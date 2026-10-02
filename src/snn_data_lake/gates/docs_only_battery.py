@@ -200,13 +200,17 @@ def _sndl_doc_audit():
             argv = args[1]
             env = args[3] if len(args) > 3 else None
             t = os.environ.get("SNDL_DOC_AUDIT_TEST") or os.environ.get("PYTEST_CURRENT_TEST")
-            if isinstance(env, dict):
-                # setdefault: a dict that names its own audit (a nested instrument run) keeps it; a
-                # stripped dict or one copied at import (no SNDL_DOC_AUDIT_TEST there) is armed now
-                env.setdefault("SNDL_DOC_AUDIT", out_dir)
-                env.setdefault("SNDL_DOC_AUDIT_ROOT", root)
+            # `env` is the CALLER's own dict (Popen audits it uncopied), so a write persists in a
+            # module-level dict such as run_selfchecks._ENV: re-stamp the CURRENT test on every spawn,
+            # or the first test file to spawn through it would own every later spawn's reads. A dict
+            # naming a DIFFERENT audit dir is a nested instrument run: leave it alone.
+            if isinstance(env, dict) and env.get("SNDL_DOC_AUDIT") in (None, out_dir):
+                env["SNDL_DOC_AUDIT"] = out_dir
+                env["SNDL_DOC_AUDIT_ROOT"] = root
                 if t:
-                    env.setdefault("SNDL_DOC_AUDIT_TEST", t)
+                    env["SNDL_DOC_AUDIT_TEST"] = t
+                else:
+                    env.pop("SNDL_DOC_AUDIT_TEST", None)
             if isinstance(argv, (list, tuple)):
                 a = [os.fsdecode(x) if isinstance(x, (str, bytes, os.PathLike)) else str(x) for x in argv]
             else:
@@ -526,7 +530,9 @@ def run(out_dir: Path) -> int:
 
 
 def _child(code: str, env: dict) -> None:
-    subprocess.run([sys.executable, "-c", code], env=env, check=True, timeout=60)
+    # -S: no `site`, so no installed .pth hook -- the child runs THIS module's HOOK_SOURCE, not
+    # whatever version was installed (without it a mutant of the hook passed, seen 2026-10-02).
+    subprocess.run([sys.executable, "-S", "-c", code], env=env, check=True, timeout=60)
 
 
 def _selfcheck_rules() -> None:
@@ -627,7 +633,7 @@ def _selfcheck_instrument() -> None:
             + "\nimport os, subprocess, sys\n"
             + "env = {k: v for k, v in os.environ.items() "
             + "if not k.startswith(('SNDL_DOC_AUDIT', 'PYTEST_'))}\n"
-            + f"subprocess.run([sys.executable, '-c', {reader!r}], env=env, check=True)\n"
+            + f"subprocess.run([sys.executable, '-S', '-c', {reader!r}], env=env, check=True)\n"
         )
         for f in logs.iterdir():
             f.unlink()
@@ -641,6 +647,22 @@ def _selfcheck_instrument() -> None:
         assert mp["tests"]["tests/test_k.py"]["read"] == ["docs/k.md"], mp
         cov = mp["coverage"]
         assert (cov["process_starts"], cov["python_spawns_seen_by_parents"]) == (2, 1), mp
+        # SHARED DICT (advisor, 2026-10-02): one module-level env dict, two spawns under two test ids --
+        # each child logs under its OWN test file (setdefault pinned the first id; reachable red).
+        for f in logs.iterdir():
+            f.unlink()
+        shared = (
+            HOOK_SOURCE
+            + "\nimport os, subprocess, sys\n"
+            + "D = {k: v for k, v in os.environ.items() if not k.startswith(('SNDL_DOC_AUDIT_TEST',))}\n"
+            + "os.environ.pop('SNDL_DOC_AUDIT_TEST', None)\n"
+            + "for t in ('tests/test_a.py::x (call)', 'tests/test_b.py::y (call)'):\n"
+            + "    os.environ['PYTEST_CURRENT_TEST'] = t\n"
+            + f"    subprocess.run([sys.executable, '-S', '-c', {reader!r}], env=D, check=True)\n"
+        )
+        _child(shared, on)
+        got = sorted(r["t"] for r in load_records(logs) if r["k"] == "read")
+        assert got == ["tests/test_a.py", "tests/test_b.py"], got
         # Globs: a literal path is an existence check (no record); `*` lists one dir; `**` is recursive.
         for f in logs.iterdir():
             f.unlink()
