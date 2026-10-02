@@ -95,7 +95,8 @@ on its grown neurons, placed on an anatomical map (G7), and G8 reorganizes the p
   since Claude cannot flip its own main model mid-session. Codex executes a bounded brief (files, acceptance,
   validation; one writer at a time; envelope work never delegated) and writes the read-only closing report:
   `gpt-6-luna` for mechanical edits and checks, `gpt-6-sol` for builds and folds, `gpt-6-astra` for design
-  reads, lenses, refuters, debates and closing reports. A spawned Claude worker passes **`model: 'sonnet'`**
+  reads and debates; *(2026-09-30, owner: "use Codex 6.1 sol for review")* every review read -- panel lenses,
+  refuters and the closing report -- runs on `gpt-6.1-sol`. A spawned Claude worker passes **`model: 'sonnet'`**
   where Sonnet is adequate (owner 2026-09-28: "Use Sonnet 5.5 for appropriate work to save on tokens") and
   `'opus'` only for judgment reads (a session reading; omitting `model:` inherits). Codex runs on the Codex desktop app's engine, on the ChatGPT
   subscription only (owner 2026-09-24: "Use octopus to use the codex app on my desktop with the monthly
@@ -103,6 +104,16 @@ on its grown neurons, placed on an anatomical map (G7), and G8 reorganizes the p
   minute: that engine runs all three GPT-6 models on the subscription, while the older npm Codex CLI returned
   HTTP 400 for Sol and Luna -- the gate is the client version, not the account. The machine-local launchers
   are named in the operator's protocol.
+- **ADVISOR AND VERIFY LOOP** (owner 2026-10-01: "save the advisor fable command and the VERIFY.md to SNDL
+  protocol"). The owner may type `/advisor fable`, which gives the session an advisor backed by Fable 5.1;
+  when present, the orchestrator consults it after orienting and before declaring done, reproduces any number
+  it reports before acting on it, and never lets it stand in for the panel, the closing report or the battery.
+  Before telling the owner a change works, the operator runs the machine-local verify skill
+  (`.claude/skills/verify/`, git-ignored): a brain on a throwaway `NORD_HOME`, `/api/state` and one chat turn,
+  a stop, then proof that neither the live home nor the checkout was written (its first run found the daemon
+  writing telemetry into the checkout, fixed at `4e696357`); for a docs change, the four fast doc gates. A
+  verify red is attributed, never re-run until green; verify never replaces the battery and is never named as
+  a commit's verification.
 - **One change per commit; one full battery per pushed ARC, on its stacked head** (owner rule 2026-09-02,
   POLICIES' "Gated + reversible" amendment). Every commit names the battery that verified the head it was
   pushed under; a red on the head is attributed per stage per commit, never by whole re-runs.
