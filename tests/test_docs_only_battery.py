@@ -56,6 +56,6 @@ def test_committed_map_if_present_is_well_formed():
         pytest.skip("no map committed yet (the first instrumented battery writes it)")
     m = json.loads(dob.MAP_PATH.read_text(encoding="utf-8"))
     assert m["version"] == dob.MAP_VERSION
-    assert set(m["pytest_all"]) == {"read", "list", "listr"}
+    assert set(m["pytest_all"]) == {"read", "list", "listr", "git_scan", "blind"}
     for t, e in m["tests"].items():
-        assert t.startswith("tests/") and set(e) == {"read", "list", "listr", "git_scan"}
+        assert t.startswith("tests/") and set(e) == {"read", "list", "listr", "git_scan", "blind"}

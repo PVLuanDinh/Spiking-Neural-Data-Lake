@@ -219,6 +219,8 @@ def _sndl_doc_audit():
                     env.pop("SNDL_DOC_AUDIT_TEST", None)
             elif env is None:
                 os.environ["SNDL_DOC_AUDIT_TOK"] = tok  # the child inherits this process's environment
+                # Disclosed (panel F5): two threads spawning with env=None at once can hand both children
+                # the later token. The COUNT of unpaired spawns is preserved; which spawn is named may not be.
             else:
                 tok = None  # a nested instrument run's own dict: not this audit's child
             if isinstance(argv, (list, tuple)):
@@ -227,8 +229,12 @@ def _sndl_doc_audit():
                 a = [str(argv)]
             emit({"k": "spawn", "a": a, "t": test_id(), "tok": tok})
 
+    # `h` names the hook that MADE this record (the .pth passes its id; a bare exec has none), and
+    # `end` proves the process ran to exit -- a killed or partial capture cannot pass for a full one.
     emit({"k": "start", "argv": list(sys.orig_argv), "ppid": os.getppid(), "t": test_id(),
-          "tok": os.environ.get("SNDL_DOC_AUDIT_TOK")})
+          "tok": os.environ.get("SNDL_DOC_AUDIT_TOK"), "h": globals().get("_SNDL_HOOK_ID", "")})
+    import atexit
+    atexit.register(lambda: emit({"k": "end"}))
     sys.addaudithook(hook)
 
 
@@ -240,9 +246,17 @@ del _sndl_doc_audit
 # --- the instrument's installation -------------------------------------------------------------
 
 
+# distinct-from: gates/selfcheck_cache.py -- _facts derives a source file's static data inputs; this
+#   names the installed hook's version. Also read: neuromodulation/drive_reduction.py (a set-point
+#   policy) -- term overlap only.
+def hook_id() -> str:
+    return hashlib.sha256(HOOK_SOURCE.encode("utf-8")).hexdigest()[:16]
+
+
 def pth_line() -> str:
     """The one .pth line: inert unless SNDL_DOC_AUDIT is set (no import beyond os otherwise)."""
-    return f'import os; exec({HOOK_SOURCE!r}) if os.environ.get("SNDL_DOC_AUDIT") else None\n'
+    ns = f'{{"_SNDL_HOOK_ID": {hook_id()!r}}}'
+    return f'import os; exec({HOOK_SOURCE!r}, {ns}) if os.environ.get("SNDL_DOC_AUDIT") else None\n'
 
 
 def pth_path() -> Path:
@@ -315,15 +329,61 @@ def _is_python(argv: list[str]) -> bool:
 
 
 def _empty() -> dict:
-    return {"read": set(), "list": set(), "listr": set(), "git_scan": False}
+    return {"read": set(), "list": set(), "listr": set(), "git_scan": False, "blind": False}
 
 
-def build_map(records: list[dict], head: str, chash: str) -> dict:
+# distinct-from: instruments/pool_selection.py -- _tabulate validates replay RESULTS into a table;
+#   this validates an instrument CAPTURE and fingerprints the runtime. Also read:
+#   instruments/attention_schema.py (branch map), binding_instrument.py and report_order_probe.py
+#   (dry runs), nef_compute.py (run hint) -- term overlaps only.
+def runtime_fingerprint() -> str:
+    """What decides which tests RUN and what they see, beyond the tracked code (panel F3,
+    2026-10-02): the interpreter, every installed distribution and version, the NORD_* environment,
+    and the NAMES of ignored files (the gitignored models/, data/ and pins decide which tests skip).
+    Disclosed limit: an ignored file whose CONTENT changes under the same name is not seen."""
+    from importlib import metadata  # noqa: PLC0415
+
+    dists = sorted(f"{d.metadata['Name']}=={d.version}" for d in metadata.distributions())
+    env = sorted(f"{k}={v}" for k, v in os.environ.items() if k.startswith("NORD_"))
+    ignored = [
+        p
+        for p in _git("ls-files", "-oi", "--exclude-standard").splitlines()
+        if "__pycache__" not in p and not p.endswith(".pyc") and not p.startswith("graphify-out/")
+    ]
+    parts = [sys.version, os.path.normcase(sys.executable), *dists, *env, *sorted(ignored)]
+    return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
+
+
+def validate_capture(records: list[dict], hid: str) -> list[str]:
+    """Why this capture may NOT become a map (panel F1): it must hold a pytest root that started AND
+    ended, and every process in it must have run THIS hook."""
+    problems = []
+    starts = [r for r in records if r.get("k") == "start"]
+    ended = {r["_pid"] for r in records if r.get("k") == "end"}
+    roots = [r for r in starts if "pytest" in " ".join(r.get("argv", [])) and not r.get("t")]
+    if not roots:
+        problems.append("no pytest root process in the capture (empty or not a pytest run)")
+    elif not any(r["_pid"] in ended for r in roots):
+        problems.append("the pytest root never reached exit (killed or still running)")
+    stale = sorted({r.get("h", "") for r in starts} - {hid})
+    if stale:
+        problems.append(f"records made by another hook version {stale} (current {hid})")
+    return problems
+
+
+def build_map(records: list[dict], head: str, chash: str, fingerprint: str = "") -> dict:
     """Fold instrument records into the map. Records without a test id in a pytest process are
     collection-time reads (pytest_all); records without a test id elsewhere are outside pytest and
-    unused (self-checks and gates always run in full)."""
+    unused (self-checks and gates always run in full). A test file that spawned a python child whose
+    hook never started is BLIND (its child's reads are unknown) and is always selected."""
     tests: dict[str, dict] = {}
-    pytest_all: dict[str, set] = {"read": set(), "list": set(), "listr": set()}
+    pytest_all: dict = {
+        "read": set(),
+        "list": set(),
+        "listr": set(),
+        "git_scan": False,
+        "blind": False,
+    }
     starts = spawns_py = dropped = 0
     is_pytest: dict[str, bool] = {}
     started_toks = set()
@@ -338,14 +398,19 @@ def build_map(records: list[dict], head: str, chash: str) -> dict:
         k = rec.get("k")
         t = rec.get("t") or ""
         if k == "spawn":
+            owner = tests.setdefault(t, _empty()) if t else None
+            if not t and not is_pytest.get(rec["_pid"]):
+                continue  # outside pytest: self-checks and gates always run in full
+            target = owner if owner is not None else pytest_all
             if _is_python(rec.get("a", [])):
                 spawns_py += 1
                 if rec.get("tok") and rec["tok"] not in started_toks:
                     unpaired.append(
                         " ".join(_tokens(rec.get("a", []))[1:4]) + f"  [{t or 'no test'}]"
                     )
-            if t and _is_git_scan(rec.get("a", [])):
-                tests.setdefault(t, _empty())["git_scan"] = True
+                    target["blind"] = True
+            if _is_git_scan(rec.get("a", [])):
+                target["git_scan"] = True
             continue
         if k not in ("read", "list", "listr"):
             continue
@@ -360,6 +425,7 @@ def build_map(records: list[dict], head: str, chash: str) -> dict:
         "version": MAP_VERSION,
         "head": head,
         "code_hash": chash,
+        "fingerprint": fingerprint,
         "built": _now(),
         "coverage": {
             "process_starts": starts,
@@ -368,14 +434,9 @@ def build_map(records: list[dict], head: str, chash: str) -> dict:
             # each a python child whose hook never started: a NAMED blind spot (no hook = no reads seen)
             "python_spawns_without_child_start": sorted(unpaired),
         },
-        "pytest_all": {k: sorted(v) for k, v in pytest_all.items()},
+        "pytest_all": {k: (sorted(v) if isinstance(v, set) else v) for k, v in pytest_all.items()},
         "tests": {
-            t: {
-                "read": sorted(v["read"]),
-                "list": sorted(v["list"]),
-                "listr": sorted(v["listr"]),
-                "git_scan": v["git_scan"],
-            }
+            t: {k: (sorted(x) if isinstance(x, set) else x) for k, x in v.items()}
             for t, v in sorted(tests.items())
         },
     }
@@ -408,8 +469,12 @@ def check_changed(changes: list[tuple[str, str]]) -> None:
         raise Refused(f"R1: non-Markdown paths changed -- run the full battery: {bad[:10]}")
 
 
-def check_map(m: dict | None, chash: str) -> None:
-    """R2: the map must exist, be this version, and describe this code."""
+# distinct-from: gates/gradient_claim_gate.py -- _refuses_rise refuses a gate BASELINE rise; this
+#   refuses a reader map for other code or another runtime. Also read: growth/neuron_zoo.py,
+#   infra/self_mod_harness.py, instruments/paired_contrast.py, instruments/nef_compute.py -- term
+#   overlaps only.
+def check_map(m: dict | None, chash: str, fingerprint: str | None = None) -> None:
+    """R2: the map must exist, be this version, and describe this code and this runtime."""
     if not m:
         raise Refused(
             "R2: no tools/doc_reader_map.json -- run the full battery (instrumented) first"
@@ -421,6 +486,11 @@ def check_map(m: dict | None, chash: str) -> None:
             "R2: the map was measured on other code (map head "
             f"{str(m.get('head'))[:10]}) -- run the full battery, which rebuilds it"
         )
+    if fingerprint is not None and m.get("fingerprint") != fingerprint:
+        raise Refused(
+            "R2: the runtime changed since the map was measured (interpreter, installed packages, "
+            "NORD_* env or ignored assets) -- run the full battery, which rebuilds it"
+        )
 
 
 def _ancestors(path: str) -> list[str]:
@@ -429,13 +499,13 @@ def _ancestors(path: str) -> list[str]:
 
 
 def _touches(entry: dict, status: str, path: str) -> bool:
-    if path in entry["read"]:
+    # BLIND (a hookless python child) and git ls-files/grep scanners are selected on ANY change: a
+    # child's reads are unknown, and `git grep` output changes with a modified file's content (panel F2).
+    if entry.get("blind") or entry.get("git_scan") or path in entry["read"]:
         return True
     if status in ("A", "D"):
         parent = "/".join(path.split("/")[:-1]) or "."
         if parent in entry["list"] or any(a in entry["listr"] for a in _ancestors(path)):
-            return True
-        if entry.get("git_scan"):
             return True
     return False
 
@@ -446,13 +516,17 @@ def _touches(entry: dict, status: str, path: str) -> bool:
 #   cortex/self_improvement_suite.py, growth/arealization.py, instruments/pool_selection.py -- term
 #   overlaps only.
 def _folded(entry: dict) -> dict:
-    return {k: ({p.lower() for p in v} if k != "git_scan" else v) for k, v in entry.items()}
+    return {
+        k: ({p.lower() for p in v} if isinstance(v, list | set) else v) for k, v in entry.items()
+    }
 
 
+# distinct-from: readout/language_readout_slda.py -- its _split is a train/test data split; this picks
+#   test files (now honouring the collection-time git-scan and blind flags, panel F1/F2).
 def select(m: dict, changes: list[tuple[str, str]]) -> tuple[bool, list[str]]:
     """(run the FULL pytest?, the test files to run). Statuses are git's A / M / D (renames split)."""
     ch = [(s, p.lower()) for s, p in changes]
-    full = any(_touches(_folded({**m["pytest_all"], "git_scan": False}), s, p) for s, p in ch)
+    full = any(_touches(_folded(m["pytest_all"]), s, p) for s, p in ch)
     files = sorted(
         t for t, e in m["tests"].items() if any(_touches(_folded(e), s, p) for s, p in ch)
     )
@@ -476,15 +550,10 @@ def _now() -> str:
 
 def run(out_dir: Path) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
-    home = out_dir / "home"
-    home.mkdir(exist_ok=True)
-    env = {
-        **os.environ,
-        "PYTHONUTF8": "1",
-        "NORD_PERSIST": "0",
-        "NORD_HOME": str(home),
-        "PYTHONPATH": str(ROOT / "src"),
-    }
+    # The environment of the battery of record (t066): UTF-8 and the source path, NOTHING else --
+    # tests/conftest.py and run_selfchecks.py isolate NORD_HOME themselves and deliberately do NOT set
+    # NORD_PERSIST=0 (panel F4: an earlier draft forced it, copying a session script).
+    env = {**os.environ, "PYTHONUTF8": "1", "PYTHONPATH": str(ROOT / "src")}
     for v in ("SNDL_DOC_AUDIT", "SNDL_DOC_AUDIT_ROOT", "SNDL_DOC_AUDIT_TEST"):
         env.pop(v, None)
     head = _git("rev-parse", "HEAD").strip()
@@ -493,7 +562,7 @@ def run(out_dir: Path) -> int:
         changes = changed_paths()
         check_changed(changes)
         m = json.loads(MAP_PATH.read_text(encoding="utf-8")) if MAP_PATH.exists() else None
-        check_map(m, code_hash(_git("ls-files", "-s")))
+        check_map(m, code_hash(_git("ls-files", "-s")), runtime_fingerprint())
     except Refused as e:
         print(f"REFUSED {e}")
         (out_dir / "verdict.txt").write_text("REFUSED\n", encoding="utf-8")
@@ -518,6 +587,8 @@ def run(out_dir: Path) -> int:
         (out_dir / "verdict.txt").write_text("HALTED\n", encoding="utf-8")
         return 1
     rcs = [stage("certify", [py, "-m", "snn_data_lake.gates.policy_manifest", "--certify"])]
+    rcs.append(stage("ruff", [py, "-m", "ruff", "check", "."]))
+    rcs.append(stage("ruff_format", [py, "-m", "ruff", "format", "--check", "."]))
     rcs.append(stage("selfchecks", [py, "run_selfchecks.py"]))
     for g in BATTERY_GATES:
         rcs.append(stage(g, [py, "-m", f"snn_data_lake.gates.{g}", "--assert"]))
@@ -538,6 +609,7 @@ def run(out_dir: Path) -> int:
         "pytest": "full" if full else files,
         "map_head": m["head"],
         "map_code_hash": m["code_hash"],
+        "map_fingerprint": m["fingerprint"],
     }
     CERT_PATH.write_text(
         json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
@@ -585,29 +657,54 @@ def _selfcheck_rules() -> None:
             pass
         else:
             raise AssertionError(f"R2 did not refuse {bad_map!r} against {h}")
-    print("  RED    R2 refuses a missing map, a wrong version and a map for other code")
+    # R2 runtime (panel F3): the same code under another runtime fingerprint refuses.
+    check_map({**good, "fingerprint": "f"}, "h", "f")
+    try:
+        check_map({**good, "fingerprint": "f"}, "h", "other-runtime")
+    except Refused:
+        pass
+    else:
+        raise AssertionError("R2 did not refuse a map measured under another runtime")
+    print("  RED    R2 refuses a missing map, a wrong version, other code and another runtime")
+
+    # Capture validation (panel F1): an empty capture, a killed pytest root and another hook's records
+    # never become a map.
+    root = {"k": "start", "argv": ["python", "-m", "pytest"], "t": "", "h": "H", "_pid": "1"}
+    assert validate_capture([], "H"), "an empty capture validated"
+    assert validate_capture([root], "H"), "a pytest root that never ended validated"
+    assert validate_capture([{**root, "h": "OLD"}, {"k": "end", "_pid": "1"}], "H")
+    assert validate_capture([root, {"k": "end", "_pid": "1"}], "H") == []
+    print(
+        "  RED    capture: empty, unfinished and other-hook captures are refused; a complete one passes"
+    )
 
     # Selection: a reader of the changed file; a lister of its directory on ADD only; a recursive
-    # glob over an ancestor; a git scanner on ADD; a collection-time read forces the full pytest.
-    e = {"read": [], "list": [], "listr": [], "git_scan": False}
+    # glob over an ancestor; a git scanner and a BLIND file on ANY change (panel F1/F2); a
+    # collection-time read, git scan or blind child forces the full pytest.
+    e = {"read": [], "list": [], "listr": [], "git_scan": False, "blind": False}
+    pa = {"read": ["docs/POLICIES.md"], "list": [], "listr": [], "git_scan": False, "blind": False}
     m = {
-        "pytest_all": {"read": ["docs/POLICIES.md"], "list": [], "listr": []},
+        "pytest_all": pa,
         "tests": {
             "tests/test_reader.py": {**e, "read": ["docs/a.md"]},
             "tests/test_lister.py": {**e, "list": ["specs/ev"]},
             "tests/test_globber.py": {**e, "listr": ["specs"]},
             "tests/test_scanner.py": {**e, "git_scan": True},
+            "tests/test_blind.py": {**e, "blind": True},
             "tests/test_none.py": {**e, "read": ["docs/other.md"]},
         },
     }
-    assert select(m, [("M", "docs/a.md")]) == (False, ["tests/test_reader.py"])
-    assert select(m, [("M", "specs/ev/x.md")]) == (False, [])
+    always = ["tests/test_blind.py", "tests/test_scanner.py"]
+    assert select(m, [("M", "docs/a.md")]) == (False, sorted(always + ["tests/test_reader.py"]))
+    assert select(m, [("M", "specs/ev/x.md")]) == (False, always)
     assert select(m, [("A", "specs/ev/x.md")]) == (
         False,
-        ["tests/test_globber.py", "tests/test_lister.py", "tests/test_scanner.py"],
+        sorted(always + ["tests/test_globber.py", "tests/test_lister.py"]),
     )
     assert select(m, [("M", "docs/POLICIES.md")])[0] is True
-    assert select(m, [("M", "DOCS/A.md")]) == (False, ["tests/test_reader.py"])  # case-insensitive
+    assert select(m, [("M", "DOCS/A.md")])[1] == select(m, [("M", "docs/a.md")])[1]  # case
+    for flag in ("git_scan", "blind"):
+        assert select({**m, "pytest_all": {**pa, flag: True}}, [("M", "docs/z.md")])[0] is True
     # The spawn classifiers, on the Windows command-line string and on a list.
     assert _is_python(['"C:\\a b\\python.exe" -c pass']) and _is_python(["/usr/bin/python3", "-c"])
     assert _is_git_scan(['"C:\\Program Files\\Git\\cmd\\git.exe" ls-files -z'])
@@ -633,6 +730,10 @@ def _selfcheck_instrument() -> None:
         base_env = {
             k: v for k, v in os.environ.items() if not k.startswith(("SNDL_DOC_AUDIT", "PYTEST_"))
         }
+        # An EXPLICITLY EMPTY audit dir opts a spawn out: an enclosing instrumented battery leaves this
+        # dict alone, so H- tests real inertness and this check's children stay out of that capture
+        # (seen 2026-10-02: they were re-armed into it and logged with no hook id).
+        base_env["SNDL_DOC_AUDIT"] = ""
         on = {
             **base_env,
             "SNDL_DOC_AUDIT": str(logs),
@@ -717,7 +818,8 @@ def _selfcheck_instrument() -> None:
         {"k": "read", "p": "docs/POLICIES.md", "t": "", "c": "_pytest.x", "_pid": "1"},
     ]
     mp = build_map(recs, "h", "c")
-    assert mp["pytest_all"] == {"read": ["docs/POLICIES.md"], "list": [], "listr": []}, mp
+    assert mp["pytest_all"]["read"] == ["docs/POLICIES.md"], mp
+    assert mp["pytest_all"]["list"] == mp["pytest_all"]["listr"] == [], mp
     assert mp["tests"]["tests/test_a.py"]["list"] == ["docs"], mp
     assert mp["coverage"]["listings_dropped_as_infrastructure"] == 2, mp
     print(
@@ -755,7 +857,16 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 2
         recs = load_records(Path(argv[1]))
-        m = build_map(recs, _git("rev-parse", "HEAD").strip(), code_hash(_git("ls-files", "-s")))
+        problems = validate_capture(recs, hook_id())
+        if problems:
+            print("REFUSED: this capture cannot become a map --", "; ".join(problems))
+            return 2
+        m = build_map(
+            recs,
+            _git("rev-parse", "HEAD").strip(),
+            code_hash(_git("ls-files", "-s")),
+            runtime_fingerprint(),
+        )
         MAP_PATH.write_text(
             json.dumps(m, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
         )
