@@ -127,7 +127,7 @@ measured behavioural change, not a proven improvement, and it is safe-by-constru
 sense that HOLD adds caution and never releases an action.
 
 Reuses (does NOT reimplement): growth/lif_neuron.LIFNeuron (the spiking pool),
-substrate/_mathutils.{mean,sigmoid}, substrate/signal_calibrator.SignalCalibrator (the O(1)
+infra/_mathutils.{mean,sigmoid}, substrate/signal_calibrator.SignalCalibrator (the O(1)
 running quantile that is the HOLD bar), faculties/executive_control.ExecutiveControl (the consumed
 conflict; this module computes no conflict of its own). The self-check additionally drives
 growth/growing_learner.GrowingLearner (a real neurogenesis learner whose capacity

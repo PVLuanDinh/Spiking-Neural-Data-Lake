@@ -53,7 +53,7 @@ class Node(Protocol):
 
     `step(current)` advances one timestep and returns the spike(s); `current` and the returned spike may
     be scalars (single neuron) or vectors/arrays (a layer). Cells whose reset is named differently
-    (e.g. LIFNeuron.reset_state) are adapted with a tiny shim -- see cortex/heterogeneous_microcircuit.
+    (e.g. LIFNeuron.reset_state) are adapted with a tiny shim -- see growth/heterogeneous_microcircuit.
     """
 
     def step(self, current): ...
