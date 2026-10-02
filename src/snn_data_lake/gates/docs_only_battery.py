@@ -60,6 +60,24 @@ PTH_NAME = "sndl_doc_audit.pth"
 MAP_VERSION = 1
 # The record and the map are written AFTER the battery that measured the code; neither can change a verdict.
 HASH_EXEMPT = frozenset({"tools/policy_certification.json", "tools/doc_reader_map.json"})
+# A directory listing whose first non-plumbing caller is one of these top-level packages is the import
+# system or the test runner walking the tree (measured 2026-10-02: every collection-time listing came
+# from importlib's finder or pytest), never a reader of a document. READS are never dropped.
+INFRA_CALLERS = frozenset(
+    {
+        "importlib",
+        "_frozen_importlib",
+        "_frozen_importlib_external",
+        "zipimport",
+        "pkgutil",
+        "site",
+        "_pytest",
+        "pluggy",
+        "pytest",
+        "pytest_cov",
+        "coverage",
+    }
+)
 # The battery's --assert gates (plan A.4's literal block, as run by every battery since 2026-09-29), plus
 # doc_budget_gate, which run_selfchecks runs bare (printing, not failing).
 BATTERY_GATES = (
@@ -110,9 +128,23 @@ def _sndl_doc_audit():
         finally:
             tl.busy = False
 
+    plumbing = ("os", "ntpath", "posixpath", "genericpath", "glob", "fnmatch", "pathlib", "shutil")
+
+    # distinct-from: brainstem/so101_arm.py -- its close() is a lifecycle no-op; this names the module
+    #   that asked for a directory listing (term overlap on "caller" only).
+    def caller():
+        # the first module above the filesystem plumbing that asked for the listing
+        f = sys._getframe(2)
+        while f is not None:
+            n = f.f_globals.get("__name__", "")
+            if n.split(".")[0] not in plumbing:
+                return n
+            f = f.f_back
+        return ""
+
     def rel(p):
         try:
-            real = os.path.realpath(os.path.join(os.getcwd(), os.fsdecode(p)))
+            real =os.path.realpath(os.path.join(os.getcwd(), os.fsdecode(p)))
         except Exception:
             return None
         key = os.path.normcase(real)
@@ -143,7 +175,7 @@ def _sndl_doc_audit():
                 return
             r = rel("." if p is None else p)
             if r is not None:
-                emit({"k": "list", "p": r, "t": test_id()})
+                emit({"k": "list", "p": r, "t": test_id(), "c": caller()})
         elif event == "glob.glob" or event == "glob.glob/2":
             try:
                 pat = os.fsdecode(args[0])
@@ -155,21 +187,26 @@ def _sndl_doc_audit():
                 if magic & set(part):
                     break
                 fixed.append(part)
+            if len(fixed) == len(parts):
+                return  # no wildcard: an existence check (pytest's testpaths), not a listing
             base = "/".join(fixed) or "."
             if len(args) > 2 and args[2] is not None:
                 base = os.path.join(os.fsdecode(args[2]), base)
             r = rel(base)
             if r is not None:
-                emit({"k": "listr", "p": r, "t": test_id()})
+                k = "listr" if "**" in pat else "list"
+                emit({"k": k, "p": r, "t": test_id(), "c": caller()})
         elif event == "subprocess.Popen":
             argv = args[1]
             env = args[3] if len(args) > 3 else None
             t = os.environ.get("SNDL_DOC_AUDIT_TEST") or os.environ.get("PYTEST_CURRENT_TEST")
             if isinstance(env, dict):
-                env["SNDL_DOC_AUDIT"] = out_dir
-                env["SNDL_DOC_AUDIT_ROOT"] = root
+                # setdefault: a dict that names its own audit (a nested instrument run) keeps it; a
+                # stripped dict or one copied at import (no SNDL_DOC_AUDIT_TEST there) is armed now
+                env.setdefault("SNDL_DOC_AUDIT", out_dir)
+                env.setdefault("SNDL_DOC_AUDIT_ROOT", root)
                 if t:
-                    env["SNDL_DOC_AUDIT_TEST"] = t
+                    env.setdefault("SNDL_DOC_AUDIT_TEST", t)
             if isinstance(argv, (list, tuple)):
                 a = [os.fsdecode(x) if isinstance(x, (str, bytes, os.PathLike)) else str(x) for x in argv]
             else:
@@ -272,7 +309,7 @@ def build_map(records: list[dict], head: str, chash: str) -> dict:
     unused (self-checks and gates always run in full)."""
     tests: dict[str, dict] = {}
     pytest_all: dict[str, set] = {"read": set(), "list": set(), "listr": set()}
-    starts = spawns_py = 0
+    starts = spawns_py = dropped = 0
     is_pytest: dict[str, bool] = {}
     for rec in records:
         if rec.get("k") == "start":
@@ -289,6 +326,9 @@ def build_map(records: list[dict], head: str, chash: str) -> dict:
             continue
         if k not in ("read", "list", "listr"):
             continue
+        if k != "read" and str(rec.get("c", "")).split(".")[0] in INFRA_CALLERS:
+            dropped += 1  # an import finder or pytest's own walk lists dirs; it reads no document
+            continue
         if t:
             tests.setdefault(t, _empty())[k].add(rec["p"])
         elif is_pytest.get(rec["_pid"]):
@@ -298,7 +338,11 @@ def build_map(records: list[dict], head: str, chash: str) -> dict:
         "head": head,
         "code_hash": chash,
         "built": _now(),
-        "coverage": {"process_starts": starts, "python_spawns_seen_by_parents": spawns_py},
+        "coverage": {
+            "process_starts": starts,
+            "python_spawns_seen_by_parents": spawns_py,
+            "listings_dropped_as_infrastructure": dropped,
+        },
         "pytest_all": {k: sorted(v) for k, v in pytest_all.items()},
         "tests": {
             t: {
@@ -567,6 +611,9 @@ def _selfcheck_instrument() -> None:
             "SNDL_DOC_AUDIT": str(logs),
             "SNDL_DOC_AUDIT_ROOT": str(repo),
             "PYTEST_CURRENT_TEST": "tests/test_k.py::test_k (call)",
+            # explicit: under an instrumented battery the PARENT's hook would otherwise fill it with
+            # the running pytest file (seen 2026-10-02: this check red only under audit)
+            "SNDL_DOC_AUDIT_TEST": "tests/test_k.py::test_k (call)",
         }
         reader = HOOK_SOURCE + f"\nopen({str(md)!r}).read()\n"
         _child(reader, on)
@@ -592,10 +639,36 @@ def _selfcheck_instrument() -> None:
         assert len(spawns) == 1 and reads[0]["_pid"] != spawns[0]["_pid"], recs
         mp = build_map(recs, "h", "c")
         assert mp["tests"]["tests/test_k.py"]["read"] == ["docs/k.md"], mp
-        assert mp["coverage"] == {"process_starts": 2, "python_spawns_seen_by_parents": 1}, mp
+        cov = mp["coverage"]
+        assert (cov["process_starts"], cov["python_spawns_seen_by_parents"]) == (2, 1), mp
+        # Globs: a literal path is an existence check (no record); `*` lists one dir; `**` is recursive.
+        for f in logs.iterdir():
+            f.unlink()
+        globber = (
+            HOOK_SOURCE
+            + f"\nimport glob, os\nos.chdir({str(repo)!r})\n"
+            + "glob.glob('docs')\nglob.glob('docs/*.md')\nglob.glob('docs/**/*.md', recursive=True)\n"
+        )
+        _child(globber, on)
+        got = sorted((r["k"], r["p"]) for r in load_records(logs) if r["k"] in ("list", "listr"))
+        assert ("list", "docs") in got and ("listr", "docs") in got, got
+        assert all(p != "." or k == "list" for k, p in got), got  # no recursive walk of the root
+    # Infrastructure listings are dropped from the map; a test's own listing is kept; reads always kept.
+    recs = [
+        {"k": "start", "argv": ["python", "-m", "pytest"], "_pid": "1"},
+        {"k": "list", "p": "src/x", "t": "", "c": "_frozen_importlib_external", "_pid": "1"},
+        {"k": "listr", "p": ".", "t": "", "c": "_pytest.main", "_pid": "1"},
+        {"k": "list", "p": "docs", "t": "tests/test_a.py", "c": "tests.test_a", "_pid": "1"},
+        {"k": "read", "p": "docs/POLICIES.md", "t": "", "c": "_pytest.x", "_pid": "1"},
+    ]
+    mp = build_map(recs, "h", "c")
+    assert mp["pytest_all"] == {"read": ["docs/POLICIES.md"], "list": [], "listr": []}, mp
+    assert mp["tests"]["tests/test_a.py"]["list"] == ["docs"], mp
+    assert mp["coverage"]["listings_dropped_as_infrastructure"] == 2, mp
     print(
         "  RED    instrument: H+ read recorded with its test file; H- silent without the variable; "
-        "HS a stripped env dict is re-armed and the grandchild logs under the parent's test"
+        "HS a stripped env dict is re-armed and the grandchild logs under the parent's test; "
+        "globs by kind; import/pytest listings dropped, reads kept"
     )
 
 
