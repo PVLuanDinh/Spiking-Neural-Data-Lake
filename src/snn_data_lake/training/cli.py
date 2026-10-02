@@ -84,7 +84,7 @@ def main(argv=None):
         if lmmod._TORCH_IMPORT_ERROR is not None:
             print('snn-train --lm needs Torch + Brian2: pip install ".[gpu]"')
             sys.exit(1)
-        from snn_data_lake.reasoning import torch_device as lm_devmod
+        from snn_data_lake.infra import device as lm_devmod
         dev = lm_devmod.resolve_device("cuda" if args.gpu else None)
 
         corpus = lmmod.load_corpus(args.corpus)          # real UTF-8 file, or built-in toy
@@ -139,7 +139,7 @@ def main(argv=None):
     # only touched here. A missing extra -> one clean line, not an ImportError trace.
     try:
         import torch  # noqa: F401
-        from snn_data_lake.reasoning import torch_device as devmod
+        from snn_data_lake.infra import device as devmod
         from snn_data_lake.training import trainer
         from snn_data_lake.training import offload as offloadmod
         from snn_data_lake.training import mnist as mnistmod
