@@ -3201,3 +3201,66 @@ Codex closing report (`gpt-6-astra`, read-only, on `5c9f98fd`): no BLOCKER or MA
 ### 3.26 G8-2 closing record (Claude, 2026-09-29)
 
 One battery on the stacked head `cb6e2fb4` (20:58:09-22:29:37Z, launched detached with the G8-1 corrected launcher: absolute `PYTHONPATH`, isolated `NORD_HOME`) ended GREEN on its first run: 1,695 passed, two xfailed, 87.23% coverage (70% required), 365/365 self-checks, 6/6 tools gates, all sixteen final asserting gates rc 0, record assert and certify first. The slow-marked tests the stages deselected ran here. Retained in `C:\Users\vinhl\AppData\Local\Temp\g8-2-battery-cb6e2fb4`. This record and that battery's own `tools/policy_certification.json` (certified, clean, `cb6e2fb4`) are the arc's last commit. G8-2 moved 44 modules (M6-M10); G8-3 (M11a-M11e, D1) is unstarted. The daemon stays stopped; no poll.
+
+### 3.27 G8-3 pre-registration: M11a-M11e and D1 (Claude, work loop, 2026-10-02)
+
+**The decision.** The owner chose "Go, as designed" from the session's options on 2026-10-02 (plan G8 row, dated
+note, `e46cbcdc`): G8-3 is M11a through M11e and D1 exactly as frozen in 2.4-2.8 and re-cut in 2.9, its own pushed arc.
+"brainstem untouched" means the five envelope files, `tools/envelope_hashes.json` and `brainstem/so101/` stay
+byte-identical; `envelope_hash_gate` runs inside C3 at every stage. `brainstem/cpg_oscillator.py` (not an envelope
+file) moves at M11b as designed. `so101_arm.py`'s comment citations of M11 modules (F11: lines 602, 603, 607 at M11d;
+606 at M11e) dangle by design and are reported to the owner, never edited.
+
+**Base.** The parent of M11a's stack is `ff8db8aa` (`origin/main`: G8-2's head `cb6e2fb4` plus the N1/T096
+pre-registration, telemetry-home, doc-sync and docs-only arcs). `git diff --name-only cb6e2fb4 ff8db8aa` lists 17
+files, none in an M11 package. Branch `claude/g8-3` in the worktree; one writer.
+
+**Prep (read-only at `ba657134`, re-taken at `ff8db8aa`):**
+- No drift: `git ls-tree` lists 416 non-`__init__` modules; 415 equal both ways to the frozen mover's post-M10 map
+  (`g8_mover.py expected ... M10`, positive control: a planted missing and a planted extra module both reported). The
+  416th is `gates/docs_only_battery` (the docs-only arc), outside the frozen table: it keeps its name through every
+  stage, and `move_gate`'s `--expected` map carries only moved names forward (`forward()`), so it never enters C1.
+  Each sub-stage's source packages hold exactly the mover's list (M11a 1, M11b 12, M11c 22, M11d 24, M11e 33; 92)
+  and no non-`.py` tracked file.
+- `atlas_node_gate`'s F7 sites sit at the symbols `(SRC / "thalamus").glob` and `REGIONS.get("cerebellum")` /
+  `SRC / "cerebellum"` (now about eight lines below 2.4's 165 and 199-203); cited by symbol from here on.
+- A mover dry run (M11a through M11e in sequence, frozen mover `b49e982a`, in a scratch clone at `ba657134`, no gates):
+  every sub-stage rc 0, 92 moves, `faculties/` holds 92 modules and its `__init__.py`; the mover itself re-keys
+  `TORCH_TIER` at M11e (`cortex` -> `faculties`, 1 member, `language_acquisition`), so M11e's declared delta carries
+  that key change (2.6's general rule: all three tables follow 2.12). It does NOT delete `olfactory/` or its
+  `REGIONS` key at M11b (nothing moves out of it, so the mover never sees it emptied): after M11e its `REGIONS` had
+  14 keys, `olfactory` empty, against 2.6's 13. M11b removes both by hand, as its row says; `import_manifest.GOVERNED`
+  edits stay hand edits, as in G8-2.
+- The live-citation rewriter for M11 is one stage-parameterized script with both of G8-2's passes (`<pkg>/<mod>` and
+  its member form) and a hard envelope skip that prints what it skipped; on the scratch clone at M11d it skipped
+  `so101_arm.py` (3 citations, F11's M11d lines) and left its sha256 unchanged.
+- Two live old-path citations left by earlier stages (member form, which pass 1 skips): `docs/POLICIES.md` P0's
+  `basal_ganglia/self_build_loop.SelfBuildLoop.run` (M4 moved it to `infra/`) and plan A.5's
+  `basal_ganglia/learning_progress.GoalStore` (M5, `growth/`). D1 re-points both, word-neutral, as items beyond the row.
+
+**Reds and controls (2.4's last column; fired in a planted export copy, green on the real tree).** M11a: `claustrum`
+put back in `_MOVED` (C2(b)) and `claustrum/` left holding only `__pycache__/` (C6). M11b: the `REGISTRANTS` row
+`snn_data_lake.insula.interoceptive_integration` (C8). M11c: the `EXEMPT_METHOD` key
+`neuromodulation.developmental_envelope...` (C1, C2(d)). M11d: `_LIVE_ROOTS`' `thalamus.reentrant_workspace` (C1).
+M11e: `schema_induction`'s `_KB` (C2(d)), plus F16's self-checks of `reasoning_cortex` and `schema_induction`, whose
+neutered reds must still fire. D1: a planted dangling live citation (C7). C1 diffs against a delta DECLARED before any
+post census.
+
+**Dispositions.** A C1 diff that differs from its declaration halts the stage; the declaration is amended only with a
+dated written reason for a real forecast miss and a FRESH census. An envelope byte change stops the arc for the
+owner. A battery red is attributed per stage per commit (2.8); an unattributable red does not push. Nothing is claimed
+beyond "the tree is reorganized and every check named here passed": G8 makes no engine claim.
+
+**Review and record.** ONE Codex `gpt-6.1-sol` panel (three lenses: instrument, policy honesty, integration) on the
+frozen stacked head, its fold stated re-panelled or battery-verified only; a Codex closing report; ONE battery on the
+stacked head with the instrumented launcher (POLICIES' 2026-10-02 amendment: every full battery rebuilds the reader
+map), its record (`tools/policy_certification.json` and the rebuilt `tools/doc_reader_map.json`) committed last;
+push; the daemon stays stopped. D1's budget-tight rewrites (`docs/AGENT_COLD_START.md` 9,841 of 9,851 words,
+POLICIES.md 14,352 of 14,362) land net-zero or with a raise of "measured + 0", its reason in the commit, declared in
+D1's record before the gate runs.
+
+**Cost, from G8-2's measured stages (not re-measured):** M10 build 7 min 39 s, cheap half about 79 min (bounded pytest
+32 min). M11d and M11e move 24 and 33 modules (M10: 7); estimate 60-120 min per stage, about 7-11 h for the six, plus
+the panel, the fold and the battery (about 2 h 15).
+
+NOT VERIFIED BY A BATTERY (a pre-registration).
