@@ -4138,3 +4138,30 @@ planted re-run, guard re-runs and this edit of the record): about 8 min of wall 
 NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed (the tree is staged), no
 daemon was started and no live-lake file was opened. The `slow`-marked tests were deselected from the bounded pytest (`-m 'not
 slow'`), so they stay owed to the battery. D1b, D1c, G8-3's panel, fold and one battery remain owed.
+
+### 3.34 D1b predeclared comment restoration (Claude, G8-3, 2026-10-02)
+
+The parent is D1a's commit `ad43fe87`; its clean export completed the strict census, every gate rc 0. Built by the
+orchestrator (no builder): `regions_comments.py` (an out-of-tree operator script, read-only over git objects) compared
+the live tables' per-entry comments at the pre-G8 head `68db184` with `ad43fe87`: the frozen mover had dropped the
+attached comments of **103 modules, 150 lines**, across every G8 stage (M1-M11e; 86 modules and 117 lines to M11d, the
+cortex list's at M11e). Positive control for that detector: it reports `spiking_storage_prototype`'s 9-line block, seen
+dropped in M11c's raw diff. `restore_comments.py` put every line back directly above its module's live entry (an old
+inline comment comes back as a line above its entry, same text), asserting the tables' AST unchanged; then
+`init_comment_rewrite.py` re-pointed stale module paths inside full-line comments of `__init__.py` for all 253 pairs,
+both rewriter passes, asserting the whole module's AST unchanged: 10 citations (e.g. `cortex/brain` -> `engine/brain.py`).
+Diff: `src/snn_data_lake/__init__.py` only, +150 lines. `ruff check` and `ruff format --check` clean.
+
+**Declared before the post census** (`declared_D1b.json`): citation BROAD 2564/311 -> 2567/311, by the guard's own parser
+and resolver over the candidate tree. The +3 are restored provenance notes citing `reasoning/snn_moe_classifier`,
+`training/eprop_nmnist` and `training/eprop_shd`: files absent at `68db184`, where those same comment citations
+already dangled and were counted (`git show 68db184:src/snn_data_lake/__init__.py`; retired paths written without `.py` here, as in A.5a); G8's mover removed them with their
+comments, so restoration returns to the pre-G8 baseline rather than adding a live-file rise (2.6). No other gate line moves.
+
+**C1:** `move_gate OK: the diff equals the declared delta (2 declared change(s))` on the first post census (strict, fresh
+export of the staged tree; observed delta `8817CF4622BDB8B8`). **Red:** in a copy of the post export's `__init__.py`, one
+restored line deleted (spiking_storage_prototype's "Promoted from reasoning/ 2026-08-04 ..."): the detector over that copy
+counts 10 dropped lines missing against the real tree's 9 (the 9 are exactly the comment lines the re-pointing changed, so
+their pre-G8 text is absent by construction). Envelope: no file under `brainstem/` or `tools/envelope_hashes.json` changed.
+
+NOT VERIFIED BY A BATTERY (comments only; the census, ruff and the detector are its checks).

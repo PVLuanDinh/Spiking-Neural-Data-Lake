@@ -138,6 +138,7 @@ REGIONS = {
         # NOT CLAIMED LIVE. docs/coverage/artifacts/surprise_60.txt records the neuter-A/B:
         # the orienting signal changed 0 of 60 act/hold decisions. Promotion makes it VISIBLE
         # to the P3 gates; it does not make it charged, and P3 forbids force-wiring it.
+        # neuron model. Sole governed importer: faculties/percept_surprise.py.
         "oja_pca",
         "bcm_plasticity",
         "homeostatic_scaling",
@@ -207,11 +208,15 @@ REGIONS = {
         "lake_index",  # specs/022 T007: derived pointer index (sqlite WAL); bare == round-trip + divergence red
         "lake_migrate",  # specs/022 T009: per-tag dispositions + identity migration; bare == identity + unknown-tag red
         "lake_engine",  # specs/022 T010-i: retention registry + IMMORTAL append budget; bare == consistency + flood red
+        # PROMOTED 2026-08-11 (#10 family C1): the 64-dim crc32 content key for lake/skill routing
         "content_signature",
         "episodic_recall",
+        # specs/022 T057: recall(cue) -> k episodes with margins over THE ONE LAKE's episode
+        # records (LAESA/proximity_index composed; margin vs a measured scrambled-cue null)
         "lake_recall",
         "paradigm_b_engine",
         "paradigm_b_matcher",
+        # PROMOTED+RENAMED 2026-08-11 (#10 family C3, was reasoning lake_memory): durable proximity-addressable replay
         "proximity_replay",
     ],
     # G8 (specs/022 evidence g8-reorganization.md 2.2, stage S1a): the engine-function package of
@@ -219,62 +224,101 @@ REGIONS = {
     # gates join it at M1.
     "gates": [
         "move_gate",  # G8 G-R8: the gate census, its diff against a declared delta, and its reds
+        # specs/008 Gate Zero / 022 S6: the Amdahl ceiling of a delivery-path conversion
         "amdahl_gate",
+        # specs/022 T024: every connectome node id named by its region or dated-EXEMPT; bare == census + probe reds
         "atlas_node_gate",
+        # specs/022 X1 (T088): a capability claim carries its protocol and provenance
         "capability_bar",
+        # specs/022 C5 (T090): what a consciousness instrument may conclude  # POLICIES.md manifest + release audit: derive rows, audit gates, certify (bare == --assert)
         "conclusion_protocol",
+        # specs/022 T015: T=1..16 byte-equal trains + measured frac_bits; bare == control arms + thread pair
         "determinism_gate",
+        # word ceilings on the standing documents: prose growth stays visible
         "doc_budget_gate",
         "docs_only_battery",
+        # Policy 3: the no-silent-dormancy CI gate (reachable-or-EXEMPT over REGIONS)
         "dormancy_gate",
+        # specs/022 T021b: five envelope files' bytes vs approved baseline; bare == positive control + 3 reds
         "envelope_hash_gate",
+        # e-prop invariant: a transposed weight may not reach a weight update
         "eprop_transport_gate",
+        # e-prop SCOPE: which rules OWE a cosine at all (census asserts on the governed tier)
         "gradient_claim_gate",
+        # specs/022 T046: register row 7's instruments, counted (coverage red 1 of 10)
         "growth_coverage_gate",
+        # specs/022 L5 (T089): what the lake never evicts, and the proof
         "immortal_retention",
+        # Policy 3: the cross-tier canary (governed -> ungoverned lazy imports)
         "import_manifest",
+        # specs/022 T008: delete->rebuild->logical-equality from the lake alone; bare == self-check
         "lake_rebuild_gate",
+        # specs/022 T019: the five contract checks + divergence red over the committed artifact; bare == assert + reds
         "manifest_gate",
+        # Policy 3 amendment: per-METHOD dormancy (update rules with no live caller)
         "method_dormancy_gate",
+        # specs/022 T001: pinned-host perf ratchet; bare == cheap wiring check, never a measurement
         "perf_baseline",
         "policy_manifest",
+        # specs/022 T022: reachable AND port-charged per region (BINDING at the T039 floor since 2026-08-22); bare == census + reds
         "region_charge_gate",
+        # specs/022 T017: G5 snapshot/restore with RNG stream positions; bare == all four arms, reduced ticks
         "replay_gate",
+        # Policy 4: the one-brain guard (canonical stack classes defined once)
         "replication_guard",
+        # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "safety_envelope",
+        # battery carry-forward: closure-hash-verified PASS carries; bare == dependency/poison/envelope/FAIL reds
         "selfcheck_cache",
     ],
     "instruments": [
+        # specs/022 T078 Part I: the G3 task-binding (MI vs a permutation floor) and G4 content-leakage (held-out decode vs a shuffle band) instrument over the live loop's own attention state; no ACS, no wire to brain.py
         "attention_schema",
         "binding_instrument",
         "energy",
+        # 022 T035: stimulus port + trial schedule (fixation/saccade) + G5-replayable trials
         "episode_driver",
+        # specs/022 Phase 4 C0: the L12 audit's 20-item everyday battery as a GOVERNED SCORER -- the frozen answer key, 2.3's ordered classifier (abstention decided by route AND preamble before any key is tested) and the five-seed campaign on scratch brains; never the live lake
         "everyday_battery",
         "ignition_instrument",
         "integration_measure",
+        # G1 causal contract diagnostic harness
         "memory_diagnostic",
+        # PROMOTED 2026-08-12 (PROMOTE lane): the NEF (Eliasmith & Anderson) reference implementation -- REFERENCE IMPLEMENTATION / cross-engine ground truth for the gated [nengo] tier (infra/nengo_bridge:471 reaches it only when nengo is installed, which no gate env carries); its only gate-executed path is its own __main__ self-check. Reachable via nengo_bridge (dormancy green, no EXEMPT); recorded per the polychronization-entry pattern so "reachable" is not read as "charged".
         "nef_compute",
         "neuro_chip",
         "neuro_chip_stream",
         "neuronal_avalanches",
+        # the plan's seed-paired t + exact sign-flip FPR (lifted from the T063 harness, T077 2.10)
         "paired_contrast",
+        # G1(b) pool-selection campaign: section 2's steps, ordering and taxonomy
         "pool_selection",
+        # specs/022 T021: pinned-payload neuter + margin surveillance + replay-twice A/B; bare == both controls
         "port_charge_probe",
+        # specs/022 T063: the three-arm seeded/random/wrong drift harness with SC-006's two reds, PLANTED and FROZEN; bare == the offline self-check
         "prior_drift_harness",
+        # specs/022 T081 [US4]: the C5 report_order instrument -- the live arm's report channel read against LESIONED CLONES of the workspace state that produced it (named pool vs a scrambled one); the lesion never touches the live brain
         "report_order_probe",
         "snn_mnist_stdp_genn",
+        # specs/022 W3: the world-red instrument -- two-chain liveness at 4dp, category entropy, the derived refit gap (P8 #9)
         "world_red_probe",
     ],
     "sensorimotor": [
+        # 022 T036: transduction-in; idle sentinel handled at the door; proprio lane
         "afferent_boundary",
         "arm_bridge",
+        # physical-arm build TARGET: spec + static torque budget + the sim-to-real gap
         "arm_hardware",
         "closed_loop",
+        # PROMOTED 2026-08-11 (#10 family C2): real-scale corpus/CMUdict ingestion for the language loop
         "corpus_stream",
+        # 022 T037: efference copy around the envelope; cerebellar forward-model charge
         "efferent_boundary",
         "esp32_encoder_path",
         "gesture_recognition",
+        # streamed HF datasets -> brain-consumable features (licence-gated, bounded)
         "hf_stream",
+        # content boundary for outside data: licence deny-by-default + injection flagging
         "ingest_guard",
         "lca_sparse_coding",
         "learned_matcher",
@@ -282,6 +326,7 @@ REGIONS = {
         "make_sensor_dataset",
         "multimodal_encoder",
         "nl_interface",
+        # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
         "population_encoding",
         "rank_order_coding",
@@ -294,80 +339,131 @@ REGIONS = {
         "trained_brain",
         "wavefront_planner",
         "web_ingest",
+        # PROMOTED 2026-08-11 (#10 family C2b): the curated world-KB (605 real triples) + masked-slot adapter
         "world_kb_stream",
     ],
     "infra": [
         "_mathutils",
         "brain_bundle",
+        # hand-authored anatomical layout + the REAL connectome tracts (stdlib)
         "brain_geometry",
         "brain_native_selfbuild",
+        # the ONE snapshot contract + JSONL recorder + provenance table
         "brain_telemetry",
+        # THE one frontend: live brain + arm + hardware target + chat, one page
         "cockpit",
         "demo",
         "device",
         "drift_monitor",
         "nengo_bridge",
         "nir_export",
+        # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
         "region_wiring",
+        # Promoted from reasoning/ 2026-08-04. Both belong in basal_ganglia because both LEARN FROM
+        # OUTCOME: self_build_loop is the correctness-gated apply/rollback path, and
+        # brain_native_selfbuild picks WHICH candidate to propose using the brain's own three-factor
+        # RSTDP rule driven by the gate verdict (kept +1 / rolled_back -1), which is reward-modulated
+        # action selection in the literal sense -- not a census, not a heuristic ranking.
+        # LIVE, and the honest limit of that claim: brain.py::_enter_wake reaches both once every
+        # SELFBUILD_EVERY=8 nights, but ONLY under NORD_SELFMOD=1 (the daemon sets it, CI does not),
+        # so under `pytest` / `run_selfchecks.py` neither fires and CHARGE IS UNMEASURED. Registered
+        # as reachable-and-operator-gated, NOT as charge-proven.
+        # brain_native_selfbuild's learned weights moved INTO the one lake under _T_SELFBUILD as part
+        # of this promotion (P4b) -- they were in <repo>/data/selfbuild_state.json, a second durable
+        # store. Cross-process round-trip proven: writer pid wrote w=0.77/0.11, a separate reader
+        # process read them back after the writer exited.
         "self_build_loop",
         "self_mod_harness",
     ],
     "growth": [
+        # PROMOTED from reasoning/ 2026-08-04: the three neuron models `neuron_zoo`
+        # composes. They fed a GOVERNED module from outside the gate.
         "adex_neuron",
         "alif_neuron",
+        # specs/022 T040: organizer fields + repression-GRN region emission (P8 #7)
         "arealization",
         "autapse_neuron",
+        # Brain-Cog-adopted composition interface: node + local-rule + connection palette
         "basic_components",
+        # Brian2 LIF authority + differentiable Torch bridge
         "brian2_backend",
+        # H01 HUMAN cortex reference data: value + units + provenance + bound
         "cortical_prior",
         "dendritic_neuron",
         "function_preserving_growth",
         "growable",
         "growing_learner",
+        # specs/022 T042: one-shared-program locality + scaffold refusal (P8 #7)
         "growth_program",
+        # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
         "growth_stop",
+        # specs/022 T062: the H01 c3 SYNAPSE graph, 8 gates, a seeded population
         "h01_ingest",
+        # Brain-Cog-adopted: LIF+Izhikevich+AdEx worked EXAMPLE of the basic_components palette (not on the live tick)
         "heterogeneous_microcircuit",
         "hodgkin_huxley",
         "izhikevich_neuron",
+        # specs/022 T046a: |LP| third factor (adopts CuriosityDrive) + the _T_GOAL store
         "learning_progress",
         "lif_neuron",
+        # merges: recognizer ensemble / encoder bank / neuron population
         "neuron_zoo",
+        # every grown unit gets a cortical depth, a layer and an immutable Dale sign
         "placement",
         "resonate_and_fire",
+        # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
         "similarity_sized_growth",
         "srm_neuron",
     ],
     "reservoir": [
         "cortical_microcircuit",
         "criticality_regulator",
+        # specs/022 T013: SoA substrate state, 128B-aligned, lake-backed; bare == alignment + round-trip + refusal reds
         "kernel_state",
+        # specs/022 T014: two-phase deterministic tick (P fixed, integer delivery); bare == delay + thread-equality reds
         "kernel_tick",
         "neural_sampling",
+        # G1(b) pool-selection benchmark: the winner, g1 LSM, as a streaming pool
         "recurrent_pool",
+        # specs/022 T045: learnable OU bootstrap through the SAME plasticity path (FR-033)
         "spontaneous_activity",
     ],
     "readout": [
+        # PROMOTED 2026-08-11 (#10 lane 4b): function-preserving Net2Net growth + freeze; the specs/007 T022 origin copy
         "growable_readout",
         "interaction_learning",
+        # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): the ONE live-tick
+        # percept readout (feedback alignment + fixed-random L6, no weight transport) --
+        # engine/brain.py constructs it lazily on every real percept; numpy-only, CORE tier.
         "laminar_local_readout",
+        # PROMOTED 2026-08-11 (#10 family C5): SLDA-RFF competence head; absorbed fair_compare's equal-budget bar
         "language_readout_slda",
         "predictive_coding",
         "snn_classifier",
+        # PROMOTED 2026-08-13 (was reasoning/snn_moe_classifier.py): firing-rate ROUTED
+        # mixture-of-experts over snn_classifier's spiking experts. CORE, not TORCH_TIER -- it
+        # imports only math/random/numpy plus readout.snn_classifier and infra._mathutils.
+        # Reached from sensorimotor/recognizer_bank.py. Its blocker was an UNRESTORED process-global
+        # `random.seed(0)`, fixed with infra/brain_bundle.py's snapshot-seed-restore pattern.
         "snn_moe_classifier",
         "tempotron",
     ],
     "sleep": [
         "circadian_clock",
         "developmental_pruning",
+        # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
         "episode_consolidation",
         "experience_replay",
+        # PROMOTED 2026-08-11 (#10 lane 4a): the loop's replay adapter over ReplayBuffer + SleepConsolidator
         "hippocampal_memory",
+        # sleep-time prune of the symbolic durable lake (cap re-derivable bulk, keep learned)
         "lake_consolidation",
         "lifelong_consolidation",
+        # PROMOTED 2026-08-11 (#10 family C9a): the ONE standing skills loop (absorbed meta_skill_loop + open_meta_loop)
         "nightly_skills",
         "sleep_consolidation",
         "sleep_replay",
+        # specs/022 T048: DEEP-R budget + MSP sign steering, slow clock
         "structural_rewiring",
     ],
     "engine": [
@@ -375,8 +471,11 @@ REGIONS = {
         "brain",
         "learn_daemon",
         "live_brain",
+        # 022 T034: typed workspace-report snapshot; the broadcast's declared consumer
         "report_channel",
+        # specs/022 T011: ONE-writer multicast ring + lake journaller; bare == replay A/B + overrun red
         "signal_ring",
+        # specs/022 T018: TypedPort + WiringManifest (declared anatomy); bare == five checks + five reds + NIR round-trip
         "wiring_manifest",
     ],
     "faculties": [
@@ -389,11 +488,13 @@ REGIONS = {
         "interoceptive_arousal",
         "interoceptive_integration",
         "mossy_relay",
+        # C1 batch-3: cross-region Kuramoto coherence + integration -> GWT ignition bias
         "region_coherence",
         "set_points",
         "vital_nuclei",
         "wm_capacity",
         "acetylcholine",
+        # C1 batch-2: spiking neuromod fusion -> coupled affect + self-organized emotions
         "affect_integrator",
         "affective_memory",
         "allocentric_map",
@@ -408,14 +509,30 @@ REGIONS = {
         "grid_place_map",
         "intrinsic_motivation",
         "locus_coeruleus",
+        # PROMOTED 2026-08-11 (#10 family C7): DP-means signature discovery (feeds nightly_skills' open frontier)
         "open_world_loop",
         "raphe_serotonin",
         "ring_attractor",
+        # PROMOTED 2026-08-11 (#10 family C4): domain-agnostic skill formation + SkillRegistry proximity router
         "skill_builder",
         "spiking_curiosity",
+        # C1: continuous-attractor SPIKING grid network (bump path integration)
         "spiking_grid_can",
+        # Promoted from reasoning/ 2026-08-04 after an in-place P7/P1/P8 redesign. FACTORED
+        # k-WTA associative memory: the P sparse patterns ARE the memory (O(P*k)), so there is
+        # no N x N weight matrix to store. WIRED AND CHARGED, measured not assumed -- neutering
+        # S.recall to a pass-through costs its live consumer (sensorimotor/recognizer_bank.py:233
+        # StorageRecognizer) 3 of its 64 out-of-distribution rejections, 0.844 -> 0.797. That is
+        # P6 one-way as well: a hippocampus faculty whose output moves a cortex faculty's output.
+        # Honest qualifier: the bank builds lazily and fires only on an explicit "recognize:"
+        # query, so the path is charged but query-gated, not exercised on an ordinary tick.
+        # factored k-WTA associative memory; denoising content-addressable recall
         "spiking_storage_prototype",
         "action_gating",
+        # PROMOTED from reasoning/ 2026-08-12 (#10 lane 4d): the SELECTION stage over latent_q's
+        # VALUE table (fuses value + metacognition on the loop's curiosity). Composition-only;
+        # the fusion A/B verdict at promotion is a recorded NULL at the shipped rule -- see the
+        # module docstring. EXEMPT-"wire" until developmental_loop_brain promotes.
         "brain_decision",
         "connectome_router",
         "dopamine_nuclei",
@@ -428,9 +545,16 @@ REGIONS = {
         "interoceptive_relay",
         "jepa_world_model",
         "latent_q",
+        # specs/022 T054-i: the anatomical TISSUE layer (granule expansion + PF bundle +
+        # Purkinje + MLI opposite-sign pathway) -- names cb_ctx and cb_deep
         "microcircuit",
         "mlp_q",
         "multisensory_integration",
+        # PROMOTED from reasoning/ 2026-08-04 (owner directive: every build is promoted into the
+        # governed tier the moment it lands; reasoning/ is outside all three P3 gates, which is
+        # where dormancy hides). Cerebellum is the anatomically correct home -- this is the timing
+        # structure, and synfire_chain.py:37 already cross-references it to distinguish zero-lag
+        # synchrony from delay-matched convergence.
         "polychronization",
         "reentrant_workspace",
         "reticular_gate",
@@ -439,28 +563,39 @@ REGIONS = {
         "spiking_pid",
         "superior_colliculus",
         "synfire_chain",
+        # higher cognition / self-model / self-improvement (v3.14+)
         "access_consciousness",
         "affect_core",
         "agency_monitor",
         "autotelic_goals",
+        # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f, was reasoning/brain_adapters/executive_control -- the LAST brain_adapters module): dopamine-RPE lr gate + the PUBLIC CompetenceDynamics/goal_value planning objects (the WorkspaceBroadcast/ExecutivePlanner wrappers RETIRED later the same day -- retirement record in-file); renamed because the basename is taken by faculties/executive_control (brain_atlas.py:81 asserts uniqueness)
         "competence_executive",
+        # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator simulation
         "counterfactual_sim",
         "crossmodal_binder",
         "divisive_normalization",
         "executive_control",
+        # C1: spiking clock / task-set-shift / learned generative self-model
         "generative_self_model",
         "is_snn_forward",
+        # PROMOTED from reasoning/ 2026-08-11 (#10 batch-1): open-vocab DistMult KB completion head
         "kb_ranking",
+        # PROMOTED 2026-08-11 (#10 family C6): autonomous R-STDP language assemblies; LIVE on the sleep tick
         "language_self_build",
+        # C1 batch-3: learned spiking reticular attention gate (local plasticity)
         "learned_attention",
+        # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
         "learned_evc",
         "metacognitive_monitor",
+        # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
         "percept_surprise",
         "prefrontal_executive",
         "quality_diversity",
         "reasoning_curriculum",
         "recursive_tom",
+        # PROMOTED 2026-08-12 (PROMOTE lane): the ROSE fluent-language pipeline (VSA constituency parse + KB-grounded comprehend + SLDA competence), LIVE via brain._rose_serve's lazy reach. P3/P4b debt carried visibly, NOT discharged by the move (AUDIT_BACKLOG H7, runtime-reproduced at the promotion audit): nightly_refit moves the SLDA sufficient statistics while competence() returns the build-time cached acc byte-identical; the refit filter accepts a novel HEAD coded OOV-zero; _readout is per-Brain RAM reaching brain_lake.bin nowhere. P2 direction recorded: rose's derived parameterisation (rff from in_dim, ctx from data, relations from the KB ratio) is THE mechanism; sensorimotor/world_kb_stream main()'s four-literal demo copy consumes it or retires at the family's next lane.
         "rose_language",
+        # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
         "second_order_access",
         "self_improvement_suite",
         "self_model",
@@ -469,6 +604,7 @@ REGIONS = {
         "theta_gamma_code",
         "time_cells",
         "vsa_reasoning",
+        # PROMOTED 2026-08-12 (PROMOTE lane): Gentner relational structure-mapping over VSA spike codes; LIVE via reasoning_cortex's structure-map solver (reached from brain.py's lazy :924 -- the lane's own I001 sort moved it from :928 -- + reasoning_cortex:705). P3 debt carried visibly, NOT fixed here: brain.py:967's `_structure_mapper` attribute is write-only (AUDIT_BACKLOG M11) -- retire-or-read is its own commit. P2 direction recorded in-file: the dim-parameterised _cleanup_project is THE mechanism; reasoning/resonator_network's hardcoded copy (measured 300/300 bit-identical at dim=512) delegates or retires when its lane arrives.
         "vsa_structure_mapping",
         "wholistic_loop",
     ],
@@ -481,7 +617,15 @@ REGIONS = {
 # neurogenesis) imports lazily and lives in REGIONS above. See brain_atlas for the gated verification.
 TORCH_TIER = {
     "sensorimotor": [
+        # PROMOTED 2026-08-12 (PROMOTE lane 4/4, was training/eprop_nmnist.py): the brain's
+        # N-MNIST perception encoder (e-prop, cosine>0.5 vs BPTT asserted in-check). TORCH_TIER
+        # because torch is imported at module top; reached on Brain's CONSTRUCTION path
+        # (brain.py's perception-tier try block). Its e-prop engine lives in `eprop_kernel` below,
+        # which it and `eprop_shd` both import.
         "eprop_nmnist",
+        # PROMOTED 2026-08-13 (specs/013 C3, was training/eprop_shd.py): the brain's SHD audio
+        # perception encoder, the auditory twin of eprop_nmnist. TORCH_TIER for the same reason
+        # (torch at module top), reached on the same construction path via brain.py's audio try.
         "eprop_shd",
     ],
     "growth": [
@@ -489,6 +633,12 @@ TORCH_TIER = {
         "ng_snn",
     ],
     "plasticity": [
+        # The ONE e-prop engine (specs/013 C4). Holds the nine definitions that were byte-identical
+        # across eprop_nmnist and eprop_shd -- surrogate spike fn, the independent BPTT reference,
+        # the cosine comparator, the Adam step, the evaluation loop, and the LIF base. Both
+        # consumers import from it; neither carries a copy. Verified bit-exact across the merge
+        # (12/12 pinned tensors identical, tests/pin/), which is the check that matters here --
+        # the cosine assert is measurably blind to the one judgment call it contains.
         "eprop_kernel",
     ],
     "readout": [
