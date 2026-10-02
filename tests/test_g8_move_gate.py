@@ -119,7 +119,7 @@ def test_move_gate_is_registered_and_imports_nothing_it_measures():
 def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_it():
     """Each `_LEGACY` pair is a module whose live package differs from its frozen label (none
     before the first move, every moved module after); `_LEGACY_PKGS` stays empty until a package
-    empties (M11a)."""
+    empties (M11a: `claustrum`, the first)."""
     from snn_data_lake.readout import interaction_learning as ixn
 
     label = {
@@ -132,7 +132,7 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     assert S._LEGACY == {
         f"{label[m]}.{m}": S.module_path(m)[len("snn_data_lake.") :] for m in moved
     }
-    assert S._LEGACY_PKGS == frozenset()
+    assert S._LEGACY_PKGS == frozenset({"claustrum"})  # G8 M11a: its package emptied into faculties
     assert ixn._g0c_legacy_modules() is S._LEGACY  # the ONE table, read at call time (P2)
     # 286 -> 287 on 2026-10-02: gates.docs_only_battery joined REGIONS (its flat alias is derived)
     assert len(S._MOVED) == 287 and "claustrum" not in S._MOVED

@@ -59,7 +59,6 @@ below. Nothing here is aware of anything.
 import random
 import zlib
 
-from snn_data_lake.claustrum.claustrum import Claustrum
 from snn_data_lake.cortex.vsa_reasoning import (
     D,
     bind,
@@ -69,6 +68,7 @@ from snn_data_lake.cortex.vsa_reasoning import (
     hv,
     is_spike_code,
 )
+from snn_data_lake.faculties.claustrum import Claustrum
 from snn_data_lake.midbrain.multisensory_integration import MultisensoryCell
 
 _MODALITIES = ("vision", "audio")

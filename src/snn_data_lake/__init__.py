@@ -253,7 +253,6 @@ REGIONS = {
     "medulla": ["vital_nuclei", "interoceptive_arousal"],
     "epithalamus": ["habenula"],
     "olfactory": [],
-    "claustrum": ["claustrum"],
     # specs/022 T021a: the insular region opens registration-complete -- the interoceptive
     # cortical terminus of viscera -> nts_rvlm -> thal_relay -> insula -> {gwt, ctx_pfc}.
     "insula": ["interoceptive_integration"],
@@ -529,6 +528,9 @@ REGIONS = {
         "report_channel",
         "signal_ring",
         "wiring_manifest",
+    ],
+    "faculties": [
+        "claustrum",
     ],
 }
 

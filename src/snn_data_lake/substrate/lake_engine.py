@@ -168,7 +168,7 @@ def registry_consistent() -> tuple[bool, str]:
 #   from local activity; this class PERSISTS already-computed weights as lake records.
 # distinct-from: substrate/home.py -- the _T_GROWTH_DELTA chain diffs whole npz MEMBERS of the
 #   grown-substrate blob; this diffs individual synapses inside a weight matrix, keyed by spikes.
-# distinct-from: claustrum/claustrum.py -- detects cross-area spike coincidence windows.
+# distinct-from: faculties/claustrum.py -- detects cross-area spike coincidence windows.
 # distinct-from: thalamus/global_workspace.py -- formats an ASCII trace of one tick.
 # distinct-from: infra/self_build_loop.py -- snapshots safety-envelope FILES for restore.
 # All sites read.

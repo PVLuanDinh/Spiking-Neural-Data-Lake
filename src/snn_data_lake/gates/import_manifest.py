@@ -101,7 +101,6 @@ GOVERNED = (
     "hypothalamus",
     "medulla",
     "epithalamus",
-    "claustrum",
     "lakehouse",
     "gates",  # G8 S1a (evidence g8-reorganization.md 2.5 item 6, F15): the package it creates
     "instruments",  # G8 M2: the package created by the instrument move
@@ -112,6 +111,7 @@ GOVERNED = (
     "readout",  # G8 M7: the package created by the readout move
     "sleep",  # G8 M8: the package created by the sleep move
     "engine",  # G8 M10: the package created by the engine move
+    "faculties",  # G8 M11a: the package created by the faculties move
 )
 
 # The tiers no gate covers. A governed -> ungoverned edge is what this module protects.

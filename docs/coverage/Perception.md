@@ -219,7 +219,7 @@ Format: `capability` -- provider -- liveness.
   daemon shape only; its `learn()` call is gated on a real percept (`brain.py:1977`).
 - TRN gate + divisive normalization, biased competition -- `thalamus/reticular_gate.py` and
   `cortex/divisive_normalization.py` -- LIVE and measurably inert.
-- claustral cross-modal assembly detection -- `claustrum/claustrum.py` via `autonomous_loop.py:836`
+- claustral cross-modal assembly detection -- `faculties/claustrum.py` via `autonomous_loop.py:836`
   -- LIVE, constant 0; `Claustrum.broadcast()` has no live call site at all.
 - super-additive vision+audio object binding -- `cortex/crossmodal_binder.py` -- daemon shape only,
   telemetry-only consumption.

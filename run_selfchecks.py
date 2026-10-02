@@ -253,7 +253,7 @@ CORE = [
     "epithalamus.habenula",
     # olfactory â€” bulb decorrelation + piriform association
     # claustrum â€” cortical synchrony / salience hub
-    "claustrum.claustrum",
+    "faculties.claustrum",
     # neuromodulation â€” diffuse chemical modulators + glia (LC noradrenaline, raphe serotonin)
     "neuromodulation.acetylcholine",
     "neuromodulation.astrocyte_modulation",

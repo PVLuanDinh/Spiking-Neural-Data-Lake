@@ -21,7 +21,7 @@ not its cell-level microcircuitry or phenomenology.
 | Pons | **ABSENT** | `pons/` holds only `__init__.py`; `REGIONS` maps 0 modules to it. `pontine_relay` and `reticular_formation` are NOT implemented (corrected 2026-07-28 — this row read "present" with both named). The directory is a placeholder, and `live_brain.py:262` still emits a `spikes.pons` row from a proxy signal |
 | Epithalamus | present | `epithalamus/habenula` — lateral habenula anti-reward (negative RPE, dopamine opponent via RMTg) |
 | Olfactory pathway | **ABSENT** | `olfactory/` holds only `__init__.py`; `REGIONS` maps 0 modules to it. `olfactory_bulb` and `piriform_cortex` are NOT implemented (corrected 2026-07-28). `spikes.olfactory` is a constant 0.0 and `PROVENANCE` says so |
-| Claustrum | present | `claustrum/claustrum` — coincidence-gated cortical synchrony / salience hub |
+| Claustrum | present | `faculties/claustrum` — coincidence-gated cortical synchrony / salience hub |
 | Basal forebrain / neuromodulators | present | `neuromodulation/` — ACh, LC-noradrenaline, raphe-serotonin, astrocyte, cortisol; dopamine in `midbrain` |
 | Reticular activating system (ARAS) | **ABSENT** | `pons/reticular_formation` does not exist (corrected 2026-07-28). The wake/sleep switch that DOES run is the circadian clock in `engine/brain.py`, which is not an ARAS model |
 | White-matter connectome | present (schematic) | `connectome.py` — typed/directed/signed/loop-aware edge list (37 nodes, 11 closed loops) |

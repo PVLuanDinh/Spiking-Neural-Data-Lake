@@ -1240,8 +1240,8 @@ class AutonomousArm:
         never suppresses a threat or the safety path. Bounded, deterministic, guarded."""
         try:
             if self._rgate is None:
-                from snn_data_lake.claustrum.claustrum import Claustrum
                 from snn_data_lake.cortex.divisive_normalization import DivisiveNormalization
+                from snn_data_lake.faculties.claustrum import Claustrum
                 from snn_data_lake.thalamus.reticular_gate import ReticularGate
 
                 self._rgate = ReticularGate(n_channels=4, seed=self._seed)

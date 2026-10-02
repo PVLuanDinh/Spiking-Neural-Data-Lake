@@ -3264,3 +3264,93 @@ D1's record before the gate runs.
 the panel, the fold and the battery (about 2 h 15).
 
 NOT VERIFIED BY A BATTERY (a pre-registration).
+
+### 3.28 M11a predeclared faculties move: claustrum (Claude, G8-3, 2026-10-02)
+
+The M11a parent is `62b87892` (branch `claude/g8-3`, one writer, clean at the start). Its clean export completed the
+24-gate, seven-probe, 30-registry census with every gate rc 0 (pre census SHA-256 begins `C6264BF81C0AC8DB`, taken with
+`SNN_ALIAS_STRICT=1`, 114.9 s). The frozen 2.12 map, read by the frozen mover (sha256 prefix `b49e982a`), moves ONE module
+into the NEW `faculties/` package: `claustrum`, from the package of the same name (core tier, not in the safety envelope;
+frozen-map names `expected_M11a.json`, `EA38AD5281785833`). The mover created `faculties/__init__.py` (docstring only, as at
+`engine/`), re-keyed `REGIONS` (`claustrum` out, `faculties` in with 1 member) and the runner's name, deleted the emptied
+`claustrum` directory with its `__pycache__/` (absent on disk afterwards, so C6's real-checkout shadow check has nothing to
+find) and rewrote 3 files (2 imports, 1 string): the importers `cortex/crossmodal_binder.py` and
+`engine/autonomous_loop.py`, and `run_selfchecks.py`. The live-citation rewriter (re-targeted to M11, kept out of tree) pass 1
+rewrote 5 live files, 5 citations (`docs/ANATOMY.md`, `docs/CODEBASE_DIGEST.md`, `docs/coverage/Perception.md`, the
+module's own `python -m` docstring line, and the distinct-from comment in `substrate/lake_engine.py`); pass 2 (member form)
+found none. Neither pass skipped an envelope file: no envelope comment cites this module (F11 has no M11a line).
+
+Before any M11a post-move gate run, the C1 delta was written to the out-of-tree `declared_M11a.json` (SHA-256 begins
+`55142C57B327FE17`). It forecasts 8 changes: the brain atlas drops the `claustrum` row (1 module) and adds a `faculties`
+row (1 module), with the TOTAL line (299 modules, 27 regions) and the self-check line (287 legacy import paths) unchanged,
+because one key leaves and one joins and `claustrum` stays out of `_MOVED` before (module name equals package name) and
+after (`_LEGACY_PKGS`); every parsed-file count unchanged (`faculties/__init__.py` joins and the emptied package's
+initializer leaves: 449 files, 38 `__init__` scaffolds), so none is declared; citation BROAD 2215/308 to 2217/308,
+forecast statically with the guard's own parser and resolver (reproducing 2215/308 on the parent export) and then the
+candidate: the two added violations are the old-path citations in two frozen documents (`docs/POLICIES_EVIDENCE.md` and
+this file's 2.12 table), so live files gain none; and the names `REGIONS.keys` and `import_manifest.GOVERNED`, each
+losing `claustrum` and gaining `faculties`. The atlas rows came from a script adapted from M10's, which listed only keys
+present after the move and so could not see a key leave; its print format was checked first against the pre census
+(every parent row must appear verbatim: the check caught a train-tier tag the real atlas does not print).
+
+**No halt, no amendment.** The first post census (over an export of the staged worktree, strict) completed 24 gates and
+seven probes, all rc 0 (post census SHA-256 begins `6D9F8E5FAC71C477`, observed delta `881DF17C9145C5B4`, 115.6 s), and C1
+said the diff equals the declared delta (8 declared changes). A second census over a fresh export, taken after the one
+test edit below, read the same: all rc 0, the observed delta byte-identical (`881DF17C9145C5B4`).
+
+Items beyond the row, each required by the frozen procedure or by what the checks prove, recorded:
+- `import_manifest.GOVERNED` gained `faculties` and lost `claustrum` (row item; hand edit, CRLF kept).
+- **One test assertion flipped, by design.** `tests/test_g8_move_gate.py` pinned `_LEGACY_PKGS == frozenset()` with the
+  docstring "stays empty until a package empties (M11a)". The stage empties `claustrum`: the targeted run failed on that
+  one assertion (1 failed) and it now reads `frozenset({"claustrum"})`, its docstring and a trailing comment naming the package. Two lines, no
+  logic. M11b-M11e each delete packages, so each flips this literal again (a derived expectation would stop the churn; not
+  done here, the row names no such change).
+- The rule census (2.5 item 6) and the policy documents: no row of `tools/rule_census.json`, no adjudicated entry, and no
+  `docs/POLICIES.md` text names the module, so nothing is regenerated; the doc budgets read as before (POLICIES 14,352 of
+  14,362, ANATOMY 1,874 of 1,968, AGENT_COLD_START 9,841 of 9,851).
+- `ruff check --fix --select I` re-sorted the imports of 2 touched files (the two importers; first-party names re-sort once
+  `claustrum` becomes `faculties`) and `ruff format` left all 9 touched `.py` files unchanged.
+- **Envelope: untouched.** SHA-256 of the five files, `tools/envelope_hashes.json` and the 16 files of `brainstem/so101/` (22 in
+  all) are equal before the rewriters and at the end; the protected diff against HEAD is empty (staged and unstaged);
+  `envelope_hash_gate --assert` rc 0, its self-check rc 0.
+- Home rule: every Python process that could build a brain or touch a home ran with `NORD_PERSIST=0` and its own fresh
+  scratch `NORD_HOME` under the kit; the live lake was never named or opened and no daemon or battery was started.
+- Not touched: the frozen documents keep their historical paths; the index documents' package rows and region prose
+  (`docs/ANATOMY.md`, `docs/CODEBASE_DIGEST.md`'s package table and file tree) are D1's.
+
+**Cheap half (2.8), counts.** C2(a): 416 imports attempted on the parent export, the staged worktree and the post export,
+the same 13 known optional-import failures on all three, zero scratch-home files. C2(b): 162 legacy pairs (161 plus the 1
+new), ONE synthetic legacy package (`claustrum`, the first), 287 flat aliases, no identity failure, on the real worktree
+and on the export. C2(c): 17 of 17 legacy gate runs equal the current runs, 0 differ (real worktree, strict off; 263.3 s).
+C2(d): 671 live source files, 0 unparsed, 0 findings, on the staged worktree and on the export. C2(e): 16 frozen
+artifacts, 12 module names, all file-loaded. C3: the envelope hash gate and its self-check green, the `safety_envelope`
+document check and its self-check green, the protected diff empty, the latch path resolved through the real home module
+with a file loader under a scratch home (resolved, never opened). C4: the R-b0 probe identical in the pre and post censuses.
+C5: `--rl1-check` on the S1b baseline home, real worktree: brain arm PASS and zoo arm PASS (refused None, walks equal,
+answers equal). C6 to C9 green inside the census (invariants empty, strict registry parity) and C6 re-run directly on the
+real worktree. Citation STRICT 0 unexempted with its 2 exemptions; BROAD 2217 across 308 files, equal to the forecast;
+the document command guard (67 runnable, 0 unrunnable) and the document budget passed; `policy_manifest --audit` passed
+(P3, P4, P6, P7, P8, e-prop, P4c PASS); `p6_gate` self-check (4 of 4 controls) and `move_gate`'s self-check with the mover
+and the R-L1 baseline (C1, F5, C2(b), F3(c), F2, C2(c) and C5 reds fired in copies; C2(d)'s positive control found F7's six
+sites; its C2(b) now finds the copy already holding the stage's move) passed. The module's own self-check ran as `-m
+snn_data_lake.faculties.claustrum` and printed its OK output. The bounded run of the 25 test files that name the moved
+module, its runner or the move and gate tables (`-o addopts= -p no:cacheprovider -m 'not slow'`, scratch home) on the
+staged worktree: 597 passed, 0 failed (24 min 30 s).
+
+**Planted reds (both in export copies, never the worktree; green on the real tree).** (1) C2(b): `claustrum` put back in
+`_MOVED` in the copy's `__init__.py`: the C2(b) probe went red ("flat set: missing [], extra ['claustrum']", 288 flat
+aliases against the real 287) and the strict census diff went red with 2 differences (the atlas gate's rc 0 to 1 and its
+self-check line gone: the planted flat alias breaks its legacy-path resolution); the real tree reads `bad=0`. (2) C6: the copy's `claustrum/` left
+holding only a `__pycache__/` with one planted `.pyc`: C6's `legacy_pkg_dirs` read `['claustrum']` and the strict census
+diff went red with exactly that one difference (every other line equal to the declaration); the real tree's invariants
+are all empty and the directory does not exist.
+
+**Time.** Pre census 115 s; build (mover, both rewriters, hand edits, ruff, atlas and BROAD forecasts,
+declaration) 8.9 min of wall clock from the first command, pre census included; cheap half about 30 min of wall clock,
+run partly in parallel (post export, census and diff 116 s, a second census 115 s, planted censuses 146 s and 115 s, C2(c)
+263 s, `policy_manifest --audit` 43 s, `p6_gate` self-check 69 s, the `move_gate` self-check in the background, bounded pytest
+24 min 30 s).
+
+NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed (the tree is
+staged), no daemon was started and the live lake was not opened. The `slow`-marked tests were deselected from the bounded
+pytest (`-m 'not slow'`), so they stay owed to the battery. G8-3's panel, fold and one battery remain owed.

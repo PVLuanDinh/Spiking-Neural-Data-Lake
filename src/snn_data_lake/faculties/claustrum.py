@@ -31,7 +31,7 @@ HONEST FRAMING: this models a coincidence / salience-BINDING FUNCTION only. It t
 on -- and gives no support to -- the claustrum-as-seat-of-consciousness hypothesis. "Fires",
 "binds" and "broadcast" name information-routing dynamics; nothing here is aware of anything.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.claustrum.claustrum
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.claustrum
 """
 
 import random
