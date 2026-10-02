@@ -788,6 +788,9 @@ _C2D_PKG = (
     re.compile(rf"(?<![\w.])({_ID})[/\\]"),  # <pkg>/ or <pkg>\, a path prefix
     re.compile(rf"(?<![\w.])({_ID})\.(?![\w.])"),  # <pkg>., a trailing-dot prefix
 )
+# A RELATIVE import spelled in a string (`from ..<pkg> import <mod>`, `from ..<pkg>.<mod> import x`): the dotted
+# pattern's lookbehind refuses the leading dots, so this form was invisible (found at G8-3 M11d; Codex panel MAJOR).
+_C2D_REL = re.compile(rf"\bfrom\s+\.+({_ID})(?:\.({_ID}))?\s+import\s+([\w\s,()]+)")
 
 
 def live_py(root: Path) -> list:
@@ -824,6 +827,12 @@ def _string_hits(s: str, pairs, pkgs) -> list:
     out += [f"{m[1]}/{m[2]}" for m in _C2D_PATH.finditer(s) if (m[1], m[2]) in pairs]
     for rx in _C2D_PKG:
         out += [m[1] for m in rx.finditer(s) if m[1] in pkgs]
+    for m in _C2D_REL.finditer(s):
+        if m[2]:
+            named = [(m[1], m[2])] if (m[1], m[2]) in pairs else []
+        else:
+            named = [(m[1], n) for n in re.findall(_ID, m[3]) if (m[1], n) in pairs]
+        out += [f"{p}.{n}" for p, n in named] or ([m[1]] if m[1] in pkgs else [])
     return out
 
 
@@ -1006,6 +1015,14 @@ def c2d_control(mover: Path, repo: Path = REPO, log=print) -> list:
                 fails.append(f"C2(d) control: {rel} {kind} {pkg!r} on lines {lines}, needs {need}")
             else:
                 log(f"  C2(d) F7 site found: {rel} lines {lines} {kind} {pkg!r}")
+        # The relative-import form (G8-3 panel): the string M11d found by hand must be named. Built from
+        # parts so this control is not itself a C2(d) finding on the live tree.
+        pkg_, mod_ = "cere" + "bellum", "jepa_world_model"
+        rel_hit = _string_hits(f"from ..{pkg_} import {mod_}", {(pkg_, mod_): "faculties"}, {pkg_})
+        if rel_hit != [f"{pkg_}.{mod_}"]:
+            fails.append(f"C2(d) control: a relative-import string is not named ({rel_hit})")
+        else:
+            log("  C2(d) relative-import control found (from ..<legacy pkg> import <module>)")
         return fails
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
