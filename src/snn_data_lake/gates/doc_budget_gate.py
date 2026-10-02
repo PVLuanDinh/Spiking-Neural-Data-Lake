@@ -135,7 +135,10 @@ BUDGETS = {
     # verbatim, the operational reading labelled a session call with its evidence, the (P2)/lake-record sleep
     # bullet 73b1f992 had dropped restored, and "sleep-plasticity" added to Not claimed. The 10 words of
     # pre-raise headroom are carried, not spent.
-    "docs/POLICIES.md": 14276,  # EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
+    # RAISED 14276 -> 14362 on 2026-10-02 by the MEASURED delta (14,266 -> 14,352, +86): the owner's docs-only
+    # battery amendment ("add the docs-only battery rule"), condensed from +208 by moving its mechanics to plan
+    # A.4 step 5 and the evidence file; the 10 words of pre-raise headroom are carried, not spent.
+    "docs/POLICIES.md": 14362,  # EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
     # execution-record note that lands in the same arc; NOT minimum-viable on purpose (the headroom is
     # for that note), a disclosed departure from the +~56 convention below
     # Superseded history of the 28150 ceiling, kept for the ratchet record:

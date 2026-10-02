@@ -1138,6 +1138,13 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   `--certify` writes the record for the head under test; a green battery commits that record as the arc's
   last commit and pushes with it. A shallow checkout cannot resolve the parent refs; the assert says so
   instead of failing.
+
+  **AMENDED 2026-10-02, owner: A DOCS-ONLY ARC MAY PUSH ON THE DOCS-ONLY BATTERY** ("add the docs-only
+  battery rule"; the owner chose a runtime reader map). For a diff against `origin/main` touching only `*.md`,
+  `python -m snn_data_lake.gates.docs_only_battery --run <out>` replaces the full battery: it refuses any other
+  diff or a map not measured on this code, runs every other stage in full, and runs pytest only on the files
+  the map shows reading the changed docs. Every full battery rebuilds the map. The gate and its count:
+  `specs/022-unified-brain-arc/evidence/docs-only-battery.md`.
 - **A `file.py:NNN` citation is a claim, and it is the least durable claim this project makes.** The
   docs-wide audit that measured it (thousands resolved; the worst misses in this file's own most
   safety-relevant paragraphs; a file whose line numbers moved *between two reads minutes apart*) is
