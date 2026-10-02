@@ -1,4 +1,32 @@
 {
+  "battery": {
+    "changed": [
+      "M specs/022-unified-brain-arc/evidence/docs-only-battery.md"
+    ],
+    "kind": "docs-only",
+    "map_code_hash": "56d6717480b0ee3bec1149023ac3d04b1937fbdf64f93a4a81b96011b84eb798",
+    "map_fingerprint": "d5eca9dbb200d9e3af101b8370a3afa05235731b31be2a12455ec55ba2b7ed3d",
+    "map_head": "64fac65c9e56d88110c58d11a2a46bbff0703ff3",
+    "pytest": [
+      "tests/test_brain_growth_restart.py",
+      "tests/test_brian2_backend.py",
+      "tests/test_coverage_persistence.py",
+      "tests/test_docs_only_battery.py",
+      "tests/test_g8_checkpoint_translation.py",
+      "tests/test_g8_move_gate.py",
+      "tests/test_gil_gate.py",
+      "tests/test_gradient_claim_gate.py",
+      "tests/test_gradient_claim_measure.py",
+      "tests/test_growing_learner_restart.py",
+      "tests/test_policy_manifest.py",
+      "tests/test_ratified_row_gates.py",
+      "tests/test_run_selfchecks_tools_stage.py",
+      "tests/test_selfchecks.py",
+      "tests/test_signal_calibrator_lake.py",
+      "tests/test_so101_arm.py"
+    ],
+    "verdict": "GREEN"
+  },
   "certified": true,
   "commands_run": [
     {
@@ -6,7 +34,7 @@
         "-m",
         "snn_data_lake.gates.dormancy_gate"
       ],
-      "seconds": 3.97,
+      "seconds": 3.18,
       "verdict": "PASS"
     },
     {
@@ -14,7 +42,7 @@
         "-m",
         "snn_data_lake.gates.method_dormancy_gate"
       ],
-      "seconds": 7.73,
+      "seconds": 7.07,
       "verdict": "PASS"
     },
     {
@@ -22,7 +50,7 @@
         "-m",
         "snn_data_lake.gates.import_manifest"
       ],
-      "seconds": 2.74,
+      "seconds": 2.97,
       "verdict": "PASS"
     },
     {
@@ -30,7 +58,7 @@
         "-m",
         "snn_data_lake.gates.replication_guard"
       ],
-      "seconds": 1.62,
+      "seconds": 1.97,
       "verdict": "PASS"
     },
     {
@@ -38,7 +66,7 @@
         "-m",
         "snn_data_lake.gates.lake_rebuild_gate"
       ],
-      "seconds": 0.14,
+      "seconds": 0.13,
       "verdict": "PASS"
     },
     {
@@ -46,7 +74,7 @@
         "tools/p6_gate.py",
         "--assert"
       ],
-      "seconds": 5.65,
+      "seconds": 5.61,
       "verdict": "PASS"
     },
     {
@@ -54,7 +82,7 @@
         "tools/dependency_ledger.py",
         "--assert"
       ],
-      "seconds": 6.72,
+      "seconds": 5.82,
       "verdict": "PASS"
     },
     {
@@ -62,7 +90,7 @@
         "tools/red_reachability.py",
         "--assert"
       ],
-      "seconds": 1.71,
+      "seconds": 1.55,
       "verdict": "PASS"
     },
     {
@@ -70,7 +98,7 @@
         "-m",
         "snn_data_lake.gates.eprop_transport_gate"
       ],
-      "seconds": 12.54,
+      "seconds": 10.43,
       "verdict": "PASS"
     },
     {
@@ -78,7 +106,7 @@
         "-m",
         "snn_data_lake.gates.gradient_claim_gate"
       ],
-      "seconds": 2.47,
+      "seconds": 2.39,
       "verdict": "PASS"
     },
     {
@@ -86,7 +114,7 @@
         "tools/p4c_ratchet.py",
         "--assert"
       ],
-      "seconds": 0.08,
+      "seconds": 0.09,
       "verdict": "PASS"
     }
   ],
@@ -186,7 +214,7 @@
     "P5a"
   ],
   "tree": {
-    "commit": "64fac65c9e56d88110c58d11a2a46bbff0703ff3",
+    "commit": "e55cfefa30f584eab1d0a588781a571e2fd0e229",
     "dirty": false
   }
 }
