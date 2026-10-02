@@ -219,8 +219,8 @@ def _sndl_doc_audit():
                     env.pop("SNDL_DOC_AUDIT_TEST", None)
             elif env is None:
                 os.environ["SNDL_DOC_AUDIT_TOK"] = tok  # the child inherits this process's environment
-                # Disclosed (panel F5): two threads spawning with env=None at once can hand both children
-                # the later token. The COUNT of unpaired spawns is preserved; which spawn is named may not be.
+                # Two threads spawning with env=None at once can hand both children the later token
+                # (panel F5); build_map then marks EVERY python spawner of this process blind.
             else:
                 tok = None  # a nested instrument run's own dict: not this audit's child
             if isinstance(argv, (list, tuple)):
@@ -388,6 +388,8 @@ def build_map(records: list[dict], head: str, chash: str, fingerprint: str = "")
     is_pytest: dict[str, bool] = {}
     started_toks = set()
     unpaired: list[str] = []
+    blind_pids: set = set()
+    py_spawners: dict[str, list] = {}
     for rec in records:
         if rec.get("k") == "start":
             starts += 1
@@ -409,6 +411,8 @@ def build_map(records: list[dict], head: str, chash: str, fingerprint: str = "")
                         " ".join(_tokens(rec.get("a", []))[1:4]) + f"  [{t or 'no test'}]"
                     )
                     target["blind"] = True
+                    blind_pids.add(rec["_pid"])
+                py_spawners.setdefault(rec["_pid"], []).append(target)
             if _is_git_scan(rec.get("a", [])):
                 target["git_scan"] = True
             continue
@@ -421,6 +425,12 @@ def build_map(records: list[dict], head: str, chash: str, fingerprint: str = "")
             tests.setdefault(t, _empty())[k].add(rec["p"])
         elif is_pytest.get(rec["_pid"]):
             pytest_all[k].add(rec["p"])
+    # Two spawns racing on one token (an env=None or shared env dict, panel F5 / closing report) can
+    # pair a HOOKLESS child with a hooked sibling's token, so the unpaired spawn may name the wrong
+    # test file. Fail closed: in a process with ANY unpaired spawn, every python spawner is blind.
+    for pid in blind_pids:
+        for target in py_spawners.get(pid, []):
+            target["blind"] = True
     return {
         "version": MAP_VERSION,
         "head": head,
@@ -822,6 +832,16 @@ def _selfcheck_instrument() -> None:
     assert mp["pytest_all"]["list"] == mp["pytest_all"]["listr"] == [], mp
     assert mp["tests"]["tests/test_a.py"]["list"] == ["docs"], mp
     assert mp["coverage"]["listings_dropped_as_infrastructure"] == 2, mp
+    # The closing report's counterexample: hooked spawn A (tests/a.py) and hookless spawn B (tests/b.py)
+    # in one process; the race gives A's child B's token. Both files must be blind either way.
+    race = [
+        {"k": "start", "argv": ["python", "-m", "pytest"], "_pid": "1"},
+        {"k": "spawn", "a": ["python"], "t": "tests/a.py", "tok": "A", "_pid": "1"},
+        {"k": "spawn", "a": ["python", "-S"], "t": "tests/b.py", "tok": "B", "_pid": "1"},
+        {"k": "start", "argv": ["python"], "tok": "B", "_pid": "2"},
+    ]
+    sel = select(build_map(race, "h", "c"), [("M", "SECURITY.md")])[1]
+    assert sel == ["tests/a.py", "tests/b.py"], sel
     print(
         "  RED    instrument: H+ read recorded with its test file; H- silent without the variable; "
         "HS a stripped env dict is re-armed and the grandchild logs under the parent's test; "

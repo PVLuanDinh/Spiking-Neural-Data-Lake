@@ -171,8 +171,13 @@ Every claim was reproduced by its command before the fold (`700cea8f`), and each
     `537d9534` (N1), `36747c8e` (telemetry) and `ea1fe0d4` (doc-sync). Those batteries ran with persistence off.
   - Filed as a carried opening for the owner, not re-run here.
   - `run()` and the map battery now mirror t066.
-- **F5 (MAJOR), claim stood for ATTRIBUTION only.** With `env=None`, concurrent spawns can share a token. The count
-  of unpaired spawns is preserved; which spawn gets named may be wrong. The audit hook cannot give each spawn its own
-  environment, so this is disclosed in the hook, not fixed.
+- **F5 (MAJOR), claim stood, and it is WORSE than first read.** I first recorded it as an attribution defect. The
+  closing report showed it is a selection defect: a token race can pair a hookless child with a hooked
+  sibling's token, so the truly blind test file goes unselected (constructed: only `tests/a.py` selected).
+  Folded fail-closed: in a process with ANY unpaired python spawn, every python spawner is blind. The
+  closing report's exact counterexample is now a red, and it kills the mutant without the rule.
+- **F4, the closing report's refinement, stood.** `run()` inherits `NORD_*` from the caller, as t066 does, so it
+  does not by itself guarantee persistence is on. Equality with the mapped battery is enforced by the F3 runtime
+  fingerprint, which includes `NORD_*`: a docs-only run under different `NORD_*` refuses (R2).
 
 The fold is battery-verified only; the closing report reviews the whole arc.
