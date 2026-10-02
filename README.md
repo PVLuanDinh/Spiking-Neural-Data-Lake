@@ -50,7 +50,7 @@ not demonstrate bounded whole-system RAM use.
 | Evaluation | Deterministic self-checks, pytest, fault controls, policy gates, replay checks, and recorded experiments | [Self-check runner](run_selfchecks.py), [tests](tests/), [experiment records](specs/022-unified-brain-arc/evidence/) |
 
 The system uses a mixture of spiking, tensor, symbolic, and conventional Python components. Brain
-region names organize the implementation; they do not establish biological equivalence. Software
+region names label parts of the implementation; they do not establish biological equivalence. Software
 in `research/`, `integrations/`, and other tiers remains part of the project, with gaps in governance
 treated as engineering debt under [the development policies](docs/POLICIES.md).
 

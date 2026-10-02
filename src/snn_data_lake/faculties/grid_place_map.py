@@ -26,7 +26,7 @@ no loss anywhere -- so there is no BPTT/e-prop cosine to report (that check appl
 DISTINCTNESS. REUSES GridCell from grid_cells.py for every hexagonal firing field (does NOT reimplement the
 grid math). Not ring_attractor.py (1-D heading integrator), not episodic_recall.py / sleep_replay.py
 (DISCRETE-memory separation/completion; this named `hippocampus.py`, RETIRED in the Policy-3 wave --
-see `hippocampus/__init__.py` -- corrected 2026-08-04). ZERO coupling to the arm / safety envelope: it
+corrected 2026-08-04). ZERO coupling to the arm / safety envelope: it
 imports only grid_cells (which is pure math/random) and receives a plain (x, y) from the caller (e.g.
 AllocentricMap.position).
 

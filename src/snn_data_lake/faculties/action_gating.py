@@ -18,7 +18,7 @@ Mechanism (Go/NoGo disinhibition -- Mink 1996; Frank 2005; Redgrave 1999):
     duplicated byte-for-byte in `faculties/superior_colliculus.SuperiorColliculus`, which now imports
     it. (Citation corrected 2026-08-04: this named `research/fly_hash.py`, which moved to
     `reasoning/fly_hash.py` in v3.78 and carries its own top-k, and `hippocampus/hippocampus.py`,
-    which was RETIRED in the Policy-3 wave -- see `hippocampus/__init__.py`. Neither resolved.)
+    which was RETIRED in the Policy-3 wave. Neither resolved.)
   - Dopamine sets the D1/D2 balance: high DA raises the Go gain and suppresses NoGo (the RPE
     from valence_stdp would supply this level); DA=0 is an SNc lesion (Parkinsonian).
 

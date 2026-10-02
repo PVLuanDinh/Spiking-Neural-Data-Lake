@@ -13,6 +13,11 @@ defects each region carries.
 Line numbers in this tree rot within days; cite by SYMBOL and re-verify before relying on any
 claim here. A finding recorded as OPEN may have been fixed since.
 
+**G8 note (2026-10-02).** The package names below (`cortex/`, `hippocampus/`, `basal_ganglia/`, and the rest) are the
+pre-G8 anatomy packages this pass read; G8 moved their modules into functional packages. File-path citations of moved
+modules were re-pointed by the G8 stages; section headers, counts and package-level prose stay as read. The frozen
+`snn_data_lake.LEGACY_REGIONS` table and plan A.5a map each old path to its current one.
+
 ---
 
 

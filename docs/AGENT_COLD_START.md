@@ -76,11 +76,11 @@ Two words used throughout: the **owner** is the human who directs the project an
 
 **What SNDL is.** SNDL is a spiking "digital brain": a few hundred modules under `src/snn_data_lake/`,
 registered by region in `REGIONS` (`src/snn_data_lake/__init__.py`).
-- The regions are the keys of `REGIONS`. Among them: `cortex/`, `hippocampus/`, `basal_ganglia/`,
-  `amygdala/`, `cerebellum/`, `thalamus/`, `neuromodulation/`, `plasticity/`, `brainstem/`, `pons/`,
-  `medulla/`, `hypothalamus/` and `substrate/`. `reasoning/` and `training/` are not among them. These are
+- The regions are the keys of `REGIONS`: `engine/`, `growth/`, `reservoir/`, `readout/`, `plasticity/`,
+  `sleep/`, `substrate/`, `sensorimotor/`, `infra/`, `gates/`, `instruments/`, `faculties/` and
+  `brainstem/` (the five envelope files). `reasoning/` and `training/` are not among them. These are
   CODE packages, not the brain's anatomy: under P4d the brain's regions are labels on grown neurons; G8
-  reorganizes them (owner, 2026-09-25).
+  reorganized them (owner, 2026-09-25; old paths: plan A.5a).
 - The wiring between regions is `connectome.py`; the region map is `brain_atlas.py`.
 - Its ONE durable memory is an append-only lake of tagged records, `brain_lake.bin`.
 - Its drive is an always-on daemon, `engine/learn_daemon.py`. The daemon's cockpit,

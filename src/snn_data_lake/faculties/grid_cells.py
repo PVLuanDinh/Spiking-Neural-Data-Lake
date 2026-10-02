@@ -22,7 +22,7 @@ DISTINCTNESS (this is a different neural code from the repo's other attractor / 
     integration whose firing is a HEXAGONAL lattice tiling a plane (position, not heading), built by
     oscillatory interference -- a 2D periodic code, not a single 1D bump.
   - NOT episodic_recall.py / sleep_replay.py (pattern separation / completion of DISCRETE memories).
-    (This row named `hippocampus.py`, RETIRED in the Policy-3 wave; see `hippocampus/__init__.py`.
+    (This row named `hippocampus.py`, RETIRED in the Policy-3 wave.
     Corrected 2026-08-04.)
   - NOT theta_gamma_code.py (phase-multiplexed working-memory buffer of ordered items).
 

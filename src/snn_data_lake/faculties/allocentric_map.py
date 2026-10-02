@@ -29,8 +29,7 @@ DISTINCTNESS.
   - grid_cells.py: exact metric path integration, no landmarks, no drift, no correction.
   - ring_attractor.py: 1D heading only, no place, no correction.
   - episodic_recall.py / sleep_replay.py: pattern separation + completion of DISCRETE memories, not a
-    metric map. (This row named `hippocampus.py`, RETIRED in the Policy-3 wave -- see
-    `hippocampus/__init__.py` for where its three roles went. Corrected 2026-08-04.)
+    metric map. (This row named `hippocampus.py`, RETIRED in the Policy-3 wave. Corrected 2026-08-04.)
 This module stays ZERO-COUPLING: it keeps its own internal [x, y] estimate rather than driving
 grid_cells (whose step() integrates a clean velocity with no drift hook), so the drift and its
 correction are explicit and testable. Conceptually the estimate is the read-out of the entorhinal
