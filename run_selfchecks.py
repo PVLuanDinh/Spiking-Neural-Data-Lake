@@ -344,6 +344,7 @@ CORE = [
     "gates.method_dormancy_gate",  # Policy 3 amendment: assert no update rule on a live module lacks a live caller
     "gates.eprop_transport_gate",  # e-prop invariant: assert no governed module transposes a weight into a weight update
     "gates.doc_budget_gate",  # word ceilings on the standing docs: a document may not grow unnoticed
+    "gates.docs_only_battery",  # docs-only battery: R1/R2 refusals, reader selection, the audit hook's +/- and spawn-injection controls
     "gates.gradient_claim_gate",  # e-prop SCOPE: assert every governed learning rule is classified as owing a cosine or not
     "gates.policy_manifest",
     "gates.capability_bar",  # X1: 4 constructed reds + the REFUSED arm + the surface check

@@ -376,6 +376,7 @@ REGIONS = {
         "conclusion_protocol",
         "determinism_gate",
         "doc_budget_gate",
+        "docs_only_battery",
         "dormancy_gate",
         "envelope_hash_gate",
         "eprop_transport_gate",

@@ -565,6 +565,11 @@ EXEMPT = {
         "(CHANGELOG, specs/, docs/coverage/, vendored papers) where growth is CORRECT, nor "
         "CLAUDE.md, which is untracked and would report MISSING in every clone",
     ),
+    "docs_only_battery": (
+        "permanent",
+        "a battery RUNNER for docs-only pushes (owner 2026-10-02), invoked from the command line by the "
+        "operator before a push -- not a tick faculty; its self-check runs in run_selfchecks",
+    ),
     "hf_stream": (
         "permanent",
         "TOOL: offline data-prep CLI -- streams a licensed HF dataset into feature rows for a "
