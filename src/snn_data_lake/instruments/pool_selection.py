@@ -424,7 +424,7 @@ def _replay_job(stream, arm, out, *, pool=None, readout=True, fault=None):
 # The cell helpers below file replays for R-b7 (sites read, none files a replay under a binding):
 # distinct-from: instruments/memory_diagnostic.py -- replay() RUNS the pool arm from a spec; these name one
 # distinct-from: cortex/time_cells.py -- tick advances a ramp and latches crossed cells
-# distinct-from: neuromodulation/drive_reduction.py -- NeedPool is a drive's LIF population
+# distinct-from: faculties/drive_reduction.py -- NeedPool is a drive's LIF population
 # distinct-from: reasoning/rpm_solver.py -- _induce_attr predicts a missing matrix cell
 # distinct-from: instruments/binding_instrument.py -- _t080_sparse_latent draws a sparse latent
 def _spec(candidate, config, form, noise=False):

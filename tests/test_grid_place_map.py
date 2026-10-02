@@ -1,4 +1,4 @@
-"""Tests for GridPlaceMap (hippocampus/grid_place_map.py): the grid population binds percepts to
+"""Tests for GridPlaceMap (faculties/grid_place_map.py): the grid population binds percepts to
 locations, and both the firing criterion and the binding rule are DERIVED rather than configured.
 
 Run: pytest tests/test_grid_place_map.py
@@ -6,7 +6,7 @@ Run: pytest tests/test_grid_place_map.py
 
 import statistics
 
-from snn_data_lake.hippocampus.grid_place_map import GridPlaceMap
+from snn_data_lake.faculties.grid_place_map import GridPlaceMap
 
 LABELS = ["digit3", "digit7", "digit1"]
 ROUTE = [(-1.2 + 0.3 * i, -1.0 + 0.21 * ((i * 5) % 11)) for i in range(24)]

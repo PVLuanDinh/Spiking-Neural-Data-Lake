@@ -56,7 +56,7 @@ _OBS_INDEX = next(j.qpos_index for j in arm_config.JOINTS if j.name == _OBS_JOIN
 # consolidates: sensorimotor/efferent_boundary.py -- the private shoulder_lift regex this
 #   function carried is DELETED and the parse is that module's `intended_deltas`, which
 #   parses every rotatable joint. One parser survives (P2, specs/022 T079 2.1).
-# distinct-from: hippocampus/ring_attractor.py::ProprioceptiveEstimator -- the CONSUMER of
+# distinct-from: faculties/ring_attractor.py::ProprioceptiveEstimator -- the CONSUMER of
 #   this number (it integrates commanded deltas into an encoder-free angle estimate). This
 #   only reads the delta out of a token; it integrates nothing and holds no state. Read.
 def _joint_obs_delta(command):
@@ -79,7 +79,7 @@ def _joint_obs_delta(command):
 
 def _make_observer():
     """Opt-in read-only proprioceptive observer: encoder-free joint-angle estimate + slip watchdog."""
-    from snn_data_lake.hippocampus.ring_attractor import ProprioceptiveEstimator
+    from snn_data_lake.faculties.ring_attractor import ProprioceptiveEstimator
 
     return ProprioceptiveEstimator()
 
@@ -400,7 +400,7 @@ def _main():
     )
 
     # ---- opt-in arm-primitive wiring (v2.2): defaults above are unchanged; each is proven safe ----
-    from snn_data_lake.hippocampus.ring_attractor import ProprioceptiveEstimator
+    from snn_data_lake.faculties.ring_attractor import ProprioceptiveEstimator
 
     # 1. --proprioception observer is READ-ONLY: the SAME stream, with vs without the observer,
     #    must drive the arm identically (it issues no command and never moves the joint).

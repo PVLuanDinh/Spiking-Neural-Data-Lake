@@ -1,6 +1,6 @@
 r"""
 Spiking learning-progress curiosity + self-paced curriculum -- the ONE live self-improvement
-primitive (neuromodulation/intrinsic_motivation.py CuriosityDrive + neuromodulation/curriculum.py
+primitive (faculties/intrinsic_motivation.py CuriosityDrive + neuromodulation/curriculum.py
 Curriculum) rebuilt so its core signal is GENUINELY SPIKING: the learning-progress value is read
 off EMITTED SPIKE COUNTS of leaky integrate-and-fire pools, never off a rate EMA or a membrane
 potential. Roadmap item SI-1 "SPIKE-LP".
@@ -168,7 +168,7 @@ Deps: math, random, growth.lif_neuron.LIFNeuron,
 infra._mathutils.mean (numpy/torch allowed project-wide); ASCII-only prints, deterministic (per-instance random.Random(seed);
 LIF dynamics are deterministic; spike counts are integers).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.spiking_curiosity
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.spiking_curiosity
 """
 
 import math
@@ -289,7 +289,7 @@ class SpikingCuriosityDrive:
         self.rng = random.Random(seed)  # per-instance rng (pool heterogeneity + selector tie-break)
         self._ctx = {}  # context_key -> spiking state (pool, normaliser, fast/slow EMAs)
 
-    # distinct-from: neuromodulation/locus_coeruleus.py -- the LC is an AROUSAL readout
+    # distinct-from: faculties/locus_coeruleus.py -- the LC is an AROUSAL readout
     #   pool (salience -> phasic burst -> downstream gain); this pool transduces a
     #   prediction ERROR into a count for the LP pair. Different signal, different
     #   consumer; term overlap is "pool of LIF neurons" only. Site read.
@@ -329,7 +329,7 @@ class SpikingCuriosityDrive:
                 spikes += nrn.step(current)  # LIFNeuron.step -> 1 (spiked) or 0 (did not)
         return spikes
 
-    # distinct-from: neuromodulation/drive_reduction.py -- its pool spike COUNT proves
+    # distinct-from: faculties/drive_reduction.py -- its pool spike COUNT proves
     #   growth under constant drive; this measures a NORMALISER for the LP estimator.
     #   Generic-vocabulary overlap only. Site read.
     def _calibrate(self, pool):
@@ -345,7 +345,7 @@ class SpikingCuriosityDrive:
             nrn.reset_state()  # discard the calibration transient; start from rest
         return max(total / _WARMUP, 1e-6)  # mean spikes/observe at _E_REF (guard tiny/zero)
 
-    # distinct-from: neuromodulation/intrinsic_motivation.py -- the RATE sibling this
+    # distinct-from: faculties/intrinsic_motivation.py -- the RATE sibling this
     #   class duck-types (the recorded open P2 debt in the module docstring). The EMA
     #   PAIR below deliberately imports that sibling's fast/slow EMA STRUCTURE -- run at
     #   the sibling's own alpha/alpha_slow -- while the SIGNAL stays emitted spike
@@ -386,7 +386,7 @@ class SpikingCuriosityDrive:
             return 1.0
         return self.novelty_decay ** st["n"]
 
-    # distinct-from: neuromodulation/intrinsic_motivation.py -- the rate sibling's
+    # distinct-from: faculties/intrinsic_motivation.py -- the rate sibling's
     #   max(0, slow_EMA - fast_EMA) in ERROR units; this one runs the SAME estimator pair
     #   over SPIKE-COUNT rates (the duck-typed drop-in, the recorded open P2 debt). Read.
     # distinct-from: growth/learning_progress.py -- the T046a |LP| FACADE, which
@@ -768,7 +768,7 @@ def main():
     )
 
     # ---- (5) PURITY vs the rate CuriosityDrive (report only, NOT asserted -- different mechanisms) ----
-    from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
+    from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive
 
     rate = CuriosityDrive(seed=1)
     rate_peak = 0.0

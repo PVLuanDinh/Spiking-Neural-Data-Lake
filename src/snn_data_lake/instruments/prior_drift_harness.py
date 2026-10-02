@@ -867,7 +867,7 @@ def trial_drive(classes, cls, seed, trial_id, n_units, t_trial=T_TRIAL):
 #   rate fixed point, with the connectivity mask kept so plasticity stays sparse. It is not
 #   orthonormal, it is not a feature map, and it is TRAINED afterwards. What is built here is a
 #   DENSE, ORTHONORMAL, FROZEN measurement basis whose only job is to bound the readout's capacity.
-# distinct-from: hippocampus/grid_place_map.py::grid_spikes -- a deterministic rate-to-SPIKE
+# distinct-from: faculties/grid_place_map.py::grid_spikes -- a deterministic rate-to-SPIKE
 #   sampler over a grid population (Bernoulli draws per cell per tick), not a linear map of counts.
 # distinct-from: readout/growable_readout.py::_restore_adam -- optimizer-moment surgery when a
 #   torch readout gains a unit; no projection and no draw.
@@ -1718,7 +1718,7 @@ def _bare():
 # distinct-from: growth/h01_ingest.py::_lif_defaults -- imports the LIF constants from their
 #   equation owner; no host, no process, no port.
 # distinct-from: gates/doc_budget_gate.py::_selfcheck,
-#   hippocampus/spiking_storage_prototype.py::run, hypothalamus/__init__ -- a gate's constructed
+#   faculties/spiking_storage_prototype.py::run, hypothalamus/__init__ -- a gate's constructed
 #   reds, a prototype's returned criteria numbers and a region docstring; none reads a PROCESS.
 #   All five read 2026-09-09.
 # distinct-from: microcircuit.py -- its `sign_identities` READS a per-Purkinje +1/-1 row from the

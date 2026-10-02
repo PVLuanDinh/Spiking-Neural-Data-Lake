@@ -84,7 +84,7 @@ from snn_data_lake.brainstem.reflex import (  # #2 instinctive fast-path (no cyc
     Reflex,
     reflex_guard,
 )
-from snn_data_lake.neuromodulation.cortisol import (
+from snn_data_lake.faculties.cortisol import (
     Cortisol,  # slow tonic stress (leaf: only os/math)
 )
 from snn_data_lake.plasticity.valence_stdp import (

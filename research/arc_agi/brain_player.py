@@ -19,7 +19,7 @@ What real brain modules it drives
 - PERCEPTION: `perceive(grid)` -> a population one-hot SPIKE code (one firing input neuron per
   cell, selected by that cell's color). This spike tuple IS the state signature the player reasons
   over -- lossless and hashable.
-- EXPLORATION (rule discovery): `neuromodulation.intrinsic_motivation.CuriosityDrive` (the real
+- EXPLORATION (rule discovery): `faculties.intrinsic_motivation.CuriosityDrive` (the real
   module), used two ways:
     * a world-model TRANSITION curiosity: intrinsic_reward((state,action), pred_error) where the
       prediction error is 1.0 for a surprising (unseen) transition and 0.0 once the transition is
@@ -57,7 +57,7 @@ for _p in (os.path.join(_ROOT, "src"), _ROOT, _HERE):
 import env as arc_env  # noqa: E402
 
 from snn_data_lake.basal_ganglia.evidence_accumulation import RaceAccumulator  # noqa: E402
-from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive  # noqa: E402
+from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive  # noqa: E402
 
 PALETTE = 16  # fixed color palette for the one-hot spike encoder (all game colors are < 16)
 

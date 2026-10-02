@@ -40,7 +40,7 @@ effect of storage -- disclosed, not smoothed.
 import json
 import math
 
-from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
+from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.substrate.home import _T_GOAL, _log
 
 
@@ -92,10 +92,10 @@ class LearningProgress:
         live predictor port. Returns the updated cortex |LP|."""
         return self.observe("cortex", surprise)
 
-    # distinct-from: neuromodulation/intrinsic_motivation.py -- the ADOPTED drive this method
+    # distinct-from: faculties/intrinsic_motivation.py -- the ADOPTED drive this method
     #   READS (learning_progress_abs); nothing re-derived. Site read (this module's own dep).
     # distinct-from: growth/placement.py -- region-keyed PRIORS; unrelated job. Site read.
-    # distinct-from: neuromodulation/locus_coeruleus.py -- LC pool readout window; unrelated.
+    # distinct-from: faculties/locus_coeruleus.py -- LC pool readout window; unrelated.
     #   Site read; the matcher fired on generic words.
     def lp(self, region):
         """The adopted drive's |slow_EMA minus fast_EMA| readout for a fed region; KeyError

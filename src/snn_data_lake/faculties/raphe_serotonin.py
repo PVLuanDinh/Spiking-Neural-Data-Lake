@@ -29,7 +29,7 @@ discounting. Additive/opt-in, changes no existing behaviour, and models a time-h
 FUNCTION -- not mood affect, not clinical serotonin, not cognition/AGI. Credit: Doya 2002;
 Schweighofer et al. 2008; Miyazaki, Miyazaki & Doya 2011/2014.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.raphe_serotonin
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.raphe_serotonin
 """
 
 import math

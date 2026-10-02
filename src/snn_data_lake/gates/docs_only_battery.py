@@ -247,7 +247,7 @@ del _sndl_doc_audit
 
 
 # distinct-from: gates/selfcheck_cache.py -- _facts derives a source file's static data inputs; this
-#   names the installed hook's version. Also read: neuromodulation/drive_reduction.py (a set-point
+#   names the installed hook's version. Also read: faculties/drive_reduction.py (a set-point
 #   policy) -- term overlap only.
 def hook_id() -> str:
     return hashlib.sha256(HOOK_SOURCE.encode("utf-8")).hexdigest()[:16]

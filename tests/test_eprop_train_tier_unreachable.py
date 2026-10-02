@@ -144,7 +144,7 @@ def test_no_backprop_trainer_is_reachable_from_a_live_path():
         "e-prop invariant: these modules train by loss.backward() + optimizer.step() and are "
         f"permitted ONLY while no live root reaches them -- {live} is/are now reachable. Either "
         "revert the wire, or port the consumer to the governed three-factor lr_scale "
-        "(plasticity/valence_stdp.py, neuromodulation/cortisol.py) and retire the Adam path. "
+        "(plasticity/valence_stdp.py, faculties/cortisol.py) and retire the Adam path. "
         "Do not silence this by editing EXEMPT: EXEMPT governs dormancy, not the e-prop invariant"
     )
 

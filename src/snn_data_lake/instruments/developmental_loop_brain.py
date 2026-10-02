@@ -62,7 +62,7 @@ that path -- permitted because "That path is TRAIN-TIER OFFLINE, not a live lear
 dlb's whole import closure sits outside reachable()). BINDING CONSTRAINT: this module must
 never be wired to a live LEARNING consumer; if it ever is, that consumer takes the
 governed `lr_scale` three-factor parameter (plasticity/valence_stdp.py,
-neuromodulation/cortisol.py), never Adam -- and making this module reachable converts the
+faculties/cortisol.py), never Adam -- and making this module reachable converts the
 permitted offline trainer into an e-prop violation that nothing would announce.
 
 EXEC-BYPASS P2 ADJUDICATED 2026-08-12 (#10 lane 4f follow-up): the PLANNER is the one
@@ -106,14 +106,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from snn_data_lake.basal_ganglia.brain_decision import BrainDecision
-from snn_data_lake.infra.device import enable, resolve_device
-from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp
-from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
-from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
-from snn_data_lake.neuromodulation.spiking_curiosity import (
+from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
+from snn_data_lake.faculties.spiking_curiosity import (
     SpikingCuriosityDrive,
     SpikingCurriculum,
 )
+from snn_data_lake.infra.device import enable, resolve_device
+from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp
+from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
 from snn_data_lake.readout.growable_readout import GrowableReadout, LaminarColumns
 from snn_data_lake.sleep.hippocampal_memory import HippocampalMemory
 

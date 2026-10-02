@@ -6,12 +6,12 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| tonic_stress_caution_bias | 50 | src/snn_data_lake/neuromodulation/cortisol.py:51#caution_bias; src/snn_data_lake/neuromodulation/cortisol.py:38#step; src/snn_data_lake/engine/autonomous_loop.py:808#_explore_noise; src/snn_data_lake/engine/autonomous_loop.py:822#_select | affect_cortisol_caution_60.txt | 61 claimed by opus-5 auditor:Affect (affect_ab_probe.py cortisol_caution 60); REFUTED to 50 by refuter:Affect / affect_refute_probe.py seeds 60 6 + dose 60 + onset 60 | 2026-07-30 |
+| tonic_stress_caution_bias | 50 | src/snn_data_lake/faculties/cortisol.py:51#caution_bias; src/snn_data_lake/faculties/cortisol.py:38#step; src/snn_data_lake/engine/autonomous_loop.py:808#_explore_noise; src/snn_data_lake/engine/autonomous_loop.py:822#_select | affect_cortisol_caution_60.txt | 61 claimed by opus-5 auditor:Affect (affect_ab_probe.py cortisol_caution 60); REFUTED to 50 by refuter:Affect / affect_refute_probe.py seeds 60 6 + dose 60 + onset 60 | 2026-07-30 |
 | categorical_emotion | 40 | src/snn_data_lake/cortex/affect_core.py:176#recognize; src/snn_data_lake/engine/brain.py:3233#state; src/snn_data_lake/engine/brain.py:1562#_route_percept_to_action | affect_categorical_emotion_150.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py categorical_emotion 150 + 8-label episodic-cue sweep | 2026-07-30 |
-| somatic_marker_recall | 40 | src/snn_data_lake/hippocampus/affective_memory.py:163#recall_by_emotion; src/snn_data_lake/engine/brain.py:3838#_somatic_recall; src/snn_data_lake/engine/brain.py:3528#respond | - | opus-5 auditor:Affect / live 60-tick brain + one respond() turn, instrumented recall_by_emotion | 2026-07-30 |
+| somatic_marker_recall | 40 | src/snn_data_lake/faculties/affective_memory.py:163#recall_by_emotion; src/snn_data_lake/engine/brain.py:3838#_somatic_recall; src/snn_data_lake/engine/brain.py:3528#respond | - | opus-5 auditor:Affect / live 60-tick brain + one respond() turn, instrumented recall_by_emotion | 2026-07-30 |
 | dimensional_valence | 30 | src/snn_data_lake/engine/brain.py:2373#_observe_self_wake; src/snn_data_lake/engine/brain.py:3234#state | - | opus-5 auditor:Affect / live census, 60 wake ticks (31 distinct values) | 2026-07-30 |
-| neuromod_fused_affect_core | 30 | src/snn_data_lake/neuromodulation/affect_integrator.py:137#integrate; src/snn_data_lake/engine/brain.py:2206#_c1_tick; src/snn_data_lake/engine/brain.py:2210#_c1_tick | affect_integrator_150.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py affect_integrator 150 | 2026-07-30 |
-| tonic_stress_learning_gain | 30 | src/snn_data_lake/neuromodulation/cortisol.py:46#learn_rate_scale; src/snn_data_lake/engine/autonomous_loop.py:1797#step | affect_cortisol_learnrate_60.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py cortisol_learnrate 60 + instrumented call census | 2026-07-30 |
+| neuromod_fused_affect_core | 30 | src/snn_data_lake/faculties/affect_integrator.py:137#integrate; src/snn_data_lake/engine/brain.py:2206#_c1_tick; src/snn_data_lake/engine/brain.py:2210#_c1_tick | affect_integrator_150.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py affect_integrator 150 | 2026-07-30 |
+| tonic_stress_learning_gain | 30 | src/snn_data_lake/faculties/cortisol.py:46#learn_rate_scale; src/snn_data_lake/engine/autonomous_loop.py:1797#step | affect_cortisol_learnrate_60.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py cortisol_learnrate 60 + instrumented call census | 2026-07-30 |
 | arousal_dimension | 22 | src/snn_data_lake/engine/brain.py:3232#state; src/snn_data_lake/engine/autonomous_loop.py:1913#step; src/snn_data_lake/engine/brain.py:3247#state | - | opus-5 auditor:Affect / live census, 60 wake ticks + 31 stored affective episodes | 2026-07-30 |
 | learned_affective_appraisal | 22 | src/snn_data_lake/faculties/affective_appraisal.py:106#appraise; src/snn_data_lake/engine/brain.py:2155#_c1_tick; src/snn_data_lake/engine/brain.py:2306#_c1_tick | affect_appraisal_150.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py appraisal 150 + data/telemetry.jsonl 24,574 snapshots | 2026-07-30 |
 | affective_contagion_empathy | 22 | src/snn_data_lake/cortex/affect_core.py:198#empathize; src/snn_data_lake/engine/brain.py:3727#respond; src/snn_data_lake/engine/brain.py:1809#_drive_for | affect_empathy_help_150.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py empathy_help 150 + tools/charge_probe.py help 60 | 2026-07-30 |
@@ -203,13 +203,13 @@ about the code, not about this table.
 
 ## Capability inventory (Policy 2: what provides what, before anything is retired)
 
-- `neuromodulation/cortisol.py` -- tonic stress state. The ONLY behaviourally-charged affect signal in
+- `faculties/cortisol.py` -- tonic stress state. The ONLY behaviourally-charged affect signal in
   the brain. LIVE, and CHARGED **only in its saturated regime** -- the adversarial pass measured the
   action change at 3 of 6 seeds and those are exactly the 3 where `level` hit the `min(1.0, ...)`
   clamp at `cortisol.py:38`. In the graded regime it is behaviourally inert.
 - `cortex/affect_core.py` -- dimensional -> categorical emotion via a spiking winner-take-all over a
   Russell circumplex, plus affective contagion. LIVE, non-decisive.
-- `neuromodulation/affect_integrator.py` -- fuses four neuromodulators into a coupled (valence, arousal)
+- `faculties/affect_integrator.py` -- fuses four neuromodulators into a coupled (valence, arousal)
   core AND grows its own emotion prototypes rather than reading a hand-coded circumplex. LIVE,
   non-decisive.
 - `faculties/affective_appraisal.py` -- learned, three-factor, gradient-free (valence, arousal) appraisal
@@ -217,7 +217,7 @@ about the code, not about this table.
 - `faculties/fear_conditioning.py` -- CS-US acquisition, discrimination, extinction, spontaneous
   recovery, multi-US categories. Imported and called every tick; never learns, because no aversive
   event exists to learn from.
-- `hippocampus/affective_memory.py` -- affect-indexed episodic retrieval (Damasio somatic marker). LIVE
+- `faculties/affective_memory.py` -- affect-indexed episodic retrieval (Damasio somatic marker). LIVE
   on the chat path only; arousal axis of the key inert.
 
 Nothing above is a duplicate of anything else -- there is no P2 merge candidate inside this category.
@@ -225,7 +225,7 @@ Nothing above is a duplicate of anything else -- there is no P2 merge candidate 
 ## Gaps, ranked by distance_to_100 x feasibility
 
 1. **Give the arousal axis a real source.** It is currently `|rpe|` in one place and a constant 0.0 in
-   another. `faculties/interoceptive_arousal.py` and `neuromodulation/locus_coeruleus.py` both exist;
+   another. `faculties/interoceptive_arousal.py` and `faculties/locus_coeruleus.py` both exist;
    feeding a genuine arousal scalar into `affmem.store(arousal=...)` would make the somatic-marker key
    two-dimensional, which is the cheapest real gain in the category. Highest feasibility, and unlike
    the amygdala wire it changes no safety-adjacent semantics.

@@ -40,19 +40,19 @@ from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
 from snn_data_lake.cortex.agency_monitor import AgencyMonitor
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.engine.signal_ring import LakeJournaller, SignalRing
+from snn_data_lake.faculties.affective_memory import AffectiveEpisodicStore
+from snn_data_lake.faculties.allocentric_map import AllocentricMap
+from snn_data_lake.faculties.contrastive_episode_analysis import ContrastiveEpisodeAnalyzer
+from snn_data_lake.faculties.cortisol import Cortisol
 from snn_data_lake.faculties.cpg_oscillator import MatsuokaCPG
+from snn_data_lake.faculties.developmental_envelope import DevelopmentalEnvelope
+from snn_data_lake.faculties.empowerment import Empowerment
 from snn_data_lake.faculties.fear_conditioning import Amygdala
 from snn_data_lake.faculties.interoceptive_arousal import InteroceptiveArousal
+from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive
+from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.growth.growing_learner import GrowingLearner
-from snn_data_lake.hippocampus.affective_memory import AffectiveEpisodicStore
-from snn_data_lake.hippocampus.allocentric_map import AllocentricMap
-from snn_data_lake.hippocampus.contrastive_episode_analysis import ContrastiveEpisodeAnalyzer
 from snn_data_lake.infra.brain_bundle import BrainBundle, load_bundle
-from snn_data_lake.neuromodulation.cortisol import Cortisol
-from snn_data_lake.neuromodulation.developmental_envelope import DevelopmentalEnvelope
-from snn_data_lake.neuromodulation.empowerment import Empowerment
-from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.plasticity.naca import NACABroadcast
 from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 from snn_data_lake.sleep.experience_replay import ReplayBuffer

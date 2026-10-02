@@ -19,7 +19,7 @@ After slice 5 (v3.29): **SPIKING 50** (new module `sensorimotor/pc_cortex_serve`
   `midbrain/superior_colliculus` (LIF first-spike WTA race; latency = first-spike time),
   `midbrain/sc_deep_layers` (LIF burst pool + gain-1 line-attractor spiking integrator; displacement =
   accumulated spikes), `cortex/cue_integration` (spiking probabilistic population code; fusion = spike
-  addition), `neuromodulation/locus_coeruleus` (LIF NE pool; NE = population spike rate, phasic burst -> gain).
+  addition), `faculties/locus_coeruleus` (LIF NE pool; NE = population spike rate, phasic burst -> gain).
   All API-preserved, un-riggable spiking self-checks, live loop untouched. Honest cost: spiking read-outs add
   quantization/Poisson noise (SC latency integer-quantized; SC-deep ~4.4%; cue-integration approaches MLE within
   tolerance) -- reported, not faked.
@@ -60,7 +60,7 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | cortex/brain_reasoning | read class by spiking WTA over classifier output spikes; confidence from spike-count margin |
 | cortex/vsa_reasoning | phasor/spike-polarity hypervectors; bind = phase-multiply, bundle = spike superposition |
 | hippocampus/hippocampus | DG spiking expansion + lateral-inhibition WTA; CA3 recurrent spiking attractor completion |
-| hippocampus/grid_cells | 3 velocity-controlled spiking oscillators; grid firing from spike-phase interference |
+| faculties/grid_cells | 3 velocity-controlled spiking oscillators; grid firing from spike-phase interference |
 | hippocampus/frequency_memory | LIF neurons; firing-rate homeostat gates STDP on/off (FIP/FID) to form assemblies |
 | sleep/experience_replay | three-factor R-STDP actor; replay = spontaneous spike-sequence reactivation |
 | growth/growing_learner | spiking prototype/RBF units matched by spike coincidence; recruit-on-weak-response; Hebbian |
@@ -81,11 +81,11 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | pons/pontine_relay | LIF granule neurons on sparse random weights; k-WTA lateral inhibition; active = spiking in window |
 | faculties/interoceptive_arousal | LC-like LIF pool driven by aggregated error current; caution = normalized firing rate |
 | olfactory/piriform_cortex | spiking attractor: LIF, Hebbian recurrent synapses, k-WTA; completion via recurrent settling |
-| neuromodulation/acetylcholine | spiking attractor (LIF) + STDP writes; ACh spike-rate gates STDP + recurrent gain |
-| neuromodulation/cortisol | slow spiking neuromodulatory pool integrating aversive spikes; rate scales threshold + STDP |
-| neuromodulation/locus_coeruleus | LC spiking neurons bursting on salient events; NE spike-rate scales downstream gain |
-| neuromodulation/raphe_serotonin | tonic raphe spike-rate sets a spiking accumulator's leak; competing spiking integrators |
-| neuromodulation/intrinsic_motivation | two spiking populations, different time constants; firing-rate difference = learning-progress |
+| faculties/acetylcholine | spiking attractor (LIF) + STDP writes; ACh spike-rate gates STDP + recurrent gain |
+| faculties/cortisol | slow spiking neuromodulatory pool integrating aversive spikes; rate scales threshold + STDP |
+| faculties/locus_coeruleus | LC spiking neurons bursting on salient events; NE spike-rate scales downstream gain |
+| faculties/raphe_serotonin | tonic raphe spike-rate sets a spiking accumulator's leak; competing spiking integrators |
+| faculties/intrinsic_motivation | two spiking populations, different time constants; firing-rate difference = learning-progress |
 | neuromodulation/curriculum | LIF accumulator that spikes to advance a stage when sustained low-progress crosses threshold |
 | plasticity/bcm_plasticity | spiking triplet-STDP (Pfister-Gerstner); sliding threshold tracks postsynaptic spike rate |
 | plasticity/homeostatic_scaling | wrap a LIF neuron; windowed spike count scales weights toward target spike-rate |
@@ -128,7 +128,7 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
 
 - **Slice 1 (v3.23, in progress):** convert 5 self-contained non-safety RATE modules ->
   `cerebellum/spiking_pid`, `midbrain/superior_colliculus`, `midbrain/sc_deep_layers`,
-  `cortex/cue_integration`, `neuromodulation/locus_coeruleus`. Each in-place to genuine LIF/spike-timing with an
+  `cortex/cue_integration`, `faculties/locus_coeruleus`. Each in-place to genuine LIF/spike-timing with an
   un-riggable spiking self-check; live-loop wiring untouched (no ripple).
 - Remaining RATE after slice 1: 42. Live-loop-wired conversions (global_workspace, growing_learner,
   multimodal_encoder, the value substrate, autonomous_loop selection) are later, safety-adjacent slices done by

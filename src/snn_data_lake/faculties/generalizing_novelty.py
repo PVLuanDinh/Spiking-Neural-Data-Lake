@@ -18,7 +18,7 @@ What this IS and IS NOT (do not overclaim):
     the projection never changes after __init__.
   * It is a VISITATION proxy, NOT learning progress. It measures "have I been near this
     spike state?", never "am I getting better at predicting it?". Pair it with the
-    learning-progress curiosity kernel (neuromodulation/intrinsic_motivation.py) for the
+    learning-progress curiosity kernel (faculties/intrinsic_motivation.py) for the
     latter; this module only supplies the generalizing count.
   * OVERCLAIM TO AVOID: it does NOT "fix curiosity's collapse WHEN THE ENCODER COLLAPSES".
     SimHash runs OVER the encoder's raster, so it INHERITS an encoder collapse -- if the
@@ -34,7 +34,7 @@ Determinism & style invariants (per CLAUDE.md):
   * bucket id via zlib.crc32 of the sign-code bytes -- NEVER the builtin hash().
   * imports math, random, zlib, infra._mathutils.dot (numpy/torch allowed project-wide); ASCII-only prints.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.generalizing_novelty
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.generalizing_novelty
 """
 
 import math

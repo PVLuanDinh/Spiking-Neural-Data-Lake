@@ -122,13 +122,13 @@ from snn_data_lake.cortex.language_self_build import _bigram_baseline, _position
 # moved the library here, so a module-top import in both directions is a cycle. The lazy side
 # belongs here (the discovery path is optional per night; physics_stream is load-bearing for
 # open_world_loop's module top).
-from snn_data_lake.hippocampus.skill_builder import (
+from snn_data_lake.faculties.skill_builder import (
     MATH_VOCAB,
     SkillRegistry,
     math_stream,
     signature,
 )
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
+from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.readout.language_readout_slda import SLDA_RFF_np
 from snn_data_lake.sensorimotor.corpus_stream import (
     ARPABET,
@@ -564,7 +564,7 @@ class NightlySkills:
 
     def _ensure_ow(self):
         if self._ow is None:
-            from snn_data_lake.hippocampus.open_world_loop import OpenWorldController
+            from snn_data_lake.faculties.open_world_loop import OpenWorldController
 
             self._ow = OpenWorldController(
                 lam=_envf("NORD_NIGHT_LAM", 1.7),
@@ -648,7 +648,7 @@ class NightlySkills:
         if "world-kb" in self._domains:
             for c, nx in self._domains["world-kb"].test[:200]:
                 pool.append((c, nx, "world-kb"))
-        from snn_data_lake.hippocampus.open_world_loop import dna_stream
+        from snn_data_lake.faculties.open_world_loop import dna_stream
 
         take(dna_stream(n=800, ctx=self.ctx, seed=self.seed), "dna")
         random.Random(self.seed).shuffle(pool)

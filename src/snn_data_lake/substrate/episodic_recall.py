@@ -2,7 +2,7 @@
 v3.79 - episodic_recall: RECONSTRUCTIVE / AUTOBIOGRAPHICAL episodic memory over the spiking
 VSA substrate.
 
-WHY THIS EXISTS (the honest gap it closes). hippocampus/affective_memory.py stores affect-tagged
+WHY THIS EXISTS (the honest gap it closes). faculties/affective_memory.py stores affect-tagged
 episodes and recall_similar returns a whole Episode, but the conversational surface only ever reads
 its affect TAG (valence/arousal) -- there is no RECONSTRUCTIVE recall of episode CONTENT: no way to
 give a PARTIAL cue ("the fearful one", or a single where-slot) and have the system COMPLETE it back

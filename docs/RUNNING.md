@@ -40,7 +40,7 @@ and re-bases the environment behind every measurement in `docs/`; see `docs/POLI
 Every registered module runs standalone with an assert-based self-check — the fastest way to see
 each piece work:
 ```bash
-python -m snn_data_lake.hippocampus.spiking_storage_prototype  # factored associative-memory storage
+python -m snn_data_lake.faculties.spiking_storage_prototype  # factored associative-memory storage
 python -m snn_data_lake.substrate.spike_telemetry_hub          # Paradigm A: sparse .spk store + windowed queries
 python -m snn_data_lake.substrate.paradigm_b_engine               # Paradigm B: in-storage spike-query engine
 python -m snn_data_lake.reasoning.spike_kg                     # Paradigm C: relational spike embeddings

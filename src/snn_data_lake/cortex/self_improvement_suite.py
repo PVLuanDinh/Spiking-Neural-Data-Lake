@@ -67,17 +67,17 @@ from snn_data_lake.cortex.quality_diversity import (
     QualityDiversityArchive,
     behavior_descriptor,
 )
+from snn_data_lake.faculties.drive_reduction import (
+    DriveReductionLearner,
+    NeedPool,
+    _regulate,
+)
+from snn_data_lake.faculties.generalizing_novelty import GeneralizingNovelty
 from snn_data_lake.growth.function_preserving_growth import (
     SpikingGrowthLayer,
     _max_abs_diff,
 )
 from snn_data_lake.growth.lif_neuron import LIFNeuron
-from snn_data_lake.neuromodulation.drive_reduction import (
-    DriveReductionLearner,
-    NeedPool,
-    _regulate,
-)
-from snn_data_lake.neuromodulation.generalizing_novelty import GeneralizingNovelty
 from snn_data_lake.plasticity.benna_fusi import BennaFusiLearner
 from snn_data_lake.plasticity.meta_plasticity import MetaPlasticLearner
 from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder

@@ -54,7 +54,7 @@ Self-supervised Prediction" (ICM, 2017).
 
 Deps: random, infra._mathutils.mean (numpy/torch allowed project-wide); ASCII-only prints, deterministic.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.intrinsic_motivation
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.intrinsic_motivation
 """
 
 import random
@@ -152,7 +152,7 @@ class CuriosityDrive:
             return 0.0
         return max(0.0, st["slow"] - st["fast"])
 
-    # distinct-from: neuromodulation/spiking_curiosity.py -- the spiking sibling of THIS
+    # distinct-from: faculties/spiking_curiosity.py -- the spiking sibling of THIS
     #   drive's rectified readout (a flag-selected coexisting pair, OPEN P2 debt per its own
     #   docstring; its flat-error bias below the calibration reference is measured in
     #   learning_progress.py's adoption record and re-derivable in one probe). This method

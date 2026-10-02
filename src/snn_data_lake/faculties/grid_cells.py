@@ -30,7 +30,7 @@ A reduced/idealized interference model on synthetic trajectories -- analytic pla
 fields with literal velocity accumulation, NO real VCO spiking dynamics, no neural noise, no phase drift
 or drift correction. A mathematical grid-cell twin (geometry + dead-reckoning), not biophysics, not cognition.
 
-  python -m snn_data_lake.hippocampus.grid_cells        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.faculties.grid_cells        # (also run by run_selfchecks.py)
 """
 
 import math

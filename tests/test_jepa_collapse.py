@@ -1,7 +1,7 @@
 """specs/022 -- the JEPA-collapse arc (2026-09-05): the arm's world model must read succession.
 
 The arm builds `cerebellum/jepa_world_model.JepaWorldModel(ACTIONS, in_dim=64, seed)` at the
-module defaults and trains it online on every wake tick; `neuromodulation/spiking_curiosity`
+module defaults and trains it online on every wake tick; `faculties/spiking_curiosity`
 is fed its prediction error. Measured in-brain (evidence/w2-context-latents.md sections
 4.2-4.3b) and brain-free (evidence/jepa-collapse.md sections 3-11): at the defaults this tree
 had before the arc's fix commit, the latent COLLAPSED (its spread over distinct patterns fell to

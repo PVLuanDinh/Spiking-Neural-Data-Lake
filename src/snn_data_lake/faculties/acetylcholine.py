@@ -28,7 +28,7 @@ changes no existing behaviour. Credit Hasselmo (Neuromodulation: acetylcholine a
 consolidation, TiCS 3:351, 1999; The role of acetylcholine in learning and memory, Curr Opin
 Neurobiol 2006; encode/retrieve scheduling, J Neurosci 33:8689, 2013).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.acetylcholine
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.acetylcholine
 """
 
 import math

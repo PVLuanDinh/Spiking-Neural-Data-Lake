@@ -107,7 +107,7 @@ P8 debts.
 #   prior); this is the generative mechanism the prior will seed at T043. Read.
 # distinct-from: growth/placement.py -- placement CONSUMES region labels to order grown
 #   units; this module EMITS the labels. Read.
-# distinct-from: neuromodulation/locus_coeruleus.py -- its _population_spikes integrates
+# distinct-from: faculties/locus_coeruleus.py -- its _population_spikes integrates
 #   a LIF pool's spike count under a scalar drive (a neuromodulator readout); this file
 #   settles a Boolean gene network to fixed points (no membranes, no spikes). Read.
 # distinct-from: reasoning/random_boolean_network.py -- Kauffman NK: RANDOM truth tables

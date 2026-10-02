@@ -22,7 +22,7 @@ mechanism, generalized from one channel to three):
 learn(features, target_valence, target_arousal, neuromod=1.0) computes the appraisal error (target
 - current appraisal -- an RPE exactly like valence_stdp's `dopamine = reward - predicted`) and
 applies a three-factor Hebbian/anti-Hebbian update GATED by that error and by `neuromod`, a scalar
-standing in for a diffuse modulator (pass neuromodulation/cortisol.Cortisol.learn_rate_scale(signed)
+standing in for a diffuse modulator (pass faculties/cortisol.Cortisol.learn_rate_scale(signed)
 as `neuromod` to make aversive appraisals learn faster under stress, mirroring cortisol.py's own
 worked example of scaling a learning rate):
   err_v = target_valence - valence

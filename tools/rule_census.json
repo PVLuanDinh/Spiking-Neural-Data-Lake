@@ -113,6 +113,11 @@
    "governed": true,
    "kind": "LOCAL"
   },
+  "faculties/acetylcholine.py::RecurrentStore.encode": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "faculties/affective_appraisal.py::AffectiveAppraisal._decay": {
    "disposition": "needs-pre-collapse -- T050 census",
    "governed": true,
@@ -133,6 +138,16 @@
    "governed": true,
    "kind": "LOCAL"
   },
+  "faculties/drive_reduction.py::DriveReductionLearner.train": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/drive_reduction.py::DriveReductionLearner.train_step": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "faculties/fear_conditioning.py::Amygdala.extinguish": {
    "disposition": "needs-pre-collapse -- T050 census",
    "governed": true,
@@ -145,6 +160,21 @@
   },
   "faculties/homeostatic_drives.py::_train_values": {
    "disposition": "expressible -- T050 census (drive_reduction)",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/spiking_curiosity.py::_learner_step": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "faculties/spiking_curiosity.py::_run_curriculum_learner": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "faculties/spiking_storage_prototype.py::train": {
+   "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
   },
@@ -164,11 +194,6 @@
    "kind": "DIRECT_SOLVE"
   },
   "growth/similarity_sized_growth.py::FrozenExpert.learn": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "hippocampus/spiking_storage_prototype.py::train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
@@ -242,31 +267,6 @@
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
-  },
-  "neuromodulation/acetylcholine.py::RecurrentStore.encode": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "neuromodulation/drive_reduction.py::DriveReductionLearner.train": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "neuromodulation/drive_reduction.py::DriveReductionLearner.train_step": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "neuromodulation/spiking_curiosity.py::_learner_step": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "neuromodulation/spiking_curiosity.py::_run_curriculum_learner": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
   },
   "plasticity/bcm_plasticity.py::BCMNeuron.update": {
    "disposition": "UNDISPOSITIONED",

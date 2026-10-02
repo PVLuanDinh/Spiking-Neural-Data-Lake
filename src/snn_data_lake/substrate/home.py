@@ -721,7 +721,7 @@ def set_append_observer(fn):
 #   delivery bundles from edges and touches no lake record.
 # distinct-from: sensorimotor/afferent_boundary.py -- "the ONE transduction-in boundary": sensor
 #   readings into the stimulus contract, no record, no tag, no bytes/tick.
-# distinct-from: neuromodulation/raphe_serotonin.py::declare_ports -- "the FIRST real manifest
+# distinct-from: faculties/raphe_serotonin.py::declare_ports -- "the FIRST real manifest
 #   registrant": a typed wiring-manifest port declaration, not an append observation.
 #   All five sites read 2026-09-08.
 def observe_append(tag: bytes, n_bytes: int) -> None:

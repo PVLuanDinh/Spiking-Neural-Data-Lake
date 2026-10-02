@@ -55,7 +55,7 @@ cortex/prefrontal_executive.py a learned prior -- a ranked list of which context
 success -- so the executive can bias planning toward high-success-likelihood contexts before it
 ever acts, instead of relearning the same structure one transition at a time.
 
-  python -m snn_data_lake.hippocampus.contrastive_episode_analysis
+  python -m snn_data_lake.faculties.contrastive_episode_analysis
 """
 
 import collections

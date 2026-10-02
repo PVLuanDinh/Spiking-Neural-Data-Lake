@@ -654,7 +654,7 @@ class NGSNN:
 
     # distinct-from: infra/brain_bundle.py::predict -- a ROUTER that delegates to a named
     #   skill's trained brain; it implements no decision of its own. distinct-from:
-    #   neuromodulation/locus_coeruleus.py::_population_spikes -- integrates an LC pool to a spike
+    #   faculties/locus_coeruleus.py::_population_spikes -- integrates an LC pool to a spike
     #   COUNT, no classes. distinct-from: reasoning/rpm_solver.py::_induce_attr -- induces a
     #   Raven's-matrix rule for one attribute. distinct-from: gates/gradient_claim_gate.py's
     #   ClassificationState -- a policy-census declaration. distinct-from:

@@ -140,8 +140,8 @@ _G0C_LAZY_ATTRS = {
 
 
 # distinct-from: substrate/home.py, thalamus/reentrant_workspace.py -- phrase overlap only, as
-#   with instruments/prior_drift_harness.py, neuromodulation/intrinsic_motivation.py and
-#   neuromodulation/raphe_serotonin.py (an append observer, a theta authority, a least-squares
+#   with instruments/prior_drift_harness.py, faculties/intrinsic_motivation.py and
+#   faculties/raphe_serotonin.py (an append observer, a theta authority, a least-squares
 #   readout, a learning-progress read, a port declaration); all five sites read. The legacy-name
 #   incumbent is the alias layer in snn_data_lake/__init__.py (`_MOVED`), whose S1b `_LEGACY`
 #   table this provider now returns. Re-read at S1b with sensorimotor/afferent_boundary.py and

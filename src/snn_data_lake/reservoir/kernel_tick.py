@@ -77,7 +77,7 @@ IMBALANCE_PROVENANCE = (
 )
 
 
-# distinct-from: cortex/percept_surprise.py::declare_ports, neuromodulation/raphe_serotonin.py::
+# distinct-from: cortex/percept_surprise.py::declare_ports, faculties/raphe_serotonin.py::
 #   declare_ports -- manifest REGISTRANTS: they declare typed faculty ports on the wiring manifest
 #   and compile nothing; no weight, no delay, no ring key.
 # distinct-from: growth/basic_components.py::Connections.update -- an in-place bounded weight

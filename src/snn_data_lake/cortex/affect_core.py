@@ -33,7 +33,7 @@ This module adds three faculties on top of that substrate, reusing the repo's sp
 
   (b) RECOGNITION.  recognize(valence, arousal) -> label, and recognize_episode(ep) reads the
       (valence, arousal) tags off an affect-tagged percept/episode (duck-typed .valence/.arousal,
-      e.g. a hippocampus.affective_memory.Episode) and names the emotion.
+      e.g. a faculties.affective_memory.Episode) and names the emotion.
 
   (c) AFFECTIVE EMPATHY / CONTAGION (Hatfield, Cacioppo & Rapson 1993, "Emotional contagion").
       empathize(other_v, other_a, gain) shifts the agent's OWN affect toward another agent's
@@ -177,7 +177,7 @@ class AffectCore:
 
     def recognize_episode(self, episode, jitter=0.0):
         """Name the emotion of an affect-tagged percept/episode. Duck-typed: reads .valence/.arousal
-        (e.g. a hippocampus.affective_memory.Episode) or ['valence']/['arousal'] off a mapping."""
+        (e.g. a faculties.affective_memory.Episode) or ['valence']/['arousal'] off a mapping."""
         if hasattr(episode, "valence") and hasattr(episode, "arousal"):
             v, a = episode.valence, episode.arousal
         else:
@@ -208,7 +208,7 @@ class AffectCore:
 # ============================ un-riggable self-check ==========================
 # (`_loc`, the integer-location renderer, went with `SecondOrderToM` at T082: nothing else in
 # this module speaks in location ids.)
-# a minimal affect-tagged episode, duck-typed like hippocampus.affective_memory.Episode
+# a minimal affect-tagged episode, duck-typed like faculties.affective_memory.Episode
 _Episode = collections.namedtuple("_Episode", ["valence", "arousal"])
 
 

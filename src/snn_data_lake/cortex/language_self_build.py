@@ -58,7 +58,7 @@ import os
 import random
 import tempfile
 
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
+from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
 from snn_data_lake.sensorimotor.corpus_stream import (
     ARPABET,

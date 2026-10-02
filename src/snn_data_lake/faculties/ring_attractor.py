@@ -19,7 +19,7 @@ defined anywhere in `src/` -- it is the same phantom class `CLAUDE.md` had to co
 list. The live body is `brainstem/so101_arm.So101Arm`, which the code below has always imported and which
 carries both methods under the names used here.)
 
-  python -m snn_data_lake.hippocampus.ring_attractor        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.faculties.ring_attractor        # (also run by run_selfchecks.py)
 """
 
 import math

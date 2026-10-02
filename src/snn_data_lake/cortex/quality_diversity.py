@@ -4,7 +4,7 @@ Bounded quality-diversity repertoire -- MAP-Elites / Go-Explore over SPIKING pol
 learning-progress signal into a diverse archive of behaviors.
 
 What this is (read first, then the honest limits below). The inner drive
-(neuromodulation/intrinsic_motivation.CuriosityDrive) is a scalar that SCORES how worth
+(faculties/intrinsic_motivation.CuriosityDrive) is a scalar that SCORES how worth
 exploring one context is. It has no memory of WHICH behaviors it has already produced, so
 on its own it re-discovers the same few behaviors. Quality-diversity is the OUTER
 bookkeeping loop that fixes that: it keeps a GRID of behavioral niches and, in each niche,
@@ -86,9 +86,9 @@ Per-instance random.Random(seed), ASCII-only, deterministic.
 import math
 import random
 
+from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.infra._mathutils import mean
-from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 from snn_data_lake.sleep.experience_replay import ReplayBuffer
 

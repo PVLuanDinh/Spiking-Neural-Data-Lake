@@ -85,7 +85,7 @@ def test_entries_name_their_class():
 #
 # MATCHED BY `Class.method()`, NEVER BY THE WHOLE ENTRY. The first version of these constants was
 # the full entry string, line number included -- and it went red within the hour, because
-# `hippocampus/affective_memory.py` gained two lines and `:173` became `:175`. A test that pins a
+# `faculties/affective_memory.py` gained two lines and `:173` became `:175`. A test that pins a
 # line number is the stale-citation defect wearing a test's clothes: it fails on an edit that
 # changed nothing it claims to be about. The class-qualified name is the identity the gate keys on,
 # so it is the identity to assert; a genuine RENAME still fails here, loudly, which is what these
@@ -126,11 +126,11 @@ def test_the_exemption_branch_is_reachable_at_all(monkeypatch):
     "key,suppresses",
     [
         # class-qualified -- the form new dispositions should use
-        ("hippocampus.affective_memory.AffectiveEpisodicStore.consolidate", True),
-        ("hippocampus.affective_memory.consolidate", True),  # module-qualified, legacy
+        ("faculties.affective_memory.AffectiveEpisodicStore.consolidate", True),
+        ("faculties.affective_memory.consolidate", True),  # module-qualified, legacy
         ("consolidate", True),  # bare, legacy
-        ("hippocampus.affective_memory.SomeOtherClass.consolidate", False),  # a DIFFERENT class
-        ("faculties.affective_memory.AffectiveEpisodicStore.consolidate", False),  # another module
+        ("faculties.affective_memory.SomeOtherClass.consolidate", False),  # a DIFFERENT class
+        ("reservoir.affective_memory.AffectiveEpisodicStore.consolidate", False),  # another module
     ],
 )
 def test_exemption_lookup_precedence(key, suppresses, monkeypatch):
@@ -151,7 +151,7 @@ def test_a_class_qualified_exemption_cannot_suppress_a_sibling_finding(monkeypat
     """
     dormant = _dormant_under(
         monkeypatch,
-        {"hippocampus.affective_memory.AffectiveEpisodicStore.consolidate": ("permanent", "x")},
+        {"faculties.affective_memory.AffectiveEpisodicStore.consolidate": ("permanent", "x")},
     )
     assert not _has(dormant, _DORMANT_A), "the named rule was not suppressed"
     assert _has(dormant, _DORMANT_B), "an exemption for one rule silenced an unrelated one"

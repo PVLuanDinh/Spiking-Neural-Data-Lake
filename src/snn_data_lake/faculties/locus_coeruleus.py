@@ -42,7 +42,7 @@ the decaying phasic input trace. Additive/opt-in, changes no existing behaviour,
 gain-control FUNCTION -- not arousal, not cognition/AGI. Credit: Aston-Jones & Cohen 2005
 (adaptive-gain theory); Servan-Schreiber, Printz & Cohen 1990 (gain as sigmoid slope).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.locus_coeruleus
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.locus_coeruleus
 """
 
 import math

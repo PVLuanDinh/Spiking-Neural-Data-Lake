@@ -11,7 +11,7 @@ The enclosed cycle (each faculty is a REAL, verified component, not a stub):
                   PERSISTENT SPIKING ACTIVITY (reverberating attractor)
   SELF-DIRECTION  spiking curiosity (intrinsic learning-progress) + curriculum + a
                   METACOGNITIVE monitor pick the next objective + decide when to grow
-                  [neuromodulation.spiking_curiosity, cortex.metacognitive_monitor]
+                  [faculties.spiking_curiosity, cortex.metacognitive_monitor]
   UNDERSTANDING   a supervised readout on the frozen features -- competence deepens as
                   the agent studies more                                     [brain_adapters.growable_readout]
   NEUROGENESIS    when metacognition fires grow_trigger, the brain GROWS new readout neurons
@@ -51,8 +51,8 @@ from snn_data_lake.readout.growable_readout import GrowableReadout
 from snn_data_lake.substrate.proximity_replay import LakeMemory
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
-from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
+from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
+from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
 
 
 def _evidence(option, n=10, strong=1.0, weak=0.05):

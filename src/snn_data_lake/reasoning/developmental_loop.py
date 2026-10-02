@@ -19,7 +19,7 @@ Each stage is a REAL brain mechanism, composed (not faked):
                              the brain grows AND prunes). The locus-coeruleus (neuromodulation) boosts the STDP
                              learning gain 1x-3x on a salient/novel objective (attend harder to the unknown).
                              It self-evaluates competence by neuron-label voting (labels only read out competence).
-  4. DECISION                the brain's OWN neuromodulation/spiking_curiosity.SpikingCuriosityDrive picks the
+  4. DECISION                the brain's OWN faculties/spiking_curiosity.SpikingCuriosityDrive picks the
                              next objective (most_curious = spiking learning-progress + novelty) and a
                              SpikingCurriculum (LIF accumulator) paces mastery -- it explores every unseen
                              digit, then REVISITS the weakest-still-improving one on the learnable frontier.
@@ -74,8 +74,8 @@ from snn_data_lake.instruments.snn_mnist_stdp import (
 )
 from snn_data_lake.infra.device import enable, resolve_device
 
-from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
+from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
+from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
 from snn_data_lake.growth.brian2_backend import BrianLIF
 

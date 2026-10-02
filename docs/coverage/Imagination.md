@@ -426,7 +426,7 @@ P-violation stands as written.
   transport noted above). The only charged Imagination faculty -- charged through the *scale* of its
   error, with its predictive content measured behaviourally inert at n=60 (see the adversarial pass).
   Sole provider of an action-conditioned latent transition function to the planner, the curiosity drive
-  and `neuromodulation/empowerment.py`.
+  and `faculties/empowerment.py`.
 - `cerebellum/hjepa_serve.py` -- temporally abstract (Level-1) prospection over a K-tick window, served
   frozen from the torch tier. Unique capability: planning over a *regime* rather than a frame. Not
   instantiated.

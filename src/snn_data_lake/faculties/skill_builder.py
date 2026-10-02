@@ -26,7 +26,7 @@ is below n-gram, as language_self_build showed). It does NOT solve math or langu
 measurable, reusable, honestly-scoped skills and a router over them. Physics (JEPA latent next-state)
 and proofs (verifier-reward) are the next adapters, not built here.
 
-  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.hippocampus.skill_builder
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.faculties.skill_builder
   Knobs: NORD_CTX(3) NORD_PER(6000) NORD_RFF(1500) NORD_GAMMA(0.15) NORD_MATHN(4000)
 Deps: numpy (+ stdlib). Reuses corpus_stream, language_self_build, language_readout_slda,
 proximity_replay (each promoted 2026-08-11).
@@ -43,7 +43,7 @@ import random
 import tempfile
 
 from snn_data_lake.cortex.language_self_build import _bigram_baseline
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
+from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.readout.language_readout_slda import _slda_acc
 from snn_data_lake.sensorimotor.corpus_stream import (
     ARPABET,

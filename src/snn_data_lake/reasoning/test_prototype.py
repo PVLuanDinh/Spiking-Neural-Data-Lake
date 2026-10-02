@@ -8,7 +8,7 @@ Reuses the prototype's functions directly (no duplication). Run:
 
 import random
 
-from snn_data_lake.hippocampus.spiking_storage_prototype import (
+from snn_data_lake.faculties.spiking_storage_prototype import (
     make_patterns,
     train,
     recall,

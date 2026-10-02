@@ -12,8 +12,8 @@ component cannot be checked. "zero-dep cognition" below was also retired-rule re
 the zero-dependency rule on 2026-07-20, and what is actually true is that this file needs nothing
 beyond arc-agi and the four faculties named.)
 What DOES play, composed below, is the brain's own cognition:
-  * exploration  -- neuromodulation/intrinsic_motivation.CuriosityDrive (learning-progress + novelty)
-                    + neuromodulation/generalizing_novelty.GeneralizingNovelty (SimHash pseudo-count);
+  * exploration  -- faculties/intrinsic_motivation.CuriosityDrive (learning-progress + novelty)
+                    + faculties/generalizing_novelty.GeneralizingNovelty (SimHash pseudo-count);
   * rule discovery -- an online world model T (transitions) + model-based value iteration (planning);
   * decision     -- basal_ganglia/evidence_accumulation.RaceAccumulator (a genuine spiking N-alternative
                     race over the candidate actions' values);
@@ -52,8 +52,8 @@ from rule_inducer import (  # noqa: E402  (relational reasoning layer)
 
 from snn_data_lake.basal_ganglia.evidence_accumulation import RaceAccumulator  # noqa: E402
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor  # noqa: E402
-from snn_data_lake.neuromodulation.generalizing_novelty import GeneralizingNovelty  # noqa: E402
-from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive  # noqa: E402
+from snn_data_lake.faculties.generalizing_novelty import GeneralizingNovelty  # noqa: E402
+from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive  # noqa: E402
 
 _CLICK = GameAction.ACTION6.value  # the one complex (x,y) action
 K = 8  # click grid: K*K targets tiled over the frame

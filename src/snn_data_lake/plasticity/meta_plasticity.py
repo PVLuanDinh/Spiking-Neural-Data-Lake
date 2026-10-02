@@ -6,7 +6,7 @@ HOW FAST / IN WHICH DIRECTION each synapse learns, without ever changing the FOR
 
   (a) THIRD-FACTOR learning-rate gate.  The third factor of the reused R-STDP rule
       (plasticity/r_stdp.py: w += lr * d * e) is driven by the spiking learning-progress signal
-      (neuromodulation/spiking_curiosity.py SpikingCuriosityDrive.learning_progress, SI-1). The
+      (faculties/spiking_curiosity.py SpikingCuriosityDrive.learning_progress, SI-1). The
       EFFECTIVE learning rate RISES where progress is being made:  lr_eff = base_lr * (1 + g * LP).
       A neuromodulator that opens the plasticity gate when the task is being learned and closes it
       when learning has stalled -- classic three-factor / eligibility gating.
@@ -40,7 +40,7 @@ HONEST framing (read before trusting any number below).
 
 Reuses (does NOT reimplement): plasticity/r_stdp.py RSTDPNeuron (eligibility + third-factor reward
 gate), growth/lif_neuron.py LIFNeuron (the spiking unit + the rate the threshold slides with),
-neuromodulation/spiking_curiosity.py SpikingCuriosityDrive (the LP third factor), plasticity/
+faculties/spiking_curiosity.py SpikingCuriosityDrive (the LP third factor), plasticity/
 bcm_plasticity.py (the sliding-threshold theta_M ~ <y^2> rule), substrate/_mathutils.mean.
 
 ASCII-only prints, deterministic
@@ -52,9 +52,9 @@ ASCII-only prints, deterministic
 import random
 from collections import deque
 
+from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.infra._mathutils import mean
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.

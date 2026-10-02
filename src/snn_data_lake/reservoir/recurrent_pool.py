@@ -375,7 +375,7 @@ class LsmPool(_Pool):
         return {"unit": unit, "noise": noise}
 
 
-# distinct-from: neuromodulation/spiking_curiosity.py -- its _make_pool builds a LIF pool that turns a prediction error into a count for curiosity; no recurrence, no percept stream (site read)
+# distinct-from: faculties/spiking_curiosity.py -- its _make_pool builds a LIF pool that turns a prediction error into a count for curiosity; no recurrence, no percept stream (site read)
 POOLS = {"lsm": LsmPool}
 
 

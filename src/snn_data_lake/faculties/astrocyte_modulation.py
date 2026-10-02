@@ -29,7 +29,7 @@ DISTINCTNESS (why this is a new primitive, not a duplicate):
     excitability set-point control. The astrocyte modulates SYNAPTIC transmission via glial Ca, not
     the neuron's own homeostasis.
 
-  python -m snn_data_lake.neuromodulation.astrocyte_modulation        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.faculties.astrocyte_modulation        # (also run by run_selfchecks.py)
 
 A reduced slow-Ca + threshold-gliotransmission model of tripartite synapse on synthetic
 activity -- phenomenological glial gain, NOT IP3 / Ca-induced-Ca-release biophysics, no diffusion or

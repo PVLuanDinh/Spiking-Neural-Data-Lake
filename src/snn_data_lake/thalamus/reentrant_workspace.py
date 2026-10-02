@@ -637,7 +637,7 @@ class ReentrantWorkspace:
 
         A POPULATION rate code does not have that ceiling: spread the units' thresholds across the
         drive band and the FRACTION that sustains grades smoothly, saturating only past the highest
-        threshold. Same idiom as `neuromodulation/spiking_curiosity.py` (`_POOL_N = 12`
+        threshold. Same idiom as `faculties/spiking_curiosity.py` (`_POOL_N = 12`
         heterogeneous LIF units, whose docstring gives the same reason -- heterogeneity makes a
         pool's rate a SMOOTH function of drive instead of mode-locking).
 

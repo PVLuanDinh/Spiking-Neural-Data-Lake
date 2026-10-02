@@ -280,10 +280,10 @@ claim here. A finding recorded as OPEN may have been fixed since.
 | 16 | **Softmax delta rule** | `sleep/developmental_pruning._train_epoch` | Rate readout, single layer. |
 | 17 | **Bounded metaplasticity** (LP-gated lr + BCM θ) | `plasticity/meta_plasticity` | (a) is proven a global schedule, not local. |
 | 18 | **Criticality homeostat** | `reservoir/criticality_regulator` | σ error → one inhibitory-gain knob. |
-| 19 | **Growing/Hebbian competitive (SOM-like)** | `neuromodulation/affect_integrator` (via `GrowingLearner`) | Recruit-or-refine. |
+| 19 | **Growing/Hebbian competitive (SOM-like)** | `faculties/affect_integrator` (via `GrowingLearner`) | Recruit-or-refine. |
 | 20 | **NACA neuromodulatory credit assignment** | `plasticity/naca` | Explicitly gradient-free, no weight transport; a modulator on rule #1. |
-| 21 | **Drive-reduction three-factor** | `neuromodulation/drive_reduction` | Feeds rule #2 with a spiking eligibility as `lr_scale`. |
-| 22 | **Hebbian associative (Hopfield-ish)** | `neuromodulation/acetylcholine.RecurrentStore` | Demo store only. |
+| 21 | **Drive-reduction three-factor** | `faculties/drive_reduction` | Feeds rule #2 with a spiking eligibility as `lr_scale`. |
+| 22 | **Hebbian associative (Hopfield-ish)** | `faculties/acetylcholine.RecurrentStore` | Demo store only. |
 
 **BPTT / weight transport audit:** no BPTT anywhere in these three directories. The single weight-transport site was `mlp_q.MlpQ.update`'s `dh` line and it is **closed** — a separate feedback matrix `B` receives the same local increment as `W2` and never reads it, and the module re-derives the cosine on every gate run rather than quoting it. `snn_mnist_stdp` / `deep_stdp` use the Brian2-equation bridge only for membrane integration with an unreachable threshold — no `.backward()`, no autograd, weights written by STDP alone. Nothing else that learns owes an unpaid cosine.
 
@@ -298,7 +298,7 @@ claim here. A finding recorded as OPEN may have been fixed since.
 - `instruments/deep_stdp.py:62-63` — "this module lives in `src/snn_data_lake/reasoning/`". It lives in `plasticity/`. Its self-check comment at `:288` also refers to "the genn precedent" by behaviour rather than path.
 - `instruments/deep_stdp.py:96` — "mirrors `snn_mnist_stdp.StdpNetwork`", correct, but `:16` cites the readout "used by snn_mnist_stdp" without the region prefix used everywhere else.
 - `plasticity/r_stdp.py:196-198` — names `readout/interaction_learning`, `cortex/task_set`, `plasticity/benna_fusi`, `plasticity/naca` as candidate adopters of `reward_population`; still accurate, but the surrounding "ZERO live callers" claim is load-bearing and re-verified below.
-- `neuromodulation/locus_coeruleus.py:54` — `SALIENCE_TH = 0.50` is described in `brain_native_selfbuild.py:329-336` as having been retired in favour of live consumption, yet the constant is still the module's default and `brain.py` overrides it at runtime. Two statements of one operating point.
+- `faculties/locus_coeruleus.py:54` — `SALIENCE_TH = 0.50` is described in `brain_native_selfbuild.py:329-336` as having been retired in favour of live consumption, yet the constant is still the module's default and `brain.py` overrides it at runtime. Two statements of one operating point.
 
 **Dormant (defined, never called outside their own module — verified by full-tree grep including the gates and registries):**
 - `plasticity/short_term_plasticity.py::novelty_filter` — the module docstring already discloses this ("has no live consumer; the CLASS does").
@@ -306,7 +306,7 @@ claim here. A finding recorded as OPEN may have been fixed since.
 - `plasticity/bcm_plasticity.py::develop_selectivity` (and `_selectivity`, `_shape_patterns`) — `main()` only. `BCMNeuron` itself is live via `_BCMMetaGate`.
 - `plasticity/competitive_learning.py::CompetitiveLearner` — the whole class has no importer; the FEELING implementation is reachable only through its own `__main__`.
 - `plasticity/r_stdp.py::reward_population` (+ `calibrate`, `parallel_plan`, `partition`, `_FanOut`) — zero live callers, disclosed in-file at `:180-199`, and explicitly noted as **invisible to both P3 gates** (module-level function, so `method_dormancy_gate` has no opinion; `dormancy_gate` passes on the module's account).
-- `neuromodulation/empowerment.py::Empowerment.reward` — zero call sites, disclosed at `:90-109` with a reasoned refusal to merge into `step_reward`.
+- `faculties/empowerment.py::Empowerment.reward` — zero call sites, disclosed at `:90-109` with a reasoned refusal to merge into `step_reward`.
 - `sleep/developmental_pruning.py` — the entire module has no functional caller (only docstring references from `lifelong_consolidation` and `reasoning/developmental_loop`); it is covered by `dormancy_gate.EXEMPT:245`.
 
 **Duplicated mechanism (P2 status):**
@@ -316,10 +316,10 @@ claim here. A finding recorded as OPEN may have been fixed since.
 - **Magnitude-pruning is implemented twice** — over synapses in `developmental_pruning._prune_magnitude` and over units in `lifelong_consolidation._prune_to_budget`. The docstring calls this "reimplemented faithfully… one level up". Same rule, two levels of granularity; defensible, but it is a second site for one rule and the synapse-level original has no caller.
 
 **Hardcoded constants where a running-baseline value belongs (P1):**
-- `neuromodulation/acetylcholine.py:38` `MODE_TH = 0.5` — an absolute cut on a leaky-EMA level with no running baseline behind it.
-- `neuromodulation/locus_coeruleus.py:54-55` `SALIENCE_TH = 0.50`, `PHASIC_TH = 0.45` — the exact shape `DehardcodeSource` was built to remove, and the module's own docstring records that a running-baseline swap here was rejected by the gate.
-- `neuromodulation/cortisol.py:22-24` `TAU/GAIN/MAXMOD` — three fixed behaviour-arbitrating scalars, no calibration path.
-- `neuromodulation/raphe_serotonin.py:38-39` `K_HI=2.0 / K_LO=0.02` — fixed discount endpoints.
+- `faculties/acetylcholine.py:38` `MODE_TH = 0.5` — an absolute cut on a leaky-EMA level with no running baseline behind it.
+- `faculties/locus_coeruleus.py:54-55` `SALIENCE_TH = 0.50`, `PHASIC_TH = 0.45` — the exact shape `DehardcodeSource` was built to remove, and the module's own docstring records that a running-baseline swap here was rejected by the gate.
+- `faculties/cortisol.py:22-24` `TAU/GAIN/MAXMOD` — three fixed behaviour-arbitrating scalars, no calibration path.
+- `faculties/raphe_serotonin.py:38-39` `K_HI=2.0 / K_LO=0.02` — fixed discount endpoints.
 - `plasticity/naca.py:45-47` `ETA/LAM_INV/THETA_MAX` — the gate's shape constants; `_consolidation_reversal_check` overrides all three (`eta=0.82, lam_inv=1.0`), so the shipped module defaults are not the values the self-check validates.
 - `plasticity/meta_plasticity.py:62-84` — a fifteen-constant block; `_TUNED_LR = 0.12` is explicitly a value chosen so mechanism (b) still shows a gain, which is tuning against the module's own benchmark.
 - `basal_ganglia/brain_decision.py:136` `self.alpha = 0.8` — measured NOT load-bearing at its shipped value; declared, not silently kept.
@@ -440,7 +440,7 @@ claim here. A finding recorded as OPEN may have been fixed since.
 - `cortex/percept_surprise.py::_NoveltyBaseline` — self-check-only class (documented as such, but it is live code in the module body).
 
 **Duplicated across modules (P2)**
-- `_cosine` is defined **7 times** in `src/`: `plasticity/eprop_kernel.py:177`, `cortex/metacognitive_monitor.py:397`, `cortex/wholistic_loop.py:146`, `hippocampus/affective_memory.py:68`, `growth/growing_learner.py:40`, `reasoning/eprop.py:282`, `reasoning/weight_perturbation.py:164`. The 2026-08-15 pass that merged 8 copies of `clamp01` into `substrate/_mathutils.clamp01` did not do the same for cosine — and `wholistic_loop` already imports `clamp01`/`mean` from `_mathutils`, so the seam is open and unused.
+- `_cosine` is defined **7 times** in `src/`: `plasticity/eprop_kernel.py:177`, `cortex/metacognitive_monitor.py:397`, `cortex/wholistic_loop.py:146`, `faculties/affective_memory.py:68`, `growth/growing_learner.py:40`, `reasoning/eprop.py:282`, `reasoning/weight_perturbation.py:164`. The 2026-08-15 pass that merged 8 copies of `clamp01` into `substrate/_mathutils.clamp01` did not do the same for cosine — and `wholistic_loop` already imports `clamp01`/`mean` from `_mathutils`, so the seam is open and unused.
 - **The spiking WTA belief readout is written twice.** `cortex/theory_of_mind.py::BeliefPopulation.believed_location` and `cortex/recursive_tom.py::_spiking_readout` are the same mechanism (PopulationEncoder → one LIFNeuron per bin → most-firing wins, ties to lowest index) with the same four constants **re-declared verbatim** in both files: `_WINDOW=20`, `_TAU_M=10.0`, `_DRIVE=0.3`, `_MAX_SPIKES=12`. `recursive_tom`'s docstring even says it uses "exactly the readout theory_of_mind.BeliefPopulation uses" — it reimplements it instead of importing it.
 - `_seed_of` exists in both `readout/snn_classifier.py:86` (bit-packing) and `sensorimotor/trained_brain.py:35` (crc32 of quantized bytes) — same name, same role, different arithmetic; a reader will assume they agree.
 
@@ -735,7 +735,7 @@ The slice is four strata stacked on one primitive.
 
 **Duplicated across modules:**
 - `_clamp`, `_predict_pre`, `predict`, `make_goal_value`, `latent_std`, `_spectral_bound`, `_feedback_gz` — `cerebellum/spiking_jepa.py` copies all seven verbatim from `cerebellum/jepa_world_model.py` (self-labelled "copied from jepa_world_model"). Both `_feedback_gz` bodies are literally `return list(gp)`. This is two predictors for one job (P2).
-- `_cosine` — `hippocampus/affective_memory.py` re-implements the function `growth/growing_learner.py::_cosine` already exports (and which `growth/similarity_sized_growth.py:61` imports by name).
+- `_cosine` — `faculties/affective_memory.py` re-implements the function `growth/growing_learner.py::_cosine` already exports (and which `growth/similarity_sized_growth.py:61` imports by name).
 - `_mean`/`_std` — `cerebellum/synfire_chain.py:55,59` re-implement `substrate/_mathutils.mean`, which four sibling modules in these two directories import.
 - `developmental_loop_brain.py::_LinearReadout` — self-declared verbatim copy of `reasoning/_loop_common.LinearReadout`, recorded as debt **M21** and knowingly not adopted (adopting would create governed→reasoning module-top imports).
 - `growable_readout.py` — `_restore_adam` and `_zero_frozen_moments` exist twice (`GrowableReadout` and `LaminarColumns`). Documented as a deliberate non-merge (per-tensor vs name-keyed state), so this is disclosed duplication.
@@ -923,7 +923,7 @@ The slice is four strata stacked on one primitive.
 
 **arc_agi/env.py** — 4 hand-authored ARC-AGI-3-style interactive grid games (`KeyDoor`/`PushBox`/`ColorLock`/`ToggleToGoal`), uniform `reset/step/snapshot/restore`, exported as `GAMES`. Invariant: `step()` never terminates on timeout — the step cap lives in the runner so Go-Explore restore is unconstrained.
 
-**arc_agi/brain_player.py** — `BrainPlayer`: curiosity Go-Explore over `env.GAMES` driving real `basal_ganglia.evidence_accumulation.RaceAccumulator` + `neuromodulation.intrinsic_motivation.CuriosityDrive`, plus tabular value iteration. Gotcha: `import env as arc_env` is a **bare top-level import** — only resolves if `arc_agi/` is cwd; unimportable as a package module.
+**arc_agi/brain_player.py** — `BrainPlayer`: curiosity Go-Explore over `env.GAMES` driving real `basal_ganglia.evidence_accumulation.RaceAccumulator` + `faculties.intrinsic_motivation.CuriosityDrive`, plus tabular value iteration. Gotcha: `import env as arc_env` is a **bare top-level import** — only resolves if `arc_agi/` is cwd; unimportable as a package module.
 
 **arc_bench.py** — ARC-AGI harness: `load_tasks/score/score_task/_grids_equal` + `identity_solver`/`constant_solver` controls and an in-`main` oracle. Called by `arc_solver.main`, `arc_diagnostic`, `arc_mint`. Invariant: exact match, pass@2, controls must score ~0 or the harness is declared broken.
 

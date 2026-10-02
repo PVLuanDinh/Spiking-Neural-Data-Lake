@@ -18,7 +18,7 @@ Crucially it is the drive REDUCTION (a temporal difference of the drive), NOT th
 distinction is the whole point, and control (b) below proves it: swapping in the drive LEVEL (-D_after)
 makes acting always look bad relative to resting, and the policy stops regulating. The reward is
 INTRINSIC -- generated inside the agent from its own set-point errors -- and is fed into the SAME
-learned-valence value channel that intrinsic curiosity feeds (neuromodulation/intrinsic_motivation.py
+learned-valence value channel that intrinsic curiosity feeds (faculties/intrinsic_motivation.py
 adds its learning-progress reward to the striatal RPE; this adds the drive-reduction reward to the same
 plasticity/valence_stdp value learner, via its three-factor plasticity rule).
 
@@ -54,7 +54,7 @@ controller), plasticity/valence_stdp.ValenceLearner (the value/RPE channel + thr
 the reward feeds), substrate/_mathutils.mean. Per-instance random.Random(seed), ASCII-only,
 deterministic.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.drive_reduction
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.drive_reduction
 """
 
 import random

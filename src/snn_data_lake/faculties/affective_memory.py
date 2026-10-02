@@ -39,7 +39,7 @@ Determinism: per-instance / per-call random.Random(seed); zlib.crc32 for episode
 (never builtin hash); ASCII-only output. Additive / opt-in: nothing changes unless you
 build a store and call it.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.affective_memory
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.affective_memory
 """
 
 import collections

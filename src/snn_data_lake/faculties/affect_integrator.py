@@ -43,7 +43,7 @@ no actuator route and imports nothing under brainstem/. ASCII output, determinis
 residue of the abolished zero-dependency rule, not a design property. The pools here are 6-8 units
 wide, where plain arithmetic is simply the right tool -- a statement about the width, not a rule.)
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.affect_integrator
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.affect_integrator
 """
 
 import math

@@ -196,7 +196,7 @@ def consume_surprise(consumer):
     return out
 
 
-# distinct-from: neuromodulation/astrocyte_modulation.py -- its _gain_frames records the
+# distinct-from: faculties/astrocyte_modulation.py -- its _gain_frames records the
 #   glial gain schedule; this records the SURPRISE stream for the predictor port. Same
 #   harness pattern, different wire. Read.
 def _surprise_frames(n_ticks=120, offmanifold_at=100, in_dim=24, seed=0):

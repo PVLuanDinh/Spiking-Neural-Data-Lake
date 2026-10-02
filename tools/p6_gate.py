@@ -1798,6 +1798,23 @@ def self_check(root):
     assert quiet, (
         "no connectome region is free of a cerebellum pathway -- the undeclared-pair mutants have no home"
     )
+    # The shared-bus GREEN control needs a CONNECTOME region whose pair with brainstem (the label of the
+    # engine.autonomous_loop it imports) is already imported and undeclared, so the control adds no new pair;
+    # the overlay path's first component names it. Derived from the connectome (G8 M11c), never spelled as a
+    # package path, so a later package move cannot strand it.
+    shared = next(
+        (
+            r
+            for r in conn["regions"]
+            if r != "brainstem"
+            and tuple(sorted((r, "brainstem"))) in conn["imported"]
+            and tuple(sorted((r, "brainstem"))) not in conn["declared"]
+        ),
+        None,
+    )
+    assert shared, (
+        "no connectome region has an imported, undeclared pathway to brainstem -- the shared-bus control has no home"
+    )
 
     mutations = [
         (
@@ -1890,7 +1907,7 @@ def self_check(root):
             "THE P6 FIX: a new faculty submits into the SHARED bus live_brain reads",
             "its output IS consumed by another module; a gate that reddens this is worse than no "
             "gate",
-            {"hippocampus/_p6_selfcheck_control.py": _CONTROL_SHARED_BUS},
+            {f"{shared}/_p6_selfcheck_control.py": _CONTROL_SHARED_BUS},
         ),
         (
             "one MORE private bus SITE inside an ALREADY-private module",

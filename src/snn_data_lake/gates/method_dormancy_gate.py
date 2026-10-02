@@ -113,7 +113,7 @@ EXEMPT_METHOD = {
     ),
     "consolidate": (
         "wire",
-        "AffectiveEpisodicStore.consolidate (hippocampus/affective_memory.py:173) -- amygdala-weighted "
+        "AffectiveEpisodicStore.consolidate (faculties/affective_memory.py:173) -- amygdala-weighted "
         "replay sampling whose only callers are inside its own main(). The module IS live, but its one "
         "cross-module importer (engine/autonomous_loop.py:41) calls .store() and never this. Open "
         "P3 work: wire it into the sleep replay and prove the charge with a neuter-A/B, or retire it. "
@@ -138,7 +138,7 @@ EXEMPT_METHOD = {
     # method resolves through its live call site and the retire question is answered: the baseline
     # re-fits online. Recorded here so the row is not re-added; the T037 review panel caught the
     # stale row shipping "never called on a live path" about a method on the live path.
-    "neuromodulation.developmental_envelope.DevelopmentalEnvelope.update": (
+    "faculties.developmental_envelope.DevelopmentalEnvelope.update": (
         "wire",
         "DevelopmentalEnvelope.update -- dormant twice over: never called on any live path, and "
         "discarded even under its opt-in flag. PORT CHECK: the class IS live, constructed at "
@@ -225,7 +225,7 @@ def _main_guard_lines(tree):
     is almost always one line -- `main()`. The self-check's real body lives in a top-level `def main()`
     that the guard calls. Marking only the literal `if` block therefore counts every assertion inside
     main() as a live caller, which is exactly how the first run reported 0 dormant while
-    hippocampus/affective_memory.py:173 consolidate() -- whose only callers are at :242/:252/:253 inside
+    faculties/affective_memory.py:173 consolidate() -- whose only callers are at :242/:252/:253 inside
     its own main() -- sat there dead. So: find the functions the guard calls, and mark THEIR bodies too.
     """
     bad, called = set(), set()

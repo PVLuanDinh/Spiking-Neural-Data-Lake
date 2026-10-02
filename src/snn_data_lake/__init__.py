@@ -157,28 +157,6 @@ REGIONS = {
         "rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): the ROSE fluent-language pipeline (VSA constituency parse + KB-grounded comprehend + SLDA competence), LIVE via brain._rose_serve's lazy reach. P3/P4b debt carried visibly, NOT discharged by the move (AUDIT_BACKLOG H7, runtime-reproduced at the promotion audit): nightly_refit moves the SLDA sufficient statistics while competence() returns the build-time cached acc byte-identical; the refit filter accepts a novel HEAD coded OOV-zero; _readout is per-Brain RAM reaching brain_lake.bin nowhere. P2 direction recorded: rose's derived parameterisation (rff from in_dim, ctx from data, relations from the KB ratio) is THE mechanism; sensorimotor/world_kb_stream main()'s four-literal demo copy consumes it or retires at the family's next lane.
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
     ],
-    "hippocampus": [
-        "grid_cells",
-        "ring_attractor",
-        "affective_memory",
-        "contrastive_episode_analysis",
-        "allocentric_map",
-        "grid_place_map",
-        # specs/022 T057: recall(cue) -> k episodes with margins over THE ONE LAKE's episode
-        # records (LAESA/proximity_index composed; margin vs a measured scrambled-cue null)
-        "spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
-        "skill_builder",  # PROMOTED 2026-08-11 (#10 family C4): domain-agnostic skill formation + SkillRegistry proximity router
-        "open_world_loop",  # PROMOTED 2026-08-11 (#10 family C7): DP-means signature discovery (feeds nightly_skills' open frontier)
-        # Promoted from reasoning/ 2026-08-04 after an in-place P7/P1/P8 redesign. FACTORED
-        # k-WTA associative memory: the P sparse patterns ARE the memory (O(P*k)), so there is
-        # no N x N weight matrix to store. WIRED AND CHARGED, measured not assumed -- neutering
-        # S.recall to a pass-through costs its live consumer (sensorimotor/recognizer_bank.py:233
-        # StorageRecognizer) 3 of its 64 out-of-distribution rejections, 0.844 -> 0.797. That is
-        # P6 one-way as well: a hippocampus faculty whose output moves a cortex faculty's output.
-        # Honest qualifier: the bank builds lazily and fires only on an explicit "recognize:"
-        # query, so the path is charged but query-gated, not exercised on an ordinary tick.
-        "spiking_storage_prototype",  # factored k-WTA associative memory; denoising content-addressable recall
-    ],
     "basal_ganglia": [
         "evidence_accumulation",
         "action_gating",
@@ -248,20 +226,6 @@ REGIONS = {
     # (the second pons disposition: the package had been anatomy prose only)
     # specs/022 T021a: the insular region opens registration-complete -- the interoceptive
     # cortical terminus of viscera -> nts_rvlm -> thal_relay -> insula -> {gwt, ctx_pfc}.
-    "neuromodulation": [
-        "acetylcholine",
-        "astrocyte_modulation",
-        "cortisol",
-        "locus_coeruleus",
-        "raphe_serotonin",
-        "intrinsic_motivation",
-        "spiking_curiosity",
-        "generalizing_novelty",
-        "drive_reduction",
-        "empowerment",
-        "developmental_envelope",
-        "affect_integrator",  # C1 batch-2: spiking neuromod fusion -> coupled affect + self-organized emotions
-    ],
     "plasticity": [
         # PROMOTED from reasoning/ 2026-08-04, AFTER its P7 redesign (owner rule: redesign
         # first, promote second). Oja (1982) is a HEBBIAN RULE with a normalizing decay term,
@@ -533,6 +497,28 @@ REGIONS = {
         "set_points",
         "vital_nuclei",
         "wm_capacity",
+        "acetylcholine",
+        "affect_integrator",
+        "affective_memory",
+        "allocentric_map",
+        "astrocyte_modulation",
+        "contrastive_episode_analysis",
+        "cortisol",
+        "developmental_envelope",
+        "drive_reduction",
+        "empowerment",
+        "generalizing_novelty",
+        "grid_cells",
+        "grid_place_map",
+        "intrinsic_motivation",
+        "locus_coeruleus",
+        "open_world_loop",
+        "raphe_serotonin",
+        "ring_attractor",
+        "skill_builder",
+        "spiking_curiosity",
+        "spiking_grid_can",
+        "spiking_storage_prototype",
     ],
 }
 
@@ -1013,7 +999,7 @@ class _AliasLoader(importlib.abc.Loader):
 # distinct-from: sensorimotor/eprop_shd.py -- _self_ref derives one module's own identity; these extend
 #   this file's own alias layer in place (one layer: the flat alias plus G8's legacy paths). Also
 #   read: cerebellum/spiking_jepa.py (target_encode), cortex/vsa_reasoning.py (coincidence),
-#   hippocampus/grid_place_map.py (_pearson), substrate/lake_recall.py (_find_cell_collision).
+#   faculties/grid_place_map.py (_pearson), substrate/lake_recall.py (_find_cell_collision).
 class _LegacyLoader(_AliasLoader):
     """G8 S1b: a legacy two-level path's alias -- the same identity as the flat alias, plus
     `get_code` delegating to the target's real loader UNDER THE TARGET'S NAME (a SourceFileLoader

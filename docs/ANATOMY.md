@@ -16,7 +16,7 @@ not its cell-level microcircuitry or phenomenology.
 | Basal ganglia | present | `basal_ganglia/` — RPE learning + evidence decision + Go/NoGo `action_gating` |
 | Thalamus | present | `thalamus/` — `global_workspace` (GWT) + `reticular_gate` (TRN attentional gate) |
 | Amygdala | present | `faculties/fear_conditioning` — CS-US threat learning (BLA→CeA), extinction |
-| Hypothalamus | present | `hypothalamus/` — `circadian_clock` (SCN spiking clock) + `set_points` (thermo/osmo homeostats the SCN paces); HPA in `neuromodulation/cortisol` |
+| Hypothalamus | present | `hypothalamus/` — `circadian_clock` (SCN spiking clock) + `set_points` (thermo/osmo homeostats the SCN paces); HPA in `faculties/cortisol` |
 | Midbrain | present | `midbrain/` — `dopamine_nuclei` (VTA/SNc RPE source) + `superior_colliculus` (orienting) + `sc_deep_layers` (gaze burst generator, gated) |
 | Pons | **ABSENT** | `pons/` holds only `__init__.py`; `REGIONS` maps 0 modules to it. `pontine_relay` and `reticular_formation` are NOT implemented (corrected 2026-07-28 — this row read "present" with both named). The directory is a placeholder, and `live_brain.py:262` still emits a `spikes.pons` row from a proxy signal |
 | Epithalamus | present | `faculties/habenula` — lateral habenula anti-reward (negative RPE, dopamine opponent via RMTg) |
@@ -96,7 +96,7 @@ which the prefrontal executive plans over in latent space and which self-trains 
 tick stream. See `docs/JEPA.md`. v3.14 adds a served hierarchical H-JEPA (`cerebellum/hjepa_serve.py`) the
 executive can plan over at the abstract level.
 
-As of v3.15 the brain also has a **curiosity drive** (`neuromodulation/intrinsic_motivation.py`,
+As of v3.15 the brain also has a **curiosity drive** (`faculties/intrinsic_motivation.py`,
 `CuriosityDrive`) -- a **learning-progress** intrinsic-motivation signal (Oudeyer; Schmidhuber): the JEPA
 world-model's prediction error becomes an intrinsic reward that rewards *learnable* novelty (not noise --
 it rejects the "noisy-TV" trap), so the arm explores and learns SELF-DIRECTED, even without an external

@@ -155,20 +155,20 @@ def main():
                 f.write(body)
 
         w(
-            "src/snn_data_lake/neuromodulation/target.py",
+            "src/snn_data_lake/faculties/target.py",
             "CONST = 0.5\n\n\ndef f():\n    return CONST\n",
         )
         w(
             "src/snn_data_lake/cortex/user_a.py",
-            "from snn_data_lake.neuromodulation.target import CONST\n\nx = CONST + 1\n",
+            "from snn_data_lake.faculties.target import CONST\n\nx = CONST + 1\n",
         )
         w(
             "src/snn_data_lake/cortex/user_b.py",
-            "import snn_data_lake.neuromodulation.target as t\n\ny = t.CONST\n",
+            "import snn_data_lake.faculties.target as t\n\ny = t.CONST\n",
         )
         w("src/snn_data_lake/cortex/unrelated.py", "Z = 3  # references nothing of the target\n")
 
-        target = "src/snn_data_lake/neuromodulation/target.py"
+        target = "src/snn_data_lake/faculties/target.py"
 
         # (1) AST-only (no graph file present): CONST references found in user_a + user_b, NOT unrelated
         r = blast_radius(work, target, symbol="CONST")

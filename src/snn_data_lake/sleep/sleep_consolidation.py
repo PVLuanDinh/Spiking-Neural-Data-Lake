@@ -19,7 +19,7 @@ REUSED, NOT REIMPLEMENTED:
     held-out accuracy seed_base).
   * sleep/experience_replay.ReplayBuffer -- the rate SWR value replay, ADDED ALONGSIDE (one
     per skill), never ripped out.
-  * neuromodulation/spiking_curiosity.SpikingCuriosityDrive -- SI-1 spiking learning-progress, used
+  * faculties/spiking_curiosity.SpikingCuriosityDrive -- SI-1 spiking learning-progress, used
     only to PRIORITIZE the rate replay budget.
   * substrate/_mathutils.mean.
 
@@ -53,8 +53,8 @@ ASCII-only output, deterministic. Additive core primitive; touches no safety-env
 import random
 import zlib
 
+from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.infra._mathutils import mean
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.sleep.experience_replay import ReplayBuffer
 from snn_data_lake.sleep.sleep_replay import (
     CUE_FRAC,

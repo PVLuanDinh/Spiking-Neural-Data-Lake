@@ -45,7 +45,7 @@ UNLEARNABLE noise phase interleaved, old tasks NEVER re-shown live):
      corrupts perception, lowering competence. Runs far slower than the learning tick.
 
 Composed primitives (READ + REUSED, not reimplemented):
-  * neuromodulation/intrinsic_motivation.CuriosityDrive   -- learning-progress / novelty.
+  * faculties/intrinsic_motivation.CuriosityDrive   -- learning-progress / novelty.
   * cortex/metacognitive_monitor.MetacognitiveMonitor      -- the arbitration spine.
   * sleep/lifelong_consolidation.LifelongConsolidator -- its parts drive GROW
     (hippocampus/growing_learner.GrowingLearner), PRUNE-to-budget, and CONSOLIDATE via
@@ -78,8 +78,8 @@ import random
 import zlib
 
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
+from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.infra._mathutils import clamp01, mean
-from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.reservoir.criticality_regulator import CriticalityRegulator
 from snn_data_lake.sleep.lifelong_consolidation import LifelongConsolidator
 

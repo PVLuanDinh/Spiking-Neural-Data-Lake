@@ -264,7 +264,7 @@ def layer_histogram(placed):
 # (specs/007-whole-brain-neurogenesis/contracts/growth-consumption.md). P8 invention #7's first
 # spec-backed consumer of the arealization GRN under specs/022 -- NOT a 007 C2 consumer: C2.1
 # disqualifies a cortex-internal pair, and both modules sit in REGIONS["cortex"].
-# distinct-from: hippocampus/grid_place_map.py -- its `_match_bar` midpoint is a place-cell firing
+# distinct-from: faculties/grid_place_map.py -- its `_match_bar` midpoint is a place-cell firing
 #   threshold; nothing here thresholds activity. Site read; the shared word is "midpoint".
 # distinct-from: sensorimotor/arm_hardware.py -- its configurations are servo-rating arithmetic for
 #   the physical arm; unrelated job. Site read; the shared word is "combinations".
@@ -282,7 +282,7 @@ _GRID_NODES = 16
 
 # distinct-from: growth/arealization.py -- NOT distinct but REUSED: the binning below imports
 #   discretize_sharp (the T043 panel's P2 finding killed the first draft's inline re-derivation).
-# distinct-from: hippocampus/grid_place_map.py -- its midpoint is a place-cell firing bar;
+# distinct-from: faculties/grid_place_map.py -- its midpoint is a place-cell firing bar;
 #   unrelated job, site read; the shared word is "midpoint".
 # distinct-from: reasoning/arc_mint.py -- its grid rules recolour ARC task cells; unrelated
 #   job, site read; the shared word is "grid".

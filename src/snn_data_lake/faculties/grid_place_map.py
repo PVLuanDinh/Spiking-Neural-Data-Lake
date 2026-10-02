@@ -36,14 +36,14 @@ rate->spike readout (grid_spikes / place_spikes) emits literal integer spike cou
 is taken on the stable population-vector CORRELATION for reproducibility. No path integration, no drift, no
 theta phase; the code is unique only within the bounded toy extent, not over an open world.
 
-  python -m snn_data_lake.hippocampus.grid_place_map     # (self-check; also runnable by run_selfchecks.py)
+  python -m snn_data_lake.faculties.grid_place_map     # (self-check; also runnable by run_selfchecks.py)
 """
 
 import math
 import random
 import zlib
 
-from snn_data_lake.hippocampus.grid_cells import GridCell
+from snn_data_lake.faculties.grid_cells import GridCell
 
 
 def _pearson(a, b):

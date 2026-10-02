@@ -105,7 +105,7 @@ MEASURED DRIFT NUMBERS (this module's self-check; report them as they are).
     gain error. Landmark reset buys nothing there. Drift is a property of the PATH, not just of path length.
   - The graded correction's failure mode is REAL and kept: see capture_threshold above (amp -> 0.000).
 
-  python -m snn_data_lake.hippocampus.spiking_grid_can     # self-check; also runnable by run_selfchecks.py
+  python -m snn_data_lake.faculties.spiking_grid_can     # self-check; also runnable by run_selfchecks.py
 """
 
 import math

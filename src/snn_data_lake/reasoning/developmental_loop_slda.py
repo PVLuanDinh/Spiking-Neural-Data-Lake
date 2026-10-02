@@ -30,7 +30,7 @@ from snn_data_lake.infra.device import resolve_device, enable
 from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
 from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.fast_features import batched_features
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
+from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
 
 def _envi(k, d):

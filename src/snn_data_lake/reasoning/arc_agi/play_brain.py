@@ -6,8 +6,8 @@ a game policy; its torch PERCEPTION tier is trained on 34x34 N-MNIST event data 
 to 64x64 arcade grids -- and neither co-installs with arc-agi's numpy>=2.2. So they are deliberately
 NOT used here; using them would be theatre, not function. What DOES play, composed below, is the brain's
 real cognition:
-  * exploration  -- neuromodulation/intrinsic_motivation.CuriosityDrive (learning-progress + novelty)
-                    + neuromodulation/generalizing_novelty.GeneralizingNovelty (SimHash pseudo-count);
+  * exploration  -- faculties/intrinsic_motivation.CuriosityDrive (learning-progress + novelty)
+                    + faculties/generalizing_novelty.GeneralizingNovelty (SimHash pseudo-count);
   * rule discovery -- an online world model T (transitions) + model-based value iteration (planning);
   * decision     -- basal_ganglia/evidence_accumulation.RaceAccumulator (a genuine spiking N-alternative
                     race over the candidate actions' values);
@@ -42,8 +42,8 @@ from play import _BY_VALUE, play  # noqa: E402  (the arcade bridge)
 from rule_inducer import InducedModel, _race_action, induce  # noqa: E402  (relational reasoning layer)
 from snn_data_lake.basal_ganglia.evidence_accumulation import RaceAccumulator  # noqa: E402
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor  # noqa: E402
-from snn_data_lake.neuromodulation.generalizing_novelty import GeneralizingNovelty  # noqa: E402
-from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive  # noqa: E402
+from snn_data_lake.faculties.generalizing_novelty import GeneralizingNovelty  # noqa: E402
+from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive  # noqa: E402
 
 _CLICK = GameAction.ACTION6.value  # the one complex (x,y) action
 K = 8  # click grid: K*K targets tiled over the frame

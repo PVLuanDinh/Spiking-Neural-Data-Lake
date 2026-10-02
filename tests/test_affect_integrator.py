@@ -1,5 +1,5 @@
 """
-Edge tests for neuromodulation/affect_integrator.py: the four learned neuromodulators fuse into a
+Edge tests for faculties/affect_integrator.py: the four learned neuromodulators fuse into a
 coupled (valence, arousal) core with the right sign structure, distinct affect regions self-organize
 into distinct emergent emotion prototypes (same region -> same id), the serotonergic mood tone
 enters slowly, and the same seed + protocol is deterministic. The full un-riggable protocol (with
@@ -11,7 +11,7 @@ Run: pytest tests/test_affect_integrator.py
 
 import random
 
-from snn_data_lake.neuromodulation.affect_integrator import AffectIntegrator
+from snn_data_lake.faculties.affect_integrator import AffectIntegrator
 
 
 def test_threat_and_cortisol_give_negative_aroused_reward_gives_positive():

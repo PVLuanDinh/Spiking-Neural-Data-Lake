@@ -1,4 +1,4 @@
-"""Tests for SpikingGridCAN (hippocampus/spiking_grid_can.py): a 2-D continuous-attractor SPIKING
+"""Tests for SpikingGridCAN (faculties/spiking_grid_can.py): a 2-D continuous-attractor SPIKING
 grid network whose moving LIF bump path-integrates velocity, plus its landmark (place->grid) reset.
 
 Run: pytest tests/test_spiking_grid_can.py
@@ -6,7 +6,7 @@ Run: pytest tests/test_spiking_grid_can.py
 
 import math
 
-from snn_data_lake.hippocampus.spiking_grid_can import (
+from snn_data_lake.faculties.spiking_grid_can import (
     SpikingGridCAN,
     _circ_diff,
     _graded_probe,

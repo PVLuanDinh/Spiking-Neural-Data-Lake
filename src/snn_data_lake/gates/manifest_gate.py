@@ -44,7 +44,7 @@ from snn_data_lake.engine.wiring_manifest import (
 #: First entries: specs/022 T025, the serotonin patience wire (producer, then consumer --
 #: the consumer's declare_ports also declares THE edge, its subscription).
 REGISTRANTS: tuple = (
-    ("snn_data_lake.neuromodulation.raphe_serotonin", "declare_ports"),
+    ("snn_data_lake.faculties.raphe_serotonin", "declare_ports"),
     ("snn_data_lake.basal_ganglia.evidence_accumulation", "declare_ports"),
     # T026: the interoceptive channel -- two producer halves, then the insula terminus
     # (whose declare_ports carries both edges and the interoception_out channel)
@@ -59,7 +59,7 @@ REGISTRANTS: tuple = (
     # edge needs.
     ("snn_data_lake.faculties.region_coherence", "declare_ports"),
     # T027: the glia wire -- the astrocyte gain field as a diffuse channel (self-edge)
-    ("snn_data_lake.neuromodulation.astrocyte_modulation", "declare_ports"),
+    ("snn_data_lake.faculties.astrocyte_modulation", "declare_ports"),
     # T028: THE predictor port -- percept surprise into the brain's undirected-salience
     # competition (the one S0-chargeable consumer; the other three are dated forward
     # dispositions in SYNTHESIS section 6, discharged at T046a/T066/T076)

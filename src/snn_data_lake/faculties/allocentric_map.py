@@ -38,7 +38,7 @@ metric that this allocentric map is anchored onto.
 
 Deterministic (random.Random(seed)). ASCII output.
 
-  python -m snn_data_lake.hippocampus.allocentric_map     # (also run by run_selfchecks.py)
+  python -m snn_data_lake.faculties.allocentric_map     # (also run by run_selfchecks.py)
 """
 
 import math

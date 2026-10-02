@@ -35,7 +35,7 @@ function approximation on it:
 | `basal_ganglia/mlp_q` (v3.18) | one-hidden-layer MLP, hand-**backprop** | no |
 | `basal_ganglia/latent_q` (v3.17) | linear `W[a].x`, Widrow-Hoff | no |
 | reward-shaping (v3.19-v3.20) | linear reward head + gradient | no |
-| `neuromodulation/intrinsic_motivation` (v3.15) | EMA of prediction error | no |
+| `faculties/intrinsic_motivation` (v3.15) | EMA of prediction error | no |
 | `neuromodulation/curriculum` (v3.16) | a counter / threshold | not even neural |
 | `cerebellum/hjepa_serve` + torch H-JEPA (v3.13-14) | dense MLPs | no |
 | `sensorimotor/nl_interface` + `LiveBrain.converse` | keyword-set routing | not neural |

@@ -111,7 +111,7 @@ from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 #   entropy term at all -- `mi_bits` hands Counters straight to `_mi_from_counts`, whose whole body
 #   is the joint-over-marginals log2 sum. So nothing is duplicated and P2 owes no merge here; the
 #   reuse was declared and never performed, which the fold records as a deviation from 1.6.
-# distinct-from: neuromodulation/empowerment.py::Empowerment -- reachable-cell counting over
+# distinct-from: faculties/empowerment.py::Empowerment -- reachable-cell counting over
 #   world-model rollouts, which its own docstring already declares is "NOT exact mutual
 #   information" and which carries no null. This estimates MI on an OBSERVED recording, with a
 #   permutation FLOOR and an explicit refusal, and constructs no world model at all.

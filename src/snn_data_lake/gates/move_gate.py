@@ -666,7 +666,7 @@ def names(root: Path, tabs: dict) -> dict:
 #   resolves every registry spelling (dotted, path, module:attr, Name=path) inside the CENSUSED tree
 #   and answers None when no file backs the name (an alias never does). Also read: brain_atlas.py
 #   (_region_files), gates/import_manifest.py (_targets), infra/self_build_loop.py
-#   (_firewalled_bytes), hippocampus/spiking_storage_prototype.py (check_reds): none resolves names.
+#   (_firewalled_bytes), faculties/spiking_storage_prototype.py (check_reds): none resolves names.
 #: the NAME registries whose every entry must be backed by a module FILE -- an alias never is.
 _BY_FILE = (
     "dormancy._LIVE_ROOTS",
@@ -1148,7 +1148,7 @@ def _gate_lines(key: str, lines: list[str], pairs: dict) -> Counter:
 
 # distinct-from: __init__.py -- package_of reads the running package's live tables; forward reads a
 #   stage's post-stage map out of the mover's expected file. Also read: infra/brain_geometry.py
-#   (_reasoning_modules), gates/selfcheck_cache.py (split_rosters), neuromodulation/empowerment.py
+#   (_reasoning_modules), gates/selfcheck_cache.py (split_rosters), faculties/empowerment.py
 #   (_roll), plasticity/plasticity_rule_stack.py (_retention_selfcheck) -- none maps a stage's names.
 def forward(expected: dict | None) -> dict:
     """(old package, module) -> new package for every module the stage moves, from the mover's

@@ -149,34 +149,34 @@ CORE = [
     "readout.language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): equal-budget n-gram bar (fair_compare's port) + full-train bar
     "sleep.nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a, from the RESEARCH list): the ONE standing skills loop, sleep-tick entry
     # hippocampus â€” memory formation, spatial coding, replay
-    "hippocampus.grid_cells",
+    "faculties.grid_cells",
     # MOVED RESEARCH -> CORE 2026-08-13. It was PROMOTED into hippocampus/ on 2026-08-11 (#10 family
     # C7) and registered in REGIONS, but its run_selfchecks entry stayed in RESEARCH -- so for two
     # days it was a GOVERNED module running out-of-process, outside the in-process pytest set, while
     # every surface said it was governed. Found by census, not by eye: the identical defect had just
     # been fixed for snn_moe_classifier by accident, so the class got mechanized (see the note at
     # RESEARCH's head). Runs in 2.84 s, in line with its CORE neighbours.
-    "hippocampus.open_world_loop",
+    "faculties.open_world_loop",
     "sleep.experience_replay",
     "sleep.sleep_replay",
-    "hippocampus.ring_attractor",
+    "faculties.ring_attractor",
     "growth.growing_learner",
     "growth.function_preserving_growth",
     "sleep.sleep_consolidation",
-    "hippocampus.affective_memory",
-    "hippocampus.contrastive_episode_analysis",
-    "hippocampus.allocentric_map",
-    "hippocampus.grid_place_map",  # W6: live grid + place cells binding a percept to an allocentric location
+    "faculties.affective_memory",
+    "faculties.contrastive_episode_analysis",
+    "faculties.allocentric_map",
+    "faculties.grid_place_map",  # W6: live grid + place cells binding a percept to an allocentric location
     "substrate.episodic_recall",  # W8: reconstructive pattern-completion autobiographical recall
     "substrate.lake_recall",  # T057: recall(cue) -> k episodes with margins from the lake (FR-017)
-    "hippocampus.spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
+    "faculties.spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
     "substrate.content_signature",  # PROMOTED 2026-08-11 (#10 family C1): moved here from the RESEARCH list
     "substrate.proximity_replay",  # PROMOTED+RENAMED 2026-08-11 (#10 family C3): P4b cross-process readback + 2 constructed reds (0.5s)
-    "hippocampus.skill_builder",  # PROMOTED 2026-08-11 (#10 family C4): 2 domains, competence >= baseline, router 99% vs 50% chance (11.6s)
+    "faculties.skill_builder",  # PROMOTED 2026-08-11 (#10 family C4): 2 domains, competence >= baseline, router 99% vs 50% chance (11.6s)
     "sleep.hippocampal_memory",  # PROMOTED 2026-08-11 (#10 lane 4a): balance/no-leak/consolidate/determinism asserts (seconds)
     "sleep.episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
     "sleep.lake_consolidation",  # sleep-time PRUNE of the symbolic durable lake (cap re-derivable bulk, keep learned) -> live + bounded
-    "hippocampus.spiking_storage_prototype",  # factored associative memory; criteria judged vs a do-nothing cue control + permutation null, each with an executed red
+    "faculties.spiking_storage_prototype",  # factored associative memory; criteria judged vs a do-nothing cue control + permutation null, each with an executed red
     # basal ganglia â€” action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation",
     "growth.learning_progress",  # T046a: |LP| four regimes + discharged consumer + goal-store reds
@@ -255,19 +255,19 @@ CORE = [
     # claustrum â€” cortical synchrony / salience hub
     "faculties.claustrum",
     # neuromodulation â€” diffuse chemical modulators + glia (LC noradrenaline, raphe serotonin)
-    "neuromodulation.acetylcholine",
-    "neuromodulation.astrocyte_modulation",
-    "neuromodulation.cortisol",
-    "neuromodulation.locus_coeruleus",
-    "neuromodulation.raphe_serotonin",
-    "neuromodulation.intrinsic_motivation",
-    "neuromodulation.spiking_curiosity",
-    "neuromodulation.generalizing_novelty",
-    "neuromodulation.drive_reduction",
+    "faculties.acetylcholine",
+    "faculties.astrocyte_modulation",
+    "faculties.cortisol",
+    "faculties.locus_coeruleus",
+    "faculties.raphe_serotonin",
+    "faculties.intrinsic_motivation",
+    "faculties.spiking_curiosity",
+    "faculties.generalizing_novelty",
+    "faculties.drive_reduction",
     "plasticity.naca",
-    "neuromodulation.empowerment",
-    "neuromodulation.developmental_envelope",
-    "neuromodulation.affect_integrator",  # C1 batch-2: spiking neuromod fusion -> coupled affect + self-organized emotions
+    "faculties.empowerment",
+    "faculties.developmental_envelope",
+    "faculties.affect_integrator",  # C1 batch-2: spiking neuromod fusion -> coupled affect + self-organized emotions
     # plasticity â€” Hebbian/STDP, homeostatic, developmental learning rules
     "plasticity.bcm_plasticity",
     "plasticity.oja_pca",
@@ -580,7 +580,7 @@ def _assert_tiers_agree_with_regions():
     detected that, because each half is individually correct.
 
     WHY THIS EXISTS, and the count that earned it. Two promotions landed this defect:
-    `hippocampus.open_world_loop` (2026-08-11) and `reasoning.snn_moe_classifier` -> cortex/
+    `faculties.open_world_loop` (2026-08-11) and `reasoning.snn_moe_classifier` -> cortex/
     (2026-08-13). The second was caught only because someone happened to read which list the entry
     was in; the first had sat governed-but-out-of-process for two days. A census over REGIONS x the
     tier lists then found exactly ONE remaining (open_world_loop) -- so the class is real, recurring,

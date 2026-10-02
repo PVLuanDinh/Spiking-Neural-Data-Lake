@@ -19,7 +19,7 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | synaptic_consolidation_benna_fusi | 25 | src/snn_data_lake/engine/brain.py:2745#_sleep_tick; src/snn_data_lake/plasticity/plasticity_rule_stack.py:217 | - | memory-auditor (opus-5) / live-tick instrumentation, taught vs untaught | 2026-07-30 |
 | use_it_or_lose_it_forgetting | 20 | src/snn_data_lake/reasoning/spike_chat_lake.py:1363#converse; src/snn_data_lake/engine/brain.py:3057#_enter_sleep | - | memory-auditor (opus-5) / static read + live-tick instrumentation | 2026-07-30 |
 | semantic_schema_induction | 15 | src/snn_data_lake/engine/brain.py:3014#_enter_sleep | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
-| affective_content_retrieval | 10 | src/snn_data_lake/hippocampus/affective_memory.py:153#recall_similar | - | memory-auditor (opus-5) / whole-tree caller grep | 2026-07-30 |
+| affective_content_retrieval | 10 | src/snn_data_lake/faculties/affective_memory.py:153#recall_similar | - | memory-auditor (opus-5) / whole-tree caller grep | 2026-07-30 |
 | contrastive_episode_analysis | 10 | src/snn_data_lake/engine/autonomous_loop.py:1926#step; src/snn_data_lake/engine/live_brain.py:79#__init__ | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
 | chat_memory_flush_noop | 0 | src/snn_data_lake/substrate/chat_memory.py:247#close | - | memory-auditor (opus-5) / static read | 2026-07-30 |
 
@@ -170,7 +170,7 @@ not as verified.
 - `sleep/experience_replay.py` -- SWR forward+reverse value consolidation into `arm.q`. Sole
   provider of memory-to-learning-update. Also imported by `sleep/lifelong_consolidation.py`,
   `substrate/lake_memory.py`, `cortex/quality_diversity.py`, `cortex/reasoning_curriculum.py`.
-- `hippocampus/affective_memory.py` -- affect-tagged episodic retention; `recall_by_emotion`
+- `faculties/affective_memory.py` -- affect-tagged episodic retention; `recall_by_emotion`
   (charged) and `recall_similar` (dormant). Sole provider of somatic-marker retrieval.
 - `sleep/lake_consolidation.py` -- `RecallTrace` use-decayed utility + prune policy for the
   symbolic lake. Sole provider of retrieval-driven forgetting.
@@ -187,7 +187,7 @@ not as verified.
   `reasoning/brain_adapters/hippocampal_memory.py`, **not** by `engine/brain.py`, which reimplements
   the wake/sleep consolidation inline. Also a Policy-2 question; not a separate roster row, because
   the *faculty* it provides is already counted by the three consolidation rows.
-- `hippocampus/contrastive_episode_analysis.py` -- success-vs-failure context pooling; not enabled.
+- `faculties/contrastive_episode_analysis.py` -- success-vs-failure context pooling; not enabled.
 
 ## Gaps ranked by distance_to_100 x feasibility
 

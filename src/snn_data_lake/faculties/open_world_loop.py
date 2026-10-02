@@ -30,7 +30,7 @@ DRIFT is invisible (it silently corrupts an expert); the count is sensitive to l
 domain" is a region of signature space, not a clean human domain, so purity is structurally < 100%.
 This discovers, routes, and grows domains; it does not "understand" any of them.
 
-  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.hippocampus.open_world_loop
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.faculties.open_world_loop
   Knobs: NORD_CTX(3) NORD_LAM(1.7) NORD_HARVEST(240) NORD_MINEV(25) NORD_CAP(10) NORD_PERSRC(1200)
 Deps: numpy (+ stdlib). Reuses corpus_stream, skill_builder, meta_skill_loop, language_readout_slda, lake_memory.
 """
@@ -43,7 +43,7 @@ import zlib
 import numpy as np
 
 from snn_data_lake.cortex.language_self_build import _positional_code
-from snn_data_lake.hippocampus.skill_builder import math_stream, signature
+from snn_data_lake.faculties.skill_builder import math_stream, signature
 from snn_data_lake.readout.language_readout_slda import SLDA_RFF_np
 from snn_data_lake.sensorimotor.corpus_stream import load_cmudict, load_text, phoneme_stream
 from snn_data_lake.sleep.nightly_skills import physics_stream

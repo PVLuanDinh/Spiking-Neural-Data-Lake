@@ -41,14 +41,14 @@ Status: [present] fully live | [partial] parts exist but unwired/rate/dormant | 
 |---|------|--------|--------|
 | L0 | Substrate & immutable safety fixed-point | present | `engine/autonomous_loop.py:362` reflex E-STOP (NaN fails closed) + gated `So101Arm.apply`; `reflex.py`; `growth/lif_neuron.py`, `rank_order_coding.py` |
 | L1 | Reactive extrinsic-reward control | present | `autonomous_loop.py:426` tabular bandit `q[unit][action]` over grown units, through the gate |
-| L2 | Reactive self-improvement primitive (surprise -> learning-progress -> value) | present | `neuromodulation/intrinsic_motivation.py:118` `intrinsic_reward` of `jepa_world_model` error, value-only at `:413` (v3.15) |
+| L2 | Reactive self-improvement primitive (surprise -> learning-progress -> value) | present | `faculties/intrinsic_motivation.py:118` `intrinsic_reward` of `jepa_world_model` error, value-only at `:413` (v3.15) |
 | L3 | Active exploration + self-paced curriculum | present | `most_curious()` + `cortex/reasoning_curriculum.py` streak/patience advance, fused in `AutonomousArm.develop()` (~2/4 stages self-graduated) |
 | L4 | Local spiking plasticity as the DEPLOYED learning substrate | partial | `r_stdp.py:85` distal-reward eligibility, `interaction_learning.py:130` three-factor -- genuinely spiking but NOT on the arm value path (which is rate `LatentQ`/`MlpQ` + hand-backprop) |
-| L5 | Generalizing representation & transfer | partial | `neuromodulation/generalizing_novelty.py` (SI-4) frozen-SimHash pseudo-count now generalizes VISITATION credit across rasters that differ bit-for-bit (Spearman 0.976 vs true revisits; shuffled/single-bucket controls -> chance) -- fixes the exact-KEY brittleness. STILL partial (honest): it is a visitation proxy that INHERITS encoder collapse (printed negative), and `latent_q` transfer (0.90) + the near-collapsing online encoder (spread ~0.003) are unchanged; module built, NOT yet live-wired (arm deferred) |
+| L5 | Generalizing representation & transfer | partial | `faculties/generalizing_novelty.py` (SI-4) frozen-SimHash pseudo-count now generalizes VISITATION credit across rasters that differ bit-for-bit (Spearman 0.976 vs true revisits; shuffled/single-bucket controls -> chance) -- fixes the exact-KEY brittleness. STILL partial (honest): it is a visitation proxy that INHERITS encoder collapse (printed negative), and `latent_q` transfer (0.90) + the near-collapsing online encoder (spread ~0.003) are unchanged; module built, NOT yet live-wired (arm deferred) |
 | L6 | Structural plasticity / need-driven neurogenesis | present | `sleep/lifelong_consolidation.py` grow<->prune<->consolidate: ART recruit + magnitude-prune to a capacity BUDGET (need-driven, bounded), wired into `engine/brain.py` sleep (v3.27). FUNCTION-PRESERVING growth now exists: `growth/function_preserving_growth.py` (SI-10) duplicate-LIF + halve-fan-out is output BIT-IDENTICAL (max abs diff 0.0 exact; no-halve control perturbs; GradMax 0.0-fanout add exact). CAVEAT: recruit rule still rate/cosine; SI-10 not live-wired (arm deferred) |
 | L7 | Homeostasis & criticality (staying learnable) | present | `reservoir/criticality_regulator.py` recurrent-LIF pool with activity-dependent inhibition holds branching-ratio sigma ~0.98 (edge of chaos), measured from the live raster (reuses `neuronal_avalanches`); converged at birth + maintained each night in `brain.py` (v3.27). CAVEAT: a monitored substrate-HEALTH pool, not global regulation of every live neuron |
 | L8 | Metaplasticity / bounded meta-learning (improving HOW you learn) | present | `plasticity/meta_plasticity.py` (SI-8): (a) LP-gated third factor on R-STDP + (b) history-gated spiking BCM sliding threshold; on a non-stationary reach (b) adds a history-shuffle-DISSOCIABLE local gain even over a TUNED baseline (+0.047, collapses under shuffle). HONEST: (a) is only a GLOBAL lr schedule (a tuned fixed lr matches/beats it -- no re-adapt win credited); adapts a scalar/threshold, NOT the rule FORM; stationary null = no gain. Module built + un-riggable-verified, NOT yet live-wired (arm deferred) |
-| L9 | Self-generated goals & drive-grounded value (under fixed set-points) | present | BOTH halves built (v3.27, NOT live-wired -- arm deferred): SI-2 `neuromodulation/drive_reduction.py` closes the set_points->reward loop (drive-REDUCTION reward + LIF need-pool eligibility, regulates with ZERO external reward, honestly TIES the open-loop controller); SI-5 `cortex/autotelic_goals.py` turns the single `_z_goal` into a DIVERSITY of self-set goals (sampled from own outcomes, held in PFC WM, goal-conditioned spiking tempotron, hindsight-relabel, SAGG-RIAC via the SI-1 kernel) -- held-out never-relabeled reach 0.75 vs no-hindsight 0.00. HONEST: toy saturates, near-TABULAR, NO transfer (novel goal at chance) -- bounded goal-directedness, not open-endedness |
+| L9 | Self-generated goals & drive-grounded value (under fixed set-points) | present | BOTH halves built (v3.27, NOT live-wired -- arm deferred): SI-2 `faculties/drive_reduction.py` closes the set_points->reward loop (drive-REDUCTION reward + LIF need-pool eligibility, regulates with ZERO external reward, honestly TIES the open-loop controller); SI-5 `cortex/autotelic_goals.py` turns the single `_z_goal` into a DIVERSITY of self-set goals (sampled from own outcomes, held in PFC WM, goal-conditioned spiking tempotron, hindsight-relabel, SAGG-RIAC via the SI-1 kernel) -- held-out never-relabeled reach 0.75 vs no-hindsight 0.00. HONEST: toy saturates, near-TABULAR, NO transfer (novel goal at chance) -- bounded goal-directedness, not open-endedness |
 | L10 | Metacognitive self-monitoring & control | present | `cortex/metacognitive_monitor.py` unified LESIONABLE LIF reliability pool -> confidence-gated HOLD/abstain + learn-gate; consumes confidence/surprise/LP and GATES lifelong sleep-learning + chat abstain in `brain.py` (SI-7, v3.27) |
 | L11 | Continual consolidation & non-regression | present | `sleep/lifelong_consolidation.py` interleaved-replay CONSOLIDATE + a live held-out RETENTION probe (non-regression is now falsifiable + tracked), wired into `brain.py` sleep (v3.27). Synaptic-consolidation substrate now EXISTS: `plasticity/benna_fusi.py` (SI-9) multi-timescale beaker cascade on the spiking R-STDP weights (A-retention 1.000 vs single-scalar 0.000; cascade proven load-bearing, mechanism demo). the proven SPIKING `sleep_replay.py` is now WIRED into a live quiescent-tick phase: `sleep/sleep_consolidation.py` (SI-6) no-sleep forgets A 1.00->0.12, the sleep phase recovers it (gap +0.42 on an LP-INDEPENDENT metric; FRAGILE/seed-sensitive; LP-priority == uniform, honestly). STILL OPEN: both are demos, not live-wired (arm deferred) |
 | L12 | Quality-diversity / bounded open-ended repertoire | present | `cortex/quality_diversity.py` (SI-13): a MAP-Elites / Go-Explore archive over SPIKING policies (behavior descriptor from the closed-loop raster, cells scored by CuriosityDrive novelty/LP, elites SWR-consolidated), VALUE/REP-ONLY (no arm import). HONEST (refute-corrected): raw coverage does NOT need the archive (a scale-matched random matches/beats QD 35 vs 33 -- no stepping-stone claim; behavior-keyed 33 > param-keyed 24 IS load-bearing); the archive/novelty is genuinely load-bearing on the DECEPTIVE task (aggregate QD escapes 8/12 vs greedy 2/12, per-run seed-sensitive). Coverage PLATEAUS -> bounded, explicitly NOT open-endedness. Not live-wired (arm deferred) |
@@ -111,13 +111,13 @@ recursive-without-bound.
 
 ## The gaps (why the whole is not yet whole)
 
-1. [BUILT (opt-in) -- `neuromodulation/spiking_curiosity.py`, SI-1] SPIKING-PURITY OF THE LIVE
+1. [BUILT (opt-in) -- `faculties/spiking_curiosity.py`, SI-1] SPIKING-PURITY OF THE LIVE
    PRIMITIVE -- `SpikingCuriosityDrive` (LP = max(0, slow-fast) read from EMITTED LIF spike counts)
    + `SpikingCurriculum` (LIF advance accumulator, spikes at `patience`) EXIST + are wired into
    `AutonomousArm(spiking_curiosity=True)`, duck-typed drop-in, byte-identical when OFF. STILL OPEN:
    it is OPT-IN (the DEPLOYED default stays rate -- flipping the default is a purity-vs-fidelity call,
    the spiking margin is honestly smaller), and the brain/wholistic consumers still use the rate drive.
-2. [PARTIAL -- `neuromodulation/generalizing_novelty.py`, SI-4] GENERALIZATION FLOOR -- a frozen-SimHash
+2. [PARTIAL -- `faculties/generalizing_novelty.py`, SI-4] GENERALIZATION FLOOR -- a frozen-SimHash
    pseudo-count now generalizes VISITATION credit across bit-different rasters (fixes the exact-KEY
    brittleness). STILL OPEN: it INHERITS encoder collapse (honest-negative printed); the online-encoder
    collapse (LP->0, spread ~0.003) itself is unsolved.
@@ -176,7 +176,7 @@ overclaim-risk and an un-riggable check (control that MUST fail).
 ### P1 -- build first
 
 **SI-1 -- Spiking learning-progress + spiking curriculum-advance (SPIKE-LP)** [L2, effort M, dep none]
-**[BUILT + wired opt-in, live-verified v3.27 -- `neuromodulation/spiking_curiosity.py`.]**
+**[BUILT + wired opt-in, live-verified v3.27 -- `faculties/spiking_curiosity.py`.]**
 Replace the rate dual-EMA LP with two LIF pools whose windowed firing-RATE DIFFERENCE encodes
 `max(0, slow - fast)`, and the curriculum counter with a LIF accumulator that spikes to advance.
 Closes the flagship drift on the ONLY live primitive. DONE: `SpikingCuriosityDrive` (LP from emitted
@@ -200,7 +200,7 @@ rate (flip = purity-vs-fidelity, spiking margin honestly smaller); brain/wholist
 ### P2 -- the depth build-out
 
 **SI-2 -- Homeostatic drive-reduction reward (close the set_points loop)** [L9, effort M, dep none]
-**[BUILT + refute-GENUINE v3.27 -- `neuromodulation/drive_reduction.py`. Drive-REDUCTION reward + a real LIF need-pool phasic-drop eligibility regulates with ZERO external reward (total drive 0.450 vs shuffled 68.4 / drive-LEVEL 107.5 / membrane-eligibility 72.7). Honest-negative TIES the open-loop set_points controller EXACTLY (0.450==0.450, structural: 0 differing decisions over 2000 states) -- goal-directed-from-internal-drives is the win, NOT better regulation. Not live-wired (arm deferred).]**
+**[BUILT + refute-GENUINE v3.27 -- `faculties/drive_reduction.py`. Drive-REDUCTION reward + a real LIF need-pool phasic-drop eligibility regulates with ZERO external reward (total drive 0.450 vs shuffled 68.4 / drive-LEVEL 107.5 / membrane-eligibility 72.7). Honest-negative TIES the open-loop set_points controller EXACTLY (0.450==0.450, structural: 0 differing decisions over 2000 states) -- goal-directed-from-internal-drives is the win, NOT better regulation. Not live-wired (arm deferred).]**
 Convert `set_points.py` signed error into reward = the drive REDUCTION an action produces
 (Keramati-Gutkin), fed into the same value channel curiosity uses -> coherent behavior from
 regulating internal drives with NO external reward.
@@ -233,7 +233,7 @@ tempotron) into the live value path, shadowing then replacing rate `LatentQ`/`Ml
   honest negative). Deploy in SHADOW first, swap only after (2)+(3) pass.
 
 **SI-4 -- Generalizing pseudo-count (SimHash over the spike raster)** [L5, effort S, dep none]
-**[BUILT + un-riggable-verified v3.27 -- `neuromodulation/generalizing_novelty.py` (Spearman 0.976; shuffled/single-bucket controls -> chance; false-alias K-sweep; collapsed-encoder honest-negative). NARROW win as designed: fixes exact-key brittleness, INHERITS encoder collapse. Not yet live-wired (arm deferred).]**
+**[BUILT + un-riggable-verified v3.27 -- `faculties/generalizing_novelty.py` (Spearman 0.976; shuffled/single-bucket controls -> chance; false-alias K-sweep; collapsed-encoder honest-negative). NARROW win as designed: fixes exact-key brittleness, INHERITS encoder collapse. Not yet live-wired (arm deferred).]**
 Frozen random-hyperplane SimHash (FlyHash / Dasgupta-Stevens-Navlakha) of the binary spike vector;
 bucket visit-count -> generalizing pseudo-count bonus ~`1/sqrt(N)`, so "similar" contexts share
 visitation credit.

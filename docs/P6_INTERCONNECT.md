@@ -371,9 +371,9 @@ be the P1 defect this program audits. Region IDs in one namespace: **CP**=cortex
 
 ### W1.1 -- NM2 -- the one Wave-1 wire
 
-- **Producer.** `neuromodulation/affect_integrator.AffectIntegrator.integrate()` arousal,
+- **Producer.** `faculties/affect_integrator.AffectIntegrator.integrate()` arousal,
   26 distinct over 120 ticks.
-- **Consumer.** `hippocampus/affective_memory.AffectiveEpisodicStore.store(fragment,
+- **Consumer.** `faculties/affective_memory.AffectiveEpisodicStore.store(fragment,
   valence, arousal, reward)` at `engine/autonomous_loop.py:1647`.
 - **Signal.** Replace `arousal=threat` with the fused core-affect arousal `aa`.
 - **Consumer output that changes.** Which episode `recall_by_emotion(v, a, k=1)` returns --
@@ -519,7 +519,7 @@ be the P1 defect this program audits. Region IDs in one namespace: **CP**=cortex
 ### W3.2 -- CX4 -- task set into curiosity, consumer corrected, gated
 
 - **Producer.** `TaskSetLayer.active_set`.
-- **Consumer, CORRECTED.** The survey named `neuromodulation/intrinsic_motivation.CuriosityDrive`.
+- **Consumer, CORRECTED.** The survey named `faculties/intrinsic_motivation.CuriosityDrive`.
   **That class is not on the live path:** `brain.py:199` passes `spiking_curiosity=True`, so
   `autonomous_loop.py:332-333` constructs `SpikingCuriosityDrive` and the rate class is never
   built live. The wire must target the spiking drop-in or it is a wire to a `None`.

@@ -34,11 +34,11 @@ growth/growing_learner). So n_units grows as the world grows.
 
 The sleep-loop that grows the skill (develop()):
   * WAKE  : sample ADJACENT premises from the currently-active item set and train on them; a
-            learning-progress CURIOSITY drive (neuromodulation/intrinsic_motivation) can pick the
+            learning-progress CURIOSITY drive (faculties/intrinsic_motivation) can pick the
             still-improving FRONTIER premise instead of a uniform one.
   * SLEEP : offline REPLAY-consolidation (sleep/experience_replay.ReplayBuffer) re-applies the
             SAME rank update to sampled stored premises -- more learning per real interaction.
-  * RAMP  : a self-paced CURRICULUM (neuromodulation/spiking_curiosity.SpikingCurriculum) grows the active item set
+  * RAMP  : a self-paced CURRICULUM (faculties/spiking_curiosity.SpikingCurriculum) grows the active item set
             small -> large as the learner's own learning-progress on the current chunk dries up.
   * SCORE : held_out_accuracy() over ALL non-adjacent pairs, evaluated in BOTH directions (so the
             held-out labels are BALANCED and a constant answer scores ~0.5), recorded per night.
@@ -71,9 +71,9 @@ import zlib
 
 from snn_data_lake.basal_ganglia.evidence_accumulation import DriftDiffusion
 from snn_data_lake.cortex.vsa_reasoning import cleanup, hv
+from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive
+from snn_data_lake.faculties.spiking_curiosity import SpikingCurriculum
 from snn_data_lake.infra._mathutils import sigmoid
-from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCurriculum
 from snn_data_lake.sleep.experience_replay import ReplayBuffer
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.

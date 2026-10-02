@@ -8,7 +8,7 @@ that decides a label for a feature vector on its OWN terms and then goes dark:
   - readout/tempotron.py              Gutig-Sompolinsky spike-TIMING neuron (one-vs-rest)
   - sensorimotor/lca_sparse_coding.py      LCA sparse coding by lateral INHIBITION (dominant atom)
   - readout/snn_moe_classifier.py  firing-rate ROUTED mixture-of-experts (top-k sparse)
-  - hippocampus/spiking_storage_prototype.py  FACTORED k-WTA associative-memory recall
+  - faculties/spiking_storage_prototype.py  FACTORED k-WTA associative-memory recall
   - substrate/paradigm_b_matcher.py     LIF COINCIDENCE detector (spike-stream channel overlap)
 
 This module is the MERGE: one ensemble, one contract -- recognize(features) -> (label, confidence,
@@ -229,7 +229,7 @@ class StorageRecognizer:
     name, module, source, uses = "assoc-storage", "spiking_storage_prototype", "reason", "stdlib"
 
     def __init__(self, library, k=12, n=FEATURES, steps=8):
-        from snn_data_lake.hippocampus import spiking_storage_prototype as S
+        from snn_data_lake.faculties import spiking_storage_prototype as S
 
         self._S = S
         self.labels = list(library)
@@ -504,7 +504,7 @@ def main():
     # fabricating a label for it -- far more finely.
     #
     # RE-MEASURED 2026-08-04, and the previous numbers here are RETIRED, not merely refreshed.
-    # They were taken before hippocampus/spiking_storage_prototype.py and reasoning/
+    # They were taken before faculties/spiking_storage_prototype.py and reasoning/
     # snn_moe_classifier.py were redesigned for promotion. The MoE now draws its Poisson spikes as
     # one `rng.random((STEPS, N)) < rates` instead of 1280 scalar random() calls; that is a 9.8x
     # speedup and a DIFFERENT RANDOM STREAM, so every downstream float in this panel moved. Old

@@ -46,7 +46,7 @@ DISTINCT from existing modules (read them):
   window to reconstruct at all -- it is a pure internal population CLOCK: reset() marks a start
   event, and elapsed time since that event is read off which cells have crossed threshold. A window
   over an input signal vs. a population code for "how long has it been".
-- hippocampus/ring_attractor.py integrates ONE continuously-decoded scalar (an angle) from a velocity
+- faculties/ring_attractor.py integrates ONE continuously-decoded scalar (an angle) from a velocity
   input, and that scalar can move in either direction (persist, advance, reverse). TimeCellClock
   integrates ELAPSED TIME since reset from a constant internal drive (no external velocity, no
   reverse) and its output is a POPULATION rank-order/graded code across many cells, not one

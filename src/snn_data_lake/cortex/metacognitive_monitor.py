@@ -5,7 +5,7 @@ docs/SELF_IMPROVEMENT_RESEARCH.md.
 
 Honest framing (read this first). Across the atlas the brain already PRODUCES
 metacognitive signals -- decision confidence, prediction-error surprise, learning
-progress (neuromodulation/intrinsic_motivation.py), novelty, drift. Until now they
+progress (faculties/intrinsic_motivation.py), novelty, drift. Until now they
 were SILOED: computed and then dropped on the floor. Nothing fused them, and nothing
 let them CONTROL behavior (self-improvement gap #7: "METACOGNITION PRODUCED BUT NOT
 CONSUMED"). This module is the consumer. It fuses the signals into ONE reliability
@@ -131,7 +131,7 @@ substrate/_mathutils.{mean,sigmoid}, substrate/signal_calibrator.SignalCalibrato
 running quantile that is the HOLD bar), cortex/executive_control.ExecutiveControl (the consumed
 conflict; this module computes no conflict of its own). The self-check additionally drives
 hippocampus/growing_learner.GrowingLearner (a real neurogenesis learner whose capacity
-the monitor gates) and neuromodulation/intrinsic_motivation.CuriosityDrive (the honest
+the monitor gates) and faculties/intrinsic_motivation.CuriosityDrive (the honest
 learning-progress / novelty source), keyed off a coarse, label-free input bucket.
 
 Pure standard library (math, random, zlib, collections). Per-instance random.Random,
@@ -481,7 +481,7 @@ class _World:
     Always-on and cheap -- separate from the gated, capacity-committing grower."""
 
     def __init__(self, seed):
-        from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
+        from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive
 
         self.fam = {}  # bucket -> running-mean feature vector
         self.cur = CuriosityDrive(novelty_decay=0.8, seed=seed)

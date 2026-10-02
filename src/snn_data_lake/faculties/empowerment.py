@@ -27,7 +27,7 @@ the ACTION channel specifically: the CONTROL in the self-check shuffles the acti
 actions no longer discriminate the future and confirms E COLLAPSES -- proving it is self-caused
 reachability, not mere state spread / novelty. Per-instance random.Random(seed), ASCII.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.empowerment
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.empowerment
 """
 
 import itertools

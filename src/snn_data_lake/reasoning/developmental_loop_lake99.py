@@ -124,11 +124,11 @@ def main():
 
     readout = LinearReadout(D, seed=0)
     lake = LakeMemory(path=lake_path, seed=0)
-    from snn_data_lake.neuromodulation.spiking_curiosity import (
+    from snn_data_lake.faculties.spiking_curiosity import (
         SpikingCuriosityDrive,
         SpikingCurriculum,
     )
-    from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
+    from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
 
     curiosity = SpikingCuriosityDrive(seed=0)
     curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)

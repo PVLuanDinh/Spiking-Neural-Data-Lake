@@ -63,6 +63,10 @@ from snn_data_lake.engine.live_brain import (
     LiveBrain,
     _route_tokens,
 )
+from snn_data_lake.faculties.acetylcholine import Acetylcholine
+from snn_data_lake.faculties.astrocyte_modulation import Astrocyte
+from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
+from snn_data_lake.faculties.raphe_serotonin import DorsalRaphe
 from snn_data_lake.faculties.set_points import (
     AMBIENT_TEMP,
     SET_POINT_TEMP,
@@ -70,10 +74,6 @@ from snn_data_lake.faculties.set_points import (
     temp_setpoint,
 )
 from snn_data_lake.growth.growing_learner import GrowingLearner
-from snn_data_lake.neuromodulation.acetylcholine import Acetylcholine
-from snn_data_lake.neuromodulation.astrocyte_modulation import Astrocyte
-from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
-from snn_data_lake.neuromodulation.raphe_serotonin import DorsalRaphe
 from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
 from snn_data_lake.sleep.circadian_clock import CircadianClock, light_cycle
 from snn_data_lake.sleep.experience_replay import ReplayBuffer
@@ -559,7 +559,7 @@ class Brain:
         # feeding a real novelty signal each wake tick (a pseudo-count is exactly what curiosity consumes).
         # ADDITIVE + read-only to safety; value/rep-only. Guarded. Reported as `novelty_live`.
         try:
-            from snn_data_lake.neuromodulation.generalizing_novelty import GeneralizingNovelty
+            from snn_data_lake.faculties.generalizing_novelty import GeneralizingNovelty
 
             # dim = the wake stimulus feature vector: visual(4) + temperature(1) + audio(4) + distance(1)
             self._novelty = GeneralizingNovelty(n_bits=16, dim=10, seed=self._seed)
@@ -859,7 +859,7 @@ class Brain:
             # the deletion rather than a flag keeping both paths alive (P2).
             from snn_data_lake.cortex.affect_core import AffectCore
             from snn_data_lake.cortex.crossmodal_binder import CrossModalBinder
-            from snn_data_lake.hippocampus.grid_place_map import GridPlaceMap
+            from snn_data_lake.faculties.grid_place_map import GridPlaceMap
 
             self._affect_core = AffectCore(seed=self._seed)
             self._xmodal = CrossModalBinder(seed=self._seed)
@@ -981,7 +981,7 @@ class Brain:
             from snn_data_lake.cortex.time_cells import TimeCellClock
             from snn_data_lake.engine.autonomous_loop import ACTIONS as _ACTS
             from snn_data_lake.faculties.affective_appraisal import AffectiveAppraisal
-            from snn_data_lake.hippocampus.spiking_grid_can import SpikingGridCAN
+            from snn_data_lake.faculties.spiking_grid_can import SpikingGridCAN
 
             self._time_clock = TimeCellClock(n_cells=64, seed=self._seed)
             self._affect_appraisal = AffectiveAppraisal(dim=9, seed=self._seed)
@@ -1090,7 +1090,7 @@ class Brain:
             from snn_data_lake.cortex.counterfactual_sim import CounterfactualSim
             from snn_data_lake.cortex.recursive_tom import RecursiveToM
             from snn_data_lake.engine.autonomous_loop import ACTIONS as _ACTS2
-            from snn_data_lake.neuromodulation.affect_integrator import AffectIntegrator
+            from snn_data_lake.faculties.affect_integrator import AffectIntegrator
 
             self._recursive_tom = RecursiveToM(n_agents=3, seed=self._seed)
             self._affect_int = AffectIntegrator(seed=self._seed)
@@ -3920,7 +3920,7 @@ class Brain:
     # distinct-from: cerebellum/forward_model.py -- dynamics state, not telemetry.
     # distinct-from: cortex/generative_self_model.py -- the self-signal forward model.
     # distinct-from: cortex/self_model.py -- the mood-sentence view this dict embeds.
-    # distinct-from: neuromodulation/empowerment.py -- latent rollout state.
+    # distinct-from: faculties/empowerment.py -- latent rollout state.
     # distinct-from: reasoning/pc_active_inference.py -- policy-model state. Phrase
     #   overlap on 'state' only; this is the ONE /api/state telemetry build. Sites read.
     def state(self):
@@ -4752,7 +4752,7 @@ class Brain:
         }
 
     def _somatic_recall(self, st):
-        """CONSUME the affect-tagged episodic store (hippocampus/affective_memory) that was WRITE-ONLY on
+        """CONSUME the affect-tagged episodic store (faculties/affective_memory) that was WRITE-ONLY on
         the live path -- recall_by_emotion was never called, so emotional memory could not bias cognition.
         Given the CURRENT affect (self-model valence + an arousal proxy = |rpe|), retrieve the somatic-marker
         episode: the past percept whose STORED affect is closest to how the brain feels now (Damasio somatic
