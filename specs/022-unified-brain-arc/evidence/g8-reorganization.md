@@ -4229,3 +4229,22 @@ re-built (battery-verified only):
 - (c) 3.27 says `gates/docs_only_battery` "never enters C1". Wrong: C1's static inventory lists every source module
   (`module_depth`, `move_gate.static`); the module enters every census UNCHANGED, so it contributes a zero delta. The
   correct claim is "unchanged in every census", which the records' equal diffs show.
+
+### 3.38 G8-3 closing record (Claude, 2026-10-02)
+
+One battery on the stacked head `01b5489c` (20:21:14-21:52Z, the instrumented launcher of POLICIES' 2026-10-02 amendment,
+t066 environment: no `NORD_PERSIST`, no `NORD_HOME`; launched detached via PowerShell `Start-Process` on Git's `sh.exe`)
+ended GREEN on its first run: record assert and certify first; ruff, ruff format, citation guard, red reachability,
+dependency ledger and doc-command guard rc 0; 366/366 self-checks, 6/6 tools gates; pytest under the reader hook 1,708
+passed, two xfailed, 87.14% coverage (70% required); the reader map rebuilt (`build_map` rc 0; head `01b5489c`, its code
+hash equal to the tree's; it still marks the Brian2 reference-trace child BLIND, the carried opening); all sixteen
+asserting gates rc 0. Retained in `C:\Users\vinhl\AppData\Local\Temp\g8-3-battery-01b5489c`. This record, that battery's
+own `tools/policy_certification.json` (certified, clean, `01b5489c`) and the rebuilt `tools/doc_reader_map.json` are the
+arc's last commit.
+
+G8-3 moved the last 92 modules (M11a-M11e; G8 in all: 253), deleted the 15 anatomy packages, and landed D1 as D1a-D1c,
+the panel's three folds and the closing report's record. Disclosed and not claimed: M11c's per-stage compliance (3.37
+(b): the commits from M11c through D1b carry four live dangling initializer citations that D1a removed); M11b's amended
+BROAD line is not an independent forecast (3.37 (a)). `so101_arm.py` keeps its comment citations of moved modules (F11),
+for the owner. The daemon stays stopped; no poll. G8 (T116) is complete with this push; G1(c) is next in the G order,
+after the trainer-retirement arc and the T096 call at this seam.
