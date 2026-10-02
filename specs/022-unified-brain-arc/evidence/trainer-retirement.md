@@ -115,10 +115,21 @@ builder's one-seed split of the gap (about 1.0 point from B != W2, 0.5 from e-pr
 (d) three epochs, or B := W2 (transport, which the e-prop invariant forbids pending the owner's adjudication of the
 symmetric-e-prop opening), are untested hypotheses for the owner, not re-runs of a null.
 
-Capability lost: no working MNIST trainer for `trained_brain` remains. `training/mnist_genn` (kept; disposition to the
-owner) imports, trains and exports a loadable brain from a scratch copy of the local MNIST cache, but scored chance:
-test 0.0785 and core-served 0.005 (200 images) after one epoch on the full training set (0.097 / 0.015 at a
-10,000-image smoke scale).
+Capability lost: the validated MNIST trainer for `trained_brain` (BPTT, 0.957 at one epoch). `training/mnist_genn`
+(kept; disposition to the owner) is not shown to replace it: it imports, trains and exports a loadable brain from a
+scratch copy of the local MNIST cache, but scored chance, test 0.0785 and core-served 0.005 (200 images), after one
+epoch on the full training set (0.097 / 0.015 at a 10,000-image smoke scale); longer budgets are untested. *Fold
+(Codex panel): commit `5bec2535`'s message and the first wording here said no working MNIST trainer remains, which
+the one-epoch run does not show.*
+
+Archive (machine-local, outside this repository): the operator's memory archive `trainer-port-null-2026-10-02/`
+holds the port module `eprop_trained_brain.py` (sha256 `b0e808e4453e...`), the diff of its four in-tree registrations
+(`builder_tree_edits.diff`, `564551da9e44...`), and the drivers with their outputs: `tc2.py` (`4744c5395897...`) and
+`tc2_arm.py` (`cb53f72129e1...`) -> `tc2_result.json` (`ca0de99bd729...`); `measure_tr4.py` (`11464d3fa5d9...`) ->
+`tr4_result.json` (`56d99df6497c...`); `tc2_one_evaluator.py` (`67fa45015559...`) -> `tc2_one_evaluator.json`
+(`af8477f66789...`); `kp_decay_sweep.py` / `.json` and `diag_gap.py` / `.json`. Replay: check out `073b3186`, copy the
+module into `src/snn_data_lake/sensorimotor/`, apply the diff, then run `tc2.py <out_dir>` (T-C2) and
+`measure_tr4.py <out.json>` (T-R4) with the main checkout's `.venv-lake` and `PYTHONPATH=src`.
 
 ### 2.3 `spiking_lm`'s lost capability (commit 3), at `073b3186`
 `snn-train --lm --seed s --export-lm <scratch>` from a scratch directory, defaults (25 steps, the built-in 512-character
@@ -154,5 +165,5 @@ ungoverned total 200 -> 199 -> 198 -> 197 (commit 1 wrote 200); the POLICIES cei
   endings.
 
 ### 2.7 For the next owner brief
-`mnist_genn`'s disposition (it scores chance); the symmetric-e-prop adjudication (a B := W2 port would be transport);
+`mnist_genn`'s disposition (chance after one epoch; longer budgets untested); the symmetric-e-prop adjudication (a B := W2 port would be transport);
 governing the root e-prop char-LM; the two untested `mnist` hypotheses in 2.2 (d).

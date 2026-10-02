@@ -21,9 +21,9 @@ def main(argv=None):
     parser.add_argument("--gpu", action="store_true",
                         help="request CUDA (falls back to CPU if unavailable)")
     parser.add_argument("--mnist", action="store_true",
-                        help="train the 784->H->10 MNIST brain (torchvision MNIST) whose forward "
-                             "matches trained_brain, then export a zero-dep brain the core serves "
-                             "with no torch (use with --export-brain)")
+                        help="with --genn: train the 784->H->10 MNIST brain and export a zero-dep "
+                             "trained_brain (use with --export-brain); the BPTT --mnist path was "
+                             "retired 2026-10-02")
     parser.add_argument("--genn", action="store_true",
                         help="with --mnist, train on the GeNN CUDA backend (code-generated, faster "
                              'for SNNs) instead of the Brian2/Torch bridge; needs the GeNN extra '
@@ -34,45 +34,41 @@ def main(argv=None):
     parser.add_argument("--hidden", type=int, default=256,
                         help="MNIST brain hidden-layer width (default 256; --mnist only)")
     parser.add_argument("--steps", type=int, default=25,
-                        help="MNIST rate-coding timesteps (default 25; --mnist only), or "
-                             "LM training steps (--lm)")
+                        help="MNIST rate-coding timesteps (default 25; --mnist only)")
     parser.add_argument("--lm", action="store_true",
-                        help="train the char-level SPIKING language model (training-tier "
-                             "spiking_lm, SpikeGPT lineage) on --corpus (default: a built-in "
-                             "toy paragraph), then export a zero-dep snn_lm the core serves "
-                             "with no torch (use with --export-lm)")
+                        help="the char-level spiking LM trainer (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
     parser.add_argument("--corpus", metavar="PATH",
-                        help="UTF-8 text file to train the LM on (--lm only; default: the "
-                             "built-in toy paragraph)")
+                        help="the LM's training text (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
     parser.add_argument("--export-lm", metavar="PATH", dest="export_lm",
-                        help="export the trained spiking LM as a zero-dep snn_lm JSON at PATH "
-                             "(served by snn_data_lake.sensorimotor.spiking_lm_serve with no torch present; "
-                             "--lm only)")
+                        help="the LM's snn_lm export; its serve core was retired too (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
     parser.add_argument("--d-model", type=int, default=96, dest="d_model",
-                        help="LM width (default 96; --lm only)")
+                        help="LM width (--lm only; retired)")
     parser.add_argument("--blocks", type=int, default=2,
-                        help="LM spiking-block depth (default 2; --lm only)")
+                        help="LM depth (--lm only; retired)")
     parser.add_argument("--seq-len", type=int, default=64, dest="seq_len",
-                        help="LM context/BPTT unroll length (default 64; --lm only)")
+                        help="LM unroll length (--lm only; retired)")
     parser.add_argument("--resume", metavar="PATH",
-                        help="resume the LM from a checkpoint written by --checkpoint "
-                             "(--lm only; model config comes from the checkpoint)")
+                        help="resume the LM from a checkpoint (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
     parser.add_argument("--checkpoint", metavar="PATH",
                         help="save a torch checkpoint (state_dict) to PATH")
     parser.add_argument("--export-core", metavar="PATH", dest="export_core",
-                        help="export learned weights as a zero-dep snn_classifier "
-                             "weight file at PATH (loadable with no torch present)")
+                        help="the default readout trainer's snn_classifier weight export (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
     parser.add_argument("--export-brain", metavar="PATH", dest="export_brain",
                         help="export the trained MNIST brain as a zero-dep trained_brain JSON at "
                              "PATH (loadable + servable with no torch present; --mnist only)")
     parser.add_argument("--offload", action="store_true",
-                        help="use CPU/disk-offload training (gradient checkpointing "
-                             "+ CPU optimizer state) for models larger than VRAM")
+                        help="CPU/disk-offload BPTT training (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
     parser.add_argument("--seed", type=int, default=0, help="random seed (default 0)")
     args = parser.parse_args(argv)
 
-    if args.lm:
-        print("snn-train --lm was RETIRED 2026-10-02 (owner: port-then-retire): see docs/SPIKING_LM.md")
+    # Every flag whose only path was a retired BPTT trainer refuses BEFORE any dispatch: the GeNN path
+    # silently ignored them and exited 0, which reads as honoured (Codex panel, 2026-10-02).
+    retired = [flag for flag, on in (("--lm", args.lm), ("--offload", args.offload),
+                                     ("--export-core", args.export_core), ("--export-lm", args.export_lm),
+                                     ("--corpus", args.corpus), ("--resume", args.resume)) if on]
+    if retired:
+        print(f"snn-train {' '.join(retired)}: RETIRED 2026-10-02 with the BPTT trainers (owner: "
+              "port-then-retire) -- see docs/TRAINING.md and docs/SPIKING_LM.md")
         sys.exit(2)
 
     # Lazy, guarded import: Torch/Brian2 (and the Torch-based training modules) are
@@ -127,10 +123,6 @@ def main(argv=None):
               "see docs/TRAINING.md")
         sys.exit(2)
 
-    if args.offload:
-        print("snn-train --offload was RETIRED 2026-10-02 (owner: port-then-retire): a BPTT memory "
-              "technique with no e-prop analogue -- see docs/TRAINING.md")
-        sys.exit(2)
     print("snn-train's default 8x8 readout trainer was RETIRED 2026-10-02 (owner: port-then-retire): "
           "readout/snn_classifier's LOCAL rule trains the same task -- see docs/TRAINING.md")
     sys.exit(2)

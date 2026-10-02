@@ -210,7 +210,7 @@ Format: `file` -- unique capability -- **live consumer**.
   10,339,425-param Spiking-RWKV. **`blimp_bench.py:150` only.**
 - `reasoning/eprop_lm_serve.py`, `reasoning/eprop_lm_alif_serve.py` -- e-prop recurrent-spiking char
   LMs, 112,475 / 812,256 params. **`blimp_bench.py:151-152` only.**
-- `sensorimotor/spiking_lm_serve.py` -- pure-Python `snn_lm/1` forward; the CORE-tier serve. **No live
+- `sensorimotor/spiking_lm_serve.py` (RETIRED 2026-10-02) -- pure-Python `snn_lm/1` forward; the CORE-tier serve. **No live
   consumer; `src/snn_data_lake/training/spiking_lm.py:407` transfer check and its own self-check.**
 - `reasoning/blimp_bench.py` -- the grammaticality instrument, with four controls that must fail.
   **Research-tier self-check.**

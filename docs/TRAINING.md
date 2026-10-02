@@ -112,7 +112,8 @@ calls `trained_brain.predict`/`accuracy`, no GPU or torch at serve time.
 
 `snn-train --mnist --genn` trains the same brain on GeNN's code-generated CUDA backend (often faster
 than a Python/Torch bridge for SNNs), exporting to the same `trained_brain` format. Measured 2026-10-02:
-one epoch on the full training set scored chance (test accuracy 0.0785), so it is not a working trainer. Needs the `[genn]` extra
+one epoch on the full training set scored chance (test accuracy 0.0785); longer budgets are untested, so it is not
+shown to work. Needs the `[genn]` extra
 (`pip install ".[genn]"`, plus a C++ compiler + CUDA). **Caveat:** `training/mnist_genn.py` is a
 best-effort scaffold written against the ml_genn 2.x API and **not verified against a live GeNN
 install** — version-sensitive spots are flagged `# VERIFY(ml_genn):`, and GeNN's LIF dynamics only
