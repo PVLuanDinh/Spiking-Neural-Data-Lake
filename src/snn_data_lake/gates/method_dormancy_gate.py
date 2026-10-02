@@ -103,7 +103,6 @@ EXEMPT_METHOD = {
     ),
     "train_image": ("permanent", "deep_stdp_2stage: an offline [train]-tier trainer entrypoint"),
     "train_model": ("permanent", "training/: offline GPU trainer entrypoints (snn-train CLI)"),
-    "train_with_offload": ("permanent", "training/offload: offline GPU trainer entrypoint"),
     "learned_map": (
         "permanent",
         "drive_reduction: a READOUT of the learned state->action map, not an update rule -- the verb "

@@ -94,12 +94,9 @@ unchanged.
 
 ## Training a model larger than VRAM (disk/CPU offload)
 
-For models too big to fit in GPU memory, `--offload` trains with gradient checkpointing and a
-CPU-offloaded optimizer (`snn_data_lake/training/offload.py`):
-
-```bash
-snn-train --offload --epochs 20
-```
+The `--offload` trainer (gradient checkpointing and a CPU-offloaded optimizer around a BPTT loop) was
+RETIRED on 2026-10-02 with the other backprop trainers (owner: port-then-retire). It is a BPTT memory technique;
+e-prop keeps no sequence-length activation tape, so it has no e-prop analogue. `snn-train --offload` now refuses.
 
 At production scale, use HuggingFace `accelerate` (`device_map`) or DeepSpeed ZeRO-Offload, which
 stream optimizer/parameter state between GPU, CPU, and disk during the **backward** pass. This is
@@ -200,7 +197,7 @@ python local_llm/run_local.py --model <hf-model-id> --prompt "..."
 ```
 
 **Be clear on the distinction:** AirLLM is **inference** disk-streaming (fit a big model in low VRAM
-to run it); the `--offload` path above is **training** disk/CPU-streaming (train a big model's
+to run it); the retired `--offload` path above was **training** disk/CPU-streaming (train a big model's
 gradients larger than VRAM). AirLLM has no backward pass, so it is not a trainer.
 
 ## Reasoning: the SNN brain + a local LLM
@@ -229,7 +226,7 @@ is a poor fit for AirLLM specifically — the default backend is a deterministic
 | Real event-vision/audio on the live tick | `training/make_packs.py` → `models/*_pack.npz` | `.[nmnist]` (tonic); downloads N-MNIST + SHD |
 | GPU training → export to core | `snn-train --gpu --export-core` | core Torch + Brian2 and `.[train]`; a CUDA GPU |
 | GPU MNIST brain → serve zero-dep | `snn-train --mnist --export-brain`; `trained_brain.predict` | `.[train]` to train; nothing to serve |
-| Train larger than VRAM | `snn-train --offload` | `.[train]`, + `accelerate`/DeepSpeed for scale |
+| Train larger than VRAM | `accelerate`/DeepSpeed (the `--offload` trainer was retired 2026-10-02) | external |
 | GeNN-backend GPU training | `snn-train --mnist --genn` | `.[genn]` (pygenn+ml_genn, compiler+CUDA); best-effort scaffold |
 | Reason over the brain in NL | `brain_reasoning.BrainReasoner(...).explain` | nothing (stdlib summary); `.[llm]` for a real LLM |
 | Large-LLM local inference | `local_llm/run_local.py` | `.[llm]` (airllm, torch) |

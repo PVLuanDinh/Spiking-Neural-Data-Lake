@@ -61,7 +61,6 @@ CONTRACT = MappingProxyType(
 )
 MIGRATED_CALL_SITES = (
     "snn_data_lake.training.trainer",
-    "snn_data_lake.training.offload",
     "snn_data_lake.training.mnist",
     "snn_data_lake.training.spiking_lm",
     "snn_data_lake.instruments.deep_stdp",

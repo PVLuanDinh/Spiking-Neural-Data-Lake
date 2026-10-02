@@ -1066,6 +1066,10 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
     invariant's own verification clause requires; **a faculty is not, however far off the tick it
     sits** — `mlp_q` was one constructor argument from live and its transport was RETIRED, not
     exempted.
+  - `training/offload` (`train_with_offload`, file deleted) — BPTT with gradient checkpointing and a CPU-resident optimizer,
+    **RETIRED 2026-10-02** (owner: port-then-retire): ungoverned and never on the live tick; its learning
+    capability is `trainer`'s readout (ported at that trainer's retirement); its memory technique has no e-prop
+    analogue.
 
 - **Verify-first + honest framing:** probe → act → prove (A/B / gate) → commit; report the true number
   including a regression; reject theater with evidence; never fake a capability, a metric, or a consumer.

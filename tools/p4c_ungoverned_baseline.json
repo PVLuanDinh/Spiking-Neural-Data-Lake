@@ -2,7 +2,7 @@
   "_generated_by": "tools/p4c_ratchet.py --update-baseline",
   "_policy": "P4c -- every build is part of the brain",
   "_contract": "counts may only go DOWN; 'paths' is DIAGNOSTICS ONLY, never asserted on",
-  "total": 202,
+  "total": 200,
   "zones": {
     "<repo root>": 2,
     "docs": 16,
@@ -10,8 +10,8 @@
     "research": 24,
     "src/snn_data_lake/<toplevel>": 2,
     "src/snn_data_lake/lakehouse": 2,
-    "src/snn_data_lake/reasoning": 108,
-    "src/snn_data_lake/training": 6,
+    "src/snn_data_lake/reasoning": 107,
+    "src/snn_data_lake/training": 5,
     "tools": 30,
     "training": 4
   },
@@ -106,7 +106,6 @@
       "src/snn_data_lake/reasoning/burst_multiplexing.py",
       "src/snn_data_lake/reasoning/cellular_neural_network.py",
       "src/snn_data_lake/reasoning/concept_reflection.py",
-      "src/snn_data_lake/reasoning/consciousness_probe.py",
       "src/snn_data_lake/reasoning/deep_stdp_2stage.py",
       "src/snn_data_lake/reasoning/delay_learning.py",
       "src/snn_data_lake/reasoning/dense_associative_memory.py",
@@ -196,7 +195,6 @@
       "src/snn_data_lake/training/cli.py",
       "src/snn_data_lake/training/mnist.py",
       "src/snn_data_lake/training/mnist_genn.py",
-      "src/snn_data_lake/training/offload.py",
       "src/snn_data_lake/training/spiking_lm.py",
       "src/snn_data_lake/training/trainer.py"
     ],

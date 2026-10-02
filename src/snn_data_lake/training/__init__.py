@@ -25,8 +25,6 @@ Modules:
                   CPU fallback. Mirrors research/torch_device.py.
   - trainer.py  : the Brian2-equation surrogate-gradient model, train/eval, checkpoint,
                   and the export_to_core weight bridge.
-  - offload.py  : CPU/disk-offload training (gradient checkpointing + CPU
-                  optimizer state) for models larger than VRAM.
   - cli.py      : the ``snn-train`` console script.
 
 torch is imported LAZILY (inside functions) in this ``__init__`` and in ``cli``,

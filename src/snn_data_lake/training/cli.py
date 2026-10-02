@@ -141,7 +141,6 @@ def main(argv=None):
         import torch  # noqa: F401
         from snn_data_lake.infra import device as devmod
         from snn_data_lake.training import trainer
-        from snn_data_lake.training import offload as offloadmod
         from snn_data_lake.training import mnist as mnistmod
     except ImportError:
         print('snn-train needs the training extra: pip install ".[train]"')
@@ -207,11 +206,11 @@ def main(argv=None):
         return 0
 
     if args.offload:
-        model, metrics = offloadmod.train_with_offload(
-            epochs=args.epochs, compute_device=dev, seed=args.seed)
-    else:
-        model, metrics = trainer.train_model(
-            epochs=args.epochs, device=dev, seed=args.seed)
+        print("snn-train --offload was RETIRED 2026-10-02 (owner: port-then-retire): a BPTT memory "
+              "technique with no e-prop analogue -- see docs/TRAINING.md")
+        sys.exit(2)
+    model, metrics = trainer.train_model(
+        epochs=args.epochs, device=dev, seed=args.seed)
 
     print("training metrics:")
     for key, val in metrics.items():
