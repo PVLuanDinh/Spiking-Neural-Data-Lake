@@ -20,12 +20,12 @@ Run: pytest tests/test_interoceptive_tract.py
 
 import pytest
 
-from snn_data_lake.insula.interoceptive_integration import (
+from snn_data_lake.faculties.interoceptive_integration import (
     BODY_CHANNELS,
     RELAY_EDGE,
     InteroceptiveIntegration,
 )
-from snn_data_lake.substrate.region_coherence import INTEROCEPTION_EDGE
+from snn_data_lake.faculties.region_coherence import INTEROCEPTION_EDGE
 from snn_data_lake.thalamus.interoceptive_relay import (
     VISCERAL_EDGE,
     InteroceptiveRelay,
@@ -158,7 +158,7 @@ def test_the_relay_is_deterministic():
 def test_routing_the_real_medullary_signal_through_it_moves_the_real_terminus():
     """THE COMPOSITION, end to end and with the real modules. A hop that changed nothing
     downstream would be presence without participation, which P3 refuses."""
-    from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
+    from snn_data_lake.faculties.interoceptive_arousal import InteroceptiveArousal
 
     organ = InteroceptiveArousal(seed=0)
     q = organ.sense(0.0)

@@ -74,7 +74,7 @@ dormancy-covered per SYNTHESIS section 6's dated dispositions.
 #   sensorimotor/signal_loop.py -- the reflex/serial event loop; its simulated_stream is a
 #   feed this boundary can sit in front of, not a transduction contract. distinct-from:
 #   instruments/episode_driver.py -- the TRIAL apparatus behind this boundary; it takes
-#   already-transduced stimuli. distinct-from: insula/interoceptive_integration.py --
+#   already-transduced stimuli. distinct-from: faculties/interoceptive_integration.py --
 #   the interoceptive tract terminus; see the inventory above. All sites read.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.sensorimotor.afferent_boundary

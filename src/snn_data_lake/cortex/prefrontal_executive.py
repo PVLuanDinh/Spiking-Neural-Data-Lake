@@ -87,7 +87,7 @@ stays the incumbent's -- the same split T055 disclosed). Three decoupled clocks,
     reachable red that makes R's charge a measurement here, where T055 measured it
     saturated away at wm_attractor's own operating point.
 CAPACITY FALLS OUT of those constants instead of being declared: `max_goals` now DEFAULTS
-to the derived K = T_max/t_s + 1 (`plasticity/wm_capacity.derive_capacity`, measured on
+to the derived K = T_max/t_s + 1 (`faculties/wm_capacity.derive_capacity`, measured on
 this module's own frames; +1 because the active frame rides its own per-tick refresh
 outside the rotation). An explicit `max_goals` argument is still honored (callers own their
 caps); the DEFAULT is no longer a picked 4. Derivation runs AT CONSTRUCTION (memoized on
@@ -125,8 +125,8 @@ FOLD DISCLOSURES (panel, 2026-09-01), each measured:
 import math
 import random
 
+from snn_data_lake.faculties.wm_capacity import CapacityRefusal, derive_capacity, seed_viability
 from snn_data_lake.plasticity.short_term_plasticity import DynamicSynapse
-from snn_data_lake.plasticity.wm_capacity import CapacityRefusal, derive_capacity, seed_viability
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -643,7 +643,7 @@ class PrefrontalExecutive:
         refresh is live, the frame is SERVED: it holds the channel while its resources still
         ignite the pool (the dwell) and yields it on depletion (the handoff) -- resources are
         what bound the refresh cycle, which is why a capacity falls out of the time constants
-        (K = T_max/t_s, derived and guarded in plasticity/wm_capacity)."""
+        (K = T_max/t_s, derived and guarded in faculties/wm_capacity)."""
         bg = self._stack[:-1]
         if not bg:
             return

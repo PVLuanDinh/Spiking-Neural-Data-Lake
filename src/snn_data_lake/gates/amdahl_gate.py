@@ -593,7 +593,7 @@ def self_check_reds(pad_iters=PAD_ITERS, quick=False):
 
 
 # distinct-from: brainstem/arm_config.py -- ::ground_free_band sweeps a joint's ground-free range.
-# distinct-from: brainstem/cpg_oscillator.py -- ::_reversals counts direction changes in a trace.
+# distinct-from: faculties/cpg_oscillator.py -- ::_reversals counts direction changes in a trace.
 # distinct-from: cortex/theory_of_mind.py -- ::believed_location is a spiking WTA belief readout.
 # distinct-from: sensorimotor/arm_bridge.py -- ::send_outcome fires one UDP datagram.
 # distinct-from: sensorimotor/arm_hardware.py -- ::peak_current_amps sums a servo supply budget.

@@ -41,7 +41,7 @@ arc with vagal/sympathetic conduction. It models the FUNCTION (rhythmic autonomi
 closed-loop set-point) rather than the biophysics. These are AUTONOMIC effectors (breathing, heart
 rate); they never touch the voluntary arm actuator or the brainstem safety envelope.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.medulla.vital_nuclei
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.vital_nuclei
 """
 
 import random

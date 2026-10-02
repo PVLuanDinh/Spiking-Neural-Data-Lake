@@ -13,7 +13,7 @@ coordination, homeostasis, self-improvement. The roster below is grouped in that
 | circadian_wake_sleep_gate | 35 | src/snn_data_lake/engine/brain.py:3149#_maybe_autonomous_self_build; src/snn_data_lake/engine/brain.py:3203#_enter_wake | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
 | cpg_rhythm_to_action_preference | 35 | src/snn_data_lake/engine/autonomous_loop.py:760#_cpg_bias; src/snn_data_lake/engine/autonomous_loop.py:738#_cpg_bias | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
 | interoceptive_caution_to_selection | 35 | src/snn_data_lake/engine/autonomous_loop.py:1039#_interocept; src/snn_data_lake/engine/autonomous_loop.py:822#_select; src/snn_data_lake/engine/autonomous_loop.py:1621#step | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
-| cross_region_coherence_ignition_gate | 30 | src/snn_data_lake/engine/brain.py:2334#_c1_tick; src/snn_data_lake/substrate/region_coherence.py:132#RegionCoherence | - | opus-5 WholeBrain REFUTER (was 35) / outcome measured INVARIANT at every gain incl. 0.0 | 2026-07-30 |
+| cross_region_coherence_ignition_gate | 30 | src/snn_data_lake/engine/brain.py:2334#_c1_tick; src/snn_data_lake/faculties/region_coherence.py:132#RegionCoherence | - | opus-5 WholeBrain REFUTER (was 35) / outcome measured INVARIANT at every gain incl. 0.0 | 2026-07-30 |
 | neurogenesis_growth | 35 | src/snn_data_lake/engine/brain.py:2720#_update_access; src/snn_data_lake/engine/brain.py:2759#_sleep_tick | - | opus-5 WholeBrain auditor / live run, 60 ticks (grown_units) | 2026-07-30 |
 | connectome_spike_routing | 30 | src/snn_data_lake/engine/brain.py:2275#_c1_tick; src/snn_data_lake/engine/brain.py:3227#state | - | opus-5 WholeBrain auditor / live run, 60 ticks + reader grep | 2026-07-30 |
 | gwt_reentry_to_action_drive | 30 | src/snn_data_lake/engine/brain.py:1763#_route_percept_to_action; src/snn_data_lake/engine/brain.py:1562#_route_percept_to_action | wb_reroute_60.txt | opus-5 WholeBrain auditor / tools/charge_probe.py reroute 60 + eligibility measured from inside | 2026-07-30 |
@@ -399,16 +399,16 @@ the tool that produced the wrong answer was a shell grep whose output was being 
   point that adds a faculty to the daemon loop without editing the daemon. Currently zero registrations.
 - `thalamus/connectome_router.py` -- signed, delayed LIF spike propagation over the `connectome.py`
   schematic; reverberation over signed loops. The only module that makes the wiring graph dynamic.
-- `substrate/region_coherence.py` -- Kuramoto phase order + a tractable integration proxy over live
+- `faculties/region_coherence.py` -- Kuramoto phase order + a tractable integration proxy over live
   per-region activity; the only cross-region synchrony measure with an ignition-gating output.
 - `cerebellum/synfire_chain.py` -- feedforward synchrony survival; supplies the all-or-none threshold
   that turns continuous coherence into a binding event.
 - `sleep/circadian_clock.py` -- the only oscillator that gates which tick body runs.
-- `brainstem/cpg_oscillator.py` -- Matsuoka CPG; the only rhythm generator with a path into the
+- `faculties/cpg_oscillator.py` -- Matsuoka CPG; the only rhythm generator with a path into the
   action-preference vector.
 - `reservoir/criticality_regulator.py` -- the only closed-loop branching-ratio regulator (reuses
   `instruments/neuronal_avalanches` for the measurement).
-- `hypothalamus/homeostatic_drives.py` + `medulla/interoceptive_arousal.py` -- the two homeostasis
+- `faculties/homeostatic_drives.py` + `faculties/interoceptive_arousal.py` -- the two homeostasis
   signals with proven or measured paths into selection.
 - `plasticity/plasticity_rule_stack.py` (over `homeostatic_plasticity_stack.py`) -- composes seven
   plasticity mechanisms behind one `pre_gain`/`stabilize`/`relax` contract. Unique, and currently

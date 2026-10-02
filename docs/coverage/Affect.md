@@ -13,9 +13,9 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | neuromod_fused_affect_core | 30 | src/snn_data_lake/neuromodulation/affect_integrator.py:137#integrate; src/snn_data_lake/engine/brain.py:2206#_c1_tick; src/snn_data_lake/engine/brain.py:2210#_c1_tick | affect_integrator_150.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py affect_integrator 150 | 2026-07-30 |
 | tonic_stress_learning_gain | 30 | src/snn_data_lake/neuromodulation/cortisol.py:46#learn_rate_scale; src/snn_data_lake/engine/autonomous_loop.py:1797#step | affect_cortisol_learnrate_60.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py cortisol_learnrate 60 + instrumented call census | 2026-07-30 |
 | arousal_dimension | 22 | src/snn_data_lake/engine/brain.py:3232#state; src/snn_data_lake/engine/autonomous_loop.py:1913#step; src/snn_data_lake/engine/brain.py:3247#state | - | opus-5 auditor:Affect / live census, 60 wake ticks + 31 stored affective episodes | 2026-07-30 |
-| learned_affective_appraisal | 22 | src/snn_data_lake/amygdala/affective_appraisal.py:106#appraise; src/snn_data_lake/engine/brain.py:2155#_c1_tick; src/snn_data_lake/engine/brain.py:2306#_c1_tick | affect_appraisal_150.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py appraisal 150 + data/telemetry.jsonl 24,574 snapshots | 2026-07-30 |
+| learned_affective_appraisal | 22 | src/snn_data_lake/faculties/affective_appraisal.py:106#appraise; src/snn_data_lake/engine/brain.py:2155#_c1_tick; src/snn_data_lake/engine/brain.py:2306#_c1_tick | affect_appraisal_150.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py appraisal 150 + data/telemetry.jsonl 24,574 snapshots | 2026-07-30 |
 | affective_contagion_empathy | 22 | src/snn_data_lake/cortex/affect_core.py:198#empathize; src/snn_data_lake/engine/brain.py:3727#respond; src/snn_data_lake/engine/brain.py:1809#_drive_for | affect_empathy_help_150.txt | opus-5 auditor:Affect / artifacts/affect_ab_probe.py empathy_help 150 + tools/charge_probe.py help 60 | 2026-07-30 |
-| amygdala_fear_conditioning | 0 | src/snn_data_lake/amygdala/fear_conditioning.py:187#pair; src/snn_data_lake/engine/autonomous_loop.py:1479#step; src/snn_data_lake/brainstem/arm_config.py:37#module | - | opus-5 auditor:Affect / instrumented Amygdala.pair/threat over 60 wake ticks | 2026-07-30 |
+| amygdala_fear_conditioning | 0 | src/snn_data_lake/faculties/fear_conditioning.py:187#pair; src/snn_data_lake/engine/autonomous_loop.py:1479#step; src/snn_data_lake/brainstem/arm_config.py:37#module | - | opus-5 auditor:Affect / instrumented Amygdala.pair/threat over 60 wake ticks | 2026-07-30 |
 
 **Mean over the ten faculties: 28.6.** The auditor's table scored **29.7**; the adversarial pass at
 the bottom of this file refutes the one band-61 row to **50**, which is where the 1.1-point
@@ -212,9 +212,9 @@ about the code, not about this table.
 - `neuromodulation/affect_integrator.py` -- fuses four neuromodulators into a coupled (valence, arousal)
   core AND grows its own emotion prototypes rather than reading a hand-coded circumplex. LIVE,
   non-decisive.
-- `amygdala/affective_appraisal.py` -- learned, three-factor, gradient-free (valence, arousal) appraisal
+- `faculties/affective_appraisal.py` -- learned, three-factor, gradient-free (valence, arousal) appraisal
   of an arbitrary feature vector. LIVE; valence channel pinned at 0.0 in deployment.
-- `amygdala/fear_conditioning.py` -- CS-US acquisition, discrimination, extinction, spontaneous
+- `faculties/fear_conditioning.py` -- CS-US acquisition, discrimination, extinction, spontaneous
   recovery, multi-US categories. Imported and called every tick; never learns, because no aversive
   event exists to learn from.
 - `hippocampus/affective_memory.py` -- affect-indexed episodic retrieval (Damasio somatic marker). LIVE
@@ -225,7 +225,7 @@ Nothing above is a duplicate of anything else -- there is no P2 merge candidate 
 ## Gaps, ranked by distance_to_100 x feasibility
 
 1. **Give the arousal axis a real source.** It is currently `|rpe|` in one place and a constant 0.0 in
-   another. `medulla/interoceptive_arousal.py` and `neuromodulation/locus_coeruleus.py` both exist;
+   another. `faculties/interoceptive_arousal.py` and `neuromodulation/locus_coeruleus.py` both exist;
    feeding a genuine arousal scalar into `affmem.store(arousal=...)` would make the somatic-marker key
    two-dimensional, which is the cheapest real gain in the category. Highest feasibility, and unlike
    the amygdala wire it changes no safety-adjacent semantics.

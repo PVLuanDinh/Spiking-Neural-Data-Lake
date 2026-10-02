@@ -13,36 +13,6 @@
   "task": "specs/022 T051c"
  },
  "rules": {
-  "amygdala/affective_appraisal.py::AffectiveAppraisal._decay": {
-   "disposition": "needs-pre-collapse -- T050 census",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "amygdala/affective_appraisal.py::AffectiveAppraisal._potentiate": {
-   "disposition": "needs-pre-collapse -- T050 census",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "amygdala/affective_appraisal.py::AffectiveAppraisal.learn": {
-   "disposition": "needs-pre-collapse -- T050 census",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "amygdala/affective_appraisal.py::AffectiveAppraisal.step": {
-   "disposition": "needs-pre-collapse -- T050 census",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "amygdala/fear_conditioning.py::Amygdala.extinguish": {
-   "disposition": "needs-pre-collapse -- T050 census",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "amygdala/fear_conditioning.py::Amygdala.pair": {
-   "disposition": "needs-pre-collapse -- T050 census",
-   "governed": true,
-   "kind": "LOCAL"
-  },
   "basal_ganglia/latent_q.py::LatentQ.update": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -143,6 +113,41 @@
    "governed": true,
    "kind": "LOCAL"
   },
+  "faculties/affective_appraisal.py::AffectiveAppraisal._decay": {
+   "disposition": "needs-pre-collapse -- T050 census",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/affective_appraisal.py::AffectiveAppraisal._potentiate": {
+   "disposition": "needs-pre-collapse -- T050 census",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/affective_appraisal.py::AffectiveAppraisal.learn": {
+   "disposition": "needs-pre-collapse -- T050 census",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/affective_appraisal.py::AffectiveAppraisal.step": {
+   "disposition": "needs-pre-collapse -- T050 census",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/fear_conditioning.py::Amygdala.extinguish": {
+   "disposition": "needs-pre-collapse -- T050 census",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/fear_conditioning.py::Amygdala.pair": {
+   "disposition": "needs-pre-collapse -- T050 census",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/homeostatic_drives.py::_train_values": {
+   "disposition": "expressible -- T050 census (drive_reduction)",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "growth/autapse_neuron.py::_LinearReadout.train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -165,11 +170,6 @@
   },
   "hippocampus/spiking_storage_prototype.py::train": {
    "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "hypothalamus/homeostatic_drives.py::_train_values": {
-   "disposition": "expressible -- T050 census (drive_reduction)",
    "governed": true,
    "kind": "LOCAL"
   },

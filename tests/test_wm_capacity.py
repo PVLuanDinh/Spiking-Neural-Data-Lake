@@ -1,6 +1,6 @@
 """specs/022 T056 -- the derived WM capacity (K = T_max/t_s) and the ported synaptic pair.
 
-Fast pytest arms over `plasticity/wm_capacity` and the `cortex/prefrontal_executive` port.
+Fast pytest arms over `faculties/wm_capacity` and the `cortex/prefrontal_executive` port.
 The expensive behavioral guard (derived == held +/-1 at K~97) runs in wm_capacity's own
 registered self-check; these arms pin the derivation's determinism, the refusals, the two
 static gates (each with its constructed red), and the store-side charges at small scale.
@@ -9,7 +9,7 @@ static gates (each with its constructed red), and the store-side charges at smal
 import pytest
 
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
-from snn_data_lake.plasticity.wm_capacity import (
+from snn_data_lake.faculties.wm_capacity import (
     REGIME_EXEMPT,
     CapacityRefusal,
     derive_capacity,

@@ -40,7 +40,7 @@ SCN-paced set-point under disturbance -- on toy scalar plants. Nothing here is w
 hungry; "temperature" is a number in an accumulator. Additive/opt-in; reuses circadian_clock.py.
 Credit: Cannon 1929 (homeostasis); Pittendrigh & Daan 1976 (SCN pacing of diurnal set-points).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hypothalamus.set_points
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.set_points
 """
 
 import math

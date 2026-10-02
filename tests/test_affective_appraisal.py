@@ -1,5 +1,5 @@
 """
-Edge tests for amygdala/affective_appraisal.py's learned (valence, arousal) readout: training on
+Edge tests for faculties/affective_appraisal.py's learned (valence, arousal) readout: training on
 one context moves its appraisal toward the target (vs the pre-training/naive baseline), a different
 (disjoint-feature) context is left exactly untouched, and the same seed + protocol is deterministic.
 The full un-riggable protocol (with printed pre/post numbers) lives in the module's own __main__
@@ -10,7 +10,7 @@ Run: pytest tests/test_affective_appraisal.py
 
 import random
 
-from snn_data_lake.amygdala.affective_appraisal import AffectiveAppraisal, _context, _jitter
+from snn_data_lake.faculties.affective_appraisal import AffectiveAppraisal, _context, _jitter
 
 
 def test_learning_moves_trained_context_closer_to_target_than_baseline():

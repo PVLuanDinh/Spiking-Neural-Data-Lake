@@ -43,7 +43,7 @@ differentiated, phase-locked activity, not by everyone sitting still at zero.
 Representation-only: no arm import, nothing under brainstem/. numpy is a core dependency and used freely.
 Deterministic: per-region surrogate phases via zlib.crc32 (never builtin hash()); no global seeding. ASCII.
 
-  PYTHONPATH=src python -m snn_data_lake.substrate.region_coherence        # (self-check, exit 0)
+  PYTHONPATH=src python -m snn_data_lake.faculties.region_coherence        # (self-check, exit 0)
 """
 
 import math
@@ -393,7 +393,7 @@ def _interoception_consumer_factory():
     """Fresh ring + JoinConsumer over `interoception_in`, one pair per replay arm."""
     from snn_data_lake.engine.signal_ring import JoinConsumer, SignalRing
     from snn_data_lake.engine.wiring_manifest import WiringManifest
-    from snn_data_lake.insula.interoceptive_integration import (
+    from snn_data_lake.faculties.interoceptive_integration import (
         declare_ports as _producer_ports,
     )
 

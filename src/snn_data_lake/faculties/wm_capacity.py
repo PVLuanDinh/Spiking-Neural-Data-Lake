@@ -83,7 +83,7 @@ THE FIVE GUARDS (FR-020):
      capacity * steps_per_gamma) -- that direction is lawful and is this gate's liveness
      control; the reverse is circular here and is the constructed red.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.wm_capacity  # (run by run_selfchecks.py)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.wm_capacity  # (run by run_selfchecks.py)
 """
 
 import ast
@@ -425,7 +425,7 @@ def main():
 
     line = "=" * 92
     print(line)
-    print("plasticity/wm_capacity -- T056: K = T_max/t_s derived from the store's own constants")
+    print("faculties/wm_capacity -- T056: K = T_max/t_s derived from the store's own constants")
     print(line)
 
     TAU_F, TAU_D = (

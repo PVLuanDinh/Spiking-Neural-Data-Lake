@@ -35,7 +35,7 @@ inhibitory_stdp, short_term_plasticity.
 
 **CORRECTIONS (2026-07-15 brain audit).** Two baseline mis-classifications, fixed here (the historical
 tally line above is a dated 2026-07-10 snapshot and is left as-is):
-- `medulla/vital_nuclei` was listed "Already SPIKING" but the code is a rate/phase relaxation oscillator
+- `faculties/vital_nuclei` was listed "Already SPIKING" but the code is a rate/phase relaxation oscillator
   (no LIF membrane) -- it is RATE_BY_DESIGN (a homeostatic servo), not membrane-spiking. Removed from the
   SPIKING list above.
 - `basal_ganglia/evidence_accumulation` was converted to a genuine Wang-2002 spiking attractor in Slice 3
@@ -75,11 +75,11 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | cerebellum/hjepa_serve | serve a spiking feedforward net: LIF layers, rate/first-spike latent readout |
 | engine/autonomous_loop | spiking WTA action selection + dopamine-modulated STDP on action-value synapses (SAFETY: mine) |
 | thalamus/global_workspace | LIF specialist pools, recurrent self-excitation + global lateral inhibition; ignition = spike threshold |
-| hypothalamus/set_points | comparator as opponent spiking populations; antagonistic effector spike-rate difference drives plant |
+| faculties/set_points | comparator as opponent spiking populations; antagonistic effector spike-rate difference drives plant |
 | midbrain/superior_colliculus | LIF per location + lateral inhibition; first-to-spike wins, spike time = latency |
 | midbrain/sc_deep_layers | spiking EBN burst pool + recurrent line-attractor spiking integrator -> eye displacement |
 | pons/pontine_relay | LIF granule neurons on sparse random weights; k-WTA lateral inhibition; active = spiking in window |
-| medulla/interoceptive_arousal | LC-like LIF pool driven by aggregated error current; caution = normalized firing rate |
+| faculties/interoceptive_arousal | LC-like LIF pool driven by aggregated error current; caution = normalized firing rate |
 | olfactory/piriform_cortex | spiking attractor: LIF, Hebbian recurrent synapses, k-WTA; completion via recurrent settling |
 | neuromodulation/acetylcholine | spiking attractor (LIF) + STDP writes; ACh spike-rate gates STDP + recurrent gain |
 | neuromodulation/cortisol | slow spiking neuromodulatory pool integrating aversive spikes; rate scales threshold + STDP |

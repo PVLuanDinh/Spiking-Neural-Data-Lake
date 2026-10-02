@@ -63,13 +63,13 @@ from snn_data_lake.engine.live_brain import (
     LiveBrain,
     _route_tokens,
 )
-from snn_data_lake.growth.growing_learner import GrowingLearner
-from snn_data_lake.hypothalamus.set_points import (
+from snn_data_lake.faculties.set_points import (
     AMBIENT_TEMP,
     SET_POINT_TEMP,
     Homeostat,
     temp_setpoint,
 )
+from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.neuromodulation.acetylcholine import Acetylcholine
 from snn_data_lake.neuromodulation.astrocyte_modulation import Astrocyte
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
@@ -891,7 +891,7 @@ class Brain:
             None  # C2 #11: the drive-vocabulary activity actually performed this tick
         )
         try:
-            from snn_data_lake.hypothalamus.homeostatic_drives import HomeostaticDrives
+            from snn_data_lake.faculties.homeostatic_drives import HomeostaticDrives
             from snn_data_lake.substrate.episodic_recall import EpisodicRecall
             from snn_data_lake.thalamus.reentrant_workspace import ReentrantWorkspace
 
@@ -934,7 +934,7 @@ class Brain:
             # already live in this class -- `_drives.deficit()` and the arm's cached
             # {stress, caution} -- so this consumer feeds the exact BODY_CHANNELS concat the
             # manifest declares, and its salience joins the ONE ignition law in tick().
-            from snn_data_lake.insula.interoceptive_integration import (
+            from snn_data_lake.faculties.interoceptive_integration import (
                 BODY_CHANNELS,
                 InteroceptiveIntegration,
             )
@@ -976,11 +976,11 @@ class Brain:
         self._grid_can_xy = None
         self._grid_can_prev = None
         try:
-            from snn_data_lake.amygdala.affective_appraisal import AffectiveAppraisal
             from snn_data_lake.cortex.generative_self_model import GenerativeSelfModel
             from snn_data_lake.cortex.task_set import TaskSetLayer
             from snn_data_lake.cortex.time_cells import TimeCellClock
             from snn_data_lake.engine.autonomous_loop import ACTIONS as _ACTS
+            from snn_data_lake.faculties.affective_appraisal import AffectiveAppraisal
             from snn_data_lake.hippocampus.spiking_grid_can import SpikingGridCAN
 
             self._time_clock = TimeCellClock(n_cells=64, seed=self._seed)
@@ -1117,7 +1117,7 @@ class Brain:
         try:
             from snn_data_lake.cerebellum.synfire_chain import SynfireChain
             from snn_data_lake.cortex.learned_attention import LearnedAttention
-            from snn_data_lake.substrate.region_coherence import RegionCoherence
+            from snn_data_lake.faculties.region_coherence import RegionCoherence
             from snn_data_lake.thalamus.connectome_router import ConnectomeRouter
 
             self._learned_attn = LearnedAttention(dim=64, n_bands=4, seed=self._seed)
@@ -3472,7 +3472,7 @@ class Brain:
         # `instruments/integration_measure.py` itself is KEPT and is not the defect. Its own self-check is
         # built on WITHIN-SYSTEM CONTRASTS with controls (integrated vs independent-noise vs
         # synchronous vs silent, plus a firing-rate control proving the gap is integration and not
-        # activity), which is the honest shape; it stays reachable through `substrate/region_coherence.py`
+        # activity), which is the honest shape; it stays reachable through `faculties/region_coherence.py`
         # and `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16). What was invalid was lifting ONE absolute number off
         # a synthetic instance of it and reporting it as this brain's.
         self._observe_self_sleep()  # night growth -> self-model episode

@@ -48,16 +48,16 @@ REGISTRANTS: tuple = (
     ("snn_data_lake.basal_ganglia.evidence_accumulation", "declare_ports"),
     # T026: the interoceptive channel -- two producer halves, then the insula terminus
     # (whose declare_ports carries both edges and the interoception_out channel)
-    ("snn_data_lake.medulla.interoceptive_arousal", "declare_ports"),
-    ("snn_data_lake.hypothalamus.homeostatic_drives", "declare_ports"),
+    ("snn_data_lake.faculties.interoceptive_arousal", "declare_ports"),
+    ("snn_data_lake.faculties.homeostatic_drives", "declare_ports"),
     # T039j: the THALAMIC RELAY hop. Ordered here because declare_edge validates endpoints:
     # the relay's edge needs `arousal_out` to exist, and the insula's edge needs `relay_out`.
     ("snn_data_lake.thalamus.interoceptive_relay", "declare_ports"),
-    ("snn_data_lake.insula.interoceptive_integration", "declare_ports"),
+    ("snn_data_lake.faculties.interoceptive_integration", "declare_ports"),
     # T039j: the ignition law is the DECLARED consumer of interoception_out -- the port that had
     # carried an edge-less disposition since T026. Ordered after the insula, whose OUT port its
     # edge needs.
-    ("snn_data_lake.substrate.region_coherence", "declare_ports"),
+    ("snn_data_lake.faculties.region_coherence", "declare_ports"),
     # T027: the glia wire -- the astrocyte gain field as a diffuse channel (self-edge)
     ("snn_data_lake.neuromodulation.astrocyte_modulation", "declare_ports"),
     # T028: THE predictor port -- percept surprise into the brain's undirected-salience

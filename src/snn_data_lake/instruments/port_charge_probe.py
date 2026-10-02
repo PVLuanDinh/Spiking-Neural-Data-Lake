@@ -126,8 +126,8 @@ def interoceptive_challenge_frames(vary, n_ticks=40, spike_at=30):
     vector -- so any live-arm response attributes to the varying producer's edge (per-edge
     attribution; a whole-join neuter cannot separate two producers). vary in
     {'arousal', 'drives'}. -> (frames, spike_at). Deterministic."""
-    from snn_data_lake.hypothalamus.homeostatic_drives import SET_POINT, HomeostaticDrives
-    from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
+    from snn_data_lake.faculties.homeostatic_drives import SET_POINT, HomeostaticDrives
+    from snn_data_lake.faculties.interoceptive_arousal import InteroceptiveArousal
     from snn_data_lake.thalamus.interoceptive_relay import InteroceptiveRelay
 
     arousal = InteroceptiveArousal(seed=0)
@@ -169,7 +169,7 @@ def visceral_challenge_frames(n_ticks=40, spike_at=30):
     The two schedules measure two different edges of the same tract and neither can stand in for
     the other: pinning a relayed frame tells you nothing about whether the relay's own input
     matters. Deterministic. -> (frames, spike_at)."""
-    from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
+    from snn_data_lake.faculties.interoceptive_arousal import InteroceptiveArousal
 
     arousal = InteroceptiveArousal(seed=0)
     frames = []
@@ -186,11 +186,11 @@ def interoception_challenge_frames(n_ticks=40, spike_at=30):
     salience the tract actually produces rather than a synthetic ramp -- the point of the A/B is
     whether THIS payload moves the threshold, and a made-up payload could not answer that.
     Deterministic. -> (frames, spike_at)."""
-    from snn_data_lake.insula.interoceptive_integration import (
+    from snn_data_lake.faculties.interoceptive_arousal import InteroceptiveArousal
+    from snn_data_lake.faculties.interoceptive_integration import (
         BODY_CHANNELS,
         InteroceptiveIntegration,
     )
-    from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
     from snn_data_lake.thalamus.interoceptive_relay import InteroceptiveRelay
 
     organ, relay = InteroceptiveArousal(seed=0), InteroceptiveRelay()

@@ -76,7 +76,7 @@ here experiences anything.
 Deterministic: the class consumes no randomness (purely functional readouts); the training protocol
 seeds its own local random.Random, so two runs with the same seed are identical.
 
-  python -m snn_data_lake.amygdala.fear_conditioning
+  python -m snn_data_lake.faculties.fear_conditioning
 """
 
 import math

@@ -11,7 +11,7 @@ through the existing (safety-checked) command API, so collision detection and EM
 apply. Refs: Matsuoka, Biol. Cybern. 52 (1985); Ijspeert, "Central pattern generators for
 locomotion", Neural Networks 21 (2008).
 
-  python -m snn_data_lake.brainstem.cpg_oscillator        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.faculties.cpg_oscillator        # (also run by run_selfchecks.py)
 """
 
 from snn_data_lake.brainstem import arm_config

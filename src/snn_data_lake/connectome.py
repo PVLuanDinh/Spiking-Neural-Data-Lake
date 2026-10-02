@@ -42,7 +42,7 @@ NODES = {
     # specs/022 T021a: the higher-order thalamic nuclei + the insular terminus. pulvinar and
     # md are HIGHER-ORDER relays (driven BY cortex, projecting back to cortex -- the
     # transthalamic cortico-pulvinar-cortical route P6's topology needs); insula is the
-    # interoceptive cortical terminus (module: insula/interoceptive_integration).
+    # interoceptive cortical terminus (module: faculties/interoceptive_integration).
     "pulvinar": ("thalamus", "pulvinar (higher-order visual/attentional relay)"),
     "md": ("thalamus", "mediodorsal nucleus (MD, prefrontal higher-order relay)"),
     "insula": ("insula", "insular cortex (interoceptive integration)"),

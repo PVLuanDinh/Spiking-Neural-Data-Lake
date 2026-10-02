@@ -15,11 +15,11 @@ not its cell-level microcircuitry or phenomenology.
 | Cerebellum | present | `cerebellum/` — forward model, Kalman, spiking PID, timing, planner |
 | Basal ganglia | present | `basal_ganglia/` — RPE learning + evidence decision + Go/NoGo `action_gating` |
 | Thalamus | present | `thalamus/` — `global_workspace` (GWT) + `reticular_gate` (TRN attentional gate) |
-| Amygdala | present | `amygdala/fear_conditioning` — CS-US threat learning (BLA→CeA), extinction |
+| Amygdala | present | `faculties/fear_conditioning` — CS-US threat learning (BLA→CeA), extinction |
 | Hypothalamus | present | `hypothalamus/` — `circadian_clock` (SCN spiking clock) + `set_points` (thermo/osmo homeostats the SCN paces); HPA in `neuromodulation/cortisol` |
 | Midbrain | present | `midbrain/` — `dopamine_nuclei` (VTA/SNc RPE source) + `superior_colliculus` (orienting) + `sc_deep_layers` (gaze burst generator, gated) |
 | Pons | **ABSENT** | `pons/` holds only `__init__.py`; `REGIONS` maps 0 modules to it. `pontine_relay` and `reticular_formation` are NOT implemented (corrected 2026-07-28 — this row read "present" with both named). The directory is a placeholder, and `live_brain.py:262` still emits a `spikes.pons` row from a proxy signal |
-| Epithalamus | present | `epithalamus/habenula` — lateral habenula anti-reward (negative RPE, dopamine opponent via RMTg) |
+| Epithalamus | present | `faculties/habenula` — lateral habenula anti-reward (negative RPE, dopamine opponent via RMTg) |
 | Olfactory pathway | **ABSENT** | `olfactory/` holds only `__init__.py`; `REGIONS` maps 0 modules to it. `olfactory_bulb` and `piriform_cortex` are NOT implemented (corrected 2026-07-28). `spikes.olfactory` is a constant 0.0 and `PROVENANCE` says so |
 | Claustrum | present | `faculties/claustrum` — coincidence-gated cortical synchrony / salience hub |
 | Basal forebrain / neuromodulators | present | `neuromodulation/` — ACh, LC-noradrenaline, raphe-serotonin, astrocyte, cortisol; dopamine in `midbrain` |
@@ -46,7 +46,7 @@ ARAS), and the descending corticospinal path. A self-check asserts the arm actua
 The amygdala threat detector, the basal-ganglia Go/NoGo gate, and the interoceptive-arousal drive are
 wired **live** into the running arm loop (`engine/autonomous_loop.py`, opt-in): the amygdala learns
 which contexts predict danger, the BG gate selects the released action, and the medullary/hypothalamic
-homeostats turn the body's `homeostatic_load` into a bounded caution (`medulla/interoceptive_arousal`
+homeostats turn the body's `homeostatic_load` into a bounded caution (`faculties/interoceptive_arousal`
 via the NTS→LC ascending edge) — all **caution-only**, and the reflex/E-STOP still preempts every
 motor command.
 

@@ -26,13 +26,11 @@ import functools as _functools
 import math
 import random
 
-from snn_data_lake.amygdala.fear_conditioning import Amygdala
 from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
 from snn_data_lake.basal_ganglia.latent_q import LatentQ
 from snn_data_lake.basal_ganglia.mlp_q import MlpQ
 from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.arm_config import CONTACT
-from snn_data_lake.brainstem.cpg_oscillator import MatsuokaCPG
 from snn_data_lake.brainstem.serial_arm import is_valid_command
 from snn_data_lake.brainstem.so101_arm import _DEG as _SO101_DEG
 from snn_data_lake.brainstem.so101_arm import So101Arm
@@ -42,12 +40,14 @@ from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
 from snn_data_lake.cortex.agency_monitor import AgencyMonitor
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.engine.signal_ring import LakeJournaller, SignalRing
+from snn_data_lake.faculties.cpg_oscillator import MatsuokaCPG
+from snn_data_lake.faculties.fear_conditioning import Amygdala
+from snn_data_lake.faculties.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.hippocampus.affective_memory import AffectiveEpisodicStore
 from snn_data_lake.hippocampus.allocentric_map import AllocentricMap
 from snn_data_lake.hippocampus.contrastive_episode_analysis import ContrastiveEpisodeAnalyzer
 from snn_data_lake.infra.brain_bundle import BrainBundle, load_bundle
-from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
 from snn_data_lake.neuromodulation.developmental_envelope import DevelopmentalEnvelope
 from snn_data_lake.neuromodulation.empowerment import Empowerment
@@ -1326,7 +1326,7 @@ class AutonomousArm:
         am = self._amygdala_for(pattern)
         return am.threat(pattern) if am is not None else 0.0
 
-    # distinct-from: medulla/interoceptive_arousal.py -- the ORGAN this method reads (it owns
+    # distinct-from: faculties/interoceptive_arousal.py -- the ORGAN this method reads (it owns
     #   sense()); this is the arm's per-tick read of it. distinct-from: hypothalamus/
     #   homeostatic_drives.py -- the drives producer on the declared insula tract, not read
     #   here. Both sites read.
@@ -1344,7 +1344,7 @@ class AutonomousArm:
         self._last_intero = self.intero.sense(load)
         return self._last_intero["caution"]
 
-    # distinct-from: medulla/interoceptive_arousal.sense() -- the ORGAN'S draw, which advances
+    # distinct-from: faculties/interoceptive_arousal.sense() -- the ORGAN'S draw, which advances
     #   its noise stream; this returns the reading ALREADY taken. Both sites read.
     def interoception(self):
         """This tick's cached interoceptive reading as a plain dict, or {} when opt-out.
@@ -2295,7 +2295,7 @@ class AutonomousArm:
             if self._dopa_on:  # DOPAMINERGIC RPE + opponent anti-reward (representation-only)
                 try:
                     if self._valence is None:  # lazy build of the three spiking source nuclei
-                        from snn_data_lake.epithalamus.habenula import LateralHabenula
+                        from snn_data_lake.faculties.habenula import LateralHabenula
                         from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
                         from snn_data_lake.plasticity.valence_stdp import ValenceLearner
 

@@ -1782,6 +1782,23 @@ def self_check(root):
     with open(os.path.join(source_dir(root), "connectome.py"), encoding="utf-8") as fh:
         conn_text = fh.read()
 
+    # The undeclared-import mutants need a CONNECTOME region with no declared or imported pathway to
+    # cerebellum; the overlay path's first component names the region. Derived from the connectome (G8 M11b),
+    # never spelled as a package path, so a later package move cannot strand it.
+    conn = res["conn"]
+    taken = conn["declared"] | conn["imported"]
+    quiet = next(
+        (
+            r
+            for r in conn["regions"]
+            if r != "cerebellum" and tuple(sorted((r, "cerebellum"))) not in taken
+        ),
+        None,
+    )
+    assert quiet, (
+        "no connectome region is free of a cerebellum pathway -- the undeclared-pair mutants have no home"
+    )
+
     mutations = [
         (
             "private_instance_modules",
@@ -1827,14 +1844,14 @@ def self_check(root):
         ),
         (
             "undeclared_import_pairs",
-            "add an amygdala module importing cerebellum (no declared pathway between them)",
-            {"amygdala/_p6_selfcheck_mutant.py": _MUTANT_UNDECLARED},
+            f"add a module of the {quiet} region importing cerebellum (no declared pathway between them)",
+            {f"{quiet}/_p6_selfcheck_mutant.py": _MUTANT_UNDECLARED},
             None,
         ),
         (
             "undeclared_import_pairs",
             "the SAME wire spelled as a RELATIVE import (was invisible before 2026-08-06)",
-            {"amygdala/_p6_selfcheck_mutant.py": _MUTANT_UNDECLARED_REL},
+            {f"{quiet}/_p6_selfcheck_mutant.py": _MUTANT_UNDECLARED_REL},
             None,
         ),
         (

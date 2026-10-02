@@ -1,10 +1,10 @@
-"""Tests for substrate.region_coherence -- cross-region Kuramoto coherence + integration proxy."""
+"""Tests for faculties.region_coherence -- cross-region Kuramoto coherence + integration proxy."""
 
 import math
 
 import numpy as np
 
-from snn_data_lake.substrate.region_coherence import RegionCoherence
+from snn_data_lake.faculties.region_coherence import RegionCoherence
 
 
 def _sine_window(length, phase, freq=1.0):
@@ -120,6 +120,6 @@ def test_empty_and_single_region_are_safe():
 
 
 def test_selfcheck_main_runs():
-    from snn_data_lake.substrate import region_coherence
+    from snn_data_lake.faculties import region_coherence
 
     region_coherence.main()  # asserts internally; must not raise

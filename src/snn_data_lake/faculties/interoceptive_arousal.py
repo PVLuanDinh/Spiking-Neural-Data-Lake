@@ -42,13 +42,13 @@ feeling. The main loop consumes `caution` CAUTION-ONLY (it biases action selecti
 action); this module computes only bounded scalars. Additive/opt-in; reuses vital_nuclei.py and
 set_points.py.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.medulla.interoceptive_arousal
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.interoceptive_arousal
 """
 
 import math
 
-from snn_data_lake.hypothalamus.set_points import SET_POINT_TEMP, Homeostat
-from snn_data_lake.medulla.vital_nuclei import MedullaVitalNuclei
+from snn_data_lake.faculties.set_points import SET_POINT_TEMP, Homeostat
+from snn_data_lake.faculties.vital_nuclei import MedullaVitalNuclei
 
 
 def declare_ports(manifest):

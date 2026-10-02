@@ -130,7 +130,7 @@ def test_the_exemption_branch_is_reachable_at_all(monkeypatch):
         ("hippocampus.affective_memory.consolidate", True),  # module-qualified, legacy
         ("consolidate", True),  # bare, legacy
         ("hippocampus.affective_memory.SomeOtherClass.consolidate", False),  # a DIFFERENT class
-        ("amygdala.affective_memory.AffectiveEpisodicStore.consolidate", False),  # another module
+        ("faculties.affective_memory.AffectiveEpisodicStore.consolidate", False),  # another module
     ],
 )
 def test_exemption_lookup_precedence(key, suppresses, monkeypatch):

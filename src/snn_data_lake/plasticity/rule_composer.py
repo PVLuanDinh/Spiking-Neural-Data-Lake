@@ -755,14 +755,14 @@ _CENSUS_ADJUDICATED = (
         "expressible -- PROVEN: T050 equivalence via the exported check; T051b-iv deposit through the kernel",
     ),
     ("cortex/learned_evc.py", None, "expressible -- T050 census (value/cost forms)"),
-    ("hypothalamus/homeostatic_drives.py", None, "expressible -- T050 census (drive_reduction)"),
+    ("faculties/homeostatic_drives.py", None, "expressible -- T050 census (drive_reduction)"),
     (
         "plasticity/valence_stdp.py",
         None,
         "needs-pre-collapse -- T050 census (sign-conditional dispatch)",
     ),
-    ("amygdala/fear_conditioning.py", None, "needs-pre-collapse -- T050 census"),
-    ("amygdala/affective_appraisal.py", None, "needs-pre-collapse -- T050 census"),
+    ("faculties/fear_conditioning.py", None, "needs-pre-collapse -- T050 census"),
+    ("faculties/affective_appraisal.py", None, "needs-pre-collapse -- T050 census"),
     ("plasticity/naca.py", None, "needs-pre-collapse -- T050 census"),
     (
         "cerebellum/spiking_jepa.py",

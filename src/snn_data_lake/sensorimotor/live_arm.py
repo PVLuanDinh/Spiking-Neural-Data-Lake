@@ -212,7 +212,7 @@ def _main():
 
     # opt-in: rhythmic bounded joint sweep from the CPG, THROUGH the safety-gated apply() (off by default)
     if "--sweep" in args:
-        from snn_data_lake.brainstem.cpg_oscillator import cpg_sweep
+        from snn_data_lake.faculties.cpg_oscillator import cpg_sweep
 
         trace = cpg_sweep(So101Arm())  # cpg_sweep drives arm.apply() (gated); stops on collision
         print(
@@ -436,7 +436,7 @@ def _main():
     )
 
     # 3. --sweep: CPG rhythmic bounded motion THROUGH the gated apply(), and E-STOP still freezes it.
-    from snn_data_lake.brainstem.cpg_oscillator import cpg_sweep
+    from snn_data_lake.faculties.cpg_oscillator import cpg_sweep
 
     sweep_trace = cpg_sweep(So101Arm(), steps=400)
     assert max(sweep_trace) - min(sweep_trace) > 15.0, "--sweep produced no rhythmic joint motion"

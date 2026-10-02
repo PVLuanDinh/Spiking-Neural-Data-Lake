@@ -2153,7 +2153,7 @@ def _run_ingest(argv):
 #   neuromodulation/intrinsic_motivation.py::observe and neuromodulation/spiking_curiosity.py::
 #   observe -- fold a prediction error into running EMAs. distinct-from:
 #   reasoning/developmental_loop_wm.py::_wm_persistence_probe -- a working-memory hold probe.
-#   distinct-from: substrate/region_coherence.py::record_charge -- measures an A/B and delegates
+#   distinct-from: faculties/region_coherence.py::record_charge -- measures an A/B and delegates
 #   to record_attribution above. All sites read 2026-09-09; the guard matched on "Fold"/"record".
 def stage_key(shards):
     """The pin's key for one stage: how many shards, and which range."""

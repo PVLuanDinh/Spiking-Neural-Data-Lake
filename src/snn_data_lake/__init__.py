@@ -205,7 +205,6 @@ REGIONS = {
         # store. Cross-process round-trip proven: writer pid wrote w=0.77/0.11, a separate reader
         # process read them back after the writer exited.
     ],
-    "amygdala": ["fear_conditioning", "affective_appraisal"],
     "cerebellum": [
         "forward_model",
         "spiking_pid",
@@ -230,7 +229,6 @@ REGIONS = {
         "so101_arm",  # the MuJoCo SO-101 gate; REPLACED arm_sim (specs/004)
         "arm_config",
         "interpreter",
-        "cpg_oscillator",
     ],
     "thalamus": [
         "global_workspace",
@@ -240,7 +238,6 @@ REGIONS = {
         "gwt_deep",
         "interoceptive_relay",
     ],
-    "hypothalamus": ["set_points", "homeostatic_drives"],
     "midbrain": [
         "dopamine_nuclei",
         "superior_colliculus",
@@ -249,13 +246,8 @@ REGIONS = {
     ],
     # specs/022 T054-i: the pons region's first computing module -- the pn mossy relay
     # (the second pons disposition: the package had been anatomy prose only)
-    "pons": ["mossy_relay"],
-    "medulla": ["vital_nuclei", "interoceptive_arousal"],
-    "epithalamus": ["habenula"],
-    "olfactory": [],
     # specs/022 T021a: the insular region opens registration-complete -- the interoceptive
     # cortical terminus of viscera -> nts_rvlm -> thal_relay -> insula -> {gwt, ctx_pfc}.
-    "insula": ["interoceptive_integration"],
     "neuromodulation": [
         "acetylcholine",
         "astrocyte_modulation",
@@ -295,7 +287,6 @@ REGIONS = {
         # specs/022 T056: WM capacity derived, never picked -- K = T_max/t_s from the
         # executive's own synaptic constants + the five FR-020 guards (wm_attractor,
         # T055's standalone store, was ported into prefrontal_executive and DELETED)
-        "wm_capacity",
         "eligibility_algebra",  # specs/022 T050: sum-of-products authoring contract (three-factor rules)
         "rule_composer",  # specs/022 T051a: typed sets + naive-sum red + causal attribution (P8 #3 core)
         "espp_rule",  # specs/022 T052-i: the extracted ESPP palette element (jepa's espp branch delegates)
@@ -346,7 +337,6 @@ REGIONS = {
         "signal_calibrator",  # durable running-quantile of a live signal (Step-0 of data self-recalibration)
         "home",
         "binlog",
-        "region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> GWT ignition bias
         # PROMOTED from the repo root 2026-08-04 under P4c: the daemon is the brain's DRIVE (wake/
         # sleep cycle, tick loop, continuity), not a launcher beside it. It was 370 lines outside the
         # package in no gate, with no self-check and not one assert. `learn_daemon.py` at the root is
@@ -531,6 +521,18 @@ REGIONS = {
     ],
     "faculties": [
         "claustrum",
+        "affective_appraisal",
+        "cpg_oscillator",
+        "fear_conditioning",
+        "habenula",
+        "homeostatic_drives",
+        "interoceptive_arousal",
+        "interoceptive_integration",
+        "mossy_relay",
+        "region_coherence",
+        "set_points",
+        "vital_nuclei",
+        "wm_capacity",
     ],
 }
 

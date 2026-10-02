@@ -2,7 +2,7 @@
 affective_appraisal -- a LEARNED multi-dimensional affective appraisal net (fixes: appraisal is
 not learned).
 
-Generalizes amygdala/fear_conditioning.py's single CS-US three-factor Hebbian BLA readout from ONE
+Generalizes faculties/fear_conditioning.py's single CS-US three-factor Hebbian BLA readout from ONE
 scalar (threat) to a full (valence, arousal) appraisal of an arbitrary latency-encoded feature
 vector (percept + context, concatenated by the caller before it reaches this module). Where
 fear_conditioning binds a CS to one aversive teaching signal (the US) via
@@ -47,7 +47,7 @@ Deterministic: the class holds no RNG of its own (appraise/learn/step are pure f
 inputs and current weights); the training PROTOCOL in the self-check seeds its own local
 random.Random(seed), so two runs with the same seed are identical.
 
-  python -m snn_data_lake.amygdala.affective_appraisal
+  python -m snn_data_lake.faculties.affective_appraisal
 """
 
 import random

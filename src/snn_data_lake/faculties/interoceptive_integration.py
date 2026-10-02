@@ -6,7 +6,7 @@ THE TRACT THIS MODULE TERMINATES (each hop a declared `connectome` edge, T021a):
 afferents through the medullary NTS/RVLM complex, relayed by thalamus into THIS node
 (`insula` in connectome.NODES is this module's anatomical id), projecting onward to the
 global workspace (interoceptive ignition afferent) and prefrontal cortex. The upstream
-modules exist and are charged (`medulla/interoceptive_arousal`, `medulla/vital_nuclei`);
+modules exist and are charged (`faculties/interoceptive_arousal`, `faculties/vital_nuclei`);
 this module is the cortical terminus that was missing.
 
 WHAT IT COMPUTES, minimally and honestly: a running interoceptive STATE -- per-channel
@@ -42,7 +42,7 @@ CLOSED AT T039j, and this paragraph is corrected rather than deleted because it 
 here at T039f and falsified two commits later by the same session -- the comment-outliving-its-
 body shape, authored in the very module it describes. It said `interoception_out` was STILL
 DECLARED EDGE-LESS and that the manifest did not yet say what the anatomy did. It now does:
-`substrate/region_coherence` declares the typed IN port (FR-012/FR-013) the edge needed, and
+`faculties/region_coherence` declares the typed IN port (FR-012/FR-013) the edge needed, and
 `interoception_out -> region_coherence.interoception_in` is declared and charge-measured. The
 ascending half likewise relays through `thalamus/interoceptive_relay` rather than arriving
 straight from the medulla. Charge is MEASURED per edge: two replay-twice A/Bs, each varying ONE producer's
@@ -50,11 +50,11 @@ payload while the other stays constant, so divergence attributes to THAT edge --
 whole-join neuter could not separate the two producers.
 """
 
-# distinct-from: medulla/interoceptive_arousal.py -- the BRAINSTEM half (arousal drive from
+# distinct-from: faculties/interoceptive_arousal.py -- the BRAINSTEM half (arousal drive from
 #   visceral afferents, already charged); this is the CORTICAL terminus computing
 #   deviation-from-baseline salience. distinct-from: cortex/affect_core.py -- valence/arousal
 #   AFFECT dynamics downstream of appraisal; this is upstream body-state integration.
-# distinct-from: hypothalamus/set_points.py -- homeostatic TARGETS; this tracks the brain's
+# distinct-from: faculties/set_points.py -- homeostatic TARGETS; this tracks the brain's
 #   own running statistics, never fixed set-points. All sites read.
 
 from __future__ import annotations

@@ -22,7 +22,7 @@ and (3) hands `ReplayBuffer.replay` an importance-weighted sample instead of a u
   importance(ep) = |valence| + arousal + 0.5*|reward|
 
 WIRING (documented only -- this module edits nothing else):
-  - arousal  <- amygdala.fear_conditioning.Amygdala.threat(cs)           (threat readout, 0..1;
+  - arousal  <- faculties.fear_conditioning.Amygdala.threat(cs)           (threat readout, 0..1;
                 the class name was `FearConditioning` here, which is defined nowhere in the tree --
                 corrected 2026-08-04, the class has always been `Amygdala`)
   - valence  <- cortex.self_model.SelfModel valence-axis, or

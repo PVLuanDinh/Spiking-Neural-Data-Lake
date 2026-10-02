@@ -78,7 +78,7 @@ _PHANTOMS_AT_LANDING: tuple = (
     "ob",
     "pbc",
     "pir",
-    # "pn" RETIRED 2026-08-31 (T054-i): pons/mossy_relay.py is the region's first
+    # "pn" RETIRED 2026-08-31 (T054-i): faculties/mossy_relay.py is the region's first
     # computing module and says its id
     "prf",
     "sc_deep",

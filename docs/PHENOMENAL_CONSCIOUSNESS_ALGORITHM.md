@@ -75,9 +75,9 @@ read.
 | **`brain.py:2149` is the clobber, not a hook** | VERIFIED | `engine/brain.py:2143-2150` recomputes `ignition_threshold` from `base_ignition_threshold` every wake tick, inside `try:` / `except Exception: pass` at `:2115`/`:2151`. It also writes `_v_th = thr / _LEAK` at `:2150`. |
 | `base_ignition_threshold` is documented immutable | VERIFIED | `thalamus/reentrant_workspace.py:105-109`, "kept immutable ... Read this, never re-type the default" |
 | The gate that decides access reads `self.ignition_threshold` | VERIFIED | `thalamus/reentrant_workspace.py:244` |
-| **The workspace is saturated: 100% ignition at every gain** | VERIFIED | `substrate/region_coherence.py:132-137`. Winning drives span [0.668, 1.000] median 0.815; masked drives span [0.086, 0.500] median 0.121, p75 0.167 (`:115-117`). The interval (0.500, 0.668) has never been observed. |
+| **The workspace is saturated: 100% ignition at every gain** | VERIFIED | `faculties/region_coherence.py:132-137`. Winning drives span [0.668, 1.000] median 0.815; masked drives span [0.086, 0.500] median 0.121, p75 0.167 (`:115-117`). The interval (0.500, 0.668) has never been observed. |
 | **The graded access readout is calibrated at the shipped theta** | VERIFIED | `thalamus/reentrant_workspace.py:89-101`. `_ACC_N=32`, `_ACC_LO=0.85`, `_ACC_HI=1.90`, band measured over 360 ignited wake ticks *at theta=0.55*; consumed at `:355-374`. |
-| `IGNITION_GAIN = 0.5` scales the coherence discount on the rheobase | VERIFIED | `substrate/region_coherence.py:103`, consumed `:146`, `:298-303` |
+| `IGNITION_GAIN = 0.5` scales the coherence discount on the rheobase | VERIFIED | `faculties/region_coherence.py:103`, consumed `:146`, `:298-303` |
 | A hardcoded `"drive": 0.5` is one of six inputs to that coherence | VERIFIED | `engine/brain.py:2124` |
 | The endogenous attention port exists and is unused | VERIFIED | `cortex/learned_attention.py:88-101 _goal_gain`, `:116 attend(features, goal=None)`; sole live call `engine/brain.py:1128` passes `goal=None` |
 | **B = 4, not 8** | VERIFIED | `engine/brain.py:814` -- `LearnedAttention(dim=64, n_bands=4, seed=...)` |
@@ -373,7 +373,7 @@ theta_t = the drive at the first sign change of log(p_live(d) / p_surr(d))
 Two draft errors fixed. **Exact equality between two empirical histograms is satisfied by no bin
 almost surely**, so the draft's `max{d : p_live(d) == p_surr(d)}` would have returned its own red on
 every run for numerical reasons. And **the crc32 surrogate does not transfer**:
-`substrate/region_coherence.py:189-194` scatters a *phase* for a silent region so it reads as
+`faculties/region_coherence.py:189-194` scatters a *phase* for a silent region so it reads as
 incoherent. Scattering a post's content label leaves salience untouched, so the drive marginal is
 unchanged and `p_live == p_surr` on every bin. The surrogate must destroy what theta detects:
 **permute which source posted which content across ticks**, at matched per-source marginal salience,

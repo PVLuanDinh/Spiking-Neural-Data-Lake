@@ -684,7 +684,7 @@ design is evidence of consciousness, and neither design is intended to produce a
 * **It does not create an input-free interval, and working-memory attractors still cannot
   charge.** This is declared OUT OF SCOPE with a reason: every gate proposed across the four was
   either a rhythm importing five constants (`MatsuokaCPG`, which additionally imports the SO-101
-  arm at module level in `brainstem/cpg_oscillator.py:17-18`) or a zero-threshold comparison with
+  arm at module level in `faculties/cpg_oscillator.py:17-18`) or a zero-threshold comparison with
   no hysteresis and a modal gap of about 1 tick. Naming the blocker as unaddressed is more honest
   than shipping a gate that fires often and changes nothing.
 * **It does not move `tools/p6_gate.py`'s shipped static count.** That gate counts read SITES by

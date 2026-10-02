@@ -1,7 +1,7 @@
 """
 Interoceptive HOMEOSTATIC DRIVES -- the body's regulated needs as a real perceived state.
 
-Where this sits (the honest gap it closes). medulla/interoceptive_arousal.py already turns visceral
+Where this sits (the honest gap it closes). faculties/interoceptive_arousal.py already turns visceral
 homeostatic error into a single bounded CAUTION scalar -- a hold on action. That is interoception as a
 brake, not as a MOTIVE. It cannot say "I should EXPLORE now" or "I should REST now"; it only says "be
 careful". This module adds the missing half: a small vector of named homeostatic DRIVES (energy /
@@ -61,7 +61,7 @@ drive_reduction.py it does NOT regulate better than a hand-wired controller at t
 of a perceived drive vector is that motivation becomes an INTERNAL, readable state, not that it optimises.
 Per-instance random.Random(seed), ASCII-only, deterministic, no import-time side effects.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hypothalamus.homeostatic_drives
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.homeostatic_drives
 """
 
 import math

@@ -255,7 +255,7 @@ class ReentrantWorkspace:
             self._theta_hold = True  # sticky: only release_theta_hold clears (see docstring)
 
     # distinct-from: sensorimotor/live_arm.py -- HOLD the motor action, not this sweep hold.
-    # distinct-from: amygdala/fear_conditioning.py -- THETA_CEA threat threshold. Read.
+    # distinct-from: faculties/fear_conditioning.py -- THETA_CEA threat threshold. Read.
     def release_theta_hold(self, provenance):
         """THE one release door for the sweep hold (a re-command with default hold_bias
         deliberately does NOT release -- see set_base_rheobase). The per-tick coherence
@@ -263,7 +263,7 @@ class ReentrantWorkspace:
         self._theta_hold = False
         self._theta_provenance = str(provenance)
 
-    # distinct-from: substrate/region_coherence.py -- COMPUTES the biased value
+    # distinct-from: faculties/region_coherence.py -- COMPUTES the biased value
     #   (ignition_bias); this door WRITES it under the authority. Read.
     def coherence_theta(self, thr):
         """Door 3 of the theta authority (see set_base_rheobase): the per-tick coherence

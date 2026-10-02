@@ -28,7 +28,7 @@ is seeded structure, procedurally regenerable from (seed, dims).
 
 Deterministic (per-instance random.Random(seed)); stdlib + the reused LIFNeuron only.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.pons.mossy_relay   # (run by run_selfchecks.py)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.mossy_relay   # (run by run_selfchecks.py)
 """
 
 import math
@@ -96,7 +96,7 @@ class MossyRelay:
 def main():
     line = "=" * 78
     print(line)
-    print("pons/mossy_relay -- the pn stage (specs/022 T054-i): cortico-cerebellar fan-out")
+    print("faculties/mossy_relay -- the pn stage (specs/022 T054-i): cortico-cerebellar fan-out")
     print(line)
     n_ctx = 12
     r1 = MossyRelay(n_ctx, seed=5)

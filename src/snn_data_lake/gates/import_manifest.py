@@ -96,11 +96,7 @@ GOVERNED = (
     "neuromodulation",
     "cerebellum",
     "basal_ganglia",
-    "amygdala",
     "midbrain",
-    "hypothalamus",
-    "medulla",
-    "epithalamus",
     "lakehouse",
     "gates",  # G8 S1a (evidence g8-reorganization.md 2.5 item 6, F15): the package it creates
     "instruments",  # G8 M2: the package created by the instrument move

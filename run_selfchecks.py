@@ -195,8 +195,8 @@ CORE = [
     "infra.self_build_loop",
     "infra.brain_native_selfbuild",
     # amygdala â€” aversive/threat learning (CS-US fear conditioning)
-    "amygdala.fear_conditioning",
-    "amygdala.affective_appraisal",  # C1: learned multi-dim affective appraisal (three-factor)
+    "faculties.fear_conditioning",
+    "faculties.affective_appraisal",  # C1: learned multi-dim affective appraisal (three-factor)
     # cerebellum â€” motor coordination, timing, forward/inverse models, oscillators
     "cerebellum.forward_model",
     "cerebellum.spiking_pid",
@@ -212,7 +212,7 @@ CORE = [
     # two prior audits could record it dormant and nothing was obliged to happen.
     "cerebellum.polychronization",
     "cerebellum.microcircuit",  # T054-i: the tissue (granule/PF/Purkinje/MLI; cb_ctx + cb_deep)
-    "pons.mossy_relay",  # T054-i: the pn stage (the pons region's first computing module)
+    "faculties.mossy_relay",  # T054-i: the pn stage (the pons region's first computing module)
     # brainstem + spinal cord â€” reflexes, actuation, sensorimotor loops, motor pattern generation
     # (the safety envelope lives here)
     "brainstem.reflex",
@@ -226,7 +226,7 @@ CORE = [
     "sensorimotor.closed_loop",
     "engine.autonomous_loop",
     "sensorimotor.signal_loop",
-    "brainstem.cpg_oscillator",
+    "faculties.cpg_oscillator",
     # thalamus â€” the relay + global-broadcast hub (GWT) + reticular attentional gate
     "thalamus.global_workspace",
     "thalamus.reticular_gate",
@@ -238,8 +238,8 @@ CORE = [
     "instruments.binding_instrument",  # T080: the live cross-modal binder's report vs its own re-paired features
     # hypothalamus â€” homeostatic timing (the SCN circadian clock)
     "sleep.circadian_clock",
-    "hypothalamus.set_points",
-    "hypothalamus.homeostatic_drives",  # W8: drives as percepts
+    "faculties.set_points",
+    "faculties.homeostatic_drives",  # W8: drives as percepts
     # midbrain â€” dopamine source nuclei (VTA/SNc RPE) + superior-colliculus orienting + deep gaze layers
     "midbrain.dopamine_nuclei",
     "midbrain.superior_colliculus",
@@ -247,10 +247,10 @@ CORE = [
     "midbrain.multisensory_integration",
     # pons â€” cortico-ponto-cerebellar relay + the ascending reticular activating system (ARAS)
     # medulla â€” the autonomic vital nuclei (respiratory / cardiac CPG) + interoceptive arousal
-    "medulla.vital_nuclei",
-    "medulla.interoceptive_arousal",
+    "faculties.vital_nuclei",
+    "faculties.interoceptive_arousal",
     # epithalamus â€” the lateral habenula (anti-reward / negative RPE)
-    "epithalamus.habenula",
+    "faculties.habenula",
     # olfactory â€” bulb decorrelation + piriform association
     # claustrum â€” cortical synchrony / salience hub
     "faculties.claustrum",
@@ -275,7 +275,7 @@ CORE = [
     "plasticity.inhibitory_stdp",
     "plasticity.intrinsic_plasticity",
     "plasticity.short_term_plasticity",
-    "plasticity.wm_capacity",  # T056: K = T_max/t_s derived + five guards (wm_attractor retired)
+    "faculties.wm_capacity",  # T056: K = T_max/t_s derived + five guards (wm_attractor retired)
     "sleep.developmental_pruning",
     "sleep.structural_rewiring",  # T048: A/A + budget-conservation + MSP sign arms
     "plasticity.eligibility_algebra",  # T050: incumbent bit-equivalence + mis-declaration red
@@ -370,7 +370,7 @@ CORE = [
     "sensorimotor.afferent_boundary",  # 022 T036: sentinel->MISSING + 014-normalizer reuse + proprio neuter A/B
     "sensorimotor.efferent_boundary",  # 022 T037: passage counting + paired copy-cut charge + missing-body honesty
     "instruments.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
-    "insula.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
+    "faculties.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
     "gates.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
     "gates.region_charge_gate",  # 022 T022: registration-never-greens + constructed attribution + non-diverged-charges-nothing
     "gates.atlas_node_gate",  # 022 T024: constructed-phantom red + 7 reference-rule probes incl. both landing false-positives
@@ -378,7 +378,7 @@ CORE = [
     "gates.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "sensorimotor.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "sensorimotor.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
-    "substrate.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
+    "faculties.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
     "growth.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
     "growth.similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
     "instruments.world_red_probe",  # specs/022 W3: 7 wiring reds (pinned constant dead, absent != zero, 4dp decisive, refit gap arithmetic)

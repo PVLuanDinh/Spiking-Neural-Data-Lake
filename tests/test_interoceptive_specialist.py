@@ -20,7 +20,7 @@ import sys
 
 import pytest
 
-from snn_data_lake.insula.interoceptive_integration import (
+from snn_data_lake.faculties.interoceptive_integration import (
     BODY_CHANNELS,
     SPECIALIST,
     InteroceptiveIntegration,

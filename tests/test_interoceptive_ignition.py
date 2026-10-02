@@ -25,8 +25,8 @@ import statistics
 
 import pytest
 
-from snn_data_lake.insula.interoceptive_integration import BODY_CHANNELS
-from snn_data_lake.substrate.region_coherence import RegionCoherence
+from snn_data_lake.faculties.interoceptive_integration import BODY_CHANNELS
+from snn_data_lake.faculties.region_coherence import RegionCoherence
 
 TICKS = 40
 GAIN = RegionCoherence.IGNITION_GAIN

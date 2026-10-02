@@ -33,7 +33,7 @@ P1 -- NO NEW CONSTANT. Transmission is `m + (1 + h*novelty) * rise`, where `m` i
 own running mean, `rise` its excess over that mean, `novelty` the excess of `rise` over the
 channel's own running mean OF RISES, and `h` in [0, 1] the available de-inactivation. Every term is
 one of the brain's own running statistics, and the ONE rate is DERIVED from a stated horizon
-exactly as `insula/interoceptive_integration` derives its alpha -- `alpha = 2 / (horizon + 1)`,
+exactly as `faculties/interoceptive_integration` derives its alpha -- `alpha = 2 / (horizon + 1)`,
 same default horizon, so the two hops of this tract share one time base instead of two tuned ones.
 The amplification factor is bounded by 2 STRUCTURALLY (both `h` and `novelty` are in [0, 1]), not
 by a chosen ceiling.
@@ -122,7 +122,7 @@ def _visceral_consumer_factory():
     from snn_data_lake.engine.wiring_manifest import WiringManifest
 
     m = WiringManifest()
-    from snn_data_lake.medulla.interoceptive_arousal import declare_ports as _producer_ports
+    from snn_data_lake.faculties.interoceptive_arousal import declare_ports as _producer_ports
 
     _producer_ports(m)
     declare_ports(m)
@@ -159,7 +159,7 @@ def _measure_edge_charge():
     return live, pinned_out, reads, post > max(pre * 2, 0.05)
 
 
-# distinct-from: insula/interoceptive_integration.record_charge -- that measures the two edges
+# distinct-from: faculties/interoceptive_integration.record_charge -- that measures the two edges
 #   landing ON the terminus; this measures the one edge landing on the HOP BEFORE it. Both
 #   delegate to port_charge_probe.record_attribution, THE one writer. Read.
 def record_charge():
@@ -188,8 +188,8 @@ def record_charge():
 #   gain redistribution across channels); this is the RELAY ITSELF and its transmission mode. Its
 #   own docstring draws the line: "the thalamus is a RELAY, but the TRN is what makes it a GATE".
 # distinct-from: thalamus/connectome_router.py -- routes by declared topology, transmits nothing.
-# distinct-from: insula/interoceptive_integration.py -- the cortical TERMINUS, computing deviation
-#   from baseline; this is the hop BEFORE it. distinct-from: medulla/interoceptive_arousal.py --
+# distinct-from: faculties/interoceptive_integration.py -- the cortical TERMINUS, computing deviation
+#   from baseline; this is the hop BEFORE it. distinct-from: faculties/interoceptive_arousal.py --
 #   the SOURCE that senses the body. All sites read.
 class InteroceptiveRelay:
     """Tonic/burst thalamic transmission of the ascending visceral pair."""
@@ -343,11 +343,11 @@ def main() -> int:
     # see. Both pairs are DECLARED, which is what makes these imports legal here when the insula
     # importing the medulla directly was not: that created (medulla, insula), which the connectome
     # declares no route for, and the undeclared-pairs ratchet reddened exactly as designed.
-    from snn_data_lake.insula.interoceptive_integration import (
+    from snn_data_lake.faculties.interoceptive_arousal import InteroceptiveArousal
+    from snn_data_lake.faculties.interoceptive_integration import (
         BODY_CHANNELS,
         InteroceptiveIntegration,
     )
-    from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 
     organ = InteroceptiveArousal(seed=0)
     quiet_v = organ.sense(0.0)

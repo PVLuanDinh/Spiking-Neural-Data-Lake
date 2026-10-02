@@ -436,7 +436,7 @@ EXEMPT = {
     # the unique capability (the decoupled u/tau_f retention vs R/tau_d release pair, its
     # elapsed-time bookkeeping, and the neuter idiom) is PORTED into
     # cortex/prefrontal_executive, the capacity is DERIVED there (K = T_max/t_s,
-    # plasticity/wm_capacity, five guards), and the file is gone. Exactly one mechanism
+    # faculties/wm_capacity, five guards), and the file is gone. Exactly one mechanism
     # survives; the full record lives in wm_capacity's docstring and specs/022 tasks.md.
     # genomic_bottleneck left this table 2026-09-02: the FR-033 wire it named landed at
     # 847c5f6a (the engine imported it; NGSNN.fit read the map through a candidate hook), its

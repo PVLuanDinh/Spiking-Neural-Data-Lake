@@ -6,7 +6,7 @@ computes near BOTH "cb_ctx" (the cerebellar cortex: granule/PF/MLI/Purkinje stag
 here on purpose: naming them is what retires the atlas-gate's day-one phantom rows.
 
 WHAT IT IS (Marr 1969 / Albus 1971, the expansion-recoding theory; anatomy as spec):
-mossy fibres (delivered by pons/mossy_relay -- the `pn` stage) fan INTO a much larger
+mossy fibres (delivered by faculties/mossy_relay -- the `pn` stage) fan INTO a much larger
 granule population; each granule cell carries FOUR dendrites (the cited anatomical fact:
 granule cells have 4-5 dendrites, Eccles/Ito/Szentagothai 1967) and fires only on near-
 coincidence of its inputs ON A PHASIC STEP FROM REST -- under sustained drive the leaky
@@ -453,7 +453,7 @@ def main():
             assert out["deep"] == mossy_rate, "a silent Purkinje must leave the deep drive"
     assert pk_steps > 0, "the driven tissue must fire Purkinje at least once in 120 steps"
     # (7) PONS INTEGRATION end-to-end: ctx -> pn relay -> tissue -> deep, deterministic
-    from snn_data_lake.pons.mossy_relay import MossyRelay
+    from snn_data_lake.faculties.mossy_relay import MossyRelay
 
     def _e2e():
         relay = MossyRelay(8, seed=3)

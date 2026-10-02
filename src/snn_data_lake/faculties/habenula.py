@@ -35,7 +35,7 @@ cognition; it is additive/opt-in and changes no existing behaviour.
 Credit: Matsumoto & Hikosaka 2007 (LHb encodes negative reward signals); Jhou et al. 2009 (RMTg);
 Schultz, Dayan & Montague 1997 (reward-prediction-error dopamine).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.epithalamus.habenula
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.habenula
 """
 
 import random

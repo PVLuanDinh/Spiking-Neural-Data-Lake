@@ -1,7 +1,7 @@
 r"""
 Homeostatic DRIVE-REDUCTION reward -- L9 / SI-2: close the set-point loop (Keramati & Gutkin).
 
-Where this sits. hypothalamus/set_points.py holds regulated variables at target values and reports a
+Where this sits. faculties/set_points.py holds regulated variables at target values and reports a
 signed SET-POINT ERROR (error = set_point - sensed) that its own hand-designed negative-feedback
 controller drives to zero. That controller never LEARNS -- it is simply wired to correct. This module
 closes the loop the other way: it turns the set-point error into a REWARD a policy can LEARN from, so
@@ -49,7 +49,7 @@ honest value is not better regulation -- it is that goal-directed action arises 
 with ZERO external reward, the learning primitive the hand-wired controller can never provide.
 
 Reuses (does not reimplement): cortex/lif_neuron.LIFNeuron (the need pool + the non-spiking membrane
-control), hypothalamus/set_points.Homeostat (the signed set-point error / the honest-negative baseline
+control), faculties/set_points.Homeostat (the signed set-point error / the honest-negative baseline
 controller), plasticity/valence_stdp.ValenceLearner (the value/RPE channel + three-factor plasticity
 the reward feeds), substrate/_mathutils.mean. Per-instance random.Random(seed), ASCII-only,
 deterministic.
@@ -59,8 +59,8 @@ deterministic.
 
 import random
 
+from snn_data_lake.faculties.set_points import Homeostat
 from snn_data_lake.growth.lif_neuron import LIFNeuron
-from snn_data_lake.hypothalamus.set_points import Homeostat
 from snn_data_lake.infra._mathutils import mean
 from snn_data_lake.plasticity.valence_stdp import ValenceLearner
 from snn_data_lake.sensorimotor.spike_preprocessing import N as N_FEATURES

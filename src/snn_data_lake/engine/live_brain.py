@@ -1550,7 +1550,7 @@ def _main():
         "some region must be spiking after a few ticks + a safety turn"
     )
     assert dsnap["amygdala"] > snap["amygdala"] or dsnap["brainstem"] > snap["brainstem"], (
-        "a danger tick must raise the amygdala/brainstem spike activity (the snapshot responds to input)"
+        "a danger tick must raise the amygdala or brainstem spike activity (the snapshot responds to input)"
     )
 
     brain.arm.lake_wm.close(remove=True)  # clean up the temp lake files
