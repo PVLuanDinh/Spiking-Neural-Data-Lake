@@ -11,7 +11,7 @@ Delays SHINE on temporal (audio) data, so the target is SHD (Spiking Heidelberg 
 tonic); it FALLS BACK to N-MNIST (via reasoning/ng_snn/data.py) and to a self-contained SYNTHETIC
 temporal dataset (no download) so the trainer runs standalone for the CPU smoke.
 
-Bridge to the zero-dep core (mirrors jepa_scaffold_torch.py -> cerebellum/jepa_world_model.py):
+Bridge to the zero-dep core (mirrors jepa_scaffold_torch.py -> faculties/jepa_world_model.py):
   * the DCLS delay is a 1-D conv over TIME whose kernel is a Gaussian bump at a learnable position P
     (the delay). sigma is annealed during training; at FINALIZE the bump becomes a Dirac at round(P),
     i.e. an INTEGER tap -- exactly the integer delay the pure-stdlib core reads from its ring buffer.

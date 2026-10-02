@@ -3,15 +3,15 @@
 
 WHY THIS EXISTS, and why the obvious instrument is forbidden. The e-prop invariant is
 review-enforced with NO GATE, and `docs/POLICIES.md` says exactly why the easy one was never built:
-*"a `.backward()` tripwire would be theatre: it passed green while `cerebellum/jepa_world_model.py`
+*"a `.backward()` tripwire would be theatre: it passed green while `faculties/jepa_world_model.py`
 performed explicit weight transport on every wake tick ... Absence of `.backward()` is not evidence
 of locality."* `tools/promotion_sweep.py`'s `BACKPROP_MARKERS` is that substring grep, it has no
 `--assert`, and it scans only OUTSIDE the governed tier.
 
 What the invariant forbids is WEIGHT TRANSPORT: a forward weight, read transposed, carrying error
 into a weight update. Today exactly two modules police that, each scoped to itself --
-`cerebellum/jepa_world_model.py` inside `_feedback_gz`, and `cerebellum/spiking_jepa.py`. NEITHER
-CAN SEE A THIRD MODULE, which is how `basal_ganglia/mlp_q.py` sat in `run_selfchecks.py` passing
+`faculties/jepa_world_model.py` inside `_feedback_gz`, and `faculties/spiking_jepa.py`. NEITHER
+CAN SEE A THIRD MODULE, which is how `faculties/mlp_q.py` sat in `run_selfchecks.py` passing
 while performing transport, self-declared in its own docstring and absent from the policy record for
 the nine days it took an audit to find it.
 
@@ -37,7 +37,7 @@ W5 WAS BUILT, MEASURED, AND REJECTED, and it is recorded because it looked bette
 W5 asked a wider question -- does this function update weight A while reading a DIFFERENT weight B?
 -- which catches credit assignment regardless of spelling. It scored **6 of 6** on the
 reconstructions below, including the one W4 misses. On this tree it scored **59**, and among the 59
-was `basal_ganglia/mlp_q.py::update` ITSELF -- the module whose transport was retired. That is not a
+was `faculties/mlp_q.py::update` ITSELF -- the module whose transport was retired. That is not a
 tuning problem, it is structural: every local rule reads its own forward weights to compute its own
 error, and the shipped Kolen-Pollack rule legitimately reads a SECOND matrix `B`. Whether reading a
 second matrix is transport depends on how that matrix is MAINTAINED (`B` receives the same increment
@@ -143,7 +143,7 @@ class AmbiguousDisposition(Exception):
     Refusing is the only honest answer. A finding carries the ENCLOSING FUNCTION name (`update`),
     while the registry keys the QUALIFIED symbol (`LatentQ.update`), so the two cannot always be put
     in correspondence. MEASURED on this tree: 4 modules carry one bare method name on two or more
-    classes, and 2 of those disagree -- `basal_ganglia/latent_q` declares `LatentQ.update` LOCAL and
+    classes, and 2 of those disagree -- `faculties/latent_q` declares `LatentQ.update` LOCAL and
     `_TabularQ.update` CONTROL; `cortex/reasoning_curriculum` declares `MemorizationLearner`'s
     CONTROL and `ReasoningLearner`'s LOCAL. A resolver that picked one would be wrong in both, and
     silently -- which is worse than the gate refusing to answer.
@@ -309,7 +309,7 @@ def _findings_in(fn):
     return out
 
 
-# distinct-from: cerebellum/spiking_jepa.py -- serializes weight VALUES to JSON; this reads a
+# distinct-from: faculties/spiking_jepa.py -- serializes weight VALUES to JSON; this reads a
 #   SOURCE TREE and never touches a live weight. distinct-from: readout/snn_moe_classifier.py -- its
 #   "gate weights" are softmax scores over experts, not a matrix. distinct-from:
 #   sleep/developmental_pruning.py -- its (class, index) pairs enumerate LIVE synapses; these
@@ -467,7 +467,7 @@ def main(argv=None):
     # Printed on EVERY run, not buried in the docstring: a gate that reports 0 and does not say what
     # it cannot see gets read as a proof of compliance, which this is not.
     print("  BLIND SPOT, stated so a green is not over-read. The FIRST rule keys on an EXPLICIT")
-    print("  transpose, and the transport retired from basal_ganglia/mlp_q.py was spelled by")
+    print("  transpose, and the transport retired from faculties/mlp_q.py was spelled by")
     print("  SINGLE-ROW INDEXING -- 'w2i = W2[a]' then 'dh = err * w2i[j]' -- with no '.T' and no")
     print("  reversed index PAIR, so neither rule here catches that spelling. The wider rule that")
     print("  would was built, scored 59 findings including mlp_q's own SHIPPED fix, and was")

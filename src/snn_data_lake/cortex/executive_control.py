@@ -40,7 +40,7 @@ The three faculties (Botvinick, Braver, Cohen 2001; Shenhav, Botvinick, Cohen 20
 P6 -- WHAT THIS FACULTY CONSUMES AND WHAT CONSUMES IT, re-derived at runtime 2026-08-05 rather than
 assumed, because the brief this pass started from said "read by nobody" and that is false:
 
-  CONSUMES  cerebellum/jepa_world_model -- `plan_sequence` is called live with `transition_fn =
+  CONSUMES  faculties/jepa_world_model -- `plan_sequence` is called live with `transition_fn =
             jepa.predict` and `value_fn = jepa.make_goal_value(z_goal)`, so the search runs over
             another faculty's LEARNED latent world model, not over developer estimates.
             cortex/learned_evc -- the live `evc()` call takes its `cost` and `value_gain` from the

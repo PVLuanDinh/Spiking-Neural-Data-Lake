@@ -1,4 +1,4 @@
-"""The predictor bound has ONE body (cerebellum/jepa_world_model.bound_rows; the live-floor arc's
+"""The predictor bound has ONE body (faculties/jepa_world_model.bound_rows; the live-floor arc's
 commit A, 2026-09-05). Commit A landed on byte-identity of both module self-checks and an archived
 planted cell -- and in all three the row-scaling branch fired 0 times (max row-abs-sum 1.735
 against rho_max 4.0), so that evidence covered only the decay path (the record panel's INT-A1).
@@ -9,7 +9,7 @@ inverted factor) is caught.
 
 import random
 
-from snn_data_lake.cerebellum.jepa_world_model import bound_rows
+from snn_data_lake.faculties.jepa_world_model import bound_rows
 
 
 def _removed_jwm(Wz, rho_max, wd):  # verbatim: JepaWorldModel.train_step at 4bae53a

@@ -420,12 +420,12 @@ nothing about the forward it exists to run.**
 
 #### GAP 3c -- the re-typed literal. CLOSE NOW, one line.
 
-`src/snn_data_lake/thalamus/reentrant_workspace.py:383` re-types `ignition_threshold=0.55` in
+`src/snn_data_lake/faculties/reentrant_workspace.py:383` re-types `ignition_threshold=0.55` in
 `run_stream`'s signature, against that module's own instruction at `:107-108` ("Read this, never
 re-type the default"). Confirmed present. This is an uncited fourth site;
 `PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md:74` lists three.
 
-- **Falsifier:** `python -m snn_data_lake.thalamus.reentrant_workspace` stays green.
+- **Falsifier:** `python -m snn_data_lake.faculties.reentrant_workspace` stays green.
 - **Cannot distinguish:** nothing to distinguish; this is strictly constant-*removing*.
 - **Approval:** none.
 
@@ -579,7 +579,7 @@ observable behaviour.
 `present = sp > rt + 0.15` at `consciousness_probe.py:84`. Adding a precision term moves `sp` and
 `rt` and leaves `0.15` underived. **The P1 finding survives the closure filed against it.**
 
-- **Files:** `src/snn_data_lake/thalamus/global_workspace.py` (decoder and scorer);
+- **Files:** `src/snn_data_lake/faculties/global_workspace.py` (decoder and scorer);
   **`src/snn_data_lake/reasoning/consciousness_probe.py:84` is a required co-edit, not a
   bystander**; `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md`.
 - **Pre-registration, before anything runs:** name the combination rule *and its justification*,
@@ -800,7 +800,7 @@ smallest per-joint shove exceeding `_droop_tolerance()[j]`, which is computed ra
 
 **Correction to a claim in the program:** "`deviation` and `trajectory_breach()` have zero live
 consumers" is falsifiable by a grep. `trajectory_breach()` has one caller,
-`cerebellum/spiking_pid.py:240`, immediately after `inject_disturbance` in the same loop iteration.
+`faculties/spiking_pid.py:240`, immediately after `inject_disturbance` in the same loop iteration.
 "No *production* consumer" is the right claim -- and it sharpens the `_settled` finding, because
 that one reader works **only** because it reads before the next `apply()` re-baselines. The
 signal's lifetime is one statement and the sole reader sits inside it.

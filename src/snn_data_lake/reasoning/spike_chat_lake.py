@@ -55,7 +55,7 @@ from snn_data_lake.reasoning.lake_reason import Reasoner
 from snn_data_lake.reasoning.train_of_thought import TrainOfThought
 from snn_data_lake.sensorimotor.world_kb_stream import load_kb
 from snn_data_lake.substrate.home import KnowledgeLog, banner, home
-from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
+from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 
 _STOP = {
     "what",
@@ -207,7 +207,7 @@ _REASONING_SEED = [
 # P1 -- WHAT THE BRAIN SAYS was arbitrated by a hand-tuned ladder of ABSOLUTE salience numbers
 # (0.95 / 0.9 / 0.6 / 0.55 / 0.5 / 0.45 / 0.30) submitted into the global workspace. The workspace's
 # rheobase -- the drive current above which a content pool ignites -- is 0.55 and it lives in ANOTHER
-# module (`thalamus/global_workspace.py`). Every number in that ladder only ever meant "0.55 plus or
+# module (`faculties/global_workspace.py`). Every number in that ladder only ever meant "0.55 plus or
 # minus something": 0.30 meant SUBLIMINAL, 0.9 meant IGNITES, 0.45 + 0.3*score was reverse-engineered
 # so a chat memory crossed 0.55 at score 0.34. That is a cross-module FAIL-GREEN: move
 # GlobalWorkspace's threshold and this file's honest-gap path silently becomes a confident answer with

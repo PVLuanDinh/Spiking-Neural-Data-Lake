@@ -1,4 +1,4 @@
-"""Regression tests for ReentrantWorkspace.access_strength (thalamus/reentrant_workspace.py).
+"""Regression tests for ReentrantWorkspace.access_strength (faculties/reentrant_workspace.py).
 
 The measure is documented as GRADED. It previously was not: a single pool's sustained firing RATE is
 capped at one spike per micro-step, and every drive the brain produces sits far above threshold, so
@@ -8,7 +8,7 @@ that the docstring claims.
 Run: pytest tests/test_access_strength_graded.py
 """
 
-from snn_data_lake.thalamus.reentrant_workspace import ReentrantWorkspace
+from snn_data_lake.faculties.reentrant_workspace import ReentrantWorkspace
 
 
 def _strength_at(drive):

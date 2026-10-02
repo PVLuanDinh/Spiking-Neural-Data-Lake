@@ -163,7 +163,7 @@ def accumulate_anticausal(e, pairs, a_minus=A_MINUS, tau_minus=TAU_MINUS):
 #   input, nothing fires, and the quantity that decays is a per-synapse trace.
 # distinct-from: growth/neuron_zoo.py::NeuronZoo.make -- a factory returning objects that expose
 #   step(current)->0/1; it builds the things above and owns no formula at all.
-# distinct-from: cerebellum/spiking_jepa.py::_forward -- runs an event retina and a 2-layer
+# distinct-from: faculties/spiking_jepa.py::_forward -- runs an event retina and a 2-layer
 #   recurrent LIF backbone, recording per-timestep spikes and PRE-RESET MEMBRANES because its own
 #   eligibility trace needs them. It is a forward pass that PRODUCES the inputs a trace is built
 #   from; this is the one line that ages a trace already built.
@@ -334,7 +334,7 @@ def consume_dopamine(consumer, n_synapses=4, seed=0):
     tonic rate (d = rate - tonic; tonic = f4-quantized phasic(0.0), the producer's stated
     rpe=0 point on the frame grid -- no constant picked here). Returns
     [(tick, total_weight), ...]. LOSS IS FATAL."""
-    from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
+    from snn_data_lake.faculties.dopamine_nuclei import DopamineNuclei
 
     tonic = _f4(DopamineNuclei(seed=seed).phasic(0.0))
     nrn = RSTDPNeuron(n_syn=n_synapses, seed=seed)
@@ -355,7 +355,7 @@ def _da_frames(n_ticks=60, acquire_until=40, seed=0):
     """Recorded frames from a REAL DopamineNuclei learning a cue->reward chain: early
     trials emit a big RPE at reward (unexpected), late trials a cue burst and ~tonic at
     reward (acquired) -- the classic TD transfer, one phasic rate per tick."""
-    from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
+    from snn_data_lake.faculties.dopamine_nuclei import DopamineNuclei
 
     nuc = DopamineNuclei(seed=seed)
     trial = [("ITI", 0.0), ("CUE", 0.0), ("REWARD", 1.0)]
@@ -373,8 +373,8 @@ def _measure_da_charge():
     rpe=0 broadcast -- a dopamine system that never signals an error). -> (live,
     pinned_out, reads, responded): `responded` = the TD-extinction signature INSIDE the
     live arm (see the in-body comment; the criterion earned this shape by failing)."""
+    from snn_data_lake.faculties.dopamine_nuclei import DopamineNuclei
     from snn_data_lake.instruments.port_charge_probe import replay_twice
-    from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
 
     # WITHIN-LIVE-ARM structural predicate (review BLOCKER: the first form compared
     # against the pin's arithmetically-zero movement, collapsing to `moved > 0` -- a

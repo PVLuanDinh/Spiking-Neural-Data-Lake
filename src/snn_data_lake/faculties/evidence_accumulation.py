@@ -61,7 +61,7 @@ the module refuses to call the wire live unless the arms diverge with every fram
 (the region charge gate's evidence; regenerating it is that mode's ONLY caller -- the
 self-check only reads and re-measures, so a battery run can never republish the artifact).
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.basal_ganglia.evidence_accumulation
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.faculties.evidence_accumulation
 """
 
 import random

@@ -1851,7 +1851,7 @@ def _move(mover: Path, tree: Path, spec: str) -> str:
 # distinct-from: __init__.py -- package_of answers the RUNNING package's live table; _plant_move
 #   reads a temporary COPY's tables to decide whether a red's module still needs its planted move.
 #   Also read: readout/interaction_learning.py (_g0c_translate maps a stored class path on restore),
-#   gates/selfcheck_cache.py (tree derivation), cerebellum/spiking_jepa.py (a modulator), and --
+#   gates/selfcheck_cache.py (tree derivation), faculties/spiking_jepa.py (a modulator), and --
 #   read only -- brainstem/so101_arm.py (droop): none plants a move or edits a copy.
 def _plant_move(mover: Path, tree: Path, base: str) -> str:
     """Move `base` in the temporary copy `tree` as its own stage will, through MOVER (2.5), unless

@@ -3632,3 +3632,177 @@ in the background beside the other checks.
 NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed (the tree is
 staged), no daemon was started and the live lake was not opened. The `slow`-marked tests were deselected from the bounded
 pytest (`-m 'not slow'`), so they stay owed to the battery. G8-3's panel, fold and one battery remain owed.
+
+### 3.31 M11d predeclared faculties move: cerebellum, thalamus, basal ganglia and midbrain (Claude, G8-3, 2026-10-02)
+
+The M11d parent is `1cb2c95a` (branch `claude/g8-3`, one writer, clean at the start). Its clean export completed the
+24-gate, seven-probe, 30-registry census with every gate rc 0 (pre census SHA-256 begins `2E26A1C571EAF67C`, taken with
+`SNN_ALIAS_STRICT=1`, 113.8 s). The frozen 2.12 map, read by the frozen mover (sha256 prefix `b49e982a`), moves 24
+modules into the existing `faculties/` package from four packages (frozen-map names `expected_M11d.json`,
+`6DD3C013B9D94193`, the same 24 as the orchestrator's dry run): `basal_ganglia` 5 (`action_gating`, `brain_decision`,
+`evidence_accumulation`, `latent_q`, `mlp_q`), `cerebellum` 9 (`forward_model`, `gain_adaptation`, `hjepa_serve`,
+`jepa_world_model`, `microcircuit`, `polychronization`, `spiking_jepa`, `spiking_pid`, `synfire_chain`), `midbrain` 4
+(`dopamine_nuclei`, `multisensory_integration`, `sc_deep_layers`, `superior_colliculus`) and `thalamus` 6
+(`connectome_router`, `global_workspace`, `gwt_deep`, `interoceptive_relay`, `reentrant_workspace`, `reticular_gate`).
+All 24 are core tier: `TORCH_TIER` and `TRAIN_TIER` are AST-equal before and after and none of the 24 sits in an annex.
+The mover re-keyed `REGIONS` (four keys out, `faculties` 35 to 59 members) and the runner's names, deleted the four
+emptied directories with their `__pycache__/` (absent on disk afterwards) and rewrote 55 files (66 imports, 51 strings;
+its report line equals the orchestrator's dry run exactly). The live-citation rewriter (kept out of
+tree) pass 1 rewrote 128 live files, 366 citations; pass 2 (member form) 17 files, 23 citations. Pass 1 printed the
+envelope carve-out, verbatim: `envelope files skipped (would have matched; F11 carve-out):
+{'src/snn_data_lake/brainstem/so101_arm.py': 3}` (lines 602, 603 and 607, which cite `gwt_deep`,
+`reentrant_workspace` and `gain_adaptation` by their retired paths); pass 2 skipped none. Those three lines are F11's
+M11d carve-out: they dangle by design, are never edited, and BROAD rises by exactly their three citations.
+
+Row items, each verified: `dormancy_gate._LIVE_ROOTS` now reads `reentrant_workspace` under `faculties` (the mover);
+`method_dormancy_gate.EXEMPT_METHOD`'s four keys (`spiking_jepa`'s two `train_step`, `latent_q`'s two `update`) and the
+prose paths inside their reasons were re-pointed (mover and rewriter); `docs/POLICIES.md`'s five citations (lines 166,
+214, 215, 1041 and 1049: both workspace modules, and the e-prop register sites `jepa_world_model` and `mlp_q::MlpQ.update`)
+were re-pointed word-neutrally by the rewriter, `doc_budget_gate` printing byte-identical output over the parent export
+and the built tree (POLICIES 14,352 of 14,362), and `python -m snn_data_lake.gates.policy_manifest --manifest --write`
+regenerated `tools/policy_manifest.json` byte-identical (it carries no M11d path), after which `--assert` read rc 0;
+`manifest_gate.REGISTRANTS` five rows and `brian2_backend.CUSTOM_KERNELS` (`spiking_pid`, `gwt_deep`) were re-pointed by the
+mover; the two SCOPE commands (`docs/GAP_CLOSURE.md`, `docs/JEPA.md`) by the rewriter, the document command guard
+reading 67 runnable, 0 unrunnable; `tools/p6_gate.py`'s `ROLES`, `KNOWN_WRITERS` and `KNOWN_READERS` keys for
+`global_workspace` and `reentrant_workspace` (six keys) were re-pointed by the rewriter and end on the `faculties` paths
+(the p6 self-check below reads no `missing`); `thalamus`' own local `REGIONS` tuple in `faculties/global_workspace.py`
+(line 680, five labels) is untouched (2.5 item 2). `tools/rule_census.json` was regenerated ONLY through
+`python -m snn_data_lake.plasticity.rule_composer --regen-census`, after the rewriter re-pointed
+`_CENSUS_ADJUDICATED`'s one M11d entry (`spiking_jepa`): 104 rows and 56 undispositioned as before, ten rows re-keyed with
+equal bodies, nothing else changed. By hand: `import_manifest.GOVERNED` lost `thalamus`, `cerebellum`, `basal_ganglia` and
+`midbrain` (F15; EOL kept; `faculties` stays). `_LEGACY_PKGS` was derived by running the alias layer, not guessed: it prints
+`amygdala`, `basal_ganglia`, `cerebellum`, `claustrum`, `epithalamus`, `hippocampus`, `hypothalamus`, `insula`, `medulla`,
+`midbrain`, `neuromodulation`, `olfactory`, `pons`, `thalamus` (14), with `_MOVED` still 287 and `_LEGACY` 220 (196 plus
+the 24 new); `tests/test_g8_move_gate.py` pins that set as a literal and now reads the fourteen names (the docstring, one
+comment and four names; no logic). `atlas_node_gate` (F7): a helper `_member_file()` now holds the `module_path()` join its
+`node_references()` already spelled inline, `node_references()` calls it, and the self-check's two package-directory sites
+(the constructed-phantom corpus, formerly `SRC / "thalamus"`'s files, and the import-io hazard scan over the cerebellum's
+members, formerly `REGIONS.get("cerebellum")` and `SRC / "cerebellum"`) take their corpora from the frozen-label members
+through it and fail loudly when a corpus is empty (the thalamus corpus resolves 8 files and the cerebellum corpus 10;
+without the assert both sites would have gone vacuous once the directories were gone). Its census line is unchanged: the
+gate's assert and self-check outputs are byte-identical on the parent export and the built tree (run on both as a check of
+the hand edit, not as a census).
+
+Before any M11d post-move gate run, and AFTER `move_gate --c2d` had been run over the staged built tree (M11b's lesson),
+the C1 delta was written to the out-of-tree `declared_M11d.json` (SHA-256 begins `371469077F3E7DC4`). It forecasts 14
+changes: the brain atlas (the `basal_ganglia` 5, `cerebellum` 9, `thalamus` 6 and `midbrain` 4 rows and the old
+`faculties` 35 row leave, `faculties` 59 joins; TOTAL 18 to 14 regions and the self-check line likewise, 299 modules and
+287 legacy import paths unchanged), generated by the AST-literal script from the candidate tree against the parent export
+after its print format reproduced every parent row; the parsed-file counts, which fall by four because four `__init__.py`
+leave and none joins (`src/snn_data_lake` `.py` files 440 to 436, so `eprop_transport_gate`'s two lines,
+`gradient_claim_gate`'s files-parsed line and `p6_gate`'s scanned line, and the P4c scaffold count 29 to 25), counted over
+the parent export (reproducing 440 and 29) and then the candidate; citation BROAD 2293/311 to 2407/314, forecast statically
+with the guard's own parser and resolver (reproducing 2293/311 on the parent): 101 pairs added and 14 removed, 84 added in
+frozen documents and 17 in live files, of which THREE are the envelope carve-out (`so101_arm.py`), THIRTEEN are
+relocations of one historical citation each (the text moved with its module; 13 matching removals) and ONE is the
+hypothetical overlay path of `tools/p6_gate.py`'s self-check (a C2(d) fix, below, at net zero with its removal), so live
+files gain exactly the three carve-out citations and no other; and the names `REGIONS.keys` and `import_manifest.GOVERNED`,
+each losing the four emptied packages. A declared '-' line is asserted to be a line of the pre census before the file is
+written. The real `citation_guard` over the built tree read the forecast exactly (BROAD 2407 across 314 files, STRICT 0
+unexempted, rc 0).
+
+**No halt, no amendment.** The first post census (over an export of the staged worktree, strict) completed 24 gates and
+seven probes, all rc 0 (post census SHA-256 begins `18A6FB99D02BFBC8`, observed delta `E7D372632EC54FB4`, 114.0 s), and C1
+said the diff equals the declared delta (14 declared changes). A second census over a fresh export, taken after the one
+comment-only test edit below, read the same: all rc 0, the observed delta byte-identical (`E7D372632EC54FB4`; post census
+SHA-256 begins `3F4AB0B51F18B6D5`, 116.6 s). A third census over a fresh export, taken after this record was appended,
+read the same again (all rc 0, observed delta `E7D372632EC54FB4`, post census SHA-256 begins `599B9E3A8494D608`, 113.3 s;
+BROAD, the document commands and the document budget unchanged by the record).
+
+Items beyond the row, each required by the frozen procedure or by what the checks prove, recorded:
+- **Five C2(d) findings on the built tree, run BEFORE the declaration, fixed by four edits, none in the row.** (1) The
+  `dormancy_gate` EXEMPT reason of `gwt_deep` said "promoted reasoning/ -> thalamus/ 2026-08-11" (a path-prefix string): it
+  now says the thalamus package and that the module is now under `faculties/`. (2) `infra/brain_native_selfbuild.py`'s
+  DEHARDCODE transform replacement text cited the member form `basal_ganglia/brain_native_selfbuild.RunningBaseline`, an
+  M4 leftover that no earlier rewriter pass could see: re-pointed to its real home under `infra/` (the text it writes into
+  source). (3) `tools/p6_gate.py`'s self-check built its undeclared-pair mutant as a module importing the retired
+  `snn_data_lake.cerebellum` package (one finding) and put its two new-faculty mutants under the retired `cerebellum/` overlay
+  prefix (two findings): the import now names `faculties`, the physical module path the p6 walk resolves to the frozen
+  `cerebellum` label exactly as before, and the two new-faculty overlays sit under `faculties/`; the self-check's output is
+  identical before and after the edit except the files-parsed line (440 to 436): 6 of 6 constructed reds fired, 4 of 4
+  controls stayed green. The relative-import twin of that mutant (`from ..<pkg> import`) is not scanned by C2(d)'s string
+  rules and survived unflagged; it only worked through the walk's fallback to the physical package name, so it was re-pointed
+  by hand with the rest (found by my own survivor scan, not by the instrument: a finding for the orchestrator).
+- One live comment citation the rewriter's `(?![\w.])` guard refuses because a `.` follows the module name
+  (`faculties/gwt_deep.py` line 345, "...where the one mechanism lives, <path>.)"): re-pointed by hand.
+- The rewriter also re-pointed one comment line in `src/snn_data_lake/gates/move_gate.py` (a citation of `spiking_jepa`);
+  comment only, no behaviour, no census line.
+- The rewriter's own frozen-text rule (as in G8-2) leaves `specs/022-unified-brain-arc/SYNTHESIS.md`, `tasks.md` and
+  `specs/BACKLOG_RANKED.md` as live text, so it rewrote 2, 11 and 5 citations there; the `docs/coverage/` pages and the
+  `docs/` index documents' path citations (ANATOMY 5, CODEBASE_DIGEST 29, AGENT_COLD_START 1) were rewritten by the same
+  rule, their package rows and region prose being D1's.
+- One test literal flipped by design (`_LEGACY_PKGS`, above; a derived expectation would stop the churn, not done: the row
+  names no such change), and one E501 introduced by extending its comment, fixed by shortening it.
+- `ruff check --fix --select I` re-sorted imports in 14 places across the touched files and `ruff format` reformatted 3
+  files; the final whole-repo `ruff check` and `ruff format --check` pass (626 files), and `--select I` passes on all 123
+  touched `.py` files. (Run on the touched files by name, which bypasses the project's per-directory excludes, `ruff check`
+  reads 93 findings, 61 E501 and 32 UP031, in files the project's own run does not read, `research/arc_agi` among them; the
+  same 123 files at the parent read 117, 84 E501, 32 UP031 and one I001, so the shorter package name removed some and added
+  none that the whole-repo run can see.)
+- **Envelope: untouched.** SHA-256 of the five files, `tools/envelope_hashes.json` and the 16 files of `brainstem/so101/` (22
+  in all) are equal before the mover and at the end; the protected diff against HEAD is empty (staged and unstaged);
+  `envelope_hash_gate --assert` rc 0, its self-check rc 0, and the `safety_envelope` check and its self-check rc 0.
+- Home rule: every Python process that could build a brain or touch a home ran with `NORD_PERSIST=0` and its own fresh scratch
+  `NORD_HOME` under the kit; the 24 module self-checks (on both trees) and the R-L1 check left their scratch homes empty; the
+  live lake was never named or opened and no daemon or battery was started.
+- Not touched, noted for the orchestrator: (1) the mover drops a `REGIONS` key's own comment lines with the key, so the
+  comment blocks that sat inside the `basal_ganglia` list (the promotion note of `brain_decision`, and a block on
+  `self_build_loop` and `brain_native_selfbuild`, both stale since M4) and the `cerebellum` list (the promotion note of
+  `polychronization` and the `microcircuit` tissue note) are gone from the registry; the diff is kept in the kit as
+  `init_diff.txt`. (2) The orphaned comment blocks M11b left stay. (3) Earlier-stage member-form leftovers that the M11d
+  rewriter correctly does not own, still dangling: `docs/POLICIES.md` line 91 and plan A.5 (the two D1 items), `engine/brain.py`
+  line 1248 and `substrate/signal_calibrator.py` lines 14 and 167 (`brain_native_selfbuild` member form, M4),
+  `docs/CODEBASE_DIGEST.md` lines 265, 266 and 400. The `basal_ganglia` directory is also named as the home of a module the
+  plan has not yet built (`curriculum`, `specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`, T076 text), which will need a
+  home under `faculties` when T076 lands. (4) The frozen documents keep their historical paths; the index documents' package
+  rows and region prose are D1's. (5) Two module self-checks print a re-pointed path where they quote their own docstring
+  (`microcircuit`, `gwt_deep`); every other output of the 24 is byte-identical to the parent export's.
+
+**Cheap half (2.8), counts.** C2(a): 416 imports attempted on the parent export, the staged worktree and the post export,
+the same 13 known optional-import failures on all three, zero scratch-home files. C2(b): 220 legacy pairs (196 plus the 24
+new), FOURTEEN synthetic legacy packages (the first ten, plus `basal_ganglia`, `cerebellum`, `midbrain` and `thalamus`), 287
+flat aliases, no identity failure, on the real worktree and on the export. C2(c): 17 of 17 legacy gate runs equal the current
+runs, 0 differ (real worktree, strict off; 288.0 s). C2(d): 658 live source files, 0 unparsed, 0 findings after the fixes, on
+the staged worktree and on the export (5 findings on the built worktree before them). C2(e): 16 frozen artifacts, 12 module
+names, all file-loaded. C3: the envelope hash gate and its self-check green, the `safety_envelope` document check and its
+self-check green, the protected diff empty, the latch path resolved through the real home module with a file loader under a
+scratch home (resolved, never opened). C4: the R-b0 probe identical in the pre and post censuses (the dormancy probe's
+reachable set differs only by the 19 re-keyed names that were in it: 238 names before and after). C5: `--rl1-check` on the
+S1b baseline home, real worktree: brain arm PASS and zoo arm PASS (refused None, walks equal, answers equal; scratch home
+empty). C6 to C9 green inside the census (invariants empty, strict registry parity) and C6 re-run directly on the real
+worktree and the export (the fourteen legacy packages and their directories: none on disk). Citation STRICT 0 unexempted
+with its 2 exemptions; BROAD 2407 across 314 files, equal to the forecast; the document command guard (67 runnable, 0
+unrunnable) and the document budget passed; `policy_manifest --audit` passed (P3, P4, P6, P7, P8, e-prop, P4c PASS; no
+unclaimed and no out-of-CI gate); `p6_gate` self-check (6 of 6 constructed reds, 4 of 4 controls) and `move_gate`'s
+self-check with the mover and the R-L1 baseline (C1, F5, C2(b), F3(c), F2, C2(c) and C5 reds fired in copies; C2(d)'s
+positive control found F7's six sites) passed. The 24 module self-checks ran as `-m snn_data_lake.faculties.<module>`, each
+rc 0, scratch homes empty, and again as `-m` of their old names on the parent export for comparison: 22 of the 24 outputs
+are byte-identical, and the two that differ (`microcircuit`, `gwt_deep`) differ only by a re-pointed path they quote from their
+own docstrings. The bounded run of the 39 test files that name a moved module or package, the runner or the move and gate
+tables, plus M11a's recorded list (brain-building tests) and the tests of the gates and tools this stage edits by hand
+(`-o addopts= -p no:cacheprovider -m 'not slow'`, scratch home) on the staged worktree: 686 passed, 14 deselected, 0 failed
+(26 min 47 s). `tests/test_g8_move_gate.py` was edited once more (a comment shortened to clear an E501) while that run was in
+progress, after the run had imported it; that file was re-run alone afterwards (22 passed, 7.5 s) and the full list was NOT
+re-run.
+
+**Planted red (C1, in an export copy `planted_tree`, never the worktree; green on the real tree).** `dormancy_gate._LIVE_ROOTS`'
+`reentrant_workspace` entry was put back to its retired `thalamus.` path in the copy. The strict census diff went red with 3
+differences: C6's "registry_names_without_file" line naming that root (no file at that path) and the `_LIVE_ROOTS` name set in
+both directions (the retired name observed, the live name gone); every gate still exited 0 (the dormancy walk resolves a root
+by name and does not refuse a stale one, so the exit codes could not see it; the row names C1 as the detector and it fired).
+`move_gate --c2d --root planted_tree` independently exited 1 with two findings at `dormancy_gate.py` line 57 (the template
+forms of `thalamus` and of the dotted retired name). The real tree reads 0 findings and its census diff equals the declared
+delta. Planted census SHA-256 begins `74C00E7BF33ACFA2`, its observed delta `CACA4C8463C252AD`.
+
+**Time.** Pre export, census and frozen-map names 120.5 s. Build (mover, both rewriters, hand edits, rule-census
+regeneration, policy manifest, ruff, C2(d) over the built tree and its fixes, atlas, file-count and BROAD forecasts,
+declaration) 12.3 min of wall clock from the first command to the declaration being written, the pre census not included
+(the mover itself, not timed on its own, finished within that first minute). Cheap half: about 30 min of wall clock from
+the first post command to the last check finishing, run partly in parallel: post export, census and diff 114.0 s and 116.9 s
+(two of them), the planted census 140.9 s, C2(c) 288.1 s, `policy_manifest --audit` 46.0 s, `p6_gate` self-check 76.0 s (60.0 s
+on the parent and, run alone, on the built tree), the `move_gate` self-check 86.6 s, the 24 module self-checks 25.4 s
+together, the R-L1 check 4.5 s, the bounded pytest 26 min 47 s on the worktree, run in the background beside the other checks.
+
+NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed (the tree is
+staged), no daemon was started and the live lake was not opened. The `slow`-marked tests were deselected from the bounded
+pytest (`-m 'not slow'`), so they stay owed to the battery. G8-3's panel, fold and one battery remain owed.

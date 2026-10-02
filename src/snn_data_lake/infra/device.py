@@ -50,7 +50,7 @@ WHAT WAS DORMANT HERE, AND WHAT IS CHARGED NOW (P3 / P5a, 2026-08-05)
     this module exists to BE -- had ZERO callers tree-wide outside this file's own self-check
     (derived by AST over `src/` + `tests/` + `tools/`: no module imported any of the three, and
     every bare `select(` call site found belonged to an unrelated method --
-    `basal_ganglia/action_gating.py`, `engine/autonomous_loop.py`, `lakehouse/medallion.py`,
+    `faculties/action_gating.py`, `engine/autonomous_loop.py`, `lakehouse/medallion.py`,
     `reasoning/rpm_solver.py`). What the importers used was `resolve_device` / `enable`, the
     compatibility surface ported in from the retired `reasoning/torch_device.py`, and that surface
     routed on AVAILABILITY. So the module was reachable, the merge was real, and the headline

@@ -621,7 +621,7 @@ def main():
     # regression. The audit, per item, HEAD vs now:
     #   xor_overlapping_positions   answer #2 (truth #6)  ->  answer #6   FIXED
     #   rotation_l_shape            answer #1 (truth #4)  ->  unchanged   still wrong
-    # Attributable to the arbiter rank-key repair in thalamus/global_workspace.py (co-saturating
+    # Attributable to the arbiter rank-key repair in faculties/global_workspace.py (co-saturating
     # pools stopped being ranked by their source NAME). The fixed item resolves on the FALLBACK
     # path with known=False, so:
     #   TRUE accuracy  0.8 -> 0.9   (one more correct answer)

@@ -23,7 +23,7 @@ The training objective is the prediction error **in embedding space**:
 
 ## In this repo
 
-`src/snn_data_lake/cerebellum/jepa_world_model.py` (CORE, zero-dep, `JepaWorldModel`) is a **minimal
+`src/snn_data_lake/faculties/jepa_world_model.py` (CORE, zero-dep, `JepaWorldModel`) is a **minimal
 deterministic linear JEPA**: a single linear encoder `z = unit(tanh(We@x + be))`, a residual linear
 predictor `z' = clamp(z + Wz@z + Wa@onehot(a) + b)` (spectral-bounded so long rollouts stay finite), an
 EMA target encoder, and a hand-rolled VICReg with closed-form gradients. `latent_dim = 16`.
@@ -33,7 +33,7 @@ multimodality, no transformer, no image-patch masking. It demonstrates the JEPA 
 interface-compatible with the planner; it is **not** a frontier ViT world model and makes no such
 claim. The scale path is the torch scaffold below.
 
-### Why it beats the sibling `cerebellum/forward_model.py`
+### Why it beats the sibling `faculties/forward_model.py`
 
 `ForwardModel` predicts the next sensory state in the **raw input space** (a scalar reafference
 comparator). `JepaWorldModel` predicts in a **learned latent** space. The self-check builds a 2-factor
@@ -130,7 +130,7 @@ gradient-checkpointing / offload -- not AirLLM. See `docs/AIRLLM_ANALYSIS.md`.
 
 ```bash
 # core self-check (collapse control, identity + ForwardModel baselines, bounded rollout, latent>scalar, determinism)
-PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.jepa_world_model
+PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.jepa_world_model
 
 # JEPA wired live into the whole brain (safety + determinism with the flag ON)
 PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.engine.live_brain
@@ -143,7 +143,7 @@ PYTHONPATH=src python -m snn_data_lake.reasoning.jepa_scaffold_torch
 
 The nonlinear H-JEPA can now drive the live executive's reasoning. Two pieces:
 
-- **`cerebellum/hjepa_serve.py` (`HJepaServe`)** -- a zero-dep pure-Python SERVER for a torch-trained
+- **`faculties/hjepa_serve.py` (`HJepaServe`)** -- a zero-dep pure-Python SERVER for a torch-trained
   2-level H-JEPA exported as `snn_hjepa/1`. It replicates the torch forward exactly: `encode0` (deep
   ReLU-MLP), `encode1` (mean-pool a K-window of L0 latents -> abstract latent), and residual/pure
   predictors, with `predict(state, command)` = the abstract `predict1` so it drops into

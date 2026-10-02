@@ -71,12 +71,12 @@ read.
 |---|---|---|
 | `PREC0 = 1.0`, `PREC1 = 1.0` gate the PC error drive | VERIFIED | `readout/predictive_coding.py:88-89`, used `:192-193`, `:237-238` |
 | `THETA = 0.5`, `LEAK = 0.02` set the error-neuron operating point | VERIFIED | `readout/predictive_coding.py:86-87` |
-| `ignition_threshold=0.55` is the default in three constructors | VERIFIED | `thalamus/reentrant_workspace.py:103`, `thalamus/global_workspace.py:93`, `cortex/access_consciousness.py:84` |
+| `ignition_threshold=0.55` is the default in three constructors | VERIFIED | `faculties/reentrant_workspace.py:103`, `faculties/global_workspace.py:93`, `cortex/access_consciousness.py:84` |
 | **`brain.py:2149` is the clobber, not a hook** | VERIFIED | `engine/brain.py:2143-2150` recomputes `ignition_threshold` from `base_ignition_threshold` every wake tick, inside `try:` / `except Exception: pass` at `:2115`/`:2151`. It also writes `_v_th = thr / _LEAK` at `:2150`. |
-| `base_ignition_threshold` is documented immutable | VERIFIED | `thalamus/reentrant_workspace.py:105-109`, "kept immutable ... Read this, never re-type the default" |
-| The gate that decides access reads `self.ignition_threshold` | VERIFIED | `thalamus/reentrant_workspace.py:244` |
+| `base_ignition_threshold` is documented immutable | VERIFIED | `faculties/reentrant_workspace.py:105-109`, "kept immutable ... Read this, never re-type the default" |
+| The gate that decides access reads `self.ignition_threshold` | VERIFIED | `faculties/reentrant_workspace.py:244` |
 | **The workspace is saturated: 100% ignition at every gain** | VERIFIED | `faculties/region_coherence.py:132-137`. Winning drives span [0.668, 1.000] median 0.815; masked drives span [0.086, 0.500] median 0.121, p75 0.167 (`:115-117`). The interval (0.500, 0.668) has never been observed. |
-| **The graded access readout is calibrated at the shipped theta** | VERIFIED | `thalamus/reentrant_workspace.py:89-101`. `_ACC_N=32`, `_ACC_LO=0.85`, `_ACC_HI=1.90`, band measured over 360 ignited wake ticks *at theta=0.55*; consumed at `:355-374`. |
+| **The graded access readout is calibrated at the shipped theta** | VERIFIED | `faculties/reentrant_workspace.py:89-101`. `_ACC_N=32`, `_ACC_LO=0.85`, `_ACC_HI=1.90`, band measured over 360 ignited wake ticks *at theta=0.55*; consumed at `:355-374`. |
 | `IGNITION_GAIN = 0.5` scales the coherence discount on the rheobase | VERIFIED | `faculties/region_coherence.py:103`, consumed `:146`, `:298-303` |
 | A hardcoded `"drive": 0.5` is one of six inputs to that coherence | VERIFIED | `engine/brain.py:2124` |
 | The endogenous attention port exists and is unused | VERIFIED | `cortex/learned_attention.py:88-101 _goal_gain`, `:116 attend(features, goal=None)`; sole live call `engine/brain.py:1128` passes `goal=None` |
@@ -102,7 +102,7 @@ read.
 | `eprop.py` is a standalone demo; `grad_eprop` is bound to `Net` | VERIFIED | `reasoning/eprop.py:105-235`; `_cosine` `:282`; `assert r["cosine"] > 0.5` `:365` |
 | `GenerativeSelfModel.KAPPA = 0.5` is a literal | VERIFIED | `cortex/generative_self_model.py:70`; trace form `:101-105`, update `:144-145` |
 | Instrumented tick is 27.78 ms | VERIFIED | `docs/POLICIES.md:496` |
-| `_BIND_IGNITE = 0.6` sits under a "used only by the self-check" header | VERIFIED | `thalamus/global_workspace.py:311-318`, branched `:339`, `:376` |
+| `_BIND_IGNITE = 0.6` sits under a "used only by the self-check" header | VERIFIED | `faculties/global_workspace.py:311-318`, branched `:339`, `:376` |
 | **...but it reaches a live user-facing consciousness self-report** | VERIFIED -- **new finding, section 8 offender 4** | `reasoning/spike_chat_lake.py:34` imports `probe_binding`; `reasoning/consciousness_probe.py:72-85` calls `bind_broadcast_spiking`, which branches on `_BIND_IGNITE`; `spike_chat_lake.py:1173-1182` tallies it into a reply; that reply is returned on the live chat path at `:925-931` for "are you conscious". **[DEAD ROUTE, 2026-08-07: `consciousness_probe.py`'s call went with its F11 deletion on 2026-08-04, and the `bind_*` family itself -- `_BIND_IGNITE` included -- was retired 2026-08-07 when the honest precision-bearing benchmark returned its pre-registered null. The row is kept as the finding it was; nothing it cites still exists on a live path.]** *RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `cortex/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).* |
 
 ---
@@ -307,7 +307,7 @@ for why the "set the gap to 60% of the measured decay" repair was rejected.)
 ---
 
 **A0. Resolve P2 between the two workspaces. GATE, runs once.**
-Compare `thalamus/global_workspace.py` against `thalamus/reentrant_workspace.py` on the task. Retire
+Compare `faculties/global_workspace.py` against `faculties/reentrant_workspace.py` on the task. Retire
 the loser; port what it uniquely provides. The reentrant docstring already argues the case; execute
 it rather than instrumenting both.
 *Cost:* one `S x E` sweep. *Blocks:* everything.

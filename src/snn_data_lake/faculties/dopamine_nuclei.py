@@ -40,7 +40,7 @@ trial chain. It models the teaching-signal FUNCTION of VTA/SNc -- what the cells
 motivation, wanting, pleasure, or consciousness. A "burst" here is a raised population spike
 rate in a toy LIF pool, nothing more.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.midbrain.dopamine_nuclei
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.dopamine_nuclei
 """
 
 import random

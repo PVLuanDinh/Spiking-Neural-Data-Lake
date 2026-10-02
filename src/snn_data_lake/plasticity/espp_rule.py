@@ -8,7 +8,7 @@ self-supervised contrastive predictions", 2021) ALREADY LIVED in this tree as
 spiking_jepa's selectable `rule="espp"` branch (the contrastive variant of its
 `_modulator`). P2 ADOPT: `espp_modulator_core` below IS that math, moved here, and
 the jepa branch now DELEGATES to it -- the inline expression left
-cerebellum/spiking_jepa.py in the same commit, so exactly ONE mechanism survives.
+faculties/spiking_jepa.py in the same commit, so exactly ONE mechanism survives.
 A fresh implementation beside the living branch was REFUSED on the T049 precedent:
 the standalone lpl_rule.py built beside jepa's living lpl branch was panel-measured
 DEGENERATE and deleted per P8(5), and the palette extraction was dated to the T051
@@ -82,7 +82,7 @@ MOVES a function the production branch already computes and delegates the branch
 to it -- byte-equal behavior, zero new reach, the P2 one-mechanism move only.
 The charge claim stays exactly where it was: nowhere, until T052-ii measures.
 
-# distinct-from: cerebellum/spiking_jepa.py -- the HOST this extracts FROM: its
+# distinct-from: faculties/spiking_jepa.py -- the HOST this extracts FROM: its
 #   `rule="espp"` branch now delegates to espp_modulator_core (one mechanism); its
 #   lpl_synapse_rule is the SIBLING declaration for the rule="lpl" branch and
 #   refuses espp instances (each branch declares itself, neither declares the
@@ -90,7 +90,7 @@ The charge claim stays exactly where it was: nowhere, until T052-ii measures.
 # distinct-from: plasticity/eligibility_algebra.py -- the authoring CONTRACT this
 #   module composes THROUGH (espp_synapse_rule authors against it, the consumer
 #   its T052 row promised); nothing here re-implements term algebra.
-# distinct-from: cerebellum/jepa_world_model.py -- population-normalized VICReg
+# distinct-from: faculties/jepa_world_model.py -- population-normalized VICReg
 #   loss gradient at encoder-loss grain; coefficient-NAME overlap only (the same
 #   adjacency lpl_synapse_rule records).
 # distinct-from: plasticity/competitive_learning.py -- competitive/WTA locality,
@@ -199,7 +199,7 @@ def espp_synapse_rule(inst):
 def main():
     import sys as _sys
 
-    from snn_data_lake.cerebellum.spiking_jepa import SpikingJEPA
+    from snn_data_lake.faculties.spiking_jepa import SpikingJEPA
     from snn_data_lake.plasticity.eligibility_algebra import EligibilityAlgebra, equivalence_check
 
     line = "=" * 96
@@ -228,7 +228,7 @@ def main():
     # core through the module namespace moves production output -- proving jepa's espp
     # branch actually routes through THIS module -- then the identity guard below proves
     # the routed math is the incumbent's.
-    import snn_data_lake.cerebellum.spiking_jepa as _jepa_mod
+    import snn_data_lake.faculties.spiking_jepa as _jepa_mod
     import snn_data_lake.plasticity.espp_rule as _self_mod
 
     _probe = SpikingJEPA(_ACTIONS, retina=_R, seed=0, rule="espp")
@@ -332,7 +332,7 @@ def main():
             self._last_neg[l] = v[:]
             return v
 
-        # distinct-from: cerebellum/spiking_jepa.py -- this override is the harness SPY
+        # distinct-from: faculties/spiking_jepa.py -- this override is the harness SPY
         #   wrapper around the base method (super() call; records weights before/after),
         #   not a second update mechanism; the lpl harness's _SpyJEPA is its precedent.
         def train_step(self, x, a2, y):
@@ -740,7 +740,7 @@ def main():
     # distinct-from: sensorimotor/eprop_nmnist.py -- the SUPERVISED incumbent this benchmark
     #   compares AGAINST (torch, e-prop, classifier); this arm is the numpy espp probe
     #   harness, benchmark-local. Site read.
-    # distinct-from: cerebellum/spiking_pid.py, basal_ganglia/action_gating.py,
+    # distinct-from: faculties/spiking_pid.py, faculties/action_gating.py,
     #   sensorimotor/signal_loop.py -- generic run/window vocabulary only (PID drives, race
     #   circuits, min-max normalizers); nothing shared with this probe. Sites read.
     # PACK GATING, the percept_surprise precedent (its :320-348 adjudicated this exact

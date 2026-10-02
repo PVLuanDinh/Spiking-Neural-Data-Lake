@@ -1,6 +1,6 @@
 """The live-brain occupancy harness the workspace docstrings owe.
 
-`thalamus/global_workspace.py` and `CHANGELOG.md` quote live figures (occupancy {1: 117, 2: 3}
+`faculties/global_workspace.py` and `CHANGELOG.md` quote live figures (occupancy {1: 117, 2: 3}
 before the inhibitory rheobase, co-occupancy 0 -> 3 after the one-clock repoint) that until this
 file had NO runnable source -- "there was no runnable harness for any of it" is the CHANGELOG's
 own sentence. This is that harness, and it doubles as the standing guard on the rheobase's

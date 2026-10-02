@@ -81,7 +81,7 @@ Bardes, Ponce & LeCun, "VICReg: Variance-Invariance-Covariance Regularization" (
 
 Deps: math, random, json (numpy/torch allowed project-wide); ASCII-only prints, deterministic (random.Random(seed) per instance).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.jepa_world_model
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.jepa_world_model
 """
 
 import json
@@ -112,7 +112,7 @@ def bound_rows(W, rho_max, wd):
     entry of the residual map W, then row-scaling so its max row-abs-sum stays <= rho_max. In place.
 
     Extracted 2026-09-05 (evidence/jepa-live-floor.md section 2.6, commit A) from two byte-identical
-    bodies -- JepaWorldModel.train_step's inline block and cerebellum/spiking_jepa.SpikingJEPA's copied
+    bodies -- JepaWorldModel.train_step's inline block and faculties/spiking_jepa.SpikingJEPA's copied
     _spectral_bound -- with the operation order kept exactly (decay, rowmax, scale), so both callers'
     self-check numbers repeat to the digit. rho_max's DERIVATION lives on the caller (see
     JepaWorldModel.__init__: sqrt(L), on the measurement, not the 1 + sqrt(L) a residual map can need);
@@ -843,8 +843,8 @@ def _readout_mse(W, feats, targets, out_dim):
 
 
 def main():
-    from snn_data_lake.cerebellum.forward_model import ForwardModel
     from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+    from snn_data_lake.faculties.forward_model import ForwardModel
     from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 
     IN_DIM, K, LATENT = 64, 2, 16

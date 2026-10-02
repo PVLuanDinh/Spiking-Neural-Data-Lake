@@ -72,7 +72,7 @@ the same runs): at the shipped config (15 cycles, 30 seeds) planner vs fused cho
 a genuine tie (0.5917 vs 0.5894, higher on 12/30 vs 13/30) while the same harness
 separates a worse policy at 29/30 (curiosity-only, -2.1pp) -- a real null, not a dead
 harness. Settled on MECHANISM: the planner duplicates no governed mechanism, while the
-chooser's value channel carries basal_ganglia/brain_decision's recorded fusion null,
+chooser's value channel carries faculties/brain_decision's recorded fusion null,
 re-confirmed here by a permutation null (structure preserved, content destroyed:
 -0.11pp, 7/15; the constant-pin null alone is confounded and was not relied on).
 BrainDecision stays constructed: observe()/reliability()/grow_trigger() keep their
@@ -105,7 +105,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snn_data_lake.basal_ganglia.brain_decision import BrainDecision
+from snn_data_lake.faculties.brain_decision import BrainDecision
 from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.faculties.spiking_curiosity import (
     SpikingCuriosityDrive,
@@ -267,7 +267,7 @@ def _mechanics_check():
     cycle silently reports '+ 0 hippocampal-replay feats'. Here PER + REPLAY is asserted
     under the per-digit row count, and ASSERT 1 makes an empty replay a hard red."""
     from snn_data_lake.cortex.competence_executive import DopamineModulator
-    from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
+    from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 
     enable(resolve_device())
     dev = resolve_device()
@@ -407,7 +407,7 @@ def main():
         return _mechanics_check()
     # lazy, governed-to-governed since the 2026-08-12 lane-4f promotion (see the module-top note).
     from snn_data_lake.cortex.competence_executive import DopamineModulator
-    from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
+    from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 
     enable(resolve_device())
     dev = resolve_device()

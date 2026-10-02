@@ -6,18 +6,18 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| access_strength_graded | 42 | src/snn_data_lake/thalamus/reentrant_workspace.py:406#access_strength; src/snn_data_lake/engine/brain.py:2401#_observe_self_wake; src/snn_data_lake/engine/brain.py:2094#_update_metacog | cons_refute_strength_iso_120.txt | opus-5 REFUTER / consciousness_refute_probe.py strength_iso 120 (55 REFUTED) | 2026-07-30 |
+| access_strength_graded | 42 | src/snn_data_lake/faculties/reentrant_workspace.py:406#access_strength; src/snn_data_lake/engine/brain.py:2401#_observe_self_wake; src/snn_data_lake/engine/brain.py:2094#_update_metacog | cons_refute_strength_iso_120.txt | opus-5 REFUTER / consciousness_refute_probe.py strength_iso 120 (55 REFUTED) | 2026-07-30 |
 | second_order_access | 42 | src/snn_data_lake/cortex/second_order_access.py:176#hold; src/snn_data_lake/cortex/second_order_access.py:142#observe; src/snn_data_lake/engine/brain.py:3604#respond | consciousness_second_120.txt | opus-5 REFUTER / consciousness_refute_probe.py second_thin,c1,ws,av,st 120 (50 REFUTED) | 2026-07-30 |
 | self_model | 38 | src/snn_data_lake/cortex/self_model.py:274#confidence; src/snn_data_lake/engine/brain.py:2373#_observe_self_wake | - | opus-5 / scratchpad measure_consciousness2.py + 4.py | 2026-07-30 |
-| reentry_sustain | 35 | src/snn_data_lake/thalamus/reentrant_workspace.py:256#step; src/snn_data_lake/thalamus/reentrant_workspace.py:328#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
+| reentry_sustain | 35 | src/snn_data_lake/faculties/reentrant_workspace.py:256#step; src/snn_data_lake/faculties/reentrant_workspace.py:328#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
 | ignition | 30 | src/snn_data_lake/engine/brain.py:2468#_update_access; src/snn_data_lake/engine/brain.py:1574#_route_percept_to_action | ignition_60.txt | opus-5 / tools/charge_probe.py ignition 60 | 2026-07-30 |
-| reentry_reroute | 28 | src/snn_data_lake/thalamus/reentrant_workspace.py:373#_deliver; src/snn_data_lake/engine/brain.py:1761#_route_percept_to_action | reroute_60.txt | opus-5 / tools/charge_probe.py reroute 60 | 2026-07-30 |
-| global_availability | 25 | src/snn_data_lake/thalamus/reentrant_workspace.py:387#_deliver; src/snn_data_lake/cortex/access_consciousness.py:541#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
+| reentry_reroute | 28 | src/snn_data_lake/faculties/reentrant_workspace.py:373#_deliver; src/snn_data_lake/engine/brain.py:1761#_route_percept_to_action | reroute_60.txt | opus-5 / tools/charge_probe.py reroute 60 | 2026-07-30 |
+| global_availability | 25 | src/snn_data_lake/faculties/reentrant_workspace.py:387#_deliver; src/snn_data_lake/cortex/access_consciousness.py:541#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
 | integration_measure_pci | 22 | src/snn_data_lake/engine/brain.py:2727#_sleep_tick; src/snn_data_lake/engine/brain.py:3441#state | - | opus-5 / scratchpad measure_consciousness2.py, 200 ticks / 8 nights | 2026-07-30 |
 | arm_workspace_broadcast | 21 | src/snn_data_lake/engine/autonomous_loop.py:1374#_workspace_broadcast; src/snn_data_lake/engine/live_brain.py:92#__init__ | - | opus-5 / scratchpad measure_consciousness4.py, 240 ticks | 2026-07-30 |
-| reentrant_predictive_completion | 15 | src/snn_data_lake/thalamus/reentrant_workspace.py:168#expect | - | opus-5 / static reachability + live respond() probe | 2026-07-30 (site repointed 2026-08-06, see below) |
+| reentrant_predictive_completion | 15 | src/snn_data_lake/faculties/reentrant_workspace.py:168#expect | - | opus-5 / static reachability + live respond() probe | 2026-07-30 (site repointed 2026-08-06, see below) |
 | reportability_of_access_content | 12 | src/snn_data_lake/engine/live_brain.py:365; src/snn_data_lake/reasoning/spike_chat_lake.py:1212#converse | - | opus-5 / live respond() on the three consciousness phrases | 2026-07-30 |
-| binding_of_broadcast_content | UNSCORED | src/snn_data_lake/thalamus/global_workspace.py:1975#module | - | fable-5 / honest Jaccard benchmark 120 trials/K; the `bind_*` family was DELETED 2026-08-07 on that benchmark's pre-registered null (the spiking decoder's Jaccard equalled an all-fired-pairs strawman at every K -- it recovered membership, never pairing), so the capability is ABSENT rather than low-band. Cite is the retirement record, which is the only surviving evidence. Band 10 -> UNSCORED 2026-08-13: the row's own prose already said "honestly ABSENT, not low-band" while the band column still scored it, and UNSCORED counts as 0 per this ledger's own rule. | 2026-07-30 / 2026-08-07 |
+| binding_of_broadcast_content | UNSCORED | src/snn_data_lake/faculties/global_workspace.py:1975#module | - | fable-5 / honest Jaccard benchmark 120 trials/K; the `bind_*` family was DELETED 2026-08-07 on that benchmark's pre-registered null (the spiking decoder's Jaccard equalled an all-fired-pairs strawman at every K -- it recovered membership, never pairing), so the capability is ABSENT rather than low-band. Cite is the retirement record, which is the only surviving evidence. Band 10 -> UNSCORED 2026-08-13: the row's own prose already said "honestly ABSENT, not low-band" while the band column still scored it, and UNSCORED counts as 0 per this ledger's own rule. | 2026-07-30 / 2026-08-07 |
 
 **Category score: 26.7** = 320 / 12, **down from the audited 28.4 after an adversarial pass in which
 both band-41+ rows fell** (55 -> 42 and 50 -> 42). Two rows still clear 40 on recorded neuter-A/Bs, but
@@ -331,7 +331,7 @@ all: `_pci` appears at `brain.py:417` (init), `:2332` (write) and `:2801` (`stat
 telemetry-only.
 
 ### arm_workspace_broadcast -- 21
-The original spiking GWT (`thalamus/global_workspace.py`) is live inside the arm --
+The original spiking GWT (`faculties/global_workspace.py`) is live inside the arm --
 `live_brain.py:92` passes `workspace=True`, so `_workspace_broadcast` steps it on every tick. Its own
 docstring calls it a "READ-ONLY annotation". Measured: the broadcast content took **2 distinct values
 over 240 ticks** (`0` on 237, `None` on 3), and `_ignitions` -- the only quantity that escapes, via
@@ -343,7 +343,7 @@ no reader, and the one derived number that does reach telemetry moved once in 24
 ### reentrant_predictive_completion -- 15
 **SETTLED 2026-08-06 (P2). The capability moved; the duplicate is gone.** Predictive completion --
 weak bottom-up evidence plus a matching top-down prior crossing ignition together, with an explicit
-no-hallucination guard -- now lives in the governed `thalamus/reentrant_workspace.py` as
+no-hallucination guard -- now lives in the governed `faculties/reentrant_workspace.py` as
 `expect(content, magnitude)`, and `reasoning/gwt_reentry.py` is DELETED. Exactly one mechanism
 survives, which is what backlog item 7 below asked for.
 
@@ -429,9 +429,9 @@ Deliberately NOT a markdown table: `tools/coverage_score.py::_table` treats ever
 after the evidence header as an evidence row, so a second table in this file makes the scorer refuse the
 whole thing (F3). One line per file -- capability, then whether it is live.
 
-* `thalamus/global_workspace.py` -- spiking LIF ignition + shared-inhibition WTA + persistence/decay;
+* `faculties/global_workspace.py` -- spiking LIF ignition + shared-inhibition WTA + persistence/decay;
   binding-by-synchrony. LIVE twice (inside the arm, and inside `AccessConsciousness`).
-* `thalamus/reentrant_workspace.py` -- coalitions, ignition that can FAIL, closed re-entry, subscriber
+* `faculties/reentrant_workspace.py` -- coalitions, ignition that can FAIL, closed re-entry, subscriber
   re-route, the graded 32-unit access readout. LIVE (`Brain._reentrant`).
 * `cortex/access_consciousness.py` -- VSA bundling of grown neurons into one content + the integration
   proxy. LIVE (`Brain._access`).
@@ -442,7 +442,7 @@ whole thing (F3). One line per file -- capability, then whether it is live.
   what supplies a real self-surprise. LIVE.
 * `instruments/integration_measure.py` -- perturbational complexity / normalized LZ. LIVE on sleep, every 4th
   night.
-* `thalamus/reentrant_workspace.py::expect` -- re-entrant predictive completion + the no-hallucination
+* `faculties/reentrant_workspace.py::expect` -- re-entrant predictive completion + the no-hallucination
   guard. Ported here 2026-08-06 from `reasoning/gwt_reentry.py`, which is DELETED (P2). Live on the
   wake tick with the rest of the workspace; the capability itself has no caller yet, which is open P3
   work at the accessor tier and is NOT force-wired.

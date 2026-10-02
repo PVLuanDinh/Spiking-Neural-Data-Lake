@@ -10,14 +10,14 @@ Baseline inventory (2026-07-10, parallel classification of 103 brain-region modu
 After slice 1 (v3.23): **SPIKING 39 | RATE 42 | RATE_BY_DESIGN 22.**
 After slice 2 (v3.24): **SPIKING 44 | RATE 38 | RATE_BY_DESIGN 21.**
 After slice 3 (v3.25): **SPIKING 48 | RATE 36 | RATE_BY_DESIGN 19.**
-After slice 4 (v3.26): **SPIKING 49** (new module `cerebellum/spiking_jepa`; rate `jepa_world_model` kept as the fair baseline).
+After slice 4 (v3.26): **SPIKING 49** (new module `faculties/spiking_jepa`; rate `jepa_world_model` kept as the fair baseline).
 After slice 5 (v3.29): **SPIKING 50** (new module `sensorimotor/pc_cortex_serve`, the DEEP spiking predictive-coding cortex server; the 2-level spiking seed `readout/predictive_coding` kept as the small baseline).
 
 ## Converted to spiking (progress)
 
-- **Slice 1 (v3.23):** `cerebellum/spiking_pid` (P/I/D as LIF populations; integral = running spike count),
-  `midbrain/superior_colliculus` (LIF first-spike WTA race; latency = first-spike time),
-  `midbrain/sc_deep_layers` (LIF burst pool + gain-1 line-attractor spiking integrator; displacement =
+- **Slice 1 (v3.23):** `faculties/spiking_pid` (P/I/D as LIF populations; integral = running spike count),
+  `faculties/superior_colliculus` (LIF first-spike WTA race; latency = first-spike time),
+  `faculties/sc_deep_layers` (LIF burst pool + gain-1 line-attractor spiking integrator; displacement =
   accumulated spikes), `cortex/cue_integration` (spiking probabilistic population code; fusion = spike
   addition), `faculties/locus_coeruleus` (LIF NE pool; NE = population spike rate, phasic burst -> gain).
   All API-preserved, un-riggable spiking self-checks, live loop untouched. Honest cost: spiking read-outs add
@@ -38,7 +38,7 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 - `faculties/vital_nuclei` was listed "Already SPIKING" but the code is a rate/phase relaxation oscillator
   (no LIF membrane) -- it is RATE_BY_DESIGN (a homeostatic servo), not membrane-spiking. Removed from the
   SPIKING list above.
-- `basal_ganglia/evidence_accumulation` was converted to a genuine Wang-2002 spiking attractor in Slice 3
+- `faculties/evidence_accumulation` was converted to a genuine Wang-2002 spiking attractor in Slice 3
   (v3.25); the RATE table below no longer lists it (treat it as SPIKING).
 
 ## RATE -- to convert (47), with the spiking design
@@ -66,18 +66,18 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | growth/growing_learner | spiking prototype/RBF units matched by spike coincidence; recruit-on-weak-response; Hebbian |
 | hippocampus/legendre_memory | realize the A/B delay state-space in spiking neurons via NEF (spiking LMU) |
 | plasticity/valence_stdp | LIF valence neuron; pre/post spike-timing eligibility gated by dopamine (three-factor) |
-| basal_ganglia/latent_q | spiking linear readout over latent spikes, reward-modulated (three-factor) plasticity |
-| basal_ganglia/mlp_q | spiking MLP: LIF hidden units, surrogate-gradient / reward-STDP; first-spike action-value |
-| cerebellum/forward_model | granule->Purkinje spiking forward model; climbing-fiber error drives spike-timing plasticity |
+| faculties/latent_q | spiking linear readout over latent spikes, reward-modulated (three-factor) plasticity |
+| faculties/mlp_q | spiking MLP: LIF hidden units, surrogate-gradient / reward-STDP; first-spike action-value |
+| faculties/forward_model | granule->Purkinje spiking forward model; climbing-fiber error drives spike-timing plasticity |
 | cerebellum/kalman_filter | NEF/PPC spiking net carrying state + covariance in population activity |
-| cerebellum/spiking_pid | **named spiking but rate** -> genuine LIF integral/derivative populations |
-| cerebellum/jepa_world_model | spiking JEPA: LIF encoder/predictor (surrogate grad); slow spiking EMA target; homeostatic VICReg |
-| cerebellum/hjepa_serve | serve a spiking feedforward net: LIF layers, rate/first-spike latent readout |
+| faculties/spiking_pid | **named spiking but rate** -> genuine LIF integral/derivative populations |
+| faculties/jepa_world_model | spiking JEPA: LIF encoder/predictor (surrogate grad); slow spiking EMA target; homeostatic VICReg |
+| faculties/hjepa_serve | serve a spiking feedforward net: LIF layers, rate/first-spike latent readout |
 | engine/autonomous_loop | spiking WTA action selection + dopamine-modulated STDP on action-value synapses (SAFETY: mine) |
-| thalamus/global_workspace | LIF specialist pools, recurrent self-excitation + global lateral inhibition; ignition = spike threshold |
+| faculties/global_workspace | LIF specialist pools, recurrent self-excitation + global lateral inhibition; ignition = spike threshold |
 | faculties/set_points | comparator as opponent spiking populations; antagonistic effector spike-rate difference drives plant |
-| midbrain/superior_colliculus | LIF per location + lateral inhibition; first-to-spike wins, spike time = latency |
-| midbrain/sc_deep_layers | spiking EBN burst pool + recurrent line-attractor spiking integrator -> eye displacement |
+| faculties/superior_colliculus | LIF per location + lateral inhibition; first-to-spike wins, spike time = latency |
+| faculties/sc_deep_layers | spiking EBN burst pool + recurrent line-attractor spiking integrator -> eye displacement |
 | pons/pontine_relay | LIF granule neurons on sparse random weights; k-WTA lateral inhibition; active = spiking in window |
 | faculties/interoceptive_arousal | LC-like LIF pool driven by aggregated error current; caution = normalized firing rate |
 | olfactory/piriform_cortex | spiking attractor: LIF, Hebbian recurrent synapses, k-WTA; completion via recurrent settling |
@@ -127,7 +127,7 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
 ## Progress
 
 - **Slice 1 (v3.23, in progress):** convert 5 self-contained non-safety RATE modules ->
-  `cerebellum/spiking_pid`, `midbrain/superior_colliculus`, `midbrain/sc_deep_layers`,
+  `faculties/spiking_pid`, `faculties/superior_colliculus`, `faculties/sc_deep_layers`,
   `cortex/cue_integration`, `faculties/locus_coeruleus`. Each in-place to genuine LIF/spike-timing with an
   un-riggable spiking self-check; live-loop wiring untouched (no ripple).
 - Remaining RATE after slice 1: 42. Live-loop-wired conversions (global_workspace, growing_learner,
@@ -141,17 +141,17 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   (stochastic LIF sampling + event-driven CD/STDP), `cortex/brain_reasoning` (LIF WTA decision + spike-margin
   confidence). All API-preserved, un-riggable spiking self-checks. Honest gaps reported (pfc WM metastable/drive-gated
   release; spike-quantized inference approximate; WTA ties can differ from argmax). Remaining RATE after slice 2: 38.
-- **Slice 3 (v3.25) -- more rational-thinking (4 modules):** `basal_ganglia/evidence_accumulation` (RATE ->
+- **Slice 3 (v3.25) -- more rational-thinking (4 modules):** `faculties/evidence_accumulation` (RATE ->
   Wang-2002 spiking decision attractor: LIF pools + shared inhibition; psychometric/chronometric/speed-accuracy
-  hold), `thalamus/global_workspace` (RATE -> spiking Dehaene-Changeux IGNITION: LIF pools + global lateral
+  hold), `faculties/global_workspace` (RATE -> spiking Dehaene-Changeux IGNITION: LIF pools + global lateral
   inhibition + self-excitation; all-or-none ignition; LIVE-LOOP-WIRED -- verified autonomous_loop sec8 broadcast
-  contract + E-STOP + live_brain), `thalamus/reticular_gate` (RATE_BY_DESIGN -> spiking TRN attentional gate:
+  contract + E-STOP + live_brain), `faculties/reticular_gate` (RATE_BY_DESIGN -> spiking TRN attentional gate:
   LIF relay + inhibitory pool = spiking divisive normalization), `cortex/theta_gamma_code` (RATE_BY_DESIGN ->
   spiking Lisman-Idiart phase code: LIF populations fire at item-specific gamma phases; capacity = theta/gamma
   ratio ~7). All API-preserved, un-riggable spiking self-checks; honest gaps reported (attractor RT units differ;
   global-workspace N-way exact-tie metastable; theta-gamma is a reduced discrete-step oscillator). Remaining
   RATE after slice 3: 36.
-- **Slice 4 (v3.26) -- SpikingJEPA (NEW module, honest study):** `cerebellum/spiking_jepa.py` = a genuinely-spiking
+- **Slice 4 (v3.26) -- SpikingJEPA (NEW module, honest study):** `faculties/spiking_jepa.py` = a genuinely-spiking
   (LIF backbone, {0,1} signals, latent=integer counts), genuinely-LOCAL (three-factor rule, no backprop -- freeze-top
   proof) JEPA world model synthesizing LPL + event-stream + RPL. It genuinely learns action-conditioned latent
   DYNAMICS (predict beats identity, time-shuffle destroys it). HONEST NEGATIVES (printed, not asserted, not hidden):

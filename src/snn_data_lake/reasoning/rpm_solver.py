@@ -32,9 +32,9 @@ DESIGN (all over vsa_reasoning primitives):
           the two known permute-powers, read out over the ordinal codebook.
   * SPIKING SELECTION (not a bare argmax). The induced rule per attribute is chosen by routing the
     fitting rule types' evidence through the spiking basal-ganglia Go/NoGo gate
-    (basal_ganglia.action_gating.BasalGangliaGate.select -- disinhibition WTA). The winning ANSWER
+    (faculties.action_gating.BasalGangliaGate.select -- disinhibition WTA). The winning ANSWER
     among the 8 candidates is chosen by the spiking thalamic global workspace
-    (thalamus.global_workspace.GlobalWorkspace) -- each candidate's rule-match salience competes,
+    (faculties.global_workspace.GlobalWorkspace) -- each candidate's rule-match salience competes,
     and a candidate that crosses the all-or-none IGNITION threshold and ranks inside the workspace's
     capacity is ADMITTED to a slot; the highest-ranked admitted candidate of ours is the answer.
   * SOLVE. RPM is 8-choice: score every candidate by the induced per-attribute predictions
@@ -55,10 +55,10 @@ import random
 import re
 import zlib
 
-from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
+from snn_data_lake.faculties.action_gating import BasalGangliaGate
 from snn_data_lake.cortex.vsa_reasoning import bind, bundle, cleanup, hv, permute, sim
 from snn_data_lake.reasoning.gf import code, induce_shift
-from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
+from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 
 # NVSA rule set, in Occam order (simplest first). Rule selection routes evidence for the FITTING
 # types through the spiking basal-ganglia gate; the priority below is the per-channel drive so the
@@ -376,7 +376,7 @@ class RpmSolver:
         #
         # `step()` returns the ranked HEAD, and on a multi-slot bus the head is a different question
         # from access: a compliant specialist can always win a SLOT and cannot always become the
-        # FOCUS (`thalamus/global_workspace.py`, limit 3). Reading the head therefore reports an
+        # FOCUS (`faculties/global_workspace.py`, limit 3). Reading the head therefore reports an
         # honest gap whenever any louder faculty is also in the workspace, which is the single-slot
         # "a competitor took the one slot away from me" pathology and not a fact about this solver.
         # `broadcast_all()` is the arbiter's full ranked output and is the read that matches the
@@ -779,7 +779,7 @@ def main():
     #      weakened." It read: two ordinary consecutive solves on one bus, the PREVIOUS matrix's
     #      winner still charged and wearing the identical content shape, RANKING ABOVE this
     #      matrix's candidate, and it asserted `ws_seq.broadcast() == stale` as its own non-vacuity
-    #      check. That precondition was manufactured by `thalamus/global_workspace.py`'s rank key
+    #      check. That precondition was manufactured by `faculties/global_workspace.py`'s rank key
     #      falling through to the SOURCE STRING: measured on the exact configuration this case
     #      built, the stale pool held the head on `_g` 0.850000 / final membrane 0.613777 against
     #      this solve's own candidate at 1.000000 / 0.916325 -- IDENTICAL MEMBRANES UNDER BOTH

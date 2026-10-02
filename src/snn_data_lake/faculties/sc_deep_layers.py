@@ -52,12 +52,12 @@ explicitly DOES NOT ACTUATE: the command is returned as DATA. In the full archit
 command reaches an effector ONLY through the gated brainstem final common path; this module imports
 nothing from brainstem/ and drives no hardware.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.midbrain.sc_deep_layers
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.sc_deep_layers
 """
 
 import random
 
-from snn_data_lake.midbrain.superior_colliculus import SuperiorColliculus
+from snn_data_lake.faculties.superior_colliculus import SuperiorColliculus
 
 
 class SCDeepLayers:

@@ -31,7 +31,7 @@ What real brain modules it drives
       its `run()` is hardcoded to search `SpikingPolicy` weight-genomes and cannot search grid-game
       policies. We reuse its real CuriosityDrive and mirror its Go-Explore selection over game
       states (returning to promising states via env.snapshot/restore).
-- DECISION: `basal_ganglia.evidence_accumulation.RaceAccumulator` (the real spiking N-alternative
+- DECISION: `faculties.evidence_accumulation.RaceAccumulator` (the real spiking N-alternative
   winner-take-all race) picks the exploit action from the learned action-values -- evidence
   accumulation, not a bare argmax.
 - PLANNING: a small model-based value iteration over the world model the curiosity-driven
@@ -56,7 +56,7 @@ for _p in (os.path.join(_ROOT, "src"), _ROOT, _HERE):
 
 import env as arc_env  # noqa: E402
 
-from snn_data_lake.basal_ganglia.evidence_accumulation import RaceAccumulator  # noqa: E402
+from snn_data_lake.faculties.evidence_accumulation import RaceAccumulator  # noqa: E402
 from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive  # noqa: E402
 
 PALETTE = 16  # fixed color palette for the one-hot spike encoder (all game colors are < 16)

@@ -93,7 +93,7 @@ not before it (a premature extraction was measured wrong once already, above).
 
 Deps: math, random, json, zlib (numpy/torch allowed project-wide); ASCII-only prints, deterministic (random.Random(seed) per instance).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.spiking_jepa
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.spiking_jepa
 """
 
 import json
@@ -101,8 +101,8 @@ import math
 import random
 import zlib
 
-from snn_data_lake.cerebellum.jepa_world_model import bound_rows
 from snn_data_lake.cortex.is_snn_forward import SPARSITY, STABLE_GAIN
+from snn_data_lake.faculties.jepa_world_model import bound_rows
 from snn_data_lake.growth.lif_neuron import LIFNeuron
 from snn_data_lake.infra._mathutils import dot, mean
 from snn_data_lake.plasticity.espp_rule import espp_modulator_core
@@ -413,7 +413,7 @@ class SpikingJEPA:
         FORWARD matrix transposed -- weight transport, which this module's own headline claim
         ("NO backprop and NO weight transport") denied it was doing. Only the residual skip
         survives, which is structure rather than a weight. Same definition and same measurement as
-        `cerebellum/jepa_world_model._feedback_gz`; see that docstring for the 5-seed benchmark."""
+        `faculties/jepa_world_model._feedback_gz`; see that docstring for the 5-seed benchmark."""
         return list(gp)
 
     def _readout_grad(self, gz, s_bar_top, wr, br):
@@ -1768,7 +1768,7 @@ def main():
     #   linear dep_br 2.910e+00 A2 pass A3 pass | deleted 0.000e+00 A2 FIRE A3 fire
     #   squared 0.000e+00 A2 FIRE A3 pass       | rectified 1.455e+00 A2 pass A3 pass
     # It restated the assert above it, which is the same defect this pass deleted from
-    # `cerebellum/synfire_chain.py`. Deleted, not weakened (F11).
+    # `faculties/synfire_chain.py`. Deleted, not weakened (F11).
     ep = SpikingJEPA(_ACTIONS, retina=retina, seed=5)
     gp_probe = [0.1 * (i + 1) for i in range(ep.L)]
     sbar_probe = [0.3] * ep.sizes[-1]

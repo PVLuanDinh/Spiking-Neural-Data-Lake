@@ -10,13 +10,13 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 |---|---|---|---|---|---|
 | path_integration_dead_reckoning | 35 | src/snn_data_lake/engine/autonomous_loop.py:1958#step; src/snn_data_lake/engine/brain.py:2189#_c1_tick | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
 | interval_timing_time_cells | 35 | src/snn_data_lake/cortex/time_cells.py:168#tick; src/snn_data_lake/engine/brain.py:1742#_route_percept_to_action | st_timing_60.txt | opus-5 auditor / spatiotemporal_probe.py timing 60 (charge_probe verdict) | 2026-07-30 |
-| sequence_binding_synfire | 35 | src/snn_data_lake/cerebellum/synfire_chain.py:172#survives; src/snn_data_lake/engine/brain.py:2334#_c1_tick | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
+| sequence_binding_synfire | 35 | src/snn_data_lake/faculties/synfire_chain.py:172#survives; src/snn_data_lake/engine/brain.py:2334#_c1_tick | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
 | path_integration_spiking_can | 30 | src/snn_data_lake/faculties/spiking_grid_can.py:217#step; src/snn_data_lake/engine/brain.py:2190#_c1_tick | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
 | interval_timing_wake_counter | 30 | src/snn_data_lake/engine/brain.py:2043#_wake_tick; src/snn_data_lake/engine/brain.py:3433#state | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
 | place_coding | 21 | src/snn_data_lake/faculties/grid_place_map.py:184#observe; src/snn_data_lake/engine/brain.py:1516#_consume_perception | st_place_60.txt | opus-5 auditor / call instrumentation + spatiotemporal_probe.py place 60; band UNCHANGED but its rationale is superseded, see "The freeze is fixed" | 2026-07-30 |
 | grid_coding | 21 | src/snn_data_lake/faculties/grid_place_map.py:124#grid_code; src/snn_data_lake/faculties/grid_cells.py:71 | - | opus-5 auditor / call instrumentation, 60 ticks seed 0, daemon sys.path; band UNCHANGED, see "The freeze is fixed" | 2026-07-30 |
 | landmark_drift_correction | 21 | src/snn_data_lake/faculties/spiking_grid_can.py:250#observe_landmark; src/snn_data_lake/engine/brain.py:1458#_consume_perception | - | opus-5 auditor / return-value instrumentation, 60 ticks seed 0 | 2026-07-30 |
-| sequence_memory_polychronous | 15 | src/snn_data_lake/cerebellum/polychronization.py:23#module; src/snn_data_lake/cortex/rose_language.py:358#dependency_order_ok | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime; paths+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
+| sequence_memory_polychronous | 15 | src/snn_data_lake/faculties/polychronization.py:23#module; src/snn_data_lake/cortex/rose_language.py:358#dependency_order_ok | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime; paths+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
 | sequence_prediction_sorn | 10 | src/snn_data_lake/reasoning/sorn.py:201#self_organize | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime) | 2026-07-30 |
 | heading_integration_ring_attractor | 10 | src/snn_data_lake/faculties/ring_attractor.py:107#ProprioceptiveEstimator; src/snn_data_lake/sensorimotor/live_arm.py:67#_make_observer | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime) | 2026-07-30 |
 
@@ -250,7 +250,7 @@ honest band for a static-only claim is low and saying which evidence it rests on
   and slip detection. Unique capability; not on the brain's tick.
 - `cortex/time_cells.py` -- ramp-to-threshold population clock with emergent Weber scaling and
   reward-latency learning.
-- `cerebellum/synfire_chain.py` -- all-or-none synchronous-volley propagation with a reliability
+- `faculties/synfire_chain.py` -- all-or-none synchronous-volley propagation with a reliability
   threshold derived from its own width/window.
 - `reasoning/polychronization.py` -- combinatorial memory keyed on relative spike TIMING.
 - `reasoning/sorn.py` -- plasticity-driven sequence prediction above a static-reservoir control.

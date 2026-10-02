@@ -16,7 +16,7 @@ it lands). It had sat in `reasoning/`, which is outside all three P3 gates, ruff
 the coverage denominator -- so two separate audits could record it dormant
 (`docs/coverage/SpatialTemporal.md:19` scored it 15, tagged "STATIC ONLY, not runtime"; `:274` said
 "I did not run polychronization") and nothing was obliged to happen. Cerebellum is the anatomically
-correct home: this is the timing structure, and `cerebellum/synfire_chain.py:37` already
+correct home: this is the timing structure, and `faculties/synfire_chain.py:37` already
 cross-references this module to distinguish zero-lag synchrony from delay-matched convergence.
 
 The docstring used to end "Pure standard library, deterministic." That was a ZERO-DEPENDENCY
@@ -30,7 +30,7 @@ module imports numpy. A file asserting its own cleanup two paragraphs below the 
 "a claim living in two places, only one corrected" failure `docs/POLICIES.md` names. The headline
 also carried a non-ASCII em dash.)*
 
-  python -m snn_data_lake.cerebellum.polychronization    # self-check; also run by run_selfchecks.py
+  python -m snn_data_lake.faculties.polychronization    # self-check; also run by run_selfchecks.py
 """
 
 from collections import defaultdict

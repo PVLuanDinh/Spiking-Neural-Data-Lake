@@ -41,7 +41,7 @@ is additive/opt-in and models a relay-gating FUNCTION, not cognition/awareness/A
 emergent feedback, not an exact algebraic divide; it is a small LIF circuit, not a full cortical model.
 Credit: Crick 1984 (searchlight); Carandini & Heeger 2012 (normalization); McAlonan et al. 2006 (TRN attention).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.thalamus.reticular_gate
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.reticular_gate
 """
 
 import random

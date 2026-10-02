@@ -115,7 +115,7 @@ def _markov_matrix(k_modes, peak, seed):
 # distinct-from: engine/brain.py -- Brain.tick() is the circadian wake/sleep iteration this
 #   stream's drive() mimics; it perceives, this synthesizes a harness stimulus. Site read.
 # distinct-from: sensorimotor/arm_bridge.py -- recv_outcome() reads the NEXT reward packet off a
-#   socket. distinct-from: cerebellum/forward_model.py -- reset() sets a plant state.
+#   socket. distinct-from: faculties/forward_model.py -- reset() sets a plant state.
 #   distinct-from: growth/dendritic_neuron.py -- step() advances a compartment. distinct-from:
 #   cortex/generative_self_model.py -- a forward model of the self-signal. Phrase overlap on
 #   'next'/'tick'/'stream' only; none produces a (percept, category) stimulus. All sites read.
@@ -383,7 +383,7 @@ class NeurogenesisSelfImprove:
         return majority, persistence
 
     # distinct-from: engine/autonomous_loop.py -- _context_pattern() ENCODES the percept this
-    #   consumes. distinct-from: cerebellum/spiking_jepa.py -- a collapse measurement on a
+    #   consumes. distinct-from: faculties/spiking_jepa.py -- a collapse measurement on a
     #   held-out batch. distinct-from: growth/growth_stop.py -- should_grow() is the VERDICT this
     #   refit consults. distinct-from: cortex/percept_surprise.py -- records an A/B attribution.
     #   distinct-from: readout/growable_readout.py -- re-seeds an optimizer. Phrase overlap

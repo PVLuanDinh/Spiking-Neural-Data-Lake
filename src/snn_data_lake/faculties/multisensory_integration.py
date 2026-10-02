@@ -60,7 +60,7 @@ DISTINCTNESS (this is single-cell threshold ENHANCEMENT, a different mechanism f
     complementary accounts of multisensory integration (optimal-cue-combination vs SC enhancement).
   * sensorimotor.multimodal_encoder BANDS four modalities into disjoint slots of the N=64 feature vector
     (concatenation, no interaction). THIS makes the modalities INTERACT inside one cell.
-  * midbrain.superior_colliculus is a WHERE map -- a spiking winner-take-all that SELECTS which of
+  * faculties.superior_colliculus is a WHERE map -- a spiking winner-take-all that SELECTS which of
     many locations to orient to. THIS is a HOW-MUCH cell -- how strongly one location's cross-modal
     pair drives the SC, the enhancement that makes a faint bimodal target detectable. They compose:
     enhancement here raises a weak target's salience; the colliculus map there picks the winner.
@@ -73,7 +73,7 @@ in an untrained integrate-and-fire unit -- an existence/mechanism demonstration 
 hold, not a claim to match any particular neuron's tuning. Deterministic (per-instance RNG used
 only for the randomized robustness battery; the enhancement measurements carry no randomness).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.midbrain.multisensory_integration
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.multisensory_integration
 """
 
 import random

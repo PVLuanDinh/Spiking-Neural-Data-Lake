@@ -11,8 +11,8 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | model_based_plan_rollout | 35 | src/snn_data_lake/engine/autonomous_loop.py:1156#goal_value; src/snn_data_lake/engine/autonomous_loop.py:1193#_pfc_bias | imag_plan_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py model_based_plan 60 | 2026-07-30 |
 | mental_imagery | 20 | src/snn_data_lake/engine/brain.py:4132#_finish_sentence; src/snn_data_lake/engine/brain.py:3540#respond | - | opus-5 REFUTER / band-definition correction on the auditor's own live cue-sensitivity probe | 2026-07-30 |
 | dream_replay | 25 | src/snn_data_lake/engine/brain.py:2754#_sleep_tick; src/snn_data_lake/sleep/sleep_replay.py:329#sleep | imag_dream_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py dream_replay 60 | 2026-07-30 |
-| spiking_world_model | 10 | src/snn_data_lake/gates/dormancy_gate.py:285#module; src/snn_data_lake/cerebellum/spiking_jepa.py:121#SpikingJEPA | - | dormancy_gate EXEMPT permanent + its recorded encode() negative (static) | 2026-07-30 |
-| efference_copy_forward_model | 10 | src/snn_data_lake/engine/live_brain.py:363#deliberate_ahead; src/snn_data_lake/cerebellum/forward_model.py:81#ForwardModel | - | opus-5 / live_brain._planner is None after 20 ticks, seeds 0 and 3 | 2026-07-30 |
+| spiking_world_model | 10 | src/snn_data_lake/gates/dormancy_gate.py:285#module; src/snn_data_lake/faculties/spiking_jepa.py:121#SpikingJEPA | - | dormancy_gate EXEMPT permanent + its recorded encode() negative (static) | 2026-07-30 |
+| efference_copy_forward_model | 10 | src/snn_data_lake/engine/live_brain.py:363#deliberate_ahead; src/snn_data_lake/faculties/forward_model.py:81#ForwardModel | - | opus-5 / live_brain._planner is None after 20 ticks, seeds 0 and 3 | 2026-07-30 |
 | hierarchical_abstract_world_model | 0 | src/snn_data_lake/engine/autonomous_loop.py:169#__init__; src/snn_data_lake/engine/autonomous_loop.py:1120#_pfc_bias; src/snn_data_lake/engine/autonomous_loop.py:2695#main | - | opus-5 / arm.hjepa_serve is None on make_brain(seed=0) | 2026-07-30 |
 | generative_recombination | 0 | src/snn_data_lake/cortex/self_improvement_suite.py:216#_rung_qd; src/snn_data_lake/gates/dormancy_gate.py:246#module | - | opus-5 / caller search over src: no live-path generator | 2026-07-30 |
 
@@ -205,7 +205,7 @@ Three caveats a refuter should press on, none of which I think overturns the ban
 
 **A P-violation on record, which is not a band but bears on the claim.** `train_step` propagates the
 invariance error into the encoder by using the forward predictor matrix transposed --
-`gz[k] = gp[k] + sum(gp[i] * self.Wz[i][k])` at `cerebellum/jepa_world_model.py:272-278`, with the
+`gz[k] = gp[k] + sum(gp[i] * self.Wz[i][k])` at `faculties/jepa_world_model.py:272-278`, with the
 comment at `:267` stating outright that this is "backprop into We/be". That is weight transport, and it
 runs on the live tick, in a project whose standing rule is to pivot any backprop consideration to e-prop
 and whose P1 sibling `cortex/counterfactual_sim.py` goes to some length in its docstring to justify a
@@ -299,7 +299,7 @@ P-violation stands as written.
   which never runs unless a human asks for it is not part of the brain's own cognition.
   **REFUTER: that argument was taken; the row is now 20.** Reasoning and the counter-argument are in
   "The adversarial pass" above. The measurement is unchanged -- only the band cell moved.
-- **`efference_copy_forward_model` scored 10 on runtime evidence, not a grep.** `cerebellum/forward_model
+- **`efference_copy_forward_model` scored 10 on runtime evidence, not a grep.** `faculties/forward_model
   .ForwardModel` is imported inside `live_brain.deliberate_ahead` (`:329`) and is its default predictor,
   which is enough to satisfy the dormancy gate -- the gate reads the import, not the construction.
   `deliberate_ahead` has no live-tick caller: `plan_latent` passes the JEPA as predictor, and the only
@@ -421,19 +421,19 @@ P-violation stands as written.
 
 ## Capability inventory (Policy 2)
 
-- `cerebellum/jepa_world_model.py` -- the live latent world model: `encode`, `predict`,
+- `faculties/jepa_world_model.py` -- the live latent world model: `encode`, `predict`,
   `prediction_error`, `make_goal_value`, online `train_step` (VICReg anti-collapse, with the weight
   transport noted above). The only charged Imagination faculty -- charged through the *scale* of its
   error, with its predictive content measured behaviourally inert at n=60 (see the adversarial pass).
   Sole provider of an action-conditioned latent transition function to the planner, the curiosity drive
   and `faculties/empowerment.py`.
-- `cerebellum/hjepa_serve.py` -- temporally abstract (Level-1) prospection over a K-tick window, served
+- `faculties/hjepa_serve.py` -- temporally abstract (Level-1) prospection over a K-tick window, served
   frozen from the torch tier. Unique capability: planning over a *regime* rather than a frame. Not
   instantiated.
-- `cerebellum/spiking_jepa.py` -- the spiking-native world model. Unique in principle; measured NOT a
+- `faculties/spiking_jepa.py` -- the spiking-native world model. Unique in principle; measured NOT a
   drop-in replacement (`encode()` invariant across 24 distinct live-width patterns), which is why it is
   EXEMPT rather than adopted. Retiring it would lose the only spiking world model, so it stays.
-- `cerebellum/forward_model.py` -- efference copy: reafference cancellation and exafference flagging,
+- `faculties/forward_model.py` -- efference copy: reafference cancellation and exafference flagging,
   with online delta-rule gain identification. Unique capability (self-caused vs externally-caused
   sensation); no live consumer.
 - `cortex/counterfactual_sim.py` -- the do()-operator: `imagine(z, a, horizon)` rollout, `counterfactual`

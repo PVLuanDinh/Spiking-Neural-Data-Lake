@@ -298,7 +298,7 @@ def code_hash(ls_files_stage: str) -> str:
 
 
 # distinct-from: reasoning/arc_diagnostic.py -- a verdict line from measured numbers; this tokenizes a
-#   spawn command line. Also read: brainstem/reflex.py (reflex step), cerebellum/spiking_jepa.py
+#   spawn command line. Also read: brainstem/reflex.py (reflex step), faculties/spiking_jepa.py
 #   (encoder), gates/gradient_claim_gate.py (baseline loader), reasoning/spike_chat_lake.py (chat
 #   clause) -- term overlaps only.
 def _tokens(argv: list[str]) -> list[str]:

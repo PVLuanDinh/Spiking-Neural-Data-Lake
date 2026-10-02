@@ -20,14 +20,14 @@ Mechanism (brain-native, spiking, three-factor local -- NO backprop):
      rectifies it (control is WITHHELD when net <= 0), and reads it out as the normalized spike RATE
      of a small leaky integrate-and-fire (LIF) population whose drive is that net level. The
      population rate IS the allocated control gain in [0, 1] -- a genuinely spiking readout (the same
-     LIF-pool convention as midbrain/dopamine_nuclei), not a bare arithmetic clamp. Higher
+     LIF-pool convention as faculties/dopamine_nuclei), not a bare arithmetic clamp. Higher
      conflict*stakes -> higher net -> higher rate -> more control.
 
   2. LEARN (dopamine-gated three-factor plasticity). learn(engaged, reward) computes the reward
      PREDICTION ERROR against a running baseline of the DEFAULT (control-withheld) outcome,
          dopamine = reward - expected                    (the RPE, same convention as
                                                           plasticity/valence_stdp and
-                                                          midbrain/dopamine_nuclei)
+                                                          faculties/dopamine_nuclei)
      and applies a THREE-FACTOR update gated by whether control was actually engaged (the eligibility
      of the control unit -- only an engaged, i.e. FIRING, control unit is eligible to change its
      weights):

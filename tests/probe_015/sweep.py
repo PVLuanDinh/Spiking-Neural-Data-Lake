@@ -29,7 +29,7 @@ Run:  .venv-lake\\Scripts\\python.exe tests\\probe_015\\sweep.py
 import math
 import random
 
-from snn_data_lake.basal_ganglia.mlp_q import (
+from snn_data_lake.faculties.mlp_q import (
     MlpQ,
     _acc,
     _linear_action,

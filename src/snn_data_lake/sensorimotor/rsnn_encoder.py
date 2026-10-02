@@ -6,7 +6,7 @@ spiking encoder whose weights AND per-synapse conduction delays are LEARNED in t
 (research/rsnn_delays_torch.py, surrogate-gradient BPTT on a real temporal spiking dataset -- SHD
 preferred, N-MNIST fallback) and then FROZEN and exported as `snn_rsnn/1` JSON. This module reads
 that JSON back with a trust-boundary check and runs the forward with NO torch and NO numpy -- exactly
-the serve-frozen pattern cerebellum/jepa_world_model.py uses for `snn_jepa/2`. It raises the FEATURE
+the serve-frozen pattern faculties/jepa_world_model.py uses for `snn_jepa/2`. It raises the FEATURE
 ceiling on TEMPORAL data: `features(spikes)` returns the penultimate layer's per-neuron SPIKE-COUNT
 vector, the drop-in replacement for a frozen conv-STDP `features()` that the SLDA-RFF readout consumes
 (research/developmental_loop_slda.py). It is NOT a claim of beating all comers; it is the field-standard

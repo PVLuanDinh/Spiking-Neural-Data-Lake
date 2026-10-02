@@ -53,7 +53,7 @@ Representation-only: no arm import, nothing under `brainstem/`. Deterministic: n
 the relay is a state machine over its input, so replay is byte-identical by construction and it
 adds nothing to the G5 snapshot. ASCII.
 
-  PYTHONPATH=src python -m snn_data_lake.thalamus.interoceptive_relay   # self-check, exit 0
+  PYTHONPATH=src python -m snn_data_lake.faculties.interoceptive_relay   # self-check, exit 0
 """
 
 from __future__ import annotations
@@ -184,10 +184,10 @@ def record_charge():
     return 0
 
 
-# distinct-from: thalamus/reticular_gate.py -- the TRN, the inhibitory GATE ON relay (attentional
+# distinct-from: faculties/reticular_gate.py -- the TRN, the inhibitory GATE ON relay (attentional
 #   gain redistribution across channels); this is the RELAY ITSELF and its transmission mode. Its
 #   own docstring draws the line: "the thalamus is a RELAY, but the TRN is what makes it a GATE".
-# distinct-from: thalamus/connectome_router.py -- routes by declared topology, transmits nothing.
+# distinct-from: faculties/connectome_router.py -- routes by declared topology, transmits nothing.
 # distinct-from: faculties/interoceptive_integration.py -- the cortical TERMINUS, computing deviation
 #   from baseline; this is the hop BEFORE it. distinct-from: faculties/interoceptive_arousal.py --
 #   the SOURCE that senses the body. All sites read.

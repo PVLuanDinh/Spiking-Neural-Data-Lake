@@ -1566,7 +1566,7 @@ _SELF_SYNAPSES_CORE = [
 # distinct-from: gates/amdahl_gate.py::red_repeatability -- constructs a red for a TIMING
 #   rig's own resamples. distinct-from: cortex/theta_gamma_code.py::_decode_cycle -- decodes item
 #   order from live SPIKE PHASE in this brain. distinct-from:
-#   cerebellum/forward_model.py::predict -- an efference-copy sensory prediction.
+#   faculties/forward_model.py::predict -- an efference-copy sensory prediction.
 # distinct-from: cortex/access_consciousness.py::_post -- the ONE workspace submit site a
 #   self-check uses to stand in for other faculties on a live bus. None of the five builds an
 #   EXTERNAL-release fixture, and none of them is a fixture this could import instead: the shape

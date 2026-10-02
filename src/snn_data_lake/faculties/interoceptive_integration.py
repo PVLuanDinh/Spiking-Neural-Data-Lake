@@ -44,7 +44,7 @@ body shape, authored in the very module it describes. It said `interoception_out
 DECLARED EDGE-LESS and that the manifest did not yet say what the anatomy did. It now does:
 `faculties/region_coherence` declares the typed IN port (FR-012/FR-013) the edge needed, and
 `interoception_out -> region_coherence.interoception_in` is declared and charge-measured. The
-ascending half likewise relays through `thalamus/interoceptive_relay` rather than arriving
+ascending half likewise relays through `faculties/interoceptive_relay` rather than arriving
 straight from the medulla. Charge is MEASURED per edge: two replay-twice A/Bs, each varying ONE producer's
 payload while the other stays constant, so divergence attributes to THAT edge -- a single
 whole-join neuter could not separate the two producers.
@@ -155,7 +155,7 @@ def consume_body(consumer):
     return out
 
 
-# distinct-from: basal_ganglia/evidence_accumulation.py -- serotonin's single-edge A/B;
+# distinct-from: faculties/evidence_accumulation.py -- serotonin's single-edge A/B;
 #   this is the body wire's per-edge pair over the instrument-layer schedules. Read.
 def _measure_edge_charge(vary):
     """One per-edge replay-twice A/B: -> (live, pinned_out, reads, responded) where
@@ -421,7 +421,7 @@ def main() -> int:
     return 0
 
 
-# distinct-from: basal_ganglia/evidence_accumulation.py -- its record_charge measures the
+# distinct-from: faculties/evidence_accumulation.py -- its record_charge measures the
 #   SEROTONIN wire's single edge; this measures the BODY wire's TWO edges with per-edge
 #   vary-one-freeze-one schedules. Both delegate to port_charge_probe.record_attribution,
 #   THE one writer. Read.

@@ -2,7 +2,7 @@
 """A/B: does per-tract CONDUCTION DELAY variation change anything in the connectome router?
 
 specs/010 follow-on. `connectome.py`'s `_e()` gained a `delay` field on 2026-08-04; before that every
-long-range projection arrived in a uniform 1 tick. The router (`thalamus/connectome_router.py`,
+long-range projection arrived in a uniform 1 tick. The router (`faculties/connectome_router.py`,
 `ConnectomeRouter.__init__`) was already built to consume per-edge delays and to size a ring buffer
 to the longest one -- it had just never been handed a value.
 
@@ -143,7 +143,7 @@ if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
 from snn_data_lake import connectome  # noqa: E402
-from snn_data_lake.thalamus.connectome_router import ConnectomeRouter  # noqa: E402
+from snn_data_lake.faculties.connectome_router import ConnectomeRouter  # noqa: E402
 
 TICKS = 60
 DRIVE_TICKS = 20

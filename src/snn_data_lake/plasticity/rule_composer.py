@@ -765,7 +765,7 @@ _CENSUS_ADJUDICATED = (
     ("faculties/affective_appraisal.py", None, "needs-pre-collapse -- T050 census"),
     ("plasticity/naca.py", None, "needs-pre-collapse -- T050 census"),
     (
-        "cerebellum/spiking_jepa.py",
+        "faculties/spiking_jepa.py",
         None,
         "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, "
         "five named pre-collapsed factors, held to the production path) and its "
@@ -1271,7 +1271,7 @@ def main():
     #     the producers enumeration is T051c-wave's (open, undated), cited. rule_charge is the attribution's FIRST
     #     READER -- tick-live since T053-ii (the stack replays its controllers'
     #     RECORDED production bindings; this harness's readings are constructed).
-    from snn_data_lake.cerebellum.spiking_jepa import SpikingJEPA
+    from snn_data_lake.faculties.spiking_jepa import SpikingJEPA
     from snn_data_lake.gates.manifest_gate import rebuild_from_registrants
 
     _mani = rebuild_from_registrants()

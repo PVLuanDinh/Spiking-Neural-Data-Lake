@@ -21,7 +21,7 @@ SUSTAINED activity held across a delay (persistent recurrent firing).
 
 THE MECHANISM HERE
 ------------------
-`snn_data_lake.thalamus.global_workspace.GlobalWorkspace` already gives genuine spiking IGNITION
+`snn_data_lake.faculties.global_workspace.GlobalWorkspace` already gives genuine spiking IGNITION
 (LIF pools -> compete -> ignite -> broadcast) and, crucially, a cross-tick attractor + hysteresis
 so an ignited thought PERSISTS across `step()` calls (HOLD-in-mind for free). `TrainOfThought`
 composes ONE such workspace into a RE-ENTRANT LOOP the feedforward J-space cannot form:
@@ -52,7 +52,7 @@ Shadlen-Movshon), demonstrated on a toy symbolic graph, nothing more.
     set PYTHONPATH=src & python -m snn_data_lake.reasoning.train_of_thought
 """
 
-from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
+from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 
 # how the workspace slot is driven when we post a thought as a candidate (supra-rheobase ~0.55)
 _IGNITE_SALIENCE = 0.9
@@ -408,14 +408,14 @@ def main():
     # the spiking WTA SELECTED the strong branch: the weak associate never ignited into the chain.
     assert "coriolis" not in chain, "the weak (0.6) associate must lose the WTA and NOT ignite"
     # DELETED 2026-08-06, NOT WEAKENED (P8 falsifier F11), and this is the only edit this pass makes
-    # outside `thalamus/global_workspace.py`. The line here was:
+    # outside `faculties/global_workspace.py`. The line here was:
     #
     #     assert any(ev == "hold" for _, ev in trace), \
     #         "thoughts must be HELD (sustained firing) between hops"
     #
     # A `hold` tick is one where the workspace kept broadcasting the PREVIOUS thought while this
     # stream was already posting its successor. That was never sustained firing -- it was
-    # `thalamus/global_workspace.py` paying `self_boost + hysteresis` to a content THIS STREAM HAD
+    # `faculties/global_workspace.py` paying `self_boost + hysteresis` to a content THIS STREAM HAD
     # ALREADY RETRACTED, against this stream's own fresh claim. MEASURED on that arbiter, one source
     # posting 'A' at 0.95 then 'B' at 0.95: the two pools carry `g` A=0.8075 / B=0.9500 and BOTH
     # saturate at late=30, and the head was 'A' -- the retracted content, holding the workspace with

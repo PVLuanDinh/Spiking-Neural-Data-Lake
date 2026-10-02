@@ -87,13 +87,13 @@ CUSTOM_KERNELS = (
     "snn_data_lake.growth.neuron_zoo::_AdExCell",
     "snn_data_lake.growth.neuron_zoo::_IzhikevichCell",
     "snn_data_lake.growth.neuron_zoo::NeuronZoo",
-    "snn_data_lake.cerebellum.spiking_pid::_LIFPopulation",
+    "snn_data_lake.faculties.spiking_pid::_LIFPopulation",
     "snn_data_lake.plasticity.r_stdp::RSTDPNeuron",
     "snn_data_lake.plasticity.bcm_plasticity::BCMNeuron",
     "snn_data_lake.plasticity.homeostatic_scaling::HomeostaticNeuron",
     "snn_data_lake.plasticity.oja_pca::OjaNeuron",
     "snn_data_lake.growth.basic_components::_DemoLIFLayer",
-    "snn_data_lake.thalamus.gwt_deep::LIF",
+    "snn_data_lake.faculties.gwt_deep::LIF",
     "snn_data_lake.reservoir.kernel_tick::KernelTick",
 )
 

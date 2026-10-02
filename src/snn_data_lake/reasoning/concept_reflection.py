@@ -68,7 +68,7 @@ class ConceptReflector:
         `rheobase` is the ignition threshold READ OFF the workspace this train of thought will drive
         (see `reflect`), never a literal. It used to be `min(1.0, 0.55 + 0.44 * sim)` with a comment
         naming 0.55 as "rheobase" -- a second, silent copy of
-        `thalamus/global_workspace.GlobalWorkspace.ignition_threshold`. Two definitions of one value
+        `faculties/global_workspace.GlobalWorkspace.ignition_threshold`. Two definitions of one value
         is the P2 defect, and the tree already carries the correct idiom
         (`spike_chat_lake.LakeChat.__init__`: `self._rheobase = self._new_workspace().ignition_threshold`).
         The affine map is now derived from it rather than hand-tuned to it: sim in [threshold, 1]

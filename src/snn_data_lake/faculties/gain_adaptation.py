@@ -45,7 +45,7 @@ A reduced scalar LMS gain-calibrator for an involuntary feedforward reflex (VOR 
 the flocculus gain-adaptation level -- NOT a spiking Purkinje network, not biophysics, not cognition.
 Refs: Ito (1982); Miles & Lisberger (1981); Boyden, Katoh & Raymond (2004).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.gain_adaptation
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.gain_adaptation
 """
 
 import random

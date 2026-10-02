@@ -9,7 +9,7 @@ real cognition:
   * exploration  -- faculties/intrinsic_motivation.CuriosityDrive (learning-progress + novelty)
                     + faculties/generalizing_novelty.GeneralizingNovelty (SimHash pseudo-count);
   * rule discovery -- an online world model T (transitions) + model-based value iteration (planning);
-  * decision     -- basal_ganglia/evidence_accumulation.RaceAccumulator (a genuine spiking N-alternative
+  * decision     -- faculties/evidence_accumulation.RaceAccumulator (a genuine spiking N-alternative
                     race over the candidate actions' values);
   * control      -- cortex/metacognitive_monitor.MetacognitiveMonitor gates explore-vs-exploit.
 
@@ -40,7 +40,7 @@ from arcengine import GameAction, GameState  # noqa: E402
 from play import _BY_VALUE, play  # noqa: E402  (the arcade bridge)
 
 from rule_inducer import InducedModel, _race_action, induce  # noqa: E402  (relational reasoning layer)
-from snn_data_lake.basal_ganglia.evidence_accumulation import RaceAccumulator  # noqa: E402
+from snn_data_lake.faculties.evidence_accumulation import RaceAccumulator  # noqa: E402
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor  # noqa: E402
 from snn_data_lake.faculties.generalizing_novelty import GeneralizingNovelty  # noqa: E402
 from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive  # noqa: E402

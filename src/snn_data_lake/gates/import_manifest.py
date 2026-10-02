@@ -88,13 +88,9 @@ import sys
 # brain_atlas parity, the dormancy gate, ruff and the coverage denominator.
 GOVERNED = (
     "cortex",
-    "thalamus",
     "substrate",
     "brainstem",
     "plasticity",
-    "cerebellum",
-    "basal_ganglia",
-    "midbrain",
     "lakehouse",
     "gates",  # G8 S1a (evidence g8-reorganization.md 2.5 item 6, F15): the package it creates
     "instruments",  # G8 M2: the package created by the instrument move

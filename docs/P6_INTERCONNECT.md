@@ -28,8 +28,8 @@ instantiation sites: 26 across 10 modules; 11 of 26 outside the bus self-checks,
 
 | module | role | W | R | sub |
 |---|---|---|---|---|
-| thalamus/global_workspace.py | BUS | 14 | 3 | 4 |
-| thalamus/reentrant_workspace.py | BUS | 11 | 2 | 4 |
+| faculties/global_workspace.py | BUS | 14 | 3 | 4 |
+| faculties/reentrant_workspace.py | BUS | 11 | 2 | 4 |
 | reasoning/train_of_thought.py | FACULTY | 4 | 2 | 0 |
 | engine/brain.py | FACULTY | 3 | 1 | 1 |
 | cortex/competence_executive.py (reasoning/brain_adapters/executive_control.py until 2026-08-12) | FACULTY | 3 | 0 | 0 |
@@ -90,7 +90,7 @@ from inside a single region. Each was re-verified against source today.
 
 ### F1 -- the drain is content-blind, so the bus cannot carry "which faculty spoke"
 
-`thalamus/reentrant_workspace.py:282-312`, `_deliver`:
+`faculties/reentrant_workspace.py:282-312`, `_deliver`:
 
 ```python
 assoc = max((v for (_src, c), v in self._assoc.items() if c == winner), default=0.0)
@@ -871,7 +871,7 @@ Blocked:
    *decomposition* and this loop is flat and reactive, so there is no honest trigger at all.
 3. `top_down_bias()`'s multi-frame summation, `max_goals`, the HELD-parent pop-back, and
    `_wm_spikes` -- all dead live for the same one reason.
-4. `cerebellum/spiking_jepa` -> `PrefrontalExecutive.plan` latent rollout -- blocked twice:
+4. `faculties/spiking_jepa` -> `PrefrontalExecutive.plan` latent rollout -- blocked twice:
    already EXEMPT with a measured reason (`encode()` does not vary across 24 distinct live
    width patterns), and a rollout needs a deliberation phase the tick does not have.
 5. `wavefront_planner.collides()` -> `PrefrontalExecutive.plan()` -- same shape via

@@ -2,12 +2,12 @@
 Re-entrant, NON-saturated Global Neuronal Workspace.
 (Dependencies are governed by P7; this module imports `random` only. The line here used to open
 "stdlib + numpy/torch allowed project-wide; uses only `random`" -- the same dependency-scope boast
-that was removed from the sibling `thalamus/global_workspace.py` on 2026-08-04 and left standing
+that was removed from the sibling `faculties/global_workspace.py` on 2026-08-04 and left standing
 here, in a file edited in the same pass. P7 names a stdlib-scope claim as residue, not a feature.)
 
 WHY THIS EXISTS -- the honest defect it fixes
 ==============================================
-The shipped `thalamus/global_workspace.py` + its live wiring (`cortex/access_consciousness.py`
+The shipped `faculties/global_workspace.py` + its live wiring (`cortex/access_consciousness.py`
 driven from `engine/brain.py::_update_access`) are SATURATED BY CONSTRUCTION: each tick posts a
 single coherent coalition, so ignition fires ~every tick, `global_availability == 1.0` always, and
 the all-or-none gate never actually GATES (nothing ever fails to reach access). Two more gaps: the
@@ -76,7 +76,7 @@ experience, carries NO Phi claim, and asserts nothing about subjective feeling. 
 "access", "availability" name information-routing dynamics only; whether such dynamics bear on
 consciousness is an OPEN question this project builds toward -- neither denied nor claimed here.
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.thalamus.reentrant_workspace
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.faculties.reentrant_workspace
 """
 
 import random
@@ -191,7 +191,7 @@ class ReentrantWorkspace:
             self._order[c] = len(self._order)
         self._buffer.append((str(source), c, float(salience)))
 
-    # distinct-from: thalamus/global_workspace.py -- the shared bus's rheobase is fixed at
+    # distinct-from: faculties/global_workspace.py -- the shared bus's rheobase is fixed at
     #   construction and nobody rewrites it; THIS class is the one workspace whose theta is
     #   moved live (engine.brain's coherence bias), which is why the actuator lives here. Read.
     # distinct-from: gates/perf_baseline.py -- performance ratchet, no rheobase.

@@ -163,7 +163,7 @@ Safety constants are exempt from P1 *because* they are safety constants, not bec
 them.
 
 The worked case behind the corollary (a hardcode that was already a derivation, and a defence no
-value could fix — both in `thalamus/global_workspace.py`) is relocated to
+value could fix — both in `faculties/global_workspace.py`) is relocated to
 `docs/POLICIES_EVIDENCE.md`. Its two transferable tells stay: **a constant that only ever appears
 divided is a round trip written down as a number**, and **a constant that resists every value in a
 sweep is not a tuning problem — the blocking constraint is doing two jobs.**
@@ -211,8 +211,8 @@ them, the answer is still *build the benchmark first* — and "we have no benchm
 licence to decline on dependency grounds. Where a library covers a capability the tree does **not**
 have, there is no incumbent, P2 does not gate it, and P7 governs alone.
 
-**STANDING ADJUDICATION — the two workspaces.** `thalamus/global_workspace.py` and
-`thalamus/reentrant_workspace.py` both run live: an open P2 debt, held open deliberately because
+**STANDING ADJUDICATION — the two workspaces.** `faculties/global_workspace.py` and
+`faculties/reentrant_workspace.py` both run live: an open P2 debt, held open deliberately because
 *"better" requires a measurement that exists* and SNDL has no consensus benchmark. **The benchmark
 that would settle it:** a set of ambiguous multi-source inputs with a known correct winner, scored on
 which workspace's ignited content matches it. Until that exists, both stay. Do not retire either on
@@ -1038,7 +1038,7 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   byte-exact to `docs/POLICIES_EVIDENCE.md`. A verdict that enumerates is read as a verdict that
   surveys, so this register is explicit that it covers ONLY the sites it lists:
 
-  - `cerebellum/jepa_world_model.py` — WAS a violation on the live tick; **CLOSED 2026-08-04**
+  - `faculties/jepa_world_model.py` — WAS a violation on the live tick; **CLOSED 2026-08-04**
     (one backward definition; the broadcast error half alone). The policy-prescribed remedy
     (feedback alignment) was built first and **REFUTED by its own null** — the entire gain was the
     removal of the transport term. A policy prescribing a fix does not make the fix correct; the
@@ -1046,7 +1046,7 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   - `growth/ng_snn.py::fit` — **NOT a violation.** A direct solve: no gradient propagated, no
     weight transported. It IS non-local — "non-local" and "backprop" are different claims, and only
     the second is forbidden.
-  - `basal_ganglia/mlp_q.py::MlpQ.update` — transport **RETIRED 2026-08-14**
+  - `faculties/mlp_q.py::MlpQ.update` — transport **RETIRED 2026-08-14**
     (specs/015): `dh` reads a separate feedback matrix `B` receiving the same increment as the
     forward read-out (Kolen-Pollack), so `B` TRACKS `W2` without ever reading it. Neither of the two
     resolutions the module had proposed was needed.

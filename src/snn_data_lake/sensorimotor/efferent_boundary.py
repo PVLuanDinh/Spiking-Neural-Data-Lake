@@ -42,9 +42,9 @@ advance the envelope.
 
 # distinct-from: brainstem/so101_arm.py -- THE envelope; apply() is its gate and this
 #   boundary never wraps, replaces, or conditions it -- it reads state() before and
-#   after. distinct-from: cerebellum/forward_model.py -- the incumbent model this REUSES
+#   after. distinct-from: faculties/forward_model.py -- the incumbent model this REUSES
 #   (constructs one, calls predict/residual/update; re-implements nothing).
-# distinct-from: cerebellum/jepa_world_model.py -- the latent world model; different
+# distinct-from: faculties/jepa_world_model.py -- the latent world model; different
 #   state space, its own reafference. distinct-from: sensorimotor/afferent_boundary.py --
 #   the SENSORY door; this is the MOTOR door, sharing only the fold (on purpose).
 # distinct-from: engine/autonomous_loop.py -- the loop that owns the action choice;
@@ -56,7 +56,7 @@ advance the envelope.
 import re
 
 from snn_data_lake.brainstem import arm_config
-from snn_data_lake.cerebellum.forward_model import ForwardModel
+from snn_data_lake.faculties.forward_model import ForwardModel
 from snn_data_lake.sensorimotor.afferent_boundary import proprioception_delta, proprioception_deltas
 
 # LMS learning rate, derived from the fold's own bounds rather than copied from the
@@ -202,7 +202,7 @@ def declare_ports(manifest):
     TYPE HONESTY discipline); this boundary declares `efferent_in` and its subscription
     edge. The cerebellar forward model consumes the copy INSIDE the boundary (the model
     instance lives here), so no out-port is declared for it -- a cross-module edge would
-    claim an import cerebellum/forward_model does not make."""
+    claim an import faculties/forward_model does not make."""
     from snn_data_lake.engine.wiring_manifest import Port
 
     manifest.declare_port(

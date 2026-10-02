@@ -78,7 +78,7 @@ NO live tick caller yet: the brain-side consumer is future work (the cerebellar 
 FR-019 lands on this tissue in its own task) -- the dormancy row states this plainly
 rather than dressing a harness as a wire.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.microcircuit  # (run by run_selfchecks.py)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.microcircuit  # (run by run_selfchecks.py)
 """
 
 import math
@@ -89,10 +89,10 @@ from snn_data_lake.growth.lif_neuron import LIFNeuron
 # distinct-from: reservoir/cortical_microcircuit.py -- Potjans-Diesmann's 8-population
 #   CORTICAL reference dynamics (permanent reference model); this is CEREBELLAR tissue
 #   with the expansion/PF/MLI architecture, built to carry live rules. Site read.
-# distinct-from: cerebellum/forward_model.py + gain_adaptation.py + spiking_pid.py --
+# distinct-from: faculties/forward_model.py + gain_adaptation.py + spiking_pid.py --
 #   FUNCTIONAL cerebellar models (efference copy / LMS gain / control laws); this is the
 #   ANATOMICAL tissue layer those functions may one day live on. Sites read.
-# distinct-from: cerebellum/jepa_world_model.py + spiking_jepa.py -- latent world models
+# distinct-from: faculties/jepa_world_model.py + spiking_jepa.py -- latent world models
 #   filed in cerebellum; no granule/PF/MLI structure. Sites read.
 # distinct-from: sensorimotor/lca_sparse_coding.py -- lateral-inhibition sparse CODING of
 #   analog inputs; the granule stage sparsifies by COINCIDENCE thresholding on an
@@ -308,7 +308,7 @@ def main():
     line = "=" * 96
     print(line)
     print(
-        "cerebellum/microcircuit -- T054-i TISSUE: granule expansion + PF bundle + Purkinje "
+        "faculties/microcircuit -- T054-i TISSUE: granule expansion + PF bundle + Purkinje "
         "+ MLI (cb_ctx), deep readout (cb_deep)"
     )
     print(line)

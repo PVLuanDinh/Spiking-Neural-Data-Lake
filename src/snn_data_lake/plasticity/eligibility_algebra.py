@@ -66,7 +66,7 @@ import zlib
 # distinct-from: plasticity/r_stdp.py -- the INCUMBENT rule this contract
 #   EXPRESSES and checks against; the algebra evaluates a declaration, it does not
 #   re-implement the neuron. Site read.
-# distinct-from: cerebellum/spiking_jepa.py -- the LPL modulator (T049's adjudicated
+# distinct-from: faculties/spiking_jepa.py -- the LPL modulator (T049's adjudicated
 #   spine); FOUR of its five terms are authored at T051b-i (lpl_synapse_rule, held to
 #   the production path by equivalence; the fifth is the layer-conditional lambda_jepa
 #   addition, not a modulator term) -- the census row moved NOT-EXPRESSIBLE ->

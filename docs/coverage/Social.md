@@ -327,8 +327,8 @@ have been wrong in both directions.
 
 **joint_attention (0).** Genuinely absent. I searched the tree for shared or triadic attention,
 referential pointing, gaze-following and attention directed at another agent's focus. Every `gaze`
-hit is oculomotor with no second agent in it -- `midbrain/sc_deep_layers.py` turns a selected
-orienting winner into a saccade command and `cerebellum/gain_adaptation.py` adapts the VOR. There is
+hit is oculomotor with no second agent in it -- `faculties/sc_deep_layers.py` turns a selected
+orienting winner into a saccade command and `faculties/gain_adaptation.py` adapts the VOR. There is
 attention (`cortex/learned_attention.py`) and there are other agents (the ToM trackers), and nothing
 joins them: no mechanism represents "the other is attending to X" or aligns the brain's own
 attentional selection to another agent's. Citation is `-`, which the evidence standard permits at

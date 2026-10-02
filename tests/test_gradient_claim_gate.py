@@ -70,8 +70,8 @@ _MUST_BE_ENUMERATED = (
     "plasticity/eprop_kernel.py",  # the reference gradient FR-011 reconciles; 17 defs, all unseen
     "sensorimotor/eprop_shd.py",  # shipped encoder, guards itself on its own kappa-filtered form
     "sensorimotor/eprop_nmnist.py",  # shipped encoder
-    "basal_ganglia/mlp_q.py",  # the feedback-alignment case SC-003 turns on
-    "cerebellum/jepa_world_model.py",  # the closed transport violation
+    "faculties/mlp_q.py",  # the feedback-alignment case SC-003 turns on
+    "faculties/jepa_world_model.py",  # the closed transport violation
     "readout/predictive_coding.py",  # inference ran every tick while learning never did
     "reasoning/eprop.py",  # hand-rolled BPTT in pure loops; invisible to any .T-based walk
     "reasoning/gf.py",  # the owner-EXEMPT CONTROL that a two-value classifier would condemn

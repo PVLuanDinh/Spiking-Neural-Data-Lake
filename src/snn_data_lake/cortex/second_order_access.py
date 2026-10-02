@@ -3,7 +3,7 @@ Second-order ACCESS metacognition -- a spiking read on "did that content actuall
 reach my workspace, and how reliable is that read?".
 
 Honest framing (read this first). The brain already has a FIRST-order access layer:
-thalamus/reentrant_workspace grades how strongly content holds the workspace
+faculties/reentrant_workspace grades how strongly content holds the workspace
 (`access_strength()`), cortex/access_consciousness reports all-or-none ignition +
 global availability, and engine/brain.py folds both into a self-model access
 confidence. What was MISSING is the SECOND order: nothing read the ACCESS STATE

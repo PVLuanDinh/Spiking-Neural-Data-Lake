@@ -6,7 +6,7 @@ most important test for this project.
 THE IGNITION / RE-ENTRY HALF IS RETIRED (2026-08-11, P2 -- one mechanism per job). This
 module carried its own all-or-none workspace ignition (an IGNITE_TH gate on every
 broadcast) and re-entrant sustain (extra theta cycles at `_REENTRY * drive` reverberation)
-BESIDE `thalamus/reentrant_workspace`, which is THE ignition/re-entry mechanism -- it
+BESIDE `faculties/reentrant_workspace`, which is THE ignition/re-entry mechanism -- it
 already absorbed `reasoning/gwt_reentry.py`'s predictive-completion (2026-08-06, ported to
 `::expect`, neuter-A/B verified). The duplicated half is deleted: the gate, the cycles,
 their two demos and their two self-check asserts. What remains is the BINDING half,
@@ -47,7 +47,7 @@ LEAK*V_TH = 0.25): the same two criteria go red deterministically with no igniti
   "permanent" as a benchmark demonstration -- nothing on the live tick binds K objects; the
   consumer is `tests/instruments/gwt_deep_split_ab.py` plus this __main__.
 
-  PYTHONPATH=src python -m snn_data_lake.thalamus.gwt_deep
+  PYTHONPATH=src python -m snn_data_lake.faculties.gwt_deep
 """
 
 import random
@@ -97,7 +97,7 @@ def spiking_broadcast(objs, n_color, n_shape, drive=1.0):
 
     Returns raster, raster[t] = (fired_colors, fired_shapes). (Until 2026-08-11 this also carried an
     all-or-none ignition gate and re-entrant sustain cycles -- retired, see the module docstring;
-    `thalamus/reentrant_workspace` is the one ignition/re-entry mechanism.)
+    `faculties/reentrant_workspace` is the one ignition/re-entry mechanism.)
 
     CORRECTED 2026-08-04, and the correction is the point. The previous version put EVERY object into
     an `active` list at t=0 and gave the out-of-slot ones `drive*0.55`, which is 2.2x the LIF rheobase
@@ -297,7 +297,7 @@ def main():
     )
     print("=" * 90)
     print(
-        "  (ignition + re-entry demos retired 2026-08-11 -- thalamus/reentrant_workspace is the one"
+        "  (ignition + re-entry demos retired 2026-08-11 -- faculties/reentrant_workspace is the one"
     )
     print("   mechanism for both; this module is the tree's phase-binding demonstration)")
 
@@ -342,7 +342,7 @@ def main():
     # is the pre-fix broadcast itself, which `_reds()` rebuilds and RUNS at the end of this
     # function rather than asserting in prose. (The ignition-all-or-none and re-entry-sustains
     # asserts that stood here retired 2026-08-11 with their mechanism -- those properties are
-    # asserted where the one mechanism lives, thalamus/reentrant_workspace.) ----
+    # asserted where the one mechanism lives, faculties/reentrant_workspace.) ----
     # PRECISION is the half the old metric could not see: a multiplexed reader must not emit pairs
     # that were never presented. Without this, K>=2 below is satisfiable by emitting everything.
     _objs_p = _objects(N_COLOR, N_SHAPE, 3, random.Random(99))

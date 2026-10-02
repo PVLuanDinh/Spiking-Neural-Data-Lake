@@ -19,7 +19,7 @@ refit (no global backprop anywhere). Every stage is an existing module; ROSE is 
      vsa_reasoning.cleanup snaps a noisy composite to the codebook (the syntactic round-trip).
   S  STRUCTURE -- hierarchy over timescales. cortex/theta_gamma_code.py nests constituents-on-fast-gamma
      inside order-on-slow-theta (a phase code that reads word order back from LIF spike timing);
-     cerebellum/polychronization.py encodes a multi-word DEPENDENCY as a delay-matched polychronous
+     faculties/polychronization.py encodes a multi-word DEPENDENCY as a delay-matched polychronous
      group that ignites only for the correct temporal order (rate-blind, timing-selective). ROSE
      ADOPTS that module's own `_build`/`_fire` network (P2) rather than re-wiring a second copy of it.
   E  ENCODING -- competence. readout/language_readout_slda.py::SLDA_RFF_np (promoted 2026-08-11) is the frozen, forward-served
@@ -51,7 +51,7 @@ more often than this one) and is imported at MODULE TOP here. The docstring used
 absent -> those stages degrade honestly)". That was obedience to a retired rule dressed as a design
 property, and it also gave
 `competence()` a "numpy absent" failure note with NO reachable red in any supported install.
-Precedent for this wording: cerebellum/polychronization.py, which took the same treatment.
+Precedent for this wording: faculties/polychronization.py, which took the same treatment.
 
   What was MEASURED before keeping the VSA path in stdlib (P7: a rejection ships its measurement).
   vsa_reasoning.coincidence_many is the numpy-batched form of the cleanup primitive and is BIT-EXACT
@@ -379,7 +379,7 @@ class RoseLanguage:
         and leaves group 1 silent. Both directions have a reachable red -- flatten the delays, or fire
         the anchors simultaneously, and one of the four clauses goes False.
 
-        P2: the network and the anchor schedule are cerebellum/polychronization.py's own `_build()`
+        P2: the network and the anchor schedule are faculties/polychronization.py's own `_build()`
         and `_fire()`. This method used to re-wire a second copy of exactly that graph inline (five
         `connect` calls carrying hardcoded weights 0.4/0.6 and delays 3/2/1/2/2, plus a hand-written
         anchor dict) -- two mechanisms for one job, and ten magic constants in the wrong file. The
@@ -389,7 +389,7 @@ class RoseLanguage:
         returned `ignited` alone and dropped the silence half -- a success criterion with a strictly
         smaller red, reachable by any caller, and no caller ever passed it. Deleted, not weakened."""
         try:
-            from snn_data_lake.cerebellum.polychronization import D1, D2, T1, T2, _build, _fire
+            from snn_data_lake.faculties.polychronization import D1, D2, T1, T2, _build, _fire
 
             net = _build()
             # steps horizon: the last downstream arrival lands at ~8 (anchor offset <= 3, + the T1

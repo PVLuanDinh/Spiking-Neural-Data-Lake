@@ -178,17 +178,17 @@ CORE = [
     "sleep.lake_consolidation",  # sleep-time PRUNE of the symbolic durable lake (cap re-derivable bulk, keep learned) -> live + bounded
     "faculties.spiking_storage_prototype",  # factored associative memory; criteria judged vs a do-nothing cue control + permutation null, each with an executed red
     # basal ganglia â€” action selection, reward-modulated learning, decision, Go/NoGo gating
-    "basal_ganglia.evidence_accumulation",
+    "faculties.evidence_accumulation",
     "growth.learning_progress",  # T046a: |LP| four regimes + discharged consumer + goal-store reds
     "plasticity.r_stdp",
     "plasticity.valence_stdp",
-    "basal_ganglia.action_gating",
-    "basal_ganglia.latent_q",
-    "basal_ganglia.mlp_q",
+    "faculties.action_gating",
+    "faculties.latent_q",
+    "faculties.mlp_q",
     # PROMOTED from reasoning/ 2026-08-12 (#10 lane 4d): selection stage over latent_q. Pure
     # stdlib composition (no torch), sub-second; carries the four-arm fusion A/B whose
     # value-channel verdict is a recorded NULL at the shipped rule (printed, not asserted).
-    "basal_ganglia.brain_decision",
+    "faculties.brain_decision",
     # PROMOTED from RESEARCH 2026-08-04. Reward-modulated action selection over its own candidate
     # set: the three-factor RSTDP weights are driven by the GATE verdict (kept +1 / rolled_back -1).
     # Reachable on the live sleep path but only under NORD_SELFMOD=1, so charge is UNMEASURED here.
@@ -198,20 +198,20 @@ CORE = [
     "faculties.fear_conditioning",
     "faculties.affective_appraisal",  # C1: learned multi-dim affective appraisal (three-factor)
     # cerebellum â€” motor coordination, timing, forward/inverse models, oscillators
-    "cerebellum.forward_model",
-    "cerebellum.spiking_pid",
-    "cerebellum.synfire_chain",
+    "faculties.forward_model",
+    "faculties.spiking_pid",
+    "faculties.synfire_chain",
     "sensorimotor.wavefront_planner",
-    "cerebellum.jepa_world_model",
-    "cerebellum.hjepa_serve",
-    "cerebellum.spiking_jepa",
-    "cerebellum.gain_adaptation",
+    "faculties.jepa_world_model",
+    "faculties.hjepa_serve",
+    "faculties.spiking_jepa",
+    "faculties.gain_adaptation",
     # PROMOTED from RESEARCH 2026-08-04. It was "reasoning.polychronization" in the RESEARCH list
     # below, which runs it as an isolated subprocess and leaves it outside all three P3 gates. It
     # holds the only delay-matched coincidence detector in the tree; keeping it ungoverned is how
     # two prior audits could record it dormant and nothing was obliged to happen.
-    "cerebellum.polychronization",
-    "cerebellum.microcircuit",  # T054-i: the tissue (granule/PF/Purkinje/MLI; cb_ctx + cb_deep)
+    "faculties.polychronization",
+    "faculties.microcircuit",  # T054-i: the tissue (granule/PF/Purkinje/MLI; cb_ctx + cb_deep)
     "faculties.mossy_relay",  # T054-i: the pn stage (the pons region's first computing module)
     # brainstem + spinal cord â€” reflexes, actuation, sensorimotor loops, motor pattern generation
     # (the safety envelope lives here)
@@ -228,12 +228,12 @@ CORE = [
     "sensorimotor.signal_loop",
     "faculties.cpg_oscillator",
     # thalamus â€” the relay + global-broadcast hub (GWT) + reticular attentional gate
-    "thalamus.global_workspace",
-    "thalamus.reticular_gate",
-    "thalamus.reentrant_workspace",  # W8: de-saturated competitive ignition + re-entry
-    "thalamus.connectome_router",  # C1 batch-3: live signed/delayed spike propagation over the connectome graph
-    "thalamus.gwt_deep",  # phase-binding demonstration (spiking-vs-rate control); promoted 2026-08-11
-    "thalamus.interoceptive_relay",  # T039j: thal_relay -- the declared tract hop that had no module
+    "faculties.global_workspace",
+    "faculties.reticular_gate",
+    "faculties.reentrant_workspace",  # W8: de-saturated competitive ignition + re-entry
+    "faculties.connectome_router",  # C1 batch-3: live signed/delayed spike propagation over the connectome graph
+    "faculties.gwt_deep",  # phase-binding demonstration (spiking-vs-rate control); promoted 2026-08-11
+    "faculties.interoceptive_relay",  # T039j: thal_relay -- the declared tract hop that had no module
     "instruments.ignition_instrument",  # T033: dual-derived ignition scorer over the re-entry stage
     "instruments.binding_instrument",  # T080: the live cross-modal binder's report vs its own re-paired features
     # hypothalamus â€” homeostatic timing (the SCN circadian clock)
@@ -241,10 +241,10 @@ CORE = [
     "faculties.set_points",
     "faculties.homeostatic_drives",  # W8: drives as percepts
     # midbrain â€” dopamine source nuclei (VTA/SNc RPE) + superior-colliculus orienting + deep gaze layers
-    "midbrain.dopamine_nuclei",
-    "midbrain.superior_colliculus",
-    "midbrain.sc_deep_layers",
-    "midbrain.multisensory_integration",
+    "faculties.dopamine_nuclei",
+    "faculties.superior_colliculus",
+    "faculties.sc_deep_layers",
+    "faculties.multisensory_integration",
     # pons â€” cortico-ponto-cerebellar relay + the ascending reticular activating system (ARAS)
     # medulla â€” the autonomic vital nuclei (respiratory / cardiac CPG) + interoceptive arousal
     "faculties.vital_nuclei",
@@ -408,7 +408,7 @@ RESEARCH = [
     "reasoning.loop_latency",
     "reasoning.delay_learning",
     "reasoning.eprop",
-    # "reasoning.polychronization" -> PROMOTED to CORE as "cerebellum.polychronization" (2026-08-04)
+    # "reasoning.polychronization" -> PROMOTED to CORE as "faculties.polychronization" (2026-08-04)
     "reasoning.sn_p_system",
     "reasoning.free_energy_control",
     "reasoning.pc_active_inference",

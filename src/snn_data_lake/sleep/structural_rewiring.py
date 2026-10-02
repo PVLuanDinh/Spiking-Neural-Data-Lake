@@ -104,7 +104,7 @@ constructed sign-flip in tests/test_sleep_capabilities.py (prune + budget conser
 + cascade adoption each asserted), per the house rule that a gate landing green ships
 the reconstruction of the defect it was built for. FR-018's neuter attribution did NOT
 wait for this wire: it landed at T054-ii on the tissue's own elements
-(cerebellum/microcircuit.py's per-element A/B).
+(faculties/microcircuit.py's per-element A/B).
 
 WHAT THE ADOPTION OWES (P2/P8 discipline; every arm in main(), driven PAST the first
 event per the T047 lesson -- a harness that breaks at the first firing certifies a

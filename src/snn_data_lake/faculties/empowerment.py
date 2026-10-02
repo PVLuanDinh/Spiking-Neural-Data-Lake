@@ -14,7 +14,7 @@ lot (high novelty) while the agent controls nothing (E ~ 0).
 
 Estimate (deterministic, bounded): roll a bounded horizon H of action sequences through an
 action-conditioned forward model (duck-typed `.predict(state, action) -> next_state`; e.g.
-cerebellum/jepa_world_model.JepaWorldModel), quantize each terminal state to a grid CELL (a crc32
+faculties/jepa_world_model.JepaWorldModel), quantize each terminal state to a grid CELL (a crc32
 signature of the rounded latent), and count the DISTINCT reachable cells. E = log2(that count) = bits
 of reachable-future variety the agent controls. The intrinsic reward is the empowerment GAIN
 E(s') - E(s) -- the same temporal-difference form the other drives use -- so a step that OPENS UP the

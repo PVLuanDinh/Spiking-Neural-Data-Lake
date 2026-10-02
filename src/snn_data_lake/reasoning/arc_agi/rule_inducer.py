@@ -27,10 +27,10 @@ memorizing (exact-grid-state -> value) like a tabular RL agent, it:
      hardcoded per game -- shuffle the action->effect pairing and no correct rule is induced.
   3. PREDICTS grid' from (grid, action) via the induced rules, PLANS toward the goal by value
      iteration over the LEARNED (relational, imagined) model, and SELECTS each action with a genuine
-     spiking `basal_ganglia.evidence_accumulation.RaceAccumulator` race over the planned values.
+     spiking `faculties.evidence_accumulation.RaceAccumulator` race over the planned values.
 
 Reused repo modules (genuine, load-bearing):
-  - basal_ganglia.evidence_accumulation.RaceAccumulator : spiking winner-take-all action selection.
+  - faculties.evidence_accumulation.RaceAccumulator : spiking winner-take-all action selection.
   - cortex.vsa_reasoning (bind/bundle/cleanup/hv)        : the induced ACTION SEMANTICS are stored and
     recalled as spike-polarity role-filler hypervectors (bind(action, delta) bundled; queried by
     spike XOR + coincidence cleanup). The planner reads deltas THROUGH this spike-code store.
@@ -87,7 +87,7 @@ for _p in (os.path.join(_ROOT, "src"), _ROOT, _HERE):
     if _p not in sys.path:
         pass  # migrated: sys.path bootstrap removed (now an importable package)
 
-from snn_data_lake.basal_ganglia.evidence_accumulation import RaceAccumulator  # noqa: E402
+from snn_data_lake.faculties.evidence_accumulation import RaceAccumulator  # noqa: E402
 from snn_data_lake.cortex.vsa_reasoning import bind, bundle, cleanup, hv  # noqa: E402
 
 import env as arc_env  # noqa: E402

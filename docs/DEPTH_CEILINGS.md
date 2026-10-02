@@ -392,7 +392,7 @@ The solver is genuinely spiking-native: role-filler object codes bound with `cor
 bipolar HD algebra (the repo's NVSA substrate), **example→rule induction** over the NVSA rule set
 (distribute-three via row-product+unbind, progression via `gf.py`'s shift inducer, constant, arithmetic)
 executed as spike XOR / permute / cleanup ops, with the winning rule and answer selected through
-`basal_ganglia.action_gating.BasalGangliaGate.select` + `thalamus.global_workspace.GlobalWorkspace` ignition.
+`faculties.action_gating.BasalGangliaGate.select` + `faculties.global_workspace.GlobalWorkspace` ignition.
 
 ```
 raven_bench (synthetic 8-choice):  RpmSolver 98.3% (59/60), known 96.7%

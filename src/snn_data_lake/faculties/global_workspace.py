@@ -630,15 +630,15 @@ a second, independent channel on that claim should know the old one was spent he
 
 Verified UNAFFECTED, RE-RUN 2026-08-06 after the delivery change rather than carried over:
 `engine/live_brain.py`, `engine/brain.py`, `engine/autonomous_loop.py`,
-`thalamus/reentrant_workspace.py`, `cortex/self_model.py`, `cortex/executive_control.py`,
+`faculties/reentrant_workspace.py`, `cortex/self_model.py`, `cortex/executive_control.py`,
 `reasoning/rpm_solver.py`, `reasoning/spike_chat_lake.py`, `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16),
 `reasoning/train_of_thought.py`, `reasoning/concept_reflection.py`,
 `cortex/competence_executive.py` (verified at its pre-promotion path
 `reasoning/brain_adapters/executive_control.py`; PROMOTED+RENAMED 2026-08-12, same file),
-`thalamus/gwt_deep.py` (verified at its pre-promotion
+`faculties/gwt_deep.py` (verified at its pre-promotion
 path `reasoning/gwt_deep.py`; PROMOTED 2026-08-11, same file). (`reasoning/gwt_reentry.py`
 stood here and was RETIRED 2026-08-06 under P2 -- its predictive-completion capability ported into
-`thalamus/reentrant_workspace.py::expect` first, verified by a neuter-A/B that flips the ported claim
+`faculties/reentrant_workspace.py::expect` first, verified by a neuter-A/B that flips the ported claim
 and leaves the other four rows unmoved. Corrected here rather than left dangling: a prose list naming
 a path that no longer exists reads as coverage nobody has, and no gate reads this list, so nothing
 would have caught it.)
@@ -668,7 +668,7 @@ module still claims spikes buy is what its remaining criteria measure: the all-o
 bottleneck, sustained-firing admission, and the stability-vs-argmax margin -- nothing about
 feature binding.
 
-  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.thalamus.global_workspace
+  set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.faculties.global_workspace
 """
 
 import itertools
@@ -1120,7 +1120,7 @@ class GlobalWorkspace:
         return max(1, int(1.0 // max(defence, self._JITTER)))
 
     # -- specialist / module interface ----------------------------------------------------------
-    # distinct-from: thalamus/reentrant_workspace.py -- the re-entry stage's own submit
+    # distinct-from: faculties/reentrant_workspace.py -- the re-entry stage's own submit
     #   (different kernel, its own record shape is NOT changed here); this is the shared
     #   bus's buffer becoming Coalition records. Read.
     def submit(self, source, content, salience):
@@ -3805,12 +3805,12 @@ def main():
     )
 
     # ---- T031 COALITION RECORDS: the record layer over the untouched kernel --------------------
-    # distinct-from: thalamus/reentrant_workspace.py -- its step() groups submissions into
+    # distinct-from: faculties/reentrant_workspace.py -- its step() groups submissions into
     #   coalitions for the RE-ENTRY kernel; this block is a SELF-CHECK harness driving THIS
     #   module's record layer end-to-end. distinct-from: instruments/port_charge_probe.py -- the
     #   replay-twice charge A/B instrument; nothing here measures charge. distinct-from:
     #   sensorimotor/pc_cortex_serve.py -- its settle is the predictive-coding hierarchy relaxation.
-    #   distinct-from: cerebellum/spiking_jepa.py and reasoning/arc_agi/brain_player.py --
+    #   distinct-from: faculties/spiking_jepa.py and reasoning/arc_agi/brain_player.py --
     #   phrase overlap only (their drives run retinas/games, not lake framing). All sites read.
     # Four claims, each with its red reachable IN THIS BLOCK: (a) the record IS the 3-tuple to
     # every kernel consumer (projection identity -- mutate as_tuple and every assert here goes
@@ -3973,7 +3973,7 @@ def declare_ports(manifest):
         second constructions; access_consciousness receives it injected).
       * the chat's per-turn arena is a declared PRIVATE-ARENA VIEW (its isolation is
         load-bearing by experiment); it reads THIS bus through broadcast()/broadcast_hold.
-      * the re-entry stage is thalamus/reentrant_workspace (its own registrant).
+      * the re-entry stage is faculties/reentrant_workspace (its own registrant).
     Declared surfaces carry today's REAL traffic: coalition_in receives the arm's per-tick
     submits under the bus's own ARBITRATE semantics (the P6-fixed rank key -- ranked by
     final membrane, never by name -- lives in this module's kernel and its self-check);

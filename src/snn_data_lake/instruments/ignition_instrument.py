@@ -3,7 +3,7 @@ anchored to docs/INVENTION_REGISTER.md row 6 ("dual-derived gate, actuator-whole
 published-band checks -- 100% ignition = saturated detector").
 
 WHAT IT MEASURES. Whether the declared subject -- the re-entry stage of the T030 workspace
-composite (thalamus/reentrant_workspace.ReentrantWorkspace), theta commanded through the
+composite (faculties/reentrant_workspace.ReentrantWorkspace), theta commanded through the
 T032 actuator -- exhibits IGNITION: an all-or-none transition in sustained firing as drive
 crosses the rheobase. The scorer never asserts a marker; it derives the transition TWICE by
 independent routes and refuses unless they agree:
@@ -54,9 +54,9 @@ DISCLOSURE (P8 sentience clause): a green verdict here is evidence about a MECHA
 all-or-none dynamical transition in a spiking competition -- never a verdict about
 experience. No phenomenal claim is made or implied.
 
-# distinct-from: thalamus/reentrant_workspace.py -- the SUBJECT under measurement; the
+# distinct-from: faculties/reentrant_workspace.py -- the SUBJECT under measurement; the
 #   scorer drives it through its public API and re-reads its rasters, it re-implements
-#   nothing of it. distinct-from: thalamus/gwt_deep.py -- an EXEMPT phase-binding
+#   nothing of it. distinct-from: faculties/gwt_deep.py -- an EXEMPT phase-binding
 #   benchmark, no scoring. distinct-from: instruments/port_charge_probe.py -- charge A/B
 #   over recorded frames; this scores a dynamical transition. distinct-from:
 #   cortex/access_consciousness.py -- claims over the LIVE bus; this is an offline
@@ -70,7 +70,7 @@ import math
 import random
 from pathlib import Path
 
-from snn_data_lake.thalamus.reentrant_workspace import ReentrantWorkspace
+from snn_data_lake.faculties.reentrant_workspace import ReentrantWorkspace
 
 _BASELINE = Path(__file__).resolve().parents[3] / "tools" / "ignition_baseline.json"
 

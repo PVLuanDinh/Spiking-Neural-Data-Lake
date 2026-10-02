@@ -45,14 +45,14 @@ from snn_data_lake.engine.wiring_manifest import (
 #: the consumer's declare_ports also declares THE edge, its subscription).
 REGISTRANTS: tuple = (
     ("snn_data_lake.faculties.raphe_serotonin", "declare_ports"),
-    ("snn_data_lake.basal_ganglia.evidence_accumulation", "declare_ports"),
+    ("snn_data_lake.faculties.evidence_accumulation", "declare_ports"),
     # T026: the interoceptive channel -- two producer halves, then the insula terminus
     # (whose declare_ports carries both edges and the interoception_out channel)
     ("snn_data_lake.faculties.interoceptive_arousal", "declare_ports"),
     ("snn_data_lake.faculties.homeostatic_drives", "declare_ports"),
     # T039j: the THALAMIC RELAY hop. Ordered here because declare_edge validates endpoints:
     # the relay's edge needs `arousal_out` to exist, and the insula's edge needs `relay_out`.
-    ("snn_data_lake.thalamus.interoceptive_relay", "declare_ports"),
+    ("snn_data_lake.faculties.interoceptive_relay", "declare_ports"),
     ("snn_data_lake.faculties.interoceptive_integration", "declare_ports"),
     # T039j: the ignition law is the DECLARED consumer of interoception_out -- the port that had
     # carried an edge-less disposition since T026. Ordered after the insula, whose OUT port its
@@ -84,13 +84,13 @@ REGISTRANTS: tuple = (
     # Ordered after learning_progress, whose OUT port the edge needs.
     ("snn_data_lake.growth.growth_stop", "declare_ports"),
     # T029: the RPE third-factor port -- phasic DA into the R-STDP eligibility gate
-    ("snn_data_lake.midbrain.dopamine_nuclei", "declare_ports"),
+    ("snn_data_lake.faculties.dopamine_nuclei", "declare_ports"),
     ("snn_data_lake.plasticity.r_stdp", "declare_ports"),
     # T030: the workspace composite -- the arm's bus producer, the shared bus, and the
     # re-entry stage (brain's reroute_in consumer edge rides in brain.declare_ports)
     ("snn_data_lake.engine.autonomous_loop", "declare_ports"),
-    ("snn_data_lake.thalamus.global_workspace", "declare_ports"),
-    ("snn_data_lake.thalamus.reentrant_workspace", "declare_ports"),
+    ("snn_data_lake.faculties.global_workspace", "declare_ports"),
+    ("snn_data_lake.faculties.reentrant_workspace", "declare_ports"),
     # T034: the report channel -- the workspace broadcast's declared consumer (discharges
     # T030's edge-less disposition on broadcast_out) + the typed report_out snapshot
     # consumed by brain.report_in (Brain.state()'s workspace_report, the cockpit field)

@@ -5,7 +5,7 @@ single cross-modal object. Today the lake perceives N-MNIST vision and SHD audio
 PARALLEL but never BINDS them; this module supplies the missing fusion, reusing three
 existing spiking primitives (it reimplements none of them):
 
-  * midbrain.multisensory_integration.MultisensoryCell -- the Stein & Meredith deep
+  * faculties.multisensory_integration.MultisensoryCell -- the Stein & Meredith deep
     superior-colliculus cell. A congruent cross-modal pair drives a SUPER-ADDITIVE
     response (bound > sum of the two unimodal responses) via genuine LIF membrane
     dynamics. Content CONGRUENCE is mapped onto the collicular SPATIAL RULE: two percepts
@@ -69,7 +69,7 @@ from snn_data_lake.cortex.vsa_reasoning import (
     is_spike_code,
 )
 from snn_data_lake.faculties.claustrum import Claustrum
-from snn_data_lake.midbrain.multisensory_integration import MultisensoryCell
+from snn_data_lake.faculties.multisensory_integration import MultisensoryCell
 
 _MODALITIES = ("vision", "audio")
 

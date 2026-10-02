@@ -63,7 +63,7 @@ _PHANTOMS_AT_LANDING: tuple = (
     "bs_motor",
     "ca1",
     "ca3",
-    # "cb_ctx" + "cb_deep" RETIRED 2026-08-31 (specs/022 T054-i): cerebellum/microcircuit.py
+    # "cb_ctx" + "cb_deep" RETIRED 2026-08-31 (specs/022 T054-i): faculties/microcircuit.py
     # computes near both and says their ids -- the retirement condition, met (the ratchet:
     # rows only ever leave this tuple)
     "ctx_motor",
@@ -115,6 +115,16 @@ def references(node: str, text: str) -> bool:
     )  # prose with an uppercase letter (CeA); bare lowercase is English or a variable
 
 
+def _member_file(mod: str):
+    """The source file of a frozen-label region member, from module_path() (G8 F5/F7), or None for a name
+    that is no module of the tree. The path may not exist: callers test it."""
+    from snn_data_lake import module_path, package_of
+
+    if package_of(mod) is None:
+        return None
+    return SRC.joinpath(*module_path(mod).split(".")[1:]).with_suffix(".py")
+
+
 # distinct-from: brain_atlas.py -- _region_files lists a package's files for the atlas's
 #   filesystem parity; this gate's own census, edited in place (G8 F5), reads each member's TEXT for
 #   node ids. Also read: readout/interaction_learning.py (g0_campaign), growth/arealization.py
@@ -123,7 +133,7 @@ def node_references() -> dict:
     """node_id -> [module files in its region referencing it]. The census. The region's LABEL and
     MEMBERSHIP come from the frozen LEGACY_REGIONS, each member's FILE from module_path() (G8 S1a,
     F5): `SRC / region` stops holding a module once G8 moves it into an engine-function package."""
-    from snn_data_lake import LEGACY_REGIONS, module_path, package_of
+    from snn_data_lake import LEGACY_REGIONS
     from snn_data_lake.connectome import NODES
 
     out = {}
@@ -132,10 +142,12 @@ def node_references() -> dict:
             continue  # effectors: outside every region by design (the safety property)
         hits = []
         for mod in LEGACY_REGIONS.get(region, ()):
-            if package_of(mod) is None:
-                continue
-            f = SRC.joinpath(*module_path(mod).split(".")[1:]).with_suffix(".py")
-            if f.exists() and references(node, f.read_text(encoding="utf-8", errors="replace")):
+            f = _member_file(mod)
+            if (
+                f is not None
+                and f.exists()
+                and references(node, f.read_text(encoding="utf-8", errors="replace"))
+            ):
                 hits.append(f"{region}/{mod}")
         out[node] = hits
     return out
@@ -165,12 +177,23 @@ def main(argv=None) -> int:
         f"{len(c['exempt_stale'])} stale exemptions"
     )
     if mode == "--self-check":
+        from snn_data_lake import LEGACY_REGIONS
+
         # red 1 (constructed phantom): a fake node with no possible reference must be caught
         # by the same token machinery the census uses
         pattern = _token("zz_constructed_phantom_zz")
+        # the corpus is the frozen-label thalamus region's files, resolved through module_path() (G8 M11d, F7):
+        # the directory `SRC / "thalamus"` is gone once its modules move, which would have left the red vacuous
+        thal = [
+            f for m in LEGACY_REGIONS.get("thalamus", ()) if (f := _member_file(m)) and f.exists()
+        ]
+        if not thal:
+            print(
+                "atlas_node_gate self-check FAILED: the constructed-phantom corpus is empty (no thalamus file resolved)"
+            )
+            return 1
         anywhere = any(
-            pattern.search(p.read_text(encoding="utf-8", errors="replace"))
-            for p in (SRC / "thalamus").glob("*.py")
+            pattern.search(p.read_text(encoding="utf-8", errors="replace")) for p in thal
         )
         if anywhere:
             print("atlas_node_gate self-check FAILED: the constructed phantom was 'referenced'")
@@ -200,16 +223,21 @@ def main(argv=None) -> int:
                 return 1
         # disclosed hazard pin: a literal 'import io' would false-resolve node io -- assert
         # no cerebellum module carries one, so the hazard stays theoretical on this tree
-        from snn_data_lake import REGIONS
-
+        cereb = [
+            (m, f)
+            for m in LEGACY_REGIONS.get("cerebellum", ())
+            if (f := _member_file(m)) and f.exists()
+        ]
+        if not cereb:
+            print(
+                "atlas_node_gate self-check FAILED: the import-io corpus is empty (no cerebellum file resolved)"
+            )
+            return 1
         io_hazard = [
             m
-            for m in REGIONS.get("cerebellum", ())
-            if (SRC / "cerebellum" / f"{m}.py").exists()
-            and re.search(
-                r"^\s*import io\b",
-                (SRC / "cerebellum" / f"{m}.py").read_text(encoding="utf-8", errors="replace"),
-                re.MULTILINE,
+            for m, f in cereb
+            if re.search(
+                r"^\s*import io\b", f.read_text(encoding="utf-8", errors="replace"), re.MULTILINE
             )
         ]
         if io_hazard:

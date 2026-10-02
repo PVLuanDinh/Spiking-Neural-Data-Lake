@@ -157,7 +157,7 @@ _DERIVED_CAP = {}
 #   attractor at _decide_spiking and _run_wm_pool both do), and this helper is that existing
 #   inline loop EXTRACTED so maintain() and the capacity probe run one arithmetic, not two.
 #   Sites read.
-# distinct-from: basal_ganglia/evidence_accumulation.py -- a decision race over currents; this
+# distinct-from: faculties/evidence_accumulation.py -- a decision race over currents; this
 #   is the WM pool micro-step only. Site read.
 def _lif_pool_run(Vs, cur, bias, md, steps):
     """Advance one LIF pool `steps` micro-steps at input current `cur` (threshold 1.0, reset
@@ -378,7 +378,7 @@ class PrefrontalExecutive:
 
     # distinct-from: plasticity/wm_attractor.py (retired, T056) -- this is its neuter idiom
     #   ported with the mechanism; verdict vocabulary stays rule_composer's. Site read.
-    # distinct-from: cerebellum/microcircuit.py::neuter and plasticity/rule_composer.py::
+    # distinct-from: faculties/microcircuit.py::neuter and plasticity/rule_composer.py::
     #   neutered -- same IDIOM, different substrate: a neuter has to know its own internals,
     #   which is why the tree keeps one per module. Sites read.
     def neuter(self, element):
@@ -703,7 +703,7 @@ def _mean_rt(pfc, evidence, n):
 
 def main():
 
-    from snn_data_lake.cerebellum.forward_model import ForwardModel  # the injected lookahead model
+    from snn_data_lake.faculties.forward_model import ForwardModel  # the injected lookahead model
 
     n_opt = 4
 

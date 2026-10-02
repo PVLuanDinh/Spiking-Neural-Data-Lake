@@ -200,7 +200,7 @@ def _main():
 
     # opt-in: drive joint A to a target with the spiking PID, THROUGH the safety-gated apply() (off by default)
     if "--reach" in args:
-        from snn_data_lake.cerebellum.spiking_pid import drive_to
+        from snn_data_lake.faculties.spiking_pid import drive_to
 
         target = float(args[args.index("--reach") + 1])
         errs, final, breaches = drive_to(target)  # drive_to uses So101Arm().apply() (gated)
@@ -428,7 +428,7 @@ def _main():
     )
 
     # 2. --reach: spiking PID drives joint A to the target THROUGH the gated apply().
-    from snn_data_lake.cerebellum.spiking_pid import drive_to
+    from snn_data_lake.faculties.spiking_pid import drive_to
 
     _errs, reach_final, _ = drive_to(30.0)
     assert abs(reach_final - 30.0) < 1.5, (

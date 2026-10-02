@@ -13,46 +13,6 @@
   "task": "specs/022 T051c"
  },
  "rules": {
-  "basal_ganglia/latent_q.py::LatentQ.update": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "basal_ganglia/mlp_q.py::MlpQ.update": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "basal_ganglia/mlp_q.py::_train": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "cerebellum/forward_model.py::ForwardModel.update": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cerebellum/jepa_world_model.py::JepaWorldModel.train_step": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "cerebellum/jepa_world_model.py::_fit_linear": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cerebellum/spiking_jepa.py::SpikingJEPA._readout_grad": {
-   "disposition": "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, five named pre-collapsed factors, held to the production path) and its rule='espp' branch at T052-i (delegated to plasticity/espp_rule); the readout/predictor gradient half is not-expressible (tensor family, T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "cerebellum/spiking_jepa.py::SpikingJEPA.train_step": {
-   "disposition": "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, five named pre-collapsed factors, held to the production path) and its rule='espp' branch at T052-i (delegated to plasticity/espp_rule); the readout/predictor gradient half is not-expressible (tensor family, T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
   "cortex/autotelic_goals.py::GoalConditionedReadout.train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -138,6 +98,11 @@
    "governed": true,
    "kind": "LOCAL"
   },
+  "faculties/dopamine_nuclei.py::_train": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "faculties/drive_reduction.py::DriveReductionLearner.train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -158,8 +123,43 @@
    "governed": true,
    "kind": "LOCAL"
   },
+  "faculties/forward_model.py::ForwardModel.update": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "faculties/homeostatic_drives.py::_train_values": {
    "disposition": "expressible -- T050 census (drive_reduction)",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/jepa_world_model.py::JepaWorldModel.train_step": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "faculties/jepa_world_model.py::_fit_linear": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/latent_q.py::LatentQ.update": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/mlp_q.py::MlpQ.update": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "faculties/mlp_q.py::_train": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "faculties/reentrant_workspace.py::ReentrantWorkspace._hebb_update": {
+   "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
   },
@@ -170,6 +170,16 @@
   },
   "faculties/spiking_curiosity.py::_run_curriculum_learner": {
    "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "faculties/spiking_jepa.py::SpikingJEPA._readout_grad": {
+   "disposition": "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, five named pre-collapsed factors, held to the production path) and its rule='espp' branch at T052-i (delegated to plasticity/espp_rule); the readout/predictor gradient half is not-expressible (tensor family, T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "faculties/spiking_jepa.py::SpikingJEPA.train_step": {
+   "disposition": "mixed -- the LOCAL three-factor block is EXPRESSED at T051b-i (lpl_synapse_rule, five named pre-collapsed factors, held to the production path) and its rule='espp' branch at T052-i (delegated to plasticity/espp_rule); the readout/predictor gradient half is not-expressible (tensor family, T050 census)",
    "governed": true,
    "kind": "APPROXIMATES_GRADIENT"
   },
@@ -259,11 +269,6 @@
    "kind": "LOCAL"
   },
   "instruments/snn_mnist_stdp_genn.py::run_mnist": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "midbrain/dopamine_nuclei.py::_train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
@@ -525,11 +530,6 @@
   },
   "sleep/structural_rewiring.py::StructuralRewiring.rewire": {
    "disposition": "expressed (component grain) -- T051b-ii: the prune form vs rewire()",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "thalamus/reentrant_workspace.py::ReentrantWorkspace._hebb_update": {
-   "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
   }

@@ -69,8 +69,8 @@ import random
 import sys
 import zlib
 
-from snn_data_lake.basal_ganglia.evidence_accumulation import DriftDiffusion
 from snn_data_lake.cortex.vsa_reasoning import cleanup, hv
+from snn_data_lake.faculties.evidence_accumulation import DriftDiffusion
 from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.faculties.spiking_curiosity import SpikingCurriculum
 from snn_data_lake.infra._mathutils import sigmoid

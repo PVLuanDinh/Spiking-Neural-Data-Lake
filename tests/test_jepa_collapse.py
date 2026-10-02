@@ -1,6 +1,6 @@
 """specs/022 -- the JEPA-collapse arc (2026-09-05): the arm's world model must read succession.
 
-The arm builds `cerebellum/jepa_world_model.JepaWorldModel(ACTIONS, in_dim=64, seed)` at the
+The arm builds `faculties/jepa_world_model.JepaWorldModel(ACTIONS, in_dim=64, seed)` at the
 module defaults and trains it online on every wake tick; `faculties/spiking_curiosity`
 is fed its prediction error. Measured in-brain (evidence/w2-context-latents.md sections
 4.2-4.3b) and brain-free (evidence/jepa-collapse.md sections 3-11): at the defaults this tree
@@ -44,8 +44,8 @@ import random
 import numpy as np
 import pytest
 
-from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
 from snn_data_lake.engine.autonomous_loop import ACTIONS
+from snn_data_lake.faculties.jepa_world_model import JepaWorldModel
 from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 
 CYCLE = 256

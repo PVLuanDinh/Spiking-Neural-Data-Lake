@@ -332,7 +332,7 @@ publishes the live fraction with both C5 sentences and that disclosure in its pr
 0.2309. DATED 2026-09-16 (the panel fold; `evidence/t080-temporal-binding.md` 3.5 item 11): the "same view" conjunct is NOT MET AS RENDERED -- the cockpit's `cross-modal bound rate` row is appended below the ACCESS plate's 110 px visible box and its two sentences reach the DOM only in the row's title string, so a viewer sees neither; the row's data and the /api/state PROVENANCE line (both sentences) stand; the clipping is shared with the PCI and integration rows and is owed a cockpit row of its own.*
 
 *DATED NOTE 2026-09-16 (specs/022 T081; `evidence/t081-report-order.md` section 2 and 2.10; pin `tools/t081_report_order.json`,
-head `f5cf8b8`): the ARM's global workspace (`thalamus/global_workspace`, read through `engine/report_channel`) is now READ
+head `f5cf8b8`): the ARM's global workspace (`faculties/global_workspace`, read through `engine/report_channel`) is now READ
 by an instrument that perturbs it. On a scratch brain's own stream (seeds 0-7 x 600 ticks, ten clones of the same pre-step
 state per awake tick, the lesion applied only to COPIES so the live bus is never touched) the report channel's record is
 reproduced BIT-FOR-BIT by an unperturbed clone on every awake tick of every seed; it MOVES on 1.0000 of applicable ticks when
@@ -397,11 +397,11 @@ the tool that produced the wrong answer was a shell grep whose output was being 
 
 - `infra/region_wiring.py` -- the per-cycle charge-adapter registry. Unique capability: a plug
   point that adds a faculty to the daemon loop without editing the daemon. Currently zero registrations.
-- `thalamus/connectome_router.py` -- signed, delayed LIF spike propagation over the `connectome.py`
+- `faculties/connectome_router.py` -- signed, delayed LIF spike propagation over the `connectome.py`
   schematic; reverberation over signed loops. The only module that makes the wiring graph dynamic.
 - `faculties/region_coherence.py` -- Kuramoto phase order + a tractable integration proxy over live
   per-region activity; the only cross-region synchrony measure with an ignition-gating output.
-- `cerebellum/synfire_chain.py` -- feedforward synchrony survival; supplies the all-or-none threshold
+- `faculties/synfire_chain.py` -- feedforward synchrony survival; supplies the all-or-none threshold
   that turns continuous coherence into a binding event.
 - `sleep/circadian_clock.py` -- the only oscillator that gates which tick body runs.
 - `faculties/cpg_oscillator.py` -- Matsuoka CPG; the only rhythm generator with a path into the
@@ -419,7 +419,7 @@ the tool that produced the wrong answer was a shell grep whose output was being 
   ratchet, byte-exact rollback, and the immutable safety kernel. The safety machinery is the unique
   capability here and it is intact; the driver above it is off and its proposer is empty.
 - `cortex/agency_monitor.py` -- per-channel sustained-controllability detection with hysteresis;
-  genuinely distinct from `cerebellum/forward_model.py`'s transient error, and worth keeping unwired
+  genuinely distinct from `faculties/forward_model.py`'s transient error, and worth keeping unwired
   rather than wiring on 129 observations of a single channel.
 
 ## Gaps, ranked by distance_to_100 x feasibility

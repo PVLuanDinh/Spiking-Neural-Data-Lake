@@ -4,7 +4,7 @@ Executive-control adapters over the COMPETENCE vector of a developmental / NG-SN
 What lives here after the 2026-08-12 retirement pass (WorkspaceBroadcast and ExecutivePlanner
 DELETED -- the RETIREMENT RECORD below is the durable account):
 
-  * DopamineModulator  wraps midbrain.dopamine_nuclei.DopamineNuclei -- turns a reward-prediction
+  * DopamineModulator  wraps faculties.dopamine_nuclei.DopamineNuclei -- turns a reward-prediction
     error over the loop's own COMPETENCE GAIN into a bounded learning-rate multiplier (dopamine
     gates plasticity: a positive surprise -> bigger learning step; a negative surprise -> smaller).
   * CompetenceDynamics + goal_value -- the competence-domain forward model and objective, PUBLIC
@@ -125,7 +125,7 @@ import importlib.util
 import os
 
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
-from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
+from snn_data_lake.faculties.dopamine_nuclei import DopamineNuclei
 
 
 # ---------------------------------------------------------------------------------------------
@@ -171,7 +171,7 @@ class DopamineModulator:
     surprise) -> a smaller step. Deterministic given seed.
 
     Learning-rate map (documented, bounded):  lr_gain = LR_MIN + (LR_MAX - LR_MIN) * da_level
-    Because da_level is clipped to [0, 1] at `midbrain/dopamine_nuclei.py:96`, lr_gain is an affine
+    Because da_level is clipped to [0, 1] at `faculties/dopamine_nuclei.py:96`, lr_gain is an affine
     image of [0, 1] onto [LR_MIN, LR_MAX] -- it saturates at both ends and cannot leave them. With
     the nucleus defaults (tonic_baseline = 0.2) a zero RPE rests at lr_gain 0.800; a strong positive
     surprise saturates da_level and reaches exactly LR_MAX. (The previous docstring said 0.725 for
@@ -298,7 +298,7 @@ def goal_value(state):
 # P8 note -- two asserts were DELETED here rather than weakened, each because a red was searched for
 # and not found:
 #   1. `LR_MIN <= lr_gain <= LR_MAX`. `da_level` clips to [0, 1] unconditionally
-#      (`midbrain/dopamine_nuclei.py:96`) and lr_gain is an affine image of that interval, so no
+#      (`faculties/dopamine_nuclei.py:96`) and lr_gain is an affine image of that interval, so no
 #      input reaches the assert with an out-of-range value. Replaced by the SATURATION endpoints,
 #      which do discriminate between inputs: a huge +RPE must land exactly on LR_MAX and a huge -RPE
 #      exactly on LR_MIN, while a middling RPE lands on neither.

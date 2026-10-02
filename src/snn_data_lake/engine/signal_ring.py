@@ -192,7 +192,7 @@ class LakeJournaller:
 # ---- T020: JoinPolicy + DeliveryPolicy ENFORCEMENT on the delivery path (P8 invention #2,
 # ---- docs/INVENTION_REGISTER.md row 2 -- the register indexes this, the reds live here) ----
 # distinct-from: engine/wiring_manifest.py -- DECLARES the policies; this ENFORCES them
-#   where payloads actually combine. distinct-from: thalamus/global_workspace.py -- workspace
+#   where payloads actually combine. distinct-from: faculties/global_workspace.py -- workspace
 #   COMPETITION among coalitions; this is typed fan-in combination at a port. All sites read.
 class UndeclaredJoin(RuntimeError):
     """Two producers reached one consumer with no declared join -- the silent-sum defect,

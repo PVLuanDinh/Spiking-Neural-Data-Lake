@@ -27,7 +27,7 @@ THE GATE IS MEASURED, NOT HARDCODED (P1). `pick_thread_count(serial_estimate_s)`
 own running-EMA estimate of its serial cost against the **measured** dispatch overhead of this machine
 (`parallel_overhead_s`, calibrated lazily on first use, cached per thread count) and returns 1 -- run
 serial -- unless a real net win survives. No width constant, no thread constant, appears in the decision.
-`thalamus/global_workspace.py` and `thalamus/connectome_router.py` gate their own parallel kernels
+`faculties/global_workspace.py` and `faculties/connectome_router.py` gate their own parallel kernels
 through this same function.
 
 STATUS, STATED PLAINLY: **the registry is EMPTY in production and always has been**, so `charge_all()`

@@ -56,8 +56,8 @@ scratch brain, seeds 0-7, 600 ticks) is NOT here -- the pin is written once by `
 
 import pytest
 
+from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 from snn_data_lake.instruments import report_order_probe as rop
-from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
 
 @pytest.fixture(scope="module")

@@ -6,7 +6,7 @@ tier (research/hjepa_torch.py: deep ReLU-MLP encoders at L0/L1, an EMA/stop-grad
 anti-collapse, action-conditioned residual/pure-MLP predictors) and EXPORTED as an `snn_hjepa/1`
 JSON artifact. This module is the matching core SERVER: it LOADS that artifact and replays the
 forward -- forward-serve only, no training here. It is the
-H-JEPA analogue of cerebellum/jepa_world_model.py's `snn_jepa/2` served/frozen deep encoder, one
+H-JEPA analogue of faculties/jepa_world_model.py's `snn_jepa/2` served/frozen deep encoder, one
 level up: two levels (fine L0 obs latent + abstract L1 window latent) instead of one.
 
 DEPENDENCIES (P7). This file used to open "Zero-dep forward SERVER", call itself the "PURE-STDLIB
@@ -44,7 +44,7 @@ mismatch. save()/round-trip is intentionally NOT provided -- this is a serve-onl
 
 Imports math + json + the shared _mathutils dot/mean/unit. ASCII-only prints, deterministic.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.hjepa_serve
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.hjepa_serve
 """
 
 import json

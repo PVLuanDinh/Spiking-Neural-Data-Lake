@@ -1,7 +1,7 @@
 """Tests for the connectome router -- signed, delayed spike propagation over the connectome."""
 
 from snn_data_lake import connectome
-from snn_data_lake.thalamus.connectome_router import ConnectomeRouter
+from snn_data_lake.faculties.connectome_router import ConnectomeRouter
 
 
 def _run(router, drive, ticks):

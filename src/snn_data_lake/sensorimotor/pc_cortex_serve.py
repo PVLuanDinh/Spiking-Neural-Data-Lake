@@ -8,7 +8,7 @@ network: an L-level (L >= 2) generative hierarchy TRAINED in the torch tier (res
 GPU-batched local predictive-coding -- top-down generative weights, bottom-up precision-weighted error,
 local Hebbian weight updates, NO global backprop) and EXPORTED as an `snn_pcnet/1` JSON artifact. Here
 we LOAD that artifact and replay the SPIKING SETTLING forward in numpy with NO torch -- forward-serve
-only, no training. It is the predictive_coding analogue of cerebellum/hjepa_serve.py one architecture-
+only, no training. It is the predictive_coding analogue of faculties/hjepa_serve.py one architecture-
 class over: a spiking generative hierarchy instead of a feedforward H-JEPA.
 
 The forward replicated here is the seed's spiking settling made deep. With L cause levels r_1..r_L and

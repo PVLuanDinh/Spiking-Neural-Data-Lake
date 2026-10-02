@@ -157,70 +157,12 @@ REGIONS = {
         "rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): the ROSE fluent-language pipeline (VSA constituency parse + KB-grounded comprehend + SLDA competence), LIVE via brain._rose_serve's lazy reach. P3/P4b debt carried visibly, NOT discharged by the move (AUDIT_BACKLOG H7, runtime-reproduced at the promotion audit): nightly_refit moves the SLDA sufficient statistics while competence() returns the build-time cached acc byte-identical; the refit filter accepts a novel HEAD coded OOV-zero; _readout is per-Brain RAM reaching brain_lake.bin nowhere. P2 direction recorded: rose's derived parameterisation (rff from in_dim, ctx from data, relations from the KB ratio) is THE mechanism; sensorimotor/world_kb_stream main()'s four-literal demo copy consumes it or retires at the family's next lane.
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
     ],
-    "basal_ganglia": [
-        "evidence_accumulation",
-        "action_gating",
-        "latent_q",
-        "mlp_q",
-        # PROMOTED from reasoning/ 2026-08-12 (#10 lane 4d): the SELECTION stage over latent_q's
-        # VALUE table (fuses value + metacognition on the loop's curiosity). Composition-only;
-        # the fusion A/B verdict at promotion is a recorded NULL at the shipped rule -- see the
-        # module docstring. EXEMPT-"wire" until developmental_loop_brain promotes.
-        "brain_decision",
-        # Promoted from reasoning/ 2026-08-04. Both belong in basal_ganglia because both LEARN FROM
-        # OUTCOME: self_build_loop is the correctness-gated apply/rollback path, and
-        # brain_native_selfbuild picks WHICH candidate to propose using the brain's own three-factor
-        # RSTDP rule driven by the gate verdict (kept +1 / rolled_back -1), which is reward-modulated
-        # action selection in the literal sense -- not a census, not a heuristic ranking.
-        #
-        # LIVE, and the honest limit of that claim: brain.py::_enter_wake reaches both once every
-        # SELFBUILD_EVERY=8 nights, but ONLY under NORD_SELFMOD=1 (the daemon sets it, CI does not),
-        # so under `pytest` / `run_selfchecks.py` neither fires and CHARGE IS UNMEASURED. Registered
-        # as reachable-and-operator-gated, NOT as charge-proven.
-        #
-        # brain_native_selfbuild's learned weights moved INTO the one lake under _T_SELFBUILD as part
-        # of this promotion (P4b) -- they were in <repo>/data/selfbuild_state.json, a second durable
-        # store. Cross-process round-trip proven: writer pid wrote w=0.77/0.11, a separate reader
-        # process read them back after the writer exited.
-    ],
-    "cerebellum": [
-        "forward_model",
-        "spiking_pid",
-        "synfire_chain",
-        "jepa_world_model",
-        "hjepa_serve",
-        "spiking_jepa",
-        "gain_adaptation",
-        # PROMOTED from reasoning/ 2026-08-04 (owner directive: every build is promoted into the
-        # governed tier the moment it lands; reasoning/ is outside all three P3 gates, which is
-        # where dormancy hides). Cerebellum is the anatomically correct home -- this is the timing
-        # structure, and synfire_chain.py:37 already cross-references it to distinguish zero-lag
-        # synchrony from delay-matched convergence.
-        "polychronization",
-        # specs/022 T054-i: the anatomical TISSUE layer (granule expansion + PF bundle +
-        # Purkinje + MLI opposite-sign pathway) -- names cb_ctx and cb_deep
-        "microcircuit",
-    ],
     "brainstem": [
         "reflex",
         "serial_arm",
         "so101_arm",  # the MuJoCo SO-101 gate; REPLACED arm_sim (specs/004)
         "arm_config",
         "interpreter",
-    ],
-    "thalamus": [
-        "global_workspace",
-        "reticular_gate",
-        "reentrant_workspace",
-        "connectome_router",
-        "gwt_deep",
-        "interoceptive_relay",
-    ],
-    "midbrain": [
-        "dopamine_nuclei",
-        "superior_colliculus",
-        "sc_deep_layers",
-        "multisensory_integration",
     ],
     # specs/022 T054-i: the pons region's first computing module -- the pn mossy relay
     # (the second pons disposition: the package had been anatomy prose only)
@@ -519,6 +461,30 @@ REGIONS = {
         "spiking_curiosity",
         "spiking_grid_can",
         "spiking_storage_prototype",
+        "action_gating",
+        "brain_decision",
+        "connectome_router",
+        "dopamine_nuclei",
+        "evidence_accumulation",
+        "forward_model",
+        "gain_adaptation",
+        "global_workspace",
+        "gwt_deep",
+        "hjepa_serve",
+        "interoceptive_relay",
+        "jepa_world_model",
+        "latent_q",
+        "microcircuit",
+        "mlp_q",
+        "multisensory_integration",
+        "polychronization",
+        "reentrant_workspace",
+        "reticular_gate",
+        "sc_deep_layers",
+        "spiking_jepa",
+        "spiking_pid",
+        "superior_colliculus",
+        "synfire_chain",
     ],
 }
 
@@ -998,7 +964,7 @@ class _AliasLoader(importlib.abc.Loader):
 
 # distinct-from: sensorimotor/eprop_shd.py -- _self_ref derives one module's own identity; these extend
 #   this file's own alias layer in place (one layer: the flat alias plus G8's legacy paths). Also
-#   read: cerebellum/spiking_jepa.py (target_encode), cortex/vsa_reasoning.py (coincidence),
+#   read: faculties/spiking_jepa.py (target_encode), cortex/vsa_reasoning.py (coincidence),
 #   faculties/grid_place_map.py (_pearson), substrate/lake_recall.py (_find_cell_collision).
 class _LegacyLoader(_AliasLoader):
     """G8 S1b: a legacy two-level path's alias -- the same identity as the flat alias, plus

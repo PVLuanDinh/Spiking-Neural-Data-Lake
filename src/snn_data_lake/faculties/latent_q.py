@@ -7,7 +7,7 @@ q[unit] per discrete context (a GrowingLearner unit), updated bootstrap-free by 
 A table has ZERO transfer -- mastering one context teaches nothing about any other context,
 because every context is an independent row. So a curriculum's later stages get no benefit from
 mastery of the earlier ones. This module replaces that table with ONE weight set shared across
-ALL contexts, evaluated over the JEPA latent z (cerebellum/jepa_world_model.encode, a unit vector
+ALL contexts, evaluated over the JEPA latent z (faculties/jepa_world_model.encode, a unit vector
 in R^latent_dim):
 
     Q(z, a) = dot(W[a], z) + b[a]          # ONE W (n_actions x latent_dim), b (n_actions), shared
@@ -42,7 +42,7 @@ the same shape as the old q[unit] row, so it wires in without changing the selec
 stdlib + numpy/torch allowed project-wide (uses random; dot/unit reused from infra._mathutils), ASCII-only prints, deterministic
 (random.Random(seed) per instance -- identical seed => byte-identical weights).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.basal_ganglia.latent_q
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.latent_q
 """
 
 import random

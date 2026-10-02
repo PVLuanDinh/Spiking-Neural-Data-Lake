@@ -1152,8 +1152,8 @@ def _line(c):
 #   This is the guard in front of it -- whether a contrast may be BUILT at all. Read, imported,
 #   never re-implemented. distinct-from: readout/online_readout.py::ClosingGate (a refit-count
 #   gate that holds beta stale after k refits), engine/signal_ring.py::publish (a single-writer
-#   ring append whose "never drops ITS OWN write" is about slot reuse), cerebellum/hjepa_serve.py::
-#   _validate_stack (layer shape chaining, raises) and cerebellum/gain_adaptation.py (online LMS
+#   ring append whose "never drops ITS OWN write" is about slot reuse), faculties/hjepa_serve.py::
+#   _validate_stack (layer shape chaining, raises) and faculties/gain_adaptation.py (online LMS
 #   gain recalibration). All four READ: none decides whether a REPORTED statistic may be computed
 #   from readings that refused, and none returns a refusal record in place of a number.
 def _reported_mi(name, key, seeds, ss):
@@ -1421,7 +1421,7 @@ RED_LINES = {
 #   a second mechanism.
 # distinct-from: instruments/paired_contrast.py::main -- the reds of the STATISTIC (it must be able
 #   to say NOT MET, its FPR must be exact). Read; that module is IMPORTED here, never re-checked.
-# distinct-from: thalamus/gwt_deep.py::_reds -- constructs the input that makes each BINDING
+# distinct-from: faculties/gwt_deep.py::_reds -- constructs the input that makes each BINDING
 #   criterion fail. distinct-from: gates/selfcheck_cache.py::self_check -- cache key-invariance
 #   reds. distinct-from: engine/learn_daemon.py::_selfcheck -- the daemon's non-driving checks.
 #   All three read; each fires its own module's reds, and none touches a permutation floor, a

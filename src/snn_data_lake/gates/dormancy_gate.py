@@ -54,7 +54,7 @@ _LIVE_ROOTS = (
     f"{_PKG}.engine.brain",
     f"{_PKG}.engine.live_brain",
     f"{_PKG}.engine.autonomous_loop",
-    f"{_PKG}.thalamus.reentrant_workspace",
+    f"{_PKG}.faculties.reentrant_workspace",
 )
 _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-package deps
     f"{_PKG}.infra.demo",
@@ -230,7 +230,7 @@ EXEMPT = {
     # the sentence above forbids, and it owes its own adjudication.
     "gwt_deep": (
         "permanent",
-        "BENCHMARK DEMONSTRATION (promoted reasoning/ -> thalamus/ 2026-08-11): the tree's "
+        "BENCHMARK DEMONSTRATION (promoted reasoning/ -> the thalamus package 2026-08-11; now faculties/): the tree's "
         "phase-binding spiking-vs-rate control, credited 2026-08-07 on the benchmark that killed "
         "the workspace bind_* family. Nothing on the live tick binds K (color,shape) objects; its "
         "consumers are its __main__ self-check (4 reachable reds) and "
@@ -252,7 +252,7 @@ EXEMPT = {
     ),
     "brain_decision": (
         "permanent",
-        "SELECTION-turned-CONTROL stage over basal_ganglia/latent_q's value table (promoted "
+        "SELECTION-turned-CONTROL stage over faculties/latent_q's value table (promoted "
         "2026-08-12, #10 lane 4d): fuses value + metacognition on the loop's curiosity; "
         "composition-only. The EXEC-bypass P2 this entry used to record was ADJUDICATED "
         "2026-08-12: the consumer (instruments/developmental_loop_brain) deleted NORD_EXEC "
@@ -295,8 +295,8 @@ EXEMPT = {
         "2026-08-12, #10 lane 4f -- the LAST brain_adapters module; renamed because "
         "cortex/executive_control holds the basename and brain_atlas.py:81 asserts "
         "uniqueness). Three stdlib wrappers over governed mechanisms: dopamine RPE -> "
-        "bounded lr multiplier (midbrain/dopamine_nuclei), objective broadcast "
-        "(thalamus/global_workspace), competence planning (cortex/prefrontal_executive). "
+        "bounded lr multiplier (faculties/dopamine_nuclei), objective broadcast "
+        "(faculties/global_workspace), competence planning (cortex/prefrontal_executive). "
         "Its ONE consumer is instruments/developmental_loop_brain, lazily inside main() "
         "and _mechanics_check(), and that consumer is itself EXEMPT-permanent TRAIN-TIER "
         "and offline. NO CONVERSION CLAUSE IS WRITTEN HERE, and that is a measurement, "

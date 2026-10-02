@@ -9,7 +9,7 @@ excitatory). Pontine nuclei receive a cortical efferent copy and DIVERGE it onto
 cerebellar granule stage as mossy-fibre activity -- a recombining fan-out, not a mirror:
 each pontine cell samples a seeded subset of the cortical drive, so the mossy code the
 cerebellum sees is a mixed projection of cortex, which is what the granule expansion then
-separates (cerebellum/microcircuit.py, the tissue this relay feeds).
+separates (faculties/microcircuit.py, the tissue this relay feeds).
 
 STRUCTURE, said honestly per value (P1, re-adjudicated by this module's panel -- the first
 draft called these "structure as spec" and attached no measurement to either, so its own
@@ -36,10 +36,10 @@ import random
 
 from snn_data_lake.growth.lif_neuron import LIFNeuron
 
-# distinct-from: thalamus/interoceptive_relay.py -- thal_relay is the interoceptive
+# distinct-from: faculties/interoceptive_relay.py -- thal_relay is the interoceptive
 #   tonic/burst hop into cortex; this is the cortico-CEREBELLAR mossy fan-out. Different
 #   declared edges, different transform. Site read.
-# distinct-from: thalamus/connectome_router.py -- the router turns EVERY declared edge
+# distinct-from: faculties/connectome_router.py -- the router turns EVERY declared edge
 #   into a generic delayed LIF projection; this module IS the pn stage's own computation
 #   (seeded recombining fan-out), the thing the router's generic projection is not. Read.
 

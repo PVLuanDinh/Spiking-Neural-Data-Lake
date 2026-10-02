@@ -15,7 +15,7 @@ Mechanism (Go/NoGo disinhibition -- Mink 1996; Frank 2005; Redgrave 1999):
   - Winner-take-all: lateral inhibition in the striatum (`kwta` below, k=1) lets only the strongest
     candidate open its Go gate, so at most one channel is ever disinhibited -- the disinhibition
     bottleneck. `kwta` is THE definition of this primitive for the selection circuits (P2): it was
-    duplicated byte-for-byte in `midbrain/superior_colliculus.SuperiorColliculus`, which now imports
+    duplicated byte-for-byte in `faculties/superior_colliculus.SuperiorColliculus`, which now imports
     it. (Citation corrected 2026-08-04: this named `research/fly_hash.py`, which moved to
     `reasoning/fly_hash.py` in v3.78 and carries its own top-k, and `hippocampus/hippocampus.py`,
     which was RETIRED in the Policy-3 wave -- see `hippocampus/__init__.py`. Neither resolved.)
@@ -37,7 +37,7 @@ Honest framing: this models the action-SELECTION function -- which candidate the
 disinhibits and releases -- NOT volition, choice, agency, or consciousness. A "selection" here
 is a disinhibition event in a spiking circuit, nothing more.
 
-  python -m snn_data_lake.basal_ganglia.action_gating
+  python -m snn_data_lake.faculties.action_gating
 """
 
 import random
@@ -47,7 +47,7 @@ def kwta(values, k):
     """Indices of the k largest values (lateral-inhibition winner-take-all), as a set.
 
     Deterministic tie-break by LOWEST index. THE single definition of this primitive for the brain's
-    selection circuits: `midbrain/superior_colliculus` imports it rather than keeping the
+    selection circuits: `faculties/superior_colliculus` imports it rather than keeping the
     byte-identical copy it used to hold (P2 -- two mechanisms for one job is the defect, and a
     comment asserting "these two agree" is not a mechanism that makes them agree).
     """

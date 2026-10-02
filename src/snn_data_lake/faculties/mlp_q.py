@@ -1,6 +1,6 @@
 r"""
 Shared NONLINEAR (one-hidden-layer MLP) action-value over the JEPA latent -- the task-aligned
-NONLINEAR counterpart of the LINEAR basal_ganglia/latent_q.LatentQ.
+NONLINEAR counterpart of the LINEAR faculties/latent_q.LatentQ.
 
 WHY BOTH EXIST (Policy 2/4 note -- this pair is a MEASURED tradeoff, not un-retired bloat). MlpQ was
 once described as a "strict upgrade" that made LatentQ retirable. Its own self-check refutes that: on a
@@ -38,7 +38,7 @@ the 015 half is the resolution.)
 THE VIOLATION, as it stood (audit 2026-08-04). The `dh` line read the FORWARD read-out weights
 `W2[a]` transposed to carry error backward into the shared hidden layer. That is WEIGHT TRANSPORT --
 structurally the same SHAPE `docs/POLICIES.md` once ruled a real violation at
-`cerebellum/jepa_world_model.py`. Hand-writing it in stdlib rather than calling autograd changed
+`faculties/jepa_world_model.py`. Hand-writing it in stdlib rather than calling autograd changed
 nothing about that ("absence of `.backward()` is NOT evidence of locality"). It was not on the live
 tick -- `AutonomousArm` defaults `mlp_q=False` -- but it was one constructor argument away, so it
 was latent, not a non-issue.
@@ -157,7 +157,7 @@ interference: the shared representation is one object).
 Same ceiling caveat as LatentQ, honestly stated: an MLP head can only recover structure that is
 PRESENT in z. If the latent itself does not carry the information the task needs, no head -- linear or
 nonlinear -- can invent it, and the nonlinearity must move into the ENCODER instead (a deeper JEPA;
-cf. cerebellum/jepa_world_model's snn_jepa/2 hidden encoder). It is still ONE primitive: a nonlinear
+cf. faculties/jepa_world_model's snn_jepa/2 hidden encoder). It is still ONE primitive: a nonlinear
 function approximator plus a delta rule, a strict drop-in upgrade of the linear LatentQ.
 
 Distinctness. This is the VALUE table (which action is worth most in a context), not the SELECTION
@@ -168,7 +168,7 @@ values(z), so it wires in without touching the selection stage.
 stdlib + numpy/torch allowed project-wide (uses random; math.sqrt for the fan-in init; dot reused from infra._mathutils), ASCII-only
 prints, deterministic (random.Random(seed) per instance -- identical seed => byte-identical weights).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.basal_ganglia.mlp_q
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.mlp_q
 """
 
 import math
@@ -369,7 +369,7 @@ def _train(model, contexts, n_actions, passes):
 
 
 def main():
-    from snn_data_lake.basal_ganglia.latent_q import LatentQ
+    from snn_data_lake.faculties.latent_q import LatentQ
 
     LATENT = 2
     ACTIONS = ("A0", "A1")

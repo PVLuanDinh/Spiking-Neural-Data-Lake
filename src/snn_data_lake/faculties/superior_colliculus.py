@@ -38,12 +38,12 @@ synthetic salience map. It models the orienting/selection FUNCTION -- which loca
 commits to and how fast -- not vision, perception, or awareness. A "saccade" here is the first
 threshold-crossing spike in a small LIF winner-take-all array, nothing more.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.midbrain.superior_colliculus
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.superior_colliculus
 """
 
 import random
 
-from snn_data_lake.basal_ganglia.action_gating import kwta
+from snn_data_lake.faculties.action_gating import kwta
 
 
 class SuperiorColliculus:

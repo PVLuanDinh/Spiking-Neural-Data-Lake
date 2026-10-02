@@ -11,7 +11,7 @@ a scaffold budget, the bridge is a correctness contract. The GPU (RTX 5070) run 
 Every torch-specific behaviour is still flagged ``# VERIFY(torch):`` and no loss or accuracy number
 is hard-coded in the code path.
 
-This is the SCALE tier for the core cerebellum/jepa_world_model.py (v3.11 shipped a minimal
+This is the SCALE tier for the core faculties/jepa_world_model.py (v3.11 shipped a minimal
 *linear* JEPA there). It trains a DEEPER latent JEPA in PyTorch -- a hidden-layer MLP encoder
 instead of a single linear read-in -- and bridges the GPU-trained weights into a NEW core format
 ``snn_jepa/2`` that the core serves in plain Python, so the trained model runs on the live tick
@@ -372,7 +372,7 @@ def verify_transfer(path, model, n_probe=5, tol=1e-4):
         print("verify_transfer: skipped (torch not installed)")
         return None
 
-    from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
+    from snn_data_lake.faculties.jepa_world_model import JepaWorldModel
 
     # float64 CPU reference built from the LIVE trained weights (via state_dict) -- verifies both
     # that export captured the live weights AND that the core reads them back correctly.
@@ -432,7 +432,7 @@ def main():
         print("JEPA TORCH TRAINER (not in run_selfchecks) -- torch is NOT installed")
         print("=" * 66)
         print("This is the torch SCALE tier for the core")
-        print("cerebellum/jepa_world_model.py (deeper MLP encoder -> snn_jepa/2).")
+        print("faculties/jepa_world_model.py (deeper MLP encoder -> snn_jepa/2).")
         print("Without torch there is nothing to train or export; the core")
         print("serve path is what CI covers.")
         print("needs torch: pip install '.[gpu]'")

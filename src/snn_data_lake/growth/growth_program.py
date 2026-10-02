@@ -98,8 +98,8 @@ node contract, each piece named at its owner.
 # distinct-from: gates/safety_envelope.py -- that gate hashes the five envelope
 #   FILES; this refusal polices growth PROPOSALS by region name. Different layer,
 #   deliberately redundant in the brainstem direction. Read.
-# distinct-from: basal_ganglia/action_gating.py + readout/snn_moe_classifier.py +
-#   cerebellum/hjepa_serve.py + readout/interaction_learning.py +
+# distinct-from: faculties/action_gating.py + readout/snn_moe_classifier.py +
+#   faculties/hjepa_serve.py + readout/interaction_learning.py +
 #   growth/autapse_neuron.py -- trial builders, expert forwards, action one-hots and
 #   delayed-match harnesses; none is a growth program, a locality mask, or a region
 #   gate. Read.

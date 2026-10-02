@@ -246,7 +246,7 @@ def main():
     # is WHERE the quantity appears: `steps_per_theta` is only ever WRITTEN as that product, so
     # dividing it back out asserts that multiplication round-trips -- an identity wearing a
     # derivation's clothes. The genuinely derived workspace capacity, with the falsifier that
-    # moves, is `thalamus/global_workspace.py::capacity`.
+    # moves, is `faculties/global_workspace.py::capacity`.
 
     # ---- 4. GENUINELY SPIKING: LIF populations fire discrete spikes at discrete gamma phases, only in their window ----
     events = tgc.spike_events(n_cycles=1)  # (cycle, gamma_window, theta_phase, neuron_id)

@@ -115,7 +115,7 @@ P8 debts.
 #   file enumerates SIGNED-EDGE threshold networks against a TARGET map under
 #   repression-dominant asynchronous semantics. Same broad family (Boolean nets),
 #   different mechanism, different question. Read.
-# distinct-from: reasoning/test_prototype.py + cerebellum/spiking_pid.py +
+# distinct-from: reasoning/test_prototype.py + faculties/spiking_pid.py +
 #   growth/autapse_neuron.py + plasticity/intrinsic_plasticity.py +
 #   gates/gradient_claim_gate.py + substrate/lake_bridge.py +
 #   gates/perf_baseline.py -- recall controls, LIF populations, delayed-match

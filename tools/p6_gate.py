@@ -92,7 +92,7 @@ running the OLD and NEW instruments over the SAME tree (4fc5fb1c), varying one c
   unread writers        7               7             7                 7
 
   1. `broadcast_all` was absent from the (method, arity) table. `GlobalWorkspace.broadcast_all()`
-     (`thalamus/global_workspace.py:534`, zero-arg) returns the admitted SET and its own docstring
+     (`faculties/global_workspace.py:534`, zero-arg) returns the admitted SET and its own docstring
      calls it the only answer to "what else is available", so every consumer of it was invisible.
      Adding it moves READS 21 -> 54 (+157%) and moves NOTHING structural. That insensitivity is the
      single most useful measurement here: the raw read total is almost entirely an artifact of which
@@ -243,11 +243,11 @@ READ_ATTR = "current"  # a property on both bus classes; an attribute load, not 
 # claim from the AST so a stale label goes RED rather than quietly mislabelling a module.
 # --------------------------------------------------------------------------------------------------
 ROLES = {
-    "thalamus/global_workspace.py": (
+    "faculties/global_workspace.py": (
         "BUS",
         "defines GlobalWorkspace; its writes are its own __main__ self-check, not broadcast",
     ),
-    "thalamus/reentrant_workspace.py": (
+    "faculties/reentrant_workspace.py": (
         "BUS",
         "defines ReentrantWorkspace; likewise self-check writes",
     ),
@@ -276,8 +276,8 @@ DEFAULT_ROLE = ("FACULTY", "not the bus and not the action path")
 # stayed green. Both are floored at 1 -- the smallest number that still detects a total loss of
 # matching, chosen low for the same reason the write floors are low.
 KNOWN_WRITERS = {
-    "thalamus/global_workspace.py": 14,
-    "thalamus/reentrant_workspace.py": 11,
+    "faculties/global_workspace.py": 14,
+    "faculties/reentrant_workspace.py": 11,
     "reasoning/train_of_thought.py": 4,
     "engine/autonomous_loop.py": 3,
     "engine/brain.py": 3,
@@ -294,9 +294,9 @@ KNOWN_WRITERS = {
     "instruments/developmental_loop_brain.py": 1,
 }
 KNOWN_READERS = {
-    "thalamus/global_workspace.py": 3,
+    "faculties/global_workspace.py": 3,
     "reasoning/train_of_thought.py": 2,
-    "thalamus/reentrant_workspace.py": 2,
+    "faculties/reentrant_workspace.py": 2,
     "engine/brain.py": 1,
     "reasoning/rpm_solver.py": 1,
     # INSTRUMENT CHANGE 2026-08-21 (T034): the counted broadcast() reads of BOTH
@@ -404,7 +404,7 @@ BASELINE = {
     # its own, so closing those two is an architectural call inside global_workspace.py and is
     # NOT owed by this commit.
     #
-    # 23 -> 21 AT T039j: BOTH REMAINING PAIRS CLOSED. `thalamus/interoceptive_relay` implements
+    # 23 -> 21 AT T039j: BOTH REMAINING PAIRS CLOSED. `faculties/interoceptive_relay` implements
     # `thal_relay`, the hop the connectome always declared and no module carried. Its self-check
     # drives the REAL composition -- a medullary InteroceptiveArousal through this hop into a real
     # insula terminus -- so (medulla, thalamus) and (thalamus, insula) become import paths this
@@ -1570,7 +1570,7 @@ def verify_roles(root):
 # moves private-instance MODULES and unread-writer MODULES by exactly one each.
 _MUTANT_PRIVATE = '''"""overlay mutant -- a new faculty that builds its own private bus and shouts into it."""
 
-from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
+from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 
 
 class MutantFaculty:
@@ -1585,7 +1585,7 @@ class MutantFaculty:
 # amygdala <-> cerebellum is in neither the declared set nor the imported set at 4fc5fb1c.
 _MUTANT_UNDECLARED = '''"""overlay mutant -- a cross-region wire with no declared connectome pathway."""
 
-from snn_data_lake.cerebellum import jepa_world_model
+from snn_data_lake.faculties import jepa_world_model
 
 
 def use(x):
@@ -1596,7 +1596,7 @@ def use(x):
 # above went red, so the connectome ceiling was evadable by import style alone.
 _MUTANT_UNDECLARED_REL = '''"""overlay mutant -- the same cross-region wire, spelled as a relative import."""
 
-from ..cerebellum import jepa_world_model
+from ..faculties import jepa_world_model
 
 
 def use(x):
@@ -1820,13 +1820,13 @@ def self_check(root):
         (
             "private_instance_modules",
             "add a new FACULTY module that constructs its own GlobalWorkspace",
-            {"cerebellum/_p6_selfcheck_mutant.py": _MUTANT_PRIVATE},
+            {"faculties/_p6_selfcheck_mutant.py": _MUTANT_PRIVATE},
             None,
         ),
         (
             "unread_writer_modules",
             "the same new module submits to its own bus and nobody reads it",
-            {"cerebellum/_p6_selfcheck_mutant.py": _MUTANT_PRIVATE},
+            {"faculties/_p6_selfcheck_mutant.py": _MUTANT_PRIVATE},
             None,
         ),
         (

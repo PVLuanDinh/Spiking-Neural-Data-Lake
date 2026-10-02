@@ -45,7 +45,7 @@ cause their expected sensory change?" and flags the SUSTAINED loss of that
 self-causation (deafferentation / learned helplessness) rather than a one-off jolt.
 
 Honest framing (read this first). The atlas already predicts sensory consequences of
-action -- cerebellum/forward_model.py runs an efference-copy forward model that flags a
+action -- faculties/forward_model.py runs an efference-copy forward model that flags a
 TRANSIENT prediction error when an external force perturbs a reach (one tick, one push).
 That is a fast, per-EVENT surprise. It cannot answer the SLOW question this module owns:
 has a channel STOPPED being controllable at all -- has the command->feedback coupling

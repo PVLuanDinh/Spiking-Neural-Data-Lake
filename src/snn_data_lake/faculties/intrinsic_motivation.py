@@ -10,10 +10,10 @@ which a predictor's error is falling; it holds no world model of its own and mak
 action decision. It is the CONSUMER of a surprise signal, not its source.
 
 Where the signal comes from. Curiosity is the complement of the midbrain dopamine nuclei
-(midbrain/dopamine_nuclei.py), which EMIT the EXTRINSIC reward-prediction error (RPE) --
+(faculties/dopamine_nuclei.py), which EMIT the EXTRINSIC reward-prediction error (RPE) --
 "was the world better than I expected?". This drive is the INTRINSIC reward -- "am I getting
 BETTER at predicting the world?". The raw surprise it consumes is exactly the scalar
-PREDICTION ERROR a world model reports: cerebellum/jepa_world_model.py train_step() returns
+PREDICTION ERROR a world model reports: faculties/jepa_world_model.py train_step() returns
 that error. The control loop ADDS intrinsic_reward() to any extrinsic reward.
 
 The key idea -- why naive novelty/surprise-seeking is BROKEN. Rewarding raw surprise (high
@@ -157,7 +157,7 @@ class CuriosityDrive:
     #   docstring; its flat-error bias below the calibration reference is measured in
     #   learning_progress.py's adoption record and re-derivable in one probe). This method
     #   adds the |.| readout to the EMA form ONLY. Site read.
-    # distinct-from: cerebellum/jepa_world_model.py -- BRidge error transport; unrelated. Read.
+    # distinct-from: faculties/jepa_world_model.py -- BRidge error transport; unrelated. Read.
     # distinct-from: cortex/learned_evc.py -- a dopamine-gated three-factor UPDATE; this is a
     #   read-only measurement. Site read.
     def learning_progress_abs(self, context_key):

@@ -31,7 +31,7 @@ noise-robust transduction, but the PID itself is now spikes end-to-end.
 
 Deps: math, random (numpy/torch allowed project-wide). Deterministic: random.Random(seed) per instance.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.spiking_pid   # self-check
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.spiking_pid   # self-check
 """
 
 import random

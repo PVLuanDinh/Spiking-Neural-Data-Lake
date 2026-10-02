@@ -90,10 +90,10 @@ an anatomical region subpackage, and touches none of the 5 safety-envelope files
 ## Learning
 
 Beyond the anatomy, the brain also carries **learning mechanisms**. As of v3.11 the cerebellum holds a
-**JEPA latent world model** (`cerebellum/jepa_world_model.py`) beside the input-space `forward_model`:
+**JEPA latent world model** (`faculties/jepa_world_model.py`) beside the input-space `forward_model`:
 a self-supervised encoder + action-conditioned latent predictor + EMA target + VICReg anti-collapse,
 which the prefrontal executive plans over in latent space and which self-trains online from the live
-tick stream. See `docs/JEPA.md`. v3.14 adds a served hierarchical H-JEPA (`cerebellum/hjepa_serve.py`) the
+tick stream. See `docs/JEPA.md`. v3.14 adds a served hierarchical H-JEPA (`faculties/hjepa_serve.py`) the
 executive can plan over at the abstract level.
 
 As of v3.15 the brain also has a **curiosity drive** (`faculties/intrinsic_motivation.py`,
@@ -111,13 +111,13 @@ progress on a stage dries up (mastery, not a clock -- Elman "starting small"; Ou
 driven by its own curiosity, learning through the same gated `step()`. Curiosity + curriculum together are
 the self-directed, cumulative-learning loop -- master easy, unlock harder, at the frontier of competence.
 
-v3.17 adds the **transfer substrate** (`basal_ganglia/latent_q.py`, `LatentQ`): a SHARED linear
+v3.17 adds the **transfer substrate** (`faculties/latent_q.py`, `LatentQ`): a SHARED linear
 action-value `Q(x,a) = W[a].x` (opt-in `AutonomousArm(latent_q=True)`) replacing the tabular
 per-context `q[unit][action]`. One weight set across all contexts, so a reward update generalizes -- the
 arm reaches competence 1.00 on genuinely-novel contexts where the tabular baseline scores 0.00. The
 substrate rides the task-linear lake-stored `[0,1]^64` pattern.
 
-v3.18 adds the **nonlinear head** (`basal_ganglia/mlp_q.py`, `MlpQ`): a SHARED one-hidden-layer action-value
+v3.18 adds the **nonlinear head** (`faculties/mlp_q.py`, `MlpQ`): a SHARED one-hidden-layer action-value
 `Q(z,a) = W2[a].relu(W1 z + b1) + b2[a]` over the self-supervised JEPA latent (opt-in `AutonomousArm(mlp_q=True)`).
 Its own self-check proves the head recovers a NONLINEAR (XOR) rule a linear Q provably cannot (0.99 vs 0.47).
 **Honest finding (corrects v3.17):** v3.17 called the SSL latent "not task-aligned" (a linear online Q over it
@@ -127,7 +127,7 @@ recovers the arm's rule at 0.80 linear / 0.88 MLP). The real cause of the on-arm
 linear or nonlinear -- can separate them. The honest next lever is a better ENCODER (reward-shaped / deeper /
 more diverse experience), not a bigger Q head.
 
-v3.19 takes exactly that lever: **reward-shaping the encoder** (`cerebellum/jepa_world_model.py`, opt-in
+v3.19 takes exactly that lever: **reward-shaping the encoder** (`faculties/jepa_world_model.py`, opt-in
 `reward_shaping=True`; `AutonomousArm(reward_shaped_encoder=True)`). A reward-predictive auxiliary head
 `r_hat[a] = Wr[a].z + br[a]` adds a weak supervised gradient (from the observed reward) into the SAME encoder
 backprop, so the latent encodes task/reward structure -- "task-shaped SSL", not pure SSL. This breaks the

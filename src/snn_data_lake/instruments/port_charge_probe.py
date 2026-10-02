@@ -73,7 +73,7 @@ def margin_frozen(margins, tol=0.0) -> bool:
     return len(vals) >= 2 and max(vals) - min(vals) <= tol
 
 
-# consolidates: basal_ganglia/evidence_accumulation.py (merge)
+# consolidates: faculties/evidence_accumulation.py (merge)
 # Its T025 record_charge wrote the whole evidence file as a single row (the next registrant
 # would have deleted the first's attribution). This read-modify-write per edge supersedes
 # that inline writer; evidence_accumulation's record_charge becomes a caller of THIS
@@ -110,7 +110,7 @@ def read_attribution(edge):
     return mine[0] if mine else None
 
 
-# distinct-from: basal_ganglia/evidence_accumulation.py -- its _measure_patience_charge
+# distinct-from: faculties/evidence_accumulation.py -- its _measure_patience_charge
 #   records SEROTONIN frames from the raphe (a route the connectome declares, so the
 #   consumer may import its producer directly); this builds the T026 INTEROCEPTIVE frames,
 #   which touch two regions whose direct import the connectome does NOT declare -- hence
@@ -128,7 +128,7 @@ def interoceptive_challenge_frames(vary, n_ticks=40, spike_at=30):
     {'arousal', 'drives'}. -> (frames, spike_at). Deterministic."""
     from snn_data_lake.faculties.homeostatic_drives import SET_POINT, HomeostaticDrives
     from snn_data_lake.faculties.interoceptive_arousal import InteroceptiveArousal
-    from snn_data_lake.thalamus.interoceptive_relay import InteroceptiveRelay
+    from snn_data_lake.faculties.interoceptive_relay import InteroceptiveRelay
 
     arousal = InteroceptiveArousal(seed=0)
     drives = HomeostaticDrives()
@@ -191,7 +191,7 @@ def interoception_challenge_frames(n_ticks=40, spike_at=30):
         BODY_CHANNELS,
         InteroceptiveIntegration,
     )
-    from snn_data_lake.thalamus.interoceptive_relay import InteroceptiveRelay
+    from snn_data_lake.faculties.interoceptive_relay import InteroceptiveRelay
 
     organ, relay = InteroceptiveArousal(seed=0), InteroceptiveRelay()
     ii = InteroceptiveIntegration(channels=BODY_CHANNELS)

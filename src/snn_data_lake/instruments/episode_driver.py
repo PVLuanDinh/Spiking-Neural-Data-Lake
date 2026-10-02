@@ -48,7 +48,7 @@ DERIVED is everything the kernel owns: quantization uses the kernel's OWN frac_b
 #   instruments/ignition_instrument.py -- an L7 scorer over the RE-ENTRY workspace with its
 #   own drive sweep; this drives the KERNEL and owns trials, not verdicts. distinct-from:
 #   sensorimotor/afferent_boundary.py (T036) -- the declared modality boundary that will
-#   FEED this port. distinct-from: midbrain/sc_deep_layers.py and midbrain/
+#   FEED this port. distinct-from: faculties/sc_deep_layers.py and midbrain/
 #   superior_colliculus.py -- the tree's GAZE fixation/saccade MECHANICS (omnipause gate,
 #   target selection); this module's 'fixation'/'saccade' are trial-PHASE labels over the
 #   substrate tick, not eye movements. distinct-from: growth/autapse_neuron.py -- its

@@ -40,7 +40,7 @@ def test_an_ambiguous_bare_name_is_refused_rather_than_guessed():
     A resolver that guesses here would hand the gate a disposition the tree does not support.
     """
     for rel, fn in (
-        ("basal_ganglia.latent_q", "update"),
+        ("faculties.latent_q", "update"),
         ("cortex.reasoning_curriculum", "train_premise"),
     ):
         try:

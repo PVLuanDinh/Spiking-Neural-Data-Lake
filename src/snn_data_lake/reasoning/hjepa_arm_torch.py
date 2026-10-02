@@ -32,7 +32,7 @@ nn.Module: deep ReLU-MLP encode0/encode1, unit-normalized latents, EMA targets; 
 anti-collapse; the residual-fine / pure-coarse predictors; the resolve_device/AMP/no-torch
 pattern; the snn_hjepa/1 export layout) but swaps in an ARM-NATIVE two-timescale world so
 the exported snn_hjepa/1 artifact can be loaded by the zero-dep core server
-``src/snn_data_lake/cerebellum/hjepa_serve.py`` and served in the live arm brain.
+``src/snn_data_lake/faculties/hjepa_serve.py`` and served in the live arm brain.
 
 THE ARM-NATIVE WORLD (ArmTwoTimescaleWorld):
   * Observations are [0,1]^64 BANDED exactly like cortex/multimodal_encoder.encode_multimodal:
@@ -519,7 +519,7 @@ def evaluate_abstract_vs_flat(model, world, n=DECODE_N):
 
 def export_hjepa_arm(model, path):
     """Dump BOTH levels' weights as an snn_hjepa/1 JSON artifact for the zero-dep core server
-    src/snn_data_lake/cerebellum/hjepa_serve.py. Layout matches reasoning/hjepa_torch.export_hjepa:
+    src/snn_data_lake/faculties/hjepa_serve.py. Layout matches reasoning/hjepa_torch.export_hjepa:
     nn.Linear weights are [out][in] via .tolist() (no transpose); enc0/enc1/pred0/pred1 in
     application order, plus EMA targets. Keys are arm-native (in_dim=64, arm action sets, regime
     map). Returns the written dict."""
@@ -579,10 +579,10 @@ def verify_transfer_hjepa(model, path):
     import torch
 
     try:
-        from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
+        from snn_data_lake.faculties.hjepa_serve import HJepaServe
     except ImportError:
         print(
-            "[bridge] core-no-hjepa-serve (src/snn_data_lake/cerebellum/hjepa_serve.py absent) -- skipped"
+            "[bridge] core-no-hjepa-serve (src/snn_data_lake/faculties/hjepa_serve.py absent) -- skipped"
         )
         return None
 
@@ -754,7 +754,7 @@ def main():
     print("-" * 72)
     print(
         f"exported     : {HJEPA_FORMAT} -> {export_path} "
-        f"(in_dim=64, arm actions, enc0/enc1/pred0/pred1 + EMA targets; for cerebellum/hjepa_serve.py)"
+        f"(in_dim=64, arm actions, enc0/enc1/pred0/pred1 + EMA targets; for faculties/hjepa_serve.py)"
     )
     print(
         "NOTE: the pooling capacity to beat a flat single frame is present by construction; whether"

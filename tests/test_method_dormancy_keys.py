@@ -2,7 +2,7 @@
 
 Two defects motivated this, both measured on 2026-07-31:
 
-1. `defs` was keyed (module, name), so `basal_ganglia/latent_q.py` -- which defines `update` on BOTH
+1. `defs` was keyed (module, name), so `faculties/latent_q.py` -- which defines `update` on BOTH
    `LatentQ` (genuinely dormant open work) and `_TabularQ` (the self-check's control, correctly
    dead) -- collapsed to ONE entry whose surviving lineno named whichever class came last. The
    finding was therefore reported against the wrong class.
@@ -60,10 +60,10 @@ def _def_line(module_rel, cls_name, meth):
 def test_two_same_named_methods_in_one_module_stay_distinct():
     """The regression that reported a finding against the wrong class."""
     r = gate.audit()
-    latent = [u for u in r["uncertain"] + r["dormant"] if "basal_ganglia.latent_q" in u]
+    latent = [u for u in r["uncertain"] + r["dormant"] if "faculties.latent_q" in u]
     assert len(latent) == 2, f"expected LatentQ.update AND _TabularQ.update, got {latent}"
     for cls, meth in (("LatentQ", "update"), ("_TabularQ", "update")):
-        line = _def_line("basal_ganglia/latent_q.py", cls, meth)
+        line = _def_line("faculties/latent_q.py", cls, meth)
         assert any(f"{cls}.{meth}()" in u and f":{line}" in u for u in latent), (
             f"expected {cls}.{meth}() reported at its real def line :{line}, got {latent}"
         )

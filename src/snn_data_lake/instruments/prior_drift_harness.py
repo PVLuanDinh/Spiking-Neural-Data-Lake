@@ -861,7 +861,7 @@ def trial_drive(classes, cls, seed, trial_id, n_units, t_trial=T_TRIAL):
     return out
 
 
-# distinct-from: cerebellum/spiking_jepa.py::_sparse_init -- the nearest neighbour, and it is a
+# distinct-from: faculties/spiking_jepa.py::_sparse_init -- the nearest neighbour, and it is a
 #   different object: a SPARSE random WEIGHT INITIALISER for a LIF layer, k = SPARSITY*fan_in
 #   non-zeros per row drawn U(0.5, 1) and scaled by gain * v_threshold / k so the layer sits at the
 #   rate fixed point, with the connectivity mask kept so plasticity stays sparse. It is not

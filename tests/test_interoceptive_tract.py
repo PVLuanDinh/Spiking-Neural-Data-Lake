@@ -10,7 +10,7 @@ WHAT THIS FILE DOES NOT CLAIM, because the repo already adjudicated it and being
 be worse than the gap. `specs/BACKLOG_RANKED.md` row 59 says in as many words: *do not "fix"
 FINDING 1 by adding region-to-region imports* -- `p6_gate`'s `unimplemented_declared_pairs`
 measures IMPORT TOPOLOGY, not traffic, and these routes were ALREADY load-bearing through
-`thalamus/connectome_router.py`, which turns every declared edge into a delayed LIF projection. So
+`faculties/connectome_router.py`, which turns every declared edge into a delayed LIF projection. So
 no test here asserts that a dead route was brought to life. What is asserted is the typed layer:
 the manifest now matches the anatomy, the relay transmits rather than forwards, and every edge on
 the tract carries a measured charge.
@@ -25,11 +25,11 @@ from snn_data_lake.faculties.interoceptive_integration import (
     RELAY_EDGE,
     InteroceptiveIntegration,
 )
-from snn_data_lake.faculties.region_coherence import INTEROCEPTION_EDGE
-from snn_data_lake.thalamus.interoceptive_relay import (
+from snn_data_lake.faculties.interoceptive_relay import (
     VISCERAL_EDGE,
     InteroceptiveRelay,
 )
+from snn_data_lake.faculties.region_coherence import INTEROCEPTION_EDGE
 
 QUIET = [0.05, 0.05]
 STEP = [0.40, 0.40]
@@ -189,7 +189,7 @@ def test_routing_the_real_medullary_signal_through_it_moves_the_real_terminus():
 # ======================================================================================
 def test_the_router_propagates_topology_and_carries_no_typed_payload():
     """THE P2 CHECK, and it is asserted rather than argued because the incumbent is real:
-    `thalamus/connectome_router` already turns every declared connectome edge into a delayed LIF
+    `faculties/connectome_router` already turns every declared connectome edge into a delayed LIF
     projection, and BACKLOG row 59 records the tract as load-bearing through it. That module
     propagates an ABSTRACT graded drive over the anatomy graph; it never touches the typed
     {stress, caution} payload or the terminus. If it ever does, these two ARE one job and this
@@ -198,7 +198,7 @@ def test_the_router_propagates_topology_and_carries_no_typed_payload():
 
     src = (
         pathlib.Path(__file__).resolve().parents[1]
-        / "src/snn_data_lake/thalamus/connectome_router.py"
+        / "src/snn_data_lake/faculties/connectome_router.py"
     ).read_text(encoding="utf-8")
     for token in ("stress", "caution", "interoceptive_integration", "InteroceptiveIntegration"):
         assert token not in src, (

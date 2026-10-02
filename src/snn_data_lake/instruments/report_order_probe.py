@@ -655,7 +655,7 @@ def t081_constructed_workspace(seed=0):
     subjects are not more private buses, which is the gate's own stated reason for rejecting the
     private-instance SITE count. The disposition is the arc's, not this module's, and nothing
     here is shaped to avoid the walk."""
-    from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
+    from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 
     ws = GlobalWorkspace(seed=int(seed))
     counter = {"n": 0}

@@ -84,7 +84,7 @@ EXEMPT_METHOD = {
     # The next three entered the census at T053-ii (2026-08-31): rule_composer's census
     # imports made their hosts REACHABLE (the module-gate rows retired on it), and this
     # per-METHOD gate scopes by reachable() -- import-topology arriving, not a wire.
-    "cerebellum.spiking_jepa.SpikingJEPA.train_step": (
+    "faculties.spiking_jepa.SpikingJEPA.train_step": (
         "permanent",
         "TRAIN-TIER world-model trainer on a kept-unadopted model (the module docstring's "
         "adopt-or-retire record: encode() invariant across live widths, NOT a drop-in). "
@@ -92,7 +92,7 @@ EXEMPT_METHOD = {
         "equivalence arms that spy its call sites; a live wire would be a P2 adoption "
         "decision, never a call added for this gate",
     ),
-    "cerebellum.spiking_jepa._SpyJEPA.train_step": (
+    "faculties.spiking_jepa._SpyJEPA.train_step": (
         "permanent",
         "harness SPY subclass -- records production call sites for the declaration "
         "equivalence arms; exists only inside the module self-check",
@@ -131,7 +131,7 @@ EXEMPT_METHOD = {
     # it. Every one is dead as a METHOD while its CLASS is live, which is the per-method amendment's
     # whole point -- and not one of them can be retired today, because P2 requires porting a unique
     # capability before deletion and each still owns one.
-    # cerebellum.forward_model.ForwardModel.update: row DISCHARGED at specs/022 T037 (2026-08-21).
+    # faculties.forward_model.ForwardModel.update: row DISCHARGED at specs/022 T037 (2026-08-21).
     # It read "never called on a live path ... retire after confirming the baseline never needs to
     # re-fit" -- the efference-copy boundary (sensorimotor/efferent_boundary.py, observe()) now calls
     # update on EVERY envelope passage of the live loop (AutonomousArm.apply_observed), so the
@@ -147,23 +147,23 @@ EXEMPT_METHOD = {
         "RNG), which is why the disposition is wire rather than retire -- but wiring it must be a "
         "real consumer of the envelope, never a call added to satisfy this gate (P3)",
     ),
-    "basal_ganglia.latent_q.LatentQ.update": (
+    "faculties.latent_q.LatentQ.update": (
         "wire",
         "LatentQ.update -- never called on a live path while the module is imported at "
         "engine/autonomous_loop.py:30, the exact shape the per-method amendment was written for. "
-        "PORT CHECK surfaces a P2 question rather than a P3 one: basal_ganglia/mlp_q.py documents "
+        "PORT CHECK surfaces a P2 question rather than a P3 one: faculties/mlp_q.py documents "
         "itself as the NONLINEAR counterpart 'once described as a strict upgrade that made LatentQ "
         "retirable', and its own docstring walks that claim back. So the honest next step is to settle "
         "which of the two survives on a benchmark, not to wire the loser",
     ),
     # CLASS-QUALIFIED keys. Each names exactly one rule and can suppress nothing else.
-    "basal_ganglia.latent_q._TabularQ.update": (
+    "faculties.latent_q._TabularQ.update": (
         "permanent",
-        "_TabularQ.update (basal_ganglia/latent_q.py:165) -- the self-check's fair TABULAR CONTROL, "
+        "_TabularQ.update (faculties/latent_q.py:165) -- the self-check's fair TABULAR CONTROL, "
         "constructed only inside main(). A measurement baseline, not an update rule on the brain's "
         "path: a control class that ran live would be the bug, so dormancy here is the correct state "
         "rather than a gap. Adjudicated at runtime 2026-07-31 and adversarially reviewed. This key "
-        "MUST stay class-qualified: `basal_ganglia.latent_q.update` would also exempt LatentQ.update "
+        "MUST stay class-qualified: `faculties.latent_q.update` would also exempt LatentQ.update "
         "at :102, which is GENUINELY dormant open P3 work, and exempting the real finding in order to "
         "excuse the control is the failure this gate exists to prevent",
     ),
@@ -180,7 +180,7 @@ EXEMPT_METHOD = {
     ),
 }
 
-# STILL OPEN, and deliberately not exempted: LatentQ.update (basal_ganglia/latent_q.py:102). The module
+# STILL OPEN, and deliberately not exempted: LatentQ.update (faculties/latent_q.py:102). The module
 # is imported at engine/autonomous_loop.py:30 -- so the MODULE gate sees it reachable -- while every
 # method of the class is cold. That is exactly the shape the per-method amendment was written for, and
 # it is real P3 work: wire it and prove the charge, or retire it with its capability ported first.
@@ -285,7 +285,7 @@ def audit():
                     # Keyed by (module, CLASS, name). The class was already in hand and thrown away,
                     # and dropping it cost twice: two same-named defs in one module COLLAPSED to one
                     # entry whose surviving lineno named whichever came last, and an exemption could
-                    # not distinguish them. basal_ganglia/latent_q.py is the case -- LatentQ.update at
+                    # not distinguish them. faculties/latent_q.py is the case -- LatentQ.update at
                     # :102 is genuinely dormant open work, _TabularQ.update at :165 is the self-check's
                     # control and correctly dead. One key for both meant the finding was reported
                     # against the wrong class, and exempting the control would have hidden the finding.
@@ -328,7 +328,7 @@ def audit():
         # disposition: exempting `learn` to excuse ONE offline wrapper would also excuse the next
         # PredictiveCodingNetwork.learn -- the exact case this gate was built for, and itself a method
         # named `learn`. Module scope was still not enough: latent_q defines `update` on two classes
-        # with OPPOSITE correct dispositions, so `basal_ganglia.latent_q.update` would exempt the
+        # with OPPOSITE correct dispositions, so `faculties.latent_q.update` would exempt the
         # genuinely-dormant LatentQ.update in order to excuse the _TabularQ control. Class scope is the
         # first granularity at which every disposition in this tree can be stated without collateral.
         # Bare and module keys stay honoured so existing entries keep working; new dispositions should

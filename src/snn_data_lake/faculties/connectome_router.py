@@ -18,7 +18,7 @@ Representation-only: this simulates spike propagation over the wiring schematic.
 brainstem module and drives no hardware -- the effector nodes (`actuator`, `viscera`) are inert LIF
 sink pools like any other, integrating spikes but commanding nothing.
 
-  python -m snn_data_lake.thalamus.connectome_router   # self-check, exit 0
+  python -m snn_data_lake.faculties.connectome_router   # self-check, exit 0
 """
 
 import math

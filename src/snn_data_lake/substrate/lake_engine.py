@@ -169,7 +169,7 @@ def registry_consistent() -> tuple[bool, str]:
 # distinct-from: substrate/home.py -- the _T_GROWTH_DELTA chain diffs whole npz MEMBERS of the
 #   grown-substrate blob; this diffs individual synapses inside a weight matrix, keyed by spikes.
 # distinct-from: faculties/claustrum.py -- detects cross-area spike coincidence windows.
-# distinct-from: thalamus/global_workspace.py -- formats an ASCII trace of one tick.
+# distinct-from: faculties/global_workspace.py -- formats an ASCII trace of one tick.
 # distinct-from: infra/self_build_loop.py -- snapshots safety-envelope FILES for restore.
 # All sites read.
 class SynapseDelta:

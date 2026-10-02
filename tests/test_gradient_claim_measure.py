@@ -38,7 +38,7 @@ def test_the_frozen_feedback_alignment_arm_misses_the_bar_on_every_draw():
     -- the framing POLICIES retracted (RULE_JUDGED is a coherence-keyed token; this arm's product
     is ~0.0001). The body always asserted only the PROPERTY, and is unchanged.
 
-    `basal_ganglia/mlp_q.py` already computes this sweep and prints it. Reconstructing the
+    `faculties/mlp_q.py` already computes this sweep and prints it. Reconstructing the
     configuration here would build a second copy of a mechanism that exists (P2), and the
     reconstruction that was drafted for this task had a positive control of the form
     `_cos(f(W), f(W))` -- an algebraic identity that reads 1.0 with the hidden layer dead, so it
@@ -50,9 +50,7 @@ def test_the_frozen_feedback_alignment_arm_misses_the_bar_on_every_draw():
     on, is the PROPERTY: feedback alignment misses the bar on every draw while the shipped path
     clears it.
     """
-    p = _sub(
-        "import runpy; runpy.run_module('snn_data_lake.basal_ganglia.mlp_q', run_name='__main__')"
-    )
+    p = _sub("import runpy; runpy.run_module('snn_data_lake.faculties.mlp_q', run_name='__main__')")
     assert p.returncode == 0, f"the shipped self-check did not run:\n{p.stdout}\n{p.stderr}"
     line = next((ln for ln in p.stdout.splitlines() if ln.strip().startswith("(5)")), None)
     assert line, (

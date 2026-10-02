@@ -94,7 +94,7 @@ def _e(source, target, tract, sign, cls, loop=None, weight=1.0, delay=1):
     corticostriatal, pallidothalamic -- arrived in exactly one tick. In biology these differ by an
     order of magnitude, and conduction delay is what STDP and coincidence detection are FOR.
 
-    The consumer was already here and complete: `thalamus/connectome_router.py:83` reads
+    The consumer was already here and complete: `faculties/connectome_router.py:83` reads
     `e.get("delay", default_delay)` and `:101` sizes a ring buffer to the longest delay. It has
     simply never been handed a value -- a consumer waiting on a producer that did not exist, which
     is P6 seen from the structural side.
@@ -376,7 +376,7 @@ EDGES = [
     # hippocampus -> ventral striatum (subiculum -> nucleus accumbens): memory/context state
     # informs value-based selection. DECLARED 2026-08-12 when the promoted
     # instruments/developmental_loop_brain realized the route in code (its main path feeds
-    # competence state into basal_ganglia/brain_decision's LatentQ every cycle) -- the p6
+    # competence state into faculties/brain_decision's LatentQ every cycle) -- the p6
     # gate's undeclared-pair detector caught the missing declaration, which is the detector
     # working: the import existed, the connectome had not recorded it.
     _e(
@@ -396,7 +396,7 @@ EDGES = [
     # not live traffic -- the loop's bus is private and offline (p6's unread-writers census lists
     # it), it is NOT the Papez limb (that is the sub->hypothal fornix row + LOOPS["papez"]), and
     # wiring the loop's goal broadcast into THE shared hub remains open P6 work. Structural
-    # consequence disclosed rather than implied: EDGES feeds thalamus/connectome_router, so this
+    # consequence disclosed rather than implied: EDGES feeds faculties/connectome_router, so this
     # row adds one exc/relay projection constructed per Brain -- measured on the live brain
     # (60 ticks, seed 0, with vs without the row) the per-tick (broadcast, hold) sequence is
     # IDENTICAL 60/60: the projection exists, nothing live consumes it yet.

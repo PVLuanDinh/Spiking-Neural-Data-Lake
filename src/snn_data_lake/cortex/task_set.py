@@ -4,7 +4,7 @@ Spiking task-set / set-shifting layer -- an executive TASK-SET (attentional-set)
 The prefrontal executive (prefrontal_executive.py) holds a GOAL; this module holds a RULE. A
 task set is a whole input->action MAPPING, not a single option: which set is active decides HOW
 inputs are read out into actions, not just which action wins. The brain-atlas already has goal
-working memory (PFC), a Go/NoGo action-selection circuit (basal_ganglia.action_gating), and
+working memory (PFC), a Go/NoGo action-selection circuit (faculties.action_gating), and
 delayed-reward plasticity (plasticity.r_stdp) -- but nothing that holds an attentional SET and
 re-maps behaviour once the current set stops working (Wisconsin-Card-Sort-style set-shifting).
 This module is that faculty.
@@ -163,7 +163,7 @@ class TaskSetLayer:
         conf = self._confidence
         return [conf * sum(w * x for w, x in zip(row, input_vec)) for row in self._W[self._active]]
 
-    # distinct-from: basal_ganglia/action_gating.py -- drive-vector construction for the Go/NoGo
+    # distinct-from: faculties/action_gating.py -- drive-vector construction for the Go/NoGo
     #   race; this is the SAME module's own bias() re-expressed as a (gain, threshold) pair, not
     #   a second drive builder. Site read.
     def film(self, input_vec):

@@ -40,7 +40,7 @@ online learning) -- the efference-copy / reafference level, NOT a spiking motor-
 not biophysics; not cognition.
 Refs: von Holst & Mittelstaedt (1950); Wolpert, Ghahramani & Jordan, Science 269:1880 (1995).
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.forward_model
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.forward_model
 """
 
 import random

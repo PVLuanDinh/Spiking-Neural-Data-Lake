@@ -44,7 +44,7 @@ or theta-gamma phase codes. No aggregate consciousness score. Nothing about the 
 accuracy beyond its reported role as the yield's ceiling. A green reading here is evidence
 about a MECHANISM, never a verdict about experience.
 
-# distinct-from: thalamus/gwt_deep.py -- a SYNTHETIC K-object phase-multiplexing benchmark
+# distinct-from: faculties/gwt_deep.py -- a SYNTHETIC K-object phase-multiplexing benchmark
 #   with its own spiking-vs-rate control, scoring a pairing this tree's live tick never
 #   performs. This module runs no synthetic binding task at all: it reads the LIVE binder's
 #   own report off a recorded brain and scores it against a permutation of that recording.

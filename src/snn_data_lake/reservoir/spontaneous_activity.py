@@ -250,7 +250,7 @@ class SpontaneousActivity:
 # distinct-from: reasoning/nengo_gui_brain.py -- constructs the canonical Brain for the GUI;
 #   unrelated job, site read; the matcher fired on the phrase "the one canonical".
 # distinct-from: reasoning/rpm_solver.py -- NVSA rule induction; unrelated. Read.
-# distinct-from: thalamus/global_workspace.py -- the running-baseline rule; unrelated. Read.
+# distinct-from: faculties/global_workspace.py -- the running-baseline rule; unrelated. Read.
 # distinct-from: faculties/interoceptive_integration.py -- per-edge A/B writer; unrelated. Read.
 # distinct-from: engine/live_brain.py -- integrative-stack presence check; unrelated. Read.
 def bootstrap_percept_rule(ps, k=3, seed=0, n_steps=1600, theta=THETA0):

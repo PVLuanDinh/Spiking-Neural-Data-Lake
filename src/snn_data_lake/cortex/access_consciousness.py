@@ -29,7 +29,7 @@ HOW IT WORKS (GROW -> BUNDLE -> IGNITE -> BROADCAST -> report an ACCESS index)
 =============================================================================
 Built entirely on two existing spiking primitives (no new mechanism reinvented):
 
-  * thalamus/global_workspace.GlobalWorkspace -- LIF pools that COMPETE and, above rheobase,
+  * faculties/global_workspace.GlobalWorkspace -- LIF pools that COMPETE and, above rheobase,
     IGNITE into sustained firing and BROADCAST to every subscriber (all-or-none global
     availability). We drive it with a salience current and subscribe N downstream taps.
   * cortex/vsa_reasoning -- spike-polarity hypervectors: `hv` (atomic spike code), `bundle`
@@ -50,7 +50,7 @@ The pipeline:
 
 ACCESS IS NOT FOCUS -- the dissociation this module can now state (2026-08-06)
 =============================================================================
-`thalamus/global_workspace.py` holds up to `capacity` contents at once and RANKS them. Those are
+`faculties/global_workspace.py` holds up to `capacity` contents at once and RANKS them. Those are
 two different facts about one workspace and this file reports them as two:
 
   * `ignited()` / `state()["ignited"]` -- ACCESS. My content holds a workspace slot, so it was
@@ -119,7 +119,7 @@ co-existence window ONE TICK of 56 wide. Credit is claimed for the criterion, ne
 that was measured at zero.
 
 WHAT DID MOVE ON THE LIVE BRAIN, and it is the other half of this pass. This faculty posted a FROZEN
-content key, so `thalamus/global_workspace.py::_defended` could never withdraw its tenancy subsidy
+content key, so `faculties/global_workspace.py::_defended` could never withdraw its tenancy subsidy
 and its pool was PERMANENTLY SELF-DEFENDED -- the same defect that file closed for perception, still
 live here. `content_key` keys the pool on the BUNDLE instead. Consequence over 56 live wake ticks:
 `ignited` goes 56 of 56 -- ONE distinct value, a flag with no reachable False, read by TEN
@@ -182,13 +182,13 @@ are recorded here, because a route that carries nothing is the force-wiring P6 f
     **RETIRED, and recorded because this module quoted it as a permanent property:** the bus used
     to grant its one incumbent `self_boost + hysteresis` = 0.25 of defence while the whole band a
     compliant specialist may claim is 0.20 wide, so the first tenant held the single slot forever.
-    `thalamus/global_workspace.py` FIXED exactly that on 2026-08-06 (multi-slot, capacity
+    `faculties/global_workspace.py` FIXED exactly that on 2026-08-06 (multi-slot, capacity
     `floor(1 / defence)` = 4, lateral inhibition divided across the capacity), and a compliant
     challenger now wins a slot against any compliant tenant. **The live null therefore no longer
     has a bus defect behind it.** What is behind it now is the producer population: with room for
     four contents and one admissible producer beside this faculty, both are in every tick, so a
     producer that changes its volume inside the band changes nothing about a consumer that had
-    access either way. That is `thalamus/global_workspace.py`'s own measured finding on this bus
+    access either way. That is `faculties/global_workspace.py`'s own measured finding on this bus
     ("THE CAPACITY IS NOT THE BINDING CONSTRAINT ON THAT BUS TODAY; THE PRODUCER POPULATION IS"),
     reached independently from the consumer side here.
 
@@ -219,7 +219,7 @@ from collections import deque
 import numpy as np
 
 from snn_data_lake.cortex.vsa_reasoning import D, bundle, cleanup, hv, sim
-from snn_data_lake.thalamus.global_workspace import GlobalWorkspace, OneSubsidyArbiter
+from snn_data_lake.faculties.global_workspace import GlobalWorkspace, OneSubsidyArbiter
 
 # phenomenal-consciousness vocabulary that MUST NEVER appear in the functional readout (claim 5).
 _BANNED = ("conscious", "sentient", "phenomenal", "subjective", "aware", "feels", "qualia")
@@ -492,7 +492,7 @@ class AccessConsciousness:
         before anything has been bound.
 
         IT IDENTIFIES THE CONTENT, NOT THE FACULTY, AND THAT IS THE WHOLE POINT (2026-08-06). This
-        faculty used to post the frozen string `_LABEL` on every tick. `thalamus/global_workspace.py`
+        faculty used to post the frozen string `_LABEL` on every tick. `faculties/global_workspace.py`
         keys its pools on `(source, content)` and `_defended` withholds the tenancy subsidy from a
         held pool exactly when its SOURCE is posting a DIFFERENT content -- so a source whose content
         key can never change is PERMANENTLY SELF-DEFENDED. It re-asserts the identical
@@ -568,7 +568,7 @@ class AccessConsciousness:
         ticks where this faculty is admitted-but-not-head every tap holds somebody else's content,
         `global_availability` reads 0.0, and `access_index = gate * availability * integration`
         stays 0.0 -- a readout that says "ignited" while reporting no reach. So the bus now
-        delivers its ADMITTED SET (`thalamus/global_workspace.py::_deliver`, one channel, not a
+        delivers its ADMITTED SET (`faculties/global_workspace.py::_deliver`, one channel, not a
         second one), and the tap scan below asks the question that channel can now answer: did the
         workspace this tap was handed CONTAIN my content. Claim (10) runs the head-only delivery
         back as a shim and shows the index collapsing to 0.0 -- the trap, measured rather than
@@ -626,7 +626,7 @@ class AccessConsciousness:
         # SET to every tap, and `:508` reads that same set back -- so `tap[-1]` and `admitted` come
         # from one cycle, `received > 0` implies `_LABEL in tap[-1]` implies `_LABEL in admitted`
         # implies `_ignited`, and the false branch cannot be reached. A mutant deleting the gate is
-        # GREEN on every criterion in this module and in thalamus/global_workspace.py -- found by
+        # GREEN on every criterion in this module and in faculties/global_workspace.py -- found by
         # adversarial review, recorded here rather than left for the next reader to mistake for a
         # live guard. Why kept anyway: it is inert only BECAUSE delivery carries the set. Under the
         # retired head-only contract `tap[-1]` was a bare head, and this gate is what stopped a
@@ -841,7 +841,7 @@ def _slot_after_threat(claim, threat=0.95, warm=8, psal=0.6, bus=None):
     threat. Returns what the slot holds afterwards -- 'threat' iff the bus is still displaceable.
 
     `bus` selects the ARBITER, defaulting to the shipped one. Claim (9)'s red passes
-    `thalamus/global_workspace.OneSubsidyArbiter` -- see the criterion for why the red moved off
+    `faculties/global_workspace.OneSubsidyArbiter` -- see the criterion for why the red moved off
     the uncapped arm and onto the arbiter."""
     ws = _bus() if bus is None else bus(seed=0)
     ac = AccessConsciousness(seed=0, ws=ws)
@@ -974,7 +974,7 @@ def _name_ranked(ws):
     """THE RETIRED RANK KEY, re-expressed on the CURRENT bus: `(-late, -total, k)` instead of
     `(-late, -total, -_last_v, k)`.
 
-    `thalamus/global_workspace.py::_rank_key` is the single place that arbiter decides who out-ranks
+    `faculties/global_workspace.py::_rank_key` is the single place that arbiter decides who out-ranks
     whom, so restoring the retired ordering is a one-method override and NOT a second arbiter --
     same pools, same drives, same settle, same capacity, same delivery. That is what makes it the
     RED for claim (10)'s string test rather than a different experiment: the ONLY variable is
@@ -987,7 +987,7 @@ def _name_ranked(ws):
 
     BOTH ORDERINGS ARE RESTORED, and that became load-bearing on 2026-08-07. The arbiter now
     decides ADMISSION with `_rank_key` and the HEAD with `_focus_key` (the hold/grip split -- see
-    `thalamus/global_workspace.py::grip`), and this file's FOCUS readout reads the head. Overriding
+    `faculties/global_workspace.py::grip`), and this file's FOCUS readout reads the head. Overriding
     `_rank_key` alone therefore left the head on the REPAIRED key and the red went green: measured,
     the rename moved FOCUS on 0 of 12 in both arms, which is a control that has quietly stopped
     being one. A red has to reconstruct the retired behaviour on the path the criterion reads."""
@@ -1246,7 +1246,7 @@ def main():
     sh_disagree = sum(1 for c, k in zip(sh_own, sh_keys) if (c is not None) != (c == k))
 
     # ---- (8) THE OTHER FACULTIES ON A SHARED BUS DECIDE THIS ONE'S OWN ACCESS TO IT. -------------
-    # RE-DERIVED 2026-08-06, after `thalamus/global_workspace.py` replaced single-slot winner-take-
+    # RE-DERIVED 2026-08-06, after `faculties/global_workspace.py` replaced single-slot winner-take-
     # all with a limited-capacity multi-slot workspace. The PROPERTY is unchanged and is the P6 one:
     # this faculty is a competitor in a SHARED bottleneck, so what else is in the workspace decides
     # what it gets. What changed is that the old criterion read that property through a single-slot
@@ -1310,7 +1310,7 @@ def main():
     # into ONE competition and ties exactly; below `capacity` denial is impossible (all admitted,
     # deterministically), and at or above it the population is truncated to exactly `capacity`
     # every tick while WHICH exact-tie claimant is cut is `_jitter_for`'s declared symmetry break
-    # -- the (c1b) tie floor of `thalamus/global_workspace.py`, surfacing at the faculty level.
+    # -- the (c1b) tie floor of `faculties/global_workspace.py`, surfacing at the faculty level.
     # Measured: smallest fully-denying load per capacity 1/2/3/4/6 -> 1/2/3/5/7 on this seed --
     # at or one above the capacity, never a clean equality and never below it.
     _defence = shipped_bus.self_boost + shipped_bus.hysteresis
@@ -1431,7 +1431,7 @@ def main():
     # string, so the HEAD was decided by a letter and renaming the peer moved FOCUS on 11 of 12
     # ticks. That criterion asserted `focus_moved >= 1`, so ITS GREEN STATE REQUIRED THE DEFECT: the
     # only arbiter it passed on was one that decides a consciousness-relevant flag by alphabet.
-    # `thalamus/global_workspace.py::_rank_key` now ranks co-saturating pools on their final
+    # `faculties/global_workspace.py::_rank_key` now ranks co-saturating pools on their final
     # MEMBRANE, and the rename moves nothing. Per P8 the criterion is RE-DERIVED rather than
     # weakened -- the PROPERTY (access and focus are two facts, and neither may be settled by a
     # name) is real, the PROXY was pathology-shaped.
@@ -1872,7 +1872,7 @@ def main():
     assert idx_ho == 0.0, (
         f"RED (ii-b), REACH: with the bus handed back its retired HEAD-ONLY broadcast, admission is "
         f"unchanged (see ii-a) and access_index must therefore collapse to 0.0 -- got max {idx_ho}. "
-        f"If it does not, the delivery change in thalamus/global_workspace.py is buying nothing here "
+        f"If it does not, the delivery change in faculties/global_workspace.py is buying nothing here "
         f"and should be reverted rather than believed. NOTE this asserts the value under the "
         f"HEAD-ONLY shim only; a non-zero here means either the shim did not apply or availability "
         f"stopped depending on the delivered payload -- check `_deliver` before believing either"

@@ -695,7 +695,7 @@ def _baseline_path(root=None):
 
     # distinct-from: growth/neurogenesis_engine.py::growth_state_bytes -- returns a GROWTH BLOB.
     # distinct-from: infra/device.py::crossover -- returns a CUDA crossover WIDTH.
-    # distinct-from: thalamus/global_workspace.py::_band_ratio -- returns a RATIO in [0,1].
+    # distinct-from: faculties/global_workspace.py::_band_ratio -- returns a RATIO in [0,1].
     # All three were flagged on the shared docstring phrase "or None when there is no ...", not on the
     # capability; each was READ before this marker was added, and none of the three calls os.path.join
     # even once (measured 0/0/0 against this file's 6). None resolves a filesystem path.
@@ -1608,7 +1608,7 @@ def _write_measure_artifact(results, root=None):
 #: learning-rule body is out of scope by construction rather than by judgement.
 FR010_ALLOWED_RULE_EDITS = (
     "src/snn_data_lake/plasticity/eprop_kernel.py",  # _TinyNet.eprop_grads + its recorded numbers
-    "src/snn_data_lake/basal_ganglia/mlp_q.py",  # the SECOND copy of the share figure only
+    "src/snn_data_lake/faculties/mlp_q.py",  # the SECOND copy of the share figure only
 )
 
 # distinct-from: src/snn_data_lake/instruments/integration_measure.py -- its `_run` executes one

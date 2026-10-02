@@ -37,7 +37,7 @@ event presented differs):
 
 Honest framing: a reduced, genuinely-spiking model of LC-NE adaptive gain on synthetic
 near-threshold decisions. The pool is re-integrated per readout (a windowed rate code, same choice
-as the sibling dopamine source midbrain/dopamine_nuclei.py); the cross-tick burst dynamics live in
+as the sibling dopamine source faculties/dopamine_nuclei.py); the cross-tick burst dynamics live in
 the decaying phasic input trace. Additive/opt-in, changes no existing behaviour, and models a
 gain-control FUNCTION -- not arousal, not cognition/AGI. Credit: Aston-Jones & Cohen 2005
 (adaptive-gain theory); Servan-Schreiber, Printz & Cohen 1990 (gain as sigmoid slope).

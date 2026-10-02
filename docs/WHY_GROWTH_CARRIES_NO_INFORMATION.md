@@ -77,7 +77,7 @@ times, by different mechanisms -- which is what makes this architectural rather 
 | 5 | `cortex/executive_control.py:80-98` `conflict()` | scale AND permutation | documented invariant, with an assert at `:263-266` enforcing it |
 | 6 | `growth/growable.py` `fill=0.0` | new units emit 0 until trained | the docstring says so; ripple consumer delta measured `0.0` |
 
-Sites 1 and 3 are the same defect twice on one path. `basal_ganglia/action_gating.py:114` does
+Sites 1 and 3 are the same defect twice on one path. `faculties/action_gating.py:114` does
 `range(1, steps+1)` -- a seventh instance of the int-cast form, in a third region.
 
 ## Why this reframes specs/007 and P6 as one problem

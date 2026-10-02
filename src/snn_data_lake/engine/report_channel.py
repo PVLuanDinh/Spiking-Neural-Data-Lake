@@ -127,7 +127,7 @@ def as_vector(rec):
     ]
 
 
-# distinct-from: thalamus/global_workspace.py -- the REAL bus; this stub only answers the
+# distinct-from: faculties/global_workspace.py -- the REAL bus; this stub only answers the
 #   two accessor names so the record contract is testable without constructing a bus.
 # distinct-from: substrate/episodic_recall.py -- phrase overlap only. Both read.
 class _StubBus:

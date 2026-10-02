@@ -491,7 +491,7 @@ def report(do_assert=False):
 #   verdict path; the SAME pattern is followed here, no code shared. Site read.
 # distinct-from: gates/selfcheck_cache.py -- P8 reds for the cache's keys; unrelated. Read.
 # distinct-from: gates/doc_budget_gate.py -- reds for budget statuses; unrelated. Read.
-# distinct-from: thalamus/global_workspace.py -- a slot-load site; unrelated. Read.
+# distinct-from: faculties/global_workspace.py -- a slot-load site; unrelated. Read.
 # distinct-from: cortex/self_improvement_suite.py -- the rung census; unrelated. Read.
 def _report_rc(mod):
     buf = io.StringIO()

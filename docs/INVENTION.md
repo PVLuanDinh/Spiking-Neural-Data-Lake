@@ -106,7 +106,7 @@ same computation and the headline is non-decreasing by construction.
 
 **MINT's FlyHash + ART spiking layer. Dead on three independent counts.**
 (a) Zero importers. All hits for `fly_hash` outside its own file are prose:
-`basal_ganglia/action_gating.py:16` and `:77`, `cortex/is_snn_forward.py:77`,
+`faculties/action_gating.py:16` and `:77`, `cortex/is_snn_forward.py:77`,
 `sensorimotor/lca_sparse_coding.py:14`, `faculties/generalizing_novelty.py:15`. The claim "live:
 action_gating, is_snn_forward, lca_sparse_coding" was made from a name grep.
 (b) Degenerate on the proposed descriptor: `FlyHash(d=32, expansion=7, wta=0.05)` gives m = 224
@@ -241,7 +241,7 @@ Two. The argument is not convenience.
 
 ### 2.1 The defect, at the line
 
-`thalamus/reentrant_workspace.py:282-315`. Inside the per-subscriber loop, `assoc` is computed
+`faculties/reentrant_workspace.py:282-315`. Inside the per-subscriber loop, `assoc` is computed
 from a generator that does not mention the subscriber at all:
 
 ```
@@ -774,7 +774,7 @@ practice, the unification is nominal and must be reported as such.
 
 **Design A**
 
-* `src/snn_data_lake/thalamus/reentrant_workspace.py` -- `_ledger` and `_tsup` state; `_deliver`
+* `src/snn_data_lake/faculties/reentrant_workspace.py` -- `_ledger` and `_tsup` state; `_deliver`
   rewritten and given the `sources` argument; `_REENTRY_GAIN` deleted; the `max()` aggregate
   deleted; `reached / len(self._subs)` deleted; `step()` records the tally before
   `self._buffer = []`. `submit`, `subscribe`, `broadcast_to`, `association`, `access_strength`

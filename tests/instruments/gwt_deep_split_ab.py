@@ -17,7 +17,7 @@ import random
 import statistics
 import sys
 
-from snn_data_lake.thalamus.gwt_deep import (
+from snn_data_lake.faculties.gwt_deep import (
     _objects,
     rate_broadcast,
     rate_decode,

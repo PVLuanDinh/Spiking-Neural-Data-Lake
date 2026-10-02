@@ -357,8 +357,8 @@ class LiveBrain:
 
     @property
     # distinct-from: reasoning/spike_chat_lake.py -- the CHAT-side adapter of the channel.
-    # distinct-from: thalamus/global_workspace.py -- broadcast() is the bus's own accessor.
-    # distinct-from: thalamus/reentrant_workspace.py -- the re-entry stage's occupant read.
+    # distinct-from: faculties/global_workspace.py -- broadcast() is the bus's own accessor.
+    # distinct-from: faculties/reentrant_workspace.py -- the re-entry stage's occupant read.
     # distinct-from: cortex/access_consciousness.py -- criteria over the bus, not a route.
     # distinct-from: engine/report_channel.py -- the ROUTE this accessor now reads
     #   through (snapshot); this stays the cockpit-facing property name. All sites read.
@@ -422,7 +422,7 @@ class LiveBrain:
         SAFETY: this holds a goal by lookahead; it does NOT drive the arm. Motor selection stays
         reactive and GATED (the reflex/E-STOP and the So101Arm gate are untouched); planning only biases
         the executive's goal, it never adds a path to the actuator. Returns (option_index, mean_rt)."""
-        from snn_data_lake.cerebellum.forward_model import ForwardModel
+        from snn_data_lake.faculties.forward_model import ForwardModel
 
         if predictor is None:
             predictor = ForwardModel(

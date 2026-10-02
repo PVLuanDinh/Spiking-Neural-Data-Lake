@@ -26,20 +26,15 @@ import functools as _functools
 import math
 import random
 
-from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
-from snn_data_lake.basal_ganglia.latent_q import LatentQ
-from snn_data_lake.basal_ganglia.mlp_q import MlpQ
 from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.serial_arm import is_valid_command
 from snn_data_lake.brainstem.so101_arm import _DEG as _SO101_DEG
 from snn_data_lake.brainstem.so101_arm import So101Arm
-from snn_data_lake.cerebellum.gain_adaptation import GainAdapter
-from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
-from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
 from snn_data_lake.cortex.agency_monitor import AgencyMonitor
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.engine.signal_ring import LakeJournaller, SignalRing
+from snn_data_lake.faculties.action_gating import BasalGangliaGate
 from snn_data_lake.faculties.affective_memory import AffectiveEpisodicStore
 from snn_data_lake.faculties.allocentric_map import AllocentricMap
 from snn_data_lake.faculties.contrastive_episode_analysis import ContrastiveEpisodeAnalyzer
@@ -48,8 +43,14 @@ from snn_data_lake.faculties.cpg_oscillator import MatsuokaCPG
 from snn_data_lake.faculties.developmental_envelope import DevelopmentalEnvelope
 from snn_data_lake.faculties.empowerment import Empowerment
 from snn_data_lake.faculties.fear_conditioning import Amygdala
+from snn_data_lake.faculties.gain_adaptation import GainAdapter
+from snn_data_lake.faculties.global_workspace import GlobalWorkspace
+from snn_data_lake.faculties.hjepa_serve import HJepaServe
 from snn_data_lake.faculties.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive
+from snn_data_lake.faculties.jepa_world_model import JepaWorldModel
+from snn_data_lake.faculties.latent_q import LatentQ
+from snn_data_lake.faculties.mlp_q import MlpQ
 from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.infra.brain_bundle import BrainBundle, load_bundle
@@ -58,7 +59,6 @@ from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 from snn_data_lake.sleep.experience_replay import ReplayBuffer
 from snn_data_lake.substrate.home import _T_COALITION, _log
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
-from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -314,7 +314,7 @@ class AutonomousArm:
         # content perception had already superseded, so the head never changed after the first
         # ignition: READ OFF `_ignitions` over 120 live ticks of `make_brain(seed=0, refit_every=10,
         # persist=False)` at `clock.phase = 0.25`, it was 1 -- the None -> first-percept transition
-        # and nothing after it. With `thalamus/global_workspace.py::_defended` scoping that subsidy
+        # and nothing after it. With `faculties/global_workspace.py::_defended` scoping that subsidy
         # to a tenancy the source still asserts, the same run counts 56. A rise here is the counter
         # starting to work, not the workspace becoming unstable -- inter-source competition is
         # unchanged (the workspace's own churn criterion still reads 9 against the argmax control's
@@ -460,7 +460,7 @@ class AutonomousArm:
         self._pattern_len = None
         self._tick_t = 0
         # opt-in JEPA latent world model: a learned encoder enc(context)->z + an action-conditioned latent
-        # predictor pred(z,a)->z' (cerebellum/jepa_world_model), trained self-supervised ONLINE from the live
+        # predictor pred(z,a)->z' (faculties/jepa_world_model), trained self-supervised ONLINE from the live
         # tick stream. When on (with the executive), the prefrontal executive PLANS over it -- model-based
         # lookahead in LATENT space -- to set its goal, instead of the reactive value deliberation; the result
         # is the SAME top-down PREFERENCE (bounded by pfc_gain) fed to the SAME gated selection. ADDITIVE +
@@ -484,7 +484,7 @@ class AutonomousArm:
             0.02  # min intrinsic reward that forms a latent goal (autotelic planning)
         )
         self._jepa_prev = None  # (prev pattern, prev action) for the online (z,a,z') update
-        # opt-in SERVED H-JEPA: a GPU-trained 2-level hierarchical JEPA (cerebellum/hjepa_serve.HJepaServe, FROZEN).
+        # opt-in SERVED H-JEPA: a GPU-trained 2-level hierarchical JEPA (faculties/hjepa_serve.HJepaServe, FROZEN).
         # The executive plans over the ABSTRACT (Level-1) latent: z0 = encode0(pattern) each tick fills a K-window,
         # z1 = encode1(window) is the abstract situation, and plan() rolls the L1 predictor over it. Like the online
         # jepa it ONLY biases the executive's goal (bounded by pfc_gain, gated) -- it drives no motion, adds no
@@ -632,7 +632,7 @@ class AutonomousArm:
             self._vitals = None
         # opt-in SHARED LATENT Q (the transfer substrate): replace the TABULAR per-context q[unit][action] with a
         # shared linear action-value Q(x,a)=W[a].x over the LAKE-STORED pattern representation x (the [0,1]^64
-        # encode_multimodal vector the lake records; basal_ganglia/latent_q.LatentQ). ONE weight set across ALL
+        # encode_multimodal vector the lake records; faculties/latent_q.LatentQ). ONE weight set across ALL
         # contexts, so a reward update generalizes to nearby contexts -> mastery TRANSFERS (unlike tabular, which
         # learns each context in isolation). This LINEAR substrate rides the lake-stored PATTERN, which is
         # task-linear and stable. (v3.17 measured a linear Q over the online SSL-JEPA latent at chance and called
@@ -646,7 +646,7 @@ class AutonomousArm:
         self.latent_q = None  # lazily built on the first tick (sized to len(pattern))
         # opt-in SHARED NONLINEAR MLP-Q (the task-aligned learned substrate): a one-hidden-layer action-value
         # Q(z,a)=dot(W2[a], relu(W1@z+b1))+b2[a] over the SELF-SUPERVISED JEPA latent z=jepa.encode(pattern)
-        # (basal_ganglia/mlp_q.MlpQ). Where the linear latent_q rides the raw lake pattern, this rides the LEARNED
+        # (faculties/mlp_q.MlpQ). Where the linear latent_q rides the raw lake pattern, this rides the LEARNED
         # JEPA latent AND lifts the linear ceiling with a hidden ReLU layer -- a nonlinear function approximator
         # over a nonlinear encoder. HONEST CORRECTION of v3.17: I reported the SSL latent as "not task-aligned"
         # (a linear online Q over it scored 0.33 ~ chance). That was OVER-PESSIMISTIC -- an offline probe recovers
@@ -1242,7 +1242,7 @@ class AutonomousArm:
             if self._rgate is None:
                 from snn_data_lake.cortex.divisive_normalization import DivisiveNormalization
                 from snn_data_lake.faculties.claustrum import Claustrum
-                from snn_data_lake.thalamus.reticular_gate import ReticularGate
+                from snn_data_lake.faculties.reticular_gate import ReticularGate
 
                 self._rgate = ReticularGate(n_channels=4, seed=self._seed)
                 self._dnorm = DivisiveNormalization()
@@ -1598,7 +1598,7 @@ class AutonomousArm:
         through the REAL `GlobalWorkspace` "broadcast exactly ONE content value with ZERO flips",
         so the extra machinery bought nothing and the parameter-free form shipped by default.
         THAT MEASUREMENT WAS TAKEN ON AN ARBITER THAT COULD NOT HAVE DISTINGUISHED THEM. It held a
-        content its own source had already superseded (`thalamus/global_workspace.py::_defended`
+        content its own source had already superseded (`faculties/global_workspace.py::_defended`
         records the defect and the fix), so EVERY producer-side form was going to read one content
         and zero flips -- the null was a property of the consumer, and reading it as a verdict on
         these three forms was measuring the bus and scoring the signal.
@@ -1634,7 +1634,7 @@ class AutonomousArm:
         value, 0 changes, 19 of 56. What is still capped is the RANGE, not the content -- this
         channel offers a downstream reader at most `hi - lo = 0.20` of swing, against the > 0.30
         shift `cortex/access_consciousness` was measured to need before its own output moves, and
-        that ceiling is a property of `thalamus/global_workspace.py`'s constants.
+        that ceiling is a property of `faculties/global_workspace.py`'s constants.
 
         Checked at the four degenerate inputs, because a P1 rewrite in this tree already shipped a
         `mu/1e-12 = 1e12` singularity onto a live path. ZERO deviance -> ratio 0 -> the bare
@@ -1658,7 +1658,7 @@ class AutonomousArm:
         # inherits that difference intact. Measured: symmetrising only the map left the repoint
         # byte-identical.
         self._sal_base = ws.next_baseline(self._sal_base, dev, self._sal_n)
-        # The band map MOVED to `thalamus/global_workspace.py::band_claim` 2026-08-06 and is now
+        # The band map MOVED to `faculties/global_workspace.py::band_claim` 2026-08-06 and is now
         # SHARED with engine/brain.py::_update_access -- not copied, called. This method's arithmetic
         # is byte-for-byte what it was (same floor, same ceiling, same self-normalising ratio, same
         # hi<=lo guard, same total<=0 guard); what changed is that ONE definition of "a compliant
@@ -1814,7 +1814,7 @@ class AutonomousArm:
                 break  # stalled on this stage (never mastered) -> stop
         return trace
 
-    # distinct-from: thalamus/reentrant_workspace.py -- that is the theta AUTHORITY over
+    # distinct-from: faculties/reentrant_workspace.py -- that is the theta AUTHORITY over
     #   workspace coherence; this is the motor tap pairing one apply() with one
     #   observation. distinct-from: engine/live_brain.py -- the composed tick; this is
     #   one envelope passage inside it. Sites read; term overlap is the spec citation.
@@ -1822,7 +1822,7 @@ class AutonomousArm:
     #   this is the loop's passage that feeds it. Read.
     # distinct-from: gates/envelope_hash_gate.py, gates/lake_rebuild_gate.py -- gates
     #   over bytes and the index; phrase overlap only. Read.
-    # distinct-from: thalamus/reentrant_workspace.py -- the theta authority door; phrase
+    # distinct-from: faculties/reentrant_workspace.py -- the theta authority door; phrase
     #   overlap only ("the ONE statement"). Read.
     def apply_observed(self, command, *, deliberate=False):
         """THE tapped envelope passage (specs/022 T037): every apply this loop issues --
@@ -2295,8 +2295,8 @@ class AutonomousArm:
             if self._dopa_on:  # DOPAMINERGIC RPE + opponent anti-reward (representation-only)
                 try:
                     if self._valence is None:  # lazy build of the three spiking source nuclei
+                        from snn_data_lake.faculties.dopamine_nuclei import DopamineNuclei
                         from snn_data_lake.faculties.habenula import LateralHabenula
-                        from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
                         from snn_data_lake.plasticity.valence_stdp import ValenceLearner
 
                         self._dopa = DopamineNuclei(seed=self._seed)
@@ -3208,7 +3208,7 @@ def main():
     assert run_jp(5) == run_jp(5), "the JEPA path must be deterministic"
 
     # 15. SERVED H-JEPA wired live: the executive plans over the ABSTRACT (Level-1) latent of a GPU-trained
-    #     2-level hierarchical JEPA (cerebellum/hjepa_serve). A hand-built tiny served model exercises the
+    #     2-level hierarchical JEPA (faculties/hjepa_serve). A hand-built tiny served model exercises the
     #     WIRING + safety here (the real arm-trained model is research/hjepa_arm_torch.py, GPU); opt-in.
     import os as _os
     import tempfile as _tf
@@ -3378,7 +3378,7 @@ def main():
     #     replaces the tabular per-context q, so mastery GENERALIZES to genuinely-novel contexts (NEW units)
     #     where tabular has no learned value. Opt-in; only changes HOW the value is computed (gated selection +
     #     reflex/E-STOP unchanged). It rides the task-linear lake PATTERN; the deep clean transfer proof is in
-    #     basal_ganglia/latent_q's own self-check. (The NONLINEAR-over-SSL-latent variant + the honest v3.17
+    #     faculties/latent_q's own self-check. (The NONLINEAR-over-SSL-latent variant + the honest v3.17
     #     correction are self-check 19 / the mlp_q block below.)
     def _lq_ctx(v, t, au):
         return _ctx(v, t, au, safe_d)
@@ -3449,7 +3449,7 @@ def main():
     assert lq_det, "the latent-Q path must be deterministic"
 
     # 19. TASK-ALIGNED LEARNED SUBSTRATE (nonlinear MLP-Q over the SSL-JEPA latent): the honest push PAST the
-    #     LINEAR latent-Q. basal_ganglia/mlp_q's own self-check proves a one-hidden-layer head recovers a NONLINEAR
+    #     LINEAR latent-Q. faculties/mlp_q's own self-check proves a one-hidden-layer head recovers a NONLINEAR
     #     rule a linear Q provably cannot (0.99 vs 0.47 over a CLEAN latent). Wired over the arm's ONLINE JEPA latent,
     #     this is the honest on-robot test -- and it CORRECTS v3.17 with a precise cause. Opt-in (auto-enables the
     #     JEPA); only changes HOW the value is computed (gate + reflex/E-STOP unchanged). Mutually exclusive with

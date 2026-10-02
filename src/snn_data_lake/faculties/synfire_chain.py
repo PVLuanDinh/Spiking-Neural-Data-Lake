@@ -34,7 +34,7 @@ DISTINCTNESS (kuramoto_sync / neuronal_avalanches / delay_learning / polychroniz
 - `neuronal_avalanches.py` is a STOCHASTIC branching cascade whose signature is a scale-free POWER-LAW
   size distribution. A synfire volley is the OPPOSITE: a stable, near-deterministic packet locked to an
   attractor, not a scale-free cascade.
-- `cerebellum/polychronization.py` (PROMOTED out of research/ 2026-08-04; this line still said
+- `faculties/polychronization.py` (PROMOTED out of research/ 2026-08-04; this line still said
   "research ... polychronization.py" until 2026-08-05) and `reasoning/delay_learning.py` are
   DELAY-based coincidence groups (spikes
   converge because of matched conduction DELAYS). A synfire chain is FEEDFORWARD SYNCHRONY -- a zero-lag
@@ -45,7 +45,7 @@ A REDUCED feedforward synfire model -- an LIF-pool coincidence chain on a HOMOGE
 (no recurrence, no plasticity, no real cortical connectivity), the packet-propagation LEVEL of
 synchrony, not spiking biophysics; not cognition.
 
-  python -m snn_data_lake.cerebellum.synfire_chain        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.faculties.synfire_chain        # (also run by run_selfchecks.py)
 """
 
 import math

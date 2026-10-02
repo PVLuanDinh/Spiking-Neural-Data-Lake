@@ -1,6 +1,6 @@
 r"""The physics-JEPA high-dim probe (2026-08-11, #10 lane 3): the MERGE half of the trio's
 settlement. physics_jepa_highdim.py was a BENCHMARK over the governed
-cerebellum/jepa_world_model.JepaWorldModel -- it held no mechanism of its own -- so its merge
+faculties/jepa_world_model.JepaWorldModel -- it held no mechanism of its own -- so its merge
 target is the instrument category (the gwt_deep_split_ab / rankingdomain_nightkb_ab pattern),
 and the retiring physics_jepa's dynamics (gen_dynamics/ACTIONS/_THRUST, ~40 self-contained
 lines) are ABSORBED verbatim so the licence survives both deletions.
@@ -25,7 +25,7 @@ import sys
 
 import numpy as np
 
-from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
+from snn_data_lake.faculties.jepa_world_model import JepaWorldModel
 
 ACTIONS = ("coast", "up", "down", "left", "right")
 _THRUST = {

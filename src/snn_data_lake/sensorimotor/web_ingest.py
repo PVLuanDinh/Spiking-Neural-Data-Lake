@@ -369,7 +369,7 @@ def main():
     #   property. The stub below stands for ANY caller check; what this module owns is that
     #   the plumbing CALLS it, which is what is asserted. Site read.
     # distinct-from: infra/brain_native_selfbuild.py::_forbidden (legality of a
-    #   self-build FILE target) and basal_ganglia/latent_q.py::update (a Q-learning scalar
+    #   self-build FILE target) and faculties/latent_q.py::update (a Q-learning scalar
     #   `target`). Neither concerns redirect targets. Sites read.
     # THE FIXTURE HAS TO DISCRIMINATE, and the first version of this arm did not. It sent
     # origin http://8.8.8.8/start -> target http://8.8.8.8/ok (the SAME host) through a stub

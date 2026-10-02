@@ -658,7 +658,7 @@ class NGSNN:
     #   COUNT, no classes. distinct-from: reasoning/rpm_solver.py::_induce_attr -- induces a
     #   Raven's-matrix rule for one attribute. distinct-from: gates/gradient_claim_gate.py's
     #   ClassificationState -- a policy-census declaration. distinct-from:
-    #   cerebellum/jepa_world_model.py's invariance loss -- a scalar loss, not a class decision.
+    #   faculties/jepa_world_model.py's invariance loss -- a scalar loss, not a class decision.
     #   All five read 2026-09-07; none decides a class over an NG-SNN rate matrix. This method
     #   CONSOLIDATES the two sites that did: this one and the inline argmax in
     #   growth/neurogenesis_engine.py::_refit's closed-gate branch, which now calls it.

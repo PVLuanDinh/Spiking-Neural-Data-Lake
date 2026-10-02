@@ -10,7 +10,7 @@ cycle with `SpikingCuriosityDrive.most_curious(candidates)` filtered by a
 "should I explore or exploit right now, and should I grow?". This adapter AUGMENTS
 (never replaces) that with two REAL, shipped core modules:
 
-  * basal_ganglia.latent_q.LatentQ   -- a shared linear action-value Q(z, a) that
+  * faculties.latent_q.LatentQ   -- a shared linear action-value Q(z, a) that
     estimates the EXPECTED LEARNING VALUE of studying each digit a, given the current
     competence vector z. It is trained online from the REALISED learning
     (competence_after - competence_before) on the digit actually studied.
@@ -88,13 +88,13 @@ Mappings (competence -> module inputs), stated once and used everywhere below:
 Deterministic: per-instance random.Random(seed); LatentQ and the
 monitor are seeded from the same seed. ASCII-only prints.
 
-  PYTHONPATH=src python -m snn_data_lake.basal_ganglia.brain_decision
+  PYTHONPATH=src python -m snn_data_lake.faculties.brain_decision
 """
 
 import random
 
-from snn_data_lake.basal_ganglia.latent_q import LatentQ
 from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
+from snn_data_lake.faculties.latent_q import LatentQ
 
 
 def _minmax(vals):

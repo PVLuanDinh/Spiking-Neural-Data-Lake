@@ -602,7 +602,7 @@ class Brain:
         # `multisensory_index` stays: it reads a live cell's enhancement, not a frozen flag.
         self._braincog = {}
         try:
-            from snn_data_lake.midbrain.multisensory_integration import MultisensoryCell
+            from snn_data_lake.faculties.multisensory_integration import MultisensoryCell
 
             _idx = MultisensoryCell(seed=self._seed).enhancement(0.06, 0.06)[
                 "index"
@@ -892,8 +892,8 @@ class Brain:
         )
         try:
             from snn_data_lake.faculties.homeostatic_drives import HomeostaticDrives
+            from snn_data_lake.faculties.reentrant_workspace import ReentrantWorkspace
             from snn_data_lake.substrate.episodic_recall import EpisodicRecall
-            from snn_data_lake.thalamus.reentrant_workspace import ReentrantWorkspace
 
             self._reentrant = ReentrantWorkspace(seed=self._seed)
             # C2 #11: SUBSCRIBE the downstream specialists so an ignited coalition is actually RE-ROUTED --
@@ -945,7 +945,7 @@ class Brain:
             # the hop `connectome.py` has always declared (nts_rvlm -> thal_relay -> insula) and
             # the only one that had no module. Constructed here so the tract has one instance on
             # the live tick rather than one per caller.
-            from snn_data_lake.thalamus.interoceptive_relay import InteroceptiveRelay
+            from snn_data_lake.faculties.interoceptive_relay import InteroceptiveRelay
 
             self._thal_relay = InteroceptiveRelay()
             # T039h: hand the terminus the subscriber handle. It reads the broadcast through
@@ -1115,10 +1115,10 @@ class Brain:
             0  # coherence->theta writes refused by a sweep hold (T032; audit, cockpit-visible)
         )
         try:
-            from snn_data_lake.cerebellum.synfire_chain import SynfireChain
             from snn_data_lake.cortex.learned_attention import LearnedAttention
+            from snn_data_lake.faculties.connectome_router import ConnectomeRouter
             from snn_data_lake.faculties.region_coherence import RegionCoherence
-            from snn_data_lake.thalamus.connectome_router import ConnectomeRouter
+            from snn_data_lake.faculties.synfire_chain import SynfireChain
 
             self._learned_attn = LearnedAttention(dim=64, n_bands=4, seed=self._seed)
             self._connectome_router = ConnectomeRouter(seed=self._seed)
@@ -3183,7 +3183,7 @@ class Brain:
             # ticks and pushed perception out on 79, taking `live_brain.thought` from naming the
             # percept 120/120 to 41/120. Occupancy stayed 1 of 4 because ONE PRODUCER WAS
             # STRUCTURALLY ALWAYS LOUDER, not because the capacity was too small.
-            # `band_claim` is the ONE shared derivation (thalamus/global_workspace.py) that
+            # `band_claim` is the ONE shared derivation (faculties/global_workspace.py) that
             # `_percept_salience` also calls, so both producers now map their own running signal
             # into the same band by the same sentence. It introduces no constant and is bounded
             # ABOVE by the displaceable ceiling by construction.
@@ -3596,7 +3596,7 @@ class Brain:
     # distinct-from: cortex/prefrontal_executive.py -- its neuter() gates the WM rehearsal
     #   channel's elements; this gates the SLEEP-OWNED consolidation capabilities. Same
     #   attribution idiom, different substrate. Site read.
-    # distinct-from: cerebellum/microcircuit.py -- its neuter() gates tissue elements
+    # distinct-from: faculties/microcircuit.py -- its neuter() gates tissue elements
     #   (codon/mli/pf); a neuter has to know its own internals, which is why the tree keeps
     #   one per module rather than sharing one. Site read.
     def neuter_sleep(self, element):
@@ -3917,7 +3917,7 @@ class Brain:
                 pass
         return "asleep" if asleep else "awake"
 
-    # distinct-from: cerebellum/forward_model.py -- dynamics state, not telemetry.
+    # distinct-from: faculties/forward_model.py -- dynamics state, not telemetry.
     # distinct-from: cortex/generative_self_model.py -- the self-signal forward model.
     # distinct-from: cortex/self_model.py -- the mood-sentence view this dict embeds.
     # distinct-from: faculties/empowerment.py -- latent rollout state.
@@ -5132,7 +5132,7 @@ class Brain:
 
     # distinct-from: engine/autonomous_loop.py -- the tapped envelope passage (motion, T037).
     #   distinct-from: infra/brain_native_selfbuild.py -- ranks self-build candidates.
-    #   distinct-from: cortex/percept_surprise.py, midbrain/dopamine_nuclei.py -- manifest port
+    #   distinct-from: cortex/percept_surprise.py, faculties/dopamine_nuclei.py -- manifest port
     #   registrants. distinct-from: substrate/lake_segments.py -- the lake engine's segment
     #   writer. Phrase overlap on 'specs/022'/'write' only; this persists prototypes. Sites read.
     def _flush_prototypes(self):

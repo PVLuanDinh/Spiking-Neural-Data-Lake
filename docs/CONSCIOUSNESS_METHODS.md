@@ -62,7 +62,7 @@ which we could test, but the density vector itself would be a number we invented
 
 | Theory | Our implementation | Rolls' position |
 |---|---|---|
-| Global Workspace | `thalamus/global_workspace.py`, `thalamus/reentrant_workspace.py`, `access_index`, `access_ignited` | insufficient -- no principled threshold |
+| Global Workspace | `faculties/global_workspace.py`, `faculties/reentrant_workspace.py`, `access_index`, `access_ignited` | insufficient -- no principled threshold |
 | Integrated information | `instruments/integration_measure.py` (PCI), `faculties/region_coherence.py` | not the locus |
 | Higher-order thought | `cortex/metacognitive_monitor.py`, `cortex/recursive_tom.py` (2nd-order ToM), `cortex/generative_self_model.py` | closer, but HOT alone is not syntactic |
 | **Higher order SYNTACTIC thought** | **nothing** | **the proposal** |
