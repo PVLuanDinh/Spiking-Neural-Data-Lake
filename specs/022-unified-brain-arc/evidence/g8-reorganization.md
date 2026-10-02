@@ -4189,3 +4189,26 @@ counter reads 1 there and 0 on the real file.
 
 NOT VERIFIED BY A BATTERY (comments, docstrings and documents only; the census, the AST equality, ruff and the counter
 are its checks).
+
+### 3.36 G8-3 panel and fold (Claude, 2026-10-02)
+
+ONE Codex panel (`gpt-6.1-sol`, read-only, three lenses in one send; banner `model: gpt-6.1-sol`, 174,787 tokens) read the
+frozen stacked head `a72b3c64`. It reproduced all eight saved final C1 comparisons and checked the 92 moves, the 13
+`REGIONS` keys without `olfactory`, `faculties` in `TORCH_TIER` with one member, `GOVERNED`, the 253-row map, the
+protected bytes and the recorded planted reds. No BLOCKER. Every finding was reproduced by the orchestrator's own
+command before folding:
+- MAJOR, instrument: C2(d) could not see a RELATIVE import spelled in a string (`_string_hits` returned `[]` for the
+  string the M11d builder found by hand). Folded `79e9888c`: a relative-import pattern, with that string as a positive
+  control inside `c2d_control` (built from parts so it is not itself a live finding); the real tree reads 0 findings
+  over 657 files and `move_gate --self-check` passes with the control.
+- MINOR, instrument: two docstrings still named pre-G8 paths. Cause: both rewriter passes miss a path followed by "."
+  and a non-word character. Folded `585ae19b`: that form re-pointed over all 253 pairs by the same AST-classified
+  rewrite as D1c (1 document line, 2 docstrings; a second dry run finds 0).
+- MAJOR, policy honesty: D1b's three restored provenance citations raised live BROAD (2564 -> 2567), which 2.6 does not
+  allow; "they dangled at the pre-G8 head too" is not an exemption 2.6 states. Folded `666d7435`: the three notes name
+  the path without the suffix and say "pre-promotion path"; BROAD back to 2564.
+- MAJOR, integration, PRE-EXISTING: `training/cli.py` (`snn-train`) imports the retired `reasoning.torch_device` at two
+  sites. Not G8's: the next arc (the owner's trainer retirement, which edits `cli.py`) owns it; filed as a carried
+  opening.
+Codex also reported all 18 console/CI targets resolving under `SNN_ALIAS_STRICT=1`, the daemon chain importing, and 26
+imports still on permitted flat aliases. The three fold commits are battery-verified only (not re-panelled).
