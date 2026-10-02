@@ -813,7 +813,7 @@ class _PoolArm:
 
 
 # distinct-from: faculties/evidence_accumulation.py -- `_measure_patience_charge` replays 5-HT frames
-#   twice through substrate/port_charge_probe.replay_twice for a port-charge A/B; this is G1's recorded
+#   twice through instruments/port_charge_probe.replay_twice for a port-charge A/B; this is G1's recorded
 #   event schedule replayed into the grower (site read). Extended in place for G1(b), not duplicated.
 def replay(stream, arm, mode="causal", *, mutate=None, readout=True, pool=None):
     """Replay the recorded event schedule, rejecting missing gate evidence.

@@ -51,7 +51,7 @@ Reuses (does NOT reimplement): readout/tempotron.Tempotron (the goal-conditioned
 faculties/spiking_curiosity.SpikingCuriosityDrive (SI-1 -- the competence-progress LP kernel),
 faculties/prefrontal_executive.PrefrontalExecutive (the WM attractor that HOLDS a goal),
 faculties/drive_reduction.REWARD_SCALE (SI-2 -- the internal drive-reduction reward channel the
-goal-reaching reward rides), substrate/_mathutils.mean. Per-instance random.Random(seed),
+goal-reaching reward rides), infra/_mathutils.mean. Per-instance random.Random(seed),
 zlib.crc32 (never hash()), ASCII-only prints, deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.autotelic_goals

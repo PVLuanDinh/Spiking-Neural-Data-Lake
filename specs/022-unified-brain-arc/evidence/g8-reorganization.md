@@ -4165,3 +4165,27 @@ counts 10 dropped lines missing against the real tree's 9 (the 9 are exactly the
 their pre-G8 text is absent by construction). Envelope: no file under `brainstem/` or `tools/envelope_hashes.json` changed.
 
 NOT VERIFIED BY A BATTERY (comments only; the census, ruff and the detector are its checks).
+
+### 3.35 D1c predeclared member-form leftovers (Claude, G8-3, 2026-10-02)
+
+The parent is D1b's commit `4358a307`; its clean export completed the strict census, every gate rc 0. Built by the
+orchestrator: stages M1-M9 ran only the rewriter's first pass, which refuses a path followed by `.`, so citations of the
+form `<old pkg>/<module>.<member>` survived in live text (M10 onward ran both passes). `d1c_rewrite.py` (out of tree)
+applied the second-pass pattern for the 161 M1-M9 pairs, classifying every Python hit by token: 35 document citations,
+26 Python comments and 54 docstrings rewritten across 65 files (113 lines); for each Python file the AST is asserted
+equal before and after with docstring text blanked. Two hits inside ordinary string literals were LEFT ALONE, as the
+3.27 amendment requires, and filed as a carried opening: `infra/cockpit.py`'s served HTML page string (line 539, a
+path inside the page text) and an assertion message in `tests/test_report_order_probe.py` (line 135). Frozen records
+and the envelope are excluded by the rewriter. A second dry run finds 0 leftovers. `ruff check .` and
+`ruff format --check .` clean over the whole repository (explicit-file runs also flag the ruff-excluded `research/` file
+the pass touched, with pre-existing findings only); `py_compile` clean on the 49 touched Python files.
+
+**Declared before the post census** (`declared_D1c.json`): no gate line changes. Citation BROAD stays 2567/311 (the
+guard's own parser and resolver over the candidate: it does not count the member form), and every rewrite is token for
+token, so no budgeted word count moves.
+
+**Red:** in a copy of `docs/P4C_BACKLOG.md`, one rewritten citation put back to its pre-G8 member form: the pass-2
+counter reads 1 there and 0 on the real file.
+
+NOT VERIFIED BY A BATTERY (comments, docstrings and documents only; the census, the AST equality, ruff and the counter
+are its checks).

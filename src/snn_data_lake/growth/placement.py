@@ -52,7 +52,7 @@ own prosomeric coordinate and whose SIGN IS None -- refused, not defaulted, beca
 E-fraction exists outside H01 cortex and a default is how a made-up number acquires a
 measurement's authority. The same section composes the project's growers -- a grower -> region
 routing table asserted to sit inside growth_program's owner-ratified GROWABLE partition --
-through the 007 interface (`substrate/growable.GrowthCoordinator`): the first `register_seam`
+through the 007 interface (`growth/growable.GrowthCoordinator`): the first `register_seam`
 caller outside growable.py's own self-check (no live-tick caller: a sleep-tick wire was built
 and measured a NULL on 2026-09-02 -- placement has no live reader yet -- and reverted under P3;
 specs/022 evidence/s1-placement-null.md, pinned by tests/test_placement_charge_null.py), with

@@ -49,7 +49,7 @@ def _stable_key(item):
 
 
 # RETIRED 2026-08-05 (P2): a private `_LIFNeuron` lived here, a second definition of the LIF
-# dynamics `cortex/lif_neuron.LIFNeuron` already owns, kept with the reason *"Inlined (not imported)
+# dynamics `growth/lif_neuron.LIFNeuron` already owns, kept with the reason *"Inlined (not imported)
 # so this module stays self-contained."* Self-containment is not a P2 exception -- two definitions
 # of one dynamics IS the defect P2 names -- and the module docstring three dozen lines above already
 # said this module "composes" lif_neuron, which it did not.

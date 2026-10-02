@@ -127,7 +127,7 @@ from snn_data_lake.sensorimotor.efferent_boundary import (
 __version__ = "0.1.0"
 
 
-#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: MERGED 2026-08-15 into `infra/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
 #: spelling so no call site changes; the MECHANISM is singular.
 _clamp01 = clamp01
 
@@ -744,7 +744,7 @@ def _t079_score(entry, joint, arm):
 
 
 def t079_contrasts(intact, shoved, deadband=T079_DEADBAND, score=_t079_score, bar=T079_BAR):
-    """2.3's conjuncts, each decided by `substrate/paired_contrast.contrast` (the ONE
+    """2.3's conjuncts, each decided by `instruments/paired_contrast.contrast` (the ONE
     statistic; nothing is re-spelled here).
 
     `intact` and `shoved` are per-seed lists of `{"read": t079_read(...), "floor":

@@ -1,6 +1,6 @@
 """Placement is WRITE-ONLY on the live path at HEAD -- a pinned null (specs/022 audit s8 rank 1).
 
-`cortex/placement.place` gives every grown unit a (position, layer, sign). This test pins the
+`growth/placement.place` gives every grown unit a (position, layer, sign). This test pins the
 measured fact that nothing ON A LIVE PATH reads that record: a brain whose placement is replaced
 by constant tuples is value-identical to a live one on every key of `state()` and the telemetry
 snapshot but the wall clock, over enough ticks for the neurogenesis engine to refit and grow. Two
@@ -13,7 +13,7 @@ evidence/s1-genome-fanin-ab.md); the growth blob and its restore path are OUT OF
 (placement is serialized there by design, and read back only to rebuild the record itself).
 
 WHY THIS IS PINNED RATHER THAN FIXED. The composed growth->placement wire
-(`cortex/placement.compose_growers` driven from the sleep tick, giving the hippocampal recruits
+(`growth/placement.compose_growers` driven from the sleep tick, giving the hippocampal recruits
 of `growth/growing_learner` a placement) was BUILT and MEASURED the same way: 0 differing
 keys beyond the nondeterminism baseline, i.e. it charged nothing, so P3 ("a wire that does not
 charge is reverted") reverted it. The record is `specs/022-unified-brain-arc/evidence/

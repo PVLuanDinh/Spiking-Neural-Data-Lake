@@ -79,7 +79,7 @@ def q95(draws):
     element at round(0.95 * (len - 1)) of the sorted sample. Sorts `draws` IN PLACE, which
     every caller in this tree already relies on.
 
-    LIFTED 2026-09-15 (specs/022 T079) from `cortex/attention_schema._q95`, itself T078's
+    LIFTED 2026-09-15 (specs/022 T079) from `instruments/attention_schema._q95`, itself T078's
     restatement of `faculties/metacognitive_monitor`'s `track_error` convention. Moved rather
     than copied for a MEASURED reason: `agency_monitor` is a LIVE module (autonomous_loop
     imports it) and attention_schema is an EXEMPT instrument, so a live module importing it

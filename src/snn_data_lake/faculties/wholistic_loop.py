@@ -48,10 +48,10 @@ Composed primitives (READ + REUSED, not reimplemented):
   * faculties/intrinsic_motivation.CuriosityDrive   -- learning-progress / novelty.
   * faculties/metacognitive_monitor.MetacognitiveMonitor      -- the arbitration spine.
   * sleep/lifelong_consolidation.LifelongConsolidator -- its parts drive GROW
-    (hippocampus/growing_learner.GrowingLearner), PRUNE-to-budget, and CONSOLIDATE via
+    (growth/growing_learner.GrowingLearner), PRUNE-to-budget, and CONSOLIDATE via
     interleaved replay (sleep/experience_replay.ReplayBuffer).
   * reservoir/criticality_regulator.CriticalityRegulator  -- slow substrate health.
-  * substrate/_mathutils.mean                              -- aggregation.
+  * infra/_mathutils.mean                              -- aggregation.
 
 Each spine component (metacog / consolidation / criticality) can be DISABLED
 individually so the self-check can prove -- with a control that FAILS -- that the whole
@@ -138,7 +138,7 @@ HARD_STRIDE = 3  # class-to-class shift (< WIN -> windows OVERLAP -> confusable)
 SIGMA_HARD = 0.16  # moderate sample noise -> real nearest-prototype errors (sub-ceiling)
 
 
-#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: MERGED 2026-08-15 into `infra/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
 #: spelling so no call site changes; the MECHANISM is singular.
 _clamp01 = clamp01
 

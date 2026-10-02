@@ -6,7 +6,7 @@ GENUINELY fails):
 
   * GENUINELY SPIKING (claim 1). A temporal-contrast EVENT retina (log-ratio ON/OFF events, deterministic
     latency binning -- the encode_latency style of sensorimotor/spike_preprocessing, never the non-deterministic
-    encode_poisson) feeds a stack of LIF grids (cortex/lif_neuron.LIFNeuron) wired as RECURRENT PREDICTIVE
+    encode_poisson) feeds a stack of LIF grids (growth/lif_neuron.LIFNeuron) wired as RECURRENT PREDICTIVE
     layers (per-timestep input = [feed-forward spikes ++ own spikes at t-1]). Every inter-layer signal is a
     0/1 spike; each layer's latent is a function of INTEGER spike counts. CONTROL: a graded (tanh) backbone
     emits non-binary signals and fails the check.

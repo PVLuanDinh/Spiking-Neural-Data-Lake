@@ -18,7 +18,7 @@ Where the repo stood (honest baseline this module deepens):
   * empathy and emotion-recognition were ABSENT.
 
 This module adds three faculties on top of that substrate, reusing the repo's spiking primitives
-(cortex/lif_neuron.LIFNeuron) rather than reinventing:
+(growth/lif_neuron.LIFNeuron) rather than reinventing:
 
   (a) CATEGORICAL EMOTION from the 2-D core.  Russell's affect CIRCUMPLEX (Russell 1980,
       "A circumplex model of affect", JPSP 39:1161-1178) lays discrete emotions out as anchors on

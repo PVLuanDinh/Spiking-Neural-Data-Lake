@@ -53,7 +53,7 @@ gradient.
 Setting a live coupling parameter to the argmax of the repo's perturbational complexity index is
 optimising toward the closest thing this repo has to a consciousness marker. Two-sidedness blocks
 monotone rigging; it does not block selection toward the metric, which is what an argmax is.
-Separately, the harness does not exist: `cortex/integration_measure.PerturbationalComplexity`
+Separately, the harness does not exist: `instruments/integration_measure.PerturbationalComplexity`
 constructs its own internal LIF pool and has no API to accept an external population, and
 `lz76_complexity` is pure-Python and roughly O(n^2), so the proposed 12-point x 7-seed sweep is
 tens of hours, not "hours". **No PCI value appears anywhere in this design, deliberately.**
@@ -677,7 +677,7 @@ design is evidence of consciousness, and neither design is intended to produce a
   here may be printed beside PCI 0.41 in a way that invites a conflation.
 * **Nothing is optimised toward any marker.** The ledger is a count. It is not tuned, and there
   is no parameter to tune. Design B is admitted on training-split solves and evaluated once.
-* **It does not fix the binding marker.** *RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `cortex/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).* `reasoning/consciousness_probe.probe_binding`'s
+* **It does not fix the binding marker.** *RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `instruments/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).* `reasoning/consciousness_probe.probe_binding`'s
   `present = sp > rt + 0.15` (`:84`) is untouched, and its 1-of-26 insensitivity is untouched.
   Fixing the availability payload does not fix binding, and saying otherwise would be exactly the
   marker-conflation this project forbids.

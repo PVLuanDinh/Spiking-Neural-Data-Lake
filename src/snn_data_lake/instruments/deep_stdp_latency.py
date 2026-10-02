@@ -300,7 +300,7 @@ class ConvLatencyStdp:
 
 
 #: Deep: frozen conv-latency-STDP layer 1 -> pooled features -> FC-STDP prototypes.
-#: MERGED 2026-08-16 into `plasticity/deep_stdp.TwoLayerNet` (2 copies -> 1). The two bodies were
+#: MERGED 2026-08-16 into `instruments/deep_stdp.TwoLayerNet` (2 copies -> 1). The two bodies were
 #: AST-identical, and this module ALREADY imported four names from that exact module, so the merge
 #: adds a name to an existing import: no new module, no new dependency, no cycle. The alias keeps
 #: the local spelling so no call site changes; the MECHANISM is singular.

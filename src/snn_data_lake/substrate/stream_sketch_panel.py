@@ -56,7 +56,7 @@ from snn_data_lake.substrate.spike_stream_sketch import HeavyHitters
 from snn_data_lake.substrate.streaming_quantile import StreamingQuantiles
 
 #: Squeeze a float into [0,1] (bounds the drift blend and every component that feeds it).
-#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: MERGED 2026-08-15 into `infra/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
 #: spelling so no call site changes; the MECHANISM is singular.
 _clamp01 = clamp01
 

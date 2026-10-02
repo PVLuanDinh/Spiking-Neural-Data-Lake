@@ -92,7 +92,7 @@ STABILITY, AFFECT, ACCESS, LIFE, LAKE & CENSUS, DEVICE ROUTING).
 - Arm commands go through an allow-list (`brainstem.serial_arm.is_valid_command`), separate from
   the camera endpoint. Camera drag/wheel go to `/api/look`; actions go to the allow-listed
   `/api/act`. The two must not be merged.
-- `DEVICE ROUTING` is explicitly **not brain state** — it comes from `substrate/device.decisions()`
+- `DEVICE ROUTING` is explicitly **not brain state** — it comes from `infra/device.decisions()`
   and is a fact about the process. It is named as an exception rather than left for a reader to
   discover.
 - `HARDWARE TARGET — NOT BUILT` says so in its own heading. A plate that reports an absent thing

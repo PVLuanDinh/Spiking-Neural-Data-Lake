@@ -22,8 +22,8 @@ single believed LOCATION for one observer. This module generalises on three axes
 
 Spiking substrate (reuse, not reinvention). The VSA cleanup selects WHICH content symbol a path
 believes; that selected content is then read out as a genuine SPIKING POPULATION CODE -- encoded
-across overlapping RBF neurons (cortex/population_encoding.PopulationEncoder) and decoded by a LIF
-winner-take-all (one cortex/lif_neuron.LIFNeuron per bin, most-firing bin wins), exactly the readout
+across overlapping RBF neurons (sensorimotor/population_encoding.PopulationEncoder) and decoded by a LIF
+winner-take-all (one growth/lif_neuron.LIFNeuron per bin, most-firing bin wins), exactly the readout
 theory_of_mind.BeliefPopulation uses. So the belief is a spiking population, not a stored label, and
 the readout is noise-robust (a jitter check below perturbs the counts and still recovers).
 

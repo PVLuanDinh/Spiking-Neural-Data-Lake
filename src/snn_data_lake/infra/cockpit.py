@@ -29,7 +29,7 @@ THE DESIGN IS BORROWED, THE HONESTY MODEL IS NOT
     brain_telemetry.PROVENANCE tag beside it. A dashboard is the easiest place in a project to lie.
 
     ONE SECTION IS NOT BRAIN STATE, and it is named here rather than left for a reader to discover:
-    `device`, the DEVICE ROUTING plate, comes from `substrate/device.decisions()`. A routing
+    `device`, the DEVICE ROUTING plate, comes from `infra/device.decisions()`. A routing
     decision is a fact about the PROCESS, so `snapshot(brain)` -- which is handed a Brain -- has
     nothing to read it from. See `_snapshot` for why that does not weaken brain_telemetry's rule 1
     and for the measurement that fixes what its tag is allowed to say.
@@ -1398,8 +1398,8 @@ def main():
     )
 
     # ---- DEVICE ROUTING: the page shows what the ROUTER decided, and FOLLOWS it ----------------
-    # P3 disposition for `substrate/device.decisions()` (2026-08-06). RETIRE was refused on
-    # evidence rather than taste: `cortex/neurogenesis_engine.main()`'s claim 6 already reads it
+    # P3 disposition for `infra/device.decisions()` (2026-08-06). RETIRE was refused on
+    # evidence rather than taste: `growth/neurogenesis_engine.main()`'s claim 6 already reads it
     # and asserts the refit is WIDTH-routed, so deleting the function deletes a criterion that HAS
     # a reachable red -- and P8 deletes criteria with no red, never ones with one. What was
     # genuinely missing was the REPORT half, and this plate is it. A report is not a P6

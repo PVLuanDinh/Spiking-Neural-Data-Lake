@@ -85,7 +85,7 @@ def _forward_logits(lm, ids):
 
 
 #: Deterministic stdlib LCG for temperature sampling (no global RNG).
-#: MERGED 2026-08-15 into `substrate/_mathutils.Rng` -- this module and `sensorimotor/trained_brain.py`
+#: MERGED 2026-08-15 into `infra/_mathutils.Rng` -- this module and `sensorimotor/trained_brain.py`
 #: held byte-equivalent copies, proven identical over 5 seeds x 500 draws before either was deleted.
 #: The alias keeps the local spelling so no call site changes; the MECHANISM is now singular.
 _Rng = Rng

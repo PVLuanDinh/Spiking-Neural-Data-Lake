@@ -60,7 +60,7 @@ class LinearReadout:
 
     def __init__(self, in_dim, n_classes=10, seed=0, lr=0.01):
         # A constructor may not re-seed the process-global RNG -- see the identical note on
-        # hippocampus/developmental_loop_brain._LinearReadout, which is a verbatim copy of this
+        # instruments/developmental_loop_brain._LinearReadout, which is a verbatim copy of this
         # class (AUDIT_BACKLOG M21). The duplication is NOT collapsed here: adopting either into
         # the other needs the promotion lane M21 is owed by, and this fix must not create a new
         # governed->reasoning import. Fixed twice, on purpose, and recorded rather than laundered.

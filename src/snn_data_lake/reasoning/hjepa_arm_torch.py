@@ -35,7 +35,7 @@ the exported snn_hjepa/1 artifact can be loaded by the zero-dep core server
 ``src/snn_data_lake/faculties/hjepa_serve.py`` and served in the live arm brain.
 
 THE ARM-NATIVE WORLD (ArmTwoTimescaleWorld):
-  * Observations are [0,1]^64 BANDED exactly like cortex/multimodal_encoder.encode_multimodal:
+  * Observations are [0,1]^64 BANDED exactly like sensorimotor/multimodal_encoder.encode_multimodal:
     four modality bands of 16 -- visual[0:16], temperature[16:32], audio[32:48],
     distance[48:64]. (The torch world builds the banded [0,1] shape with a GPU RBF; it MIRRORS
     the encode_multimodal layout rather than calling that stdlib/CPU function on GPU tensors.)

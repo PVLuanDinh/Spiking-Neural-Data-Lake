@@ -1,14 +1,14 @@
 """
 SELF-BUILD LOOP -- the gated APPLY/PROMOTE step that lets the brain build itself.
 
-substrate/self_mod_harness.SelfModHarness sandbox-verifies a candidate self-modification (firewall the
+infra/self_mod_harness.SelfModHarness sandbox-verifies a candidate self-modification (firewall the
 arm-safety files + isolate into a temp repo copy + run run_selfchecks in the copy) but APPLIES NOTHING
 to the real tree. This module adds the one missing step -- promote: for a proposal the harness ACCEPTED,
 apply the SAME whitelisted single-numeric edit to the REAL tree, run the FULL correctness gates, and KEEP
 it if green or ROLL BACK byte-exact if red.
 
 THE FIREWALL, and why every path in it is DERIVED rather than written as a literal:
-  * substrate/self_mod_harness._PROTECTED -- the 5 brainstem arm-safety files (via
+  * infra/self_mod_harness._PROTECTED -- the 5 brainstem arm-safety files (via
     godel_machine._SAFETY_KERNEL) plus run_selfchecks.py, godel_machine.py, self_improve.py and
     self_mod_harness.py. Never a legal promote target: refused up front, before anything is read.
   * SELF_BUILD_LOOP_REL -- THIS module's own repo-relative path, computed from __file__ at import.

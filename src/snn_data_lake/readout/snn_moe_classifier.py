@@ -25,7 +25,7 @@ matters because it IS on a live learning path: sensorimotor/recognizer_bank.py's
 trains it at construction and calls forward() on every recognition.
 
 Reuses readout/snn_classifier.py for the data + spike rates (no duplication) and
-substrate/_mathutils.softmax (P2: one implementation of a formula, not two).
+infra/_mathutils.softmax (P2: one implementation of a formula, not two).
 
 -----------------------------------------------------------------------------------------
 P7 -- what the RETIRED zero-dependency rule cost this module, measured, and what was done

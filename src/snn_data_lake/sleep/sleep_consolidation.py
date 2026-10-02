@@ -21,7 +21,7 @@ REUSED, NOT REIMPLEMENTED:
     per skill), never ripped out.
   * faculties/spiking_curiosity.SpikingCuriosityDrive -- SI-1 spiking learning-progress, used
     only to PRIORITIZE the rate replay budget.
-  * substrate/_mathutils.mean.
+  * infra/_mathutils.mean.
 
 HONEST FRAMING -- THIS RUNG IS FRAGILE; the claims are scoped hard:
   LIMIT (capacity). The attractor holds ~0.14N patterns, so at N=24 only a FEW skills coexist; the

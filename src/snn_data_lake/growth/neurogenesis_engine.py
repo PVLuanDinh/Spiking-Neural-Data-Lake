@@ -47,7 +47,7 @@ Runs in the torch tier; deterministic via random.Random(seed) (Markov chain) and
 inside NG-SNN. DEVICE IS MEASURED, NOT ASSUMED (P5a, 2026-08-05): this line read "cuda if available
 else cpu", which is exactly what `_refit` used to do -- it sent a ~60,000-element fit to a card whose
 measured crossover on this machine is 262,144. The refit now hands its real element count to
-`substrate/device.select`, and the env named here was `.venv-cu128`, retired the same day.
+`infra/device.select`, and the env named here was `.venv-cu128`, retired the same day.
 
   PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.growth.neurogenesis_engine
 """
@@ -402,7 +402,7 @@ class NeurogenesisSelfImprove:
         x = torch.tensor(self._buf_x, dtype=torch.float32)
         y = torch.tensor(self._buf_y, dtype=torch.long)
         # L1a (2026-09-05): the measurement slice COVERS THE CATEGORY MARGINAL (recency-mixed), not the
-        # most recent third -- hippocampus/ng_snn.marginal_holdout, the ONE window this engine and NGSNN
+        # most recent third -- growth/ng_snn.marginal_holdout, the ONE window this engine and NGSNN
         # share; the floors are computed against each held-out row's true stream predecessor.
         from snn_data_lake.growth.ng_snn import marginal_holdout
 
@@ -529,7 +529,7 @@ class NeurogenesisSelfImprove:
         self._batch_beta = model.beta.detach().clone() if model.beta is not None else None
 
     # ---- read-only state ---------------------------------------------------------------------
-    # REUSE, not a second mechanism: both accessors return what `cortex/placement.place` produced
+    # REUSE, not a second mechanism: both accessors return what `growth/placement.place` produced
     # and this engine maintains. The assignment rule lives there and is imported, never reimplemented.
     #
     # distinct-from: engine/autonomous_loop.py and engine/brain.py -- their "grown units" are the

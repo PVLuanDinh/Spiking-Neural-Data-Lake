@@ -4,7 +4,7 @@ implemented (specs/022 T039j).
 THE GAP THIS CLOSES, stated as the tree itself stated it. `connectome.py` declares the ascending
 visceral tract as `viscera -> nts_rvlm -> thal_relay -> insula -> {gwt, ctx_pfc}` -- four hops, and
 until now the middle one existed only as a NODE ID. The consequence was recorded in
-`substrate/port_charge_probe.interoceptive_challenge_frames`, verbatim: *a consumer importing its
+`instruments/port_charge_probe.interoceptive_challenge_frames`, verbatim: *a consumer importing its
 producers DIRECTLY put two region pairs on the import graph that the connectome declares no route
 for -- the declared tract relays through thalamus -- and the p6 undeclared-pairs ratchet went red
 exactly as designed*. The workaround was to move the multi-region measurement into the instrument

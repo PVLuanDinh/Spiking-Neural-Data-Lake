@@ -91,7 +91,7 @@ _PKG = "snn_data_lake"
 
 
 def _repo_root():
-    """REUSES `substrate/self_mod_harness._repo_root` -- no fourth resolver is defined here.
+    """REUSES `infra/self_mod_harness._repo_root` -- no fourth resolver is defined here.
 
     This file first hand-rolled a four-level counted climb copied from `doc_budget_gate.py:49-50`.
     That was the wrong pattern to copy, and `readout/laminar_local_readout._repo_root` already records

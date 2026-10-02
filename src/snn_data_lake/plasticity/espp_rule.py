@@ -27,7 +27,7 @@ rule math, so it stays with the instance.
 
 THE SAME/DIFFERENT ORACLE, NAMED (FR-019's clause, discharged here): for temporal
 streams the positive/negative assignment is supervised by
-`substrate/episode_driver.EpisodeDriver` -- each trial presents a SAMPLE then a
+`instruments/episode_driver.EpisodeDriver` -- each trial presents a SAMPLE then a
 PROBE and `trial['oracle']` is 'same'/'different', ground truth BY CONSTRUCTION
 (the T035 review proved the oracle cannot lie: the 'different' draw redraws until
 distinct). 'same' trials supply the pull target (echo), 'different' trials supply

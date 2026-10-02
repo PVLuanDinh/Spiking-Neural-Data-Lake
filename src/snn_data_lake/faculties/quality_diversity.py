@@ -16,9 +16,9 @@ holds its best) and diverse (cells span the behavior space). This is MAP-Elites
 from it" selection (Ecoffet et al. 2019/2021), driven by learning-progress novelty.
 
 The searched POLICY is genuinely SPIKING. Each policy is a small population of
-leaky integrate-and-fire neurons (cortex/lif_neuron.LIFNeuron) with a mutable weight
+leaky integrate-and-fire neurons (growth/lif_neuron.LIFNeuron) with a mutable weight
 genome, run as a CLOSED LOOP in an abstract 2-D box: each step the current position is
-population-coded into the inputs (cortex/population_encoding.PopulationEncoder), the LIF
+population-coded into the inputs (sensorimotor/population_encoding.PopulationEncoder), the LIF
 neurons take one step, and four neuron groups (right/left/up/down) vote with their SPIKES
 to nudge the position. The behavior DESCRIPTOR is where that spike-driven trajectory SETTLES
 -- read from the rollout's POPULATION CODE, NOT from the genome parameters. The box position
@@ -123,7 +123,7 @@ class SpikingPolicy:
     """A searched spiking policy: K leaky integrate-and-fire neurons, genome = weight matrix W[K][D].
 
     Rolled out as a CLOSED LOOP: the current abstract position is population-coded into the D inputs, the
-    K LIF neurons (cortex/lif_neuron.LIFNeuron, membrane state carried ACROSS drift steps) each take one
+    K LIF neurons (growth/lif_neuron.LIFNeuron, membrane state carried ACROSS drift steps) each take one
     step, and four neuron groups vote with their spikes to nudge the position (right/left on x, up/down on
     y). The output is a genuine SPIKE RASTER driving the dynamics; nothing here is an actuator or a motor
     command -- the position is a pure latent used only to DEFINE the behavior. mutate() returns a

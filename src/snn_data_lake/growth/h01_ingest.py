@@ -152,7 +152,7 @@ SOURCES_URL = "https://raw.githubusercontent.com/ashapsoncoe/h01/{commit}/{name}
 #: sha256 of shard 0's header `avro.schema` bytes, measured 2026-09-09 from the release itself.
 AVRO_SCHEMA_SHA256 = "4f09c112b46f1efd8608934f19e01a9aa716315b8646d3c424e9778507e9c5e6"
 
-#: The licence identifier `substrate/ingest_guard.license_ok` is asked about before any use.
+#: The licence identifier `sensorimotor/ingest_guard.license_ok` is asked about before any use.
 LICENSE_ID = "cc-by-4.0"
 ATTRIBUTION = (
     "H01 (Shapson-Coe et al.), c3 agglomeration, synapse export "
@@ -230,7 +230,7 @@ NEURONAL_TYPES = frozenset({*_EXCITATORY_TYPES, *_INHIBITORY_TYPES, "unclassifie
 
 def _lif_defaults():
     """Threshold, decay, reset and refractory BY IMPORT from the live equation owner (P1: cited,
-    not invented). `cortex/lif_neuron.LIFNeuron` is the module `reservoir/kernel_tick` names as
+    not invented). `growth/lif_neuron.LIFNeuron` is the module `reservoir/kernel_tick` names as
     the owner of the equation its vectorized step implements."""
     from snn_data_lake.growth.lif_neuron import LIFNeuron
 

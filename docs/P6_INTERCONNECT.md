@@ -489,7 +489,7 @@ be the P1 defect this program audits. Region IDs in one namespace: **CP**=cortex
 
 ### W3.1 -- CP2 -- real percept into NeurogenesisEngine, under a named contract change
 
-- **Producer / consumer.** The live percept stream -> `cortex/neurogenesis_engine.tick()`,
+- **Producer / consumer.** The live percept stream -> `growth/neurogenesis_engine.tick()`,
   which before 2026-09-02 took no argument and drew features from `_mode_features(self.current_mode)`
   with `self._chain = random.Random(seed)`; `brain.py` called it bare -- while its
   docstring claimed it grows "to predict the brain's own next perception."

@@ -1560,7 +1560,7 @@ class LakeChat:
         longer reads `probe_access` (a reading off `_access_ema` whose verdict was permanently None
         after the GWT ACCESS marker's F11 deletion) or `probe_integration` (a PCI distribution over
         synthetic reference networks, which by its own admission said nothing about this instance;
-        that sweep is PORTED to `cortex/integration_measure.pci_marker_sweep`, one commit earlier).
+        that sweep is PORTED to `instruments/integration_measure.pci_marker_sweep`, one commit earlier).
         Both replacement halves now exist as instruments, which is the condition T034 set, so the
         incumbent goes rather than being kept beside them (P2: exactly one mechanism survives).
 

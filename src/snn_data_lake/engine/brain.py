@@ -469,7 +469,7 @@ class Brain:
         #     Galton-Watson ground truth it is unbiased with sampling noise: max |err| 0.0074 at
         #     seed 0 over sigma in [0.7, 1.2], and 0.0117 across seeds 0..11 (this clause said
         #     "|err| <= 0.008" and that was one draw quoted as a bound; see the SUBSAMPLING note in
-        #     cortex/neuronal_avalanches.measured_branching_ratio for the condition under which even
+        #     instruments/neuronal_avalanches.measured_branching_ratio for the condition under which even
         #     that stops holding, which no live path here violates);
         #   * a branching ratio has a PRINCIPLED within-system reference point -- sigma = 1 is the
         #     critical point of the process itself, not an externally calibrated cutoff -- so "is my
@@ -1245,7 +1245,7 @@ class Brain:
         # quantile every tick, so the LC gate is baseline-relative instead of a frozen literal.
         # (This comment named `_w8_tick` as the ASSIGNING frame until 2026-08-05. `_w8_tick` is the
         # CALLER; the assignment is one frame down, in `_tick_ensemble`.) Supersedes the nightly
-        # source-edit path (`basal_ganglia/brain_native_selfbuild.ThresholdRecalibrationSource`, now
+        # source-edit path (`infra/brain_native_selfbuild.ThresholdRecalibrationSource`, now
         # target-less; this said `reasoning/`, a path the P4c promotion wave retired).
         # P4b: the quantile state lives IN THE ONE LAKE under _T_STATE, never in a sidecar JSON.
         self._salience_calib = None
@@ -4156,7 +4156,7 @@ class Brain:
             # T081 (C5 row report_order, CHARGED 2026-09-16): the live charge margin of the SAME bus
             # the line above snapshots -- (g_top - g_second) / g_top over the slots, the quantity the
             # campaign's flip dose was read against. The function is IMPORTED from the instrument
-            # (`cortex/report_order_probe._t081_top_margin`), never re-implemented here: ONE
+            # (`instruments/report_order_probe._t081_top_margin`), never re-implemented here: ONE
             # mechanism (P2), so the number the cockpit prints and the number the probe scored come
             # from the same body. None when there is no workspace -- a brain that has not built its
             # arm has no margin, which is a state and not a 0.0. The licensed and refused sentences

@@ -802,7 +802,7 @@ that baseline.
   brain-free control was withdrawn after its panel; the ridge candidate did not land by its pre-registered control's letter
   (near-vacuous on a one-class window) and lost the P2 wash; the perceptron lost the tiebreak on t (by mean it read ahead).
   The session's call under the authorization.* Adopt an existing online local readout rule
-  (`cortex/laminar_local_readout.observe`'s single-sample local update, or `similarity_sized_growth.FrozenExpert`'s
+  (`readout/laminar_local_readout.observe`'s single-sample local update, or `similarity_sized_growth.FrozenExpert`'s
   three-factor rule — P2: one survives, named at pre-registration) with its state as a lake record.
   Estimated L1a–c: 400–700 LOC over three commits.
 - **L2 — grow on plateau, prune in sleep (FR-023, FR-024).** *BUILT, MEASURED and DELETED ON ITS NULL 2026-09-06 (T092, `evidence/l2-grow-on-plateau.md`, P8 clause 5). The trigger read the online readout's residual as a third evidence stream inside `GrowthStop`; its red fired in both directions and its refusals track temporal ORDER (0 of 200 shuffles of the same windows reach the live refusal rate). Deleted anyway on the branch its own pre-registration named: it moves the outcome it exists to move by +0.625 units per seed at t=0.141, and neutering the readout does not shift the growth rate at the bar (t 1.135, p 0.313) — reachability is not charge, applied to a decision rule. TWO instrument defects were found and recorded on the way: the first run was a null caused by a `len(history)` cursor into a trimmed window, and the attribution control was a TAUTOLOGY (mu=0 returned before recording, so the neutered arm fed nothing and its identity with the incumbent was entailed, not measured). The harness and the corrected numbers live at `9f63683`. The T047 growth STOP is untouched — this row deleted a trigger, not a gate. What a re-proposal owes is in §6.5 of the record, and the deepest of the three is that the pathology FR-023 names has not been exhibited on any stream this project currently has.* *Trigger RESTATED 2026-09-05 with L1b deleted (the session's
@@ -2077,7 +2077,7 @@ May run in parallel with Phase 3 (O5(b)); MUST precede Phase 5.
   what is forbidden.
 - **C4 — the dissociation instruments (SC-009's first half)**: T070 (integration measure, never Phi), T077
   (metacognition as an extension of the incumbents), T078 (attention schema), T079 (agency; needs O1),
-  *RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `cortex/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).*
+  *RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `instruments/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).*
   T080 (temporal binding), T081 (report-order probe; `reasoning/consciousness_probe.py` RETIRED in the same
   commit — its criteria are markers, not dissociations), T082 (social cognition composed onto the bus).
   Each fires its constructed red once. *DATED NOTE 2026-09-10 (T070): its reds FIRED (R1, R2, R3 in the

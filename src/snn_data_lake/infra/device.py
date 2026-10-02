@@ -60,7 +60,7 @@ WHAT WAS DORMANT HERE, AND WHAT IS CHARGED NOW (P3 / P5a, 2026-08-05)
       * `resolve_device()` no longer decides -- it resolves INTENT and calls `select()`. Every
         module that already imported it now routes through the measured path, and every one of
         their choices lands in `decisions()`.
-      * `cortex/neurogenesis_engine._refit()` passes a REAL width (`x_tr.numel()`), so at least one
+      * `growth/neurogenesis_engine._refit()` passes a REAL width (`x_tr.numel()`), so at least one
         live path is width-routed rather than availability-routed. Before that edit the refit ran on
         the card at ~60k elements against a measured crossover of 262,144 -- the 0.01x regime P5a
         was written to prevent.
@@ -196,7 +196,7 @@ def select(workload, n=None, explicit=None):
     dataset passes) -- those go to the GPU whenever one exists, which is the whole point of having
     one. ("neurogenesis refits" stood in that list until 2026-08-05 and was wrong: a refit fits an
     NG-SNN over a CONCRETE buffer, so its element count is `x_tr.numel()` and it is width-bounded
-    like anything else. `cortex/neurogenesis_engine._refit` now passes it.)
+    like anything else. `growth/neurogenesis_engine._refit` now passes it.)
 
     Explicit override wins over measurement, both directions: the `explicit` ARGUMENT first, then
     NORD_DEVICE=cpu|cuda, then NORD_GPU=0 forces CPU. An operator who has a reason beats a benchmark.
@@ -238,7 +238,7 @@ def decisions():
     which is which is the point, because collapsing them is how "it has a reader" becomes a claim
     nobody measured:
 
-      * A CRITERION reads it, and always did. `cortex/neurogenesis_engine.main()`'s claim 6 asserts
+      * A CRITERION reads it, and always did. `growth/neurogenesis_engine.main()`'s claim 6 asserts
         the recorded width IS the fit tensor's own element count and that the recorded device
         follows the measured crossover -- the only proof in this tree that `_refit` routes on
         WIDTH rather than on availability, and its own comment records it firing red against a

@@ -126,11 +126,11 @@ rather than tuned away. What is NOT claimed: that abstaining more often is BETTE
 measured behavioural change, not a proven improvement, and it is safe-by-construction only in the
 sense that HOLD adds caution and never releases an action.
 
-Reuses (does NOT reimplement): cortex/lif_neuron.LIFNeuron (the spiking pool),
+Reuses (does NOT reimplement): growth/lif_neuron.LIFNeuron (the spiking pool),
 substrate/_mathutils.{mean,sigmoid}, substrate/signal_calibrator.SignalCalibrator (the O(1)
 running quantile that is the HOLD bar), faculties/executive_control.ExecutiveControl (the consumed
 conflict; this module computes no conflict of its own). The self-check additionally drives
-hippocampus/growing_learner.GrowingLearner (a real neurogenesis learner whose capacity
+growth/growing_learner.GrowingLearner (a real neurogenesis learner whose capacity
 the monitor gates) and faculties/intrinsic_motivation.CuriosityDrive (the honest
 learning-progress / novelty source), keyed off a coarse, label-free input bucket.
 
@@ -175,7 +175,7 @@ GRADIENT_CLAIM = {
     ),
 }
 
-#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: MERGED 2026-08-15 into `infra/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
 #: spelling so no call site changes; the MECHANISM is singular.
 _clamp01 = clamp01
 
@@ -804,7 +804,7 @@ def _p6_experiment(seed=0, n=180):
 # specs/022 T077 (evidence/t077-metacognition.md 2.1-2.4): does the monitor's read TRACK the brain's own error
 # rate on held-out items better than a fixed prior does? ONE scorer for that question, here, in the incumbent
 # it extends (P2: no third monitor; the row's other incumbent, second_order_access.calibration(), is re-pointed
-# to this scorer in the next commit). The paired t over seeds is `substrate/paired_contrast.contrast`, imported
+# to this scorer in the next commit). The paired t over seeds is `instruments/paired_contrast.contrast`, imported
 # lazily by the campaign. It was LIFTED there from instruments/prior_drift_harness.py by T077 2.10 because the dormancy
 # gate counts an import at ANY depth -- the lazy import of the EXEMPT harness from this live CORE module read five
 # EXEMPT rows stale (determinism_gate, h01_ingest, kernel_state, kernel_tick, prior_drift_harness); a lazy import

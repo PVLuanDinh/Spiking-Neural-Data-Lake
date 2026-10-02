@@ -48,10 +48,10 @@ largest-deficit rule the hand-designed controller already encodes; it does not b
 honest value is not better regulation -- it is that goal-directed action arises from INTERNAL drives
 with ZERO external reward, the learning primitive the hand-wired controller can never provide.
 
-Reuses (does not reimplement): cortex/lif_neuron.LIFNeuron (the need pool + the non-spiking membrane
+Reuses (does not reimplement): growth/lif_neuron.LIFNeuron (the need pool + the non-spiking membrane
 control), faculties/set_points.Homeostat (the signed set-point error / the honest-negative baseline
 controller), plasticity/valence_stdp.ValenceLearner (the value/RPE channel + three-factor plasticity
-the reward feeds), substrate/_mathutils.mean. Per-instance random.Random(seed), ASCII-only,
+the reward feeds), infra/_mathutils.mean. Per-instance random.Random(seed), ASCII-only,
 deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.drive_reduction

@@ -149,7 +149,7 @@ N_CHANNELS = 64  # reserved-channel layout for the durable autobiographical trac
 # growth 32-39, confidence 40-47, dominant-signal 48-63.
 
 
-#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
+#: MERGED 2026-08-15 into `infra/_mathutils.clamp01` (8 copies -> 1). Alias keeps the local
 #: spelling so no call site changes; the MECHANISM is singular.
 _clamp01 = clamp01
 

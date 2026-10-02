@@ -41,7 +41,7 @@ HONEST framing (read before trusting any number below).
 Reuses (does NOT reimplement): plasticity/r_stdp.py RSTDPNeuron (eligibility + third-factor reward
 gate), growth/lif_neuron.py LIFNeuron (the spiking unit + the rate the threshold slides with),
 faculties/spiking_curiosity.py SpikingCuriosityDrive (the LP third factor), plasticity/
-bcm_plasticity.py (the sliding-threshold theta_M ~ <y^2> rule), substrate/_mathutils.mean.
+bcm_plasticity.py (the sliding-threshold theta_M ~ <y^2> rule), infra/_mathutils.mean.
 
 ASCII-only prints, deterministic
 (per-instance random.Random(seed); LIF dynamics + spike counts are integer-deterministic).

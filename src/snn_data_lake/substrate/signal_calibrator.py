@@ -11,7 +11,7 @@ CONSUMES IT LIVE into the LC salience gate every tick (`self._lc.salience_th = f
 the quantile is valid), so the threshold is baseline-relative at runtime rather than a constant kept
 fixed. *(Named `_w8_tick` here until 2026-08-05. `_w8_tick` is the CALLER; the assignment lives one frame
 down in `_tick_ensemble`, which `_w8_tick` invokes. Cited by SYMBOL for the reason POLICIES.md gives.)*
-The older path -- `basal_ganglia/brain_native_selfbuild.ThresholdRecalibrationSource` freezing the value
+The older path -- `infra/brain_native_selfbuild.ThresholdRecalibrationSource` freezing the value
 into the source as a literal -- is the inferior, superseded mechanism (a target-less extension point).
 
 HONEST: this is plumbing, not learning. It records the brain's own signal distribution and reports a
@@ -164,7 +164,7 @@ class SignalCalibrator:
     @staticmethod
     def load_result(name, lake_path=None):
         """Read the distilled {p, value, n} for `name` WITHOUT a live object -- the read path
-        `basal_ganglia/brain_native_selfbuild.ThresholdRecalibrationSource.candidates` uses, and its
+        `infra/brain_native_selfbuild.ThresholdRecalibrationSource.candidates` uses, and its
         ONLY caller in the tree. *(Said "the read path the DataIngestSource uses" until 2026-08-05;
         `DataIngestSource` is a NotImplemented extension point and has never called this.)*
         Returns None if the name is absent or has no samples yet."""

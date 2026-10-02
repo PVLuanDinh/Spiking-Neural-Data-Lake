@@ -255,7 +255,7 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #   Read; shares only the word "score". distinct-from: growth/neuron_zoo.py::_worker_ladder (a
 #   thread-count race) and gates/selfcheck_cache.py::_refresh_derived (a roster recompute) --
 #   both read, neither computes a percentile, a null or an information quantity.
-#: MERGED 2026-09-15 (specs/022 T079) into `substrate/_mathutils.q95`. The body moved there
+#: MERGED 2026-09-15 (specs/022 T079) into `infra/_mathutils.q95`. The body moved there
 #: VERBATIM -- the order statistic at round(0.95 * (len - 1)), EXACTLY as `track_error` takes
 #: it (metacognitive_monitor's `track_error`), never an interpolation -- and this alias keeps
 #: the local spelling so no call site in this module or its tests changes. ONE convention for

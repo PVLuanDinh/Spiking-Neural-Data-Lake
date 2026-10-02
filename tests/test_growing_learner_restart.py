@@ -1,7 +1,7 @@
 """The brain's PROTOTYPES of what it perceived must survive a restart -- proven across a real
 process boundary (specs/022 audit s8 rank 2b, 2026-09-02).
 
-`hippocampus/growing_learner.GrowingLearner` had no persistence path anywhere in the tree: the
+`growth/growing_learner.GrowingLearner` had no persistence path anywhere in the tree: the
 arm loop's context prototypes and the vision/audio prototype learners re-grew from zero on every
 daemon relaunch. Since rank 2a the neurogenesis grower's categories ARE the arm learner's prototype
 ids, so a re-grown learner re-keys the vocabulary the persisted NG-SNN readout was fit on.

@@ -195,7 +195,7 @@ rot. That is this repo's own silent-degradation pattern applied to a safety gate
 
 ### C-D. GAP 3a cannot ship unattended: its falsifier passes for two scorers with opposite verdicts
 
-*RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `cortex/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).*
+*RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `instruments/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).*
 `reasoning/consciousness_probe.py:84` is `present = sp > rt + 0.15`, where both `sp` and `rt` are
 `_bind_pair_acc` outputs -- the exact function GAP 3a rewrites. **[measured]**, K=2 (the value
 `:82` hardcodes), n=100, seed 0:

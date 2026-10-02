@@ -21,7 +21,7 @@ Run (after deps):  .venv-lake/Scripts/python -m snn_data_lake.instruments.snn_mn
 
 PROMOTED reasoning/ -> plasticity/ 2026-08-11 (#10 lane 2a; measured row in docs/P4C_BACKLOG.md):
 the rule-family hub (its constants are the GeNN port's oracle source of truth via
-plasticity/snn_mnist_stdp_genn.oracle()). Registered in the NEW run_selfchecks TRAIN_GATED tier
+instruments/snn_mnist_stdp_genn.oracle()). Registered in the NEW run_selfchecks TRAIN_GATED tier
 -- runs where torchvision is importable (the gate env carries torchvision 0.26.0+cu128, matched
 to the cu128 torch, which is how the module IS importable here; the module's own torchvision
 adjudication below still stands for pyproject/CI), skipped-with-notice elsewhere. Its 14

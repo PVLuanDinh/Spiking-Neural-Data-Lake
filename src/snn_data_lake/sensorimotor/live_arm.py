@@ -64,7 +64,7 @@ def _joint_obs_delta(command):
 
     ONE PARSER (P2, specs/022 T079 2.1): this was a private `JOINT_SHOULDER_LIFT_(ROTATE|
     MOVETO)` regex; the per-joint intended delta T079 needs is the same parse over every
-    joint, so the parse moved to `substrate/efferent_boundary.intended_deltas` and this is
+    joint, so the parse moved to `sensorimotor/efferent_boundary.intended_deltas` and this is
     a projection of it. Every ROTATE token reads bit-identically to the retired regex.
 
     ONE BEHAVIOUR CHANGED, and it is a correction, disclosed rather than preserved: the old

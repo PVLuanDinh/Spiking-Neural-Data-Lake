@@ -481,7 +481,7 @@ def t080_null(recs, seed, n_draws=T080_N_DRAWS, resample=False):
     broken. `n_draws` draws are taken as ONE (n_draws x n) integer array -- never a per-draw
     Python loop over ticks, which at 2,000 x 600 would cost more than the recording did.
 
-    Returns the derived margin `q95` (`substrate/_mathutils.q95`, the tree's ONE order
+    Returns the derived margin `q95` (`infra/_mathutils.q95`, the tree's ONE order
     statistic), the draws' `mean` and `draws_sd`, the agreement band [`q005`, `q995`] of
     2.3 (b2), the product-of-marginals `expected` (sum over objects of p_v(o) p_a(o)), and
     `multiset_ok` -- the membership match ASSERTED on the draws themselves rather than argued
@@ -591,7 +591,7 @@ def _t080_band(entry):
 
 
 def t080_contrasts(per_seed, score=None, band=None, g0=None, bar=T080_BAR):
-    """2.3's conjuncts, each decided by `substrate/paired_contrast.contrast` (the ONE
+    """2.3's conjuncts, each decided by `instruments/paired_contrast.contrast` (the ONE
     statistic; nothing is re-spelled here).
 
       (g0) t over seeds of (congruent fraction ALIGNED - congruent fraction NULL), the

@@ -9,8 +9,8 @@ changes behind the other's back, its belief goes STALE (a false belief).
 
 Reuse, not reinvention. The design mirrors faculties/self_model.py -- a belief/state population that
 changes ONLY through observe() and otherwise persists. The believed location is carried as a genuine
-spiking POPULATION CODE (reusing cortex/population_encoding.PopulationEncoder: N overlapping RBF
-neurons tile the locations) and read back out by a spiking WINNER-TAKE-ALL over cortex/lif_neuron.LIFNeuron
+spiking POPULATION CODE (reusing sensorimotor/population_encoding.PopulationEncoder: N overlapping RBF
+neurons tile the locations) and read back out by a spiking WINNER-TAKE-ALL over growth/lif_neuron.LIFNeuron
 (one leaky integrate-and-fire neuron per location, the most-firing location wins). Nothing here is a
 re-implementation of those primitives.
 

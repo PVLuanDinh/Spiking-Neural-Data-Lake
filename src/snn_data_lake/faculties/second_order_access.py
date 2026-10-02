@@ -61,7 +61,7 @@ MEASURED LIMITS -- KEPT, NOT TUNED AWAY (the self-check prints the true numbers)
     1.000 TIES it -- a computability result about the stream, not a calibration result
     about the pool. The number is 1.000, never the ignition-echo's 0.864.
 
-Reuses (does NOT reimplement): cortex/lif_neuron.LIFNeuron. Mirrors the style of
+Reuses (does NOT reimplement): growth/lif_neuron.LIFNeuron. Mirrors the style of
 faculties/metacognitive_monitor.py (which monitors LEARNING reliability; this one
 monitors ACCESS reliability). Deterministic, ASCII-only, per-instance RNG.
 
@@ -77,7 +77,7 @@ from snn_data_lake.infra._mathutils import clamp01
 _BANNED = ("conscious", "sentient", "phenomenal", "subjective", "aware", "feels", "qualia")
 
 
-#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). This file's copy WAS the
+#: MERGED 2026-08-15 into `infra/_mathutils.clamp01` (8 copies -> 1). This file's copy WAS the
 #: canonical form -- it coerced up front, and that is the behaviour that survived. Alias kept so no
 #: call site changes; the MECHANISM is singular.
 _clamp01 = clamp01

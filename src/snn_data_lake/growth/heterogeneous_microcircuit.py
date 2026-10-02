@@ -13,10 +13,10 @@ population and learns their afferent weights with a LOCAL plasticity rule:
 
 The neuron cells have DIFFERENT native interfaces, so each is wrapped in a one-line shim to the Node
 contract `step(current)->spike, reset()` (we do NOT edit the cell files):
-  - cortex/lif_neuron.LIFNeuron           : already step(current)->0/1, reset_state -> reset shim
+  - growth/lif_neuron.LIFNeuron           : already step(current)->0/1, reset_state -> reset shim
   - growth/izhikevich_neuron              : only a simulate() fn + REGIMES params -> a stepping shim that
                                             mirrors its per-dt (v,u) dynamics, sub-stepped within a tick
-  - cortex/adex_neuron.AdEx               : step(I)->0/1, reset(); sub-stepped within a tick
+  - growth/adex_neuron.AdEx               : step(I)->0/1, reset(); sub-stepped within a tick
 
 Population encoding reuses sensorimotor/population_encoding (its RBF receptive fields). Learning reuses the
 local STDP/covariance rule from growth/basic_components -- no loss.backward, no autograd, no surrogate
@@ -48,7 +48,7 @@ from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 # presynaptic vector (an Encoder: encode(x) -> vector).
 # --------------------------------------------------------------------------------------------------
 class _PopRateEncoder:
-    """Wraps cortex/population_encoding.PopulationEncoder; encode(x) returns its Gaussian activations."""
+    """Wraps sensorimotor/population_encoding.PopulationEncoder; encode(x) returns its Gaussian activations."""
 
     def __init__(self, n, lo=0.0, hi=1.0):
         self.pop = PopulationEncoder(n=n, lo=lo, hi=hi, max_spikes=10)
@@ -133,7 +133,7 @@ class HeterogeneousLayer:
 
     Within a tick the cells are mutually INDEPENDENT -- each integrates its own membrane from its
     own state and writes only its own spike bit -- so this is a population update, and it delegates
-    the loop to the single implementation of that in `cortex/neuron_zoo.Population` instead of
+    the loop to the single implementation of that in `growth/neuron_zoo.Population` instead of
     keeping a second copy here (P2: one mechanism survives). `Population` decides serial-or-
     across-cores by racing both on real steps; the two paths are byte-identical, so that decision
     cannot reach this layer's output -- only its cost.
@@ -281,7 +281,7 @@ def main():
 
     # ---- (d) THE POPULATION UPDATE ---------------------------------------------------------------
     # HeterogeneousLayer no longer carries its own per-neuron loop: it delegates to
-    # cortex/neuron_zoo.Population, which runs the population across cores once it is wide enough
+    # growth/neuron_zoo.Population, which runs the population across cores once it is wide enough
     # to pay for the threads. Two separate claims, both MEASURED here rather than asserted:
     #   (d1) the delegation is FAITHFUL -- identical to the in-line loop it replaced;
     #   (d2) at a width ABOVE the crossover the raced path is byte-identical to serial, so the

@@ -19,7 +19,7 @@ Ground truth it MATCHES (reused, not re-implemented):
     was reasoning/ and before that research/). Nengo is configured
     with the SAME LIF constants (tau_rc=0.02, tau_ref=0.002), intercepts and max-rates so the Nengo decode
     is COMPARABLE to the zero-dep decode: same framework, different engine.
-  * cortex/lif_neuron.LIFNeuron -- the canonical discrete-time LIF. `lif_to_nengo` builds a Nengo LIF whose
+  * growth/lif_neuron.LIFNeuron -- the canonical discrete-time LIF. `lif_to_nengo` builds a Nengo LIF whose
     firing rate tracks this neuron's rate across an input-current sweep.
   * sensorimotor/population_encoding, connectome.py -- `to_nengo_network` exports a population front-end (or a
     recurrent line-attractor loop) as an equivalent nengo.Network that runs and emits spikes.
@@ -166,7 +166,7 @@ class NengoNEF:
 
 
 # ----------------------------------------------------------------------------------------------------------
-# 2. LIF EXPORT -- a Nengo LIF configured to MATCH cortex/lif_neuron.LIFNeuron
+# 2. LIF EXPORT -- a Nengo LIF configured to MATCH growth/lif_neuron.LIFNeuron
 # ----------------------------------------------------------------------------------------------------------
 class _NengoLIFMatch:
     """A Nengo LIF neuron matched to the brain's discrete-time LIFNeuron(tau_m, v_threshold).
@@ -226,7 +226,7 @@ class _NengoLIFMatch:
 
 
 def lif_to_nengo(tau_m=20.0, v_threshold=1.0, dt=0.001, tau_ref=0.0, seed=0):
-    """Build a Nengo LIF configured to MATCH cortex/lif_neuron.LIFNeuron(tau_m, v_threshold). Returns a
+    """Build a Nengo LIF configured to MATCH growth/lif_neuron.LIFNeuron(tau_m, v_threshold). Returns a
     helper exposing `.neuron_type` (drop into a nengo.Ensemble), `.current_for`, `.rate` (analytic) and
     `.sim_rate` (empirical, run on the simulator). Defaults mirror LIFNeuron's (v_threshold=1, no refractory)."""
     _require_nengo()

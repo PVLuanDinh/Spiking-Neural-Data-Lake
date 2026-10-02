@@ -515,7 +515,7 @@ def t081_contrasts(per_seed, score=None, c2=None, bar=T081_BAR):
          maps to REFUSED, never to a STOP.
     (c1) NAMED > SCRAMBLED AT THE LESION -- the licensed sentence, and THE ONLY BARRED CLAIM: the
          paired one-sided t over the seeds of (f_named(1.0) - f_scr(1.0)) against `T081_BAR`,
-         decided by `substrate/paired_contrast.contrast` with its exact sign-flip FPR beside it.
+         decided by `instruments/paired_contrast.contrast` with its exact sign-flip FPR beside it.
     (c2) THE SCRAMBLED INTERMEDIATE LEAVES THE REPORT UNCHANGED -- the C5 row's own dissociation
          input. AN EXACT COUNT per 2.3: zero on every seed, with the offending seed and its ticks
          NAMED. Never a bar to raise.

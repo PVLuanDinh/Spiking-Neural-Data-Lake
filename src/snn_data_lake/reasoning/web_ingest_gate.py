@@ -137,7 +137,7 @@ class WebAccessGate:
         byte cap enforced while streaming + provenance logging. Returns (path, bytes_written).
 
         THIS FUNCTION IS THE OPEN P2 DEBT named and dated 2026-09-09 under specs/022 T062. Its
-        retirement target is `substrate/web_ingest.fetch_bytes(sink=)` -- the capability was
+        retirement target is `sensorimotor/web_ingest.fetch_bytes(sink=)` -- the capability was
         ported THERE first, which is P2's order; the rationale lives at that site and is not
         restated here. It has NO call site in the tracked tree today, so the retirement is a
         rewrite of this body into one `fetch_bytes(..., sink=f.write)` call plus the provenance

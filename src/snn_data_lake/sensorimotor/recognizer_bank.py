@@ -47,7 +47,7 @@ _EPS = 1e-9
 # ------------------------------------------------------------- helpers --------------------------------
 
 
-#: MERGED 2026-08-15 into `substrate/_mathutils.clamp01` (8 copies -> 1). This file held one of the
+#: MERGED 2026-08-15 into `infra/_mathutils.clamp01` (8 copies -> 1). This file held one of the
 #: THREE float-coercing copies, which is the form that survived. Alias keeps the local spelling.
 _clamp01 = clamp01
 
