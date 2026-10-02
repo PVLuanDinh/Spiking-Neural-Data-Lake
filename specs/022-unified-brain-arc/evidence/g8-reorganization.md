@@ -3263,6 +3263,27 @@ D1's record before the gate runs.
 32 min). M11d and M11e move 24 and 33 modules (M10: 7); estimate 60-120 min per stage, about 7-11 h for the six, plus
 the panel, the fold and the battery (about 2 h 15).
 
+**Dated amendment, 2026-10-02 (written after M11e's commit `289bad3d`, before any D1 work).** Findings of M11b-M11e
+split D1 into three commits; no plan row changes. Each carries its own declared delta and an orchestrator re-take of C1.
+- **D1a, the frozen D1 plus a 2.6 debt.** The A.5 old-to-new map (generated from `LEGACY_*` against the live tables,
+  253 rows), the index-document rewrites, POLICIES' `REGIONS` wording, `tools/policy_manifest.json` regenerated, C7's
+  planted dangling live citation. Plus, required by what the checks prove: M11c raised BROAD in LIVE files through
+  citations of the deleted `hippocampus/__init__.py`, which 2.6 allows only for F11's envelope lines -- every live
+  citation of any of the 15 deleted package initializers is re-pointed or removed, with a before/after BROAD forecast;
+  and the two member-form re-points named above (POLICIES P0, plan A.5). Declared classes: BROAD, `doc_budget_gate`
+  counts, `policy_manifest.json`. A budget raise, if any, is "measured + 0" with its reason in the commit.
+- **D1b, comment restoration.** The frozen mover drops every per-entry comment of a module it moves out of a
+  `REGIONS`/`TORCH_TIER`/`TRAIN_TIER` list (measured from `68db184` to `a3e11791`: 86 modules, 117 lines, all G8
+  stages; M11e adds the cortex list's). They go back above their live entries (the tables' AST asserted unchanged),
+  and in the same commit both rewriter passes run over all 253 pairs on `src/snn_data_lake/__init__.py` only, so the
+  restored text carries no stale path. Declared class: BROAD (net). Red: one restored comment deleted in an export
+  copy, and the drop detector must report exactly that one.
+- **D1c, member-form leftovers of M1-M9.** Those stages ran the rewriter's first pass only. Every `.py` hit is
+  classified by AST: comment or docstring -> rewritten; a string literal in code -> listed in the record and NOT
+  touched (a functional key in member form could change behaviour, and C2(d) may not see it), filed as a carried
+  opening if any exist. Document hits are rewritten. Hygiene, not a 2.6 debt (BROAD counted them at G8-1/G8-2).
+  Declared class: BROAD (down).
+
 NOT VERIFIED BY A BATTERY (a pre-registration).
 
 ### 3.28 M11a predeclared faculties move: claustrum (Claude, G8-3, 2026-10-02)
