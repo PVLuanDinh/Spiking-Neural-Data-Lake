@@ -398,7 +398,7 @@ modules were re-pointed by the G8 stages; section headers, counts and package-le
 
 **spike_preprocessing** — The encoding/distance substrate. `encode_latency` (deterministic, ≤1 spike/channel), `encode_poisson`, `precompute/save_cache/load_cache`, `van_rossum_filter/distance` (closed-form geometric fast path, guarded per call, value- and decision-identical to the general loop), `victor_purpura_distance`, `denoise`. Widest consumer set in the slice. **Gotcha:** the fast path is only taken when *every* channel has ≤1 in-range spike.
 
-**spiking_lm_serve** — Zero-torch forward for a trained spiking LM (`snn_lm/1`), RWKV-style linear-attention state + Brian2-compatible subtract-reset LIF. `generate,save_lm,load_lm,_forward_logits`.
+**spiking_lm_serve** (RETIRED 2026-10-02) — Zero-torch forward for a trained spiking LM (`snn_lm/1`), RWKV-style linear-attention state + Brian2-compatible subtract-reset LIF. `generate,save_lm,load_lm,_forward_logits`.
 
 **srm_neuron** — Spike Response Model: membrane as a sum of `eps` (PSP) and `eta` (soft-reset/refractory) kernels. `SRMNeuron`, `IFNeuron` (hard-reset control), `run`. **Gotcha:** `potential()` sums over *all* stored `inputs`/`fires` with no pruning — O(t) per step, unbounded growth on a long run.
 
@@ -1301,7 +1301,7 @@ Every one of these terminates at `So101Arm.apply()`. There is no second writer o
 | location | n | files |
 |---|---|---|
 | package root | 3 | `__init__.py`, `brain_atlas.py`, `connectome.py` |
-| training | 7 | `__init__.py`, `cli.py`, `mnist` (retired 2026-10-02), `mnist_genn.py`, `offload` (retired 2026-10-02), `spiking_lm.py`, `trainer.py` |
+| training | 7 | `__init__.py`, `cli.py`, `mnist` (retired 2026-10-02), `mnist_genn.py`, `offload` (retired 2026-10-02), `spiking_lm` (retired 2026-10-02), `trainer.py` |
 | midbrain | 5 | `__init__.py`, `dopamine_nuclei.py`, `multisensory_integration.py`, `sc_deep_layers.py`, `superior_colliculus.py` |
 | hypothalamus | 4 | `__init__.py`, `circadian_clock.py`, `homeostatic_drives.py`, `set_points.py` |
 | amygdala | 3 | `__init__.py`, `affective_appraisal.py`, `fear_conditioning.py` |
@@ -1320,7 +1320,7 @@ Every one of these terminates at `So101Arm.apply()`. There is no second writer o
 **training/mnist** (RETIRED 2026-10-02; its e-prop port was not landed) — 784→H→10 MnistBrain whose forward is byte-for-byte `sensorimotor.trained_brain.predict` (beta=0.9, thr=1.0, reset-to-zero, output *accumulates*); AMP + DataLoader workers on CUDA only; `export_brain` + `verify_transfer` re-score through the zero-dep core. Invariant: shapes `[H][784]`/`[10][H]` are asserted before `make_brain`/`save_brain`.
 **training/mnist_genn.py** — GeNN/ml_genn 2.x sibling of the retired `mnist` (SpikeInput→LIF→LeakyIntegrate, EventProp+Adam). **Self-declared UNVERIFIED against any live ml_genn install**; every API touchpoint carries a `# VERIFY(ml_genn):`. `_beta_to_tau` maps `tau_mem = -dt/ln(beta)` — an approximation, so transfer to `trained_brain` is explicitly lossy.
 **training/offload** (retired 2026-10-02) — ZeRO-Offload demonstration: master weight + Adam state on CPU, `torch.utils.checkpoint` over the STEPS unroll. Imports `SpikingReadout`, `rate_encode`, `_to_tensors`, `_generator`, `evaluate` from `trainer` (private-name coupling). Reached only via `cli --offload`.
-**training/spiking_lm.py** — char-level SpikeGPT-lineage LM: `SpikingBlock` (LIF-in → causal exp-decay token mixer → LIF-out → FFN + graded residual), `SpikingLM`, `train`/`generate`/`perplexity`, checkpoint/resume, `export_lm` → `snn_lm/1` JSON served by `sensorimotor.spiking_lm_serve`. Torch import is guarded so the module imports torch-free (`_Module = object` fallback); `main()` prints shape and exits 0. `main()` uses `infra.device.resolve_device` — the correct selector — while `cli.py` uses the retired one.
+**training/spiking_lm** (RETIRED 2026-10-02) — char-level SpikeGPT-lineage LM: `SpikingBlock` (LIF-in → causal exp-decay token mixer → LIF-out → FFN + graded residual), `SpikingLM`, `train`/`generate`/`perplexity`, checkpoint/resume, `export_lm` → `snn_lm/1` JSON served by `sensorimotor.spiking_lm_serve`. Torch import is guarded so the module imports torch-free (`_Module = object` fallback); `main()` prints shape and exits 0. `main()` uses `infra.device.resolve_device` — the correct selector — while `cli.py` uses the retired one.
 
 **faculties/dopamine_nuclei.py** — `DopamineNuclei`: TD(0) critic over a trial chain emitting RPE as a LIF population rate (`da_level`, `phasic`, `present`). Source of dopamine only — no synapses, no action. Gotcha: a deleted vacuous assert is documented in-file (value cache is seed-independent because `present()` consumes no randomness); the two surviving determinism asserts have a constructed reachable red.
 **faculties/superior_colliculus.py** — `SuperiorColliculus.saccade()`: surround-contrast rectification → LIF race → first spike wins, lateral IPSPs suppress losers. Reuses `faculties.action_gating.kwta` for the argmax cross-check so the two competition circuits tie-break identically (`(-v, i)`). Invariant: a flat/high-energy map must produce **zero** spikes — contrast, not energy, drives it.

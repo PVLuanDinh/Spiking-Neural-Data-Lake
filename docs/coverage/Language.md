@@ -265,10 +265,11 @@ python tools/coverage_score.py --rerun lang_blimp_bench_67x25     # needs data/l
 # the runtime readings above, in order (R1-R7); all read-only, none writes state
 PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.faculties.rose_language
 PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.pragmatics
-PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.sensorimotor.spiking_lm_serve
 ```
 
-*Path note (G8 M11e, 2026-10-02): the first of these three commands named `snn_data_lake.cortex.rose_language` when R1-R7 were taken; its runnable path is the `faculties` one shown.*
+*Retirement note (2026-10-02): a third command ran the `sensorimotor/spiking_lm_serve` self-check; that module was retired with `training/spiking_lm` (`specs/022-unified-brain-arc/evidence/trainer-retirement.md`), so it is gone.*
+
+*Path note (G8 M11e, 2026-10-02): the first of these commands named `snn_data_lake.cortex.rose_language` when R1-R7 were taken; its runnable path is the `faculties` one shown.*
 
 The route census, the `expose()` weight delta and the `_pragmatics` neuter-A/B were run from a
 throwaway script against `make_brain(seed=0, persist=False)` and are **not** re-runnable from the tree.

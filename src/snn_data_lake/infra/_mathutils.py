@@ -120,7 +120,7 @@ def clamp01(x):
     return x
 
 
-# consolidates: src/snn_data_lake/sensorimotor/trained_brain.py (merge), src/snn_data_lake/sensorimotor/spiking_lm_serve.py (merge)
+# consolidates: src/snn_data_lake/sensorimotor/trained_brain.py (merge), src/snn_data_lake/sensorimotor/spiking_lm_serve (merge; retired 2026-10-02)
 # Both originals lose their local `_Rng` in this same change and import this one instead. A merge
 # that leaves both paths reachable is additive with extra steps -- the failure P2 exists to prevent.
 class Rng:

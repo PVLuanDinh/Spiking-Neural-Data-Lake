@@ -335,7 +335,6 @@ REGIONS = {
         "sensor_csv_ingest",
         "signal_loop",
         "spike_preprocessing",
-        "spiking_lm_serve",
         "trained_brain",
         "wavefront_planner",
         "web_ingest",

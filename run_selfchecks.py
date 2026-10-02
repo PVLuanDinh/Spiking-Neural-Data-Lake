@@ -97,7 +97,6 @@ CORE = [
     "substrate.paradigm_b_engine",
     "sensorimotor.gesture_recognition",
     "sensorimotor.nl_interface",
-    "sensorimotor.spiking_lm_serve",
     "faculties.vsa_reasoning",
     "faculties.prefrontal_executive",
     "engine.live_brain",

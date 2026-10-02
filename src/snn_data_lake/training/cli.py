@@ -71,69 +71,9 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=0, help="random seed (default 0)")
     args = parser.parse_args(argv)
 
-    # ---- spiking-LM path: char-level spiking LM -> exports a zero-dep snn_lm ----
-    # Nested guard FIRST (before the shared [train] guard) so --lm gets its own clean
-    # line. spiking_lm itself imports torch-FREE (its module guard just sets a flag),
-    # so the real "is torch here" check is _TORCH_IMPORT_ERROR, not the import.
     if args.lm:
-        try:
-            from snn_data_lake.training import spiking_lm as lmmod
-        except ImportError:
-            print('snn-train --lm needs Torch + Brian2: pip install ".[gpu]"')
-            sys.exit(1)
-        if lmmod._TORCH_IMPORT_ERROR is not None:
-            print('snn-train --lm needs Torch + Brian2: pip install ".[gpu]"')
-            sys.exit(1)
-        from snn_data_lake.infra import device as lm_devmod
-        dev = lm_devmod.resolve_device("cuda" if args.gpu else None)
-
-        corpus = lmmod.load_corpus(args.corpus)          # real UTF-8 file, or built-in toy
-        tok = lmmod.CharTokenizer(corpus)
-        if args.resume:
-            model, cfg = lmmod.load_checkpoint(args.resume)
-            # honesty guard: the char->id map comes from the corpus tokenizer, so a resumed
-            # model is only meaningful on the SAME corpus; vocab size is the cheap cross-check.
-            if cfg.vocab_size != tok.vocab_size:
-                print(f"--resume vocab mismatch: checkpoint vocab={cfg.vocab_size}, "
-                      f"corpus vocab={tok.vocab_size} (resume with the SAME corpus)")
-                sys.exit(1)
-            print(f"resumed checkpoint: {args.resume} "
-                  f"(d_model={cfg.d_model} blocks={cfg.n_blocks} seq_len={cfg.seq_len})")
-        else:
-            cfg = lmmod.SpikingLMConfig(vocab_size=tok.vocab_size, d_model=args.d_model,
-                                        n_blocks=args.blocks, seq_len=args.seq_len)
-            model = lmmod.SpikingLM(cfg)
-        loss = lmmod.train(model, tok, corpus, steps=args.steps, seq_len=cfg.seq_len,
-                           device=dev, seed=args.seed)
-        ppl = lmmod.perplexity(model, tok, corpus, seq_len=cfg.seq_len, device=dev)
-        n_params = sum(p.numel() for p in model.parameters())
-        print("training metrics:")
-        print(f"  steps: {int(args.steps)}")
-        print(f"  device: {dev}")
-        print(f"  corpus_chars: {len(corpus)}")
-        print(f"  vocab: {tok.vocab_size}")
-        print(f"  d_model: {cfg.d_model}")
-        print(f"  blocks: {cfg.n_blocks}")
-        print(f"  seq_len: {cfg.seq_len}")
-        print(f"  params: {int(n_params)}")
-        print(f"  final_loss: {loss:.6f}")
-        print(f"  perplexity: {ppl:.4f}")
-        if args.checkpoint:
-            lmmod.save_checkpoint(model, cfg, args.checkpoint)
-            print(f"checkpoint saved: {args.checkpoint}")
-        if args.export_lm:
-            lmmod.export_lm(model, tok, args.export_lm, cfg,
-                            meta={"steps": int(args.steps), "device": str(dev),
-                                  "corpus_chars": len(corpus),
-                                  "final_loss": round(loss, 6),
-                                  "perplexity": round(ppl, 4)})
-            print(f"exported lm: {args.export_lm}")
-            # honesty win: generate THROUGH the zero-dep core serve, so the user SEES the
-            # trained LM run with no torch (greedy; may differ slightly from torch sampling).
-            sample = lmmod.verify_transfer(args.export_lm, prompt="the ", n=60)
-            print("transfer check (greedy, served by zero-dep spiking_lm_serve):")
-            print("  " + repr(sample))
-        return 0
+        print("snn-train --lm was RETIRED 2026-10-02 (owner: port-then-retire): see docs/SPIKING_LM.md")
+        sys.exit(2)
 
     # Lazy, guarded import: Torch/Brian2 (and the Torch-based training modules) are
     # only touched here. A missing extra -> one clean line, not an ImportError trace.

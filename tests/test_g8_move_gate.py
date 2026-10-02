@@ -157,7 +157,8 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     )
     assert ixn._g0c_legacy_modules() is S._LEGACY  # the ONE table, read at call time (P2)
     # 286 -> 287 on 2026-10-02: gates.docs_only_battery joined REGIONS (its flat alias is derived)
-    assert len(S._MOVED) == 287 and "claustrum" not in S._MOVED
+    # 287 -> 286 on 2026-10-02: sensorimotor.spiking_lm_serve left REGIONS (retired)
+    assert len(S._MOVED) == 286 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture

@@ -161,9 +161,6 @@ def _padded_step(pad_iters):
     return padded
 
 
-# distinct-from: training/spiking_lm.py::verify_transfer -- matched only on the substring "ZERO-D";
-#   that function loads an exported LM into the zero-dep core and generates text. It installs
-#   nothing, times nothing and has no control role. Site read.
 def _sham_propagate(self, pre):
     """THE SHAM: installed on Connection.propagate, a path carrying ZERO share. Removes no work.
 

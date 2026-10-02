@@ -1074,6 +1074,10 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
     network, **RETIRED 2026-10-02** (owner: port-then-retire). Its e-prop port (Kolen-Pollack feedback, hidden
     cosine to BPTT 0.993) was NOT landed: it lost the pre-registered A/B, 0.942 against 0.957 (S = 8, t = 9.79).
     Capability lost: no working MNIST trainer for `trained_brain` remains (`mnist_genn` runs but scored chance at one epoch).
+  - `training/spiking_lm` (`SpikingLM`, `train`, file deleted) with its serve core `sensorimotor/spiking_lm_serve` —
+    a char-level spiking LM trained by BPTT, **RETIRED 2026-10-02** (owner: port-then-retire): ungoverned, never on
+    the live tick; at its defaults it scored in-sample perplexity 14.4-15.5 (S = 3) against a unigram 17.1 and a
+    bigram 7.2 on its own 512-character corpus. The e-prop char-LM outside the governed tree is a carried opening.
 
 - **Verify-first + honest framing:** probe → act → prove (A/B / gate) → commit; report the true number
   including a regression; reject theater with evidence; never fake a capability, a metric, or a consumer.
