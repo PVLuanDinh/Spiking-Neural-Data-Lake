@@ -118,6 +118,9 @@ on its grown neurons, placed on an anatomical map (G7), and G8 reorganizes the p
 - **One change per commit; one full battery per pushed ARC, on its stacked head** (owner rule 2026-09-02,
   POLICIES' "Gated + reversible" amendment). Every commit names the battery that verified the head it was
   pushed under; a red on the head is attributed per stage per commit, never by whole re-runs.
+  *DATED 2026-10-02, owner chose 'Stack 2-4 arcs/battery' from the session's options:* the owner's 2026-09-10 rule
+  stands -- two to four arcs, each with its own panel and fold, share ONE battery on the stacked head before one push;
+  a single-head campaign closes its stack, and an arc the work queue marks to push alone (the docs-only arc, G8-3) does.
 - **Commit messages carry NO attribution trailer** (owner, 2026-09-03, superseding the session-model
   trailer rule this line used to state). `attribution: {commit: "", pr: ""}` in `~/.claude/settings.json`
   enforces it mechanically rather than by remembering; the rule is kept written down here because the
@@ -214,6 +217,10 @@ on its grown neurons, placed on an anatomical map (G7), and G8 reorganizes the p
    smooth it.
 7. **Close out**: route-ledger line, task-observer observation(s), memory START-HERE + handoff, the audit
    artifact republished if the audit doc changed.
+   *DATED 2026-10-02, owner chose 'Commit, cite the finding' from the session's options:* a plan step made stale by
+   a finding or a source gets a dated note beside it in this house style, naming the finding's hash or the source,
+   landed as ONE docs commit at the head of the arc's stack; never a silent rewrite. Adding, removing, merging or
+   reordering a row stops for the owner.
 
 Measured cost per ARC: one panel (≈ 25 min) + one fold + one battery (≈ 60–70 min), plus a re-run when the
 head reds; commits inside an arc cost only their build and local checks. Before the batched rule every
@@ -907,6 +914,11 @@ B-R1 must fail on altered threshold/reset/schedule and on a parent GIL regressio
 Brian2 traces and unchanged local learning are the controls. Missing required checkpoint state,
 silent unsupported-mode fallback and a resource-overrun candidate must also be refused.
 
+*DATED 2026-10-02, owner chose 'CPU ref + Torch/kernel GPU' from the session's options:* Brian2 stays the CPU parity
+oracle in its isolated subprocess and GPU work runs on Torch CUDA (P5); there is no brian2cuda arc. This supersedes the
+owner's 2026-09-29 brian2cuda request (the operator's carried openings). The compiled procedural-reservoir kernel (a
+2026-09-30 scratch probe) stays a probe; adopting it would be a new row.
+
 ### R workstream - durable recall becomes retained learning (T102-T104)
 
 **R1 / T102; FR-038, SC-016.** Preserve the three recall tiers and verified slot matching while
@@ -1154,6 +1166,10 @@ none is a result.
   model the reservoir, whose "liquid" is Maass's metaphor for fading perturbations, and it predicts no transported
   weights; those are read from the reservoir's own measured dynamics (P4d, G9).
 Full evaluation: the operator's memory store, `archive/n-eval-2026-09-16/` (assessment, digest, notes).
+*DATED 2026-10-02, owner chose 'Loop decides at its slot' from the session's options:* T096 sits outside the G chain.
+The work loop decides whether to freeze it, with the 2026-09-30 amendments as written, as its own arc at a seam outside
+any single-head campaign (after G8-3's push or after G1(c)'s results record), and records the call and its reason here.
+T097-T100 stay outside the loop.
 
 **N2 / T097 - solver and causal coupling.** *(Added 2026-09-23: if N2 selects G1(b)'s pool as its
 spiking substrate, T109 precedes T097.)* Start with a periodic Fourier projection solver:
@@ -1668,6 +1684,12 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     two `python -m` commands) is rewritten at its stage, the historical path kept in a dated note beside it,
     because a stale path makes `git diff --quiet` pass vacuously and `doc_command_guard` resolves `-m` by file; all
     other frozen text keeps its historical paths.
+  - *DATED 2026-10-02, owner chose 'Go, as designed' from the session's options:* G8-3 = M11a-M11e and D1 (the A.5
+    old-to-new map, the index documents, POLICIES' REGIONS wording), per the evidence file's re-cut (2.9), its own
+    pushed arc. "brainstem untouched" means the five envelope files, `tools/envelope_hashes.json` and
+    `brainstem/so101/` stay byte-identical, with `envelope_hash_gate` run after each M11 stage; `cpg_oscillator` (not
+    an envelope file) moves at M11b as designed; `so101_arm.py`'s dangling comment citations (F11) are reported to the
+    owner, never edited.
 
   G-R8.
 - **G9 / T117 — the engine, end to end (the owner's condition, "as long as the engine can work").** *(Added
@@ -1704,6 +1726,15 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   label gate lands with it at the latest); G5; G4 (its data fitting, T3, needs no row before it and runs before G3's
   attachment arms use a distance kernel); G6, after R2/R3; G9 last, after G1(c), G3, G5 and G6. G3 still waits for
   G2's capacity cell.
+  *DATED 2026-10-02, owner chose 'Port-then-retire' from the session's options:* at the seam after G8-3's push and
+  before G1(c), outside any campaign, one arc retires the four backprop trainers (`training/trainer`, `offload`,
+  `mnist`, `spiking_lm`). First a census of each one's non-test importers and export consumers (e.g.
+  `growth/brian2_backend.py`'s parity self-check imports `trainer.SpikingReadout`). A learning capability is
+  re-implemented e-prop-side in a governed module, never MOVED into the governed tree (that is a promotion); a
+  non-learning one moves to its natural home first; otherwise "none". One commit per trainer in dependency order
+  (`offload` and `mnist` before `trainer`), each with its e-prop verdict-register entry in POLICIES.md and a
+  re-derived `gradient_claim_gate` census; every head stays importable. `training/mnist_genn.py` (EventProp/GeNN,
+  imported only by `cli.py`) is not covered: it, `cli.py` and `snn-train` stay, its disposition owed to the owner.
 - **No bypass:** nothing here bypasses the phase exits, T073/T074 or FR-025/OD-2.
 - **Carriers at introduction:** each row lands its own carriers' lake tag, retention label and
   fresh-process red. Continuation state (carried liquid state, cached feedback) resumes exactly under
