@@ -156,6 +156,16 @@ def _watermark_path():
     return os.path.join(home(), "daemon.watermark")
 
 
+# distinct-from: infra/brain_telemetry.py -- Recorder._compact decimates a rotated file it is given; this only chooses where the daemon's Recorder writes
+def _telemetry_path():
+    """Telemetry lives in the ACTIVE home, beside the lake and the watermark. It used to be
+    <checkout>/data/telemetry.jsonl whatever NORD_HOME said, so a throwaway brain appended to the
+    real daemon's record (measured 2026-10-01; tests/test_learn_daemon_telemetry_home.py)."""
+    from snn_data_lake.substrate.home import home  # noqa: PLC0415
+
+    return os.path.join(home(), "telemetry.jsonl")
+
+
 def _write_watermark():
     """Publish the shutdown barrier's durable watermark (specs/022 T005a).
 
@@ -369,9 +379,8 @@ def main():
     # every=1, NOT TICKS_PER_CYCLE. Recorder.every counts CALLS to write(), and write() is called once
     # per cycle below -- so every=TICKS_PER_CYCLE meant one snapshot per 20 cycles (400 ticks), 20x
     # sparser than the "one snapshot per cycle" the call site claims. The two disagreed silently.
-    # _repo_root(), not dirname(__file__): this file now lives in substrate/, so the old expression
-    # would have written telemetry to src/snn_data_lake/substrate/data/telemetry.jsonl.
-    rec = Recorder(os.path.join(_repo_root(), "data", "telemetry.jsonl"), every=1)
+    # Where it writes: _telemetry_path(), the active home (2026-10-01), never the checkout.
+    rec = Recorder(_telemetry_path(), every=1)
 
     atexit.register(lambda: _shutdown(b, mem))
     atexit.register(rec.close)
