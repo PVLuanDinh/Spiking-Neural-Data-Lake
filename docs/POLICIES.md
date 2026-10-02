@@ -1068,8 +1068,8 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
     exempted.
   - `training/offload` (`train_with_offload`, file deleted) — BPTT with gradient checkpointing and a CPU-resident optimizer,
     **RETIRED 2026-10-02** (owner: port-then-retire): ungoverned and never on the live tick; its learning
-    capability is `trainer`'s readout (ported at that trainer's retirement); its memory technique has no e-prop
-    analogue.
+    capability is `trainer`'s readout, which the core's LOCAL rule already covers (its entry below); its memory
+    technique has no e-prop analogue.
   - `training/mnist` (`MnistBrain`, `train_model`, file deleted) — BPTT trainer of `trained_brain`'s 784-H-10 MNIST
     network, **RETIRED 2026-10-02** (owner: port-then-retire). Its e-prop port (Kolen-Pollack feedback, hidden
     cosine to BPTT 0.993) was NOT landed: it lost the pre-registered A/B, 0.942 against 0.957 (S = 8, t = 9.79).
@@ -1078,6 +1078,10 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
     a char-level spiking LM trained by BPTT, **RETIRED 2026-10-02** (owner: port-then-retire): ungoverned, never on
     the live tick; at its defaults it scored in-sample perplexity 14.4-15.5 (S = 3) against a unigram 17.1 and a
     bigram 7.2 on its own 512-character corpus. The e-prop char-LM outside the governed tree is a carried opening.
+  - `training/trainer` (`SpikingReadout`, `train_model`, file deleted) — BPTT trainer of the core 8x8 readout,
+    **RETIRED 2026-10-02** (owner: port-then-retire): nothing unique to port, since the core's LOCAL rule
+    (`readout/snn_classifier`) beat it on identical data, 0.998 against 0.714 (S = 8). Its parity fixture moved
+    into `growth/brian2_backend` byte-identically.
 
 - **Verify-first + honest framing:** probe → act → prove (A/B / gate) → commit; report the true number
   including a regression; reject theater with evidence; never fake a capability, a metric, or a consumer.

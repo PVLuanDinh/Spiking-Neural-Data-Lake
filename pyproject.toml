@@ -64,7 +64,7 @@
 # tracing to "ONE unguarded module-top import". RE-DERIVED by importing all 152 `reasoning/`
 # modules in ISOLATED subprocesses before and after installing it: the census moves 39 failures ->
 # 35. FOUR modules are unblocked -- snn_dreamer_6dof, snn_motor_control, snn_ssm_shd,
-# snn_world_model_rl -- plus TWO in the governed tier, training/trainer.py and training/offload (retired 2026-10-02).
+# snn_world_model_rl -- plus TWO in the governed tier, training/trainer and training/offload (both retired 2026-10-02).
 # SIX in total. The first draft of this comment said "training/{trainer,offload,spiking_lm}" and
 # that was an OVERCLAIM caught by running the before-state instead of inferring it: spiking_lm (retired 2026-10-02)
 # guarded its own import and was ALREADY importable, so crediting it here would have counted a

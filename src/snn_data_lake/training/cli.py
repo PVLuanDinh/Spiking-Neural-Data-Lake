@@ -15,8 +15,8 @@ import sys
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="snn-train",
-        description="Train a surrogate-gradient spiking classifier on GPU and export "
-                    "the weights back into the zero-dep snn_classifier core.",
+        description="Train the MNIST brain on the GeNN backend (--mnist --genn). The BPTT trainers "
+                    "(default readout, --offload, --mnist without --genn, --lm) were retired 2026-10-02.",
     )
     parser.add_argument("--gpu", action="store_true",
                         help="request CUDA (falls back to CPU if unavailable)")
@@ -80,7 +80,6 @@ def main(argv=None):
     try:
         import torch  # noqa: F401
         from snn_data_lake.infra import device as devmod
-        from snn_data_lake.training import trainer
     except ImportError:
         print('snn-train needs the training extra: pip install ".[train]"')
         sys.exit(1)
@@ -132,24 +131,9 @@ def main(argv=None):
         print("snn-train --offload was RETIRED 2026-10-02 (owner: port-then-retire): a BPTT memory "
               "technique with no e-prop analogue -- see docs/TRAINING.md")
         sys.exit(2)
-    model, metrics = trainer.train_model(
-        epochs=args.epochs, device=dev, seed=args.seed)
-
-    print("training metrics:")
-    for key, val in metrics.items():
-        print(f"  {key}: {val}")
-
-    if args.checkpoint:
-        trainer.save_checkpoint(model, args.checkpoint)
-        print(f"checkpoint saved: {args.checkpoint}")
-
-    if args.export_core:
-        trainer.export_to_core(
-            model, args.export_core,
-            meta={"epochs": args.epochs, "device": str(dev), "offload": bool(args.offload)})
-        print(f"exported core weights: {args.export_core}")
-
-    return 0
+    print("snn-train's default 8x8 readout trainer was RETIRED 2026-10-02 (owner: port-then-retire): "
+          "readout/snn_classifier's LOCAL rule trains the same task -- see docs/TRAINING.md")
+    sys.exit(2)
 
 
 if __name__ == "__main__":

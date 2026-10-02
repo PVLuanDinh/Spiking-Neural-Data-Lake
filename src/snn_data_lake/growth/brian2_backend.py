@@ -60,7 +60,6 @@ CONTRACT = MappingProxyType(
     }
 )
 MIGRATED_CALL_SITES = (
-    "snn_data_lake.training.trainer",
     "snn_data_lake.instruments.deep_stdp",
     "snn_data_lake.instruments.snn_mnist_stdp",
     "snn_data_lake.reasoning.developmental_loop",
@@ -476,15 +475,49 @@ def conjunct_p(seed=0) -> dict:
     }
 
 
-def conjunct_m() -> dict:
-    from snn_data_lake.training.trainer import SpikingReadout, _generator, rate_encode
+class _ReadoutFixture(nn.Module):
+    """conjunct_m's parity fixture: one bias-free 64->4 linear synapse (snn_classifier.N inputs) feeding
+    BrianLIF, unrolled in time. Moved here from training/trainer's SpikingReadout when that BPTT trainer
+    retired (2026-10-02); construction order and forward are unchanged, so the seeded trace is byte-identical
+    (specs/022 evidence trainer-retirement.md, T-R2)."""
 
+    def __init__(self, n_inputs=64, n_classes=4, beta=0.9):
+        super().__init__()
+        self.fc = nn.Linear(n_inputs, n_classes, bias=False)
+        self.lif = BrianLIF(beta=beta, spike_grad=fast_sigmoid())
+
+    def forward(self, spikes):
+        mem = spk_sum = None
+        for t in range(spikes.shape[0]):
+            cur = self.fc(spikes[t])
+            if mem is None:
+                mem = torch.zeros_like(cur)
+            spk, mem = self.lif(cur, mem)
+            spk_sum = spk if spk_sum is None else spk_sum + spk
+        return spk_sum
+
+
+def _fixture_generator(device, seed):
+    gen = torch.Generator(device=device)
+    gen.manual_seed(int(seed))
+    return gen
+
+
+def _fixture_rate_encode(X, steps, gen, device):
+    """X[n, N] in {0,1} -> a [steps, n, N] Bernoulli spike train at snn_classifier's ON/OFF rates."""
+    from snn_data_lake.readout.snn_classifier import OFF_RATE, ON_RATE
+
+    prob = (X * ON_RATE + (1.0 - X) * OFF_RATE).unsqueeze(0).expand(steps, -1, -1)
+    return (torch.rand(prob.shape, generator=gen, device=device) < prob).float()
+
+
+def conjunct_m() -> dict:
     currents, spikes = [], []
     with torch.random.fork_rng(devices=[]), torch.no_grad():
         torch.manual_seed(0)
-        model = SpikingReadout(beta=0.9)
+        model = _ReadoutFixture(beta=0.9)
         batch = torch.randint(0, 2, (8, model.fc.in_features)).float()
-        encoded = rate_encode(batch, 25, _generator("cpu", 0), "cpu")
+        encoded = _fixture_rate_encode(batch, 25, _fixture_generator("cpu", 0), "cpu")
         current_hook = model.fc.register_forward_hook(
             lambda _m, _args, out: currents.append(out.detach().numpy().copy())
         )

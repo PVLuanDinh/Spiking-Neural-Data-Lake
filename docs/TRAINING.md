@@ -60,20 +60,15 @@ of these states it measured in — see [`COVERAGE_BASELINE.md`](COVERAGE_BASELIN
 pip install ".[train]"      # core Torch + Brian2, plus torchvision/scikit-learn
 ```
 
-## Train on GPU, deploy zero-dep
+## The 8×8 readout trainer (retired)
 
-`snn-train` trains a surrogate-gradient spiking classifier (Brian2 LIF equation with a
-differentiable Torch bridge, BPTT) on the same 8×8
-4-shape task as the core `snn_classifier`, then exports the learned weights in the core's `W[c][i]`
-layout:
-
-```bash
-NORD_GPU=1 snn-train --gpu --epochs 20 --checkpoint model.pt --export-core weights.json
-```
-
-GPU is opt-in (`--gpu` or `NORD_GPU=1` / `NORD_DEVICE=cuda`); it falls back to CPU with a clear
-message if CUDA is unavailable, and the CPU path is deterministic. The exported `weights.json` loads
-straight into the zero-dep core:
+`snn-train`'s default path trained a surrogate-gradient spiking classifier by BPTT on the core
+`snn_classifier`'s 8×8 4-shape task and exported it in the core's `W[c][i]` layout (`--export-core`). It was
+RETIRED on 2026-10-02 with the other backprop trainers (owner: port-then-retire): on identical data over 8
+seeds it scored 0.714 mean test accuracy against 0.998 for the core's own LOCAL rule, so it had nothing to
+port (`specs/022-unified-brain-arc/evidence/trainer-retirement.md`). `snn-train` without `--mnist --genn` now
+refuses. A weight file in that layout (from `snn_classifier.save_weights`, or an earlier export) still loads
+straight into the core:
 
 ```python
 from snn_data_lake import snn_classifier as c
@@ -82,15 +77,7 @@ currents, counts, synops = c.forward(W, sample, n_classes=4)
 ```
 
 `load_weights` validates the format and shape at the trust boundary, so a mismatched or hand-edited
-file fails loudly rather than silently misclassifying. This is the **train-fast-on-GPU,
-deploy-zero-dep bridge**: the GPU optimizer improves the same `W[c][i]` readout the core runs.
-
-**Honest caveat on the transfer.** The export is *format*-faithful, but the two inference paths are
-not identical: the trainer optimizes LIF output-spike dynamics (leaky membrane + threshold), while
-the core serves a *linear spike-count* readout (`currents[c] = Σ_i W[c][i]·count[i]`, argmax). Treat
-the export as a GPU-optimized weight **init** and verify it in the core after export
-(`load_weights` → `forward`/`evaluate`) rather than assuming the trainer's test accuracy carries over
-unchanged.
+file fails loudly rather than silently misclassifying.
 
 ## Training a model larger than VRAM (disk/CPU offload)
 
@@ -218,7 +205,7 @@ is a poor fit for AirLLM specifically — the default backend is a deterministic
 |------------|-----------------|----------|
 | Clone-and-run inference | `snn-demo`, `import snn_data_lake` | nothing (stdlib) |
 | Real event-vision/audio on the live tick | `training/make_packs.py` → `models/*_pack.npz` | `.[nmnist]` (tonic); downloads N-MNIST + SHD |
-| GPU training → export to core | `snn-train --gpu --export-core` | core Torch + Brian2 and `.[train]`; a CUDA GPU |
+| 8×8 readout → core weights | `snn_classifier.train` + `save_weights` (the GPU trainer was retired 2026-10-02) | nothing beyond the core |
 | MNIST brain → serve zero-dep | `trained_brain.predict` on an existing brain file (the trainer was retired 2026-10-02) | nothing to serve |
 | Train larger than VRAM | `accelerate`/DeepSpeed (the `--offload` trainer was retired 2026-10-02) | external |
 | GeNN-backend GPU training | `snn-train --mnist --genn` | `.[genn]` (pygenn+ml_genn, compiler+CUDA); best-effort scaffold |
