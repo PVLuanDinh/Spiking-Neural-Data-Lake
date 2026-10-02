@@ -440,7 +440,7 @@ REGIONS = {
         "language_readout_slda",
         "predictive_coding",
         "snn_classifier",
-        # PROMOTED 2026-08-13 (was reasoning/snn_moe_classifier.py): firing-rate ROUTED
+        # PROMOTED 2026-08-13 (was reasoning/snn_moe_classifier, pre-promotion path): firing-rate ROUTED
         # mixture-of-experts over snn_classifier's spiking experts. CORE, not TORCH_TIER -- it
         # imports only math/random/numpy plus readout.snn_classifier and infra._mathutils.
         # Reached from sensorimotor/recognizer_bank.py. Its blocker was an UNRESTORED process-global
@@ -617,13 +617,13 @@ REGIONS = {
 # neurogenesis) imports lazily and lives in REGIONS above. See brain_atlas for the gated verification.
 TORCH_TIER = {
     "sensorimotor": [
-        # PROMOTED 2026-08-12 (PROMOTE lane 4/4, was training/eprop_nmnist.py): the brain's
+        # PROMOTED 2026-08-12 (PROMOTE lane 4/4, was training/eprop_nmnist, pre-promotion path): the brain's
         # N-MNIST perception encoder (e-prop, cosine>0.5 vs BPTT asserted in-check). TORCH_TIER
         # because torch is imported at module top; reached on Brain's CONSTRUCTION path
         # (brain.py's perception-tier try block). Its e-prop engine lives in `eprop_kernel` below,
         # which it and `eprop_shd` both import.
         "eprop_nmnist",
-        # PROMOTED 2026-08-13 (specs/013 C3, was training/eprop_shd.py): the brain's SHD audio
+        # PROMOTED 2026-08-13 (specs/013 C3, was training/eprop_shd, pre-promotion path): the brain's SHD audio
         # perception encoder, the auditory twin of eprop_nmnist. TORCH_TIER for the same reason
         # (torch at module top), reached on the same construction path via brain.py's audio try.
         "eprop_shd",
