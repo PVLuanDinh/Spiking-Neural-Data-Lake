@@ -4212,3 +4212,20 @@ command before folding:
   opening.
 Codex also reported all 18 console/CI targets resolving under `SNN_ALIAS_STRICT=1`, the daemon chain importing, and 26
 imports still on permitted flat aliases. The three fold commits are battery-verified only (not re-panelled).
+
+### 3.37 Codex closing report (Codex `gpt-6.1-sol`, read-only, on `df520870`; folded by Claude, 2026-10-02)
+
+Three findings survived; each was reproduced by the orchestrator's own command, and all three are recorded here, not
+re-built (battery-verified only):
+- (a) M11b's accepted BROAD line (2246) was amended AFTER the value was observed and reproduced with the guard's own
+  resolver (3.29 says so). The fresh census shows repeatability; that one component of M11b's C1 is NOT an independent
+  forecast. The claim for M11b narrows accordingly.
+- (b) M11c added four live dangling citations of the deleted `hippocampus` package initializer, raising live-file BROAD
+  outside F11's envelope lines, which 2.6 forbids, yet its record says "No halt, no amendment"; by 2.8 a stage whose
+  cheap half is not green is not built upon. The rise was declared (C1 matched) but the live-file rule was not applied as
+  a halt. A PROCEDURAL DEFECT, disclosed: D1a (`ad43fe87`) removed the four citations, so the stacked head complies, but
+  the commits from M11c (`1cb2c95a`) through D1b (`4358a307`) each carry them; M11c's per-stage compliance is not
+  established and is not claimed.
+- (c) 3.27 says `gates/docs_only_battery` "never enters C1". Wrong: C1's static inventory lists every source module
+  (`module_depth`, `move_gate.static`); the module enters every census UNCHANGED, so it contributes a zero delta. The
+  correct claim is "unchanged in every census", which the records' equal diffs show.
