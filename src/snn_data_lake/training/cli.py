@@ -141,7 +141,6 @@ def main(argv=None):
         import torch  # noqa: F401
         from snn_data_lake.infra import device as devmod
         from snn_data_lake.training import trainer
-        from snn_data_lake.training import mnist as mnistmod
     except ImportError:
         print('snn-train needs the training extra: pip install ".[train]"')
         sys.exit(1)
@@ -185,25 +184,9 @@ def main(argv=None):
                       f"core-served acc (200 imgs)={core_acc:.4f}")
             return 0
 
-        model, metrics = mnistmod.train_model(
-            epochs=args.epochs, hidden=args.hidden, steps=args.steps,
-            device=dev, seed=args.seed)
-        print("training metrics:")
-        for key, val in metrics.items():
-            print(f"  {key}: {val}")
-        if args.checkpoint:
-            mnistmod.save_checkpoint(model, args.checkpoint)
-            print(f"checkpoint saved: {args.checkpoint}")
-        if args.export_brain:
-            brain = mnistmod.export_brain(
-                model, args.export_brain, steps=args.steps,
-                meta={"epochs": args.epochs, "device": str(dev)})
-            print(f"exported brain: {args.export_brain}")
-            # honesty win: prove the export transfers by re-scoring MNIST through the ZERO-DEP core
-            core_acc = mnistmod.verify_transfer(brain, n=200)
-            print(f"transfer check: torch test_acc={metrics['test_acc']:.4f}  "
-                  f"core-served acc (200 imgs)={core_acc:.4f}")
-        return 0
+        print("snn-train --mnist (without --genn) was RETIRED 2026-10-02 (owner: port-then-retire): "
+              "see docs/TRAINING.md")
+        sys.exit(2)
 
     if args.offload:
         print("snn-train --offload was RETIRED 2026-10-02 (owner: port-then-retire): a BPTT memory "

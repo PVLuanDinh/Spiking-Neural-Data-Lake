@@ -1070,6 +1070,10 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
     **RETIRED 2026-10-02** (owner: port-then-retire): ungoverned and never on the live tick; its learning
     capability is `trainer`'s readout (ported at that trainer's retirement); its memory technique has no e-prop
     analogue.
+  - `training/mnist` (`MnistBrain`, `train_model`, file deleted) — BPTT trainer of `trained_brain`'s 784-H-10 MNIST
+    network, **RETIRED 2026-10-02** (owner: port-then-retire). Its e-prop port (Kolen-Pollack feedback, hidden
+    cosine to BPTT 0.993) was NOT landed: it lost the pre-registered A/B, 0.942 against 0.957 (S = 8, t = 9.79).
+    Capability lost: no working MNIST trainer for `trained_brain` remains (`mnist_genn` runs but scored chance at one epoch).
 
 - **Verify-first + honest framing:** probe → act → prove (A/B / gate) → commit; report the true number
   including a regression; reject theater with evidence; never fake a capability, a metric, or a consumer.

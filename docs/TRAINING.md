@@ -102,20 +102,13 @@ At production scale, use HuggingFace `accelerate` (`device_map`) or DeepSpeed Ze
 stream optimizer/parameter state between GPU, CPU, and disk during the **backward** pass. This is
 the correct mechanism for *training* something larger than VRAM.
 
-## A real trained brain (MNIST) the whole stack uses
+## A trained brain (MNIST) the whole stack can serve
 
-Train a real MNIST classifier fast on the GPU and load it into the **zero-dep core** so the
-lakehouse, matcher, and arm loop can all call it:
-
-```bash
-snn-train --mnist --gpu --epochs 20 --hidden 256 --export-brain brain.json
-```
-
-The MNIST trainer (`snn_data_lake.training.mnist`) is a surrogate-gradient Brian2-equation net
-(784 → hidden LIF → 10, mixed-precision, checkpointed) that **matches the core's serving semantics
-exactly** — so unlike the 8×8 classifier bridge above, the exported weights transfer *faithfully*
-(the trainer re-runs its export through the zero-dep core and reports the core-served accuracy next
-to the torch one). Serve it with no torch:
+The surrogate-gradient BPTT trainer that produced these brains (`training/mnist`, `snn-train --mnist`)
+was RETIRED on 2026-10-02 with the other backprop trainers (owner: port-then-retire). Its e-prop port was
+built and measured but NOT landed: it lost the pre-registered A/B to the BPTT trainer (test accuracy 0.942
+against 0.957 over 8 seeds at one epoch; `specs/022-unified-brain-arc/evidence/trainer-retirement.md`).
+`snn-train --mnist` without `--genn` now refuses. An existing brain file still serves with no torch:
 
 ```python
 from snn_data_lake import trained_brain as tb
@@ -131,7 +124,8 @@ calls `trained_brain.predict`/`accuracy`, no GPU or torch at serve time.
 ### Faster training on GeNN (optional, best-effort)
 
 `snn-train --mnist --genn` trains the same brain on GeNN's code-generated CUDA backend (often faster
-than a Python/Torch bridge for SNNs), exporting to the same `trained_brain` format. Needs the `[genn]` extra
+than a Python/Torch bridge for SNNs), exporting to the same `trained_brain` format. Measured 2026-10-02:
+one epoch on the full training set scored chance (test accuracy 0.0785), so it is not a working trainer. Needs the `[genn]` extra
 (`pip install ".[genn]"`, plus a C++ compiler + CUDA). **Caveat:** `training/mnist_genn.py` is a
 best-effort scaffold written against the ml_genn 2.x API and **not verified against a live GeNN
 install** — version-sensitive spots are flagged `# VERIFY(ml_genn):`, and GeNN's LIF dynamics only
@@ -225,7 +219,7 @@ is a poor fit for AirLLM specifically — the default backend is a deterministic
 | Clone-and-run inference | `snn-demo`, `import snn_data_lake` | nothing (stdlib) |
 | Real event-vision/audio on the live tick | `training/make_packs.py` → `models/*_pack.npz` | `.[nmnist]` (tonic); downloads N-MNIST + SHD |
 | GPU training → export to core | `snn-train --gpu --export-core` | core Torch + Brian2 and `.[train]`; a CUDA GPU |
-| GPU MNIST brain → serve zero-dep | `snn-train --mnist --export-brain`; `trained_brain.predict` | `.[train]` to train; nothing to serve |
+| MNIST brain → serve zero-dep | `trained_brain.predict` on an existing brain file (the trainer was retired 2026-10-02) | nothing to serve |
 | Train larger than VRAM | `accelerate`/DeepSpeed (the `--offload` trainer was retired 2026-10-02) | external |
 | GeNN-backend GPU training | `snn-train --mnist --genn` | `.[genn]` (pygenn+ml_genn, compiler+CUDA); best-effort scaffold |
 | Reason over the brain in NL | `brain_reasoning.BrainReasoner(...).explain` | nothing (stdlib summary); `.[llm]` for a real LLM |

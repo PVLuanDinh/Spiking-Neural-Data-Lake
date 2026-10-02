@@ -138,7 +138,7 @@ BUDGETS = {
     # RAISED 14276 -> 14362 on 2026-10-02 by the MEASURED delta (14,266 -> 14,352, +86): the owner's docs-only
     # battery amendment ("add the docs-only battery rule"), condensed from +208 by moving its mechanics to plan
     # A.4 step 5 and the evidence file; the 10 words of pre-raise headroom are carried, not spent.
-    "docs/POLICIES.md": 14405,  # 2026-10-02 +43 measured + 0: the e-prop register entry retiring training/offload (owner: port-then-retire). EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
+    "docs/POLICIES.md": 14467,  # 2026-10-02 +62 measured + 0: the e-prop register entry retiring training/mnist (its port not landed). 2026-10-02 +43 measured + 0: the e-prop register entry retiring training/offload (owner: port-then-retire). EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
     # execution-record note that lands in the same arc; NOT minimum-viable on purpose (the headroom is
     # for that note), a disclosed departure from the +~56 convention below
     # Superseded history of the 28150 ceiling, kept for the ratchet record:

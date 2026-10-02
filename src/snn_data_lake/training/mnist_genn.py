@@ -12,21 +12,21 @@ flagged inline with a ``# VERIFY(ml_genn):`` comment. Do NOT treat any accuracy 
 this module as a real result until it has run end-to-end on a live GeNN install.
 
 WHY GeNN: GeNN code-generates C++/CUDA for the whole spiking network, so the O(STEPS)
-Python loop the Brian2/Torch trainer (mnist.py) runs collapses into one compiled CUDA kernel
+Python loop the retired Brian2/Torch trainer (training/mnist) ran collapses into one compiled CUDA kernel
 sequence -- materially faster for SNNs on the GPU. This module is the GeNN sibling of
-``snn_data_lake.training.mnist``; it trains the SAME 784 -> H -> 10 rate-coded spiking
+``snn_data_lake.training.mnist`` (retired 2026-10-02); it trains the SAME 784 -> H -> 10 rate-coded spiking
 classifier and exports to the SAME zero-dep ``trained_brain`` JSON format, so a torch-free
 clone-and-run install serves the result with no GeNN, no torch, nothing.
 
 APPROACH (ml_genn 2.x high-level API):
   * Network of three populations: SpikeInput(784) -> LeakyIntegrateFire(H) -> LeakyIntegrate(10).
-  * MNIST pixels in [0, 1] are RATE-CODED over STEPS (Bernoulli per step), matching mnist.py
+  * MNIST pixels in [0, 1] are RATE-CODED over STEPS (Bernoulli per step), matching the retired mnist trainer
     and trained_brain's coding, then handed to the SpikeInput population as explicit spikes.
   * Trained with the EventProp compiler (ml_genn's gradient-based SNN training; the surrogate/
     adjoint route) + Adam on sparse-categorical-crossentropy over the leaky-integrate readout.
   * The CUDA backend is selected by GeNN automatically when CUDA + a compiler are available.
 
-TRANSFER CAVEAT (honest, like mnist.py): GeNN's continuous-time LIF dynamics are NOT
+TRANSFER CAVEAT (honest, like the retired mnist trainer): GeNN's continuous-time LIF dynamics are NOT
 bit-identical to trained_brain's discrete ``m = m*beta + cur; reset-to-0`` accumulate
 semantics (GeNN decays as ``exp(-dt/tau_mem)``; we map ``tau_mem = -1/ln(beta)`` so a step
 of decay approximately equals a multiply-by-beta, but synapse kinetics + reset differ). So
@@ -47,7 +47,7 @@ import numpy as np
 
 # torchvision is used ONLY to fetch/normalise MNIST pixels to [0, 1]; ml_genn does the SNN.
 # (ml_genn ships its own dataset helpers too, but torchvision is already the [train] extra's
-#  MNIST source in mnist.py, so we reuse it for an identical pixel pipeline.)
+#  MNIST source the retired mnist trainer used, so we reuse it for an identical pixel pipeline.)
 from torchvision import datasets, transforms
 
 # ---- ml_genn 2.x high-level API -------------------------------------------------------------
@@ -119,7 +119,7 @@ def _to_numpy(ds, limit=None):
 def _rate_encode_one(x, steps, rng):
     """Rate-code one image x[784] in [0,1] into (spike_times, spike_ids) for a SpikeInput.
 
-    Pixel i fires with prob x_i per timestep -- EXACTLY trained_brain's / mnist.py's Bernoulli
+    Pixel i fires with prob x_i per timestep -- EXACTLY trained_brain's / the retired mnist trainer's Bernoulli
     rate coding -- so the GeNN net sees the same input statistics the zero-dep core will serve.
     Times are integer step indices in [0, steps); ids are the firing pixel indices at each step.
     """

@@ -68,7 +68,7 @@
 # SIX in total. The first draft of this comment said "training/{trainer,offload,spiking_lm}" and
 # that was an OVERCLAIM caught by running the before-state instead of inferring it: spiking_lm.py
 # guards its own import and was ALREADY importable, so crediting it here would have counted a
-# module this change did not move. training/mnist.py stays red on torchvision.
+# module this change did not move. training/mnist (retired 2026-10-02) stayed red on torchvision.
 # The premise was wrong twice over: SEVEN `reasoning/` modules import snntorch directly at module
 # top (not one), and the hub file has a SECOND unguarded absent import on the very next line. The
 # other 18 do not become importable; they RE-LABEL from snntorch to `torchvision`.

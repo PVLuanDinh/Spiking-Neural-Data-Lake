@@ -15,7 +15,7 @@ This is the SCALE tier for the core faculties/jepa_world_model.py (v3.11 shipped
 *linear* JEPA there). It trains a DEEPER latent JEPA in PyTorch -- a hidden-layer MLP encoder
 instead of a single linear read-in -- and bridges the GPU-trained weights into a NEW core format
 ``snn_jepa/2`` that the core serves in plain Python, so the trained model runs on the live tick
-without loading torch. This mirrors how snn_data_lake.training.mnist exports a torch MLP into
+without loading torch. This mirrors how the retired snn_data_lake.training.mnist exported a torch MLP into
 ``trained_brain`` (export_brain/verify_transfer): train wide and offline, serve narrow and online.
 
 P7 note (2026-08-04): the words "zero-dep" and "pure-stdlib" were removed from the paragraph above.
@@ -40,7 +40,7 @@ Method (action-conditioned latent JEPA -- I-JEPA / V-JEPA in a robot-action sett
               + VICReg anti-collapse on the online embeddings (variance hinge gamma=1 +
               off-diagonal covariance), which is what blocks the trivial constant latent.
               Standard autograd -- no surrogate gradient is needed (this is a rate/latent model,
-              not a spiking one), unlike snn_data_lake.training.mnist.
+              not a spiking one), unlike the retired snn_data_lake.training.mnist.
 
 The deeper encoder is the point of ``snn_jepa/2``: the core ``snn_jepa/1`` format serves a
 single linear read-in ``We[latent][in]``; ``snn_jepa/2`` serves a LIST of encoder layers
