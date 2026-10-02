@@ -205,9 +205,9 @@ class GrowthStop:
             del log[:-_WINDOW]  # bounded, like the evidence windows
         return verdict
 
-    # distinct-from: cortex/prefrontal_executive.py -- its decide-then-gate writes the
+    # distinct-from: faculties/prefrontal_executive.py -- its decide-then-gate writes the
     #   WORKING-MEMORY goal by evidence margin; nothing about growth. Site read.
-    # distinct-from: cortex/reasoning_curriculum.py -- decide() there scores premises off
+    # distinct-from: faculties/reasoning_curriculum.py -- decide() there scores premises off
     #   a grown codebook; its growth is the learner's own, ungated by design. Site read.
     # distinct-from: reasoning/ar_spiking_lm_serve.py, reasoning/arc_agi/brain_player.py,
     #   reasoning/arc_agi/rule_inducer.py -- a lazy import and two action-selection races;

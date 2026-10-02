@@ -59,7 +59,7 @@ experience. No phenomenal claim is made or implied.
 #   nothing of it. distinct-from: faculties/gwt_deep.py -- an EXEMPT phase-binding
 #   benchmark, no scoring. distinct-from: instruments/port_charge_probe.py -- charge A/B
 #   over recorded frames; this scores a dynamical transition. distinct-from:
-#   cortex/access_consciousness.py -- claims over the LIVE bus; this is an offline
+#   faculties/access_consciousness.py -- claims over the LIVE bus; this is an offline
 #   instrument on scratch subjects. All sites read.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.instruments.ignition_instrument

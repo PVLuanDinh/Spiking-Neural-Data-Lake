@@ -26,7 +26,7 @@ What real brain modules it drives
       learned -- learning progress rises then falls as each rule is mastered (the anti-noisy-TV
       signal, straight from the module).
     * a GO-EXPLORE frontier selector: most_curious(archived_states) + observe(untried_fraction),
-      which is EXACTLY the selection mechanism `cortex.quality_diversity.QualityDiversityArchive.
+      which is EXACTLY the selection mechanism `faculties.quality_diversity.QualityDiversityArchive.
       _select_parent` uses. NOTE (honest): we do not call QualityDiversityArchive itself, because
       its `run()` is hardcoded to search `SpikingPolicy` weight-genomes and cannot search grid-game
       policies. We reuse its real CuriosityDrive and mirror its Go-Explore selection over game

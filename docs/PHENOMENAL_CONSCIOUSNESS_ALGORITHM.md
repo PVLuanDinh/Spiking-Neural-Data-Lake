@@ -71,7 +71,7 @@ read.
 |---|---|---|
 | `PREC0 = 1.0`, `PREC1 = 1.0` gate the PC error drive | VERIFIED | `readout/predictive_coding.py:88-89`, used `:192-193`, `:237-238` |
 | `THETA = 0.5`, `LEAK = 0.02` set the error-neuron operating point | VERIFIED | `readout/predictive_coding.py:86-87` |
-| `ignition_threshold=0.55` is the default in three constructors | VERIFIED | `faculties/reentrant_workspace.py:103`, `faculties/global_workspace.py:93`, `cortex/access_consciousness.py:84` |
+| `ignition_threshold=0.55` is the default in three constructors | VERIFIED | `faculties/reentrant_workspace.py:103`, `faculties/global_workspace.py:93`, `faculties/access_consciousness.py:84` |
 | **`brain.py:2149` is the clobber, not a hook** | VERIFIED | `engine/brain.py:2143-2150` recomputes `ignition_threshold` from `base_ignition_threshold` every wake tick, inside `try:` / `except Exception: pass` at `:2115`/`:2151`. It also writes `_v_th = thr / _LEAK` at `:2150`. |
 | `base_ignition_threshold` is documented immutable | VERIFIED | `faculties/reentrant_workspace.py:105-109`, "kept immutable ... Read this, never re-type the default" |
 | The gate that decides access reads `self.ignition_threshold` | VERIFIED | `faculties/reentrant_workspace.py:244` |
@@ -79,28 +79,28 @@ read.
 | **The graded access readout is calibrated at the shipped theta** | VERIFIED | `faculties/reentrant_workspace.py:89-101`. `_ACC_N=32`, `_ACC_LO=0.85`, `_ACC_HI=1.90`, band measured over 360 ignited wake ticks *at theta=0.55*; consumed at `:355-374`. |
 | `IGNITION_GAIN = 0.5` scales the coherence discount on the rheobase | VERIFIED | `faculties/region_coherence.py:103`, consumed `:146`, `:298-303` |
 | A hardcoded `"drive": 0.5` is one of six inputs to that coherence | VERIFIED | `engine/brain.py:2124` |
-| The endogenous attention port exists and is unused | VERIFIED | `cortex/learned_attention.py:88-101 _goal_gain`, `:116 attend(features, goal=None)`; sole live call `engine/brain.py:1128` passes `goal=None` |
+| The endogenous attention port exists and is unused | VERIFIED | `faculties/learned_attention.py:88-101 _goal_gain`, `:116 attend(features, goal=None)`; sole live call `engine/brain.py:1128` passes `goal=None` |
 | **B = 4, not 8** | VERIFIED | `engine/brain.py:814` -- `LearnedAttention(dim=64, n_bands=4, seed=...)` |
 | **`brain.py:1128`'s documented hole is a FEATURE-SPACE goal** | VERIFIED | `engine/brain.py:1125-1127`. A band-preference vector takes the *other* `_goal_gain` branch and does not close it. |
-| The attention gate is computed FROM the content | VERIFIED | `cortex/learned_attention.py:126-140` -- `sal` is per-band mean absolute feature magnitude; gate = learned synapse * salience * goal * surprise |
+| The attention gate is computed FROM the content | VERIFIED | `faculties/learned_attention.py:126-140` -- `sal` is per-band mean absolute feature magnitude; gate = learned synapse * salience * goal * surprise |
 | `attention_focus` is exported and unconsumed | VERIFIED | `engine/brain.py:2865` |
 | **`state()['pci']` is a synthetic surrogate, stale 3 nights in 4** | VERIFIED | `engine/brain.py:2405-2419`: fresh `PerturbationalComplexity(n=10, coupling=cpl, noise=0.45)` under `if self._nights % 4 == 0`, inside `try:` with bare `except: pass` at `:2419`. Surfaced at `:2916`. |
 | **`PerturbationalComplexity` is a closed toy with no `system` port** | VERIFIED | `instruments/integration_measure.py:199-231` -- `_run` builds its own `LIFNeuron` list from its own `self.w` and pre-draws its own noise. No injection point exists. |
 | `lz76_complexity` is a pure-Python nested scan | VERIFIED | `instruments/integration_measure.py:82-113` |
 | The regime factories are a `weight_mode` switch | VERIFIED | `instruments/integration_measure.py:296-316` |
-| `push_subgoal()` has callers only in its own self-check | VERIFIED | def `cortex/prefrontal_executive.py:299`; callers `:469`, `:630` only |
-| `maintain()` has SIX call sites across four modules, all offline | VERIFIED | `cortex/autotelic_goals.py:315`, `reasoning/autonomous_brain.py:122`, `reasoning/developmental_core.py:153`, `reasoning/developmental_loop_wm.py:56/:65/:128`. Plus self-checks at `prefrontal_executive.py:383/389/475/574` and `autonomous_loop.py:2092`. The enumeration at `engine/autonomous_loop.py:970-974` is correct and is the authority. |
-| **`_new_frame` stores an integer, not a proposition** | VERIFIED | `cortex/prefrontal_executive.py:311-313` returns `[index, 1.0, [0.0] * self._n_wm]` |
-| `deliberate()` exists | VERIFIED -- **the draft said "NOT VERIFIED"** | `cortex/prefrontal_executive.py:230-235` |
-| `recurrence=0.98`, `hold_threshold=0.2`, `max_goals=4`, `commit_races=25` | VERIFIED | `cortex/prefrontal_executive.py:88-96` |
-| `_n_wm = 6`, `_wm_steps = 8` | VERIFIED | `cortex/prefrontal_executive.py:132-133` |
+| `push_subgoal()` has callers only in its own self-check | VERIFIED | def `faculties/prefrontal_executive.py:299`; callers `:469`, `:630` only |
+| `maintain()` has SIX call sites across four modules, all offline | VERIFIED | `faculties/autotelic_goals.py:315`, `reasoning/autonomous_brain.py:122`, `reasoning/developmental_core.py:153`, `reasoning/developmental_loop_wm.py:56/:65/:128`. Plus self-checks at `prefrontal_executive.py:383/389/475/574` and `autonomous_loop.py:2092`. The enumeration at `engine/autonomous_loop.py:970-974` is correct and is the authority. |
+| **`_new_frame` stores an integer, not a proposition** | VERIFIED | `faculties/prefrontal_executive.py:311-313` returns `[index, 1.0, [0.0] * self._n_wm]` |
+| `deliberate()` exists | VERIFIED -- **the draft said "NOT VERIFIED"** | `faculties/prefrontal_executive.py:230-235` |
+| `recurrence=0.98`, `hold_threshold=0.2`, `max_goals=4`, `commit_races=25` | VERIFIED | `faculties/prefrontal_executive.py:88-96` |
+| `_n_wm = 6`, `_wm_steps = 8` | VERIFIED | `faculties/prefrontal_executive.py:132-133` |
 | **`Brain.tick(self)` takes no arguments** | VERIFIED | `engine/brain.py:2690`; `_wake_tick(self)` at `:1808` builds its own context |
 | `charge_probe._PinnedWeights` is a **dict subclass** | VERIFIED | `tools/charge_probe.py:54-74`, applied `:106` to `b._drive_w`, a `{source: float}` map |
 | The prior leaky neuter fired on 12/60 ticks | VERIFIED | `tools/charge_probe.py:58-66` |
 | `charge_probe`'s observables are actuator-mediated | VERIFIED | `tools/charge_probe.py:112-113` -- `arm_stopped`, `map_position` |
-| VSA `D = 512`, `VOCAB = 128`, `THRESH = 0.95` | VERIFIED | `cortex/vsa_reasoning.py:48-51`; `record_recovery` `:140-151` |
+| VSA `D = 512`, `VOCAB = 128`, `THRESH = 0.95` | VERIFIED | `faculties/vsa_reasoning.py:48-51`; `record_recovery` `:140-151` |
 | `eprop.py` is a standalone demo; `grad_eprop` is bound to `Net` | VERIFIED | `reasoning/eprop.py:105-235`; `_cosine` `:282`; `assert r["cosine"] > 0.5` `:365` |
-| `GenerativeSelfModel.KAPPA = 0.5` is a literal | VERIFIED | `cortex/generative_self_model.py:70`; trace form `:101-105`, update `:144-145` |
+| `GenerativeSelfModel.KAPPA = 0.5` is a literal | VERIFIED | `faculties/generative_self_model.py:70`; trace form `:101-105`, update `:144-145` |
 | Instrumented tick is 27.78 ms | VERIFIED | `docs/POLICIES.md:496` |
 | `_BIND_IGNITE = 0.6` sits under a "used only by the self-check" header | VERIFIED | `faculties/global_workspace.py:311-318`, branched `:339`, `:376` |
 | **...but it reaches a live user-facing consciousness self-report** | VERIFIED -- **new finding, section 8 offender 4** | `reasoning/spike_chat_lake.py:34` imports `probe_binding`; `reasoning/consciousness_probe.py:72-85` calls `bind_broadcast_spiking`, which branches on `_BIND_IGNITE`; `spike_chat_lake.py:1173-1182` tallies it into a reply; that reply is returned on the live chat path at `:925-931` for "are you conscious". **[DEAD ROUTE, 2026-08-07: `consciousness_probe.py`'s call went with its F11 deletion on 2026-08-04, and the `bind_*` family itself -- `_BIND_IGNITE` included -- was retired 2026-08-07 when the honest precision-bearing benchmark returned its pre-registered null. The row is kept as the finding it was; nothing it cites still exists on a live path.]** *RETIRED at T081 (2026-09-16): `reasoning/consciousness_probe.py` is deleted; its 20-seed PCI sweep lives in `cortex/integration_measure.main()`; "are you conscious" answers from the report channel (`evidence/t081-report-order.md` 2.6).* |
@@ -120,7 +120,7 @@ Nobody argues for a constant. This tree ships `PREC0`, `PREC1`, and three separa
 HOT requires misrepresentation. AST requires impoverishment. Type-2 AUROC requires the confidence
 source to be able to decorrelate from correctness. A read computed as a deterministic function of
 the first-order state satisfies none of them, and every existing "second-order" module here
-(`cortex/metacognitive_monitor.py`, `second_order_access`) is exactly such a function.
+(`faculties/metacognitive_monitor.py`, `second_order_access`) is exactly such a function.
 
 **AG-3. Dissociation, not markers.** All six converge on the same instrument shape: ablate, then
 show one capability survives while another collapses. This repo already owns the instrument.
@@ -435,7 +435,7 @@ err     = u_{t+1} - u_hat                   # spiking ON/OFF LIF population
 dW_pred = lr * outer(err, zbar)             # three-factor, local, no BPTT
 ```
 
-Form follows `cortex/generative_self_model.py:101-105` and `:144-145`, with one deviation named:
+Form follows `faculties/generative_self_model.py:101-105` and `:144-145`, with one deviation named:
 that module's `KAPPA = 0.5` is a literal (`:70`) and this one is estimated.
 
 **The draft's `divergence_from_first_order` criterion is deleted.** It could not go red. The ACS is
@@ -462,7 +462,7 @@ gated = learned_attn.attend(latent, goal=g_t)         # the n_bands branch
 dW_g  = lr * r * (elig - mean(elig)),  elig = outer(zbar, g_t)
 ```
 
-The `n_bands`-length branch at `cortex/learned_attention.py:94-97` is reachable at
+The `n_bands`-length branch at `faculties/learned_attention.py:94-97` is reachable at
 `n_bands=4, dim=64` and needs no signature change. This is the cleanest item in the plan: a wire,
 not a build.
 
@@ -484,7 +484,7 @@ discovered in analysis.
 
 **A7. HEAD B -- blame on a one-off plan, then targeted repair.**
 
-*Plan encoding at episode start* (`cortex/vsa_reasoning.py`, D=512):
+*Plan encoding at episode start* (`faculties/vsa_reasoning.py`, D=512):
 
 ```
 step_codes[i] = bind(permute(POS, i), hv(a_i))
@@ -524,7 +524,7 @@ effect size needs order 1e3 to 1e4 episodes per condition. **Held-out blame accu
 demoted to a secondary endpoint behind repair-success-versus-re-plan, which uses the same signal at
 far lower variance.**
 
-*Repair:* rewrite only the blamed step; `a'` ranked by `cortex/counterfactual_sim.py imagine` and
+*Repair:* rewrite only the blamed step; `a'` ranked by `faculties/counterfactual_sim.py imagine` and
 committed through the spiking WTA at `prefrontal_executive.py:230`. (`deliberate()` exists; the
 draft said it had not checked.)
 
@@ -537,7 +537,7 @@ draft said it had not checked.)
 
 **A8. HEAD C -- calibrated confidence.**
 `c_t = sigmoid(W_c @ zbar)`. **This is the confidence source, named here, and nothing else may be
-cited as confidence for the duration of the program.** `cortex/metacognitive_monitor.py`'s
+cited as confidence for the duration of the program.** `faculties/metacognitive_monitor.py`'s
 reliability and `second_order_access` are demoted to descriptive telemetry by name, in writing, at
 the baseline commit. The draft stated this anti-accommodation rule and then left the blank unfilled,
 which is the accommodation.
@@ -1004,7 +1004,7 @@ tie is a task-design artifact, not a theory verdict.
 
 Four of these are expected to fire. A baseline that wins is a result, not a disqualification.
 
-1. **Re-plan from scratch** (`cortex/executive_control.py:149 plan_sequence`). Most likely to tie on
+1. **Re-plan from scratch** (`faculties/executive_control.py:149 plan_sequence`). Most likely to tie on
    a short-horizon task. Match on success rate *and* steps-to-success.
 2. **Re-plan with one randomly chosen step forbidden.** Most of the value of knowing *which* step
    may be captured by being forced to change *some* step.

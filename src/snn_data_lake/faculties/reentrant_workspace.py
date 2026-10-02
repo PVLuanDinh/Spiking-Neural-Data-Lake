@@ -7,7 +7,7 @@ here, in a file edited in the same pass. P7 names a stdlib-scope claim as residu
 
 WHY THIS EXISTS -- the honest defect it fixes
 ==============================================
-The shipped `faculties/global_workspace.py` + its live wiring (`cortex/access_consciousness.py`
+The shipped `faculties/global_workspace.py` + its live wiring (`faculties/access_consciousness.py`
 driven from `engine/brain.py::_update_access`) are SATURATED BY CONSTRUCTION: each tick posts a
 single coherent coalition, so ignition fires ~every tick, `global_availability == 1.0` always, and
 the all-or-none gate never actually GATES (nothing ever fails to reach access). Two more gaps: the
@@ -196,7 +196,7 @@ class ReentrantWorkspace:
     #   moved live (engine.brain's coherence bias), which is why the actuator lives here. Read.
     # distinct-from: gates/perf_baseline.py -- performance ratchet, no rheobase.
     # distinct-from: substrate/lake_migrate.py -- tag dispositions, no rheobase.
-    # distinct-from: cortex/theta_gamma_code.py -- theta the OSCILLATION, not the rheobase.
+    # distinct-from: faculties/theta_gamma_code.py -- theta the OSCILLATION, not the rheobase.
     # distinct-from: growth/cortical_prior.py -- anatomy fractions, no rheobase.
     # distinct-from: reasoning/spike_chat_lake.py -- reads a GlobalWorkspace band, writes
     #   nothing. Phrase overlap only; all sites read.
@@ -1487,7 +1487,7 @@ def consume_reroute(consumer):
     return out
 
 
-# distinct-from: cortex/percept_surprise.py -- its _surprise_frames records a PREDICTOR stream off
+# distinct-from: faculties/percept_surprise.py -- its _surprise_frames records a PREDICTOR stream off
 #   a learned manifold; this records the RE-ROUTE bias a real workspace broadcasts once ignited.
 #   Same harness pattern (T028's), different wire. Read.
 def _reroute_frames(n_ticks=40, ignite_at=10, seed=0, reentry=True, learn=True):

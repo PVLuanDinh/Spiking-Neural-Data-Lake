@@ -4,7 +4,7 @@ prefrontal PERSISTENT SPIKING ACTIVITY (a reverberating attractor), not a python
 
 Closes the explicit-working-memory gap. The loop already has IMPLICIT memory (STDP-learned conv1
 features = procedural) + durable DECLARATIVE memory (the data lake). This adds EXPLICIT WORKING
-MEMORY: `cortex.prefrontal_executive.PrefrontalExecutive` (Wang-2002 persistent-activity WM,
+MEMORY: `faculties.prefrontal_executive.PrefrontalExecutive` (Wang-2002 persistent-activity WM,
 recurrence 0.98) actively MAINTAINS the current objective across the cycle with NO input, and the
 loop READS the objective back from the attractor (wm.goal) to drive learning -- so the pointer
 lives in reverberating spikes, and the WM is genuinely in the control path.
@@ -26,7 +26,7 @@ import torch
 from snn_data_lake.infra.device import resolve_device, enable
 from snn_data_lake.instruments.snn_mnist_stdp import load_mnist
 from snn_data_lake.instruments.deep_stdp_latency import ConvLatencyStdp, _train
-from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
 

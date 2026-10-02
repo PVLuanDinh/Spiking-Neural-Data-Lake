@@ -83,7 +83,7 @@ def _objects(n_color, n_shape, k, rng):
 
 # ----------------------------------------------------------------------------------------------------
 # SPIKING workspace: theta-gamma phase-multiplexed broadcast (binds by synchrony)
-# distinct-from: cortex/theta_gamma_code.py -- that is a working-memory BUFFER (store/recall API,
+# distinct-from: faculties/theta_gamma_code.py -- that is a working-memory BUFFER (store/recall API,
 #   its own dormancy lane, P4C_BACKLOG row on theta_gamma_code); this is the measured
 #   spiking-vs-rate CONTROL demonstration. Their merge question was examined at the bind_*
 #   retirement and the three-way merge REFUTED on a pre-registered null (P4C_BACKLOG); this

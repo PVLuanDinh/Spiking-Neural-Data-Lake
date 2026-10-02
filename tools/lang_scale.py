@@ -1,6 +1,6 @@
 r"""CORPUS-SCALE EXPERIMENT for the online, locally-plastic character learner.
 
-Question: does cortex/language_acquisition.py::LanguageAcquisition actually ACQUIRE grammar when it
+Question: does faculties/language_acquisition.py::LanguageAcquisition actually ACQUIRE grammar when it
 is given a REAL corpus instead of its 2,428-character built-in CORPUS -- and where does it plateau?
 
 The learner is exposed ONLINE to increasing prefixes of WikiText-103 (real text). At each scale we
@@ -62,7 +62,7 @@ _ROOT = os.path.abspath(os.path.join(_HERE, ".."))
 sys.path.insert(0, os.path.join(_ROOT, "src"))
 os.environ.setdefault("NORD_PERSIST", "0")
 
-from snn_data_lake.cortex import language_acquisition as LA  # noqa: E402
+from snn_data_lake.faculties import language_acquisition as LA  # noqa: E402
 from snn_data_lake.reasoning.blimp_bench import load_pairs, paradigms, score  # noqa: E402
 
 # Module-level because tools/lang_diag.py and tools/lang_probe.py import read_corpus/read_heldout from

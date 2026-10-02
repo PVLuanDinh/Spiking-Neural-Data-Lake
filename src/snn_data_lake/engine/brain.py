@@ -18,8 +18,8 @@ the whole thing with a CircadianClock (SCN phase oscillator):
 
 What makes this the UNIFIED brain and not just the daemon: the neurogenesis engine (torch tier) lives
 in this same cortex/ package, and every tick feeds the REAL signals into a genuine, evolving SELF-MODEL
-(cortex/self_model.py). The brain no longer answers from a fixed status template -- respond() introspects
-the self-model FRESHLY, grounds the brain-native language organ (cortex/language_acquisition -- ACQUIRED
+(faculties/self_model.py). The brain no longer answers from a fixed status template -- respond() introspects
+the self-model FRESHLY, grounds the brain-native language organ (faculties/language_acquisition -- ACQUIRED
 online by spiking predictive coding + local plasticity, NOT a pretrained/imported LM) on that self-
 generated prompt, and falls back to the narrator's own state-varying sentence (never a canned string).
 A benevolence intent is answered plainly and safely.
@@ -46,15 +46,6 @@ import math
 import re
 
 from snn_data_lake.brainstem.arm_config import CONTACT
-from snn_data_lake.cortex.access_consciousness import AccessConsciousness
-from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
-from snn_data_lake.cortex.reasoning_curriculum import ReasoningEnv, ReasoningLearner
-
-# T082 (FR-034): the social-risk fold's two constants are the PRODUCER's, read here rather than
-# restated, so the live fold and the charge A/B's consumer cannot drift apart. Module-top because
-# the fold runs on every wake tick; recursive_tom imports nothing from brain at module scope.
-from snn_data_lake.cortex.recursive_tom import T082_PROTECT_DECAY, T082_PROTECT_GAIN
-from snn_data_lake.cortex.self_model import SelfModel, SelfNarrator
 from snn_data_lake.engine.live_brain import (
     _AFFIRM,
     _IXN_INTENTS,
@@ -63,10 +54,19 @@ from snn_data_lake.engine.live_brain import (
     LiveBrain,
     _route_tokens,
 )
+from snn_data_lake.faculties.access_consciousness import AccessConsciousness
 from snn_data_lake.faculties.acetylcholine import Acetylcholine
 from snn_data_lake.faculties.astrocyte_modulation import Astrocyte
 from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
+from snn_data_lake.faculties.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.faculties.raphe_serotonin import DorsalRaphe
+from snn_data_lake.faculties.reasoning_curriculum import ReasoningEnv, ReasoningLearner
+
+# T082 (FR-034): the social-risk fold's two constants are the PRODUCER's, read here rather than
+# restated, so the live fold and the charge A/B's consumer cannot drift apart. Module-top because
+# the fold runs on every wake tick; recursive_tom imports nothing from brain at module scope.
+from snn_data_lake.faculties.recursive_tom import T082_PROTECT_DECAY, T082_PROTECT_GAIN
+from snn_data_lake.faculties.self_model import SelfModel, SelfNarrator
 from snn_data_lake.faculties.set_points import (
     AMBIENT_TEMP,
     SET_POINT_TEMP,
@@ -392,7 +392,7 @@ class Brain:
         # to commit to an open reply when its own estimate says the content did not reliably reach
         # access, even if first-order reliability looked fine.
         try:
-            from snn_data_lake.cortex.second_order_access import SecondOrderAccess
+            from snn_data_lake.faculties.second_order_access import SecondOrderAccess
 
             self._second_order = SecondOrderAccess(seed=self._seed)
         except Exception:
@@ -508,7 +508,7 @@ class Brain:
         # competence MINUS the un-arbitrated sum's (no metacog/consolidation, healthy substrate so
         # the by-construction criticality confound is excluded). Run once at birth (deterministic).
         try:
-            from snn_data_lake.cortex.wholistic_loop import WholisticLoop
+            from snn_data_lake.faculties.wholistic_loop import WholisticLoop
 
             _whole = WholisticLoop(hard=True, seed=self._seed).run()  # integrated, real hard task
             _sum = WholisticLoop(
@@ -545,7 +545,7 @@ class Brain:
         # metaplast_gain is an honest small-scale artifact, NOT a live regression). Under state()["rungs"].
         # L5 generalizing-novelty is ALSO promoted to the LIVE wake tick (see _wake_tick -> novelty_live).
         try:
-            from snn_data_lake.cortex.self_improvement_suite import census
+            from snn_data_lake.faculties.self_improvement_suite import census
 
             self._rungs = {
                 "_scale": "reduced-birth-diagnostic",
@@ -584,7 +584,7 @@ class Brain:
         # three answers on one turn (fact 1); `_recursive_tom` generalises both retired ones on
         # three axes and R5 shows the symmetric feed reproduces each of them, so exactly ONE
         # survives (P2). `_tom_ok` additionally was a constant computed at construction and True on
-        # every brain -- a marker, not a measurement. `cortex/theory_of_mind.TheoryOfMind` STAYS:
+        # every brain -- a marker, not a measurement. `faculties/theory_of_mind.TheoryOfMind` STAYS:
         # `reasoning/pragmatics.py` runs its own instance.
         self._tom_obj = None  # the object the live belief tracker currently tracks
 
@@ -639,7 +639,7 @@ class Brain:
         self.neuro = self._make_neuro(self._seed, device)
 
         # ---- language organ (brain-native, LAZY): the brain's CONVERSATION comes from the ACQUIRED
-        # organ (cortex/language_acquisition, built lazily in _lm_serve -- spiking predictive coding +
+        # organ (faculties/language_acquisition, built lazily in _lm_serve -- spiking predictive coding +
         # local plasticity, learned ONLINE from exposure, NO pretrained/imported LM). The former
         # SpikeGPT-216M organ was SCRAPPED (v3.77). SAFETY: display-only -- its text is NEVER parsed as
         # a motor command; arm commands stay on the NL firewall + gated-arm path in respond().
@@ -857,8 +857,8 @@ class Brain:
             # answers on one turn). R5 measures `predict_nested` reproducing
             # `predict_second_order` on 200 constructed witness scripts, which is what licenses
             # the deletion rather than a flag keeping both paths alive (P2).
-            from snn_data_lake.cortex.affect_core import AffectCore
-            from snn_data_lake.cortex.crossmodal_binder import CrossModalBinder
+            from snn_data_lake.faculties.affect_core import AffectCore
+            from snn_data_lake.faculties.crossmodal_binder import CrossModalBinder
             from snn_data_lake.faculties.grid_place_map import GridPlaceMap
 
             self._affect_core = AffectCore(seed=self._seed)
@@ -976,12 +976,12 @@ class Brain:
         self._grid_can_xy = None
         self._grid_can_prev = None
         try:
-            from snn_data_lake.cortex.generative_self_model import GenerativeSelfModel
-            from snn_data_lake.cortex.task_set import TaskSetLayer
-            from snn_data_lake.cortex.time_cells import TimeCellClock
             from snn_data_lake.engine.autonomous_loop import ACTIONS as _ACTS
             from snn_data_lake.faculties.affective_appraisal import AffectiveAppraisal
+            from snn_data_lake.faculties.generative_self_model import GenerativeSelfModel
             from snn_data_lake.faculties.spiking_grid_can import SpikingGridCAN
+            from snn_data_lake.faculties.task_set import TaskSetLayer
+            from snn_data_lake.faculties.time_cells import TimeCellClock
 
             self._time_clock = TimeCellClock(n_cells=64, seed=self._seed)
             self._affect_appraisal = AffectiveAppraisal(dim=9, seed=self._seed)
@@ -1087,10 +1087,10 @@ class Brain:
         self._imagined_surprise = 0.0
         self._cf_prev = None
         try:
-            from snn_data_lake.cortex.counterfactual_sim import CounterfactualSim
-            from snn_data_lake.cortex.recursive_tom import RecursiveToM
             from snn_data_lake.engine.autonomous_loop import ACTIONS as _ACTS2
             from snn_data_lake.faculties.affect_integrator import AffectIntegrator
+            from snn_data_lake.faculties.counterfactual_sim import CounterfactualSim
+            from snn_data_lake.faculties.recursive_tom import RecursiveToM
 
             self._recursive_tom = RecursiveToM(n_agents=3, seed=self._seed)
             self._affect_int = AffectIntegrator(seed=self._seed)
@@ -1115,8 +1115,8 @@ class Brain:
             0  # coherence->theta writes refused by a sweep hold (T032; audit, cockpit-visible)
         )
         try:
-            from snn_data_lake.cortex.learned_attention import LearnedAttention
             from snn_data_lake.faculties.connectome_router import ConnectomeRouter
+            from snn_data_lake.faculties.learned_attention import LearnedAttention
             from snn_data_lake.faculties.region_coherence import RegionCoherence
             from snn_data_lake.faculties.synfire_chain import SynfireChain
 
@@ -1136,8 +1136,8 @@ class Brain:
         self._evc_value = 0.0
         self._episode_retained = 0.0
         try:
-            from snn_data_lake.cortex.learned_evc import LearnedEVC
-            from snn_data_lake.cortex.vsa_structure_mapping import StructureMapper
+            from snn_data_lake.faculties.learned_evc import LearnedEVC
+            from snn_data_lake.faculties.vsa_structure_mapping import StructureMapper
             from snn_data_lake.sleep.episode_consolidation import (
                 EpisodeConsolidator,
                 capacity_for,
@@ -1606,7 +1606,7 @@ class Brain:
         {channel:[0,1]^4, band, focus}, or None when the latent is too short.
 
         C2 #2 CONSOLIDATION: the gating is now performed by the LEARNED spiking reticular gate
-        (cortex/learned_attention) -- per-band drive = learned synapse x bottom-up salience x
+        (faculties/learned_attention) -- per-band drive = learned synapse x bottom-up salience x
         top-down goal similarity x bottom-up surprise, under Reynolds-Heeger divisive normalization
         with a spiking LIF winner-take-all, trained by a local three-factor rule. It REPLACES the
         hardcoded (salience/mean)*0.4*gain formula that used to live here: that formula was the real
@@ -1753,7 +1753,7 @@ class Brain:
             # prototype-novelty source (measured novelty_corr ~0.26): subspace-residual vs nearest-proto.
             try:
                 if self._percept_surprise is None:
-                    from snn_data_lake.cortex.percept_surprise import PerceptSurprise
+                    from snn_data_lake.faculties.percept_surprise import PerceptSurprise
 
                     self._percept_surprise = PerceptSurprise(in_dim=len(percept), k=8, seed=0)
                     # T045: PRE-EXPERIENCE SPONTANEOUS BOOTSTRAP -- an OU drive through the
@@ -1982,7 +1982,7 @@ class Brain:
         numbers chosen by hand -- the same hardcoding this project's consolidation policy forbids,
         one level up from the mechanisms they gate. They are now SYNAPTIC WEIGHTS learned by the
         repo's own three-factor idiom (cf. plasticity/r_stdp, plasticity/valence_stdp,
-        cortex/learned_attention.learn): eligibility = each source's activation this tick, dopamine =
+        faculties/learned_attention.learn): eligibility = each source's activation this tick, dopamine =
         the arm's RPE, baseline-subtracted so the sources COMPETE for influence. Weights start EQUAL
         so no source is privileged by hand -- the brain learns the ordering from what pays off.
         The two former absolute thresholds are now RELATIVE to running baselines (neural adaptation
@@ -2572,11 +2572,11 @@ class Brain:
             )
             decision_conf = min(1.0, dm / self._margin_base) if self._margin_base > 1e-9 else 1.0
             # P6 (2026-08-05): hand the monitor the EXECUTIVE's response conflict as well. This is
-            # the one line outside cortex/metacognitive_monitor.py that the executive->metacognition
+            # the one line outside faculties/metacognitive_monitor.py that the executive->metacognition
             # edge needs, and without it the consumer's new input would be a parameter nobody fills
-            # (P3 shape 1). `_conflict` is cortex/executive_control.ExecutiveControl.conflict(drive)
+            # (P3 shape 1). `_conflict` is faculties/executive_control.ExecutiveControl.conflict(drive)
             # computed on the live tick at engine/autonomous_loop.py; until now its only readers
-            # were the ACTION path (the STN hyperdirect brake) and cortex/learned_evc, so no faculty
+            # were the ACTION path (the STN hyperdirect brake) and faculties/learned_evc, so no faculty
             # consumed it as EVIDENCE. The monitor takes it relative to its own running baseline, so
             # a conflict stream that never varies contributes exactly zero -- see that module's
             # self-check, where the neuter, its controls and each criterion's red are all run.
@@ -3008,7 +3008,7 @@ class Brain:
         `clock.phase = 0.25` over 120 ticks (56 awake): `_access_state["ignited"]` was True on
         56 of 56 -- ONE distinct value, with no reachable False on the live wake path -- while the
         posted salience ranged 0.5207..0.7500 across the rheobase. TEN live readers consumed that
-        readout; every one was reading a constant. `cortex/access_consciousness.py::content_key` keys
+        readout; every one was reading a constant. `faculties/access_consciousness.py::content_key` keys
         the pool on the BUNDLE, and the same run now reads 44 of 56, of which 8 of the 12 lapses
         post STRICTLY BELOW the 0.55 rheobase -- the repetition-suppression failure the paragraph
         below has always claimed, actually happening. `engine/live_brain.py::thought` is
@@ -3449,7 +3449,7 @@ class Brain:
         #     `_criticality` is a branching ratio the CONVERGED regulator holds just under 1.0 --
         #     EMPIRICALLY, not by construction, and this clause said "by construction" until it was
         #     checked. Nothing clamps sigma: `CriticalityRegulator` bounds its KNOB (`g_lo, g_hi =
-        #     0.0, 120.0`) and `band=(0.95, 1.02)` is a target, read only by `cortex/wholistic_loop.py`
+        #     0.0, 120.0`) and `band=(0.95, 1.02)` is a target, read only by `faculties/wholistic_loop.py`
         #     (its `_fidelity` map and its `in_band` flag) and never applied to sigma anywhere.
         #     RE-MEASURED on the brain's own n=64 pool with regulation
         #     OFF: inhib_gain 35 -> sigma 0.1111 (cpl 1.1111, NOT 1.6) and 90 -> sigma 0.0000
@@ -3593,7 +3593,7 @@ class Brain:
             pass
         return {"episode": {}, "confidence": 0.0, "source": "miss"}
 
-    # distinct-from: cortex/prefrontal_executive.py -- its neuter() gates the WM rehearsal
+    # distinct-from: faculties/prefrontal_executive.py -- its neuter() gates the WM rehearsal
     #   channel's elements; this gates the SLEEP-OWNED consolidation capabilities. Same
     #   attribution idiom, different substrate. Site read.
     # distinct-from: faculties/microcircuit.py -- its neuter() gates tissue elements
@@ -3918,8 +3918,8 @@ class Brain:
         return "asleep" if asleep else "awake"
 
     # distinct-from: faculties/forward_model.py -- dynamics state, not telemetry.
-    # distinct-from: cortex/generative_self_model.py -- the self-signal forward model.
-    # distinct-from: cortex/self_model.py -- the mood-sentence view this dict embeds.
+    # distinct-from: faculties/generative_self_model.py -- the self-signal forward model.
+    # distinct-from: faculties/self_model.py -- the mood-sentence view this dict embeds.
     # distinct-from: faculties/empowerment.py -- latent rollout state.
     # distinct-from: reasoning/pc_active_inference.py -- policy-model state. Phrase
     #   overlap on 'state' only; this is the ONE /api/state telemetry build. Sites read.
@@ -4831,7 +4831,7 @@ class Brain:
         )
         self._tom_obj = obj
         try:
-            from snn_data_lake.cortex.recursive_tom import t082_false_beliefs, t082_feed
+            from snn_data_lake.faculties.recursive_tom import t082_false_beliefs, t082_feed
 
             t082_feed(self._recursive_tom, {"brain"} if unwitnessed else {"user", "brain"}, loc)
             first, nested = t082_false_beliefs(self._recursive_tom)
@@ -4954,7 +4954,7 @@ class Brain:
             return None
 
     def _lm_serve(self):
-        """The brain's language organ is now ACQUIRED, not imported. cortex/language_acquisition learns
+        """The brain's language organ is now ACQUIRED, not imported. faculties/language_acquisition learns
         language ONLINE like a human -- spiking predictive coding + local spike-timing plasticity, from
         exposure, no gradient training and no pretrained weights. Lazily built + cached; keeps learning
         as the brain converses (each turn's text is fed back via expose() in respond()). Returns None on
@@ -4963,7 +4963,7 @@ class Brain:
         coherence guard in `_language` keeps a too-babbly generation from replacing the narrator."""
         if getattr(self, "_acq_lm", "unset") == "unset":
             try:
-                from snn_data_lake.cortex.language_acquisition import load_lm
+                from snn_data_lake.faculties.language_acquisition import load_lm
 
                 self._acq_lm = load_lm(seed=self._seed)
                 if self._persist:  # never-forget: reload what it learned in prior runs
@@ -4988,7 +4988,7 @@ class Brain:
         MECHANISM, not fluent GPT-level generation."""
         if getattr(self, "_rose", "unset") == "unset":
             try:
-                from snn_data_lake.cortex.rose_language import RoseLanguage
+                from snn_data_lake.faculties.rose_language import RoseLanguage
 
                 self._rose = RoseLanguage(seed=self._seed)
             except Exception:
@@ -4997,7 +4997,7 @@ class Brain:
 
     def _language(self, prompt):
         """Generate a grounded conversational reply with the brain-native acquired language organ
-        (cortex/language_acquisition) on the prompt the narrator already built from the self-model.
+        (faculties/language_acquisition) on the prompt the narrator already built from the self-model.
         Returns "" if unavailable (caller falls back to the narrator's fresh summary). The text is
         DISPLAY-ONLY -- it is never parsed as a motor command (arm commands route via the firewall)."""
         lm = self._lm_serve()
@@ -5132,7 +5132,7 @@ class Brain:
 
     # distinct-from: engine/autonomous_loop.py -- the tapped envelope passage (motion, T037).
     #   distinct-from: infra/brain_native_selfbuild.py -- ranks self-build candidates.
-    #   distinct-from: cortex/percept_surprise.py, faculties/dopamine_nuclei.py -- manifest port
+    #   distinct-from: faculties/percept_surprise.py, faculties/dopamine_nuclei.py -- manifest port
     #   registrants. distinct-from: substrate/lake_segments.py -- the lake engine's segment
     #   writer. Phrase overlap on 'specs/022'/'write' only; this persists prototypes. Sites read.
     def _flush_prototypes(self):

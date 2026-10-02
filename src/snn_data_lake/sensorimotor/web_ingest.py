@@ -140,7 +140,7 @@ class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
 #   named debt. The retirement is one call site plus its provenance log line.
 # distinct-from: infra/self_mod_harness.py::_run_selfchecks -- runs run_selfchecks.py in a
 #   subprocess inside a sandbox; no URL, no socket. distinct-from: engine/live_brain.py::tick --
-#   one brain tick over a context dict. distinct-from: cortex/metacognitive_monitor.py::_experiment
+#   one brain tick over a context dict. distinct-from: faculties/metacognitive_monitor.py::_experiment
 #   -- a gated/lesioned/plain comparison harness. distinct-from: reasoning/arc_solver.py::solve --
 #   iterative-deepening program synthesis over ARC grids. distinct-from:
 #   reasoning/autonomous_enrich.py::learn_topic -- a CALLER of this module (through the gate's

@@ -260,7 +260,7 @@ first 4 thresholds         : [1.0, 2.0, 3.0, 4.0]   (start AND end)
 **The "plastic" threshold is the initial ladder, unchanged.** 32 reward-modulated STDP updates moved
 it by exactly zero.
 
-**This is a P1 finding as much as a P3 one.** `cortex/time_cells.py`'s own header claims the module
+**This is a P1 finding as much as a P3 one.** `faculties/time_cells.py`'s own header claims the module
 REPLACES a hand-coded interval constant with a learned one. Measured, the learned value is a de facto
 fixed constant — the "constant sitting where a computed value belongs" that P1 names as this
 project's signature defect, wearing a learning rule's clothes. The claim in the module header is

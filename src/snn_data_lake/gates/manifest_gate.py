@@ -63,15 +63,15 @@ REGISTRANTS: tuple = (
     # T028: THE predictor port -- percept surprise into the brain's undirected-salience
     # competition (the one S0-chargeable consumer; the other three are dated forward
     # dispositions in SYNTHESIS section 6, discharged at T046a/T066/T076)
-    ("snn_data_lake.cortex.percept_surprise", "declare_ports"),
+    ("snn_data_lake.faculties.percept_surprise", "declare_ports"),
     # T060 (FR-034): the executive task-set faculty's FiLM surface. Placed before brain
     # (its consumer) for READING order only -- declare_edge appends unconditionally and
     # validate_structure checks the assembled manifest order-independently, so the
     # position carries no mechanism (the panel measured both orderings identical; the
     # T039j comment above states otherwise and predates that measurement).
-    ("snn_data_lake.cortex.task_set", "declare_ports"),
+    ("snn_data_lake.faculties.task_set", "declare_ports"),
     # T082 (FR-034): the recursive belief tracker's divergence wire, producer + THE edge.
-    ("snn_data_lake.cortex.recursive_tom", "declare_ports"),
+    ("snn_data_lake.faculties.recursive_tom", "declare_ports"),
     ("snn_data_lake.engine.brain", "declare_ports"),
     # T046a: the |LP| third factor -- the SECOND of percept_surprise's dated forward
     # dispositions discharged (the consumer declares the edge surprise_out -> surprise_in);

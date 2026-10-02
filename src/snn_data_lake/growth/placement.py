@@ -116,7 +116,7 @@ WHITE_MATTER = "White matter"
 LAYER_RULE_AGREEMENT = 0.9195
 
 
-# distinct-from: cortex/is_snn_forward.py -- its "layer" is a LIF network layer with its own
+# distinct-from: faculties/is_snn_forward.py -- its "layer" is a LIF network layer with its own
 #   membrane tau; this one is a CORTICAL LAMINAR BAND in micron geometry. Same English word,
 #   unrelated jobs; site read, nothing to reuse in either direction.
 def layer_of(x, y):
@@ -185,11 +185,11 @@ def _depth_bands():
 DEPTH_BANDS = _depth_bands()
 
 
-# distinct-from: cortex/vsa_reasoning.py::hv -- that builds a +/-1 HYPERVECTOR spike code from a
+# distinct-from: faculties/vsa_reasoning.py::hv -- that builds a +/-1 HYPERVECTOR spike code from a
 #   crc32 seed; this draws a LAMINAR ASSIGNMENT from measured occupancy. Site read; the shared word
 #   is "deterministic" and there is nothing to reuse either way.
 def place(n_units, seed=0, region="cortex"):
-    # distinct-from: cortex/vsa_reasoning.py -- that builds a +/-1 HYPERVECTOR spike code from a
+    # distinct-from: faculties/vsa_reasoning.py -- that builds a +/-1 HYPERVECTOR spike code from a
     #   crc32 seed; this draws a LAMINAR/REGIONAL ASSIGNMENT from a prior. Site read (see the
     #   module-level marker above); the shared word is "deterministic", nothing to reuse.
     """[(depth, layer, sign)] for `n_units` newly grown cells. Deterministic in `seed`.
@@ -297,7 +297,7 @@ def _ap_node(neuromere):
 
 # distinct-from: sensorimotor/arm_hardware.py -- servo-rating arithmetic for the physical arm;
 #   unrelated job, site read (also declared in the T043 header block above).
-# distinct-from: cortex/theta_gamma_code.py -- its _ensemble draws a sparse LIF population per
+# distinct-from: faculties/theta_gamma_code.py -- its _ensemble draws a sparse LIF population per
 #   gamma sub-cycle; nothing here draws populations. Site read; shared word is "which cells".
 def region_prior(region):
     """The prior for `region`, keyed by its declared (neuromere, zone) coordinate -- which ARM
@@ -403,7 +403,7 @@ GROWER_REGIONS = {
 #   nothing here buffers replays. Site read; unrelated job.
 # distinct-from: faculties/interoceptive_integration.py -- a salience accessor; unrelated. Read.
 # distinct-from: plasticity/r_stdp.py -- worker fork/join barriers; unrelated. Read.
-# distinct-from: cortex/access_consciousness.py -- a workspace submit site; unrelated. Read.
+# distinct-from: faculties/access_consciousness.py -- a workspace submit site; unrelated. Read.
 def place_grown(grower, n_units, seed=0):
     """Placement for `grower`'s newly grown units -- THE GROWTH CALL SITE, enforcing the 007
     contract's C1.7 refusal AND T042's SCAFFOLD closure as ONE admission rule. The contract's
@@ -442,7 +442,7 @@ def place_grown(grower, n_units, seed=0):
 # distinct-from: growth/growth_program.py -- its shared program decides GROW/QUIESCE proposals
 #   from local fields; this coordinates seam WIDTHS into placements. Site read; adjacent by
 #   design (T042/T043 are sibling tasks), no shared code.
-# distinct-from: cortex/self_improvement_suite.py -- its _rung_growth measures duplicate_unit's
+# distinct-from: faculties/self_improvement_suite.py -- its _rung_growth measures duplicate_unit's
 #   current-difference eps-invariant on a standalone layer; the self-check here demonstrates
 #   gradmax insertion THROUGH the coordinator with placements. Site read; different check.
 # distinct-from: reasoning/reasoning_compose.py -- routes reasoning sub-steps; unrelated. Read.
@@ -533,7 +533,7 @@ def main():
     )
     print(
         "GRN-arm sign is None -- REFUSED, not defaulted: no measured E-fraction exists outside "
-        "H01 cortex."
+        "the H01 cortex sample."
     )
     coord, ledger = compose_growers()
     print(

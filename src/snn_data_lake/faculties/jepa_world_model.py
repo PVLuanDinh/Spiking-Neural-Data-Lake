@@ -843,8 +843,8 @@ def _readout_mse(W, feats, targets, out_dim):
 
 
 def main():
-    from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
     from snn_data_lake.faculties.forward_model import ForwardModel
+    from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
     from snn_data_lake.sensorimotor.population_encoding import PopulationEncoder
 
     IN_DIM, K, LATENT = 64, 2, 16

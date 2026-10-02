@@ -11,14 +11,14 @@ one that produced them.
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| pfc_goal_top_down_bias | 61 | src/snn_data_lake/engine/autonomous_loop.py:1175#_pfc_bias; src/snn_data_lake/cortex/prefrontal_executive.py:350#top_down_bias; src/snn_data_lake/engine/autonomous_loop.py:1781#step | exec_pfcbias_60.txt | opus-5 refuter / executive_ab_probe.py pfc_bias 60 (exit 0, reproduces) + exec_refute_seeds_pfcbias (seeds 1,2,3 all diverge) + exec_refute_marg_pfcgain_given_pfcbias (absorbs pfc_gain_metalearning) | 2026-07-30 |
-| acc_conflict_monitoring_evc | 61 | src/snn_data_lake/engine/autonomous_loop.py:890#_bg_select; src/snn_data_lake/engine/autonomous_loop.py:1102#_pfc_bias; src/snn_data_lake/cortex/executive_control.py:110#conflict; src/snn_data_lake/engine/autonomous_loop.py:915#_bg_select | exec_conflict_60.txt | opus-5 refuter / executive_ab_probe.py conflict 60 (exit 0, reproduces) + exec_refute_seeds_conflict (seeds 1,2,3 all diverge) + exec_refute_marg_stn_given_conflict (absorbs stn_hyperdirect_brake, 0/60 marginal) | 2026-07-30 |
-| task_set_sr_mapping | 45 | src/snn_data_lake/engine/brain.py:2128#_c1_tick; src/snn_data_lake/engine/brain.py:1809#_drive_for; src/snn_data_lake/cortex/task_set.py:159#bias | exec_taskset_60.txt | opus-5 refuter / DOWNGRADED from 61 by exec_refute_seeds_taskset (0/60 on every observable at seeds 1 and 2) + exec_refute_taskset_elig (eligible on 60/60 ticks at those seeds) | 2026-07-30 |
+| pfc_goal_top_down_bias | 61 | src/snn_data_lake/engine/autonomous_loop.py:1175#_pfc_bias; src/snn_data_lake/faculties/prefrontal_executive.py:350#top_down_bias; src/snn_data_lake/engine/autonomous_loop.py:1781#step | exec_pfcbias_60.txt | opus-5 refuter / executive_ab_probe.py pfc_bias 60 (exit 0, reproduces) + exec_refute_seeds_pfcbias (seeds 1,2,3 all diverge) + exec_refute_marg_pfcgain_given_pfcbias (absorbs pfc_gain_metalearning) | 2026-07-30 |
+| acc_conflict_monitoring_evc | 61 | src/snn_data_lake/engine/autonomous_loop.py:890#_bg_select; src/snn_data_lake/engine/autonomous_loop.py:1102#_pfc_bias; src/snn_data_lake/faculties/executive_control.py:110#conflict; src/snn_data_lake/engine/autonomous_loop.py:915#_bg_select | exec_conflict_60.txt | opus-5 refuter / executive_ab_probe.py conflict 60 (exit 0, reproduces) + exec_refute_seeds_conflict (seeds 1,2,3 all diverge) + exec_refute_marg_stn_given_conflict (absorbs stn_hyperdirect_brake, 0/60 marginal) | 2026-07-30 |
+| task_set_sr_mapping | 45 | src/snn_data_lake/engine/brain.py:2128#_c1_tick; src/snn_data_lake/engine/brain.py:1809#_drive_for; src/snn_data_lake/faculties/task_set.py:159#bias | exec_taskset_60.txt | opus-5 refuter / DOWNGRADED from 61 by exec_refute_seeds_taskset (0/60 on every observable at seeds 1 and 2) + exec_refute_taskset_elig (eligible on 60/60 ticks at those seeds) | 2026-07-30 |
 | response_inhibition_nogo | 35 | src/snn_data_lake/faculties/action_gating.py:106#select; src/snn_data_lake/engine/autonomous_loop.py:928#_bg_select | - | opus-5 / live gate spy, 200 ticks (veto rate; counterfactual undefined) -- audited value, re-read not re-measured | 2026-07-30 |
-| multi_step_plan_sequence | 30 | src/snn_data_lake/engine/autonomous_loop.py:1157#goal_value; src/snn_data_lake/cortex/executive_control.py:179#plan_sequence | exec_plan_60.txt | opus-5 refuter / executive_ab_probe.py plan 60 (exit 1 honest negative, reproduces) | 2026-07-30 |
+| multi_step_plan_sequence | 30 | src/snn_data_lake/engine/autonomous_loop.py:1157#goal_value; src/snn_data_lake/faculties/executive_control.py:179#plan_sequence | exec_plan_60.txt | opus-5 refuter / executive_ab_probe.py plan 60 (exit 1 honest negative, reproduces) | 2026-07-30 |
 | metacognitive_arbitration | 30 | src/snn_data_lake/engine/brain.py:2100#_update_metacog; src/snn_data_lake/engine/brain.py:2985#_enter_sleep; src/snn_data_lake/engine/brain.py:3604#respond | - | opus-5 / live trace, 200 ticks, both gates counted at their decision point -- audited value, citations re-verified | 2026-07-30 |
-| pfc_working_memory_maintenance | 15 | src/snn_data_lake/cortex/prefrontal_executive.py:334#maintain; src/snn_data_lake/engine/autonomous_loop.py:1053#_pfc_bias | - | opus-5 / live trace, 200 ticks + the reverted-wire record at the citation -- audited value, citations re-verified | 2026-07-30 |
-| task_set_shifting | 0 | src/snn_data_lake/cortex/task_set.py:213#observe; src/snn_data_lake/cortex/task_set.py:221#shift | - | opus-5 / live trace, 200 ticks (rubric rule 4) -- audited value, citations re-verified | 2026-07-30 |
+| pfc_working_memory_maintenance | 15 | src/snn_data_lake/faculties/prefrontal_executive.py:334#maintain; src/snn_data_lake/engine/autonomous_loop.py:1053#_pfc_bias | - | opus-5 / live trace, 200 ticks + the reverted-wire record at the citation -- audited value, citations re-verified | 2026-07-30 |
+| task_set_shifting | 0 | src/snn_data_lake/faculties/task_set.py:213#observe; src/snn_data_lake/faculties/task_set.py:221#shift | - | opus-5 / live trace, 200 ticks (rubric rule 4) -- audited value, citations re-verified | 2026-07-30 |
 
 **Mean over the eight rows: 277 / 8 = 34.6.** Two above 40 with a recorded, reproduced and now
 multi-seed A/B; one at 45 that the audit had at 61; five at or below 35.
@@ -209,23 +209,23 @@ B2 `conflict=0`, C both -- which is the B1-against-B2 comparison neither two-arm
 
 - **Every citation in the table resolves to what it claims**, not merely to a line that exists (which
   is all `_cite_ok` can check). All 21 were opened: `prefrontal_executive.py:349` is
-  `def top_down_bias`, `cortex/executive_control.py:80` is `def conflict`, `:149` is `def plan_sequence`,
+  `def top_down_bias`, `faculties/executive_control.py:80` is `def conflict`, `:149` is `def plan_sequence`,
   `task_set.py:159` is `def bias`, `:213` is the `_bad_streak >= patience` shift trigger, `:221` is
   `def shift`, `brain.py:1608` is the `taskset_a` drive term, `:1912` is `_task_pref =
   task_set.bias(feat)`, `:2401` is the once-per-night learn gate, `:2949` is `respond()`'s abstain
   branch, `autonomous_loop.py:1418` is the `_n_ovr >= 10 and _n_hab >= 10` guard on the `pfc_gain`
   update. No drift found.
   *(Disambiguation CORRECTED 2026-08-05, and it had been made worse before it was made better.
-  `executive_control.py` then named two different modules — `cortex/executive_control.py` and
+  `executive_control.py` then named two different modules — `faculties/executive_control.py` and
   `reasoning/brain_adapters/executive_control.py` (line counts this note used to carry had
   drifted twice and are dropped; the ambiguity itself is the record). A 2026-08-04 pass qualified
   this cite to the `reasoning/brain_adapters/` one; re-resolved, that file's `:80` was a numpy
   timing comment and its `:149` was `directory = os.path.dirname(directory)`. **`def conflict` is
-  at `cortex/executive_control.py:80` and `def plan_sequence` at `:149`** — both exact. The bare
+  at `faculties/executive_control.py:80` and `def plan_sequence` at `:149`** — both exact. The bare
   cite was ambiguous-but-right; qualifying it to the wrong module made it unambiguous-and-wrong,
   which is the worse failure, because the next reader stops checking once a path looks specific.
   The ambiguity was RETIRED 2026-08-12: the adapter module was promoted+renamed to
-  `cortex/competence_executive.py`, so the bare basename now resolves to exactly one module.)*
+  `faculties/competence_executive.py`, so the bare basename now resolves to exactly one module.)*
 - **The rule-4 zero (`task_set_shifting`) and the three sub-40 rows are the audit's, re-read but not
   re-measured.** A refuter's mandate is the band-41+ claims; re-deriving conservative low bands would
   spend the budget in the direction that cannot inflate a score. If any of them is wrong it is wrong
@@ -261,24 +261,24 @@ re-split them by refuting section 3 or 4 rather than by re-typing a band.
 
 ## Capability inventory (Policy 2 evidence: which file provides what)
 
-- `cortex/executive_control.py` -- ACC Hopfield-energy conflict (`:80`), EVC arithmetic (`:118`),
+- `faculties/executive_control.py` -- ACC Hopfield-energy conflict (`:80`), EVC arithmetic (`:118`),
   beam/tree sequence planner (`:149`). No learned weights, by design.
-- `cortex/learned_evc.py:65` -- the dopamine-gated three-factor cost/value replacing `evc()`'s
+- `faculties/learned_evc.py:65` -- the dopamine-gated three-factor cost/value replacing `evc()`'s
   constants. Unique capability, no separable behavioural footprint (row 2).
-- `cortex/prefrontal_executive.py` -- spiking WTA goal commitment (`:246`), latent-rollout planning
+- `faculties/prefrontal_executive.py` -- spiking WTA goal commitment (`:246`), latent-rollout planning
   (`:275`), top-down bias (`:349`), WM pool + goal stack (`:314`, `:333`) live only in the offline
   loops.
 - `faculties/action_gating.py:99` -- the Go/NoGo gate that owns release. `stn` raises `eff_tonic`
   on every channel (`:109`), which is why it can only add caution, and why it moves
   `_decision_margin` only where the `max(0, ...)` clamp at `:96` bites.
-- `cortex/task_set.py` -- n_sets S-R rule matrices in a persistent-activity LIF pool (`:159`,
+- `faculties/task_set.py` -- n_sets S-R rule matrices in a persistent-activity LIF pool (`:159`,
   `:166`) plus an R-STDP shift vote (`:184`). The readout changes an internal read at every seed and a
   decision at half of them; the shift never fires.
-- `cortex/metacognitive_monitor.py` via `brain.py:1851-1859` -- reliability, hold, explore,
+- `faculties/metacognitive_monitor.py` via `brain.py:1851-1859` -- reliability, hold, explore,
   learn_gate. `_decision_margin` is its one executive input and reaches it (section 3).
 - The learned control gain lives in `autonomous_loop.py:1418-1421`; the STN brake gain in `:745-749`.
   Both learn; neither is a separate faculty from the channel it scales.
-- `cortex/autotelic_goals.py` is goal *generation*, reached only from
+- `faculties/autotelic_goals.py` is goal *generation*, reached only from
   `self_improvement_suite.census` and `reasoning/nightly_skills.py`, never from the live tick --
   WholeBrain's roster. Recorded here so it is not silently omitted from every category.
 

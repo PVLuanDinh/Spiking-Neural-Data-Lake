@@ -174,8 +174,8 @@ update during evaluation, or the benchmark would teach the model its own test.
 | scorer | score |
 |---|---|
 | char-bigram fitted on the same exposure text | **52.8%** |
-| acquired-LM — `cortex/language_acquisition.py`, the online locally-plastic learner | **51.0%** |
-| ROSE `comprehend` — `cortex/rose_language.py` (promoted 2026-08-12) | **no signal** |
+| acquired-LM — `faculties/language_acquisition.py`, the online locally-plastic learner | **51.0%** |
+| ROSE `comprehend` — `faculties/rose_language.py` (promoted 2026-08-12) | **no signal** |
 
 Three findings, all worse than the release-note framing:
 
@@ -329,7 +329,7 @@ The contaminated numbers are not used anywhere in this document.
 
 ### 2026-08-02 — an assembly-calculus organ was proposed and refused at the instrument stage. **There is no "After".**
 
-`specs/005-language-organ` proposed replacing `cortex/language_acquisition.py` with a brain-native
+`specs/005-language-organ` proposed replacing `faculties/language_acquisition.py` with a brain-native
 Assembly-Calculus language organ (arXiv 2306.15364 / 2507.11788), to be decided by an A/B on
 `reasoning/blimp_bench.py`. **No "After" row is added to this ceiling, because there is no after**: the
 swap was refused before any organ code was written, so nothing was measured against the figures above
@@ -388,7 +388,7 @@ ceiling, and both are reported with the same developer-aware honesty as above.
 ### Gf — a second measured point: RAVEN, not ARC
 
 New instruments: `reasoning/rpm_solver.py` (`RpmSolver` + live `RpmExpert`) and `reasoning/raven_bench.py`.
-The solver is genuinely spiking-native: role-filler object codes bound with `cortex/vsa_reasoning.py`'s
+The solver is genuinely spiking-native: role-filler object codes bound with `faculties/vsa_reasoning.py`'s
 bipolar HD algebra (the repo's NVSA substrate), **example→rule induction** over the NVSA rule set
 (distribute-three via row-product+unbind, progression via `gf.py`'s shift inducer, constant, arithmetic)
 executed as spike XOR / permute / cleanup ops, with the winning rule and answer selected through

@@ -593,7 +593,7 @@ class SelfcheckCache:
         return "closure"
 
     def closure_key(self, mod):
-        """The carry key for one MODULES entry ('cortex.percept_surprise'): sha256 over the
+        """The carry key for one MODULES entry ('faculties.percept_surprise'): sha256 over the
         envelope + the closure's (dotted, file-hash) rows + the DERIVED data rows."""
         if mod in self._closure_keys:
             return self._closure_keys[mod]

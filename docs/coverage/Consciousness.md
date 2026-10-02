@@ -7,12 +7,12 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
 | access_strength_graded | 42 | src/snn_data_lake/faculties/reentrant_workspace.py:406#access_strength; src/snn_data_lake/engine/brain.py:2401#_observe_self_wake; src/snn_data_lake/engine/brain.py:2094#_update_metacog | cons_refute_strength_iso_120.txt | opus-5 REFUTER / consciousness_refute_probe.py strength_iso 120 (55 REFUTED) | 2026-07-30 |
-| second_order_access | 42 | src/snn_data_lake/cortex/second_order_access.py:176#hold; src/snn_data_lake/cortex/second_order_access.py:142#observe; src/snn_data_lake/engine/brain.py:3604#respond | consciousness_second_120.txt | opus-5 REFUTER / consciousness_refute_probe.py second_thin,c1,ws,av,st 120 (50 REFUTED) | 2026-07-30 |
-| self_model | 38 | src/snn_data_lake/cortex/self_model.py:274#confidence; src/snn_data_lake/engine/brain.py:2373#_observe_self_wake | - | opus-5 / scratchpad measure_consciousness2.py + 4.py | 2026-07-30 |
+| second_order_access | 42 | src/snn_data_lake/faculties/second_order_access.py:176#hold; src/snn_data_lake/faculties/second_order_access.py:142#observe; src/snn_data_lake/engine/brain.py:3604#respond | consciousness_second_120.txt | opus-5 REFUTER / consciousness_refute_probe.py second_thin,c1,ws,av,st 120 (50 REFUTED) | 2026-07-30 |
+| self_model | 38 | src/snn_data_lake/faculties/self_model.py:274#confidence; src/snn_data_lake/engine/brain.py:2373#_observe_self_wake | - | opus-5 / scratchpad measure_consciousness2.py + 4.py | 2026-07-30 |
 | reentry_sustain | 35 | src/snn_data_lake/faculties/reentrant_workspace.py:256#step; src/snn_data_lake/faculties/reentrant_workspace.py:328#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
 | ignition | 30 | src/snn_data_lake/engine/brain.py:2468#_update_access; src/snn_data_lake/engine/brain.py:1574#_route_percept_to_action | ignition_60.txt | opus-5 / tools/charge_probe.py ignition 60 | 2026-07-30 |
 | reentry_reroute | 28 | src/snn_data_lake/faculties/reentrant_workspace.py:373#_deliver; src/snn_data_lake/engine/brain.py:1761#_route_percept_to_action | reroute_60.txt | opus-5 / tools/charge_probe.py reroute 60 | 2026-07-30 |
-| global_availability | 25 | src/snn_data_lake/faculties/reentrant_workspace.py:387#_deliver; src/snn_data_lake/cortex/access_consciousness.py:541#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
+| global_availability | 25 | src/snn_data_lake/faculties/reentrant_workspace.py:387#_deliver; src/snn_data_lake/faculties/access_consciousness.py:541#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
 | integration_measure_pci | 22 | src/snn_data_lake/engine/brain.py:2727#_sleep_tick; src/snn_data_lake/engine/brain.py:3441#state | - | opus-5 / scratchpad measure_consciousness2.py, 200 ticks / 8 nights | 2026-07-30 |
 | arm_workspace_broadcast | 21 | src/snn_data_lake/engine/autonomous_loop.py:1374#_workspace_broadcast; src/snn_data_lake/engine/live_brain.py:92#__init__ | - | opus-5 / scratchpad measure_consciousness4.py, 240 ticks | 2026-07-30 |
 | reentrant_predictive_completion | 15 | src/snn_data_lake/faculties/reentrant_workspace.py:168#expect | - | opus-5 / static reachability + live respond() probe | 2026-07-30 (site repointed 2026-08-06, see below) |
@@ -433,12 +433,12 @@ whole thing (F3). One line per file -- capability, then whether it is live.
   binding-by-synchrony. LIVE twice (inside the arm, and inside `AccessConsciousness`).
 * `faculties/reentrant_workspace.py` -- coalitions, ignition that can FAIL, closed re-entry, subscriber
   re-route, the graded 32-unit access readout. LIVE (`Brain._reentrant`).
-* `cortex/access_consciousness.py` -- VSA bundling of grown neurons into one content + the integration
+* `faculties/access_consciousness.py` -- VSA bundling of grown neurons into one content + the integration
   proxy. LIVE (`Brain._access`).
-* `cortex/second_order_access.py` -- metacognition OF access (reliability of the access report). LIVE on
+* `faculties/second_order_access.py` -- metacognition OF access (reliability of the access report). LIVE on
   the chat path only.
-* `cortex/self_model.py` -- signal store, the confidence product, narrator introspection. LIVE.
-* `cortex/generative_self_model.py` -- learned (e-prop) forward model of the brain's own state, which is
+* `faculties/self_model.py` -- signal store, the confidence product, narrator introspection. LIVE.
+* `faculties/generative_self_model.py` -- learned (e-prop) forward model of the brain's own state, which is
   what supplies a real self-surprise. LIVE.
 * `instruments/integration_measure.py` -- perturbational complexity / normalized LZ. LIVE on sleep, every 4th
   night.

@@ -151,7 +151,7 @@ REJECTED BY MEASUREMENT, recorded so it is not re-proposed: resolving an ambiguo
 CLASS (`submit` is GlobalWorkspace's, so the token `workspace` narrows to `autonomous_loop` and not
 `developmental_loop_brain`). It would take `cross_module_reads` 1 -> 4 and `unread_writer_modules`
 7 -> 6, but three of the four "cross" reads it produces are `ac.workspace` / `strong.workspace` on
-LOCAL objects in `cortex/access_consciousness.py`'s self-check, attributed to `autonomous_loop` on
+LOCAL objects in `faculties/access_consciousness.py`'s self-check, attributed to `autonomous_loop` on
 the strength of a naming coincidence. That trades an honest UNATTRIBUTABLE for a confident guess and
 would rest the floor on three of them. The ambiguity is real; "this walk does not know" is the
 correct answer to it.
@@ -198,7 +198,7 @@ from collections import defaultdict
 # What counts as "the workspace". Two bus classes. (Until 2026-08-12 this set also carried
 # WorkspaceBroadcast, the one wrapper that owned a bus instance and re-exported it under a different
 # verb -- omitting it is how a prior reading turned three writes into one read. The wrapper was
-# RETIRED that day, cortex/competence_executive's retirement record; its 3-arg `broadcast` arity
+# RETIRED that day, faculties/competence_executive's retirement record; its 3-arg `broadcast` arity
 # entry left the API table with it.)
 # --------------------------------------------------------------------------------------------------
 WORKSPACE_CLASSES = {"GlobalWorkspace", "ReentrantWorkspace"}
@@ -281,11 +281,11 @@ KNOWN_WRITERS = {
     "reasoning/train_of_thought.py": 4,
     "engine/autonomous_loop.py": 3,
     "engine/brain.py": 3,
-    # cortex/competence_executive.py LEFT this table 2026-08-12: WorkspaceBroadcast was retired
+    # faculties/competence_executive.py LEFT this table 2026-08-12: WorkspaceBroadcast was retired
     # (its retirement record in that module) and the module now performs ZERO workspace writes --
     # a floor of 3 would have fired "produced ZERO writes" on a correct deletion, the exact
     # failure mode :258-259 warns a liveness floor must not manufacture.
-    "cortex/access_consciousness.py": 1,
+    "faculties/access_consciousness.py": 1,
     "reasoning/rpm_solver.py": 1,
     "reasoning/spike_chat_lake.py": 1,
     # relpath co-edited 2026-08-12 with the module's promotion (#10 lane 4e) -- the key is a
@@ -329,7 +329,7 @@ KNOWN_READERS = {
 # --------------------------------------------------------------------------------------------------
 BASELINE = {
     # Both ceilings ratcheted DOWN 7 -> 6 on 2026-08-12: WorkspaceBroadcast's retirement removed
-    # cortex/competence_executive from both censuses (it no longer constructs or writes into any
+    # faculties/competence_executive from both censuses (it no longer constructs or writes into any
     # workspace instance). A ratchet keeps ground it gains -- left at 7, the self-check's
     # one-mutant regression could no longer cross the ceiling, i.e. the criterion would have had
     # no reachable red (measured before this edit: BOTH mutations dead, 6 -> 7 does not cross 7;
@@ -974,7 +974,7 @@ def resolve_owner(relpath, receiver_text, w):
     # PUBLIC ACCESSOR HOP (T039g) -- A FALLBACK, NEVER AN OVERRIDE, and the ordering is the whole
     # correctness argument. The first draft ran this BEFORE the resolution above and hijacked reads
     # that already resolved: `self.arm.workspace` in live_brain moved off its true owner
-    # (engine/autonomous_loop.py) onto cortex/access_consciousness.py, which merely exposes an
+    # (engine/autonomous_loop.py) onto faculties/access_consciousness.py, which merely exposes an
     # accessor of the same name -- and fac_cross went 0 -> 3, which read like a discovery. Running
     # it only where the answer was already None means every pre-existing attribution is preserved
     # bit for bit and this can add resolution, never move it.
@@ -982,7 +982,7 @@ def resolve_owner(relpath, receiver_text, w):
     # AND IT ONLY APPLIES TO AN ATTRIBUTE ACCESS. A BARE NAME IS NOT ONE, and refusing it is the
     # second correctness condition this hop needed -- found by reading what the newly-attributed
     # sites actually were. With bare names admitted, `report_channel.snapshot(workspace)` resolved
-    # to cortex/access_consciousness.py: `workspace` there is a plain FUNCTION PARAMETER whose
+    # to faculties/access_consciousness.py: `workspace` there is a plain FUNCTION PARAMETER whose
     # docstring says it adopts the bus the CALLER hands it, and it collided by name alone with an
     # unrelated module's accessor. Two more (`ws` in brain.py and in spike_chat_lake.py) were the
     # same shape. That is guessing from a name, which this resolver already refuses for ambiguous
@@ -996,7 +996,7 @@ def resolve_owner(relpath, receiver_text, w):
     # what got attributed. `ws = self.brain.workspace` expands to a DOTTED chain ending in
     # `workspace`, which is a construction token in two modules (autonomous_loop and
     # developmental_loop_brain) and therefore correctly ambiguous. Letting the accessor map break
-    # that tie sent the read to cortex/access_consciousness.py -- a third module that merely
+    # that tie sent the read to faculties/access_consciousness.py -- a third module that merely
     # exposes a property of the same name -- when the object is really the arm's ACTION-owned bus.
     # When a name is BOTH a construction token and an accessor, the ambiguity is real and
     # UNATTRIBUTABLE is the honest answer; this hop exists only for names that no module builds.

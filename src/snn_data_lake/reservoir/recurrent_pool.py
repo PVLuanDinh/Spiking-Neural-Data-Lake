@@ -27,9 +27,9 @@ that contract.
 # retire/promote/exempt row is its own P2 opening (section 2.13).
 # distinct-from: src/snn_data_lake/growth/arealization.py -- a GRN consensus network settled once
 #   into developmental region labels; nothing is driven by a percept or carried between percepts
-# distinct-from: src/snn_data_lake/cortex/prefrontal_executive.py -- its LIF pool holds a goal with
+# distinct-from: src/snn_data_lake/faculties/prefrontal_executive.py -- its LIF pool holds a goal with
 #   NO external input (section 1.2 names that a different job); no stimulus drive, no forms
-# distinct-from: src/snn_data_lake/cortex/recursive_tom.py -- a theory-of-mind reading over recorded
+# distinct-from: src/snn_data_lake/faculties/recursive_tom.py -- a theory-of-mind reading over recorded
 #   rows; no recurrent state at all
 # distinct-from: src/snn_data_lake/instruments/report_order_probe.py -- a report-order probe reading over
 #   constructed rows; no recurrent state at all
@@ -576,7 +576,7 @@ def _skip_carrier(pool, carrier):
 # planted fault or a freeze red):
 # distinct-from: readout/predictive_coding.py -- learn_step is a real local weight update
 # distinct-from: growth/h01_ingest.py -- decode_shard counts a shard's joins in one pass
-# distinct-from: cortex/vsa_reasoning.py -- coincidence_many counts spike coincidences
+# distinct-from: faculties/vsa_reasoning.py -- coincidence_many counts spike coincidences
 # distinct-from: plasticity/naca.py -- its reversal check is a real R-STDP experiment
 # distinct-from: reasoning/spike_chat_lake.py -- _kb_reply retrieves stored triples
 def _write_after_boundary(pool):
@@ -847,7 +847,7 @@ def check_r_b5_freeze(
 
 
 # Sites read; none checks a pool's parameters against a boundary fingerprint:
-# distinct-from: cortex/recursive_tom.py -- _t082_s2 checks one seed of a theory-of-mind control
+# distinct-from: faculties/recursive_tom.py -- _t082_s2 checks one seed of a theory-of-mind control
 # distinct-from: instruments/deep_stdp.py -- _mechanics_check asserts an STDP library's mechanics
 # distinct-from: plasticity/inhibitory_stdp.py -- istdp_synapse_rule authors a synapse rule
 # distinct-from: gates/amdahl_gate.py -- within_noise_of_zero is a sham timing criterion

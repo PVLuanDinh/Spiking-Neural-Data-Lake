@@ -31,11 +31,11 @@ memorizing (exact-grid-state -> value) like a tabular RL agent, it:
 
 Reused repo modules (genuine, load-bearing):
   - faculties.evidence_accumulation.RaceAccumulator : spiking winner-take-all action selection.
-  - cortex.vsa_reasoning (bind/bundle/cleanup/hv)        : the induced ACTION SEMANTICS are stored and
+  - faculties.vsa_reasoning (bind/bundle/cleanup/hv)        : the induced ACTION SEMANTICS are stored and
     recalled as spike-polarity role-filler hypervectors (bind(action, delta) bundled; queried by
     spike XOR + coincidence cleanup). The planner reads deltas THROUGH this spike-code store.
   - env.py (KeyDoor/PushBox/ColorLock/ToggleToGoal)      : the verification suite.
-  The held-out / memoriser / shuffle CONTROL methodology mirrors cortex.reasoning_curriculum's
+  The held-out / memoriser / shuffle CONTROL methodology mirrors faculties.reasoning_curriculum's
   un-riggable protocol (train on observed, score on never-seen, each claim paired with a failing
   control); its dependency-ordering is the length-1 degenerate case of that module's transitive chain.
 
@@ -98,8 +98,8 @@ for _p in (os.path.join(_ROOT, "src"), _ROOT, _HERE):
 import env as arc_env  # noqa: E402
 from brain_player import BrainPlayer, random_player  # noqa: E402
 
-from snn_data_lake.cortex.vsa_reasoning import bind, bundle, cleanup, hv  # noqa: E402
 from snn_data_lake.faculties.evidence_accumulation import RaceAccumulator  # noqa: E402
+from snn_data_lake.faculties.vsa_reasoning import bind, bundle, cleanup, hv  # noqa: E402
 
 EMPTY = arc_env.EMPTY
 
@@ -845,7 +845,7 @@ def main():
     # P7 abolished the zero-dependency rule project-wide and names surviving purity asserts as the
     # residue to remove; docs/POLICIES.md lists three (laminar_local_readout x2,
     # vsa_structure_mapping) and does not know about this fourth one. It was worse than dead weight:
-    # this module imports snn_data_lake.cortex.vsa_reasoning and
+    # this module imports snn_data_lake.faculties.vsa_reasoning and
     # snn_data_lake.faculties.evidence_accumulation, so the day either of those (or anything
     # they reach) imports numpy -- which P7 explicitly permits and P5 may require -- this self-check
     # goes RED for a purity reason and not a correctness one. It was an anti-P7 tripwire aimed at

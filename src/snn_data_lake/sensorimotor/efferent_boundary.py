@@ -144,7 +144,7 @@ class EfferentBoundary:
         self._err_sum = 0.0
         self._err_n = 0
 
-    # distinct-from: cortex/percept_surprise.py -- Hebbian subspace update on percepts;
+    # distinct-from: faculties/percept_surprise.py -- Hebbian subspace update on percepts;
     #   this is the MOTOR copy's LMS step on the incumbent cerebellar model. Read.
     def observe(self, action, theta_pre, commanded_after, theta_post):
         """ONE envelope passage: count it, form the delta-space copy, score and update

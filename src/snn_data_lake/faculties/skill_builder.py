@@ -2,7 +2,7 @@ r"""
 SKILL BUILDER -- one domain-agnostic autonomous loop that BUILDS its own skill for ANY domain
 castable as a stream, gives it competence, and INDEXES it in the durable lake for reuse.
 
-This generalizes cortex/language_self_build.py (promoted 2026-08-11; built a LANGUAGE skill) into a
+This generalizes faculties/language_self_build.py (promoted 2026-08-11; built a LANGUAGE skill) into a
 domain-independent mechanism. The universal move (per the research): any domain becomes a stream of
 (context, next-token) pairs; the SAME loop consumes every domain:
 
@@ -42,7 +42,7 @@ import os
 import random
 import tempfile
 
-from snn_data_lake.cortex.language_self_build import _bigram_baseline
+from snn_data_lake.faculties.language_self_build import _bigram_baseline
 from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.readout.language_readout_slda import _slda_acc
 from snn_data_lake.sensorimotor.corpus_stream import (

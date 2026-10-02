@@ -359,7 +359,7 @@ def emit_regions(n_nodes=16, wiring=None, basal=None):
 # T041 -- the prosomeric (neuromere, zone) label grid, the two-regime discretization, the
 # deferred cell-type stage, and the D12 graded-admissibility instrument (re-scoped here from
 # T040, whose Boolean arm measured non-discrimination). P8 invention #7, register row 7.
-# distinct-from: cortex/second_order_access.py -- its state() is a per-tick functional
+# distinct-from: faculties/second_order_access.py -- its state() is a per-tick functional
 #   snapshot; nothing here snapshots brain state. Read.
 # distinct-from: growth/function_preserving_growth.py -- its run() steps a spiking net
 #   over an input window; the settle below iterates a gene-network fixed point. Read.

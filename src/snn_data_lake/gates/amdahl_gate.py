@@ -517,7 +517,7 @@ def red_sham_neuter(ticks=RED_TICKS, resamples=RED_RESAMPLES, seed=0):
 #   criterion re-run with a perturbation. Site read.
 # distinct-from: gates/conclusion_protocol.py::surface_findings -- scans tracked prose surfaces
 #   for unlicensed sentences. Text, not a measurement. Site read.
-# distinct-from: cortex/theta_gamma_code.py, engine/learn_daemon.py::self_check,
+# distinct-from: faculties/theta_gamma_code.py, engine/learn_daemon.py::self_check,
 #   substrate/home.py's census rule and brainstem/arm_config.py -- matched on generic docstring words
 #   ("one", "read", "control", "deliberately"); none runs a criterion twice with an arm perturbed.
 #   All sites read. graph-exists returns NO existing broken arm for the repeatability criterion --
@@ -594,7 +594,7 @@ def self_check_reds(pad_iters=PAD_ITERS, quick=False):
 
 # distinct-from: brainstem/arm_config.py -- ::ground_free_band sweeps a joint's ground-free range.
 # distinct-from: faculties/cpg_oscillator.py -- ::_reversals counts direction changes in a trace.
-# distinct-from: cortex/theory_of_mind.py -- ::believed_location is a spiking WTA belief readout.
+# distinct-from: faculties/theory_of_mind.py -- ::believed_location is a spiking WTA belief readout.
 # distinct-from: sensorimotor/arm_bridge.py -- ::send_outcome fires one UDP datagram.
 # distinct-from: sensorimotor/arm_hardware.py -- ::peak_current_amps sums a servo supply budget.
 # All five matched on the word "one" and all five sites were read; none counts live instances of a

@@ -1,7 +1,7 @@
 # Brain Review -- cohesion audit of the unified Brain
 
 Scope: `src/snn_data_lake/engine/brain.py` (the unified `Brain`) and
-`src/snn_data_lake/cortex/self_improvement_suite.py` (the new 8-rung census).
+`src/snn_data_lake/faculties/self_improvement_suite.py` (the new 8-rung census).
 READ-ONLY review -- suggestions only, no code changed.
 
 ## Cohesion verdict: MOSTLY one program

@@ -37,7 +37,7 @@ full COGNITIVE stack above.
 
 > Corrected 2026-08-04: this said *"the brain's torch LANGUAGE (SpikeGPT = conversation)"*. The
 > SpikeGPT-216M organ was **scrapped in v3.77** — `engine/brain.py` says so at the language-organ
-> block, and conversation now comes from the acquired organ (`cortex/language_acquisition`, built
+> block, and conversation now comes from the acquired organ (`faculties/language_acquisition`, built
 > lazily in `_lm_serve`). Naming a deleted component as the reason for a scope limit makes the limit
 > unverifiable. `play_brain.py`'s own docstring carried the same stale name and is corrected too.
 
@@ -54,7 +54,7 @@ ARC_API_KEY=<key> PYTHONPATH=src .venv-arc/Scripts/python research/arc_agi/play.
 - `rule_inducer.py` — a relational grid rule-inducer: parse the grid into OBJECTS (connected components),
   INDUCE causal change-rules from (grid, action, grid') transitions (object translate / click-transform /
   appear / dependency / goal), then PLAN with a model-based value iteration; the executed action is chosen
-  by a spiking RaceAccumulator. Reuses `cortex/vsa_reasoning` (rule store), `faculties/evidence_accumulation`.
+  by a spiking RaceAccumulator. Reuses `faculties/vsa_reasoning` (rule store), `faculties/evidence_accumulation`.
   PROVEN (self-check): rules learned on 4 small size-5 instances TRANSFER zero-shot to held-out + SCALED-UP
   grids -- key_door **1.00** and push_box **1.00** solve, vs a tabular-state agent (same budget) at **0.06 / 0.00**
   (state explosion) and a shuffled-action control at 0.12 / 0.00. That is the honest win: relational induction

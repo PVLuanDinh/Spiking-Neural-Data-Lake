@@ -53,7 +53,7 @@ from lang_scale import (  # noqa: E402
     set_inputs,
 )
 
-from snn_data_lake.cortex import language_acquisition as LA  # noqa: E402
+from snn_data_lake.faculties import language_acquisition as LA  # noqa: E402
 from snn_data_lake.reasoning.blimp_bench import load_pairs, paradigms, score  # noqa: E402
 
 V = LA.V

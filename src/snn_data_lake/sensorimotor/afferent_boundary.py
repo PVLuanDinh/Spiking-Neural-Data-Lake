@@ -240,7 +240,7 @@ AUDITION_FRAME_SHAPE = (100, 700)
 #   'frame' vocabulary only. Site read.
 # distinct-from: substrate/arm_view.py -- PNG camera frames for the cockpit; unrelated.
 #   Site read.
-# distinct-from: cortex/theta_gamma_code.py -- decodes LIF firing EVENTS into theta
+# distinct-from: faculties/theta_gamma_code.py -- decodes LIF firing EVENTS into theta
 #   cycles; 'events' vocabulary only. Site read.
 def _transduce_events(frame, want_shape):
     """Shared event-frame rule: (frame, present). None / non-ndarray / wrong-shape /

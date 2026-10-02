@@ -3806,3 +3806,194 @@ together, the R-L1 check 4.5 s, the bounded pytest 26 min 47 s on the worktree, 
 NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed (the tree is
 staged), no daemon was started and the live lake was not opened. The `slow`-marked tests were deselected from the bounded
 pytest (`-m 'not slow'`), so they stay owed to the battery. G8-3's panel, fold and one battery remain owed.
+
+### 3.32 M11e predeclared faculties move: the cortex package (Claude, G8-3, 2026-10-02)
+
+The M11e parent is `a3e11791` (branch `claude/g8-3`, one writer, clean at the start). Its clean export completed the
+24-gate, seven-probe, 30-registry census with every gate rc 0 (pre census SHA-256 begins `A4C3C512E078F988`, taken with
+`SNN_ALIAS_STRICT=1`, 115.4 s). The frozen 2.12 map, read by the frozen mover (sha256 prefix `b49e982a`), moves the 33
+modules of `cortex` whole into the existing `faculties/` package (frozen-map names `expected_M11e.json`, `5DD36A1E990DB181`,
+byte-equal to the orchestrator's prep copy and the same 33 as its dry run): `access_consciousness`, `affect_core`,
+`agency_monitor`, `autotelic_goals`, `competence_executive`, `counterfactual_sim`, `crossmodal_binder`,
+`divisive_normalization`, `executive_control`, `generative_self_model`, `is_snn_forward`, `kb_ranking`,
+`language_acquisition`, `language_self_build`, `learned_attention`, `learned_evc`, `metacognitive_monitor`,
+`percept_surprise`, `prefrontal_executive`, `quality_diversity`, `reasoning_curriculum`, `recursive_tom`, `rose_language`,
+`second_order_access`, `self_improvement_suite`, `self_model`, `task_set`, `theory_of_mind`, `theta_gamma_code`,
+`time_cells`, `vsa_reasoning`, `vsa_structure_mapping` and `wholistic_loop`. 32 are core tier; ONE, `language_acquisition`,
+is torch tier (`TORCH_TIER['cortex'] = ['language_acquisition']`), the one module of the stage outside `REGIONS`, and none
+is train tier. The mover re-keyed `REGIONS` (the `cortex` key out, `faculties` 59 to 91 members; 13 keys remain, as 2.6 states), `TORCH_TIER` (the key `cortex` out and `faculties` in with that one member; five keys stay five) and the
+runner's names, deleted the emptied `cortex/` directory with its `__pycache__/` (absent on disk afterwards, and C6's
+`legacy_pkg_dirs` empty on the real checkout) and rewrote 73 files (114 imports, 46 strings, one non-simple string
+skipped; its report line equals the orchestrator's dry run exactly). The live-citation rewriter (kept out of tree) pass 1
+rewrote 154 live files, 516 citations; pass 2 (member form) 19 files, 30 citations. Pass 1 printed the envelope carve-out,
+verbatim: `envelope files skipped (would have matched; F11 carve-out): {'src/snn_data_lake/brainstem/so101_arm.py': 1}` (line
+606, a comment that cites `autotelic_goals` by its retired path); pass 2 skipped none. That line is F11's M11e carve-out:
+it dangles by design, is never edited, and BROAD rises by exactly its one citation.
+
+Row items, each verified: `reasoning_cortex`'s three `sys.modules` asserts on the `kb_ranking` key and `schema_induction`'s
+`_KB` neuter key (the mover had re-spelled all four literals to the new path) now read `module_path("kb_ranking")`
+(`from snn_data_lake import module_path` beside each self-check's `import sys`; F16, below); the specs/005 quickstart's
+`git diff --quiet` path for `language_acquisition` (line 75) now names the `faculties` path and a dated `### G8 M11e path note
+(2026-10-02)` beside the M3 and M10 notes names the historical path, in their format (F10); `manifest_gate.REGISTRANTS`'
+three rows (`percept_surprise`, `task_set`, `recursive_tom`) were re-pointed by the mover; the one SCOPE command
+(`docs/coverage/Language.md`, `rose_language`) was re-pointed by the rewriter (the page is live text by its rule) and an F10
+dated prose note sits below the fenced block (a note inside it would be a second runnable line), the document command guard
+printing identical output over the parent export and the built tree (62 documents, 67 runnable, 0 unrunnable, 1 exempt);
+`import_manifest.GOVERNED` lost `cortex` by hand (F15; EOL kept; `faculties` stays); `tools/p6_gate.py`'s `KNOWN_WRITERS`
+key now ends on the `faculties` path (the rewriter; the p6 self-check below reads no `missing`);
+`rule_composer._CENSUS_ADJUDICATED`'s one M11e entry (`learned_evc`) was re-pointed by the rewriter and `tools/rule_census.json`
+was then regenerated ONLY through `python -m snn_data_lake.plasticity.rule_composer --regen-census`: 104 rows and 56
+undispositioned as before, twelve rows re-keyed with equal bodies, nothing else changed; `_LEGACY_PKGS` was derived by running
+the alias layer, not guessed: it prints `amygdala`, `basal_ganglia`, `cerebellum`, `claustrum`, `cortex`, `epithalamus`,
+`hippocampus`, `hypothalamus`, `insula`, `medulla`, `midbrain`, `neuromodulation`, `olfactory`, `pons`, `thalamus` (15), with
+`_MOVED` still 287 and `_LEGACY` 253 (220 plus the 33 new); `tests/test_g8_move_gate.py` pins that set as a literal and now
+reads the fifteen names (the docstring, one comment and one name; no logic). `python -m snn_data_lake.gates.policy_manifest
+--manifest --write` regenerated `tools/policy_manifest.json` byte-identical (it carries no M11e path) and `--assert` read
+rc 0; `docs/POLICIES.md` holds no M11e citation, and `doc_budget_gate` prints byte-identical output over the parent export
+and the built tree (POLICIES 14,352 of 14,362, the cold-start document 9,841 of 9,851).
+
+Before any M11e post-move gate run, and AFTER `move_gate --c2d` had been run over the staged built tree (M11b's lesson), the C1
+delta was written to the out-of-tree `declared_M11e.json` (SHA-256 begins `5EA32E86C7272B8E`). It forecasts 18 changed lines:
+the brain atlas (the `cortex` row, 32 modules and one torch-tier, and the old `faculties` 59 row leave, `faculties` 91 modules
+plus one torch-tier joins; TOTAL and the self-check line 14 to 13 regions, 299 modules and 287 legacy import paths
+unchanged), generated by the AST-literal script from the candidate tree against the parent export after its print format
+reproduced every parent row; the parsed-file counts, which fall by one because the emptied package's `__init__.py` leaves and none joins
+(`src/snn_data_lake` `.py` files 436 to 435, so `eprop_transport_gate`'s two lines, `gradient_claim_gate`'s files-parsed line and
+`p6_gate`'s scanned line, and the P4c scaffold count 25 to 24), counted over the parent export (reproducing 436 and 25) and
+then the candidate; citation BROAD 2407/314 to 2567/314, forecast statically with the guard's own parser and resolver
+(reproducing 2407/314 on the parent): 130 pairs added and 33 removed, 99 added in frozen documents and 31 in live files, of
+which ONE is the envelope carve-out (`so101_arm.py`, line 606), fourteen are relocations of one historical citation each (the
+text moved with its module; 14 matching removals) and sixteen are the hypothetical fixture paths of the C2(d) fixes below
+(moved under `faculties/` at net zero with their 16 removals), while the mover's drop of the three comment citations that
+sat inside the `cortex` list (below) removes three more with no addition, so live files gain exactly the one carve-out
+citation and nothing else; one `growth_coverage_gate` line (the stale disclosure prefix, below), computed by one textual
+substitution on the pre line; and the names `REGIONS.keys` and `import_manifest.GOVERNED` (each losing `cortex`) and
+`TORCH_TIER.keys` (losing `cortex`, gaining `faculties`). A declared '-' line is asserted to be a line of the pre census
+before the file is written. The real `citation_guard` over the built tree read the forecast exactly (BROAD 2567 across 314
+files, STRICT 0 unexempted). The declaration's own note carries one sentence copied from the M11d template, that
+POLICIES' citations were re-pointed word-neutrally; there were none at M11e, and no declared line depends on it.
+
+**No halt, no amendment.** The first post census (over an export of the staged worktree, strict) completed 24 gates and seven
+probes, all rc 0 (post census SHA-256 begins `9E37FB8464B77E34`, observed delta `AE229B414BB91821`, 114.1 s), and C1 said the diff
+equals the declared delta (18 declared changes). A second census over a fresh export, taken after the hand edits that landed
+during the bounded run (the `_LEGACY_PKGS` literal, the `_KB` comment move, one docstring re-wrap), read the same: all rc 0, the
+observed delta byte-identical (`AE229B414BB91821`; post census SHA-256 begins `3CEC328FF5B17643`, 114.0 s). A third census over a fresh export, taken after this record
+was appended, read the same again (all rc 0, observed delta `AE229B414BB91821`, post census SHA-256 begins
+`75EB13A3CCFB1098`, 113.6 s; BROAD, the document commands and the document budget unchanged by the record).
+
+Items beyond the row, each required by the frozen procedure or by what the checks prove, recorded:
+- **45 C2(d) findings on the built tree, run BEFORE the declaration, fixed by edits none of which is in the row.** Once
+  `cortex` is a retired package name, C2(d)'s string rules (a `cortex/` path prefix, a qualified `snn_data_lake.cortex`, a
+  trailing-dot `cortex.`, a join operand) flag every code string that spells it: 45 findings in 16 files, 37 hypothetical
+  fixture paths and imports, 2 spellings of a frozen label and 6 prose or citation strings. (a) Fixture paths and imports moved under the live `faculties/` prefix, as M11d did for p6_gate's overlays:
+  `gradient_claim_gate`'s self-check overlay key (10 sites; the gate classifies by module basename, so the directory is not
+  read) and its test (2), `brain_native_selfbuild`'s toy repo files and one off-limits alias (3; `_forbidden` matches by
+  basename), `impact_analysis`'s toy repo (11), `self_improve`'s three target labels, and the tests (`fingerprint` 1,
+  `p6_accessor_attribution` 2 overlay paths, `move_gate` 3 for its tmp_path relative-import source); `tools/instrument_guard.py`
+  and its test spelled `from snn_data_lake.cortex import brain` in the source they feed the guard, now the real home
+  `snn_data_lake.engine` (the rule matches the last component). (b) `brain_geometry._SEED_PIN_KEY`, the seed contract's frozen
+  label, would have had to be spelled `cortex/rank_order_coding`; it is now derived from the frozen `LEGACY_REGIONS` by the
+  module name alone (`_frozen_label_key`), the value unchanged (the gate's own output line is byte-identical), so the pin is
+  still the module NAME plus the frozen label and a moved census head still reds it; the test pins both halves
+  (`S._LABEL["rank_order_coding"] == "cortex"` and the key equal to the label plus that name). (c) Prose and citations:
+  the `dormancy_gate` EXEMPT reason for `deep_stdp_latency` now names the cortex package and that it is under `faculties/` (it
+  is no census line); the `growth_coverage_gate` DISCLOSURE dropped the stale prefix of `genomic_bottleneck` (a module deleted at
+  its own pre-registration; it is ONE census line, declared); `h01_ingest`'s attribution string and `layer_rule` value, and
+  `brain_telemetry`'s `report_order_margin` text, cited modules moved at M2 and M5 (`cortical_prior`, `placement`,
+  `report_order_probe`) by the retired package: earlier-stage member-form leftovers the rewriter does not own, re-pointed to
+  their real homes; and `placement`'s refusal line ended "H01 cortex." (the trailing-dot rule's false positive), now "the H01
+  cortex sample." After these, C2(d) reads 657 live source files, 0 unparsed, 0 findings.
+- **My own survivor scan** (`cortex/` prefixes, the 33 pairs, `from ..cortex` and every relative form, a dotted `snn_data_lake.cortex`,
+  a quoted bare name, `import cortex`) over the live tree, which C2(d) does not do for relative-import strings: no live relative
+  hit; the only live `.py` survivors are three docstring examples (`gradient_claim_gate`'s and `p6_gate`'s `overlay`
+  parameter docs, `instrument_guard`'s history of the qualified spelling), which C2(d) does not read and the stage leaves, and
+  the comments in `.gitignore`, `pyproject.toml` and `ci.yml`, outside every scanned set (a finding for the orchestrator: the
+  LAST package of a series costs the most C2(d) edits, because its name becomes a retired prefix everywhere it was ever used as
+  an example path).
+- One E501 introduced by the rewriter (a docstring line of `tests/test_metacognition_instrument.py` grew to 102 columns): the
+  docstring re-wrapped, no word changed. `ruff check --fix --select I` re-sorted imports in 18 places across the touched files and
+  `ruff format` reformatted 2 files; the final whole-repo `ruff check` and `ruff format --check` pass (625 files), and
+  `--select I` passes on all 155 touched `.py` files.
+- `schema_induction`'s `_KB` line is a comment above the one-line assignment (`ruff format` had wrapped the statement around
+  its trailing comment, so the planted red could not find the one-line form).
+- The rewriter's frozen-text rule (as in G8-2) leaves `specs/022-unified-brain-arc/` `PLAN-FINAL-2026-09-02.md`, `SYNTHESIS.md`,
+  `spec.md`, `tasks.md` and `specs/BACKLOG_RANKED.md` as live text; the `docs/coverage/` pages and the `docs/` index documents'
+  path citations (ANATOMY 1, CODEBASE_DIGEST 45) were rewritten by the same rule, their package rows and region prose being D1's.
+- **Envelope: untouched.** SHA-256 of the five files, `tools/envelope_hashes.json` and the 16 files of `brainstem/so101/` (22 in all)
+  are equal before the mover and at the end; the protected diff against HEAD is empty (staged and unstaged);
+  `envelope_hash_gate --assert` rc 0, its self-check rc 0, and the `safety_envelope` check and its self-check rc 0.
+- Home rule: every Python process that could build a brain or touch a home ran with `NORD_PERSIST=0` and its own fresh scratch
+  `NORD_HOME` under the kit; the 33 module self-checks (on both trees), the F16 runs and the R-L1 check left their scratch homes
+  empty (the bounded pytest's scratch home holds the one `brain_lake.bin` its brain-building tests write); no file of the live lake
+  was opened or written (its directory was listed once, names only, while locating that scratch file) and no daemon or battery
+  was started.
+- Not touched, noted for the orchestrator: (1) the mover drops a `REGIONS` key's own comment lines with the key, so 26 comment-only
+  lines of the `cortex` list (provenance blocks orphaned when their modules left it at earlier stages, among them the notes of
+  members now under `readout/`, `growth/`, `plasticity/` and `sensorimotor/`) and the 11 inline provenance comments on its members (`generative_self_model`,
+  `counterfactual_sim`, `learned_attention`, `learned_evc`, `second_order_access`, `percept_surprise`, `kb_ranking`,
+  `language_self_build`, `competence_executive`, `vsa_structure_mapping`, `rose_language`) are gone from the registry; the diff is
+  kept in the kit as `init_diff.txt`. (2) The orphaned comment blocks of M11b and M11d stay. (3) Earlier-stage member-form
+  leftovers still dangling: `docs/POLICIES.md` line 91 and plan A.5 (the two D1 items), and the M11d record's list stands. (4) `.gitignore` line
+  150, `ci.yml` line 178 and `pyproject.toml` line 206 name retired cortex paths in comments, and `growth/placement.py` line 266
+  still names the retired `REGIONS` key in a comment. (5) The frozen documents keep their historical paths; the index documents'
+  package rows and region prose are D1's. (6) Five module self-checks print a re-pointed path they quote or derive and three print
+  measured timings; the other 25 of the 33 are byte-identical to the parent export's.
+
+**Cheap half (2.8), counts.** C2(a): 416 imports attempted on the parent export, the staged worktree and the post export, the same 13
+known optional-import failures on all three, zero scratch-home files. C2(b): 253 legacy pairs (220 plus the 33 new), FIFTEEN
+synthetic legacy packages (the fourteen of M11d plus `cortex`), 287 flat aliases, no identity failure, on the real worktree and on
+the export. C2(c): 17 of 17 legacy gate runs equal the current runs, 0 differ (real worktree, strict off; 289.6 s). C2(d): 657 live
+source files, 0 unparsed, 0 findings after the fixes, on the staged worktree and on the export (45 findings on the built
+worktree before them). C2(e): 16 frozen artifacts, 12 module names, all file-loaded. C3: the envelope hash gate and its self-check
+green, the `safety_envelope` document check and its self-check green, the protected diff empty, the latch path resolved through the
+real home module with a file loader under a scratch home (resolved, never opened). C4: the R-b0 probe identical in the pre and post
+censuses, the dormancy reachable set equal to the pre set with its 32 reachable moved names re-keyed (238 names before and after).
+C5: `--rl1-check` on the S1b baseline home, real worktree: brain arm PASS and zoo arm PASS (refused None, walks equal, answers equal;
+scratch home empty, baseline untouched). C6 to C9 green inside the census (invariants empty, strict registry parity) and C6 re-run
+directly on the real worktree and the export (the fifteen legacy packages and their directories: none on disk). Citation STRICT 0
+unexempted with its 2 exemptions; BROAD 2567 across 314 files, equal to the forecast; the document command guard (67 runnable, 0
+unrunnable) and the document budget passed; `policy_manifest --audit` passed (P3, P4, P6, P7, P8, e-prop, P4c PASS; no unclaimed and
+no out-of-CI gate); `p6_gate` self-check (6 of 6 constructed reds, 4 of 4 controls) and `move_gate`'s self-check with the mover and
+the R-L1 baseline (C1, F5, C2(b), F3(c), F2, C2(c) and C5 reds fired in copies; C2(d)'s positive control found F7's six sites) passed.
+The 33 module self-checks ran as `-m snn_data_lake.faculties.<module>`, each rc 0, scratch homes empty, and again as `-m` of their
+old names on the parent export for comparison: 25 of the 33 outputs are byte-identical, five differ only by a re-pointed
+path they quote or derive and three only by a measured timing. The bounded run of the 54 test files that name a moved module or
+the package, the runner or the move and gate tables, plus M11a's recorded list (brain-building tests) and the tests of the gates
+and tools this stage edits by hand (`-o addopts= -p no:cacheprovider -m 'not slow'`, scratch home) on the staged worktree: 914
+passed, 11 deselected, 1 failed (28 min 10 s). The one failure is `tests/test_g8_move_gate.py`'s `_LEGACY_PKGS` literal: that
+file was imported by the run before the literal was re-derived (the hand edit landed while the run was in progress, as did the
+`_KB` comment move and one docstring re-wrap); the file was re-run alone afterwards (22 passed), and seven files, it,
+`test_analogy_bench` (names `schema_induction`), `test_metacognition_instrument` and the four tests this stage edited, were
+re-run together at the final state: 135 passed (3 min 41 s). The 54-file list was NOT re-run in full. `tools/coverage_score.py
+score --check` reads the same 194 unsupported claims on the parent export and the built tree (a baseline red; the re-pointed
+`path:line#anchor` citations resolve as the old ones did, the outputs differing only in history-dependent lines).
+
+**F16 (the row's own check, run in this cheap half).** `reasoning_cortex`'s and `schema_induction`'s own self-checks ran green on the
+real worktree (rc 0, scratch homes empty), and `schema_induction`'s printed reading of its confidence-gate red is `kb_ranking import
+blocked -> confidence_gate_ran=False`: the neuter blocks the module the code now reads. A green self-check does not show that
+`reasoning_cortex`'s three asserts can fire (a stale key passes them vacuously), so each was given a positive control in a fresh
+process on the real worktree: with `kb_ranking` imported before `main()` the first assert fired ("must not load before the
+relational expert's first use"); with the kb-completion cortex build made to import it the second fired ("building the cortex must not
+import"); with routing on that cortex made to import it the third fired ("routing non-relational queries must never touch numpy");
+the no-interference baseline completed. The same four runs on a throwaway export whose `reasoning_cortex` key was put back to the
+stale spelling completed all three controls without a single assert firing (vacuous), which is what the derivation closes.
+
+**Planted red (C2(d), F16, in an export copy `planted_tree`, never the worktree; green on the real tree).** `schema_induction`'s
+`_KB` was put back to its retired cortex path in the copy. `move_gate --c2d --root planted_tree` exited 1 with two findings at the
+planted line (the qualified package and the `cortex.kb_ranking` pair), against 0 on the real tree; and the copy's own `schema_induction`
+self-check exited 1 (the stale key blocks nothing, the governed import succeeds, `confidence_gate_ran` stays true and the self-check's
+own assertion that it must read False fails), against rc 0 on the real tree. The strict census diff over the copy still equals the
+declared delta (observed delta `AE229B414BB91821`, byte-equal to the real tree's, planted census SHA-256 begins `30D11B0DDEF61745`,
+122.6 s): C1 reads gate outputs and registries, and this string is read by no gate, so C2(d) and the self-check are the detectors,
+as the row names them.
+
+**Time.** Pre export, census and frozen-map names 122.0 s. Build (mover, both rewriters, hand edits, rule-census regeneration, policy
+manifest, ruff, C2(d) over the built tree and its fixes, atlas, file-count and BROAD forecasts, declaration) 14.9 min of wall clock
+from the first command to the declaration being written, the pre census not included. Cheap half: about 43 min of wall clock from the first post command to the last check finishing, run partly in
+parallel: post export, census and diff 114.1 s, the planted census 122.6 s, C2(c) 289.6 s, `policy_manifest --audit` 47.7 s,
+`p6_gate` self-check 72.0 s, the `move_gate` self-check 85 s, the 33 module self-checks about 80 s together per tree, the F16 runs 38 s
+together, the R-L1 check 3.3 s, the bounded pytest 28 min 10 s on the worktree, run in the background beside the other checks.
+
+NOT VERIFIED BY A BATTERY. The stage is verified by the cheap half only; nothing is committed or pushed (the tree is staged), no daemon
+was started and no live-lake file was opened. The `slow`-marked tests were deselected from the bounded pytest (`-m 'not slow'`), so
+they stay owed to the battery. G8-3's panel, fold and one battery remain owed.

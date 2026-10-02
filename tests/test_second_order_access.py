@@ -1,5 +1,5 @@
 """
-Edge tests for cortex/second_order_access.py: the SECOND-ORDER access monitor reads high
+Edge tests for faculties/second_order_access.py: the SECOND-ORDER access monitor reads high
 when content reliably reached the workspace, reads zero when ignition FAILED (even under a
 loud first-order report), holds on weak/masked access, calibrates above chance on a mixed
 stream, and is deterministic. The full un-riggable protocol with the failing controls and
@@ -11,7 +11,7 @@ Run: pytest tests/test_second_order_access.py
 
 import random
 
-from snn_data_lake.cortex.second_order_access import _BANNED, SecondOrderAccess
+from snn_data_lake.faculties.second_order_access import _BANNED, SecondOrderAccess
 
 
 def test_strong_reliable_access_reads_high_and_does_not_hold():

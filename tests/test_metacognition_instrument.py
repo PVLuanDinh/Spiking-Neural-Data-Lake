@@ -2,9 +2,9 @@
 (evidence/t077-metacognition.md 2.4).
 
 WRITTEN AND COMMITTED **RED**, before `track_error` / `replay_reliability` exist in
-`cortex/metacognitive_monitor.py`, per the pre-registration's commit order (2.9 step 1). The import
-below is the red: collection fails until the instrument lands. Each test constructs the input on
-which the instrument must FAIL (or refuse), with the control that must hold in the same test.
+`faculties/metacognitive_monitor.py`, per the pre-registration's commit order (2.9 step 1). The
+import below is the red: collection fails until the instrument lands. Each test constructs the input
+on which the instrument must FAIL (or refuse), with the control that must hold in the same test.
 
   R0 REPLAY      -- the offline replay of the monitor on a recorded input stream reproduces its
                     read exactly; a recorded read perturbed by 1e-9 on one tick is CAUGHT.
@@ -34,7 +34,7 @@ import random
 
 import pytest
 
-from snn_data_lake.cortex.metacognitive_monitor import (
+from snn_data_lake.faculties.metacognitive_monitor import (
     RHO,
     T_BAR,
     MetacognitiveMonitor,
@@ -168,7 +168,7 @@ def test_r4_the_synthetic_world_is_not_relay_proof_by_construction():
     """On the monitor's own world, abstaining on the unreliable RAISES committed accuracy (the
     module's claim 2): first-order accuracy is NOT preserved under the gate there, so (b4)'s
     equivalence must read NOT MET on this input -- the red for the behavioural half."""
-    from snn_data_lake.cortex.metacognitive_monitor import _experiment
+    from snn_data_lake.faculties.metacognitive_monitor import _experiment
 
     r = _experiment(seed=0)
     n = r["committed"]

@@ -13,66 +13,6 @@
   "task": "specs/022 T051c"
  },
  "rules": {
-  "cortex/autotelic_goals.py::GoalConditionedReadout.train": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/counterfactual_sim.py::CounterfactualSim.learn": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/kb_ranking.py::DistMult.train_epoch": {
-   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
-   "governed": true,
-   "kind": "APPROXIMATES_GRADIENT"
-  },
-  "cortex/language_acquisition.py::LanguageAcquisition._learn_step": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/language_self_build.py::_train_eval": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/learned_attention.py::LearnedAttention.learn": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/learned_evc.py::LearnedEVC.learn": {
-   "disposition": "expressible -- T050 census (value/cost forms)",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/reasoning_curriculum.py::ReasoningLearner._train_units": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/reasoning_curriculum.py::ReasoningLearner.replay_consolidate": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/reasoning_curriculum.py::ReasoningLearner.train_premise": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/rose_language.py::RoseLanguage.nightly_refit": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
-  "cortex/time_cells.py::TimeCellClock.learn_interval": {
-   "disposition": "UNDISPOSITIONED",
-   "governed": true,
-   "kind": "LOCAL"
-  },
   "faculties/acetylcholine.py::RecurrentStore.encode": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -95,6 +35,16 @@
   },
   "faculties/affective_appraisal.py::AffectiveAppraisal.step": {
    "disposition": "needs-pre-collapse -- T050 census",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/autotelic_goals.py::GoalConditionedReadout.train": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/counterfactual_sim.py::CounterfactualSim.learn": {
+   "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
   },
@@ -143,8 +93,33 @@
    "governed": true,
    "kind": "LOCAL"
   },
+  "faculties/kb_ranking.py::DistMult.train_epoch": {
+   "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
+   "governed": true,
+   "kind": "APPROXIMATES_GRADIENT"
+  },
+  "faculties/language_acquisition.py::LanguageAcquisition._learn_step": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/language_self_build.py::_train_eval": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "faculties/latent_q.py::LatentQ.update": {
    "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/learned_attention.py::LearnedAttention.learn": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/learned_evc.py::LearnedEVC.learn": {
+   "disposition": "expressible -- T050 census (value/cost forms)",
    "governed": true,
    "kind": "LOCAL"
   },
@@ -158,7 +133,27 @@
    "governed": true,
    "kind": "APPROXIMATES_GRADIENT"
   },
+  "faculties/reasoning_curriculum.py::ReasoningLearner._train_units": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/reasoning_curriculum.py::ReasoningLearner.replay_consolidate": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/reasoning_curriculum.py::ReasoningLearner.train_premise": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "faculties/reentrant_workspace.py::ReentrantWorkspace._hebb_update": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/rose_language.py::RoseLanguage.nightly_refit": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
@@ -184,6 +179,11 @@
    "kind": "APPROXIMATES_GRADIENT"
   },
   "faculties/spiking_storage_prototype.py::train": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "faculties/time_cells.py::TimeCellClock.learn_interval": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"

@@ -213,11 +213,11 @@ def main():
     def tune_more(state):  # a second real improvement, stacks on the first
         state["accuracy"] = 0.83
 
-    a1 = imp.propose(Change("tune-threshold", ["cortex/readout.py"], tune))
+    a1 = imp.propose(Change("tune-threshold", ["faculties/readout.py"], tune))
     a2 = imp.propose(Change("faster-but-broken", ["substrate/binlog.py"], regress))
-    a3 = imp.propose(Change("cosmetic-noop", ["cortex/readout.py"], noop_gain))
+    a3 = imp.propose(Change("cosmetic-noop", ["faculties/readout.py"], noop_gain))
     a4 = imp.propose(Change("boost-via-reflex", ["brainstem/reflex.py"], touch_safety))
-    a5 = imp.propose(Change("tune-more", ["cortex/readout.py"], tune_more))
+    a5 = imp.propose(Change("tune-more", ["faculties/readout.py"], tune_more))
 
     for name, (ok, why) in [
         ("tune-threshold", a1),

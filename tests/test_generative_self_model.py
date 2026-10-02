@@ -8,7 +8,7 @@ state without touching the learned weights.
 Run: pytest tests/test_generative_self_model.py
 """
 
-from snn_data_lake.cortex.generative_self_model import GenerativeSelfModel
+from snn_data_lake.faculties.generative_self_model import GenerativeSelfModel
 
 DIM = 4
 

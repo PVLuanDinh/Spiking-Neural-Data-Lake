@@ -58,7 +58,7 @@ def test_P4_construction_fires_on_the_QUALIFIED_spelling_too(tmp_path, monkeypat
     viol = _scan_fixture(
         tmp_path,
         monkeypatch,
-        "from snn_data_lake.cortex import brain\n\n\ndef solve():\n    return brain.Brain()\n",
+        "from snn_data_lake.engine import brain\n\n\ndef solve():\n    return brain.Brain()\n",
     )
     assert [v[2] for v in viol] == ["P4-CONSTRUCTION"], viol
     assert "brain.Brain(" in viol[0][3], "the finding must quote the spelling it found"

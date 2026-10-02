@@ -39,7 +39,7 @@ import sys
 import sysconfig
 
 
-# distinct-from: sensorimotor/wavefront_planner.py, cortex/quality_diversity.py,
+# distinct-from: sensorimotor/wavefront_planner.py, faculties/quality_diversity.py,
 #   sleep/sleep_replay.py, sleep/circadian_clock.py,
 #   gates/gradient_claim_gate.py -- the hook matched shared verbs (run/refuse/free);
 #   none guards the interpreter. This EDIT EXTENDS the incumbent guard in place (one
@@ -111,52 +111,6 @@ require_free_threaded()
 
 # region -> modules  (single source of truth for the anatomical layout)
 REGIONS = {
-    "cortex": [
-        "theta_gamma_code",
-        "divisive_normalization",
-        # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): the ONE live-tick
-        # percept readout (feedback alignment + fixed-random L6, no weight transport) --
-        # engine/brain.py constructs it lazily on every real percept; numpy-only, CORE tier.
-        "is_snn_forward",
-        # PROMOTED 2026-08-13 (was reasoning/snn_moe_classifier.py): firing-rate ROUTED
-        # mixture-of-experts over snn_classifier's spiking experts. CORE, not TORCH_TIER -- it
-        # imports only math/random/numpy plus readout.snn_classifier and infra._mathutils.
-        # Reached from sensorimotor/recognizer_bank.py. Its blocker was an UNRESTORED process-global
-        # `random.seed(0)`, fixed with infra/brain_bundle.py's snapshot-seed-restore pattern.
-        "vsa_reasoning",
-        "prefrontal_executive",
-        # higher cognition / self-model / self-improvement (v3.14+)
-        "access_consciousness",
-        "self_model",
-        "metacognitive_monitor",
-        "theory_of_mind",
-        "reasoning_curriculum",
-        "autotelic_goals",
-        "quality_diversity",
-        "self_improvement_suite",
-        "wholistic_loop",
-        # PROMOTED from reasoning/ 2026-08-04: the three neuron models `neuron_zoo`
-        # composes. They fed a GOVERNED module from outside the gate.
-        "agency_monitor",
-        "affect_core",
-        "crossmodal_binder",
-        "executive_control",
-        "time_cells",
-        "task_set",
-        "generative_self_model",  # C1: spiking clock / task-set-shift / learned generative self-model
-        "recursive_tom",
-        "counterfactual_sim",  # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator simulation
-        "learned_attention",  # C1 batch-3: learned spiking reticular attention gate (local plasticity)
-        "learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
-        "second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
-        "percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
-        "kb_ranking",  # PROMOTED from reasoning/ 2026-08-11 (#10 batch-1): open-vocab DistMult KB completion head
-        "language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): autonomous R-STDP language assemblies; LIVE on the sleep tick
-        "competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f, was reasoning/brain_adapters/executive_control -- the LAST brain_adapters module): dopamine-RPE lr gate + the PUBLIC CompetenceDynamics/goal_value planning objects (the WorkspaceBroadcast/ExecutivePlanner wrappers RETIRED later the same day -- retirement record in-file); renamed because the basename is taken by cortex/executive_control (brain_atlas.py:81 asserts uniqueness)
-        "vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner relational structure-mapping over VSA spike codes; LIVE via reasoning_cortex's structure-map solver (reached from brain.py's lazy :924 -- the lane's own I001 sort moved it from :928 -- + reasoning_cortex:705). P3 debt carried visibly, NOT fixed here: brain.py:967's `_structure_mapper` attribute is write-only (AUDIT_BACKLOG M11) -- retire-or-read is its own commit. P2 direction recorded in-file: the dim-parameterised _cleanup_project is THE mechanism; reasoning/resonator_network's hardcoded copy (measured 300/300 bit-identical at dim=512) delegates or retires when its lane arrives.
-        "rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): the ROSE fluent-language pipeline (VSA constituency parse + KB-grounded comprehend + SLDA competence), LIVE via brain._rose_serve's lazy reach. P3/P4b debt carried visibly, NOT discharged by the move (AUDIT_BACKLOG H7, runtime-reproduced at the promotion audit): nightly_refit moves the SLDA sufficient statistics while competence() returns the build-time cached acc byte-identical; the refit filter accepts a novel HEAD coded OOV-zero; _readout is per-Brain RAM reaching brain_lake.bin nowhere. P2 direction recorded: rose's derived parameterisation (rff from in_dim, ctx from data, relations from the KB ratio) is THE mechanism; sensorimotor/world_kb_stream main()'s four-literal demo copy consumes it or retires at the family's next lane.
-        # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
-    ],
     "brainstem": [
         "reflex",
         "serial_arm",
@@ -172,7 +126,7 @@ REGIONS = {
         # PROMOTED from reasoning/ 2026-08-04, AFTER its P7 redesign (owner rule: redesign
         # first, promote second). Oja (1982) is a HEBBIAN RULE with a normalizing decay term,
         # w += lr*y*(x - y*w): no membrane, no threshold, no spike. A plasticity rule, not a
-        # neuron model. Sole governed importer: cortex/percept_surprise.py.
+        # neuron model. Sole governed importer: faculties/percept_surprise.py.
         #
         # P7: the compromise was at the BOUNDARY -- percept_surprise held a numpy residual and
         # called .tolist() per sample, at in_dim=2312, purely so a list-based OjaNeuron could
@@ -485,6 +439,38 @@ REGIONS = {
         "spiking_pid",
         "superior_colliculus",
         "synfire_chain",
+        "access_consciousness",
+        "affect_core",
+        "agency_monitor",
+        "autotelic_goals",
+        "competence_executive",
+        "counterfactual_sim",
+        "crossmodal_binder",
+        "divisive_normalization",
+        "executive_control",
+        "generative_self_model",
+        "is_snn_forward",
+        "kb_ranking",
+        "language_self_build",
+        "learned_attention",
+        "learned_evc",
+        "metacognitive_monitor",
+        "percept_surprise",
+        "prefrontal_executive",
+        "quality_diversity",
+        "reasoning_curriculum",
+        "recursive_tom",
+        "rose_language",
+        "second_order_access",
+        "self_improvement_suite",
+        "self_model",
+        "task_set",
+        "theory_of_mind",
+        "theta_gamma_code",
+        "time_cells",
+        "vsa_reasoning",
+        "vsa_structure_mapping",
+        "wholistic_loop",
     ],
 }
 
@@ -494,23 +480,6 @@ REGIONS = {
 # is present. Every OTHER torch-trained organ (pc_cortex_serve, brain, jepa/hjepa serve,
 # neurogenesis) imports lazily and lives in REGIONS above. See brain_atlas for the gated verification.
 TORCH_TIER = {
-    "cortex": [
-        "language_acquisition",
-        # PROMOTED 2026-08-12 (PROMOTE lane 4/4, was training/eprop_nmnist.py): the brain's
-        # N-MNIST perception encoder (e-prop, cosine>0.5 vs BPTT asserted in-check). TORCH_TIER
-        # because torch is imported at module top; reached on Brain's CONSTRUCTION path
-        # (brain.py's perception-tier try block). Its e-prop engine lives in `eprop_kernel` below,
-        # which it and `eprop_shd` both import.
-        # The ONE e-prop engine (specs/013 C4). Holds the nine definitions that were byte-identical
-        # across eprop_nmnist and eprop_shd -- surrogate spike fn, the independent BPTT reference,
-        # the cosine comparator, the Adam step, the evaluation loop, and the LIF base. Both
-        # consumers import from it; neither carries a copy. Verified bit-exact across the merge
-        # (12/12 pinned tensors identical, tests/pin/), which is the check that matters here --
-        # the cosine assert is measurably blind to the one judgment call it contains.
-        # PROMOTED 2026-08-13 (specs/013 C3, was training/eprop_shd.py): the brain's SHD audio
-        # perception encoder, the auditory twin of eprop_nmnist. TORCH_TIER for the same reason
-        # (torch at module top), reached on the same construction path via brain.py's audio try.
-    ],
     "sensorimotor": [
         "eprop_nmnist",
         "eprop_shd",
@@ -524,6 +493,9 @@ TORCH_TIER = {
     ],
     "readout": [
         "online_readout",
+    ],
+    "faculties": [
+        "language_acquisition",
     ],
 }
 
@@ -964,7 +936,7 @@ class _AliasLoader(importlib.abc.Loader):
 
 # distinct-from: sensorimotor/eprop_shd.py -- _self_ref derives one module's own identity; these extend
 #   this file's own alias layer in place (one layer: the flat alias plus G8's legacy paths). Also
-#   read: faculties/spiking_jepa.py (target_encode), cortex/vsa_reasoning.py (coincidence),
+#   read: faculties/spiking_jepa.py (target_encode), faculties/vsa_reasoning.py (coincidence),
 #   faculties/grid_place_map.py (_pearson), substrate/lake_recall.py (_find_cell_collision).
 class _LegacyLoader(_AliasLoader):
     """G8 S1b: a legacy two-level path's alias -- the same identity as the flat alias, plus

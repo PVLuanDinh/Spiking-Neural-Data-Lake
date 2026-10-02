@@ -1,4 +1,4 @@
-"""Tests for cortex/counterfactual_sim.py -- brain-native counterfactual imagination.
+"""Tests for faculties/counterfactual_sim.py -- brain-native counterfactual imagination.
 
 Verifies the learned forward model reduces imagination error with local training, the do()-operator
 ranks the target-reaching action first, and determinism.
@@ -6,7 +6,7 @@ ranks the target-reaching action first, and determinism.
 (A fourth test asserted that importing the module pulled in neither numpy nor torch -- "it must
 stay in the zero-dependency core". Removed 2026-07-29 with that rule; note at the bottom.)"""
 
-from snn_data_lake.cortex.counterfactual_sim import CounterfactualSim, _toy_experiment
+from snn_data_lake.faculties.counterfactual_sim import CounterfactualSim, _toy_experiment
 
 
 def test_learns_reduces_imagination_error():

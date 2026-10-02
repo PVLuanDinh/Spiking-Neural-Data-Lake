@@ -103,7 +103,7 @@ against the 80 consecutive `maintain()` calls a pop needs (`0.98^79 = 0.2027 >= 
 
 **The input-free interval already exists inside the wake loop.** It was never missing. What is
 missing is the call: `PrefrontalExecutive.maintain()` has no live caller. Confirmed -- its callers
-are `cortex/autotelic_goals.py:315`, `reasoning/autonomous_brain.py:122`,
+are `faculties/autotelic_goals.py:315`, `reasoning/autonomous_brain.py:122`,
 `reasoning/developmental_core.py:153`, `reasoning/developmental_loop_wm.py:56,65,128`, all
 offline, plus one self-check.
 
@@ -121,7 +121,7 @@ reason to close the file -- both were arguing about an interval that already exi
 
 ### C-B. The "permanent structural blocker" on the working memory is real but non-blocking
 
-`cortex/prefrontal_executive.py:350-357` is confirmed verbatim: `top_down_bias` is
+`faculties/prefrontal_executive.py:350-357` is confirmed verbatim: `top_down_bias` is
 `bias[frame[0]] += strength` and **never reads `frame[1]`**, so the decayed drive magnitude
 reaches no consumer.
 
@@ -727,7 +727,7 @@ it adds is dormant on arrival.
 
 - **Tiers:** 5 of 8 sites are a one-line `step()` unwrap (`autonomous_loop.py:235,1168`;
   `executive_control.py:102,112`; `rpm_solver.py:305-308`; `spike_chat_lake.py:817-825`).
-  2 modules are genuine behavioural ports: `cortex/access_consciousness.py:92-98` (the
+  2 modules are genuine behavioural ports: `faculties/access_consciousness.py:92-98` (the
   `subscribe(fn)` callback idiom `ReentrantWorkspace` cannot express) and
   `reasoning/train_of_thought.py:92,97,157-158,244` (depends on per-(source, content) decay;
   `ReentrantWorkspace` has only a scalar `_g_reentry`).

@@ -59,14 +59,14 @@ CORE = [
     "sensorimotor.population_encoding",
     "sensorimotor.multimodal_encoder",
     "sensorimotor.spike_preprocessing",
-    "cortex.theta_gamma_code",
+    "faculties.theta_gamma_code",
     "sensorimotor.rsnn_encoder",
     "growth.lif_neuron",
     "growth.dendritic_neuron",
     "growth.izhikevich_neuron",
     "growth.hodgkin_huxley",
     "growth.alif_neuron",
-    "cortex.divisive_normalization",
+    "faculties.divisive_normalization",
     "instruments.neuronal_avalanches",
     "reservoir.cortical_microcircuit",
     "growth.cortical_prior",  # H01 human reference data: every entry carries its four attributes
@@ -82,7 +82,7 @@ CORE = [
     "sensorimotor.lca_sparse_coding",
     "readout.predictive_coding",
     "sensorimotor.pc_cortex_serve",
-    "cortex.is_snn_forward",
+    "faculties.is_snn_forward",
     "reservoir.neural_sampling",
     "readout.snn_classifier",
     # PROMOTED 2026-08-13 from reasoning/ -- and moved RESEARCH -> CORE with it. It had been
@@ -98,54 +98,54 @@ CORE = [
     "sensorimotor.gesture_recognition",
     "sensorimotor.nl_interface",
     "sensorimotor.spiking_lm_serve",
-    "cortex.vsa_reasoning",
-    "cortex.prefrontal_executive",
+    "faculties.vsa_reasoning",
+    "faculties.prefrontal_executive",
     "engine.live_brain",
     "readout.interaction_learning",
     "sensorimotor.recognizer_bank",
     "growth.neuron_zoo",
-    "cortex.access_consciousness",
+    "faculties.access_consciousness",
     "instruments.integration_measure",
-    "cortex.self_model",
-    "cortex.reasoning_curriculum",
+    "faculties.self_model",
+    "faculties.reasoning_curriculum",
     "growth.autapse_neuron",
     "growth.adex_neuron",
     "growth.resonate_and_fire",
     "growth.srm_neuron",
-    "cortex.metacognitive_monitor",
+    "faculties.metacognitive_monitor",
     # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): live-tick percept
     # readout; numpy-only, real cached N-MNIST pack, measured ~2-5s. CORE, not TORCH_GATED.
     "readout.laminar_local_readout",
-    "cortex.wholistic_loop",
-    "cortex.autotelic_goals",
-    "cortex.quality_diversity",
-    "cortex.self_improvement_suite",
-    "cortex.theory_of_mind",
-    "cortex.agency_monitor",
-    "cortex.affect_core",
-    "cortex.crossmodal_binder",  # W6: categorical emotion + 2nd-order ToM; cross-modal super-additive binding
-    "cortex.executive_control",  # W8: ACC conflict + EVC + tree/sequence planning
-    "cortex.competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f): dopamine-RPE lr gate + public competence-planning objects (wrappers retired same day); stdlib-only, ~1s
+    "faculties.wholistic_loop",
+    "faculties.autotelic_goals",
+    "faculties.quality_diversity",
+    "faculties.self_improvement_suite",
+    "faculties.theory_of_mind",
+    "faculties.agency_monitor",
+    "faculties.affect_core",
+    "faculties.crossmodal_binder",  # W6: categorical emotion + 2nd-order ToM; cross-modal super-additive binding
+    "faculties.executive_control",  # W8: ACC conflict + EVC + tree/sequence planning
+    "faculties.competence_executive",  # PROMOTED+RENAMED 2026-08-12 (#10 lane 4f): dopamine-RPE lr gate + public competence-planning objects (wrappers retired same day); stdlib-only, ~1s
     "instruments.nef_compute",  # PROMOTED 2026-08-12 (PROMOTE lane): NEF reference implementation / nengo_bridge ground truth; numpy-only, ~0.2s
-    "cortex.vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner structure-mapping analogy (VSA/resonator); stdlib, ~0.1s
-    "cortex.rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): ROSE fluent-language pipeline (VSA constituency + grounded semantics + SLDA competence); ~0.5s
-    "cortex.time_cells",
-    "cortex.task_set",
-    "cortex.generative_self_model",  # C1: spiking clock / task-set-shift / learned generative self-model
-    "cortex.recursive_tom",
-    "cortex.counterfactual_sim",  # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator
-    "cortex.learned_attention",  # C1 batch-3: learned spiking reticular attention gate
+    "faculties.vsa_structure_mapping",  # PROMOTED 2026-08-12 (PROMOTE lane): Gentner structure-mapping analogy (VSA/resonator); stdlib, ~0.1s
+    "faculties.rose_language",  # PROMOTED 2026-08-12 (PROMOTE lane): ROSE fluent-language pipeline (VSA constituency + grounded semantics + SLDA competence); ~0.5s
+    "faculties.time_cells",
+    "faculties.task_set",
+    "faculties.generative_self_model",  # C1: spiking clock / task-set-shift / learned generative self-model
+    "faculties.recursive_tom",
+    "faculties.counterfactual_sim",  # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator
+    "faculties.learned_attention",  # C1 batch-3: learned spiking reticular attention gate
     "instruments.attention_schema",  # specs/022 T078 Part I: G3/G4's six reds on constructed streams (no brain, no lake); the campaign is --t078-campaign only
     "instruments.report_order_probe",  # specs/022 T081 [US4]: 2.4's six reds on constructed workspaces (no brain, no lake); the campaign is --t081-campaign only
     "instruments.everyday_battery",  # specs/022 Phase 4 C0: 2.5's five constructed reds + (k)/(s)/(p)'s constructed arms (no brain, no lake); the campaign is --c0-campaign only
-    "cortex.learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
-    "cortex.second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
+    "faculties.learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
+    "faculties.second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
     "growth.heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
-    "cortex.percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
-    "cortex.kb_ranking",  # PROMOTED 2026-08-11 (#10 batch-1): DistMult KB completion; offline fallback keeps it deterministic
+    "faculties.percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
+    "faculties.kb_ranking",  # PROMOTED 2026-08-11 (#10 batch-1): DistMult KB completion; offline fallback keeps it deterministic
     "sensorimotor.corpus_stream",  # PROMOTED 2026-08-11 (#10 family C2): real corpus + CMUdict ingestion; offline fallback deterministic
     "sensorimotor.world_kb_stream",  # PROMOTED 2026-08-11 (#10 family C2b): masked-slot fact completion vs per-relation baseline (0.4s)
-    "cortex.language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): real corpus + controls; NORD_EVAL_N bounds only the eval sample
+    "faculties.language_self_build",  # PROMOTED 2026-08-11 (#10 family C6): real corpus + controls; NORD_EVAL_N bounds only the eval sample
     "readout.language_readout_slda",  # PROMOTED 2026-08-11 (#10 family C5): equal-budget n-gram bar (fair_compare's port) + full-train bar
     "sleep.nightly_skills",  # PROMOTED 2026-08-11 (#10 family C9a, from the RESEARCH list): the ONE standing skills loop, sleep-tick entry
     # hippocampus â€” memory formation, spatial coding, replay
@@ -470,7 +470,7 @@ RESEARCH = [
 # (engine.brain the unified brain + growth.neurogenesis_engine) is the user-authorized relaxation
 # of the zero-dep-core rule for "the best-performing brain" -- the zero-dep core still runs with no
 # torch (Brain degrades to its deterministic narrator + no growth). SpikeGPT was SCRAPPED (v3.77): no
-# imported language model; conversation is the narrator + the brain-native cortex.language_acquisition
+# imported language model; conversation is the narrator + the brain-native faculties.language_acquisition
 # (numpy predictive-coding + local plasticity, gated here so it never pollutes the pure in-process test).
 TORCH_GATED = [
     "growth.ng_snn",
@@ -478,7 +478,7 @@ TORCH_GATED = [
     "readout.growable_readout",  # PROMOTED 2026-08-11 (#10 lane 4b): grow-preservation 1.9e-06, freeze retention delta (8.4s)
     "engine.brain",
     "growth.neurogenesis_engine",
-    "cortex.language_acquisition",
+    "faculties.language_acquisition",
     "sensorimotor.eprop_nmnist",  # PROMOTED 2026-08-12 (PROMOTE lane 4/4): N-MNIST e-prop perception encoder; bare check ~6s CPU incl torch import
     "sensorimotor.eprop_shd",  # PROMOTED 2026-08-13 (specs/013 C3): SHD e-prop audio perception encoder, the auditory twin
     "plasticity.eprop_kernel",  # NEW 2026-08-13 (specs/013 C4): the ONE e-prop engine both encoders import; two demonstrated reds
@@ -515,7 +515,7 @@ _ROOT = os.path.dirname(os.path.abspath(__file__))
 # Writing the producer removes entries from this dict. That is the fix; this is the accounting.
 #
 # EMPTY as of 2026-07-29, and by the fix rather than by giving up on it: the sole entry was
-# `cortex.percept_surprise` -> `models/nmnist_pack.npz`, one of the two perception packs that had five
+# `faculties.percept_surprise` -> `models/nmnist_pack.npz`, one of the two perception packs that had five
 # reader sites and no producer. `training/make_packs.py` is now that producer -- it rebuilds
 # nmnist_pack.npz and shd_pack.npz from tonic, byte-for-byte identical to the artifacts every
 # perception number in this repo was measured against (verified: 0 of 8,878,080 and 0 of 17,920,000

@@ -200,7 +200,7 @@ PROVENANCE = {
     "reliability": (
         "MEASURED, and measured NOT to be what its name suggests (T077, 2026-09-15, "
         "evidence/t077-metacognition.md 3.3-3.4, pin tools/t077_metacognition.json): the fused spike-count "
-        "rate of cortex/metacognitive_monitor over the self-model's confidence / surprise / learning progress / "
+        "rate of faculties/metacognitive_monitor over the self-model's confidence / surprise / learning progress / "
         "novelty / ACC conflict. On a scratch brain's prequential readout stream (600 ticks, 8 seeds) it does NOT "
         "track the readout's own error rate better than a fixed prior: paired t +0.50 against the bar 1.895, four of "
         "eight seeds below chance; removing the read in vivo collapses nothing (t +0.37). It decides the chat "
@@ -212,7 +212,7 @@ PROVENANCE = {
     "crossmodal_bound_rate": (
         "MEASURED (T080, 2026-09-16, evidence/t080-temporal-binding.md 3.3-3.4, pin "
         "tools/t080_temporal_binding.json + tools/t080_latents.npz, head c3a9fb5): the fraction of the last "
-        "200 awake ticks on which cortex/crossmodal_binder reported ONE bound object (crossmodal_handle not "
+        "200 awake ticks on which faculties/crossmodal_binder reported ONE bound object (crossmodal_handle not "
         "None) for the vision and audio latents presented in the same tick. The C5 row temporal_binding is "
         "CHARGED by that pin, on a scratch brain fed an ALIGNED bimodal stream: features inside one window are "
         "bound into one reported object more often than features across windows -- within-window 0.26-0.42 "
@@ -234,7 +234,7 @@ PROVENANCE = {
         "MEASURED (T081, 2026-09-16, evidence/t081-report-order.md 2.6 and section 3, pin "
         "tools/t081_report_order.json, head f5cf8b8): the LIVE charge margin of the arm's global "
         "workspace this tick -- (g_top - g_second) / g_top over the slots, read by "
-        "cortex/report_order_probe._t081_top_margin on the same bus Brain.state()['workspace_report'] "
+        "instruments/report_order_probe._t081_top_margin on the same bus Brain.state()['workspace_report'] "
         "snapshots, and None before the arm's bus exists. The C5 row report_order is CHARGED by that "
         "pin: perturbing one named intermediate changes the report, so the report is generated from "
         "the internal state -- and this licenses no claim that the report is a first-person account "
@@ -277,7 +277,7 @@ PROVENANCE = {
         "location differs from the world (an agent name, e.g. 'user') followed by the ordered nested "
         "pairs whose model of another agent differs from that agent's own belief (e.g. "
         "'user->brain') -- derived on every parsed dialogue turn by "
-        "cortex/recursive_tom.t082_false_beliefs from the CHAT'S OWN statements, and the one "
+        "faculties/recursive_tom.t082_false_beliefs from the CHAT'S OWN statements, and the one "
         "quantity the arm reads: len() of it folds into Brain._tom_protect on the wake tick and "
         "reaches AutonomousArm's caution term over the declared wire recursive_tom.belief_out -> "
         "brain.social_risk_in. IT IS A LIST OF AGENT NAMES, NOT THE ROW'S READING: the C5 row's "
@@ -314,7 +314,7 @@ PROVENANCE = {
         "['recursive_tom', 'belief_out', 'brain', 'social_risk_in'] -- diverged true, 12 reads, the "
         "caution trajectory running [1, 0.0] at the first frame to [12, 0.68] at the last against a "
         "pinned [0, 0] payload, with the constant-consumer specificity control holding -- and "
-        "cortex/recursive_tom.t082_charge_reading re-measures it on every self-check. WHAT THIS KEY "
+        "faculties/recursive_tom.t082_charge_reading re-measures it on every self-check. WHAT THIS KEY "
         "READS IN PRACTICE, measured at this surface's landing on a scratch brain at seed 0: with no "
         "dialogue at all it is [] (an empty list, not a zero -- there is no tracked object yet); a "
         "first turn carrying an absence marker is parsed WITNESSED and still reads [], because "
@@ -430,13 +430,13 @@ def _coverage_census():
 
 # distinct-from: gates/conclusion_protocol.py -- that module GATES the registry (findings a gate
 #   asserts on); this one SERVES it to the page. One registry, two consumers. Site read.
-# distinct-from: cortex/recursive_tom.py::t082_read and instruments/report_order_probe.py::t081_read --
+# distinct-from: faculties/recursive_tom.py::t082_read and instruments/report_order_probe.py::t081_read --
 #   per-seed readings of a CAMPAIGN's recording rows, producing the numbers a C5 row is charged
 #   with; this function never measures anything, it hands an already-charged row to a surface.
 #   Site read.
-# distinct-from: cortex/access_consciousness.py::bind_assembly -- grows and bundles a coalition
+# distinct-from: faculties/access_consciousness.py::bind_assembly -- grows and bundles a coalition
 #   inside the brain; no relation to the registry. Site read.
-# distinct-from: cortex/agency_monitor.py -- per-arm reported quantities of T079's campaign, a row
+# distinct-from: faculties/agency_monitor.py -- per-arm reported quantities of T079's campaign, a row
 #   that reads NOT MET and is therefore ABSENT from what this serves. Site read.
 def conclusion_rows(cognition, registry=None):
     """The CONSCIOUSNESS section: one entry per CHARGED row of C5's conclusion registry.

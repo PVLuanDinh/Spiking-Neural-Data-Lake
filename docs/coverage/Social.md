@@ -6,12 +6,12 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| tom_first_order_false_belief | 40 | src/snn_data_lake/cortex/theory_of_mind.py:101#TheoryOfMind; src/snn_data_lake/engine/brain.py:3950#_tom_report | - | auditor:Social live-brain reply probe (make_brain seed=0, 5 ticks + 7 dialogue turns) | 2026-07-30 |
+| tom_first_order_false_belief | 40 | src/snn_data_lake/faculties/theory_of_mind.py:101#TheoryOfMind; src/snn_data_lake/engine/brain.py:3950#_tom_report | - | auditor:Social live-brain reply probe (make_brain seed=0, 5 ticks + 7 dialogue turns) | 2026-07-30 |
 | tom_belief_guided_caution | 45 | src/snn_data_lake/engine/brain.py:1737#_route_percept_to_action; src/snn_data_lake/engine/autonomous_loop.py:903#_bg_select | social_tom_caution_60.txt | refuter:Social -- band 61 REFUTED to 45 / social_tom_refute_probe.py arm 60 at seeds 0,1,2: 23, 0 and 4 action flips, seed 1 exit 1 CONSUMED-BUT-NOT-DECISIVE (social_tom_refute_seed1_60.txt) | 2026-07-30 |
-| empathy_affective_contagion | 40 | src/snn_data_lake/cortex/affect_core.py:198#empathize; src/snn_data_lake/engine/brain.py:3726#respond | - | auditor:Social live-brain reply probe (empathy clause observed in the reply) | 2026-07-30 |
+| empathy_affective_contagion | 40 | src/snn_data_lake/faculties/affect_core.py:198#empathize; src/snn_data_lake/engine/brain.py:3726#respond | - | auditor:Social live-brain reply probe (empathy clause observed in the reply) | 2026-07-30 |
 | pragmatics_implicature | 40 | src/snn_data_lake/reasoning/pragmatics.py:356#implicature; src/snn_data_lake/reasoning/spike_chat_lake.py:1326#converse | - | auditor:Social method-instrumented live chat -- 5 calls in 6 turns, candidate won the reply twice | 2026-07-30 |
-| tom_second_order | 35 | src/snn_data_lake/cortex/affect_core.py:210#SecondOrderToM; src/snn_data_lake/engine/brain.py:3945#_tom_report | - | auditor:Social live-brain reply probe (2nd-order clause observed in the reply) | 2026-07-30 |
-| tom_recursive_depth_k | 30 | src/snn_data_lake/cortex/recursive_tom.py:82#RecursiveToM; src/snn_data_lake/engine/brain.py:3878#_tom_update | - | auditor:Social live-brain probe -- charged at depth 2 over 2 agents; depth-k/N-agent/non-location capability never exercised | 2026-07-30 |
+| tom_second_order | 35 | src/snn_data_lake/faculties/affect_core.py:210#SecondOrderToM; src/snn_data_lake/engine/brain.py:3945#_tom_report | - | auditor:Social live-brain reply probe (2nd-order clause observed in the reply) | 2026-07-30 |
+| tom_recursive_depth_k | 30 | src/snn_data_lake/faculties/recursive_tom.py:82#RecursiveToM; src/snn_data_lake/engine/brain.py:3878#_tom_update | - | auditor:Social live-brain probe -- charged at depth 2 over 2 agents; depth-k/N-agent/non-location capability never exercised | 2026-07-30 |
 | empathy_help_drive_to_action | 25 | src/snn_data_lake/engine/brain.py:1737#_route_percept_to_action; src/snn_data_lake/engine/brain.py:1562#_route_percept_to_action | help_60.txt | auditor:Social / tools/charge_probe.py help 60 (exit 2) + a chat-live pinned-weight neuter at 0/60 | 2026-07-30 |
 | pragmatics_speech_act | 15 | src/snn_data_lake/reasoning/pragmatics.py:269#act; src/snn_data_lake/reasoning/pragmatics.py:590#classify | - | auditor:Social method-instrumented live chat -- act() called 0 times in 6 turns while implicature() got 5 | 2026-07-30 |
 | joint_attention | 0 | - | - | auditor:Social tree-wide search for shared/triadic attention, referential pointing, gaze-following | 2026-07-30 |
@@ -19,7 +19,7 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 **Mean over the nine rows = 270/9 = 30.0.** Before the adversarial pass recorded below it was
 286/9 = 31.8; one row fell, 61 -> 45, and nothing else moved.
 
-*DATED NOTE 2026-09-16 (specs/022 T082): the `tom_second_order` row's citation above is STALE and is left standing rather than rewritten -- the class it names was RETIRED at T082 (2026-09-16) under P2, after R5 measured the surviving recursive tracker reproducing its `predict_second_order` readings on 200 constructed witness scripts (1,200 of 1,200 ordered pairs). The second-order capability is not lost: it is read from `cortex/recursive_tom.py`'s `predict_nested` on the same dialogue path, and the merged feed is symmetric, so the spurious nested divergence this row's faculty could not see is gone (0 of 60 episodes per seed against 5 of 12 on the retired feed; `evidence/t082-social-cognition.md`).*
+*DATED NOTE 2026-09-16 (specs/022 T082): the `tom_second_order` row's citation above is STALE and is left standing rather than rewritten -- the class it names was RETIRED at T082 (2026-09-16) under P2, after R5 measured the surviving recursive tracker reproducing its `predict_second_order` readings on 200 constructed witness scripts (1,200 of 1,200 ordered pairs). The second-order capability is not lost: it is read from `faculties/recursive_tom.py`'s `predict_nested` on the same dialogue path, and the merged feed is symmetric, so the spurious nested divergence this row's faculty could not see is gone (0 of 60 episodes per seed against 5 of 12 on the retired feed; `evidence/t082-social-cognition.md`).*
 
 ---
 
@@ -42,7 +42,7 @@ category had exactly one such row. Five new recorded artifacts, all reproducing 
   tried and 0.0 in the neutered arm, so a negative here is a real negative and not a dead wire.
 - **The roster is not padded**, and the one omission that would have flattered the mean checks out:
   `readout/interaction_learning.py`'s only non-self-check constructors are
-  `cortex/language_self_build.py:83` and `cortex/readout_fair_compare.py:65`, so it is on Language's
+  `faculties/language_self_build.py:83` and `cortex/readout_fair_compare.py:65`, so it is on Language's
   roster rather than this one. The nine-row split really does score lower than a four-row
   per-faculty-maximum roster, as the section below shows.
 
@@ -167,7 +167,7 @@ The remaining instrument gap is the top-ranked gap at the bottom of this file.
 *Read this section against the adversarial pass above, which refuted the band it argues for. The
 measurements in it are correct and reproduce; what fell is the inference from them.*
 
-`cortex/recursive_tom` divergence -> `_tom_protect` -> `arm._social_risk` (`brain.py:1627`) is read as
+`faculties/recursive_tom` divergence -> `_tom_protect` -> `arm._social_risk` (`brain.py:1627`) is read as
 caution by both selection paths: `autonomous_loop.py:728` inside the basal-ganglia gate and `:659` in
 the non-BG fallback. Recorded in `social_tom_caution_60.txt` at exit 0. Both arms execute the IDENTICAL
 dialogue, so everything else a chat turn does is held constant and only `_social_risk` differs:
@@ -329,7 +329,7 @@ have been wrong in both directions.
 referential pointing, gaze-following and attention directed at another agent's focus. Every `gaze`
 hit is oculomotor with no second agent in it -- `faculties/sc_deep_layers.py` turns a selected
 orienting winner into a saccade command and `faculties/gain_adaptation.py` adapts the VOR. There is
-attention (`cortex/learned_attention.py`) and there are other agents (the ToM trackers), and nothing
+attention (`faculties/learned_attention.py`) and there are other agents (the ToM trackers), and nothing
 joins them: no mechanism represents "the other is attending to X" or aligns the brain's own
 attentional selection to another agent's. Citation is `-`, which the evidence standard permits at
 band 0 rather than inviting an invented one.
@@ -338,15 +338,15 @@ band 0 rather than inviting an invented one.
 
 Format: **file** -- unique capability -- live?
 
-- **`cortex/theory_of_mind.py`** -- first-order WHERE-belief as a spiking population with an LIF WTA
+- **`faculties/theory_of_mind.py`** -- first-order WHERE-belief as a spiking population with an LIF WTA
   readout; the Sally-Anne substrate -- live on the chat path, plus a birth-frozen flag.
-- **`cortex/affect_core.py` (`SecondOrderToM`)** -- nested "A believes B believes" over the same
+- **`faculties/affect_core.py` (`SecondOrderToM`)** -- nested "A believes B believes" over the same
   belief population -- live on the chat path, one fixed agent pair.
 
-  *DATED NOTE 2026-09-16 (specs/022 T082): RETIRED at T082 (2026-09-16) -- this bullet's class was deleted under P2 once R5 showed `cortex/recursive_tom.py` reproducing its readings on 1,200 of 1,200 ordered pairs over 200 constructed witness scripts; the chat path's nested belief now comes from that ONE tracker. The bullet above it is also narrowed rather than wrong: `cortex/theory_of_mind.py` STAYS (`reasoning/pragmatics.py`'s implicature engine runs its own instance) but its LIVE CHAT FEED and the birth-frozen flag that bullet names are both gone with the same merge (`evidence/t082-social-cognition.md` 2.1).*
-- **`cortex/affect_core.py` (`empathize`)** -- affective contagion as a convex pull of own
+  *DATED NOTE 2026-09-16 (specs/022 T082): RETIRED at T082 (2026-09-16) -- this bullet's class was deleted under P2 once R5 showed `faculties/recursive_tom.py` reproducing its readings on 1,200 of 1,200 ordered pairs over 200 constructed witness scripts; the chat path's nested belief now comes from that ONE tracker. The bullet above it is also narrowed rather than wrong: `faculties/theory_of_mind.py` STAYS (`reasoning/pragmatics.py`'s implicature engine runs its own instance) but its LIVE CHAT FEED and the birth-frozen flag that bullet names are both gone with the same merge (`evidence/t082-social-cognition.md` 2.1).*
+- **`faculties/affect_core.py` (`empathize`)** -- affective contagion as a convex pull of own
   valence/arousal toward another's -- live on the chat path, 9 cue phrases.
-- **`cortex/recursive_tom.py`** -- N agents, depth-k holder paths, VSA role-filler propositions
+- **`faculties/recursive_tom.py`** -- N agents, depth-k holder paths, VSA role-filler propositions
   beyond location, `wants`/`knows` attitudes -- module live, but the depth-k, N-agent and
   non-location axes are exercised only in its own `main()`.
 - **`reasoning/pragmatics.py` (`implicature`)** -- Gricean maxim step to speaker meaning, ToM-gated

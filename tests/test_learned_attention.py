@@ -1,8 +1,8 @@
-"""Tests for the learned spiking attention gate (cortex/learned_attention.py)."""
+"""Tests for the learned spiking attention gate (faculties/learned_attention.py)."""
 
 import numpy as np
 
-from snn_data_lake.cortex.learned_attention import LearnedAttention
+from snn_data_lake.faculties.learned_attention import LearnedAttention
 
 
 def test_attend_shape_and_bounds():
@@ -89,6 +89,6 @@ def test_different_seed_signature_reproducible():
 
 
 def test_selfcheck_main_runs():
-    import snn_data_lake.cortex.learned_attention as mod
+    import snn_data_lake.faculties.learned_attention as mod
 
     mod.main()  # asserts internally; must not raise

@@ -587,7 +587,7 @@ _RED = {
         "P4-CONSTRUCTION",
     ),
     "P4-CONSTRUCTION (qualified)": (
-        "from snn_data_lake.cortex import brain\n_B = brain.Brain()\n",
+        "from snn_data_lake.engine import brain\n_B = brain.Brain()\n",
         "P4-CONSTRUCTION",
     ),
     "CWD-DEPENDENT-PATH": ('import sys\nsys.path.insert(0, "src")\n', "CWD-DEPENDENT-PATH"),

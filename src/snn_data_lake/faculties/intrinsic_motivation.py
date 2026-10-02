@@ -158,7 +158,7 @@ class CuriosityDrive:
     #   learning_progress.py's adoption record and re-derivable in one probe). This method
     #   adds the |.| readout to the EMA form ONLY. Site read.
     # distinct-from: faculties/jepa_world_model.py -- BRidge error transport; unrelated. Read.
-    # distinct-from: cortex/learned_evc.py -- a dopamine-gated three-factor UPDATE; this is a
+    # distinct-from: faculties/learned_evc.py -- a dopamine-gated three-factor UPDATE; this is a
     #   read-only measurement. Site read.
     def learning_progress_abs(self, context_key):
         """|slow_EMA - fast_EMA| from the SAME state (specs/022 T046a): the UNRECTIFIED

@@ -80,7 +80,7 @@ def q95(draws):
     every caller in this tree already relies on.
 
     LIFTED 2026-09-15 (specs/022 T079) from `cortex/attention_schema._q95`, itself T078's
-    restatement of `cortex/metacognitive_monitor`'s `track_error` convention. Moved rather
+    restatement of `faculties/metacognitive_monitor`'s `track_error` convention. Moved rather
     than copied for a MEASURED reason: `agency_monitor` is a LIVE module (autonomous_loop
     imports it) and attention_schema is an EXEMPT instrument, so a live module importing it
     -- even lazily, inside a function -- makes `gates/dormancy_gate` name that exemption
@@ -95,7 +95,7 @@ def q95(draws):
     return draws[min(len(draws) - 1, int(round(0.95 * (len(draws) - 1))))]
 
 
-# consolidates: src/snn_data_lake/cortex/self_model.py (merge), src/snn_data_lake/cortex/wholistic_loop.py (merge), src/snn_data_lake/faculties/affect_integrator.py (merge), src/snn_data_lake/cortex/agency_monitor.py (merge), src/snn_data_lake/cortex/metacognitive_monitor.py (merge), src/snn_data_lake/sensorimotor/recognizer_bank.py (merge), src/snn_data_lake/substrate/stream_sketch_panel.py (merge), src/snn_data_lake/cortex/second_order_access.py (merge)
+# consolidates: src/snn_data_lake/faculties/self_model.py (merge), src/snn_data_lake/faculties/wholistic_loop.py (merge), src/snn_data_lake/faculties/affect_integrator.py (merge), src/snn_data_lake/faculties/agency_monitor.py (merge), src/snn_data_lake/faculties/metacognitive_monitor.py (merge), src/snn_data_lake/sensorimotor/recognizer_bank.py (merge), src/snn_data_lake/substrate/stream_sketch_panel.py (merge), src/snn_data_lake/faculties/second_order_access.py (merge)
 def clamp01(x):
     """Clamp a scalar into [0,1], always returning a float.
 

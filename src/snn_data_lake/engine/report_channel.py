@@ -40,7 +40,7 @@ content, availability, hold. It is a report wire, not a marker of experience; no
 phenomenal claim is made or implied.
 
 # distinct-from: reasoning/spike_chat_lake.py -- the chat CONSUMER; its _attended now
-#   delegates here (one mechanism, P2). distinct-from: cortex/access_consciousness.py --
+#   delegates here (one mechanism, P2). distinct-from: faculties/access_consciousness.py --
 #   CLAIMS/criteria over the bus; this is the typed transport of the report itself.
 # distinct-from: engine/live_brain.py -- owns the composite and the `thought` accessor;
 #   this snapshots through the same public accessors, constructs nothing.

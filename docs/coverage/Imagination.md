@@ -14,7 +14,7 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | spiking_world_model | 10 | src/snn_data_lake/gates/dormancy_gate.py:285#module; src/snn_data_lake/faculties/spiking_jepa.py:121#SpikingJEPA | - | dormancy_gate EXEMPT permanent + its recorded encode() negative (static) | 2026-07-30 |
 | efference_copy_forward_model | 10 | src/snn_data_lake/engine/live_brain.py:363#deliberate_ahead; src/snn_data_lake/faculties/forward_model.py:81#ForwardModel | - | opus-5 / live_brain._planner is None after 20 ticks, seeds 0 and 3 | 2026-07-30 |
 | hierarchical_abstract_world_model | 0 | src/snn_data_lake/engine/autonomous_loop.py:169#__init__; src/snn_data_lake/engine/autonomous_loop.py:1120#_pfc_bias; src/snn_data_lake/engine/autonomous_loop.py:2695#main | - | opus-5 / arm.hjepa_serve is None on make_brain(seed=0) | 2026-07-30 |
-| generative_recombination | 0 | src/snn_data_lake/cortex/self_improvement_suite.py:216#_rung_qd; src/snn_data_lake/gates/dormancy_gate.py:246#module | - | opus-5 / caller search over src: no live-path generator | 2026-07-30 |
+| generative_recombination | 0 | src/snn_data_lake/faculties/self_improvement_suite.py:216#_rung_qd; src/snn_data_lake/gates/dormancy_gate.py:246#module | - | opus-5 / caller search over src: no live-path generator | 2026-07-30 |
 
 **Mean over the nine faculties: 201/9 = 22.3.** Nine rows, none UNSCORED, one above 40.
 
@@ -208,7 +208,7 @@ invariance error into the encoder by using the forward predictor matrix transpos
 `gz[k] = gp[k] + sum(gp[i] * self.Wz[i][k])` at `faculties/jepa_world_model.py:272-278`, with the
 comment at `:267` stating outright that this is "backprop into We/be". That is weight transport, and it
 runs on the live tick, in a project whose standing rule is to pivot any backprop consideration to e-prop
-and whose P1 sibling `cortex/counterfactual_sim.py` goes to some length in its docstring to justify a
+and whose P1 sibling `faculties/counterfactual_sim.py` goes to some length in its docstring to justify a
 purely local rule. The specified fix is feedback alignment: a fixed random `Bz` in place of `Wz^T`. The
 faculty still earns its band -- the band asks whether the output changes a learning update, and it does
 -- but "the brain learns its world model with a local rule" is not true of this learner, and the
@@ -275,9 +275,9 @@ P-violation stands as written.
 - **`generative_recombination`.** The rubric names this as one of the four things Imagination scores, and
   I could not find a live implementation. What exists: `reservoir/neural_sampling.py` is EXEMPT permanent
   because "the live tick has no such [energy] model and no query asking for samples from one"
-  (`dormancy_gate.py:107-111`); `cortex/quality_diversity.py`'s archive is constructed only inside
+  (`dormancy_gate.py:107-111`); `faculties/quality_diversity.py`'s archive is constructed only inside
   `self_improvement_suite.py:213`, and the live brain imports only `census` from that module
-  (`brain.py:389`); `cortex/vsa_reasoning.py`'s `bind`/`bundle` *are* live, but their four consumers
+  (`brain.py:389`); `faculties/vsa_reasoning.py`'s `bind`/`bundle` *are* live, but their four consumers
   (`access_consciousness`, `crossmodal_binder`, `recursive_tom`, `reasoning_curriculum`) use them to
   compose a representation, not to synthesise novel content -- that is binding, and it belongs to
   Perception, Consciousness and Social. The nearest thing to recombination on a live path is the
@@ -307,7 +307,7 @@ P-violation stands as written.
   None after 20 live ticks at seeds 0 and 3, so the class is never instantiated on the tick. The live
   loop deliberately uses *proprioceptive reafference* instead, and says so at
   `autonomous_loop.py:512-518`. So the efference-copy mechanism the docstring of
-  `cortex/agency_monitor.py:27-33` refers to as running is not running.
+  `faculties/agency_monitor.py:27-33` refers to as running is not running.
 - **The `W3` warning this file will trigger is a false positive.** `coverage_score` fingerprints an
   artifact by its `N/M ticks` lines and warns when two faculties share one, on the theory that they are
   two probe points on one serial chain. `imag_plan_60`, `imag_cf_60` and `imag_dream_60` all fingerprint
@@ -436,10 +436,10 @@ P-violation stands as written.
 - `faculties/forward_model.py` -- efference copy: reafference cancellation and exafference flagging,
   with online delta-rule gain identification. Unique capability (self-caused vs externally-caused
   sensation); no live consumer.
-- `cortex/counterfactual_sim.py` -- the do()-operator: `imagine(z, a, horizon)` rollout, `counterfactual`
+- `faculties/counterfactual_sim.py` -- the do()-operator: `imagine(z, a, horizon)` rollout, `counterfactual`
   ranking with imagined surprise, and a local three-factor forward-model update. Unique capability: the
   only mechanism that scores *candidate actions* by imagined outcome.
-- `cortex/executive_control.py::plan_sequence` (via `autonomous_loop.py:981`) -- multi-step beam search
+- `faculties/executive_control.py::plan_sequence` (via `autonomous_loop.py:981`) -- multi-step beam search
   over a transition function. Unique capability: rollout depth. Overlaps Executive's planning faculty by
   construction; the *rollout* is scored here, the deliberation there.
 - `sleep/sleep_replay.py` -- noise-driven offline attractor replay with Hebbian learning and SHY

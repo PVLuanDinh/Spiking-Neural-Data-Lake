@@ -1,8 +1,8 @@
-"""Tests for the learned expected-value-of-control unit (cortex/learned_evc.py)."""
+"""Tests for the learned expected-value-of-control unit (faculties/learned_evc.py)."""
 
 import numpy as np
 
-from snn_data_lake.cortex.learned_evc import LearnedEVC
+from snn_data_lake.faculties.learned_evc import LearnedEVC
 
 
 def _run_regime(evc, engaged_reward, withheld_reward, n):
@@ -108,6 +108,6 @@ def test_different_seed_signature_reproducible():
 
 
 def test_selfcheck_main_runs():
-    import snn_data_lake.cortex.learned_evc as mod
+    import snn_data_lake.faculties.learned_evc as mod
 
     mod.main()  # asserts internally; must not raise

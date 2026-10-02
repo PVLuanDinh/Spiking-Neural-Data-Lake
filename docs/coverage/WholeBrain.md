@@ -19,7 +19,7 @@ coordination, homeostasis, self-improvement. The roster below is grouped in that
 | gwt_reentry_to_action_drive | 30 | src/snn_data_lake/engine/brain.py:1763#_route_percept_to_action; src/snn_data_lake/engine/brain.py:1562#_route_percept_to_action | wb_reroute_60.txt | opus-5 WholeBrain auditor / tools/charge_probe.py reroute 60 + eligibility measured from inside | 2026-07-30 |
 | criticality_edge_of_chaos_regulation | 30 | src/snn_data_lake/engine/brain.py:2994#_enter_sleep; src/snn_data_lake/engine/brain.py:2842#_sleep_tick | - | opus-5 WholeBrain auditor / live run, sigma sampled | 2026-07-30 |
 | wholistic_integration_capstone | 22 | src/snn_data_lake/engine/brain.py:426#__init__ | - | opus-5 WholeBrain auditor / live run at birth | 2026-07-30 |
-| agency_controllability_monitor | 15 | src/snn_data_lake/engine/autonomous_loop.py:1827#apply_observed; src/snn_data_lake/cortex/agency_monitor.py:2#module | - | opus-5 WholeBrain auditor / live run, agency() sampled at 60 ticks | 2026-07-30 |
+| agency_controllability_monitor | 15 | src/snn_data_lake/engine/autonomous_loop.py:1827#apply_observed; src/snn_data_lake/faculties/agency_monitor.py:2#module | - | opus-5 WholeBrain auditor / live run, agency() sampled at 60 ticks | 2026-07-30 |
 | homeostatic_plasticity_stack | 10 | src/snn_data_lake/engine/brain.py:278#__init__; src/snn_data_lake/readout/interaction_learning.py:200#_deposit; src/snn_data_lake/engine/brain.py:2745#_sleep_tick | - | opus-5 WholeBrain auditor / live instrumented run, pre_gain/stabilize/relax counted | 2026-07-30 |
 | gated_self_modification | 10 | src/snn_data_lake/engine/brain.py:3141#_reason_chunk_mastered; src/snn_data_lake/engine/brain.py:3190#_gate | - | opus-5 WholeBrain auditor / live run, _selfbuild_last after 2 nights | 2026-07-30 |
 | knowledge_acquisition_web_ingest | 12 | src/snn_data_lake/reasoning/autonomous_enrich.py:41#module; src/snn_data_lake/reasoning/spike_chat_lake.py:2259#boot | - | opus-5 WholeBrain auditor / caller grep over brain.py + cockpit.py | 2026-07-30 |
@@ -322,7 +322,7 @@ into their clamp limits under the disturbance (the copy is blind to a clamp). It
 that record as its reason.*
 
 *DATED NOTE 2026-09-16 (specs/022 T080; `evidence/t080-temporal-binding.md` 3.4; pin `tools/t080_temporal_binding.json`):
-the cross-modal binder (`cortex/crossmodal_binder`, W6) is now READ by an instrument. On a scratch brain fed an
+the cross-modal binder (`faculties/crossmodal_binder`, W6) is now READ by an instrument. On a scratch brain fed an
 ALIGNED bimodal stream (the audio pack re-ordered so each position's word names its digit) it reports ONE object for
 features presented inside one tick window on 0.26-0.42 of ticks against a membership-matched null's q95 of
 0.12-0.14 (t +13.54 over 8 seeds); audio delayed by one tick binds at the null's rate on 6 of 8 seeds. On THIS
@@ -353,8 +353,8 @@ PROVENANCE line is where a reader actually sees them. Retired with this row, on 
 *DATED NOTE 2026-09-16 (specs/022 T082; `evidence/t082-social-cognition.md` section 2 and its 2.10 amendment; pin
 `tools/t082_social_cognition.json`, head `6d4a65f`, `dirty` False): the brain's DIALOGUE path now feeds ONE belief tracker,
 and that tracker's output reaches a muscle. Three trackers of one event used to be fed by the same chat statement --
-`cortex/theory_of_mind.py`'s first-order population, a nested second-order tracker in `cortex/affect_core.py`, and
-`cortex/recursive_tom.py`'s N-agent recursive one -- and they disagreed on one dialogue: the first said "no divergence right
+`faculties/theory_of_mind.py`'s first-order population, a nested second-order tracker in `faculties/affect_core.py`, and
+`faculties/recursive_tom.py`'s N-agent recursive one -- and they disagreed on one dialogue: the first said "no divergence right
 now" while the recursive one read a persistent nested false belief that was an artefact of its own subject-asymmetric feed.
 P2's merge kept the recursive tracker, deleted the other two live feeds and the birth-time Sally-Anne constant that was True
 on every brain, and replaced the single-subject call with a SYMMETRIC event (each present agent fed as a subject in turn),
@@ -375,7 +375,7 @@ this licenses no claim that the system understands another mind, or that it has 
 notes carry applies here unchanged: the cockpit's `social false beliefs` row is appended below the ACCESS plate's 110 px
 visible box, so its two sentences reach the DOM and not the viewer, and /api/state's PROVENANCE line is where a reader
 actually sees them. Retired with this row, on P2 rather than on the verdict: the second-order tracker in
-`cortex/affect_core.py`, the first-order tracker's live chat feed (the class itself STAYS -- `reasoning/pragmatics.py` runs
+`faculties/affect_core.py`, the first-order tracker's live chat feed (the class itself STAYS -- `reasoning/pragmatics.py` runs
 its own instance), and the birth-time false-belief flag.*
 
 *DATED NOTE 2026-09-17 (specs/022 T090; `evidence/t090-conclusion-plate.md` 3.1-3.4): the "same view" conjunct carried NOT MET AS RENDERED on the three notes above (T080, T081, T082) is MET AS RENDERED at `a431e67` (T090, second reading): each row's licensed and refused sentences and its live value sit fully inside the strict visible box of the cockpit's CONSCIOUSNESS plate at 1420 x 1321 and at 1920 x 1080 (570 of 570 sentence characters, 3 of 3 live values), `<details>` collapsed, the page as loaded. The first reading was NOT MET (304 / 261 of 570: a fixed-height column, every plate clipped); the artifact and the instrument changed, the criterion did not. Opening, measured: five fewer rows are in view at load (24 -> 19 of 47) while all 47 are reachable for the first time.* *DATED 2026-09-17 (the T090 panel fold, `evidence/t090-conclusion-plate.md` 3.5 item 5): the stamp `a431e67` above is the commit that LANDED record section 3.4, not the head the reading ran at. The second reading ran at head `fab9889`; `fab9889..0cab69f` touches markdown only, so the rendered page at `a431e67` is byte-identical to the measured one and no number moves. The sentence above is true as written and is left standing; only its stamp's kind was unstated.* *DATED 2026-09-17 (the T090 panel fold, record 3.5 item 4): the "all 47 reachable" half above is DERIVED from measured offsets (every plate's extent lies inside the column's measured scroll range; the scroll itself was rendered at scrollTop 400), not a read bottom-of-scroll state -- that state and its ledger are an opening. E4's "invisible text" check is parent-scoped (an ancestor's `opacity:0` is not detected; not reachable on this page: record 3.5 item 1).*
@@ -418,7 +418,7 @@ the tool that produced the wrong answer was a shell grep whose output was being 
 - `reasoning/self_mod_harness.py` + `self_build_loop.py` + `godel_machine.py` -- sandbox-verify,
   ratchet, byte-exact rollback, and the immutable safety kernel. The safety machinery is the unique
   capability here and it is intact; the driver above it is off and its proposer is empty.
-- `cortex/agency_monitor.py` -- per-channel sustained-controllability detection with hysteresis;
+- `faculties/agency_monitor.py` -- per-channel sustained-controllability detection with hysteresis;
   genuinely distinct from `faculties/forward_model.py`'s transient error, and worth keeping unwired
   rather than wiring on 129 observations of a single channel.
 

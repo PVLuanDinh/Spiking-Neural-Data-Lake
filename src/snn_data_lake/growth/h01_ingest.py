@@ -157,7 +157,7 @@ LICENSE_ID = "cc-by-4.0"
 ATTRIBUTION = (
     "H01 (Shapson-Coe et al.), c3 agglomeration, synapse export "
     "gs://h01-release/data/20210729/c3/synapses/exported/ and the five files pinned by "
-    "cortex/cortical_prior.SOURCES at commit " + H01_COMMIT + ". "
+    "growth/cortical_prior.SOURCES at commit " + H01_COMMIT + ". "
     "'All released datasets are licensed under a Creative Commons Attribution 4.0 License' "
     "(https://storage.googleapis.com/h01-release/data.html). CC-BY-4.0. "
     "FR-007: this is a measurement of a HUMAN brain that a microscope saw, NOT a measurement of "
@@ -711,7 +711,7 @@ def check_join(counts, declared=DECLARED_JOIN):
 #   over a declared dopamine port; no coordinates and no extent. distinct-from:
 #   growth/arealization.py::postmitotic_discretize -- an argmax over graded GRN profiles per node.
 #   distinct-from: plasticity/eprop_kernel.py::bptt_grads -- reverse-mode BPTT over an unrolled net.
-#   distinct-from: cortex/theory_of_mind.py::TheoryOfMind -- tracks per-agent beliefs about a world
+#   distinct-from: faculties/theory_of_mind.py::TheoryOfMind -- tracks per-agent beliefs about a world
 #   state. distinct-from: reasoning/reservoir_eprop.py::run -- a full two-arm SHD experiment.
 #   None of the five computes a per-axis bounding box, and nothing in the tree computes the extent
 #   of THIS soma cloud. All five sites read 2026-09-09 (the duplicate guard reported seven matches
@@ -1353,7 +1353,7 @@ def artifact_meta(graph, arrays):
         "join_counts": graph.gates["join_counts"],
         "declared_scale_nm_per_voxel": list(DECLARED_VOXEL_NM),
         "unit_extent_ratios": graph.gates["unit_ratios"],
-        "layer_rule": "COMPUTED via cortex/placement.layer_of (H01 fix_layer_mem circles), microns",
+        "layer_rule": "COMPUTED via growth/placement.layer_of (H01 fix_layer_mem circles), microns",
         "layer_agreement": list(LAYER_AGREEMENT_PIN),
         "ei_instrument_1": (
             "the export's own synapse type (2 = E, 1 = I) aggregated per POST cell into that "
@@ -1564,10 +1564,10 @@ _SELF_SYNAPSES_CORE = [
 # distinct-from: gates/doc_budget_gate.py::_selfcheck -- builds constructed manifests to make
 #   a DOC gate's statuses reachable; nothing about synapses, cells or a correlation.
 # distinct-from: gates/amdahl_gate.py::red_repeatability -- constructs a red for a TIMING
-#   rig's own resamples. distinct-from: cortex/theta_gamma_code.py::_decode_cycle -- decodes item
+#   rig's own resamples. distinct-from: faculties/theta_gamma_code.py::_decode_cycle -- decodes item
 #   order from live SPIKE PHASE in this brain. distinct-from:
 #   faculties/forward_model.py::predict -- an efference-copy sensory prediction.
-# distinct-from: cortex/access_consciousness.py::_post -- the ONE workspace submit site a
+# distinct-from: faculties/access_consciousness.py::_post -- the ONE workspace submit site a
 #   self-check uses to stand in for other faculties on a live bus. None of the five builds an
 #   EXTERNAL-release fixture, and none of them is a fixture this could import instead: the shape
 #   below is (Avro record, soma row, e/i CSV row) and exists nowhere else in the tree. All five

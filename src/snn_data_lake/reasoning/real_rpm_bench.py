@@ -16,7 +16,7 @@ gaps at once and reports the TRUE number, whatever it is:
                   handed in. A shape the perceiver cannot classify is an honest perception gap
                   (the attribute is omitted), not a guess.
   (c) ENCODE+SOLVE : the derived attributes become VSA role-filler panel codes (bind role to
-                  filler, bundle -- cortex/vsa_reasoning's spike ops; `panel_code()` below builds
+                  filler, bundle -- faculties/vsa_reasoning's spike ops; `panel_code()` below builds
                   them and RpmSolver builds the same form internally for its ignition decision),
                   and the matrix is solved by the EXISTING brain-native inducers, unmodified:
                   reasoning/rpm_solver.RpmSolver first (NVSA menu: constant / progression /
@@ -60,7 +60,7 @@ ASCII-only output. Representation-only: imports no brainstem, routes no actuator
 
 import random
 
-from snn_data_lake.cortex.vsa_reasoning import bind, bundle, hv, sim
+from snn_data_lake.faculties.vsa_reasoning import bind, bundle, hv, sim
 from snn_data_lake.reasoning.arc_solver import components
 from snn_data_lake.reasoning.rpm_solver import RpmSolver
 from snn_data_lake.reasoning.vsa_synthesize import VsaSynthesizer
@@ -155,7 +155,7 @@ def expected_cell(spec):
 
 def panel_code(cell):
     """VSA role-filler PANEL CODE for a derived cell: bind each attribute ROLE to its value FILLER
-    and bundle (spike superposition) -- cortex/vsa_reasoning ops. RpmSolver builds this same form
+    and bundle (spike superposition) -- faculties/vsa_reasoning ops. RpmSolver builds this same form
     internally for its workspace-ignition decision; this exposed copy is used by the self-check to
     verify the perceptual codes behave (identical percepts coincide, different ones do not)."""
     pairs = [bind(hv(f"RRB|role|{a}"), hv(f"RRB|val|{a}|{v!r}")) for a, v in sorted(cell.items())]

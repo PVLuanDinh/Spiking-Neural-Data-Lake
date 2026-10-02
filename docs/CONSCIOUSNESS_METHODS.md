@@ -64,14 +64,14 @@ which we could test, but the density vector itself would be a number we invented
 |---|---|---|
 | Global Workspace | `faculties/global_workspace.py`, `faculties/reentrant_workspace.py`, `access_index`, `access_ignited` | insufficient -- no principled threshold |
 | Integrated information | `instruments/integration_measure.py` (PCI), `faculties/region_coherence.py` | not the locus |
-| Higher-order thought | `cortex/metacognitive_monitor.py`, `cortex/recursive_tom.py` (2nd-order ToM), `cortex/generative_self_model.py` | closer, but HOT alone is not syntactic |
+| Higher-order thought | `faculties/metacognitive_monitor.py`, `faculties/recursive_tom.py` (2nd-order ToM), `faculties/generative_self_model.py` | closer, but HOT alone is not syntactic |
 | **Higher order SYNTACTIC thought** | **nothing** | **the proposal** |
 
 We have the two layers Rolls criticises and lack the one he argues for.
 
 ## 4. The gap is a mechanism we already own and never wired
 
-`cortex/prefrontal_executive.py` has `plan(state, options, predictor, goal_value, horizon)`,
+`faculties/prefrontal_executive.py` has `plan(state, options, predictor, goal_value, horizon)`,
 `push_subgoal(evidence)` and a frame stack. **`push_subgoal` and `maintain` have zero live callers
 outside their own module** -- verified 2026-08-02, and it is the same finding the coverage ledger
 already records at `Executive.md:20`, whose citation deliberately points at the comment explaining
@@ -116,6 +116,6 @@ tests the *computational* claim and nothing else. No Phi will be reported: `inte
 computes a perturbational complexity index, that is not Phi, and the two must not be conflated in any
 write-up.
 
-**Order.** Behind specs/005 and specs/006. It touches `cortex/prefrontal_executive.py`,
+**Order.** Behind specs/005 and specs/006. It touches `faculties/prefrontal_executive.py`,
 `engine/brain.py` and the Executive coverage rows, and it should not be started while another feature
 is mid-flight in those files.

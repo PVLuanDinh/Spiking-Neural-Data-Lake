@@ -51,7 +51,7 @@ order -- same episodes always yield the same ranking and the same advice.
 
 Integration (documentation only -- not wired here): this analyzer would CONSUME the data lake's
 stored episode outcomes (the same (outcome, context) records the loop already logs) and FEED
-cortex/prefrontal_executive.py a learned prior -- a ranked list of which context features predict
+faculties/prefrontal_executive.py a learned prior -- a ranked list of which context features predict
 success -- so the executive can bias planning toward high-success-likelihood contexts before it
 ever acts, instead of relearning the same structure one transition at a time.
 

@@ -7,11 +7,11 @@ The enclosed cycle (each faculty is a REAL, verified component, not a stub):
 
   PERCEPTION      conv1 latency-STDP (unsupervised, spiking, frozen)         [deep_stdp_latency]
                   -> batched byte-identical feature extraction               [fast_features]
-  WORKING MEMORY  the current objective is held as a POINTER in prefrontal   [cortex.prefrontal_executive]
+  WORKING MEMORY  the current objective is held as a POINTER in prefrontal   [faculties.prefrontal_executive]
                   PERSISTENT SPIKING ACTIVITY (reverberating attractor)
   SELF-DIRECTION  spiking curiosity (intrinsic learning-progress) + curriculum + a
                   METACOGNITIVE monitor pick the next objective + decide when to grow
-                  [faculties.spiking_curiosity, cortex.metacognitive_monitor]
+                  [faculties.spiking_curiosity, faculties.metacognitive_monitor]
   UNDERSTANDING   a supervised readout on the frozen features -- competence deepens as
                   the agent studies more                                     [brain_adapters.growable_readout]
   NEUROGENESIS    when metacognition fires grow_trigger, the brain GROWS new readout neurons
@@ -49,8 +49,8 @@ from snn_data_lake.reasoning.fast_features import batched_features_and_keys
 from snn_data_lake.reasoning._loop_common import envi, acc
 from snn_data_lake.readout.growable_readout import GrowableReadout
 from snn_data_lake.substrate.proximity_replay import LakeMemory
-from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
-from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
+from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
+from snn_data_lake.faculties.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
 

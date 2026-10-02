@@ -36,7 +36,7 @@ Schema induction needs the vigilance/reset/allocate firewall -- the one mechanis
 non-matching episode cannot be forced into (and corrupt) a committed category. So, as the design brief
 permits, this module implements a compact ART-1-style vigilance clustering over spiking triple
 signatures instead. The signatures ARE spike codes (sparse binary spike patterns, crc32-seeded like
-cortex/vsa_reasoning.hv), and the plasticity is local intersection learning -- spiking-native, no
+faculties/vsa_reasoning.hv), and the plasticity is local intersection learning -- spiking-native, no
 rate-ANN backprop.
 
 DESIGN (spiking-native, bounded, deduped)
@@ -324,7 +324,7 @@ class SchemaInducer:
         comparison False, so every candidate ranks 1st and is accepted, `rejected` stays 0, and the
         caller wrote unchecked schemas to the durable lake believing the evidence was good."""
         try:
-            from snn_data_lake.cortex.kb_ranking import DistMult
+            from snn_data_lake.faculties.kb_ranking import DistMult
         except Exception:
             return None, None, None, None, None
         ent, rel = {}, {}
@@ -518,7 +518,10 @@ def _selfcheck():
     #     was untested in both directions. Force the governed -> ungoverned import to fail and read it.
     import sys
 
-    _KB = "snn_data_lake.cortex.kb_ranking"  # repointed 2026-08-11 with the promotion; the neuter must block the path the code READS
+    from snn_data_lake import module_path
+
+    # derived, not spelled (G8 F16): the neuter must block the path the code READS
+    _KB = module_path("kb_ranking")
     _saved, _had = sys.modules.get(_KB), _KB in sys.modules
     sys.modules[_KB] = None  # None makes `from ... import DistMult` raise ImportError
     try:

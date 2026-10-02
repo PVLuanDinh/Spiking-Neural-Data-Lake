@@ -193,7 +193,7 @@ environment provenance, not an inexpensive-device result or a fresh clean instal
 | Ruff, citations, dependency ledger, reachable-red check, documentation commands | Passed. Ruff format checked 591 files; citation guard had zero unexempted strict violations; dependency ledger had zero undeclared, unused, or misdescribed dependencies; reachable-red checked 19 criteria; documentation guard found 61 addressable commands and zero unrunnable ones. All 59 local documentation links resolved. |
 
 The full suite's warnings included invalid escape sequences and overflow/invalid arithmetic in
-[knowledge-base ranking](../src/snn_data_lake/cortex/kb_ranking.py) during the schema-induction
+[knowledge-base ranking](../src/snn_data_lake/faculties/kb_ranking.py) during the schema-induction
 self-check. These remain numerical-robustness and maintenance follow-ups; passing assertions do
 not establish that all intermediate values were finite. They were not suppressed or repaired in
 this documentation update.

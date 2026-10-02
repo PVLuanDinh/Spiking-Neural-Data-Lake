@@ -49,14 +49,14 @@ about a MECHANISM, never a verdict about experience.
 #   performs. This module runs no synthetic binding task at all: it reads the LIVE binder's
 #   own report off a recorded brain and scores it against a permutation of that recording.
 #   gwt_deep is not a control here and is not run. Read.
-# distinct-from: cortex/crossmodal_binder.py -- the MECHANISM UNDER TEST. This module changes
+# distinct-from: faculties/crossmodal_binder.py -- the MECHANISM UNDER TEST. This module changes
 #   nothing in it: it calls its public `bind` and its own `_project` / `_recognize` and
 #   re-implements neither. The margin (0.15) and the cue strength (0.055) are READ off the
 #   shipped binder, never re-declared. Read.
 # distinct-from: instruments/ignition_instrument.py -- an EXEMPT scorer over scratch
 #   ReentrantWorkspace subjects, scoring an all-or-none DRIVE transition. Different subject,
 #   different quantity; the EXEMPT-instrument shape is the thing reused. Read.
-# distinct-from: cortex/agency_monitor.py's T079 functions -- the same campaign/dry-run/pin
+# distinct-from: faculties/agency_monitor.py's T079 functions -- the same campaign/dry-run/pin
 #   PATTERN over a different instrument, different arms and a different pin. No state, no pin
 #   and no statistic is shared beyond `instruments/paired_contrast`, which both IMPORT. Read.
 
@@ -395,7 +395,7 @@ def _t080_float_or_none(x):
 #   against the 1/K chance floor with a paired t and a bar. The two below compute NO
 #   statistic, take NO bar and decide nothing: they difference the brain's own cumulative
 #   hit/seen counters so a per-ARM accuracy exists to report at all. Read.
-# distinct-from: cortex/agency_monitor.py::_t079_arm_extras -- the per-arm REPORTED
+# distinct-from: faculties/agency_monitor.py::_t079_arm_extras -- the per-arm REPORTED
 #   quantities of a DIFFERENT instrument (an action histogram and two Pearsons over joint
 #   channels). Same word "arm", different recording, different quantity. Read.
 # distinct-from: gates/amdahl_gate.py::red_sham_neuter and
@@ -660,7 +660,7 @@ def t080_verdict(got, refusals):
 #   census gates that CLASSIFY existing code. Every entry below is a deliberately broken twin
 #   of THIS module's own instrument, constructed so a red can be shown to fire rather than
 #   argued to (P8 clause 1). Read; nothing here inspects or rewrites any other module.
-# distinct-from: cortex/agency_monitor.py::_t079_mutated_scorer and
+# distinct-from: faculties/agency_monitor.py::_t079_mutated_scorer and
 #   instruments/attention_schema.py::_t078_mutated_scorer -- the PATTERN this follows over
 #   DIFFERENT instruments (a permutation floor over an EMA correlation there, a
 #   membership-matched permutation over a recognition pair here). One catalog per module is
@@ -865,7 +865,7 @@ def t080_constructed_binder(seed=0, taught=T080_R2_TAUGHT):
     prototypes) where prototypes[i] is the (vision, audio) pair that registered `obj<i>`."""
     import random
 
-    from snn_data_lake.cortex.crossmodal_binder import CrossModalBinder
+    from snn_data_lake.faculties.crossmodal_binder import CrossModalBinder
 
     rng = random.Random(seed)
     binder = CrossModalBinder(seed=0)
@@ -1255,13 +1255,13 @@ def _t080_head():
 
 # distinct-from: instruments/attention_schema.py -- its `g4_rule` is a BRANCH RULE over per-seed
 #   decodes; this computes nothing at all. Read.
-# distinct-from: cortex/metacognitive_monitor.py -- `_experiment` RUNS a three-condition
+# distinct-from: faculties/metacognitive_monitor.py -- `_experiment` RUNS a three-condition
 #   comparison; this formats one already-computed arm. Read.
-# distinct-from: cortex/autotelic_goals.py -- `_random_reach_rate` is a CHANCE BASELINE under
+# distinct-from: faculties/autotelic_goals.py -- `_random_reach_rate` is a CHANCE BASELINE under
 #   a random policy; no baseline, no policy and no rng here. Read.
 # distinct-from: sensorimotor/efferent_boundary.py -- `intended_deltas` PARSES an action token
 #   into per-joint degrees; this parses nothing. Read.
-# distinct-from: cortex/agency_monitor.py -- its `_t079_arm_extras` computes an action
+# distinct-from: faculties/agency_monitor.py -- its `_t079_arm_extras` computes an action
 #   histogram and two Pearsons for a DIFFERENT instrument's arms. This is a printf, and it
 #   exists so the dry run and the campaign cannot drift into two report formats. Read.
 def _t080_arm_line(name, arm):
@@ -1516,7 +1516,7 @@ def _t080_constants():
     }
 
 
-# distinct-from: cortex/agency_monitor.py::run_t079_campaign and
+# distinct-from: faculties/agency_monitor.py::run_t079_campaign and
 #   instruments/attention_schema.py::run_t078_campaign -- the PATTERN this follows (record, read,
 #   contrast, pin ONCE) over a different instrument, different arms and a different pin.
 #   Read; no state, no pin and no statistic is shared beyond `instruments/paired_contrast`.

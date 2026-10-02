@@ -14,7 +14,7 @@ cycle with `SpikingCuriosityDrive.most_curious(candidates)` filtered by a
     estimates the EXPECTED LEARNING VALUE of studying each digit a, given the current
     competence vector z. It is trained online from the REALISED learning
     (competence_after - competence_before) on the digit actually studied.
-  * cortex.metacognitive_monitor.MetacognitiveMonitor -- a lesionable spiking
+  * faculties.metacognitive_monitor.MetacognitiveMonitor -- a lesionable spiking
     reliability monitor whose gates decide explore-vs-exploit (explore()) and when to
     recruit capacity (grow_trigger()).
 
@@ -93,8 +93,8 @@ monitor are seeded from the same seed. ASCII-only prints.
 
 import random
 
-from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.faculties.latent_q import LatentQ
+from snn_data_lake.faculties.metacognitive_monitor import MetacognitiveMonitor
 
 
 def _minmax(vals):

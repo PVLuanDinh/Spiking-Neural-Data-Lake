@@ -575,7 +575,7 @@ def t081_verdict(got, refusals):
 
 
 # distinct-from: instruments/binding_instrument.py::_t080_mutated_scorer and
-#   cortex/agency_monitor.py::_t079_mutated_scorer and instruments/attention_schema.py's -- the same
+#   faculties/agency_monitor.py::_t079_mutated_scorer and instruments/attention_schema.py's -- the same
 #   one-catalog-per-module CONVENTION over DIFFERENT instruments (a membership-matched
 #   permutation there, a lesioned clone of a workspace here). Every entry below is a deliberately
 #   broken twin of THIS module's own instrument, constructed so a red can be SHOWN to fire rather
@@ -1100,7 +1100,7 @@ def _t081_dirty():
 
 
 # distinct-from: instruments/binding_instrument.py::_t080_seed_block and
-#   cortex/agency_monitor.py / instruments/attention_schema.py's per-seed printers -- the same
+#   faculties/agency_monitor.py / instruments/attention_schema.py's per-seed printers -- the same
 #   one-printer-per-instrument CONVENTION over a DIFFERENT reading (a bound fraction against a
 #   permutation null there, a per-dose report-change fraction here). It exists so the dry run and
 #   the campaign cannot drift into two report formats. Read.
@@ -1261,7 +1261,7 @@ def run_t081_dry_run(out_path=T081_DRY_RUN_OUT, seed=0):
 
 
 # distinct-from: instruments/binding_instrument.py::run_t080_campaign and
-#   cortex/agency_monitor.py::run_t079_campaign and instruments/attention_schema.py's -- the PATTERN
+#   faculties/agency_monitor.py::run_t079_campaign and instruments/attention_schema.py's -- the PATTERN
 #   this follows (record, read, contrast, pin ONCE) over a different instrument, different arms
 #   and a different pin. Each row's campaign is its own instrument's; a shared runner would be a
 #   fifth mechanism, not one. Read; nothing is shared beyond `instruments/paired_contrast`.

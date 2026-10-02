@@ -17,8 +17,8 @@ trips the reflex E-STOP before any action, and every motor command flows through
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.engine.live_brain
 """
 
-from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.engine.autonomous_loop import ACTIONS, AutonomousArm
+from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner, text_features
 from snn_data_lake.readout.predictive_coding import PredictiveCodingNetwork
 from snn_data_lake.sensorimotor.nl_interface import NLInterface
@@ -359,7 +359,7 @@ class LiveBrain:
     # distinct-from: reasoning/spike_chat_lake.py -- the CHAT-side adapter of the channel.
     # distinct-from: faculties/global_workspace.py -- broadcast() is the bus's own accessor.
     # distinct-from: faculties/reentrant_workspace.py -- the re-entry stage's occupant read.
-    # distinct-from: cortex/access_consciousness.py -- criteria over the bus, not a route.
+    # distinct-from: faculties/access_consciousness.py -- criteria over the bus, not a route.
     # distinct-from: engine/report_channel.py -- the ROUTE this accessor now reads
     #   through (snapshot); this stays the cockpit-facing property name. All sites read.
     def thought(self):
@@ -404,7 +404,7 @@ class LiveBrain:
             predictor=self.arm.jepa,
         )
 
-    # distinct-from: cortex/counterfactual_sim.py -- imagine() rolls ONE held-fixed action into a
+    # distinct-from: faculties/counterfactual_sim.py -- imagine() rolls ONE held-fixed action into a
     # trajectory and decides nothing; this races OPTIONS through the spiking WTA and commits a goal.
     def deliberate_ahead(self, state, options, goal_value, horizon=8, predictor=None, write=True):
         """The brain's DELIBERATIVE (planning) faculty: look `horizon` steps ahead over a forward
@@ -414,7 +414,7 @@ class LiveBrain:
         -value TRAP that rolls into a bad state.
 
         `write=False` is a STATELESS query (ported 2026-08-12 from
-        cortex/competence_executive.ExecutivePlanner ahead of that wrapper's retirement -- the one
+        faculties/competence_executive.ExecutivePlanner ahead of that wrapper's retirement -- the one
         planning capability it held that no governed caller of plan() exposed): the race runs, the
         pick returns, and the planner's held working-memory goal is untouched. The default
         write=True gate-writes the committed goal exactly as before (plan()'s own default).
@@ -473,7 +473,7 @@ class LiveBrain:
             )
         if words & {"goal", "want", "trying", "intend", "plan", "planning", "objective"}:
             # the brain's TRUE standing goal/telos is to keep improving ITSELF, indefinitely -- grounded in the
-            # self-improvement suite/ladder (cortex/self_improvement_suite.py). The prefrontal working-memory
+            # self-improvement suite/ladder (faculties/self_improvement_suite.py). The prefrontal working-memory
             # goal is only the CURRENT sub-goal ACTION, so lead with the telos and name the sub-goal briefly.
             sub = (
                 f" (right now my working-memory sub-goal action is {goal_txt})"

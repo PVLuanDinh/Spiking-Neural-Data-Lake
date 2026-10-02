@@ -26,7 +26,7 @@ PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.sensorimotor.eprop_shd
 **2. The event-frame packs** (`.npz`) — what gets perceived. The encoders alone are not enough:
 `engine/brain.py` only sets `perceiving_real` / `perceiving_audio` once it has loaded
 `models/nmnist_pack.npz` / `models/shd_pack.npz` (overridable via `SNN_PERCEPTION_PACK` /
-`SNN_SHD_PACK`), and two more readers depend on them — `cortex/percept_surprise.py` rate-codes the
+`SNN_SHD_PACK`), and two more readers depend on them — `faculties/percept_surprise.py` rate-codes the
 vision pack, `reasoning/reservoir_eprop.py` re-bins the audio pack. Until 2026-07-29 these two files
 had **five readers and no producer anywhere in the tree**, so this section regenerated only half of
 what perception needs. The producer:
@@ -211,7 +211,7 @@ gradients larger than VRAM). AirLLM has no backward pass, so it is not a trainer
 > `ModuleNotFoundError` for anyone who tried it. What follows is the path that actually exists.
 
 The brain's language layer is `reasoning/spike_chat_lake.py::LakeChat`, reached live from
-`engine/live_brain.py:450`, with `cortex/rose_language.py` (`engine/brain.py:4077`; promoted from reasoning/ 2026-08-12) behind it. It
+`engine/live_brain.py:450`, with `faculties/rose_language.py` (`engine/brain.py:4077`; promoted from reasoning/ 2026-08-12) behind it. It
 answers from the brain's own durable lake — learned facts, not a language model — and it is honest
 about gaps rather than fabricating: a query with no supporting fact returns `known=False`.
 

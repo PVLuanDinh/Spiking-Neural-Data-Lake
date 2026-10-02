@@ -117,7 +117,7 @@ def _markov_matrix(k_modes, peak, seed):
 # distinct-from: sensorimotor/arm_bridge.py -- recv_outcome() reads the NEXT reward packet off a
 #   socket. distinct-from: faculties/forward_model.py -- reset() sets a plant state.
 #   distinct-from: growth/dendritic_neuron.py -- step() advances a compartment. distinct-from:
-#   cortex/generative_self_model.py -- a forward model of the self-signal. Phrase overlap on
+#   faculties/generative_self_model.py -- a forward model of the self-signal. Phrase overlap on
 #   'next'/'tick'/'stream' only; none produces a (percept, category) stimulus. All sites read.
 class SyntheticPerceptStream:
     """The self-check's STIMULUS, not a live mechanism (P2: the live path has one stimulus, the
@@ -272,7 +272,7 @@ class NeurogenesisSelfImprove:
     # distinct-from: growth/growing_learner.py -- its observe() RECRUITS/refines prototypes
     #   and is the CATEGORY producer this consumes. distinct-from: basal_ganglia/
     #   learning_progress.py -- its observe() feeds error levels into |LP| EMAs.
-    #   distinct-from: substrate/signal_calibrator.py, cortex/percept_surprise.py -- observe()
+    #   distinct-from: substrate/signal_calibrator.py, faculties/percept_surprise.py -- observe()
     #   there records a scalar distribution / an Oja residual. This one BUFFERS a (percept ->
     #   next own-category) transition for the sleep refit. All sites read.
     def predict_next(self):
@@ -355,10 +355,10 @@ class NeurogenesisSelfImprove:
         return self.ticks
 
     # ---- neurogenesis / self-improvement -----------------------------------------------------
-    # distinct-from: cortex/rose_language.py -- its majority-class CONTROL scores a competence
-    #   head on language items. distinct-from: cortex/metacognitive_monitor.py, cortex/
+    # distinct-from: faculties/rose_language.py -- its majority-class CONTROL scores a competence
+    #   head on language items. distinct-from: faculties/metacognitive_monitor.py, cortex/
     #   wholistic_loop.py -- held-out accuracy of a prototype/two-mode classifier on fresh
-    #   samples. distinct-from: cortex/reasoning_curriculum.py -- the curriculum's nightly
+    #   samples. distinct-from: faculties/reasoning_curriculum.py -- the curriculum's nightly
     #   held-out accuracy. distinct-from: sleep/sleep_consolidation.py -- pattern-completion
     #   retention. None computes the persistence floor of a TEMPORAL category stream, which is
     #   the number this exists for; the majority floor is two lines and rides beside it so the
@@ -385,7 +385,7 @@ class NeurogenesisSelfImprove:
     # distinct-from: engine/autonomous_loop.py -- _context_pattern() ENCODES the percept this
     #   consumes. distinct-from: faculties/spiking_jepa.py -- a collapse measurement on a
     #   held-out batch. distinct-from: growth/growth_stop.py -- should_grow() is the VERDICT this
-    #   refit consults. distinct-from: cortex/percept_surprise.py -- records an A/B attribution.
+    #   refit consults. distinct-from: faculties/percept_surprise.py -- records an A/B attribution.
     #   distinct-from: readout/growable_readout.py -- re-seeds an optimizer. Phrase overlap
     #   on 'measure'/'held-out'/'fresh' only. All sites read.
     def _refit(self):
@@ -1038,7 +1038,7 @@ def _cross_process_restart(seed, cfg, ticks=140):
 # -------------------------------------------------------------------------------------------------
 # distinct-from: engine/brain.py -- _drive() there ticks a BRAIN with a forced clock phase.
 #   distinct-from: growth/heterogeneous_microcircuit.py -- drives a circuit for spike counts.
-#   distinct-from: cortex/reasoning_curriculum.py -- runs the curriculum's own night loop.
+#   distinct-from: faculties/reasoning_curriculum.py -- runs the curriculum's own night loop.
 #   distinct-from: instruments/neuro_chip_stream.py -- an out-of-core AER event loop.
 #   distinct-from: gates/replay_gate.py -- an RNG-driven stimulus for the resume proof.
 #   Phrase overlap on 'drive for n ticks' only; this hands the harness stream to drive(). Sites read.

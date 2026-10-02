@@ -2,11 +2,11 @@ r"""Honest BLiMP baseline for the brain's language faculty AS IT STANDS TODAY (p
 
 Scorers, weakest to strongest existing mechanism:
 
-  1. acquired-LM  -- cortex/language_acquisition.py, the online locally-plastic character predictor
+  1. acquired-LM  -- faculties/language_acquisition.py, the online locally-plastic character predictor
                      (the "learn like a human, no backprop" learner). Sentence score = total
                      log-likelihood, computed READ-ONLY (no weight update during scoring, or the
                      benchmark would teach the model its own test).
-  2. rose         -- cortex/rose_language.py comprehend(): accept/reject/gap over grounded structure.
+  2. rose         -- faculties/rose_language.py comprehend(): accept/reject/gap over grounded structure.
   3. char-bigram  -- a plain bigram model fitted on the same exposure text. Reference point: if the
                      spiking learner cannot beat a bigram table, its language knowledge is n-gram or less.
 
@@ -54,7 +54,7 @@ def build_acquired_lm():
     # -- and P7 (2026-08-04) abolished the rule it belonged to. An import whose only consumer is a
     # discard is dead code, and dead code that exists to make a point about dependencies is exactly
     # the residue P7 names.
-    from snn_data_lake.cortex import language_acquisition as LA
+    from snn_data_lake.faculties import language_acquisition as LA
 
     lm = LA.load_lm(seed=0, expose_rounds=3)
 
@@ -73,7 +73,7 @@ def build_acquired_lm():
 
 
 def build_rose_scorer():
-    from snn_data_lake.cortex.rose_language import RoseLanguage
+    from snn_data_lake.faculties.rose_language import RoseLanguage
 
     rose = RoseLanguage(seed=0)
 
@@ -94,7 +94,7 @@ def build_rose_scorer():
 
 def build_bigram():
     """Reference model: a character bigram fitted on the same exposure text the learner saw."""
-    from snn_data_lake.cortex import language_acquisition as LA
+    from snn_data_lake.faculties import language_acquisition as LA
 
     text = ""
     for attr in ("SEED_TEXT", "CORPUS", "_TEXT", "TEXT"):

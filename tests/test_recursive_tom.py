@@ -22,9 +22,9 @@ import random
 
 import pytest
 
-from snn_data_lake.cortex import recursive_tom
-from snn_data_lake.cortex.recursive_tom import RecursiveToM
-from snn_data_lake.cortex.theory_of_mind import TheoryOfMind
+from snn_data_lake.faculties import recursive_tom
+from snn_data_lake.faculties.recursive_tom import RecursiveToM
+from snn_data_lake.faculties.theory_of_mind import TheoryOfMind
 
 
 def test_false_belief_transfer_and_world_divergence():
@@ -118,7 +118,7 @@ def _need(name):
     died on an AttributeError would not be a red that RAN."""
     fn = getattr(recursive_tom, name, None)
     assert fn is not None, (
-        f"cortex.recursive_tom.{name} does not exist yet -- 2.9 step 2 landed the stubs and "
+        f"faculties.recursive_tom.{name} does not exist yet -- 2.9 step 2 landed the stubs and "
         f"step 4 lands the instrument. This red is RUNNING red, exactly as 2.4 requires."
     )
     return fn

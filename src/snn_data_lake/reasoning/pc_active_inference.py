@@ -45,7 +45,7 @@ import numpy as np
 
 from snn_data_lake.faculties.jepa_world_model import JepaWorldModel
 from snn_data_lake.sensorimotor.pc_cortex_serve import PcCortexServe
-from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
 
 
 # ---- a small deterministic PC cortex (snn_pcnet/1) over an 8-dim observation space --------------------

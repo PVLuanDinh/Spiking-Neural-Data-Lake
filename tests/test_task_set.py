@@ -1,11 +1,11 @@
-"""Tests for TaskSetLayer (cortex/task_set.py): active-set persistence with a single task set,
+"""Tests for TaskSetLayer (faculties/task_set.py): active-set persistence with a single task set,
 R-STDP-gated shifting under sustained conflict/low reward, and the switch-cost transient (a drop
 in the bias() mapping readout right after a shift, which recovers as the new set re-settles).
 
 Run: pytest tests/test_task_set.py
 """
 
-from snn_data_lake.cortex.task_set import TaskSetLayer
+from snn_data_lake.faculties.task_set import TaskSetLayer
 
 
 def test_single_task_set_is_held_despite_relentless_bad_signals():

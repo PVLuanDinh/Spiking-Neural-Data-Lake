@@ -465,7 +465,7 @@ Listed as `file -- unique capability -- live consumer`:
   `reasoning_cortex` via `enable_rpm=True`.
 - `reasoning/vsa_synthesize.py` -- out-of-grammar rule synthesis for matrices the fixed NVSA menu
   gaps on -- `RpmExpert`'s fallback.
-- `cortex/vsa_structure_mapping.py` (promoted 2026-08-12) -- Gentner structure mapping with a systematicity score --
+- `faculties/vsa_structure_mapping.py` (promoted 2026-08-12) -- Gentner structure mapping with a systematicity score --
   `reasoning_cortex.StructureMappingSolver` (and one dead construction at `brain.py:967`).
 - `reasoning/schema_induction.py` -- ART-vigilance schema abstraction + a DistMult confidence gate
   over durable episodes -- `brain._enter_sleep`.

@@ -58,7 +58,7 @@ tally line above is a dated 2026-07-10 snapshot and is left as-is):
 | sensorimotor/gesture_recognition | latency/rank-encode the distance stream; spiking sequence/tempotron detector end-to-end |
 | sensorimotor/nl_interface | rank-order spike-encode words -> R-STDP intent classifier (keep the fixed allow-list) |
 | cortex/brain_reasoning | read class by spiking WTA over classifier output spikes; confidence from spike-count margin |
-| cortex/vsa_reasoning | phasor/spike-polarity hypervectors; bind = phase-multiply, bundle = spike superposition |
+| faculties/vsa_reasoning | phasor/spike-polarity hypervectors; bind = phase-multiply, bundle = spike superposition |
 | hippocampus/hippocampus | DG spiking expansion + lateral-inhibition WTA; CA3 recurrent spiking attractor completion |
 | faculties/grid_cells | 3 velocity-controlled spiking oscillators; grid firing from spike-phase interference |
 | hippocampus/frequency_memory | LIF neurons; firing-rate homeostat gates STDP on/off (FIP/FID) to form assemblies |
@@ -133,9 +133,9 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
 - Remaining RATE after slice 1: 42. Live-loop-wired conversions (global_workspace, growing_learner,
   multimodal_encoder, the value substrate, autonomous_loop selection) are later, safety-adjacent slices done by
   the main agent.
-- **Slice 2 (v3.24) -- the RATIONAL-THINKING core (5 modules):** `cortex/prefrontal_executive` (RATE_BY_DESIGN ->
+- **Slice 2 (v3.24) -- the RATIONAL-THINKING core (5 modules):** `faculties/prefrontal_executive` (RATE_BY_DESIGN ->
   spiking: Wang-2002 spiking WTA decision attractor + persistent-activity bistable spiking working memory; the
-  flagship rate-by-design redesign; still passes autonomous_loop sec12 + live_brain + E-STOP), `cortex/vsa_reasoning`
+  flagship rate-by-design redesign; still passes autonomous_loop sec12 + live_brain + E-STOP), `faculties/vsa_reasoning`
   (spike-polarity hypervectors; bind=spike-XOR, bundle=superposition-WTA, sim=coincidence), `readout/predictive_coding`
   (signed LIF error populations; inference = spiking settling; Hebbian-on-spikes), `cortex/restricted_boltzmann`
   (stochastic LIF sampling + event-driven CD/STDP), `cortex/brain_reasoning` (LIF WTA decision + spike-margin
@@ -146,7 +146,7 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   hold), `faculties/global_workspace` (RATE -> spiking Dehaene-Changeux IGNITION: LIF pools + global lateral
   inhibition + self-excitation; all-or-none ignition; LIVE-LOOP-WIRED -- verified autonomous_loop sec8 broadcast
   contract + E-STOP + live_brain), `faculties/reticular_gate` (RATE_BY_DESIGN -> spiking TRN attentional gate:
-  LIF relay + inhibitory pool = spiking divisive normalization), `cortex/theta_gamma_code` (RATE_BY_DESIGN ->
+  LIF relay + inhibitory pool = spiking divisive normalization), `faculties/theta_gamma_code` (RATE_BY_DESIGN ->
   spiking Lisman-Idiart phase code: LIF populations fire at item-specific gamma phases; capacity = theta/gamma
   ratio ~7). All API-preserved, un-riggable spiking self-checks; honest gaps reported (attractor RT units differ;
   global-workspace N-way exact-tie metastable; theta-gamma is a reduced discrete-step oscillator). Remaining

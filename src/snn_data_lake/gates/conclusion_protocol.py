@@ -30,7 +30,7 @@ Bare invocation (also run by run_selfchecks): the constructed reds, their positi
 #   task T081, not this one. Site read.
 # distinct-from: gradient_claim_gate.py -- the same declaration-registry PATTERN over a different claim (a
 #   learning rule's relation to a gradient, not an instrument's relation to a conclusion). Site read.
-# distinct-from: cortex/access_consciousness.py -- an instrument that PRODUCES an access index; a row here says
+# distinct-from: faculties/access_consciousness.py -- an instrument that PRODUCES an access index; a row here says
 #   what its number licenses. Site read.
 # distinct-from: gates/capability_bar.py -- the same shape for capability claims; the two registries police
 #   different sentences and neither can stand in for the other (X1 vs C5). Site read.

@@ -34,7 +34,7 @@ citation was wrong, the correction is stated.
    `decay_a = math.exp(-1.0 / tau_a)` (`growth/dendritic_neuron.py:65`) equals `1/tau_a`, and
    `tau_a` is ONE scalar. All `d/2` pairs would rotate at the same frequency. The "bank" is one
    2-D subspace replicated, effective capacity 2 rather than `d`.
-3. *It already exists.* `cortex/theta_gamma_code.py` holds multiple items simultaneously in
+3. *It already exists.* `faculties/theta_gamma_code.py` holds multiple items simultaneously in
    phase slots, re-fires them every theta cycle (active maintenance), and reads them back BY
    SLOT. That is an S-item register with slot-addressed retrieval. `growth/autapse_neuron.py`
    is the delayed-match-across-a-silent-gap harness with an ablation to chance. Building a third
@@ -106,7 +106,7 @@ same computation and the headline is non-decreasing by construction.
 
 **MINT's FlyHash + ART spiking layer. Dead on three independent counts.**
 (a) Zero importers. All hits for `fly_hash` outside its own file are prose:
-`faculties/action_gating.py:16` and `:77`, `cortex/is_snn_forward.py:77`,
+`faculties/action_gating.py:16` and `:77`, `faculties/is_snn_forward.py:77`,
 `sensorimotor/lca_sparse_coding.py:14`, `faculties/generalizing_novelty.py:15`. The claim "live:
 action_gating, is_snn_forward, lca_sparse_coding" was made from a name grep.
 (b) Degenerate on the proposed descriptor: `FlyHash(d=32, expansion=7, wta=0.05)` gives m = 224
@@ -808,7 +808,7 @@ practice, the unification is nominal and must be reported as such.
 `substrate/lake_memory.py`.
 
 **Explicitly not built, and why:** any resonator or theta-slot register (already exists in
-`cortex/theta_gamma_code.py` and `growth/autapse_neuron.py`); any PCI sweep (optimising toward a
+`faculties/theta_gamma_code.py` and `growth/autapse_neuron.py`); any PCI sweep (optimising toward a
 marker, and the harness does not exist); any VSA bus layer (cold-start identity collapse and
 `D = 512` capacity); any FlyHash or ART clustering layer (zero importers, degenerate on the
 descriptor, duplicates `SchemaInducer`, and its null could not fail); any R-STDP credit layer for

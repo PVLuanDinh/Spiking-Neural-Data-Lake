@@ -7,7 +7,7 @@ arcade grids -- and neither co-installs with arc-agi's numpy>=2.2. So they are d
 here; using them would be theatre, not function.
 (Corrected 2026-08-04: this named the language tier "SpikeGPT". That organ was SCRAPPED in v3.77 --
 see the language-organ block in engine/brain.py -- and conversation now comes from the ACQUIRED
-organ, cortex/language_acquisition, built lazily in _lm_serve. A scope limit justified by a deleted
+organ, faculties/language_acquisition, built lazily in _lm_serve. A scope limit justified by a deleted
 component cannot be checked. "zero-dep cognition" below was also retired-rule residue: P7 abolished
 the zero-dependency rule on 2026-07-20, and what is actually true is that this file needs nothing
 beyond arc-agi and the four faculties named.)
@@ -17,7 +17,7 @@ What DOES play, composed below, is the brain's own cognition:
   * rule discovery -- an online world model T (transitions) + model-based value iteration (planning);
   * decision     -- faculties/evidence_accumulation.RaceAccumulator (a genuine spiking N-alternative
                     race over the candidate actions' values);
-  * control      -- cortex/metacognitive_monitor.MetacognitiveMonitor gates explore-vs-exploit.
+  * control      -- faculties/metacognitive_monitor.MetacognitiveMonitor gates explore-vs-exploit.
 
 ACTION SPACE (the thing that actually matters): ARC-AGI-3 mixes SIMPLE actions (ACTION1-5, ACTION7,
 RESET) with a COMPLEX action ACTION6 = CLICK at (x, y). A bare ACTION6 is a no-op, so the brain must
@@ -50,10 +50,10 @@ from rule_inducer import (  # noqa: E402  (relational reasoning layer)
     induce,
 )
 
-from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor  # noqa: E402
 from snn_data_lake.faculties.evidence_accumulation import RaceAccumulator  # noqa: E402
 from snn_data_lake.faculties.generalizing_novelty import GeneralizingNovelty  # noqa: E402
 from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive  # noqa: E402
+from snn_data_lake.faculties.metacognitive_monitor import MetacognitiveMonitor  # noqa: E402
 
 _CLICK = GameAction.ACTION6.value  # the one complex (x,y) action
 K = 8  # click grid: K*K targets tiled over the frame

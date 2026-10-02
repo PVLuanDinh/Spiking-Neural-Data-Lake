@@ -9,7 +9,7 @@ cue that shares zero content words, and the lexical gate provably returns [] -- 
 generalization.
 
 THIS MODULE: a SemanticStore that encodes each remembered fact as a HIGH-DIMENSIONAL vector built
-on the same substrate conventions as cortex/vsa_reasoning.py -- deterministic crc32-seeded bipolar
+on the same substrate conventions as faculties/vsa_reasoning.py -- deterministic crc32-seeded bipolar
 spike-polarity ATOMS (one spike per dimension on an up(+1)/down(-1) line), superposed (bundled)
 into a fact code -- and recalls by VSA cosine (centred spike coincidence), not by shared words.
 

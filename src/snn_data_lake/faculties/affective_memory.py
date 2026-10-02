@@ -25,7 +25,7 @@ WIRING (documented only -- this module edits nothing else):
   - arousal  <- faculties.fear_conditioning.Amygdala.threat(cs)           (threat readout, 0..1;
                 the class name was `FearConditioning` here, which is defined nowhere in the tree --
                 corrected 2026-08-04, the class has always been `Amygdala`)
-  - valence  <- cortex.self_model.SelfModel valence-axis, or
+  - valence  <- faculties.self_model.SelfModel valence-axis, or
                 plasticity.valence_stdp.ValenceLearner.valence()      (learned good/bad axis)
   - reward   <- the same live reward the arm loop already emits
   At store time the caller passes (fragment, valence, arousal, reward). At consolidation the

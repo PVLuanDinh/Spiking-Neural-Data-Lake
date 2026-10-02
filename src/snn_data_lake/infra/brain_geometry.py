@@ -416,7 +416,16 @@ def layout():
 # The first module drawn, pinned. This is the SEED CONTRACT: it fails if the seed, the placement
 # rules, or the head of the module census changes -- any of which silently moves every coordinate.
 # G8 M4: this is a frozen anatomical label, not the module's current file path.
-_SEED_PIN_KEY = "cortex/rank_order_coding"
+# G8 M11e: the label is read from the frozen LEGACY_* tables, not spelled here: `cortex` is a retired package
+# name now, and a spelled `<retired package>/<module>` string is what C2(d) reads as a stale path. The pin
+# is still the module NAME plus the frozen label, so a moved census head still reds it.
+def _frozen_label_key(module):
+    from snn_data_lake import LEGACY_REGIONS  # lazy: keeps this cycle-free
+
+    return next(f"{label}/{module}" for label, mods in LEGACY_REGIONS.items() if module in mods)
+
+
+_SEED_PIN_KEY = _frozen_label_key("rank_order_coding")
 _SEED_PIN_XYZ = (0.2656447451741262, 0.44153862227162194, 0.5522876185510223)
 
 

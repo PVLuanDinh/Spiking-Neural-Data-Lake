@@ -14,7 +14,7 @@ semantic memory: an episode is a bound conjunction of who/what/where/when/affect
 content-addressable pattern completion from a partial cue, not a lookup by key.
 
 HOW (the mechanism -- genuinely spiking, no gradients). Each episode is encoded the HDC/VSA way,
-reusing the verified spiking primitives in cortex/vsa_reasoning (two-line spike-polarity codes;
+reusing the verified spiking primitives in faculties/vsa_reasoning (two-line spike-polarity codes;
 bind = self-inverse spike-XOR coincidence gate; bundle = spike-superposition majority WTA;
 coincidence/sim = spike-coincidence count; cleanup = snap-to-nearest codebook spike code):
 
@@ -72,7 +72,7 @@ cosine gate does not apply (nothing here learns by gradient).
 
 SAFETY / SCOPE. Representation/value-side ONLY. This module NEVER selects an action, NEVER calls the
 arm, NEVER emits a motor command, and imports NOTHING from brainstem/ or any safety-envelope file.
-It reuses cortex/vsa_reasoning (pure spike algebra). Additive/opt-in: nothing runs at import; work
+It reuses faculties/vsa_reasoning (pure spike algebra). Additive/opt-in: nothing runs at import; work
 happens only under explicit calls or __main__.
 
 THRESHOLDS ARE DERIVED, NOT FROZEN. Both decision margins used below are COMPUTED from the store's
@@ -140,7 +140,7 @@ import zlib
 
 import numpy as np
 
-from snn_data_lake.cortex.vsa_reasoning import (
+from snn_data_lake.faculties.vsa_reasoning import (
     D,
     bind,
     bundle,

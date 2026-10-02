@@ -31,11 +31,10 @@ from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.serial_arm import is_valid_command
 from snn_data_lake.brainstem.so101_arm import _DEG as _SO101_DEG
 from snn_data_lake.brainstem.so101_arm import So101Arm
-from snn_data_lake.cortex.agency_monitor import AgencyMonitor
-from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.engine.signal_ring import LakeJournaller, SignalRing
 from snn_data_lake.faculties.action_gating import BasalGangliaGate
 from snn_data_lake.faculties.affective_memory import AffectiveEpisodicStore
+from snn_data_lake.faculties.agency_monitor import AgencyMonitor
 from snn_data_lake.faculties.allocentric_map import AllocentricMap
 from snn_data_lake.faculties.contrastive_episode_analysis import ContrastiveEpisodeAnalyzer
 from snn_data_lake.faculties.cortisol import Cortisol
@@ -51,6 +50,7 @@ from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.faculties.jepa_world_model import JepaWorldModel
 from snn_data_lake.faculties.latent_q import LatentQ
 from snn_data_lake.faculties.mlp_q import MlpQ
+from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.infra.brain_bundle import BrainBundle, load_bundle
@@ -684,7 +684,7 @@ class AutonomousArm:
             self.arm.set_substeps(max(n + 1, n * 2))  # find it fast
 
     # ---- T038 (FR-027): the coverage ledger's two measured properties -----------------------
-    # distinct-from: cortex/time_cells.py -- save()/restored() persist the CLOCK's thresholds
+    # distinct-from: faculties/time_cells.py -- save()/restored() persist the CLOCK's thresholds
     #   with a seed/drive lineage; this persists the coverage CELLS with a cell-size/reach
     #   lineage. Same carrier (home.save_state), different state, each refusing its own
     #   mismatch. Read.
@@ -1174,7 +1174,7 @@ class AutonomousArm:
         )
         if self._exec is None:  # W8: lazily bind the ACC executive
             try:
-                from snn_data_lake.cortex.executive_control import ExecutiveControl
+                from snn_data_lake.faculties.executive_control import ExecutiveControl
 
                 self._exec = ExecutiveControl(seed=self._seed)
             except Exception:
@@ -1240,8 +1240,8 @@ class AutonomousArm:
         never suppresses a threat or the safety path. Bounded, deterministic, guarded."""
         try:
             if self._rgate is None:
-                from snn_data_lake.cortex.divisive_normalization import DivisiveNormalization
                 from snn_data_lake.faculties.claustrum import Claustrum
+                from snn_data_lake.faculties.divisive_normalization import DivisiveNormalization
                 from snn_data_lake.faculties.reticular_gate import ReticularGate
 
                 self._rgate = ReticularGate(n_channels=4, seed=self._seed)
@@ -1374,7 +1374,7 @@ class AutonomousArm:
             return [0.0] * len(ACTIONS)
         # THE PFC WORKING MEMORY IS UNREACHABLE FROM HERE, AND THE REASON IS THIS LOOP'S SHAPE.
         # PrefrontalExecutive.maintain() and push_subgoal() have no live caller (their callers are 6
-        # call sites across 4 modules -- cortex/autotelic_goals.py:315, reasoning/autonomous_brain.py:122,
+        # call sites across 4 modules -- faculties/autotelic_goals.py:315, reasoning/autonomous_brain.py:122,
         # reasoning/developmental_core.py:153, reasoning/developmental_loop_wm.py:56/:65/:128 -- all
         # offline loops; "five real callers" here was neither the site count nor the module count,
         # corrected 2026-07-29 by enumerating them), so `_wm_spikes`
@@ -1414,7 +1414,7 @@ class AutonomousArm:
                     (vals[0] - vals[1]) if len(vals) > 1 else 0.5
                 )  # decision margin = value of resolving the conflict
                 # C2 #9: use the LEARNED cost/value-of-control when the cortex has pushed them
-                # (cortex/learned_evc, dopamine-gated three-factor). They replace the fixed
+                # (faculties/learned_evc, dopamine-gated three-factor). They replace the fixed
                 # cost=0.1 / +0.3 constants -- same formula shape, same BOUNDED top-down preference
                 # into the same gated selection; the reflex/E-STOP still preempts and no actuator
                 # route is added. Falls back to the constants when the cortex has not pushed yet.
@@ -1633,7 +1633,7 @@ class AutonomousArm:
         is the hysteresis working rather than failing). The same run on the pre-fix bus: 1 distinct
         value, 0 changes, 19 of 56. What is still capped is the RANGE, not the content -- this
         channel offers a downstream reader at most `hi - lo = 0.20` of swing, against the > 0.30
-        shift `cortex/access_consciousness` was measured to need before its own output moves, and
+        shift `faculties/access_consciousness` was measured to need before its own output moves, and
         that ceiling is a property of `faculties/global_workspace.py`'s constants.
 
         Checked at the four degenerate inputs, because a P1 rewrite in this tree already shipped a
@@ -1720,7 +1720,7 @@ class AutonomousArm:
             wrote = self._coalition_journal.drain()
             self._coalition_drained += wrote
             self._coalition_deduped = self._coalition_ring.head - self._coalition_drained
-        # The ignition VERDICT, ported 2026-08-12 from cortex/competence_executive.WorkspaceBroadcast
+        # The ignition VERDICT, ported 2026-08-12 from faculties/competence_executive.WorkspaceBroadcast
         # ahead of that wrapper's retirement -- the one expression the wrapper added over the bus:
         # did THIS loop's own percept submission seize the slot this tick. Distinct from
         # `_ignitions` below, which counts content CHANGES across ticks. Consumed by

@@ -52,7 +52,7 @@ whole-join neuter could not separate the two producers.
 
 # distinct-from: faculties/interoceptive_arousal.py -- the BRAINSTEM half (arousal drive from
 #   visceral afferents, already charged); this is the CORTICAL terminus computing
-#   deviation-from-baseline salience. distinct-from: cortex/affect_core.py -- valence/arousal
+#   deviation-from-baseline salience. distinct-from: faculties/affect_core.py -- valence/arousal
 #   AFFECT dynamics downstream of appraisal; this is upstream body-state integration.
 # distinct-from: faculties/set_points.py -- homeostatic TARGETS; this tracks the brain's
 #   own running statistics, never fixed set-points. All sites read.
@@ -283,7 +283,7 @@ class InteroceptiveIntegration:
 
     # distinct-from: engine/autonomous_loop.py -- _pfc_bias COMPUTES a prefrontal action
     #   preference; this returns a cached term and computes nothing. Read.
-    # distinct-from: cortex/access_consciousness.py -- workspace exposes an identity handle;
+    # distinct-from: faculties/access_consciousness.py -- workspace exposes an identity handle;
     #   this reports a scalar the last observe() applied. Read.
     def last_top_down(self) -> float:
         """The top-down term observe() last APPLIED, for a caller that must REPORT it.

@@ -37,7 +37,7 @@ class OjaNeuron:
 
     WHAT THE ZERO-DEP RULE COST HERE, and why this one is a real compromise unlike the scalar
     neuron models: `self.w` was a Python list and the update ran as a list comprehension over
-    `zip(self.w, x)`. The live consumer is numpy -- `cortex/percept_surprise.py` holds a numpy
+    `zip(self.w, x)`. The live consumer is numpy -- `faculties/percept_surprise.py` holds a numpy
     residual and had to call `.tolist()` purely to DEMOTE it so this class could eat it, then
     re-promote afterwards. That is a conversion per sample, at `in_dim=2312`, in both directions,
     existing only to satisfy a rule abolished 2026-07-20. numpy is an unconditional core dependency

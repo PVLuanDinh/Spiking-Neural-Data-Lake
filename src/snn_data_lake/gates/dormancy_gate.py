@@ -291,12 +291,12 @@ EXEMPT = {
     "competence_executive": (
         "permanent",
         "EXECUTIVE ADAPTERS over a developmental COMPETENCE vector (promoted+RENAMED "
-        "reasoning/brain_adapters/executive_control.py -> cortex/competence_executive.py "
+        "reasoning/brain_adapters/executive_control.py -> faculties/competence_executive.py "
         "2026-08-12, #10 lane 4f -- the LAST brain_adapters module; renamed because "
-        "cortex/executive_control holds the basename and brain_atlas.py:81 asserts "
+        "faculties/executive_control holds the basename and brain_atlas.py:81 asserts "
         "uniqueness). Three stdlib wrappers over governed mechanisms: dopamine RPE -> "
         "bounded lr multiplier (faculties/dopamine_nuclei), objective broadcast "
-        "(faculties/global_workspace), competence planning (cortex/prefrontal_executive). "
+        "(faculties/global_workspace), competence planning (faculties/prefrontal_executive). "
         "Its ONE consumer is instruments/developmental_loop_brain, lazily inside main() "
         "and _mechanics_check(), and that consumer is itself EXEMPT-permanent TRAIN-TIER "
         "and offline. NO CONVERSION CLAUSE IS WRITTEN HERE, and that is a measurement, "
@@ -315,7 +315,8 @@ EXEMPT = {
     "deep_stdp_latency": (
         "permanent",
         "TRAIN-TIER perception feature learner (promoted 2026-08-11, #10 lane 2c, region "
-        "settled cortex/ -- its consumer set IS the perception tier): ConvLatencyStdp is "
+        "settled in the cortex package, now faculties/ -- its consumer set IS the perception "
+        "tier): ConvLatencyStdp is "
         "consumed by the reasoning-tier loops (autonomous_brain, developmental_*, "
         "fast_features) until their own rungs; nothing governed reaches it yet. Mechanics "
         "check in TRAIN_GATED; DSLATENCY_RUN=1 = the full benchmark with both measured bars",
@@ -435,7 +436,7 @@ EXEMPT = {
     # two stores; two wrong verdicts recorded); T056 executed the row's own disposition --
     # the unique capability (the decoupled u/tau_f retention vs R/tau_d release pair, its
     # elapsed-time bookkeeping, and the neuter idiom) is PORTED into
-    # cortex/prefrontal_executive, the capacity is DERIVED there (K = T_max/t_s,
+    # faculties/prefrontal_executive, the capacity is DERIVED there (K = T_max/t_s,
     # faculties/wm_capacity, five guards), and the file is gone. Exactly one mechanism
     # survives; the full record lives in wm_capacity's docstring and specs/022 tasks.md.
     # genomic_bottleneck left this table 2026-09-02: the FR-033 wire it named landed at

@@ -467,7 +467,7 @@ def report(do_assert=False):
         "record. No LIVE path reads one -- a brain with placement replaced by constant tuples "
         "is value-identical in state() and telemetry on every key but the wall clock "
         "(tests/test_placement_charge_null.py pins it; specs/022 evidence/s1-placement-null.md). "
-        "The one built reader, cortex/genomic_bottleneck (FR-033), was wired behind its paired "
+        "The one built reader, genomic_bottleneck (FR-033), was wired behind its paired "
         "A/B, measured a NULL at 24 seeds (847c5f6a) and was DELETED per its own pre-registration; "
         "no reader exists. A region "
         "added here without a live reader claims coverage of a write-only record. The 007 "
@@ -492,7 +492,7 @@ def report(do_assert=False):
 # distinct-from: gates/selfcheck_cache.py -- P8 reds for the cache's keys; unrelated. Read.
 # distinct-from: gates/doc_budget_gate.py -- reds for budget statuses; unrelated. Read.
 # distinct-from: faculties/global_workspace.py -- a slot-load site; unrelated. Read.
-# distinct-from: cortex/self_improvement_suite.py -- the rung census; unrelated. Read.
+# distinct-from: faculties/self_improvement_suite.py -- the rung census; unrelated. Read.
 def _report_rc(mod):
     buf = io.StringIO()
     with redirect_stdout(buf):

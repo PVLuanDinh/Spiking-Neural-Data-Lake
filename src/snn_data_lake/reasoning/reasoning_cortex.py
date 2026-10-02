@@ -702,7 +702,7 @@ class StructureMappingSolver:
                 False,
             )
         if self._Mapper is None:
-            from snn_data_lake.cortex.vsa_structure_mapping import StructureMapper
+            from snn_data_lake.faculties.vsa_structure_mapping import StructureMapper
 
             self._Mapper = StructureMapper
         mapper = self._Mapper(dim=self.DIM, seed=self.seed)  # FRESH: map() advances its own rng
@@ -805,7 +805,7 @@ class RelationalCompletionExpert:
         if self._model is None:
             import numpy as np
 
-            from snn_data_lake.cortex.kb_ranking import (
+            from snn_data_lake.faculties.kb_ranking import (
                 DistMult,  # the class ONLY, never its dataset fns
             )
 
@@ -1154,7 +1154,11 @@ def main():
     # ---- relational completion: LEARNED link prediction over the brain's OWN triples -----------------
     import sys
 
-    assert "snn_data_lake.cortex.kb_ranking" not in sys.modules, (
+    from snn_data_lake import module_path
+
+    # derived, never spelled: a stale spelling would make the three asserts below pass vacuously (G8 F16)
+    _KB = module_path("kb_ranking")
+    assert _KB not in sys.modules, (
         "kb_ranking (numpy) must not load before the relational expert's first use (lazy contract)"
     )
     kb_triples = [
@@ -1174,7 +1178,7 @@ def main():
     kbx = build_default_cortex(seed=0, triples=kb_triples)
     rc = kbx.experts[-1]
     assert rc.name == "kb-completion" and len(kbx.roster()) == len(roster) + 1
-    assert "snn_data_lake.cortex.kb_ranking" not in sys.modules, (
+    assert _KB not in sys.modules, (
         "building the cortex must not import kb_ranking/numpy -- training is lazy"
     )
     # (e) no regression: with the extra (relational) expert registered, the base experts still take
@@ -1182,12 +1186,10 @@ def main():
     for pq, we, _wa in probes[:10]:
         assert kbx.route(pq)["expert"] == we, "expert %s must still take %r" % (we, pq)
     # ...and routing those non-relational queries never touched numpy (score() is pure stdlib)
-    assert "snn_data_lake.cortex.kb_ranking" not in sys.modules, (
-        "routing non-relational queries must never touch numpy"
-    )
+    assert _KB not in sys.modules, "routing non-relational queries must never touch numpy"
     # (offline) the expert may use kb_ranking.DistMult ONLY -- its dataset/network fns must never run:
     # stub them to raise BEFORE the first relational answer, so any call would fail the self-check.
-    from snn_data_lake.cortex import kb_ranking as _kbr
+    from snn_data_lake.faculties import kb_ranking as _kbr
 
     def _forbidden(*_a, **_k):
         raise AssertionError("kb_ranking dataset/network path must NEVER run (offline contract)")

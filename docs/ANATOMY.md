@@ -50,7 +50,7 @@ homeostats turn the body's `homeostatic_load` into a bounded caution (`faculties
 via the NTS→LC ascending edge) — all **caution-only**, and the reflex/E-STOP still preempts every
 motor command.
 
-The **prefrontal executive** (`cortex/prefrontal_executive`) sits at the centre: it deliberates over
+The **prefrontal executive** (`faculties/prefrontal_executive`) sits at the centre: it deliberates over
 the action-values (reusing the drift-diffusion race), holds a **goal** in working memory, and biases
 selection top-down toward it (`ctx_pfc→ctx_motor`), so the arm is **goal-directed**, not merely
 reactive — a top-down *preference* that still yields to caution and the reflex/E-STOP.

@@ -6,16 +6,16 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| generation_acquired_lm | 40 | src/snn_data_lake/engine/brain.py:4081#_rose_serve; src/snn_data_lake/engine/brain.py:3617#respond; src/snn_data_lake/cortex/language_acquisition.py:188#generate | lang_no_ab_source.txt | opus-5 language-auditor / live respond() route census, 40-tick brain, seed 0 | 2026-07-30 |
+| generation_acquired_lm | 40 | src/snn_data_lake/engine/brain.py:4081#_rose_serve; src/snn_data_lake/engine/brain.py:3617#respond; src/snn_data_lake/faculties/language_acquisition.py:188#generate | lang_no_ab_source.txt | opus-5 language-auditor / live respond() route census, 40-tick brain, seed 0 | 2026-07-30 |
 | comprehension_intent_firewall | 40 | src/snn_data_lake/engine/brain.py:3491#respond | - | opus-5 language-auditor / live respond() route census, seed 0 | 2026-07-30 |
-| generation_narrator | 35 | src/snn_data_lake/cortex/self_model.py:411#introspect; src/snn_data_lake/engine/brain.py:3587#respond | - | opus-5 language-auditor / live respond() route census + benevolence turn, seed 0 | 2026-07-30 |
+| generation_narrator | 35 | src/snn_data_lake/faculties/self_model.py:411#introspect; src/snn_data_lake/engine/brain.py:3587#respond | - | opus-5 language-auditor / live respond() route census + benevolence turn, seed 0 | 2026-07-30 |
 | pragmatics_implicature | 32 | src/snn_data_lake/reasoning/spike_chat_lake.py:1326#converse; src/snn_data_lake/reasoning/pragmatics.py:356#implicature | - | opus-5 language-auditor / live neuter-A/B on LakeChat._pragmatics, seed 0 | 2026-07-30 |
-| constituency_parse_rose | 28 | src/snn_data_lake/engine/brain.py:3039#_enter_sleep; src/snn_data_lake/cortex/rose_language.py:274#parse | - | opus-5 language-auditor / live respond('parse ...') + shuffled-input control (path+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
+| constituency_parse_rose | 28 | src/snn_data_lake/engine/brain.py:3039#_enter_sleep; src/snn_data_lake/faculties/rose_language.py:274#parse | - | opus-5 language-auditor / live respond('parse ...') + shuffled-input control (path+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
 | nightly_language_skill | 25 | src/snn_data_lake/sleep/nightly_skills.py:579#_ensure_domains; src/snn_data_lake/engine/brain.py:3070#_enter_sleep | - | opus-5 language-auditor / static read of the sleep-tick consumer, NOT runtime | 2026-07-30 |
 | comprehension_learned_intent_router | 22 | src/snn_data_lake/engine/live_brain.py:568#chat; src/snn_data_lake/engine/live_brain.py:551#route | - | opus-5 language-auditor / caller search for the route() readout, static | 2026-07-30 |
 | grammar_competence_blimp | 12 | src/snn_data_lake/reasoning/blimp_bench.py:170#module; src/snn_data_lake/reasoning/ar_spiking_lm_serve.py:356#logprob | lang_blimp_bench_67x25.txt | opus-5 language-auditor / blimp_bench.py self-check, 67x25 pairs | 2026-07-30 |
 | core_spiking_lm_serve | 5 | src/snn_data_lake/sensorimotor/spiking_lm_serve.py:96#generate | - | opus-5 language-auditor / weight-file search + caller search | 2026-07-30 |
-| rose_grounded_comprehension | 5 | src/snn_data_lake/cortex/rose_language.py:585#comprehend | - | opus-5 language-auditor / live comprehend() on 3 ordinary sentences (path+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
+| rose_grounded_comprehension | 5 | src/snn_data_lake/faculties/rose_language.py:585#comprehend | - | opus-5 language-auditor / live comprehend() on 3 ordinary sentences (path+line re-derived at the 2026-08-12 promotion) | 2026-07-30 |
 | discourse_model | 0 | - | - | opus-5 language-auditor / tree-wide search, nothing implements it | 2026-07-30 |
 
 **Mean over the eleven rows: 244 / 11 = 22.2.** Zero rows are `UNSCORED`. Zero rows are above 40, so
@@ -197,12 +197,12 @@ it will cost Perception or Gf something.
 
 Format: `file` -- unique capability -- **live consumer**.
 
-- `cortex/language_acquisition.py` -- online spiking predictive-coding char LM; `expose()` learns from
+- `faculties/language_acquisition.py` -- online spiking predictive-coding char LM; `expose()` learns from
   live turns, `generate()` produces the reply. **`Brain._lm_serve` / `_language`
   (`brain.py:3384,3426`).**
-- `cortex/self_model.py::SelfNarrator` -- deterministic state-grounded sentence generation; the only
+- `faculties/self_model.py::SelfNarrator` -- deterministic state-grounded sentence generation; the only
   always-coherent generator in the stack. **`brain.py:2932,2951,2961`.**
-- `cortex/rose_language.py` (promoted from reasoning/ 2026-08-12) -- VSA role-filler parse string, KB-grounded `comprehend`, SLDA
+- `faculties/rose_language.py` (promoted from reasoning/ 2026-08-12) -- VSA role-filler parse string, KB-grounded `comprehend`, SLDA
   competence head. **`parse` only, via `brain.py:2898`.**
 - `reasoning/pragmatics.py` -- speech-act taxonomy, Gricean implicature, indirect-request detection,
   VSA-Hebbian learner. **`implicature` only, via `spike_chat_lake.py:1000`.**
@@ -263,10 +263,12 @@ python tools/coverage_score.py --rerun lang_no_ab_source          # exit 2, no l
 python tools/coverage_score.py --rerun lang_blimp_bench_67x25     # needs data/lang/blimp + models/ (gitignored)
 
 # the runtime readings above, in order (R1-R7); all read-only, none writes state
-PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.cortex.rose_language
+PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.faculties.rose_language
 PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.pragmatics
 PYTHONPATH=src PYTHONUTF8=1 .venv-lake/Scripts/python.exe -m snn_data_lake.sensorimotor.spiking_lm_serve
 ```
+
+*Path note (G8 M11e, 2026-10-02): the first of these three commands named `snn_data_lake.cortex.rose_language` when R1-R7 were taken; its runnable path is the `faculties` one shown.*
 
 The route census, the `expose()` weight delta and the `_pragmatics` neuter-A/B were run from a
 throwaway script against `make_brain(seed=0, persist=False)` and are **not** re-runnable from the tree.
@@ -277,7 +279,7 @@ yet for the live-brain ones.
 
 ### 2026-08-02 -- assembly-calculus language organ: NOT-P2-ELIGIBLE, no band change
 
-`specs/005-language-organ` proposed replacing `cortex/language_acquisition.py` with a brain-native
+`specs/005-language-organ` proposed replacing `faculties/language_acquisition.py` with a brain-native
 Assembly-Calculus language organ (arXiv 2306.15364 / 2507.11788), to be decided by an A/B on
 `reasoning/blimp_bench.py`. It was refused at the INSTRUMENT stage, before any organ code was
 written, and no `src/` file was touched.

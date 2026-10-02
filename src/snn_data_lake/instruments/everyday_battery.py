@@ -70,7 +70,7 @@ after this module at 2a13221.
 #   REPLIES against a frozen answer key. Read before writing this file; no scorer, no answer key
 #   and no reply classifier exists in the tree (graph-exists, 2026-09-17: "NO EXISTING
 #   IMPLEMENTATION found").
-# distinct-from: cortex/reasoning_curriculum.py, cortex/vsa_reasoning.py -- lexical matches on
+# distinct-from: faculties/reasoning_curriculum.py, faculties/vsa_reasoning.py -- lexical matches on
 #   "reasoning" only: the curriculum GENERATES training items for sleep consolidation and
 #   vsa_reasoning BINDS symbols; neither scores a chat reply and neither holds an answer key.
 """

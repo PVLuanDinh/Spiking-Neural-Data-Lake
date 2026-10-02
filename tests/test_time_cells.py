@@ -1,4 +1,4 @@
-"""Tests for TimeCellClock (cortex/time_cells.py): a ramping-to-threshold spiking time-cell
+"""Tests for TimeCellClock (faculties/time_cells.py): a ramping-to-threshold spiking time-cell
 population that tiles an interval. Covers the three faculty claims -- (a) decode() tracks true
 elapsed steps monotonically, (b) the decoded SD scales up with longer intervals (Weber/scalar
 timing emerges from accumulator noise), (c) learn_interval() reduces interval-reproduction error
@@ -10,7 +10,7 @@ Run: pytest tests/test_time_cells.py
 import math
 from functools import cache
 
-from snn_data_lake.cortex.time_cells import TimeCellClock
+from snn_data_lake.faculties.time_cells import TimeCellClock
 
 
 def test_decode_tracks_elapsed_time_monotonically():

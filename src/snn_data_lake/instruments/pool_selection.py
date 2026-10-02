@@ -203,7 +203,7 @@ def ordering(entries, band):
     return ranked
 
 
-# distinct-from: cortex/access_consciousness.py -- `focused()` reads whether a workspace content is the
+# distinct-from: faculties/access_consciousness.py -- `focused()` reads whether a workspace content is the
 #   arbiter's head; this filters benchmark entries to the selectable set before section 2.5's ordering.
 def rank_selection(entries, band):
     """(ranked, reference): the ordering over the eligible SELECTABLE entries, whose head is the
@@ -423,7 +423,7 @@ def _replay_job(stream, arm, out, *, pool=None, readout=True, fault=None):
 
 # The cell helpers below file replays for R-b7 (sites read, none files a replay under a binding):
 # distinct-from: instruments/memory_diagnostic.py -- replay() RUNS the pool arm from a spec; these name one
-# distinct-from: cortex/time_cells.py -- tick advances a ramp and latches crossed cells
+# distinct-from: faculties/time_cells.py -- tick advances a ramp and latches crossed cells
 # distinct-from: faculties/drive_reduction.py -- NeedPool is a drive's LIF population
 # distinct-from: reasoning/rpm_solver.py -- _induce_attr predicts a missing matrix cell
 # distinct-from: instruments/binding_instrument.py -- _t080_sparse_latent draws a sparse latent

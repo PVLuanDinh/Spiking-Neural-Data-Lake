@@ -431,7 +431,7 @@ class ThresholdRecalibrationSource(SelfBuildSource):
 DEHARDCODE_TRANSFORMS = (
     {
         "id": "metacog_r_explore",
-        "target": "src/snn_data_lake/cortex/metacognitive_monitor.py",
+        "target": "src/snn_data_lake/faculties/metacognitive_monitor.py",
         "const": "r_explore",
         "current": 0.30,
         "rationale": (
@@ -849,8 +849,8 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
     work = tempfile.mkdtemp(prefix="brain_native_selfbuild_selfcheck_")
     try:
         fake = os.path.join(work, "fakerepo")
-        rel_good = "src/snn_data_lake/cortex/_toy_gate.py"
-        rel_bad = "src/snn_data_lake/cortex/_toy_pinned.py"
+        rel_good = "src/snn_data_lake/faculties/_toy_gate.py"
+        rel_bad = "src/snn_data_lake/faculties/_toy_pinned.py"
         for rel, body in ((rel_good, _TOY_GOOD_SRC), (rel_bad, _TOY_BAD_SRC)):
             p = os.path.join(fake, *rel.split("/"))
             os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -997,11 +997,11 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
             "src/snn_data_lake/reasoning/self_mod_harness.py",  # harness, NOT-AT-THAT-PATH
             "src/snn_data_lake/reasoning/self_build_loop.py",  # accept path, NOT-AT-THAT-PATH
             _SELF_REL,  # itself, at wherever it actually lives right now
-            "src/snn_data_lake/cortex/self_improvement_suite.py",  # the census scorer
+            "src/snn_data_lake/faculties/self_improvement_suite.py",  # the census scorer
             "src/../../evil.py",
             "src/snn_data_lake/brainstem/reflex.py",
             "src/snn_data_lake/reasoning/brain_native_selfbuild.py",  # this file, NOT-AT-THAT-PATH
-            "src/snn_data_lake/cortex/self_build_loop.py",  # accept path, NOT-AT-THAT-PATH
+            "src/snn_data_lake/faculties/self_build_loop.py",  # accept path, NOT-AT-THAT-PATH
             "src/snn_data_lake/infra/self_mod_harness.py",  # the harness at its REAL path
         )
         rejected = 0

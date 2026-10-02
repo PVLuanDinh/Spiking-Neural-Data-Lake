@@ -5,7 +5,7 @@ where the grounded method has a real number: NVSA (Hersche et al. 2023, arXiv:22
 ~88% on the RAVEN benchmark by inducing the puzzle's rule in a vector-symbolic algebra and executing
 it over role-filler object codes. This module runs NVSA's backend over the brain's OWN spiking VSA.
 
-WHY THIS RUNS WITH ZERO NUMERICAL CHANGE. cortex/vsa_reasoning.py is a two-line spike-polarity code
+WHY THIS RUNS WITH ZERO NUMERICAL CHANGE. faculties/vsa_reasoning.py is a two-line spike-polarity code
 whose docstring states it is "numerically lossless w.r.t. the dense HD algebra" -- i.e. the balanced
 +/-1 spike code IS NVSA's bipolar +/-1 codebook, and bind/bundle/permute/sim/cleanup are exactly
 NVSA's Hadamard-product / superposition / fractional-power / cosine / nearest-neighbour ops. So NVSA
@@ -56,7 +56,7 @@ import re
 import zlib
 
 from snn_data_lake.faculties.action_gating import BasalGangliaGate
-from snn_data_lake.cortex.vsa_reasoning import bind, bundle, cleanup, hv, permute, sim
+from snn_data_lake.faculties.vsa_reasoning import bind, bundle, cleanup, hv, permute, sim
 from snn_data_lake.reasoning.gf import code, induce_shift
 from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 

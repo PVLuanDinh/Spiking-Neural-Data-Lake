@@ -1007,9 +1007,9 @@ def _entropy(values):
 # predictions against a recorded category stream (all read):
 # distinct-from: sensorimotor/ingest_guard.py -- license_ok refuses a non-permissive licence id
 # distinct-from: growth/cortical_prior.py -- validate lists reference data missing an attribute
-# distinct-from: cortex/counterfactual_sim.py -- counterfactual scores imagined rollouts by value_fn
+# distinct-from: faculties/counterfactual_sim.py -- counterfactual scores imagined rollouts by value_fn
 # distinct-from: instruments/prior_drift_harness.py -- arm_wrong builds a band-permuted target table
-# distinct-from: cortex/wholistic_loop.py -- _perceive degrades an input by substrate fidelity
+# distinct-from: faculties/wholistic_loop.py -- _perceive degrades an input by substrate fidelity
 def score(stream, predictions, fallbacks, *, floors=True):
     """Per segment: accuracy (None is a miss), coverage, entropies, the prior-fallback rate and the
     stream's own floors. `floors=False` (G1(b)'s campaign scores thousands of replays of one

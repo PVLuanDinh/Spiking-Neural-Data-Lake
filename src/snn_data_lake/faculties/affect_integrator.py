@@ -3,7 +3,7 @@ Affect integrator -- fuses the brain's LEARNED neuromodulators into a coupled
 (valence, arousal) core affect and SELF-ORGANIZES emergent emotion categories.
 
 GAP this closes:
-  cortex/affect_core.py maps emotion onto a FIXED Russell-circumplex lookup, and the
+  faculties/affect_core.py maps emotion onto a FIXED Russell-circumplex lookup, and the
   learned neuromodulators -- amygdala threat, dopaminergic reward, serotonergic mood,
   cortisol load -- were never wired INTO it. So the felt emotion could not move with the
   chemistry the rest of the brain is busy learning. This module is that missing coupling:

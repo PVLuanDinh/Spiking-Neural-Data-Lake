@@ -21,7 +21,7 @@ import json
 
 gate = importlib.import_module("snn_data_lake.gates.gradient_claim_gate")
 
-_PROBE = "cortex/zz_probe_rule.py"
+_PROBE = "faculties/zz_probe_rule.py"
 
 
 def _states(rules, module_rel):
@@ -94,7 +94,7 @@ def test_every_load_bearing_module_stays_visible_to_the_census():
     )
     # NEGATIVE CONTROL: membership must be able to answer NO, or the assertion above is satisfied by
     # a set that contains everything.
-    assert "cortex/zz_not_a_real_module.py" not in seen, (
+    assert "faculties/zz_not_a_real_module.py" not in seen, (
         "the census claims to contain a module that does not exist -- membership proves nothing"
     )
     # POSITIVE CONTROL: and it must answer YES for something outside the list, or `seen` is just the

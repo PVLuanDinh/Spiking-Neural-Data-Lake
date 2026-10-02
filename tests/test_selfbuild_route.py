@@ -65,7 +65,7 @@ from snn_data_lake.engine.brain import SELFBUILD_EVERY, make_brain
 
 # Every file the one authored transform can reach. Digested before and after the run: this is what
 # replaced `proposed == 0` as the safety bound (see the tripwire block below).
-_REACHABLE = ("src/snn_data_lake/cortex/metacognitive_monitor.py",)
+_REACHABLE = ("src/snn_data_lake/faculties/metacognitive_monitor.py",)
 
 
 def _digest(root):

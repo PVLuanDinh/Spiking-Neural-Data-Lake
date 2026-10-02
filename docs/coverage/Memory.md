@@ -169,7 +169,7 @@ not as verified.
   dict). Overlaps `episodic_recall` in role but not in mechanism; both are live and consumed.
 - `sleep/experience_replay.py` -- SWR forward+reverse value consolidation into `arm.q`. Sole
   provider of memory-to-learning-update. Also imported by `sleep/lifelong_consolidation.py`,
-  `substrate/lake_memory.py`, `cortex/quality_diversity.py`, `cortex/reasoning_curriculum.py`.
+  `substrate/lake_memory.py`, `faculties/quality_diversity.py`, `faculties/reasoning_curriculum.py`.
 - `faculties/affective_memory.py` -- affect-tagged episodic retention; `recall_by_emotion`
   (charged) and `recall_similar` (dormant). Sole provider of somatic-marker retrieval.
 - `sleep/lake_consolidation.py` -- `RecallTrace` use-decayed utility + prune policy for the
@@ -183,7 +183,7 @@ not as verified.
   module it was built to replace is the one on the tick. Flagged as a Policy-2 question for whoever
   owns that decision, not scored here.
 - `sleep/sleep_consolidation.py` -- `SleepConsolidator` (wake -> quiescent consolidation).
-  Imported by `cortex/self_improvement_suite.py`, `reasoning/lake_skill_library.py` and
+  Imported by `faculties/self_improvement_suite.py`, `reasoning/lake_skill_library.py` and
   `reasoning/brain_adapters/hippocampal_memory.py`, **not** by `engine/brain.py`, which reimplements
   the wake/sleep consolidation inline. Also a Policy-2 question; not a separate roster row, because
   the *faculty* it provides is already counted by the three consolidation rows.

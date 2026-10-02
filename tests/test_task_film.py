@@ -5,7 +5,7 @@ cost measurement) run in task_set's registered self-check; these pin the decompo
 identity, the declared anatomy, and the refusal shapes at unit grain.
 """
 
-from snn_data_lake.cortex.task_set import FILM_EDGE, TaskSetLayer, declare_ports
+from snn_data_lake.faculties.task_set import FILM_EDGE, TaskSetLayer, declare_ports
 
 
 def test_film_decomposes_bias_exactly():
@@ -59,7 +59,7 @@ def test_committed_manifest_carries_the_film_wire():
 
 
 def test_charge_evidence_is_committed_and_reproduces():
-    from snn_data_lake.cortex.task_set import _measure_film_charge
+    from snn_data_lake.faculties.task_set import _measure_film_charge
     from snn_data_lake.instruments.port_charge_probe import read_attribution
 
     rec = read_attribution(FILM_EDGE)

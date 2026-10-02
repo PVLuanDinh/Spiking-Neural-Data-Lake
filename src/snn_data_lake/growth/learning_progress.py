@@ -255,8 +255,8 @@ class GoalStore:
     # distinct-from: reasoning/semantic_memory.py -- its top-k is VSA-hypervector cosine
     #   over FACT text (a different record class in a different space); nothing shared but
     #   the words "top-k". Site read.
-    # distinct-from: cortex/learned_attention.py -- per-band bias cosine; unrelated. Read.
-    # distinct-from: cortex/prefrontal_executive.py -- a goal STACK index (which goal is
+    # distinct-from: faculties/learned_attention.py -- per-band bias cosine; unrelated. Read.
+    # distinct-from: faculties/prefrontal_executive.py -- a goal STACK index (which goal is
     #   held), not a similarity index; unrelated job. Read.
     def query(self, embedding, k=3):
         """Cosine top-k over the DERIVED index: [(goal_id, similarity)], best first. The

@@ -67,7 +67,7 @@ _REQUIRED = ("value", "units", "provenance", "accuracy_bound")
 # distinct-from: substrate/home.py -- parses a LAKE RECORD's binary layout. distinct-from:
 #   infra/brain_bundle.py -- validates a serialized BRAIN BUNDLE at a trust boundary.
 #   distinct-from: infra/self_build_loop.py -- reads firewalled FILE BYTES. distinct-from:
-#   cortex/is_snn_forward.py -- per-neuron FIRING RATES. distinct-from: reasoning/blimp_bench.py --
+#   faculties/is_snn_forward.py -- per-neuron FIRING RATES. distinct-from: reasoning/blimp_bench.py --
 #   benchmark label/serve pairs. All five read; none checks reference-datum schema attributes, and
 #   nothing here is reusable in either direction.
 def entry(value, units, provenance, accuracy_bound):

@@ -1,6 +1,6 @@
 """Tests for VSA structure-mapping analogy (relational-system correspondence over spike codes)."""
 
-from snn_data_lake.cortex import vsa_structure_mapping as sm
+from snn_data_lake.faculties import vsa_structure_mapping as sm
 
 SOLAR = [
     ("attracts", "sun", "planet"),

@@ -34,7 +34,7 @@ WHAT THIS MODULE REUSES rather than rebuilds (P2; checked with graph-exists 2026
     its exact sign-flip FPR. Imported AT MODULE LEVEL and never through
     `instruments/prior_drift_harness`: the harness is an EXEMPT instrument and a live import of it
     stales five dormancy rows (T077 2.10, which is why the statistic was lifted in the first place).
-  * `cortex/metacognitive_monitor` -- the SHAPE of `t077_record_brain` (a scratch brain under
+  * `faculties/metacognitive_monitor` -- the SHAPE of `t077_record_brain` (a scratch brain under
     `throwaway_home()`, per-tick rows, an INSTANCE's method wrapped to capture what it is fed and
     what it returns), of `_t077_mutated_scorer` / `t077_reds` (every red reddened IN FACT by a
     deliberately broken scorer, run, never argued), and the q95 convention of `track_error`
@@ -97,7 +97,7 @@ from snn_data_lake.engine.report_channel import snapshot as _report_snapshot
 from snn_data_lake.infra._mathutils import q95
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 
-# distinct-from: cortex/metacognitive_monitor.py::track_error -- a TYPE-2 AUROC over one
+# distinct-from: faculties/metacognitive_monitor.py::track_error -- a TYPE-2 AUROC over one
 #   (confidence, outcome) stream against its own label-permutation null. This is the MUTUAL
 #   INFORMATION of TWO discrete streams against a permutation floor: a different statistic
 #   answering a different question (does the attention state predict the next action, not does
@@ -220,7 +220,7 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #   over MI draws and decoder accuracies. DISCLOSED P2 debt rather than hidden, and CORRECTED
 #   2026-09-15 in the panel fold: this is the THIRD spelling of that non-interpolating order
 #   statistic in the tree, not the second. The others are the inline copy in
-#   `cortex/metacognitive_monitor::track_error`, which 2.1 names as THE convention, and
+#   `faculties/metacognitive_monitor::track_error`, which 2.1 names as THE convention, and
 #   `substrate/lake_engine::AppendBudget._p95_of`, which landed at 37c3203 on 2026-09-06 -- NINE
 #   DAYS before this row's pre-registration -- so this module's own stated trigger ("the moment a
 #   THIRD caller appears") was already met when `_q95` was written, and the sentence that said
@@ -251,7 +251,7 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 # distinct-from: gates/determinism_gate.py::measure_frac_bits -- a sweep for the smallest
 #   fractional-bit width whose spike trains equal an FP64 reference. A search over widths, not a
 #   percentile of a null. Read; unrelated.
-# distinct-from: cortex/executive_control.py::search -- beam/tree search over action SEQUENCES.
+# distinct-from: faculties/executive_control.py::search -- beam/tree search over action SEQUENCES.
 #   Read; shares only the word "score". distinct-from: growth/neuron_zoo.py::_worker_ladder (a
 #   thread-count race) and gates/selfcheck_cache.py::_refresh_derived (a roster recompute) --
 #   both read, neither computes a percentile, a null or an information quantity.
@@ -260,7 +260,7 @@ assert not (set(U_FIELDS) & set(U_FORBIDDEN)), (
 #: it (metacognitive_monitor's `track_error`), never an interpolation -- and this alias keeps
 #: the local spelling so no call site in this module or its tests changes. ONE convention for
 #: every floor and every band here, and now one IMPLEMENTATION of it. Why it moved rather
-#: than being imported from here: T079's `cortex/agency_monitor` is LIVE (autonomous_loop
+#: than being imported from here: T079's `faculties/agency_monitor` is LIVE (autonomous_loop
 #: imports it) and this module is dormancy-EXEMPT, so a live importer of this file makes
 #: `gates/dormancy_gate` name the exemption stale and exit 1 (measured 2026-09-15). The
 #: MECHANISM is singular; only the door moved.
@@ -548,7 +548,7 @@ def g4_rule(u_reads, c_reads):
 # shape `metacognitive_monitor.t077_record_brain` uses for the monitor's `update`, reused rather
 # than reinvented (2.1's P2 list). Seeds run sequentially in ONE process because `throwaway_home()`
 # sets a process-wide env var and is not thread-safe (2.8). The pin is written ONCE.
-# distinct-from: cortex/metacognitive_monitor.py::t077_record_brain -- records the METACOGNITIVE
+# distinct-from: faculties/metacognitive_monitor.py::t077_record_brain -- records the METACOGNITIVE
 #   monitor's five inputs and its unrounded read, and carries a LESIONED arm. This records the
 #   ATTENTION control state, the committed action and the frame label, and Part I has NO lesion
 #   and NO second arm at all: one recording, two gates read off it.
@@ -837,7 +837,7 @@ def t078_determinism(seed, n_ticks=DETERMINISM_TICKS):
 #   context dicts and returns live states. Read: these constructors tick nothing and construct no
 #   brain; `t078_stub_brain` is a duck-typed namespace carrying the seven attributes
 #   `control_state` reads, so R5 runs with no Brain, no lake and no torch.
-# distinct-from: cortex/self_model.py::SelfModel.observe -- folds one tick of REAL brain signals
+# distinct-from: faculties/self_model.py::SelfModel.observe -- folds one tick of REAL brain signals
 #   into an EMA-tracked model. Read: `control_state` keeps no state, folds nothing and returns a
 #   pure function of the fields it is handed on that tick.
 # distinct-from: gates/amdahl_gate.py::_count_lif_in -- a bounded attribute walk counting
@@ -1186,7 +1186,7 @@ def _reported_mi(name, key, seeds, ss):
     return contrast(name, [x["g3"][key]["mi"] - x["g3"][key]["perm_q95"] for x in ss])._asdict()
 
 
-# distinct-from: cortex/metacognitive_monitor.py::run_t077_campaign -- the PIN-ONCE campaign shape
+# distinct-from: faculties/metacognitive_monitor.py::run_t077_campaign -- the PIN-ONCE campaign shape
 #   2.1 names for reuse, read before this marker was written. That one records a metacognitive
 #   monitor's five inputs over an intact and a LESIONED arm plus a chat arm, and scores a type-2
 #   AUROC. This one records the ATTENTION state over ONE arm (Part I has no lesion), scores an MI
@@ -1413,7 +1413,7 @@ RED_LINES = {
 }
 
 
-# distinct-from: cortex/metacognitive_monitor.py::t077_reds and its main() reds line -- the PATTERN
+# distinct-from: faculties/metacognitive_monitor.py::t077_reds and its main() reds line -- the PATTERN
 #   this self-check mirrors, and 2.1 names it as the thing to reuse. Read: that line asserts T077's
 #   R0-R5 over a metacognitive monitor's replay and its type-2 AUROC; this asserts T078's R1-R6
 #   over an MI floor, a decoder band and a control vector. Same shape, different instrument,

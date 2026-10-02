@@ -17,7 +17,7 @@ biology: retinal waves -- structured, spatially correlated spontaneous activity 
 same plasticity rules that experience will use later, so the first real stimulus arrives at an
 organized circuit. This module is that bootstrap for the percept path: an Ornstein-Uhlenbeck
 process on a small latent, projected through declared smooth spatial modes onto the percept
-dimension, fed step by step into `cortex/percept_surprise.PerceptSurprise.observe` -- the SAME
+dimension, fed step by step into `faculties/percept_surprise.PerceptSurprise.observe` -- the SAME
 method, the same Oja/Sanger rule, the same instance that live perception drives from
 `Brain._perceive_real` (the wire sits at that method's lazy-init, BEFORE the first real percept
 reaches the rule, and runs ONLY where the torch perception tier is armed: the eprop checkpoint
@@ -179,7 +179,7 @@ class SpontaneousActivity:
 
     # distinct-from: growth/arealization.py -- its L512 graded-arm RMSE is a profile-fit
     #   instrument; nothing here fits gene profiles. Site read.
-    # distinct-from: cortex/learned_evc.py -- control-value readout; unrelated. Read.
+    # distinct-from: faculties/learned_evc.py -- control-value readout; unrelated. Read.
     # distinct-from: plasticity/competitive_learning.py -- resets activity traces; the shared
     #   word is "traces", unrelated job. Read.
     # distinct-from: reasoning/arc_solver.py -- fits ARC primitive params; unrelated. Read.
@@ -330,7 +330,7 @@ def main():
     print("=" * 96)
     print("SPONTANEOUS ACTIVITY -- learnable OU bootstrap through the SAME plasticity path")
     print("=" * 96)
-    from snn_data_lake.cortex.percept_surprise import PerceptSurprise
+    from snn_data_lake.faculties.percept_surprise import PerceptSurprise
 
     dim, k = 64, 4
 

@@ -159,14 +159,14 @@ def main():
             "CONST = 0.5\n\n\ndef f():\n    return CONST\n",
         )
         w(
-            "src/snn_data_lake/cortex/user_a.py",
+            "src/snn_data_lake/faculties/user_a.py",
             "from snn_data_lake.faculties.target import CONST\n\nx = CONST + 1\n",
         )
         w(
-            "src/snn_data_lake/cortex/user_b.py",
+            "src/snn_data_lake/faculties/user_b.py",
             "import snn_data_lake.faculties.target as t\n\ny = t.CONST\n",
         )
-        w("src/snn_data_lake/cortex/unrelated.py", "Z = 3  # references nothing of the target\n")
+        w("src/snn_data_lake/faculties/unrelated.py", "Z = 3  # references nothing of the target\n")
 
         target = "src/snn_data_lake/faculties/target.py"
 
@@ -175,10 +175,10 @@ def main():
         assert not r["via_graph"], "no graph file -> graph path contributes nothing"
         assert r["radius"] == 2, r
         assert set(r["modules"]) == {
-            "snn_data_lake.cortex.user_a",
-            "snn_data_lake.cortex.user_b",
+            "snn_data_lake.faculties.user_a",
+            "snn_data_lake.faculties.user_b",
         }, r
-        assert "snn_data_lake.cortex.unrelated" not in r["modules"], (
+        assert "snn_data_lake.faculties.unrelated" not in r["modules"], (
             "an unrelated file must NOT be in the radius"
         )
         _emit(
@@ -187,11 +187,11 @@ def main():
 
         # (2) a match in a STRING/COMMENT does not count (ast-precise, not a text grep)
         w(
-            "src/snn_data_lake/cortex/user_c.py",
+            "src/snn_data_lake/faculties/user_c.py",
             "S = 'CONST appears here in a string only'  # and CONST in a comment\n",
         )
         r2 = blast_radius(work, target, symbol="CONST")
-        assert "snn_data_lake.cortex.user_c" not in r2["modules"], (
+        assert "snn_data_lake.faculties.user_c" not in r2["modules"], (
             "a string/comment mention must NOT count"
         )
         _emit(
@@ -202,7 +202,7 @@ def main():
         graph = {
             "nodes": [
                 {"id": "tgt_f", "source_file": target},
-                {"id": "caller", "source_file": "src/snn_data_lake/cortex/graph_only.py"},
+                {"id": "caller", "source_file": "src/snn_data_lake/faculties/graph_only.py"},
             ],
             "links": [{"source": "caller", "target": "tgt_f", "relation": "calls"}],
         }
@@ -210,14 +210,14 @@ def main():
         with open(gp, "w", encoding="utf-8") as f:
             json.dump(graph, f)
         r3 = blast_radius(work, target, symbol="CONST", graph_path=gp)
-        assert r3["via_graph"] and "snn_data_lake.cortex.graph_only" in r3["modules"], r3
+        assert r3["via_graph"] and "snn_data_lake.faculties.graph_only" in r3["modules"], r3
         assert r3["radius"] >= 3, r3  # user_a + user_b (ast) + graph_only (graph)
         _emit(
             f"  [OK] graphify dep edge adds a referrer: radius {r3['radius']} incl. graph-only caller"
         )
 
         # (4) no symbol + no graph -> radius 0 (a module with no known referrers is fully surgical)
-        r4 = blast_radius(work, "src/snn_data_lake/cortex/unrelated.py")
+        r4 = blast_radius(work, "src/snn_data_lake/faculties/unrelated.py")
         assert r4["radius"] == 0, r4
         _emit(
             "  [OK] a module with no referrers -> radius 0 (a fully surgical, low-risk mutation site)"

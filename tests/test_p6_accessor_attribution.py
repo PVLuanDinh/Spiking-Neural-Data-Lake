@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 
 p6_gate = pytest.importorskip("p6_gate")
 
-PROBE = "cortex/_probe_accessor.py"
+PROBE = "faculties/_probe_accessor.py"
 HDR = '"""overlay-only probe module -- never written to disk."""\n\n'
 
 
@@ -129,7 +129,7 @@ def test_an_accessor_defined_in_two_modules_is_ambiguous_not_guessed(base):
         "        return self._reentrant\n"
     )
     body = "    def step(self):\n        return self.brain.reentrant.broadcast()\n"
-    res = p6_gate.measure(ROOT, overlay={PROBE: _mod(body), "cortex/_probe_twin.py": twin})
+    res = p6_gate.measure(ROOT, overlay={PROBE: _mod(body), "faculties/_probe_twin.py": twin})
     mine_cross = [c for c in res["cross"] if c[0] == PROBE]
     mine_un = [c for c in res["unattributable"] if c[0] == PROBE]
     assert not mine_cross, f"an ambiguous accessor name was attributed anyway: {mine_cross}"

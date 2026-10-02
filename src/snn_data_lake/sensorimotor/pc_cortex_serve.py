@@ -581,7 +581,7 @@ def main():
 
     # ---- (6) plan() CONSUMES the PC top-down predictions (duck-typed like JEPA/HJepaServe), with the HONEST
     #         limit surfaced: PC has NO action channel, so predict IGNORES command -> plan() TIES across options.
-    from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+    from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
 
     z0 = srv.encode(x)  # a settled top-cause latent (alias of infer)
     cmd_agnostic = (

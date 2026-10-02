@@ -140,7 +140,7 @@ computed the ignited SET (`late[k] > 0`, one flag per pool) and then threw all b
 with an argmax. Meanwhile the one incumbent was granted `self_boost + hysteresis = 0.25` of extra
 drive, while the entire band a compliant specialist may claim -- `[ignition_threshold, 1 -
 (self_boost + hysteresis)]` = [0.55, 0.75], the derivation `engine/autonomous_loop.py::
-_percept_salience` and `cortex/access_consciousness.py::_max_claim` both apply -- is 0.20 WIDE.
+_percept_salience` and `faculties/access_consciousness.py::_max_claim` both apply -- is 0.20 WIDE.
 THE DEFENCE EXCEEDED THE WHOLE BAND. Measured on the old arbiter, incumbent warmed 5 ticks and
 still posting, challenger swept 0.55..1.00 in steps of 0.002:
 
@@ -186,7 +186,7 @@ where one suffices is the additive failure P2 forbids, so the export decoupling 
 
 WHAT DID NOT CHANGE, deliberately. `ignition_threshold`, `decay`, `hysteresis` and `self_boost`
 keep their exact defaults. `engine/autonomous_loop.py::_percept_salience` and
-`cortex/access_consciousness.py::_max_claim` READ those three attributes off this object at
+`faculties/access_consciousness.py::_max_claim` READ those three attributes off this object at
 runtime and size their own admissible band from them, and `autonomous_loop`'s self-check ASSERTS
 its live saliences land inside it. Moving any of them here would move a producer's range in
 another file and could redden a self-check this module does not own.
@@ -359,7 +359,7 @@ numbers and for the honest reading of that (it is worth ZERO on today's bus, bec
 is 1 of 4). Slot winnability stays a flat [0.72 x5], the capacity still binds (40 at 0.90 -> 4), the
 silent-source hold still releases after 7, `_defended` is untouched. THREE things moved:
 
-  1. `cortex/access_consciousness.py` claim (10): `focus_moved >= 1` went to 0. Its FOCUS lever WAS
+  1. `faculties/access_consciousness.py` claim (10): `focus_moved >= 1` went to 0. Its FOCUS lever WAS
      a peer rename, so its green state REQUIRED the head to be name-decided and no arbiter is both
      correct and green on it. RE-DERIVED at the claim onto the peer VOLUME lever -- the property is
      real, the proxy was pathology-shaped. Its ACCESS half was untouched (`access_same` 12 of 12
@@ -392,7 +392,7 @@ THE 2026-08-06 RANK REPAIR IS WORTH EXACTLY ZERO HERE, and it is measured rather
 awake), the live brain is BYTE-IDENTICAL under the retired key and the shipped one: `thought` crc32
 0f0938d6, 4 distinct values, 55 changes, naming the submitted percept on 56 of 56 posting ticks;
 `_access_state["ignited"]` identical; `_access_ema` 0.488958 to 6 dp under both. Re-run in BOTH
-`cortex/access_consciousness.py` content-key regimes (frozen and rotating) so the null is not an
+`faculties/access_consciousness.py` content-key regimes (frozen and rotating) so the null is not an
 artefact of the other change landing in the same pass -- 0.488958/0.488958 frozen, 0.287282/0.287282
 rotating, the rank key moving nothing in either. THE REASON IS OCCUPANCY: 1 of 4 on 56 of 56 ticks,
 so no tick ranks two contents and there is nothing for a rank key to decide. What the repair buys is
@@ -421,7 +421,7 @@ the DISTINCT-VALUE count of that sequence is printed beside it, which is why eve
 header now carries one.
 
 WHAT IT BUYS THE MOMENT A SECOND FACULTY JOINS, which is the whole point and is measured rather
-than asserted. `cortex/access_consciousness.AccessConsciousness` was put on the arm's OWN bus
+than asserted. `faculties/access_consciousness.AccessConsciousness` was put on the arm's OWN bus
 object (identity-checked, not a copy) and posted at a compliant 0.65:
 
     arbiter              workspace         percept still in it   producer B in it
@@ -571,7 +571,7 @@ name: the second content is in `broadcast_all()` on 12 of 12 ticks under every n
 head-only subscriber saw it on 0 of 12 against a peer named 'aaa' and 12 of 12 against 'mmm'. Two
 compliant pools both SATURATE their sustained-firing counts, so the rank key FELL THROUGH `-late`
 and `-total` to the source string and the head was settled lexicographically -- the defect the
-tie-break block above closes at the rank line. `cortex/access_consciousness.py` read its own
+tie-break block above closes at the rank line. `faculties/access_consciousness.py` read its own
 ignition off that head, so a consciousness-relevant flag -- and the `access_index` behind it -- were
 being decided by a string comparison. TWO INDEPENDENT FIXES, and keeping both is not additive: the
 delivery change removes the channel by which a subscriber has to infer membership from rank at all,
@@ -594,7 +594,7 @@ appears the moment two producers co-exist with one out-ranking the other, and do
 bus is shared is doing it in the only window where it is free.
 
 BLAST RADIUS, derived and not estimated: `GlobalWorkspace.subscribe` has FIVE call sites tree-wide
--- `cortex/access_consciousness.py` and four inside this module's own self-check. ONE production
+-- `faculties/access_consciousness.py` and four inside this module's own self-check. ONE production
 consumer. (`engine/brain.py:799` subscribes to a `ReentrantWorkspace`, a different class.)
 
 DETERMINISM is preserved by construction and re-measured: `broadcast_all()` builds a FRESH tuple of
@@ -607,7 +607,7 @@ consumer on a shared bus and 24 on a private one, and 6 of the live brain.
 =====================================================================================================
 LIMIT 4 -- THE TWO CONSUMER CRITERIA THAT WENT RED ARE BOTH RE-DERIVED AND GREEN. Re-run, not read.
 =====================================================================================================
-This block previously said `cortex/access_consciousness.py` claim (8) and `reasoning/rpm_solver.py`'s
+This block previously said `faculties/access_consciousness.py` claim (8) and `reasoning/rpm_solver.py`'s
 `collide_ok` were red and were required companion work. Both were done, and both are re-run here
 rather than taken from the note that scheduled them:
 
@@ -630,10 +630,10 @@ a second, independent channel on that claim should know the old one was spent he
 
 Verified UNAFFECTED, RE-RUN 2026-08-06 after the delivery change rather than carried over:
 `engine/live_brain.py`, `engine/brain.py`, `engine/autonomous_loop.py`,
-`faculties/reentrant_workspace.py`, `cortex/self_model.py`, `cortex/executive_control.py`,
+`faculties/reentrant_workspace.py`, `faculties/self_model.py`, `faculties/executive_control.py`,
 `reasoning/rpm_solver.py`, `reasoning/spike_chat_lake.py`, `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16),
 `reasoning/train_of_thought.py`, `reasoning/concept_reflection.py`,
-`cortex/competence_executive.py` (verified at its pre-promotion path
+`faculties/competence_executive.py` (verified at its pre-promotion path
 `reasoning/brain_adapters/executive_control.py`; PROMOTED+RENAMED 2026-08-12, same file),
 `faculties/gwt_deep.py` (verified at its pre-promotion
 path `reasoning/gwt_deep.py`; PROMOTED 2026-08-11, same file). (`reasoning/gwt_reentry.py`
@@ -706,7 +706,7 @@ def _fold_parts(parts):
 
 # distinct-from: engine/signal_ring.py -- the ring frames TRANSPORT records; this is
 #   the workspace's COMPETITION record (the ring carries its bytes). distinct-from:
-#   cortex/self_model.py -- self-episode history; this is per-tick coalition identity.
+#   faculties/self_model.py -- self-episode history; this is per-tick coalition identity.
 #   distinct-from: reservoir/kernel_tick.py -- the neuron-substrate tick frame. Read.
 class Coalition:
     """The COALITION RECORD (specs/022 T031, data-model 'Episode / Coalition'):
@@ -1564,7 +1564,7 @@ class GlobalWorkspace:
         asks; `_slot()` already exposes the triples for anything that later needs them.
 
         HONEST LIMIT, MEASURED rather than inherited, so a consumer is not misled by its own read.
-        On the live brain this spans 0.4335..0.6. Sweeping `cortex/access_consciousness.py` at
+        On the live brain this spans 0.4335..0.6. Sweeping `faculties/access_consciousness.py` at
         constant salience 0.00..1.00 in steps of 0.01, its `ignited` flips exactly once, at 0.54 --
         which the live range straddles. It still cannot move it: fed the live cycle
         0.6/0.51/0.4335 against a pinned 0.6 for 150 ticks, that consumer's outputs are IDENTICAL
@@ -2132,7 +2132,7 @@ class OneSubsidyArbiter(GlobalWorkspace):
 
     IT IS MODULE-SCOPE AND EXPORTED BECAUSE TWO SELF-CHECKS NEED IT (P2 -- one definition of "the
     retired arbiter", not one per consumer). `main()` here runs it as the reachable red for the
-    focus-capture criterion; `cortex/access_consciousness.py` runs it as the red for claim (9),
+    focus-capture criterion; `faculties/access_consciousness.py` runs it as the red for claim (9),
     whose displaceability guarantee moved from the faculty's own claim cap to this split. A control
     that two criteria describe differently is two controls, which is how an A/B stops comparing
     what it says it compares."""
@@ -2291,7 +2291,7 @@ def main():
     # ONE default-parameter workspace read by every section below that needs the shipped constants.
     # `tools/p6_gate.py` censuses instantiation sites per module, and four separate constructions of
     # an object built only to read three attributes off it would add four to the very count this
-    # work exists to reduce -- the same reason `cortex/access_consciousness.py::_bus` exists.
+    # work exists to reduce -- the same reason `faculties/access_consciousness.py::_bus` exists.
     _defaults = GlobalWorkspace()
     cap = _defaults.capacity
     band_lo = _defaults.ignition_threshold
@@ -2541,7 +2541,7 @@ def main():
     assert isinstance(b_content, str), "the top broadcast content must be one region, not a set"
     # DELIVERY: subscribers are handed the WHOLE admitted set, and the point of that is the part
     # they could not previously see -- the contents they did not top. A subscriber's own membership
-    # is unanswerable without it, which is how `cortex/access_consciousness.py` came to settle a
+    # is unanswerable without it, which is how `faculties/access_consciousness.py` came to settle a
     # consciousness-relevant flag on the arbiter's lexicographic tie-break.
     assert delivery_ok, (
         f"ONE broadcast per cycle, carrying EXACTLY the admitted set, head first: {len(seen)} "
@@ -2706,7 +2706,7 @@ def main():
     # steps, and it is the specific regression a prior pass declined to ship: repointing a second
     # faculty onto the shared bus made the arm's broadcast go '0' -> 'GLOBAL' PERMANENTLY and the
     # percept vanished from the workspace entirely. Measured on the LIVE brain with the real
-    # `cortex/access_consciousness` faculty sharing the arm's own bus object at a compliant 0.65
+    # `faculties/access_consciousness` faculty sharing the arm's own bus object at a compliant 0.65
     # claim: the retired arbiter kept the percept in the workspace on 0 of 40 ticks, this one on
     # 40 of 40. The mechanism-level form of that measurement is asserted here.
     def _coexist(cls, tenant_claim, challenger):
@@ -3839,7 +3839,7 @@ def main():
         "typed channels must survive the lake"
     )
 
-    # distinct-from: cortex/access_consciousness.py and engine/live_brain.py -- their "one
+    # distinct-from: faculties/access_consciousness.py and engine/live_brain.py -- their "one
     #   workspace" is the LIVE composite; this closure is a self-check harness driving a
     #   scratch lake through restarts. Phrase overlap only; sites read.
     def _restart_life(base=None):

@@ -11,7 +11,7 @@ real cognition:
   * rule discovery -- an online world model T (transitions) + model-based value iteration (planning);
   * decision     -- faculties/evidence_accumulation.RaceAccumulator (a genuine spiking N-alternative
                     race over the candidate actions' values);
-  * control      -- cortex/metacognitive_monitor.MetacognitiveMonitor gates explore-vs-exploit.
+  * control      -- faculties/metacognitive_monitor.MetacognitiveMonitor gates explore-vs-exploit.
 
 ACTION SPACE (the thing that actually matters): ARC-AGI-3 mixes SIMPLE actions (ACTION1-5, ACTION7,
 RESET) with a COMPLEX action ACTION6 = CLICK at (x, y). A bare ACTION6 is a no-op, so the brain must
@@ -41,7 +41,7 @@ from play import _BY_VALUE, play  # noqa: E402  (the arcade bridge)
 
 from rule_inducer import InducedModel, _race_action, induce  # noqa: E402  (relational reasoning layer)
 from snn_data_lake.faculties.evidence_accumulation import RaceAccumulator  # noqa: E402
-from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor  # noqa: E402
+from snn_data_lake.faculties.metacognitive_monitor import MetacognitiveMonitor  # noqa: E402
 from snn_data_lake.faculties.generalizing_novelty import GeneralizingNovelty  # noqa: E402
 from snn_data_lake.faculties.intrinsic_motivation import CuriosityDrive  # noqa: E402
 

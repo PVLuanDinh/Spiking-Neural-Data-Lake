@@ -553,7 +553,7 @@ def resolve(declared_disp, inferred):  # FR-002a: TWO signals -- declaration + i
 #   carry-forward verification; this one collects a NAME set for existence checks. Read.
 # distinct-from: substrate/home.py (sidecar census) -- a census of MODULES that can write
 #   the T037a sidecar; unrelated to symbol names. Read.
-# distinct-from: cortex/metacognitive_monitor.py -- reliability signals; term overlap on
+# distinct-from: faculties/metacognitive_monitor.py -- reliability signals; term overlap on
 #   'ground truth' only. Read.
 def _symbol_surface(tree):
     """Every name the module PROVIDES, at any nesting -- the phantom check's ground truth.
@@ -854,8 +854,8 @@ def _selfcheck():
         '        """Approximates the gradient by backprop."""\n'
         "        self.W -= 0.1 * x\n"
     )
-    r1, _, _ = census(overlay={"cortex/zz_probe_rule.py": mutant})
-    hits = [r for r in r1 if r["module_rel"] == "cortex/zz_probe_rule.py"]
+    r1, _, _ = census(overlay={"faculties/zz_probe_rule.py": mutant})
+    hits = [r for r in r1 if r["module_rel"] == "faculties/zz_probe_rule.py"]
     fired = any(r["state"] == MISSING_DECLARATION for r in hits)
     print(
         f"  {'RED  ' if fired else 'FAIL '}  undeclared claimant -> MISSING_DECLARATION ({len(hits)} rule(s) seen)"
@@ -870,8 +870,8 @@ def _selfcheck():
         '        """Approximates the gradient."""\n'
         "        self.W -= 0.1 * x\n"
     )
-    r2, _, _ = census(overlay={"cortex/zz_probe_rule.py": declared})
-    got = [r["state"] for r in r2 if r["module_rel"] == "cortex/zz_probe_rule.py"]
+    r2, _, _ = census(overlay={"faculties/zz_probe_rule.py": declared})
+    got = [r["state"] for r in r2 if r["module_rel"] == "faculties/zz_probe_rule.py"]
     good = CLASSIFIED_CLAIMANT in got and CLASSIFIED_LOCAL not in got
     print(
         f"  {'RED  ' if good else 'FAIL '}  declared claimant stays CLAIMANT, never LOCAL -> {sorted(set(got))}"
@@ -893,7 +893,7 @@ def _selfcheck():
     ok = ok and bool(lively)
 
     # RED 4 -- an unparseable module raises parse_failures, an ABSOLUTE bound.
-    r4, f4, _ = census(overlay={"cortex/zz_probe_rule.py": "def broken(:\n"})
+    r4, f4, _ = census(overlay={"faculties/zz_probe_rule.py": "def broken(:\n"})
     rose = len(f4) > len(base_fail)
     print(
         f"  {'RED  ' if rose else 'FAIL '}  an unparseable module raises parse_failures {len(base_fail)} -> {len(f4)}"
@@ -908,8 +908,8 @@ def _selfcheck():
         "    def learn(self, x):\n"
         "        self.W -= 0.1 * x\n"
     )
-    r5, _, _ = census(overlay={"cortex/zz_probe_rule.py": repaired})
-    st5 = [r["state"] for r in r5 if r["module_rel"] == "cortex/zz_probe_rule.py"]
+    r5, _, _ = census(overlay={"faculties/zz_probe_rule.py": repaired})
+    st5 = [r["state"] for r in r5 if r["module_rel"] == "faculties/zz_probe_rule.py"]
     clean = st5 and all(s == CLASSIFIED_LOCAL for s in st5)
     print(
         f"  {'green' if clean else 'FAIL '}  CONTROL: the repaired shape is NOT flagged -> {sorted(set(st5))}"
@@ -972,7 +972,7 @@ def _selfcheck():
     ok = ok and gov_hit and bool(gov_reds)
     # (b) UNGOVERNED phantom: the ALL-scope bound must catch it through the SAME composition
     # (declarations are tree-wide artifacts; every bearing row enters rule_census.json).
-    r8b, _, n8b = census(overlay={"cortex/zz_probe_rule.py": phantom_src})
+    r8b, _, n8b = census(overlay={"faculties/zz_probe_rule.py": phantom_src})
     ungov_reds = _main_composition_reds(r8b, n8b)
     print(
         f"  {'RED  ' if ungov_reds else 'FAIL '}  UNGOVERNED phantom -> the SAME assert "
@@ -1008,7 +1008,7 @@ def _selfcheck():
     )
     g_ok = True
     for src8 in (ghost_present, truthful_shapes):
-        r8c, _, n8c = census(overlay={"cortex/zz_probe_rule.py": src8})
+        r8c, _, n8c = census(overlay={"faculties/zz_probe_rule.py": src8})
         if _main_composition_reds(r8c, n8c):
             g_ok = False
     print(
@@ -1031,7 +1031,7 @@ def _selfcheck():
         "    def evaluate(self, x):\n"
         "        return x\n"
     )
-    r8d, _, n8d = census(overlay={"cortex/zz_probe_rule.py": incident_shape})
+    r8d, _, n8d = census(overlay={"faculties/zz_probe_rule.py": incident_shape})
     inc_reds = _main_composition_reds(r8d, n8d)
     print(
         f"  {'RED  ' if inc_reds else 'FAIL '}  the T050 wrong-class shape (local var in the "
@@ -1104,13 +1104,13 @@ def _refuses_rise(c, baseline):
 #
 # P2 -- the cosine here is REUSED, not re-authored. Ten cosine definitions already exist in src/;
 # six sit in rule-carrying modules FR-013b forbids importing, and of the four that remain
-# `cortex/wholistic_loop::_cosine` and `growth/growing_learner::_cosine` both document
+# `faculties/wholistic_loop::_cosine` and `growth/growing_learner::_cosine` both document
 # NON-NEGATIVE inputs ([0,1]^N) and are wrong for a signed gradient. That leaves exactly one.
 #
-# distinct-from: cortex/access_consciousness.py -- its `_coherence_scalar` is mean PAIRWISE
+# distinct-from: faculties/access_consciousness.py -- its `_coherence_scalar` is mean PAIRWISE
 #   similarity over coalition member codes, a between-vectors quantity. `coherence` here is
 #   |mean|/rms WITHIN one vector, and answers whether a permutation null is a null at all.
-# distinct-from: growth/neurogenesis_engine.py, growth/neuron_zoo.py, cortex/rose_language.py,
+# distinct-from: growth/neurogenesis_engine.py, growth/neuron_zoo.py, faculties/rose_language.py,
 #   readout/growable_readout.py -- matched on the words "frozen"/"derived"/"zero"; none
 #   computes a cosine, a null, or a sign-coherence statistic.
 # ---------------------------------------------------------------------------------------------
@@ -1535,8 +1535,8 @@ MEASURE_ARTIFACT = os.path.join("tools", "gradient_claim_measure.json")
 #   recorded measurement still describes the current tree. Different input, different granularity,
 #   different question -- and neither can serve the other's purpose.
 # distinct-from: infra/self_mod_harness.py (runs selfchecks in a sandbox),
-#   reasoning/make_results_plot.py (writes an SVG), cortex/time_cells.py (returns a max),
-#   cortex/quality_diversity.py, reasoning/godel_machine.py -- matched on "returns/records"; none
+#   reasoning/make_results_plot.py (writes an SVG), faculties/time_cells.py (returns a max),
+#   faculties/quality_diversity.py, reasoning/godel_machine.py -- matched on "returns/records"; none
 #   computes a fingerprint of anything.
 
 

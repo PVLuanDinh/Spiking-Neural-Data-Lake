@@ -25,19 +25,19 @@ instrument could record for Perception measured a brain whose perception tier wa
 | multimodal_rate_encoding | 40 | src/snn_data_lake/sensorimotor/multimodal_encoder.py:62#encode_multimodal; src/snn_data_lake/engine/autonomous_loop.py:1529#step | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
 | eprop_event_vision_tier | 40 | src/snn_data_lake/engine/brain.py:623#_load_enc; src/snn_data_lake/engine/brain.py:1358#_perceive_real | - | opus-5 live-brain census, daemon import shape (lines re-derived 2026-08-12) | 2026-07-30 |
 | eprop_event_audio_tier | 40 | src/snn_data_lake/engine/brain.py:677#_load_enc; src/snn_data_lake/engine/brain.py:1432#_perceive_audio | - | opus-5 live-brain census, daemon import shape (lines re-derived 2026-08-12) | 2026-07-30 |
-| learned_attention_real_stream | 40 | src/snn_data_lake/cortex/learned_attention.py:136#attend; src/snn_data_lake/engine/brain.py:1289#_attend_real_stream; src/snn_data_lake/engine/brain.py:1300#_attend_real_stream | - | opus-5 neuter-A/B 46 of 60 ticks, NOT recordable | 2026-07-30 |
+| learned_attention_real_stream | 40 | src/snn_data_lake/faculties/learned_attention.py:136#attend; src/snn_data_lake/engine/brain.py:1289#_attend_real_stream; src/snn_data_lake/engine/brain.py:1300#_attend_real_stream | - | opus-5 neuter-A/B 46 of 60 ticks, NOT recordable | 2026-07-30 |
 | perceptual_novelty_salience | 40 | src/snn_data_lake/engine/brain.py:1460#_consume_perception; src/snn_data_lake/engine/brain.py:1573#_route_percept_to_action; src/snn_data_lake/engine/brain.py:1318#_safe_ctx | novelty_120.txt | opus-5 charge_probe novelty 120, both import shapes | 2026-07-30 |
 | predictive_coding_prediction_error | 40 | src/snn_data_lake/engine/live_brain.py:169#tick; src/snn_data_lake/engine/brain.py:2001#_wake_tick; src/snn_data_lake/engine/brain.py:1874#_w8_tick | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
-| crossmodal_superadditive_binding | 30 | src/snn_data_lake/cortex/crossmodal_binder.py:153#bind; src/snn_data_lake/engine/brain.py:1497#_consume_perception; src/snn_data_lake/engine/brain.py:3318#state | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
+| crossmodal_superadditive_binding | 30 | src/snn_data_lake/faculties/crossmodal_binder.py:153#bind; src/snn_data_lake/engine/brain.py:1497#_consume_perception; src/snn_data_lake/engine/brain.py:3318#state | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | percept_class_to_action_drive | 30 | src/snn_data_lake/engine/brain.py:1648#_route_percept_to_action; src/snn_data_lake/engine/brain.py:1617#_route_percept_to_action | percept_60.txt | opus-5 charge_probe percept 60 and 120 | 2026-07-30 |
 | perceptual_confidence_gate | 25 | src/snn_data_lake/readout/laminar_local_readout.py:268#observe; src/snn_data_lake/engine/brain.py:1358#_perceive_real | - | opus-5 live-brain census, daemon import shape; laminar_local_readout promoted to cortex/ 2026-08-12, repoint runtime-proven at that promotion (_percept_conf moved 40/40 stubbed-encoder ticks) | 2026-08-12 |
-| percept_surprise_orienting | 25 | src/snn_data_lake/cortex/percept_surprise.py:125; src/snn_data_lake/engine/brain.py:1412#_perceive_real; src/snn_data_lake/engine/brain.py:1592#_route_percept_to_action | surprise_60.txt | opus-5 charge_probe surprise 60 and 120 | 2026-07-30 |
+| percept_surprise_orienting | 25 | src/snn_data_lake/faculties/percept_surprise.py:125; src/snn_data_lake/engine/brain.py:1412#_perceive_real; src/snn_data_lake/engine/brain.py:1592#_route_percept_to_action | surprise_60.txt | opus-5 charge_probe surprise 60 and 120 | 2026-07-30 |
 | percept_to_place_binding | 25 | src/snn_data_lake/faculties/grid_place_map.py:163#observe; src/snn_data_lake/engine/brain.py:1516#_consume_perception | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | covert_attention_trn_gain | 21 | src/snn_data_lake/engine/autonomous_loop.py:971#_attend; src/snn_data_lake/engine/autonomous_loop.py:1557#step | - | opus-5 neuter-A/B 0 of 40 on unit action threat pos | 2026-07-30 |
 | latency_spike_coding | 21 | src/snn_data_lake/sensorimotor/spike_preprocessing.py:39#encode_latency; src/snn_data_lake/faculties/fear_conditioning.py:143; src/snn_data_lake/engine/autonomous_loop.py:1597#step | - | opus-5 live-brain census, threat 0.0 on 40 of 40 | 2026-07-30 |
 | generative_pc_perception_tier | 10 | src/snn_data_lake/engine/brain.py:988#__init__; src/snn_data_lake/engine/brain.py:1962#propose_improvements | - | opus-5 static call-site census, no live-tick caller | 2026-07-30 |
 | hardware_sensor_transduction | 10 | src/snn_data_lake/sensorimotor/esp32_encoder_path.py:125#spikes_for; src/snn_data_lake/gates/dormancy_gate.py:255#module | - | opus-5 read of dormancy_gate EXEMPT, static only | 2026-07-30 |
-| attention_goal_modulation | 0 | src/snn_data_lake/cortex/learned_attention.py:92#_goal_gain; src/snn_data_lake/engine/brain.py:1289#_attend_real_stream | - | opus-5 re-check of the v4.79 finding, rule 4 | 2026-07-30 |
+| attention_goal_modulation | 0 | src/snn_data_lake/faculties/learned_attention.py:92#_goal_gain; src/snn_data_lake/engine/brain.py:1289#_attend_real_stream | - | opus-5 re-check of the v4.79 finding, rule 4 | 2026-07-30 |
 | claustral_assembly_binding | 0 | src/snn_data_lake/engine/autonomous_loop.py:1009#_energy; src/snn_data_lake/engine/brain.py:3438#state | - | opus-5 live-brain census, bound_modalities 0 | 2026-07-30 |
 
 **Mean over the 17 rows = 437 / 17 = 25.7.** 0 rows above 40, 0 `UNSCORED`.
@@ -215,15 +215,15 @@ Format: `capability` -- provider -- liveness.
   `Brain.perceive_pc` -- checkpoint loads, no live-tick caller.
 - live predictive-coding prediction error over the sensory pattern -- `readout/predictive_coding.py`
   via `engine/live_brain.py:169` -- LIVE, nonzero on 57/60 ticks.
-- learned spiking reticular gate + three-factor plasticity -- `cortex/learned_attention.py` --
+- learned spiking reticular gate + three-factor plasticity -- `faculties/learned_attention.py` --
   daemon shape only; its `learn()` call is gated on a real percept (`brain.py:1977`).
 - TRN gate + divisive normalization, biased competition -- `faculties/reticular_gate.py` and
-  `cortex/divisive_normalization.py` -- LIVE and measurably inert.
+  `faculties/divisive_normalization.py` -- LIVE and measurably inert.
 - claustral cross-modal assembly detection -- `faculties/claustrum.py` via `autonomous_loop.py:836`
   -- LIVE, constant 0; `Claustrum.broadcast()` has no live call site at all.
-- super-additive vision+audio object binding -- `cortex/crossmodal_binder.py` -- daemon shape only,
+- super-additive vision+audio object binding -- `faculties/crossmodal_binder.py` -- daemon shape only,
   telemetry-only consumption.
-- online unsupervised percept surprise (Oja/Sanger) -- `cortex/percept_surprise.py` -- daemon shape
+- online unsupervised percept surprise (Oja/Sanger) -- `faculties/percept_surprise.py` -- daemon shape
   only, fires on 2/60 ticks.
 - no-backprop laminar readout -> perceptual confidence --
   `readout/laminar_local_readout.py` (promoted 2026-08-12) -- daemon shape only, range 0.169-1.0.

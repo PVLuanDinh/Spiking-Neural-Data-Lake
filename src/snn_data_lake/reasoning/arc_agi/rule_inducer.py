@@ -31,11 +31,11 @@ memorizing (exact-grid-state -> value) like a tabular RL agent, it:
 
 Reused repo modules (genuine, load-bearing):
   - faculties.evidence_accumulation.RaceAccumulator : spiking winner-take-all action selection.
-  - cortex.vsa_reasoning (bind/bundle/cleanup/hv)        : the induced ACTION SEMANTICS are stored and
+  - faculties.vsa_reasoning (bind/bundle/cleanup/hv)        : the induced ACTION SEMANTICS are stored and
     recalled as spike-polarity role-filler hypervectors (bind(action, delta) bundled; queried by
     spike XOR + coincidence cleanup). The planner reads deltas THROUGH this spike-code store.
   - env.py (KeyDoor/PushBox/ColorLock/ToggleToGoal)      : the verification suite.
-  The held-out / memoriser / shuffle CONTROL methodology mirrors cortex.reasoning_curriculum's
+  The held-out / memoriser / shuffle CONTROL methodology mirrors faculties.reasoning_curriculum's
   un-riggable protocol (train on observed, score on never-seen, each claim paired with a failing
   control); its dependency-ordering is the length-1 degenerate case of that module's transitive chain.
 
@@ -88,7 +88,7 @@ for _p in (os.path.join(_ROOT, "src"), _ROOT, _HERE):
         pass  # migrated: sys.path bootstrap removed (now an importable package)
 
 from snn_data_lake.faculties.evidence_accumulation import RaceAccumulator  # noqa: E402
-from snn_data_lake.cortex.vsa_reasoning import bind, bundle, cleanup, hv  # noqa: E402
+from snn_data_lake.faculties.vsa_reasoning import bind, bundle, cleanup, hv  # noqa: E402
 
 import env as arc_env  # noqa: E402
 from brain_player import BrainPlayer, random_player  # noqa: E402

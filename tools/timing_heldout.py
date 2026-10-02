@@ -1,6 +1,6 @@
 """Held-out A/B for one added time cell: does it EARN its place, or is it free-rider arithmetic?
 
-The question this answers is narrow on purpose. `cortex/time_cells.py` tiles an interval with
+The question this answers is narrow on purpose. `faculties/time_cells.py` tiles an interval with
 `n_cells` ramping-to-threshold cells; `grow("interior")` splits the widest log-gap. Whether the
 added cell improves the population's timing has to be judged on intervals the population was NOT
 taught, against a control that shows the improvement is not something ANY added cell would get.
@@ -54,7 +54,7 @@ for _p in (_ROOT, os.path.join(_ROOT, "src")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from snn_data_lake.cortex.time_cells import TimeCellClock, interval_grid  # noqa: E402
+from snn_data_lake.faculties.time_cells import TimeCellClock, interval_grid  # noqa: E402
 
 _REGIMES_MD = os.path.join(_ROOT, "specs", "003-grow-the-live-populations", "regimes.md")
 
@@ -79,7 +79,7 @@ def readout_blind_ramp(clock, tau):
 def interval_universe(thresholds):
     """(teach, test, n_gaps_the_test_set_touches) over the population's own ladder.
 
-    The grid itself is `cortex.time_cells.interval_grid` -- it is a property of the ladder, not of
+    The grid itself is `faculties.time_cells.interval_grid` -- it is a property of the ladder, not of
     this probe. At n=64: 630 intervals, 504 teach and 126 test, all 63 gaps represented."""
     teach, test = interval_grid(thresholds)
     gaps_hit = len({bisect.bisect_right(thresholds, t) - 1 for t in test})

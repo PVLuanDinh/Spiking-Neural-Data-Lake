@@ -523,7 +523,7 @@ def _touches(entry: dict, status: str, path: str) -> bool:
 # distinct-from: readout/language_readout_slda.py -- its _split is a train/test data split; this
 #   selects test FILES and lowercases repo PATHS so a Windows normcased record (seen 2026-10-02) still
 #   matches git's spelling. Also read: sensorimotor/corpus_stream.py (word tokens),
-#   cortex/self_improvement_suite.py, growth/arealization.py, instruments/pool_selection.py -- term
+#   faculties/self_improvement_suite.py, growth/arealization.py, instruments/pool_selection.py -- term
 #   overlaps only.
 def _folded(entry: dict) -> dict:
     return {

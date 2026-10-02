@@ -32,9 +32,9 @@ instantiation sites: 26 across 10 modules; 11 of 26 outside the bus self-checks,
 | faculties/reentrant_workspace.py | BUS | 11 | 2 | 4 |
 | reasoning/train_of_thought.py | FACULTY | 4 | 2 | 0 |
 | engine/brain.py | FACULTY | 3 | 1 | 1 |
-| cortex/competence_executive.py (reasoning/brain_adapters/executive_control.py until 2026-08-12) | FACULTY | 3 | 0 | 0 |
+| faculties/competence_executive.py (reasoning/brain_adapters/executive_control.py until 2026-08-12) | FACULTY | 3 | 0 | 0 |
 | engine/autonomous_loop.py | ACTION | 3 | 0 | 0 |
-| cortex/access_consciousness.py | FACULTY | 1 | 0 | 1 |
+| faculties/access_consciousness.py | FACULTY | 1 | 0 | 1 |
 | reasoning/rpm_solver.py | FACULTY | 1 | 0 | 0 |
 | reasoning/spike_chat_lake.py | FACULTY | 1 | 0 | 0 |
 | instruments/developmental_loop_brain.py (reasoning/ until 2026-08-12) | FACULTY | 1 | 0 | 0 |
@@ -55,7 +55,7 @@ are **instrument defects, not tree movement** -- `git blame` dates every affecte
    feeds `elig["reroute"]` into the three-factor drive-weight update. "2 reads" was really 3.
 3. **`reasoning/developmental_loop_brain.py:295` is a WRITE, not one of the two reads.**
    The receiver is `WorkspaceBroadcast` (RETIRED 2026-08-12 -- retirement record in
-   `cortex/competence_executive.py`; at this reading it lived at
+   `faculties/competence_executive.py`; at this reading it lived at
    `reasoning/brain_adapters/executive_control.py`),
    whose `broadcast(source, content, salience)` called `_ws.submit()` then `_ws.step()`.
    `GlobalWorkspace.broadcast()` takes zero args, so a 3-arg `.broadcast(` was a submit
@@ -63,7 +63,7 @@ are **instrument defects, not tree movement** -- `git blame` dates every affecte
    calls `submit()` under its own name.
 4. **Two more writes of that same wrapper shape** inside the adapter module itself (cited at
    this reading as `executive_control.py:231`/`:234`; that bare basename now resolves to the
-   OTHER module, cortex/executive_control -- the adapter is cortex/competence_executive since
+   OTHER module, faculties/executive_control -- the adapter is faculties/competence_executive since
    2026-08-12, and the line numbers are a dated snapshot).
 
 Net: the prior headline was low on both sides -- it lost a writer module and a read, and

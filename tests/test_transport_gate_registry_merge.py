@@ -41,7 +41,7 @@ def test_an_ambiguous_bare_name_is_refused_rather_than_guessed():
     """
     for rel, fn in (
         ("faculties.latent_q", "update"),
-        ("cortex.reasoning_curriculum", "train_premise"),
+        ("faculties.reasoning_curriculum", "train_premise"),
     ):
         try:
             got = etg.resolve_disposition(rel, fn)

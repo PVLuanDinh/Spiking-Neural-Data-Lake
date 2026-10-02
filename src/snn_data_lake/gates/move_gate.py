@@ -434,7 +434,7 @@ def _git_status(root: Path) -> bytes | None:
     return p.stdout if p.returncode == 0 else None
 
 
-# distinct-from: cortex/agency_monitor.py -- _t079_head pins the RUNNING repo's HEAD sha into a
+# distinct-from: faculties/agency_monitor.py -- _t079_head pins the RUNNING repo's HEAD sha into a
 #   record; census_mode classifies a CENSUSED tree (export, checkout or copy) so --diff can refuse
 #   a mixed pair. Also read: gradient_claim_gate.py (claim classifier), home.py (record parse),
 #   __init__.py (the GIL guard), cortical_prior.py (dataset lookup) -- term overlaps only.
@@ -1293,9 +1293,9 @@ def copy_tree(repo: Path, dest: Path, marker: bool) -> Path:
     return Path(dest)
 
 
-# distinct-from: cortex/rose_language.py -- _dotted derives one module's own dotted path; this
+# distinct-from: faculties/rose_language.py -- _dotted derives one module's own dotted path; this
 #   extracts a whole revision for a census. Also read: __init__.py (require_free_threaded),
-#   readout/snn_moe_classifier.py (_new_rng), cortex/theta_gamma_code.py (_new_population),
+#   readout/snn_moe_classifier.py (_new_rng), faculties/theta_gamma_code.py (_new_population),
 #   brainstem/so101_arm.py (probe_contact, read only) -- none an export.
 def _archive(rev: str, dest: Path, repo: Path) -> None:
     p = _git(["-c", "core.autocrlf=false", "archive", "--format=tar", rev], repo)

@@ -949,7 +949,7 @@ def save_state(name, obj):
     Every JSON member of that census is closed by this one edit, because the callers name a state
     and this decides where it lives: `engine/brain.py` (reasoning_curriculum.json),
     `sensorimotor/closed_loop.py` (valence.json), `sleep/lake_consolidation.py`
-    (recall_trace.json), `cortex/time_cells.py` (time_cells.json), `reasoning/gf.py`
+    (recall_trace.json), `faculties/time_cells.py` (time_cells.json), `reasoning/gf.py`
     (gf_library.json, active_library.json), `sleep/nightly_skills.py (promoted 2026-08-11)`. Not one of them changed a
     line to move, and none of them can drift back.
 

@@ -119,7 +119,8 @@ def test_move_gate_is_registered_and_imports_nothing_it_measures():
 def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_it():
     """Each `_LEGACY` pair is a module whose live package differs from its frozen label (none
     before the first move, every moved module after); `_LEGACY_PKGS` stays empty until a package
-    empties (M11a: `claustrum`, the first; M11b: seven more; M11c: two more; M11d: four more)."""
+    empties (M11a: `claustrum`, the first; M11b: seven more; M11c: two more; M11d: four more;
+    M11e: `cortex`, the last)."""
     from snn_data_lake.readout import interaction_learning as ixn
 
     label = {
@@ -134,12 +135,13 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     }
     assert (
         S._LEGACY_PKGS
-        == frozenset(  # G8 M11a-M11d: 14 packages (1+7+2+4) emptied into faculties
+        == frozenset(  # G8 M11a-M11e: 15 packages (1+7+2+4+1) emptied into faculties
             {
                 "amygdala",
                 "basal_ganglia",
                 "cerebellum",
                 "claustrum",
+                "cortex",
                 "epithalamus",
                 "hippocampus",
                 "hypothalamus",
@@ -246,15 +248,15 @@ def test_c2d_reads_the_trees_own_legacy_names_and_finds_none_in_live_code():
 
 
 def test_c2d_resolves_relative_imports_from_the_source_package(tmp_path, monkeypatch):
-    source = tmp_path / "src" / "snn_data_lake" / "cortex" / "probe.py"
+    source = tmp_path / "src" / "snn_data_lake" / "faculties" / "probe.py"
     source.parent.mkdir(parents=True)
-    monkeypatch.setattr(mg, "live_py", lambda root: ["src/snn_data_lake/cortex/probe.py"])
+    monkeypatch.setattr(mg, "live_py", lambda root: ["src/snn_data_lake/faculties/probe.py"])
     old_pkg, old_mod = "plasticity", "deep_stdp"
     pairs = {(old_pkg, old_mod): "growth"}
     source.write_text(f"from ..{old_pkg}.{old_mod} import main\n", encoding="utf-8")
     found, n, unparsed = mg.c2d(tmp_path, pairs, set())
     assert (n, unparsed) == (1, [])
-    assert found == [("src/snn_data_lake/cortex/probe.py", 1, "import", f"{old_pkg}.{old_mod}")]
+    assert found == [("src/snn_data_lake/faculties/probe.py", 1, "import", f"{old_pkg}.{old_mod}")]
 
     source.write_text(f"from ..{old_pkg} import {old_mod}\n", encoding="utf-8")
     assert mg.c2d(tmp_path, pairs, set())[0] == found
@@ -365,5 +367,6 @@ def test_geometry_seed_pin_stays_on_frozen_label_after_move():
     from snn_data_lake.infra import brain_geometry
 
     assert S.module_path("rank_order_coding") == "snn_data_lake.sensorimotor.rank_order_coding"
-    assert brain_geometry._SEED_PIN_KEY == "cortex/rank_order_coding"
+    assert S._LABEL["rank_order_coding"] == "cortex"
+    assert brain_geometry._SEED_PIN_KEY == f"{S._LABEL['rank_order_coding']}/rank_order_coding"
     assert brain_geometry.layout()["modules"][0]["key"] == brain_geometry._SEED_PIN_KEY

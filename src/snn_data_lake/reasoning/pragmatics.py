@@ -10,7 +10,7 @@ IMPLICATURE step to the intended (non-literal) meaning, and (c) detects INDIRECT
 
 WHY THEORY OF MIND. Pragmatics is exactly the SPEAKER-meaning != SENTENCE-meaning gap, and that gap is
 the SAME shape as ToM's false-belief gap: a believed state that DIVERGES from the surface/world state.
-So the implicature step reuses cortex/theory_of_mind.TheoryOfMind as its divergence engine -- two
+So the implicature step reuses faculties/theory_of_mind.TheoryOfMind as its divergence engine -- two
 readings tile two "locations" (0 = LITERAL, 1 = INTENDED); a literal hearer's reading stays at the
 world/surface (location 0), while the SPEAKER's communicative goal, when a maxim is flouted, MOVES to
 the intended reading (location 1). implicature() returns the non-literal reading ONLY when the ToM
@@ -18,7 +18,7 @@ readout confirms belief != world -- the divergence is the switch, not decoration
 fallback if the ToM organ is unavailable).
 
 LEARNING (brain-native, NO gradient). Speech-act classification is ALSO learnable from labelled
-examples by a VSA / rank-order HEBBIAN rule (reusing cortex/vsa_reasoning spike-polarity codes): each
+examples by a VSA / rank-order HEBBIAN rule (reusing faculties/vsa_reasoning spike-polarity codes): each
 utterance's surface cues become atomic spike codes, rank-order permuted and BUNDLED (superposition)
 into one utterance code; a class PROTOTYPE is the Hebbian bundle of its members' codes; classify by
 spike COINCIDENCE (argmax). No loss.backward(), no gradient anywhere -- a local superposition rule.
@@ -41,7 +41,7 @@ import random
 import re
 
 # spike-polarity VSA substrate (crc32-seeded spike codes) -- the ONLY hard import.
-from snn_data_lake.cortex.vsa_reasoning import bundle, coincidence, hv, permute
+from snn_data_lake.faculties.vsa_reasoning import bundle, coincidence, hv, permute
 
 # ------------------------------------------------------------------ speech-act taxonomy (Searle) ----
 ASSERT = "assert"  # representative: states a proposition            ("the cat is on the mat")
@@ -466,7 +466,7 @@ class Pragmatics:
         hearer_reading); they diverge exactly when a non-literal meaning is intended. Falls back to a
         direct model if the ToM organ is unavailable."""
         try:
-            from snn_data_lake.cortex.theory_of_mind import TheoryOfMind
+            from snn_data_lake.faculties.theory_of_mind import TheoryOfMind
 
             tom = TheoryOfMind(n_locations=2, seed=self.seed)
             tom.place(0, observers=("speaker", "hearer"))  # both start on the literal reading

@@ -106,7 +106,7 @@ def _is_weight(name):
     return bool(name) and not _CONSTANTISH.match(name) and bool(_WEIGHTISH.search(name))
 
 
-# distinct-from: cortex/second_order_access.py -- that module's "key" is a TELEMETRY key in a
+# distinct-from: faculties/second_order_access.py -- that module's "key" is a TELEMETRY key in a
 # per-tick state() dict (its "NO phenomenal key, ever" is a P8 honesty constraint about what the
 # brain may report). The "key" below is a lookup string into this gate's static EXEMPT allowlist.
 # Same English word, unrelated jobs; nothing to reuse or consolidate in either direction.
@@ -144,7 +144,7 @@ class AmbiguousDisposition(Exception):
     while the registry keys the QUALIFIED symbol (`LatentQ.update`), so the two cannot always be put
     in correspondence. MEASURED on this tree: 4 modules carry one bare method name on two or more
     classes, and 2 of those disagree -- `faculties/latent_q` declares `LatentQ.update` LOCAL and
-    `_TabularQ.update` CONTROL; `cortex/reasoning_curriculum` declares `MemorizationLearner`'s
+    `_TabularQ.update` CONTROL; `faculties/reasoning_curriculum` declares `MemorizationLearner`'s
     CONTROL and `ReasoningLearner`'s LOCAL. A resolver that picked one would be wrong in both, and
     silently -- which is worse than the gate refusing to answer.
     """

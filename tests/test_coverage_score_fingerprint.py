@@ -49,7 +49,7 @@ def test_real_counters_are_captured(line, want):
     [
         "recorded_at: 2026/07/30T11:00:00Z",
         "2026/07/30",
-        "src/snn_data_lake/cortex/readout.py:12",
+        "src/snn_data_lake/faculties/readout.py:12",
         "docs/coverage/artifacts/gf_raven_dist3.txt",
         "rate 1.5/2 of baseline",
         "accuracy 12/400.5 percent",

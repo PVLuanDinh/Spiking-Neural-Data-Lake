@@ -5,7 +5,7 @@ models/nmnist_pack.npz (event VISION) and models/shd_pack.npz (event AUDIO).
 WHY THIS EXISTS. Until now these two files had FIVE reader sites and ZERO producers anywhere in src/,
 training/, tools/, integrations/ or research/. `engine/brain.py` loads them (SNN_PERCEPTION_PACK,
 SNN_SHD_PACK) to give the live tick REAL event-camera / cochlear input and to set
-`perceiving_real` / `perceiving_audio`; `cortex/percept_surprise.py` rate-codes the vision pack into
+`perceiving_real` / `perceiving_audio`; `faculties/percept_surprise.py` rate-codes the vision pack into
 its Oja-PCA surprise instrument; `reasoning/reservoir_eprop.py` re-bins the audio pack for its
 held-out reservoir benchmark. `models/` is gitignored and docs/TRAINING.md regenerated only the `.pt`
 encoder checkpoints -- so a FRESH CLONE HAD NO PERCEPTION AT ALL and no command that could restore it.
@@ -93,7 +93,7 @@ SPECS = {
         "seed": 0,
         "split_size": 10000,
         "crc32": 0xB1BD2E57,
-        "reader": "engine/brain.py (SNN_PERCEPTION_PACK), cortex/percept_surprise.py",
+        "reader": "engine/brain.py (SNN_PERCEPTION_PACK), faculties/percept_surprise.py",
     },
     "shd": {
         "filename": "shd_pack.npz",
@@ -629,7 +629,7 @@ def run_smoke():
 def build_parser():
     p = argparse.ArgumentParser(
         description="Produce models/nmnist_pack.npz and models/shd_pack.npz (the perception packs "
-        "engine/brain.py, cortex/percept_surprise.py and reasoning/reservoir_eprop.py read)."
+        "engine/brain.py, faculties/percept_surprise.py and reasoning/reservoir_eprop.py read)."
     )
     p.add_argument(
         "--smoke", action="store_true", help="deterministic self-check (no tonic/dataset/network)"

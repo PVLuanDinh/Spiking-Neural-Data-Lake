@@ -67,7 +67,7 @@ import random
 import pytest
 
 from snn_data_lake.brainstem import arm_config
-from snn_data_lake.cortex.agency_monitor import (
+from snn_data_lake.faculties.agency_monitor import (
     T079_DEADBAND,
     T079_JOINTS,
     T079_R1_PASSAGES,

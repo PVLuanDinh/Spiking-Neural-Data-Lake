@@ -4,7 +4,7 @@ store's own synaptic constants, with the five guards FR-020 owes (specs/022 T056
 
 WHAT SETTLED HERE, so the next reader does not re-derive it. T055 built a standalone
 synaptic WM (`plasticity/wm_attractor.py`), measured it IDENTICAL to the incumbent
-`cortex/prefrontal_executive` on the settling benchmark (tuned, both (4 hits, 0 FA); with
+`faculties/prefrontal_executive` on the settling benchmark (tuned, both (4 hits, 0 FA); with
 distractors both (4, 2), neither suppressing), and its dormancy row read RETIRE dated T056.
 T056 is the port-then-retire P2's honesty guard requires: the unique capability -- the
 DECOUPLED retention/release pair (facilitation u on tau_f vs resources R on tau_d) and a
@@ -79,7 +79,7 @@ THE FIVE GUARDS (FR-020):
      REQUIRED to bless a real site or the gate fails loudly.
   5. no theta/gamma as K -- static: no expression in src/ derives a capacity by dividing
      a theta-named quantity by a gamma-named one (either orientation).
-     `cortex/theta_gamma_code` computes the RATIO FROM K (steps_per_theta =
+     `faculties/theta_gamma_code` computes the RATIO FROM K (steps_per_theta =
      capacity * steps_per_gamma) -- that direction is lawful and is this gate's liveness
      control; the reverse is circular here and is the constructed red.
 
@@ -90,12 +90,12 @@ import ast
 import math
 import os
 
-# distinct-from: cortex/prefrontal_executive.py -- the STORE (frames, rehearsal channel,
+# distinct-from: faculties/prefrontal_executive.py -- the STORE (frames, rehearsal channel,
 #   goal stack). This module is the store's METROLOGY: it measures the store's own
 #   mechanism and derives what the store may claim as capacity. The store imports this
 #   module (top-level, so the dormancy walk sees the edge); this module imports the store
 #   only lazily inside its own self-check, so there is no cycle. Site read.
-# distinct-from: cortex/theta_gamma_code.py -- ORDERED WM by oscillatory phase whose
+# distinct-from: faculties/theta_gamma_code.py -- ORDERED WM by oscillatory phase whose
 #   theta/gamma ratio is derived FROM a capacity argument; guard 5 exists precisely to
 #   keep that arrow one-way. Site read.
 # distinct-from: plasticity/short_term_plasticity.py -- owns the Tsodyks-Markram synapse
@@ -110,7 +110,7 @@ class CapacityRefusal(ValueError):
 # distinct-from: instruments/ignition_instrument.py -- GWT ignition (workspace broadcast
 #   threshold sweep over ensembles); this is the WM rehearsal pool's facilitation floor,
 #   measured through _RehearsalFrame.ignites. Different substrate, same word. Site read.
-# distinct-from: cortex/access_consciousness.py -- workspace ignition competition, not a
+# distinct-from: faculties/access_consciousness.py -- workspace ignition competition, not a
 #   synaptic retention floor. Site read.
 def ignition_floor(frame_factory):
     """The minimal facilitation that ignites a FRESH pool at full resources -- the derived
@@ -421,7 +421,7 @@ def theta_gamma_findings(root=None, source_by_name=None):
 
 
 def main():
-    from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+    from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
 
     line = "=" * 92
     print(line)

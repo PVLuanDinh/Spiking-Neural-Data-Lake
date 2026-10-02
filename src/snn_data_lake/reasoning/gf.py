@@ -665,7 +665,7 @@ r"""
 FLUID-INTELLIGENCE INDUCER -- test-time rule induction over the brain's OWN spiking VSA.
 
 The brain measured Gc but 0/11 Gf (scratchpad/probe_fluid.py): it could WALK taught knowledge but
-never SYNTHESIZE a rule for a novel problem. The binding substrate was there (cortex.vsa_reasoning:
+never SYNTHESIZE a rule for a novel problem. The binding substrate was there (faculties.vsa_reasoning:
 a genuinely spiking VSA) and simply never wired to induction. This module wires it.
 
 THE MECHANISM (Rasmussen & Eliasmith 2011, "rule generation in inductive reasoning", in the
@@ -685,14 +685,14 @@ HONEST CEILING (measured, not hidden -- the probe asserts these GAP rather than 
   This is a BOUNDED, spiking-native Gf mechanism (WHICH shift on a known ordered space), not general
   fluid reasoning. The ordinality of the space is a built-in prior; the rule over it is induced.
 
-Deps: stdlib + the brain's own snn_data_lake.cortex.vsa_reasoning (no LLM).
+Deps: stdlib + the brain's own snn_data_lake.faculties.vsa_reasoning (no LLM).
   PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.gf    # scripted probe + self-check
 """
 import re
 import string
 from fractions import Fraction
 
-from snn_data_lake.cortex.vsa_reasoning import bundle, cleanup, coincidence, hv, permute, sim
+from snn_data_lake.faculties.vsa_reasoning import bundle, cleanup, coincidence, hv, permute, sim
 
 _ANCHOR = hv("GF_ORDERED_LINE_ANCHOR")
 _SHIFTS = range(-15, 16)  # the transforms the model searches over (rule hypotheses)

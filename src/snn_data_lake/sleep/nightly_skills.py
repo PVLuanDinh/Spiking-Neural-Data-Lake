@@ -104,7 +104,7 @@ import tempfile
 
 import numpy as np
 
-from snn_data_lake.cortex.autotelic_goals import (
+from snn_data_lake.faculties.autotelic_goals import (
     EVAL_STARTS,
     HELDOUT_GOALS,
     REACH_HI,
@@ -114,8 +114,8 @@ from snn_data_lake.cortex.autotelic_goals import (
     _reach_rate,
     collect_labels,
 )
-from snn_data_lake.cortex.kb_ranking import DistMult, load_dataset
-from snn_data_lake.cortex.language_self_build import _bigram_baseline, _positional_code
+from snn_data_lake.faculties.kb_ranking import DistMult, load_dataset
+from snn_data_lake.faculties.language_self_build import _bigram_baseline, _positional_code
 
 # open_world_loop is imported LAZILY at its two use sites (_ensure_ow, the discovery feed):
 # it imports physics_stream from THIS module since meta_skill_loop's 2026-08-11 retirement

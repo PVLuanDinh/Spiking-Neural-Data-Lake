@@ -42,8 +42,8 @@ from snn_data_lake.substrate.proximity_replay import LakeMemory
 from snn_data_lake.reasoning.developmental_loop_slda import SLDA_RFF, _acc
 from snn_data_lake.reasoning.developmental_loop_lake99 import _rbf_refit_eval
 from snn_data_lake.reasoning.concept_reflection import ConceptReflector
-from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
-from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
+from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
+from snn_data_lake.faculties.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.faculties.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
 

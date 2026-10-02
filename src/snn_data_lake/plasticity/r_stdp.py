@@ -6,7 +6,7 @@ extra beside another one. (Framing corrected 2026-08-04b: this opened "a new mem
 plasticity family (additive, opt-in; changes no existing behaviour)", which is the disposition P2
 forbids in those exact words -- and it was also no longer true. `docs/POLICIES.md` names this module
 as the REUSE ANCHOR for three-factor plasticity, and it is imported by `brain_native_selfbuild`,
-`readout/interaction_learning`, `cortex/task_set`, `plasticity/naca` and four others. What makes
+`readout/interaction_learning`, `faculties/task_set`, `plasticity/naca` and four others. What makes
 that P2-clean is NOT that it is opt-in; it is the DISTINCTNESS argument three paragraphs below --
 this rule and `valence_stdp` do different jobs on two independent axes, so neither supersedes the
 other and there is nothing to retire.) This is the classic Izhikevich (2007) solution to the
@@ -499,7 +499,7 @@ def record_charge():
 #   neither has an opinion about it. Under P4c that makes it a build the gates cannot see, and
 #   the disposition is therefore carried here in prose: it is P3 shape 1 (present, importable,
 #   never invoked) until a population consumer adopts it. The consumers that would are
-#   `readout/interaction_learning`, `cortex/task_set`, `plasticity/benna_fusi` and
+#   `readout/interaction_learning`, `faculties/task_set`, `plasticity/benna_fusi` and
 #   `plasticity/naca`, none of which is in this lane's write scope, and none of which has a
 #   broadcast-to-many shape today anyway -- adopting this is a change to what those modules DO,
 #   not a call site to add.

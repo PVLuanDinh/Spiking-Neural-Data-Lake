@@ -112,7 +112,7 @@ def _child_seed(base, tag):
 # The compression primitives: Lempel-Ziv (LZ76) + a gzip cross-check. LZ rewards STRUCTURE, not
 # marginal randomness (unlike an entropy coder) -- the anti-noise-trap choice for the compression step.
 # ======================================================================================================
-# distinct-from: cortex/executive_control.py::plan_sequence (L190) -- a beam search over ACTION
+# distinct-from: faculties/executive_control.py::plan_sequence (L190) -- a beam search over ACTION
 #   sequences scored by a value function; no suffix array, no factorization.
 # distinct-from: reasoning/gf.py::consistent_programs -- enumerates arithmetic programs that
 #   reproduce a numeric series; no string parse.

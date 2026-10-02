@@ -53,10 +53,10 @@ remains ONE compiler, used by `Synapses.__init__`.
 # distinct-from: plasticity/r_stdp.py -- its _FanOut/Calibration machinery parallelizes its
 #   OWN plasticity math with a measured serial/parallel crossover; a learning-rule execution
 #   detail, never a substrate tick or delivery transport.
-# distinct-from: cortex/access_consciousness.py -- workspace BROADCAST delivery (_head_only is
+# distinct-from: faculties/access_consciousness.py -- workspace BROADCAST delivery (_head_only is
 #   that contract's red); content routing between faculties, not spikes between units.
 # distinct-from: substrate/lake_migrate.py, growth/neurogenesis_engine.py,
-#   cortex/counterfactual_sim.py -- matched on shared vocabulary (dispositions, crc identity);
+#   faculties/counterfactual_sim.py -- matched on shared vocabulary (dispositions, crc identity);
 #   none steps a substrate. All sites read.
 
 from __future__ import annotations
@@ -77,7 +77,7 @@ IMBALANCE_PROVENANCE = (
 )
 
 
-# distinct-from: cortex/percept_surprise.py::declare_ports, faculties/raphe_serotonin.py::
+# distinct-from: faculties/percept_surprise.py::declare_ports, faculties/raphe_serotonin.py::
 #   declare_ports -- manifest REGISTRANTS: they declare typed faculty ports on the wiring manifest
 #   and compile nothing; no weight, no delay, no ring key.
 # distinct-from: growth/basic_components.py::Connections.update -- an in-place bounded weight
@@ -244,7 +244,7 @@ class KernelTick:
             for part, delay, key in self.syn.by_pre.get(u, ()):
                 self._rings[part][(self.tick_index + delay) % slots].append(key)
 
-    # distinct-from: cortex/time_cells.py -- first_passage_sd is a Wiener first-passage
+    # distinct-from: faculties/time_cells.py -- first_passage_sd is a Wiener first-passage
     #   variance statistic. distinct-from: reasoning/rsnn_delays_torch.py -- verify_transfer
     #   bridges a torch export into the zero-dep core. distinct-from:
     #   reasoning/train_of_thought.py -- summon() ignites a workspace slot. distinct-from:

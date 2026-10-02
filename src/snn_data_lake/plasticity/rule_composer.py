@@ -106,7 +106,7 @@ from snn_data_lake.plasticity.eligibility_algebra import AuthoredRule
 # distinct-from: plasticity/homeostatic_plasticity_stack.py -- live incumbent
 #   composition #2 (the BASE sandwich the first landing's census missed -- the
 #   T046a all-incumbents lesson); same adjudication, same landed merge. Site read.
-# distinct-from: cortex/wholistic_loop.py -- FACULTY-grain tick arbitration (a
+# distinct-from: faculties/wholistic_loop.py -- FACULTY-grain tick arbitration (a
 #   metacognitive spine over tasks); this composes RULES on one substrate. Site read.
 # distinct-from: plasticity/eligibility_algebra.py -- the AUTHORING contract this
 #   kernel consumes; rules arrive as AuthoredRule, never re-parsed. Site read.
@@ -754,7 +754,7 @@ _CENSUS_ADJUDICATED = (
         "reward",
         "expressible -- PROVEN: T050 equivalence via the exported check; T051b-iv deposit through the kernel",
     ),
-    ("cortex/learned_evc.py", None, "expressible -- T050 census (value/cost forms)"),
+    ("faculties/learned_evc.py", None, "expressible -- T050 census (value/cost forms)"),
     ("faculties/homeostatic_drives.py", None, "expressible -- T050 census (drive_reduction)"),
     (
         "plasticity/valence_stdp.py",
@@ -1487,7 +1487,7 @@ def main():
     # 1d) T051b-iv: THE STACK-SANDWICH MERGE -- both live incumbent compositions
     #     (HomeostaticPlasticityStack AND PlasticityRuleStack) expressed as
     #     RuleSpecs held to their PRODUCTION paths.
-    # distinct-from: cortex/learned_evc.py (and the other gated-update sites) -- those ARE
+    # distinct-from: faculties/learned_evc.py (and the other gated-update sites) -- those ARE
     #   learning rules; this block EXPRESSES the two stack sandwiches' pipelines through the
     #   kernel and holds the expression to spied production calls. No other site does that job.
     #     NOT adopt-and-delete, said plainly: both stacks REMAIN the production

@@ -534,7 +534,7 @@ def _measure_patience_charge():
     return live, pinned_out, reads, spec_live == spec_pinned
 
 
-# distinct-from: cortex/metacognitive_monitor.py -- that is a live rate-quantile HOLD bar;
+# distinct-from: faculties/metacognitive_monitor.py -- that is a live rate-quantile HOLD bar;
 #   this checks a COMMITTED evidence artifact against a fresh in-command measurement. Read.
 def _assert_recorded_evidence_live(live, reads):
     """The committed attribution must correspond to the measurement THIS run just took --

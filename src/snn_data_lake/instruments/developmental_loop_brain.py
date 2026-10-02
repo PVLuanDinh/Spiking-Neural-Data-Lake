@@ -10,7 +10,7 @@ hand-rolled parts replaced by the brain's REAL subsystems, wired through thin ad
   neurogenesis  : readout.grow() fired by the MetacognitiveMonitor grow_trigger  [the brain grows its own readout neurons]
   neuromod      : LocusCoeruleus (readout lr gain)                    [neuromodulation]
   executive     : PrefrontalExecutive.plan over CompetenceDynamics + goal_value (the competence-domain
-                  objects public in cortex/competence_executive since the 2026-08-12 retirement of the
+                  objects public in faculties/competence_executive since the 2026-08-12 retirement of the
                   ExecutivePlanner/WorkspaceBroadcast wrappers) + DopamineModulator; the goal broadcast
                   is a GlobalWorkspace this loop OWNS (private offline bus: submit + step + verdict).
                   All imported lazily inside main() and _mechanics_check().
@@ -150,8 +150,8 @@ def _plan_objective(comp_vec, candidates, seed=0):
     """PLAN the next study objective: a fresh PrefrontalExecutive per call (n_options must equal
     len(candidates)), the competence-domain forward model + objective injected, write=False.
     The composition the retired ExecutivePlanner wrapper held, now owned by its one consumer."""
-    from snn_data_lake.cortex.competence_executive import CompetenceDynamics, goal_value
-    from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+    from snn_data_lake.faculties.competence_executive import CompetenceDynamics, goal_value
+    from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
 
     executive = PrefrontalExecutive(n_options=len(candidates), seed=seed)
     idx, _rt = executive.plan(
@@ -266,7 +266,7 @@ def _mechanics_check():
     NORD_TRAIN the full loop's replay store slice runs past the per-digit index and every
     cycle silently reports '+ 0 hippocampal-replay feats'. Here PER + REPLAY is asserted
     under the per-digit row count, and ASSERT 1 makes an empty replay a hard red."""
-    from snn_data_lake.cortex.competence_executive import DopamineModulator
+    from snn_data_lake.faculties.competence_executive import DopamineModulator
     from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 
     enable(resolve_device())
@@ -406,7 +406,7 @@ def main():
     if os.environ.get("DLB_RUN") != "1":
         return _mechanics_check()
     # lazy, governed-to-governed since the 2026-08-12 lane-4f promotion (see the module-top note).
-    from snn_data_lake.cortex.competence_executive import DopamineModulator
+    from snn_data_lake.faculties.competence_executive import DopamineModulator
     from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 
     enable(resolve_device())
@@ -576,7 +576,7 @@ def main():
         # 0.5 fixes how far noradrenaline may amplify the readout lr. It is NOT inert --
         # measured live at full scale, the combined gain ranged x0.75 to x3.00 across the 15
         # cycles (the mechanics check asserts non-constancy). The lane-4f adjudication
-        # (2026-08-12, in cortex/competence_executive's own P1 paragraph) settled the
+        # (2026-08-12, in faculties/competence_executive's own P1 paragraph) settled the
         # LR_MIN/LR_MAX side: kept fixed, NO exception claimed, conversion declined on P2
         # grounds. This file is the governed caller of that pair; both P1 records now sit in
         # the governed tier.

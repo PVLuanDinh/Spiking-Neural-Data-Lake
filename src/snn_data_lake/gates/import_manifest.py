@@ -87,7 +87,6 @@ import sys
 # The tiers Policy 3 mechanizes (REGIONS keys + the top-level modules). A module here is covered by
 # brain_atlas parity, the dormancy gate, ruff and the coverage denominator.
 GOVERNED = (
-    "cortex",
     "substrate",
     "brainstem",
     "plasticity",
@@ -279,7 +278,7 @@ def main():
     # root-tier blindness detector are two separate lines (see below) precisely so this edit
     # cannot silently delete the detector.
     # Floor lowered 12 -> 11 on 2026-08-12 (#10 lane 4f): brain_adapters/executive_control
-    # promoted+renamed to cortex/competence_executive, so its one target (the dlb lazy reach,
+    # promoted+renamed to faculties/competence_executive, so its one target (the dlb lazy reach,
     # two call sites) legitimately left the manifest -- same shrink-by-promotion case, and the
     # floor keeps its one-target slack rather than parking on the new count of 12.
     # Floor lowered 11 -> 10 on 2026-08-12 (PROMOTE lane, nef_compute -> cortex/): its one

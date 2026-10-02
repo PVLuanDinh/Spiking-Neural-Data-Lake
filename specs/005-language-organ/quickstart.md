@@ -72,7 +72,7 @@ becoming a green light that cannot go red.
 ## Scenario 2 - the baseline is real and reproducible (FR-003, SC-002)
 
 ```
-git diff --quiet HEAD -- src/snn_data_lake/cortex/language_acquisition.py \
+git diff --quiet HEAD -- src/snn_data_lake/faculties/language_acquisition.py \
     src/snn_data_lake/sensorimotor/spiking_lm_serve.py src/snn_data_lake/engine/brain.py \
     src/snn_data_lake/reasoning/blimp_bench.py tools/
 git rev-parse HEAD
@@ -99,6 +99,12 @@ The original baseline command named
 The original baseline command named
 `src/snn_data_lake/cortex/brain.py`; its runnable path is now
 `src/snn_data_lake/engine/brain.py`.
+
+### G8 M11e path note (2026-10-02)
+
+The original baseline command named
+`src/snn_data_lake/cortex/language_acquisition.py`; its runnable path is now
+`src/snn_data_lake/faculties/language_acquisition.py`.
 
 ---
 

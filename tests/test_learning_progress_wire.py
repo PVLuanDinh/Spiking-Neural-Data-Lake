@@ -64,7 +64,7 @@ def test_constant_stream_reads_exactly_zero(monkeypatch):
     regime), while the observation count proves the feed ran. Together with the varying
     arm's lp > 0.0 this discriminates a live moving signal from a dead channel -- either
     alone cannot."""
-    from snn_data_lake.cortex.percept_surprise import PerceptSurprise
+    from snn_data_lake.faculties.percept_surprise import PerceptSurprise
 
     monkeypatch.setattr(PerceptSurprise, "observe", lambda self, x: 0.4)
     b = _perceiving_brain()

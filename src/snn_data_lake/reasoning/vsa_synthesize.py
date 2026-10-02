@@ -14,7 +14,7 @@ space, and so do NOVEL compositions no fixed menu contains (col3 = col2 - col1; 
 + 1; a per-row progression whose step DIFFERS row to row, i.e. col3 = 2*col2 - col1) -- the
 self-check proves rpm_solver gaps on those very matrices while this module solves them.
 
-THE OPERATION SPACE (the DSL; every op a spike op from cortex/vsa_reasoning + gf's ordinal line):
+THE OPERATION SPACE (the DSL; every op a spike op from faculties/vsa_reasoning + gf's ordinal line):
   terminals    A, B         the row's first / second cell spike code (role slots)
                R            the row INVARIANT: fold-bind of example row 0's three cell codes
                             (bind is self-inverse XOR, so R carries the row's multiset identity)
@@ -54,7 +54,7 @@ answer. Honest gap (known=False) whenever no program in the space fits -- never 
 # (which the repo excludes from `ruff check .`); kept for consistency, not reflowed to f-strings.
 import random
 
-from snn_data_lake.cortex.vsa_reasoning import bind, bundle, hv, permute
+from snn_data_lake.faculties.vsa_reasoning import bind, bundle, hv, permute
 from snn_data_lake.reasoning.gf import code
 
 MAX_SIZE = 6  # MDL cap: total description length of a program (nodes; perm costs |shift|)
