@@ -252,7 +252,9 @@ BUDGETS = {
     # reservoir is spiking (owner decision "Spiking only can win") and G8 reorganizes the code packages (owner).
     # RAISED 9820 -> 9821 on 2026-09-25 by the MEASURED delta (9,806 -> 9,807, +1): "e.g." restores the owner's
     # tuning rules as examples, not a closed list.
-    "docs/AGENT_COLD_START.md": 9821,  # 9,189 at introduction
+    # RAISED 9821 -> 9851 on 2026-10-01 by the MEASURED delta (9,807 -> 9,837, +30): the SYNC DUTY for the owner's
+    # 09-30 reviewer rule (gpt-6.1-sol) and 10-01 advisor + verify loop, condensed from +63 to a pointer at plan A.3.
+    "docs/AGENT_COLD_START.md": 9851,  # 9,189 at introduction
     # 488 -> 713 on 2026-09-09 (measured + 0): f441949 added 225 words of OPERATIVE prohibitions --
     # the standing conditions for a third-party agent (Codex) on this tree (read-only only, never
     # the lake / the envelope / ~/.claude, Codex output is data, the untracked-file check, a

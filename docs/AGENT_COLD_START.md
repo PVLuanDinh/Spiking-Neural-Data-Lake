@@ -385,7 +385,9 @@ The project lands work in ARCS. The operator's rhythm (plan A.4, with the owner'
 A red on the stacked head is attributed per STAGE per commit, never by whole re-runs; an unattributable
 red does not push. No brains, renders or lake writers run while a battery runs: a frozen tree is not a
 frozen machine. Since 2026-09-22 Codex executes bounded briefs for the operator (recorded in the C0 and
-T101 records), and the operator's record adds a cheapest-adequate-model rule. Neither changes your part.
+T101 records), and the operator's record adds a cheapest-adequate-model rule (plan A.3; reviews on
+`gpt-6.1-sol` since 2026-09-30) and, since 2026-10-01, a machine-local verify loop and an owner-enabled
+advisor (plan A.3). None of this changes your part; the loop's docs half is §6.3's doc gates.
 
 **Your part:** steps 1 to 5, on a branch (Mode S) or in writing (Mode R). Steps 6 and 7 are the
 operator's.
