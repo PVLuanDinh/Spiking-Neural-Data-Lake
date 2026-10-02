@@ -160,10 +160,21 @@ def _watermark_path():
 def _telemetry_path():
     """Telemetry lives in the ACTIVE home, beside the lake and the watermark. It used to be
     <checkout>/data/telemetry.jsonl whatever NORD_HOME said, so a throwaway brain appended to the
-    real daemon's record (measured 2026-10-01; tests/test_learn_daemon_telemetry_home.py)."""
+    real daemon's record (measured 2026-10-01; tests/test_learn_daemon_telemetry_home.py). It lands
+    in the checkout only if NORD_HOME itself points there.
+
+    P4c reading (a session call, open to the owner): P4c forbids the daemon keeping "its own durable
+    state alongside brain_lake.bin". This JSONL is a diagnostic trace that nothing restores the brain
+    from and no in-tree code reads back, like the watermark and the lock already in the home; it is
+    not learned state, so it is not a second lake."""
     from snn_data_lake.substrate.home import home  # noqa: PLC0415
 
     return os.path.join(home(), "telemetry.jsonl")
+
+
+def _make_recorder():
+    """The daemon's ONE Recorder construction, so a test can pin where it writes."""
+    return Recorder(_telemetry_path(), every=1)
 
 
 def _write_watermark():
@@ -379,8 +390,8 @@ def main():
     # every=1, NOT TICKS_PER_CYCLE. Recorder.every counts CALLS to write(), and write() is called once
     # per cycle below -- so every=TICKS_PER_CYCLE meant one snapshot per 20 cycles (400 ticks), 20x
     # sparser than the "one snapshot per cycle" the call site claims. The two disagreed silently.
-    # Where it writes: _telemetry_path(), the active home (2026-10-01), never the checkout.
-    rec = Recorder(_telemetry_path(), every=1)
+    # Where it writes: _make_recorder() -> _telemetry_path(), the active home (2026-10-01).
+    rec = _make_recorder()
 
     atexit.register(lambda: _shutdown(b, mem))
     atexit.register(rec.close)
