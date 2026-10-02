@@ -1431,6 +1431,16 @@ Full evaluation: the operator's memory store, `archive/n-eval-2026-09-16/` (asse
 The work loop decides whether to freeze it, with the 2026-09-30 amendments as written, as its own arc at a seam outside
 any single-head campaign (after G8-3's push or after G1(c)'s results record), and records the call and its reason here.
 T097-T100 stay outside the loop.
+*DATED 2026-10-02, the work loop's call at the seam after G8-3's push (a session call under 'Loop decides at its slot'):*
+T096 is NOT frozen in this loop. Reason: the owner's 2026-09-30 rule makes a reservoir bar's primary endpoint
+FUNCTIONAL (a fed-in neuron, the reservoir, a brain-tuned readout, back to the brain), and nothing that endpoint needs
+exists before G3 (feed) and G5 (readout neurons, return path); T097 cannot start before T109 anyway (amendment 3 makes
+the hybrid's substrate G1(b)'s g1 pool, and this section's own clause puts T109 before T097). Freezing now would fix a
+non-functional primary for a protocol nothing in the loop can run. Trigger: T096 freezes as the first arc of the stack
+that schedules T097, after T109, with the engine sentence and a functional primary endpoint written in before any
+T097 data; carried into that freeze: the coupling gain's name clash with the pool's `g`, the readout referent, N4's
+live-brain task, budget ceilings as multiples of the measured g = 0 arm, the B/C growth surface, and the
+INVENTION_REGISTER row (2212 of 2212 words: a measured raise). T096 stays open.
 
 **N2 / T097 - solver and causal coupling.** *(Added 2026-09-23: if N2 selects G1(b)'s pool as its
 spiking substrate, T109 precedes T097.)* Start with a periodic Fourier projection solver:
@@ -1951,6 +1961,9 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
     `brainstem/so101/` stay byte-identical, with `envelope_hash_gate` run after each M11 stage; `cpg_oscillator` (not
     an envelope file) moves at M11b as designed; `so101_arm.py`'s dangling comment citations (F11) are reported to the
     owner, never edited.
+  - *DATED 2026-10-02, G8 complete:* G8-3 pushed `ff8db8aa..d065a80a` (battery GREEN on `01b5489c`): 253 modules
+    moved in all, the 15 anatomy packages deleted, A.5a maps every old path; the panel's folds and the closing
+    report's record are in the evidence file (3.36-3.38; M11c's per-stage compliance is not claimed). T116 closes.
 
   G-R8.
 - **G9 / T117 — the engine, end to end (the owner's condition, "as long as the engine can work").** *(Added
