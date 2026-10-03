@@ -761,6 +761,22 @@ def _writing_readout():
         names["ReferenceReadout"] = original
 
 
+# distinct-from: reservoir/recurrent_pool.py::_skip_carrier -- that rewires ONE pool's reset (R-b5 (i)); this is its replay-level carrier, the way _writing_readout is R-b8's: every pool a replay builds inside has the same skip (G1(c) 2.10's skip-a-carrier red of Settled invariance), by calling it on what make_pool returns
+@contextlib.contextmanager
+def _skipped_carrier(carrier):
+    """Every pool a replay builds inside has a reset that leaves `carrier` as it was."""
+    original = rp.make_pool
+
+    def skipping(*args, **kwargs):
+        return rp._skip_carrier(original(*args, **kwargs), carrier)
+
+    rp.make_pool = skipping
+    try:
+        yield
+    finally:
+        rp.make_pool = original
+
+
 @contextlib.contextmanager
 def _e1_mutant():
     """R-b8's pre-build red: `_feature("e1")` with one element changed."""
@@ -1107,6 +1123,7 @@ _TAP_FIELDS = (
     "config_digest",
     "seed",
     "revision",
+    "mode",
     "w_at_b",
     "activity",
     "refit_weights",
@@ -1114,7 +1131,9 @@ _TAP_FIELDS = (
 
 
 def _belongs(side, identity, count):
-    # a side tap belongs to the replay it feeds: that replay's digests, seed and revision, and one
+    # a side tap belongs to the replay it feeds: that replay's digests, seed, revision and MODE (a live
+    # tap read the recorded live |LP| and a causal one the causal |LP|: the two taps differ in their
+    # weights, rates and refits, and either must feed only a replay of its own mode), and one
     # activity slot per delivery
     if not isinstance(side, dict) or any(key not in side for key in _TAP_FIELDS):
         raise ValueError("REFUSED: side tap lacks a tap's fields")
@@ -1143,7 +1162,8 @@ def replay(
     G1(c) 2.7: `tap=b` (arm "a" only) records, read-only, the incumbent grower's weights at the START
     of delivery b + 1, its hidden rates at every delivery and its weights at every refit, returned as
     result["tap"]. `side=` is such a tap, handed to a transport arm ("pool-copy", "pool-act",
-    "pool-swap"; the copy and the activity arms require it); it must belong to this replay."""
+    "pool-swap"; the copy and the activity arms require it); it must belong to this replay: its source
+    and config digests, seed, revision and MODE (a live tap never feeds a causal replay)."""
     if arm not in ARMS or mode not in ("causal", "live"):
         raise ValueError("unknown arm or mode")
     if (arm in POOL_ARMS) != (pool is not None):
@@ -1185,6 +1205,7 @@ def _replay(stream, arm, mode, mutate, readout, pool, tap=None, side=None):
             "config_digest": _config_digest(stream),
             "seed": stream.get("seed"),
             "revision": dict(zip(("head", "dirty"), _revision(), strict=True)),
+            "mode": mode,
         }
         _belongs(side, identity, len(rows["events"]))
         supply = _TapSupply(side)
@@ -1354,6 +1375,7 @@ def _replay(stream, arm, mode, mutate, readout, pool, tap=None, side=None):
                 "config_digest": result["config_digest"],
                 "seed": result["seed"],
                 "revision": result["revision"],
+                "mode": mode,
             },
         )
     result["seconds"] = time.perf_counter() - started  # end-to-end, reported only
@@ -1831,12 +1853,23 @@ def check_transport_timing(stream, *, b=TRANSPORT_B, late=LATE_TAP_EVENTS):
 # suffix mutation, is tapped afresh (a side tap belongs to its own stream); the grower's predictions
 # at t <= cut must be unchanged, and the re-taken weights at b equal the original's.
 # RED: a tap that lists the FINAL model as its weights at b changes pool-copy's predictions before
-# every cut.
+# every cut. The cuts are exactly three distinct integers, each strictly after b and before the end of
+# the stream: no cut at all (or a repeated one) leaves nothing to compare and would pass, and a cut at
+# or past the end mutates nothing a later prediction could read.
+# distinct-from: gates/eprop_transport_gate.py::_selfcheck -- that gate polices WEIGHT TRANSPORT in the source tree (a transposed forward weight feeding an update); this is G1(c)'s transport arms' R-a2 causality, replayed at three cuts
 def check_transport_causality(stream, spec, *, b=TRANSPORT_B, cuts=None):
     count = len(stream["events"])
     cuts = (count // 4, count // 2, 3 * count // 4) if cuts is None else tuple(cuts)
+    if any(isinstance(cut, bool) or not isinstance(cut, int) for cut in cuts):
+        raise ValueError(f"REFUSED: every cut is an integer event count: {cuts}")
+    if len(cuts) != 3 or len(set(cuts)) != 3:
+        raise ValueError(f"REFUSED: the causality check takes exactly three distinct cuts: {cuts}")
     if any(cut <= b for cut in cuts):
         raise ValueError(f"REFUSED: every cut must lie after b ({b}): {cuts}")
+    if any(cut >= count for cut in cuts):
+        raise ValueError(
+            f"REFUSED: every cut must lie before the end of the stream ({count} events): {cuts}"
+        )
     taps = {"honest": replay(stream, "a", tap=b)["tap"]}
     with _leaky_tap():
         taps["leaky"] = replay(stream, "a", tap=b)["tap"]

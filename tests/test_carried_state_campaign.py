@@ -5,6 +5,8 @@ check (only the decoder row decides; an incomplete oracle is a blind harness). P
 hand fixtures: no recording, no pool, no campaign."""
 
 import ast
+import contextlib
+import functools
 import inspect
 import itertools
 import json
@@ -542,6 +544,35 @@ def test_a_stream_that_is_not_the_transforms_output_for_its_declared_k_fails():
     assert not result["ok"] and any("not the transform's output" in r for r in result["reasons"])
 
 
+def test_every_registered_k_passes_on_a_stream_whose_last_block_is_two_events():
+    # The P3 panel's F3: the check drew k + 1, a shuffle nobody registered, and failed a valid k = 3
+    # because k = 4 moves under half of a 2-event block. Only the declared k is drawn now.
+    stream = md.rb6_stream(81111)
+    for i in (1198, 1199):
+        stream["events"][i]["segment"] = "last-two"
+    sizes = [len(group) for group in ccc.blocks(stream)]
+    assert sizes == [256, 256, 256, 256, 174, 2]
+    with pytest.raises(AssertionError, match="under half"):
+        ccc.block_permutations(81111, ccc.SHUFFLE_K, sizes)  # the draw the old check made for k = 3
+    for k in range(ccc.SHUFFLE_K):
+        shuffled = ccc.shuffle_blocks(stream, k)
+        assert ccc.check_shuffle_transform(stream, shuffled) == {"ok": True, "reasons": []}
+
+
+def test_k_drives_the_permutation_on_the_fixture_without_the_check_drawing_k_plus_one():
+    stream = ccc._sourced_fixture()
+    drawn = [ccc.shuffle_blocks(stream, k, block=BLOCK) for k in range(ccc.SHUFFLE_K)]
+    assert len({md._source_digest(s) for s in drawn}) == ccc.SHUFFLE_K  # k changes the stream
+    shuffled = drawn[1]
+    assert ccc.check_shuffle_transform(stream, shuffled, BLOCK)["ok"]
+    # a stream declaring another k than its own draw is refused for that, never for what a
+    # neighbouring k would do
+    shuffled["shuffle"]["k"] = 2
+    result = ccc.check_shuffle_transform(stream, shuffled, BLOCK)
+    assert not result["ok"] and any("not the transform's output" in r for r in result["reasons"])
+    assert not any("k + 1" in r for r in result["reasons"])
+
+
 def test_an_event_key_in_neither_set_refuses_the_transform_and_the_check():
     stream = ccc._sourced_fixture()
     stream["events"][5]["extra"] = 1
@@ -646,6 +677,16 @@ def test_survives_is_true_for_a_planted_order_independent_gain_and_false_for_a_d
     assert ccc.survives([0.03] * 31) is False  # degenerate is never met (2.3)
     with pytest.raises(ValueError, match="30 differences"):
         ccc.survives(ccc._jittered(0.05, 0.01, 7)[:30])
+
+
+def test_survives_takes_the_bar_and_the_count_of_its_caller_and_keeps_the_campaigns_defaults():
+    gain = [0.05 + 0.002 * i for i in range(8)]
+    assert ccc.survives(gain, bar=pc.T_BAR, n_required=8) is True  # 8 seeds at Part F's bar
+    assert ccc.survives([-g for g in gain], bar=pc.T_BAR, n_required=8) is False
+    with pytest.raises(ValueError, match="8 differences, 31 required"):
+        ccc.survives(gain)  # the campaign's own call still takes 31 at T_CRIT
+    with pytest.raises(ValueError, match="31 differences, 8 required"):
+        ccc.survives(ccc._jittered(0.05, 0.01, 7), bar=pc.T_BAR, n_required=8)
 
 
 def test_incremental_is_the_contrast_over_d_minus_d_shuf():
@@ -808,3 +849,147 @@ def test_a_shuffled_stream_replays_as_an_ordinary_stream_under_the_revision_bind
     # the shuffled replay feeds the same phi multiset per block in another order
     invariance = ccc.settled_invariance(plain_run, shuffled_run, stream, boundary=16, block=BLOCK)
     assert invariance["ok"] is True, invariance
+
+
+# ---- 2.10's shuffle controls on REAL replays (the P3 panel's F2) ---------------------------------
+
+
+@pytest.fixture(scope="module")
+def pooled():
+    stream = ccc._sourced_fixture()
+    return stream, ccc.shuffle_blocks(stream, 0, block=BLOCK)
+
+
+def test_settled_holds_its_invariance_on_real_pool_replays_of_the_fixture(pooled):
+    stream, shuffled = pooled
+    result = ccc._pool_invariance(stream, shuffled, "settled", block=BLOCK)
+    assert result["ok"] is True and result["excluded"] == 2
+    assert [row["start"] for row in result["per_block"]] == [16, 24, 32, 40]
+    assert all(row["multiset_equal"] and row["sequence_differs"] for row in result["per_block"])
+
+
+@pytest.mark.parametrize(
+    ("form", "carrier"),
+    [("carried", None), ("settled", "v"), ("settled", "s")],
+    ids=["the Carried red", "Settled skipping v", "Settled skipping s"],
+)
+def test_carried_and_a_settled_skipping_a_carrier_fail_the_invariance_on_real_pool_replays(
+    pooled, form, carrier
+):
+    stream, shuffled = pooled
+    result = ccc._pool_invariance(stream, shuffled, form, block=BLOCK, carrier=carrier)
+    assert result["ok"] is False and len(result["per_block"]) == 4
+    assert ccc._equal_blocks(result) == 0  # the multiset moved in every post-boundary block
+
+
+def test_the_pool_controls_report_their_counts(pooled):
+    stream, shuffled = pooled
+    assert ccc._check_pool_controls(stream, shuffled, BLOCK) == {
+        "blocks": 4, "settled": 4, "carried": 0, "skipped": {"v": 0, "s": 0},
+    }  # fmt: skip
+
+
+def test_a_pool_control_whose_red_cannot_fire_is_refused(pooled, monkeypatch):
+    stream, shuffled = pooled
+    # a skip-a-carrier fault that skips nothing leaves an honest Settled, which holds the invariance
+    monkeypatch.setattr(md, "_skipped_carrier", lambda carrier: contextlib.nullcontext())
+    with pytest.raises(AssertionError, match="skipping"):
+        ccc._check_pool_controls(stream, shuffled, BLOCK)
+    monkeypatch.undo()
+    # a Carried that resets (the form's reset standing in for it) holds the invariance too
+    original = ccc._pool_invariance
+
+    def resetting(stream, shuffled, form, **kwargs):
+        return original(stream, shuffled, "settled" if form == "carried" else form, **kwargs)
+
+    monkeypatch.setattr(ccc, "_pool_invariance", resetting)
+    with pytest.raises(AssertionError, match="Carried held"):
+        ccc._check_pool_controls(stream, shuffled, BLOCK)
+
+
+@pytest.fixture(scope="module")
+def recordings():
+    return [md.rb6_stream(seed) for seed in ccc.SHUFFLE_RED_SEEDS]
+
+
+def _arms():
+    return tuple(functools.partial(ccc._arm_rows, arm=arm) for arm in ("a", "e1", "e1-0"))
+
+
+@pytest.mark.parametrize("arm", ["a", "e1", "e1-0"])
+def test_the_decoder_alone_reads_what_replays_reference_readout_reads(recordings, arm):
+    shuffled = ccc.shuffle_blocks(recordings[0], 0)
+    run = md.replay(shuffled, arm)
+    rows = ccc._arm_rows(shuffled, arm)
+    pairs = list(zip(rows, (e["c"] for e in shuffled["events"]), strict=True))
+    with rp._blas_threads(1):
+        guesses = md._drive_readout(md.ReferenceReadout(), pairs)
+    assert guesses == run["readout"]["predictions"]
+    assert ccc._decoder_accuracy(shuffled, rows) == ps.recording_accuracy(
+        ps.digest(run, shuffled)["readout"]
+    )
+
+
+def test_the_lookahead_red_instrument_feeds_the_decoder_the_current_category():
+    stream = ccc._stream_fixture()
+    rows = ccc._lookahead_rows(stream)
+    cats = [event["c"] for event in stream["events"]]
+    assert len(rows) == 48 and {len(row) for row in rows} == {64}
+    assert all(rows[i] == md.onehot_32(cats[i + 1]) + [0.0] * 32 for i in range(47))
+    assert rows[47] == [0.0] * 64  # nothing follows the last event
+    # the reference readout predicts c_i from row i - 1: after its first solve it reads the category
+    # of the event it is asked about, in the stream as recorded and in a shuffled one alike
+    shuffled = ccc.shuffle_blocks(stream, 0, block=BLOCK)
+    for s in (stream, shuffled):
+        assert ccc._decoder_accuracy(s, ccc._lookahead_rows(s)) == 1.0
+    assert ccc._decoder_accuracy(shuffled, ccc._arm_rows(shuffled, "a")) < 1.0
+
+
+def test_a_planted_current_category_gain_survives_the_shuffle_and_the_history_gain_does_not(
+    recordings,
+):
+    arm_a, e1, e1_0 = _arms()
+    bar, n = pc.T_BAR, len(recordings)
+    assert n == 8 and ccc.SHUFFLE_RED_SEEDS == tuple(range(6100, 6108)) and bar == 1.895
+    current = ccc._decoder_gaps(recordings, ccc._lookahead_rows, arm_a, shuffles=ccc.SHUFFLE_K)
+    assert ccc.survives(current, bar=bar, n_required=n) is True
+    assert ccc.contrast_row("current", current, bar=bar, n_required=n)["t"] > 100.0
+    plain = ccc._decoder_gaps(recordings, e1, e1_0, shuffles=0)  # R-b6 unshuffled: the sighted half
+    assert ccc.survives(plain, bar=bar, n_required=n) is True
+    assert statistics.fmean(plain) >= md.RB6_BAR
+    history = ccc._decoder_gaps(recordings, e1, e1_0, shuffles=ccc.SHUFFLE_K)
+    row = ccc.contrast_row("history", history, bar=bar, n_required=n)
+    assert ccc.survives(history, bar=bar, n_required=n) is False
+    assert row["t"] < 0.0 and statistics.fmean(history) < md.RB6_BAR
+
+
+def test_the_decoder_decisions_report_their_numbers():
+    numbers = ccc._check_decoder_decisions()
+    assert numbers["history_shuffles"] == 1
+    assert numbers["current_t"] > numbers["unshuffled_t"] > pc.T_BAR > numbers["history_t"]
+
+
+def test_the_self_check_goes_red_when_the_decoder_always_predicts_zero(monkeypatch):
+    monkeypatch.setattr(md.ReferenceReadout, "predict", lambda self: 0)
+    with pytest.raises(AssertionError, match="planted current-category gain"):
+        ccc._check_shuffle()  # every gain is 0: degenerate, NOT MET
+
+
+def test_the_self_check_goes_red_when_the_pool_is_unavailable(monkeypatch):
+    def unavailable(*args, **kwargs):
+        raise RuntimeError("the pool is unavailable")
+
+    monkeypatch.setattr(rp, "make_pool", unavailable)
+    with pytest.raises(RuntimeError, match="unavailable"):
+        ccc._check_shuffle()
+
+
+def test_the_orchestrators_one_liner_no_longer_leaves_the_self_check_green(monkeypatch):
+    monkeypatch.setattr(md.ReferenceReadout, "predict", lambda self: 0)
+
+    def unavailable(*args, **kwargs):
+        raise RuntimeError("the pool is unavailable")
+
+    monkeypatch.setattr(rp, "make_pool", unavailable)
+    with pytest.raises((AssertionError, RuntimeError)):
+        ccc._check_shuffle()

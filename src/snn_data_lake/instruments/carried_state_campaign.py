@@ -29,6 +29,11 @@ Arc P3b adds section 2.6's within-block time shuffle and section 2.5's reading o
   survives, incremental
                      "survives" = contrast(D_shuf) met at T_CRIT; contrast(D - D_shuf) is reported
   g_r1_reading       2.5's table, rows top to bottom, as a pure function
+  _check_pool_controls, _check_decoder_decisions
+                     2.10's shuffle controls on REAL replays, beside the arithmetic checks: Settled
+                     invariance on pool replays with its Carried and skip-a-carrier reds, and "survives"
+                     on a planted current-category gain and on R-b6's history gain through the real
+                     reference readout (seeds 6100-6107 at Part F's bar)
 
 The 48-event self-check fixture is shorter than one 256-event block, so its shuffles use blocks of 8
 (FIXTURE_BLOCK); every function takes the block size and defaults to SHUFFLE_BLOCK.
@@ -41,11 +46,14 @@ The campaign stages (record ... report, section 2.13) arrive in P5, added to thi
 Pure standard library beyond the instruments it restates; deterministic; ASCII-only prints.
 """
 
+import contextlib
 import copy
+import functools
 import itertools
 import json
 import math
 import random
+import statistics
 import zlib
 from collections import Counter
 
@@ -407,7 +415,9 @@ def check_shuffle_transform(stream, shuffled, block=SHUFFLE_BLOCK):
     known; per block the multiset of (x, c) pairs and of whole percepts equal; slot fields, events in no
     block and the whole sleep list equal to the original; the revision-binding keys kept; the shuffle
     declared; the digest different; at least half of each block of two or more moved; and `shuffled` is
-    exactly what `shuffle_blocks` returns for its declared k, while k + 1 gives another stream."""
+    exactly what `shuffle_blocks` returns for its declared k. Only the declared k is ever drawn: a
+    neighbouring k is not a registered shuffle, so a stream is never failed for what k + 1 would do
+    (that k drives the draw is shown on the fixture, by the self-check and its test)."""
     events, mixed = stream["events"], shuffled.get("events")
     if not isinstance(mixed, list) or len(mixed) != len(events) or "sleep" not in shuffled:
         return {"ok": False, "reasons": ["the shuffled stream lacks the events or the sleep rows"]}
@@ -454,14 +464,11 @@ def check_shuffle_transform(stream, shuffled, block=SHUFFLE_BLOCK):
     if declares:
         try:
             again = shuffle_blocks(stream, declared["k"], block=block)
-            other = shuffle_blocks(stream, declared["k"] + 1, block=block)
         except (ValueError, AssertionError) as error:
             reasons.append(f"the transform refuses the original stream: {error}")
         else:
             if _canon(again) != _canon(shuffled):
                 reasons.append("not the transform's output for its declared (seed, block, k)")
-            if md._source_digest(other) == md._source_digest(shuffled):
-                reasons.append("k + 1 gives the same stream: k does not drive the draw")
     return {"ok": not reasons, "reasons": reasons}
 
 
@@ -505,10 +512,16 @@ def settled_invariance(plain_run, shuffled_run, stream, *, boundary=256, block=S
     }
 
 
-def survives(d_shuf_diffs):
+# Sites the duplicate-capability hook flagged for this decision, read; none decides survival of a shuffle:
+# distinct-from: faculties/brain_decision.py::_ab_world -- shuffles a per-seed list of learn rates for an A/B world
+# distinct-from: faculties/metacognitive_monitor.py::_build_stream -- shuffles a plan of class and noise samples into a stream
+# distinct-from: faculties/recursive_tom.py::t082_contrasts -- T082's per-seed conjuncts, a different task's verdict
+# distinct-from: instruments/paired_contrast.py::contrast -- this CALLS it (through contrast_row) and adds only 2.3's met rule at the bar and count its caller names
+def survives(d_shuf_diffs, *, bar=T_CRIT, n_required=N_LIVE):
     """2.6: D_shuf "survives" the shuffle when contrast(D_shuf) is met at T_CRIT: the 31 per-seed
-    differences (each a mean over the K shuffles), through `contrast_row`."""
-    return bool(contrast_row("D_shuf", d_shuf_diffs)["met"])
+    differences (each a mean over the K shuffles), through `contrast_row`. The construction controls
+    (2.10) take the same decision over 8 synthetic seeds at Part F's bar: `bar` and `n_required`."""
+    return bool(contrast_row("D_shuf", d_shuf_diffs, bar=bar, n_required=n_required)["met"])
 
 
 def incremental(d, d_shuf):
@@ -701,6 +714,137 @@ _TRANSFORM_REDS = {
 }
 
 
+# ---- 2.10's shuffle controls on REAL replays ------------------------------------------------------
+# The checks in _check_shuffle on hand phi and hand gains stay as regressions of the arithmetic. These
+# run what the campaign runs, the pool and the decoder: a pool made unavailable, or a decoder that
+# always predicts 0, fails them.
+
+
+def _equal_blocks(result):
+    return sum(row["multiset_equal"] for row in result["per_block"])
+
+
+# Sites the duplicate-capability hook flagged for the next two functions, read; none is a pool replay's invariance check:
+# distinct-from: instruments/binding_instrument.py::_t080_arm_counts -- counts one arm's scored ticks of a binding recording
+# distinct-from: instruments/memory_diagnostic.py::_PoolArm -- the pool arm's bookkeeping; this CALLS it (through replay) and compares two replays of it
+# distinct-from: reservoir/recurrent_pool.py::pool_noise_red -- kicks one Carried pool and compares its state chain with an unkicked twin's; no shuffled stream, no Settled form
+# distinct-from: brainstem/arm_config.py::ground_free_band -- a joint's range over which the gripper stays off the floor (read only; no brainstem file is touched)
+# distinct-from: engine/brain.py::_flush_coverage -- writes the arm's coverage ledger into the lake
+def _pool_invariance(stream, shuffled, form, *, block, carrier=None):
+    """Settled invariance (2.6) over two REAL pool replays of the fixture, plain and shuffled: the g1
+    LSM at TUNED with a window of two blocks, which is also the boundary. `carrier` replays both with
+    that carrier skipped on reset (memory_diagnostic._skipped_carrier)."""
+    spec = {"candidate": "lsm", "config": TUNED, "form": form, "window": 2 * block}
+    with md._skipped_carrier(carrier) if carrier else contextlib.nullcontext():
+        plain = md.replay(stream, "pool", pool=spec)
+        mixed = md.replay(shuffled, "pool", pool=spec)
+    return settled_invariance(plain, mixed, stream, boundary=2 * block, block=block)
+
+
+def _check_pool_controls(stream, shuffled, block):
+    """2.10: on real pool replays Settled keeps every post-boundary block's multiset of phi while the
+    sequence moves; Carried must FAIL it (history reaches phi: the red), and so must a Settled whose
+    reset skips a carrier (the skip-a-carrier red, each carrier of the pool). Returns the counts."""
+    settled = _pool_invariance(stream, shuffled, "settled", block=block)
+    assert settled["ok"] and settled["excluded"] == 2 and len(settled["per_block"]) == 4, settled
+    assert all(row["sequence_differs"] for row in settled["per_block"]), settled
+    carried = _pool_invariance(stream, shuffled, "carried", block=block)
+    assert not carried["ok"], f"Carried held Settled invariance: the red did not fire: {carried}"
+    skipped = {}
+    for carrier in rp.LsmPool.CARRIERS:
+        mutant = _pool_invariance(stream, shuffled, "settled", block=block, carrier=carrier)
+        assert not mutant["ok"], f"a Settled skipping {carrier!r} held invariance: {mutant}"
+        skipped[carrier] = _equal_blocks(mutant)
+    return {
+        "blocks": len(settled["per_block"]),
+        "settled": _equal_blocks(settled),
+        "carried": _equal_blocks(carried),
+        "skipped": skipped,
+    }
+
+
+def _arm_rows(stream, arm):
+    """The feature rows memory_diagnostic's `_feature` gives `arm` (a, e1 or e1-0) on a recording, one
+    per event, from the percept and the three before it (zeros before the start), as replay's loop
+    supplies them."""
+    rows, seen = [], []
+    for event in stream["events"]:
+        values = {
+            "x": event["x"],
+            "x_history": [seen[-i] if len(seen) >= i else [0.0] * 64 for i in range(1, 4)],
+        }
+        rows.append(md._feature(arm, md._View(md.ARMS[arm][1], values)))
+        seen.append(event["x"])
+    return rows
+
+
+def _lookahead_rows(stream):
+    """RED INSTRUMENT, never an arm and never in a campaign table: row i holds onehot(c_{i+1}), so the
+    reference readout, which predicts c_i from row i - 1, is fed the CURRENT category. Its gain over
+    arm (a) is order-independent by construction, which is what 2.10's planted gain must be."""
+    cats = [event["c"] for event in stream["events"]]
+    return [
+        md.onehot_32(c) + [0.0] * 32 if c is not None else [0.0] * 64 for c in (*cats[1:], None)
+    ]
+
+
+def _decoder_accuracy(stream, rows):
+    """A recording's accuracy through memory_diagnostic's own ReferenceReadout (`_drive_readout`:
+    predict c_t from the row before it, then add the pair) at replay's one BLAS thread, scored as the
+    campaign's tables score it (`md.score`, `recording_accuracy`)."""
+    pairs = list(zip(rows, (event["c"] for event in stream["events"]), strict=True))
+    with rp._blas_threads(1):
+        guesses = md._drive_readout(md.ReferenceReadout(), pairs)
+    return ps.recording_accuracy(md.score(stream, guesses, [False] * len(guesses), floors=False))
+
+
+# Sites the duplicate-capability hook flagged for the next function, read; none is this gap over feature rows:
+# distinct-from: instruments/report_order_probe.py::t081_read -- one recording's per-seed reading of the order probe's fractions
+# distinct-from: faculties/agency_monitor.py::_t079_refusals -- names the joints a T079 recording left unscored
+# distinct-from: faculties/recursive_tom.py::t082_read -- one recording's per-seed reading of T082's statements
+# distinct-from: instruments/pool_selection.py::_contrast -- takes two finished REPLAYS of one synthetic stream and differences their scored accuracy; this runs the reference readout alone over feature rows (a replay cannot carry the lookahead red instrument, and a grower replay costs about a second a stream) and averages the difference over the stream's shuffles, scoring through its recording_accuracy
+def _decoder_gaps(recordings, first, second, *, shuffles):
+    """Per recording (an rb6 stream of one synthetic seed): accuracy(first rows) - accuracy(second
+    rows) through the reference readout, the mean over its `shuffles` within-block shuffles
+    (k = 0 .. shuffles - 1); `shuffles` 0 reads the recording unshuffled."""
+    gaps = []
+    for recording in recordings:
+        streams = [shuffle_blocks(recording, k) for k in range(shuffles)] or [recording]
+        gaps.append(
+            statistics.fmean(
+                _decoder_accuracy(s, first(s)) - _decoder_accuracy(s, second(s)) for s in streams
+            )
+        )
+    return gaps
+
+
+def _check_decoder_decisions(*, history_shuffles=1):
+    """2.10's "survives" decision on real decoders, synthetic seeds 6100-6107 at Part F's bar: a gain
+    from a decoder fed the CURRENT category (the red instrument above) over arm (a), through the
+    reference readout and shuffled with the registered K, survives; R-b6's order-dependent history
+    gain (e1) - (e1-0) does not (its unshuffled gain, the sighted half, is met at the same bar and
+    reaches RB6_BAR). A decoder that always predicts 0 gives every gain 0 and fails both halves."""
+    recordings = [md.rb6_stream(seed) for seed in SHUFFLE_RED_SEEDS]
+    arm_a, e1, e1_0 = (functools.partial(_arm_rows, arm=arm) for arm in ("a", "e1", "e1-0"))
+    bar, n = pc.T_BAR, len(recordings)
+    current = _decoder_gaps(recordings, _lookahead_rows, arm_a, shuffles=SHUFFLE_K)
+    current_row = contrast_row("planted current-category gain", current, bar=bar, n_required=n)
+    assert survives(current, bar=bar, n_required=n) is True, current_row
+    sighted = _decoder_gaps(recordings, e1, e1_0, shuffles=0)
+    sighted_row = contrast_row("(e1) - (e1-0), unshuffled", sighted, bar=bar, n_required=n)
+    assert sighted_row["met"] and statistics.fmean(sighted) >= md.RB6_BAR, sighted_row
+    history = _decoder_gaps(recordings, e1, e1_0, shuffles=history_shuffles)
+    history_row = contrast_row("(e1) - (e1-0), shuffled", history, bar=bar, n_required=n)
+    assert survives(history, bar=bar, n_required=n) is False, history_row
+    assert statistics.fmean(history) < md.RB6_BAR, history_row
+    return {
+        "current_t": current_row["t"],
+        "unshuffled_t": sighted_row["t"],
+        "history_t": history_row["t"],
+        "history_shuffles": history_shuffles,
+    }
+
+
 def _check_shuffle():
     """The transform, its reds, Settled invariance, "survives" and one real replay, on the fixtures;
     returns the numbers main() prints."""
@@ -768,6 +912,9 @@ def _check_shuffle():
         plain_replay, shuffled_replay, stream, boundary=2 * block, block=block
     )
     assert replayed["ok"], replayed
+    # 2.10's controls on REAL replays: the pool's invariance and its two reds, the decoder's decisions
+    pool = _check_pool_controls(stream, shuffled, block)
+    decoder = _check_decoder_decisions()
     return {
         "reds": len(_TRANSFORM_REDS),
         "counted": len(settled["per_block"]),
@@ -777,6 +924,8 @@ def _check_shuffle():
         "destroyed": contrast_row("destroyed", destroyed)["t"],
         "refused_k": len(refused),
         "digests": (md._source_digest(stream), md._source_digest(shuffled)),
+        "pool": pool,
+        "decoder": decoder,
     }
 
 
@@ -932,7 +1081,15 @@ def main():
         f"{shuffle['counted']} post-boundary blocks ({shuffle['excluded']} pre-boundary excluded) and "
         f"fails on a Carried-like phi ({shuffle['carried_equal']} blocks equal); survives True at t "
         f"{shuffle['gain']:.4f}, False at t {shuffle['destroyed']:.4f}; a shuffled stream replays under "
-        f"the revision binding (digest {shuffle['digests'][0]} -> {shuffle['digests'][1]}); G-R1: "
+        f"the revision binding (digest {shuffle['digests'][0]} -> {shuffle['digests'][1]}); on REAL "
+        f"replays of the g1 pool Settled holds {shuffle['pool']['settled']} of "
+        f"{shuffle['pool']['blocks']} post-boundary blocks while Carried holds "
+        f"{shuffle['pool']['carried']} and a Settled skipping a carrier holds "
+        f"{shuffle['pool']['skipped']}; through the reference readout on seeds 6100-6107 at "
+        f"{pc.T_BAR} the planted current-category gain survives (t {shuffle['decoder']['current_t']:.4f}) "
+        f"and R-b6's history gain (e1) - (e1-0), met unshuffled (t "
+        f"{shuffle['decoder']['unshuffled_t']:.4f}), does not when shuffled "
+        f"({shuffle['decoder']['history_shuffles']} shuffle, t {shuffle['decoder']['history_t']:.4f}); G-R1: "
         f"{reading['rows']} table fixtures exact, {reading['combinations']} input combinations "
         f"{reading['verdicts']}, an ignore-one-input mutant caught for every input"
     )

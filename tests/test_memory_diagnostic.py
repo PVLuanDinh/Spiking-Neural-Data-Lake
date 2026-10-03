@@ -760,6 +760,7 @@ def test_a_side_is_refused_unless_it_belongs_to_this_replay(tapped):
         "config_digest": 1,
         "seed": 18,
         "revision": {"head": "0" * 40, "dirty": False},
+        "mode": "live",
     }
     for key, value in wrong.items():
         with pytest.raises(ValueError, match=f"side tap {key}"):
@@ -774,6 +775,64 @@ def test_a_side_is_refused_unless_it_belongs_to_this_replay(tapped):
         replay(stream, "pool-act", pool=SHORT, side=short)
     with pytest.raises(ValueError, match="side tap"):
         replay(stream, "pool-copy", pool=SHORT, side={})
+
+
+# ---- the mode binding (the P3 panel's F1): a live tap never feeds a causal replay ----------------
+
+MODED = {"candidate": "lsm", "config": rp.R_B5_PERSISTENCE_WITNESS, "form": "carried", "window": 84}
+
+
+@pytest.fixture(scope="module")
+def moded():
+    """The 48-event fixture run three times (144 events), a live |LP| of 10 recorded at three sleep
+    rows: a live tap and a causal one then differ in what they hold, not only in their mode."""
+    stream = _stamped()
+    stream["events"] = [
+        dict(e, t=i + 1, tick=2 * i + 1) for i, e in enumerate(stream["events"] * 3)
+    ]
+    stream["sleep"] = [
+        dict(s, tick=i + 1, brain_tick=2 * i + 2, event=i + 1)
+        for i, s in enumerate(stream["sleep"] * 3)
+    ]
+    for j in (72, 76, 80):
+        stream["sleep"][j - 1]["live_lp"] = 10.0
+    taps = {mode: replay(stream, "a", mode=mode, tap=84)["tap"] for mode in ("causal", "live")}
+    return stream, taps
+
+
+def test_a_tap_carries_its_replays_mode_and_the_two_modes_tap_different_weights(moded):
+    _, taps = moded
+    assert "mode" in md._TAP_FIELDS
+    assert (taps["causal"]["mode"], taps["live"]["mode"]) == ("causal", "live")
+    assert taps["causal"]["w_at_b"]["crc_W"] != taps["live"]["w_at_b"]["crc_W"]
+    assert taps["causal"]["activity"] != taps["live"]["activity"]
+
+
+@pytest.mark.parametrize("arm", ["pool-copy", "pool-act", "pool-swap"])
+def test_a_tap_of_the_other_mode_is_refused_by_every_transport_arm(moded, arm):
+    stream, taps = moded
+    with pytest.raises(ValueError, match="side tap mode"):
+        replay(stream, arm, mode="causal", pool=MODED, side=taps["live"])
+    with pytest.raises(ValueError, match="side tap mode"):
+        replay(stream, arm, mode="live", pool=MODED, side=taps["causal"])
+
+
+def test_a_tap_without_its_mode_or_with_another_value_for_it_is_refused(moded):
+    stream, taps = moded
+    stripped = {key: value for key, value in taps["causal"].items() if key != "mode"}
+    with pytest.raises(ValueError, match="lacks a tap's fields"):
+        replay(stream, "pool-copy", mode="causal", pool=MODED, side=stripped)
+    with pytest.raises(ValueError, match="side tap mode"):
+        replay(stream, "pool-copy", mode="causal", pool=MODED, side={**taps["causal"], "mode": 0})
+
+
+@pytest.mark.parametrize("mode", ["causal", "live"])
+def test_a_tap_of_the_replays_own_mode_feeds_it(moded, mode):
+    stream, taps = moded
+    copied = replay(stream, "pool-copy", mode=mode, pool=MODED, side=taps[mode])
+    assert copied["mode"] == mode and copied["pool"]["encoder"] is not None
+    md._validate_run(copied, stream, stream, "pool-copy", mode)
+    assert len(copied["phi"]) == len(stream["events"])
 
 
 def test_the_tap_is_refused_where_it_has_nothing_to_read():
@@ -1128,3 +1187,72 @@ def test_the_causality_check_refuses_a_cut_not_after_b(tapped):
         md.check_transport_causality(stream, SHORT, b=B, cuts=(16, 32, 40))
     with pytest.raises(ValueError, match="after b"):
         md.check_transport_causality(stream, SHORT, b=B)  # R-a2's cuts here are 12, 24, 36
+
+
+@pytest.mark.parametrize(
+    ("cuts", "reason"),
+    [
+        ((), "exactly three distinct cuts"),  # the check it was green with: nothing to compare
+        ((24,), "exactly three distinct cuts"),
+        ((24, 32), "exactly three distinct cuts"),
+        ((24, 32, 40, 41), "exactly three distinct cuts"),
+        ((24, 24, 40), "exactly three distinct cuts"),
+        ((32, 32, 32), "exactly three distinct cuts"),
+        ((24, 32, 48), "before the end"),  # the stream's 48 events: a cut AT the end reads nothing
+        ((24, 32, 60), "before the end"),  # past the end: the mutation changes nothing at all
+        ((24.0, 32, 40), "integer"),
+        ((24, 32, "40"), "integer"),
+        ((True, 32, 40), "integer"),
+    ],
+)
+def test_the_causality_check_refuses_cuts_that_are_not_three_distinct_integers_inside_the_stream(
+    tapped, cuts, reason
+):
+    stream, _ = tapped
+    with pytest.raises(ValueError, match=reason):
+        md.check_transport_causality(stream, SHORT, b=B, cuts=cuts)
+
+
+def test_the_causality_check_takes_the_last_event_but_one_as_a_cut_and_the_fixtures_cuts_stay_green(
+    tapped,
+):
+    stream, _ = tapped
+    result = md.check_transport_causality(stream, SHORT, b=B, cuts=(24, 32, 47))
+    assert result["verdict"] and result["numbers"]["cuts"] == [24, 32, 47]
+    assert md.check_transport_causality(stream, SHORT, b=B, cuts=CUTS)["red"] == {
+        "leaky_tap": [True] * 3
+    }  # the leaky-tap red stays exercised at the fixture's own cuts
+
+
+# ---- the replay-level skip-a-carrier fault (G1(c) 2.10's red for Settled invariance) -----------
+
+
+def test_a_skipped_carrier_leaves_that_carrier_alone_on_every_pool_built_inside_and_is_undone():
+    original = rp.make_pool
+    percepts = rp.cycled_fixture(12)
+    for carrier in rp.LsmPool.CARRIERS:
+        with md._skipped_carrier(carrier):
+            assert rp.make_pool is not original
+            skipping = rp.make_pool("lsm", rp.R_B5_PERSISTENCE_WITNESS, 17, "settled", window=0)
+        honest = rp.make_pool("lsm", rp.R_B5_PERSISTENCE_WITNESS, 17, "settled", window=0)
+        assert rp.make_pool is original and f"skip_{carrier}" in type(skipping).__name__
+        assert f"skip_{carrier}" not in type(honest).__name__
+        for pool in (skipping, honest):
+            for x in percepts:
+                pool.percept(x)
+            before = getattr(pool, carrier).copy()
+            assert before.any(), f"the {carrier} carrier is all zero: the test would prove nothing"
+            pool.reset_carriers()
+            kept = np.array_equal(getattr(pool, carrier), before)
+            assert kept is (pool is skipping)  # only the skipping pool's reset leaves it as it was
+            assert (pool is skipping) or np.array_equal(
+                getattr(pool, carrier), pool._reset_values()[carrier]
+            )
+
+
+def test_a_skipped_carrier_is_undone_when_the_body_raises():
+    original = rp.make_pool
+    with pytest.raises(RuntimeError, match="boom"):
+        with md._skipped_carrier("v"):
+            raise RuntimeError("boom")
+    assert rp.make_pool is original
