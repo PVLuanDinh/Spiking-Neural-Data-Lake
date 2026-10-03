@@ -292,7 +292,14 @@ def cell_key(cell):
     # G1(c): a cell filed under a window other than the default carries it, so Settled@0 and
     # Settled@256 of one seed are two cells; every existing key is the same tuple as before
     window = cell.get("window", rp.WINDOW)
-    return key if window == rp.WINDOW else (*key, window)
+    key = key if window == rp.WINDOW else (*key, window)
+    # G1(c) 2.7: a transport cell that names the transport it filed, or the encoder it ends with,
+    # carries them; a cell that names neither has the key it always had
+    if cell.get("transport") is not None:
+        key = (*key, "transport", rp.crc_json(cell["transport"]))
+    if cell.get("encoder") is not None:
+        key = (*key, "encoder", cell["encoder"])
+    return key
 
 
 def binding_problems(cell):
@@ -300,7 +307,7 @@ def binding_problems(cell):
     digest = cell["digest"]
     problems = [key for key in ("arm", "seed") if digest.get(key) != cell[key]]
     binding = digest.get("pool")
-    if cell["arm"] != "pool":
+    if cell["arm"] not in md.POOL_ARMS:
         return problems + (["pool"] if binding is not None else [])
     if binding is None:
         return [*problems, "pool"]
@@ -314,7 +321,18 @@ def binding_problems(cell):
         "noise": bool(cell.get("noise")),
         "w_in": _w_in_crc(cell["seed"]),
     }
-    return problems + [key for key, value in expected.items() if binding.get(key) != value]
+    # G1(c) 2.7: a transport cell may name the crc of the encoder it ends with, and fields of its
+    # transport record; a cell that names neither is held to G1(b)'s fields alone
+    if "encoder" in cell:
+        expected["encoder"] = cell["encoder"]
+    problems = problems + [key for key, value in expected.items() if binding.get(key) != value]
+    if "transport" in cell:
+        record = binding.get("transport")
+        if not isinstance(record, dict) or any(
+            record.get(key) != value for key, value in cell["transport"].items()
+        ):
+            problems.append("transport")
+    return problems
 
 
 def build_table(cells, phase_seeds):
@@ -424,8 +442,8 @@ def digest(run, stream):
     }
 
 
-def _replay_job(stream, arm, out, *, pool=None, readout=True, fault=None):
-    return {
+def _replay_job(stream, arm, out, *, pool=None, readout=True, fault=None, tap=None, side=None):
+    job = {
         "kind": "replay",
         "stream": str(stream),
         "arm": arm,
@@ -434,6 +452,13 @@ def _replay_job(stream, arm, out, *, pool=None, readout=True, fault=None):
         "fault": fault,
         "out": str(out),
     }
+    # G1(c): the tap boundary and the side tap's file appear only when given, so every G1(b) job is
+    # the dict it always was
+    if tap is not None:
+        job["tap"] = tap
+    if side is not None:
+        job["side"] = str(side)
+    return job
 
 
 # The cell helpers below file replays for R-b7 (sites read, none files a replay under a binding):
@@ -451,10 +476,13 @@ def _spec(candidate, config, form, noise=False, window=rp.WINDOW):
     return spec if window == rp.WINDOW else dict(spec, window=window)
 
 
-def _bound(seed, spec):
+# distinct-from: plasticity/eligibility_algebra.py::evaluate -- the site read evaluates one eligibility-trace term over named bindings
+def _bound(seed, spec, *, arm="pool", encoder=None, transport=None):
     """What one pool replay must be bound to (R-b7), for binding_problems."""
+    # G1(c): a transport arm files under its own `arm`, and may name the encoder crc and the
+    # transport record fields it expects; none of the three changes a G1(b) filing
     bound = {
-        "arm": "pool",
+        "arm": arm,
         "seed": seed,
         "candidate": spec["candidate"],
         "config": spec["config"],
@@ -463,7 +491,13 @@ def _bound(seed, spec):
     }
     # the same rule: a spec under a non-default window files that window, the default files none
     window = spec.get("window", rp.WINDOW)
-    return bound if window == rp.WINDOW else dict(bound, window=window)
+    if window != rp.WINDOW:
+        bound = dict(bound, window=window)
+    if encoder is not None:
+        bound = dict(bound, encoder=encoder)
+    if transport is not None:
+        bound = dict(bound, transport=transport)
+    return bound
 
 
 def _cell(stream, out, seed, *, arm="pool", index=None, spec=None, missing=False):
@@ -682,7 +716,17 @@ FAULTS = {
     None: contextlib.nullcontext,
     "e1_one_element": md._e1_mutant,  # R-b8's pre-build red
     "writing_readout": md._writing_readout,  # R-b8's with/without red
+    # G1(c) 2.10 "Transport": the tap's constructed reds, run on an arm-(a) tap job
+    "late_tap": md._late_tap,
+    "leaky_tap": md._leaky_tap,
+    "writing_tap": md._writing_tap,
 }
+
+
+# a tap job's saved result carries the tap under "tap"; a bare tap file is as good
+def _side(path):
+    value = md._load(path)
+    return value["tap"] if "tap" in value else value
 
 
 def execute(spec):
@@ -692,9 +736,20 @@ def execute(spec):
     with rp._blas_threads(1):
         if kind == "replay":
             stream = md._load(spec["stream"])
+            # G1(c): a job names a tap boundary and/or a side tap only when it needs one; a job that
+            # names neither is the call G1(b) made
+            extra = {}
+            if spec.get("tap") is not None:
+                extra["tap"] = spec["tap"]
+            if spec.get("side") is not None:
+                extra["side"] = _side(spec["side"])
             with FAULTS[spec.get("fault")]():
                 result = md.replay(
-                    stream, spec["arm"], readout=spec.get("readout", True), pool=spec.get("pool")
+                    stream,
+                    spec["arm"],
+                    readout=spec.get("readout", True),
+                    pool=spec.get("pool"),
+                    **extra,
                 )
         elif kind == "cost":
             stream = md._load(spec["stream"])
@@ -1550,8 +1605,35 @@ def self_check():
     assert run["pool"]["frozen"] and run["pool"]["boundary"] is not None
     filed = _bound(fixture["seed"], _spec("lsm", spec["config"], "settled"))
     assert binding_problems(dict(filed, digest=digest(run, fixture))) == ["window"]
+    # G1(c): a G1(b) job carries no tap or side, a transport filing binds its replay's arm, encoder
+    # and transport record (and refuses a plain pool replay filed under a transport arm)
+    assert list(_replay_job("s", "a", "o")) == [
+        "kind",
+        "stream",
+        "arm",
+        "pool",
+        "readout",
+        "fault",
+        "out",
+    ]
+    assert _replay_job("s", "a", "o", tap=256, side="t")["tap"] == 256
+    assert {"late_tap", "leaky_tap", "writing_tap"} <= set(FAULTS)
+    copy_filed = _bound(
+        fixture["seed"], _spec("lsm", spec["config"], "settled", window=16), arm="pool-copy"
+    )
+    copy_cell = dict(copy_filed, encoder=7, transport={"form": "copy"})
+    copy_bound = dict(digest(run, fixture)["pool"], encoder=7, transport={"form": "copy"})
+    assert (
+        binding_problems(
+            dict(copy_cell, digest={"arm": "pool-copy", "seed": 17, "pool": copy_bound})
+        )
+        == []
+    )
+    assert binding_problems(
+        dict(copy_cell, digest={"arm": "pool", "seed": 17, "pool": copy_bound})
+    ) == ["arm"]
     print(
-        "pool_selection self-check OK: ordering, eligibility, power, S = 31 bar tie, R-b7 reds, step order, exit codes, pool arm"
+        "pool_selection self-check OK: ordering, eligibility, power, S = 31 bar tie, R-b7 reds, step order, exit codes, pool arm, transport filing"
     )
 
 

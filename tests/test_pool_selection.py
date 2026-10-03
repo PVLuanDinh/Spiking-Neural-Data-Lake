@@ -744,3 +744,169 @@ def test_the_noise_red_reads_the_state_chain_not_one_final_sample():
 
 def test_self_check_runs():
     assert ps.main([]) == ps.EXIT_OK
+
+
+# ---- G1(c) P3c: the transport arms in the filing, the key, the binding and the jobs --------------
+
+
+def transport_cell(arm, seed=204, *, encoder=None, transport=None, ran=None):
+    """A transport arm's cell: filed under `arm` (and the encoder / transport it names, if any),
+    its replay bound to what the filing names unless `ran` overrides a field of the binding."""
+    config = rp.grid("lsm")[0]
+    filed = ps._bound(
+        seed, ps._spec("lsm", config, "carried"), arm=arm, encoder=encoder, transport=transport
+    )
+    binding = {
+        "candidate": "lsm",
+        "form": "carried",
+        "config_crc32": rp.crc_json(config),
+        "realization_seed": rp.realization_seed("lsm", seed),
+        "window": rp.WINDOW,
+        "noise": False,
+        "w_in": ps._w_in_crc(seed),
+        "encoder": 123456,
+        "transport": {"form": "copy", "copied_at_event": 256, "L": 3},
+    }
+    binding.update(ran or {})
+    return dict(filed, index=0, status="OK", digest={"arm": arm, "seed": seed, "pool": binding})
+
+
+def test_a_transport_filing_names_its_arm_and_carries_encoder_and_transport_only_when_given():
+    config = rp.grid("lsm")[0]
+    spec = ps._spec("lsm", config, "carried")
+    assert ps._bound(204, spec, arm="pool") == ps._bound(204, spec)  # the default arm is pool
+    copy_bound = ps._bound(204, spec, arm="pool-copy")
+    assert copy_bound == dict(ps._bound(204, spec), arm="pool-copy")
+    assert list(copy_bound) == ["arm", "seed", "candidate", "config", "form", "noise"]
+    named = ps._bound(204, spec, arm="pool-copy", encoder=7, transport={"form": "copy"})
+    assert list(named) == [*copy_bound, "encoder", "transport"]
+    assert (named["encoder"], named["transport"]) == (7, {"form": "copy"})
+    assert "encoder" not in ps._bound(204, spec, arm="pool-swap", transport={"form": "swap"})
+    assert ps._spec("lsm", config, "carried") == {
+        "candidate": "lsm",
+        "config": config,
+        "form": "carried",
+    }
+
+
+def test_the_cell_key_gains_the_encoder_and_the_transport_only_when_the_cell_names_them():
+    config = rp.grid("lsm")[0]
+    base = ("pool-copy", "lsm", rp.crc_json(config), "carried", 204, False)
+    assert ps.cell_key(transport_cell("pool-copy")) == base
+    named = transport_cell("pool-copy", encoder=7, transport={"form": "copy"})
+    assert ps.cell_key(named) == (*base, "transport", rp.crc_json({"form": "copy"}), "encoder", 7)
+    only = transport_cell("pool-copy", transport={"form": "copy"})
+    assert ps.cell_key(only) == (*base, "transport", rp.crc_json({"form": "copy"}))
+    # the same arm filed under two transports is two cells; the arm already separates the rest
+    other = transport_cell("pool-copy", transport={"form": "copy", "copied_at_event": 300})
+    assert ps.cell_key(only) != ps.cell_key(other)
+    assert ps.cell_key(transport_cell("pool-act")) != ps.cell_key(transport_cell("pool-copy"))
+    # a window and a transport together: the window first, then the transport
+    config_cell = dict(transport_cell("pool-copy", transport={"form": "copy"}), window=0)
+    assert ps.cell_key(config_cell)[6:] == (0, "transport", rp.crc_json({"form": "copy"}))
+
+
+@pytest.mark.parametrize("arm", ["pool-copy", "pool-act", "pool-swap"])
+def test_a_transport_replay_filed_under_its_own_arm_binds_and_under_another_does_not(arm):
+    assert ps.binding_problems(transport_cell(arm)) == []
+    cell = transport_cell(arm)
+    wrong = dict(cell, digest=dict(cell["digest"], arm="pool"))
+    assert ps.binding_problems(wrong) == ["arm"]
+    plain = dict(transport_cell("pool"), digest=dict(cell["digest"], arm="pool"))
+    assert ps.binding_problems(plain) == []  # a plain pool cell never asks for the transport keys
+    bare = dict(cell, digest=dict(cell["digest"], pool=None))
+    assert ps.binding_problems(bare) == ["pool"]
+    other = rp.grid("lsm")[1]
+    refiled = transport_cell(arm, ran={"config_crc32": rp.crc_json(other)})
+    assert ps.binding_problems(refiled) == ["config_crc32"]
+
+
+def test_the_encoder_and_transport_a_cell_names_must_be_the_replays():
+    ok = transport_cell("pool-copy", encoder=123456, transport={"form": "copy", "L": 3})
+    assert ps.binding_problems(ok) == []
+    wrong_encoder = transport_cell("pool-copy", encoder=1, ran={})
+    assert ps.binding_problems(wrong_encoder) == ["encoder"]
+    wrong_event = transport_cell("pool-copy", transport={"copied_at_event": 300})
+    assert ps.binding_problems(wrong_event) == ["transport"]
+    wrong_form = transport_cell("pool-copy", transport={"form": "swap"})
+    assert ps.binding_problems(wrong_form) == ["transport"]
+    # a replay whose binding lacks what the cell names disagrees on it
+    lacking = transport_cell("pool-copy", encoder=123456)
+    del lacking["digest"]["pool"]["encoder"]
+    assert ps.binding_problems(lacking) == ["encoder"]
+    unrecorded = transport_cell("pool-act", transport={"form": "activity"})
+    del unrecorded["digest"]["pool"]["transport"]
+    assert ps.binding_problems(unrecorded) == ["transport"]
+
+
+def test_a_replay_job_names_a_tap_or_a_side_only_when_given():
+    plain = ps._replay_job("s", "a", "o")
+    assert list(plain) == ["kind", "stream", "arm", "pool", "readout", "fault", "out"]
+    assert ps._replay_job("s", "a", "o", pool=None, readout=True, fault=None) == plain
+    tapped = ps._replay_job("s", "a", "o", tap=256, fault="leaky_tap")
+    assert tapped == dict(plain, fault="leaky_tap", tap=256) and "side" not in tapped
+    sided = ps._replay_job("s", "pool-copy", "o", pool={"x": 1}, side="tap.json.gz")
+    assert sided["side"] == "tap.json.gz" and "tap" not in sided
+
+
+def test_the_tap_faults_are_the_harness_context_managers():
+    assert ps.FAULTS["late_tap"] is md._late_tap
+    assert ps.FAULTS["leaky_tap"] is md._leaky_tap
+    assert ps.FAULTS["writing_tap"] is md._writing_tap
+    assert list(ps.FAULTS)[:3] == [None, "e1_one_element", "writing_readout"]  # G1(b)'s, in order
+
+
+def test_execute_forwards_a_tap_and_a_side_only_when_the_job_names_them(tmp_path, monkeypatch):
+    path = tmp_path / "17-stream.json.gz"
+    md._save(path, md._synthetic_stream())
+    side = tmp_path / "side.json.gz"
+    md._save(side, {"arm": "a", "tap": {"b": 16, "marker": 1}})
+    bare = tmp_path / "bare.json.gz"
+    md._save(bare, {"b": 16, "marker": 2})
+    calls = []
+
+    def spy(stream, arm, **kwargs):
+        calls.append((arm, kwargs))
+        return {"arm": arm}
+
+    monkeypatch.setattr(md, "replay", spy)
+    ps.execute(ps._replay_job(path, "a", tmp_path / "o1.json"))
+    ps.execute(ps._replay_job(path, "a", tmp_path / "o2.json", tap=16))
+    ps.execute(ps._replay_job(path, "pool-copy", tmp_path / "o3.json", pool={"p": 1}, side=side))
+    ps.execute(ps._replay_job(path, "pool-swap", tmp_path / "o4.json", pool={"p": 1}, side=bare))
+    # a default job is the call G1(b) made, keyword for keyword
+    assert calls[0] == ("a", {"readout": True, "pool": None})
+    assert calls[1] == ("a", {"readout": True, "pool": None, "tap": 16})
+    assert calls[2] == (
+        "pool-copy",
+        {"readout": True, "pool": {"p": 1}, "side": {"b": 16, "marker": 1}},
+    )
+    assert calls[3][1]["side"] == {"b": 16, "marker": 2}  # a bare tap file is as good as a result
+
+
+def test_a_tap_job_feeds_a_transport_job_through_files_in_process(tmp_path):
+    stream = md._synthetic_stream()
+    stream["final"] = dict(zip(("head", "dirty"), md._revision(), strict=True))
+    path = tmp_path / "17-stream.json.gz"
+    md._save(path, stream)
+    tap_out, copy_out, leaky_out = (
+        tmp_path / f"{name}.json.gz" for name in ("tap", "copy", "leaky")
+    )
+    ps.execute(ps._replay_job(path, "a", tap_out, tap=16))
+    ps.execute(ps._replay_job(path, "a", leaky_out, tap=16, fault="leaky_tap"))
+    spec = ps._spec("lsm", rp.R_B5_PERSISTENCE_WITNESS, "carried", window=16)
+    ps.execute(ps._replay_job(path, "pool-copy", copy_out, pool=spec, side=tap_out))
+    tap, copied, leaky = (md._load(p) for p in (tap_out, copy_out, leaky_out))
+    assert (
+        tap["tap"]["w_at_b"]["event"] == 16 and copied["pool"]["transport"]["copied_at_event"] == 16
+    )
+    assert copied["pool"]["transport"]["L"] == len(tap["tap"]["w_at_b"]["W"])
+    assert leaky["tap"]["w_at_b"]["crc_W"] != tap["tap"]["w_at_b"]["crc_W"]  # the final model's
+    # the copy's own digest binds under the filing that names its arm, window, encoder and transport
+    record = copied["pool"]["transport"]
+    filed = ps._bound(
+        17, spec, arm="pool-copy", encoder=copied["pool"]["encoder"], transport={"form": "copy"}
+    )
+    cell = dict(filed, digest=ps.digest(copied, stream))
+    assert record["form"] == "copy" and ps.binding_problems(cell) == []
+    assert ps.binding_problems(dict(cell, arm="pool-act", digest=dict(cell["digest"]))) == ["arm"]

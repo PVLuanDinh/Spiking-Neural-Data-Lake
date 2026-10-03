@@ -4,6 +4,7 @@ Every hand fixture below is small (N <= 8) and its expected values were worked b
 section 2.3 rules; each rule also has a deliberately wrong twin that must disagree with them.
 """
 
+import copy
 import json
 import random
 import statistics
@@ -512,3 +513,111 @@ def test_window_zero_check_refuses_a_run_inside_the_window_and_an_unknown_fault(
 def test_window_zero_adds_no_form_and_no_candidate():
     assert rp.FORMS == ("carried", "reset", "settled", "front_end")
     assert rp.CANDIDATES == ("lsm",) and set(rp.POOLS) == {"lsm"} and rp.WINDOW == 256
+
+
+# ---- G1(c) 2.7: the transported encoder and the swap control's fresh draw -----------------------
+
+
+def _block(rows, seed=5):
+    """A float32 weight block as the grower holds one (rows x 64), as the tap lists it."""
+    return np.random.default_rng(seed).standard_normal((rows, rp.N_IN)).astype(np.float32).tolist()
+
+
+def test_row_norms_are_sequential_sums_and_the_mean_is_their_mean():
+    w = rp.w_in(7)
+    norms = rp.row_norms(w)
+    assert norms.shape == (256,)
+    assert np.array_equal(norms, np.sqrt(np.cumsum(w * w, axis=1)[:, -1]))
+    assert abs(rp.mean_row_norm(w) - float(np.mean(norms))) < 1e-12
+    assert abs(rp.mean_row_norm(w) - 1.0) < 0.1  # N(0, 1) / 8 over 64 inputs: a row norm near 1
+
+
+def test_the_transported_encoder_replaces_the_leading_rows_and_matches_the_random_mean_norm():
+    w_random = rp.w_in(7)
+    block = _block(3)
+    out = rp.transported_encoder(w_random, block)
+    target = rp.mean_row_norm(w_random)
+    assert out.shape == (256, 64) and out.dtype == np.float64
+    assert np.array_equal(out[3:], w_random[3:])  # rows L..255 are kept, bit for bit
+    for i in range(3):
+        row = np.asarray(block[i], dtype=np.float64)  # float32 values cast up, exactly
+        assert abs(np.linalg.norm(out[i]) - target) < 1e-12
+        assert abs(rp.row_norms(out[i : i + 1])[0] - target) < 1e-12
+        # the direction is the transported row's: the raw row times a positive scalar
+        np.testing.assert_allclose(
+            out[i] / np.linalg.norm(out[i]), row / np.linalg.norm(row), rtol=0, atol=1e-15
+        )
+        assert not np.array_equal(out[i], w_random[i])
+    assert np.array_equal(w_random, rp.w_in(7))  # the random draw is never written
+
+
+@pytest.mark.parametrize(
+    ("block", "match"),
+    [
+        (np.zeros((0, 64)), "no unit"),
+        (np.ones((3, 63)), "width 63"),
+        (np.ones((257, 64)), "more than the encoder"),
+        (np.zeros((2, 64)), "cannot be rescaled"),
+        (np.full((2, 64), np.nan), "cannot be rescaled"),
+        (np.ones(64), "no unit|width"),  # a bare row is not a block
+    ],
+)
+def test_the_transported_encoder_refuses_what_it_cannot_carry(block, match):
+    with pytest.raises(ValueError, match=match):
+        rp.transported_encoder(rp.w_in(7), block)
+
+
+def test_the_transported_encoder_refuses_a_random_draw_that_is_not_the_encoder():
+    with pytest.raises(ValueError, match="encoder shape"):
+        rp.transported_encoder(np.ones((255, 64)), _block(2))
+    # 256 units fill every row: the largest block it admits
+    out = rp.transported_encoder(rp.w_in(7), _block(256))
+    assert abs(rp.mean_row_norm(out) - rp.mean_row_norm(rp.w_in(7))) < 1e-12
+
+
+def test_the_fresh_draw_has_its_own_tag_and_every_row_at_the_random_mean_norm():
+    assert rp.SWAP_TAG == int.from_bytes(b"SWAP", "big") == 0x53574150
+    w_random = rp.w_in(9)
+    fresh = rp.fresh_encoder(9, w_random)
+    raw = np.random.default_rng(np.random.SeedSequence([9, rp.SWAP_TAG])).standard_normal((256, 64))
+    raw = raw / 8
+    target = rp.mean_row_norm(w_random)
+    scale = target / np.sqrt(np.cumsum(raw * raw, axis=1)[:, -1])
+    np.testing.assert_allclose(fresh, raw * scale[:, None], rtol=1e-14, atol=0)
+    assert np.max(np.abs(rp.row_norms(fresh) - target)) < 1e-12
+    assert not np.array_equal(raw, w_random)  # not the construction draw of the same seed
+    assert np.array_equal(fresh, rp.fresh_encoder(9, w_random))  # deterministic
+    assert not np.array_equal(fresh, rp.fresh_encoder(10, rp.w_in(10)))  # one draw per seed
+    with pytest.raises(ValueError, match="encoder shape"):
+        rp.fresh_encoder(9, np.ones((255, 64)))
+
+
+def test_replace_encoder_swaps_the_matrix_and_no_state():
+    pool = rp.make_pool("lsm", CONFIG["lsm"], 3, "carried", window=4)
+    percepts = rp.random_percepts(3, 6)
+    for percept in percepts[:3]:
+        pool.percept(percept)
+    before = (pool.fingerprint(), pool.params_fingerprint(), pool.count)
+    new = rp.fresh_encoder(3, pool.w_in)
+    pool.replace_encoder(new)
+    # the encoder is no part of the pool's state: its fingerprints, count and boundary stay
+    assert (pool.fingerprint(), pool.params_fingerprint(), pool.count) == before
+    assert pool.w_in is not new and np.array_equal(pool.w_in, new)
+    twin = copy.deepcopy(pool)
+    assert np.array_equal(pool.percept(percepts[3]), twin.percept_drive(rp.drive(new, percepts[3])))
+    for bad in (np.ones((255, 64)), np.ones((256, 63)), np.full((256, 64), np.nan)):
+        with pytest.raises(ValueError, match="encoder"):
+            pool.replace_encoder(bad)
+
+
+def test_the_transported_encoder_check_holds_and_each_red_fires():
+    result = rp.check_transported_encoder()
+    assert result["verdict"], result["numbers"]
+    assert result["red"] == {
+        "L == 0": True,
+        "width 63": True,
+        "L 257": True,
+        "zero-norm row": True,
+        "an unscaled copy": True,
+    }
+    assert result["numbers"]["norm_error"] < 1e-12

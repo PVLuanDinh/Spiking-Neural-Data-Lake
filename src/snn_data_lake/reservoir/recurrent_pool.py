@@ -6,7 +6,9 @@ window, the four forms, the startup diagnostic), section 2.3's g1 LSM with its s
 the manifest and cost of section 2.4, and the machinery of R-b0 (parity with its source), R-b3
 (determinism by construction), R-b4's pool-noise red and R-b5 (the forms do what they claim); G1(c)
 adds window 0 (g1c-carried-state.md 2.6, 2.10: no adaptation window, Settled from the first
-percept) and its check. Every red is constructed by `main()`. The reference readout, the harness arms and the campaign are
+percept) and its check, and 2.7's transported encoder (the grower's weights copied into W_in at
+the random draw's mean row norm, and the swap control's fresh draw) with its refusals. Every red
+is constructed by `main()`. The reference readout, the harness arms and the campaign are
 instruments/memory_diagnostic.py's. Nothing here builds a brain or touches the lake.
 
 The selection record (section 3.4, commit 0bd1de7) named g1 the winner, and section 2.9 then deleted
@@ -137,6 +139,80 @@ def drive(weights, x):
 
 def realization_seed(candidate, recording_seed):
     return recording_seed * 31 + 11 + INDEX[candidate]
+
+
+# ---- the transported encoder and the swap control's fresh draw (G1(c) 2.7) ----------------------
+
+# The fixed middle word of the swap control's SeedSequence([recording_seed, SWAP_TAG]): the ASCII
+# bytes of "SWAP". W_in itself is seeded by the integer recording_seed * 31 + 7, and the within-block
+# shuffle's own tag is "SHUF" (instruments/carried_state_campaign.SHUFFLE_TAG), so no draw shares one.
+SWAP_TAG = 0x53574150
+NORM_TOL = 1e-12  # a rescaled row's norm equals the random draw's mean row norm within this
+
+
+# Sites the duplicate-capability hook flagged, read; none computes an encoder's row norms:
+# distinct-from: instruments/everyday_battery.py::conjunct_c -- compares a seed's campaign rows with a sequential run's
+# distinct-from: engine/brain.py::resume_probe -- returns a probe's rows and summary from child interpreters
+# distinct-from: faculties/homeostatic_drives.py::_train_values -- a value rule's exploration run
+# distinct-from: gates/safety_envelope.py::_enumerated -- the paths a doc's table rows name
+# distinct-from: instruments/attention_schema.py::t078_planted_rows -- n rows of noise features with a planted label
+def row_norms(w):
+    """Each row's L2 norm: the square root of a sequential sum of squares (section 2.2's rule)."""
+    w = np.asarray(w, dtype=np.float64)
+    return np.sqrt(np.cumsum(w * w, axis=1)[:, -1])
+
+
+def mean_row_norm(w):
+    norms = row_norms(w)
+    return float(np.cumsum(norms)[-1] / norms.shape[0])
+
+
+def _encoder_shaped(w, what):
+    w = np.asarray(w, dtype=np.float64)
+    if w.shape != (N, N_IN):
+        raise ValueError(f"REFUSED: {what} is not an encoder shape ({N} x {N_IN}): {w.shape}")
+    return w
+
+
+def rescale_rows(rows, target):
+    """`rows` with every row scaled to L2 norm `target`; a row of zero or non-finite norm cannot be."""
+    rows = np.asarray(rows, dtype=np.float64)
+    norms = row_norms(rows)
+    if not np.all(np.isfinite(norms)) or np.any(norms == 0.0):
+        raise ValueError("REFUSED: a row of zero or non-finite norm cannot be rescaled")
+    return rows * (target / norms)[:, None]
+
+
+def transported_encoder(w_random, w_b):
+    """G1(c) 2.7's copy form: the random encoder with rows 0..L-1 replaced by the L x 64 block `w_b`
+    (cast to float64), each row rescaled to the mean row norm of the random draw; rows L..255 are
+    the draw's, bit for bit. Refused: no unit (L == 0, never padded from nothing), a width other
+    than 64, L above 256, a zero or non-finite row. Neither input is written."""
+    random = _encoder_shaped(w_random, "the random draw")
+    block = np.asarray(w_b, dtype=np.float64)
+    if block.ndim != 2:
+        raise ValueError(f"REFUSED: the transported block's width is not 64 inputs: {block.shape}")
+    units = block.shape[0]
+    if units == 0:
+        raise ValueError("REFUSED: the transported block holds no unit (L == 0)")
+    if block.shape[1] != N_IN:
+        raise ValueError(f"REFUSED: the transported block's width {block.shape[1]} is not {N_IN}")
+    if units > N:
+        raise ValueError(
+            f"REFUSED: the transported block holds {units} units, more than the encoder's {N}"
+        )
+    out = random.copy()
+    out[:units] = rescale_rows(block, mean_row_norm(random))
+    return out
+
+
+def fresh_encoder(recording_seed, w_random):
+    """G1(c) 2.7's swap control: a fresh N(0, 1) / 8 draw from SeedSequence([recording_seed,
+    SWAP_TAG]) with EVERY row rescaled to the mean row norm of `w_random` (the copy form's own
+    target), so nothing is transported and only the encoder's discontinuity at b remains."""
+    random = _encoder_shaped(w_random, "the random draw")
+    stream = np.random.default_rng(np.random.SeedSequence([recording_seed, SWAP_TAG]))
+    return rescale_rows(stream.standard_normal((N, N_IN)) / 8, mean_row_norm(random))
 
 
 # ---- the grids and the manifest (section 2.4) ----------------------------------------------------
@@ -306,6 +382,20 @@ class _Pool:
             return None
         expected = self.lesion_record["params"] if self.lesion_record else self.boundary
         return self.params_fingerprint() == expected
+
+    # Sites the duplicate-capability hook flagged, read; none replaces a pool's input matrix:
+    # distinct-from: engine/brain.py::_attend_real_stream -- pools an encoder latent into a 4-d sensory channel by salience
+    # distinct-from: faculties/locus_coeruleus.py::_population_spikes -- integrates one LIF pool under a constant drive
+    # distinct-from: gates/selfcheck_cache.py::closure_key -- a sha256 carry key for a module closure
+    # distinct-from: plasticity/eprop_kernel.py::EpropLIFBase -- the recurrent-LIF forward of the two trained perception encoders
+    def replace_encoder(self, w):
+        """Swap the input matrix W_in for `w` (256 x 64, finite). W_in is no part of the pool's
+        state: its count, carriers, parameters and fingerprints are as they were, which is why a
+        replay's binding records the swapped matrix's own crc."""
+        w = _encoder_shaped(w, "the encoder")
+        if not np.all(np.isfinite(w)):
+            raise ValueError("REFUSED: the encoder holds a non-finite entry")
+        self.w_in = np.array(w, dtype=np.float64)
 
     def percept(self, x):
         if self.w_in is None:
@@ -1051,6 +1141,69 @@ def check_window_zero_faults(
     }
 
 
+# ---- the transported encoder (G1(c) 2.7, 2.10 "Transport") ---------------------------------------
+
+
+def _norm_matched(rows, target):
+    return bool(np.max(np.abs(row_norms(rows) - target)) < NORM_TOL)
+
+
+def _is_refused(build):
+    try:
+        build()
+    except ValueError as error:
+        return str(error).startswith("REFUSED")
+    return False
+
+
+# Sites the duplicate-capability hook flagged, read; none holds a copied weight block to a norm contract:
+# distinct-from: gates/conclusion_protocol.py::mechanism_findings -- reads what a served page renders for a charged row
+# distinct-from: gates/safety_envelope.py::_enumerated -- the paths a doc's table rows name
+# distinct-from: gates/selfcheck_cache.py::_global_files -- the file rows of the global envelope
+# distinct-from: growth/basic_components.py -- the (encoder, neuron, connection, rule) composition contract
+# distinct-from: growth/function_preserving_growth.py::_eligibility_seed -- unit-normalizes the mean input into one NEW unit's in-weights
+def check_transported_encoder(recording_seed=DEV_SEED, units=3):
+    """G1(c) 2.10's encoder clause. The copy's rows 0..L-1 sit at the random draw's mean row norm
+    within NORM_TOL and rows L..255 are the draw's, bit for bit; the swap draw's 256 rows all sit at
+    that norm. Each refusal fires (L == 0, width 63, L 257, a zero-norm row), and a copy that skips
+    the rescale fails the norm match (the red of the match itself)."""
+    w_random = w_in(recording_seed)
+    target = mean_row_norm(w_random)
+    block = np.random.default_rng(recording_seed + 1).standard_normal((units, N_IN))
+    block = block.astype(np.float32)
+    copied = transported_encoder(w_random, block)
+    swapped = fresh_encoder(recording_seed, w_random)
+    copy_error = float(np.max(np.abs(row_norms(copied[:units]) - target)))
+    swap_error = float(np.max(np.abs(row_norms(swapped) - target)))
+    kept = bool(np.array_equal(copied[units:], w_random[units:]))
+    unscaled = w_random.copy()
+    unscaled[:units] = block
+    red = {
+        "L == 0": _is_refused(lambda: transported_encoder(w_random, np.zeros((0, N_IN)))),
+        "width 63": _is_refused(lambda: transported_encoder(w_random, np.ones((units, N_IN - 1)))),
+        "L 257": _is_refused(lambda: transported_encoder(w_random, np.ones((N + 1, N_IN)))),
+        "zero-norm row": _is_refused(
+            lambda: transported_encoder(w_random, np.zeros((units, N_IN)))
+        ),
+        "an unscaled copy": not _norm_matched(unscaled[:units], target),
+    }
+    return {
+        "verdict": bool(
+            _norm_matched(copied[:units], target)
+            and _norm_matched(swapped, target)
+            and kept
+            and all(red.values())
+        ),
+        "numbers": {
+            "units": units,
+            "mean_row_norm": target,
+            "norm_error": max(copy_error, swap_error),
+            "rows_kept": kept,
+        },
+        "red": red,
+    }
+
+
 # ---- the self-check ------------------------------------------------------------------------------
 
 
@@ -1100,6 +1253,13 @@ def main():
         "window 0: Settled@0's first phi, boundary at count 0, Settled@0 = Settled@256 after 256, "
         "Carried@0 = Carried@256; faults fired on "
         + ", ".join(f"{fault}->{clause}" for fault, clause in W0_FAULTS.items())
+    )
+    encoder = check_transported_encoder()
+    assert encoder["verdict"], encoder
+    print(
+        "G1(c) transport: copied rows and the swap draw at the random draw's mean row norm "
+        f"(error {encoder['numbers']['norm_error']:.1e}); refusals fired on "
+        + ", ".join(encoder["red"])
     )
     diagnostic = startup_diagnostic(make_pool("lsm", R_B5_PERSISTENCE_WITNESS, DEV_SEED))
     print(

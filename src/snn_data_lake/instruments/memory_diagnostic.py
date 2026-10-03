@@ -7,6 +7,22 @@ G1(b) extends it (specs/022-unified-brain-arc/evidence/g1b-pool-selection.md sec
 every replay, the pool arm feeds x alone into reservoir/recurrent_pool.py's pools, every replay runs at
 one BLAS thread, and R-b6's synthetic stream family (section 2.7) lives here. The campaign that runs
 them is instruments/pool_selection.py.
+
+G1(c) (specs/022-unified-brain-arc/evidence/g1c-carried-state.md 2.7, 2.10 "Transport") adds, after
+the last arm G1(b) had: a read-only tap of the incumbent grower, taken from an arm-(a) replay
+(`replay(..., "a", tap=b)`), the transport arms "pool-copy" (the grower's input weights at b, copied
+into the pool's encoder), "pool-act" (the pool driven by the grower's hidden rates) and "pool-swap"
+(the swap control: a fresh random encoder at the same b), each fed that tap as `side=`, and the checks
+of the channels, the tap's timing, the transport's causality and the tap's read-only contract. The
+default replay paths, ARMS[:8] and SCORED_ARMS are as G1(b) left them: a replay without `tap`/`side`
+carries no extra key and a plain pool arm's result carries neither "encoder" nor "transport".
+
+This module is past the 800-line soft ceiling, as it was before G1(c) (1,746 lines at P3b). It stays
+one module because the tap is taken inside `_replay`'s event loop and the transport arms are arms of
+`replay`: splitting the arms from their loop would put a second copy of the loop's event order,
+refit bookkeeping and view construction in another file, which is exactly the duplicate-mechanism
+defect POLICIES P2 refuses. The transport checks sit beside the R-a checks they mirror for the same
+reason; moving the whole instrument family out is an opening, not part of this change.
 """
 
 import argparse
@@ -51,13 +67,20 @@ _EXECUTIONS = itertools.count()
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it. `_refit_positions`
 #: (G1(a), 829fb40) carries the learn verb "fit" and left the gate's governed UNDETERMINABLE ratchet
-#: at 1 against a baseline of 0; it is bookkeeping, and says so here.
+#: at 1 against a baseline of 0; it is bookkeeping, and says so here. `_corrupt_w` (G1(c)) is the
+#: one constructed write of the writing-tap red, declared for the same reason.
 GRADIENT_CLAIM = {
     "_refit_positions": (
         "NOT_A_RULE",
         "bookkeeping for R-a1: lists the (tick, event) positions at which the grower refit, from a "
         "recording's rows or a replay's, so the two can be compared. It reads fingerprints already "
         "taken; no weight is touched and no learning signal is consumed",
+    ),
+    "_corrupt_w": (
+        "NOT_A_RULE",
+        "the writing-tap red (G1(c) 2.10): adds a constant 1e-3 to the incumbent's W[0, 0], once, and "
+        "is reached only inside `_writing_tap`, to prove check_tap_read_only can fail. It consumes "
+        "no learning signal and moves no weight in any real replay",
     ),
 }
 
@@ -213,7 +236,38 @@ def _feature(arm, view, pool=None):
     if arm == "noise":
         row = list(view.get("x"))
         return [v + int.from_bytes(os.urandom(4), "little") / 2**32 for v in row]
+    if arm in ("pool-copy", "pool-swap"):
+        # G1(c) 2.7: x alone through the pool's encoder; what the copy copies (w@b) and where the swap
+        # swaps act on the encoder, in _PoolArm, never on this row
+        if pool is None:
+            raise ValueError("REFUSED: the pool arm's features come from its pool")
+        return pool.percept(view.get("x")).tolist()
+    if arm == "pool-act":
+        if pool is None:
+            raise ValueError("REFUSED: the pool arm's features come from its pool")
+        return pool.percept(_padded_activity(view.get("grower_activity"))).tolist()
     raise ValueError(f"unknown arm {arm}")
+
+
+# Sites the duplicate-capability hook flagged, read; none pads a grower's activity into the pool's inputs:
+# distinct-from: plasticity/eprop_kernel.py::EpropLIFBase -- the recurrent-LIF forward of the two trained perception encoders
+# distinct-from: reservoir/recurrent_pool.py::cost -- times a pool's per-percept wall clock
+# distinct-from: growth/neurogenesis_engine.py::SyntheticPerceptStream.next -- draws a synthetic percept and its mode
+# distinct-from: growth/neuron_zoo.py::_DendriticCell -- one dendritic neuron behind the zoo's contract
+# distinct-from: reservoir/spontaneous_activity.py::fit_to_traces -- an AR(1) moment match of a sensor trace
+def _padded_activity(activity):
+    """The grower's hidden rates for the current percept, zero-padded to the 64 inputs of the
+    pool's W_in (2.7's activity form). None (the grower holds no model yet) is zeros; more than
+    64 units is refused."""
+    padded = np.zeros(rp.N_IN)
+    if activity is None:
+        return padded
+    if len(activity) > rp.N_IN:
+        raise ValueError(
+            f"REFUSED: the grower holds {len(activity)} units, more than 64: its rates do not fit W_in"
+        )
+    padded[: len(activity)] = activity
+    return padded
 
 
 ARMS = {
@@ -229,9 +283,30 @@ ARMS = {
     "noise": (64, ("x",)),
     "leak": (64, ("x",)),
     "pool": (rp.N, ("x",)),  # G1(b): phi_t of a recurrent pool; its view declares ONLY x (R-b2)
+    # G1(c) 2.7, appended after the last G1(b) arm (SCORED_ARMS is the first eight and never moves):
+    # the transport arms. Their declarations are written out here AND frozen in TRANSPORT_CHANNELS,
+    # so check_transport_channels' comparison of the two can fail
+    "pool-copy": (rp.N, ("x", "w@b")),
+    "pool-act": (rp.N, ("grower_activity",)),
+    "pool-swap": (rp.N, ("x",)),
 }
 SCORED_ARMS = tuple(ARMS)[:8]
 SCORED_SEGMENTS = ("repeated-canonical", "unseen-order", "repeated-permuted")
+
+# G1(c) 2.7: b is the adaptation-window boundary; the copy is taken at the START of delivery b + 1
+TRANSPORT_B = 256
+LATE_TAP_EVENTS = 40  # the late-tap red copies at b + 40
+TRANSPORT_CHANNELS = {
+    "pool-copy": ("x", "w@b"),
+    "pool-act": ("grower_activity",),
+    "pool-swap": ("x",),
+}
+TRANSPORT_ARMS = tuple(TRANSPORT_CHANNELS)
+POOL_ARMS = ("pool", *TRANSPORT_ARMS)
+# the transport record's form, per arm
+TRANSPORT_FORM = {"pool-copy": "copy", "pool-act": "activity", "pool-swap": "swap"}
+# the tap's fault switch (None: the honest tap); set only by the context managers below
+_FAULT = {"tap": None, "late": LATE_TAP_EVENTS}
 
 
 def _segments(events, acquisitions, n_frames):
@@ -705,6 +780,54 @@ def _e1_mutant():
         names["_feature"] = original
 
 
+# ---- G1(c) 2.10 "Transport": the constructed faults ---------------------------------------------
+# Each is a context manager; pool_selection.FAULTS names them so a child process can run one.
+
+
+@contextlib.contextmanager
+def _tap_fault(name, **settings):
+    saved = dict(_FAULT)
+    _FAULT.update(tap=name, **settings)
+    try:
+        yield
+    finally:
+        _FAULT.clear()
+        _FAULT.update(saved)
+
+
+def _late_tap(by=LATE_TAP_EVENTS):
+    # the tap taken `by` events after b (the late-tap red copies at b + 40)
+    return _tap_fault("late_tap", late=by)
+
+
+def _leaky_tap():
+    # a tap that lists the grower's FINAL weights as its weights at b
+    return _tap_fault("leaky_tap")
+
+
+def _writing_tap():
+    # a tap that adds 1e-3 to the grower's W[0, 0] as it reads (read-only is its contract)
+    return _tap_fault("writing_tap")
+
+
+@contextlib.contextmanager
+def _w_live_mutant():
+    # the frozen request red: pool-copy keeps its permitted declaration and REQUESTS w_live
+    names = globals()
+    original = names["_feature"]
+
+    def mutant(arm, view, pool=None):
+        if arm == "pool-copy":
+            view.get("w_live")
+        return original(arm, view, pool)
+
+    names["_feature"] = mutant
+    try:
+        yield
+    finally:
+        names["_feature"] = original
+
+
 # ---- G1(b): the pool arm's bookkeeping ----------------------------------------------------------
 
 
@@ -740,7 +863,8 @@ class _PoolArm:
 
     KEYS = ("candidate", "config", "form", "noise", "window")
 
-    def __init__(self, spec, seed):
+    def __init__(self, spec, seed, arm="pool", b=TRANSPORT_B):
+        self.arm, self.b, self.seed = arm, b, seed
         unknown = sorted(set(spec) - set(self.KEYS))
         if unknown:
             raise ValueError(f"REFUSED: unknown pool spec keys {unknown}")
@@ -773,6 +897,61 @@ class _PoolArm:
             "topology": self.pool.params_fingerprint(),
             "initial": self.pool.fingerprint(),
         }
+        if arm != "pool":
+            # G1(c) 2.7: binding["w_in"] stays the construction draw's crc; "encoder" is the crc of
+            # the matrix after the single swap (None before it, or without one). A plain pool arm
+            # carries neither this key nor "transport", so its result is G1(b)'s.
+            self.binding["encoder"] = None
+            self.random = self.pool.w_in.copy()
+            self.silent = self.events = self.widest = 0
+            self.record = {
+                "pool-copy": {
+                    "copied_at_event": None,
+                    "L": None,
+                    "padding_fraction": None,
+                    "raw_row_norms": None,
+                    "mean_row_norm": None,
+                    "encoder_crc": None,
+                },
+                "pool-swap": {"swapped_at_event": None, "mean_row_norm": None, "encoder_crc": None},
+                "pool-act": {},
+            }[arm]
+
+    # Sites the duplicate-capability hook flagged, read; neither changes a pool's input matrix:
+    # distinct-from: gates/amdahl_gate.py::_sham_propagate -- a sham stand-in installed on Connection.propagate
+    # distinct-from: sensorimotor/wavefront_planner.py::collides -- reports whether the arm is in contact
+    def _install(self, matrix, **record):
+        self.pool.replace_encoder(matrix)
+        self.binding["encoder"] = _crc(self.pool.w_in)
+        self.record.update(
+            record, mean_row_norm=rp.mean_row_norm(self.random), encoder_crc=self.binding["encoder"]
+        )
+
+    def _arm_moves(self, view):
+        # copy: once, when the view first holds w@b; swap: once, at b; activity: count the silent events
+        pool = self.pool
+        if self.arm == "pool-copy":
+            block = view.get("w@b")
+            if block is not None and self.binding["encoder"] is None:
+                block = np.asarray(block, dtype=np.float64)
+                units = block.shape[0]
+                self._install(
+                    rp.transported_encoder(self.random, block),
+                    copied_at_event=pool.count,
+                    L=units,
+                    padding_fraction=(rp.N - units) / rp.N,
+                    raw_row_norms=rp.row_norms(block).tolist(),
+                )
+        elif self.arm == "pool-swap":
+            if self.binding["encoder"] is None and pool.count >= self.b:
+                self._install(rp.fresh_encoder(self.seed, self.random), swapped_at_event=pool.count)
+        else:
+            activity = view.get("grower_activity")
+            self.events += 1
+            if activity is None:
+                self.silent += 1
+            else:
+                self.widest = max(self.widest, len(activity))
 
     def features(self, view):
         pool = self.pool
@@ -780,8 +959,10 @@ class _PoolArm:
             # R-b4's red (pool-noise): a kick before every percept after the window
             pool.perturb()
             self.kicks += 1
+        if self.arm != "pool":
+            self._arm_moves(view)
         started = time.perf_counter()
-        features = _feature("pool", view, pool)
+        features = _feature(self.arm, view, pool)
         if pool.count > pool.window:
             self.seconds += time.perf_counter() - started
         self.chain = zlib.crc32(pool.fingerprint().to_bytes(4, "little"), self.chain)
@@ -799,7 +980,7 @@ class _PoolArm:
                 "transient": {str(s): v for s, v in diagnostic["transient"].items()},
                 "flagged": diagnostic["flagged"],
             }
-        return {
+        result = {
             **self.binding,
             "boundary": pool.boundary,
             "frozen": pool.frozen(),
@@ -813,12 +994,143 @@ class _PoolArm:
             "startup": startup,
             "pool_ms": 1000.0 * self.seconds / after if after > 0 else None,
         }
+        if self.arm != "pool":
+            record = {"form": TRANSPORT_FORM[self.arm], **self.record}
+            if self.arm == "pool-act":
+                record.update(silent_events=self.silent, events=self.events, widest=self.widest)
+            result["transport"] = record
+        return result
+
+
+# ---- G1(c) 2.7: the read-only tap and what a transport arm may be handed from it ----------------
+
+
+def _corrupt_w(model):
+    # the writing-tap red's write (GRADIENT_CLAIM above declares it): a constant added to W[0, 0]
+    with torch.no_grad():
+        model.W[0, 0] += 1e-3
+
+
+def _grower_w(engine):
+    # the incumbent's W (L x 64) as a list; None while it holds no model
+    model = engine._model
+    if model is None or model.W is None:
+        return None
+    return model.W.detach().cpu().tolist()
+
+
+# Reads the incumbent beside an arm-(a) replay and writes nothing (the writing-tap fault is the red
+# of that). Three readings: `at`, the weights at the START of delivery b + 1 (before predict_next);
+# one activity row per delivery, the hidden rates for the CURRENT percept (after predict_next,
+# before observe); and the weights at every completed refit.
+class _Tap:
+    def __init__(self, b):
+        self.b = b
+        self.at = None
+        self.activity = []
+        self.weights = []
+
+    @property
+    def due(self):
+        return self.b + (_FAULT["late"] if _FAULT["tap"] == "late_tap" else 0)
+
+    def at_delivery(self, engine, event):
+        if self.at is not None or event != self.due:
+            return
+        model = engine._model
+        if model is None or model.W is None or int(model.W.shape[0]) == 0:
+            raise ValueError(
+                "REFUSED: the grower holds no model at the tap (never padded from nothing)"
+            )
+        self.at = {
+            "event": event,
+            "observed": engine.observed,
+            "W": _grower_w(engine),
+            "crc_W": _crc(model.W),
+        }
+        if _FAULT["tap"] == "writing_tap":
+            _corrupt_w(model)
+
+    def rates(self, engine, x):
+        model = engine._model
+        if model is None or model.W is None:
+            self.activity.append(None)
+            return
+        row = torch.tensor([x], dtype=torch.float32)
+        self.activity.append(model._rates(row, model.W, model.b)[0].tolist())
+
+    def note(self, engine, event):
+        self.weights.append({"event": event, "W": _grower_w(engine)})
+
+    def close(self, engine, identity):
+        if self.at is None:
+            raise ValueError(
+                f"REFUSED: the stream has no delivery {self.due + 1} to take the tap at"
+            )
+        if _FAULT["tap"] == "leaky_tap":
+            # the leak: the weights the grower ends the whole replay with, not the weights at b
+            self.at = dict(self.at, W=_grower_w(engine), crc_W=_crc(engine._model.W))
+        return {
+            "b": self.b,
+            **identity,
+            "w_at_b": self.at,
+            "activity": self.activity,
+            "refit_weights": self.weights,
+        }
+
+
+# The three values a transport arm's loop supplies from a tap: w@b (the tap's W once the delivery
+# count reaches its event, else None), this delivery's activity, and w_live (the latest refit's W),
+# which no legitimate arm declares.
+class _TapSupply:
+    def __init__(self, tap):
+        self.tap = tap
+        self.cursor = 0
+        self.live = None
+
+    def at_event(self, event):
+        weights = self.tap["refit_weights"]
+        while self.cursor < len(weights) and weights[self.cursor]["event"] <= event:
+            self.live = weights[self.cursor]["W"]
+            self.cursor += 1
+        at = self.tap["w_at_b"]
+        return {
+            "w@b": at["W"] if event >= at["event"] else None,
+            "grower_activity": self.tap["activity"][event],
+            "w_live": self.live,
+        }
+
+
+_TAP_FIELDS = (
+    "b",
+    "source_digest",
+    "config_digest",
+    "seed",
+    "revision",
+    "w_at_b",
+    "activity",
+    "refit_weights",
+)
+
+
+def _belongs(side, identity, count):
+    # a side tap belongs to the replay it feeds: that replay's digests, seed and revision, and one
+    # activity slot per delivery
+    if not isinstance(side, dict) or any(key not in side for key in _TAP_FIELDS):
+        raise ValueError("REFUSED: side tap lacks a tap's fields")
+    for key, expected in identity.items():
+        if side[key] != expected:
+            raise ValueError(f"REFUSED: side tap {key} does not match this replay")
+    if len(side["activity"]) != count:
+        raise ValueError("REFUSED: side tap activity does not hold one slot per delivery")
 
 
 # distinct-from: faculties/evidence_accumulation.py -- `_measure_patience_charge` replays 5-HT frames
 #   twice through instruments/port_charge_probe.replay_twice for a port-charge A/B; this is G1's recorded
 #   event schedule replayed into the grower (site read). Extended in place for G1(b), not duplicated.
-def replay(stream, arm, mode="causal", *, mutate=None, readout=True, pool=None):
+def replay(
+    stream, arm, mode="causal", *, mutate=None, readout=True, pool=None, tap=None, side=None
+):
     """Replay the recorded event schedule, rejecting missing gate evidence.
 
     G1(b) (g1b-pool-selection.md section 2): the reference readout runs beside the grower for every
@@ -826,11 +1138,25 @@ def replay(stream, arm, mode="causal", *, mutate=None, readout=True, pool=None):
     for R-b8's second half); `arm="pool"` takes a spec {"candidate", "config", "form"} (plus "noise",
     R-b4's red, and "window": the self-checks' short streams, and 0 for G1(c)'s Settled@0) and feeds x alone through its view
     into recurrent_pool.make_pool(candidate, config, stream["seed"], form); the whole replay runs at
-    one BLAS thread, recorded in the result's policy."""
+    one BLAS thread, recorded in the result's policy.
+
+    G1(c) 2.7: `tap=b` (arm "a" only) records, read-only, the incumbent grower's weights at the START
+    of delivery b + 1, its hidden rates at every delivery and its weights at every refit, returned as
+    result["tap"]. `side=` is such a tap, handed to a transport arm ("pool-copy", "pool-act",
+    "pool-swap"; the copy and the activity arms require it); it must belong to this replay."""
     if arm not in ARMS or mode not in ("causal", "live"):
         raise ValueError("unknown arm or mode")
-    if (arm == "pool") != (pool is not None):
-        raise ValueError("REFUSED: the pool arm takes a pool spec, and only the pool arm does")
+    if (arm in POOL_ARMS) != (pool is not None):
+        raise ValueError("REFUSED: the pool arms take a pool spec, and only they do")
+    if tap is not None:
+        if arm != "a":
+            raise ValueError("REFUSED: the tap reads the incumbent grower: arm a only")
+        if isinstance(tap, bool) or not isinstance(tap, int) or tap < 1:
+            raise ValueError(f"REFUSED: the tap's boundary is a positive event count, not {tap!r}")
+    if side is not None and arm not in TRANSPORT_ARMS:
+        raise ValueError("REFUSED: a side tap feeds only the transport arms")
+    if side is None and arm in ("pool-copy", "pool-act"):
+        raise ValueError(f"REFUSED: arm {arm} needs a side tap and never runs on nothing")
     torch.set_num_threads(1)
     if stream.get("policy", {}).get("threads") != 1:
         raise ValueError("REFUSED: recording policy")
@@ -844,13 +1170,24 @@ def replay(stream, arm, mode="causal", *, mutate=None, readout=True, pool=None):
     ):
         raise ValueError("REFUSED: library policy changed")
     with rp._blas_threads(1):  # section 2.2: the readout's products and solves at one BLAS thread
-        return _replay(stream, arm, mode, mutate, readout, pool)
+        return _replay(stream, arm, mode, mutate, readout, pool, tap, side)
 
 
-def _replay(stream, arm, mode, mutate, readout, pool):
+def _replay(stream, arm, mode, mutate, readout, pool, tap=None, side=None):
     started = time.perf_counter()
     rows = mutate if mutate is not None else stream
     source_digest = _source_digest(rows)
+    recorder = _Tap(tap) if tap is not None else None
+    supply = None
+    if side is not None:
+        identity = {
+            "source_digest": source_digest,
+            "config_digest": _config_digest(stream),
+            "seed": stream.get("seed"),
+            "revision": dict(zip(("head", "dirty"), _revision(), strict=True)),
+        }
+        _belongs(side, identity, len(rows["events"]))
+        supply = _TapSupply(side)
     ledger = []
     state = {"tick": 0, "event": 0, "value": None, "exists": False}
 
@@ -885,7 +1222,11 @@ def _replay(stream, arm, mode, mutate, readout, pool):
         **stream["config"], device="cpu", growth_gate=gate, online_readout="delta"
     )
     guide = ReferenceReadout() if readout else None
-    unit = _PoolArm(pool, stream["seed"]) if pool is not None else None
+    unit = (
+        _PoolArm(pool, stream["seed"], arm, side["b"] if side is not None else TRANSPORT_B)
+        if pool is not None
+        else None
+    )
     predictions, fallbacks, phi, refits = [], [], [], []
     guesses = []
     history_x, history_c = [], []
@@ -899,6 +1240,8 @@ def _replay(stream, arm, mode, mutate, readout, pool):
     )
     for _global_tick, kind, item in timeline:
         if kind == 0:
+            if recorder is not None:
+                recorder.at_delivery(engine, state["event"])  # the START of this delivery
             prediction = engine.predict_next()
             fallback = bool(engine._pending_prediction[4]) if engine._pending_prediction else False
             # the readout predicts c_t from phi_{t-1} at the point the grower does
@@ -911,6 +1254,8 @@ def _replay(stream, arm, mode, mutate, readout, pool):
             fallbacks.append(fallback)
             guesses.append(guess)
             x, c = item["x"], item["c"]
+            if recorder is not None:
+                recorder.rates(engine, x)  # after predict_next, before observe
             values = {
                 "x": x,
                 "c": c,
@@ -921,6 +1266,9 @@ def _replay(stream, arm, mode, mutate, readout, pool):
                 "c_history": [c]
                 + [history_c[-i] if len(history_c) >= i else None for i in range(1, 4)],
             }
+            if supply is not None:
+                # G1(c): always supplied (None when not yet available), the forbidden w_live among them
+                values.update(supply.at_event(state["event"]))
             view = _View(ARMS[arm][1], values)
             features = unit.features(view) if unit is not None else _feature(arm, view)
             if len(features) != ARMS[arm][0]:
@@ -960,6 +1308,8 @@ def _replay(stream, arm, mode, mutate, readout, pool):
                         "fingerprint": _fingerprint(engine),
                     }
                 )
+                if recorder is not None:
+                    recorder.note(engine, state["event"])
             sleep_i += 1
     if event_i != len(events) or sleep_i != len(sleep):
         raise ValueError("REFUSED: event count")
@@ -995,6 +1345,17 @@ def _replay(stream, arm, mode, mutate, readout, pool):
     }
     if guide is not None:
         result["readout"] = {"predictions": guesses, "fingerprint": guide.fingerprint()}
+    if recorder is not None:
+        # the identity a side tap is held to when it feeds a transport arm
+        result["tap"] = recorder.close(
+            engine,
+            {
+                "source_digest": source_digest,
+                "config_digest": result["config_digest"],
+                "seed": result["seed"],
+                "revision": result["revision"],
+            },
+        )
     result["seconds"] = time.perf_counter() - started  # end-to-end, reported only
     return result
 
@@ -1337,6 +1698,190 @@ def check_r_a4(stream, runs=None):
         )
     red = replay(stream, "noise")["phi"] != replay(stream, "noise")["phi"]
     return {"verdict": all(equal.values()) and red, "numbers": equal, "red": red}
+
+
+# ---- G1(c) 2.10 "Transport": the checks, each beside its red ------------------------------------
+
+
+def _declaration_problems(arm, declared):
+    # 2.7's declaration-validation check: what a transport arm declares beyond, or lacks of, its frozen set
+    expected = TRANSPORT_CHANNELS.get(arm)
+    if expected is None:
+        return ["not a transport arm"]
+    declared = tuple(declared)
+    return [f"missing {c}" for c in expected if c not in declared] + [
+        c for c in declared if c not in expected
+    ]
+
+
+def _raises_forbidden(call):
+    try:
+        call()
+    except ValueError as error:
+        return "forbidden feature channel" in str(error)
+    return False
+
+
+# 2.7 and 2.10: the three transport arms declare exactly TRANSPORT_CHANNELS; a view over values that
+# also hold w_live, c and pairs holds only the declared keys and raises on any other.
+# RED 1 (the frozen request red): pool-copy keeps its permitted declaration and REQUESTS w_live while
+# it is present, which must raise (through a real replay too when a stream and a pool spec are
+# given). RED 2: an arm that DECLARES w_live fails the declaration check; pool-act's view cannot
+# read x.
+def check_transport_channels(stream=None, spec=None, *, b=TRANSPORT_B):
+    declared = {arm: ARMS[arm][1] for arm in TRANSPORT_ARMS}
+    values = {
+        "x": [0.0] * 64,
+        "c": 1,
+        "pairs": 3,
+        "w@b": [[1.0] * 64],
+        "grower_activity": [0.1],
+        "w_live": [[2.0] * 64],
+    }
+    views = {arm: _View(channels, values) for arm, channels in declared.items()}
+    problems = {arm: _declaration_problems(arm, channels) for arm, channels in declared.items()}
+    only = all(set(view.values) == set(declared[arm]) for arm, view in views.items())
+    shut = all(
+        _raises_forbidden(lambda view=view, key=key: view.get(key))
+        for view in views.values()
+        for key in ("w_live", "c", "pairs")
+    )
+    pool = rp.make_pool("lsm", rp.R_B5_PERSISTENCE_WITNESS, rp.DEV_SEED)
+    request = _View(ARMS["pool-copy"][1], values)
+    control = len(_feature("pool-copy", request, pool)) == rp.N  # the permitted call runs
+    with _w_live_mutant():
+        asked = _raises_forbidden(lambda: _feature("pool-copy", request, pool))
+    red = {
+        "request_w_live": asked,
+        "declares_w_live": _declaration_problems("pool-copy", (*declared["pool-copy"], "w_live"))
+        != [],
+        "pool_act_reads_x": _raises_forbidden(lambda: views["pool-act"].get("x")),
+    }
+    if stream is not None:
+        side = replay(stream, "a", tap=b)["tap"]
+        replay(stream, "pool-copy", pool=spec, side=side)  # as declared, it runs
+        with _w_live_mutant():
+            red["request_w_live_in_replay"] = _raises_forbidden(
+                lambda: replay(stream, "pool-copy", pool=spec, side=side)
+            )
+    return {
+        "verdict": bool(
+            not any(problems.values()) and only and shut and control and all(red.values())
+        ),
+        "numbers": {
+            "declared": {arm: list(channels) for arm, channels in declared.items()},
+            "views": {arm: sorted(view.values) for arm, view in views.items()},
+        },
+        "red": red,
+    }
+
+
+def _truncated(stream, b):
+    # the recording cut to its first b deliveries and the sleep ticks before delivery b + 1
+    events = stream["events"]
+    if len(events) <= b:
+        raise ValueError(f"REFUSED: the stream has no delivery {b + 1}")
+    horizon = events[b]["tick"]
+    return {
+        **stream,
+        "events": events[:b],
+        "sleep": [s for s in stream["sleep"] if s["brain_tick"] < horizon],
+    }
+
+
+def _last_w_crc(run, event):
+    return [r for r in run["refits"] if r["event"] <= event][-1]["fingerprint"]["W"]
+
+
+# 2.10: the tap's timing by two instruments that must agree. (i) Its crc_W is the W crc of the last
+# completed refit at or before b in the same replay. (ii) An arm-(a) replay of the stream cut at b
+# (its first b events and the sleep before delivery b + 1) ends at the same position (b events
+# observed) with the same W crc. RED: a tap taken `late` events after b fails (ii) always, by its
+# position, and (i) exactly when the refits between b and the late tap moved W's crc.
+def check_transport_timing(stream, *, b=TRANSPORT_B, late=LATE_TAP_EVENTS):
+    base = replay(stream, "a", tap=b)
+    at = base["tap"]["w_at_b"]
+    last = _last_w_crc(base, b)
+    cut = _truncated(stream, b)
+    ended = replay(cut, "a")
+    end = (len(cut["events"]), ended["observed"], ended["fingerprint"]["W"])
+    agree_i = at["crc_W"] == last
+    agree_ii = (at["event"], at["observed"], at["crc_W"]) == end
+    with _late_tap(by=late):
+        slip = replay(stream, "a", tap=b)["tap"]["w_at_b"]
+    late_i = slip["crc_W"] == last
+    late_ii = (slip["event"], slip["observed"], slip["crc_W"]) == end
+    moved = _last_w_crc(base, b + late) != last
+    return {
+        "verdict": bool(agree_i and agree_ii and not late_ii and (not late_i) == moved),
+        "numbers": {
+            "b": b,
+            "tap": {key: at[key] for key in ("event", "observed", "crc_W")},
+            "last_refit_crc": last,
+            "truncated": dict(zip(("events", "observed", "crc_W"), end, strict=True)),
+            "agree_i": agree_i,
+            "agree_ii": agree_ii,
+            "late": {"by": late, "tap": {key: slip[key] for key in ("event", "observed", "crc_W")}},
+        },
+        "red": {"late_fails_ii": not late_ii, "late_fails_i": not late_i, "moved_between": moved},
+    }
+
+
+# 2.10: R-a2's three cuts (all after b) on pool-copy and pool-act. Each stream, the recording and its
+# suffix mutation, is tapped afresh (a side tap belongs to its own stream); the grower's predictions
+# at t <= cut must be unchanged, and the re-taken weights at b equal the original's.
+# RED: a tap that lists the FINAL model as its weights at b changes pool-copy's predictions before
+# every cut.
+def check_transport_causality(stream, spec, *, b=TRANSPORT_B, cuts=None):
+    count = len(stream["events"])
+    cuts = (count // 4, count // 2, 3 * count // 4) if cuts is None else tuple(cuts)
+    if any(cut <= b for cut in cuts):
+        raise ValueError(f"REFUSED: every cut must lie after b ({b}): {cuts}")
+    taps = {"honest": replay(stream, "a", tap=b)["tap"]}
+    with _leaky_tap():
+        taps["leaky"] = replay(stream, "a", tap=b)["tap"]
+    base = {
+        arm: replay(stream, arm, pool=spec, side=taps["honest"])
+        for arm in ("pool-copy", "pool-act")
+    }
+    leaked = replay(stream, "pool-copy", pool=spec, side=taps["leaky"])
+    kept = {arm: [] for arm in base}
+    same_weights, changed_by_leak = [], []
+    for cut in cuts:
+        changed = mutate_suffix(stream, cut, stream["seed"] + cut)
+        tap = replay(changed, "a", tap=b)["tap"]
+        same_weights.append(tap["w_at_b"]["crc_W"] == taps["honest"]["w_at_b"]["crc_W"])
+        for arm in kept:
+            other = replay(changed, arm, pool=spec, side=tap)
+            kept[arm].append(base[arm]["predictions"][:cut] == other["predictions"][:cut])
+        with _leaky_tap():
+            leaky = replay(changed, "a", tap=b)["tap"]
+        other = replay(changed, "pool-copy", pool=spec, side=leaky)
+        changed_by_leak.append(leaked["predictions"][:cut] != other["predictions"][:cut])
+    return {
+        "verdict": bool(
+            all(all(v) for v in kept.values()) and all(same_weights) and all(changed_by_leak)
+        ),
+        "numbers": {"cuts": list(cuts), **kept, "tap_crc_unchanged": same_weights},
+        "red": {"leaky_tap": changed_by_leak},
+    }
+
+
+# 2.10: arm (a) with the tap on and off is equal on GROWER_KEYS and on the reference readout's
+# predictions and fingerprint. RED: a writing tap (1e-3 added to W[0, 0]) must change them.
+def check_tap_read_only(stream, *, b=TRANSPORT_B):
+    off = replay(stream, "a")
+    on = replay(stream, "a", tap=b)
+    grower = {key: on[key] == off[key] for key in GROWER_KEYS}
+    readout = on["readout"] == off["readout"]
+    with _writing_tap():
+        written = replay(stream, "a", tap=b)
+    red = any(written[key] != off[key] for key in GROWER_KEYS)
+    return {
+        "verdict": bool(all(grower.values()) and readout and red),
+        "numbers": {"grower": grower, "readout": readout},
+        "red": red,
+    }
 
 
 def _load(path):
@@ -1735,10 +2280,33 @@ def main():
             cats = [event["c"] for event in family["events"]]
             assert {b for a, b in itertools.pairwise(cats) if a == 3} == followers
             assert sum(e["segment"] == "unseen-order" for e in family["events"]) == 944
+        # G1(c) 2.7 and 2.10 "Transport": the channel, timing, causality and read-only checks and the
+        # encoder's contract, each with its red, and G1(b)'s arms where they were. b is 256 for the
+        # recordings; on this 48-event fixture ONLY it is 16 (256 does not fit, and the first refit
+        # lands at event 12), the late tap's offset 8 (not 40) and R-a2's three cuts 24, 32, 40.
+        assert SCORED_ARMS == tuple(ARMS)[:8] and TRANSPORT_B == 256
+        assert tuple(ARMS)[8:12] == ("forbidden", "noise", "leak", "pool")
+        fixture_b = 16
+        channels = check_transport_channels(fixture, spec, b=fixture_b)
+        assert channels["verdict"], channels
+        timing = check_transport_timing(fixture, b=fixture_b, late=8)
+        assert timing["verdict"], timing
+        causality = check_transport_causality(fixture, spec, b=fixture_b, cuts=(24, 32, 40))
+        assert causality["verdict"], causality
+        read_only = check_tap_read_only(fixture, b=fixture_b)
+        assert read_only["verdict"], read_only
+        encoder = rp.check_transported_encoder()
+        assert encoder["verdict"], encoder
         print(
             "G1(b): readout R-b0x fixtures, R-b2, R-b8 comparisons and reds, pool arm, R-b6 family OK"
         )
         print("G1(c): Carried@0 = Carried@256 on the 48-event fixture OK")
+        print(
+            f"G1(c) transport on the 48-event fixture at b {fixture_b}: channels, timing (late tap "
+            f"fails ii: {timing['red']['late_fails_ii']}, i: {timing['red']['late_fails_i']}), "
+            f"causality at cuts 24/32/40 (leaky tap changed {causality['red']['leaky_tap']}), "
+            "tap read-only (writing tap changed it), encoder norm and refusals OK"
+        )
         print("memory_diagnostic self-check OK")
 
 
