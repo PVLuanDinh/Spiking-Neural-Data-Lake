@@ -69,6 +69,7 @@ import random
 import statistics
 import zlib
 from collections import Counter
+from typing import NamedTuple
 
 import numpy as np
 
@@ -96,6 +97,10 @@ RB6_RESERVE_SEED = 6001  # the synthetic reserve for R-b6 (2.11)
 SHUFFLE_RED_SEEDS = tuple(range(6100, 6108))  # the shuffle's planted order-independent gain (2.10)
 G2II_CHECK_SEEDS = tuple(range(7000, 7008))  # G-R2's construction-check seeds (2.8)
 G2II_DEV_SEEDS = tuple(range(7100, 7104))  # G2(ii)'s learner development seeds (2.8)
+# 208-211 and 5009-5012: the repair re-run's migration-gate seeds, G1B 2.8's reserve (2.11); like 204-207
+# and 5005-5008 they are exposed, read only by the gate
+GATE_RESERVE_SEEDS = tuple(range(208, 212))
+GATE_SYNTHETIC_RESERVE_SEEDS = tuple(range(5009, 5013))
 # Exposed by G1(a) and G1(b), never confirmatory (2.12): 0-7, 100-103, 200-211, 4242-4247, 5001-5012.
 EXPOSED_SEEDS = frozenset(
     (*range(0, 8), *range(100, 104), *range(200, 212), *range(4242, 4248), *range(5001, 5013))
@@ -123,8 +128,35 @@ assert (IDENTITY_SEED, GATE_SEEDS, GATE_SYNTHETIC_SEEDS) == (
     (204, 205, 206, 207),
     (5005, 5006, 5007, 5008),
 ), "the identity and gate seeds are G1(b)'s (2.12)"
+assert (GATE_RESERVE_SEEDS, GATE_SYNTHETIC_RESERVE_SEEDS, RB6_RESERVE_SEED) == (
+    (208, 209, 210, 211),
+    (5009, 5010, 5011, 5012),
+    6001,
+), "the reserve's gate and R-b6 seeds are the registration's (2.11)"
+assert not set(GATE_RESERVE_SEEDS) & set(GATE_SEEDS), "the reserve gate repeats no live gate seed"
+assert not set(GATE_SYNTHETIC_RESERVE_SEEDS) & set(GATE_SYNTHETIC_SEEDS), "nor its D_task seeds"
+assert set(GATE_RESERVE_SEEDS) | set(GATE_SYNTHETIC_RESERVE_SEEDS) <= EXPOSED_SEEDS
 assert (T_CRIT, DELTA) == (1.6973, 0.02), "the bar and Delta are the frozen numbers (2.3)"
 rp.canonical("lsm", TUNED)  # raises ValueError unless TUNED lies in section 2.3's grid of G1B
+
+
+# One COMPLETE seed bundle per campaign (2.11, 2.12): the live set with the gate, synthetic-gate and R-b6
+# seeds that go with it. The record's `seed_set` picks it once; record, migrate, instrument and controls
+# all read it, so no stage mixes the live seeds with the reserve's.
+class SeedBundle(NamedTuple):
+    which: str
+    live: tuple
+    gate: tuple
+    gate_synthetic: tuple
+    rb6: int
+
+
+SEED_BUNDLES = {
+    "live": SeedBundle("live", LIVE_SEEDS, GATE_SEEDS, GATE_SYNTHETIC_SEEDS, RB6_SEED),
+    "reserve": SeedBundle(
+        "reserve", RESERVE_SEEDS, GATE_RESERVE_SEEDS, GATE_SYNTHETIC_RESERVE_SEEDS, RB6_RESERVE_SEED
+    ),
+}
 
 
 # distinct-from: sensorimotor/rsnn_encoder.py -- load_weights validates a weights file's shapes (like global_workspace._deliver's tuple and prior_drift_harness.run_campaign's seeds, none checks a seed list); this is the one structural seed-list check
@@ -156,6 +188,13 @@ def validate_seed_set(seeds, *, allow_reserve=False):
     if reserve and not allow_reserve:
         raise ValueError(f"reserve seeds {reserve} are not live seeds (g1c 2.11)")
     return seeds
+
+
+def seed_bundle(which):
+    """The bundle `which` names ("live" or "reserve"), else ValueError."""
+    if which not in SEED_BUNDLES:
+        raise ValueError(f"seed set {which!r} is neither live nor reserve (g1c 2.11)")
+    return SEED_BUNDLES[which]
 
 
 def skewness(values):
@@ -1116,6 +1155,24 @@ def main():
     assert "reserve" in _raises(validate_seed_set, [300, 331])
     assert validate_seed_set([300, 331], allow_reserve=True) == (300, 331)
     assert "duplicate" in _raises(validate_seed_set, [300, 301, 300])
+    # the bundles (2.11): each seed set names ONE complete bundle and the reserve repeats none of the live one
+    live, reserve = seed_bundle("live"), seed_bundle("reserve")
+    assert live == (
+        "live",
+        LIVE_SEEDS,
+        (204, 205, 206, 207),
+        (5005, 5006, 5007, 5008),
+        6000,
+    ) and reserve == (
+        "reserve",
+        RESERVE_SEEDS,
+        (208, 209, 210, 211),
+        (5009, 5010, 5011, 5012),
+        6001,
+    )
+    for part in ("live", "gate", "gate_synthetic"):
+        assert not set(getattr(live, part)) & set(getattr(reserve, part)), part
+    assert live.rb6 != reserve.rb6 and "neither live nor reserve" in _raises(seed_bundle, "other")
     # statistics: the formulas on hand values
     assert skewness([1.0, 2.0, 3.0]) == 0.0 and skewness([5.0] * 31) == 0.0 and skewness([]) == 0.0
     assert math.isclose(skewness([0.0, 0.0, 3.0]), 2.0 / 2.0**1.5, rel_tol=1e-12)  # m2 = 2, m3 = 2

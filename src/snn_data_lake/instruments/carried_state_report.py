@@ -59,6 +59,13 @@ STAGES_READ = (
     "transport",
     "separation",
 )
+# what the report keeps of the separation stage: its reading AND the measurements it was read from
+SEPARATION_KEYS = tuple(
+    (
+        "run item_3 reason reading host window stream_checks "
+        "accuracy mean per_text distinct_settled_rows"
+    ).split()
+)
 
 
 # Sites the duplicate-capability hook flagged on the report's helpers (read; none digests a campaign's summaries):
@@ -202,6 +209,7 @@ def _assemble(summaries):
         "head": record["head"],
         "dirty": False,
         "seed_set": record["seed_set"],
+        "seed_bundle": record["bundle"],
         "live_seeds": record["live_seeds"],
         "host": prim["host"],
         "shortened": any(bool(body.get("shortened")) for body in summaries.values()),
@@ -234,7 +242,19 @@ def _assemble(summaries):
             }
             for seed in live
         },
-        "tables": {"cells": cells, "input_response": prim["input_response"]},
+        "tables": {  # 2.3: the per-segment diagnostics of EVERY contrasted variant, not the primary's alone
+            "cells": cells,
+            "input_response": prim["input_response"],
+            "references": {
+                arm: row["per_seed"] for arm, row in summaries["references"]["references"].items()
+            },
+            "shuffle": ctl["cells"]["shuffle"],
+            "window0": ctl["cells"]["window0"],
+            "transport": {
+                arm: body["cells"] for arm, body in summaries["transport"]["arms"].items()
+            },
+            "separation": sep.get("cells"),
+        },
         "transport": {
             "b": summaries["transport"]["b"],
             "taps": summaries["transport"]["taps"],
@@ -246,7 +266,7 @@ def _assemble(summaries):
         "construct": {
             key: summaries["construct"].get(key) for key in ("run", "verdict", "item_3", "reason")
         },
-        "separation": {key: sep.get(key) for key in ("run", "item_3", "reason", "reading")},
+        "separation": {key: sep.get(key) for key in SEPARATION_KEYS},
         "causality": {
             "cuts": summaries["causality"]["cuts"],
             "R-b1": summaries["causality"]["R-b1"],
@@ -292,48 +312,26 @@ def _table(headers, rows):
 
 
 def _contrast_lines(rows):
-    headers = (
-        "contrast",
-        "n",
-        "mean",
-        "sd",
-        "t",
-        "bar",
-        "lower bound",
-        "exact FPR",
-        "band",
-        "skew",
-        "+ / - / 0",
-        "met",
-        "flags",
-    )
+    names = "contrast|n|mean|sd|t|bar|lower bound|exact FPR|band|skew|+ / - / 0|met|flags"
+    keys = ("n", "mean", "sd", "t", "bar", "lower_bound", "fpr", "band_population", "skewness")
     body = []
     for name, row in rows.items():
-        signs = row["signs"]
+        s = row["signs"]
         flags = ", ".join(flag for flag in ("degenerate", "skew_flagged") if row[flag])
-        body.append(
-            (
-                name,
-                row["n"],
-                row["mean"],
-                row["sd"],
-                row["t"],
-                row["bar"],
-                row["lower_bound"],
-                row["fpr"],
-                row["band_population"],
-                row["skewness"],
-                f"{signs['positive']} / {signs['negative']} / {signs['zero']}",
-                row["met"],
-                flags,
-            )
-        )
-    return _table(headers, body)
+        signs = f"{s['positive']} / {s['negative']} / {s['zero']}"
+        body.append((name, *(row[key] for key in keys), signs, row["met"], flags))
+    return _table(names.split("|"), body)
 
 
-def _segment_lines(report, form):
-    cells, body = report["tables"]["cells"][form], []
+def _segment_lines(cells):
+    names = "seed|segment|n|readout acc|entropy|coverage|fallback|grower acc|entropy|coverage|"
+    names += "fallback|distinct rows|startup flagged"
+    keys, body = ("accuracy", "prediction_entropy", "coverage", "prior_fallback"), []
     for seed, cell in cells.items():
+        pool = (
+            (cell.get("degeneracy") or {}).get("distinct_rows"),
+            (cell.get("startup") or {}).get("flagged"),
+        )
         for segment, row in (cell.get("readout") or {}).items():
             theirs = (cell.get("grower") or {}).get(segment, {})
             body.append(
@@ -341,30 +339,31 @@ def _segment_lines(report, form):
                     seed,
                     segment,
                     row["n"],
-                    row["accuracy"],
-                    row["prediction_entropy"],
-                    row["coverage"],
-                    row["prior_fallback"],
-                    theirs.get("accuracy"),
-                    theirs.get("prediction_entropy"),
-                    theirs.get("coverage"),
-                    theirs.get("prior_fallback"),
+                    *(row[k] for k in keys),
+                    *(theirs.get(k) for k in keys),
+                    *pool,
                 )
             )
-    headers = (
-        "seed",
-        "segment",
-        "n",
-        "readout acc",
-        "entropy",
-        "coverage",
-        "fallback",
-        "grower acc",
-        "entropy",
-        "coverage",
-        "fallback",
-    )
-    return _table(headers, body)
+    return _table(names.split("|"), body)
+
+
+# Site the duplicate-capability hook flagged on the next two helpers (read; they gather and format tables of a report):
+# distinct-from: reasoning/rpm_solver.py::_parse_raven -- parses a 'raven:' RPM query string into context cells and candidates
+# {variant name: {seed: cell}} of every contrasted variant but the primary's four forms (2.3)
+def _variant_cells(tables):
+    found = {f"Reference arm ({arm})": cells for arm, cells in tables["references"].items()}
+    for k, forms in tables["shuffle"].items():
+        found |= {f"{form}, within-block shuffle {k}": cells for form, cells in forms.items()}
+    found |= {f"{form} at window 0": cells for form, cells in tables["window0"].items()}
+    for arm, forms in tables["transport"].items():
+        found |= {f"{form} through {arm}": cells for form, cells in forms.items()}
+    for stream, arms in (tables["separation"] or {}).items():
+        found |= {f"Separation {stream}, arm {arm}": cells for arm, cells in arms.items()}
+    return found
+
+
+def _text_accuracies(per_text):
+    return " ".join(f"{t}:{'-' if hit is None else f'{hit:.2f}'}" for t, hit in per_text.items())
 
 
 # Sites the duplicate-capability hook flagged on the render and the report stage (read; none writes this campaign's report):
@@ -378,11 +377,12 @@ def render(report):
     per-seed values, the per-seed, per-form, per-segment tables (both learners' accuracy, entropy,
     coverage, prior-fallback rate), degeneracy, startup and input response, the transport records and the
     separation reading."""
-    g = report["g_r1"]
+    g, sep = report["g_r1"], report["separation"]
     lines = [
         "# G1(c) campaign report",
         "",
         f"head {report['head']} (clean), seeds {report['seed_set']}, surviving host {report['host']}",
+        "seed bundle: " + json.dumps(report["seed_bundle"], sort_keys=True),
     ]
     if report["shortened"]:
         lines.append("SHORTENED: a test's window and sizes, never a campaign")
@@ -420,63 +420,35 @@ def render(report):
         + json.dumps(horizon, sort_keys=True),
     ]
     lines += ["", "## Per seed (the reference readout; the grower's D beside it)", ""]
+    names = "seed|D|D grower|D_shuf|D0|W|startup flagged|scored rows <= boundary"
+    keys = ("D", "D_grower", "D_shuf", "D0", "W", "startup_flagged", "scored_rows_through_boundary")
     lines += [
         _table(
-            (
-                "seed",
-                "D",
-                "D grower",
-                "D_shuf",
-                "D0",
-                "W",
-                "startup flagged",
-                "scored rows <= boundary",
-            ),
-            [
-                (
-                    seed,
-                    row["D"],
-                    row["D_grower"],
-                    row["D_shuf"],
-                    row["D0"],
-                    row["W"],
-                    row["startup_flagged"],
-                    row["scored_rows_through_boundary"],
-                )
-                for seed, row in report["per_seed"].items()
-            ],
+            names.split("|"), [(s, *(r[k] for k in keys)) for s, r in report["per_seed"].items()]
         )
     ]
-    for form, name in zip(rp.FORMS, ("Carried", "Reset", "Settled", "Front-end"), strict=True):
+    forms = dict(zip(rp.FORMS, ("Carried", "Reset", "Settled", "Front-end"), strict=True))
+    variants = {name: report["tables"]["cells"][form] for form, name in forms.items()}
+    variants.update(
+        _variant_cells(report["tables"])
+    )  # 2.3: every contrasted variant, not the primary's
+    for name, cells in variants.items():
         heading = f"## {name}: accuracy, entropy, coverage, prior-fallback per seed and segment"
-        lines += ["", heading, "", _segment_lines(report, form)]
+        lines += ["", heading, "", _segment_lines(cells)]
     carried, response = report["tables"]["cells"]["carried"], report["tables"]["input_response"]
     lines += ["", "## Degeneracy, startup and input response (Carried)", ""]
-    lines += [
-        _table(
-            (
-                "seed",
-                "distinct rows",
-                "constant fraction",
-                "startup flagged",
-                "driven",
-                "drive mean",
-                "drive sd",
-            ),
-            [
-                (
-                    seed,
-                    (cell.get("degeneracy") or {}).get("distinct_rows"),
-                    (cell.get("degeneracy") or {}).get("constant_fraction"),
-                    (cell.get("startup") or {}).get("flagged"),
-                    response[seed]["driven"],
-                    response[seed]["mean"],
-                    response[seed]["sd"],
-                )
-                for seed, cell in carried.items()
-            ],
+    names = "seed|distinct rows|constant fraction|startup flagged|driven|drive mean|drive sd"
+    rows = [
+        (
+            seed,
+            (cell.get("degeneracy") or {}).get("distinct_rows"),
+            (cell.get("degeneracy") or {}).get("constant_fraction"),
+            (cell.get("startup") or {}).get("flagged"),
+            *(response[seed][key] for key in ("driven", "mean", "sd")),
         )
+        for seed, cell in carried.items()
     ]
+    lines += [_table(names.split("|"), rows)]
     forbidden = json.dumps(report["transport"]["forbidden_request"], sort_keys=True)
     lines += [
         "",
@@ -489,9 +461,38 @@ def render(report):
         "## Construction check and separation",
         "",
         "construct: " + json.dumps(report["construct"], sort_keys=True),
-        "separation: " + json.dumps(report["separation"], sort_keys=True),
+        "separation: " + json.dumps({k: sep[k] for k in SEPARATION_KEYS[:4]}, sort_keys=True),
         "",
     ]
+    if sep["run"]:  # the measurements the reading was read from, per stream, arm and seed
+        distinct = sep["distinct_settled_rows"]
+        measured = [
+            (
+                name,
+                arm,
+                seed,
+                accuracy,
+                _text_accuracies(sep["per_text"][name][arm][seed]),
+                distinct[name][seed] if arm == "settled" else None,
+            )
+            for name, arms in sep["accuracy"].items()
+            for arm, per_seed in arms.items()
+            for seed, accuracy in per_seed.items()
+        ]
+        headers = (
+            "stream",
+            "arm",
+            "seed",
+            "accuracy",
+            "per-text accuracy",
+            "distinct Settled rows",
+        )
+        lines += [
+            "## Separation measurements (decoder accuracy)",
+            "",
+            _table(headers, measured),
+            "",
+        ]
     return "\n".join(lines)
 
 
@@ -626,6 +627,11 @@ def _replay_records(host, fixture, tap):
     for form in rp.FORMS:
         spec = ps._spec(st.POOL, cs.TUNED, form, window=GOLDEN_WINDOW, host=host)
         record[f"pool {form}"] = _core(md.replay(fixture, "pool", pool=spec))
+    for (
+        form
+    ) in ps.FIT_FORMS:  # window 0, the registered Settled-from-first-percept intervention (2.6)
+        spec = ps._spec(st.POOL, cs.TUNED, form, window=0, host=host)
+        record[f"pool {form}@0"] = _core(md.replay(fixture, "pool", pool=spec))
     for arm in md.TRANSPORT_ARMS:
         for form in ps.FIT_FORMS:
             spec = ps._spec(st.POOL, cs.TUNED, form, window=GOLDEN_WINDOW, host=host)

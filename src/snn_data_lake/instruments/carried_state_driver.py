@@ -10,14 +10,19 @@ head moved), 2 HALTED (the shared instrument failed; the summary names the check
 summary written). A stage writes OUT/<stage>.summary.json with `head` and `dirty`.
 
   record      seed 100 ALONE and timed, then R-b8's digest against the G1(a) pilot's 100-stream (a differing
-              digest HALTS, 2.6); the cost projection is printed; then ONE batch for 203, 204-207 and the live
-              set (300-330, or 331-361 with --seeds reserve, which needs OUT/REPAIR.txt, 2.11). Any recording
+              digest HALTS, 2.6); the cost projection is printed; then ONE batch for 203, the bundle's gate
+              seeds and its live set. ONE complete seed bundle per campaign (carried_state_campaign.
+              SEED_BUNDLES): live 300-330 + gate 204-207 + synthetic 5005-5008 + R-b6 6000, or, with --seeds
+              reserve (2.11), reserve 331-361 + gate 208-211 + synthetic 5009-5012 + R-b6 6001; migrate,
+              instrument and controls read it from the record summary. --seeds reserve needs OUT/REPAIR.txt
+              naming an ORIGINAL live campaign (never a reserve one) and CLAIMS that campaign's single
+              reserve attempt exclusively before recording; a second claim halts. Any recording
               that is not OK halts. 2.6's half-moved rule on the K = 4 drawn permutations is asserted before the
               first recording (over the pre-registered block sizes) and again on each live recording's own block
               sizes before any replay.
   mechanism   pool_selection's step_mechanism, then one "configuration" job for TUNED; any failure halts (the
               pool is the object under test: there is no runner-up).
-  instrument  pool_selection's step_instrument on synthetic seed 6000 with R-b6 as a READING (a blind R-b6 is
+  instrument  pool_selection's step_instrument on the bundle's R-b6 seed (6000; 6001 reserve) with R-b6 as a READING (a blind R-b6 is
               G-R1's REFUSED, 2.4 (i), recorded, not a halt; R-b2, R-b7's reds and R-b8's two halves still halt),
               then the shuffle's POOL-FREE positive control and its A/A twin on the same stream (2.6).
   references  (a), (f64), (e1), (e1-0) on the live seeds through pool_selection's _phase_table with no pool
@@ -34,7 +39,7 @@ the golden check of 2.11). `golden [OUT] [--against FILE]` is the CLI's thirteen
 twelve stages: it runs the golden check in-process and prints its digest, or with --against compares it with
 a saved one (exit 0 equal, 1 moved).
 
-Summary keys part 2 reads: record `live_seeds`, `seed_set`, `recordings`, `identity`, `shuffle`; instrument
+Summary keys part 2 reads: record `live_seeds`, `seed_set` (and `bundle`), `recordings`, `identity`, `shuffle`; instrument
 `rb6_ok`, `rb6_clauses`, `shuffle_control`, `shuffle_aa`; references `inspected`, `oracle`, `oracle_verdict`,
 `stream_history`, `accuracy`, `references`; construct `run`, `verdict`, `item_3`, `result`.
 
@@ -47,7 +52,8 @@ launched from the repository root with OUT outside it. The preflight refuses (ex
 working directory that is not the repository root, an OUT inside the repository, any of SNN_EPROP_CKPT,
 SNN_PERCEPTION_PACK, SNN_EPROP_AUDIO_CKPT, SNN_SHD_PACK, NORD_DEVICE or NORD_GPU set, and an asset that is
 missing or fails its hash. OUT/REPAIR.txt for --seeds reserve: its first line is the path of the first OUT (a
-directory holding record.summary.json), its further lines the repair.
+directory holding record.summary.json of an ORIGINAL live campaign that has not given its one reserve
+attempt: OUT/RESERVE_CLAIM.txt there), its further lines the repair.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.carried_state_driver
 
@@ -106,6 +112,9 @@ ENV_REFUSED = (
     "NORD_GPU",
 )  # an override the recorder, or the policy, reads
 REPAIR_FILE = "REPAIR.txt"
+RESERVE_CLAIM_FILE = (
+    "RESERVE_CLAIM.txt"  # in the ORIGINAL OUT: its one reserve attempt (2.11), made with mode "x"
+)
 INSPECTED_FILE = "INSPECTED.txt"
 CONSTRUCTION_TARGET = "snn_data_lake.instruments.inseparable_mapping:construction_check"
 
@@ -183,7 +192,43 @@ def _repair_problems(out):
         return [f"{path} line 1 must name the first OUT (a directory holding record.summary.json)"]
     if _same_path(first, out):
         return [f"{path} names this very OUT as the first OUT"]
+    # 2.11: a repair gets ONE reserve attempt, and only the ORIGINAL (live) campaign is repaired
+    try:
+        seed_set = md._load(first / "record.summary.json").get("seed_set")
+    except (OSError, ValueError, AttributeError) as error:
+        return [f"{path} line 1: the first OUT's record summary cannot be read ({error!r})"]
+    if seed_set != "live":
+        return [
+            f"{path} line 1 names a campaign whose record summary reads seed_set {seed_set!r}: only "
+            "the ORIGINAL live campaign is repaired, and a repair is never repaired again (a second "
+            "repair halts G1(c) and goes to the owner, 2.11)"
+        ]
+    claim = first / RESERVE_CLAIM_FILE
+    if claim.exists():
+        return [
+            f"{first} already gave its one reserve attempt ({claim}): a second repair of the same "
+            "OUT halts G1(c) and goes to the owner (2.11)"
+        ]
     return []
+
+
+# 2.11: a repair's reserve attempt is CLAIMED exclusively (open mode "x" on RESERVE_CLAIM.txt in the
+# original OUT) before anything is recorded; a claim that appeared since the start check, a second
+# repair racing the first, halts. Returns the claim file's path.
+def claim_reserve(out):
+    first = Path(Path(out, REPAIR_FILE).read_text(encoding="utf-8").splitlines()[0].strip())
+    claim = first / RESERVE_CLAIM_FILE
+    try:
+        with open(claim, "x", encoding="utf-8") as file:
+            file.write(f"{Path(out)}\n")
+            file.flush()
+            os.fsync(file.fileno())
+    except FileExistsError as error:
+        text = claim.read_text(encoding="utf-8").strip()
+        raise ps.Halt(
+            "record: the reserve attempt is already claimed", {"original": str(first), "by": text}
+        ) from error
+    return str(claim)
 
 
 def start_problems(stage, out, pilot=None, seeds="live"):
@@ -250,9 +295,10 @@ def _recorded_blocks(out, live):
 
 def stage_record(out, pilot, seeds="live"):
     """Seed 100 alone (timed) and R-b8's digest, then ONE batch for 203, 204-207 and the live seeds."""
-    live = live_seeds(seeds)
+    live, bundle = live_seeds(seeds), cs.seed_bundle(seeds)  # ONE complete bundle for the campaign
     for seed in live:  # before the first recording (2.6): the pre-registered sizes
         check_half_moved(seed, preregistered_sizes())
+    claim = claim_reserve(out) if seeds == "reserve" else None  # 2.11: before ANYTHING is recorded
     started = time.monotonic()
     first = ps._record_seeds(out, (ps.PILOT_SEED,))
     seconds = time.monotonic() - started
@@ -268,7 +314,7 @@ def stage_record(out, pilot, seeds="live"):
     }
     if row["source_digest"] != pinned:  # 2.6: the stream changed: a shared-instrument failure
         raise ps.Halt("R-b8 stream identity", identity)
-    rest = (cs.CAUSALITY_SEED, *cs.GATE_SEEDS, *live)
+    rest = (cs.CAUSALITY_SEED, *bundle.gate, *live)
     rounds = math.ceil(len(rest) / ps.WORKERS)
     projected = seconds * rounds
     print(
@@ -285,6 +331,14 @@ def stage_record(out, pilot, seeds="live"):
     return {
         "recordings": recordings,
         "seed_set": seeds,
+        "bundle": {  # the complete bundle: migrate, instrument and controls read their seeds from it
+            "which": bundle.which,
+            "live": list(bundle.live),
+            "gate": list(bundle.gate),
+            "gate_synthetic": list(bundle.gate_synthetic),
+            "rb6": bundle.rb6,
+        },
+        "reserve_claim": claim,
         "live_seeds": list(live),
         "identity": {**identity, "equal": True},
         "projection": {"seconds": projected, "rounds": rounds, "workers": ps.WORKERS},
@@ -345,9 +399,12 @@ def shuffle_control(stream):
     }
 
 
-def stage_instrument(out, pilot, rb6_seed=cs.RB6_SEED):
-    """R-b2, R-b7's reds, R-b6 on `rb6_seed` (6000; only a test names another) as a reading, R-b8's halves;
-    then the shuffle's pool-free positive control and its A/A twin."""
+# Site the duplicate-capability hook flagged on the name stage_instrument (read; it reads a pilot-pin file, no replay, no stage):
+# distinct-from: instruments/prior_drift_harness.py::_pin_stages -- every pilot stage ever written, earliest first, from one pin file
+def stage_instrument(out, pilot, rb6_seed=None):
+    """R-b2, R-b7's reds, R-b6 on `rb6_seed` (the seed bundle's: 6000 live, 6001 reserve; only a test names another)
+    as a reading, R-b8's halves; then the shuffle's pool-free positive control and its A/A twin."""
+    rb6_seed = st.bundle_of(out).rb6 if rb6_seed is None else rb6_seed
     body = ps.step_instrument(out, pilot, rb6_seed=rb6_seed, rb6_halts=False)
     families = ps._rb6_families(ps._folder(out, "instrument"), rb6_seed)
     body["rb6_ok"] = all(body["rb6_clauses"].values())
@@ -537,8 +594,29 @@ def self_check():
         assert not (elsewhere / "later" / "migrate.summary.json").exists()
         assert start_problems("record", fresh, str(pilot), "live") == []
         assert len(start_problems("record", fresh, str(pilot), "reserve")) == 1
-        (fresh / REPAIR_FILE).write_text(f"{out}\nthe repair\n", encoding="utf-8")
+        # 2.11: only an ORIGINAL live campaign is repaired, once (P5 panel F5)
+        original, earlier = elsewhere / "original", elsewhere / "earlier-reserve"
+        for folder, seed_set in ((original, "live"), (earlier, "reserve")):
+            folder.mkdir()
+            (folder / "record.summary.json").write_text(
+                json.dumps({"seed_set": seed_set, "status": "COMPLETED"}), encoding="utf-8"
+            )
+        (fresh / REPAIR_FILE).write_text(f"{original}\nthe repair\n", encoding="utf-8")
         assert start_problems("record", fresh, str(pilot), "reserve") == []
+        (fresh / REPAIR_FILE).write_text(f"{earlier}\nthe repair\n", encoding="utf-8")
+        assert "never repaired again" in start_problems("record", fresh, str(pilot), "reserve")[0]
+        (fresh / REPAIR_FILE).write_text(f"{original}\nthe repair\n", encoding="utf-8")
+        assert claim_reserve(fresh) == str(original / RESERVE_CLAIM_FILE)
+        assert (
+            "already gave its one reserve attempt"
+            in start_problems("record", fresh, str(pilot), "reserve")[0]
+        )
+        try:
+            claim_reserve(fresh)
+        except ps.Halt as halt:
+            assert halt.check == "record: the reserve attempt is already claimed"
+        else:
+            raise AssertionError("a second claim of one original OUT was not refused")
         assert len(start_problems("record", fresh, None, "live")) == 1  # no pilot
         assert len(start_problems("instrument", fresh, str(pilot), "live")) == len(md.SCORED_ARMS)
     # 2.6's half-moved rule: holds on every pre-registered size for the live and the reserve seeds, and a
@@ -555,7 +633,8 @@ def self_check():
         "carried_state_driver self-check OK: preflight (control clear; wrong cwd, OUT inside the repo, "
         f"{len(ENV_REFUSED)} overrides, a bad asset each refused), stage chain (order, head, dirty tree, "
         "moved head, no retries), the seven later stages refuse before their predecessor, --seeds reserve "
-        "needs REPAIR.txt, half-moved "
+        "needs REPAIR.txt naming an original live campaign that has not spent its one reserve attempt "
+        "(a reserve chain and a second claim refused), half-moved "
         f"rule holds on {len(cs.LIVE_SEEDS) + len(cs.RESERVE_SEEDS)} seeds x {len(PERMUTED_BLOCKS)} sizes "
         "and fires on a constructed red"
     )

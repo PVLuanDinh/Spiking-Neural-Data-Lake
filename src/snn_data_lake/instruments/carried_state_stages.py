@@ -9,14 +9,17 @@ This module also holds the helpers every pool stage shares (`carried_state_contr
 worker batch for several R-b7 tables), `use_of` (the host the migration gate chose) and `settings` (the
 real window, b, R-b3 size and kick count, and the one place a test may shorten them).
 
-  migrate     (2.9) "call" jobs for the host parity fixtures and the hosted R-b3 (with its red) and R-b4;
-              the TUNED configuration x {carried, settled} x {port, hosted} on 204-207 and on the
-              synthetic 5005-5008 regenerated at this head; D_live and D_task per host; the machinery red
-              (a hosted Reset standing in for Carried must fail the D_task conjunct);
-              `migration_reading` -> "hosted" or "port"; the quantization sensitivity (the hosted pool
-              alone at frac_bits 12, 16, 24 through the same decoder, REPORT-ONLY, never filed in R-b7's
-              table) and the parity horizon (the hosted pool against the port over one gate recording at
-              frac_bits 4-32, REPORT-ONLY). Every later stage reads `use` from this summary.
+  migrate     (2.9) "call" jobs for the host parity fixtures and the hosted R-b3 (with its red) and the
+              pool-noise red (a red: not firing halts); the TUNED configuration x {carried, settled} x
+              {port, hosted} on the seed bundle's gate seeds (204-207, or the reserve's 208-211) and on
+              its synthetic gate seeds (5005-5008 / 5009-5012) regenerated at this head; R-b4 on the
+              hosted form = a fresh-process TWIN of every hosted cell (a pool difference fails the gate:
+              "port"; a learner difference halts); D_live and D_task per host; the machinery red (a hosted
+              Reset standing in for Carried must fail the D_task conjunct); `migration_reading` ->
+              "hosted" or "port"; the quantization sensitivity (the hosted pool alone at each
+              FRAC_BITS_SWEEP width through the same decoder, REPORT-ONLY, never filed in R-b7's table)
+              and the parity horizon (the hosted pool against the port over one gate recording at the
+              same widths, REPORT-ONLY). Every later stage reads `use` from this summary.
   causality   (2.10 R-b1) G1(a)'s R-a2 on the surviving host's Carried and Settled, both learners, three
               cuts, on seed 203; the (leak) red must change predictions at every cut; a failure halts.
   primary     (2.1, 2.3, 2.5) four forms x the live seeds on the surviving host; R-b4 twins (a second
@@ -58,9 +61,11 @@ REAL_SCALE = {  # what every stage runs at; only a test names another (disclosed
     "percepts": rp.R_B3_PERCEPTS,
     "kicks": 16,
 }
-QUANT_BITS = (12, 16, 24)  # 2.9: the quantization-sensitivity report's frac_bits (report only)
-PARITY_BITS = tuple(range(4, 33))  # 2.9: the parity horizon is reported for frac_bits 4-32
-# G1B 3.4: g1's per-seed D on 204-207, which the port's D here is reported against (2.9)
+# 2.9's "frac_bits 4-32": the six widths, defined ONCE and read by both the quantization-sensitivity
+# decoder jobs and the parity horizon (REPORT ONLY, never filed in R-b7's table); 12 is the binding
+FRAC_BITS_SWEEP = (4, 8, 12, 16, 24, 32)
+# G1B 3.4: g1's per-seed D on the historical G1(b) gate seeds 204-207, which the LIVE bundle's port D
+# here is reported against (2.9); never paired with the reserve's 208-211
 G1B_PER_SEED_D = (-0.0063, 0.0082, 0.0007, -0.0276)
 RP = "snn_data_lake.reservoir.recurrent_pool:"
 HERE = "snn_data_lake.instruments.carried_state_stages:"
@@ -86,6 +91,15 @@ def use_of(out):
     if use not in HOSTS:
         raise ps.Halt("migrate summary", f"use {use!r} is not a host")
     return use
+
+
+# The seed bundle of the campaign in `out`: the record summary's `seed_set` names it once, and migrate,
+# instrument and controls read their gate and R-b6 seeds from it (2.11)
+def bundle_of(out):
+    try:
+        return cs.seed_bundle(ps._summary(out, "record")["seed_set"])
+    except (KeyError, ValueError, OSError) as error:
+        raise ps.Halt("seed bundle", f"the record summary names no seed set: {error!r}") from error
 
 
 # ---- cells, tables and accuracies (one reader for every pool stage) --------------------------------
@@ -193,6 +207,58 @@ def mean_of(values):
     return statistics.fmean(values.values())
 
 
+# The per-segment diagnostic tables 2.3 requires of EVERY contrasted variant: pool_selection's own `_report`
+# of each cell (both learners' accuracy, entropy, coverage, prior-fallback rate, degeneracy, startup), as
+# {form: {str(seed): report}} over an OK table whose cell keys differ only by form and seed
+def variant_tables(table, seeds, forms, *, host, window, **named):
+    return {
+        form: {
+            str(seed): ps._report(table[key(form, seed, host=host, window=window, **named)])
+            for seed in seeds
+        }
+        for form in forms
+    }
+
+
+# R-b4's fresh-process TWINS, one machinery for the migration gate (on the hosted form) and the primary:
+# a second replay of Carried and Settled on every seed of `seeds`, held against the table's own first one
+# (pool_selection._twins_differ). A TIMEOUT, twins that ran in one process and a LEARNER difference halt
+# here (a shared-instrument failure, 2.9, 2.11); what a POOL difference means is the caller's: the primary
+# halts on it, the migration gate reads "port" (the hosted implementation is rejected).
+# Sites the duplicate-capability hook flagged on twin_rows (read; neither compares two replays):
+# distinct-from: sleep/structural_rewiring.py::StructuralRewiring -- the slow-clock structural pass over a substrate's rows, mutated in place; no replay
+# distinct-from: substrate/episodic_recall.py::_RowStore -- an append-only float32 row buffer with capacity doubling; no replay
+def twin_rows(folder, seeds, paths, table, host, window):
+    jobs, bound = {}, {}
+    for form in ps.FIT_FORMS:
+        spec = ps._spec(POOL, cs.TUNED, form, window=window, host=host)
+        for seed in seeds:
+            bound[(form, seed)] = ps._bound(seed, spec)
+            name = folder / f"twin-{form}-{seed}.json.gz"
+            jobs[(form, seed)] = ps._replay_job(paths[seed], "pool", name, pool=spec)
+    statuses = dict(zip(jobs, ps.run_jobs(list(jobs.values())), strict=True))
+    late = sorted(f"{form} {seed}" for (form, seed), s in statuses.items() if s["status"] != "OK")
+    if late:
+        raise ps.Halt("R-b4 TIMEOUT", late)
+    rows = {}
+    for (form, seed), job in jobs.items():
+        stream = md._load(paths[seed])
+        first = md._load(table[key(form, seed, host=host, window=window)]["job"]["out"])
+        second = ps._checked(job, stream, cell=bound[(form, seed)])
+        pool, learner = ps._twins_differ(first, second)
+        apart = first["execution_id"].split("-")[0] != second["execution_id"].split("-")[0]
+        rows[f"{form} {seed}"] = {
+            "pool_differs": pool,
+            "learner_differs": learner,
+            "executions": apart,
+        }
+    if not all(row["executions"] for row in rows.values()):
+        raise ps.Halt("R-b4", "the twins ran in one process")
+    if any(row["learner_differs"] for row in rows.values()):
+        raise ps.Halt("R-b4", rows)
+    return rows
+
+
 # ---- migrate (2.9) -------------------------------------------------------------------------------
 
 
@@ -256,7 +322,7 @@ def parity_horizon(stream, frac_bits, window=rp.WINDOW):
 
 
 def _gate_jobs(folder, sc):
-    """The four pool-only checks of 2.9 (i) and (iii), each a "call" job."""
+    """The four pool-only checks of 2.9 (i) and (iii) that are "call" jobs (R-b4's twins are replays)."""
     return {
         "parity": _call(RP + "check_host_parity", folder / "parity.json"),
         "r_b3": _call(
@@ -275,9 +341,9 @@ def _gate_jobs(folder, sc):
             window=sc["window"],
             percepts=sc["percepts"],
         ),
-        "r_b4": _call(
+        "r_b4_red": _call(  # R-b4's RED (the kicks must move the state), not its reproducibility green
             RP + "pool_noise_red",
-            folder / "r_b4.json",
+            folder / "r_b4-red.json",
             candidate=POOL,
             config=cs.TUNED,
             window=sc["window"],
@@ -358,8 +424,8 @@ def _quantization(quant, statuses, acc, gate, task, binding):
 
 def stage_migrate(out, *, scale=None):
     """The migration gate (2.9): hosted or port for every later stage; the quantization sensitivity beside it."""
-    sc = settings(scale)
-    window, gate, task = sc["window"], cs.GATE_SEEDS, cs.GATE_SYNTHETIC_SEEDS
+    sc, bundle = settings(scale), bundle_of(out)
+    window, gate, task = sc["window"], bundle.gate, bundle.gate_synthetic
     recorded = ps._recorded(out)
     absent = [seed for seed in gate if recorded.get(seed) != "OK"]
     if absent:
@@ -370,7 +436,7 @@ def stage_migrate(out, *, scale=None):
         **ps._synthetic(ps._folder(out, "migrate/synthetic"), task),  # regenerated at this head
     }
     binding = rp.KernelLsmPool.lineage_policy(cs.TUNED)["frac_bits"]
-    bits = sorted({binding, *QUANT_BITS})
+    bits = sorted({binding, *FRAC_BITS_SWEEP})
     checks = _gate_jobs(folder, sc)
     quant = _quantization_jobs(folder, paths, (*gate, *task), bits, sc)
     horizon = {
@@ -381,7 +447,7 @@ def stage_migrate(out, *, scale=None):
             frac_bits=b,
             window=window,
         )
-        for b in PARITY_BITS
+        for b in FRAC_BITS_SWEEP
     }
     batch = [
         *checks.values(),
@@ -393,10 +459,12 @@ def stage_migrate(out, *, scale=None):
         name: md._load(job["out"]) if statuses[job["out"]]["status"] == "OK" else None
         for name, job in checks.items()
     }
-    if found["r_b3_red"] is None or not found["r_b3_red"]["verdict"]:  # a red that does not fire
-        raise ps.Halt(
-            "a red that does not fire", {"hosted R-b3 float-accumulation red": found["r_b3_red"]}
-        )
+    for name, label in (
+        ("r_b3_red", "hosted R-b3 float-accumulation red"),
+        ("r_b4_red", "hosted R-b4 pool-noise red"),
+    ):  # a red that does not fire halts (2.11); R-b4's reproducibility green is the twins' below
+        if found[name] is None or not found[name]["verdict"]:
+            raise ps.Halt("a red that does not fire", {label: found[name]})
     tables = {}
     for host in HOSTS:
         tables[host] = pool_table(
@@ -410,6 +478,10 @@ def stage_migrate(out, *, scale=None):
             task=task,
         )
         need_ok(tables[host], f"migrate: {host} replays")
+    # R-b4 on the HOSTED form: a fresh-process twin of every hosted cell, compared as the primary's are
+    twins = twin_rows(
+        ps._folder(out, "migrate/twin"), gate, paths, tables["kernel"], "kernel", window
+    )
     reset = [
         pool_cell(
             paths[seed],
@@ -441,7 +513,7 @@ def stage_migrate(out, *, scale=None):
     )
     parity_ok = bool(found["parity"] and found["parity"]["verdict"])
     r_b3_ok = bool(found["r_b3"] and found["r_b3"]["verdict"])
-    r_b4_ok = bool(found["r_b4"] and found["r_b4"]["verdict"])
+    r_b4_ok = not any(row["pool_differs"] for row in twins.values())  # a learner difference halted
     reading = cs.migration_reading(
         parity_ok,
         mean["kernel"]["live"],
@@ -467,10 +539,12 @@ def stage_migrate(out, *, scale=None):
     if not (red_fires and isolated == "port" and control == "hosted"):
         raise ps.Halt("a red that does not fire", {"migration gate machinery red": red})
     port = [d["port"]["live"]["readout"][str(seed)] for seed in gate]
+    paired = tuple(gate) == cs.GATE_SEEDS  # only the live bundle's gate seeds ARE G1(b)'s 204-207
     return {
         "window": window,
         "scale": sc,
         "shortened": sc != REAL_SCALE,
+        "seed_set": bundle.which,
         "reading": reading,
         "use": "kernel" if reading == "hosted" else "port",
         "conjuncts": {
@@ -480,6 +554,7 @@ def stage_migrate(out, *, scale=None):
             "r_b3": r_b3_ok,
             "r_b4": r_b4_ok,
         },
+        "r_b4_twins": twins,
         "mean": mean,
         "d": d,
         "accuracy": acc,
@@ -493,11 +568,15 @@ def stage_migrate(out, *, scale=None):
                 for b, job in horizon.items()
             },
         },
-        "port_vs_g1b": {
+        "port_vs_g1b": {  # G1(b)'s 204-207 numbers, labelled; paired only with the same seeds (2.9, 2.11)
             "seeds": list(gate),
             "port": port,
+            "g1b_seeds": list(cs.GATE_SEEDS),
             "g1b": list(G1B_PER_SEED_D),
-            "difference": [a - b for a, b in zip(port, G1B_PER_SEED_D, strict=True)],
+            "paired": paired,
+            "difference": [a - b for a, b in zip(port, G1B_PER_SEED_D, strict=True)]
+            if paired
+            else None,
         },
     }
 
@@ -552,39 +631,6 @@ def stage_causality(out, *, scale=None):
 # ---- primary (2.1, 2.3, 2.5) ---------------------------------------------------------------------
 
 
-def _twin_rows(folder, live, paths, table, host, window):
-    """R-b4: a second fresh-process replay of Carried and Settled on every seed, held against the
-    primary's own; a difference in the pool or a learner, or twins in one process, halts."""
-    jobs, bound = {}, {}
-    for form in ps.FIT_FORMS:
-        spec = ps._spec(POOL, cs.TUNED, form, window=window, host=host)
-        for seed in live:
-            bound[(form, seed)] = ps._bound(seed, spec)
-            name = folder / f"twin-{form}-{seed}.json.gz"
-            jobs[(form, seed)] = ps._replay_job(paths[seed], "pool", name, pool=spec)
-    statuses = dict(zip(jobs, ps.run_jobs(list(jobs.values())), strict=True))
-    late = sorted(f"{form} {seed}" for (form, seed), s in statuses.items() if s["status"] != "OK")
-    if late:
-        raise ps.Halt("R-b4 TIMEOUT", late)
-    rows = {}
-    for (form, seed), job in jobs.items():
-        stream = md._load(paths[seed])
-        first = md._load(table[key(form, seed, host=host, window=window)]["job"]["out"])
-        second = ps._checked(job, stream, cell=bound[(form, seed)])
-        pool, learner = ps._twins_differ(first, second)
-        apart = first["execution_id"].split("-")[0] != second["execution_id"].split("-")[0]
-        rows[f"{form} {seed}"] = {
-            "pool_differs": pool,
-            "learner_differs": learner,
-            "executions": apart,
-        }
-    if not all(row["executions"] for row in rows.values()):
-        raise ps.Halt("R-b4", "the twins ran in one process")
-    if any(row["pool_differs"] or row["learner_differs"] for row in rows.values()):
-        raise ps.Halt("R-b4", rows)
-    return rows
-
-
 def _noise_red(out, folder, host, window):
     """R-b4's pool-noise red on seed 100: a replay with unseeded kicks must move the state chain and phi
     of an otherwise identical plain Carried replay (pool_selection.noise_red_fires)."""
@@ -618,7 +664,9 @@ def stage_primary(out, *, scale=None):
     paths = {seed: ps._recording(out, seed) for seed in live}
     table = pool_table(out, folder, live, rp.FORMS, paths, host=host, window=window)
     need_ok(table, "primary")
-    twins = _twin_rows(folder, live, paths, table, host, window)
+    twins = twin_rows(folder, live, paths, table, host, window)
+    if any(row["pool_differs"] for row in twins.values()):  # the primary halts on a pool difference
+        raise ps.Halt("R-b4", twins)
     noise = _noise_red(out, folder, host, window)
     streams = ps._streams(paths)
     acc = accuracies(table, live, rp.FORMS, host=host, window=window)
@@ -670,7 +718,10 @@ def self_check():
         pass
     else:
         raise AssertionError("an unknown scale key was accepted")
-    assert len(G1B_PER_SEED_D) == len(cs.GATE_SEEDS) and 12 in QUANT_BITS
+    assert len(G1B_PER_SEED_D) == len(cs.GATE_SEEDS)
+    # 2.9's six widths, defined once; the lineage's binding is one of them (the agreement instrument's)
+    assert FRAC_BITS_SWEEP == (4, 8, 12, 16, 24, 32)
+    assert rp.KernelLsmPool.lineage_policy(cs.TUNED)["frac_bits"] in FRAC_BITS_SWEEP
     # the key is pool_selection's: a hosted cell differs from the port's, a window from the default
     port = key("carried", 7, host="port", window=rp.WINDOW)
     kernel = key("carried", 7, host="kernel", window=rp.WINDOW)

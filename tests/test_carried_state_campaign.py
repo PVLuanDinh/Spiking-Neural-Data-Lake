@@ -70,6 +70,37 @@ def test_live_reserve_and_exposed_are_pairwise_disjoint():
     assert set(ccc.GATE_SYNTHETIC_SEEDS) <= ccc.EXPOSED_SEEDS
 
 
+def test_each_seed_set_names_one_complete_bundle_and_the_reserve_repeats_none_of_the_live_one():
+    """P5 panel F2 (2.11, 2.12): live = 300-330 + gate 204-207 + 5005-5008 + R-b6 6000; reserve =
+    331-361 + gate 208-211 + 5009-5012 + R-b6 6001. One definition, read by every stage."""
+    live, reserve = ccc.seed_bundle("live"), ccc.seed_bundle("reserve")
+    assert live == ("live", ccc.LIVE_SEEDS, (204, 205, 206, 207), (5005, 5006, 5007, 5008), 6000)
+    assert reserve == (
+        "reserve",
+        ccc.RESERVE_SEEDS,
+        (208, 209, 210, 211),
+        (5009, 5010, 5011, 5012),
+        6001,
+    )
+    assert (
+        ccc.GATE_RESERVE_SEEDS == reserve.gate
+        and ccc.GATE_SYNTHETIC_RESERVE_SEEDS == reserve.gate_synthetic
+    )
+    assert set(ccc.SEED_BUNDLES) == {"live", "reserve"}
+    for part in ("live", "gate", "gate_synthetic"):
+        assert not set(getattr(live, part)) & set(getattr(reserve, part)), part
+    assert live.rb6 != reserve.rb6 and {live.rb6, reserve.rb6} == {
+        ccc.RB6_SEED,
+        ccc.RB6_RESERVE_SEED,
+    }
+    # the gate seeds are exposed ones, read only by the gate; the live sets are never exposed
+    assert set(reserve.gate) | set(reserve.gate_synthetic) <= ccc.EXPOSED_SEEDS
+    assert not set(reserve.live) & ccc.EXPOSED_SEEDS and not set(live.live) & ccc.EXPOSED_SEEDS
+    for which in ("other", "", None):
+        with pytest.raises(ValueError, match="neither live nor reserve"):
+            ccc.seed_bundle(which)
+
+
 def test_the_tuned_configuration_is_the_text_and_lies_in_the_grid():
     assert ccc.TUNED == {"k": 8, "w": 0.25, "lambda": 0.9, "g": 4, "T_in": 1}
     assert rp.canonical("lsm", ccc.TUNED) == ccc.TUNED

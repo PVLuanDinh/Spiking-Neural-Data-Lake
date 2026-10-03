@@ -64,6 +64,20 @@ def cells():
     }
 
 
+def fit_cells():
+    """The cells of Carried and Settled alone, the variants a control or a transport arm replays."""
+    return {form: seeds for form, seeds in cells().items() if form in ps.FIT_FORMS}
+
+
+BUNDLE = {
+    "which": "live",
+    "live": list(cs.LIVE_SEEDS),
+    "gate": list(cs.GATE_SEEDS),
+    "gate_synthetic": list(cs.GATE_SYNTHETIC_SEEDS),
+    "rb6": cs.RB6_SEED,
+}
+
+
 def references(oracle_gain, history_gain):
     table = {
         learner: {
@@ -83,6 +97,19 @@ def references(oracle_gain, history_gain):
     return stamped(
         {
             "accuracy": table,
+            "references": {  # each arm's per-seed diagnostic table, as ps._reference files it
+                arm: {
+                    "per_seed": {
+                        seed: {
+                            "status": "OK",
+                            "readout": {"unseen-order": segment(0.5)},
+                            "grower": {},
+                        }
+                        for seed in SEEDS
+                    }
+                }
+                for arm in ("a", "f64", "e1", "e1-0")
+            },
             "oracle": ps._plain(cs.oracle_check(ints["readout"], ints["grower"])),
             "stream_history": {
                 learner: ps._plain(
@@ -118,11 +145,12 @@ def summaries(
         arm: {
             "d": {"readout": per_seed(0.02 * k, OTHER)},
             "records": {seed: {"transport": {"form": arm}, "encoder": 7} for seed in SEEDS},
+            "cells": fit_cells(),
         }
         for k, arm in enumerate(md.TRANSPORT_ARMS)
     }
     body = {
-        "record": stamped(live_seeds=list(cs.LIVE_SEEDS), seed_set="live"),
+        "record": stamped(live_seeds=list(cs.LIVE_SEEDS), seed_set="live", bundle=BUNDLE),
         "mechanism": stamped(refused={}, configuration={"verdicts": {"R-b3": True}}),
         "instrument": stamped(
             rb6_ok=rb6_ok, rb6_clauses={"positive": rb6_ok, "history_free": True}
@@ -162,6 +190,11 @@ def summaries(
                 "d0": {"readout": per_seed(0.03), "grower": per_seed(0.0, OTHER)},
                 "w": {"readout": per_seed(-0.02, OTHER), "grower": per_seed(0.0)},
                 "scored_rows_through_boundary": {seed: 0 for seed in SEEDS},
+                "cells": fit_cells(),
+            },
+            cells={
+                "shuffle": {str(k): fit_cells() for k in range(cs.SHUFFLE_K)},
+                "window0": fit_cells(),
             },
         ),
         "transport": stamped(
@@ -170,7 +203,32 @@ def summaries(
             arms=arms,
             forbidden_request={"raised": True},
         ),
-        "separation": stamped(run=True, item_3="RUN", reason=None, reading={"stream_ok": True}),
+        "separation": stamped(
+            run=True,
+            item_3="RUN",
+            reason=None,
+            reading={"stream_ok": True},
+            host=host,
+            window=256,
+            stream_checks={seed: True for seed in SEEDS},
+            accuracy={
+                name: {arm: per_seed(0.8) for arm in ("a", *ps.FIT_FORMS)}
+                for name in ("xor", "twin")
+            },
+            mean={name: {arm: 0.8 for arm in ("a", *ps.FIT_FORMS)} for name in ("xor", "twin")},
+            per_text={
+                name: {
+                    arm: {seed: {"00": 0.5, "01": None} for seed in SEEDS}
+                    for arm in ("a", *ps.FIT_FORMS)
+                }
+                for name in ("xor", "twin")
+            },
+            distinct_settled_rows={name: {seed: 4 for seed in SEEDS} for name in ("xor", "twin")},
+            cells={
+                name: {arm: cells()["carried"] for arm in ("a", *ps.FIT_FORMS)}
+                for name in ("xor", "twin")
+            },
+        ),
     }
     return body
 
@@ -344,6 +402,63 @@ def test_the_markdown_carries_the_reading_every_row_and_the_per_segment_tables()
     assert "SHORTENED" in rep.render(rep.assemble(shortened))
 
 
+def test_the_report_keeps_every_contrasted_variants_tables_and_the_separation_measurements():
+    """P5 panel F9: tables for the references, the shuffle, window 0 and every transport arm beside
+    the
+    primary's; the separation's accuracy, per-text accuracy and distinct Settled rows pass
+    through."""
+    report = rep.assemble(summaries())
+    tables = report["tables"]
+    assert set(tables) == {
+        "cells",
+        "input_response",
+        "references",
+        "shuffle",
+        "window0",
+        "transport",
+        "separation",
+    }
+    assert set(tables["references"]) == {"a", "f64", "e1", "e1-0"}
+    assert set(tables["shuffle"]) == {str(k) for k in range(cs.SHUFFLE_K)}
+    assert set(tables["window0"]) == set(ps.FIT_FORMS)
+    assert set(tables["transport"]) == set(md.TRANSPORT_ARMS)
+    assert set(tables["separation"]) == {"xor", "twin"}
+    sep, saved = report["separation"], summaries()["separation"]
+    assert set(rep.SEPARATION_KEYS) == set(sep)
+    for key in ("accuracy", "mean", "per_text", "distinct_settled_rows", "stream_checks"):
+        assert sep[key] == saved[key], key
+    assert report["seed_bundle"] == BUNDLE
+    text = rep.render(report)
+    for needle in (
+        "seed bundle: ",
+        "## Reference arm (a): accuracy",
+        "## Reference arm (e1-0): accuracy",
+        "## carried, within-block shuffle 3: accuracy",
+        "## settled at window 0: accuracy",
+        "## carried through pool-swap: accuracy",
+        "## Separation xor, arm settled: accuracy",
+        "## Separation measurements (decoder accuracy)",
+        "00:0.50 01:-",  # a per-text accuracy
+    ):
+        assert needle in text, needle
+    # a summary missing one of the new tables is refused, never filled in
+    for stage, drop in (("controls", "cells"), ("references", "references"), ("record", "bundle")):
+        thin = summaries()
+        del thin[stage][drop]
+        with pytest.raises(ValueError, match="lacks what the report reads"):
+            rep.assemble(thin)
+    thin = summaries()
+    del thin["transport"]["arms"]["pool-act"]["cells"]
+    with pytest.raises(ValueError, match="lacks what the report reads"):
+        rep.assemble(thin)
+    # a separation that was NOT RUN leaves the report with no separation table, and says so
+    unrun = summaries()
+    unrun["separation"] = stamped(run=False, item_3="NOT RUN", reason="a clause failed")
+    report = rep.assemble(unrun)
+    assert report["tables"]["separation"] is None and report["separation"]["run"] is False
+    assert "## Separation measurements" not in rep.render(report)
+
+
 def test_the_report_stage_writes_both_files_and_files_the_digest(tmp_path):
     out = tmp_path / "out"
     out.mkdir()
@@ -406,6 +521,7 @@ def test_the_golden_is_deterministic_and_covers_every_arm_form_and_host(golden_p
     for host in st.HOSTS:
         assert set(base["replays"][host]) == {
             *(f"pool {form}" for form in rp.FORMS),
+            *(f"pool {form}@0" for form in ps.FIT_FORMS),  # window 0 (P5 panel F4)
             *(f"{arm} {form}" for arm in md.TRANSPORT_ARMS for form in ("carried", "settled")),
         }
         assert len(base["hand"][host]) == len(base["r_b3"][host]) == 64
@@ -432,11 +548,42 @@ def test_a_one_ulp_change_to_the_pools_leak_moves_the_golden_on_each_host(golden
     assert nudged["hand"][host] != base["hand"][host]
     assert nudged["r_b3"][host] != base["r_b3"][host]
     moved = [n for n, found in nudged["replays"][host].items() if found != base["replays"][host][n]]
-    assert len(moved) == 10, (
-        moved
-    )  # every pool replay: pool x four forms and every transport arm x two
+    # every pool replay: pool x four forms, Carried and Settled at window 0, each arm x two
+    assert len(moved) == 12, moved
     assert rp.LsmPool.__init__.__name__ == "__init__"  # restored on exit
     assert rep.golden(hosts=(host,))["hand"][host] == base["hand"][host]
+
+
+def test_a_fault_in_the_window_zero_intervention_alone_moves_the_golden(golden_pair):
+    """P5 panel F4: the golden used to replay the pool only at window 16, so a pool whose features
+    were
+    zeroed at window 0 -- the registered Settled@0 intervention -- left every golden digest
+    equal."""
+    import numpy as np
+
+    base, _ = golden_pair
+    assert {"pool carried@0", "pool settled@0"} <= set(base["replays"]["port"])
+    original = rp._Pool.percept_drive
+
+    def broken(self, u):
+        if self.window == 0:  # zero features only for the window-0 intervention
+            self.count += 1
+            return np.zeros(self.n)
+        return original(self, u)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(rp._Pool, "percept_drive", broken)
+        faulty = rep.golden(hosts=("port",))
+    moved = sorted(
+        name
+        for name, found in faulty["replays"]["port"].items()
+        if found != base["replays"]["port"][name]
+    )
+    assert moved == ["pool carried@0", "pool settled@0"]  # exactly the window-0 records, no other
+    assert faulty["digest"] != base["digest"]
+    for part in ("hand", "r_b3"):  # the other golden parts stay as they were: the red is specific
+        assert faulty[part]["port"] == base[part]["port"]
+    assert faulty["arms"] == base["arms"]
 
 
 def test_the_leak_red_moves_the_leak_by_exactly_one_ulp_of_the_hosts_arithmetic():
@@ -522,5 +669,5 @@ def test_the_module_self_check_runs(capsys):
     out = capsys.readouterr().out
     assert (
         "carried_state_report self-check OK" in out
-        and "a one-ulp leak moved port in 12 records" in out
+        and "a one-ulp leak moved port in 14 records" in out
     )

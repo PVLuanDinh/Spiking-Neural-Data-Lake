@@ -131,6 +131,24 @@ def base_out(out, *, construct=True):
     )
 
 
+SEPARATION_EVENTS = (
+    120  # the G2(ii) stream, shortened: 60 events leave arm (a) under the twin floor
+)
+
+
+def short_stream(seed, labelling):
+    return im._build_stream(seed, labelling, n_events=SEPARATION_EVENTS)
+
+
+def shorten_separation(patch):
+    """The disclosed shortening of the separation world: a 24-event warm-up, and the structural
+    stream
+    checks (which the stage now ENFORCES) told the shortened length, so a clean stream still passes
+    them."""
+    patch.setattr(im, "STREAM_WARM_UP", 24)
+    patch.setattr(im, "STREAM_EVENTS", SEPARATION_EVENTS)
+
+
 @contextlib.contextmanager
 def shortened(children=None):
     """The disclosed shortening of the world: R-b6's family and the synthetic gate streams at 300
@@ -162,12 +180,9 @@ def world(tmp_path_factory):
             codes[name], _ = run(out, name)
         codes["controls"], _ = run(out, "controls", rb6_seed=RB6)
         codes["transport"], _ = run(out, "transport")
-        short = functools.partial(im._build_stream, n_events=60)
         with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(im, "STREAM_WARM_UP", 24)
-            codes["separation"], _ = run(
-                out, "separation", build=lambda seed, lab: short(seed, lab)
-            )
+            shorten_separation(patch)
+            codes["separation"], _ = run(out, "separation", build=short_stream)
     return out, codes
 
 
@@ -291,8 +306,21 @@ def test_migrate_reads_the_gate_on_both_hosts_and_files_the_quantization_beside_
         body["machinery_red"]["D_task_reset"], body["machinery_red"]["D_task_port"]
     )
     # the gate's four checks ran as "call" jobs and every one holds
-    assert all(body["checks"][name]["verdict"] for name in ("parity", "r_b3", "r_b3_red", "r_b4"))
+    names = ("parity", "r_b3", "r_b3_red", "r_b4_red")
+    assert all(body["checks"][name]["verdict"] for name in names)
     assert body["checks"]["r_b3"]["numbers"]["host"] == "kernel"
+    # R-b4 on the hosted form is a fresh-process TWIN of every hosted cell (P5 panel F7), beside
+    # the red
+    twins = body["r_b4_twins"]
+    assert set(twins) == {f"{form} {seed}" for form in ps.FIT_FORMS for seed in cs.GATE_SEEDS}
+    assert all(
+        row == {"pool_differs": False, "learner_differs": False, "executions": True}
+        for row in twins.values()
+    )
+    assert (
+        body["seed_set"] == "live"
+        and (out / "migrate" / "twin" / "twin-carried-204.json.gz").is_file()
+    )
     # the replays: TUNED x {carried, settled} x {port, hosted} on 204-207 and 5005-5008
     for host in st.HOSTS:
         for where, seeds in (("live", cs.GATE_SEEDS), ("task", cs.GATE_SYNTHETIC_SEEDS)):
@@ -313,6 +341,7 @@ def test_migrate_reads_the_gate_on_both_hosts_and_files_the_quantization_beside_
     assert "host" not in md._load(out / "migrate" / "port" / "lsm-00-carried-204.json.gz")["pool"]
     # the port's per-seed D beside G1(b)'s four numbers
     versus = body["port_vs_g1b"]
+    assert versus["paired"] is True and versus["g1b_seeds"] == [204, 205, 206, 207]
     assert versus["seeds"] == [204, 205, 206, 207] and versus["g1b"] == [
         -0.0063,
         0.0082,
@@ -331,7 +360,10 @@ def test_the_quantization_sensitivity_is_report_only_and_its_instrument_agrees_a
     quant = summary(out, "migrate")["quantization"]
     binding = rp.KernelLsmPool.lineage_policy(cs.TUNED)["frac_bits"]
     assert quant["report_only"] and quant["binding_frac_bits"] == binding == 12
-    assert set(quant["rows"]) == {"12", "16", "24"} and all(
+    # the six widths of 2.9's "frac_bits 4-32" (P5 panel F8), the same tuple the parity horizon
+    # reads
+    assert st.FRAC_BITS_SWEEP == (4, 8, 12, 16, 24, 32)
+    assert set(quant["rows"]) == {str(b) for b in st.FRAC_BITS_SWEEP} and all(
         row["complete"] for row in quant["rows"].values()
     )
     assert quant["table_agreement"] == {"live": True, "task": True}
@@ -354,11 +386,12 @@ def test_the_quantization_sensitivity_is_report_only_and_its_instrument_agrees_a
     )  # a binding R-b7 still holds
 
 
-def test_the_parity_horizon_is_reported_for_frac_bits_4_to_32_and_never_decides(world):
+def test_the_parity_horizon_is_reported_at_the_one_sweeps_widths_and_never_decides(world):
     out, _ = world
     body = summary(out, "migrate")
     horizon = body["parity_horizon"]
-    assert horizon["report_only"] and set(horizon["rows"]) == {str(b) for b in range(4, 33)}
+    assert horizon["report_only"] and set(horizon["rows"]) == {str(b) for b in st.FRAC_BITS_SWEEP}
+    assert set(horizon["rows"]) == set(body["quantization"]["rows"])  # one tuple, two readers
     rows = {int(bits): row for bits, row in horizon["rows"].items()}
     assert all(row["ticks"] == 48 and row["frac_bits"] == bits for bits, row in rows.items())
     assert (
@@ -387,22 +420,60 @@ def migrate_of(world, tmp_path, children, *, patch=None):
         world, tmp_path, "migrate", "causality", "primary", "controls", "transport", "separation"
     )
     with shortened(children) as monkeypatch:
-        monkeypatch.setattr(st, "PARITY_BITS", ())  # the horizon is report-only: the reds skip it
-        monkeypatch.setattr(
-            st, "QUANT_BITS", ()
-        )  # the binding alone: the reds below do not need 16 and 24
+        # the sweep is report-only, and the one tuple both its readers use: the reds skip it, the
+        # binding width alone stays (the quantization instrument's agreement)
+        monkeypatch.setattr(st, "FRAC_BITS_SWEEP", ())
         if patch:
             patch(monkeypatch)
         return call(functools.partial(st.stage_migrate, scale=SCALE), out), out
 
 
-@pytest.mark.parametrize("name", ["check_host_parity", "check_r_b3", "pool_noise_red"])
+@pytest.mark.parametrize("name", ["check_host_parity", "check_r_b3"])
 def test_a_failed_gate_conjunct_reads_port_and_the_stage_still_completes(world, tmp_path, name):
     held = {"verdict": False, "numbers": {}}
     body, _ = migrate_of(world, tmp_path, Children(overrides={name: held}))
     assert isinstance(body, dict) and body["reading"] == "port" and body["use"] == "port"
-    key = {"check_host_parity": "parity", "check_r_b3": "r_b3", "pool_noise_red": "r_b4"}[name]
+    key = {"check_host_parity": "parity", "check_r_b3": "r_b3"}[name]
     assert body["conjuncts"][key] is False and sum(not v for v in body["conjuncts"].values()) == 1
+
+
+def test_a_hosted_twin_that_differs_in_the_pool_fails_the_gate_and_in_a_learner_halts(
+    world, tmp_path
+):
+    """P5 panel F7: R-b4 on the hosted form is the fresh-process TWIN comparison, as the primary's
+    is."""
+    pool_only = lambda m: m.setattr(ps, "_twins_differ", lambda a, b: (True, False))  # noqa: E731
+    body, _ = migrate_of(world, tmp_path, Children(), patch=pool_only)
+    assert isinstance(body, dict) and body["reading"] == "port" and body["use"] == "port"
+    assert (
+        body["conjuncts"]["r_b4"] is False and sum(not v for v in body["conjuncts"].values()) == 1
+    )
+    assert all(row["pool_differs"] for row in body["r_b4_twins"].values())
+    # a learner-state difference is a shared-instrument failure (2.9, 2.11): it halts, never reads
+    # "port"
+    learner = lambda m: m.setattr(ps, "_twins_differ", lambda a, b: (False, True))  # noqa: E731
+    halt, _ = migrate_of(world, tmp_path / "learner", Children(), patch=learner)
+    assert isinstance(halt, ps.Halt) and halt.check == "R-b4"
+    assert all(row["learner_differs"] for row in halt.detail.values())
+    # twins in one process, and a timed-out twin, halt as the primary's do
+    halt, _ = migrate_of(world, tmp_path / "one", Children(patch_pid=False))
+    assert isinstance(halt, ps.Halt) and halt.check == "R-b4"
+    twin = lambda spec: "twin-" in spec["out"]  # noqa: E731
+    halt, _ = migrate_of(world, tmp_path / "late", Children(timeouts=twin))
+    assert isinstance(halt, ps.Halt) and halt.check == "R-b4 TIMEOUT" and len(halt.detail) == 8
+
+
+def test_a_pool_noise_red_that_does_not_fire_halts_the_migration_it_is_no_conjunct(world, tmp_path):
+    """The red stays a separate requirement (P5 panel F7): it halts when it fires on nothing, and
+    the
+    verdict of a hosted pool whose ordinary twins agree does not depend on it."""
+    blind = {"verdict": False, "numbers": {}}
+    halt, _ = migrate_of(world, tmp_path, Children(overrides={"pool_noise_red": blind}))
+    assert isinstance(halt, ps.Halt) and halt.check == "a red that does not fire"
+    assert "hosted R-b4 pool-noise red" in halt.detail
+    gone = lambda spec: spec["kind"] == "call" and spec["target"].endswith("pool_noise_red")  # noqa: E731
+    halt, _ = migrate_of(world, tmp_path / "gone", Children(timeouts=gone))
+    assert isinstance(halt, ps.Halt) and halt.check == "a red that does not fire"
 
 
 def test_a_gate_check_that_times_out_reads_port_and_a_blind_red_halts(world, tmp_path):
@@ -458,6 +529,47 @@ def test_a_hosted_replay_that_times_out_halts_and_so_does_a_missing_gate_recordi
     with shortened():
         halt = call(functools.partial(st.stage_migrate, scale=SCALE), out)
     assert halt.check == "migrate" and halt.detail == {"gate recordings not OK": [205]}
+
+
+def test_the_reserve_campaign_migrates_on_the_reserve_gate_seeds_and_pairs_nothing_with_g1b(
+    world, tmp_path
+):
+    """P5 panel F2: the record's seed set picks ONE complete bundle; reserve = gate 208-211 and
+    synthetic 5009-5012, and G1(b)'s 204-207 numbers stay labelled, never paired with them."""
+    out = copy_of(
+        world, tmp_path, "migrate", "causality", "primary", "controls", "transport", "separation"
+    )
+    record = summary(out, "record")
+    record["seed_set"] = "reserve"
+    record["recordings"].update({str(s): {"status": "OK"} for s in cs.GATE_RESERVE_SEEDS})
+    md._save(ps._summary_path(out, "record"), record)
+    for seed in cs.GATE_RESERVE_SEEDS:
+        md._save(ps._recording(out, seed), fixture(seed))
+    with shortened() as monkeypatch:
+        monkeypatch.setattr(st, "FRAC_BITS_SWEEP", ())
+        body = call(functools.partial(st.stage_migrate, scale=SCALE), out)
+    assert isinstance(body, dict) and body["seed_set"] == "reserve"
+    for where, seeds in (
+        ("live", cs.GATE_RESERVE_SEEDS),
+        ("task", cs.GATE_SYNTHETIC_RESERVE_SEEDS),
+    ):
+        assert set(body["accuracy"]["kernel"][where]["readout"]["carried"]) == {
+            str(s) for s in seeds
+        }
+    assert set(body["r_b4_twins"]) == {
+        f"{form} {seed}" for form in ps.FIT_FORMS for seed in cs.GATE_RESERVE_SEEDS
+    }
+    versus = body["port_vs_g1b"]
+    assert versus["seeds"] == [208, 209, 210, 211] and versus["g1b_seeds"] == [204, 205, 206, 207]
+    assert versus["paired"] is False and versus["difference"] is None
+    assert versus["g1b"] == list(st.G1B_PER_SEED_D) and len(versus["port"]) == 4
+    assert (out / "migrate" / "synthetic" / "task-5009-stream.json.gz").is_file()
+    # a record that names no seed set cannot choose a bundle: a halt, never a silent live default
+    del record["seed_set"]
+    md._save(ps._summary_path(out, "record"), record)
+    with shortened():
+        halt = call(functools.partial(st.stage_migrate, scale=SCALE), out)
+    assert isinstance(halt, ps.Halt) and halt.check == "seed bundle"
 
 
 def test_a_quantization_instrument_that_disagrees_with_the_hosted_table_halts(world, tmp_path):
@@ -930,22 +1042,55 @@ def test_a_blind_control_reads_as_not_sighted_and_the_stage_still_completes(worl
     assert aa["sighted"] is False and aa["halves"]["pool_free"] is False
 
 
-def test_settled_invariance_and_its_carried_red_each_decide_sighted(world, tmp_path):
-    held = {
+def carried_check_returns(found):
+    """A patch for `controls_of`: Settled's K invariance checks run for real (they come first), and
+    every
+    CARRIED one (the red) returns `found`."""
+    real, calls = cs.settled_invariance, []
+
+    def patch(monkeypatch, out):
+        def invariance(plain_run, shuffled_run, stream, **kwargs):
+            calls.append(1)
+            result = real(plain_run, shuffled_run, stream, **kwargs)
+            return result if len(calls) <= cs.SHUFFLE_K else found
+
+        monkeypatch.setattr(cs, "settled_invariance", invariance)
+
+    return patch
+
+
+def test_a_carried_red_that_does_not_fire_halts_the_controls_and_a_vacuous_one_is_not_a_fire(
+    world, tmp_path
+):
+    """P5 panel F3: the red fires only on a nonempty tested block set with an actual multiset
+    difference; equal multisets with an identical sequence, an empty set and a held invariance do
+    not, and a red that does not fire HALTS (2.11), it no longer reads `sighted: False`."""
+    vacuous = {  # the panel's reproduction: nothing moved, so `ok` is False and the old red "fired"
+        "ok": False,
+        "per_block": [{"multiset_equal": True, "sequence_differs": False, "n": 8}],
+        "excluded": 1,
+    }
+    empty = {"ok": False, "per_block": [], "excluded": 1}  # no block tested at all
+    held = {  # Carried's invariance HOLDS: history did not reach phi, the red is blind
         "ok": True,
         "per_block": [{"multiset_equal": True, "sequence_differs": True}],
         "excluded": 0,
     }
-    never = controls_of(
-        world,
-        tmp_path,
-        patch=lambda m, out: m.setattr(cs, "settled_invariance", lambda *a, **k: held),
-    )
-    assert (
-        never["halves"]["settled_invariance"]
-        and not never["halves"]["carried_red"]
-        and never["sighted"] is False
-    )
+    for name, found in (("vacuous", vacuous), ("empty", empty), ("held", held)):
+        halt = controls_of(world, tmp_path / name, patch=carried_check_returns(found))
+        assert isinstance(halt, ps.Halt) and halt.check == "a red that does not fire", name
+        assert "Settled invariance, Carried red" in halt.detail
+    assert not ctl.history_reaches_phi(vacuous) and not ctl.history_reaches_phi(empty)
+    assert not ctl.history_reaches_phi(held)
+    moved = {"per_block": [{"multiset_equal": True}, {"multiset_equal": False}]}
+    assert ctl.history_reaches_phi(moved)  # one block whose multiset differs is the red firing
+    # the control: the real Carried red fires on the stand-in world and the stage completes
+    assert controls_of(world, tmp_path / "real")["halves"]["carried_red"] is True
+
+
+def test_settled_invariance_failing_is_a_reading_and_the_blind_controls_stay_readings(
+    world, tmp_path
+):
     broken = {
         "ok": False,
         "per_block": [{"multiset_equal": False, "sequence_differs": True}],
@@ -1026,6 +1171,39 @@ def test_a_control_on_another_rb6_seed_than_the_instruments_halts(world, tmp_pat
     with shortened():
         halt = call(functools.partial(ctl.stage_controls, scale=SCALE, rb6_seed=4244), out)
     assert halt.check == "controls" and "4243" in halt.detail
+
+
+@pytest.mark.parametrize(("seed_set", "rb6"), [("live", 6000), ("reserve", 6001)])
+def test_the_controls_default_to_the_seed_bundles_rb6_seed_and_never_run_it_here(
+    world, tmp_path, seed_set, rb6
+):
+    """P5 panel F2: `rb6_seed` defaults to the record's bundle (6000 live, 6001 reserve). Stand-ins
+    only:
+    the pool control is replaced by a spy that stops the stage, so neither seed is ever run."""
+    out = copy_of(world, tmp_path, "controls", "transport", "separation")
+    record = summary(out, "record")
+    md._save(ps._summary_path(out, "record"), {**record, "seed_set": seed_set})
+    instrument = summary(out, "instrument")
+    md._save(ps._summary_path(out, "instrument"), {**instrument, "rb6_seed": rb6})
+    asked = []
+
+    class Stop(Exception):
+        pass
+
+    def spy(out_, folder, host, window, seed):
+        asked.append(seed)
+        raise Stop
+
+    with shortened() as patch:
+        patch.setattr(ctl, "_pool_control", spy)
+        with pytest.raises(Stop):
+            ctl.stage_controls(out, scale=SCALE)
+    assert asked == [rb6]
+    # the instrument stage that ran the OTHER bundle's R-b6 seed is refused, never mixed
+    other = 6001 if rb6 == 6000 else 6000
+    md._save(ps._summary_path(out, "instrument"), {**instrument, "rb6_seed": other})
+    halt = call(functools.partial(ctl.stage_controls, scale=SCALE), out)
+    assert halt.check == "controls" and str(other) in halt.detail
 
 
 # ---- transport -----------------------------------------------------------------------------------
@@ -1141,9 +1319,9 @@ def test_separation_reads_the_xor_and_the_twin_through_arm_a_carried_and_settled
         "carried",
         "settled",
     }
-    assert all(
-        body["stream_checks"][str(seed)] is False for seed in LIVE
-    )  # the shortened stream is not 1,200 events
+    # every structural check held on the shortened stream (told its length), or the stage had halted
+    assert all(body["stream_checks"][str(seed)] is True for seed in LIVE)
+    assert body["reading"]["stream_ok"] is True
     for name in ("xor", "twin"):
         for arm in ("a", "carried", "settled"):
             assert body["mean"][name][arm] == pytest.approx(
@@ -1152,8 +1330,11 @@ def test_separation_reads_the_xor_and_the_twin_through_arm_a_carried_and_settled
             assert set(body["per_text"][name][arm]["300"]) == {"00", "01", "10", "11"}
         assert all(1 <= n <= 4 for n in body["distinct_settled_rows"][name].values())
     reading = body["reading"]
-    assert reading["scored"] == 36 and reading["floor"] == 0.75
-    assert reading["ceiling"] == pytest.approx(0.75 + 4 * math.sqrt(0.75 * 0.25 / 36), abs=1e-12)
+    scored = SEPARATION_EVENTS - 24  # the 24-event warm-up is not scored
+    assert reading["scored"] == scored and reading["floor"] == 0.75
+    assert reading["ceiling"] == pytest.approx(
+        0.75 + 4 * math.sqrt(0.75 * 0.25 / scored), abs=1e-12
+    )
     assert set(reading["forms"]) == {"carried", "settled"}
     assert (out / "separation" / "xor-300-stream.json.gz").is_file() and (
         out / "separation" / "twin-300-stream.json.gz"
@@ -1166,6 +1347,110 @@ def test_separation_reads_the_xor_and_the_twin_through_arm_a_carried_and_settled
         e["x"] for e in twin["events"]
     ]  # one set of x, two labellings
     assert xor["synthetic"]["labelling"] == "xor" and twin["synthetic"]["labelling"] == "twin"
+
+
+def separation_of(world, tmp_path, build, children=None):
+    out = copy_of(world, tmp_path, "separation")
+    with shortened(children) as patch:
+        shorten_separation(patch)
+        return call(functools.partial(ctl.stage_separation, scale=SCALE, build=build), out), out
+
+
+def test_a_failed_structural_stream_check_halts_before_any_replay(world, tmp_path):
+    """P5 panel F6: one corrupted event label used to certify as valid (the checks were computed and
+    never enforced). The control (clean streams) completes; the corrupted one halts naming the check
+    and the seed, and no replay of any stream ran."""
+    body, _ = separation_of(world, tmp_path / "clean", short_stream)
+    assert isinstance(body, dict) and body["stream_checks"] == {str(seed): True for seed in LIVE}
+
+    def corrupted(seed, labelling):
+        stream = short_stream(seed, labelling)
+        if seed == LIVE[0] and labelling is im.label_xor:
+            event = stream["events"][40]
+            event["c"] = 1 - event["c"]  # one corrupted event label
+        return stream
+
+    children = Children()
+    halt, out = separation_of(world, tmp_path / "bad", corrupted, children)
+    assert isinstance(halt, ps.Halt) and halt.check == "separation: stream checks"
+    assert halt.detail == {str(LIVE[0]): ["c_is_the_previous_texts_xor_label"]}
+    assert children.specs == []  # halted BEFORE any replay: no job ran
+    assert (out / "separation" / f"xor-{LIVE[0]}-stream.json.gz").is_file()  # the streams are kept
+
+    def wrong_length(seed, labelling):  # 60 events where the checks are told 120
+        return im._build_stream(seed, labelling, n_events=60)
+
+    halt, _ = separation_of(world, tmp_path / "length", wrong_length, Children())
+    assert isinstance(halt, ps.Halt) and halt.check == "separation: stream checks"
+    assert all("exactly_1200_events" in names for names in halt.detail.values())
+
+
+def test_a_stream_that_reads_wrong_halts_and_a_pool_blind_to_the_code_stays_a_reading(
+    world, tmp_path
+):
+    """The accuracy reading's `stream_ok` False (arm (a) above the affine ceiling on XOR, or under
+    the
+    floor on the twin) is the harness defect 2.11 names: it halts. 'pool blind to the code' is a
+    reading, whatever a form reads."""
+    real_read = ctl.read_separation
+
+    def wrong(means, scored):
+        return {**real_read(means, scored), "stream_ok": False, "stream_wrong": {"a_twin": True}}
+
+    def blind(means, scored):
+        reading = real_read(means, scored)
+        for row in reading["forms"].values():
+            row.update(readable=False, reading="pool blind to the code")
+        return reading
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(ctl, "read_separation", wrong)
+        halt, _ = separation_of(world, tmp_path / "wrong", short_stream)
+    assert isinstance(halt, ps.Halt) and halt.check == "separation: the stream is wrong"
+    assert halt.detail == {"a_twin": True}
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(ctl, "read_separation", blind)
+        body, _ = separation_of(world, tmp_path / "blind", short_stream)
+    assert isinstance(body, dict) and body["reading"]["stream_ok"] is True
+    assert {row["reading"] for row in body["reading"]["forms"].values()} == {
+        "pool blind to the code"
+    }
+
+
+def test_every_contrasted_variant_keeps_its_per_segment_diagnostic_tables(world):
+    """P5 panel F9: the controls, transport and separation summaries carry ps._report's table of
+    every
+    cell (both learners, per segment, with degeneracy and startup) for the report to keep."""
+    out, _ = world
+    controls, transport = summary(out, "controls"), summary(out, "transport")
+    separation = summary(out, "separation")
+    seeds = {str(seed) for seed in LIVE}
+
+    def check(cells):
+        assert set(cells) == set(ps.FIT_FORMS) and all(
+            set(per_seed) == seeds for per_seed in cells.values()
+        )
+        for per_seed in cells.values():
+            for cell in per_seed.values():
+                assert cell["status"] == "OK" and {"readout", "grower", "degeneracy"} <= set(cell)
+                row = cell["readout"]["unseen-order"]
+                assert {"accuracy", "prediction_entropy", "coverage", "prior_fallback"} <= set(row)
+
+    assert set(controls["cells"]["shuffle"]) == {str(k) for k in range(cs.SHUFFLE_K)}
+    for cells in controls["cells"]["shuffle"].values():
+        check(cells)
+    check(controls["cells"]["window0"])
+    assert controls["window0"]["cells"] == controls["cells"]["window0"]
+    assert set(transport["arms"]) == set(md.TRANSPORT_ARMS)
+    for arm in md.TRANSPORT_ARMS:
+        check(transport["arms"][arm]["cells"])
+    assert set(separation["cells"]) == {"xor", "twin"}
+    for arms in separation["cells"].values():
+        assert set(arms) == {"a", "carried", "settled"}
+        assert all(set(per_seed) == seeds for per_seed in arms.values())
+        assert all(
+            cell["status"] == "OK" for per_seed in arms.values() for cell in per_seed.values()
+        )
 
 
 def test_separation_is_not_run_when_the_construction_check_did_not_read_true(world, tmp_path):

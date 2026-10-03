@@ -376,6 +376,17 @@ def test_record_runs_seed_100_alone_then_one_batch_and_files_pool_selections_sum
     }
     assert ps._recorded(out) == {seed: "OK" for seed in (100, *REST, *cs.LIVE_SEEDS)}
     assert body["live_seeds"] == list(cs.LIVE_SEEDS) and body["seed_set"] == "live"
+    assert (
+        body["bundle"]
+        == {  # ONE complete bundle, read by migrate, instrument and controls
+            "which": "live",
+            "live": list(range(300, 331)),
+            "gate": [204, 205, 206, 207],
+            "gate_synthetic": [5005, 5006, 5007, 5008],
+            "rb6": 6000,
+        }
+        and body["reserve_claim"] is None
+    )
     assert body["identity"]["equal"] and body["identity"]["new"] == body["identity"]["pilot"]
     assert body["projection"]["rounds"] == 9 and body["projection"]["workers"] == ps.WORKERS
     assert body["repair"] is None and body["shuffle"]["k"] == cs.SHUFFLE_K
@@ -427,9 +438,12 @@ def test_the_half_moved_assertion_runs_on_each_recordings_own_block_sizes_before
     assert halted["check"] == "shuffle half-moved" and "under half" in halted["detail"]
 
 
+REST_RESERVE = (203, *cs.GATE_RESERVE_SEEDS)  # the reserve bundle's: gate 208-211, not 204-207
+
+
 def test_a_reserve_record_needs_a_repair_file_naming_the_first_out(tmp_path, monkeypatch):
     first = tmp_path / "first"
-    write_summary(first, "record")
+    write_summary(first, "record", seed_set="live")  # an ORIGINAL live campaign
     out = tmp_path / "out"
     with pytest.raises(ps.Refused, match="REPAIR.txt"):
         record(tmp_path, monkeypatch, seeds="reserve")
@@ -448,11 +462,93 @@ def test_a_reserve_record_needs_a_repair_file_naming_the_first_out(tmp_path, mon
         ps._summary_path(out, "record").unlink()
     (out / drv.REPAIR_FILE).write_text(f"{first}\na fold of finding 7\n", encoding="utf-8")
     code, _, batches = record(tmp_path, monkeypatch, seeds="reserve")
-    assert code == ps.EXIT_OK and batches == [(100,), (*REST, *cs.RESERVE_SEEDS)]
+    # P5 panel F2: the WHOLE bundle moves -- gate 208-211, not 204-207 -- and the record names it
+    assert code == ps.EXIT_OK and batches == [(100,), (*REST_RESERVE, *cs.RESERVE_SEEDS)]
     body = summary(out, "record")
     assert body["seed_set"] == "reserve" and body["live_seeds"] == list(cs.RESERVE_SEEDS)
+    assert body["bundle"] == {
+        "which": "reserve",
+        "live": list(range(331, 362)),
+        "gate": [208, 209, 210, 211],
+        "gate_synthetic": [5009, 5010, 5011, 5012],
+        "rb6": 6001,
+    }
     assert "a fold of finding 7" in body["repair"]
     assert not set(cs.LIVE_SEEDS) & {int(seed) for seed in body["recordings"]}
+    assert not set(cs.GATE_SEEDS) & {int(seed) for seed in body["recordings"]}
+    assert (first / drv.RESERVE_CLAIM_FILE).read_text(encoding="utf-8").strip() == str(out)
+    assert body["reserve_claim"] == str(first / drv.RESERVE_CLAIM_FILE)
+
+
+def test_a_repair_is_made_once_of_an_original_live_campaign_and_never_chained(
+    tmp_path, monkeypatch
+):
+    """P5 panel F5: REPAIR validation reads the original's record summary (seed_set live) and
+    CLAIMS its
+    single reserve attempt exclusively before anything is recorded; a reserve-to-reserve chain and a
+    second attempt naming the same original OUT are both refused."""
+    original, earlier = tmp_path / "original", tmp_path / "earlier-reserve"
+    write_summary(original, "record", seed_set="live")
+    write_summary(earlier, "record", seed_set="reserve")
+    pilot = str(pilot_dir(tmp_path))
+
+    def attempt(name, first):
+        out = tmp_path / name
+        out.mkdir()
+        (out / drv.REPAIR_FILE).write_text(f"{first}\na stand-in repair\n", encoding="utf-8")
+        return out
+
+    chain = attempt("chain", earlier)  # a repair of a repair
+    (problem,) = drv.start_problems("record", chain, pilot, "reserve")
+    assert "never repaired again" in problem and "'reserve'" in problem
+    with pytest.raises(ps.Refused, match="never repaired again"):
+        drv.run_stage("record", chain, revision=clean, pilot=pilot, seeds="reserve")
+    assert (
+        not list(chain.glob("*.summary.json")) and not (earlier / drv.RESERVE_CLAIM_FILE).exists()
+    )
+    unreadable = tmp_path / "unreadable"
+    unreadable.mkdir()
+    (unreadable / "record.summary.json").write_text("{not json", encoding="utf-8")
+    (problem,) = drv.start_problems("record", attempt("bad", unreadable), pilot, "reserve")
+    assert "cannot be read" in problem
+    first = attempt("repair1", original)  # repair 1: accepted, and it claims the one attempt
+    assert drv.start_problems("record", first, pilot, "reserve") == []
+    monkeypatch.setattr(ps, "_record_child", recorder())
+    assert (
+        drv.run_stage("record", first, revision=clean, pilot=pilot, seeds="reserve") == ps.EXIT_OK
+    )
+    assert (original / drv.RESERVE_CLAIM_FILE).read_text(encoding="utf-8").strip() == str(first)
+    second = attempt("repair2", original)  # a second attempt on the same original OUT
+    (problem,) = drv.start_problems("record", second, pilot, "reserve")
+    assert "already gave its one reserve attempt" in problem and "halts G1(c)" in problem
+    with pytest.raises(ps.Refused, match="already gave its one reserve attempt"):
+        drv.run_stage("record", second, revision=clean, pilot=pilot, seeds="reserve")
+    assert not list(second.glob("*.summary.json"))
+
+
+def test_a_race_for_the_one_reserve_attempt_halts_the_loser_before_it_records(
+    tmp_path, monkeypatch
+):
+    original = tmp_path / "original"
+    write_summary(original, "record", seed_set="live")
+    pilot = str(pilot_dir(tmp_path))
+    first, second = (tmp_path / name for name in ("a", "b"))
+    for out in (first, second):
+        out.mkdir()
+        (out / drv.REPAIR_FILE).write_text(f"{original}\na repair\n", encoding="utf-8")
+    assert (
+        drv.start_problems("record", second, pilot, "reserve") == []
+    )  # both passed the start check
+    batches = spy_batches(monkeypatch)
+    monkeypatch.setattr(ps, "_record_child", recorder())
+    assert drv.run_stage("record", first, revision=clean, pilot=pilot, seeds="reserve") == 0
+    monkeypatch.setattr(drv, "start_problems", lambda *a, **k: [])  # the check it passed earlier
+    before = list(batches)
+    code = drv.run_stage("record", second, revision=clean, pilot=pilot, seeds="reserve")
+    assert code == ps.EXIT_HALT and batches == before  # claimed by the other: nothing recorded
+    halted = summary(second, "record")
+    assert halted["check"] == "record: the reserve attempt is already claimed"
+    assert halted["detail"] == {"original": str(original), "by": str(first)}
 
 
 # ---- the mechanism stage -------------------------------------------------------------------------
@@ -526,7 +622,7 @@ def test_mechanism_halts_on_any_failure_of_the_pool_under_test(
 
 def instrument_out(out):
     """An OUT the instrument stage may start in: predecessor summaries, seed 100's recording."""
-    write_summary(out, "record", recordings={"100": {"status": "OK"}})
+    write_summary(out, "record", recordings={"100": {"status": "OK"}}, seed_set="live")
     write_summary(out, "mechanism")
     ps._folder(out, "record")
     md._save(ps._recording(out, ps.PILOT_SEED), fixture(ps.PILOT_SEED))
@@ -611,24 +707,32 @@ def test_pool_selections_default_still_halts_on_r_b6_and_keeps_its_summary_shape
     assert inspect.signature(ps.step_instrument).parameters["rb6_halts"].default is True
 
 
-def test_the_stage_runs_r_b6_on_6000_as_a_reading_and_never_builds_that_stream(
-    tmp_path, monkeypatch
+@pytest.mark.parametrize(("seed_set", "rb6"), [("live", 6000), ("reserve", 6001)])
+def test_the_stage_runs_the_bundles_r_b6_seed_as_a_reading_and_never_builds_that_stream(
+    tmp_path, monkeypatch, seed_set, rb6
 ):
+    """P5 panel F2: the default is the record's bundle (6000 live, 6001 reserve), not a constant."""
     asked = {}
 
     def stand_in(out, pilot, *, rb6_seed, rb6_halts):
         asked.update(rb6_seed=rb6_seed, rb6_halts=rb6_halts)
         for name, path in ps._rb6_families(ps._folder(out, "instrument"), rb6_seed).items():
             history_free = name == "rb6red"
-            md._save(path, md.rb6_stream(4243, history_free=history_free))  # never seed 6000
+            md._save(path, md.rb6_stream(4243, history_free=history_free))  # never seed 6000/6001
         return {"rb6_clauses": {"positive": True, "history_free": True}}
 
     monkeypatch.setattr(ps, "step_instrument", stand_in)
-    body = drv.stage_instrument(tmp_path / "out", tmp_path / "pilot")
-    assert asked == {"rb6_seed": 6000, "rb6_halts": False}
-    assert inspect.signature(drv.stage_instrument).parameters["rb6_seed"].default == cs.RB6_SEED
+    out = tmp_path / "out"
+    write_summary(out, "record", seed_set=seed_set)
+    body = drv.stage_instrument(out, tmp_path / "pilot")
+    assert asked == {"rb6_seed": rb6, "rb6_halts": False}
+    assert inspect.signature(drv.stage_instrument).parameters["rb6_seed"].default is None
     assert body["rb6_ok"] and body["shuffle_control"]["sighted"] and body["shuffle_aa"]["held"]
-    assert (tmp_path / "out" / "instrument" / "rb6-6000-stream.json.gz").is_file()
+    assert (out / "instrument" / f"rb6-{rb6}-stream.json.gz").is_file()
+    # a record that names no seed set cannot choose a bundle: a halt, never a silent live default
+    write_summary(tmp_path / "bare", "record")
+    with pytest.raises(ps.Halt, match="seed bundle"):
+        drv.stage_instrument(tmp_path / "bare", tmp_path / "pilot")
 
 
 def test_the_pool_free_shuffle_control_sees_history_and_is_blind_without_it():
@@ -840,6 +944,10 @@ MINI_SCALE = {
     "kicks": 48,
 }  # disclosed: the 48-event fixture's
 MINI_RB6 = 4243  # exposed; the stage is told this seed, never 6000
+# the G2(ii) stream, shortened and told so: the separation stage ENFORCES its structural checks and
+# arm (a)'s floor, which 60 events do not reach (the stand-in world measured 120 does); 120 fails
+# seed 328's lag-1 repeat-rate check by chance, 140 passes the checks for all 31 stand-in seed names
+MINI_SEPARATION_EVENTS = 140
 
 
 def mini_children():
@@ -925,6 +1033,9 @@ def mini(tmp_path_factory):
         patch.setattr(md, "RB6_EVENTS", 300)
         patch.setattr(md, "RB6_WARM_UP", 64)
         patch.setattr(im, "STREAM_WARM_UP", 24)
+        patch.setattr(
+            im, "STREAM_EVENTS", MINI_SEPARATION_EVENTS
+        )  # the structural checks are enforced
         patch.setattr(ps, "_record_child", mini_recorder(streams))
         patch.setattr(ps, "_child", mini_children())
         stream = fixture(ps.PILOT_SEED)
@@ -932,7 +1043,9 @@ def mini(tmp_path_factory):
         md._save(pilot / f"{ps.PILOT_SEED}-stream.json.gz", stream)
         for arm in md.SCORED_ARMS:
             md._save(pilot / f"{ps.PILOT_SEED}-{arm}-causal.json", md.replay(stream, arm))
-        functions = mini_functions(lambda seed, lab: im._build_stream(seed, lab, n_events=60))
+        functions = mini_functions(
+            lambda seed, lab: im._build_stream(seed, lab, n_events=MINI_SEPARATION_EVENTS)
+        )
         codes = {}
         for stage in drv.STAGES:
             extra = {"pilot": str(pilot)} if stage in ("record", "instrument") else {}
@@ -972,6 +1085,37 @@ def test_the_mini_campaigns_report_reads_31_seeds_and_marks_itself_shortened(min
     wanted = {"primary D, readout", "D_shuf, readout", "D0, readout", "W = D0 - D, readout"}
     assert wanted <= set(report["rows"])
     assert len(report["tables"]["cells"]) == 4 and len(report["tables"]["cells"]["carried"]) == 31
+    # P5 panel F9: the diagnostic tables of EVERY contrasted variant, and the separation
+    # measurements
+    tables = report["tables"]
+    assert set(tables) == {
+        "cells",
+        "input_response",
+        "references",
+        "shuffle",
+        "window0",
+        "transport",
+        "separation",
+    }
+    assert set(tables["references"]) == set(drv.REFERENCE_ARMS)
+    assert set(tables["shuffle"]) == {str(k) for k in range(cs.SHUFFLE_K)}
+    assert set(tables["window0"]) == set(ps.FIT_FORMS) and set(tables["transport"]) == set(
+        md.TRANSPORT_ARMS
+    )
+    assert set(tables["separation"]) == {"xor", "twin"}
+    for variant in (
+        tables["references"]["a"],
+        tables["window0"]["settled"],
+        tables["shuffle"]["0"]["carried"],
+    ):
+        assert len(variant) == 31 and variant["300"]["readout"]
+    separation = report["separation"]
+    assert {"accuracy", "per_text", "distinct_settled_rows", "mean", "stream_checks"} <= set(
+        separation
+    ) and all(held is True for held in separation["stream_checks"].values())
+    assert report["seed_bundle"]["which"] == "live" and report["seed_bundle"]["rb6"] == 6000
+    assert "## Reference arm (a): accuracy" in text and "## Separation measurements" in text
+    assert "## carried at window 0: accuracy" in text and "## settled through pool-copy" in text
     # the stand-ins differ, so no contrast is degenerate: every row has a spread over its 31 seeds
     for name in ("primary D, readout", "D_shuf, readout", "oracle (f64) - (a), readout"):
         row = report["rows"][name]

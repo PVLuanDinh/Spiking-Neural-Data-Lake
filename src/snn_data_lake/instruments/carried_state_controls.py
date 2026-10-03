@@ -17,10 +17,12 @@ the helpers they share with migrate, causality and primary are `carried_state_st
               request red as one replay that must RAISE; padding fractions and raw norms from the bindings.
   separation  (2.8) when construct's verdict is True: G2(ii)'s XOR and twin streams per live seed through
               arm (a), Carried and Settled; decoder accuracy, per-text accuracy, distinct Settled phi
-              rows and the reading rules (a stream that is wrong is a READING, not a halt).
+              rows and the reading rules. A failed structural stream check (before any replay) or an arm
+              (a) outside its ceiling or floor is a wrong STREAM, a harness defect: it halts (2.11).
 
-A red that does not fire, a missing or TIMEOUT cell and a Carried@0 that differs from Carried halt (2.11);
-a blind control reads as `sighted: False` and a pool that cannot read the code as a reading.
+A red that does not fire (the Carried red of Settled invariance included), a missing or TIMEOUT cell, a
+wrong separation stream and a Carried@0 that differs from Carried halt (2.11); a blind control reads as
+`sighted: False` and a pool that cannot read the code ("pool blind to the code") as a reading.
 Deterministic. Names avoid the verbs the gradient-claim census reads.
 """
 
@@ -81,6 +83,14 @@ def _invariance_row(result):
         "multiset_equal": sum(row["multiset_equal"] for row in result["per_block"]),
         "sequence_differs": sum(row["sequence_differs"] for row in result["per_block"]),
     }
+
+
+# 2.6's RED of Settled invariance: the same check on Carried, whose history reaches phi, must find the
+# multisets DIFFERENT in a nonempty set of tested blocks. A result with no tested block, or whose
+# multisets are all equal (the shuffle moved nothing), proves nothing: that red did NOT fire (2.11).
+def history_reaches_phi(result):
+    blocks = result["per_block"]
+    return bool(blocks) and any(not row["multiset_equal"] for row in blocks)
 
 
 def _pool_control(out, folder, host, window, seed):
@@ -150,16 +160,17 @@ def _pool_control(out, folder, host, window, seed):
             "settled": [_invariance_row(r) for r in settled],
             "carried_red": [_invariance_row(r) for r in carried],
             "settled_ok": all(r["ok"] for r in settled),
-            "red_fired": all(not r["ok"] for r in carried),
+            "red_fired": all(history_reaches_phi(r) for r in carried),
         },
     }
 
 
 def _live_shuffles(out, folder, live, host, window):
     """K tables (one R-b7 table per shuffle k: a seed's cell key does not name its stream): Carried and
-    Settled replays of every live seed's k-th shuffled stream; returns [accuracies] over k."""
+    Settled replays of every live seed's k-th shuffled stream; returns ([accuracies] over k, {k: the
+    cells' per-segment diagnostic tables} for the report, 2.3)."""
     paths = {seed: ps._recording(out, seed) for seed in live}
-    per_k = []
+    per_k, tables = [], {}
     for k in range(cs.SHUFFLE_K):
         streams, cells = {}, []
         for seed in live:
@@ -181,7 +192,8 @@ def _live_shuffles(out, folder, live, host, window):
         (table,) = st.run_cells([(cells, live, streams)])
         st.need_ok(table, f"controls: shuffle {k}")
         per_k.append(st.accuracies(table, live, ps.FIT_FORMS, host=host, window=window))
-    return per_k
+        tables[str(k)] = st.variant_tables(table, live, ps.FIT_FORMS, host=host, window=window)
+    return per_k, tables
 
 
 IDENTITY_KEYS = ("phi", "predictions", "fallbacks", "fingerprint", "refits")
@@ -232,6 +244,7 @@ def _window_zero(out, folder, live, host, window, primary):
     d0 = st.gaps(acc)
     return {
         "accuracy": acc,
+        "cells": st.variant_tables(table, live, ps.FIT_FORMS, host=host, window=0),
         "d0": d0,
         "w": {
             learner: {seed: d0[learner][seed] - primary["d"][learner][seed] for seed in d0[learner]}
@@ -244,19 +257,26 @@ def _window_zero(out, folder, live, host, window, primary):
     }
 
 
-def stage_controls(out, *, scale=None, rb6_seed=cs.RB6_SEED):
+def stage_controls(out, *, scale=None, rb6_seed=None):
     """The shuffle's pool controls, the shuffle on the live seeds and window 0 (2.6), all on the
-    surviving host. `rb6_seed` is 6000 (only a test names another)."""
+    surviving host. `rb6_seed` is the seed bundle's (6000 live, 6001 reserve; only a test names
+    another). A Carried red that does not fire (no tested block, or no multiset moved) halts (2.11)."""
     sc = st.settings(scale)
     window, host = sc["window"], st.use_of(out)
     record, primary = ps._summary(out, "record"), ps._summary(out, "primary")
     instrument = ps._summary(out, "instrument")
+    rb6_seed = st.bundle_of(out).rb6 if rb6_seed is None else rb6_seed
     if instrument.get("rb6_seed", ps.RB6_SEED) != rb6_seed:
         raise ps.Halt("controls", f"the instrument stage ran rb6 on {instrument.get('rb6_seed')}")
     live = tuple(record["live_seeds"])
     folder = ps._folder(out, "controls")
     control = _pool_control(out, ps._folder(out, "controls/rb6"), host, window, rb6_seed)
-    per_k = _live_shuffles(out, ps._folder(out, "controls/shuffle"), live, host, window)
+    if not control["invariance"]["red_fired"]:  # a red that does not fire halts (2.11)
+        detail = {"Settled invariance, Carried red": control["invariance"]["carried_red"]}
+        raise ps.Halt("a red that does not fire", detail)
+    per_k, shuffle_cells = _live_shuffles(
+        out, ps._folder(out, "controls/shuffle"), live, host, window
+    )
     d_k = [st.gaps(acc) for acc in per_k]
     d_shuf = {
         learner: {str(seed): statistics.fmean(d[learner][str(seed)] for d in d_k) for seed in live}
@@ -282,6 +302,7 @@ def stage_controls(out, *, scale=None, rb6_seed=cs.RB6_SEED):
         "control": control,
         "d_shuf": d_shuf,
         "d_shuf_k": {str(seed): [d["readout"][str(seed)] for d in d_k] for seed in live},
+        "cells": {"shuffle": shuffle_cells, "window0": zero["cells"]},
         "window0": zero,
     }
 
@@ -421,7 +442,16 @@ def stage_transport(out, *, scale=None):
             if arm == "pool-act" and binding["encoder"] is not None:
                 raise ps.Halt("transport", f"pool-act swapped an encoder on seed {seed}")
             records[str(seed)] = {"transport": binding["transport"], "encoder": binding["encoder"]}
-        arms[arm] = {"accuracy": acc, "d": st.gaps(acc), "records": records}
+        cells = {  # each seed's own encoder crc is in its cell key, so the tables are read per seed
+            form: {
+                str(seed): ps._report(
+                    table[_arm_key(arm, form, seed, encoders, host=host, window=window)]
+                )
+                for seed in live
+            }
+            for form in ps.FIT_FORMS
+        }
+        arms[arm] = {"accuracy": acc, "d": st.gaps(acc), "records": records, "cells": cells}
     return {
         "host": host,
         "window": window,
@@ -505,13 +535,23 @@ def stage_separation(out, *, scale=None, build=im.stream):
     live = tuple(ps._summary(out, "record")["live_seeds"])
     folder = ps._folder(out, "separation")
     labellings = {"xor": im.label_xor, "twin": im.label_twin}
-    streams, groups = {}, []
+    streams = {name: {} for name in labellings}
     for name, labelling in labellings.items():
-        streams[name], cells = {}, []
         for seed in live:
             streams[name][seed] = build(seed, labelling)
+            md._save(folder / f"{name}-{seed}-stream.json.gz", streams[name][seed])
+    failed = {}  # the structural stream checks hold BEFORE any replay: a wrong stream is a harness defect
+    for seed in live:
+        found = im.stream_checks(seed, xor=streams["xor"][seed], twin=streams["twin"][seed])
+        if not found["ok"]:
+            failed[str(seed)] = sorted(name for name, held in found["checks"].items() if not held)
+    if failed:
+        raise ps.Halt("separation: stream checks", failed)
+    groups = []
+    for name in labellings:
+        cells = []
+        for seed in live:
             where = folder / f"{name}-{seed}-stream.json.gz"
-            md._save(where, streams[name][seed])
             cells.append(ps._cell(where, folder / f"{name}-a-{seed}.json.gz", seed, arm="a"))
             cells += [
                 st.pool_cell(
@@ -528,12 +568,6 @@ def stage_separation(out, *, scale=None, build=im.stream):
     tables = dict(zip(labellings, st.run_cells(groups), strict=True))
     for name, table in tables.items():
         st.need_ok(table, f"separation: {name}")
-    checks = {
-        str(seed): im.stream_checks(seed, xor=streams["xor"][seed], twin=streams["twin"][seed])[
-            "ok"
-        ]
-        for seed in live
-    }
     counts = {
         sum(e.get("segment") in md.SCORED_SEGMENTS for e in streams[name][seed]["events"])
         for name in labellings
@@ -575,6 +609,11 @@ def stage_separation(out, *, scale=None, build=im.stream):
         name: {arm: statistics.fmean(acc[name][arm].values()) for arm in arms}
         for name in labellings
     }
+    reading = read_separation(means, counts.pop())
+    if not reading[
+        "stream_ok"
+    ]:  # arm (a) outside its ceiling or floor: the stream is wrong (2.8, 2.11)
+        raise ps.Halt("separation: the stream is wrong", reading["stream_wrong"])
     return {
         "run": True,
         "item_3": "RUN",
@@ -583,10 +622,16 @@ def stage_separation(out, *, scale=None, build=im.stream):
         "scale": sc,
         "shortened": sc != st.REAL_SCALE,
         "live_seeds": list(live),
-        "stream_checks": checks,
+        "stream_checks": {str(seed): True for seed in live},  # every check held, or it halted
         "accuracy": acc,
         "mean": means,
         "per_text": per_text,
+        "cells": {
+            name: {
+                arm: {str(seed): ps._report(cell(name, arm, seed)) for seed in live} for arm in arms
+            }
+            for name in labellings
+        },
         "distinct_settled_rows": {
             name: {
                 str(seed): cell(name, "settled", seed)["digest"]["pool"]["degeneracy"][
@@ -596,7 +641,7 @@ def stage_separation(out, *, scale=None, build=im.stream):
             }
             for name in labellings
         },
-        "reading": read_separation(means, counts.pop()),
+        "reading": reading,
     }
 
 
