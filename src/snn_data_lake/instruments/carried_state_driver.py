@@ -1,4 +1,4 @@
-r"""G1(c) / T109 part (c): the campaign driver -- section 2.13's stages over one OUT directory (part 1).
+r"""G1(c) / T109 part (c): the campaign driver -- section 2.13's stages over one OUT directory (parts 1 and 2).
 
 The frozen text is specs/022-unified-brain-arc/evidence/g1c-carried-state.md; sections 2.4, 2.6, 2.11, 2.12
 and 2.13 bind this module. `carried_state_campaign` holds the frozen constants, the pure decisions and the
@@ -27,8 +27,12 @@ summary written). A stage writes OUT/<stage>.summary.json with `head` and `dirty
   construct   G-R2's construction check (inseparable_mapping.construction_check) as a "call" job; the stage
               COMPLETES whatever the verdict (2.8: a red makes item (3) NOT RUN; G1(c) continues).
 
-OWED to part 2 (P5c): migrate, causality, primary, controls, transport, separation, report. They raise
-NotImplementedError("P5c") and write nothing.
+Part 2 (P5c) adds the other seven stages, in three modules this one imports (they never import it):
+`carried_state_stages` (migrate, causality, primary and the helpers every pool stage shares),
+`carried_state_controls` (controls, transport, separation) and `carried_state_report` (the report stage and
+the golden check of 2.11). `golden [OUT] [--against FILE]` is the CLI's thirteenth command, beside the
+twelve stages: it runs the golden check in-process and prints its digest, or with --against compares it with
+a saved one (exit 0 equal, 1 moved).
 
 Summary keys part 2 reads: record `live_seeds`, `seed_set`, `recordings`, `identity`, `shuffle`; instrument
 `rb6_ok`, `rb6_clauses`, `shuffle_control`, `shuffle_aa`; references `inspected`, `oracle`, `oracle_verdict`,
@@ -37,6 +41,7 @@ Summary keys part 2 reads: record `live_seeds`, `seed_set`, `recordings`, `ident
 The CLI (no argument runs the self-check; the preflight is the CLI's alone):
 
   python -m snn_data_lake.instruments.carried_state_driver <stage> OUT [--pilot DIR] [--seeds live|reserve]
+  python -m snn_data_lake.instruments.carried_state_driver golden [OUT] [--against FILE]
 
 launched from the repository root with OUT outside it. The preflight refuses (exit 3, nothing written) a
 working directory that is not the repository root, an OUT inside the repository, any of SNN_EPROP_CKPT,
@@ -53,6 +58,7 @@ import argparse
 import contextlib
 import functools
 import io
+import json
 import math
 import os
 import sys
@@ -61,6 +67,9 @@ import time
 from pathlib import Path
 
 from snn_data_lake.instruments import carried_state_campaign as cs
+from snn_data_lake.instruments import carried_state_controls as ctl
+from snn_data_lake.instruments import carried_state_report as rep
+from snn_data_lake.instruments import carried_state_stages as st
 from snn_data_lake.instruments import memory_diagnostic as md
 from snn_data_lake.instruments import pool_selection as ps
 
@@ -84,7 +93,7 @@ STAGES = (
     "separation",
     "report",
 )
-POOL = "lsm"  # the one candidate (ps.SELECTABLE): the pool G1(b) selected
+POOL = st.POOL  # the one candidate (ps.SELECTABLE): the pool G1(b) selected
 REFERENCE_ARMS = ("a", "f64", "e1", "e1-0")  # 2.13's references stage
 # 2.6's blocks of a live recording, in segment order: warm-up 256, repeated-canonical 463 = 256 + 207,
 # unseen-order 256, then repeated-permuted, one partial block of 207-214 events (209 on the rehearsal's
@@ -430,18 +439,24 @@ STAGE_FUNCTIONS = {
     "instrument": stage_instrument,
     "references": stage_references,
     "construct": stage_construct,
+    **st.STAGE_FUNCTIONS,  # migrate, causality, primary
+    **ctl.STAGE_FUNCTIONS,  # controls, transport, separation
+    "report": rep.stage_report,
 }
-OWED = tuple(stage for stage in STAGES if stage not in STAGE_FUNCTIONS)  # part 2 (P5c)
 
 
+# Sites the duplicate-capability hook flagged on the name `run_stage` (read; none runs a campaign stage):
+# distinct-from: instruments/pool_selection.py::run_step -- the step protocol this CALLS (steps=STAGES); run_stage adds the start refusals and nothing else
+# distinct-from: gates/policy_manifest.py::_enabled_ci_text -- strips the comment lines of ci.yml
+# distinct-from: instruments/prior_drift_harness.py::run_arm -- one arm and one seed of another harness's per-trial protocol
+# distinct-from: instruments/report_order_probe.py::run_t081_dry_run -- one seed's apparatus dry run of another probe
+# distinct-from: plasticity/homeostatic_plasticity_stack.py::_run_stream -- drives deposits onto one neuron to check a stabilizer
 def run_stage(stage, out, *, revision=None, function=None, **kwargs):
-    """Run one stage under pool_selection's step protocol with STAGES as its order. An owed stage raises
-    NotImplementedError("P5c") and writes nothing; a stage that may not start raises pool_selection's
-    Refused before OUT is touched. `function` stands in for the stage's own in a test."""
+    """Run one stage under pool_selection's step protocol with STAGES as its order; a stage that may
+    not start raises pool_selection's Refused before OUT is touched. `function` stands in for the
+    stage's own in a test."""
     if stage not in STAGES:
         raise ps.Refused(f"unknown stage {stage!r}")
-    if stage in OWED:
-        raise NotImplementedError("P5c")
     problems = start_problems(stage, out, **kwargs)
     if problems:
         raise ps.Refused(f"{stage}: " + "; ".join(problems))
@@ -471,7 +486,7 @@ def _refused(stage, out, revision, **kwargs):
 
 
 def self_check():
-    assert STAGES[:5] == tuple(STAGE_FUNCTIONS) and OWED == STAGES[5:] and len(set(STAGES)) == 12
+    assert STAGES == tuple(STAGE_FUNCTIONS) and len(set(STAGES)) == 12
     # the preflight: the control passes; each refusal is the only reason it names
     with tempfile.TemporaryDirectory() as scratch:
         root, elsewhere = Path(scratch) / "repo", Path(scratch) / "elsewhere"
@@ -515,15 +530,11 @@ def self_check():
                 "mechanism", fresh, lambda: ("h2", False)
             )  # the predecessor at another head
             assert _refused("record", fresh, _clean, pilot=str(pilot))  # no retries
-        # an owed stage raises and writes nothing; --seeds reserve needs a REPAIR.txt naming the first OUT
-        for stage in OWED:
-            try:
-                run_stage(stage, elsewhere / "owed", revision=_clean)
-            except NotImplementedError as owed:
-                assert str(owed) == "P5c"
-            else:
-                raise AssertionError(f"{stage} did not raise")
-        assert not (elsewhere / "owed").exists()
+        # every later stage refuses to start before its predecessor and writes nothing; --seeds reserve
+        # needs a REPAIR.txt naming the first OUT
+        for stage in STAGES[5:]:
+            assert _refused(stage, elsewhere / "later", _clean)
+        assert not (elsewhere / "later" / "migrate.summary.json").exists()
         assert start_problems("record", fresh, str(pilot), "live") == []
         assert len(start_problems("record", fresh, str(pilot), "reserve")) == 1
         (fresh / REPAIR_FILE).write_text(f"{out}\nthe repair\n", encoding="utf-8")
@@ -543,7 +554,8 @@ def self_check():
     print(
         "carried_state_driver self-check OK: preflight (control clear; wrong cwd, OUT inside the repo, "
         f"{len(ENV_REFUSED)} overrides, a bad asset each refused), stage chain (order, head, dirty tree, "
-        "moved head, no retries), owed stages raise P5c, --seeds reserve needs REPAIR.txt, half-moved "
+        "moved head, no retries), the seven later stages refuse before their predecessor, --seeds reserve "
+        "needs REPAIR.txt, half-moved "
         f"rule holds on {len(cs.LIVE_SEEDS) + len(cs.RESERVE_SEEDS)} seeds x {len(PERMUTED_BLOCKS)} sizes "
         "and fires on a constructed red"
     )
@@ -557,16 +569,38 @@ def _parser():
     )
     commands = parser.add_subparsers(dest="stage")
     for stage in STAGES:
-        function = STAGE_FUNCTIONS.get(stage)
-        sub = commands.add_parser(
-            stage, help=function.__doc__.split("\n")[0] if function else "owed to part 2 (P5c)"
-        )
+        sub = commands.add_parser(stage, help=STAGE_FUNCTIONS[stage].__doc__.split("\n")[0])
         sub.add_argument("out", help="the campaign directory (outside the repository)")
         if stage in ("record", "instrument"):
             sub.add_argument("--pilot", help="G1(a)'s pilot3 directory (100-stream.json.gz, ...)")
         if stage == "record":
             sub.add_argument("--seeds", choices=("live", "reserve"), default="live")
+    gold = commands.add_parser("golden", help="the golden check (g1c 2.11), in-process; no stage")
+    gold.add_argument("out", nargs="?", help="a campaign directory whose summaries are recomputed")
+    gold.add_argument("--against", help="a saved golden digest (JSON): exit 1 and name what moved")
     return parser
+
+
+# Sites the duplicate-capability hook flagged on the golden command (read; none runs or compares a golden check):
+# distinct-from: engine/learn_daemon.py::_selfcheck -- a daemon's self-check that must never start its drive loop
+# distinct-from: gates/gradient_claim_gate.py::_write_measure_artifact -- records one gate run so its age is checkable
+# distinct-from: engine/autonomous_loop.py::AutonomousArm._percept_novelty -- a percept's habituating novelty signal
+# distinct-from: engine/brain.py::Brain._restore_episodes -- refills the attractor from the lake
+# distinct-from: faculties/agency_monitor.py::_t079_reds_line -- prints six booleans beside what each says
+def run_golden(out, against):
+    """The golden check (2.11) from the CLI: print its digest as JSON, or compare it with a saved one
+    (exit 0 equal, 1 moved, 3 an OUT whose summaries cannot be assembled)."""
+    try:
+        found = rep.golden(out)
+    except ValueError as refusal:
+        print(f"REFUSED: {refusal}", file=sys.stderr)
+        return ps.EXIT_REFUSED
+    if against is None:
+        print(json.dumps(found, indent=1, sort_keys=True))
+        return ps.EXIT_OK
+    moved = rep.differences(json.loads(Path(against).read_text(encoding="utf-8")), found)
+    print("golden: " + ("equal" if not moved else "MOVED at " + ", ".join(moved)))
+    return ps.EXIT_ABORT if moved else ps.EXIT_OK
 
 
 def main(argv=None):
@@ -574,10 +608,12 @@ def main(argv=None):
     if args.stage is None:
         self_check()
         return ps.EXIT_OK
-    problems = preflight(args.out)
+    problems = preflight(args.out or tempfile.gettempdir())
     if problems:
         print("REFUSED: " + "; ".join(problems), file=sys.stderr)
         return ps.EXIT_REFUSED
+    if args.stage == "golden":
+        return run_golden(args.out, args.against)
     extra = {}
     if args.stage in ("record", "instrument"):
         extra["pilot"] = args.pilot
@@ -587,9 +623,6 @@ def main(argv=None):
         return run_stage(args.stage, args.out, **extra)
     except ps.Refused as refusal:
         print(f"REFUSED: {refusal}", file=sys.stderr)
-        return ps.EXIT_REFUSED
-    except NotImplementedError as owed:
-        print(f"REFUSED: {args.stage} is not built yet (owed to {owed})", file=sys.stderr)
         return ps.EXIT_REFUSED
 
 

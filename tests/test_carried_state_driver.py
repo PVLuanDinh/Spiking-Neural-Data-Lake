@@ -1,22 +1,30 @@
-"""G1(c)'s campaign driver, part 1 (instruments/carried_state_driver.py): the preflight, the CLI,
-the stage chain and the first five stages (record, mechanism, instrument, references, construct)
-of g1c-carried-state.md section 2.13, each with its constructed red.
+"""G1(c)'s campaign driver (instruments/carried_state_driver.py): the preflight, the CLI, the stage
+chain, the first five stages (record, mechanism, instrument, references, construct) of
+g1c-carried-state.md section 2.13 each with its constructed red, and -- at the end -- the
+MINI-CAMPAIGN: every one of the twelve stages run end to end through the report on 31 stand-in live
+seeds.
 
 Nothing here records or builds a Brain, and no live seed (300-361), synthetic seed 6000 or learner
 seed 7000-7007 is run: stages run on a scratch OUT at a stand-in revision, their jobs go through
 stand-in runners (monkeypatched `ps._child` / `ps._record_child`) or an in-process replay of the
 48-event fixture, and the streams are that fixture (or R-b6's family on the exposed seed 4243,
-shortened where a test says so)."""
+shortened where a test says so). The mini-campaign shortens the window and b to 16 and R-b6's family
+to 300 events, and says so in every summary it writes (`scale`, `shortened`)."""
 
 import copy
 import functools
 import inspect
+import itertools
+import json
+import threading
 from pathlib import Path
 
 import pytest
 
 from snn_data_lake.instruments import carried_state_campaign as cs
 from snn_data_lake.instruments import carried_state_driver as drv
+from snn_data_lake.instruments import carried_state_report as rep
+from snn_data_lake.instruments import inseparable_mapping as im
 from snn_data_lake.instruments import memory_diagnostic as md
 from snn_data_lake.instruments import pool_selection as ps
 
@@ -66,7 +74,7 @@ def in_process(spec):
 # ---- the stage list, the registrations' shape and the module itself ------------------------------
 
 
-def test_the_stages_are_section_2_13s_and_five_are_built():
+def test_the_stages_are_section_2_13s_and_every_one_is_built():
     assert drv.STAGES == (
         "record",
         "mechanism",
@@ -81,13 +89,27 @@ def test_the_stages_are_section_2_13s_and_five_are_built():
         "separation",
         "report",
     )
-    assert tuple(drv.STAGE_FUNCTIONS) == drv.STAGES[:5] and drv.OWED == drv.STAGES[5:]
+    assert tuple(drv.STAGE_FUNCTIONS) == drv.STAGES and not hasattr(drv, "OWED")
     assert drv.REFERENCE_ARMS == ("a", "f64", "e1", "e1-0") and drv.POOL == ps.SELECTABLE[0]
+    # the seven stages of part 2 are the three modules' own: the driver imports them, they never
+    # import it
+    assert [
+        drv.STAGE_FUNCTIONS[stage].__module__.rsplit(".", 1)[1] for stage in drv.STAGES[5:]
+    ] == [
+        "carried_state_stages",
+        "carried_state_stages",
+        "carried_state_stages",
+        "carried_state_controls",
+        "carried_state_controls",
+        "carried_state_controls",
+        "carried_state_report",
+    ]
 
 
-def test_the_module_stays_under_the_soft_ceiling():
-    lines = Path(inspect.getsourcefile(drv)).read_text(encoding="utf-8").count("\n")
-    assert lines < 800
+def test_every_module_of_the_driver_stays_under_the_soft_ceiling():
+    for module in (drv, drv.st, drv.ctl, drv.rep):
+        lines = Path(inspect.getsourcefile(module)).read_text(encoding="utf-8").count("\n")
+        assert lines < 800, (module.__name__, lines)
 
 
 def test_the_self_check_runs(capsys):
@@ -178,6 +200,7 @@ def test_the_cli_passes_each_stage_only_what_it_takes(tmp_path, monkeypatch):
         ["instrument", out, "--pilot", "p"],
         ["references", out],
         ["construct", out],
+        *([stage, out] for stage in drv.STAGES[5:]),
     ):
         assert drv.main(argv) == 0
     assert given == [
@@ -187,10 +210,11 @@ def test_the_cli_passes_each_stage_only_what_it_takes(tmp_path, monkeypatch):
         ("instrument", {"pilot": "p"}),
         ("references", {}),
         ("construct", {}),
+        *((stage, {}) for stage in drv.STAGES[5:]),
     ]
 
 
-def test_the_cli_refuses_a_missing_pilot_a_reserve_without_repair_and_an_owed_stage(
+def test_the_cli_refuses_a_missing_pilot_a_reserve_without_repair_and_an_early_stage(
     tmp_path, monkeypatch, capsys
 ):
     monkeypatch.setattr(drv, "preflight", lambda out: [])
@@ -202,9 +226,10 @@ def test_the_cli_refuses_a_missing_pilot_a_reserve_without_repair_and_an_owed_st
     assert "REPAIR.txt" in capsys.readouterr().err
     assert drv.main(["instrument", str(out), "--pilot", str(pilot)]) == ps.EXIT_REFUSED
     assert "causal.json" in capsys.readouterr().err  # the eight causal replays are missing
+    monkeypatch.setattr(md, "_revision", clean)  # the CLI reads the real tree: stand in a clean one
     assert drv.main(["migrate", str(out)]) == ps.EXIT_REFUSED
-    assert "owed to P5c" in capsys.readouterr().err
-    assert not out.exists()  # nothing was written by any refusal
+    assert "migrate: construct has no summary" in capsys.readouterr().err
+    assert not list(out.glob("*.summary.json"))  # nothing was written by any refusal
 
 
 # ---- the stage chain (pool_selection's own refusals, at stand-in revisions) ----------------------
@@ -262,11 +287,12 @@ def test_a_stage_never_runs_twice_in_one_out(tmp_path):
 
 
 @pytest.mark.parametrize("stage", drv.STAGES[5:])
-def test_an_owed_stage_raises_p5c_and_writes_nothing(tmp_path, stage):
+def test_a_later_stage_refuses_before_its_predecessor_and_writes_no_summary(tmp_path, stage):
     out = tmp_path / "out"
-    with pytest.raises(NotImplementedError, match="^P5c$"):
+    previous = drv.STAGES[drv.STAGES.index(stage) - 1]
+    with pytest.raises(ps.Refused, match=f"{previous} has no summary"):
         drv.run_stage(stage, out, revision=clean)
-    assert not out.exists()
+    assert not list(out.glob("*.summary.json"))
     with pytest.raises(ps.Refused, match="unknown stage"):
         drv.run_stage("nonsense", out, revision=clean)
 
@@ -803,3 +829,227 @@ def test_a_construction_check_that_times_out_is_not_run_and_one_that_fails_abort
         tmp_path / "f", monkeypatch, status="FAIL"
     )  # a defect in the check
     assert code == ps.EXIT_ABORT and summary(out, "construct")["status"] == "ABORTED"
+
+
+# ---- the mini-campaign: every stage, end to end, to the report -----------------------------------
+
+MINI_SCALE = {
+    "window": 16,
+    "b": 16,
+    "percepts": 64,
+    "kicks": 48,
+}  # disclosed: the 48-event fixture's
+MINI_RB6 = 4243  # exposed; the stage is told this seed, never 6000
+
+
+def mini_children():
+    """The mini-campaign's `ps._child`: the mechanism, configuration and construction jobs are
+    stand-ins (the construction check's learner seeds 7000-7007 are never run), every other job runs
+    in-process; a replay's execution id gets a process of its own, as R-b4's twins have in a
+    campaign."""
+    counter, lock = itertools.count(1000), threading.Lock()
+
+    def child(spec):
+        kind, ok = spec["kind"], {"status": "OK", "path": spec["out"]}
+        if kind == "mechanism":
+            body = {
+                "candidate": "lsm",
+                "greens": {"R-b0": True},
+                "reds": {"R-b0": True},
+                "numbers": {},
+            }
+            md._save(spec["out"], body)
+            return ok
+        if kind == "configuration":
+            result = {name: {"verdict": True, "numbers": {}} for name in ps.CONFIGURATION_CHECKS}
+            result["R-b3"] = {"verdict": True, "numbers": {"settings": [[1, 1]]}}
+            md._save(spec["out"], result)
+            return ok
+        if kind == "call" and spec["target"].endswith(":construction_check"):
+            md._save(
+                spec["out"], {"verdict": True, "a1": {"ok": True}, "seeds": [7000], "epochs": 400}
+            )
+            return ok
+        ps.execute(spec)
+        if kind == "replay":
+            run = md._load(spec["out"])
+            with lock:
+                run["execution_id"] = f"{next(counter)}-" + run["execution_id"].split("-", 1)[1]
+            md._save(spec["out"], run)
+        return ok
+
+    return child
+
+
+def mini_functions(build):
+    stages = drv.STAGE_FUNCTIONS
+    return {
+        "instrument": functools.partial(drv.stage_instrument, rb6_seed=MINI_RB6),
+        "migrate": functools.partial(stages["migrate"], scale=MINI_SCALE),
+        "causality": functools.partial(stages["causality"], scale=MINI_SCALE),
+        "primary": functools.partial(stages["primary"], scale=MINI_SCALE),
+        "controls": functools.partial(stages["controls"], scale=MINI_SCALE, rb6_seed=MINI_RB6),
+        "transport": functools.partial(stages["transport"], scale=MINI_SCALE),
+        "separation": functools.partial(stages["separation"], scale=MINI_SCALE, build=build),
+    }
+
+
+def stand_in(seed):
+    """A tiny synthetic recording under `seed`: the 48-event fixture, seed 100's exactly (it is the
+    pilot's, and R-b8 compares them), every other seed's with its category held for 2 + seed % 3
+    events, so that the stand-ins differ and the contrasts have a spread over their seeds."""
+    stream = fixture(seed)
+    if seed != ps.PILOT_SEED:
+        for index, event in enumerate(stream["events"]):
+            event["c"] = (index // (2 + seed % 3)) % 3
+    return stream
+
+
+def mini_recorder(streams):
+    def child(job):
+        md._save(job["out"], streams[job["seed"]])
+        return {"status": "OK", "path": job["out"]}
+
+    return child
+
+
+@pytest.fixture(scope="module")
+def mini(tmp_path_factory):
+    """OUT after all twelve stages. Tiny synthetic streams (`stand_in`, built from the 48-event
+    fixture, which is seed 100's) stand in for the 37 recordings; the pilot is seed 100's honest
+    stream and eight causal replays."""
+    root = tmp_path_factory.mktemp("mini")
+    out, pilot = root / "out", root / "pilot"
+    with pytest.MonkeyPatch.context() as patch:
+        streams = {seed: stand_in(seed) for seed in (ps.PILOT_SEED, *REST, *cs.LIVE_SEEDS)}
+        patch.setattr(md, "RB6_EVENTS", 300)
+        patch.setattr(md, "RB6_WARM_UP", 64)
+        patch.setattr(im, "STREAM_WARM_UP", 24)
+        patch.setattr(ps, "_record_child", mini_recorder(streams))
+        patch.setattr(ps, "_child", mini_children())
+        stream = fixture(ps.PILOT_SEED)
+        pilot.mkdir()
+        md._save(pilot / f"{ps.PILOT_SEED}-stream.json.gz", stream)
+        for arm in md.SCORED_ARMS:
+            md._save(pilot / f"{ps.PILOT_SEED}-{arm}-causal.json", md.replay(stream, arm))
+        functions = mini_functions(lambda seed, lab: im._build_stream(seed, lab, n_events=60))
+        codes = {}
+        for stage in drv.STAGES:
+            extra = {"pilot": str(pilot)} if stage in ("record", "instrument") else {}
+            codes[stage] = drv.run_stage(
+                stage, out, revision=clean, function=functions.get(stage), **extra
+            )
+    return out, pilot, codes
+
+
+def test_the_mini_campaign_runs_every_stage_end_to_end_at_one_clean_head(mini):
+    out, _, codes = mini
+    assert codes == {stage: ps.EXIT_OK for stage in drv.STAGES}
+    bodies = {stage: summary(out, stage) for stage in drv.STAGES}
+    assert {body["status"] for body in bodies.values()} == {"COMPLETED"}
+    assert {(body["head"], body["dirty"]) for body in bodies.values()} == {("h1", False)}
+    assert [body["step"] for body in bodies.values()] == list(drv.STAGES)
+    assert bodies["record"]["live_seeds"] == list(cs.LIVE_SEEDS)
+    assert len(bodies["record"]["recordings"]) == 37
+    assert bodies["references"]["inspected"] is True and (out / drv.INSPECTED_FILE).is_file()
+    assert bodies["migrate"]["use"] == "kernel" and bodies["migrate"]["reading"] == "hosted"
+    for stage in ("primary", "controls", "transport", "separation"):  # each binds to that host
+        assert bodies[stage]["host"] == "kernel" and bodies[stage]["shortened"] is True
+        assert bodies[stage]["scale"] == MINI_SCALE
+    assert bodies["primary"]["live_seeds"] == list(cs.LIVE_SEEDS)
+    assert bodies["separation"]["run"] is True and bodies["construct"]["item_3"] == "RUN"
+    assert bodies["controls"]["sighted"] is True and bodies["instrument"]["rb6_ok"] is True
+
+
+def test_the_mini_campaigns_report_reads_31_seeds_and_marks_itself_shortened(mini):
+    out, _, _ = mini
+    report = json.loads((out / "report.json").read_text(encoding="utf-8"))
+    text = (out / "report.md").read_text(encoding="utf-8")
+    assert report["shortened"] is True and "SHORTENED" in text and text.isascii()
+    assert report["head"] == "h1" and report["dirty"] is False and report["host"] == "kernel"
+    assert report["live_seeds"] == list(cs.LIVE_SEEDS) and len(report["per_seed"]) == 31
+    assert all(row["n"] == 31 and row["bar"] == cs.T_CRIT for row in report["rows"].values())
+    wanted = {"primary D, readout", "D_shuf, readout", "D0, readout", "W = D0 - D, readout"}
+    assert wanted <= set(report["rows"])
+    assert len(report["tables"]["cells"]) == 4 and len(report["tables"]["cells"]["carried"]) == 31
+    # the stand-ins differ, so no contrast is degenerate: every row has a spread over its 31 seeds
+    for name in ("primary D, readout", "D_shuf, readout", "oracle (f64) - (a), readout"):
+        row = report["rows"][name]
+        assert not row["degenerate"] and row["sd"] > 0 and row["fpr"] > 0, name
+    inputs, rows = report["inputs"], report["rows"]
+    # the reading is 2.5's table over the report's own rows and inputs, whichever row it lands on
+    assert report["g_r1"] == cs.g_r1_reading(
+        blind_harness_ok=inputs["blind_harness_ok"],
+        primary=rows["primary D, readout"],
+        stream_history=rows["stream history, readout"],
+        d_shuf=rows["D_shuf, readout"],
+        shuffle_sighted=inputs["shuffle_sighted"],
+    )
+    assert report["g_r1"]["verdict"] in {"PASS", "RED", "NOT READ", "REFUSED (blind harness)"}
+    assert inputs["blind_harness_ok"] == (
+        all(inputs["rb6_clauses"].values()) and inputs["oracle_met"]
+    )
+    assert inputs["shuffle_sighted"] is True and report["separation"]["run"] is True
+    assert (
+        report["migration"]["reading"] == "hosted" and report["migration"]["machinery_red"]["fired"]
+    )
+    assert set(report["transport"]["records"]) == set(md.TRANSPORT_ARMS)
+    assert f"## G-R1 reads: {report['g_r1']['verdict']}" in text
+    filed = summary(out, "report")
+    assert filed["g_r1"] == report["g_r1"] and filed["digest"]["report"] == rep.digest_of(report)
+
+
+def test_the_report_is_a_pure_function_of_the_saved_summaries(mini):
+    out, _, _ = mini
+    again = rep.assemble(rep.load_summaries(out))
+    saved = json.loads((out / "report.json").read_text(encoding="utf-8"))
+    assert saved == json.loads(json.dumps(ps._plain(again)))
+    assert (out / "report.md").read_text(encoding="utf-8") == rep.render(again)
+    assert rep.assemble(rep.load_summaries(out)) == again  # and deterministic
+
+
+def test_the_golden_over_the_mini_campaigns_summaries_agrees_with_the_report_stage(mini):
+    out, _, _ = mini
+    found = rep.golden(out)
+    assert found["scope"]["hosts"] == ["kernel"]  # the surviving host the migrate summary names
+    assert found["report"] == summary(out, "report")["digest"]
+    assert rep.golden(out) == found  # in-process at one head: byte-identical
+
+
+def test_no_seed_the_campaign_may_not_run_was_run_by_the_mini_campaign(mini):
+    out, _, _ = mini
+    names = [path.name for path in out.rglob("*") if path.is_file()]
+    banned = (6000, *range(7000, 7008), *cs.RESERVE_SEEDS)
+    for seed in banned:
+        assert not [name for name in names if f"-{seed}-" in name or f"-{seed}." in name], seed
+    assert (out / "instrument" / f"rb6-{MINI_RB6}-stream.json.gz").is_file()
+
+
+@pytest.mark.parametrize("stage", drv.STAGES)
+def test_a_stage_of_the_mini_campaign_never_runs_twice_and_a_dirty_tree_refuses_it(
+    mini, tmp_path, stage
+):
+    out, pilot, _ = mini
+    extra = {"pilot": str(pilot)} if stage in ("record", "instrument") else {}
+    with pytest.raises(ps.Refused, match="already ran"):
+        drv.run_stage(stage, out, revision=clean, function=lambda _o, **_k: {}, **extra)
+    dirty = tmp_path / "dirty"  # a dirty-tree stand-in refuses before anything is written
+    with pytest.raises(ps.Refused, match="dirty"):
+        drv.run_stage(
+            stage, dirty, revision=lambda: ("h1", True), function=lambda _o, **_k: {}, **extra
+        )
+    assert not list(dirty.glob("*.summary.json"))
+
+
+def test_a_tampered_pilot_halts_r_b8_in_the_chain_and_no_later_stage_starts(tmp_path, monkeypatch):
+    code, out, batches = record(tmp_path, monkeypatch, nudge_pilot=True)
+    assert code == ps.EXIT_HALT and batches == [(100,)]  # halted on seed 100 before the batch
+    halted = summary(out, "record")
+    assert halted["check"] == "R-b8 stream identity"
+    assert halted["detail"]["new"] != halted["detail"]["pilot"]
+    pilot = str(pilot_dir(tmp_path, causal=True))  # enough to START the instrument stage
+    for stage in drv.STAGES[1:]:  # the chain stops: the predecessor HALTED, or never ran
+        extra = {"pilot": pilot} if stage == "instrument" else {}
+        with pytest.raises(ps.Refused, match="HALTED|no summary"):
+            drv.run_stage(stage, out, revision=clean, function=lambda _o, **_k: {}, **extra)
+    assert [p.name for p in out.glob("*.summary.json")] == ["record.summary.json"]

@@ -135,6 +135,18 @@ EXEMPT = {
         "permanent",
         "G1(c)'s campaign module (a governed benchmark; evidence g1c-carried-state.md) until G1(c)'s disposition; consumers: its CLI and tests/test_carried_state_campaign.py",
     ),
+    "carried_state_stages": (
+        "permanent",
+        "G1(c)'s migrate, causality and primary stages (a governed benchmark; evidence g1c-carried-state.md 2.9, 2.10, 2.3) until G1(c)'s disposition; consumers: carried_state_driver's CLI and tests/test_carried_state_stages.py",
+    ),
+    "carried_state_controls": (
+        "permanent",
+        "G1(c)'s controls, transport and separation stages (a governed benchmark; evidence g1c-carried-state.md 2.6-2.8) until G1(c)'s disposition; consumers: carried_state_driver's CLI and tests/test_carried_state_stages.py",
+    ),
+    "carried_state_report": (
+        "permanent",
+        "G1(c)'s report stage and golden check (a governed benchmark; evidence g1c-carried-state.md 2.3, 2.5, 2.11) until G1(c)'s disposition; consumers: carried_state_driver's CLI and tests/test_carried_state_report.py",
+    ),
     "carried_state_driver": (
         "permanent",
         "G1(c)'s campaign driver (a governed benchmark; evidence g1c-carried-state.md 2.13) until G1(c)'s disposition; consumers: its CLI and tests/test_carried_state_driver.py",
