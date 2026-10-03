@@ -5,12 +5,15 @@ hand-built tables, section 2.6's power rule, R-b7's refusals, the step-order ref
 Nothing here runs a campaign: steps run on a scratch OUT at a stand-in revision, and their jobs go
 through stand-in runners (or one in-process replay of the 48-event fixture)."""
 
+import contextlib
 import functools
 import hashlib
 import inspect
 import json
 import math
 import os
+import threading
+import time
 from pathlib import Path
 
 import numpy as np
@@ -1298,6 +1301,57 @@ def test_the_tap_faults_are_the_harness_context_managers():
     assert ps.FAULTS["leaky_tap"] is md._leaky_tap
     assert ps.FAULTS["writing_tap"] is md._writing_tap
     assert list(ps.FAULTS)[:3] == [None, "e1_one_element", "writing_readout"]  # G1(b)'s, in order
+
+
+def _fault_schedule(tmp_path, monkeypatch, guard):
+    """One fault job and six plain replays through run_jobs' 4 threads, in process; each job's
+    interval (monotonic) is recorded. A FAULTS context swaps module globals for the process."""
+    tmp_path.mkdir(parents=True)
+    path = tmp_path / "17-stream.json.gz"
+    md._save(path, {"seed": 17, "events": []})
+    fault, plain, lock, mine = [], [], threading.Lock(), threading.local()
+
+    @contextlib.contextmanager
+    def probe():
+        start, mine.fault = time.monotonic(), True
+        time.sleep(0.3)
+        yield
+        mine.fault = False
+        fault.append((start, time.monotonic()))
+
+    def replay(stream, arm, **_kwargs):
+        start = time.monotonic()
+        time.sleep(0.05)
+        if not getattr(mine, "fault", False):  # the fault job's own replay is not a neighbour
+            with lock:
+                plain.append((start, time.monotonic()))
+        return {"arm": arm}
+
+    def runner(spec):
+        ps.execute(spec)
+        return {"status": "OK", "path": spec["out"]}
+
+    monkeypatch.setitem(ps.FAULTS, "probe", probe)
+    monkeypatch.setattr(md, "replay", replay)
+    monkeypatch.setattr(ps, "_FAULT_GUARD", guard)
+    jobs = [ps._replay_job(path, "a", tmp_path / "f.json", fault="probe")]
+    jobs += [ps._replay_job(path, "a", tmp_path / f"p{i}.json") for i in range(6)]
+    ps.run_jobs(jobs, runner)
+    assert len(fault) == 1 and len(plain) == 6
+    ((f0, f1),) = fault
+    return sum(start < f1 and end > f0 for start, end in plain)
+
+
+def test_a_fault_job_runs_alone_in_process_and_the_guard_is_what_keeps_it_alone(
+    tmp_path, monkeypatch
+):
+    class Free:  # the red: no guard, the same schedule
+        @contextlib.contextmanager
+        def hold(self, fault):
+            yield
+
+    assert _fault_schedule(tmp_path / "red", monkeypatch, Free()) > 0
+    assert _fault_schedule(tmp_path / "green", monkeypatch, ps._FaultGuard()) == 0
 
 
 def test_execute_forwards_a_tap_and_a_side_only_when_the_job_names_them(tmp_path, monkeypatch):

@@ -49,6 +49,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import threading
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -837,6 +838,36 @@ FAULTS = {
 }
 
 
+class _FaultGuard:
+    """A FAULTS context swaps module globals for its whole process. A campaign runs each job in a child
+    process of its own, so this never waits there; an in-process caller (the tests' stand-in runners, 4
+    threads) must never run a fault job beside another job: a fault job runs alone, plain jobs share."""
+
+    def __init__(self):
+        self._turn, self._plain, self._fault = threading.Condition(), 0, False
+
+    @contextlib.contextmanager
+    def hold(self, fault):
+        with self._turn:
+            self._turn.wait_for(lambda: not self._fault and (self._plain == 0 or not fault))
+            if fault:
+                self._fault = True
+            else:
+                self._plain += 1
+        try:
+            yield
+        finally:
+            with self._turn:
+                if fault:
+                    self._fault = False
+                else:
+                    self._plain -= 1
+                self._turn.notify_all()
+
+
+_FAULT_GUARD = _FaultGuard()
+
+
 # a tap job's saved result carries the tap under "tap"; a bare tap file is as good
 def _side(path):
     value = md._load(path)
@@ -882,7 +913,7 @@ def execute(spec):
     """One job, inside its child process, at torch and BLAS one thread (R-b3 sets its own)."""
     torch.set_num_threads(1)
     kind = spec["kind"]
-    with rp._blas_threads(1):
+    with _FAULT_GUARD.hold(spec.get("fault") is not None), rp._blas_threads(1):
         if kind == "replay":
             stream = md._load(spec["stream"])
             # G1(c): a job names a tap boundary and/or a side tap only when it needs one; a job that
