@@ -35,6 +35,7 @@ SCALE = {"window": 16, "b": 16, "percepts": 64, "kicks": 48}
 LIVE = (300, 301, 302)
 RB6 = 4243  # exposed; never 6000
 SEEDS = (100, 203, *cs.GATE_SEEDS, *LIVE)
+HOSTED_SEEDS = (*cs.GATE_SEEDS, *cs.GATE_SYNTHETIC_SEEDS)  # every hosted cell, live bundle (2.9)
 
 
 def clean():
@@ -312,7 +313,9 @@ def test_migrate_reads_the_gate_on_both_hosts_and_files_the_quantization_beside_
     # R-b4 on the hosted form is a fresh-process TWIN of every hosted cell (P5 panel F7), beside
     # the red
     twins = body["r_b4_twins"]
-    assert set(twins) == {f"{form} {seed}" for form in ps.FIT_FORMS for seed in cs.GATE_SEEDS}
+    # "every hosted cell" (2.9 as amended): the live gate seeds AND the synthetic gate cells (R1)
+    assert set(twins) == {f"{form} {seed}" for form in ps.FIT_FORMS for seed in HOSTED_SEEDS}
+    assert len(twins) == 16
     assert all(
         row == {"pool_differs": False, "learner_differs": False, "executions": True}
         for row in twins.values()
@@ -320,6 +323,7 @@ def test_migrate_reads_the_gate_on_both_hosts_and_files_the_quantization_beside_
     assert (
         body["seed_set"] == "live"
         and (out / "migrate" / "twin" / "twin-carried-204.json.gz").is_file()
+        and (out / "migrate" / "twin" / "twin-settled-5005.json.gz").is_file()
     )
     # the replays: TUNED x {carried, settled} x {port, hosted} on 204-207 and 5005-5008
     for host in st.HOSTS:
@@ -460,7 +464,37 @@ def test_a_hosted_twin_that_differs_in_the_pool_fails_the_gate_and_in_a_learner_
     assert isinstance(halt, ps.Halt) and halt.check == "R-b4"
     twin = lambda spec: "twin-" in spec["out"]  # noqa: E731
     halt, _ = migrate_of(world, tmp_path / "late", Children(timeouts=twin))
-    assert isinstance(halt, ps.Halt) and halt.check == "R-b4 TIMEOUT" and len(halt.detail) == 8
+    assert isinstance(halt, ps.Halt) and halt.check == "R-b4 TIMEOUT" and len(halt.detail) == 16
+
+
+def test_a_hosted_twin_difference_confined_to_a_synthetic_gate_cell_is_read_like_a_live_one(
+    world, tmp_path
+):
+    """Re-panel R1 (2.9 as amended: the twins cover "every hosted cell"): the hosted table also
+    holds the synthetic gate cells, so a difference on one of them alone halts R-b4 when it is a
+    learner's and reads "port" when it is the pool's; a clean run stays "hosted" with sixteen
+    twins."""
+    synthetic = set(cs.GATE_SYNTHETIC_SEEDS)
+    cells = {f"{form} {seed}" for form in ps.FIT_FORMS for seed in synthetic}
+
+    def only(pool, learner):
+        def found(a, b):
+            mine = a["seed"] in synthetic
+            return pool and mine, learner and mine
+
+        return lambda m: m.setattr(ps, "_twins_differ", found)
+
+    halt, _ = migrate_of(world, tmp_path / "learner", Children(), patch=only(False, True))
+    assert isinstance(halt, ps.Halt) and halt.check == "R-b4"
+    assert {name for name, row in halt.detail.items() if row["learner_differs"]} == cells
+    assert len(halt.detail) == 16 and not any(row["pool_differs"] for row in halt.detail.values())
+    body, _ = migrate_of(world, tmp_path / "pool", Children(), patch=only(True, False))
+    assert isinstance(body, dict) and body["reading"] == "port" and body["use"] == "port"
+    failed = [name for name, held in body["conjuncts"].items() if not held]
+    assert failed == ["r_b4"]
+    assert {name for name, row in body["r_b4_twins"].items() if row["pool_differs"]} == cells
+    body, _ = migrate_of(world, tmp_path / "clean", Children(), patch=only(False, False))
+    assert body["reading"] == "hosted" and len(body["r_b4_twins"]) == 16
 
 
 def test_a_pool_noise_red_that_does_not_fire_halts_the_migration_it_is_no_conjunct(world, tmp_path):
@@ -557,7 +591,9 @@ def test_the_reserve_campaign_migrates_on_the_reserve_gate_seeds_and_pairs_nothi
             str(s) for s in seeds
         }
     assert set(body["r_b4_twins"]) == {
-        f"{form} {seed}" for form in ps.FIT_FORMS for seed in cs.GATE_RESERVE_SEEDS
+        f"{form} {seed}"
+        for form in ps.FIT_FORMS
+        for seed in (*cs.GATE_RESERVE_SEEDS, *cs.GATE_SYNTHETIC_RESERVE_SEEDS)
     }
     versus = body["port_vs_g1b"]
     assert versus["seeds"] == [208, 209, 210, 211] and versus["g1b_seeds"] == [204, 205, 206, 207]

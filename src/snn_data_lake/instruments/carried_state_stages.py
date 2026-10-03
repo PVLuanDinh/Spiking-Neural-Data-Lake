@@ -478,9 +478,10 @@ def stage_migrate(out, *, scale=None):
             task=task,
         )
         need_ok(tables[host], f"migrate: {host} replays")
-    # R-b4 on the HOSTED form: a fresh-process twin of every hosted cell, compared as the primary's are
+    # R-b4 on the HOSTED form: a fresh-process twin of EVERY hosted cell (the live gate seeds and the
+    # synthetic gate cells the table also holds, 2.9 as amended; re-panel R1), compared as the primary's are
     twins = twin_rows(
-        ps._folder(out, "migrate/twin"), gate, paths, tables["kernel"], "kernel", window
+        ps._folder(out, "migrate/twin"), (*gate, *task), paths, tables["kernel"], "kernel", window
     )
     reset = [
         pool_cell(

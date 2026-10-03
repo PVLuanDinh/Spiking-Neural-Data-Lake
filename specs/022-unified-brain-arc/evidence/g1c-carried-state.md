@@ -387,6 +387,13 @@ forbidden-map request's two replays). Scaled from this paragraph's own two figur
 min), the 1,123 replays take about **21-43 min**; the call jobs and the recordings are timed apart. Still 4 workers and a 900 s
 timeout per job.
 
+*DATED CORRECTION 2026-10-03 (pre-data, as above; Codex re-panel on the P5 fold, finding R1; changes no seed, threshold, worker
+count or decision):* the migration gate's R-b4 twins cover **every hosted cell**, as 2.9's amendment says: the four synthetic gate
+cells (5005-5008 live, 5009-5012 reserve) as well as the four live gate seeds, so 16 twins and not 8. The migrate stage therefore
+runs **52 replay jobs, not 44**, and a campaign **1,131, not 1,123** (recounted from the implemented stages with a locked
+counter: instrument 22, references 124, migrate 52, causality 12, primary 188, controls 330, transport 217, separation 186; the
+108 `call` jobs and the 37 recordings are unchanged). Scaled by the same two figures, the 1,131 replays take about **21-44 min**.
+
 ### 2.14 Arc split, commits, review and battery
 
 One arc per part, stacked on one branch off `e1b3ae3c`: P0 this file and the plan's dated notes; P1 instruments (the exact FPR
