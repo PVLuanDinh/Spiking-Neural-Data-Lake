@@ -88,7 +88,9 @@ STABLE = 10  # A4: 4 of 4 at each of the last STABLE epoch ends
 # epochs_to_stable 122, 170, 112, 124 -> 2 * 170 = 340 -> 350. The first presentation at which all four
 # texts read right was step 129, 106, 112, 84 (steps, not epochs). All four seeds read 4 of 4 at every
 # epoch end after epoch end 179, 170, 162, 161 respectively, through epoch 4000.
-TEACH_EPOCHS = 350
+# DATED 2026-10-03 (g1c 2.8 amendment, pre-data): the rule reads the STRONGER stability, the last epoch end not
+# reading 4 of 4 within 4000 epochs (179, 170, 162, 161; reproduced by the orchestrator): 2 * 179 = 358 -> 400.
+TEACH_EPOCHS = 400
 RANDOM_SETTINGS = 2000  # A3: random weight settings (all 9 neurons, U(-1, 1))
 RANDOM_SETTINGS_SEED = 20261003  # an RNG seed for those settings, not a recording seed
 ADDITIVITY_TOL = 1e-12  # A2: the float additivity bound (the plan read 1.1e-16)

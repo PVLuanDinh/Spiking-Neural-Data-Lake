@@ -258,7 +258,7 @@ def test_a5_two_threshold_units_separate_xor_and_one_cannot():
 # ---- the construction check, the reds, the development measurement ---------------------------
 def test_the_construction_check_passes_on_the_development_seeds():
     result = im.construction_check(check_seeds=DEV, epochs=im.TEACH_EPOCHS)
-    assert result["verdict"] is True and result["seeds"] == DEV and result["epochs"] == 350
+    assert result["verdict"] is True and result["seeds"] == DEV and result["epochs"] == 400
     assert all(result[key]["ok"] for key in ("a1", "a2", "a3", "a4", "a5"))
     assert result["a3"]["max_correct"] <= 3 and result["a3"]["random_4_of_4"] == 0
     # the verdict is the conjunction of A1-A4 and not of A5 (witness only)
@@ -290,7 +290,14 @@ def test_every_construction_red_fires():
 def test_the_development_measurement_is_recorded_and_sets_teach_epochs():
     measured = {s: im.epochs_to_stable(s, im.label_twin, max_epochs=4000) for s in DEV}
     assert measured == DEV_EPOCHS_TO_STABLE
-    assert im.TEACH_EPOCHS == -(-2 * max(measured.values()) // 50) * 50 == 350
+    # g1c 2.8 amendment (pre-data): TEACH_EPOCHS reads the stronger stability, the last epoch
+    # end that is not 4 of 4 within 4000 epochs -- 179, 170, 162, 161 -- so 2 * 179 = 358 -> 400
+    last_unstable = {}
+    for s in DEV:
+        ends = im._run(s, im.label_twin, 4000, every_step=False)["epoch_ends"]
+        last_unstable[s] = max((i + 1 for i, c in enumerate(ends) if c != 4), default=0)
+    assert last_unstable == {7100: 179, 7101: 170, 7102: 162, 7103: 161}
+    assert im.TEACH_EPOCHS == -(-2 * max(last_unstable.values()) // 50) * 50 == 400
     # the stable run is the 10 epoch ends e + 1 .. e + 10: one epoch short of it, nothing is found
     e = measured[7100]
     assert im.epochs_to_stable(7100, im.label_twin, e + im.STABLE - 1) is None
@@ -324,7 +331,7 @@ def test_teaching_goes_through_learn_turn_on_one_shared_schedule(monkeypatch):
 
 def test_the_defaults_are_the_check_seeds_and_the_reds_use_a_development_seed(monkeypatch):
     seeds, epochs = im._resolve(None, None)  # resolves the campaign's defaults; runs nothing
-    assert seeds == ccc.G2II_CHECK_SEEDS == tuple(range(7000, 7008)) and epochs == 350
+    assert seeds == ccc.G2II_CHECK_SEEDS == tuple(range(7000, 7008)) and epochs == 400
     assert not set(seeds) & set(DEV)
     assert im._resolve(DEV, 50) == (DEV, 50)
     assert im._dev_seed() == 7100 and im._dev_seed() in ccc.G2II_DEV_SEEDS

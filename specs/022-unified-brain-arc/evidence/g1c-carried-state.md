@@ -216,6 +216,21 @@ each blind-control combination (2.10).
   teaching schedule TEACH_EPOCHS = 2 x the largest dev epochs-to-stable, rounded up to a multiple of 50; the arm-(a) floor on
   the twin stream and the pool-readability floor on the twin. They enter this file as a dated amendment before any check seed
   (7000-7007) or campaign seed is run.
+  *DATED AMENDMENT 2026-10-03 (pre-data: no check seed 7000-7007 and no campaign seed has been run; it specifies the numbers
+  this bullet left to the development measurement, each a strengthening):*
+  - **TEACH_EPOCHS = 400.** On learner seeds 7100-7103 the first run of 10 consecutive 4-of-4 epoch ends began after 122,
+    170, 112 and 124 epochs, and the last epoch end NOT reading 4 of 4 within 4,000 epochs was 179, 170, 162 and 161 (both
+    reproduced by the orchestrator). The rule reads the stronger of the two: 2 x 179 = 358, rounded up to 400 (the weaker
+    reading gave 350). A full construction check on the four development seeds took 3.01 s at 350 epochs.
+  - **Floors, both 0.75**, the affine ceiling on the XOR set, which a decoder can exceed on the linearly separable twin: arm
+    (a)'s mean decoder accuracy on the twin streams must reach 0.75, else the stream is wrong; a pool form's XOR reading is
+    "readable" only if that form's mean on the twin reaches 0.75, else it is reported as "pool blind to the code". Means are
+    over the seeds read (300-330 in the campaign).
+  - **Development readings** (decoder accuracy, pool seeds 100-103, streams built and replayed out of tree at `deb2be25`):
+    arm (a) XOR 0.485, 0.429, 0.573, 0.510 and twin 1.0 on all four; Settled XOR 0.992, 0.989, 0.991, 0.988 and twin 1.000,
+    0.997, 1.000, 0.993; Carried XOR 0.555, 0.682, 0.621, 0.680 and twin 0.784, 0.823, 0.884, 0.897. Disclosed: Settled's
+    near-perfect XOR reading is the pool's threshold nonlinearity separating four fixed codes (a Settled pool is a function
+    of x alone), which this section's reading anticipated; Carried mixes the previous presentation into the state.
 - **Pool reading (reported for G9, no bar):** a synthetic stream per live seed 300-330 (so the pool realizations are the
   primary's): 1,200 events, texts i.i.d. uniform, x = the 52-dim PSP-of-rank code scaled to norm 1.73 and zero-padded to 64,
   c_t = label(text_{t-1}) (the decoder predicts c_t from phi_{t-1}, so each label answers the previous presentation; disclosed),
