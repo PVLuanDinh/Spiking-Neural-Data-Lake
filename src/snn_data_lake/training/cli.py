@@ -41,12 +41,12 @@ def main(argv=None):
                         help="the LM's training text (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
     parser.add_argument("--export-lm", metavar="PATH", dest="export_lm",
                         help="the LM's snn_lm export; its serve core was retired too (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
-    parser.add_argument("--d-model", type=int, default=96, dest="d_model",
-                        help="LM width (--lm only; retired)")
-    parser.add_argument("--blocks", type=int, default=2,
-                        help="LM depth (--lm only; retired)")
-    parser.add_argument("--seq-len", type=int, default=64, dest="seq_len",
-                        help="LM unroll length (--lm only; retired)")
+    parser.add_argument("--d-model", type=int, default=None, dest="d_model",
+                        help="LM width (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
+    parser.add_argument("--blocks", type=int, default=None,
+                        help="LM depth (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
+    parser.add_argument("--seq-len", type=int, default=None, dest="seq_len",
+                        help="LM unroll length (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
     parser.add_argument("--resume", metavar="PATH",
                         help="resume the LM from a checkpoint (RETIRED 2026-10-02 with the BPTT trainers; refuses)")
     parser.add_argument("--checkpoint", metavar="PATH",
@@ -65,7 +65,10 @@ def main(argv=None):
     # silently ignored them and exited 0, which reads as honoured (Codex panel, 2026-10-02).
     retired = [flag for flag, on in (("--lm", args.lm), ("--offload", args.offload),
                                      ("--export-core", args.export_core), ("--export-lm", args.export_lm),
-                                     ("--corpus", args.corpus), ("--resume", args.resume)) if on]
+                                     ("--corpus", args.corpus), ("--resume", args.resume),
+                                     ("--d-model", args.d_model is not None),
+                                     ("--blocks", args.blocks is not None),
+                                     ("--seq-len", args.seq_len is not None)) if on]
     if retired:
         print(f"snn-train {' '.join(retired)}: RETIRED 2026-10-02 with the BPTT trainers (owner: "
               "port-then-retire) -- see docs/TRAINING.md and docs/SPIKING_LM.md")

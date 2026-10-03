@@ -85,7 +85,21 @@ from `readout/snn_classifier` (`trainer` imports them). `trainer.train_model(see
 
 Mean 0.7141 against 0.9984; paired one-sided t (BPTT - LOCAL) = -3.90 against the bar 1.895; exact sign-flip FPR 0.0625.
 **BPTT does not beat LOCAL: "nothing unique to port" holds and no e-prop arm is built.** Disclosed: LOCAL is at ceiling,
-so BPTT had at most 0.0016 of headroom; three BPTT seeds sat at chance. The verdict covers the pre-registered task only.
+so BPTT had at most 0.0016 of headroom; three BPTT seeds sat at 0.5 (chance is 0.25 for four balanced classes; commit
+`360b957d`'s message says "chance", which is wrong). The verdict covers the pre-registered task only.
+
+Second instrument (the closing report's reading: each arm was scored by its own readout, BPTT on LIF output spikes,
+LOCAL on summed currents). `tc1_cross.py` (scratch, at `073b3186`) scores BOTH trained weight matrices through BOTH
+evaluators on identical spike tapes, same per-seed data:
+
+| readout | BPTT mean | LOCAL mean | t (BPTT - LOCAL) | exact FPR |
+|---|---|---|---|---|
+| core summed currents (`snn_classifier.evaluate`, the path `trainer` exported to) | 0.6156 | 0.9984 | -5.38 | 0.0625 |
+| LIF output spikes (`trainer.evaluate`) | 0.7141 | 0.9234 | -2.94 | 0.0547 |
+
+LOCAL beats BPTT under either readout, so the verdict is not a readout artefact. The LIF evaluator reproduces BPTT's
+own scores on all eight seeds; LOCAL's weights lose accuracy under the LIF readout (0.998 -> 0.923), which is
+evaluator sensitivity and is recorded, not explained away.
 
 ### 2.2 The `mnist` port: T-R4 PASS, T-C2 NULL (pre-registered disposition 1.4 applied)
 The port (`sensorimotor/eprop_trained_brain`, e-prop with a Kolen-Pollack feedback matrix B, never `fc2` transposed; its
@@ -152,6 +166,13 @@ ungoverned total 200 -> 199 -> 198 -> 197 (commit 1 wrote 200); the POLICIES cei
 14582, each step the measured words of that commit's register entry ("measured + 0", headroom 10 words).
 
 ### 2.6 What the build found that the protocol did not say
+- **A deviation from the owner's decision, recorded as one (the closing report's finding).** The owner's decision 3
+  reads "Re-implement each learning capability e-prop-side in a governed module", and P2 (`docs/POLICIES.md`, the
+  port-first guard) says a retired mechanism's unique capability is ported FIRST. `spiking_lm`'s learning capability
+  (a char-level spiking LM) was retired WITHOUT an attempted governed e-prop port: 1.2 item 3 deferred it, on the
+  session's advisor-scoped reading that governing the ungoverned root e-prop char-LM is a separate P4c arc. Three of
+  the four trainers followed the clause; this one did not, so decision 3 is NOT claimed as executed in full. The port
+  is owed (its register entry says so) and leads the owner brief (2.7).
 - `MIGRATED_CALL_SITES` listed eleven modules, not only the four trainers; the other seven are themselves unreachable, so
   1.1's claim that the last retirement strands `brian2_backend` held, and was measured (T-R3), not assumed.
 - `sensorimotor/spiking_lm_serve` is the first frozen pre-G8 label with no live module. It left the live `REGIONS` table
@@ -165,5 +186,7 @@ ungoverned total 200 -> 199 -> 198 -> 197 (commit 1 wrote 200); the POLICIES cei
   endings.
 
 ### 2.7 For the next owner brief
-`mnist_genn`'s disposition (chance after one epoch; longer budgets untested); the symmetric-e-prop adjudication (a B := W2 port would be transport);
+First: govern the root e-prop char-LM (a P4c arc: census, register entry, a live consumer or an EXEMPT, the gates) or
+record the governed-tree char-LM capability as lost; its update rule bears on the open symmetric-e-prop adjudication,
+so that adjudication comes first. Then: `mnist_genn`'s disposition (chance after one epoch; longer budgets untested); the symmetric-e-prop adjudication (a B := W2 port would be transport);
 governing the root e-prop char-LM; the two untested `mnist` hypotheses in 2.2 (d).

@@ -1077,7 +1077,8 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   - `training/spiking_lm` (`SpikingLM`, `train`, file deleted) with its serve core `sensorimotor/spiking_lm_serve` —
     a char-level spiking LM trained by BPTT, **RETIRED 2026-10-02** (owner: port-then-retire): ungoverned, never on
     the live tick; at its defaults it scored in-sample perplexity 14.4-15.5 (S = 3) against a unigram 17.1 and a
-    bigram 7.2 on its own 512-character corpus. The e-prop char-LM outside the governed tree is a carried opening.
+    bigram 7.2 on its own 512-character corpus. Its governed e-prop re-implementation, which the owner's decision
+    asks for, is OWED, not done (the root e-prop char-LM is ungoverned).
   - `training/trainer` (`SpikingReadout`, `train_model`, file deleted) — BPTT trainer of the core 8x8 readout,
     **RETIRED 2026-10-02** (owner: port-then-retire): nothing unique to port, since the core's LOCAL rule
     (`readout/snn_classifier`) beat it on identical data, 0.998 against 0.714 (S = 8). Its parity fixture moved
