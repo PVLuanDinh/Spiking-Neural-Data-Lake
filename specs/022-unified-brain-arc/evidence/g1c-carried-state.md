@@ -268,6 +268,15 @@ each blind-control combination (2.10).
   frac_bits 4-32 are reported as quantization sensitivity, never used to explain a FAIL away. The loser and the host switch
   are deleted after the results record (G1B 3.5 precedent) in a commit whose survivor is checked by golden fixture fingerprints
   equal before and after (2.11), and a test then counts one reachable pool implementation.
+- **DATED AMENDMENT 2026-10-03 (pre-data: no live seed 300-361, no synthetic 6000 or 6001 and no learner seed 7000-7007 has been
+  run; it specifies the width set this section left open, and relaxes nothing).** "frac_bits 4-32", in both places above, is the
+  six-width set **{4, 8, 12, 16, 24, 32}**, defined ONCE (`carried_state_stages.FRAC_BITS_SWEEP`, the parity horizon's) and read
+  by both reports: the parity horizon at each width, and the hosted pool's decoder D (live and D_task, Carried - Settled) at each
+  width through the same decoder. Both are REPORT ONLY: never filed in an R-b7 table, never a conjunct, never used to explain a
+  FAIL away. The first build's 29-width horizon (every integer 4-32) and its three-width decoder sweep (12, 16, 24) are replaced
+  by this set (Codex panel on P5, finding 8). Gate (iii)'s R-b4 on the hosted form is the fresh-process twin comparison of every
+  hosted cell, as the primary's is: a pool difference reads "port", a learner difference halts; the pool-noise red is a separate
+  requirement and halts when it does not fire (finding 7).
 
 ### 2.10 Checks, each with a constructed red (the build arcs owe every one; a red that does not fire halts its arc)
 
@@ -328,6 +337,13 @@ each blind-control combination (2.10).
 - **Reserve seeds (strengthening):** live 331-361. Inspection starts when any replay of a live seed 300-330 has been written. A
   repair after inspection exposes 300-330 and re-runs the whole campaign on 331-361 in a new OUT; a second repair halts G1(c)
   and is brought to the owner. Synthetic reserve: 6001 for R-b6, 5009-5012 and 208-211 for the gate (G1B 2.8's reserve).
+  *DATED AMENDMENT 2026-10-03 (pre-data, as in 2.9's; checks this wording against the driver, adds nothing to the seeds):* a
+  campaign runs ONE complete seed bundle chosen by its `seed_set`: live = 300-330 + gate 204-207 + synthetic gate 5005-5008 +
+  R-b6 6000; reserve = 331-361 + gate 208-211 + synthetic gate 5009-5012 + R-b6 6001 (identity 100 and R-b1's 203 are the same
+  in both). Record, migrate, instrument and controls all read it from the record summary, so no stage mixes a live seed with the
+  reserve. G1(b)'s 204-207 per-seed D stays a labelled baseline and is never paired with 208-211. The repair must name an
+  ORIGINAL live campaign (never a reserve one), and its single reserve attempt is claimed exclusively before the first reserve
+  recording; a second attempt on the same original OUT halts G1(c) (Codex panel on P5, findings 2 and 5).
 
 ### 2.12 Seeds
 
@@ -351,6 +367,15 @@ band population, skewness, signs, met; and 2.3's per-seed, per-form, per-segment
 root with OUT outside it, the main checkout's `.venv-lake`, no asset or device override. Cost, recorded figures (not yet
 measured at this head): 37 recordings about 27 min at 4 workers (the rehearsal recorded 12 in 511 s at `e1b3ae3c`), about
 650-800 replays about 15-25 min; the seed-100 timing is printed with the projection before the batch starts.
+
+*DATED AMENDMENT 2026-10-03 (pre-data, as in 2.9's; corrects the estimate above, changes no seed, threshold, worker count or
+decision):* counted from the implemented stages (the driver's mini-campaign on stand-in streams, 31 live seed names and the four
+gate seeds), a campaign runs **1,123 replay jobs** (instrument 22, references 124, migrate 44, causality 12, primary 188,
+controls 330, transport 217, separation 186) and 108 `call` jobs (96 quantized-decoder and 6 parity-horizon jobs, both
+report-only, and 6 single checks), beside the 37 recordings and some in-process work (the pool-free shuffle controls, the
+forbidden-map request's two replays). Scaled from this paragraph's own two figures (800 replays in about 15 min, 650 in about 25
+min), the 1,123 replays take about **21-43 min**; the call jobs and the recordings are timed apart. Still 4 workers and a 900 s
+timeout per job.
 
 ### 2.14 Arc split, commits, review and battery
 
