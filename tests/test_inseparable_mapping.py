@@ -499,3 +499,50 @@ def test_main_is_fast_and_cwd_independent(tmp_path, monkeypatch, capsys):
     printed = capsys.readouterr().out
     assert printed.startswith("self-check OK (smoke on development seed 7100") and printed.isascii()
     assert "8 of 8 construction reds fired and 4 of 4 stream reds fired" in printed
+
+
+# ---- fold of the P2 panel (Codex gpt-6.1-sol)
+# F1: the inseparability theorem is exact arithmetic; the learner's float drive admits a rounding
+# exception at a constructed near-tie. The panel's setting is pinned so the claim cannot return.
+PANEL_NEAR_TIE = {
+    "GREET": [0.17592707319977863, 0.9233723545616195, 0.5891015567042697,
+              -0.20250800908554667, 0.49247652699894706, -0.6829210623295618],
+    "GOAL": [0.17592707319977863, 0.9233723545616195, 1.5411131524422712,
+             0.7495035866524549, -0.7299305589101017, -1.9053281482386106],
+}  # fmt: skip
+PANEL_NEAR_TIE_INDICES = (0, 1, 28, 41, 31, 51)
+
+
+def test_fold_f1_a_constructed_near_tie_reads_xor_4_of_4_in_float_but_2_of_4_exactly():
+    from fractions import Fraction
+
+    unit = im._incumbent(7100)
+    for name, neuron in zip(unit.responses, unit.neurons, strict=True):
+        neuron.w = [-1.0] * 52
+        if name in PANEL_NEAR_TIE:
+            neuron.w = [0.0] * 52
+            for j, v in zip(PANEL_NEAR_TIE_INDICES, PANEL_NEAR_TIE[name], strict=True):
+                neuron.w[j] = v / 2
+    assert im._read(unit, im.label_xor)[0] == 4  # the float argmax: a rounding exception
+    weights = {
+        n: m.w for n, m in zip(unit.responses, unit.neurons, strict=True) if n in PANEL_NEAR_TIE
+    }
+    gaps = set()
+    for uv in im.UV:
+        code = [Fraction(c) for c in im.code(im.TEXTS[uv])]
+        greet = sum(Fraction(w) * c for w, c in zip(weights["GREET"], code, strict=True))
+        goal = sum(Fraction(w) * c for w, c in zip(weights["GOAL"], code, strict=True))
+        gaps.add(greet - goal)
+    (gap,) = gaps  # the same exact gap on all four texts: additivity, exactly
+    assert gap < 0 and abs(float(gap)) < 1e-15  # exact argmax: GOAL everywhere, 2 of 4
+
+
+# F2: an empty, duplicated or non-int seed list is refused before any check runs
+@pytest.mark.parametrize("seeds", [(), (7100, 7100), (7100.0,), (True,)])
+def test_fold_f2_a3_a4_and_the_construction_check_refuse_a_bad_seed_list(seeds):
+    with pytest.raises(ValueError):
+        im.check_a3(seeds, im.TEACH_EPOCHS, settings=0)
+    with pytest.raises(ValueError):
+        im.check_a4(seeds, im.TEACH_EPOCHS)
+    with pytest.raises(ValueError):
+        im.construction_check(check_seeds=seeds)

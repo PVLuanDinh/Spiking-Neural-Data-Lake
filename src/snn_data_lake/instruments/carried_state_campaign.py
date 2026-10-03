@@ -84,14 +84,28 @@ assert (T_CRIT, DELTA) == (1.6973, 0.02), "the bar and Delta are the frozen numb
 rp.canonical("lsm", TUNED)  # raises ValueError unless TUNED lies in section 2.3's grid of G1B
 
 
+# distinct-from: sensorimotor/rsnn_encoder.py -- load_weights validates a weights file's shapes (like global_workspace._deliver's tuple and prior_drift_harness.run_campaign's seeds, none checks a seed list); this is the one structural seed-list check
+def distinct_seeds(seeds):
+    """The seeds as a non-empty tuple of distinct ints, or ValueError: the structural half of every seed
+    list this campaign reads (`validate_seed_set` here; `inseparable_mapping`'s A3 / A4 / construction
+    check import it). Fold of the P2 panel's F2: an empty list had made A4 vacuously ok, and eight copies
+    of one seed had read as eight measurements."""
+    seeds = tuple(seeds)
+    if not seeds:
+        raise ValueError("no seeds: a check over an empty seed list proves nothing")
+    if not all(isinstance(s, int) and not isinstance(s, bool) for s in seeds):
+        raise ValueError(f"seeds must be ints, got {seeds!r}")
+    duplicated = sorted({s for s in seeds if seeds.count(s) > 1})
+    if duplicated:
+        raise ValueError(f"duplicate seeds {duplicated}")
+    return seeds
+
+
 def validate_seed_set(seeds, *, allow_reserve=False):
     """The seeds as a tuple, or ValueError: a duplicate, an exposed seed (2.12: exposed seeds are never
     confirmatory), or a reserve seed unless `allow_reserve` (2.11: a reserve seed enters a primary
     table only in the repair re-run)."""
-    seeds = tuple(seeds)
-    duplicated = sorted({s for s in seeds if seeds.count(s) > 1})
-    if duplicated:
-        raise ValueError(f"duplicate seeds {duplicated}")
+    seeds = distinct_seeds(seeds)
     exposed = sorted(set(seeds) & EXPOSED_SEEDS)
     if exposed:
         raise ValueError(f"exposed seeds {exposed} are never confirmatory (g1c 2.12)")

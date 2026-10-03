@@ -11,6 +11,11 @@ rank depends on ONE of the two bits (cat and dog on u, sun and sky on v). The le
 the PSP of that code, so every neuron's score is a(u) + b(v), and the difference of any two neurons'
 scores is additive too: phi00 + phi11 = phi01 + phi10. An argmax over such scores can never answer all
 four XOR texts (GREET at 00 and 11 needs D(00) + D(11) > 0, GOAL at 01 and 10 needs D(01) + D(10) < 0).
+That argument is EXACT arithmetic. The learner sums its drive in floating point, so at a constructed
+near-tie a rounding can flip a winner: the G1(c) P2 panel's hand-built setting (dev seed 7100; GREET - GOAL
+is -1.74e-16 exactly on all four texts, so an exact argmax reads 2 of 4) reads XOR 4 of 4 through the real
+`route_text` (pinned in the tests; a carried opening for the live learner). A3 is therefore a measurement of
+the instrument, not a consequence of A2.
 A5's two threshold units over the same code do separate it: the inseparability is the readout's, not the
 code's.
 
@@ -23,7 +28,8 @@ Construction check (g1c-carried-state.md 2.8, G-R2's clauses 1-2; run first, at 
   A2  phi00 + phi11 = phi01 + phi10 in the learner's PSP-of-rank code: exactly on the integer ranks,
       within 1e-12 in float
   A3  the bare incumbent never answers all four XOR texts at any step on any check seed, and 0 of 2,000
-      random weight settings do (entailed by A2; reported, never presented as independent evidence)
+      random weight settings do (A2 entails this in exact arithmetic only; in the learner's float drive
+      both zeros are measurements, see above)
   A4  the bare incumbent learns the twin (4 of 4 at each of the last 10 epoch ends on every check seed,
       no bystander intent winning), and the witness weights read 4 of 4 on the twin, 2 of 4 on XOR
   A5  (witness only) two hand threshold units over the code separate XOR
@@ -241,7 +247,15 @@ def _resolve(check_seeds, epochs):
         from snn_data_lake.instruments.carried_state_campaign import G2II_CHECK_SEEDS
 
         check_seeds = G2II_CHECK_SEEDS
-    return tuple(check_seeds), _epochs(epochs)
+    return _distinct(check_seeds), _epochs(epochs)
+
+
+def _distinct(seeds):
+    # delegates to carried_state_campaign.distinct_seeds, the one shared check (P2 panel fold); the
+    # import is deferred for the reason _resolve gives
+    from snn_data_lake.instruments.carried_state_campaign import distinct_seeds
+
+    return distinct_seeds(seeds)
 
 
 def _dev_seed():
@@ -348,7 +362,9 @@ def _random_hits(settings, labelling):
 def check_a3(seeds, epochs, *, labelling=label_xor, settings=RANDOM_SETTINGS):
     """A3: the bare incumbent taught `labelling` (XOR) for `epochs` epochs never reads more than 3 of 4
     right at any presentation on any of `seeds`, and 0 of `settings` random weight settings read 4 of 4.
-    Entailed by A2's additivity: the second clause is reported, not independent evidence."""
+    A2's additivity entails both clauses in exact arithmetic only; the learner's float drive admits
+    rounding exceptions at constructed near-ties (the module docstring), so both are measurements."""
+    seeds = _distinct(seeds)
     runs = {seed: _run(seed, labelling, epochs) for seed in seeds}
     best = max(run["max_correct"] for run in runs.values())
     hits = _random_hits(settings, labelling)
@@ -370,6 +386,7 @@ def check_a4(seeds, epochs, *, labelling=label_twin, lr=None, shuffled=False):
     4 on `labelling` and 2 of 4 on XOR. `lr` and `shuffled` build the reds."""
     if epochs < STABLE:
         raise ValueError(f"epochs {epochs}: at least {STABLE} are needed")
+    seeds = _distinct(seeds)
     rows = {}
     for seed in seeds:
         taught = _shuffled(seed, labelling) if shuffled else None

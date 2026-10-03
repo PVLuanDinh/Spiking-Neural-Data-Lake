@@ -343,3 +343,16 @@ def test_fold_f1_the_oracle_refuses_an_exposed_seed_and_an_unauthorized_reserve_
         ccc.oracle_check(reserve, reserve, seeds=ccc.RESERVE_SEEDS)
     authorized = ccc.oracle_check(reserve, reserve, seeds=ccc.RESERVE_SEEDS, allow_reserve=True)
     assert authorized["met"] and authorized["decoder"]["n"] == 31
+
+
+# ---- fold of the P2 panel (Codex gpt-6.1-sol): F2 one structural check of a seed list
+@pytest.mark.parametrize("seeds", [(), (300, 300), (300.0,), (True,)])
+def test_fold_p2_distinct_seeds_refuses_empty_duplicate_and_non_int(seeds):
+    with pytest.raises(ValueError):
+        ccc.distinct_seeds(seeds)
+    with pytest.raises(ValueError):
+        ccc.validate_seed_set(seeds)
+
+
+def test_fold_p2_distinct_seeds_returns_the_tuple():
+    assert ccc.distinct_seeds([300, 301]) == (300, 301)
