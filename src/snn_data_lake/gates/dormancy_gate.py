@@ -131,6 +131,10 @@ EXEMPT = {
         "permanent",
         "G1(b)'s selection campaign (a governed benchmark; its record is g1b section 3.4) until G1(c)'s disposition; consumers: its CLI and tests/test_pool_selection.py",
     ),
+    "carried_state_campaign": (
+        "permanent",
+        "G1(c)'s campaign module (a governed benchmark; evidence g1c-carried-state.md) until G1(c)'s disposition; consumers: its CLI and tests/test_carried_state_campaign.py",
+    ),
     "brian2_backend": (
         "permanent",
         "the CI-asserted Brian2 reference simulator, the CPU parity oracle (owner decision 2, 2026-10-02: 'CPU ref + Torch/kernel GPU'); its last live-rooted importers (training/trainer, training/spiking_lm) retired 2026-10-02 (specs/022 evidence trainer-retirement.md); consumers: its __main__ self-check (run_selfchecks, ci.yml) and the call sites still listed in its MIGRATED_CALL_SITES",

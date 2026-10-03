@@ -79,6 +79,7 @@ CORE = [
     "instruments.memory_diagnostic",  # G1 causal contract synthetic reds
     "reservoir.recurrent_pool",  # G1(b): R-b0 parity, R-b3, R-b4 pool noise, R-b5 and every red
     "instruments.pool_selection",  # G1(b) campaign: ordering, power, R-b7 reds, step order, exit codes
+    "instruments.carried_state_campaign",  # G1(c): frozen constants, the contrast row (degenerate NOT MET), the oracle check and their reds
     "sensorimotor.lca_sparse_coding",
     "readout.predictive_coding",
     "sensorimotor.pc_cortex_serve",

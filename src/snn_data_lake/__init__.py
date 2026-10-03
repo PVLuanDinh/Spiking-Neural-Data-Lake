@@ -275,6 +275,8 @@ REGIONS = {
         # specs/022 T078 Part I: the G3 task-binding (MI vs a permutation floor) and G4 content-leakage (held-out decode vs a shuffle band) instrument over the live loop's own attention state; no ACS, no wire to brain.py
         "attention_schema",
         "binding_instrument",
+        # G1(c) carried-state campaign: the frozen constants, the contrast row and the oracle check (g1c-carried-state.md 2.2-2.4)
+        "carried_state_campaign",
         "energy",
         # 022 T035: stimulus port + trial schedule (fixation/saccade) + G5-replayable trials
         "episode_driver",
