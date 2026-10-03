@@ -337,13 +337,17 @@ def binding_problems(cell):
     problems = problems + [key for key, value in expected.items() if binding.get(key) != value]
     # G1(c) 2.9: the host. A port binding carries no "host" key, so the comparison is made on the
     # port-defaulted values (never through `expected`, which would red every port cell): a hosted
-    # replay filed under a port cell, and a port replay filed under a hosted cell, both disagree here
-    if binding.get("host", "port") != cell.get("host", "port"):
+    # replay filed under a port cell, and a port replay filed under a hosted cell, both disagree here.
+    # A host outside rp.HOSTS is refused whatever its binding says
+    host = cell.get("host", "port")
+    if host not in rp.HOSTS or binding.get("host", "port") != host:
         problems.append("host")
-    elif cell.get("host", "port") != "port":
-        # a hosted binding also carries the host's policy (frac_bits, partitions, decay, reset, ...)
-        policy = binding.get("host_policy")
-        if not isinstance(policy, dict) or policy.get("host") != cell["host"]:
+    elif host != "port":
+        # a hosted binding also carries the host's policy (frac_bits, partitions, decay, reset, ...),
+        # and ALL of it must be the host's own at the lineage's recorded options for this
+        # configuration (the host class builds that policy: nothing is restated here). A missing,
+        # short, extended or contradicting policy is a replay run on some other arithmetic
+        if binding.get("host_policy") != rp.HOSTS[host].lineage_policy(config):
             problems.append("host_policy")
     if "transport" in cell:
         record = binding.get("transport")
@@ -384,6 +388,13 @@ def _refused_by_r_b7(build):
     return False
 
 
+def _changed(value):
+    """Policy field value, altered.
+
+    A string (the host's name) becomes another host's; a number steps by one."""
+    return "port" if isinstance(value, str) else value + 1
+
+
 def r_b7_reds():
     """R-b7's four constructed refusals (a wrong configuration, a duplicate seed, a tuning seed in
     the selection table, a window-0 replay filed as window 256), beside the well-formed tables they
@@ -391,11 +402,13 @@ def r_b7_reds():
 
     G1(c) 2.9 adds three refusals on the host: a hosted replay filed under a port cell, a port replay
     filed under a hosted cell, and a hosted binding that lacks its policy; beside them the hosted table
-    filed as hosted passes, and a port and a hosted replay of one seed are two cells."""
+    filed as hosted passes, and a port and a hosted replay of one seed are two cells. The policy is held
+    WHOLE (the G1(c) P4 panel): a contradictory policy, each of its fields changed alone, and an
+    unsupported host are three more refusals."""
     config, other = rp.grid("lsm")[0], rp.grid("lsm")[1]
     policy = rp.make_pool("lsm", config, SELECT_SEEDS[0], host="kernel").host_policy()
 
-    def cell(seed, bound=config, window=rp.WINDOW, host="port", with_policy=True):
+    def cell(seed, bound=config, window=rp.WINDOW, host="port", with_policy=True, edit=None):
         binding = {
             "candidate": "lsm",
             "form": "carried",
@@ -406,7 +419,8 @@ def r_b7_reds():
             "w_in": _w_in_crc(seed),
         }
         if host != "port":
-            binding = dict(binding, host=host, **({"host_policy": policy} if with_policy else {}))
+            filed = {"host_policy": {**policy, **(edit or {})}} if with_policy else {}
+            binding = dict(binding, host=host, **filed)
         row = {
             "arm": "pool",
             "candidate": "lsm",
@@ -457,6 +471,32 @@ def r_b7_reds():
         ),
         "hosted binding without its policy": _refused_by_r_b7(
             lambda: build_table([cell(204, host="kernel", with_policy=False)], SELECT_SEEDS)
+        ),
+        # the whole policy is held (G1(c) P4 panel): a binding that names the host but claims another
+        # arithmetic (the panel's own mutant), each policy field changed on its own, and a host the
+        # table does not know, whose binding agrees with its cell
+        "hosted binding with a contradictory policy": _refused_by_r_b7(
+            lambda: build_table(
+                [
+                    cell(
+                        204,
+                        host="kernel",
+                        edit={"frac_bits": 4, "delay": 2, "thr": 99.0, "refrac_ticks": 1},
+                    )
+                ],
+                SELECT_SEEDS,
+            )
+        ),
+        "hosted binding with one policy field changed": all(
+            _refused_by_r_b7(
+                lambda key=key: build_table(
+                    [cell(204, host="kernel", edit={key: _changed(policy[key])})], SELECT_SEEDS
+                )
+            )
+            for key in policy
+        ),
+        "unsupported host": _refused_by_r_b7(
+            lambda: build_table([cell(204, host="gpu")], SELECT_SEEDS)
         ),
     }
     return {"verdict": bool(control and all(red.values())), "control": control, "red": red}
@@ -1716,10 +1756,12 @@ def self_check():
     assert math.ceil(t_quantile(0.95, 30) * 1e4) / 1e4 == T_BAR_S31
     assert power_s(SIGMA_PROXY)["S"] - 1 == 30
     # R-b7's four refusals (the fourth: a window-0 replay filed as window 256) and G1(c) 2.9's three on
-    # the host (hosted under a port cell, port under a hosted cell, no policy), beside the well-formed tables
+    # the host (hosted under a port cell, port under a hosted cell, no policy), beside the well-formed
+    # tables; and the G1(c) P4 panel's three on the whole policy (contradictory, a field changed, an
+    # unsupported host)
     reds = r_b7_reds()
     assert reds["verdict"], reds
-    assert len(reds["red"]) == 7 and all(reds["red"].values()), reds
+    assert len(reds["red"]) == 10 and all(reds["red"].values()), reds
     # the step order, the taxonomy and the exit codes, on a scratch OUT at a stand-in revision (the
     # stand-in steps' own status lines are swallowed so a log never shows a HALTED campaign step)
     with tempfile.TemporaryDirectory() as scratch, contextlib.redirect_stdout(io.StringIO()):

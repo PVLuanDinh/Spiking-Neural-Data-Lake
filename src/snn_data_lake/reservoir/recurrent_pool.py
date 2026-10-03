@@ -685,29 +685,53 @@ class KernelLsmPool(LsmPool):
 
     def fingerprint(self):
         """crc32 of the complete continuation state, independent of P: the percept count and the
-        tick index, v (float32), the last fired mask, the summed accumulators, the parameters and the
-        live edges. Every delay is 1, so every ring slot is drained within its tick; a fingerprint
-        taken with a bundle in flight is refused."""
+        tick index, the carriers (v float32, the last fired mask, the summed accumulators), EVERY
+        array of the host's KernelState (v, thr, refrac, last_spike, sign: the refractory counter
+        and the adaptive threshold are state the carriers do not name, and a host that differs only
+        in them continues differently), the parameters and the live edges. Every delay is 1, so every
+        ring slot is drained within its tick; a fingerprint taken with a bundle in flight is
+        refused."""
         if any(slot for ring in self._kt._rings for slot in ring):
             raise ValueError("REFUSED: a delay ring holds an in-flight bundle at a fingerprint")
         crc = zlib.crc32(f"count|{self.count}|tick|{self._kt.tick_index}".encode("ascii"))
         crc = _crc_arrays(self.carriers(), crc)
+        crc = _crc_arrays(self._kt.state.arrays, crc)
         return _crc_arrays(self._live_edges(), _crc_arrays(self.params(), crc))
 
-    def host_policy(self):
-        """What the host does that the port does not, for a replay's binding: the fixed-point width,
-        the partition count, the decay as float32 sees it, the reset, the refraction, the delay and
-        the threshold."""
+    @classmethod
+    def policy_of(cls, frac_bits, p_parts, lam):
+        """Kernel host policy dict.
+
+        What the host does that the port does not, built in this one place: the fixed-point width,
+        the partition count and the decay as float32 sees it, then this class's reset, refraction,
+        delay and threshold. host_policy() reads it off an instance and lineage_policy() off the
+        lineage's records; neither restates a constant."""
         return {
             "host": "kernel",
-            "frac_bits": self.frac_bits,
-            "p_parts": self.p_parts,
-            "decay_f32": float(np.float32(self.lam)),
-            "v_reset": float(self.V_RESET),
-            "refrac_ticks": int(self.REFRAC_TICKS),
-            "delay": int(self.DELAY),
-            "thr": float(np.float32(self.THR)),
+            "frac_bits": int(frac_bits),
+            "p_parts": int(p_parts),
+            "decay_f32": float(np.float32(lam)),
+            "v_reset": float(cls.V_RESET),
+            "refrac_ticks": int(cls.REFRAC_TICKS),
+            "delay": int(cls.DELAY),
+            "thr": float(np.float32(cls.THR)),
         }
+
+    @classmethod
+    def lineage_policy(cls, config):
+        """Lineage-recorded policy of a configuration.
+
+        policy_of at the lineage's recorded frac_bits and partition count (the options a campaign
+        replay runs at) and the configuration's leak: what R-b7 holds a hosted binding's whole
+        policy equal to. An absent lineage record raises, as building the host does."""
+        frac_bits, p_parts = _lineage_host(None, None)
+        return cls.policy_of(frac_bits, p_parts, float(config["lambda"]))
+
+    def host_policy(self):
+        """Instance policy dict.
+
+        What a replay's binding records of this host: policy_of at its own options and leak."""
+        return self.policy_of(self.frac_bits, self.p_parts, self.lam)
 
     def __deepcopy__(self, memo):
         """copy.deepcopy fails on a KernelState and on a KernelTick (each holds the numpy module as an

@@ -683,6 +683,24 @@ def test_the_host_policy_names_what_the_host_does_that_the_port_does_not():
     assert rp._StrictThreshold(LSM_PRE, LSM_W, LSM_CFG).host_policy()["thr"] > 1.0
 
 
+def test_the_lineage_policy_is_the_policy_of_a_host_built_at_the_lineage_options(
+    monkeypatch, tmp_path
+):
+    for config in (TUNED, CONFIG["lsm"], rp.R_B3_WITNESS["lsm"]):
+        hosted = rp.make_pool("lsm", config, 100, host="kernel")
+        assert rp.KernelLsmPool.lineage_policy(config) == hosted.host_policy()
+    # the policy is the class's own: a wrong host's lineage policy is not the faithful host's
+    wrong = rp._Refracts.lineage_policy(LSM_CFG)
+    base = rp.KernelLsmPool.lineage_policy(LSM_CFG)
+    assert [key for key in base if base[key] != wrong[key]] == ["refrac_ticks"]
+    # and the construction is shared, not restated: the instance policy is policy_of at its options
+    pool = rp.KernelLsmPool(LSM_PRE, LSM_W, LSM_CFG, frac_bits=16, p_parts=2)
+    assert pool.host_policy() == rp.KernelLsmPool.policy_of(16, 2, LSM_CFG["lambda"])
+    monkeypatch.setattr(determinism_gate, "BASELINE", tmp_path / "no_frac_bits.json")
+    with pytest.raises(ValueError, match="no binding frac_bits"):
+        rp.KernelLsmPool.lineage_policy(LSM_CFG)
+
+
 def test_the_host_refuses_when_the_lineage_records_are_absent(monkeypatch, tmp_path):
     monkeypatch.setattr(determinism_gate, "BASELINE", tmp_path / "no_frac_bits.json")
     with pytest.raises(ValueError, match="no binding frac_bits"):
@@ -767,8 +785,13 @@ def test_the_carriers_are_a_float32_view_a_fired_mask_and_summed_integer_accumul
         carriers["v"], pool.v
     )
     assert pool.v is pool._kt.state.arrays["v"]  # the carrier is a view of the host's membranes
-    # the setters write through, which the skip-a-carrier fault (setattr) relies on
+    # the setters write through, which the skip-a-carrier fault (setattr) relies on. The v setter
+    # writes INTO the original block: a replacement array would break KernelState's 128-byte
+    # alignment contract (kernel_state.py), which `identity` and the pointer modulus catch
+    held = pool.v
     pool.v = np.array([0.25, 0.5, 0.75])
+    assert pool.v is held and pool._kt.state.arrays["v"] is held
+    assert held.ctypes.data % 128 == 0 and held.dtype == np.float32
     pool.s = [True, False, True]
     pool.acc = [5, -3, 7]
     assert pool.v.tolist() == [0.25, 0.5, 0.75] and pool.s.tolist() == [True, False, True]
@@ -812,6 +835,37 @@ def test_the_fingerprint_refuses_a_bundle_in_flight_and_sees_the_tick_index_and_
     assert pool.fingerprint() == before
     pool._kt.tick_index += 1  # so is the tick index
     assert pool.fingerprint() != before
+
+
+def test_the_hosted_fingerprint_holds_every_state_array_and_tells_the_refracting_host_apart():
+    # the G1(c) P4 panel's pair: the faithful host and the one-refractory-tick host, one unit, one
+    # percept. Activity, v, s and acc are equal after it; refrac is not, and the next tick differs
+    config = {"lambda": 0.5, "g": 1, "T_in": 1}
+    percepts = [np.array([1.5])]
+    faithful = rp._hosted(rp.KernelLsmPool, 12, [[0]], [[0.0]], config, w_in=[[1.0]])
+    refracts = rp._hosted(rp._Refracts, 12, [[0]], [[0.0]], config, w_in=[[1.0]])
+    runs = [rp._record(pool, percepts, chain=True) for pool in (faithful, refracts)]
+    assert (
+        runs[0]["activity_crc"] == runs[1]["activity_crc"]
+        and runs[0]["phi_crc"] == runs[1]["phi_crc"]
+    )
+    assert [faithful._kt.state.arrays["refrac"][0], refracts._kt.state.arrays["refrac"][0]] == [
+        0,
+        1,
+    ]
+    assert not rp._runs_agree(runs)  # the state fingerprint, and so the chain, tell them apart
+    assert faithful.step([1.5]).tolist() == [1.0] and refracts.step([1.5]).tolist() == [0.0]
+    # each of the KernelState arrays moves the fingerprint on its own, and restoring it restores it
+    pool = _host(window=4)
+    pool.step(U1)
+    before = pool.fingerprint()
+    assert set(pool._kt.state.arrays) == {"v", "thr", "refrac", "last_spike", "sign"}
+    for name, array in pool._kt.state.arrays.items():
+        saved = array[0].copy()
+        array[0] = saved + 1
+        assert pool.fingerprint() != before, name
+        array[0] = saved
+        assert pool.fingerprint() == before, name
 
 
 def test_params_fingerprint_chains_the_live_bundles_and_a_live_write_moves_it():

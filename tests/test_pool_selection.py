@@ -204,6 +204,9 @@ def test_r_b7_refuses_its_reds_and_passes_the_well_formed_tables():
         "hosted replay filed under a port cell": True,
         "port replay filed under a hosted cell": True,
         "hosted binding without its policy": True,
+        "hosted binding with a contradictory policy": True,
+        "hosted binding with one policy field changed": True,
+        "unsupported host": True,
     }
 
 
@@ -361,9 +364,14 @@ def test_g1b_keys_specs_and_bindings_are_byte_identical_at_the_default():
 # ---- G1(c) P4b: the host in the filing, the key, the spec and the binding ------------------------
 
 
+def hosted_policy(config):
+    """The policy a real hosted pool of `config` records: what a hosted replay's binding carries."""
+    return rp.make_pool("lsm", config, 204, host="kernel").host_policy()
+
+
 def host_cell(seed, ran_on="port", filed_as="port", policy=True):
     """A Settled cell whose replay ran on host `ran_on`, filed under host `filed_as` (the port files
-    no host at all); a hosted binding carries "host" and, if `policy`, "host_policy"."""
+    no host at all); a hosted binding carries "host" and, if `policy`, its whole "host_policy"."""
     config = rp.grid("lsm")[0]
     spec = ps._spec("lsm", config, "settled", host=filed_as)
     binding = {
@@ -378,7 +386,7 @@ def host_cell(seed, ran_on="port", filed_as="port", policy=True):
     if ran_on != "port":
         binding = dict(binding, host=ran_on)
         if policy:
-            binding["host_policy"] = {"host": ran_on, "frac_bits": 12}
+            binding["host_policy"] = hosted_policy(config)
     digest = {"arm": "pool", "seed": seed, "pool": binding}
     return dict(ps._bound(seed, spec), index=0, status="OK", digest=digest)
 
@@ -423,6 +431,84 @@ def test_the_binding_holds_a_replay_to_the_host_it_is_filed_under(
     wrong = host_cell(204, "kernel", "kernel")
     wrong["digest"]["pool"]["host_policy"] = {"host": "port"}
     assert ps.binding_problems(wrong) == ["host_policy"]
+
+
+# the G1(c) P4 panel: R-b7 held only policy["host"], so a replay claiming frac_bits 4, delay 2,
+# thr 99 and one refractory tick entered the table. The WHOLE policy is held now, at the lineage's
+# options
+POLICY_FIELDS = (
+    "host",
+    "frac_bits",
+    "p_parts",
+    "decay_f32",
+    "v_reset",
+    "refrac_ticks",
+    "delay",
+    "thr",
+)
+
+
+def policy_cell(edit=None, drop=(), seed=204):
+    """A hosted cell filed as hosted whose binding's policy is the real one with `edit` applied and
+    the `drop` fields removed."""
+    cell = host_cell(seed, "kernel", "kernel")
+    real = cell["digest"]["pool"]["host_policy"]
+    cell["digest"]["pool"]["host_policy"] = {
+        key: value for key, value in {**real, **(edit or {})}.items() if key not in drop
+    }
+    return cell
+
+
+def test_the_lineage_policy_is_the_policy_of_a_real_hosted_pool_of_every_leak():
+    grid = rp.grid("lsm")
+    assert tuple(hosted_policy(grid[0])) == POLICY_FIELDS
+    for leak in (0.5, 0.7, 0.9):
+        config = next(config for config in grid if config["lambda"] == leak)
+        assert rp.KernelLsmPool.lineage_policy(config) == hosted_policy(config)
+    assert hosted_policy(next(c for c in grid if c["lambda"] == 0.9))["decay_f32"] != 0.9
+
+
+@pytest.mark.parametrize("field", POLICY_FIELDS)
+def test_a_hosted_binding_whose_policy_changes_or_loses_one_field_is_refused(field):
+    value = hosted_policy(rp.grid("lsm")[0])[field]
+    other = "port" if isinstance(value, str) else value + 1
+    assert ps.binding_problems(policy_cell({field: other})) == ["host_policy"]
+    assert ps.binding_problems(policy_cell(drop=(field,))) == ["host_policy"]
+    with pytest.raises(ps.Halt, match="R-b7") as refused:
+        ps.build_table([policy_cell({field: other})], ps.SELECT_SEEDS)
+    assert "host_policy" in refused.value.detail
+    assert (
+        ps.binding_problems(policy_cell({field: value})) == []
+    )  # the unchanged field is the control
+
+
+def test_a_missing_short_extended_or_contradictory_hosted_policy_is_refused():
+    base = hosted_policy(rp.grid("lsm")[0])
+    assert ps.binding_problems(policy_cell()) == []
+    contradictory = dict(base, frac_bits=4, delay=2, thr=99.0, refrac_ticks=1)  # the panel's mutant
+    for bad in ({"host": "kernel"}, contradictory, {}, dict(base, extra=1), None, "kernel", [1]):
+        cell = host_cell(204, "kernel", "kernel")
+        cell["digest"]["pool"]["host_policy"] = bad
+        assert ps.binding_problems(cell) == ["host_policy"], bad
+        with pytest.raises(ps.Halt, match="R-b7"):
+            ps.build_table([cell], ps.SELECT_SEEDS)
+    cell = host_cell(204, "kernel", "kernel")
+    del cell["digest"]["pool"]["host_policy"]  # no policy at all
+    assert ps.binding_problems(cell) == ["host_policy"]
+    # the policy of another configuration's leak is no policy of this one
+    other = next(c for c in rp.grid("lsm") if c["lambda"] != rp.grid("lsm")[0]["lambda"])
+    cell = host_cell(204, "kernel", "kernel")
+    cell["digest"]["pool"]["host_policy"] = hosted_policy(other)
+    assert ps.binding_problems(cell) == ["host_policy"]
+
+
+def test_an_unsupported_host_is_refused_though_its_cell_and_binding_agree():
+    cell = host_cell(204, "kernel", "kernel")
+    binding = cell["digest"]["pool"]
+    cell["host"], binding["host"], binding["host_policy"]["host"] = "gpu", "gpu", "gpu"
+    assert ps.binding_problems(cell) == ["host"]
+    with pytest.raises(ps.Halt, match="R-b7"):
+        ps.build_table([cell], ps.SELECT_SEEDS)
 
 
 def test_a_port_and_a_hosted_replay_of_one_seed_are_two_cells_and_a_mismatch_halts():
