@@ -1724,6 +1724,38 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   *DATED 2026-09-25 (G1(b)'s result, `evidence/g1b-pool-selection.md` section 3.4): selection record 0bd1de7:
   winner g1 LSM {k 8, w 0.25, lambda 0.9, g 4, T_in 1}; live D near -0.006 for every candidate, inside band_D;
   the losing ports g2-g4 deleted at `440a6a5` (section 3.5); the G1(b) panel's fold (section 3.6) records the tuning's timing-dependent tie-break and a learner-side term inside D; G1(c) next (S 31), with G8 landing before it (the order below).*
+  *DATED 2026-10-03, revised after the seam arc's push (`e1b3ae3c`), the G1(b) record (sections 3.4 and 3.6, `0bd1de7`), the
+  carried openings of 2026-09-25 and the research note of 2026-10-02 (eight sources, cited in `evidence/g1c-carried-state.md`
+  section 2.16):* G1(c)'s pre-registration (`evidence/g1c-carried-state.md`) adds, each a strengthening of G1B section 2.6 and
+  none a change of its rule:
+  - *(6) a stream-history reading, (e1) - (e1-0) through the same decoder on the same 31 seeds and bar; it only words a
+    primary null ("pool-null" if met, "stream-null" if not);*
+  - *(7) the within-block time shuffle defined: a block is 256 consecutive events of one segment, the percept's fields move
+    together and the time axis stays; "survives" means the shuffled Carried-minus-Settled contrast is met at the bar; its
+    positive control is R-b6's family on seed 6000, and a survival reads "not within-block order", never "not history";*
+  - *(8) a Settled-from-the-first-percept form (window 0) reported beside D, with Carried asserted byte-identical across the
+    two windows;*
+  - *(9) the critical value t(0.95, 30) = 1.6972609 used as 1.6973 (rounded up), and the exact sign-flip false-positive rate
+    at S = 31 computed by meet-in-the-middle inside `instruments/paired_contrast.permutation_fpr`, equal to brute force on at
+    least 160 samples;*
+  - *(10) a skew disclosure: the skewness and sign count of the 31 differences; a met contrast below skewness -1.0 reads
+    "met, skew-flagged";*
+  - *(11) reserve live seeds 331-361 for a repair after inspection (G1B section 2.8's rule; a second repair halts G1(c));*
+  - *(12) item (1)'s source declared: the incumbent grower's input weights at the window boundary, norm-matched and padded by
+    the random draw (padding disclosed), with a swap control; the activity form reads the grower's rates for the current
+    percept before its category is delivered;*
+  - *(13) item (3)'s separable twin defined (the same four texts labelled by whether "cat" precedes "dog") and G-R2's
+    clauses 1-2 run as its construction check, the presized nonlinear and delayed-cue controls staying G2's;*
+  - *(14) item (5)'s gate built before the campaign and run inside it at the campaign head, with a D_task conjunct on
+    5005-5008 added to its D tolerance (G1(b)'s candidate comparison did not show live D sensitive to a carrying defect);
+    a gate never built is not "failed";*
+  - *(15) the inherited checks run at the campaign head on the surviving host: R-b1 on seed 203 and R-b8 on seed 100, which
+    halts on a changed stream; a decision needs a non-degenerate sample with t above the bar; after the first recording, a
+    change to code the campaign executed restarts the campaign on the reserve seeds when it moves the pre-registered golden
+    check;*
+  - *(16) the arc split: P0 these notes and the pre-registration; P1 instruments; P2 the G2(ii) generator and construction
+    check; P3 the pool-side arms; P4 the hosted form; P5 the campaign driver; then the campaign, the results record, the
+    closing review and one battery. Nothing is committed between the first recording and the results record.*
 - **G2 / T110 — problems the current weights provably cannot solve.** Delivered as TAUGHT
   exchanges through G0's repaired channel.
   - (i) A delayed-cue 2x2 (needs state × needs capacity). Its explicit-history control is proven
