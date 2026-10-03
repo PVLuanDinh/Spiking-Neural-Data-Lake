@@ -1227,12 +1227,21 @@ def test_the_mini_campaigns_report_reads_31_seeds_and_marks_itself_shortened(min
     assert set(tables) == {
         "cells",
         "input_response",
+        "variant_response",
         "references",
         "shuffle",
         "window0",
         "transport",
         "separation",
     }
+    # re-panel R3: the input response of the transport arms and of both separation streams, per seed
+    assert set(tables["variant_response"]) == {
+        *(f"through {arm}" for arm in md.TRANSPORT_ARMS),
+        "Separation xor",
+        "Separation twin",
+    }
+    assert all(len(per_seed) == 31 for per_seed in tables["variant_response"].values())
+    assert "### through pool-swap" in text and "### Separation twin" in text
     assert set(tables["references"]) == set(drv.REFERENCE_ARMS)
     assert set(tables["shuffle"]) == {str(k) for k in range(cs.SHUFFLE_K)}
     assert set(tables["window0"]) == set(ps.FIT_FORMS) and set(tables["transport"]) == set(

@@ -14,11 +14,13 @@ the helpers they share with migrate, causality and primary are `carried_state_st
               boundary, and Carried@0 asserted identical to the primary's Carried (a difference halts).
   transport   (2.7) a tap job (arm (a), tap = b) per seed; pool-copy, pool-act and pool-swap x {carried,
               settled} on the surviving host with the tap as `side`; per form D_t; the forbidden-map
-              request red as one replay that must RAISE; padding fractions and raw norms from the bindings.
+              request red as one replay that must RAISE; padding fractions and raw norms from the bindings;
+              each arm's input-response statistics (2.3) from its own encoder and input.
   separation  (2.8) when construct's verdict is True: G2(ii)'s XOR and twin streams per live seed through
               arm (a), Carried and Settled; decoder accuracy, per-text accuracy, distinct Settled phi
               rows and the reading rules. A failed structural stream check (before any replay) or an arm
-              (a) outside its ceiling or floor is a wrong STREAM, a harness defect: it halts (2.11).
+              (a) outside its ceiling or floor is a wrong STREAM, a harness defect: it halts (2.11). Each
+              stream's input-response statistics (2.3) are filed per stream and seed.
 
 A red that does not fire (the Carried red of Settled invariance included), a missing or TIMEOUT cell, a
 wrong separation stream and a Carried@0 that differs from Carried halt (2.11); a blind control reads as
@@ -302,6 +304,13 @@ def stage_controls(out, *, scale=None, rb6_seed=None):
         "control": control,
         "d_shuf": d_shuf,
         "d_shuf_k": {str(seed): [d["readout"][str(seed)] for d in d_k] for seed in live},
+        # 2.3's input-response statistics beside these two variants are the PRIMARY's (re-panel R3), so none
+        # is filed here: both replay the recording's own seed (the same W_in); a shuffle only permutes whole
+        # percepts inside blocks (the multiset of x is kept: check_shuffle_transform, held per stream by
+        # `_shuffled`); and the window is read by the pool's adaptation, never by the drive u = W x. The
+        # per-unit drive statistics are those of the same numbers -- window 0's bit for bit, a shuffle's
+        # up to the last bits of a reordered float sum (tests/test_carried_state_stages.py shows both
+        # through a fresh replay's received drive).
         "cells": {"shuffle": shuffle_cells, "window0": zero["cells"]},
         "window0": zero,
     }
@@ -358,6 +367,29 @@ def _arm_key(arm, form, seed, encoders, *, host, window):
     )
 
 
+# Sites the duplicate-capability hook flagged on `_transport_response` (read; none computes a drive statistic, and the one that does, pool_selection.input_response, is CALLED below, never re-implemented):
+# distinct-from: faculties/forward_model.py::ForwardModel.predict -- predicts the next sensed state from an efference copy; no pool, no encoder drive
+# distinct-from: faculties/agency_monitor.py::_t079_score -- reads one joint's controllability from one arm of one seed's record
+# distinct-from: faculties/ring_attractor.py::ProprioceptiveEstimator -- a ring-attractor dead-reckoner of a joint angle from commanded deltas
+# distinct-from: faculties/task_set.py::TaskSetLayer -- a layer of rule mappings with a working-memory pool and a conflict monitor
+# distinct-from: instruments/attention_schema.py::g4_rule -- another campaign's G4 branches over per-seed decodes of a vector; no pool, no encoder
+# distinct-from: instruments/everyday_battery.py::run_seed -- one seed's reading of a scratch brain's replies to questions
+# distinct-from: readout/snn_moe_classifier.py::_new_rng -- seeds a numpy Generator from the global random stream; this draws nothing
+def _transport_response(arm, stream, tap, matrix, record):
+    """2.3's input-response statistics of one transport arm on one seed, from the arm's ACTUAL input and
+    encoder through pool_selection's one helper. pool-act drives the seed's random encoder with the tap's
+    grower activity, zero-padded as the arm pads it; pool-copy and pool-swap drive it with x, through the
+    random encoder up to the event the replay recorded (`copied_at_event`, `swapped_at_event`) and
+    through the transported or the fresh `matrix` from it. A replay that never installed one (a None
+    event) was refused by R-b7's encoder binding before this runs; were it to arrive, it fails loud."""
+    if arm == "pool-act":
+        padded = [md._padded_activity(activity) for activity in tap["activity"]]
+        return ps.input_response(st.POOL, cs.TUNED, stream, inputs=padded)
+    first = record["transport"]["copied_at_event" if arm == "pool-copy" else "swapped_at_event"]
+    steps = [(0, matrix)] if first == 0 else [(0, rp.w_in(stream["seed"])), (first, matrix)]
+    return ps.input_response(st.POOL, cs.TUNED, stream, encoders=steps)
+
+
 def stage_transport(out, *, scale=None):
     """The transport family (2.7, secondary): tap, pool-copy, pool-act and pool-swap on the surviving host."""
     sc = st.settings(scale)
@@ -394,12 +426,14 @@ def stage_transport(out, *, scale=None):
     red = md._load(request["out"])
     if not red["raised"]:
         raise ps.Halt("a red that does not fire", {"transport forbidden-map request": red})
-    encoders, cells = {}, []
+    matrices, encoders, cells = {}, {}, []
     for seed in live:
         random = rp.w_in(seed)
         block = np.asarray(side[seed]["w_at_b"]["W"], dtype=np.float64)
-        encoders[(seed, "pool-copy")] = md._crc(rp.transported_encoder(random, block))
-        encoders[(seed, "pool-swap")] = md._crc(rp.fresh_encoder(seed, random))
+        matrices[(seed, "pool-copy")] = rp.transported_encoder(random, block)
+        matrices[(seed, "pool-swap")] = rp.fresh_encoder(seed, random)
+        for arm in ("pool-copy", "pool-swap"):
+            encoders[(seed, arm)] = md._crc(matrices[(seed, arm)])
         for arm in md.TRANSPORT_ARMS:
             for form in ps.FIT_FORMS:
                 name = folder / f"{arm}-{form}-{seed}.json.gz"
@@ -451,7 +485,20 @@ def stage_transport(out, *, scale=None):
             }
             for form in ps.FIT_FORMS
         }
-        arms[arm] = {"accuracy": acc, "d": st.gaps(acc), "records": records, "cells": cells}
+        # 2.3 (re-panel R3): the input response of THIS arm's own encoder and input, per seed
+        response = {
+            str(seed): _transport_response(
+                arm, streams[seed], side[seed], matrices.get((seed, arm)), records[str(seed)]
+            )
+            for seed in live
+        }
+        arms[arm] = {
+            "accuracy": acc,
+            "d": st.gaps(acc),
+            "records": records,
+            "cells": cells,
+            "input_response": response,
+        }
     return {
         "host": host,
         "window": window,
@@ -629,6 +676,15 @@ def stage_separation(out, *, scale=None, build=im.stream):
         "cells": {
             name: {
                 arm: {str(seed): ps._report(cell(name, arm, seed)) for seed in live} for arm in arms
+            }
+            for name in labellings
+        },
+        # 2.3 (re-panel R3): the input response of each OTHER stream through the seed's own encoder
+        # (arm (a) has no pool encoder; Carried and Settled see the same drive)
+        "input_response": {
+            name: {
+                str(seed): ps.input_response(st.POOL, cs.TUNED, streams[name][seed])
+                for seed in live
             }
             for name in labellings
         },

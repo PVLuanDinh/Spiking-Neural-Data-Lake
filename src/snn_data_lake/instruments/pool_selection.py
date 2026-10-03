@@ -743,17 +743,31 @@ def _reference(table, arm, seeds):
 
 # distinct-from: reservoir/recurrent_pool.py -- `drive` is the encoder itself and `_percept` builds fixture
 #   percepts; this READS the drive each candidate's input rule applies, over a recording (reported)
-def input_response(candidate, config, stream):
+def input_response(candidate, config, stream, *, inputs=None, encoders=None):
     """Section 2.5's reported input-response statistics on one recording: the driven-unit mask, and
     the mean and sd of the per-unit drive over the driven units and the recording's percepts (g1:
-    the signed drive g u, on every unit)."""
+    the signed drive g u, on every unit).
+    G1(c) 2.3 reports them beside every contrasted variant (re-panel R3), so the two things a variant
+    changes are arguments: `inputs`, the vector each event drives the encoder with (default each
+    event's x; pool-act drives it with the grower's zero-padded activity), and `encoders`, the
+    [(first event, matrix)] steps of the encoder each event meets (default the recording seed's W_in
+    throughout; pool-copy and pool-swap change it once). A short list of inputs, or a schedule that
+    does not start at event 0 and increase, is refused. With neither it is G1(b)'s calculation."""
     config = rp.canonical(candidate, config)
-    encoder = rp.w_in(stream["seed"])
+    events = stream["events"]
+    inputs = [event["x"] for event in events] if inputs is None else inputs
+    steps = [(0, rp.w_in(stream["seed"]))] if encoders is None else list(encoders)
+    firsts = [first for first, _ in steps]
+    if len(inputs) != len(events) or firsts[:1] != [0] or firsts != sorted(set(firsts)):
+        raise ValueError(
+            "REFUSED: input_response wants one input an event and an encoder schedule that starts at "
+            f"event 0 and increases ({len(inputs)} inputs for {len(events)} events, starts {firsts})"
+        )
     mask = np.ones(rp.N, dtype=bool)
     rows = []
-    for event in stream["events"]:
-        u = rp.drive(encoder, event["x"])
-        rows.append(config["g"] * u)
+    for index, x in enumerate(inputs):
+        encoder = next(matrix for first, matrix in reversed(steps) if first <= index)
+        rows.append(config["g"] * rp.drive(encoder, x))
     driven = np.asarray(rows)[:, mask]
     return {
         "driven": int(np.count_nonzero(mask)),

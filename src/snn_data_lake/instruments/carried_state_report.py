@@ -189,6 +189,8 @@ def _rows(summaries, live, oracle, history):
 def _assemble(summaries):
     record, prim, ctl = summaries["record"], summaries["primary"], summaries["controls"]
     inst, mig, sep = summaries["instrument"], summaries["migrate"], summaries["separation"]
+    arms = summaries["transport"]["arms"]
+    shown = sep["input_response"] if sep["run"] else {}  # a separation that ran files its own (R3)
     live = [str(seed) for seed in record["live_seeds"]]
     oracle, history = _references(summaries, live)
     rows = _rows(summaries, live, oracle, history)
@@ -245,22 +247,22 @@ def _assemble(summaries):
         "tables": {  # 2.3: the per-segment diagnostics of EVERY contrasted variant, not the primary's alone
             "cells": cells,
             "input_response": prim["input_response"],
+            "variant_response": {  # 2.3: every pool variant whose input is not the primary's (R3)
+                **{f"through {arm}": body["input_response"] for arm, body in arms.items()},
+                **{f"Separation {name}": rows for name, rows in shown.items()},
+            },
             "references": {
                 arm: row["per_seed"] for arm, row in summaries["references"]["references"].items()
             },
             "shuffle": ctl["cells"]["shuffle"],
             "window0": ctl["cells"]["window0"],
-            "transport": {
-                arm: body["cells"] for arm, body in summaries["transport"]["arms"].items()
-            },
+            "transport": {arm: body["cells"] for arm, body in arms.items()},
             "separation": sep.get("cells"),
         },
         "transport": {
             "b": summaries["transport"]["b"],
             "taps": summaries["transport"]["taps"],
-            "records": {
-                arm: body["records"] for arm, body in summaries["transport"]["arms"].items()
-            },
+            "records": {arm: body["records"] for arm, body in arms.items()},
             "forbidden_request": summaries["transport"]["forbidden_request"],
         },
         "construct": {
@@ -449,6 +451,13 @@ def render(report):
         for seed, cell in carried.items()
     ]
     lines += [_table(names.split("|"), rows)]
+    lines += ["", "## Input response of the variants whose input is not the primary's", ""]
+    lines += [
+        "window 0 and the within-block shuffles drive the pool with the primary's inputs (above)"
+    ]
+    for name, per_seed in report["tables"]["variant_response"].items():
+        rows = [(s, *(r[k] for k in ("driven", "mean", "sd"))) for s, r in per_seed.items()]
+        lines += ["", f"### {name}", "", _table("seed|driven|drive mean|drive sd".split("|"), rows)]
     forbidden = json.dumps(report["transport"]["forbidden_request"], sort_keys=True)
     lines += [
         "",
@@ -479,14 +488,7 @@ def render(report):
             for arm, per_seed in arms.items()
             for seed, accuracy in per_seed.items()
         ]
-        headers = (
-            "stream",
-            "arm",
-            "seed",
-            "accuracy",
-            "per-text accuracy",
-            "distinct Settled rows",
-        )
+        headers = "stream|arm|seed|accuracy|per-text accuracy|distinct Settled rows".split("|")
         lines += [
             "## Separation measurements (decoder accuracy)",
             "",

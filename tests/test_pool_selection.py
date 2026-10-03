@@ -13,6 +13,7 @@ import math
 import os
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from snn_data_lake.instruments import memory_diagnostic as md
@@ -614,6 +615,53 @@ def test_input_response_mask_is_every_unit_for_g1():
     stream = md._synthetic_stream()
     lsm = ps.input_response("lsm", rp.R_B5_PERSISTENCE_WITNESS, stream)
     assert lsm["driven"] == 256 and lsm["mask"] == list(range(256)) and lsm["sd"] > 0.0
+
+
+def test_input_response_takes_a_variants_inputs_and_encoders_and_defaults_to_g1bs_calculation():
+    """Re-panel R3: 2.3 reports the statistics beside every contrasted variant, so the helper takes
+    what a variant changes -- the vector each event drives the encoder with, and the encoder each
+    event meets -- and with neither it is G1(b)'s calculation, number for number."""
+    stream = md._synthetic_stream()
+    config, events = rp.canonical("lsm", rp.R_B5_PERSISTENCE_WITNESS), stream["events"]
+    w = rp.w_in(stream["seed"])
+    other = rp.fresh_encoder(stream["seed"], w)  # a different encoder of the same shape
+
+    def read(encoder_at, x_at):
+        rows = [config["g"] * rp.drive(encoder_at(i), x_at(i)) for i in range(len(events))]
+        return {"mean": float(np.mean(rows)), "sd": float(np.std(rows))}
+
+    def asked(**variant):
+        return ps.input_response("lsm", rp.R_B5_PERSISTENCE_WITNESS, stream, **variant)
+
+    default = asked()
+    held = read(lambda i: w, lambda i: events[i]["x"])
+    assert default["mean"] == pytest.approx(held["mean"], rel=1e-12)
+    assert default["sd"] == pytest.approx(held["sd"], rel=1e-12)
+    assert asked(encoders=[(0, w)]) == default  # one constant step IS the default
+    # the encoder changes once, at event 20: the first twenty events meet W_in, the rest the other
+    spliced = asked(encoders=[(0, w), (20, other)])
+    held = read(lambda i: w if i < 20 else other, lambda i: events[i]["x"])
+    assert spliced["mean"] == pytest.approx(held["mean"], rel=1e-12)
+    assert spliced["sd"] == pytest.approx(held["sd"], rel=1e-12)
+    assert (spliced["mean"], spliced["sd"]) != (default["mean"], default["sd"])  # it is read
+    assert spliced["driven"] == 256 and spliced["mask"] == list(range(256))
+    # other inputs through the seed's own encoder (pool-act drives it with the grower's activity)
+    ones = [np.full(rp.N_IN, 0.5) for _ in events]
+    held = read(lambda i: w, lambda i: ones[i])
+    assert asked(inputs=ones)["mean"] == pytest.approx(held["mean"], rel=1e-12)
+    assert asked(inputs=ones)["sd"] == pytest.approx(held["sd"], rel=1e-12)
+    assert asked(inputs=ones)["mean"] != default["mean"]
+    # a short list of inputs and an encoder schedule that does not start at event 0, or is not
+    # increasing, are refused (never averaged over what is there)
+    for variant in (
+        {"inputs": ones[:-1]},
+        {"encoders": [(1, w)]},
+        {"encoders": [(0, w), (9, other), (9, w)]},
+        {"encoders": [(0, w), (9, other), (5, w)]},
+        {"encoders": []},
+    ):
+        with pytest.raises(ValueError, match="REFUSED"):
+            asked(**variant)
 
 
 def test_twins_differ_separates_the_pool_from_the_learners():

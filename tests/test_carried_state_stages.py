@@ -1286,6 +1286,92 @@ def test_transport_runs_the_three_arms_on_the_taps_of_every_seed(world):
             assert arm_d[learner]["300"] == acc["carried"]["300"] - acc["settled"]["300"]
 
 
+def received(stream, arm, host, window, tap=None):
+    """The drive g u a pool of `arm` ACTUALLY takes in a fresh replay of `stream`, read where it
+    takes it (`_Pool.percept_drive`, spied): an instrument independent of ps.input_response, which
+    the saved statistics must agree with (two instruments that must agree)."""
+    seen = []
+    real = rp._Pool.percept_drive
+
+    def spy(self, u):
+        seen.append(cs.TUNED["g"] * np.asarray(u, dtype=np.float64))
+        return real(self, u)
+
+    spec = ps._spec(st.POOL, cs.TUNED, "carried", window=window, host=host)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(rp._Pool, "percept_drive", spy)
+        md.replay(stream, arm, pool=spec, side=tap)
+    assert len(seen) == len(stream["events"])  # one drive a delivery
+    return {"mean": float(np.mean(seen)), "sd": float(np.std(seen))}
+
+
+def agree(saved, fresh):
+    assert saved["driven"] == rp.N and saved["mask"] == list(range(rp.N))
+    assert saved["mean"] == pytest.approx(fresh["mean"], rel=1e-9, abs=1e-12)
+    assert saved["sd"] == pytest.approx(fresh["sd"], rel=1e-9, abs=1e-12)
+
+
+def test_transport_files_each_arms_input_response_as_its_pool_actually_received_it(world):
+    """Re-panel R3 (2.3: the input-response statistics beside every contrasted variant): pool-copy
+    and pool-swap change the encoder at the event the replay recorded, pool-act drives it with the
+    tap's grower activity; each seed's saved statistics equal what a fresh replay's pool took, and
+    differ from the primary's (a helper that ignored the variant would file the primary's)."""
+    out, _ = world
+    body, primary = summary(out, "transport"), summary(out, "primary")["input_response"]
+    for arm in md.TRANSPORT_ARMS:
+        assert set(body["arms"][arm]["input_response"]) == {str(seed) for seed in LIVE}
+        for seed in LIVE:
+            stream = md._load(ps._recording(out, seed))
+            tap = ps._side(str(out / "transport" / f"tap-{seed}.json.gz"))
+            saved = body["arms"][arm]["input_response"][str(seed)]
+            agree(saved, received(stream, arm, body["host"], body["window"], tap))
+            assert (saved["mean"], saved["sd"]) != (
+                primary[str(seed)]["mean"],
+                primary[str(seed)]["sd"],
+            )
+    # the control for the instrument itself: the primary's own statistics agree with a fresh replay
+    for seed in LIVE:
+        stream = md._load(ps._recording(out, seed))
+        agree(primary[str(seed)], received(stream, "pool", body["host"], body["window"]))
+
+
+def test_separation_files_the_input_response_of_its_own_streams(world):
+    """Re-panel R3: the XOR and twin streams are other streams, so other inputs through the seed's
+    encoder: filed per stream and seed, equal to a fresh replay's received drive, and not the
+    primary's."""
+    out, _ = world
+    body, primary = summary(out, "separation"), summary(out, "primary")
+    assert set(body["input_response"]) == {"xor", "twin"}
+    for name, per_seed in body["input_response"].items():
+        assert set(per_seed) == {str(seed) for seed in LIVE}
+        for seed in LIVE:
+            stream = md._load(out / "separation" / f"{name}-{seed}-stream.json.gz")
+            agree(per_seed[str(seed)], received(stream, "pool", body["host"], body["window"]))
+            assert per_seed[str(seed)]["mean"] != primary["input_response"][str(seed)]["mean"]
+
+
+def test_the_shuffles_and_window_zero_drive_the_pool_with_the_primarys_input_response(world):
+    """Re-panel R3: why carried_state_controls files no statistics of its own for them. The per-unit
+    drive statistics are those of the same numbers: a shuffle moves whole percepts inside blocks
+    (the multiset of x, and the recording's seed, so W_in, are kept), and the window is read by the
+    pool's adaptation only, never by the drive. Shown through a fresh replay's received drive."""
+    out, _ = world
+    host = summary(out, "primary")["host"]
+    stream = md._load(ps._recording(out, LIVE[0]))
+    plain = ps.input_response(st.POOL, cs.TUNED, stream)
+    base = received(stream, "pool", host, 16)
+    assert received(stream, "pool", host, 0) == base  # window 0: bit for bit the same drive
+    for k in range(cs.SHUFFLE_K):
+        shuffled = cs.shuffle_blocks(stream, k)
+        assert cs.check_shuffle_transform(stream, shuffled)["ok"]
+        assert shuffled["seed"] == stream["seed"]
+        again = ps.input_response(st.POOL, cs.TUNED, shuffled)
+        assert again["mask"] == plain["mask"] and again["driven"] == plain["driven"]
+        for key in ("mean", "sd"):  # the sum is reordered: equal as numbers, to float rounding
+            assert again[key] == pytest.approx(plain[key], rel=1e-12, abs=1e-14)
+        agree(plain, received(shuffled, "pool", host, 16))
+
+
 def transport_of(world, tmp_path, children=None, patch=None):
     out = copy_of(world, tmp_path, "transport", "separation")
     with shortened(children) as monkeypatch:

@@ -127,6 +127,14 @@ def references(oracle_gain, history_gain):
     )
 
 
+def response(center):
+    """A hand-built per-seed input response (driven units, drive mean and sd) for one variant."""
+    return {
+        seed: {"driven": 256, "mean": center + i / 1000, "sd": 1.0 + i / 10000}
+        for i, seed in enumerate(SEEDS)
+    }
+
+
 def summaries(
     *,
     oracle_gain=0.1,
@@ -146,6 +154,7 @@ def summaries(
             "d": {"readout": per_seed(0.02 * k, OTHER)},
             "records": {seed: {"transport": {"form": arm}, "encoder": 7} for seed in SEEDS},
             "cells": fit_cells(),
+            "input_response": response(0.1 * (k + 1)),
         }
         for k, arm in enumerate(md.TRANSPORT_ARMS)
     }
@@ -228,6 +237,7 @@ def summaries(
                 name: {arm: cells()["carried"] for arm in ("a", *ps.FIT_FORMS)}
                 for name in ("xor", "twin")
             },
+            input_response={"xor": response(0.5), "twin": response(0.6)},
         ),
     }
     return body
@@ -412,6 +422,7 @@ def test_the_report_keeps_every_contrasted_variants_tables_and_the_separation_me
     assert set(tables) == {
         "cells",
         "input_response",
+        "variant_response",
         "references",
         "shuffle",
         "window0",
@@ -457,6 +468,53 @@ def test_the_report_keeps_every_contrasted_variants_tables_and_the_separation_me
     report = rep.assemble(unrun)
     assert report["tables"]["separation"] is None and report["separation"]["run"] is False
     assert "## Separation measurements" not in rep.render(report)
+    assert not [name for name in report["tables"]["variant_response"] if "Separation" in name]
+
+
+def test_the_report_keeps_and_renders_the_input_response_of_every_variant_whose_input_differs():
+    """Re-panel R3 (2.3: the driven-unit mask, the mean and sd of per-unit drive beside every
+    contrasted variant): the transport arms' and the separation streams' statistics are retained and
+    rendered, one table a variant; the primary's stay; window 0 and the shuffles are the primary's
+    (carried_state_controls says why); and nothing else of the report moves."""
+    base = summaries()
+    report = rep.assemble(base)
+    kept = report["tables"]["variant_response"]
+    arms = {f"through {arm}": base["transport"]["arms"][arm] for arm in md.TRANSPORT_ARMS}
+    assert set(kept) == {*arms, "Separation xor", "Separation twin"}
+    for name, arm in arms.items():
+        assert kept[name] == arm["input_response"]
+    assert kept["Separation xor"] == base["separation"]["input_response"]["xor"]
+    assert report["tables"]["input_response"] == base["primary"]["input_response"]
+    text = rep.render(report)
+    assert "window 0 and the within-block shuffles drive the pool with the primary's" in text
+    for name, per_seed in kept.items():
+        table = text.split(f"### {name}\n\n")[1].split("\n\n")[0]  # that variant's table
+        assert table.count("\n") == len(SEEDS) + 1  # a header, its rule and one row a seed
+        first = per_seed[SEEDS[0]]
+        assert (
+            f"| {SEEDS[0]} | {first['driven']} | {first['mean']:.4f} | {first['sd']:.4f} |" in table
+        )
+    # reporting only: other numbers in those tables move nothing else (rows, G-R1, per seed)
+    moved = summaries()
+    for arm in moved["transport"]["arms"].values():
+        arm["input_response"] = response(7.0)
+    moved["separation"]["input_response"] = {"xor": response(8.0), "twin": response(9.0)}
+    other = rep.assemble(moved)
+    assert other["tables"]["variant_response"] != kept
+    for part in ("rows", "g_r1", "per_seed", "migration", "transport", "separation"):
+        assert other[part] == report[part], part
+    assert {k: v for k, v in other["tables"].items() if k != "variant_response"} == {
+        k: v for k, v in report["tables"].items() if k != "variant_response"
+    }
+    # a summary short of them is refused, never filled in: a transport arm, or a separation that ran
+    for stage, path in (("transport", ("arms", "pool-swap")), ("separation", ())):
+        thin = summaries()
+        holder = thin[stage]
+        for step in path:
+            holder = holder[step]
+        del holder["input_response"]
+        with pytest.raises(ValueError, match="lacks what the report reads"):
+            rep.assemble(thin)
 
 
 def test_the_report_stage_writes_both_files_and_files_the_digest(tmp_path):
