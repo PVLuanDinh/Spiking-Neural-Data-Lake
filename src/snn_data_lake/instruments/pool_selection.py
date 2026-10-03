@@ -27,12 +27,17 @@ head, and the step then ends ABORTED.
 
 One module on purpose, past the 800-line soft ceiling: the build brief lands the campaign as this
 one new file beside the harness (memory_diagnostic.py) and the pools (recurrent_pool.py), and its
-size is the size of section 2's ten steps and their checks.
+size is the size of section 2's ten steps and their checks. It grows once more (G1(c) P5a): the
+step, job and table machinery here is the ONE machinery the G1(c) campaign driver reuses
+(g1c-carried-state.md 2.14, POLICIES P2), through parameters whose defaults are G1(b)'s values --
+`require`/`run_step`'s `steps`, `_record_seeds`, `_phase_table`'s `paths`, `window` and `host`, a
+cell's `stream_key` and `source_key`, and the `call` job kind -- so G1(b)'s behaviour is unchanged.
 """
 
 import argparse
 import contextlib
 import functools
+import importlib
 import io
 import math
 import statistics
@@ -594,8 +599,13 @@ def _tabulate(cells, phase_seeds, streams, runner=None):
         cell["status"] = status["status"]
     for cell in cells:
         if cell["status"] == "OK":
-            stream = streams[cell["seed"]]
-            cell["digest"] = digest(_checked(cell["job"], stream), stream)
+            # G1(c): a cell whose replay ran on a stream other than its seed's recording (a shuffled
+            # one) names it by `stream_key`, and the stream its replay's source digest is held to
+            # by `source_key`; a cell that names neither is the seed's own recording, as it was
+            stream = streams[cell.get("stream_key", cell["seed"])]
+            source = cell.get("source_key")
+            source = None if source is None else streams[source]
+            cell["digest"] = digest(_checked(cell["job"], stream, source), stream)
     return build_table(cells, phase_seeds)
 
 
@@ -774,6 +784,41 @@ def _side(path):
     return value["tap"] if "tap" in value else value
 
 
+# G1(c) P5a: a `call` job runs one function in a child, named "module.path:function". A job spec is
+# data a fresh process reads back, so the target is held to the two packages the campaign's own code
+# lives in, and to a function defined there (not one such a module merely imports).
+CALL_PREFIXES = ("snn_data_lake.instruments.", "snn_data_lake.reservoir.")
+
+
+# Sites read (the hook's flags and the other module:attr resolvers in src/); none resolves a callable under an allow-list:
+# distinct-from: gates/move_gate.py::_rl1_run -- runs one R-L1 arm in a fresh process from a fixed script
+# distinct-from: gates/move_gate.py::module_file -- maps a registry name to its source FILE, never imports or calls it
+# distinct-from: instruments/everyday_battery.py::_run_seed_child -- one seed's child entry of another battery
+# distinct-from: readout/interaction_learning.py::g0_campaign -- runs each seed and arm of another campaign in a subprocess
+# distinct-from: readout/interaction_learning.py::_g0c_translate -- translates a legacy checkpoint class name and checks it is a class
+# distinct-from: growth/brian2_backend.py::conjunct_i -- resolves "module::Class" names to confirm each is a class, never calls one
+# distinct-from: infra/cockpit.py::Acts -- a queue of arm commands for the tick loop
+# distinct-from: reservoir/recurrent_pool.py::transported_encoder -- builds an encoder from a transported block (hook-flagged on "job")
+def _call_target(target):
+    """The function a `call` job names, or ValueError (REFUSED): an unknown target, a target that is
+    not "module.path:function", a module outside CALL_PREFIXES, or a name that is no callable defined
+    under them."""
+    module, colon, name = target.partition(":")
+    if not (colon and name and module.startswith(CALL_PREFIXES)):
+        raise ValueError(
+            f"REFUSED: call target {target!r} is not module.path:function under {CALL_PREFIXES}"
+        )
+    try:
+        function = getattr(importlib.import_module(module), name)
+    except (ImportError, AttributeError) as error:
+        raise ValueError(f"REFUSED: call target {target!r} is unknown ({error})") from error
+    if not callable(function) or not getattr(function, "__module__", "").startswith(CALL_PREFIXES):
+        raise ValueError(
+            f"REFUSED: call target {target!r} is no function defined under {CALL_PREFIXES}"
+        )
+    return function
+
+
 def execute(spec):
     """One job, inside its child process, at torch and BLAS one thread (R-b3 sets its own)."""
     torch.set_num_threads(1)
@@ -804,6 +849,13 @@ def execute(spec):
             result = mechanism_checks(spec["candidate"])
         elif kind == "configuration":
             result = configuration_checks(spec["candidate"], spec["config"])
+        elif kind == "call":  # G1(c): any function of the instruments or the reservoir, by name
+            result = _call_target(spec["target"])(**(spec.get("args") or {}))
+            if not isinstance(result, dict):
+                raise ValueError(
+                    f"REFUSED: call target {spec['target']!r} returned "
+                    f"{type(result).__name__}, not a dict"
+                )
         else:
             raise ValueError(f"REFUSED: unknown job kind {kind!r}")
     if kind != "replay":  # a replay carries its own revision; section 2.10: dirty beside head
@@ -871,9 +923,10 @@ def _summary_path(out, step):
     return Path(out) / f"{step}.summary.json"
 
 
-def require(out, step, revision):
+def require(out, step, revision, steps=STEPS):
     """Refuse to start unless the previous step's summary exists, COMPLETED, and was written at this
-    same clean head; refuse a dirty tree, and a step that already ran here (section 2.8: no retries)."""
+    same clean head; refuse a dirty tree, and a step that already ran here (section 2.8: no retries).
+    `steps` is the step list the order is read from (G1(b)'s ten by default)."""
     head, dirty = revision()
     if dirty:
         raise Refused(
@@ -881,9 +934,9 @@ def require(out, step, revision):
         )
     if _summary_path(out, step).exists():
         raise Refused(f"{step}: already ran in {out}; section 2.8 allows no retries")
-    index = STEPS.index(step)
+    index = steps.index(step)
     if index:
-        previous = STEPS[index - 1]
+        previous = steps[index - 1]
         path = _summary_path(out, previous)
         if not path.exists():
             raise Refused(f"{step}: {previous} has no summary in {out}")
@@ -898,13 +951,20 @@ def require(out, step, revision):
     return head
 
 
-def run_step(step, out, *, revision=None, function=None, **kwargs):
+# Sites the duplicate-capability hook flagged on the name `run_step` (read; none runs a campaign step):
+# distinct-from: faculties/agency_monitor.py::run_t079_dry_run -- a one-seed apparatus dry run of another campaign; this runs ONE named step of this module's ordered chain and files its summary
+# distinct-from: faculties/recursive_tom.py::run_t082_dry_run -- likewise a one-seed dry run of another campaign, with no step order and no summary file
+# distinct-from: faculties/affect_integrator.py::_pool_rate -- runs a LIF pool at a constant drive and returns a spike rate; no step, no summary
+# distinct-from: faculties/autotelic_goals.py::_reaches -- runs a goal-conditioned policy for a horizon of environment steps
+# distinct-from: brainstem/so101_arm.py::set_substeps -- sets how many physics steps one arm command runs (read only; no brainstem file is touched)
+def run_step(step, out, *, revision=None, function=None, steps=STEPS, **kwargs):
     """Run one step under section 2.8's taxonomy and write its summary: COMPLETED (exit 0), HALTED
-    naming the shared check (exit 2), ABORTED on a FAILed job or a head that moved (exit 1)."""
+    naming the shared check (exit 2), ABORTED on a FAILed job or a head that moved (exit 1). `steps`
+    is the step list `require` reads the order from; it is never passed on to the step's function."""
     revision = revision or md._revision
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    head = require(out, step, revision)
+    head = require(out, step, revision, steps)
     function = function or STEP_FUNCTIONS[step]
     try:
         body, status, code = function(out, **kwargs), "COMPLETED", EXIT_OK
@@ -958,10 +1018,17 @@ def _streams(paths):
 # ---- the steps -----------------------------------------------------------------------------------
 
 
-def step_record(out):
-    """Seeds 100-103 and 200-207 through memory_diagnostic's own --record (the pilot's workers)."""
+# Sites the duplicate-capability hook flagged on `_record_seeds` (read; this is step_record's own body, extracted):
+# distinct-from: instruments/binding_instrument.py::t080_seed -- one seed's reading of another campaign (record, decompose, null); this fans a list of seeds out to memory_diagnostic's --record children
+# distinct-from: instruments/prior_drift_harness.py::build_arms -- builds the five tables of a seed; no recording, no children
+# distinct-from: brainstem/so101_arm.py::_verdict -- a contact label from the contact list (read only; no brainstem file is touched)
+# distinct-from: engine/autonomous_loop.py::AutonomousArm.coverage_state -- the coverage ledger as a lake record; no recording
+# distinct-from: faculties/homeostatic_drives.py::_train_values -- a value rule's exploration loop; no recording
+def _record_seeds(out, seeds):
+    """The record step's body for any seed list: each of `seeds` through memory_diagnostic's own
+    --record (the pilot's workers), its scored segments counted (section 2.5)."""
     folder = _folder(out, "record")
-    jobs = [{"seed": seed, "out": str(folder / f"{seed}-stream.json.gz")} for seed in RECORD_SEEDS]
+    jobs = [{"seed": seed, "out": str(folder / f"{seed}-stream.json.gz")} for seed in seeds]
     recordings = {}
     for job, status in zip(jobs, run_jobs(jobs, _record_child), strict=True):
         row = {"status": status["status"]}
@@ -980,6 +1047,17 @@ def step_record(out):
             )
         recordings[str(job["seed"])] = row
     return {"recordings": recordings}
+
+
+# Sites the duplicate-capability hook flagged on `step_record` (read; it only names G1(b)'s list for _record_seeds):
+# distinct-from: instruments/memory_diagnostic.py -- the recorder whose --record child each seed runs in; it records one stream, this fans G1(b)'s seed list out to it
+# distinct-from: instruments/binding_instrument.py::t080_seed -- one seed's reading of another campaign (record, decompose, null)
+# distinct-from: gates/amdahl_gate.py::_padded_step -- a positive control's padded stand-in for LIFNeuron.step
+# distinct-from: gates/manifest_gate.py::self_check -- constructed reds through the manifest gate's own verdict path
+# distinct-from: reasoning/train_of_thought.py::TrainOfThought.dismiss -- steps a workspace until a thought decays
+def step_record(out):
+    """Seeds 100-103 and 200-207 through memory_diagnostic's own --record (the pilot's workers)."""
+    return _record_seeds(out, RECORD_SEEDS)
 
 
 def step_mechanism(out):
@@ -1248,12 +1326,28 @@ def step_sigma(out):
     }
 
 
-def _phase_table(out, folder, standing, live, task, forms, references):
+# distinct-from: faculties/cpg_oscillator.py::MatsuokaCPG -- an anti-phase oscillator; this table is a campaign phase's cells (read; it shares the word "phase")
+def _phase_table(
+    out,
+    folder,
+    standing,
+    live,
+    task,
+    forms,
+    references,
+    paths=None,
+    *,
+    window=rp.WINDOW,
+    host="port",
+):
     """Cells for standing {candidate: [(index, config)]} x forms x (live + task), and the reference
-    arms on the live recordings; run, validated and bound into R-b7's table."""
+    arms on the live recordings; run, validated and bound into R-b7's table. G1(c): `paths`, when
+    given, is the seed -> stream path map (G1(b)'s is the record step's recordings and the synthetic
+    streams written to `folder`), and `window` and `host` go into every pool cell's spec."""
     recorded = _recorded(out)
-    tasks = _synthetic(folder, task)
-    paths = {seed: _recording(out, seed) for seed in live} | tasks
+    if paths is None:
+        tasks = _synthetic(folder, task)
+        paths = {seed: _recording(out, seed) for seed in live} | tasks
     cells = []
     for candidate, configs in standing.items():
         for index, config in configs:
@@ -1266,7 +1360,7 @@ def _phase_table(out, folder, standing, live, task, forms, references):
                             folder / name,
                             seed,
                             index=index,
-                            spec=_spec(candidate, config, form),
+                            spec=_spec(candidate, config, form, window=window, host=host),
                             missing=seed in live and recorded.get(seed) != "OK",
                         )
                     )

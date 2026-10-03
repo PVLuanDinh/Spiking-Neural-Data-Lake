@@ -9,6 +9,7 @@ import hashlib
 import inspect
 import json
 import math
+import os
 from pathlib import Path
 
 import pytest
@@ -1024,3 +1025,313 @@ def test_a_tap_job_feeds_a_transport_job_through_files_in_process(tmp_path):
     cell = dict(filed, digest=ps.digest(copied, stream))
     assert record["form"] == "copy" and ps.binding_problems(cell) == []
     assert ps.binding_problems(dict(cell, arm="pool-act", digest=dict(cell["digest"]))) == ["arm"]
+
+
+# ---- G1(c) P5a: the step, job and table machinery takes G1(c)'s parameters, G1(b)'s defaults -----
+
+
+CUSTOM_STEPS = ("alpha", "beta", "gamma")
+POWER_S = "snn_data_lake.instruments.pool_selection:power_s"  # a pure function of the instruments
+
+
+def test_the_new_parameters_default_to_g1bs_values():
+    assert inspect.signature(ps.require).parameters["steps"].default is ps.STEPS
+    assert inspect.signature(ps.run_step).parameters["steps"].default is ps.STEPS
+    phase = inspect.signature(ps._phase_table).parameters
+    assert (phase["paths"].default, phase["window"].default, phase["host"].default) == (
+        None,
+        rp.WINDOW,
+        "port",
+    )
+
+
+def test_require_walks_a_custom_step_list_with_g1bs_refusals(tmp_path):
+    steps = CUSTOM_STEPS
+    # the first step of the list needs no predecessor
+    assert ps.require(tmp_path, "alpha", clean, steps) == "h1"
+    with pytest.raises(ps.Refused, match="alpha has no summary"):
+        ps.require(tmp_path, "beta", clean, steps)
+    write_summary(tmp_path, "alpha", status="HALTED")
+    with pytest.raises(ps.Refused, match="ended HALTED"):
+        ps.require(tmp_path, "beta", clean, steps)
+    write_summary(tmp_path, "alpha", head="h0")
+    with pytest.raises(ps.Refused, match="not at the clean head h1"):
+        ps.require(tmp_path, "beta", clean, steps)
+    write_summary(tmp_path, "alpha", dirty=True)
+    with pytest.raises(ps.Refused, match="dirty=True"):
+        ps.require(tmp_path, "beta", clean, steps)
+    write_summary(tmp_path, "alpha")
+    with pytest.raises(ps.Refused, match="the tree is dirty"):
+        ps.require(tmp_path, "beta", lambda: ("h1", True), steps)
+    assert ps.require(tmp_path, "beta", clean, steps) == "h1"
+    with pytest.raises(ps.Refused, match="no retries"):
+        ps.require(tmp_path, "alpha", clean, steps)
+    # a step's predecessor is the one before it in THIS list: gamma wants beta, not alpha
+    with pytest.raises(ps.Refused, match="beta has no summary"):
+        ps.require(tmp_path, "gamma", clean, steps)
+    # a G1(b) step is no step of this list (the index lookup fails as it always did)
+    with pytest.raises(ValueError):
+        ps.require(tmp_path, "mechanism", clean, steps)
+
+
+def test_require_at_the_default_list_is_g1bs_step_order(tmp_path):
+    with pytest.raises(ps.Refused, match="record has no summary"):
+        ps.require(tmp_path, "mechanism", clean)
+    with pytest.raises(ps.Refused, match="record has no summary"):
+        ps.require(tmp_path, "mechanism", clean, ps.STEPS)
+    assert ps.require(tmp_path, "record", clean) == ps.require(tmp_path, "record", clean, ps.STEPS)
+    write_summary(tmp_path, "alpha")  # a custom step's summary is no predecessor of G1(b)'s
+    with pytest.raises(ps.Refused, match="record has no summary"):
+        ps.require(tmp_path, "mechanism", clean)
+
+
+def test_run_step_passes_its_step_list_to_require_and_not_to_the_function(tmp_path):
+    def first(out):
+        return {"n": 1}
+
+    def second(out, extra=0):
+        return {"extra": extra}
+
+    steps = CUSTOM_STEPS
+    assert ps.run_step("alpha", tmp_path, revision=clean, function=first, steps=steps) == ps.EXIT_OK
+    assert summary(tmp_path, "alpha")["n"] == 1
+    assert (
+        ps.run_step("beta", tmp_path, revision=clean, function=second, steps=steps, extra=3)
+        == ps.EXIT_OK
+    )
+    assert summary(tmp_path, "beta")["extra"] == 3  # the other keywords still reach the function
+    write_summary(tmp_path / "halted", "beta", status="HALTED")
+    with pytest.raises(ps.Refused, match="gamma: beta ended HALTED"):
+        ps.run_step("gamma", tmp_path / "halted", revision=clean, function=first, steps=steps)
+    # the same call without `steps` is G1(b)'s list: alpha is not a step there, and record is
+    with pytest.raises(ValueError):
+        ps.run_step("alpha", tmp_path / "default", revision=clean, function=first)
+    assert ps.run_step("record", tmp_path / "default", revision=clean, function=first) == ps.EXIT_OK
+
+
+def fake_record_child(unscored=()):
+    """A stand-in for memory_diagnostic's --record child: the 48-event fixture under the seed's name
+    (`unscored` seeds get one with no scored segment). The fixtures are built HERE, in the calling
+    thread: md._synthetic_stream asks threadpoolctl, which can fail when its first call comes from
+    several worker threads at once."""
+    stream = md._synthetic_stream()
+    stream["final"] = {"head": "h1", "dirty": False}
+    blind = dict(stream, events=[dict(event, segment="warm-up") for event in stream["events"]])
+
+    def runner(job):
+        md._save(job["out"], blind if job["seed"] in unscored else stream)
+        return {"status": "OK", "path": job["out"]}
+
+    return runner
+
+
+def test_record_seeds_takes_any_seed_list_and_step_record_is_g1bs(tmp_path, monkeypatch):
+    monkeypatch.setattr(ps, "_record_child", fake_record_child())
+    custom = ps._record_seeds(tmp_path / "custom", (300, 301))
+    assert list(custom["recordings"]) == ["300", "301"]
+    assert {row["status"] for row in custom["recordings"].values()} == {"OK"}
+    assert sorted(path.name for path in (tmp_path / "custom" / "record").iterdir()) == [
+        "300-stream.json.gz",
+        "301-stream.json.gz",
+    ]
+    default = ps.step_record(tmp_path / "default")
+    assert list(default["recordings"]) == [str(seed) for seed in ps.RECORD_SEEDS]
+    assert default == ps._record_seeds(tmp_path / "again", ps.RECORD_SEEDS)
+    # the CLI's help line reads this docstring
+    assert ps.step_record.__doc__.startswith("Seeds 100-103 and 200-207")
+
+
+def test_record_seeds_halts_on_a_recording_without_scored_segments(tmp_path, monkeypatch):
+    monkeypatch.setattr(ps, "_record_child", fake_record_child(unscored=(301,)))
+    with pytest.raises(ps.Halt, match="scored segments") as halted:
+        ps._record_seeds(tmp_path, (300, 301))
+    assert "recording 301" in halted.value.detail
+
+
+def fixture_stream(tmp_path, name, *, shuffled=False):
+    """The 48-event fixture bound to this head, saved under `name`; `shuffled` swaps the percept
+    fields (x, c) of its last two events, a stand-in shuffle that keeps every binding key."""
+    stream = md._synthetic_stream()
+    stream["final"] = dict(zip(("head", "dirty"), md._revision(), strict=True))
+    if shuffled:
+        last, before = stream["events"][-1], stream["events"][-2]
+        for key in ("x", "c"):
+            last[key], before[key] = before[key], last[key]
+    md._save(tmp_path / name, stream)
+    return tmp_path / name, stream
+
+
+def in_process(spec):
+    ps.execute(spec)
+    return {"status": "OK", "path": spec["out"]}
+
+
+def test_a_cell_validates_against_its_own_stream_only_when_it_names_it(tmp_path):
+    path, plain = fixture_stream(tmp_path, "17-stream.json.gz")
+    shuffled_path, shuffled = fixture_stream(tmp_path, "17-shuffled.json.gz", shuffled=True)
+    assert md._source_digest(plain) != md._source_digest(shuffled)
+    streams = {17: plain, "shuffled": shuffled}
+
+    def cells(**keys):
+        """One reference replay of the SHUFFLED file, filed under seed 17, naming `keys`."""
+        cell = ps._cell(shuffled_path, tmp_path / "shuffled-e1-0.json.gz", 17, arm="e1-0")
+        return [dict(cell, **keys)]
+
+    # without the keys the cell is held to seed 17's recording: another stream's replay is refused
+    with pytest.raises(ps.Halt, match="R-b7") as refused:
+        ps._tabulate(cells(), (17,), streams, in_process)
+    assert "replay identity e1-0 causal" in refused.value.detail
+    # a stream_key makes the cell's stream, source and scoring the shuffled one
+    table = ps._tabulate(cells(stream_key="shuffled"), (17,), streams, in_process)
+    (cell,) = table.values()
+    assert cell["status"] == "OK"
+    assert cell["digest"] == ps.digest(md._load(cell["job"]["out"]), shuffled)
+    # a source_key alone makes the source the shuffled one (the provenance stays seed 17's)
+    assert len(ps._tabulate(cells(source_key="shuffled"), (17,), streams, in_process)) == 1
+    # a source that is not the stream the replay ran on is refused, with or without a stream_key
+    for keys in ({"stream_key": "shuffled", "source_key": 17}, {"source_key": 17}):
+        with pytest.raises(ps.Halt, match="R-b7") as wrong:
+            ps._tabulate(cells(**keys), (17,), streams, in_process)
+        assert "replay identity" in wrong.value.detail
+
+
+def test_a_cell_that_names_no_keys_is_tabulated_as_it_always_was(tmp_path):
+    path, plain = fixture_stream(tmp_path, "17-stream.json.gz")
+    cell = ps._cell(path, tmp_path / "e1-0.json.gz", 17, arm="e1-0")
+    assert "stream_key" not in cell and "source_key" not in cell
+    table = ps._tabulate([cell], (17,), {17: plain}, in_process)
+    assert list(table) == [("e1-0", None, None, None, 17, False)]
+    assert table[("e1-0", None, None, None, 17, False)]["digest"] == ps.digest(
+        md._load(cell["job"]["out"]), plain
+    )
+
+
+def capture_tabulate(monkeypatch):
+    """Stand in for _tabulate where a test reads what _phase_table hands it."""
+    taken = {}
+
+    def tabulate(cells, phase_seeds, streams, runner=None):
+        taken.update(cells=cells, seeds=phase_seeds, streams=streams)
+        return "table"
+
+    monkeypatch.setattr(ps, "_tabulate", tabulate)
+    return taken
+
+
+def phase_table(tmp_path, monkeypatch, recorded=None, **kwargs):
+    """_phase_table over seed 17 (live) and 5001 (synthetic) with the record summary and the
+    synthetic writer stood in for; returns (cells, the _synthetic calls). `recorded` is what the
+    record step says of seed 17 (OK by default)."""
+    taken, synthetic = capture_tabulate(monkeypatch), []
+
+    def writer(folder, seeds):
+        synthetic.append((folder, tuple(seeds)))
+        return {seed: folder / f"task-{seed}-stream.json.gz" for seed in seeds}
+
+    monkeypatch.setattr(ps, "_recorded", lambda out: {17: "OK"} if recorded is None else recorded)
+    monkeypatch.setattr(ps, "_synthetic", writer)
+    standing = {"lsm": [(0, rp.R_B3_WITNESS["lsm"])]}
+    out, folder = tmp_path / "out", tmp_path / "folder"
+    table = ps._phase_table(out, folder, standing, (17,), (5001,), ("carried",), ("a",), **kwargs)
+    assert table == "table"
+    return taken["cells"], synthetic
+
+
+def test_phase_table_builds_its_stream_paths_unless_it_is_given_them(tmp_path, monkeypatch):
+    cells, synthetic = phase_table(tmp_path, monkeypatch)
+    assert synthetic == [(tmp_path / "folder", (5001,))]
+    assert [Path(cell["job"]["stream"]) for cell in cells] == [
+        tmp_path / "out" / "record" / "17-stream.json.gz",  # the pool cell of the live seed
+        tmp_path / "folder" / "task-5001-stream.json.gz",  # the pool cell of the synthetic seed
+        tmp_path / "out" / "record" / "17-stream.json.gz",  # the reference arm on the live seed
+    ]
+
+
+def test_phase_table_files_every_cell_under_the_paths_it_is_given(tmp_path, monkeypatch):
+    paths = {17: tmp_path / "xor-17.json.gz", 5001: tmp_path / "twin-5001.json.gz"}
+    cells, synthetic = phase_table(tmp_path, monkeypatch, paths=paths)
+    assert synthetic == []  # the given paths are not overwritten by the default synthetic writer
+    assert [Path(cell["job"]["stream"]) for cell in cells] == [
+        paths[17],
+        paths[5001],
+        paths[17],
+    ]
+    # the record summary is still what says a live seed is missing (inherited as a TIMEOUT)
+    assert [cell["status"] for cell in cells] == [None, None, None]
+    cells, _ = phase_table(tmp_path, monkeypatch, recorded={}, paths=paths)
+    assert [cell["status"] for cell in cells] == ["TIMEOUT", None, "TIMEOUT"]
+
+
+def test_phase_table_names_a_window_or_a_host_in_its_specs_only_when_given(tmp_path, monkeypatch):
+    config = rp.R_B3_WITNESS["lsm"]
+    cells, _ = phase_table(tmp_path, monkeypatch)
+    pool = [cell["job"]["pool"] for cell in cells if cell["arm"] == "pool"]
+    assert pool == [ps._spec("lsm", config, "carried")] * 2
+    assert all(list(spec) == ["candidate", "config", "form"] for spec in pool)
+    named = phase_table(tmp_path, monkeypatch, window=rp.WINDOW, host="port")[0]
+    assert [cell["job"]["pool"] for cell in named if cell["arm"] == "pool"] == pool
+    cells, _ = phase_table(tmp_path, monkeypatch, window=0, host="kernel")
+    pool_cells = [cell for cell in cells if cell["arm"] == "pool"]
+    assert [cell["job"]["pool"] for cell in pool_cells] == [
+        ps._spec("lsm", config, "carried", window=0, host="kernel")
+    ] * 2
+    assert all((cell["window"], cell["host"]) == (0, "kernel") for cell in pool_cells)
+    assert [cell for cell in cells if cell["arm"] == "a"][0]["job"]["pool"] is None
+
+
+def call_spec(tmp_path, target, args=None, name="call.json"):
+    return {"kind": "call", "target": target, "args": args or {}, "out": str(tmp_path / name)}
+
+
+def test_the_call_kind_runs_its_target_and_stamps_the_revision(tmp_path):
+    spec = call_spec(tmp_path, POWER_S, {"sigma": 0.0436})
+    ps.execute(spec)
+    revision = dict(zip(("head", "dirty"), md._revision(), strict=True))
+    assert md._load(spec["out"]) == {"S": 31, "capped": False, "revision": revision}
+    # a spec without args calls its target with none (crc_json, in the reservoir package, needs one)
+    bare = call_spec(tmp_path, "snn_data_lake.reservoir.recurrent_pool:crc_json", name="bare.json")
+    bare.pop("args")
+    with pytest.raises(TypeError, match="missing 1 required positional argument"):
+        ps.execute(bare)
+    assert not Path(bare["out"]).exists()
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "os:getcwd",  # outside both packages
+        "snn_data_lake.faculties.time_cells:tick",  # inside the project, outside the two prefixes
+        "snn_data_lake.instruments_other.module:power_s",  # a lookalike of the instruments prefix
+        "snn_data_lake.instruments:power_s",  # the package itself carries no trailing dot
+        "snn_data_lake.instruments.pool_selection",  # no function named
+        "snn_data_lake.instruments.pool_selection:",  # an empty function name
+        "snn_data_lake.instruments.no_such_module:power_s",  # an unknown module
+        "snn_data_lake.instruments.pool_selection:no_such_function",  # an unknown function
+        "snn_data_lake.instruments.pool_selection:Path",  # a callable the module only imports
+        "snn_data_lake.instruments.pool_selection:EXIT_OK",  # not a callable
+        "snn_data_lake.instruments.pool_selection:band_d",  # a callable that returns no dict
+    ],
+)
+def test_the_call_kind_refuses_a_target_it_may_not_run(tmp_path, target):
+    spec = call_spec(tmp_path, target, {"sigma_dev": 0.01})
+    with pytest.raises(ValueError, match="REFUSED: call target"):
+        ps.execute(spec)
+    assert not Path(spec["out"]).exists()  # nothing is saved for a refused call
+
+
+def test_the_call_kind_runs_in_a_child_and_a_refused_target_fails_there(tmp_path, monkeypatch):
+    # the child imports the code under test whatever the interpreter's installed copy is
+    src = Path(ps.__file__).resolve().parents[2]
+    inherited = [os.environ["PYTHONPATH"]] if os.environ.get("PYTHONPATH") else []
+    monkeypatch.setenv("PYTHONPATH", os.pathsep.join([str(src), *inherited]))
+    spec = call_spec(tmp_path, POWER_S, {"sigma": 0.0436})
+    assert ps._child(spec) == {"status": "OK", "path": spec["out"]}
+    result = md._load(spec["out"])
+    assert (result["S"], result["capped"]) == (31, False) and set(result["revision"]) == {
+        "head",
+        "dirty",
+    }
+    refused = call_spec(tmp_path, "os:getcwd", name="refused.json")
+    status = ps._child(refused)
+    assert status["status"] == "FAIL" and "REFUSED: call target 'os:getcwd'" in status["stderr"]
+    assert not Path(refused["out"]).exists()
