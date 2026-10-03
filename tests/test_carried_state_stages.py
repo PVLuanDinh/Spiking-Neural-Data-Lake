@@ -11,7 +11,9 @@ through a stand-in `ps._child`."""
 
 import contextlib
 import functools
+import hashlib
 import itertools
+import json
 import math
 import shutil
 import threading
@@ -533,6 +535,132 @@ def test_a_pool_whose_predictions_read_the_suffix_halts_r_b1(world, tmp_path):
         Children(timeouts=lambda spec: spec["kind"] == "replay" and spec.get("arm") == "leak")
     ):
         assert call(functools.partial(st.stage_causality, scale=SCALE), out).check == "R-b1 TIMEOUT"
+
+
+# ---- one R-b1 construction for both bodies (G1(c) P5 panel F10) ----------------------------------
+
+# sha256[:16] of every job spec (paths made OUT-relative) that each body built on the 48-event
+# fixture, at 96d3d999 BEFORE the shared helper replaced the two hand-written bodies: the helper
+# must reproduce them.
+PINNED_R_B1_JOBS = {"check203": ("8ea8c9bf3d80ee82", 15), "causality": ("4c3e0fc99d859dee", 12)}
+PINNED_R_B1_BODIES = {
+    "check203": {
+        "R-b1": {
+            "lsm carried": {"12": True, "24": True, "36": True},
+            "lsm settled": {"12": True, "24": True, "36": True},
+        },
+        "R-b1 red": {"12": True, "24": True, "36": True},
+        "R-b4": {"lsm": {"executions": True, "learner_differs": False, "pool_differs": False}},
+        "R-b4 red": {"lsm": True},
+        "cuts": [12, 24, 36],
+        "refused": {},
+    },
+    "causality": {
+        "R-b1": {
+            f"{form} {cut}": {"grower": True, "readout": True}
+            for form in ("carried", "settled")
+            for cut in (12, 24, 36)
+        },
+        "R-b1 red": {"12": True, "24": True, "36": True},
+        "cuts": [12, 24, 36],
+        "host": "port",
+        "scale": SCALE,
+        "seed": 203,
+        "window": 16,
+    },
+}
+
+
+def scrub(value, root):
+    """The value with every path OUT-relative and forward-slashed (a temp name never pins)."""
+    if isinstance(value, dict):
+        return {k: scrub(v, root) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        return [scrub(v, root) for v in value]
+    if isinstance(value, str):
+        return value.replace(str(root), "<OUT>").replace("\\", "/")
+    return value
+
+
+def digest_of_jobs(specs, root):
+    jobs = {scrub(spec, root)["out"]: scrub(spec, root) for spec in specs}
+    return hashlib.sha256(json.dumps(jobs, sort_keys=True).encode()).hexdigest()[:16], len(jobs)
+
+
+def test_both_r_b1_bodies_build_one_helper_and_it_reproduces_what_each_built_before(tmp_path):
+    seed = ps.CHECK_SEED
+    g1b, driver = tmp_path / "g1b", tmp_path / "driver"
+    for out in (g1b, driver):
+        ps._folder(out, "record")
+        md._save(ps._recording(out, seed), fixture(seed))
+        write_summary(
+            out, "record", recordings={str(seed): {"status": "OK"}}, live_seeds=[], seed_set="live"
+        )
+    write_summary(g1b, "tune", candidates={"lsm": {"tuned": {"config": cs.TUNED}}}, refused={})
+    write_summary(driver, "migrate", use="port")
+    built, real_spec, bodies, specs = [], ps._spec, {}, {}
+
+    class Spy(ps.RB1Check):
+        def __init__(self, *args, **kwargs):
+            built.append(kwargs.get("leak", "leak"))
+            super().__init__(*args, **kwargs)
+
+    def small(candidate, config, form, noise=False, window=rp.WINDOW, host="port"):
+        window = (
+            SCALE["window"] if window == rp.WINDOW else window
+        )  # the 48-event fixture: window 16
+        return real_spec(candidate, config, form, noise=noise, window=window, host=host)
+
+    for name, body in (
+        ("check203", ps.step_check203),
+        ("causality", functools.partial(st.stage_causality, scale=SCALE)),
+    ):
+        children = Children()
+        with shortened(children) as patch:
+            patch.setattr(ps, "RB1Check", Spy)
+            patch.setattr(ps, "_spec", small)
+            bodies[name] = scrub(body(g1b if name == "check203" else driver), tmp_path)
+        specs[name] = children.specs
+    assert built == ["R-b1 leak", "leak"]  # both bodies called the one helper, once each
+    for name, specs_run in specs.items():
+        assert digest_of_jobs(specs_run, tmp_path) == PINNED_R_B1_JOBS[name], name
+        assert bodies[name] == PINNED_R_B1_BODIES[name], name
+    for name, folder in (("check203", g1b / "check203"), ("causality", driver / "causality")):
+        original = md._load(ps._recording(g1b if name == "check203" else driver, seed))
+        for cut in (
+            12,
+            24,
+            36,
+        ):  # the cut streams are the recording's suffix mutation, seeded as before
+            moved = md._load(folder / f"{seed}-cut-{cut}.json.gz")
+            assert moved == md.mutate_suffix(original, cut, original["seed"] + cut), (name, cut)
+    assert hasattr(st, "_held") is False  # the stage's own prefix reader is retired
+
+
+def test_the_r_b1_helper_refuses_to_read_a_replay_bound_to_another_filing(tmp_path):
+    seed, folder = ps.CHECK_SEED, tmp_path / "rb1"
+    folder.mkdir()
+    ps._folder(tmp_path, "record")
+    stream, path = fixture(seed), ps._recording(tmp_path, seed)
+    md._save(path, stream)
+    spec = ps._spec("lsm", cs.TUNED, "carried", window=16)
+    check = ps.RB1Check(folder, seed, path, stream, {"pool x": ("x", spec)})
+    assert check.cuts == (12, 24, 36) and set(check.bound) == {"pool x"}
+    assert sorted(check.jobs) == sorted(
+        [f"pool x {tag}" for tag in ("base", 12, 24, 36)]
+        + [f"leak {tag}" for tag in ("base", 12, 24, 36)]
+    )
+    with shortened(Children()):
+        statuses = ps.run_jobs(list(check.jobs.values()))
+        assert {s["status"] for s in statuses} == {"OK"}
+        assert check.red() == {"12": True, "24": True, "36": True}
+        assert all(all(equal) for equal in check.held("pool x").values())
+        elsewhere = ps._spec(
+            "lsm", cs.TUNED, "settled", window=16
+        )  # filed under a spec it did not run
+        check.bound["pool x"] = ps._bound(seed, elsewhere)
+        with pytest.raises(ps.Halt, match="R-b7"):
+            check.held("pool x")
 
 
 # ---- primary -------------------------------------------------------------------------------------

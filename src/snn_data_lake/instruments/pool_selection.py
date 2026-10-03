@@ -32,6 +32,9 @@ step, job and table machinery here is the ONE machinery the G1(c) campaign drive
 (g1c-carried-state.md 2.14, POLICIES P2), through parameters whose defaults are G1(b)'s values --
 `require`/`run_step`'s `steps`, `_record_seeds`, `_phase_table`'s `paths`, `window` and `host`, a
 cell's `stream_key` and `source_key`, and the `call` job kind -- so G1(b)'s behaviour is unchanged.
+G1(c)'s P5 panel fold made two changes to it (G1(b) is closed; no recorded run moves): `run_step` files
+its summary RUNNING, exclusively, BEFORE the body runs (a crash can no longer be retried), and
+`RB1Check` is the one construction of R-b1's jobs, shared with the campaign driver's causality stage.
 """
 
 import argparse
@@ -39,7 +42,9 @@ import contextlib
 import functools
 import importlib
 import io
+import json
 import math
+import os
 import statistics
 import subprocess
 import sys
@@ -963,17 +968,46 @@ def _summary_path(out, step):
     return Path(out) / f"{step}.summary.json"
 
 
+RUNNING = "RUNNING"  # the status of a summary filed before its step's body ran (section 2.8)
+
+
+def _already_ran(out, step):
+    """Why `step` may not start again: its summary is there, finished or RUNNING (interrupted)."""
+    try:
+        status = md._load(_summary_path(out, step)).get("status")
+    except (OSError, ValueError):  # a half-written file is a summary all the same
+        status = None
+    if status == RUNNING:
+        return (
+            f"{step}: already ran in {out} and never finished (its summary reads {RUNNING}: it was "
+            "interrupted); section 2.8 allows no retries"
+        )
+    return f"{step}: already ran in {out}; section 2.8 allows no retries"
+
+
+def _file_running(out, step, head):
+    """Create `step`'s RUNNING summary with open mode "x" (flushed, fsynced) before its body runs."""
+    try:
+        with open(_summary_path(out, step), "x", encoding="utf-8") as file:
+            json.dump({"step": step, "status": RUNNING, "head": head, "dirty": False}, file)
+            file.flush()
+            os.fsync(file.fileno())
+    except FileExistsError as error:  # a concurrent start filed its summary after `require` looked
+        raise Refused(f"{step}: a concurrent start filed its summary first in {out}") from error
+
+
 def require(out, step, revision, steps=STEPS):
     """Refuse to start unless the previous step's summary exists, COMPLETED, and was written at this
     same clean head; refuse a dirty tree, and a step that already ran here (section 2.8: no retries).
+    A RUNNING summary (filed by `run_step` before the body) counts as having run.
     `steps` is the step list the order is read from (G1(b)'s ten by default)."""
     head, dirty = revision()
     if dirty:
         raise Refused(
             f"{step}: the tree is dirty; every step runs at one clean head (section 2.10)"
         )
-    if _summary_path(out, step).exists():
-        raise Refused(f"{step}: already ran in {out}; section 2.8 allows no retries")
+    if _summary_path(out, step).exists():  # any summary, a RUNNING one included (G1(c) P5 panel F1)
+        raise Refused(_already_ran(out, step))
     index = steps.index(step)
     if index:
         previous = steps[index - 1]
@@ -1000,11 +1034,15 @@ def require(out, step, revision, steps=STEPS):
 def run_step(step, out, *, revision=None, function=None, steps=STEPS, **kwargs):
     """Run one step under section 2.8's taxonomy and write its summary: COMPLETED (exit 0), HALTED
     naming the shared check (exit 2), ABORTED on a FAILed job or a head that moved (exit 1). `steps`
-    is the step list `require` reads the order from; it is never passed on to the step's function."""
+    is the step list `require` reads the order from; it is never passed on to the step's function.
+    The summary exists from BEFORE the body runs (status RUNNING, created with mode "x"); the final
+    summary replaces it, so a body that never returns (a KeyboardInterrupt, a killed process) leaves one
+    that `require` refuses: no retries, a crash included (G1(c) P5 panel F1)."""
     revision = revision or md._revision
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     head = require(out, step, revision, steps)
+    _file_running(out, step, head)  # before the body: an interrupt then leaves a RUNNING summary
     function = function or STEP_FUNCTIONS[step]
     try:
         body, status, code = function(out, **kwargs), "COMPLETED", EXIT_OK
@@ -1498,6 +1536,78 @@ def _twins_differ(first, second):
     return pool, learner
 
 
+# Sites the duplicate-capability hook flagged on prefix_held and RB1Check (read; none compares predictions up to a cut or builds R-b1's jobs):
+# distinct-from: instruments/prior_drift_harness.py::_wiring_contrast -- marks one contrast whose two arms both sat at the floor; no replay, no prediction prefix
+# distinct-from: reservoir/recurrent_pool.py::check_r_b5_erasure -- R-b5 (i): two random prefixes then the same percept must give one phi; it never mutates a recording's suffix
+# distinct-from: faculties/access_consciousness.py::ignited -- whether a content crossed the ignition threshold and held a workspace slot
+# distinct-from: faculties/agency_monitor.py::_t079_pearson -- the Pearson of two series, None when either has no variance
+# distinct-from: faculties/autotelic_goals.py::GoalConditionedReadout -- a two-tempotron goal-conditioned readout; no replay, no cut
+def prefix_held(first, second, cut):
+    """(grower equal, readout equal): both learners' predictions at t <= `cut` agree between two replays
+    of one stream and its suffix-mutated twin (R-b1: a prediction cannot read the future)."""
+    return (
+        first["predictions"][:cut] == second["predictions"][:cut],
+        first["readout"]["predictions"][:cut] == second["readout"]["predictions"][:cut],
+    )
+
+
+class RB1Check:
+    """R-b1 on one recording at three cuts (G1(a)'s R-a2): the suffix-mutated copies, the replay jobs of
+    each EXPLICIT pool spec in `pools` ({name: (file stem, spec)}) and of the (leak) arm named `leak`, and
+    the prediction-prefix reads. G1(b)'s step_check203 and G1(c)'s causality stage both build it (POLICIES
+    P2: one construction); each keeps its own R-b4 twins, halts and summary shape. `jobs` and `bound` are
+    the batch and the R-b7 filings, open to the caller's own jobs."""
+
+    def __init__(self, folder, seed, path, stream, pools, *, leak="leak"):
+        folder = Path(folder)
+        count = len(stream["events"])
+        self.stream, self.leak = stream, leak
+        self.cuts = (count // 4, count // 2, 3 * count // 4)
+        self.changed = {}
+        for cut in self.cuts:
+            self.changed[cut] = folder / f"{seed}-cut-{cut}.json.gz"
+            md._save(self.changed[cut], md.mutate_suffix(stream, max(1, cut), stream["seed"] + cut))
+        self.jobs, self.bound, self._sources = {}, {}, None
+        for name, (stem, spec) in pools.items():
+            self.bound[name] = _bound(seed, spec)
+            self.jobs[f"{name} base"] = _replay_job(
+                path, "pool", folder / f"{stem}.json.gz", pool=spec
+            )
+            for cut in self.cuts:
+                out_path = folder / f"{stem}-cut-{cut}.json.gz"
+                self.jobs[f"{name} {cut}"] = _replay_job(
+                    self.changed[cut], "pool", out_path, pool=spec
+                )
+        self.jobs[f"{leak} base"] = _replay_job(path, "leak", folder / "leak.json.gz")
+        for cut in self.cuts:
+            out_path = folder / f"leak-cut-{cut}.json.gz"
+            self.jobs[f"{leak} {cut}"] = _replay_job(self.changed[cut], "leak", out_path)
+
+    def load(self, name, cut=None, *, filed=None):
+        """One finished replay, held to G1(a)'s provenance and (`filed` names a pool) R-b7's binding."""
+        if self._sources is None:
+            self._sources = {cut: md._load(path) for cut, path in self.changed.items()}
+        return _checked(
+            self.jobs[name], self.stream, self._sources.get(cut), cell=self.bound.get(filed)
+        )
+
+    def red(self):
+        """{str(cut): True} where the (leak) arm's predictions at t <= cut CHANGE under the mutation."""
+        base = self.load(f"{self.leak} base")
+        return {
+            str(cut): not any(prefix_held(base, self.load(f"{self.leak} {cut}", cut), cut))
+            for cut in self.cuts
+        }
+
+    def held(self, name):
+        """{cut: (grower equal, readout equal)} for the pool named `name`."""
+        base = self.load(f"{name} base", filed=name)
+        return {
+            cut: prefix_held(base, self.load(f"{name} {cut}", cut, filed=name), cut)
+            for cut in self.cuts
+        }
+
+
 def step_check203(out):
     """R-b1: G1(a)'s R-a2 on every tuned candidate's Carried and Settled forms on seed 203 at the
     three cuts, for both learners, with (leak) as the red. The per-candidate R-b4 twins (Carried,
@@ -1510,58 +1620,31 @@ def step_check203(out):
         raise Halt("R-b1", f"seed {CHECK_SEED}'s recording is missing")
     path = _recording(out, CHECK_SEED)
     stream = md._load(path)
-    count = len(stream["events"])
-    cuts = (count // 4, count // 2, 3 * count // 4)
-    changed = {}
-    for cut in cuts:
-        changed[cut] = folder / f"{CHECK_SEED}-cut-{cut}.json.gz"
-        md._save(changed[cut], md.mutate_suffix(stream, max(1, cut), stream["seed"] + cut))
-    jobs, bound = {}, {}
-    for c, t in tuned.items():
-        for form in FIT_FORMS:
-            spec = _spec(c, t["config"], form)
-            bound[f"R-b1 {c} {form}"] = _bound(CHECK_SEED, spec)
-            name = f"R-b1 {c} {form}"
-            jobs[f"{name} base"] = _replay_job(
-                path, "pool", folder / f"{c}-{form}.json.gz", pool=spec
-            )
-            for cut in cuts:
-                out_path = folder / f"{c}-{form}-cut-{cut}.json.gz"
-                jobs[f"{name} {cut}"] = _replay_job(changed[cut], "pool", out_path, pool=spec)
+    pools = {  # explicit specs: every tuned candidate's Carried and Settled, on the port
+        f"R-b1 {c} {form}": (f"{c}-{form}", _spec(c, t["config"], form))
+        for c, t in tuned.items()
+        for form in FIT_FORMS
+    }
+    check = RB1Check(folder, CHECK_SEED, path, stream, pools, leak="R-b1 leak")
+    cuts, jobs, bound = check.cuts, check.jobs, check.bound
+    for c, t in tuned.items():  # R-b4's twins stay G1(b)'s own
         for twin in ("1", "2", "noise"):
             spec = _spec(c, t["config"], "carried", noise=twin == "noise")
             bound[f"R-b4 {c} {twin}"] = _bound(CHECK_SEED, spec)
             out_path = folder / f"{c}-twin-{twin}.json.gz"
             jobs[f"R-b4 {c} {twin}"] = _replay_job(path, "pool", out_path, pool=spec)
-    jobs["R-b1 leak base"] = _replay_job(path, "leak", folder / "leak.json.gz")
-    for cut in cuts:
-        out_path = folder / f"leak-cut-{cut}.json.gz"
-        jobs[f"R-b1 leak {cut}"] = _replay_job(changed[cut], "leak", out_path)
     statuses = dict(zip(jobs, run_jobs(list(jobs.values())), strict=True))
     late = sorted(name for name, status in statuses.items() if status["status"] != "OK")
     if any(name.startswith("R-b1") for name in late):
         raise Halt("R-b1 TIMEOUT", late)
-    sources = {cut: md._load(changed[cut]) for cut in cuts}
-
-    def load(name, cut=None, filed=None):
-        return _checked(jobs[name], stream, sources.get(cut), cell=bound.get(filed))
-
-    def before(first, second, cut):
-        """Both learners' predictions up to the cut: (grower equal, readout equal)."""
-        return (
-            first["predictions"][:cut] == second["predictions"][:cut],
-            first["readout"]["predictions"][:cut] == second["readout"]["predictions"][:cut],
-        )
-
-    leak = load("R-b1 leak base")
-    red = {str(cut): not any(before(leak, load(f"R-b1 leak {cut}", cut), cut)) for cut in cuts}
+    red = check.red()
     r_b4, noise_red = {}, {}
     for c in tuned:
         if any(name.startswith(f"R-b4 {c} ") for name in late):
             refused[c] = ["R-b4 TIMEOUT on 203: its tuned configuration is ineligible"]
             continue
         first, second, noisy = (
-            load(f"R-b4 {c} {t}", filed=f"R-b4 {c} {t}") for t in ("1", "2", "noise")
+            check.load(f"R-b4 {c} {t}", filed=f"R-b4 {c} {t}") for t in ("1", "2", "noise")
         )
         noise_red[c] = noise_red_fires(first, noisy)  # section 2.7, amended 2026-09-25
         pool_differs, learner_differs = _twins_differ(first, second)
@@ -1577,12 +1660,8 @@ def step_check203(out):
     r_b1 = {}
     for c in tuned:
         for form in FIT_FORMS:
-            name = f"R-b1 {c} {form}"
-            base = load(f"{name} base", filed=name)
-            r_b1[f"{c} {form}"] = {
-                str(cut): all(before(base, load(f"{name} {cut}", cut, filed=name), cut))
-                for cut in cuts
-            }
+            read = check.held(f"R-b1 {c} {form}")
+            r_b1[f"{c} {form}"] = {str(cut): all(equal) for cut, equal in read.items()}
     if not all(all(held.values()) for held in r_b1.values()):
         raise Halt("R-b1", r_b1)
     for c, row in r_b4.items():
@@ -1790,6 +1869,18 @@ def self_check():
         assert run_step("mechanism", out, revision=_clean, function=halts) == EXIT_HALT
         assert _summary(out, "mechanism")["check"] == "R-b6"
         assert _refuses(out, "instrument", _clean)  # the previous step HALTED
+        # a step interrupted after it started leaves a RUNNING summary, and a start cannot follow it (P5 F1)
+        crash = out / "crash"
+
+        def interrupted(_):
+            raise KeyboardInterrupt
+
+        try:
+            run_step("record", crash, revision=_clean, function=interrupted)
+        except KeyboardInterrupt:
+            pass
+        assert _summary(crash, "record")["status"] == RUNNING and _refuses(crash, "record", _clean)
+        assert _refuses(crash, "mechanism", _clean)  # and its successor sees it unfinished
     # one pool-arm replay on a short synthetic stream; its window is shortened to 16 for this
     # 48-event fixture ONLY, and R-b7 refuses that binding in any campaign table
     fixture = md._synthetic_stream()

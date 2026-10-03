@@ -690,6 +690,85 @@ def test_a_failed_job_aborts_and_so_does_a_head_that_moved(tmp_path):
     assert summary(moved, "record")["moved"] == {"start": "h1", "end": "h2", "dirty": False}
 
 
+# ---- G1(c) P5 panel F1: a step that started cannot start again, crash included -------------------
+
+
+def test_a_step_interrupted_before_its_summary_is_written_cannot_be_started_again(tmp_path):
+    def interrupted(out):
+        assert summary(out, "record")["status"] == "RUNNING"  # filed BEFORE the body ran
+        raise KeyboardInterrupt  # not an Exception: run_step's own handlers never see it
+
+    with pytest.raises(KeyboardInterrupt):
+        ps.run_step("record", tmp_path, revision=clean, function=interrupted)
+    crashed = summary(tmp_path, "record")
+    assert (crashed["status"], crashed["head"], crashed["dirty"]) == ("RUNNING", "h1", False)
+    ran = []
+    with pytest.raises(ps.Refused, match="never finished.*RUNNING.*no retries"):
+        ps.run_step("record", tmp_path, revision=clean, function=lambda out: ran.append(1) or {})
+    assert ran == [] and summary(tmp_path, "record") == crashed  # refused, nothing run or rewritten
+    with pytest.raises(ps.Refused, match="no summary|ended RUNNING"):  # and no later step either
+        ps.require(tmp_path, "mechanism", clean)
+
+
+def test_a_normal_step_replaces_its_running_summary_with_the_one_it_always_wrote(tmp_path):
+    seen = []
+
+    def body(out):
+        seen.append(summary(out, "record")["status"])
+        return {"n": 1}
+
+    assert ps.run_step("record", tmp_path, revision=clean, function=body) == ps.EXIT_OK
+    assert seen == ["RUNNING"]
+    assert summary(tmp_path, "record") == {
+        "step": "record",
+        "status": "COMPLETED",
+        "head": "h1",
+        "dirty": False,
+        "n": 1,
+    }
+
+    def halts(out):
+        raise ps.Halt("R-b6", {"difference": 0.01})
+
+    assert ps.run_step("mechanism", tmp_path, revision=clean, function=halts) == ps.EXIT_HALT
+    assert summary(tmp_path, "mechanism")["status"] == "HALTED"
+    with pytest.raises(ps.Refused, match="ended HALTED"):  # a halted predecessor still blocks
+        ps.require(tmp_path, "instrument", clean)
+
+
+def test_a_second_start_that_passed_require_is_refused_by_the_exclusive_create(
+    tmp_path, monkeypatch
+):
+    ran = []
+    monkeypatch.setattr(
+        ps, "require", lambda out, step, revision, steps=ps.STEPS: "h1"
+    )  # both saw "no summary"
+    assert (
+        ps.run_step("record", tmp_path, revision=clean, function=lambda out: ran.append(1) or {})
+        == 0
+    )
+    with pytest.raises(ps.Refused, match="concurrent start filed its summary first"):
+        ps.run_step("record", tmp_path, revision=clean, function=lambda out: ran.append(2) or {})
+    assert ran == [1]
+    with pytest.raises(ps.Refused, match="concurrent start"):  # the mechanism itself: mode "x"
+        ps._file_running(tmp_path, "record", "h1")
+    assert (
+        summary(tmp_path, "record")["status"] == "COMPLETED"
+    )  # the finished summary was never rewritten
+
+
+def test_prefix_held_reads_both_learners_up_to_the_cut_and_nothing_after():
+    base = {"predictions": [1, 2, 3, 4], "readout": {"predictions": [4, 3, 2, 1]}}
+    same = {"predictions": [1, 2, 3, 9], "readout": {"predictions": [4, 3, 2, 9]}}
+    assert ps.prefix_held(base, same, 3) == (True, True)  # the suffix after the cut moved
+    assert ps.prefix_held(base, same, 4) == (False, False)
+    assert ps.prefix_held(base, {**same, "predictions": [1, 9, 3, 9]}, 3) == (False, True)
+    assert ps.prefix_held(base, {**same, "readout": {"predictions": [4, 9, 2, 9]}}, 3) == (
+        True,
+        False,
+    )
+
+
 def test_run_jobs_aborts_on_a_fail_and_records_a_timeout():
     jobs = [{"out": f"job{i}"} for i in range(6)]
 

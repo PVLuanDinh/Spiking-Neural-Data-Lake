@@ -505,18 +505,13 @@ def stage_migrate(out, *, scale=None):
 # ---- causality (2.10 R-b1) -----------------------------------------------------------------------
 
 
-def _held(first, second, cut):
-    """(grower equal, readout equal) up to `cut`: the predictions at t <= cut cannot read the suffix."""
-    return (
-        first["predictions"][:cut] == second["predictions"][:cut],
-        first["readout"]["predictions"][:cut] == second["readout"]["predictions"][:cut],
-    )
-
-
-# distinct-from: instruments/pool_selection.py::step_check203 -- G1(b)'s R-b1 over the TUNING summary's candidates on the port (a closed campaign, untested here); this runs the SURVIVING HOST's Carried and Settled on seed 203 under the driver's own summaries, with the same cuts, mutation and (leak) red. Re-expressed, not extracted: see the commit message's deviations
+# Sites the duplicate-capability hook flagged on stage_causality (read; neither builds R-b1's replay jobs):
+# distinct-from: instruments/pool_selection.py::step_check203 -- G1(b)'s sibling wrapper (the tuning summary's candidates on the port, with R-b4's twins); both CALL pool_selection.RB1Check, the one construction of R-b1's jobs, cuts and prefix reads, so this is no second mechanism
+# distinct-from: faculties/theory_of_mind.py::_run_sally_anne -- stages the Sally-Anne false-belief task for a TheoryOfMind; no replay, no cut
 def stage_causality(out, *, scale=None):
     """R-b1 on seed 203: G1(a)'s R-a2 on the surviving host's Carried and Settled at three cuts, both
-    learners; the (leak) arm must change predictions at every cut. A failure halts (2.10, 2.11)."""
+    learners; the (leak) arm must change predictions at every cut. A failure halts (2.10, 2.11). The
+    jobs, the cuts and the prediction-prefix reads are `pool_selection.RB1Check`'s."""
     sc = settings(scale)
     window, seed, host = sc["window"], cs.CAUSALITY_SEED, use_of(out)
     if ps._recorded(out).get(seed) != "OK":
@@ -524,41 +519,20 @@ def stage_causality(out, *, scale=None):
     folder = ps._folder(out, "causality")
     path = ps._recording(out, seed)
     stream = md._load(path)
-    count = len(stream["events"])
-    cuts = (count // 4, count // 2, 3 * count // 4)
-    changed = {}
-    for cut in cuts:
-        changed[cut] = folder / f"{seed}-cut-{cut}.json.gz"
-        md._save(changed[cut], md.mutate_suffix(stream, max(1, cut), stream["seed"] + cut))
-    jobs, bound = {}, {}
-    for form in ps.FIT_FORMS:
-        spec = ps._spec(POOL, cs.TUNED, form, window=window, host=host)
-        bound[form] = ps._bound(seed, spec)
-        jobs[f"{form} base"] = ps._replay_job(path, "pool", folder / f"{form}.json.gz", pool=spec)
-        for cut in cuts:
-            name = folder / f"{form}-cut-{cut}.json.gz"
-            jobs[f"{form} {cut}"] = ps._replay_job(changed[cut], "pool", name, pool=spec)
-    jobs["leak base"] = ps._replay_job(path, "leak", folder / "leak.json.gz")
-    for cut in cuts:
-        jobs[f"leak {cut}"] = ps._replay_job(
-            changed[cut], "leak", folder / f"leak-cut-{cut}.json.gz"
-        )
-    statuses = dict(zip(jobs, ps.run_jobs(list(jobs.values())), strict=True))
+    pools = {  # explicit specs: the surviving host's Carried and Settled
+        form: (form, ps._spec(POOL, cs.TUNED, form, window=window, host=host))
+        for form in ps.FIT_FORMS
+    }
+    check = ps.RB1Check(folder, seed, path, stream, pools)
+    cuts = check.cuts
+    statuses = dict(zip(check.jobs, ps.run_jobs(list(check.jobs.values())), strict=True))
     late = sorted(name for name, status in statuses.items() if status["status"] != "OK")
     if late:
         raise ps.Halt("R-b1 TIMEOUT", late)
-    sources = {cut: md._load(changed[cut]) for cut in cuts}
-
-    def load(name, cut=None, form=None):
-        return ps._checked(jobs[name], stream, sources.get(cut), cell=bound.get(form))
-
-    leak = load("leak base")
-    red = {str(cut): not any(_held(leak, load(f"leak {cut}", cut), cut)) for cut in cuts}
+    red = check.red()
     held = {}
     for form in ps.FIT_FORMS:
-        base = load(f"{form} base", form=form)
-        for cut in cuts:
-            grower, readout = _held(base, load(f"{form} {cut}", cut, form), cut)
+        for cut, (grower, readout) in check.held(form).items():
             held[f"{form} {cut}"] = {"grower": grower, "readout": readout}
     if not all(red.values()):
         raise ps.Halt("a red that does not fire", {"R-b1 leak": red})
