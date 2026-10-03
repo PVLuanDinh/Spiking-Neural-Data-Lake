@@ -455,7 +455,7 @@ def test_stream_checks_hold_and_each_mutant_fails_its_clause(streams):
         lambda s: s["events"][2].update(x=list(reversed(s["events"][2]["x"]))),
     )
     # one text starved: the frequency clause (every x replaced by one text's)
-    red("texts_within_4_sd", lambda s: [e.update(x=list(s["events"][0]["x"])) for e in s["events"]])
+    red("texts_within_6_sd", lambda s: [e.update(x=list(s["events"][0]["x"])) for e in s["events"]])
 
 
 def test_the_stream_reds_all_fire():
@@ -473,8 +473,11 @@ def test_the_stream_reds_all_fire():
     result = im.stream_checks(
         7100, xor=block, twin=im._build_stream(7100, im.label_twin, frame=frame, blocks=True)
     )
-    assert result["checks"]["texts_within_4_sd"] and not result["checks"]["repeat_rate_within_4_sd"]
+    assert result["checks"]["texts_within_6_sd"] and not result["checks"]["repeat_rate_within_6_sd"]
     assert result["repeat_rate"] < 0.1
+    # the 6-sd bound (g1c 2.8 dated note) keeps a wide margin on this red
+    z = (result["repeat_rate"] - 0.25) / math.sqrt(0.25 * 0.75 / (result["events"] - 1))
+    assert z < -(im.SD_BOUND + 6), z
 
 
 def test_the_stream_replays_and_reads_the_twin_but_not_xor_through_arm_a(streams):

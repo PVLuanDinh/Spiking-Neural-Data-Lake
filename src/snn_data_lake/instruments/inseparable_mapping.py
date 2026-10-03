@@ -110,7 +110,10 @@ STREAM_WARM_UP = 256
 STREAM_NORM = 1.73  # the live percepts' L2 norm
 STREAM_DIM = 64
 FEED = "psp52_pad64_norm1.73"
-SD_BOUND = 4  # a frequency must lie within this many binomial sd of its i.i.d. value
+# A frequency must lie within this many binomial sd of its i.i.d. value. 6, not 4 (g1c 2.8 dated note): a failed
+# stream check HALTS the campaign, and five such tests on each of 31 seeds put a valid stream's chance halt near 1 % at
+# 4 sd (~3e-7 at 6); the permutation-block red these tests carry sits near 15 sd.
+SD_BOUND = 6
 
 
 # ---- the learner's own code --------------------------------------------------------------------------
@@ -565,7 +568,7 @@ def _within(count, n, p):
 def stream_checks(seed, *, xor=None, twin=None):
     """The checks of one seed's XOR and twin streams (built here unless passed, for the reds): more than
     256 events (and exactly 1,200); every x of norm 1.73 within 1e-12 and zero outside dims 0-51; every x
-    a text's code; each text within 4 binomial sd of 25 %; the lag-1 repeat rate within 4 sd of 25 %
+    a text's code; each text within SD_BOUND (6) binomial sd of 25 %; the lag-1 repeat rate within 6 sd of 25 %
     (strengthening: the i.i.d. witness that catches texts drawn in permutation blocks, where every text
     is exactly 25 %); the xor and twin x events byte-identical; c_t == category(label(text_{t-1})) re-derived
     from the decoded texts and, for t = 1, the first `random.Random(seed)` draw."""
@@ -597,8 +600,8 @@ def stream_checks(seed, *, xor=None, twin=None):
             len(e["x"]) == STREAM_DIM and all(v == 0.0 for v in e["x"][N_IN:]) for e in events
         ),
         "x_is_a_text_code": all(d is not None for d in decoded),
-        "texts_within_4_sd": n > 0 and all(_within(c, n, 0.25) for c in counts.values()),
-        "repeat_rate_within_4_sd": n > 1 and _within(repeats, n - 1, 0.25),
+        "texts_within_6_sd": n > 0 and all(_within(c, n, 0.25) for c in counts.values()),
+        "repeat_rate_within_6_sd": n > 1 and _within(repeats, n - 1, 0.25),
         "xor_twin_x_identical": json.dumps([e["x"] for e in events])
         == json.dumps([e["x"] for e in twin["events"]]),
         "c_is_the_previous_texts_xor_label": answers_previous(xor, label_xor),
@@ -630,7 +633,7 @@ def stream_reds(seed):
         "lag_0": fires("c_is_the_previous_texts_xor_label", {"lag": 0}, {"lag": 0}),
         "events_256": fires("beyond_warm_up", {"n_events": 256}, {"n_events": 256}),
         "permutation_blocks_of_4": fires(
-            "repeat_rate_within_4_sd", {"blocks": True}, {"blocks": True}
+            "repeat_rate_within_6_sd", {"blocks": True}, {"blocks": True}
         ),
         "twin_from_another_rng_state": fires("xor_twin_x_identical", {}, {"rng_seed": seed + 1}),
     }

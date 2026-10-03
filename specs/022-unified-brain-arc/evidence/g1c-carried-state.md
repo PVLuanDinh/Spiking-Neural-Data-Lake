@@ -238,6 +238,16 @@ each blind-control combination (2.10).
   accuracy and per-text accuracy, distinct Settled phi rows. Reading rules: arm (a) on XOR must stay below 0.75 + 4 binomial
   sd (the affine ceiling) or the stream is wrong; an XOR reading is "readable" only if the same pool form clears the twin floor,
   else it is reported as "pool blind to the code".
+  *DATED AMENDMENT 2026-10-03 (pre-data: no live seed 300-361, no synthetic 6000 or 6001 and no learner seed 7000-7007 has
+  been run; a code constant, not a sentence above):* the stream's structural checks (`inseparable_mapping.stream_checks`)
+  now HALT the separation stage (the P5 panel's fold, F6), so their two statistical clauses -- each text's frequency and the
+  lag-1 repeat rate, each against its i.i.d. 25 % -- are bounded at 6 binomial sd, not the 4 they carried as readings. At 4,
+  five such tests on each of 31 seeds put a valid stream's chance halt near 1 % per campaign (5 x 31 x 6.3e-5, computed),
+  at stage 11 of 12 with the reserve as the only repair; at 6 it is ~3e-7 (computed). The red these clauses carry (texts in
+  permutation blocks of 4) measured z -14.06 to -15.52 on the repeat rate over exposed seeds 100-103 and 4242-4247, so 6
+  keeps it with at least 8 sd of margin (pinned by a test). The registered reading rules above are untouched: arm (a)'s XOR
+  ceiling stays 0.75 + 4 binomial sd (0.8064 at 944 scored events), and the nearest development reading (0.573) sits 16.6
+  sd below it.
 - **If the construction check reds,** item (3) is reported NOT RUN and G1(c) continues (owner, work loop 2026-10-03).
 
 ### 2.9 The migration gate (plan item (5); G1B 2.9)
