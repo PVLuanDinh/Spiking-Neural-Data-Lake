@@ -1041,3 +1041,190 @@ def test_class_b_the_decay_product_pair_is_found_by_scan_and_the_float64_formula
     # the scan is silent where host and port must agree (a leak that is a power of two)
     assert rp.decay_divergence_scan(12, lam=1.0) is None
     assert rp.decay_divergence_scan(12, lam=0.5) is None
+
+
+# ---- G1(c) P4b: the hosted pool's R-b3, R-b4 and R-b5 --------------------------------------------
+
+HOSTED_SMALL = {"percepts": 64, "window": 32}  # reduced sizes; the full sizes are the campaign's
+TUNED = {"k": 8, "w": 0.25, "lambda": 0.9, "g": 4, "T_in": 1}  # G1(c) 2.2's tuned configuration
+WITNESS = rp.R_B3_WITNESS["lsm"]
+
+
+@pytest.mark.parametrize("config", [TUNED, WITNESS], ids=["tuned", "witness"])
+def test_the_hosted_pool_is_equal_across_p_and_threads_activity_state_and_chain(config):
+    result = rp.check_r_b3("lsm", config, host="kernel", **HOSTED_SMALL)
+    numbers = result["numbers"]
+    assert result["verdict"] and numbers["equal"] == {"carried": True, "settled": True}
+    assert numbers["settings"] == [{"P": p, "threads": t} for p, t in ((1, 1), (8, 1), (8, 4))]
+    assert "vacuous" in numbers["blas"] and "vacuous" in numbers["torch"]
+    forms = ("carried", "settled")
+    assert set(numbers["runs"]) == {f"P{p}/T{t}/{f}" for p, t in rp.R_B3_HOSTED for f in forms}
+    # every run records its activity, phi, final state and the per-percept state chain
+    assert all(
+        set(run) == {"activity_crc", "steps", "phi_crc", "state", "state_chain"}
+        for run in numbers["runs"].values()
+    )
+    assert numbers["runs"]["P8/T4/settled"]["steps"] == numbers["runs"]["P1/T1/settled"]["steps"]
+
+
+def test_the_port_equality_is_as_it_was_and_the_comparator_sees_each_field():
+    result = rp.check_r_b3("lsm", WITNESS, percepts=16, window=8, blas=(1,), torch_threads=(1,))
+    assert result["verdict"] and "blas" not in result["numbers"]
+    assert all("state_chain" not in run for run in result["numbers"]["runs"].values())
+    run = result["numbers"]["runs"]["1/1/carried"]
+    assert rp._runs_agree([run, dict(run)]) and not rp._runs_agree([])  # no run, no agreement
+    for key in ("activity_crc", "steps", "phi_crc", "state"):
+        assert not rp._runs_agree([run, dict(run, **{key: run[key] + 1})]), key
+    chained = dict(run, state_chain=1)
+    assert not rp._runs_agree([chained, dict(chained, state_chain=2)])
+
+
+def test_the_float_accumulation_twin_red_fires_and_its_fixture_exercises_the_spread():
+    result = rp.check_r_b3_hosted_red("lsm", **HOSTED_SMALL)
+    numbers = result["numbers"]
+    assert result["verdict"] and result["red"], numbers
+    # unseeded order changed the chain; the stored order twice agrees: the order is the cause
+    assert numbers["differs"] and numbers["chain_changed"] and numbers["control_agrees"]
+    assert numbers["config"] == WITNESS and numbers["exercise_count"] >= rp.R_B3_MULTI
+    for row in numbers[
+        "counts"
+    ].values():  # both runs: >= 100 unit-steps with 3+ spikes, and with both scaled entries
+        assert row["multi"] >= rp.R_B3_MULTI and row["spread"] >= rp.R_B3_MULTI
+        assert row["spread"] <= row["multi"]
+    assert numbers["unit_spread_min"] >= rp.R_B3_SPREAD == 2**12
+    # the gate's own wiring control, beside it and deciding nothing here
+    assert numbers["wiring"] == {"float_diverged": True, "int_agreed": True}
+    assert tuple(determinism_gate.broken_control()) == (True, True)
+
+
+def _twin(order, *, lattice=False, window=32):
+    base = rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=window, host="kernel")
+    weights = np.rint(base.w * 2**12) / 2**12 if lattice else base.w
+    cls = {"unseeded": rp._FloatTwin, "forward": rp._ForwardTwin}[order]
+    return cls(base.pre, weights, base.config, "carried", base.w_in, window=window, s_settle=64)
+
+
+def test_the_twin_scales_one_entry_up_and_one_down_and_leaves_the_network_as_it_was():
+    base = rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=32, host="kernel")
+    twin = _twin("forward")
+    assert np.array_equal(twin.pre, base.pre) and isinstance(twin, rp.KernelLsmPool)
+    assert np.array_equal(twin.w[:, 2:], base.w[:, 2:])
+    assert np.array_equal(twin.w[:, 0], base.w[:, 0] * 2**12)
+    assert np.array_equal(twin.w[:, 1], base.w[:, 1] / 2**12)
+    assert (
+        rp._unit_spread(twin.w) >= 2**12 > rp._unit_spread(base.w)
+    )  # the spread is the twin's own
+
+
+def test_the_twin_is_deterministic_in_the_stored_order_and_blind_without_its_spread(monkeypatch):
+    seq = rp.cycled_fixture(HOSTED_SMALL["percepts"])
+    forward = [rp._record(_twin("forward"), seq, chain=True) for _ in range(2)]
+    assert rp._runs_agree(forward)
+    assert not rp._runs_agree([forward[0], rp._record(_twin("unseeded"), seq, chain=True)])
+    # why 2.9 re-founded the red: lattice weights at 2**-12 and no spread sum exactly in float32 in
+    # any order, so the same twin fed them cannot tell an unseeded order from the stored one
+    monkeypatch.setattr(rp, "R_B3_SPREAD", 1)
+    lattice = rp._record(_twin("forward", lattice=True), seq, chain=True)
+    assert rp._runs_agree([lattice, rp._record(_twin("unseeded", lattice=True), seq, chain=True)])
+
+
+def test_the_twin_counts_its_unit_steps_by_hand():
+    # four units with four entries each; entries 0 and 1 are the scaled ones
+    pre = [[0, 1, 2, 3], [0, 0, 0, 0], [1, 2, 3, 0], [2, 2, 2, 2]]
+    twin = rp._FloatTwin(
+        pre,
+        [[0.5, 0.25, 0.125, 0.0625]] * 4,
+        {"lambda": 1.0, "g": 1, "T_in": 1},
+        window=4,
+        s_settle=0,
+    )
+    twin.s = np.array(
+        [True, True, True, True]
+    )  # every unit hears four spiking entries, scaled ones too
+    twin.step(np.zeros(4))
+    assert (twin.multi, twin.spread) == (4, 4)
+    # unit 1 silent: units 0 and 2 hear three entries but one scaled entry is silent (multi only),
+    # units 1 and 3 hear four through unit 0 and unit 2 (both scaled entries spiking: multi, spread)
+    twin.s = np.array([True, False, True, True])
+    twin.step(np.zeros(4))
+    assert (twin.multi, twin.spread) == (4 + 4, 4 + 2)
+    twin.s = np.array(
+        [False, False, True, False]
+    )  # units 0 and 2 hear one entry, unit 1 none, unit 3 four
+    twin.step(np.zeros(4))
+    assert (twin.multi, twin.spread) == (8 + 1, 6 + 1)
+
+
+# R-b4's kicks are unseeded. On the R-b3 witness (saturated drive) the hosted red left phi unmoved
+# in 6 of 150 trials at 16 kicks (0 of 150 at 48), so it is asserted where it never failed in 150
+# trials: the tuned configuration, which R-b4 is pre-registered on, and the persistence witness
+@pytest.mark.parametrize(
+    "config", [TUNED, rp.R_B5_PERSISTENCE_WITNESS], ids=["tuned", "persistence-witness"]
+)
+def test_the_hosted_pool_noise_red_changes_the_state_chain_and_phi(config):
+    pool = rp.make_pool("lsm", config, rp.DEV_SEED, host="kernel")
+    before = pool.fingerprint()
+    pool.perturb()
+    assert pool.fingerprint() != before and pool.v.dtype == np.float32
+    result = rp.pool_noise_red("lsm", config, window=32, host="kernel")
+    assert result["verdict"] and result["numbers"]["state"] and result["numbers"]["phi"], result
+
+
+@pytest.mark.parametrize("form", ["reset", "settled"])
+def test_hosted_erasure_holds_and_skipping_v_or_acc_fails_it_but_s_is_never_read(form):
+    config, carrier = rp.R_B5_ERASURE_WITNESS["lsm"]
+    green = rp.check_r_b5_erasure("lsm", config, form, window=32, host="kernel")
+    assert green["verdict"] and green["numbers"]["prefixes_diverged"], green["numbers"]
+    red = rp.check_r_b5_erasure_red("lsm", form, window=32, host="kernel")
+    assert carrier == "v" and red["verdict"], red["numbers"]
+    assert red["numbers"]["fired"] == {"v": True, "s": False, "acc": True}
+    by = red["numbers"]["by"]
+    assert "state" in by["v"] and "state" in by["acc"] and by["s"] == "none"
+    # the port's own red is as it was: its two carriers, no "by"
+    port = rp.check_r_b5_erasure_red("lsm", form, window=32)
+    assert set(port["numbers"]["fired"]) == {"v", "s"} and "by" not in port["numbers"]
+
+
+def test_the_hosted_s_is_a_recorded_mask_the_host_never_reads_where_the_port_reads_it():
+    u = rp.drive(rp.w_in(rp.DEV_SEED), rp.fixture_percepts()[0])
+    for cls, host, reads in ((rp.LsmPool, "port", True), (rp.KernelLsmPool, "kernel", False)):
+        pool = rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=32, host=host)
+        assert type(pool) is cls
+        for _ in range(3):
+            pool.step(u)
+        twin = copy.deepcopy(pool)
+        twin.s = ~twin.s  # a different last mask
+        assert np.array_equal(pool.step(u), twin.step(u)) is (not reads)
+    # so the hosted skip-s red cannot fire: the first step overwrites the mask it kept, and the
+    # erasure it was built to break still holds
+    skipped = rp.check_r_b5_erasure("lsm", WITNESS, "reset", window=32, skip="s", host="kernel")
+    assert skipped["verdict"] and skipped["numbers"]["skip"] == "s"
+
+
+def test_hosted_persistence_and_its_reset_every_percept_red():
+    result = rp.check_r_b5_persistence(window=32, host="kernel")
+    assert result["verdict"] and result["numbers"]["persists"]
+    assert not rp.check_r_b5_persistence(window=32, carried_form="reset", host="kernel")["verdict"]
+
+
+def test_the_hosted_freeze_is_re_based_on_the_live_bundles_and_fails_on_that_form_alone():
+    green = rp.check_r_b5_freeze("lsm", WITNESS, window=32, after=4, host="kernel")
+    assert green["verdict"], green["numbers"]
+    red = rp.check_r_b5_freeze_red("lsm", WITNESS, window=32, after=4, host="kernel")
+    assert red["verdict"], red["numbers"]
+    assert red["numbers"]["fired"] == ["carried"] and red["numbers"]["boundary_agree"]
+    # the write is q + 1 on one live bundle weight and leaves the stored w as it was
+    pool = rp._write_live_after_boundary(
+        rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=4, host="kernel")
+    )
+    before = {key: q.copy() for key, (_, q) in pool._syn.bundles.items()}
+    stored = rp._crc_arrays(
+        pool.params()
+    )  # the stored (pre, w) alone, as the port's freeze reads it
+    for x in rp.cycled_fixture(4):
+        pool.percept(x)
+    moved = [key for key, (_, q) in pool._syn.bundles.items() if not np.array_equal(q, before[key])]
+    assert len(moved) == 1 and rp._crc_arrays(pool.params()) == stored  # w untouched ...
+    assert pool.frozen() is False  # ... and only the live edges' chain in params_fingerprint saw it
+    delta = pool._syn.bundles[moved[0]][1] - before[moved[0]]
+    assert delta.tolist() == [1] + [0] * (len(delta) - 1)

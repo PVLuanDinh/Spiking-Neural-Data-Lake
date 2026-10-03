@@ -993,3 +993,129 @@ def test_the_orchestrators_one_liner_no_longer_leaves_the_self_check_green(monke
     monkeypatch.setattr(rp, "make_pool", unavailable)
     with pytest.raises((AssertionError, RuntimeError)):
         ccc._check_shuffle()
+
+
+# ---- G1(c) P4b: section 2.9's migration gate -----------------------------------------------------
+
+
+def test_the_migration_tolerance_is_the_frozen_number_and_the_default_of_within():
+    assert ccc.MIGRATION_TOL == 0.005
+    assert inspect.signature(ccc.within).parameters["tol"].default == 0.005
+    assert list(inspect.signature(ccc.migration_reading).parameters) == [
+        "parity_ok",
+        "d_live_host",
+        "d_live_port",
+        "d_task_host",
+        "d_task_port",
+        "r_b3_ok",
+        "r_b4_ok",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("d_host", "d_port", "expected"),
+    [
+        (0.005, 0.0, True),  # inclusive at the tolerance, either sign, either side
+        (0.0, 0.005, True),
+        (-0.005, 0.0, True),
+        (0.0049, 0.0, True),  # the boundary reds
+        (0.1049, 0.1, True),
+        (0.0051, 0.0, False),
+        (0.1051, 0.1, False),
+        (0.0, 0.0051, False),
+        (np.float64(0.0049), np.float32(0.0), True),
+        (math.nan, 0.0, False),  # never a pass
+        (0.0, math.nan, False),
+        (math.nan, math.nan, False),
+        (None, 0.0, False),
+        (0.0, None, False),
+        (None, None, False),
+        (math.inf, 0.0, False),
+        (math.inf, math.inf, False),
+        (-math.inf, math.inf, False),
+        ("0.0", 0.0, False),
+        (True, 0.0, False),
+        ([0.0], 0.0, False),
+    ],
+)
+def test_within_is_inclusive_at_the_tolerance_and_never_passes_what_it_cannot_read(
+    d_host, d_port, expected
+):
+    assert ccc.within(d_host, d_port) is expected
+
+
+def test_within_takes_its_tolerance_as_a_finite_non_negative_number():
+    assert ccc.within(0.02, 0.0, 0.02) and not ccc.within(0.0201, 0.0, 0.02)
+    for tol in (-0.001, math.nan, None, math.inf, "0.005", True):
+        with pytest.raises(ValueError, match="tol"):
+            ccc.within(0.0, 0.0, tol)
+
+
+GOOD = {
+    "parity_ok": True,
+    "d_live_host": 0.012,
+    "d_live_port": 0.010,
+    "d_task_host": 0.090,
+    "d_task_port": 0.0892,
+    "r_b3_ok": True,
+    "r_b4_ok": True,
+}
+
+
+def test_migration_reading_is_hosted_only_when_every_part_of_the_gate_holds():
+    assert ccc.migration_reading(**GOOD) == "hosted"
+    edge = dict(GOOD, d_live_host=0.0049, d_live_port=0.0, d_task_host=0.0049, d_task_port=0.0)
+    assert ccc.migration_reading(**edge) == "hosted"
+    assert ccc.migration_reading(**dict(GOOD, parity_ok=np.True_, r_b3_ok=np.True_)) == "hosted"
+    # a conjunct needs BOTH D legs: 0.0051 on either leg (or both) is the port
+    for live, task in ((0.0049, 0.0051), (0.0051, 0.0049), (0.0051, 0.0051)):
+        row = dict(GOOD, d_live_host=live, d_live_port=0.0, d_task_host=task, d_task_port=0.0)
+        assert ccc.migration_reading(**row) == "port", (live, task)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {
+            "d_task_host": 0.0051,
+            "d_task_port": 0.0,
+        },  # the hosted-Reset red: live passes, D_task fails
+        {"d_live_host": 0.0051, "d_live_port": 0.0},
+        {"d_live_host": math.nan},
+        {"d_live_port": None},
+        {"d_task_host": math.nan},
+        {"d_task_port": None},
+        {"d_task_host": math.inf},
+        {"parity_ok": False},
+        {"r_b3_ok": False},
+        {"r_b4_ok": False},
+        {"parity_ok": None},  # a missing result is no pass
+        {"r_b3_ok": 1},  # a truthy non-bool is no pass
+        {"r_b4_ok": "True"},
+        {"parity_ok": np.False_},
+    ],
+)
+def test_migration_reading_is_the_port_for_every_failing_missing_or_unreadable_input(change):
+    assert ccc.migration_reading(**dict(GOOD, **change)) == "port"
+
+
+def test_a_reading_that_ignores_one_input_is_caught_by_a_row_that_input_alone_fails():
+    # each input held at a passing constant flips its own failing row to "hosted"
+    rows = (
+        ("parity_ok", True, {"parity_ok": False}),
+        ("r_b3_ok", True, {"r_b3_ok": False}),
+        ("r_b4_ok", True, {"r_b4_ok": False}),
+        ("d_live_host", 0.0, {"d_live_host": 0.0051, "d_live_port": 0.0}),
+        ("d_live_port", 0.0051, {"d_live_host": 0.0051, "d_live_port": 0.0}),
+        ("d_task_host", 0.0, {"d_task_host": 0.0051, "d_task_port": 0.0}),
+        ("d_task_port", 0.0051, {"d_task_host": 0.0051, "d_task_port": 0.0}),
+    )
+    for key, constant, change in rows:
+        failing = dict(GOOD, **change)
+        assert ccc.migration_reading(**failing) == "port", key
+        assert ccc.migration_reading(**{**failing, key: constant}) == "hosted", key
+
+
+def test_the_migration_check_runs_its_reds_and_the_hosted_equality_on_the_tuned_configuration():
+    result = ccc._check_migration()
+    assert result["equal"] == {"carried": True, "settled": True} and result["rows"] == 10

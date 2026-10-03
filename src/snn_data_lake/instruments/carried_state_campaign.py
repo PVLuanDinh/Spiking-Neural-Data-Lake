@@ -35,6 +35,17 @@ Arc P3b adds section 2.6's within-block time shuffle and section 2.5's reading o
                      on a planted current-category gain and on R-b6's history gain through the real
                      reference readout (seeds 6100-6107 at Part F's bar)
 
+Arc P4b adds section 2.9's migration gate as two pure functions (the checks of the hosted form itself,
+R-b3 / R-b4 / R-b5 with their reds, live in reservoir/recurrent_pool.py):
+
+  within             |d_host - d_port| <= 0.005, INCLUSIVE; None, NaN, an infinity or a non-number is
+                     False, never a pass
+  migration_reading  "hosted" only when the parity fixtures, BOTH D conjuncts (live D, D_task) and R-b3
+                     and R-b4 all hold, else "port"
+
+SIZE: this module is about 1,200 lines, past the 800-line soft ceiling, on purpose: it is the one place
+the campaign's frozen decisions and their self-checks are tied to the frozen text, and P5 adds the stages.
+
 The 48-event self-check fixture is shorter than one 256-event block, so its shuffles use blocks of 8
 (FIXTURE_BLOCK); every function takes the block size and defaults to SHUFFLE_BLOCK.
 
@@ -576,6 +587,48 @@ def g_r1_reading(*, blind_harness_ok, primary, stream_history, d_shuf, shuffle_s
     return reading("PASS" if shuffle_sighted else "NOT READ")  # rows 4 and 5
 
 
+# ---- section 2.9: the migration gate's reading -----------------------------------------------------
+# 2.9 (ii): |mean D_hosted - mean D_port| <= 0.005, on D and (strengthening) on D_task
+MIGRATION_TOL = 0.005
+assert MIGRATION_TOL == 0.005, "the migration tolerance is the frozen number (2.9)"
+
+
+# a real, finite number: None, NaN, an infinity, a bool or a string is no measurement and never a pass
+def _measured(value):
+    is_number = isinstance(value, int | float | np.integer | np.floating)
+    return is_number and not isinstance(value, bool | np.bool_) and math.isfinite(float(value))
+
+
+# Sites the duplicate-capability hook flagged for the two functions below, read; none compares two means:
+# distinct-from: gates/eprop_transport_gate.py::resolve_disposition -- reads a finding's declared disposition from a registry
+# distinct-from: plasticity/r_stdp.py::Calibration -- a NamedTuple of what a host measured (workers, floors, ns per synapse)
+# distinct-from: reasoning/spike_chat_lake.py::_attended_clause -- a chat reply's one-sentence report of the attended content
+# distinct-from: faculties/access_consciousness.py::ignited -- whether a content crossed the ignition threshold and held a slot
+# distinct-from: faculties/affective_memory.py::store -- encodes one episode with emotion-weighted eviction
+# distinct-from: reasoning/stats_bounds.py::within -- a value inside the mean +- k sigma band of its own samples; this is an absolute tolerance between two means
+# distinct-from: gates/amdahl_gate.py::within_noise_of_zero -- a timing sham's magnitude-or-band criterion; no two-mean difference
+def within(d_host, d_port, tol=MIGRATION_TOL):
+    """2.9 (ii)'s conjunct: |d_host - d_port| <= tol, INCLUSIVE at tol. None, NaN, an infinity or a
+    non-number on either side is False, never a pass (a gate that cannot read a mean accepts nothing)."""
+    if not _measured(tol) or tol < 0:
+        raise ValueError(f"within: tol must be a finite non-negative number, got {tol!r}")
+    return _measured(d_host) and _measured(d_port) and abs(float(d_host) - float(d_port)) <= tol
+
+
+def migration_reading(
+    parity_ok, d_live_host, d_live_port, d_task_host, d_task_port, r_b3_ok, r_b4_ok
+):
+    """2.9's disposition as a pure function: "hosted" only when ALL hold -- (i) the parity fixtures
+    (`parity_ok`), (ii) BOTH D conjuncts (`within` on the live D means and on the D_task means), and
+    (iii) R-b3 and R-b4 on the hosted form -- else "port" (the migration is then an opening). A flag
+    counts only as a bool True; a missing or non-bool input, a NaN mean and a False are all "port"."""
+    held = all(
+        isinstance(flag, bool | np.bool_) and bool(flag) for flag in (parity_ok, r_b3_ok, r_b4_ok)
+    )
+    both = within(d_live_host, d_live_port) and within(d_task_host, d_task_port)
+    return "hosted" if held and both else "port"
+
+
 # ---- the self-check's hand fixtures --------------------------------------------------------------
 FIXTURE_RNG_SEED = 20261003  # an RNG seed for the fixtures below, not a recording seed
 # 2.10's named symmetric zero-mean fixture: 15 pairs of +0.02 / -0.02 and one 0.0 (interleaved so the
@@ -986,6 +1039,71 @@ def _check_reading():
     return {"rows": len(rows), "combinations": sum(verdicts.values()), "verdicts": dict(verdicts)}
 
 
+# distinct-from: instruments/deep_stdp.py::_mechanics_check -- asserts an STDP library's mechanics on an MNIST slice; this holds 2.9's two pure functions and the hosted R-b3 equality (sites read)
+# distinct-from: reasoning/spike_chat_lake.py::_wants_repl -- decides between an interactive session and the self-check by stdin; no gate, no tolerance
+def _check_migration():
+    # 2.9's two pure functions: `within`'s inclusive edge and its 0.0049 / 0.0051 boundaries, NaN / None /
+    # infinity / non-number inputs and a refused tolerance; `migration_reading`'s "hosted" on a good row
+    # and "port" for every False flag, every non-bool flag, a NaN mean, each D conjunct failing alone
+    # (the live one passing while D_task fails is the hosted-Reset machinery red's reading) and a
+    # reading that ignores one input; then the hosted R-b3 equality on TUNED, the configuration 2.2 freezes
+    assert within(0.005, 0.0) and within(0.0, 0.005) and within(-0.005, 0.0)  # inclusive at tol
+    assert within(0.0049, 0.0) and within(0.1049, 0.1) and within(0.0, 0.0049)
+    assert not within(0.0051, 0.0) and not within(0.1051, 0.1) and not within(0.0, 0.0051)
+    for bad in (math.nan, None, math.inf, -math.inf, "0.0", True, [0.0]):
+        assert not within(bad, 0.0) and not within(0.0, bad), bad
+    assert not within(math.nan, math.nan) and not within(math.inf, math.inf)
+    assert not within(None, None) and not within(np.float64("nan"), np.float64(0.0))
+    assert within(np.float64(0.0049), np.float32(0.0)) and not within(np.float64(0.0051), 0.0)
+    for tol in (-0.001, math.nan, None, math.inf):
+        assert "tol" in _raises(within, 0.0, 0.0, tol), tol
+    good = {
+        "parity_ok": True,
+        "d_live_host": 0.012,
+        "d_live_port": 0.010,
+        "d_task_host": 0.090,
+        "d_task_port": 0.0892,
+        "r_b3_ok": True,
+        "r_b4_ok": True,
+    }
+    assert migration_reading(**good) == "hosted"
+    edge = dict(good, d_live_host=0.0049, d_live_port=0.0, d_task_host=0.0049, d_task_port=0.0)
+    assert migration_reading(**edge) == "hosted"
+    over = {"d_live_host": 0.0051, "d_live_port": 0.0, "d_task_host": 0.0051, "d_task_port": 0.0}
+    assert migration_reading(**dict(good, **over)) == "port"
+    task_fails = dict(good, d_task_host=0.0051, d_task_port=0.0)
+    live_fails = dict(good, d_live_host=0.0051, d_live_port=0.0)
+    rows = {
+        "the live conjunct alone passes while D_task fails": task_fails,
+        "D_task passes while the live conjunct fails": live_fails,
+        "a NaN live mean": dict(good, d_live_host=math.nan),
+        "a missing task mean": dict(good, d_task_port=None),
+        "parity False": dict(good, parity_ok=False),
+        "R-b3 False": dict(good, r_b3_ok=False),
+        "R-b4 False": dict(good, r_b4_ok=False),
+        "parity missing": dict(good, parity_ok=None),
+        "R-b3 a truthy non-bool": dict(good, r_b3_ok=1),
+        "R-b4 a string": dict(good, r_b4_ok="True"),
+    }
+    for name, row in rows.items():
+        assert migration_reading(**row) == "port", name
+    assert migration_reading(**dict(good, parity_ok=np.True_)) == "hosted"
+    # a reading that ignores one input is caught: that input held at a constant flips a row's verdict
+    for key, constant, row in (
+        ("parity_ok", True, "parity False"),
+        ("r_b3_ok", True, "R-b3 False"),
+        ("r_b4_ok", True, "R-b4 False"),
+        ("d_live_host", 0.0, "D_task passes while the live conjunct fails"),
+        ("d_live_port", 0.0051, "D_task passes while the live conjunct fails"),
+        ("d_task_host", 0.0, "the live conjunct alone passes while D_task fails"),
+        ("d_task_port", 0.0051, "the live conjunct alone passes while D_task fails"),
+    ):
+        assert migration_reading(**{**rows[row], key: constant}) == "hosted", (key, row)
+    equal = rp.check_r_b3("lsm", TUNED, host="kernel", percepts=64, window=32)
+    assert equal["verdict"], equal["numbers"]["equal"]
+    return {"rows": len(rows), "equal": equal["numbers"]["equal"]}
+
+
 def main():
     """The self-check: every function above on hand fixtures, each with its red. No argv, no files, no
     cwd: the fixtures are built in memory."""
@@ -1064,7 +1182,7 @@ def main():
     assert "blind harness: oracle incomplete" in _raises(
         oracle_check, complete, {**complete, 301: {"a": 0.5}}
     )
-    shuffle, reading = _check_shuffle(), _check_reading()
+    shuffle, reading, migration = _check_shuffle(), _check_reading(), _check_migration()
     print(
         "self-check OK: constants tied at import (S = 31, live/reserve/exposed disjoint, TUNED in the "
         f"grid); decoder 0.05 +- 0.01 MET at t {decoder['t']:.4f} > {T_CRIT} (exact FPR "
@@ -1091,7 +1209,11 @@ def main():
         f"{shuffle['decoder']['unshuffled_t']:.4f}), does not when shuffled "
         f"({shuffle['decoder']['history_shuffles']} shuffle, t {shuffle['decoder']['history_t']:.4f}); G-R1: "
         f"{reading['rows']} table fixtures exact, {reading['combinations']} input combinations "
-        f"{reading['verdicts']}, an ignore-one-input mutant caught for every input"
+        f"{reading['verdicts']}, an ignore-one-input mutant caught for every input; migration gate: "
+        f"within() inclusive at {MIGRATION_TOL} (0.0049 in, 0.0051 out, NaN and None never a pass), "
+        f"migration_reading hosted on the good row and edge, port on {migration['rows']} reds (each "
+        f"False flag, each D conjunct failing alone, a NaN, a missing input), hosted R-b3 equal on "
+        f"TUNED {migration['equal']}"
     )
 
 

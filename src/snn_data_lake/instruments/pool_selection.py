@@ -293,6 +293,10 @@ def cell_key(cell):
     # Settled@256 of one seed are two cells; every existing key is the same tuple as before
     window = cell.get("window", rp.WINDOW)
     key = key if window == rp.WINDOW else (*key, window)
+    # G1(c) 2.9: a cell filed under a host other than the port carries it, so a hosted replay and a
+    # port replay of one seed are two cells; absent means the port, and every existing key is unchanged
+    host = cell.get("host", "port")
+    key = key if host == "port" else (*key, "host", host)
     # G1(c) 2.7: a transport cell that names the transport it filed, or the encoder it ends with,
     # carries them; a cell that names neither has the key it always had
     if cell.get("transport") is not None:
@@ -326,6 +330,16 @@ def binding_problems(cell):
     if "encoder" in cell:
         expected["encoder"] = cell["encoder"]
     problems = problems + [key for key, value in expected.items() if binding.get(key) != value]
+    # G1(c) 2.9: the host. A port binding carries no "host" key, so the comparison is made on the
+    # port-defaulted values (never through `expected`, which would red every port cell): a hosted
+    # replay filed under a port cell, and a port replay filed under a hosted cell, both disagree here
+    if binding.get("host", "port") != cell.get("host", "port"):
+        problems.append("host")
+    elif cell.get("host", "port") != "port":
+        # a hosted binding also carries the host's policy (frac_bits, partitions, decay, reset, ...)
+        policy = binding.get("host_policy")
+        if not isinstance(policy, dict) or policy.get("host") != cell["host"]:
+            problems.append("host_policy")
     if "transport" in cell:
         record = binding.get("transport")
         if not isinstance(record, dict) or any(
@@ -368,10 +382,15 @@ def _refused_by_r_b7(build):
 def r_b7_reds():
     """R-b7's four constructed refusals (a wrong configuration, a duplicate seed, a tuning seed in
     the selection table, a window-0 replay filed as window 256), beside the well-formed tables they
-    are cut from (the default window, and window 0 filed as window 0), which must pass."""
-    config, other = rp.grid("lsm")[0], rp.grid("lsm")[1]
+    are cut from (the default window, and window 0 filed as window 0), which must pass.
 
-    def cell(seed, bound=config, window=rp.WINDOW):
+    G1(c) 2.9 adds three refusals on the host: a hosted replay filed under a port cell, a port replay
+    filed under a hosted cell, and a hosted binding that lacks its policy; beside them the hosted table
+    filed as hosted passes, and a port and a hosted replay of one seed are two cells."""
+    config, other = rp.grid("lsm")[0], rp.grid("lsm")[1]
+    policy = rp.make_pool("lsm", config, SELECT_SEEDS[0], host="kernel").host_policy()
+
+    def cell(seed, bound=config, window=rp.WINDOW, host="port", with_policy=True):
         binding = {
             "candidate": "lsm",
             "form": "carried",
@@ -381,7 +400,9 @@ def r_b7_reds():
             "noise": False,
             "w_in": _w_in_crc(seed),
         }
-        return {
+        if host != "port":
+            binding = dict(binding, host=host, **({"host_policy": policy} if with_policy else {}))
+        row = {
             "arm": "pool",
             "candidate": "lsm",
             "index": 0,
@@ -392,13 +413,21 @@ def r_b7_reds():
             "status": "OK",
             "digest": {"arm": "pool", "seed": seed, "pool": binding},
         }
+        return row if host == "port" else dict(row, host=host)
 
     def filed_as_zero(seed):
         return dict(cell(seed, window=0), window=0)
 
+    def hosted_filed_as_port(seed):
+        # the hosted replay's own binding under a cell that names no host (so: the port's cell)
+        return {key: value for key, value in cell(seed, host="kernel").items() if key != "host"}
+
     control = (
         len(build_table([cell(seed) for seed in SELECT_SEEDS], SELECT_SEEDS)) == 4
         and len(build_table([filed_as_zero(seed) for seed in SELECT_SEEDS], SELECT_SEEDS)) == 4
+        and len(build_table([cell(seed, host="kernel") for seed in SELECT_SEEDS], SELECT_SEEDS))
+        == 4
+        and len(build_table([cell(204), cell(204, host="kernel")], SELECT_SEEDS)) == 2
     )
     red = {
         "wrong configuration": _refused_by_r_b7(
@@ -413,6 +442,16 @@ def r_b7_reds():
         # a replay run at window 0 but filed under the default window (it carries no window)
         "window-0 replay filed as window 256": _refused_by_r_b7(
             lambda: build_table([cell(204, window=0)], SELECT_SEEDS)
+        ),
+        # G1(c) 2.9: a hosted replay under a port cell, the reverse, and a hosted binding with no policy
+        "hosted replay filed under a port cell": _refused_by_r_b7(
+            lambda: build_table([hosted_filed_as_port(204)], SELECT_SEEDS)
+        ),
+        "port replay filed under a hosted cell": _refused_by_r_b7(
+            lambda: build_table([dict(cell(204), host="kernel")], SELECT_SEEDS)
+        ),
+        "hosted binding without its policy": _refused_by_r_b7(
+            lambda: build_table([cell(204, host="kernel", with_policy=False)], SELECT_SEEDS)
         ),
     }
     return {"verdict": bool(control and all(red.values())), "control": control, "red": red}
@@ -467,13 +506,15 @@ def _replay_job(stream, arm, out, *, pool=None, readout=True, fault=None, tap=No
 # distinct-from: faculties/drive_reduction.py -- NeedPool is a drive's LIF population
 # distinct-from: reasoning/rpm_solver.py -- _induce_attr predicts a missing matrix cell
 # distinct-from: instruments/binding_instrument.py -- _t080_sparse_latent draws a sparse latent
-def _spec(candidate, config, form, noise=False, window=rp.WINDOW):
+def _spec(candidate, config, form, noise=False, window=rp.WINDOW, host="port"):
     """A pool arm's spec for memory_diagnostic.replay (R-b4's red when `noise`)."""
     spec = {"candidate": candidate, "config": config, "form": form}
     spec = dict(spec, noise=True) if noise else spec
     # G1(c): a window other than the default is part of the spec; the default adds no key, so every
     # G1(b) spec is the dict it always was
-    return spec if window == rp.WINDOW else dict(spec, window=window)
+    spec = spec if window == rp.WINDOW else dict(spec, window=window)
+    # G1(c) 2.9: the same rule for the host (the port is the default and adds no key)
+    return spec if host == "port" else dict(spec, host=host)
 
 
 # distinct-from: plasticity/eligibility_algebra.py::evaluate -- the site read evaluates one eligibility-trace term over named bindings
@@ -493,6 +534,10 @@ def _bound(seed, spec, *, arm="pool", encoder=None, transport=None):
     window = spec.get("window", rp.WINDOW)
     if window != rp.WINDOW:
         bound = dict(bound, window=window)
+    # G1(c) 2.9: and for the host, which a spec off the port names and the port files none of
+    host = spec.get("host", "port")
+    if host != "port":
+        bound = dict(bound, host=host)
     if encoder is not None:
         bound = dict(bound, encoder=encoder)
     if transport is not None:
@@ -1576,9 +1621,11 @@ def self_check():
     assert t_quantile(0.95, 30) <= T_BAR_S31 < t_quantile(0.95, 30) + 1e-4
     assert math.ceil(t_quantile(0.95, 30) * 1e4) / 1e4 == T_BAR_S31
     assert power_s(SIGMA_PROXY)["S"] - 1 == 30
-    # R-b7's four refusals (the fourth: a window-0 replay filed as window 256), beside the well-formed tables
+    # R-b7's four refusals (the fourth: a window-0 replay filed as window 256) and G1(c) 2.9's three on
+    # the host (hosted under a port cell, port under a hosted cell, no policy), beside the well-formed tables
     reds = r_b7_reds()
     assert reds["verdict"], reds
+    assert len(reds["red"]) == 7 and all(reds["red"].values()), reds
     # the step order, the taxonomy and the exit codes, on a scratch OUT at a stand-in revision (the
     # stand-in steps' own status lines are swallowed so a log never shows a HALTED campaign step)
     with tempfile.TemporaryDirectory() as scratch, contextlib.redirect_stdout(io.StringIO()):

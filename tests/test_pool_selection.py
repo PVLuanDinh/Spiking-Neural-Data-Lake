@@ -192,7 +192,7 @@ def pool_cell(seed, *, bound=None, status="OK"):
     return dict(filed, index=0, status=status, digest=digest)
 
 
-def test_r_b7_refuses_its_four_reds_and_passes_the_well_formed_tables():
+def test_r_b7_refuses_its_reds_and_passes_the_well_formed_tables():
     reds = ps.r_b7_reds()
     assert reds["verdict"] and reds["control"]
     assert reds["red"] == {
@@ -200,6 +200,9 @@ def test_r_b7_refuses_its_four_reds_and_passes_the_well_formed_tables():
         "duplicate seed": True,
         "tuning seed in selection": True,
         "window-0 replay filed as window 256": True,
+        "hosted replay filed under a port cell": True,
+        "port replay filed under a hosted cell": True,
+        "hosted binding without its policy": True,
     }
 
 
@@ -352,6 +355,117 @@ def test_g1b_keys_specs_and_bindings_are_byte_identical_at_the_default():
     text = g1_surface()
     assert '"window"' not in text  # no G1(b) spec or filing names the default window
     assert hashlib.sha256(text.encode("utf-8")).hexdigest() == G1B_SURFACE_SHA256
+
+
+# ---- G1(c) P4b: the host in the filing, the key, the spec and the binding ------------------------
+
+
+def host_cell(seed, ran_on="port", filed_as="port", policy=True):
+    """A Settled cell whose replay ran on host `ran_on`, filed under host `filed_as` (the port files
+    no host at all); a hosted binding carries "host" and, if `policy`, "host_policy"."""
+    config = rp.grid("lsm")[0]
+    spec = ps._spec("lsm", config, "settled", host=filed_as)
+    binding = {
+        "candidate": "lsm",
+        "form": "settled",
+        "config_crc32": rp.crc_json(config),
+        "realization_seed": rp.realization_seed("lsm", seed),
+        "window": rp.WINDOW,
+        "noise": False,
+        "w_in": ps._w_in_crc(seed),
+    }
+    if ran_on != "port":
+        binding = dict(binding, host=ran_on)
+        if policy:
+            binding["host_policy"] = {"host": ran_on, "frac_bits": 12}
+    digest = {"arm": "pool", "seed": seed, "pool": binding}
+    return dict(ps._bound(seed, spec), index=0, status="OK", digest=digest)
+
+
+def test_the_host_is_in_the_spec_the_filing_and_the_key_only_off_the_port():
+    config = rp.grid("lsm")[0]
+    plain = {"candidate": "lsm", "config": config, "form": "carried"}
+    assert ps._spec("lsm", config, "carried", host="port") == plain
+    assert ps._spec("lsm", config, "carried", host="kernel") == dict(plain, host="kernel")
+    assert list(ps._spec("lsm", config, "carried", host="kernel")) == [*plain, "host"]
+    both = ps._spec("lsm", config, "carried", True, 0, "kernel")
+    assert both == dict(plain, noise=True, window=0, host="kernel")
+    assert list(both) == ["candidate", "config", "form", "noise", "window", "host"]
+    bound = ps._bound(204, ps._spec("lsm", config, "carried"))
+    assert list(bound) == ["arm", "seed", "candidate", "config", "form", "noise"]
+    assert ps._bound(204, dict(plain, host="port")) == bound  # a named port files nothing
+    assert ps._bound(204, ps._spec("lsm", config, "carried", host="kernel")) == dict(
+        bound, host="kernel"
+    )
+    key = ps.cell_key(host_cell(204))
+    assert len(key) == 6 and ps.cell_key(host_cell(204, filed_as="port")) == key
+    hosted = ps.cell_key(host_cell(204, "kernel", "kernel"))
+    assert hosted == (*key, "host", "kernel")
+    assert ps.cell_key(dict(host_cell(204), host="port")) == key  # naming the port adds nothing
+
+
+@pytest.mark.parametrize(
+    ("ran_on", "filed_as", "policy", "problems"),
+    [
+        ("port", "port", True, []),
+        ("kernel", "kernel", True, []),
+        ("kernel", "port", True, ["host"]),  # a hosted replay filed under a port cell
+        ("port", "kernel", True, ["host"]),  # a port replay filed under a hosted cell
+        ("kernel", "kernel", False, ["host_policy"]),  # a hosted binding with no policy
+    ],
+)
+def test_the_binding_holds_a_replay_to_the_host_it_is_filed_under(
+    ran_on, filed_as, policy, problems
+):
+    assert ps.binding_problems(host_cell(204, ran_on, filed_as, policy)) == problems
+    # a policy that names another host is no policy of this one
+    wrong = host_cell(204, "kernel", "kernel")
+    wrong["digest"]["pool"]["host_policy"] = {"host": "port"}
+    assert ps.binding_problems(wrong) == ["host_policy"]
+
+
+def test_a_port_and_a_hosted_replay_of_one_seed_are_two_cells_and_a_mismatch_halts():
+    table = ps.build_table([host_cell(204), host_cell(204, "kernel", "kernel")], ps.SELECT_SEEDS)
+    assert len(table) == 2
+    with pytest.raises(ps.Halt, match="R-b7") as twice:
+        ps.build_table([host_cell(204, "kernel", "kernel")] * 2, ps.SELECT_SEEDS)
+    assert "duplicate seed 204" in twice.value.detail
+    for cell in (host_cell(204, "kernel", "port"), host_cell(204, "port", "kernel")):
+        with pytest.raises(ps.Halt, match="R-b7") as refused:
+            ps.build_table([cell], ps.SELECT_SEEDS)
+        assert "['host']" in refused.value.detail
+
+
+def named_port_surface(seed=204):
+    """g1_surface() with the host NAMED as the port wherever a host can be named (the spec's
+    argument and the cell's key): the rows must be the ones the default makes."""
+    rows = []
+    for config in rp.grid("lsm"):
+        for form in rp.FORMS:
+            for noise in (False, True):
+                spec = ps._spec("lsm", config, form, noise=noise, host="port")
+                bound = ps._bound(seed, dict(spec, host="port"))
+                binding = {
+                    "candidate": "lsm",
+                    "form": form,
+                    "config_crc32": rp.crc_json(config),
+                    "realization_seed": rp.realization_seed("lsm", seed),
+                    "window": rp.WINDOW,
+                    "noise": noise,
+                    "w_in": ps._w_in_crc(seed),
+                }
+                cell = dict(
+                    bound, host="port", digest={"arm": "pool", "seed": seed, "pool": binding}
+                )
+                rows.append([spec, bound, list(ps.cell_key(cell)), ps.binding_problems(cell)])
+    return json.dumps(rows, separators=(",", ":"))
+
+
+def test_naming_the_port_leaves_g1bs_keys_specs_and_bindings_byte_identical():
+    text = named_port_surface()
+    assert '"host"' not in text
+    assert hashlib.sha256(text.encode("utf-8")).hexdigest() == G1B_SURFACE_SHA256
+    assert text == g1_surface()
 
 
 def test_tabulate_binds_a_window_zero_replay_under_its_own_cell(tmp_path):
