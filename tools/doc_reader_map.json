@@ -1,8 +1,8 @@
 {
- "built": "2026-10-02T21:51:06+00:00",
- "code_hash": "ffd7ddbf12b4a841b738f0f73afad383594e796abb7f30612662a2fa2a2432e7",
+ "built": "2026-10-03T08:21:30+00:00",
+ "code_hash": "4d5d032a8c28dbd7f03b41f43655f6b559e7f2e1bddf7121eeeaa881cf076931",
  "coverage": {
-  "listings_dropped_as_infrastructure": 1986,
+  "listings_dropped_as_infrastructure": 1978,
   "process_starts": 321,
   "python_spawns_seen_by_parents": 312,
   "python_spawns_without_child_start": [
@@ -25,17 +25,15 @@
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]"
   ]
  },
- "fingerprint": "e5f9e0448be48f62e91ae662aa01896d0ca664356bdf4ffc023a2cf8f810e2eb",
- "head": "01b5489cda82d4093dbd45a540db627c6aa7316a",
+ "fingerprint": "d95a7346fa0baadbea8f394a57572a17497ce8fffeb44c7201dac15043aa2698",
+ "head": "08616d881a699e9b8d6e5bafc8382799f0501e70",
  "pytest_all": {
   "blind": false,
   "git_scan": false,
@@ -1456,6 +1454,7 @@
     "specs/022-unified-brain-arc/evidence/t082-social-cognition.md",
     "specs/022-unified-brain-arc/evidence/t090-conclusion-plate.md",
     "specs/022-unified-brain-arc/evidence/t101-brian2-contract.md",
+    "specs/022-unified-brain-arc/evidence/trainer-retirement.md",
     "specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md",
     "specs/022-unified-brain-arc/evidence/us1-policy-audit.md",
     "specs/022-unified-brain-arc/evidence/w-exit.md",

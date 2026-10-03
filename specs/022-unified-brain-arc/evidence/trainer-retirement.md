@@ -190,3 +190,20 @@ First: govern the root e-prop char-LM (a P4c arc: census, register entry, a live
 record the governed-tree char-LM capability as lost; its update rule bears on the open symmetric-e-prop adjudication,
 so that adjudication comes first. Then: `mnist_genn`'s disposition (chance after one epoch; longer budgets untested); the symmetric-e-prop adjudication (a B := W2 port would be transport);
 governing the root e-prop char-LM; the two untested `mnist` hypotheses in 2.2 (d).
+
+### 2.8 The arc's battery and its reviews (the closing record)
+Battery on the stacked head `08616d88` (the t066 stage list with the reader instrument and `--build-map`; t066's
+environment), 06:29:56 to 08:22:23 UTC on 2026-10-03: the execution-record assert passed (previous record certified at
+`01b5489c`); certify, ruff, ruff format, `citation_guard`, `red_reachability`, `dependency_ledger` and `doc_command_guard`
+rc 0; `run_selfchecks` 365/365 self-checks and 6/6 tools gates; pytest 1702 passed, 2 xfailed, coverage 87.14 %; `build_map`
+rc 0 (map head `08616d88`; the BLIND lines are the Brian2 reference-trace child already filed as an opening); the 16
+substrate gates rc 0. GREEN. An earlier battery on the same head was halted at the owner's stop on 2026-10-02 during pytest
+and has no verdict; nothing here cites it.
+
+Reviews, both on `gpt-6.1-sol`. The panel (three lenses, on `3781e29b`) filed four findings, each reproduced or read true,
+folded at `134811c4`: F3 (MAJOR) retired `snn-train` flags were silently ignored on the GeNN path and now refuse before
+dispatch; F2 the "no working MNIST trainer" over-claim narrowed; F1 the archive manifest and replay commands for the
+not-landed port (2.2); F4 two docs no longer present `spiking_lm_serve` as registered. The closing report (on `134811c4`):
+(a) its readout-artefact reading of T-C1 is settled by the second instrument in 2.1; (b) the char-LM deviation from
+decision 3 is recorded (2.6) and leads the owner brief (2.7); (c) the three LM flags the first fold missed and 2.1's "chance"
+wording were fixed at `08616d88`. Both folds are battery-verified only (this battery); neither was re-panelled.
