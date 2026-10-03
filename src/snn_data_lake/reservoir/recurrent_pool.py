@@ -11,6 +11,12 @@ the random draw's mean row norm, and the swap control's fresh draw) with its ref
 is constructed by `main()`. The reference readout, the harness arms and the campaign are
 instruments/memory_diagnostic.py's. Nothing here builds a brain or touches the lake.
 
+G1(c) 2.9 adds the governed host: `KernelLsmPool` runs the SAME network (the same draws, the same
+realization seed and index) on reservoir/kernel_tick.py's KernelTick at the lineage's binding
+frac_bits, with the parity fixtures of the migration gate's part (i) (`check_host_parity`: Class A
+bit-equal to the port, Class B the declared divergences, each with its constructed wrong host).
+`make_pool(host=...)` selects the host; the port stays the default and byte-identical.
+
 The selection record (section 3.4, commit 0bd1de7) named g1 the winner, and section 2.9 then deleted
 the losing ports g2 (ESN-LSM), g3 (SORN) and g4 (RBN) from this module. Commit f27ae70 holds them,
 and the campaign that selected among all four ran at it.
@@ -57,6 +63,9 @@ import time
 import zlib
 
 import numpy as np
+
+from snn_data_lake.reservoir.kernel_state import KernelState
+from snn_data_lake.reservoir.kernel_tick import KernelTick, Synapses
 
 N = 256
 N_IN = 64
@@ -484,22 +493,273 @@ class LsmPool(_Pool):
         return {"unit": unit, "noise": noise}
 
 
+# ---- g1 hosted on KernelTick (G1(c) 2.9) ---------------------------------------------------------
+
+
+def _lineage_host(frac_bits, p_parts):
+    """The hosted pool's fixed-point width and partition count: each as given, else the lineage's
+    recorded value (the determinism gate's binding frac_bits, the partition baseline's P). A value
+    that is not given and not recorded is refused: the host takes a measurement, never a pick."""
+    from snn_data_lake.gates.determinism_gate import binding_frac_bits
+    from snn_data_lake.reservoir.kernel_tick import PARTITION_BASELINE
+
+    if frac_bits is None:
+        frac_bits = binding_frac_bits()
+        if frac_bits is None:
+            raise ValueError(
+                "REFUSED: no binding frac_bits is recorded (tools/determinism_baseline.json)"
+            )
+    if p_parts is None:
+        if not PARTITION_BASELINE.exists():
+            raise ValueError(
+                "REFUSED: no lineage partition baseline is recorded (tools/kernel_partition_baseline.json)"
+            )
+        p_parts = json.loads(PARTITION_BASELINE.read_text())["P"]
+    if int(frac_bits) < 1 or int(p_parts) < 1:
+        raise ValueError("REFUSED: frac_bits and p_parts are positive counts")
+    return int(frac_bits), int(p_parts)
+
+
+class KernelLsmPool(LsmPool):
+    """g1 hosted on KernelTick: the SAME network as LsmPool (the same draws, realization seed and
+    index; never a second candidate), its recurrent weights compiled once into fixed-point bundles
+    at the lineage's binding frac_bits (post = each unit's own index repeated k times, delay 1) and
+    its external drive quantized per step as rint(g * u * 2**frac_bits). One KernelTick.tick is one
+    port step, and the activity is the fired mask as float64, so percept_drive, T_in, S_settle, the
+    four forms, the window and its boundary are inherited unchanged. What differs is the host's own
+    arithmetic: integer accumulation, a float32 membrane, the decay applied in float32, threshold 1.0,
+    reset 0, no refraction. Whole-trajectory bit parity with the port is therefore NOT expected
+    (the weights and the drive round at 2**-frac_bits); parity holds on lattice fixtures only.
+
+    Carriers: `v` (a float32 view of the state's membranes), `s` (the last tick's fired mask) and
+    `acc` (the partitions' integer accumulators summed: the charge in flight, which at delay 1 is
+    all of it between ticks). `reset_carriers` builds a fresh KernelState and KernelTick over the
+    SAME compiled table. `frac_bits`, `p_parts` and `threads` are constructor options, defaulting to
+    the lineage's record; a non-binding frac_bits is for fixtures and the quantization-sensitivity
+    reading, and is named by host_policy().
+
+    The class attributes are the host's policy and the two hooks below its quantization and edge
+    list; they exist so a constructed wrong host can differ in exactly one of them. This switch and
+    the port are transient: G1(c) 2.9 deletes the loser and the host dimension after the results
+    record.
+    """
+
+    CARRIERS = ("v", "s", "acc")
+    THR = LSM_THRESH
+    V_RESET = 0.0
+    REFRAC_TICKS = 0
+    DELAY = 1
+
+    def __init__(
+        self,
+        pre,
+        w,
+        config,
+        form="carried",
+        w_in=None,
+        *,
+        frac_bits=None,
+        p_parts=None,
+        threads=1,
+        **kwargs,
+    ):
+        self.frac_bits, self.p_parts = _lineage_host(frac_bits, p_parts)
+        self.threads = int(threads)
+        self._syn = None  # compiled by the first reset_carriers, from self.pre and self.w
+        self._kt = None
+        self._s = None
+        super().__init__(pre, w, config, form, w_in, **kwargs)
+
+    # -- the host's tables -------------------------------------------------------------------------
+
+    def _edges(self):
+        """(pre, post, weight, delay) of the synapse table: row i of the stored lists is unit i's
+        incoming entries, so post is i repeated k times; a duplicate (pre, post) pair is kept."""
+        units, fan_in = self.pre.shape
+        post = np.repeat(np.arange(units, dtype=np.int64), fan_in)
+        return self.pre.ravel(), post, self.w.ravel(), np.full(units * fan_in, self.DELAY, np.int64)
+
+    def _compile(self):
+        pre, post, weight, delay = self._edges()
+        return Synapses(pre, post, weight, delay, self.n, self.p_parts, self.frac_bits)
+
+    def _quantize_drive(self, drive_vector):
+        """The external drive in the host's fixed point: the same rint convention as the weights."""
+        return np.rint(drive_vector * 2**self.frac_bits).astype(np.int64)
+
+    def _start(self):
+        state = KernelState([("pool", self.n)])
+        state.arrays["thr"][:] = self.THR
+        self._kt = KernelTick(
+            state,
+            self._syn,
+            decay=self.lam,
+            v_reset=self.V_RESET,
+            refrac_ticks=self.REFRAC_TICKS,
+            threads=self.threads,
+        )
+        self._s = np.zeros(self.n, dtype=bool)
+
+    def _live_edges(self):
+        """The live bundles' (post, pre, q) triples as three int64 arrays sorted by (post, pre, q):
+        independent of P and of bundle order, a duplicate edge kept."""
+        keys = sorted(self._syn.bundles)
+        if not keys:
+            empty = np.zeros(0, dtype=np.int64)
+            return {"edge_post": empty, "edge_pre": empty, "edge_q": empty}
+        posts = np.concatenate([self._syn.bundles[key][0] for key in keys])
+        pres = np.concatenate(
+            [np.full(len(self._syn.bundles[key][0]), key[0], np.int64) for key in keys]
+        )
+        qs = np.concatenate([self._syn.bundles[key][1] for key in keys])
+        order = np.lexsort((qs, pres, posts))
+        return {"edge_post": posts[order], "edge_pre": pres[order], "edge_q": qs[order]}
+
+    # -- the carriers ------------------------------------------------------------------------------
+
+    @property
+    def v(self):
+        return self._kt.state.arrays["v"]
+
+    @v.setter
+    def v(self, value):
+        self._kt.state.arrays["v"][:] = value
+
+    @property
+    def s(self):
+        return self._s
+
+    @s.setter
+    def s(self, value):
+        self._s = np.array(value, dtype=bool)
+
+    @property
+    def acc(self):
+        return np.sum(np.stack(self._kt._acc), axis=0)
+
+    @acc.setter
+    def acc(self, value):
+        value = np.asarray(value, dtype=np.int64)
+        for part, members in enumerate(self._kt._members):
+            self._kt._acc[part][:] = 0
+            self._kt._acc[part][members] = value[members]
+
+    def reset_carriers(self):
+        if self._syn is None:
+            self._syn = self._compile()
+        self._start()
+
+    def step(self, u):
+        u = np.asarray(u, dtype=np.float64)
+        fired = self._kt.tick(self._quantize_drive(self.g * u))
+        s = np.zeros(self.n, dtype=bool)
+        s[fired] = True
+        self._s = s
+        return s.astype(np.float64)
+
+    # -- the front-end lesion, the fingerprints, the policy ----------------------------------------
+
+    def _zero_in_flight(self):
+        for part in range(self.p_parts):
+            self._kt._acc[part][:] = 0
+
+    def lesion(self):
+        """Every recurrent weight zero (the port's rule), the table recompiled, and every in-flight
+        accumulator zeroed: charge already delivered into acc was computed from the old weights,
+        which the port's zero-weight sum would never add at its next step."""
+        super().lesion()
+        self._syn = self._compile()
+        self._kt.syn = self._syn
+        self._zero_in_flight()
+
+    def params_fingerprint(self):
+        return _crc_arrays(self._live_edges(), _crc_arrays(self.params()))
+
+    def fingerprint(self):
+        """crc32 of the complete continuation state, independent of P: the percept count and the
+        tick index, v (float32), the last fired mask, the summed accumulators, the parameters and the
+        live edges. Every delay is 1, so every ring slot is drained within its tick; a fingerprint
+        taken with a bundle in flight is refused."""
+        if any(slot for ring in self._kt._rings for slot in ring):
+            raise ValueError("REFUSED: a delay ring holds an in-flight bundle at a fingerprint")
+        crc = zlib.crc32(f"count|{self.count}|tick|{self._kt.tick_index}".encode("ascii"))
+        crc = _crc_arrays(self.carriers(), crc)
+        return _crc_arrays(self._live_edges(), _crc_arrays(self.params(), crc))
+
+    def host_policy(self):
+        """What the host does that the port does not, for a replay's binding: the fixed-point width,
+        the partition count, the decay as float32 sees it, the reset, the refraction, the delay and
+        the threshold."""
+        return {
+            "host": "kernel",
+            "frac_bits": self.frac_bits,
+            "p_parts": self.p_parts,
+            "decay_f32": float(np.float32(self.lam)),
+            "v_reset": float(self.V_RESET),
+            "refrac_ticks": int(self.REFRAC_TICKS),
+            "delay": int(self.DELAY),
+            "thr": float(np.float32(self.THR)),
+        }
+
+    def __deepcopy__(self, memo):
+        """copy.deepcopy fails on a KernelState and on a KernelTick (each holds the numpy module as an
+        attribute: TypeError, cannot pickle 'module' object), so the copy is rebuilt: the table is
+        deep-copied (its bundles are not shared), a fresh KernelState and KernelTick are built over
+        the copy, and the runtime (the state arrays, the tick index, the integer accumulators and the
+        ring slots) is carried over by the replay gate's own capture and restore, the one
+        serialization of a kernel's runtime."""
+        from snn_data_lake.gates.replay_gate import capture, restore
+
+        dup = self.__class__.__new__(self.__class__)
+        memo[id(self)] = dup
+        host = ("_kt", "_syn", "_s")
+        for key, value in self.__dict__.items():
+            if key not in host:
+                setattr(dup, key, copy.deepcopy(value, memo))
+        dup._syn = copy.deepcopy(self._syn, memo)
+        dup._start()
+        restore(capture(self._kt, {}), dup._kt)
+        dup._s = self._s.copy()
+        return dup
+
+
 # distinct-from: faculties/spiking_curiosity.py -- its _make_pool builds a LIF pool that turns a prediction error into a count for curiosity; no recurrence, no percept stream (site read)
 POOLS = {"lsm": LsmPool}
+# TRANSIENT: G1(c) 2.9's migration gate picks one host for every later stage and then deletes the
+# loser and this switch in the commit after the results record (g1b 3.5's precedent); a test then
+# counts one reachable pool implementation.
+HOSTS = {"port": LsmPool, "kernel": KernelLsmPool}
 
 
+# Sites the duplicate-capability hook flagged, read; neither is a second pool builder:
+# distinct-from: faculties/spiking_curiosity.py::_make_pool -- builds a log-spaced-tau LIF pool for a curiosity count; no recurrence, no percept stream
+# distinct-from: instruments/memory_diagnostic.py::_PoolArm -- the CALLER of this make_pool (its docstring names it); it builds no pool itself
 def make_pool(
-    candidate, config, recording_seed, form="carried", *, window=WINDOW, s_settle=S_SETTLE
+    candidate,
+    config,
+    recording_seed,
+    form="carried",
+    *,
+    window=WINDOW,
+    s_settle=S_SETTLE,
+    host="port",
+    **host_options,
 ):
     """A pool from (candidate, config, recording seed): W_in from the recording seed, the random
     structure from realization_seed, drawn in spiking_ssm's exact call order. `canonical` raises for
-    any candidate or configuration outside section 2.3's g1 grid."""
+    any candidate or configuration outside section 2.3's g1 grid. `host` names the arithmetic the
+    SAME network runs on (HOSTS): the float64 port by default, or the KernelTick host, whose options
+    (frac_bits, p_parts, threads) default to the lineage's record; the port takes none."""
+    if host not in HOSTS:
+        raise ValueError(f"REFUSED: unknown host {host!r}")
+    if host_options and host == "port":
+        raise ValueError("REFUSED: the port takes no host options")
     config = canonical(candidate, config)
     seed = realization_seed(candidate, recording_seed)
     encoder = w_in(recording_seed)
     kwargs = {"window": window, "s_settle": s_settle}
     _, pre, weights = _lsm_draw(seed, N, config["k"], config["w"])
-    return LsmPool(pre, weights, config, form, encoder, **kwargs)
+    return HOSTS[host](pre, weights, config, form, encoder, **kwargs, **host_options)
 
 
 # ---- fixture percepts and the startup diagnostic (section 2.2) -----------------------------------
@@ -1204,6 +1464,355 @@ def check_transported_encoder(recording_seed=DEV_SEED, units=3):
     }
 
 
+# ---- the hosted pool's parity fixtures: the migration gate's part (i) (G1(c) 2.9, 2.10) ----------
+
+# Class A: the host equals the port bit for bit (v, s, the activity and phi) on lattice fixtures.
+# Class B: the declared divergences, where the asserted observable IS the divergence. Each Class A
+# fixture has a constructed wrong host that must fail it. Every fixture is at most 4 units, stepped
+# through pool.step or percept_drive with the port and the host side by side; the 2**-frac_bits unit
+# (the lsb) is the host's own, so a fixture is a lattice fixture at any binding frac_bits.
+
+HAND_PRE = [[1, 2], [0, 0], [1, 0]]  # the hand fixture of tests/test_recurrent_pool.py (N 3, k 2)
+HAND_W = [[0.5, 0.25], [1.0, -0.5], [0.5, 0.5]]
+HAND_CFG = {"lambda": 0.5, "g": 2, "T_in": 2}
+HAND_U = ([0.25, 0.5, 0.375], [0.0, 0.25, 0.0], [0.0, 0.3125, 0.0])
+CHAIN_PRE = [[0], [0], [1]]  # unit 1 hears unit 0 and unit 2 hears unit 1, each at 1.0
+CHAIN_W = [[0.0], [1.0], [1.0]]  # unit 0 hears itself at 0.0, so every unit has one entry
+CHAIN_CFG = {"lambda": 0.5, "g": 1, "T_in": 1}
+DECAY_LAMBDA = 0.9  # the tuned configuration's leak: the float32 decay product's scan is read at it
+
+
+class _ResetsBelowZero(KernelLsmPool):  # wrong host: the reset value is -0.25, not 0
+    V_RESET = -0.25
+
+
+class _Refracts(KernelLsmPool):  # wrong host: one refractory tick after a spike
+    REFRAC_TICKS = 1
+
+
+class _DelaysTwo(KernelLsmPool):  # wrong host: every edge takes two ticks
+    DELAY = 2
+
+
+class _StrictThreshold(KernelLsmPool):  # wrong host: `>` for `>=`, the threshold a float32 step up
+    THR = float(np.nextafter(np.float32(LSM_THRESH), np.float32(2.0)))
+
+
+class _Truncates(KernelLsmPool):  # wrong host: weights and drive truncated, not rounded
+    def _edges(self):
+        pre, post, weight, delay = super()._edges()
+        scale = 2.0**self.frac_bits
+        return pre, post, np.trunc(weight * scale) / scale, delay
+
+    def _quantize_drive(self, drive_vector):
+        return np.trunc(drive_vector * 2**self.frac_bits).astype(np.int64)
+
+
+class _Deduplicates(KernelLsmPool):  # wrong host: a repeated (pre, post) edge keeps its first entry
+    def _edges(self):
+        pre, post, weight, delay = super()._edges()
+        _, first = np.unique(np.stack([pre, post]), axis=1, return_index=True)
+        keep = np.sort(first)
+        return pre[keep], post[keep], weight[keep], delay[keep]
+
+
+class _KeepsCharge(KernelLsmPool):  # wrong host: a lesion leaves the charge already in flight
+    def _zero_in_flight(self):
+        pass
+
+
+def _hosted(host_cls, bits, pre, w, config, form="carried", **kwargs):
+    return host_cls(pre, w, config, form, frac_bits=bits, p_parts=1, **kwargs)
+
+
+def _row(pool, activity):
+    return (
+        activity.tobytes(),
+        np.asarray(pool.v, dtype=np.float64).tobytes(),
+        np.asarray(pool.s, dtype=bool).tobytes(),
+    )
+
+
+def _stepped(pool, drives):
+    return [_row(pool, pool.step(np.asarray(u, dtype=np.float64))) for u in drives]
+
+
+def _percepted(pool, drives):
+    return [(*_row(pool, pool.percept_drive(u)), pool.count) for u in drives]
+
+
+def _spiked(rows):
+    return [np.frombuffer(row[0], dtype=np.float64).tolist() for row in rows]
+
+
+# P1: the hand fixture through all four forms, at a one-percept and a four-percept window
+def _fx_hand_forms(host_cls, bits):
+    for form in FORMS:
+        for window in (1, 4):
+            port = LsmPool(HAND_PRE, HAND_W, HAND_CFG, form, window=window, s_settle=1)
+            host = _hosted(
+                host_cls, bits, HAND_PRE, HAND_W, HAND_CFG, form, window=window, s_settle=1
+            )
+            if _percepted(port, HAND_U) != _percepted(host, HAND_U):
+                return False
+    return True
+
+
+# P2: the chain 0 -> 1 -> 2 with only unit 0 driven at its first step spikes at steps 0, 1 and 2
+def _fx_delay_one(host_cls, bits):
+    drives = [[1.0, 0.0, 0.0]] + [[0.0, 0.0, 0.0]] * 4
+    rows = _stepped(_hosted(host_cls, bits, CHAIN_PRE, CHAIN_W, CHAIN_CFG), drives)
+    chain = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0] * 3, [0.0] * 3]
+    port_rows = _stepped(LsmPool(CHAIN_PRE, CHAIN_W, CHAIN_CFG), drives)
+    return rows == port_rows and _spiked(rows) == chain
+
+
+# P3: at lambda 1, 0.75 then 0.25 reaches exactly 1.0 and spikes (`>=`); 0.25 - lsb does not
+def _fx_threshold_boundary(host_cls, bits):
+    lsb = 2.0**-bits
+    config = {"lambda": 1.0, "g": 1, "T_in": 1}
+    for second, expected in ((0.25, [[0.0], [1.0]]), (0.25 - lsb, [[0.0], [0.0]])):
+        drives = [[0.75], [second]]
+        rows = _stepped(_hosted(host_cls, bits, [[0]], [[0.0]], config), drives)
+        if rows != _stepped(LsmPool([[0]], [[0.0]], config), drives) or _spiked(rows) != expected:
+            return False
+    return True
+
+
+# P4: a supra-threshold drive spikes at every step (no refraction)
+def _fx_sustained(host_cls, bits):
+    config = {"lambda": 0.5, "g": 1, "T_in": 1}
+    drives = [[1.5]] * 4
+    rows = _stepped(_hosted(host_cls, bits, [[0]], [[0.0]], config), drives)
+    port_rows = _stepped(LsmPool([[0]], [[0.0]], config), drives)
+    return rows == port_rows and _spiked(rows) == [[1.0]] * 4
+
+
+# P5a: weights and drive that are whole multiples of the lsb, at lambda 1 and 1/2, are exact
+def _fx_lattice(host_cls, bits):
+    lsb = 2.0**-bits
+    pre = [[1, 2], [0, 2], [0, 1]]
+    w = [[k * lsb for k in row] for row in ((1229, -819), (2458, 1638), (-1229, 2048))]
+    steps = (
+        (3000, 2500, 1000),
+        (1500, 2000, 3500),
+        (2800, 100, 900),
+        (0, 3900, 0),
+        (2500, 2500, 2500),
+        (100, 100, 100),
+        (3500, 3000, 2000),
+        (1000, 0, 3000),
+    )
+    drives = [[k * lsb for k in step] for step in steps]
+    for leak in (1.0, 0.5):
+        config = {"lambda": leak, "g": 1, "T_in": 1}
+        port_rows = _stepped(LsmPool(pre, w, config), drives)
+        if port_rows != _stepped(_hosted(host_cls, bits, pre, w, config), drives):
+            return False
+        if not any(any(spikes) for spikes in _spiked(port_rows)):
+            return False  # a fixture that never spikes would pass any host
+    return True
+
+
+# P5c: weights 2.5 lsb and 3.5 lsb round to 2 and 4 (half to even) and the drive 2.7 lsb to 3:
+# the host equals the port holding the rounded values
+def _fx_rounding(host_cls, bits):
+    lsb = 2.0**-bits
+    config = {"lambda": 1.0, "g": 1, "T_in": 1}
+    pre = [[0], [0], [0]]
+    host = _hosted(host_cls, bits, pre, [[0.0], [2.5 * lsb], [3.5 * lsb]], config)
+    twin = LsmPool(pre, [[0.0], [2 * lsb], [4 * lsb]], config)
+    rows = _stepped(host, [[1.0, 2.7 * lsb, 0.0], [0.0, 0.0, 0.0]])
+    twin_rows = _stepped(twin, [[1.0, 3 * lsb, 0.0], [0.0, 0.0, 0.0]])
+    return rows == twin_rows and host._live_edges()["edge_q"].tolist() == [0, 2, 4]
+
+
+# P7: two (pre, post) edges between the same units sum, and a self-edge feeds its own unit
+def _fx_duplicates(host_cls, bits):
+    pre, w = [[0, 1], [0, 0]], [[0.5, 0.25], [0.25, 0.5]]
+    config = {"lambda": 1.0, "g": 1, "T_in": 1}
+    drives = [[1.0, 0.0], [0.0, 0.0], [0.5, 0.25], [0.0, 0.0], [0.0, 0.0]]
+    port_rows = _stepped(LsmPool(pre, w, config), drives)
+    return port_rows == _stepped(_hosted(host_cls, bits, pre, w, config), drives)
+
+
+# P8: the Front-end lesion lands after a window whose last step left charge in flight
+def _fx_lesion(host_cls, bits):
+    port = LsmPool(HAND_PRE, HAND_W, HAND_CFG, "front_end", window=1, s_settle=1)
+    host = _hosted(host_cls, bits, HAND_PRE, HAND_W, HAND_CFG, "front_end", window=1, s_settle=1)
+    same = _percepted(port, HAND_U) == _percepted(host, HAND_U)
+    return same and host.lesion_record["changed"] == ["w"]
+
+
+# P9: make_pool(host="kernel") holds the port's pre and w byte for byte; `shift` builds the red, a
+# hosted pool drawn at the realization seed plus `shift` (a second candidate's index)
+def _same_network(shift=0):
+    config = R_B5_PERSISTENCE_WITNESS
+    port = make_pool("lsm", config, DEV_SEED)
+    if shift == 0:
+        host = make_pool("lsm", config, DEV_SEED, host="kernel")
+    else:
+        seed = realization_seed("lsm", DEV_SEED) + shift
+        _, pre, weights = _lsm_draw(seed, N, config["k"], config["w"])
+        host = KernelLsmPool(pre, weights, config, w_in=w_in(DEV_SEED))
+    return (
+        port.pre.tobytes() == host.pre.tobytes()
+        and port.w.tobytes() == host.w.tobytes()
+        and np.array_equal(port.w_in, host.w_in)
+    )
+
+
+PARITY_A = {
+    "p1_hand_forms": _fx_hand_forms,
+    "p2_delay_one": _fx_delay_one,
+    "p3_threshold_boundary": _fx_threshold_boundary,
+    "p4_sustained_drive": _fx_sustained,
+    "p5a_lattice": _fx_lattice,
+    "p5c_rounding": _fx_rounding,
+    "p7_duplicate_and_self_edges": _fx_duplicates,
+    "p8_front_end_lesion": _fx_lesion,
+}
+# each constructed wrong host and the fixture it must fail
+WRONG_HOSTS = {
+    "v_reset -0.25": (_ResetsBelowZero, "p1_hand_forms"),
+    "refrac_ticks 1": (_Refracts, "p4_sustained_drive"),
+    "delay 2": (_DelaysTwo, "p2_delay_one"),
+    "`>` for `>=`": (_StrictThreshold, "p3_threshold_boundary"),
+    "truncating quantizer": (_Truncates, "p5c_rounding"),
+    "de-duplicated edges": (_Deduplicates, "p7_duplicate_and_self_edges"),
+    "lesion leaves the in-flight charge": (_KeepsCharge, "p8_front_end_lesion"),
+}
+
+
+# The first lattice pair (v_prev = k lsb, ext = j lsb), scanned k-major over v_prev in [0, 1) and ext
+# in [0, 2], at which the host's float32 membrane step differs from the port's float64 step rounded
+# once to float32. The host's step is KernelTick's dtype path: the float32 product of v and the
+# float32 decay, added to the float64 drive, rounded to float32. Returns the pair, the number of
+# pairs examined up to and including it, and both values (None if no pair differs).
+def decay_divergence_scan(frac_bits, lam=DECAY_LAMBDA):
+    scale = 2**frac_bits
+    ext = np.arange(0, 2 * scale + 1, dtype=np.int64) / float(scale)
+    for k in range(scale):
+        v_prev = k / float(scale)
+        host = (np.full(ext.shape, v_prev, dtype=np.float32) * lam + ext).astype(np.float32)
+        port = (lam * v_prev + ext).astype(np.float32)
+        hit = np.flatnonzero(host != port)
+        if hit.size:
+            j = int(hit[0])
+            return {
+                "size": k * ext.size + j + 1,
+                "k": k,
+                "j": j,
+                "host": float(host[j]),
+                "port_f32": float(port[j]),
+            }
+    return None
+
+
+# The declared divergences, each asserting the host's own arithmetic and carrying its red:
+# P5b a weight of 0.25 - lsb / 4 rounds to 0.25 on the host (it spikes, the port does not), and a
+#   host with four more fractional bits keeps the weight and agrees with the port;
+# P6a at a fixture-only frac_bits 32 the drive 0.25 - 2**-30 is kept: 0.75 plus it is 1 - 2**-30 in
+#   float64 (no spike) and 1.0 in float32 (the host spikes); the float64 sum is the red;
+# P6b the scan's pair, reproduced through both pools in two lattice steps (v_prev, then ext): the
+#   host's float32 membrane differs from the port's, and the same formula in float64 equals the port.
+# A one-step FIRING flip is not reachable on the lattice (a flip needs the exact sum within a float32
+# half-ulp of 1.0, and 0.9 k + j is a multiple of 0.1 lsb), so P6b's observable is the membrane.
+def _class_b(bits):
+    lsb = 2.0**-bits
+    config = {"lambda": 1.0, "g": 1, "T_in": 1}
+    pre, w = [[0], [0]], [[0.0], [0.25 - lsb / 4]]
+    drives = [[1.0, 0.75], [0.0, 0.0]]
+    port_5b = _spiked(_stepped(LsmPool(pre, w, config), drives))
+    host_5b = _spiked(_stepped(_hosted(KernelLsmPool, bits, pre, w, config), drives))
+    finer_5b = _spiked(_stepped(_hosted(KernelLsmPool, bits + 4, pre, w, config), drives))
+    p5b = {"port": port_5b, "host": host_5b, "finer_host": finer_5b}
+    ok_5b = (
+        port_5b == [[1.0, 0.0], [0.0, 0.0]]
+        and host_5b == [[1.0, 0.0], [0.0, 1.0]]
+        and finer_5b == port_5b
+    )
+    pre, w = [[0]], [[0.0]]
+    drives = [[0.75], [0.25 - 2.0**-30]]
+    port_6a = _spiked(_stepped(LsmPool(pre, w, config), drives))
+    host_6a = _spiked(_stepped(_hosted(KernelLsmPool, 32, pre, w, config), drives))
+    total = 0.75 + (0.25 - 2.0**-30)
+    p6a = {
+        "port": port_6a,
+        "host": host_6a,
+        "float64_sum": total,
+        "float32_sum": float(np.float32(total)),
+    }
+    ok_6a = (
+        port_6a == [[0.0], [0.0]]
+        and host_6a == [[0.0], [1.0]]
+        and total < 1.0
+        and float(np.float32(total)) == 1.0
+    )
+    pair = decay_divergence_scan(bits)
+    ok_6b, p6b = False, {"scan": pair}
+    if pair is not None:
+        v_prev, ext = pair["k"] * lsb, pair["j"] * lsb
+        leaky = {"lambda": DECAY_LAMBDA, "g": 1, "T_in": 1}
+        port = LsmPool([[0]], [[0.0]], leaky)
+        host = _hosted(KernelLsmPool, bits, [[0]], [[0.0]], leaky)
+        _stepped(port, [[v_prev], [ext]])
+        _stepped(host, [[v_prev], [ext]])
+        v_port, v_host = float(port.v[0]), float(host.v[0])
+        product = np.float32(v_prev) * np.float32(DECAY_LAMBDA)
+        host_formula = float(np.float32(np.float64(product) + ext))
+        float64_formula = (DECAY_LAMBDA * v_prev + ext) + 0.0
+        p6b = {
+            "scan": pair,
+            "host_v": v_host,
+            "port_v": v_port,
+            "float64_formula_equals_port": v_port == float64_formula,
+            "host_formula_equals_host": v_host == host_formula,
+        }
+        ok_6b = (
+            v_host != float(np.float32(v_port))
+            and v_host == pair["host"]
+            and float(np.float32(v_port)) == pair["port_f32"]
+            and p6b["float64_formula_equals_port"]
+            and p6b["host_formula_equals_host"]
+        )
+    return {
+        "verdict": bool(ok_5b and ok_6a and ok_6b),
+        "numbers": {"p5b": p5b, "p6a": p6a, "p6b": p6b},
+    }
+
+
+# Sites the duplicate-capability hook flagged, read; none holds a hosted pool's parity fixtures:
+# distinct-from: gates/gradient_claim_gate.py::_qualnames -- lists the defs of a module's syntax tree
+# distinct-from: gates/move_gate.py::constructed_reds -- the diff engine's reds over constructed censuses
+# distinct-from: gates/selfcheck_cache.py::self_check -- the P8 reds of the selfcheck cache's keys
+# distinct-from: sensorimotor/ingest_guard.py -- the license and content boundary for ingested data
+# distinct-from: gates/amdahl_gate.py::_count_lif_in -- counts the LIFNeuron objects reachable from one brain
+def check_host_parity(frac_bits=None):
+    """The migration gate's part (i): every Class A fixture holds for the host, each constructed
+    wrong host fails the fixture it was built for, and the Class B divergences assert the host's own
+    arithmetic. `frac_bits` None is the lineage's binding value."""
+    bits = _lineage_host(frac_bits, 1)[0]
+    class_a = {name: bool(fixture(KernelLsmPool, bits)) for name, fixture in PARITY_A.items()}
+    class_a["p9_same_network"] = bool(_same_network())
+    reds, failed_by = {}, {}
+    for name, (wrong, target) in WRONG_HOSTS.items():
+        failed_by[name] = sorted(f for f, fixture in PARITY_A.items() if not fixture(wrong, bits))
+        reds[name] = target in failed_by[name]
+    reds["second-candidate realization seed"] = not _same_network(shift=1)
+    class_b = _class_b(bits)
+    return {
+        "verdict": bool(all(class_a.values()) and all(reds.values()) and class_b["verdict"]),
+        "numbers": {
+            "frac_bits": bits,
+            "class_a": class_a,
+            "reds": reds,
+            "failed_by": failed_by,
+            "class_b": class_b["numbers"],
+        },
+    }
+
+
 # ---- the self-check ------------------------------------------------------------------------------
 
 
@@ -1260,6 +1869,17 @@ def main():
         "G1(c) transport: copied rows and the swap draw at the random draw's mean row norm "
         f"(error {encoder['numbers']['norm_error']:.1e}); refusals fired on "
         + ", ".join(encoder["red"])
+    )
+    parity = check_host_parity()
+    assert parity["verdict"], parity["numbers"]
+    numbers = parity["numbers"]
+    scan = numbers["class_b"]["p6b"]["scan"]
+    print(
+        f"hosted g1 (KernelTick, frac_bits {numbers['frac_bits']}): "
+        f"{len(numbers['class_a'])} Class A fixtures bit-equal to the port; "
+        f"{len(numbers['reds'])} wrong hosts each failed their fixture; Class B: weight and "
+        f"membrane roundings asserted, decay-product pair (k {scan['k']}, j {scan['j']}) found "
+        f"after {scan['size']} lattice pairs"
     )
     diagnostic = startup_diagnostic(make_pool("lsm", R_B5_PERSISTENCE_WITNESS, DEV_SEED))
     print(
