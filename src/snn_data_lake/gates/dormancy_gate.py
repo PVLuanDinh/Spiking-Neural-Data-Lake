@@ -135,6 +135,10 @@ EXEMPT = {
         "permanent",
         "G1(c)'s campaign module (a governed benchmark; evidence g1c-carried-state.md) until G1(c)'s disposition; consumers: its CLI and tests/test_carried_state_campaign.py",
     ),
+    "carried_state_driver": (
+        "permanent",
+        "G1(c)'s campaign driver (a governed benchmark; evidence g1c-carried-state.md 2.13) until G1(c)'s disposition; consumers: its CLI and tests/test_carried_state_driver.py",
+    ),
     "inseparable_mapping": (
         "permanent",
         "G2(ii)'s generator and G-R2's construction check (a governed benchmark; evidence g1c-carried-state.md 2.8); consumers: G1(c)'s campaign, G2/G3/G9 later, tests/test_inseparable_mapping.py",

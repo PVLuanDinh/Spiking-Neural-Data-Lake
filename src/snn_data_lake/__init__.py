@@ -277,6 +277,8 @@ REGIONS = {
         "binding_instrument",
         # G1(c) carried-state campaign: the frozen constants, the contrast row and the oracle check (g1c-carried-state.md 2.2-2.4)
         "carried_state_campaign",
+        # G1(c) campaign driver, part 1: preflight, CLI and the record-to-construct stages (g1c-carried-state.md 2.13)
+        "carried_state_driver",
         "energy",
         # 022 T035: stimulus port + trial schedule (fixation/saccade) + G5-replayable trials
         "episode_driver",

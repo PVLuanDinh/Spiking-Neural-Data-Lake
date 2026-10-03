@@ -44,13 +44,15 @@ R-b3 / R-b4 / R-b5 with their reds, live in reservoir/recurrent_pool.py):
                      and R-b4 all hold, else "port"
 
 SIZE: this module is about 1,200 lines, past the 800-line soft ceiling, on purpose: it is the one place
-the campaign's frozen decisions and their self-checks are tied to the frozen text, and P5 adds the stages.
+the campaign's frozen decisions and their self-checks are tied to the frozen text (the stages are not
+here: they are carried_state_driver's).
 
 The 48-event self-check fixture is shorter than one 256-event block, so its shuffles use blocks of 8
 (FIXTURE_BLOCK); every function takes the block size and defaults to SHUFFLE_BLOCK.
 
-The campaign stages (record ... report, section 2.13) arrive in P5, added to this module; it imports
-`pool_selection`'s step, job and table machinery for them (section 2.14).
+The campaign stages (record ... report, section 2.13) are `carried_state_driver`'s (P5): it imports this
+module's constants, decisions and transforms and `pool_selection`'s step, job and table machinery
+(section 2.14).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.carried_state_campaign
 

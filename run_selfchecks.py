@@ -80,6 +80,7 @@ CORE = [
     "reservoir.recurrent_pool",  # G1(b): R-b0 parity, R-b3, R-b4 pool noise, R-b5 and every red
     "instruments.pool_selection",  # G1(b) campaign: ordering, power, R-b7 reds, step order, exit codes
     "instruments.carried_state_campaign",  # G1(c): frozen constants, the contrast row (degenerate NOT MET), the oracle check and their reds
+    "instruments.carried_state_driver",  # G1(c) campaign driver, part 1: preflight, stage chain, owed stages, REPAIR.txt, the half-moved rule
     "instruments.inseparable_mapping",  # G2(ii)'s generator + G-R2's construction check: A1-A5, every construction and stream red, a smoke A3/A4 on one development seed
     "sensorimotor.lca_sparse_coding",
     "readout.predictive_coding",

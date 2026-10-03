@@ -1163,10 +1163,17 @@ def _rb6_families(folder, seed):
     }
 
 
-def step_instrument(out, pilot, *, rb6_seed=RB6_SEED):
+# Sites the duplicate-capability hook flagged on the name `step_instrument` (read; none is a campaign step):
+# distinct-from: instruments/binding_instrument.py::_t080_record_arm -- records one arm of another campaign from a live brain, tick by tick
+# distinct-from: instruments/deep_stdp.py::FcStdp.run -- rate-codes one vector and simulates an STDP prototype layer
+# distinct-from: instruments/developmental_loop_brain.py::_LinearReadout.train_step -- one optimiser step of a linear classifier
+# distinct-from: instruments/energy.py::crossover_sparsity -- solves an SNN-vs-INT8 energy crossover for a spike probability
+# distinct-from: instruments/integration_measure.py::PerturbationalComplexity._serialize -- joins a response matrix into one binary string
+def step_instrument(out, pilot, *, rb6_seed=RB6_SEED, rb6_halts=True):
     """R-b2 and R-b7's reds here; R-b6 on rb6_seed (default 4242) and its history-free red, and
     R-b8's two halves and their reds, each replay in its own child. Every failure here is the shared
-    instrument's."""
+    instrument's, except that with `rb6_halts` False (G1(c) 2.4 (i): a blind R-b6 refuses G-R1 and
+    the campaign goes on) R-b6's two clauses are recorded under "rb6_clauses", not raised."""
     folder = _folder(out, "instrument")
     r_b2 = md.check_r_b2()
     if not r_b2["verdict"]:
@@ -1204,10 +1211,13 @@ def step_instrument(out, pilot, *, rb6_seed=RB6_SEED):
         stream = md._load(path)
         runs = [_checked(jobs[f"{name} {arm}"], stream) for arm in ("e1", "e1-0")]
         rb6[name] = _contrast(stream, *runs)
-    if not rb6["rb6red"]["readout"]["difference"] < md.RB6_BAR:
-        raise Halt("R-b6 red", rb6)
-    if not rb6["rb6"]["readout"]["difference"] >= md.RB6_BAR:
-        raise Halt("R-b6", rb6)
+    red_held = bool(rb6["rb6red"]["readout"]["difference"] < md.RB6_BAR)
+    green_held = bool(rb6["rb6"]["readout"]["difference"] >= md.RB6_BAR)
+    if rb6_halts:
+        if not red_held:
+            raise Halt("R-b6 red", rb6)
+        if not green_held:
+            raise Halt("R-b6", rb6)
     stream = md._load(new)
     pinned = md._load(Path(pilot) / f"{PILOT_SEED}-stream.json.gz")
     on = {arm: _checked(jobs[f"on {arm}"], stream) for arm in md.SCORED_ARMS}
@@ -1236,6 +1246,8 @@ def step_instrument(out, pilot, *, rb6_seed=RB6_SEED):
     summary = {"R-b2": r_b2, "R-b7 reds": r_b7, "R-b6": rb6, "R-b8": r_b8}
     if rb6_seed != RB6_SEED:  # a default run's summary stays byte-identical to G1(b)'s
         summary["rb6_seed"] = rb6_seed
+    if not rb6_halts:  # G1(c) 2.4 (i): R-b6 is a reading there; its two clauses are the record
+        summary["rb6_clauses"] = {"positive": green_held, "history_free": red_held}
     return summary
 
 
