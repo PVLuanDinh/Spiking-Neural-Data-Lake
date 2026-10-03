@@ -1,8 +1,10 @@
 """G1(c)'s campaign module (instruments/carried_state_campaign.py): the frozen constants of
 g1c-carried-state.md sections 2.2, 2.3 and 2.12, the seed-set refusals, section 2.3's contrast
 row (a degenerate row is NOT MET; a short list halts; skew-flagging) and section 2.4 (ii)'s oracle
-check (only the decoder row decides; an incomplete oracle is a blind harness). Pure functions on
-hand fixtures: no recording, no pool, no campaign."""
+check (only the decoder row decides; an incomplete oracle is a blind harness), the within-block
+shuffle with its checks and the G-R1 reading (2.5, 2.6), and the migration gate's reading (2.9).
+Mostly pure functions on hand fixtures; the shuffle controls also run real pool and decoder
+replays on fixture and rb6 streams. Never a recording, never a campaign seed."""
 
 import ast
 import contextlib

@@ -240,7 +240,8 @@ def _epochs(epochs):
 
 
 def _resolve(check_seeds, epochs):
-    # The seed constants live in carried_state_campaign, whose P5 campaign stages import THIS module,
+    # The seed constants live in carried_state_campaign; the campaign's separation stage
+    # (instruments/carried_state_controls) imports THIS module,
     # so the import is deferred to here: a top-level import in both directions would make the first
     # import of either order-dependent.
     if check_seeds is None:
