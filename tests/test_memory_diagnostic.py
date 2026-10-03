@@ -490,6 +490,79 @@ def test_pool_arm_refusals_and_r_b2():
         _View(ARMS["pool"][1], {"x": [0.0] * 64, "c": 1}).get("c")
 
 
+# ---- G1(c) 2.6: the pool arm at window 0 -----------------------------------------------------
+
+
+def test_window_zero_pool_arm_binds_its_window_and_an_empty_movement():
+    stream = _stamped()
+    run = replay(stream, "pool", pool=dict(SHORT, window=0))
+    md._validate_run(run, stream, stream, "pool", "causal")
+    config = rp.canonical("lsm", SHORT["config"])
+    fresh = rp.make_pool("lsm", config, stream["seed"], "carried", window=0)
+    binding = run["pool"]
+    assert (binding["window"], binding["percepts"], binding["movement"]) == (0, 48, {})
+    assert binding["boundary"] == fresh.params_fingerprint() and binding["frozen"] is True
+    assert binding["initial"] == fresh.fingerprint() and binding["pool_ms"] is not None
+    assert binding["kicks"] == 0 and set(binding["startup"]) == {"transient", "flagged"}
+    # no window to move across: the field is {} in every form, Front-end included (its window-16
+    # field is None, because its parameters are the lesion's), so it stays comparable
+    for form in rp.FORMS:
+        zero = replay(stream, "pool", pool=dict(SHORT, form=form, window=0))
+        assert zero["pool"]["movement"] == {} and zero["pool"]["frozen"] is True
+        assert zero["pool"]["boundary"] is not None
+    assert replay(stream, "pool", pool=dict(SHORT, form="front_end"))["pool"]["movement"] is None
+    assert replay(stream, "pool", pool=SHORT)["pool"]["movement"] == {}
+
+
+def test_carried_at_zero_is_carried_at_256_on_the_fixture_and_the_comparison_can_differ():
+    stream = _stamped()
+    zero = replay(stream, "pool", pool=dict(SHORT, window=0))
+    default = replay(stream, "pool", pool={k: v for k, v in SHORT.items() if k != "window"})
+    assert (zero["pool"]["window"], default["pool"]["window"]) == (0, rp.WINDOW)
+    assert all(zero[key] == default[key] for key in GROWER_KEYS)
+    assert zero["readout"] == default["readout"]
+    assert all(zero["pool"][key] == default["pool"][key] for key in ("state", "state_chain"))
+    # 48 events never reach window 256's boundary: these fields differ, and are not compared
+    assert default["pool"]["boundary"] is None and zero["pool"]["boundary"] is not None
+    assert default["pool"]["frozen"] is None and zero["pool"]["frozen"] is True
+    # the instrument fires: Settled@0 is not Carried@0 on the same events
+    settled = replay(stream, "pool", pool=dict(SHORT, form="settled", window=0))
+    assert settled["phi"] != zero["phi"]
+    assert settled["pool"]["state_chain"] != zero["pool"]["state_chain"]
+
+
+def test_window_zero_noise_kicks_before_every_percept():
+    stream = _synthetic_stream()
+    clean = replay(stream, "pool", pool=dict(SHORT, window=0))
+    noisy = replay(stream, "pool", pool=dict(SHORT, window=0, noise=True))
+    assert (noisy["pool"]["noise"], noisy["pool"]["kicks"]) == (True, 48)
+    assert noisy["pool"]["state"] != clean["pool"]["state"] and noisy["phi"] != clean["phi"]
+
+
+def test_window_zero_leaves_the_arms_and_the_forms_as_they_were():
+    # the order is part of it: SCORED_ARMS is the first eight
+    assert tuple(ARMS) == (
+        ("a", "f64", "d", "d0", "e1", "e1-0", "e2", "e2-0") + ("forbidden", "noise", "leak", "pool")
+    )
+    assert ARMS == {
+        "a": (64, ("x",)),
+        "f64": (64, ("c",)),
+        "d": (96, ("x", "own_predictions")),
+        "d0": (96, ("x",)),
+        "e1": (256, ("x", "x_history")),
+        "e1-0": (256, ("x",)),
+        "e2": (192, ("x", "c_history")),
+        "e2-0": (192, ("x", "c")),
+        "forbidden": (96, ("x",)),
+        "noise": (64, ("x",)),
+        "leak": (64, ("x",)),
+        "pool": (256, ("x",)),
+    }
+    assert md.SCORED_ARMS == ("a", "f64", "d", "d0", "e1", "e1-0", "e2", "e2-0")
+    assert md._PoolArm.KEYS == ("candidate", "config", "form", "noise", "window")
+    assert rp.FORMS == ("carried", "reset", "settled", "front_end")
+
+
 # ---- G1(b): R-b6's synthetic family (section 2.7) ------------------------------------------------
 
 

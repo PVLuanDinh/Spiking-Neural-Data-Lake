@@ -5,7 +5,9 @@ hand-built tables, section 2.6's power rule, R-b7's refusals, the step-order ref
 Nothing here runs a campaign: steps run on a scratch OUT at a stand-in revision, and their jobs go
 through stand-in runners (or one in-process replay of the 48-event fixture)."""
 
+import hashlib
 import inspect
+import json
 import math
 from pathlib import Path
 
@@ -190,13 +192,14 @@ def pool_cell(seed, *, bound=None, status="OK"):
     return dict(filed, index=0, status=status, digest=digest)
 
 
-def test_r_b7_refuses_its_three_reds_and_passes_the_well_formed_table():
+def test_r_b7_refuses_its_four_reds_and_passes_the_well_formed_tables():
     reds = ps.r_b7_reds()
     assert reds["verdict"] and reds["control"]
     assert reds["red"] == {
         "wrong configuration": True,
         "duplicate seed": True,
         "tuning seed in selection": True,
+        "window-0 replay filed as window 256": True,
     }
 
 
@@ -236,6 +239,146 @@ def test_binding_problems_name_each_disagreement():
     assert ps.binding_problems(dict(reference, digest=dict(reference["digest"], arm="e1"))) == [
         "arm"
     ]
+
+
+# ---- G1(c) P3a: the window in the filing, the key and the spec -----------------------------------
+
+
+def window_cell(seed, ran_at, filed_as=None):
+    """A Settled cell whose replay ran at window `ran_at`, filed under window `filed_as` (None: the
+    default, which files no window at all)."""
+    config = rp.grid("lsm")[0]
+    spec = ps._spec("lsm", config, "settled", window=rp.WINDOW if filed_as is None else filed_as)
+    binding = {
+        "candidate": "lsm",
+        "form": "settled",
+        "config_crc32": rp.crc_json(config),
+        "realization_seed": rp.realization_seed("lsm", seed),
+        "window": ran_at,
+        "noise": False,
+        "w_in": ps._w_in_crc(seed),
+    }
+    digest = {"arm": "pool", "seed": seed, "pool": binding}
+    return dict(ps._bound(seed, spec), index=0, status="OK", digest=digest)
+
+
+def test_a_window_zero_replay_filed_as_window_256_is_refused_and_filed_as_zero_passes():
+    zero = window_cell(204, ran_at=0)  # run at window 0, filed under the default window
+    assert ps.binding_problems(zero) == ["window"]
+    with pytest.raises(ps.Halt, match="R-b7") as refused:
+        ps.build_table([zero], ps.SELECT_SEEDS)
+    assert "['window']" in refused.value.detail
+    filed = window_cell(204, ran_at=0, filed_as=0)
+    assert ps.binding_problems(filed) == [] and len(ps.build_table([filed], ps.SELECT_SEEDS)) == 1
+
+
+@pytest.mark.parametrize(
+    ("ran_at", "filed_as", "problems"),
+    [
+        (16, None, ["window"]),  # the short-window red: the self-checks' 16, filed as 256
+        (rp.WINDOW, 0, ["window"]),  # a default-window replay filed as window 0
+        (0, 16, ["window"]),  # window 0 filed as some other window
+        (16, 16, []),
+        (rp.WINDOW, rp.WINDOW, []),
+        (rp.WINDOW, None, []),
+    ],
+)
+def test_the_binding_holds_a_replay_to_the_window_it_is_filed_under(ran_at, filed_as, problems):
+    assert ps.binding_problems(window_cell(204, ran_at, filed_as)) == problems
+
+
+def test_the_window_is_in_the_cell_key_only_off_the_default():
+    config = rp.grid("lsm")[0]
+    default = window_cell(204, rp.WINDOW)
+    key = ps.cell_key(default)
+    assert key == ("pool", "lsm", rp.crc_json(config), "settled", 204, False) and len(key) == 6
+    # naming the default window files nothing
+    assert ps.cell_key(window_cell(204, rp.WINDOW, rp.WINDOW)) == key
+    zero = window_cell(204, 0, 0)
+    assert ps.cell_key(zero) == (*key, 0)
+    # Settled@256 and Settled@0 of one seed are two cells; the same window twice is a duplicate
+    assert len(ps.build_table([default, zero], ps.SELECT_SEEDS)) == 2
+    with pytest.raises(ps.Halt, match="R-b7") as duplicate:
+        ps.build_table([zero, window_cell(204, 0, 0)], ps.SELECT_SEEDS)
+    assert "duplicate seed 204" in duplicate.value.detail
+
+
+def test_spec_and_bound_carry_a_window_only_off_the_default():
+    config = rp.grid("lsm")[0]
+    plain = {"candidate": "lsm", "config": config, "form": "carried"}
+    assert ps._spec("lsm", config, "carried") == plain
+    assert list(ps._spec("lsm", config, "carried")) == ["candidate", "config", "form"]
+    assert ps._spec("lsm", config, "carried", window=rp.WINDOW) == plain
+    assert ps._spec("lsm", config, "carried", noise=True) == dict(plain, noise=True)
+    zero = ps._spec("lsm", config, "settled", window=0)
+    assert zero == {"candidate": "lsm", "config": config, "form": "settled", "window": 0}
+    assert ps._spec("lsm", config, "carried", True, 0) == dict(plain, noise=True, window=0)
+    bound = ps._bound(204, ps._spec("lsm", config, "carried"))
+    assert bound == {"arm": "pool", "seed": 204, **plain, "noise": False}
+    assert list(bound) == ["arm", "seed", "candidate", "config", "form", "noise"]
+    settled = ps._bound(204, ps._spec("lsm", config, "settled"))
+    assert ps._bound(204, zero) == dict(settled, window=0)
+    assert ps._bound(204, dict(plain, window=rp.WINDOW)) == bound  # a named default files nothing
+
+
+# the sha256 of g1_surface() computed at the G1(b) parent (7cd4c604), before the window existed
+G1B_SURFACE_SHA256 = "ea54ab059b817620aad56b8f33b6d502344920c604f8086cc133366242edc35b"
+
+
+def g1_surface(seed=204):
+    """Every G1(b) spec, filing, cell key and binding verdict over the whole grid, every form and
+    both noise settings, as one text in dict order (so key order is part of it)."""
+    rows = []
+    for config in rp.grid("lsm"):
+        for form in rp.FORMS:
+            for noise in (False, True):
+                spec = ps._spec("lsm", config, form, noise=noise)
+                bound = ps._bound(seed, spec)
+                binding = {
+                    "candidate": "lsm",
+                    "form": form,
+                    "config_crc32": rp.crc_json(config),
+                    "realization_seed": rp.realization_seed("lsm", seed),
+                    "window": rp.WINDOW,
+                    "noise": noise,
+                    "w_in": ps._w_in_crc(seed),
+                }
+                cell = dict(bound, digest={"arm": "pool", "seed": seed, "pool": binding})
+                rows.append([spec, bound, list(ps.cell_key(cell)), ps.binding_problems(cell)])
+    return json.dumps(rows, separators=(",", ":"))
+
+
+def test_g1b_keys_specs_and_bindings_are_byte_identical_at_the_default():
+    text = g1_surface()
+    assert '"window"' not in text  # no G1(b) spec or filing names the default window
+    assert hashlib.sha256(text.encode("utf-8")).hexdigest() == G1B_SURFACE_SHA256
+
+
+def test_tabulate_binds_a_window_zero_replay_under_its_own_cell(tmp_path):
+    stream = md._synthetic_stream()
+    stream["final"] = dict(zip(("head", "dirty"), md._revision(), strict=True))
+    path = tmp_path / "17-stream.json.gz"
+    md._save(path, stream)
+    config = rp.R_B3_WITNESS["lsm"]
+    cells = [
+        ps._cell(path, tmp_path / f"w{window}.json.gz", 17, index=0, spec=spec)
+        for window, spec in (
+            (rp.WINDOW, ps._spec("lsm", config, "settled")),
+            (0, ps._spec("lsm", config, "settled", window=0)),
+        )
+    ]
+
+    def runner(spec):
+        ps.execute(spec)
+        return {"status": "OK", "path": spec["out"]}
+
+    table = ps._tabulate(cells, (17,), {17: md._load(path)}, runner)
+    crc = rp.crc_json(rp.canonical("lsm", config))
+    default = table[("pool", "lsm", crc, "settled", 17, False)]
+    zero = table[("pool", "lsm", crc, "settled", 17, False, 0)]
+    assert (default["digest"]["pool"]["window"], zero["digest"]["pool"]["window"]) == (rp.WINDOW, 0)
+    assert zero["digest"]["pool"]["movement"] == {} and zero["digest"]["pool"]["boundary"]
+    assert default["digest"]["pool"]["boundary"] is None  # 48 percepts: no window boundary
 
 
 def test_tabulate_binds_real_replays_run_in_process(tmp_path):

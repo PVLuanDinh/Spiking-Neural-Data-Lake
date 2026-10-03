@@ -747,12 +747,15 @@ class _PoolArm:
         self.candidate, self.form = spec["candidate"], spec["form"]
         self.config = rp.canonical(self.candidate, spec["config"])
         self.noise = bool(spec.get("noise", False))
-        # the window is shortened ONLY by the self-checks' short streams (disclosed); a campaign table
-        # refuses any binding whose window is not recurrent_pool.WINDOW (R-b7)
+        # the window is shortened ONLY by the self-checks' short streams (disclosed) and set to 0 by
+        # G1(c)'s Settled@0 arm, which files it as window 0; a campaign table refuses any binding
+        # whose window is not the one it is filed under (R-b7)
         window = int(spec.get("window", rp.WINDOW))
         self.pool = rp.make_pool(self.candidate, self.config, seed, self.form, window=window)
         self.start = {key: value.copy() for key, value in self.pool.params().items()}
-        self.movement = None
+        # window 0 has no window to move across: nothing can move, so the field is the empty
+        # movement a window leaves g1, which keeps it comparable with window 256's
+        self.movement = {} if window == 0 else None
         self.rows = []
         self.kicks = 0
         self.chain = 0  # R-b4's per-percept state chain (amended 2026-09-25, section 2.7)
@@ -821,7 +824,7 @@ def replay(stream, arm, mode="causal", *, mutate=None, readout=True, pool=None):
     G1(b) (g1b-pool-selection.md section 2): the reference readout runs beside the grower for every
     arm and predicts c_t from phi_{t-1} where the grower predicts (`readout=False` switches it off,
     for R-b8's second half); `arm="pool"` takes a spec {"candidate", "config", "form"} (plus "noise",
-    R-b4's red, and "window", the self-checks' short streams only) and feeds x alone through its view
+    R-b4's red, and "window": the self-checks' short streams, and 0 for G1(c)'s Settled@0) and feeds x alone through its view
     into recurrent_pool.make_pool(candidate, config, stream["seed"], form); the whole replay runs at
     one BLAS thread, recorded in the result's policy."""
     if arm not in ARMS or mode not in ("causal", "live"):
@@ -1715,6 +1718,18 @@ def main():
         _validate_run(pooled, fixture, fixture, "pool", "causal")
         assert pooled["pool"]["frozen"] and pooled["pool"]["degeneracy"]["rows"] == 24
         assert len(pooled["readout"]["predictions"]) == len(fixture["events"])
+        # G1(c) 2.6: window 0 is admitted and Carried@0 is Carried@256. The default window never
+        # reaches its boundary on 48 events, so the boundary, frozen and movement fields are not
+        # compared (they differ before a boundary exists); everything the learners and the pool's
+        # continuation state carry is.
+        zero = replay(fixture, "pool", pool=dict(spec, window=0))
+        default = replay(fixture, "pool", pool=dict(spec, window=rp.WINDOW))
+        _validate_run(zero, fixture, fixture, "pool", "causal")
+        assert all(zero[key] == default[key] for key in GROWER_KEYS)
+        assert zero["readout"] == default["readout"]
+        assert all(zero["pool"][key] == default["pool"][key] for key in ("state", "state_chain"))
+        assert zero["pool"]["window"] == 0 and zero["pool"]["boundary"] is not None
+        assert zero["pool"]["movement"] == {}
         for history_free, followers in ((False, {4, 5}), (True, {4})):
             family = rb6_stream(4242, history_free=history_free)
             cats = [event["c"] for event in family["events"]]
@@ -1723,6 +1738,7 @@ def main():
         print(
             "G1(b): readout R-b0x fixtures, R-b2, R-b8 comparisons and reds, pool arm, R-b6 family OK"
         )
+        print("G1(c): Carried@0 = Carried@256 on the 48-event fixture OK")
         print("memory_diagnostic self-check OK")
 
 

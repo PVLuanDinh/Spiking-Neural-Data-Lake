@@ -281,7 +281,7 @@ def cell_key(cell):
         if cell["config"] is None
         else rp.crc_json(rp.canonical(cell["candidate"], cell["config"]))
     )
-    return (
+    key = (
         cell["arm"],
         cell["candidate"],
         config,
@@ -289,6 +289,10 @@ def cell_key(cell):
         cell["seed"],
         bool(cell.get("noise")),
     )
+    # G1(c): a cell filed under a window other than the default carries it, so Settled@0 and
+    # Settled@256 of one seed are two cells; every existing key is the same tuple as before
+    window = cell.get("window", rp.WINDOW)
+    return key if window == rp.WINDOW else (*key, window)
 
 
 def binding_problems(cell):
@@ -306,7 +310,7 @@ def binding_problems(cell):
         "form": cell["form"],
         "config_crc32": rp.crc_json(config),
         "realization_seed": rp.realization_seed(cell["candidate"], cell["seed"]),
-        "window": rp.WINDOW,
+        "window": cell.get("window", rp.WINDOW),
         "noise": bool(cell.get("noise")),
         "w_in": _w_in_crc(cell["seed"]),
     }
@@ -344,17 +348,18 @@ def _refused_by_r_b7(build):
 
 
 def r_b7_reds():
-    """R-b7's three constructed refusals (a wrong configuration, a duplicate seed, a tuning seed in
-    the selection table), beside the well-formed table they are cut from, which must pass."""
+    """R-b7's four constructed refusals (a wrong configuration, a duplicate seed, a tuning seed in
+    the selection table, a window-0 replay filed as window 256), beside the well-formed tables they
+    are cut from (the default window, and window 0 filed as window 0), which must pass."""
     config, other = rp.grid("lsm")[0], rp.grid("lsm")[1]
 
-    def cell(seed, bound=config):
+    def cell(seed, bound=config, window=rp.WINDOW):
         binding = {
             "candidate": "lsm",
             "form": "carried",
             "config_crc32": rp.crc_json(bound),
             "realization_seed": rp.realization_seed("lsm", seed),
-            "window": rp.WINDOW,
+            "window": window,
             "noise": False,
             "w_in": _w_in_crc(seed),
         }
@@ -370,7 +375,13 @@ def r_b7_reds():
             "digest": {"arm": "pool", "seed": seed, "pool": binding},
         }
 
-    control = len(build_table([cell(seed) for seed in SELECT_SEEDS], SELECT_SEEDS)) == 4
+    def filed_as_zero(seed):
+        return dict(cell(seed, window=0), window=0)
+
+    control = (
+        len(build_table([cell(seed) for seed in SELECT_SEEDS], SELECT_SEEDS)) == 4
+        and len(build_table([filed_as_zero(seed) for seed in SELECT_SEEDS], SELECT_SEEDS)) == 4
+    )
     red = {
         "wrong configuration": _refused_by_r_b7(
             lambda: build_table([cell(204, bound=other)], SELECT_SEEDS)
@@ -380,6 +391,10 @@ def r_b7_reds():
         ),
         "tuning seed in selection": _refused_by_r_b7(
             lambda: build_table([cell(200)], SELECT_SEEDS)
+        ),
+        # a replay run at window 0 but filed under the default window (it carries no window)
+        "window-0 replay filed as window 256": _refused_by_r_b7(
+            lambda: build_table([cell(204, window=0)], SELECT_SEEDS)
         ),
     }
     return {"verdict": bool(control and all(red.values())), "control": control, "red": red}
@@ -427,15 +442,18 @@ def _replay_job(stream, arm, out, *, pool=None, readout=True, fault=None):
 # distinct-from: faculties/drive_reduction.py -- NeedPool is a drive's LIF population
 # distinct-from: reasoning/rpm_solver.py -- _induce_attr predicts a missing matrix cell
 # distinct-from: instruments/binding_instrument.py -- _t080_sparse_latent draws a sparse latent
-def _spec(candidate, config, form, noise=False):
+def _spec(candidate, config, form, noise=False, window=rp.WINDOW):
     """A pool arm's spec for memory_diagnostic.replay (R-b4's red when `noise`)."""
     spec = {"candidate": candidate, "config": config, "form": form}
-    return dict(spec, noise=True) if noise else spec
+    spec = dict(spec, noise=True) if noise else spec
+    # G1(c): a window other than the default is part of the spec; the default adds no key, so every
+    # G1(b) spec is the dict it always was
+    return spec if window == rp.WINDOW else dict(spec, window=window)
 
 
 def _bound(seed, spec):
     """What one pool replay must be bound to (R-b7), for binding_problems."""
-    return {
+    bound = {
         "arm": "pool",
         "seed": seed,
         "candidate": spec["candidate"],
@@ -443,6 +461,9 @@ def _bound(seed, spec):
         "form": spec["form"],
         "noise": bool(spec.get("noise")),
     }
+    # the same rule: a spec under a non-default window files that window, the default files none
+    window = spec.get("window", rp.WINDOW)
+    return bound if window == rp.WINDOW else dict(bound, window=window)
 
 
 def _cell(stream, out, seed, *, arm="pool", index=None, spec=None, missing=False):
@@ -1500,7 +1521,7 @@ def self_check():
     assert t_quantile(0.95, 30) <= T_BAR_S31 < t_quantile(0.95, 30) + 1e-4
     assert math.ceil(t_quantile(0.95, 30) * 1e4) / 1e4 == T_BAR_S31
     assert power_s(SIGMA_PROXY)["S"] - 1 == 30
-    # R-b7's three refusals, beside the well-formed table
+    # R-b7's four refusals (the fourth: a window-0 replay filed as window 256), beside the well-formed tables
     reds = r_b7_reds()
     assert reds["verdict"], reds
     # the step order, the taxonomy and the exit codes, on a scratch OUT at a stand-in revision (the

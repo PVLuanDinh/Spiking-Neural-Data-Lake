@@ -4,8 +4,9 @@ The frozen text is specs/022-unified-brain-arc/evidence/g1b-pool-selection.md se
 23c7e97). This module holds the pool contract of section 2.2 (the shared encoder, the adaptation
 window, the four forms, the startup diagnostic), section 2.3's g1 LSM with its source's exact draws,
 the manifest and cost of section 2.4, and the machinery of R-b0 (parity with its source), R-b3
-(determinism by construction), R-b4's pool-noise red and R-b5 (the forms do what they claim). Every
-red is constructed by `main()`. The reference readout, the harness arms and the campaign are
+(determinism by construction), R-b4's pool-noise red and R-b5 (the forms do what they claim); G1(c)
+adds window 0 (g1c-carried-state.md 2.6, 2.10: no adaptation window, Settled from the first
+percept) and its check. Every red is constructed by `main()`. The reference readout, the harness arms and the campaign are
 instruments/memory_diagnostic.py's. Nothing here builds a brain or touches the lake.
 
 The selection record (section 3.4, commit 0bd1de7) named g1 the winner, and section 2.9 then deleted
@@ -103,6 +104,16 @@ R_B5_PERSISTENCE_WITNESS = {"k": 8, "w": 0.5, "lambda": 0.9, "g": 2, "T_in": 1}
 # skipped reset must leak prefix history through both Reset and Settled's 64 uncounted steps.
 R_B5_ERASURE_WITNESS = {
     "lsm": ({"k": 32, "w": 1.0, "lambda": 0.9, "g": 8, "T_in": 8}, "v"),
+}
+# G1(c) 2.10's window-0 check: more percepts than the default window so percepts 257-end can be
+# compared, and the short run each form's boundary and freeze are read after
+W0_PERCEPTS = 320
+W0_AFTER = 16
+# each constructed fault and the one clause it must make fail
+W0_FAULTS = {
+    "clamp": "i_first_phi",
+    "write_after": "ii_boundary",
+    "boundary_resets": "iv_carried_identity",
 }
 
 
@@ -248,7 +259,9 @@ class _Pool:
     `percept(x)` is one wake percept: u = W_in x, the pool's own percept count, Carried for the
     first `window` percepts, a boundary fingerprint of every parameter at the last window
     percept, then the form, then T_in counted steps; phi is each unit's mean activity over the
-    counted steps.
+    counted steps. Window 0 (G1(c) 2.6) is no window at all: every percept runs the form's own
+    regime from percept 1, and the boundary fingerprint is taken at construction (the subclass
+    takes it once its parameters exist).
     """
 
     name = ""
@@ -257,8 +270,10 @@ class _Pool:
     def __init__(self, config, form, w_in, *, window=WINDOW, s_settle=S_SETTLE):
         if form not in FORMS:
             raise ValueError(f"REFUSED: unknown form {form!r}")
-        if int(window) < 1 or int(s_settle) < 0 or int(config["T_in"]) < 1:
-            raise ValueError("REFUSED: window and T_in must be positive, s_settle non-negative")
+        if int(window) < 0:
+            raise ValueError("REFUSED: the window is a non-negative count of percepts")
+        if int(s_settle) < 0 or int(config["T_in"]) < 1:
+            raise ValueError("REFUSED: T_in must be positive, s_settle non-negative")
         self.config = dict(config)
         self.form = form
         self.w_in = None if w_in is None else np.array(w_in, dtype=np.float64)
@@ -344,6 +359,10 @@ class LsmPool(_Pool):
         self.lam = float(config["lambda"])
         self.g = config["g"]
         self.reset_carriers()
+        if self.window == 0:
+            # no window: the parameters are final from construction, so the boundary fingerprint
+            # (and Front-end's lesion) exist now; percept_drive never reaches count == window
+            self._at_boundary()
 
     def _reset_values(self):
         return {"v": np.zeros(self.n), "s": np.zeros(self.n, dtype=bool)}
@@ -877,6 +896,161 @@ def check_r_b5_freeze_red(candidate, config, recording_seed=DEV_SEED, *, window=
     }
 
 
+# ---- window 0: Settled from the first percept (G1(c) 2.6, 2.10) ---------------------------------
+
+
+def _settled_first_phi(config, recording_seed, x):
+    """Reset, s_settle uncounted steps, then t_in counted steps summed left to right and divided
+    by t_in, written from step() and reset_carriers() alone (never percept_drive or the window)."""
+    stepper = make_pool("lsm", config, recording_seed, "carried")
+    u = drive(stepper.w_in, x)
+    stepper.reset_carriers()
+    for _ in range(stepper.s_settle):
+        stepper.step(u)
+    total = np.zeros(stepper.n)
+    for _ in range(stepper.t_in):
+        total = total + stepper.step(u)
+    return total / stepper.t_in
+
+
+def _boundary_resets(pool):
+    """(iv)'s red: the window boundary also resets the carriers of a Carried pool."""
+    base = type(pool)
+
+    def _at_boundary(self):
+        base._at_boundary(self)
+        self.reset_carriers()
+
+    return _fault(pool, "boundary_resets", _at_boundary=_at_boundary)
+
+
+# distinct-from: instruments/pool_selection.py::mechanism_checks -- G1(b)'s campaign step CALLS this module's R-b0..R-b5 checks at the default window; this is G1(c)'s own window-0 check, which that step does not run
+def check_window_zero(
+    config=R_B5_PERSISTENCE_WITNESS, recording_seed=DEV_SEED, *, percepts=W0_PERCEPTS, fault=None
+):
+    """G1(c) 2.10's window-0 check: four clauses on one realization and one percept sequence.
+    (i) Settled@0's first phi equals an independent derivation (reset, S_SETTLE uncounted steps,
+    T_in counted steps, their mean) bit for bit. (ii) Every form's boundary fingerprint exists at
+    count 0, the four agree, Front-end's lesion is recorded, and frozen() holds after a short run.
+    (iii) Settled@0's phi equals Settled@256's on percepts 257-end and differs on at least one of
+    percepts 1-256. (iv) Carried@0 and Carried@256 give identical phi sequences, state chains and
+    final fingerprints. `fault` builds a red and must fail exactly its own clause (W0_FAULTS):
+    "clamp" silently raises window 0 to 1 after construction, "write_after" writes one weight
+    after the construction-time boundary, "boundary_resets" gives Carried a boundary that resets
+    its carriers."""
+    if fault is not None and fault not in W0_FAULTS:
+        raise ValueError(f"REFUSED: unknown window-0 fault {fault!r}")
+    if percepts <= WINDOW:
+        raise ValueError(
+            "REFUSED: window 0 meets window 256 on percepts 257-end; pass more than 256"
+        )
+    sequence = random_percepts(recording_seed, percepts)
+
+    def build(form, window):
+        return make_pool("lsm", config, recording_seed, form, window=window)
+
+    settled = build("settled", 0)
+    if fault == "clamp":
+        settled.window = max(1, settled.window)
+    phi_zero = [settled.percept(x) for x in sequence]
+    first = _settled_first_phi(config, recording_seed, sequence[0])
+    first_equal = bool(np.array_equal(phi_zero[0], first))
+
+    settled_default = build("settled", WINDOW)
+    phi_default = [settled_default.percept(x) for x in sequence]
+    after_equal = all(
+        np.array_equal(a, b) for a, b in zip(phi_zero[WINDOW:], phi_default[WINDOW:], strict=True)
+    )
+    inside_differ = sum(
+        not np.array_equal(a, b)
+        for a, b in zip(phi_zero[:WINDOW], phi_default[:WINDOW], strict=True)
+    )
+
+    boundary, exists, frozen, lesions = {}, {}, {}, {}
+    for form in FORMS:
+        pool = build(form, 0)
+        exists[form] = pool.count == 0 and pool.boundary is not None
+        boundary[form] = pool.boundary
+        if fault == "write_after" and form == "carried":
+            w = pool.w.copy()
+            w[0, 0] = np.nextafter(w[0, 0], np.inf)
+            pool.w = w
+        for x in sequence[:W0_AFTER]:
+            pool.percept(x)
+        frozen[form] = bool(pool.frozen())
+        lesions[form] = pool.lesion_record and pool.lesion_record["changed"]
+    agree = len(set(boundary.values())) == 1
+
+    carried = {}
+    for window in (0, WINDOW):
+        pool = build("carried", window)
+        if fault == "boundary_resets":
+            pool = _boundary_resets(pool)
+        rows, crc = [], 0
+        for x in sequence:
+            rows.append(pool.percept(x))
+            crc = zlib.crc32(pool.fingerprint().to_bytes(4, "little"), crc)
+        carried[window] = (rows, crc, pool.fingerprint())
+    zero, default = carried[0], carried[WINDOW]
+    phi_identical = all(np.array_equal(a, b) for a, b in zip(zero[0], default[0], strict=True))
+
+    clauses = {
+        "i_first_phi": first_equal,
+        "ii_boundary": bool(
+            all(exists.values())
+            and agree
+            and all(frozen.values())
+            and lesions["front_end"] == ["w"]
+        ),
+        "iii_settled_invariance": bool(after_equal and inside_differ >= 1),
+        "iv_carried_identity": bool(
+            phi_identical and zero[1] == default[1] and zero[2] == default[2]
+        ),
+    }
+    return {
+        "verdict": all(clauses.values()),
+        "numbers": {
+            "config": config,
+            "percepts": percepts,
+            "fault": fault,
+            "clauses": clauses,
+            "first_phi_crc": zlib.crc32(phi_zero[0].tobytes()),
+            "after_boundary_equal": bool(after_equal),
+            "inside_window_differing": int(inside_differ),
+            "boundary_at_count_0": exists,
+            "boundary_agree": agree,
+            "frozen": frozen,
+            "front_end_changed": lesions["front_end"],
+            "carried_phi_identical": bool(phi_identical),
+            "carried_chain": [zero[1], default[1]],
+            "carried_final": [zero[2], default[2]],
+        },
+    }
+
+
+# Sites read; none runs constructed window-0 faults against check_window_zero's clauses:
+# distinct-from: instruments/attention_schema.py::main -- its own self-check, six reds of the attention-schema scorer
+# distinct-from: instruments/paired_contrast.py::main -- its own self-check of the paired t statistic and its exact FPR
+# distinct-from: instruments/pool_selection.py::step_mechanism -- G1(b)'s campaign step that runs the default-window pool checks in a child process
+# distinct-from: readout/interaction_learning.py::g0_campaign -- a seed/arm campaign driver that writes a label and routing verdict
+# distinct-from: reasoning/jepa_scaffold_torch.py::verify_transfer -- an export-to-core bridge check on a torch model
+def check_window_zero_faults(
+    config=R_B5_PERSISTENCE_WITNESS, recording_seed=DEV_SEED, *, percepts=W0_PERCEPTS, twin=None
+):
+    """The window-0 faults of W0_FAULTS: each must fail its own clause of check_window_zero and no
+    other, while the unfaulted twin (`twin`, a result already in hand) holds all four."""
+    twin = check_window_zero(config, recording_seed, percepts=percepts) if twin is None else twin
+    failed = {}
+    for fault in W0_FAULTS:
+        broken = check_window_zero(config, recording_seed, percepts=percepts, fault=fault)
+        failed[fault] = sorted(key for key, ok in broken["numbers"]["clauses"].items() if not ok)
+    expected = {fault: [clause] for fault, clause in W0_FAULTS.items()}
+    return {
+        "verdict": bool(twin["verdict"] and failed == expected),
+        "numbers": {"twin": twin["numbers"]["clauses"], "failed": failed},
+    }
+
+
 # ---- the self-check ------------------------------------------------------------------------------
 
 
@@ -918,6 +1092,15 @@ def main():
     assert check_r_b5_persistence(window=32)["verdict"]
     assert not check_r_b5_persistence(window=32, carried_form="reset")["verdict"]
     print("R-b5 persistence and its reset-every-percept red OK")
+    zero = check_window_zero()
+    assert zero["verdict"], zero["numbers"]
+    faults = check_window_zero_faults(twin=zero)
+    assert faults["verdict"], faults["numbers"]
+    print(
+        "window 0: Settled@0's first phi, boundary at count 0, Settled@0 = Settled@256 after 256, "
+        "Carried@0 = Carried@256; faults fired on "
+        + ", ".join(f"{fault}->{clause}" for fault, clause in W0_FAULTS.items())
+    )
     diagnostic = startup_diagnostic(make_pool("lsm", R_B5_PERSISTENCE_WITNESS, DEV_SEED))
     print(
         "startup diagnostic g1 witness: transients "

@@ -364,3 +364,151 @@ def test_r_b5_freeze_red_a_weight_written_after_the_boundary():
     assert result["numbers"]["twin_frozen"] == frozen
     assert result["numbers"]["faulted_frozen"] == dict(frozen, carried=False)
     assert result["numbers"]["boundary_agree"]  # the write came after the fingerprint
+
+
+# ---- window 0: Settled from the first percept (G1(c) 2.6, 2.10) ----------------------------------
+
+W0_CLAUSES = ("i_first_phi", "ii_boundary", "iii_settled_invariance", "iv_carried_identity")
+
+
+def test_window_zero_is_a_non_negative_count_and_every_other_refusal_stands():
+    pool = _lsm("settled", window=0)
+    assert (pool.window, pool.count) == (0, 0)
+    for window in (-1, -256):
+        with pytest.raises(ValueError, match="non-negative count"):
+            _lsm(window=window)
+    with pytest.raises(ValueError, match="T_in must be positive"):
+        rp.LsmPool(LSM_PRE, LSM_W, dict(LSM_CFG, T_in=0), window=0)
+    with pytest.raises(ValueError, match="s_settle non-negative"):
+        rp.LsmPool(LSM_PRE, LSM_W, LSM_CFG, window=0, s_settle=-1)
+
+
+@pytest.mark.parametrize("form", rp.FORMS)
+def test_window_zero_takes_the_boundary_at_construction_in_every_form(form):
+    adapted = rp.LsmPool(LSM_PRE, LSM_W, LSM_CFG, window=1)  # a window pool has none yet
+    assert adapted.boundary is None and adapted.frozen() is None
+    pool = _lsm(form, window=0)
+    assert pool.count == 0 and pool.boundary == adapted.params_fingerprint()
+    assert pool.frozen()
+    if form == "front_end":  # the lesion exists from construction, and the boundary precedes it
+        assert pool.w.tolist() == [[0.0, 0.0]] * 3 and pool.lesion_record["changed"] == ["w"]
+        assert pool.lesion_record["params"] != pool.boundary
+    else:
+        assert pool.lesion_record is None and pool.w.tolist() == LSM_W
+
+
+def test_window_zero_settled_runs_its_form_from_the_first_percept_by_hand():
+    # Settled resets, takes one uncounted step, then two counted ones. From zero U1 gives
+    # v = [0.5, 1, 0.75] (settle: only unit 1 spikes), then two steps on which all three units spike
+    pool = _lsm("settled", window=0)
+    assert pool.percept_drive(U1).tolist() == [1.0, 1.0, 1.0]
+    # percept 2 resets again: settle v = [0, 0.5, 0], then 0.75 and 0.875, nothing spiking
+    assert pool.percept_drive(U2).tolist() == [0.0, 0.0, 0.0]
+    assert pool.v.tolist() == [0.0, 0.875, 0.0] and pool.s.tolist() == [False] * 3
+    # at window 1 percept 1 is Carried (no settle step): the first percept is where they part
+    assert _lsm("settled", window=1).percept_drive(U1).tolist() == [0.5, 1.0, 0.5]
+    # the wrong twin: a window silently clamped to 1 after construction gives that Carried phi
+    clamped = _lsm("settled", window=0)
+    clamped.window = 1
+    assert clamped.percept_drive(U1).tolist() == [0.5, 1.0, 0.5]
+
+
+def test_window_zero_front_end_reset_and_carried_first_percepts_by_hand():
+    front = _lsm("front_end", window=0)  # zero synapses from the start, the leak still carries
+    assert front.percept_drive(U1).tolist() == [0.0, 1.0, 0.5]
+    reset = _lsm("reset", window=0)  # the carriers are zero at construction: Carried's first phi
+    assert reset.percept_drive(U1).tolist() == [0.5, 1.0, 0.5]
+    assert reset.percept_drive(U2).tolist() == [0.0, 0.0, 0.0]
+    assert reset.v.tolist() == [0.0, 0.75, 0.0]
+    carried = _lsm("carried", window=0)
+    assert carried.percept_drive(U1).tolist() == [0.5, 1.0, 0.5]
+    assert carried.percept_drive(U2).tolist() == [0.5, 0.5, 0.5]
+    assert carried.v.tolist() == [0.0, 0.5, 0.5] and carried.boundary is not None
+
+
+def test_the_independent_first_phi_is_apart_from_the_pool_and_sees_the_settle_count():
+    config, seed = rp.R_B5_PERSISTENCE_WITNESS, rp.DEV_SEED
+    x = rp.random_percepts(seed, 1)[0]
+    first = rp._settled_first_phi(config, seed, x)
+    settled = rp.make_pool("lsm", config, seed, "settled", window=0)
+    assert np.array_equal(settled.percept(x), first)
+    for settle in (63, 65):  # a derivation one settle step off is a different phi
+        wrong = rp.make_pool("lsm", config, seed, "settled", window=0, s_settle=settle)
+        assert not np.array_equal(wrong.percept(x), first)
+    carried = rp.make_pool("lsm", config, seed, "carried", window=0)
+    assert not np.array_equal(carried.percept(x), first)  # Carried@0 does not settle
+
+
+def test_settled_at_zero_meets_settled_at_the_window_only_after_the_window():
+    config, seed, window = rp.R_B5_PERSISTENCE_WITNESS, rp.DEV_SEED, 8
+    zero = rp.make_pool("lsm", config, seed, "settled", window=0)
+    late = rp.make_pool("lsm", config, seed, "settled", window=window)
+    sequence = rp.random_percepts(seed, window + 8)
+    pairs = [(zero.percept(x), late.percept(x)) for x in sequence]
+    # inside the window one is Carried and the other Settled; after it both reset and settle
+    assert any(not np.array_equal(a, b) for a, b in pairs[:window])
+    assert all(np.array_equal(a, b) for a, b in pairs[window:])
+
+
+def test_carried_at_zero_is_carried_at_the_window_phi_state_and_chain():
+    config, seed, window = rp.R_B5_PERSISTENCE_WITNESS, rp.DEV_SEED, 12
+    zero = rp.make_pool("lsm", config, seed, "carried", window=0)
+    late = rp.make_pool("lsm", config, seed, "carried", window=window)
+    for x in rp.random_percepts(seed, window + 12):
+        assert np.array_equal(zero.percept(x), late.percept(x))
+        assert zero.fingerprint() == late.fingerprint()
+    assert zero.boundary == late.boundary  # the same parameters, fingerprinted at two moments
+
+
+def test_window_zero_check_holds_its_four_clauses_on_its_twin():
+    result = rp.check_window_zero()
+    assert result["verdict"], result["numbers"]
+    numbers = result["numbers"]
+    assert numbers["clauses"] == dict.fromkeys(W0_CLAUSES, True)
+    assert numbers["config"] == rp.R_B5_PERSISTENCE_WITNESS and numbers["fault"] is None
+    assert numbers["percepts"] == 320 and numbers["inside_window_differing"] >= 1
+    assert numbers["after_boundary_equal"] and numbers["boundary_agree"]
+    assert all(numbers["boundary_at_count_0"].values()) and all(numbers["frozen"].values())
+    assert numbers["front_end_changed"] == ["w"] and numbers["carried_phi_identical"]
+    assert numbers["carried_chain"][0] == numbers["carried_chain"][1]
+    assert numbers["carried_final"][0] == numbers["carried_final"][1]
+
+
+@pytest.mark.parametrize(("fault", "clause"), sorted(rp.W0_FAULTS.items()))
+def test_each_window_zero_fault_fails_its_own_clause_and_no_other(fault, clause):
+    result = rp.check_window_zero(fault=fault)
+    clauses = result["numbers"]["clauses"]
+    assert not result["verdict"] and clauses[clause] is False, clauses
+    assert all(ok for key, ok in clauses.items() if key != clause), clauses
+
+
+def test_the_window_zero_faults_runner_names_each_fault_and_can_say_no():
+    twin = rp.check_window_zero()
+    result = rp.check_window_zero_faults(twin=twin)
+    assert result["verdict"], result["numbers"]
+    assert result["numbers"]["failed"] == {f: [c] for f, c in rp.W0_FAULTS.items()}
+    assert result["numbers"]["twin"] == dict.fromkeys(W0_CLAUSES, True)
+    # a twin that is not clean makes the runner refuse, however the faults fire
+    assert not rp.check_window_zero_faults(twin=dict(twin, verdict=False))["verdict"]
+
+
+def test_the_freeze_red_of_the_default_window_cannot_see_a_write_at_window_zero():
+    # R-b5 (iii)'s planted write waits for a boundary that, at window 0, was already taken inside
+    # the constructor, so it never lands and the red does not fire: window 0's own red writes a
+    # weight after construction instead (W0_FAULTS["write_after"])
+    result = rp.check_r_b5_freeze_red("lsm", CONFIG["lsm"], window=0)
+    assert not result["verdict"] and result["numbers"]["fired"] == []
+    assert rp.W0_FAULTS["write_after"] == "ii_boundary"
+
+
+def test_window_zero_check_refuses_a_run_inside_the_window_and_an_unknown_fault():
+    with pytest.raises(ValueError, match="more than 256"):
+        rp.check_window_zero(percepts=256)
+    with pytest.raises(ValueError, match="unknown window-0 fault"):
+        rp.check_window_zero(fault="sideways")
+    assert set(rp.W0_FAULTS.values()) <= set(W0_CLAUSES)
+
+
+def test_window_zero_adds_no_form_and_no_candidate():
+    assert rp.FORMS == ("carried", "reset", "settled", "front_end")
+    assert rp.CANDIDATES == ("lsm",) and set(rp.POOLS) == {"lsm"} and rp.WINDOW == 256
