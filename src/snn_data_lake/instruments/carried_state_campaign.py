@@ -19,6 +19,20 @@ This module (arc P1-C) holds what that text freezes and what decides without tou
   oracle_check       section 2.4 (ii): accuracy(f64) - accuracy(a) through the reference readout decides,
                      the grower's reading of the same difference is reported beside it
 
+Arc P3b adds section 2.6's within-block time shuffle and section 2.5's reading of the primary:
+
+  shuffle_blocks     the shuffle as a PURE stream transform (percept fields move inside a block, slot fields
+                     and sleep rows stay); the campaign writes each shuffled stream to disk and replays it
+                     as an ordinary stream, so replay has no new path
+  check_shuffle_transform, settled_invariance
+                     the transform's checks, and 2.6's Settled invariance over two replay results
+  survives, incremental
+                     "survives" = contrast(D_shuf) met at T_CRIT; contrast(D - D_shuf) is reported
+  g_r1_reading       2.5's table, rows top to bottom, as a pure function
+
+The 48-event self-check fixture is shorter than one 256-event block, so its shuffles use blocks of 8
+(FIXTURE_BLOCK); every function takes the block size and defaults to SHUFFLE_BLOCK.
+
 The campaign stages (record ... report, section 2.13) arrive in P5, added to this module; it imports
 `pool_selection`'s step, job and table machinery for them (section 2.14).
 
@@ -27,9 +41,17 @@ The campaign stages (record ... report, section 2.13) arrive in P5, added to thi
 Pure standard library beyond the instruments it restates; deterministic; ASCII-only prints.
 """
 
+import copy
+import itertools
+import json
 import math
 import random
+import zlib
+from collections import Counter
 
+import numpy as np
+
+from snn_data_lake.instruments import memory_diagnostic as md
 from snn_data_lake.instruments import paired_contrast as pc
 from snn_data_lake.instruments import pool_selection as ps
 from snn_data_lake.reservoir import recurrent_pool as rp
@@ -224,6 +246,323 @@ def oracle_check(readout, grower, *, seeds=LIVE_SEEDS, allow_reserve=False):
     return {"decoder": decoder, "grower": rows["grower"], "met": decoder["met"]}
 
 
+# ---- section 2.6: the within-block time shuffle (a pure stream transform) --------------------------
+SHUFFLE_BLOCK = 256  # 2.6: a block is 256 consecutive events by index within one segment (packs are 256-periodic)
+SHUFFLE_K = 4  # 2.6: shuffles per recording
+# 2.6's TAG: the fixed middle word of SeedSequence([recording_seed, TAG, k]); the ASCII bytes of "SHUF".
+# Frozen with the draws the campaign asserts before its first recording; never changed after them.
+SHUFFLE_TAG = 0x53485546
+# 2.6: a percept's fields move together; the slot's fields stay (|LP| is a property of the time axis). Together
+# they are every key memory_diagnostic.record_stream writes to an event plus the "segment" _segments adds (a
+# test ties the two sets to that code): an event key in neither set refuses the transform.
+PERCEPT_FIELDS = ("x", "c", "source", "attended", "prediction", "fallback")
+SLOT_FIELDS = ("t", "tick", "segment", "causal_lp")
+_KNOWN_FIELDS = frozenset((*PERCEPT_FIELDS, *SLOT_FIELDS))
+_BOUND_KEYS = (
+    "seed",
+    "config",
+    "policy",
+    "final",
+)  # a shuffled stream keeps the recording's binding keys
+FIXTURE_BLOCK = (
+    8  # the 48-event fixture is shorter than one SHUFFLE_BLOCK: its shuffles use blocks of 8
+)
+
+
+# distinct-from: instruments/memory_diagnostic.py::_source_digest -- that digests events + sleep to one crc32; this is the canonical JSON string itself, so the multiset comparisons below are exact (a crc would make them probabilistic). reservoir/recurrent_pool.py::crc_json is likewise a crc32
+def _canon(value):
+    """Canonical JSON: the form memory_diagnostic's source digest and every comparison below use."""
+    return json.dumps(value, sort_keys=True)
+
+
+def _percept(event):
+    return {key: event[key] for key in PERCEPT_FIELDS if key in event}
+
+
+def _slots(event):
+    return _canon({key: event[key] for key in SLOT_FIELDS if key in event})
+
+
+def _pairs(rows, group):
+    """The sorted canonical (x, c) pairs of a block."""
+    return sorted(_canon([rows[i].get("x"), rows[i].get("c")]) for i in group)
+
+
+def _percepts(rows, group):
+    """The sorted canonical whole percepts of a block."""
+    return sorted(_canon(_percept(rows[i])) for i in group)
+
+
+# distinct-from: instruments/inseparable_mapping.py::_shuffled -- re-draws a taught-label arrangement until it differs, from a random.Random; this is the numpy SeedSequence([recording_seed, TAG, k]) generator 2.6 freezes, whose draws are asserted and never re-drawn
+def shuffle_seed(recording_seed, k):
+    """The generator of 2.6's permutation draws: default_rng(SeedSequence([recording_seed, TAG, k]))."""
+    return np.random.default_rng(np.random.SeedSequence([recording_seed, SHUFFLE_TAG, k]))
+
+
+def blocks(stream, block=SHUFFLE_BLOCK):
+    """2.6's blocks as lists of event indices: within each segment (an event whose segment is None, x_1,
+    is in no block) consecutive groups of `block` by index within the segment; a final partial group is
+    its own block."""
+    if not isinstance(block, int) or isinstance(block, bool) or block < 1:
+        raise ValueError(f"the block size must be a positive int, got {block!r}")
+    by_segment = {}
+    for index, event in enumerate(stream["events"]):
+        if event.get("segment") is not None:
+            by_segment.setdefault(event["segment"], []).append(index)
+    return [
+        indices[start : start + block]
+        for indices in by_segment.values()
+        for start in range(0, len(indices), block)
+    ]
+
+
+def block_permutations(recording_seed, k, sizes):
+    """One permutation per block size, drawn in order from `shuffle_seed(recording_seed, k)`; permutation[i]
+    is the block position whose percept lands at position i. 2.6: a block of two or more events moves at
+    least half its events, ASSERTED on the draw (AssertionError) and never re-drawn; the campaign asserts
+    it on its seeds before the first recording."""
+    rng = shuffle_seed(recording_seed, k)
+    drawn = []
+    for size in sizes:
+        permutation = rng.permutation(size).tolist()
+        moved = sum(permutation[i] != i for i in range(size))
+        if size >= 2 and 2 * moved < size:
+            raise AssertionError(
+                f"shuffle (seed {recording_seed}, k {k}): a block of {size} moves {moved} events, "
+                "under half (g1c 2.6; never re-drawn)"
+            )
+        drawn.append(permutation)
+    return drawn
+
+
+def _pass_problems(events, groups):
+    """Why a block is not one contiguous pass (empty if all are). A source pointer is the brain's frame
+    cursor at an acquisition and advances by one per acquisition, so a block of consecutive deliveries is
+    one contiguous pass exactly when its events are consecutive in the recording and, where they carry
+    sources, each modality's pointers are consecutive integers. A reflex tick acquires without delivering
+    (memory_diagnostic._segments), so a live gap is refused here, never shuffled across."""
+    problems = []
+    for group in groups:
+        start = group[0]
+        if group[-1] - start != len(group) - 1:
+            problems.append(f"block at event {start}: events are not consecutive in the recording")
+            continue
+        sources = [events[i].get("source") for i in group]
+        if all(source is None for source in sources):
+            continue
+        for modality in ("vision", "audio"):
+            try:
+                pointers = [source[modality]["pointer"] for source in sources]
+                gapless = pointers == [pointers[0] + j for j in range(len(pointers))]
+            except (KeyError, TypeError):
+                gapless = False
+            if not gapless:
+                problems.append(
+                    f"block at event {start}: {modality} pointers are not one contiguous pass"
+                )
+    return problems
+
+
+# distinct-from: reasoning/arc_agi/rule_inducer.py::shuffle_transitions -- permutes ACTION labels across a whole transition list as a control; this moves a recorded percept's fields between events inside one 256-event block of a recording, keeps slot fields, sleep rows and the revision binding, and refuses an unknown key or a non-contiguous block
+def shuffle_blocks(stream, k, *, block=SHUFFLE_BLOCK):
+    """2.6's shuffle k of a recording: a deep copy in which, inside every block, each event carries the
+    PERCEPT_FIELDS of another event of that block (a permutation drawn by `block_permutations`) while
+    every SLOT_FIELD, every event in no block and every sleep row stays in place. The copy keeps the
+    recording's seed, config, policy and final (the revision binding holds) and gains
+    "shuffle": {"seed", "block", "k"}; the campaign writes it to disk and replays it as an ordinary
+    stream. ValueError refuses an event key in neither field set, an already shuffled stream, a stream
+    with no block, and a block that is not one contiguous pass."""
+    if not isinstance(k, int) or isinstance(k, bool) or k < 0:
+        raise ValueError(f"k must be a non-negative int, got {k!r}")
+    if "shuffle" in stream:
+        raise ValueError("REFUSED: the stream is already shuffled")
+    for index, event in enumerate(stream["events"]):
+        extra = sorted(set(event) - _KNOWN_FIELDS)
+        if extra:
+            raise ValueError(
+                f"REFUSED: event {index} carries the key {extra[0]!r}, in neither PERCEPT_FIELDS nor "
+                "SLOT_FIELDS (g1c 2.6)"
+            )
+    groups = blocks(stream, block)
+    if not groups:
+        raise ValueError("REFUSED: no segment events: there is no block to shuffle")
+    problems = _pass_problems(stream["events"], groups)
+    if problems:
+        raise ValueError(f"REFUSED: {problems[0]}")
+    shuffled = copy.deepcopy(stream)
+    permutations = block_permutations(stream["seed"], k, [len(group) for group in groups])
+    for group, permutation in zip(groups, permutations, strict=True):
+        held = [_percept(shuffled["events"][i]) for i in group]
+        for slot, donor in zip(group, permutation, strict=True):
+            event = shuffled["events"][slot]
+            for key in PERCEPT_FIELDS:
+                event.pop(key, None)
+            event.update(held[donor])
+    shuffled["shuffle"] = {"seed": stream["seed"], "block": block, "k": k}
+    return shuffled
+
+
+def check_shuffle_transform(stream, shuffled, block=SHUFFLE_BLOCK):
+    """The transform's own check, as {"ok", "reasons"} (every failed reason, none raised): every event key
+    known; per block the multiset of (x, c) pairs and of whole percepts equal; slot fields, events in no
+    block and the whole sleep list equal to the original; the revision-binding keys kept; the shuffle
+    declared; the digest different; at least half of each block of two or more moved; and `shuffled` is
+    exactly what `shuffle_blocks` returns for its declared k, while k + 1 gives another stream."""
+    events, mixed = stream["events"], shuffled.get("events")
+    if not isinstance(mixed, list) or len(mixed) != len(events) or "sleep" not in shuffled:
+        return {"ok": False, "reasons": ["the shuffled stream lacks the events or the sleep rows"]}
+    reasons = []
+    for name, rows in (("original", events), ("shuffled", mixed)):
+        for index, event in enumerate(rows):
+            extra = sorted(set(event) - _KNOWN_FIELDS)
+            if extra:
+                reasons.append(f"{name} event {index}: unknown key {extra[0]!r}")
+                break
+    groups = blocks(stream, block)
+    in_block = {i for group in groups for i in group}
+    if any(_canon(events[i]) != _canon(mixed[i]) for i in range(len(events)) if i not in in_block):
+        reasons.append("an event in no block (x_1) changed")
+    if any(_slots(a) != _slots(b) for a, b in zip(events, mixed, strict=True)):
+        reasons.append("a slot field changed (t, tick, segment and causal_lp stay at the slot)")
+    if _canon(stream["sleep"]) != _canon(shuffled["sleep"]):
+        reasons.append("the sleep rows differ from the original's")
+    if any(stream.get(key) != shuffled.get(key) for key in _BOUND_KEYS):
+        reasons.append(
+            "revision binding: seed, config, policy or final differ from the recording's"
+        )
+    declared = shuffled.get("shuffle")
+    declares = (
+        isinstance(declared, dict)
+        and declared.get("seed") == stream.get("seed")
+        and declared.get("block") == block
+        and isinstance(declared.get("k"), int)
+    )
+    if not declares:
+        reasons.append('the stream does not declare its shuffle {"seed", "block", "k"}')
+    for group in groups:
+        if _pairs(events, group) != _pairs(mixed, group):
+            reasons.append(f"block at event {group[0]}: the multiset of (x, c) pairs changed")
+        elif _percepts(events, group) != _percepts(mixed, group):
+            reasons.append(f"block at event {group[0]}: the percept fields did not travel together")
+        moved = sum(_canon(_percept(events[i])) != _canon(_percept(mixed[i])) for i in group)
+        if len(group) >= 2 and 2 * moved < len(group):
+            reasons.append(
+                f"block at event {group[0]}: {moved} of {len(group)} events moved, under half"
+            )
+    if md._source_digest(stream) == md._source_digest(shuffled):
+        reasons.append("the digest is unchanged: nothing moved")
+    if declares:
+        try:
+            again = shuffle_blocks(stream, declared["k"], block=block)
+            other = shuffle_blocks(stream, declared["k"] + 1, block=block)
+        except (ValueError, AssertionError) as error:
+            reasons.append(f"the transform refuses the original stream: {error}")
+        else:
+            if _canon(again) != _canon(shuffled):
+                reasons.append("not the transform's output for its declared (seed, block, k)")
+            if md._source_digest(other) == md._source_digest(shuffled):
+                reasons.append("k + 1 gives the same stream: k does not drive the draw")
+    return {"ok": not reasons, "reasons": reasons}
+
+
+def settled_invariance(plain_run, shuffled_run, stream, *, boundary=256, block=SHUFFLE_BLOCK):
+    """2.6's Settled invariance over two replay results of one recording, plain and shuffled, as
+    {"ok", "per_block", "excluded"}: in every block lying wholly after the adaptation boundary the
+    multiset of the runs' per-event phi crc32s is equal while the sequences differ (a block of one event
+    cannot differ and is only held to the multiset). Replay delivers every event to the pool once, in
+    tick order, so event i (from 0) is the pool's percept number i + 1, and a block lies wholly after
+    `boundary` when its first event's delivery count exceeds it; every other block is `excluded`
+    (warm-up runs every form as Carried, G1B 2.2). No counted block is not ok: an empty proof proves
+    nothing. The red is the same check on a history-dependent phi, whose multisets must differ."""
+    count = len(stream["events"])
+    for name, run in (("plain", plain_run), ("shuffled", shuffled_run)):
+        if len(run.get("phi", ())) != count:
+            raise ValueError(
+                f"the {name} run has {len(run.get('phi', ()))} phi rows for {count} events"
+            )
+    per_block, excluded = [], 0
+    for group in blocks(stream, block):
+        if group[0] + 1 <= boundary:  # delivery count of the block's first event
+            excluded += 1
+            continue
+        before = [plain_run["phi"][i] for i in group]
+        after = [shuffled_run["phi"][i] for i in group]
+        equal, differs = sorted(before) == sorted(after), before != after
+        per_block.append(
+            {
+                "start": group[0],
+                "n": len(group),
+                "segment": stream["events"][group[0]]["segment"],
+                "multiset_equal": equal,
+                "sequence_differs": differs,
+                "ok": equal and (differs or len(group) < 2),
+            }
+        )
+    return {
+        "ok": bool(per_block) and all(row["ok"] for row in per_block),
+        "per_block": per_block,
+        "excluded": excluded,
+    }
+
+
+def survives(d_shuf_diffs):
+    """2.6: D_shuf "survives" the shuffle when contrast(D_shuf) is met at T_CRIT: the 31 per-seed
+    differences (each a mean over the K shuffles), through `contrast_row`."""
+    return bool(contrast_row("D_shuf", d_shuf_diffs)["met"])
+
+
+def incremental(d, d_shuf):
+    """2.6's reported "incremental benefit": `contrast_row` over the per-seed d - d_shuf."""
+    d, d_shuf = tuple(d), tuple(d_shuf)
+    if len(d) != len(d_shuf):
+        raise ValueError(f"D has {len(d)} differences and D_shuf {len(d_shuf)}")
+    return contrast_row(
+        "D - D_shuf (incremental benefit)", [a - b for a, b in zip(d, d_shuf, strict=True)]
+    )
+
+
+# ---- section 2.5: the G-R1 reading ---------------------------------------------------------------
+
+
+def _read_bool(row, key, who):
+    value = row.get(key) if isinstance(row, dict) else None
+    if not isinstance(value, bool | np.bool_):
+        raise ValueError(
+            f"g_r1_reading: {who} must be a contrast_row dict with a bool {key!r}, "
+            f"got a {type(row).__name__}"
+        )
+    return bool(value)
+
+
+# distinct-from: gates/conclusion_protocol.py -- reads tracked prose for a verdict about experience; this is G1(c)'s 2.5 table, rows over contrast_row dicts and two bools, a pure function with no text
+def g_r1_reading(*, blind_harness_ok, primary, stream_history, d_shuf, shuffle_sighted):
+    """2.5's table as a pure function, rows read top to bottom, the first that applies deciding:
+    {"verdict", "wording", "skew_flagged"}. `blind_harness_ok` and `shuffle_sighted` are bools (2.4's
+    (i) and (ii) both held; 2.6's positive control sighted on the surviving host); `primary`,
+    `stream_history` and `d_shuf` are `contrast_row` dicts. A row reads only the inputs it needs (an
+    input that row never reaches may be None); a needed input that is not a row or a bool raises
+    ValueError. A met D_shuf reads RED whether or not the control is sighted, a blind control never
+    reads PASS, and a met primary below SKEW_BOUND carries skew_flagged in every row."""
+    if not isinstance(blind_harness_ok, bool):
+        raise ValueError("g_r1_reading: blind_harness_ok must be a bool")
+    primary_met = _read_bool(primary, "met", "primary")
+    flagged = _read_bool(primary, "skew_flagged", "primary")
+
+    def reading(verdict, wording=None):
+        return {"verdict": verdict, "wording": wording, "skew_flagged": flagged}
+
+    if not blind_harness_ok:  # row 1: 2.4 (i) or (ii) failed
+        return reading("REFUSED (blind harness)")
+    if not primary_met:  # row 2: the stream-history reading words the null
+        met = _read_bool(stream_history, "met", "stream_history")
+        return reading("RED", "pool-null" if met else "stream-null")
+    if _read_bool(d_shuf, "met", "d_shuf"):  # row 3: the advantage survives the shuffle
+        return reading("RED", "survives the shuffle")
+    if not isinstance(shuffle_sighted, bool):
+        raise ValueError("g_r1_reading: shuffle_sighted must be a bool")
+    return reading("PASS" if shuffle_sighted else "NOT READ")  # rows 4 and 5
+
+
 # ---- the self-check's hand fixtures --------------------------------------------------------------
 FIXTURE_RNG_SEED = 20261003  # an RNG seed for the fixtures below, not a recording seed
 # 2.10's named symmetric zero-mean fixture: 15 pairs of +0.02 / -0.02 and one 0.0 (interleaved so the
@@ -255,6 +594,247 @@ def _raises(function, *args, **kwargs):
     except ValueError as error:
         return str(error)
     raise AssertionError(f"{function.__name__}{args!r} did not raise ValueError")
+
+
+# ---- the shuffle's hand fixtures and reds ---------------------------------------------------------
+
+
+# distinct-from: instruments/memory_diagnostic.py::_synthetic_stream -- this CALLS it and adds only the recording's `final` (the current revision), so replay's revision binding holds on the fixture
+def _stream_fixture():
+    """memory_diagnostic's 48-event hand stream (24 warm-up, 24 unseen-order; the self-check never builds
+    a brain) with the current revision as its `final`, so replay's revision binding holds on it."""
+    stream = md._synthetic_stream()
+    head, dirty = md._revision()
+    stream["final"] = {"head": head, "dirty": dirty}
+    return stream
+
+
+def _sourced_fixture():
+    """The same stream with every PERCEPT_FIELD an event carries live: event i has the acquisition record
+    of frame pointer i in both modalities (consecutive pointers, one contiguous pass), an attended pair,
+    a prediction and a fallback flag."""
+    stream = _stream_fixture()
+    for i, event in enumerate(stream["events"]):
+        event["source"] = {
+            m: {"modality": m, "pointer": i, "success": True, "index": i % 8, "order": "canonical"}
+            for m in ("vision", "audio")
+        }
+        event["attended"] = {"vision": True, "audio": True}
+        event["prediction"] = None if i % 4 == 0 else i % 3
+        event["fallback"] = i % 5 == 0
+    return stream
+
+
+def _percept_phi(stream):
+    """A Settled-like phi per event: a pure function of the percept (x, c) alone."""
+    return [zlib.crc32(_canon([e["x"], e["c"]]).encode()) for e in stream["events"]]
+
+
+def _history_phi(stream):
+    """A Carried-like phi per event: a crc chain over every x delivered so far, so a reorder changes it."""
+    phi, chain = [], 0
+    for event in stream["events"]:
+        chain = zlib.crc32(_canon(event["x"]).encode(), chain)
+        phi.append(chain)
+    return phi
+
+
+def _mutant(stream, block, *, fields=PERCEPT_FIELDS, whole_segment=False, identity=False):
+    """A red's mutant of `shuffle_blocks` (the same declared shuffle, k 0): `fields` travel instead of
+    PERCEPT_FIELDS, or the permutation spans a whole segment, or it is the identity."""
+    out = copy.deepcopy(stream)
+    out["shuffle"] = {"seed": stream["seed"], "block": block, "k": 0}
+    groups = blocks(stream, len(stream["events"]) if whole_segment else block)
+    sizes = [len(group) for group in groups]
+    perms = (
+        [list(range(n)) for n in sizes]
+        if identity
+        else block_permutations(stream["seed"], 0, sizes)
+    )
+    for group, perm in zip(groups, perms, strict=True):
+        held = [
+            {f: stream["events"][i][f] for f in fields if f in stream["events"][i]} for i in group
+        ]
+        for slot, donor in zip(group, perm, strict=True):
+            out["events"][slot].update(copy.deepcopy(held[donor]))
+    return out
+
+
+def _sleep_moved(shuffled):
+    out = copy.deepcopy(shuffled)
+    out["sleep"][0], out["sleep"][1] = out["sleep"][1], out["sleep"][0]
+    return out
+
+
+def _binding_dropped(shuffled):
+    out = copy.deepcopy(shuffled)
+    del out["final"]
+    return out
+
+
+# name -> (builds the mutant from the sourced fixture, the reason the check must give for it)
+_TRANSFORM_REDS = {
+    "cross-block": (
+        lambda s: _mutant(s, FIXTURE_BLOCK, whole_segment=True),
+        "(x, c) pairs changed",
+    ),
+    "c-only": (lambda s: _mutant(s, FIXTURE_BLOCK, fields=("c",)), "(x, c) pairs changed"),
+    "identity": (lambda s: _mutant(s, FIXTURE_BLOCK, identity=True), "under half"),
+    "slot field (tick) moved": (
+        lambda s: _mutant(s, FIXTURE_BLOCK, fields=(*PERCEPT_FIELDS, "tick")),
+        "a slot field changed",
+    ),
+    "source stays at the slot": (
+        lambda s: _mutant(
+            s, FIXTURE_BLOCK, fields=tuple(f for f in PERCEPT_FIELDS if f != "source")
+        ),
+        "did not travel together",
+    ),
+    "sleep row moved": (
+        lambda s: _sleep_moved(shuffle_blocks(s, 0, block=FIXTURE_BLOCK)),
+        "sleep rows",
+    ),
+    "binding key dropped": (
+        lambda s: _binding_dropped(shuffle_blocks(s, 0, block=FIXTURE_BLOCK)),
+        "revision binding",
+    ),
+}
+
+
+def _check_shuffle():
+    """The transform, its reds, Settled invariance, "survives" and one real replay, on the fixtures;
+    returns the numbers main() prints."""
+    block = FIXTURE_BLOCK
+    stream = _sourced_fixture()
+    shuffled = shuffle_blocks(stream, 0, block=block)
+    assert check_shuffle_transform(stream, shuffled, block) == {"ok": True, "reasons": []}
+    assert _canon(shuffle_blocks(stream, 0, block=block)) == _canon(shuffled)  # same (seed, k)
+    assert md._source_digest(shuffle_blocks(stream, 1, block=block)) != md._source_digest(shuffled)
+    for name, (
+        build,
+        reason,
+    ) in _TRANSFORM_REDS.items():  # each red FAILS the check, for its reason
+        result = check_shuffle_transform(stream, build(stream), block)
+        assert not result["ok"] and any(reason in r for r in result["reasons"]), (name, result)
+    identity = check_shuffle_transform(stream, _mutant(stream, block, identity=True), block)
+    assert any("digest" in r for r in identity["reasons"]), identity
+    unknown = copy.deepcopy(stream)
+    unknown["events"][5]["extra"] = 1
+    assert "'extra'" in _raises(shuffle_blocks, unknown, 0, block=block)
+    jumped = copy.deepcopy(stream)  # a gap in block [8..15]'s vision pointers
+    jumped["events"][9]["source"]["vision"]["pointer"] = 100
+    assert "contiguous pass" in _raises(shuffle_blocks, jumped, 0, block=block)
+    interleaved = copy.deepcopy(
+        stream
+    )  # a segment that is not one run: block [8..15] not consecutive
+    interleaved["events"][10]["segment"] = "unseen-order"
+    assert "not consecutive" in _raises(shuffle_blocks, interleaved, 0, block=block)
+    refused = []  # the half-moved assertion fires on a drawn identity, and is never re-drawn
+    for k in range(40):
+        try:
+            block_permutations(stream["seed"], k, [2])
+        except AssertionError as error:
+            assert "under half" in str(error)
+            refused.append(k)
+    assert refused and len(refused) < 40, refused
+    # Settled invariance: delivery counts 1-16 are the window here (events 0-15), 17-48 are after it
+    plain_run, shuffled_run = {"phi": _percept_phi(stream)}, {"phi": _percept_phi(shuffled)}
+    settled = settled_invariance(plain_run, shuffled_run, stream, boundary=2 * block, block=block)
+    assert settled["ok"] and settled["excluded"] == 2
+    assert [row["start"] for row in settled["per_block"]] == [16, 24, 32, 40]
+    carried = settled_invariance(
+        {"phi": _history_phi(stream)},
+        {"phi": _history_phi(shuffled)},
+        stream,
+        boundary=2 * block,
+        block=block,
+    )
+    assert not carried["ok"] and not all(r["multiset_equal"] for r in carried["per_block"]), carried
+    pre = {"phi": [*shuffled_run["phi"][:3], 12345, *shuffled_run["phi"][4:]]}  # block [0..7] only
+    assert settled_invariance(plain_run, pre, stream, boundary=2 * block, block=block)["ok"]
+    late = {"phi": [*shuffled_run["phi"][:27], 12345, *shuffled_run["phi"][28:]]}  # block [24..31]
+    assert not settled_invariance(plain_run, late, stream, boundary=2 * block, block=block)["ok"]
+    # survives: a planted order-independent gain survives, an order-dependent one the shuffle destroys does not
+    gain, destroyed = _jittered(0.05, 0.01, 7), _jittered(-0.002, 0.01, 8)
+    assert survives(gain) is True and survives(destroyed) is False
+    assert survives([0.03] * 31) is False and incremental(gain, destroyed)["mean"] > 0.0
+    assert incremental(gain, gain)["degenerate"] and not incremental(gain, gain)["met"]
+    # one real replay: a shuffled stream is an ordinary stream under the revision binding
+    plain_replay, shuffled_replay = md.replay(stream, "a"), md.replay(shuffled, "a")
+    md._validate_run(shuffled_replay, shuffled, shuffled, "a", "causal")
+    assert shuffled_replay["source_digest"] == md._source_digest(shuffled)
+    assert shuffled_replay["source_digest"] != plain_replay["source_digest"]
+    replayed = settled_invariance(
+        plain_replay, shuffled_replay, stream, boundary=2 * block, block=block
+    )
+    assert replayed["ok"], replayed
+    return {
+        "reds": len(_TRANSFORM_REDS),
+        "counted": len(settled["per_block"]),
+        "excluded": settled["excluded"],
+        "carried_equal": sum(r["multiset_equal"] for r in carried["per_block"]),
+        "gain": contrast_row("gain", gain)["t"],
+        "destroyed": contrast_row("destroyed", destroyed)["t"],
+        "refused_k": len(refused),
+        "digests": (md._source_digest(stream), md._source_digest(shuffled)),
+    }
+
+
+def _check_reading():
+    """2.5's table: one fixture per row, every input combination, a mutant that ignores each input."""
+    met = contrast_row("met", _jittered(0.05, 0.01, 1))
+    unmet = contrast_row("not met", _jittered(-0.005, 0.005, 2))
+    flagged = contrast_row("met, left tail", _left_tail())
+
+    def given(ok=True, primary=met, history=unmet, shuf=unmet, sighted=True):
+        return {
+            "blind_harness_ok": ok,
+            "primary": primary,
+            "stream_history": history,
+            "d_shuf": shuf,
+            "shuffle_sighted": sighted,
+        }
+
+    def reads(verdict, wording=None, skew=False):
+        return {"verdict": verdict, "wording": wording, "skew_flagged": skew}
+
+    rows = {
+        "refused": (given(ok=False, shuf=met), reads("REFUSED (blind harness)")),
+        "pool-null": (given(primary=unmet, history=met, shuf=met), reads("RED", "pool-null")),
+        "stream-null": (given(primary=unmet, shuf=met), reads("RED", "stream-null")),
+        "survives, sighted": (given(shuf=met), reads("RED", "survives the shuffle")),
+        "survives, blind": (given(shuf=met, sighted=False), reads("RED", "survives the shuffle")),
+        "not read": (given(sighted=False), reads("NOT READ")),
+        "pass": (given(), reads("PASS")),
+        "pass, skew-flagged": (given(primary=flagged), reads("PASS", None, True)),
+    }
+    for name, (inputs, expected) in rows.items():
+        assert g_r1_reading(**inputs) == expected, (name, g_r1_reading(**inputs))
+    assert g_r1_reading(**given(ok=False, primary=flagged))["skew_flagged"] is True
+    # a reading that ignores one input is caught: that input held at a constant changes a row's output
+    for key, constant, row in (
+        ("blind_harness_ok", True, "refused"),
+        ("primary", met, "stream-null"),
+        ("primary", unmet, "pass"),
+        ("stream_history", unmet, "pool-null"),
+        ("stream_history", met, "stream-null"),
+        ("d_shuf", unmet, "survives, blind"),
+        ("shuffle_sighted", True, "not read"),
+        ("shuffle_sighted", False, "pass"),
+    ):
+        assert g_r1_reading(**{**rows[row][0], key: constant}) != rows[row][1], (key, row)
+    verdicts = Counter()  # every input combination against an independent statement of PASS
+    for ok, primary, history, shuf, sighted in itertools.product(
+        (True, False), (met, unmet), (met, unmet), (met, unmet), (True, False)
+    ):
+        verdict = g_r1_reading(**given(ok, primary, history, shuf, sighted))["verdict"]
+        verdicts[verdict] += 1
+        assert (verdict == "PASS") == (ok and primary is met and shuf is unmet and sighted)
+    assert "blind_harness_ok" in _raises(g_r1_reading, **given(ok=1))
+    assert "primary" in _raises(g_r1_reading, **given(primary=True))
+    assert "d_shuf" in _raises(g_r1_reading, **given(shuf={"t": 3.0}))
+    assert "shuffle_sighted" in _raises(g_r1_reading, **given(sighted=None))
+    return {"rows": len(rows), "combinations": sum(verdicts.values()), "verdicts": dict(verdicts)}
 
 
 def main():
@@ -335,6 +915,7 @@ def main():
     assert "blind harness: oracle incomplete" in _raises(
         oracle_check, complete, {**complete, 301: {"a": 0.5}}
     )
+    shuffle, reading = _check_shuffle(), _check_reading()
     print(
         "self-check OK: constants tied at import (S = 31, live/reserve/exposed disjoint, TUNED in the "
         f"grid); decoder 0.05 +- 0.01 MET at t {decoder['t']:.4f} > {T_CRIT} (exact FPR "
@@ -344,7 +925,16 @@ def main():
         f"{symmetric['fpr']:.6f}); all-zero degenerate NOT MET; constant +0.03 degenerate NOT MET "
         f"where contrast() says met (FPR {flat['fpr']:.6f}, band {flat['band_population']}); "
         f"left-tailed met vector skew-flagged (g1 {tail['skewness']:.4f}, t {tail['t']:.4f}); "
-        "30 values, exposed, reserve and duplicate seeds, a missing, None or NaN oracle cell all refused"
+        "30 values, exposed, reserve and duplicate seeds, a missing, None or NaN oracle cell all refused; "
+        f"shuffle (blocks of {FIXTURE_BLOCK}): {shuffle['reds']} transform reds each fail the check for "
+        "their own reason, an unknown key and a non-contiguous block are refused, the half-moved "
+        f"assertion fires on {shuffle['refused_k']} of 40 drawn 2-blocks; Settled invariance holds on "
+        f"{shuffle['counted']} post-boundary blocks ({shuffle['excluded']} pre-boundary excluded) and "
+        f"fails on a Carried-like phi ({shuffle['carried_equal']} blocks equal); survives True at t "
+        f"{shuffle['gain']:.4f}, False at t {shuffle['destroyed']:.4f}; a shuffled stream replays under "
+        f"the revision binding (digest {shuffle['digests'][0]} -> {shuffle['digests'][1]}); G-R1: "
+        f"{reading['rows']} table fixtures exact, {reading['combinations']} input combinations "
+        f"{reading['verdicts']}, an ignore-one-input mutant caught for every input"
     )
 
 

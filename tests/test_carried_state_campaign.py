@@ -6,12 +6,16 @@ hand fixtures: no recording, no pool, no campaign."""
 
 import ast
 import inspect
+import itertools
+import json
 import math
 import statistics
 
+import numpy as np
 import pytest
 
 from snn_data_lake.instruments import carried_state_campaign as ccc
+from snn_data_lake.instruments import memory_diagnostic as md
 from snn_data_lake.instruments import paired_contrast as pc
 from snn_data_lake.instruments import pool_selection as ps
 from snn_data_lake.reservoir import recurrent_pool as rp
@@ -322,6 +326,8 @@ def test_the_self_check_passes_from_any_directory(monkeypatch, tmp_path, capsys)
     printed = capsys.readouterr().out
     assert printed.startswith("self-check OK") and printed.isascii()
     assert "exact FPR" in printed and "band" in printed and "skew-flagged" in printed
+    assert "shuffle (blocks of 8)" in printed and "Settled invariance holds" in printed
+    assert "G-R1: 8 table fixtures exact, 32 input combinations" in printed
     assert sorted(tmp_path.iterdir()) == before  # it wrote nothing
 
 
@@ -356,3 +362,449 @@ def test_fold_p2_distinct_seeds_refuses_empty_duplicate_and_non_int(seeds):
 
 def test_fold_p2_distinct_seeds_returns_the_tuple():
     assert ccc.distinct_seeds([300, 301]) == (300, 301)
+
+
+# ---- P3b: the within-block time shuffle, its checks and G-R1's reading (2.5, 2.6, 2.10) -------
+
+BLOCK = (
+    8  # the 48-event fixture is shorter than one 256-event block (the module's docstring says so)
+)
+
+
+def canon(value):
+    return json.dumps(value, sort_keys=True)
+
+
+def test_the_shuffle_constants_and_the_field_sets_are_the_text():
+    assert (ccc.SHUFFLE_BLOCK, ccc.SHUFFLE_K) == (256, 4)
+    assert isinstance(ccc.SHUFFLE_TAG, int) and not isinstance(ccc.SHUFFLE_TAG, bool)
+    assert ccc.PERCEPT_FIELDS == ("x", "c", "source", "attended", "prediction", "fallback")
+    assert ccc.SLOT_FIELDS == ("t", "tick", "segment", "causal_lp")
+    assert not set(ccc.PERCEPT_FIELDS) & set(ccc.SLOT_FIELDS)
+
+
+def test_the_two_field_sets_are_exactly_the_keys_the_recorder_writes_to_an_event():
+    # the row record_stream's observe() appends (the Dict that carries "causal_lp"), plus the
+    # "segment" key _segments() adds: the sets restate that code, so a new recorded key fails here
+    tree = ast.parse(inspect.getsource(md.record_stream))
+    rows = [
+        {k.value for k in node.keys if isinstance(k, ast.Constant)}
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Dict)
+        and "causal_lp" in {k.value for k in node.keys if isinstance(k, ast.Constant)}
+    ]
+    assert len(rows) == 1, rows
+    assert "segment" in inspect.getsource(md._segments)
+    assert {*rows[0], "segment"} == {*ccc.PERCEPT_FIELDS, *ccc.SLOT_FIELDS}
+
+
+def test_shuffle_seed_is_the_seed_sequence_of_recording_tag_and_k():
+    expected = np.random.default_rng(np.random.SeedSequence([17, ccc.SHUFFLE_TAG, 2]))
+    assert ccc.shuffle_seed(17, 2).permutation(50).tolist() == expected.permutation(50).tolist()
+    draw = [ccc.shuffle_seed(17, k).permutation(50).tolist() for k in (0, 1)]
+    assert draw[0] != draw[1]  # k drives the draw
+    assert ccc.shuffle_seed(18, 0).permutation(50).tolist() != draw[0]  # so does the seed
+
+
+def test_blocks_are_consecutive_groups_by_index_within_a_segment():
+    stream = ccc._stream_fixture()
+    assert ccc.blocks(stream, BLOCK) == [list(range(s, s + 8)) for s in range(0, 48, 8)]
+    # a final partial block is its own block (24 warm-up events in groups of 10)
+    assert [len(g) for g in ccc.blocks(stream, 10)] == [10, 10, 4, 10, 10, 4]
+    # x_1 (segment None) is in no block, and the groups count by index within the segment
+    stream["events"][0]["segment"] = None
+    first = ccc.blocks(stream, BLOCK)[0]
+    assert first == list(range(1, 9)) and 0 not in {i for g in ccc.blocks(stream, BLOCK) for i in g}
+    with pytest.raises(ValueError):
+        ccc.blocks(stream, 0)
+
+
+def test_the_half_moved_assertion_fires_on_a_drawn_identity_and_never_re_draws():
+    drawn = []
+    for k in range(40):
+        try:
+            drawn.append(ccc.block_permutations(17, k, [2]))
+        except AssertionError as error:
+            assert "under half" in str(error)
+            drawn.append(None)
+    assert None in drawn and any(
+        d is not None for d in drawn
+    )  # a 2-block is the identity half the time
+    for permutation in ccc.block_permutations(17, 0, [8, 8, 5, 1]):
+        assert sorted(permutation) == list(range(len(permutation)))
+    assert ccc.block_permutations(17, 3, [8, 8]) == ccc.block_permutations(17, 3, [8, 8])
+    assert ccc.block_permutations(17, 0, [1]) == [
+        [0]
+    ]  # a block of one cannot move and is not asserted
+
+
+def test_shuffle_blocks_moves_percepts_whole_and_leaves_every_slot_field_and_sleep_row():
+    stream = ccc._sourced_fixture()
+    before = canon(stream)
+    shuffled = ccc.shuffle_blocks(stream, 0, block=BLOCK)
+    assert canon(stream) == before  # the input is untouched
+    assert shuffled["shuffle"] == {"seed": 17, "block": BLOCK, "k": 0}
+    assert shuffled["seed"] == stream["seed"] and shuffled["config"] == stream["config"]
+    assert shuffled["policy"] == stream["policy"] and shuffled["final"] == stream["final"]
+    assert canon(shuffled["sleep"]) == canon(stream["sleep"])
+    for old, new in zip(stream["events"], shuffled["events"], strict=True):
+        assert {k: old[k] for k in ccc.SLOT_FIELDS} == {k: new[k] for k in ccc.SLOT_FIELDS}
+    for group in ccc.blocks(stream, BLOCK):
+        held = sorted(canon({k: stream["events"][i][k] for k in ccc.PERCEPT_FIELDS}) for i in group)
+        now = sorted(
+            canon({k: shuffled["events"][i][k] for k in ccc.PERCEPT_FIELDS}) for i in group
+        )
+        assert held == now
+        assert [stream["events"][i]["x"] for i in group] != [
+            shuffled["events"][i]["x"] for i in group
+        ]
+    shuffled["events"][3]["x"][0] = 99.0  # deep copy: no aliasing into the input
+    assert canon(stream) == before
+    result = ccc.check_shuffle_transform(stream, ccc.shuffle_blocks(stream, 0, block=BLOCK), BLOCK)
+    assert result == {"ok": True, "reasons": []}
+
+
+def test_the_same_seed_and_k_give_the_same_stream_and_another_k_another_one():
+    stream = ccc._stream_fixture()
+    one = [canon(ccc.shuffle_blocks(stream, 0, block=BLOCK)) for _ in range(2)]
+    assert one[0] == one[1]
+    digests = {md._source_digest(ccc.shuffle_blocks(stream, k, block=BLOCK)) for k in range(4)}
+    assert len(digests) == 4 and md._source_digest(stream) not in digests
+
+
+def test_x_1_and_every_event_in_no_block_never_move():
+    stream = ccc._sourced_fixture()
+    stream["events"][0]["segment"] = None
+    shuffled = ccc.shuffle_blocks(stream, 1, block=BLOCK)
+    assert canon(shuffled["events"][0]) == canon(stream["events"][0])
+    assert ccc.check_shuffle_transform(stream, shuffled, BLOCK)["ok"]
+
+
+def test_the_default_block_is_256_and_a_stream_longer_than_a_block_is_shuffled_in_256s():
+    stream = ccc._stream_fixture()
+    stream["events"] = [dict(stream["events"][i % 48], t=i + 1, tick=2 * i + 1) for i in range(600)]
+    stream["sleep"] = stream["sleep"] * 13
+    for event in stream["events"]:
+        event["segment"] = "unseen-order"
+    assert [len(g) for g in ccc.blocks(stream)] == [256, 256, 88]
+    shuffled = ccc.shuffle_blocks(stream, 0)
+    assert (
+        shuffled["shuffle"]["block"] == 256 and ccc.check_shuffle_transform(stream, shuffled)["ok"]
+    )
+    # the default boundary is delivery count 256: events 0-255 are deliveries 1-256 (the window)
+    runs = {"phi": ccc._percept_phi(stream)}, {"phi": ccc._percept_phi(shuffled)}
+    result = ccc.settled_invariance(*runs, stream)
+    assert [r["start"] for r in result["per_block"]] == [256, 512] and result["excluded"] == 1
+    assert result["ok"] is True
+
+
+TRANSFORM_REDS = {
+    # name -> (the mutant shuffle, the reason check_shuffle_transform must give for it)
+    "cross-block": (lambda s: ccc._mutant(s, BLOCK, whole_segment=True), "(x, c) pairs changed"),
+    "c-only": (lambda s: ccc._mutant(s, BLOCK, fields=("c",)), "(x, c) pairs changed"),
+    "identity": (lambda s: ccc._mutant(s, BLOCK, identity=True), "under half"),
+    "slot field tick": (
+        lambda s: ccc._mutant(s, BLOCK, fields=(*ccc.PERCEPT_FIELDS, "tick")),
+        "slot field",
+    ),
+    "source stays": (
+        lambda s: ccc._mutant(s, BLOCK, fields=("x", "c", "attended", "prediction", "fallback")),
+        "did not travel together",
+    ),
+    "sleep row moved": (lambda s: ccc._sleep_moved(ccc.shuffle_blocks(s, 0, block=BLOCK)), "sleep"),
+    "binding dropped": (
+        lambda s: ccc._binding_dropped(ccc.shuffle_blocks(s, 0, block=BLOCK)),
+        "binding",
+    ),
+}
+
+
+@pytest.mark.parametrize("name", sorted(TRANSFORM_REDS))
+def test_each_transform_red_fails_the_check_for_its_own_reason(name):
+    build, reason = TRANSFORM_REDS[name]
+    stream = ccc._sourced_fixture()
+    result = ccc.check_shuffle_transform(stream, build(stream), BLOCK)
+    assert result["ok"] is False
+    assert any(reason in r for r in result["reasons"]), result["reasons"]
+
+
+def test_the_identity_red_also_leaves_the_digest_unchanged():
+    stream = ccc._sourced_fixture()
+    result = ccc.check_shuffle_transform(stream, ccc._mutant(stream, BLOCK, identity=True), BLOCK)
+    assert any("digest" in r for r in result["reasons"]), result["reasons"]
+
+
+def test_a_stream_that_is_not_the_transforms_output_for_its_declared_k_fails():
+    stream = ccc._sourced_fixture()
+    wrong_k = ccc.shuffle_blocks(stream, 1, block=BLOCK)
+    wrong_k["shuffle"]["k"] = 0
+    result = ccc.check_shuffle_transform(stream, wrong_k, BLOCK)
+    assert not result["ok"] and any("not the transform's output" in r for r in result["reasons"])
+
+
+def test_an_event_key_in_neither_set_refuses_the_transform_and_the_check():
+    stream = ccc._sourced_fixture()
+    stream["events"][5]["extra"] = 1
+    with pytest.raises(ValueError, match="'extra'"):
+        ccc.shuffle_blocks(stream, 0, block=BLOCK)
+    clean = ccc._sourced_fixture()
+    shuffled = ccc.shuffle_blocks(clean, 0, block=BLOCK)
+    shuffled["events"][5]["extra"] = 1
+    result = ccc.check_shuffle_transform(clean, shuffled, BLOCK)
+    assert not result["ok"] and any("unknown key" in r for r in result["reasons"])
+
+
+def test_a_block_whose_source_pointers_are_not_one_contiguous_pass_is_refused():
+    jumped = ccc._sourced_fixture()
+    jumped["events"][9]["source"]["vision"]["pointer"] = 100  # a gap inside block [8..15]
+    with pytest.raises(ValueError, match="contiguous pass"):
+        ccc.shuffle_blocks(jumped, 0, block=BLOCK)
+    backward = ccc._sourced_fixture()
+    backward["events"][10]["source"]["audio"]["pointer"] = 3  # a block that goes back
+    with pytest.raises(ValueError, match="audio pointers"):
+        ccc.shuffle_blocks(backward, 0, block=BLOCK)
+    interleaved = ccc._sourced_fixture()
+    interleaved["events"][10]["segment"] = "unseen-order"  # a segment that is not one run
+    with pytest.raises(ValueError, match="not consecutive"):
+        ccc.shuffle_blocks(interleaved, 0, block=BLOCK)
+    assert ccc.shuffle_blocks(
+        ccc._sourced_fixture(), 0, block=BLOCK
+    )  # the unbroken fixture is fine
+
+
+def test_a_shuffled_stream_is_never_shuffled_again_and_a_stream_without_blocks_is_refused():
+    stream = ccc._stream_fixture()
+    with pytest.raises(ValueError, match="already shuffled"):
+        ccc.shuffle_blocks(ccc.shuffle_blocks(stream, 0, block=BLOCK), 1, block=BLOCK)
+    for event in stream["events"]:
+        event["segment"] = None
+    with pytest.raises(ValueError, match="no segment"):
+        ccc.shuffle_blocks(stream, 0, block=BLOCK)
+
+
+# ---- settled_invariance -------------------------------------------------------------------------
+
+
+def test_settled_invariance_holds_on_post_boundary_blocks_and_never_counts_a_pre_boundary_one():
+    stream = ccc._stream_fixture()
+    shuffled = ccc.shuffle_blocks(stream, 0, block=BLOCK)
+    plain_run, shuffled_run = {"phi": ccc._percept_phi(stream)}, {"phi": ccc._percept_phi(shuffled)}
+    result = ccc.settled_invariance(plain_run, shuffled_run, stream, boundary=16, block=BLOCK)
+    assert result["ok"] is True and result["excluded"] == 2  # events 0-15 are deliveries 1-16
+    assert [row["start"] for row in result["per_block"]] == [16, 24, 32, 40]
+    assert all(r["multiset_equal"] and r["sequence_differs"] for r in result["per_block"])
+    # a block that STRADDLES the boundary is not "wholly after" it: delivery 17 > 16, 20 is not
+    straddle = ccc.settled_invariance(plain_run, shuffled_run, stream, boundary=20, block=BLOCK)
+    assert [row["start"] for row in straddle["per_block"]] == [24, 32, 40] and straddle[
+        "excluded"
+    ] == 3
+    # a boundary past every delivery leaves nothing to count, and an empty proof is no proof
+    assert ccc.settled_invariance(plain_run, shuffled_run, stream, boundary=48, block=BLOCK) == {
+        "ok": False, "per_block": [], "excluded": 6,
+    }  # fmt: skip
+
+
+def test_a_pre_boundary_block_that_differs_is_never_counted():
+    stream = ccc._stream_fixture()
+    shuffled = ccc.shuffle_blocks(stream, 0, block=BLOCK)
+    plain_run, shuffled_run = {"phi": ccc._percept_phi(stream)}, {"phi": ccc._percept_phi(shuffled)}
+    shuffled_run["phi"][3] = 12345  # inside block [0..7], before delivery 16
+    assert ccc.settled_invariance(plain_run, shuffled_run, stream, boundary=16, block=BLOCK)["ok"]
+    shuffled_run["phi"][27] = 12345  # inside block [24..31], after it: counted, and it breaks
+    broken = ccc.settled_invariance(plain_run, shuffled_run, stream, boundary=16, block=BLOCK)
+    assert not broken["ok"] and not broken["per_block"][1]["multiset_equal"]
+
+
+def test_a_carried_like_pair_whose_multisets_differ_is_not_ok():
+    stream = ccc._stream_fixture()
+    shuffled = ccc.shuffle_blocks(stream, 0, block=BLOCK)
+    result = ccc.settled_invariance(
+        {"phi": ccc._history_phi(stream)},
+        {"phi": ccc._history_phi(shuffled)},
+        stream,
+        boundary=16,
+        block=BLOCK,
+    )
+    assert result["ok"] is False and not all(r["multiset_equal"] for r in result["per_block"])
+
+
+def test_settled_invariance_needs_one_phi_per_event_and_a_sequence_that_moved():
+    stream = ccc._stream_fixture()
+    run = {"phi": ccc._percept_phi(stream)}
+    with pytest.raises(ValueError, match="phi"):
+        ccc.settled_invariance(run, {"phi": run["phi"][:-1]}, stream, boundary=16, block=BLOCK)
+    same = ccc.settled_invariance(run, run, stream, boundary=16, block=BLOCK)  # nothing moved
+    assert same["ok"] is False and not any(r["sequence_differs"] for r in same["per_block"])
+
+
+# ---- survives / incremental ---------------------------------------------------------------------
+
+
+def test_survives_is_true_for_a_planted_order_independent_gain_and_false_for_a_destroyed_one():
+    assert ccc.survives(ccc._jittered(0.05, 0.01, 7)) is True
+    assert ccc.survives(ccc._jittered(-0.002, 0.01, 8)) is False
+    assert ccc.survives([0.03] * 31) is False  # degenerate is never met (2.3)
+    with pytest.raises(ValueError, match="30 differences"):
+        ccc.survives(ccc._jittered(0.05, 0.01, 7)[:30])
+
+
+def test_incremental_is_the_contrast_over_d_minus_d_shuf():
+    d = [0.08 + 0.001 * i for i in range(31)]
+    d_shuf = [0.03] * 31
+    row = ccc.incremental(d, d_shuf)
+    assert row["n"] == 31 and row["met"] and math.isclose(row["mean"], statistics.fmean(d) - 0.03)
+    assert row["name"].startswith("D - D_shuf")
+    assert (
+        not ccc.incremental(d, d)["met"] and ccc.incremental(d, d)["degenerate"]
+    )  # the shuffle ate all of D
+    with pytest.raises(ValueError):
+        ccc.incremental(d, d_shuf[:30])
+
+
+# ---- g_r1_reading (2.5) -------------------------------------------------------------------------
+
+MET = ccc.contrast_row("met", ccc._jittered(0.05, 0.01, 1))
+NOT_MET = ccc.contrast_row("not met", ccc._jittered(-0.005, 0.005, 2))
+FLAGGED = ccc.contrast_row("met, left tail", ccc._left_tail())
+REFUSED = "REFUSED (blind harness)"
+
+
+def reading(verdict, wording=None, skew=False):
+    return {"verdict": verdict, "wording": wording, "skew_flagged": skew}
+
+
+def inputs(*, ok=True, primary=MET, history=NOT_MET, shuf=NOT_MET, sighted=True):
+    return {
+        "blind_harness_ok": ok,
+        "primary": primary,
+        "stream_history": history,
+        "d_shuf": shuf,
+        "shuffle_sighted": sighted,
+    }
+
+
+G_R1_ROWS = {
+    # one fixture per row of 2.5's table, built so a reading that skips its row reads otherwise
+    "1 REFUSED beats a met primary, a met D_shuf and a sighted control": (
+        inputs(ok=False, shuf=MET),
+        reading(REFUSED),
+    ),
+    "2 pool-null": (inputs(primary=NOT_MET, history=MET, shuf=MET), reading("RED", "pool-null")),
+    "2 stream-null": (
+        inputs(primary=NOT_MET, history=NOT_MET, shuf=MET),
+        reading("RED", "stream-null"),
+    ),
+    "3 survives, control sighted": (inputs(shuf=MET), reading("RED", "survives the shuffle")),
+    "3 survives, control blind": (
+        inputs(shuf=MET, sighted=False),
+        reading("RED", "survives the shuffle"),
+    ),
+    "4 not read": (inputs(sighted=False), reading("NOT READ")),
+    "5 pass": (inputs(), reading("PASS")),
+    "5 pass, skew-flagged": (inputs(primary=FLAGGED), reading("PASS", None, True)),
+}
+
+
+@pytest.mark.parametrize("name", sorted(G_R1_ROWS))
+def test_g_r1_reads_each_row_of_the_table_to_its_exact_output(name):
+    given, expected = G_R1_ROWS[name]
+    assert ccc.g_r1_reading(**given) == expected
+
+
+def test_a_met_primary_with_skew_below_minus_one_carries_the_flag_in_every_row_it_reaches():
+    assert FLAGGED["skew_flagged"] and not NOT_MET["skew_flagged"]
+    flag = {"skew": True}
+    assert ccc.g_r1_reading(**inputs(primary=FLAGGED, ok=False)) == reading(REFUSED, **flag)
+    assert ccc.g_r1_reading(**inputs(primary=FLAGGED, shuf=MET)) == reading(
+        "RED", "survives the shuffle", **flag
+    )
+    assert ccc.g_r1_reading(**inputs(primary=FLAGGED, sighted=False)) == reading("NOT READ", **flag)
+    assert ccc.g_r1_reading(**inputs(primary=FLAGGED)) == reading("PASS", **flag)
+    # a primary that is not met cannot be flagged
+    assert ccc.g_r1_reading(**inputs(primary=NOT_MET))["skew_flagged"] is False
+
+
+def test_pass_needs_a_sighted_harness_a_met_primary_a_sighted_shuffle_and_an_unmet_d_shuf():
+    # every combination of the five inputs against an independent statement of the table
+    for ok, primary, history, shuf, sighted in itertools.product(
+        (True, False), (MET, NOT_MET), (MET, NOT_MET), (MET, NOT_MET), (True, False)
+    ):
+        got = ccc.g_r1_reading(
+            **inputs(ok=ok, primary=primary, history=history, shuf=shuf, sighted=sighted)
+        )
+        if not ok:
+            want = reading(REFUSED)
+        elif primary is NOT_MET:
+            want = reading("RED", "pool-null" if history is MET else "stream-null")
+        elif shuf is MET:
+            want = reading("RED", "survives the shuffle")
+        else:
+            want = reading("PASS" if sighted else "NOT READ")
+        assert got == want
+        passes = ok and primary is MET and shuf is NOT_MET and sighted
+        assert (got["verdict"] == "PASS") is bool(passes)  # no blind-control combination reads PASS
+
+
+def test_a_reading_that_ignores_any_one_input_is_caught_by_a_row_fixture():
+    ignoring = (
+        (
+            "blind_harness_ok",
+            True,
+            "1 REFUSED beats a met primary, a met D_shuf and a sighted control",
+        ),
+        ("primary", MET, "2 stream-null"),
+        ("primary", NOT_MET, "5 pass"),
+        ("stream_history", NOT_MET, "2 pool-null"),
+        ("stream_history", MET, "2 stream-null"),
+        ("d_shuf", NOT_MET, "3 survives, control blind"),
+        ("shuffle_sighted", True, "4 not read"),
+        ("shuffle_sighted", False, "5 pass"),
+    )
+    for name, constant, row in ignoring:
+        given = inputs()
+        given.update(G_R1_ROWS[row][0])
+        assert ccc.g_r1_reading(**{**given, name: constant}) != ccc.g_r1_reading(**given), (
+            name,
+            row,
+        )
+
+
+def test_g_r1_reading_refuses_inputs_that_are_not_a_row_or_a_bool():
+    with pytest.raises(ValueError, match="blind_harness_ok"):
+        ccc.g_r1_reading(**inputs(ok=1))
+    with pytest.raises(ValueError, match="primary"):
+        ccc.g_r1_reading(**inputs(primary=True))
+    with pytest.raises(ValueError, match="stream_history"):
+        ccc.g_r1_reading(**inputs(primary=NOT_MET, history=None))
+    with pytest.raises(ValueError, match="d_shuf"):
+        ccc.g_r1_reading(**inputs(shuf={"t": 3.0}))
+    with pytest.raises(ValueError, match="shuffle_sighted"):
+        ccc.g_r1_reading(**inputs(sighted=None))
+    # an input the deciding row never reads may be absent: the REFUSED row needs only the harness
+    assert ccc.g_r1_reading(**inputs(ok=False, shuf=None, history=None, sighted=None)) == reading(
+        REFUSED
+    )
+
+
+# ---- one real replay on the 48-event fixture ----------------------------------------------------
+
+
+def test_a_shuffled_stream_replays_as_an_ordinary_stream_under_the_revision_binding():
+    stream = ccc._stream_fixture()
+    shuffled = ccc.shuffle_blocks(stream, 0, block=BLOCK)
+    assert md._source_digest(shuffled) != md._source_digest(stream)
+    plain_run = md.replay(stream, "a")
+    shuffled_run = md.replay(
+        shuffled, "a"
+    )  # arm "a" feeds x alone: a Settled-like, history-free phi
+    md._validate_run(plain_run, stream, stream, "a", "causal")
+    md._validate_run(shuffled_run, shuffled, shuffled, "a", "causal")  # the revision binding holds
+    assert (
+        shuffled_run["source_digest"] == md._source_digest(shuffled) != plain_run["source_digest"]
+    )
+    assert shuffled_run["revision"] == plain_run["revision"] == {
+        "head": stream["final"]["head"], "dirty": stream["final"]["dirty"],
+    }  # fmt: skip
+    # the shuffled replay feeds the same phi multiset per block in another order
+    invariance = ccc.settled_invariance(plain_run, shuffled_run, stream, boundary=16, block=BLOCK)
+    assert invariance["ok"] is True, invariance
