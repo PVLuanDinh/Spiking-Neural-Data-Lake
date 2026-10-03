@@ -5,10 +5,15 @@ hand-built tables, section 2.6's power rule, R-b7's refusals, the step-order ref
 Nothing here runs a campaign: steps run on a scratch OUT at a stand-in revision, and their jobs go
 through stand-in runners (or one in-process replay of the 48-event fixture)."""
 
+import inspect
+import math
+from pathlib import Path
+
 import pytest
 
 from snn_data_lake.instruments import memory_diagnostic as md
 from snn_data_lake.instruments import pool_selection as ps
+from snn_data_lake.instruments.paired_contrast import T_BAR_S31
 from snn_data_lake.reservoir import recurrent_pool as rp
 
 
@@ -141,6 +146,29 @@ def test_t_quantiles_match_the_printed_tables():
     assert abs(ps.t_quantile(0.975, 10) - 2.2281389) < 1e-7
     assert ps._t_cdf(0.0, 5) == 0.5 and abs(ps._t_cdf(1.0, 1) - 0.75) < 1e-12
     assert abs(ps._t_cdf(-1.5, 6) + ps._t_cdf(1.5, 6) - 1.0) < 1e-15
+
+
+# ---- G1(c) P1-B: the S = 31 bar tied to the quantile (g1c-carried-state.md 2.3, 2.10) -----------
+
+
+def bar_ties_to_quantile(bar, df):
+    """The bar is the fourth-place round-UP of t_quantile(0.95, df), at most 1e-4 above it."""
+    lo = ps.t_quantile(0.95, df)
+    return lo <= bar < lo + 1e-4 and math.ceil(lo * 1e4) / 1e4 == bar
+
+
+def test_the_s31_bar_is_the_fourth_place_round_up_of_the_30_df_quantile():
+    assert bar_ties_to_quantile(T_BAR_S31, 30)
+    assert ps.power_s(ps.SIGMA_PROXY)["S"] - 1 == 30  # S = 31 seeds is 30 d.f.
+
+
+@pytest.mark.parametrize(
+    ("bar", "df"),
+    [(1.895, 30), (T_BAR_S31, 7), (T_BAR_S31, 29), (T_BAR_S31, 31)],
+    ids=["the 7 d.f. bar at 30", "S31 at 7", "S31 at 29", "S31 at 31"],
+)
+def test_the_bar_tie_reds_fire_on_a_wrong_bar_or_a_wrong_df(bar, df):
+    assert not bar_ties_to_quantile(bar, df)
 
 
 # ---- R-b7: the binding and the table -------------------------------------------------------------
@@ -346,6 +374,130 @@ def test_main_refuses_without_writing_a_summary(tmp_path):
     pilot = tmp_path / "pilot"
     assert ps.main(["instrument", str(tmp_path), "--pilot", str(pilot)]) == ps.EXIT_REFUSED
     assert not list(tmp_path.glob("*.summary.json"))
+
+
+# ---- G1(c) P1-B: R-b6's seed is a step parameter; 4242 stays G1(b)'s default ---------------------
+
+
+class Cut(Exception):
+    """Stand-in for run_jobs where a test stops step_instrument once R-b6's streams are built."""
+
+
+def stub_instrument(monkeypatch, tmp_path, *, cut):
+    """Stub every call step_instrument makes: R-b2, R-b7's reds, the recording, rb6_stream, _save
+    and its one run_jobs batch (cut=True raises Cut there), then what it reads back after the
+    batch. Returns what the step asked for: rb6_stream's (seed, history_free) calls, the files
+    saved and the batches handed to run_jobs."""
+    asked = {"streams": [], "saved": [], "batches": []}
+    saved = {}
+
+    def rb6_stream(seed, *, history_free=False):
+        asked["streams"].append((seed, history_free))
+        return {"seed": seed, "history_free": history_free}
+
+    def save(path, value):
+        asked["saved"].append(Path(path))
+        saved[str(path)] = value
+
+    def run_jobs(jobs):
+        asked["batches"].append(list(jobs))
+        if cut:
+            raise Cut
+        return [{"status": "OK"} for _ in jobs]
+
+    def checked(job, stream):
+        return {"k": 2 if job["fault"] else 1, "readout": 1 if job["readout"] else None}
+
+    def contrast(stream, first, second):
+        return {"readout": {"difference": 0.0 if stream["history_free"] else 0.1}}
+
+    monkeypatch.setattr(md, "check_r_b2", lambda: {"verdict": True})
+    monkeypatch.setattr(ps, "r_b7_reds", lambda: {"verdict": True})
+    monkeypatch.setattr(ps, "_recorded", lambda out: {ps.PILOT_SEED: "OK"})
+    monkeypatch.setattr(ps, "_recording", lambda out, seed: tmp_path / "recorded.json.gz")
+    monkeypatch.setattr(md, "rb6_stream", rb6_stream)
+    monkeypatch.setattr(md, "_save", save)
+    monkeypatch.setattr(ps, "run_jobs", run_jobs)
+    monkeypatch.setattr(md, "_load", lambda path: saved.get(str(path), {}))
+    monkeypatch.setattr(md, "_source_digest", lambda stream: "digest")
+    monkeypatch.setattr(ps, "_checked", checked)
+    monkeypatch.setattr(ps, "_contrast", contrast)
+    monkeypatch.setattr(ps, "_pilot_run", lambda pilot, arm: {"k": 1, "readout": 1})
+    monkeypatch.setattr(ps, "_same", lambda first, second: first["k"] == second["k"])
+    return asked
+
+
+def test_rb6_families_name_the_seed_and_nothing_else():
+    folder = Path("x")
+    assert ps._rb6_families(folder, 4242) == {
+        "rb6": folder / "rb6-4242-stream.json.gz",
+        "rb6red": folder / "rb6red-4242-stream.json.gz",
+    }
+    names = [path.name for path in ps._rb6_families(folder, 6000).values()]
+    assert names == ["rb6-6000-stream.json.gz", "rb6red-6000-stream.json.gz"]
+    assert not any("4242" in name for name in names)
+
+
+def test_rb6_seed_defaults_to_g1bs_4242():
+    parameter = inspect.signature(ps.step_instrument).parameters["rb6_seed"]
+    assert parameter.default == ps.RB6_SEED == 4242
+
+
+@pytest.mark.parametrize(("kwargs", "seed"), [({}, 4242), ({"rb6_seed": 6000}, 6000)])
+def test_step_instrument_builds_and_names_r_b6_on_its_seed(tmp_path, monkeypatch, kwargs, seed):
+    asked = stub_instrument(monkeypatch, tmp_path, cut=True)
+    out = tmp_path / "out"
+    with pytest.raises(Cut):
+        ps.step_instrument(out, tmp_path / "pilot", **kwargs)
+    folder = out / "instrument"
+    assert asked["streams"] == [(seed, False), (seed, True)]
+    assert asked["saved"] == [
+        folder / f"rb6-{seed}-stream.json.gz",
+        folder / f"rb6red-{seed}-stream.json.gz",
+    ]
+    (batch,) = asked["batches"]
+    rb6_jobs = [job for job in batch if Path(job["stream"]).name.startswith("rb6")]
+    assert len(rb6_jobs) == 4  # {rb6, rb6red} x {e1, e1-0}, each replaying its own seed's stream
+    assert {Path(job["stream"]).name for job in rb6_jobs} == {
+        f"rb6-{seed}-stream.json.gz",
+        f"rb6red-{seed}-stream.json.gz",
+    }
+    other = {4242: 6000, 6000: 4242}[seed]  # the seed it must not carry anywhere
+    assert not any(str(other) in Path(job["stream"]).name for job in batch)
+
+
+def test_the_summary_names_the_seed_only_when_it_is_not_g1bs(tmp_path, monkeypatch):
+    asked = stub_instrument(monkeypatch, tmp_path, cut=False)
+    default = ps.step_instrument(tmp_path / "default", tmp_path / "pilot")
+    assert list(default) == ["R-b2", "R-b7 reds", "R-b6", "R-b8"]  # G1(b)'s keys, no rb6_seed
+    assert ps.step_instrument(tmp_path / "explicit", tmp_path / "pilot", rb6_seed=4242) == default
+    other = ps.step_instrument(tmp_path / "other", tmp_path / "pilot", rb6_seed=6000)
+    assert other == {**default, "rb6_seed": 6000}
+    # the step stays ONE run_jobs batch: 4 R-b6 replays, an on and an off per scored arm, 2 mutants
+    assert [len(batch) for batch in asked["batches"]] == [4 + 2 * len(md.SCORED_ARMS) + 2] * 3
+
+
+def test_main_passes_the_rb6_seed_to_the_instrument_step(tmp_path, monkeypatch):
+    pilot = tmp_path / "pilot"
+    pilot.mkdir()
+    names = [f"{ps.PILOT_SEED}-stream.json.gz"]
+    names += [f"{ps.PILOT_SEED}-{arm}-causal.json" for arm in md.SCORED_ARMS]
+    for name in names:
+        (pilot / name).touch()
+    given = []
+
+    def run_step(step, out, **kwargs):
+        given.append((step, kwargs))
+        return ps.EXIT_OK
+
+    monkeypatch.setattr(ps, "run_step", run_step)
+    base = ["instrument", str(tmp_path / "out"), "--pilot", str(pilot)]
+    assert ps.main(base) == ps.EXIT_OK
+    assert ps.main([*base, "--rb6-seed", "6000"]) == ps.EXIT_OK
+    assert given == [
+        ("instrument", {"pilot": str(pilot), "rb6_seed": 4242}),
+        ("instrument", {"pilot": str(pilot), "rb6_seed": 6000}),
+    ]
 
 
 def mechanism_runner(*, red=True, green=True, refuse="lsm", timeout=None):

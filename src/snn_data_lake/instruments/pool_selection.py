@@ -914,9 +914,20 @@ def _same(first, second, keys=md.GROWER_KEYS):
     return all(first[key] == second[key] for key in keys)
 
 
-def step_instrument(out, pilot):
-    """R-b2 and R-b7's reds here; R-b6 on 4242 and its history-free red, and R-b8's two halves and
-    their reds, each replay in its own child. Every failure here is the shared instrument's."""
+# distinct-from: instruments/memory_diagnostic.py::rb6_stream -- that builds the stream; this only names where step_instrument files the two recordings of a seed
+def _rb6_families(folder, seed):
+    """Where step_instrument files R-b6's two synthetic recordings for `seed`: the positive family
+    and its history-free red twin (G1(c) P1-B: the seed is a parameter, 4242 stays the default)."""
+    return {
+        "rb6": folder / f"rb6-{seed}-stream.json.gz",
+        "rb6red": folder / f"rb6red-{seed}-stream.json.gz",
+    }
+
+
+def step_instrument(out, pilot, *, rb6_seed=RB6_SEED):
+    """R-b2 and R-b7's reds here; R-b6 on rb6_seed (default 4242) and its history-free red, and
+    R-b8's two halves and their reds, each replay in its own child. Every failure here is the shared
+    instrument's."""
     folder = _folder(out, "instrument")
     r_b2 = md.check_r_b2()
     if not r_b2["verdict"]:
@@ -926,12 +937,9 @@ def step_instrument(out, pilot):
         raise Halt("R-b7 reds", r_b7)
     if _recorded(out).get(PILOT_SEED) != "OK":
         raise Halt("R-b8", f"seed {PILOT_SEED}'s recording at this head is missing")
-    families = {
-        "rb6": folder / f"rb6-{RB6_SEED}-stream.json.gz",
-        "rb6red": folder / f"rb6red-{RB6_SEED}-stream.json.gz",
-    }
-    md._save(families["rb6"], md.rb6_stream(RB6_SEED))
-    md._save(families["rb6red"], md.rb6_stream(RB6_SEED, history_free=True))
+    families = _rb6_families(folder, rb6_seed)
+    md._save(families["rb6"], md.rb6_stream(rb6_seed))
+    md._save(families["rb6red"], md.rb6_stream(rb6_seed, history_free=True))
     new = _recording(out, PILOT_SEED)
     jobs = {}
     for name, path in families.items():
@@ -986,7 +994,10 @@ def step_instrument(out, pilot):
         raise Halt("R-b8 pre-build", r_b8)
     if not all(r_b8["with_without"].values()):
         raise Halt("R-b8 with/without", r_b8)
-    return {"R-b2": r_b2, "R-b7 reds": r_b7, "R-b6": rb6, "R-b8": r_b8}
+    summary = {"R-b2": r_b2, "R-b7 reds": r_b7, "R-b6": rb6, "R-b8": r_b8}
+    if rb6_seed != RB6_SEED:  # a default run's summary stays byte-identical to G1(b)'s
+        summary["rb6_seed"] = rb6_seed
+    return summary
 
 
 def step_screen(out):
@@ -1483,6 +1494,12 @@ def self_check():
     assert power_s(0.0436) == {"S": 31, "capped": False}
     assert power_s(0.0436, 0.03)["S"] == 15 and power_s(0.08, 0.03)["S"] == 46
     assert power_s(0.0436, 0.01)["capped"]
+    # G1(c) 2.3's S = 31 bar is the fourth-place round-UP of the 30 d.f. quantile S = 31 implies
+    from snn_data_lake.instruments.paired_contrast import T_BAR_S31
+
+    assert t_quantile(0.95, 30) <= T_BAR_S31 < t_quantile(0.95, 30) + 1e-4
+    assert math.ceil(t_quantile(0.95, 30) * 1e4) / 1e4 == T_BAR_S31
+    assert power_s(SIGMA_PROXY)["S"] - 1 == 30
     # R-b7's three refusals, beside the well-formed table
     reds = r_b7_reds()
     assert reds["verdict"], reds
@@ -1513,7 +1530,7 @@ def self_check():
     filed = _bound(fixture["seed"], _spec("lsm", spec["config"], "settled"))
     assert binding_problems(dict(filed, digest=digest(run, fixture))) == ["window"]
     print(
-        "pool_selection self-check OK: ordering, eligibility, power, R-b7 reds, step order, exit codes, pool arm"
+        "pool_selection self-check OK: ordering, eligibility, power, S = 31 bar tie, R-b7 reds, step order, exit codes, pool arm"
     )
 
 
@@ -1532,6 +1549,12 @@ def main(argv=None):
                 "--pilot",
                 required=True,
                 help="G1(a)'s pilot3 directory at 829fb40 (100-stream.json.gz, 100-<arm>-causal.json)",
+            )
+            sub.add_argument(
+                "--rb6-seed",
+                type=int,
+                default=RB6_SEED,
+                help=f"the synthetic seed R-b6 runs on (default {RB6_SEED}, G1(b)'s)",
             )
     commands.add_parser(
         "job", help="run one job spec (the campaign's child processes)"
@@ -1556,6 +1579,7 @@ def main(argv=None):
             print(f"REFUSED: the pilot directory lacks {missing}", file=sys.stderr)
             return EXIT_REFUSED
         extra["pilot"] = args.pilot
+        extra["rb6_seed"] = args.rb6_seed
     try:
         return run_step(args.command, args.out, **extra)
     except Refused as refusal:
