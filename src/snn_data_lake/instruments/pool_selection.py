@@ -985,11 +985,21 @@ def _already_ran(out, step):
     return f"{step}: already ran in {out}; section 2.8 allows no retries"
 
 
-def _file_running(out, step, head):
-    """Create `step`'s RUNNING summary with open mode "x" (flushed, fsynced) before its body runs."""
+def _file_running(out, step, head, provenance=None):
+    """Create `step`'s RUNNING summary with open mode "x" (flushed, fsynced) before its body runs, carrying
+    the caller's `provenance` keys after the four every summary has (none: G1(b)'s marker, key for key)."""
     try:
         with open(_summary_path(out, step), "x", encoding="utf-8") as file:
-            json.dump({"step": step, "status": RUNNING, "head": head, "dirty": False}, file)
+            json.dump(
+                {
+                    "step": step,
+                    "status": RUNNING,
+                    "head": head,
+                    "dirty": False,
+                    **(provenance or {}),
+                },
+                file,
+            )
             file.flush()
             os.fsync(file.fileno())
     except FileExistsError as error:  # a concurrent start filed its summary after `require` looked
@@ -1031,18 +1041,27 @@ def require(out, step, revision, steps=STEPS):
 # distinct-from: faculties/affect_integrator.py::_pool_rate -- runs a LIF pool at a constant drive and returns a spike rate; no step, no summary
 # distinct-from: faculties/autotelic_goals.py::_reaches -- runs a goal-conditioned policy for a horizon of environment steps
 # distinct-from: brainstem/so101_arm.py::set_substeps -- sets how many physics steps one arm command runs (read only; no brainstem file is touched)
-def run_step(step, out, *, revision=None, function=None, steps=STEPS, **kwargs):
+def run_step(step, out, *, revision=None, function=None, steps=STEPS, provenance=None, **kwargs):
     """Run one step under section 2.8's taxonomy and write its summary: COMPLETED (exit 0), HALTED
     naming the shared check (exit 2), ABORTED on a FAILed job or a head that moved (exit 1). `steps`
     is the step list `require` reads the order from; it is never passed on to the step's function.
     The summary exists from BEFORE the body runs (status RUNNING, created with mode "x"); the final
     summary replaces it, so a body that never returns (a KeyboardInterrupt, a killed process) leaves one
-    that `require` refuses: no retries, a crash included (G1(c) P5 panel F1)."""
+    that `require` refuses: no retries, a crash included (G1(c) P5 panel F1).
+    `provenance` (G1(c) re-panel R2) is a dict the CALLER has validated, filed in the RUNNING marker and
+    kept in EVERY final summary, so what a later reader needs of a step that did not complete (which seed
+    set a campaign's record ran) survives a crash, a halt and an abort; it is never passed to the step's
+    function, never displaced by the body's keys, and may not name the four keys every summary has.
+    None (G1(b)'s steps) leaves every summary exactly as it was."""
     revision = revision or md._revision
     out = Path(out)
+    provenance = _plain(provenance or {})
+    if clash := sorted(set(provenance) & {"step", "status", "head", "dirty"}):
+        raise ValueError(f"{step}: provenance may not name {clash}: every summary carries those")
     out.mkdir(parents=True, exist_ok=True)
     head = require(out, step, revision, steps)
-    _file_running(out, step, head)  # before the body: an interrupt then leaves a RUNNING summary
+    # before the body: an interrupt then leaves a RUNNING summary, the caller's provenance in it
+    _file_running(out, step, head, provenance)
     function = function or STEP_FUNCTIONS[step]
     try:
         body, status, code = function(out, **kwargs), "COMPLETED", EXIT_OK
@@ -1057,7 +1076,7 @@ def run_step(step, out, *, revision=None, function=None, steps=STEPS, **kwargs):
     if status == "COMPLETED" and (end != head or dirty):
         body = {"moved": {"start": head, "end": end, "dirty": dirty}}
         status, code = "ABORTED", EXIT_ABORT
-    summary = {"step": step, "status": status, "head": head, "dirty": dirty, **body}
+    summary = {"step": step, "status": status, "head": head, "dirty": dirty, **body, **provenance}
     md._save(_summary_path(out, step), _plain(summary))
     print(f"{step}: {status}" + (f" ({body['check']})" if status == "HALTED" else ""))
     return code

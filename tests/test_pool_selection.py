@@ -5,6 +5,7 @@ hand-built tables, section 2.6's power rule, R-b7's refusals, the step-order ref
 Nothing here runs a campaign: steps run on a scratch OUT at a stand-in revision, and their jobs go
 through stand-in runners (or one in-process replay of the 48-event fixture)."""
 
+import functools
 import hashlib
 import inspect
 import json
@@ -755,6 +756,121 @@ def test_a_second_start_that_passed_require_is_refused_by_the_exclusive_create(
     assert (
         summary(tmp_path, "record")["status"] == "COMPLETED"
     )  # the finished summary was never rewritten
+
+
+# ---- G1(c) re-panel R2: a caller's provenance is filed before the body, kept in every summary ----
+
+
+def test_without_provenance_every_summary_is_byte_for_byte_what_run_step_always_wrote(tmp_path):
+    """G1(b)'s steps pass no provenance: the RUNNING marker and the final summaries keep their exact
+    keys and order (compared as text, not as dicts)."""
+    seen = {}
+
+    def body(out):
+        seen["marker"] = ps._summary_path(out, "record").read_text(encoding="utf-8")
+        return {"n": 1}
+
+    def halts(out):
+        raise ps.Halt("R-b6", {"difference": 0.01})
+
+    def aborts(out):
+        raise ps.Abort([{"status": "FAIL", "path": "x"}])
+
+    base = {"step": "record", "status": "RUNNING", "head": "h1", "dirty": False}
+    assert ps.run_step("record", tmp_path / "ok", revision=clean, function=body) == ps.EXIT_OK
+    assert seen["marker"] == json.dumps(base)
+    done = ps._summary_path(tmp_path / "ok", "record").read_text(encoding="utf-8")
+    assert done == json.dumps({**base, "status": "COMPLETED", "n": 1})
+    assert ps.run_step("record", tmp_path / "halt", revision=clean, function=halts) == ps.EXIT_HALT
+    stopped = ps._summary_path(tmp_path / "halt", "record").read_text(encoding="utf-8")
+    assert stopped == json.dumps(
+        {**base, "status": "HALTED", "check": "R-b6", "detail": {"difference": 0.01}}
+    )
+    assert ps.run_step("record", tmp_path / "abort", revision=clean, function=aborts) == 1
+    failed = ps._summary_path(tmp_path / "abort", "record").read_text(encoding="utf-8")
+    assert failed == json.dumps(
+        {**base, "status": "ABORTED", "failed": [{"status": "FAIL", "path": "x"}]}
+    )
+
+
+def test_run_step_files_a_callers_provenance_before_the_body_and_keeps_it_in_every_summary(
+    tmp_path,
+):
+    """Re-panel R2: the provenance is in the exclusive RUNNING marker before the body runs (so a
+    crash leaves it), in COMPLETED, HALTED and ABORTED summaries (a moved head and a defect
+    included), is never passed to the step's function, and is never displaced by the body's own
+    keys."""
+    provenance = {"seed_set": "live"}
+    base = {"step": "record", "status": "RUNNING", "head": "h1", "dirty": False}
+    seen = {}
+
+    def body(out, **kwargs):
+        seen["marker"], seen["kwargs"] = summary(out, "record"), kwargs
+        return {"n": 1, "seed_set": "claimed by the body"}
+
+    def halts(out):
+        raise ps.Halt("R-b6", {"difference": 0.01})
+
+    def aborts(out):
+        raise ps.Abort([{"status": "FAIL", "path": "x"}])
+
+    def defect(out):
+        raise ValueError("a defect in the parent")
+
+    def interrupted(out):
+        raise KeyboardInterrupt
+
+    run = functools.partial(ps.run_step, "record", revision=clean, provenance=provenance)
+    assert run(tmp_path / "ok", function=body, extra=2) == ps.EXIT_OK
+    assert seen["marker"] == {**base, "seed_set": "live"} and seen["kwargs"] == {"extra": 2}
+    assert summary(tmp_path / "ok", "record") == {
+        **base,
+        "status": "COMPLETED",
+        "n": 1,
+        "seed_set": "live",
+    }
+    assert run(tmp_path / "halt", function=halts) == ps.EXIT_HALT
+    assert run(tmp_path / "abort", function=aborts) == ps.EXIT_ABORT
+    assert run(tmp_path / "defect", function=defect) == ps.EXIT_ABORT
+    heads = iter([("h1", False), ("h2", False)])
+    assert (
+        ps.run_step(
+            "record",
+            tmp_path / "moved",
+            revision=lambda: next(heads),
+            function=lambda o: {},
+            provenance=provenance,
+        )
+        == ps.EXIT_ABORT
+    )
+    for name, status in (
+        ("halt", "HALTED"),
+        ("abort", "ABORTED"),
+        ("defect", "ABORTED"),
+        ("moved", "ABORTED"),
+    ):
+        found = summary(tmp_path / name, "record")
+        assert (found["status"], found["seed_set"]) == (status, "live"), name
+    with pytest.raises(KeyboardInterrupt):  # the marker a crash leaves carries it too
+        run(tmp_path / "crash", function=interrupted)
+    assert summary(tmp_path / "crash", "record") == {**base, "seed_set": "live"}
+    with pytest.raises(ps.Refused, match="never finished"):  # and the crash still allows no retry
+        run(tmp_path / "crash", function=lambda out: {})
+
+
+def test_provenance_that_names_a_key_every_summary_carries_is_refused_before_anything_is_filed(
+    tmp_path,
+):
+    for clash in ("step", "status", "head", "dirty"):
+        with pytest.raises(ValueError, match=clash):
+            ps.run_step(
+                "record",
+                tmp_path / clash,
+                revision=clean,
+                function=lambda out: {},
+                provenance={clash: "x"},
+            )
+        assert not list((tmp_path / clash).glob("*.summary.json"))
 
 
 def test_prefix_held_reads_both_learners_up_to_the_cut_and_nothing_after():

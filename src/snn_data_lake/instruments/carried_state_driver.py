@@ -16,8 +16,10 @@ summary written). A stage writes OUT/<stage>.summary.json with `head` and `dirty
               reserve (2.11), reserve 331-361 + gate 208-211 + synthetic 5009-5012 + R-b6 6001; migrate,
               instrument and controls read it from the record summary. --seeds reserve needs OUT/REPAIR.txt
               naming an ORIGINAL live campaign (never a reserve one) and CLAIMS that campaign's single
-              reserve attempt exclusively before recording; a second claim halts. Any recording
-              that is not OK halts. 2.6's half-moved rule on the K = 4 drawn permutations is asserted before the
+              reserve attempt exclusively before recording; a second claim halts. The record's `seed_set`
+              is filed in its RUNNING marker before the body runs and kept in every final summary
+              (COMPLETED, HALTED, ABORTED): a record that crashed or stopped is still a repairable
+              ORIGINAL (re-panel R2). Any recording that is not OK halts. 2.6's half-moved rule on the K = 4 drawn permutations is asserted before the
               first recording (over the pre-registered block sizes) and again on each live recording's own block
               sizes before any replay.
   mechanism   pool_selection's step_mechanism, then one "configuration" job for TUNED; any failure halts (the
@@ -517,12 +519,17 @@ def run_stage(stage, out, *, revision=None, function=None, **kwargs):
     problems = start_problems(stage, out, **kwargs)
     if problems:
         raise ps.Refused(f"{stage}: " + "; ".join(problems))
+    # re-panel R2: the record stage files WHICH seed set it runs (validated by start_problems above) in its
+    # exclusive RUNNING marker and every final summary, so a record that crashed, halted or aborted still
+    # names the campaign a reserve repair of it must be able to read (2.11); no other stage has one
+    provenance = {"seed_set": kwargs.get("seeds", "live")} if stage == "record" else None
     return ps.run_step(
         stage,
         out,
         revision=revision,
         function=function or STAGE_FUNCTIONS[stage],
         steps=STAGES,
+        provenance=provenance,
         **kwargs,
     )
 

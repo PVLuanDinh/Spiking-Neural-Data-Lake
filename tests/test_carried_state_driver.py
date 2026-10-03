@@ -328,15 +328,18 @@ def test_the_half_moved_rule_fires_on_a_draw_that_moves_under_half_and_on_an_emp
 # ---- the record stage ----------------------------------------------------------------------------
 
 
-def recorder(*, timeout=(), nudge=()):
+def recorder(*, timeout=(), nudge=(), fail=()):
     """A stand-in for memory_diagnostic's --record child: the 48-event fixture under the seed's
-    name (a seed in `timeout` times out, one in `nudge` records a perturbed stream). The fixtures
-    are built here, in the calling thread (md._synthetic_stream asks threadpoolctl)."""
+    name (a seed in `timeout` times out, one in `fail` FAILs, one in `nudge` records a perturbed
+    stream). The fixtures are built here, in the calling thread (md._synthetic_stream asks
+    threadpoolctl)."""
     plain, nudged = fixture(), fixture(nudge=True)
 
     def child(job):
         if job["seed"] in timeout:
             return {"status": "TIMEOUT", "path": job["out"]}
+        if job["seed"] in fail:
+            return {"status": "FAIL", "path": job["out"]}
         md._save(job["out"], dict(nudged if job["seed"] in nudge else plain, seed=job["seed"]))
         return {"status": "OK", "path": job["out"]}
 
@@ -549,6 +552,139 @@ def test_a_race_for_the_one_reserve_attempt_halts_the_loser_before_it_records(
     halted = summary(second, "record")
     assert halted["check"] == "record: the reserve attempt is already claimed"
     assert halted["detail"] == {"original": str(original), "by": str(first)}
+
+
+# ---- re-panel R2: the record stage's seed set survives a crash, a halt and an abort --------------
+
+ENDINGS = {"interrupted": "RUNNING", "halted": "HALTED", "aborted": "ABORTED"}
+
+
+def reserve_start(out, original):
+    """OUT's REPAIR.txt for a reserve record: line 1 names `original`, the rest is the repair."""
+    out.mkdir(parents=True, exist_ok=True)
+    (out / drv.REPAIR_FILE).write_text(f"{original}\na repair of executed code\n", encoding="utf-8")
+
+
+def ended_record(tmp_path, monkeypatch, how, seeds):
+    """The record stage on the `seeds` bundle, ended `how`: "interrupted" (a KeyboardInterrupt after
+    seed 100's recording, so only the exclusive RUNNING marker stands), "halted" (a TIMEOUT) or
+    "aborted" (a FAILed job). Returns its OUT. A reserve record is itself a repair of an original
+    live one."""
+    work = tmp_path / f"{how}-{seeds}"
+    out = work / "out"
+    if seeds == "reserve":
+        write_summary(work / "original", "record", seed_set="live")
+        reserve_start(out, work / "original")
+    monkeypatch.setattr(
+        ps,
+        "_record_child",
+        recorder(
+            timeout=(cs.CAUSALITY_SEED,) if how == "halted" else (),
+            fail=(cs.CAUSALITY_SEED,) if how == "aborted" else (),
+        ),
+    )
+    if how == "interrupted":
+        real, batches = ps._record_seeds, []
+
+        def second_batch_dies(folder, which):
+            batches.append(which)
+            if len(batches) == 2:
+                raise KeyboardInterrupt
+            return real(folder, which)
+
+        monkeypatch.setattr(ps, "_record_seeds", second_batch_dies)
+    pilot = str(pilot_dir(work))
+    try:
+        drv.run_stage("record", out, revision=clean, pilot=pilot, seeds=seeds)
+    except KeyboardInterrupt:
+        assert how == "interrupted"
+    return out
+
+
+@pytest.mark.parametrize("how", ENDINGS)
+def test_an_original_live_record_that_did_not_complete_files_its_seed_set_and_is_repairable(
+    tmp_path, monkeypatch, how
+):
+    """Re-panel R2: 2.11's golden rule can require a reserve restart after a crashed, halted or
+    aborted ORIGINAL live record; its seed set was filed before the body ran, so a repair can name
+    it."""
+    original = ended_record(tmp_path, monkeypatch, how, "live")
+    found = summary(original, "record")
+    assert (found["status"], found["seed_set"]) == (ENDINGS[how], "live")
+    assert (found["head"], found["dirty"]) == ("h1", False)
+    repair = tmp_path / "repair" / "out"
+    reserve_start(repair, original)
+    pilot = str(pilot_dir(tmp_path / "repair"))
+    assert drv.start_problems("record", repair, pilot, "reserve") == []
+    monkeypatch.undo()  # the repair records (stand-in children) and claims the one attempt
+    monkeypatch.setattr(ps, "_record_child", recorder())
+    assert drv.run_stage("record", repair, revision=clean, pilot=pilot, seeds="reserve") == 0
+    assert summary(repair, "record")["seed_set"] == "reserve"
+    assert (original / drv.RESERVE_CLAIM_FILE).read_text(encoding="utf-8").strip() == str(repair)
+
+
+@pytest.mark.parametrize("how", ENDINGS)
+def test_a_reserve_record_that_did_not_complete_is_never_repaired_in_its_turn(
+    tmp_path, monkeypatch, how
+):
+    """The rule stays whole: an original whose record summary reads seed_set reserve, in ANY status,
+    is refused (a repair is never repaired again, 2.11); the refused start writes nothing."""
+    attempted = ended_record(tmp_path, monkeypatch, how, "reserve")
+    assert summary(attempted, "record")["seed_set"] == "reserve"
+    chain = tmp_path / "chain" / "out"
+    reserve_start(chain, attempted)
+    pilot = str(pilot_dir(tmp_path / "chain"))
+    (problem,) = drv.start_problems("record", chain, pilot, "reserve")
+    assert "never repaired again" in problem and "'reserve'" in problem
+    with pytest.raises(ps.Refused, match="never repaired again"):
+        drv.run_stage("record", chain, revision=clean, pilot=pilot, seeds="reserve")
+    assert not list(chain.glob("*.summary.json"))
+    assert not (attempted / drv.RESERVE_CLAIM_FILE).exists()
+
+
+@pytest.mark.parametrize("status", ["RUNNING", "HALTED", "ABORTED", "COMPLETED"])
+def test_a_record_summary_that_names_no_seed_set_is_still_refused_as_an_original(tmp_path, status):
+    """A summary with no seed set (None) is never accepted as an original, whatever its status: the
+    repair rule is not weakened to admit what the stage did not file."""
+    original = tmp_path / "original"
+    write_summary(original, "record", status=status)
+    repair = tmp_path / "repair"
+    reserve_start(repair, original)
+    (problem,) = drv.start_problems("record", repair, str(pilot_dir(tmp_path)), "reserve")
+    assert "seed_set None" in problem and "only the ORIGINAL live campaign is repaired" in problem
+
+
+@pytest.mark.parametrize("seeds", ["live", "reserve"])
+def test_the_record_stages_running_marker_carries_its_seed_set_before_the_body_runs(
+    tmp_path, seeds
+):
+    out = tmp_path / "out"
+    if seeds == "reserve":
+        write_summary(tmp_path / "original", "record", seed_set="live")
+        reserve_start(out, tmp_path / "original")
+    seen = []
+
+    def body(folder, **kwargs):
+        seen.append(summary(folder, "record"))
+        return {}
+
+    code = drv.run_stage(
+        "record", out, revision=clean, function=body, pilot=str(pilot_dir(tmp_path)), seeds=seeds
+    )
+    assert code == ps.EXIT_OK
+    assert seen == [
+        {"step": "record", "status": "RUNNING", "head": "h1", "dirty": False, "seed_set": seeds}
+    ]
+    assert summary(out, "record")["seed_set"] == seeds  # kept in the summary the body did not fill
+    # the provenance is the record stage's alone: a later stage's marker names no seed set
+    later = []
+    drv.run_stage(
+        "mechanism",
+        out,
+        revision=clean,
+        function=lambda folder: later.append(summary(folder, "mechanism")) or {},
+    )
+    assert later == [{"step": "mechanism", "status": "RUNNING", "head": "h1", "dirty": False}]
 
 
 # ---- the mechanism stage -------------------------------------------------------------------------
