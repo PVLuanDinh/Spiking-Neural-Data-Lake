@@ -257,3 +257,28 @@ def test_g_a_band_of_billions_of_flips_is_refused_at_once():
     with pytest.raises(ValueError, match="threshold band"):
         permutation_fpr([1.0] * 36, 1.0)
     assert time.perf_counter() - t0 < 30.0
+
+
+# ---- fold of the P1 panel (Codex gpt-6.1-sol): F2 threshold range, F3 refusal order
+@pytest.mark.parametrize(
+    "d, bar", [([1.0, 2.0], 1e155), ([1e-100, 2e-100], 1e100), ([0.3, -0.1, 0.2], 1e30)]
+)
+def test_fold_f2_an_extreme_bar_keeps_the_threshold_finite_and_equals_the_oracle(d, bar):
+    assert pc.permutation_fpr(d, bar) == _oracle(d, bar)
+
+
+@pytest.mark.parametrize(
+    "d, bar", [([0.0, 0.0], -1.0), ([], math.inf), ([1.0], 0.0), ([0.0] * 41, T_BAR)]
+)
+def test_fold_f3_the_refusals_come_before_the_trivial_answers(d, bar):
+    with pytest.raises(ValueError):
+        pc.permutation_fpr(d, bar)
+
+
+def test_fold_f3_a_trivial_sample_at_a_valid_bar_still_reads_zero():
+    assert (
+        pc.permutation_fpr([], T_BAR)
+        == pc.permutation_fpr([0.4], T_BAR)
+        == pc.permutation_fpr([0.0] * 5, T_BAR)
+        == 0.0
+    )

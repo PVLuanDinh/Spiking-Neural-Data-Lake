@@ -190,7 +190,8 @@ def _accuracy(table, seed, key, who):
     return value
 
 
-def oracle_check(readout, grower, *, seeds=LIVE_SEEDS):
+# distinct-from: substrate/minhash.py -- exact_jaccard (like frequency_moment.exact_f2 and snn_mnist_stdp_genn's codegen check) is a self-check ground truth; this is G1(c)'s seed-paired (f64)-(a) contrast over replay accuracies
+def oracle_check(readout, grower, *, seeds=LIVE_SEEDS, allow_reserve=False):
     """Section 2.4 (ii): per seed, accuracy(f64) - accuracy(a) through the reference readout, one
     contrast row at the bar; the grower's reading of the same difference beside it.
 
@@ -198,6 +199,9 @@ def oracle_check(readout, grower, *, seeds=LIVE_SEEDS):
     value that is None, NaN or infinite, raises ValueError('blind harness: oracle incomplete ...'):
     G-R1 then reads REFUSED. Only the decoder row decides: the grower's rows (G1A read f64 above a
     through the GROWER in 12 of 12 cells) never stand in for the decoder's."""
+    # the seed set is validated first (fold of the P1 panel's F1: 30 copies of 300 plus 301 had read n 31, MET):
+    # a duplicate or an exposed seed is refused, a reserve seed only with the repair run's authorization (2.11)
+    seeds = validate_seed_set(tuple(seeds), allow_reserve=allow_reserve)
     rows = {}
     for who, table in (("reference readout", readout), ("grower", grower)):
         diffs = [_accuracy(table, s, "f64", who) - _accuracy(table, s, "a", who) for s in seeds]

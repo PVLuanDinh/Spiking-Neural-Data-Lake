@@ -323,3 +323,23 @@ def test_the_self_check_passes_from_any_directory(monkeypatch, tmp_path, capsys)
     assert printed.startswith("self-check OK") and printed.isascii()
     assert "exact FPR" in printed and "band" in printed and "skew-flagged" in printed
     assert sorted(tmp_path.iterdir()) == before  # it wrote nothing
+
+
+# ---- fold of the P1 panel (Codex gpt-6.1-sol): F1 the oracle validates its seed set
+def test_fold_f1_the_oracle_refuses_a_duplicate_seed_set():
+    table = {300: {"f64": 0.55, "a": 0.5}, 301: {"f64": 0.56, "a": 0.5}}
+    with pytest.raises(ValueError, match="duplicate"):
+        ccc.oracle_check(table, table, seeds=(300,) * 30 + (301,))
+
+
+def test_fold_f1_the_oracle_refuses_an_exposed_seed_and_an_unauthorized_reserve_seed():
+    diffs = green()
+    exposed = (*ccc.LIVE_SEEDS[:-1], 203)
+    table = {s: {"f64": 0.5 + d, "a": 0.5} for s, d in zip(exposed, diffs, strict=True)}
+    with pytest.raises(ValueError):
+        ccc.oracle_check(table, table, seeds=exposed)
+    reserve = {s: {"f64": 0.5 + d, "a": 0.5} for s, d in zip(ccc.RESERVE_SEEDS, diffs, strict=True)}
+    with pytest.raises(ValueError):
+        ccc.oracle_check(reserve, reserve, seeds=ccc.RESERVE_SEEDS)
+    authorized = ccc.oracle_check(reserve, reserve, seeds=ccc.RESERVE_SEEDS, allow_reserve=True)
+    assert authorized["met"] and authorized["decoder"]["n"] == 31

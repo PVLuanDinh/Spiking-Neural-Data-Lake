@@ -99,7 +99,9 @@ def _signed_sums(xs):
 
 def _threshold(n, bar, q):
     """The total S' a flip must exceed for t' > bar (bar > 0): n * bar * sqrt(Q / (n (n - 1 + bar^2)))."""
-    return n * bar * math.sqrt(q / (n * (n - 1 + bar * bar)))
+    # = sqrt(n Q) * bar / sqrt(bar^2 + n - 1), written with hypot so neither bar^2 overflows nor the quotient
+    # underflows (fold of the P1 panel's F2: [1, 2] at bar 1e155 had read threshold 0.0 and fpr 0.5 against 0.0)
+    return math.sqrt(n * q) * (bar / math.hypot(bar, math.sqrt(n - 1)))
 
 
 def _band_eps(n, q):
@@ -109,8 +111,9 @@ def _band_eps(n, q):
     u = 2^-53; s bounds S', thr and A = sum|d| (Cauchy-Schwarz; thr < s for n >= 2); the sums below add
     non-negative terms, so each carries a relative error of at most (number of additions) * u.
       (a) a half-sum of h terms plus the final s_left + s_right: at most n*u*A <= n*u*s;
-      (b) thr: Q has relative error <= (n + 1)u, the six remaining operations add <= 6u, the square root halves
-          that: <= (n + 12)u * thr <= (n + 12)u*s;
+      (b) thr: Q has relative error <= (n + 1)u, the remaining operations (n*Q, sqrt(n - 1), hypot, the
+          division and the product, each <= 2u) add <= 10u, the square roots halve their part; at most
+          (n + 12)u * thr <= (n + 12)u*s;
       (c) `paired_t` on the reconstructed vector: its mean carries n*u*A/S' + u, its centred variance sums n
           NON-negative squares (no cancellation: <= (n + 3)u, the second-order n*(mean error)^2/var is far
           smaller), the division, square root and division add 3u: a relative error eta <= n*u*A/S' +
@@ -153,15 +156,17 @@ def permutation_fpr_detail(diffs, bar=T_BAR):
     (0.0, 0), as the definition gives."""
     xs = [float(d) for d in diffs]
     n = len(xs)
+    # the refusals come BEFORE the trivial answers (fold of the P1 panel's F3: [0, 0] at bar -1 had returned 0.0
+    # where the definition gives 1.0, and 41 zeros had returned 0.0 instead of being refused)
+    if not 0.0 < bar < math.inf:
+        raise ValueError(f"bar must be in (0, inf) (the threshold needs bar > 0), got {bar!r}")
+    if n > MITM_MAX_N:
+        raise ValueError(f"n = {n} exceeds MITM_MAX_N = {MITM_MAX_N}: refused, never approximated")
     if n < 2 or not all(map(math.isfinite, xs)):
         return 0.0, 0
     q = sum(x * x for x in xs)
     if q == 0.0:
         return 0.0, 0
-    if not 0.0 < bar < math.inf:
-        raise ValueError(f"bar must be in (0, inf) (the threshold needs bar > 0), got {bar!r}")
-    if n > MITM_MAX_N:
-        raise ValueError(f"n = {n} exceeds MITM_MAX_N = {MITM_MAX_N}: refused, never approximated")
     if not _Q_MIN < q < _Q_MAX:
         raise ValueError(
             f"sum of squares {q!r} is outside ({_Q_MIN}, {_Q_MAX}): the bound needs it in range"
