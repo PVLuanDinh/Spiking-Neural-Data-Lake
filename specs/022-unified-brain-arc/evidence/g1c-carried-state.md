@@ -454,7 +454,7 @@ recorder or the causal contract; G2's presized nonlinear and delayed-cue control
   construct 0 / 10; migrate 0 / 206; causality 0 / 25; primary 0 / 347; controls 0 / 921; transport 0 / 362; separation 0 /
   291; report 0 / 3. No TIMEOUT, no halt, no repair: the reserve seeds 331-361 were not used.
 - **Report:** `run1/report.json` (file sha256 `986d5794...02d3d6`; the driver's digest `ec34c68a...a3757c` is over its
-  canonical content) and `run1/report.md` (file sha256 `748c49e7...42433b`). Every number below is copied from that report.
+  canonical content) and `run1/report.md` (file sha256 `748c49e7...42433b`). The contrast, timing, migration and separation numbers below are copied from that report; the construct numbers of 3.4 are copied from `run1/construct.summary.json` (the report keeps only the construct verdict).
 - **Live lake:** `C:\Users\vinhl\.snn_data_lake\brain_lake.bin` last written 2026-09-27 01:19, unchanged after the campaign.
 
 ### 3.2 G-R1: RED (carried state not shown), worded "stream-null"
@@ -481,9 +481,9 @@ The forbidden-map request (`w_live`) raised as required.
 
 **What it licenses (2.1):** the null refuses "carried state helps prospective prediction through this fixed decoder on this
 stream" and nothing else. The pool is KEPT, G4 does not wait on it, it is not a stop of the work loop, and it is not a null on
-an owner-drawn part (P4d): the reservoir stays; only G-R9 can claim or refuse the engine's reservoir. Stream-null names the
-cause the instrument can see: the stream's own history did not help the reference readout either (2.6), so this stream did not
-pose a problem that carried state could solve.
+an owner-drawn part (P4d): the reservoir stays; only G-R9 can claim or refuse the engine's reservoir. Stream-null is 2.5's wording when 2.6's reading is
+not met: the stream-history benefit was not demonstrated through this reference readout (a weaker benefit, or one another
+decoder could reach, is not excluded).
 
 ### 3.3 Migration gate (2.9): the hosted form survives
 
@@ -492,7 +492,7 @@ later stage. Mean D per host: kernel live -0.00218 / task 0.12659; port live -0.
 (hosted Reset: D_task 0.00132). The port reproduced G1(b)'s per-seed D on 204-207 within 4.2e-5. Quantization sensitivity and
 the parity horizon over frac_bits {4, 8, 12, 16, 24, 32} are REPORT ONLY (parity equal from 24 bits up).
 
-### 3.4 Construct (2.8): G2(ii)'s construction check PASS
+### 3.4 Construct (2.8): G2(ii)'s construction check PASS (numbers from `run1/construct.summary.json`)
 
 A1-A5 all held on learner seeds 7000-7007, 400 epochs: A1 four distinct buckets (cat 28, dog 41, sun 31, sky 51); A2 ranks and
 code additive (max code deviation 1.1e-16); A3 max correct 2 of 4 on every seed, 0 of 2000 random settings 4 of 4 (12,800
@@ -507,4 +507,8 @@ Carried XOR 0.676, twin 0.853; Settled XOR 0.996, twin 0.997; the stream reads c
    explicit go (the integration brief's stop-and-ask list names deleting a file), then a stacked commit.
 3. The dormancy rows that say "until G1(c)'s disposition", the plan's T109 note and T108's stale checkbox: stacked commits by
    the integrator.
-4. The Codex closing report, ONE battery on the stacked head, the closing record LAST, push.
+4. The Codex closing report (2026-10-04, gpt-6.1-sol, `scratchpad/g1c/codex_closing_reply.txt`): claims 1-4 survive (the RED
+   reading, stream-null, the scoped null, the dormancy rows); its finding 6 (construct numbers sourced from the summary, not
+   the report) and finding 2 (stream-null wording) are folded in 3.1-3.4; its BLOCKER finding 5 holds that 2.14 orders the
+   loser deletion BEFORE the battery and push, so this arc is NOT closed and NOT pushed until item 2 lands (or the owner
+   overrides the frozen order in words). Then ONE battery on the stacked head, the closing record LAST, push.
