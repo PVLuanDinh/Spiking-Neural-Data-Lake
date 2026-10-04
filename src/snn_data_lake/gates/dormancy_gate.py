@@ -125,31 +125,31 @@ EXEMPT = {
     ),
     "recurrent_pool": (
         "permanent",
-        "G1(b)'s selected pool, g1 LSM, a governed benchmark component until G1(c)'s disposition (g1b section 2.9); consumers: instruments/memory_diagnostic.py's pool arm, instruments/pool_selection.py's campaign, tests/test_recurrent_pool.py",
+        "G1(b)'s selected pool, g1 LSM, a governed benchmark component, KEPT after G1(c)'s RED (stream-null; g1c 3.2: a null keeps the pool) for G5 Part D and G9's engine (g1b section 2.9); consumers: instruments/memory_diagnostic.py's pool arm, instruments/pool_selection.py's campaign, tests/test_recurrent_pool.py",
     ),
     "pool_selection": (
         "permanent",
-        "G1(b)'s selection campaign (a governed benchmark; its record is g1b section 3.4) until G1(c)'s disposition; consumers: its CLI and tests/test_pool_selection.py",
+        "G1(b)'s selection campaign (a governed benchmark; its record is g1b section 3.4); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: its CLI and tests/test_pool_selection.py",
     ),
     "carried_state_campaign": (
         "permanent",
-        "G1(c)'s campaign module (a governed benchmark; evidence g1c-carried-state.md) until G1(c)'s disposition; consumers: its CLI and tests/test_carried_state_campaign.py",
+        "G1(c)'s campaign module (a governed benchmark; evidence g1c-carried-state.md); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: its CLI and tests/test_carried_state_campaign.py",
     ),
     "carried_state_stages": (
         "permanent",
-        "G1(c)'s migrate, causality and primary stages (a governed benchmark; evidence g1c-carried-state.md 2.9, 2.10, 2.3) until G1(c)'s disposition; consumers: carried_state_driver's CLI and tests/test_carried_state_stages.py",
+        "G1(c)'s migrate, causality and primary stages (a governed benchmark; evidence g1c-carried-state.md 2.9, 2.10, 2.3); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: carried_state_driver's CLI and tests/test_carried_state_stages.py",
     ),
     "carried_state_controls": (
         "permanent",
-        "G1(c)'s controls, transport and separation stages (a governed benchmark; evidence g1c-carried-state.md 2.6-2.8) until G1(c)'s disposition; consumers: carried_state_driver's CLI and tests/test_carried_state_stages.py",
+        "G1(c)'s controls, transport and separation stages (a governed benchmark; evidence g1c-carried-state.md 2.6-2.8); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: carried_state_driver's CLI and tests/test_carried_state_stages.py",
     ),
     "carried_state_report": (
         "permanent",
-        "G1(c)'s report stage and golden check (a governed benchmark; evidence g1c-carried-state.md 2.3, 2.5, 2.11) until G1(c)'s disposition; consumers: carried_state_driver's CLI and tests/test_carried_state_report.py",
+        "G1(c)'s report stage and golden check (a governed benchmark; evidence g1c-carried-state.md 2.3, 2.5, 2.11); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: carried_state_driver's CLI and tests/test_carried_state_report.py",
     ),
     "carried_state_driver": (
         "permanent",
-        "G1(c)'s campaign driver (a governed benchmark; evidence g1c-carried-state.md 2.13) until G1(c)'s disposition; consumers: its CLI and tests/test_carried_state_driver.py",
+        "G1(c)'s campaign driver (a governed benchmark; evidence g1c-carried-state.md 2.13); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: its CLI and tests/test_carried_state_driver.py",
     ),
     "inseparable_mapping": (
         "permanent",
