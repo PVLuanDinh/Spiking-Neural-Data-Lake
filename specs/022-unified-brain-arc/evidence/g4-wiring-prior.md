@@ -614,3 +614,30 @@ with G7 (D22):
   stage holds. Check: recomputing it from the pinned artifact reproduces the recorded integer E exactly.
 - G4 flag (information for G7's design, not an objection): at small N, a sparse dbar may make the kernel arms
   near-trivially local. G7 noted that this only sharpens the already-registered narrowness of a PASS.
+
+## DATED PRE-DATA AMENDMENT 2026-10-04 (check (j) refused the x-quartile region blocks; lead ruling 22, option B; no edge read)
+
+Pointers (no frozen passage is edited): replaces the region-block DEFINITION in 2.4's second bullet ("Four blocks by the
+x quartiles of soma position"); everything else in 2.4, 2.5, 2.14 A2-A3, A5-A7 applies unchanged to the new blocks.
+
+- **What fired.** Check 2.11 (j) (2.14 A7), run 2026-10-04 on the pinned artifact's POSITIONS and layer bands only (A8's
+  whitelist; `h01_distance_kernel.Geometry.of`), REFUSED the x-quartile blocks. Unit counts per block (rows) per band
+  (L1..L6, white matter):
+  block 0 [0, 2, 303, 735, 1016, 1029, 469]; block 1 [0, 576, 975, 1044, 947, 11, 0];
+  block 2 [73, 1556, 1143, 730, 52, 0, 0]; block 3 [454, 2575, 525, 0, 0, 0, 0].
+  The x axis runs ACROSS the layers (the radial direction lies in the x-y plane, 1.3, 3.1). Under the frozen A7 the
+  reading would have been NOT READ (region instrument invalid).
+- **The new definition.** Region blocks = the four quartiles of each soma's polar angle about the centre of
+  `placement.LAYER_CIRCLES["value"][0]` (the white-matter circle, the first circle `layer_of` tests; (462.3, 2806.0) um),
+  angle = atan2(y - cy, x - cx) in the x-y plane, z ignored. This is the TANGENTIAL direction 3.1 names, so every block
+  spans the radial (laminar) axis. The centre is read from the code constant, never typed.
+- **Disclosed: a positions-only look before the choice.** Three distinct circle centres were tabled. Only the
+  white-matter centre passes (j): minimum cell 13 (L1 in block 0), table
+  [13, 719, 738, 737, 572, 516, 259] / [190, 1332, 714, 543, 467, 216, 91] / [208, 1289, 705, 592, 483, 184, 93] /
+  [116, 1369, 789, 637, 493, 124, 26]. Centres (1149.9, 2458.4) and (1158.2, 2411.7) leave block 0 without L1 (minimum
+  cell 0). No connection, distance-to-edge relation or fit was read; the choice is over positions only. The thin L1 cell
+  (13 units) is stated: block 0's L1 contributes few pairs to its held-out set.
+- **What tests it.** The planted stage (2.14 A5-A6) scores every planted truth through the new blocks before any edge is
+  read: the region instrument's positive controls (planted kernels must read +1 on every block, A3 row 6) and its
+  false-positive control (flat validation) bind the new split exactly as they bound the old one. Check (j) is re-run on
+  the new blocks and its table recorded in the campaign record.
