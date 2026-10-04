@@ -381,22 +381,83 @@ def knowledge_path(name="brain_lake.bin"):
     return os.path.join(home(), name)
 
 
+# distinct-from: gates/move_gate.py -- _live_home_stamp DETECTS a live-home write after the fact (an
+#   mtime stamp compared across a run); this REFUSES a path before anything binds a lake. Site read.
+# distinct-from: substrate/home.py (_arm_selfcheck_unguarded, below) -- a STATIC source check that a
+#   module's main() wraps throwaway_home; this is the runtime path check that wrapper now performs.
+# distinct-from: gates/gradient_claim_gate.py, sensorimotor/ingest_guard.py, instruments/prior_drift_harness.py,
+#   faculties/time_cells.py, reasoning/dishbrain_learning.py -- keyword hits on "refused" (FR-010 envelope
+#   paths, a licence reason, a nuisance-arm refusal, cell growth, Hebbian feedback); none guards a home. Sites read.
+class LiveHomeRefused(ValueError):
+    """A home that is, contains, or sits inside the LIVE home was refused (lead ruling 16).
+
+    One type for every refusal, so an adopting harness prints it as a refusal; a ValueError so a
+    caller that only knows the builtin still catches it. The message names the resolved path and
+    the rule that fired: equal / contains / contained / unset."""
+
+
+def _default_live_home():
+    return os.path.join(os.path.expanduser("~"), ".snn_data_lake")
+
+
+def assert_not_live_home(path, live_home=None):
+    """THE shared live-home guard (specs/022 T102 R1, lead ruling 16): return `path` RESOLVED, or
+    raise LiveHomeRefused. Every row's harness adopts this one; none writes its own (P2).
+
+    A prefix check (`selfcheck_home_*`) is not isolation -- a prefixed junction or symlink can alias
+    the live lake (Codex #14 on G5) -- so both sides are resolved first (`realpath` follows
+    junctions on Windows) and compared case-insensitively, for equality AND containment in either
+    direction. Two different drives cannot contain each other (`commonpath` raises there)."""
+    if path is None or str(path) == "":
+        raise LiveHomeRefused("home refused (unset): an empty home falls back to the default, which is the live lake")
+    p = os.path.realpath(os.path.abspath(str(path)), strict=True)
+    live = os.path.realpath(os.path.abspath(str(live_home if live_home is not None else _default_live_home())))
+    a, b = os.path.normcase(p), os.path.normcase(live)
+    if a == b:
+        raise LiveHomeRefused(f"home refused (equal): {p} is the live home {live}")
+    try:
+        common = os.path.normcase(os.path.commonpath([a, b]))
+    except ValueError:  # different drives
+        return p
+    if common == b:
+        raise LiveHomeRefused(f"home refused (contained): {p} is inside the live home {live}")
+    if common == a:
+        raise LiveHomeRefused(f"home refused (contains): {p} contains the live home {live}")
+    return p
+
+
+def require_isolated_home(live_home=None):
+    """For a harness that set NORD_HOME itself: refuse an unset or empty NORD_HOME (home() would then
+    be the live lake), else apply `assert_not_live_home`. Call before any lake-binding import or
+    Brain construction. Returns the resolved home."""
+    return assert_not_live_home(os.environ.get("NORD_HOME") or "", live_home=live_home)
+
+
 @contextlib.contextmanager
-def throwaway_home():
+def throwaway_home(live_home=None, parent=None):
     """A self-check's home (specs/022 T037a): a fresh temp dir as NORD_HOME for the duration,
     the previous value restored after. Every main() that drives a So101Arm through
     EMERGENCY_STOP or HOME runs under this, because the E-STOP now writes a durable latch
     sidecar into home() -- a self-check run by hand against the real home would otherwise
     leave the live brain's next restart frozen. The runner's isolated NORD_HOME is replaced
-    too: a check that exits stopped must not freeze the next check either."""
+    too: a check that exits stopped must not freeze the next check either.
+
+    GUARDED (lead ruling 16): the temp dir passes `assert_not_live_home` before NORD_HOME is set,
+    and NORD_HOME holds its RESOLVED path. `parent` places it (Codex b3 #11: a multi-GB home must
+    not land in a system TEMP on C:); None keeps the system temp dir, as before."""
     prev = os.environ.get("NORD_HOME")
     # best-effort cleanup: a brain can still hold a lake handle in the temp home when the
     # check returns, and on Windows that makes rmdir raise -- which would turn a passed
     # self-check into exit 1 (measured on engine.brain)
-    tmp = tempfile.TemporaryDirectory(prefix="selfcheck_home_", ignore_cleanup_errors=True)
-    os.environ["NORD_HOME"] = tmp.name
+    tmp = tempfile.TemporaryDirectory(prefix="selfcheck_home_", dir=parent, ignore_cleanup_errors=True)
     try:
-        yield tmp.name
+        resolved = assert_not_live_home(tmp.name, live_home=live_home)
+    except BaseException:
+        tmp.cleanup()
+        raise
+    os.environ["NORD_HOME"] = resolved
+    try:
+        yield resolved
     finally:
         if prev is None:
             os.environ.pop("NORD_HOME", None)
