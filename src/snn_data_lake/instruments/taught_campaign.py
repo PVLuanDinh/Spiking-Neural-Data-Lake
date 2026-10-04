@@ -339,6 +339,39 @@ def reading(r):
     return "PASS: S0C0 positive; S1C0 STATE; S0C1 CAPACITY; S1C1 STATE + CAPACITY; C1-d CAPACITY held-out"
 
 
+# distinct-from: faculties/access_consciousness.py -- an ignition-threshold access predicate
+# distinct-from: faculties/recursive_tom.py -- T082's per-seed reading of its own rows
+# distinct-from: faculties/vsa_reasoning.py -- a one-spike-per-dimension predicate
+# distinct-from: gates/move_gate.py -- the move census diff's reds
+# distinct-from: infra/brain_telemetry.py -- the telemetry contract self-check. Sites read 2026-10-04.
+# (ii)'s separate reading (2.9; cp1 #6), over complete per-seed rows of ARMS_II, or NOT RUN. Clause 1 is G1(c)'s
+# A3 on the bare learner; a canonical-learner XOR solve here is a DISAGREEMENT reported beside it (the float
+# near-tie carried opening, to the owner), never a RED against G1(c)'s record. Clauses 2 and 3 are G2's own.
+def reading_ii(rows_ii, seeds):
+    if rows_ii is None:
+        return "NOT RUN: G1(c)'s construct-stage PASS was not supplied"
+    for arm in ARMS_II:
+        if sorted(r.get("seed") for r in rows_ii.get(arm[0], [])) != sorted(seeds):
+            raise ValueError(f"(ii) arm {arm[0]} lacks a result per seed")
+
+    def all_met(arm_id):
+        return all(r["met"] for r in rows_ii[arm_id])
+
+    if not all_met("inc.ii.xor"):
+        return "DISAGREEMENT with G1(c)'s A3 (a canonical-learner XOR solve): the near-tie opening, to the owner"
+    if not all_met("inc.ii.twin"):
+        return "RED: (ii)'s separable twin is not learned (clause 2)"
+    if not (all_met("pre.ii.xor") and all_met("pre.ii.twin")):
+        return "RED: (ii)'s presized nonlinear positive control fails (clause 3)"
+    return "PASS (ii): twin learned, presized solves XOR and twin; clause 1 reported beside G1(c)'s A3"
+
+
+# G1(c)'s construct-stage evidence: verdict True on exactly the check seeds 7000-7007
+def g1c_construct_passed(record):
+    return (isinstance(record, dict) and record.get("verdict") is True
+            and sorted(record.get("seeds", ())) == list(range(7000, 7008)))
+
+
 PASS_FLAGS = {
     "b8_ok": True, "reds_fired": True, "construction_ok": True, "b3_ok": True, "presized_solves_s1c0": False,
     "incumbent_solves_s1_or_c1": False, "history_solves_s1c1": False, "incumbent_solves_c1d": False,
@@ -448,9 +481,18 @@ def preflight(seeds, out_dir, arms=ARMS, *, require_clean=True):
             raise PermissionError("dirty tree refused")
 
 
-def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, include_ii=False, require_clean=True):
-    """The campaign (2.9's order): construction checks (no learner) -> B8 on every seed -> reds -> the arms ->
-    (ii) when G1(c)'s construct stage passed. Writes OUT/g2_campaign.json; returns the record."""
+# distinct-from: instruments/report_order_probe.py -- T081's apparatus dry run
+# distinct-from: faculties/recursive_tom.py -- T082's per-seed printer
+# distinct-from: gates/policy_manifest.py -- in_ci / in_selfchecks derivation
+# distinct-from: instruments/binding_instrument.py -- T080's apparatus dry run
+# distinct-from: instruments/everyday_battery.py -- the C0 battery's port-faithfulness check. Sites read 2026-10-04.
+# The campaign (2.9's order): construction (no learner) -> B8 per seed -> reds -> arms; (ii) ONLY on G1(c)'s
+# construct-stage evidence `g1c_construct` (verdict True on 7000-7007; cp1 #6), else (ii) reads NOT RUN;
+# evidence supplied but not passing is refused. Writes OUT/g2_campaign.json.
+def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, g1c_construct=None, require_clean=True):
+    if g1c_construct is not None and not g1c_construct_passed(g1c_construct):
+        raise PermissionError("G1(c)'s construct-stage evidence does not show a PASS on 7000-7007: (ii) refused")
+    include_ii = g1c_construct is not None
     # distinct-from: brainstem/so101_arm.py -- the arm's E-STOP sidecar write
     # distinct-from: faculties/agency_monitor.py -- T079's own campaign runner
     # distinct-from: faculties/metacognitive_monitor.py -- T077's own campaign runner
@@ -488,7 +530,8 @@ def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, include_ii=False, requir
         return conclude("HALT: shared instrument (a campaign red did not fire)")
     rows = {arm[0]: [run_arm(arm, s, epochs, h) for s in seeds] for arm in arms}
     flags = flags_from(rows, True, True, True, seeds=seeds, arms=ARMS)
-    record.update(rows=rows, flags=flags, verdict=reading(flags))
+    rows_ii = {arm[0]: rows[arm[0]] for arm in ARMS_II} if include_ii else None
+    record.update(rows=rows, flags=flags, verdict=reading(flags), verdict_ii=reading_ii(rows_ii, seeds))
     return _record_campaign(out_dir, record, before)
 
 

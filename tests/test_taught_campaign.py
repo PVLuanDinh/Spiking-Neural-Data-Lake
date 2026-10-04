@@ -45,6 +45,39 @@ def test_isolation_failure_halts(monkeypatch):
         tc._assert_isolated(before)
 
 
+def _ii_rows(seeds, override=None):
+    rows = {arm[0]: [{"seed": s, "met": True} for s in seeds] for arm in tc.ARMS_II}
+    for arm_id in override or ():
+        rows[arm_id] = [{"seed": s, "met": False} for s in seeds]
+    return rows
+
+
+@pytest.mark.parametrize("failing,prefix", [
+    ((), "PASS (ii)"), (("inc.ii.xor",), "DISAGREEMENT"), (("inc.ii.twin",), "RED: (ii)'s separable"),
+    (("pre.ii.xor",), "RED: (ii)'s presized"), (("pre.ii.twin",), "RED: (ii)'s presized"),
+])
+def test_reading_ii_rows_each_fire(failing, prefix):
+    # cp1 #6: (ii) has its own reading; each row's planted failure gives that row's verdict
+    seeds = (8900, 8901)
+    assert tc.reading_ii(_ii_rows(seeds, failing), seeds).startswith(prefix)
+
+
+def test_reading_ii_not_run_and_partial_evidence():
+    assert tc.reading_ii(None, (8900,)).startswith("NOT RUN")
+    rows = _ii_rows((8900, 8901))
+    rows["pre.ii.twin"] = rows["pre.ii.twin"][:1]
+    with pytest.raises(ValueError):
+        tc.reading_ii(rows, (8900, 8901))
+
+
+@pytest.mark.parametrize("evidence", [{"verdict": False, "seeds": list(range(7000, 7008))},
+                                      {"verdict": True, "seeds": [7000]}, {"verdict": "yes"}])
+def test_ii_refused_without_g1c_construct_pass(evidence, tmp_path):
+    with pytest.raises(PermissionError):
+        tc.run_campaign((8900,), str(tmp_path), g1c_construct=evidence, require_clean=False)
+    assert tc.g1c_construct_passed({"verdict": True, "seeds": list(range(7000, 7008))})
+
+
 def _no_arms(*a, **k):
     raise AssertionError("an arm ran after a failed prerequisite")
 
