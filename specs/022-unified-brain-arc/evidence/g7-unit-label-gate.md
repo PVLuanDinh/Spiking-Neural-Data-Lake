@@ -173,6 +173,7 @@ Pure, stdlib plus the incumbents' constants (no second vocabulary: `REGION_COORD
   arrays), and a row whose label differs from its journal entry is `derived` and printed as a mismatch. So origin is
   read from journal EVIDENCE, never from the blob's own `origin` array (batch 1 Codex G7 #3), and `derived`/`legacy`
   cannot become an admission escape: neither is admissible and neither can be re-admitted under a known id.
+  AMENDED 2026-10-04 (D21): a journaled id whose restored label differs is REFUSED, not `derived` -- see the dated pre-data amendment at the end.
 - **The gate precedes admission structurally (Codex b3 #8, folded).** `require_admissible` returns an `AdmissionTicket`
   naming exactly the admitted `unit_id`s; G3's single row-append point (its `admit_rows(rows, ticket)`, an interface ask
   to G3 registered in 2.9) refuses rows whose ids the ticket does not cover, and a ticket is consumed once. "A grower
@@ -255,6 +256,8 @@ G-R7's controls, verbatim from the record section 7, then this draft's additions
 | R17 | (Codex b3 #9) a fully valid unit whose `unit_id` already has a journal birth entry, in a later batch | refused, field `unit_id`, reason `duplicate across batches` | uniqueness across batches |
 | R18 | (Codex b3 #9) restore of (a) a journaled unit whose label equals its entry; (b) a row with no journal entry; (c) a journaled unit whose restored label differs | (a) `born` and NOT refused as a duplicate (restoration is not admission); (b) `derived`/`legacy`; (c) `derived` with the mismatch printed | restoration distinguished from admission; origin from journal evidence |
 | R19 | (batch 1 #1) `ap = 1.0`; `dv` NaN; a position whose cell holds no `REGION_COORDS` label | each refused (`position`, `position`, `region` "unknown territory") | the frozen position-to-region contract |
+
+AMENDED 2026-10-04 (D21): R18(c) now reads REFUSED (tampered born unit), not `derived` -- see the dated pre-data amendment at the end.
 
 The gate's own determinism: verdicts are pure functions of the record and the registries (no RNG); the fixture RNG uses
 seeds 13010-13019. **Home safety (board PROTOCOL 4b):** R8 and R12 build an engine and therefore run under
@@ -384,6 +387,7 @@ guard, keeps the record's disposition (2.6).
    R8 reads the same way: the restored pre-label blob's units are `legacy` (no full label set), never `born`, before
    and after G7's stacked `neurogenesis_engine.py` commit; re-admission is refused either way. R12's today-refit rows are
    `legacy` unambiguously.
+   AMENDED 2026-10-04 (D21): `derived` = full label set with NO journal entry; a differing journaled label is a refusal -- see the dated pre-data amendment at the end.
 2. **Stated couplings.** (a) R6 and every cortex admission depend on O2: under the fallback a cortex unit is admitted
    with `region_read = "name"`; under the strict sentence the gate refuses every ('sp', 'alar') unit and G3 can admit
    nothing -- a ruling for the strict sentence blocks G3's loop until a finer pallial map exists. (b) R8 cannot be green
@@ -450,6 +454,7 @@ guard, keeps the record's disposition (2.6).
   - **M:** `M = round(N x dbar / 2)`, `dbar` = the mean degree of H01's SYMMETRIZED simple graph over the cortical layers
     the substrate uses, READ from `tools/g4_t3_campaign.json` (an ask to G4's Part B, registered in 2.9). If that number is
     absent, T4 waits; no chosen density stands in for it. M is fixed per N before any T4 seed and is the same in every arm.
+    AMENDED 2026-10-04 (D22): `dbar`'s population and the T4 layers are pinned -- see the dated pre-data amendment at the end.
   - **Directed to undirected:** `CONN_PROB` is directed layer-to-layer; the pair's layer term is `c(a, b) = 1 - (1 -
     p_ab)(1 - p_ba)` (the probability of at least one directed contact), so the undirected weight is symmetric by
     construction. Pair weight `w_ij = c(L_i, L_j) x g(d_ij) x (1 + beta x m_ij)`, `g` = G4's tangential kernel, `d_ij` the
@@ -506,6 +511,8 @@ G4's, by the record's section 6 and the plan's G4 row; this file maps them and r
 | the gate's admission interface | G3: `admit_rows(rows, ticket)` as the single row-append point of its grown segment (ticket-checked, consume-once) and `known_unit` / `classify_restored` reading its IMMORTAL `'unit'` journal (Codex b3 #8, #9; interface asks registered here, G3 to confirm at its build) | the gate's side on fixtures |
 | T4's wiring run | G4's T3 verdict, Part B (tangential kernel, surface density, and -- an ask registered here -- `dbar`, H01's symmetrized simple-graph mean degree over the substrate's layers, for M) and Part B2 (beta); CONN_PROB read through placement (G4) | modularity instrument + IR1-IR3 + the exact-M sampler on fixtures |
 | T4's task half | G9 | -- |
+
+AMENDED 2026-10-04 (D22): the T4 wiring-run row's `dbar` wording is superseded -- see the dated pre-data amendment at the end.
 
 **Dependencies this draft found beyond DEPENDENCIES.md** (reported to main, recorded there 2026-10-03): T1 waits on G2
 and G3 as well as G4; T4's wiring half waits on G4's T3 and its Part B (tangential sigma, surface density) and the beta
@@ -655,3 +662,44 @@ None. Nothing has run but the cost probe of 2.12.
 - **Folds since the critique:** the fold is itself unreviewed text -- the Codex critique reviewed the PROPOSED version,
   so every change listed above is battery-free design text that no reviewer has re-read; stated plainly, per the
   project's rule.
+
+## DATED PRE-DATA AMENDMENT 2026-10-04 (with G3's and G4's replies; no data read)
+
+Amends the frozen text of `854de0e7`; the passages it supersedes carry one-line `AMENDED 2026-10-04` pointers and are
+otherwise unchanged. Raised by G3's and G4's replies to this row's cross-row asks (2.9); nothing has been run, measured
+or read since the freeze. Unreviewed amendment text, stated plainly.
+
+**D21 -- a restored label that contradicts its birth record is REFUSED (G3's concern, agreed).** In `classify_restored`
+(2.3) and the origin partition (2.6b(1)): a restored row whose `unit_id` HAS a journal birth entry but whose label
+differs from that entry in any field is a TAMPERED or corrupted born unit and is **REFUSED**, the red naming the unit
+and the differing fields. It is NOT classified `derived`: that would launder the change into a debt row. `derived` now
+means exactly: the FULL label field set present and NO journal birth entry for its `unit_id`. `born` and `legacy` are
+unchanged. This is consistent with the write-once sign (2.2): a journaled unit's label is write-once as a whole. Red
+R18(c) changes accordingly: a journaled unit whose restored label differs -> REFUSED, naming the unit and the differing
+fields (was: `derived` with the mismatch printed). G3 confirms `classify_restored` at its build as a dated pre-data
+amendment on claude/g3.
+
+**D22 -- `dbar` and the T4 layers pinned (G4's two definitions, agreed).** In 2.7's M bullet: `dbar` is the mean degree
+of the INDUCED subgraph of H01's symmetrized simple graph on the units of the T4 layers (an edge counts only if both
+ends are in those layers), read from `tools/g4_t3_campaign.json` Part B and taken only after T3 reads (G4's A13).
+**The T4 layers** are the cortical layers `CONN_PROB` has a population for: **L1 excluded** (no `CONN_PROB` population,
+so an L1 unit would have no defined layer term and its every arrival would be infeasible) and **white matter
+excluded**. The T4 substrate's `place_labeled` draws (`roles=None`) are restricted to the same layers by rejecting draws
+outside them, disclosed; so the substrate's layer mix is H01's occupancy conditioned on those layers, not H01's full
+marginal. Beside `dbar` G4's record carries N_units, the undirected simple edge count, the reciprocal-pair fraction and
+the reconstruction-density disclosure (H01's observed density 3.46e-4, far below biological, which `dbar` inherits);
+this row prints that disclosure beside every T4 result. At a sparse `dbar` the kernel arms are near-trivially local;
+that only sharpens the already-registered narrowness of a PASS ("more modular than random", CH1). G4 confirms `dbar`
+in its Part B amendment on claude/g4.
+
+**2.9, the T4 wiring-run row, superseded:** waits for G4's T3 verdict, Part B (tangential kernel, surface density, and
+`dbar` = the mean degree of the induced symmetrized simple-graph subgraph on the T4 layers -- L1 and white matter
+excluded -- taken after T3, D22) and Part B2 (beta); CONN_PROB read through placement (G4). Proceeds now: modularity
+instrument + IR1-IR3 + the exact-M sampler on fixtures.
+
+**Debate log rows added:**
+
+| # | challenge | from | answer | resolution |
+|---|---|---|---|---|
+| D21 | a restored row with a journal birth entry but a different label, classified `derived`, launders tampering into a debt row | G3 -> G7 | REFUSED as a tampered born unit, naming the unit and fields; `derived` = full label set, no journal entry; R18(c) amended | RESOLVED (this amendment) |
+| D22 | `dbar`: induced subgraph or all-partner degree? which layers, and does L1 count? | G4 -> G7 | induced subgraph on the T4 layers; L1 excluded (no `CONN_PROB` population) and white matter excluded; substrate draws restricted to the same layers; density 3.46e-4 disclosed | RESOLVED (this amendment) |
