@@ -416,6 +416,8 @@ REGIONS = {
         "growth_program",
         # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
         "growth_stop",
+        # specs/022 T111 (G3) P3: the grow-attempt loop, the budget pause, the ledger + unit journal
+        "growth_loop",
         # specs/022 T111 (G3) P1: the taught learner's grown latency segment (frozen code never re-ranked)
         "grown_code",
         # specs/022 T062: the H01 c3 SYNAPSE graph, 8 gates, a seeded population

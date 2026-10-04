@@ -959,6 +959,12 @@ EXEMPT = {
         "(growth/growth_loop.py, P3), which reaches the live path only when G9 wires the engine; "
         "this exemption retires the day that wire lands",
     ),
+    "growth_loop": (
+        "wire",
+        "specs/022 T111 (G3) P3: the posed-problem grow-attempt loop. Its consumers are G3's "
+        "campaign instrument (P4) and G6's ledger/solved_sink readers; it reaches the live path only "
+        "when G9 wires the engine, and this exemption retires that day",
+    ),
 }
 
 

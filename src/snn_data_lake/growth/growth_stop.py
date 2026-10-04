@@ -139,6 +139,10 @@ class GrowthStop:
         self._lp_hist = {}  # region -> [|LP| at each refit], trailing _WINDOW
         self._decisions = {}  # region -> [(fed_count, verdict, reason)], trailing _WINDOW
         self._fed = {}  # region -> MONOTONE fed-row count (the cursor; survives the trim)
+        # specs/022 T111 (G3) P3: the PROBLEM key (2.6 "one stop rule", P2/P4d). A posed problem's
+        # budget pause is a second verdict of this ONE gate, not a second stop module: problem ->
+        # (solved, spend, allowance, batch). A disjoint namespace -- region verdicts never read it.
+        self._problems = {}
 
     # ---- evidence ----------------------------------------------------------------------------
     # distinct-from: growth/learning_progress.py -- its observe() feeds ERROR levels
@@ -181,6 +185,22 @@ class GrowthStop:
         return v if math.isfinite(v) else None
 
     # ---- the criterion -----------------------------------------------------------------------
+    def observe_problem(self, problem_id, solved, spend, budget, batch):
+        """One posed problem's state, observed by the gate itself (G3's loop feeds it before every
+        growth decision): solved?, units spent, the allowance (the budgets drawn), the next batch size."""
+        self._problems[problem_id] = (bool(solved), int(spend), float(budget), int(batch))
+
+    def should_grow_problem(self, problem_id):
+        """THE PROBLEM VERDICT: grow only while the problem is unsolved AND the next WHOLE batch fits
+        the allowance (2.6 D5: a batch that would cross the budget is refused whole). Takes the problem
+        id and nothing else (the executive-independence contract). An unobserved problem does not grow:
+        unlike a region, a problem's budget must be read before any spend."""
+        state = self._problems.get(problem_id)
+        if state is None:
+            return False
+        solved, spend, budget, batch = state
+        return (not solved) and spend + batch <= budget
+
     def should_grow(self, region):
         """THE VERDICT. True = the next refit may grow; False = this region's growth is
         gated off, and the stop HOLDS until charging evidence re-opens it.

@@ -141,6 +141,11 @@ class GoalStore:
         self._index = []  # [(goal_id, unit-embedding)] -- DERIVED, rebuilt on replay
         self._next = 0  # monotone id allocator, maintained by _fold (never a count: the
         # panel measured count-based ids re-issuing an occupied id forever after one gap)
+        # G3 P3 (specs/022 T111): every row of any OTHER kind -- G3's "problem" and "unit" rows,
+        # G6's "sleep_bout" / "sleep_verdict" / "sleep_save" -- is kept in lake order, untouched
+        # (unknown-kind PASS-THROUGH, P4b): their folds belong to their owners
+        # (growth/growth_loop.py's Ledger), never to this goal view.
+        self._events = []
         self._replay()
 
     # ---- lake I/O ------------------------------------------------------------------------
@@ -157,6 +162,7 @@ class GoalStore:
 
     def _replay(self):
         self._goals, self._index, self._next = {}, [], 0
+        self._events = []
         for payload in self._bin.replay():
             if payload[:1] != _T_GOAL:
                 continue
@@ -202,6 +208,8 @@ class GoalStore:
             and int(row.get("goal_id", -1)) in self._goals
         ):
             self._goals[int(row["goal_id"])]["outcomes"].append(str(row["outcome"]))
+        elif kind not in ("create", "lp", "outcome"):
+            self._events.append(dict(row))  # pass-through: another owner's row, kept verbatim
 
     # ---- the API -------------------------------------------------------------------------
     def create(self, embedding, achievement_function_ref):
@@ -251,6 +259,20 @@ class GoalStore:
 
     def goals(self):
         return dict(self._goals)
+
+    def append_event(self, row):
+        """Append one non-goal event row (G3's ledger and unit journal, G6's sleep rows) to the
+        IMMORTAL _T_GOAL class, synchronously (write-ahead). Goal kinds are refused here: they
+        have their own validated API above."""
+        if not isinstance(row, dict) or row.get("kind") in (None, "create", "lp", "outcome"):
+            raise ValueError(f"append_event takes a non-goal event row, got {row!r}")
+        json.dumps(row, allow_nan=False)  # a NaN would write invalid JSON into an IMMORTAL row
+        self._append(row)
+        self._fold(row)
+
+    def events(self):
+        """Every non-goal row in lake order (copies)."""
+        return [dict(r) for r in self._events]
 
     # distinct-from: reasoning/semantic_memory.py -- its top-k is VSA-hypervector cosine
     #   over FACT text (a different record class in a different space); nothing shared but
