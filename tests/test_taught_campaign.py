@@ -45,6 +45,24 @@ def test_isolation_failure_halts(monkeypatch):
         tc._assert_isolated(before)
 
 
+def _no_arms(*a, **k):
+    raise AssertionError("an arm ran after a failed prerequisite")
+
+
+@pytest.mark.parametrize("failure", ["construction", "b8", "p1_red", "campaign_red"])
+def test_a_failed_prerequisite_halts_before_any_arm(failure, tmp_path, monkeypatch):
+    # cp1 #2: no deferred halts -- the stage that fails stops the campaign before any arm is built
+    monkeypatch.setattr(tc, "run_arm", _no_arms)
+    monkeypatch.setattr(tc, "b8_twin", lambda s, e: {"ok": failure != "b8"})
+    monkeypatch.setattr(tc.dc, "construction_reds", lambda: {"all_fired": failure != "p1_red"})
+    monkeypatch.setattr(tc, "campaign_reds", lambda **k: {"all_fired": failure != "campaign_red"})
+    if failure == "construction":
+        monkeypatch.setattr(tc.dc, "construction_check", lambda seeds: {"verdict": False})
+    record = tc.run_campaign((8900,), str(tmp_path / "out"), require_clean=False)
+    assert record["verdict"].startswith("RED: construction" if failure == "construction" else "HALT")
+    assert "rows" not in record and (tmp_path / "out" / "g2_campaign.json").exists()
+
+
 def test_preflight_refuses_an_arm_naming_future_d(tmp_path):
     arms = (("x", "c1d", "incumbent", "never", "future_d"),)
     with pytest.raises(PermissionError):

@@ -431,22 +431,48 @@ def preflight(seeds, out_dir, arms=ARMS, *, require_clean=True):
 def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, include_ii=False, require_clean=True):
     """The campaign (2.9's order): construction checks (no learner) -> B8 on every seed -> reds -> the arms ->
     (ii) when G1(c)'s construct stage passed. Writes OUT/g2_campaign.json; returns the record."""
+    # distinct-from: brainstem/so101_arm.py -- the arm's E-STOP sidecar write
+    # distinct-from: faculties/agency_monitor.py -- T079's own campaign runner
+    # distinct-from: faculties/metacognitive_monitor.py -- T077's own campaign runner
+    # distinct-from: faculties/recursive_tom.py -- T082's own campaign runner
+    # distinct-from: instruments/attention_schema.py -- T078's own campaign runner
+    # distinct-from: instruments/binding_instrument.py -- T080's own campaign runner ("a shared runner would be
+    #   a fifth mechanism, not one"). Sites read 2026-10-04.
     arms = ARMS + (ARMS_II if include_ii else ())
     preflight(seeds, out_dir, arms, require_clean=require_clean)
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     before = _live_mtime()
+    record = {"seeds": list(seeds), "epochs": epochs, "h": h}
+
+    def conclude(verdict):
+        # a failed prerequisite concludes HERE: no later stage builds a learner, teaches or reads (cp1 #2)
+        record["verdict"] = verdict
+        return _record_campaign(out_dir, record, before)
+
     construction = dc.construction_check(seeds)
     p2 = {"b9": tp.check_b9()["ok"], "b11": tp.check_b11()["ok"],
           "b12": all(tp.check_b12(learner(s), tp.PROBLEMS["i.S1C1"], s)["ok"] for s in seeds)}
-    construction_ok = construction["verdict"] and all(p2.values())
-    b8 = {s: b8_twin(s, epochs)["ok"] for s in seeds}
-    reds = {"p1": dc.construction_reds()["all_fired"], "p2": tp.construction_reds(learner)["all_fired"],
-            "campaign": campaign_reds(epochs=epochs, h=h)}
-    reds_fired = reds["p1"] and reds["p2"] and reds["campaign"]["all_fired"]
+    record.update(construction_ok=construction["verdict"] and all(p2.values()), p2=p2)
+    if not record["construction_ok"]:
+        return conclude("RED: construction wrong (the generator)")
+    record["b8"] = {}
+    for s in seeds:
+        record["b8"][s] = b8_twin(s, epochs)["ok"]
+        if not record["b8"][s]:
+            return conclude(f"HALT: shared instrument (B8 failed on seed {s})")
+    record["reds"] = {"p1": dc.construction_reds()["all_fired"], "p2": tp.construction_reds(learner)["all_fired"]}
+    if not (record["reds"]["p1"] and record["reds"]["p2"]):
+        return conclude("HALT: shared instrument (a P1/P2 red did not fire)")
+    record["reds"]["campaign"] = campaign_reds(epochs=epochs, h=h)
+    if not record["reds"]["campaign"]["all_fired"]:
+        return conclude("HALT: shared instrument (a campaign red did not fire)")
     rows = {arm[0]: [run_arm(arm, s, epochs, h) for s in seeds] for arm in arms}
-    flags = flags_from(rows, construction_ok, all(b8.values()), reds_fired)
-    record = {"seeds": list(seeds), "epochs": epochs, "h": h, "construction_ok": construction_ok, "p2": p2,
-              "b8": b8, "reds": reds, "rows": rows, "flags": flags, "verdict": reading(flags)}
+    flags = flags_from(rows, True, True, True)
+    record.update(rows=rows, flags=flags, verdict=reading(flags))
+    return _record_campaign(out_dir, record, before)
+
+
+def _record_campaign(out_dir, record, before):
     Path(out_dir, "g2_campaign.json").write_text(json.dumps(record, indent=1, default=str), encoding="ascii")
     _assert_isolated(before)  # AFTER the last write: an isolation failure halts, never reports
     return record
