@@ -126,6 +126,15 @@ def test_b3_identity_holds_for_incumbent_and_reds_for_history():
     assert not tc.b3_identity(hist, s1c0)["ok"]
 
 
+def test_us_attempt_reads_fresh_labels_each_epoch_end():
+    # cp1 #9: the attempt path itself gives every epoch-end read its own index, so U_S labels differ
+    p = tp.PROBLEMS["U_S"]
+    result = tc.attempt(p, tc.make_reader("incumbent", p, SCRATCH), SCRATCH, 4)
+    assert result["validation_read_indices"] == [0, 1, 2, 3]
+    labels = [tuple(e[-1].label for e in p.episodes(SCRATCH, "validation", read_index=i)) for i in range(4)]
+    assert len(set(labels)) == 4 and result["never"]
+
+
 def test_shuffled_teaching_never_teaches_the_truth():
     taught = tc._shuffled_labels(SCRATCH)
     true = [dc.GREET, dc.GOAL, dc.GREET, dc.GOAL]

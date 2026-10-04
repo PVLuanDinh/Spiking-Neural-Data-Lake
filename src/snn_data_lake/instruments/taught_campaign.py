@@ -180,7 +180,7 @@ def attempt(problem, reader, seed, epochs, *, judge_future=False, stop_when_stab
     end a learning-OFF validation read. Returns epoch-end solved flags and accuracies, the max accuracy, the
     first solved epoch end, and (judge_future) one final future read."""
     taught = _shuffled_labels(seed) if shuffled else None
-    solved_ends, accuracy = [], []
+    solved_ends, accuracy, read_indices = [], [], []
     for k, epoch in enumerate(problem.teach_epochs(seed, epochs)):
         true = [episode[-1].label for episode in epoch]
         labels = taught(true) if taught else true
@@ -188,7 +188,9 @@ def attempt(problem, reader, seed, epochs, *, judge_future=False, stop_when_stab
             for i in range(len(episode) - 1):
                 reader.route(episode[: i + 1])  # context turns arrive through the read
             reader.teach(episode, label)
-        reads = tp.read_split(problem, seed, "validation", reader.route)
+        # each epoch-end read is its own read index (U_S draws fresh labels per read; cp1 #9)
+        reads = tp.read_split(problem, seed, "validation", reader.route, read_index=k)
+        read_indices.append(k)
         solved_ends.append(tp.solved(problem, seed, "validation", reads))
         accuracy.append(sum(a == b for a, b in reads) / len(reads))
         if on_epoch_end:
@@ -203,6 +205,7 @@ def attempt(problem, reader, seed, epochs, *, judge_future=False, stop_when_stab
         "stable": tp.solves_stably(solved_ends),
         "never": tp.never_solves(solved_ends),
         "epochs_run": len(solved_ends),
+        "validation_read_indices": read_indices,
     }
     if judge_future:
         reads = tp.read_split(problem, seed, "future", reader.route)
