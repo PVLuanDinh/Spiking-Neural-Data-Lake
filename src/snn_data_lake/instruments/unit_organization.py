@@ -36,6 +36,7 @@ from collections import namedtuple
 
 import numpy as np
 
+from snn_data_lake.gates.growth_coverage_gate import nmi  # the ONE partition-agreement home (P2)
 from snn_data_lake.instruments.paired_contrast import T_BAR, paired_t, permutation_fpr
 
 #: Louvain restart seeds (estimator seeds, not recordings; pre-registration 2.10).
@@ -320,9 +321,9 @@ def main():
     return 0
 
 
-# distinct-from: gates/growth_coverage_gate.py -- its adjusted_rand scores partition agreement by ARI;
-#   IR1 is FROZEN on NMI >= 0.9 (2.7), a different statistic on a different scale, so this uses
-#   sklearn's NMI rather than re-reading a frozen bar through ARI (put to the lead as a P2 question).
+# distinct-from: gates/growth_coverage_gate.py -- partition agreement is NOT computed here: IR1 reads
+#   growth_coverage_gate.nmi, which lives beside adjusted_rand (the one home, P2; lead ruling on cp3).
+#   This module only partitions (Louvain); the bar stays the FROZEN NMI >= 0.9 (2.7).
 # distinct-from: instruments/paired_contrast.py, faculties/self_model.py, reservoir/kernel_tick.py,
 #   substrate/lake_bridge.py -- a self-check, a self-model, a partition drain, a digest round trip;
 #   the matcher fired on "partition" / "own". All sites read.
@@ -362,17 +363,15 @@ NMI_BAR = 0.9  # CHOSEN, disclosed (2.7)
 def ir1(n, m, *, blocks, between=0.2, seeds=IR_SEEDS, louvain_seeds=LOUVAIN_SEEDS):
     """IR1: a planted block model at the same N and M must beat RANDOM (gnm) by Part F's contrast AND its
     Louvain partition must recover the plant (NMI >= NMI_BAR on EVERY seed). Fails -> T4 REFUSED."""
-    from sklearn.metrics import normalized_mutual_info_score
-
     truth = list(np.arange(n) * blocks // n)
-    diffs, nmi = [], []
+    diffs, nmis = [], []
     for s in seeds:
         q_p, labels = best_partition(planted_blocks(n, m, blocks=blocks, between=between, seed=s), n,
                                      louvain_seeds)
         diffs.append(q_p - modularity(random_graph(n, m, seed=s), n, louvain_seeds))
-        nmi.append(float(normalized_mutual_info_score(truth, labels)))
+        nmis.append(nmi(truth, labels))
     verdict = judge("IR1 planted vs RANDOM", diffs, "superiority")
-    return {"verdict": verdict, "nmi": nmi, "ok": verdict.met and min(nmi) >= NMI_BAR}
+    return {"verdict": verdict, "nmi": nmis, "ok": verdict.met and min(nmis) >= NMI_BAR}
 
 
 def ir2(n, m, *, seeds=IR_SEEDS, twin_seeds=IR_TWIN_SEEDS, louvain_seeds=LOUVAIN_SEEDS):

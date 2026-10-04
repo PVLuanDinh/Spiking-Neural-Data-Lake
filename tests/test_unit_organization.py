@@ -211,6 +211,30 @@ def test_bare_main_fires_its_instrument_reds(capsys):
     assert "instrument reds fired: 6 of 6" in capsys.readouterr().out
 
 
+def test_nmi_lives_beside_adjusted_rand_and_matches_a_hand_computed_value():
+    from snn_data_lake.gates import growth_coverage_gate as gc
+
+    # a = [0,0,1,1], b = [0,0,0,1]: H(a) = ln 2, H(b) = -(3/4 ln 3/4 + 1/4 ln 1/4),
+    # I = 1/2 ln(4/3) + 1/4 ln(2/3) + 1/4 ln 2; NMI = I / ((H(a) + H(b)) / 2)  (arithmetic mean)
+    ha = math.log(2)
+    hb = -(0.75 * math.log(0.75) + 0.25 * math.log(0.25))
+    mi = 0.5 * math.log(4 / 3) + 0.25 * math.log(2 / 3) + 0.25 * math.log(2)
+    assert math.isclose(gc.nmi([0, 0, 1, 1], [0, 0, 0, 1]), mi / ((ha + hb) / 2), rel_tol=1e-12)
+    assert gc.nmi([0, 0, 1, 1], [5, 5, 7, 7]) == 1.0  # a relabelling is perfect agreement
+    assert gc.nmi([0, 0, 0, 0], [1, 1, 1, 1]) == 1.0  # both constant: sklearn's convention
+    assert U.nmi is gc.nmi  # the instrument reads the ONE partition-agreement home (P2)
+
+
+def test_nmi_matches_sklearn_on_the_ir_fixture_when_present():
+    sk = pytest.importorskip("sklearn.metrics")
+    pytest.importorskip("networkx")
+    from snn_data_lake.gates import growth_coverage_gate as gc
+
+    n, truth = 300, list(np.arange(300) * 10 // 300)
+    _, labels = U.best_partition(U.planted_blocks(n, 1500, blocks=10, between=0.5, seed=13230), n, _FAST)
+    assert math.isclose(gc.nmi(truth, labels), sk.normalized_mutual_info_score(truth, labels), rel_tol=1e-9)
+
+
 _FAST = (13900, 13901, 13902)  # three Louvain restarts keep the test cheap; the instrument default is ten
 
 

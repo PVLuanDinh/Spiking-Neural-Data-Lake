@@ -343,6 +343,31 @@ def adjusted_rand(a, b):
     return (sum_ij - expected) / (max_index - expected)
 
 
+def nmi(a, b):
+    """Normalized mutual information, arithmetic-mean normalization (sklearn's default), numpy-only --
+    the second partition-agreement score, kept beside adjusted_rand so the tree has ONE home for them
+    (P2; G7's IR1 bar is frozen on NMI >= 0.9). Two constant labelings agree perfectly (1.0)."""
+    n = len(a)
+    assert n == len(b) and n > 0
+    cats_a, cats_b = sorted(set(a)), sorted(set(b))
+    table = np.zeros((len(cats_a), len(cats_b)), dtype=np.float64)
+    for x, y in zip(a, b, strict=True):
+        table[cats_a.index(x), cats_b.index(y)] += 1
+    p = table / n
+    pa, pb = p.sum(axis=1), p.sum(axis=0)
+
+    def entropy(q):
+        q = q[q > 0]
+        return float(-(q * np.log(q)).sum())
+
+    ha, hb = entropy(pa), entropy(pb)
+    if ha + hb == 0.0:
+        return 1.0
+    nz = p > 0
+    mi = float((p[nz] * np.log(p[nz] / np.outer(pa, pb)[nz])).sum())
+    return max(0.0, mi / ((ha + hb) / 2.0))
+
+
 def our_macro_partition():
     out, missing = {}, []
     for r, (nm, _z) in REGION_COORDS.items():
