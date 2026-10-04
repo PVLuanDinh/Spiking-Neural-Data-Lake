@@ -2,6 +2,8 @@
 self-check (a deterministic runner, the frozen generator, the reading's NOT MET cases). Part A's
 trace code and its 2.7a gate were deleted on the gate's null (commit 4ecc90d9 keeps them as run)."""
 
+import os
+
 import pytest
 
 torch = pytest.importorskip("torch")
@@ -89,3 +91,20 @@ def test_contrast_cells_pairs_one_seed():
     ]
     met, c, x = g.contrast_cells(cells, "X", "Y")
     assert met and x["nontied"] == 8
+
+
+def test_brain_cell_refuses_a_live_home_before_any_brain(monkeypatch, tmp_path):
+    # the shared guard runs inside the cell: with the guard's default live home set to the cell's
+    # own temp home (a decoy), the cell must refuse before make_brain is reached
+    import snn_data_lake.substrate.home as home
+
+    built = []
+    monkeypatch.setattr(
+        home, "_default_live_home", lambda: os.environ.get("NORD_HOME") or str(tmp_path / "decoy")
+    )
+    import snn_data_lake.engine.brain as brain
+
+    monkeypatch.setattr(brain, "make_brain", lambda **kw: built.append(kw))
+    with pytest.raises(home.LiveHomeRefused):
+        g.brain_cell((20261003, "DELTA", [0, 1, 0]))
+    assert built == [], "a Brain was constructed past a refused home"

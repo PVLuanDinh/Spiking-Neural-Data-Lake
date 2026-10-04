@@ -397,20 +397,15 @@ def live_lake_stamp():
 def brain_cell(args):
     """One in-brain cell in a worker process: make_brain(seed) under throwaway_home, the arm wired onto
     its engine, CELL_TICKS ticks. args = (seed, arm, recorded sequence or None for the RECORD stage).
-    Until R1's shared guard lands (record 10 row 8) the home is checked to be a fresh temp dir."""
-    import os
-    import tempfile
-
+    The home is THE shared live-home guard (record 10 row 8; R1, lead ruling 16): throwaway_home
+    resolves and checks its temp dir, and require_isolated_home() re-checks NORD_HOME before any
+    lake-binding import; a refusal raises home.LiveHomeRefused and no Brain is built."""
     seed, arm, seq = args
     torch.set_num_threads(1)
-    from snn_data_lake.substrate.home import throwaway_home
+    from snn_data_lake.substrate.home import require_isolated_home, throwaway_home
 
-    with throwaway_home() as h:
-        tmp = os.path.realpath(tempfile.gettempdir())
-        if os.environ.get("NORD_HOME") != h or not os.path.realpath(h).startswith(tmp):
-            raise RuntimeError(
-                f"refused: NORD_HOME {os.environ.get('NORD_HOME')!r} is not a temp home"
-            )
+    with throwaway_home():
+        require_isolated_home()
         from snn_data_lake.engine.brain import make_brain
 
         b = make_brain(seed=seed, persist=False)
