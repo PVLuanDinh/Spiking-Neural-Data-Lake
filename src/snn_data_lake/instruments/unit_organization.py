@@ -1,0 +1,323 @@
+"""
+Unit organization -- the T1 and T4 instrument of decision C (G7 / T115, P4).
+
+Pre-registration: specs/022-unified-brain-arc/evidence/g7-unit-label-gate.md, 2.6-2.7 and 2.6a-2.6b
+(frozen 854de0e7, amended da4bcfb7). This module DECIDES; it runs nothing confirmatory: G3's runner executes
+T1's arms on G3's seeds and G4 runs T4's wiring half on this row's seeds, each handing their numbers here.
+
+VERDICTS (judge): Part F's paired one-sided t > 1.895 through instruments/paired_contrast (one statistic,
+P2), with this row's degenerate rule -- a zero-variance SUPERIORITY sample reads NOT MET (ruling 9), a
+zero-variance NON-INFERIORITY sample reads by its common value (ruling 9a). Beside every verdict: the EXACT
+sign-flip rate over all 2^S flips judged by THAT rule (Codex b3 #21), and paired_contrast's own rate,
+labelled as the reference.
+
+T1 (2.6, 2.6a): the size and retention differences, the strictly positive retention margin delta_NI (in
+items), the per-problem granularity guard (censored values excluded; one failing problem REFUSES the whole
+U contrast), and the two decision tables. A T1-struct deletion waits on the owner's O9.
+
+T4 (2.7): the layer term read from reservoir/cortical_microcircuit.CONN_PROB (Potjans-Diesmann's 8
+populations, C[target][source]; Layer 2 and Layer 3 are its L2/3, Layer 1 has no population and is
+excluded, D22), symmetrized c(a, b) = 1 - (1 - p_ab)(1 - p_ba); an exact-M sequential sampler; Louvain
+modularity (max over ten seeded restarts); the planted-partition and random references for IR1-IR3.
+THE SAMPLER DRAWS EACH PARTNER ONE AT A TIME (a build finding against the frozen "Efraimidis-Spirakis keys"
+wording, reported to the lead): a one-shot keyed draw holds every shared-partner count at 0 -- an arriving
+unit has no neighbours yet -- so beta would be inert and its attribution contrast could never be credited.
+With fixed weights the sequential draw has the same distribution as the keyed one. The arrival process
+alone is not uniform (older units collect edges), so RULE is credited only if it beats BOTH gnm and
+RANDOM-SEQ, the same sampler with every term flat (ruling 23).
+networkx is imported lazily (modularity, random_graph only): it is not yet a declared dependency.
+"""
+
+from __future__ import annotations
+
+import math
+import statistics
+from collections import namedtuple
+
+import numpy as np
+
+from snn_data_lake.instruments.paired_contrast import T_BAR, paired_t, permutation_fpr
+
+#: Louvain restart seeds (estimator seeds, not recordings; pre-registration 2.10).
+LOUVAIN_SEEDS = tuple(range(13900, 13910))
+
+ContrastVerdict = namedtuple(
+    "ContrastVerdict", "name kind diffs t met degenerate exact_flip_rate reference_fpr"
+)
+
+
+class Infeasible(ValueError):
+    """An arm whose generator cannot place exactly M edges: REFUSED, never repaired (2.7)."""
+
+
+def _met(diffs, kind):
+    if len(set(diffs)) <= 1:  # degenerate: ruling 9 (superiority) / 9a (non-inferiority)
+        return kind == "noninferiority" and bool(diffs) and diffs[0] > 0.0
+    return paired_t(diffs) > T_BAR
+
+
+def judge(name, diffs, kind):
+    """ContrastVerdict for one paired contrast; `kind` is "superiority" or "noninferiority"."""
+    if kind not in ("superiority", "noninferiority"):
+        raise ValueError(f"kind must be superiority or noninferiority, got {kind!r}")
+    diffs = tuple(float(d) for d in diffs)
+    degenerate = len(set(diffs)) <= 1
+    hits = 0
+    for mask in range(1 << len(diffs)):
+        flipped = tuple(-d if (mask >> i) & 1 else d for i, d in enumerate(diffs))
+        hits += _met(flipped, kind)
+    return ContrastVerdict(
+        name, kind, diffs, 0.0 if degenerate else paired_t(diffs), _met(diffs, kind), degenerate,
+        hits / float(1 << len(diffs)), permutation_fpr(diffs),
+    )
+
+
+# ---- T1 --------------------------------------------------------------------------------------------------
+
+
+def delta_ni(f_bound):
+    """The retention margin in ITEMS of task A's future set: max(F_bound, 1 item), strictly positive."""
+    if not (isinstance(f_bound, (int, float)) and math.isfinite(f_bound) and f_bound >= 0):
+        raise ValueError(f"F_bound must be a finite count >= 0, got {f_bound!r}")
+    return max(f_bound, 1)
+
+
+def size_diffs(u_col, u_ref):
+    """d_s = log 1.2 - log(U(COL) / U(ref)) per seed (the 20 % non-inferiority bar)."""
+    return [math.log(1.2) - math.log(c / r) for c, r in zip(u_col, u_ref, strict=True)]
+
+
+def retention_diffs(f_col, f_ref, delta):
+    """e_s = delta_NI - (F(COL) - F(ref)) per seed, F in items lost; delta must be > 0."""
+    if not delta > 0:
+        raise ValueError(f"the retention margin must be strictly positive, got {delta!r}")
+    return [delta - (c - r) for c, r in zip(f_col, f_ref, strict=True)]
+
+
+def granularity_guard(pilot, k):
+    """(passed, {problem: detail}). `pilot`: {problem: [U(SINGLE) per pilot seed, None if censored]}.
+    U* = 10 k (worst overshoot k units <= 10 % of U). Per problem: median over SOLVED seeds >= U*, and
+    no more than half censored. ANY failing problem fails the whole guard (2.6a, Codex b3 #22)."""
+    ustar, detail = 10 * k, {}
+    for problem, values in pilot.items():
+        solved = [u for u in values if u is not None]
+        censored = len(values) - len(solved)
+        med = statistics.median(solved) if solved else None
+        ok = bool(solved) and censored * 2 <= len(values) and med >= ustar
+        detail[problem] = {"median": med, "solved": len(solved), "censored": censored, "ok": ok}
+    return bool(detail) and all(d["ok"] for d in detail.values()), detail
+
+
+def t1_struct_decision(u_verdict, e_verdict, *, owner_o9):
+    """2.6a's table. `u_verdict` None = the U half was REFUSED by the guard."""
+    if u_verdict is None:
+        verdict = "PASS (retention only; U untested)" if e_verdict.met else "RED"
+    else:
+        verdict = "PASS" if (u_verdict.met and e_verdict.met) else "RED"
+    red = verdict == "RED"
+    if not red:
+        disposition = "column structure kept"
+    elif owner_o9:
+        disposition = ("column structure not shown non-inferior within delta_NI / 20 %: shared "
+                       "inhibition and E/E wiring deleted, owner told")
+    else:
+        disposition = "RED reported to the owner; nothing deleted until O9 is answered"
+    return {"verdict": verdict, "deletes_structure": red and owner_o9, "disposition": disposition}
+
+
+def t1_size_decision(u_verdict, e_verdict):
+    """T1-size: its U half REFUSED leaves the whole test UNTESTED (the retention half alone is
+    count-confounded and never decides it); otherwise the record's disposition (2.6)."""
+    if u_verdict is None:
+        return {"verdict": "UNTESTED", "reverts_to_single": False}
+    passed = u_verdict.met and e_verdict.met
+    return {"verdict": "PASS" if passed else "RED", "reverts_to_single": not passed}
+
+
+# ---- T4 --------------------------------------------------------------------------------------------------
+
+_POP_LAYER = {"Layer 2": "L2/3", "Layer 3": "L2/3", "Layer 4": "L4", "Layer 5": "L5", "Layer 6": "L6"}
+
+
+def population(layer, sign):
+    """The CONN_PROB population index of a (layer, Dale sign); None for Layer 1 (no population)."""
+    from snn_data_lake.reservoir.cortical_microcircuit import POP_NAMES
+
+    group = _POP_LAYER.get(layer)
+    return None if group is None else POP_NAMES.index(group + ("e" if sign == 1 else "i"))
+
+
+def layer_term(a, b):
+    """Symmetrized layer term: the probability of at least one directed contact between a and b."""
+    from snn_data_lake.reservoir.cortical_microcircuit import CONN_PROB
+
+    return 1.0 - (1.0 - CONN_PROB[a][b]) * (1.0 - CONN_PROB[b][a])
+
+
+def _allotment(n, m, capacity):
+    """m_t per arrival position: min(capacity_t, q), q = m // (n - 1), then one more edge each to the
+    LAST arrivals with a spare candidate until the sum is exactly m."""
+    q = m // max(n - 1, 1)
+    alloc = [min(c, q) for c in capacity]
+    rem = m - sum(alloc)
+    while rem > 0:
+        added = 0
+        for t in range(n - 1, -1, -1):
+            if rem and alloc[t] < capacity[t]:
+                alloc[t] += 1
+                rem -= 1
+                added += 1
+        if not added:
+            raise Infeasible(f"cannot place {m} edges: every arrival is at capacity")
+    return alloc
+
+
+def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None):
+    """Sorted (i, j) edges, i < j, exactly m of them, simple and undirected (2.7, frozen construction):
+    units arrive in a seeded order; arrival t draws m_t partners among earlier units ONE AT A TIME,
+    without replacement, with probability proportional to
+        c(pop_i, pop_j) x kernel(distance) x (1 + beta x shared_partners_so_far).
+    `pops` None drops the layer term (c = 1); `kernel` takes a numpy distance array; `columns` restricts
+    candidates to the unit's own column (IMPOSED). Infeasible -> REFUSED."""
+    if m > n * (n - 1) // 2:
+        raise Infeasible(f"M = {m} exceeds the {n * (n - 1) // 2} pairs of N = {n}")
+    rng = np.random.default_rng(seed)
+    order = rng.permutation(n)
+    xy = np.asarray(xy, dtype=float)[order]
+    pop = None if pops is None else np.asarray(pops)[order]
+    col = None if columns is None else np.asarray(columns)[order]
+    if col is None:
+        capacity = list(range(n))
+    else:
+        capacity = [int(np.sum(col[:t] == col[t])) for t in range(n)]
+    alloc = _allotment(n, m, capacity)
+    nbrs = [[] for _ in range(n)]  # by arrival position
+    edges = []
+    for t in range(1, n):
+        if not alloc[t]:
+            continue
+        d = np.hypot(xy[:t, 0] - xy[t, 0], xy[:t, 1] - xy[t, 1])
+        w0 = np.broadcast_to(np.asarray(kernel(d), dtype=float), (t,)).copy()
+        if pop is not None:
+            w0 *= np.array([layer_term(int(pop[t]), int(p)) for p in pop[:t]])
+        if col is not None:
+            w0[col[:t] != col[t]] = 0.0
+        if int(np.count_nonzero(w0 > 0)) < alloc[t]:
+            raise Infeasible(f"arrival {t} has fewer positive-weight candidates than its {alloc[t]} edges")
+        shared = np.zeros(t)
+        for _ in range(alloc[t]):
+            w = w0 * (1.0 + beta * shared)
+            cum = np.cumsum(w)
+            j = int(np.searchsorted(cum, rng.random() * cum[-1], side="right"))
+            j = min(j, t - 1)
+            while w[j] <= 0.0:  # float edge case at the top of the cumsum: step back to a live candidate
+                j -= 1
+            w0[j] = 0.0  # without replacement
+            for q in nbrs[j]:
+                if q < t:
+                    shared[q] += 1.0
+            nbrs[j].append(t)
+            nbrs[t].append(j)
+            a, b = int(order[j]), int(order[t])
+            edges.append((min(a, b), max(a, b)))
+    return sorted(edges)
+
+
+# distinct-from: faculties/access_consciousness.py -- a workspace slot recorder; unrelated. Site read.
+# distinct-from: gates/amdahl_gate.py -- interleaved harness arms for a timing ceiling; unrelated. Read.
+# distinct-from: gates/determinism_gate.py -- an FP64 reference run; unrelated. Site read.
+# distinct-from: gates/docs_only_battery.py -- folds instrument records into a test map; unrelated. Read.
+# distinct-from: instruments/energy.py -- spiking energy terms; the matcher fired on "terms". Site read.
+def random_seq(n, m, *, seed):
+    """RANDOM-SEQ (ruling 23): the SAME sequential sampler with every term flat (kernel 1, no layer term,
+    beta 0) -- random attachment under RULE's own arrival process, so RULE vs RANDOM-SEQ differs only in
+    the rule. Positions are irrelevant under a flat kernel."""
+    return sample_exact_m(n, m, xy=np.zeros((n, 2)), kernel=lambda d: 1.0, seed=seed)
+
+
+def t4_rule_credited(vs_gnm, vs_seq):
+    """RULE is credited (T4's wiring half PASSES) only if it beats BOTH random arms: gnm (the record's
+    literal red) AND RANDOM-SEQ (the arrival-process control) -- ruling 23."""
+    return bool(vs_gnm.met and vs_seq.met)
+
+
+def planted_blocks(n, m, *, blocks, between, seed):
+    """IR1/IR3's reference: exactly m simple edges, round(m x between) of them across blocks of a
+    contiguous `blocks`-way partition, the rest within; uniform over each pair class."""
+    rng = np.random.default_rng(seed)
+    label = np.arange(n) * blocks // n
+    m_between = round(m * between)
+    edges = set()
+    while len(edges) < m:
+        want_between = len(edges) < m_between
+        i, j = (int(v) for v in rng.integers(0, n, size=2))
+        if i == j or (label[i] != label[j]) != want_between:
+            continue
+        edges.add((min(i, j), max(i, j)))
+    return sorted(edges)
+
+
+def random_graph(n, m, *, seed):
+    """RANDOM: networkx.gnm_random_graph(N, M, seed) -- simple, undirected, exactly M."""
+    import networkx as nx
+
+    return sorted((min(a, b), max(a, b)) for a, b in nx.gnm_random_graph(n, m, seed=seed).edges())
+
+
+def _triangles(edges, n):
+    nb = [set() for _ in range(n)]
+    for i, j in edges:
+        nb[i].add(j)
+        nb[j].add(i)
+    return sum(len(nb[i] & nb[j]) for i, j in edges) // 3
+
+
+# distinct-from: instruments/attention_schema.py -- its t078_reds line; that module's own reds. Read.
+# distinct-from: instruments/binding_instrument.py -- its t080_reds line; that module's own reds. Read.
+# distinct-from: instruments/report_order_probe.py -- its t081_reds line; that module's own reds. Read.
+# distinct-from: faculties/agency_monitor.py -- its t079_reds line; that module's own reds. Read.
+# distinct-from: faculties/metacognitive_monitor.py -- its t077_reds line; that module's own reds. Read.
+def main():
+    """Bare self-check: six instrument reds, each of which must fire (networkx-free; no Brain, no lake)."""
+
+    def raises(fn):
+        try:
+            fn()
+        except (ValueError, Infeasible):
+            return True
+        return False
+
+    xy = np.random.default_rng(13237).random((300, 2)) * 1000.0
+    tri = [sum(_triangles(sample_exact_m(300, 1200, xy=xy, kernel=lambda d: 1.0, seed=s, beta=b), 300)
+               for s in (13233, 13234, 13235)) for b in (0.0, 5.0)]
+    reds = {
+        "degenerate superiority NOT MET (ruling 9)": not judge("r", [0.3] * 8, "superiority").met,
+        "exact flip rate 8/256 on a constant-positive sample": judge(
+            "r", [0.5] * 8, "superiority").exact_flip_rate == 8 / 256,
+        "guard refuses a small judging problem": not granularity_guard({"A": [2, 3, 4]}, k=8)[0],
+        "a zero retention margin is refused": raises(lambda: retention_diffs([0], [0], delta=0)),
+        "an infeasible density is refused": raises(
+            lambda: sample_exact_m(10, 46, xy=np.zeros((10, 2)), kernel=lambda d: 1.0, seed=1)),
+        "the shared-partner term is live": tri[1] > 2 * tri[0],
+    }
+    silent = [k for k, fired in reds.items() if not fired]
+    print(f"instrument reds fired: {len(reds) - len(silent)} of {len(reds)}  (triangles beta 0 vs 5: {tri})")
+    assert not silent, f"reds that did not fire: {silent}"
+    return 0
+
+
+def modularity(edges, n, seeds=LOUVAIN_SEEDS):
+    """Newman Q of the Louvain partition (resolution 1.0), the MAXIMUM over seeded restarts; unweighted."""
+    import networkx as nx
+
+    g = nx.Graph()
+    g.add_nodes_from(range(n))
+    g.add_edges_from(edges)
+    return max(
+        nx.community.modularity(g, nx.community.louvain_communities(g, resolution=1.0, seed=s))
+        for s in seeds
+    )
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -308,6 +308,7 @@ CORE = [
     # substrate â€” the spiking data-lake, telemetry, and infra (not a brain region)
     "infra._mathutils",
     "instruments.paired_contrast",  # T077 2.10: the seed-paired t + exact FPR, lifted from the T063 harness
+    "instruments.unit_organization",  # G7 T115 P4: six instrument reds (verdict rules, guard, sampler, beta live)
     "substrate.spike_stream_sketch",
     "substrate.spike_cardinality",
     "substrate.reservoir_sampling",
