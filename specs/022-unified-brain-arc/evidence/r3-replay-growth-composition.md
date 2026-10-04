@@ -152,6 +152,7 @@ lines, `b.attractor.store(b._patterns[i % 3], reps=1)` and `b._stored_any = True
 disclosed; `_wake_tick` is never called), identical across its arms; `_stored_any` False reads NOT READ. G6(a) owns
 `downscale_prune`; F3 reads only the sleep LEARNING. G6's harness-alive control also neuters `AttractorNet.sleep` on
 G6's own workload; it is a control there, never a verdict -- the verdict is F3's (debate 4.3).
+(Amended 2026-10-04: W is no longer 30 -- see "DATED PRE-DATA AMENDMENT 2026-10-04 (F3's store count W)" at the end.)
 
 MASSED ledger, written out: deposits matched to EXT (n x 8 draws, delivered at wake instead of in sleep); bout
 presentations matched by fwd draws; total forward passes therefore 2x EXT's -- disclosed, never claimed equal; benna
@@ -734,3 +735,25 @@ Source: R2's message of 2026-10-04 (R2's frozen text fixes only the function's n
   the X-F7 amendment cites them; X-F7 cites the exact form.
 - Nothing else changes: F7 forms pairs only through that function or R2's exact pseq-adjacency rule, and the
   interposed-held-out red stands.
+
+## DATED PRE-DATA AMENDMENT 2026-10-04 (F3's store count W; approved by the lead the same day)
+
+Written before any F3 CONFIRMATORY seed (16120-16127) has run. DISCLOSED: dev data WERE read before this amendment.
+The F1-F4 dev rehearsal (16000-16007, EXPOSED, P1 `c8f33213`'s instrument) is what showed the defect it repairs.
+- **The defect (dev, MEASURED).** At W = 30 constructed stores, F3's attractor sits at ceiling. AT-OFF and AT-NONE
+  read 36/36 on 8/8 dev seeds, and AT-ON reads 0.989-1.000 (per-seed means of `_consolidation_acc` over the bout).
+  C6 = AT-ON - AT-OFF therefore can never read MET (d <= 0 by construction): the MET row of F3's table is unreachable,
+  and a null would describe the ceiling, not the attractor. 2.6's historical positive control (neutering
+  `AttractorNet.sleep` pinned `_consolidation_acc` at 0.333 on 7/7 seeds, brain.py's 2026-08-05 record) did NOT
+  reproduce at W = 30: AT-NONE read 1.000. That record came from natural wake-tick storage over ~37 nights, not from W
+  back-to-back constructed stores.
+- **The repair: W is chosen on DEV seeds by a frozen rule.** W = the smallest value in the ladder {1, 2, 3, 6, 12} at
+  which AT-NONE (the dev-only positive control, attractor sleep removed) reads below 35/36 on ALL 8 dev seeds
+  16000-16007. The ladder runs only AT-NONE, on dev seeds only, in ascending order, and stops at the first W that
+  qualifies. W is then frozen in this file by a dated note, before any F3 confirmatory seed runs. Every F3 arm (AT-ON,
+  AT-OFF) uses that W. The stores stay the wake tick's own two lines, `_patterns[i % 3]`, `reps=1`.
+- **If no W in the ladder qualifies,** F3 is REFUSED (blind harness) and reported as such. The ladder is not extended
+  after the fact.
+- **Nothing else changes:** C6's endpoint (P-5), its statistic (P-8), K13's compute match, F3's table and seeds
+  16120-16127. Choosing W on AT-NONE never reads AT-ON or AT-OFF, so the confirmatory contrast C6 is not tuned on its
+  own outcome.
