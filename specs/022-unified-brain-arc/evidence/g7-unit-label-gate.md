@@ -703,3 +703,51 @@ instrument + IR1-IR3 + the exact-M sampler on fixtures.
 |---|---|---|---|---|
 | D21 | a restored row with a journal birth entry but a different label, classified `derived`, launders tampering into a debt row | G3 -> G7 | REFUSED as a tampered born unit, naming the unit and fields; `derived` = full label set, no journal entry; R18(c) amended | RESOLVED (this amendment) |
 | D22 | `dbar`: induced subgraph or all-partner degree? which layers, and does L1 count? | G4 -> G7 | induced subgraph on the T4 layers; L1 excluded (no `CONN_PROB` population) and white matter excluded; substrate draws restricted to the same layers; density 3.46e-4 disclosed | RESOLVED (this amendment) |
+
+## DATED PRE-DATA AMENDMENT 2026-10-04 (b) -- lead ruling 23 and the owner's answers; found by the build; no data read
+
+Nothing confirmatory has run; every number below is from the build's own fixture tests (dev seeds 13010-13019,
+13230-13237) or the owner's answers as relayed by the lead. Unreviewed amendment text, stated plainly.
+
+**The owner's answers (relayed by the lead, 2026-10-04).** O9: the T1 split is ACCEPTED -- T1-size is REFUSED
+below median U(SINGLE) 80 (per judging problem, 2.6a) and T1-struct's retention contrast stands in for the record's
+T1; T1-struct's deletion authority therefore now exists (2.6a's table applies with `owner_o9 = True`). O1-O3:
+admission is the NAME fallback in the ambiguous ('sp', 'alar') cell (`STRICT_TERRITORY = False`, rule (4) of 2.2's
+contract) and cortex only.
+
+**`place_labeled`'s signature as built (2.2; the frozen signature was underspecified).** `place_labeled(n, *,
+unit_ids, region, site, problem_id, batch_id, seed, centre_um, density_per_mm2, roles=None)`: `unit_ids` (G3
+supplies them, one per unit); `region` (selects the arm; `roles` outside cortex REFUSED, O3); `centre_um` (the batch
+centre from G3's site rule); `density_per_mm2` with NO default (G4's Part B records it; the build's fixtures use a
+labelled 2.7e4). Tangential offsets come from an RNG stream separate from the laminar one, so `roles=None` stays
+byte-identical to `place()` (asserted against `place(50)`; placement's golden self-check passes).
+
+**T4 fix 1 -- sequential partner draw (2.7's sampler).** The frozen one-shot Efraimidis-Spirakis keyed draw held every
+shared-partner count at 0 (an arriving unit has no neighbours when its keys are drawn), so beta was inert and the
+shared-partner contrast could never be credited. Partners are drawn ONE AT A TIME, re-weighting after each pick; with
+fixed weights this has the keyed draw's distribution, so the other arms are unchanged. Instrument red (fixture: flat
+kernel, N = 300, M = 1200, seeds 13233-13235): triangles 607 at beta = 0 vs 1510 at beta = 5.
+
+**T4 fix 2 -- RANDOM-SEQ.** The sequential generator alone is not uniform (older arrivals collect edges: 607
+triangles vs about 86 expected for G(n, m) at that density), so RULE vs gnm mixes the rule with the arrival process.
+Added arm RANDOM-SEQ: the same sampler with every term flat (kernel 1, no layer term, beta 0). **RULE is credited --
+T4's wiring half PASSES -- only if it beats BOTH gnm (the record's literal red) AND RANDOM-SEQ**, each by 2.7's
+contrast at S = 8 on the T4 seeds.
+
+**The concrete T4 layer term (D22, made concrete).** `CONN_PROB` is Potjans-Diesmann's 8-population table
+(`reservoir/cortical_microcircuit.py`, C[target][source], L2/3 merged), not an H01 table: a unit's population is
+(layer, Dale sign) -> {Layer 2, Layer 3} -> L2/3, L4, L5, L6, each e/i; Layer 1 has no population.
+
+**The scope rule (ruling 23).** P4d's "grown unit" is a unit grown on the ENGINE'S GROWTH PATH. Row growth found
+elsewhere by the row-growth scan -- `readout/growable_readout.py::GrowableReadout._grow_one`,
+`readout/laminar_local_readout.py::LaminarLocalReadout.grow`, `reasoning/developmental_loop.py::GrowableSTDP.
+maybe_recruit` -- is OUT of the gate's scope by a rule the gate PRINTS on every run (`OUT_OF_SCOPE_ROW_GROWTH`),
+listed for the owner, never counted as debt; a scope row that stops growing rows reds as stale.
+
+**networkx** (3.6.1 in `.venv-lake`) is not a declared dependency: the owner's decision; the instrument imports it
+lazily (Louvain modularity and gnm only).
+
+| # | challenge | from | answer | resolution |
+|---|---|---|---|---|
+| D23 | the frozen one-shot keyed draw makes beta inert; the arrival process confounds RULE vs gnm | G7 build -> lead | sequential draw; RANDOM-SEQ added, RULE credited only if it beats both | RULED (lead, 23) |
+| D24 | unlabeled row growth outside the engine's growth path (readout, reasoning) | G7 build -> lead | out of scope by a printed rule, listed for the owner | RULED (lead, 23) |
