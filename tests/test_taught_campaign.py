@@ -102,8 +102,34 @@ def test_preflight_refuses_an_arm_naming_future_d(tmp_path):
         tc.preflight(tc.CONFIRMATORY_SEEDS, str(tmp_path), arms, require_clean=False)
 
 
-def test_preflight_accepts_the_registered_campaign(tmp_path):
+def test_preflight_accepts_the_registered_campaign_only_after_the_amendment(tmp_path, monkeypatch):
+    # cp1 #7: confirmation is refused until the dated pre-data amendment is entered
+    with pytest.raises(PermissionError):
+        tc.preflight(tc.CONFIRMATORY_SEEDS, str(tmp_path), require_clean=False)
+    with pytest.raises(PermissionError):
+        tc.preflight(tc.RESERVE_SEEDS, str(tmp_path), require_clean=False)
+    monkeypatch.setattr(tc, "AMENDMENT", "2026-10-04 test")
     tc.preflight(tc.CONFIRMATORY_SEEDS, str(tmp_path), require_clean=False)
+    tc.preflight(tc.DEV_SEEDS, str(tmp_path), require_clean=False)
+
+
+def test_dev_measurement_refuses_non_dev_seeds(tmp_path):
+    with pytest.raises(PermissionError):
+        tc.dev_measurement(str(tmp_path / "x.jsonl"), seeds=(8200,))
+
+
+def test_dev_measurement_derives_on_a_planted_grid(tmp_path, monkeypatch):
+    # the derivation rules on planted rows: H = 2 x the smallest passing H; E = max(400, 2 x largest, /50)
+    def planted(stage, kind, pid, seed, epochs, h, solves=True):
+        stable = solves and not (pid == "c1d") and not (stage == "R1" and h == 16)
+        return {"stage": stage, "arm": kind, "problem": pid, "seed": seed, "h": h, "epochs": epochs,
+                "stable": stable, "never": not solves, "max_acc": 1.0,
+                "to_stable": (100 if stage == "R1" else 230) if stable else None,
+                "future_solved": False if pid == "c1d" else None, "future_acc": None}
+
+    monkeypatch.setattr(tc, "_dev_row", lambda *a, **k: planted(*a, **k))
+    derived = tc.dev_measurement(str(tmp_path / "d.jsonl"), seeds=(8000,))
+    assert derived["H"] == 64 and derived["E"] == 500 and derived["c1d_learned_at"] == []
 
 
 def test_seed_blocks_inside_g2s_block_and_disjoint():

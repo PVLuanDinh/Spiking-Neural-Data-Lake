@@ -46,6 +46,9 @@ from snn_data_lake.instruments import taught_problems as tp
 
 EPOCHS = 400  # [PROJECTION, 2.7]: re-derived by the dated pre-data amendment (dev seeds 8000-8003)
 H = 64  # [PROJECTION, 2.4]: re-derived on GREET / GOAL by the pre-data amendment (2.13's rule)
+# The dated pre-data amendment (2.13's second freeze step) that fixes EPOCHS, H and the NGSNN disposition. None
+# until the lead commits it; while None, preflight refuses every confirmatory / reserve seed (cp1 #7).
+AMENDMENT = None
 DEV_SEEDS = (8000, 8001, 8002, 8003)
 CONFIRMATORY_SEEDS = tuple(range(8200, 8208))
 RESERVE_SEEDS = tuple(range(8300, 8308))
@@ -450,6 +453,76 @@ def campaign_reds(seed=RED_SEED, epochs=EPOCHS, h=H):
     return {"fired": fired, "all_fired": all(fired.values())}
 
 
+# ---- the dev measurement path (2.13's pre-data amendment; cp1 #7) ------------------------------------------------------
+# distinct-from: instruments/binding_instrument.py -- T080's per-arm print line
+# distinct-from: sleep/developmental_pruning.py -- a softmax delta-rule epoch
+# distinct-from: faculties/global_workspace.py -- a running-mean baseline rule
+# distinct-from: faculties/interoceptive_integration.py -- per-channel running baselines
+# distinct-from: growth/similarity_sized_growth.py -- nearest-expert routing. Sites read 2026-10-04.
+SAME_ITEMS_CAPACITY = (("presized", "i.S0C1"), ("presized_history", "i.S1C1"), ("presized", "ii.xor"),
+                       ("presized", "ii.twin"))
+POSITIVES = (("incumbent", "i.S0C0"), ("history", "i.S1C0"), ("history", "i.S0C0"), ("incumbent", "aii"),
+             ("incumbent", "ac1d"), ("incumbent", "ii.twin"))
+
+
+def _dev_row(stage, kind, pid, seed, epochs, h, *, solves=True):
+    problem = tp.PROBLEMS[pid]
+    future = problem.kind == "combo"
+    r = attempt(problem, make_reader(kind, problem, seed, h=h), seed, epochs, judge_future=future,
+                stop_when_stable=solves)
+    return {"stage": stage, "arm": kind, "problem": pid, "seed": seed, "h": h, "epochs": epochs,
+            "stable": r["stable"], "never": r["never"], "max_acc": r["max_accuracy"],
+            "to_stable": r["epochs_run"] - tp.STABLE if r["stable"] else None,
+            "future_solved": r.get("future_solved"), "future_acc": r.get("future_accuracy")}
+
+
+# 2.13's dev readings on dev seeds only, one JSON line per run. R1: the smallest H solving every same-items
+# capacity cell on every seed within EPOCHS / 2 (H = 2 x it). R6: the presized control on C1-d (validation AND
+# future) at every H. R2: E = max(EPOCHS, 2 x the largest epochs-to-stable of any positive, rounded up to 50).
+# R3: the explicit-history proof. R4: NGSNN's feature mode on every capacity cell (adopt iff B7 on every seed).
+# R5: A_ii and A_c1d through the incumbent. Returns the derived values.
+def dev_measurement(out_path, seeds=DEV_SEEDS, h_grid=(16, 32, 64, 128), max_epochs=4000):
+    if not set(seeds) <= set(DEV_SEEDS):
+        raise PermissionError(f"dev measurement on dev seeds {DEV_SEEDS} only: {seeds}")
+
+    def log(row):
+        with open(out_path, "a", encoding="ascii") as f:
+            f.write(json.dumps(row) + "\n")
+        return row
+
+    def ok(row, within):
+        return row["stable"] and row["to_stable"] <= within and row["future_solved"] in (None, True)
+
+    smallest = None
+    for h in h_grid:
+        rows = [log(_dev_row("R1", k, p, s, EPOCHS, h)) for k, p in SAME_ITEMS_CAPACITY for s in seeds]
+        if all(ok(r, EPOCHS // 2) for r in rows):
+            smallest = h
+            break
+    h_final = 2 * smallest if smallest else None
+    hc = h_final or H
+    c1d = {h: all(ok(log(_dev_row("R6", "presized", "c1d", s, EPOCHS, h)), EPOCHS) for s in seeds) for h in h_grid}
+    largest = 0
+    for k, p in POSITIVES + SAME_ITEMS_CAPACITY:
+        for s in seeds:
+            row = log(_dev_row("R2", k, p, s, max_epochs, hc))
+            largest = max(largest, row["to_stable"] or 0)
+    e_final = max(EPOCHS, int(math.ceil(2 * largest / 50.0) * 50))
+    history = all(log(_dev_row("R3", "history", "i.S1C0", s, e_final, hc))["stable"]
+                  and log(_dev_row("R3", "history", "i.S0C0", s, e_final, hc))["stable"]
+                  and log(_dev_row("R3", "history", "i.S1C1", s, e_final, hc, solves=False))["never"]
+                  for s in seeds)
+    ngsnn = all(ok(log(_dev_row("R4", k.replace("presized", "ngsnn"), p, s, e_final, hc)), e_final)
+                for k, p in SAME_ITEMS_CAPACITY + (("presized", "c1d"),) for s in seeds) and all(
+        log(_dev_row("R4", "ngsnn", "i.S1C0", s, e_final, hc, solves=False))["never"] for s in seeds)
+    a_rows = all(ok(log(_dev_row("R5", "incumbent", p, s, e_final, hc)), e_final)
+                 for p in ("aii", "ac1d") for s in seeds)
+    derived = {"H": h_final, "E": e_final, "history_proof": history, "ngsnn_adopt": ngsnn,
+               "c1d_learned_at": [h for h, v in c1d.items() if v], "a_rows_ok": a_rows, "largest": largest}
+    log({"stage": "derived", **derived})
+    return derived
+
+
 # ---- the driver -------------------------------------------------------------------------------------------------------
 def preflight(seeds, out_dir, arms=ARMS, *, require_clean=True):
     """Refusals before any read: a live seed, a seed outside G2's block, OUT inside the repo, an arm list naming
@@ -460,6 +533,8 @@ def preflight(seeds, out_dir, arms=ARMS, *, require_clean=True):
     for block in (CONFIRMATORY_SEEDS, RESERVE_SEEDS):  # a confirmatory read is the WHOLE registered block (cp1 #5)
         if set(seeds) & set(block) and sorted(seeds) != list(block):
             raise PermissionError(f"seeds {sorted(seeds)} touch {block[0]}-{block[-1]} but are not that exact block")
+        if set(seeds) & set(block) and AMENDMENT is None:
+            raise PermissionError("confirmation refused: the dated pre-data amendment (2.13) is not entered")
     bad = sorted(set(seeds) & LIVE_SEEDS)
     if bad:
         raise PermissionError(f"live seeds refused: {bad}")
