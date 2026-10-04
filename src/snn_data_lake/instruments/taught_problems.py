@@ -194,7 +194,7 @@ def never_solves(epoch_end_solved):
 # distinct-from: readout/growable_readout.py -- a zero fan-out weight extension
 # distinct-from: readout/laminar_local_readout.py -- an N-MNIST train/test loader
 # distinct-from: readout/language_readout_slda.py -- a train/test split of language pairs. Sites read 2026-10-04.
-def read_split(problem, seed, split, route, *, read_index=0):
+def read_split(problem, seed, split, route, *, read_index=0, records=None):
     """One learning-OFF read: `route(turns_so_far)` answers each probe; context turns are routed too (a
     stateful reader steps its state on reads). The reader sees LABEL-FREE turns (cp1 #4): the targets stay
     here, in the judging instrument. Returns [(answer, label)] for the probes."""
@@ -206,7 +206,19 @@ def read_split(problem, seed, split, route, *, read_index=0):
             answer = route(tuple(seen))
             if turn.role == "probe":
                 reads.append((answer, turn.label))
+                if records is not None:  # (context texts, probe text, answer) of the ACTUAL read (cp1 #10)
+                    records.append((tuple(t.text for t in seen[:-1]), turn.text, answer))
     return reads
+
+
+# distinct-from: faculties/reentrant_workspace.py -- a self-check specialist's argmax; this judges a reader.
+# B3 on the actual validation stream (cp1 #10): one answer per probe text over every cue value and pass
+def check_b3_stream(records):
+    answers = {}
+    for _context, probe, answer in records:
+        answers.setdefault(probe, set()).add(answer)
+    same = bool(records) and all(len(a) == 1 for a in answers.values())
+    return {"ok": same, "conditions": {"same_answer_every_cue_and_pass": same}}
 
 
 def check_b9(predicate=None):

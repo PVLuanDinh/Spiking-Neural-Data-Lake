@@ -118,12 +118,30 @@ def test_incumbent_solves_s0c0_never_state_cells_short():
 
 def test_b3_identity_holds_for_incumbent_and_reds_for_history():
     s1c0 = tp.PROBLEMS["i.S1C0"]
-    inc = tc.make_reader("incumbent", s1c0, SCRATCH)
-    tc.attempt(s1c0, inc, SCRATCH, 10)
-    assert tc.b3_identity(inc, s1c0)["ok"]
-    hist = tc.make_reader("history", s1c0, SCRATCH)
-    tc.attempt(s1c0, hist, SCRATCH, 20)
-    assert not tc.b3_identity(hist, s1c0)["ok"]
+    assert tc.b3_on_stream(tc.make_reader("incumbent", s1c0, SCRATCH), s1c0, SCRATCH, 10)
+    assert not tc.b3_on_stream(tc.make_reader("history", s1c0, SCRATCH), s1c0, SCRATCH, 20)
+
+
+class _CueCatcher:
+    # a hidden-state reader: it captures the cue from SEPARATE context reads, then answers the probe from it
+    def __init__(self):
+        self.cue = None
+
+    def route(self, turns):
+        if turns[-1].role == "context" and turns[-1].text in dc.CUE:
+            self.cue = dc.CUE.index(turns[-1].text)
+        return dc.LABELS[self.cue or 0]
+
+    def teach(self, turns, label):
+        return None
+
+
+def test_b3_judged_on_the_actual_stream_catches_a_cue_capturing_reader():
+    # cp1 #10: a reader that captures cues during separate context reads solves S1C0 and must fail B3
+    s1c0 = tp.PROBLEMS["i.S1C0"]
+    assert not tc.b3_on_stream(_CueCatcher(), s1c0, SCRATCH, 2)
+    result = tc.attempt(s1c0, _CueCatcher(), SCRATCH, 12)
+    assert result["stable"]  # it really solves the state cell, so only B3 stands between it and a PASS
 
 
 def test_us_attempt_reads_fresh_labels_each_epoch_end():

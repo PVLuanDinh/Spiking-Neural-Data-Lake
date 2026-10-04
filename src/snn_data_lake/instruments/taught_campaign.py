@@ -189,12 +189,13 @@ def attempt(problem, reader, seed, epochs, *, judge_future=False, stop_when_stab
                 reader.route(episode[: i + 1])  # context turns arrive through the read
             reader.teach(episode, label)
         # each epoch-end read is its own read index (U_S draws fresh labels per read; cp1 #9)
-        reads = tp.read_split(problem, seed, "validation", reader.route, read_index=k)
+        records = []
+        reads = tp.read_split(problem, seed, "validation", reader.route, read_index=k, records=records)
         read_indices.append(k)
         solved_ends.append(tp.solved(problem, seed, "validation", reads))
         accuracy.append(sum(a == b for a, b in reads) / len(reads))
         if on_epoch_end:
-            on_epoch_end(k, reader)
+            on_epoch_end(k, reader, records)  # the ACTUAL read's records (B3 judges these; cp1 #10)
         if stop_when_stable and tp.solves_stably(solved_ends):
             break
     out = {
@@ -215,10 +216,12 @@ def attempt(problem, reader, seed, epochs, *, judge_future=False, stop_when_stab
 
 
 # ---- B3: state identity on a live reader ------------------------------------------------------------------------
-def b3_identity(reader, problem):
-    """B3 on a reader: each plain probe gets the same answer under both cue values (full episodes routed)."""
-    answers = {it: reader.route(tuple(tp.Turn(x, r, None) for x, r in dc.episode_i(it))) for it in dc.ITEMS_I}
-    return dc.check_b3(answers)
+# B3 on a live reader over an attempt: every epoch-end read judged on its ACTUAL stream (cp1 #10)
+def b3_on_stream(reader, problem, seed, epochs):
+    verdicts = []
+    attempt(problem, reader, seed, epochs,
+            on_epoch_end=lambda k, r, records: verdicts.append(tp.check_b3_stream(records)["ok"]))
+    return all(verdicts)
 
 
 # ---- the arms (2.9, 2.15.1) ---------------------------------------------------------------------------------------
@@ -260,8 +263,8 @@ def run_arm(arm, seed, epochs=EPOCHS, h=H):
     b3 = []
     hook = None
     if kind == "incumbent" and pid in ("i.S1C0", "i.S1C1"):
-        def hook(k, r):
-            b3.append(b3_identity(r, problem)["ok"])
+        def hook(k, r, records):
+            b3.append(tp.check_b3_stream(records)["ok"])
     result = attempt(problem, reader, seed, epochs, judge_future=judge_future,
                      stop_when_stable=(expectation == "solves"), on_epoch_end=hook)
     result.update({"arm": arm_id, "seed": seed, "expectation": expectation,
@@ -386,10 +389,8 @@ def flags_from(rows, construction_ok, b8_ok, reds_fired):
 def campaign_reds(seed=RED_SEED, epochs=EPOCHS, h=H):
     """Each check's planted red on the reds block: a stand-in reader whose result must trip the check."""
     s0c0, s1c0, s0c1, s1c1 = (tp.PROBLEMS[f"i.{c}"] for c in ("S0C0", "S1C0", "S0C1", "S1C1"))
-    hist = make_reader("history", s1c0, seed)
-    attempt(s1c0, hist, seed, 20)
     fired = {
-        "b3_history_stands_in": not b3_identity(hist, s1c0)["ok"],
+        "b3_history_stands_in": not b3_on_stream(make_reader("history", s1c0, seed), s1c0, seed, 20),
         "b4_presized_on_s0c1": not attempt(s0c1, make_reader("presized", s0c1, seed, h=h), seed, epochs)["never"],
         "b5_lr_zero": not attempt(s0c0, make_reader("incumbent", s0c0, seed, lr=0.0), seed, epochs)["stable"],
         "b5_shuffled": not attempt(s0c0, make_reader("incumbent", s0c0, seed), seed, epochs,
