@@ -64,6 +64,12 @@ class Problem:
 
     # ---- items and turns --------------------------------------------------------------------------------
     def items(self, seed, split):
+        """The split's items for LEARNER-facing callers; future_d is refused (cp1 #11)."""
+        if split == "future_d":
+            raise PermissionError("future_d is G6(d)'s untouched set: learner-free construction checks only")
+        return self._items(seed, split)
+
+    def _items(self, seed, split):
         if self.kind == "combo":
             parts, _ = dc.combo_partition(self.family, seed)
             return dc.combo_items(parts[split])
@@ -100,16 +106,23 @@ class Problem:
             order = rng.sample(items, len(items))
             yield [self._episode(it, self.label(seed, it, pass_k=k)) for it in order]
 
-    def episodes(self, seed, split, *, read_index=0, construction_check=False):
-        """A held-out read: PASSES passes over the split's items, each pass ordered by its offset stream."""
+    # learner-facing held-out read (PASSES passes, offset-stream order); future_d refused, cp1 #11
+    def episodes(self, seed, split, *, read_index=0):
+        if split == "future_d":
+            raise PermissionError("future_d is G6(d)'s untouched set: learner-free construction checks only")
+        return self._episodes(seed, split, read_index)
+
+    # the ONLY future_d path: learner-free construction checks and G6(d)'s own re-solve; read_split never uses it
+    def construction_episodes(self, seed, split):
+        return self._episodes(seed, split, 0)
+
+    def _episodes(self, seed, split, read_index):
         if split not in SPLIT_OFFSETS:
             raise ValueError(f"split {split!r}: teaching goes through teach_epochs")
-        if split == "future_d" and not construction_check:
-            raise PermissionError("future_d is G6(d)'s untouched set: learner-free construction checks only")
         if self.kind != "combo" and split == "future_d":
             raise ValueError(f"{self.id} has no future_d split")
         rng = random.Random(seed + SPLIT_OFFSETS[split])
-        items = self.items(seed, split if self.kind == "combo" else "teach")
+        items = self._items(seed, split if self.kind == "combo" else "teach")
         out, presentation = [], 0
         us = dc.us_labels(seed, split, read_index, PASSES * len(items)) if self.kind == "us" else None
         for k in range(PASSES):
@@ -120,7 +133,7 @@ class Problem:
         return out
 
     def presentations(self, seed, split):
-        return PASSES * len(self.items(seed, split if self.kind == "combo" else "teach"))
+        return PASSES * len(self._items(seed, split if self.kind == "combo" else "teach"))
 
     # ---- budget fields (2.7, 2.15.6) -----------------------------------------------------------------
     def n_teach_codes(self, seed=8000):
@@ -173,13 +186,15 @@ def never_solves(epoch_end_solved):
     return not any(epoch_end_solved)
 
 
-def read_split(problem, seed, split, route, *, read_index=0, construction_check=False):
+# distinct-from: readout/growable_readout.py -- a zero fan-out weight extension
+# distinct-from: readout/laminar_local_readout.py -- an N-MNIST train/test loader
+# distinct-from: readout/language_readout_slda.py -- a train/test split of language pairs. Sites read 2026-10-04.
+def read_split(problem, seed, split, route, *, read_index=0):
     """One learning-OFF read: `route(turns_so_far)` answers each probe; context turns are routed too (a
     stateful reader steps its state on reads). The reader sees LABEL-FREE turns (cp1 #4): the targets stay
     here, in the judging instrument. Returns [(answer, label)] for the probes."""
     reads = []
-    for episode in problem.episodes(seed, split, read_index=read_index,
-                                    construction_check=construction_check):
+    for episode in problem.episodes(seed, split, read_index=read_index):
         seen = []
         for turn in episode:
             seen.append(Turn(turn.text, turn.role, None))

@@ -36,9 +36,20 @@ def test_future_d_refused_to_learners_and_open_to_construction_checks():
     p = tp.PROBLEMS["c1d"]
     with pytest.raises(PermissionError):
         p.episodes(8000, "future_d")
-    assert len(p.episodes(8000, "future_d", construction_check=True)) == 48
+    assert len(p.construction_episodes(8000, "future_d")) == 48
     with pytest.raises(ValueError):
-        tp.PROBLEMS["i.S0C1"].episodes(8000, "future_d", construction_check=True)
+        tp.PROBLEMS["i.S0C1"].construction_episodes(8000, "future_d")
+
+
+def test_future_d_not_reachable_through_any_learner_path():
+    # cp1 #11: neither the generic read helper nor items() grants future_d
+    p = tp.PROBLEMS["c1d"]
+    with pytest.raises(PermissionError):
+        tp.read_split(p, 8000, "future_d", lambda turns: dc.GREET)
+    with pytest.raises(PermissionError):
+        p.items(8000, "future_d")
+    with pytest.raises(TypeError):
+        tp.read_split(p, 8000, "future_d", lambda turns: dc.GREET, construction_check=True)
 
 
 def test_episode_shape_and_labels_on_probes_only():
