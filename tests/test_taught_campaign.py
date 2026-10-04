@@ -212,6 +212,28 @@ def test_us_attempt_reads_fresh_labels_each_epoch_end():
     assert len(set(labels)) == 4 and result["never"]
 
 
+def test_constant_cue_history_cannot_solve_s1c0():
+    # cp1 #15: B6's constant-cue red -- the history text carries no cue, so S1C0 stays at chance
+    s1c0 = tp.PROBLEMS["i.S1C0"]
+    reader = tc.constant_cue_reader(s1c0, SCRATCH)
+    turns = tuple(tp.Turn(t, r, None) for t, r in dc.episode_i((1, 0, 1)))
+    assert reader.text(turns) == "jar box oak owl"
+    result = tc.attempt(s1c0, reader, SCRATCH, 30)
+    assert not result["stable"] and result["max_accuracy"] <= 0.5
+
+
+def test_campaign_reds_stage_b6_constant_cue_and_b8_bare(monkeypatch):
+    # cp1 #15: both registered controls are in the staged red set; a non-firing B8 bare red reads not fired
+    monkeypatch.setattr(tc, "attempt", lambda *a, **k: {"stable": False, "never": False})
+    monkeypatch.setattr(tc, "b3_on_stream", lambda *a: False)
+    monkeypatch.setattr(tc, "b8_twin", lambda s, e, bare=False: {"conditions": {"twin_equal": not bare}})
+    fired = tc.campaign_reds(epochs=5, h=8)["fired"]
+    assert fired["b6_constant_cue"] and fired["b8_bare_class"]
+    monkeypatch.setattr(tc, "b8_twin", lambda s, e, bare=False: {"conditions": {"twin_equal": True}})
+    reds = tc.campaign_reds(epochs=5, h=8)
+    assert not reds["fired"]["b8_bare_class"] and not reds["all_fired"]
+
+
 def test_shuffled_teaching_never_teaches_the_truth():
     taught = tc._shuffled_labels(SCRATCH)
     true = [dc.GREET, dc.GOAL, dc.GREET, dc.GOAL]

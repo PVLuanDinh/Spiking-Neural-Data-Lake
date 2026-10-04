@@ -161,6 +161,18 @@ def make_reader(arm, problem, seed, *, h=H, lr=None, window=dc.HISTORY_WINDOW):
     raise ValueError(f"unknown arm {arm!r}")
 
 
+# distinct-from: substrate/chat_memory.py -- a chat turn's retrieval cue words
+# distinct-from: infra/region_wiring.py -- the thread-count gate
+# distinct-from: reasoning/test_prototype.py -- a do-nothing control on a corrupted cue
+# distinct-from: sensorimotor/nl_interface.py -- a word-boundary cue matcher
+# distinct-from: substrate/episodic_recall.py -- coincidence ranking of stored episodes. Sites read 2026-10-04.
+# B6's red: the explicit-history reader with the cue turn replaced by the constant word CUE[0]
+def constant_cue_reader(problem, seed):
+    reader = make_reader("history", problem, seed)
+    reader.text = lambda turns: " ".join([dc.CUE[0], *(t.text for t in turns[-dc.HISTORY_WINDOW + 1:])])
+    return reader
+
+
 def _shuffled_labels(seed):
     """Each epoch's labels re-arranged, never equal to the truth (inseparable_mapping._shuffled's form)."""
     rng = random.Random(seed + 1_000_003)
@@ -442,6 +454,10 @@ def campaign_reds(seed=RED_SEED, epochs=EPOCHS, h=H):
         "b5_shuffled": not attempt(s0c0, make_reader("incumbent", s0c0, seed), seed, epochs,
                                    shuffled=True)["stable"],
         "b6_window_1": not attempt(s1c0, make_reader("history", s1c0, seed, window=1), seed, epochs)["stable"],
+        # cp1 #15: the cue replaced by a constant word in the history text (B6's registered perturbation)
+        "b6_constant_cue": not attempt(s1c0, constant_cue_reader(s1c0, seed), seed, epochs)["stable"],
+        # cp1 #15: B8's bare-class twin, staged with the rest so a non-firing red halts before the arms
+        "b8_bare_class": not b8_twin(seed, 3, bare=True)["conditions"]["twin_equal"],
         "b6_presized_history_on_s1c1": not attempt(
             s1c1, make_reader("presized_history", s1c1, seed, h=h), seed, epochs)["never"],
         "b7_identity_front_end": not attempt(s0c1, make_reader("incumbent", s0c1, seed), seed, epochs)["stable"],
