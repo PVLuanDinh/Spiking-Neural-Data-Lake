@@ -532,11 +532,27 @@ def run_arm(out, family, arm_name, seed, budget=None, red=None, stores=None):
     return rec
 
 
+# distinct-from: interaction_learning.py -- g0_campaign / g0b_campaign run G0's OWN seed/arm registry in
+#   subprocesses; also read: binding_instrument.py::t080_seed (one seed's binder reading),
+#   reentrant_workspace.py::_deliver (broadcast), brainstem arm_config / serial_arm (joint tokens) -- none
+#   maps an R3 family to its seed set or lists the arms its reading requires.
+def check_set(family, set_name):
+    """Codex cp2 #5: a family reads only its OWN confirmatory set or the shared EXPOSED dev set."""
+    if set_name not in ("dev", family):
+        raise ValueError(
+            f"refused: family {family} may use set 'dev' or '{family}', not '{set_name}'"
+        )
+    return SEED_SETS[set_name]
+
+
+def registered_arms(family, set_name):
+    """Every arm a family's reading REQUIRES, twins included (Codex cp2 #7); dev-only arms on dev only."""
+    return [a for a in FAMILIES[family] if set_name == "dev" or (family, a) not in DEV_ONLY_ARMS]
+
+
 def run_family(out, family, set_name, arms=None):
-    seeds = SEED_SETS[set_name]
-    names = arms or [
-        a for a in FAMILIES[family] if set_name == "dev" or (family, a) not in DEV_ONLY_ARMS
-    ]
+    seeds = check_set(family, set_name)
+    names = arms or registered_arms(family, set_name)
     for seed in seeds:
         for name in names:
             t0 = time.perf_counter()
@@ -572,8 +588,12 @@ def verdict(name, diffs, seeds, kind="sup"):
         raise ValueError(
             f"{name}: {len(diffs)} values / {len(seeds)} seeds, the contrast needs exactly {S}"
         )
-    if any(not SEED_BLOCK[0] <= int(s) <= SEED_BLOCK[1] for s in seeds):
+    if any(type(s) is not int or not SEED_BLOCK[0] <= s <= SEED_BLOCK[1] for s in seeds):
         raise ValueError(f"{name}: a seed outside R3's block {SEED_BLOCK}: {list(seeds)}")
+    if (
+        len(set(seeds)) != S
+    ):  # Codex cp2 #5: eight entries from fewer independent seeds is not S = 8
+        raise ValueError(f"{name}: repeated seeds {list(seeds)}")
     d = tuple(float(x) for x in diffs)
     flips = sum(
         _met(tuple(-x if (m >> i) & 1 else x for i, x in enumerate(d)), kind) for m in range(1 << S)
@@ -817,7 +837,33 @@ def contrasts(family, recs, seeds):
     return out
 
 
-def decide_family(family, recs, seeds, k7_sighted=False, restore=None):
+# distinct-from: agency_monitor.py::_t079_refusals -- named joint/count refusals for one recording; also
+#   read: everyday_battery.py::Fix (a recorded cell), prior_drift_harness.py::drift_records (per-statistic
+#   drift), interaction_learning.py::g0b_campaign (G0's runner) -- none checks an arm x seed record SET.
+def completeness(family, recs, seeds, set_name):
+    """Codex cp2 #7: exactly one record for every registered arm x seed (both twins included) and nothing
+    else; a missing, duplicated or foreign cell is listed. Run BEFORE any check or contrast."""
+    want = {(a, s) for a in registered_arms(family, set_name) for s in seeds}
+    got = [(r["arm"], r["seed"]) for r in recs]
+    missing = sorted(want - set(got))
+    dupes = sorted({c for c in got if got.count(c) > 1})
+    foreign = sorted(set(got) - want)
+    return (
+        [("missing", c) for c in missing]
+        + [("duplicate", c) for c in dupes]
+        + [("foreign", c) for c in foreign]
+    )
+
+
+def decide_family(family, recs, seeds, k7_sighted=False, restore=None, set_name=None):
+    incomplete = completeness(family, recs, seeds, set_name or family)
+    if incomplete:
+        return {
+            "checks": {"COMPLETE": incomplete},
+            "checks_ok": False,
+            "contrasts": {},
+            "row": "HALT (instrument defect, no verdict): the record set is incomplete",
+        }
     fails = check_records(family, recs)
     checks_ok = not any(fails.values())
     v = {c.name: c for c in contrasts(family, recs, seeds)}
@@ -1005,13 +1051,31 @@ def _cli(argv):
         _main_cmd(a)
 
 
+RECORD_KEYS = frozenset(
+    (
+        "family arm seed budget stores red d0 d1 weights_d1 weights_post taught ring_keys heldout_keys "
+        "drawn tick stored_any att_calls k8a chrono_before chrono_after inproc restored n_a wall "
+        "eval_before eval_after eval_s live_lake_untouched"
+    ).split()
+)
+
+
+# distinct-from: substrate/home.py::load_state -- reads a JSON state blob out of the one lake; this reads
+#   the instrument's own record FILES from its output directory (never the lake). Site read.
 def _load(out, family, seeds):
+    """Only regular `<family>_*.json` record files (never the kept `.stderr.txt` logs, Codex cp2 #11), each
+    schema-checked; a malformed record raises rather than being skipped."""
     recs = []
     d = os.path.join(out, "records")
     for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
-        if f.startswith(family + "_") and "_red-" not in f:
-            with open(os.path.join(d, f), encoding="ascii") as fh:
+        p = os.path.join(d, f)
+        regular = f.endswith(".json") and "_red-" not in f and os.path.isfile(p)
+        if f.startswith(family + "_") and regular:
+            with open(p, encoding="ascii") as fh:
                 r = json.load(fh)
+            missing = RECORD_KEYS - set(r)
+            if missing or r["family"] != family:
+                raise ValueError(f"malformed record {f}: missing {sorted(missing)}")
             registered = BUDGETS[FAMILIES[family][r["arm"]].budget]
             if (
                 r["seed"] in seeds
@@ -1064,21 +1128,24 @@ def _main_cmd(a):
         if not fired:
             raise SystemExit(1)
     elif a.cmd == "decide":
-        seeds = SEED_SETS[a.set]
+        seeds = check_set(a.family, a.set)
         recs = _load(a.out, a.family, seeds)
         k7 = None
         kp = os.path.join(a.out, "k7.json")
         if os.path.exists(kp):
             with open(kp, encoding="ascii") as fh:
                 k7 = json.load(fh).get("sighted")
-        res = decide_family(a.family, recs, seeds, k7_sighted=bool(k7))
+        res = decide_family(a.family, recs, seeds, k7_sighted=bool(k7), set_name=a.set)
         for name, c in res["contrasts"].items():
             print(
                 f"{name:6s} {c.kind:3s} met={c.met} deg={c.degenerate} t={c.t:.3f} fpr={c.fpr:.4f} "
                 f"(ref {c.ref_fpr:.4f}) mean={c.mean:.4f} sd={c.sd:.4f} lb95={c.lower95:.4f} mde={c.mde:.4f}"
             )
         print("checks:", {k: len(v) for k, v in res["checks"].items()})
-        print("table:", res["row"], "(set", a.set + ")")
+        if a.set == "dev":  # Codex cp2 #5: a dev reading is never printed as a claim
+            print("DEV READING (EXPOSED seeds, never a verdict) -- table row:", res["row"])
+        else:
+            print("table:", res["row"], "(set", a.set + ")")
         for line in census(res["contrasts"].values()):
             print(line)
         walls = {}

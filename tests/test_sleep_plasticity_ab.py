@@ -49,6 +49,47 @@ def test_k12_refuses_partial_lists_and_foreign_seeds(diffs, seeds):
         m.verdict("red", diffs, seeds)
 
 
+def test_cp2_5_repeated_seeds_refused():
+    # seven copies of one seed + one other: eight entries, two independent seeds -- refused
+    with pytest.raises(ValueError):
+        m.verdict("red", [0.1] * 7 + [-0.1], (16000,) * 7 + (16001,))
+
+
+def test_cp2_5_a_family_reads_only_its_own_set_or_dev():
+    assert m.check_set("F1", "F1") == m.SEED_SETS["F1"]
+    assert m.check_set("F1", "dev") == m.SEED_SETS["dev"]
+    with pytest.raises(ValueError):
+        m.check_set("F1", "F2")
+
+
+def test_cp2_7_a_missing_twin_halts_before_any_contrast():
+    seeds = m.SEED_SETS["F1"]
+    arms = m.registered_arms("F1", "F1")
+    assert "ON-TWIN" in arms and "A-ONLY-TWIN" in arms
+    full = [_record(a, s) for a in arms for s in seeds]
+    assert m.completeness("F1", full, seeds, "F1") == []
+    partial = [r for r in full if r["arm"] != "ON-TWIN"]
+    res = m.decide_family("F1", partial, seeds, set_name="F1")
+    assert res["row"].startswith("HALT") and res["contrasts"] == {}
+    assert ("missing", ("ON-TWIN", seeds[0])) in res["checks"]["COMPLETE"]
+    assert ("duplicate", ("ON", seeds[0])) in m.completeness("F1", full + full[:1], seeds, "F1")
+
+
+def test_cp2_11_load_reads_only_json_records_and_refuses_malformed(tmp_path):
+    import json
+
+    d = tmp_path / "records"
+    d.mkdir()
+    rec = dict(_record("ON", 16000), stores=None, red=None, wall={}, eval_s=0.0, budget=40)
+    (d / "F1_ON_16000.json").write_text(json.dumps(rec), encoding="ascii")
+    (d / "F1_ON_16000.stderr.txt").write_text("--- bout\nwarning: something\n", encoding="utf-8")
+    recs = m._load(str(tmp_path), "F1", m.SEED_SETS["dev"])
+    assert [r["arm"] for r in recs] == ["ON"]  # the stderr log is never parsed as a record
+    (d / "F1_OFF_16000.json").write_text(json.dumps({"family": "F1"}), encoding="ascii")
+    with pytest.raises(ValueError):
+        m._load(str(tmp_path), "F1", m.SEED_SETS["dev"])
+
+
 def test_k11_every_row_reached_and_the_inventory_is_complete():
     ok, misses = m.table_reach_ok()
     assert ok, misses
