@@ -656,6 +656,7 @@ At most one mechanism is live after any row.
   ACCEPTED results. RESOLVED: F6 and F7 call this signature. The X-F7 amendment forms F7 pairs ONLY through R2's
   `hydrate_transitions` or R2's exact pseq-adjacency rule, never a second pairing rule (P2), and its K9 red set includes
   an interposed held-out percept that must yield no bridging pair.
+  (Amended 2026-10-04: the `hydrate_transitions` citation -- see "DATED PRE-DATA AMENDMENT 2026-10-04" at the end.)
 
 ### 4.2 G3 (aab6003013a8b76f6)
 
@@ -722,3 +723,14 @@ At most one mechanism is live after any row.
 ## 5. Results
 
 Empty until the frozen campaign runs.
+
+## DATED PRE-DATA AMENDMENT 2026-10-04 (citation of R2 P3's hydrate_transitions; no data read)
+
+Written after the P0 freeze (`f83c7c74`) and before any R3 data, dev included; no run of any kind preceded it.
+Source: R2's message of 2026-10-04 (R2's frozen text fixes only the function's name and input).
+- 4.1's last row cites "R2's `hydrate_transitions`". The citation is now **"R2 P3's `hydrate_transitions(events)`, R2
+  2.10"**: a pure function over the output of `read_learner_events(("percept",), ...)`. Its return value, and whether it
+  is a method or a free function, are fixed at R2's P3 build. R2 sends them, with any dated amendment of its own, before
+  the X-F7 amendment cites them; X-F7 cites the exact form.
+- Nothing else changes: F7 forms pairs only through that function or R2's exact pseq-adjacency rule, and the
+  interposed-held-out red stands.
