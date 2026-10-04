@@ -1,0 +1,157 @@
+"""specs/022 T111 (G3) P1: the encoding contract's GROWN SEGMENT.
+
+Pre-registration: specs/022-unified-brain-arc/evidence/g3-growth-loop.md 2.3. The taught learner's frozen code
+(`text_features(text, 52)` -> `rank_code`, 52 integer spike ranks) is byte-identical forever; widening it would
+re-bucket every word (2.9 C1's red). Grown units add a SEPARATE segment instead: each grown unit j integrates the
+frozen code's PSPs over integer steps of its own window and fires at its first-spike latency t_j (no spike = no
+contribution); each label neuron reads it as PSP(t_post_g - t_j). The 52 ranks are never re-ranked with it.
+
+Contract, all pure functions over immutable units (no RNG, no state carried between stimuli):
+- `latency(unit, ranks, tau)` -- a capacity unit's latency is a function of (the frozen code, its parameters);
+- `segment_psp(units, ranks, tau, t_post_g)` -- the segment in unit_id order, never insertion order;
+- `grown_version(units)` -- crc32 over every unit's parameters in unit_id order, active flag included, so it
+  changes on every admission, silencing or output-weight change;
+- `apply_unit_row(units, row)` -- moves the segment one journal step (admit / out / silence) and REFUSES a
+  reused unit_id or a stored output synapse that violates the unit's Dale sign (2.9 C17's restore half);
+- `clip_to_sign(w, sign)` -- the deposit half of C17: E outputs >= 0, I outputs <= 0 (D9).
+
+The port that feeds this segment into `SpikingInteractionLearner` lands after R2's P1 (OWNERS.md landing order);
+this module is the segment it will call.
+
+distinct-from: growth/srm_neuron.py and growth/lif_neuron.py -- those are STATEFUL step neurons (membrane carried
+  across steps, reset/refractory kernels, their own eps kernel); a grown capacity unit here is the STATELESS
+  first-crossing of the learner's own PSP kernel over one frozen rank code, so its latency is a pure function the
+  redo and the certificate's lift can recompute exactly. Disclosed for the panel as a P2 question: if the column
+  arc (P4) needs LIF dynamics, the unit kind adopts lif_neuron there rather than growing a third neuron here.
+distinct-from: faculties/astrocyte_modulation.py, gates/perf_baseline.py, growth/placement.py,
+  instruments/prior_drift_harness.py, sensorimotor/rank_order_coding.py -- read 2026-10-04 (the duplicate guard's
+  hits): a glial gain relay, a bytes-per-unit measurement, GRN placement, a planted wiring control and a Van Rossum
+  matcher; none computes a grown unit's latency segment.
+"""
+
+import math
+import struct
+import zlib
+from dataclasses import dataclass, replace
+
+
+@dataclass(frozen=True)
+class GrownUnit:
+    unit_id: int  # minted at admission, never reused
+    w_in: tuple  # one input weight per frozen-code synapse; frozen after admission
+    threshold: float
+    window: int  # integer steps the unit integrates over; no crossing inside it = no spike
+    sign: int  # Dale sign from the unit's label (+1 E, -1 I); write-once per unit_id
+    out: tuple  # one output synapse per label neuron (the only weights that learn after admission)
+    active: bool = True
+
+    def silenced(self):
+        return replace(self, active=False)
+
+
+def _psp(dt, tau):
+    return math.exp(-dt / tau) if dt > 0 else 0.0
+
+
+def latency(unit, ranks, tau):
+    """The unit's first-spike step: the first t in 1..window where the PSP-weighted frozen input reaches threshold."""
+    for t in range(1, unit.window + 1):
+        v = sum(w * _psp(t - r, tau) for w, r in zip(unit.w_in, ranks) if w != 0.0)
+        if v >= unit.threshold:
+            return t
+    return None
+
+
+def segment_psp(units, ranks, tau, t_post_g):
+    """Each unit's PSP onto the label neurons, in unit_id order; silenced or non-spiking units give 0.0."""
+    out = []
+    for u in sorted(units, key=lambda u: u.unit_id):
+        t = latency(u, ranks, tau) if u.active else None
+        out.append(_psp(t_post_g - t, tau) if t is not None else 0.0)
+    return out
+
+
+def latencies(units, ranks, tau):
+    """Each unit's latency (None = no spike), in unit_id order: the grown part of the certificate's lift."""
+    return [
+        latency(u, ranks, tau) if u.active else None for u in sorted(units, key=lambda u: u.unit_id)
+    ]
+
+
+def grown_version(units):
+    """crc32 over every unit's parameters in unit_id order (little-endian doubles, the active flag included)."""
+    crc = 0
+    for u in sorted(units, key=lambda u: u.unit_id):
+        blob = struct.pack("<qdqb?", u.unit_id, u.threshold, u.window, u.sign, u.active)
+        blob += struct.pack(f"<{len(u.w_in)}d", *u.w_in) + struct.pack(f"<{len(u.out)}d", *u.out)
+        crc = zlib.crc32(blob, crc)
+    return crc
+
+
+def clip_to_sign(w, sign):
+    """Dale's sign at a deposit: an E unit's output synapses stay >= 0, an I unit's <= 0."""
+    return [max(x, 0.0) if sign > 0 else min(x, 0.0) for x in w]
+
+
+def _check_sign(uid, sign, out):
+    bad = [i for i, x in enumerate(out) if (sign > 0 and x < 0) or (sign < 0 and x > 0)]
+    if bad:
+        raise ValueError(f"unit {uid}: output synapse(s) {bad} violate Dale sign {sign:+d}")
+
+
+def apply_unit_row(units, row):
+    """One journal step on an immutable segment; returns the new tuple sorted by unit_id."""
+    by_id = {u.unit_id: u for u in units}
+    op = row["op"]
+    if op == "admit":
+        u = row["unit"]
+        if u.unit_id in by_id:
+            raise ValueError(f"unit {u.unit_id}: unit_id already admitted (ids are never reused)")
+        _check_sign(u.unit_id, u.sign, u.out)
+        by_id[u.unit_id] = u
+    elif op == "out":
+        u = by_id[row["unit_id"]]
+        out = tuple(float(x) for x in row["out"])
+        _check_sign(u.unit_id, u.sign, out)
+        by_id[u.unit_id] = replace(u, out=out)
+    elif op == "silence":
+        by_id[row["unit_id"]] = by_id[row["unit_id"]].silenced()
+    else:
+        raise ValueError(f"unknown unit-row op {op!r}")
+    return tuple(by_id[k] for k in sorted(by_id))
+
+
+def main():
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner, text_features
+
+    texts = [
+        "cat dog sun sky",
+        "cat dog sky sun",
+        "dog cat sun sky",
+        "dog cat sky sun",
+        "hello there",
+        "sky",
+    ]
+
+    def ranks(n_in, t):
+        return tuple(
+            SpikingInteractionLearner(["A"], n_in=n_in, seed=9900).encode(text_features(t, n_in))
+        )
+
+    assert [ranks(52, t) for t in texts] == [ranks(52, t) for t in texts]
+    changed = sum(ranks(52, t) != ranks(62, t)[:52] for t in texts)
+    assert changed == len(texts), f"red: widening 52 -> 62 must change every probe code ({changed})"
+    u = GrownUnit(1, tuple([2.0] + [0.0] * 51), 1.0, 12, -1, (-0.2,))
+    try:
+        apply_unit_row((u,), {"op": "out", "unit_id": 1, "out": (0.3,)})
+        raise AssertionError("red: a sign-violating restore must be refused")
+    except ValueError:
+        pass
+    assert grown_version((u,)) != grown_version((u.silenced(),))
+    print(
+        f"grown_code: C1 red {changed}/{len(texts)} codes change on widening; C17 restore red fires"
+    )
+
+
+if __name__ == "__main__":
+    main()

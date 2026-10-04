@@ -404,6 +404,8 @@ REGIONS = {
         "basic_components",
         # Brian2 LIF authority + differentiable Torch bridge
         "brian2_backend",
+        # specs/022 T111 (G3) P1: the growth trigger -- contradiction count + exact lift certificate
+        "capacity_certificate",
         # H01 HUMAN cortex reference data: value + units + provenance + bound
         "cortical_prior",
         "dendritic_neuron",
@@ -414,6 +416,8 @@ REGIONS = {
         "growth_program",
         # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
         "growth_stop",
+        # specs/022 T111 (G3) P1: the taught learner's grown latency segment (frozen code never re-ranked)
+        "grown_code",
         # specs/022 T062: the H01 c3 SYNAPSE graph, 8 gates, a seeded population
         "h01_ingest",
         # Brain-Cog-adopted: LIF+Izhikevich+AdEx worked EXAMPLE of the basic_components palette (not on the live tick)
