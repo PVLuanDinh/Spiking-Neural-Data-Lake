@@ -439,6 +439,114 @@ def place_grown(grower, n_units, seed=0):
     return place(n_units, seed=seed, region=region)
 
 
+#: The keys `labels_by` groups on (G7 pre-registration 2.2): the population keys G5's return path,
+#: G6's census and per-batch attribution read. `origin` separates born from derived/legacy units.
+LABEL_KEYS = ("region", "batch_id", "problem_id", "layer", "origin")
+
+
+# distinct-from: growth/neurogenesis_engine.py -- its `placement` property RETURNS the stored
+#   (depth, layer, sign) rows; this DRAWS them, role-conditioned. Site read (L542).
+# distinct-from: engine/signal_ring.py, faculties/forward_model.py, faculties/wholistic_loop.py,
+#   growth/h01_ingest.py -- a ring cursor, a sensory predictor, a metacognitive signal source and a
+#   propagation probe; the guard matched docstring words only. All four sites read.
+def _place_by_role(roles, seed):
+    """[(depth, layer, sign)] with the SIGN FIXED BY THE ROLE and the layer drawn from H01's joint
+    P(layer | sign), proportional to occupancy(layer) x P(sign | layer) -- the same measured
+    E-fractions assign_sign reads. Keeps H01's CONDITIONAL; the E/I mixture is the caller's (G7 2.2)."""
+    rng = random.Random(seed)
+    occ, ef = LAYER_OCCUPANCY["value"], LAYER_E_FRACTION["value"]
+    out = []
+    for role in roles:
+        sign = EXCITATORY if role == "E" else INHIBITORY
+        weights = [occ[L] * (ef[L] if role == "E" else 1.0 - ef[L]) for L in _LAYER_NAMES]
+        u, acc, chosen = rng.random() * math.fsum(weights), 0.0, None
+        for layer, w in zip(_LAYER_NAMES, weights):
+            if w <= 0.0:
+                continue  # a zero-weight layer (E in Layer 1) is never drawn, not even at u == 0
+            acc += w
+            chosen = layer
+            if u < acc:
+                break
+        lo, hi = DEPTH_BANDS[chosen]
+        out.append((lo + rng.random() * (hi - lo), chosen, sign))
+    return out
+
+
+# distinct-from: place / place_grown -- those return bare (depth, layer, sign) tuples; this returns
+#   the FULL admission record P4d's provenance check reads (G7 / T115). It delegates the default
+#   draw to place() itself, so there is one laminar sampler, not two.
+# distinct-from: growth/neurogenesis_engine.py, engine/signal_ring.py, faculties/forward_model.py,
+#   faculties/wholistic_loop.py, growth/h01_ingest.py -- see _place_by_role above; all sites read.
+def place_labeled(
+    n_units, *, unit_ids, region, site, problem_id, batch_id, seed, centre_um, density_per_mm2,
+    roles=None,
+):
+    """Full label records for one grown batch (G7 pre-registration 2.2, as built: unit_ids, region,
+    centre_um and density_per_mm2 are the build's additions to the frozen signature, disclosed).
+
+    roles=None: (depth, layer, sign) is EXACTLY place(n_units, seed=seed, region=region) -- the cortex
+    golden does not move. roles given ("E"/"I" per unit): cortex only (no measured E-fraction exists
+    elsewhere, O3), sign = role, layer from H01's P(layer | sign). Tangential offsets (x_um, y_um) are
+    uniform in the disc that holds n_units at `density_per_mm2` around `centre_um`, from an RNG stream
+    SEPARATE from the laminar one. The density has NO default: G4's Part B records it.
+    """
+    unit_ids = list(unit_ids)
+    if len(unit_ids) != n_units:
+        raise ValueError(f"{len(unit_ids)} unit_ids for {n_units} units")
+    if not (isinstance(density_per_mm2, (int, float)) and math.isfinite(density_per_mm2)
+            and density_per_mm2 > 0):
+        raise ValueError(f"density_per_mm2 must be a finite positive number, got {density_per_mm2!r}")
+    if roles is None:
+        base = place(n_units, seed=seed, region=region)
+    else:
+        roles = tuple(roles)
+        if region != "cortex":
+            raise ValueError(
+                f"roles refused for {region!r}: a role fixes a Dale sign, and no measured "
+                "E-fraction exists outside H01 cortex (G7 O3)"
+            )
+        if len(roles) != n_units or any(r not in ("E", "I") for r in roles):
+            raise ValueError(f"roles must be {n_units} of 'E'/'I', got {roles!r}")
+        base = _place_by_role(roles, seed)
+    radius_um = math.sqrt(n_units / (density_per_mm2 * math.pi)) * 1000.0
+    off = random.Random(zlib.crc32(b"place_labeled/offsets") ^ (seed & 0xFFFFFFFF))
+    cx, cy = centre_um
+    ap, dv = site
+    out = []
+    for uid, (depth, layer, sign) in zip(unit_ids, base):
+        r, theta = radius_um * math.sqrt(off.random()), 2.0 * math.pi * off.random()
+        out.append({
+            "unit_id": uid,
+            "batch_id": batch_id,
+            "position": (ap, dv, cx + r * math.cos(theta), cy + r * math.sin(theta), depth),
+            "layer": layer,
+            "sign": sign,
+            "region": region,
+            "problem_id": problem_id,
+            "origin": "born",
+        })
+    return out
+
+
+def label_of(records, unit_id):
+    """The label record for `unit_id`, or None -- the one id-addressable reader (G5 D5)."""
+    for rec in records:
+        if rec.get("unit_id") == unit_id:
+            return rec
+    return None
+
+
+def labels_by(records, key):
+    """{value: [unit ids]} over `records` for one of LABEL_KEYS -- G5 and G6 read populations here
+    and define no label of their own (P2)."""
+    if key not in LABEL_KEYS:
+        raise ValueError(f"labels_by key must be one of {LABEL_KEYS}, got {key!r}")
+    out = {}
+    for rec in records:
+        out.setdefault(rec.get(key), []).append(rec.get("unit_id"))
+    return out
+
+
 # distinct-from: growth/growth_program.py -- its shared program decides GROW/QUIESCE proposals
 #   from local fields; this coordinates seam WIDTHS into placements. Site read; adjacent by
 #   design (T042/T043 are sibling tasks), no shared code.
