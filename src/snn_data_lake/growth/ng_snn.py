@@ -49,6 +49,8 @@ stdlib core never imports this.
 
 import torch
 
+from snn_data_lake.growth import candidate_lifecycle as _lc
+
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "NGSNN.fit": (
@@ -357,42 +359,14 @@ class NGSNN:
         m = int(self.beta.shape[1])
         Y = torch.zeros(N, m, device=self.device)
         Y[torch.arange(N, device=self.device), y] = 1.0
-        n_val = max(8, int(0.2 * N))
-        tr_list, va_list = marginal_holdout(y.tolist(), n_val)  # L1a: the ONE window
-        n_tr, n_val = len(tr_list), len(va_list)
-        if n_tr < 2 or n_val < 2:
-            return 0  # too few rows to judge honestly -- keep everything
-        tr_idx = torch.tensor(tr_list, device=self.device)
-        va_idx = torch.tensor(va_list, device=self.device)
-
         S = self._rates(X, self.W, self.b)  # (N, L)
-        L = int(S.shape[1])
-
-        def _val_rmse(cols):
-            beta = self._solve_beta(S[tr_idx][:, cols], Y[tr_idx])
-            resid = Y[va_idx] - S[va_idx][:, cols] @ beta
-            return resid.pow(2).mean().sqrt().item()
-
-        allc = list(range(L))
-        base = _val_rmse(allc)
-        drop, cost = [], {}
-        for j in range(L):
-            keep = [c for c in allc if c != j]
-            if not keep:
-                continue
-            cost[j] = _val_rmse(keep)
-            if cost[j] <= base + tol:  # removing it costs nothing -> it earns nothing
-                drop.append(j)
-        if not drop:
+        # G3 P2 (specs/022 T111): the held-out discipline lives in the shared lifecycle so every consumer of
+        # the ONE grower prunes by it. L3 (2026-09-05) is kept there: an all-redundant set keeps exactly the
+        # unit whose removal costs the most held-out RMSE (ties -> the lowest index), never empty, never padded.
+        res = _lc.heldout_prune(S, Y, y.tolist(), self._solve_beta, tol)
+        if res.keep is None:
             return 0
-        if len(drop) >= L:
-            # L3 (specs/022, 2026-09-05): EVERY unit is droppable -- an all-redundant set. Until this
-            # landed the answer was "never prune to nothing", which kept ALL of them (24 on a constant
-            # percept, s2 v2). Keep exactly ONE: the unit whose removal costs the most held-out RMSE
-            # (ties -> the lowest index), so a substrate is never empty and never padded.
-            survivor = max(allc, key=lambda j: (cost.get(j, float("-inf")), -j))
-            drop = [c for c in allc if c != survivor]
-        keep = [c for c in allc if c not in set(drop)]
+        keep, tr_idx = res.keep, res.tr_idx
         # THE SURVIVOR MASK, published so a caller can follow a unit's IDENTITY across a prune.
         # `return len(drop)` alone says how many went, never WHICH -- and anything keyed per unit
         # (a placement, a layer, a Dale sign assigned at birth) silently re-associates to a
@@ -402,7 +376,7 @@ class NGSNN:
         self.W = self.W[keep]
         self.b = self.b[keep]
         self.beta = self._solve_beta(S[tr_idx][:, keep], Y[tr_idx])  # re-solve: beta must match W
-        return len(drop)
+        return res.n_drop
 
     def fit(self, X, y, delta=1, score_subsample=None, init_W=None, init_b=None):
         """Grow the classifier on X (spike sequence {0,1}^(N,T,d_in) or features [0,1]^(N,d_in)) with
@@ -550,64 +524,16 @@ class NGSNN:
             # the (possibly subsampled) rows, and keep the TOP-delta by residual reduction: the drop
             # from adding unit s is sum_q <e_q,s>^2/||s||^2 = sum_q C_q ||e_q||^2 (Eq. 6 weighted by
             # per-class residual norm). The consistency criterion (Eq. 7) is a preference tiebreak.
-            poolW, poolb, poolscore, poolpass, poolzero = [], [], [], [], []
-            for Lam in self.lambdas:  # multi-scale candidate search (Alg. 1)
-                P = self.t_cand
-                # drawn on the CPU stream (see __init__), then moved -- seed decides, hardware does not
-                Wp = ((torch.rand(P, d, generator=self.g) * 2 - 1) * Lam).to(self.device)  # (P,d)
-                bp = ((torch.rand(P, generator=self.g) * 2 - 1) * Lam).to(self.device)  # (P,)
-                Sp = self._rates(Xsel, Wp, bp)  # (Nsel, P) candidate responses
-                proj = Sp.t() @ Esel  # (P, m) <e_q, s_p>
-                spn = (Sp * Sp).sum(dim=0)  # (P,)   ||s_p||^2
-                C = proj.pow(2) / (
-                    spn.unsqueeze(1) * enorm.unsqueeze(0) + self.reg_eps
-                )  # (P,m) Eq.6
-                score = (C * enorm.unsqueeze(0)).sum(dim=1)  # (P,) residual reduction
-                passes = (C >= thresh).all(dim=1)  # (P,) meets consistency criterion
-                # L3 (specs/022, 2026-09-05): a candidate whose response does not VARY across the
-                # fitted rows cannot discriminate them -- identical rows give identical rates, so the
-                # test is EXACT zero variance, not an epsilon (P1). At most ONE such unit is ever
-                # admitted (the class prior, when nothing has been admitted yet); once any unit exists a
-                # constant candidate carries nothing. Measured before this landed: a CONSTANT percept
-                # admitted 24 units on the brain's own stream (s2 v2), each shaving ridge slack.
-                # A DEAD candidate (zero norm: rate exactly 0 on every scoring row) is excluded always --
-                # measured 2026-09-05: the first form of this rule admitted one such unit on a constant
-                # percept, whose all-zero readout answered class 0 (accuracy 0.0 against a majority floor of
-                # 0.3-0.7). Exact zero, not an epsilon (P1): a dead LIF unit's rate is exactly 0. The
-                # constant-response test is an EQUALITY across the scoring rows (identical rows give
-                # identical rates), not a variance rounding to zero -- the record panel showed float32
-                # variance reads exactly 0.0 only for some (N, rate) pairs. Both tests read the SCORING rows
-                # (the fitted rows unless score_subsample is given).
-                dead = spn == 0.0
-                zero_var = (Sp == Sp[0]).all(dim=0) & ~dead
-                passes = passes & ~dead
-                score = score.masked_fill(dead, 0.0)
-                if W.shape[0] > 0:
-                    passes = passes & ~zero_var
-                    score = score.masked_fill(zero_var, 0.0)
-                poolW.append(Wp)
-                poolb.append(bp)
-                poolscore.append(score)
-                poolpass.append(passes)
-                poolzero.append(zero_var)
-            allW = torch.cat(poolW, 0)
-            allb = torch.cat(poolb, 0)
-            allscore = torch.cat(poolscore, 0)
-            allpass = torch.cat(poolpass, 0)
-
-            rank = allscore + allpass.float() * 1e12  # prefer passing, then by score
-            k = min(delta, l_max - W.shape[0])  # l_max: the derived bound above, not self.l_max
-            top = torch.topk(rank, k).indices
-            keep = [
-                int(j) for j in top.tolist() if allscore[j].item() > 0.0 or bool(allpass[j].item())
-            ]  # genuinely contributing
-            if (
-                W.shape[0] == 0 and keep
-            ):  # L3: at most one zero-variance unit, and only as the first
-                allzero = torch.cat(poolzero, 0)
-                zk = [j for j in keep if bool(allzero[j].item())]
-                if zk:
-                    keep = [j for j in keep if not bool(allzero[j].item())] + zk[:1]
+            # G3 P2 (specs/022 T111): the draw, the score and the admission live in the SHARED lifecycle
+            # (growth/candidate_lifecycle.py) so the taught learner's problem loop grows through the same
+            # one grower; byte-identical here (tests/test_candidate_lifecycle.py pins the fingerprints).
+            # L3 (specs/022, 2026-09-05), measured: a CONSTANT percept admitted 24 units on the brain's own
+            # stream (s2 v2) before constant candidates were excluded once any unit exists, and the first
+            # form admitted a DEAD unit whose all-zero readout answered class 0 (accuracy 0.0 against a
+            # majority floor of 0.3-0.7); both tests are exact equalities on the scoring rows (P1).
+            pool = _lc.draw_and_score(self, d, Xsel, Esel, enorm, thresh, int(W.shape[0]))
+            allW, allb = pool.W, pool.b
+            keep = _lc.select_block(pool, delta, l_max - W.shape[0], int(W.shape[0]))
             if not keep:  # nothing contributes -> saturate
                 break
             newW = allW[keep]

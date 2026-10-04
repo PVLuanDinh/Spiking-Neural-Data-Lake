@@ -650,6 +650,8 @@ TORCH_TIER = {
         "eprop_shd",
     ],
     "growth": [
+        # specs/022 T111 (G3) P2: NG-SNN's candidate lifecycle, shared by every consumer of the one grower
+        "candidate_lifecycle",
         "neurogenesis_engine",
         "ng_snn",
     ],

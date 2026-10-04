@@ -959,12 +959,6 @@ EXEMPT = {
         "(growth/growth_loop.py, P3), which reaches the live path only when G9 wires the engine; "
         "this exemption retires the day that wire lands",
     ),
-    "grown_code": (
-        "wire",
-        "specs/022 T111 (G3) P1: the taught learner's grown latency segment. Its consumers are the "
-        "default-off port on readout/interaction_learning.py (after R2's P1) and G3's loop (P3); "
-        "it retires from EXEMPT when G9 wires the engine",
-    ),
 }
 
 
