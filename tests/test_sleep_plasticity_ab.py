@@ -145,6 +145,14 @@ def test_k13_red_unequal_attractor_draws():
     assert m.check_records("F3", [a, b])["K13"]
 
 
+def test_f3_ladder_rule_and_the_unfrozen_refusal():
+    below, at = [34] * 40, [35] * 40  # per-tick correct counts of 36
+    assert m.ladder_qualifies([below] * 8)
+    assert not m.ladder_qualifies([below] * 7 + [at])  # one seed at 35/36 fails the rung
+    assert not m.ladder_qualifies([below] * 7)  # a partial seed list never qualifies
+    assert m.F3_W_LADDER == (1, 2, 3, 6, 12)
+
+
 def test_two_real_arm_seeds_restore_exactly(tmp_path):
     """ON and OFF on a red-block seed, 2 sleep ticks: every record check green, restore exact, the
     ledger k per tick, OFF's weights untouched by its bout, and the live lake untouched."""

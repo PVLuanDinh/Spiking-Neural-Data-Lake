@@ -71,7 +71,11 @@ RED_SEEDS = tuple(range(16900, 17000))  # constructed reds and positive controls
 BUDGETS = {"SHORT": 10, "MED": 40, "EXT": 160}  # sleep ticks (2.3)
 REPS = 3  # teaching reps per session (2.2)
 EPS_A = Fraction(1, 8)  # one A item (2.4's NI margin)
-F3_STORES = 30  # constructed wake stores before F3's bout (2.3)
+# F3's constructed wake stores W (2.3; the dated amendment 2026-10-04): W = 30 put the attractor at ceiling on
+# dev (AT-OFF and AT-NONE 36/36 on 8/8), so W is chosen by the frozen dev ladder below and written here by a
+# dated note BEFORE any F3 confirmatory seed. None = not yet frozen: an F3 arm without an explicit W refuses.
+F3_W_LADDER = (1, 2, 3, 6, 12)
+F3_STORES = None
 CHILD_TIMEOUT_S = 900
 LIVE_LAKE = os.path.join(os.path.expanduser("~"), ".snn_data_lake")
 
@@ -236,11 +240,19 @@ def chrono(b):
 
 
 # --------------------------------------------------------------------------------------- the bout child
-def run_bout(family, arm_name, seed, budget=None, red=None):
+# distinct-from: growth/brian2_backend.py -- its child runner simulates Brian2 networks; also read:
+#   engine/learn_daemon.py (one-daemon lock), gates/gradient_claim_gate.py (run-age record),
+#   brainstem/arm_config.py + so101_arm.py (joint geometry) -- term overlaps only; none runs a sleep arm.
+def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
     """One arm's PS(s) + bout + in-process evaluation, in THIS process (the `bout` child). Returns a record."""
     require_scratch_home()
     arm = FAMILIES[family][arm_name]
     n = BUDGETS[arm.budget] if budget is None else int(budget)
+    w = F3_STORES if stores is None else int(stores)
+    if arm.pre == "stores" and w is None:
+        raise RuntimeError(
+            "refused: F3's store count W is not frozen (run the dev ladder, then the dated note)"
+        )
     wall = {}
     t0 = time.perf_counter()
     from snn_data_lake.engine.brain import make_brain
@@ -292,7 +304,7 @@ def run_bout(family, arm_name, seed, budget=None, red=None):
         for line, lab in oracle:
             ixn.learn_turn(line, firewall_intent=lab)
     elif arm.pre == "stores":
-        for i in range(F3_STORES):
+        for i in range(w):
             b.attractor.store(b._patterns[i % 3], reps=1)
         b._stored_any = True
     elif arm.pre == "massed":  # EXT's n x K draws, delivered at WAKE through the full deposit path
@@ -383,6 +395,7 @@ def run_bout(family, arm_name, seed, budget=None, red=None):
         "arm": arm_name,
         "seed": seed,
         "budget": n,
+        "stores": w if arm.pre == "stores" else None,
         "red": red,
         "a": a,
         "b": bb,
@@ -458,11 +471,16 @@ def _child(args, home, timeout=CHILD_TIMEOUT_S, err_path=None):
     return json.loads(proc.stdout.strip().splitlines()[-1])
 
 
-def run_arm(out, family, arm_name, seed, budget=None, red=None, keep_home=False):
+# distinct-from: gates/move_gate.py::_rl1_run -- runs its private embedded R-L1 script once per arm; also
+#   read: instruments/everyday_battery.py::run_seed (one in-process scratch brain, persist=False),
+#   faculties/agency_monitor.py, evidence_accumulation.py, global_workspace.py (in-process arms) -- none
+#   runs TWO processes on one PERSISTENT home, which is the restore path R-R3 reads (bout, then evaluate).
+def run_arm(out, family, arm_name, seed, budget=None, red=None, keep_home=False, stores=None):
     """One arm-seed end to end: a fresh scratch home, the bout child, the evaluate child, K14 around both."""
     tag = (
         f"{family}_{arm_name}_{seed}"
         + (f"_n{budget}" if budget else "")
+        + (f"_w{stores}" if stores is not None else "")
         + (f"_red-{red}" if red else "")
     )
     path = os.path.join(out, "records", tag + ".json")
@@ -478,6 +496,7 @@ def run_arm(out, family, arm_name, seed, budget=None, red=None, keep_home=False)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     live_before = lake_snapshot(LIVE_LAKE)
     bout_args = ["bout", family, arm_name, str(seed), str(budget or ""), red or ""]
+    bout_args.append("" if stores is None else str(stores))
     err = path[: -len(".json")] + ".stderr.txt"
     rec = _child(bout_args, home, err_path=err)
     rec.update(_child(["evaluate", str(seed), red or ""], home, err_path=err))
@@ -858,6 +877,37 @@ def run_k7(seed):
     return out
 
 
+# ------------------------------------------------- F3's W ladder (the dated amendment 2026-10-04, dev only)
+# distinct-from: report_order_probe.py -- t081_pin_reading re-derives a committed pin's mean over seeds;
+#   also read: binding_instrument.py::t080_pin_reading and recursive_tom.py::t082_pin_reading (the same
+#   pin idiom), access_consciousness.py::ignited (an ignition predicate), self_improvement_suite.py::
+#   _rung_metaplast (L8's reach) -- none selects a constructed-workload size on a positive control.
+def ladder_qualifies(counts_per_seed):
+    """A rung qualifies iff AT-NONE reads below 35/36 on ALL 8 dev seeds; each seed's reading is the mean of
+    its per-tick correct counts (of 36) over the bout, compared exactly as a Fraction."""
+    return len(counts_per_seed) == S and all(
+        Fraction(sum(c), 36 * len(c)) < Fraction(35, 36) for c in counts_per_seed
+    )
+
+
+def run_ladder(out):
+    """AT-NONE only, dev seeds only, rungs in ascending order; stops at the first qualifying W. Reads no
+    AT-ON / AT-OFF cell, so C6 is never tuned on its own outcome. None = no rung qualifies -> F3 REFUSED."""
+    rungs = []
+    for w in F3_W_LADDER:
+        counts = []
+        for seed in SEED_SETS["dev"]:
+            r = run_arm(out, "F3", "AT-NONE", seed, stores=w)
+            counts.append([v for v in r["tick"]["cacc"] if v is not None])
+        ok = ladder_qualifies(counts)
+        means = [round(sum(c) / (36 * len(c)), 4) for c in counts]
+        rungs.append({"w": w, "means": means, "qualifies": ok})
+        print(f"ladder W={w}: {means} qualifies={ok}", flush=True)
+        if ok:
+            return {"w": w, "rungs": rungs}
+    return {"w": None, "rungs": rungs}
+
+
 # ------------------------------------------------------------------------------------------- self-check
 def main():
     """Offline self-check (no engine import): the statistic, the tables, the census, the K14 decoy red."""
@@ -908,8 +958,15 @@ def main():
 def _cli(argv):
     cmd = argv[0] if argv else ""
     if cmd == "bout":
-        family, arm, seed, budget, red = argv[1:6]
-        rec = run_bout(family, arm, int(seed), int(budget) if budget else None, red or None)
+        family, arm, seed, budget, red, stores = argv[1:7]
+        rec = run_bout(
+            family,
+            arm,
+            int(seed),
+            int(budget) if budget else None,
+            red or None,
+            int(stores) if stores else None,
+        )
         print(json.dumps(rec))
     elif cmd == "evaluate":
         print(json.dumps(run_evaluate(int(argv[1]), argv[2] or None)))
@@ -919,7 +976,7 @@ def _cli(argv):
         import argparse
 
         p = argparse.ArgumentParser(prog="sleep_plasticity_ab")
-        p.add_argument("cmd", choices=["run", "decide", "k7", "red"])
+        p.add_argument("cmd", choices=["run", "decide", "k7", "red", "ladder"])
         p.add_argument("--family", choices=sorted(FAMILIES))
         p.add_argument("--set", default="dev", choices=sorted(SEED_SETS))
         p.add_argument("--out", required=True)
@@ -941,6 +998,7 @@ def _load(out, family, seeds):
                 r["seed"] in seeds
                 and (family, r["arm"]) not in DEV_ONLY_ARMS
                 and r["budget"] == registered
+                and r.get("stores") == (F3_STORES if family == "F3" else None)
             ):
                 recs.append(r)  # a smoke / red cell at another budget never enters a contrast
     return recs
@@ -959,6 +1017,11 @@ def _main_cmd(a):
         with open(os.path.join(a.out, "k7.json"), "w", encoding="ascii") as fh:
             json.dump(res, fh)
         print(res)
+    elif a.cmd == "ladder":
+        res = run_ladder(a.out)
+        with open(os.path.join(a.out, "f3_ladder.json"), "w", encoding="ascii") as fh:
+            json.dump(res, fh)
+        print(json.dumps(res))
     elif a.cmd == "red":
         fam, arm, budget = {
             "K1": ("F1", "ON", 2), "K2": ("F1", "OFF", 10), "K3": ("F1", "ON", 2), "K4": ("F1", "ON", 2),
@@ -966,8 +1029,9 @@ def _main_cmd(a):
             "K13": ("F3", "AT-OFF", 2),
         }[a.name]  # fmt: skip
         seed = RED_SEEDS[1]
-        base = run_arm(a.out, fam, arm if fam != "F3" else "AT-ON", seed, budget=budget)
-        redrec = run_arm(a.out, fam, arm, seed, budget=budget, red=a.name)
+        w = F3_W_LADDER[0] if fam == "F3" else None  # a red needs stores, never the frozen W
+        base = run_arm(a.out, fam, arm if fam != "F3" else "AT-ON", seed, budget=budget, stores=w)
+        redrec = run_arm(a.out, fam, arm, seed, budget=budget, red=a.name, stores=w)
         twin = (
             dict(redrec, arm="ON-TWIN") if a.name == "K1" else redrec
         )  # the split-offset build as ON's twin
