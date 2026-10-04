@@ -841,27 +841,51 @@ FAULTS = {
 class _FaultGuard:
     """A FAULTS context swaps module globals for its whole process. A campaign runs each job in a child
     process of its own, so this never waits there; an in-process caller (the tests' stand-in runners, 4
-    threads) must never run a fault job beside another job: a fault job runs alone, plain jobs share."""
+    threads) must never run such a job beside another: a job that runs `alone` (a fault job, and a call job,
+    whose target may enter a fault context itself) excludes every other; plain jobs share. Admission is in
+    arrival order, so a waiting job that runs alone is never overtaken; the thread holding the guard may
+    re-enter it, and a thread that shares may not start a job that runs alone (no upgrade: it would wait on
+    itself)."""
 
     def __init__(self):
-        self._turn, self._plain, self._fault = threading.Condition(), 0, False
+        self._turn, self._held = threading.Condition(), {}  # thread -> [alone, depth]
+        self._issued = self._admitted = 0
+        self._alone = False
 
     @contextlib.contextmanager
-    def hold(self, fault):
+    def hold(self, alone):
+        me = threading.get_ident()
         with self._turn:
-            self._turn.wait_for(lambda: not self._fault and (self._plain == 0 or not fault))
-            if fault:
-                self._fault = True
+            mine = self._held.get(me)
+            if mine is not None:  # re-entry: the outer hold already admits this thread
+                if alone and not mine[0]:
+                    raise RuntimeError(
+                        "a job that shares the guard cannot start one that runs alone"
+                    )
+                mine[1] += 1
             else:
-                self._plain += 1
+                ticket, self._issued = self._issued, self._issued + 1
+                self._turn.wait_for(
+                    lambda: (
+                        self._admitted == ticket
+                        and not self._alone
+                        and (not alone or not self._held)
+                    )
+                )
+                self._admitted += 1
+                self._alone = alone
+                self._held[me] = [alone, 1]
+                self._turn.notify_all()
         try:
             yield
         finally:
             with self._turn:
-                if fault:
-                    self._fault = False
-                else:
-                    self._plain -= 1
+                mine = self._held[me]
+                mine[1] -= 1
+                if mine[1] == 0:
+                    del self._held[me]
+                    if mine[0]:
+                        self._alone = False
                 self._turn.notify_all()
 
 
@@ -913,7 +937,8 @@ def execute(spec):
     """One job, inside its child process, at torch and BLAS one thread (R-b3 sets its own)."""
     torch.set_num_threads(1)
     kind = spec["kind"]
-    with _FAULT_GUARD.hold(spec.get("fault") is not None), rp._blas_threads(1):
+    alone = spec.get("fault") is not None or kind == "call"
+    with _FAULT_GUARD.hold(alone), rp._blas_threads(1):
         if kind == "replay":
             stream = md._load(spec["stream"])
             # G1(c): a job names a tap boundary and/or a side tap only when it needs one; a job that
@@ -1122,9 +1147,21 @@ def run_step(step, out, *, revision=None, function=None, steps=STEPS, provenance
         body = {"moved": {"start": head, "end": end, "dirty": dirty}}
         status, code = "ABORTED", EXIT_ABORT
     summary = {"step": step, "status": status, "head": head, "dirty": dirty, **body, **provenance}
-    md._save(_summary_path(out, step), _plain(summary))
+    _replace_summary(_summary_path(out, step), _plain(summary))
     print(f"{step}: {status}" + (f" ({body['check']})" if status == "HALTED" else ""))
     return code
+
+
+def _replace_summary(path, summary):
+    """The final summary replaces the RUNNING marker whole: written to a sibling, flushed and fsynced,
+    then os.replace, so a write interrupted midway leaves the marker and its provenance intact (G1(c)
+    narrow re-panel R2). The bytes are md._save's for a .json path."""
+    partial = path.with_name(path.name + ".partial")
+    with open(partial, "w", encoding="utf-8") as file:
+        json.dump(summary, file, allow_nan=False)
+        file.flush()
+        os.fsync(file.fileno())
+    os.replace(partial, path)
 
 
 def _summary(out, step):

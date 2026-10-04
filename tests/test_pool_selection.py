@@ -1354,6 +1354,126 @@ def test_a_fault_job_runs_alone_in_process_and_the_guard_is_what_keeps_it_alone(
     assert _fault_schedule(tmp_path / "green", monkeypatch, ps._FaultGuard()) == 0
 
 
+class _Free:  # no guard: the reds below
+    @contextlib.contextmanager
+    def hold(self, alone):
+        yield
+
+
+def _tap_beside_a_call(monkeypatch, guard):
+    """A plain tap replay started while a call job (an allowed target, check_transport_timing) sits
+    inside its own late-tap red, which shifts the tap for the whole process; returns the tap event
+    the plain replay files (the narrow re-panel's R4 reproduction, in threads)."""
+    stream = md._synthetic_stream()
+    stream["seed"] = 17
+    saved, entered, release = {}, threading.Event(), threading.Event()
+    late = ps.FAULTS["late_tap"]  # the real red (FAULTS keeps it, whatever a previous call patched)
+    plain = {"kind": "replay", "stream": "memory", "arm": "a", "tap": 16, "out": "plain"}
+    call = {
+        "kind": "call",
+        "target": "snn_data_lake.instruments.memory_diagnostic:check_transport_timing",
+        "args": {"stream": stream, "b": 16, "late": 8},
+        "out": "check",
+    }
+
+    @contextlib.contextmanager
+    def paused(*args, **kwargs):
+        with late(*args, **kwargs):
+            entered.set()
+            assert release.wait(10)
+            yield
+
+    monkeypatch.setattr(md, "_load", lambda _path: stream)
+    monkeypatch.setattr(md, "_save", saved.__setitem__)
+    monkeypatch.setattr(ps, "_FAULT_GUARD", guard)
+    monkeypatch.setattr(md, "_late_tap", paused)
+    caller = threading.Thread(target=ps.execute, args=(call,))
+    caller.start()
+    assert entered.wait(10)
+    neighbour = threading.Thread(target=ps.execute, args=(plain,))
+    neighbour.start()
+    time.sleep(0.3)  # the neighbour either ran inside the red or is waiting for the call
+    release.set()
+    caller.join(10)
+    neighbour.join(10)
+    return saved["plain"]["tap"]["w_at_b"]["event"]
+
+
+def test_a_call_job_runs_alone_too_its_target_may_enter_a_fault_itself(monkeypatch):
+    assert _tap_beside_a_call(monkeypatch, _Free()) == 24  # the red: inside the late tap
+    assert _tap_beside_a_call(monkeypatch, ps._FaultGuard()) == 16
+
+
+def test_the_guard_admits_in_arrival_order_and_re_enters_without_upgrading():
+    guard, order = ps._FaultGuard(), []
+
+    def job(name, alone):
+        with guard.hold(alone):
+            order.append(name)
+
+    with guard.hold(
+        False
+    ):  # a plain job holds the guard; a job that runs alone arrives, then another plain
+        first = threading.Thread(target=job, args=("alone", True))
+        first.start()
+        while guard._issued < 2:
+            time.sleep(0.01)
+        later = threading.Thread(target=job, args=("plain", False))
+        later.start()
+        time.sleep(0.2)
+        assert order == []  # neither overtakes: the later plain job waits behind the waiting one
+    first.join(10)
+    later.join(10)
+    assert order == ["alone", "plain"]
+    for inner in (True, False):  # the thread that runs alone re-enters either way
+        with guard.hold(True), guard.hold(inner):
+            order.append(inner)
+    assert order[-2:] == [True, False] and guard._held == {}
+    with guard.hold(False), pytest.raises(RuntimeError, match="cannot start one that runs alone"):
+        with guard.hold(True):
+            pass
+    assert guard._held == {} and not guard._alone
+
+
+def test_an_interrupted_final_write_leaves_the_running_marker_and_its_provenance(
+    tmp_path, monkeypatch
+):
+    real, calls = json.dump, []
+
+    def dump(value, file, **kwargs):  # the second dump is the final summary: it dies midway
+        calls.append(value)
+        if len(calls) == 2:
+            file.write("{")
+            raise KeyboardInterrupt
+        return real(value, file, **kwargs)
+
+    monkeypatch.setattr(ps.json, "dump", dump)
+    with pytest.raises(KeyboardInterrupt):
+        ps.run_step(
+            "record",
+            tmp_path,
+            revision=lambda: ("h1", False),
+            function=lambda _out: {},
+            provenance={"seed_set": "live"},
+        )
+    marker = json.loads((tmp_path / "record.summary.json").read_text(encoding="utf-8"))
+    assert marker == {
+        "step": "record",
+        "status": "RUNNING",
+        "head": "h1",
+        "dirty": False,
+        "seed_set": "live",
+    }
+    monkeypatch.setattr(ps.json, "dump", real)
+    with pytest.raises(ps.Refused, match="never finished"):  # still no retry
+        ps.run_step("record", tmp_path, revision=lambda: ("h1", False), function=lambda _out: {})
+    # and the final bytes are md._save's
+    summary = {"step": "s", "status": "COMPLETED", "head": "h", "dirty": False, "x": [1.5, None]}
+    ps._replace_summary(tmp_path / "a.summary.json", summary)
+    md._save(tmp_path / "b.summary.json", summary)
+    assert (tmp_path / "a.summary.json").read_bytes() == (tmp_path / "b.summary.json").read_bytes()
+
+
 def test_execute_forwards_a_tap_and_a_side_only_when_the_job_names_them(tmp_path, monkeypatch):
     path = tmp_path / "17-stream.json.gz"
     md._save(path, md._synthetic_stream())
