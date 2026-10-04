@@ -261,15 +261,31 @@ def _budget_unfixed(problem, solved_spends, beta=2):
     return beta * statistics.median(solved_spends)
 
 
-def check_b11(rule=None):
-    """B11, a COST-BUDGET pacing floor (2.15.6): budget >= the teach-code count for every G2 problem, and a
-    zero-spend solve does not enter the baseline. No sufficiency is claimed from either count."""
-    rule = rule or budget
+# the budget a problem OPENS with (2.7; cp1 #12): the registered formula, refused below the teach-code floor
+def open_budget(problem, solved_spends, beta=None, seed=8000):
+    value = budget(problem, solved_spends, beta)
+    floor = problem.n_teach_codes(seed)
+    if value < floor:
+        raise ValueError(f"{problem.id}: budget {value} below its cost floor {floor} (teach codes); refused")
+    return value
+
+
+def check_b11(rule=None, opener=None):
+    """B11, a COST-BUDGET pacing floor (2.15.6): every G2 problem opens at or above its teach-code count, a
+    zero-spend solve does not enter the baseline, and an undersized positive-baseline budget is REFUSED at
+    opening (cp1 #12: C1-d under [0, 0, 12] with beta 2 gives 24 < 32). No sufficiency is claimed."""
+    rule, opener = rule or budget, opener or open_budget
     floors = {pid: p.n_teach_codes() for pid, p in PROBLEMS.items() if p.kind not in ("u", "us")}
-    first = all(rule(PROBLEMS[pid], []) >= n for pid, n in floors.items())
+    first = all(opener(PROBLEMS[pid], []) >= n for pid, n in floors.items())
     # two zero-spend solves and one of 12: the baseline must be 12 (positive spends only), never 0
     zero_excluded = rule(PROBLEMS["c1d"], [0, 0, 12], beta=2) == 2 * 12
-    conditions = {"first_budget_at_least_teach_codes": first, "zero_spend_excluded": zero_excluded}
+    try:
+        opener(PROBLEMS["c1d"], [0, 0, 12], beta=2)
+        undersized_refused = False
+    except ValueError:
+        undersized_refused = True
+    conditions = {"first_budget_at_least_teach_codes": first, "zero_spend_excluded": zero_excluded,
+                  "undersized_budget_refused": undersized_refused}
     return {"ok": all(conditions.values()), "conditions": conditions, "floors": floors}
 
 
@@ -322,6 +338,9 @@ def construction_reds(unit_factory):
     fired = {
         "b9_reader_skipping_one_presentation": _fires(check_b9(skips_last), "one_wrong_not_solved"),
         "b11_unfixed_zero_spend_rule": _fires(check_b11(_budget_unfixed), "zero_spend_excluded"),
+        "b11_opener_without_the_floor": _fires(
+            check_b11(opener=lambda p, s, beta=None: budget(p, s, beta)), "undersized_budget_refused"
+        ),
         "b12_validation_calls_correct": _fires(
             check_b12(unit_factory(8900), problem, 8900, read=correct_once), "state_byte_identical"
         ),

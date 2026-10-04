@@ -141,6 +141,15 @@ def test_b9_b11_b12():
     assert tp.check_b12(tp.canonical_incumbent(8000), tp.PROBLEMS["i.S1C1"], 8000)["ok"]
 
 
+def test_open_budget_refuses_an_undersized_positive_baseline():
+    # cp1 #12: the registered formula is kept; an opening below the teach-code floor is refused
+    c1d = tp.PROBLEMS["c1d"]
+    with pytest.raises(ValueError):
+        tp.open_budget(c1d, [0, 0, 12], beta=2)  # 24 < 32
+    assert tp.open_budget(c1d, [0, 0, 16], beta=2) == 32
+    assert tp.open_budget(c1d, []) == 52
+
+
 def test_budget_rule():
     p = tp.PROBLEMS["c1d"]
     assert tp.budget(p, []) == tp.FIRST_BUDGET == 52
@@ -158,3 +167,4 @@ def test_canonical_incumbent_carries_the_brain_stack():
 def test_every_p2_red_fires():
     reds = tp.construction_reds(tp.canonical_incumbent)
     assert reds["all_fired"], reds["fired"]
+    assert len(reds["fired"]) == 5
