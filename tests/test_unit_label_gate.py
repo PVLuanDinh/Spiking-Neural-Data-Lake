@@ -243,15 +243,36 @@ def test_r16_r17_duplicate_unit_ids_refused():
         G.require_admissible([a], resolve_problem=_resolve, known_unit=lambda u: u == a["unit_id"])
 
 
-def test_ticket_covers_exactly_the_admitted_ids_and_is_consumed_once():
+def test_ticket_covers_exactly_the_admitted_records_and_is_consumed_once():
     recs = [_good(i=i) for i in range(3)]
     ticket = G.require_admissible(recs, resolve_problem=_resolve, known_unit=lambda u: False)
-    ids = [r["unit_id"] for r in recs]
     with pytest.raises(G.UnitLabelRefused):
-        ticket.consume(ids + ["stranger"])
-    ticket.consume(ids)
+        ticket.consume(recs + [_good(i=5)])  # a stranger
+    with pytest.raises(G.UnitLabelRefused, match="missing"):
+        ticket.consume(recs[:2])  # the ticket binds the whole validated batch
+    ticket.consume(recs)
     with pytest.raises(G.UnitLabelRefused, match="consumed"):
-        ticket.consume(ids)
+        ticket.consume(recs)
+
+
+def test_cp3_blocker_duplicate_append_under_one_ticket_is_refused():
+    # Codex cp3 #1: a ticket for u, then append [u, u] -- consumption must refuse, and a census that
+    # sees the duplicate must red even though both rows match the journal
+    u = _good(i=0)
+    ticket = G.require_admissible([u], resolve_problem=_resolve, known_unit=lambda x: False)
+    with pytest.raises(G.UnitLabelRefused, match="duplicate"):
+        ticket.consume([u, u])
+    journal = {u["unit_id"]: dict(u)}
+    out = G.census({"fx": [u, u]}, journal, open_debt={"fx"})["fx"]
+    assert out["duplicate"] == 1 and out["red"] is True  # open debt never excuses a duplicate
+
+
+def test_ticket_is_bound_to_the_validated_records_not_to_the_ids():
+    recs = [_good(i=i) for i in range(2)]
+    ticket = G.require_admissible(recs, resolve_problem=_resolve, known_unit=lambda u: False)
+    recs[0]["sign"] = -recs[0]["sign"]  # mutated AFTER validation, same id
+    with pytest.raises(G.UnitLabelRefused, match="differs from the validated"):
+        ticket.consume(recs)
 
 
 def test_r18_restore_is_classified_from_journal_evidence():
@@ -416,7 +437,7 @@ class _FixtureSegment:
         self.rows = []
 
     def admit_rows(self, rows, ticket):
-        ticket.consume([r["unit_id"] for r in rows])
+        ticket.consume(rows)
         self.rows.extend(rows)
 
 

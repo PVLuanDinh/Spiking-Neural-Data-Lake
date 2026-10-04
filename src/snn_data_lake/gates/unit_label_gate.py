@@ -193,20 +193,39 @@ def check_admission(unit, *, resolve_problem):
     return Verdict(True, None, None, ctx["region_read"])
 
 
+# distinct-from: growth/h01_ingest.py -- a binary site-field cursor; unrelated. Site read.
+# distinct-from: growth/similarity_sized_growth.py -- a weights-moved predicate; unrelated. Site read.
+# distinct-from: substrate/lake_segments.py -- a durable WAL record appender; this checks an append's
+#   rows against validated records, it writes nothing. Site read.
 class AdmissionTicket:
-    """The admitted unit ids, consumed ONCE by the segment's row-append point (G3's admit_rows)."""
+    """The VALIDATED admission records (frozen copies), consumed ONCE by the segment's row-append point
+    (G3's admit_rows): the appended rows must be exactly those records -- no duplicate, no stranger, none
+    missing, none changed since validation (Codex cp3 #1)."""
 
-    def __init__(self, ids):
-        self.ids = frozenset(ids)
+    def __init__(self, records):
+        self._records = {r["unit_id"]: {k: r[k] for k in FIELD_ORDER} for r in records}
+        self.ids = frozenset(self._records)
         self._consumed = False
 
-    def consume(self, unit_ids):
-        unit_ids = list(unit_ids)
+    def consume(self, rows):
+        rows = list(rows)
         if self._consumed:
             raise UnitLabelRefused(None, "ticket", "ticket already consumed")
-        stray = [u for u in unit_ids if u not in self.ids]
-        if stray:
-            raise UnitLabelRefused(stray[0], "ticket", "row not covered by the admission ticket")
+        seen = set()
+        for row in rows:
+            uid = row.get("unit_id") if isinstance(row, Mapping) else None
+            if uid in seen:
+                raise UnitLabelRefused(uid, "ticket", "duplicate row under one ticket")
+            seen.add(uid)
+            frozen = self._records.get(uid)
+            if frozen is None:
+                raise UnitLabelRefused(uid, "ticket", "row not covered by the admission ticket")
+            diff = [k for k in FIELD_ORDER if row.get(k) != frozen[k]]
+            if diff:
+                raise UnitLabelRefused(uid, "ticket", f"row differs from the validated record in {diff}")
+        missing = sorted(self.ids - seen)
+        if missing:
+            raise UnitLabelRefused(missing[0], "ticket", f"validated records missing from the append: {missing}")
         self._consumed = True
 
 
@@ -228,7 +247,7 @@ def require_admissible(units, *, resolve_problem, known_unit):
         if not v.admitted:
             uid = u.get("unit_id") if isinstance(u, Mapping) else None
             raise UnitLabelRefused(uid, v.field, v.reason)
-    return AdmissionTicket(u["unit_id"] for u in units)
+    return AdmissionTicket(units)
 
 
 def classify_restored(rows, journal):
@@ -490,15 +509,19 @@ def open_debt_segments():
 
 
 def census(segments, journal, open_debt=None):
-    """{segment: {born, derived, legacy, rows, red}}; red = a derived/legacy row in a segment with no
-    open debt (the partition always sums to rows, so the sum is never the red)."""
+    """{segment: {born, derived, legacy, duplicate, rows, red}}; red = a derived/legacy row in a segment
+    with no open debt (the partition always sums to rows, so the sum is never the red), or ANY repeated
+    unit_id -- open debt never excuses a duplicate (Codex cp3 #1)."""
     open_debt = open_debt_segments() if open_debt is None else open_debt
     out = {}
     for name, rows in segments.items():
         origins = classify_restored(rows, journal)
         counts = {o: origins.count(o) for o in ("born", "derived", "legacy")}
+        ids = [r["unit_id"] for r in rows if isinstance(r, Mapping) and _text(r.get("unit_id"))]
+        duplicate = len(ids) - len(set(ids))
         unticketed = counts["derived"] + counts["legacy"]
-        out[name] = {**counts, "rows": len(rows), "red": bool(unticketed) and name not in open_debt}
+        red = bool(duplicate) or (bool(unticketed) and name not in open_debt)
+        out[name] = {**counts, "duplicate": duplicate, "rows": len(rows), "red": red}
     return out
 
 
