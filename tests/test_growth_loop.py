@@ -26,7 +26,13 @@ VALUES = BudgetValues(first=52, beta=1.5, k_max=3)
 
 class ScriptedLearner:
     """Fixture adapter: `diagnoses` is consumed per diagnose() call (the last value repeats); the
-    problem solves on the attempt after `solve_after_units` admitted units (None = never)."""
+    problem solves on the attempt after `solve_after_units` admitted units (None = never).
+
+    BOUNDED (lead 2026-10-04): more than MAX_ATTEMPTS attempts fail the test with an assertion in
+    milliseconds, so a loop that lost its attempt cap is a reachable RED, never a hang until a
+    runner timeout."""
+
+    MAX_ATTEMPTS = 200  # above the 52 single-neuron attempts the longest legitimate test makes
 
     def __init__(self, diagnoses, solve_after_units=None):
         self.diagnoses = list(diagnoses)
@@ -42,6 +48,7 @@ class ScriptedLearner:
 
     def attempt(self, epochs):
         self.attempts += 1
+        assert self.attempts <= self.MAX_ATTEMPTS, "unbounded attempts: the loop lost its cap"
         return self.solve_after_units is not None and len(self.units) >= self.solve_after_units
 
 
