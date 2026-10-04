@@ -137,3 +137,45 @@ def test_contribution_uses_the_incumbent_eq6_algebra_on_low_energy_residuals():
     assert got != pytest.approx(
         proj2 / (sn + 1e-6), rel=0.5
     )  # the divergent form scores ~101x higher
+
+
+# ---- cp1 #18 / C9: the shared silencing helper and the matched-source picker (2.5) ---------------
+
+
+def test_silence_units_on_a_grown_segment():
+    from snn_data_lake.growth.grown_code import GrownUnit
+
+    units = tuple(GrownUnit(i, (1.0,), 0.5, 4, 1, (0.0,)) for i in (1, 2, 3))
+    out = candidate_lifecycle.silence_units(units, [2])
+    assert [u.active for u in out] == [True, False, True]
+    assert all(u.active for u in units)  # the caller's segment is untouched
+    with pytest.raises(KeyError):
+        candidate_lifecycle.silence_units(units, [9])
+
+
+def test_silence_units_on_an_ngsnn_readout():
+    from snn_data_lake.growth.ng_snn import NGSNN
+
+    m = NGSNN(device="cpu")
+    m.W, m.b = torch.ones(3, 2), torch.zeros(3)
+    m.beta = torch.ones(3, 2)
+    out = candidate_lifecycle.silence_units(m, [0, 2])
+    assert out.beta[:, 0].tolist() == [0.0, 1.0, 0.0] and m.beta.sum().item() == 6.0
+    with pytest.raises(KeyError):
+        candidate_lifecycle.silence_units(m, [3])
+
+
+def test_match_sources_is_nearest_without_replacement_and_excludes_dead():
+    targets = [("g1", 1.0, 0.5), ("g2", 1.0, 0.5), ("g3", 0.0, 0.5)]  # g3 is dead
+    pool = [("d1", 1.1, 0.5), ("d2", 3.0, 0.5), ("d3", 0.9, 0.0), ("d4", 1.6, 0.6)]
+    pairs = candidate_lifecycle.match_sources(targets, pool)
+    assert pairs == [("g1", "d1"), ("g2", "d4")]  # d2: norm ratio 3 > 2; d3 dead; no reuse of d1
+
+
+def test_match_feasibility_rule():
+    ok = candidate_lifecycle.match_feasible
+    assert ok(pair_counts=[5] * 8, grown_counts=[9] * 8)
+    assert not ok(pair_counts=[5] * 7 + [0], grown_counts=[9] * 8)  # k >= 1 on EVERY seed
+    assert not ok(
+        pair_counts=[4] * 3 + [5] * 5, grown_counts=[9] * 8
+    )  # half covered on only 5 of 8

@@ -107,6 +107,68 @@ def contribution(feature, residual, reg_eps=1e-6):
     return float(score[0])
 
 
+def silence_units(consumer, unit_ids):
+    """THE shared silencing operation (2.5; C9; R3 imports it), returning a silenced COPY -- the
+    caller's object is never modified. A grown segment (a sequence of units with `unit_id` and
+    `silenced()`, e.g. growth/grown_code.GrownUnit -- duck-typed, so this live module does not import
+    it) gets those units' `active` flag cleared; an NG-SNN model (W and beta) gets those COLUMNS'
+    readout rows zeroed. An unknown id raises KeyError: silencing nothing must never read as a
+    silencing."""
+    import copy
+
+    ids = list(unit_ids)
+    if hasattr(consumer, "beta") and hasattr(consumer, "W"):
+        n = int(consumer.W.shape[0])
+        missing = [i for i in ids if not 0 <= int(i) < n]
+        if missing:
+            raise KeyError(f"no unit column(s) {missing} in a model of {n} units")
+        out = copy.deepcopy(consumer)
+        for i in ids:
+            out.beta[int(i)] = 0.0
+        return out
+    by_id = {u.unit_id: u for u in consumer}
+    missing = [i for i in ids if i not in by_id]
+    if missing:
+        raise KeyError(f"no grown unit(s) {missing} in the segment")
+    silence = set(ids)
+    return tuple(u.silenced() if u.unit_id in silence else u for u in consumer)
+
+
+def match_sources(targets, pool, norm_ratio=(0.5, 2.0), rate_tol=0.25):
+    """C9's matched control (2.9, Codex b1 G3 #1): pair each target source (id, output-synapse L2 norm,
+    firing rate on the evaluated items) with its nearest pool source, WITHOUT replacement, within the
+    tolerance fixed in the pre-registration (norm ratio in [0.5, 2], rate difference <= 0.25); dead
+    sources (norm 0 or rate 0) are excluded from both sides. Distance = |log norm ratio| + |rate
+    difference|; ties -> the earlier pool entry. Returns [(target_id, pool_id)] in target order."""
+    import math
+
+    lo, hi = norm_ratio
+    free = [p for p in pool if p[1] > 0.0 and p[2] > 0.0]
+    pairs = []
+    for tid, tn, tr in targets:
+        if tn <= 0.0 or tr <= 0.0:
+            continue
+        best, best_d = None, None
+        for k, (_pid, pn, pr) in enumerate(free):
+            if not lo <= pn / tn <= hi or abs(pr - tr) > rate_tol:
+                continue
+            d = abs(math.log(pn / tn)) + abs(pr - tr)
+            if best_d is None or d < best_d:
+                best, best_d = k, d
+        if best is not None:
+            pairs.append((tid, free.pop(best)[0]))
+    return pairs
+
+
+def match_feasible(pair_counts, grown_counts, min_seeds=6):
+    """C9's feasibility rule, checked on dev seeds BEFORE confirmation: k >= 1 matched pair on EVERY
+    seed, and pairs covering at least half of the grown units on at least `min_seeds` seeds (6 of 8)."""
+    if any(k < 1 for k in pair_counts):
+        return False
+    covered = sum(1 for k, g in zip(pair_counts, grown_counts, strict=True) if 2 * k >= g)
+    return covered >= min_seeds
+
+
 @dataclass
 class PruneResult:
     keep: list  # survivor columns, or None when nothing was pruned (identity unchanged)
