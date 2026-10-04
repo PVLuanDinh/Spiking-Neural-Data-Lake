@@ -360,6 +360,7 @@ CORE = [
     "gates.policy_manifest",
     "gates.capability_bar",  # X1: 4 constructed reds + the REFUSED arm + the surface check
     "gates.immortal_retention",  # L5: label reds, the reclaimer scan, the cross-process round trip
+    "gates.unit_label_gate",  # G7 T115 (G-R7): R6 positive control + ten constructed reds, both scans vs their debt tables
     "gates.conclusion_protocol",  # C5: row reds, the verdict/aggregate refusals, the prose control  # POLICIES.md manifest: derivation reconciles, committed copy in sync, drift never worsens
     "gates.perf_baseline",  # 022 T001 wiring check: baseline parses + scorer discriminates (cheap; never measures)
     "gates.amdahl_gate",  # specs/008 Gate Zero / 022 S6: the three reds, then the neuter-and-measure ceiling reading

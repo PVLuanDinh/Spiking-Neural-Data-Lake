@@ -270,6 +270,8 @@ REGIONS = {
         "safety_envelope",
         # battery carry-forward: closure-hash-verified PASS carries; bare == dependency/poison/envelope/FAIL reds
         "selfcheck_cache",
+        # specs/022 G7 (T115): P4d's provenance check (red G-R7) -- unlabeled grown units refused; bare == R6 + ten reds
+        "unit_label_gate",
     ],
     "instruments": [
         # specs/022 T078 Part I: the G3 task-binding (MI vs a permutation floor) and G4 content-leakage (held-out decode vs a shuffle band) instrument over the live loop's own attention state; no ACS, no wire to brain.py
