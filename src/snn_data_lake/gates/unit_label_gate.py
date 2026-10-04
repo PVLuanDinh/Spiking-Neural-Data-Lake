@@ -362,9 +362,20 @@ OUT_OF_SCOPE_ROW_GROWTH = {
         "a reasoning learner's recruited rows (not the engine's growth path)",
 }
 
+#: Reviewed FALSE POSITIVES of the row-growth scan (Codex cp3 #4 widened its forms; these hits grow no
+#: rows of units). Printed every run; a row that stops matching reds as stale, like debt.
+SCAN_FALSE_POSITIVES = {
+    "snn_data_lake/faculties/learned_attention.py::LearnedAttention._goal_gain":
+        "np.resize of a 1-D gain vector to the attention width -- an input reshape, no unit rows",
+    "snn_data_lake/faculties/learned_attention.py::LearnedAttention.attend":
+        "np.resize of a 1-D input vector to the attention width -- an input reshape, no unit rows",
+    "snn_data_lake/reasoning/ng_snn/softhebb_mnist.py::HebbConv2d.forward":
+        "F.pad of a convolution INPUT tensor -- spatial padding of activations, no unit rows",
+}
+
 _GATE_CALLS = frozenset({"require_admissible", "check_admission"})
 _TICKET_CALLS = frozenset({"consume", "admit_rows"})
-_ROW_GROWERS = frozenset({"vstack", "concatenate", "append", "cat", "row_stack"})
+
 
 
 def _repo_src():
@@ -419,24 +430,60 @@ def _creation_functions(root):
     return out
 
 
+# distinct-from: gates/eprop_transport_gate.py -- its _transposed names a TRANSPOSED operand; this
+#   reads a concatenation/resize/pad AXIS. Different AST question. Site read.
+# distinct-from: gates/move_gate.py -- its _assign returns a module-level assignment's value; unrelated.
+# distinct-from: faculties/access_consciousness.py, growth/neurogenesis_engine.py, infra/device.py --
+#   a constructor argument, a persistence predicate, a CUDA crossover; the matcher fired on "None". Read.
+def _axis(call, positional):
+    """The call's axis/dim: its constant, None when absent, "?" when not a constant."""
+    for kw in call.keywords:
+        if kw.arg in ("axis", "dim"):
+            return kw.value.value if isinstance(kw.value, ast.Constant) else "?"
+    if len(call.args) > positional:
+        a = call.args[positional]
+        return a.value if isinstance(a, ast.Constant) else "?"
+    return None
+
+
+def _same(node, name):
+    return isinstance(node, (ast.Name, ast.Attribute)) and ast.unparse(node) == name
+
+
+def _pads_axis0(call):
+    """False only when the pad width provably leaves axis 0 alone ((0, 0) first); else True."""
+    width = call.args[1] if len(call.args) > 1 else next(
+        (kw.value for kw in call.keywords if kw.arg == "pad_width"), None)
+    if isinstance(width, (ast.Tuple, ast.List)) and width.elts and isinstance(width.elts[0], (ast.Tuple, ast.List)):
+        return not all(isinstance(e, ast.Constant) and e.value == 0 for e in width.elts[0].elts)
+    return True
+
+
 def _self_growth(node):
-    """True if `node` assigns a name regrown from itself along axis 0."""
+    """True if `node` grows a name's LEADING dimension from itself -- the registered forms (2.3(b), Codex
+    cp3 #4): vstack / row_stack / concatenate / cat of a sequence holding the name on axis 0;
+    np.append(name, x, axis=0); np.resize(name, ...); np.pad(name, ...) touching axis 0; and slice
+    extension past the end, name[len(name):] / name[name.shape[0]:] = ..."""
     if not (isinstance(node, ast.Assign) and len(node.targets) == 1):
         return False
     target, value = node.targets[0], node.value
+    if isinstance(target, ast.Subscript) and isinstance(target.slice, ast.Slice) and target.slice.lower:
+        me, lower = ast.unparse(target.value), ast.unparse(target.slice.lower)
+        return f"len({me})" in lower or f"{me}.shape" in lower
     if not (isinstance(target, (ast.Name, ast.Attribute)) and isinstance(value, ast.Call)
-            and isinstance(value.func, ast.Attribute) and value.func.attr in _ROW_GROWERS
-            and value.args and isinstance(value.args[0], (ast.List, ast.Tuple))):
+            and isinstance(value.func, ast.Attribute) and value.args):
         return False
-    me = ast.unparse(target)
-    if not any(isinstance(e, (ast.Name, ast.Attribute)) and ast.unparse(e) == me for e in value.args[0].elts):
-        return False
-    for kw in value.keywords:
-        if kw.arg in ("axis", "dim"):
-            return isinstance(kw.value, ast.Constant) and kw.value.value == 0
-    if len(value.args) >= 2:
-        return isinstance(value.args[1], ast.Constant) and value.args[1].value == 0
-    return value.func.attr != "append"  # np.append without an axis flattens; the others default to 0
+    me, fn, first = ast.unparse(target), value.func.attr, value.args[0]
+    if fn in ("vstack", "row_stack", "concatenate", "cat"):
+        holds = isinstance(first, (ast.List, ast.Tuple)) and any(_same(e, me) for e in first.elts)
+        return holds and (fn in ("vstack", "row_stack") or _axis(value, 1) in (None, 0))
+    if fn == "append":
+        return _same(first, me) and _axis(value, 2) == 0  # without an axis np.append flattens
+    if fn == "resize":
+        return _same(first, me)
+    if fn == "pad":
+        return _same(first, me) and _pads_axis0(value)
+    return False
 
 
 @functools.lru_cache(maxsize=8)
@@ -487,7 +534,7 @@ def label_creation_findings(src_root=None, known=None):
 #   faculties/time_cells.py -- see _row_growth_functions above; all sites read.
 def row_growth_findings(src_root=None, known=None, out_of_scope=None):
     known = KNOWN_UNGATED_ROW_GROWTH if known is None else known
-    oos = OUT_OF_SCOPE_ROW_GROWTH if out_of_scope is None else out_of_scope
+    oos = {**OUT_OF_SCOPE_ROW_GROWTH, **SCAN_FALSE_POSITIVES} if out_of_scope is None else out_of_scope
     return sorted(k for k, ticketed in _row_growth_functions(_root(src_root)).items()
                   if not ticketed and k not in known and k not in oos)
 
@@ -503,7 +550,7 @@ def stale_known(src_root=None, known_creation=None, known_rows=None, out_of_scop
     root = _root(src_root)
     kc = KNOWN_UNGATED_CREATION_SITES if known_creation is None else known_creation
     kr = KNOWN_UNGATED_ROW_GROWTH if known_rows is None else known_rows
-    oos = OUT_OF_SCOPE_ROW_GROWTH if out_of_scope is None else out_of_scope
+    oos = {**OUT_OF_SCOPE_ROW_GROWTH, **SCAN_FALSE_POSITIVES} if out_of_scope is None else out_of_scope
     stale = [k for k in kc if k not in _creation_functions(root)]
     stale += [k for k in list(kr) + list(oos) if k not in _row_growth_functions(root)]
     return sorted(stale)
@@ -551,6 +598,8 @@ def report():
     lines.append(f"  out of scope (ruling 23: P4d's grown unit = the engine's growth path; listed for the "
                  f"owner): {len(OUT_OF_SCOPE_ROW_GROWTH)} row(s)")
     lines += [f"    {k}  {why}" for k, why in sorted(OUT_OF_SCOPE_ROW_GROWTH.items())]
+    lines.append(f"  reviewed scan false positives (no unit rows grown): {len(SCAN_FALSE_POSITIVES)} row(s)")
+    lines += [f"    {k}  {why}" for k, why in sorted(SCAN_FALSE_POSITIVES.items())]
     lines.append(f"  findings: creation {creation}  rows {rows}  stale {stale}")
     if KNOWN_UNGATED_CREATION_SITES or KNOWN_UNGATED_ROW_GROWTH:
         lines.append('  the sentence "no unlabeled grown unit is admitted" is FALSE while either debt '

@@ -412,6 +412,35 @@ def test_r14_row_growth_scan_sees_what_the_creation_scan_cannot(tmp_path):
     assert G.label_creation_findings(src_root=root, known={}) == []
 
 
+@pytest.mark.parametrize("stmt", [
+    "self.W = np.append(self.W, new, axis=0)",
+    "self.W = np.resize(self.W, (self.W.shape[0] + 1, self.W.shape[1]))",
+    "self.W = np.pad(self.W, ((0, 1), (0, 0)))",
+    "self.W[len(self.W):] = new",
+    "self.W[self.W.shape[0]:] = new",
+])
+def test_cp3_4_every_registered_row_growth_form_is_seen(tmp_path, stmt):
+    root = _tree(tmp_path, f"import numpy as np\nclass Grower:\n    def grow(self, new):\n        {stmt}\n")
+    assert G.row_growth_findings(src_root=root, known={}, out_of_scope={}) == ["fakepkg/mod.py::Grower.grow"]
+
+
+def test_cp3_4_flattening_append_and_column_concat_are_not_row_growth(tmp_path):
+    root = _tree(tmp_path, (
+        "import numpy as np\nclass Grower:\n    def f(self, new):\n"
+        "        self.W = np.append(self.W, new)\n        self.S = np.concatenate([self.S, new], axis=1)\n"
+    ))
+    assert G.row_growth_findings(src_root=root, known={}, out_of_scope={}) == []
+
+
+def test_cp3_4_place_labeled_callers_are_label_creation_sites(tmp_path):
+    root = _tree(tmp_path, (
+        "from snn_data_lake.growth.placement import place_labeled\n"
+        "def grow(ids):\n    return place_labeled(1, unit_ids=ids, region='cortex', site=(0, 0),\n"
+        "        problem_id='p', batch_id='b', seed=1, centre_um=(0, 0), density_per_mm2=1.0)\n"
+    ))
+    assert G.label_creation_findings(src_root=root, known={}) == ["fakepkg/mod.py::grow"]
+
+
 def test_real_tree_scans_are_clean_against_their_debt_tables():
     assert G.label_creation_findings() == []
     assert G.row_growth_findings() == []
