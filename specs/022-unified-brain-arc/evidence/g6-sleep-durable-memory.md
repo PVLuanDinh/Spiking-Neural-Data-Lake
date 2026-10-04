@@ -652,7 +652,8 @@ it overrides. Nothing here is measured.
   and 3; between 3 and 4; between 4 and 5; after 5) and the COMPLETE restored state (active membership, unit labels,
   feed/readout/return synapses, folded verdicts, learner weights digest) must equal the registered reference for that
   boundary (pre-mask for the first five, post-mask for the last two); a planted restore that folds uncommitted
-  verdicts must red.
+  verdicts must red. (Step 4, the prepared row and `mask_digest` are amended: see the DATED PRE-DATA AMENDMENT
+  2026-10-03 at the end of 2.16.)
 - **A13 -- equal-budget accounting and SA initialization (Codex 19; overrides 2.4's Arms).** One EVALUATION = one
   proposed mask scored (refit on teach + validation score), feasible or not; every infeasible proposal and every
   refit counts against B for every arm, and calibration consumes B. B = greedy's measured evaluation count on the
@@ -678,6 +679,29 @@ it overrides. Nothing here is measured.
   `future_d` may influence mask selection, refitting or search stopping (the search stops only on B or the fixed
   point); C26 (new check): a planted search that reads `retention_final` or `future` during selection must red (the
   harness asserts zero reads of those sets before the winner is frozen).
+
+**DATED PRE-DATA AMENDMENT 2026-10-03 (D21, agreed with R2; no data read).** R2 writes no per-tick checkpoint (its
+r2.v1 checkpoint is written at `_enter_wake` and `close` only), so `applied_mask_digest` rides where R2's redo can
+prove the apply. Amends A12:
+1. A12 step 4 becomes: "R2's P2 `sleep` progress event for that tick records `applied_mask_digest` (mid-night
+   applies); the r2.v1 checkpoint at `_enter_wake`/`close` carries the same field". Restore reads the interrupted
+   night's latest progress event, else the checkpoint.
+2. `sleep_mask_prepared` gains `tick` and kept bits on its synapse refs (reader: R2's redo takes each re-executed
+   tick's mask from this row, keyed on (`sleep_id`, `tick`), and verifies its digest against the event). The verdict
+   rows link to it by `mask_digest` and carry no tick.
+3. `mask_digest` is defined: sha256 hex of canonical JSON (sorted keys, separators (",", ":")) of {sleep_id, tick,
+   sorted kept ids, sorted pruned ids, sorted [kind, pre, post, kept_bit] synapses}; one function
+   `mask_digest(prepared_row)`, which R2 imports and does not reimplement; `applied_mask_digest` is the digest of the
+   mask, not of the network state. Build order (the lead's ruling 17a, 2026-10-03): the function ships in
+   G6's P2 module `instruments/joint_mask_search.py` (fixtures only, no waits), not in P4, so R2's P2, which imports
+   it, is not blocked behind G6's P4 (which lands after R2/R3); a later move of the function re-points R2's import in
+   the same commit.
+4. The P2 file list (2.13 arc split) becomes: `src/snn_data_lake/instruments/joint_mask_search.py` (the search AND
+   `mask_digest(prepared_row)`), `tests/test_joint_mask_search.py` (C7-C10, C22, plus a `mask_digest` check: the
+   digest is invariant to the order of ids and synapses in the row, and changes when any one kept bit flips). P4 no
+   longer defines the digest; it imports it from P2.
+C18's seven boundaries are unchanged: "between 3 and 4" (applied, no progress event yet) restores PRE-mask, which
+R2's redo gives (no event, no redo); "between 4 and 5" restores the applied mask and restore writes the commit.
 
 ### 2.17 Review record
 
