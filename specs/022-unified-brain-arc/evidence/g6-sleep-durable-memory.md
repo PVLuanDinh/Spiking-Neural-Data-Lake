@@ -703,6 +703,21 @@ prove the apply. Amends A12:
 C18's seven boundaries are unchanged: "between 3 and 4" (applied, no progress event yet) restores PRE-mask, which
 R2's redo gives (no event, no redo); "between 4 and 5" restores the applied mask and restore writes the commit.
 
+**DATED PRE-DATA AMENDMENT 2026-10-04 (A2's windows; lead ruling 24; no deciding data read).** Additive to A2.
+Measured on the eight exposed dev seeds 12001-12008 run as the frozen live arm (900 ticks, TEACH at every wake
+onset, throwaway homes): `_enter_wake` readings per run 37 (12001) and 36 (the other seven); `_stored_any` True at
+the second reading on all eight (False at the first on 12001 and 12006); P-EY refits measured = scheduled on all
+eight (22 or 23); P-EY pooled held-out totals 1070, 1060, 1108, 1057, 1081, 1111, 1064, 1076; P-LL 3 of 3 tasks
+learned on all eight. Indexing nights by `Brain._nights` would refuse seven of the eight (no `_nights == 36` reading),
+so A2's words are read as follows:
+1. Night k = the k-th `_enter_wake` reading, counted from 1. The P-DP window is k = 2..36 (35 readings x 36 trials =
+   1260; delta_DP = 1/1260 unchanged).
+2. A P-DP run is REFUSED if it has fewer than 36 readings, or if `_stored_any` is False at the k = 2 reading (every
+   window night reads stored patterns). This replaces A2's "the attractor's first store comes after night 1", which
+   read literally would refuse 12001 and 12006 although their whole window reads stored patterns.
+3. T_ref = 1111 (the largest of the eight pooled totals, seed 12006), so delta_EY = 1/1111, fixed before any
+   confirmatory run.
+
 ### 2.17 Review record
 
 - **Lead read:** 2026-10-03, CLI lead session 2d85b496; board `p0_reports\G6.md` section "=== LEAD READ ===" (L1-L5),
