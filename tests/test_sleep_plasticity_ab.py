@@ -70,14 +70,60 @@ def test_k14_decoy_red_fires(tmp_path):
     assert not m.live_lake_untouched(str(tmp_path), before)[0]
 
 
-def test_scratch_home_refusals(monkeypatch):
-    monkeypatch.setenv("NORD_HOME", m.LIVE_LAKE)
+def _decoy(tmp_path, monkeypatch):
+    """A DECOY live lake holding one file; the module's LIVE_LAKE points at it."""
+    live = tmp_path / "decoy_live"
+    live.mkdir()
+    (live / "brain_lake.bin").write_bytes(b"x")
+    monkeypatch.setattr(m, "LIVE_LAKE", str(live))
+    return live
+
+
+def test_scratch_home_refusals(tmp_path, monkeypatch):
+    from snn_data_lake.substrate.home import LiveHomeRefused
+
+    live = _decoy(tmp_path, monkeypatch)
     monkeypatch.setenv("NORD_PERSIST", "1")
-    with pytest.raises(RuntimeError):
-        m.require_scratch_home()
+    (live / "inside").mkdir()
+    for bad in (str(live), str(live / "inside"), str(tmp_path)):  # equal, contained, contains
+        monkeypatch.setenv("NORD_HOME", bad)
+        with pytest.raises(LiveHomeRefused):
+            m.require_scratch_home()
     monkeypatch.delenv("NORD_HOME")
-    with pytest.raises(RuntimeError):
+    with pytest.raises(LiveHomeRefused):
         m.require_scratch_home()
+
+
+@pytest.mark.parametrize("sub", ["", "records", "new/deeper"])
+def test_run_arm_refuses_the_live_lake_before_any_mutation(tmp_path, monkeypatch, sub):
+    """Codex cp2 #1's red: --out at, or anywhere under, the (decoy) live lake is refused before any
+    mkdir, write or delete -- the decoy reads byte-for-byte unchanged afterwards."""
+    from snn_data_lake.substrate.home import LiveHomeRefused
+
+    live = _decoy(tmp_path, monkeypatch)
+    before = m.lake_snapshot(str(live))
+    dirs_before = sorted(p for p, _d, _f in os.walk(live))
+    with pytest.raises(LiveHomeRefused):
+        m.run_arm(str(live / sub) if sub else str(live), "F1", "ON", m.RED_SEEDS[6], budget=1)
+    assert m.lake_snapshot(str(live)) == before
+    assert sorted(p for p, _d, _f in os.walk(live)) == dirs_before
+
+
+def test_guard_out_refuses_a_junction_alias(tmp_path, monkeypatch):
+    """An alias (a directory junction pointing INTO the decoy live lake) resolves and is refused."""
+    import subprocess
+
+    from snn_data_lake.substrate.home import LiveHomeRefused
+
+    live = _decoy(tmp_path, monkeypatch)
+    alias = tmp_path / "alias"
+    made = subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(alias), str(live)], capture_output=True, text=True
+    )
+    if made.returncode != 0:
+        pytest.skip(f"no junction on this host: {made.stderr.strip()}")
+    with pytest.raises(LiveHomeRefused):
+        m.guard_out(str(alias / "out"))
 
 
 def test_seed_sets_inside_the_block_and_disjoint():
@@ -168,6 +214,4 @@ def test_two_real_arm_seeds_restore_exactly(tmp_path):
     assert on["d0"] == off["d0"] and on["d1"] == off["d1"]
     assert off["weights_d1"] == off["weights_post"] and on["weights_d1"] != on["weights_post"]
     assert all(r["live_lake_untouched"] for r in recs)
-    assert not os.path.exists(
-        os.path.join(out, "homes", f"F1_ON_{seed}_n2")
-    )  # scratch homes removed
+    assert os.listdir(os.path.join(out, "homes")) == []  # every throwaway home removed

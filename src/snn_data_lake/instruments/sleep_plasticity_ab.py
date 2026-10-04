@@ -48,7 +48,6 @@ import json
 import math
 import os
 import random
-import shutil
 import subprocess
 import sys
 import time
@@ -154,15 +153,32 @@ def live_lake_untouched(path, before):
 
 
 def require_scratch_home():
-    """Children refuse to build a Brain unless NORD_HOME names a scratch home that is not the live lake."""
-    home = os.environ.get("NORD_HOME", "")
-    if not home or os.path.normcase(os.path.abspath(home)) == os.path.normcase(
-        os.path.abspath(LIVE_LAKE)
-    ):
-        raise RuntimeError(f"refused: NORD_HOME must be a scratch home, not {home!r}")
+    """Children refuse to build a Brain unless NORD_HOME passes the ONE shared live-home guard
+    (substrate/home.require_isolated_home: resolved, junction-following, equality and containment in
+    either direction; Codex cp2 #1) and the arm runs persistent without self-modification."""
+    from snn_data_lake.substrate.home import require_isolated_home
+
+    home = require_isolated_home(live_home=LIVE_LAKE)
     if os.environ.get("NORD_PERSIST") != "1" or os.environ.get("NORD_SELFMOD"):
         raise RuntimeError("refused: arms run with NORD_PERSIST=1 and no NORD_SELFMOD")
     return home
+
+
+def guard_out(out):
+    """Codex cp2 #1: validate the RESOLVED output directory BEFORE any filesystem mutation. The guard needs
+    an existing path, so it is applied to the nearest existing ancestor; the missing remainder is plain names
+    under it, which cannot alias anything. Refuses the live lake, anything inside it, and anything containing
+    it (an ancestor that contains the live home refuses too -- over-refusal is the safe side)."""
+    from snn_data_lake.substrate.home import assert_not_live_home
+
+    probe = os.path.abspath(str(out))
+    while not os.path.exists(probe):
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            break
+        probe = parent
+    assert_not_live_home(probe, live_home=LIVE_LAKE)
+    return probe
 
 
 # ---------------------------------------------------------------------------------- the pre-sleep state
@@ -475,8 +491,13 @@ def _child(args, home, timeout=CHILD_TIMEOUT_S, err_path=None):
 #   read: instruments/everyday_battery.py::run_seed (one in-process scratch brain, persist=False),
 #   faculties/agency_monitor.py, evidence_accumulation.py, global_workspace.py (in-process arms) -- none
 #   runs TWO processes on one PERSISTENT home, which is the restore path R-R3 reads (bout, then evaluate).
-def run_arm(out, family, arm_name, seed, budget=None, red=None, keep_home=False, stores=None):
-    """One arm-seed end to end: a fresh scratch home, the bout child, the evaluate child, K14 around both."""
+def run_arm(out, family, arm_name, seed, budget=None, red=None, stores=None):
+    """One arm-seed end to end: a guarded output dir, a throwaway home, the bout child, the evaluate child,
+    K14 around both. Codex cp2 #1: `guard_out` runs BEFORE any mkdir / write / delete, and the home comes
+    from the shared `throwaway_home` (guarded before NORD_HOME is set, resolved, removed after)."""
+    from snn_data_lake.substrate.home import throwaway_home
+
+    guard_out(out)
     tag = (
         f"{family}_{arm_name}_{seed}"
         + (f"_n{budget}" if budget else "")
@@ -484,30 +505,28 @@ def run_arm(out, family, arm_name, seed, budget=None, red=None, keep_home=False,
         + (f"_red-{red}" if red else "")
     )
     path = os.path.join(out, "records", tag + ".json")
-    if os.path.exists(path):
+    if os.path.exists(path):  # a completed cell is never re-run (a TIMEOUT re-runs the SAME seed)
         with open(path, encoding="ascii") as fh:
-            return json.load(
-                fh
-            )  # a completed cell is never re-run (a TIMEOUT re-runs the SAME seed)
-    home = os.path.join(out, "homes", tag)
-    if os.path.exists(home):
-        shutil.rmtree(home)
-    os.makedirs(home)
+            return json.load(fh)
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    homes = os.path.join(out, "homes")
+    os.makedirs(homes, exist_ok=True)
     live_before = lake_snapshot(LIVE_LAKE)
     bout_args = ["bout", family, arm_name, str(seed), str(budget or ""), red or ""]
     bout_args.append("" if stores is None else str(stores))
     err = path[: -len(".json")] + ".stderr.txt"
-    rec = _child(bout_args, home, err_path=err)
-    rec.update(_child(["evaluate", str(seed), red or ""], home, err_path=err))
-    rec["stderr_lines"] = sum(1 for _ in open(err, encoding="utf-8")) if os.path.exists(err) else 0
+    with throwaway_home(live_home=LIVE_LAKE, parent=homes) as home:
+        rec = _child(bout_args, home, err_path=err)
+        rec.update(_child(["evaluate", str(seed), red or ""], home, err_path=err))
+    rec["stderr_lines"] = 0
+    if os.path.exists(err):
+        with open(err, encoding="utf-8") as fh:
+            rec["stderr_lines"] = sum(1 for _ in fh)
     ok, changed = live_lake_untouched(LIVE_LAKE, live_before)
     rec["live_lake_untouched"] = ok
     rec["live_lake_changed"] = changed
     with open(path, "w", encoding="ascii") as fh:
         json.dump(rec, fh)
-    if not keep_home:
-        shutil.rmtree(home, ignore_errors=True)
     if not ok:
         raise RuntimeError(f"K14 RED: the live lake changed during {tag}: {changed[:5]}")
     return rec
@@ -1005,14 +1024,18 @@ def _load(out, family, seeds):
 
 
 def _main_cmd(a):
+    from snn_data_lake.substrate.home import throwaway_home
+
+    guard_out(a.out)  # Codex cp2 #1: before the first mkdir
     os.makedirs(a.out, exist_ok=True)
     if a.cmd == "run":
         run_family(a.out, a.family, a.set, a.arms)
     elif a.cmd == "k7":
-        home = os.path.join(a.out, "homes", "k7")
-        os.makedirs(home, exist_ok=True)
+        homes = os.path.join(a.out, "homes")
+        os.makedirs(homes, exist_ok=True)
         before = lake_snapshot(LIVE_LAKE)
-        res = _child(["k7child", str(RED_SEEDS[0])], home)
+        with throwaway_home(live_home=LIVE_LAKE, parent=homes) as home:
+            res = _child(["k7child", str(RED_SEEDS[0])], home)
         res["live_lake_untouched"] = live_lake_untouched(LIVE_LAKE, before)[0]
         with open(os.path.join(a.out, "k7.json"), "w", encoding="ascii") as fh:
             json.dump(res, fh)
