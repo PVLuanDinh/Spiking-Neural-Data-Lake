@@ -280,6 +280,9 @@ REGIONS = {
         "episode_driver",
         # specs/022 Phase 4 C0: the L12 audit's 20-item everyday battery as a GOVERNED SCORER -- the frozen answer key, 2.3's ordered classifier (abstention decided by route AND preamble before any key is tested) and the five-seed campaign on scratch brains; never the live lake
         "everyday_battery",
+        # specs/022 T112 (G4) T3: H01 connection probability vs soma distance -- flat / Gaussian / exponential / mixture,
+        # held-out on neuron folds, region blocks and the z-interior; the planted stage gates every edge read
+        "h01_distance_kernel",
         "ignition_instrument",
         "integration_measure",
         # G1 causal contract diagnostic harness

@@ -131,6 +131,17 @@ EXEMPT = {
         "permanent",
         "G1(b)'s selection campaign (a governed benchmark; its record is g1b section 3.4) until G1(c)'s disposition; consumers: its CLI and tests/test_pool_selection.py",
     ),
+    "h01_distance_kernel": (
+        "permanent",
+        "specs/022 T112 (G4) T3, DATED 2026-10-04: the pre-registered H01 distance-kernel instrument "
+        "(evidence/g4-wiring-prior.md section 2 + 2.14, frozen at 857163d4). A CI/run_selfchecks "
+        "MEASUREMENT INSTRUMENT on positions and the pinned artifact -- it builds no Brain, ticks "
+        "nothing and never touches the lake, which is the prior_drift_harness / paired_contrast "
+        "shape. Reachable from run_selfchecks (its synthetic self-check) and its campaign CLI, "
+        "never from a tick. Its CONSUMERS are records, not imports: tools/g4_t3_campaign.json's "
+        "reading and width decide the kernel FORM of growth/wiring_prior.py (Part C, not yet "
+        "built) and gate G7's T2/T4 kernel arms (2.14 A13)"
+    ),
     "brian2_backend": (
         "permanent",
         "the CI-asserted Brian2 reference simulator, the CPU parity oracle (owner decision 2, 2026-10-02: 'CPU ref + Torch/kernel GPU'); its last live-rooted importers (training/trainer, training/spiking_lm) retired 2026-10-02 (specs/022 evidence trainer-retirement.md); consumers: its __main__ self-check (run_selfchecks, ci.yml) and the call sites still listed in its MIGRATED_CALL_SITES",
