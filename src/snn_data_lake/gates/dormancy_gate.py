@@ -959,6 +959,14 @@ EXEMPT = {
         "(growth/growth_loop.py, P3), which reaches the live path only when G9 wires the engine; "
         "this exemption retires the day that wire lands",
     ),
+    "grown_code": (
+        "wire",
+        "specs/022 T111 (G3) P1: the taught learner's grown latency segment. Its consumers are the "
+        "default-off port on readout/interaction_learning.py (after R2's P1) and G3's problem loop "
+        "(growth_loop.py, itself EXEMPT until G9); RESTORED by cp1 #19 after the trace source moved out "
+        "of the live candidate_lifecycle -- a lazy import there had made it reachable without any use "
+        "(P3: reachability is not charge). It retires when G9 wires the engine",
+    ),
     "growth_loop": (
         "wire",
         "specs/022 T111 (G3) P3: the posed-problem grow-attempt loop. Its consumers are G3's "

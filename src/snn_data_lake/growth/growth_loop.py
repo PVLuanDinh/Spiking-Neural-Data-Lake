@@ -245,6 +245,56 @@ class Ledger:
         self._append_raw({"kind": "sleep_save", **dict(payload)})
 
 
+# distinct-from: growth/function_preserving_growth.py -- its `_eligibility_seed` points a Net2Net/GradMax unit at
+#   the MEAN input energy of a window (a disclosed unproven heuristic, no target); this trains a candidate on the
+#   multiclass RESIDUAL through a fixed random feedback vector. Disclosed for the panel as a P2 question: if G3's
+#   primary family deletes the trace-trained source (P8 clause 5), neither survives as a residual-directed seed.
+# distinct-from: faculties/homeostatic_drives.py, engine/brain.py, faculties/wholistic_loop.py,
+#   growth/growth_stop.py -- read 2026-10-04 (the duplicate guard's hits): a drive-preference softmax, a table
+#   checksum, a metacognitive-signal source and a stop criterion; none trains a candidate unit. The softmax is
+#   REUSED from infra/_mathutils.py, not rewritten.
+def trace_train(w, threshold, window, tau, items, eta, epochs, seed):
+    """THE TRACE-TRAINED CANDIDATE SOURCE (2.5; moved here from candidate_lifecycle by cp1 #19: it is the
+    PROBLEM consumer's source, so it lives with that consumer, and the live lifecycle no longer
+    references grown_code): one capacity candidate's input row trained on the multiclass
+    residual with an eligibility trace and a FIXED RANDOM feedback vector -- never a transposed forward weight
+    (the e-prop invariant; 2.9 C7).
+
+    `items` = [(ranks, y_onehot, p)] with p = softmax(v / T) of the learner's CURRENT label drives at the
+    registered T = 1 drive unit (D4), fixed while the candidate trains (it has no output synapses before
+    admission). Per item, e_i = PSP(t_ref - rank_i) at the candidate's membrane, t_ref = its first-spike step
+    (the window end when it does not spike), and L = sum_c B_c (y_c - p_c) with B drawn once at the candidate's
+    birth from `seed`. The update is the pre-registered dW_i = -eta * L * e_i; B is drawn from a symmetric law
+    (B and -B equally likely), so the sign convention does not change the rule's distribution. Returns the
+    trained row as a tuple."""
+    import math
+    import random
+
+    from snn_data_lake.growth.grown_code import GrownUnit, latency
+
+    rng = random.Random(seed)
+    n_labels = len(items[0][1])
+    feedback = [rng.gauss(0.0, 1.0) for _ in range(n_labels)]  # B: fixed at birth, never learned
+    w = list(w)
+    for _ in range(int(epochs)):
+        for ranks, y, p in items:
+            unit = GrownUnit(0, tuple(w), threshold, window, 1, ())
+            t = latency(unit, ranks, tau)
+            t_ref = window if t is None else t
+            e = [math.exp(-(t_ref - r) / tau) if t_ref > r else 0.0 for r in ranks]
+            L = sum(b * (yc - pc) for b, yc, pc in zip(feedback, y, p))
+            for i in range(len(w)):
+                w[i] += -eta * L * e[i]
+    return tuple(w)
+
+
+def label_probabilities(drives):
+    """p = softmax(drives / T) at the registered T = 1 drive unit (D4), via the shared helper."""
+    from snn_data_lake.infra._mathutils import softmax
+
+    return softmax(list(drives))
+
+
 class GrowthLoop:
     """One posed problem's grow-attempt loop (2.6)."""
 

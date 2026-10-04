@@ -119,74 +119,11 @@ def test_heldout_prune_is_consumer_agnostic():
     assert set(res.keep) <= set(range(4)) and len(res.keep) + res.n_drop == 4
 
 
-# ---- the trace-trained candidate source (2.5; 2.9 C7) -------------------------------------------
-
-
-def _xor_items():
-    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner, text_features
-
-    labels = ["GREET", "GOAL", "ARM"]
-    learner = SpikingInteractionLearner(labels, n_in=52, seed=9900, t_post=6)
-    texts = ["cat dog sun sky", "cat dog sky sun", "dog cat sun sky", "dog cat sky sun"]
-    ys = [0, 1, 1, 0]
-    items = []
-    for t, y in zip(texts, ys, strict=True):
-        ranks = tuple(learner.encode(text_features(t, 52)))
-        drives = [learner._drive(n, list(ranks)) for n in learner.neurons]
-        onehot = [1.0 if c == y else 0.0 for c in range(len(labels))]
-        items.append((ranks, onehot, candidate_lifecycle.label_probabilities(drives)))
-    return items
-
-
-def test_trace_training_is_deterministic_per_seed():
-    items = _xor_items()
-    a = candidate_lifecycle.trace_train([0.1] * 52, 1.0, 12, 8.0, items, 0.05, 20, seed=9901)
-    b = candidate_lifecycle.trace_train([0.1] * 52, 1.0, 12, 8.0, items, 0.05, 20, seed=9901)
-    c = candidate_lifecycle.trace_train([0.1] * 52, 1.0, 12, 8.0, items, 0.05, 20, seed=9902)
-    assert a == b and a != c
-
-
-def test_trace_training_moves_the_row():
-    items = _xor_items()
-    w0 = (0.1,) * 52
-    assert candidate_lifecycle.trace_train(w0, 1.0, 12, 8.0, items, 0.05, 20, seed=9901) != w0
-    assert candidate_lifecycle.trace_train(w0, 1.0, 12, 8.0, items, 0.0, 20, seed=9901) == w0
-
-
 def test_contribution_scores_dead_and_constant_features_zero():
     resid = [[1.0, -1.0], [-1.0, 1.0], [0.5, -0.5]]
     assert candidate_lifecycle.contribution([0.0, 0.0, 0.0], resid) == 0.0
     assert candidate_lifecycle.contribution([0.3, 0.3, 0.3], resid) == 0.0
     assert candidate_lifecycle.contribution([1.0, 0.0, 0.2], resid) > 0.0
-
-
-def _gate_findings(source):
-    import ast
-
-    from snn_data_lake.gates.eprop_transport_gate import _findings_in
-
-    tree = ast.parse(source)
-    return [f for fn in ast.walk(tree) if isinstance(fn, ast.FunctionDef) for f in _findings_in(fn)]
-
-
-def test_the_trace_rule_carries_no_weight_transport():
-    import inspect
-
-    assert _gate_findings(inspect.getsource(candidate_lifecycle)) == []
-
-
-def test_a_transposed_readout_in_the_trace_rule_is_flagged():
-    # C7's red: L_j read through the transposed readout weights must be caught by the gate
-    import inspect
-    import textwrap
-
-    src = textwrap.dedent(inspect.getsource(candidate_lifecycle.trace_train))
-    variant = src.replace(
-        "L = sum(b * (yc - pc) for b, yc, pc in zip(feedback, y, p))",
-        "L = (W_out.T @ err)[0]",
-    )
-    assert variant != src
-    assert _gate_findings(variant), "the transport gate did not flag a transposed readout"
 
 
 def test_contribution_uses_the_incumbent_eq6_algebra_on_low_energy_residuals():

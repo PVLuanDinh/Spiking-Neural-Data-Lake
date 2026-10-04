@@ -11,6 +11,7 @@ what these tests pin. Every lake is pytest's tmp_path.
 
 import pytest
 
+from snn_data_lake.growth import growth_loop
 from snn_data_lake.growth.grown_code import GrownUnit
 from snn_data_lake.growth.growth_loop import (
     BudgetValues,
@@ -304,3 +305,66 @@ def test_a_g6_shaped_row_round_trips_through_the_one_writer(tmp_path):
         ledger.record_event({"kind": "unit", "unit_id": 8})  # the ledger's own kinds have their API
     with pytest.raises(ValueError):
         ledger.record_event({"kind": "sleep_bout", "score": float("nan")})
+
+
+# ---- the trace-trained candidate source (2.5; 2.9 C7) -------------------------------------------
+
+
+def _xor_items():
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner, text_features
+
+    labels = ["GREET", "GOAL", "ARM"]
+    learner = SpikingInteractionLearner(labels, n_in=52, seed=9900, t_post=6)
+    texts = ["cat dog sun sky", "cat dog sky sun", "dog cat sun sky", "dog cat sky sun"]
+    ys = [0, 1, 1, 0]
+    items = []
+    for t, y in zip(texts, ys, strict=True):
+        ranks = tuple(learner.encode(text_features(t, 52)))
+        drives = [learner._drive(n, list(ranks)) for n in learner.neurons]
+        onehot = [1.0 if c == y else 0.0 for c in range(len(labels))]
+        items.append((ranks, onehot, growth_loop.label_probabilities(drives)))
+    return items
+
+
+def test_trace_training_is_deterministic_per_seed():
+    items = _xor_items()
+    a = growth_loop.trace_train([0.1] * 52, 1.0, 12, 8.0, items, 0.05, 20, seed=9901)
+    b = growth_loop.trace_train([0.1] * 52, 1.0, 12, 8.0, items, 0.05, 20, seed=9901)
+    c = growth_loop.trace_train([0.1] * 52, 1.0, 12, 8.0, items, 0.05, 20, seed=9902)
+    assert a == b and a != c
+
+
+def test_trace_training_moves_the_row():
+    items = _xor_items()
+    w0 = (0.1,) * 52
+    assert growth_loop.trace_train(w0, 1.0, 12, 8.0, items, 0.05, 20, seed=9901) != w0
+    assert growth_loop.trace_train(w0, 1.0, 12, 8.0, items, 0.0, 20, seed=9901) == w0
+
+
+def _gate_findings(source):
+    import ast
+
+    from snn_data_lake.gates.eprop_transport_gate import _findings_in
+
+    tree = ast.parse(source)
+    return [f for fn in ast.walk(tree) if isinstance(fn, ast.FunctionDef) for f in _findings_in(fn)]
+
+
+def test_the_trace_rule_carries_no_weight_transport():
+    import inspect
+
+    assert _gate_findings(inspect.getsource(growth_loop)) == []
+
+
+def test_a_transposed_readout_in_the_trace_rule_is_flagged():
+    # C7's red: L_j read through the transposed readout weights must be caught by the gate
+    import inspect
+    import textwrap
+
+    src = textwrap.dedent(inspect.getsource(growth_loop.trace_train))
+    variant = src.replace(
+        "L = sum(b * (yc - pc) for b, yc, pc in zip(feedback, y, p))",
+        "L = (W_out.T @ err)[0]",
+    )
+    assert variant != src
+    assert _gate_findings(variant), "the transport gate did not flag a transposed readout"
