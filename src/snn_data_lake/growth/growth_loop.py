@@ -231,6 +231,15 @@ class Ledger:
             }
         )
 
+    def record_event(self, row):
+        """The PUBLIC entry for another owner's row on this lake (G6's sleep_bout / sleep_verdict /
+        sleep_mask_prepared / sleep_mask_commit): one writer per lake (P2), no private call and no
+        second GoalStore. The ledger's own kinds ("problem", "unit") are refused here -- they have
+        their own API -- and GoalStore.append_event refuses goal kinds and NaN."""
+        if not isinstance(row, dict) or row.get("kind") in ("problem", "unit"):
+            raise ValueError(f"record_event takes another owner's row, got {row!r}")
+        self._append_raw(dict(row))
+
     def record_sleep_save(self, payload):
         """G6's API: one "sleep_save" row on this class (the fold passes it through untouched)."""
         self._append_raw({"kind": "sleep_save", **dict(payload)})

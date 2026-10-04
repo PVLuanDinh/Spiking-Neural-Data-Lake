@@ -283,3 +283,24 @@ def test_retention_ok_against_the_factual_bound():
     assert retention_ok(before=4, after=4, f_bound=0)
     assert not retention_ok(before=4, after=3, f_bound=0)
     assert retention_ok(before=4, after=3, f_bound=1)
+
+
+def test_a_g6_shaped_row_round_trips_through_the_one_writer(tmp_path):
+    # G6's public entry point: no private _append_raw, no second GoalStore writer on the lake (P2)
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    row = {
+        "kind": "sleep_verdict",
+        "unit_id": 7,
+        "problem_id": "xor",
+        "sleep_id": 3,
+        "verdict": "kept",
+        "mask_digest": "ab" * 32,
+        "synapses": [[7, 0], [7, 1]],
+        "retention_label": "immortal",
+    }
+    ledger.record_event(row)
+    assert Ledger(tmp_path / "lake.bin", VALUES).events() == [row]
+    with pytest.raises(ValueError):
+        ledger.record_event({"kind": "unit", "unit_id": 8})  # the ledger's own kinds have their API
+    with pytest.raises(ValueError):
+        ledger.record_event({"kind": "sleep_bout", "score": float("nan")})
