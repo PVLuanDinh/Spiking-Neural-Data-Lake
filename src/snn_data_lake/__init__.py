@@ -285,6 +285,8 @@ REGIONS = {
         "carried_state_report",
         # G1(c) campaign driver, part 2a: the migrate, causality and primary stages and the helpers every pool stage shares (2.9, 2.10, 2.3)
         "carried_state_stages",
+        # G2 / T110 P1: the problem generators ((i)'s delayed-cue 2x2, C1-d, A_c1d, A_ii, U, U_S) and their construction checks (evidence g2-taught-problems.md 2.2, 2.8, 2.15)
+        "delayed_cue",
         "energy",
         # 022 T035: stimulus port + trial schedule (fixation/saccade) + G5-replayable trials
         "episode_driver",

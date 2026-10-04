@@ -155,6 +155,10 @@ EXEMPT = {
         "permanent",
         "G2(ii)'s generator and G-R2's construction check (a governed benchmark; evidence g1c-carried-state.md 2.8); consumers: G1(c)'s campaign, G2/G3/G9 later, tests/test_inseparable_mapping.py",
     ),
+    "delayed_cue": (
+        "permanent",
+        "G2 / T110's problem generators and construction checks (a governed benchmark; evidence g2-taught-problems.md 2.2, 2.8, 2.15); consumers: taught_problems / taught_campaign (G2), G3, G4 (witness_units, decoy_units), G5, G6, G9, tests/test_delayed_cue.py",
+    ),
     "brian2_backend": (
         "permanent",
         "the CI-asserted Brian2 reference simulator, the CPU parity oracle (owner decision 2, 2026-10-02: 'CPU ref + Torch/kernel GPU'); its last live-rooted importers (training/trainer, training/spiking_lm) retired 2026-10-02 (specs/022 evidence trainer-retirement.md); consumers: its __main__ self-check (run_selfchecks, ci.yml) and the call sites still listed in its MIGRATED_CALL_SITES",
