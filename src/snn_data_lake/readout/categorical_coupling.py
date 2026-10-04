@@ -8,8 +8,10 @@ NO INCUMBENT (record section 1: `grep -i confusion` over src/ fires on `facultie
 no readout couples categories).
 
 THE COUNTS. C[i, j] counts scored transitions where the readout predicted i and the truth was j, updated
-AFTER the live instrument scores, from the same pair the online rule learns from (prequential). `decide` arms
-the event; `update` refuses unless the event it closes was decided first (PB4: a leak raises).
+AFTER the live instrument scores, from the same pair the online rule learns from (prequential). One event
+moves through three phases in order -- `decide` (the decision is made), `scored` (the caller has scored it
+against the truth), `update` (the truth is counted) -- and every out-of-order call raises (PB4, Codex cp4 #4:
+a count before SCORING, not merely before deciding, is the leak).
 
 TWO READINGS OF THE SAME COUNTS (one class, one count matrix, a `mode` -- the arms are measurement modes of
 ONE mechanism, not two mechanisms; the losing mode is deleted with its arm, record 3.6):
@@ -55,7 +57,7 @@ class CategoricalCoupling:
         self.alpha = float(alpha)
         self.frozen = bool(frozen)  # COUPLED0: counts never move, K stays the identity
         self.C = torch.zeros(m, m, dtype=torch.float64)
-        self._armed = False
+        self._phase = "idle"  # idle -> decided -> scored -> idle (one event)
         self.decisions = 0
         self.moved = 0  # decisions the coupling changed against the uncoupled argmax
 
@@ -73,23 +75,33 @@ class CategoricalCoupling:
         return torch.diag((mcol + a) / (r + a))
 
     def decide(self, q):
-        """The coupled decision for one row of class probabilities q (m,). Arms the event for `update`."""
+        """The coupled decision for one row of class probabilities q (m,). Opens the event. A re-decide of
+        an event not yet scored replaces its decision (the harness may read the prediction twice)."""
         q = torch.as_tensor(q, dtype=torch.float64).reshape(-1)
         if q.shape[0] != self.m:
             raise ValueError(f"q has {q.shape[0]} classes, the coupling {self.m}")
-        self._armed = True
+        if self._phase == "scored":
+            raise RuntimeError("decide on a scored event: update must close it first")
+        self._phase = "decided"
         self.decisions += 1
         pick = int((q @ self.coupling()).argmax())
         self.moved += int(pick != int(q.argmax()))
         return pick
 
+    def scored(self):
+        """The caller has scored the decided event against its truth; only now may it be counted."""
+        if self._phase != "decided":
+            raise RuntimeError(f"scored() in phase {self._phase!r}: nothing was decided to score")
+        self._phase = "scored"
+
     def update(self, pred, truth):
-        """Count one SCORED transition (prequential). Refuses an event that was never decided (PB4)."""
-        if not self._armed:
+        """Count one SCORED transition (prequential). Refuses an event that was not decided AND scored
+        first (PB4): the counts would see the truth before the decision it informs was scored."""
+        if self._phase != "scored":
             raise RuntimeError(
-                "update before decide: the counts would see the truth before it is scored"
+                f"update in phase {self._phase!r}: the counts would see the truth before it is scored"
             )
-        self._armed = False
+        self._phase = "idle"
         if self.frozen:
             return
         self.C[int(pred), int(truth)] += 1.0
@@ -114,21 +126,26 @@ def main():
         for _ in range(50):
             q = torch.softmax(torch.randn(4, generator=g), dim=0)
             assert cc.decide(q) == int(q.argmax())
+            cc.scored()
             cc.update(int(q.argmax()), 0)
         assert cc.moved == 0 and int(cc.C.sum()) == 0
-    # PB4 prequential: an update with no decided event raises
-    cc = CategoricalCoupling(3)
-    try:
-        cc.update(0, 1)
-    except RuntimeError:
-        pass
-    else:
-        raise AssertionError("a count before scoring must raise")
+    # PB4 prequential: a count before the event is decided AND scored raises
+    for leak in ("undecided", "unscored"):
+        cc = CategoricalCoupling(3)
+        if leak == "unscored":
+            cc.decide(torch.tensor([1.0, 0.0, 0.0]))
+        try:
+            cc.update(0, 1)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError(f"a count before scoring must raise ({leak})")
     # "full" learns a systematic relabelling; "marg" cannot move evidence across classes
     full, marg = CategoricalCoupling(3, "full"), CategoricalCoupling(3, "marg")
     for _ in range(30):  # the readout always says 1 when the truth is 0
         for cc in (full, marg):
             cc.decide(torch.tensor([0.0, 1.0, 0.0]))
+            cc.scored()
             cc.update(1, 0)
     q = torch.tensor([0.2, 0.7, 0.1])
     assert full.decide(q) == 0, "full coupling must map the systematic 1 -> 0"

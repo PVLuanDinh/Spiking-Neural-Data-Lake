@@ -180,8 +180,9 @@ def coupled_accuracies(stream, k=PLANT_K):
         hits["uncoupled"] += int(said == t)
         hits["full"] += int(full.decide(q) == t)
         hits["marg"] += int(marg.decide(q) == t)
-        full.update(said, t)
-        marg.update(said, t)
+        for cc in (full, marg):  # scored above; only now counted (PB4)
+            cc.scored()
+            cc.update(said, t)
     n = len(stream)
     return {a: h / n for a, h in hits.items()}
 
@@ -258,12 +259,16 @@ class _Taught:
         return self.readout.state()
 
 
-def instrument_engine(eng, readout, M=None, coupling=None, count_labels=None, teach_labels=None):
+def instrument_engine(
+    eng, readout, M=None, coupling=None, count_labels=None, teach_labels=None, _leak=False
+):
     """Wire one arm onto a NeurogenesisSelfImprove. Returns its record: the true categories, the
     column count at every scoring (the vocabulary schedule) and the readout. M: the common vocabulary
     -- every new model object is widened to M columns before its first scoring (None: the deployed
     lazy widen). coupling: the live decision is re-read through it on non-silent rows, and it counts
-    (the readout's own decision, count_labels[k] or the truth) AFTER scoring."""
+    (the readout's own decision, count_labels[k] or the truth) AFTER scoring -- `real_observe` scores the
+    event, then the harness marks it `scored()` and counts it. `_leak` is PB4's planted red only: it counts
+    the truth after the decision but BEFORE the scoring, which the coupling must refuse."""
     rec = {"cats": [], "cols": [], "k": 0}
     if teach_labels is not None and readout is not None:
         readout = _Taught(readout, teach_labels, lambda: rec["k"])
@@ -304,8 +309,18 @@ def instrument_engine(eng, readout, M=None, coupling=None, count_labels=None, te
         k, cat, m = rec["k"], int(category), eng._model
         if m is not None and getattr(m, "beta", None) is not None and eng._prev is not None:
             rec["cols"].append(int(m.beta.shape[1]))
-        out = real_observe(features, category)
+        if (
+            _leak
+            and coupling is not None
+            and eng.predict_next() is not None
+            and said.get("decided")
+        ):
+            coupling.update(
+                said["said"], cat
+            )  # PB4's planted leak: counted before scoring -> raises
+        out = real_observe(features, category)  # the live instrument scores the event here
         if coupling is not None and said.get("k") == k and said.get("decided"):
+            coupling.scored()
             coupling.update(said["said"], cat if count_labels is None else count_labels[k])
         rec["cats"].append(cat)
         rec["k"] = k + 1

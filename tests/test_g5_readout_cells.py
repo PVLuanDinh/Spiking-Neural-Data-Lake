@@ -9,6 +9,7 @@ import pytest
 torch = pytest.importorskip("torch")
 
 from snn_data_lake.instruments import g5_readout_cells as g  # noqa: E402
+from snn_data_lake.readout.online_readout import OnlineReadout  # noqa: E402
 
 
 def test_bare_self_check():
@@ -108,3 +109,27 @@ def test_brain_cell_refuses_a_live_home_before_any_brain(monkeypatch, tmp_path):
     with pytest.raises(home.LiveHomeRefused):
         g.brain_cell((20261003, "DELTA", [0, 1, 0]))
     assert built == [], "a Brain was constructed past a refused home"
+
+
+def test_pb4_a_count_before_scoring_through_the_harness_raises():
+    # Codex cp4 #4: the leak is built through the ACTUAL harness path (instrument_engine), where
+    # the truth is counted after the decision but before the live instrument scores it
+    from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
+    from snn_data_lake.readout.categorical_coupling import CategoricalCoupling
+
+    torch.set_num_threads(1)
+    chain = g.planted_chain(20261003, "burst", 2.0, n=300)
+    M = 1 + max(c for _, c in chain)
+    eng = NeurogenesisSelfImprove(
+        seed=20261003,
+        device="cpu",
+        refit_every=1,
+        online_readout=None,
+        growth_gate=g.ClosingGate(3),
+    )
+    g.instrument_engine(eng, OnlineReadout("delta"), M, CategoricalCoupling(M), _leak=True)
+    with pytest.raises(RuntimeError, match="before it is scored"):
+        for i, (x, c) in enumerate(chain):
+            eng.observe(x, c)
+            if i % 20 == 19:
+                eng.tick()

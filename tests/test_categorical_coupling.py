@@ -31,6 +31,7 @@ def test_frozen_counts_never_move_the_decision(mode):
     for t in range(100):
         q = torch.softmax(torch.randn(4, generator=g), dim=0)
         assert cc.decide(q) == int(q.argmax())
+        cc.scored()
         cc.update(int(q.argmax()), t % 4)
     assert cc.moved == 0 and int(cc.C.sum()) == 0
 
@@ -38,11 +39,16 @@ def test_frozen_counts_never_move_the_decision(mode):
 def test_a_count_before_scoring_raises():
     cc = CategoricalCoupling(3)
     with pytest.raises(RuntimeError):
-        cc.update(0, 0)
+        cc.update(0, 0)  # never decided
     cc.decide(torch.tensor([1.0, 0.0, 0.0]))
+    with pytest.raises(RuntimeError):
+        cc.update(0, 0)  # decided but NOT scored: Codex cp4 #4's leak
+    cc.scored()
     cc.update(0, 0)
     with pytest.raises(RuntimeError):  # one decision closes one event, never two
         cc.update(0, 0)
+    with pytest.raises(RuntimeError):
+        cc.scored()  # nothing decided to score
 
 
 def test_full_recovers_a_relabelling_marg_cannot_cross_classes():
@@ -50,6 +56,7 @@ def test_full_recovers_a_relabelling_marg_cannot_cross_classes():
     for _ in range(30):
         for cc in (full, marg):
             cc.decide(torch.tensor([0.0, 1.0, 0.0]))
+            cc.scored()
             cc.update(1, 0)
     q = torch.tensor([0.2, 0.7, 0.1])
     assert full.decide(q) == 0
@@ -62,6 +69,7 @@ def test_marg_is_a_label_shift_correction():
     marg = CategoricalCoupling(3, "marg")
     for _ in range(40):
         marg.decide(torch.tensor([0.3, 0.2, 0.5]))
+        marg.scored()
         marg.update(2, 0)
     assert marg.decide(torch.tensor([0.3, 0.2, 0.5])) == 0
 
