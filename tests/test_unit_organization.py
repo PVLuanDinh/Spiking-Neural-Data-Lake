@@ -75,6 +75,22 @@ def test_guard_is_per_problem_excludes_censoring_and_refuses_the_whole_contrast(
     assert not U.granularity_guard({"A": [40, 41, 45]}, k=8)[0]
 
 
+_NONE = ([False] * 8, [False] * 8)  # (COL arm, reference arm) censor flags per seed: none censored
+
+
+@pytest.mark.parametrize("n_col, n_ref, refused", [(5, 0, True), (8, 8, True), (0, 5, True), (4, 4, False)])
+def test_cp3_8_more_than_half_censored_in_either_arm_refuses_before_scoring(n_col, n_ref, refused):
+    # Codex cp3 #8: every arm censored at budget 100 gives COL = 109, SINGLE = 101 -- constant positive
+    # size differences that would PASS; the censoring refusal must come first
+    flags = ([True] * n_col + [False] * (8 - n_col), [True] * n_ref + [False] * (8 - n_ref))
+    size = U.t1_size_decision(_v(True), _v(True), censored=flags)
+    struct = U.t1_struct_decision(_v(True), _v(True), owner_o9=True, censored=flags)
+    assert (size["verdict"] == "REFUSED (censoring)") is refused
+    assert (struct["verdict"] == "REFUSED (censoring)") is refused
+    if refused:
+        assert size["reverts_to_single"] is False and struct["deletes_structure"] is False
+
+
 def _v(met):
     return U.ContrastVerdict("x", "noninferiority", (), 0.0, met, False, 0.0, 0.0)
 
@@ -88,20 +104,20 @@ def _v(met):
     (False, False, "RED", True),
 ])
 def test_t1_struct_decision_table(u, e, verdict, deletes):
-    out = U.t1_struct_decision(None if u is None else _v(u), _v(e), owner_o9=True)
+    out = U.t1_struct_decision(None if u is None else _v(u), _v(e), owner_o9=True, censored=_NONE)
     assert out["verdict"] == verdict and out["deletes_structure"] is deletes
 
 
 def test_t1_struct_never_deletes_before_o9():
-    out = U.t1_struct_decision(_v(True), _v(False), owner_o9=False)
+    out = U.t1_struct_decision(_v(True), _v(False), owner_o9=False, censored=_NONE)
     assert out["verdict"] == "RED" and out["deletes_structure"] is False
     assert "O9" in out["disposition"]
 
 
 def test_t1_size_is_untested_when_its_u_half_is_refused():
-    out = U.t1_size_decision(None, _v(True))
+    out = U.t1_size_decision(None, _v(True), censored=_NONE)
     assert out["verdict"] == "UNTESTED" and out["reverts_to_single"] is False
-    assert U.t1_size_decision(_v(False), _v(True))["reverts_to_single"] is True
+    assert U.t1_size_decision(_v(False), _v(True), censored=_NONE)["reverts_to_single"] is True
 
 
 # ---- T4: the layer term, the exact-M sampler, modularity, the instrument reds ---------------------------

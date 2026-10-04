@@ -125,9 +125,11 @@ def t1_struct_decision(u_verdict, e_verdict, *, owner_o9):
     return {"verdict": verdict, "deletes_structure": red and owner_o9, "disposition": disposition}
 
 
-def t1_size_decision(u_verdict, e_verdict):
-    """T1-size: its U half REFUSED leaves the whole test UNTESTED (the retention half alone is
-    count-confounded and never decides it); otherwise the record's disposition (2.6)."""
+def t1_size_decision(u_verdict, e_verdict, *, censored):
+    """T1-size: censoring refusal first; its U half REFUSED leaves the whole test UNTESTED (the retention
+    half alone is count-confounded and never decides it); otherwise the record's disposition (2.6)."""
+    if censoring_refused(censored):
+        return {"verdict": "REFUSED (censoring)", "reverts_to_single": False}
     if u_verdict is None:
         return {"verdict": "UNTESTED", "reverts_to_single": False}
     passed = u_verdict.met and e_verdict.met
