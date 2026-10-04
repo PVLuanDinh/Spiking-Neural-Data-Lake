@@ -956,3 +956,34 @@ overcome on the wake stream.
 - Re-run on the committed instrument (sha256 e2568787...27760, which adds only self-check lines): byte-identical
   output.
 - Brain-free. Logs in the G5 scratchpad: `g5_planted_PB.log` and `g5_planted_PB_run2.log`.
+
+## Results: the cell machinery's brain-free reds PA3 / PA4 / PA8 / PA10 (2026-10-04)
+
+**All fire as registered.** The in-brain runner is built (`brain_cell`, `run_cells`, `instrument_engine`) and has
+NOT been run on any Brain. Dev cells wait for the lead's go.
+
+**PA3, the shift's positive control** (`--pa3`, seeds 11916-11923, oracle input one-hot(c_{t-1}) on the frozen burst
+chain at noise 2.0, delta under the common vocabulary init), verbatim:
+
+    PA3 ORACLE - BATCH                           mean +0.0810  t +3.234  ++++++++  FPR(diag) 0.0391  skew +1.34  MET
+    PA3 ORACLE - ORACLE_SHUF                     mean +0.5339  t +15.140  ++++++++  FPR(diag) 0.0391  skew +0.52  MET
+    PA3 ORACLE_SHUF - BATCH                      mean -0.4529  t -15.051  --------  FPR(diag) 0.0469  skew -0.25  NOT MET
+    PA3 MET
+
+The circular shift therefore removes a real teaching gain, and does so decisively (+0.534). A-R3 / B-R3's
+X - X_SHUF contrast can fire.
+
+**PA4, PA8 and PA10** run in the bare self-check:
+- PA4: a one-category sequence reads f = 0, i.e. VACUOUS.
+- PA8: a one-label perturbation halts the same-rows check.
+- PA10 (Codex #8): the late-category fixture taught its circular shift WITHOUT the common init widened beta (2 vs 3
+  widens), changed the column schedule hash and HALTED the same-rows check. The same construction WITH the common
+  init passes.
+
+**Wiring check (brain-free, on fixture seed 20261003 only, not a registered reading).**
+- COUPLED0 equals DELTA bit for bit (live accuracy and beta hash): B-R2's reach.
+- Every coupled arm leaves beta and the refit trajectory identical to DELTA's: B-R4's construction.
+- The coupling re-reads only the decision. Pinned in tests/test_g5_readout_cells.py.
+
+**Run conditions.** Commit d34993a0 plus the instrument at sha256 8e773656...ab620cf. Brain-free, 23 s. Log in the G5
+scratchpad: `g5_pa3.log`.
