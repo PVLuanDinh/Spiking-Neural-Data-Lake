@@ -314,6 +314,8 @@ REGIONS = {
         # specs/022 T081 [US4]: the C5 report_order instrument -- the live arm's report channel read against LESIONED CLONES of the workspace state that produced it (named pool vs a scrambled one); the lesion never touches the live brain
         "report_order_probe",
         "snn_mnist_stdp_genn",
+        # G2 / T110 P3: the taught campaign -- the canonical incumbent through G0's channel, the presized and NGSNN front-ends, the explicit-history control, B3-B8, the G-R2 reading and the driver (evidence g2-taught-problems.md 2.4, 2.5, 2.8, 2.9, 2.15)
+        "taught_campaign",
         # G2 / T110 P2: the Problem contract G3/G5/G6/G9 import -- splits as episodes, the future_d guard, the solved predicate, the budget fields, learning OFF (evidence g2-taught-problems.md 2.6, 2.7, 2.15)
         "taught_problems",
         # specs/022 W3: the world-red instrument -- two-chain liveness at 4dp, category entropy, the derived refit gap (P8 #9)

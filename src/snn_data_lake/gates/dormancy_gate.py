@@ -155,6 +155,10 @@ EXEMPT = {
         "permanent",
         "G2(ii)'s generator and G-R2's construction check (a governed benchmark; evidence g1c-carried-state.md 2.8); consumers: G1(c)'s campaign, G2/G3/G9 later, tests/test_inseparable_mapping.py",
     ),
+    "taught_campaign": (
+        "permanent",
+        "G2 / T110's taught campaign driver (a governed benchmark; evidence g2-taught-problems.md 2.9, 2.13, 2.15); consumers: its CLI, G5 (presized_expansion as Part D's matched-size control), tests/test_taught_campaign.py",
+    ),
     "taught_problems": (
         "permanent",
         "G2 / T110's Problem contract (a governed benchmark; evidence g2-taught-problems.md 2.6, 2.7, 2.15); consumers: taught_campaign (G2), G3's growth loop, G5 Part D, G6, G9, tests/test_taught_problems.py",
