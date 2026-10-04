@@ -91,6 +91,7 @@ CORE = [
     "instruments.taught_campaign",  # G2 P3: the G-R2 reading and its 9 row reds, preflight's refusals, the presized front-end's determinism, the incumbent on S0C0 / S1C0 at 30 epochs on scratch seed 8900; no Brain
     "instruments.taught_problems",  # G2 P2: the Problem contract's B9 (predicate), B11 (cost budget), B12 (learning OFF) and its 4 reds incl. the future_d refusal
     "instruments.delayed_cue",  # G2 P1: the problem generators' construction checks (B1, B2, B2-A, B10, B13, B14, witnesses) on dev seed 8000 and all 17 constructed reds; no learner taught
+    "instruments.g5_readout_cells",  # T113 (G5): reach, lifecycle, determinism, frozen generator, the reading's NOT MET cases
     "sensorimotor.lca_sparse_coding",
     "readout.predictive_coding",
     "sensorimotor.pc_cortex_serve",

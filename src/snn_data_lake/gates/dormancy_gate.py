@@ -127,6 +127,12 @@ EXEMPT = {
         "permanent",
         "G1(b)'s selected pool, g1 LSM, a governed benchmark component, KEPT after G1(c)'s RED (stream-null; g1c 3.2: a null keeps the pool) for G5 Part D and G9's engine (g1b section 2.9); consumers: instruments/memory_diagnostic.py's pool arm, instruments/pool_selection.py's campaign, tests/test_recurrent_pool.py",
     ),
+    "g5_readout_cells": (
+        "permanent",
+        "G5 / T113's readout-variant cells (a governed benchmark instrument; record evidence/g5-readout-variants.md, "
+        "frozen at 500d3f58): its 2.7a gate and Part B's cells; consumers: its CLI, run_selfchecks (bare, brain-free) "
+        "and tests/test_g5_readout_cells.py; never on a tick",
+    ),
     "pool_selection": (
         "permanent",
         "G1(b)'s selection campaign (a governed benchmark; its record is g1b section 3.4); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: its CLI and tests/test_pool_selection.py",

@@ -842,3 +842,77 @@ The lead read (L4) batches Q1-Q7 for one owner brief.
   - reads of `online_readout.py` and `paired_contrast.py`, which confirmed #8's widen and #9's FPR definition;
   - `sha256sum` of the reply file (one small file);
   - `wc` and `grep` over this draft.
+
+## Results: 2.7a, the trace's reachability gate (2026-10-04; appended below the frozen text, which is unchanged)
+
+**Verdict: PA1 NOT MET.** 1 of 12 configurations was met on discovery, and 0 replicated. **Part A is DELETED before any
+in-brain cell.** This is 2.7a's deletion under P8 F11 ("deleted, not weakened"). Section 2.7 states that it is not a
+refusal. Section 2.8 applies:
+- `OnlineReadout("delta")` stays the incumbent and the record stands.
+- The owner-drawn parts are untouched: the readout neurons, the brain's tuning connection and the return path.
+- Part D carries a trace only by its own amendment for the stateful substrate.
+
+The replication rule (lead ruling L2) did the job it was adopted for. The one discovery pass read t +4.378 (7 of 8
+seeds positive, 1 tie) and then t +0.153 on the fresh replication seeds. On that same discovery cell, DELTA_SCHED also
+cleared the bar (t +3.780, printed, not a bar). Even the discovery gain was therefore at least partly the trace's step
+schedule rather than its history.
+
+**Run 2 (cited), the 12 discovery contrasts, the replication and the verdict, verbatim:**
+
+    TRACE - DELTA  [drift noise 2.0 lambda 0.368] disc mean -0.0011  t -0.236  -+-+---+  FPR(diag) 0.0625  skew +0.21  NOT MET
+    TRACE - DELTA  [drift noise 2.0 lambda 0.717] disc mean -0.0127  t -1.651  +--+----  FPR(diag) 0.0469  skew -0.10  NOT MET
+    TRACE - DELTA  [drift noise 3.0 lambda 0.368] disc mean +0.0009  t +0.220  +-++---+  FPR(diag) 0.0352  skew +0.61  NOT MET
+    TRACE - DELTA  [drift noise 3.0 lambda 0.717] disc mean -0.0114  t -2.244  ---+----  FPR(diag) 0.0508  skew +1.24  NOT MET
+    TRACE - DELTA  [drift noise 4.0 lambda 0.368] disc mean +0.0058  t +1.208  -+--+-++  FPR(diag) 0.0430  skew +0.67  NOT MET
+    TRACE - DELTA  [drift noise 4.0 lambda 0.717] disc mean -0.0025  t -0.351  -+--+---  FPR(diag) 0.0430  skew +1.49  NOT MET
+    TRACE - DELTA  [burst noise 2.0 lambda 0.368] disc mean +0.0176  t +4.378  ++++++0+  FPR(diag) 0.0625  skew +0.41  MET
+    TRACE - DELTA  [burst noise 2.0 lambda 0.717] disc mean +0.0027  t +0.523  ++-+-+-+  FPR(diag) 0.0586  skew -0.86  NOT MET
+    TRACE - DELTA  [burst noise 3.0 lambda 0.368] disc mean +0.0058  t +1.868  ++++--++  FPR(diag) 0.0430  skew +0.05  NOT MET
+    TRACE - DELTA  [burst noise 3.0 lambda 0.717] disc mean -0.0071  t -1.042  -+-+---+  FPR(diag) 0.0469  skew +0.82  NOT MET
+    TRACE - DELTA  [burst noise 4.0 lambda 0.368] disc mean +0.0056  t +1.011  +-+++0-+  FPR(diag) 0.0391  skew -0.38  NOT MET
+    TRACE - DELTA  [burst noise 4.0 lambda 0.717] disc mean -0.0020  t -0.204  +-+++---  FPR(diag) 0.0547  skew -0.15  NOT MET
+    TRACE - DELTA  [burst noise 2.0 lambda 0.368] REPL mean +0.0009  t +0.153  +-+-+-+-  FPR(diag) 0.0469  skew -0.08  NOT MET
+    TRACE - DELTA_SCHED  [burst noise 2.0 lambda 0.368] REPL mean -0.0018  t -0.661  0-+-+-+-  FPR(diag) 0.0469  skew +0.32  NOT MET  (printed, not a bar)
+    false-pass references (record 2.7a; references, not guarantees): independence reference 1-(1-0.05)^12 = 0.46; union bound 12x0.05 = 0.60; replicated <= 12x0.05^2 = 0.030 (needs independent discovery/replication data)
+    PA1 NOT MET: 1/12 met on discovery, 0 replicated -- Part A is DELETED before any in-brain cell (record 2.7a, P8 F11)
+
+The 12 discovery TRACE - DELTA_SCHED lines are in the run log; they are printed and not a bar.
+
+**Reproduction.**
+- Run 1 at 07:43:54Z and run 2 at 07:49:33Z gave byte-identical discovery lines (all 24, `diff`).
+- Between the runs one change was made: the replication branch now also prints its DELTA_SCHED contrast, which 2.7a
+  registered as "printed beside". It changes no computed TRACE or DELTA number.
+- The one discovery MET and its failed replication were also reproduced alone, in a third process.
+
+**Instrument sensitivity: two measured positives, so a null here is not a deaf instrument.**
+1. The reading cleared the bar on a +0.018 paired difference (the discovery pass above).
+2. **DIAGNOSTIC, unregistered.** contrast(DELTA - BATCH) on the burst / noise-2.0 chains read mean +0.3259, t +15.203,
+   ++++++++, on discovery seeds 11900-11907 (already exposed). The harness therefore resolves a known readout effect on
+   these chains. It is disclosed as an extra look, run after the verdict, and it alters nothing.
+
+**Run conditions.**
+- Commit 500d3f58 plus the uncommitted instrument `src/snn_data_lake/instruments/g5_readout_cells.py`, sha256
+  c2e2e762...cd0128 at run 2.
+  - The COMMITTED file is the same code after `ruff format`, sha256 0658b781...8573aa. Run 3 (formatted) printed
+    every contrast, reference and verdict line byte-identical to run 2 (`diff`).
+- `D:\AI-project\spiking-neural-data-lake\.venv-lake` (python 3.14t), with PYTHONPATH set to this worktree's src.
+- `NeurogenesisSelfImprove(refit_every=1, device="cpu")` under `ClosingGate(3)`, ticking every 20 observations.
+- `planted_chain` with n 600, k 4, run 20, d 64. torch threads 1, one process, wall 2m41s (run 1) and 3m37s (run 2).
+- Brain-free: no Brain and no lake. The live lake mtime was 1790231317 before and after every run.
+- Logs, outside the repo, in the G5 scratchpad: `g5_gate_2.7a.log`, `g5_gate_2.7a_run2.log`,
+  `g5_gate_2.7a_repro.log` and `g5_gate_2.7a_run3_formatted.log`.
+
+**What the deletion takes and what stays (Part B still needs the shared machinery).**
+- GOES: `TraceDelta`, `DeltaSched`, `GATE_FAMILY`, `LAMBDAS` and `reachability_gate`; the trace-specific checks PA1,
+  PA2, PA5, PA6 and PA7; and the arms TRACE, TRACE0, TRACE_SHUF, TRACE_FLIP, DELTA_STEP and DELTA_SCHED, together with
+  the lambda / MU_step dev grid.
+- STAYS for Part B:
+  - `planted_chain`, `reading` and `run_planted`;
+  - PA3, the shift's positive control, which B-R3 uses;
+  - PA4 (vacuity), PA8 (same rows), PA9 (the home guard) and PA10 (the common vocabulary);
+  - A-R0, contrast(DELTA - BATCH), which B-R0 reads.
+- DELTA_SHUF and DELTA_FLIP were incumbent findings, not G5 bars. They lapse with Part A, and the label-null question
+  about `OnlineReadout` (open question 2) stays open for the lead.
+- **For the owner (question 4, now sharpened by measurement):** the learning-side presynaptic trace has no
+  replicable positive on the stateless substrate, even on a planted chain. A trace stays plausible only where the
+  substrate carries state (Part D, by its own amendment). This stays batched.
