@@ -320,17 +320,79 @@ def main():
     return 0
 
 
-def modularity(edges, n, seeds=LOUVAIN_SEEDS):
-    """Newman Q of the Louvain partition (resolution 1.0), the MAXIMUM over seeded restarts; unweighted."""
+# distinct-from: gates/growth_coverage_gate.py -- its adjusted_rand scores partition agreement by ARI;
+#   IR1 is FROZEN on NMI >= 0.9 (2.7), a different statistic on a different scale, so this uses
+#   sklearn's NMI rather than re-reading a frozen bar through ARI (put to the lead as a P2 question).
+# distinct-from: instruments/paired_contrast.py, faculties/self_model.py, reservoir/kernel_tick.py,
+#   substrate/lake_bridge.py -- a self-check, a self-model, a partition drain, a digest round trip;
+#   the matcher fired on "partition" / "own". All sites read.
+def best_partition(edges, n, seeds=LOUVAIN_SEEDS):
+    """(Q, labels): the Louvain partition (resolution 1.0) with the MAXIMUM Newman Q over seeded restarts,
+    as one community label per node; unweighted."""
     import networkx as nx
 
     g = nx.Graph()
     g.add_nodes_from(range(n))
     g.add_edges_from(edges)
-    return max(
-        nx.community.modularity(g, nx.community.louvain_communities(g, resolution=1.0, seed=s))
-        for s in seeds
-    )
+    best = None
+    for s in seeds:
+        comms = nx.community.louvain_communities(g, resolution=1.0, seed=s)
+        q = nx.community.modularity(g, comms)
+        if best is None or q > best[0]:
+            labels = [0] * n
+            for c, members in enumerate(comms):
+                for v in members:
+                    labels[v] = c
+            best = (q, labels)
+    return best
+
+
+def modularity(edges, n, seeds=LOUVAIN_SEEDS):
+    """Newman Q of the Louvain partition, the maximum over seeded restarts (best_partition's Q)."""
+    return best_partition(edges, n, seeds)[0]
+
+
+#: IR seeds (dev block, pre-registration 2.10): the planted / RANDOM pairs; RANDOM's TWIN draws from the
+#: second range (13240-13247, the build's addition, disclosed in the dated amendment).
+IR_SEEDS = tuple(range(13230, 13238))
+IR_TWIN_SEEDS = tuple(range(13240, 13248))
+NMI_BAR = 0.9  # CHOSEN, disclosed (2.7)
+
+
+def ir1(n, m, *, blocks, between=0.2, seeds=IR_SEEDS, louvain_seeds=LOUVAIN_SEEDS):
+    """IR1: a planted block model at the same N and M must beat RANDOM (gnm) by Part F's contrast AND its
+    Louvain partition must recover the plant (NMI >= NMI_BAR on EVERY seed). Fails -> T4 REFUSED."""
+    from sklearn.metrics import normalized_mutual_info_score
+
+    truth = list(np.arange(n) * blocks // n)
+    diffs, nmi = [], []
+    for s in seeds:
+        q_p, labels = best_partition(planted_blocks(n, m, blocks=blocks, between=between, seed=s), n,
+                                     louvain_seeds)
+        diffs.append(q_p - modularity(random_graph(n, m, seed=s), n, louvain_seeds))
+        nmi.append(float(normalized_mutual_info_score(truth, labels)))
+    verdict = judge("IR1 planted vs RANDOM", diffs, "superiority")
+    return {"verdict": verdict, "nmi": nmi, "ok": verdict.met and min(nmi) >= NMI_BAR}
+
+
+def ir2(n, m, *, seeds=IR_SEEDS, twin_seeds=IR_TWIN_SEEDS, louvain_seeds=LOUVAIN_SEEDS):
+    """IR2, the false-positive control: RANDOM against a RANDOM twin must NOT pass. Passes -> T4 REFUSED."""
+    diffs = [modularity(random_graph(n, m, seed=s), n, louvain_seeds)
+             - modularity(random_graph(n, m, seed=t), n, louvain_seeds) for s, t in zip(seeds, twin_seeds)]
+    verdict = judge("IR2 RANDOM vs RANDOM twin", diffs, "superiority")
+    return {"verdict": verdict, "ok": not verdict.met}
+
+
+def ir3(n, m, *, blocks, seeds=IR_SEEDS, louvain_seeds=LOUVAIN_SEEDS):
+    """IR3: the planted model at 50 % between-block edges vs RANDOM -- REPORTED only, to locate the floor."""
+    diffs = [modularity(planted_blocks(n, m, blocks=blocks, between=0.5, seed=s), n, louvain_seeds)
+             - modularity(random_graph(n, m, seed=s), n, louvain_seeds) for s in seeds]
+    return {"verdict": judge("IR3 planted (50% between) vs RANDOM", diffs, "superiority")}
+
+
+def t4_instruments_refuse(ir1_result, ir2_result):
+    """T4 is REFUSED (before any arm is scored) if IR1 or IR2 fails (2.7)."""
+    return not (ir1_result["ok"] and ir2_result["ok"])
 
 
 if __name__ == "__main__":

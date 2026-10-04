@@ -211,6 +211,30 @@ def test_bare_main_fires_its_instrument_reds(capsys):
     assert "instrument reds fired: 6 of 6" in capsys.readouterr().out
 
 
+_FAST = (13900, 13901, 13902)  # three Louvain restarts keep the test cheap; the instrument default is ten
+
+
+def test_cp3_7_ir1_ir2_pass_on_a_detectable_partition_and_ir3_reports():
+    pytest.importorskip("networkx")
+    pytest.importorskip("sklearn")
+    ir1 = U.ir1(300, 1500, blocks=10, between=0.2, louvain_seeds=_FAST)
+    ir2 = U.ir2(300, 1500, louvain_seeds=_FAST)
+    ir3 = U.ir3(300, 1500, blocks=10, louvain_seeds=_FAST)
+    assert ir1["ok"] and ir1["verdict"].met and min(ir1["nmi"]) >= 0.9, ir1
+    assert ir2["ok"] and not ir2["verdict"].met, ir2
+    assert "verdict" in ir3 and len(ir3["verdict"].diffs) == 8
+    assert U.t4_instruments_refuse(ir1, ir2) is False
+
+
+def test_cp3_7_ir1_fails_when_the_plant_is_undetectable_and_t4_is_refused():
+    pytest.importorskip("networkx")
+    pytest.importorskip("sklearn")
+    ir1 = U.ir1(300, 1500, blocks=10, between=0.9, louvain_seeds=_FAST)  # ~random: no partition to find
+    assert not ir1["ok"]
+    assert U.t4_instruments_refuse(ir1, {"ok": True}) is True
+    assert U.t4_instruments_refuse({"ok": True}, {"ok": False}) is True
+
+
 def test_modularity_separates_a_planted_partition_from_random():
     pytest.importorskip("networkx")
     n, m = 600, 3000
