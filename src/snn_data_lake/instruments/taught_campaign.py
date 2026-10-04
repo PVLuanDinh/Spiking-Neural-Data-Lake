@@ -295,9 +295,18 @@ def b8_twin(seed, epochs, *, bare=False):
 
 
 def _live_mtime():
-    if not LIVE_HOME.exists():
-        return None
-    return max((p.stat().st_mtime for p in LIVE_HOME.rglob("*") if p.is_file()), default=None)
+    """The live home's stamp, REUSED from the move gate's census guard (P2: one guard): every top-level
+    file's (size, mtime_ns)."""
+    from snn_data_lake.gates.move_gate import _live_home_stamp
+
+    return _live_home_stamp()
+
+
+def _assert_isolated(before):
+    """Halt if the live home's stamp moved since `before` (called AFTER the campaign's last write)."""
+    after = _live_mtime()
+    if after != before:
+        raise RuntimeError("isolation failure: the live home changed; campaign halted")
 
 
 # ---- the G-R2 reading (2.9, 2.15.1; first row that applies decides) -----------------------------------------------
@@ -407,6 +416,9 @@ def preflight(seeds, out_dir, arms=ARMS, *, require_clean=True):
     out = Path(out_dir).resolve()
     if out == REPO or REPO in out.parents:
         raise PermissionError(f"OUT {out} is inside the repo")
+    live = LIVE_HOME.resolve()
+    if out == live or live in out.parents:
+        raise PermissionError(f"OUT {out} is the live home or inside it")
     if any("future_d" in str(field) for arm in arms for field in arm):
         raise PermissionError("an arm names future_d (G6(d)'s untouched set)")
     if require_clean:
@@ -434,9 +446,9 @@ def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, include_ii=False, requir
     rows = {arm[0]: [run_arm(arm, s, epochs, h) for s in seeds] for arm in arms}
     flags = flags_from(rows, construction_ok, all(b8.values()), reds_fired)
     record = {"seeds": list(seeds), "epochs": epochs, "h": h, "construction_ok": construction_ok, "p2": p2,
-              "b8": b8, "reds": reds, "rows": rows, "flags": flags, "verdict": reading(flags),
-              "live_home_untouched": _live_mtime() == before}
+              "b8": b8, "reds": reds, "rows": rows, "flags": flags, "verdict": reading(flags)}
     Path(out_dir, "g2_campaign.json").write_text(json.dumps(record, indent=1, default=str), encoding="ascii")
+    _assert_isolated(before)  # AFTER the last write: an isolation failure halts, never reports
     return record
 
 

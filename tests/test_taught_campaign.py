@@ -26,6 +26,25 @@ def test_preflight_refusals(seeds, out, tmp_path):
         tc.preflight(seeds, out, require_clean=False)
 
 
+@pytest.mark.parametrize("sub", [None, "g2_out", "deep/er"])
+def test_preflight_refuses_the_live_home_before_creating_anything(sub):
+    # cp1 #1: OUT may never be the live home or a descendant; refused before any mkdir
+    out = tc.LIVE_HOME if sub is None else tc.LIVE_HOME / sub
+    existed = out.exists()
+    with pytest.raises(PermissionError):
+        tc.preflight((8200,), str(out), require_clean=False)
+    assert out.exists() == existed
+
+
+def test_isolation_failure_halts(monkeypatch):
+    # cp1 #1: a moved live-home mtime after the last write raises, never reports
+    stamps = iter([1.0, 2.0])
+    monkeypatch.setattr(tc, "_live_mtime", lambda: next(stamps))
+    before = tc._live_mtime()
+    with pytest.raises(RuntimeError):
+        tc._assert_isolated(before)
+
+
 def test_preflight_refuses_an_arm_naming_future_d(tmp_path):
     arms = (("x", "c1d", "incumbent", "never", "future_d"),)
     with pytest.raises(PermissionError):
