@@ -594,3 +594,20 @@ information.
 
   The fold of these findings is itself unreviewed text: battery-free (a docs freeze), read once by G4 against the
   critique; the lead decides whether it is re-panelled before the commit.
+
+## Amendment 2026-10-04 (pre-data; Part B record field for G7's T4; debate D10 / G7's D22) -- UNCOMMITTED, for the lead
+
+G7's Codex fold (b3 #24) froze T4's edge count as M = round(N x dbar / 2), the same in every arm. T4 waits if dbar is
+absent; no chosen density stands in. G4 accepts. Part B's record in `tools/g4_t3_campaign.json` gains `dbar`, defined
+with G7 (D22):
+- dbar = 2 E / N, the mean degree of the SYMMETRIZED simple graph (an undirected edge where either direction exists,
+  no multi-edges, no self-loops) INDUCED on H01 units in the cortical layers that `CONN_PROB` has a population for
+  (L2, L3, L4, L5, L6). L1 is excluded (no `CONN_PROB` population). White matter is excluded. Both ends must lie in
+  those layers.
+- Recorded beside it: N, E, the reciprocal-pair fraction, and the reconstruction-density disclosure (observed directed
+  density 3.46e-4, far below biological short-range connection probability; dbar inherits it, and G7 discloses it beside
+  every T4 result).
+- It is an aggregate read of H01 edges, so it is taken in Part B, after T3 reads (2.14 A13), never before the planted
+  stage holds. Check: recomputing it from the pinned artifact reproduces the recorded integer E exactly.
+- G4 flag (information for G7's design, not an objection): at small N, a sparse dbar may make the kernel arms
+  near-trivially local. G7 noted that this only sharpens the already-registered narrowness of a PASS.
