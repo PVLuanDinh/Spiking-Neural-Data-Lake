@@ -296,6 +296,9 @@ REGIONS = {
         "everyday_battery",
         # specs/022 T113 (G5): the retained cell HARNESS (frozen generator, reading, in-brain cell machinery, PA3/PA4/PA8/PA10 reds, persisted records); Parts A and B were deleted on their nulls (4ecc90d9 / 0fba900c keep them as run). Reuse by Part D is PENDING, so the harness is exempt-by-registration, not charged (P3); brain-free bare self-check
         "g5_readout_cells",
+        # specs/022 T112 (G4) T3: H01 connection probability vs soma distance -- flat / Gaussian / exponential / mixture,
+        # held-out on neuron folds, region blocks and the z-interior; the planted stage gates every edge read
+        "h01_distance_kernel",
         "ignition_instrument",
         # G2(ii)'s inseparable-mapping generator and G-R2's construction check on it (g1c-carried-state.md 2.8)
         "inseparable_mapping",
