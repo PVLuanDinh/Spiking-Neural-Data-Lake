@@ -102,9 +102,14 @@ class Problem:
         """E epochs, each the teach items once in `random.Random(seed).sample` order (one stream)."""
         rng = random.Random(seed)
         items = self.items(seed, "teach")
+        # U_S teaches from its OWN stream, independent of every read's stream (2.15.6; cp1 #8)
+        us_teach = random.Random(f"g2.US-teach:{seed}") if self.kind == "us" else None
         for k in range(int(epochs)):
             order = rng.sample(items, len(items))
-            yield [self._episode(it, self.label(seed, it, pass_k=k)) for it in order]
+            if us_teach is not None:
+                yield [self._episode(it, dc.LABELS[us_teach.getrandbits(1)]) for it in order]
+            else:
+                yield [self._episode(it, self.label(seed, it, pass_k=k)) for it in order]
 
     # learner-facing held-out read (PASSES passes, offset-stream order); future_d refused, cp1 #11
     def episodes(self, seed, split, *, read_index=0):

@@ -106,6 +106,20 @@ def test_us_reads_draw_fresh_labels():
     assert r0 != r1 and len(r0) == 32
 
 
+def test_us_teaching_runs_on_its_own_stream():
+    # cp1 #8: U_S had no teaching labels (labelling None); a full teaching attempt must run
+    p = tp.PROBLEMS["U_S"]
+    seq = tp.teaching_sequence(p, 8000, 3)
+    assert len(seq) == 24 and set(lab for _, _, lab in seq) == set(dc.LABELS)
+    assert seq == tp.teaching_sequence(p, 8000, 3)
+    teach_labels = [lab for _, _, lab in seq[:8]]
+    assert teach_labels != dc.us_labels(8000, "validation", 0, 8)  # its own stream, not a read's
+    unit = tp.canonical_incumbent(8000)
+    for epoch in p.teach_epochs(8000, 2):
+        for episode in epoch:
+            unit.learn_turn(episode[-1].text, None, feedback=episode[-1].label)
+
+
 def test_solved_refuses_a_short_read():
     p = tp.PROBLEMS["i.S0C1"]
     with pytest.raises(ValueError):
