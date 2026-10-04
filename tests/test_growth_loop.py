@@ -80,9 +80,12 @@ def test_ledger_refuses_a_missing_path():
 
 
 def test_ledger_refuses_the_live_lake():
+    # through THE shared guard (R1, lead ruling 16), never a row-local check
     from pathlib import Path
 
-    with pytest.raises(LedgerError):
+    from snn_data_lake.substrate.home import LiveHomeRefused
+
+    with pytest.raises(LiveHomeRefused):
         Ledger(Path.home() / ".snn_data_lake" / "brain_lake.bin", VALUES)
 
 

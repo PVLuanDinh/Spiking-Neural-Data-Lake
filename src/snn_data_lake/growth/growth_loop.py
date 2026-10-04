@@ -29,19 +29,18 @@ with the grown-segment port after R2's P1.
 
 import hashlib
 import json
-import os
 import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from snn_data_lake.growth.growth_stop import GrowthStop
 from snn_data_lake.growth.learning_progress import GoalStore
+from snn_data_lake.substrate.home import LiveHomeRefused, assert_not_live_home
 
 #: diagnoses that license growth (2.4); every other kind attempts without growth or not at all
 GROWTH_KINDS = ("CAPACITY", "STATE", "STATE+CAPACITY")
 A_MAX = 3  # consecutive no-growth attempts per budget (2.6 D3), a disclosed session call
 ENCODER = "text_features n_in=52"
-_LIVE_HOME = Path(os.path.expanduser("~")) / ".snn_data_lake"
 
 
 class LedgerError(RuntimeError):
@@ -77,15 +76,17 @@ def retention_ok(before, after, f_bound):
 
 
 def _refuse_path(path):
+    """2.12a: an EXPLICIT lake path, never None (GoalStore would resolve None to the home lake), and
+    never inside the live home -- through THE shared guard (R1, lead ruling 16), which raises
+    LiveHomeRefused; no row-local live-home check (P2)."""
     if path is None:
         raise LedgerError(
             "the ledger needs an explicit lake path (2.12a): None would resolve to the home lake"
         )
-    p = Path(path).resolve()
-    live = _LIVE_HOME.resolve()
-    if p == live or live in p.parents:
-        raise LedgerError(f"refused: {p} is inside the live home {live} (2.12a)")
-    return p
+    # the guard resolves strictly (the path must exist): guard the lake's DIRECTORY, which a fresh lake
+    # file does not yet have to be, and keep the file name
+    path = Path(path)
+    return Path(assert_not_live_home(str(path.parent))) / path.name
 
 
 class Ledger:
@@ -380,9 +381,9 @@ def main():
         except LedgerError:
             pass
     try:
-        Ledger(_LIVE_HOME / "brain_lake.bin", values)
+        Ledger(Path.home() / ".snn_data_lake" / "brain_lake.bin", values)
         raise AssertionError("red: the live lake must be refused")
-    except LedgerError:
+    except LiveHomeRefused:
         pass
     print(
         "growth_loop: pause at 45/52 (UNSOLVED, OPEN), attempt cap -> LEARNING_RULE_DEFICIT, ledger rebuilt "
