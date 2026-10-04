@@ -187,6 +187,13 @@ def test_r4_cortex_name_in_refused_territory_refused_by_position(cell):
     assert _refused_field(_at(_good(), *cell)) == "region"
 
 
+def test_cp3_6_a_non_cortex_region_with_valid_cortical_fields_is_refused():
+    # Codex cp3 #6: hippocampus shares ('sp', 'alar'); its cortical layer and sign would pass every other
+    # check, so only the owner's cortex-only ruling (O3, 2026-10-04) can refuse it
+    v = G.check_admission(_with(_good(), region="hippocampus"), resolve_problem=_resolve)
+    assert v.field == "region" and "cortex only" in v.reason
+
+
 def test_r5_neuromodulation_refused():
     assert _refused_field(_at(_with(_good(), region="neuromodulation"), "r1", "basal")) == "region"
 

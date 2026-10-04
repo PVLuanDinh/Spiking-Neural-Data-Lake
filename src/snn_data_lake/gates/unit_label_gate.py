@@ -44,8 +44,11 @@ FIELD_ORDER = ("unit_id", "batch_id", "position", "layer", "sign", "region", "pr
 #: The label fields a restored row must carry to count as labeled (origin is a cache, not a label).
 LABEL_FIELDS = FIELD_ORDER[:-1]
 
-#: O2 (pending the owner): False = the registered fallback (a several-label cell admits by name).
+#: O2 (owner, 2026-10-04): False = the name fallback in a several-label cell, as ruled.
 STRICT_TERRITORY = False
+
+#: O3 (owner, 2026-10-04): cortex only -- the one region with a measured Dale sign (H01).
+ADMISSIBLE_REGIONS = frozenset({"cortex"})
 
 Verdict = namedtuple("Verdict", "admitted field reason region_read")
 SavedVerdict = namedtuple("SavedVerdict", "outcome field reason")
@@ -141,6 +144,9 @@ def _check_region(rec, ctx):
         return f"unknown region name {region!r}"
     if region not in GROWABLE:
         return f"{region!r} is not growable (scaffold or charged-never-grown)"
+    if region not in ADMISSIBLE_REGIONS:
+        return (f"{region!r} refused: cortex only -- no other region has a measured Dale sign "
+                "(owner, O3, 2026-10-04)")
     pos = rec.get("position")
     if not (isinstance(pos, (tuple, list)) and len(pos) == 5 and _number(pos[0]) and _number(pos[1])
             and 0.0 <= pos[0] < 1.0 and 0.0 <= pos[1] < 1.0):
