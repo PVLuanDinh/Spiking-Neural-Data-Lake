@@ -595,7 +595,10 @@ information.
   The fold of these findings is itself unreviewed text: battery-free (a docs freeze), read once by G4 against the
   critique; the lead decides whether it is re-panelled before the commit.
 
-## Amendment 2026-10-04 (pre-data; Part B record field for G7's T4; debate D10 / G7's D22) -- UNCOMMITTED, for the lead
+## DATED PRE-DATA AMENDMENT 2026-10-04 (G7's dbar ask; no data read)
+
+Pointers (no frozen passage is edited): applies to 3.1 Part B (the record's fields) and 3.4 Part E (T4's M); its run
+gate is 2.14 A13 (Part B: T3 READ with K != none); debate D10 here, D22 in G7's file.
 
 G7's Codex fold (b3 #24) froze T4's edge count as M = round(N x dbar / 2), the same in every arm. T4 waits if dbar is
 absent; no chosen density stands in. G4 accepts. Part B's record in `tools/g4_t3_campaign.json` gains `dbar`, defined
