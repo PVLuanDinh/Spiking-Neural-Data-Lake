@@ -1435,6 +1435,37 @@ def test_the_guard_admits_in_arrival_order_and_re_enters_without_upgrading():
     assert guard._held == {} and not guard._alone
 
 
+@pytest.mark.parametrize("error", [RuntimeError, KeyboardInterrupt])
+def test_a_waiter_interrupted_before_its_turn_never_stalls_the_queue(error):
+    # the final narrow re-panel's reproduction: before the fix, every later job waited forever
+    guard, caught = ps._FaultGuard(), []
+
+    def interrupted():
+        try:
+            with guard.hold(True):
+                pass
+        except BaseException as exc:
+            caught.append(type(exc))
+
+    with guard.hold(False):
+        wait = guard._turn.wait
+
+        def interrupted_wait(timeout=None):
+            wait(0.02)
+            raise error("interrupted while waiting")
+
+        guard._turn.wait = interrupted_wait
+        waiter = threading.Thread(target=interrupted)
+        waiter.start()
+        waiter.join(2)
+        guard._turn.wait = wait
+    assert not waiter.is_alive() and caught == [error]
+    later = threading.Thread(target=lambda: guard.hold(False).__enter__())
+    later.start()
+    later.join(2)
+    assert not later.is_alive() and not guard._cancelled
+
+
 def test_an_interrupted_final_write_leaves_the_running_marker_and_its_provenance(
     tmp_path, monkeypatch
 ):

@@ -845,12 +845,17 @@ class _FaultGuard:
     whose target may enter a fault context itself) excludes every other; plain jobs share. Admission is in
     arrival order, so a waiting job that runs alone is never overtaken; the thread holding the guard may
     re-enter it, and a thread that shares may not start a job that runs alone (no upgrade: it would wait on
-    itself)."""
+    itself). A waiter interrupted before its turn retires its ticket, so the queue never stalls on it."""
 
     def __init__(self):
         self._turn, self._held = threading.Condition(), {}  # thread -> [alone, depth]
         self._issued = self._admitted = 0
-        self._alone = False
+        self._alone, self._cancelled = False, set()
+
+    def _skip_cancelled(self):
+        while self._admitted in self._cancelled:
+            self._cancelled.discard(self._admitted)
+            self._admitted += 1
 
     @contextlib.contextmanager
     def hold(self, alone):
@@ -865,14 +870,21 @@ class _FaultGuard:
                 mine[1] += 1
             else:
                 ticket, self._issued = self._issued, self._issued + 1
-                self._turn.wait_for(
-                    lambda: (
-                        self._admitted == ticket
-                        and not self._alone
-                        and (not alone or not self._held)
+                try:
+                    self._turn.wait_for(
+                        lambda: (
+                            self._admitted == ticket
+                            and not self._alone
+                            and (not alone or not self._held)
+                        )
                     )
-                )
+                except BaseException:  # interrupted before its turn: retire the ticket
+                    self._cancelled.add(ticket)
+                    self._skip_cancelled()
+                    self._turn.notify_all()
+                    raise
                 self._admitted += 1
+                self._skip_cancelled()
                 self._alone = alone
                 self._held[me] = [alone, 1]
                 self._turn.notify_all()
