@@ -26,6 +26,18 @@ class Pool:
     zero: torch.Tensor  # constant response across the scoring rows (and not dead)
 
 
+def eq6(Sp, E, enorm, reg_eps):
+    """THE Eq. 6 algebra, shared by every consumer of the one grower (cp1 #16): per candidate column p
+    and class q, C_pq = <e_q, s_p>^2 / (||s_p||^2 ||e_q||^2 + reg_eps), and the residual reduction
+    score_p = sum_q C_pq ||e_q||^2. Returns (C, score, ||s_p||^2). Sp: (N, P) responses, E: (N, m)
+    residual, enorm: (m,) per-class residual energy."""
+    proj = Sp.t() @ E  # (P, m) <e_q, s_p>
+    spn = (Sp * Sp).sum(dim=0)  # (P,)   ||s_p||^2
+    C = proj.pow(2) / (spn.unsqueeze(1) * enorm.unsqueeze(0) + reg_eps)  # (P,m) Eq.6
+    score = (C * enorm.unsqueeze(0)).sum(dim=1)  # (P,) residual reduction
+    return C, score, spn
+
+
 def draw_and_score(model, d, Xsel, Esel, enorm, thresh, n_units):
     """Draw the whole multi-scale candidate POOL on the model's CPU generator, evaluate it in one vectorized LIF
     pass over the scoring rows, and score it against the residual Esel. RNG consumption is unchanged from the
@@ -37,10 +49,7 @@ def draw_and_score(model, d, Xsel, Esel, enorm, thresh, n_units):
         Wp = ((torch.rand(P, d, generator=model.g) * 2 - 1) * Lam).to(model.device)  # (P,d)
         bp = ((torch.rand(P, generator=model.g) * 2 - 1) * Lam).to(model.device)  # (P,)
         Sp = model._rates(Xsel, Wp, bp)  # (Nsel, P) candidate responses
-        proj = Sp.t() @ Esel  # (P, m) <e_q, s_p>
-        spn = (Sp * Sp).sum(dim=0)  # (P,)   ||s_p||^2
-        C = proj.pow(2) / (spn.unsqueeze(1) * enorm.unsqueeze(0) + model.reg_eps)  # (P,m) Eq.6
-        score = (C * enorm.unsqueeze(0)).sum(dim=1)  # (P,) residual reduction
+        C, score, spn = eq6(Sp, Esel, enorm, model.reg_eps)
         passes = (C >= thresh).all(dim=1)  # (P,) meets consistency criterion
         # L3 (specs/022, 2026-09-05): a DEAD candidate (rate exactly 0 on every scoring row) is excluded always;
         # a CONSTANT-response candidate (exact equality across the scoring rows, not a variance epsilon -- P1)
@@ -134,18 +143,16 @@ def label_probabilities(drives):
     return softmax(list(drives))
 
 
-def contribution(feature, residual, eps=1e-6):
-    """Eq. 6's residual reduction of one candidate feature over rows: sum_c <e_c, s>^2 / ||s||^2 -- the same
-    score `draw_and_score` uses, here on the taught learner's residual (rows x labels lists). A dead or
-    constant feature carries nothing (L3) and scores 0.0."""
-    sn = sum(x * x for x in feature)
-    if sn == 0.0 or all(x == feature[0] for x in feature):
+def contribution(feature, residual, reg_eps=1e-6):
+    """One candidate feature's Eq. 6 residual reduction over rows, through the SAME `eq6` algebra
+    `draw_and_score` uses (cp1 #16), on the taught learner's residual (rows x labels lists); reg_eps
+    defaults to NGSNN's. A dead or constant feature carries nothing (L3) and scores 0.0."""
+    if all(x == 0.0 for x in feature) or all(x == feature[0] for x in feature):
         return 0.0
-    total = 0.0
-    for c in range(len(residual[0])):
-        proj = sum(s * r[c] for s, r in zip(feature, residual))
-        total += proj * proj
-    return total / (sn + eps)
+    Sp = torch.tensor([[float(x)] for x in feature], dtype=torch.float64)
+    E = torch.tensor([[float(v) for v in row] for row in residual], dtype=torch.float64)
+    _, score, _ = eq6(Sp, E, (E * E).sum(dim=0), reg_eps)
+    return float(score[0])
 
 
 @dataclass

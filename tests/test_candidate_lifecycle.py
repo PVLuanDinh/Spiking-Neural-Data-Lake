@@ -130,7 +130,7 @@ def _xor_items():
     texts = ["cat dog sun sky", "cat dog sky sun", "dog cat sun sky", "dog cat sky sun"]
     ys = [0, 1, 1, 0]
     items = []
-    for t, y in zip(texts, ys):
+    for t, y in zip(texts, ys, strict=True):
         ranks = tuple(learner.encode(text_features(t, 52)))
         drives = [learner._drive(n, list(ranks)) for n in learner.neurons]
         onehot = [1.0 if c == y else 0.0 for c in range(len(labels))]
@@ -187,3 +187,16 @@ def test_a_transposed_readout_in_the_trace_rule_is_flagged():
     )
     assert variant != src
     assert _gate_findings(variant), "the transport gate did not flag a transposed readout"
+
+
+def test_contribution_uses_the_incumbent_eq6_algebra_on_low_energy_residuals():
+    # cp1 #16: Codex's case -- feature [1, 0], residual [[1e-4], [0]]: the incumbent regularizes
+    # ||s||^2 * ||e_c||^2 + reg_eps, so its score is C * ||e||^2 with C = <e,s>^2 / (that)
+    feature, residual = [1.0, 0.0], [[1e-4], [0.0]]
+    proj2, sn, en = (1e-4) ** 2, 1.0, (1e-4) ** 2
+    incumbent = proj2 / (sn * en + 1e-6) * en
+    got = candidate_lifecycle.contribution(feature, residual)
+    assert got == pytest.approx(incumbent, rel=1e-4)
+    assert got != pytest.approx(
+        proj2 / (sn + 1e-6), rel=0.5
+    )  # the divergent form scores ~101x higher
