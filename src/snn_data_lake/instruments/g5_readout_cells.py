@@ -353,6 +353,17 @@ def arm_parts(arm, M, seq, seed):
     raise ValueError(f"unknown arm {arm!r}")
 
 
+def tensor_digest(t):
+    """The EXACT identity of a tensor (Codex cp4 #11): sha256 over dtype, shape and its raw bytes --
+    never a rounded copy, which a sub-rounding perturbation would pass."""
+    import hashlib
+
+    t = t.detach().cpu().contiguous()
+    h = hashlib.sha256(f"{t.dtype}|{tuple(t.shape)}|".encode())
+    h.update(t.numpy().tobytes())
+    return h.hexdigest()
+
+
 def _digest(seq):
     import hashlib
 
@@ -374,7 +385,7 @@ def summarize(eng, rec, seed, arm):
         "live_pers": st.get("live_persistence"),
         "live_n": st.get("live_n"),
         "traj": [(int(t), int(u), float(a)) for t, u, a in eng.trajectory],
-        "beta_hash": None if beta is None else _digest((beta * 1e6).round().flatten().tolist()),
+        "beta_hash": None if beta is None else tensor_digest(beta),
         "units": eng.grown_units,
     }
 

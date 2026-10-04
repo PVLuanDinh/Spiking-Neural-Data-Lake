@@ -133,3 +133,16 @@ def test_pb4_a_count_before_scoring_through_the_harness_raises():
             eng.observe(x, c)
             if i % 20 == 19:
                 eng.tick()
+
+
+def test_beta_identity_is_exact_bytes_and_a_sub_rounding_perturbation_breaks_it():
+    # Codex cp4 #11: B-R2's bit identity compares exact bytes, dtype and shape; the retired rounded
+    # hash (1e-6 grid) would have passed this perturbation
+    beta = torch.randn(5, 4, generator=torch.Generator().manual_seed(20261003))
+    nudged = beta.clone()
+    nudged[0, 0] = torch.nextafter(nudged[0, 0], torch.tensor(float("inf")))
+    assert (nudged * 1e6).round().equal((beta * 1e6).round()), "the perturbation is sub-rounding"
+    assert g.tensor_digest(nudged) != g.tensor_digest(beta)
+    assert g.tensor_digest(beta.clone()) == g.tensor_digest(beta)
+    assert g.tensor_digest(beta.double()) != g.tensor_digest(beta)  # dtype is part of identity
+    assert g.tensor_digest(beta.reshape(4, 5)) != g.tensor_digest(beta)  # so is shape
