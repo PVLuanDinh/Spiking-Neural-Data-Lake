@@ -751,3 +751,24 @@ prune (G6); readout neurons (G5); a growth target inside the reservoir (owner); 
 Probe safety (main's PROTOCOL 4b, received mid-draft): G3's two scratch probes built no Brain (a bare
 `SpikingInteractionLearner`, `placement.place`, scipy); `C:\Users\vinhl\.snn_data_lake\brain_lake.bin` mtime is
 2026-09-27 01:19, unchanged.
+
+## DATED PRE-DATA AMENDMENT 2026-10-04 (G7's asks; no data read)
+
+Frozen passages above are unchanged; each line below adds to the section it names. Source: G7's Codex fold (b3 #8/#9),
+agreed by message 2026-10-04.
+- (2.7, 2.15 P1/P4) `admit_rows(rows, ticket)` is the SINGLE append point of the grown segment: it refuses any row whose
+  unit_id the `AdmissionTicket` returned by G7's `require_admissible` does not cover, and a ticket is consumed once, so
+  the label gate precedes every append by construction. Red: an append without a ticket, with a ticket not covering a
+  row, or with a spent ticket must raise.
+- (2.6 unit journal) `known_unit(unit_id) -> bool` reads the IMMORTAL `_T_GOAL` "unit" birth rows; G7's gate refuses an
+  id already known (a duplicate across batches) or repeated within a batch. Red: re-admitting a journaled id must be
+  refused.
+- (2.6, 2.7 restore) `classify_restored(rows, journal) -> {unit_id: origin}` runs at restore (restore never calls
+  `require_admissible`): born iff a journal birth entry exists AND the restored label equals it field for field;
+  derived iff the full label set is present and NO birth entry exists; legacy iff the full label set is lacking. A
+  restored row that HAS a birth entry but a DIFFERENT label is REFUSED as a tampered born unit, naming the unit and the
+  differing fields -- never classed derived (G3's refusal, G7 agreed as D21). The persisted origin array is a
+  recomputed cache, never evidence. Reds: a planted label change on a born unit must be refused; a planted origin array
+  that disagrees with the journal must be overwritten by the recomputation.
+- (2.9) G7's census reds any derived or legacy row in a grown segment that has no open debt row; G3's segments are
+  registered as GROWN_SEGMENTS for it.
