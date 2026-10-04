@@ -202,11 +202,9 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None)
     xy = np.asarray(xy, dtype=float)[order]
     pop = None if pops is None else np.asarray(pops)[order]
     col = None if columns is None else np.asarray(columns)[order]
-    if col is None:
-        capacity = list(range(n))
-    else:
-        capacity = [int(np.sum(col[:t] == col[t])) for t in range(n)]
-    alloc = _allotment(n, m, capacity)
+    # ONE common allotment, computed BEFORE any column restriction: an IMPOSED arrival short of earlier
+    # column mates is REFUSED below, never given fewer edges (Codex cp3 #9)
+    alloc = _allotment(n, m, list(range(n)))
     nbrs = [[] for _ in range(n)]  # by arrival position
     edges = []
     for t in range(1, n):

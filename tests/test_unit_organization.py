@@ -163,6 +163,16 @@ def test_sampler_refuses_an_infeasible_density():
         U.sample_exact_m(9, 27, xy=_flat_units(9, 13232), kernel=lambda d: 1.0, seed=1, columns=cols)
 
 
+def test_cp3_9_imposed_refuses_a_deficient_arrival_instead_of_repairing_it():
+    # Codex cp3 #9: N = 16, M = 16, two columns of 8; an order whose second arrival is in the OTHER
+    # column gives it one required edge and no earlier column mate -> REFUSED, never redistributed
+    cols = [0] * 8 + [1] * 8
+    seed = next(s for s in range(13230, 13300)
+                if len({cols[i] for i in np.random.default_rng(s).permutation(16)[:2]}) == 2)
+    with pytest.raises(U.Infeasible, match="fewer positive-weight candidates"):
+        U.sample_exact_m(16, 16, xy=np.zeros((16, 2)), kernel=lambda d: 1.0, seed=seed, columns=cols)
+
+
 def _triangles(edges, n):
     nb = [set() for _ in range(n)]
     for i, j in edges:
