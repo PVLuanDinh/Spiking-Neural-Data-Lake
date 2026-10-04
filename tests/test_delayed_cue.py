@@ -80,6 +80,24 @@ def test_float_lp_separates_separable_not_xor():
     assert dc.float_separability_lp(ac1d) == "feasible"
 
 
+def test_lp_status_distinguishes_unresolved(monkeypatch):
+    # cp1 #20: only HiGHS status 2 reads infeasible; another non-zero status is unresolved
+    import scipy.optimize
+
+    class R:
+        status = 1
+
+    monkeypatch.setattr(scipy.optimize, "linprog", lambda **k: R())
+    pairs = [(dc.probe_text(it), dc.label_i("S0C1", it)) for it in dc.ITEMS_I]
+    assert dc.float_separability_lp(pairs) == "unresolved:1"
+
+
+def test_lp_measurements_recorded():
+    lp = dc.lp_measurements()
+    assert lp == {"S0C0": "feasible", "S1C0_history": "feasible", "S0C1": "infeasible",
+                  "S1C1_history": "infeasible", "c1d_union": "infeasible", "ac1d_union": "feasible"}
+
+
 def test_b3_pure_check():
     stateless = {it: dc.label_i("S0C0", it) for it in dc.ITEMS_I}
     assert dc.check_b3(stateless)["ok"]

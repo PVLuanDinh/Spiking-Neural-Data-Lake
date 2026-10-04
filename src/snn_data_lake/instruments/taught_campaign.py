@@ -605,7 +605,9 @@ def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, g1c_construct=None, requ
     construction = dc.construction_check(seeds)
     p2 = {"b9": tp.check_b9()["ok"], "b11": tp.check_b11()["ok"],
           "b12": all(tp.check_b12(learner(s), tp.PROBLEMS["i.S1C1"], s)["ok"] for s in seeds)}
-    record.update(construction_ok=construction["verdict"] and all(p2.values()), p2=p2)
+    record.update(construction_ok=construction["verdict"] and all(p2.values()), p2=p2,
+                  witnesses=construction.get("witnesses", {}).get("cases"),
+                  lp=dc.lp_measurements())  # D2 beside the witness margins (cp1 #20)
     if not record["construction_ok"]:
         return conclude("RED: construction wrong (the generator)")
     record["b8"] = {}

@@ -472,7 +472,31 @@ def float_separability_lp(texts_labels):
         c=[0.0] * (N_IN + 1), A_ub=rows, b_ub=[-1.0] * len(rows),
         bounds=[(None, None)] * (N_IN + 1), method="highs",
     )
-    return "feasible" if result.status == 0 else "infeasible"
+    # cp1 #20: HiGHS status 2 is PROVEN infeasibility; any other non-zero status (iteration limit, numerical
+    # trouble) is unresolved and reported as such, never read as infeasible
+    if result.status == 0:
+        return "feasible"
+    return "infeasible" if result.status == 2 else f"unresolved:{result.status}"
+
+
+# D2's float measurement for the record, beside the witness margins (cp1 #20)
+LP_CASES = {
+    "S0C0": ("i", "S0C0", "probe"), "S1C0_history": ("i", "S1C0", "history"),
+    "S0C1": ("i", "S0C1", "probe"), "S1C1_history": ("i", "S1C1", "history"),
+    "c1d_union": ("combo", "c1d", None), "ac1d_union": ("combo", "ac1d", None),
+}
+
+
+def lp_measurements():
+    out = {}
+    for name, (kind, which, text) in LP_CASES.items():
+        if kind == "i":
+            make = probe_text if text == "probe" else history_text
+            pairs = [(make(it), label_i(which, it)) for it in ITEMS_I]
+        else:
+            pairs = [(combo_text(which, it), combo_label(which, it)) for it in combo_items(COMBOS)]
+        out[name] = float_separability_lp(pairs)
+    return out
 
 
 # ---- B3: state identity (pure; the stateful red is the campaign's) -----------------------------------------
