@@ -188,3 +188,22 @@ grower event for event; a suffix mutation that changes a prediction at or before
 |LP| read that is not refused. CONTROL: the in-brain run itself, a leaking predictor, a forbidden-channel map, an
 unseeded-noise arm. SCOPE: pilot seeds 100-103, 2,400 ticks. PASS (harness validation) 2026-09-24.
 `evidence/g1a-causal-contract.md`, section 3.
+
+## 14. The growth trigger's exact lift certificate (G3 P1, T111)
+INVENTED: on the taught learner's full current code, contradictions -> DATA/STATE; at k = 0, CAPACITY only on a
+Farkas witness over the (synapse, rank) lift that an LP finds and an exact Fraction check accepts; SEPARABLE only
+through the real `route_text`; else UNRESOLVED. RED: a doubled multiplier; twin labels through the XOR witness; a
+capable grown unit. CONTROL: the LP status; the separable twin. NULL: the gated loop does not beat the literal loop
+-> the gate leaves the loop. `evidence/g3-growth-loop.md` 2.4, 2.9 C2.
+
+## 15. The trace-trained candidate source (G3 P2, T111)
+INVENTED: a candidate row trained on the multiclass residual by its own eligibility trace and a FIXED random
+feedback vector (never a transposed weight). RED: a W_out.T variant is flagged (C7); shuffled training labels must
+lower the held-out score (C10). CONTROL: presized-selected, random growth. NULL: targeted beats neither -> DELETED;
+the random source stays. `evidence/g3-growth-loop.md` 2.5, 2.8.
+
+## 16. The problem-keyed budget pause (G3 P3, T111)
+INVENTED: grow a whole batch, attempt, repeat; GrowthStop's problem key pauses when the next batch exceeds beta x
+median(positive-spend solves) (first: 52); a 3-attempt no-growth cap; an IMMORTAL seq-checked ledger. RED: an
+unsolvable cell pauses UNSOLVED, never solved (C8); a frozen learner ends LEARNING_RULE_DEFICIT (C18); a dropped row
+refuses the rebuild (C13). CONTROL: a solvable twin. `evidence/g3-growth-loop.md` 2.6.

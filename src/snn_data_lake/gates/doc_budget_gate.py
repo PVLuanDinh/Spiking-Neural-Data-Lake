@@ -182,6 +182,10 @@ BUDGETS = {
     # TIGHTENABLE report is structurally quiet for them.
     # RAISED 2056 -> 2212 on 2026-09-24: G1(a)'s row 13, the recorded-stream replay with a causally lagged gate
     # signal (FR-031; T109) -- measured 2056 -> 2212, +156 words (str.split); measured + 0.
+    # RAISED 2212 -> 2441 on 2026-10-04: G3's rows 14-16 (the lift certificate, the trace-trained source, the
+    # problem-keyed budget pause; FR-031 + P8 require a register row per landed invention, Codex cp1 #22) --
+    # measured 2212 -> 2441, +229 words (str.split); measured + 0, the minimum-viable raise; each row condensed
+    # to its RED / CONTROL / NULL and a pointer to evidence/g3-growth-loop.md.
     # RAISED 1919 -> 2056 on 2026-09-24: G0(c)'s row 12, the restart checkpoint and lake-sourced authority its
     # pre-registration promised (FR-031; T108) -- measured 1919 -> 2056, +137 words (str.split); measured + 0.
     # RAISED 1783 -> 1919 on 2026-09-24: G0(b)'s row 11, the confirmed-clarification rule its pre-registration
@@ -191,7 +195,7 @@ BUDGETS = {
     # raise.
     # RAISED 1644 -> 1680 on 2026-09-16: T080's MECHANIZED line under 6 (measured 1644 -> 1680, +36 words;
     # measured + 0, the minimum-viable raise, the same rule as the 2026-09-15 raise below).
-    "docs/INVENTION_REGISTER.md": 2212,  # RAISED 1618 -> 1644 on 2026-09-15: T079's MECHANIZED line under 6
+    "docs/INVENTION_REGISTER.md": 2441,  # RAISED 1618 -> 1644 on 2026-09-15: T079's MECHANIZED line under 6
     # (measured 1618 -> 1644, +26 words; measured + 0, the minimum-viable raise). EARLIER:
     # RAISED 1595 -> 1618 on 2026-09-15: T077's MECHANIZED line under
     # S6 (FR-031 requires a register row per landed P8 invention; the row is two lines, condensed twice
