@@ -365,10 +365,20 @@ def reading_reds():
     return {"fired": fired, "all_fired": all(fired.values())}
 
 
-def flags_from(rows, construction_ok, b8_ok, reds_fired):
-    """The reading's flags from per-arm rows ({arm_id: [per-seed result]})."""
+# distinct-from: connectome.py -- a BFS reachability query
+# distinct-from: engine/autonomous_loop.py -- an end-effector position from a body state
+# distinct-from: engine/brain.py -- episode recall from working memory and the lake
+# distinct-from: faculties/acetylcholine.py -- an ACh write/recall headline
+# distinct-from: faculties/allocentric_map.py -- a landmark sighting. Sites read 2026-10-04.
+# every mandatory arm must carry exactly one result per campaign seed (cp1 #5); partial evidence raises
+def flags_from(rows, construction_ok, b8_ok, reds_fired, *, seeds, arms=ARMS):
+    for arm in arms:
+        got = sorted(row.get("seed") for row in rows.get(arm[0], []))
+        if got != sorted(seeds):
+            raise ValueError(f"arm {arm[0]}: results for seeds {got}, expected {sorted(seeds)}")
+
     def all_met(arm_id):
-        return all(row["met"] for row in rows.get(arm_id, [])) if arm_id in rows else True
+        return all(row["met"] for row in rows[arm_id])
 
     b3 = all(row.get("b3_every_read", True) for arm in ("inc.S1C0", "inc.S1C1") for row in rows.get(arm, []))
     return {
@@ -411,6 +421,12 @@ def campaign_reds(seed=RED_SEED, epochs=EPOCHS, h=H):
 def preflight(seeds, out_dir, arms=ARMS, *, require_clean=True):
     """Refusals before any read: a live seed, a seed outside G2's block, OUT inside the repo, an arm list naming
     future_d, a dirty tree."""
+    seeds = tuple(seeds)
+    if not seeds or len(set(seeds)) != len(seeds):
+        raise PermissionError(f"seeds must be non-empty and distinct: {seeds}")
+    for block in (CONFIRMATORY_SEEDS, RESERVE_SEEDS):  # a confirmatory read is the WHOLE registered block (cp1 #5)
+        if set(seeds) & set(block) and sorted(seeds) != list(block):
+            raise PermissionError(f"seeds {sorted(seeds)} touch {block[0]}-{block[-1]} but are not that exact block")
     bad = sorted(set(seeds) & LIVE_SEEDS)
     if bad:
         raise PermissionError(f"live seeds refused: {bad}")
@@ -471,7 +487,7 @@ def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, include_ii=False, requir
     if not record["reds"]["campaign"]["all_fired"]:
         return conclude("HALT: shared instrument (a campaign red did not fire)")
     rows = {arm[0]: [run_arm(arm, s, epochs, h) for s in seeds] for arm in arms}
-    flags = flags_from(rows, True, True, True)
+    flags = flags_from(rows, True, True, True, seeds=seeds, arms=ARMS)
     record.update(rows=rows, flags=flags, verdict=reading(flags))
     return _record_campaign(out_dir, record, before)
 

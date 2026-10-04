@@ -19,7 +19,7 @@ def test_reading_pass_and_every_row_red():
     assert reds["all_fired"], reds["fired"]
 
 
-@pytest.mark.parametrize("seeds,out", [((300,), "x"), ((7003,), "x"), ((12000,), "x"), ((8200,), None)])
+@pytest.mark.parametrize("seeds,out", [((300,), "x"), ((7003,), "x"), ((12000,), "x"), (tuple(range(8200, 8208)), None)])
 def test_preflight_refusals(seeds, out, tmp_path):
     out = str(tc.REPO / "out") if out is None else str(tmp_path / out)
     with pytest.raises(PermissionError):
@@ -32,7 +32,7 @@ def test_preflight_refuses_the_live_home_before_creating_anything(sub):
     out = tc.LIVE_HOME if sub is None else tc.LIVE_HOME / sub
     existed = out.exists()
     with pytest.raises(PermissionError):
-        tc.preflight((8200,), str(out), require_clean=False)
+        tc.preflight(tc.CONFIRMATORY_SEEDS, str(out), require_clean=False)
     assert out.exists() == existed
 
 
@@ -66,7 +66,7 @@ def test_a_failed_prerequisite_halts_before_any_arm(failure, tmp_path, monkeypat
 def test_preflight_refuses_an_arm_naming_future_d(tmp_path):
     arms = (("x", "c1d", "incumbent", "never", "future_d"),)
     with pytest.raises(PermissionError):
-        tc.preflight((8200,), str(tmp_path), arms, require_clean=False)
+        tc.preflight(tc.CONFIRMATORY_SEEDS, str(tmp_path), arms, require_clean=False)
 
 
 def test_preflight_accepts_the_registered_campaign(tmp_path):
@@ -165,10 +165,39 @@ def test_attempt_judges_future_on_combos():
     assert "future_solved" in result and 0.0 <= result["future_accuracy"] <= 1.0
 
 
+def _full_rows(seeds, override=None):
+    rows = {arm[0]: [{"seed": s, "met": True} for s in seeds] for arm in tc.ARMS}
+    for arm_id, met in (override or {}).items():
+        rows[arm_id] = [{"seed": s, "met": met} for s in seeds]
+    return rows
+
+
 def test_flags_from_rows_reads_a_planted_capacity_solve():
-    rows = {"inc.S0C1": [{"met": False}], "inc.S0C0": [{"met": True}]}
-    flags = tc.flags_from(rows, True, True, True)
+    seeds = (8900, 8901)
+    flags = tc.flags_from(_full_rows(seeds, {"inc.S0C1": False}), True, True, True, seeds=seeds)
     assert flags["incumbent_solves_s1_or_c1"] and tc.reading(flags).startswith("RED: construction wrong (a")
+    assert tc.reading(tc.flags_from(_full_rows(seeds), True, True, True, seeds=seeds)).startswith("PASS: S0C0")
+
+
+@pytest.mark.parametrize("rows", [{}, "one_arm_missing", "one_seed_missing"])
+def test_flags_from_refuses_missing_evidence(rows):
+    # cp1 #5: missing or partial arm rows never read as success
+    seeds = (8900, 8901)
+    if rows == "one_arm_missing":
+        rows = _full_rows(seeds)
+        del rows["pre.c1d"]
+    elif rows == "one_seed_missing":
+        rows = _full_rows(seeds)
+        rows["inc.S0C0"] = rows["inc.S0C0"][:1]
+    with pytest.raises(ValueError):
+        tc.flags_from(rows, True, True, True, seeds=seeds)
+
+
+@pytest.mark.parametrize("seeds", [(), (8200,) * 8, tuple(range(8200, 8207)), (8300, 8301)])
+def test_preflight_refuses_empty_duplicate_and_partial_blocks(seeds, tmp_path):
+    # cp1 #5: non-empty, distinct, and a confirmatory or reserve read is that WHOLE block
+    with pytest.raises(PermissionError):
+        tc.preflight(seeds, str(tmp_path), require_clean=False)
 
 
 def test_b8_twin_equal_and_bare_class_reds():
