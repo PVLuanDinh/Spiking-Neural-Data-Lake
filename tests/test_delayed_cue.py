@@ -145,7 +145,16 @@ def test_witness_refuses_unknown_problem():
 def test_every_construction_red_fires():
     reds = dc.construction_reds()
     assert reds["all_fired"], [k for k, v in reds["fired"].items() if not v]
-    assert len(reds["fired"]) == 17
+    assert len(reds["fired"]) == 18
+
+
+def test_r_q_collision_breaks_additivity_and_r_p_cannot():
+    # cp1 #14: the registered R/P collision red cannot fire on B2 (P sits at rank 3 whatever q is); the R/Q one does
+    assert dc.r_p_collision_keeps_additivity()
+    assert dc.construction_reds()["fired"]["b2_c1d_r_q_collision"]
+    words = dc.combo_words("c1d")
+    assert not dc.check_b1((*words[:4], words[0], *words[5:]), [dc.collided_text((0, 0, 0, 0), "P")])[
+        "conditions"]["distinct_buckets"]  # B1's collision refusal still catches the R/P case
 
 
 def test_construction_check_on_dev_seeds():

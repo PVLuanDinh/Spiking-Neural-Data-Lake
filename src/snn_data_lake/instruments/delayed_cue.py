@@ -602,6 +602,25 @@ def construction_check(seeds=(8000, 8001, 8002, 8003)):
 LONG_WORD = "interpretation"  # 14 letters: as a first word it outranks the next word (1.24 > 1.23)
 
 
+# distinct-from: faculties/access_consciousness.py -- a workspace slot-claim probe
+# distinct-from: faculties/synfire_chain.py -- a packet-propagation predicate
+# distinct-from: gates/amdahl_gate.py -- a pre-registered sham criterion
+# distinct-from: gates/manifest_gate.py -- the manifest gate's own reds
+# distinct-from: infra/demo.py -- an ordered-firing detector. Sites read 2026-10-04.
+# C1-d's text with R1[0] replaced by the core slot's word 0 (`core` 'P' or 'Q'): a planted R/core collision
+def collided_text(item, core):
+    words = combo_text("c1d", item).split()
+    if item[2] == 0:
+        words[2] = COMBO_FAMILIES["c1d"][core][0]
+    return " ".join(words)
+
+
+# True: an R/P collision leaves the p/q identity intact on ranks AND code, so the registered R/P wording
+# cannot fire on B2
+def r_p_collision_keeps_additivity():
+    return check_b2_combo("c1d", lambda it: collided_text(it, "P"))["ok"]
+
+
 def _fires(result, clause):
     """A red fired iff its check failed AND the named clause is the one that failed."""
     return (not result["ok"]) and (not result["conditions"][clause])
@@ -644,6 +663,14 @@ def construction_reds(seed=8900):
         "b2c_xor_in_separable_slot": _fires(check_b2(slot_cell="S0C1"), "witness_reads_separable_8_of_8"),
         "b2_c1d_q_position_depends_on_p": _fires(
             check_b2_combo("c1d", swapped_pq), "ranks_additive_every_combo"
+        ),
+        # cp1 #14: an R word colliding with a CORE word. Measured 2026-10-04: an R/Q collision breaks the identity
+        # in the learner's PSP code (deviation 0.081: a doubled Q[0] bucket moves P's rank with q, and P's rank
+        # crosses t_post where the PSP is 0), while the integer ranks stay additive (the empty-bucket ranks shift
+        # together). An R/P collision keeps both (rank 0, code 1.1e-16): P sits at the first position, so Q keeps
+        # rank 2. B1's collision refusal covers the R/P case, as `r_p_collision_keeps_additivity` pins.
+        "b2_c1d_r_q_collision": _fires(
+            check_b2_combo("c1d", lambda it: collided_text(it, "Q")), "code_additive_every_combo"
         ),
         "b10_s0c0_labels": _fires(
             check_b10(seed, labeller=lambda s, i, k: LABELS[(i >> 1) & 1]), "every_item_both_labels"
