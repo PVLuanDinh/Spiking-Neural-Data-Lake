@@ -742,6 +742,13 @@ EXEMPT = {
         "paged reads (T064/T066). BOUND EXPIRED AT T039 UNMET (US1 audit B3, 2026-08-25; "
         "recorded, not re-dated). Printed by the standing-TODO arm every run",
     ),
+    "unit_organization": (
+        "wire",
+        "specs/022 G7 (T115) P4: the T1 / T4 decision instrument -- a benchmark harness, never on a "
+        "tick (lead ruling, 2026-10-04). Its consumers are G3's growth-loop campaign runner (T1's "
+        "arms on G3's seeds 9300-9307) and G4's wiring run (T4's arms on G7's seeds 13210-13217). "
+        "RETIRES from EXEMPT when either consumer imports it on its campaign path",
+    ),
     "region_charge_gate": (
         "permanent",
         "specs/022 T022: the region-granularity charge verdict (reachable AND measured "
