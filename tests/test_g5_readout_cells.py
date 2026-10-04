@@ -30,3 +30,14 @@ def test_reading_rules():
 def test_the_trace_is_gone():
     for name in ("TraceDelta", "DeltaSched", "reachability_gate", "GATE_FAMILY", "LAMBDAS"):
         assert not hasattr(g, name), f"{name} survived its deletion (record 2.7a)"
+
+
+def test_planted_readout_refuses_an_unknown_plant():
+    with pytest.raises(ValueError):
+        g.planted_readout(20261003, "shuffle")
+
+
+def test_coupled_accuracies_are_prequential_and_bounded():
+    acc = g.coupled_accuracies(g.planted_readout(20261003, "iid_errors", n=100))
+    assert set(acc) == {"uncoupled", "full", "marg"}
+    assert all(0.0 <= v <= 1.0 for v in acc.values())

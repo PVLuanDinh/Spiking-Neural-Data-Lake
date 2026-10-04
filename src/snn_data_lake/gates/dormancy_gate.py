@@ -127,6 +127,13 @@ EXEMPT = {
         "permanent",
         "G1(b)'s selected pool, g1 LSM, a governed benchmark component, KEPT after G1(c)'s RED (stream-null; g1c 3.2: a null keeps the pool) for G5 Part D and G9's engine (g1b section 2.9); consumers: instruments/memory_diagnostic.py's pool arm, instruments/pool_selection.py's campaign, tests/test_recurrent_pool.py",
     ),
+    "categorical_coupling": (
+        "wire",
+        "specs/022 T113 (G5) Part B, record evidence/g5-readout-variants.md section 3: the categorical "
+        "coupling, a calibration layer on the grown readout. Measured by instruments/g5_readout_cells (planted "
+        "PB1/PB2/PB5 MET 2026-10-04; in-brain cells pending). DATED CONSUMER: NeurogenesisSelfImprove.predict_next "
+        "if B-R0..B-R4 hold; DELETED with its arms on a null (record 3.6)",
+    ),
     "g5_readout_cells": (
         "permanent",
         "G5 / T113's readout-variant cells (a governed benchmark instrument; record evidence/g5-readout-variants.md, "

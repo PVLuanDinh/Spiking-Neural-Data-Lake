@@ -673,6 +673,8 @@ TORCH_TIER = {
         "eprop_kernel",
     ],
     "readout": [
+        # specs/022 T113 (G5) Part B: the categorical coupling (a calibration layer, record 3.1) -- measured by instruments/g5_readout_cells; wired into predict_next only if Part B lands
+        "categorical_coupling",
         "online_readout",
     ],
     "faculties": [

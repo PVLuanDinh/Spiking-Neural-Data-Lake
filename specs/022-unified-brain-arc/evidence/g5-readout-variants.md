@@ -916,3 +916,43 @@ The 12 discovery TRACE - DELTA_SCHED lines are in the run log; they are printed 
 - **For the owner (question 4, now sharpened by measurement):** the learning-side presynaptic trace has no
   replicable positive on the stateless substrate, even on a planted chain. A trace stays plausible only where the
   substrate carries state (Part D, by its own amendment). This stays batched.
+
+## Results: Part B's brain-free planted checks PB1 / PB2 / PB5 (2026-10-04)
+
+**All three are MET.** These checks run on a SYNTHETIC readout (`g5_readout_cells.planted_readout`): class
+probabilities from a planted error process, with no engine. They test the coupling and its control, not the brain.
+
+**The fixture**, fixed in code BEFORE the registered seeds ran (once) and never tuned after: n = 400 events, k = 4
+classes, logit strength 2.0 on the readout's named class over N(0, 1) logit noise, and a hit rate of 0.85.
+- PB1 (relabel): truths 0-2 are named (t + 1) % 3, class 3 is answered right, and the truths are uniform, so both
+  marginals are equal.
+- PB2 (iid_errors): the readout is right at 0.85, else names a uniform OTHER class.
+- PB5 (prior): the truths are drawn from (0.55, 0.15, 0.15, 0.15), with a +1.0 logit bias on class 3.
+
+**Output, verbatim** (`--planted`; seeds 11924-11931 for PB1/PB2 and 11944-11951 for PB5):
+
+    relabel: full - uncoupled                    mean +0.4584  t +47.407  ++++++++  FPR(diag) 0.0352  skew +0.96  MET
+    relabel: full - marg                         mean +0.4509  t +40.015  ++++++++  FPR(diag) 0.0352  skew +0.73  MET
+    iid_errors: full - uncoupled                 mean -0.0100  t -3.480  ----0---  FPR(diag) 0.0625  skew -0.21  NOT MET
+    prior: marg - uncoupled                      mean +0.0897  t +13.055  ++++++++  FPR(diag) 0.0469  skew +0.38  MET
+    prior: full - marg                           mean -0.0338  t -2.555  -+-----+  FPR(diag) 0.0625  skew -0.65  NOT MET
+    PB1 MET; PB2 MET; PB5 MET
+
+**What this establishes.**
+- The coupling can recover a which-confuses-which structure (PB1).
+- The marginal control is alive (PB5): it corrects a pure base-rate miscalibration, so B-R3's
+  contrast(COUPLED - COUPLED_MARG) cannot pass because the control is dead.
+- The two readings differ in the direction 3.3 assumes: on equal marginals only the off-diagonal moves evidence.
+
+**Disclosed, unprompted (P8 clause 4).** On NON-systematic errors (PB2) the full coupling did not merely fail to
+help: it read measurably WORSE than the uncoupled argmax (mean -0.0100, t -3.480, 7 of 8 negative). PB2 asks only
+that it "must NOT clear", so this is not a red. It does mean the coupling has a real cost where the confusions are
+noise: its counts re-route some correct decisions. That cost is part of what the in-brain B-R1 contrast must
+overcome on the wake stream.
+
+**Run conditions.**
+- Commit d446d9f0 plus the uncommitted `categorical_coupling.py` (sha256 78a18eb8...270526) and instrument (sha256
+  6be99321...51de49e5).
+- Re-run on the committed instrument (sha256 e2568787...27760, which adds only self-check lines): byte-identical
+  output.
+- Brain-free. Logs in the G5 scratchpad: `g5_planted_PB.log` and `g5_planted_PB_run2.log`.
