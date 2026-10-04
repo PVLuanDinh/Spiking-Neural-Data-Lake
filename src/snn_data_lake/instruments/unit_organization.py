@@ -108,8 +108,22 @@ def granularity_guard(pilot, k):
     return bool(detail) and all(d["ok"] for d in detail.values()), detail
 
 
-def t1_struct_decision(u_verdict, e_verdict, *, owner_o9):
-    """2.6a's table. `u_verdict` None = the U half was REFUSED by the guard."""
+# distinct-from: engine/autonomous_loop.py -- persists a coverage ledger; unrelated. Site read.
+# distinct-from: faculties/agency_monitor.py -- per-arm reported quantities of its own rows; unrelated.
+# distinct-from: faculties/evidence_accumulation.py -- a replay consumer factory; unrelated. Site read.
+# distinct-from: faculties/generalizing_novelty.py -- a Spearman correlation; unrelated. Site read.
+# distinct-from: brainstem/so101_arm.py -- the arm's pose-breach predicate; read only, never touched.
+def censoring_refused(censored):
+    """True if more than half the seeds are censored in EITHER arm (2.6); `censored` = (arm flags,
+    reference flags), one bool per seed. Checked BEFORE any scoring (Codex cp3 #8)."""
+    return any(sum(bool(f) for f in flags) * 2 > len(flags) for flags in censored)
+
+
+def t1_struct_decision(u_verdict, e_verdict, *, owner_o9, censored):
+    """2.6a's table. `u_verdict` None = the U half was REFUSED by the guard; `censored` per censoring_refused."""
+    if censoring_refused(censored):
+        return {"verdict": "REFUSED (censoring)", "deletes_structure": False,
+                "disposition": "more than half the seeds censored in an arm: refused, reported, nothing deleted"}
     if u_verdict is None:
         verdict = "PASS (retention only; U untested)" if e_verdict.met else "RED"
     else:
