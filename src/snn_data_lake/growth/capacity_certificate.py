@@ -218,16 +218,29 @@ class Diagnosis:
     log: dict = field(default_factory=dict)
 
 
-def diagnose(learner, texts, labels, history_texts=None):
-    """The three-way diagnosis on the learner's frozen code (2.4). Labels are response names."""
+def current_keys(learner, texts, units=()):
+    """THE one accessor for the learner's FULL current code (cp1 #3): the frozen rank lift plus the
+    grown segment's latency per unit (unit_id order). Contradiction counting, certification and the
+    history pass all read it; nothing reads the frozen code alone."""
+    from snn_data_lake.growth.grown_code import latencies
+
+    return [lift_keys(r, latencies(units, r, learner.tau)) for r in item_ranks(learner, texts)]
+
+
+def diagnose(learner, texts, labels, history_texts=None, units=()):
+    """The three-way diagnosis on the learner's FULL current code (2.4): frozen code + grown segment.
+    Labels are response names. The separator direction is read through the REAL `route_text`, which
+    carries no grown segment until the port lands after R2's P1: with grown units present and no lift
+    witness, the separator cannot be verified on the real reader, so the diagnosis is UNRESOLVED (no
+    growth licensed) and the log says why -- never an exact-arithmetic shadow standing in for the reader."""
     ys = [learner.responses.index(lab) for lab in labels]
     n_lab = len(learner.responses)
-    keys = [lift_keys(r) for r in item_ranks(learner, texts)]
+    keys = current_keys(learner, texts, units)
     k = contradiction_count(keys, ys)
     if k > 0:
         if history_texts is None:
             return Diagnosis("DATA", k, log={"history": "absent"})
-        hkeys = [lift_keys(r) for r in item_ranks(learner, history_texts)]
+        hkeys = current_keys(learner, history_texts, units)
         kh = contradiction_count(hkeys, ys)
         if kh > 0:
             return Diagnosis("DATA", k, kh)
@@ -236,6 +249,12 @@ def diagnose(learner, texts, labels, history_texts=None):
     w = farkas_witness(keys, ys, n_lab)
     if w is not None:
         return Diagnosis("CAPACITY", 0, witness=w, log={"path": w.path})
+    if units:
+        return Diagnosis(
+            "UNRESOLVED",
+            0,
+            log={"separator": "no grown-segment reader yet (the port lands after R2's P1)"},
+        )
     sep = separating_witness(learner, texts, labels)
     if sep is not None:
         return Diagnosis("SEPARABLE", 0, separator=sep)

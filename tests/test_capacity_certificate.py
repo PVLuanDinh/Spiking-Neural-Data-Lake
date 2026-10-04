@@ -195,3 +195,41 @@ def test_lift_covers_every_rank_not_only_the_contributing_ones():
     assert (
         len(lift_keys(ranks)) == 52
     )  # the full lift: the soundness claim holds for any PSP kernel
+
+
+# ---- cp1 #3: the diagnosis reads the FULL current code (frozen + grown segment) ---------------
+
+
+def _two_synapse_unit(learner):
+    from snn_data_lake.growth.grown_code import GrownUnit
+
+    ranks = item_ranks(learner, TEXTS)
+    w = [0.0] * 52
+    w[ranks[0].index(0)], w[ranks[0].index(2)] = 1.0, 1.0
+    return GrownUnit(1, tuple(w), threshold=1.6, window=12, sign=1, out=(0.0,) * len(INTENTS))
+
+
+def test_diagnose_reads_the_grown_segment():
+    learner = _learner()
+    unit = _two_synapse_unit(learner)
+    assert diagnose(learner, TEXTS, XOR).kind == "CAPACITY"
+    d = diagnose(learner, TEXTS, XOR, units=(unit,))
+    assert d.kind != "CAPACITY"  # the capable unit removes the lift witness on the current code
+    assert d.kind == "UNRESOLVED" and "reader" in d.log.get("separator", "")
+
+
+def test_diagnose_keeps_capacity_under_an_incapable_unit():
+    from snn_data_lake.growth.grown_code import GrownUnit
+
+    learner = _learner()
+    w = [0.0] * 52
+    w[item_ranks(learner, TEXTS)[0].index(0)] = 2.0
+    unit = GrownUnit(1, tuple(w), threshold=1.0, window=12, sign=1, out=(0.0,) * len(INTENTS))
+    assert diagnose(learner, TEXTS, XOR, units=(unit,)).kind == "CAPACITY"
+
+
+def test_diagnose_counts_contradictions_on_the_full_code():
+    learner = _learner()
+    unit = _two_synapse_unit(learner)
+    d = diagnose(learner, ["sun sky", "sun sky"], ["GREET", "GOAL"], units=(unit,))
+    assert d.kind == "DATA" and d.k == 2
