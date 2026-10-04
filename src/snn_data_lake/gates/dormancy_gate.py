@@ -130,7 +130,7 @@ EXEMPT = {
     "g5_readout_cells": (
         "permanent",
         "G5 / T113's readout-variant cells (a governed benchmark instrument; record evidence/g5-readout-variants.md, "
-        "frozen at 500d3f58): its 2.7a gate and Part B's cells; consumers: its CLI, run_selfchecks (bare, brain-free) "
+        "frozen at 500d3f58): Part B's cells (Part A and its 2.7a gate deleted on PA1 NOT MET); consumers: its CLI, run_selfchecks (bare, brain-free) "
         "and tests/test_g5_readout_cells.py; never on a tick",
     ),
     "pool_selection": (

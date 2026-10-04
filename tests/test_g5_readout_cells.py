@@ -1,33 +1,16 @@
-"""G5 / T113's instrument reds (specs/022 evidence/g5-readout-variants.md 2.4, 2.6, 2.7a): the bare
-self-check (reach, lifecycle, determinism, the frozen generator, DeltaSched's in-arm matching, the
-reading's NOT MET cases), plus the gate's plumbing on a one-seed family -- never the registered
-seeds."""
+"""G5 / T113's instrument reds (specs/022 evidence/g5-readout-variants.md 2.4, 2.6): the bare
+self-check (a deterministic runner, the frozen generator, the reading's NOT MET cases). Part A's
+trace code and its 2.7a gate were deleted on the gate's null (commit 4ecc90d9 keeps them as run)."""
 
 import pytest
 
 torch = pytest.importorskip("torch")
 
 from snn_data_lake.instruments import g5_readout_cells as g  # noqa: E402
-from snn_data_lake.readout.online_readout import OnlineReadout  # noqa: E402
 
 
 def test_bare_self_check():
-    g.main([])
-
-
-def test_lambda_zero_is_the_incumbent_bit_for_bit():
-    torch.set_num_threads(1)
-    a = g._short(20261003, OnlineReadout("delta"))
-    b = g._short(20261003, g.TraceDelta(0.0))
-    assert torch.equal(a._model.beta, b._model.beta)
-    assert a.state()["live_accuracy"] == b.state()["live_accuracy"]
-
-
-def test_lambda_out_of_range_refuses():
-    with pytest.raises(ValueError):
-        g.TraceDelta(1.0)
-    with pytest.raises(ValueError):
-        g.DeltaSched(-0.1)
+    g.main()
 
 
 def test_generator_refuses_an_unknown_kind_and_is_seeded():
@@ -44,14 +27,6 @@ def test_reading_rules():
     assert met and x["pattern"] == "++++++++" and 0.0 < c.fpr < 0.1  # the FPR is printed, not gated
 
 
-def test_gate_plumbing_on_one_seed():
-    lines = []
-    out = g.reachability_gate(
-        discovery=(20261003,),
-        replication=(20261004,),
-        family=(("burst", 2.0, g.LAMBDAS[0]),),
-        log=lines.append,
-    )
-    assert not out["pa1_met"]  # one seed is degenerate: NOT MET by ruling 9
-    assert any("PA1 NOT MET" in s for s in lines)
-    assert any("independence reference" in s for s in lines)
+def test_the_trace_is_gone():
+    for name in ("TraceDelta", "DeltaSched", "reachability_gate", "GATE_FAMILY", "LAMBDAS"):
+        assert not hasattr(g, name), f"{name} survived its deletion (record 2.7a)"
