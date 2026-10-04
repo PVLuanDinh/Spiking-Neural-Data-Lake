@@ -173,6 +173,10 @@ EXEMPT = {
         "permanent",
         "G2 / T110's problem generators and construction checks (a governed benchmark; evidence g2-taught-problems.md 2.2, 2.8, 2.15); consumers: taught_problems / taught_campaign (G2), G3, G4 (witness_units, decoy_units), G5, G6, G9, tests/test_delayed_cue.py",
     ),
+    "sleep_plasticity_ab": (
+        "permanent",
+        "R3 / T104's sleep-plasticity campaign (a governed benchmark on scratch-home brains, never the live tick; its record is evidence/r3-replay-growth-composition.md section 5); consumers: its CLI and tests/test_sleep_plasticity_ab.py",
+    ),
     "brian2_backend": (
         "permanent",
         "the CI-asserted Brian2 reference simulator, the CPU parity oracle (owner decision 2, 2026-10-02: 'CPU ref + Torch/kernel GPU'); its last live-rooted importers (training/trainer, training/spiking_lm) retired 2026-10-02 (specs/022 evidence trainer-retirement.md); consumers: its __main__ self-check (run_selfchecks, ci.yml) and the call sites still listed in its MIGRATED_CALL_SITES",

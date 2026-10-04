@@ -323,6 +323,8 @@ REGIONS = {
         "sleep_pressure",
         # specs/022 G6 (T114) part (a): the live sleep-pruner census + per-pruner neuter-A/B (R0-R4, E)
         "sleep_pruner_census",
+        # specs/022 R3 / T104 P1: the 2026-09-27 sleep-plasticity arms F1-F4 (two-process scratch-home arm-seeds, the presentation ledger, K1-K14, rulings 9 / 9a); never the live lake
+        "sleep_plasticity_ab",
         "snn_mnist_stdp_genn",
         # G2 / T110 P3: the taught campaign -- the canonical incumbent through G0's channel, the presized and NGSNN front-ends, the explicit-history control, B3-B8, the G-R2 reading and the driver (evidence g2-taught-problems.md 2.4, 2.5, 2.8, 2.9, 2.15)
         "taught_campaign",

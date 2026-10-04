@@ -300,6 +300,7 @@ CORE = [
     "plasticity.benna_fusi",
     "plasticity.homeostatic_plasticity_stack",
     "plasticity.plasticity_rule_stack",
+    "instruments.sleep_plasticity_ab",  # R3 / T104 P1: rulings 9 / 9a, enumerated flips, K11 reach, K12, census, K14 decoy red
     "instruments.snn_mnist_stdp_genn",  # specs/012 GeNN port: codegen-integrity check every box; GPU train is GENN_RUN-gated
     # substrate â€” the spiking data-lake, telemetry, and infra (not a brain region)
     "infra._mathutils",
