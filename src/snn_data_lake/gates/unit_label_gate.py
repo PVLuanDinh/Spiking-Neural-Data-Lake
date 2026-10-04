@@ -320,7 +320,9 @@ def require_labeled_targets(target_ids, records, *, resolve_problem):
 # or a name concatenated under a different name; place_labeled callers are not in (a) yet (no live caller
 # exists; it lands with G3's admitting commit) -- (b) and the ticket cover them.
 
-#: Grown-row segments: name -> (module, what grows, owning row, the debt keys that keep it open).
+#: Grown-row segments: name -> (module, what grows, owning row, the debt keys that keep it open, the
+#: declared ADMIT POINT -- the one "rel::qualname" whose ticket-first append is admissible; None until the
+#: owner builds it). Row growth anywhere else is a finding unless debt-listed (Codex cp3 #5).
 GROWN_SEGMENTS = {
     "neurogenesis_engine": (
         "snn_data_lake/growth/ng_snn.py",
@@ -328,6 +330,7 @@ GROWN_SEGMENTS = {
         "G3/T111",
         ("snn_data_lake/growth/ng_snn.py::NGSNN.fit",
          "snn_data_lake/growth/neurogenesis_engine.py::NeurogenesisSelfImprove._refit"),
+        None,  # G3's admit_rows lands with its admitting commit
     ),
 }
 
@@ -374,7 +377,6 @@ SCAN_FALSE_POSITIVES = {
 }
 
 _GATE_CALLS = frozenset({"require_admissible", "check_admission"})
-_TICKET_CALLS = frozenset({"consume", "admit_rows"})
 
 
 
@@ -496,7 +498,7 @@ def _row_growth_functions(root):
     """{"rel::qualname": ticketed?} for every function that regrows rows (module harness fns skipped)."""
     from snn_data_lake.gates.growth_coverage_gate import _HARNESS_FNS
 
-    out = {}
+    out, first_growth, nodes = {}, {}, {}
     for py in sorted(root.rglob("*.py")):
         rel = py.relative_to(root).as_posix()
         try:
@@ -512,8 +514,31 @@ def _row_growth_functions(root):
             if hit and hit[0] in _HARNESS_FNS:
                 continue
             key = f"{rel}::{hit[0] if hit else '<module>'}"
-            out[key] = bool(hit) and _calls(hit[1], _TICKET_CALLS)
+            first_growth[key] = min(first_growth.get(key, node.lineno), node.lineno)
+            nodes[key] = hit[1] if hit else None
+    for key, fn in nodes.items():
+        out[key] = fn is not None and _consumes_first(fn, first_growth[key])
     return out
+
+
+# distinct-from: reasoning/nengo_gui_brain.py -- its _module_scope_is_inert checks THAT file's
+#   module-level statements for import side effects; this checks a function body's statement order
+#   for a ticket spent before an append. Site read.
+def _consumes_first(fn, growth_line):
+    """True iff `fn`'s body holds, as a TOP-LEVEL statement before `growth_line`, a call
+    `<parameter>.consume(...)` -- a ticket passed IN and spent before any row grows (Codex cp3 #5: a call
+    nested under a branch, on an unrelated object, or after the append does not count)."""
+    a = fn.args
+    params = {p.arg for p in (*a.posonlyargs, *a.args, *a.kwonlyargs)}
+    for stmt in fn.body:
+        if stmt.lineno >= growth_line:
+            break
+        call = stmt.value if isinstance(stmt, ast.Expr) else None
+        if (isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
+                and call.func.attr == "consume" and isinstance(call.func.value, ast.Name)
+                and call.func.value.id in params):
+            return True
+    return False
 
 
 def _root(src_root):
@@ -532,11 +557,20 @@ def label_creation_findings(src_root=None, known=None):
 #   reports unticketed weight-row growth. Site read.
 # distinct-from: engine/brain.py, faculties/self_improvement_suite.py, faculties/self_model.py,
 #   faculties/time_cells.py -- see _row_growth_functions above; all sites read.
-def row_growth_findings(src_root=None, known=None, out_of_scope=None):
+# distinct-from: growth/neurogenesis_engine.py -- a crc32 growth fingerprint; no scan. Site read.
+# distinct-from: growth/arealization.py -- a GRN fixed-point settle; unrelated. Site read.
+# distinct-from: growth/growth_stop.py -- a port declaration; unrelated. Site read.
+# distinct-from: growth/h01_ingest.py -- a join-count refusal; unrelated. Site read.
+# distinct-from: growth/ng_snn.py -- prune_unearned drops units; it is a SCANNED site, not a scanner. Read.
+def row_growth_findings(src_root=None, known=None, out_of_scope=None, segments=None):
+    """Row growth that is neither ADMITTED -- the declared admit point of a GROWN_SEGMENTS row, spending
+    its ticket first (_consumes_first) -- nor debt-listed, out of scope, or a reviewed false positive."""
     known = KNOWN_UNGATED_ROW_GROWTH if known is None else known
     oos = {**OUT_OF_SCOPE_ROW_GROWTH, **SCAN_FALSE_POSITIVES} if out_of_scope is None else out_of_scope
+    segments = GROWN_SEGMENTS if segments is None else segments
+    admit_points = {seg[4] for seg in segments.values() if seg[4]}
     return sorted(k for k, ticketed in _row_growth_functions(_root(src_root)).items()
-                  if not ticketed and k not in known and k not in oos)
+                  if not (ticketed and k in admit_points) and k not in known and k not in oos)
 
 
 # distinct-from: gates/immortal_retention.py -- its stale_known is bound to KNOWN_UNLABELED and its

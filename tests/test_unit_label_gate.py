@@ -408,8 +408,28 @@ def test_r14_row_growth_scan_sees_what_the_creation_scan_cannot(tmp_path):
         "    def grow_ticketed(self, new, ticket):\n"
         "        ticket.consume([1])\n        self.W = np.vstack([self.W, new])\n"
     ))
-    assert G.row_growth_findings(src_root=root, known={}) == ["fakepkg/mod.py::Grower.grow"]
+    inventory = {"fx": ("fakepkg/mod.py", "fixture rows", "G7", (), "fakepkg/mod.py::Grower.grow_ticketed")}
+    assert G.row_growth_findings(src_root=root, known={}, out_of_scope={}, segments=inventory) == [
+        "fakepkg/mod.py::Grower.grow"]
     assert G.label_creation_findings(src_root=root, known={}) == []
+
+
+_ADMIT = "fakepkg/mod.py::Seg.admit_rows"
+
+
+@pytest.mark.parametrize("body, inventory, admitted", [
+    ("        ticket.consume(rows)\n        self.W = np.vstack([self.W, rows])\n", True, True),
+    ("        ticket.consume(rows)\n        self.W = np.vstack([self.W, rows])\n", False, False),  # uncensused
+    ("        if False:\n            ticket.consume(rows)\n        self.W = np.vstack([self.W, rows])\n",
+     True, False),  # unreachable
+    ("        self.cache.consume(rows)\n        self.W = np.vstack([self.W, rows])\n", True, False),  # unrelated
+    ("        self.W = np.vstack([self.W, rows])\n        ticket.consume(rows)\n", True, False),  # after append
+])
+def test_cp3_5_a_ticket_counts_only_structurally_at_a_declared_admit_point(tmp_path, body, inventory, admitted):
+    root = _tree(tmp_path, f"import numpy as np\nclass Seg:\n    def admit_rows(self, rows, ticket):\n{body}")
+    segs = {"fx": ("fakepkg/mod.py", "fixture rows", "G7", (), _ADMIT)} if inventory else {}
+    found = G.row_growth_findings(src_root=root, known={}, out_of_scope={}, segments=segs)
+    assert found == ([] if admitted else [_ADMIT])
 
 
 @pytest.mark.parametrize("stmt", [
