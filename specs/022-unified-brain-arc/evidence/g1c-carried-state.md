@@ -442,4 +442,69 @@ recorder or the causal contract; G2's presized nonlinear and delayed-cue control
 
 ## 3. Results
 
-(Empty until the campaign's results record.)
+### 3.1 The campaign (recorded 2026-10-03 22:55 -> 2026-10-04 00:05 CDT, CLI Agent-Teams lead)
+
+- **Head and tree:** every stage ran at `5761f3a7` with a clean tree (`dirty-lines 0` at start and end). Launched detached by
+  `campaign.ps1` with OUT `C:\Users\vinhl\AppData\Local\Temp\g1c-live\run1` (outside the repo), live seed bundle (gate
+  204-207, synthetic gate 5005-5008, live 300-330, R-b6 6000). Before the first recording: the 2.11 non-pytest stages GREEN on
+  this head (precampaign 2026-10-03, ruff, ruff format, `run_selfchecks`, the 16 gates `--assert`, the census, the registry-pin
+  tests 32 passed), an advisor read, and an exposed-seed full-scale rehearsal of every stage on this exact head (rc 0, 0
+  TIMEOUT; the earlier full rehearsals had run at `cd2f4baa` / `ed166c35` / `c8dd93fa` only).
+- **Stages (rc, seconds):** record 0 / 1889 (seed 100 alone 144.1 s); mechanism 0 / 7; instrument 0 / 24; references 0 / 114;
+  construct 0 / 10; migrate 0 / 206; causality 0 / 25; primary 0 / 347; controls 0 / 921; transport 0 / 362; separation 0 /
+  291; report 0 / 3. No TIMEOUT, no halt, no repair: the reserve seeds 331-361 were not used.
+- **Report:** `run1/report.json` (file sha256 `986d5794...02d3d6`; the driver's digest `ec34c68a...a3757c` is over its
+  canonical content) and `run1/report.md` (file sha256 `748c49e7...42433b`). Every number below is copied from that report.
+- **Live lake:** `C:\Users\vinhl\.snn_data_lake\brain_lake.bin` last written 2026-09-27 01:19, unchanged after the campaign.
+
+### 3.2 G-R1: RED (carried state not shown), worded "stream-null"
+
+Read by 2.5's table, top row first: the blind harness held (2.4 (i) R-b6 history-free and positive clauses true; (ii) the oracle
+through the decoder MET), so the second row applies -- **the primary is not met** -- and 2.6's stream-history reading is also
+not met, so the wording is **stream-null**. No skew flag.
+
+| contrast (S = 31, bar T_BAR_S31 = 1.6973) | mean | sd | t | lower bound | + / - / 0 | met |
+| --- | --- | --- | --- | --- | --- | --- |
+| oracle (f64) - (a), readout | 0.0576 | 0.0973 | 3.2977 | 0.0280 | 20 / 1 / 10 | yes |
+| oracle (f64) - (a), grower (reported) | 0.0837 | 0.1752 | 2.6598 | 0.0303 | 25 / 5 / 1 | yes |
+| stream history (e1) - (e1-0), readout | 0.0011 | 0.0111 | 0.5478 | -0.0023 | 10 / 15 / 6 | no |
+| **primary D = Carried - Settled, readout** | **-0.0074** | 0.0191 | -2.1417 | -0.0132 | 8 / 22 / 1 | **no** |
+| primary D, grower (reported) | -0.0071 | 0.0446 | -0.8856 | -0.0207 | 13 / 18 / 0 | no |
+| D_shuf, readout | 0.0152 | 0.0177 | 4.7902 | 0.0098 | 23 / 8 / 0 | yes |
+| W = D0 - D, readout (window 0) | 0.0062 | 0.0189 | 1.8295 | 0.0004 | 18 / 10 / 3 | yes |
+
+The exact sign-flip false-positive rate is printed beside every row in the report (0.0422-0.0550). Disclosed, read nothing
+into: the readout's primary mean is NEGATIVE (Carried below Settled on 22 of 31 seeds); D_shuf met and W met are reported
+under a RED primary and license nothing (2.5's later rows apply only to a met primary). The transport arms (pool-copy,
+pool-act, pool-swap; b = 256) are reported only: none met; pool-act read below its references (D_t - D -0.0551, 3 / 28 / 0).
+The forbidden-map request (`w_live`) raised as required.
+
+**What it licenses (2.1):** the null refuses "carried state helps prospective prediction through this fixed decoder on this
+stream" and nothing else. The pool is KEPT, G4 does not wait on it, it is not a stop of the work loop, and it is not a null on
+an owner-drawn part (P4d): the reservoir stays; only G-R9 can claim or refuse the engine's reservoir. Stream-null names the
+cause the instrument can see: the stream's own history did not help the reference readout either (2.6), so this stream did not
+pose a problem that carried state could solve.
+
+### 3.3 Migration gate (2.9): the hosted form survives
+
+All three conjuncts held (d_live_within, d_task_within, parity; R-b3 and R-b4 on the hosted form): the KERNEL host ran every
+later stage. Mean D per host: kernel live -0.00218 / task 0.12659; port live -0.00626 / task 0.12659. The machinery red fired
+(hosted Reset: D_task 0.00132). The port reproduced G1(b)'s per-seed D on 204-207 within 4.2e-5. Quantization sensitivity and
+the parity horizon over frac_bits {4, 8, 12, 16, 24, 32} are REPORT ONLY (parity equal from 24 bits up).
+
+### 3.4 Construct (2.8): G2(ii)'s construction check PASS
+
+A1-A5 all held on learner seeds 7000-7007, 400 epochs: A1 four distinct buckets (cat 28, dog 41, sun 31, sky 51); A2 ranks and
+code additive (max code deviation 1.1e-16); A3 max correct 2 of 4 on every seed, 0 of 2000 random settings 4 of 4 (12,800
+presentations); A4 the twin learned and stable on every seed, no bystander, first 4-of-4 step 43-234; A5 witness 4 of 4, min
+margin 0.0321. G2's (ii) taught campaign may therefore run (G2 2.12). Separation (reported): arm (a) XOR 0.496, twin 1.0;
+Carried XOR 0.676, twin 0.853; Settled XOR 0.996, twin 0.997; the stream reads correctly (floor 0.75, ceiling 0.806).
+
+### 3.5 Exit duties (2.14) and what they wait on
+
+1. The results record: this commit.
+2. Deleting 2.9's non-surviving host (the port) and the HOSTS switch, golden check before and after: HELD for the owner's
+   explicit go (the integration brief's stop-and-ask list names deleting a file), then a stacked commit.
+3. The dormancy rows that say "until G1(c)'s disposition", the plan's T109 note and T108's stale checkbox: stacked commits by
+   the integrator.
+4. The Codex closing report, ONE battery on the stacked head, the closing record LAST, push.
