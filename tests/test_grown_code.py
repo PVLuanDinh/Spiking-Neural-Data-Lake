@@ -147,3 +147,30 @@ def test_restore_refuses_a_stored_synapse_violating_its_sign():
         apply_unit_row(
             (), {"op": "admit", "unit": _unit(8, _one_hot(52, 0), sign=1, out=(-0.3, 0.0))}
         )
+
+
+# ---- cp1 #17: sign exactly +-1, every synapse finite, refused with ids
+
+
+def test_a_sign_other_than_plus_or_minus_one_is_refused():
+    with pytest.raises(ValueError, match="unit 4"):
+        apply_unit_row(
+            (), {"op": "admit", "unit": _unit(4, _one_hot(52, 0), sign=0, out=(0.1, -0.1))}
+        )
+    with pytest.raises(ValueError):
+        clip_to_sign([0.1, -0.1], sign=0)
+
+
+def test_non_finite_synapses_are_refused_at_admit_deposit_and_restore():
+    nan = float("nan")
+    with pytest.raises(ValueError, match=r"unit 5.*synapse 1"):
+        apply_unit_row((), {"op": "admit", "unit": _unit(5, _one_hot(52, 0), out=(0.1, nan))})
+    w = _one_hot(52, 0)
+    w[3] = float("inf")
+    with pytest.raises(ValueError, match="unit 6"):
+        apply_unit_row((), {"op": "admit", "unit": _unit(6, w)})
+    units = apply_unit_row((), {"op": "admit", "unit": _unit(9, _one_hot(52, 0))})
+    with pytest.raises(ValueError, match=r"unit 9.*synapse 0"):
+        apply_unit_row(units, {"op": "out", "unit_id": 9, "out": (nan, 0.0)})
+    with pytest.raises(ValueError, match="synapse 1"):
+        clip_to_sign([0.1, nan], sign=1)

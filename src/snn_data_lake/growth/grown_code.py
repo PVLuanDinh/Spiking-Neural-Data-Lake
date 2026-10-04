@@ -88,15 +88,36 @@ def grown_version(units):
     return crc
 
 
-def clip_to_sign(w, sign):
-    """Dale's sign at a deposit: an E unit's output synapses stay >= 0, an I unit's <= 0."""
+def _require_sign(uid, sign):
+    if sign not in (1, -1) or isinstance(sign, bool):
+        raise ValueError(f"unit {uid}: Dale sign must be exactly +1 or -1, got {sign!r}")
+
+
+def _require_finite(uid, what, values):
+    bad = [i for i, x in enumerate(values) if not math.isfinite(x)]
+    if bad:
+        raise ValueError(f"unit {uid}: {what} synapse {bad[0]} is not finite ({values[bad[0]]!r})")
+
+
+def clip_to_sign(w, sign, uid=None):
+    """Dale's sign at a deposit: an E unit's output synapses stay >= 0, an I unit's <= 0. A sign other
+    than exactly +-1 or a non-finite synapse is REFUSED, never clipped (cp1 #17: NaN passes both
+    comparisons and would survive a clip)."""
+    _require_sign(uid, sign)
+    _require_finite(uid, "output", w)
     return [max(x, 0.0) if sign > 0 else min(x, 0.0) for x in w]
 
 
-def _check_sign(uid, sign, out):
-    bad = [i for i, x in enumerate(out) if (sign > 0 and x < 0) or (sign < 0 and x > 0)]
+def _check_unit(u, out):
+    """Admission and restore: sign exactly +-1, every input and output synapse and the threshold finite,
+    every output synapse on the unit's Dale side; each refusal names the unit and the synapse."""
+    _require_sign(u.unit_id, u.sign)
+    _require_finite(u.unit_id, "input", u.w_in)
+    _require_finite(u.unit_id, "threshold", (u.threshold,))
+    _require_finite(u.unit_id, "output", out)
+    bad = [i for i, x in enumerate(out) if (u.sign > 0 and x < 0) or (u.sign < 0 and x > 0)]
     if bad:
-        raise ValueError(f"unit {uid}: output synapse(s) {bad} violate Dale sign {sign:+d}")
+        raise ValueError(f"unit {u.unit_id}: output synapse(s) {bad} violate Dale sign {u.sign:+d}")
 
 
 def apply_unit_row(units, row):
@@ -107,12 +128,12 @@ def apply_unit_row(units, row):
         u = row["unit"]
         if u.unit_id in by_id:
             raise ValueError(f"unit {u.unit_id}: unit_id already admitted (ids are never reused)")
-        _check_sign(u.unit_id, u.sign, u.out)
+        _check_unit(u, u.out)
         by_id[u.unit_id] = u
     elif op == "out":
         u = by_id[row["unit_id"]]
         out = tuple(float(x) for x in row["out"])
-        _check_sign(u.unit_id, u.sign, out)
+        _check_unit(u, out)
         by_id[u.unit_id] = replace(u, out=out)
     elif op == "silence":
         by_id[row["unit_id"]] = by_id[row["unit_id"]].silenced()
