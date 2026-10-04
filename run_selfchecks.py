@@ -85,6 +85,7 @@ CORE = [
     "instruments.carried_state_report",  # G1(c) driver part 2c: provenance refusals, digests, the golden check deterministic and moved by a one-ulp leak
     "instruments.carried_state_driver",  # G1(c) campaign driver: preflight, stage chain, the later stages' refusals, REPAIR.txt, the half-moved rule
     "instruments.inseparable_mapping",  # G2(ii)'s generator + G-R2's construction check: A1-A5, every construction and stream red, a smoke A3/A4 on one development seed
+    "instruments.taught_problems",  # G2 P2: the Problem contract's B9 (predicate), B11 (cost budget), B12 (learning OFF) and its 4 reds incl. the future_d refusal
     "instruments.delayed_cue",  # G2 P1: the problem generators' construction checks (B1, B2, B2-A, B10, B13, B14, witnesses) on dev seed 8000 and all 17 constructed reds; no learner taught
     "sensorimotor.lca_sparse_coding",
     "readout.predictive_coding",
