@@ -272,6 +272,11 @@ def witness_units(problem):
     `inseparable_mapping.check_a5`'s rule (w = +1 at dog and sky, -1 at cat and sun; thresholds -/+
     WITNESS_THRESHOLD), re-expressed as units and pinned against check_a5's answers by the tests."""
     if problem == "ii":
+        # cp1 #21 REFUTED, with this reason: "delegate, never a copy" would need a shared helper INSIDE
+        # inseparable_mapping, which is G1(c)'s campaign-recorded instrument (results record 2d714954) -- editing it
+        # changes a recorded instrument outside this row. The re-expression is instead PINNED to check_a5 by
+        # tests/test_delayed_cue.py (same four answers, margin equal to 1e-12), so any A5 change reds here. The
+        # shared helper is the integrator's / G1(c)'s to add when that file next opens.
         w = [0.0] * N_IN
         w[bucket("dog")], w[bucket("sky")] = 1.0, 1.0
         w[bucket("cat")], w[bucket("sun")] = -1.0, -1.0
