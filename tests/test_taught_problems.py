@@ -74,6 +74,20 @@ def test_u_never_solved_by_a_stateless_reader(seed):
     assert not tp.solved(p, seed, "validation", reads)
 
 
+@pytest.mark.parametrize("pid", ["U", "U_S", "i.S0C1", "c1d"])
+def test_a_label_reading_reader_sees_no_labels(pid):
+    # cp1 #4: route(turns) receives label-free turns, so reading the target cannot solve anything
+    p = tp.PROBLEMS[pid]
+    seen = []
+
+    def cheat(turns):
+        seen.extend(t.label for t in turns)
+        return turns[-1].label
+
+    reads = tp.read_split(p, 8000, "validation", cheat)
+    assert set(seen) == {None} and not tp.solved(p, 8000, "validation", reads)
+
+
 def test_us_reads_draw_fresh_labels():
     p = tp.PROBLEMS["U_S"]
     r0 = [e[-1].label for e in p.episodes(8000, "validation", read_index=0)]

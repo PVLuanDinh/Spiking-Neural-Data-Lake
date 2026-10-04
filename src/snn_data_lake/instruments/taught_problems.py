@@ -175,13 +175,14 @@ def never_solves(epoch_end_solved):
 
 def read_split(problem, seed, split, route, *, read_index=0, construction_check=False):
     """One learning-OFF read: `route(turns_so_far)` answers each probe; context turns are routed too (a
-    stateful reader steps its state on reads). Returns [(answer, label)] for the probes."""
+    stateful reader steps its state on reads). The reader sees LABEL-FREE turns (cp1 #4): the targets stay
+    here, in the judging instrument. Returns [(answer, label)] for the probes."""
     reads = []
     for episode in problem.episodes(seed, split, read_index=read_index,
                                     construction_check=construction_check):
         seen = []
         for turn in episode:
-            seen.append(turn)
+            seen.append(Turn(turn.text, turn.role, None))
             answer = route(tuple(seen))
             if turn.role == "probe":
                 reads.append((answer, turn.label))
