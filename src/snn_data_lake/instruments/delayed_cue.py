@@ -71,7 +71,9 @@ from snn_data_lake.instruments.inseparable_mapping import label_xor as label_xor
 
 LABELS = (GREET, GOAL)  # bit 0 -> GREET, bit 1 -> GOAL (2.2; the pair (ii) uses)
 ADDITIVITY_TOL = 1e-12
-MIN_BUCKET = 8  # every word's bucket >= 8, so fillers are the lowest-index empty buckets in every text
+MIN_BUCKET = (
+    8  # every word's bucket >= 8, so fillers are the lowest-index empty buckets in every text
+)
 
 # ---- (i) the delayed-cue 2x2 (2.2) -------------------------------------------------------------------
 CUE = ("jar", "pen")
@@ -149,13 +151,42 @@ COMBO_FAMILIES = {
     },
 }
 # the R0 buckets: ASSERTED by B1 against the learner's own featurizer, never used to build anything
-BUCKETS_C1D = {"awl": 27, "bat": 11, "bee": 29, "bun": 48, "cab": 45, "car": 33, "cog": 8, "cud": 37,
-               "dip": 24, "dot": 35, "dub": 25, "fir": 42}
-BUCKETS_AC1D = {"fog": 43, "gel": 30, "gin": 18, "gum": 9, "hip": 32, "ink": 44, "jaw": 13, "keg": 22,
-                "lop": 34, "mob": 17, "mod": 40, "orb": 47}
+BUCKETS_C1D = {
+    "awl": 27,
+    "bat": 11,
+    "bee": 29,
+    "bun": 48,
+    "cab": 45,
+    "car": 33,
+    "cog": 8,
+    "cud": 37,
+    "dip": 24,
+    "dot": 35,
+    "dub": 25,
+    "fir": 42,
+}
+BUCKETS_AC1D = {
+    "fog": 43,
+    "gel": 30,
+    "gin": 18,
+    "gum": 9,
+    "hip": 32,
+    "ink": 44,
+    "jaw": 13,
+    "keg": 22,
+    "lop": 34,
+    "mob": 17,
+    "mod": 40,
+    "orb": 47,
+}
 COMBOS = tuple((a, b) for a in range(4) for b in range(4))
 PQ = ((0, 0), (0, 1), (1, 0), (1, 1))
-SPLIT_SIZES = {"teach": 8, "validation": 2, "future": 3, "future_d": 3}  # ruling 12: counts only go up
+SPLIT_SIZES = {
+    "teach": 8,
+    "validation": 2,
+    "future": 3,
+    "future_d": 3,
+}  # ruling 12: counts only go up
 SPLITS = tuple(SPLIT_SIZES)
 
 
@@ -458,8 +489,11 @@ def check_b2_combo(family="c1d", text_of=None):
         "code_additive_every_combo": all(d[1] <= ADDITIVITY_TOL for d in devs),
         "codes_distinct_every_combo": all(d[2] for d in devs),
     }
-    return {"ok": all(conditions.values()), "conditions": conditions,
-            "max_code_deviation": max(d[1] for d in devs)}
+    return {
+        "ok": all(conditions.values()),
+        "conditions": conditions,
+        "max_code_deviation": max(d[1] for d in devs),
+    }
 
 
 def float_separability_lp(texts_labels):
@@ -474,8 +508,11 @@ def float_separability_lp(texts_labels):
         y = 1.0 if label == GOAL else -1.0
         rows.append([-y * v for v in code(text)] + [-y])
     result = linprog(
-        c=[0.0] * (N_IN + 1), A_ub=rows, b_ub=[-1.0] * len(rows),
-        bounds=[(None, None)] * (N_IN + 1), method="highs",
+        c=[0.0] * (N_IN + 1),
+        A_ub=rows,
+        b_ub=[-1.0] * len(rows),
+        bounds=[(None, None)] * (N_IN + 1),
+        method="highs",
     )
     # cp1 #20: HiGHS status 2 is PROVEN infeasibility; any other non-zero status (iteration limit, numerical
     # trouble) is unresolved and reported as such, never read as infeasible
@@ -486,9 +523,12 @@ def float_separability_lp(texts_labels):
 
 # D2's float measurement for the record, beside the witness margins (cp1 #20)
 LP_CASES = {
-    "S0C0": ("i", "S0C0", "probe"), "S1C0_history": ("i", "S1C0", "history"),
-    "S0C1": ("i", "S0C1", "probe"), "S1C1_history": ("i", "S1C1", "history"),
-    "c1d_union": ("combo", "c1d", None), "ac1d_union": ("combo", "ac1d", None),
+    "S0C0": ("i", "S0C0", "probe"),
+    "S1C0_history": ("i", "S1C0", "history"),
+    "S0C1": ("i", "S0C1", "probe"),
+    "S1C1_history": ("i", "S1C1", "history"),
+    "c1d_union": ("combo", "c1d", None),
+    "ac1d_union": ("combo", "ac1d", None),
 }
 
 
@@ -516,9 +556,10 @@ def check_b3(answers):
 PASSES = 4
 
 
-def check_b10(seed, n_items=len(ITEMS_I), labeller=None):
+def check_b10(seed, n_items=None, labeller=None):
     """B10: under U's labels every item carries both labels across the PASSES passes of a read (so a stateless
     reader is never solved, exactly), and the labels are balanced. `labeller(seed, i, k)` builds the red."""
+    n_items = len(ITEMS_I) if n_items is None else n_items
     labeller = labeller or u_label
     table = {i: [labeller(seed, i, k) for k in range(PASSES)] for i in range(n_items)}
     both = all(set(v) == set(LABELS) for v in table.values())
@@ -585,8 +626,11 @@ def check_b2a(labelled=None):
     answer = combo_witness_answer("ac1d")
     every = combo_items(COMBOS)
     right = sum(answer(combo_text("ac1d", it)) == label(it) for it in every)
-    return {"ok": right == len(every), "conditions": {"witness_reads_all_64": right == len(every)},
-            "right": right}
+    return {
+        "ok": right == len(every),
+        "conditions": {"witness_reads_all_64": right == len(every)},
+        "right": right,
+    }
 
 
 def check_witnesses():
@@ -609,8 +653,13 @@ def check_witnesses():
 
 def construction_check(seeds=(8000, 8001, 8002, 8003)):
     """Every learner-free construction check of P1; the split- and label-dependent ones on each of `seeds`."""
-    result = {"b1": check_b1_all(), "b2": check_b2(), "b2_c1d": check_b2_combo("c1d"),
-              "b2a": check_b2a(), "witnesses": check_witnesses()}
+    result = {
+        "b1": check_b1_all(),
+        "b2": check_b2(),
+        "b2_c1d": check_b2_combo("c1d"),
+        "b2a": check_b2a(),
+        "witnesses": check_witnesses(),
+    }
     per_seed = {}
     for seed in seeds:
         row = {"b10": check_b10(seed)["ok"], "b10s": check_b10s(seed)["ok"]}
@@ -621,9 +670,9 @@ def construction_check(seeds=(8000, 8001, 8002, 8003)):
             row[f"draws_{family}"] = draws
         per_seed[seed] = row
     result["per_seed"] = per_seed
-    result["verdict"] = all(result[k]["ok"] for k in ("b1", "b2", "b2_c1d", "b2a", "witnesses")) and all(
-        v for row in per_seed.values() for k, v in row.items() if not k.startswith("draws")
-    )
+    result["verdict"] = all(
+        result[k]["ok"] for k in ("b1", "b2", "b2_c1d", "b2a", "witnesses")
+    ) and all(v for row in per_seed.values() for k, v in row.items() if not k.startswith("draws"))
     return result
 
 
@@ -686,10 +735,16 @@ def construction_reds(seed=8900):
             "probe_code_cue_free",
         ),
         "b2b_q_position_depends_on_p": _fires(
-            check_b2(probe=lambda it: probe_text(it) if it[1] == 0 else f"{Q_WORDS[it[2]]} {P_WORDS[it[1]]}"),
+            check_b2(
+                probe=lambda it: (
+                    probe_text(it) if it[1] == 0 else f"{Q_WORDS[it[2]]} {P_WORDS[it[1]]}"
+                )
+            ),
             "ranks_additive",
         ),
-        "b2c_xor_in_separable_slot": _fires(check_b2(slot_cell="S0C1"), "witness_reads_separable_8_of_8"),
+        "b2c_xor_in_separable_slot": _fires(
+            check_b2(slot_cell="S0C1"), "witness_reads_separable_8_of_8"
+        ),
         "b2_c1d_q_position_depends_on_p": _fires(
             check_b2_combo("c1d", swapped_pq), "ranks_additive_every_combo"
         ),
@@ -704,19 +759,26 @@ def construction_reds(seed=8900):
         "b10_s0c0_labels": _fires(
             check_b10(seed, labeller=lambda s, i, k: LABELS[(i >> 1) & 1]), "every_item_both_labels"
         ),
-        "b10s_shared_index": _fires(check_b10s(seed, read_indices=(0, 0)), "reads_draw_distinct_streams"),
+        "b10s_shared_index": _fires(
+            check_b10s(seed, read_indices=(0, 0)), "reads_draw_distinct_streams"
+        ),
         "b13_future_future_d_shared": _fires(check_b13(shared), "four_way_disjoint"),
         "b13_r1_3_missing_from_teach": _fires(
-            check_b13({"teach": tuple(no_r1_3[:8]), "validation": (), "future": (), "future_d": ()}),
+            check_b13(
+                {"teach": tuple(no_r1_3[:8]), "validation": (), "future": (), "future_d": ()}
+            ),
             "teach_covers_every_distractor_word",
         ),
         "b13_future_d_of_2": _fires(
             check_b13({**parts, "future_d": parts["future_d"][:2]}), "sizes_at_least_registered"
         ),
         "b14_witness_on_unlearnable_labels": _fires(
-            check_b14("c1d", parts, labelled=lambda it: LABELS[it[2] & 1]), "witness_solves_every_split"
+            check_b14("c1d", parts, labelled=lambda it: LABELS[it[2] & 1]),
+            "witness_solves_every_split",
         ),
-        "b2a_xor_labels": _fires(check_b2a(labelled=lambda it: LABELS[it[0] ^ it[1]]), "witness_reads_all_64"),
+        "b2a_xor_labels": _fires(
+            check_b2a(labelled=lambda it: LABELS[it[0] ^ it[1]]), "witness_reads_all_64"
+        ),
     }
     return {"fired": fired, "all_fired": all(fired.values())}
 

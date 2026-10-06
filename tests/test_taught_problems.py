@@ -1,7 +1,8 @@
-"""G2 / T110's problem contract (instruments/taught_problems.py, P2): the Problem record, its splits as
-episodes (orders, presentation counts, the C1-d disjointness, the future_d guard), the U / U_S fixtures read
-through a stateless reader, the predicate (B9), the budget (B11) and learning OFF (B12), with every P2 red.
-No Brain is built; seeds are the dev block 8000-8003 and the exposed scratch seed 8900."""
+"""G2 / T110's problem contract (instruments/taught_problems.py, P2): the Problem record, its
+splits as episodes (orders, presentation counts, the C1-d disjointness, the future_d guard), the
+U / U_S fixtures read through a stateless reader, the predicate (B9), the budget (B11) and
+learning OFF (B12), with every P2 red. No Brain is built; seeds are the dev block 8000-8003 and
+the exposed scratch seed 8900."""
 
 import pytest
 
@@ -13,8 +14,19 @@ DEV = (8000, 8001, 8002, 8003)
 
 
 def test_registry_covers_every_registered_problem():
-    assert set(tp.PROBLEMS) == {"i.S0C0", "i.S1C0", "i.S0C1", "i.S1C1", "c1d", "ac1d", "ii.xor", "ii.twin",
-                                "aii", "U", "U_S"}
+    assert set(tp.PROBLEMS) == {
+        "i.S0C0",
+        "i.S1C0",
+        "i.S0C1",
+        "i.S1C1",
+        "c1d",
+        "ac1d",
+        "ii.xor",
+        "ii.twin",
+        "aii",
+        "U",
+        "U_S",
+    }
     assert tp.PROBLEMS["i.S1C0"].delay_turns == 1 and tp.PROBLEMS["c1d"].delay_turns == 0
 
 
@@ -136,8 +148,17 @@ def test_b9_b11_b12():
     assert tp.check_b9()["ok"]
     result = tp.check_b11()
     assert result["ok"]
-    assert result["floors"] == {"i.S0C0": 8, "i.S1C0": 8, "i.S0C1": 8, "i.S1C1": 8, "c1d": 32, "ac1d": 32,
-                                "ii.xor": 4, "ii.twin": 4, "aii": 4}
+    assert result["floors"] == {
+        "i.S0C0": 8,
+        "i.S1C0": 8,
+        "i.S0C1": 8,
+        "i.S1C1": 8,
+        "c1d": 32,
+        "ac1d": 32,
+        "ii.xor": 4,
+        "ii.twin": 4,
+        "aii": 4,
+    }
     assert tp.check_b12(tp.canonical_incumbent(8000), tp.PROBLEMS["i.S1C1"], 8000)["ok"]
 
 
@@ -161,7 +182,11 @@ def test_budget_rule():
 
 def test_canonical_incumbent_carries_the_brain_stack():
     unit = tp.canonical_incumbent(8000)
-    assert type(unit.stack).__name__ == "PlasticityRuleStack" and unit.n_in == 52 and unit.t_post == 6.0
+    assert (
+        type(unit.stack).__name__ == "PlasticityRuleStack"
+        and unit.n_in == 52
+        and unit.t_post == 6.0
+    )
 
 
 def test_every_p2_red_fires():

@@ -66,7 +66,9 @@ class Problem:
     def items(self, seed, split):
         """The split's items for LEARNER-facing callers; future_d is refused (cp1 #11)."""
         if split == "future_d":
-            raise PermissionError("future_d is G6(d)'s untouched set: learner-free construction checks only")
+            raise PermissionError(
+                "future_d is G6(d)'s untouched set: learner-free construction checks only"
+            )
         return self._items(seed, split)
 
     def _items(self, seed, split):
@@ -114,7 +116,9 @@ class Problem:
     # learner-facing held-out read (PASSES passes, offset-stream order); future_d refused, cp1 #11
     def episodes(self, seed, split, *, read_index=0):
         if split == "future_d":
-            raise PermissionError("future_d is G6(d)'s untouched set: learner-free construction checks only")
+            raise PermissionError(
+                "future_d is G6(d)'s untouched set: learner-free construction checks only"
+            )
         return self._episodes(seed, split, read_index)
 
     # the ONLY future_d path: learner-free construction checks and G6(d)'s own re-solve; read_split never uses it
@@ -129,7 +133,11 @@ class Problem:
         rng = random.Random(seed + SPLIT_OFFSETS[split])
         items = self._items(seed, split if self.kind == "combo" else "teach")
         out, presentation = [], 0
-        us = dc.us_labels(seed, split, read_index, PASSES * len(items)) if self.kind == "us" else None
+        us = (
+            dc.us_labels(seed, split, read_index, PASSES * len(items))
+            if self.kind == "us"
+            else None
+        )
         for k in range(PASSES):
             for it in rng.sample(items, len(items)):
                 label = us[presentation] if us else self.label(seed, it, pass_k=k)
@@ -145,7 +153,11 @@ class Problem:
         return len(self.items(seed, "teach"))
 
     def n_union_codes(self):
-        return len(dc.combo_items(dc.COMBOS)) if self.kind == "combo" else len(self.items(8000, "teach"))
+        return (
+            len(dc.combo_items(dc.COMBOS))
+            if self.kind == "combo"
+            else len(self.items(8000, "teach"))
+        )
 
 
 PROBLEMS = {
@@ -206,7 +218,9 @@ def read_split(problem, seed, split, route, *, read_index=0, records=None):
             answer = route(tuple(seen))
             if turn.role == "probe":
                 reads.append((answer, turn.label))
-                if records is not None:  # (context texts, probe text, answer) of the ACTUAL read (cp1 #10)
+                if (
+                    records is not None
+                ):  # (context texts, probe text, answer) of the ACTUAL read (cp1 #10)
                     records.append((tuple(t.text for t in seen[:-1]), turn.text, answer))
     return reads
 
@@ -266,7 +280,9 @@ def open_budget(problem, solved_spends, beta=None, seed=8000):
     value = budget(problem, solved_spends, beta)
     floor = problem.n_teach_codes(seed)
     if value < floor:
-        raise ValueError(f"{problem.id}: budget {value} below its cost floor {floor} (teach codes); refused")
+        raise ValueError(
+            f"{problem.id}: budget {value} below its cost floor {floor} (teach codes); refused"
+        )
     return value
 
 
@@ -284,8 +300,11 @@ def check_b11(rule=None, opener=None):
         undersized_refused = False
     except ValueError:
         undersized_refused = True
-    conditions = {"first_budget_at_least_teach_codes": first, "zero_spend_excluded": zero_excluded,
-                  "undersized_budget_refused": undersized_refused}
+    conditions = {
+        "first_budget_at_least_teach_codes": first,
+        "zero_spend_excluded": zero_excluded,
+        "undersized_budget_refused": undersized_refused,
+    }
     return {"ok": all(conditions.values()), "conditions": conditions, "floors": floors}
 
 
@@ -339,7 +358,8 @@ def construction_reds(unit_factory):
         "b9_reader_skipping_one_presentation": _fires(check_b9(skips_last), "one_wrong_not_solved"),
         "b11_unfixed_zero_spend_rule": _fires(check_b11(_budget_unfixed), "zero_spend_excluded"),
         "b11_opener_without_the_floor": _fires(
-            check_b11(opener=lambda p, s, beta=None: budget(p, s, beta)), "undersized_budget_refused"
+            check_b11(opener=lambda p, s, beta=None: budget(p, s, beta)),
+            "undersized_budget_refused",
         ),
         "b12_validation_calls_correct": _fires(
             check_b12(unit_factory(8900), problem, 8900, read=correct_once), "state_byte_identical"
@@ -377,8 +397,10 @@ def main():
     reds = construction_reds(canonical_incumbent)
     assert reds["all_fired"], reds["fired"]
     counts = {pid: p.presentations(8000, "validation") for pid, p in PROBLEMS.items()}
-    print(f"self-check OK: B9, B11, B12; {sum(reds['fired'].values())} of {len(reds['fired'])} reds fired; "
-          f"validation presentations {counts}")
+    print(
+        f"self-check OK: B9, B11, B12; {sum(reds['fired'].values())} of {len(reds['fired'])} reds fired; "
+        f"validation presentations {counts}"
+    )
 
 
 if __name__ == "__main__":

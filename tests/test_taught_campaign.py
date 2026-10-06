@@ -1,8 +1,8 @@
-"""G2 / T110's taught campaign (instruments/taught_campaign.py, P3): the G-R2 reading and a red per row, the
-driver's preflight refusals, the front-ends (determinism, the default texts byte-identical, teach-only medians
-for C1-d), the readers and the attempt on short schedules, B3 on a live reader with its stateful red, and B8's
-channel identity under throwaway_home() (the one test that builds a Brain). Seeds: scratch 8900-8901 and the
-reds block 8500 only."""
+"""G2 / T110's taught campaign (instruments/taught_campaign.py, P3): the G-R2 reading and a red per
+row, the driver's preflight refusals, the front-ends (determinism, the default texts byte-
+identical, teach-only medians for C1-d), the readers and the attempt on short schedules, B3 on a
+live reader with its stateful red, and B8's channel identity under throwaway_home() (the one
+test that builds a Brain). Seeds: scratch 8900-8901 and the reds block 8500 only."""
 
 import pytest
 
@@ -19,7 +19,9 @@ def test_reading_pass_and_every_row_red():
     assert reds["all_fired"], reds["fired"]
 
 
-@pytest.mark.parametrize("seeds,out", [((300,), "x"), ((7003,), "x"), ((12000,), "x"), (tuple(range(8200, 8208)), None)])
+@pytest.mark.parametrize(
+    "seeds,out", [((300,), "x"), ((7003,), "x"), ((12000,), "x"), (tuple(range(8200, 8208)), None)]
+)
 def test_preflight_refusals(seeds, out, tmp_path):
     out = str(tc.REPO / "out") if out is None else str(tmp_path / out)
     with pytest.raises(PermissionError):
@@ -52,10 +54,16 @@ def _ii_rows(seeds, override=None):
     return rows
 
 
-@pytest.mark.parametrize("failing,prefix", [
-    ((), "PASS (ii)"), (("inc.ii.xor",), "DISAGREEMENT"), (("inc.ii.twin",), "RED: (ii)'s separable"),
-    (("pre.ii.xor",), "RED: (ii)'s presized"), (("pre.ii.twin",), "RED: (ii)'s presized"),
-])
+@pytest.mark.parametrize(
+    "failing,prefix",
+    [
+        ((), "PASS (ii)"),
+        (("inc.ii.xor",), "DISAGREEMENT"),
+        (("inc.ii.twin",), "RED: (ii)'s separable"),
+        (("pre.ii.xor",), "RED: (ii)'s presized"),
+        (("pre.ii.twin",), "RED: (ii)'s presized"),
+    ],
+)
 def test_reading_ii_rows_each_fire(failing, prefix):
     # cp1 #6: (ii) has its own reading; each row's planted failure gives that row's verdict
     seeds = (8900, 8901)
@@ -70,8 +78,14 @@ def test_reading_ii_not_run_and_partial_evidence():
         tc.reading_ii(rows, (8900, 8901))
 
 
-@pytest.mark.parametrize("evidence", [{"verdict": False, "seeds": list(range(7000, 7008))},
-                                      {"verdict": True, "seeds": [7000]}, {"verdict": "yes"}])
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        {"verdict": False, "seeds": list(range(7000, 7008))},
+        {"verdict": True, "seeds": [7000]},
+        {"verdict": "yes"},
+    ],
+)
 def test_ii_refused_without_g1c_construct_pass(evidence, tmp_path):
     with pytest.raises(PermissionError):
         tc.run_campaign((8900,), str(tmp_path), g1c_construct=evidence, require_clean=False)
@@ -92,7 +106,9 @@ def test_a_failed_prerequisite_halts_before_any_arm(failure, tmp_path, monkeypat
     if failure == "construction":
         monkeypatch.setattr(tc.dc, "construction_check", lambda seeds: {"verdict": False})
     record = tc.run_campaign((8900,), str(tmp_path / "out"), require_clean=False)
-    assert record["verdict"].startswith("RED: construction" if failure == "construction" else "HALT")
+    assert record["verdict"].startswith(
+        "RED: construction" if failure == "construction" else "HALT"
+    )
     assert "rows" not in record and (tmp_path / "out" / "g2_campaign.json").exists()
 
 
@@ -119,13 +135,24 @@ def test_dev_measurement_refuses_non_dev_seeds(tmp_path):
 
 
 def test_dev_measurement_derives_on_a_planted_grid(tmp_path, monkeypatch):
-    # the derivation rules on planted rows: H = 2 x the smallest passing H; E = max(400, 2 x largest, /50)
+    # the derivation rules on planted rows: H = 2 x the smallest passing H; E = max(400, 2 x
+    # largest, /50)
     def planted(stage, kind, pid, seed, epochs, h, solves=True):
         stable = solves and not (pid == "c1d") and not (stage == "R1" and h == 16)
-        return {"stage": stage, "arm": kind, "problem": pid, "seed": seed, "h": h, "epochs": epochs,
-                "stable": stable, "never": not solves, "max_acc": 1.0,
-                "to_stable": (100 if stage == "R1" else 230) if stable else None,
-                "future_solved": False if pid == "c1d" else None, "future_acc": None}
+        return {
+            "stage": stage,
+            "arm": kind,
+            "problem": pid,
+            "seed": seed,
+            "h": h,
+            "epochs": epochs,
+            "stable": stable,
+            "never": not solves,
+            "max_acc": 1.0,
+            "to_stable": (100 if stage == "R1" else 230) if stable else None,
+            "future_solved": False if pid == "c1d" else None,
+            "future_acc": None,
+        }
 
     monkeypatch.setattr(tc, "_dev_row", lambda *a, **k: planted(*a, **k))
     derived = tc.dev_measurement(str(tmp_path / "d.jsonl"), seeds=(8000,))
@@ -133,7 +160,13 @@ def test_dev_measurement_derives_on_a_planted_grid(tmp_path, monkeypatch):
 
 
 def test_seed_blocks_inside_g2s_block_and_disjoint():
-    blocks = [tc.DEV_SEEDS, tc.CONFIRMATORY_SEEDS, tc.RESERVE_SEEDS, (tc.RED_SEED,), tc.SCRATCH_SEEDS]
+    blocks = [
+        tc.DEV_SEEDS,
+        tc.CONFIRMATORY_SEEDS,
+        tc.RESERVE_SEEDS,
+        (tc.RED_SEED,),
+        tc.SCRATCH_SEEDS,
+    ]
     flat = [s for b in blocks for s in b]
     assert len(flat) == len(set(flat)) and all(8000 <= s <= 8999 for s in flat)
     assert not set(flat) & tc.LIVE_SEEDS
@@ -182,7 +215,8 @@ def test_b3_identity_holds_for_incumbent_and_reds_for_history():
 
 
 class _CueCatcher:
-    # a hidden-state reader: it captures the cue from SEPARATE context reads, then answers the probe from it
+    # a hidden-state reader: it captures the cue from SEPARATE context reads, then answers the
+    # probe from it
     def __init__(self):
         self.cue = None
 
@@ -196,11 +230,14 @@ class _CueCatcher:
 
 
 def test_b3_judged_on_the_actual_stream_catches_a_cue_capturing_reader():
-    # cp1 #10: a reader that captures cues during separate context reads solves S1C0 and must fail B3
+    # cp1 #10: a reader that captures cues during separate context reads solves S1C0 and must fail
+    # B3
     s1c0 = tp.PROBLEMS["i.S1C0"]
     assert not tc.b3_on_stream(_CueCatcher(), s1c0, SCRATCH, 2)
     result = tc.attempt(s1c0, _CueCatcher(), SCRATCH, 12)
-    assert result["stable"]  # it really solves the state cell, so only B3 stands between it and a PASS
+    assert result[
+        "stable"
+    ]  # it really solves the state cell, so only B3 stands between it and a PASS
 
 
 def test_us_attempt_reads_fresh_labels_each_epoch_end():
@@ -208,7 +245,10 @@ def test_us_attempt_reads_fresh_labels_each_epoch_end():
     p = tp.PROBLEMS["U_S"]
     result = tc.attempt(p, tc.make_reader("incumbent", p, SCRATCH), SCRATCH, 4)
     assert result["validation_read_indices"] == [0, 1, 2, 3]
-    labels = [tuple(e[-1].label for e in p.episodes(SCRATCH, "validation", read_index=i)) for i in range(4)]
+    labels = [
+        tuple(e[-1].label for e in p.episodes(SCRATCH, "validation", read_index=i))
+        for i in range(4)
+    ]
     assert len(set(labels)) == 4 and result["never"]
 
 
@@ -223,13 +263,18 @@ def test_constant_cue_history_cannot_solve_s1c0():
 
 
 def test_campaign_reds_stage_b6_constant_cue_and_b8_bare(monkeypatch):
-    # cp1 #15: both registered controls are in the staged red set; a non-firing B8 bare red reads not fired
+    # cp1 #15: both registered controls are in the staged red set; a non-firing B8 bare red reads
+    # not fired
     monkeypatch.setattr(tc, "attempt", lambda *a, **k: {"stable": False, "never": False})
     monkeypatch.setattr(tc, "b3_on_stream", lambda *a: False)
-    monkeypatch.setattr(tc, "b8_twin", lambda s, e, bare=False: {"conditions": {"twin_equal": not bare}})
+    monkeypatch.setattr(
+        tc, "b8_twin", lambda s, e, bare=False: {"conditions": {"twin_equal": not bare}}
+    )
     fired = tc.campaign_reds(epochs=5, h=8)["fired"]
     assert fired["b6_constant_cue"] and fired["b8_bare_class"]
-    monkeypatch.setattr(tc, "b8_twin", lambda s, e, bare=False: {"conditions": {"twin_equal": True}})
+    monkeypatch.setattr(
+        tc, "b8_twin", lambda s, e, bare=False: {"conditions": {"twin_equal": True}}
+    )
     reds = tc.campaign_reds(epochs=5, h=8)
     assert not reds["fired"]["b8_bare_class"] and not reds["all_fired"]
 
@@ -256,8 +301,12 @@ def _full_rows(seeds, override=None):
 def test_flags_from_rows_reads_a_planted_capacity_solve():
     seeds = (8900, 8901)
     flags = tc.flags_from(_full_rows(seeds, {"inc.S0C1": False}), True, True, True, seeds=seeds)
-    assert flags["incumbent_solves_s1_or_c1"] and tc.reading(flags).startswith("RED: construction wrong (a")
-    assert tc.reading(tc.flags_from(_full_rows(seeds), True, True, True, seeds=seeds)).startswith("PASS: S0C0")
+    assert flags["incumbent_solves_s1_or_c1"] and tc.reading(flags).startswith(
+        "RED: construction wrong (a"
+    )
+    assert tc.reading(tc.flags_from(_full_rows(seeds), True, True, True, seeds=seeds)).startswith(
+        "PASS: S0C0"
+    )
 
 
 @pytest.mark.parametrize("rows", [{}, "one_arm_missing", "one_seed_missing"])
@@ -290,7 +339,8 @@ def test_b8_twin_equal_and_bare_class_reds():
 
 
 def test_b8_refuses_an_unset_home_before_building_a_brain(monkeypatch):
-    # ruling 16: B8 calls the shared guard inside its home block; with NORD_HOME unset it must refuse BEFORE make_brain
+    # ruling 16: B8 calls the shared guard inside its home block; with NORD_HOME unset it must
+    # refuse BEFORE make_brain
     import contextlib
 
     from snn_data_lake.engine import brain as brain_mod

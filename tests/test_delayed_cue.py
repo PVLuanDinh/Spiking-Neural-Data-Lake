@@ -1,8 +1,9 @@
-"""G2 / T110's problem generators and construction checks (instruments/delayed_cue.py, P1): every bucket
-re-derived with zlib.crc32 here (a second instrument beside the module's, which reads the learner's
-featurizer), every check B1, B2, B2-A, B3, B10, B10-S, B13, B14 and every constructed red, the witness units
-against inseparable_mapping's A5, D2's float separability LP, and the partition rule. No learner is taught
-and no Brain is built; seeds are the dev block 8000-8003 and the exposed scratch seed 8900."""
+"""G2 / T110's problem generators and construction checks (instruments/delayed_cue.py, P1): every
+bucket re-derived with zlib.crc32 here (a second instrument beside the module's, which reads the
+learner's featurizer), every check B1, B2, B2-A, B3, B10, B10-S, B13, B14 and every constructed
+red, the witness units against inseparable_mapping's A5, D2's float separability LP, and the
+partition rule. No learner is taught and no Brain is built; seeds are the dev block 8000-8003
+and the exposed scratch seed 8900."""
 
 import zlib
 
@@ -19,15 +20,20 @@ def _crc(word):
 
 
 @pytest.mark.parametrize(
-    "table", [dc.BUCKETS_I, dc.BUCKETS_C1D, dc.BUCKETS_AC1D, dc.BUCKETS_AII], ids=["i", "c1d", "ac1d", "aii"]
+    "table",
+    [dc.BUCKETS_I, dc.BUCKETS_C1D, dc.BUCKETS_AC1D, dc.BUCKETS_AII],
+    ids=["i", "c1d", "ac1d", "aii"],
 )
 def test_buckets_rederived_with_crc32(table):
     assert {w: _crc(w) for w in table} == table
 
 
 def test_every_family_bucket_is_distinct_and_at_least_8():
-    every = [b for t in (dc.BUCKETS_I, dc.BUCKETS_C1D, dc.BUCKETS_AC1D, dc.BUCKETS_AII, im.BUCKETS_52)
-             for b in t.values()]
+    every = [
+        b
+        for t in (dc.BUCKETS_I, dc.BUCKETS_C1D, dc.BUCKETS_AC1D, dc.BUCKETS_AII, im.BUCKETS_52)
+        for b in t.values()
+    ]
     assert len(every) == len(set(every)) == 7 + 12 + 12 + 4 + 4
     assert min(every) >= dc.MIN_BUCKET
 
@@ -61,11 +67,14 @@ def test_ii_witness_units_agree_with_check_a5():
     answers = {uv: dc.LABELS[dc.xor_bit(units, im.code(im.TEXTS[uv]))] for uv in im.UV}
     assert all(answers[uv] == im.label_xor(*uv) for uv in im.UV)
     assert im.check_a5()["right"] == 4
-    assert abs(dc.check_witnesses()["cases"]["ii"]["min_margin"] - im.check_a5()["min_margin"]) < 1e-12
+    assert (
+        abs(dc.check_witnesses()["cases"]["ii"]["min_margin"] - im.check_a5()["min_margin"]) < 1e-12
+    )
 
 
 def test_float_lp_separates_separable_not_xor():
-    # D2: the float side is a measurement; separable labellings are feasible, the XOR unions infeasible
+    # D2: the float side is a measurement; separable labellings are feasible, the XOR unions
+    # infeasible
     def pairs_i(cell, text):
         return [(text(it), dc.label_i(cell, it)) for it in dc.ITEMS_I]
 
@@ -94,8 +103,14 @@ def test_lp_status_distinguishes_unresolved(monkeypatch):
 
 def test_lp_measurements_recorded():
     lp = dc.lp_measurements()
-    assert lp == {"S0C0": "feasible", "S1C0_history": "feasible", "S0C1": "infeasible",
-                  "S1C1_history": "infeasible", "c1d_union": "infeasible", "ac1d_union": "feasible"}
+    assert lp == {
+        "S0C0": "feasible",
+        "S1C0_history": "feasible",
+        "S0C1": "infeasible",
+        "S1C1_history": "infeasible",
+        "c1d_union": "infeasible",
+        "ac1d_union": "feasible",
+    }
 
 
 def test_b3_pure_check():
@@ -124,7 +139,9 @@ def test_partition_streams_differ_by_family_and_seed():
 
 def test_partition_refuses_oversized_splits():
     with pytest.raises(ValueError):
-        dc.combo_partition("c1d", 8000, sizes={"teach": 10, "validation": 2, "future": 3, "future_d": 3})
+        dc.combo_partition(
+            "c1d", 8000, sizes={"teach": 10, "validation": 2, "future": 3, "future_d": 3}
+        )
 
 
 @pytest.mark.parametrize("seed", DEV)
@@ -167,12 +184,14 @@ def test_every_construction_red_fires():
 
 
 def test_r_q_collision_breaks_additivity_and_r_p_cannot():
-    # cp1 #14: the registered R/P collision red cannot fire on B2 (P sits at rank 3 whatever q is); the R/Q one does
+    # cp1 #14: the registered R/P collision red cannot fire on B2 (P sits at rank 3 whatever q
+    # is); the R/Q one does
     assert dc.r_p_collision_keeps_additivity()
     assert dc.construction_reds()["fired"]["b2_c1d_r_q_collision"]
     words = dc.combo_words("c1d")
-    assert not dc.check_b1((*words[:4], words[0], *words[5:]), [dc.collided_text((0, 0, 0, 0), "P")])[
-        "conditions"]["distinct_buckets"]  # B1's collision refusal still catches the R/P case
+    assert not dc.check_b1(
+        (*words[:4], words[0], *words[5:]), [dc.collided_text((0, 0, 0, 0), "P")]
+    )["conditions"]["distinct_buckets"]  # B1's collision refusal still catches the R/P case
 
 
 def test_construction_check_on_dev_seeds():

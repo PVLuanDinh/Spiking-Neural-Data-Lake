@@ -60,7 +60,9 @@ REPO = Path(__file__).resolve().parents[3]
 
 
 # ---- the canonical learners ---------------------------------------------------------------------------------
-learner = tp.canonical_incumbent  # the ONE factory (P2); B8 below proves it equal to the Brain's learner
+learner = (
+    tp.canonical_incumbent
+)  # the ONE factory (P2); B8 below proves it equal to the Brain's learner
 
 
 # ---- the front-ends -----------------------------------------------------------------------------------------
@@ -136,7 +138,11 @@ class Reader:
         self.unit, self.history = unit, history
 
     def text(self, turns):
-        return " ".join(t.text for t in turns[-dc.HISTORY_WINDOW :]) if self.history else turns[-1].text
+        return (
+            " ".join(t.text for t in turns[-dc.HISTORY_WINDOW :])
+            if self.history
+            else turns[-1].text
+        )
 
     def route(self, turns):
         return self.unit.route_text(self.text(turns))
@@ -169,7 +175,9 @@ def make_reader(arm, problem, seed, *, h=H, lr=None, window=dc.HISTORY_WINDOW):
 # B6's red: the explicit-history reader with the cue turn replaced by the constant word CUE[0]
 def constant_cue_reader(problem, seed):
     reader = make_reader("history", problem, seed)
-    reader.text = lambda turns: " ".join([dc.CUE[0], *(t.text for t in turns[-dc.HISTORY_WINDOW + 1:])])
+    reader.text = lambda turns: " ".join(
+        [dc.CUE[0], *(t.text for t in turns[-dc.HISTORY_WINDOW + 1 :])]
+    )
     return reader
 
 
@@ -189,8 +197,17 @@ def _shuffled_labels(seed):
     return taught
 
 
-def attempt(problem, reader, seed, epochs, *, judge_future=False, stop_when_stable=False, shuffled=False,
-            on_epoch_end=None):
+def attempt(
+    problem,
+    reader,
+    seed,
+    epochs,
+    *,
+    judge_future=False,
+    stop_when_stable=False,
+    shuffled=False,
+    on_epoch_end=None,
+):
     """One E-epoch teaching attempt: per episode, context turns are READ and the probe is taught; at each epoch
     end a learning-OFF validation read. Returns epoch-end solved flags and accuracies, the max accuracy, the
     first solved epoch end, and (judge_future) one final future read."""
@@ -205,7 +222,9 @@ def attempt(problem, reader, seed, epochs, *, judge_future=False, stop_when_stab
             reader.teach(episode, label)
         # each epoch-end read is its own read index (U_S draws fresh labels per read; cp1 #9)
         records = []
-        reads = tp.read_split(problem, seed, "validation", reader.route, read_index=k, records=records)
+        reads = tp.read_split(
+            problem, seed, "validation", reader.route, read_index=k, records=records
+        )
         read_indices.append(k)
         solved_ends.append(tp.solved(problem, seed, "validation", reads))
         accuracy.append(sum(a == b for a, b in reads) / len(reads))
@@ -234,8 +253,13 @@ def attempt(problem, reader, seed, epochs, *, judge_future=False, stop_when_stab
 # B3 on a live reader over an attempt: every epoch-end read judged on its ACTUAL stream (cp1 #10)
 def b3_on_stream(reader, problem, seed, epochs):
     verdicts = []
-    attempt(problem, reader, seed, epochs,
-            on_epoch_end=lambda k, r, records: verdicts.append(tp.check_b3_stream(records)["ok"]))
+    attempt(
+        problem,
+        reader,
+        seed,
+        epochs,
+        on_epoch_end=lambda k, r, records: verdicts.append(tp.check_b3_stream(records)["ok"]),
+    )
     return all(verdicts)
 
 
@@ -278,12 +302,27 @@ def run_arm(arm, seed, epochs=EPOCHS, h=H):
     b3 = []
     hook = None
     if kind == "incumbent" and pid in ("i.S1C0", "i.S1C1"):
+
         def hook(k, r, records):
             b3.append(tp.check_b3_stream(records)["ok"])
-    result = attempt(problem, reader, seed, epochs, judge_future=judge_future,
-                     stop_when_stable=(expectation == "solves"), on_epoch_end=hook)
-    result.update({"arm": arm_id, "seed": seed, "expectation": expectation,
-                   "met": met(expectation, result, judge_future)})
+
+    result = attempt(
+        problem,
+        reader,
+        seed,
+        epochs,
+        judge_future=judge_future,
+        stop_when_stable=(expectation == "solves"),
+        on_epoch_end=hook,
+    )
+    result.update(
+        {
+            "arm": arm_id,
+            "seed": seed,
+            "expectation": expectation,
+            "met": met(expectation, result, judge_future),
+        }
+    )
     if b3:
         result["b3_every_read"] = all(b3)
     return result
@@ -309,11 +348,17 @@ def b8_twin(seed, epochs, *, bare=False):
                 probe = episode[-1]
                 brain.correct(probe.text, probe.label)
                 factory.learn_turn(probe.text, None, feedback=probe.label)
-            reads_b = tp.read_split(problem, seed, "validation", lambda t: brain.brain.route(t[-1].text))
-            reads_f = tp.read_split(problem, seed, "validation", lambda t: factory.route_text(t[-1].text))
+            reads_b = tp.read_split(
+                problem, seed, "validation", lambda t: brain.brain.route(t[-1].text)
+            )
+            reads_f = tp.read_split(
+                problem, seed, "validation", lambda t: factory.route_text(t[-1].text)
+            )
             equal &= reads_b == reads_f and brain.brain._ixn.weights() == factory.weights()
-    return {"ok": equal and _live_mtime() == before, "conditions": {"twin_equal": equal,
-            "live_home_untouched": _live_mtime() == before}}
+    return {
+        "ok": equal and _live_mtime() == before,
+        "conditions": {"twin_equal": equal, "live_home_untouched": _live_mtime() == before},
+    }
 
 
 def _live_mtime():
@@ -379,30 +424,48 @@ def reading_ii(rows_ii, seeds):
         return "RED: (ii)'s separable twin is not learned (clause 2)"
     if not (all_met("pre.ii.xor") and all_met("pre.ii.twin")):
         return "RED: (ii)'s presized nonlinear positive control fails (clause 3)"
-    return "PASS (ii): twin learned, presized solves XOR and twin; clause 1 reported beside G1(c)'s A3"
+    return (
+        "PASS (ii): twin learned, presized solves XOR and twin; clause 1 reported beside G1(c)'s A3"
+    )
 
 
 # G1(c)'s construct-stage evidence: verdict True on exactly the check seeds 7000-7007
 def g1c_construct_passed(record):
-    return (isinstance(record, dict) and record.get("verdict") is True
-            and sorted(record.get("seeds", ())) == list(range(7000, 7008)))
+    return (
+        isinstance(record, dict)
+        and record.get("verdict") is True
+        and sorted(record.get("seeds", ())) == list(range(7000, 7008))
+    )
 
 
 PASS_FLAGS = {
-    "b8_ok": True, "reds_fired": True, "construction_ok": True, "b3_ok": True, "presized_solves_s1c0": False,
-    "incumbent_solves_s1_or_c1": False, "history_solves_s1c1": False, "incumbent_solves_c1d": False,
-    "incumbent_fails_s0c0": False, "history_fails_s1c0": False, "presized_fails_capacity": False,
-    "c1d_presized_fails": False, "a_fails": False,
+    "b8_ok": True,
+    "reds_fired": True,
+    "construction_ok": True,
+    "b3_ok": True,
+    "presized_solves_s1c0": False,
+    "incumbent_solves_s1_or_c1": False,
+    "history_solves_s1c1": False,
+    "incumbent_solves_c1d": False,
+    "incumbent_fails_s0c0": False,
+    "history_fails_s1c0": False,
+    "presized_fails_capacity": False,
+    "c1d_presized_fails": False,
+    "a_fails": False,
 }
 
 
 def reading_reds():
     """One constructed input per reading row: flipping that row's flag must produce that row's verdict."""
     expected = {
-        "b8_ok": "HALT: shared", "construction_ok": "RED: construction wrong (the generator)",
-        "b3_ok": "HALT: a reader", "incumbent_solves_c1d": "RED: construction wrong (a capacity",
-        "incumbent_fails_s0c0": "RED: the channel", "history_fails_s1c0": "RED: the delayed-cue",
-        "presized_fails_capacity": "RED: the presized", "c1d_presized_fails": "C1-d REPRESENTABLE",
+        "b8_ok": "HALT: shared",
+        "construction_ok": "RED: construction wrong (the generator)",
+        "b3_ok": "HALT: a reader",
+        "incumbent_solves_c1d": "RED: construction wrong (a capacity",
+        "incumbent_fails_s0c0": "RED: the channel",
+        "history_fails_s1c0": "RED: the delayed-cue",
+        "presized_fails_capacity": "RED: the presized",
+        "c1d_presized_fails": "C1-d REPRESENTABLE",
         "a_fails": "PASS for (i) and C1-d; task A",
     }
     fired = {}
@@ -429,11 +492,20 @@ def flags_from(rows, construction_ok, b8_ok, reds_fired, *, seeds, arms=ARMS):
     def all_met(arm_id):
         return all(row["met"] for row in rows[arm_id])
 
-    b3 = all(row.get("b3_every_read", True) for arm in ("inc.S1C0", "inc.S1C1") for row in rows.get(arm, []))
+    b3 = all(
+        row.get("b3_every_read", True)
+        for arm in ("inc.S1C0", "inc.S1C1")
+        for row in rows.get(arm, [])
+    )
     return {
-        "b8_ok": b8_ok, "reds_fired": reds_fired, "construction_ok": construction_ok, "b3_ok": b3,
+        "b8_ok": b8_ok,
+        "reds_fired": reds_fired,
+        "construction_ok": construction_ok,
+        "b3_ok": b3,
         "presized_solves_s1c0": not all_met("pre.S1C0"),
-        "incumbent_solves_s1_or_c1": not all(all_met(a) for a in ("inc.S1C0", "inc.S0C1", "inc.S1C1")),
+        "incumbent_solves_s1_or_c1": not all(
+            all_met(a) for a in ("inc.S1C0", "inc.S0C1", "inc.S1C1")
+        ),
         "history_solves_s1c1": not all_met("hist.S1C1"),
         "incumbent_solves_c1d": not all_met("inc.c1d"),
         "incumbent_fails_s0c0": not all_met("inc.S0C0"),
@@ -449,22 +521,39 @@ def campaign_reds(seed=RED_SEED, epochs=EPOCHS, h=H):
     """Each check's planted red on the reds block: a stand-in reader whose result must trip the check."""
     s0c0, s1c0, s0c1, s1c1 = (tp.PROBLEMS[f"i.{c}"] for c in ("S0C0", "S1C0", "S0C1", "S1C1"))
     fired = {
-        "b3_history_stands_in": not b3_on_stream(make_reader("history", s1c0, seed), s1c0, seed, 20),
-        "b4_presized_on_s0c1": not attempt(s0c1, make_reader("presized", s0c1, seed, h=h), seed, epochs)["never"],
-        "b5_lr_zero": not attempt(s0c0, make_reader("incumbent", s0c0, seed, lr=0.0), seed, epochs)["stable"],
-        "b5_shuffled": not attempt(s0c0, make_reader("incumbent", s0c0, seed), seed, epochs,
-                                   shuffled=True)["stable"],
-        "b6_window_1": not attempt(s1c0, make_reader("history", s1c0, seed, window=1), seed, epochs)["stable"],
+        "b3_history_stands_in": not b3_on_stream(
+            make_reader("history", s1c0, seed), s1c0, seed, 20
+        ),
+        "b4_presized_on_s0c1": not attempt(
+            s0c1, make_reader("presized", s0c1, seed, h=h), seed, epochs
+        )["never"],
+        "b5_lr_zero": not attempt(s0c0, make_reader("incumbent", s0c0, seed, lr=0.0), seed, epochs)[
+            "stable"
+        ],
+        "b5_shuffled": not attempt(
+            s0c0, make_reader("incumbent", s0c0, seed), seed, epochs, shuffled=True
+        )["stable"],
+        "b6_window_1": not attempt(
+            s1c0, make_reader("history", s1c0, seed, window=1), seed, epochs
+        )["stable"],
         # cp1 #15: the cue replaced by a constant word in the history text (B6's registered perturbation)
-        "b6_constant_cue": not attempt(s1c0, constant_cue_reader(s1c0, seed), seed, epochs)["stable"],
+        "b6_constant_cue": not attempt(s1c0, constant_cue_reader(s1c0, seed), seed, epochs)[
+            "stable"
+        ],
         # cp1 #15: B8's bare-class twin, staged with the rest so a non-firing red halts before the arms
         "b8_bare_class": not b8_twin(seed, 3, bare=True)["conditions"]["twin_equal"],
         "b6_presized_history_on_s1c1": not attempt(
-            s1c1, make_reader("presized_history", s1c1, seed, h=h), seed, epochs)["never"],
-        "b7_identity_front_end": not attempt(s0c1, make_reader("incumbent", s0c1, seed), seed, epochs)["stable"],
-        "b7_shuffled": not attempt(s0c1, make_reader("presized", s0c1, seed, h=h), seed, epochs,
-                                   shuffled=True)["stable"],
-        "b7_history_on_s1c0_plain": not attempt(s1c0, make_reader("history", s1c0, seed), seed, epochs)["never"],
+            s1c1, make_reader("presized_history", s1c1, seed, h=h), seed, epochs
+        )["never"],
+        "b7_identity_front_end": not attempt(
+            s0c1, make_reader("incumbent", s0c1, seed), seed, epochs
+        )["stable"],
+        "b7_shuffled": not attempt(
+            s0c1, make_reader("presized", s0c1, seed, h=h), seed, epochs, shuffled=True
+        )["stable"],
+        "b7_history_on_s1c0_plain": not attempt(
+            s1c0, make_reader("history", s1c0, seed), seed, epochs
+        )["never"],
         **{f"reading_{k}": v for k, v in reading_reds()["fired"].items()},
     }
     return {"fired": fired, "all_fired": all(fired.values())}
@@ -476,21 +565,47 @@ def campaign_reds(seed=RED_SEED, epochs=EPOCHS, h=H):
 # distinct-from: faculties/global_workspace.py -- a running-mean baseline rule
 # distinct-from: faculties/interoceptive_integration.py -- per-channel running baselines
 # distinct-from: growth/similarity_sized_growth.py -- nearest-expert routing. Sites read 2026-10-04.
-SAME_ITEMS_CAPACITY = (("presized", "i.S0C1"), ("presized_history", "i.S1C1"), ("presized", "ii.xor"),
-                       ("presized", "ii.twin"))
-POSITIVES = (("incumbent", "i.S0C0"), ("history", "i.S1C0"), ("history", "i.S0C0"), ("incumbent", "aii"),
-             ("incumbent", "ac1d"), ("incumbent", "ii.twin"))
+SAME_ITEMS_CAPACITY = (
+    ("presized", "i.S0C1"),
+    ("presized_history", "i.S1C1"),
+    ("presized", "ii.xor"),
+    ("presized", "ii.twin"),
+)
+POSITIVES = (
+    ("incumbent", "i.S0C0"),
+    ("history", "i.S1C0"),
+    ("history", "i.S0C0"),
+    ("incumbent", "aii"),
+    ("incumbent", "ac1d"),
+    ("incumbent", "ii.twin"),
+)
 
 
 def _dev_row(stage, kind, pid, seed, epochs, h, *, solves=True):
     problem = tp.PROBLEMS[pid]
     future = problem.kind == "combo"
-    r = attempt(problem, make_reader(kind, problem, seed, h=h), seed, epochs, judge_future=future,
-                stop_when_stable=solves)
-    return {"stage": stage, "arm": kind, "problem": pid, "seed": seed, "h": h, "epochs": epochs,
-            "stable": r["stable"], "never": r["never"], "max_acc": r["max_accuracy"],
-            "to_stable": r["epochs_run"] - tp.STABLE if r["stable"] else None,
-            "future_solved": r.get("future_solved"), "future_acc": r.get("future_accuracy")}
+    r = attempt(
+        problem,
+        make_reader(kind, problem, seed, h=h),
+        seed,
+        epochs,
+        judge_future=future,
+        stop_when_stable=solves,
+    )
+    return {
+        "stage": stage,
+        "arm": kind,
+        "problem": pid,
+        "seed": seed,
+        "h": h,
+        "epochs": epochs,
+        "stable": r["stable"],
+        "never": r["never"],
+        "max_acc": r["max_accuracy"],
+        "to_stable": r["epochs_run"] - tp.STABLE if r["stable"] else None,
+        "future_solved": r.get("future_solved"),
+        "future_acc": r.get("future_accuracy"),
+    }
 
 
 # 2.13's dev readings on dev seeds only, one JSON line per run. R1: the smallest H solving every same-items
@@ -512,30 +627,51 @@ def dev_measurement(out_path, seeds=DEV_SEEDS, h_grid=(16, 32, 64, 128), max_epo
 
     smallest = None
     for h in h_grid:
-        rows = [log(_dev_row("R1", k, p, s, EPOCHS, h)) for k, p in SAME_ITEMS_CAPACITY for s in seeds]
+        rows = [
+            log(_dev_row("R1", k, p, s, EPOCHS, h)) for k, p in SAME_ITEMS_CAPACITY for s in seeds
+        ]
         if all(ok(r, EPOCHS // 2) for r in rows):
             smallest = h
             break
     h_final = 2 * smallest if smallest else None
     hc = h_final or H
-    c1d = {h: all(ok(log(_dev_row("R6", "presized", "c1d", s, EPOCHS, h)), EPOCHS) for s in seeds) for h in h_grid}
+    c1d = {
+        h: all(ok(log(_dev_row("R6", "presized", "c1d", s, EPOCHS, h)), EPOCHS) for s in seeds)
+        for h in h_grid
+    }
     largest = 0
     for k, p in POSITIVES + SAME_ITEMS_CAPACITY:
         for s in seeds:
             row = log(_dev_row("R2", k, p, s, max_epochs, hc))
             largest = max(largest, row["to_stable"] or 0)
     e_final = max(EPOCHS, int(math.ceil(2 * largest / 50.0) * 50))
-    history = all(log(_dev_row("R3", "history", "i.S1C0", s, e_final, hc))["stable"]
-                  and log(_dev_row("R3", "history", "i.S0C0", s, e_final, hc))["stable"]
-                  and log(_dev_row("R3", "history", "i.S1C1", s, e_final, hc, solves=False))["never"]
-                  for s in seeds)
-    ngsnn = all(ok(log(_dev_row("R4", k.replace("presized", "ngsnn"), p, s, e_final, hc)), e_final)
-                for k, p in SAME_ITEMS_CAPACITY + (("presized", "c1d"),) for s in seeds) and all(
-        log(_dev_row("R4", "ngsnn", "i.S1C0", s, e_final, hc, solves=False))["never"] for s in seeds)
-    a_rows = all(ok(log(_dev_row("R5", "incumbent", p, s, e_final, hc)), e_final)
-                 for p in ("aii", "ac1d") for s in seeds)
-    derived = {"H": h_final, "E": e_final, "history_proof": history, "ngsnn_adopt": ngsnn,
-               "c1d_learned_at": [h for h, v in c1d.items() if v], "a_rows_ok": a_rows, "largest": largest}
+    history = all(
+        log(_dev_row("R3", "history", "i.S1C0", s, e_final, hc))["stable"]
+        and log(_dev_row("R3", "history", "i.S0C0", s, e_final, hc))["stable"]
+        and log(_dev_row("R3", "history", "i.S1C1", s, e_final, hc, solves=False))["never"]
+        for s in seeds
+    )
+    ngsnn = all(
+        ok(log(_dev_row("R4", k.replace("presized", "ngsnn"), p, s, e_final, hc)), e_final)
+        for k, p in SAME_ITEMS_CAPACITY + (("presized", "c1d"),)
+        for s in seeds
+    ) and all(
+        log(_dev_row("R4", "ngsnn", "i.S1C0", s, e_final, hc, solves=False))["never"] for s in seeds
+    )
+    a_rows = all(
+        ok(log(_dev_row("R5", "incumbent", p, s, e_final, hc)), e_final)
+        for p in ("aii", "ac1d")
+        for s in seeds
+    )
+    derived = {
+        "H": h_final,
+        "E": e_final,
+        "history_proof": history,
+        "ngsnn_adopt": ngsnn,
+        "c1d_learned_at": [h for h, v in c1d.items() if v],
+        "a_rows_ok": a_rows,
+        "largest": largest,
+    }
     log({"stage": "derived", **derived})
     return derived
 
@@ -547,11 +683,18 @@ def preflight(seeds, out_dir, arms=ARMS, *, require_clean=True):
     seeds = tuple(seeds)
     if not seeds or len(set(seeds)) != len(seeds):
         raise PermissionError(f"seeds must be non-empty and distinct: {seeds}")
-    for block in (CONFIRMATORY_SEEDS, RESERVE_SEEDS):  # a confirmatory read is the WHOLE registered block (cp1 #5)
+    for block in (
+        CONFIRMATORY_SEEDS,
+        RESERVE_SEEDS,
+    ):  # a confirmatory read is the WHOLE registered block (cp1 #5)
         if set(seeds) & set(block) and sorted(seeds) != list(block):
-            raise PermissionError(f"seeds {sorted(seeds)} touch {block[0]}-{block[-1]} but are not that exact block")
+            raise PermissionError(
+                f"seeds {sorted(seeds)} touch {block[0]}-{block[-1]} but are not that exact block"
+            )
         if set(seeds) & set(block) and AMENDMENT is None:
-            raise PermissionError("confirmation refused: the dated pre-data amendment (2.13) is not entered")
+            raise PermissionError(
+                "confirmation refused: the dated pre-data amendment (2.13) is not entered"
+            )
     bad = sorted(set(seeds) & LIVE_SEEDS)
     if bad:
         raise PermissionError(f"live seeds refused: {bad}")
@@ -567,8 +710,12 @@ def preflight(seeds, out_dir, arms=ARMS, *, require_clean=True):
     if any("future_d" in str(field) for arm in arms for field in arm):
         raise PermissionError("an arm names future_d (G6(d)'s untouched set)")
     if require_clean:
-        dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"], capture_output=True,
-                               text=True, check=True).stdout.strip()
+        dirty = subprocess.run(
+            ["git", "-C", str(REPO), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
         if dirty:
             raise PermissionError("dirty tree refused")
 
@@ -583,7 +730,9 @@ def preflight(seeds, out_dir, arms=ARMS, *, require_clean=True):
 # evidence supplied but not passing is refused. Writes OUT/g2_campaign.json.
 def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, g1c_construct=None, require_clean=True):
     if g1c_construct is not None and not g1c_construct_passed(g1c_construct):
-        raise PermissionError("G1(c)'s construct-stage evidence does not show a PASS on 7000-7007: (ii) refused")
+        raise PermissionError(
+            "G1(c)'s construct-stage evidence does not show a PASS on 7000-7007: (ii) refused"
+        )
     include_ii = g1c_construct is not None
     # distinct-from: brainstem/so101_arm.py -- the arm's E-STOP sidecar write
     # distinct-from: faculties/agency_monitor.py -- T079's own campaign runner
@@ -604,11 +753,17 @@ def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, g1c_construct=None, requ
         return _record_campaign(out_dir, record, before)
 
     construction = dc.construction_check(seeds)
-    p2 = {"b9": tp.check_b9()["ok"], "b11": tp.check_b11()["ok"],
-          "b12": all(tp.check_b12(learner(s), tp.PROBLEMS["i.S1C1"], s)["ok"] for s in seeds)}
-    record.update(construction_ok=construction["verdict"] and all(p2.values()), p2=p2,
-                  witnesses=construction.get("witnesses", {}).get("cases"),
-                  lp=dc.lp_measurements())  # D2 beside the witness margins (cp1 #20)
+    p2 = {
+        "b9": tp.check_b9()["ok"],
+        "b11": tp.check_b11()["ok"],
+        "b12": all(tp.check_b12(learner(s), tp.PROBLEMS["i.S1C1"], s)["ok"] for s in seeds),
+    }
+    record.update(
+        construction_ok=construction["verdict"] and all(p2.values()),
+        p2=p2,
+        witnesses=construction.get("witnesses", {}).get("cases"),
+        lp=dc.lp_measurements(),
+    )  # D2 beside the witness margins (cp1 #20)
     if not record["construction_ok"]:
         return conclude("RED: construction wrong (the generator)")
     record["b8"] = {}
@@ -616,7 +771,10 @@ def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, g1c_construct=None, requ
         record["b8"][s] = b8_twin(s, epochs)["ok"]
         if not record["b8"][s]:
             return conclude(f"HALT: shared instrument (B8 failed on seed {s})")
-    record["reds"] = {"p1": dc.construction_reds()["all_fired"], "p2": tp.construction_reds(learner)["all_fired"]}
+    record["reds"] = {
+        "p1": dc.construction_reds()["all_fired"],
+        "p2": tp.construction_reds(learner)["all_fired"],
+    }
     if not (record["reds"]["p1"] and record["reds"]["p2"]):
         return conclude("HALT: shared instrument (a P1/P2 red did not fire)")
     record["reds"]["campaign"] = campaign_reds(epochs=epochs, h=h)
@@ -625,12 +783,16 @@ def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, g1c_construct=None, requ
     rows = {arm[0]: [run_arm(arm, s, epochs, h) for s in seeds] for arm in arms}
     flags = flags_from(rows, True, True, True, seeds=seeds, arms=ARMS)
     rows_ii = {arm[0]: rows[arm[0]] for arm in ARMS_II} if include_ii else None
-    record.update(rows=rows, flags=flags, verdict=reading(flags), verdict_ii=reading_ii(rows_ii, seeds))
+    record.update(
+        rows=rows, flags=flags, verdict=reading(flags), verdict_ii=reading_ii(rows_ii, seeds)
+    )
     return _record_campaign(out_dir, record, before)
 
 
 def _record_campaign(out_dir, record, before):
-    Path(out_dir, "g2_campaign.json").write_text(json.dumps(record, indent=1, default=str), encoding="ascii")
+    Path(out_dir, "g2_campaign.json").write_text(
+        json.dumps(record, indent=1, default=str), encoding="ascii"
+    )
     _assert_isolated(before)  # AFTER the last write: an isolation failure halts, never reports
     return record
 
@@ -651,9 +813,11 @@ def main():
     pos = attempt(s0c0, make_reader("incumbent", s0c0, 8900), 8900, 30)
     neg = attempt(s1c0, make_reader("incumbent", s1c0, 8900), 8900, 30)
     assert pos["stable"] and neg["never"] and neg["max_accuracy"] <= 0.5, (pos, neg)
-    print(f"self-check OK (scratch seed 8900, 30 epochs): reading reds all fired; preflight refused live, "
-          f"in-repo and out-of-block runs; S0C0 first solved at epoch end {pos['first_solved_end']}; S1C0 max "
-          f"accuracy {neg['max_accuracy']:.2f}")
+    print(
+        f"self-check OK (scratch seed 8900, 30 epochs): reading reds all fired; preflight refused live, "
+        f"in-repo and out-of-block runs; S0C0 first solved at epoch end {pos['first_solved_end']}; S1C0 max "
+        f"accuracy {neg['max_accuracy']:.2f}"
+    )
 
 
 if __name__ == "__main__":
