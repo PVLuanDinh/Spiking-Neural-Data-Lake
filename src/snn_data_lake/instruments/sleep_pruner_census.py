@@ -95,6 +95,7 @@ AB_SCOPE = (
 )  # 2.3 + A1: G6 reads three; P-SR is R3's; P-LAKE is out of (a)'s scope
 
 TICKS = 900  # 2.3: the 2026-08-05 length
+N_SEEDS = 8  # S = 8 paired seeds: T_BAR is the 7 d.f. bar, so any other count is refused (all G6 decisions)
 # A2 + the dated pre-data amendment 2026-10-04 (ruling 24): night k = the k-th `_enter_wake` reading, from 1
 NIGHTS = range(
     2, 37
@@ -931,6 +932,10 @@ def decide_pruner(pid, seeds, *, delta="registered", repeat_ok):
     `repeat_ok` is R0 (the live arm byte-identical twice on the dev seeds)."""
     delta = DELTA[pid] if delta == "registered" else delta
     r = {"seeds": len(seeds)}
+    if len(seeds) != N_SEEDS:
+        return Verdict(
+            pid, "REFUSED", f"{len(seeds)} seeds read; the bar is the S = {N_SEEDS} one", r
+        )
     refusals = [why for s in seeds for why in s.get("refused", [])]
     if refusals:
         return Verdict(pid, "REFUSED", "per-seed precondition failed", {**r, "refused": refusals})

@@ -315,3 +315,9 @@ def test_protected_and_foreign_seeds_are_refused_before_any_brain(seed):
 
 def test_a_seed_in_the_block_is_admitted():
     assert spc.admit_seed(12001) == 12001 and spc.admit_seed(12999) == 12999
+
+
+@pytest.mark.parametrize("n", [0, 1, 7])
+def test_decide_pruner_refuses_a_wrong_seed_count(n):
+    seeds = spc._constructed("P-LL", 0.9, 0.8, 0.5)[:n]
+    assert spc.decide_pruner("P-LL", seeds, repeat_ok=True).disposition == "REFUSED"

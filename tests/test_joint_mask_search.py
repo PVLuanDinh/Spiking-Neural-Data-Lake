@@ -153,3 +153,11 @@ def test_c9_the_retention_judgment_reds_a_mask_that_drops_the_old_unit():
     m.freeze()
     _, retained = m.judge(tuple([1] * (fx.n - 1) + [0]))
     assert retained is False
+
+
+@pytest.mark.parametrize("n", [0, 1, 7, 9])
+def test_a_decision_on_the_wrong_seed_count_is_refused(n):
+    """Codex panel MAJOR: <8 (or 0) seeds ran through the 7 d.f. bar."""
+    seeds = jms.constructed_seeds()
+    seeds = (seeds * 2)[:n]
+    assert _decide(seeds).outcome == "REFUSED"

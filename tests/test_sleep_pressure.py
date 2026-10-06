@@ -105,3 +105,12 @@ def test_requests_move_onsets_and_keep_the_budget_on_a_real_brain(short_brain_ru
     gate, run = short_brain_runs["oracle"]
     assert run.advanced and run.plan != gate
     assert sp.check_budgets({"clock": gate, "oracle": run.plan})[0]
+
+
+@pytest.mark.parametrize("n", [0, 1, 7])
+def test_decide_c_refuses_a_wrong_seed_count(n):
+    seeds = [
+        {"clock": 0.5 + 0.01 * i, "oracle": 0.6 + 0.01 * i, "pressure": 0.58, "shuffled": 0.5}
+        for i in range(8)
+    ][:n]
+    assert sp.decide_c(seeds)[0] == "REFUSED"

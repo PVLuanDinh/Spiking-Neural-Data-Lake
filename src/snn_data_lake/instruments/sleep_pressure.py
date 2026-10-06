@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 
 from snn_data_lake.faculties.global_workspace import GlobalWorkspace
 from snn_data_lake.instruments.paired_contrast import contrast
+from snn_data_lake.instruments.sleep_pruner_census import N_SEEDS
 
 # distinct-from: faculties/global_workspace.py::next_baseline -- REUSED here (imported), not re-spelled.
 #   distinct-from: engine/brain.py::Brain.tick -- REUSED: the harness calls it with the gate answered from
@@ -240,6 +241,8 @@ def decide_c(seeds):
     """`seeds`: per-seed {arm: held-out retention rate} for clock, oracle, pressure, shuffled (solve optional).
     C11 first: if the schedule ORACLE does not beat clock-only the workload cannot show a timing benefit and (c)
     is REFUSED. Then the primary: pressure > shuffled-pressure (pressure-SPECIFIC); pressure > clock is reported."""
+    if len(seeds) != N_SEEDS:
+        return "REFUSED", f"{len(seeds)} seeds read; the bar is the S = {N_SEEDS} one", {}
     need = ("clock", "oracle", "pressure", "shuffled")
     if any(a not in s for s in seeds for a in need):
         return "REFUSED", "an arm is missing on some seed", {}

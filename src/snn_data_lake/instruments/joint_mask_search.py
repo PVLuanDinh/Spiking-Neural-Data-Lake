@@ -27,6 +27,7 @@ import random
 from dataclasses import dataclass, field
 
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
+from snn_data_lake.instruments.sleep_pruner_census import N_SEEDS
 
 # distinct-from: faculties/theory_of_mind.py::believed_location -- a spiking WTA readout of a belief.
 #   distinct-from: growth/basic_components.py::Node, growth/neuron_zoo.py::_AdExCell -- the neuron step
@@ -309,6 +310,8 @@ def decide_b(seeds, *, instrument_gates_fired):
     (an arm absent on a refused small-budget instance REFUSES the read). The first applicable step decides."""
     if not instrument_gates_fired:
         return Disposition("REFUSED", "C7-C10/C22 did not all fire on their constructed inputs")
+    if len(seeds) != N_SEEDS:
+        return Disposition("REFUSED", f"{len(seeds)} seeds read; the bar is the S = {N_SEEDS} one")
     if any(a not in s for s in seeds for a in COMPETITORS):
         return Disposition("REFUSED", "an arm is missing on some seed (A13 small-budget refusal)")
     con = {}
