@@ -676,3 +676,16 @@ def test_a_ticket_refuses_an_equal_but_differently_typed_identity(change):
     with pytest.raises(G.UnitLabelRefused):
         ticket.consume([_with(rec, **change)])
     assert ticket.consumed is False
+
+
+@pytest.mark.parametrize("field", ["layer", "region", "position", "problem_id"])
+def test_a_journaled_born_unit_missing_a_label_field_is_refused_not_legacy(field):
+    # Codex G3 panel: deleting a label field from a journaled id used to read 'legacy', and an open
+    # debt kept the census green -- tampering laundered through the debt table
+    born = _good()
+    journal = {born["unit_id"]: dict(born)}
+    stripped = {k: v for k, v in born.items() if k != field}
+    with pytest.raises(G.UnitLabelRefused, match="tampered"):
+        G.classify_restored([stripped], journal)
+    with pytest.raises(G.UnitLabelRefused, match="tampered"):
+        G.census({"fx": [stripped]}, journal, open_debt={"fx"})

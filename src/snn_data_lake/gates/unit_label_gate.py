@@ -297,22 +297,25 @@ def require_admissible(units, *, resolve_problem, known_unit):
 
 
 def classify_restored(rows, journal):
-    """[origin] aligned with `rows`, from journal EVIDENCE (`journal`: unit_id -> birth record). A
-    journaled id whose restored label differs is a tampered born unit: UnitLabelRefused (D21)."""
+    """[origin] aligned with `rows`, from journal EVIDENCE (`journal`: unit_id -> birth record). The
+    journal is consulted FIRST: a journaled id whose restored label differs OR LACKS a label field is a
+    tampered born unit (UnitLabelRefused, D21) -- a row cannot launder itself into 'legacy' (and an open
+    debt) by deleting fields. Only an id the journal has never seen is derived / legacy."""
     out = []
     for row in rows:
-        if not all(k in row for k in LABEL_FIELDS):
+        uid = row.get("unit_id") if isinstance(row, Mapping) else None
+        entry = journal.get(uid) if _ident(uid) else None
+        if entry is not None:
+            diff = [
+                k for k in LABEL_FIELDS if k not in row or not _same_typed(row[k], entry.get(k))
+            ]
+            if diff:
+                raise UnitLabelRefused(uid, "label", f"tampered born unit: fields differ {diff}")
+            out.append("born")
+        elif not all(k in row for k in LABEL_FIELDS):
             out.append("legacy")
-            continue
-        uid = row["unit_id"]
-        entry = journal.get(uid)
-        if entry is None:
+        else:
             out.append("derived")
-            continue
-        diff = [k for k in LABEL_FIELDS if _canon(row[k]) != _canon(entry.get(k))]
-        if diff:
-            raise UnitLabelRefused(uid, "label", f"tampered born unit: fields differ {diff}")
-        out.append("born")
     return out
 
 
