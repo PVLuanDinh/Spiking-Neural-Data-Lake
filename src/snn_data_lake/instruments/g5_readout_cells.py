@@ -449,7 +449,9 @@ def check_fresh_home(fresh):
 
     got = require_isolated_home()
     if os.path.normcase(got) != os.path.normcase(fresh):
-        raise LiveHomeRefused(f"home refused (not the fresh one): NORD_HOME {got} != yielded {fresh}")
+        raise LiveHomeRefused(
+            f"home refused (not the fresh one): NORD_HOME {got} != yielded {fresh}"
+        )
     return got
 
 
@@ -504,12 +506,16 @@ def _run_seed(seed, arms, before, workers, pool, cell):
         rec = ex.submit(cell, (seed, "RECORD", None)).result()
         _lake_unmoved(before, "the RECORD stage")
         if not rec["unified"]:
-            raise InstrumentFailure(f"seed {seed}: RECORD stage ran on fallback perception (unified False)")
+            raise InstrumentFailure(
+                f"seed {seed}: RECORD stage ran on fallback perception (unified False)"
+            )
         cells = list(ex.map(cell, [(seed, a, rec["cats"]) for a in arms]))
         _lake_unmoved(before, "the arm stage")
     for c in cells:
         if not c["unified"]:
-            raise InstrumentFailure(f"seed {seed} arm {c['arm']}: fallback perception (unified False)")
+            raise InstrumentFailure(
+                f"seed {seed} arm {c['arm']}: fallback perception (unified False)"
+            )
         if c["cats_hash"] != rec["cats_hash"]:
             raise InstrumentFailure(f"seed {seed} arm {c['arm']}: rows differ from the recording")
     same_rows(cells)
@@ -541,11 +547,15 @@ def run_cells(seeds, arms, workers=4, log=print, pool=None, cell=None, reserve=(
             except (LiveLakeMoved, LiveHomeRefused):
                 raise
             except Exception as e:
-                _lake_unmoved(before, "a stage that raised")  # a violation outranks the exception it hides
+                _lake_unmoved(
+                    before, "a stage that raised"
+                )  # a violation outranks the exception it hides
                 if not spare:
                     raise
                 nxt = spare.pop(0)
-                log(f"  seed {s} FAILED on the instrument ({type(e).__name__}: {e}); replaced by {nxt}")
+                log(
+                    f"  seed {s} FAILED on the instrument ({type(e).__name__}: {e}); replaced by {nxt}"
+                )
                 replaced.append((seed, s, nxt))
                 s = nxt
         recorded[s] = rec
@@ -588,7 +598,9 @@ def b_reach_gate(cells):
         for a in COUPLED_ARMS:
             c = by.get((s, a))
             if c is not None and (c["beta_hash"] != d["beta_hash"] or c["traj"] != d["traj"]):
-                raise ReachHalt(f"seed {s}: B-R4 -- {a} moved beta or the refits; no B-R1 verdict is read")
+                raise ReachHalt(
+                    f"seed {s}: B-R4 -- {a} moved beta or the refits; no B-R1 verdict is read"
+                )
     return True
 
 

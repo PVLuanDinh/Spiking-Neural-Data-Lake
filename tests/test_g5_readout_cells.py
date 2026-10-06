@@ -149,7 +149,7 @@ def test_beta_identity_is_exact_bytes_and_a_sub_rounding_perturbation_breaks_it(
 
 
 def test_same_rows_halts_on_a_moved_refit_floor_and_arm_table_prints_the_floor():
-    # Codex cp4 #12: every registered floor is compared, and each arm's accuracy is printed against it
+    # Codex cp4 #12: every registered floor is compared; each arm prints its accuracy vs the floor
     row = {
         "seed": 1,
         "arm": "DELTA",
@@ -170,8 +170,10 @@ def test_same_rows_halts_on_a_moved_refit_floor_and_arm_table_prints_the_floor()
     assert any("acc - floor -0.0500" in s for s in lines)
 
 
-def test_a_home_swapped_for_another_populated_dir_is_refused_not_just_a_live_one(tmp_path, monkeypatch):
-    # Codex cp4 #7: NORD_HOME must be the home throwaway_home yielded; any other non-live dir is a red
+def test_a_home_swapped_for_another_populated_dir_is_refused_not_just_a_live_one(
+    tmp_path, monkeypatch
+):
+    # Codex cp4 #7: NORD_HOME must be the yielded home; any other non-live dir is a red
     from snn_data_lake.substrate.home import LiveHomeRefused, throwaway_home
 
     other = tmp_path / "populated_B"
@@ -186,8 +188,18 @@ def test_a_home_swapped_for_another_populated_dir_is_refused_not_just_a_live_one
 
 def _fake_cell(args):
     seed, arm, seq = args
-    return {"seed": seed, "arm": arm, "cats": [0, 1, 0, 1], "cats_hash": "h", "cols_hash": "c",
-            "widened": 0, "live_pers": 0.5, "live_acc": 0.5, "floors": [], "unified": True}
+    return {
+        "seed": seed,
+        "arm": arm,
+        "cats": [0, 1, 0, 1],
+        "cats_hash": "h",
+        "cols_hash": "c",
+        "widened": 0,
+        "live_pers": 0.5,
+        "live_acc": 0.5,
+        "floors": [],
+        "unified": True,
+    }
 
 
 def test_the_live_lake_check_runs_after_each_stage_and_survives_an_exception(monkeypatch):
@@ -203,7 +215,9 @@ def test_the_live_lake_check_runs_after_each_stage_and_survives_an_exception(mon
         return _fake_cell(args)
 
     with pytest.raises(g.LiveLakeMoved, match="RECORD stage"):
-        g.run_cells((1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell)
+        g.run_cells(
+            (1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell
+        )
     assert ran == ["RECORD"]  # the arm stage never launched
 
     # an exception in a stage while the lake moved reports the move, not the hidden exception
@@ -216,11 +230,13 @@ def test_the_live_lake_check_runs_after_each_stage_and_survives_an_exception(mon
         return _fake_cell(args)
 
     with pytest.raises(g.LiveLakeMoved, match="raised"):
-        g.run_cells((1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=boom)
+        g.run_cells(
+            (1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=boom
+        )
 
 
 def test_a_fallback_perception_seed_is_replaced_whole_from_the_reserve(monkeypatch):
-    # Codex cp4 #9: `unified` False is an instrument failure; the whole seed block is discarded and the
+    # Codex cp4 #9: `unified` False is an instrument failure; the whole seed is discarded and the
     # next reserve seed replaces it, printed beside it; with no reserve left the failure surfaces
     from concurrent.futures import ThreadPoolExecutor
 
@@ -233,12 +249,20 @@ def test_a_fallback_perception_seed_is_replaced_whole_from_the_reserve(monkeypat
 
     lines = []
     rec, cells, rep = g.run_cells(
-        (1, 2), ("DELTA", "BATCH"), workers=1, log=lines.append, pool=ThreadPoolExecutor, cell=cell, reserve=(9,)
+        (1, 2),
+        ("DELTA", "BATCH"),
+        workers=1,
+        log=lines.append,
+        pool=ThreadPoolExecutor,
+        cell=cell,
+        reserve=(9,),
     )
     assert sorted(rec) == [1, 9] and {c["seed"] for c in cells} == {1, 9} and len(cells) == 4
     assert rep == [(2, 2, 9)] and any("seed 2 FAILED" in s and "replaced by 9" in s for s in lines)
     with pytest.raises(g.InstrumentFailure, match="unified False"):
-        g.run_cells((1, 2), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell)
+        g.run_cells(
+            (1, 2), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell
+        )
 
 
 def _b_cells(coupled_accs, z_acc=0.5, z_beta="b", c_traj=()):
