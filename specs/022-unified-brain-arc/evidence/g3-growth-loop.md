@@ -829,3 +829,11 @@ Adds to the state-branch amendment above; nothing is removed. Agreed with R2 (ki
   `reconstruct_state`'s red, not the reader's (the test says so).
 - Cost: one more immortal row per stepped turn of a live memory unit; it joins decision 13's claim-with-a-check (R2 reports the
   measured B/turn at the first daemon restart).
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (d) (a stated crash window; no data read; G7's residual)
+
+A process crash between a batch's birth rows and its run/spend rows leaves born units journaled with no spend row and no run row (write-ahead
+order: birth rows, run row, spend row, then the learner's admit). This is the same window the spend row already had; the run row is
+deliberately NOT moved ahead of the birth rows, because a refusal inside `record_units` (a repeated id) must leave no run row (2.6, amendment
+(b)). Recovery is a ledger/journal reconciliation, not a rule: the next fold reads birth rows with no spend as an unsettled batch, to be
+reported, never silently re-derived. No reconciliation code exists yet; the window is disclosed, not closed.
