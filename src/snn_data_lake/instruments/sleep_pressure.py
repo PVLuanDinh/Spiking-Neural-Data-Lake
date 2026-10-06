@@ -219,6 +219,10 @@ def budget(plan):
     return sum(1 for s in plan if s), onsets
 
 
+class BudgetMismatch(Exception):
+    """An arm's (sleep ticks, onsets) differs from the clock arm's: the run is refused (C12)."""
+
+
 def check_budgets(plans):
     """C12: every arm's plan must carry the clock arm's (sleep ticks, onsets); a mismatch REFUSES the run."""
     ref = budget(plans["clock"])
@@ -362,7 +366,8 @@ def run_pressure_arm(brain, arm, total, workload, *, requests=None, seed=0, shuf
         raise ValueError(f"unknown arm {arm!r}; arms are {ARMS}")
     if arm == "solve" and requests is None:
         raise ValueError("the solve arm needs the solved_sink request ticks (G3's loop); it is never the oracle")
-    cycles = cycles_from_gate(clock_gate(brain, total))
+    clock_plan = clock_gate(brain, total)
+    cycles = cycles_from_gate(clock_plan)
     run = PressureRun(seed=seed, arm=arm)
     sched = None if arm == "shuffled" else Rescheduler(cycles, total)
     fixed = shuffled_plan(cycles, total, shuffle_from or {}, seed) if arm == "shuffled" else None
@@ -398,6 +403,9 @@ def run_pressure_arm(brain, arm, total, workload, *, requests=None, seed=0, shuf
                 if got is not None:
                     run.retention.append([t, int(got[0]), int(got[1])])
             run.plan.append(asleep)
+    ok, ref, bad = check_budgets({"clock": clock_plan, arm: run.plan})  # C12 at run time, not only in main()
+    if not ok:
+        raise BudgetMismatch(f"arm {arm!r} budget {bad[arm]} != the clock arm's {ref}")
     if sched is not None:
         run.advanced, run.absorbed = dict(sched.advanced), sched.absorbed
     run.carrier = meter.state() if meter is not None else {}
