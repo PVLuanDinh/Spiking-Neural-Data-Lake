@@ -998,7 +998,7 @@ one word; no threshold, arm, seed or bar changes.
    B-R1 is NOT met either way, `categorical_coupling` is deleted (3.6), and the evidence file records HARMFUL beside
    the number. Reason: PB2 measured the coupling worse than the uncoupled argmax on non-systematic errors (mean
    -0.0100, t -3.480, 7 of 8 negative), so a negative read is a reachable outcome and must not collapse into "null".
-2. **B-R3 conjunct 4: the word "secondary" is struck; all four conjuncts bind (line 460).** The frozen text above stays byte-intact; this amendment overrides its label. The conjunct reads: "contrast(COUPLED_SHUF - DELTA) NOT met.
+2. **B-R3 conjunct 4: the word "secondary" is struck; all four conjuncts bind (line 467).** The frozen text above stays byte-intact; this amendment overrides its label. The conjunct reads: "contrast(COUPLED_SHUF - DELTA) NOT met.
    This conjunct can only add a refusal." All four conjuncts must hold (hard rule 5: no relabelling a failed conjunct).
 3. **Order of evaluation.** B-R2 (COUPLED0 == DELTA on 8 of 8) and B-R4 are evaluated and printed BEFORE B-R1 is read.
    A failed B-R2 or B-R4 HALTS the read: no B-R1 verdict is printed, so a zero-count arm cannot read MET by noise.
