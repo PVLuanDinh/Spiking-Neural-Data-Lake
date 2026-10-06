@@ -278,6 +278,28 @@ def test_a_non_positive_batch_is_refused(tmp_path):
             GrowthLoop(ScriptedLearner(["CAPACITY"]), "z", Ledger(tmp_path / "l.bin", VALUES), _source(9), bad)
 
 
+def test_a_reused_unit_id_is_refused_before_any_birth_row_is_written(tmp_path):
+    # Codex cp5 #5 + the 2026-10-04 amendment's red: re-admitting a journaled id is refused
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    units = _source(9)(9)
+    ledger.record_units(units[:3], "p", 0)
+    assert ledger.known_unit(units[0].unit_id) and not ledger.known_unit(10**9)
+    n = len(ledger.units())
+    with pytest.raises(LedgerError):  # across batches
+        ledger.record_units([units[0]], "p", 1)
+    with pytest.raises(LedgerError):  # within one batch, nothing written even for the fresh first id
+        ledger.record_units([units[5], units[5]], "p", 1)
+    assert len(ledger.units()) == n
+
+
+def test_a_reconstructed_source_that_restarts_its_ids_stops_the_loop_with_nothing_spent(tmp_path):
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    GrowthLoop(ScriptedLearner(["CAPACITY"]), "p", ledger, _source(9), 9).run()  # ids 0..44
+    with pytest.raises(LedgerError):  # a fresh source counts from 0 again
+        GrowthLoop(ScriptedLearner(["CAPACITY"]), "q", ledger, _source(9), 9).run()
+    assert ledger.ledger("q").spend_units == 0
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 

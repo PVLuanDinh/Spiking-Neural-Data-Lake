@@ -218,7 +218,22 @@ class Ledger:
         if rec.state != "SOLVED":
             self.set_state(problem_id, "OPEN")
 
-    def record_unit(self, unit, problem_id, batch_id):
+    def known_unit(self, unit_id):
+        """True for EVERY id ever born -- the birth rows are IMMORTAL (_T_GOAL 0x0B), pruned units included."""
+        return any(r["unit_id"] == int(unit_id) for r in self.units())
+
+    def record_units(self, units, problem_id, batch_id):
+        """One batch of birth rows; a duplicate id (within the batch or already journaled) refuses the WHOLE
+        batch before any write (Codex cp5 #5)."""
+        ids = [int(u.unit_id) for u in units]
+        known = {r["unit_id"] for r in self.units()}
+        dup = sorted({i for i in ids if ids.count(i) > 1} | (set(ids) & known))
+        if dup:
+            raise LedgerError(f"problem {problem_id!r}: unit ids {dup} are already born or repeated in the batch")
+        for u in units:
+            self._record_unit(u, problem_id, batch_id)
+
+    def _record_unit(self, unit, problem_id, batch_id):
         """The IMMORTAL birth row, written BEFORE the learner receives the unit (write-ahead)."""
         body = {
             "unit_id": int(unit.unit_id),
@@ -358,8 +373,7 @@ class GrowthLoop:
             raise LedgerError(
                 f"problem {self.problem_id!r}: the source returned {len(units)} units for a batch of {self.batch}"
             )
-        for u in units:  # write-ahead: journaled before the learner holds it
-            self.ledger.record_unit(u, self.problem_id, self._batches)
+        self.ledger.record_units(units, self.problem_id, self._batches)  # write-ahead, before the learner
         self.ledger.record_spend(self.problem_id, len(units), evals=0)
         self.learner.admit(units)
         self._batches += 1
