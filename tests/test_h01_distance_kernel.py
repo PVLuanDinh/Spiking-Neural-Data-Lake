@@ -512,10 +512,12 @@ def test_cp2_6_the_statistic_refuses_an_unregistered_seed_allocation(artifact, s
     with pytest.raises(ValueError):
         KD.seed_state([1.0] * 16, 0.0)
     monkeypatch.setattr(KD, "pinned_artifact", lambda: pin)  # the synthetic file stands for production
-    KD._check_seeds(pin[0], KD.CONFIRMATORY_SEEDS)
-    KD._check_seeds(pin[0], KD.CONFIRMATORY_RESERVE)
+    KD._check_seeds(True, KD.CONFIRMATORY_SEEDS)
+    KD._check_seeds(True, KD.CONFIRMATORY_RESERVE)
     with pytest.raises(KD.ExposureRefused, match="registered"):
-        KD._check_seeds(pin[0], tuple(range(10050, 10058)))
+        KD._check_seeds(True, tuple(range(10050, 10058)))
+    with pytest.raises(KD.ExposureRefused, match="seeds"):  # a bool is not a seed (G7 D2)
+        KD._check_seeds(False, (True,) + tuple(range(10051, 10058)))
 
 
 def test_cp2_9_split_membership_is_asserted_on_the_actual_train_and_test_indexing(pop):
@@ -562,3 +564,21 @@ def test_cp2_r4_a_stopped_record_with_a_foreign_plan_authorizes_nothing_on_produ
     monkeypatch.setattr(KD, "pinned_artifact", lambda: pin)
     with pytest.raises(KD.ExposureRefused, match="registered plan"):
         KD.score_h01(path, rec, pin=pin)
+
+
+def test_cp2_h1_a_resaved_copy_under_a_caller_pin_is_still_production(artifact, stage, tmp_path, monkeypatch):
+    """G7 H1: production is recognised by content, so new bytes + a caller-supplied pin + a reduced plan or
+    unregistered seeds authorize nothing."""
+    path, pin = artifact
+    z = np.load(path)
+    copy = tmp_path / "resaved.npz"
+    np.savez_compressed(copy, **{k: z[k] for k in z.files})
+    cpin = (hashlib.sha256(copy.read_bytes()).hexdigest(), pin[1], pin[2])
+    assert cpin[0] != pin[0]
+    monkeypatch.setattr(KD, "pinned_artifact", lambda: pin)  # the 'real' H01: same counts, different sha
+    for call in (
+        lambda: KD.score_h01(copy, stage, pin=cpin, plan=_plan(), n_edges=EDGES_SYN),
+        lambda: KD.final_width_record(copy, "gauss", stage, pin=cpin, plan=_plan(), n_edges=EDGES_SYN),
+    ):
+        with pytest.raises(KD.ExposureRefused, match="registered plan"):
+            call()
