@@ -850,3 +850,37 @@ A for B = i.S0C1 is ii.twin ONLY IF Q-AII resolves it as solvable by the registe
 PlasticityRuleStack: G2 reads the incumbent as NOT stably solving the (ii) problems on dev seeds 8000-8003, and G2's frozen
 2.9 routes that red to the owner as Q-AII); until then B = i.S0C1 has no task A and its retention half is unread. A task A
 must be one the incumbent solves. (f)'s other lines stand: J = { i.S0C1 }, and A = ac1d for B = c1d.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (h) -- COL's wiring defined (G3 asked: 2.6a's "shared I with E->I and I->E wiring" was undefined; no data read)
+
+Nothing confirmatory has run. 2.6a named the column's structure and never defined it; G3's grown units are STATELESS
+first-spike-latency units (`grown_code.latency`: the first step t in 1..window where sum_i w_i psp(t - r_i) >= threshold,
+psp(dt) = exp(-dt/tau) for dt > 0, else 0, over the frozen 52-rank code), so the coupling is defined in that model, here, before
+any T1 arm exists. Unreviewed amendment text (G3 refutes it); every constant is CHOSEN and disclosed, none is tuned on T1.
+
+**COL's wiring (fixed, not learned; k E units and one I unit of one batch, members read through `labels_by(records, "batch_id")`
+-- no separate column registry).** The batch is evaluated causally, one step at a time, t = 1..window, every unit spiking at most
+once (its first crossing), the spikes of EARLIER steps only:
+- E unit e: v_e(t) = sum_i w_i psp(t - r_i) - gamma x theta_e x psp(t - t_I), the second term present only once the I unit has
+  spiked (t_I < t).  (I->E: the shared I spike subtracts gamma x theta_e, decaying with psp, from every E unit's drive.)
+- I unit: v_I(t) = sum_i w_i psp(t - r_i) + gamma x theta_I x sum_e psp(t - t_e), over the E units that have spiked (t_e < t).
+  (E->I: each E spike adds gamma x theta_I, decaying with psp, to the I unit's drive.)
+- Each unit's latency is its first t with v >= its OWN threshold; its Dale sign and output synapses are as for any unit (E >= 0,
+  I <= 0, G3's D9). psp(0) = 0, so a spike changes other units from the NEXT step: the evaluation is causal and has no loop.
+- gamma = 1/k (CHOSEN, disclosed): one coupling constant, in units of the receiving unit's own threshold, shared by both
+  directions, never a learned weight and never a parameter of the learner (the e-prop invariant is untouched). k in {4, 12}
+  scale it with k as secondary arms. A SENSITIVITY pair gamma in {0.5/k, 2/k} is run and REPORTED beside T1-struct, never
+  rescuing and never deciding (the same rule as the k grid).
+
+**BATCH9 (the control) is the same nine units with gamma = 0:** the I unit then takes its own afferents like any single and
+projects only onto the label neurons, as 2.6a says.
+
+**Reds the build owes (G3 builds, G7 reads).**
+1. NEUTER: gamma = 0 on the COL batch reproduces BATCH9's latencies BYTE-IDENTICALLY (a planted fixture and a seeded batch).
+2. LIVENESS: on a planted fixture where the I unit spikes before an E unit would, gamma > 0 changes at least one E latency
+   (the coupling is not a cosmetic label; mirrors the shared-partner term's liveness red in T4).
+3. CAUSALITY: no unit's latency depends on a spike at the same or a later step (flip a later spike; earlier latencies unchanged).
+4. DALE: the I unit's output synapses stay <= 0 at every deposit (G3's D9 clip; the planted-flip red lives there).
+
+What a T1-struct RED deletes is therefore exactly this coupling (the shared inhibition and its E->I drive) and, with it, the batch
+as a structured unit; the owner is told. The frozen COL has no E->E term; none is added.
