@@ -372,6 +372,84 @@ def index_swaps_in(tree):
     return out
 
 
+# ---------------------------------------------------------------------------------------------
+# W6 -- THE SYMMETRIC SPELLING (REPORT-ONLY). Added 2026-10-06, owner decision 17a: "err @ W_out" IS
+# weight transport. A hidden learning signal formed by multiplying an ERROR by a FORWARD weight
+# (`lsig = err @ self.W_out`, `L_j = Wout[j] * err[t]`) is exactly what the invariant forbids, and
+# W4 cannot see it: the transpose is implicit in the matmul shape and the result is RETURNED as a
+# gradient, so no weight update is reached inside the function. W6 therefore keys on the PRODUCT
+# itself. Disclosed blinds: operand NAMES decide (error-ish / weight-ish), like W4, and it cannot
+# tell a transported copy from a maintained feedback matrix except by name (B, *fb*, *feedback*).
+# It also fires on a BPTT reference (reasoning/eprop.py::grad_bptt) -- report, never exempt here.
+# It does NOT drive `--assert`: what the gate asserts is the owner's call (POLICIES e-prop block).
+# ---------------------------------------------------------------------------------------------
+_ERRISH = re.compile(r"^_?(err|error|delta|dy|resid|residual)(\d|_|$)", re.I)
+_FEEDBACKISH = re.compile(r"fb|feedback|random", re.I)
+
+
+def _opname(node):
+    """The array being multiplied, looking through `.T` / `.t()` / `.transpose()` and indexing."""
+    if isinstance(node, ast.Attribute) and node.attr in ("T", "mT"):
+        return _opname(node.value)
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        if node.func.attr in ("t", "transpose", "permute", "swapaxes"):
+            return _opname(node.func.value)
+    if isinstance(node, ast.Subscript):
+        return _opname(node.value)
+    return _base(node)
+
+
+def _operand_pairs(node):
+    """Operand pairs of `a @ b`, `a * b`, and `matmul/mm/dot/einsum` calls."""
+    if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.MatMult, ast.Mult)):
+        yield node.left, node.right
+    elif isinstance(node, ast.Call):
+        name = getattr(node.func, "attr", getattr(node.func, "id", ""))
+        if name in ("matmul", "mm", "dot", "einsum"):
+            args = [a for a in node.args if not isinstance(a, ast.Constant)]
+            for i, a in enumerate(args):
+                for b in args[i + 1 :]:
+                    yield a, b
+
+
+def signal_sites_in(tree):
+    """(lineno, error, weight) for every error x forward-weight product in `tree`."""
+    out = []
+    for node in ast.walk(tree):
+        for a, b in _operand_pairs(node):
+            for e, w in ((_opname(a), _opname(b)), (_opname(b), _opname(a))):
+                if e and w and _ERRISH.match(e) and _is_weight(w) and not _FEEDBACKISH.search(w):
+                    out.append((node.lineno, e, w))
+    return sorted(set(out))
+
+
+def scan_signals(brain_modules=None, extra_roots=()):
+    """[(where, lineno, error, weight, tier)] -- tier is governed / ungoverned / root."""
+    if brain_modules is None:
+        from snn_data_lake.gates.dormancy_gate import BRAIN_MODULES
+
+        brain_modules = BRAIN_MODULES
+    out = []
+    for root, tier in [(_PKG_DIR, None)] + [(r, "root") for r in extra_roots]:
+        for dirpath, _dirs, files in os.walk(root):
+            if "__pycache__" in dirpath:
+                continue
+            for f in sorted(files):
+                if not f.endswith(".py"):
+                    continue
+                path = os.path.join(dirpath, f)
+                rel = os.path.relpath(path, root).replace(os.sep, ".")[:-3]
+                try:
+                    with open(path, encoding="utf-8", errors="replace") as fh:
+                        tree = ast.parse(fh.read())
+                except (OSError, SyntaxError):
+                    continue
+                t = tier or ("governed" if f"{_PKG}.{rel}" in brain_modules else "ungoverned")
+                where = rel if tier is None else f"training/{f}"
+                out.extend((where, ln, e, w, t) for ln, e, w in signal_sites_in(tree))
+    return out
+
+
 def scan(brain_modules=None):
     """(violations, census, swaps).
 
@@ -458,6 +536,18 @@ def main(argv=None):
         print(f"  {'GOVERNED  ' if g else 'ungoverned'} {rel}:{lineno}   {name}: {detail}")
     if not swaps:
         print("  (none)")
+    print()
+    root_training = os.path.normpath(os.path.join(_PKG_DIR, "..", "..", "training"))
+    sig = scan_signals(extra_roots=[root_training] if os.path.isdir(root_training) else [])
+    print("--- W6 SYMMETRIC SPELLING: error x forward weight (REPORT-ONLY, not asserted) ---")
+    for where, lineno, e, w, tier in sig:
+        print(f"  {tier:10s} {where}:{lineno}   {e} x {w}")
+    if not sig:
+        print("  (none)")
+    print(
+        "  W6 governed/ungoverned/root: "
+        + "/".join(str(sum(1 for s_ in sig if s_[4] == t)) for t in ("governed", "ungoverned", "root"))
+    )
     print()
     print(
         f"GOVERNED: {len(gov)}   UNGOVERNED: {len(ungov)}   EXEMPT: {len(exempt)}   "
@@ -611,6 +701,33 @@ def _selfcheck():
         "'both orders appear' and scored this as a false positive"
     )
     print("  green  a symmetry validator comparing both orders -- enforces, never transports")
+
+    # W6, proven both ways on constructed sources, then on the KNOWN POSITIVE in the real tree.
+    for label, src, red in (
+        ("symmetric `err @ W_out`", """def f(err, net):
+    return err @ net.W_out
+""", True),
+        ("symmetric `err @ w.T`", """def f(err, w):
+    return err @ w.T
+""", True),
+        ("scalar `Wout[j] * err[t]`", """def f(self, err, j, t):
+    return self.Wout[j] * err[t]
+""", True),
+        ("fixed random feedback `delta @ B.T`", """def f(delta, B):
+    return delta @ B.T
+""", False),
+        ("a forward matmul `x @ W.T`", """def f(x, W):
+    return x @ W.T
+""", False),
+    ):
+        assert bool(signal_sites_in(ast.parse(src))) == red, f"W6 case flipped: {label}"
+        print(f"  {'RED  ' if red else 'green'}  W6 {label}")
+    sig = scan_signals()
+    assert any(s_[0] == "plasticity.eprop_kernel" for s_ in sig), (
+        "W6 did not find plasticity/eprop_kernel.py's `err @ self.W_out` -- a zero anywhere else "
+        "cannot be trusted until the known positive fires"
+    )
+    print(f"  RED    W6 finds eprop_kernel's symmetric spelling ({len(sig)} site(s), report-only)")
 
     violations, census, _swaps = scan()
 
