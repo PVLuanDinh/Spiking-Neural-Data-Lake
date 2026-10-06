@@ -783,3 +783,33 @@ the field order, the duplicate rules and every other check are untouched. New re
 re-keyed to ints. Agreed interface with G3 (birth row carries every LABEL_FIELDS key; `known_unit`, `birth_records`,
 `first_sign` over the immortal 'unit' rows; G3's `admit_rows` sets GROWN_SEGMENTS' admit point, its two debt rows retire
 later, `restore_growth_state` in G7's neurogenesis_engine commit). Unreviewed amendment text.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (e) -- owner decision A2 answers O9: T1-struct is registered, its retention half stands in (no T1 data read)
+
+**What already stood.** 2.6a (written 2026-10-03, joint G3+G7) already registers T1-struct (COL 8E+1I vs BATCH9, nine
+independent units placed by the same `place_labeled(9, roles=("E",)*8 + ("I",))` call at the same site, same targeting
+rules), its exact decision table, G3's seeds 9300-9307 (reserve 9308-9315, pilot 9040-9047; ruling 5) and the per-problem
+granularity guard (U* = 80 for k = 8). It was marked PENDING OWNER O9. This amendment adds no clause; it records the
+owner's answer and makes the table's "after O9 = yes" column the live one.
+
+**The owner's answer.** OWNER_DECISIONS_2026-10-04.md item A2 (the owner's delegation, ratified in the owner's words
+2026-10-06): "ACCEPT the T1 split. T1-size is REFUSED (untested, nothing deleted) unless the median single-neuron U >= 80;
+T1-struct (column vs 9 independent units) is pre-registered and its retention half stands in meanwhile." So: O9 = YES.
+T1-struct's retention contrast e'_s stands in for the record's T1 while no judging problem passes the guard; T1-size is
+UNTESTED and deletes nothing in that case.
+
+**What is live, stated once, nothing re-chosen.**
+- U half (T1-struct and T1-size): non-inferiority bound 20 % (d = log 1.2 on the log unit ratio), behind the
+  per-problem guard of 2.6a; guard REFUSED = untested, never a red and never a pass.
+- Retention half e'_s = delta_NI - (F(COL) - F(BATCH9)), reads at any size; paired one-sided t over S = 8 > 1.895;
+  degenerate (zero-variance) samples read by ruling 9a (common value > 0 MET, <= 0 NOT MET, "degenerate" printed);
+  exact sign-flip rate printed (2.6b).
+- Seeds: G3's 9300-9307 (reserve 9308-9315), computed inside G3's campaign and labelled as such in both
+  pre-registrations; nothing runs on G7's own block for T1.
+- What a RED deletes: the column STRUCTURE (the shared inhibitory unit with E->I and I->E wiring that the frozen COL
+  arm adds over BATCH9) -- NOT the column's neuron count, and nothing owner-drawn -- and the owner is told. The frozen
+  COL definition carries no E->E wiring; none is added here. T1-size's red keeps the record's disposition (2.6).
+- The condition A2 set (a dated pre-data amendment BEFORE any T1 data is read) holds: no T1 arm has run, no pilot
+  reading of U(SINGLE) exists in this worktree, and the dev seeds are G3's.
+
+Unreviewed amendment text; G3 (co-signer of O9) refutes it before the lead reads it.
