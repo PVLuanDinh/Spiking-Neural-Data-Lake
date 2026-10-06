@@ -634,6 +634,8 @@ def bands_sha256(bands):
 
 def seed_state(diffs, band):
     """+1 MET, -1 reverse MET, 0 unresolved; degenerate is NOT MET (ruling 9); mean must exceed band."""
+    if len(diffs) != len(CONFIRMATORY_SEEDS):
+        raise ValueError(f"the statistic is over {len(CONFIRMATORY_SEEDS)} seeds, got {len(diffs)}")
     mean = math.fsum(diffs) / len(diffs)
     up = contrast("up", diffs)
     if not up.degenerate and up.met and mean > band:
@@ -903,6 +905,17 @@ def _resolution_flags(reading, units, planted_record):
     return flags
 
 
+def _check_seeds(sha, seeds):
+    """The registered statistic is over EIGHT distinct recording seeds: on the production artifact exactly
+    the confirmatory set or its reserve (2.12); a fixture names any eight distinct integers."""
+    seeds = tuple(seeds)
+    if sha == pinned_artifact()[0]:
+        if seeds not in (CONFIRMATORY_SEEDS, CONFIRMATORY_RESERVE):
+            raise ExposureRefused("H01's edges are read on the registered confirmatory seeds or their reserve only (2.12)")
+    elif len(seeds) != len(CONFIRMATORY_SEEDS) or len(set(seeds)) != len(seeds) or not all(isinstance(x, int) for x in seeds):
+        raise ExposureRefused(f"the statistic needs {len(CONFIRMATORY_SEEDS)} distinct integer seeds, got {seeds!r}")
+
+
 def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, plan=None, n_edges=None, log=None):
     """2.4-2.8 on H01's edges, read ONCE, only after validate_planted accepts the planted record. A
     record that STOPPED at check (j) yields A3 row 2's reading, NOT_READ_REGION_INVALID, and no edge
@@ -926,6 +939,7 @@ def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, plan=Non
             "reading": {"verdict": "NOT_READ_REGION_INVALID", "K": None, "C": [], "a": 0},
         }
     pop, edges, sha, bands, plan = _load_gated(path, planted_record, pin, plan, n_edges)
+    _check_seeds(sha, seeds)
     geo = Geometry.of(pop)
     units = []
     for seed in seeds:
