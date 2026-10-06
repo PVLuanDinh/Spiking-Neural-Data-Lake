@@ -17,8 +17,9 @@ of the channels, the tap's timing, the transport's causality and the tap's read-
 default replay paths, ARMS[:8] and SCORED_ARMS are as G1(b) left them: a replay without `tap`/`side`
 carries no extra key and a plain pool arm's result carries neither "encoder" nor "transport".
 
-G1(c) 2.9 lets a pool spec name its `host` (recurrent_pool.HOSTS): off the port the binding also
-carries "host" and "host_policy"; on the port (the default) it is G1(b)'s dict, key for key.
+G1(c) 2.9 hosts the pool on KernelTick: every pool binding carries "host_policy" (the one pool
+implementation's arithmetic). The float64 port and the spec's `host` key went with the host switch
+(g1c-carried-state.md 3.3), so a pool replay no longer reproduces G1(b)'s port numbers bit for bit.
 
 This module is past the 800-line soft ceiling, as it was before G1(c) (1,746 lines at P3b). It stays
 one module because the tap is taken inside `_replay`'s event loop and the transport arms are arms of
@@ -880,7 +881,7 @@ class _PoolArm:
     its result carries: R-b7's binding, section 2.5's degeneracy rows, the parameter movement across
     the window, the Carried form's startup diagnostic, and R-b4's pool-noise kicks when asked."""
 
-    KEYS = ("candidate", "config", "form", "noise", "window", "host")
+    KEYS = ("candidate", "config", "form", "noise", "window")
 
     def __init__(self, spec, seed, arm="pool", b=TRANSPORT_B):
         self.arm, self.b, self.seed = arm, b, seed
@@ -894,12 +895,7 @@ class _PoolArm:
         # G1(c)'s Settled@0 arm, which files it as window 0; a campaign table refuses any binding
         # whose window is not the one it is filed under (R-b7)
         window = int(spec.get("window", rp.WINDOW))
-        # G1(c) 2.9: the host the same network runs on (recurrent_pool.HOSTS); the port by default,
-        # which is the call G1(b) made. A hosted binding names it and the host's policy below
-        host = spec.get("host", "port")
-        self.pool = rp.make_pool(
-            self.candidate, self.config, seed, self.form, window=window, host=host
-        )
+        self.pool = rp.make_pool(self.candidate, self.config, seed, self.form, window=window)
         self.start = {key: value.copy() for key, value in self.pool.params().items()}
         # window 0 has no window to move across: nothing can move, so the field is the empty
         # movement a window leaves g1, which keeps it comparable with window 256's
@@ -920,11 +916,9 @@ class _PoolArm:
             "w_in": _crc(self.pool.w_in),
             "topology": self.pool.params_fingerprint(),
             "initial": self.pool.fingerprint(),
+            # G1(c) 2.9: the arithmetic the pool runs (R-b7 holds it whole to the lineage's)
+            "host_policy": self.pool.host_policy(),
         }
-        if host != "port":
-            # the two keys appear ONLY off the port, so every port binding is G1(b)'s dict, key for key
-            self.binding["host"] = host
-            self.binding["host_policy"] = self.pool.host_policy()
         if arm != "pool":
             # G1(c) 2.7: binding["w_in"] stays the construction draw's crc; "encoder" is the crc of
             # the matrix after the single swap (None before it, or without one). A plain pool arm
@@ -2320,21 +2314,17 @@ def main():
         assert all(zero["pool"][key] == default["pool"][key] for key in ("state", "state_chain"))
         assert zero["pool"]["window"] == 0 and zero["pool"]["boundary"] is not None
         assert zero["pool"]["movement"] == {}
-        # G1(c) 2.9: a spec may name its host. The hosted run validates and its binding carries the host
-        # and the host's policy; the port's binding carries neither key (it is G1(b)'s dict); an unknown
-        # host is refused
-        hosted = replay(fixture, "pool", pool=dict(spec, host="kernel"))
-        _validate_run(hosted, fixture, fixture, "pool", "causal")
-        policy = hosted["pool"]["host_policy"]
-        assert hosted["pool"]["host"] == "kernel" and policy["host"] == "kernel", policy
-        assert "host" not in pooled["pool"] and "host_policy" not in pooled["pool"]
-        assert _PoolArm.KEYS[-1] == "host"
+        # G1(c) 2.9: the binding carries the one pool implementation's policy; a spec naming a host
+        # (the deleted switch) is refused as an unknown key
+        policy = pooled["pool"]["host_policy"]
+        assert policy == rp.KernelLsmPool.lineage_policy(spec["config"]), policy
+        assert "host" not in pooled["pool"] and "host" not in _PoolArm.KEYS
         try:
-            replay(fixture, "pool", pool=dict(spec, host="gpu"))
+            replay(fixture, "pool", pool=dict(spec, host="kernel"))
         except ValueError as error:
-            assert "unknown host" in str(error), error
+            assert "unknown pool spec keys" in str(error), error
         else:
-            raise AssertionError("an unknown host was accepted")
+            raise AssertionError("a pool spec naming a host was accepted")
         for history_free, followers in ((False, {4, 5}), (True, {4})):
             family = rb6_stream(4242, history_free=history_free)
             cats = [event["c"] for event in family["events"]]

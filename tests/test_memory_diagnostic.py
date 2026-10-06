@@ -569,7 +569,7 @@ def test_window_zero_leaves_the_arms_and_the_forms_as_they_were():
         "pool-swap": (256, ("x",)),
     }
     assert md.SCORED_ARMS == ("a", "f64", "d", "d0", "e1", "e1-0", "e2", "e2-0")
-    assert md._PoolArm.KEYS == ("candidate", "config", "form", "noise", "window", "host")
+    assert md._PoolArm.KEYS == ("candidate", "config", "form", "noise", "window")
     assert rp.FORMS == ("carried", "reset", "settled", "front_end")
 
 
@@ -701,7 +701,7 @@ def test_the_transport_arms_are_appended_and_the_scored_arms_do_not_move():
     assert {arm: ARMS[arm] for arm in md.TRANSPORT_ARMS} == {
         arm: (rp.N, channels) for arm, channels in md.TRANSPORT_CHANNELS.items()
     }
-    assert md._PoolArm.KEYS == ("candidate", "config", "form", "noise", "window", "host")
+    assert md._PoolArm.KEYS == ("candidate", "config", "form", "noise", "window")
 
 
 def test_a_default_replay_carries_no_tap_and_the_plain_pool_arm_neither_transport_key(tapped):
@@ -1261,34 +1261,26 @@ def test_a_skipped_carrier_is_undone_when_the_body_raises():
 # ---- G1(c) P4b: the host in the pool arm's binding ----------------------------------------------
 
 
-def test_a_pool_spec_may_name_its_host_and_only_a_hosted_binding_carries_it():
+def test_every_pool_binding_carries_the_surviving_host_policy():
     spec = dict(SHORT, form="settled")
-    port = md._PoolArm(spec, 17)
-    assert type(port.pool) is rp.LsmPool
-    assert "host" not in port.binding and "host_policy" not in port.binding
-    assert (
-        md._PoolArm(dict(spec, host="port"), 17).binding == port.binding
-    )  # the port files nothing
-    hosted = md._PoolArm(dict(spec, host="kernel"), 17)
+    hosted = md._PoolArm(spec, 17)
     assert type(hosted.pool) is rp.KernelLsmPool
-    assert hosted.binding["host"] == "kernel"
+    assert "host" not in hosted.binding
     assert hosted.binding["host_policy"] == hosted.pool.host_policy()
-    assert list(hosted.binding) == [*port.binding, "host", "host_policy"]
-    # the SAME network on another host, never a second candidate
-    for key in ("candidate", "form", "config_crc32", "realization_seed", "window", "w_in"):
-        assert hosted.binding[key] == port.binding[key], key
-    with pytest.raises(ValueError, match="unknown host"):
-        md._PoolArm(dict(spec, host="gpu"), 17)
-    assert md._PoolArm.KEYS[-1] == "host"
+    assert md._PoolArm(spec, 17).binding == hosted.binding
+
+
+@pytest.mark.parametrize("host", ("port", "kernel", "gpu"))
+def test_a_retired_host_switch_in_a_pool_spec_is_refused(host):
+    with pytest.raises(ValueError, match="unknown pool spec keys"):
+        md._PoolArm(dict(SHORT, host=host), 17)
 
 
 def test_a_hosted_pool_arm_replay_validates_and_files_its_host():
     stream = _stamped()
-    port = replay(stream, "pool", pool=SHORT)
-    hosted = replay(stream, "pool", pool=dict(SHORT, host="kernel"))
+    hosted = replay(stream, "pool", pool=SHORT)
     md._validate_run(hosted, stream, stream, "pool", "causal")
-    assert "host" not in port["pool"] and "host_policy" not in port["pool"]
-    assert hosted["pool"]["host"] == "kernel" and hosted["pool"]["host_policy"]["host"] == "kernel"
+    assert "host" not in hosted["pool"] and hosted["pool"]["host_policy"]["host"] == "kernel"
     assert hosted["pool"]["host_policy"]["frac_bits"] == 12
     assert (hosted["pool"]["window"], hosted["pool"]["percepts"], hosted["pool"]["frozen"]) == (
         16,
@@ -1297,8 +1289,8 @@ def test_a_hosted_pool_arm_replay_validates_and_files_its_host():
     )
     assert len(hosted["readout"]["predictions"]) == len(stream["events"])
     # R-b4's noise kicks reach a hosted pool through the same spec
-    noisy = replay(stream, "pool", pool=dict(SHORT, host="kernel", noise=True, window=4))
-    quiet = replay(stream, "pool", pool=dict(SHORT, host="kernel", window=4))
+    noisy = replay(stream, "pool", pool=dict(SHORT, noise=True, window=4))
+    quiet = replay(stream, "pool", pool=dict(SHORT, window=4))
     assert (
         noisy["pool"]["kicks"] > 0 and noisy["pool"]["state_chain"] != quiet["pool"]["state_chain"]
     )

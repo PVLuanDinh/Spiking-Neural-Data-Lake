@@ -10,8 +10,8 @@ r"""G1(c) / T109 part (c): the campaign's report stage and its golden check (g1c
   stage_report        loads the summaries, writes OUT/report.json and OUT/report.md, files the report's
                       digest.
   golden              the golden check (2.11), in-process at the current head: the pool's hand fixtures and
-                      R-b3's fixture chain on the surviving host (read from OUT's migrate summary when
-                      given, else both hosts), a full replay of the 48-event synthetic fixture through
+                      R-b3's fixture chain on the pool (the one implementation G1(c) 2.9 kept; an OUT's
+                      migrate summary must name its host), a full replay of the 48-event synthetic fixture through
                       every arm and form (predictions, phi, both learners' fingerprints, pool state
                       chains), and `assemble` / `render` recomputed over OUT's saved summaries. It returns a
                       digest dict; `golden OUT --against FILE` compares two. Its RED is a one-ulp change to
@@ -46,25 +46,16 @@ from snn_data_lake.reservoir import recurrent_pool as rp
 # distinct-from: gates/selfcheck_cache.py::SelfcheckCache._refresh_derived -- recomputes the cache's rosters and envelope from the tree
 # distinct-from: infra/self_mod_harness.py::SelfModHarness._run_ruff -- runs ruff inside a sandbox
 
-STAGES_READ = (
-    "record",
-    "mechanism",
-    "instrument",
-    "references",
-    "construct",
-    "migrate",
-    "causality",
-    "primary",
-    "controls",
-    "transport",
-    "separation",
+STAGES_READ = tuple(
+    "record mechanism instrument references construct migrate causality primary controls transport separation".split()
 )
+# The migration gate's stage ran in the campaign at 5761f3a7 (g1c-carried-state.md 3.3) and was deleted with
+# the port and the host switch (2.9): that campaign's OUT holds its summary, which is read and held to the
+# same provenance as the rest; a later campaign has none
+STAGES_OPTIONAL = ("migrate",)
 # what the report keeps of the separation stage: its reading AND the measurements it was read from
 SEPARATION_KEYS = tuple(
-    (
-        "run item_3 reason reading host window stream_checks "
-        "accuracy mean per_text distinct_settled_rows"
-    ).split()
+    "run item_3 reason reading host window stream_checks accuracy mean per_text distinct_settled_rows".split()
 )
 
 
@@ -81,18 +72,21 @@ def digest_of(value):
 
 def load_summaries(out):
     """The stage summaries OUT holds, by stage (a missing one is simply absent)."""
-    summaries = {}
-    for stage in STAGES_READ:
-        path = ps._summary_path(out, stage)
-        if path.exists():
-            summaries[stage] = md._load(path)
-    return summaries
+    return {
+        stage: md._load(path)
+        for stage in STAGES_READ
+        if (path := ps._summary_path(out, stage)).exists()
+    }
 
 
 def provenance_problems(summaries):
     """Why these summaries are not one campaign (empty: clear): a stage missing, not COMPLETED, written on
     a dirty tree, or at another head than the rest (2.13: one clean head)."""
-    problems = [f"{stage}: no summary" for stage in STAGES_READ if stage not in summaries]
+    problems = [
+        f"{stage}: no summary"
+        for stage in STAGES_READ
+        if stage not in summaries and stage not in STAGES_OPTIONAL
+    ]
     for stage, body in summaries.items():
         if body.get("status") != "COMPLETED":
             problems.append(f"{stage}: {body.get('status')}, not COMPLETED")
@@ -186,9 +180,33 @@ def _rows(summaries, live, oracle, history):
     return rows
 
 
+def _migration(mig):
+    """The migration gate's record (2.9), as the campaign at 5761f3a7 wrote it (None for a campaign after
+    its deletion). Its reading is recomputed from the recorded conjuncts and means by 2.9's pure
+    function and must equal the recorded one: two instruments that must agree."""
+    if mig is None:
+        return None
+    conj, mean = mig["conjuncts"], mig["mean"]
+    again = cs.migration_reading(
+        conj["parity"],
+        mean["kernel"]["live"],
+        mean["port"]["live"],
+        mean["kernel"]["task"],
+        mean["port"]["task"],
+        conj["r_b3"],
+        conj["r_b4"],
+    )
+    if again != mig["reading"]:
+        raise ValueError(f"migrate: the recorded reading {mig['reading']!r} is not 2.9's {again!r}")
+    kept = (
+        "reading use conjuncts mean machinery_red port_vs_g1b quantization parity_horizon".split()
+    )
+    return {key: mig[key] for key in kept}
+
+
 def _assemble(summaries):
     record, prim, ctl = summaries["record"], summaries["primary"], summaries["controls"]
-    inst, mig, sep = summaries["instrument"], summaries["migrate"], summaries["separation"]
+    inst, sep = summaries["instrument"], summaries["separation"]
     arms = summaries["transport"]["arms"]
     shown = sep["input_response"] if sep["run"] else {}  # a separation that ran files its own (R3)
     live = [str(seed) for seed in record["live_seeds"]]
@@ -227,11 +245,7 @@ def _assemble(summaries):
             "primary_host": prim["host"],
         },
         "rows": rows,
-        "migration": {
-            key: mig[key]
-            for key in ("reading", "use", "conjuncts", "mean", "machinery_red", "port_vs_g1b")
-        }
-        | {"quantization": mig["quantization"], "parity_horizon": mig["parity_horizon"]},
+        "migration": _migration(summaries.get("migrate")),
         "per_seed": {
             seed: {
                 "D": prim["d"]["readout"][seed],
@@ -374,6 +388,41 @@ def _text_accuracies(per_text):
 # distinct-from: gates/doc_budget_gate.py::_selfcheck -- constructs the reds of one doc-budget gate's statuses
 # distinct-from: gates/docs_only_battery.py::code_hash -- hashes the non-Markdown lines of git ls-files
 # distinct-from: instruments/pool_selection.py::_tabulate -- runs and validates cells into R-b7's table; the stage here only reads the summaries those tables produced
+def _migration_lines(mig):
+    """The report's migration-gate section: the record's, line for line, or one line saying no gate ran."""
+    if mig is None:
+        return [
+            "",
+            "## Migration gate: not run (2.9 deleted the port and the gate after the campaign at 5761f3a7)",
+        ]
+    quantization = {
+        bits: {"D_live": row["D_live"], "D_task": row["D_task"]}
+        for bits, row in mig["quantization"]["rows"].items()
+    }
+    horizon = {
+        bits: None
+        if row is None
+        else {
+            "first_diverging_tick": row["first_diverging_tick"],
+            "equal_fraction": row["equal_fraction"],
+        }
+        for bits, row in mig["parity_horizon"]["rows"].items()
+    }
+    return [
+        "",
+        f"## Migration gate: {mig['reading']} (use {mig['use']})",
+        "",
+        "conjuncts: " + json.dumps(mig["conjuncts"], sort_keys=True),
+        "mean D (live, task) per host: " + json.dumps(mig["mean"], sort_keys=True),
+        "machinery red: " + json.dumps(mig["machinery_red"], sort_keys=True),
+        "port D vs G1(b): " + json.dumps(mig["port_vs_g1b"], sort_keys=True),
+        "quantization sensitivity (REPORT ONLY, never used to explain a failure away): "
+        + json.dumps(quantization, sort_keys=True),
+        "parity horizon, hosted vs port, per frac_bits (REPORT ONLY): "
+        + json.dumps(horizon, sort_keys=True),
+    ]
+
+
 def render(report):
     """The report as markdown (PURE): the G-R1 reading, every contrast row, the migration gate, the
     per-seed values, the per-seed, per-form, per-segment tables (both learners' accuracy, entropy,
@@ -394,33 +443,7 @@ def render(report):
     lines += ["", f"## G-R1 reads: {reading}", "", "inputs: " + inputs]
     lines += ["", "## Contrast rows (bar T_BAR_S31, exact sign-flip rate beside each)", ""]
     lines += [_contrast_lines(report["rows"])]
-    mig = report["migration"]
-    quantization = {
-        bits: {"D_live": row["D_live"], "D_task": row["D_task"]}
-        for bits, row in mig["quantization"]["rows"].items()
-    }
-    horizon = {
-        bits: None
-        if row is None
-        else {
-            "first_diverging_tick": row["first_diverging_tick"],
-            "equal_fraction": row["equal_fraction"],
-        }
-        for bits, row in mig["parity_horizon"]["rows"].items()
-    }
-    lines += [
-        "",
-        f"## Migration gate: {mig['reading']} (use {mig['use']})",
-        "",
-        "conjuncts: " + json.dumps(mig["conjuncts"], sort_keys=True),
-        "mean D (live, task) per host: " + json.dumps(mig["mean"], sort_keys=True),
-        "machinery red: " + json.dumps(mig["machinery_red"], sort_keys=True),
-        "port D vs G1(b): " + json.dumps(mig["port_vs_g1b"], sort_keys=True),
-        "quantization sensitivity (REPORT ONLY, never used to explain a failure away): "
-        + json.dumps(quantization, sort_keys=True),
-        "parity horizon, hosted vs port, per frac_bits (REPORT ONLY): "
-        + json.dumps(horizon, sort_keys=True),
-    ]
+    lines += _migration_lines(report["migration"])
     lines += ["", "## Per seed (the reference readout; the grower's D beside it)", ""]
     names = "seed|D|D grower|D_shuf|D0|W|startup flagged|scored rows <= boundary"
     keys = ("D", "D_grower", "D_shuf", "D0", "W", "startup_flagged", "scored_rows_through_boundary")
@@ -577,29 +600,24 @@ def _core(run):
     }
 
 
-def _hand_record(host):
+def _hand_record():
     """The pool's hand fixture (recurrent_pool's HAND_*) through all four forms at a one- and a
-    four-percept window, on `host`: every step's activity, membrane and spikes as hex, and the pool's
+    four-percept window: every step's activity, membrane and spikes as hex, and the pool's
     fingerprint."""
     bits = rp.KernelLsmPool.lineage_policy(cs.TUNED)["frac_bits"]
     record = {}
     for form in rp.FORMS:
         for window in (1, 4):
-            if host == "port":
-                pool = rp.LsmPool(
-                    rp.HAND_PRE, rp.HAND_W, rp.HAND_CFG, form, window=window, s_settle=1
-                )
-            else:
-                pool = rp._hosted(
-                    rp.KernelLsmPool,
-                    bits,
-                    rp.HAND_PRE,
-                    rp.HAND_W,
-                    rp.HAND_CFG,
-                    form,
-                    window=window,
-                    s_settle=1,
-                )
+            pool = rp._hosted(
+                rp.KernelLsmPool,
+                bits,
+                rp.HAND_PRE,
+                rp.HAND_W,
+                rp.HAND_CFG,
+                form,
+                window=window,
+                s_settle=1,
+            )
             rows = rp._percepted(pool, rp.HAND_U)
             record[f"{form}/{window}"] = [
                 [row[0].hex(), row[1].hex(), row[2].hex(), row[3]] for row in rows
@@ -607,71 +625,67 @@ def _hand_record(host):
     return record
 
 
-def _chain_record(host):
-    """R-b3's fixture chain on `host`: the cycled fixture percepts through the TUNED configuration's
-    Carried and Settled pools, every step's activity, phi, final state and the chain of the state at every
-    percept boundary (recurrent_pool._record)."""
+def _chain_record():
+    """R-b3's fixture chain: the cycled fixture percepts through the TUNED configuration's Carried and
+    Settled pools, every step's activity, phi, final state and the chain of the state at every percept
+    boundary (recurrent_pool._record)."""
     seq = rp.cycled_fixture(GOLDEN_PERCEPTS)
     return {
         form: rp._record(
-            rp.make_pool(st.POOL, cs.TUNED, rp.DEV_SEED, form, window=32, host=host),
-            seq,
-            chain=True,
+            rp.make_pool(st.POOL, cs.TUNED, rp.DEV_SEED, form, window=32), seq, chain=True
         )
         for form in ("carried", "settled")
     }
 
 
-def _replay_records(host, fixture, tap):
+def _replay_records(fixture, tap):
     """The fixture through the pool arm in every form and through every transport arm (Carried and
-    Settled) on `host`, at GOLDEN_WINDOW; one golden record per replay."""
+    Settled), at GOLDEN_WINDOW; one golden record per replay."""
     record = {}
     for form in rp.FORMS:
-        spec = ps._spec(st.POOL, cs.TUNED, form, window=GOLDEN_WINDOW, host=host)
+        spec = ps._spec(st.POOL, cs.TUNED, form, window=GOLDEN_WINDOW)
         record[f"pool {form}"] = _core(md.replay(fixture, "pool", pool=spec))
     for (
         form
     ) in ps.FIT_FORMS:  # window 0, the registered Settled-from-first-percept intervention (2.6)
-        spec = ps._spec(st.POOL, cs.TUNED, form, window=0, host=host)
+        spec = ps._spec(st.POOL, cs.TUNED, form, window=0)
         record[f"pool {form}@0"] = _core(md.replay(fixture, "pool", pool=spec))
     for arm in md.TRANSPORT_ARMS:
         for form in ps.FIT_FORMS:
-            spec = ps._spec(st.POOL, cs.TUNED, form, window=GOLDEN_WINDOW, host=host)
+            spec = ps._spec(st.POOL, cs.TUNED, form, window=GOLDEN_WINDOW)
             record[f"{arm} {form}"] = _core(md.replay(fixture, arm, pool=spec, side=tap))
     return record
 
 
-def hosts_in(out):
-    """The host the golden check runs: the surviving host OUT's migrate summary names, else both."""
-    if out is not None and ps._summary_path(out, "migrate").exists():
-        return (md._load(ps._summary_path(out, "migrate"))["use"],)
-    return st.HOSTS
-
-
-def golden(out=None, *, hosts=None):
+def golden(out=None):
     """The golden digest dict (2.11): see the module docstring. With `out` the report stage's pure
     functions are recomputed over OUT's saved summaries (a set that cannot be assembled is a
-    ValueError, never a silent None); without it the "report" entry is None."""
-    hosts = tuple(hosts) if hosts is not None else hosts_in(out)
+    ValueError, never a silent None); without it the "report" entry is None. The digest names the pool's
+    host (st.HOST), as the golden check at 5761f3a7 did for the surviving host; an OUT whose migrate
+    summary names another host is a ValueError."""
+    if out is not None:
+        try:
+            st.use_of(out)
+        except ps.Halt as halt:
+            raise ValueError(f"the golden check cannot run OUT's host: {halt}") from halt
+    host = st.HOST
     fixture = _fixture()
     tap = md.replay(fixture, "a", tap=GOLDEN_B)["tap"]
     body = {
         "scope": {
-            "hosts": list(hosts),
+            "hosts": [host],
             "window": GOLDEN_WINDOW,
             "b": GOLDEN_B,
             "percepts": GOLDEN_PERCEPTS,
             "arms": list(GOLDEN_ARMS),
         },
-        "hand": {host: digest_of(_hand_record(host)) for host in hosts},
-        "r_b3": {host: digest_of(_chain_record(host)) for host in hosts},
+        "hand": {host: digest_of(_hand_record())},
+        "r_b3": {host: digest_of(_chain_record())},
         "arms": {arm: digest_of(_core(md.replay(fixture, arm))) for arm in GOLDEN_ARMS},
         "replays": {
             host: {
-                name: digest_of(record)
-                for name, record in _replay_records(host, fixture, tap).items()
+                name: digest_of(record) for name, record in _replay_records(fixture, tap).items()
             }
-            for host in hosts
         },
         "report": None,
     }
@@ -692,21 +706,16 @@ def differences(first, second, prefix=""):
 
 
 @contextlib.contextmanager
-def leak_nudged(host):
+def leak_nudged():
     """The golden check's RED: while it holds every pool is built with its leak moved ONE ULP of the
-    host's own arithmetic (float64 on the port; float32 on the host, whose membrane decays in float32,
-    where a float64 ulp is invisible). The pool constructor is wrapped, never the configuration:
-    `canonical` would refuse an off-grid configuration and the mutant would never run."""
+    pool's own arithmetic (float32: the membrane decays in float32, where a float64 ulp is invisible).
+    The pool constructor is wrapped, never the configuration: `canonical` would refuse an off-grid
+    configuration and the mutant would never run."""
     original = rp.LsmPool.__init__
 
-    def moved(leak):
-        if host == "kernel":
-            return float(np.nextafter(np.float32(leak), np.float32(2.0)))
-        return float(np.nextafter(leak, 2.0))
-
     def nudged(self, pre, w, config, *args, **kwargs):
-        shifted = dict(config, **{"lambda": moved(config["lambda"])})
-        original(self, pre, w, shifted, *args, **kwargs)
+        moved = float(np.nextafter(np.float32(config["lambda"]), np.float32(2.0)))
+        original(self, pre, w, dict(config, **{"lambda": moved}), *args, **kwargs)
 
     rp.LsmPool.__init__ = nudged
     try:
@@ -754,28 +763,22 @@ def _check_digests():
 
 def _check_golden():
     """The golden digest, twice at one head (equal: it is deterministic), and under a one-ulp change to
-    the pool's leak on each host (it must move, and only where a pool is read: the arms with no pool do
-    not move)."""
+    the pool's leak (it must move, and only where a pool is read: the arms with no pool do not move)."""
     started = time.perf_counter()
     base = golden()
-    again = golden(hosts=("port",))
-    assert again["hand"]["port"] == base["hand"]["port"], "the golden is not deterministic"
-    assert again["r_b3"]["port"] == base["r_b3"]["port"]
-    assert again["replays"]["port"] == base["replays"]["port"] and again["arms"] == base["arms"]
-    moved = {}
-    for host in st.HOSTS:
-        with leak_nudged(host):
-            nudged = golden(hosts=(host,))
-        assert nudged["arms"] == base["arms"], "the leak red moved an arm with no pool"
-        assert nudged["digest"] != base["digest"]
-        moved[host] = [
-            part for part in ("hand", "r_b3") if nudged[part][host] != base[part][host]
-        ] + [
-            f"replays/{name}"
-            for name, found in nudged["replays"][host].items()
-            if found != base["replays"][host][name]
-        ]
-        assert "r_b3" in moved[host] and len(moved[host]) > 2, (host, moved[host])
+    again = golden()
+    assert again == base, "the golden is not deterministic"
+    host = st.HOST
+    with leak_nudged():
+        nudged = golden()
+    assert nudged["arms"] == base["arms"], "the leak red moved an arm with no pool"
+    assert nudged["digest"] != base["digest"]
+    moved = [part for part in ("hand", "r_b3") if nudged[part][host] != base[part][host]] + [
+        f"replays/{name}"
+        for name, found in nudged["replays"][host].items()
+        if found != base["replays"][host][name]
+    ]
+    assert "r_b3" in moved and len(moved) > 2, moved
     return base, moved, time.perf_counter() - started
 
 
@@ -786,10 +789,8 @@ def self_check():
     print(
         "carried_state_report self-check OK: provenance (a missing, halted, dirty or second-head summary "
         "refused), digests, the golden deterministic over "
-        f"{len(base['replays']['port'])} pool replays per host and {len(base['arms'])} arms; a one-ulp "
-        "leak moved "
-        + ", ".join(f"{host} in {len(parts)} records" for host, parts in moved.items())
-        + f" ({seconds:.1f} s)"
+        f"{len(base['replays'][st.HOST])} pool replays and {len(base['arms'])} arms; a one-ulp "
+        f"leak moved {len(moved)} records ({seconds:.1f} s)"
     )
 
 

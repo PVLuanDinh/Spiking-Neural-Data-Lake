@@ -77,12 +77,12 @@ CORE = [
     "growth.placement",  # grown units ordered into cortical layers by measured H01 occupancy
     "growth.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause
     "instruments.memory_diagnostic",  # G1 causal contract synthetic reds
-    "reservoir.recurrent_pool",  # G1(b): R-b0 parity, R-b3, R-b4 pool noise, R-b5 and every red
+    "reservoir.recurrent_pool",  # G1(b)/G1(c) 2.9: the one pool implementation's R-b0 draws, R-b3, R-b4 pool noise, R-b5 and every red
     "instruments.pool_selection",  # G1(b) campaign: ordering, power, R-b7 reds, step order, exit codes
     "instruments.carried_state_campaign",  # G1(c): frozen constants, the contrast row (degenerate NOT MET), the oracle check and their reds
-    "instruments.carried_state_stages",  # G1(c) driver part 2a: the scale, the cell keys and readers, the quantized decoder equal to a hosted replay on the fixture
+    "instruments.carried_state_stages",  # G1(c) driver part 2a: the scale, the cell keys and readers, use_of and its port refusal
     "instruments.carried_state_controls",  # G1(c) driver part 2b: the separation reading rules and the scored-row count on hand numbers
-    "instruments.carried_state_report",  # G1(c) driver part 2c: provenance refusals, digests, the golden check deterministic and moved by a one-ulp leak on both hosts
+    "instruments.carried_state_report",  # G1(c) driver part 2c: provenance refusals, digests, the golden check deterministic and moved by a one-ulp leak
     "instruments.carried_state_driver",  # G1(c) campaign driver: preflight, stage chain, the later stages' refusals, REPAIR.txt, the half-moved rule
     "instruments.inseparable_mapping",  # G2(ii)'s generator + G-R2's construction check: A1-A5, every construction and stream red, a smoke A3/A4 on one development seed
     "sensorimotor.lca_sparse_coding",

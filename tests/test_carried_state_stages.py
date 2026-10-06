@@ -1,5 +1,5 @@
 """G1(c)'s campaign driver, part 2 (instruments/carried_state_stages.py and
-carried_state_controls.py): the migrate, causality, primary, controls, transport and separation
+carried_state_controls.py): the causality, primary, controls, transport and separation
 stages of g1c-carried-state.md 2.13, each with its constructed red.
 
 Nothing here records or builds a Brain, and no live seed (300-361), synthetic seed 6000 or learner
@@ -35,7 +35,6 @@ SCALE = {"window": 16, "b": 16, "percepts": 64, "kicks": 48}
 LIVE = (300, 301, 302)
 RB6 = 4243  # exposed; never 6000
 SEEDS = (100, 203, *cs.GATE_SEEDS, *LIVE)
-HOSTED_SEEDS = (*cs.GATE_SEEDS, *cs.GATE_SYNTHETIC_SEEDS)  # every hosted cell, live bundle (2.9)
 
 
 def clean():
@@ -177,7 +176,7 @@ def world(tmp_path_factory):
     with shortened():
         base_out(out)
         codes = {}
-        for name in ("migrate", "causality", "primary"):
+        for name in ("causality", "primary"):
             codes[name], _ = run(out, name)
         codes["controls"], _ = run(out, "controls", rb6_seed=RB6)
         codes["transport"], _ = run(out, "transport")
@@ -209,8 +208,8 @@ def call(function, out, **kwargs):
 
 def test_the_stage_functions_are_the_drivers_and_every_stage_completed(world):
     _, codes = world
-    assert codes == {name: ps.EXIT_OK for name in codes} and len(codes) == 6
-    assert tuple(st.STAGE_FUNCTIONS) == ("migrate", "causality", "primary")
+    assert codes == {name: ps.EXIT_OK for name in codes} and len(codes) == 5
+    assert tuple(st.STAGE_FUNCTIONS) == ("causality", "primary")
     assert tuple(ctl.STAGE_FUNCTIONS) == ("controls", "transport", "separation")
     assert all(
         drv.STAGE_FUNCTIONS[name] is f
@@ -226,23 +225,20 @@ def test_settings_default_to_the_real_scale_and_refuse_an_unknown_key():
 
 
 def test_the_cell_key_is_pool_selections_own_for_every_variant():
-    for host, window in (("port", rp.WINDOW), ("kernel", rp.WINDOW), ("port", 0), ("kernel", 16)):
+    for window in (rp.WINDOW, 0, 16):
         cell = ps._cell(
             Path("s"),
             Path("o"),
             7,
-            spec=ps._spec("lsm", cs.TUNED, "settled", window=window, host=host),
+            spec=ps._spec("lsm", cs.TUNED, "settled", window=window),
         )
-        assert st.key("settled", 7, host=host, window=window) == ps.cell_key(cell)
-    assert (
-        len({st.key("carried", 7, host=h, window=w) for h in st.HOSTS for w in (0, 16, 256)}) == 6
-    )
-    noise = st.key("carried", 7, host="port", window=256, noise=True)
-    assert noise != st.key("carried", 7, host="port", window=256) and noise[5] is True
+        assert st.key("settled", 7, window=window) == ps.cell_key(cell)
+    assert len({st.key("carried", 7, window=w) for w in (0, 16, 256)}) == 3
+    noise = st.key("carried", 7, window=256, noise=True)
+    assert noise != st.key("carried", 7, window=256) and noise[5] is True
     copy = st.key(
         "carried",
         7,
-        host="port",
         window=256,
         arm="pool-copy",
         transport={"form": "copy"},
@@ -264,361 +260,40 @@ def test_a_table_that_is_not_ok_halts_and_two_groups_may_hold_one_key(tmp_path):
 
         def cells(tag):
             return [
-                st.pool_cell(
-                    path, tmp_path / f"{tag}-{form}.json.gz", 17, form, host="port", window=16
-                )
+                st.pool_cell(path, tmp_path / f"{tag}-{form}.json.gz", 17, form, window=16)
                 for form in ps.FIT_FORMS
             ]
 
         first, second = st.run_cells([(cells("a"), (17,), streams), (cells("b"), (17,), streams)])
         assert first.keys() == second.keys() and len(first) == 2  # one key in two tables: fine
         st.need_ok(first, "x")
-        gap = st.accuracy(first, st.key("carried", 17, host="port", window=16)) - st.accuracy(
-            first, st.key("settled", 17, host="port", window=16)
+        gap = st.accuracy(first, st.key("carried", 17, window=16)) - st.accuracy(
+            first, st.key("settled", 17, window=16)
         )
-        assert (
-            st.gaps(st.accuracies(first, (17,), ps.FIT_FORMS, host="port", window=16))["readout"][
-                "17"
-            ]
-            == gap
-        )
+        assert st.gaps(st.accuracies(first, (17,), ps.FIT_FORMS, window=16))["readout"]["17"] == gap
         with pytest.raises(ps.Halt, match="R-b7"):  # one table never holds a key twice
             st.run_cells([(cells("c") + cells("d"), (17,), streams)])
         broken = {k: dict(cell, status="TIMEOUT") for k, cell in first.items()}
         halt = call(lambda _o: st.need_ok(broken, "somewhere"), None)
         assert halt.check == "somewhere" and len(halt.detail["not OK"]) == 2
         with pytest.raises(ps.Halt):
-            st.accuracy(broken, st.key("carried", 17, host="port", window=16))
+            st.accuracy(broken, st.key("carried", 17, window=16))
 
 
-# ---- migrate -------------------------------------------------------------------------------------
+# ---- the surviving host and archived migration decision ------------------------------------------
 
 
-def test_migrate_reads_the_gate_on_both_hosts_and_files_the_quantization_beside_it(world):
-    out, _ = world
-    body = summary(out, "migrate")
-    assert body["reading"] == "hosted" and body["use"] == "kernel" and body["shortened"] is True
-    assert body["scale"] == SCALE and body["window"] == 16 and all(body["conjuncts"].values())
-    assert set(body["mean"]) == {"port", "kernel"} and set(body["mean"]["port"]) == {"live", "task"}
-    assert cs.within(body["mean"]["kernel"]["live"], body["mean"]["port"]["live"])
-    assert cs.within(body["mean"]["kernel"]["task"], body["mean"]["port"]["task"])
-    assert body["machinery_red"]["fired"] and body["machinery_red"]["isolated"] == "port"
-    assert body["machinery_red"]["control"] == "hosted" and not cs.within(
-        body["machinery_red"]["D_task_reset"], body["machinery_red"]["D_task_port"]
-    )
-    # the gate's four checks ran as "call" jobs and every one holds
-    names = ("parity", "r_b3", "r_b3_red", "r_b4_red")
-    assert all(body["checks"][name]["verdict"] for name in names)
-    assert body["checks"]["r_b3"]["numbers"]["host"] == "kernel"
-    # R-b4 on the hosted form is a fresh-process TWIN of every hosted cell (P5 panel F7), beside
-    # the red
-    twins = body["r_b4_twins"]
-    # "every hosted cell" (2.9 as amended): the live gate seeds AND the synthetic gate cells (R1)
-    assert set(twins) == {f"{form} {seed}" for form in ps.FIT_FORMS for seed in HOSTED_SEEDS}
-    assert len(twins) == 16
-    assert all(
-        row == {"pool_differs": False, "learner_differs": False, "executions": True}
-        for row in twins.values()
-    )
-    assert (
-        body["seed_set"] == "live"
-        and (out / "migrate" / "twin" / "twin-carried-204.json.gz").is_file()
-        and (out / "migrate" / "twin" / "twin-settled-5005.json.gz").is_file()
-    )
-    # the replays: TUNED x {carried, settled} x {port, hosted} on 204-207 and 5005-5008
-    for host in st.HOSTS:
-        for where, seeds in (("live", cs.GATE_SEEDS), ("task", cs.GATE_SYNTHETIC_SEEDS)):
-            assert set(body["accuracy"][host][where]["readout"]["carried"]) == {
-                str(s) for s in seeds
-            }
-            assert set(body["d"][host][where]) == {"readout", "grower"}
-    assert (
-        out / "migrate" / "synthetic" / "task-5005-stream.json.gz"
-    ).is_file()  # regenerated at this head
-    assert (
-        len(md._load(out / "migrate" / "synthetic" / "task-5005-stream.json.gz")["events"]) == 300
-    )
-    hosted = md._load(out / "migrate" / "kernel" / "lsm-00-carried-204.json.gz")["pool"]
-    assert hosted["host"] == "kernel" and hosted["host_policy"] == rp.KernelLsmPool.lineage_policy(
-        cs.TUNED
-    )
-    assert "host" not in md._load(out / "migrate" / "port" / "lsm-00-carried-204.json.gz")["pool"]
-    # the port's per-seed D beside G1(b)'s four numbers
-    versus = body["port_vs_g1b"]
-    assert versus["paired"] is True and versus["g1b_seeds"] == [204, 205, 206, 207]
-    assert versus["seeds"] == [204, 205, 206, 207] and versus["g1b"] == [
-        -0.0063,
-        0.0082,
-        0.0007,
-        -0.0276,
-    ]
-    assert [round(a - b, 12) for a, b in zip(versus["port"], versus["g1b"], strict=True)] == [
-        round(x, 12) for x in versus["difference"]
-    ]
+def test_new_outs_and_archived_kernel_decisions_use_the_surviving_host(tmp_path):
+    assert st.use_of(tmp_path) == "kernel"
+    write_summary(tmp_path, "migrate", use="kernel")
+    assert st.use_of(tmp_path) == "kernel"
 
 
-def test_the_quantization_sensitivity_is_report_only_and_its_instrument_agrees_at_the_binding(
-    world,
-):
-    out, _ = world
-    quant = summary(out, "migrate")["quantization"]
-    binding = rp.KernelLsmPool.lineage_policy(cs.TUNED)["frac_bits"]
-    assert quant["report_only"] and quant["binding_frac_bits"] == binding == 12
-    # the six widths of 2.9's "frac_bits 4-32" (P5 panel F8), the same tuple the parity horizon
-    # reads
-    assert st.FRAC_BITS_SWEEP == (4, 8, 12, 16, 24, 32)
-    assert set(quant["rows"]) == {str(b) for b in st.FRAC_BITS_SWEEP} and all(
-        row["complete"] for row in quant["rows"].values()
-    )
-    assert quant["table_agreement"] == {"live": True, "task": True}
-    table = summary(out, "migrate")["accuracy"]["kernel"]
-    for where, seeds in (("live", cs.GATE_SEEDS), ("task", cs.GATE_SYNTHETIC_SEEDS)):
-        for (
-            form
-        ) in ps.FIT_FORMS:  # the call job at the binding equals the hosted table's own replay
-            assert {s: quant["rows"]["12"]["accuracy"][form][str(s)] for s in seeds} == {
-                s: table[where]["readout"][form][str(s)] for s in seeds
-            }
-    # never filed in R-b7's table: the hosted table holds the binding's cells alone
-    assert sorted(p.name for p in (out / "migrate" / "kernel").glob("*.json.gz")) == sorted(
-        f"lsm-00-{form}-{seed}.json.gz"
-        for form in ps.FIT_FORMS
-        for seed in (*cs.GATE_SEEDS, *cs.GATE_SYNTHETIC_SEEDS)
-    )
-    assert (
-        rp.HOSTS["kernel"].lineage_policy(cs.TUNED)["frac_bits"] == 12
-    )  # a binding R-b7 still holds
-
-
-def test_the_parity_horizon_is_reported_at_the_one_sweeps_widths_and_never_decides(world):
-    out, _ = world
-    body = summary(out, "migrate")
-    horizon = body["parity_horizon"]
-    assert horizon["report_only"] and set(horizon["rows"]) == {str(b) for b in st.FRAC_BITS_SWEEP}
-    assert set(horizon["rows"]) == set(body["quantization"]["rows"])  # one tuple, two readers
-    rows = {int(bits): row for bits, row in horizon["rows"].items()}
-    assert all(row["ticks"] == 48 and row["frac_bits"] == bits for bits, row in rows.items())
-    assert (
-        rows[4]["equal_fraction"] < rows[32]["equal_fraction"] == 1.0
-    )  # a coarse lattice parts early
-    assert rows[32]["first_diverging_tick"] is None
-    assert "parity_horizon" not in body["conjuncts"]  # reported beside the gate, never a conjunct
-
-
-def test_the_parity_horizon_of_one_recording_reads_where_the_hosted_pool_parts_from_the_port(
-    tmp_path,
-):
-    path = tmp_path / "rb6.json.gz"
-    md._save(path, md.rb6_stream(RB6))
-    narrow, binding, wide = (st.parity_horizon(str(path), b) for b in (4, 12, 32))
-    assert narrow["first_diverging_tick"] == 0 and narrow["equal_fraction"] < 0.1
-    assert binding["first_diverging_tick"] is None or binding["first_diverging_tick"] > 0
-    assert wide["first_diverging_tick"] is None and wide["equal_fraction"] == 1.0
-    assert wide["ticks"] == 1200 and wide["report_only"] and wide["frac_bits"] == 32
-    # the same recording at the binding gives the same answer twice (deterministic)
-    assert st.parity_horizon(str(path), 12) == binding
-
-
-def migrate_of(world, tmp_path, children, *, patch=None):
-    out = copy_of(
-        world, tmp_path, "migrate", "causality", "primary", "controls", "transport", "separation"
-    )
-    with shortened(children) as monkeypatch:
-        # the sweep is report-only, and the one tuple both its readers use: the reds skip it, the
-        # binding width alone stays (the quantization instrument's agreement)
-        monkeypatch.setattr(st, "FRAC_BITS_SWEEP", ())
-        if patch:
-            patch(monkeypatch)
-        return call(functools.partial(st.stage_migrate, scale=SCALE), out), out
-
-
-@pytest.mark.parametrize("name", ["check_host_parity", "check_r_b3"])
-def test_a_failed_gate_conjunct_reads_port_and_the_stage_still_completes(world, tmp_path, name):
-    held = {"verdict": False, "numbers": {}}
-    body, _ = migrate_of(world, tmp_path, Children(overrides={name: held}))
-    assert isinstance(body, dict) and body["reading"] == "port" and body["use"] == "port"
-    key = {"check_host_parity": "parity", "check_r_b3": "r_b3"}[name]
-    assert body["conjuncts"][key] is False and sum(not v for v in body["conjuncts"].values()) == 1
-
-
-def test_a_hosted_twin_that_differs_in_the_pool_fails_the_gate_and_in_a_learner_halts(
-    world, tmp_path
-):
-    """P5 panel F7: R-b4 on the hosted form is the fresh-process TWIN comparison, as the primary's
-    is."""
-    pool_only = lambda m: m.setattr(ps, "_twins_differ", lambda a, b: (True, False))  # noqa: E731
-    body, _ = migrate_of(world, tmp_path, Children(), patch=pool_only)
-    assert isinstance(body, dict) and body["reading"] == "port" and body["use"] == "port"
-    assert (
-        body["conjuncts"]["r_b4"] is False and sum(not v for v in body["conjuncts"].values()) == 1
-    )
-    assert all(row["pool_differs"] for row in body["r_b4_twins"].values())
-    # a learner-state difference is a shared-instrument failure (2.9, 2.11): it halts, never reads
-    # "port"
-    learner = lambda m: m.setattr(ps, "_twins_differ", lambda a, b: (False, True))  # noqa: E731
-    halt, _ = migrate_of(world, tmp_path / "learner", Children(), patch=learner)
-    assert isinstance(halt, ps.Halt) and halt.check == "R-b4"
-    assert all(row["learner_differs"] for row in halt.detail.values())
-    # twins in one process, and a timed-out twin, halt as the primary's do
-    halt, _ = migrate_of(world, tmp_path / "one", Children(patch_pid=False))
-    assert isinstance(halt, ps.Halt) and halt.check == "R-b4"
-    twin = lambda spec: "twin-" in spec["out"]  # noqa: E731
-    halt, _ = migrate_of(world, tmp_path / "late", Children(timeouts=twin))
-    assert isinstance(halt, ps.Halt) and halt.check == "R-b4 TIMEOUT" and len(halt.detail) == 16
-
-
-def test_a_hosted_twin_difference_confined_to_a_synthetic_gate_cell_is_read_like_a_live_one(
-    world, tmp_path
-):
-    """Re-panel R1 (2.9 as amended: the twins cover "every hosted cell"): the hosted table also
-    holds the synthetic gate cells, so a difference on one of them alone halts R-b4 when it is a
-    learner's and reads "port" when it is the pool's; a clean run stays "hosted" with sixteen
-    twins."""
-    synthetic = set(cs.GATE_SYNTHETIC_SEEDS)
-    cells = {f"{form} {seed}" for form in ps.FIT_FORMS for seed in synthetic}
-
-    def only(pool, learner):
-        def found(a, b):
-            mine = a["seed"] in synthetic
-            return pool and mine, learner and mine
-
-        return lambda m: m.setattr(ps, "_twins_differ", found)
-
-    halt, _ = migrate_of(world, tmp_path / "learner", Children(), patch=only(False, True))
-    assert isinstance(halt, ps.Halt) and halt.check == "R-b4"
-    assert {name for name, row in halt.detail.items() if row["learner_differs"]} == cells
-    assert len(halt.detail) == 16 and not any(row["pool_differs"] for row in halt.detail.values())
-    body, _ = migrate_of(world, tmp_path / "pool", Children(), patch=only(True, False))
-    assert isinstance(body, dict) and body["reading"] == "port" and body["use"] == "port"
-    failed = [name for name, held in body["conjuncts"].items() if not held]
-    assert failed == ["r_b4"]
-    assert {name for name, row in body["r_b4_twins"].items() if row["pool_differs"]} == cells
-    body, _ = migrate_of(world, tmp_path / "clean", Children(), patch=only(False, False))
-    assert body["reading"] == "hosted" and len(body["r_b4_twins"]) == 16
-
-
-def test_a_pool_noise_red_that_does_not_fire_halts_the_migration_it_is_no_conjunct(world, tmp_path):
-    """The red stays a separate requirement (P5 panel F7): it halts when it fires on nothing, and
-    the
-    verdict of a hosted pool whose ordinary twins agree does not depend on it."""
-    blind = {"verdict": False, "numbers": {}}
-    halt, _ = migrate_of(world, tmp_path, Children(overrides={"pool_noise_red": blind}))
-    assert isinstance(halt, ps.Halt) and halt.check == "a red that does not fire"
-    assert "hosted R-b4 pool-noise red" in halt.detail
-    gone = lambda spec: spec["kind"] == "call" and spec["target"].endswith("pool_noise_red")  # noqa: E731
-    halt, _ = migrate_of(world, tmp_path / "gone", Children(timeouts=gone))
-    assert isinstance(halt, ps.Halt) and halt.check == "a red that does not fire"
-
-
-def test_a_gate_check_that_times_out_reads_port_and_a_blind_red_halts(world, tmp_path):
-    def slow(spec):
-        return spec["kind"] == "call" and spec["target"].endswith("check_r_b3")
-
-    body, _ = migrate_of(world, tmp_path, Children(timeouts=slow))
-    assert (
-        body["reading"] == "port"
-        and body["conjuncts"]["r_b3"] is False
-        and body["checks"]["r_b3"] is None
-    )
-    blind = {"verdict": False, "numbers": {}}
-    halt, _ = migrate_of(
-        world, tmp_path / "blind", Children(overrides={"check_r_b3_hosted_red": blind})
-    )
-    assert isinstance(halt, ps.Halt) and halt.check == "a red that does not fire"
-    assert "hosted R-b3 float-accumulation red" in halt.detail
-
-    def gone(spec):
-        return spec["kind"] == "call" and spec["target"].endswith("check_r_b3_hosted_red")
-
-    halt, _ = migrate_of(world, tmp_path / "gone", Children(timeouts=gone))
-    assert isinstance(halt, ps.Halt) and halt.check == "a red that does not fire"
-
-
-def test_a_machinery_red_that_does_not_fire_halts(world, tmp_path):
-    halt, _ = migrate_of(
-        world, tmp_path, Children(), patch=lambda m: m.setattr(cs, "within", lambda *a, **k: True)
-    )
-    assert isinstance(halt, ps.Halt) and halt.check == "a red that does not fire"
-    assert halt.detail["migration gate machinery red"]["fired"] is False
-
-
-def test_a_hosted_replay_that_times_out_halts_and_so_does_a_missing_gate_recording(world, tmp_path):
-    def hosted(spec):
-        return (
-            spec["kind"] == "replay"
-            and spec.get("arm") == "pool"
-            and (spec["pool"] or {}).get("host") == "kernel"
-        )
-
-    halt, _ = migrate_of(world, tmp_path, Children(timeouts=hosted))
-    assert (
-        isinstance(halt, ps.Halt)
-        and halt.check == "migrate: kernel replays"
-        and halt.detail["not OK"]
-    )
-    out = copy_of(world, tmp_path / "gone", "migrate")
-    record = summary(out, "record")
-    record["recordings"]["205"]["status"] = "TIMEOUT"
-    md._save(ps._summary_path(out, "record"), record)
-    with shortened():
-        halt = call(functools.partial(st.stage_migrate, scale=SCALE), out)
-    assert halt.check == "migrate" and halt.detail == {"gate recordings not OK": [205]}
-
-
-def test_the_reserve_campaign_migrates_on_the_reserve_gate_seeds_and_pairs_nothing_with_g1b(
-    world, tmp_path
-):
-    """P5 panel F2: the record's seed set picks ONE complete bundle; reserve = gate 208-211 and
-    synthetic 5009-5012, and G1(b)'s 204-207 numbers stay labelled, never paired with them."""
-    out = copy_of(
-        world, tmp_path, "migrate", "causality", "primary", "controls", "transport", "separation"
-    )
-    record = summary(out, "record")
-    record["seed_set"] = "reserve"
-    record["recordings"].update({str(s): {"status": "OK"} for s in cs.GATE_RESERVE_SEEDS})
-    md._save(ps._summary_path(out, "record"), record)
-    for seed in cs.GATE_RESERVE_SEEDS:
-        md._save(ps._recording(out, seed), fixture(seed))
-    with shortened() as monkeypatch:
-        monkeypatch.setattr(st, "FRAC_BITS_SWEEP", ())
-        body = call(functools.partial(st.stage_migrate, scale=SCALE), out)
-    assert isinstance(body, dict) and body["seed_set"] == "reserve"
-    for where, seeds in (
-        ("live", cs.GATE_RESERVE_SEEDS),
-        ("task", cs.GATE_SYNTHETIC_RESERVE_SEEDS),
-    ):
-        assert set(body["accuracy"]["kernel"][where]["readout"]["carried"]) == {
-            str(s) for s in seeds
-        }
-    assert set(body["r_b4_twins"]) == {
-        f"{form} {seed}"
-        for form in ps.FIT_FORMS
-        for seed in (*cs.GATE_RESERVE_SEEDS, *cs.GATE_SYNTHETIC_RESERVE_SEEDS)
-    }
-    versus = body["port_vs_g1b"]
-    assert versus["seeds"] == [208, 209, 210, 211] and versus["g1b_seeds"] == [204, 205, 206, 207]
-    assert versus["paired"] is False and versus["difference"] is None
-    assert versus["g1b"] == list(st.G1B_PER_SEED_D) and len(versus["port"]) == 4
-    assert (out / "migrate" / "synthetic" / "task-5009-stream.json.gz").is_file()
-    # a record that names no seed set cannot choose a bundle: a halt, never a silent live default
-    del record["seed_set"]
-    md._save(ps._summary_path(out, "record"), record)
-    with shortened():
-        halt = call(functools.partial(st.stage_migrate, scale=SCALE), out)
-    assert isinstance(halt, ps.Halt) and halt.check == "seed bundle"
-
-
-def test_a_quantization_instrument_that_disagrees_with_the_hosted_table_halts(world, tmp_path):
-    def off(spec):
-        real = st.quantized_decoder(**spec["args"])
-        return {**real, "accuracy": real["accuracy"] + 0.25}
-
-    halt, _ = migrate_of(world, tmp_path, Children(overrides={"quantized_decoder": off}))
-    assert (
-        isinstance(halt, ps.Halt)
-        and halt.check == "the quantization instrument disagrees with the hosted table"
-    )
-    assert halt.detail == {"live": False, "task": False}
+@pytest.mark.parametrize("host", ("port", "gpu"))
+def test_an_archived_decision_for_an_unavailable_host_halts(tmp_path, host):
+    write_summary(tmp_path, "migrate", use=host)
+    with pytest.raises(ps.Halt, match="migrate summary"):
+        st.use_of(tmp_path)
 
 
 # ---- causality -----------------------------------------------------------------------------------
@@ -636,7 +311,7 @@ def test_causality_holds_on_the_surviving_host_at_three_cuts_for_both_learners(w
         "36": True,
     }  # the (leak) arm changes predictions at every cut
     hosted = md._load(out / "causality" / "carried.json.gz")["pool"]
-    assert hosted["host"] == "kernel"
+    assert "host" not in hosted and hosted["host_policy"]["host"] == "kernel"
 
 
 def test_a_leak_that_does_not_change_predictions_halts_causality_as_a_red_that_does_not_fire(
@@ -689,7 +364,7 @@ def test_a_pool_whose_predictions_read_the_suffix_halts_r_b1(world, tmp_path):
 
 # sha256[:16] of every job spec (paths made OUT-relative) that each body built on the 48-event
 # fixture, at 96d3d999 BEFORE the shared helper replaced the two hand-written bodies: the helper
-# must reproduce them.
+# must reproduce their job recipes and checks; only the retired port's host label changes.
 PINNED_R_B1_JOBS = {"check203": ("8ea8c9bf3d80ee82", 15), "causality": ("4c3e0fc99d859dee", 12)}
 PINNED_R_B1_BODIES = {
     "check203": {
@@ -711,7 +386,7 @@ PINNED_R_B1_BODIES = {
         },
         "R-b1 red": {"12": True, "24": True, "36": True},
         "cuts": [12, 24, 36],
-        "host": "port",
+        "host": "kernel",
         "scale": SCALE,
         "seed": 203,
         "window": 16,
@@ -745,7 +420,7 @@ def test_both_r_b1_bodies_build_one_helper_and_it_reproduces_what_each_built_bef
             out, "record", recordings={str(seed): {"status": "OK"}}, live_seeds=[], seed_set="live"
         )
     write_summary(g1b, "tune", candidates={"lsm": {"tuned": {"config": cs.TUNED}}}, refused={})
-    write_summary(driver, "migrate", use="port")
+    write_summary(driver, "migrate", use="kernel")
     built, real_spec, bodies, specs = [], ps._spec, {}, {}
 
     class Spy(ps.RB1Check):
@@ -753,11 +428,11 @@ def test_both_r_b1_bodies_build_one_helper_and_it_reproduces_what_each_built_bef
             built.append(kwargs.get("leak", "leak"))
             super().__init__(*args, **kwargs)
 
-    def small(candidate, config, form, noise=False, window=rp.WINDOW, host="port"):
+    def small(candidate, config, form, noise=False, window=rp.WINDOW):
         window = (
             SCALE["window"] if window == rp.WINDOW else window
         )  # the 48-event fixture: window 16
-        return real_spec(candidate, config, form, noise=noise, window=window, host=host)
+        return real_spec(candidate, config, form, noise=noise, window=window)
 
     for name, body in (
         ("check203", ps.step_check203),
@@ -860,7 +535,7 @@ def test_primary_runs_four_forms_on_every_live_seed_with_its_tables(world):
         out / "primary" / "noise-red-noise.json.gz"
     ).is_file()
     host = md._load(out / "primary" / "lsm-00-front_end-301.json.gz")["pool"]
-    assert host["host"] == "kernel" and host["window"] == 16
+    assert "host" not in host and host["host_policy"]["host"] == "kernel" and host["window"] == 16
 
 
 def primary_of(world, tmp_path, children=None, patch=None):
@@ -916,7 +591,7 @@ def test_a_replay_bound_to_another_host_is_refused_by_r_b7(world, tmp_path):
     def tamper(spec, run):
         if (
             spec["arm"] == "pool"
-            and run["pool"].get("host") == "kernel"
+            and run["pool"]["host_policy"]["host"] == "kernel"
             and spec["out"].endswith("settled-300.json.gz")
         ):
             run["pool"]["host_policy"] = {**run["pool"]["host_policy"], "frac_bits": 4}
@@ -1226,7 +901,7 @@ def test_the_controls_default_to_the_seed_bundles_rb6_seed_and_never_run_it_here
     class Stop(Exception):
         pass
 
-    def spy(out_, folder, host, window, seed):
+    def spy(out_, folder, window, seed):
         asked.append(seed)
         raise Stop
 
@@ -1290,6 +965,7 @@ def received(stream, arm, host, window, tap=None):
     """The drive g u a pool of `arm` ACTUALLY takes in a fresh replay of `stream`, read where it
     takes it (`_Pool.percept_drive`, spied): an instrument independent of ps.input_response, which
     the saved statistics must agree with (two instruments that must agree)."""
+    assert host == st.HOST
     seen = []
     real = rp._Pool.percept_drive
 
@@ -1297,7 +973,7 @@ def received(stream, arm, host, window, tap=None):
         seen.append(cs.TUNED["g"] * np.asarray(u, dtype=np.float64))
         return real(self, u)
 
-    spec = ps._spec(st.POOL, cs.TUNED, "carried", window=window, host=host)
+    spec = ps._spec(st.POOL, cs.TUNED, "carried", window=window)
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(rp._Pool, "percept_drive", spy)
         md.replay(stream, arm, pool=spec, side=tap)

@@ -903,8 +903,8 @@ def test_settled_holds_its_invariance_on_real_pool_replays_of_the_fixture(pooled
 
 @pytest.mark.parametrize(
     ("form", "carrier"),
-    [("carried", None), ("settled", "v"), ("settled", "s")],
-    ids=["the Carried red", "Settled skipping v", "Settled skipping s"],
+    [("carried", None), ("settled", "v"), ("settled", "acc")],
+    ids=["the Carried red", "Settled skipping v", "Settled skipping acc"],
 )
 def test_carried_and_a_settled_skipping_a_carrier_fail_the_invariance_on_real_pool_replays(
     pooled, form, carrier
@@ -915,10 +915,17 @@ def test_carried_and_a_settled_skipping_a_carrier_fail_the_invariance_on_real_po
     assert ccc._equal_blocks(result) == 0  # the multiset moved in every post-boundary block
 
 
+def test_skipping_the_kernels_unread_mask_preserves_settled_invariance(pooled):
+    stream, shuffled = pooled
+    result = ccc._pool_invariance(stream, shuffled, "settled", block=BLOCK, carrier="s")
+    assert result["ok"] is True and len(result["per_block"]) == 4
+    assert ccc._equal_blocks(result) == 4
+
+
 def test_the_pool_controls_report_their_counts(pooled):
     stream, shuffled = pooled
     assert ccc._check_pool_controls(stream, shuffled, BLOCK) == {
-        "blocks": 4, "settled": 4, "carried": 0, "skipped": {"v": 0, "s": 0},
+        "blocks": 4, "settled": 4, "carried": 0, "skipped": {"v": 0, "s": 4, "acc": 0},
     }  # fmt: skip
 
 

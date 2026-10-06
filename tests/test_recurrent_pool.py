@@ -2,9 +2,13 @@
 
 Every hand fixture below is small (N <= 8) and its expected values were worked by hand from the
 section 2.3 rules; each rule also has a deliberately wrong twin that must disagree with them.
+G1(c) 2.9 deleted the float64 port and the host switch: every fixture runs on the one pool
+implementation, KernelLsmPool (the hand values are lattice values at the binding frac_bits), and
+the constructed wrong hosts below are this file's own reds of that pool's arithmetic.
 """
 
 import copy
+import inspect
 import json
 import random
 import statistics
@@ -110,7 +114,7 @@ U2 = [0.0, 0.25, 0.0]  # g u = [0.0, 0.5, 0.0]
 U3 = [0.0, 0.3125, 0.0]  # g u = [0.0, 0.625, 0.0]
 
 
-def _lsm(form="carried", window=4, cls=rp.LsmPool):
+def _lsm(form="carried", window=4, cls=rp.KernelLsmPool):
     return cls(LSM_PRE, LSM_W, LSM_CFG, form, window=window, s_settle=1)
 
 
@@ -126,7 +130,7 @@ def test_lsm_vector_drive_t_in_average_and_carry_across_percepts():
     assert pool.count == 2 and pool.boundary is None
 
 
-@pytest.mark.parametrize("cls", [rp.LsmPool, rp.KernelLsmPool])
+@pytest.mark.parametrize("cls", [rp.KernelLsmPool])
 @pytest.mark.parametrize(
     ("form", "phi", "v", "s"),
     [
@@ -137,7 +141,7 @@ def test_lsm_vector_drive_t_in_average_and_carry_across_percepts():
     ],
 )
 def test_lsm_each_form_after_a_one_percept_window(form, phi, v, s, cls):
-    # the hand values are lattice values at lambda 1/2, so the KernelTick host (P4a) holds them too
+    # the hand values are lattice values at lambda 1/2, which the KernelTick pool holds exactly
     pool = _lsm(form, window=1, cls=cls)
     assert pool.percept_drive(U1).tolist() == [0.5, 1.0, 0.5]  # the window is Carried in every form
     assert pool.percept_drive(U2).tolist() == phi
@@ -168,35 +172,32 @@ def test_lsm_front_end_is_zero_synapse_but_stateful():
     assert front.frozen() and reset.frozen()
 
 
-class _SoftResetLsm(rp.LsmPool):  # wrong rule: subtract the threshold instead of resetting to 0
-    def step(self, u):
-        v = (self.lam * self.v + self.g * np.asarray(u)) + self._rec()
-        self.s = v >= 1.0
-        self.v = np.where(self.s, v - 1.0, v)
-        return self.s.astype(np.float64)
+class _ResetBelowZeroLsm(rp.KernelLsmPool):  # wrong rule: a spike resets to -0.25, not to 0
+    V_RESET = -0.25
 
 
-class _MeanOverTInPlusOneLsm(rp.LsmPool):  # wrong rule: T_in averaging over T_in + 1
+class _MeanOverTInPlusOneLsm(rp.KernelLsmPool):  # wrong rule: T_in averaging over T_in + 1
     def percept_drive(self, u):
         return super().percept_drive(u) * self.t_in / (self.t_in + 1)
 
 
-class _SettleWithoutResetLsm(rp.LsmPool):  # wrong rule: Settled that forgets the reset
+class _SettleWithoutResetLsm(rp.KernelLsmPool):  # wrong rule: Settled that forgets the reset
     def reset_carriers(self):
         if self.count <= self.window:
             super().reset_carriers()
 
 
-class _MemorylessFrontEndLsm(rp.LsmPool):  # wrong rule: the lesion also removes the leak
+class _MemorylessFrontEndLsm(rp.KernelLsmPool):  # wrong rule: the lesion also removes the leak
     def lesion(self):
         super().lesion()
-        self.lam = 0.0
+        # KernelTick refuses a zero decay, so "no leak" is a decay far below one float32 ulp of v
+        self._kt.decay = self.lam = 1e-30
 
 
 def test_lsm_fixtures_catch_each_deliberately_wrong_rule():
-    soft = _lsm(cls=_SoftResetLsm)
-    soft.percept_drive(U1)
-    assert soft.v.tolist() != [0.0, 0.0, 0.0]
+    below = _lsm(cls=_ResetBelowZeroLsm)
+    below.percept_drive(U1)
+    assert below.v.tolist() != [0.0, 0.0, 0.0]
     assert _lsm(cls=_MeanOverTInPlusOneLsm).percept_drive(U1).tolist() != [0.5, 1.0, 0.5]
     settled = _lsm("settled", window=1, cls=_SettleWithoutResetLsm)
     settled.percept_drive(U1)
@@ -245,11 +246,12 @@ def test_fixture_percepts_follow_the_recipe():
         assert np.allclose(x, np.clip(v * 1.73 / norm, 0.0, 1.0), rtol=0, atol=1e-15)
 
 
-def _oscillator(t_in, lam=0.0):
-    # one g1 unit, no leak, a self-inhibition of 1e6 and a drive g u = 8 sum(x) >= 54 on every
+def _oscillator(t_in, lam=1e-30):
+    # one g1 unit, no leak (KernelTick refuses a zero decay: 1e-30 carries less than 1e-23 of a
+    # silenced membrane), a self-inhibition of 1e6 and a drive g u = 8 sum(x) >= 54 on every
     # fixture: it spikes, is silenced, spikes, ... from reset 0 (1, 0, 1, 0, ...)
     config = {"lambda": lam, "g": 8, "T_in": t_in}
-    return rp.LsmPool([[0]], [[-1e6]], config, w_in=np.ones((1, 64)))
+    return rp.KernelLsmPool([[0]], [[-1e6]], config, w_in=np.ones((1, 64)))
 
 
 def test_startup_diagnostic_by_hand_on_a_period_two_unit():
@@ -290,38 +292,27 @@ def test_cost_is_the_median_carried_time_after_the_window():
         rp.cost("lsm", config, 200, percepts[:256])
 
 
-# ---- R-b0: parity with the sources, each with its red --------------------------------------------
+# ---- R-b0: the draws against the source, with its red --------------------------------------------
 
 
-@pytest.mark.parametrize("check", [rp.check_r_b0_lsm])
-def test_r_b0_parity_with_its_red(check):
-    result = check()
-    assert result["verdict"], result["numbers"]
-    assert result["red"]
+def test_r_b0_the_draws_equal_the_sources_and_a_shifted_draw_does_not():
+    # the parity clause (the float64 port's rates and SynOps) went with the port (G1(c) 2.9)
+    result = rp.check_r_b0_lsm()
+    assert result["verdict"] and result["numbers"]["structure"], result["numbers"]
+    assert result["red"] and (result["numbers"]["units"], result["numbers"]["fan_in"]) == (100, 8)
+    assert not rp.check_r_b0_lsm(red_shift=0)["verdict"]  # a red at no shift cannot fire
 
 
 # ---- R-b3: determinism by construction at the real N, and its reds -------------------------------
 
 
 @pytest.mark.parametrize("candidate", rp.CANDIDATES)
-def test_r_b3_thread_invariance_at_the_real_n(candidate):
+def test_r_b3_partition_and_thread_invariance_at_the_real_n(candidate):
     result = rp.check_r_b3(candidate, CONFIG[candidate])
     assert result["verdict"], result["numbers"]["equal"]
-    assert {(s["blas"], s["torch"]) for s in result["numbers"]["settings"]} == {
-        (1, 1),
-        (1, 4),
-        (24, 1),
-        (24, 4),
-    }
+    assert result["numbers"]["settings"] == [{"P": p, "threads": t} for p, t in rp.R_B3_HOSTED]
     t_in = CONFIG[candidate]["T_in"]  # every step is observed, Settled's uncounted 64 included
-    assert result["numbers"]["runs"]["1/1/settled"]["steps"] == 256 * t_in + 256 * (64 + t_in)
-
-
-@pytest.mark.parametrize("candidate", rp.CANDIDATES)
-def test_r_b3_red_fires_on_its_declared_witness(candidate):
-    result = rp.check_r_b3_red(candidate)
-    assert result["verdict"], result["numbers"]
-    assert result["red"]
+    assert result["numbers"]["runs"]["P1/T1/settled"]["steps"] == 256 * t_in + 256 * (64 + t_in)
 
 
 # ---- R-b4's pool-noise red -----------------------------------------------------------------------
@@ -332,8 +323,7 @@ def test_pool_noise_changes_the_continuation_state_and_phi(candidate):
     pool = rp.make_pool(candidate, CONFIG[candidate], 200)
     before = pool.fingerprint()
     pool.perturb()
-    assert pool.fingerprint() != before
-    assert rp.pool_noise_red(candidate, CONFIG[candidate], window=16)["verdict"]
+    assert pool.fingerprint() != before  # the red itself: test_the_hosted_pool_noise_red_...
 
 
 # ---- R-b5: the forms do what they claim ----------------------------------------------------------
@@ -383,14 +373,14 @@ def test_window_zero_is_a_non_negative_count_and_every_other_refusal_stands():
         with pytest.raises(ValueError, match="non-negative count"):
             _lsm(window=window)
     with pytest.raises(ValueError, match="T_in must be positive"):
-        rp.LsmPool(LSM_PRE, LSM_W, dict(LSM_CFG, T_in=0), window=0)
+        rp.KernelLsmPool(LSM_PRE, LSM_W, dict(LSM_CFG, T_in=0), window=0)
     with pytest.raises(ValueError, match="s_settle non-negative"):
-        rp.LsmPool(LSM_PRE, LSM_W, LSM_CFG, window=0, s_settle=-1)
+        rp.KernelLsmPool(LSM_PRE, LSM_W, LSM_CFG, window=0, s_settle=-1)
 
 
 @pytest.mark.parametrize("form", rp.FORMS)
 def test_window_zero_takes_the_boundary_at_construction_in_every_form(form):
-    adapted = rp.LsmPool(LSM_PRE, LSM_W, LSM_CFG, window=1)  # a window pool has none yet
+    adapted = rp.KernelLsmPool(LSM_PRE, LSM_W, LSM_CFG, window=1)  # a window pool has none yet
     assert adapted.boundary is None and adapted.frozen() is None
     pool = _lsm(form, window=0)
     assert pool.count == 0 and pool.boundary == adapted.params_fingerprint()
@@ -402,7 +392,7 @@ def test_window_zero_takes_the_boundary_at_construction_in_every_form(form):
         assert pool.lesion_record is None and pool.w.tolist() == LSM_W
 
 
-@pytest.mark.parametrize("cls", [rp.LsmPool, rp.KernelLsmPool])
+@pytest.mark.parametrize("cls", [rp.KernelLsmPool])
 def test_window_zero_settled_runs_its_form_from_the_first_percept_by_hand(cls):
     # Settled resets, takes one uncounted step, then two counted ones. From zero U1 gives
     # v = [0.5, 1, 0.75] (settle: only unit 1 spikes), then two steps on which all three units spike
@@ -419,7 +409,7 @@ def test_window_zero_settled_runs_its_form_from_the_first_percept_by_hand(cls):
     assert clamped.percept_drive(U1).tolist() == [0.5, 1.0, 0.5]
 
 
-@pytest.mark.parametrize("cls", [rp.LsmPool, rp.KernelLsmPool])
+@pytest.mark.parametrize("cls", [rp.KernelLsmPool])
 def test_window_zero_front_end_reset_and_carried_first_percepts_by_hand(cls):
     front = _lsm("front_end", window=0, cls=cls)  # zero synapses from the start, the leak carries
     assert front.percept_drive(U1).tolist() == [0.0, 1.0, 0.5]
@@ -629,14 +619,58 @@ def test_the_transported_encoder_check_holds_and_each_red_fires():
     assert result["numbers"]["norm_error"] < 1e-12
 
 
-# ---- the KernelTick-hosted g1 and its parity fixtures (G1(c) 2.9, P4a) ---------------------------
+# ---- the KernelTick-hosted g1, the one pool implementation (G1(c) 2.9, P4a) ---------------------
 
 TUNED = {"k": 8, "w": 0.25, "lambda": 0.9, "g": 4, "T_in": 1}  # the campaign's configuration
 LSB = 2.0**-12
+CHAIN_PRE = [[0], [0], [1]]  # unit 1 hears unit 0 and unit 2 hears unit 1, each at 1.0
+CHAIN_W = [[0.0], [1.0], [1.0]]  # unit 0 hears itself at 0.0, so every unit has one entry
+CHAIN_CFG = {"lambda": 0.5, "g": 1, "T_in": 1}
+
+
+# The constructed wrong hosts: each differs from the pool in exactly one policy attribute or hook,
+# so a test of the pool's arithmetic has a red that must fail it (they were G1(c) 2.9's parity
+# fixtures' wrong hosts; the fixtures went with the port)
+class _ResetsBelowZero(rp.KernelLsmPool):  # wrong host: the reset value is -0.25, not 0
+    V_RESET = -0.25
+
+
+class _Refracts(rp.KernelLsmPool):  # wrong host: one refractory tick after a spike
+    REFRAC_TICKS = 1
+
+
+class _DelaysTwo(rp.KernelLsmPool):  # wrong host: every edge takes two ticks
+    DELAY = 2
+
+
+class _StrictThreshold(
+    rp.KernelLsmPool
+):  # wrong host: `>` for `>=`, the threshold a float32 step up
+    THR = float(np.nextafter(np.float32(rp.LSM_THRESH), np.float32(2.0)))
+
+
+class _Truncates(rp.KernelLsmPool):  # wrong host: weights and drive truncated, not rounded
+    def _edges(self):
+        pre, post, weight, delay = super()._edges()
+        scale = 2.0**self.frac_bits
+        return pre, post, np.trunc(weight * scale) / scale, delay
+
+    def _quantize_drive(self, drive_vector):
+        return np.trunc(drive_vector * 2**self.frac_bits).astype(np.int64)
+
+
+class _KeepsCharge(rp.KernelLsmPool):  # wrong host: a lesion leaves the charge already in flight
+    def _zero_in_flight(self):
+        pass
 
 
 def _host(form="carried", window=4, **options):
     return rp.KernelLsmPool(LSM_PRE, LSM_W, LSM_CFG, form, window=window, s_settle=1, **options)
+
+
+def _spikes(pool, drives):
+    """Each step's activity on `drives`, as lists."""
+    return [pool.step(np.asarray(u, dtype=np.float64)).tolist() for u in drives]
 
 
 def _observed(pool, percepts):
@@ -647,11 +681,6 @@ def _observed(pool, percepts):
         pool.percept(x)
     pool.observer = None
     return np.stack(steps)
-
-
-@pytest.fixture(scope="module")
-def parity():
-    return rp.check_host_parity()
 
 
 def test_the_host_policy_names_what_the_host_does_that_the_port_does_not():
@@ -673,24 +702,24 @@ def test_the_host_policy_names_what_the_host_does_that_the_port_does_not():
     # each constructed wrong host differs from the host in exactly the one policy key it names
     base = _host().host_policy()
     for wrong, key in (
-        (rp._ResetsBelowZero, "v_reset"),
-        (rp._Refracts, "refrac_ticks"),
-        (rp._DelaysTwo, "delay"),
-        (rp._StrictThreshold, "thr"),
+        (_ResetsBelowZero, "v_reset"),
+        (_Refracts, "refrac_ticks"),
+        (_DelaysTwo, "delay"),
+        (_StrictThreshold, "thr"),
     ):
         policy = wrong(LSM_PRE, LSM_W, LSM_CFG).host_policy()
         assert [k for k in base if base[k] != policy[k]] == [key]
-    assert rp._StrictThreshold(LSM_PRE, LSM_W, LSM_CFG).host_policy()["thr"] > 1.0
+    assert _StrictThreshold(LSM_PRE, LSM_W, LSM_CFG).host_policy()["thr"] > 1.0
 
 
 def test_the_lineage_policy_is_the_policy_of_a_host_built_at_the_lineage_options(
     monkeypatch, tmp_path
 ):
     for config in (TUNED, CONFIG["lsm"], rp.R_B3_WITNESS["lsm"]):
-        hosted = rp.make_pool("lsm", config, 100, host="kernel")
+        hosted = rp.make_pool("lsm", config, 100)
         assert rp.KernelLsmPool.lineage_policy(config) == hosted.host_policy()
     # the policy is the class's own: a wrong host's lineage policy is not the faithful host's
-    wrong = rp._Refracts.lineage_policy(LSM_CFG)
+    wrong = _Refracts.lineage_policy(LSM_CFG)
     base = rp.KernelLsmPool.lineage_policy(LSM_CFG)
     assert [key for key in base if base[key] != wrong[key]] == ["refrac_ticks"]
     # and the construction is shared, not restated: the instance policy is policy_of at its options
@@ -718,26 +747,50 @@ def test_the_host_refuses_when_the_lineage_records_are_absent(monkeypatch, tmp_p
         rp.KernelLsmPool(LSM_PRE, LSM_W, {**LSM_CFG, "lambda": 0.0}, frac_bits=12, p_parts=1)
 
 
-def test_make_pool_host_dimension_defaults_to_the_port_and_refuses_the_rest():
-    assert rp.HOSTS == {"port": rp.LsmPool, "kernel": rp.KernelLsmPool}
-    assert type(rp.make_pool("lsm", CONFIG["lsm"], 200)) is rp.LsmPool
-    assert type(rp.make_pool("lsm", CONFIG["lsm"], 200, host="port")) is rp.LsmPool
-    hosted = rp.make_pool("lsm", CONFIG["lsm"], 200, host="kernel", frac_bits=16, p_parts=2)
-    assert type(hosted) is rp.KernelLsmPool and hosted.host_policy()["frac_bits"] == 16
-    assert rp.make_pool("lsm", CONFIG["lsm"], 200, host="kernel").host_policy()["frac_bits"] == 12
-    with pytest.raises(ValueError, match="unknown host"):
-        rp.make_pool("lsm", CONFIG["lsm"], 200, host="gpu")
-    with pytest.raises(ValueError, match="no host options"):
-        rp.make_pool("lsm", CONFIG["lsm"], 200, frac_bits=16)
+def _subclasses(cls):
+    found = set()
+    for sub in cls.__subclasses__():
+        found |= {sub} | _subclasses(sub)
+    return found
+
+
+def test_one_reachable_pool_implementation():
+    """G1(c) 2.9 (P2: a merge must reduce): the migration gate's loser, the float64 port, and the
+    host switch are deleted: make_pool reaches ONE pool implementation and nothing else steps one.
+    The one other class that defines `step` is R-b3's float-accumulation twin (_FloatTwin, with its
+    stored-order control _ForwardTwin inheriting it): a constructed red that only
+    check_r_b3_hosted_red builds, never in POOLS and never returned by make_pool."""
+    assert set(rp.POOLS.values()) == {rp.KernelLsmPool}
+    assert not hasattr(rp, "HOSTS") and "host" not in inspect.signature(rp.make_pool).parameters
+    assert "step" not in vars(rp.LsmPool) and "step" not in vars(rp._Pool)
+    assert "_rec" not in vars(rp.LsmPool) and "reset_carriers" not in vars(rp._Pool)
+    stepping = {cls for cls in _subclasses(rp._Pool) if "step" in vars(cls)}
+    assert stepping == {rp.KernelLsmPool, rp._FloatTwin}, stepping
+    assert rp._FloatTwin not in rp.POOLS.values() and rp._ForwardTwin not in rp.POOLS.values()
+    for form in rp.FORMS:
+        assert type(rp.make_pool("lsm", CONFIG["lsm"], 200, form)) is rp.KernelLsmPool
+    # the host options reach the one pool; a host name is no option
+    hosted = rp.make_pool("lsm", CONFIG["lsm"], 200, frac_bits=16, p_parts=2)
+    assert hosted.host_policy()["frac_bits"] == 16
+    assert rp.make_pool("lsm", CONFIG["lsm"], 200).host_policy()["frac_bits"] == 12
+    for host in ("kernel", "port"):
+        with pytest.raises(TypeError, match="host"):
+            rp.make_pool("lsm", CONFIG["lsm"], 200, host=host)
+    # LsmPool keeps the network (draws, leak, gain, lesion rule, parameters, kick) and no arithmetic
+    with pytest.raises(AttributeError):
+        rp.LsmPool(LSM_PRE, LSM_W, LSM_CFG)
 
 
 @pytest.mark.parametrize("seed", [100, 101, 200])
-def test_the_kernel_host_is_the_same_network_as_the_port(seed):
+def test_the_pool_is_the_draws_network_and_its_live_table_the_stored_lists(seed):
     for config in (TUNED, CONFIG["lsm"], rp.R_B3_WITNESS["lsm"]):
-        port = rp.make_pool("lsm", config, seed)
-        host = rp.make_pool("lsm", config, seed, "carried", host="kernel")
-        assert port.pre.tobytes() == host.pre.tobytes() and port.w.tobytes() == host.w.tobytes()
-        assert np.array_equal(port.w_in, host.w_in) and port.config == host.config
+        drawn = rp.realization_seed("lsm", seed)
+        _, pre, weights = rp._lsm_draw(drawn, rp.N, config["k"], config["w"])
+        host = rp.make_pool("lsm", config, seed, "carried")
+        assert pre.tobytes() == host.pre.tobytes() and weights.tobytes() == host.w.tobytes()
+        assert (
+            np.array_equal(rp.w_in(seed), host.w_in) and rp.canonical("lsm", config) == host.config
+        )
         # the live table is the stored lists row by row: post is the unit, pre the entry's source,
         # q the weight at the lsb with half to even, and a repeated (pre, post) pair is kept
         posts = np.repeat(np.arange(host.n), host.pre.shape[1])
@@ -751,7 +804,7 @@ def test_the_kernel_host_is_the_same_network_as_the_port(seed):
     assert rp.realization_seed("lsm", 100) == 100 * 31 + 11 + 1  # never a second candidate
 
 
-def test_one_kernel_tick_is_one_port_step_in_every_form():
+def test_one_kernel_tick_is_one_pool_step_in_every_form():
     for form, ticks in (("carried", 2), ("reset", 2), ("settled", 3), ("front_end", 2)):
         pool = _host(form, window=0)  # T_in 2, one settle step (Settled's only)
         pool.percept_drive(U1)
@@ -807,9 +860,7 @@ def test_the_hosted_state_and_fingerprints_are_independent_of_p_and_threads(form
     sequence = rp.random_percepts(100, 10)
     runs = {}
     for p_parts, threads in ((1, 1), (2, 1), (8, 1), (8, 4)):
-        pool = rp.make_pool(
-            "lsm", TUNED, 100, form, window=4, host="kernel", p_parts=p_parts, threads=threads
-        )
+        pool = rp.make_pool("lsm", TUNED, 100, form, window=4, p_parts=p_parts, threads=threads)
         phis, chain = [], []
         for x in sequence:
             phis.append(pool.percept(x).tobytes())
@@ -821,7 +872,7 @@ def test_the_hosted_state_and_fingerprints_are_independent_of_p_and_threads(form
 
 
 def test_the_fingerprint_refuses_a_bundle_in_flight_and_sees_the_tick_index_and_acc():
-    wrong = rp._DelaysTwo(LSM_PRE, LSM_W, LSM_CFG, frac_bits=12, p_parts=1)
+    wrong = _DelaysTwo(LSM_PRE, LSM_W, LSM_CFG, frac_bits=12, p_parts=1)
     wrong.step(U1)
     assert any(slot for ring in wrong._kt._rings for slot in ring)
     with pytest.raises(ValueError, match="in-flight bundle"):
@@ -843,7 +894,7 @@ def test_the_hosted_fingerprint_holds_every_state_array_and_tells_the_refracting
     config = {"lambda": 0.5, "g": 1, "T_in": 1}
     percepts = [np.array([1.5])]
     faithful = rp._hosted(rp.KernelLsmPool, 12, [[0]], [[0.0]], config, w_in=[[1.0]])
-    refracts = rp._hosted(rp._Refracts, 12, [[0]], [[0.0]], config, w_in=[[1.0]])
+    refracts = rp._hosted(_Refracts, 12, [[0]], [[0.0]], config, w_in=[[1.0]])
     runs = [rp._record(pool, percepts, chain=True) for pool in (faithful, refracts)]
     assert (
         runs[0]["activity_crc"] == runs[1]["activity_crc"]
@@ -876,7 +927,7 @@ def test_params_fingerprint_chains_the_live_bundles_and_a_live_write_moves_it():
     key = sorted(pool._syn.bundles)[0]
     pool._syn.bundles[key][1][0] += 1  # one live weight, the stored lists untouched
     assert pool.params_fingerprint() != base and rp._crc_arrays(pool.params()) == stored
-    assert sorted(pool.params()) == ["pre", "w"]  # the port's parameter keys
+    assert sorted(pool.params()) == ["pre", "w"]  # the stored lists' parameter keys
 
 
 def test_the_lesion_zeroes_the_weights_the_bundles_and_the_charge_in_flight():
@@ -886,13 +937,13 @@ def test_the_lesion_zeroes_the_weights_the_bundles_and_the_charge_in_flight():
     assert not pool.acc.any() and not pool._live_edges()["edge_q"].any()
     assert pool._kt.syn is pool._syn and pool.v.dtype == np.float32
     # the red's premise: charge WAS in flight when the lesion landed
-    wrong = rp._KeepsCharge(LSM_PRE, LSM_W, LSM_CFG, "front_end", window=1, s_settle=1)
+    wrong = _KeepsCharge(LSM_PRE, LSM_W, LSM_CFG, "front_end", window=1, s_settle=1)
     wrong.percept_drive(U1)
     assert wrong.acc.any() and not wrong._live_edges()["edge_q"].any()
 
 
 def test_perturb_kicks_exactly_one_float32_membrane():
-    pool = rp.make_pool("lsm", TUNED, 100, "carried", window=4, host="kernel")
+    pool = rp.make_pool("lsm", TUNED, 100, "carried", window=4)
     for x in rp.random_percepts(100, 3):
         pool.percept(x)
     before, fingerprint = pool.v.copy(), pool.fingerprint()
@@ -930,13 +981,13 @@ def test_the_quantizer_rounds_half_to_even_and_keeps_the_sign():
         0,
         -3,
     ]
-    assert rp._Truncates(pre, weights, {"lambda": 1.0, "g": 1, "T_in": 1})._live_edges()[
+    assert _Truncates(pre, weights, {"lambda": 1.0, "g": 1, "T_in": 1})._live_edges()[
         "edge_q"
     ].tolist() == [0, 2, 3, -2, -3]
 
 
 def test_kernel_state_and_tick_cannot_be_deep_copied_so_the_pool_rebuilds_its_copy():
-    pool = rp.make_pool("lsm", TUNED, 100, "carried", window=4, host="kernel")
+    pool = rp.make_pool("lsm", TUNED, 100, "carried", window=4)
     with pytest.raises(TypeError, match="module"):
         copy.deepcopy(pool._kt)  # KernelTick holds the numpy module as an attribute
     with pytest.raises(TypeError, match="module"):
@@ -966,11 +1017,11 @@ def test_kernel_state_and_tick_cannot_be_deep_copied_so_the_pool_rebuilds_its_co
 
 
 def test_the_copy_carries_the_ring_slots_the_tick_index_and_the_fault_class():
-    wrong = rp._DelaysTwo(LSM_PRE, LSM_W, LSM_CFG, frac_bits=12, p_parts=2)
+    wrong = _DelaysTwo(LSM_PRE, LSM_W, LSM_CFG, frac_bits=12, p_parts=2)
     wrong.step(U1)
     assert any(slot for ring in wrong._kt._rings for slot in ring)  # charge in a ring, not in acc
     twin = copy.deepcopy(wrong)
-    assert type(twin) is rp._DelaysTwo and twin._kt.tick_index == wrong._kt.tick_index == 1
+    assert type(twin) is _DelaysTwo and twin._kt.tick_index == wrong._kt.tick_index == 1
     assert twin._kt._rings == wrong._kt._rings and twin._kt._rings is not wrong._kt._rings
     for u in (U2, U3, U1):
         assert np.array_equal(wrong.step(u), twin.step(u))
@@ -978,7 +1029,7 @@ def test_the_copy_carries_the_ring_slots_the_tick_index_and_the_fault_class():
 
 
 def test_the_startup_diagnostic_runs_on_a_hosted_pool_and_leaves_it_untouched():
-    pool = rp.make_pool("lsm", CONFIG["lsm"], 200, host="kernel")
+    pool = rp.make_pool("lsm", CONFIG["lsm"], 200)
     before = pool.fingerprint()
     result = rp.startup_diagnostic(pool)
     assert pool.fingerprint() == before
@@ -994,107 +1045,32 @@ def test_the_host_takes_its_window_zero_boundary_at_construction(form):
     assert (pool.lesion_record is not None) == (form == "front_end")
 
 
-def test_whole_trajectory_parity_is_not_expected_at_the_binding_frac_bits():
-    # 2.9's frozen prediction: the weights and the drive round at 2**-12 and the membrane is
-    # float32, so the host walks away from the port on a real trajectory; on this fixture (the tuned
-    # configuration, seed 100, the 16 fixture percepts cycled) Carried happens to agree for 260
-    # percepts at F 12 and Settled parts at its second settle step; a coarse host parts at once
-    sequence = rp.cycled_fixture(260)
-    for form, bits, first in (
-        ("settled", 12, 257),
-        ("settled", 4, 0),
-        ("carried", 4, 0),
-        ("settled", 32, None),
-        ("carried", 12, None),
-    ):
-        port = _observed(rp.make_pool("lsm", TUNED, 100, form), sequence)
-        host = _observed(
-            rp.make_pool("lsm", TUNED, 100, form, host="kernel", frac_bits=bits), sequence
-        )
-        equal = np.all(port == host, axis=1)
-        assert (None if equal.all() else int(np.argmin(equal))) == first, (form, bits)
-
-
-# ---- the migration gate's part (i): Class A, its wrong hosts and Class B -------------------------
-
-
-def test_the_parity_gate_holds_on_the_binding_frac_bits(parity):
-    assert parity["verdict"], parity["numbers"]
-    numbers = parity["numbers"]
-    assert numbers["frac_bits"] == 12
-    assert set(numbers["class_a"]) == {*rp.PARITY_A, "p9_same_network"}
-    assert all(numbers["class_a"].values()) and all(numbers["reds"].values())
-
-
-@pytest.mark.parametrize("name", sorted(rp.WRONG_HOSTS))
-def test_each_wrong_host_fails_the_fixture_it_was_built_for(parity, name):
-    wrong, target = rp.WRONG_HOSTS[name]
-    assert rp.PARITY_A[target](rp.KernelLsmPool, 12)  # the host holds it
-    assert not rp.PARITY_A[target](wrong, 12)  # the constructed wrong host does not
-    assert target in parity["numbers"]["failed_by"][name] and parity["numbers"]["reds"][name]
-
-
-def test_a_second_candidates_realization_seed_fails_the_same_network_fixture():
-    assert rp._same_network() and not rp._same_network(shift=1)
-    assert rp.INDEX == {"lsm": 1}  # there is no second candidate to be drawn
-
-
-def test_class_a_fixtures_exercise_the_net_the_wrong_hosts_would_break():
-    # P2 by hand: spikes at ticks 0, 1, 2 on the host, 0, 2, 4 with a delay of two
+def test_the_pool_delivers_at_delay_one_fires_on_ge_and_never_refracts_by_hand():
+    # the chain 0 -> 1 -> 2 with only unit 0 driven at its first step: spikes at ticks 0, 1, 2 at
+    # delay one, at 0, 2, 4 with a delay of two
     drives = [[1.0, 0.0, 0.0]] + [[0.0, 0.0, 0.0]] * 4
-    for cls, spikes in ((rp.KernelLsmPool, [0, 1, 2]), (rp._DelaysTwo, [0, 2, 4])):
-        pool = rp._hosted(cls, 12, rp.CHAIN_PRE, rp.CHAIN_W, rp.CHAIN_CFG)
-        rows = rp._stepped(pool, drives)
-        assert [t for t, row in enumerate(rp._spiked(rows)) if any(row)] == spikes
-    # P3 by hand: exactly 1.0 spikes on `>=` and not on `>`; one lsb below it never does
-    for cls, fires in ((rp.KernelLsmPool, True), (rp._StrictThreshold, False)):
+    for cls, spikes in ((rp.KernelLsmPool, [0, 1, 2]), (_DelaysTwo, [0, 2, 4])):
+        pool = rp._hosted(cls, 12, CHAIN_PRE, CHAIN_W, CHAIN_CFG)
+        assert [t for t, row in enumerate(_spikes(pool, drives)) if any(row)] == spikes
+    # at lambda 1, 0.75 then 0.25 reaches exactly 1.0: it spikes on `>=` and not on `>`
+    for cls, fires in ((rp.KernelLsmPool, True), (_StrictThreshold, False)):
         pool = rp._hosted(cls, 12, [[0]], [[0.0]], {"lambda": 1.0, "g": 1, "T_in": 1})
-        assert (rp._stepped(pool, [[0.75], [0.25]])[1][0] == np.float64(1.0).tobytes()) == fires
-    # P4 by hand: every tick spikes without refraction, every other tick with one refractory tick
-    for cls, spikes in ((rp.KernelLsmPool, [1.0] * 4), (rp._Refracts, [1.0, 0.0, 1.0, 0.0])):
+        assert (_spikes(pool, [[0.75], [0.25]])[1] == [1.0]) == fires
+    # one lsb below it never does
+    pool = rp._hosted(rp.KernelLsmPool, 12, [[0]], [[0.0]], {"lambda": 1.0, "g": 1, "T_in": 1})
+    assert _spikes(pool, [[0.75], [0.25 - LSB]]) == [[0.0], [0.0]]
+    # a supra-threshold drive spikes at every tick without refraction, every other tick with one
+    for cls, spikes in ((rp.KernelLsmPool, [1.0] * 4), (_Refracts, [1.0, 0.0, 1.0, 0.0])):
         pool = rp._hosted(cls, 12, [[0]], [[0.0]], {"lambda": 0.5, "g": 1, "T_in": 1})
-        assert [row[0] for row in rp._spiked(rp._stepped(pool, [[1.5]] * 4))] == spikes
+        assert [row[0] for row in _spikes(pool, [[1.5]] * 4)] == spikes
 
 
-def test_class_b_a_weight_below_half_an_lsb_rounds_away_on_the_host(parity):
-    b = parity["numbers"]["class_b"]["p5b"]
-    assert b["port"] == [[1.0, 0.0], [0.0, 0.0]] and b["host"] == [[1.0, 0.0], [0.0, 1.0]]
-    assert b["finer_host"] == b["port"]  # four more fractional bits keep the weight: the red
+def test_a_weight_below_half_an_lsb_and_a_drive_below_it_round_to_the_lattice():
     weight = 0.25 - 2.0**-14
     pool = rp.KernelLsmPool([[0], [0]], [[0.0], [weight]], {"lambda": 1.0, "g": 1, "T_in": 1})
     assert weight != 0.25 and pool._live_edges()["edge_q"].tolist() == [0, 1024]
-    assert 0.75 + weight < 1.0  # the port's sum stays below the threshold
-
-
-def test_class_b_a_float32_membrane_rounds_up_to_the_threshold(parity):
-    b = parity["numbers"]["class_b"]["p6a"]
-    assert b["float64_sum"] == 1.0 - 2.0**-30 and b["float32_sum"] == 1.0
-    assert b["port"] == [[0.0], [0.0]] and b["host"] == [[0.0], [1.0]]
-    # at the binding frac_bits the same drive is rounded to 0.25 first, a different mechanism
     pool = rp._hosted(rp.KernelLsmPool, 12, [[0]], [[0.0]], {"lambda": 1.0, "g": 1, "T_in": 1})
     assert pool._quantize_drive(np.array([0.25 - 2.0**-30])).tolist() == [1024]
-
-
-def test_class_b_the_decay_product_pair_is_found_by_scan_and_the_float64_formula_agrees(parity):
-    b = parity["numbers"]["class_b"]["p6b"]
-    assert (b["scan"]["k"], b["scan"]["j"], b["scan"]["size"]) == (3, 0, 3 * 8193 + 1)
-    assert b["host_v"] != float(np.float32(b["port_v"])) and b["host_v"] != b["port_v"]
-    assert b["float64_formula_equals_port"] and b["host_formula_equals_host"]
-    # a second instrument, scalar arithmetic: the first pair in the same scan order is the same
-    found = None
-    for k in range(4):
-        for j in range(8193):
-            v_prev, ext = k * LSB, j * LSB
-            host = np.float32(np.float64(np.float32(v_prev) * np.float32(0.9)) + ext)
-            if host != np.float32(0.9 * v_prev + ext):
-                found = (k, j)
-                break
-        if found:
-            break
-    assert found == (3, 0)
-    # the scan is silent where host and port must agree (a leak that is a power of two)
-    assert rp.decay_divergence_scan(12, lam=1.0) is None
-    assert rp.decay_divergence_scan(12, lam=0.5) is None
 
 
 # ---- G1(c) P4b: the hosted pool's R-b3, R-b4 and R-b5 --------------------------------------------
@@ -1106,7 +1082,7 @@ WITNESS = rp.R_B3_WITNESS["lsm"]
 
 @pytest.mark.parametrize("config", [TUNED, WITNESS], ids=["tuned", "witness"])
 def test_the_hosted_pool_is_equal_across_p_and_threads_activity_state_and_chain(config):
-    result = rp.check_r_b3("lsm", config, host="kernel", **HOSTED_SMALL)
+    result = rp.check_r_b3("lsm", config, **HOSTED_SMALL)
     numbers = result["numbers"]
     assert result["verdict"] and numbers["equal"] == {"carried": True, "settled": True}
     assert numbers["settings"] == [{"P": p, "threads": t} for p, t in ((1, 1), (8, 1), (8, 4))]
@@ -1121,16 +1097,13 @@ def test_the_hosted_pool_is_equal_across_p_and_threads_activity_state_and_chain(
     assert numbers["runs"]["P8/T4/settled"]["steps"] == numbers["runs"]["P1/T1/settled"]["steps"]
 
 
-def test_the_port_equality_is_as_it_was_and_the_comparator_sees_each_field():
-    result = rp.check_r_b3("lsm", WITNESS, percepts=16, window=8, blas=(1,), torch_threads=(1,))
-    assert result["verdict"] and "blas" not in result["numbers"]
-    assert all("state_chain" not in run for run in result["numbers"]["runs"].values())
-    run = result["numbers"]["runs"]["1/1/carried"]
+def test_the_comparator_sees_each_field():
+    result = rp.check_r_b3("lsm", WITNESS, percepts=16, window=8)
+    assert result["verdict"]
+    run = result["numbers"]["runs"]["P1/T1/carried"]
     assert rp._runs_agree([run, dict(run)]) and not rp._runs_agree([])  # no run, no agreement
-    for key in ("activity_crc", "steps", "phi_crc", "state"):
+    for key in ("activity_crc", "steps", "phi_crc", "state", "state_chain"):
         assert not rp._runs_agree([run, dict(run, **{key: run[key] + 1})]), key
-    chained = dict(run, state_chain=1)
-    assert not rp._runs_agree([chained, dict(chained, state_chain=2)])
 
 
 def test_the_float_accumulation_twin_red_fires_and_its_fixture_exercises_the_spread():
@@ -1152,14 +1125,14 @@ def test_the_float_accumulation_twin_red_fires_and_its_fixture_exercises_the_spr
 
 
 def _twin(order, *, lattice=False, window=32):
-    base = rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=window, host="kernel")
+    base = rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=window)
     weights = np.rint(base.w * 2**12) / 2**12 if lattice else base.w
     cls = {"unseeded": rp._FloatTwin, "forward": rp._ForwardTwin}[order]
     return cls(base.pre, weights, base.config, "carried", base.w_in, window=window, s_settle=64)
 
 
 def test_the_twin_scales_one_entry_up_and_one_down_and_leaves_the_network_as_it_was():
-    base = rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=32, host="kernel")
+    base = rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=32)
     twin = _twin("forward")
     assert np.array_equal(twin.pre, base.pre) and isinstance(twin, rp.KernelLsmPool)
     assert np.array_equal(twin.w[:, 2:], base.w[:, 2:])
@@ -1216,65 +1189,62 @@ def test_the_twin_counts_its_unit_steps_by_hand():
     "config", [TUNED, rp.R_B5_PERSISTENCE_WITNESS], ids=["tuned", "persistence-witness"]
 )
 def test_the_hosted_pool_noise_red_changes_the_state_chain_and_phi(config):
-    pool = rp.make_pool("lsm", config, rp.DEV_SEED, host="kernel")
+    pool = rp.make_pool("lsm", config, rp.DEV_SEED)
     before = pool.fingerprint()
     pool.perturb()
     assert pool.fingerprint() != before and pool.v.dtype == np.float32
-    result = rp.pool_noise_red("lsm", config, window=32, host="kernel")
+    result = rp.pool_noise_red("lsm", config, window=32)
     assert result["verdict"] and result["numbers"]["state"] and result["numbers"]["phi"], result
 
 
 @pytest.mark.parametrize("form", ["reset", "settled"])
 def test_hosted_erasure_holds_and_skipping_v_or_acc_fails_it_but_s_is_never_read(form):
     config, carrier = rp.R_B5_ERASURE_WITNESS["lsm"]
-    green = rp.check_r_b5_erasure("lsm", config, form, window=32, host="kernel")
+    green = rp.check_r_b5_erasure("lsm", config, form, window=32)
     assert green["verdict"] and green["numbers"]["prefixes_diverged"], green["numbers"]
-    red = rp.check_r_b5_erasure_red("lsm", form, window=32, host="kernel")
+    red = rp.check_r_b5_erasure_red("lsm", form, window=32)
     assert carrier == "v" and red["verdict"], red["numbers"]
     assert red["numbers"]["fired"] == {"v": True, "s": False, "acc": True}
     by = red["numbers"]["by"]
     assert "state" in by["v"] and "state" in by["acc"] and by["s"] == "none"
-    # the port's own red is as it was: its two carriers, no "by"
-    port = rp.check_r_b5_erasure_red("lsm", form, window=32)
-    assert set(port["numbers"]["fired"]) == {"v", "s"} and "by" not in port["numbers"]
 
 
-def test_the_hosted_s_is_a_recorded_mask_the_host_never_reads_where_the_port_reads_it():
+def test_the_hosted_s_is_a_recorded_mask_the_pool_never_reads():
     u = rp.drive(rp.w_in(rp.DEV_SEED), rp.fixture_percepts()[0])
-    for cls, host, reads in ((rp.LsmPool, "port", True), (rp.KernelLsmPool, "kernel", False)):
-        pool = rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=32, host=host)
-        assert type(pool) is cls
-        for _ in range(3):
-            pool.step(u)
-        twin = copy.deepcopy(pool)
-        twin.s = ~twin.s  # a different last mask
-        assert np.array_equal(pool.step(u), twin.step(u)) is (not reads)
+    pool = rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=32)
+    for _ in range(3):
+        pool.step(u)
+    twin = copy.deepcopy(pool)
+    twin.s = ~twin.s  # a different last mask
+    assert np.array_equal(pool.step(u), twin.step(u))
+    # the red of this test's own reading: a different membrane DOES move the next step
+    other = copy.deepcopy(pool)
+    other.v = other.v + np.float32(0.5)
+    assert not np.array_equal(pool.step(u), other.step(u))
     # so the hosted skip-s red cannot fire: the first step overwrites the mask it kept, and the
     # erasure it was built to break still holds
-    skipped = rp.check_r_b5_erasure("lsm", WITNESS, "reset", window=32, skip="s", host="kernel")
+    skipped = rp.check_r_b5_erasure("lsm", WITNESS, "reset", window=32, skip="s")
     assert skipped["verdict"] and skipped["numbers"]["skip"] == "s"
 
 
 def test_hosted_persistence_and_its_reset_every_percept_red():
-    result = rp.check_r_b5_persistence(window=32, host="kernel")
+    result = rp.check_r_b5_persistence(window=32)
     assert result["verdict"] and result["numbers"]["persists"]
-    assert not rp.check_r_b5_persistence(window=32, carried_form="reset", host="kernel")["verdict"]
+    assert not rp.check_r_b5_persistence(window=32, carried_form="reset")["verdict"]
 
 
 def test_the_hosted_freeze_is_re_based_on_the_live_bundles_and_fails_on_that_form_alone():
-    green = rp.check_r_b5_freeze("lsm", WITNESS, window=32, after=4, host="kernel")
+    green = rp.check_r_b5_freeze("lsm", WITNESS, window=32, after=4)
     assert green["verdict"], green["numbers"]
-    red = rp.check_r_b5_freeze_red("lsm", WITNESS, window=32, after=4, host="kernel")
+    red = rp.check_r_b5_freeze_red("lsm", WITNESS, window=32, after=4)
     assert red["verdict"], red["numbers"]
     assert red["numbers"]["fired"] == ["carried"] and red["numbers"]["boundary_agree"]
     # the write is q + 1 on one live bundle weight and leaves the stored w as it was
     pool = rp._write_live_after_boundary(
-        rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=4, host="kernel")
+        rp.make_pool("lsm", WITNESS, rp.DEV_SEED, "carried", window=4)
     )
     before = {key: q.copy() for key, (_, q) in pool._syn.bundles.items()}
-    stored = rp._crc_arrays(
-        pool.params()
-    )  # the stored (pre, w) alone, as the port's freeze reads it
+    stored = rp._crc_arrays(pool.params())  # the stored (pre, w) alone
     for x in rp.cycled_fixture(4):
         pool.percept(x)
     moved = [key for key, (_, q) in pool._syn.bundles.items() if not np.array_equal(q, before[key])]

@@ -70,11 +70,11 @@ def _shuffled(stream, k):
     return shuffled
 
 
-def _gap(table, seed, host, window, learner="readout"):
+def _gap(table, seed, window, learner="readout"):
     """accuracy(Carried) - accuracy(Settled) of one seed's cells in an OK table."""
-    return st.accuracy(
-        table, st.key("carried", seed, host=host, window=window), learner
-    ) - st.accuracy(table, st.key("settled", seed, host=host, window=window), learner)
+    return st.accuracy(table, st.key("carried", seed, window=window), learner) - st.accuracy(
+        table, st.key("settled", seed, window=window), learner
+    )
 
 
 def _invariance_row(result):
@@ -95,7 +95,7 @@ def history_reaches_phi(result):
     return bool(blocks) and any(not row["multiset_equal"] for row in blocks)
 
 
-def _pool_control(out, folder, host, window, seed):
+def _pool_control(out, folder, window, seed):
     """2.6's pool positive control, A/A and Settled invariance on the rb6 family (the streams the
     instrument stage wrote) on the surviving host: Carried and Settled on each stream plain and under
     the K shuffles."""
@@ -115,7 +115,6 @@ def _pool_control(out, folder, host, window, seed):
                     folder / f"{name}-{label}-{form}.json.gz",
                     seed,
                     form,
-                    host=host,
                     window=window,
                     stream_key=ident,
                 )
@@ -126,14 +125,14 @@ def _pool_control(out, folder, host, window, seed):
     tables = dict(zip(labels, st.run_cells(groups), strict=True))
     for label, table in tables.items():
         st.need_ok(table, f"controls: rb6 {label}")
-    gap = {label: _gap(table, seed, host, window) for label, table in tables.items()}
+    gap = {label: _gap(table, seed, window) for label, table in tables.items()}
 
     def read(name):
         shuffled = [gap[(name, f"shuf{k}")] for k in range(cs.SHUFFLE_K)]
         return {"unshuffled": gap[(name, "plain")], "shuffled": statistics.fmean(shuffled)}
 
     def run(label, form):
-        cell = tables[label][st.key(form, seed, host=host, window=window)]
+        cell = tables[label][st.key(form, seed, window=window)]
         return md._load(cell["job"]["out"])
 
     def invariance(form):
@@ -167,7 +166,7 @@ def _pool_control(out, folder, host, window, seed):
     }
 
 
-def _live_shuffles(out, folder, live, host, window):
+def _live_shuffles(out, folder, live, window):
     """K tables (one R-b7 table per shuffle k: a seed's cell key does not name its stream): Carried and
     Settled replays of every live seed's k-th shuffled stream; returns ([accuracies] over k, {k: the
     cells' per-segment diagnostic tables} for the report, 2.3)."""
@@ -185,7 +184,6 @@ def _live_shuffles(out, folder, live, host, window):
                     folder / f"{seed}-shuf{k}-{form}.json.gz",
                     seed,
                     form,
-                    host=host,
                     window=window,
                     stream_key=ident,
                 )
@@ -193,8 +191,8 @@ def _live_shuffles(out, folder, live, host, window):
             ]
         (table,) = st.run_cells([(cells, live, streams)])
         st.need_ok(table, f"controls: shuffle {k}")
-        per_k.append(st.accuracies(table, live, ps.FIT_FORMS, host=host, window=window))
-        tables[str(k)] = st.variant_tables(table, live, ps.FIT_FORMS, host=host, window=window)
+        per_k.append(st.accuracies(table, live, ps.FIT_FORMS, window=window))
+        tables[str(k)] = st.variant_tables(table, live, ps.FIT_FORMS, window=window)
     return per_k, tables
 
 
@@ -227,17 +225,17 @@ def scored_rows_through(stream, boundary):
     )
 
 
-def _window_zero(out, folder, live, host, window, primary):
+def _window_zero(out, folder, live, window, primary):
     """Settled@0 and Carried@0 on every live seed: D0 = accuracy(Carried) - accuracy(Settled@0), W = D0 - D,
     the scored rows at or before the boundary, and Carried@0 held identical to the primary's Carried."""
     paths = {seed: ps._recording(out, seed) for seed in live}
-    table = st.pool_table(out, folder, live, ps.FIT_FORMS, paths, host=host, window=0)
+    table = st.pool_table(out, folder, live, ps.FIT_FORMS, paths, window=0)
     st.need_ok(table, "controls: window 0")
-    acc = st.accuracies(table, live, ps.FIT_FORMS, host=host, window=0)
+    acc = st.accuracies(table, live, ps.FIT_FORMS, window=0)
     differs = {}
     for seed in live:
         first = md._load(ps._folder(out, "primary") / f"{st.POOL}-00-carried-{seed}.json.gz")
-        second = md._load(table[st.key("carried", seed, host=host, window=0)]["job"]["out"])
+        second = md._load(table[st.key("carried", seed, window=0)]["job"]["out"])
         found = _carried_differences(first, second)
         if found:
             differs[str(seed)] = found
@@ -246,7 +244,7 @@ def _window_zero(out, folder, live, host, window, primary):
     d0 = st.gaps(acc)
     return {
         "accuracy": acc,
-        "cells": st.variant_tables(table, live, ps.FIT_FORMS, host=host, window=0),
+        "cells": st.variant_tables(table, live, ps.FIT_FORMS, window=0),
         "d0": d0,
         "w": {
             learner: {seed: d0[learner][seed] - primary["d"][learner][seed] for seed in d0[learner]}
@@ -272,19 +270,17 @@ def stage_controls(out, *, scale=None, rb6_seed=None):
         raise ps.Halt("controls", f"the instrument stage ran rb6 on {instrument.get('rb6_seed')}")
     live = tuple(record["live_seeds"])
     folder = ps._folder(out, "controls")
-    control = _pool_control(out, ps._folder(out, "controls/rb6"), host, window, rb6_seed)
+    control = _pool_control(out, ps._folder(out, "controls/rb6"), window, rb6_seed)
     if not control["invariance"]["red_fired"]:  # a red that does not fire halts (2.11)
         detail = {"Settled invariance, Carried red": control["invariance"]["carried_red"]}
         raise ps.Halt("a red that does not fire", detail)
-    per_k, shuffle_cells = _live_shuffles(
-        out, ps._folder(out, "controls/shuffle"), live, host, window
-    )
+    per_k, shuffle_cells = _live_shuffles(out, ps._folder(out, "controls/shuffle"), live, window)
     d_k = [st.gaps(acc) for acc in per_k]
     d_shuf = {
         learner: {str(seed): statistics.fmean(d[learner][str(seed)] for d in d_k) for seed in live}
         for learner in st.LEARNERS
     }
-    zero = _window_zero(out, ps._folder(out, "controls/window0"), live, host, window, primary)
+    zero = _window_zero(out, ps._folder(out, "controls/window0"), live, window, primary)
     pool_free = bool(instrument["shuffle_control"]["sighted"] and instrument["shuffle_aa"]["held"])
     halves = {
         "pool_free": pool_free,
@@ -323,12 +319,12 @@ HERE = "snn_data_lake.instruments.carried_state_controls:"
 
 # Sites the duplicate-capability hook flagged on the transport stage (read; none files a transport arm's replays):
 # distinct-from: instruments/memory_diagnostic.py::check_transport_channels -- the channel check on ONE fixture stream and its reds; the call job below is the campaign's one forbidden-request replay on a live seed's own tap
-def forbidden_request(stream, side, form, host, window=rp.WINDOW):
+def forbidden_request(stream, side, form, window=rp.WINDOW):
     """RED (2.7, 2.10; a "call" target): pool-copy keeps its permitted declaration and REQUESTS "w_live"
     while that value is present in the replay's values; the replay must RAISE "forbidden feature
     channel". The permitted replay runs first (the control)."""
     data = md._load(stream)
-    spec = ps._spec(st.POOL, cs.TUNED, form, window=window, host=host)
+    spec = ps._spec(st.POOL, cs.TUNED, form, window=window)
     tap = ps._side(side)
     md.replay(data, "pool-copy", pool=spec, side=tap)
     message = ""
@@ -344,10 +340,10 @@ def forbidden_request(stream, side, form, host, window=rp.WINDOW):
     }
 
 
-def _transport_cell(path, out_path, seed, arm, form, side, encoder, *, host, window):
+def _transport_cell(path, out_path, seed, arm, form, side, encoder, *, window):
     """One transport arm's replay as a table cell, filed under its arm, the form of its transport and
     the crc of the encoder it must end with (None for the activity form, which swaps nothing)."""
-    spec = ps._spec(st.POOL, cs.TUNED, form, window=window, host=host)
+    spec = ps._spec(st.POOL, cs.TUNED, form, window=window)
     filed = ps._bound(
         seed, spec, arm=arm, encoder=encoder, transport={"form": md.TRANSPORT_FORM[arm]}
     )
@@ -355,11 +351,10 @@ def _transport_cell(path, out_path, seed, arm, form, side, encoder, *, host, win
     return {**filed, "index": None, "status": None, "job": job, "digest": None}
 
 
-def _arm_key(arm, form, seed, encoders, *, host, window):
+def _arm_key(arm, form, seed, encoders, *, window):
     return st.key(
         form,
         seed,
-        host=host,
         window=window,
         arm=arm,
         transport={"form": md.TRANSPORT_FORM[arm]},
@@ -415,7 +410,6 @@ def stage_transport(out, *, scale=None):
             "stream": str(paths[first]),
             "side": taps[first]["out"],
             "form": "carried",
-            "host": host,
             "window": window,
         },
         "out": str(folder / "forbidden-request.json"),
@@ -446,7 +440,6 @@ def stage_transport(out, *, scale=None):
                         form,
                         taps[seed]["out"],
                         encoders.get((seed, arm)),
-                        host=host,
                         window=window,
                     )
                 )
@@ -459,7 +452,7 @@ def stage_transport(out, *, scale=None):
                 form: {
                     str(seed): st.accuracy(
                         table,
-                        _arm_key(arm, form, seed, encoders, host=host, window=window),
+                        _arm_key(arm, form, seed, encoders, window=window),
                         learner,
                     )
                     for seed in live
@@ -470,17 +463,15 @@ def stage_transport(out, *, scale=None):
         }
         records = {}
         for seed in live:
-            binding = table[_arm_key(arm, "carried", seed, encoders, host=host, window=window)][
-                "digest"
-            ]["pool"]
+            binding = table[_arm_key(arm, "carried", seed, encoders, window=window)]["digest"][
+                "pool"
+            ]
             if arm == "pool-act" and binding["encoder"] is not None:
                 raise ps.Halt("transport", f"pool-act swapped an encoder on seed {seed}")
             records[str(seed)] = {"transport": binding["transport"], "encoder": binding["encoder"]}
         cells = {  # each seed's own encoder crc is in its cell key, so the tables are read per seed
             form: {
-                str(seed): ps._report(
-                    table[_arm_key(arm, form, seed, encoders, host=host, window=window)]
-                )
+                str(seed): ps._report(table[_arm_key(arm, form, seed, encoders, window=window)])
                 for seed in live
             }
             for form in ps.FIT_FORMS
@@ -606,7 +597,6 @@ def stage_separation(out, *, scale=None, build=im.stream):
                     folder / f"{name}-{form}-{seed}.json.gz",
                     seed,
                     form,
-                    host=host,
                     window=window,
                 )
                 for form in ps.FIT_FORMS
@@ -627,7 +617,7 @@ def stage_separation(out, *, scale=None, build=im.stream):
     def cell(name, arm, seed):
         if arm == "a":
             return tables[name][("a", None, None, None, seed, False)]
-        return tables[name][st.key(arm, seed, host=host, window=window)]
+        return tables[name][st.key(arm, seed, window=window)]
 
     acc = {
         name: {

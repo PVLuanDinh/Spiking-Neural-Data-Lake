@@ -193,6 +193,7 @@ def pool_cell(seed, *, bound=None, status="OK"):
         "window": rp.WINDOW,
         "noise": False,
         "w_in": ps._w_in_crc(seed),
+        "host_policy": rp.KernelLsmPool.lineage_policy(config),
     }
     digest = {"arm": "pool", "seed": seed, "pool": binding} if status == "OK" else None
     return dict(filed, index=0, status=status, digest=digest)
@@ -206,12 +207,9 @@ def test_r_b7_refuses_its_reds_and_passes_the_well_formed_tables():
         "duplicate seed": True,
         "tuning seed in selection": True,
         "window-0 replay filed as window 256": True,
-        "hosted replay filed under a port cell": True,
-        "port replay filed under a hosted cell": True,
         "hosted binding without its policy": True,
         "hosted binding with a contradictory policy": True,
         "hosted binding with one policy field changed": True,
-        "unsupported host": True,
     }
 
 
@@ -269,6 +267,7 @@ def window_cell(seed, ran_at, filed_as=None):
         "window": ran_at,
         "noise": False,
         "w_in": ps._w_in_crc(seed),
+        "host_policy": rp.KernelLsmPool.lineage_policy(config),
     }
     digest = {"arm": "pool", "seed": seed, "pool": binding}
     return dict(ps._bound(seed, spec), index=0, status="OK", digest=digest)
@@ -354,6 +353,7 @@ def g1_surface(seed=204):
                     "window": rp.WINDOW,
                     "noise": noise,
                     "w_in": ps._w_in_crc(seed),
+                    "host_policy": rp.KernelLsmPool.lineage_policy(config),
                 }
                 cell = dict(bound, digest={"arm": "pool", "seed": seed, "pool": binding})
                 rows.append([spec, bound, list(ps.cell_key(cell)), ps.binding_problems(cell)])
@@ -371,14 +371,13 @@ def test_g1b_keys_specs_and_bindings_are_byte_identical_at_the_default():
 
 def hosted_policy(config):
     """The policy a real hosted pool of `config` records: what a hosted replay's binding carries."""
-    return rp.make_pool("lsm", config, 204, host="kernel").host_policy()
+    return rp.make_pool("lsm", config, 204).host_policy()
 
 
-def host_cell(seed, ran_on="port", filed_as="port", policy=True):
-    """A Settled cell whose replay ran on host `ran_on`, filed under host `filed_as` (the port files
-    no host at all); a hosted binding carries "host" and, if `policy`, its whole "host_policy"."""
+def host_cell(seed, policy=True):
+    """A Settled replay bound to the surviving host's whole policy."""
     config = rp.grid("lsm")[0]
-    spec = ps._spec("lsm", config, "settled", host=filed_as)
+    spec = ps._spec("lsm", config, "settled")
     binding = {
         "candidate": "lsm",
         "form": "settled",
@@ -388,52 +387,24 @@ def host_cell(seed, ran_on="port", filed_as="port", policy=True):
         "noise": False,
         "w_in": ps._w_in_crc(seed),
     }
-    if ran_on != "port":
-        binding = dict(binding, host=ran_on)
-        if policy:
-            binding["host_policy"] = hosted_policy(config)
+    if policy:
+        binding["host_policy"] = hosted_policy(config)
     digest = {"arm": "pool", "seed": seed, "pool": binding}
     return dict(ps._bound(seed, spec), index=0, status="OK", digest=digest)
 
 
-def test_the_host_is_in_the_spec_the_filing_and_the_key_only_off_the_port():
-    config = rp.grid("lsm")[0]
-    plain = {"candidate": "lsm", "config": config, "form": "carried"}
-    assert ps._spec("lsm", config, "carried", host="port") == plain
-    assert ps._spec("lsm", config, "carried", host="kernel") == dict(plain, host="kernel")
-    assert list(ps._spec("lsm", config, "carried", host="kernel")) == [*plain, "host"]
-    both = ps._spec("lsm", config, "carried", True, 0, "kernel")
-    assert both == dict(plain, noise=True, window=0, host="kernel")
-    assert list(both) == ["candidate", "config", "form", "noise", "window", "host"]
-    bound = ps._bound(204, ps._spec("lsm", config, "carried"))
-    assert list(bound) == ["arm", "seed", "candidate", "config", "form", "noise"]
-    assert ps._bound(204, dict(plain, host="port")) == bound  # a named port files nothing
-    assert ps._bound(204, ps._spec("lsm", config, "carried", host="kernel")) == dict(
-        bound, host="kernel"
-    )
-    key = ps.cell_key(host_cell(204))
-    assert len(key) == 6 and ps.cell_key(host_cell(204, filed_as="port")) == key
-    hosted = ps.cell_key(host_cell(204, "kernel", "kernel"))
-    assert hosted == (*key, "host", "kernel")
-    assert ps.cell_key(dict(host_cell(204), host="port")) == key  # naming the port adds nothing
+def test_the_host_switch_is_absent_from_specs_filings_and_keys():
+    assert "host" not in inspect.signature(ps._spec).parameters
+    assert "host" not in inspect.signature(ps._phase_table).parameters
+    cell = host_cell(204)
+    assert "host" not in cell and len(ps.cell_key(cell)) == 6
+    assert ps.binding_problems(cell) == []
 
 
-@pytest.mark.parametrize(
-    ("ran_on", "filed_as", "policy", "problems"),
-    [
-        ("port", "port", True, []),
-        ("kernel", "kernel", True, []),
-        ("kernel", "port", True, ["host"]),  # a hosted replay filed under a port cell
-        ("port", "kernel", True, ["host"]),  # a port replay filed under a hosted cell
-        ("kernel", "kernel", False, ["host_policy"]),  # a hosted binding with no policy
-    ],
-)
-def test_the_binding_holds_a_replay_to_the_host_it_is_filed_under(
-    ran_on, filed_as, policy, problems
-):
-    assert ps.binding_problems(host_cell(204, ran_on, filed_as, policy)) == problems
-    # a policy that names another host is no policy of this one
-    wrong = host_cell(204, "kernel", "kernel")
+@pytest.mark.parametrize("policy, problems", [(True, []), (False, ["host_policy"])])
+def test_the_binding_requires_the_surviving_hosts_whole_policy(policy, problems):
+    assert ps.binding_problems(host_cell(204, policy=policy)) == problems
+    wrong = host_cell(204)
     wrong["digest"]["pool"]["host_policy"] = {"host": "port"}
     assert ps.binding_problems(wrong) == ["host_policy"]
 
@@ -456,7 +427,7 @@ POLICY_FIELDS = (
 def policy_cell(edit=None, drop=(), seed=204):
     """A hosted cell filed as hosted whose binding's policy is the real one with `edit` applied and
     the `drop` fields removed."""
-    cell = host_cell(seed, "kernel", "kernel")
+    cell = host_cell(seed)
     real = cell["digest"]["pool"]["host_policy"]
     cell["digest"]["pool"]["host_policy"] = {
         key: value for key, value in {**real, **(edit or {})}.items() if key not in drop
@@ -492,72 +463,34 @@ def test_a_missing_short_extended_or_contradictory_hosted_policy_is_refused():
     assert ps.binding_problems(policy_cell()) == []
     contradictory = dict(base, frac_bits=4, delay=2, thr=99.0, refrac_ticks=1)  # the panel's mutant
     for bad in ({"host": "kernel"}, contradictory, {}, dict(base, extra=1), None, "kernel", [1]):
-        cell = host_cell(204, "kernel", "kernel")
+        cell = host_cell(204)
         cell["digest"]["pool"]["host_policy"] = bad
         assert ps.binding_problems(cell) == ["host_policy"], bad
         with pytest.raises(ps.Halt, match="R-b7"):
             ps.build_table([cell], ps.SELECT_SEEDS)
-    cell = host_cell(204, "kernel", "kernel")
+    cell = host_cell(204)
     del cell["digest"]["pool"]["host_policy"]  # no policy at all
     assert ps.binding_problems(cell) == ["host_policy"]
     # the policy of another configuration's leak is no policy of this one
     other = next(c for c in rp.grid("lsm") if c["lambda"] != rp.grid("lsm")[0]["lambda"])
-    cell = host_cell(204, "kernel", "kernel")
+    cell = host_cell(204)
     cell["digest"]["pool"]["host_policy"] = hosted_policy(other)
     assert ps.binding_problems(cell) == ["host_policy"]
 
 
 def test_an_unsupported_host_is_refused_though_its_cell_and_binding_agree():
-    cell = host_cell(204, "kernel", "kernel")
+    cell = host_cell(204)
     binding = cell["digest"]["pool"]
-    cell["host"], binding["host"], binding["host_policy"]["host"] = "gpu", "gpu", "gpu"
-    assert ps.binding_problems(cell) == ["host"]
+    binding["host_policy"]["host"] = "gpu"
+    assert ps.binding_problems(cell) == ["host_policy"]
     with pytest.raises(ps.Halt, match="R-b7"):
         ps.build_table([cell], ps.SELECT_SEEDS)
 
 
-def test_a_port_and_a_hosted_replay_of_one_seed_are_two_cells_and_a_mismatch_halts():
-    table = ps.build_table([host_cell(204), host_cell(204, "kernel", "kernel")], ps.SELECT_SEEDS)
-    assert len(table) == 2
+def test_a_duplicate_replay_of_one_seed_halts():
     with pytest.raises(ps.Halt, match="R-b7") as twice:
-        ps.build_table([host_cell(204, "kernel", "kernel")] * 2, ps.SELECT_SEEDS)
+        ps.build_table([host_cell(204)] * 2, ps.SELECT_SEEDS)
     assert "duplicate seed 204" in twice.value.detail
-    for cell in (host_cell(204, "kernel", "port"), host_cell(204, "port", "kernel")):
-        with pytest.raises(ps.Halt, match="R-b7") as refused:
-            ps.build_table([cell], ps.SELECT_SEEDS)
-        assert "['host']" in refused.value.detail
-
-
-def named_port_surface(seed=204):
-    """g1_surface() with the host NAMED as the port wherever a host can be named (the spec's
-    argument and the cell's key): the rows must be the ones the default makes."""
-    rows = []
-    for config in rp.grid("lsm"):
-        for form in rp.FORMS:
-            for noise in (False, True):
-                spec = ps._spec("lsm", config, form, noise=noise, host="port")
-                bound = ps._bound(seed, dict(spec, host="port"))
-                binding = {
-                    "candidate": "lsm",
-                    "form": form,
-                    "config_crc32": rp.crc_json(config),
-                    "realization_seed": rp.realization_seed("lsm", seed),
-                    "window": rp.WINDOW,
-                    "noise": noise,
-                    "w_in": ps._w_in_crc(seed),
-                }
-                cell = dict(
-                    bound, host="port", digest={"arm": "pool", "seed": seed, "pool": binding}
-                )
-                rows.append([spec, bound, list(ps.cell_key(cell)), ps.binding_problems(cell)])
-    return json.dumps(rows, separators=(",", ":"))
-
-
-def test_naming_the_port_leaves_g1bs_keys_specs_and_bindings_byte_identical():
-    text = named_port_surface()
-    assert '"host"' not in text
-    assert hashlib.sha256(text.encode("utf-8")).hexdigest() == G1B_SURFACE_SHA256
-    assert text == g1_surface()
 
 
 def test_tabulate_binds_a_window_zero_replay_under_its_own_cell(tmp_path):
@@ -1211,6 +1144,7 @@ def transport_cell(arm, seed=204, *, encoder=None, transport=None, ran=None):
         "window": rp.WINDOW,
         "noise": False,
         "w_in": ps._w_in_crc(seed),
+        "host_policy": rp.KernelLsmPool.lineage_policy(config),
         "encoder": 123456,
         "transport": {"form": "copy", "copied_at_event": 256, "L": 3},
     }
@@ -1572,11 +1506,8 @@ def test_the_new_parameters_default_to_g1bs_values():
     assert inspect.signature(ps.require).parameters["steps"].default is ps.STEPS
     assert inspect.signature(ps.run_step).parameters["steps"].default is ps.STEPS
     phase = inspect.signature(ps._phase_table).parameters
-    assert (phase["paths"].default, phase["window"].default, phase["host"].default) == (
-        None,
-        rp.WINDOW,
-        "port",
-    )
+    assert (phase["paths"].default, phase["window"].default) == (None, rp.WINDOW)
+    assert "host" not in phase
 
 
 def test_require_walks_a_custom_step_list_with_g1bs_refusals(tmp_path):
@@ -1796,20 +1727,20 @@ def test_phase_table_files_every_cell_under_the_paths_it_is_given(tmp_path, monk
     assert [cell["status"] for cell in cells] == ["TIMEOUT", None, "TIMEOUT"]
 
 
-def test_phase_table_names_a_window_or_a_host_in_its_specs_only_when_given(tmp_path, monkeypatch):
+def test_phase_table_names_a_nondefault_window_in_its_specs(tmp_path, monkeypatch):
     config = rp.R_B3_WITNESS["lsm"]
     cells, _ = phase_table(tmp_path, monkeypatch)
     pool = [cell["job"]["pool"] for cell in cells if cell["arm"] == "pool"]
     assert pool == [ps._spec("lsm", config, "carried")] * 2
     assert all(list(spec) == ["candidate", "config", "form"] for spec in pool)
-    named = phase_table(tmp_path, monkeypatch, window=rp.WINDOW, host="port")[0]
+    named = phase_table(tmp_path, monkeypatch, window=rp.WINDOW)[0]
     assert [cell["job"]["pool"] for cell in named if cell["arm"] == "pool"] == pool
-    cells, _ = phase_table(tmp_path, monkeypatch, window=0, host="kernel")
+    cells, _ = phase_table(tmp_path, monkeypatch, window=0)
     pool_cells = [cell for cell in cells if cell["arm"] == "pool"]
     assert [cell["job"]["pool"] for cell in pool_cells] == [
-        ps._spec("lsm", config, "carried", window=0, host="kernel")
+        ps._spec("lsm", config, "carried", window=0)
     ] * 2
-    assert all((cell["window"], cell["host"]) == (0, "kernel") for cell in pool_cells)
+    assert all(cell["window"] == 0 and "host" not in cell for cell in pool_cells)
     assert [cell for cell in cells if cell["arm"] == "a"][0]["job"]["pool"] is None
 
 

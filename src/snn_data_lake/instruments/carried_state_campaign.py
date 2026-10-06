@@ -838,16 +838,23 @@ def _pool_invariance(stream, shuffled, form, *, block, carrier=None):
 def _check_pool_controls(stream, shuffled, block):
     """2.10: on real pool replays Settled keeps every post-boundary block's multiset of phi while the
     sequence moves; Carried must FAIL it (history reaches phi: the red), and so must a Settled whose
-    reset skips a carrier (the skip-a-carrier red, each carrier of the pool). Returns the counts."""
+    reset skips a carrier the step reads (the skip-a-carrier red: `v` and `acc`). The pool's `s` is a
+    recorded mask its delay rings never read (recurrent_pool's erasure red records it leaking to the
+    state alone), so a Settled skipping it must HOLD invariance. Returns the counts."""
     settled = _pool_invariance(stream, shuffled, "settled", block=block)
     assert settled["ok"] and settled["excluded"] == 2 and len(settled["per_block"]) == 4, settled
     assert all(row["sequence_differs"] for row in settled["per_block"]), settled
     carried = _pool_invariance(stream, shuffled, "carried", block=block)
     assert not carried["ok"], f"Carried held Settled invariance: the red did not fire: {carried}"
     skipped = {}
-    for carrier in rp.LsmPool.CARRIERS:
+    for carrier in rp.KernelLsmPool.CARRIERS:
         mutant = _pool_invariance(stream, shuffled, "settled", block=block, carrier=carrier)
-        assert not mutant["ok"], f"a Settled skipping {carrier!r} held invariance: {mutant}"
+        if carrier == "s":
+            assert mutant["ok"], (
+                f"a Settled skipping the unread mask 's' broke invariance: {mutant}"
+            )
+        else:
+            assert not mutant["ok"], f"a Settled skipping {carrier!r} held invariance: {mutant}"
         skipped[carrier] = _equal_blocks(mutant)
     return {
         "blocks": len(settled["per_block"]),
@@ -1140,7 +1147,7 @@ def _check_migration():
         ("d_task_port", 0.0051, "the live conjunct alone passes while D_task fails"),
     ):
         assert migration_reading(**{**rows[row], key: constant}) == "hosted", (key, row)
-    equal = rp.check_r_b3("lsm", TUNED, host="kernel", percepts=64, window=32)
+    equal = rp.check_r_b3("lsm", TUNED, percepts=64, window=32)
     assert equal["verdict"], equal["numbers"]["equal"]
     return {"rows": len(rows), "equal": equal["numbers"]["equal"]}
 

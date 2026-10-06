@@ -2,7 +2,7 @@
 2.3, 2.5 and 2.11: the pure assembly over a hand-built summary set (one clean head, COMPLETED
 stages, every contrast row, the G-R1 reading of every row of 2.5's table, the recomputed rows held
 equal to the stored ones), the markdown, the digests, the golden check (deterministic, and moved by
-a one-ulp change to the pool's leak on each host) and its CLI.
+a one-ulp change to the pool's leak on the surviving host) and its CLI.
 
 Nothing here records or builds a Brain; no live seed (300-361), synthetic seed 6000 or learner seed
 7000-7007 is run. The summaries are hand numbers over the live seeds' names (300-330 are only keys
@@ -169,7 +169,7 @@ def summaries(
         "migrate": stamped(
             reading="hosted" if host == "kernel" else "port",
             use=host,
-            conjuncts={"parity": True},
+            conjuncts={"parity": host == "kernel", "r_b3": True, "r_b4": True},
             mean={"port": {"live": 0.0, "task": 0.1}, "kernel": {"live": 0.0, "task": 0.1}},
             machinery_red={"fired": True},
             port_vs_g1b={"port": [0.0] * 4},
@@ -301,6 +301,20 @@ def test_a_stored_row_that_disagrees_with_its_recomputation_is_refused():
     exposed["record"]["live_seeds"] = [100, *cs.LIVE_SEEDS[1:]]  # an exposed seed
     with pytest.raises(ValueError):
         rep.assemble(exposed)
+
+
+def test_a_later_report_needs_no_migration_but_the_archived_reading_still_must_agree():
+    later = summaries()
+    del later["migrate"]
+    assert rep.provenance_problems(later) == []
+    report = rep.assemble(later)
+    assert report["host"] == "kernel" and report["migration"] is None
+    assert "## Migration gate: not run" in rep.render(report)
+    archived = summaries()["migrate"]
+    assert rep._migration(archived)["reading"] == "hosted"
+    archived["conjuncts"]["r_b3"] = False
+    with pytest.raises(ValueError, match="recorded reading.*not 2.9"):
+        rep._migration(archived)
 
 
 # ---- every contrast row, and 2.5's table ---------------------------------------------------------
@@ -563,20 +577,20 @@ def test_the_digest_is_canonical_and_the_differences_name_the_paths():
 @pytest.fixture(scope="module")
 def golden_pair():
     base = rep.golden()
-    return base, rep.golden(hosts=("port",))
+    return base, rep.golden()
 
 
-def test_the_golden_is_deterministic_and_covers_every_arm_form_and_host(golden_pair):
+def test_the_golden_is_deterministic_and_covers_every_arm_form_on_the_surviving_host(golden_pair):
     base, again = golden_pair
     assert base["scope"] == {
-        "hosts": ["port", "kernel"],
+        "hosts": ["kernel"],
         "window": rep.GOLDEN_WINDOW,
         "b": rep.GOLDEN_B,
         "percepts": rep.GOLDEN_PERCEPTS,
         "arms": list(rep.GOLDEN_ARMS),
     }
     assert set(base["arms"]) == set(rep.GOLDEN_ARMS) and len(base["arms"]) == 9
-    for host in st.HOSTS:
+    for host in (st.HOST,):
         assert set(base["replays"][host]) == {
             *(f"pool {form}" for form in rp.FORMS),
             *(f"pool {form}@0" for form in ps.FIT_FORMS),  # window 0 (P5 panel F4)
@@ -584,23 +598,14 @@ def test_the_golden_is_deterministic_and_covers_every_arm_form_and_host(golden_p
         }
         assert len(base["hand"][host]) == len(base["r_b3"][host]) == 64
     assert base["report"] is None and len(base["digest"]) == 64
-    # the same code at the same head: byte-identical, and a host's entries do not depend on the
-    # other host
-    assert (
-        again["hand"]["port"] == base["hand"]["port"]
-        and again["r_b3"]["port"] == base["r_b3"]["port"]
-    )
-    assert again["replays"]["port"] == base["replays"]["port"] and again["arms"] == base["arms"]
-    assert (
-        base["hand"]["port"] != base["hand"]["kernel"]
-    )  # the two hosts really are two arithmetics
+    assert again == base
 
 
-@pytest.mark.parametrize("host", st.HOSTS)
-def test_a_one_ulp_change_to_the_pools_leak_moves_the_golden_on_each_host(golden_pair, host):
+def test_a_one_ulp_change_to_the_pools_leak_moves_the_golden(golden_pair):
     base, _ = golden_pair
-    with rep.leak_nudged(host):
-        nudged = rep.golden(hosts=(host,))
+    host = st.HOST
+    with rep.leak_nudged():
+        nudged = rep.golden()
     assert nudged["digest"] != base["digest"]
     assert nudged["arms"] == base["arms"]  # an arm with no pool is not moved: the red is specific
     assert nudged["hand"][host] != base["hand"][host]
@@ -609,7 +614,7 @@ def test_a_one_ulp_change_to_the_pools_leak_moves_the_golden_on_each_host(golden
     # every pool replay: pool x four forms, Carried and Settled at window 0, each arm x two
     assert len(moved) == 12, moved
     assert rp.LsmPool.__init__.__name__ == "__init__"  # restored on exit
-    assert rep.golden(hosts=(host,))["hand"][host] == base["hand"][host]
+    assert rep.golden()["hand"][host] == base["hand"][host]
 
 
 def test_a_fault_in_the_window_zero_intervention_alone_moves_the_golden(golden_pair):
@@ -620,7 +625,7 @@ def test_a_fault_in_the_window_zero_intervention_alone_moves_the_golden(golden_p
     import numpy as np
 
     base, _ = golden_pair
-    assert {"pool carried@0", "pool settled@0"} <= set(base["replays"]["port"])
+    assert {"pool carried@0", "pool settled@0"} <= set(base["replays"][st.HOST])
     original = rp._Pool.percept_drive
 
     def broken(self, u):
@@ -631,34 +636,26 @@ def test_a_fault_in_the_window_zero_intervention_alone_moves_the_golden(golden_p
 
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(rp._Pool, "percept_drive", broken)
-        faulty = rep.golden(hosts=("port",))
+        faulty = rep.golden()
     moved = sorted(
         name
-        for name, found in faulty["replays"]["port"].items()
-        if found != base["replays"]["port"][name]
+        for name, found in faulty["replays"][st.HOST].items()
+        if found != base["replays"][st.HOST][name]
     )
     assert moved == ["pool carried@0", "pool settled@0"]  # exactly the window-0 records, no other
     assert faulty["digest"] != base["digest"]
     for part in ("hand", "r_b3"):  # the other golden parts stay as they were: the red is specific
-        assert faulty[part]["port"] == base[part]["port"]
+        assert faulty[part][st.HOST] == base[part][st.HOST]
     assert faulty["arms"] == base["arms"]
 
 
 def test_the_leak_red_moves_the_leak_by_exactly_one_ulp_of_the_hosts_arithmetic():
     import numpy as np
 
-    seen = {}
-    for host in st.HOSTS:
-        with rep.leak_nudged(host):
-            pool = rp.make_pool("lsm", cs.TUNED, 3, "carried", host=host)
-        seen[host] = pool.lam
-    assert seen["port"] == float(np.nextafter(cs.TUNED["lambda"], 2.0))
-    assert np.float32(seen["kernel"]) == np.nextafter(
-        np.float32(cs.TUNED["lambda"]), np.float32(2.0)
-    )
-    assert np.float32(seen["port"]) == np.float32(
-        cs.TUNED["lambda"]
-    )  # float32 would not see a float64 ulp
+    with rep.leak_nudged():
+        pool = rp.make_pool("lsm", cs.TUNED, 3, "carried")
+    assert np.float32(pool.lam) == np.nextafter(np.float32(cs.TUNED["lambda"]), np.float32(2.0))
+    assert np.float32(pool.lam) != np.float32(cs.TUNED["lambda"])
     assert rp.make_pool("lsm", cs.TUNED, 3, "carried").lam == cs.TUNED["lambda"]  # restored
 
 
@@ -668,9 +665,9 @@ def test_the_golden_recomputes_the_report_over_an_outs_saved_summaries(tmp_path,
     for stage, body in summaries().items():
         md._save(ps._summary_path(out, stage), {"step": stage, **body})
     # the cheap parts stood in for: this test is about the report entry, which the real parts feed
-    monkeypatch.setattr(rep, "_hand_record", lambda host: {"host": host})
-    monkeypatch.setattr(rep, "_chain_record", lambda host: {"host": host})
-    monkeypatch.setattr(rep, "_replay_records", lambda host, fixture, tap: {"x": {"host": host}})
+    monkeypatch.setattr(rep, "_hand_record", lambda: {"host": st.HOST})
+    monkeypatch.setattr(rep, "_chain_record", lambda: {"host": st.HOST})
+    monkeypatch.setattr(rep, "_replay_records", lambda fixture, tap: {"x": {"host": st.HOST}})
     monkeypatch.setattr(rep, "_core", lambda run: {"arm": run["arm"]})
     found = rep.golden(out)
     assert found["scope"]["hosts"] == ["kernel"]  # the surviving host the migrate summary names
@@ -685,11 +682,16 @@ def test_the_golden_recomputes_the_report_over_an_outs_saved_summaries(tmp_path,
     md._save(ps._summary_path(out, "primary"), {"step": "primary", **moved["primary"]})
     other = rep.golden(out)
     assert rep.differences(found, other) == ["/digest", "/report/markdown", "/report/report"]
+    migration = md._load(ps._summary_path(out, "migrate"))
+    md._save(ps._summary_path(out, "migrate"), {**migration, "use": "port"})
+    with pytest.raises(ValueError, match="cannot run OUT's host"):
+        rep.golden(out)
+    md._save(ps._summary_path(out, "migrate"), migration)
     # an OUT that cannot be assembled is refused, never a silent None
     ps._summary_path(out, "transport").unlink()
     with pytest.raises(ValueError, match="transport: no summary"):
         rep.golden(out)
-    assert rep.hosts_in(None) == st.HOSTS
+    assert st.use_of(out) == st.HOST
 
 
 # ---- the golden command --------------------------------------------------------------------------
@@ -698,7 +700,7 @@ def test_the_golden_recomputes_the_report_over_an_outs_saved_summaries(tmp_path,
 def test_the_golden_command_prints_a_digest_compares_it_and_names_what_moved(
     tmp_path, monkeypatch, capsys
 ):
-    canned = {"scope": {"hosts": ["port"]}, "hand": {"port": "a"}, "digest": "d1"}
+    canned = {"scope": {"hosts": ["kernel"]}, "hand": {"kernel": "a"}, "digest": "d1"}
     monkeypatch.setattr(rep, "golden", lambda out: canned)
     monkeypatch.setattr(drv, "preflight", lambda out: [])
     assert drv.main(["golden"]) == ps.EXIT_OK
@@ -707,9 +709,9 @@ def test_the_golden_command_prints_a_digest_compares_it_and_names_what_moved(
     saved.write_text(json.dumps(canned), encoding="utf-8")
     assert drv.main(["golden", "--against", str(saved)]) == ps.EXIT_OK
     assert "golden: equal" in capsys.readouterr().out
-    saved.write_text(json.dumps({**canned, "hand": {"port": "b"}}), encoding="utf-8")
+    saved.write_text(json.dumps({**canned, "hand": {"kernel": "b"}}), encoding="utf-8")
     assert drv.main(["golden", "--against", str(saved)]) == ps.EXIT_ABORT
-    assert "MOVED at /hand/port" in capsys.readouterr().out
+    assert "MOVED at /hand/kernel" in capsys.readouterr().out
     monkeypatch.setattr(
         rep, "golden", lambda out: (_ for _ in ()).throw(ValueError("transport: no summary"))
     )
@@ -725,7 +727,4 @@ def test_the_golden_command_prints_a_digest_compares_it_and_names_what_moved(
 def test_the_module_self_check_runs(capsys):
     rep.self_check()
     out = capsys.readouterr().out
-    assert (
-        "carried_state_report self-check OK" in out
-        and "a one-ulp leak moved port in 14 records" in out
-    )
+    assert "carried_state_report self-check OK" in out and "a one-ulp leak moved 14 records" in out

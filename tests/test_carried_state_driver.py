@@ -1,7 +1,7 @@
 """G1(c)'s campaign driver (instruments/carried_state_driver.py): the preflight, the CLI, the stage
 chain, the first five stages (record, mechanism, instrument, references, construct) of
 g1c-carried-state.md section 2.13 each with its constructed red, and -- at the end -- the
-MINI-CAMPAIGN: every one of the twelve stages run end to end through the report on 31 stand-in live
+MINI-CAMPAIGN: every one of the eleven stages run end to end through the report on 31 stand-in live
 seeds.
 
 Nothing here records or builds a Brain, and no live seed (300-361), synthetic seed 6000 or learner
@@ -81,7 +81,6 @@ def test_the_stages_are_section_2_13s_and_every_one_is_built():
         "instrument",
         "references",
         "construct",
-        "migrate",
         "causality",
         "primary",
         "controls",
@@ -91,12 +90,11 @@ def test_the_stages_are_section_2_13s_and_every_one_is_built():
     )
     assert tuple(drv.STAGE_FUNCTIONS) == drv.STAGES and not hasattr(drv, "OWED")
     assert drv.REFERENCE_ARMS == ("a", "f64", "e1", "e1-0") and drv.POOL == ps.SELECTABLE[0]
-    # the seven stages of part 2 are the three modules' own: the driver imports them, they never
+    # the six stages of part 2 are the three modules' own: the driver imports them, they never
     # import it
     assert [
         drv.STAGE_FUNCTIONS[stage].__module__.rsplit(".", 1)[1] for stage in drv.STAGES[5:]
     ] == [
-        "carried_state_stages",
         "carried_state_stages",
         "carried_state_stages",
         "carried_state_controls",
@@ -227,9 +225,16 @@ def test_the_cli_refuses_a_missing_pilot_a_reserve_without_repair_and_an_early_s
     assert drv.main(["instrument", str(out), "--pilot", str(pilot)]) == ps.EXIT_REFUSED
     assert "causal.json" in capsys.readouterr().err  # the eight causal replays are missing
     monkeypatch.setattr(md, "_revision", clean)  # the CLI reads the real tree: stand in a clean one
-    assert drv.main(["migrate", str(out)]) == ps.EXIT_REFUSED
-    assert "migrate: construct has no summary" in capsys.readouterr().err
+    assert drv.main(["causality", str(out)]) == ps.EXIT_REFUSED
+    assert "causality: construct has no summary" in capsys.readouterr().err
     assert not list(out.glob("*.summary.json"))  # nothing was written by any refusal
+
+
+def test_the_cli_refuses_the_retired_migration_stage(tmp_path, capsys):
+    with pytest.raises(SystemExit) as refused:
+        drv.main(["migrate", str(tmp_path)])
+    assert refused.value.code == 2
+    assert "invalid choice: 'migrate'" in capsys.readouterr().err
 
 
 # ---- the stage chain (pool_selection's own refusals, at stand-in revisions) ----------------------
@@ -1129,7 +1134,6 @@ def mini_functions(build):
     stages = drv.STAGE_FUNCTIONS
     return {
         "instrument": functools.partial(drv.stage_instrument, rb6_seed=MINI_RB6),
-        "migrate": functools.partial(stages["migrate"], scale=MINI_SCALE),
         "causality": functools.partial(stages["causality"], scale=MINI_SCALE),
         "primary": functools.partial(stages["primary"], scale=MINI_SCALE),
         "controls": functools.partial(stages["controls"], scale=MINI_SCALE, rb6_seed=MINI_RB6),
@@ -1159,7 +1163,7 @@ def mini_recorder(streams):
 
 @pytest.fixture(scope="module")
 def mini(tmp_path_factory):
-    """OUT after all twelve stages. Tiny synthetic streams (`stand_in`, built from the 48-event
+    """OUT after all eleven stages. Tiny synthetic streams (`stand_in`, built from the 48-event
     fixture, which is seed 100's) stand in for the 37 recordings; the pilot is seed 100's honest
     stream and eight causal replays."""
     root = tmp_path_factory.mktemp("mini")
@@ -1201,7 +1205,7 @@ def test_the_mini_campaign_runs_every_stage_end_to_end_at_one_clean_head(mini):
     assert bodies["record"]["live_seeds"] == list(cs.LIVE_SEEDS)
     assert len(bodies["record"]["recordings"]) == 37
     assert bodies["references"]["inspected"] is True and (out / drv.INSPECTED_FILE).is_file()
-    assert bodies["migrate"]["use"] == "kernel" and bodies["migrate"]["reading"] == "hosted"
+    assert "migrate" not in bodies
     for stage in ("primary", "controls", "transport", "separation"):  # each binds to that host
         assert bodies[stage]["host"] == "kernel" and bodies[stage]["shortened"] is True
         assert bodies[stage]["scale"] == MINI_SCALE
@@ -1279,9 +1283,8 @@ def test_the_mini_campaigns_report_reads_31_seeds_and_marks_itself_shortened(min
         all(inputs["rb6_clauses"].values()) and inputs["oracle_met"]
     )
     assert inputs["shuffle_sighted"] is True and report["separation"]["run"] is True
-    assert (
-        report["migration"]["reading"] == "hosted" and report["migration"]["machinery_red"]["fired"]
-    )
+    assert report["migration"] is None
+    assert "## Migration gate: not run" in text
     assert set(report["transport"]["records"]) == set(md.TRANSPORT_ARMS)
     assert f"## G-R1 reads: {report['g_r1']['verdict']}" in text
     filed = summary(out, "report")

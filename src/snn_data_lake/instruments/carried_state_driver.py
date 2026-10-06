@@ -13,8 +13,9 @@ summary written). A stage writes OUT/<stage>.summary.json with `head` and `dirty
               digest HALTS, 2.6); the cost projection is printed; then ONE batch for 203, the bundle's gate
               seeds and its live set. ONE complete seed bundle per campaign (carried_state_campaign.
               SEED_BUNDLES): live 300-330 + gate 204-207 + synthetic 5005-5008 + R-b6 6000, or, with --seeds
-              reserve (2.11), reserve 331-361 + gate 208-211 + synthetic 5009-5012 + R-b6 6001; migrate,
-              instrument and controls read it from the record summary. --seeds reserve needs OUT/REPAIR.txt
+              reserve (2.11), reserve 331-361 + gate 208-211 + synthetic 5009-5012 + R-b6 6001;
+              instrument and controls read it from the record summary (and the migrate stage did, until
+              2.9 deleted it with the port: the gate seeds of a bundle now have no consumer). --seeds reserve needs OUT/REPAIR.txt
               naming an ORIGINAL live campaign (never a reserve one) and CLAIMS that campaign's single
               reserve attempt exclusively before recording; a second claim halts. The record's `seed_set`
               is filed in its RUNNING marker before the body runs and kept in every final summary
@@ -34,11 +35,12 @@ summary written). A stage writes OUT/<stage>.summary.json with `head` and `dirty
   construct   G-R2's construction check (inseparable_mapping.construction_check) as a "call" job; the stage
               COMPLETES whatever the verdict (2.8: a red makes item (3) NOT RUN; G1(c) continues).
 
-Part 2 (P5c) adds the other seven stages, in three modules this one imports (they never import it):
-`carried_state_stages` (migrate, causality, primary and the helpers every pool stage shares),
+Part 2 (P5c) adds the other six stages, in three modules this one imports (they never import it):
+`carried_state_stages` (causality, primary and the helpers every pool stage shares),
 `carried_state_controls` (controls, transport, separation) and `carried_state_report` (the report stage and
-the golden check of 2.11). `golden [OUT] [--against FILE]` is the CLI's thirteenth command, beside the
-twelve stages: it runs the golden check in-process and prints its digest, or with --against compares it with
+the golden check of 2.11). The migrate stage (2.9's migration gate) ran in the campaign at 5761f3a7 and
+was deleted with the port and the host switch (g1c-carried-state.md 3.3). `golden [OUT] [--against FILE]`
+is the CLI's twelfth command, beside the eleven stages: it runs the golden check in-process and prints its digest, or with --against compares it with
 a saved one (exit 0 equal, 1 moved).
 
 Summary keys part 2 reads: record `live_seeds`, `seed_set` (and `bundle`), `recordings`, `identity`, `shuffle`; instrument
@@ -93,7 +95,6 @@ STAGES = (
     "instrument",
     "references",
     "construct",
-    "migrate",
     "causality",
     "primary",
     "controls",
@@ -333,7 +334,7 @@ def stage_record(out, pilot, seeds="live"):
     return {
         "recordings": recordings,
         "seed_set": seeds,
-        "bundle": {  # the complete bundle: migrate, instrument and controls read their seeds from it
+        "bundle": {  # the complete bundle: instrument and controls read their seeds from it
             "which": bundle.which,
             "live": list(bundle.live),
             "gate": list(bundle.gate),
@@ -498,7 +499,7 @@ STAGE_FUNCTIONS = {
     "instrument": stage_instrument,
     "references": stage_references,
     "construct": stage_construct,
-    **st.STAGE_FUNCTIONS,  # migrate, causality, primary
+    **st.STAGE_FUNCTIONS,  # causality, primary
     **ctl.STAGE_FUNCTIONS,  # controls, transport, separation
     "report": rep.stage_report,
 }
@@ -550,7 +551,7 @@ def _refused(stage, out, revision, **kwargs):
 
 
 def self_check():
-    assert STAGES == tuple(STAGE_FUNCTIONS) and len(set(STAGES)) == 12
+    assert STAGES == tuple(STAGE_FUNCTIONS) and len(set(STAGES)) == 11
     # the preflight: the control passes; each refusal is the only reason it names
     with tempfile.TemporaryDirectory() as scratch:
         root, elsewhere = Path(scratch) / "repo", Path(scratch) / "elsewhere"
@@ -598,7 +599,7 @@ def self_check():
         # needs a REPAIR.txt naming the first OUT
         for stage in STAGES[5:]:
             assert _refused(stage, elsewhere / "later", _clean)
-        assert not (elsewhere / "later" / "migrate.summary.json").exists()
+        assert not (elsewhere / "later" / "causality.summary.json").exists()
         assert start_problems("record", fresh, str(pilot), "live") == []
         assert len(start_problems("record", fresh, str(pilot), "reserve")) == 1
         # 2.11: only an ORIGINAL live campaign is repaired, once (P5 panel F5)
