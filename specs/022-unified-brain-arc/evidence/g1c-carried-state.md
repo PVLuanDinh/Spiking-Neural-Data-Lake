@@ -505,6 +505,12 @@ Carried XOR 0.676, twin 0.853; Settled XOR 0.996, twin 0.997; the stream reads c
 1. The results record: this commit.
 2. Deleting 2.9's non-surviving host (the port) and the HOSTS switch, golden check before and after: HELD for the owner's
    explicit go (the integration brief's stop-and-ask list names deleting a file), then a stacked commit.
+   *DATED 2026-10-06, landed:* the owner's go ("Go: delete, then close", board ruling 25; restated by the owner on 2026-10-06
+   as the order for this close) -> `5bd10691`. The golden check (2.11), run in-process by the integrator against the
+   campaign OUT `run1` on three trees (the campaign head 5761f3a7 and 6dbe61e2, each exported whole with `git archive`, and
+   the deletion tree), printed one JSON, byte-identical on all three and equal to the saved golden: digest
+   `587ae8190af25b7ddefdce80a9a70f171da5bdd87d10a37a15f794006c87326d`. No difference, so no reserve seed runs. The live
+   lake's mtime was unchanged across the three runs. `test_one_reachable_pool_implementation` counts one reachable pool.
 3. The dormancy rows that say "until G1(c)'s disposition", the plan's T109 note and T108's stale checkbox: stacked commits by
    the integrator.
 4. The Codex closing report (2026-10-04, gpt-6.1-sol, `scratchpad/g1c/codex_closing_reply.txt`): claims 1-4 survive (the RED
