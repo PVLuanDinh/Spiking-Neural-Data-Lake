@@ -188,6 +188,10 @@ def test_f_width_record_reproduces_and_a_perturbed_record_is_refused(artifact, s
     bad = dict(rec, params=[rec["params"][0], rec["params"][1] * (1 + 1e-4)])
     with pytest.raises(KD.RecordRefused):
         KD.verify_width_record(bad, path, stage, **fx)
+    with pytest.raises(KD.RecordRefused):  # cp2 #4: the physical width is verified, not only the params
+        KD.verify_width_record(dict(rec, width_um={"sigma": rec["width_um"]["sigma"] * 1.01}), path, stage, **fx)
+    with pytest.raises(KD.RecordRefused):
+        KD.verify_width_record(dict(rec, width_um={}), path, stage, **fx)
     with pytest.raises(KD.ExposureRefused):
         KD.final_width_record(path, "gauss", None, **fx)
     with pytest.raises(KD.ExposureRefused):  # cp2 #2: the verifier is an edge read, gated like the rest

@@ -972,6 +972,13 @@ def verify_width_record(record, path, planted_record, pin=None, plan=None, n_edg
     fresh = _final_width(pop, Geometry.of(pop), edges, record["model"], sha)
     if not np.allclose(fresh["params"], record["params"], rtol=WIDTH_RTOL, atol=0.0):
         raise RecordRefused(f"refit {fresh['params']} != record {record['params']}")
+    # the widths consumers read are physical (um): the record's own, and consistent with its params
+    wu = record.get("width_um") or {}
+    if set(wu) != set(fresh["width_um"]) or any(
+        not np.isclose(wu[k], v, rtol=WIDTH_RTOL, atol=0.0) or not np.isclose(wu[k], _width_um(record["model"], record["params"])[k], rtol=WIDTH_RTOL, atol=0.0)
+        for k, v in fresh["width_um"].items()
+    ):
+        raise RecordRefused(f"refit widths {fresh['width_um']} != record widths {wu}")
     return fresh
 
 
