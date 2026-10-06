@@ -892,3 +892,22 @@ four reds). The value gamma = 1/k and the sensitivity pair {0.5/k, 2/k} are a ch
 column structure is deleted -- a new design choice after the owner's 2026-10-04 decisions -- so they are PARKED for the owner as
 Q-COL (board OWNER_QUESTIONS) and read "pending Q-COL" wherever (h) states them. G3 builds the coupling with gamma as a
 PARAMETER plus the four reds (that decides nothing); T1-struct's run waits on Q-COL and on G4's T3 either way.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (j) -- (h) completed per G3's refutation (build `grown_code.column_latencies`; no data read)
+
+Additive; G3 built (h)'s form and refuted three omissions, all accepted. Unreviewed amendment text.
+1. **One window, one tau.** A column's batch shares ONE window and ONE tau (a column with mixed windows has no "t = 1..window");
+   mixed windows, or a batch that does not hold exactly one I unit, are REFUSED (ValueError), never repaired.
+2. **The version obligation.** `grown_version` (crc32 over unit parameters) does not cover gamma or batch membership, yet a
+   column's latencies depend on both. When the adapter that calls `column_latencies` lands, the segment config {gamma, batch_id
+   per unit} enters `grown_version`, so a gamma change bumps the version that redo/eligibility keys on. Stated as an obligation;
+   not built now (no consumer calls `column_latencies` yet).
+3. **What isolates the structure.** Candidate training / selection (G3's `trace_train`) evaluates each candidate as an
+   INDEPENDENT unit in BOTH arms; the coupling acts only when a batch is evaluated (every evaluation, including the learner's
+   attempts). COL and BATCH9 therefore hold IDENTICAL trained unit rows and differ only in gamma at evaluation -- which is what
+   makes T1-struct test the structure and nothing else. (It also means T1-struct tests a read-time coupling, not coupling
+   learned into the rows: the owner's Q-COL should know this.)
+4. **The four reds, as built (G3):** neuter byte-identity (three rank patterns, one shared `_drive` expression); liveness in
+   BOTH directions with a mutant per direction; causality (structural: psp(0) = 0 makes a "same-step spikes act" mutant
+   equivalent, so it is disclosed as not killable at runtime); Dale on I's output lives in `clip_to_sign` / `apply_unit_row`
+   (cp1 #17), not in this function.
