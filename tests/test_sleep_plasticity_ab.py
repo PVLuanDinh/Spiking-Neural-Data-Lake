@@ -195,8 +195,8 @@ def _record(arm="ON", seed=16000, family="F1"):
         "heldout_keys": ["h1"], "drawn": ["t1"],
         "tick": {"presentations": [m.K, m.K], "turnover": [None, None], "cacc": [None, None]},
         "att_calls": [[1, 3], [2, 3]], "k8a": [], "stored_any": False,
-        "chrono_before": {"nights": 0, "wake_ticks": 0, "arm_ticks": 0},
-        "chrono_after": {"nights": 1, "wake_ticks": 0, "arm_ticks": 0},
+        "chrono_before": {"nights": 0, "wake_ticks": 0, "arm_ticks": 0, "step": 0},
+        "chrono_after": {"nights": 1, "wake_ticks": 0, "arm_ticks": 0, "step": 0},
         "inproc": [1, 0], "restored": [1, 0], "n_a": 1, "eval_before": "e", "eval_after": "e",
         "live_lake_untouched": True,
     }  # fmt: skip
@@ -211,6 +211,7 @@ PLANTS = {
     "K6": lambda r: r.update(weights_post="moved"),
     "K8a": lambda r: r.update(k8a=[{"before": {}, "after": {}}]),
     "K8b": lambda r: r["chrono_after"].update(nights=2),
+    "K8b-step": lambda r: r["chrono_after"].update(step=1),  # cp2 #10: _step asserted, not printed
     "K14": lambda r: r.update(live_lake_untouched=False),
 }
 
@@ -222,7 +223,7 @@ def test_record_check_reds(check):
     assert not any(m.check_records("F1", base).values()), m.check_records("F1", base)
     planted = copy.deepcopy(base)
     PLANTS[check](planted[0])
-    assert m.check_records("F1", planted)[check], check
+    assert m.check_records("F1", planted)[check.split("-")[0]], check
 
 
 def test_k13_red_unequal_attractor_draws():

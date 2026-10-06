@@ -291,7 +291,7 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
     wall["teach"] = time.perf_counter() - t0
     d0 = state_digest(b)
 
-    log = {"presentations": 0, "drawn": [], "k8a": []}
+    log = {"presentations": 0, "drawn": [], "k8a": [], "draws": 0, "in_guard": False}
     real_argmax, real_interact, real_replay = ixn._argmax_label, ixn.interact, ixn.replay
 
     def counted_argmax(code):
@@ -301,20 +301,34 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
     def logged_interact(stimulus, feedback, _record=True, _key=None):
         if not _record:
             log["drawn"].append(_key)
+            return guarded(real_interact, stimulus, feedback, _record, _key)
         return real_interact(stimulus, feedback, _record=_record, _key=_key)
 
+    # K8a per draw (Codex cp2 #10): each incumbent replay, fwd, Rec and MASSED draw has its own
+    # chronology snapshot, so a change one draw makes and a later draw undoes is still caught.
     def guarded(fn, *args):
-        before = chrono(b)
-        out = fn(*args)
-        if red == "K8a" and not log["k8a"]:
-            b._step += 1  # the red: chronology moves inside a replay / instrument action
-        after = chrono(b)
-        if after != before:
-            log["k8a"].append({"before": before, "after": after})
-        return out
+        if log["in_guard"]:
+            return fn(*args)
+        log["in_guard"] = True
+        try:
+            before = chrono(b)
+            out = fn(*args)
+            log["draws"] += 1
+            if red == "K8a" and log["draws"] <= 2:  # the red: +1 on one draw, -1 on the next
+                b._step += 1 if log["draws"] == 1 else -1
+            if red == "K8a-obs" and log["draws"] == 1:  # the red: the grower is fed one percept
+                from snn_data_lake.growth.neurogenesis_engine import _mode_features
+
+                b.neuro.observe(_mode_features(0, 5), 0)
+            after = chrono(b)
+            if after != before:
+                log["k8a"].append({"before": before, "after": after})
+            return out
+        finally:
+            log["in_guard"] = False
 
     def logged_replay(k=8):
-        return guarded(real_replay, k)
+        return real_replay(k)  # each of its draws reaches logged_interact, which checks it
 
     if arm.pre == "oracle":
         for line, lab in oracle:
@@ -328,12 +342,9 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
         twin.setstate(ixn.rng.getstate())
         ring = list(ixn._replay)
 
-        def massed():
-            for _ in range(BUDGETS["EXT"] * K):
-                stim, lab, key = ring[twin.randrange(len(ring))]
-                ixn.interact(list(stim), lab, _record=False, _key=key)
-
-        guarded(massed)
+        for _ in range(BUDGETS["EXT"] * K):
+            stim, lab, key = ring[twin.randrange(len(ring))]
+            guarded(ixn.interact, list(stim), lab, False, key)
     d1 = state_digest(b)
 
     for cap, on in zip(("replay", "benna_fusi", "structural"), arm.caps):
@@ -366,26 +377,18 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
         p0, dep0 = log["presentations"], b._plasticity.consolidation_calls()
         ring = ixn._replay
         if arm.action == "fwd":
-
-            def fwd(t=t, ring=ring):
-                for j in range(K):
-                    stim = ring[twin.randrange(len(ring))][0]
-                    if red == "K2" and t % 10 == 0 and j == 0:
-                        continue  # the red: one fwd draw dropped per 10 ticks
-                    if red == "K6" and t == 0 and j == 0:
-                        ixn.interact(list(stim), ixn.respond(stim), _record=False)  # the red
-                        continue
-                    ixn.respond(stim)
-
-            guarded(fwd)
+            for j in range(K):
+                stim = ring[twin.randrange(len(ring))][0]
+                if red == "K2" and t % 10 == 0 and j == 0:
+                    continue  # the red: one fwd draw dropped per 10 ticks
+                if red == "K6" and t == 0 and j == 0:
+                    ixn.interact(list(stim), ixn.respond(stim), _record=False)  # the red
+                    continue
+                guarded(ixn.respond, stim)
         elif arm.action == "rec":
-
-            def rec():
-                for _ in range(K):
-                    stim, lab, key = b_pool[ixn.rng.randrange(len(b_pool))]
-                    ixn.interact(list(stim), lab, _record=False, _key=key)
-
-            guarded(rec)
+            for _ in range(K):
+                stim, lab, key = b_pool[ixn.rng.randrange(len(b_pool))]
+                ixn.interact(list(stim), lab, _record=False, _key=key)  # guarded per draw
         b._sleep_tick()
         tick["presentations"].append(log["presentations"] - p0)
         tick["deposits"].append(b._plasticity.consolidation_calls() - dep0)
@@ -770,11 +773,10 @@ def check_records(family, recs):
         if r["k8a"]:
             fails["K8a"].append(tag)
         cb, ca = r["chrono_before"], r["chrono_after"]
-        if (ca["nights"] - cb["nights"], ca["wake_ticks"], ca["arm_ticks"]) != (
-            1,
-            cb["wake_ticks"],
-            cb["arm_ticks"],
-        ):
+        # K8b (X-17), with `_step` ASSERTED unchanged rather than only printed (Codex cp2 #10; measured
+        # unchanged on all 144 dev arm-seeds, so the stricter reading halts nothing valid)
+        moved = (ca["nights"] - cb["nights"], ca["wake_ticks"], ca["arm_ticks"], ca["step"])
+        if moved != (1, cb["wake_ticks"], cb["arm_ticks"], cb["step"]):
             fails["K8b"].append(tag)
         if not r.get("live_lake_untouched", False):
             fails["K14"].append(tag)
@@ -1113,7 +1115,7 @@ def _main_cmd(a):
         fam, arm, budget = {
             "K1": ("F1", "ON", 2), "K2": ("F1", "OFF", 10), "K3": ("F1", "ON", 2), "K4": ("F1", "ON", 2),
             "K5": ("F1", "ON", 2), "K6": ("F1", "OFF", 2), "K8a": ("F1", "ON", 2), "K8b": ("F1", "ON", 2),
-            "K13": ("F3", "AT-OFF", 2),
+            "K8a-obs": ("F1", "ON", 2), "K13": ("F3", "AT-OFF", 2),
         }[a.name]  # fmt: skip
         seed = RED_SEEDS[1]
         w = F3_W_LADDER[0] if fam == "F3" else None  # a red needs stores, never the frozen W
@@ -1123,8 +1125,9 @@ def _main_cmd(a):
             dict(redrec, arm="ON-TWIN") if a.name == "K1" else redrec
         )  # the split-offset build as ON's twin
         fails = check_records(fam, [base, twin] if a.name in ("K1", "K13") else [redrec])
-        fired = bool(fails[a.name])
-        print(f"red {a.name}: {'FIRED' if fired else 'DID NOT FIRE'} {fails[a.name]}")
+        check = a.name.split("-")[0]  # K8a-obs is read by K8a
+        fired = bool(fails[check])
+        print(f"red {a.name}: {'FIRED' if fired else 'DID NOT FIRE'} {fails[check]}")
         if not fired:
             raise SystemExit(1)
     elif a.cmd == "decide":
