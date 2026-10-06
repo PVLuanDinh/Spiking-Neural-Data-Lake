@@ -182,3 +182,38 @@ def test_a_home_swapped_for_another_populated_dir_is_refused_not_just_a_live_one
         with pytest.raises(LiveHomeRefused, match="not the fresh one"):
             g.check_fresh_home(fresh)
         monkeypatch.setenv("NORD_HOME", fresh)
+
+
+def _fake_cell(args):
+    seed, arm, seq = args
+    return {"seed": seed, "arm": arm, "cats": [0, 1, 0, 1], "cats_hash": "h", "cols_hash": "c",
+            "widened": 0, "live_pers": 0.5, "live_acc": 0.5, "floors": [], "unified": True}
+
+
+def test_the_live_lake_check_runs_after_each_stage_and_survives_an_exception(monkeypatch):
+    # Codex cp4 #13: a RECORD-stage violation must halt BEFORE the arm stage launches
+    from concurrent.futures import ThreadPoolExecutor
+
+    stamps = iter([("a", "b"), ("a2", "b"), ("a2", "b"), ("a2", "b")])
+    monkeypatch.setattr(g, "live_lake_stamp", lambda: next(stamps))
+    ran = []
+
+    def cell(args):
+        ran.append(args[1])
+        return _fake_cell(args)
+
+    with pytest.raises(g.LiveLakeMoved, match="RECORD stage"):
+        g.run_cells((1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell)
+    assert ran == ["RECORD"]  # the arm stage never launched
+
+    # an exception in a stage while the lake moved reports the move, not the hidden exception
+    stamps = iter([("a", "b"), ("a", "b"), ("a2", "b")])
+    monkeypatch.setattr(g, "live_lake_stamp", lambda: next(stamps))
+
+    def boom(args):
+        if args[1] != "RECORD":
+            raise ValueError("arm crashed")
+        return _fake_cell(args)
+
+    with pytest.raises(g.LiveLakeMoved, match="raised"):
+        g.run_cells((1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=boom)

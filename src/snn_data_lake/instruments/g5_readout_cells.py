@@ -482,20 +482,39 @@ def brain_cell(args):
     return out
 
 
-def run_cells(seeds, arms, workers=4, log=print):
+class LiveLakeMoved(RuntimeError):
+    """The live lake's mtime moved while cells ran: a HALT, never a replaceable instrument failure."""
+
+
+def _lake_unmoved(before, stage):
+    if live_lake_stamp() != before:
+        raise LiveLakeMoved(
+            f"the live lake's mtime moved during {stage} -- halt (board PROTOCOL 4b; Codex cp4 #13)"
+        )
+
+
+def run_cells(seeds, arms, workers=4, log=print, pool=None, cell=None):
     """Stage 1 records each seed's sequence (RECORD, the deployed wiring); stage 2 runs every arm under
-    the common vocabulary init on that sequence. The live lake's mtimes must not move."""
+    the common vocabulary init on that sequence. The live lake's mtimes must not move: checked right
+    after EACH stage, and again on the way out of an exception (record 2.6 PA9; Codex cp4 #13).
+    `pool` / `cell` are test seams (default ProcessPoolExecutor / brain_cell)."""
     from concurrent.futures import ProcessPoolExecutor
 
+    pool = pool or ProcessPoolExecutor
+    cell = cell or brain_cell
     before = live_lake_stamp()
-    with ProcessPoolExecutor(max_workers=workers) as ex:
-        recorded = {c["seed"]: c for c in ex.map(brain_cell, [(s, "RECORD", None) for s in seeds])}
-        jobs = [(s, a, recorded[s]["cats"]) for s in seeds for a in arms]
-        cells = list(ex.map(brain_cell, jobs))
-    if live_lake_stamp() != before:
-        raise RuntimeError(
-            "the live lake's mtime moved during the cells -- halt (board PROTOCOL 4b)"
-        )
+    try:
+        with pool(max_workers=workers) as ex:
+            recorded = {c["seed"]: c for c in ex.map(cell, [(s, "RECORD", None) for s in seeds])}
+            _lake_unmoved(before, "the RECORD stage")
+            jobs = [(s, a, recorded[s]["cats"]) for s in seeds for a in arms]
+            cells = list(ex.map(cell, jobs))
+            _lake_unmoved(before, "the arm stage")
+    except LiveLakeMoved:
+        raise
+    except BaseException:
+        _lake_unmoved(before, "a stage that raised")  # a violation outranks the exception it hides
+        raise
     for c in cells:
         if c["cats_hash"] != recorded[c["seed"]]["cats_hash"]:
             raise SameRowsHalt(f"seed {c['seed']} arm {c['arm']}: rows differ from the recording")
