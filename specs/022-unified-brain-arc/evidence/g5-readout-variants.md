@@ -468,7 +468,7 @@ property worth carrying into the return projection (Part D; G7 section 4).
   1. contrast(COUPLED - COUPLED_MARG) MET: which-confuses-which beats prior correction;
   2. contrast(COUPLED - COUPLED_SHUF) MET: the gain depends on the true teaching alignment;
   3. the shift is non-vacuous on 8 of 8;
-  4. contrast(COUPLED_SHUF - DELTA) NOT met. This secondary conjunct can only add a refusal.
+  4. contrast(COUPLED_SHUF - DELTA) NOT met. This conjunct can only add a refusal.
 - **B-R4:** refit accuracy and the trajectory are identical to DELTA's on 8 of 8.
 - **Reported:** (live acc - live persistence) per arm. The confusion matrix on this stream is persistence-shaped (the live
   floor is 0.90-0.99). A coupling that only approaches that floor is read against it and never as a relational
@@ -987,3 +987,18 @@ X - X_SHUF contrast can fire.
 
 **Run conditions.** Commit d34993a0 plus the instrument at sha256 8e773656...ab620cf. Brain-free, 23 s. Log in the G5
 scratchpad: `g5_pa3.log`.
+
+## Amendment 2026-10-06 (pre-data: no in-brain cell has run; challenger G6's plan-level refutation, three points)
+
+Dated pre-data amendment to 3.4, applied before any in-brain Part B cell. It adds a reading and an ordering and removes
+one word; no threshold, arm, seed or bar changes.
+
+1. **B-R1 reports its sign.** B-R1 stays "contrast(COUPLED - DELTA) MET". The printed line carries the contrast's mean
+   sign. A contrast that is significantly NEGATIVE (the paired t at the bar, wrong direction) reads HARMFUL, not null:
+   B-R1 is NOT met either way, `categorical_coupling` is deleted (3.6), and the evidence file records HARMFUL beside
+   the number. Reason: PB2 measured the coupling worse than the uncoupled argmax on non-systematic errors (mean
+   -0.0100, t -3.480, 7 of 8 negative), so a negative read is a reachable outcome and must not collapse into "null".
+2. **B-R3 conjunct 4 is no longer called "secondary".** The sentence reads: "contrast(COUPLED_SHUF - DELTA) NOT met.
+   This conjunct can only add a refusal." All four conjuncts must hold (hard rule 5: no relabelling a failed conjunct).
+3. **Order of evaluation.** B-R2 (COUPLED0 == DELTA on 8 of 8) and B-R4 are evaluated and printed BEFORE B-R1 is read.
+   A failed B-R2 or B-R4 HALTS the read: no B-R1 verdict is printed, so a zero-count arm cannot read MET by noise.
