@@ -243,14 +243,29 @@ def decide_c(seeds):
     need = ("clock", "oracle", "pressure", "shuffled")
     if any(a not in s for s in seeds for a in need):
         return "REFUSED", "an arm is missing on some seed", {}
-    con = {k: _beats(*k.split(">"), seeds) for k in ("oracle>clock", "pressure>shuffled", "pressure>clock")}
+    con = {
+        k: _beats(*k.split(">"), seeds)
+        for k in ("oracle>clock", "pressure>shuffled", "pressure>clock")
+    }
     if "solve" in seeds[0]:
         con.update({f"solve>{b}": _beats("solve", b, seeds) for b in ("clock", "pressure")})
     if not con["oracle>clock"].met:
-        return "REFUSED", "C11: the oracle does not beat clock-only; the workload shows no timing benefit", con
+        return (
+            "REFUSED",
+            "C11: the oracle does not beat clock-only; the workload shows no timing benefit",
+            con,
+        )
     if con["pressure>shuffled"].met:
-        return "PRESSURE-SPECIFIC", "pressure beats its shuffled twin; the live input may wire after C13", con
-    return "NULL", "pressure does not beat its shuffled twin; the input is deleted on this null", con
+        return (
+            "PRESSURE-SPECIFIC",
+            "pressure beats its shuffled twin; the live input may wire after C13",
+            con,
+        )
+    return (
+        "NULL",
+        "pressure does not beat its shuffled twin; the input is deleted on this null",
+        con,
+    )
 
 
 # ================================================================================================
@@ -388,7 +403,9 @@ def run_pressure_arm(brain, arm, total, workload, *, requests=None, seed=0, shuf
     if arm not in ARMS:
         raise ValueError(f"unknown arm {arm!r}; arms are {ARMS}")
     if arm == "solve" and requests is None:
-        raise ValueError("the solve arm needs the solved_sink request ticks (G3's loop); it is never the oracle")
+        raise ValueError(
+            "the solve arm needs the solved_sink request ticks (G3's loop); it is never the oracle"
+        )
     clock_plan = clock_gate(brain, total)
     cycles = cycles_from_gate(clock_plan)
     run = PressureRun(seed=seed, arm=arm)
@@ -426,7 +443,9 @@ def run_pressure_arm(brain, arm, total, workload, *, requests=None, seed=0, shuf
                 if got is not None:
                     run.retention.append([t, int(got[0]), int(got[1])])
             run.plan.append(asleep)
-    ok, ref, bad = check_budgets({"clock": clock_plan, arm: run.plan})  # C12 at run time, not only in main()
+    ok, ref, bad = check_budgets(
+        {"clock": clock_plan, arm: run.plan}
+    )  # C12 at run time, not only in main()
     if not ok:
         raise BudgetMismatch(f"arm {arm!r} budget {bad[arm]} != the clock arm's {ref}")
     if sched is not None:
@@ -473,12 +492,24 @@ def main():
     ok, _, bad = check_budgets({"clock": gate, "planted": extra})
     assert not ok and "planted" in bad
 
-    base = [{"clock": 0.50 + 0.01 * i, "oracle": 0.60 + 0.01 * i, "pressure": 0.58 + 0.01 * i, "shuffled": 0.50 + 0.01 * i} for i in range(8)]
-    jit = [0.001 * ((i * 5) % 7 - 3) for i in range(8)]  # nonzero spread so no contrast is degenerate
+    base = [
+        {
+            "clock": 0.50 + 0.01 * i,
+            "oracle": 0.60 + 0.01 * i,
+            "pressure": 0.58 + 0.01 * i,
+            "shuffled": 0.50 + 0.01 * i,
+        }
+        for i in range(8)
+    ]
+    jit = [
+        0.001 * ((i * 5) % 7 - 3) for i in range(8)
+    ]  # nonzero spread so no contrast is degenerate
     base = [{a: v + j for a, v in s_.items()} for s_, j in zip(base, jit)]
     assert decide_c(base)[0] == "PRESSURE-SPECIFIC"
     flat_oracle = [dict(s_, oracle=s_["clock"] + j) for s_, j in zip(base, jit)]
-    assert decide_c(flat_oracle)[0] == "REFUSED", "C11 red: an oracle no better than clock refuses (c)"
+    assert decide_c(flat_oracle)[0] == "REFUSED", (
+        "C11 red: an oracle no better than clock refuses (c)"
+    )
     twin = [dict(s_, shuffled=s_["pressure"] - j) for s_, j in zip(base, jit)]
     assert decide_c(twin)[0] == "NULL", "a shuffled twin as good as pressure is a null"
     sh = shuffled_plan(cyc, len(gate), r.advanced, seed=1)

@@ -16,7 +16,7 @@ def test_self_check_runs():
 
 
 def test_the_solve_arm_refuses_to_alias_the_oracle():
-    """R3 refutation R2: without G3's solved_sink request ticks the solve arm is refused, not run as the oracle."""
+    """R3 refutation R2: no solved_sink ticks -> the solve arm is refused, not the oracle."""
     with pytest.raises(ValueError):
         sp.run_pressure_arm(None, "solve", 10, lambda b, t: None)
 

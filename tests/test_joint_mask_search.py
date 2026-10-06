@@ -99,7 +99,7 @@ def test_c26_a_judging_read_before_the_freeze_or_twice_is_refused():
         ({("random", "cost"): jms._smaller}, "RANDOM-WIN"),
         ({(a, "future_ok"): False for a in jms.COMPETITORS}, "UNBUILT"),
         ({("SA", "future_ok"): False}, "GREEDY"),
-        # R3 refutation R4: greedy is adopted over an INELIGIBLE incumbent (A3 step 3 asks only greedy eligible and beating it)
+        # R3 refutation R4: greedy is adopted over an INELIGIBLE incumbent (A3 step 3)
         ({(a, "future_ok"): False for a in ("incumbent", "SA", "random")}, "GREEDY"),
         ({(a, "future_ok"): False for a in ("SA", "greedy", "random")}, "INCUMBENT"),
     ],

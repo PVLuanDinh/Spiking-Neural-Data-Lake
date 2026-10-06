@@ -85,7 +85,9 @@ class StageReport:
     structural_edits: int = 0
     synthetic: int = 0
     refused: int = 0
-    starved: int = 0  # budget NOT spent because the stage had nothing to draw (empty ring / < 2 replayed)
+    starved: int = (
+        0  # budget NOT spent because the stage had nothing to draw (empty ring / < 2 replayed)
+    )
     populations: list = field(
         default_factory=list
     )  # participation census: populations whose weights changed
@@ -372,9 +374,18 @@ def main():
         "C19: one extra presentation must be refused as compute-unmatched"
     )
     # R3 refutation R1: a rem-first order starves (nothing replayed yet), spends less, and must be refused
-    rem_first = run_bout(_Brain(), [("rem", {"presentations": 4}), ("nrem", {"presentations": 4})], rng_seed=7)
+    rem_first = run_bout(
+        _Brain(), [("rem", {"presentations": 4}), ("nrem", {"presentations": 4})], rng_seed=7
+    )
     assert rem_first.stages[0].starved == 4 and rem_first.stages[1].starved == 0, rem_first.stages
-    assert not check_compute(rem_first, run_bout(_Brain(), flat_of([("rem", {"presentations": 4}), ("nrem", {"presentations": 4})]), rng_seed=7))
+    assert not check_compute(
+        rem_first,
+        run_bout(
+            _Brain(),
+            flat_of([("rem", {"presentations": 4}), ("nrem", {"presentations": 4})]),
+            rng_seed=7,
+        ),
+    )
 
     try:
         guard(Item([0.5] * 4, synthetic=True, observed=True))

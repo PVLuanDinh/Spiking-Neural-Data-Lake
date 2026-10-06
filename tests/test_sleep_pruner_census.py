@@ -93,8 +93,8 @@ def test_c3_ll_sabotage_drops_the_highest_utility_units():
 
 
 def test_scratch_home_guard_refuses_the_live_home(monkeypatch, tmp_path):
-    """The shared guard (home.require_isolated_home) via a PLANTED decoy live dir: unset, equal, contained,
-    containing and a junction alias are each refused; a fresh sibling dir is accepted (the red is sighted)."""
+    """The shared guard via a PLANTED decoy live dir: unset, equal, contained, containing and a
+    junction alias are each refused; a fresh sibling dir is accepted (the red is sighted)."""
     import subprocess
 
     from snn_data_lake.substrate.home import LiveHomeRefused
