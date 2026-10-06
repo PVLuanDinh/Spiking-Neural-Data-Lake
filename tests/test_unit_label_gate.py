@@ -710,3 +710,20 @@ def test_a_declared_admit_point_must_exist_and_spend_the_ticket(tmp_path):
     assert found(good, seg) == []  # control: a real point that spends its ticket
     assert found(bad, seg) == [f"{_ADMIT} [admit point does not spend its ticket]"]
     assert found(good, ghost) == ["fakepkg/missing.py::no_such_function [admit point not found]"]
+
+
+def test_a_ticket_refuses_a_bool_inside_a_position():
+    # G3 refutation: 1.0 == True inside a tuple, so a top-level-only type check let it through
+    rec = _good()
+    pos = list(rec["position"])
+    pos[2] = 1.0
+    rec = _with(rec, position=tuple(pos))
+    ticket = G.require_admissible([rec], resolve_problem=_resolve, known_unit=lambda u: False)
+    pos[2] = True
+    bad = _with(rec, position=tuple(pos))
+    assert not G.check_admission(bad, resolve_problem=_resolve).admitted  # the gate refuses it
+    with pytest.raises(G.UnitLabelRefused, match="differs from the validated"):
+        ticket.consume([bad])
+    ticket.consume(
+        [_with(rec, position=list(rec["position"]))]
+    )  # a JSON list of the same numbers is fine

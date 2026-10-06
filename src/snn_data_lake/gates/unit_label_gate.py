@@ -89,10 +89,23 @@ def _canon(v):
 
 
 def _same_typed(a, b):
-    """Equal AND the same type at the top level (1 == True and 0 == 0.0 in Python, so == alone lets a
-    forbidden representation through); sequences compare as tuples (_canon)."""
+    # distinct-from: faculties/reticular_gate.py -- an SDR measurement over permuted gains; the matcher fired on "same".
+    # distinct-from: substrate/lake_working_memory.py -- a spkl reopen cursor; the matcher fired on "same". Sites read.
+    """Equal AND the same type (1 == True and 0 == 0.0 in Python, so == alone lets a forbidden
+    representation through); sequences compare as tuples (_canon) element by element, where int and
+    float stay interchangeable (a JSON replay) but a bool never stands for a number."""
     a, b = _canon(a), _canon(b)
-    return a == b and (isinstance(a, tuple) or type(a) is type(b))
+    if isinstance(a, tuple) and isinstance(b, tuple):
+        return len(a) == len(b) and all(_same_element(x, y) for x, y in zip(a, b, strict=True))
+    return a == b and type(a) is type(b)
+
+
+def _same_element(x, y):
+    if isinstance(x, bool) != isinstance(y, bool):
+        return False
+    if isinstance(x, tuple) and isinstance(y, tuple):
+        return _same_typed(x, y)
+    return x == y
 
 
 def _ident(v):
