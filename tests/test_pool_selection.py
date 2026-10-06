@@ -1813,3 +1813,30 @@ def test_the_call_kind_runs_in_a_child_and_a_refused_target_fails_there(tmp_path
     status = ps._child(refused)
     assert status["status"] == "FAIL" and "REFUSED: call target 'os:getcwd'" in status["stderr"]
     assert not Path(refused["out"]).exists()
+
+
+# ---- the step's two check wrappers, called for real (deletion panel 2026-10-06, correctness #3:
+# the golden and the step tests substitute their results, so a wrapper broken by the deletion
+# would stay green) ---------------------------------------------------------------------------
+
+
+def test_mechanism_checks_runs_every_check_on_the_one_pool_each_green_beside_its_red():
+    result = ps.mechanism_checks("lsm")
+    assert result["candidate"] == "lsm" and set(result["numbers"]) >= set(result["greens"])
+    assert result["greens"] and all(result["greens"].values()), result["greens"]
+    assert {"R-b0", "R-b3", "R-b4 pool noise"} <= set(result["reds"]), result["reds"]
+    assert all(result["reds"].values()), result["reds"]
+
+
+def test_configuration_checks_files_every_registered_check_on_the_one_pool(monkeypatch):
+    seen = []  # R-b3 at the real n (~90 s) runs in test_recurrent_pool's own test; here, its call
+
+    def r_b3(candidate, config):
+        seen.append((candidate, config))
+        return {"verdict": True}
+
+    monkeypatch.setattr(rp, "check_r_b3", r_b3)
+    config = rp.R_B5_ERASURE_WITNESS["lsm"][0]
+    result = ps.configuration_checks("lsm", config)
+    assert tuple(result) == ps.CONFIGURATION_CHECKS and seen == [("lsm", config)]
+    assert all(result[name]["verdict"] for name in ps.CONFIGURATION_GREENS), result
