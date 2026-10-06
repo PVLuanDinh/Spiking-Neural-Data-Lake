@@ -260,10 +260,22 @@ def run_instance(problem, seed, *, feasibility=True, budget=None, q=None):
     return out
 
 
-def net_savings(res, no_prune, *, horizon, eval_cost):
-    """2.4: (per-tick compute saved) x H - (search compute). H is the measured median wake-period length
-    in ticks (a disclosed session call); eval_cost is one evaluation's compute in the same unit."""
-    return (no_prune.work_per_tick - res.work_per_tick) * horizon - res.evaluations * eval_cost
+def net_savings(res, no_prune, *, horizon, eval_cost, restart_cost):
+    """2.4: (per-tick compute saved) x H - (search + restart compute). H is the measured median wake-period
+    length in ticks (a disclosed session call); eval_cost is one evaluation's compute in the same unit and
+    restart_cost what re-serving the masked network costs (required: an omitted cost must not read as 0)."""
+    return (
+        (no_prune.work_per_tick - res.work_per_tick) * horizon
+        - res.evaluations * eval_cost
+        - restart_cost
+    )
+
+
+def break_even_horizon(res, no_prune, *, eval_cost, restart_cost):
+    """2.4: H* = (search + restart compute) / (per-tick compute saved), printed beside the chosen H;
+    infinite when the mask saves nothing per tick."""
+    saved = no_prune.work_per_tick - res.work_per_tick
+    return (res.evaluations * eval_cost + restart_cost) / saved if saved > 0 else math.inf
 
 
 # ================================================================================================
@@ -438,7 +450,8 @@ def main():
 
     full = _full(fx.n)
     zero = ArmResult("x", full, fx.cost(full), evaluations=5, work_per_tick=fx.work_per_tick(full))
-    assert net_savings(zero, zero, horizon=100, eval_cost=1.0) < 0, "C10"
+    assert net_savings(zero, zero, horizon=100, eval_cost=1.0, restart_cost=0.0) < 0, "C10"
+    assert break_even_horizon(zero, zero, eval_cost=1.0, restart_cost=0.0) == math.inf, "C10 H*"
 
     m = Meter(fx)
     try:

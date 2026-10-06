@@ -78,7 +78,7 @@ def test_c10_a_zero_saving_mask_reads_net_below_zero():
     fx = jms.CoverFixture()
     full = tuple([1] * fx.n)
     r = jms.ArmResult("x", full, fx.cost(full), evaluations=3, work_per_tick=fx.work_per_tick(full))
-    assert jms.net_savings(r, r, horizon=1000, eval_cost=0.5) < 0
+    assert jms.net_savings(r, r, horizon=1000, eval_cost=0.5, restart_cost=0.0) < 0
 
 
 def test_c26_a_judging_read_before_the_freeze_or_twice_is_refused():
@@ -133,3 +133,14 @@ def test_a_decision_without_its_gate_flag_is_a_type_error_not_a_pass():
     """R3 lead: `instrument_gates_fired` had a default of True; an omitted gate must not pass."""
     with pytest.raises(TypeError):
         jms.decide_b(jms.constructed_seeds())
+
+
+def test_restart_cost_lowers_net_and_h_star_is_the_break_even():
+    """2.4: net = saved x H - search - restart; H* = (search + restart) / saved."""
+    full = jms.ArmResult("full", (1,) * 4, 24, 0, True, True, 10.0)
+    res = jms.ArmResult("SA", (1, 0, 0, 0), 6, 20, True, True, 4.0)
+    kw = {"eval_cost": 0.5}
+    free = jms.net_savings(res, full, horizon=10, restart_cost=0.0, **kw)
+    paid = jms.net_savings(res, full, horizon=10, restart_cost=7.0, **kw)
+    assert free - paid == 7.0
+    assert jms.break_even_horizon(res, full, restart_cost=5.0, **kw) == (20 * 0.5 + 5.0) / 6.0
