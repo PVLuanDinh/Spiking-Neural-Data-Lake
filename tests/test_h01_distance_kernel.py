@@ -453,3 +453,10 @@ def test_frozen_plan_matches_the_pre_registration():
     reserve = [s for r in KD.reserve_plan() for s in r.seeds]
     assert reserve == list(range(10600, 10704))
     assert KD.CONFIRMATORY_SEEDS == tuple(range(10100, 10108))
+
+
+def test_cp2_15_degenerate_is_bounded_by_the_largest_pair_distance_not_the_box_diagonal():
+    """Codex cp2 #15 / 2.3: extrema on different somata make the box diagonal exceed every pair distance."""
+    xyz = np.array([[0.0, 0, 0], [10, 0, 0], [0, 10, 0], [0, 0, 10]])
+    geo = KD.Geometry.of(KD.Population(xyz_um=xyz, layer=np.zeros(4, int), out_deg=np.ones(4, int), in_deg=np.ones(4, int)))
+    assert geo.dpair == pytest.approx(10 * math.sqrt(2)) and geo.dmax == pytest.approx(10 * math.sqrt(3))
