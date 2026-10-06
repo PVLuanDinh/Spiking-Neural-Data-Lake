@@ -770,3 +770,16 @@ firing on 4242: 37 hits) finds only `instruments/unit_organization.py`'s own con
 seed). NMI is computed by `gates/growth_coverage_gate.nmi`, beside that module's `adjusted_rand` -- the tree's one
 partition-agreement home (P2, lead ruling on cp3) -- numpy-only, arithmetic normalization (scikit-learn's default),
 checked against a hand-computed value and against scikit-learn on an IR fixture; no ARI substitution.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (d) -- unit_id and batch_id are non-negative integers (G3 refutation; lead-approved; no data read)
+
+G3 read the gate against its journal and found a representation mismatch: 2.x's identity checks required non-empty
+STRINGS (`gates/unit_label_gate.py` `_check_unit_id` / `_check_batch_id`), while G3's write-ahead birth row carries
+`int(unit.unit_id)` / `int(batch_id)` (`growth_loop.py:211-228`, `grown_code.py:40`). Two representations of one id is a
+bug farm, so the gate now accepts **a non-bool int >= 0 only** and refuses strings, bools, negatives, floats and None
+for both fields. Nothing else moves: `AdmissionTicket` / `classify_restored` compare by `==` (ints work unchanged);
+the field order, the duplicate rules and every other check are untouched. New red: each of `"7"`, `True`, `-1`, `1.0`,
+`None` is refused naming the field (tests/test_unit_label_gate.py, `test_ids_are_non_negative_ints_only`). Fixtures
+re-keyed to ints. Agreed interface with G3 (birth row carries every LABEL_FIELDS key; `known_unit`, `birth_records`,
+`first_sign` over the immortal 'unit' rows; G3's `admit_rows` sets GROWN_SEGMENTS' admit point, its two debt rows retire
+later, `restore_growth_state` in G7's neurogenesis_engine commit). Unreviewed amendment text.
