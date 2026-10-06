@@ -48,6 +48,14 @@ class LedgerError(RuntimeError):
     """A refused ledger operation: a missing or live path, a seq gap, a starved budget, an exhausted retry."""
 
 
+def _int_id(value, what):
+    """An id is a non-negative int, never coerced (a 1.5, True or "7" journaled as 1/1/7 while the learner
+    holds the original would split the journal's id from the unit's; G7's gate refuses the same types)."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise LedgerError(f"{what} must be a non-negative int, got {value!r}")
+    return value
+
+
 @dataclass(frozen=True)
 class BudgetValues:
     first: float  # the first positive-spend problem's budget (G2: 52, the frozen code's width)
@@ -224,12 +232,15 @@ class Ledger:
 
     def known_unit(self, unit_id):
         """True for EVERY id ever born -- the birth rows are IMMORTAL (_T_GOAL 0x0B), pruned units included."""
-        return any(r["unit_id"] == int(unit_id) for r in self.units())
+        # ponytail: a full scan of the birth rows per call (fixture size); cache the id set if live births get large
+        unit_id = _int_id(unit_id, "unit_id")
+        return any(r["unit_id"] == unit_id for r in self.units())
 
     def record_units(self, units, problem_id, batch_id):
         """One batch of birth rows; a duplicate id (within the batch or already journaled) refuses the WHOLE
         batch before any write (Codex cp5 #5)."""
-        ids = [int(u.unit_id) for u in units]
+        batch_id = _int_id(batch_id, "batch_id")
+        ids = [_int_id(u.unit_id, "unit_id") for u in units]
         known = {r["unit_id"] for r in self.units()}
         dup = sorted({i for i in ids if ids.count(i) > 1} | (set(ids) & known))
         if dup:
@@ -343,8 +354,8 @@ class GrowthLoop:
         solved_sink=None,
     ):
         self.learner, self.problem_id, self.ledger = learner, problem_id, ledger
-        if int(batch) <= 0:
-            raise ValueError(f"batch must be positive, got {batch!r}")
+        if isinstance(batch, bool) or not isinstance(batch, int) or batch <= 0:
+            raise ValueError(f"batch must be a positive int, got {batch!r}")
         self.source, self.batch, self.gated, self.diagnosis = (
             source,
             int(batch),
@@ -357,6 +368,7 @@ class GrowthLoop:
             solved_sink  # called once per OPEN -> SOLVED transition (G6's scheduler gate)
         )
         self._batches = 0
+        self._ran = False
 
     def _may_grow(self, rec):
         self.gate.observe_problem(
@@ -374,22 +386,40 @@ class GrowthLoop:
         # a searching source returns (units, evaluations) so the matched-search-budget controls are paid in
         # the same currency (2.6; Codex cp5 #7); a plain list evaluated nothing it can report
         units, evals = out if isinstance(out, tuple) else (out, 0)
+        try:
+            if units and len(units) != self.batch:  # the gate cleared THIS size; anything else could cross the budget
+                raise LedgerError(
+                    f"problem {self.problem_id!r}: the source returned {len(units)} units for a batch of {self.batch}"
+                )
+            if units:
+                self.ledger.record_units(units, self.problem_id, self._batches)  # write-ahead, before the learner
+        except LedgerError:
+            self._pay_search(evals)  # a refused batch still paid its search (G7 refutation 1)
+            raise
         if not units:
-            if evals:
-                self.ledger.record_spend(self.problem_id, 0, evals=evals)
+            self._pay_search(evals)
             return False
-        if len(units) != self.batch:  # the gate cleared THIS size; anything else could cross the budget
-            raise LedgerError(
-                f"problem {self.problem_id!r}: the source returned {len(units)} units for a batch of {self.batch}"
-            )
-        self.ledger.record_units(units, self.problem_id, self._batches)  # write-ahead, before the learner
+        self._mark_run()
         self.ledger.record_spend(self.problem_id, len(units), evals=evals)
         self.learner.admit(units)
         self._batches += 1
         return True
 
+    def _mark_run(self):
+        """The run row is written at a run's FIRST journal write, never at its start: a run that journals
+        nothing (a refusal before any write) is no run, so the next one is not a retry (2.6)."""
+        if not self._ran:
+            self.ledger.record_run(self.problem_id)
+            self._ran = True
+
+    def _pay_search(self, evals):
+        if evals:
+            self._mark_run()
+            self.ledger.record_spend(self.problem_id, 0, evals=evals)
+
     def _attempt(self):
         solved = bool(self.learner.attempt(self.epochs))
+        self._mark_run()
         self.ledger.record_attempt(self.problem_id, solved, self.epochs)
         if solved and self.solved_sink is not None:
             self.solved_sink(self.ledger.ledger(self.problem_id))
@@ -402,8 +432,8 @@ class GrowthLoop:
         if self.diagnosis and self.learner.diagnose() == "DATA":
             self.ledger.set_state(self.problem_id, "CONTRADICTORY")
             return self.ledger.ledger(self.problem_id)
-        self.ledger.record_run(self.problem_id)
-        if rec.runs_this_budget > 0:
+        self._ran = False
+        if rec.runs_this_budget > 0:  # read BEFORE any write of this run: `rec` is the replayed ledger
             # a retry (a run already started under this budget, spent or not): no new teaching, so no fresh
             # budget -- attempts only, growth frozen (2.6 retry rule; Codex cp5 #3)
             if self._attempt():  # a solve on the retry stands (Codex cp5 #2)

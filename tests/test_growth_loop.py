@@ -373,6 +373,52 @@ def test_unit_birth_rows_are_measured_against_the_immortal_class_append_budget(t
     assert any("0x0b" in v.lower() for v in bud.end_tick()), "the flood must trip the budget"
 
 
+def test_a_wrong_size_batch_still_journals_the_evaluations_its_search_paid(tmp_path):
+    # G7 refutation 1: the refusal must not lose the matched-search-budget currency
+    draw = _source(9)
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    with pytest.raises(LedgerError):
+        GrowthLoop(ScriptedLearner(["CAPACITY"]), "w", ledger, lambda n: (draw(4), 40), 9).run()
+    assert ledger.ledger("w").spend_evals == 40 and ledger.ledger("w").spend_units == 0
+
+
+def test_ids_are_refused_not_coerced(tmp_path):
+    # G7 refutation 2: 1.5 / True / "7" must not be journaled as 1 / 1 / 7 while the learner holds the original
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    good = GrownUnit(3, (0.0,), 1.0, 12, 1, (0.0,))
+    for bad in (1.5, True, "7", -1):
+        unit = GrownUnit(bad, (0.0,), 1.0, 12, 1, (0.0,))
+        with pytest.raises(LedgerError):
+            ledger.record_units([unit], "p", 0)
+        with pytest.raises(LedgerError):
+            ledger.known_unit(bad)
+    for bad in (1.5, True, "0", -1):
+        with pytest.raises(LedgerError):
+            ledger.record_units([good], "p", bad)
+    for bad in (2.5, True, 0):
+        with pytest.raises((ValueError, LedgerError)):
+            GrowthLoop(ScriptedLearner(["CAPACITY"]), "z", ledger, _source(9), bad)
+    assert ledger.units() == []
+
+
+def test_run_one_on_a_fresh_problem_grows_and_run_two_under_the_same_budget_does_not(tmp_path):
+    # G7 refutation 3: both halves of the retry rule named in one test
+    learner = ScriptedLearner(["CAPACITY"])
+    loop, ledger = _loop(tmp_path, learner)
+    assert loop.run().spend_units == 45  # run 1 GROWS
+    assert loop.run().spend_units == 45  # run 2, same budget: attempts only
+
+
+def test_a_run_that_journals_nothing_does_not_turn_the_next_run_into_a_retry(tmp_path):
+    # a source that returns a wrong-size batch with NO evaluations raises before any write: no run happened
+    draw = _source(9)
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    with pytest.raises(LedgerError):
+        GrowthLoop(ScriptedLearner(["CAPACITY"]), "n", ledger, lambda n: draw(4), 9).run()
+    rec = GrowthLoop(ScriptedLearner(["CAPACITY"]), "n", ledger, _source(9), 9).run()
+    assert rec.spend_units == 45  # grew: the failed run left no run row
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 
