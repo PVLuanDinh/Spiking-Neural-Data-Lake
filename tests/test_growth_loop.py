@@ -28,7 +28,9 @@ from snn_data_lake.growth.growth_stop import GrowthStop
 
 VALUES = BudgetValues(first=52, beta=1.5, k_max=3)
 # FIXTURE site/centre/density (G7's test values; G4's Part B supplies the measured density)
-ADMISSION = make_admission(site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), density_per_mm2=2.7e4)
+ADMISSION = make_admission(
+    site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), density_per_mm2=2.7e4, seed=9000
+)
 
 
 def GrowthLoop(*args, **kw):
@@ -655,6 +657,31 @@ def test_batch_ids_are_allocated_from_the_journal_not_per_loop_instance(tmp_path
     assert len(by_batch) == len(ledger.units()) // 9  # no batch id was reused
     for rows in by_batch.values():  # every batch is one problem with exactly one inhibitory unit
         assert len({r["problem_id"] for r in rows}) == 1 and sum(r["sign"] < 0 for r in rows) == 1
+
+
+def test_the_batch_seed_never_leaves_the_g3_block(monkeypatch):
+    # Codex panel MAJOR: seed + batch_id escaped 9000-9999 (9999 + 1 -> 10000) and a default seed 0
+    # + batch 300 landed ON a protected seed
+    seen = []
+
+    def spy(*args, **kw):
+        seen.append(kw["seed"])
+        return real(*args, **kw)
+
+    real = growth_loop.place_labeled
+    monkeypatch.setattr(growth_loop, "place_labeled", spy)
+    units = _source(9)(9)
+    for seed, batch in ((9999, 1), (9999, 0), (9000, 2500), (9300, 7)):
+        adm = make_admission(
+            site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), density_per_mm2=2.7e4, seed=seed
+        )
+        adm(units, "p", batch, resolve_problem=lambda p: True, known_unit=lambda u: False)
+    assert seen == [9000, 9999, 9500, 9307] and all(9000 <= s <= 9999 for s in seen)
+    for bad in (0, 300, 6000, 7000, 10000, 8999, True, 9000.0):
+        with pytest.raises(ValueError, match="block"):
+            make_admission(site=(0.1, 0.4), centre_um=(0.0, 0.0), density_per_mm2=1.0, seed=bad)
+    with pytest.raises(TypeError):  # no default seed: a default is how 0 + 300 reached 300
+        make_admission(site=(0.1, 0.4), centre_um=(0.0, 0.0), density_per_mm2=1.0)
 
 
 # ---- one stop rule (2.6): the pause lives in GrowthStop

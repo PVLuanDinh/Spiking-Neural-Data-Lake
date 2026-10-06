@@ -384,12 +384,21 @@ def label_probabilities(drives):
     return softmax(list(drives))
 
 
-def make_admission(*, site, centre_um, density_per_mm2, seed=0):
+#: G3's seed block (SEEDS.md): every seed the loop hands a randomness stream stays inside it
+SEED_BLOCK = (9000, 10000)
+
+
+def make_admission(*, site, centre_um, density_per_mm2, seed):
     """The admission a GrowthLoop needs: G7's `place_labeled` with the campaign's site, centre and density (no
     defaults here: G4's Part B measures the density), each unit's role read off its Dale sign (E +1, I -1) so a
     role/sign disagreement cannot exist, then G7's gate. Returns admission(units, problem_id, batch_id, *,
     resolve_problem, known_unit) -> (labels, ticket). The labels are created and gated in ONE function, which is
-    what G7's creation census requires; the ticket is consumed by `grown_code.admit_rows`."""
+    what G7's creation census requires; the ticket is consumed by `grown_code.admit_rows`. `seed` has no default
+    and must lie in G3's block; the per-batch stream is the block-relative sum modulo the block width, so it
+    never leaves the block (a default 0 + batch 300 once reached a protected seed)."""
+    lo, hi = SEED_BLOCK
+    if isinstance(seed, bool) or not isinstance(seed, int) or not lo <= seed < hi:
+        raise ValueError(f"seed {seed!r} is outside G3's block {lo}-{hi - 1}")
 
     def admission(units, problem_id, batch_id, *, resolve_problem, known_unit):
         labels = place_labeled(
@@ -399,7 +408,7 @@ def make_admission(*, site, centre_um, density_per_mm2, seed=0):
             site=site,
             problem_id=problem_id,
             batch_id=batch_id,
-            seed=seed + batch_id,
+            seed=lo + (seed - lo + batch_id) % (hi - lo),
             roles=["E" if u.sign > 0 else "I" for u in units],
             centre_um=centre_um,
             density_per_mm2=density_per_mm2,
@@ -610,7 +619,7 @@ def main():
 
     values = BudgetValues(first=52, beta=1.5)
     admission = make_admission(
-        site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), density_per_mm2=2.7e4
+        site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), density_per_mm2=2.7e4, seed=9000
     )  # fixture values
 
     def Loop(*a, **k):
