@@ -197,7 +197,8 @@ def _record(arm="ON", seed=16000, family="F1"):
         "att_calls": [[1, 3], [2, 3]], "k8a": [], "stored_any": False,
         "chrono_before": {"nights": 0, "wake_ticks": 0, "arm_ticks": 0, "step": 0},
         "chrono_after": {"nights": 1, "wake_ticks": 0, "arm_ticks": 0, "step": 0},
-        "inproc": [1, 0], "restored": [1, 0], "n_a": 1, "eval_before": "e", "eval_after": "e", "margin": 0.5,
+        "inproc": [1, 0], "restored": [1, 0], "n_a": 1, "eval_before": "e", "eval_after": "e",
+        "margin": 0.5,
         "live_lake_untouched": True,
     }  # fmt: skip
 
@@ -276,7 +277,8 @@ def test_cp2_12_margin_is_correct_minus_best_other_and_claims_read_primary():
         def _drive(self, n, code):
             return n
 
-    assert m.margin(Ixn(), [("hello world", "x"), ("hello world", "z")]) == (1.0 + -1.0) / 2  # 3-2, 2-3
+    items = [("hello world", "x"), ("hello world", "z")]  # margins 3-2 and 2-3
+    assert m.margin(Ixn(), items) == (1.0 + -1.0) / 2
     recs = [_record("ON", s) for s in (16000, 16001)]
     c = type("C", (), {"met": True})()
     lines = m.claims_report("F1", {"C1": c, "C1-NI": c}, recs)

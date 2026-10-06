@@ -782,7 +782,9 @@ def check_records(family, recs):
             fails["K3"].append(tag)
         if r["eval_before"] != r["eval_after"]:
             fails["K4"].append(tag)
-        if family != "F3" and r["inproc"] != r["restored"]:  # P-5: F3 reads in-process (Codex cp2 #13)
+        if (
+            family != "F3" and r["inproc"] != r["restored"]
+        ):  # P-5: F3 reads in-process (Codex cp2 #13)
             fails["K5"].append(tag)
         if r["arm"] in PLASTICITY_FREE and r["weights_d1"] != r["weights_post"]:
             fails["K6"].append(tag)
@@ -943,7 +945,11 @@ def claims_report(family, contrasts, recs):
         "secondary correct-label margin (mean over seeds, per arm): "
         + str(
             {
-                a: round(sum(r["margin"] for r in recs if r["arm"] == a) / sum(r["arm"] == a for r in recs), 4)
+                a: round(
+                    sum(r["margin"] for r in recs if r["arm"] == a)
+                    / sum(r["arm"] == a for r in recs),
+                    4,
+                )
                 for a in sorted({r["arm"] for r in recs})
             }
         ),
