@@ -1102,28 +1102,22 @@ def main():
     assert not superiority("deg", [0.1] * 8).met and non_inferiority("deg", [0.0] * 8, 0.01).met
     assert not non_inferiority("deg", [-0.02] * 8, 0.01).met
 
-    # C25: the executed-work counter discriminates a dense recurrence from one that skips pruned units
-    class Dense:
-        def __init__(self, n):
-            self.W = [[1.0] * n for _ in range(n)]
+    # C25: the INSTRUMENT's executed-work counter (_work_patches, not a local stand-in) discriminates a
+    # network with one more unit from one without it: P-LL's classify counts n_units * dim.
+    from snn_data_lake.sleep.lifelong_consolidation import LifelongConsolidator
 
-        def step(self, z):
-            ops = 0
-            for _i in range(len(self.W)):
-                for _k in range(len(self.W)):
-                    ops += 1  # visited whether the weight is zero or not
-            return ops
+    def ll_work(units):
+        run = ArmRun(seed=0, arm="c25", ticks=0)
+        con = LifelongConsolidator(4, 8)
+        for k in range(units):
+            con.learner.observe([1.0 if i == k else 0.0 for i in range(4)])
+        con.labels = list(range(units))
+        assert con.n_units == units, "C25 fixture: orthogonal patterns each grow a unit"
+        with _patched(_work_patches(run)):
+            con.classify([1.0, 0.0, 0.0, 0.0])
+        return run.work["P-LL"]
 
-    class Sparse(Dense):
-        def step(self, z):
-            return sum(1 for row in self.W for w in row if w != 0.0)
-
-    for cls_, expect_saving in ((Dense, False), (Sparse, True)):
-        live, neut = cls_(6), cls_(6)
-        for r in range(6):
-            live.W[r][(r + 1) % 6] = 0.0  # the live arm pruned six synapses
-        w_live, w_neut = live.step(None), neut.step(None)
-        assert (w_neut - w_live == 6) is expect_saving and (w_neut == w_live) is (not expect_saving)
+    assert ll_work(3) - ll_work(2) == 4, "C25: one pruned unit saves exactly dim operations"
 
     print(
         f"sleep_pruner_census self-check OK: census {cen.found()} via {len(cen.sites)} sites "
