@@ -266,17 +266,11 @@ def summarise(rows, window=WINDOW, entropy_wake=ENTROPY_WAKE):
 
 def _assert_scratch_home():
     """Refuse to run against the live lake. The pre-mortem gate: a probe that appends to
-    brain_lake.bin has contaminated the subject it measures (P4b's honesty guard, inverted)."""
-    import pathlib
+    brain_lake.bin has contaminated the subject it measures (P4b's honesty guard, inverted).
+    The check is the ONE shared guard (specs/022 ruling 16): resolved, containment, aliases."""
+    from snn_data_lake.substrate.home import require_isolated_home
 
-    from snn_data_lake.substrate.home import home
-
-    live = pathlib.Path.home() / ".snn_data_lake"
-    here = pathlib.Path(str(home())).resolve()
-    assert here != live.resolve(), (
-        f"world_red_probe refuses to run against the live lake home {here} -- "
-        "wrap the call in substrate.home.throwaway_home()"
-    )
+    require_isolated_home()
 
 
 def run_seed(seed, checkpoints=CHECKPOINTS, window=WINDOW, entropy_wake=ENTROPY_WAKE):
