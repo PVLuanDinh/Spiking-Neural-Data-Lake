@@ -158,7 +158,10 @@ def brain_from_genn_checkpoint(path):
     module's LIF, so `meta.transfer` says so; no checkpoint of this format is known to exist on disk.
     """
     with open(path, encoding="utf-8") as f:
-        c = json.load(f)
+        try:
+            c = json.load(f)
+        except ValueError as e:  # JSONDecodeError carries no path
+            raise ValueError(f"{path}: not JSON ({e})") from e
     if not isinstance(c, dict) or c.get("format") != GENN_CHECKPOINT_FORMAT:
         raise ValueError(f"{path}: not a {GENN_CHECKPOINT_FORMAT} checkpoint")
     # Trust boundary: every malformed shape is a ValueError that names the path, never a bare KeyError /
@@ -177,7 +180,7 @@ def brain_from_genn_checkpoint(path):
                 "transfer": "approximate: GeNN dynamics != LIF",
             },
         )
-    except (KeyError, IndexError, TypeError, ValueError) as e:
+    except (KeyError, IndexError, TypeError, ValueError, OverflowError) as e:
         raise ValueError(f"{path}: malformed {GENN_CHECKPOINT_FORMAT} checkpoint ({e!r})") from e
     if not (
         isinstance(steps, int)
@@ -269,6 +272,16 @@ def main():
     genn_ok = gb["in"] == GENN_IN and gb["out"] == GENN_OUT and len(gb["layers"]) == 2
     nan = float("nan")
     bad = [{"format": "nope"}, [1]]
+    # numbers JSON admits but float()/int() cannot hold: Infinity, 10**400 (OverflowError, not a ValueError)
+    bad += [
+        dict(good, **{k: v})
+        for k, v in (
+            ("steps", float("inf")),
+            ("beta", 10**400),
+            ("threshold", 10**400),
+            ("W2", [[10**400, 0.2]] + [[0.1, 0.2]] * 9),
+        )
+    ]
     bad += [
         dict(good, **{k: v})
         for k, v in (
@@ -292,6 +305,13 @@ def main():
     ]
     bad += [{a: b for a, b in good.items() if a != k} for k in good if k != "format"]
     genn_ok = genn_ok and all(_refused(x) for x in bad)
+    with open(cp, "w", encoding="utf-8") as f:
+        f.write("{bad")
+    try:
+        brain_from_genn_checkpoint(cp)
+        genn_ok = False
+    except ValueError as e:
+        genn_ok = genn_ok and cp in str(e)  # the error names the checkpoint
     with open(cp, "w", encoding="utf-8") as f:
         json.dump([1], f)
     for fn in (brain_from_genn_checkpoint, load_brain):
