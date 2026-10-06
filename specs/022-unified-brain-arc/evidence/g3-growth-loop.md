@@ -772,3 +772,35 @@ agreed by message 2026-10-04.
   that disagrees with the journal must be overwritten by the recomputation.
 - (2.9) G7's census reds any derived or legacy row in a grown segment that has no open debt row; G3's segments are
   registered as GROWN_SEGMENTS for it.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (ruling 18 / D-R2-5: the state branch; no data read)
+
+Frozen passages above are unchanged; this adds to 2.3's "Learning OFF freezes plasticity, never state" paragraph and
+to 2.15 P4. It answers R2's wait (ruling 18): any R2 verdict covering grown MEMORY-role units waits on THIS text and on the
+reconstruction test below passing.
+- **What state is carried.** A grown MEMORY-kind unit (a `growth/neuron_zoo.py` kind drawn by the STATE branch, 2.4/2.5) keeps
+  its own dynamical state across the CONTEXT turns of one episode (its membrane and, for ALIF, the adaptive threshold; for the
+  autapse kind, its self-connection state; the exact variables are the kind's, named in the unit row at admission). The state
+  is reset to the unit's birth state at an episode boundary and is a function of (the unit's parameters, the episode's turns
+  so far, in turn order) and nothing else: no RNG, no wall clock. Capacity-kind units carry none (2.3, Determinism).
+- **The read call site.** The learner's two entry points that present a turn: `SpikingInteractionLearner.route_text(utterance)`
+  (readout/interaction_learning.py:615, a context-role or probe read) and `learn_turn(utterance, firewall_intent, feedback)`
+  (:621). Each steps the memory units exactly once per turn through ONE hook added with the P1 port (none exists on this
+  branch today; the hook is the only writer of the unit state).
+- **The context-read journal.** One row per stepped turn, written BEFORE the step (write-ahead, as the "unit" rows are):
+  `{episode_id, turn_index, encoded_ranks_digest (sha256 of the turn's `text_features` n_in=52 code), grown_version}`. It
+  is the event kind R2 adds to its `learner_events.py` registry (D-R2-5's first branch); this amendment fixes its fields,
+  R2 owns its schema and reader (one schema owner, P2). Bytes are accounted against the 0x0B/learner-event append budgets
+  at the campaign, not assumed.
+- **The reconstruction test (owed before any R2 verdict on memory units).** `grown_code.reconstruct_state(units, context_rows,
+  episode_id)` rebuilds every memory unit's state at an episode's last turn from the journal alone, and its result must equal
+  the live state EXACTLY (float64 equality) on G2's (i) delayed-cue fixture episodes. Reds: (a) a planted DROPPED context row
+  must be detected and the episode refused as `stale_state`, never reconstructed approximately; (b) two planted swapped
+  turn_index values must be refused; (c) a row whose digest differs from the replayed turn's code must be refused.
+  Control: the untouched journal reconstructs equal.
+- **The interim rule (until R2's kind and this test have landed).** Deposits made while a memory unit is live are EXCLUDED
+  from redo eligibility, counted per episode and reported once, never silently re-derived (ruling 18's text). D-R2-5's
+  second branch, so stated, is the fallback and not a choice: if R2 declines the kind, the exclusion stands and R2's verdict
+  on those units reads NOT RECOVERABLE.
+- **Scope.** No memory unit is grown in any confirmatory run before this lands; C5 only checks that the STATE branch DRAWS
+  memory kinds. This amendment decides no threshold and reads no data.
