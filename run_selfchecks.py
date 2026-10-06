@@ -385,6 +385,7 @@ CORE = [
     "instruments.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
     "instruments.sleep_pruner_census",  # G6 T114 (a): static census = section 1 table + C1 reds, C2, decision branches, C25
     "instruments.joint_mask_search",  # G6 T114 (b): mask_digest, C7-C10, C22, C26 on the planted fixture
+    "instruments.sleep_pressure",  # G6 T114 (c): rescheduling budget, C12, A6 shuffle, A7 C23/C24, carrier
     "faculties.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
     "gates.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
     "gates.region_charge_gate",  # 022 T022: registration-never-greens + constructed attribution + non-diverged-charges-nothing

@@ -1012,6 +1012,14 @@ EXEMPT = {
         "reachable from the live sleep path; the search itself is adopted into the grower's prune or "
         "deleted by decide_b at G6's deciding run (2.4's P2 on the result)",
     ),
+    "sleep_pressure": (
+        "wire",
+        "specs/022 G6 (T114) part (c), evidence g6-sleep-durable-memory.md 2.5/2.16 A6/A7: the "
+        "learning-load pressure HARNESS (budget-matched rescheduling over the brain's own Brain.tick, "
+        "the gate answered from a plan). Retires at G6's P4: the pressure input lands in "
+        "sleep/circadian_clock.py + Brain.tick after the deciding test (C13), or the input is deleted "
+        "on its null and this harness with it",
+    ),
 }
 
 
