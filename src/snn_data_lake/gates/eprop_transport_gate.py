@@ -589,6 +589,11 @@ def main(argv=None):
             str(sum(1 for s_ in sig if s_[4] == t)) for t in ("governed", "ungoverned", "root")
         )
     )
+    print("  W6 taint follows binary operations only (not aug-assign, tuple unpack, calls such as")
+    print(
+        "  tanh/relu, or comprehensions), and F.linear(err, W) with W in the non-transposed layout may be a"
+    )
+    print("  false positive.")
     print(
         "  W6 reads NAMES: a renamed error variable or a neutral weight name is invisible to it, and it"
     )
@@ -803,6 +808,35 @@ def _selfcheck():
             "a neutral weight name `err @ M`",
             """def f(err, M):
     return err @ M
+""",
+        ),
+        (
+            "error through an aug-assign `s += err; s @ W_out`",
+            """def f(err, W_out):
+    s = 0
+    s += err
+    return s @ W_out
+""",
+        ),
+        (
+            "error through a tuple unpack `a, b = err, 1; a @ W_out`",
+            """def f(err, W_out):
+    a, b = err, 1
+    return a @ W_out
+""",
+        ),
+        (
+            "error through a call `h = tanh(err); h @ W_out`",
+            """def f(err, W_out):
+    h = tanh(err)
+    return h @ W_out
+""",
+        ),
+        (
+            "error through a comprehension `h = [e * 2 for e in err]; h @ W_out`",
+            """def f(err, W_out):
+    h = [e * 2 for e in err]
+    return h @ W_out
 """,
         ),
     ):
