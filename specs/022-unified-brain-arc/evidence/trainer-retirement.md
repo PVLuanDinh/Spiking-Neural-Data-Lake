@@ -218,3 +218,31 @@ signal as `err @ wout` -- symmetric e-prop, which the owner's 17a rules weight t
 governed-tree char-LM capability as lost"): it is recorded as not claimed, not governed. Nothing is deleted or
 converted by this note; the rebuild (fixed random feedback B, then a re-measure, retraining `models/eprop_lm.npz`) is a
 later arc and its heavy run is the lead's to schedule.
+
+### 2.10 Dated record, 2026-10-06 -- `training/mnist_genn` RETIRED (owner decision 17c: census first, port, then retire)
+**Census (commands re-run at base `9b2107c5`; the instrument fired on a known positive: `grep -c mnist_genn
+src/snn_data_lake/training/cli.py` = 2 before the retirement).** `grep -rnI "mnist_genn|mnist-genn"` over the tree minus
+`.git`/`graphify-out` found the module read by exactly one importer, `training/cli.py:98` (lazy, behind `--mnist --genn`);
+one registry row, `tools/p4c_ungoverned_baseline.json:196`; prose in `training/__init__.py:10`, `docs/TRAINING.md:117`,
+`docs/POLICIES.md:1076` and the historical specs/CHANGELOG. NO gate, self-check (`run_selfchecks.py`), `tests/` file,
+brain-module registry or console script other than `snn-train` reads it, and it is not in `BRAIN_MODULES` (never governed).
+**Unique capability: none to port.** The module has no GPU-tick or instrument path (its functions: `build_network`,
+`train_model`, `_extract_core_weights`, `save_checkpoint`/`load_checkpoint`, `export_brain`, `verify_transfer`, data
+helpers). Its one distinguishing property, a code-generated CUDA step loop, already exists in the two GeNN modules that
+never imported it: `instruments/snn_mnist_stdp_genn.py` (a local STDP rule) and `reasoning/paradigm_b_genn.py`; what it
+alone added was ml_genn's EventProp gradient trainer, a backprop-family learner the e-prop invariant does not admit.
+**Result recorded (P8 deletion on a null).** One epoch on the full training set scored chance: test 0.0785, core-served
+0.005 on 200 images (0.097 / 0.015 at a 10,000-image smoke scale), 2026-10-02 (2.1 above). **Two hypotheses stay
+UNTESTED and are recorded, not re-run:** (1) a longer budget (3 epochs; the owner hypothesis of 2.2 (d), never run on
+`mnist_genn` either), and (2) `B := W2` feedback (transport; forbidden, per 17a). The file is recoverable at
+`7b6b884e^:src/snn_data_lake/training/mnist_genn.py`.
+**What changed:** `training/mnist_genn.py` deleted; `training/cli.py` refuses `--mnist`/`--genn` with the other retired
+flags (exit 2; verified `--mnist --genn`, `--lm`, no flag: rc 2 each); `training/__init__.py` docstring; the p4c baseline
+re-derived by `tools/p4c_ratchet.py --update-baseline` (197 -> 196, `--assert` OK); `docs/TRAINING.md` (the GeNN section
+is now this retirement note); `pyproject.toml`: `ml_genn` dropped from the `genn` extra (its only importer was the retired
+module, grep with the positive control above; `pygenn` stays, two other users; `tools/dependency_ledger.py --assert` OK).
+**Disclosure:** the deletion and the dependency removal are called for by the owner's recorded decision 17c and the
+owner's 2026-10-06 order to delete files a recorded decision calls for without asking. **Parked for the owner**
+(`docs/POLICIES.md` is owner-only): line 1076's "the kept `mnist_genn` scored chance in a one-epoch run" should read
+"`mnist_genn` (retired 2026-10-06) scored chance in a one-epoch run". Also noted, not touched: `tools/dependency_ledger.py`
+lines 31 and 104 still name `ml_genn` (an import-to-distribution map entry; the ledger is green with it).
