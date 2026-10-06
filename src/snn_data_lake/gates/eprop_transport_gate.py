@@ -80,6 +80,7 @@ import ast
 import os
 import re
 import sys
+import tempfile
 
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PKG = "snn_data_lake"
@@ -452,8 +453,8 @@ def _own_exprs(stmt):
     stack = [c for c in ast.iter_child_nodes(stmt) if not isinstance(c, ast.stmt)]
     while stack:
         n = stack.pop()
-        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            continue  # its own scope
         yield n
         stack.extend(c for c in ast.iter_child_nodes(n) if not isinstance(c, ast.stmt))
 
@@ -488,41 +489,59 @@ def signal_sites_in(tree):
 
     ERROR-TAINT PROPAGATES within a scope (R2's refutation): training/eprop_lm_alif.py carries the signal
     DOWN its layers -- `lsig[l+1] = ... @ wout`, then `up = Ps * lsig[l+1]`, then
-    `lsig[l] = up @ model.W_ff[l+1]`. `up` is not error-named. A name bound from a W6 hit or from a
-    tainted value is tainted (seeds are hits, never a bare error-sounding name: the first draft seeded on
-    names and flagged `residual - y * nrn.w` in faculties/percept_surprise).
+    `lsig[l] = up @ model.W_ff[l+1]`. `up` is not error-named. A name bound from a W6 hit or
+    DIRECTLY from an error-named / tainted value (`_carries`: names, arithmetic, subscripts, tuples -- never a
+    call, which is also why `y = nrn.learn(residual)` in faculties/percept_surprise does not taint `y`) is
+    tainted. A tuple unpack carries per destination, a lambda is its own scope, and a clean (annotated)
+    reassignment clears the name.
     """
     out = set()
+
+    def _hits(exprs, tainted, found):
+        hit = False
+        for sub in exprs:
+            for a, b in _operand_pairs(sub):
+                for e, w in ((_opname(a), _opname(b)), (_opname(b), _opname(a))):
+                    if _err(e, tainted) and _is_weight(w) and not _FEEDBACKISH.search(w):
+                        found.add((sub.lineno, e, w))
+                        hit = True
+        return hit
+
     scopes = [tree] + [
         n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
     ]
+    for lam in (
+        n for n in ast.walk(tree) if isinstance(n, ast.Lambda)
+    ):  # a lambda is a fresh scope
+        _hits(ast.walk(lam.body), set(), out)
     for scope in scopes:
         tainted = set()
         for stmt in _scope_stmts(scope):
-            hit = False
-            for sub in _own_exprs(stmt):
-                for a, b in _operand_pairs(sub):
-                    for e, w in ((_opname(a), _opname(b)), (_opname(b), _opname(a))):
-                        if _err(e, tainted) and _is_weight(w) and not _FEEDBACKISH.search(w):
-                            out.add((sub.lineno, e, w))
-                            hit = True
+            hit = _hits(_own_exprs(stmt), tainted, out)
             if (
                 not isinstance(stmt, (ast.Assign, ast.AugAssign, ast.AnnAssign))
                 or stmt.value is None
             ):
                 continue
-            mentions = {
-                _base(n) for n in ast.walk(stmt.value) if isinstance(n, (ast.Name, ast.Attribute))
-            }
-            carry = hit or _carries(stmt.value, tainted) or any(m in tainted for m in mentions)
             targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
-            names = [(t, _base(t)) for t in targets]
-            names += [(e, _base(e)) for t in targets if isinstance(t, ast.Tuple) for e in t.elts]
-            for t, name in names:
-                if carry and name:
-                    tainted.add(name)
-                elif name and isinstance(stmt, ast.Assign) and isinstance(t, ast.Name):
-                    tainted.discard(name)  # a clean reassignment clears the taint
+            for t in targets:
+                pairs = [(t, stmt.value)]
+                if (
+                    isinstance(t, ast.Tuple)
+                    and isinstance(stmt.value, (ast.Tuple, ast.List))
+                    and len(t.elts) == len(stmt.value.elts)
+                ):  # `a, b = err, x`: each destination takes ITS source only
+                    pairs = list(zip(t.elts, stmt.value.elts, strict=True))
+                for dst, src in pairs:
+                    carry = hit or _carries(src, tainted)
+                    for d in dst.elts if isinstance(dst, ast.Tuple) else [dst]:
+                        name = _base(d)
+                        if carry and name:
+                            tainted.add(name)
+                        elif (
+                            name and not isinstance(stmt, ast.AugAssign) and isinstance(d, ast.Name)
+                        ):
+                            tainted.discard(name)  # a clean reassignment clears the taint
     return sorted(out)
 
 
@@ -1087,6 +1106,49 @@ def fwd(x, W):
             1,
         ),
         (
+            "a tuple unpack carries per destination: `a, b = err, x; b @ W.T` is clean",
+            """def f(err, x, W):
+    a, b = err, x
+    return b @ W.T
+""",
+            0,
+        ),
+        (
+            "a tuple unpack still carries its own destination: `a, b = err, x; a @ W_out`",
+            """def f(err, x, W_out):
+    a, b = err, x
+    return a @ W_out
+""",
+            1,
+        ),
+        (
+            "a call is not followed: `x = err; h = reset(x); h @ W.T` is clean",
+            """def f(err, W):
+    x = err
+    h = reset(x)
+    return h @ W.T
+""",
+            0,
+        ),
+        (
+            "a lambda is its own scope: `x = err; lambda x: x @ W.T` is clean",
+            """def f(err, W):
+    x = err
+    h = lambda x: x @ W.T
+    return h
+""",
+            0,
+        ),
+        (
+            "a clean ANNOTATED reassignment clears: `h = err; h: object = x; h @ W.T`",
+            """def f(err, x, W):
+    h = err
+    h: object = x
+    return h @ W.T
+""",
+            0,
+        ),
+        (
             "tuple unpack `a, b = err, 1; a @ W_out`",
             """def f(err, W_out):
     a, b = err, 1
@@ -1126,6 +1188,20 @@ def fwd(x, W):
         "W6 did not fire on the frozen reconstruction of eprop_kernel's `err @ self.W_out`"
     )
     print("  RED    W6 fires on a frozen reconstruction of eprop_kernel's symmetric spelling")
+    # THE SCANNER, calibrated on its own known-positive FIXTURE (independent of the live kernel): a stub
+    # scan_signals returning [] must fail here, not just a stub detector.
+    with tempfile.TemporaryDirectory() as fx:
+        with open(os.path.join(fx, "fixture_learner.py"), "w", encoding="utf-8") as fh:
+            fh.write("""def f(err, net):
+    return err @ net.W_out
+""")
+        found = scan_signals(extra_roots=[fx])
+    assert any(w == "training/fixture_learner.py" and t == "root" for w, _l, _e, _w, t in found), (
+        "scan_signals did not report the planted fixture learner -- the scanner is uncalibrated"
+    )
+    print(
+        "  RED    W6 scan_signals finds a planted fixture learner (the scanner itself, not the detector)"
+    )
     sig = scan_signals()
     assert sig == sorted(sig), (
         "W6 findings must be globally sorted (filesystem order is not an ordering)"
