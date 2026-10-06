@@ -515,6 +515,33 @@ verdict:
   presized-on-C1-d dev reading (or a redesigned learned control), the NGSNN adopt-or-control reading, the
   explicit-history proof, A_ii's readings, and beta from G3.
 
+### 2.17 Dated PRE-DATA amendment, 2026-10-06 (dev seeds 8000-8003 only; 2.13's second freeze step)
+
+Read at head `9fc94e24` by `taught_campaign.dev_measurement` (no Brain built; `brain_lake.bin` mtime 2026-09-27 01:19:19
+before and after) plus the same `_dev_row` instrument run without `all()` short-circuiting for R4, R5, R6. No seed of
+8200-8307 and no live seed was read. This amendment carries NO beta and claims nothing about budget values (G3's
+dev-run gap, accepted: a one-problem run never reaches beta x baseline; beta is G3's own dated amendment). Nothing in the
+registration above is changed; this section adds readings and fixes the constants the registration named.
+
+| reading | rule (2.13) | dev result | disposition |
+|---|---|---|---|
+| R1 H | 2 x smallest H in {16, 32, 64, 128} solving every same-items capacity cell on all four seeds within E/2 | H 16 fails (presized_history S1C1 on 8000), H 32 solves all four seeds on S0C1, S1C1 (history), ii.xor, ii.twin | **H = 64** (code constant unchanged) |
+| R2 E | max(400, 2 x largest epochs-to-stable, rounded up to 50) | largest epochs-to-stable of any positive = 5 | **E = 400** (code constant unchanged) |
+| R3 explicit history | S1C0 and S0C0 solved, S1C1 never, all four seeds | S1C0 stable at epoch 0-1, S0C0 stable at 2-5, S1C1 max accuracy 0.75 never stable, on 8000-8003 | **PROVEN** |
+| R4 NGSNN feature mode (H 64) | adopt iff B7 on every seed | S0C1 stable on 8000 and 8002, not on 8001 and 8003 (max 0.75); S1C0 never (max 0.5) on all four | **NOT ADOPTED**: the centred `presized_expansion` stays a declared CONTROL instrument (2.4), measured reason: NGSNN's expansion meets B7 on 2 of 4 seeds |
+| R6 presized control on C1-d | learned solve on validation AND future | at H 16, 32, 64, 128 on all four seeds: never stable-solved, future never solved (future accuracy 0.0-0.75; max validation accuracy 0.62-1.0 transient) | **C1-d reads REPRESENTABLE, NOT SHOWN LEARNABLE** (2.15.1, ruling 28). No redesign here (O11 is the owner's) |
+| R5 A_c1d (incumbent, H 64, E 400) | solves validation and future on every seed | stable at epoch 0 and future solved on 8000-8003 | **PASS** |
+| R5 A_ii (incumbent, E 400) | solves on every seed | not stable-solved on any seed: max accuracy 1.0 (transient) on 8000-8002, 0.5 on 8003 | **FAILS the registered requirement.** Not substituted, not tuned: reported to the lead (a_rows_ok = false) |
+
+Realised split sizes at seed 8000 (distinct texts; learning presentations per read are 4 per text as registered): C1-d and
+A_c1d each: teach 32 distinct codes (`n_teach_codes`), validation 8 texts (32 presentations), future 12 texts (48
+presentations). `future_d` is not readable by any learner arm (2.15.1) and was not read here.
+
+Raw rows: scratchpad `g2_dev.jsonl` (92 rows, the registered run, derived line `H 64, E 400, history_proof true,
+ngsnn_adopt false, c1d_learned_at [], a_rows_ok false, largest 5`) and `g2_dev_full.jsonl` (32 rows, the complete R4/R5/R6
+reads). Module self-checks at the same head: `taught_problems` OK (B9, B11, B12, 5 of 5 reds), `delayed_cue` OK (18 of 18
+reds), `taught_campaign` OK (scratch seed 8900).
+
 ## 3. Open questions for the owner
 
 - **O1** *(narrowed by 2.15.1, lead read 2026-10-03.)* Held-out means novel COMBINATIONS of taught words (C1-d), not novel
