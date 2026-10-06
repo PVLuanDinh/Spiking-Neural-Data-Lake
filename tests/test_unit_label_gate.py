@@ -546,3 +546,14 @@ def test_r12_census_counts_todays_refit_as_legacy_and_reds_without_its_debt_row(
 @pytest.mark.parametrize("bad", ["7", True, -1, 1.0, None])
 def test_ids_are_non_negative_ints_only(field, bad):
     assert _refused_field(_with(_good(), **{field: bad})) == field
+
+
+def test_a_json_replayed_list_position_is_not_a_tampered_label():
+    born = _good(i=0)
+    replayed = _with(born, position=list(born["position"]))  # JSON turns the tuple into a list
+    assert G.classify_restored([replayed], {born["unit_id"]: dict(born)}) == ["born"]
+    ticket = G.require_admissible([born], resolve_problem=_resolve, known_unit=lambda x: False)
+    ticket.consume([replayed])  # a list-position row IS the validated record
+    moved = _with(born, position=[x + 1.0 for x in born["position"]])  # a real change still reds
+    with pytest.raises(G.UnitLabelRefused, match="tampered"):
+        G.classify_restored([moved], {born["unit_id"]: dict(born)})

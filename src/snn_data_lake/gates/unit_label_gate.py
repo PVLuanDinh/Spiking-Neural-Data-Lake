@@ -83,6 +83,11 @@ def _text(v):
     return isinstance(v, str) and v != ""
 
 
+def _canon(v):
+    """Sequences compare as tuples: place_labeled's position is a tuple, a JSON-replayed birth row's is a list."""
+    return tuple(_canon(x) for x in v) if isinstance(v, (list, tuple)) else v
+
+
 def _ident(v):
     """unit_id / batch_id: a non-bool int >= 0 -- G3's journal ids; one representation (lead, 2026-10-06)."""
     return isinstance(v, int) and not isinstance(v, bool) and v >= 0
@@ -231,7 +236,7 @@ class AdmissionTicket:
             frozen = self._records.get(uid)
             if frozen is None:
                 raise UnitLabelRefused(uid, "ticket", "row not covered by the admission ticket")
-            diff = [k for k in FIELD_ORDER if row.get(k) != frozen[k]]
+            diff = [k for k in FIELD_ORDER if _canon(row.get(k)) != _canon(frozen[k])]
             if diff:
                 raise UnitLabelRefused(uid, "ticket", f"row differs from the validated record in {diff}")
         missing = sorted(self.ids - seen)
@@ -274,7 +279,7 @@ def classify_restored(rows, journal):
         if entry is None:
             out.append("derived")
             continue
-        diff = [k for k in LABEL_FIELDS if row[k] != entry.get(k)]
+        diff = [k for k in LABEL_FIELDS if _canon(row[k]) != _canon(entry.get(k))]
         if diff:
             raise UnitLabelRefused(uid, "label", f"tampered born unit: fields differ {diff}")
         out.append("born")
