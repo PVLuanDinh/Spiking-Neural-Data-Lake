@@ -1822,10 +1822,12 @@ def test_the_call_kind_runs_in_a_child_and_a_refused_target_fails_there(tmp_path
 
 def test_mechanism_checks_runs_every_check_on_the_one_pool_each_green_beside_its_red():
     result = ps.mechanism_checks("lsm")
+    erasure = {"R-b5 erasure reset", "R-b5 erasure settled"}
     assert result["candidate"] == "lsm" and set(result["numbers"]) >= set(result["greens"])
-    assert result["greens"] and all(result["greens"].values()), result["greens"]
-    assert {"R-b0", "R-b3", "R-b4 pool noise"} <= set(result["reds"]), result["reds"]
-    assert all(result["reds"].values()), result["reds"]
+    # the exact sets (fold re-panel: a mutant dropping every R-b5 check passed a superset test)
+    assert set(result["greens"]) == {"R-b0", *erasure, "R-b5 freeze", "R-b5 persistence"}
+    assert set(result["reds"]) == {"R-b0", "R-b3", *erasure, "R-b4 pool noise", "R-b5 persistence"}
+    assert all(result["greens"].values()) and all(result["reds"].values()), result
 
 
 def test_configuration_checks_files_every_registered_check_on_the_one_pool(monkeypatch):
