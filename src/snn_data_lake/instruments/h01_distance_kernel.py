@@ -233,7 +233,8 @@ def block_layer_table(blocks, layer):
 class Geometry:
     nb: int
     d_c: np.ndarray
-    dmax: float
+    dmax: float  # the bounding-box diagonal: sizes the bins
+    dpair: float  # the largest pair distance: 2.3's DEGENERATE bound
     blocks: np.ndarray
     interior: np.ndarray
     table: np.ndarray
@@ -248,12 +249,14 @@ class Geometry:
         if dmax > MAX_EXTENT_UM:
             raise ArtifactRefused(f"units: extent diagonal {dmax:.4g} um > {MAX_EXTENT_UM} um (positions in nm?)")
         nb = int(math.ceil(dmax / BIN_UM)) + 1
+        dpair = max(float(np.sqrt(((xyz[s:e, None, :] - xyz[None, :, :]) ** 2).sum(-1)).max()) for s, e in _chunks(len(xyz)))
         blocks = region_blocks(xyz)
         table = block_layer_table(blocks, pop.layer)
         return cls(
             nb=nb,
             d_c=(np.arange(nb) + 0.5) * BIN_UM,
             dmax=dmax,
+            dpair=dpair,
             blocks=blocks,
             interior=interior_mask(xyz),
             table=table,
@@ -579,7 +582,7 @@ def score_unit(hist, geo):
         "ll": {"neuron": neuron_ll, "interior": inner_ll},
         "edge_instances": sum(r[2] for r in folds),
         "width_all": width_all,
-        "degenerate": {m: width_all[m] > geo.dmax for m in width_all},
+        "degenerate": {m: width_all[m] > geo.dpair for m in width_all},
         "params": {"folds": [r[1] for r in folds], "all": {m: [float(x) for x in th_all[m]] for m in th_all}},
         "hist_sha256": _hist_sha(hist),
     }
@@ -948,7 +951,7 @@ def _final_width(pop, geo, edges, model, sha):
         "model": model,
         "params": [float(x) for x in th],
         "width_um": wu,
-        "degenerate": any(v > geo.dmax for v in wu.values()),
+        "degenerate": any(v > geo.dpair for v in wu.values()),
         "artifact_sha256": sha,
         "n_pairs": int(n_all.sum()),
         "n_edges": int(k_all.sum()),
