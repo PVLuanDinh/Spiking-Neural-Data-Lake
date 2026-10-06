@@ -74,7 +74,7 @@ EPS_A = Fraction(1, 8)  # one A item (2.4's NI margin)
 # dev (AT-OFF and AT-NONE 36/36 on 8/8), so W is chosen by the frozen dev ladder below and written here by a
 # dated note BEFORE any F3 confirmatory seed. None = not yet frozen: an F3 arm without an explicit W refuses.
 F3_W_LADDER = (1, 2, 3, 6, 12)
-F3_STORES = None
+F3_STORES = 1  # frozen 2026-10-06 by the dev ladder (the dated amendment in the pre-registration)
 CHILD_TIMEOUT_S = 900
 LIVE_LAKE = os.path.join(os.path.expanduser("~"), ".snn_data_lake")
 

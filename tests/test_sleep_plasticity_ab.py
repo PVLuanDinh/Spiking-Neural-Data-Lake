@@ -239,6 +239,7 @@ def test_f3_ladder_rule_and_the_unfrozen_refusal():
     assert not m.ladder_qualifies([below] * 7 + [at])  # one seed at 35/36 fails the rung
     assert not m.ladder_qualifies([below] * 7)  # a partial seed list never qualifies
     assert m.F3_W_LADDER == (1, 2, 3, 6, 12)
+    assert m.F3_STORES == 1  # the first rung that qualified on dev (2026-10-06 amendment)
 
 
 def test_two_real_arm_seeds_restore_exactly(tmp_path):
