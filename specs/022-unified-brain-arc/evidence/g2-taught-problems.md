@@ -542,6 +542,27 @@ ngsnn_adopt false, c1d_learned_at [], a_rows_ok false, largest 5`) and `g2_dev_f
 reads). Module self-checks at the same head: `taught_problems` OK (B9, B11, B12, 5 of 5 reds), `delayed_cue` OK (18 of 18
 reds), `taught_campaign` OK (scratch seed 8900).
 
+#### 2.17.1 Addendum, 2026-10-06 (G3's refutation pass on 99d6193d, the lead's A_ii ruling; dev seeds 8000-8003 only)
+
+- **"Stable at epoch 0" is `to_stable = epochs_run - tp.STABLE`** (`taught_campaign.py:491`): ten consecutive solved
+  epoch-ends counted from the FIRST epoch end. It does not mean "solved untaught".
+- **A_c1d lr = 0 control (G3 #2).** The incumbent with lr 0 on A_c1d, E 400, future judged: never solved and not stable on
+  all four seeds (max validation accuracy 0.25, 0.0, 0.125, 0.125; future accuracy 0.0 on every seed). A_c1d is a teaching
+  task: an untaught learner fails it, the incumbent that learns it passes it.
+- **ii.twin through the canonical incumbent (G3's S0C1 pairing question): NOT stable-solved.** E 400: solved at one epoch
+  end on 8000 and 8001 (max accuracy 1.0, transient), never on 8002 and 8003 (max 0.5); the same at 4000 epochs on all four
+  seeds. B = i.S0C1's curriculum A (ii.twin, 2.2) therefore does not read on the canonical incumbent either.
+- **R2's E caveat.** `dev_measurement` computes `largest` with `to_stable or 0`, so the positives that never stabilised
+  (the incumbent on `aii` and `ii.twin`) contribute 0, not a failure. E = 400 rests on the positives that did solve
+  (largest epochs-to-stable 5); it says nothing about A_ii or ii.twin.
+- **A_ii and (ii) are PARKED per 2.9 row 5** (lead ruling 2026-10-06; owner question Q-AII on the board). Attribution
+  (dev seeds, no code changed): the canonical incumbent answers one label for all four A_ii texts every epoch (accuracy
+  0.5); the bare learner through the same harness and criterion stabilises A_ii at 118 / 133 / 140 / 141 epochs and ii.twin
+  at 122 / 105 / 179 / 141. Of the live stack's six switches, the E/I balance, the Benna-Fusi consolidation and the
+  homeostatic scaling each block alone (only-one-on), no single or pair switched off restores it, and the three together
+  off restore it (174 / 156 / 179 / 141). The metaplastic gate and intrinsic plasticity do not block; short-term gain only
+  slows it. Evidence for the owner; nothing here chooses among Q-AII's options. The (i) cells, C1-d and A_c1d do not depend on it.
+
 ## 3. Open questions for the owner
 
 - **O1** *(narrowed by 2.15.1, lead read 2026-10-03.)* Held-out means novel COMBINATIONS of taught words (C1-d), not novel
