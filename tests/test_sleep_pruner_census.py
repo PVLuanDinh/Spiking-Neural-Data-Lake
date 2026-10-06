@@ -342,3 +342,17 @@ def test_a_truncated_sabotage_schedule_is_a_counted_mismatch_not_a_silent_zero()
     empty = spc.ArmRun(seed=12001, arm="dp_sabotage", ticks=1)
     spc._dp_sabotage(empty, [])(Fake())
     assert empty.sabotage_shortfall == 1
+
+
+def test_both_p_ll_twins_must_lose_ruling_31():
+    """Ruling 31: a random twin that ties or wins, or is missing, makes P-LL's R2 REFUSED."""
+    ok = spc._decide("P-LL", spc._constructed("P-LL", 0.9, 0.8, 0.5))
+    assert ok.disposition == "KEEP"
+    tie = spc._decide("P-LL", spc._constructed("P-LL", 0.9, 0.8, 0.5, random=0.901))
+    assert tie.disposition == "REFUSED" and "random" in tie.words
+    win = spc._decide("P-LL", spc._constructed("P-LL", 0.9, 0.8, 0.5, random=0.95))
+    assert win.disposition == "REFUSED"
+    gone = spc._decide("P-LL", spc._constructed("P-LL", 0.9, 0.8, 0.5, random=None))
+    assert gone.disposition == "REFUSED" and "missing" in gone.words
+    # the other pruners keep their single twin (no random key needed)
+    assert spc._decide("P-EY", spc._constructed("P-EY", 0.9, 0.8, 0.5)).disposition == "KEEP"

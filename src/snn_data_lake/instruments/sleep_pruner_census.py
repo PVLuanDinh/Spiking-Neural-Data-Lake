@@ -967,10 +967,13 @@ def decide_pruner(pid, seeds, *, delta="registered", repeat_ok):
         r["C4_floor_pinned"], r["C4_live_off_floor"] = pinned, off
         if not (pinned and off):
             return Verdict(pid, "REFUSED", "C4: harness-alive control failed", r)
-    if pid == "P-LL" and all("random" in s for s in seeds):
-        r["random_control"] = contrast(
-            f"{pid} live > random (reported)", [s["live"] - s["random"] for s in seeds]
-        )
+    if pid == "P-LL":  # ruling 31: BOTH twins (highest-utility-first above, random here) must lose
+        if not all("random" in s for s in seeds):
+            return Verdict(pid, "REFUSED", "R2: the P-LL random twin is missing on some seed", r)
+        r2b = superiority(f"{pid} R2 live > random", [s["live"] - s["random"] for s in seeds])
+        r["R2_random"] = r2b
+        if not r2b.met:
+            return Verdict(pid, "REFUSED", "R2: blind outcome (the random twin did not lose)", r)
     d = [s["live"] - s["neuter"] for s in seeds]
     r3 = superiority(f"{pid} R3 benefit", d)
     r4 = non_inferiority(f"{pid} R4 non-inferiority (delta {delta:.6g})", d, delta)
@@ -1061,7 +1064,9 @@ def planted_sources(kind):
     return {"engine.brain": text}
 
 
-def _constructed(pid, live, neuter, sabotage, *, floor=None, removals=5, w_live=10, w_neuter=10):
+def _constructed(
+    pid, live, neuter, sabotage, *, floor=None, removals=5, w_live=10, w_neuter=10, random=-1
+):
     out = []
     for i in range(8):
         jitter = (i % 3) * 1e-3
@@ -1077,6 +1082,10 @@ def _constructed(pid, live, neuter, sabotage, *, floor=None, removals=5, w_live=
         }
         if floor is not None:
             s["floor"] = floor
+        if (
+            pid == "P-LL" and random is not None
+        ):  # -1: the default twin loses as the sabotage twin does
+            s["random"] = sabotage if random == -1 else random
         out.append(s)
     return out
 
@@ -1111,6 +1120,10 @@ def main():
     inert = _decide("P-LL", _constructed("P-LL", 0.9, 0.9, 0.5, removals=0))
     assert inert.disposition == "INERT", inert
     blind = _decide("P-LL", _constructed("P-LL", 0.9, 0.9, 0.95))
+    rand_blind = _decide("P-LL", _constructed("P-LL", 0.9, 0.8, 0.5, random=0.95))  # ruling 31
+    assert rand_blind.disposition == "REFUSED" and "random" in rand_blind.words, rand_blind
+    rand_gone = _decide("P-LL", _constructed("P-LL", 0.9, 0.8, 0.5, random=None))
+    assert rand_gone.disposition == "REFUSED" and "missing" in rand_gone.words, rand_gone
     assert blind.disposition == "REFUSED" and "R2" in blind.words, blind
     idle = _decide("P-LL", _constructed("P-LL", 0.9, 0.9, 0.5))  # harmless, no benefit, no saving
     assert idle.disposition == "RETIRE-OR-EXEMPT", idle
