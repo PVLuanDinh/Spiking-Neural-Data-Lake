@@ -313,6 +313,9 @@ def test_a_later_report_needs_no_migration_but_the_archived_reading_still_must_a
     assert rep.provenance_problems(later) == []
     later["record"]["stages"] = list(rep.STAGES_READ)
     assert rep.provenance_problems(later) == ["migrate: no summary"]
+    for malformed in ({}, "", None, ["primary"]):  # the closing report: these bypassed or raised
+        later["record"]["stages"] = malformed
+        assert rep.provenance_problems(later)[0].startswith("record: stages"), malformed
     later["record"]["stages"] = [stage for stage in rep.STAGES_READ if stage != "migrate"]
     report = rep.assemble(later)
     assert report["host"] == "kernel" and report["migration"] is None

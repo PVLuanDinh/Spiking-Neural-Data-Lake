@@ -16,10 +16,8 @@ r"""G1(c) / T109 part (c): the campaign's report stage and its golden check (g1c
                       digest dict; `golden OUT --against FILE` compares two. Its RED is a one-ulp change to
                       the pool's leak (`leak_nudged`), which must move the digest.
 
-The fixture is shorter than one window, so the golden replays it at GOLDEN_WINDOW and GOLDEN_B (16, as
-the self-checks do; disclosed here, and the digest names them). A change to code the campaign executed
-after its first recording is tested by comparing two golden digests (2.11): equal, or the campaign
-restarts on the reserve seeds.
+The fixture is shorter than one window: the golden replays it at GOLDEN_WINDOW and GOLDEN_B (16, as the
+self-checks do; the digest names them). Two digests compared (2.11): equal, or the reserve repair is owed.
 
 Deterministic; ASCII-only output. Names avoid the verbs the gradient-claim census reads.
 """
@@ -79,7 +77,9 @@ def load_summaries(out):
 def provenance_problems(summaries):
     """Why these summaries are not one campaign (empty: clear): a stage missing, not COMPLETED, written on
     a dirty tree, at another head than the rest (2.13: one clean head), or naming another host."""
-    ran = summaries.get("record", {}).get("stages", STAGES_READ)  # see STAGES_OPTIONAL
+    ran = summaries.get("record", {}).get("stages", list(STAGES_READ))  # see STAGES_OPTIONAL
+    if not isinstance(ran, list) or "record" not in ran:  # closing report: a malformed list refuses
+        return [f"record: stages {ran!r} is not the list of stages its driver ran"]
     problems = [
         f"{stage}: no summary"
         for stage in STAGES_READ
