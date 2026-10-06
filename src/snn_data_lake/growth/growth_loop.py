@@ -24,7 +24,7 @@ problem OPEN to retry after sleep or new teaching; journal units into the lake w
 - ISOLATION (2.12a): the ledger takes an EXPLICIT lake path and refuses the live home.
 
 A source returns units, or (units, evaluations) when it searches (2.6).
-The learner is an adapter with diagnose() / admit(units) / attempt(epochs); the taught learner's adapter lands
+The learner is an adapter with diagnose() / admit(units, labels, ticket) / attempt(epochs); the taught learner's adapter lands
 with the grown-segment port after R2's P1.
 """
 
@@ -34,7 +34,9 @@ import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from snn_data_lake.gates.unit_label_gate import LABEL_FIELDS, UnitLabelRefused, require_admissible
 from snn_data_lake.growth.growth_stop import GrowthStop
+from snn_data_lake.growth.placement import place_labeled
 from snn_data_lake.growth.learning_progress import GoalStore
 from snn_data_lake.substrate.home import LiveHomeRefused, assert_not_live_home
 
@@ -236,19 +238,38 @@ class Ledger:
         unit_id = _int_id(unit_id, "unit_id")
         return any(r["unit_id"] == unit_id for r in self.units())
 
-    def record_units(self, units, problem_id, batch_id):
-        """One batch of birth rows; a duplicate id (within the batch or already journaled) refuses the WHOLE
-        batch before any write (Codex cp5 #5)."""
+    def record_units(self, units, labels, problem_id, batch_id):
+        """One batch of birth rows, each carrying its unit's G7 LABEL (the journal is the one birth record that
+        `classify_restored` and `check_saved` read). A duplicate id (within the batch or already journaled), a
+        label that is not this problem's/batch's or a unit sign that is not its label's refuses the WHOLE batch
+        before any write (Codex cp5 #5)."""
         batch_id = _int_id(batch_id, "batch_id")
         ids = [_int_id(u.unit_id, "unit_id") for u in units]
         known = {r["unit_id"] for r in self.units()}
         dup = sorted({i for i in ids if ids.count(i) > 1} | (set(ids) & known))
         if dup:
             raise LedgerError(f"problem {problem_id!r}: unit ids {dup} are already born or repeated in the batch")
+        by_id = {lab["unit_id"]: lab for lab in labels}
+        if sorted(by_id) != sorted(ids) or len(by_id) != len(labels):
+            raise LedgerError(f"problem {problem_id!r}: the label records do not name exactly the batch's unit ids")
         for u in units:
-            self._record_unit(u, problem_id, batch_id)
+            lab = by_id[u.unit_id]
+            if lab["problem_id"] != problem_id or lab["batch_id"] != batch_id or lab["sign"] != u.sign:
+                raise LedgerError(
+                    f"unit {u.unit_id}: its label (problem, batch, sign) is not this batch's / this unit's"
+                )
+        for u in units:
+            self._record_unit(u, by_id[u.unit_id], problem_id, batch_id)
 
-    def _record_unit(self, unit, problem_id, batch_id):
+    def birth_records(self):
+        """{unit_id: birth row} over every unit ever born (immortal, pruned included): classify_restored's journal."""
+        return {r["unit_id"]: r for r in self.units()}
+
+    def first_sign(self):
+        """{unit_id: the sign written at birth}: check_saved's Dale reference."""
+        return {r["unit_id"]: r["sign"] for r in self.units()}
+
+    def _record_unit(self, unit, label, problem_id, batch_id):
         """The IMMORTAL birth row, written BEFORE the learner receives the unit (write-ahead)."""
         body = {
             "unit_id": int(unit.unit_id),
@@ -259,10 +280,15 @@ class Ledger:
             "out": [float(x) for x in unit.out],
         }
         digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
+        # the label fields come from the label record (LABEL_FIELDS is G7's tuple, imported, never copied);
+        # position is a tuple in the record and a list after the lake's JSON, so it is stored as the list
+        born = {k: label[k] for k in LABEL_FIELDS}
+        born["position"] = list(label["position"])
         self._append_raw(
             {
                 "kind": "unit",
                 **body,
+                **born,
                 "problem_id": problem_id,
                 "batch_id": int(batch_id),
                 "origin": "born",
@@ -335,6 +361,32 @@ def label_probabilities(drives):
     return softmax(list(drives))
 
 
+def make_admission(*, site, centre_um, density_per_mm2, seed=0):
+    """The admission a GrowthLoop needs: G7's `place_labeled` with the campaign's site, centre and density (no
+    defaults here: G4's Part B measures the density), each unit's role read off its Dale sign (E +1, I -1) so a
+    role/sign disagreement cannot exist, then G7's gate. Returns admission(units, problem_id, batch_id, *,
+    resolve_problem, known_unit) -> (labels, ticket). The labels are created and gated in ONE function, which is
+    what G7's creation census requires; the ticket is consumed by `grown_code.admit_rows`."""
+
+    def admission(units, problem_id, batch_id, *, resolve_problem, known_unit):
+        labels = place_labeled(
+            len(units),
+            unit_ids=[u.unit_id for u in units],
+            region="cortex",  # a LITERAL: the growth-coverage census attributes the call by it; only cortex has a measured Dale sign (O3)
+            site=site,
+            problem_id=problem_id,
+            batch_id=batch_id,
+            seed=seed + batch_id,
+            roles=["E" if u.sign > 0 else "I" for u in units],
+            centre_um=centre_um,
+            density_per_mm2=density_per_mm2,
+        )
+        ticket = require_admissible(labels, resolve_problem=resolve_problem, known_unit=known_unit)
+        return labels, ticket
+
+    return admission
+
+
 class GrowthLoop:
     """One posed problem's grow-attempt loop (2.6)."""
 
@@ -352,6 +404,9 @@ class GrowthLoop:
         n_codes=4,
         gate=None,
         solved_sink=None,
+        *,
+        admission,
+        resolve_problem,
     ):
         self.learner, self.problem_id, self.ledger = learner, problem_id, ledger
         if isinstance(batch, bool) or not isinstance(batch, int) or batch <= 0:
@@ -367,6 +422,9 @@ class GrowthLoop:
         self.solved_sink = (
             solved_sink  # called once per OPEN -> SOLVED transition (G6's scheduler gate)
         )
+        # the admission (labels + G7's gate, `make_admission`) and the problem resolver are REQUIRED: no grown
+        # unit can reach the learner without a ticket (the 2026-10-04 amendment)
+        self.admission, self.resolve_problem = admission, resolve_problem
         self._batches = 0
         self._ran = False
 
@@ -392,8 +450,16 @@ class GrowthLoop:
                     f"problem {self.problem_id!r}: the source returned {len(units)} units for a batch of {self.batch}"
                 )
             if units:
-                self.ledger.record_units(units, self.problem_id, self._batches)  # write-ahead, before the learner
-        except LedgerError:
+                labels, ticket = self.admission(
+                    units,
+                    self.problem_id,
+                    self._batches,
+                    resolve_problem=self.resolve_problem,
+                    known_unit=self.ledger.known_unit,
+                )
+                labels = list(labels)
+                self.ledger.record_units(units, labels, self.problem_id, self._batches)  # write-ahead
+        except (LedgerError, UnitLabelRefused):
             self._pay_search(evals)  # a refused batch still paid its search (G7 refutation 1)
             raise
         if not units:
@@ -401,7 +467,7 @@ class GrowthLoop:
             return False
         self._mark_run()
         self.ledger.record_spend(self.problem_id, len(units), evals=evals)
-        self.learner.admit(units)
+        self.learner.admit(units, labels, ticket)  # the adapter appends through grown_code.admit_rows
         self._batches += 1
         return True
 
@@ -483,7 +549,7 @@ def main():
         def diagnose(self):
             return self.kind
 
-        def admit(self, units):
+        def admit(self, units, labels, ticket):
             self.n += len(units)
 
         def attempt(self, epochs):
@@ -498,17 +564,22 @@ def main():
         ]
 
     values = BudgetValues(first=52, beta=1.5)
+    admission = make_admission(site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), density_per_mm2=2.7e4)  # fixture values
+
+    def Loop(*a, **k):
+        return GrowthLoop(*a, admission=admission, resolve_problem=lambda p: True, **k)
+
     with tempfile.TemporaryDirectory() as d:
         lake = Path(d) / "lake.bin"
-        paused = GrowthLoop(Scripted("CAPACITY"), "u", Ledger(lake, values), source, 9).run()
+        paused = Loop(Scripted("CAPACITY"), "u", Ledger(lake, values), source, 9).run()
         assert paused.state == "UNSOLVED" and paused.open and paused.spend_units == 45, paused
-        capped = GrowthLoop(Scripted("SEPARABLE"), "s", Ledger(lake, values), source, 9).run()
+        capped = Loop(Scripted("SEPARABLE"), "s", Ledger(lake, values), source, 9).run()
         assert (
             capped.state == "LEARNING_RULE_DEFICIT"
             and capped.attempts == A_MAX
             and capped.spend_units == 0
         )
-        solved = GrowthLoop(Scripted("CAPACITY", 18), "x", Ledger(lake, values), source, 9).run()
+        solved = Loop(Scripted("CAPACITY", 18), "x", Ledger(lake, values), source, 9).run()
         assert solved.state == "SOLVED" and Ledger(lake, values).ledger("x") == solved
         ledger = Ledger(lake, values)
         ledger._append_raw(

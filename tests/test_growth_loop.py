@@ -11,18 +11,31 @@ what these tests pin. Every lake is pytest's tmp_path.
 
 import pytest
 
+from snn_data_lake.gates.unit_label_gate import UnitLabelRefused
 from snn_data_lake.growth import growth_loop
 from snn_data_lake.growth.grown_code import GrownUnit
 from snn_data_lake.growth.growth_loop import (
     BudgetValues,
-    GrowthLoop,
+    GrowthLoop as _GrowthLoop,
     Ledger,
     LedgerError,
+    make_admission,
     retention_ok,
 )
 from snn_data_lake.growth.growth_stop import GrowthStop
 
 VALUES = BudgetValues(first=52, beta=1.5, k_max=3)
+# FIXTURE site/centre/density (G7's test values; G4's Part B supplies the measured density)
+ADMISSION = make_admission(site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), density_per_mm2=2.7e4)
+
+
+def GrowthLoop(*args, **kw):
+    """The loop with the fixture admission and a resolve-anything resolver; omitting them is a TypeError (a
+    test below pins that no ungated loop can be built)."""
+    kw.setdefault("admission", ADMISSION)
+    kw.setdefault("resolve_problem", lambda p: True)
+    return _GrowthLoop(*args, **kw)
+
 
 
 class ScriptedLearner:
@@ -44,7 +57,7 @@ class ScriptedLearner:
     def diagnose(self):
         return self.diagnoses.pop(0) if len(self.diagnoses) > 1 else self.diagnoses[0]
 
-    def admit(self, units):
+    def admit(self, units, labels=None, ticket=None):
         self.units.extend(units)
 
     def attempt(self, epochs):
@@ -65,6 +78,14 @@ def _source(batch):
         ]
 
     return draw
+
+
+def _born(ledger, units, problem, batch):
+    """Journal `units` with their real G7 labels (the fixture labeler)."""
+    labels, _ticket = ADMISSION(
+        units, problem, batch, resolve_problem=lambda p: True, known_unit=lambda u: False
+    )
+    ledger.record_units(units, labels, problem, batch)
 
 
 def _loop(tmp_path, learner, batch=9, gated=True, problem="xor", **kw):
@@ -282,20 +303,20 @@ def test_a_reused_unit_id_is_refused_before_any_birth_row_is_written(tmp_path):
     # Codex cp5 #5 + the 2026-10-04 amendment's red: re-admitting a journaled id is refused
     ledger = Ledger(tmp_path / "lake.bin", VALUES)
     units = _source(9)(9)
-    ledger.record_units(units[:3], "p", 0)
+    _born(ledger, units[:3], "p", 0)
     assert ledger.known_unit(units[0].unit_id) and not ledger.known_unit(10**9)
     n = len(ledger.units())
     with pytest.raises(LedgerError):  # across batches
-        ledger.record_units([units[0]], "p", 1)
+        _born(ledger, [units[0]], "p", 1)
     with pytest.raises(LedgerError):  # within one batch, nothing written even for the fresh first id
-        ledger.record_units([units[5], units[5]], "p", 1)
+        ledger.record_units([units[5], units[5]], [], "p", 1)
     assert len(ledger.units()) == n
 
 
 def test_a_reconstructed_source_that_restarts_its_ids_stops_the_loop_with_nothing_spent(tmp_path):
     ledger = Ledger(tmp_path / "lake.bin", VALUES)
     GrowthLoop(ScriptedLearner(["CAPACITY"]), "p", ledger, _source(9), 9).run()  # ids 0..44
-    with pytest.raises(LedgerError):  # a fresh source counts from 0 again
+    with pytest.raises(UnitLabelRefused, match="duplicate across batches"):  # a fresh source counts from 0 again
         GrowthLoop(ScriptedLearner(["CAPACITY"]), "q", ledger, _source(9), 9).run()
     assert ledger.ledger("q").spend_units == 0
 
@@ -357,7 +378,7 @@ def test_unit_birth_rows_are_measured_against_the_immortal_class_append_budget(t
     ledger = Ledger(lake, VALUES)
     ledger.open_problem("p", 4)
     before = os.path.getsize(lake)
-    ledger.record_units(batch(), "p", 0)
+    _born(ledger, batch(), "p", 0)
     ledger.record_spend("p", 9, evals=0)
     one = os.path.getsize(lake) - before
     bud = AppendBudget()  # the recorded baseline (tools/lake_append_baseline.json), 0x0B included
@@ -366,7 +387,7 @@ def test_unit_birth_rows_are_measured_against_the_immortal_class_append_budget(t
     bud.on_append(0x0B, one)
     assert bud.end_tick() == []  # control: an ordinary batch tick is green
     for b in range(12):
-        ledger.record_units(batch(), "p", 1 + b)
+        _born(ledger, batch(), "p", 1 + b)
     flood = os.path.getsize(lake) - before - one
     assert flood > FLOOD_FACTOR * one  # 12 batches in one tick is past the 8x factor
     bud.on_append(0x0B, flood)
@@ -389,12 +410,12 @@ def test_ids_are_refused_not_coerced(tmp_path):
     for bad in (1.5, True, "7", -1):
         unit = GrownUnit(bad, (0.0,), 1.0, 12, 1, (0.0,))
         with pytest.raises(LedgerError):
-            ledger.record_units([unit], "p", 0)
+            ledger.record_units([unit], [], "p", 0)
         with pytest.raises(LedgerError):
             ledger.known_unit(bad)
     for bad in (1.5, True, "0", -1):
         with pytest.raises(LedgerError):
-            ledger.record_units([good], "p", bad)
+            ledger.record_units([good], [], "p", bad)
     for bad in (2.5, True, 0):
         with pytest.raises((ValueError, LedgerError)):
             GrowthLoop(ScriptedLearner(["CAPACITY"]), "z", ledger, _source(9), bad)
@@ -417,6 +438,66 @@ def test_a_run_that_journals_nothing_does_not_turn_the_next_run_into_a_retry(tmp
         GrowthLoop(ScriptedLearner(["CAPACITY"]), "n", ledger, lambda n: draw(4), 9).run()
     rec = GrowthLoop(ScriptedLearner(["CAPACITY"]), "n", ledger, _source(9), 9).run()
     assert rec.spend_units == 45  # grew: the failed run left no run row
+
+
+def test_no_ungated_loop_can_be_built(tmp_path):
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    with pytest.raises(TypeError):  # no admission, no resolver: nothing to put on a ticket
+        _GrowthLoop(ScriptedLearner(["CAPACITY"]), "x", ledger, _source(9), 9)
+
+
+def test_every_admitted_batch_reaches_the_learner_with_its_ticket_and_labels(tmp_path):
+    seen = []
+
+    class Recording(ScriptedLearner):
+        def admit(self, units, labels=None, ticket=None):
+            seen.append((units, labels, ticket))
+            super().admit(units, labels, ticket)
+
+    loop, ledger = _loop(tmp_path, Recording(["CAPACITY"]))
+    loop.run()
+    assert len(seen) == 5 and all(t is not None and len(lab) == 9 for _u, lab, t in seen)
+
+
+def test_the_gate_refuses_before_any_birth_row_and_the_refused_search_is_still_paid(tmp_path):
+    # a problem the resolver does not know: the gate refuses the batch; nothing is born, the evals are journaled
+    draw = _source(9)
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    loop = GrowthLoop(
+        ScriptedLearner(["CAPACITY"]), "ghost", ledger, lambda n: (draw(n), 32), 9, resolve_problem=lambda p: False
+    )
+    with pytest.raises(UnitLabelRefused, match="does not resolve"):
+        loop.run()
+    assert ledger.units() == [] and ledger.ledger("ghost").spend_evals == 32
+
+
+def test_the_birth_row_carries_the_label_and_feeds_the_gates_three_readers(tmp_path):
+    from snn_data_lake.gates.unit_label_gate import LABEL_FIELDS, classify_restored
+
+    loop, ledger = _loop(tmp_path, ScriptedLearner(["CAPACITY"], solve_after_units=9))
+    loop.run()
+    births = ledger.birth_records()
+    assert len(births) == 9 and all(set(LABEL_FIELDS) <= set(r) for r in births.values())
+    assert ledger.first_sign() == {u: r["sign"] for u, r in births.items()}
+    assert ledger.known_unit(0) and not ledger.known_unit(10**6)
+    # the restore reader: the journal's own rows classify as born; a changed label on a born unit is refused
+    rows = [dict(r) for r in births.values()]
+    assert set(classify_restored(rows, births)) == {"born"}
+    tampered = [dict(rows[0], layer="Layer 6" if rows[0]["layer"] != "Layer 6" else "Layer 2")] + rows[1:]
+    with pytest.raises(UnitLabelRefused, match="tampered"):
+        classify_restored(tampered, births)
+
+
+def test_a_label_that_is_not_the_units_is_refused_before_any_write(tmp_path):
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    units = _source(9)(9)
+    labels, _ticket = ADMISSION(units, "p", 0, resolve_problem=lambda p: True, known_unit=lambda u: False)
+    with pytest.raises(growth_loop.LedgerError):  # the batch id on the labels is not this batch's
+        ledger.record_units(units, labels, "p", 1)
+    flipped = [dict(labels[0], sign=-labels[0]["sign"])] + labels[1:]
+    with pytest.raises(growth_loop.LedgerError):  # a unit sign that is not its label's
+        ledger.record_units(units, flipped, "p", 0)
+    assert ledger.units() == []
 
 
 # ---- one stop rule (2.6): the pause lives in GrowthStop
