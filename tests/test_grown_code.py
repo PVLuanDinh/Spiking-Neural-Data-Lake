@@ -348,3 +348,15 @@ def test_a_column_needs_one_i_unit_and_one_window_and_silenced_units_never_spike
         column_latencies(odd, _steps(1, 1, 1, 1), TAU, 0.1)
     silent = units[:2] + [units[2].silenced(), units[3]]
     assert column_latencies(silent, _steps(1, 1, 1, 1), TAU, 0.1)[2] is None
+
+
+def test_column_latencies_do_not_depend_on_the_callers_unit_order_down_to_the_bytes():
+    import json
+
+    from snn_data_lake.growth.grown_code import column_latencies
+
+    units = _column()
+    ranks = _steps(1, 2, 3, 2)
+    base = json.dumps(column_latencies(units, ranks, TAU, 1 / 3))
+    for perm in (units[::-1], units[2:] + units[:2], [units[1], units[3], units[0], units[2]]):
+        assert json.dumps(column_latencies(perm, ranks, TAU, 1 / 3)) == base

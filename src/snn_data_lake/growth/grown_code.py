@@ -74,7 +74,10 @@ def column_latencies(units, ranks, tau, gamma):
     drive is its frozen-code drive minus gamma*theta_e*psp(t - t_I) once the I unit has spiked (I->E); the I
     unit's gains gamma*theta_I*psp(t - t_e) per spiked E unit (E->I). gamma is ONE fixed constant (never learned);
     gamma = 0 is BATCH9 and reproduces `latency` byte-identically. A silenced unit never spikes. All units share
-    one window. Returns {unit_id: latency or None}."""
+    one window. Returns {unit_id: latency or None} in unit_id order."""
+    units = sorted(
+        units, key=lambda u: u.unit_id
+    )  # unit_id order, never the caller's (bytes, not just ==)
     inhibitory = [u for u in units if u.sign < 0]
     if len(inhibitory) != 1:
         raise ValueError(f"a column has exactly one inhibitory unit, got {len(inhibitory)}")
