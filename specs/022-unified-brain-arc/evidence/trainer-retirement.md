@@ -221,8 +221,8 @@ later arc and its heavy run is the lead's to schedule.
 
 ### 2.10 Dated record, 2026-10-06 -- `training/mnist_genn` RETIRED (owner decision 17c: census first, port, then retire)
 **Census (commands re-run at base `9b2107c5`; the instrument fired on a known positive: `grep -c mnist_genn
-src/snn_data_lake/training/cli.py` = 2 before the retirement).** `grep -rnI "mnist_genn|mnist-genn"` over the tree minus
-`.git`/`graphify-out` found the module read by exactly one importer, `training/cli.py:98` (lazy, behind `--mnist --genn`);
+src/snn_data_lake/training/cli.py` = 2 before the retirement).** `grep -rnIE "mnist_genn|mnist-genn"` (-E: alternation) over the tree
+minus `.git`/`graphify-out` found the module read by exactly one importer, `training/cli.py:98` (lazy, behind `--mnist --genn`);
 one registry row, `tools/p4c_ungoverned_baseline.json:196`; prose in `training/__init__.py:10`, `docs/TRAINING.md:117`,
 `docs/POLICIES.md:1076` and the historical specs/CHANGELOG. NO gate, self-check (`run_selfchecks.py`), `tests/` file,
 brain-module registry or console script other than `snn-train` reads it, and it is not in `BRAIN_MODULES` (never governed).
@@ -232,7 +232,13 @@ helpers). Its one distinguishing property, a code-generated CUDA step loop, alre
 never imported it: `instruments/snn_mnist_stdp_genn.py` (a local STDP rule) and `reasoning/paradigm_b_genn.py`; what it
 alone added was ml_genn's EventProp gradient trainer, a backprop-family learner the e-prop invariant does not admit.
 **Result recorded (P8 deletion on a null).** One epoch on the full training set scored chance: test 0.0785, core-served
-0.005 on 200 images (0.097 / 0.015 at a 10,000-image smoke scale), 2026-10-02 (2.1 above). **Two hypotheses stay
+0.005 on 200 images (0.097 / 0.015 at a 10,000-image smoke scale), 2026-10-02. **PROVENANCE, stated plainly: these four
+numbers are UNREPRODUCED HISTORICAL READINGS.** They come from the arc's builder smoke (2.2's "Capability lost" paragraph,
+not 2.1, which measures another trainer; the session record is memory `project-snn-session-handoff-1002`, checkpoint 21:
+"runs + exports loadable brain but CHANCE at 1 epoch full set (test 0.0785)"). The driver, seed and a result artifact were
+not archived (the `trainer-port-null-2026-10-02` archive holds the mnist port, not this smoke), and the recovered source
+is a parameterized trainer, not the measured invocation. The deletion rests on the owner's decision 17c and on the module's
+own self-declared "UNVERIFIED scaffold" status (its docstring, lines 3-11), not on this score being replayable. **Two hypotheses stay
 UNTESTED and are recorded, not re-run:** (1) a longer budget (3 epochs; the owner hypothesis of 2.2 (d), never run on
 `mnist_genn` either), and (2) `B := W2` feedback (transport; forbidden, per 17a). The file is recoverable at
 `7b6b884e^:src/snn_data_lake/training/mnist_genn.py`.
