@@ -804,3 +804,15 @@ reconstruction test below passing.
   on those units reads NOT RECOVERABLE.
 - **Scope.** No memory unit is grown in any confirmatory run before this lands; C5 only checks that the STATE branch DRAWS
   memory kinds. This amendment decides no threshold and reads no data.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (b) (cp5 fold disclosures; no data read)
+
+- **0x0B "baselined" is not "bounded".** `tools/lake_append_baseline.json` tag 11 (13,959 B) is one fixture burst, a SEED p95 for the
+  per-TICK flood check only (a 9-unit batch burst against 8x that bar). It does not bound the immortal class's CUMULATIVE growth
+  (52 weight-bearing rows per problem, forever); owner decision 13 stands: report the measured rate at the first daemon restart
+  before calling the growth acceptable.
+- **A run is a run only once it journals.** The "run" ledger row (2.6 retry rule) is written at a loop run's FIRST journal write
+  (a spend row or an attempt row), never at its start. A run refused before any write (a wrong-size batch with no evaluations, a
+  repeated id) leaves no run row, so the next run still draws growth under the same budget; a refusal that already paid
+  evaluations journals them (spend units = 0) and counts as a run, so the next run under that budget is a retry.
+- **Ids are not coerced.** The ledger refuses a non-int, bool or negative `unit_id`/`batch_id` (the same types G7's gate refuses).
