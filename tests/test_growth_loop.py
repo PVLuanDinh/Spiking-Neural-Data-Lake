@@ -13,7 +13,7 @@ import pytest
 
 from snn_data_lake.gates.unit_label_gate import UnitLabelRefused
 from snn_data_lake.growth import growth_loop
-from snn_data_lake.growth.grown_code import GrownUnit
+from snn_data_lake.growth.grown_code import GrownUnit, admit_rows
 from snn_data_lake.growth.growth_loop import (
     BudgetValues,
     GrowthLoop as _GrowthLoop,
@@ -52,12 +52,15 @@ class ScriptedLearner:
         self.diagnoses = list(diagnoses)
         self.solve_after_units = solve_after_units
         self.units = []
+        self.segment = ()
         self.attempts = 0
 
     def diagnose(self):
         return self.diagnoses.pop(0) if len(self.diagnoses) > 1 else self.diagnoses[0]
 
     def admit(self, units, labels=None, ticket=None):
+        # a conforming adapter: the one append is grown_code.admit_rows, which consumes the ticket
+        self.segment = admit_rows(self.segment, units, labels, ticket)
         self.units.extend(units)
 
     def attempt(self, epochs):
@@ -514,6 +517,17 @@ def test_a_unit_the_segment_would_refuse_writes_no_birth_row_and_still_pays_its_
     with pytest.raises(ValueError, match="not finite"):
         GrowthLoop(ScriptedLearner(["CAPACITY"]), "nf", ledger, bad_source, 9).run()
     assert ledger.units() == [] and ledger.ledger("nf").spend_evals == 32
+
+
+def test_an_adapter_that_ignores_the_ticket_is_caught(tmp_path):
+    # G7 finding 2 (AdmissionTicket.consumed): detection after the fact, loud
+    class Ignoring(ScriptedLearner):
+        def admit(self, units, labels=None, ticket=None):
+            self.units.extend(units)  # appends without admit_rows: the ticket stays unspent
+
+    loop, _ = _loop(tmp_path, Ignoring(["CAPACITY"]))
+    with pytest.raises(LedgerError, match="without consuming"):
+        loop.run()
 
 
 # ---- one stop rule (2.6): the pause lives in GrowthStop

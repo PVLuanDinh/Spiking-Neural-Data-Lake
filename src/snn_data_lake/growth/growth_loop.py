@@ -471,6 +471,10 @@ class GrowthLoop:
         self._mark_run()
         self.ledger.record_spend(self.problem_id, len(units), evals=evals)
         self.learner.admit(units, labels, ticket)  # a conforming adapter appends through grown_code.admit_rows (none exists in src yet: the learner port waits on R2's P1)
+        if not ticket.consumed:  # detection after the fact: the loop cannot un-admit (2026-10-06 amendment (e))
+            raise LedgerError(
+                f"problem {self.problem_id!r}: the adapter admitted a batch without consuming its ticket"
+            )
         self._batches += 1
         return True
 
@@ -543,17 +547,18 @@ def main():
     rebuild and its dropped-row red (C13), and the live-lake refusal (2.12a)."""
     import tempfile
 
-    from snn_data_lake.growth.grown_code import GrownUnit
+    from snn_data_lake.growth.grown_code import GrownUnit, admit_rows
 
     class Scripted:
         def __init__(self, kind, solve_after=None):
-            self.kind, self.solve_after, self.n = kind, solve_after, 0
+            self.kind, self.solve_after, self.n, self.segment = kind, solve_after, 0, ()
 
         def diagnose(self):
             return self.kind
 
         def admit(self, units, labels, ticket):
             self.n += len(units)
+            self.segment = admit_rows(self.segment, units, labels, ticket)
 
         def attempt(self, epochs):
             return self.solve_after is not None and self.n >= self.solve_after
