@@ -468,12 +468,25 @@ def _refuse_if_live(p, live, what="home", contains=True):
         raise LiveHomeRefused(f"{what} refused (contains): {p} contains the live home {live}")
 
 
+def _live_file_stats(live):
+    """stat() of every regular top-level file of the live home ([] when it does not exist): the
+    identity a hardlink shares with its original (a resolved path cannot see one). `os.stat`, not
+    `DirEntry.stat()`: on Windows the latter leaves st_ino / st_dev at 0 and every file would match."""
+    try:
+        with os.scandir(live) as it:
+            return [os.stat(e.path) for e in it if e.is_file(follow_symlinks=False)]
+    except OSError:
+        return []
+
+
 def require_isolated_home(live_home=None):
     """For a harness that set NORD_HOME itself: refuse an unset or empty NORD_HOME (home() would then
     be the live lake), else apply `assert_not_live_home`. Call before any lake-binding import or
-    Brain construction. Returns the resolved home."""
+    Brain construction. Returns the resolved home. Scope, stated: TOP-LEVEL entries only -- a junction
+    or hardlink inside a subdirectory of the home is not examined."""
     p = assert_not_live_home(os.environ.get("NORD_HOME") or "", live_home=live_home)
     live = _resolve(live_home if live_home is not None else _default_live_home())
+    live_files = _live_file_stats(live)
     with os.scandir(
         p
     ) as entries:  # where the home's OWN files (the lake, its sidecars) really point
@@ -481,6 +494,12 @@ def require_isolated_home(live_home=None):
             real = _resolve(e.path)
             if os.path.normcase(real) != os.path.normcase(os.path.join(p, e.name)):
                 _refuse_if_live(real, live, what=f"home entry {e.name!r} (an alias); its target")
+            elif e.is_file(follow_symlinks=False) and any(
+                os.path.samestat(os.stat(e.path), st) for st in live_files
+            ):
+                raise LiveHomeRefused(
+                    f"home refused (hardlink): entry {e.name!r} is the same file as one in the live home"
+                )
     return p
 
 

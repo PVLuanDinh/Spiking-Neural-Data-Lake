@@ -189,6 +189,26 @@ def test_a_network_or_device_spelling_is_never_an_isolated_home(tmp_path):
         H.assert_not_live_home("\\\\?\\GLOBALROOT\\Device\\x", live_home=str(live))
 
 
+def test_a_hardlink_to_the_live_lake_inside_an_isolated_home_is_refused(tmp_path, monkeypatch):
+    # R2's refutation by execution: a hardlink resolves to itself (no alias for realpath) but writes
+    # through it hit the live lake's bytes; same file identity (samestat) is the only tell
+    live = tmp_path / "live"
+    live.mkdir()
+    (live / "brain_lake.bin").write_bytes(b"live")
+    iso = tmp_path / "iso"
+    iso.mkdir()
+    monkeypatch.setenv("NORD_HOME", str(iso))
+    (iso / "brain_lake.bin").write_bytes(b"mine")  # the positive: same name, different file
+    assert H.require_isolated_home(live_home=str(live))
+    (iso / "brain_lake.bin").unlink()
+    try:
+        os.link(live / "brain_lake.bin", iso / "brain_lake.bin")
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"cannot create a hardlink here: {exc}")
+    with pytest.raises(H.LiveHomeRefused, match="hardlink"):
+        H.require_isolated_home(live_home=str(live))
+
+
 def test_namespace_prefix_normalisation_covers_unc():
     # `\\?\UNC\server\share` is the extended spelling of `\\server\share`
     assert H._strip_namespace("\\\\?\\UNC\\srv\\share\\x") == "\\\\srv\\share\\x"
