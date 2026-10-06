@@ -334,6 +334,7 @@ def stage_record(out, pilot, seeds="live"):
     return {
         "recordings": recordings,
         "seed_set": seeds,
+        "stages": list(STAGES),  # the report owes migrate only from a record that lists it
         "bundle": {  # the complete bundle: instrument and controls read their seeds from it
             "which": bundle.which,
             "live": list(bundle.live),

@@ -306,7 +306,14 @@ def test_a_stored_row_that_disagrees_with_its_recomputation_is_refused():
 def test_a_later_report_needs_no_migration_but_the_archived_reading_still_must_agree():
     later = summaries()
     del later["migrate"]
+    # the deletion panel (2026-10-06): a record naming no stage list is the campaign at 5761f3a7,
+    # which ran migrate and owes it; only a record listing its stages without migrate may omit it
+    assert rep.provenance_problems(later) == ["migrate: no summary"]
+    later["record"]["stages"] = [stage for stage in rep.STAGES_READ if stage != "migrate"]
     assert rep.provenance_problems(later) == []
+    later["record"]["stages"] = list(rep.STAGES_READ)
+    assert rep.provenance_problems(later) == ["migrate: no summary"]
+    later["record"]["stages"] = [stage for stage in rep.STAGES_READ if stage != "migrate"]
     report = rep.assemble(later)
     assert report["host"] == "kernel" and report["migration"] is None
     assert "## Migration gate: not run" in rep.render(report)
@@ -369,8 +376,10 @@ def test_the_g_r1_reading_of_every_row_of_2_5_through_the_whole_report():
     # rows 4 and 5: a blind control is NOT READ, never PASS; and a PASS needs the control on the
     # primary's host
     assert reading(sighted=False)["verdict"] == "NOT READ"
-    assert reading(controls_host="port")["verdict"] == "NOT READ"
-    assert rep.assemble(summaries(controls_host="port"))["inputs"]["shuffle_sighted"] is False
+    # a control on another host is refused outright since the port's deletion (the deletion panel,
+    # 2026-10-06): no summary may name a host other than the one pool implementation
+    with pytest.raises(ValueError, match="controls: host 'port' is not the pool's host"):
+        rep.assemble(summaries(controls_host="port"))
 
 
 def test_a_met_primary_with_a_long_left_tail_carries_the_skew_flag_in_the_reading():
@@ -388,9 +397,15 @@ def test_the_report_inputs_name_what_each_reading_read():
     assert inputs["primary_host"] == inputs["controls_host"] == "kernel"
     assert inputs["rb6_clauses"] == {"positive": True, "history_free": True}
     assert inputs["d_shuf_survives"] is False
-    report = rep.assemble(summaries(host="port"))
-    assert report["host"] == "port" and report["migration"]["use"] == "port"
-    assert report["shortened"] is False
+    with pytest.raises(ValueError, match="primary: host 'port' is not the pool's host 'kernel'"):
+        rep.assemble(summaries(host="port"))
+    # an archived migrate whose `use` or reading names the port (every stage host still kernel)
+    for key, match in (("use", "use 'port', reading 'hosted'"), ("reading", "not 2.9's 'hosted'")):
+        contradicted = summaries()
+        contradicted["migrate"][key] = "port"
+        with pytest.raises(ValueError, match=f"migrate: .*{match}"):
+            rep.assemble(contradicted)
+    assert rep.assemble(summaries())["shortened"] is False
     short = summaries()
     short["primary"]["shortened"] = True
     assert rep.assemble(short)["shortened"] is True

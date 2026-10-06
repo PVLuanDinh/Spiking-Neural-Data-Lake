@@ -7,8 +7,7 @@ r"""G1(c) / T109 part (c): the campaign's report stage and its golden check (g1c
                       accuracies and held equal to the rows that stage stored: two instruments that must
                       agree), and 2.5's G-R1 reading is `g_r1_reading` over them. One head, a clean tree
                       and COMPLETED on every stage are asserted first.
-  stage_report        loads the summaries, writes OUT/report.json and OUT/report.md, files the report's
-                      digest.
+  stage_report        loads the summaries, writes OUT/report.json and OUT/report.md, files their digest.
   golden              the golden check (2.11), in-process at the current head: the pool's hand fixtures and
                       R-b3's fixture chain on the pool (the one implementation G1(c) 2.9 kept; an OUT's
                       migrate summary must name its host), a full replay of the 48-event synthetic fixture through
@@ -49,9 +48,7 @@ from snn_data_lake.reservoir import recurrent_pool as rp
 STAGES_READ = tuple(
     "record mechanism instrument references construct migrate causality primary controls transport separation".split()
 )
-# The migration gate's stage ran in the campaign at 5761f3a7 (g1c-carried-state.md 3.3) and was deleted with
-# the port and the host switch (2.9): that campaign's OUT holds its summary, which is read and held to the
-# same provenance as the rest; a later campaign has none
+# migrate (3.3) went with the port (2.9): owed unless the record lists `stages` without it (5761f3a7's has none)
 STAGES_OPTIONAL = ("migrate",)
 # what the report keeps of the separation stage: its reading AND the measurements it was read from
 SEPARATION_KEYS = tuple(
@@ -81,17 +78,20 @@ def load_summaries(out):
 
 def provenance_problems(summaries):
     """Why these summaries are not one campaign (empty: clear): a stage missing, not COMPLETED, written on
-    a dirty tree, or at another head than the rest (2.13: one clean head)."""
+    a dirty tree, at another head than the rest (2.13: one clean head), or naming another host."""
+    ran = summaries.get("record", {}).get("stages", STAGES_READ)  # see STAGES_OPTIONAL
     problems = [
         f"{stage}: no summary"
         for stage in STAGES_READ
-        if stage not in summaries and stage not in STAGES_OPTIONAL
+        if stage not in summaries and (stage in ran or stage not in STAGES_OPTIONAL)
     ]
     for stage, body in summaries.items():
         if body.get("status") != "COMPLETED":
             problems.append(f"{stage}: {body.get('status')}, not COMPLETED")
         if body.get("dirty") is not False:
             problems.append(f"{stage}: written on a dirty tree")
+        if body.get("host", st.HOST) != st.HOST:
+            problems.append(f"{stage}: host {body['host']!r} is not the pool's host {st.HOST!r}")
     heads = sorted({str(body.get("head")) for body in summaries.values()})
     if len(heads) > 1:
         problems.append(f"more than one head: {heads}")
@@ -181,9 +181,8 @@ def _rows(summaries, live, oracle, history):
 
 
 def _migration(mig):
-    """The migration gate's record (2.9), as the campaign at 5761f3a7 wrote it (None for a campaign after
-    its deletion). Its reading is recomputed from the recorded conjuncts and means by 2.9's pure
-    function and must equal the recorded one: two instruments that must agree."""
+    """The migration gate's record (2.9) as 5761f3a7 wrote it (None after its deletion): its reading,
+    recomputed by 2.9's pure function, must equal the recorded one and keep the one pool's host."""
     if mig is None:
         return None
     conj, mean = mig["conjuncts"], mig["mean"]
@@ -198,6 +197,8 @@ def _migration(mig):
     )
     if again != mig["reading"]:
         raise ValueError(f"migrate: the recorded reading {mig['reading']!r} is not 2.9's {again!r}")
+    if (mig["use"], again) != (st.HOST, "hosted"):  # the deletion panel, 2026-10-06
+        raise ValueError(f"migrate: use {mig['use']!r}, reading {again!r}: not the pool's host")
     kept = (
         "reading use conjuncts mean machinery_red port_vs_g1b quantization parity_horizon".split()
     )
