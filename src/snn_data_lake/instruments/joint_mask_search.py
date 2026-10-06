@@ -282,7 +282,7 @@ def _sup(name, diffs):
     return c._replace(met=False) if c.degenerate else c  # A9: degenerate superiority -> NOT MET
 
 
-def decide_b(seeds, *, instrument_gates_fired=True):
+def decide_b(seeds, *, instrument_gates_fired):
     """`seeds`: per-seed {arm: {"cost", "future_ok", "retention_ok", "net"}} for every arm in COMPETITORS
     (an arm absent on a refused small-budget instance REFUSES the read). The first applicable step decides."""
     if not instrument_gates_fired:
@@ -396,6 +396,10 @@ def _smaller(i):
     return 20.0 + (i % 2) * 0.3
 
 
+def _decide(seeds):
+    return decide_b(seeds, instrument_gates_fired=True)
+
+
 def main():
     row = {
         "sleep_id": "s1-n3",
@@ -444,18 +448,18 @@ def main():
         pass
 
     assert (
-        decide_b(constructed_seeds({("SA", "cost"): _smaller, ("SA", "future_ok"): False})).outcome
+        _decide(constructed_seeds({("SA", "cost"): _smaller, ("SA", "future_ok"): False})).outcome
         != "SA"
     )
     assert (
-        decide_b(constructed_seeds({("SA", "cost"): _smaller, ("SA", "net"): -3.0})).outcome != "SA"
+        _decide(constructed_seeds({("SA", "cost"): _smaller, ("SA", "net"): -3.0})).outcome != "SA"
     )
-    assert decide_b(constructed_seeds({("random", "cost"): _smaller})).outcome == "RANDOM-WIN"
+    assert _decide(constructed_seeds({("random", "cost"): _smaller})).outcome == "RANDOM-WIN"
     assert (
-        decide_b(constructed_seeds({(a, "future_ok"): False for a in COMPETITORS})).outcome
+        _decide(constructed_seeds({(a, "future_ok"): False for a in COMPETITORS})).outcome
         == "UNBUILT"
     )
-    assert decide_b(constructed_seeds({("SA", "cost"): _smaller})).outcome == "SA"
+    assert _decide(constructed_seeds({("SA", "cost"): _smaller})).outcome == "SA"
     assert decide_b(constructed_seeds(), instrument_gates_fired=False).outcome == "REFUSED"
 
     print(

@@ -917,7 +917,7 @@ def non_inferiority(name, diffs, delta):
     return contrast(name, [d + delta for d in diffs])
 
 
-def decide_pruner(pid, seeds, *, delta="registered", repeat_ok=True):
+def decide_pruner(pid, seeds, *, delta="registered", repeat_ok):
     """`seeds`: per-seed dicts {"live", "neuter", "sabotage", "floor"(P-DP), "random"(P-LL)} of
     accuracy (or None with "refused": [reasons]), {"removals_live": int}, {"work_live", "work_neuter"}.
     `repeat_ok` is R0 (the live arm byte-identical twice on the dev seeds)."""
@@ -1059,6 +1059,10 @@ def _constructed(pid, live, neuter, sabotage, *, floor=None, removals=5, w_live=
     return out
 
 
+def _decide(pid, seeds, **kw):
+    return decide_pruner(pid, seeds, repeat_ok=True, **kw)
+
+
 def main():
     cen = census_static()
     assert cen.missing() == [], f"static census misses registered pruners: {cen.missing()}"
@@ -1078,23 +1082,21 @@ def main():
     assert _removed_lake([1, 2], 5, None) == 3
 
     # the decision's branches (A1, A9, A11), constructed
-    keep = decide_pruner("P-LL", _constructed("P-LL", 0.9, 0.8, 0.5))
+    keep = _decide("P-LL", _constructed("P-LL", 0.9, 0.8, 0.5))
     assert keep.disposition == "KEEP" and "beneficial" in keep.words, keep
-    eff = decide_pruner("P-LL", _constructed("P-LL", 0.9, 0.9, 0.5, w_live=5, w_neuter=10))
+    eff = _decide("P-LL", _constructed("P-LL", 0.9, 0.9, 0.5, w_live=5, w_neuter=10))
     assert eff.disposition == "KEEP" and eff.words == "KEEP (efficient)", eff
-    inert = decide_pruner("P-LL", _constructed("P-LL", 0.9, 0.9, 0.5, removals=0))
+    inert = _decide("P-LL", _constructed("P-LL", 0.9, 0.9, 0.5, removals=0))
     assert inert.disposition == "INERT", inert
-    blind = decide_pruner("P-LL", _constructed("P-LL", 0.9, 0.9, 0.95))
+    blind = _decide("P-LL", _constructed("P-LL", 0.9, 0.9, 0.95))
     assert blind.disposition == "REFUSED" and "R2" in blind.words, blind
-    idle = decide_pruner(
-        "P-LL", _constructed("P-LL", 0.9, 0.9, 0.5)
-    )  # harmless, no benefit, no saving
+    idle = _decide("P-LL", _constructed("P-LL", 0.9, 0.9, 0.5))  # harmless, no benefit, no saving
     assert idle.disposition == "RETIRE-OR-EXEMPT", idle
-    worse = decide_pruner("P-LL", _constructed("P-LL", 0.7, 0.9, 0.5, w_live=5, w_neuter=10))
+    worse = _decide("P-LL", _constructed("P-LL", 0.7, 0.9, 0.5, w_live=5, w_neuter=10))
     assert worse.disposition == "RETIRE-OR-EXEMPT" and not worse.readings["R4"].met, worse
-    dead = decide_pruner("P-DP", _constructed("P-DP", 0.5, 0.4, 0.3, floor=0.4))
+    dead = _decide("P-DP", _constructed("P-DP", 0.5, 0.4, 0.3, floor=0.4))
     assert dead.disposition == "REFUSED" and "C4" in dead.words, dead
-    nomargin = decide_pruner("P-EY", _constructed("P-EY", 0.9, 0.8, 0.5), delta=None)
+    nomargin = _decide("P-EY", _constructed("P-EY", 0.9, 0.8, 0.5), delta=None)
     assert nomargin.disposition == "REFUSED" and "T_ref" in nomargin.words, nomargin
     # A9: a degenerate superiority contrast is NOT MET; a degenerate R4 reads by its common value
     assert not superiority("deg", [0.1] * 8).met and non_inferiority("deg", [0.0] * 8, 0.01).met

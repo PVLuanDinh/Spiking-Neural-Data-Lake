@@ -92,6 +92,10 @@ def test_c26_a_judging_read_before_the_freeze_or_twice_is_refused():
         m.judge(tuple([1] * fx.n))
 
 
+def _decide(seeds):
+    return jms.decide_b(seeds, instrument_gates_fired=True)
+
+
 @pytest.mark.parametrize(
     "over, outcome",
     [
@@ -105,23 +109,27 @@ def test_c26_a_judging_read_before_the_freeze_or_twice_is_refused():
     ],
 )
 def test_c22_decide_b_on_constructed_readings(over, outcome):
-    assert jms.decide_b(jms.constructed_seeds(over)).outcome == outcome
+    assert _decide(jms.constructed_seeds(over)).outcome == outcome
 
 
 def test_c22_a_size_win_never_adopts_past_a_failed_gate():
     assert (
-        jms.decide_b(
+        _decide(
             jms.constructed_seeds({("SA", "cost"): jms._smaller, ("SA", "future_ok"): False})
         ).outcome
         != "SA"
     )
     assert (
-        jms.decide_b(
-            jms.constructed_seeds({("SA", "cost"): jms._smaller, ("SA", "net"): -3.0})
-        ).outcome
+        _decide(jms.constructed_seeds({("SA", "cost"): jms._smaller, ("SA", "net"): -3.0})).outcome
         != "SA"
     )
     assert jms.decide_b(jms.constructed_seeds(), instrument_gates_fired=False).outcome == "REFUSED"
     missing = jms.constructed_seeds()
     del missing[0]["SA"]
-    assert jms.decide_b(missing).outcome == "REFUSED"
+    assert _decide(missing).outcome == "REFUSED"
+
+
+def test_a_decision_without_its_gate_flag_is_a_type_error_not_a_pass():
+    """R3 lead: `instrument_gates_fired` had a default of True; an omitted gate must not pass."""
+    with pytest.raises(TypeError):
+        jms.decide_b(jms.constructed_seeds())
