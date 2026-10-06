@@ -153,6 +153,8 @@ def _check_unit(u, out):
     """Admission and restore: sign exactly +-1, every input and output synapse and the threshold finite,
     every output synapse on the unit's Dale side; each refusal names the unit and the synapse."""
     _require_sign(u.unit_id, u.sign)
+    if isinstance(u.window, bool) or not isinstance(u.window, int) or u.window < 1:
+        raise ValueError(f"unit {u.unit_id}: window must be a positive int, got {u.window!r}")
     _require_finite(u.unit_id, "input", u.w_in)
     _require_finite(u.unit_id, "threshold", (u.threshold,))
     _require_finite(u.unit_id, "output", out)

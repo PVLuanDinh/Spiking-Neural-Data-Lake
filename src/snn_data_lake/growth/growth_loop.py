@@ -269,8 +269,11 @@ class Ledger:
                 raise LedgerError(
                     f"unit {u.unit_id}: its label (problem, batch, sign) is not this batch's / this unit's"
                 )
-        for u in units:
-            self._record_unit(u, by_id[u.unit_id], problem_id, batch_id)
+        rows = [self._birth_row(u, by_id[u.unit_id], problem_id, batch_id) for u in units]
+        for row in rows:  # every row serialises BEFORE any is appended (the lake is immortal)
+            json.dumps(row, allow_nan=False)
+        for row in rows:
+            self._append_raw(row)
 
     def unsettled(self, problem_id):
         """Births journaled for `problem_id` minus the admissions its spend rows charged: nonzero after a crash
@@ -286,8 +289,8 @@ class Ledger:
         """{unit_id: the sign written at birth}: check_saved's Dale reference."""
         return {r["unit_id"]: r["sign"] for r in self.units()}
 
-    def _record_unit(self, unit, label, problem_id, batch_id):
-        """The IMMORTAL birth row, written BEFORE the learner receives the unit (write-ahead)."""
+    def _birth_row(self, unit, label, problem_id, batch_id):
+        """The IMMORTAL birth row, appended BEFORE the learner receives the unit (write-ahead)."""
         body = {
             "unit_id": int(unit.unit_id),
             "w_in": [float(x) for x in unit.w_in],
@@ -301,18 +304,16 @@ class Ledger:
         # position is a tuple in the record and a list after the lake's JSON, so it is stored as the list
         born = {k: label[k] for k in LABEL_FIELDS}
         born["position"] = list(label["position"])
-        self._append_raw(
-            {
-                "kind": "unit",
-                **body,
-                **born,
-                "problem_id": problem_id,
-                "batch_id": int(batch_id),
-                "origin": "born",
-                "encoder": ENCODER,
-                "digest": digest,
-            }
-        )
+        return {
+            "kind": "unit",
+            **body,
+            **born,
+            "problem_id": problem_id,
+            "batch_id": int(batch_id),
+            "origin": "born",
+            "encoder": ENCODER,
+            "digest": digest,
+        }
 
     def record_event(self, row):
         """The PUBLIC entry for another owner's row on this lake (G6's sleep_bout / sleep_verdict /

@@ -588,6 +588,36 @@ def test_unsettled_births_stop_growth_until_the_reconciler_lands(tmp_path):
     assert ledger.unsettled("u") == 0
 
 
+def test_a_bad_window_anywhere_in_a_batch_writes_no_birth_row(tmp_path):
+    # Codex panel MAJOR: nine units, the ninth with a window that cannot be journaled or
+    # evaluated, left eight immortal birth rows, zero spend and zero runs before the ValueError
+    for bad in ("bad", float("nan"), 12.5, True, 0, -3):
+        draw = _source(9)
+
+        def source(n, bad=bad, draw=draw):
+            units = draw(n)
+            units[-1] = GrownUnit(units[-1].unit_id, (0.0,) * 4, 1.0, bad, units[-1].sign, (0.0,))
+            return units, 32
+
+        ledger = Ledger(tmp_path / f"lake-{abs(hash(str(bad)))}.bin", VALUES)
+        with pytest.raises(ValueError, match="window"):
+            GrowthLoop(ScriptedLearner(["CAPACITY"]), "w", ledger, source, 9).run()
+        assert ledger.units() == [] and ledger.ledger("w").spend_evals == 32, bad
+
+
+def test_every_birth_row_is_serialised_before_any_is_appended(tmp_path):
+    # the second line of defence behind the unit check: an unserialisable field in the LAST row
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    units = _source(9)(9)
+    labels, _ticket = ADMISSION(
+        units, "p", 0, resolve_problem=lambda p: True, known_unit=lambda u: False
+    )
+    units[-1] = GrownUnit(units[-1].unit_id, (float("inf"),) * 4, 1.0, 12, units[-1].sign, (0.0,))
+    with pytest.raises(ValueError):
+        ledger.record_units(units, labels, "p", 0)
+    assert ledger.units() == []
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 
