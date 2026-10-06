@@ -567,14 +567,6 @@ def census_misses(static, seen):
 # ================================================================================================
 # 2. A/B -- arms, outcomes, executed-work counters
 # ================================================================================================
-def _assert_scratch_home(live_home=None):
-    """Refuse to build a Brain unless NORD_HOME is set and is not, contains, or sits inside the live home
-    (the one shared guard, lead ruling 16; `live_home` only for a planted decoy)."""
-    from snn_data_lake.substrate.home import require_isolated_home
-
-    return require_isolated_home(live_home=live_home)
-
-
 def _teach(brain):
     from snn_data_lake.readout.interaction_learning import text_features
 
@@ -845,8 +837,10 @@ def run_arm(seed, arm, *, ticks=TICKS, schedule=None, teach=True):
     sabotage twins. The caller owns NORD_HOME (a throwaway); this refuses the live home."""
     if arm not in ARMS:
         raise ValueError(f"unknown arm {arm!r}; arms are {ARMS}")
+    from snn_data_lake.substrate.home import require_isolated_home
+
     admit_seed(seed)
-    _assert_scratch_home()
+    require_isolated_home()
     from snn_data_lake.engine.brain import make_brain
 
     brain = make_brain(seed=seed)
@@ -1156,7 +1150,7 @@ def _guard_out(path, live_home=None):
 def _cli(argv):
     import argparse
 
-    from snn_data_lake.substrate.home import throwaway_home
+    from snn_data_lake.substrate.home import require_isolated_home, throwaway_home
 
     p = argparse.ArgumentParser(prog="sleep_pruner_census")
     p.add_argument("--census", action="store_true")
@@ -1169,7 +1163,7 @@ def _cli(argv):
     admit_seed(a.arm[0] if a.arm else a.seed)
     if a.census:
         with throwaway_home():
-            _assert_scratch_home()
+            require_isolated_home()
             from snn_data_lake.engine.brain import make_brain
 
             b = make_brain(seed=a.seed)

@@ -9,6 +9,7 @@ import os
 import pytest
 
 from snn_data_lake.instruments import sleep_pruner_census as spc
+from snn_data_lake.substrate.home import require_isolated_home
 
 LIVE_HOME = os.path.join(os.path.expanduser("~"), ".snn_data_lake")
 
@@ -109,16 +110,16 @@ def test_scratch_home_guard_refuses_the_live_home(monkeypatch, tmp_path):
     ok.mkdir()
     monkeypatch.delenv("NORD_HOME", raising=False)
     with pytest.raises(LiveHomeRefused):
-        spc._assert_scratch_home(live_home=decoy)
+        require_isolated_home(live_home=decoy)
     for bad in (decoy, decoy / "sub", alias, tmp_path):
         monkeypatch.setenv("NORD_HOME", str(bad))
         with pytest.raises(LiveHomeRefused):
-            spc._assert_scratch_home(live_home=decoy)
+            require_isolated_home(live_home=decoy)
     monkeypatch.setenv("NORD_HOME", str(ok))
-    assert spc._assert_scratch_home(live_home=decoy) == os.path.realpath(ok)
+    assert require_isolated_home(live_home=decoy) == os.path.realpath(ok)
     monkeypatch.setenv("NORD_HOME", LIVE_HOME)
     with pytest.raises(LiveHomeRefused):
-        spc._assert_scratch_home()
+        require_isolated_home()
 
 
 def test_outcome_windows_refuse_short_or_late_runs():
@@ -187,7 +188,7 @@ def test_runtime_census_counts_and_discovers_no_miss():
     from snn_data_lake.substrate.home import throwaway_home
 
     with throwaway_home():
-        spc._assert_scratch_home()
+        require_isolated_home()
         b = make_brain(seed=12001)
         cen = spc.census_static(runtime_types=spc.runtime_types_of(b))
         seen = set()
@@ -209,7 +210,7 @@ def test_the_discovery_net_reds_on_a_planted_unclassified_pruner():
     ns = {"__name__": "snn_data_lake.planted_g6"}
     exec("def evict_planted():\n    return 1\n", ns)  # noqa: S102 -- a constructed package-scoped callee
     with throwaway_home():
-        spc._assert_scratch_home()
+        require_isolated_home()
         b = make_brain(seed=12001)
         cen = spc.census_static()
         real = b.attractor.downscale_prune

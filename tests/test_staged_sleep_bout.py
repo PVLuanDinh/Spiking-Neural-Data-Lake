@@ -53,11 +53,11 @@ def test_carriers_are_one_per_presentation_and_redo_exact():
 
 def test_a_real_brain_bout_changes_the_learner_and_never_ticks():
     from snn_data_lake.engine.brain import make_brain
-    from snn_data_lake.instruments.sleep_pruner_census import _assert_scratch_home, _teach
-    from snn_data_lake.substrate.home import throwaway_home
+    from snn_data_lake.instruments.sleep_pruner_census import _teach
+    from snn_data_lake.substrate.home import require_isolated_home, throwaway_home
 
     with throwaway_home():
-        _assert_scratch_home()
+        require_isolated_home()
         b = make_brain(seed=12401)
         _teach(b)
         step = b._step

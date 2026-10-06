@@ -80,13 +80,12 @@ def test_sleep_ticks_never_count_as_load():
 @pytest.fixture(scope="module")
 def short_brain_runs():
     from snn_data_lake.engine.brain import make_brain
-    from snn_data_lake.instruments.sleep_pruner_census import _assert_scratch_home
-    from snn_data_lake.substrate.home import throwaway_home
+    from snn_data_lake.substrate.home import require_isolated_home, throwaway_home
 
     out = {}
     for arm, req in (("clock", None), ("oracle", [16, 41])):
         with throwaway_home():
-            _assert_scratch_home()
+            require_isolated_home()
             b = make_brain(seed=12201)
             gate = sp.clock_gate(b, 60)
             out[arm] = (
