@@ -458,6 +458,27 @@ def _own_exprs(stmt):
         stack.extend(c for c in ast.iter_child_nodes(n) if not isinstance(c, ast.stmt))
 
 
+def _carries(node, tainted):
+    """Does this expression DIRECTLY carry an error-named or tainted value (not through a call)?
+
+    `x = err`, `x = -err`, `x = err * 2`, `x = err[:, 0]`, `a, b = err, 1`. A call is not followed
+    (`h = tanh(err)`), which is also what keeps `y = nrn.learn(residual)` from tainting `y`.
+    """
+    if isinstance(node, (ast.Name, ast.Attribute)):
+        return _err(_base(node), tainted)
+    if isinstance(node, ast.Subscript):
+        return _carries(node.value, tainted)
+    if isinstance(node, ast.BinOp):
+        return _carries(node.left, tainted) or _carries(node.right, tainted)
+    if isinstance(node, ast.UnaryOp):
+        return _carries(node.operand, tainted)
+    if isinstance(node, (ast.Tuple, ast.List)):
+        return any(_carries(e, tainted) for e in node.elts)
+    if isinstance(node, ast.IfExp):
+        return _carries(node.body, tainted) or _carries(node.orelse, tainted)
+    return False
+
+
 def signal_sites_in(tree):
     """(lineno, error, weight) for every error x forward-weight product in `tree`.
 
@@ -485,18 +506,23 @@ def signal_sites_in(tree):
                         if _err(e, tainted) and _is_weight(w) and not _FEEDBACKISH.search(w):
                             out.add((sub.lineno, e, w))
                             hit = True
-            if not isinstance(stmt, (ast.Assign, ast.AugAssign)):
+            if (
+                not isinstance(stmt, (ast.Assign, ast.AugAssign, ast.AnnAssign))
+                or stmt.value is None
+            ):
                 continue
             mentions = {
                 _base(n) for n in ast.walk(stmt.value) if isinstance(n, (ast.Name, ast.Attribute))
             }
-            carry = hit or any(m in tainted for m in mentions)
-            for t in stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]:
-                name = _base(t)
+            carry = hit or _carries(stmt.value, tainted) or any(m in tainted for m in mentions)
+            targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
+            names = [(t, _base(t)) for t in targets]
+            names += [(e, _base(e)) for t in targets if isinstance(t, ast.Tuple) for e in t.elts]
+            for t, name in names:
                 if carry and name:
                     tainted.add(name)
                 elif name and isinstance(stmt, ast.Assign) and isinstance(t, ast.Name):
-                    tainted.discard(name)  # a clean reassignment clears the taint: exactly 1 site
+                    tainted.discard(name)  # a clean reassignment clears the taint
     return sorted(out)
 
 
@@ -628,13 +654,16 @@ def main(argv=None):
         )
     )
     print(
-        "  W6 taint follows binary operations only, in execution order (not aug-assign, tuple unpack, loop-"
+        "  W6 taint follows plain aliases and arithmetic (x = err, -err, err * 2, err[:, 0], a, b = err, 1,"
     )
-    print("  carried flow, calls such as")
+    print("  s += err) in ONE function, in execution order. It does NOT follow calls (tanh/relu),")
     print(
-        "  tanh/relu, or comprehensions), and F.linear(err, W) with W in the non-transposed layout may be a"
+        "  comprehensions, a walrus, loop-carried flow, a may-taint cleared on one branch, or a value"
     )
-    print("  false positive.")
+    print(
+        "  handed to another function (by design). F.linear(err, W) with W in the non-transposed layout"
+    )
+    print("  may be a false positive.")
     print(
         "  W6 reads NAMES: a renamed error variable or a neutral weight name is invisible to it, and it"
     )
@@ -852,25 +881,46 @@ def _selfcheck():
 """,
         ),
         (
-            "error through an aug-assign `s += err; s @ W_out`",
-            """def f(err, W_out):
-    s = 0
-    s += err
-    return s @ W_out
-""",
-        ),
-        (
-            "error through a tuple unpack `a, b = err, 1; a @ W_out`",
-            """def f(err, W_out):
-    a, b = err, 1
-    return a @ W_out
-""",
-        ),
-        (
             "error through a call `h = tanh(err); h @ W_out`",
             """def f(err, W_out):
     h = tanh(err)
     return h @ W_out
+""",
+        ),
+        (
+            "a walrus `(h := err) @ W_out`",
+            """def f(err, W_out):
+    return (h := err) @ W_out
+""",
+        ),
+        (
+            "a conditional reassignment `x = err; if c: x = 0; x @ W_out` (a clean branch clears the may-taint)",
+            """def f(err, W_out, c):
+    x = err
+    if c:
+        x = 0
+    return x @ W_out
+""",
+        ),
+        (
+            "a cross-function chain `h = a(err); h @ W_out` (taint stays inside one function, by design)",
+            """def a(e):
+    return e
+
+
+def f(err, W_out):
+    h = a(err)
+    return h @ W_out
+""",
+        ),
+        (
+            "a sink in another function `lin(err, W)` whose body is `x @ W_out` (by design)",
+            """def lin(x, W_out):
+    return x @ W_out
+
+
+def f(err, W_out):
+    return lin(err, W_out)
 """,
         ),
         (
@@ -978,6 +1028,72 @@ def fwd(x, W):
 """,
             1,
         ),
+        (
+            "alias `x = err; x @ W_out`",
+            """def f(err, W_out):
+    x = err
+    return x @ W_out
+""",
+            1,
+        ),
+        (
+            "alias chain `x = err; y = x; y @ W_out`",
+            """def f(err, W_out):
+    x = err
+    y = x
+    return y @ W_out
+""",
+            1,
+        ),
+        (
+            "scaled `x = err * 2; x @ W_out`",
+            """def f(err, W_out):
+    x = err * 2
+    return x @ W_out
+""",
+            1,
+        ),
+        (
+            "negated `x = -err; x @ W_out`",
+            """def f(err, W_out):
+    x = -err
+    return x @ W_out
+""",
+            1,
+        ),
+        (
+            "sliced `x = err[:, 0]; x @ W_out`",
+            """def f(err, W_out):
+    x = err[:, 0]
+    return x @ W_out
+""",
+            1,
+        ),
+        (
+            "annotated `x: int = err; x @ W_out`",
+            """def f(err, W_out):
+    x: int = err
+    return x @ W_out
+""",
+            1,
+        ),
+        (
+            "aug-assign `s = 0; s += err; s @ W_out`",
+            """def f(err, W_out):
+    s = 0
+    s += err
+    return s @ W_out
+""",
+            1,
+        ),
+        (
+            "tuple unpack `a, b = err, 1; a @ W_out`",
+            """def f(err, W_out):
+    a, b = err, 1
+    return a @ W_out
+""",
+            1,
+        ),
     ):
         got = len(signal_sites_in(ast.parse(src)))
         assert got == n_expected, (
@@ -1016,7 +1132,7 @@ def fwd(x, W):
     )
     k = sum(1 for s_ in sig if s_[0] == "plasticity.eprop_kernel")
     print(
-        f"  report W6 live tree: {len(sig)} package site(s), {k} in plasticity/eprop_kernel.py "
+        f"  report W6 live tree (a FLOOR): {len(sig)} package site(s), {k} in plasticity/eprop_kernel.py "
         "(0 there is the expected state AFTER the 17a conversion, not a failure)"
     )
 
