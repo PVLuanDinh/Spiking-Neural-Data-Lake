@@ -995,6 +995,14 @@ EXEMPT = {
         "G9 wires the engine; this exemption retires that day, together with the gate's debt row for "
         "NeurogenesisSelfImprove._refit. No import was added for reachability (cp1 #19)",
     ),
+    "joint_mask_search": (
+        "wire",
+        "specs/022 G6 (T114) part (b), evidence g6-sleep-durable-memory.md 2.4/2.16 A3/A13/A14 + the "
+        "dated pre-data amendment 2026-10-03: the joint-mask search contract, decide_b and THE "
+        "mask_digest. Retires when R2's P2 redo imports mask_digest (ruling 17a), which makes it "
+        "reachable from the live sleep path; the search itself is adopted into the grower's prune or "
+        "deleted by decide_b at G6's deciding run (2.4's P2 on the result)",
+    ),
 }
 
 

@@ -300,6 +300,8 @@ REGIONS = {
         # G2(ii)'s inseparable-mapping generator and G-R2's construction check on it (g1c-carried-state.md 2.8)
         "inseparable_mapping",
         "integration_measure",
+        # specs/022 G6 (T114) part (b): joint-mask search contract + decide_b + THE mask_digest (R2 imports it)
+        "joint_mask_search",
         # G1 causal contract diagnostic harness
         "memory_diagnostic",
         # PROMOTED 2026-08-12 (PROMOTE lane): the NEF (Eliasmith & Anderson) reference implementation -- REFERENCE IMPLEMENTATION / cross-engine ground truth for the gated [nengo] tier (infra/nengo_bridge:471 reaches it only when nengo is installed, which no gate env carries); its only gate-executed path is its own __main__ self-check. Reachable via nengo_bridge (dormancy green, no EXEMPT); recorded per the polychronization-entry pattern so "reachable" is not read as "charged".
