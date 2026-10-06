@@ -1020,6 +1020,13 @@ EXEMPT = {
         "sleep/circadian_clock.py + Brain.tick after the deciding test (C13), or the input is deleted "
         "on its null and this harness with it",
     ),
+    "staged_sleep_bout": (
+        "wire",
+        "specs/022 G6 (T114) part (e), evidence g6-sleep-durable-memory.md 2.7: the staged sleep-bout "
+        "runner (R3's run_bout interface), participation census and fabrication guard. Consumer: R3's "
+        "F5 staged/flat/shuffled arms in instruments/sleep_plasticity_ab.py. Instrument tier until a "
+        "deciding test adopts it into sleep/ (then reachable from _sleep_tick) or its null deletes it",
+    ),
 }
 
 

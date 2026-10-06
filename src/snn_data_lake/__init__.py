@@ -328,6 +328,8 @@ REGIONS = {
         "taught_campaign",
         # G2 / T110 P2: the Problem contract G3/G5/G6/G9 import -- splits as episodes, the future_d guard, the solved predicate, the budget fields, learning OFF (evidence g2-taught-problems.md 2.6, 2.7, 2.15)
         "taught_problems",
+        # specs/022 G6 (T114) part (e): the staged sleep-bout runner (R3's run_bout), participation census, fabrication guard
+        "staged_sleep_bout",
         # specs/022 W3: the world-red instrument -- two-chain liveness at 4dp, category entropy, the derived refit gap (P8 #9)
         "world_red_probe",
     ],
