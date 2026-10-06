@@ -813,3 +813,33 @@ UNTESTED and deletes nothing in that case.
   reading of U(SINGLE) exists in this worktree, and the dev seeds are G3's.
 
 Unreviewed amendment text; G3 (co-signer of O9) refutes it before the lead reads it.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (f) -- (e)'s three omissions and T1's judging set (G3's refutation; no T1 data read)
+
+Nothing confirmatory has run. G3 refuted (e) against its frozen g3-growth-loop.md and found three omissions; (e) is not
+rewritten, it is completed here (additive). Unreviewed amendment text, stated plainly.
+
+**(e) completed.**
+1. **T1 waits on G4's T3 result.** G3's frozen text registers: no T1 arm (T1-size or T1-struct) runs before G4's T3 result;
+   the kernel-free exemption does NOT apply to T1; any exception needs a board amendment. 2.6's family-level wait (T1 waits on
+   G4's T3) is unchanged. Owner decision A2's "its retention half stands in meanwhile" means the retention READING may stand
+   in for the record's T1 once it exists; it does not lift this wait.
+2. **e'_s's precondition is pending.** Dale clipping on the weights (G3's D9) is half landed: `clip_to_sign` and the restore
+   refusal exist (`growth/grown_code.py`, G3 cp1 #17); the DEPOSIT-site wiring (every R-STDP deposit onto the grown segment)
+   waits on the learner port in `readout/interaction_learning.py` (R2's P1 first), and the reservoir-segment clip waits on
+   G3's P5. Until both land, e'_s is NOT runnable and T1-struct has no reading.
+3. **Naming.** The owner's A2 answers what this record calls O9 and G3's record calls O10 ("O10 = G7's O9").
+
+**T1's judging set (2.6a: "fixed by G2 before the pilot"; neither frozen text names ids; G3 and G7 agree below, G2 reports
+counts only).** The problems' own tables (g2-taught-problems.md, cells S0C0 / S1C0 / S0C1 / S1C1: state x capacity needs;
+B5: the incumbent solves S0C0 on every seed) decide it; no dev reading of A_ii enters:
+- **U / granularity-guard set J = { i.S0C1 }** now. It is the growth-licensing capacity cell with no state need. i.S1C1
+  (capacity AND state) is added to J by a dated amendment when G3's state branch lands (G3's amendment 98d92203: no memory
+  unit is grown in any confirmatory run until R2's ctxread kind and G3's reconstruct_state test land). i.S0C0 (no state, no
+  capacity; the incumbent solves it, U = 0 by construction) and i.S1C0 (state only) are not capacity-growth problems and are
+  not judged for U. c1d is a retention task B, not a U-judged problem.
+- **Retention task A for each B (ruling 15 / G2's table):** B = c1d -> A = ac1d; B = i.S0C1 -> A = ii.twin (the separable twin).
+- **(ii) problems** (ii.xor, ii.twin, aii): disposition follows G2's A_ii attribution (pending); nothing is excluded or
+  admitted on an unattributed dev reading.
+- Future items counted in distinct items, reproduced at seeds 8000 and 9300 (tp.PROBLEMS[id].items(seed, "future"), G2's
+  head 99d6193d): ac1d 12, c1d 12, ii.* 4, i.* 8 (identical across the two seeds).
