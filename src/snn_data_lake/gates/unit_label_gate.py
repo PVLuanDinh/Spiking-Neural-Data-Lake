@@ -653,11 +653,33 @@ def row_growth_findings(src_root=None, known=None, out_of_scope=None, segments=N
     )
     segments = GROWN_SEGMENTS if segments is None else segments
     admit_points = {seg[4] for seg in segments.values() if seg[4]}
-    return sorted(
+    findings = [
         k
         for k, ticketed in _row_growth_functions(_root(src_root)).items()
         if not (ticketed and k in admit_points) and k not in known and k not in oos
-    )
+    ]
+    return sorted(findings + _admit_point_findings(_root(src_root), admit_points))
+
+
+def _admit_point_findings(root, admit_points):
+    """Each DECLARED admit point must exist and spend its ticket (a top-level `<param>.consume(...)`);
+    a declaration alone proves nothing (Codex G3 panel). Independent of the row-growth forms: an
+    admit function that builds its segment functionally has no recognised growth statement."""
+    out = []
+    for point in sorted(admit_points):
+        rel, _, qual = point.partition("::")
+        path = root / rel
+        fn = None
+        if path.is_file():
+            try:
+                fn = dict(_qualnames(ast.parse(path.read_text(encoding="utf-8")))).get(qual)
+            except SyntaxError:
+                fn = None
+        if fn is None:
+            out.append(f"{point} [admit point not found]")
+        elif not _consumes_first(fn, 10**9):
+            out.append(f"{point} [admit point does not spend its ticket]")
+    return out
 
 
 # distinct-from: gates/immortal_retention.py -- its stale_known is bound to KNOWN_UNLABELED and its

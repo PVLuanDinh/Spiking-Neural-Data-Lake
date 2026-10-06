@@ -496,7 +496,8 @@ def test_cp3_5_a_ticket_counts_only_structurally_at_a_declared_admit_point(
     root = _tree(tmp_path, head + body)
     segs = {"fx": ("fakepkg/mod.py", "fixture rows", "G7", (), _ADMIT)} if inventory else {}
     found = G.row_growth_findings(src_root=root, known={}, out_of_scope={}, segments=segs)
-    assert found == ([] if admitted else [_ADMIT])
+    # an unspent ticket now also reds the declared point itself (a '[admit point ...]' suffix)
+    assert {f.split(" [")[0] for f in found} == (set() if admitted else {_ADMIT})
 
 
 @pytest.mark.parametrize(
@@ -689,3 +690,23 @@ def test_a_journaled_born_unit_missing_a_label_field_is_refused_not_legacy(field
         G.classify_restored([stripped], journal)
     with pytest.raises(G.UnitLabelRefused, match="tampered"):
         G.census({"fx": [stripped]}, journal, open_debt={"fx"})
+
+
+def test_a_declared_admit_point_must_exist_and_spend_the_ticket(tmp_path):
+    # Codex G3 panel: a declared admit point was never checked -- a missing function, or an
+    # admit_rows with its ticket.consume deleted, produced no finding
+    head = "class Seg:\n    def admit_rows(self, rows, ticket):\n"
+    good = head + "        ticket.consume(rows)\n        return rows\n"
+    bad = head + "        return rows\n"
+    seg = {"fx": ("fakepkg/mod.py", "fixture rows", "G7", (), _ADMIT)}
+    ghost = {
+        "fx": ("fakepkg/mod.py", "fixture rows", "G7", (), "fakepkg/missing.py::no_such_function")
+    }
+
+    def found(body, segments):
+        root = _tree(tmp_path, body)
+        return G.row_growth_findings(src_root=root, known={}, out_of_scope={}, segments=segments)
+
+    assert found(good, seg) == []  # control: a real point that spends its ticket
+    assert found(bad, seg) == [f"{_ADMIT} [admit point does not spend its ticket]"]
+    assert found(good, ghost) == ["fakepkg/missing.py::no_such_function [admit point not found]"]
