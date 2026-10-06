@@ -664,3 +664,15 @@ def test_a_ticket_freezes_list_positions_at_mint():
     with pytest.raises(G.UnitLabelRefused, match="differs from the validated"):
         ticket.consume([rec])
     assert ticket.consumed is False
+
+
+@pytest.mark.parametrize(
+    "change", [{"unit_id": True}, {"batch_id": 0.0}, {"unit_id": 1.0}, {"sign": True}]
+)
+def test_a_ticket_refuses_an_equal_but_differently_typed_identity(change):
+    # Codex G3 panel: 1 == True and 0 == 0.0 in Python, so == let a forbidden id type through
+    rec = _with(_good(), unit_id=1, batch_id=0)
+    ticket = G.require_admissible([rec], resolve_problem=_resolve, known_unit=lambda u: False)
+    with pytest.raises(G.UnitLabelRefused):
+        ticket.consume([_with(rec, **change)])
+    assert ticket.consumed is False

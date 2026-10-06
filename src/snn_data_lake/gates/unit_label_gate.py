@@ -88,6 +88,13 @@ def _canon(v):
     return tuple(_canon(x) for x in v) if isinstance(v, (list, tuple)) else v
 
 
+def _same_typed(a, b):
+    """Equal AND the same type at the top level (1 == True and 0 == 0.0 in Python, so == alone lets a
+    forbidden representation through); sequences compare as tuples (_canon)."""
+    a, b = _canon(a), _canon(b)
+    return a == b and (isinstance(a, tuple) or type(a) is type(b))
+
+
 def _ident(v):
     """unit_id / batch_id: a non-bool int >= 0 -- G3's journal ids; one representation (lead, 2026-10-06)."""
     return isinstance(v, int) and not isinstance(v, bool) and v >= 0
@@ -245,13 +252,17 @@ class AdmissionTicket:
         seen = set()
         for row in rows:
             uid = row.get("unit_id") if isinstance(row, Mapping) else None
+            if not (_ident(uid) and _ident(row.get("batch_id"))):
+                raise UnitLabelRefused(
+                    uid, "ticket", "unit_id / batch_id are not non-negative ints"
+                )
             if uid in seen:
                 raise UnitLabelRefused(uid, "ticket", "duplicate row under one ticket")
             seen.add(uid)
             frozen = self._records.get(uid)
             if frozen is None:
                 raise UnitLabelRefused(uid, "ticket", "row not covered by the admission ticket")
-            diff = [k for k in FIELD_ORDER if _canon(row.get(k)) != _canon(frozen[k])]
+            diff = [k for k in FIELD_ORDER if not _same_typed(row.get(k), frozen[k])]
             if diff:
                 raise UnitLabelRefused(
                     uid, "ticket", f"row differs from the validated record in {diff}"
