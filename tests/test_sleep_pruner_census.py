@@ -261,3 +261,39 @@ def test_c6_the_digest_moves_when_the_run_moves():
         and a.digest
         == spc.ArmRun(seed=0, arm="live", ticks=9, nights=[[2, True, 30]]).finish().digest
     )
+
+
+def test_out_target_inside_or_aliasing_the_live_home_is_refused(tmp_path):
+    """BLOCKER (Codex panel): `--out` was opened for write unguarded, after throwaway_home."""
+    import subprocess
+
+    from snn_data_lake.substrate.home import LiveHomeRefused
+
+    decoy = tmp_path / "a" / "decoy_live"
+    decoy.mkdir(parents=True)
+    (decoy / "brain_lake.bin").write_bytes(b"x")
+    link = tmp_path / "a" / "selfcheck_home_link"
+    r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(decoy)], capture_output=True)
+    if r.returncode != 0:
+        os.symlink(decoy, link, target_is_directory=True)
+    for bad in (
+        decoy / "brain_lake.bin",
+        decoy / "new.json",
+        link / "brain_lake.bin",
+        link / "new.json",
+    ):
+        with pytest.raises(LiveHomeRefused):
+            spc._guard_out(str(bad), live_home=decoy)
+    (tmp_path / "b").mkdir()
+    ok = tmp_path / "b" / "out.json"
+    assert spc._guard_out(str(ok), live_home=decoy) == os.path.realpath(ok)
+
+
+def test_cli_refuses_an_out_in_the_live_home_before_any_brain_runs():
+    """The guard fires in `_cli` itself (no brain is built, nothing is written)."""
+    from snn_data_lake.substrate.home import LiveHomeRefused
+
+    target = os.path.join(LIVE_HOME, "g6_out_guard_probe.json")
+    with pytest.raises(LiveHomeRefused):
+        spc._cli(["--arm", "12001", "live", "--out", target])
+    assert not os.path.exists(target)

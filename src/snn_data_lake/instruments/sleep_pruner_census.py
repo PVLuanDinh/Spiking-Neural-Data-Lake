@@ -1127,6 +1127,18 @@ def main():
     )
 
 
+def _guard_out(path, live_home=None):
+    """The RESOLVED output file for `--out`, refused if it is, or sits inside, the live home (a symlink,
+    junction or dangling link included: resolve first, then guard the file, or its directory if new)."""
+    from snn_data_lake.substrate.home import assert_not_live_home
+
+    real = os.path.realpath(os.path.abspath(path))
+    assert_not_live_home(
+        real if os.path.exists(real) else os.path.dirname(real), live_home=live_home
+    )
+    return real
+
+
 def _cli(argv):
     import argparse
 
@@ -1165,12 +1177,13 @@ def _cli(argv):
         )
         return 0
     if a.arm:
+        out = _guard_out(a.out) if a.out else None  # before any brain runs
         sched = json.load(open(a.schedule)) if a.schedule else None
         with throwaway_home():
             run = run_arm(int(a.arm[0]), a.arm[1], ticks=a.ticks, schedule=sched)
         text = json.dumps(asdict(run), sort_keys=True)
-        if a.out:
-            with open(a.out, "w", encoding="utf-8") as fh:
+        if out:
+            with open(out, "w", encoding="utf-8") as fh:
                 fh.write(text)
         else:
             print(text)
