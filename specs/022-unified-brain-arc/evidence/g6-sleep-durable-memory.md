@@ -735,6 +735,14 @@ so A2's words are read as follows:
   `applied_mask_digest`) are G6's requests to those rows, to be settled before G6's P4 lands; until they agree, A12's
   restore rule is G6's design, not yet theirs.
 
+**DATED PRE-DATA AMENDMENT 2026-10-06 (P-LL's sabotage set; lead ruling 31; no deciding data read).** Additive to 2.3's R2
+bullet (the frozen text above stays byte-intact). 2.3 lists P-LL's sabotage twins as `prune_mode = "random"` PLUS
+highest-utility-first and says "a SABOTAGE twin ... must lose". Ruling 31 reads it in the STRICTER way: for P-LL BOTH
+twins must lose to the live arm at the bar (paired one-sided t > 1.895, A9's degenerate rule applied); either twin
+tying or winning makes R2 REFUSED (blind outcome), and a missing twin on any seed is REFUSED, never skipped. A pruner
+survives only if it beats both. P-DP and P-EY keep their single adversarial twin. The random twin is therefore a GATE
+for P-LL, no longer only a reported contrast.
+
 ## 3. Results
 
 None. Nothing is measured beyond section 1; no deciding test has run.
