@@ -655,3 +655,7 @@ confirmatory seeds or their reserve, authorize a read. (4) A6's planted scale is
 (Newton on the true sum, relative tolerance 1e-9), the record carries the clipped share of expected edges (A10) and an
 independently drawn expectation. (5) `verify_width_record` compares the physical widths at 1e-6 (2.11 (f)). (6) The mixture
 starts from the fitted Gaussian and exponential unchanged (2.3), and DEGENERATE is bounded by the largest pair distance.
+(7) **Disclosed limit (G7, 2026-10-06):** H01 is recognised by its pinned node and edge counts, so a SUBSAMPLED or edited copy
+with a different edge count and a matching caller-supplied pin reads as a fixture and could expose a subset of H01's edge
+distances under a caller-named plan. Closing it needs H01's population fingerprint in the pin file (a pin-file change, not
+made here); the campaign entry points (`main`) take no caller pin, so the production path cannot reach this.
