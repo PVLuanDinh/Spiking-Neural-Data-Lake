@@ -475,10 +475,11 @@ class GrowthLoop:
                     f"problem {self.problem_id!r}: the source returned {len(units)} units for a batch of {self.batch}"
                 )
             if units:
-                for u in (
-                    units
-                ):  # grown_code's own refusals (non-finite weights, Dale) fire BEFORE any birth row
-                    apply_unit_row((), {"op": "admit", "unit": u})
+                # the WHOLE admission is dry-run against the learner's incumbent segment: grown_code's
+                # refusals (a reused id, non-finite weights, a bad window, Dale) fire BEFORE any birth row
+                segment = tuple(self.learner.segment)
+                for u in units:
+                    segment = apply_unit_row(segment, {"op": "admit", "unit": u})
                 labels, ticket = self.admission(
                     units,
                     self.problem_id,

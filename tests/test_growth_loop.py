@@ -618,6 +618,21 @@ def test_every_birth_row_is_serialised_before_any_is_appended(tmp_path):
     assert ledger.units() == []
 
 
+def test_the_preflight_runs_against_the_learners_incumbent_segment(tmp_path):
+    # Codex panel MAJOR: an id the learner already holds but the journal does not know must be
+    # refused BEFORE any birth/spend row, not by admit_rows after them
+    learner = ScriptedLearner(["CAPACITY"])
+    learner.segment = (
+        GrownUnit(0, (0.0,) * 4, 1.0, 12, 1, (0.0,)),
+    )  # held by the learner, unjournaled
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    draw = _source(9)
+    with pytest.raises(ValueError, match="already admitted"):
+        GrowthLoop(learner, "i", ledger, lambda n: (draw(n), 32), 9).run()
+    assert ledger.units() == [] and ledger.ledger("i").spend_units == 0
+    assert ledger.ledger("i").spend_evals == 32
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 
