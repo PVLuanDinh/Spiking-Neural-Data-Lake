@@ -246,3 +246,12 @@ owner's 2026-10-06 order to delete files a recorded decision calls for without a
 (`docs/POLICIES.md` is owner-only): line 1076's "the kept `mnist_genn` scored chance in a one-epoch run" should read
 "`mnist_genn` (retired 2026-10-06) scored chance in a one-epoch run". Also noted, not touched: `tools/dependency_ledger.py`
 lines 31 and 104 still name `ml_genn` (an import-to-distribution map entry; the ledger is green with it).
+
+**2.10 addendum (R2's 17c refutation, 2026-10-06).** R2 re-ran the census by `git grep` and confirmed the importer, the
+ml_genn and the e-prop claims. Two stale pointers it found: (1) `sensorimotor/web_ingest.py` still told users to run
+`snn-train --lm --corpus` (a docstring and a printed command) -- fixed by its own commit, the instruction is gone and
+nothing in the console scripts consumes a fetched corpus any more; (2) docs naming the module: `docs/CODEBASE_DIGEST.md`
+(6 hits) and `docs/AUDIT_BACKLOG.md` (3) are DATED SNAPSHOTS (generated 2026-08-17 and 2026-07-28 respectively) and are
+left as they were, `docs/TRAINING.md` is now the retirement note, `docs/POLICIES.md:1076` is the owner's (text proposed
+above). The `snn-train` console script (`pyproject.toml:303`) stays DECLARED on purpose and only refuses; it is not a live
+trainer. "The same export format exists elsewhere" was not checked and is not claimed.
