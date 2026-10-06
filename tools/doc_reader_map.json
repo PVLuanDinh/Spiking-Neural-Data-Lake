@@ -1,16 +1,11 @@
 {
- "built": "2026-10-03T08:21:30+00:00",
- "code_hash": "4d5d032a8c28dbd7f03b41f43655f6b559e7f2e1bddf7121eeeaa881cf076931",
+ "built": "2026-10-06T11:15:39+00:00",
+ "code_hash": "0602ec412ac3f760b3d5f4ef28622be699b40ba7b97af192ec0f14ff6a9a71a9",
  "coverage": {
-  "listings_dropped_as_infrastructure": 1978,
-  "process_starts": 321,
-  "python_spawns_seen_by_parents": 312,
+  "listings_dropped_as_infrastructure": 2014,
+  "process_starts": 324,
+  "python_spawns_seen_by_parents": 315,
   "python_spawns_without_child_start": [
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
@@ -32,8 +27,8 @@
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]"
   ]
  },
- "fingerprint": "d95a7346fa0baadbea8f394a57572a17497ce8fffeb44c7201dac15043aa2698",
- "head": "08616d881a699e9b8d6e5bafc8382799f0501e70",
+ "fingerprint": "54417c727a47ca859864bda28406ce0018a6c1feba8d67e4deeb77cebd5165ec",
+ "head": "f717388ab65d168f1584e5470ddff63560741a83",
  "pytest_all": {
   "blind": false,
   "git_scan": false,
@@ -195,6 +190,34 @@
     "src/snn_data_lake/training",
     "src/snn_data_lake/training/__pycache__"
    ],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_carried_state_campaign.py": {
+   "blind": false,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_carried_state_driver.py": {
+   "blind": false,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_carried_state_report.py": {
+   "blind": false,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_carried_state_stages.py": {
+   "blind": false,
+   "git_scan": false,
+   "list": [],
    "listr": [],
    "read": []
   },
@@ -637,6 +660,15 @@
    "listr": [],
    "read": []
   },
+  "tests/test_inseparable_mapping.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": [
+    "specs/022-unified-brain-arc/evidence/g1c-carried-state.md"
+   ]
+  },
   "tests/test_instrument_guard.py": {
    "blind": false,
    "git_scan": false,
@@ -934,7 +966,7 @@
    ]
   },
   "tests/test_pool_selection.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": false,
    "list": [],
    "listr": [],
@@ -1406,6 +1438,7 @@
     "specs/022-unified-brain-arc/evidence/g0c-learner-persists.md",
     "specs/022-unified-brain-arc/evidence/g1a-causal-contract.md",
     "specs/022-unified-brain-arc/evidence/g1b-pool-selection.md",
+    "specs/022-unified-brain-arc/evidence/g1c-carried-state.md",
     "specs/022-unified-brain-arc/evidence/g7-organizing-unit.md",
     "specs/022-unified-brain-arc/evidence/g8-reorganization.md",
     "specs/022-unified-brain-arc/evidence/gates-for-the-ratified-rows.md",
