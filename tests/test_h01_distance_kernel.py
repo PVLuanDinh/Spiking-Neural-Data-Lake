@@ -500,3 +500,19 @@ def test_cp2_8_the_planted_scale_makes_the_exact_pairwise_clipped_expectation_hi
     assert share == pytest.approx(float((c * w[off] >= 1.0).sum()) / brute) and share > 0
     hist = KD.pair_histograms(pop, geo, KD.unit_folds(KD.seed_streams(10050)[0], N_SYN), truth=truth, n_edges=target, rng=KD.seed_streams(10050)[1])
     assert hist.planted["expected_edges_drawn"] == pytest.approx(brute, rel=1e-9)
+
+
+def test_cp2_6_the_statistic_refuses_an_unregistered_seed_allocation(artifact, stage, monkeypatch):
+    """Codex cp2 #6 / 2.12: sixteen partitions, repeated seeds, or exposed seeds never reach the t statistic."""
+    path, pin = artifact
+    fx = dict(pin=pin, plan=_plan(), n_edges=EDGES_SYN)
+    for bad in (tuple(range(10050, 10066)), (10050,) * 8, tuple(range(10050, 10057)), (10050.0,) + tuple(range(10051, 10058))):
+        with pytest.raises(KD.ExposureRefused, match="seeds"):
+            KD.score_h01(path, stage, seeds=bad, **fx)
+    with pytest.raises(ValueError):
+        KD.seed_state([1.0] * 16, 0.0)
+    monkeypatch.setattr(KD, "pinned_artifact", lambda: pin)  # the synthetic file stands for production
+    KD._check_seeds(pin[0], KD.CONFIRMATORY_SEEDS)
+    KD._check_seeds(pin[0], KD.CONFIRMATORY_RESERVE)
+    with pytest.raises(KD.ExposureRefused, match="registered"):
+        KD._check_seeds(pin[0], tuple(range(10050, 10058)))
