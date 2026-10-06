@@ -360,6 +360,8 @@ def run_pressure_arm(brain, arm, total, workload, *, requests=None, seed=0, shuf
     the request ticks of the 'oracle' / 'solve' arms; `shuffle_from` = the pressure arm's `advanced`."""
     if arm not in ARMS:
         raise ValueError(f"unknown arm {arm!r}; arms are {ARMS}")
+    if arm == "solve" and requests is None:
+        raise ValueError("the solve arm needs the solved_sink request ticks (G3's loop); it is never the oracle")
     cycles = cycles_from_gate(clock_gate(brain, total))
     run = PressureRun(seed=seed, arm=arm)
     sched = None if arm == "shuffled" else Rescheduler(cycles, total)
@@ -402,7 +404,7 @@ def run_pressure_arm(brain, arm, total, workload, *, requests=None, seed=0, shuf
     return run
 
 
-def run_seed_arm(seed, arm, *, total=900, shuffle_from=None):
+def run_seed_arm(seed, arm, *, total=900, shuffle_from=None, solve_requests=None):
     """One (seed, arm) on a fresh scratch brain with the burst workload; the caller owns a throwaway
     NORD_HOME (refused if it resolves to the live home). Returns (PressureRun, pooled [correct, total])."""
     from snn_data_lake.engine.brain import make_brain
@@ -412,7 +414,8 @@ def run_seed_arm(seed, arm, *, total=900, shuffle_from=None):
     b = make_brain(seed=seed)
     cycles = cycles_from_gate(clock_gate(b, total))
     wl = BurstWorkload(seed, cycles, list(b.brain._ixn.responses), total)
-    req = wl.ends() if arm in ("oracle", "solve") else None
+    # the oracle's requests are the planted burst ends; the solve arm's are G3's solved_sink events, never the oracle's
+    req = wl.ends() if arm == "oracle" else solve_requests if arm == "solve" else None
     run = run_pressure_arm(b, arm, total, wl, requests=req, seed=seed, shuffle_from=shuffle_from)
     return run, [sum(r[1] for r in run.retention), sum(r[2] for r in run.retention)]
 

@@ -15,6 +15,12 @@ def test_self_check_runs():
     sp.main()
 
 
+def test_the_solve_arm_refuses_to_alias_the_oracle():
+    """R3 refutation R2: without G3's solved_sink request ticks the solve arm is refused, not run as the oracle."""
+    with pytest.raises(ValueError):
+        sp.run_pressure_arm(None, "solve", 10, lambda b, t: None)
+
+
 def test_a_request_advances_its_cycle_once_and_keeps_the_budget():
     r = sp.Rescheduler(sp.cycles_from_gate(GATE), len(GATE))
     assert r.request(2) and not r.request(3)
