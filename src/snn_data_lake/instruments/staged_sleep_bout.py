@@ -164,6 +164,14 @@ def run_bout(brain, stages, *, rng_seed, validate=None, wake_request=None, extra
     """Execute one bout; see the module docstring. `validate()` -> a score (higher is better) read by the
     caller with learning OFF; `wake_request()` -> bool."""
     for name, b in stages:
+        if b.get("structural_candidates") not in (
+            None,
+            0,
+        ):  # P3: no consumer exists yet, so no silent no-op
+            raise ValueError(
+                f"stage {name!r}: structural_candidates={b['structural_candidates']!r} has no consumer "
+                "(accepted only as None or 0 until a structural rewirer consumes it)"
+            )
         if name not in STAGE_NAMES or int(b.get("presentations", -1)) < 0:
             raise ValueError(f"bad stage {name!r} {b!r}; names are {STAGE_NAMES}")
     ixn = brain.brain._ixn

@@ -88,3 +88,18 @@ def test_only_teach_and_unsplit_entries_are_replay_eligible():
     ixn._replay = [([0.0], "A", k) for k in keys]
     got = [k for _, _, k in ssb._eligible_ring(ixn)]
     assert got == [None, {}, {"split": "teach"}]
+
+
+def test_a_nonzero_structural_budget_is_refused_until_a_consumer_exists():
+    """Codex panel MAJOR (P3): the field was accepted and never used."""
+    for bad in (1, 5):
+        with pytest.raises(ValueError):
+            ssb.run_bout(
+                ssb._Brain(),
+                [("nrem", {"presentations": 1, "structural_candidates": bad})],
+                rng_seed=0,
+            )
+    for ok in (None, 0):
+        ssb.run_bout(
+            ssb._Brain(), [("nrem", {"presentations": 1, "structural_candidates": ok})], rng_seed=0
+        )
