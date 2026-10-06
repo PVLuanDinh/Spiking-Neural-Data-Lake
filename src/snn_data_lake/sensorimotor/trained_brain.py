@@ -141,6 +141,9 @@ def load_brain(path):
 
 
 GENN_CHECKPOINT_FORMAT = "snn_training.GennBrain/1"
+#: Largest `steps` a checkpoint may ask for: predict() loops this many times per image, so an unbounded value
+#: is resource exhaustion at a trust boundary. The shipped trainers used 25 (the CLI default) and the self-checks 8.
+MAX_CHECKPOINT_STEPS = 1000
 
 
 def brain_from_genn_checkpoint(path):
@@ -173,8 +176,16 @@ def brain_from_genn_checkpoint(path):
         )
     except (KeyError, IndexError, TypeError, ValueError) as e:
         raise ValueError(f"{path}: malformed {GENN_CHECKPOINT_FORMAT} checkpoint ({e!r})") from e
-    if not (isinstance(steps, int) and not isinstance(steps, bool) and steps >= 1):
-        raise ValueError(f"{path}: steps must be an int >= 1, got {steps!r}")
+    if not (
+        isinstance(steps, int)
+        and not isinstance(steps, bool)
+        and 1 <= steps <= MAX_CHECKPOINT_STEPS
+    ):
+        raise ValueError(
+            f"{path}: steps must be an int in [1, {MAX_CHECKPOINT_STEPS}], got {steps!r}"
+        )
+    if not all(type(w) in (int, float) for W in (w1, w2) for row in W for w in row):
+        raise ValueError(f"{path}: every weight must be a JSON number (not a boolean or a string)")
     if not (0.0 < beta < 1.0 and math.isfinite(thr) and thr > 0.0):
         raise ValueError(f"{path}: need 0 < beta < 1 and a finite threshold > 0, got {beta}, {thr}")
     if hidden != len(w1):
@@ -258,6 +269,9 @@ def main():
         ("W1", []),
         ("steps", 0),
         ("steps", -3),
+        ("steps", 10**9),
+        ("W2", [[True, 0.0], [0.0, 1.0]]),
+        ("W1", [["0.1", 0.2, 0.3], [0.3, 0.2, 0.1]]),
         ("beta", 5.0),
         ("hidden", 3),
         ("W2", [[float("nan"), 0.0], [0.0, 1.0]]),
