@@ -548,4 +548,13 @@ Carried XOR 0.676, twin 0.853; Settled XOR 0.996, twin 0.997; the stream reads c
   are unsigned JSON: provenance checks that they are one consistent campaign, not that they are authentic (an editor of
   `stages` can equally edit D or the heads); the realistic failure, an OUT whose migrate summary is missing, still reds,
   because no legacy record lists `stages`; authenticity is the golden check's job (2.11), which compares the report's
-  digest against a trusted golden and would move on that edit, as the finding itself notes.
+  digest against a trusted golden and would move on that edit, as the finding itself notes.- **Codex closing report** (Template B, gpt-6.1-sol, frozen clone at `1b0c0d1b`, reply sha256 `ebd232d6...ec0`, archived
+  beside the panel): claims 1, 3, 4, 6 SURVIVE; 2, 5, 7 NARROWED, and their corrected wording stands here: (2) "the
+  deletion and folds preserve every observable covered by the registered golden, including the reassembled archived
+  report and Markdown digests" (report digest `ec34c68a...e1242`; the golden's fixtures are smaller than a campaign's);
+  (5) "host constraints hold for valid summaries; migration omission depends on `record.stages`"; (7) "G1(a)-(c),
+  including the deletion duties, have landed; the arc's certification and push remain conditions of the completion
+  claim". Its two new MINORs: a malformed `stages` (`{}`, `""`, `null`) bypassed or raised -> refused, `430d0c46`,
+  battery-verified only; T109's note names a battery before the record exists -> **refuted in writing:** "the arc's
+  battery, named in the closing record commit" is the protocol's required wording (never a future battery number), and
+  the closing record commit, LAST before the push, supplies it.
