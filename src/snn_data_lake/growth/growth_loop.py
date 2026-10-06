@@ -64,6 +64,7 @@ class ProblemRecord:
     spend_units: int = 0  # every unit this problem ever admitted
     spend_since_teach: int = 0  # units admitted under the CURRENT budget (a fresh budget resets it)
     spend_evals: int = 0
+    runs_this_budget: int = 0  # loop runs started under the CURRENT budget; a second one is a RETRY
     attempts: int = 0
     baseline_at_open: float = None
     n_codes: int = 0
@@ -148,6 +149,9 @@ class Ledger:
                 rec.spend_since_teach = (
                     0  # one FRESH budget per new teaching episode, no carry-over
                 )
+                rec.runs_this_budget = 0
+            elif op == "run":
+                rec.runs_this_budget += 1
             elif op == "spend":
                 rec.spend_units += int(row["units"])
                 rec.spend_since_teach += int(row["units"])
@@ -193,6 +197,9 @@ class Ledger:
 
     def record_spend(self, problem_id, units, evals):
         self._write(problem_id, "spend", units=int(units), evals=int(evals))
+
+    def record_run(self, problem_id):
+        self._write(problem_id, "run")
 
     def record_attempt(self, problem_id, solved, epochs=None):
         self._write(problem_id, "attempt", solved=bool(solved), epochs=epochs)
@@ -362,8 +369,10 @@ class GrowthLoop:
         if self.diagnosis and self.learner.diagnose() == "DATA":
             self.ledger.set_state(self.problem_id, "CONTRADICTORY")
             return self.ledger.ledger(self.problem_id)
-        if not self._may_grow(rec) and rec.spend_since_teach > 0:
-            # a retry with no fresh budget: attempts only, growth frozen (2.6 retry rule)
+        self.ledger.record_run(self.problem_id)
+        if rec.runs_this_budget > 0:
+            # a retry (a run already started under this budget, spent or not): no new teaching, so no fresh
+            # budget -- attempts only, growth frozen (2.6 retry rule; Codex cp5 #3)
             if self._attempt():  # a solve on the retry stands (Codex cp5 #2)
                 return self.ledger.ledger(self.problem_id)
             return self._paused()

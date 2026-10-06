@@ -240,6 +240,20 @@ def test_a_retry_that_solves_is_reported_solved_with_its_spend_in_the_baseline(t
     assert len(sunk) == 1 and ledger.baseline() == 45
 
 
+def test_a_retry_after_an_unresolved_run_never_grows_on_the_unspent_remainder(tmp_path):
+    # Codex cp5 #3: 9 units spent, then UNRESOLVED (remainder 43 of 52); after "sleep" the diagnosis
+    # reads CAPACITY, but with no new teaching the retry attempts once and grows nothing (2.6)
+    learner = ScriptedLearner(["CAPACITY", "CAPACITY", "UNRESOLVED"])
+    loop, ledger = _loop(tmp_path, learner)
+    first = loop.run()
+    assert first.state == "UNRESOLVED" and first.spend_units == 9
+    learner.diagnoses = ["CAPACITY"]
+    again = loop.run()
+    assert again.spend_units == 9 and again.attempts == first.attempts + 1
+    ledger.new_teaching("xor")  # control: new teaching DOES license growth again
+    assert loop.run().spend_units > 9
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 
