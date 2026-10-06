@@ -751,3 +751,22 @@ lazily (Louvain modularity and gnm only).
 |---|---|---|---|---|
 | D23 | the frozen one-shot keyed draw makes beta inert; the arrival process confounds RULE vs gnm | G7 build -> lead | sequential draw; RANDOM-SEQ added, RULE credited only if it beats both | RULED (lead, 23) |
 | D24 | unlabeled row growth outside the engine's growth path (readout, reasoning) | G7 build -> lead | out of scope by a printed rule, listed for the owner | RULED (lead, 23) |
+
+## DATED PRE-DATA AMENDMENT 2026-10-04 (c) -- IR2's twin seeds and the one NMI home (the cp3 fold; no data read)
+
+Nothing confirmatory has run. Unreviewed amendment text, stated plainly.
+
+**IR2's twin seeds (2.7's instrument reds, 2.10's seed table).** IR2 compares RANDOM against a RANDOM TWIN, and a
+twin needs its own seed stream: **13240-13247** (dev, instrument red; one twin per IR seed 13230-13237, paired in
+order). Inside G7's block 13000-13999; a grep of `specs/ src/ tests/ tools/` for 13240-13247 (with the same filter
+firing on 4242: 37 hits) finds only `instruments/unit_organization.py`'s own constant and two decimals
+(0.13241, 0.13244) in `tools/t078_attention_schema.json`, which are values, not seeds. 2.10's table gains the row:
+
+| use | seeds | status |
+|---|---|---|
+| T4 instrument red IR2: the RANDOM twin | 13240-13247 | dev (exposed) |
+
+**The NMI bar stays frozen; its computation has one home.** IR1's recovery bar is unchanged (NMI >= 0.9 on every IR
+seed). NMI is computed by `gates/growth_coverage_gate.nmi`, beside that module's `adjusted_rand` -- the tree's one
+partition-agreement home (P2, lead ruling on cp3) -- numpy-only, arithmetic normalization (scikit-learn's default),
+checked against a hand-computed value and against scikit-learn on an IR fixture; no ARI substitution.
