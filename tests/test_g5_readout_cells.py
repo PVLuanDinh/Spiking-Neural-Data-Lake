@@ -146,3 +146,25 @@ def test_beta_identity_is_exact_bytes_and_a_sub_rounding_perturbation_breaks_it(
     assert g.tensor_digest(beta.clone()) == g.tensor_digest(beta)
     assert g.tensor_digest(beta.double()) != g.tensor_digest(beta)  # dtype is part of identity
     assert g.tensor_digest(beta.reshape(4, 5)) != g.tensor_digest(beta)  # so is shape
+
+
+def test_same_rows_halts_on_a_moved_refit_floor_and_arm_table_prints_the_floor():
+    # Codex cp4 #12: every registered floor is compared, and each arm's accuracy is printed against it
+    row = {
+        "seed": 1,
+        "arm": "DELTA",
+        "widened": 0,
+        "cats_hash": "x",
+        "cols_hash": "y",
+        "live_pers": 0.9,
+        "live_acc": 0.8,
+        "floors": [(0.5, 0.9), (0.6, 0.92)],
+    }
+    g.same_rows([row, {**row, "arm": "COUPLED"}])
+    with pytest.raises(g.SameRowsHalt, match="refit floors"):
+        g.same_rows([row, {**row, "arm": "COUPLED", "floors": [(0.5, 0.9), (0.6, 0.93)]}])
+    with pytest.raises(g.SameRowsHalt, match="refit floors"):
+        g.same_rows([row, {**row, "arm": "COUPLED", "floors": [(0.5, 0.9)]}])
+    lines = []
+    g.arm_table([row, {**row, "arm": "COUPLED", "live_acc": 0.85}], log=lines.append)
+    assert any("acc - floor -0.0500" in s for s in lines)

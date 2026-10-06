@@ -385,14 +385,17 @@ def summarize(eng, rec, seed, arm):
         "live_pers": st.get("live_persistence"),
         "live_n": st.get("live_n"),
         "traj": [(int(t), int(u), float(a)) for t, u, a in eng.trajectory],
+        # the held-out slice's majority and persistence floors per refit (record 2.3; Codex cp4 #12)
+        "floors": [(float(m), float(p)) for _, m, p in eng.baselines],
         "beta_hash": None if beta is None else tensor_digest(beta),
         "units": eng.grown_units,
     }
 
 
 def same_rows(cells):
-    """Record 2.3's check, per seed across arms: identical category sequence, vocabulary schedule and
-    live persistence floor; no readout widened inside a cell. Raises SameRowsHalt."""
+    """Record 2.3's check, per seed across arms: identical category sequence, vocabulary schedule, live
+    persistence floor and every refit's majority and persistence floors (Codex cp4 #12); no readout
+    widened inside a cell. Raises SameRowsHalt."""
     by_seed = {}
     for c in cells:
         by_seed.setdefault(c["seed"], []).append(c)
@@ -408,7 +411,25 @@ def same_rows(cells):
                     raise SameRowsHalt(f"seed {seed}: {key} {c['arm']} != {ref['arm']}")
             if abs((c["live_pers"] or 0.0) - (ref["live_pers"] or 0.0)) > SAME_TOL:
                 raise SameRowsHalt(f"seed {seed}: live persistence {c['arm']} != {ref['arm']}")
+            fa, fr = c.get("floors", []), ref.get("floors", [])
+            if len(fa) != len(fr) or any(
+                abs(x - y) > SAME_TOL for a, b in zip(fa, fr) for x, y in zip(a, b)
+            ):
+                raise SameRowsHalt(f"seed {seed}: refit floors {c['arm']} != {ref['arm']}")
     return True
+
+
+def arm_table(cells, log=print):
+    """Record 2.4 / 3.4's printed context: per arm, mean live accuracy, mean live persistence floor and
+    their difference -- a contrast that only approaches the floor is read against it (Codex cp4 #12)."""
+    arms = sorted({c["arm"] for c in cells})
+    for a in arms:
+        cs = [c for c in cells if c["arm"] == a]
+        acc = sum(c["live_acc"] for c in cs) / len(cs)
+        pers = sum(c["live_pers"] for c in cs) / len(cs)
+        log(
+            f"  {a:<14} live acc {acc:.4f}  live persistence {pers:.4f}  acc - floor {acc - pers:+.4f}"
+        )
 
 
 def live_lake_stamp():
