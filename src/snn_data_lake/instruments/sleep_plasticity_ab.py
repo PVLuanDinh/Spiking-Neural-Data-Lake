@@ -241,6 +241,20 @@ def score(ixn, items):
     return [int(ixn.route_text(line) == lab) for line, lab in items]
 
 
+def margin(ixn, items):
+    """P-1 secondary (never decisive): mean drive of the correct label minus the best other, in the learner's
+    membrane units. Pure read of `_drive` (no plasticity, no rng); Codex cp2 #12."""
+    from snn_data_lake.readout.interaction_learning import text_features
+
+    out = []
+    for line, lab in items:
+        code = ixn.encode(text_features(line, ixn.n_in))
+        d = [ixn._drive(n, code) for n in ixn.neurons]
+        k = ixn.responses.index(lab)
+        out.append(d[k] - max(v for i, v in enumerate(d) if i != k))
+    return sum(out) / len(out)
+
+
 def chrono(b):
     """The K8 observables: wake chronology, the grower's wake counters and the arm's motor tick count."""
     neuro = getattr(b, "neuro", None)
@@ -464,9 +478,11 @@ def run_evaluate(seed, red=None):
     else:
         got = score(ixn, items)
     after = eval_digest(ixn)
+    mar = margin(ixn, items)
     b.close()
     return {
         "restored": got,
+        "margin": mar,
         "eval_before": before,
         "eval_after": after,
         "eval_s": time.perf_counter() - t0,
@@ -916,6 +932,25 @@ def census(read):
     return lines
 
 
+def claims_report(family, contrasts, recs):
+    """P-6 (Codex cp2 #12): the claims made through the family's ONE declared primary (PRIMARY, read here),
+    beside the tests read; plus the endpoint quantum and the secondary correct-label margin."""
+    prim = PRIMARY[family]
+    made = [n for n in prim if n in contrasts and contrasts[n].met]
+    lines = [
+        f"claims made: {len(made)} of {len(prim)} primary {list(prim)} -> {made}",
+        f"endpoint quantum E_all = 1/{len(recs[0]['restored'])}",
+        "secondary correct-label margin (mean over seeds, per arm): "
+        + str(
+            {
+                a: round(sum(r["margin"] for r in recs if r["arm"] == a) / sum(r["arm"] == a for r in recs), 4)
+                for a in sorted({r["arm"] for r in recs})
+            }
+        ),
+    ]
+    return lines
+
+
 # --------------------------------------------------------------------- K7: the turnover detector, sighted
 def run_k7(seed):
     """The A/A stable-sign schedule must read exactly 0.0 and a planted sign flip > 0 (in this process)."""
@@ -1057,7 +1092,7 @@ RECORD_KEYS = frozenset(
     (
         "family arm seed budget stores red d0 d1 weights_d1 weights_post taught ring_keys heldout_keys "
         "drawn tick stored_any att_calls k8a chrono_before chrono_after inproc restored n_a wall "
-        "eval_before eval_after eval_s live_lake_untouched"
+        "eval_before eval_after eval_s margin live_lake_untouched"
     ).split()
 )
 
@@ -1149,7 +1184,9 @@ def _main_cmd(a):
             print("DEV READING (EXPOSED seeds, never a verdict) -- table row:", res["row"])
         else:
             print("table:", res["row"], "(set", a.set + ")")
-        for line in census(res["contrasts"].values()):
+        for line in census(res["contrasts"].values()) + claims_report(
+            a.family, res["contrasts"], recs
+        ):
             print(line)
         walls = {}
         for r in recs:

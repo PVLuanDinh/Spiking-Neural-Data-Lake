@@ -197,7 +197,7 @@ def _record(arm="ON", seed=16000, family="F1"):
         "att_calls": [[1, 3], [2, 3]], "k8a": [], "stored_any": False,
         "chrono_before": {"nights": 0, "wake_ticks": 0, "arm_ticks": 0, "step": 0},
         "chrono_after": {"nights": 1, "wake_ticks": 0, "arm_ticks": 0, "step": 0},
-        "inproc": [1, 0], "restored": [1, 0], "n_a": 1, "eval_before": "e", "eval_after": "e",
+        "inproc": [1, 0], "restored": [1, 0], "n_a": 1, "eval_before": "e", "eval_after": "e", "margin": 0.5,
         "live_lake_untouched": True,
     }  # fmt: skip
 
@@ -263,3 +263,25 @@ def test_cp2_13_k5_does_not_apply_to_f3():
     a, b = _record("AT-ON", family="F3"), _record("AT-OFF", family="F3")
     a["restored"] = [0, 0]  # an unrelated restore discrepancy: P-5 says K5 is not an F3 check
     assert not m.check_records("F3", [a, b])["K5"]
+
+
+def test_cp2_12_margin_is_correct_minus_best_other_and_claims_read_primary():
+    class Ixn:
+        n_in, responses, neurons = 8, ["x", "y", "z"], [3.0, 1.0, 2.0]
+
+        def encode(self, s):
+            return s
+
+        def _drive(self, n, code):
+            return n
+
+    assert m.margin(Ixn(), [("hello world", "x"), ("hello world", "z")]) == (1.0 + -1.0) / 2  # 3-2, 2-3
+    recs = [_record("ON", s) for s in (16000, 16001)]
+    c = type("C", (), {"met": True})()
+    lines = m.claims_report("F1", {"C1": c, "C1-NI": c}, recs)
+    assert "claims made: 2 of 2" in lines[0] and "1/2" in lines[1]
+    m.PRIMARY["F1"] = ("C1", "C9")  # the declaration is CONSUMED: changing it changes the report
+    try:
+        assert "claims made: 1 of 2" in m.claims_report("F1", {"C1": c}, recs)[0]
+    finally:
+        m.PRIMARY["F1"] = ("C1", "C1-NI")
