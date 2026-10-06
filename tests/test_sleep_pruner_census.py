@@ -92,15 +92,32 @@ def test_c3_ll_sabotage_drops_the_highest_utility_units():
     assert ll.n_units == n - 1 and ll.learner.prototypes == expect and ll.utility == expect_u
 
 
-def test_scratch_home_guard_refuses_the_live_home(monkeypatch):
+def test_scratch_home_guard_refuses_the_live_home(monkeypatch, tmp_path):
+    """The shared guard (home.require_isolated_home) via a PLANTED decoy live dir: unset, equal, contained,
+    containing and a junction alias are each refused; a fresh sibling dir is accepted (the red is sighted)."""
+    import subprocess
+
+    from snn_data_lake.substrate.home import LiveHomeRefused
+
+    decoy = tmp_path / "decoy_live"
+    (decoy / "sub").mkdir(parents=True)
+    alias = tmp_path / "selfcheck_home_alias"
+    r = subprocess.run(["cmd", "/c", "mklink", "/J", str(alias), str(decoy)], capture_output=True)
+    if r.returncode != 0:
+        os.symlink(decoy, alias, target_is_directory=True)
+    ok = tmp_path / "scratch"
+    ok.mkdir()
     monkeypatch.delenv("NORD_HOME", raising=False)
-    with pytest.raises(RuntimeError):
-        spc._assert_scratch_home()
+    with pytest.raises(LiveHomeRefused):
+        spc._assert_scratch_home(live_home=decoy)
+    for bad in (decoy, decoy / "sub", alias, tmp_path):
+        monkeypatch.setenv("NORD_HOME", str(bad))
+        with pytest.raises(LiveHomeRefused):
+            spc._assert_scratch_home(live_home=decoy)
+    monkeypatch.setenv("NORD_HOME", str(ok))
+    assert spc._assert_scratch_home(live_home=decoy) == os.path.realpath(ok)
     monkeypatch.setenv("NORD_HOME", LIVE_HOME)
-    with pytest.raises(RuntimeError):
-        spc._assert_scratch_home()
-    monkeypatch.setenv("NORD_HOME", os.path.join(LIVE_HOME, "sub"))
-    with pytest.raises(RuntimeError):
+    with pytest.raises(LiveHomeRefused):
         spc._assert_scratch_home()
 
 

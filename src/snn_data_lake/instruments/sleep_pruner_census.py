@@ -567,19 +567,12 @@ def census_misses(static, seen):
 # ================================================================================================
 # 2. A/B -- arms, outcomes, executed-work counters
 # ================================================================================================
-def _assert_scratch_home():
-    """Refuse to build a Brain unless NORD_HOME is set and does not resolve to (or under) the live home."""
-    h = os.environ.get("NORD_HOME")
-    live = os.path.realpath(os.path.join(os.path.expanduser("~"), ".snn_data_lake"))
-    if not h:
-        raise RuntimeError(
-            "sleep_pruner_census: NORD_HOME unset -- a brain here would open the live lake"
-        )
-    real = os.path.realpath(h)
-    if real == live or real.startswith(live + os.sep):
-        raise RuntimeError(
-            f"sleep_pruner_census: NORD_HOME {h!r} resolves to the live home {live!r}"
-        )
+def _assert_scratch_home(live_home=None):
+    """Refuse to build a Brain unless NORD_HOME is set and is not, contains, or sits inside the live home
+    (the one shared guard, lead ruling 16; `live_home` only for a planted decoy)."""
+    from snn_data_lake.substrate.home import require_isolated_home
+
+    return require_isolated_home(live_home=live_home)
 
 
 def _teach(brain):
