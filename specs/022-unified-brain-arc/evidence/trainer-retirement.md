@@ -207,3 +207,14 @@ not-landed port (2.2); F4 two docs no longer present `spiking_lm_serve` as regis
 (a) its readout-artefact reading of T-C1 is settled by the second instrument in 2.1; (b) the char-LM deviation from
 decision 3 is recorded (2.6) and leads the owner brief (2.7); (c) the three LM flags the first fold missed and 2.1's "chance"
 wording were fixed at `08616d88`. Both folds are battery-verified only (this battery); neither was re-panelled.
+
+### 2.9 Dated note, 2026-10-06 -- the governed char-LM is NOT CLAIMED (owner decision 17b)
+Owner decision 17b (board OWNER_DECISIONS_2026-10-04.md section C, ratified in the owner's own words 2026-10-06): the
+governed char-LM is recorded as NOT CLAIMED until it is rebuilt on the 17a feedback rule and re-measured. Root
+`training/eprop_lm` is NOT governed as it stands. Reason: both root e-prop char-LM trainers form the hidden learning
+signal as `err @ wout` -- symmetric e-prop, which the owner's 17a rules weight transport. The gate's W6 report
+(`gates/eprop_transport_gate`, commit `4f13260a`) finds them at `training/eprop_lm.py:176` and
+`training/eprop_lm_alif.py:242`. This closes 2.7's first item ("govern the root e-prop char-LM, or record the
+governed-tree char-LM capability as lost"): it is recorded as not claimed, not governed. Nothing is deleted or
+converted by this note; the rebuild (fixed random feedback B, then a re-measure, retraining `models/eprop_lm.npz`) is a
+later arc and its heavy run is the lead's to schedule.
