@@ -66,7 +66,7 @@ pip install ".[train]"      # core Torch + Brian2, plus torchvision/scikit-learn
 `snn_classifier`'s 8×8 4-shape task and exported it in the core's `W[c][i]` layout (`--export-core`). It was
 RETIRED on 2026-10-02 with the other backprop trainers (owner: port-then-retire): on identical data over 8
 seeds it scored 0.714 mean test accuracy against 0.998 for the core's own LOCAL rule, so it had nothing to
-port (`specs/022-unified-brain-arc/evidence/trainer-retirement.md`). `snn-train` without `--mnist --genn` now
+port (`specs/022-unified-brain-arc/evidence/trainer-retirement.md`). `snn-train` now
 refuses. A weight file in that layout (from `snn_classifier.save_weights`, or an earlier export) still loads
 straight into the core:
 
@@ -95,7 +95,7 @@ The surrogate-gradient BPTT trainer that produced these brains (`training/mnist`
 was RETIRED on 2026-10-02 with the other backprop trainers (owner: port-then-retire). Its e-prop port was
 built and measured but NOT landed: it lost the pre-registered A/B to the BPTT trainer (test accuracy 0.942
 against 0.957 over 8 seeds at one epoch; `specs/022-unified-brain-arc/evidence/trainer-retirement.md`).
-`snn-train --mnist` without `--genn` now refuses. An existing brain file still serves with no torch:
+`snn-train --mnist` now refuses. An existing brain file still serves with no torch:
 
 ```python
 from snn_data_lake import trained_brain as tb
@@ -108,17 +108,13 @@ hidden layers, accumulate output currents, argmax; a single-layer brain reduces 
 `snn_classifier`. This is the integration point: anything in the stack that needs a trained model
 calls `trained_brain.predict`/`accuracy`, no GPU or torch at serve time.
 
-### Faster training on GeNN (optional, best-effort)
+### GeNN training (retired)
 
-`snn-train --mnist --genn` trains the same brain on GeNN's code-generated CUDA backend (often faster
-than a Python/Torch bridge for SNNs), exporting to the same `trained_brain` format. Measured 2026-10-02:
-one epoch on the full training set scored chance (test accuracy 0.0785); longer budgets are untested, so it is not
-shown to work. Needs the `[genn]` extra
-(`pip install ".[genn]"`, plus a C++ compiler + CUDA). **Caveat:** `training/mnist_genn.py` is a
-best-effort scaffold written against the ml_genn 2.x API and **not verified against a live GeNN
-install** — version-sensitive spots are flagged `# VERIFY(ml_genn):`, and GeNN's LIF dynamics only
-*approximate* the core's, so weights transfer more loosely than the Brian2/Torch path (`verify_transfer`
-reports the gap). Treat it as a starting point to iterate on your GPU, not a finished trainer.
+`snn-train --mnist --genn` (`training/mnist_genn.py`, an ml_genn EventProp trainer) was RETIRED on 2026-10-06
+(owner decision 17c). Measured 2026-10-02: one epoch on the full training set scored chance (test accuracy
+0.0785); longer budgets were never run. It refuses now; the record is
+`specs/022-unified-brain-arc/evidence/trainer-retirement.md`. The `[genn]` extra (pygenn) stays for
+`instruments/snn_mnist_stdp_genn` and `reasoning/paradigm_b_genn`.
 
 ## The AR spiking char-LM artifact carries its own provenance
 
@@ -209,7 +205,7 @@ is a poor fit for AirLLM specifically — the default backend is a deterministic
 | 8×8 readout → core weights | `snn_classifier.train` + `save_weights` (the GPU trainer was retired 2026-10-02) | nothing beyond the core |
 | MNIST brain → serve zero-dep | `trained_brain.predict` on an existing brain file (the trainer was retired 2026-10-02) | nothing to serve |
 | Train larger than VRAM | `accelerate`/DeepSpeed (the `--offload` trainer was retired 2026-10-02) | external |
-| GeNN-backend GPU training | `snn-train --mnist --genn` | `.[genn]` (pygenn+ml_genn, compiler+CUDA); best-effort scaffold |
+| GeNN-backend GPU training | the `snn-train --genn` trainer was retired 2026-10-06 | `.[genn]` (pygenn, compiler+CUDA) still serves the two GeNN instruments |
 | Reason over the brain in NL | `brain_reasoning.BrainReasoner(...).explain` | nothing (stdlib summary); `.[llm]` for a real LLM |
 | Large-LLM local inference | `local_llm/run_local.py` | `.[llm]` (airllm, torch) |
 | GPU SNN research training | `research/*` (`NORD_GPU=1`) | `.[gpu]` |
