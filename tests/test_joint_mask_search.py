@@ -86,7 +86,7 @@ def test_c26_a_judging_read_before_the_freeze_or_twice_is_refused():
     m = jms.Meter(fx)
     with pytest.raises(jms.SelectionLeak):
         m.judge(tuple([1] * fx.n))
-    m.freeze()
+    m.freeze(tuple([1] * fx.n))
     m.judge(tuple([1] * fx.n))
     with pytest.raises(jms.SelectionLeak):
         m.judge(tuple([1] * fx.n))
@@ -150,8 +150,9 @@ def test_c9_the_retention_judgment_reds_a_mask_that_drops_the_old_unit():
     """C9 through Meter.judge (the judged retention), not the fixture's own predicate."""
     fx = jms.CoverFixture()
     m = jms.Meter(fx)
-    m.freeze()
-    _, retained = m.judge(tuple([1] * (fx.n - 1) + [0]))
+    dropped = tuple([1] * (fx.n - 1) + [0])
+    m.freeze(dropped)
+    _, retained = m.judge(dropped)
     assert retained is False
 
 
@@ -161,3 +162,13 @@ def test_a_decision_on_the_wrong_seed_count_is_refused(n):
     seeds = jms.constructed_seeds()
     seeds = (seeds * 2)[:n]
     assert _decide(seeds).outcome == "REFUSED"
+
+
+def test_c26_judge_reads_only_the_frozen_winner():
+    """Codex panel MAJOR: freeze() bound nothing, so any mask could be judged once."""
+    fx = jms.CoverFixture()
+    m = jms.Meter(fx)
+    m.freeze(tuple([1] * fx.n))
+    with pytest.raises(jms.SelectionLeak):
+        m.judge(tuple([1] * (fx.n - 1) + [0]))
+    m.judge(tuple([1] * fx.n))

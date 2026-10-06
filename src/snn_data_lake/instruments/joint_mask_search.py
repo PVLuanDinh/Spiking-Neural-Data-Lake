@@ -91,6 +91,7 @@ class Meter:
         self.spent = 0
         self.frozen = False
         self.judged = 0
+        self.winner = None
 
     def evaluate(self, mask, *, feasibility=True):
         if self.budget is not None and self.spent >= self.budget:
@@ -102,12 +103,16 @@ class Meter:
     def cost(self, mask):
         return self.p.cost(tuple(mask))
 
-    def freeze(self):
+    def freeze(self, mask):
+        """Bind THE winner: `judge` will read this mask and no other."""
         self.frozen = True
+        self.winner = tuple(mask)
 
     def judge(self, mask):
         if not self.frozen:
             raise SelectionLeak("judge() read before the winner was frozen")
+        if tuple(mask) != self.winner:
+            raise SelectionLeak("judge() was asked about a mask that is not the frozen winner")
         if self.judged:
             raise SelectionLeak("judge() read twice: the untouched sets are read once")
         self.judged += 1
@@ -262,7 +267,7 @@ def run_instance(problem, seed, *, feasibility=True, budget=None, q=None):
     masks["no_prune"] = (_full(n), Meter(problem, budget=0))
     out = {}
     for arm, (mask, meter) in masks.items():
-        meter.freeze()
+        meter.freeze(mask)
         fut, ret = meter.judge(mask)
         out[arm] = ArmResult(
             arm, mask, problem.cost(mask), meter.spent, fut, ret, problem.work_per_tick(mask)
