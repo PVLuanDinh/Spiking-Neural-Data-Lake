@@ -633,6 +633,30 @@ def test_the_preflight_runs_against_the_learners_incumbent_segment(tmp_path):
     assert ledger.ledger("i").spend_evals == 32
 
 
+def test_batch_ids_are_allocated_from_the_journal_not_per_loop_instance(tmp_path):
+    # Codex panel MAJOR: batch_id restarted at 0 per loop, merging distinct columns (two I units in
+    # one batch label); allocation is monotone over the lake birth rows, across problems/restarts
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    ids = iter(range(10**6))
+
+    def source(n):
+        return [
+            GrownUnit(next(ids), (0.0,) * 4, 1.0, 12, 1 if i < n - 1 else -1, (0.0,))
+            for i in range(n)
+        ]
+
+    GrowthLoop(ScriptedLearner(["CAPACITY"], solve_after_units=9), "p", ledger, source, 9).run()
+    GrowthLoop(ScriptedLearner(["CAPACITY"], solve_after_units=9), "q", ledger, source, 9).run()
+    ledger.new_teaching("p")  # a new teaching episode, a fresh loop instance for the same problem
+    GrowthLoop(ScriptedLearner(["CAPACITY"], solve_after_units=18), "p", ledger, source, 9).run()
+    by_batch = {}
+    for r in ledger.units():
+        by_batch.setdefault(r["batch_id"], []).append(r)
+    assert len(by_batch) == len(ledger.units()) // 9  # no batch id was reused
+    for rows in by_batch.values():  # every batch is one problem with exactly one inhibitory unit
+        assert len({r["problem_id"] for r in rows}) == 1 and sum(r["sign"] < 0 for r in rows) == 1
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 

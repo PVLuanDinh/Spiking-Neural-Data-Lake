@@ -281,6 +281,11 @@ class Ledger:
         born = sum(1 for r in self.units() if r["problem_id"] == problem_id)
         return born - self.ledger(problem_id).spend_units
 
+    def next_batch_id(self):
+        """One past the highest batch id in the immortal birth rows: monotone across loop instances,
+        problems and restarts, so `labels_by(records, "batch_id")` never merges two columns."""
+        return max((r["batch_id"] for r in self.units()), default=-1) + 1
+
     def birth_records(self):
         """{unit_id: birth row} over every unit ever born (immortal, pruned included): classify_restored's journal."""
         return {r["unit_id"]: r for r in self.units()}
@@ -443,7 +448,6 @@ class GrowthLoop:
         # the admission (labels + G7's gate, `make_admission`) and the problem resolver are REQUIRED: no grown
         # unit can reach the learner without a ticket (the 2026-10-04 amendment)
         self.admission, self.resolve_problem = admission, resolve_problem
-        self._batches = 0
         self._ran = False
 
     def _may_grow(self, rec):
@@ -463,6 +467,7 @@ class GrowthLoop:
                 f"problem {self.problem_id!r}: {self.ledger.unsettled(self.problem_id)} unsettled birth row(s), none "
                 "charged (a crash between them); growth refuses until the reconciler lands"
             )
+        batch_id = self.ledger.next_batch_id()
         out = self.source(self.batch)
         # a searching source returns (units, evaluations) so the matched-search-budget controls are paid in
         # the same currency (2.6; Codex cp5 #7); a plain list evaluated nothing it can report
@@ -483,14 +488,12 @@ class GrowthLoop:
                 labels, ticket = self.admission(
                     units,
                     self.problem_id,
-                    self._batches,
+                    batch_id,
                     resolve_problem=self.resolve_problem,
                     known_unit=self.ledger.known_unit,
                 )
                 labels = list(labels)
-                self.ledger.record_units(
-                    units, labels, self.problem_id, self._batches
-                )  # write-ahead
+                self.ledger.record_units(units, labels, self.problem_id, batch_id)  # write-ahead
         except (LedgerError, ValueError):  # UnitLabelRefused is a ValueError
             self._pay_search(evals)  # a refused batch still paid its search (G7 refutation 1)
             raise
@@ -508,7 +511,6 @@ class GrowthLoop:
             raise LedgerError(
                 f"problem {self.problem_id!r}: the adapter admitted a batch without consuming its ticket"
             )
-        self._batches += 1
         return True
 
     def _mark_run(self):
