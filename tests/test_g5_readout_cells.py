@@ -217,3 +217,25 @@ def test_the_live_lake_check_runs_after_each_stage_and_survives_an_exception(mon
 
     with pytest.raises(g.LiveLakeMoved, match="raised"):
         g.run_cells((1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=boom)
+
+
+def test_a_fallback_perception_seed_is_replaced_whole_from_the_reserve(monkeypatch):
+    # Codex cp4 #9: `unified` False is an instrument failure; the whole seed block is discarded and the
+    # next reserve seed replaces it, printed beside it; with no reserve left the failure surfaces
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(g, "live_lake_stamp", lambda: ("a", "b"))
+
+    def cell(args):
+        out = _fake_cell(args)
+        out["unified"] = args[0] != 2  # seed 2 ran on fallback perception, in both stages
+        return out
+
+    lines = []
+    rec, cells, rep = g.run_cells(
+        (1, 2), ("DELTA", "BATCH"), workers=1, log=lines.append, pool=ThreadPoolExecutor, cell=cell, reserve=(9,)
+    )
+    assert sorted(rec) == [1, 9] and {c["seed"] for c in cells} == {1, 9} and len(cells) == 4
+    assert rep == [(2, 2, 9)] and any("seed 2 FAILED" in s and "replaced by 9" in s for s in lines)
+    with pytest.raises(g.InstrumentFailure, match="unified False"):
+        g.run_cells((1, 2), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell)

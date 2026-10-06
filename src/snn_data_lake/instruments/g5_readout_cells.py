@@ -493,38 +493,69 @@ def _lake_unmoved(before, stage):
         )
 
 
-def run_cells(seeds, arms, workers=4, log=print, pool=None, cell=None):
-    """Stage 1 records each seed's sequence (RECORD, the deployed wiring); stage 2 runs every arm under
-    the common vocabulary init on that sequence. The live lake's mtimes must not move: checked right
-    after EACH stage, and again on the way out of an exception (record 2.6 PA9; Codex cp4 #13).
-    `pool` / `cell` are test seams (default ProcessPoolExecutor / brain_cell)."""
+class InstrumentFailure(RuntimeError):
+    """An instrument failure (record sec. 4): `unified` False, or rows that differ from the recording. A
+    seed that fails this way is replaced WHOLE from the reserve; a result never triggers it."""
+
+
+def _run_seed(seed, arms, before, workers, pool, cell):
+    """One seed's block: RECORD, then every arm on that sequence; both stages validated (Codex cp4 #9)."""
+    with pool(max_workers=workers) as ex:
+        rec = ex.submit(cell, (seed, "RECORD", None)).result()
+        _lake_unmoved(before, "the RECORD stage")
+        if not rec["unified"]:
+            raise InstrumentFailure(f"seed {seed}: RECORD stage ran on fallback perception (unified False)")
+        cells = list(ex.map(cell, [(seed, a, rec["cats"]) for a in arms]))
+        _lake_unmoved(before, "the arm stage")
+    for c in cells:
+        if not c["unified"]:
+            raise InstrumentFailure(f"seed {seed} arm {c['arm']}: fallback perception (unified False)")
+        if c["cats_hash"] != rec["cats_hash"]:
+            raise InstrumentFailure(f"seed {seed} arm {c['arm']}: rows differ from the recording")
+    same_rows(cells)
+    return rec, cells
+
+
+def run_cells(seeds, arms, workers=4, log=print, pool=None, cell=None, reserve=()):
+    """Per seed: RECORD (the deployed wiring) records the sequence, then every arm runs under the common
+    vocabulary init on it. The live lake's mtimes must not move: checked after EACH stage and on the way
+    out of an exception (record 2.6 PA9; Codex cp4 #13). A seed whose block fails on the INSTRUMENT
+    (crash, `unified` False, same-rows halt) is discarded WHOLE and replaced by the next reserve seed,
+    printed beside it (record sec. 4's reserve rule; Codex cp4 #9); a live-lake or live-home violation is
+    a halt, never replaced. `pool` / `cell` are test seams. Returns (recorded, cells, replacements)."""
     from concurrent.futures import ProcessPoolExecutor
+
+    from snn_data_lake.substrate.home import LiveHomeRefused
 
     pool = pool or ProcessPoolExecutor
     cell = cell or brain_cell
     before = live_lake_stamp()
-    try:
-        with pool(max_workers=workers) as ex:
-            recorded = {c["seed"]: c for c in ex.map(cell, [(s, "RECORD", None) for s in seeds])}
-            _lake_unmoved(before, "the RECORD stage")
-            jobs = [(s, a, recorded[s]["cats"]) for s in seeds for a in arms]
-            cells = list(ex.map(cell, jobs))
-            _lake_unmoved(before, "the arm stage")
-    except LiveLakeMoved:
-        raise
-    except BaseException:
-        _lake_unmoved(before, "a stage that raised")  # a violation outranks the exception it hides
-        raise
-    for c in cells:
-        if c["cats_hash"] != recorded[c["seed"]]["cats_hash"]:
-            raise SameRowsHalt(f"seed {c['seed']} arm {c['arm']}: rows differ from the recording")
-    same_rows(cells)
-    for s in seeds:
-        seq = recorded[s]["cats"]
+    spare = list(reserve)
+    recorded, cells, replaced = {}, [], []
+    for seed in seeds:
+        s = seed
+        while True:
+            try:
+                rec, cs = _run_seed(s, arms, before, workers, pool, cell)
+                break
+            except (LiveLakeMoved, LiveHomeRefused):
+                raise
+            except Exception as e:
+                _lake_unmoved(before, "a stage that raised")  # a violation outranks the exception it hides
+                if not spare:
+                    raise
+                nxt = spare.pop(0)
+                log(f"  seed {s} FAILED on the instrument ({type(e).__name__}: {e}); replaced by {nxt}")
+                replaced.append((seed, s, nxt))
+                s = nxt
+        recorded[s] = rec
+        cells.extend(cs)
+    for s, rec in recorded.items():
+        seq = rec["cats"]
         f = shift_fraction(seq, circular_shift(seq))
         vac = "  VACUOUS" if f < VACUITY_FLOOR else ""
         log(f"  seed {s}: M {1 + max(seq)}  events {len(seq)}  shift f {f:.3f}{vac}")
-    return recorded, cells
+    return recorded, cells, replaced
 
 
 def contrast_cells(cells, a, b, label=""):
@@ -643,7 +674,7 @@ def main(argv=None):
         pa3()
         return
     if "--dev" in argv:  # in-brain: run only on the lead's go (board rule)
-        _, cells = run_cells(DEV_SEEDS, DEV_ARMS)
+        _, cells, _ = run_cells(DEV_SEEDS, DEV_ARMS)
         for a, b in (("DELTA", "BATCH"), ("COUPLED", "DELTA"), ("COUPLED_MARG", "DELTA")):
             met, c, x = contrast_cells(cells, a, b, "DEV ")
             print(_line(c.name, met, c, x))
