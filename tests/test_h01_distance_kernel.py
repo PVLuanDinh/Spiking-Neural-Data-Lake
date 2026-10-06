@@ -480,3 +480,23 @@ def test_cp2_14_the_mixture_starts_from_the_fitted_gaussian_and_exponential_unch
     monkeypatch.setattr(KD, "fit_model", spy)
     th = KD.fit_all(d, n, k)
     assert np.allclose(seen["mix"], np.r_[th["gauss"], th["exp"]])
+
+
+@pytest.mark.parametrize("truth", [("gauss", 30.0), ("dc_exp", 20.0), ("mix", 30.0, 60.0, 0.5)])
+def test_cp2_8_the_planted_scale_makes_the_exact_pairwise_clipped_expectation_hit_the_target(pop, truth):
+    """Codex cp2 #8 / A10: E = sum over every ordered pair of min(1, c w) = n_edges, checked against a
+    brute-force full-matrix sum, in a regime where clipping bites (40,000 of 159,600 pairs' worth)."""
+    geo = KD.Geometry.of(pop)
+    target = 40_000
+    c, expected, share = KD.solve_scale(pop, geo, truth, target)
+    d = np.sqrt(((pop.xyz_um[:, None] - pop.xyz_um[None]) ** 2).sum(-1))
+    w = KD.kernel_shape(truth, d)
+    if truth[0].startswith("dc_"):
+        w = w * (pop.out_deg[:, None] * pop.in_deg[None, :])
+    np.fill_diagonal(w, 0.0)
+    off = ~np.eye(len(d), dtype=bool)
+    brute = float(np.minimum(c * w[off], 1.0).sum())
+    assert abs(brute - target) <= 1e-6 * target and abs(expected - brute) <= 1e-6 * target
+    assert share == pytest.approx(float((c * w[off] >= 1.0).sum()) / brute) and share > 0
+    hist = KD.pair_histograms(pop, geo, KD.unit_folds(KD.seed_streams(10050)[0], N_SYN), truth=truth, n_edges=target, rng=KD.seed_streams(10050)[1])
+    assert hist.planted["expected_edges_drawn"] == pytest.approx(brute, rel=1e-9)

@@ -317,6 +317,7 @@ def _n_all(pop, geo):
 
 
 _LOGW_LO, _LOGW_HI, _LOGW_STEP = -40.0, 6.0, 1e-3
+EXPECT_RTOL = 1e-9  # A10: the planted expectation is exact to this, not the bucket approximation
 
 
 def _weight_buckets(pop, geo, truth):
@@ -359,8 +360,35 @@ def solve_scale(pop, geo, truth, n_edges):
     for _ in range(200):
         mid = 0.5 * (lo + hi)
         lo, hi = (mid, hi) if expected(mid) < n_edges else (lo, mid)
-    geo.cache[key] = (hi, expected(hi))
+    c = _refine_exact(pop, truth, hi, n_edges)  # the buckets only start it: they clip per bucket, not per pair
+    geo.cache[key] = (c, *_exact_pass(pop, truth, c)[::2])
     return geo.cache[key]
+
+
+def _exact_pass(pop, truth, c):
+    """The actual pairwise clipped expectation at scale c: (E = sum min(1, c w), slope dE/dc, clipped share of E)."""
+    e_sum = slope = n_clip = 0.0
+    for s, e in _chunks(len(pop.xyz_um)):
+        d, mask, rows = _distances(pop.xyz_um, s, e)
+        w = kernel_shape(truth, d)
+        if _is_dc(truth):
+            w = w * (pop.out_deg[rows][:, None] * pop.in_deg[None, :])
+        w = w[mask]
+        raw = c * w
+        e_sum += float(np.minimum(raw, 1.0).sum())
+        slope += float(w[raw < 1.0].sum())
+        n_clip += float((raw >= 1.0).sum())
+    return e_sum, slope, n_clip / e_sum
+
+
+def _refine_exact(pop, truth, c, n_edges):
+    """Newton on the concave piecewise-linear E(c): monotone from below, finite."""
+    for _ in range(30):
+        e_sum, slope, _ = _exact_pass(pop, truth, c)
+        if abs(e_sum - n_edges) <= EXPECT_RTOL * n_edges:
+            return c
+        c += (n_edges - e_sum) / slope
+    raise ValueError(f"truth {truth!r}: the exact expected edge count did not reach {n_edges}")
 
 
 # ---- the histograms: one pass over all ordered pairs -------------------------------------------
@@ -385,8 +413,9 @@ def pair_histograms(pop, geo, fold, truth=None, n_edges=None, rng=None, edges=No
     ki = np.zeros_like(ni)
     planted = {}
     if truth is not None:
-        c, expected = solve_scale(pop, geo, truth, n_edges)
-        planted = {"truth": list(truth), "scale": c, "expected_edges": expected, "clipped_pairs": 0}
+        c, expected, share = solve_scale(pop, geo, truth, n_edges)
+        planted = {"truth": list(truth), "scale": c, "expected_edges": expected, "clipped_share_of_edges": share,
+                   "clipped_pairs": 0, "expected_edges_drawn": 0.0}
     for s, e in _chunks(len(xyz)):
         d, mask, rows = _distances(xyz, s, e)
         b = np.minimum((d / BIN_UM).astype(np.int64), nb - 1)
@@ -401,6 +430,7 @@ def pair_histograms(pop, geo, fold, truth=None, n_edges=None, rng=None, edges=No
                 w = w * (pop.out_deg[rows][:, None] * pop.in_deg[None, :])
             raw = c * w
             planted["clipped_pairs"] += int((raw[mask] > 1.0).sum())
+            planted["expected_edges_drawn"] += float(np.minimum(raw[mask], 1.0).sum())  # independent of the solver
             hit = mask & (rng.random(d.shape) < np.minimum(raw, 1.0))
             k += np.bincount(code[hit], minlength=k.size)
             ki += np.bincount(code_i[hit & both_in], minlength=ki.size)
