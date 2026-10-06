@@ -223,6 +223,11 @@ class AdmissionTicket:
         self.ids = frozenset(self._records)
         self._consumed = False
 
+    @property
+    def consumed(self):
+        """True once the row-append point has spent this ticket (the loop checks it after an admit)."""
+        return self._consumed
+
     def consume(self, rows):
         rows = list(rows)
         if self._consumed:

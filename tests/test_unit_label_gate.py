@@ -557,3 +557,13 @@ def test_a_json_replayed_list_position_is_not_a_tampered_label():
     moved = _with(born, position=[x + 1.0 for x in born["position"]])  # a real change still reds
     with pytest.raises(G.UnitLabelRefused, match="tampered"):
         G.classify_restored([moved], {born["unit_id"]: dict(born)})
+
+
+def test_ticket_consumed_is_read_only_and_flips_on_consume():
+    u = _good(i=0)
+    ticket = G.require_admissible([u], resolve_problem=_resolve, known_unit=lambda x: False)
+    assert ticket.consumed is False
+    ticket.consume([u])
+    assert ticket.consumed is True
+    with pytest.raises(AttributeError):
+        ticket.consumed = False
