@@ -570,6 +570,37 @@ def contrast_cells(cells, a, b, label=""):
     return reading(f"{label}{a} - {b}", diffs)
 
 
+class ReachHalt(SameRowsHalt):
+    """B-R2 or B-R4 failed: no B-R1 verdict may be read (amendment 2026-10-06, point 3)."""
+
+
+COUPLED_ARMS = ("COUPLED", "COUPLED0", "COUPLED_MARG", "COUPLED_SHUF")
+
+
+def b_reach_gate(cells):
+    """B-R2 (COUPLED0 == DELTA: live accuracy and beta bytes, every seed) and B-R4 (every coupled arm leaves
+    beta and the refit trajectory identical to DELTA's) -- evaluated BEFORE B-R1 is read. Raises ReachHalt."""
+    by = {(c["seed"], c["arm"]): c for c in cells}
+    for s in sorted({c["seed"] for c in cells}):
+        d, z = by[(s, "DELTA")], by.get((s, "COUPLED0"))
+        if z is None or z["live_acc"] != d["live_acc"] or z["beta_hash"] != d["beta_hash"]:
+            raise ReachHalt(f"seed {s}: B-R2 -- COUPLED0 != DELTA; no B-R1 verdict is read")
+        for a in COUPLED_ARMS:
+            c = by.get((s, a))
+            if c is not None and (c["beta_hash"] != d["beta_hash"] or c["traj"] != d["traj"]):
+                raise ReachHalt(f"seed {s}: B-R4 -- {a} moved beta or the refits; no B-R1 verdict is read")
+    return True
+
+
+def read_b_r1(cells, label=""):
+    """B-R1 = contrast(COUPLED - DELTA) MET, read only after the reach gate; a significantly NEGATIVE
+    contrast reads HARMFUL, not null (amendment 2026-10-06, point 1). Returns (met, line)."""
+    b_reach_gate(cells)
+    met, c, x = contrast_cells(cells, "COUPLED", "DELTA", label)
+    harm = (not met) and (not c.degenerate) and c.t < -T_BAR
+    return met, _line(c.name, met, c, x) + ("  HARMFUL" if harm else "")
+
+
 # --------------------------------------------------------------------------------------------------
 # the brain-free reds of the cell machinery (record 2.6: PA3, PA4, PA8, PA10)
 # --------------------------------------------------------------------------------------------------
@@ -675,7 +706,8 @@ def main(argv=None):
         return
     if "--dev" in argv:  # in-brain: run only on the lead's go (board rule)
         _, cells, _ = run_cells(DEV_SEEDS, DEV_ARMS)
-        for a, b in (("DELTA", "BATCH"), ("COUPLED", "DELTA"), ("COUPLED_MARG", "DELTA")):
+        print(read_b_r1(cells, "DEV ")[1])  # gate first: B-R2 / B-R4 halt before any B-R1 line
+        for a, b in (("DELTA", "BATCH"), ("COUPLED_MARG", "DELTA")):
             met, c, x = contrast_cells(cells, a, b, "DEV ")
             print(_line(c.name, met, c, x))
         return

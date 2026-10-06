@@ -239,3 +239,31 @@ def test_a_fallback_perception_seed_is_replaced_whole_from_the_reserve(monkeypat
     assert rep == [(2, 2, 9)] and any("seed 2 FAILED" in s and "replaced by 9" in s for s in lines)
     with pytest.raises(g.InstrumentFailure, match="unified False"):
         g.run_cells((1, 2), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell)
+
+
+def _b_cells(coupled_accs, z_acc=0.5, z_beta="b", c_traj=()):
+    out = []
+    for i, ca in enumerate(coupled_accs):
+        base = {"seed": i, "beta_hash": "b", "traj": [(1, 1, 0.5)], "live_acc": 0.5}
+        out += [
+            {**base, "arm": "DELTA"},
+            {**base, "arm": "COUPLED0", "live_acc": z_acc, "beta_hash": z_beta},
+            {**base, "arm": "COUPLED", "live_acc": ca, "traj": list(c_traj) or base["traj"]},
+        ]
+    return out
+
+
+def test_reach_gate_halts_before_b_r1_and_a_significant_negative_reads_harmful():
+    # amendment 2026-10-06 points 1 and 3
+    neg = [-0.05, -0.04, -0.06, -0.05, -0.04, -0.07, -0.05, -0.06]
+    met, line = g.read_b_r1(_b_cells([0.5 + d for d in neg]))
+    assert not met and "HARMFUL" in line and "NOT MET" in line
+    pos = [0.05, 0.04, 0.06, 0.05, 0.04, 0.07, 0.05, 0.06]
+    met, line = g.read_b_r1(_b_cells([0.5 + d for d in pos]))
+    assert met and "HARMFUL" not in line
+    null = [0.01, -0.01, 0.01, -0.01, 0.01, -0.01, 0.01, -0.01]
+    assert "HARMFUL" not in g.read_b_r1(_b_cells([0.5 + d for d in null]))[1]
+    with pytest.raises(g.ReachHalt, match="B-R2"):  # COUPLED0 != DELTA: no verdict at all
+        g.read_b_r1(_b_cells([0.6] * 8, z_acc=0.51))
+    with pytest.raises(g.ReachHalt, match="B-R4"):  # a coupled arm moved the refit trajectory
+        g.read_b_r1(_b_cells([0.6] * 8, c_traj=[(1, 1, 0.9)]))
