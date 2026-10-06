@@ -940,7 +940,9 @@ def claims_report(family, contrasts, recs):
     prim = PRIMARY[family]
     made = [n for n in prim if n in contrasts and contrasts[n].met]
     lines = [
-        f"claims made: {len(made)} of {len(prim)} primary {list(prim)} -> {made}",
+        f"primary met: {len(made)} of {len(prim)} {list(prim)} -> {made}; claim "
+        + ("STANDS" if len(made) == len(prim) else "NOT MADE")
+        + " (a family claims only through its whole primary)",
         f"endpoint quantum E_all = 1/{len(recs[0]['restored'])}",
         "secondary correct-label margin (mean over seeds, per arm): "
         + str(

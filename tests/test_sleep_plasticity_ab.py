@@ -282,9 +282,11 @@ def test_cp2_12_margin_is_correct_minus_best_other_and_claims_read_primary():
     recs = [_record("ON", s) for s in (16000, 16001)]
     c = type("C", (), {"met": True})()
     lines = m.claims_report("F1", {"C1": c, "C1-NI": c}, recs)
-    assert "claims made: 2 of 2" in lines[0] and "1/2" in lines[1]
+    assert "met: 2 of 2" in lines[0] and "STANDS" in lines[0] and "1/2" in lines[1]
+    n = type("N", (), {"met": False})()  # F1 dev reading: C1 NOT MET, C1-NI MET -> no claim
+    assert "NOT MADE" in m.claims_report("F1", {"C1": n, "C1-NI": c}, recs)[0]
     m.PRIMARY["F1"] = ("C1", "C9")  # the declaration is CONSUMED: changing it changes the report
     try:
-        assert "claims made: 1 of 2" in m.claims_report("F1", {"C1": c}, recs)[0]
+        assert "met: 1 of 2" in m.claims_report("F1", {"C1": c}, recs)[0]
     finally:
         m.PRIMARY["F1"] = ("C1", "C1-NI")
