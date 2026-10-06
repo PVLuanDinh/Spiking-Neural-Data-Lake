@@ -409,9 +409,13 @@ def assert_not_live_home(path, live_home=None):
     junctions on Windows) and compared case-insensitively, for equality AND containment in either
     direction. Two different drives cannot contain each other (`commonpath` raises there)."""
     if path is None or str(path) == "":
-        raise LiveHomeRefused("home refused (unset): an empty home falls back to the default, which is the live lake")
+        raise LiveHomeRefused(
+            "home refused (unset): an empty home falls back to the default, which is the live lake"
+        )
     p = os.path.realpath(os.path.abspath(str(path)), strict=True)
-    live = os.path.realpath(os.path.abspath(str(live_home if live_home is not None else _default_live_home())))
+    live = os.path.realpath(
+        os.path.abspath(str(live_home if live_home is not None else _default_live_home()))
+    )
     a, b = os.path.normcase(p), os.path.normcase(live)
     if a == b:
         raise LiveHomeRefused(f"home refused (equal): {p} is the live home {live}")
@@ -449,7 +453,9 @@ def throwaway_home(live_home=None, parent=None):
     # best-effort cleanup: a brain can still hold a lake handle in the temp home when the
     # check returns, and on Windows that makes rmdir raise -- which would turn a passed
     # self-check into exit 1 (measured on engine.brain)
-    tmp = tempfile.TemporaryDirectory(prefix="selfcheck_home_", dir=parent, ignore_cleanup_errors=True)
+    tmp = tempfile.TemporaryDirectory(
+        prefix="selfcheck_home_", dir=parent, ignore_cleanup_errors=True
+    )
     try:
         resolved = assert_not_live_home(tmp.name, live_home=live_home)
     except BaseException:

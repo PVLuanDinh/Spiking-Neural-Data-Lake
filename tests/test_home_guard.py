@@ -18,7 +18,9 @@ def _alias(link, target):
     """A directory alias the way an attacker-by-accident would make one: a junction on Windows
     (no admin needed), a symlink elsewhere."""
     if sys.platform == "win32":
-        r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)], capture_output=True)
+        r = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(link), str(target)], capture_output=True
+        )
         assert r.returncode == 0, r.stderr
     else:
         os.symlink(target, link, target_is_directory=True)
@@ -70,7 +72,9 @@ def test_a_fresh_throwaway_home_is_accepted_and_resolved(decoy):
     with H.throwaway_home(live_home=decoy) as d:
         assert os.environ["NORD_HOME"] == d
         assert os.path.normcase(d) == os.path.normcase(os.path.realpath(d))
-        assert H.require_isolated_home(live_home=decoy) == H.assert_not_live_home(d, live_home=decoy)
+        assert H.require_isolated_home(live_home=decoy) == H.assert_not_live_home(
+            d, live_home=decoy
+        )
 
 
 def test_throwaway_home_honours_its_parent(tmp_path, decoy):
@@ -89,4 +93,6 @@ def test_a_home_on_another_drive_is_not_contained(tmp_path):
     other = "D:\\" if here != "D:" else "C:\\"
     if not os.path.isdir(other):
         pytest.skip(f"no {other} on this host")
-    assert H.assert_not_live_home(tmp_path, live_home=os.path.join(other, "nowhere", ".snn_data_lake"))
+    assert H.assert_not_live_home(
+        tmp_path, live_home=os.path.join(other, "nowhere", ".snn_data_lake")
+    )
