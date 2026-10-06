@@ -837,3 +837,6 @@ order: birth rows, run row, spend row, then the learner's admit). This is the sa
 deliberately NOT moved ahead of the birth rows, because a refusal inside `record_units` (a repeated id) must leave no run row (2.6, amendment
 (b)). Recovery is a ledger/journal reconciliation, not a rule: the next fold reads birth rows with no spend as an unsettled batch, to be
 reported, never silently re-derived. No reconciliation code exists yet; the window is disclosed, not closed.
+
+**OPEN ITEM (carried, 2026-10-06, agreed with G7):** a reconciler for unsettled batches (birth rows with no spend row, amendment (d)) is owed by an
+arc that wires the loop live (G9's engine); until then the window is stated, not closed. No task of this row is DONE while this item is open.
