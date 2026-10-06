@@ -160,7 +160,10 @@ def brain_from_genn_checkpoint(path):
     with open(path, encoding="utf-8") as f:
         try:
             c = json.load(f)
-        except ValueError as e:  # JSONDecodeError carries no path
+        except (
+            ValueError,
+            RecursionError,
+        ) as e:  # JSONDecodeError carries no path; deep nesting recurses
             raise ValueError(f"{path}: not JSON ({e})") from e
     if not isinstance(c, dict) or c.get("format") != GENN_CHECKPOINT_FORMAT:
         raise ValueError(f"{path}: not a {GENN_CHECKPOINT_FORMAT} checkpoint")
@@ -312,6 +315,15 @@ def main():
         genn_ok = False
     except ValueError as e:
         genn_ok = genn_ok and cp in str(e)  # the error names the checkpoint
+    with open(cp, "w", encoding="utf-8") as f:
+        f.write(
+            "[" * 100000 + "]" * 100000
+        )  # nesting deep enough to exhaust the parser's recursion
+    try:
+        brain_from_genn_checkpoint(cp)
+        genn_ok = False
+    except ValueError as e:
+        genn_ok = genn_ok and cp in str(e)
     with open(cp, "w", encoding="utf-8") as f:
         json.dump([1], f)
     for fn in (brain_from_genn_checkpoint, load_brain):
