@@ -550,3 +550,15 @@ def test_cp2_9_every_registered_planted_truth_runs_through_the_synthetic_pipelin
         assert p["expected_edges_drawn"] == pytest.approx(EDGES_SYN, rel=1e-6), row.name
         assert abs(p["edges"] - EDGES_SYN) < 6 * math.sqrt(EDGES_SYN), row.name
         assert "clipped_share_of_edges" in p and np.isfinite(u["neuron"]["gauss-flat"]), row.name
+
+
+def test_cp2_r4_a_stopped_record_with_a_foreign_plan_authorizes_nothing_on_production(tmp_path, monkeypatch):
+    """G7 R4: the NOT_READ branch reads no edge, but it must still describe the authorized plan."""
+    base = _population()
+    layer = base.layer.copy()
+    layer[(KD.region_blocks(base.xyz_um) == 0) & (layer == 6)] = 5
+    path, pin = _write_artifact(tmp_path / "holed.npz", KD.Population(xyz_um=base.xyz_um, layer=layer, out_deg=base.out_deg, in_deg=base.in_deg))
+    rec = KD.run_planted_stage(KD.load_population(path, pin=pin), plan=_plan(), n_edges=EDGES_SYN)
+    monkeypatch.setattr(KD, "pinned_artifact", lambda: pin)
+    with pytest.raises(KD.ExposureRefused, match="registered plan"):
+        KD.score_h01(path, rec, pin=pin)
