@@ -253,3 +253,78 @@ def test_admit_rows_refuses_a_planted_unlabeled_row():
         admit_rows((), units, stripped, ticket)
     with pytest.raises(Exception, match="layer"):  # and no ticket exists for an unlabeled batch at all
         require_admissible(stripped, resolve_problem=lambda p: True, known_unit=lambda u: False)
+
+
+# ---- COL's wiring (G7's amendment (h)): the causal column evaluation; gamma = 0 IS BATCH9 ----
+
+
+def _column(k=3, thresholds=(1.0, 1.0, 1.0, 1.0)):
+    """k E units (sign +1) and one I unit (sign -1); unit j reads frozen-code synapse j with weight 2.0."""
+    units = [
+        GrownUnit(j, tuple(2.0 if i == j else 0.0 for i in range(52)), thresholds[j], 12, 1, (0.0,))
+        for j in range(k)
+    ]
+    units.append(GrownUnit(k, tuple(2.0 if i == k else 0.0 for i in range(52)), thresholds[k], 12, -1, (0.0,)))
+    return units
+
+
+def _steps(*steps):
+    """The frozen code's integer spike ranks: synapse j fires at step steps[j] (others never, rank 99)."""
+    return tuple(list(steps) + [99] * (52 - len(steps)))
+
+
+def test_column_with_gamma_zero_is_batch9_byte_identically():
+    from snn_data_lake.growth.grown_code import column_latencies
+
+    units = _column()
+    for ranks in (_steps(1, 2, 3, 2), _steps(5, 1, 7, 1), _steps(99, 99, 99, 99)):
+        assert column_latencies(units, ranks, TAU, 0.0) == {
+            u.unit_id: latency(u, ranks, TAU) for u in units
+        }
+
+
+def test_the_coupling_is_live_in_both_directions():
+    from snn_data_lake.growth.grown_code import column_latencies
+
+    # I->E: the I unit spikes at step 2; the E units' drive at step 10 (2*psp(1) = 1.76) sits just over their
+    # threshold 1.7, and the inhibition (gamma*theta*psp(8), about 0.19) takes it under: E never spikes
+    units = _column(thresholds=(1.7, 1.7, 1.7, 1.0))
+    ranks = _steps(9, 9, 9, 1)
+    plain = column_latencies(units, ranks, TAU, 0.0)
+    coupled = column_latencies(units, ranks, TAU, 1 / 3)
+    assert plain[3] == coupled[3] == 2  # the I unit's own latency is unchanged (no E has spiked before it)
+    assert all(plain[e] == 10 for e in (0, 1, 2)) and all(coupled[e] != 10 for e in (0, 1, 2))
+    # E->I: E units spike at step 1; the I unit (threshold 1.9, drive 2*psp(6) = 0.95 at step 7) is lifted by
+    # gamma*theta_I*sum psp(t - 1)
+    units = _column(thresholds=(1.0, 1.0, 1.0, 1.9))
+    ranks = _steps(1, 1, 1, 7)
+    plain = column_latencies(units, ranks, TAU, 0.0)
+    coupled = column_latencies(units, ranks, TAU, 1 / 3)
+    assert plain[3] is None or coupled[3] < plain[3]
+    assert coupled[3] is not None
+
+
+def test_the_evaluation_is_causal_a_later_spike_never_changes_an_earlier_latency():
+    from snn_data_lake.growth.grown_code import column_latencies
+
+    units = _column()
+    base = column_latencies(units, _steps(1, 2, 3, 2), TAU, 1 / 3)
+    # delay the LAST-spiking unit's afferent: units that spiked strictly earlier keep their latencies
+    moved = column_latencies(units, _steps(1, 2, 8, 2), TAU, 1 / 3)
+    last = max((u for u in base if base[u] is not None), key=lambda u: base[u])
+    earlier = {uid: t for uid, t in base.items() if t is not None and t < base[last]}
+    assert earlier  # the fixture must have earlier spikes for this to be a test
+    assert all(moved[uid] == t for uid, t in earlier.items())
+
+
+def test_a_column_needs_one_i_unit_and_one_window_and_silenced_units_never_spike():
+    from snn_data_lake.growth.grown_code import column_latencies
+
+    units = _column()
+    with pytest.raises(ValueError, match="exactly one"):
+        column_latencies(units[:3], _steps(1, 1, 1), TAU, 0.1)
+    odd = units[:3] + [GrownUnit(3, units[3].w_in, 1.0, 9, -1, (0.0,))]
+    with pytest.raises(ValueError, match="window"):
+        column_latencies(odd, _steps(1, 1, 1, 1), TAU, 0.1)
+    silent = units[:2] + [units[2].silenced(), units[3]]
+    assert column_latencies(silent, _steps(1, 1, 1, 1), TAU, 0.1)[2] is None

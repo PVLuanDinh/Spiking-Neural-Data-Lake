@@ -8,6 +8,7 @@ contribution); each label neuron reads it as PSP(t_post_g - t_j). The 52 ranks a
 
 Contract, all pure functions over immutable units (no RNG, no state carried between stimuli):
 - `latency(unit, ranks, tau)` -- a capacity unit's latency is a function of (the frozen code, its parameters);
+- `column_latencies(units, ranks, tau, gamma)` -- COL's causal E/I coupling (G7's amendment (h)); gamma = 0 is BATCH9;
 - `segment_psp(units, ranks, tau, t_post_g)` -- the segment in unit_id order, never insertion order;
 - `grown_version(units)` -- crc32 over every unit's parameters in unit_id order, active flag included, so it
   changes on every admission, silencing or output-weight change;
@@ -54,13 +55,46 @@ def _psp(dt, tau):
     return math.exp(-dt / tau) if dt > 0 else 0.0
 
 
+def _drive(unit, ranks, tau, t):
+    """The unit's PSP-weighted drive from the frozen code at step t (one expression for latency and the column)."""
+    return sum(w * _psp(t - r, tau) for w, r in zip(unit.w_in, ranks) if w != 0.0)
+
+
 def latency(unit, ranks, tau):
     """The unit's first-spike step: the first t in 1..window where the PSP-weighted frozen input reaches threshold."""
     for t in range(1, unit.window + 1):
-        v = sum(w * _psp(t - r, tau) for w, r in zip(unit.w_in, ranks) if w != 0.0)
-        if v >= unit.threshold:
+        if _drive(unit, ranks, tau, t) >= unit.threshold:
             return t
     return None
+
+
+def column_latencies(units, ranks, tau, gamma):
+    """COL's wiring (G7's dated amendment (h)): one batch of k E units (sign +1) and exactly one I unit (sign -1),
+    evaluated causally step by step, every unit spiking at most once, EARLIER steps' spikes only. An E unit's
+    drive is its frozen-code drive minus gamma*theta_e*psp(t - t_I) once the I unit has spiked (I->E); the I
+    unit's gains gamma*theta_I*psp(t - t_e) per spiked E unit (E->I). gamma is ONE fixed constant (never learned);
+    gamma = 0 is BATCH9 and reproduces `latency` byte-identically. A silenced unit never spikes. All units share
+    one window. Returns {unit_id: latency or None}."""
+    inhibitory = [u for u in units if u.sign < 0]
+    if len(inhibitory) != 1:
+        raise ValueError(f"a column has exactly one inhibitory unit, got {len(inhibitory)}")
+    if len({u.window for u in units}) != 1:
+        raise ValueError("a column shares one window")
+    inh, spiked = inhibitory[0], {}
+    for t in range(1, inh.window + 1):
+        new = {}
+        for u in units:
+            if u.unit_id in spiked or not u.active:
+                continue
+            v = _drive(u, ranks, tau, t)
+            if u is inh:
+                v += gamma * u.threshold * sum(_psp(t - te, tau) for e, te in spiked.items() if e != u.unit_id)
+            elif inh.unit_id in spiked:
+                v -= gamma * u.threshold * _psp(t - spiked[inh.unit_id], tau)
+            if v >= u.threshold:
+                new[u.unit_id] = t
+        spiked.update(new)  # spikes of step t act from step t + 1 (psp(0) = 0): the evaluation is causal
+    return {u.unit_id: spiked.get(u.unit_id) for u in units}
 
 
 def segment_psp(units, ranks, tau, t_post_g):
