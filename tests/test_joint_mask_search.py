@@ -35,7 +35,7 @@ def test_mask_digest_is_order_invariant_and_flips_on_one_kept_bit():
 
 def test_budgets_are_equal_and_every_evaluation_is_charged():
     fx = jms.CoverFixture(k=8, dup=4)
-    res = jms.run_instance(fx, 3, budget=120, q=0.3)
+    res = jms.run_instance(fx, jms.RED_SEEDS[3], budget=120, q=0.3)
     assert res["SA"].evaluations == res["random"].evaluations == res["_B"] == 120
     m = jms.Meter(fx, budget=2)
     m.evaluate((0,) * fx.n)  # an infeasible proposal still costs one evaluation
@@ -54,16 +54,16 @@ def test_sa_refuses_a_budget_below_four():
 
 def test_c7_disabled_feasibility_lets_an_unsolving_winner_through_and_the_judge_reds():
     fx = jms.CoverFixture(k=8, dup=4)
-    bad = jms.run_instance(fx, 0, feasibility=False, budget=200, q=0.3)
+    bad = jms.run_instance(fx, jms.RED_SEEDS[0], feasibility=False, budget=200, q=0.3)
     assert not bad["SA"].future_ok
-    good = jms.run_instance(fx, 0, budget=200, q=0.3)
+    good = jms.run_instance(fx, jms.RED_SEEDS[0], budget=200, q=0.3)
     assert good["SA"].future_ok and good["SA"].retention_ok
 
 
 def test_c8_sa_beats_random_on_the_planted_fixture():
     fx = jms.CoverFixture(k=8, dup=4)
     q = (fx.k + 1) / float(fx.n)
-    runs = [jms.run_instance(fx, s, budget=200, q=q) for s in range(8)]
+    runs = [jms.run_instance(fx, s, budget=200, q=q) for s in jms.RED_SEEDS]
     assert all(r["SA"].cost == fx.minimum() for r in runs)
     assert jms._sup("C8", [r["random"].cost - r["SA"].cost for r in runs]).met
 

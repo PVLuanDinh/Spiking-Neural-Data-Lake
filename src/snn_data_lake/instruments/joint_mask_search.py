@@ -35,6 +35,16 @@ from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 #   ("No simulated annealing exists in the tree", PLAN; `grep anneal` hits only exploration schedules in
 #   engine/autonomous_loop.py and faculties/developmental_envelope.py). Sites read.
 
+RED_SEEDS = (
+    12131,
+    12132,
+    12133,
+    12134,
+    12135,
+    12136,
+    12137,
+    12138,
+)  # 2.12: (b)'s constructed-red set
 COMPETITORS = ("incumbent", "greedy", "random", "SA")
 
 
@@ -428,7 +438,7 @@ def main():
     # minimum's kept fraction) -- the deciding run's B is greedy's count and q greedy's kept fraction (A13)
     fx = CoverFixture(k=8, dup=4)
     q_min = (fx.k + 1) / float(fx.n)
-    runs = [run_instance(fx, s, budget=200, q=q_min) for s in range(8)]
+    runs = [run_instance(fx, RED_SEEDS[0] + s, budget=200, q=q_min) for s in range(8)]
     B = runs[0]["_B"]
     assert all(r["SA"].evaluations == B == r["random"].evaluations for r in runs), "equal budgets"
     assert all(r["SA"].cost == fx.minimum() for r in runs), ("C8", [r["SA"].cost for r in runs])
@@ -439,7 +449,7 @@ def main():
     )
     res = runs[0]
 
-    bad = run_instance(fx, 0, feasibility=False)
+    bad = run_instance(fx, RED_SEEDS[0], feasibility=False)
     assert not all(r.future_ok for a, r in bad.items() if a not in ("_B", "no_prune")), (
         "C7: judge must red"
     )
