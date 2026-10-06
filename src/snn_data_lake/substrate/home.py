@@ -400,6 +400,31 @@ def _default_live_home():
     return os.path.join(os.path.expanduser("~"), ".snn_data_lake")
 
 
+# distinct-from: gates/safety_envelope.py::normalize -- that strips the package-path prefix and flips
+#   separators for envelope-file matching; this strips a Windows DOS-device namespace prefix so two
+#   spellings of one real file compare equal. Site read.
+# distinct-from: faculties/recursive_tom.py, growth/neurogenesis_engine.py -- prose keyword hits only.
+def _strip_namespace(path):
+    """Drop a Windows extended prefix (backslash-backslash-question-backslash, its forward-slash
+    spelling, or the dot device) and turn the UNC form into an ordinary UNC name. The extended
+    spelling names the same file, but `commonpath` reads it as a different drive (Codex int1)."""
+    s = str(path)
+    if s[:4].replace("/", "\\") in ("\\\\?\\", "\\\\.\\"):
+        s = s[4:]
+        if s[:4].upper() in ("UNC\\", "UNC/"):
+            s = "\\\\" + s[4:]
+    return s
+
+
+# distinct-from: gates/safety_envelope.py::normalize -- see _strip_namespace.
+def _resolve(path, strict=False):
+    """The comparison form of a path: prefix stripped, resolved, prefix stripped again (a resolved
+    junction can come back extended)."""
+    return _strip_namespace(
+        os.path.realpath(os.path.abspath(_strip_namespace(path)), strict=strict)
+    )
+
+
 def assert_not_live_home(path, live_home=None):
     """THE shared live-home guard (specs/022 T102 R1, lead ruling 16): return `path` RESOLVED, or
     raise LiveHomeRefused. Every row's harness adopts this one; none writes its own (P2).
@@ -412,10 +437,8 @@ def assert_not_live_home(path, live_home=None):
         raise LiveHomeRefused(
             "home refused (unset): an empty home falls back to the default, which is the live lake"
         )
-    p = os.path.realpath(os.path.abspath(str(path)), strict=True)
-    live = os.path.realpath(
-        os.path.abspath(str(live_home if live_home is not None else _default_live_home()))
-    )
+    p = _resolve(path, strict=True)
+    live = _resolve(live_home if live_home is not None else _default_live_home())
     a, b = os.path.normcase(p), os.path.normcase(live)
     if a == b:
         raise LiveHomeRefused(f"home refused (equal): {p} is the live home {live}")

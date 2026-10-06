@@ -96,3 +96,33 @@ def test_a_home_on_another_drive_is_not_contained(tmp_path):
     assert H.assert_not_live_home(
         tmp_path, live_home=os.path.join(other, "nowhere", ".snn_data_lake")
     )
+
+
+@pytest.mark.parametrize("prefix", ["\\\\?\\", "//?/", "\\\\.\\"])
+def test_extended_windows_spellings_cannot_bypass_the_guard(tmp_path, prefix):
+    # Codex int1 BLOCKER (home.py:415): the extended spelling read as a different drive from the
+    # ordinary one, so equality and containment were skipped. Normalised on BOTH sides.
+    if sys.platform != "win32":
+        pytest.skip("DOS device namespace spellings are Windows-only")
+    live = tmp_path / "live"
+    sub = live / "sub"
+    sub.mkdir(parents=True)
+    ext = lambda p: prefix + str(p)  # noqa: E731
+    with pytest.raises(H.LiveHomeRefused, match="equal"):
+        H.assert_not_live_home(ext(live), live_home=str(live))
+    with pytest.raises(H.LiveHomeRefused, match="contained"):
+        H.assert_not_live_home(ext(sub), live_home=str(live))
+    with pytest.raises(H.LiveHomeRefused, match="contained"):
+        H.assert_not_live_home(str(sub), live_home=ext(live))  # the LIVE side spelled extended
+    with pytest.raises(H.LiveHomeRefused, match="contains"):
+        H.assert_not_live_home(ext(tmp_path), live_home=str(live))
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    assert H.assert_not_live_home(ext(other), live_home=str(live)) == os.path.realpath(other)
+
+
+def test_namespace_prefix_normalisation_covers_unc():
+    # `\\?\UNC\server\share` is the extended spelling of `\\server\share`
+    assert H._strip_namespace("\\\\?\\UNC\\srv\\share\\x") == "\\\\srv\\share\\x"
+    assert H._strip_namespace("\\\\?\\C:\\x") == "C:\\x"
+    assert H._strip_namespace("C:\\x") == "C:\\x"
