@@ -84,7 +84,7 @@ def short_brain_runs():
     from snn_data_lake.substrate.home import throwaway_home
 
     out = {}
-    for arm, req in (("clock", None), ("oracle", [3, 30])):
+    for arm, req in (("clock", None), ("oracle", [16, 41])):
         with throwaway_home():
             _assert_scratch_home()
             b = make_brain(seed=12201)
@@ -104,5 +104,5 @@ def test_the_clock_arm_reproduces_the_clocks_own_gate(short_brain_runs):
 
 def test_requests_move_onsets_and_keep_the_budget_on_a_real_brain(short_brain_runs):
     gate, run = short_brain_runs["oracle"]
-    assert run.plan != gate or not run.advanced
+    assert run.advanced and run.plan != gate
     assert sp.check_budgets({"clock": gate, "oracle": run.plan})[0]
