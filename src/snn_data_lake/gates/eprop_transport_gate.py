@@ -412,6 +412,10 @@ def _operand_pairs(node):
                     yield a, b
 
 
+def _err(name, tainted):
+    return bool(name) and (name in tainted or bool(_ERRISH.match(name)))
+
+
 def signal_sites_in(tree):
     """(lineno, error, weight) for every error x forward-weight product in `tree`.
 
@@ -423,7 +427,9 @@ def signal_sites_in(tree):
     first draft seeded on names and flagged `residual - y * nrn.w` in faculties/percept_surprise); a product's operand counts as error if it is either.
     """
     out = set()
-    scopes = [tree] + [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    scopes = [tree] + [
+        n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
     for scope in scopes:
         tainted = set()
         assigns = sorted(
@@ -431,26 +437,27 @@ def signal_sites_in(tree):
             key=lambda n: n.lineno,
         )
 
-        def _err(name):
-            return bool(name) and (name in tainted or bool(_ERRISH.match(name)))
-
         for node in assigns:
             hit = False
             for sub in ast.walk(node.value):
                 for a, b in _operand_pairs(sub):
                     for e, w in ((_opname(a), _opname(b)), (_opname(b), _opname(a))):
-                        if _err(e) and _is_weight(w) and not _FEEDBACKISH.search(w):
+                        if _err(e, tainted) and _is_weight(w) and not _FEEDBACKISH.search(w):
                             out.add((sub.lineno, e, w))
                             hit = True
-            mentions = {_base(n) for n in ast.walk(node.value) if isinstance(n, (ast.Name, ast.Attribute))}
-            if hit or any(m in tainted for m in mentions):  # seeds are W6 hits only, never a bare name
+            mentions = {
+                _base(n) for n in ast.walk(node.value) if isinstance(n, (ast.Name, ast.Attribute))
+            }
+            if hit or any(
+                m in tainted for m in mentions
+            ):  # seeds are W6 hits only, never a bare name
                 for t in node.targets if isinstance(node, ast.Assign) else [node.target]:
                     if _base(t):
                         tainted.add(_base(t))
         for sub in ast.walk(scope):  # products outside an assignment, e.g. `return err @ W`
             for a, b in _operand_pairs(sub):
                 for e, w in ((_opname(a), _opname(b)), (_opname(b), _opname(a))):
-                    if _err(e) and _is_weight(w) and not _FEEDBACKISH.search(w):
+                    if _err(e, tainted) and _is_weight(w) and not _FEEDBACKISH.search(w):
                         out.add((sub.lineno, e, w))
     return sorted(out)
 
@@ -578,11 +585,19 @@ def main(argv=None):
         print("  (none)")
     print(
         "  W6 governed/ungoverned/root: "
-        + "/".join(str(sum(1 for s_ in sig if s_[4] == t)) for t in ("governed", "ungoverned", "root"))
+        + "/".join(
+            str(sum(1 for s_ in sig if s_[4] == t)) for t in ("governed", "ungoverned", "root")
+        )
     )
-    print("  W6 reads NAMES: a renamed error variable or a neutral weight name is invisible to it, and it")
-    print("  also fires on an error carried into an ACTIVATION (the predictive_coding class). It is a floor,")
-    print("  not the count, and it must not be promoted to --assert without a weight-update-target test.")
+    print(
+        "  W6 reads NAMES: a renamed error variable or a neutral weight name is invisible to it, and it"
+    )
+    print(
+        "  also fires on an error carried into an ACTIVATION (the predictive_coding class). It is a floor,"
+    )
+    print(
+        "  not the count, and it must not be promoted to --assert without a weight-update-target test."
+    )
     print()
     print(
         f"GOVERNED: {len(gov)}   UNGOVERNED: {len(ungov)}   EXEMPT: {len(exempt)}   "
@@ -739,46 +754,80 @@ def _selfcheck():
 
     # W6, proven both ways on constructed sources, then on the KNOWN POSITIVE in the real tree.
     for label, src, red in (
-        ("symmetric `err @ W_out`", """def f(err, net):
+        (
+            "symmetric `err @ W_out`",
+            """def f(err, net):
     return err @ net.W_out
-""", True),
-        ("symmetric `err @ w.T`", """def f(err, w):
+""",
+            True,
+        ),
+        (
+            "symmetric `err @ w.T`",
+            """def f(err, w):
     return err @ w.T
-""", True),
-        ("scalar `Wout[j] * err[t]`", """def f(self, err, j, t):
+""",
+            True,
+        ),
+        (
+            "scalar `Wout[j] * err[t]`",
+            """def f(self, err, j, t):
     return self.Wout[j] * err[t]
-""", True),
-        ("fixed random feedback `delta @ B.T`", """def f(delta, B):
+""",
+            True,
+        ),
+        (
+            "fixed random feedback `delta @ B.T`",
+            """def f(delta, B):
     return delta @ B.T
-""", False),
-        ("a forward matmul `x @ W.T`", """def f(x, W):
+""",
+            False,
+        ),
+        (
+            "a forward matmul `x @ W.T`",
+            """def f(x, W):
     return x @ W.T
-""", False),
+""",
+            False,
+        ),
     ):
         assert bool(signal_sites_in(ast.parse(src))) == red, f"W6 case flipped: {label}"
         print(f"  {'RED  ' if red else 'green'}  W6 {label}")
     for label, src in (
-        ("a renamed error variable `e2 @ W_out`", """def f(e2, W_out):
+        (
+            "a renamed error variable `e2 @ W_out`",
+            """def f(e2, W_out):
     return e2 @ W_out
-"""),
-        ("a neutral weight name `err @ M`", """def f(err, M):
+""",
+        ),
+        (
+            "a neutral weight name `err @ M`",
+            """def f(err, M):
     return err @ M
-"""),
+""",
+        ),
     ):
         still = not signal_sites_in(ast.parse(src))
         print(f"  {'BLIND ' if still else 'FIXED'}  W6 {label} -- disclosed, not asserted")
     for label, src in (
-        ("layer chain `up = P * lsig; lsig[0] = up @ W_ff[1]`", """def f(err, wout, W_ff, P):
+        (
+            "layer chain `up = P * lsig; lsig[0] = up @ W_ff[1]`",
+            """def f(err, wout, W_ff, P):
     lsig = [0, 0]
     lsig[1] = err @ wout
     up = P * lsig[1]
     lsig[0] = up @ W_ff[1]
-"""),
-        ("`F.linear(err, W_out.t())`", """def f(err, W_out):
+""",
+        ),
+        (
+            "`F.linear(err, W_out.t())`",
+            """def f(err, W_out):
     return F.linear(err, W_out.t())
-"""),
+""",
+        ),
     ):
-        assert len(signal_sites_in(ast.parse(src))) >= (2 if "chain" in label else 1), f"W6 case flipped: {label}"
+        assert len(signal_sites_in(ast.parse(src))) >= (2 if "chain" in label else 1), (
+            f"W6 case flipped: {label}"
+        )
         print(f"  RED    W6 {label}")
     sig = scan_signals()
     assert any(s_[0] == "plasticity.eprop_kernel" for s_ in sig), (
