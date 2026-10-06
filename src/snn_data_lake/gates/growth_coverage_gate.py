@@ -237,7 +237,9 @@ def live_growth_census(src_root=None):
                 and fn.attr in ("place", "place_grown", "place_labeled")
             ):
                 target = fn.attr
-            if target == "place_labeled":  # G7 / T115: region is keyword-only and REQUIRED -- no default
+            if (
+                target == "place_labeled"
+            ):  # G7 / T115: region is keyword-only and REQUIRED -- no default
                 region_node = next((kw.value for kw in node.keywords if kw.arg == "region"), None)
                 literal = isinstance(region_node, ast.Constant)
                 add(region_node.value if literal else UNRESOLVED, rel, node.lineno)

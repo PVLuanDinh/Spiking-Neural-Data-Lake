@@ -1,8 +1,9 @@
 """G7 / T115 -- the unit-label producer (placement.place_labeled) and the unit-label gate (G-R7).
 
-Pre-registration: specs/022-unified-brain-arc/evidence/g7-unit-label-gate.md (frozen 854de0e7, amended
-da4bcfb7). Every red R1-R19 there is constructed here and must fire; R10 neuters one check at a time and
-proves the matching red stops firing. Pure: no Brain is built in this file except where a test says so,
+Pre-registration: specs/022-unified-brain-arc/evidence/g7-unit-label-gate.md (frozen 854de0e7,
+amended da4bcfb7). Every red R1-R19 there is constructed here and must fire; R10 neuters one check
+at a time and proves the matching red stops firing. Pure: no Brain is built in this file except
+where a test says so,
 and those run under substrate.home.throwaway_home().
 """
 
@@ -14,7 +15,8 @@ import pytest
 
 from snn_data_lake.growth import placement as P
 
-FIXTURE_DENSITY = 2.7e4  # per mm^2 -- a FIXTURE value (G4's projection, 2.7); G4's Part B supplies the real one
+# per mm^2 -- a FIXTURE value (G4's projection, 2.7); G4's Part B supplies the real one
+FIXTURE_DENSITY = 2.7e4
 SITE = (0.5 / 14, 1.5 / 4)  # ('sp', 'alar'): the cortex cell
 
 
@@ -34,7 +36,7 @@ def _labeled(n=9, roles=None, seed=13010, **kw):
     return P.place_labeled(n, **args)
 
 
-# ---- P2: the producer ------------------------------------------------------------------------------------
+# ---- P2: the producer ----------------------------------------------------------------------------
 
 
 def test_default_draw_is_byte_identical_to_place():
@@ -46,7 +48,14 @@ def test_default_draw_is_byte_identical_to_place():
 def test_record_carries_exactly_the_contract_fields():
     rec = _labeled(n=1)[0]
     assert set(rec) == {
-        "unit_id", "batch_id", "position", "layer", "sign", "region", "problem_id", "origin",
+        "unit_id",
+        "batch_id",
+        "position",
+        "layer",
+        "sign",
+        "region",
+        "problem_id",
+        "origin",
     }
     assert len(rec["position"]) == 5 and rec["origin"] == "born"
 
@@ -54,7 +63,7 @@ def test_record_carries_exactly_the_contract_fields():
 def test_roles_fix_the_sign_and_keep_depth_in_the_drawn_band():
     roles = ("E",) * 8 + ("I",)
     for seed in range(13012, 13016):
-        for rec, role in zip(_labeled(roles=roles, seed=seed), roles):
+        for rec, role in zip(_labeled(roles=roles, seed=seed), roles, strict=True):
             assert rec["sign"] == (P.EXCITATORY if role == "E" else P.INHIBITORY)
             lo, hi = P.DEPTH_BANDS[rec["layer"]]
             assert lo <= rec["position"][4] < hi
@@ -86,7 +95,13 @@ def test_roles_outside_cortex_are_refused():
 def test_density_has_no_default():
     with pytest.raises(TypeError):
         P.place_labeled(
-            1, unit_ids=[1], region="cortex", site=SITE, problem_id="p", batch_id=2, seed=1,
+            1,
+            unit_ids=[1],
+            region="cortex",
+            site=SITE,
+            problem_id="p",
+            batch_id=2,
+            seed=1,
             centre_um=(0.0, 0.0),
         )
 
@@ -117,7 +132,7 @@ def test_label_of_and_labels_by():
         P.labels_by(recs, "colour")
 
 
-# ---- P1: the gate ----------------------------------------------------------------------------------------
+# ---- P1: the gate --------------------------------------------------------------------------------
 
 from snn_data_lake.gates import unit_label_gate as G  # noqa: E402
 from snn_data_lake.growth.arealization import NEUROMERES, ZONES  # noqa: E402
@@ -188,8 +203,8 @@ def test_r4_cortex_name_in_refused_territory_refused_by_position(cell):
 
 
 def test_cp3_6_a_non_cortex_region_with_valid_cortical_fields_is_refused():
-    # Codex cp3 #6: hippocampus shares ('sp', 'alar'); its cortical layer and sign would pass every other
-    # check, so only the owner's cortex-only ruling (O3, 2026-10-04) can refuse it
+    # Codex cp3 #6: hippocampus shares ('sp', 'alar'); its cortical layer and sign would pass every
+    # other check, so only the owner's cortex-only ruling (O3, 2026-10-04) can refuse it
     v = G.check_admission(_with(_good(), region="hippocampus"), resolve_problem=_resolve)
     assert v.field == "region" and "cortex only" in v.reason
 
@@ -203,13 +218,22 @@ def test_r7_value_rules():
     lo5, hi5 = P.DEPTH_BANDS["Layer 5"]
     ap, dv, x, y, _ = good["position"]
     cases = {
-        "layer": [_with(good, layer="White matter"),
-                  _with(good, layer="Layer 2", position=(ap, dv, x, y, (lo5 + hi5) / 2))],
-        "position": [_with(good, position=(ap, dv, x, y, 1.5)),
-                     _with(good, position=(ap, dv, float("nan"), y, good["position"][4]))],
-        "sign": [_with(good, sign=0), _with(good, sign=None), _with(good, sign=True),
-                 _with(good, layer="Layer 1", sign=1,
-                       position=(ap, dv, x, y, P.DEPTH_BANDS["Layer 1"][0]))],
+        "layer": [
+            _with(good, layer="White matter"),
+            _with(good, layer="Layer 2", position=(ap, dv, x, y, (lo5 + hi5) / 2)),
+        ],
+        "position": [
+            _with(good, position=(ap, dv, x, y, 1.5)),
+            _with(good, position=(ap, dv, float("nan"), y, good["position"][4])),
+        ],
+        "sign": [
+            _with(good, sign=0),
+            _with(good, sign=None),
+            _with(good, sign=True),
+            _with(
+                good, layer="Layer 1", sign=1, position=(ap, dv, x, y, P.DEPTH_BANDS["Layer 1"][0])
+            ),
+        ],
         "region": [_with(good, region="atlantis")],
         "problem_id": [_with(good, problem_id="unknown-problem"), _with(good, problem_id="")],
         "origin": [_with(good, origin="derived"), _with(good, origin="legacy")],
@@ -244,8 +268,11 @@ def test_born_depths_are_never_inconsistent_with_their_layer():
 def test_r16_r17_duplicate_unit_ids_refused():
     a, b = _good(i=0), _good(i=1)
     with pytest.raises(G.UnitLabelRefused, match="duplicate within batch"):
-        G.require_admissible([a, _with(b, unit_id=a["unit_id"])], resolve_problem=_resolve,
-                             known_unit=lambda u: False)
+        G.require_admissible(
+            [a, _with(b, unit_id=a["unit_id"])],
+            resolve_problem=_resolve,
+            known_unit=lambda u: False,
+        )
     with pytest.raises(G.UnitLabelRefused, match="duplicate across batches"):
         G.require_admissible([a], resolve_problem=_resolve, known_unit=lambda u: u == a["unit_id"])
 
@@ -311,7 +338,9 @@ def test_r9_saved_record_defects_refused():
         _saved(rec, verdict="evicted"),
         _saved(rec, sign=-rec["sign"]),
     ):
-        v = G.check_saved(bad, resolve_problem=_resolve, resolve_committed=committed, first_sign=first)
+        v = G.check_saved(
+            bad, resolve_problem=_resolve, resolve_committed=committed, first_sign=first
+        )
         assert v.outcome == "REFUSED", bad
 
 
@@ -324,8 +353,9 @@ def test_r9b_only_committed_verdicts_count():
         return (s, m) in commits
 
     def outcome(r):
-        return G.check_saved(r, resolve_problem=_resolve, resolve_committed=committed,
-                             first_sign=first).outcome
+        return G.check_saved(
+            r, resolve_problem=_resolve, resolve_committed=committed, first_sign=first
+        ).outcome
 
     assert outcome(_saved(rec)) == "KEPT"
     assert outcome(_saved(rec, verdict="pruned")) == "PRUNED"
@@ -354,7 +384,9 @@ _DEFECTS = {
     "batch_id": lambda g: _with(g, batch_id=-1),
     # x_um NaN: a defect ONLY the position check can see (an out-of-range ap is ALSO refused by the
     # region check's map read -- two checks on one defect, so it cannot isolate either one)
-    "position": lambda g: _with(g, position=g["position"][:2] + (float("nan"),) + g["position"][3:]),
+    "position": lambda g: _with(
+        g, position=g["position"][:2] + (float("nan"),) + g["position"][3:]
+    ),
     "layer": lambda g: _with(g, layer="White matter"),
     "sign": lambda g: _with(g, sign=0),
     "region": lambda g: _with(g, region="insula"),
@@ -377,7 +409,7 @@ def test_r10_every_check_is_load_bearing(monkeypatch):
                     assert not v.admitted and v.field == field, (neutered, field, v)
 
 
-# ---- coverage: the two scans, the census, the debt tables (Codex b3 #8) ---------------------------------
+# ---- coverage: the two scans, the census, the debt tables (Codex b3 #8) --------------------------
 
 
 def _tree(tmp_path, body):
@@ -388,76 +420,124 @@ def _tree(tmp_path, body):
 
 
 def test_r11_creation_scan_reds_an_ungated_site_and_a_stale_debt_row(tmp_path):
-    root = _tree(tmp_path, (
-        "from snn_data_lake.growth.placement import place\n"
-        "def grow():\n    return place(3)\n"
-        "def grow_gated(rec):\n    check_admission(rec, resolve_problem=None)\n    return place(3)\n"
-    ))
+    root = _tree(
+        tmp_path,
+        (
+            "from snn_data_lake.growth.placement import place\n"
+            "def grow():\n    return place(3)\n"
+            "def grow_gated(rec):\n    check_admission(rec, resolve_problem=None)\n"
+            "    return place(3)\n"
+        ),
+    )
     found = G.label_creation_findings(src_root=root, known={})
     assert found == ["fakepkg/mod.py::grow"]
-    stale = G.stale_known(src_root=root, known_creation={"fakepkg/mod.py::gone": ("G0", "x")},
-                          known_rows={}, out_of_scope={})
+    stale = G.stale_known(
+        src_root=root,
+        known_creation={"fakepkg/mod.py::gone": ("G0", "x")},
+        known_rows={},
+        out_of_scope={},
+    )
     assert stale == ["fakepkg/mod.py::gone"]
 
 
 def test_r14_row_growth_scan_sees_what_the_creation_scan_cannot(tmp_path):
-    root = _tree(tmp_path, (
-        "import numpy as np\n"
-        "class Grower:\n"
-        "    def grow(self, new):\n        self.W = np.vstack([self.W, new])\n"
-        "    def grow_ticketed(self, new, ticket):\n"
-        "        ticket.consume([1])\n        self.W = np.vstack([self.W, new])\n"
-    ))
-    inventory = {"fx": ("fakepkg/mod.py", "fixture rows", "G7", (), "fakepkg/mod.py::Grower.grow_ticketed")}
+    root = _tree(
+        tmp_path,
+        (
+            "import numpy as np\n"
+            "class Grower:\n"
+            "    def grow(self, new):\n        self.W = np.vstack([self.W, new])\n"
+            "    def grow_ticketed(self, new, ticket):\n"
+            "        ticket.consume([1])\n        self.W = np.vstack([self.W, new])\n"
+        ),
+    )
+    admit = "fakepkg/mod.py::Grower.grow_ticketed"
+    inventory = {"fx": ("fakepkg/mod.py", "fixture rows", "G7", (), admit)}
     assert G.row_growth_findings(src_root=root, known={}, out_of_scope={}, segments=inventory) == [
-        "fakepkg/mod.py::Grower.grow"]
+        "fakepkg/mod.py::Grower.grow"
+    ]
     assert G.label_creation_findings(src_root=root, known={}) == []
 
 
 _ADMIT = "fakepkg/mod.py::Seg.admit_rows"
 
 
-@pytest.mark.parametrize("body, inventory, admitted", [
-    ("        ticket.consume(rows)\n        self.W = np.vstack([self.W, rows])\n", True, True),
-    ("        ticket.consume(rows)\n        self.W = np.vstack([self.W, rows])\n", False, False),  # uncensused
-    ("        if False:\n            ticket.consume(rows)\n        self.W = np.vstack([self.W, rows])\n",
-     True, False),  # unreachable
-    ("        self.cache.consume(rows)\n        self.W = np.vstack([self.W, rows])\n", True, False),  # unrelated
-    ("        self.W = np.vstack([self.W, rows])\n        ticket.consume(rows)\n", True, False),  # after append
-])
-def test_cp3_5_a_ticket_counts_only_structurally_at_a_declared_admit_point(tmp_path, body, inventory, admitted):
-    root = _tree(tmp_path, f"import numpy as np\nclass Seg:\n    def admit_rows(self, rows, ticket):\n{body}")
+@pytest.mark.parametrize(
+    "body, inventory, admitted",
+    [
+        ("        ticket.consume(rows)\n        self.W = np.vstack([self.W, rows])\n", True, True),
+        # uncensused
+        (
+            "        ticket.consume(rows)\n        self.W = np.vstack([self.W, rows])\n",
+            False,
+            False,
+        ),
+        # unreachable
+        (
+            "        if False:\n            ticket.consume(rows)\n"
+            "        self.W = np.vstack([self.W, rows])\n",
+            True,
+            False,
+        ),
+        # unrelated
+        (
+            "        self.cache.consume(rows)\n        self.W = np.vstack([self.W, rows])\n",
+            True,
+            False,
+        ),
+        # after append
+        ("        self.W = np.vstack([self.W, rows])\n        ticket.consume(rows)\n", True, False),
+    ],
+)
+def test_cp3_5_a_ticket_counts_only_structurally_at_a_declared_admit_point(
+    tmp_path, body, inventory, admitted
+):
+    head = "import numpy as np\nclass Seg:\n    def admit_rows(self, rows, ticket):\n"
+    root = _tree(tmp_path, head + body)
     segs = {"fx": ("fakepkg/mod.py", "fixture rows", "G7", (), _ADMIT)} if inventory else {}
     found = G.row_growth_findings(src_root=root, known={}, out_of_scope={}, segments=segs)
     assert found == ([] if admitted else [_ADMIT])
 
 
-@pytest.mark.parametrize("stmt", [
-    "self.W = np.append(self.W, new, axis=0)",
-    "self.W = np.resize(self.W, (self.W.shape[0] + 1, self.W.shape[1]))",
-    "self.W = np.pad(self.W, ((0, 1), (0, 0)))",
-    "self.W[len(self.W):] = new",
-    "self.W[self.W.shape[0]:] = new",
-])
+@pytest.mark.parametrize(
+    "stmt",
+    [
+        "self.W = np.append(self.W, new, axis=0)",
+        "self.W = np.resize(self.W, (self.W.shape[0] + 1, self.W.shape[1]))",
+        "self.W = np.pad(self.W, ((0, 1), (0, 0)))",
+        "self.W[len(self.W):] = new",
+        "self.W[self.W.shape[0]:] = new",
+    ],
+)
 def test_cp3_4_every_registered_row_growth_form_is_seen(tmp_path, stmt):
-    root = _tree(tmp_path, f"import numpy as np\nclass Grower:\n    def grow(self, new):\n        {stmt}\n")
-    assert G.row_growth_findings(src_root=root, known={}, out_of_scope={}) == ["fakepkg/mod.py::Grower.grow"]
+    head = "import numpy as np\nclass Grower:\n    def grow(self, new):\n"
+    root = _tree(tmp_path, head + f"        {stmt}\n")
+    found = G.row_growth_findings(src_root=root, known={}, out_of_scope={})
+    assert found == ["fakepkg/mod.py::Grower.grow"]
 
 
 def test_cp3_4_flattening_append_and_column_concat_are_not_row_growth(tmp_path):
-    root = _tree(tmp_path, (
-        "import numpy as np\nclass Grower:\n    def f(self, new):\n"
-        "        self.W = np.append(self.W, new)\n        self.S = np.concatenate([self.S, new], axis=1)\n"
-    ))
+    root = _tree(
+        tmp_path,
+        (
+            "import numpy as np\nclass Grower:\n    def f(self, new):\n"
+            "        self.W = np.append(self.W, new)\n"
+            "        self.S = np.concatenate([self.S, new], axis=1)\n"
+        ),
+    )
     assert G.row_growth_findings(src_root=root, known={}, out_of_scope={}) == []
 
 
 def test_cp3_4_place_labeled_callers_are_label_creation_sites(tmp_path):
-    root = _tree(tmp_path, (
-        "from snn_data_lake.growth.placement import place_labeled\n"
-        "def grow(ids):\n    return place_labeled(1, unit_ids=ids, region='cortex', site=(0, 0),\n"
-        "        problem_id='p', batch_id=2, seed=1, centre_um=(0, 0), density_per_mm2=1.0)\n"
-    ))
+    root = _tree(
+        tmp_path,
+        (
+            "from snn_data_lake.growth.placement import place_labeled\n"
+            "def grow(ids):\n"
+            "    return place_labeled(1, unit_ids=ids, region='cortex', site=(0, 0),\n"
+            "        problem_id='p', batch_id=2, seed=1, centre_um=(0, 0), density_per_mm2=1.0)\n"
+        ),
+    )
     assert G.label_creation_findings(src_root=root, known={}) == ["fakepkg/mod.py::grow"]
 
 
@@ -483,7 +563,8 @@ def test_out_of_scope_row_growth_is_a_printed_scope_rule_not_debt():
     text = G.report()
     assert "out of scope" in text and all(k in text for k in oos)
     # a stale scope row reds like a stale debt row
-    assert G.stale_known(known_creation={}, known_rows={}, out_of_scope={"x.py::gone": "r"}) == ["x.py::gone"]
+    stale = G.stale_known(known_creation={}, known_rows={}, out_of_scope={"x.py::gone": "r"})
+    assert stale == ["x.py::gone"]
 
 
 class _FixtureSegment:
@@ -524,7 +605,10 @@ def test_bare_main_fires_its_constructed_reds_and_assert_is_clean(capsys):
 def test_r12_census_counts_todays_refit_as_legacy_and_reds_without_its_debt_row():
     from pathlib import Path
 
-    from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove, SyntheticPerceptStream
+    from snn_data_lake.growth.neurogenesis_engine import (
+        NeurogenesisSelfImprove,
+        SyntheticPerceptStream,
+    )
     from snn_data_lake.substrate.home import throwaway_home
 
     live = Path.home() / ".snn_data_lake"
@@ -538,7 +622,8 @@ def test_r12_census_counts_todays_refit_as_legacy_and_reds_without_its_debt_row(
     out = G.census({"neurogenesis_engine": rows}, journal={}, open_debt={"neurogenesis_engine"})
     assert out["neurogenesis_engine"]["legacy"] == n and out["neurogenesis_engine"]["born"] == 0
     assert out["neurogenesis_engine"]["red"] is False
-    assert G.census({"neurogenesis_engine": rows}, journal={}, open_debt=set())["neurogenesis_engine"]["red"]
+    census = G.census({"neurogenesis_engine": rows}, journal={}, open_debt=set())
+    assert census["neurogenesis_engine"]["red"]
     assert (live.stat().st_mtime if live.exists() else None) == before
 
 

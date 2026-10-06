@@ -155,11 +155,19 @@ def _check_region(rec, ctx):
     if region not in GROWABLE:
         return f"{region!r} is not growable (scaffold or charged-never-grown)"
     if region not in ADMISSIBLE_REGIONS:
-        return (f"{region!r} refused: cortex only -- no other region has a measured Dale sign "
-                "(owner, O3, 2026-10-04)")
+        return (
+            f"{region!r} refused: cortex only -- no other region has a measured Dale sign "
+            "(owner, O3, 2026-10-04)"
+        )
     pos = rec.get("position")
-    if not (isinstance(pos, (tuple, list)) and len(pos) == 5 and _number(pos[0]) and _number(pos[1])
-            and 0.0 <= pos[0] < 1.0 and 0.0 <= pos[1] < 1.0):
+    if not (
+        isinstance(pos, (tuple, list))
+        and len(pos) == 5
+        and _number(pos[0])
+        and _number(pos[1])
+        and 0.0 <= pos[0] < 1.0
+        and 0.0 <= pos[1] < 1.0
+    ):
         return "position unreadable on the map"
     labels = cell_labels(pos[0], pos[1])
     if not labels:
@@ -243,10 +251,14 @@ class AdmissionTicket:
                 raise UnitLabelRefused(uid, "ticket", "row not covered by the admission ticket")
             diff = [k for k in FIELD_ORDER if _canon(row.get(k)) != _canon(frozen[k])]
             if diff:
-                raise UnitLabelRefused(uid, "ticket", f"row differs from the validated record in {diff}")
+                raise UnitLabelRefused(
+                    uid, "ticket", f"row differs from the validated record in {diff}"
+                )
         missing = sorted(self.ids - seen)
         if missing:
-            raise UnitLabelRefused(missing[0], "ticket", f"validated records missing from the append: {missing}")
+            raise UnitLabelRefused(
+                missing[0], "ticket", f"validated records missing from the append: {missing}"
+            )
         self._consumed = True
 
 
@@ -306,7 +318,9 @@ def check_saved(record, *, resolve_problem, resolve_committed, first_sign):
         if not _text(record.get(field)):
             return SavedVerdict("REFUSED", field, f"missing or empty {field}")
     if record["verdict"] not in ("kept", "pruned"):
-        return SavedVerdict("REFUSED", "verdict", f"verdict {record['verdict']!r} is not kept/pruned")
+        return SavedVerdict(
+            "REFUSED", "verdict", f"verdict {record['verdict']!r} is not kept/pruned"
+        )
     if not resolve_committed(record["sleep_id"], record["mask_digest"]):
         return SavedVerdict("PENDING", None, "no committed sleep has kept or pruned this unit yet")
     return SavedVerdict(record["verdict"].upper(), None, None)
@@ -343,8 +357,10 @@ GROWN_SEGMENTS = {
         "snn_data_lake/growth/ng_snn.py",
         "NGSNN.W rows, grown by NeurogenesisSelfImprove._refit (the one live percept grower)",
         "G3/T111",
-        ("snn_data_lake/growth/ng_snn.py::NGSNN.fit",
-         "snn_data_lake/growth/neurogenesis_engine.py::NeurogenesisSelfImprove._refit"),
+        (
+            "snn_data_lake/growth/ng_snn.py::NGSNN.fit",
+            "snn_data_lake/growth/neurogenesis_engine.py::NeurogenesisSelfImprove._refit",
+        ),
         "snn_data_lake/growth/grown_code.py::admit_rows",  # G3's single append (the ticket is consumed there)
     ),
 }
@@ -352,19 +368,27 @@ GROWN_SEGMENTS = {
 #: Shrink-only debt: label-creating functions that do not call the gate -> (owner, what retires it).
 KNOWN_UNGATED_CREATION_SITES = {
     "snn_data_lake/growth/neurogenesis_engine.py::NeurogenesisSelfImprove._refit": (
-        "G3/T111", "the clock-driven refit admits units with no problem, region or map position; "
-        "retired when the one grower admits through G3's problem-keyed loop and a ticket"),
+        "G3/T111",
+        "the clock-driven refit admits units with no problem, region or map position; "
+        "retired when the one grower admits through G3's problem-keyed loop and a ticket",
+    ),
     "snn_data_lake/growth/neurogenesis_engine.py::NeurogenesisSelfImprove.restore_growth_state": (
-        "G3/T111", "re-derives placement on restore; retired when its rows are classified by "
-        "classify_restored from G3's journal (G7's stacked neurogenesis_engine commit)"),
+        "G3/T111",
+        "re-derives placement on restore; retired when its rows are classified by "
+        "classify_restored from G3's journal (G7's stacked neurogenesis_engine commit)",
+    ),
 }
 
 #: Shrink-only debt: functions that grow weight rows with no ticket -> (owner, what retires it).
 KNOWN_UNGATED_ROW_GROWTH = {
     "snn_data_lake/growth/ng_snn.py::NGSNN.fit": (
-        "G3/T111", "the live grower's rows (W, b); retired when its append takes an AdmissionTicket"),
+        "G3/T111",
+        "the live grower's rows (W, b); retired when its append takes an AdmissionTicket",
+    ),
     "snn_data_lake/growth/ng_snn.py::_novelty_control": (
-        "G3/T111", "the self-check's novelty control grows rows the same way; retired with NGSNN.fit"),
+        "G3/T111",
+        "the self-check's novelty control grows rows the same way; retired with NGSNN.fit",
+    ),
 }
 
 #: THE SCOPE RULE (lead ruling 23, 2026-10-04): P4d's "grown unit" is a unit grown on the ENGINE'S
@@ -372,27 +396,20 @@ KNOWN_UNGATED_ROW_GROWTH = {
 #: printed on every run and listed for the owner, never silently dropped and never counted as debt; a
 #: row here that stops growing rows reds as stale like any debt row.
 OUT_OF_SCOPE_ROW_GROWTH = {
-    "snn_data_lake/readout/growable_readout.py::GrowableReadout._grow_one":
-        "a growable readout's rows (readout layer, not the engine's growth path)",
-    "snn_data_lake/readout/laminar_local_readout.py::LaminarLocalReadout.grow":
-        "a laminar readout's hidden rows (readout layer, not the engine's growth path)",
-    "snn_data_lake/reasoning/developmental_loop.py::GrowableSTDP.maybe_recruit":
-        "a reasoning learner's recruited rows (not the engine's growth path)",
+    "snn_data_lake/readout/growable_readout.py::GrowableReadout._grow_one": "a growable readout's rows (readout layer, not the engine's growth path)",
+    "snn_data_lake/readout/laminar_local_readout.py::LaminarLocalReadout.grow": "a laminar readout's hidden rows (readout layer, not the engine's growth path)",
+    "snn_data_lake/reasoning/developmental_loop.py::GrowableSTDP.maybe_recruit": "a reasoning learner's recruited rows (not the engine's growth path)",
 }
 
 #: Reviewed FALSE POSITIVES of the row-growth scan (Codex cp3 #4 widened its forms; these hits grow no
 #: rows of units). Printed every run; a row that stops matching reds as stale, like debt.
 SCAN_FALSE_POSITIVES = {
-    "snn_data_lake/faculties/learned_attention.py::LearnedAttention._goal_gain":
-        "np.resize of a 1-D gain vector to the attention width -- an input reshape, no unit rows",
-    "snn_data_lake/faculties/learned_attention.py::LearnedAttention.attend":
-        "np.resize of a 1-D input vector to the attention width -- an input reshape, no unit rows",
-    "snn_data_lake/reasoning/ng_snn/softhebb_mnist.py::HebbConv2d.forward":
-        "F.pad of a convolution INPUT tensor -- spatial padding of activations, no unit rows",
+    "snn_data_lake/faculties/learned_attention.py::LearnedAttention._goal_gain": "np.resize of a 1-D gain vector to the attention width -- an input reshape, no unit rows",
+    "snn_data_lake/faculties/learned_attention.py::LearnedAttention.attend": "np.resize of a 1-D input vector to the attention width -- an input reshape, no unit rows",
+    "snn_data_lake/reasoning/ng_snn/softhebb_mnist.py::HebbConv2d.forward": "F.pad of a convolution INPUT tensor -- spatial padding of activations, no unit rows",
 }
 
 _GATE_CALLS = frozenset({"require_admissible", "check_admission"})
-
 
 
 def _repo_src():
@@ -412,7 +429,9 @@ def _qualnames(tree):
 def _enclosing(funcs, lineno):
     best = None
     for name, node in funcs:
-        if node.lineno <= lineno <= node.end_lineno and (best is None or node.lineno >= best[1].lineno):
+        if node.lineno <= lineno <= node.end_lineno and (
+            best is None or node.lineno >= best[1].lineno
+        ):
             best = (name, node)
     return best
 
@@ -421,13 +440,21 @@ def _calls(node, names):
     for sub in ast.walk(node):
         if isinstance(sub, ast.Call):
             fn = sub.func
-            n = fn.id if isinstance(fn, ast.Name) else fn.attr if isinstance(fn, ast.Attribute) else None
+            n = (
+                fn.id
+                if isinstance(fn, ast.Name)
+                else fn.attr
+                if isinstance(fn, ast.Attribute)
+                else None
+            )
             if n in names:
                 return True
     return False
 
 
-@functools.lru_cache(maxsize=8)  # one parse per root per process: report + assert re-read the same tree
+@functools.lru_cache(
+    maxsize=8
+)  # one parse per root per process: report + assert re-read the same tree
 def _creation_functions(root):
     """{"rel::qualname": gated?} for every function holding a resolved label-creation call."""
     from snn_data_lake.gates.growth_coverage_gate import live_growth_census
@@ -469,9 +496,16 @@ def _same(node, name):
 
 def _pads_axis0(call):
     """False only when the pad width provably leaves axis 0 alone ((0, 0) first); else True."""
-    width = call.args[1] if len(call.args) > 1 else next(
-        (kw.value for kw in call.keywords if kw.arg == "pad_width"), None)
-    if isinstance(width, (ast.Tuple, ast.List)) and width.elts and isinstance(width.elts[0], (ast.Tuple, ast.List)):
+    width = (
+        call.args[1]
+        if len(call.args) > 1
+        else next((kw.value for kw in call.keywords if kw.arg == "pad_width"), None)
+    )
+    if (
+        isinstance(width, (ast.Tuple, ast.List))
+        and width.elts
+        and isinstance(width.elts[0], (ast.Tuple, ast.List))
+    ):
         return not all(isinstance(e, ast.Constant) and e.value == 0 for e in width.elts[0].elts)
     return True
 
@@ -484,11 +518,19 @@ def _self_growth(node):
     if not (isinstance(node, ast.Assign) and len(node.targets) == 1):
         return False
     target, value = node.targets[0], node.value
-    if isinstance(target, ast.Subscript) and isinstance(target.slice, ast.Slice) and target.slice.lower:
+    if (
+        isinstance(target, ast.Subscript)
+        and isinstance(target.slice, ast.Slice)
+        and target.slice.lower
+    ):
         me, lower = ast.unparse(target.value), ast.unparse(target.slice.lower)
         return f"len({me})" in lower or f"{me}.shape" in lower
-    if not (isinstance(target, (ast.Name, ast.Attribute)) and isinstance(value, ast.Call)
-            and isinstance(value.func, ast.Attribute) and value.args):
+    if not (
+        isinstance(target, (ast.Name, ast.Attribute))
+        and isinstance(value, ast.Call)
+        and isinstance(value.func, ast.Attribute)
+        and value.args
+    ):
         return False
     me, fn, first = ast.unparse(target), value.func.attr, value.args[0]
     if fn in ("vstack", "row_stack", "concatenate", "cat"):
@@ -549,9 +591,13 @@ def _consumes_first(fn, growth_line):
         if stmt.lineno >= growth_line:
             break
         call = stmt.value if isinstance(stmt, ast.Expr) else None
-        if (isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
-                and call.func.attr == "consume" and isinstance(call.func.value, ast.Name)
-                and call.func.value.id in params):
+        if (
+            isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Attribute)
+            and call.func.attr == "consume"
+            and isinstance(call.func.value, ast.Name)
+            and call.func.value.id in params
+        ):
             return True
     return False
 
@@ -564,8 +610,11 @@ def _root(src_root):
 
 def label_creation_findings(src_root=None, known=None):
     known = KNOWN_UNGATED_CREATION_SITES if known is None else known
-    return sorted(k for k, gated in _creation_functions(_root(src_root)).items()
-                  if not gated and k not in known)
+    return sorted(
+        k
+        for k, gated in _creation_functions(_root(src_root)).items()
+        if not gated and k not in known
+    )
 
 
 # distinct-from: gates/conclusion_protocol.py -- its row_findings checks instrument REGISTRY rows; this
@@ -581,11 +630,18 @@ def row_growth_findings(src_root=None, known=None, out_of_scope=None, segments=N
     """Row growth that is neither ADMITTED -- the declared admit point of a GROWN_SEGMENTS row, spending
     its ticket first (_consumes_first) -- nor debt-listed, out of scope, or a reviewed false positive."""
     known = KNOWN_UNGATED_ROW_GROWTH if known is None else known
-    oos = {**OUT_OF_SCOPE_ROW_GROWTH, **SCAN_FALSE_POSITIVES} if out_of_scope is None else out_of_scope
+    oos = (
+        {**OUT_OF_SCOPE_ROW_GROWTH, **SCAN_FALSE_POSITIVES}
+        if out_of_scope is None
+        else out_of_scope
+    )
     segments = GROWN_SEGMENTS if segments is None else segments
     admit_points = {seg[4] for seg in segments.values() if seg[4]}
-    return sorted(k for k, ticketed in _row_growth_functions(_root(src_root)).items()
-                  if not (ticketed and k in admit_points) and k not in known and k not in oos)
+    return sorted(
+        k
+        for k, ticketed in _row_growth_functions(_root(src_root)).items()
+        if not (ticketed and k in admit_points) and k not in known and k not in oos
+    )
 
 
 # distinct-from: gates/immortal_retention.py -- its stale_known is bound to KNOWN_UNLABELED and its
@@ -599,7 +655,11 @@ def stale_known(src_root=None, known_creation=None, known_rows=None, out_of_scop
     root = _root(src_root)
     kc = KNOWN_UNGATED_CREATION_SITES if known_creation is None else known_creation
     kr = KNOWN_UNGATED_ROW_GROWTH if known_rows is None else known_rows
-    oos = {**OUT_OF_SCOPE_ROW_GROWTH, **SCAN_FALSE_POSITIVES} if out_of_scope is None else out_of_scope
+    oos = (
+        {**OUT_OF_SCOPE_ROW_GROWTH, **SCAN_FALSE_POSITIVES}
+        if out_of_scope is None
+        else out_of_scope
+    )
     stale = [k for k in kc if k not in _creation_functions(root)]
     stale += [k for k in list(kr) + list(oos) if k not in _row_growth_functions(root)]
     return sorted(stale)
@@ -640,19 +700,27 @@ def engine_rows(engine):
 def report():
     lines = ["UNIT-LABEL GATE (G-R7, G7/T115) -- coverage anchored on row admission"]
     creation, rows, stale = label_creation_findings(), row_growth_findings(), stale_known()
-    for title, table in (("label-creation debt", KNOWN_UNGATED_CREATION_SITES),
-                         ("row-growth debt", KNOWN_UNGATED_ROW_GROWTH)):
+    for title, table in (
+        ("label-creation debt", KNOWN_UNGATED_CREATION_SITES),
+        ("row-growth debt", KNOWN_UNGATED_ROW_GROWTH),
+    ):
         lines.append(f"  {title}: {len(table)} row(s)")
         lines += [f"    {k}  [{owner}] {why}" for k, (owner, why) in sorted(table.items())]
-    lines.append(f"  out of scope (ruling 23: P4d's grown unit = the engine's growth path; listed for the "
-                 f"owner): {len(OUT_OF_SCOPE_ROW_GROWTH)} row(s)")
+    lines.append(
+        f"  out of scope (ruling 23: P4d's grown unit = the engine's growth path; listed for the "
+        f"owner): {len(OUT_OF_SCOPE_ROW_GROWTH)} row(s)"
+    )
     lines += [f"    {k}  {why}" for k, why in sorted(OUT_OF_SCOPE_ROW_GROWTH.items())]
-    lines.append(f"  reviewed scan false positives (no unit rows grown): {len(SCAN_FALSE_POSITIVES)} row(s)")
+    lines.append(
+        f"  reviewed scan false positives (no unit rows grown): {len(SCAN_FALSE_POSITIVES)} row(s)"
+    )
     lines += [f"    {k}  {why}" for k, why in sorted(SCAN_FALSE_POSITIVES.items())]
     lines.append(f"  findings: creation {creation}  rows {rows}  stale {stale}")
     if KNOWN_UNGATED_CREATION_SITES or KNOWN_UNGATED_ROW_GROWTH:
-        lines.append('  the sentence "no unlabeled grown unit is admitted" is FALSE while either debt '
-                     "table is non-empty; T115 stays OPEN")
+        lines.append(
+            '  the sentence "no unlabeled grown unit is admitted" is FALSE while either debt '
+            "table is non-empty; T115 stays OPEN"
+        )
     return "\n".join(lines)
 
 
@@ -673,12 +741,22 @@ def _self_check():
     def resolve(pid):
         return pid == "prob-1"
 
-    recs = place_labeled(9, unit_ids=list(range(9)), region="cortex",
-                         site=(0.5 / len(NEUROMERES), 1.5 / len(ZONES)), problem_id="prob-1",
-                         batch_id=0, seed=13015, centre_um=(0.0, 0.0), density_per_mm2=2.7e4,
-                         roles=("E",) * 8 + ("I",))
+    recs = place_labeled(
+        9,
+        unit_ids=list(range(9)),
+        region="cortex",
+        site=(0.5 / len(NEUROMERES), 1.5 / len(ZONES)),
+        problem_id="prob-1",
+        batch_id=0,
+        seed=13015,
+        centre_um=(0.0, 0.0),
+        density_per_mm2=2.7e4,
+        roles=("E",) * 8 + ("I",),
+    )
     good = recs[0]
-    assert check_admission(good, resolve_problem=resolve).admitted, "R6: a full label must be admitted"
+    assert check_admission(good, resolve_problem=resolve).admitted, (
+        "R6: a full label must be admitted"
+    )
 
     def refused(rec):
         return not check_admission(rec, resolve_problem=resolve).admitted
@@ -690,14 +768,20 @@ def _self_check():
             return True
         return False
 
-    pons = (NEUROMERES.index("r3") + 0.5) / len(NEUROMERES), (ZONES.index("basal") + 0.5) / len(ZONES)
+    pons = (
+        (NEUROMERES.index("r3") + 0.5) / len(NEUROMERES),
+        (ZONES.index("basal") + 0.5) / len(ZONES),
+    )
     saved = dict(good, sleep_id="s1", mask_digest="m1", verdict="kept")
     first = {good["unit_id"]: good["sign"]}
     with tempfile.TemporaryDirectory() as tmp:
         pkg = Path(tmp) / "fx"
         pkg.mkdir()
-        (pkg / "m.py").write_text("import numpy as np\nclass G:\n    def grow(self, n):\n"
-                                  "        self.W = np.vstack([self.W, n])\n", encoding="utf-8")
+        (pkg / "m.py").write_text(
+            "import numpy as np\nclass G:\n    def grow(self, n):\n"
+            "        self.W = np.vstack([self.W, n])\n",
+            encoding="utf-8",
+        )
         r14 = row_growth_findings(src_root=tmp, known={}) == ["fx/m.py::G.grow"]
     reds = {
         "R1 no label": refused({}),
@@ -705,17 +789,27 @@ def _self_check():
         "R4 cortex in pons": refused(dict(good, position=pons + tuple(good["position"][2:]))),
         "R5 neuromodulation": refused(dict(good, region="neuromodulation")),
         "R7 sign 0": refused(dict(good, sign=0)),
-        "R16 duplicate": raises(lambda: require_admissible(
-            [good, dict(recs[1], unit_id=good["unit_id"])], resolve_problem=resolve,
-            known_unit=lambda u: False)),
-        "R18 tampered": raises(lambda: classify_restored(
-            [dict(good, sign=-good["sign"])], {good["unit_id"]: good})),
+        "R16 duplicate": raises(
+            lambda: require_admissible(
+                [good, dict(recs[1], unit_id=good["unit_id"])],
+                resolve_problem=resolve,
+                known_unit=lambda u: False,
+            )
+        ),
+        "R18 tampered": raises(
+            lambda: classify_restored([dict(good, sign=-good["sign"])], {good["unit_id"]: good})
+        ),
         "R9 no sleep_id": check_saved(
-            {k: v for k, v in saved.items() if k != "sleep_id"}, resolve_problem=resolve,
-            resolve_committed=lambda s, m: True, first_sign=first).outcome == "REFUSED",
+            {k: v for k, v in saved.items() if k != "sleep_id"},
+            resolve_problem=resolve,
+            resolve_committed=lambda s, m: True,
+            first_sign=first,
+        ).outcome
+        == "REFUSED",
         "R9b uncommitted": check_saved(
-            saved, resolve_problem=resolve, resolve_committed=lambda s, m: False,
-            first_sign=first).outcome == "PENDING",
+            saved, resolve_problem=resolve, resolve_committed=lambda s, m: False, first_sign=first
+        ).outcome
+        == "PENDING",
         "R14 row growth": r14,
     }
     silent = [name for name, fired in reds.items() if not fired]

@@ -478,7 +478,16 @@ def _place_by_role(roles, seed):
 # distinct-from: growth/neurogenesis_engine.py, engine/signal_ring.py, faculties/forward_model.py,
 #   faculties/wholistic_loop.py, growth/h01_ingest.py -- see _place_by_role above; all sites read.
 def place_labeled(
-    n_units, *, unit_ids, region, site, problem_id, batch_id, seed, centre_um, density_per_mm2,
+    n_units,
+    *,
+    unit_ids,
+    region,
+    site,
+    problem_id,
+    batch_id,
+    seed,
+    centre_um,
+    density_per_mm2,
     roles=None,
 ):
     """Full label records for one grown batch (G7 pre-registration 2.2, as built: unit_ids, region,
@@ -493,9 +502,14 @@ def place_labeled(
     unit_ids = list(unit_ids)
     if len(unit_ids) != n_units:
         raise ValueError(f"{len(unit_ids)} unit_ids for {n_units} units")
-    if not (isinstance(density_per_mm2, (int, float)) and math.isfinite(density_per_mm2)
-            and density_per_mm2 > 0):
-        raise ValueError(f"density_per_mm2 must be a finite positive number, got {density_per_mm2!r}")
+    if not (
+        isinstance(density_per_mm2, (int, float))
+        and math.isfinite(density_per_mm2)
+        and density_per_mm2 > 0
+    ):
+        raise ValueError(
+            f"density_per_mm2 must be a finite positive number, got {density_per_mm2!r}"
+        )
     if roles is None:
         base = place(n_units, seed=seed, region=region)
     else:
@@ -515,16 +529,18 @@ def place_labeled(
     out = []
     for uid, (depth, layer, sign) in zip(unit_ids, base):
         r, theta = radius_um * math.sqrt(off.random()), 2.0 * math.pi * off.random()
-        out.append({
-            "unit_id": uid,
-            "batch_id": batch_id,
-            "position": (ap, dv, cx + r * math.cos(theta), cy + r * math.sin(theta), depth),
-            "layer": layer,
-            "sign": sign,
-            "region": region,
-            "problem_id": problem_id,
-            "origin": "born",
-        })
+        out.append(
+            {
+                "unit_id": uid,
+                "batch_id": batch_id,
+                "position": (ap, dv, cx + r * math.cos(theta), cy + r * math.sin(theta), depth),
+                "layer": layer,
+                "sign": sign,
+                "region": region,
+                "problem_id": problem_id,
+                "origin": "born",
+            }
+        )
     return out
 
 
