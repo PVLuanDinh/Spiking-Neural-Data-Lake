@@ -176,18 +176,26 @@ def test_non_finite_synapses_are_refused_at_admit_deposit_and_restore():
         clip_to_sign([0.1, nan], sign=1)
 
 
-# ---- admit_rows: the single append of the grown segment (2026-10-04 amendment; G7's AdmissionTicket) ----
+# ---- admit_rows: the single append of the grown segment (2026-10-04 amendment) ----
 
 
 def _labeled_batch(ids, signs=None, seed=13010):
-    """Real G7 label records (cortex) and matching units; the fixture density is G7's, not a measured one."""
+    """Real G7 label records (cortex) and matching units; the density is a fixture value."""
     from snn_data_lake.growth import placement as P
 
     signs = signs or [1] * (len(ids) - 1) + [-1]
     roles = ["E" if s > 0 else "I" for s in signs]
     labels = P.place_labeled(
-        len(ids), unit_ids=ids, region="cortex", site=(0.5 / 14, 1.5 / 4), problem_id="p", batch_id=0,
-        seed=seed, roles=roles, centre_um=(0.0, 0.0), density_per_mm2=2.7e4,
+        len(ids),
+        unit_ids=ids,
+        region="cortex",
+        site=(0.5 / 14, 1.5 / 4),
+        problem_id="p",
+        batch_id=0,
+        seed=seed,
+        roles=roles,
+        centre_um=(0.0, 0.0),
+        density_per_mm2=2.7e4,
     )
     units = [GrownUnit(i, (0.0,) * 52, 1.0, 12, s, (0.0,)) for i, s in zip(ids, signs, strict=True)]
     return units, labels
@@ -233,7 +241,11 @@ def test_admit_rows_refuses_a_unit_whose_sign_is_not_its_labels_and_does_not_spe
     from snn_data_lake.growth.grown_code import admit_rows
 
     units, labels = _labeled_batch([0, 1, 2])
-    flipped = [units[0], units[1], GrownUnit(2, (0.0,) * 52, 1.0, 12, 1, (0.0,))]  # label says I (-1)
+    flipped = [
+        units[0],
+        units[1],
+        GrownUnit(2, (0.0,) * 52, 1.0, 12, 1, (0.0,)),
+    ]  # label says I (-1)
     ticket = _ticket(labels)
     with pytest.raises(ValueError, match="Dale"):
         admit_rows((), flipped, labels, ticket)
@@ -241,8 +253,8 @@ def test_admit_rows_refuses_a_unit_whose_sign_is_not_its_labels_and_does_not_spe
 
 
 def test_admit_rows_refuses_a_planted_unlabeled_row():
-    # ruling 29's charge proof: the gate's ticket is consumed INSIDE admit_rows, so a row stripped of its
-    # label after validation is refused there (an import would prove only reachability)
+    # ruling 29's charge proof: the gate's ticket is consumed INSIDE admit_rows, so a row
+    # stripped of its label after validation is refused there (an import proves reachability only)
     from snn_data_lake.gates.unit_label_gate import require_admissible
     from snn_data_lake.growth.grown_code import admit_rows
 
@@ -251,7 +263,9 @@ def test_admit_rows_refuses_a_planted_unlabeled_row():
     stripped = [{k: v for k, v in labels[0].items() if k != "layer"}] + list(labels[1:])
     with pytest.raises(Exception, match="differs"):
         admit_rows((), units, stripped, ticket)
-    with pytest.raises(Exception, match="layer"):  # and no ticket exists for an unlabeled batch at all
+    with pytest.raises(
+        Exception, match="layer"
+    ):  # and no ticket exists for an unlabeled batch at all
         require_admissible(stripped, resolve_problem=lambda p: True, known_unit=lambda u: False)
 
 
@@ -259,17 +273,21 @@ def test_admit_rows_refuses_a_planted_unlabeled_row():
 
 
 def _column(k=3, thresholds=(1.0, 1.0, 1.0, 1.0)):
-    """k E units (sign +1) and one I unit (sign -1); unit j reads frozen-code synapse j with weight 2.0."""
+    """k E units (sign +1) and one I unit (sign -1); unit j reads synapse j with weight 2.0."""
     units = [
         GrownUnit(j, tuple(2.0 if i == j else 0.0 for i in range(52)), thresholds[j], 12, 1, (0.0,))
         for j in range(k)
     ]
-    units.append(GrownUnit(k, tuple(2.0 if i == k else 0.0 for i in range(52)), thresholds[k], 12, -1, (0.0,)))
+    units.append(
+        GrownUnit(
+            k, tuple(2.0 if i == k else 0.0 for i in range(52)), thresholds[k], 12, -1, (0.0,)
+        )
+    )
     return units
 
 
 def _steps(*steps):
-    """The frozen code's integer spike ranks: synapse j fires at step steps[j] (others never, rank 99)."""
+    """The frozen code's integer spike ranks: synapse j fires at step steps[j] (others: rank 99)."""
     return tuple(list(steps) + [99] * (52 - len(steps)))
 
 
@@ -286,16 +304,18 @@ def test_column_with_gamma_zero_is_batch9_byte_identically():
 def test_the_coupling_is_live_in_both_directions():
     from snn_data_lake.growth.grown_code import column_latencies
 
-    # I->E: the I unit spikes at step 2; the E units' drive at step 10 (2*psp(1) = 1.76) sits just over their
-    # threshold 1.7, and the inhibition (gamma*theta*psp(8), about 0.19) takes it under: E never spikes
+    # I->E: the I unit spikes at step 2; the E drive at step 10 (2*psp(1) = 1.76) sits just over
+    # their threshold 1.7, and the inhibition (gamma*theta*psp(8), about 0.19) takes it under
     units = _column(thresholds=(1.7, 1.7, 1.7, 1.0))
     ranks = _steps(9, 9, 9, 1)
     plain = column_latencies(units, ranks, TAU, 0.0)
     coupled = column_latencies(units, ranks, TAU, 1 / 3)
-    assert plain[3] == coupled[3] == 2  # the I unit's own latency is unchanged (no E has spiked before it)
+    assert (
+        plain[3] == coupled[3] == 2
+    )  # the I unit's own latency is unchanged (no E has spiked before it)
     assert all(plain[e] == 10 for e in (0, 1, 2)) and all(coupled[e] != 10 for e in (0, 1, 2))
-    # E->I: E units spike at step 1; the I unit (threshold 1.9, drive 2*psp(6) = 0.95 at step 7) is lifted by
-    # gamma*theta_I*sum psp(t - 1)
+    # E->I: E units spike at step 1; the I unit (threshold 1.9, drive 2*psp(6) = 0.95 at step 7)
+    # is lifted by gamma*theta_I*sum psp(t - 1)
     units = _column(thresholds=(1.0, 1.0, 1.0, 1.9))
     ranks = _steps(1, 1, 1, 7)
     plain = column_latencies(units, ranks, TAU, 0.0)
@@ -309,7 +329,7 @@ def test_the_evaluation_is_causal_a_later_spike_never_changes_an_earlier_latency
 
     units = _column()
     base = column_latencies(units, _steps(1, 2, 3, 2), TAU, 1 / 3)
-    # delay the LAST-spiking unit's afferent: units that spiked strictly earlier keep their latencies
+    # delay the LAST-spiking unit's afferent: units that spiked earlier keep their latencies
     moved = column_latencies(units, _steps(1, 2, 8, 2), TAU, 1 / 3)
     last = max((u for u in base if base[u] is not None), key=lambda u: base[u])
     earlier = {uid: t for uid, t in base.items() if t is not None and t < base[last]}

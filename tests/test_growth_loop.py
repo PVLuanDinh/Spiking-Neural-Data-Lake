@@ -16,11 +16,13 @@ from snn_data_lake.growth import growth_loop
 from snn_data_lake.growth.grown_code import GrownUnit, admit_rows
 from snn_data_lake.growth.growth_loop import (
     BudgetValues,
-    GrowthLoop as _GrowthLoop,
     Ledger,
     LedgerError,
     make_admission,
     retention_ok,
+)
+from snn_data_lake.growth.growth_loop import (
+    GrowthLoop as _GrowthLoop,
 )
 from snn_data_lake.growth.growth_stop import GrowthStop
 
@@ -30,12 +32,11 @@ ADMISSION = make_admission(site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), densi
 
 
 def GrowthLoop(*args, **kw):
-    """The loop with the fixture admission and a resolve-anything resolver; omitting them is a TypeError (a
-    test below pins that no ungated loop can be built)."""
+    """The loop with the fixture admission and a resolve-anything resolver; omitting them is a
+    TypeError (a test below pins that no ungated loop can be built)."""
     kw.setdefault("admission", ADMISSION)
     kw.setdefault("resolve_problem", lambda p: True)
     return _GrowthLoop(*args, **kw)
-
 
 
 class ScriptedLearner:
@@ -115,9 +116,9 @@ def test_ledger_refuses_the_live_lake():
 
 
 def test_ledger_refuses_a_symlink_alias_of_the_live_lake(tmp_path, monkeypatch):
-    # Codex cp5 #1: an isolated directory's lake.bin that points at the live lake file must be refused;
-    # the live home is a decoy dir (never the real one), the alias a real symlink (no skip: a platform
-    # without symlinks errors loudly instead of reading green)
+    # Codex cp5 #1: an isolated directory's lake.bin that points at the live lake file must be
+    # refused; the live home is a decoy dir (never the real one), the alias a real symlink (no
+    # skip: a platform without symlinks errors loudly instead of reading green)
     from snn_data_lake.substrate import home
     from snn_data_lake.substrate.home import LiveHomeRefused
 
@@ -299,7 +300,13 @@ def test_an_empty_source_ends_the_run_instead_of_looping(tmp_path):
 def test_a_non_positive_batch_is_refused(tmp_path):
     for bad in (0, -9):
         with pytest.raises(ValueError):
-            GrowthLoop(ScriptedLearner(["CAPACITY"]), "z", Ledger(tmp_path / "l.bin", VALUES), _source(9), bad)
+            GrowthLoop(
+                ScriptedLearner(["CAPACITY"]),
+                "z",
+                Ledger(tmp_path / "l.bin", VALUES),
+                _source(9),
+                bad,
+            )
 
 
 def test_a_reused_unit_id_is_refused_before_any_birth_row_is_written(tmp_path):
@@ -311,7 +318,9 @@ def test_a_reused_unit_id_is_refused_before_any_birth_row_is_written(tmp_path):
     n = len(ledger.units())
     with pytest.raises(LedgerError):  # across batches
         _born(ledger, [units[0]], "p", 1)
-    with pytest.raises(LedgerError):  # within one batch, nothing written even for the fresh first id
+    with pytest.raises(
+        LedgerError
+    ):  # within one batch, nothing written even for the fresh first id
         ledger.record_units([units[5], units[5]], [], "p", 1)
     assert len(ledger.units()) == n
 
@@ -319,13 +328,15 @@ def test_a_reused_unit_id_is_refused_before_any_birth_row_is_written(tmp_path):
 def test_a_reconstructed_source_that_restarts_its_ids_stops_the_loop_with_nothing_spent(tmp_path):
     ledger = Ledger(tmp_path / "lake.bin", VALUES)
     GrowthLoop(ScriptedLearner(["CAPACITY"]), "p", ledger, _source(9), 9).run()  # ids 0..44
-    with pytest.raises(UnitLabelRefused, match="duplicate across batches"):  # a fresh source counts from 0 again
+    with pytest.raises(
+        UnitLabelRefused, match="duplicate across batches"
+    ):  # a fresh source counts from 0 again
         GrowthLoop(ScriptedLearner(["CAPACITY"]), "q", ledger, _source(9), 9).run()
     assert ledger.ledger("q").spend_units == 0
 
 
 def test_candidate_evaluations_are_persisted_beside_the_admissions(tmp_path):
-    # Codex cp5 #7: a searching source returns (units, evaluations); a failed search still spends its evals
+    # Codex cp5 #7: a searching source returns (units, evaluations); a failed search still pays
     draw = _source(9)
     ledger = Ledger(tmp_path / "lake.bin", VALUES)
     rec = GrowthLoop(ScriptedLearner(["CAPACITY"]), "s", ledger, lambda n: (draw(n), 32), 9).run()
@@ -353,9 +364,9 @@ def test_a_learning_rule_deficit_journals_the_separating_witness_and_survives_a_
 
 
 def test_unit_birth_rows_are_measured_against_the_immortal_class_append_budget(tmp_path):
-    # Codex cp5 #6 / 2.6: the unit journal writes weight-bearing rows into IMMORTAL 0x0B. One ordinary
-    # 9-unit batch (measured from the lake file itself, not a constant) must sit under the recorded bar;
-    # a flood -- the same loop un-batched, 12 batches in one tick -- must trip it.
+    # Codex cp5 #6 / 2.6: the unit journal writes weight-bearing rows into IMMORTAL 0x0B. One
+    # ordinary 9-unit batch (measured from the lake file itself, not a constant) must sit under
+    # the recorded bar; a flood -- the same loop un-batched, 12 batches in one tick -- must trip it.
     import os
     import random
 
@@ -386,7 +397,9 @@ def test_unit_birth_rows_are_measured_against_the_immortal_class_append_budget(t
     one = os.path.getsize(lake) - before
     bud = AppendBudget()  # the recorded baseline (tools/lake_append_baseline.json), 0x0B included
     bar, source = bud.bar(0x0B)
-    assert bar is not None and "seeded" in source, "0x0B must be baselined, not 'a budget nobody measured'"
+    assert bar is not None and "seeded" in source, (
+        "0x0B must be baselined, not 'a budget nobody measured'"
+    )
     bud.on_append(0x0B, one)
     assert bud.end_tick() == []  # control: an ordinary batch tick is green
     for b in range(12):
@@ -407,7 +420,8 @@ def test_a_wrong_size_batch_still_journals_the_evaluations_its_search_paid(tmp_p
 
 
 def test_ids_are_refused_not_coerced(tmp_path):
-    # G7 refutation 2: 1.5 / True / "7" must not be journaled as 1 / 1 / 7 while the learner holds the original
+    # G7 refutation 2: 1.5 / True / "7" must not be journaled as 1 / 1 / 7 while the learner
+    # holds the original
     ledger = Ledger(tmp_path / "lake.bin", VALUES)
     good = GrownUnit(3, (0.0,), 1.0, 12, 1, (0.0,))
     for bad in (1.5, True, "7", -1):
@@ -434,7 +448,7 @@ def test_run_one_on_a_fresh_problem_grows_and_run_two_under_the_same_budget_does
 
 
 def test_a_run_that_journals_nothing_does_not_turn_the_next_run_into_a_retry(tmp_path):
-    # a source that returns a wrong-size batch with NO evaluations raises before any write: no run happened
+    # a wrong-size batch with NO evaluations raises before any write: no run happened
     draw = _source(9)
     ledger = Ledger(tmp_path / "lake.bin", VALUES)
     with pytest.raises(LedgerError):
@@ -463,11 +477,17 @@ def test_every_admitted_batch_reaches_the_learner_with_its_ticket_and_labels(tmp
 
 
 def test_the_gate_refuses_before_any_birth_row_and_the_refused_search_is_still_paid(tmp_path):
-    # a problem the resolver does not know: the gate refuses the batch; nothing is born, the evals are journaled
+    # a problem the resolver does not know: the gate refuses the batch; nothing is born, the
+    # evals are journaled
     draw = _source(9)
     ledger = Ledger(tmp_path / "lake.bin", VALUES)
     loop = GrowthLoop(
-        ScriptedLearner(["CAPACITY"]), "ghost", ledger, lambda n: (draw(n), 32), 9, resolve_problem=lambda p: False
+        ScriptedLearner(["CAPACITY"]),
+        "ghost",
+        ledger,
+        lambda n: (draw(n), 32),
+        9,
+        resolve_problem=lambda p: False,
     )
     with pytest.raises(UnitLabelRefused, match="does not resolve"):
         loop.run()
@@ -483,10 +503,13 @@ def test_the_birth_row_carries_the_label_and_feeds_the_gates_three_readers(tmp_p
     assert len(births) == 9 and all(set(LABEL_FIELDS) <= set(r) for r in births.values())
     assert ledger.first_sign() == {u: r["sign"] for u, r in births.items()}
     assert ledger.known_unit(0) and not ledger.known_unit(10**6)
-    # the restore reader: the journal's own rows classify as born; a changed label on a born unit is refused
+    # the restore reader: the journal's own rows classify as born; a changed label on a born
+    # unit is refused
     rows = [dict(r) for r in births.values()]
     assert set(classify_restored(rows, births)) == {"born"}
-    tampered = [dict(rows[0], layer="Layer 6" if rows[0]["layer"] != "Layer 6" else "Layer 2")] + rows[1:]
+    tampered = [
+        dict(rows[0], layer="Layer 6" if rows[0]["layer"] != "Layer 6" else "Layer 2")
+    ] + rows[1:]
     with pytest.raises(UnitLabelRefused, match="tampered"):
         classify_restored(tampered, births)
 
@@ -494,7 +517,9 @@ def test_the_birth_row_carries_the_label_and_feeds_the_gates_three_readers(tmp_p
 def test_a_label_that_is_not_the_units_is_refused_before_any_write(tmp_path):
     ledger = Ledger(tmp_path / "lake.bin", VALUES)
     units = _source(9)(9)
-    labels, _ticket = ADMISSION(units, "p", 0, resolve_problem=lambda p: True, known_unit=lambda u: False)
+    labels, _ticket = ADMISSION(
+        units, "p", 0, resolve_problem=lambda p: True, known_unit=lambda u: False
+    )
     with pytest.raises(growth_loop.LedgerError):  # the batch id on the labels is not this batch's
         ledger.record_units(units, labels, "p", 1)
     flipped = [dict(labels[0], sign=-labels[0]["sign"])] + labels[1:]
@@ -504,7 +529,8 @@ def test_a_label_that_is_not_the_units_is_refused_before_any_write(tmp_path):
 
 
 def test_a_unit_the_segment_would_refuse_writes_no_birth_row_and_still_pays_its_search(tmp_path):
-    # G7 finding 3: grown_code's own refusals (a non-finite weight) must fire BEFORE the immortal birth rows,
+    # G7 finding 3: grown_code's own refusals (a non-finite weight) must fire BEFORE the immortal
+    # birth rows,
     # or known_unit would block the id of a unit the learner never held
     draw = _source(9)
 

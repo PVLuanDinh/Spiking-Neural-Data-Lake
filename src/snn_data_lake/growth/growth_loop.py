@@ -37,8 +37,8 @@ from pathlib import Path
 from snn_data_lake.gates.unit_label_gate import LABEL_FIELDS, require_admissible
 from snn_data_lake.growth.grown_code import apply_unit_row
 from snn_data_lake.growth.growth_stop import GrowthStop
-from snn_data_lake.growth.placement import place_labeled
 from snn_data_lake.growth.learning_progress import GoalStore
+from snn_data_lake.growth.placement import place_labeled
 from snn_data_lake.substrate.home import LiveHomeRefused, assert_not_live_home
 
 #: diagnoses that license growth (2.4); every other kind attempts without growth or not at all
@@ -249,13 +249,21 @@ class Ledger:
         known = {r["unit_id"] for r in self.units()}
         dup = sorted({i for i in ids if ids.count(i) > 1} | (set(ids) & known))
         if dup:
-            raise LedgerError(f"problem {problem_id!r}: unit ids {dup} are already born or repeated in the batch")
+            raise LedgerError(
+                f"problem {problem_id!r}: unit ids {dup} are already born or repeated in the batch"
+            )
         by_id = {lab["unit_id"]: lab for lab in labels}
         if sorted(by_id) != sorted(ids) or len(by_id) != len(labels):
-            raise LedgerError(f"problem {problem_id!r}: the label records do not name exactly the batch's unit ids")
+            raise LedgerError(
+                f"problem {problem_id!r}: the label records do not name exactly the batch's unit ids"
+            )
         for u in units:
             lab = by_id[u.unit_id]
-            if lab["problem_id"] != problem_id or lab["batch_id"] != batch_id or lab["sign"] != u.sign:
+            if (
+                lab["problem_id"] != problem_id
+                or lab["batch_id"] != batch_id
+                or lab["sign"] != u.sign
+            ):
                 raise LedgerError(
                     f"unit {u.unit_id}: its label (problem, batch, sign) is not this batch's / this unit's"
                 )
@@ -446,12 +454,16 @@ class GrowthLoop:
         # the same currency (2.6; Codex cp5 #7); a plain list evaluated nothing it can report
         units, evals = out if isinstance(out, tuple) else (out, 0)
         try:
-            if units and len(units) != self.batch:  # the gate cleared THIS size; anything else could cross the budget
+            if (
+                units and len(units) != self.batch
+            ):  # the gate cleared THIS size; anything else could cross the budget
                 raise LedgerError(
                     f"problem {self.problem_id!r}: the source returned {len(units)} units for a batch of {self.batch}"
                 )
             if units:
-                for u in units:  # grown_code's own refusals (non-finite weights, Dale) fire BEFORE any birth row
+                for u in (
+                    units
+                ):  # grown_code's own refusals (non-finite weights, Dale) fire BEFORE any birth row
                     apply_unit_row((), {"op": "admit", "unit": u})
                 labels, ticket = self.admission(
                     units,
@@ -461,7 +473,9 @@ class GrowthLoop:
                     known_unit=self.ledger.known_unit,
                 )
                 labels = list(labels)
-                self.ledger.record_units(units, labels, self.problem_id, self._batches)  # write-ahead
+                self.ledger.record_units(
+                    units, labels, self.problem_id, self._batches
+                )  # write-ahead
         except (LedgerError, ValueError):  # UnitLabelRefused is a ValueError
             self._pay_search(evals)  # a refused batch still paid its search (G7 refutation 1)
             raise
@@ -470,8 +484,12 @@ class GrowthLoop:
             return False
         self._mark_run()
         self.ledger.record_spend(self.problem_id, len(units), evals=evals)
-        self.learner.admit(units, labels, ticket)  # a conforming adapter appends through grown_code.admit_rows (none exists in src yet: the learner port waits on R2's P1)
-        if not ticket.consumed:  # detection after the fact: the loop cannot un-admit (2026-10-06 amendment (e))
+        self.learner.admit(
+            units, labels, ticket
+        )  # a conforming adapter appends through grown_code.admit_rows (none exists in src yet: the learner port waits on R2's P1)
+        if (
+            not ticket.consumed
+        ):  # detection after the fact: the loop cannot un-admit (2026-10-06 amendment (e))
             raise LedgerError(
                 f"problem {self.problem_id!r}: the adapter admitted a batch without consuming its ticket"
             )
@@ -506,7 +524,9 @@ class GrowthLoop:
             self.ledger.set_state(self.problem_id, "CONTRADICTORY")
             return self.ledger.ledger(self.problem_id)
         self._ran = False
-        if rec.runs_this_budget > 0:  # read BEFORE any write of this run: `rec` is the replayed ledger
+        if (
+            rec.runs_this_budget > 0
+        ):  # read BEFORE any write of this run: `rec` is the replayed ledger
             # a retry (a run already started under this budget, spent or not): no new teaching, so no fresh
             # budget -- attempts only, growth frozen (2.6 retry rule; Codex cp5 #3)
             if self._attempt():  # a solve on the retry stands (Codex cp5 #2)
@@ -572,7 +592,9 @@ def main():
         ]
 
     values = BudgetValues(first=52, beta=1.5)
-    admission = make_admission(site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), density_per_mm2=2.7e4)  # fixture values
+    admission = make_admission(
+        site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), density_per_mm2=2.7e4
+    )  # fixture values
 
     def Loop(*a, **k):
         return GrowthLoop(*a, admission=admission, resolve_problem=lambda p: True, **k)

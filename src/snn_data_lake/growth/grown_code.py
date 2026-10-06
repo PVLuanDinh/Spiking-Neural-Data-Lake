@@ -88,12 +88,18 @@ def column_latencies(units, ranks, tau, gamma):
                 continue
             v = _drive(u, ranks, tau, t)
             if u is inh:
-                v += gamma * u.threshold * sum(_psp(t - te, tau) for e, te in spiked.items() if e != u.unit_id)
+                v += (
+                    gamma
+                    * u.threshold
+                    * sum(_psp(t - te, tau) for e, te in spiked.items() if e != u.unit_id)
+                )
             elif inh.unit_id in spiked:
                 v -= gamma * u.threshold * _psp(t - spiked[inh.unit_id], tau)
             if v >= u.threshold:
                 new[u.unit_id] = t
-        spiked.update(new)  # spikes of step t act from step t + 1 (psp(0) = 0): the evaluation is causal
+        spiked.update(
+            new
+        )  # spikes of step t act from step t + 1 (psp(0) = 0): the evaluation is causal
     return {u.unit_id: spiked.get(u.unit_id) for u in units}
 
 
@@ -189,7 +195,9 @@ def admit_rows(segment, units, label_rows, ticket):
         raise ValueError("the units and their label rows name different unit ids")
     for u in units:
         if u.sign != sign_of[u.unit_id]:
-            raise ValueError(f"unit {u.unit_id}: Dale sign {u.sign:+d} differs from its label's {sign_of[u.unit_id]:+d}")
+            raise ValueError(
+                f"unit {u.unit_id}: Dale sign {u.sign:+d} differs from its label's {sign_of[u.unit_id]:+d}"
+            )
     for u in units:
         segment = apply_unit_row(segment, {"op": "admit", "unit": u})
     ticket.consume(label_rows)
