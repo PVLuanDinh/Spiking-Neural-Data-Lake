@@ -297,3 +297,20 @@ def test_cli_refuses_an_out_in_the_live_home_before_any_brain_runs():
     with pytest.raises(LiveHomeRefused):
         spc._cli(["--arm", "12001", "live", "--out", target])
     assert not os.path.exists(target)
+
+
+@pytest.mark.parametrize(
+    "seed", [300, 330, 331, 6000, 6001, 6100, 7000, 7007, 5009, 208, 12000, 12345, 13000]
+)
+def test_protected_and_foreign_seeds_are_refused_before_any_brain(seed):
+    """Codex panel MAJOR: the CLI/arm entries admit only G6's block 12001-12999 (12345 excluded)."""
+    with pytest.raises(ValueError):
+        spc.admit_seed(seed)
+    with pytest.raises(ValueError):
+        spc.run_arm(seed, "live", ticks=1)
+    with pytest.raises(ValueError):
+        spc._cli(["--census", "--seed", str(seed)])
+
+
+def test_a_seed_in_the_block_is_admitted():
+    assert spc.admit_seed(12001) == 12001 and spc.admit_seed(12999) == 12999

@@ -458,8 +458,9 @@ def run_seed_arm(seed, arm, *, total=900, shuffle_from=None, solve_requests=None
     """One (seed, arm) on a fresh scratch brain with the burst workload; the caller owns a throwaway
     NORD_HOME (refused if it resolves to the live home). Returns (PressureRun, pooled [correct, total])."""
     from snn_data_lake.engine.brain import make_brain
-    from snn_data_lake.instruments.sleep_pruner_census import _assert_scratch_home
+    from snn_data_lake.instruments.sleep_pruner_census import _assert_scratch_home, admit_seed
 
+    admit_seed(seed)
     _assert_scratch_home()
     b = make_brain(seed=seed)
     cycles = cycles_from_gate(clock_gate(b, total))

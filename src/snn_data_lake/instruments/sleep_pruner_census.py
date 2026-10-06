@@ -827,11 +827,25 @@ def _outcome_patches(brain, run):
     return [(brain, "_enter_wake", wake), (NeurogenesisSelfImprove, "_refit", refit)]
 
 
+G6_SEEDS = range(12001, 13000)  # G6's registered block (SEEDS.md); 12000 and 12345 are excluded
+
+
+def admit_seed(seed):
+    """Refuse any seed outside G6's registered block: 300-330, 6000, 7000-7007 and the other protected sets
+    are unreachable by construction (a whitelist, not a blacklist that must be kept current)."""
+    if int(seed) not in G6_SEEDS or int(seed) == 12345:
+        raise ValueError(
+            f"seed {seed} is outside G6's registered block 12001-12999 (12345 excluded)"
+        )
+    return int(seed)
+
+
 def run_arm(seed, arm, *, ticks=TICKS, schedule=None, teach=True):
     """One (seed, arm) on a fresh throwaway brain. `schedule` = the live arm's per-call removals for the
     sabotage twins. The caller owns NORD_HOME (a throwaway); this refuses the live home."""
     if arm not in ARMS:
         raise ValueError(f"unknown arm {arm!r}; arms are {ARMS}")
+    admit_seed(seed)
     _assert_scratch_home()
     from snn_data_lake.engine.brain import make_brain
 
@@ -1152,6 +1166,7 @@ def _cli(argv):
     p.add_argument("--ticks", type=int, default=TICKS)
     p.add_argument("--seed", type=int, default=12001)
     a = p.parse_args(argv)
+    admit_seed(a.arm[0] if a.arm else a.seed)
     if a.census:
         with throwaway_home():
             _assert_scratch_home()
