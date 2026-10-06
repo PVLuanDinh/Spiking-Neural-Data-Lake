@@ -482,25 +482,40 @@ def _live_file_stats(live):
 def require_isolated_home(live_home=None):
     """For a harness that set NORD_HOME itself: refuse an unset or empty NORD_HOME (home() would then
     be the live lake), else apply `assert_not_live_home`. Call before any lake-binding import or
-    Brain construction. Returns the resolved home. Scope, stated: TOP-LEVEL entries only -- a junction
-    or hardlink inside a subdirectory of the home is not examined."""
+    Brain construction. Returns the resolved home. Every entry at EVERY depth is checked (an alias
+    is never descended into, its target is checked); a home of more than _MAX_HOME_ENTRIES entries is
+    refused rather than scanned -- an isolated home is small."""
     p = assert_not_live_home(os.environ.get("NORD_HOME") or "", live_home=live_home)
     live = _resolve(live_home if live_home is not None else _default_live_home())
-    live_files = _live_file_stats(live)
-    with os.scandir(
-        p
-    ) as entries:  # where the home's OWN files (the lake, its sidecars) really point
+    _scan_home_entries(p, live, _live_file_stats(live), [0])
+    return p
+
+
+_MAX_HOME_ENTRIES = 20000
+
+
+# distinct-from: faculties/homeostatic_drives.py, gates/move_gate.py, instruments/everyday_battery.py,
+#   brainstem/so101_arm.py, engine/brain.py -- prose keyword hits ("home", "entry", "sidecar"); none walks
+#   a home directory for aliases. This is the body of the one shared guard (require_isolated_home).
+def _scan_home_entries(d, live, live_files, seen):
+    with os.scandir(d) as entries:
         for e in entries:
+            seen[0] += 1
+            if seen[0] > _MAX_HOME_ENTRIES:
+                raise LiveHomeRefused(
+                    f"home refused (entries): more than {_MAX_HOME_ENTRIES} -- not an isolated home"
+                )
             real = _resolve(e.path)
-            if os.path.normcase(real) != os.path.normcase(os.path.join(p, e.name)):
-                _refuse_if_live(real, live, what=f"home entry {e.name!r} (an alias); its target")
+            if os.path.normcase(real) != os.path.normcase(os.path.join(d, e.name)):
+                _refuse_if_live(real, live, what=f"home entry {e.path!r} (an alias); its target")
+            elif e.is_dir(follow_symlinks=False):
+                _scan_home_entries(e.path, live, live_files, seen)
             elif e.is_file(follow_symlinks=False) and any(
                 os.path.samestat(os.stat(e.path), st) for st in live_files
             ):
                 raise LiveHomeRefused(
-                    f"home refused (hardlink): entry {e.name!r} is the same file as one in the live home"
+                    f"home refused (hardlink): entry {e.path!r} is the same file as one in the live home"
                 )
-    return p
 
 
 @contextlib.contextmanager

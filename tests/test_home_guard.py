@@ -209,6 +209,33 @@ def test_a_hardlink_to_the_live_lake_inside_an_isolated_home_is_refused(tmp_path
         H.require_isolated_home(live_home=str(live))
 
 
+def test_the_alias_scan_is_recursive_and_bounded(tmp_path, monkeypatch):
+    # lead: a symlink / hardlink inside a SUBDIRECTORY of the isolated home must be caught too, and
+    # the walk has a stated bound (a home over _MAX_HOME_ENTRIES entries is refused, not scanned)
+    live = tmp_path / "live"
+    live.mkdir()
+    (live / "brain_lake.bin").write_bytes(b"live")
+    iso = tmp_path / "iso"
+    (iso / "a" / "b").mkdir(parents=True)
+    monkeypatch.setenv("NORD_HOME", str(iso))
+    (iso / "a" / "b" / "mine.bin").write_bytes(b"mine")
+    assert H.require_isolated_home(live_home=str(live))  # the positive: a nested, ordinary file
+    _symlink_or_skip(iso / "a" / "b" / "lake.bin", live / "brain_lake.bin")
+    with pytest.raises(H.LiveHomeRefused, match="lake.bin"):
+        H.require_isolated_home(live_home=str(live))
+    (iso / "a" / "b" / "lake.bin").unlink()
+    try:
+        os.link(live / "brain_lake.bin", iso / "a" / "hard.bin")
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"cannot create a hardlink here: {exc}")
+    with pytest.raises(H.LiveHomeRefused, match="hardlink"):
+        H.require_isolated_home(live_home=str(live))
+    (iso / "a" / "hard.bin").unlink()
+    monkeypatch.setattr(H, "_MAX_HOME_ENTRIES", 2)  # a, b, mine.bin = 3 entries
+    with pytest.raises(H.LiveHomeRefused, match="entries"):
+        H.require_isolated_home(live_home=str(live))
+
+
 def test_namespace_prefix_normalisation_covers_unc():
     # `\\?\UNC\server\share` is the extended spelling of `\\server\share`
     assert H._strip_namespace("\\\\?\\UNC\\srv\\share\\x") == "\\\\srv\\share\\x"
