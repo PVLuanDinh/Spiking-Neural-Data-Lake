@@ -541,4 +541,11 @@ Carried XOR 0.676, twin 0.853; Settled XOR 0.996, twin 0.997; the stream reads c
   5. **Not folded, disposition recorded (P2/P3 #2):** the record stage still records the gate seeds (204-207 live,
      208-211 reserve) that only the deleted migrate stage read. They are a clause of 2.11's frozen seed bundle, and a new
      recording runs only as the reserve repair, which waits for the owner's yes; at that yes, a dated pre-data amendment
-     drops them first (carried as an opening).
+     drops them first (carried as an opening).- **Fold re-panel** (lens "fold", gpt-6.1-sol, frozen clone at `01a7ebfd`, reply sha256 `f87d05fc...2e27`, archived
+  beside the panel): (MINOR) the mechanism-wrapper test asserted supersets, so a mutant dropping every R-b5 check passed
+  -> exact sets, `d1e97a21`, battery-verified only (a third panel round is the owner's call). (MAJOR) **refuted in
+  writing:** a record summary EDITED to list `stages` without migrate lets run1's summaries skip migrate. The summaries
+  are unsigned JSON: provenance checks that they are one consistent campaign, not that they are authentic (an editor of
+  `stages` can equally edit D or the heads); the realistic failure, an OUT whose migrate summary is missing, still reds,
+  because no legacy record lists `stages`; authenticity is the golden check's job (2.11), which compares the report's
+  digest against a trusted golden and would move on that edit, as the finding itself notes.
