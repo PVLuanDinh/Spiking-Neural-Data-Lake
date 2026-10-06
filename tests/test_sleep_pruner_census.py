@@ -223,3 +223,41 @@ def test_the_discovery_net_reds_on_a_planted_unclassified_pruner():
         with spc.discovering(seen):
             spc.census_runtime(b, 40)
     assert ("?", "evict_planted") in spc.census_misses(cen, seen)
+
+
+def test_c2_a_planted_pruner_removing_k_items_reads_k(monkeypatch):
+    """C2 through the counting layer (counting_patches), not only the extractors on planted return values."""
+    import types
+
+    class Planted:
+        def prune(self, k):
+            return k
+
+    monkeypatch.setattr(spc, "_import", lambda mod: types.SimpleNamespace(Planted=Planted))
+    rec = spc.Recorder()
+    sites = {("x", "Planted", "prune"): ("P-DP", spc._removed_int, None)}
+    with spc._patched(spc.counting_patches(rec, sites=sites)):
+        Planted().prune(3)
+        Planted().prune(4)
+    assert rec.removals("P-DP") == 7 and rec.calls("P-DP") == 2
+
+
+def test_c5_a_planted_cross_pruner_change_is_caught():
+    """C5's red: a neuter that changes ANOTHER pruner's series before the first removal must read not-surgical."""
+    live = spc.ArmRun(seed=0, arm="live", ticks=9)
+    live.removals = {"P-DP": [[5, 2]], "P-EY": [[1, 1]]}
+    twin = spc.ArmRun(seed=0, arm="dp_neuter", ticks=9)
+    twin.removals = {"P-EY": [[1, 1]]}
+    assert spc.surgical_ok(live, twin, "P-DP") == (True, None)
+    twin.removals = {"P-EY": [[1, 9]]}
+    assert spc.surgical_ok(live, twin, "P-DP") == (False, "P-EY")
+
+
+def test_c6_the_digest_moves_when_the_run_moves():
+    a = spc.ArmRun(seed=0, arm="live", ticks=9, nights=[[2, True, 30]]).finish()
+    b = spc.ArmRun(seed=0, arm="live", ticks=9, nights=[[2, True, 31]]).finish()
+    assert (
+        a.digest != b.digest
+        and a.digest
+        == spc.ArmRun(seed=0, arm="live", ticks=9, nights=[[2, True, 30]]).finish().digest
+    )

@@ -1123,7 +1123,7 @@ def main():
         f"sleep_pruner_census self-check OK: census {cen.found()} via {len(cen.sites)} sites "
         f"({cen.unresolved} unresolved receivers counted, 0 in the prune vocabulary); C1 add+delete red; "
         f"C2 extractors exact; decision KEEP(beneficial)/KEEP(efficient)/INERT/REFUSED(R2)/REFUSED(C4)/"
-        f"REFUSED(no T_ref)/RETIRE x2; A9 degenerate rules; C25 dense vs sparse; bar {T_BAR}"
+        f"REFUSED(no T_ref)/RETIRE x2; A9 degenerate rules; C25 the instrument counter; bar {T_BAR}"
     )
 
 

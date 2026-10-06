@@ -144,3 +144,12 @@ def test_restart_cost_lowers_net_and_h_star_is_the_break_even():
     paid = jms.net_savings(res, full, horizon=10, restart_cost=7.0, **kw)
     assert free - paid == 7.0
     assert jms.break_even_horizon(res, full, restart_cost=5.0, **kw) == (20 * 0.5 + 5.0) / 6.0
+
+
+def test_c9_the_retention_judgment_reds_a_mask_that_drops_the_old_unit():
+    """C9 through Meter.judge (the judged retention), not the fixture's own predicate."""
+    fx = jms.CoverFixture()
+    m = jms.Meter(fx)
+    m.freeze()
+    _, retained = m.judge(tuple([1] * (fx.n - 1) + [0]))
+    assert retained is False
