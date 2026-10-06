@@ -34,7 +34,8 @@ import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from snn_data_lake.gates.unit_label_gate import LABEL_FIELDS, UnitLabelRefused, require_admissible
+from snn_data_lake.gates.unit_label_gate import LABEL_FIELDS, require_admissible
+from snn_data_lake.growth.grown_code import apply_unit_row
 from snn_data_lake.growth.growth_stop import GrowthStop
 from snn_data_lake.growth.placement import place_labeled
 from snn_data_lake.growth.learning_progress import GoalStore
@@ -450,6 +451,8 @@ class GrowthLoop:
                     f"problem {self.problem_id!r}: the source returned {len(units)} units for a batch of {self.batch}"
                 )
             if units:
+                for u in units:  # grown_code's own refusals (non-finite weights, Dale) fire BEFORE any birth row
+                    apply_unit_row((), {"op": "admit", "unit": u})
                 labels, ticket = self.admission(
                     units,
                     self.problem_id,
@@ -459,7 +462,7 @@ class GrowthLoop:
                 )
                 labels = list(labels)
                 self.ledger.record_units(units, labels, self.problem_id, self._batches)  # write-ahead
-        except (LedgerError, UnitLabelRefused):
+        except (LedgerError, ValueError):  # UnitLabelRefused is a ValueError
             self._pay_search(evals)  # a refused batch still paid its search (G7 refutation 1)
             raise
         if not units:
@@ -467,7 +470,7 @@ class GrowthLoop:
             return False
         self._mark_run()
         self.ledger.record_spend(self.problem_id, len(units), evals=evals)
-        self.learner.admit(units, labels, ticket)  # the adapter appends through grown_code.admit_rows
+        self.learner.admit(units, labels, ticket)  # a conforming adapter appends through grown_code.admit_rows (none exists in src yet: the learner port waits on R2's P1)
         self._batches += 1
         return True
 

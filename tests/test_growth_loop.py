@@ -500,6 +500,22 @@ def test_a_label_that_is_not_the_units_is_refused_before_any_write(tmp_path):
     assert ledger.units() == []
 
 
+def test_a_unit_the_segment_would_refuse_writes_no_birth_row_and_still_pays_its_search(tmp_path):
+    # G7 finding 3: grown_code's own refusals (a non-finite weight) must fire BEFORE the immortal birth rows,
+    # or known_unit would block the id of a unit the learner never held
+    draw = _source(9)
+
+    def bad_source(n):
+        units = draw(n)
+        units[0] = GrownUnit(units[0].unit_id, (float("nan"),) * 4, 1.0, 12, units[0].sign, (0.0,))
+        return units, 32
+
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    with pytest.raises(ValueError, match="not finite"):
+        GrowthLoop(ScriptedLearner(["CAPACITY"]), "nf", ledger, bad_source, 9).run()
+    assert ledger.units() == [] and ledger.ledger("nf").spend_evals == 32
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 

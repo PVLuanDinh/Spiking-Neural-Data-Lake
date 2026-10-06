@@ -840,3 +840,17 @@ reported, never silently re-derived. No reconciliation code exists yet; the wind
 
 **OPEN ITEM (carried, 2026-10-06, agreed with G7):** a reconciler for unsettled batches (birth rows with no spend row, amendment (d)) is owed by an
 arc that wires the loop live (G9's engine); until then the window is stated, not closed. No task of this row is DONE while this item is open.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (e) (what the gate integration is and is not; G7's census findings; no data read)
+
+- **No production adapter yet.** `GrowthLoop` hands `learner.admit(units, labels, ticket)` a ticket and expects the adapter to append
+  through `grown_code.admit_rows`. The only `admit` implementations in `src` today are the self-check's scripted learner and test
+  doubles; the real adapter is the learner port on `readout/interaction_learning.py`, after R2's P1 (OWNERS landing order), and the
+  engine wiring is G9's. Until both land, the single-append row is satisfied by declaration plus a charge test on `admit_rows`
+  itself, and the gate carries a dormancy EXEMPT 'wire' row (lead ruling 29) that retires when G9 wires the engine.
+- **Pre-validation (moved, not stated).** `grown_code.apply_unit_row` is dry-run on every unit BEFORE any birth row, so a refusal
+  the segment would make (non-finite weights, Dale on outputs) writes nothing and pays only the search's evaluations; the labels'
+  ids/signs are cross-checked against the units in `Ledger.record_units` before any write. After the birth rows a refusal is not
+  reachable from this loop's own admission.
+- **Ticket enforcement is detection, not prevention.** The loop cannot un-admit; when G7's read-only `AdmissionTicket.consumed`
+  lands, a ticket left unspent after `learner.admit` raises `LedgerError`, loudly, after the fact.
