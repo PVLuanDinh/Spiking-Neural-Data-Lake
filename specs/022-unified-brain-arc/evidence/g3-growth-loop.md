@@ -816,3 +816,16 @@ reconstruction test below passing.
   repeated id) leaves no run row, so the next run still draws growth under the same budget; a refusal that already paid
   evaluations journals them (spend units = 0) and counts as a run, so the next run under that budget is a retry.
 - **Ids are not coerced.** The ledger refuses a non-int, bool or negative `unit_id`/`batch_id` (the same types G7's gate refuses).
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (c) (the context-read row's types, agreed with R2; no data read)
+
+Adds to the state-branch amendment above; nothing is removed. Agreed with R2 (kind `ctxread`, registered in R2's `learner_events.py`):
+- Slot types: `episode_id` = the ASCII-decimal learner seq of the episode's first event; `turn_index` = ASCII decimal, 0-based within the
+  episode; `grown_version` = ASCII decimal of `grown_code.grown_version`'s unsigned crc32; `encoded_ranks_digest` = a lowercase hex
+  sha256 token (the one non-decimal slot). The row shares `Brain._learner_seq` and the boot's session with the other learner events.
+- The row is written BEFORE the step, through R2's sink `Brain._record_ctxread(...)` (G3's memory-step hook calls it; G3 never writes
+  the lake directly) and inherits the `split` and `valid` of the turn it journals, so a held-out turn's row is held-out.
+- R2's reader refuses only per-event reasons (missing_slot, duplicate_id, seq_regression ...); a SWAPPED turn_index or a dropped row is
+  `reconstruct_state`'s red, not the reader's (the test says so).
+- Cost: one more immortal row per stepped turn of a live memory unit; it joins decision 13's claim-with-a-check (R2 reports the
+  measured B/turn at the first daemon restart).
