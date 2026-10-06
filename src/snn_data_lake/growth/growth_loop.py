@@ -324,6 +324,8 @@ class GrowthLoop:
         solved_sink=None,
     ):
         self.learner, self.problem_id, self.ledger = learner, problem_id, ledger
+        if int(batch) <= 0:
+            raise ValueError(f"batch must be positive, got {batch!r}")
         self.source, self.batch, self.gated, self.diagnosis = (
             source,
             int(batch),
@@ -348,12 +350,20 @@ class GrowthLoop:
         return self.gate.should_grow_problem(self.problem_id)
 
     def _grow(self):
+        """True when one whole batch was admitted; False when the source had none to give (Codex cp5 #4)."""
         units = self.source(self.batch)
+        if not units:
+            return False
+        if len(units) != self.batch:  # the gate cleared THIS size; anything else could cross the budget
+            raise LedgerError(
+                f"problem {self.problem_id!r}: the source returned {len(units)} units for a batch of {self.batch}"
+            )
         for u in units:  # write-ahead: journaled before the learner holds it
             self.ledger.record_unit(u, self.problem_id, self._batches)
         self.ledger.record_spend(self.problem_id, len(units), evals=0)
         self.learner.admit(units)
         self._batches += 1
+        return True
 
     def _attempt(self):
         solved = bool(self.learner.attempt(self.epochs))
@@ -386,7 +396,8 @@ class GrowthLoop:
             if kind in GROWTH_KINDS:
                 if not self._may_grow(rec):
                     return self._paused()
-                self._grow()
+                if not self._grow():
+                    return self._paused()
                 idle = 0
             else:
                 if idle >= self.a_max:

@@ -254,6 +254,30 @@ def test_a_retry_after_an_unresolved_run_never_grows_on_the_unspent_remainder(tm
     assert loop.run().spend_units > 9
 
 
+def test_a_source_returning_more_than_the_gated_batch_is_refused_before_any_write(tmp_path):
+    # Codex cp5 #4: batch=1 passes the 45/52 gate, a source that returns 9 would cross the budget
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    ledger.open_problem("b", 4)
+    ledger.record_spend("b", 45, evals=0)  # b sits at 45/52
+    draw = _source(9)
+    with pytest.raises(LedgerError):
+        GrowthLoop(ScriptedLearner(["CAPACITY"]), "b", ledger, lambda n: draw(9), 1).run()
+    assert ledger.ledger("b").spend_units == 45 and not ledger.units()
+
+
+def test_an_empty_source_ends_the_run_instead_of_looping(tmp_path):
+    learner = ScriptedLearner(["CAPACITY"])  # bounded: a lost exit is an assertion, not a hang
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    rec = GrowthLoop(learner, "e", ledger, lambda n: [], 9).run()
+    assert rec.state == "UNSOLVED" and rec.open and rec.spend_units == 0
+
+
+def test_a_non_positive_batch_is_refused(tmp_path):
+    for bad in (0, -9):
+        with pytest.raises(ValueError):
+            GrowthLoop(ScriptedLearner(["CAPACITY"]), "z", Ledger(tmp_path / "l.bin", VALUES), _source(9), bad)
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 
