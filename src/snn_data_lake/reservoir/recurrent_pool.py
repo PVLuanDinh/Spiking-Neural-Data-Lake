@@ -379,14 +379,6 @@ class _Pool:
     def carriers(self):
         return {name: getattr(self, name).copy() for name in self.CARRIERS}
 
-    def params_fingerprint(self):
-        return _crc_arrays(self.params())
-
-    def fingerprint(self):
-        """crc32 of the complete continuation state: the percept count, carriers, parameters."""
-        crc = zlib.crc32(f"count|{self.count}".encode("ascii"))
-        return _crc_arrays(self.params(), _crc_arrays(self.carriers(), crc))
-
     def frozen(self):
         """R-b5 (iii): the parameters equal their boundary fingerprint (Front-end: its lesion's)."""
         if self.boundary is None:

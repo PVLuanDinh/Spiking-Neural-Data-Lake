@@ -673,16 +673,6 @@ def _spikes(pool, drives):
     return [pool.step(np.asarray(u, dtype=np.float64)).tolist() for u in drives]
 
 
-def _observed(pool, percepts):
-    """Every observed step's activity vector (the Settled form's uncounted steps included)."""
-    steps = []
-    pool.observer = lambda _pool, activity: steps.append(activity.copy())
-    for x in percepts:
-        pool.percept(x)
-    pool.observer = None
-    return np.stack(steps)
-
-
 def test_the_host_policy_names_what_the_host_does_that_the_port_does_not():
     assert determinism_gate.binding_frac_bits() == 12
     assert _host().host_policy() == {

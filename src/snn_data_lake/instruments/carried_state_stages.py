@@ -26,7 +26,6 @@ missing or TIMEOUT cell, an R-b4 difference and R-b1 halt (2.11).
 Names avoid the verbs the gradient-claim census reads. Deterministic except R-b4's unseeded kicks (a red).
 """
 
-import statistics
 import tempfile
 from pathlib import Path
 
@@ -186,10 +185,6 @@ def gaps(acc, first="carried", second="settled"):
         }
         for learner in acc
     }
-
-
-def mean_of(values):
-    return statistics.fmean(values.values())
 
 
 # The per-segment diagnostic tables 2.3 requires of EVERY contrasted variant: pool_selection's own `_report`
