@@ -843,3 +843,10 @@ B5: the incumbent solves S0C0 on every seed) decide it; no dev reading of A_ii e
   admitted on an unattributed dev reading.
 - Future items counted in distinct items, reproduced at seeds 8000 and 9300 (tp.PROBLEMS[id].items(seed, "future"), G2's
   head 99d6193d): ac1d 12, c1d 12, ii.* 4, i.* 8 (identical across the two seeds).
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (g) -- B = i.S0C1's task A waits on Q-AII (lead's read of (f); no data read)
+
+A for B = i.S0C1 is ii.twin ONLY IF Q-AII resolves it as solvable by the registered incumbent (the live brain's
+PlasticityRuleStack: G2 reads the incumbent as NOT stably solving the (ii) problems on dev seeds 8000-8003, and G2's frozen
+2.9 routes that red to the owner as Q-AII); until then B = i.S0C1 has no task A and its retention half is unread. A task A
+must be one the incumbent solves. (f)'s other lines stand: J = { i.S0C1 }, and A = ac1d for B = c1d.
