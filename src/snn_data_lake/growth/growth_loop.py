@@ -83,9 +83,12 @@ def _refuse_path(path):
         raise LedgerError(
             "the ledger needs an explicit lake path (2.12a): None would resolve to the home lake"
         )
-    # the guard resolves strictly (the path must exist): guard the lake's DIRECTORY, which a fresh lake
-    # file does not yet have to be, and keep the file name
+    # the guard resolves strictly (the path must exist): an EXISTING lake file is guarded itself (realpath
+    # follows a symlink or junction, so an alias of the live lake is refused -- Codex cp5 #1); a fresh lake
+    # file does not exist yet, so its DIRECTORY is guarded and the file name kept
     path = Path(path)
+    if path.exists():
+        return Path(assert_not_live_home(str(path)))
     return Path(assert_not_live_home(str(path.parent))) / path.name
 
 

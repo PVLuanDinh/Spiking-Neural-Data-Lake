@@ -90,6 +90,25 @@ def test_ledger_refuses_the_live_lake():
         Ledger(Path.home() / ".snn_data_lake" / "brain_lake.bin", VALUES)
 
 
+def test_ledger_refuses_a_symlink_alias_of_the_live_lake(tmp_path, monkeypatch):
+    # Codex cp5 #1: an isolated directory's lake.bin that points at the live lake file must be refused;
+    # the live home is a decoy dir (never the real one), the alias a real symlink (no skip: a platform
+    # without symlinks errors loudly instead of reading green)
+    from snn_data_lake.substrate import home
+    from snn_data_lake.substrate.home import LiveHomeRefused
+
+    live = tmp_path / "live"
+    live.mkdir()
+    (live / "brain_lake.bin").write_bytes(b"")
+    iso = tmp_path / "iso"
+    iso.mkdir()
+    (iso / "lake.bin").symlink_to(live / "brain_lake.bin")
+    monkeypatch.setattr(home, "_default_live_home", lambda: str(live))
+    with pytest.raises(LiveHomeRefused):
+        Ledger(iso / "lake.bin", VALUES)
+    Ledger(iso / "fresh.bin", VALUES)  # control: a fresh file in the same isolated dir is admitted
+
+
 # ---- the loop's terminal states
 # ---------------------------------------------------------------------
 
