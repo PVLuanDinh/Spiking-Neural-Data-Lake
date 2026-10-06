@@ -818,12 +818,19 @@ def _plan_rows(plan):
     return out
 
 
-def _authorized_plan(sha, planted_record, plan, n_edges):
-    """Which planted plan may authorize an edge read. On the PRODUCTION artifact (the pin file's sha)
+def _is_production(z, sha):
+    """H01 is recognised by CONTENT (node and edge counts) as well as by sha: a re-saved copy of the edges
+    under a caller-supplied pin is still H01 (G7 H1)."""
+    psha, n_nodes, n_edges = pinned_artifact()
+    return sha == psha or (z["xyz_nm"].shape[0], z["pre_idx"].shape[0]) == (n_nodes, n_edges)
+
+
+def _authorized_plan(prod, planted_record, plan, n_edges):
+    """Which planted plan may authorize an edge read. On the PRODUCTION artifact (H01, by `_is_production`)
     only the registered plan -- A6's table or its full reserve re-run -- at H01's edge count, whatever
     the caller passes: a reduced (rehearsal) plan can never authorize production. On any other
     artifact (a synthetic fixture) the caller names the plan, which must still be complete."""
-    if sha == pinned_artifact()[0]:
+    if prod:
         rec = _plan_rows((planted_record or {}).get("plan", []))
         for registered in (PLANTED, reserve_plan()):
             if rec == _plan_rows(registered):
@@ -865,10 +872,13 @@ def validate_planted(planted_record, pop, plan, n_edges):
     return bands
 
 
-def _load_gated(path, planted_record, pin, plan=None, n_edges=None):
+def _load_gated(path, planted_record, pin, plan=None, n_edges=None, seeds=None):
     z, sha = _verified(path, pin)
     pop = load_population(path, pin)
-    plan, n_edges = _authorized_plan(sha, planted_record, plan, n_edges)
+    prod = _is_production(z, sha)
+    if seeds is not None:
+        _check_seeds(prod, seeds)
+    plan, n_edges = _authorized_plan(prod, planted_record, plan, n_edges)
     bands = validate_planted(planted_record, pop, plan, n_edges)
     return pop, (np.asarray(z["pre_idx"]), np.asarray(z["post_idx"])), sha, bands, plan
 
@@ -905,14 +915,14 @@ def _resolution_flags(reading, units, planted_record):
     return flags
 
 
-def _check_seeds(sha, seeds):
+def _check_seeds(prod, seeds):
     """The registered statistic is over EIGHT distinct recording seeds: on the production artifact exactly
     the confirmatory set or its reserve (2.12); a fixture names any eight distinct integers."""
     seeds = tuple(seeds)
-    if sha == pinned_artifact()[0]:
+    if prod:
         if seeds not in (CONFIRMATORY_SEEDS, CONFIRMATORY_RESERVE):
             raise ExposureRefused("H01's edges are read on the registered confirmatory seeds or their reserve only (2.12)")
-    elif len(seeds) != len(CONFIRMATORY_SEEDS) or len(set(seeds)) != len(seeds) or not all(isinstance(x, int) for x in seeds):
+    elif len(seeds) != len(CONFIRMATORY_SEEDS) or len(set(seeds)) != len(seeds) or not all(type(x) is int for x in seeds):
         raise ExposureRefused(f"the statistic needs {len(CONFIRMATORY_SEEDS)} distinct integer seeds, got {seeds!r}")
 
 
@@ -921,10 +931,10 @@ def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, plan=Non
     record that STOPPED at check (j) yields A3 row 2's reading, NOT_READ_REGION_INVALID, and no edge
     distance is read."""
     if planted_record and str(planted_record.get("stopped", "")).startswith("NOT_READ_REGION_INVALID"):
-        _, sha = _verified(path, pin)
+        z, sha = _verified(path, pin)
         pop = load_population(path, pin)
         geo = Geometry.of(pop)
-        plan, n_edges = _authorized_plan(sha, planted_record, plan, n_edges)
+        plan, n_edges = _authorized_plan(_is_production(z, sha), planted_record, plan, n_edges)
         if (
             planted_record.get("population_sha256") != _fingerprint(pop)
             or geo.region_valid
@@ -938,8 +948,7 @@ def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, plan=Non
             "region_table": geo.table.tolist(),
             "reading": {"verdict": "NOT_READ_REGION_INVALID", "K": None, "C": [], "a": 0},
         }
-    pop, edges, sha, bands, plan = _load_gated(path, planted_record, pin, plan, n_edges)
-    _check_seeds(sha, seeds)
+    pop, edges, sha, bands, plan = _load_gated(path, planted_record, pin, plan, n_edges, seeds)
     geo = Geometry.of(pop)
     units = []
     for seed in seeds:
