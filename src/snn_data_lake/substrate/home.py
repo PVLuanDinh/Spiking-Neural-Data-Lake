@@ -446,7 +446,7 @@ def assert_not_live_home(path, live_home=None):
 #   home() against ~/.snn_data_lake (no containment, no resolution of the live side, no aliases): the
 #   WEAKER duplicate that ruling 16 retires in favour of this guard; its adoption is that row's change,
 #   reported to the lead. Site read. readout/interaction_learning.py -- a checkpoint refusal; unrelated.
-def _refuse_if_live(p, live, what="home"):
+def _refuse_if_live(p, live, what="home", contains=True):
     a, b = os.path.normcase(p), os.path.normcase(live)
     if a == b:
         raise LiveHomeRefused(f"{what} refused (equal): {p} is the live home {live}")
@@ -456,7 +456,7 @@ def _refuse_if_live(p, live, what="home"):
         return
     if common == b:
         raise LiveHomeRefused(f"{what} refused (contained): {p} is inside the live home {live}")
-    if common == a:
+    if common == a and contains:
         raise LiveHomeRefused(f"{what} refused (contains): {p} contains the live home {live}")
 
 
@@ -492,6 +492,14 @@ def throwaway_home(live_home=None, parent=None):
     # best-effort cleanup: a brain can still hold a lake handle in the temp home when the
     # check returns, and on Windows that makes rmdir raise -- which would turn a passed
     # self-check into exit 1 (measured on engine.brain)
+    if parent is not None:  # the parent is checked BEFORE anything is created in it; a parent that
+        # merely CONTAINS the live home is fine -- the new child is a sibling, not inside it
+        _refuse_if_live(
+            _resolve(parent, strict=True),
+            _resolve(live_home if live_home is not None else _default_live_home()),
+            what="parent",
+            contains=False,
+        )
     tmp = tempfile.TemporaryDirectory(
         prefix="selfcheck_home_", dir=parent, ignore_cleanup_errors=True
     )

@@ -153,8 +153,34 @@ def test_an_isolated_home_whose_lake_file_aliases_the_live_lake_is_refused(tmp_p
         H.require_isolated_home(live_home=str(live))
 
 
+def test_throwaway_home_refuses_a_live_parent_before_creating_anything(tmp_path, monkeypatch):
+    # Codex int1 MAJOR (home.py:452): the temp dir was created inside the live home, THEN refused
+    live = tmp_path / "live"
+    live.mkdir()
+    created = []
+    real = H.tempfile.TemporaryDirectory
+    monkeypatch.setattr(
+        H.tempfile, "TemporaryDirectory", lambda *a, **k: created.append(k) or real(*a, **k)
+    )
+    with pytest.raises(H.LiveHomeRefused):
+        with H.throwaway_home(live_home=str(live), parent=str(live)):
+            pass
+    assert created == [] and list(live.iterdir()) == []
+    with H.throwaway_home(live_home=str(live), parent=str(tmp_path)) as d:  # the positive
+        assert os.path.isdir(d) and len(created) == 1
+
+
 def test_namespace_prefix_normalisation_covers_unc():
     # `\\?\UNC\server\share` is the extended spelling of `\\server\share`
     assert H._strip_namespace("\\\\?\\UNC\\srv\\share\\x") == "\\\\srv\\share\\x"
     assert H._strip_namespace("\\\\?\\C:\\x") == "C:\\x"
     assert H._strip_namespace("C:\\x") == "C:\\x"
+
+
+def test_throwaway_home_accepts_a_parent_that_merely_contains_the_live_home(tmp_path):
+    # the over-strict reading (refuse a parent that contains the live home) would break a parent
+    # like the user's home directory: the child is a sibling of the live home, not inside it
+    live = tmp_path / "up" / ".snn_data_lake"
+    live.mkdir(parents=True)
+    with H.throwaway_home(live_home=str(live), parent=str(tmp_path / "up")) as d:
+        assert os.path.isdir(d) and os.path.dirname(d) == os.path.realpath(tmp_path / "up")
