@@ -409,6 +409,19 @@ def test_the_binding_requires_the_surviving_hosts_whole_policy(policy, problems)
     assert ps.binding_problems(wrong) == ["host_policy"]
 
 
+@pytest.mark.parametrize("where", ["cell", "binding", "both"])
+def test_a_retired_host_label_is_refused_and_the_survivors_name_is_read(where):
+    """The deletion panel (2026-10-06): a `host` label on the cell or its binding naming the retired
+    port reds R-b7; the archived campaign's label, "kernel", still reads clean."""
+    for host, problems in (("port", ["host"]), ("kernel", [])):
+        cell = host_cell(204)
+        if where in ("cell", "both"):
+            cell["host"] = host
+        if where in ("binding", "both"):
+            cell["digest"]["pool"]["host"] = host
+        assert ps.binding_problems(cell) == problems, (where, host)
+
+
 # the G1(c) P4 panel: R-b7 held only policy["host"], so a replay claiming frac_bits 4, delay 2,
 # thr 99 and one refractory tick entered the table. The WHOLE policy is held now, at the lineage's
 # options

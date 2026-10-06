@@ -344,8 +344,14 @@ def binding_problems(cell):
     # and ALL of it must be the one pool implementation's own at the lineage's recorded options for this
     # configuration (the pool class builds that policy: nothing is restated here). A missing, short,
     # extended or contradicting policy is a replay run on some other arithmetic
-    if binding.get("host_policy") != rp.KernelLsmPool.lineage_policy(config):
+    policy = rp.KernelLsmPool.lineage_policy(config)
+    if binding.get("host_policy") != policy:
         problems.append("host_policy")
+    # the deletion panel (2026-10-06): a cell or binding may still carry the retired `host` label (the
+    # campaign at 5761f3a7 filed host "kernel"), but only the surviving host's name; any other is a
+    # replay filed under an arithmetic that no longer exists
+    if any(part.get("host", policy["host"]) != policy["host"] for part in (cell, binding)):
+        problems.append("host")
     if "transport" in cell:
         record = binding.get("transport")
         if not isinstance(record, dict) or any(
