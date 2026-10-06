@@ -23,6 +23,7 @@ generalisation of that readout to arbitrary input/output sizes and optional hidd
 """
 
 import json
+import math
 import zlib
 
 from snn_data_lake.infra._mathutils import Rng
@@ -116,7 +117,8 @@ def save_brain(brain, path):
 def _validate(brain, path):
     """The trust-boundary check shared by every way a brain enters: format, ragged layers, in->out chain."""
     if not isinstance(brain, dict) or str(brain.get("format", "")) != BRAIN_FORMAT:
-        raise ValueError(f"{path}: not a {BRAIN_FORMAT} file (format={brain.get('format')!r})")
+        got = brain.get("format") if isinstance(brain, dict) else type(brain).__name__
+        raise ValueError(f"{path}: not a {BRAIN_FORMAT} file (format={got!r})")
     layers = brain.get("layers")
     if not isinstance(layers, list) or not layers:
         raise ValueError(f"{path}: 'layers' must be a non-empty list")
@@ -153,12 +155,32 @@ def brain_from_genn_checkpoint(path):
         c = json.load(f)
     if not isinstance(c, dict) or c.get("format") != GENN_CHECKPOINT_FORMAT:
         raise ValueError(f"{path}: not a {GENN_CHECKPOINT_FORMAT} checkpoint")
-    meta = {
-        "source": GENN_CHECKPOINT_FORMAT,
-        "hidden": c["hidden"],
-        "transfer": "approximate: GeNN dynamics != LIF",
-    }
-    brain = make_brain([c["W1"], c["W2"]], c["steps"], c["beta"], c["threshold"], meta=meta)
+    # Trust boundary: every malformed shape is a ValueError that names the path, never a bare KeyError /
+    # IndexError / TypeError, and the scalars are range-checked (a 0-step or NaN brain would serve garbage).
+    try:
+        w1, w2, hidden = c["W1"], c["W2"], c["hidden"]
+        steps, beta, thr = c["steps"], float(c["beta"]), float(c["threshold"])
+        brain = make_brain(
+            [w1, w2],
+            steps,
+            beta,
+            thr,
+            meta={
+                "source": GENN_CHECKPOINT_FORMAT,
+                "hidden": hidden,
+                "transfer": "approximate: GeNN dynamics != LIF",
+            },
+        )
+    except (KeyError, IndexError, TypeError, ValueError) as e:
+        raise ValueError(f"{path}: malformed {GENN_CHECKPOINT_FORMAT} checkpoint ({e!r})") from e
+    if not (isinstance(steps, int) and not isinstance(steps, bool) and steps >= 1):
+        raise ValueError(f"{path}: steps must be an int >= 1, got {steps!r}")
+    if not (0.0 < beta < 1.0 and math.isfinite(thr) and thr > 0.0):
+        raise ValueError(f"{path}: need 0 < beta < 1 and a finite threshold > 0, got {beta}, {thr}")
+    if hidden != len(w1):
+        raise ValueError(f"{path}: hidden={hidden!r} != len(W1)={len(w1)}")
+    if not all(math.isfinite(w) for W in brain["layers"] for row in W for w in row):
+        raise ValueError(f"{path}: non-finite weight")
     return _validate(brain, path)
 
 
@@ -223,6 +245,48 @@ def main():
         genn_ok = False
     except ValueError:
         pass
+    good = {
+        "format": GENN_CHECKPOINT_FORMAT,
+        "hidden": 2,
+        "steps": 4,
+        "beta": 0.9,
+        "threshold": 1.0,
+        "W1": [[0.1, 0.2, 0.3], [0.3, 0.2, 0.1]],
+        "W2": [[1.0, 0.0], [0.0, 1.0]],
+    }
+    for k, v in (
+        ("W1", []),
+        ("steps", 0),
+        ("steps", -3),
+        ("beta", 5.0),
+        ("hidden", 3),
+        ("W2", [[float("nan"), 0.0], [0.0, 1.0]]),
+        ("W1", [[0.1, 0.2], [0.3]]),
+        ("beta", "x"),
+    ):
+        with open(cp, "w", encoding="utf-8") as f:
+            json.dump(dict(good, **{k: v}), f)
+        try:
+            brain_from_genn_checkpoint(cp)
+            genn_ok = False
+        except ValueError:
+            pass
+    for k in ("W1", "W2", "steps", "beta", "threshold", "hidden"):
+        with open(cp, "w", encoding="utf-8") as f:
+            json.dump({a: b for a, b in good.items() if a != k}, f)
+        try:
+            brain_from_genn_checkpoint(cp)
+            genn_ok = False
+        except ValueError:
+            pass
+    with open(cp, "w", encoding="utf-8") as f:
+        json.dump([1], f)
+    for fn in (brain_from_genn_checkpoint, load_brain):
+        try:
+            fn(cp)
+            genn_ok = False
+        except ValueError:
+            pass
     os.remove(cp)
     assert genn_ok, (
         "the GennBrain/1 converter must convert a valid checkpoint and refuse a wrong format"
