@@ -34,6 +34,7 @@ import statistics
 from dataclasses import dataclass, field
 
 from snn_data_lake.faculties.global_workspace import GlobalWorkspace
+from snn_data_lake.instruments.paired_contrast import contrast
 
 # distinct-from: faculties/global_workspace.py::next_baseline -- REUSED here (imported), not re-spelled.
 #   distinct-from: engine/brain.py::Brain.tick -- REUSED: the harness calls it with the gate answered from
@@ -228,6 +229,28 @@ def check_budgets(plans):
     ref = budget(plans["clock"])
     bad = {a: budget(p) for a, p in plans.items() if budget(p) != ref}
     return (not bad), ref, bad
+
+
+def _beats(a, b, seeds):
+    c = contrast(f"{a} > {b}", [s[a] - s[b] for s in seeds])
+    return c._replace(met=False) if c.degenerate else c  # a degenerate superiority is NOT MET (A9)
+
+
+def decide_c(seeds):
+    """`seeds`: per-seed {arm: held-out retention rate} for clock, oracle, pressure, shuffled (solve optional).
+    C11 first: if the schedule ORACLE does not beat clock-only the workload cannot show a timing benefit and (c)
+    is REFUSED. Then the primary: pressure > shuffled-pressure (pressure-SPECIFIC); pressure > clock is reported."""
+    need = ("clock", "oracle", "pressure", "shuffled")
+    if any(a not in s for s in seeds for a in need):
+        return "REFUSED", "an arm is missing on some seed", {}
+    con = {k: _beats(*k.split(">"), seeds) for k in ("oracle>clock", "pressure>shuffled", "pressure>clock")}
+    if "solve" in seeds[0]:
+        con.update({f"solve>{b}": _beats("solve", b, seeds) for b in ("clock", "pressure")})
+    if not con["oracle>clock"].met:
+        return "REFUSED", "C11: the oracle does not beat clock-only; the workload shows no timing benefit", con
+    if con["pressure>shuffled"].met:
+        return "PRESSURE-SPECIFIC", "pressure beats its shuffled twin; the live input may wire after C13", con
+    return "NULL", "pressure does not beat its shuffled twin; the input is deleted on this null", con
 
 
 # ================================================================================================
@@ -450,6 +473,14 @@ def main():
     ok, _, bad = check_budgets({"clock": gate, "planted": extra})
     assert not ok and "planted" in bad
 
+    base = [{"clock": 0.50 + 0.01 * i, "oracle": 0.60 + 0.01 * i, "pressure": 0.58 + 0.01 * i, "shuffled": 0.50 + 0.01 * i} for i in range(8)]
+    jit = [0.001 * ((i * 5) % 7 - 3) for i in range(8)]  # nonzero spread so no contrast is degenerate
+    base = [{a: v + j for a, v in s_.items()} for s_, j in zip(base, jit)]
+    assert decide_c(base)[0] == "PRESSURE-SPECIFIC"
+    flat_oracle = [dict(s_, oracle=s_["clock"] + j) for s_, j in zip(base, jit)]
+    assert decide_c(flat_oracle)[0] == "REFUSED", "C11 red: an oracle no better than clock refuses (c)"
+    twin = [dict(s_, shuffled=s_["pressure"] - j) for s_, j in zip(base, jit)]
+    assert decide_c(twin)[0] == "NULL", "a shuffled twin as good as pressure is a null"
     sh = shuffled_plan(cyc, len(gate), r.advanced, seed=1)
     assert budget(sh) == budget(gate), "A6: the shuffle keeps the budget by construction"
     try:
