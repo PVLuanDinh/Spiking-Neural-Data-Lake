@@ -1,8 +1,9 @@
 """Firewalled web -> text-corpus fetcher: the brain's (guarded) internet access for TRAINING DATA.
 
-Give the spiking LM a real corpus to train on by downloading public text from the web:
+Download public text from the web into a local corpus file:
   snn-fetch-corpus https://www.gutenberg.org/files/11/11-0.txt alice.txt
-  snn-train --lm --corpus alice.txt --export-lm alice_lm.json     # (needs the [train] extra)
+(`snn-train --lm --corpus` was the trainer for it; that path was RETIRED 2026-10-02 and `snn-train` now
+refuses every path, so nothing in the console scripts consumes the file -- it is plain text for your own tools.)
 
 SAFETY -- read before changing. This is a DATA-PREP tool, deliberately OUTSIDE the robot-arm
 control path: it is NOT imported by the arm loop, the autonomous brain, or any safety-envelope
@@ -297,7 +298,7 @@ def cli(argv=None):
     if flags:
         print(f"WARNING: instruction-shaped passages in this corpus: {flags}")
         print("  it is a training file, not a fact and not a command -- but read it before use.")
-    print(f"now train on it:  snn-train --lm --corpus {path}")
+    print("(snn-train --lm was retired 2026-10-02; the file is plain text for your own tools.)")
     return 0
 
 
