@@ -121,6 +121,38 @@ def test_extended_windows_spellings_cannot_bypass_the_guard(tmp_path, prefix):
     assert H.assert_not_live_home(ext(other), live_home=str(live)) == os.path.realpath(other)
 
 
+def _symlink_or_skip(link, target):
+    try:
+        os.symlink(target, link)
+    except (OSError, NotImplementedError) as exc:  # Windows needs developer mode or admin
+        pytest.skip(f"cannot create a symlink here: {exc}")
+
+
+def test_an_isolated_home_whose_lake_file_aliases_the_live_lake_is_refused(tmp_path, monkeypatch):
+    # Codex int1 BLOCKER (home.py:433): only the home DIRECTORY was checked, so a dir whose
+    # brain_lake.bin (or a sidecar) is a symlink to the live lake passed and _log() bound it
+    live = tmp_path / "live"
+    live.mkdir()
+    (live / "brain_lake.bin").write_bytes(b"live")
+    (live / "estop.latch").write_bytes(b"live")
+    iso = tmp_path / "iso"
+    iso.mkdir()
+    monkeypatch.setenv("NORD_HOME", str(iso))
+    assert H.require_isolated_home(live_home=str(live))  # the positive: an empty isolated home
+    (iso / "notes.json").write_bytes(b"mine")
+    elsewhere = tmp_path / "elsewhere.bin"
+    elsewhere.write_bytes(b"x")
+    _symlink_or_skip(iso / "other.bin", elsewhere)  # an alias to a NON-live file is fine
+    assert H.require_isolated_home(live_home=str(live))
+    _symlink_or_skip(iso / "brain_lake.bin", live / "brain_lake.bin")
+    with pytest.raises(H.LiveHomeRefused, match="brain_lake.bin"):
+        H.require_isolated_home(live_home=str(live))
+    (iso / "brain_lake.bin").unlink()
+    _symlink_or_skip(iso / "estop.latch", live / "estop.latch")  # a sidecar alias is refused too
+    with pytest.raises(H.LiveHomeRefused, match="estop.latch"):
+        H.require_isolated_home(live_home=str(live))
+
+
 def test_namespace_prefix_normalisation_covers_unc():
     # `\\?\UNC\server\share` is the extended spelling of `\\server\share`
     assert H._strip_namespace("\\\\?\\UNC\\srv\\share\\x") == "\\\\srv\\share\\x"

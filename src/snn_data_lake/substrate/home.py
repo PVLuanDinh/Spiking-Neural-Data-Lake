@@ -438,26 +438,42 @@ def assert_not_live_home(path, live_home=None):
             "home refused (unset): an empty home falls back to the default, which is the live lake"
         )
     p = _resolve(path, strict=True)
-    live = _resolve(live_home if live_home is not None else _default_live_home())
+    _refuse_if_live(p, _resolve(live_home if live_home is not None else _default_live_home()))
+    return p
+
+
+# distinct-from: instruments/world_red_probe.py::_assert_scratch_home -- an equality-only check of
+#   home() against ~/.snn_data_lake (no containment, no resolution of the live side, no aliases): the
+#   WEAKER duplicate that ruling 16 retires in favour of this guard; its adoption is that row's change,
+#   reported to the lead. Site read. readout/interaction_learning.py -- a checkpoint refusal; unrelated.
+def _refuse_if_live(p, live, what="home"):
     a, b = os.path.normcase(p), os.path.normcase(live)
     if a == b:
-        raise LiveHomeRefused(f"home refused (equal): {p} is the live home {live}")
+        raise LiveHomeRefused(f"{what} refused (equal): {p} is the live home {live}")
     try:
         common = os.path.normcase(os.path.commonpath([a, b]))
     except ValueError:  # different drives
-        return p
+        return
     if common == b:
-        raise LiveHomeRefused(f"home refused (contained): {p} is inside the live home {live}")
+        raise LiveHomeRefused(f"{what} refused (contained): {p} is inside the live home {live}")
     if common == a:
-        raise LiveHomeRefused(f"home refused (contains): {p} contains the live home {live}")
-    return p
+        raise LiveHomeRefused(f"{what} refused (contains): {p} contains the live home {live}")
 
 
 def require_isolated_home(live_home=None):
     """For a harness that set NORD_HOME itself: refuse an unset or empty NORD_HOME (home() would then
     be the live lake), else apply `assert_not_live_home`. Call before any lake-binding import or
     Brain construction. Returns the resolved home."""
-    return assert_not_live_home(os.environ.get("NORD_HOME") or "", live_home=live_home)
+    p = assert_not_live_home(os.environ.get("NORD_HOME") or "", live_home=live_home)
+    live = _resolve(live_home if live_home is not None else _default_live_home())
+    with os.scandir(
+        p
+    ) as entries:  # where the home's OWN files (the lake, its sidecars) really point
+        for e in entries:
+            real = _resolve(e.path)
+            if os.path.normcase(real) != os.path.normcase(os.path.join(p, e.name)):
+                _refuse_if_live(real, live, what=f"home entry {e.name!r} (an alias); its target")
+    return p
 
 
 @contextlib.contextmanager
