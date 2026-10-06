@@ -13,6 +13,7 @@ Contract, all pure functions over immutable units (no RNG, no state carried betw
   changes on every admission, silencing or output-weight change;
 - `apply_unit_row(units, row)` -- moves the segment one journal step (admit / out / silence) and REFUSES a
   reused unit_id or a stored output synapse that violates the unit's Dale sign (2.9 C17's restore half);
+- `admit_rows(segment, units, label_rows, ticket)` -- THE single append: a ticketed, label-matched batch only;
 - `clip_to_sign(w, sign)` -- the deposit half of C17: E outputs >= 0, I outputs <= 0 (D9).
 
 The port that feeds this segment into `SpikingInteractionLearner` lands after R2's P1 (OWNERS.md landing order);
@@ -140,6 +141,25 @@ def apply_unit_row(units, row):
     else:
         raise ValueError(f"unknown unit-row op {op!r}")
     return tuple(by_id[k] for k in sorted(by_id))
+
+
+def admit_rows(segment, units, label_rows, ticket):
+    """THE single append point of the grown segment (2026-10-04 amendment): returns the segment with `units`
+    admitted, and REFUSES unless `ticket` (G7's AdmissionTicket from `require_admissible`) covers exactly these
+    label rows, unchanged, and has not been spent. Each unit's Dale sign must be its label's sign. The new
+    segment is built whole first and the ticket is consumed last, so any refusal appends nothing and spends
+    nothing; the label gate precedes every append by construction."""
+    label_rows = list(label_rows)
+    sign_of = {r["unit_id"]: r["sign"] for r in label_rows}
+    if sorted(sign_of) != sorted(u.unit_id for u in units):
+        raise ValueError("the units and their label rows name different unit ids")
+    for u in units:
+        if u.sign != sign_of[u.unit_id]:
+            raise ValueError(f"unit {u.unit_id}: Dale sign {u.sign:+d} differs from its label's {sign_of[u.unit_id]:+d}")
+    for u in units:
+        segment = apply_unit_row(segment, {"op": "admit", "unit": u})
+    ticket.consume(label_rows)
+    return segment
 
 
 def main():

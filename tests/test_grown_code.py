@@ -174,3 +174,67 @@ def test_non_finite_synapses_are_refused_at_admit_deposit_and_restore():
         apply_unit_row(units, {"op": "out", "unit_id": 9, "out": (nan, 0.0)})
     with pytest.raises(ValueError, match="synapse 1"):
         clip_to_sign([0.1, nan], sign=1)
+
+
+# ---- admit_rows: the single append of the grown segment (2026-10-04 amendment; G7's AdmissionTicket) ----
+
+
+def _labeled_batch(ids, signs=None, seed=13010):
+    """Real G7 label records (cortex) and matching units; the fixture density is G7's, not a measured one."""
+    from snn_data_lake.growth import placement as P
+
+    signs = signs or [1] * (len(ids) - 1) + [-1]
+    roles = ["E" if s > 0 else "I" for s in signs]
+    labels = P.place_labeled(
+        len(ids), unit_ids=ids, region="cortex", site=(0.5 / 14, 1.5 / 4), problem_id="p", batch_id=0,
+        seed=seed, roles=roles, centre_um=(0.0, 0.0), density_per_mm2=2.7e4,
+    )
+    units = [GrownUnit(i, (0.0,) * 52, 1.0, 12, s, (0.0,)) for i, s in zip(ids, signs, strict=True)]
+    return units, labels
+
+
+def _ticket(labels):
+    from snn_data_lake.gates.unit_label_gate import require_admissible
+
+    return require_admissible(labels, resolve_problem=lambda p: True, known_unit=lambda u: False)
+
+
+def test_admit_rows_appends_a_ticketed_batch_and_spends_the_ticket():
+    from snn_data_lake.growth.grown_code import admit_rows
+
+    units, labels = _labeled_batch([0, 1, 2])
+    ticket = _ticket(labels)
+    seg = admit_rows((), units, labels, ticket)
+    assert [u.unit_id for u in seg] == [0, 1, 2]
+    with pytest.raises(Exception, match="already consumed"):  # a spent ticket admits nothing
+        admit_rows((), units, labels, ticket)
+
+
+def test_admit_rows_refuses_what_the_ticket_does_not_cover_and_leaves_the_segment_unchanged():
+    from snn_data_lake.growth.grown_code import admit_rows
+
+    units, labels = _labeled_batch([0, 1, 2])
+    other_units, other_labels = _labeled_batch([7, 8, 9])
+    ticket = _ticket(labels)
+    with pytest.raises(Exception, match="not covered"):  # a stranger's rows under this ticket
+        admit_rows((), other_units, other_labels, ticket)
+    ticket = _ticket(labels)
+    changed = [dict(labels[0], layer="Layer 6")] + list(labels[1:])
+    with pytest.raises(Exception, match="differs"):  # a row that changed since validation
+        admit_rows((), units, changed, ticket)
+    ticket = _ticket(labels)
+    with pytest.raises(Exception, match="missing"):  # a validated record left out of the append
+        admit_rows((), units[:2], labels[:2], ticket)
+    ticket = _ticket(labels)  # control: the untouched batch still goes through on a fresh ticket
+    assert len(admit_rows((), units, labels, ticket)) == 3
+
+
+def test_admit_rows_refuses_a_unit_whose_sign_is_not_its_labels_and_does_not_spend_the_ticket():
+    from snn_data_lake.growth.grown_code import admit_rows
+
+    units, labels = _labeled_batch([0, 1, 2])
+    flipped = [units[0], units[1], GrownUnit(2, (0.0,) * 52, 1.0, 12, 1, (0.0,))]  # label says I (-1)
+    ticket = _ticket(labels)
+    with pytest.raises(ValueError, match="Dale"):
+        admit_rows((), flipped, labels, ticket)
+    assert len(admit_rows((), units, labels, ticket)) == 3  # the refusal did not consume the ticket

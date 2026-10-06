@@ -335,7 +335,7 @@ GROWN_SEGMENTS = {
         "G3/T111",
         ("snn_data_lake/growth/ng_snn.py::NGSNN.fit",
          "snn_data_lake/growth/neurogenesis_engine.py::NeurogenesisSelfImprove._refit"),
-        None,  # G3's admit_rows lands with its admitting commit
+        "snn_data_lake/growth/grown_code.py::admit_rows",  # G3's single append (the ticket is consumed there)
     ),
 }
 
