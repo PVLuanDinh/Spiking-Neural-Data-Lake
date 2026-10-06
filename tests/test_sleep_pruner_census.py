@@ -321,3 +321,24 @@ def test_a_seed_in_the_block_is_admitted():
 def test_decide_pruner_refuses_a_wrong_seed_count(n):
     seeds = spc._constructed("P-LL", 0.9, 0.8, 0.5)[:n]
     assert spc.decide_pruner("P-LL", seeds, repeat_ok=True).disposition == "REFUSED"
+
+
+def test_a_truncated_sabotage_schedule_is_a_counted_mismatch_not_a_silent_zero():
+    """Codex panel MAJOR: calls past the schedule's end removed 0 and read as a valid twin."""
+    from snn_data_lake.sleep import sleep_replay as sr
+
+    class Fake:
+        W = [[0.5] * sr.N for _ in range(sr.N)]
+
+        def _normalize(self):
+            pass
+
+    run = spc.ArmRun(seed=12001, arm="dp_sabotage", ticks=1)
+    sab = spc._dp_sabotage(run, [2])
+    sab(Fake())  # call 0: in the schedule
+    assert run.sabotage_shortfall == 0
+    sab(Fake())  # call 1: the schedule has ended
+    assert run.sabotage_shortfall == 1
+    empty = spc.ArmRun(seed=12001, arm="dp_sabotage", ticks=1)
+    spc._dp_sabotage(empty, [])(Fake())
+    assert empty.sabotage_shortfall == 1

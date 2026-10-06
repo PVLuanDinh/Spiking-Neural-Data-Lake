@@ -653,6 +653,15 @@ def _work_patches(run):
 
 
 # ---- neuters, sabotage twins and the floor control (2.3; each surgical, each disclosed) ----
+def _scheduled(run, schedule, i):
+    """The live arm's removal count for call i. A call the schedule never had (a truncated or missing
+    schedule) is a MISMATCH counted in `sabotage_shortfall`, never a silent zero-removal twin."""
+    if i < len(schedule):
+        return schedule[i]
+    run.sabotage_shortfall += 1
+    return 0
+
+
 def _dp_sabotage(run, schedule):
     """Remove the SAME count per call as the live arm, chosen adversarially: the STRONGEST synapses."""
     from snn_data_lake.sleep import sleep_replay as sr
@@ -662,7 +671,7 @@ def _dp_sabotage(run, schedule):
     def sab(self, eps=1e-3):
         i = calls[0]
         calls[0] += 1
-        k = schedule[i] if i < len(schedule) else 0
+        k = _scheduled(run, schedule, i)
         cand = sorted(
             (
                 (self.W[r][c], r, c)
@@ -703,7 +712,7 @@ def _ey_sabotage(run, schedule):
     def sab(self, X, y, tol=0.0):
         i = calls[0]
         calls[0] += 1
-        k = schedule[i] if i < len(schedule) else 0
+        k = _scheduled(run, schedule, i)
         self.last_keep = None
         if k <= 0 or self.W is None or self.beta is None or int(self.W.shape[0]) <= 1:
             run.sabotage_shortfall += max(0, k)
