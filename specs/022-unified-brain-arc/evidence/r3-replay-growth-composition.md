@@ -757,3 +757,17 @@ The F1-F4 dev rehearsal (16000-16007, EXPOSED, P1 `c8f33213`'s instrument) is wh
 - **Nothing else changes:** C6's endpoint (P-5), its statistic (P-8), K13's compute match, F3's table and seeds
   16120-16127. Choosing W on AT-NONE never reads AT-ON or AT-OFF, so the confirmatory contrast C6 is not tuned on its
   own outcome.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (F3's W FROZEN by the dev ladder)
+
+Written before any F3 CONFIRMATORY seed (16120-16127) has run; additive (a zero-removed-lines diff).
+- **Ladder result (MEASURED, 2026-10-06, `claude/r3` fb7e3a0f's instrument, one process, dev seeds 16000-16007, AT-NONE only).**
+  W = 1 is the first rung of {1, 2, 3, 6, 12}; the per-seed mean `_consolidation_acc` was 0.3333 on all 8 seeds, below
+  35/36, so the rung QUALIFIES and the ladder STOPPED (no later rung was run). Result file `f3_ladder.json`, sha256
+  `3c965479794534e302858dfa2886c6875df9d415e4c534d196478feef3a2c76c` (exit 0; live lake mtime unchanged).
+- **W = 1 is FROZEN** for every F3 arm (AT-ON, AT-OFF); `F3_STORES = 1` lands in the next commit. Nothing else changes.
+- **DISCLOSED RISK, not resolved by this note.** 0.3333 is exactly 1/3, the 3-pattern chance level, identical on all 8
+  seeds: AT-NONE may be at a floor rather than merely degraded. The frozen rule selects W on AT-NONE only and never reads
+  AT-ON or AT-OFF, so whether C6 = AT-ON - AT-OFF is reachable at W = 1 (AT-ON above chance) is UNMEASURED. A confirmatory
+  F3 reading is a null-or-MET reading under the pre-registered C6 table either way; an AT-ON reading on dev to check the
+  ceiling-and-floor reachability would be a NEW pre-data choice, raised to the lead rather than taken.
