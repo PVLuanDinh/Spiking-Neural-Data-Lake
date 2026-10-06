@@ -160,12 +160,20 @@ def match_sources(targets, pool, norm_ratio=(0.5, 2.0), rate_tol=0.25):
     return pairs
 
 
+#: C9's eight development seeds (the G3 block's dev range, 2.12)
+DEV_SEEDS = tuple(range(9000, 9008))
+
+
 def match_feasible(pair_counts, grown_counts, min_seeds=6):
     """C9's feasibility rule, checked on dev seeds BEFORE confirmation: k >= 1 matched pair on EVERY
-    seed, and pairs covering at least half of the grown units on at least `min_seeds` seeds (6 of 8)."""
-    if any(k < 1 for k in pair_counts):
+    seed, and pairs covering at least half of the grown units on at least `min_seeds` seeds (6 of 8).
+    Both arguments are {seed: count} and must name exactly DEV_SEEDS: an omitted (failed) run is NOT
+    feasible, never a silent skip (Codex cp5 #8)."""
+    if set(pair_counts) != set(DEV_SEEDS) or set(grown_counts) != set(DEV_SEEDS):
         return False
-    covered = sum(1 for k, g in zip(pair_counts, grown_counts, strict=True) if 2 * k >= g)
+    if any(k < 1 for k in pair_counts.values()):
+        return False
+    covered = sum(1 for s in DEV_SEEDS if 2 * pair_counts[s] >= grown_counts[s])
     return covered >= min_seeds
 
 

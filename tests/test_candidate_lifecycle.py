@@ -174,8 +174,15 @@ def test_match_sources_is_nearest_without_replacement_and_excludes_dead():
 
 def test_match_feasibility_rule():
     ok = candidate_lifecycle.match_feasible
-    assert ok(pair_counts=[5] * 8, grown_counts=[9] * 8)
-    assert not ok(pair_counts=[5] * 7 + [0], grown_counts=[9] * 8)  # k >= 1 on EVERY seed
-    assert not ok(
-        pair_counts=[4] * 3 + [5] * 5, grown_counts=[9] * 8
-    )  # half covered on only 5 of 8
+    S = candidate_lifecycle.DEV_SEEDS
+
+    def d(*vals):
+        return dict(zip(S, vals, strict=True))
+
+    assert ok(d(*[5] * 8), d(*[9] * 8))
+    assert not ok(d(*[5] * 7, 0), d(*[9] * 8))  # k >= 1 on EVERY seed
+    assert not ok(d(*[4] * 3, *[5] * 5), d(*[9] * 8))  # half covered on only 5 of 8
+    # Codex cp5 #8: an omitted dev seed is NOT feasible, and neither is a stranger seed in its place
+    assert not ok({s: 5 for s in S[:6]}, {s: 9 for s in S[:6]})
+    assert not ok({**d(*[5] * 8), 9099: 5}, d(*[9] * 8))
+    assert not ok({s: 5 for s in (*S[:7], 9099)}, d(*[9] * 8))
