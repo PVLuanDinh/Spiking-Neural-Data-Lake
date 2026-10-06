@@ -310,6 +310,24 @@ def test_candidate_evaluations_are_persisted_beside_the_admissions(tmp_path):
     assert rec.spend_units == 0 and rec.spend_evals == 32 and rec.state == "UNSOLVED"
 
 
+def test_a_learning_rule_deficit_journals_the_separating_witness_and_survives_a_restart(tmp_path):
+    # Codex cp5 #9: the terminal row must substantiate that a verified real-reader separator existed
+    witness = {"weights": [[1.0, -1.0]], "reads": [0, 1, 1, 0]}
+
+    class Witnessing(ScriptedLearner):
+        def evidence(self):
+            return witness
+
+    learner = Witnessing(["SEPARABLE"])
+    loop, _ = _loop(tmp_path, learner)
+    assert loop.run().state == "LEARNING_RULE_DEFICIT"
+    rec = Ledger(tmp_path / "lake.bin", VALUES).ledger("xor")  # a fresh process's fold
+    assert rec.evidence == witness
+    # control: an adapter without evidence() still terminates, with none recorded
+    other, _ = _loop(tmp_path, ScriptedLearner(["SEPARABLE"]), problem="plain")
+    assert other.run().evidence is None
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 

@@ -65,6 +65,7 @@ class ProblemRecord:
     spend_units: int = 0  # every unit this problem ever admitted
     spend_since_teach: int = 0  # units admitted under the CURRENT budget (a fresh budget resets it)
     spend_evals: int = 0
+    evidence: dict = None  # the terminal row's diagnosis evidence (the separating witness), if the adapter gave any
     runs_this_budget: int = 0  # loop runs started under the CURRENT budget; a second one is a RETRY
     attempts: int = 0
     baseline_at_open: float = None
@@ -163,6 +164,7 @@ class Ledger:
                     rec.state, rec.open = "SOLVED", False
             elif op == "state":
                 rec.state = row["state"]
+                rec.evidence = row.get("evidence", rec.evidence)
             rec.history.append(op)
         return rec
 
@@ -205,8 +207,9 @@ class Ledger:
     def record_attempt(self, problem_id, solved, epochs=None):
         self._write(problem_id, "attempt", solved=bool(solved), epochs=epochs)
 
-    def set_state(self, problem_id, state):
-        self._write(problem_id, "state", state=state)
+    def set_state(self, problem_id, state, evidence=None):
+        extra = {} if evidence is None else {"evidence": evidence}
+        self._write(problem_id, "state", state=state, **extra)
 
     def new_teaching(self, problem_id):
         """A new teaching episode of the same problem draws one fresh budget, at most k_max per lifetime."""
@@ -422,7 +425,10 @@ class GrowthLoop:
             else:
                 if idle >= self.a_max:
                     terminal = "LEARNING_RULE_DEFICIT" if kind == "SEPARABLE" else "UNRESOLVED"
-                    self.ledger.set_state(self.problem_id, terminal)
+                    # the adapter's separating witness (weights + verified reads), journaled with the
+                    # terminal decision (2.6; Codex cp5 #9); an adapter without evidence() records none
+                    evidence = getattr(self.learner, "evidence", lambda: None)()
+                    self.ledger.set_state(self.problem_id, terminal, evidence)
                     return self.ledger.ledger(self.problem_id)
                 idle += 1
             if self._attempt():
