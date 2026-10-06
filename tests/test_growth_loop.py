@@ -134,6 +134,23 @@ def test_ledger_refuses_a_symlink_alias_of_the_live_lake(tmp_path, monkeypatch):
     Ledger(iso / "fresh.bin", VALUES)  # control: a fresh file in the same isolated dir is admitted
 
 
+def test_ledger_refuses_a_dangling_symlink_to_the_live_lake(tmp_path, monkeypatch):
+    # Codex panel BLOCKER: a lake.bin symlink whose target does not exist yet (the live lake file)
+    # has exists() False, so the file check was skipped and BinLog would CREATE the live lake
+    from snn_data_lake.substrate import home
+    from snn_data_lake.substrate.home import LiveHomeRefused
+
+    live = tmp_path / "live"
+    live.mkdir()
+    iso = tmp_path / "iso"
+    iso.mkdir()
+    (iso / "lake.bin").symlink_to(live / "brain_lake.bin")  # dangling: the target is absent
+    monkeypatch.setattr(home, "_default_live_home", lambda: str(live))
+    with pytest.raises(LiveHomeRefused):
+        Ledger(iso / "lake.bin", VALUES)
+    assert not (live / "brain_lake.bin").exists()  # and nothing was created through the link
+
+
 # ---- the loop's terminal states
 # ---------------------------------------------------------------------
 

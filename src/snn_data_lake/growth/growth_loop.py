@@ -30,6 +30,7 @@ with the grown-segment port after R2's P1.
 
 import hashlib
 import json
+import os
 import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -97,13 +98,14 @@ def _refuse_path(path):
         raise LedgerError(
             "the ledger needs an explicit lake path (2.12a): None would resolve to the home lake"
         )
-    # the guard resolves strictly (the path must exist): an EXISTING lake file is guarded itself (realpath
-    # follows a symlink or junction, so an alias of the live lake is refused -- Codex cp5 #1); a fresh lake
-    # file does not exist yet, so its DIRECTORY is guarded and the file name kept
-    path = Path(path)
-    if path.exists():
-        return Path(assert_not_live_home(str(path)))
-    return Path(assert_not_live_home(str(path.parent))) / path.name
+    # the guard resolves strictly (the path must exist). The LEXICAL leaf is resolved first, non-strictly, so
+    # a symlink or junction is followed even when DANGLING (a link to the live lake file that does not exist
+    # yet: exists() is False, and BinLog would create the live lake through it -- Codex panel BLOCKER). An
+    # existing target is guarded itself; a fresh one has only its DIRECTORY guarded and the name kept.
+    target = Path(os.path.realpath(path))
+    if target.exists():
+        return Path(assert_not_live_home(str(target)))
+    return Path(assert_not_live_home(str(target.parent))) / target.name
 
 
 class Ledger:
