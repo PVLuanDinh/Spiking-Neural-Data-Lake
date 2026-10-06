@@ -854,3 +854,16 @@ arc that wires the loop live (G9's engine); until then the window is stated, not
   reachable from this loop's own admission.
 - **Ticket enforcement is detection, not prevention.** The loop cannot un-admit; when G7's read-only `AdmissionTicket.consumed`
   lands, a ticket left unspent after `learner.admit` raises `LedgerError`, loudly, after the fact.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (f) (the state branch is PARKED; lead decision B; no data read)
+
+Ties to the state-branch amendment (98d92203) and its ctxread row types (21ca1bc7). Nothing in them is removed or changed.
+- **Parked:** `grown_code.reconstruct_state` and the memory-step hook (the one writer of a memory unit's state, calling R2's
+  `Brain._record_ctxread`, 97acf5df on claude/r2). No memory-unit STEP is defined anywhere (grown units are stateless latency units;
+  nothing fixes what current a context turn feeds a stateful kernel, how many steps per turn, or its reset), so any step is a new
+  design decision to be pre-registered first, and no confirmatory run grows a memory unit this wave: a reconstruction with no
+  consumer is speculative.
+- **What unparks it:** the first confirmatory run that grows a MEMORY-role unit, or G9's engine arc, whichever comes first; then a
+  dated amendment defines the step, G7 and R2 refute it, and the reconstruction test (with the three reds of 98d92203) is built.
+- **Meanwhile:** the interim exclusion rule of 98d92203 stands: deposits made while a memory unit is live are excluded from redo
+  eligibility, counted and reported; R2's verdict on grown MEMORY-role units stays excluded (NOT RECOVERABLE-excluded).
