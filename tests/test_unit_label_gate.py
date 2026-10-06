@@ -652,3 +652,15 @@ def test_ticket_consumed_is_read_only_and_flips_on_consume():
     assert ticket.consumed is True
     with pytest.raises(AttributeError):
         ticket.consumed = False
+
+
+def test_a_ticket_freezes_list_positions_at_mint():
+    # Codex G3 panel: a list-position record mutated AFTER validation must not be admitted
+    rec = _with(_good(), position=list(_good()["position"]))
+    ticket = G.require_admissible([rec], resolve_problem=_resolve, known_unit=lambda u: False)
+    rec["position"][2] = float(
+        "inf"
+    )  # the live label is now invalid; the frozen evidence must not follow
+    with pytest.raises(G.UnitLabelRefused, match="differs from the validated"):
+        ticket.consume([rec])
+    assert ticket.consumed is False

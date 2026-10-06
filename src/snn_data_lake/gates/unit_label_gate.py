@@ -227,7 +227,9 @@ class AdmissionTicket:
     missing, none changed since validation (Codex cp3 #1)."""
 
     def __init__(self, records):
-        self._records = {r["unit_id"]: {k: r[k] for k in FIELD_ORDER} for r in records}
+        self._records = {
+            r["unit_id"]: {k: _canon(r[k]) for k in FIELD_ORDER} for r in records
+        }  # immutable at mint
         self.ids = frozenset(self._records)
         self._consumed = False
 
