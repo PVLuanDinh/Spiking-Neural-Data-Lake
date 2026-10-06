@@ -641,3 +641,17 @@ x quartiles of soma position"); everything else in 2.4, 2.5, 2.14 A2-A3, A5-A7 a
   read: the region instrument's positive controls (planted kernels must read +1 on every block, A3 row 6) and its
   false-positive control (flat validation) bind the new split exactly as they bound the old one. Check (j) is re-run on
   the new blocks and its table recorded in the campaign record.
+
+### 2.15 Dated pre-data amendment 2026-10-06 -- how the planted precondition is checked (Codex cp2, G7 refutation)
+
+No H01 edge distance has been read. (1) The exposure gate is ONE validator, `validate_planted`, called by every edge-reading
+entry (`score_h01`, `final_width_record`, `verify_width_record`). (2) It is **recomputed from the record, not
+re-simulated**: it checks the plan row by row and seed by seed, recomputes the bands from the calibration units and re-reads
+every other row through `read_t3` and its expectation; it is an honest-record gate, not an anti-forgery one, and A8 is not
+an authentication of the planted record. It supersedes the stored-verdict check (`all_rows_hold`, the bands hash) as the
+lock: the bands are locked by recomputation. (3) H01 is recognised by CONTENT (the pin's node and edge counts) as well as by
+sha, so a re-saved copy under a caller-supplied pin is still H01: there only A6's plan or its reserve, and exactly the
+confirmatory seeds or their reserve, authorize a read. (4) A6's planted scale is the exact pairwise clipped expectation
+(Newton on the true sum, relative tolerance 1e-9), the record carries the clipped share of expected edges (A10) and an
+independently drawn expectation. (5) `verify_width_record` compares the physical widths at 1e-6 (2.11 (f)). (6) The mixture
+starts from the fitted Gaussian and exponential unchanged (2.3), and DEGENERATE is bounded by the largest pair distance.
