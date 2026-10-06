@@ -23,6 +23,7 @@ problem OPEN to retry after sleep or new teaching; journal units into the lake w
   learner receives the unit (write-ahead), and carries the weights themselves.
 - ISOLATION (2.12a): the ledger takes an EXPLICIT lake path and refuses the live home.
 
+A source returns units, or (units, evaluations) when it searches (2.6).
 The learner is an adapter with diagnose() / admit(units) / attempt(epochs); the taught learner's adapter lands
 with the grown-segment port after R2's P1.
 """
@@ -366,15 +367,20 @@ class GrowthLoop:
 
     def _grow(self):
         """True when one whole batch was admitted; False when the source had none to give (Codex cp5 #4)."""
-        units = self.source(self.batch)
+        out = self.source(self.batch)
+        # a searching source returns (units, evaluations) so the matched-search-budget controls are paid in
+        # the same currency (2.6; Codex cp5 #7); a plain list evaluated nothing it can report
+        units, evals = out if isinstance(out, tuple) else (out, 0)
         if not units:
+            if evals:
+                self.ledger.record_spend(self.problem_id, 0, evals=evals)
             return False
         if len(units) != self.batch:  # the gate cleared THIS size; anything else could cross the budget
             raise LedgerError(
                 f"problem {self.problem_id!r}: the source returned {len(units)} units for a batch of {self.batch}"
             )
         self.ledger.record_units(units, self.problem_id, self._batches)  # write-ahead, before the learner
-        self.ledger.record_spend(self.problem_id, len(units), evals=0)
+        self.ledger.record_spend(self.problem_id, len(units), evals=evals)
         self.learner.admit(units)
         self._batches += 1
         return True

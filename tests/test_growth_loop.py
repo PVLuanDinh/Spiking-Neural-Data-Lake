@@ -300,6 +300,16 @@ def test_a_reconstructed_source_that_restarts_its_ids_stops_the_loop_with_nothin
     assert ledger.ledger("q").spend_units == 0
 
 
+def test_candidate_evaluations_are_persisted_beside_the_admissions(tmp_path):
+    # Codex cp5 #7: a searching source returns (units, evaluations); a failed search still spends its evals
+    draw = _source(9)
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    rec = GrowthLoop(ScriptedLearner(["CAPACITY"]), "s", ledger, lambda n: (draw(n), 32), 9).run()
+    assert rec.spend_units == 45 and rec.spend_evals == 5 * 32
+    rec = GrowthLoop(ScriptedLearner(["CAPACITY"]), "f", ledger, lambda n: ([], 32), 9).run()
+    assert rec.spend_units == 0 and rec.spend_evals == 32 and rec.state == "UNSOLVED"
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 
