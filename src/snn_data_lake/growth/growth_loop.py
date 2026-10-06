@@ -272,6 +272,12 @@ class Ledger:
         for u in units:
             self._record_unit(u, by_id[u.unit_id], problem_id, batch_id)
 
+    def unsettled(self, problem_id):
+        """Births journaled for `problem_id` minus the admissions its spend rows charged: nonzero after a crash
+        between the birth rows and the spend row (amendment (d)); no reconciler exists, so growth refuses."""
+        born = sum(1 for r in self.units() if r["problem_id"] == problem_id)
+        return born - self.ledger(problem_id).spend_units
+
     def birth_records(self):
         """{unit_id: birth row} over every unit ever born (immortal, pruned included): classify_restored's journal."""
         return {r["unit_id"]: r for r in self.units()}
@@ -451,6 +457,11 @@ class GrowthLoop:
 
     def _grow(self):
         """True when one whole batch was admitted; False when the source had none to give (Codex cp5 #4)."""
+        if self.ledger.unsettled(self.problem_id):
+            raise LedgerError(
+                f"problem {self.problem_id!r}: {self.ledger.unsettled(self.problem_id)} unsettled birth row(s), none "
+                "charged (a crash between them); growth refuses until the reconciler lands"
+            )
         out = self.source(self.batch)
         # a searching source returns (units, evaluations) so the matched-search-budget controls are paid in
         # the same currency (2.6; Codex cp5 #7); a plain list evaluated nothing it can report

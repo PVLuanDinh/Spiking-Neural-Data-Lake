@@ -573,6 +573,21 @@ def test_an_adapter_that_ignores_the_ticket_is_caught(tmp_path):
         loop.run()
 
 
+def test_unsettled_births_stop_growth_until_the_reconciler_lands(tmp_path):
+    # Codex panel MAJOR / amendment (d): birth rows with no spend row (a crash between them)
+    # must not be replayed as a fresh unspent run (54 born, 45 charged, budget 52)
+    ledger = Ledger(tmp_path / "lake.bin", VALUES)
+    ledger.open_problem("u", 4)
+    _born(ledger, _source(9)(9), "u", 0)  # nine births, no spend row: the crash window
+    assert ledger.unsettled("u") == 9
+    learner = ScriptedLearner(["CAPACITY"])
+    with pytest.raises(LedgerError, match="unsettled"):
+        GrowthLoop(learner, "u", ledger, _source(9), 9).run()
+    assert len(ledger.units()) == 9 and learner.units == []  # nothing more was born or admitted
+    ledger.record_spend("u", 9, evals=0)  # control: once settled, the loop grows again
+    assert ledger.unsettled("u") == 0
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 
