@@ -518,3 +518,27 @@ Carried XOR 0.676, twin 0.853; Settled XOR 0.996, twin 0.997; the stream reads c
    the report) and finding 2 (stream-null wording) are folded in 3.1-3.4; its BLOCKER finding 5 holds that 2.14 orders the
    loser deletion BEFORE the battery and push, so this arc is NOT closed and NOT pushed until item 2 lands (or the owner
    overrides the frozen order in words). Then ONE battery on the stacked head, the closing record LAST, push.
+
+### 3.6 The deletion's review record (2026-10-06, CLI lead session 578b753f)
+
+- **Golden check, disclosed method (amends nothing in 3.5 item 2):** each old head's `git archive` export was given a
+  synthetic `git init` commit (so `md._revision()` could run) and a junction to the worktree's `models/`; the digest is
+  equal across three different git HEADs, which itself shows head and dirty are not digested. Its red: at `d8752f98` the
+  report self-check's one-ulp leak moved 14 records (deterministic over 12 pool replays and 9 arms). Re-run equal after
+  each fold that touched executed code (`a99bb11c`, `0de60e86`).
+- **Advisor read:** CLI lead session (Fable), before the panel; it asked for the red above and this disclosure.
+- **Codex panel** (gpt-6.1-sol, read-only, frozen clone at `d8752f98`, one lens per run; prompts and replies archived in
+  memory `archive/g1c-deletion-close-2026-10-06/panel/`): correctness + P8 (reply sha256 `be7f3511...376a`), P2/P3
+  (`0044d101...fe02`), safety + determinism (`ff2d5958...9f9b`). Seven distinct findings, each reproduced by the
+  integrator before folding:
+  1. R-b7 accepted a cell or binding labelled host "port" -> `0e4c67fb`.
+  2. The report accepted a legacy OUT without its migrate summary, stage hosts other than kernel, and a migrate `use`
+     of "port" (P2/P3 #1 = safety #1, correctness #2) -> `a99bb11c` (the record now lists the stages its driver ran).
+  3. `_Pool.params_fingerprint` / `_Pool.fingerprint` shadowed, `mean_of` and the tests' `_observed` uncalled ->
+     deleted, `0de60e86`.
+  4. The step's `mechanism_checks` / `configuration_checks` ran only inside substituted job children -> tests,
+     `a6200de8`.
+  5. **Not folded, disposition recorded (P2/P3 #2):** the record stage still records the gate seeds (204-207 live,
+     208-211 reserve) that only the deleted migrate stage read. They are a clause of 2.11's frozen seed bundle, and a new
+     recording runs only as the reserve repair, which waits for the owner's yes; at that yes, a dated pre-data amendment
+     drops them first (carried as an opening).
