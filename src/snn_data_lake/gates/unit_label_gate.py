@@ -83,12 +83,17 @@ def _text(v):
     return isinstance(v, str) and v != ""
 
 
+def _ident(v):
+    """unit_id / batch_id: a non-bool int >= 0 -- G3's journal ids; one representation (lead, 2026-10-06)."""
+    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
+
+
 def _check_unit_id(rec, ctx):
-    return None if _text(rec.get("unit_id")) else "missing or empty unit_id"
+    return None if _ident(rec.get("unit_id")) else "missing or not a non-negative int unit_id"
 
 
 def _check_batch_id(rec, ctx):
-    return None if _text(rec.get("batch_id")) else "missing or empty batch_id"
+    return None if _ident(rec.get("batch_id")) else "missing or not a non-negative int batch_id"
 
 
 def _check_position(rec, ctx):
@@ -242,7 +247,7 @@ def require_admissible(units, *, resolve_problem, known_unit):
     seen = set()
     for u in units:
         uid = u.get("unit_id") if isinstance(u, Mapping) else None
-        if _text(uid):
+        if _ident(uid):
             if uid in seen:
                 raise UnitLabelRefused(uid, "unit_id", "duplicate within batch")
             seen.add(uid)
@@ -604,7 +609,7 @@ def census(segments, journal, open_debt=None):
     for name, rows in segments.items():
         origins = classify_restored(rows, journal)
         counts = {o: origins.count(o) for o in ("born", "derived", "legacy")}
-        ids = [r["unit_id"] for r in rows if isinstance(r, Mapping) and _text(r.get("unit_id"))]
+        ids = [r["unit_id"] for r in rows if isinstance(r, Mapping) and _ident(r.get("unit_id"))]
         duplicate = len(ids) - len(set(ids))
         unticketed = counts["derived"] + counts["legacy"]
         red = bool(duplicate) or (bool(unticketed) and name not in open_debt)
@@ -658,9 +663,9 @@ def _self_check():
     def resolve(pid):
         return pid == "prob-1"
 
-    recs = place_labeled(9, unit_ids=[f"sc-{i}" for i in range(9)], region="cortex",
+    recs = place_labeled(9, unit_ids=list(range(9)), region="cortex",
                          site=(0.5 / len(NEUROMERES), 1.5 / len(ZONES)), problem_id="prob-1",
-                         batch_id="sc", seed=13015, centre_um=(0.0, 0.0), density_per_mm2=2.7e4,
+                         batch_id=0, seed=13015, centre_um=(0.0, 0.0), density_per_mm2=2.7e4,
                          roles=("E",) * 8 + ("I",))
     good = recs[0]
     assert check_admission(good, resolve_problem=resolve).admitted, "R6: a full label must be admitted"

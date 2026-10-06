@@ -20,11 +20,11 @@ SITE = (0.5 / 14, 1.5 / 4)  # ('sp', 'alar'): the cortex cell
 
 def _labeled(n=9, roles=None, seed=13010, **kw):
     args = dict(
-        unit_ids=[f"u{seed}-{i}" for i in range(n)],
+        unit_ids=[seed * 100 + i for i in range(n)],
         region="cortex",
         site=SITE,
         problem_id="prob-1",
-        batch_id=f"b{seed}",
+        batch_id=seed,
         seed=seed,
         roles=roles,
         centre_um=(0.0, 0.0),
@@ -86,7 +86,7 @@ def test_roles_outside_cortex_are_refused():
 def test_density_has_no_default():
     with pytest.raises(TypeError):
         P.place_labeled(
-            1, unit_ids=["a"], region="cortex", site=SITE, problem_id="p", batch_id="b", seed=1,
+            1, unit_ids=[1], region="cortex", site=SITE, problem_id="p", batch_id=2, seed=1,
             centre_um=(0.0, 0.0),
         )
 
@@ -102,15 +102,15 @@ def test_offsets_are_deterministic_and_inside_the_batch_disc():
 
 def test_unit_ids_must_match_n():
     with pytest.raises(ValueError):
-        _labeled(n=3, unit_ids=["a", "b"])
+        _labeled(n=3, unit_ids=[1, 2])
 
 
 def test_label_of_and_labels_by():
     recs = _labeled(roles=("E",) * 8 + ("I",), seed=13019)
     assert P.label_of(recs, recs[3]["unit_id"]) is recs[3]
-    assert P.label_of(recs, "nope") is None
+    assert P.label_of(recs, 987654) is None
     by_batch = P.labels_by(recs, "batch_id")
-    assert by_batch == {"b13019": [r["unit_id"] for r in recs]}
+    assert by_batch == {13019: [r["unit_id"] for r in recs]}
     by_layer = P.labels_by(recs, "layer")
     assert sum(len(v) for v in by_layer.values()) == 9
     with pytest.raises(ValueError):
@@ -343,7 +343,7 @@ def test_r13_return_targets_must_be_admitted_born_units():
     no_region = {k: v for k, v in _good(i=2).items() if k != "region"}
     records = [born, derived, no_region]
     G.require_labeled_targets([born["unit_id"]], records, resolve_problem=_resolve)
-    for bad in (derived["unit_id"], no_region["unit_id"], "unknown-id"):
+    for bad in (derived["unit_id"], no_region["unit_id"], 987654):
         with pytest.raises(G.UnitLabelRefused):
             G.require_labeled_targets([bad], records, resolve_problem=_resolve)
 
@@ -351,7 +351,7 @@ def test_r13_return_targets_must_be_admitted_born_units():
 # R10: each check is load-bearing -- neuter ONE at a time; only its own red stops firing.
 _DEFECTS = {
     "unit_id": lambda g: {k: v for k, v in g.items() if k != "unit_id"},
-    "batch_id": lambda g: _with(g, batch_id=""),
+    "batch_id": lambda g: _with(g, batch_id=-1),
     # x_um NaN: a defect ONLY the position check can see (an out-of-range ap is ALSO refused by the
     # region check's map read -- two checks on one defect, so it cannot isolate either one)
     "position": lambda g: _with(g, position=g["position"][:2] + (float("nan"),) + g["position"][3:]),
@@ -456,7 +456,7 @@ def test_cp3_4_place_labeled_callers_are_label_creation_sites(tmp_path):
     root = _tree(tmp_path, (
         "from snn_data_lake.growth.placement import place_labeled\n"
         "def grow(ids):\n    return place_labeled(1, unit_ids=ids, region='cortex', site=(0, 0),\n"
-        "        problem_id='p', batch_id='b', seed=1, centre_um=(0, 0), density_per_mm2=1.0)\n"
+        "        problem_id='p', batch_id=2, seed=1, centre_um=(0, 0), density_per_mm2=1.0)\n"
     ))
     assert G.label_creation_findings(src_root=root, known={}) == ["fakepkg/mod.py::grow"]
 
@@ -540,3 +540,9 @@ def test_r12_census_counts_todays_refit_as_legacy_and_reds_without_its_debt_row(
     assert out["neurogenesis_engine"]["red"] is False
     assert G.census({"neurogenesis_engine": rows}, journal={}, open_debt=set())["neurogenesis_engine"]["red"]
     assert (live.stat().st_mtime if live.exists() else None) == before
+
+
+@pytest.mark.parametrize("field", ["unit_id", "batch_id"])
+@pytest.mark.parametrize("bad", ["7", True, -1, 1.0, None])
+def test_ids_are_non_negative_ints_only(field, bad):
+    assert _refused_field(_with(_good(), **{field: bad})) == field
