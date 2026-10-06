@@ -563,6 +563,16 @@ reds), `taught_campaign` OK (scratch seed 8900).
   off restore it (174 / 156 / 179 / 141). The metaplastic gate and intrinsic plasticity do not block; short-term gain only
   slows it. Evidence for the owner; nothing here chooses among Q-AII's options. The (i) cells, C1-d and A_c1d do not depend on it.
 
+- **Correction, 2026-10-06 (Codex panel MINOR, lead relay), to the A_ii bullet above.** "Accuracy 0.5 every epoch" is
+  wrong: the canonical incumbent on A_ii is never stable-10, but the per-epoch validation accuracy varies. Reproduced at E 400
+  through `taught_campaign.attempt`: seed 8000 reads 0.5 at 389 epoch ends, 0.0 at 9, 0.75 at 1 and 1.0 at epoch end 165
+  (mean 0.491); 8001: 0.5 x 391, 0.0 x 7, 0.25 x 1, 1.0 at 127 (mean 0.492); 8002: 0.5 x 394, 0.0 x 4, 0.75 at epoch
+  end 0, 1.0 at 110 (mean 0.497); 8003: 0.5 x 393, 0.0 x 7, never solved (mean 0.491). The solved read is a single isolated
+  epoch end on 8000-8002 (so the 2.17 table's "max accuracy 1.0 (transient)" stands). The attribution (the stack, not the
+  construction) is unchanged, but I read the answer pattern only on seed 8000 (epochs 0-7, 100, 101, 398, 399: one label
+  for all four texts, GREET or GOAL; ATTENTION for all four at epoch 101, a 0.0 read), so "one label per epoch" is shown
+  for those epochs, not for every epoch or seed.
+
 ## 3. Open questions for the owner
 
 - **O1** *(narrowed by 2.15.1, lead read 2026-10-03.)* Held-out means novel COMBINATIONS of taught words (C1-d), not novel
