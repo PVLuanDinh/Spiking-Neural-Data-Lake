@@ -973,6 +973,15 @@ EXEMPT = {
         "campaign instrument (P4) and G6's ledger/solved_sink readers; it reaches the live path only "
         "when G9 wires the engine, and this exemption retires that day",
     ),
+    "unit_label_gate": (
+        "wire",
+        "specs/022 T115 (G7) / T111 (G3), lead ruling 29: the label gate for every grown unit. Its consumer "
+        "is grown_code.admit_rows, which consumes the gate's AdmissionTicket (the single append of the grown "
+        "segment; charge proven by test_admit_rows_refuses_a_planted_unlabeled_row, not by an import), and "
+        "growth_loop.make_admission, which calls require_admissible. Both sit behind growth_loop, EXEMPT until "
+        "G9 wires the engine; this exemption retires that day, together with the gate's debt row for "
+        "NeurogenesisSelfImprove._refit. No import was added for reachability (cp1 #19)",
+    ),
 }
 
 

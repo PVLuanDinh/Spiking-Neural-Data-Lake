@@ -238,3 +238,18 @@ def test_admit_rows_refuses_a_unit_whose_sign_is_not_its_labels_and_does_not_spe
     with pytest.raises(ValueError, match="Dale"):
         admit_rows((), flipped, labels, ticket)
     assert len(admit_rows((), units, labels, ticket)) == 3  # the refusal did not consume the ticket
+
+
+def test_admit_rows_refuses_a_planted_unlabeled_row():
+    # ruling 29's charge proof: the gate's ticket is consumed INSIDE admit_rows, so a row stripped of its
+    # label after validation is refused there (an import would prove only reachability)
+    from snn_data_lake.gates.unit_label_gate import require_admissible
+    from snn_data_lake.growth.grown_code import admit_rows
+
+    units, labels = _labeled_batch([0, 1, 2])
+    ticket = _ticket(labels)
+    stripped = [{k: v for k, v in labels[0].items() if k != "layer"}] + list(labels[1:])
+    with pytest.raises(Exception, match="differs"):
+        admit_rows((), units, stripped, ticket)
+    with pytest.raises(Exception, match="layer"):  # and no ticket exists for an unlabeled batch at all
+        require_admissible(stripped, resolve_problem=lambda p: True, known_unit=lambda u: False)
