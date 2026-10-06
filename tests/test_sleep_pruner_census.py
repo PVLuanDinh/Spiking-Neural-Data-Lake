@@ -224,11 +224,9 @@ def test_the_discovery_net_reds_on_a_planted_unclassified_pruner():
             spc.census_runtime(b, 40)
     assert ("?", "evict_planted") in spc.census_misses(cen, seen)
 
-    """C2 through counting_patches, not only the extractors on planted return values."""
-
 
 def test_c2_a_planted_pruner_removing_k_items_reads_k(monkeypatch):
-    """C2 through the counting layer (counting_patches), not only the extractors on planted return values."""
+    """C2 through counting_patches, not only the extractors on planted return values."""
     import types
 
     class Planted:
@@ -245,7 +243,7 @@ def test_c2_a_planted_pruner_removing_k_items_reads_k(monkeypatch):
 
 
 def test_c5_a_planted_cross_pruner_change_is_caught():
-    """C5 red: a neuter changing ANOTHER pruner's series before its first removal is not surgical."""
+    """C5 red: a neuter changing ANOTHER pruner's series before its first removal."""
     live = spc.ArmRun(seed=0, arm="live", ticks=9)
     live.removals = {"P-DP": [[5, 2]], "P-EY": [[1, 1]]}
     twin = spc.ArmRun(seed=0, arm="dp_neuter", ticks=9)
