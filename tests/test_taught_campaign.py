@@ -287,3 +287,24 @@ def test_b8_twin_equal_and_bare_class_reds():
     assert ok["ok"], ok
     red = tc.b8_twin(SCRATCH, 3, bare=True)
     assert not red["conditions"]["twin_equal"]
+
+
+def test_b8_refuses_an_unset_home_before_building_a_brain(monkeypatch):
+    # ruling 16: B8 calls the shared guard inside its home block; with NORD_HOME unset it must refuse BEFORE make_brain
+    import contextlib
+
+    from snn_data_lake.engine import brain as brain_mod
+    from snn_data_lake.substrate import home as home_mod
+
+    @contextlib.contextmanager
+    def no_home():
+        monkeypatch.delenv("NORD_HOME", raising=False)
+        yield
+
+    def build(*a, **k):
+        raise AssertionError("make_brain reached without the guard")
+
+    monkeypatch.setattr(home_mod, "throwaway_home", no_home)
+    monkeypatch.setattr(brain_mod, "make_brain", build)
+    with pytest.raises(home_mod.LiveHomeRefused):
+        tc.b8_twin(8900, 1)

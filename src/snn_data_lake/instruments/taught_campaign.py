@@ -295,13 +295,14 @@ def b8_twin(seed, epochs, *, bare=False):
     read through `brain.brain.route`, against the factory incumbent (or the bare class, the red) on the same
     sequence: weights and every validation read equal at every epoch end. The live home's mtime must not move."""
     from snn_data_lake.engine.brain import make_brain
-    from snn_data_lake.substrate.home import throwaway_home
+    from snn_data_lake.substrate.home import require_isolated_home, throwaway_home
 
     problem = tp.PROBLEMS["i.S0C0"]
     before = _live_mtime()
     factory = im._incumbent(seed) if bare else learner(seed)
     equal = True
     with throwaway_home():
+        require_isolated_home()  # ruling 16: the ONE shared guard, before any Brain exists
         brain = make_brain(seed=seed, persist=False)
         for epoch in problem.teach_epochs(seed, epochs):
             for episode in epoch:
