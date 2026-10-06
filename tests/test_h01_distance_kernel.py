@@ -460,3 +460,19 @@ def test_cp2_15_degenerate_is_bounded_by_the_largest_pair_distance_not_the_box_d
     xyz = np.array([[0.0, 0, 0], [10, 0, 0], [0, 10, 0], [0, 0, 10]])
     geo = KD.Geometry.of(KD.Population(xyz_um=xyz, layer=np.zeros(4, int), out_deg=np.ones(4, int), in_deg=np.ones(4, int)))
     assert geo.dpair == pytest.approx(10 * math.sqrt(2)) and geo.dmax == pytest.approx(10 * math.sqrt(3))
+
+
+def test_cp2_14_the_mixture_starts_from_the_fitted_gaussian_and_exponential_unchanged(monkeypatch):
+    """Codex cp2 #14 / 2.3: no unregistered amplitude adjustment of the start."""
+    d = np.arange(1, 60) + 0.5
+    n = np.full(d.shape, 1000.0)
+    k = np.round(n * 0.2 * np.exp(-d / 20)).astype(float)
+    real, seen = KD.fit_model, {}
+
+    def spy(m, d, n, k, init=None):
+        seen[m] = init if init is not None else seen.get(m)
+        return real(m, d, n, k, init)
+
+    monkeypatch.setattr(KD, "fit_model", spy)
+    th = KD.fit_all(d, n, k)
+    assert np.allclose(seen["mix"], np.r_[th["gauss"], th["exp"]])
