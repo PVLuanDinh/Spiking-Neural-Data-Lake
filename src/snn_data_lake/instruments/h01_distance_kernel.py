@@ -545,7 +545,7 @@ def fit_model(model, d, n, k, init=None):
 
 def fit_all(d, n, k):
     th = {m: fit_model(m, d, n, k) for m in ("flat", "gauss", "exp")}
-    th["mix"] = fit_model("mix", d, n, k, init=np.r_[th["gauss"], th["exp"][0] - 1.0, th["exp"][1]])
+    th["mix"] = fit_model("mix", d, n, k, init=np.r_[th["gauss"], th["exp"][0], th["exp"][1]])
     return th
 
 
