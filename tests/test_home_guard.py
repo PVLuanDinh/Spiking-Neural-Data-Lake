@@ -170,6 +170,25 @@ def test_throwaway_home_refuses_a_live_parent_before_creating_anything(tmp_path,
         assert os.path.isdir(d) and len(created) == 1
 
 
+def test_a_network_or_device_spelling_is_never_an_isolated_home(tmp_path):
+    # R2's refutation by execution: the loopback admin share names the LOCAL decoy live home but
+    # realpath never folds it back to the drive, so equality and containment were both skipped
+    if sys.platform != "win32":
+        pytest.skip("UNC / device namespaces are Windows-only")
+    live = tmp_path / "live"
+    sub = live / "sub"
+    sub.mkdir(parents=True)
+    drive, rest = os.path.splitdrive(str(live))
+    unc = "\\\\localhost\\" + drive[0] + "$" + rest
+    if not os.path.isdir(unc):
+        pytest.skip("the loopback administrative share is not reachable on this host")
+    for spelled in (unc, unc + "\\sub", "\\\\?\\UNC\\localhost\\" + drive[0] + "$" + rest):
+        with pytest.raises(H.LiveHomeRefused, match="network"):
+            H.assert_not_live_home(spelled, live_home=str(live))
+    with pytest.raises(H.LiveHomeRefused, match="device"):  # not a crash, not an accident
+        H.assert_not_live_home("\\\\?\\GLOBALROOT\\Device\\x", live_home=str(live))
+
+
 def test_namespace_prefix_normalisation_covers_unc():
     # `\\?\UNC\server\share` is the extended spelling of `\\server\share`
     assert H._strip_namespace("\\\\?\\UNC\\srv\\share\\x") == "\\\\srv\\share\\x"

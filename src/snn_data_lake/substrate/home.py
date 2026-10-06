@@ -437,7 +437,15 @@ def assert_not_live_home(path, live_home=None):
         raise LiveHomeRefused(
             "home refused (unset): an empty home falls back to the default, which is the live lake"
         )
+    if _strip_namespace(path) != str(path) and not os.path.isabs(_strip_namespace(path)):
+        raise LiveHomeRefused(
+            f"home refused (device namespace): {path} is not a drive or share path"
+        )
     p = _resolve(path, strict=True)
+    if p.startswith(
+        "\\\\"
+    ):  # the loopback admin share (C$) names a local drive realpath cannot fold
+        raise LiveHomeRefused(f"home refused (network): {p} -- a share is never an isolated home")
     _refuse_if_live(p, _resolve(live_home if live_home is not None else _default_live_home()))
     return p
 
