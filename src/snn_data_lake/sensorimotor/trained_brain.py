@@ -144,6 +144,9 @@ GENN_CHECKPOINT_FORMAT = "snn_training.GennBrain/1"
 #: Largest `steps` a checkpoint may ask for: predict() loops this many times per image, so an unbounded value
 #: is resource exhaustion at a trust boundary. The shipped trainers used 25 (the CLI default) and the self-checks 8.
 MAX_CHECKPOINT_STEPS = 1000
+#: The retired bridge (training/mnist_genn.export_brain) wrote exactly a 784 -> hidden -> 10 MNIST brain; the
+#: converter enforces the same dimensions rather than accepting any chain that happens to be consistent.
+GENN_IN, GENN_OUT = 784, 10
 
 
 def brain_from_genn_checkpoint(path):
@@ -190,6 +193,12 @@ def brain_from_genn_checkpoint(path):
         raise ValueError(f"{path}: need 0 < beta < 1 and a finite threshold > 0, got {beta}, {thr}")
     if hidden != len(w1):
         raise ValueError(f"{path}: hidden={hidden!r} != len(W1)={len(w1)}")
+    if (
+        any(len(r) != GENN_IN for r in w1)
+        or len(w2) != GENN_OUT
+        or any(len(r) != hidden for r in w2)
+    ):
+        raise ValueError(f"{path}: need W1 [{hidden}][{GENN_IN}] and W2 [{GENN_OUT}][{hidden}]")
     if not all(math.isfinite(w) for W in brain["layers"] for row in W for w in row):
         raise ValueError(f"{path}: non-finite weight")
     return _validate(brain, path)
@@ -232,67 +241,57 @@ def main():
     x0 = test[0][0]
     det = predict_scores(two, x0) == predict_scores(two, x0)
 
-    # the ported GennBrain/1 converter: a tiny checkpoint becomes a servable, validated brain; a wrong format refuses
+    # the ported GennBrain/1 converter: a checkpoint of the bridge's dimensions becomes a servable, validated
+    # brain; every malformed one refuses with a ValueError (a quiet acceptance flips genn_ok)
     cp = os.path.join(tempfile.gettempdir(), "snn_genn_ckpt_selfcheck.json")
-    with open(cp, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "format": GENN_CHECKPOINT_FORMAT,
-                "hidden": 2,
-                "steps": 4,
-                "beta": 0.9,
-                "threshold": 1.0,
-                "W1": [[0.1, 0.2, 0.3], [0.3, 0.2, 0.1]],
-                "W2": [[1.0, 0.0], [0.0, 1.0]],
-            },
-            f,
-        )
-    gb = brain_from_genn_checkpoint(cp)
-    genn_ok = gb["in"] == 3 and gb["out"] == 2 and len(gb["layers"]) == 2
-    with open(cp, "w", encoding="utf-8") as f:
-        json.dump({"format": "nope"}, f)
-    try:
-        brain_from_genn_checkpoint(cp)
-        genn_ok = False
-    except ValueError:
-        pass
     good = {
         "format": GENN_CHECKPOINT_FORMAT,
         "hidden": 2,
         "steps": 4,
         "beta": 0.9,
         "threshold": 1.0,
-        "W1": [[0.1, 0.2, 0.3], [0.3, 0.2, 0.1]],
-        "W2": [[1.0, 0.0], [0.0, 1.0]],
+        "W1": [[0.001] * GENN_IN for _ in range(2)],
+        "W2": [[0.1, 0.2] for _ in range(GENN_OUT)],
     }
-    for k, v in (
-        ("W1", []),
-        ("steps", 0),
-        ("steps", -3),
-        ("steps", 10**9),
-        ("W2", [[True, 0.0], [0.0, 1.0]]),
-        ("W1", [["0.1", 0.2, 0.3], [0.3, 0.2, 0.1]]),
-        ("beta", 5.0),
-        ("hidden", 3),
-        ("W2", [[float("nan"), 0.0], [0.0, 1.0]]),
-        ("W1", [[0.1, 0.2], [0.3]]),
-        ("beta", "x"),
-    ):
+
+    def _refused(obj):
         with open(cp, "w", encoding="utf-8") as f:
-            json.dump(dict(good, **{k: v}), f)
+            json.dump(obj, f)
         try:
             brain_from_genn_checkpoint(cp)
-            genn_ok = False
         except ValueError:
-            pass
-    for k in ("W1", "W2", "steps", "beta", "threshold", "hidden"):
-        with open(cp, "w", encoding="utf-8") as f:
-            json.dump({a: b for a, b in good.items() if a != k}, f)
-        try:
-            brain_from_genn_checkpoint(cp)
-            genn_ok = False
-        except ValueError:
-            pass
+            return True
+        return False
+
+    with open(cp, "w", encoding="utf-8") as f:
+        json.dump(good, f)
+    gb = brain_from_genn_checkpoint(cp)
+    genn_ok = gb["in"] == GENN_IN and gb["out"] == GENN_OUT and len(gb["layers"]) == 2
+    nan = float("nan")
+    bad = [{"format": "nope"}, [1]]
+    bad += [
+        dict(good, **{k: v})
+        for k, v in (
+            ("W1", []),
+            ("steps", 0),
+            ("steps", -3),
+            ("steps", 10**9),
+            ("W2", [[True, 0.2]] + [[0.1, 0.2]] * 9),
+            ("W1", [["0.1"] + [0.001] * 783, [0.001] * 784]),
+            ("beta", 5.0),
+            ("hidden", 3),
+            ("W2", [[nan, 0.2]] + [[0.1, 0.2]] * 9),
+            ("W1", [[0.001] * 784, [0.001] * 783]),
+            ("beta", "x"),
+            # the bridge's dimensions: a consistent chain of the WRONG sizes is refused
+            ("W1", [[0.1, 0.2, 0.3], [0.3, 0.2, 0.1]]),
+            ("W2", [[1.0, 0.0], [0.0, 1.0]]),
+            ("W1", [[], []]),
+            ("W2", [[0.1, 0.2]] * 9),
+        )
+    ]
+    bad += [{a: b for a, b in good.items() if a != k} for k in good if k != "format"]
+    genn_ok = genn_ok and all(_refused(x) for x in bad)
     with open(cp, "w", encoding="utf-8") as f:
         json.dump([1], f)
     for fn in (brain_from_genn_checkpoint, load_brain):
@@ -303,7 +302,7 @@ def main():
             pass
     os.remove(cp)
     assert genn_ok, (
-        "the GennBrain/1 converter must convert a valid checkpoint and refuse a wrong format"
+        "the GennBrain/1 converter must convert a valid checkpoint and refuse every malformed one"
     )
 
     print("=" * 60)
