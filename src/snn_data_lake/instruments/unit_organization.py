@@ -68,8 +68,14 @@ def judge(name, diffs, kind):
         flipped = tuple(-d if (mask >> i) & 1 else d for i, d in enumerate(diffs))
         hits += _met(flipped, kind)
     return ContrastVerdict(
-        name, kind, diffs, 0.0 if degenerate else paired_t(diffs), _met(diffs, kind), degenerate,
-        hits / float(1 << len(diffs)), permutation_fpr(diffs),
+        name,
+        kind,
+        diffs,
+        0.0 if degenerate else paired_t(diffs),
+        _met(diffs, kind),
+        degenerate,
+        hits / float(1 << len(diffs)),
+        permutation_fpr(diffs),
     )
 
 
@@ -123,8 +129,11 @@ def censoring_refused(censored):
 def t1_struct_decision(u_verdict, e_verdict, *, owner_o9, censored):
     """2.6a's table. `u_verdict` None = the U half was REFUSED by the guard; `censored` per censoring_refused."""
     if censoring_refused(censored):
-        return {"verdict": "REFUSED (censoring)", "deletes_structure": False,
-                "disposition": "more than half the seeds censored in an arm: refused, reported, nothing deleted"}
+        return {
+            "verdict": "REFUSED (censoring)",
+            "deletes_structure": False,
+            "disposition": "more than half the seeds censored in an arm: refused, reported, nothing deleted",
+        }
     if u_verdict is None:
         verdict = "PASS (retention only; U untested)" if e_verdict.met else "RED"
     else:
@@ -133,8 +142,10 @@ def t1_struct_decision(u_verdict, e_verdict, *, owner_o9, censored):
     if not red:
         disposition = "column structure kept"
     elif owner_o9:
-        disposition = ("column structure not shown non-inferior within delta_NI / 20 %: shared "
-                       "inhibition and E/E wiring deleted, owner told")
+        disposition = (
+            "column structure not shown non-inferior within delta_NI / 20 %: shared "
+            "inhibition and E/E wiring deleted, owner told"
+        )
     else:
         disposition = "RED reported to the owner; nothing deleted until O9 is answered"
     return {"verdict": verdict, "deletes_structure": red and owner_o9, "disposition": disposition}
@@ -153,7 +164,13 @@ def t1_size_decision(u_verdict, e_verdict, *, censored):
 
 # ---- T4 --------------------------------------------------------------------------------------------------
 
-_POP_LAYER = {"Layer 2": "L2/3", "Layer 3": "L2/3", "Layer 4": "L4", "Layer 5": "L5", "Layer 6": "L6"}
+_POP_LAYER = {
+    "Layer 2": "L2/3",
+    "Layer 3": "L2/3",
+    "Layer 4": "L4",
+    "Layer 5": "L5",
+    "Layer 6": "L6",
+}
 
 
 def population(layer, sign):
@@ -218,14 +235,18 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None)
         if col is not None:
             w0[col[:t] != col[t]] = 0.0
         if int(np.count_nonzero(w0 > 0)) < alloc[t]:
-            raise Infeasible(f"arrival {t} has fewer positive-weight candidates than its {alloc[t]} edges")
+            raise Infeasible(
+                f"arrival {t} has fewer positive-weight candidates than its {alloc[t]} edges"
+            )
         shared = np.zeros(t)
         for _ in range(alloc[t]):
             w = w0 * (1.0 + beta * shared)
             cum = np.cumsum(w)
             j = int(np.searchsorted(cum, rng.random() * cum[-1], side="right"))
             j = min(j, t - 1)
-            while w[j] <= 0.0:  # float edge case at the top of the cumsum: step back to a live candidate
+            while (
+                w[j] <= 0.0
+            ):  # float edge case at the top of the cumsum: step back to a live candidate
                 j -= 1
             w0[j] = 0.0  # without replacement
             for q in nbrs[j]:
@@ -303,20 +324,30 @@ def main():
         return False
 
     xy = np.random.default_rng(13237).random((300, 2)) * 1000.0
-    tri = [sum(_triangles(sample_exact_m(300, 1200, xy=xy, kernel=lambda d: 1.0, seed=s, beta=b), 300)
-               for s in (13233, 13234, 13235)) for b in (0.0, 5.0)]
+    tri = [
+        sum(
+            _triangles(sample_exact_m(300, 1200, xy=xy, kernel=lambda d: 1.0, seed=s, beta=b), 300)
+            for s in (13233, 13234, 13235)
+        )
+        for b in (0.0, 5.0)
+    ]
     reds = {
         "degenerate superiority NOT MET (ruling 9)": not judge("r", [0.3] * 8, "superiority").met,
         "exact flip rate 8/256 on a constant-positive sample": judge(
-            "r", [0.5] * 8, "superiority").exact_flip_rate == 8 / 256,
+            "r", [0.5] * 8, "superiority"
+        ).exact_flip_rate
+        == 8 / 256,
         "guard refuses a small judging problem": not granularity_guard({"A": [2, 3, 4]}, k=8)[0],
         "a zero retention margin is refused": raises(lambda: retention_diffs([0], [0], delta=0)),
         "an infeasible density is refused": raises(
-            lambda: sample_exact_m(10, 46, xy=np.zeros((10, 2)), kernel=lambda d: 1.0, seed=1)),
+            lambda: sample_exact_m(10, 46, xy=np.zeros((10, 2)), kernel=lambda d: 1.0, seed=1)
+        ),
         "the shared-partner term is live": tri[1] > 2 * tri[0],
     }
     silent = [k for k, fired in reds.items() if not fired]
-    print(f"instrument reds fired: {len(reds) - len(silent)} of {len(reds)}  (triangles beta 0 vs 5: {tri})")
+    print(
+        f"instrument reds fired: {len(reds) - len(silent)} of {len(reds)}  (triangles beta 0 vs 5: {tri})"
+    )
     assert not silent, f"reds that did not fire: {silent}"
     return 0
 
@@ -366,8 +397,9 @@ def ir1(n, m, *, blocks, between=0.2, seeds=IR_SEEDS, louvain_seeds=LOUVAIN_SEED
     truth = list(np.arange(n) * blocks // n)
     diffs, nmis = [], []
     for s in seeds:
-        q_p, labels = best_partition(planted_blocks(n, m, blocks=blocks, between=between, seed=s), n,
-                                     louvain_seeds)
+        q_p, labels = best_partition(
+            planted_blocks(n, m, blocks=blocks, between=between, seed=s), n, louvain_seeds
+        )
         diffs.append(q_p - modularity(random_graph(n, m, seed=s), n, louvain_seeds))
         nmis.append(nmi(truth, labels))
     verdict = judge("IR1 planted vs RANDOM", diffs, "superiority")
@@ -376,16 +408,22 @@ def ir1(n, m, *, blocks, between=0.2, seeds=IR_SEEDS, louvain_seeds=LOUVAIN_SEED
 
 def ir2(n, m, *, seeds=IR_SEEDS, twin_seeds=IR_TWIN_SEEDS, louvain_seeds=LOUVAIN_SEEDS):
     """IR2, the false-positive control: RANDOM against a RANDOM twin must NOT pass. Passes -> T4 REFUSED."""
-    diffs = [modularity(random_graph(n, m, seed=s), n, louvain_seeds)
-             - modularity(random_graph(n, m, seed=t), n, louvain_seeds) for s, t in zip(seeds, twin_seeds)]
+    diffs = [
+        modularity(random_graph(n, m, seed=s), n, louvain_seeds)
+        - modularity(random_graph(n, m, seed=t), n, louvain_seeds)
+        for s, t in zip(seeds, twin_seeds)
+    ]
     verdict = judge("IR2 RANDOM vs RANDOM twin", diffs, "superiority")
     return {"verdict": verdict, "ok": not verdict.met}
 
 
 def ir3(n, m, *, blocks, seeds=IR_SEEDS, louvain_seeds=LOUVAIN_SEEDS):
     """IR3: the planted model at 50 % between-block edges vs RANDOM -- REPORTED only, to locate the floor."""
-    diffs = [modularity(planted_blocks(n, m, blocks=blocks, between=0.5, seed=s), n, louvain_seeds)
-             - modularity(random_graph(n, m, seed=s), n, louvain_seeds) for s in seeds]
+    diffs = [
+        modularity(planted_blocks(n, m, blocks=blocks, between=0.5, seed=s), n, louvain_seeds)
+        - modularity(random_graph(n, m, seed=s), n, louvain_seeds)
+        for s in seeds
+    ]
     return {"verdict": judge("IR3 planted (50% between) vs RANDOM", diffs, "superiority")}
 
 

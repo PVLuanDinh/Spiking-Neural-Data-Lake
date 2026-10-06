@@ -1,7 +1,8 @@
 """G7 / T115 P4 -- the T1 / T4 instrument (instruments/unit_organization.py).
 
-Pre-registration: specs/022-unified-brain-arc/evidence/g7-unit-label-gate.md, 2.6-2.7 and 2.6a-2.6b (frozen
-854de0e7, amended da4bcfb7). Pure: no Brain, no lake, no confirmatory seed -- constructed vectors and the
+Pre-registration: specs/022-unified-brain-arc/evidence/g7-unit-label-gate.md, 2.6-2.7 and 2.6a-2.6b
+(frozen 854de0e7, amended da4bcfb7). Pure: no Brain, no lake, no confirmatory seed -- constructed
+vectors and the
 instrument-red seeds of the dev block (13130-13137, 13230-13237).
 """
 
@@ -10,13 +11,12 @@ from __future__ import annotations
 import math
 
 import numpy as np
-
 import pytest
 
 from snn_data_lake.instruments import unit_organization as U
 from snn_data_lake.instruments.paired_contrast import permutation_fpr
 
-# ---- verdict rules (rulings 9 / 9a) and the exact sign-flip rate (Codex b3 #21) -------------------------
+# ---- verdict rules (rulings 9 / 9a) and the exact sign-flip rate (Codex b3 #21) ------------------
 
 
 def test_degenerate_superiority_is_not_met_and_degenerate_noninferiority_reads_its_value():
@@ -44,7 +44,7 @@ def test_exact_flip_rate_matches_the_reference_when_no_flip_is_degenerate():
     assert v.reference_fpr == permutation_fpr(diffs)
 
 
-# ---- T1: margin, guard, contrasts, decision tables ------------------------------------------------------
+# ---- T1: margin, guard, contrasts, decision tables -----------------------------------------------
 
 
 def test_delta_ni_is_strictly_positive_and_in_items():
@@ -78,10 +78,12 @@ def test_guard_is_per_problem_excludes_censoring_and_refuses_the_whole_contrast(
 _NONE = ([False] * 8, [False] * 8)  # (COL arm, reference arm) censor flags per seed: none censored
 
 
-@pytest.mark.parametrize("n_col, n_ref, refused", [(5, 0, True), (8, 8, True), (0, 5, True), (4, 4, False)])
+@pytest.mark.parametrize(
+    "n_col, n_ref, refused", [(5, 0, True), (8, 8, True), (0, 5, True), (4, 4, False)]
+)
 def test_cp3_8_more_than_half_censored_in_either_arm_refuses_before_scoring(n_col, n_ref, refused):
-    # Codex cp3 #8: every arm censored at budget 100 gives COL = 109, SINGLE = 101 -- constant positive
-    # size differences that would PASS; the censoring refusal must come first
+    # Codex cp3 #8: every arm censored at budget 100 gives COL = 109, SINGLE = 101 -- constant
+    # positive size differences that would PASS; the censoring refusal must come first
     flags = ([True] * n_col + [False] * (8 - n_col), [True] * n_ref + [False] * (8 - n_ref))
     size = U.t1_size_decision(_v(True), _v(True), censored=flags)
     struct = U.t1_struct_decision(_v(True), _v(True), owner_o9=True, censored=flags)
@@ -95,14 +97,17 @@ def _v(met):
     return U.ContrastVerdict("x", "noninferiority", (), 0.0, met, False, 0.0, 0.0)
 
 
-@pytest.mark.parametrize("u, e, verdict, deletes", [
-    (None, True, "PASS (retention only; U untested)", False),
-    (None, False, "RED", True),
-    (True, True, "PASS", False),
-    (True, False, "RED", True),
-    (False, True, "RED", True),
-    (False, False, "RED", True),
-])
+@pytest.mark.parametrize(
+    "u, e, verdict, deletes",
+    [
+        (None, True, "PASS (retention only; U untested)", False),
+        (None, False, "RED", True),
+        (True, True, "PASS", False),
+        (True, False, "RED", True),
+        (False, True, "RED", True),
+        (False, False, "RED", True),
+    ],
+)
 def test_t1_struct_decision_table(u, e, verdict, deletes):
     out = U.t1_struct_decision(None if u is None else _v(u), _v(e), owner_o9=True, censored=_NONE)
     assert out["verdict"] == verdict and out["deletes_structure"] is deletes
@@ -120,7 +125,7 @@ def test_t1_size_is_untested_when_its_u_half_is_refused():
     assert U.t1_size_decision(_v(False), _v(True), censored=_NONE)["reverts_to_single"] is True
 
 
-# ---- T4: the layer term, the exact-M sampler, modularity, the instrument reds ---------------------------
+# ---- T4: the layer term, the exact-M sampler, modularity, the instrument reds --------------------
 
 
 def test_population_index_follows_conn_prob_and_excludes_layer_1():
@@ -160,17 +165,24 @@ def test_sampler_refuses_an_infeasible_density():
         U.sample_exact_m(10, 46, xy=xy, kernel=lambda d: 1.0, seed=1)
     cols = [i // 3 for i in range(9)]  # columns of 3: at most 2 earlier mates
     with pytest.raises(U.Infeasible):
-        U.sample_exact_m(9, 27, xy=_flat_units(9, 13232), kernel=lambda d: 1.0, seed=1, columns=cols)
+        U.sample_exact_m(
+            9, 27, xy=_flat_units(9, 13232), kernel=lambda d: 1.0, seed=1, columns=cols
+        )
 
 
 def test_cp3_9_imposed_refuses_a_deficient_arrival_instead_of_repairing_it():
     # Codex cp3 #9: N = 16, M = 16, two columns of 8; an order whose second arrival is in the OTHER
     # column gives it one required edge and no earlier column mate -> REFUSED, never redistributed
     cols = [0] * 8 + [1] * 8
-    seed = next(s for s in range(13230, 13300)
-                if len({cols[i] for i in np.random.default_rng(s).permutation(16)[:2]}) == 2)
+    seed = next(
+        s
+        for s in range(13230, 13300)
+        if len({cols[i] for i in np.random.default_rng(s).permutation(16)[:2]}) == 2
+    )
     with pytest.raises(U.Infeasible, match="fewer positive-weight candidates"):
-        U.sample_exact_m(16, 16, xy=np.zeros((16, 2)), kernel=lambda d: 1.0, seed=seed, columns=cols)
+        U.sample_exact_m(
+            16, 16, xy=np.zeros((16, 2)), kernel=lambda d: 1.0, seed=seed, columns=cols
+        )
 
 
 def _triangles(edges, n):
@@ -186,21 +198,28 @@ def test_the_shared_partner_term_is_live():
     # neighbours yet): beta would be inert. Draws are sequential, so beta must raise closure.
     xy = _flat_units(300, 13233)
     flat = lambda d: 1.0  # noqa: E731
-    t0 = sum(_triangles(U.sample_exact_m(300, 1200, xy=xy, kernel=flat, seed=s), 300)
-             for s in range(13233, 13236))
-    t5 = sum(_triangles(U.sample_exact_m(300, 1200, xy=xy, kernel=flat, seed=s, beta=5.0), 300)
-             for s in range(13233, 13236))
+    t0 = sum(
+        _triangles(U.sample_exact_m(300, 1200, xy=xy, kernel=flat, seed=s), 300)
+        for s in range(13233, 13236)
+    )
+    t5 = sum(
+        _triangles(U.sample_exact_m(300, 1200, xy=xy, kernel=flat, seed=s, beta=5.0), 300)
+        for s in range(13233, 13236)
+    )
     assert t5 > 2 * t0, (t0, t5)
 
 
 def test_random_seq_is_the_flat_sequential_sampler():
     xy = _flat_units(100, 13236)
     assert U.random_seq(100, 300, seed=13236) == U.sample_exact_m(
-        100, 300, xy=xy, kernel=lambda d: 1.0, seed=13236)
+        100, 300, xy=xy, kernel=lambda d: 1.0, seed=13236
+    )
 
 
-@pytest.mark.parametrize("gnm, seq, credited", [
-    (True, True, True), (True, False, False), (False, True, False), (False, False, False)])
+@pytest.mark.parametrize(
+    "gnm, seq, credited",
+    [(True, True, True), (True, False, False), (False, True, False), (False, False, False)],
+)
 def test_rule_is_credited_only_if_it_beats_both_random_arms(gnm, seq, credited):
     v = lambda met: U.ContrastVerdict("x", "superiority", (), 0.0, met, False, 0.0, 0.0)  # noqa: E731
     assert U.t4_rule_credited(v(gnm), v(seq)) is credited
@@ -231,11 +250,14 @@ def test_nmi_matches_sklearn_on_the_ir_fixture_when_present():
     from snn_data_lake.gates import growth_coverage_gate as gc
 
     n, truth = 300, list(np.arange(300) * 10 // 300)
-    _, labels = U.best_partition(U.planted_blocks(n, 1500, blocks=10, between=0.5, seed=13230), n, _FAST)
-    assert math.isclose(gc.nmi(truth, labels), sk.normalized_mutual_info_score(truth, labels), rel_tol=1e-9)
+    planted = U.planted_blocks(n, 1500, blocks=10, between=0.5, seed=13230)
+    _, labels = U.best_partition(planted, n, _FAST)
+    ours, ref = gc.nmi(truth, labels), sk.normalized_mutual_info_score(truth, labels)
+    assert math.isclose(ours, ref, rel_tol=1e-9)
 
 
-_FAST = (13900, 13901, 13902)  # three Louvain restarts keep the test cheap; the instrument default is ten
+# three Louvain restarts keep the test cheap; the instrument default is ten
+_FAST = (13900, 13901, 13902)
 
 
 def test_cp3_7_ir1_ir2_pass_on_a_detectable_partition_and_ir3_reports():
@@ -253,7 +275,8 @@ def test_cp3_7_ir1_ir2_pass_on_a_detectable_partition_and_ir3_reports():
 def test_cp3_7_ir1_fails_when_the_plant_is_undetectable_and_t4_is_refused():
     pytest.importorskip("networkx")
     pytest.importorskip("sklearn")
-    ir1 = U.ir1(300, 1500, blocks=10, between=0.9, louvain_seeds=_FAST)  # ~random: no partition to find
+    # ~random: no partition to find
+    ir1 = U.ir1(300, 1500, blocks=10, between=0.9, louvain_seeds=_FAST)
     assert not ir1["ok"]
     assert U.t4_instruments_refuse(ir1, {"ok": True}) is True
     assert U.t4_instruments_refuse({"ok": True}, {"ok": False}) is True
