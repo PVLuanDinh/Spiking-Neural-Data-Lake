@@ -319,6 +319,8 @@ REGIONS = {
         "prior_drift_harness",
         # specs/022 T081 [US4]: the C5 report_order instrument -- the live arm's report channel read against LESIONED CLONES of the workspace state that produced it (named pool vs a scrambled one); the lesion never touches the live brain
         "report_order_probe",
+        # specs/022 G6 (T114) part (a): the live sleep-pruner census + per-pruner neuter-A/B (R0-R4, E)
+        "sleep_pruner_census",
         "snn_mnist_stdp_genn",
         # G2 / T110 P3: the taught campaign -- the canonical incumbent through G0's channel, the presized and NGSNN front-ends, the explicit-history control, B3-B8, the G-R2 reading and the driver (evidence g2-taught-problems.md 2.4, 2.5, 2.8, 2.9, 2.15)
         "taught_campaign",

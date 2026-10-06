@@ -995,6 +995,15 @@ EXEMPT = {
         "G9 wires the engine; this exemption retires that day, together with the gate's debt row for "
         "NeurogenesisSelfImprove._refit. No import was added for reachability (cp1 #19)",
     ),
+    "sleep_pruner_census": (
+        "permanent",
+        "specs/022 G6 (T114) part (a), evidence g6-sleep-durable-memory.md 2.3/2.16: the live sleep "
+        "pruners' census and per-pruner neuter-A/B -- a MEASUREMENT instrument. Its bare invocation "
+        "touches no brain; its brain paths (`run_arm`, `--census`) build their own scratch brains under "
+        "throwaway_home and refuse a NORD_HOME resolving to the live home; it is never constructed by a "
+        "brain. The world_red_probe / everyday_battery shape: wiring it to a tick would be the "
+        "instrument perturbing the pruners it neuters",
+    ),
     "joint_mask_search": (
         "wire",
         "specs/022 G6 (T114) part (b), evidence g6-sleep-durable-memory.md 2.4/2.16 A3/A13/A14 + the "

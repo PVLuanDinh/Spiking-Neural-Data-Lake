@@ -383,6 +383,7 @@ CORE = [
     "sensorimotor.afferent_boundary",  # 022 T036: sentinel->MISSING + 014-normalizer reuse + proprio neuter A/B
     "sensorimotor.efferent_boundary",  # 022 T037: passage counting + paired copy-cut charge + missing-body honesty
     "instruments.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
+    "instruments.sleep_pruner_census",  # G6 T114 (a): static census = section 1 table + C1 reds, C2, decision branches, C25
     "instruments.joint_mask_search",  # G6 T114 (b): mask_digest, C7-C10, C22, C26 on the planted fixture
     "faculties.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
     "gates.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
