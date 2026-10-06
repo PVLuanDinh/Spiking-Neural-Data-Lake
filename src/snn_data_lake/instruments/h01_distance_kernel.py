@@ -80,7 +80,14 @@ WIDTH_RTOL = 1e-6  # 2.11 (f)
 
 MODELS = ("flat", "gauss", "exp", "mix")
 KERNELS = ("gauss", "exp", "mix")
-CONTRASTS = (("gauss", "flat"), ("exp", "flat"), ("mix", "flat"), ("exp", "gauss"), ("mix", "gauss"), ("mix", "exp"))
+CONTRASTS = (
+    ("gauss", "flat"),
+    ("exp", "flat"),
+    ("mix", "flat"),
+    ("exp", "gauss"),
+    ("mix", "gauss"),
+    ("mix", "exp"),
+)
 CONTRAST_NAMES = tuple(f"{a}-{b}" for a, b in CONTRASTS)
 
 CONFIRMATORY_SEEDS = tuple(range(10100, 10108))  # 2.12, read ONCE
@@ -247,9 +254,14 @@ class Geometry:
         ext = xyz.max(0) - xyz.min(0)
         dmax = float(np.sqrt((ext**2).sum()))
         if dmax > MAX_EXTENT_UM:
-            raise ArtifactRefused(f"units: extent diagonal {dmax:.4g} um > {MAX_EXTENT_UM} um (positions in nm?)")
+            raise ArtifactRefused(
+                f"units: extent diagonal {dmax:.4g} um > {MAX_EXTENT_UM} um (positions in nm?)"
+            )
         nb = int(math.ceil(dmax / BIN_UM)) + 1
-        dpair = max(float(np.sqrt(((xyz[s:e, None, :] - xyz[None, :, :]) ** 2).sum(-1)).max()) for s, e in _chunks(len(xyz)))
+        dpair = max(
+            float(np.sqrt(((xyz[s:e, None, :] - xyz[None, :, :]) ** 2).sum(-1)).max())
+            for s, e in _chunks(len(xyz))
+        )
         blocks = region_blocks(xyz)
         table = block_layer_table(blocks, pop.layer)
         return cls(
@@ -311,7 +323,9 @@ def _n_all(pop, geo):
         n = np.zeros(geo.nb, dtype=np.int64)
         for s, e in _chunks(len(pop.xyz_um)):
             d, mask, _ = _distances(pop.xyz_um, s, e)
-            n += np.bincount(np.minimum((d[mask] / BIN_UM).astype(np.int64), geo.nb - 1), minlength=geo.nb)
+            n += np.bincount(
+                np.minimum((d[mask] / BIN_UM).astype(np.int64), geo.nb - 1), minlength=geo.nb
+            )
         geo.cache["n_all"] = n
     return geo.cache["n_all"]
 
@@ -349,7 +363,9 @@ def solve_scale(pop, geo, truth, n_edges):
     cnt, sw = _weight_buckets(pop, geo, truth)
     pos = sw > 0
     if cnt[pos].sum() < n_edges:
-        raise ValueError(f"truth {truth!r}: only {cnt[pos].sum():.0f} pairs carry weight, < {n_edges} edges")
+        raise ValueError(
+            f"truth {truth!r}: only {cnt[pos].sum():.0f} pairs carry weight, < {n_edges} edges"
+        )
 
     def expected(c):
         return float(np.minimum(cnt[pos], c * sw[pos]).sum())
@@ -360,7 +376,9 @@ def solve_scale(pop, geo, truth, n_edges):
     for _ in range(200):
         mid = 0.5 * (lo + hi)
         lo, hi = (mid, hi) if expected(mid) < n_edges else (lo, mid)
-    c = _refine_exact(pop, truth, hi, n_edges)  # the buckets only start it: they clip per bucket, not per pair
+    c = _refine_exact(
+        pop, truth, hi, n_edges
+    )  # the buckets only start it: they clip per bucket, not per pair
     geo.cache[key] = (c, *_exact_pass(pop, truth, c)[::2])
     return geo.cache[key]
 
@@ -414,8 +432,14 @@ def pair_histograms(pop, geo, fold, truth=None, n_edges=None, rng=None, edges=No
     planted = {}
     if truth is not None:
         c, expected, share = solve_scale(pop, geo, truth, n_edges)
-        planted = {"truth": list(truth), "scale": c, "expected_edges": expected, "clipped_share_of_edges": share,
-                   "clipped_pairs": 0, "expected_edges_drawn": 0.0}
+        planted = {
+            "truth": list(truth),
+            "scale": c,
+            "expected_edges": expected,
+            "clipped_share_of_edges": share,
+            "clipped_pairs": 0,
+            "expected_edges_drawn": 0.0,
+        }
     for s, e in _chunks(len(xyz)):
         d, mask, rows = _distances(xyz, s, e)
         b = np.minimum((d / BIN_UM).astype(np.int64), nb - 1)
@@ -430,7 +454,9 @@ def pair_histograms(pop, geo, fold, truth=None, n_edges=None, rng=None, edges=No
                 w = w * (pop.out_deg[rows][:, None] * pop.in_deg[None, :])
             raw = c * w
             planted["clipped_pairs"] += int((raw[mask] > 1.0).sum())
-            planted["expected_edges_drawn"] += float(np.minimum(raw[mask], 1.0).sum())  # independent of the solver
+            planted["expected_edges_drawn"] += float(
+                np.minimum(raw[mask], 1.0).sum()
+            )  # independent of the solver
             hit = mask & (rng.random(d.shape) < np.minimum(raw, 1.0))
             k += np.bincount(code[hit], minlength=k.size)
             ki += np.bincount(code_i[hit & both_in], minlength=ki.size)
@@ -445,7 +471,11 @@ def pair_histograms(pop, geo, fold, truth=None, n_edges=None, rng=None, edges=No
         planted["edges"] = int(k.sum())
         planted["clipped_fraction"] = planted["clipped_pairs"] / float(len(xyz) * (len(xyz) - 1))
     return Hist(
-        n.reshape(G, G, nb), k.reshape(G, G, nb), ni.reshape(K_FOLDS, K_FOLDS, nb), ki.reshape(K_FOLDS, K_FOLDS, nb), planted
+        n.reshape(G, G, nb),
+        k.reshape(G, G, nb),
+        ni.reshape(K_FOLDS, K_FOLDS, nb),
+        ki.reshape(K_FOLDS, K_FOLDS, nb),
+        planted,
     )
 
 
@@ -488,7 +518,9 @@ def model_p(model, th, d):
     if model == "exp":
         return np.exp(th[0] - d / np.exp(th[1]))
     if model == "mix":
-        return np.exp(th[0] - d**2 / (2.0 * np.exp(2.0 * th[1]))) + np.exp(th[2] - d / np.exp(th[3]))
+        return np.exp(th[0] - d**2 / (2.0 * np.exp(2.0 * th[1]))) + np.exp(
+            th[2] - d / np.exp(th[3])
+        )
     raise ValueError(model)
 
 
@@ -514,7 +546,10 @@ def nelder_mead(f, x0, xatol=NM_TOL, fatol=NM_TOL, maxiter=NM_MAXITER):
     while it < maxiter:
         order = np.argsort(fsim, kind="stable")
         sim, fsim = sim[order], fsim[order]
-        if np.max(np.abs(sim[1:] - sim[0])) <= xatol and np.max(np.abs(fsim[0] - fsim[1:])) <= fatol:
+        if (
+            np.max(np.abs(sim[1:] - sim[0])) <= xatol
+            and np.max(np.abs(fsim[0] - fsim[1:])) <= fatol
+        ):
             break
         xbar = sim[:-1].mean(0)
         xr = 2.0 * xbar - sim[-1]
@@ -562,7 +597,9 @@ def fit_model(model, d, n, k, init=None):
 
     if init is None:
         best = None
-        for w in WIDTH_GRID:  # the width grid with the amplitude profiled under the Poisson approximation
+        for w in (
+            WIDTH_GRID
+        ):  # the width grid with the amplitude profiled under the Poisson approximation
             g = model_p(model, np.array([0.0, math.log(w)]), d)
             a = k.sum() / max(float((n * g).sum()), 1e-300)
             th = np.array([math.log(max(a, 1e-300)), math.log(w)])
@@ -613,7 +650,10 @@ def score_unit(hist, geo):
         "edge_instances": sum(r[2] for r in folds),
         "width_all": width_all,
         "degenerate": {m: width_all[m] > geo.dpair for m in width_all},
-        "params": {"folds": [r[1] for r in folds], "all": {m: [float(x) for x in th_all[m]] for m in th_all}},
+        "params": {
+            "folds": [r[1] for r in folds],
+            "all": {m: [float(x) for x in th_all[m]] for m in th_all},
+        },
         "hist_sha256": _hist_sha(hist),
     }
 
@@ -624,7 +664,10 @@ def calibrate_bands(units):
     return {
         "neuron": {c: max(abs(u["neuron"][c]) for u in units) for c in CONTRAST_NAMES},
         "interior": {c: max(abs(u["interior"][c]) for u in units) for c in CONTRAST_NAMES},
-        "region": [{c: max(abs(u["region"][r][c]) for u in units) for c in CONTRAST_NAMES} for r in range(N_BLOCKS)],
+        "region": [
+            {c: max(abs(u["region"][r][c]) for u in units) for c in CONTRAST_NAMES}
+            for r in range(N_BLOCKS)
+        ],
     }
 
 
@@ -659,10 +702,14 @@ def read_t3(neuron, interior, region, bands, planted_ok=True, region_valid=True)
     contrast -> one value; `bands` as calibrate_bands returns."""
     sn = {c: seed_state(neuron[c], bands["neuron"][c]) for c in CONTRAST_NAMES}
     sz = {c: seed_state(interior[c], bands["interior"][c]) for c in CONTRAST_NAMES}
-    sb = [{c: value_state(region[r][c], bands["region"][r][c]) for c in CONTRAST_NAMES} for r in range(N_BLOCKS)]
+    sb = [
+        {c: value_state(region[r][c], bands["region"][r][c]) for c in CONTRAST_NAMES}
+        for r in range(N_BLOCKS)
+    ]
     sr = {
         c: value_state(
-            math.fsum(region[r][c] for r in range(N_BLOCKS)), math.fsum(bands["region"][r][c] for r in range(N_BLOCKS))
+            math.fsum(region[r][c] for r in range(N_BLOCKS)),
+            math.fsum(bands["region"][r][c] for r in range(N_BLOCKS)),
         )
         for c in CONTRAST_NAMES
     }
@@ -741,7 +788,9 @@ def planted_units(pop, row, n_edges, geo=None, log=None):
         u["seconds"] = round(time.perf_counter() - t0, 2)
         units.append(u)
         if log:
-            log(f"  {row.name} seed {seed}: edges {hist.planted['edges']} widths {u['width_all']} ({u['seconds']} s)")
+            log(
+                f"  {row.name} seed {seed}: edges {hist.planted['edges']} widths {u['width_all']} ({u['seconds']} s)"
+            )
     return units
 
 
@@ -755,7 +804,10 @@ def _gather(units):
     neuron = {c: [u["neuron"][c] for u in units] for c in CONTRAST_NAMES}
     interior = {c: [u["interior"][c] for u in units] for c in CONTRAST_NAMES}
     # A6: a planted truth's region value is the 8-seed MEAN per block
-    region = [{c: math.fsum(u["region"][r][c] for u in units) / len(units) for c in CONTRAST_NAMES} for r in range(N_BLOCKS)]
+    region = [
+        {c: math.fsum(u["region"][r][c] for u in units) / len(units) for c in CONTRAST_NAMES}
+        for r in range(N_BLOCKS)
+    ]
     return neuron, interior, region
 
 
@@ -764,7 +816,9 @@ def _holds(row, reading, units):
     if row.expect == "red_flat":
         st = reading["states"]
         plus = [st["neuron"], st["interior"], *st["region_blocks"]]
-        ok = reading["verdict"] == "RED_FLAT" and not any(s[f"{k}-flat"] == 1 for s in plus for k in KERNELS)
+        ok = reading["verdict"] == "RED_FLAT" and not any(
+            s[f"{k}-flat"] == 1 for s in plus for k in KERNELS
+        )
     elif row.expect == "gauss":
         ok = reading["verdict"] == "PASS_FAVOURS_GAUSSIAN" and reading["K"] == "gauss"
     elif row.expect == "exp":
@@ -792,7 +846,9 @@ def run_planted_stage(pop, plan=PLANTED, n_edges=N_EDGES, log=None):
         rec["stopped"] = "NOT_READ_REGION_INVALID: a region block lacks a band (2.11 (j))"
         return rec
     cal = plan[0]
-    assert cal.expect is None and cal.truth == ("flat",), "the first plan row is the flat calibration set"
+    assert cal.expect is None and cal.truth == ("flat",), (
+        "the first plan row is the flat calibration set"
+    )
     units = planted_units(pop, cal, n_edges, geo, log)
     bands = calibrate_bands(units)
     rec["bands"] = bands
@@ -801,9 +857,15 @@ def run_planted_stage(pop, plan=PLANTED, n_edges=N_EDGES, log=None):
     for row in plan[1:]:
         units = planted_units(pop, row, n_edges, geo, log)
         reading = read_t3(*_gather(units), bands)
-        rec["rows"][row.name] = {"units": units, "reading": reading, "holds": _holds(row, reading, units)}
+        rec["rows"][row.name] = {
+            "units": units,
+            "reading": reading,
+            "holds": _holds(row, reading, units),
+        }
         if log:
-            log(f"{row.name}: {reading['verdict']} K={reading['K']} holds={rec['rows'][row.name]['holds']}")
+            log(
+                f"{row.name}: {reading['verdict']} K={reading['K']} holds={rec['rows'][row.name]['holds']}"
+            )
     rec["all_rows_hold"] = all(v["holds"] for k, v in rec["rows"].items() if k != cal.name)
     return rec
 
@@ -814,7 +876,15 @@ def _plan_rows(plan):
     out = []
     for r in plan:
         d = r._asdict() if isinstance(r, PlanRow) else r
-        out.append([d["name"], list(d["truth"]), [int(x) for x in d["seeds"]], d["expect"], bool(d["width_check"])])
+        out.append(
+            [
+                d["name"],
+                list(d["truth"]),
+                [int(x) for x in d["seeds"]],
+                d["expect"],
+                bool(d["width_check"]),
+            ]
+        )
     return out
 
 
@@ -835,7 +905,9 @@ def _authorized_plan(prod, planted_record, plan, n_edges):
         for registered in (PLANTED, reserve_plan()):
             if rec == _plan_rows(registered):
                 return registered, N_EDGES
-        raise ExposureRefused("the planted record's plan is not the registered plan (A6) or its reserve")
+        raise ExposureRefused(
+            "the planted record's plan is not the registered plan (A6) or its reserve"
+        )
     if plan is None or n_edges is None:
         raise ExposureRefused("a fixture artifact needs its plan and edge count named explicitly")
     return plan, n_edges
@@ -849,21 +921,29 @@ def validate_planted(planted_record, pop, plan, n_edges):
     if not planted_record:
         raise ExposureRefused("no planted record: H01's edges are not read (A8)")
     if len(plan) < 2 or plan[0].expect is not None or tuple(plan[0].truth) != ("flat",):
-        raise ExposureRefused("a plan needs its flat calibration row and at least one row that can fail")
+        raise ExposureRefused(
+            "a plan needs its flat calibration row and at least one row that can fail"
+        )
     if _plan_rows(planted_record.get("plan", [])) != _plan_rows(plan):
         raise ExposureRefused("the planted record's plan differs from the authorized plan")
     if planted_record.get("n_edges_target") != n_edges:
-        raise ExposureRefused(f"planted density {planted_record.get('n_edges_target')} != {n_edges} edges")
+        raise ExposureRefused(
+            f"planted density {planted_record.get('n_edges_target')} != {n_edges} edges"
+        )
     if planted_record.get("population_sha256") != _fingerprint(pop):
         raise ExposureRefused("the planted record was drawn on a different population")
     rows = planted_record.get("rows") or {}
     if set(rows) != {r.name for r in plan}:
-        raise ExposureRefused(f"planted rows {sorted(rows)} != the plan's {sorted(r.name for r in plan)}")
+        raise ExposureRefused(
+            f"planted rows {sorted(rows)} != the plan's {sorted(r.name for r in plan)}"
+        )
     for r in plan:
         if [int(u["seed"]) for u in rows[r.name]["units"]] != list(r.seeds):
             raise ExposureRefused(f"row {r.name}: its units are not the plan's seeds")
     bands = calibrate_bands(rows[plan[0].name]["units"])
-    if bands != planted_record.get("bands") or bands_sha256(bands) != planted_record.get("bands_sha256"):
+    if bands != planted_record.get("bands") or bands_sha256(bands) != planted_record.get(
+        "bands_sha256"
+    ):
         raise ExposureRefused("the planted bands do not recompute from the calibration units")
     for r in plan[1:]:
         units = rows[r.name]["units"]
@@ -911,7 +991,11 @@ def _resolution_flags(reading, units, planted_record):
         ref_edge = math.fsum(u["edge_instances"] for u in ref_units) / len(ref_units)
         ref_eff = abs(math.fsum(u["neuron"][c] for u in ref_units) / len(ref_units)) / ref_edge
         eff = abs(reading["contrasts"]["neuron"][c]["mean"]) / per_edge
-        flags[c] = {"nats_per_edge": eff, "planted_nats_per_edge": ref_eff, "flagged": eff < 0.1 * ref_eff}
+        flags[c] = {
+            "nats_per_edge": eff,
+            "planted_nats_per_edge": ref_eff,
+            "flagged": eff < 0.1 * ref_eff,
+        }
     return flags
 
 
@@ -921,16 +1005,28 @@ def _check_seeds(prod, seeds):
     seeds = tuple(seeds)
     if prod:
         if seeds not in (CONFIRMATORY_SEEDS, CONFIRMATORY_RESERVE):
-            raise ExposureRefused("H01's edges are read on the registered confirmatory seeds or their reserve only (2.12)")
-    elif len(seeds) != len(CONFIRMATORY_SEEDS) or len(set(seeds)) != len(seeds) or not all(type(x) is int for x in seeds):
-        raise ExposureRefused(f"the statistic needs {len(CONFIRMATORY_SEEDS)} distinct integer seeds, got {seeds!r}")
+            raise ExposureRefused(
+                "H01's edges are read on the registered confirmatory seeds or their reserve only (2.12)"
+            )
+    elif (
+        len(seeds) != len(CONFIRMATORY_SEEDS)
+        or len(set(seeds)) != len(seeds)
+        or not all(type(x) is int for x in seeds)
+    ):
+        raise ExposureRefused(
+            f"the statistic needs {len(CONFIRMATORY_SEEDS)} distinct integer seeds, got {seeds!r}"
+        )
 
 
-def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, plan=None, n_edges=None, log=None):
+def score_h01(
+    path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, plan=None, n_edges=None, log=None
+):
     """2.4-2.8 on H01's edges, read ONCE, only after validate_planted accepts the planted record. A
     record that STOPPED at check (j) yields A3 row 2's reading, NOT_READ_REGION_INVALID, and no edge
     distance is read."""
-    if planted_record and str(planted_record.get("stopped", "")).startswith("NOT_READ_REGION_INVALID"):
+    if planted_record and str(planted_record.get("stopped", "")).startswith(
+        "NOT_READ_REGION_INVALID"
+    ):
         z, sha = _verified(path, pin)
         pop = load_population(path, pin)
         geo = Geometry.of(pop)
@@ -940,7 +1036,9 @@ def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, plan=Non
             or geo.region_valid
             or _plan_rows(planted_record.get("plan", [])) != _plan_rows(plan)
         ):
-            raise ExposureRefused("the stopped planted record does not describe this population and plan")
+            raise ExposureRefused(
+                "the stopped planted record does not describe this population and plan"
+            )
         return {
             "artifact_sha256": sha,
             "seeds": [],
@@ -959,9 +1057,13 @@ def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, plan=Non
         if log:
             log(f"  H01 seed {seed}: widths {u['width_all']}")
     region0 = units[0]["region"]
-    identical = all(u["region"] == region0 for u in units)  # region blocks sum over folds: seed-free
+    identical = all(
+        u["region"] == region0 for u in units
+    )  # region blocks sum over folds: seed-free
     neuron, interior, _ = _gather(units)
-    reading = read_t3(neuron, interior, region0, bands, planted_ok=True, region_valid=geo.region_valid)
+    reading = read_t3(
+        neuron, interior, region0, bands, planted_ok=True, region_valid=geo.region_valid
+    )
     out = {
         "artifact_sha256": sha,
         "seeds": list(seeds),
@@ -1028,7 +1130,10 @@ def verify_width_record(record, path, planted_record, pin=None, plan=None, n_edg
     # the widths consumers read are physical (um): the record's own, and consistent with its params
     wu = record.get("width_um") or {}
     if set(wu) != set(fresh["width_um"]) or any(
-        not np.isclose(wu[k], v, rtol=WIDTH_RTOL, atol=0.0) or not np.isclose(wu[k], _width_um(record["model"], record["params"])[k], rtol=WIDTH_RTOL, atol=0.0)
+        not np.isclose(wu[k], v, rtol=WIDTH_RTOL, atol=0.0)
+        or not np.isclose(
+            wu[k], _width_um(record["model"], record["params"])[k], rtol=WIDTH_RTOL, atol=0.0
+        )
         for k, v in fresh["width_um"].items()
     ):
         raise RecordRefused(f"refit widths {fresh['width_um']} != record widths {wu}")
@@ -1055,7 +1160,9 @@ def _jsonable(o):
 def _selfcheck():
     """Offline, synthetic, a few seconds: the reading rows, the optimizer, a planted recovery, a
     degenerate flat width, the units guard. No H01 file, no Brain, no lake."""
-    x, fx, _ = nelder_mead(lambda v: float(((v - np.array([1.0, -2.0])) ** 2).sum()), np.array([3.0, 3.0]))
+    x, fx, _ = nelder_mead(
+        lambda v: float(((v - np.array([1.0, -2.0])) ** 2).sum()), np.array([3.0, 3.0])
+    )
     assert np.allclose(x, [1.0, -2.0], atol=1e-5) and fx < 1e-9, (x, fx)
 
     jit = [0.9, 1.1, 1.0, 0.95, 1.05, 1.0, 0.98, 1.02]
@@ -1070,8 +1177,14 @@ def _selfcheck():
         }
         return n, n, r, bands
 
-    g_world = ({"gauss-flat": 50.0, "exp-flat": 40.0, "exp-gauss": -10.0}, {"gauss-flat": 20.0, "exp-flat": 15.0, "exp-gauss": -5.0})
-    e_world = ({"gauss-flat": 40.0, "exp-flat": 50.0, "exp-gauss": 10.0}, {"gauss-flat": 15.0, "exp-flat": 20.0, "exp-gauss": 5.0})
+    g_world = (
+        {"gauss-flat": 50.0, "exp-flat": 40.0, "exp-gauss": -10.0},
+        {"gauss-flat": 20.0, "exp-flat": 15.0, "exp-gauss": -5.0},
+    )
+    e_world = (
+        {"gauss-flat": 40.0, "exp-flat": 50.0, "exp-gauss": 10.0},
+        {"gauss-flat": 15.0, "exp-flat": 20.0, "exp-gauss": 5.0},
+    )
     assert read_t3(*inputs(*g_world))["verdict"] == "PASS_FAVOURS_GAUSSIAN"
     assert read_t3(*inputs(*e_world))["verdict"] == "RED_EXP"
     assert read_t3(*inputs({}, {}))["verdict"] == "RED_FLAT"
@@ -1088,8 +1201,12 @@ def _selfcheck():
     g = planted_units(pop, PlanRow("g", ("gauss", 25.0), (10004,), "gauss", True), 1200)[0]
     f = planted_units(pop, PlanRow("f", ("flat",), (10005,), None, False), 1200)[0]
     assert width_recovered(g, ("gauss", 25.0)), g["width_all"]
-    assert g["neuron"]["gauss-flat"] > 0 and g["neuron"]["gauss-flat"] > g["neuron"]["exp-flat"], g["neuron"]
-    nm = Population(xyz_um=pop.xyz_um * 1000.0, layer=pop.layer, out_deg=pop.out_deg, in_deg=pop.in_deg)
+    assert g["neuron"]["gauss-flat"] > 0 and g["neuron"]["gauss-flat"] > g["neuron"]["exp-flat"], g[
+        "neuron"
+    ]
+    nm = Population(
+        xyz_um=pop.xyz_um * 1000.0, layer=pop.layer, out_deg=pop.out_deg, in_deg=pop.in_deg
+    )
     try:
         Geometry.of(nm)
         raise AssertionError("positions in nm were not refused")
@@ -1108,11 +1225,15 @@ def main(argv=None):
 
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd")
-    p = sub.add_parser("planted", help="A5-A6: the planted stage on the pinned artifact's positions (a CAMPAIGN)")
+    p = sub.add_parser(
+        "planted", help="A5-A6: the planted stage on the pinned artifact's positions (a CAMPAIGN)"
+    )
     p.add_argument("--artifact", required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--reserve", action="store_true", help="A6's repair re-run on 10600-10703")
-    h = sub.add_parser("h01", help="2.4-2.8 on H01's edges (a CAMPAIGN; refuses without a holding planted record)")
+    h = sub.add_parser(
+        "h01", help="2.4-2.8 on H01's edges (a CAMPAIGN; refuses without a holding planted record)"
+    )
     h.add_argument("--artifact", required=True)
     h.add_argument("--planted", required=True)
     h.add_argument("--out", required=True)
@@ -1127,7 +1248,12 @@ def main(argv=None):
         rec = run_planted_stage(pop, plan=reserve_plan() if a.reserve else PLANTED, log=print)
     else:
         planted = json.loads(Path(a.planted).read_text(encoding="utf-8"))
-        rec = score_h01(a.artifact, planted, seeds=CONFIRMATORY_RESERVE if a.reserve else CONFIRMATORY_SEEDS, log=print)
+        rec = score_h01(
+            a.artifact,
+            planted,
+            seeds=CONFIRMATORY_RESERVE if a.reserve else CONFIRMATORY_SEEDS,
+            log=print,
+        )
         print(f"T3 reads: {rec['reading']['verdict']} (K = {rec['reading']['K']})")
     rec["wall_s"] = round(time.perf_counter() - t0, 1)
     Path(a.out).write_text(json.dumps(_jsonable(rec), indent=1, sort_keys=True), encoding="utf-8")
