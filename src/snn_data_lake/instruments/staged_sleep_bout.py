@@ -149,11 +149,13 @@ def flat_of(stages):
 
 
 def _eligible_ring(ixn):
-    """The replay ring minus held-out entries (a key carrying split == 'heldout' is never replay-eligible)."""
+    """Replay-eligible ring entries: `teach` is the ONLY problem split sleep may replay (2.4); a key carrying
+    any other split (validation, future, future_d, heldout, or one not yet invented) is never eligible. Entries
+    with no split are the legacy learner's own teaching and stay eligible."""
     out = []
     for code, fb, key in ixn._replay:
         split = key.get("split") if isinstance(key, dict) else None
-        if split != "heldout" and isinstance(fb, str):
+        if split in (None, "teach") and isinstance(fb, str):
             out.append((code, fb, key))
     return out
 

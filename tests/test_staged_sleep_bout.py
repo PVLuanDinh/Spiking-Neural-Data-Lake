@@ -70,3 +70,21 @@ def test_a_real_brain_bout_changes_the_learner_and_never_ticks():
     assert ssb.participation_red(
         rep, {"legacy:ixn"}
     )  # C17: only the 'solved' population moved -> red
+
+
+def test_only_teach_and_unsplit_entries_are_replay_eligible():
+    """Codex panel MAJOR: only 'heldout' was excluded; validation and future leaked into replay."""
+    keys = [
+        None,
+        {},
+        {"split": "teach"},
+        {"split": "validation"},
+        {"split": "future"},
+        {"split": "future_d"},
+        {"split": "heldout"},
+        {"split": "novel_split"},
+    ]
+    ixn = type("I", (), {})()
+    ixn._replay = [([0.0], "A", k) for k in keys]
+    got = [k for _, _, k in ssb._eligible_ring(ixn)]
+    assert got == [None, {}, {"split": "teach"}]
