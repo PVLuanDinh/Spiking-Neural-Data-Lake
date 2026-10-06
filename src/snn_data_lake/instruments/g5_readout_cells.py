@@ -30,6 +30,7 @@ The fixture parameters (PLANT_*) are fixed in this file BEFORE the registered se
 """
 
 import math
+import os
 import sys
 
 import torch
@@ -441,6 +442,17 @@ def live_lake_stamp():
     return tuple(os.stat(p).st_mtime_ns if os.path.exists(p) else None for p in (base, lake))
 
 
+def check_fresh_home(fresh):
+    """Codex cp4 #7 / record 2.6 PA9: NORD_HOME must BE the home throwaway_home yielded, not merely any
+    non-live directory (a populated B swapped in for the fresh A would feed a Brain B's state)."""
+    from snn_data_lake.substrate.home import LiveHomeRefused, require_isolated_home
+
+    got = require_isolated_home()
+    if os.path.normcase(got) != os.path.normcase(fresh):
+        raise LiveHomeRefused(f"home refused (not the fresh one): NORD_HOME {got} != yielded {fresh}")
+    return got
+
+
 def brain_cell(args):
     """One in-brain cell in a worker process: make_brain(seed) under throwaway_home, the arm wired onto
     its engine, CELL_TICKS ticks. args = (seed, arm, recorded sequence or None for the RECORD stage).
@@ -449,10 +461,10 @@ def brain_cell(args):
     lake-binding import; a refusal raises home.LiveHomeRefused and no Brain is built."""
     seed, arm, seq = args
     torch.set_num_threads(1)
-    from snn_data_lake.substrate.home import require_isolated_home, throwaway_home
+    from snn_data_lake.substrate.home import throwaway_home
 
-    with throwaway_home():
-        require_isolated_home()
+    with throwaway_home() as fresh:
+        check_fresh_home(fresh)
         from snn_data_lake.engine.brain import make_brain
 
         b = make_brain(seed=seed, persist=False)

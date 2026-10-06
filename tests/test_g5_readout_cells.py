@@ -168,3 +168,17 @@ def test_same_rows_halts_on_a_moved_refit_floor_and_arm_table_prints_the_floor()
     lines = []
     g.arm_table([row, {**row, "arm": "COUPLED", "live_acc": 0.85}], log=lines.append)
     assert any("acc - floor -0.0500" in s for s in lines)
+
+
+def test_a_home_swapped_for_another_populated_dir_is_refused_not_just_a_live_one(tmp_path, monkeypatch):
+    # Codex cp4 #7: NORD_HOME must be the home throwaway_home yielded; any other non-live dir is a red
+    from snn_data_lake.substrate.home import LiveHomeRefused, throwaway_home
+
+    other = tmp_path / "populated_B"
+    other.mkdir()
+    with throwaway_home() as fresh:
+        assert g.check_fresh_home(fresh)  # the yielded home passes
+        monkeypatch.setenv("NORD_HOME", str(other))
+        with pytest.raises(LiveHomeRefused, match="not the fresh one"):
+            g.check_fresh_home(fresh)
+        monkeypatch.setenv("NORD_HOME", fresh)
