@@ -114,3 +114,54 @@ def test_decide_c_refuses_a_wrong_seed_count(n):
         for i in range(8)
     ][:n]
     assert sp.decide_c(seeds)[0] == "REFUSED"
+
+
+def test_a7_every_wake_tick_of_learning_is_counted_across_sleep_and_restore():
+    """Codex panel MAJOR: the first wake tick after sleep, restore and admission was dropped."""
+    w = [0.0]
+    m = sp.PressureMeter({"c": lambda: list(w)})
+
+    def wake_tick():
+        w[0] += 1.0
+        m.observe_wake()
+
+    wake_tick()
+    wake_tick()  # construction snapshot: BOTH ticks count
+    assert m.c["c"]["load"] == 2.0
+    m.wake_period_done()
+    w[0] += 50.0  # sleep-tick plasticity: never load
+    m.observe_sleep()
+    wake_tick()  # the first wake tick after sleep counts
+    assert m.c["c"]["load"] == 1.0
+    restored = sp.PressureMeter({"c": lambda: list(w)}, state=m.state())
+    w[0] += 1.0
+    restored.observe_wake()  # the first wake tick after a restore counts
+    assert restored.c["c"]["load"] == 2.0
+    late = [0.0]
+    m.admit("late", lambda: list(late))
+    late[0] += 4.0
+    m.observe_wake()
+    assert m.c["late"]["load"] == 4.0
+
+
+def test_the_pressure_arm_counts_learning_done_on_the_tick_it_is_taught():
+    """The meter reads AFTER the tick's teaching (real brain): total load == wake ticks x 1.0."""
+    from snn_data_lake.engine.brain import make_brain
+    from snn_data_lake.substrate.home import require_isolated_home, throwaway_home
+
+    probe = [0.0]
+
+    def teach(brain, t):
+        probe[0] += 1.0
+
+    with throwaway_home():
+        require_isolated_home()
+        b = make_brain(seed=12201)
+        run = sp.run_pressure_arm(
+            b, "pressure", 60, teach, seed=12201, extra_circuits={"probe": lambda: list(probe)}
+        )
+    row = run.carrier["probe"]
+    total = (
+        row["baseline_load_per_wake"] * row["n_wake_periods"] + row["load_since_last_wake_onset"]
+    )
+    assert total == pytest.approx(sum(1 for a in run.plan if not a))

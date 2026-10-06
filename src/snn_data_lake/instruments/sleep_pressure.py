@@ -70,11 +70,20 @@ class PressureMeter:
                 "load": float(row["load_since_last_wake_onset"]),
                 "prev": None,
             }
+        for name in (
+            self.circuits
+        ):  # a snapshot at construction/restore: the first wake tick's learning counts
+            self._snapshot(name)
+
+    def _snapshot(self, name):
+        row = self._row(name)
+        row["prev"] = [float(x) for x in self.circuits[name]()]
 
     def admit(self, name, read):
         """A circuit admitted mid-run (a born population) starts its own count here (A7)."""
         self.circuits[name] = read
         self.c[name] = {"base": 0.0, "n": 0, "admitted": self.tick, "load": 0.0, "prev": None}
+        self._snapshot(name)
 
     def _row(self, name):
         if name not in self.c:
@@ -92,10 +101,10 @@ class PressureMeter:
         self.tick += 1
 
     def observe_sleep(self):
-        """Sleep ticks move weights but never count as load; the next wake diff starts from the post-sleep
-        weights (re-read at the first wake tick)."""
-        for row in self.c.values():
-            row["prev"] = None
+        """Sleep ticks move weights but never count as load; each re-snapshots the circuits, so the next wake
+        diff starts from the post-sleep weights and the first wake tick's own learning is counted."""
+        for name in self.circuits:
+            self._snapshot(name)
         self.tick += 1
 
     def wake_period_done(self):
@@ -301,6 +310,29 @@ def gate_from(brain, decide):
             del brain.clock.consolidation_gate
 
 
+def _flat(w):
+    if w is None:
+        return []
+    if hasattr(w, "detach"):  # a torch tensor
+        return w.detach().flatten().tolist()
+    return [x for row in w for x in row] if w and isinstance(w[0], (list, tuple)) else list(w)
+
+
+def attractor_circuit(brain):
+    """`AttractorNet.W` (2.4's legacy list, third member)."""
+    return lambda: _flat(brain.attractor.W)
+
+
+def grower_circuit(brain):
+    """The NG-SNN grower's input weights (second member), read through the engine each call: None until the
+    grower has a model, so it is ADMITTED mid-run (A7), never assumed present."""
+    return lambda: _flat(getattr(getattr(brain.neuro, "_model", None), "W", None))
+
+
+def grower_ready(brain):
+    return getattr(getattr(brain.neuro, "_model", None), "W", None) is not None
+
+
 def ixn_circuit(brain):
     """The interaction learner's rows as one plastic circuit (2.4's legacy list, first member)."""
     return lambda: [w for n in brain.brain._ixn.neurons for w in n.w]
@@ -399,7 +431,9 @@ class PressureRun:
     carrier: dict = field(default_factory=dict)
 
 
-def run_pressure_arm(brain, arm, total, workload, *, requests=None, seed=0, shuffle_from=None):
+def run_pressure_arm(
+    brain, arm, total, workload, *, requests=None, seed=0, shuffle_from=None, extra_circuits=None
+):
     """Drive `brain` for `total` ticks under `arm`. `workload(brain, t)` teaches on wake ticks and returns a
     learning-OFF held-out read [correct, total] at its registered horizons (None otherwise). `requests` =
     the request ticks of the 'oracle' / 'solve' arms; `shuffle_from` = the pressure arm's `advanced`."""
@@ -414,7 +448,17 @@ def run_pressure_arm(brain, arm, total, workload, *, requests=None, seed=0, shuf
     run = PressureRun(seed=seed, arm=arm)
     sched = None if arm == "shuffled" else Rescheduler(cycles, total)
     fixed = shuffled_plan(cycles, total, shuffle_from or {}, seed) if arm == "shuffled" else None
-    meter = PressureMeter({"ixn": ixn_circuit(brain)}) if arm == "pressure" else None
+    meter = None
+    if (
+        arm == "pressure"
+    ):  # 2.4's legacy list: the ixn rows and AttractorNet.W now, the grower once it exists
+        meter = PressureMeter(
+            {
+                "ixn": ixn_circuit(brain),
+                "attractor": attractor_circuit(brain),
+                **(extra_circuits or {}),
+            }
+        )
     asked = set(requests or ())
     t_now = [0]
 
@@ -434,17 +478,19 @@ def run_pressure_arm(brain, arm, total, workload, *, requests=None, seed=0, shuf
             was = brain._was_asleep
             mode = brain.tick()
             asleep = mode == "asleep"
+            if not asleep:
+                got = workload(brain, t)  # the tick's teaching happens BEFORE the meter reads (A7)
+                if got is not None:
+                    run.retention.append([t, int(got[0]), int(got[1])])
             if meter is not None:
                 if asleep and not was:
                     meter.wake_period_done()
                 if asleep:
                     meter.observe_sleep()
                 else:
+                    if "grower" not in meter.circuits and grower_ready(brain):
+                        meter.admit("grower", grower_circuit(brain))
                     meter.observe_wake()
-            if not asleep:
-                got = workload(brain, t)
-                if got is not None:
-                    run.retention.append([t, int(got[0]), int(got[1])])
             run.plan.append(asleep)
     ok, ref, bad = check_budgets(
         {"clock": clock_plan, arm: run.plan}
