@@ -677,12 +677,17 @@ def main(argv=None):
     )
     print("  s += err) in ONE function, in execution order. It does NOT follow calls (tanh/relu),")
     print(
-        "  comprehensions, a walrus, loop-carried flow, a may-taint cleared on one branch, or a value"
+        "  comprehensions (list/dict/set), a walrus, a for-loop target, a starred unpack past the first"
     )
+    print("  slot, loop-carried flow, a may-taint cleared on one branch, or a value")
     print(
         "  handed to another function (by design). F.linear(err, W) with W in the non-transposed layout"
     )
     print("  may be a false positive.")
+    print(
+        "  Name-driven hits are possible too: a lambda parameter or a `with ... as err2` target named like an"
+    )
+    print("  error fires on the name alone (harmless while W6 is report-only).")
     print(
         "  W6 reads NAMES: a renamed error variable or a neutral weight name is invisible to it, and it"
     )
@@ -946,6 +951,43 @@ def f(err, W_out):
             "error through a comprehension `h = [e * 2 for e in err]; h @ W_out`",
             """def f(err, W_out):
     h = [e * 2 for e in err]
+    return h @ W_out
+""",
+        ),
+        (
+            "a for-loop target `for e in errs: e @ W_out`",
+            """def f(errs, W_out):
+    for e in errs:
+        r = e @ W_out
+    return r
+""",
+        ),
+        (
+            "a for-loop tuple target `for a, b in zip(err, xs): a @ W_out`",
+            """def f(err, xs, W_out):
+    for a, b in zip(err, xs):
+        r = a @ W_out
+    return r
+""",
+        ),
+        (
+            "a starred unpack past the first slot `a, *b = 1, err, 2; b @ W_out`",
+            """def f(err, W_out):
+    a, *b = 1, err, 2
+    return b @ W_out
+""",
+        ),
+        (
+            "a dict comprehension `{k: v for k, v in err.items()}; @ W_out`",
+            """def f(err, W_out):
+    h = {k: v for k, v in err.items()}
+    return h @ W_out
+""",
+        ),
+        (
+            "a set comprehension `{e for e in err}; @ W_out`",
+            """def f(err, W_out):
+    h = {e for e in err}
     return h @ W_out
 """,
         ),
