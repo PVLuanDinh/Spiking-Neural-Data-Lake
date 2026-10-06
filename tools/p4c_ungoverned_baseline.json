@@ -2,7 +2,7 @@
   "_generated_by": "tools/p4c_ratchet.py --update-baseline",
   "_policy": "P4c -- every build is part of the brain",
   "_contract": "counts may only go DOWN; 'paths' is DIAGNOSTICS ONLY, never asserted on",
-  "total": 197,
+  "total": 196,
   "zones": {
     "<repo root>": 2,
     "docs": 16,
@@ -11,7 +11,7 @@
     "src/snn_data_lake/<toplevel>": 2,
     "src/snn_data_lake/lakehouse": 2,
     "src/snn_data_lake/reasoning": 107,
-    "src/snn_data_lake/training": 2,
+    "src/snn_data_lake/training": 1,
     "tools": 30,
     "training": 4
   },
@@ -192,8 +192,7 @@
       "src/snn_data_lake/reasoning/weight_perturbation.py"
     ],
     "src/snn_data_lake/training": [
-      "src/snn_data_lake/training/cli.py",
-      "src/snn_data_lake/training/mnist_genn.py"
+      "src/snn_data_lake/training/cli.py"
     ],
     "tools": [
       "tools/ab_connectome_delay.py",
