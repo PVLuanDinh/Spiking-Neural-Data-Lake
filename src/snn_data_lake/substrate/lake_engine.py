@@ -133,8 +133,9 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "_T_GOAL goal event rows (learning_progress.GoalStore, specs/022 T046a): the brain's "
         "own intentions and their LP/outcome history are never reclaimed -- the store's "
         "materialized view folds every row, so each is load-bearing. Append budget: "
-        "unbaselined (goals are LOW-frequency, created deliberately, never per-tick; a "
-        "baseline lands with the first live per-tick writer if one ever exists)",
+        "BASELINED 2026-10-06 on the growth-loop unit journal (one 9-unit batch burst, "
+        "13,959 B; tools/lake_append_baseline.json: a fixture measurement, not a brain's) -- "
+        "re-measure at the first live per-tick writer",
     ),
 }
 

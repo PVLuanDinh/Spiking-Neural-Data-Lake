@@ -328,6 +328,51 @@ def test_a_learning_rule_deficit_journals_the_separating_witness_and_survives_a_
     assert other.run().evidence is None
 
 
+def test_unit_birth_rows_are_measured_against_the_immortal_class_append_budget(tmp_path):
+    # Codex cp5 #6 / 2.6: the unit journal writes weight-bearing rows into IMMORTAL 0x0B. One ordinary
+    # 9-unit batch (measured from the lake file itself, not a constant) must sit under the recorded bar;
+    # a flood -- the same loop un-batched, 12 batches in one tick -- must trip it.
+    import os
+    import random
+
+    from snn_data_lake.substrate.lake_engine import FLOOD_FACTOR, AppendBudget
+
+    rng = random.Random(9040)
+    ids = iter(range(10**6))
+
+    def batch():
+        return [
+            GrownUnit(
+                next(ids),
+                tuple(rng.gauss(0, 1) for _ in range(52)),
+                rng.uniform(0.5, 2),
+                12,
+                1,
+                tuple(rng.gauss(0, 1) for _ in range(9)),
+            )
+            for _ in range(9)
+        ]
+
+    lake = tmp_path / "lake.bin"
+    ledger = Ledger(lake, VALUES)
+    ledger.open_problem("p", 4)
+    before = os.path.getsize(lake)
+    ledger.record_units(batch(), "p", 0)
+    ledger.record_spend("p", 9, evals=0)
+    one = os.path.getsize(lake) - before
+    bud = AppendBudget()  # the recorded baseline (tools/lake_append_baseline.json), 0x0B included
+    bar, source = bud.bar(0x0B)
+    assert bar is not None and "seeded" in source, "0x0B must be baselined, not 'a budget nobody measured'"
+    bud.on_append(0x0B, one)
+    assert bud.end_tick() == []  # control: an ordinary batch tick is green
+    for b in range(12):
+        ledger.record_units(batch(), "p", 1 + b)
+    flood = os.path.getsize(lake) - before - one
+    assert flood > FLOOD_FACTOR * one  # 12 batches in one tick is past the 8x factor
+    bud.on_append(0x0B, flood)
+    assert any("0x0b" in v.lower() for v in bud.end_tick()), "the flood must trip the budget"
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 
