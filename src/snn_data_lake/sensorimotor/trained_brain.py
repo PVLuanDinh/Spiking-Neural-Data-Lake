@@ -113,10 +113,8 @@ def save_brain(brain, path):
     return path
 
 
-def load_brain(path):
-    """Load + validate a brain at this trust boundary (format, layer shapes chain in->out)."""
-    with open(path, encoding="utf-8") as f:
-        brain = json.load(f)
+def _validate(brain, path):
+    """The trust-boundary check shared by every way a brain enters: format, ragged layers, in->out chain."""
     if not isinstance(brain, dict) or str(brain.get("format", "")) != BRAIN_FORMAT:
         raise ValueError(f"{path}: not a {BRAIN_FORMAT} file (format={brain.get('format')!r})")
     layers = brain.get("layers")
@@ -132,6 +130,36 @@ def load_brain(path):
     if prev_in != brain["out"]:
         raise ValueError(f"{path}: final layer out={prev_in} != brain out={brain['out']}")
     return brain
+
+
+def load_brain(path):
+    """Load + validate a brain at this trust boundary (format, layer shapes chain in->out)."""
+    with open(path, encoding="utf-8") as f:
+        return _validate(json.load(f), path)
+
+
+GENN_CHECKPOINT_FORMAT = "snn_training.GennBrain/1"
+
+
+def brain_from_genn_checkpoint(path):
+    """Convert a `snn_training.GennBrain/1` checkpoint into a servable brain (stdlib, no ml_genn).
+
+    PORTED 2026-10-06 from the retired `training/mnist_genn` (owner 17c; P2: the one capability it had that
+    nothing else carries -- reading the checkpoint format it wrote). The checkpoint is JSON with `W1` [H][784],
+    `W2` [10][H] (already [out][in]), `steps`, `beta`, `threshold`. The dynamics only APPROXIMATE this
+    module's LIF, so `meta.transfer` says so; no checkpoint of this format is known to exist on disk.
+    """
+    with open(path, encoding="utf-8") as f:
+        c = json.load(f)
+    if not isinstance(c, dict) or c.get("format") != GENN_CHECKPOINT_FORMAT:
+        raise ValueError(f"{path}: not a {GENN_CHECKPOINT_FORMAT} checkpoint")
+    meta = {
+        "source": GENN_CHECKPOINT_FORMAT,
+        "hidden": c["hidden"],
+        "transfer": "approximate: GeNN dynamics != LIF",
+    }
+    brain = make_brain([c["W1"], c["W2"]], c["steps"], c["beta"], c["threshold"], meta=meta)
+    return _validate(brain, path)
 
 
 def main():
@@ -170,6 +198,35 @@ def main():
     two = make_brain([[[0.05] * scl.N for _ in range(8)], [[0.1] * 8 for _ in range(C)]], steps=8)
     x0 = test[0][0]
     det = predict_scores(two, x0) == predict_scores(two, x0)
+
+    # the ported GennBrain/1 converter: a tiny checkpoint becomes a servable, validated brain; a wrong format refuses
+    cp = os.path.join(tempfile.gettempdir(), "snn_genn_ckpt_selfcheck.json")
+    with open(cp, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "format": GENN_CHECKPOINT_FORMAT,
+                "hidden": 2,
+                "steps": 4,
+                "beta": 0.9,
+                "threshold": 1.0,
+                "W1": [[0.1, 0.2, 0.3], [0.3, 0.2, 0.1]],
+                "W2": [[1.0, 0.0], [0.0, 1.0]],
+            },
+            f,
+        )
+    gb = brain_from_genn_checkpoint(cp)
+    genn_ok = gb["in"] == 3 and gb["out"] == 2 and len(gb["layers"]) == 2
+    with open(cp, "w", encoding="utf-8") as f:
+        json.dump({"format": "nope"}, f)
+    try:
+        brain_from_genn_checkpoint(cp)
+        genn_ok = False
+    except ValueError:
+        pass
+    os.remove(cp)
+    assert genn_ok, (
+        "the GennBrain/1 converter must convert a valid checkpoint and refuse a wrong format"
+    )
 
     print("=" * 60)
     print("TRAINED BRAIN -- zero-dep inference over GPU-trained spiking weights")
