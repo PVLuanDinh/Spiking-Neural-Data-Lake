@@ -387,44 +387,89 @@ _ERRISH = re.compile(r"^_?(err|error|delta|dy|resid|residual)(\d|_|$)", re.I)
 _FEEDBACKISH = re.compile(r"fb|feedback|random", re.I)
 
 
+_MODULES = ("np", "numpy", "torch", "F", "functional", "jnp")
+_PRODUCT_CALLS = ("matmul", "mm", "dot", "einsum", "linear")
+
+
 def _opname(node):
-    """The array being multiplied, looking through `.T` / `.t()` / `.transpose()` and indexing."""
+    """The array being multiplied, looking through `.T` / `.t()` / `.transpose()` / `torch.transpose(w, ...)`
+    and indexing."""
     if isinstance(node, ast.Attribute) and node.attr in ("T", "mT"):
         return _opname(node.value)
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
         if node.func.attr in ("t", "transpose", "permute", "swapaxes"):
-            return _opname(node.func.value)
+            owner = node.func.value
+            if (
+                _base(owner) in _MODULES and node.args
+            ):  # `torch.transpose(w, 0, 1)`: the array is arg 0
+                return _opname(node.args[0])
+            return _opname(owner)
     if isinstance(node, ast.Subscript):
         return _opname(node.value)
     return _base(node)
 
 
 def _operand_pairs(node):
-    """Operand pairs of `a @ b`, `a * b`, and `matmul/mm/dot/einsum` calls."""
+    """Operand pairs of `a @ b`, `a * b`, `f(a, b)` and `a.f(b)` for matmul/mm/dot/einsum/linear.
+
+    Keyword operands count (`matmul(input=a, other=b)`, `linear(input=a, weight=b)`), and a method
+    call pairs its RECEIVER with its arguments (`err.matmul(W)`).
+    """
     if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.MatMult, ast.Mult)):
         yield node.left, node.right
     elif isinstance(node, ast.Call):
         name = getattr(node.func, "attr", getattr(node.func, "id", ""))
-        if name in ("matmul", "mm", "dot", "einsum", "linear"):
-            args = [a for a in node.args if not isinstance(a, ast.Constant)]
-            for i, a in enumerate(args):
-                for b in args[i + 1 :]:
-                    yield a, b
+        if name not in _PRODUCT_CALLS:
+            return
+        args = [a for a in node.args if not isinstance(a, ast.Constant)]
+        args += [k.value for k in node.keywords if not isinstance(k.value, ast.Constant)]
+        if isinstance(node.func, ast.Attribute) and _base(node.func.value) not in _MODULES:
+            args.insert(0, node.func.value)  # the receiver is the left operand
+        for i, a in enumerate(args):
+            for b in args[i + 1 :]:
+                yield a, b
 
 
 def _err(name, tainted):
     return bool(name) and (name in tainted or bool(_ERRISH.match(name)))
 
 
+def _scope_stmts(scope):
+    """The statements of ONE lexical scope in source order, not descending into nested functions."""
+    out, stack = [], list(ast.iter_child_nodes(scope))
+    while stack:
+        n = stack.pop()
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            continue
+        if isinstance(n, ast.stmt):
+            out.append(n)
+        stack.extend(ast.iter_child_nodes(n))
+    return sorted(out, key=lambda n: (n.lineno, n.col_offset))
+
+
+def _own_exprs(stmt):
+    """The expressions a statement evaluates itself (not its nested statements' or nested functions')."""
+    stack = [c for c in ast.iter_child_nodes(stmt) if not isinstance(c, ast.stmt)]
+    while stack:
+        n = stack.pop()
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        yield n
+        stack.extend(c for c in ast.iter_child_nodes(n) if not isinstance(c, ast.stmt))
+
+
 def signal_sites_in(tree):
     """(lineno, error, weight) for every error x forward-weight product in `tree`.
 
-    ERROR-TAINT PROPAGATES within one function (R2's refutation, 2026-10-06): training/eprop_lm_alif.py
-    carries the signal DOWN its layers -- `lsig[l+1] = ... @ wout`, then `up = Ps * lsig[l+1]`, then
-    `lsig[l] = up @ model.W_ff[l+1]` ("symmetric feedback through the real W_ff"). `up` is not
-    error-named, so a name-only test counted the first stage and missed the second. A name bound from
-    a W6 hit or from a tainted value is tainted (seeds are hits, never a bare error-sounding name: the
-    first draft seeded on names and flagged `residual - y * nrn.w` in faculties/percept_surprise); a product's operand counts as error if it is either.
+    PER-FUNCTION LEXICAL SCOPE, IN EXECUTION ORDER (Codex panel, 2026-10-06): taint is not shared between
+    functions, a product is judged with the taint in force at ITS statement (a forward product written
+    before the transport is not flagged), and a clean reassignment clears it.
+
+    ERROR-TAINT PROPAGATES within a scope (R2's refutation): training/eprop_lm_alif.py carries the signal
+    DOWN its layers -- `lsig[l+1] = ... @ wout`, then `up = Ps * lsig[l+1]`, then
+    `lsig[l] = up @ model.W_ff[l+1]`. `up` is not error-named. A name bound from a W6 hit or from a
+    tainted value is tainted (seeds are hits, never a bare error-sounding name: the first draft seeded on
+    names and flagged `residual - y * nrn.w` in faculties/percept_surprise).
     """
     out = set()
     scopes = [tree] + [
@@ -432,33 +477,26 @@ def signal_sites_in(tree):
     ]
     for scope in scopes:
         tainted = set()
-        assigns = sorted(
-            (n for n in ast.walk(scope) if isinstance(n, (ast.Assign, ast.AugAssign))),
-            key=lambda n: n.lineno,
-        )
-
-        for node in assigns:
+        for stmt in _scope_stmts(scope):
             hit = False
-            for sub in ast.walk(node.value):
+            for sub in _own_exprs(stmt):
                 for a, b in _operand_pairs(sub):
                     for e, w in ((_opname(a), _opname(b)), (_opname(b), _opname(a))):
                         if _err(e, tainted) and _is_weight(w) and not _FEEDBACKISH.search(w):
                             out.add((sub.lineno, e, w))
                             hit = True
+            if not isinstance(stmt, (ast.Assign, ast.AugAssign)):
+                continue
             mentions = {
-                _base(n) for n in ast.walk(node.value) if isinstance(n, (ast.Name, ast.Attribute))
+                _base(n) for n in ast.walk(stmt.value) if isinstance(n, (ast.Name, ast.Attribute))
             }
-            if hit or any(
-                m in tainted for m in mentions
-            ):  # seeds are W6 hits only, never a bare name
-                for t in node.targets if isinstance(node, ast.Assign) else [node.target]:
-                    if _base(t):
-                        tainted.add(_base(t))
-        for sub in ast.walk(scope):  # products outside an assignment, e.g. `return err @ W`
-            for a, b in _operand_pairs(sub):
-                for e, w in ((_opname(a), _opname(b)), (_opname(b), _opname(a))):
-                    if _err(e, tainted) and _is_weight(w) and not _FEEDBACKISH.search(w):
-                        out.add((sub.lineno, e, w))
+            carry = hit or any(m in tainted for m in mentions)
+            for t in stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]:
+                name = _base(t)
+                if carry and name:
+                    tainted.add(name)
+                elif name and isinstance(stmt, ast.Assign) and isinstance(t, ast.Name):
+                    tainted.discard(name)  # a clean reassignment clears the taint: exactly 1 site
     return sorted(out)
 
 
@@ -486,7 +524,7 @@ def scan_signals(brain_modules=None, extra_roots=()):
                 t = tier or ("governed" if f"{_PKG}.{rel}" in brain_modules else "ungoverned")
                 where = rel if tier is None else f"training/{f}"
                 out.extend((where, ln, e, w, t) for ln, e, w in signal_sites_in(tree))
-    return out
+    return sorted(out)
 
 
 def scan(brain_modules=None):
@@ -589,7 +627,10 @@ def main(argv=None):
             str(sum(1 for s_ in sig if s_[4] == t)) for t in ("governed", "ungoverned", "root")
         )
     )
-    print("  W6 taint follows binary operations only (not aug-assign, tuple unpack, calls such as")
+    print(
+        "  W6 taint follows binary operations only, in execution order (not aug-assign, tuple unpack, loop-"
+    )
+    print("  carried flow, calls such as")
     print(
         "  tanh/relu, or comprehensions), and F.linear(err, W) with W in the non-transposed layout may be a"
     )
@@ -863,12 +904,121 @@ def _selfcheck():
             f"W6 case flipped: {label}"
         )
         print(f"  RED    W6 {label}")
-    sig = scan_signals()
-    assert any(s_[0] == "plasticity.eprop_kernel" for s_ in sig), (
-        "W6 did not find plasticity/eprop_kernel.py's `err @ self.W_out` -- a zero anywhere else "
-        "cannot be trusted until the known positive fires"
+    for label, src, n_expected in (
+        (
+            "method receiver `err.matmul(W_out)`",
+            """def f(err, W_out):
+    return err.matmul(W_out)
+""",
+            1,
+        ),
+        (
+            "method receiver `err.mm(W_out)`",
+            """def f(err, W_out):
+    return err.mm(W_out)
+""",
+            1,
+        ),
+        (
+            "method receiver `err.dot(Wout)`",
+            """def f(err, Wout):
+    return err.dot(Wout)
+""",
+            1,
+        ),
+        (
+            "keyword operands `torch.matmul(input=err, other=W_out)`",
+            """def f(err, W_out):
+    return torch.matmul(input=err, other=W_out)
+""",
+            1,
+        ),
+        (
+            "keyword operands `F.linear(input=err, weight=W_out)`",
+            """def f(err, W_out):
+    return F.linear(input=err, weight=W_out)
+""",
+            1,
+        ),
+        (
+            "functional transpose `err @ torch.transpose(W_out, 0, 1)`",
+            """def f(err, W_out):
+    return err @ torch.transpose(W_out, 0, 1)
+""",
+            1,
+        ),
+        (
+            "taint stays inside one function: exactly 1 site, the forward product elsewhere is clean",
+            """def back(err, W_out):
+    x = err @ W_out
+    return x
+
+
+def fwd(x, W):
+    return x @ W.T
+""",
+            1,
+        ),
+        (
+            "taint is in execution order: exactly 1 site, the product BEFORE the transport is clean",
+            """def f(x, err, W, W_out):
+    h = x
+    before = h @ W
+    h = err @ W_out
+    return before, h
+""",
+            1,
+        ),
+        (
+            "a clean reassignment clears the taint: exactly 1 site",
+            """def f(x, err, W, W_out):
+    h = err @ W_out
+    h = x
+    return h @ W
+""",
+            1,
+        ),
+    ):
+        got = len(signal_sites_in(ast.parse(src)))
+        assert got == n_expected, (
+            f"W6 scoping/spelling case flipped ({got} != {n_expected}): {label}"
+        )
+        print(f"  {'RED  ' if n_expected else 'green'}  W6 {label}")
+    _loop = """def f(err, W_out, Wrec, T):
+    for t in range(T):
+        s = err @ W_out
+        dv = dv_prev * Wrec
+        dv_prev = s
+"""
+    print(
+        "  BLIND   W6 a LOOP-CARRIED taint (the value is tainted only on the NEXT iteration) -- disclosed, "
+        + (
+            "not asserted"
+            if len(signal_sites_in(ast.parse(_loop))) == 1
+            else "FIXED: update the caveat"
+        )
     )
-    print(f"  RED    W6 finds eprop_kernel's symmetric spelling ({len(sig)} site(s), report-only)")
+    # THE CALIBRATION IS A FROZEN RECONSTRUCTION, never the live kernel: the day the owner-approved
+    # conversion replaces `err @ self.W_out` with a fixed feedback matrix, a self-check that demanded the live
+    # hit would red `--assert` for the very change the rule exists to ask for (Codex panel, 2026-10-06).
+    _kernel = """class _TinyNet:
+    def eprop_grads(self, err, step):
+        lsig = err @ self.W_out  # broadcast learning signal
+        return lsig
+"""
+    assert signal_sites_in(ast.parse(_kernel)), (
+        "W6 did not fire on the frozen reconstruction of eprop_kernel's `err @ self.W_out`"
+    )
+    print("  RED    W6 fires on a frozen reconstruction of eprop_kernel's symmetric spelling")
+    sig = scan_signals()
+    assert sig == sorted(sig), (
+        "W6 findings must be globally sorted (filesystem order is not an ordering)"
+    )
+    k = sum(1 for s_ in sig if s_[0] == "plasticity.eprop_kernel")
+    print(
+        f"  report W6 live tree: {len(sig)} package site(s), {k} in plasticity/eprop_kernel.py "
+        "(0 there is the expected state AFTER the 17a conversion, not a failure)"
+    )
 
     violations, census, _swaps = scan()
 
