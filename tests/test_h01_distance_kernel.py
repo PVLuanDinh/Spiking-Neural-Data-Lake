@@ -516,3 +516,37 @@ def test_cp2_6_the_statistic_refuses_an_unregistered_seed_allocation(artifact, s
     KD._check_seeds(pin[0], KD.CONFIRMATORY_RESERVE)
     with pytest.raises(KD.ExposureRefused, match="registered"):
         KD._check_seeds(pin[0], tuple(range(10050, 10058)))
+
+
+def test_cp2_9_split_membership_is_asserted_on_the_actual_train_and_test_indexing(pop):
+    """Codex cp2 #9 / 2.11 (d): ntr/nte are compared with an independent per-group loop, so a mutant that
+    lets a held-out group into the training index fails even though train + test still sums to every pair."""
+    geo = KD.Geometry.of(pop)
+    hist = KD.pair_histograms(pop, geo, KD.unit_folds(KD.seed_streams(10043)[0], N_SYN))
+    n = hist.n
+    for f in range(KD.K_FOLDS):
+        ntr, ktr, nte, kte = KD.split(n, hist.k, KD.FOLD_OF, f)
+        ref_tr = np.zeros_like(ntr)
+        ref_te = np.zeros_like(nte)
+        for gi in range(KD.N_GROUPS):
+            for gj in range(KD.N_GROUPS):
+                touches = KD.FOLD_OF[gi] == f or KD.FOLD_OF[gj] == f
+                if touches:
+                    ref_te += n[gi, gj]
+                else:
+                    ref_tr += n[gi, gj]
+        assert (ntr == ref_tr).all() and (nte == ref_te).all()
+
+
+def test_cp2_9_every_registered_planted_truth_runs_through_the_synthetic_pipeline(pop):
+    """Codex cp2 #9 / 2.11 (g): all 13 A6 truths (mixture, degree-corrected, the scale ladder) are drawn at the
+    fixture density, the exact expectation holds, and the degree-corrected rows record their clipped share."""
+    assert len(KD.PLANTED) == 13
+    geo = KD.Geometry.of(pop)
+    for row in KD.PLANTED:
+        row = row._replace(seeds=row.seeds[:1])
+        (u,) = KD.planted_units(pop, row, EDGES_SYN, geo=geo)
+        p = u["planted"]
+        assert p["expected_edges_drawn"] == pytest.approx(EDGES_SYN, rel=1e-6), row.name
+        assert abs(p["edges"] - EDGES_SYN) < 6 * math.sqrt(EDGES_SYN), row.name
+        assert "clipped_share_of_edges" in p and np.isfinite(u["neuron"]["gauss-flat"]), row.name
