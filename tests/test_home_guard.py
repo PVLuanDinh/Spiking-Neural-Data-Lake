@@ -236,6 +236,25 @@ def test_the_alias_scan_is_recursive_and_bounded(tmp_path, monkeypatch):
         H.require_isolated_home(live_home=str(live))
 
 
+def test_a_hardlink_of_a_file_nested_in_the_live_home_is_refused(tmp_path, monkeypatch):
+    # R2's re-attack: the live home keeps files under subdirectories too: a hardlink of one
+    live = tmp_path / "live"
+    (live / "sub2").mkdir(parents=True)
+    (live / "sub2" / "nested.bin").write_bytes(b"live")
+    iso = tmp_path / "iso"
+    iso.mkdir()
+    monkeypatch.setenv("NORD_HOME", str(iso))
+    (iso / "nested_hl.bin").write_bytes(b"mine")  # the positive: same size class, different file
+    assert H.require_isolated_home(live_home=str(live))
+    (iso / "nested_hl.bin").unlink()
+    try:
+        os.link(live / "sub2" / "nested.bin", iso / "nested_hl.bin")
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"cannot create a hardlink here: {exc}")
+    with pytest.raises(H.LiveHomeRefused, match="hardlink"):
+        H.require_isolated_home(live_home=str(live))
+
+
 def test_namespace_prefix_normalisation_covers_unc():
     # `\\?\UNC\server\share` is the extended spelling of `\\server\share`
     assert H._strip_namespace("\\\\?\\UNC\\srv\\share\\x") == "\\\\srv\\share\\x"

@@ -489,14 +489,22 @@ def _refuse_if_live(p, live, what="home", contains=True):
 
 
 def _live_file_stats(live):
-    """stat() of every regular top-level file of the live home ([] when it does not exist): the
-    identity a hardlink shares with its original (a resolved path cannot see one). `os.stat`, not
-    `DirEntry.stat()`: on Windows the latter leaves st_ino / st_dev at 0 and every file would match."""
-    try:
-        with os.scandir(live) as it:
-            return [os.stat(e.path) for e in it if e.is_file(follow_symlinks=False)]
-    except OSError:
-        return []
+    """stat() of every regular file under the live home, at every depth, up to _MAX_HOME_ENTRIES
+    ([] when it does not exist): the identity a hardlink shares with its original (a resolved path
+    cannot see one). `os.stat`, not `DirEntry.stat()`: on Windows the latter leaves st_ino / st_dev at
+    0 and every file would match. Directory aliases are not descended into."""
+    out, todo = [], [live]
+    while todo and len(out) <= _MAX_HOME_ENTRIES:
+        try:
+            with os.scandir(todo.pop()) as it:
+                for e in it:
+                    if e.is_file(follow_symlinks=False):
+                        out.append(os.stat(e.path))
+                    elif e.is_dir(follow_symlinks=False) and not e.is_junction():
+                        todo.append(e.path)
+        except OSError:
+            continue
+    return out
 
 
 def require_isolated_home(live_home=None):
