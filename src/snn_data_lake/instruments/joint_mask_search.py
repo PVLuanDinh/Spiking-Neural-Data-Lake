@@ -313,8 +313,7 @@ def decide_b(seeds, *, instrument_gates_fired=True):
         )
     if (
         "greedy" in eligible
-        and "incumbent" in eligible
-        and beats("greedy", "incumbent")
+        and beats("greedy", "incumbent")  # A3 step 3: the incumbent need not be eligible
         and not ("random" in eligible and beats("random", "greedy"))
     ):
         return Disposition(
