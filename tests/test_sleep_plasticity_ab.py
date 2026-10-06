@@ -257,3 +257,9 @@ def test_two_real_arm_seeds_restore_exactly(tmp_path):
     assert off["weights_d1"] == off["weights_post"] and on["weights_d1"] != on["weights_post"]
     assert all(r["live_lake_untouched"] for r in recs)
     assert os.listdir(os.path.join(out, "homes")) == []  # every throwaway home removed
+
+
+def test_cp2_13_k5_does_not_apply_to_f3():
+    a, b = _record("AT-ON", family="F3"), _record("AT-OFF", family="F3")
+    a["restored"] = [0, 0]  # an unrelated restore discrepancy: P-5 says K5 is not an F3 check
+    assert not m.check_records("F3", [a, b])["K5"]

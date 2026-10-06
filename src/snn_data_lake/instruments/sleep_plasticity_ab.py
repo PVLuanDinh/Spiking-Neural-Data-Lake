@@ -766,7 +766,7 @@ def check_records(family, recs):
             fails["K3"].append(tag)
         if r["eval_before"] != r["eval_after"]:
             fails["K4"].append(tag)
-        if r["inproc"] != r["restored"]:
+        if family != "F3" and r["inproc"] != r["restored"]:  # P-5: F3 reads in-process (Codex cp2 #13)
             fails["K5"].append(tag)
         if r["arm"] in PLASTICITY_FREE and r["weights_d1"] != r["weights_post"]:
             fails["K6"].append(tag)
