@@ -646,11 +646,18 @@ def main():
             raise AssertionError("red: a seq gap must refuse the fold")
         except LedgerError:
             pass
-    try:
-        Ledger(Path.home() / ".snn_data_lake" / "brain_lake.bin", values)
-        raise AssertionError("red: the live lake must be refused")
-    except LiveHomeRefused:
-        pass
+    # a DECOY live home, never the owner's real one (live-lake freeze): the guard reads _default_live_home
+    from snn_data_lake.substrate import home
+
+    with tempfile.TemporaryDirectory() as decoy:
+        real, home._default_live_home = home._default_live_home, lambda: decoy
+        try:
+            Ledger(Path(decoy) / "brain_lake.bin", values)
+            raise AssertionError("red: the live lake must be refused")
+        except LiveHomeRefused:
+            pass
+        finally:
+            home._default_live_home = real
     print(
         "growth_loop: pause at 45/52 (UNSOLVED, OPEN), attempt cap -> LEARNING_RULE_DEFICIT, ledger rebuilt "
         "equal, seq-gap red fires, live lake refused"

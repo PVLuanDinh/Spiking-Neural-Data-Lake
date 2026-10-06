@@ -107,14 +107,18 @@ def test_ledger_refuses_a_missing_path():
         Ledger(None, VALUES)
 
 
-def test_ledger_refuses_the_live_lake():
-    # through THE shared guard (R1, lead ruling 16), never a row-local check
-    from pathlib import Path
-
+def test_ledger_refuses_the_live_lake(tmp_path, monkeypatch):
+    # through THE shared guard (R1, lead ruling 16), never a row-local check. The "live" home is a
+    # DECOY dir: a regression here must never open the owner's real lake (live-lake freeze)
+    from snn_data_lake.substrate import home
     from snn_data_lake.substrate.home import LiveHomeRefused
 
+    live = tmp_path / "live"
+    live.mkdir()
+    monkeypatch.setattr(home, "_default_live_home", lambda: str(live))
     with pytest.raises(LiveHomeRefused):
-        Ledger(Path.home() / ".snn_data_lake" / "brain_lake.bin", VALUES)
+        Ledger(live / "brain_lake.bin", VALUES)
+    assert not (live / "brain_lake.bin").exists()  # refused before anything was created
 
 
 def test_ledger_refuses_a_symlink_alias_of_the_live_lake(tmp_path, monkeypatch):
