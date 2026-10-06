@@ -884,3 +884,11 @@ projects only onto the label neurons, as 2.6a says.
 
 What a T1-struct RED deletes is therefore exactly this coupling (the shared inhibition and its E->I drive) and, with it, the batch
 as a structured unit; the owner is told. The frozen COL has no E->E term; none is added.
+
+## DATED PRE-DATA AMENDMENT 2026-10-06 (i) -- (h)'s gamma is PENDING Q-COL (lead; no data read)
+
+(h) stands as the definition of the wiring FORM (the causal stepwise coupling, BATCH9 = the same nine units at gamma = 0, the
+four reds). The value gamma = 1/k and the sensitivity pair {0.5/k, 2/k} are a chosen constant that decides whether decision C's
+column structure is deleted -- a new design choice after the owner's 2026-10-04 decisions -- so they are PARKED for the owner as
+Q-COL (board OWNER_QUESTIONS) and read "pending Q-COL" wherever (h) states them. G3 builds the coupling with gamma as a
+PARAMETER plus the four reds (that decides nothing); T1-struct's run waits on Q-COL and on G4's T3 either way.
