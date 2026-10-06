@@ -774,20 +774,68 @@ def run_planted_stage(pop, plan=PLANTED, n_edges=N_EDGES, log=None):
 
 
 # ---- H01 (the only edge reader) ----------------------------------------------------------------
-def _gate(planted_record, pop):
-    if not planted_record or planted_record.get("all_rows_hold") is not True:
-        raise ExposureRefused("no planted record whose every row holds: H01's edges are not read (A8)")
-    if bands_sha256(planted_record["bands"]) != planted_record.get("bands_sha256"):
-        raise ExposureRefused("the planted bands no longer hash to their locked value")
+def _plan_rows(plan):
+    """A plan in comparable form (tuples and JSON lists read alike)."""
+    out = []
+    for r in plan:
+        d = r._asdict() if isinstance(r, PlanRow) else r
+        out.append([d["name"], list(d["truth"]), [int(x) for x in d["seeds"]], d["expect"], bool(d["width_check"])])
+    return out
+
+
+def _authorized_plan(sha, planted_record, plan, n_edges):
+    """Which planted plan may authorize an edge read. On the PRODUCTION artifact (the pin file's sha)
+    only the registered plan -- A6's table or its full reserve re-run -- at H01's edge count, whatever
+    the caller passes: a reduced (rehearsal) plan can never authorize production. On any other
+    artifact (a synthetic fixture) the caller names the plan, which must still be complete."""
+    if sha == pinned_artifact()[0]:
+        rec = _plan_rows((planted_record or {}).get("plan", []))
+        for registered in (PLANTED, reserve_plan()):
+            if rec == _plan_rows(registered):
+                return registered, N_EDGES
+        raise ExposureRefused("the planted record's plan is not the registered plan (A6) or its reserve")
+    if plan is None or n_edges is None:
+        raise ExposureRefused("a fixture artifact needs its plan and edge count named explicitly")
+    return plan, n_edges
+
+
+def validate_planted(planted_record, pop, plan, n_edges):
+    """THE ONE validator every edge-reading entry point calls (score_h01, final_width_record,
+    verify_width_record). It never trusts a stored verdict: it checks the record against `plan` row by
+    row and seed by seed, recomputes the calibration bands from the calibration units, and re-reads
+    every other row through read_t3 and its expectation. Returns the recomputed bands."""
+    if not planted_record:
+        raise ExposureRefused("no planted record: H01's edges are not read (A8)")
+    if len(plan) < 2 or plan[0].expect is not None or tuple(plan[0].truth) != ("flat",):
+        raise ExposureRefused("a plan needs its flat calibration row and at least one row that can fail")
+    if _plan_rows(planted_record.get("plan", [])) != _plan_rows(plan):
+        raise ExposureRefused("the planted record's plan differs from the authorized plan")
+    if planted_record.get("n_edges_target") != n_edges:
+        raise ExposureRefused(f"planted density {planted_record.get('n_edges_target')} != {n_edges} edges")
     if planted_record.get("population_sha256") != _fingerprint(pop):
         raise ExposureRefused("the planted record was drawn on a different population")
+    rows = planted_record.get("rows") or {}
+    if set(rows) != {r.name for r in plan}:
+        raise ExposureRefused(f"planted rows {sorted(rows)} != the plan's {sorted(r.name for r in plan)}")
+    for r in plan:
+        if [int(u["seed"]) for u in rows[r.name]["units"]] != list(r.seeds):
+            raise ExposureRefused(f"row {r.name}: its units are not the plan's seeds")
+    bands = calibrate_bands(rows[plan[0].name]["units"])
+    if bands != planted_record.get("bands") or bands_sha256(bands) != planted_record.get("bands_sha256"):
+        raise ExposureRefused("the planted bands do not recompute from the calibration units")
+    for r in plan[1:]:
+        units = rows[r.name]["units"]
+        if not _holds(r, read_t3(*_gather(units), bands), units):
+            raise ExposureRefused(f"planted row {r.name} does not hold on recomputation")
+    return bands
 
 
-def _load_gated(path, planted_record, pin):
+def _load_gated(path, planted_record, pin, plan=None, n_edges=None):
     z, sha = _verified(path, pin)
     pop = load_population(path, pin)
-    _gate(planted_record, pop)
-    return pop, (np.asarray(z["pre_idx"]), np.asarray(z["post_idx"])), sha
+    plan, n_edges = _authorized_plan(sha, planted_record, plan, n_edges)
+    bands = validate_planted(planted_record, pop, plan, n_edges)
+    return pop, (np.asarray(z["pre_idx"]), np.asarray(z["post_idx"])), sha, bands, plan
 
 
 # 2.5's resolution flag: the matching planted discrimination (row, sign) for each contrast
@@ -822,15 +870,21 @@ def _resolution_flags(reading, units, planted_record):
     return flags
 
 
-def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, log=None):
-    """2.4-2.8 on H01's edges, read ONCE, only after the planted record holds. A planted record that
-    STOPPED at check (j) yields A3 row 2's reading, NOT_READ_REGION_INVALID, and no edge distance is read."""
+def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, plan=None, n_edges=None, log=None):
+    """2.4-2.8 on H01's edges, read ONCE, only after validate_planted accepts the planted record. A
+    record that STOPPED at check (j) yields A3 row 2's reading, NOT_READ_REGION_INVALID, and no edge
+    distance is read."""
     if planted_record and str(planted_record.get("stopped", "")).startswith("NOT_READ_REGION_INVALID"):
         _, sha = _verified(path, pin)
         pop = load_population(path, pin)
         geo = Geometry.of(pop)
-        if planted_record.get("population_sha256") != _fingerprint(pop) or geo.region_valid:
-            raise ExposureRefused("the stopped planted record does not describe this population")
+        plan, n_edges = _authorized_plan(sha, planted_record, plan, n_edges)
+        if (
+            planted_record.get("population_sha256") != _fingerprint(pop)
+            or geo.region_valid
+            or _plan_rows(planted_record.get("plan", [])) != _plan_rows(plan)
+        ):
+            raise ExposureRefused("the stopped planted record does not describe this population and plan")
         return {
             "artifact_sha256": sha,
             "seeds": [],
@@ -838,7 +892,7 @@ def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, log=None
             "region_table": geo.table.tolist(),
             "reading": {"verdict": "NOT_READ_REGION_INVALID", "K": None, "C": [], "a": 0},
         }
-    pop, edges, sha = _load_gated(path, planted_record, pin)
+    pop, edges, sha, bands, plan = _load_gated(path, planted_record, pin, plan, n_edges)
     geo = Geometry.of(pop)
     units = []
     for seed in seeds:
@@ -851,7 +905,7 @@ def score_h01(path, planted_record, seeds=CONFIRMATORY_SEEDS, pin=None, log=None
     region0 = units[0]["region"]
     identical = all(u["region"] == region0 for u in units)  # region blocks sum over folds: seed-free
     neuron, interior, _ = _gather(units)
-    reading = read_t3(neuron, interior, region0, planted_record["bands"], planted_ok=True, region_valid=geo.region_valid)
+    reading = read_t3(neuron, interior, region0, bands, planted_ok=True, region_valid=geo.region_valid)
     out = {
         "artifact_sha256": sha,
         "seeds": list(seeds),
@@ -901,19 +955,18 @@ def _final_width(pop, geo, edges, model, sha):
     }
 
 
-def final_width_record(path, model, planted_record, pin=None):
-    """2.8: the width(s) fitted once on ALL eligible pairs -- an edge read, so gated like score_h01."""
-    pop, edges, sha = _load_gated(path, planted_record, pin)
+def final_width_record(path, model, planted_record, pin=None, plan=None, n_edges=None):
+    """2.8: the width(s) fitted once on ALL eligible pairs -- an edge read, gated by validate_planted."""
+    pop, edges, sha, _, _ = _load_gated(path, planted_record, pin, plan, n_edges)
     return _final_width(pop, Geometry.of(pop), edges, model, sha)
 
 
-def verify_width_record(record, path, pin=None):
-    """2.11 (f): a refit on the pinned data reproduces the record to WIDTH_RTOL relative."""
-    z, sha = _verified(path, pin)
+def verify_width_record(record, path, planted_record, pin=None, plan=None, n_edges=None):
+    """2.11 (f): a refit on the pinned data reproduces the record -- an edge read, gated by validate_planted."""
+    pop, edges, sha, _, _ = _load_gated(path, planted_record, pin, plan, n_edges)
     if record.get("artifact_sha256") != sha:
         raise RecordRefused("the record names a different artifact")
-    pop = load_population(path, pin)
-    fresh = _final_width(pop, Geometry.of(pop), (z["pre_idx"], z["post_idx"]), record["model"], sha)
+    fresh = _final_width(pop, Geometry.of(pop), edges, record["model"], sha)
     if not np.allclose(fresh["params"], record["params"], rtol=WIDTH_RTOL, atol=0.0):
         raise RecordRefused(f"refit {fresh['params']} != record {record['params']}")
     return fresh
