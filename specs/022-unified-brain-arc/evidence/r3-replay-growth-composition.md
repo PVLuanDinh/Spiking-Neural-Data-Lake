@@ -771,3 +771,16 @@ Written before any F3 CONFIRMATORY seed (16120-16127) has run; additive (a zero-
   AT-ON or AT-OFF, so whether C6 = AT-ON - AT-OFF is reachable at W = 1 (AT-ON above chance) is UNMEASURED. A confirmatory
   F3 reading is a null-or-MET reading under the pre-registered C6 table either way; an AT-ON reading on dev to check the
   ceiling-and-floor reachability would be a NEW pre-data choice, raised to the lead rather than taken.
+
+## DATED PRE-DATA NOTE 2026-10-06 (F3's AT-ON positive control at W = 1, dev seeds; approved by the lead the same day)
+
+Written before any F3 CONFIRMATORY seed (16120-16127) has run; additive. The lead approved reading AT-ON on the EXPOSED dev
+seeds 16000-16007 at the frozen W = 1 as the positive control that C6 is reachable; it changes nothing frozen.
+- **Reading (MEASURED, one process, `run --family F3 --set dev --arms AT-ON`, 8 arm-seeds, 40 sleep ticks each, live_lake_untouched
+  True on all 8).** Per-seed mean `_consolidation_acc` of 36 stored items (chance = 12): 14.45, 12.00, 12.00, 14.20, 12.00,
+  12.10, 13.15, 12.53 -> as fractions 0.401, 0.333, 0.333, 0.394, 0.333, 0.336, 0.365, 0.348 on seeds 16000-16007. AT-ON is
+  ABOVE the AT-NONE floor (0.3333, all 8 seeds, the ladder) on 5 of 8 seeds (16000, 16003, 16005, 16006, 16007; tick maxima
+  up to 20/36) and EXACTLY at the floor on 3 (16001, 16002, 16004). It is therefore NOT at chance everywhere: C6's MET row is
+  REACHABLE at W = 1, but the margin is small and seed-dependent. Run log sha256 `ca4fa2393dd54a63f7dc46e1eb65ad6f1d4267e73700852e4649585af3657779`.
+- **Not read here:** AT-OFF at W = 1 (the confirmatory contrast's other arm; "AT-OFF still prunes", self-defect 5). Whether
+  C6 = AT-ON - AT-OFF clears t > 1.895 on 8 seeds is the confirmatory question and stays unread. No W change follows.
