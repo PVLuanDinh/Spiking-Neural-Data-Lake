@@ -181,14 +181,17 @@ def test_e_the_edge_draw_does_not_depend_on_the_fold_partition(pop):
 # ---- (f) the width record ------------------------------------------------------------------------
 def test_f_width_record_reproduces_and_a_perturbed_record_is_refused(artifact, stage):
     path, pin = artifact
-    rec = KD.final_width_record(path, "gauss", stage, pin=pin)
-    KD.verify_width_record(rec, path, pin=pin)
+    fx = dict(pin=pin, plan=_plan(), n_edges=EDGES_SYN)
+    rec = KD.final_width_record(path, "gauss", stage, **fx)
+    KD.verify_width_record(rec, path, stage, **fx)
     assert abs(rec["width_um"]["sigma"] - WIDTH) / WIDTH < 0.15
     bad = dict(rec, params=[rec["params"][0], rec["params"][1] * (1 + 1e-4)])
     with pytest.raises(KD.RecordRefused):
-        KD.verify_width_record(bad, path, pin=pin)
+        KD.verify_width_record(bad, path, stage, **fx)
     with pytest.raises(KD.ExposureRefused):
-        KD.final_width_record(path, "gauss", None, pin=pin)
+        KD.final_width_record(path, "gauss", None, **fx)
+    with pytest.raises(KD.ExposureRefused):  # cp2 #2: the verifier is an edge read, gated like the rest
+        KD.verify_width_record(rec, path, None, **fx)
 
 
 # ---- (g) the reading function (A2-A3) ------------------------------------------------------------
@@ -311,13 +314,71 @@ def test_j_a_block_with_an_empty_band_refuses_the_region_instrument(pop):
 # ---- (k) exposure order (A8) ---------------------------------------------------------------------
 def test_k_h01_scoring_refuses_before_the_planted_record_holds(artifact, stage):
     path, pin = artifact
+    fx = dict(pin=pin, plan=_plan(), n_edges=EDGES_SYN)
     with pytest.raises(KD.ExposureRefused):
-        KD.score_h01(path, None, pin=pin)
-    with pytest.raises(KD.ExposureRefused):
-        KD.score_h01(path, dict(stage, all_rows_hold=False), pin=pin)
+        KD.score_h01(path, None, **fx)
     tampered = dict(stage, bands=dict(stage["bands"], neuron=dict(stage["bands"]["neuron"], **{"gauss-flat": 0.0})))
     with pytest.raises(KD.ExposureRefused):
-        KD.score_h01(path, tampered, pin=pin)
+        KD.score_h01(path, tampered, **fx)
+    with pytest.raises(KD.ExposureRefused):  # a fixture must name its plan and density
+        KD.score_h01(path, stage, pin=pin)
+    with pytest.raises(KD.ExposureRefused):  # the record's density is not the authorized one
+        KD.score_h01(path, stage, pin=pin, plan=_plan(), n_edges=EDGES_SYN + 1)
+
+
+def test_k_the_validator_recomputes_and_never_trusts_stored_verdicts(artifact, stage):
+    """cp2 #2: a stored all_rows_hold / holds is never read; rows are re-read from their units."""
+    path, pin = artifact
+    fx = dict(pin=pin, plan=_plan(), n_edges=EDGES_SYN)
+    rows = dict(stage["rows"])
+    rows["gauss"] = dict(rows["gauss"], units=[dict(u, seed=s) for u, s in zip(rows["flat_validation"]["units"], _plan()[2].seeds)], holds=True)
+    lying = dict(stage, rows=rows, all_rows_hold=True)
+    with pytest.raises(KD.ExposureRefused, match="does not hold"):
+        KD.score_h01(path, lying, **fx)
+    missing = dict(stage, rows={k: v for k, v in stage["rows"].items() if k != "exp"})
+    with pytest.raises(KD.ExposureRefused):
+        KD.score_h01(path, missing, **fx)
+    reseeded = dict(stage["rows"])
+    reseeded["exp"] = dict(reseeded["exp"], units=reseeded["exp"]["units"][:7] + [dict(reseeded["exp"]["units"][7], seed=99999)])
+    with pytest.raises(KD.ExposureRefused, match="seeds"):
+        KD.score_h01(path, dict(stage, rows=reseeded), **fx)
+
+
+def test_k_a_record_for_another_population_or_with_self_consistent_forged_bands_is_refused(artifact, stage):
+    """cp2 #2: the fingerprint binds the record to its population; bands + their hash are recomputed from the
+    calibration units, so a forger who also rewrites bands_sha256 still fails."""
+    path, pin = artifact
+    fx = dict(pin=pin, plan=_plan(), n_edges=EDGES_SYN)
+    with pytest.raises(KD.ExposureRefused, match="different population"):
+        KD.score_h01(path, dict(stage, population_sha256="0" * 64), **fx)
+    forged = dict(stage["bands"], neuron=dict(stage["bands"]["neuron"], **{"gauss-flat": 0.0}))
+    with pytest.raises(KD.ExposureRefused, match="recompute"):
+        KD.score_h01(path, dict(stage, bands=forged, bands_sha256=KD.bands_sha256(forged)), **fx)
+
+
+def test_k_a_calibration_only_plan_authorizes_nothing(pop, artifact):
+    """cp2 #2: all([]) over no checkable rows read True; a one-row plan must refuse."""
+    path, pin = artifact
+    cal_only = KD.run_planted_stage(pop, plan=_plan()[:1], n_edges=EDGES_SYN)
+    assert cal_only["all_rows_hold"] is True  # the stored flag would have opened the gate
+    with pytest.raises(KD.ExposureRefused):
+        KD.score_h01(path, cal_only, pin=pin, plan=_plan()[:1], n_edges=EDGES_SYN)
+    with pytest.raises(KD.ExposureRefused):
+        KD.score_h01(path, cal_only, pin=pin, plan=_plan(), n_edges=EDGES_SYN)
+
+
+def test_k_a_reduced_plan_never_authorizes_the_production_artifact(artifact, stage, monkeypatch):
+    """cp2 #2: on the pin file's artifact only A6's registered plan (or its reserve) authorizes, whatever
+    plan the caller names -- here the synthetic artifact is made 'production' by pinning its sha."""
+    path, pin = artifact
+    monkeypatch.setattr(KD, "pinned_artifact", lambda: pin)
+    for call in (
+        lambda: KD.score_h01(path, stage, pin=pin, plan=_plan(), n_edges=EDGES_SYN),
+        lambda: KD.final_width_record(path, "gauss", stage, pin=pin, plan=_plan(), n_edges=EDGES_SYN),
+        lambda: KD.verify_width_record({"model": "gauss"}, path, stage, pin=pin, plan=_plan(), n_edges=EDGES_SYN),
+    ):
+        with pytest.raises(KD.ExposureRefused, match="registered plan"):
+            call()
 
 
 def test_k_a_region_invalid_population_reads_not_read_and_touches_no_edge_distance(tmp_path, monkeypatch):
@@ -335,7 +396,7 @@ def test_k_a_region_invalid_population_reads_not_read_and_touches_no_edge_distan
         raise AssertionError("no pair pass may run on a stopped record")
 
     monkeypatch.setattr(KD, "pair_histograms", no_edges)
-    out = KD.score_h01(path, rec, pin=pin)
+    out = KD.score_h01(path, rec, pin=pin, plan=_plan(), n_edges=EDGES_SYN)
     assert out["reading"]["verdict"] == "NOT_READ_REGION_INVALID" and out["reading"]["K"] is None
 
 
@@ -361,7 +422,7 @@ def test_a_failed_planted_row_makes_the_stage_not_hold(pop):
 
 def test_h01_scoring_on_a_synthetic_gaussian_artifact_reads_the_gaussian(artifact, stage):
     path, pin = artifact
-    out = KD.score_h01(path, stage, seeds=tuple(range(10050, 10058)), pin=pin)
+    out = KD.score_h01(path, stage, seeds=tuple(range(10050, 10058)), pin=pin, plan=_plan(), n_edges=EDGES_SYN)
     assert out["reading"]["verdict"] == "PASS_FAVOURS_GAUSSIAN", out["reading"]
     assert out["region_identical_across_seeds"]
 
