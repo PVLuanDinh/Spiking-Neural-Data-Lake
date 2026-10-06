@@ -727,3 +727,16 @@ def test_a_ticket_refuses_a_bool_inside_a_position():
     ticket.consume(
         [_with(rec, position=list(rec["position"]))]
     )  # a JSON list of the same numbers is fine
+
+
+@pytest.mark.parametrize("bad_id", [True, 1.0, "1", -1])
+def test_a_restored_row_with_a_non_int_unit_id_is_refused_never_derived(bad_id):
+    # G3 refutation: unit_id True == journaled id 1 but is not an _ident, so it skipped the journal
+    # lookup and read 'derived' (an open debt row then keeps the census green)
+    born = _good()
+    journal = {1: _with(born, unit_id=1)}
+    row = _with(born, unit_id=bad_id)
+    with pytest.raises(G.UnitLabelRefused, match="unit_id"):
+        G.classify_restored([row], journal)
+    with pytest.raises(G.UnitLabelRefused, match="unit_id"):
+        G.census({"fx": [row]}, journal, open_debt={"fx"})

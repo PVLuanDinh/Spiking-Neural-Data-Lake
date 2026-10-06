@@ -317,6 +317,10 @@ def classify_restored(rows, journal):
     out = []
     for row in rows:
         uid = row.get("unit_id") if isinstance(row, Mapping) else None
+        if isinstance(row, Mapping) and "unit_id" in row and not _ident(uid):
+            raise UnitLabelRefused(
+                uid, "unit_id", "a restored row's unit_id is not a non-negative int"
+            )
         entry = journal.get(uid) if _ident(uid) else None
         if entry is not None:
             diff = [
