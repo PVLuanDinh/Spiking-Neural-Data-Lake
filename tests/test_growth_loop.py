@@ -228,6 +228,18 @@ def test_retry_after_sleep_draws_no_fresh_budget(tmp_path):
     assert again.spend_units == first.spend_units and again.attempts == first.attempts + 1
 
 
+def test_a_retry_that_solves_is_reported_solved_with_its_spend_in_the_baseline(tmp_path):
+    # Codex cp5 #2: pause at 45/52, then a no-fresh-budget retry solves; the solve must stand
+    learner = ScriptedLearner(["CAPACITY"], solve_after_units=None)
+    sunk = []
+    loop, ledger = _loop(tmp_path, learner, solved_sink=sunk.append)
+    assert loop.run().state == "UNSOLVED"
+    learner.solve_after_units = 45
+    rec = loop.run()
+    assert rec.state == "SOLVED" and not rec.open and rec.spend_units == 45
+    assert len(sunk) == 1 and ledger.baseline() == 45
+
+
 # ---- one stop rule (2.6): the pause lives in GrowthStop
 # -----------------------------------------------
 

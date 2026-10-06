@@ -364,7 +364,8 @@ class GrowthLoop:
             return self.ledger.ledger(self.problem_id)
         if not self._may_grow(rec) and rec.spend_since_teach > 0:
             # a retry with no fresh budget: attempts only, growth frozen (2.6 retry rule)
-            self._attempt()
+            if self._attempt():  # a solve on the retry stands (Codex cp5 #2)
+                return self.ledger.ledger(self.problem_id)
             return self._paused()
         idle = 0
         while True:
