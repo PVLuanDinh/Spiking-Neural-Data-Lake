@@ -363,9 +363,22 @@ def _growth_zip(state):
 
 
 def home():
-    """The durable persistence dir. `NORD_HOME` overrides; default is ~/.snn_data_lake. Created on demand."""
-    d = os.environ.get("NORD_HOME") or os.path.join(os.path.expanduser("~"), ".snn_data_lake")
+    """The durable persistence dir. `NORD_HOME` overrides; default is ~/.snn_data_lake. Created on demand.
+
+    Pytest tripwire (owner 2026-10-06, after the 15:42 live-lake write): while a test RUNS
+    (`PYTEST_CURRENT_TEST` is set -- pytest sets it per test phase, and monkeypatch.undo() cannot
+    remove it), the live home is refused. R2's test undid conftest's hermetic NORD_HOME mid-test and a
+    persisting Brain appended to the operator's lake; now that path raises LiveHomeRefused instead."""
+    under_test = bool(os.environ.get("PYTEST_CURRENT_TEST"))
+    d = os.environ.get("NORD_HOME")
+    if under_test and not d:
+        raise LiveHomeRefused(
+            "home refused (unset under pytest): NORD_HOME is gone, so home() would be the live lake"
+        )
+    d = d or _default_live_home()
     os.makedirs(d, exist_ok=True)
+    if under_test:
+        assert_not_live_home(d)
     return d
 
 
