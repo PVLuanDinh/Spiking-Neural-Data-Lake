@@ -623,13 +623,15 @@ def test_inner_penalty_shape_never_sees_the_inner_held_out_edges(monkeypatch):
     seen = []
     real = pb.fit_global
 
-    def spy(d, nn, kk, kind="mix", init=None):
+    def spy(
+        d, nn, kk, kind="mix"
+    ):  # no `init`: a warm start carried in from the outer fit would TypeError
         seen.append(float(kk.sum()))
-        return real(d, nn, kk, kind, init=init)
+        return real(d, nn, kk, kind)
 
     monkeypatch.setattr(pb, "fit_global", spy)
     f = 1
-    pb.choose_penalty(np.arange(8) + 0.5, n, k, f, np.log([5.0, 5.0, 1.0]), "gauss")
+    pb.choose_penalty(np.arange(8) + 0.5, n, k, f, "gauss")
     expect = []
     for g in (h for h in range(pb.K) if h != f):
         _, ktr, _, _ = pb.inner_split(n, k, f, g)
@@ -716,7 +718,7 @@ def test_penalty_grid_is_computed_once_per_inner_split_and_picks_match_fit_delta
         return real(*a, **kw)
 
     monkeypatch.setattr(pb, "delta_table", spy)
-    pb.choose_penalty(np.arange(12) + 0.5, n, k, 0, np.log([4.0, 4.0, 1.0]), "gauss")
+    pb.choose_penalty(np.arange(12) + 0.5, n, k, 0, "gauss")
     assert len(calls) == pb.K - 1  # one table per inner split, not len(PENALTIES) of them
     monkeypatch.undo()
     d, th = np.arange(12) + 0.5, np.log([4.0, 4.0, 1.0])

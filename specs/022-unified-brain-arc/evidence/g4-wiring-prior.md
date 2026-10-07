@@ -883,3 +883,10 @@ only; they were NOT re-panelled (a third panel round needs the owner). Each fold
   cross-class cells at 60 and 160 um); a record must carry exactly those two cells with two finite fits within 15 percent on every seed.
   `recovered`, `_holds`, `pooling_sighted` and `validate_planted` take the population. Red on `32b8a615`: `planted = []` with fits 75 / 190,
   and a self-consistent wrong-cell record, both returned True.
+- **F5 (the inner fit takes no outer initialiser; fold-lens MAJOR).** (d)N2 said the penalty search refits the shape on every inner training
+  split "optimum decided by that split's counts", but the refit was warm-started from the OUTER fit, which saw the inner-held-out edges; when
+  the inner objective is flat (one occupied bin with n = k, clipped) the Nelder-Mead start IS the answer (init 1 um returned log-widths
+  [0, 0], init 100 um [4.6, 4.6]). Fixed to N2's words: each inner fit starts from its own training counts (the grid start), `fit_global`
+  loses its `init` argument and `choose_penalty` its outer-shape argument. Cost: one grid scan per inner split (the fast test file
+  went from about 53 s to 65 s); the H01-scale cost is unmeasured and waits for the machine. Red on `d6358c24`: the spy saw a non-None
+  initialiser on every inner fit.

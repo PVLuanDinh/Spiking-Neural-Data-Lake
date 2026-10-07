@@ -13,7 +13,7 @@ Contrasts: G-F (does the kernel beat its distance-free twin) and P-G (does pooli
 ORDER IS ENFORCED (amendment 4, A8): `run_planted` reads positions and layer / sign only; `score_h01` refuses
 unless a planted record is handed in whose bands recompute and whose every row recomputes to its expectation.
 SIMPLIFICATIONS, DISCLOSED in the amendment's dated addendum: P fits delta_p given the global shape (no joint
-refit); the penalty search reuses the outer-training global shape; a cell amplitude carries a pseudo-count of
+refit); the penalty search refits the shape on every inner training split; a cell amplitude carries a pseudo-count of
 0.5 so a cell with no training edge keeps a positive probability; the planted draw is edge-level, like T3's.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.h01_partb_tangential        (self-check)
@@ -300,7 +300,7 @@ def _profile(n, k, g):
     return a, (k * np.log(p) + (n - k) * np.log1p(-p)).sum(1)
 
 
-def fit_global(d, n, k, kind="mix", init=None):
+def fit_global(d, n, k, kind="mix"):
     keep = n.sum(1) > 0
     n, k = n[keep], k[keep]
 
@@ -309,8 +309,6 @@ def fit_global(d, n, k, kind="mix", init=None):
             v = -_profile(n, k, shape(d[None, :], th, kind))[1].sum()
         return v if math.isfinite(v) else math.inf
 
-    if init is not None:  # warm start only: the optimum is decided by THIS (n, k)
-        return t3.nelder_mead(nll, np.asarray(init, dtype=float))[0]
     grid = t3.WIDTH_GRID[::5]
     best = min(
         (
@@ -380,14 +378,14 @@ def inner_split(hist_n, hist_k, f, g):
     return ntr, ktr, nin - ntr, kin - ktr
 
 
-def choose_penalty(d, hist_n, hist_k, f, th, kind):
-    """Nested folds on the TRAINING folds only: the penalty with the best summed inner held-out LL."""
+def choose_penalty(d, hist_n, hist_k, f, kind):
+    """Nested folds on the TRAINING folds only: the penalty with the best summed inner held-out LL. Each inner
+    fit starts from its OWN training counts (no initialiser from the outer fit, which saw the inner-held-out
+    edges: on a flat objective the initialiser is the answer; amendment (f) F5)."""
     score = dict.fromkeys(PENALTIES, 0.0)
     for g in (h for h in range(hist_n.shape[0]) if h != f):
         ntr, ktr, nte, kte = inner_split(hist_n, hist_k, f, g)
-        th_in = fit_global(
-            d, ntr, ktr, kind, init=th
-        )  # N2: the shape never sees the inner-held-out edges
+        th_in = fit_global(d, ntr, ktr, kind)  # N2: the shape never sees the inner-held-out edges
         table = delta_table(d, ntr, ktr, th_in, kind)  # once per inner split, not once per penalty
         for pen in PENALTIES:
             delta = pick_delta(table, pen)
@@ -401,7 +399,7 @@ def score_labels(d, n, k, labels_n, kind="mix", forms=False):
     for f in range(labels_n):
         ntr, ktr, nte, kte = t3.split(n, k, np.arange(n.shape[0]), f)
         th = fit_global(d, ntr, ktr, kind)
-        pen = choose_penalty(d, n, k, f, th, kind)
+        pen = choose_penalty(d, n, k, f, kind)
         delta = fit_delta(d, ntr, ktr, th, kind, pen)
         rec = {
             "F": flat_ll(ntr, ktr, nte, kte),
