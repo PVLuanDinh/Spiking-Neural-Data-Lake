@@ -372,3 +372,21 @@ def test_brain_cell_itself_refuses_a_home_that_is_not_the_one_it_was_given(monke
     with pytest.raises(home.LiveHomeRefused, match="not the fresh one"):
         g.brain_cell((20261003, "DELTA", [0, 1, 0]))
     assert built == []
+
+
+def test_a_lake_move_during_a_successful_arm_stage_halts(monkeypatch):
+    # Codex g5_b lens-2 (d7d20f63 mutation): RECORD leaves the lake still, an arm moves it and
+    # returns normally -- the post-arm check, not an exception path, must catch it
+    from concurrent.futures import ThreadPoolExecutor
+
+    stamps = iter([("a", "b"), ("a", "b"), ("a2", "b")])
+    monkeypatch.setattr(g, "live_lake_stamp", lambda: next(stamps))
+    with pytest.raises(g.LiveLakeMoved, match="arm stage"):
+        g.run_cells(
+            (1,),
+            ("DELTA",),
+            workers=1,
+            log=lambda *_: None,
+            pool=ThreadPoolExecutor,
+            cell=_fake_cell,
+        )
