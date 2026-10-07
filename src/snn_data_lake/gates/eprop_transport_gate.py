@@ -517,7 +517,11 @@ def signal_sites_in(tree):
     for scope in scopes:
         tainted = set()
         for stmt in _scope_stmts(scope):
-            hit = _hits(_own_exprs(stmt), tainted, out)
+            exprs = list(_own_exprs(stmt))
+            if isinstance(stmt, ast.AugAssign) and isinstance(stmt.op, (ast.Mult, ast.MatMult)):
+                # `lsig *= Wout[j]` is the product `lsig * Wout[j]` spelled in place
+                exprs.append(ast.copy_location(ast.BinOp(stmt.target, stmt.op, stmt.value), stmt))
+            hit = _hits(exprs, tainted, out)
             if (
                 not isinstance(stmt, (ast.Assign, ast.AugAssign, ast.AnnAssign))
                 or stmt.value is None
@@ -1209,6 +1213,15 @@ def fwd(x, W):
             """def f(err, x, W_out, W):
     a, b = err @ W_out, x
     return b @ W.T
+""",
+            1,
+        ),
+        (
+            "an augmented product `lsig = err; lsig *= Wout[j]`",
+            """def f(err, Wout, j):
+    lsig = err
+    lsig *= Wout[j]
+    return lsig
 """,
             1,
         ),
