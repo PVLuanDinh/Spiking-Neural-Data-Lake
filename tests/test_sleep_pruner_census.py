@@ -5,6 +5,7 @@ Brain-backed cases build ONE short scratch brain per arm under throwaway_home (n
 """
 
 import os
+import stat
 
 import pytest
 
@@ -171,7 +172,13 @@ def _live_mtime(home=LIVE_HOME):
     skills/). A file that cannot be stat'd FAILS CLOSED: it gets a fresh object that never equals
     another stamp's, so an unreadable pair reads as changed, never as unchanged. A directory that
     cannot be listed fails closed the same way."""
-    if not os.path.isdir(home):
+    try:
+        root = os.stat(home)
+    except FileNotFoundError:
+        return None  # ABSENT is a stable stamp (a lake not yet created)
+    except OSError:
+        return object()  # any other failure on the root fails closed, never equal to another stamp
+    if not stat.S_ISDIR(root.st_mode):
         return None
     out = {}
 
@@ -231,6 +238,28 @@ def test_the_live_stamp_fails_closed_on_an_unlistable_directory(tmp_path, monkey
     first = _live_mtime(str(decoy))
     (decoy / "sub" / "a.bin").write_bytes(b"22")
     assert _live_mtime(str(decoy)) != first  # an unlistable directory never reads as unchanged
+
+
+def test_the_live_stamp_tells_an_absent_root_from_an_unreadable_one(tmp_path, monkeypatch):
+    """Codex fold lens M1: an unreadable root made os.path.isdir False, so both stamps were None
+    and read as unchanged. Absence (FileNotFoundError on the root) is a stable stamp; any other
+    failure on the root is a never-equal marker."""
+    gone = str(tmp_path / "never_created")
+    assert _live_mtime(gone) is None and _live_mtime(gone) == _live_mtime(gone)
+    decoy = tmp_path / "decoy_live"
+    decoy.mkdir()
+    real_stat = os.stat
+
+    def deny_root(path, *a, **k):
+        if os.fspath(path) == str(decoy):
+            raise PermissionError(13, "denied", str(path))
+        return real_stat(path, *a, **k)
+
+    monkeypatch.setattr(os, "stat", deny_root)
+    monkeypatch.setattr(
+        os.path, "isdir", lambda *_a, **_k: False
+    )  # what isdir answers on a stat error
+    assert _live_mtime(str(decoy)) != _live_mtime(str(decoy))
 
 
 def test_c6_the_live_arm_is_byte_repeatable(short_runs):
