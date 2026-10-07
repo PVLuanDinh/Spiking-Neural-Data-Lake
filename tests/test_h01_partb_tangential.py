@@ -461,23 +461,29 @@ def test_pathway_recovery_is_enforced_by_the_gate_on_both_widths():
         assert pb.pooling_sighted(plan, rows, bands) is ok, fitted  # P-G fires in every case
 
 
-def test_selected_form_is_what_is_exported_and_a_disagreement_is_recorded(pop, n_all):
+def test_exported_form_is_the_scored_form_and_the_selection_is_disclosure_only(pop, n_all):
+    """F1 (fold-lens round 2): the verdict was earned by the mixture's G / P scores, so the mixture
+    is what the record exports whatever form the tangential selection prefers; the selection and
+    its disagreement with T3's K are recorded."""
     truth = {"form": "gauss", "width": 60.0}
     h, _ = pb.build_hists(pop, 10020, n_all=n_all, truth=truth, n_edges=1200)
     edges = (np.zeros(2, dtype=int), np.ones(2, dtype=int))
-    args = (pop, h)
 
     def rec(units, t3_k, gap):
         return pb.build_record(
-            *args, units, "PASS", "global", edges, "a" * 64, {"K": t3_k}, {"form_gap": gap}
+            pop, h, units, "PASS", "global", edges, "a" * 64, {"K": t3_k}, {"form_gap": gap}
         )
 
     gauss_units = [_fake_unit(10020 + i) for i in range(8)]
     r = rec(gauss_units, "mix", 0.5)
-    assert r["form"] == "gauss" and r["c"] == 0.0 and r["form_disagrees_t3"] is True
+    assert pb.select_form(gauss_units, {"form_gap": 0.5}) == "gauss"
+    assert (
+        r["form"] == "mix" and r["a"] == 1.0 and r["c"] > 0.0
+    )  # the scored kernel, not the selected one
+    assert r["form_selected"] == "gauss" and r["form_disagrees_t3"] is True
     exp_units = [_fake_unit(10020 + i, form="exp") for i in range(8)]
     r = rec(exp_units, "exp", 0.5)
-    assert r["form"] == "exp" and r["a"] == 0.0 and r["form_disagrees_t3"] is False
+    assert r["form"] == "mix" and r["form_selected"] == "exp" and r["form_disagrees_t3"] is False
     mix_units = [_fake_unit(10020 + i) for i in range(8)]
     for i, u in enumerate(mix_units):
         u["forms"] = {
@@ -486,7 +492,7 @@ def test_selected_form_is_what_is_exported_and_a_disagreement_is_recorded(pop, n
             "mix": 20.0 + i,
         }  # a varying, large mixture advantage
     r = rec(mix_units, "mix", 5.0)
-    assert r["form"] == "mix" and r["a"] == 1.0 and r["c"] > 0.0 and r["form_disagrees_t3"] is False
+    assert r["form"] == "mix" and r["form_selected"] == "mix" and r["form_disagrees_t3"] is False
     assert pb.select_form(mix_units, {"form_gap": 50.0}) == "gauss"  # inside the band: no upgrade
 
 
@@ -512,9 +518,9 @@ def test_pooled_record_amplitudes_belong_to_the_delivered_widths_and_the_consume
     )
     d = (np.arange(p2.nb) + 0.5) * pb.BIN
     n, k = h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))
-    th = pb.fit_global(d, n, k, "gauss")
-    delta = pb.fit_delta(d, n, k, th, "gauss", rec["penalty"])
-    amp, _ = pb._profile(n, k, pb.shape(d[None, :] * np.exp(-delta)[:, None], th, "gauss"))
+    th = pb.fit_global(d, n, k, "mix")
+    delta = pb.fit_delta(d, n, k, th, "mix", rec["penalty"])
+    amp, _ = pb._profile(n, k, pb.shape(d[None, :] * np.exp(-delta)[:, None], th, "mix"))
     for c, v in rec["pathway_amplitudes"].items():
         assert math.isclose(
             v, float(amp[int(c)]), rel_tol=1e-9
@@ -524,8 +530,11 @@ def test_pooled_record_amplitudes_belong_to_the_delivered_widths_and_the_consume
     # B2: the consumer's kernel for that pathway is the record's own width, not the global one
     c = cells[0]
     f = wp.kernel_shape(rec, c)
-    sg = rec["pathway_widths"][c][0]
-    assert math.isclose(float(f(np.array([40.0]))[0]), math.exp(-(40.0**2) / (2 * sg**2)))
+    sg, lam = rec["pathway_widths"][c]
+    want = (rec["a"] * math.exp(-(40.0**2) / (2 * sg**2)) + rec["c"] * math.exp(-40.0 / lam)) / (
+        rec["a"] + rec["c"]
+    )
+    assert math.isclose(float(f(np.array([40.0]))[0]), want)
 
 
 def test_zero_exposure_cell_takes_the_pooled_amplitude_in_both_arms():

@@ -858,3 +858,15 @@ Pointers (no frozen passage is edited); adds to (c) and (d). The safety lens re-
   distance-free twin by 173 nats held-out (196 per-cell amplitudes against 300 edges); at 240 units and 1,200 edges it wins by about 800.
   The instrument's small-sample behaviour is overfitting-limited, not blind; H01's 70,001 edges are the regime that matters, and the
   planted rows on H01 positions are what decides whether the arms are sighted there.
+
+### Dated pre-data amendment 2026-10-07 (f) to the Part B amendment -- the fold-lens panel's round-2 folds (Codex gpt-6.1-sol, range c28c7d7b..48c6ea71); no edge read
+
+Pointers (no frozen passage is edited); adds to (c)-(e) and supersedes (c)M2's wording where named. Panel-prompted, before any Part B run
+and before any H01 edge or position read for Part B. LABEL: these folds were verified by their own constructed reds and the fast test suite
+only; they were NOT re-panelled (a third panel round needs the owner). Each fold is one commit on `claude/g4`.
+- **F1 (the exported kernel is the scored kernel; fold-lens BLOCKER).** G and P are the MIXTURE (frozen text 2: "form = T3's K, the mixture,
+  refit tangentially"), and every verdict, penalty and sightedness reading is earned by those arms. (c)M2 exported the form `select_form`
+  preferred, which the PASS never tested. Superseded: the record exports `SCORED_KIND` = the mixture (`form`); `select_form` is DISCLOSURE only
+  and its result is recorded as `form_selected`, with `form_disagrees_t3` = (T3's K differs from the tangentially selected form), routed to
+  the owner as 2.8 requires. T3's verdict does not change. Constructed red: a unit set whose selection is Gaussian while the verdict is PASS
+  exported Gaussian on `48c6ea71`.

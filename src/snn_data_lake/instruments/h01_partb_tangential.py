@@ -46,6 +46,9 @@ DELTAS = np.linspace(-1.5, 1.5, 31)
 SEEDS = tuple(range(10350, 10358))  # the confirmatory H01 partitions (amendment 5)
 CONTRASTS = ("G-F", "P-G")
 KINDS = ("gauss", "exp", "mix")
+SCORED_KIND = (
+    "mix"  # the form of the G / P arms (frozen text 2: T3's K, the mixture, refit tangentially)
+)
 
 
 class ExposureRefused(RuntimeError):
@@ -422,7 +425,7 @@ def _diffs(rows):
     return {"G-F": s["G"] - s["F"], "P-G": s["P"] - s["G"]}
 
 
-def score_unit(pop, h, kind="mix"):
+def score_unit(pop, h, kind=SCORED_KIND):
     d = (np.arange(pop.nb) + 0.5) * BIN
     neuron = score_labels(d, h.n_fold, h.k_fold, K, kind, forms=True)
     interior = score_labels(d, h.n_int, h.k_int, K, kind)
@@ -747,7 +750,8 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
 
 
 def select_form(units, bands):
-    """The form the record exports (frozen before any H01 read; T3's A2 shape on the Part B forms): the better
+    """The form the tangential held-out scores prefer, DISCLOSED in the record (`form_selected`; the record exports
+    SCORED_KIND, the form its verdict was earned by -- amendment (f) F1). T3's A2 shape on the Part B forms: the better
     single kernel by summed held-out LL (tie order: Gaussian), upgraded to the mixture iff the mixture's advantage
     over that single form is a MET paired contrast over the 8 seeds above the calibrated `form_gap` band."""
     ll = {f: math.fsum(u["forms"][f] for u in units) for f in KINDS}
@@ -768,12 +772,15 @@ def export_params(kind, th):
 
 
 def build_record(pop, h, units, verdict, keep, edges, sha, t3_ref=None, bands=None):
-    """The record growth/wiring_prior.py reads (schema agreed with G7). The exported kernel is the SELECTED form
-    (select_form) fitted on ALL pairs and edges, so a tangential disagreement with T3's form changes what is
-    delivered; the disagreement is recorded. Per-cell amplitudes, per-cell widths if pooled, beta = 0 until B2."""
+    """The record growth/wiring_prior.py reads (schema agreed with G7). The exported kernel is the SCORED form
+    (SCORED_KIND: the G / P arms that decided the verdict) fitted on ALL pairs and edges; the tangentially selected
+    form (select_form) and its disagreement with T3's K are recorded, not delivered. Per-cell amplitudes, per-cell widths if pooled, beta = 0 until B2."""
     d = (np.arange(pop.nb) + 0.5) * BIN
     n, k = h if isinstance(h, tuple) else (h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1)))
-    kind = select_form(units, bands)
+    kind, selected = (
+        SCORED_KIND,
+        select_form(units, bands),
+    )  # the verdict was earned by the scored form
     th = fit_global(d, n, k, kind)
     a_w, c_w, sigma, lam = export_params(kind, th)
     live = np.flatnonzero(n.sum(1) > 0)
@@ -789,8 +796,9 @@ def build_record(pop, h, units, verdict, keep, edges, sha, t3_ref=None, bands=No
         "reading": verdict,
         "keep": keep,
         "form": kind,
+        "form_selected": selected,
         "form_t3": t3_k,
-        "form_disagrees_t3": t3_k is not None and t3_k != kind,
+        "form_disagrees_t3": t3_k is not None and t3_k != selected,
         "a": a_w,
         "c": c_w,
         "sigma_um": sigma,
