@@ -123,10 +123,10 @@ def test_a_home_swapped_for_another_populated_dir_is_refused_not_just_a_live_one
     other.mkdir()
     with throwaway_home() as fresh:
         assert g.check_fresh_home(fresh)  # the yielded home passes
-        monkeypatch.setenv("NORD_HOME", str(other))
-        with pytest.raises(LiveHomeRefused, match="not the fresh one"):
-            g.check_fresh_home(fresh)
-        monkeypatch.setenv("NORD_HOME", fresh)
+        with monkeypatch.context() as m:  # undone INSIDE the home, never after it is deleted
+            m.setenv("NORD_HOME", str(other))
+            with pytest.raises(LiveHomeRefused, match="not the fresh one"):
+                g.check_fresh_home(fresh)
 
 
 def _fake_cell(args):
@@ -359,12 +359,9 @@ def test_brain_cell_itself_refuses_a_home_that_is_not_the_one_it_was_given(monke
 
     @contextlib.contextmanager
     def swapped():
-        with real() as fresh:
-            monkeypatch.setenv("NORD_HOME", str(other))  # yields A, but the process points at B
-            try:
-                yield fresh
-            finally:
-                monkeypatch.setenv("NORD_HOME", fresh)
+        with real() as fresh, monkeypatch.context() as m:
+            m.setenv("NORD_HOME", str(other))  # yields A, but the process points at B
+            yield fresh
 
     built = []
     monkeypatch.setattr(home, "throwaway_home", swapped)
