@@ -338,6 +338,17 @@ def test_claims_f4_partial_credit_stands_and_red_does_not():
     assert "NOT MADE" in m.claims_report("F4", {"C7": c}, recs, red)[0]
 
 
+def test_a_dev_set_never_claims_even_on_a_met_row():
+    """Fold lens M2: the dev seeds are EXPOSED; a MET row there is a reading, never a claim."""
+    recs = [_record("ON", s) for s in (16000, 16001)]
+    c = _met_all()
+    met = "MET: old-experience replay carries the gain (C2 MET)"
+    args = ("F1", {"C1": c, "C1-NI": c, "C1-NI-B": c}, recs, met)
+    assert "STANDS" in m.claims_report(*args)[0]
+    line = m.claims_report(*args, set_name="dev")[0]
+    assert "NOT MADE" in line and "STANDS" not in line and "dev" in line
+
+
 KE_PLANTS = {
     "short": lambda rs: rs[0].update(restored=[1] * 6 + [0] * 6, inproc=[1] * 12, n_a=6),
     "empty_b": lambda rs: rs[0].update(restored=[1] * 8, inproc=[1] * 8, n_a=8),

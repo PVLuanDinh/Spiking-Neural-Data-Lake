@@ -1038,15 +1038,22 @@ def claim_stands(row):
     return row.startswith(CLAIM_ROWS)
 
 
-def claims_report(family, contrasts, recs, row):
+def claims_report(family, contrasts, recs, row, set_name=None):
     """P-6 (Codex cp2 #12): the claims made through the family's ONE declared primary (PRIMARY, read here),
     beside the tests read; the verdict is the family's final table `row`, never the primaries alone; plus
-    the endpoint quantum and the secondary correct-label margin."""
+    the endpoint quantum and the secondary correct-label margin. The dev seeds are EXPOSED (fold lens M2): a
+    dev row is a reading and never a claim, whatever it says."""
     prim = PRIMARY[family]
     made = [n for n in prim if n in contrasts and contrasts[n].met]
     lines = [
         f"primary met: {len(made)} of {len(prim)} {list(prim)} -> {made}; claim "
-        + ("STANDS" if claim_stands(row) else "NOT MADE")
+        + (
+            "NOT MADE (exposed dev seeds: a reading, never a claim)"
+            if set_name == "dev"
+            else "STANDS"
+            if claim_stands(row)
+            else "NOT MADE"
+        )
         + f" (the family's final guarded row decides: {row[:60]})",
         f"endpoint quantum E_all = 1/{len(recs[0]['restored'])}",
         "secondary correct-label margin (mean over seeds, per arm): "
@@ -1298,7 +1305,7 @@ def _main_cmd(a):
         else:
             print("table:", res["row"], "(set", a.set + ")")
         for line in census(res["contrasts"].values()) + claims_report(
-            a.family, res["contrasts"], recs, res["row"]
+            a.family, res["contrasts"], recs, res["row"], set_name=a.set
         ):
             print(line)
         walls = {}
