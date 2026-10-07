@@ -590,6 +590,42 @@ def pooling_sighted(plan, rows, bands):
     )
 
 
+IMPLEMENTATION = (
+    "src/snn_data_lake/instruments/h01_partb_tangential.py",
+    "src/snn_data_lake/instruments/h01_distance_kernel.py",
+    "src/snn_data_lake/instruments/paired_contrast.py",
+)
+
+
+def _file_sha(rel):
+    return hashlib.sha256(
+        (t3.REPO / rel).read_bytes().replace(bytes([13, 10]), bytes([10]))
+    ).hexdigest()
+
+
+def identity():
+    """What a planted record is valid FOR (safety S3): the frozen configuration, the frame's centre, the planted
+    amplitudes' fingerprint and the hashes of the instrument's source. A record drawn by other code or settings
+    cannot authorise this instrument's H01 read."""
+    return {
+        "config": {
+            "penalties": list(PENALTIES),
+            "deltas": [float(x) for x in DELTAS],
+            "pseudo": PSEUDO,
+            "bin_um": BIN,
+            "folds": K,
+            "blocks": NB_REG,
+            "frame_window": FRAME_WINDOW,
+            "frame_violation_max": FRAME_VIOLATION_MAX,
+            "pathway_recovery_tol": PATHWAY_RECOVERY_TOL,
+            "t_bar": t3.T_BAR,
+            "centre_um": list(t3.region_centre()),
+            "amplitude_sha256": hashlib.sha256(cell_amplitude().tobytes()).hexdigest(),
+        },
+        "impl_sha256": {f: _file_sha(f) for f in IMPLEMENTATION},
+    }
+
+
 def plan_dicts(plan):
     return [r._asdict() | {"truth": dict(r.truth)} for r in plan]
 
@@ -619,6 +655,7 @@ def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
         "plan": plan_dicts(plan),
         "population_sha256": fingerprint(pop),
         "n_edges_target": n_edges,
+        "identity": identity(),
         "bands": bands,
         "bands_sha256": hashlib.sha256(json.dumps(bands, sort_keys=True).encode()).hexdigest(),
         "rows": rows,
@@ -637,6 +674,10 @@ def validate_planted(record, pop, plan=PLAN, n_edges=t3.N_EDGES):
         or record.get("n_edges_target") != n_edges
     ):
         raise ExposureRefused("the planted record was drawn on a different population or density")
+    if _plan_json(record.get("identity")) != _plan_json(identity()):
+        raise ExposureRefused(
+            "the planted record was drawn by other code or settings (identity differs)"
+        )
     if _plan_json(record["plan"]) != _plan_json(plan_dicts(plan)) or set(record["rows"]) != {
         r.name for r in plan
     }:

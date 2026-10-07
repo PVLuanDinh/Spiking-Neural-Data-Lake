@@ -5,6 +5,7 @@ units near the white-matter circle); no H01 file, no network, no Brain, no lake.
   PYTHONUTF8=1 PYTHONPATH=src pytest tests/test_h01_partb_tangential.py -q --no-cov
 """
 
+import json
 import math
 
 import numpy as np
@@ -273,6 +274,7 @@ def test_pooling_gate_is_a_gate_not_a_caveat(pop):
     rec = {
         "population_sha256": pb.fingerprint(pop),
         "n_edges_target": 1200,
+        "identity": pb.identity(),
         "plan": [r._asdict() for r in plan],
         "rows": _fake_rows(plan, False),
         "bands": pb.calibrate_bands(_fake_rows(plan, False)[plan[0].name]["units"]),
@@ -417,6 +419,7 @@ def test_planted_plan_is_compared_in_full_not_by_names(pop):
     rec = {
         "population_sha256": pb.fingerprint(pop),
         "n_edges_target": 1200,
+        "identity": pb.identity(),
         "plan": pb.plan_dicts(plan),
         "rows": rows,
         "bands": pb.calibrate_bands(rows[plan[0].name]["units"]),
@@ -605,3 +608,35 @@ def test_cli_refuses_before_computing_when_out_is_an_input(tmp_path):
     with pytest.raises(t3.OutputRefused):
         pb.main(["planted", "--artifact", str(art), "--out", str(art)])
     assert art.read_bytes() == b"not an artifact"
+
+
+def test_a_stale_planted_record_cannot_authorise_a_changed_instrument(pop, monkeypatch):
+    plan = pb.PLAN
+    rows = _fake_rows(plan, False)
+    rec = {
+        "population_sha256": pb.fingerprint(pop),
+        "n_edges_target": 1200,
+        "identity": pb.identity(),
+        "plan": pb.plan_dicts(plan),
+        "rows": rows,
+        "bands": pb.calibrate_bands(rows[plan[0].name]["units"]),
+    }
+    assert pb.validate_planted(rec, pop, plan, 1200) == rec["bands"]
+    monkeypatch.setattr(pb, "PENALTIES", (2.0, 8.0))  # a changed frozen setting
+    with pytest.raises(pb.ExposureRefused):
+        pb.validate_planted(rec, pop, plan, 1200)
+    monkeypatch.undo()
+    cx, cy = t3.region_centre()
+    monkeypatch.setattr(t3, "region_centre", lambda: (cx + 5.0, cy))  # a moved frame centre
+    with pytest.raises(pb.ExposureRefused):
+        pb.validate_planted(rec, pop, plan, 1200)
+    monkeypatch.undo()
+    monkeypatch.setattr(pb, "_file_sha", lambda rel: "0" * 64)  # changed implementation
+    with pytest.raises(pb.ExposureRefused):
+        pb.validate_planted(rec, pop, plan, 1200)
+    monkeypatch.undo()
+    for edit in (lambda r: r.pop("identity"), lambda r: r["identity"]["impl_sha256"].popitem()):
+        bad = json.loads(json.dumps(rec))
+        edit(bad)
+        with pytest.raises(pb.ExposureRefused):
+            pb.validate_planted(bad, pop, plan, 1200)
