@@ -920,8 +920,8 @@ Additive; no clause above changes. Nothing confirmatory has run. Unreviewed amen
    (codex_panels_1006\g3) and re-panelled once on int1b @8ea4d59c (1 MAJOR, folded as c7f4e7f9 / int1b 3e3610f1):
    battery-verified only, not re-panelled. The instrument arcs have NO Codex panel: `instruments/unit_organization.py`
    and `tests/test_unit_organization.py` through 5f8c523d..24cff9db, 90923817 (`t4_wiring_half`) and 76447037 (RANDOM
-   refuses M beyond the pairs). They are not in batch 1 (the file is absent on int1b). Their reds ran on this row's
-   branch only; a panel is owed before any T1 or T4 run reads them.
+   refuses M beyond the pairs). They are not in batch 1 (the file is absent on int1b). Their test results are not
+   restated here; a panel is owed before any T1 or T4 run reads them.
 2. **T4's wiring-run inputs are named placeholders until G4's records land; no number is chosen here.** N and M
    (`M = round(N x dbar / 2)`, D22) come from the Part B record's `dbar` (read as `record["dbar"]["dbar"]` per G4's
    current writer, to be confirmed by G4); `<KERNEL>` = G4's Part B kernel for the arm (see 3); `<BETA>` = G4's Part B2
