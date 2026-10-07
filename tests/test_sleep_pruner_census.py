@@ -167,39 +167,46 @@ def short_runs():
 
 
 def _live_mtime(home=LIVE_HOME):
-    """{name: (size, mtime_ns)} of a home; a file that cannot be stat'd is None (never raises)."""
-    try:
-        names = os.listdir(home)
-    except FileNotFoundError:
+    """{relpath: (size, mtime_ns)} of every file under a home, recursively (the live home has
+    skills/). A file that cannot be stat'd FAILS CLOSED: it gets a fresh object that never equals
+    another stamp's, so a stamp pair that cannot be read reads as changed, never as unchanged."""
+    if not os.path.isdir(home):
         return None
     out = {}
-    for f in names:
-        try:
-            st = os.stat(os.path.join(home, f))
-            out[f] = (st.st_size, st.st_mtime_ns)
-        except OSError:
-            out[f] = None
+    for root, _dirs, files in os.walk(home):
+        for f in files:
+            full = os.path.join(root, f)
+            try:
+                st = os.stat(full)
+                out[os.path.relpath(full, home)] = (st.st_size, st.st_mtime_ns)
+            except OSError:
+                out[os.path.relpath(full, home)] = object()
     return out
 
 
-def test_the_live_stamp_detects_change_appearance_and_removal_and_survives_unreadable(
+def test_the_live_stamp_detects_change_appearance_nested_rewrite_and_fails_closed(
     tmp_path, monkeypatch
 ):
-    """Positive control for the isolation stamp (Codex safety#8), driven on a DECOY home."""
+    """Positive control for the isolation stamp (Codex safety#8, R3), driven on a DECOY home."""
     decoy = tmp_path / "decoy_live"
-    decoy.mkdir()
+    (decoy / "skills").mkdir(parents=True)
     (decoy / "brain_lake.bin").write_bytes(b"abc")
+    (decoy / "skills" / "a.npz").write_bytes(b"123")
     base = _live_mtime(str(decoy))
     (decoy / "brain_lake.bin").write_bytes(b"abcd")
     assert _live_mtime(str(decoy)) != base  # a size change
-    (decoy / "latch.json").write_text("x")
-    assert _live_mtime(str(decoy)) != base  # a new sidecar
-    (decoy / "latch.json").unlink()
     (decoy / "brain_lake.bin").write_bytes(b"abc")
     os.utime(decoy / "brain_lake.bin", ns=(1, 1))
     assert _live_mtime(str(decoy)) != base  # mtime alone
+    (decoy / "brain_lake.bin").write_bytes(b"abc")
+    base = _live_mtime(str(decoy))
+    (decoy / "skills" / "a.npz").write_bytes(b"1234")
+    assert _live_mtime(str(decoy)) != base  # a NESTED rewrite in place (no dir mtime moves)
+    base = _live_mtime(str(decoy))
+    (decoy / "skills" / "new.npz").write_text("x")
+    assert _live_mtime(str(decoy)) != base  # a new nested file
     monkeypatch.setattr(os, "stat", lambda *_a, **_k: (_ for _ in ()).throw(PermissionError()))
-    assert _live_mtime(str(decoy)) == {"brain_lake.bin": None}
+    assert _live_mtime(str(decoy)) != _live_mtime(str(decoy))  # unreadable fails closed
 
 
 def test_c6_the_live_arm_is_byte_repeatable(short_runs):
