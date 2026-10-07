@@ -472,6 +472,11 @@ def read_partb(st, frame_ok=True, planted_ok=True, pooling_sighted=True):
             return "NOT_READ_BOUNDARY", None
         if t3._opposite(sn[c], sr[c]):
             return "NOT_READ_DISAGREE", None
+    if any(blk["G-F"] != 1 for blk in st["region_blocks"]):
+        return (
+            "RED_PATHWAY_FLAT_REGION",
+            None,
+        )  # the kernel fails a held-out region (A3 row 6): the factor leaves
     if not pooling_sighted:
         return "NOT_READ_POOLING_UNSIGHTED", None
     if sn["P-G"] != 1:
@@ -504,9 +509,19 @@ def recovered(truth, units):
     return True
 
 
+def no_positive_kernel(st):
+    """A5's validation bar: no kernel-over-flat state is +1 under ANY scoring (neuron, interior, every region
+    block, the region aggregate)."""
+    states_ = [st["neuron"]["G-F"], st["interior"]["G-F"], st["region_aggregate"]["G-F"]]
+    return all(x != 1 for x in states_ + [blk["G-F"] for blk in st["region_blocks"]])
+
+
 def _holds(row, units, bands):
-    verdict, _ = read_partb(states(units, bands))
+    st = states(units, bands)
+    verdict, _ = read_partb(st)
     want = {"red_flat": "RED_PATHWAY_FLAT", "red_pool": "RED_POOL"}[row.expect]
+    if row.expect == "red_flat" and not no_positive_kernel(st):
+        return False
     return verdict == want and recovered(row.truth, units)
 
 

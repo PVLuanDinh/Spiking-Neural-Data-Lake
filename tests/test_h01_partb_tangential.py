@@ -93,8 +93,9 @@ def test_gate_refuses_before_a_planted_record_and_on_a_perturbed_one(pop):
         pb.validate_planted({"population_sha256": "x", "n_edges_target": 1}, pop)
 
 
-def _st(g_f=1, p_g=1, z_gf=1, z_pg=1, r_gf=1, r_pg=1):
+def _st(g_f=1, p_g=1, z_gf=1, z_pg=1, r_gf=1, r_pg=1, blocks=(1, 1, 1, 1)):
     return {
+        "region_blocks": [{"G-F": b, "P-G": 1} for b in blocks],
         "neuron": {"G-F": g_f, "P-G": p_g},
         "interior": {"G-F": z_gf, "P-G": z_pg},
         "region_aggregate": {"G-F": r_gf, "P-G": r_pg},
@@ -110,6 +111,8 @@ def _st(g_f=1, p_g=1, z_gf=1, z_pg=1, r_gf=1, r_pg=1):
         ({"g_f": -1}, ("RED_PATHWAY_FLAT", None)),
         ({"z_pg": -1}, ("NOT_READ_BOUNDARY", None)),
         ({"r_gf": -1}, ("NOT_READ_DISAGREE", None)),
+        ({"blocks": (1, 1, -1, 1)}, ("RED_PATHWAY_FLAT_REGION", None)),  # one region is enough
+        ({"blocks": (1, 0, 1, 1)}, ("RED_PATHWAY_FLAT_REGION", None)),
         ({"r_pg": 0, "z_pg": 0}, ("PASS", "pooled")),  # an unresolved state never vetoes
     ],
 )
@@ -216,13 +219,16 @@ def test_unsighted_pooling_turns_pg_into_not_read_and_keeps_earlier_rows():
     assert pb.read_partb(_st(), frame_ok=False, pooling_sighted=False) == ("REFUSED_FRAME", None)
 
 
-def _fake_unit(seed, gf=0.0, pg=0.0, form="gauss", w=60.0):
+def _fake_unit(seed, gf=0.0, pg=0.0, form="gauss", w=60.0, block_gf=None):
     z = {"G-F": gf, "P-G": pg}
+    region = [dict(z) for _ in range(pb.NB_REG)]
+    if block_gf is not None:
+        region[0] = {"G-F": block_gf, "P-G": pg}
     return {
         "seed": seed,
         "neuron": dict(z),
         "interior": dict(z),
-        "region": [dict(z) for _ in range(pb.NB_REG)],
+        "region": region,
         "forms": {
             "gauss": 10.0 if form == "gauss" else 0.0,
             "exp": 0.0 if form == "gauss" else 10.0,
@@ -349,3 +355,16 @@ def test_frame_statistic_is_soma_level_and_a_small_disorder_is_a_small_fraction(
     assert (
         0 < count <= 2 * pb.FRAME_WINDOW + 1 and frac == count / 1000
     )  # per soma, not per cross-band pair
+
+
+def test_flat_validation_bar_is_no_positive_under_any_scoring():
+    row = pb.PLAN[1]
+    ramp = [50.0 + i for i in range(8)]
+    calib = [_fake_unit(s) for s in pb.PLAN[0].seeds]
+    bands = pb.calibrate_bands(calib)
+    quiet = [_fake_unit(s) for s in row.seeds]
+    assert pb._holds(row, quiet, bands)
+    # a positive in ONE region block alone (neuron folds quiet): RED verdict, but the bar fails
+    leak = [_fake_unit(s, block_gf=ramp[i]) for i, s in enumerate(row.seeds)]
+    assert not pb._holds(row, leak, bands)
+    assert not pb.no_positive_kernel(pb.states(leak, bands))
