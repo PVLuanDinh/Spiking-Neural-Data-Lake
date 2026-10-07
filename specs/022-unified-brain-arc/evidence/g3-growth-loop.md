@@ -867,3 +867,31 @@ Ties to the state-branch amendment (98d92203) and its ctxread row types (21ca1bc
   dated amendment defines the step, G7 and R2 refute it, and the reconstruction test (with the three reds of 98d92203) is built.
 - **Meanwhile:** the interim exclusion rule of 98d92203 stands: deposits made while a memory unit is live are excluded from redo
   eligibility, counted and reported; R2's verdict on grown MEMORY-role units stays excluded (NOT RECOVERABLE-excluded).
+
+## DATED ADDENDUM 2026-10-07 (P5 build disclosures and a corrected measurement; no confirmatory data read)
+
+- **Branch and commits.** `claude/g3-p5` from batch 1 (8ea4d59c). `bdf7d8a2`: `_Pool.percept_fed(x, feed)`, the declared
+  input port on `reservoir/recurrent_pool.py` (one external drive per pool unit added to `W_in x`; a zero feed is
+  byte-identical to `percept`; a wrong-length or non-finite feed is REFUSED). `57cb62c5`: `growth/grown_feed.py`
+  (`feed_drive`, `clip_feed`, `check_feed`, `random_feed`) and `tests/test_grown_feed.py`; the module is registered in
+  `snn_data_lake/__init__.py` and takes a dormancy EXEMPT `wire` row (consumers: the feed arms of P4/P5 and G5's Part D;
+  retires when G9 wires the engine). `71aee53f`: `candidate_lifecycle.select_unearned`, the one pure unearned-unit
+  rule (G6's P2 finding, settled by message): `heldout_prune` calls it, behaviour identical.
+- **What 2.9 C15 and C17 are, as built.** C15: the norm-matched random-feed arm (per-column L2 norm and Dale sign kept,
+  seeded) must give different pool carriers from the fed arm; the instrument's positive control is that a copy of the fed
+  matrix gives IDENTICAL carriers and a no-feed arm differs. C17 on the reservoir segment: `clip_feed` flips a sign-violating
+  deposit to the unit's side without mutating its input; `check_feed` refuses a violating or non-finite stored synapse and
+  names the unit and the pool unit. Constructed fixtures on the pre-registered 9900-9999 block only; the confirmatory feed
+  family (9200-9207, reserve 9208-9215) is NOT run and waits for the lead's written go.
+- **Scope of what is built.** The port, the projection and its two reds. NOT built, as pre-registered: the fed / direct /
+  random-feed READOUT contrast of 2.10 (the U contrasts need G2's problems and the taught learner's label neurons) and the
+  N > 256 fed-unit-becomes-reservoir arm (owner ratification, POLICIES P4d). No claim about feed benefit is made.
+- **A fixture is not a measurement.** The tests run on a hand-sized KernelLsmPool (N 3) and W_in of 0.01; they prove the
+  wiring and the reds, not the engine's N = 256 behaviour. The pool's own N = 256 determinism red was not re-run by this
+  arm beyond `tests/test_recurrent_pool.py` passing.
+- **Correction (the 0x0B append baseline).** Fold 18321afc pinned tag 11 at 15,241 B from "seed 9040, 5 batches:
+  15,238 / 15,223 / 15,235 / 15,241 / 15,201 B", but its script was not recorded, so the five numbers had no command. Re-run
+  from the test's own construction (random.Random(9040), one rng and one id counter across batches, 9 units per batch,
+  `Ledger.open_problem`, `_born` + `record_spend`, bytes = file size delta per batch), twice, deterministic:
+  15,236 / 15,216 / 15,240 / 15,242 / 15,197 B. The lead reproduced it and re-pinned tag 11 to 15,242 (int1b 732a72e8). The
+  fold's figures are HISTORICAL; the flood test's 8x bar is unaffected.
