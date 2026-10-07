@@ -331,6 +331,13 @@ def planted_blocks(n, m, *, blocks, between, seed):
     rng = np.random.default_rng(seed)
     label = np.arange(n) * blocks // n
     m_between = round(m * between)
+    within_pairs = int(sum(c * (c - 1) // 2 for c in np.bincount(label, minlength=blocks)))
+    between_pairs = n * (n - 1) // 2 - within_pairs
+    if m_between > between_pairs or m - m_between > within_pairs:  # Codex D+E: the loop never ended
+        raise Infeasible(
+            f"planted_blocks: {m - m_between} within / {m_between} between edges exceed the "
+            f"{within_pairs} / {between_pairs} pairs of N = {n} in {blocks} blocks"
+        )
     edges = set()
     while len(edges) < m:
         want_between = len(edges) < m_between

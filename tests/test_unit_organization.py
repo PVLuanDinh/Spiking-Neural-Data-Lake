@@ -512,3 +512,16 @@ def test_sampler_refuses_nonfinite_or_negative_weights(kw):
     with pytest.raises(ValueError) as e:
         U.sample_exact_m(8, 8, xy=np.zeros((8, 2)), seed=13230, **kw)
     assert not isinstance(e.value, U.Infeasible)  # a malformed input, not a density refusal
+
+
+def test_planted_blocks_refuses_an_allocation_that_exceeds_a_pair_class():
+    # Codex D+E: (10, 30, 2 blocks, between .2) needs 24 within edges, 20 exist: it looped forever
+    # (reproduced under `timeout 60`: rc=124 before the fix)
+    with pytest.raises(U.Infeasible):
+        U.planted_blocks(10, 30, blocks=2, between=0.2, seed=13230)
+    with pytest.raises(U.Infeasible):  # the between class: 25 pairs, 30 wanted
+        U.planted_blocks(10, 30, blocks=2, between=1.0, seed=13230)
+    ok = U.planted_blocks(
+        10, 20, blocks=2, between=0.2, seed=13230
+    )  # 16 within (of 20) + 4 between
+    assert len(ok) == 20 and len(set(ok)) == 20
