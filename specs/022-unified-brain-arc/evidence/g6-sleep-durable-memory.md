@@ -772,6 +772,14 @@ continuation pin is a real control (a mutant clearing `prev` makes it red), `_on
 evaluation count moved, and 05edea07 is additive. P2 (`_one_pass` onto G3's `select_unearned`, 71aee53f) waits for the
 batch-2 rebase.
 
+**DATED NOTE 2026-10-07 (R3's second challenge; no deciding data read).** Additive; zero lines removed. R3 found that the
+isolation stamp's `os.walk` skipped a directory it cannot list, so a rewrite under it read as unchanged; fixed in db86bcbf
+(a never-equal `<unlistable>` marker, red first). The reds for 0ab011a7 and 1fb08f83 were also run against their parents
+(0ab011a7: the new nested-rewrite control fails on the flat stamp; 1fb08f83: the A13 test fails on the parent's raise at
+`joint_mask_search.py:263`). OPEN, disclosed: no module function maps a `run_instance` result to a `decide_b` seed row
+(the test builds it); the campaign harness must add ONE producer (absent arms omitted, `_refused` carried, keys that start
+with `_` skipped when iterating results). The PressureMeter tick cursor stays a disclosed carrier gap (lead, 2026-10-07).
+
 ## 3. Results
 
 None. Nothing is measured beyond section 1; no deciding test has run.
