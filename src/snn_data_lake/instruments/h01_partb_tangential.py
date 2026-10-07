@@ -113,6 +113,15 @@ def frame_violation(layer, r):
     return float(bad.mean()), int(bad.sum())
 
 
+def frame_order_refused(layer, r):
+    """Whole-band order (amendment (f) F3): the median r of each band must not rise with the band index (band 0
+    outermost). The soma statistic above sees only somata within W of a boundary, so a wholly inverted frame with
+    few boundaries slips under its 5 percent bar; a rising median is a reversed frame, refused outright."""
+    layer, r = np.asarray(layer), np.asarray(r)
+    med = [float(np.median(r[layer == b])) for b in np.unique(layer)]
+    return any(a < b for a, b in zip(med, med[1:], strict=False))
+
+
 def unit_class(layer, sign):
     return np.asarray(layer, dtype=np.int64) * 2 + (np.asarray(sign) > 0)
 
@@ -738,7 +747,9 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
     if tuple(seeds) != SEEDS:
         raise ExposureRefused("H01's edges are read on the registered confirmatory seeds only")
     bands = validate_planted(planted_record, pop)
-    if frame_violation(pop.layer, pop.fr[0])[0] > FRAME_VIOLATION_MAX:
+    if frame_violation(pop.layer, pop.fr[0])[0] > FRAME_VIOLATION_MAX or frame_order_refused(
+        pop.layer, pop.fr[0]
+    ):
         return {"reading": "REFUSED_FRAME", "artifact_sha256": sha}
     edges = (np.asarray(z["pre_idx"]), np.asarray(z["post_idx"]))
     units, first = [], None

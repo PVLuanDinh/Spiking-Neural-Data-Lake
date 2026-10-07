@@ -475,6 +475,45 @@ def test_form_bands_are_calibrated_for_the_contrast_selection_uses():
     assert pb.select_form(clear, _fb(1.0)) == "mix"
 
 
+def _banded_frame(order):
+    """Somata whose r falls from 1800 to 1500 um; `order` is each one's band, outermost first."""
+    n = len(order)
+    r = np.linspace(1800.0, 1500.0, n)
+    th = np.linspace(-1.0, -0.85, n)
+    cx, cy = t3.region_centre()
+    xyz = np.c_[cx + r * np.cos(th), cy + r * np.sin(th), np.linspace(0.0, 60.0, n)]
+    return xyz, np.asarray(order)
+
+
+def test_a_wholly_inverted_band_order_is_refused_though_few_somata_straddle_a_boundary(monkeypatch):
+    """M1 / F3 (fold-lens round 2): bands [2]*333 + [1]*333 + [0]*334 from the outside in is a
+    reversed frame that only 20 / 1000 somata can see at W = 5; the whole-band order catches it."""
+    inverted = [2] * 333 + [1] * 333 + [0] * 334
+    xyz, layer = _banded_frame(inverted)
+    pop = pb.make_pop(xyz, layer, np.ones(len(layer), dtype=int))
+    assert (
+        pb.frame_violation(pop.layer, pop.fr[0])[0] <= pb.FRAME_VIOLATION_MAX
+    )  # the soma statistic is blind
+    assert pb.frame_order_refused(pop.layer, pop.fr[0])
+    xyz, layer = _banded_frame(sorted(inverted))  # the right way round: deeper bands further in
+    ok = pb.make_pop(xyz, layer, np.ones(len(layer), dtype=int))
+    assert not pb.frame_order_refused(ok.layer, ok.fr[0])
+    assert not pb.frame_order_refused(
+        np.array([0, 0, 2, 2]), np.array([9.0, 8.0, 7.0, 6.0])
+    )  # a gap band
+    z = {
+        "xyz_nm": pop.xyz * 1000.0,
+        "layer": pop.layer,
+        "sign": pop.sign,
+        "pre_idx": [0],
+        "post_idx": [1],
+    }
+    monkeypatch.setattr(t3, "_verified", lambda path, pin=None: (z, "s" * 64))
+    monkeypatch.setattr(pb, "validate_planted", lambda *a, **k: {})
+    out = pb.score_h01("x.npz", {}, t3_ref={"K": "mix"})
+    assert out["reading"] == "REFUSED_FRAME"
+
+
 def test_pathway_recovery_is_derived_from_the_authorised_truth_not_the_record():
     """F6 (fold-lens round 2): the record's own `planted` and `cells` are never trusted."""
     truth = next(r.truth for r in pb.PLAN if r.truth.get("pathway"))

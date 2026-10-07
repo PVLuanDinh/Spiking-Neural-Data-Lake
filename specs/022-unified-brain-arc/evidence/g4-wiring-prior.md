@@ -896,3 +896,9 @@ only; they were NOT re-panelled (a third panel round needs the owner). Each fold
   form it chose. Since F1 the selection is disclosure only, so this governs `form_selected` and `form_disagrees_t3`, not what is delivered.
   Red on `aaa34e12`: calibration units alternating Gaussian 100 / exponential 100 with the mixture at 101 gave band 1, and selection
   (gaps 1 / 101, mean 51, t about 2.70) upgraded to the mixture.
+- **F3 (whole-band order; fold-lens MAJOR).** (c)M1's soma statistic (W = 5) cannot see a wholly inverted frame with few band boundaries: bands
+  `[2]*333 + [1]*333 + [0]*334` from the outside in mark 20 / 1,000 somata (2 percent) and pass the 5 percent bar. Registered, additive,
+  before any Part B run: a second pre-data refusal, REFUSED_FRAME when the median r of an occupied band RISES with the band index (band 0
+  outermost; ties allowed). It is a refusal only, never a recorded statistic. NEVER EVALUATED ON H01 POSITIONS: per the lead's ruling the
+  rule was not fitted to, or checked against, the 14,215 H01 somata; if it fires there the reading is REFUSED_FRAME and the owner is told,
+  not the rule retuned. Constructed red on `1f13ef06`: the inverted frame above passed the frame gate and `score_h01` proceeded to read.
