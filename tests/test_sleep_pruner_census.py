@@ -166,11 +166,40 @@ def short_runs():
     return runs
 
 
-def _live_mtime():
+def _live_mtime(home=LIVE_HOME):
+    """{name: (size, mtime_ns)} of a home; a file that cannot be stat'd is None (never raises)."""
     try:
-        return max(os.path.getmtime(os.path.join(LIVE_HOME, f)) for f in os.listdir(LIVE_HOME))
-    except (FileNotFoundError, ValueError):
+        names = os.listdir(home)
+    except FileNotFoundError:
         return None
+    out = {}
+    for f in names:
+        try:
+            st = os.stat(os.path.join(home, f))
+            out[f] = (st.st_size, st.st_mtime_ns)
+        except OSError:
+            out[f] = None
+    return out
+
+
+def test_the_live_stamp_detects_change_appearance_and_removal_and_survives_unreadable(
+    tmp_path, monkeypatch
+):
+    """Positive control for the isolation stamp (Codex safety#8), driven on a DECOY home."""
+    decoy = tmp_path / "decoy_live"
+    decoy.mkdir()
+    (decoy / "brain_lake.bin").write_bytes(b"abc")
+    base = _live_mtime(str(decoy))
+    (decoy / "brain_lake.bin").write_bytes(b"abcd")
+    assert _live_mtime(str(decoy)) != base  # a size change
+    (decoy / "latch.json").write_text("x")
+    assert _live_mtime(str(decoy)) != base  # a new sidecar
+    (decoy / "latch.json").unlink()
+    (decoy / "brain_lake.bin").write_bytes(b"abc")
+    os.utime(decoy / "brain_lake.bin", ns=(1, 1))
+    assert _live_mtime(str(decoy)) != base  # mtime alone
+    monkeypatch.setattr(os, "stat", lambda *_a, **_k: (_ for _ in ()).throw(PermissionError()))
+    assert _live_mtime(str(decoy)) == {"brain_lake.bin": None}
 
 
 def test_c6_the_live_arm_is_byte_repeatable(short_runs):
