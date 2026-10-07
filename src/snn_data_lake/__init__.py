@@ -294,7 +294,7 @@ REGIONS = {
         "episode_driver",
         # specs/022 Phase 4 C0: the L12 audit's 20-item everyday battery as a GOVERNED SCORER -- the frozen answer key, 2.3's ordered classifier (abstention decided by route AND preamble before any key is tested) and the five-seed campaign on scratch brains; never the live lake
         "everyday_battery",
-        # specs/022 T113 (G5): the readout-variant cells -- Part B's planted and in-brain cells (Part A deleted at its 2.7a gate, PA1 NOT MET; 4ecc90d9 keeps it as run); brain-free bare self-check
+        # specs/022 T113 (G5): the retained cell HARNESS (frozen generator, reading, in-brain cell machinery, PA3/PA4/PA8/PA10 reds, persisted records); Parts A and B were deleted on their nulls (4ecc90d9 / 0fba900c keep them as run). Reuse by Part D is PENDING, so the harness is exempt-by-registration, not charged (P3); brain-free bare self-check
         "g5_readout_cells",
         "ignition_instrument",
         # G2(ii)'s inseparable-mapping generator and G-R2's construction check on it (g1c-carried-state.md 2.8)
