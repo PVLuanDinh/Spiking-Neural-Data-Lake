@@ -416,3 +416,19 @@ def test_an_arm_only_fallback_perception_replaces_the_whole_seed(monkeypatch):
     )
     assert sorted(rec) == [1, 9] and {c["seed"] for c in cells} == {1, 9} and len(cells) == 4
     assert rep == [(2, 2, 9)] and any("fallback perception" in s for s in lines)
+
+
+def test_same_rows_halts_on_a_majority_only_floor_difference():
+    # Codex g5_b lens-2 (fc3409d2 mutation): comparing only the persistence half of each floor pair
+    # passed a moved MAJORITY floor
+    row = {
+        "seed": 1,
+        "arm": "DELTA",
+        "widened": 0,
+        "cats_hash": "x",
+        "cols_hash": "y",
+        "live_pers": 0.9,
+        "floors": [(0.5, 0.9), (0.6, 0.92)],
+    }
+    with pytest.raises(g.SameRowsHalt, match="refit floors"):
+        g.same_rows([row, {**row, "arm": "B", "floors": [(0.5, 0.9), (0.7, 0.92)]}])
