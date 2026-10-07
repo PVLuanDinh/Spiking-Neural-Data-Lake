@@ -737,3 +737,32 @@ unmeasured.
 8. **What a PASS licenses and does not:** the tangential kernel and pathway structure favoured over their distance-free twin and over
    one global width, on the c3 graph as released, at soma-distance grain; never a benefit to the engine, never a biological law, never
    the attachment rule's charge (T2 and Part D carry that). Reconstruction completeness (2.1) is not separated.
+
+### Dated addendum 2026-10-07 to the Part B amendment -- what the instrument build fixed, before any Part B run (no edge read)
+
+Instrument: `instruments/h01_partb_tangential.py` + `tests/test_h01_partb_tangential.py` (commit following `61ffd404`). Choices the amendment
+left open or that the build forced; each is a named question for the panel, none was tuned on H01:
+1. **P is a profile fit, not a joint refit.** P fits each cell's log-width offset delta_p on a grid (31 points on [-1.5, 1.5], offset
+   scales sigma and lambda together) given the GLOBAL shape fitted on the same training set; amplitudes are profiled per cell. The
+   penalty (1, 4, 16, 64 nats per unit delta^2) is chosen on the training folds only by nested folds that reuse the outer-training
+   global shape (a one-parameter leak, disclosed).
+2. **Amplitude pseudo-count 0.5** on every cell (F and G alike), so a cell with no training edge keeps a positive probability.
+3. **Arms and contrasts.** G-F (kernel against its distance-free twin) and P-G (pooling against the global width), scored on neuron folds
+   (decide), the z-interior and the four polar-angle region blocks (agree), with T3's tri-state and band machinery (`seed_state` logic
+   reimplemented over the Part B contrasts; bands calibrated on planted-flat seeds, validated on an untouched flat set).
+4. **Reading rows.** REFUSED_FRAME, REFUSED, RED_PATHWAY_FLAT (G-F not +1 on neuron folds), NOT_READ_BOUNDARY / NOT_READ_DISAGREE
+   (opposite resolved states against the interior or the region aggregate), RED_POOL (P-G not +1: the global width alone is kept),
+   PASS (pooled). The planted rows' expectations: flat validation RED_PATHWAY_FLAT; Gaussian 100 and exponential 100 RED_POOL with the
+   width recovered within 10 percent on every seed and the matching single form beating the other on held-out LL (a single-width
+   world has nothing for pooling to find, so RED_POOL is its correct reading); pathway widths PASS; the pathway-flat world RED_POOL.
+   The amendment's list read "G/E recovered and selected" and "pathway widths recovered by P" without naming the verdicts; these are the
+   verdicts that follow.
+5. **Planted generator** is edge-level over every ordered pair (like T3's), with the amplitude scale solved exactly (linear) and refused
+   if any pair clips at 1; pathway widths go to the two most populous cross-class cells; amplitudes are `CONN_PROB` for L2-L6 and 0.02 for L1 and
+   white matter (a session choice).
+6. **Synthetic positive control (built, run on a 240-unit two-class slab):** planted pathway widths 20 and 250 um over a 60 um base -> P-G
+   +125 to +304 nats per seed; the same world without them -> P-G -8.5 to +5.2. Run first on a 7-band population the control did NOT fire
+   (the two planted cells held about 1 percent of pairs each): that is a power limit of a tiny population, and the planted rows on H01
+   (14,215 units) must show it fires there before any H01 edge distance is read.
+7. **Not yet built:** the per-band tangential density and dbar on H01 are implemented (`tangential_density`, `dbar`) but the record writer
+   (`tools/g4_partb_campaign.json`) and the CLI are not; the run waits for the lead's go and the panel.
