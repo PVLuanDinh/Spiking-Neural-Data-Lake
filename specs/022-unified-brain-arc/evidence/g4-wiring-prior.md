@@ -688,3 +688,52 @@ unchanged before and after each. Written after the run; no frozen passage is edi
   RED-exp: the Gaussian is deleted as the attachment rule's kernel FORM, the mixture is adopted, the owner is told (Q2). Observed
   kernel = anatomy times reconstruction completeness (2.1), not separated here. Part B, B2 and C stay gated by A13 (T3 READ,
   K != none: met).
+
+## DATED PRE-DATA AMENDMENT 2026-10-07 -- Part B (the tangential record) frozen before any Part B run; no edge read for Part B
+
+Pointers (no frozen passage is edited): freezes 3.1 (Part B) and 3.2's record schema; run gate 2.14 A13 (T3 READ with K != none: MET
+2026-10-07, record `cbd8ce14`); schema confirmed with G7 2026-10-07 (their additions: `kernel_shape`, `layer_term_sym`, `xy`, built in
+`growth/wiring_prior.py` at `d3cd4e27`). The first Part B RUN waits for the lead's written go. Every number below marked (projection) is
+unmeasured.
+
+1. **Frame (3.1 D1).** One reference centre, `placement.LAYER_CIRCLES["value"][0]` (white-matter circle, read from the code constant),
+   the same centre the region blocks use. Per soma: radial r = |(x, y) - centre|, polar angle theta = atan2(y - cy, x - cx). Per pair:
+   d_tan = sqrt((r_mean dtheta)^2 + dz^2) with r_mean = (r_i + r_j) / 2, dtheta wrapped to [-pi, pi], z in um. Validity check recorded
+   before any edge is read: `layer_of` is monotone in r on the 14,215 somata (the violation count and the fraction of somata whose
+   `layer_of` band disagrees with the r-order of its neighbours), and the single-centre approximation is disclosed beside it; a
+   violation fraction above 5 percent (a session choice) reads REFUSED (frame invalid) and Part B takes no edge read.
+2. **Models (one global kernel, then pathway structure).** Pair covariates: pre and post layer (`layer_of`, L1-L6; white matter and
+   L1 are kept in the fit as their own bands but flagged "not modelled" in the record), pre and post Dale sign (the cell's sign, T062's
+   0.30 export disagreement disclosed). Arms, all on binomial likelihood over 1-um d_tan bins, scored per 2.4-2.5 (neuron folds decide,
+   polar-angle region blocks agree) with T_BAR = 1.895, the A4 degeneracy rule and the null band calibrated on planted-flat seeds:
+   (G) the global kernel with a pathway-specific AMPLITUDE per (pre layer x sign, post layer x sign) cell (the layer target) and one
+   width set (form = T3's K, the mixture, refit tangentially); (P) the same with log-widths partially pooled by pathway (penalised
+   likelihood shrinking each pathway's log-width to the global one; the penalty chosen on training folds only by nested folds, never on
+   the held-out fold); (F) the distance-free twin of each with the same pathway amplitudes. If the tangential form comparison selects
+   a form other than the mixture, that disagreement with T3's 3-D reading is DISCLOSED and routed to the owner (2.8); T3's verdict does
+   not change and the record carries the tangentially selected form.
+3. **Reds (3.1, restated).** RED-pool: P does not beat G on held-out neurons -> the global width alone is kept, the record carries G.
+   RED-pathway-flat: the pathway model with the kernel (G) does not beat F -> the kernel factor is removed from the rule (the owner told).
+4. **Planted controls first** (positions + degree marginals only, run before any H01 edge distance, same whitelist as 2.14 A8): (i) the
+   T3 table's tangential analogue on H01 positions at H01's edge count: planted Gaussian 100 um and exponential 100 um in d_tan with
+   pathway amplitudes drawn from `CONN_PROB`: the width recovered within 10 percent and the matching form selected; (ii) planted flat:
+   RED-pathway-flat; (iii) pathway-specific widths planted (two pathways at 60 and 160 um): P recovers them (each within 15 percent,
+   a session choice) and beats G; a pathway-flat world: P does not beat G (RED-pool fires). Bands calibrated on planted-flat
+   calibration seeds, locked by hash, validated on an untouched flat set, exactly as 2.14 A5. Seeds: 10300-10349: calibration
+   10300-10307, validation 10308-10315, row (i) 10316-10331, (ii) already the validation set, (iii) 10332-10347, 10348-10349 spare; the
+   confirmatory H01 partitions 10350-10357 are reserved from B2's block by this amendment (B2's range moves to 10358-10399 under its own
+   amendment). Reserve for a repair re-run: 10600-10799 is NOT used by Part B; a repair re-run takes 10900-10949 (unallocated, grep
+   before use under a dated line).
+6. **The record (3.1, 3.2).** `tools/g4_partb_campaign.json`, one dict the rule reads (schema confirmed with G7): `source` "part_b",
+   `frame` "tangential", `form`, kernel parameters `a`, `sigma_um`, `c`, `lambda_um` (the global set), `pathway_amplitudes` and (if P is
+   kept) `pathway_widths`, `beta` (B2's, else 0 with `beta_fallback` true), `dbar` and its companions (N, E, reciprocal fraction,
+   density disclosure; 2026-10-04 amendment), the H01 TANGENTIAL soma density per mm^2 of sheet (pooled and per layer; area = the
+   (r dtheta) x z extent of the occupied sheet, method recorded), the frame-validity numbers, the T3 record's `cbd8ce14` and sha256s,
+   the artifact sha256, harness sha256s and the git head. A consumer reading a field absent from the record refuses.
+7. **Check list owed (red-first, each with a constructed red):** (a) the frame: a unit-trap (nm) and a theta-wrap mutant (dtheta
+   not wrapped) each fail the planted recovery; (b) the pooling penalty: chosen on training folds only (a mutant that sees the
+   held-out fold is caught by the disjointness assertion of 2.11 (d)); (c) the reading function's rows for RED-pool, RED-pathway-flat and
+   REFUSED (frame invalid) each reached by a constructed input; (d) the record round-trips through `wiring_prior._check`.
+8. **What a PASS licenses and does not:** the tangential kernel and pathway structure favoured over their distance-free twin and over
+   one global width, on the c3 graph as released, at soma-distance grain; never a benefit to the engine, never a biological law, never
+   the attachment rule's charge (T2 and Part D carry that). Reconstruction completeness (2.1) is not separated.
