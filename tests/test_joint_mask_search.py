@@ -174,33 +174,38 @@ def test_c26_judge_reads_only_the_frozen_winner():
     m.judge(tuple([1] * fx.n))
 
 
-def test_a13_a_budget_below_four_refuses_random_too_before_any_evaluation_or_judging():
-    """Codex panel MINOR: a one-element problem (B=2) ran random and judged it; A13 refuses BOTH."""
+def test_a13_a_budget_below_four_reports_random_and_sa_refused_and_decide_b_refuses():
+    """Codex MINOR + R3: B < 4 REFUSES and REPORTS random and SA (A13) -- the instance returns
+    with both arms absent and named in `_refused`, neither ran or was judged, decide_b reads the
+    missing arm as REFUSED. A raise would kill a campaign loop instead of reporting the seed."""
 
     class One:
         n = 1
-        calls = 0
+        evals = 0
+        judges = 0
 
         def evaluate(self, mask):
-            One.calls += 1
+            One.evals += 1
             return True, 1.0
 
         def cost(self, mask):
             return sum(mask)
 
         def judge(self, mask):
-            One.calls += 1
+            One.judges += 1
             return True, True
 
         def work_per_tick(self, mask):
             return float(sum(mask))
 
-    jms.arm_greedy(jms.Meter(One()), 1)
-    greedy_only = One.calls  # what the measuring greedy pass alone costs
-    One.calls = 0
-    with pytest.raises(ValueError):
-        jms.run_instance(One(), 12001)
-    assert One.calls == greedy_only  # no random draw and no judging read happened
+    res = jms.run_instance(One(), 12001)
+    assert "random" not in res and "SA" not in res
+    assert res["_refused"] == ("random", "SA")
+    assert One.evals == 0  # no random draw, no SA proposal
+    assert One.judges == 3  # greedy, incumbent, no_prune only
+    row = {"cost": 1, "future_ok": True, "retention_ok": True, "net": 1.0}
+    seeds = [{a: row for a in jms.COMPETITORS if a in res} for _ in range(jms.N_SEEDS)]
+    assert jms.decide_b(seeds, instrument_gates_fired=True).outcome == "REFUSED"
 
 
 def test_one_active_unit_is_never_probed_for_removal_like_the_incumbent():

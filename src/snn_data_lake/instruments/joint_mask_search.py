@@ -253,22 +253,26 @@ class ArmResult:
 def run_instance(problem, seed, *, feasibility=True, budget=None, q=None):
     """All arms on ONE instance at equal B (= greedy's measured evaluation count; `budget` and `q` override
     it ONLY for the planted C8 fixture, disclosed). Judging happens once per arm, after its winner is
-    frozen. Returns {arm: ArmResult} plus 'no_prune' and '_B'."""
+    frozen. Returns {arm: ArmResult} plus 'no_prune', '_B' and '_refused' (arms refused by A13)."""
     n = problem.n
     g = Meter(problem)
     gm = arm_greedy(g, n, feasibility)
     B = g.spent if budget is None else int(budget)
-    # A13: random and SA are BOTH refused below four evaluations, before either runs or is judged
-    if B < 4:
-        raise ValueError(f"budget B={B} < 4: random and SA are refused (A13)")
     q = sum(gm) / float(n) if q is None else float(q)
     masks = {"greedy": (gm, g)}
     inc = Meter(problem)
     masks["incumbent"] = (arm_incumbent(inc, n, feasibility), inc)
-    rm = Meter(problem, budget=B)
-    masks["random"] = (arm_random(rm, n, q, random.Random(f"g6.random:{seed}"), feasibility), rm)
-    sm = Meter(problem, budget=B)
-    masks["SA"] = (arm_sa(sm, n, random.Random(f"g6.sa:{seed}"), feasibility), sm)
+    # A13: below four evaluations random and SA are BOTH refused and REPORTED (absent here, named in
+    # `_refused`, so decide_b reads the missing arm as REFUSED); neither runs nor is judged
+    refused = ("random", "SA") if B < 4 else ()
+    if not refused:
+        rm = Meter(problem, budget=B)
+        masks["random"] = (
+            arm_random(rm, n, q, random.Random(f"g6.random:{seed}"), feasibility),
+            rm,
+        )
+        sm = Meter(problem, budget=B)
+        masks["SA"] = (arm_sa(sm, n, random.Random(f"g6.sa:{seed}"), feasibility), sm)
     masks["no_prune"] = (_full(n), Meter(problem, budget=0))
     out = {}
     for arm, (mask, meter) in masks.items():
@@ -278,6 +282,7 @@ def run_instance(problem, seed, *, feasibility=True, budget=None, q=None):
             arm, mask, problem.cost(mask), meter.spent, fut, ret, problem.work_per_tick(mask)
         )
     out["_B"] = B
+    out["_refused"] = refused
     return out
 
 
@@ -457,15 +462,15 @@ def main():
     assert all(r["SA"].cost == fx.minimum() for r in runs), ("C8", [r["SA"].cost for r in runs])
     c8 = _sup("C8 SA smaller than random", [r["random"].cost - r["SA"].cost for r in runs])
     assert c8.met, ("C8: SA must beat random on the planted fixture", c8)
-    assert all(a == "_B" or r[a].retention_ok for r in runs for a in r), (
+    assert all(a.startswith("_") or r[a].retention_ok for r in runs for a in r), (
         "feasibility keeps the old unit"
     )
     res = runs[0]
 
     bad = run_instance(fx, RED_SEEDS[0], feasibility=False)
-    assert not all(r.future_ok for a, r in bad.items() if a not in ("_B", "no_prune")), (
-        "C7: judge must red"
-    )
+    assert not all(
+        r.future_ok for a, r in bad.items() if not a.startswith("_") and a != "no_prune"
+    ), "C7: judge must red"
 
     assert fx.evaluate(tuple([1] * (fx.n - 1) + [0]))[0] is False, (
         "C9: dropping the old unit must red"
