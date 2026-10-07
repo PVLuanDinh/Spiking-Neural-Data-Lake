@@ -376,6 +376,13 @@ def home():
             "home refused (unset under pytest): NORD_HOME is gone, so home() would be the live lake"
         )
     d = d or _default_live_home()
+    if under_test:  # panel: refuse BEFORE creating, else a refused home is made inside the live one
+        p = _resolve(d)
+        if p.startswith("\\\\"):  # a share spelling commonpath cannot compare with the drive
+            raise LiveHomeRefused(
+                f"home refused (network): {p} -- a share is never an isolated home"
+            )
+        _refuse_if_live(p, _resolve(_default_live_home()))
     os.makedirs(d, exist_ok=True)
     if under_test:
         assert_not_live_home(d)

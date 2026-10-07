@@ -51,6 +51,31 @@ def test_home_set_to_the_live_home_is_refused(monkeypatch, decoy):
         H.home()
 
 
+def test_missing_child_of_the_live_home_is_refused_before_creation(monkeypatch, decoy):
+    """Panel (p8 + safety lenses, MAJOR): makedirs ran before the guard, so a refused home was
+    already created inside the live home."""
+    child = decoy / "probe_child"
+    monkeypatch.setenv("NORD_HOME", str(child))
+    with pytest.raises(H.LiveHomeRefused, match="contained"):
+        H.home()
+    assert not child.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="the loopback admin share is a Windows spelling")
+def test_share_spelling_of_a_live_child_is_refused_before_creation(monkeypatch, decoy):
+    """The same MAJOR through a spelling commonpath cannot compare (a share vs a drive): the
+    network refusal must also come before makedirs."""
+    drive, rest = os.path.splitdrive(str(decoy))
+    share = "\\\\localhost\\" + drive[0] + "$" + rest
+    if not os.path.isdir(share):
+        pytest.skip("loopback admin share not reachable")
+    child = decoy / "share_child"
+    monkeypatch.setenv("NORD_HOME", os.path.join(share, "share_child"))
+    with pytest.raises(H.LiveHomeRefused, match="network"):
+        H.home()
+    assert not child.exists()
+
+
 def test_control_an_isolated_home_passes(monkeypatch, tmp_path, decoy):
     """The control that is not the method: an isolated home resolves and is returned unchanged."""
     before = _listing(decoy)
