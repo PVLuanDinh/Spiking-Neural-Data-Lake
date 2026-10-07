@@ -430,3 +430,26 @@ def test_eb_rows_precede_the_c_if_row_and_f4_keeps_med_but_blocks_ext():
     assert m.table_f4(True, 1, 1, 1, 1, 1, 1, 1).startswith("EXT credited: a")
     # F2: the B bar reds a structural claim too
     assert m.table_f2(True, True, True, 1, 1, True, 0).startswith("INTERFERENCE RED")
+
+
+def test_an_unreadable_file_fails_the_live_lake_check_closed(tmp_path, monkeypatch):
+    """A file whose stat fails used to be skipped, so a change under it was invisible. It is now
+    recorded as None, and the check cannot read untouched while any file is None."""
+    decoy = tmp_path / "decoy_live"
+    decoy.mkdir()
+    (decoy / "brain_lake.bin").write_bytes(b"abc")
+    (decoy / "latch.json").write_text("x")
+    before = m.lake_snapshot(str(decoy))
+    assert m.live_lake_untouched(str(decoy), before) == (True, [])
+    real = os.stat
+
+    def flaky(path, *a, **k):
+        if str(path).endswith("latch.json"):
+            raise PermissionError(path)
+        return real(path, *a, **k)
+
+    monkeypatch.setattr(os, "stat", flaky)
+    unreadable = m.lake_snapshot(str(decoy))
+    assert unreadable["latch.json"] is None  # recorded, never skipped
+    ok, changed = m.live_lake_untouched(str(decoy), unreadable)  # None on both reads
+    assert not ok and "latch.json" in changed

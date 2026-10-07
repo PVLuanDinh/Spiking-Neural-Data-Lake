@@ -133,7 +133,8 @@ PLASTICITY_FREE = {"OFF", "ORACLE", "A-ONLY", "A-ONLY-TWIN"}  # every cap off an
 #   engine/report_channel.py::snapshot (a workspace report record), faculties/agency_monitor.py::snapshot
 #   (per-channel status) -- term overlaps only; none stamps files on disk.
 def lake_snapshot(path):
-    """mtime_ns + size of every file under `path` (an absent path snapshots as empty)."""
+    """mtime_ns + size of every file under `path` (an absent path snapshots as empty). A file whose stat fails
+    is recorded as None, never skipped: `live_lake_untouched` cannot read it as untouched."""
     snap = {}
     for root, _dirs, files in os.walk(path):
         for f in files:
@@ -141,15 +142,21 @@ def lake_snapshot(path):
             try:
                 st = os.stat(p)
             except OSError:
+                snap[os.path.relpath(p, path)] = None
                 continue
             snap[os.path.relpath(p, path)] = (st.st_mtime_ns, st.st_size)
     return snap
 
 
 def live_lake_untouched(path, before):
-    """K14 (P-3): (ok, changed) -- every file under `path` reads the same mtime and size as `before`."""
+    """K14 (P-3): (ok, changed) -- every file under `path` reads the same mtime and size as `before`; a file
+    that could not be stat'd on either read is listed as changed (it cannot be verified: fail closed)."""
     after = lake_snapshot(path)
-    changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+    changed = sorted(
+        k
+        for k in set(before) | set(after)
+        if before.get(k) != after.get(k) or before.get(k) is None or after.get(k) is None
+    )
     return not changed, changed
 
 
