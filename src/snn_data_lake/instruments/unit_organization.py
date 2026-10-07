@@ -42,6 +42,9 @@ from snn_data_lake.instruments.paired_contrast import T_BAR, paired_t, permutati
 #: Louvain restart seeds (estimator seeds, not recordings; pre-registration 2.10).
 LOUVAIN_SEEDS = tuple(range(13900, 13910))
 
+#: S: the paired seeds every decision is read on. T_BAR (1.895) is the one-sided t bar at S - 1 = 7 d.f.
+PAIRS = 8
+
 ContrastVerdict = namedtuple(
     "ContrastVerdict", "name kind diffs t met degenerate exact_flip_rate reference_fpr"
 )
@@ -62,6 +65,8 @@ def judge(name, diffs, kind):
     if kind not in ("superiority", "noninferiority"):
         raise ValueError(f"kind must be superiority or noninferiority, got {kind!r}")
     diffs = tuple(float(d) for d in diffs)
+    if len(diffs) != PAIRS:  # Codex D+E: judge("x", [1], "noninferiority") was MET
+        raise ValueError(f"{name}: a decision needs exactly {PAIRS} paired seeds, got {len(diffs)}")
     if not all(
         math.isfinite(d) for d in diffs
     ):  # Codex D+E: [inf] * 8 read as a MET non-inferiority
@@ -451,7 +456,7 @@ def t4_wiring_half(
         refused += [a for a in ("RANDOM", "RANDOM-SEQ") if a not in q]
 
     def diff(a, b):
-        return [x - y for x, y in zip(q[a], q[b])]
+        return [x - y for x, y in zip(q[a], q[b], strict=True)]
 
     out = {"refused": refused, "q": q, "verdicts": {}, "rule_credited": None}
     if {"RULE", "RANDOM", "RANDOM-SEQ"} & set(refused):
@@ -500,7 +505,7 @@ def ir2(n, m, *, seeds=IR_SEEDS, twin_seeds=IR_TWIN_SEEDS, louvain_seeds=LOUVAIN
     diffs = [
         modularity(random_graph(n, m, seed=s), n, louvain_seeds)
         - modularity(random_graph(n, m, seed=t), n, louvain_seeds)
-        for s, t in zip(seeds, twin_seeds)
+        for s, t in zip(seeds, twin_seeds, strict=True)
     ]
     verdict = judge("IR2 RANDOM vs RANDOM twin", diffs, "superiority")
     return {"verdict": verdict, "ok": not verdict.met}

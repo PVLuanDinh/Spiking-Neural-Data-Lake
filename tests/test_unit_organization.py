@@ -311,7 +311,7 @@ def test_t4_half_credits_a_planted_distance_rule_and_never_decides_on_imposed():
         kernel=lambda d: np.exp(-d / 60.0),
         beta=0.0,
         columns=None,
-        seeds=tuple(range(13250, 13256)),
+        seeds=tuple(range(13250, 13258)),
         louvain_seeds=(0, 1),
     )
     assert out["refused"] == [] and out["rule_credited"] is True
@@ -350,7 +350,7 @@ def test_t4_half_a_refused_imposed_arm_is_reported_not_decisive():
         kernel=lambda d: 1.0,
         beta=0.0,
         columns=cols,
-        seeds=(seed,),
+        seeds=(seed, *range(13270, 13277)),
         louvain_seeds=(0,),
     )
     assert out["refused"] == ["IMPOSED"] and out["rule_credited"] is not None
@@ -437,12 +437,13 @@ def test_t4_half_hands_the_pathway_to_every_kernel_arm_but_the_flat_one(monkeypa
         kernel=user_kernel,
         beta=0.5,
         columns=[i % 3 for i in range(30)],
-        seeds=(13263,),
+        seeds=tuple(range(13263, 13271)),
         louvain_seeds=(0,),
         pathway=pw,
     )
     # RULE, DIST-ONLY, NO-LAYER, IMPOSED carry kernel and pathway; FLAT-KERNEL neither
-    assert [c for c in calls if c[0]] == [(True, True)] * 4
+    mine = [c for c in calls if c[0]]
+    assert len(mine) >= 24 and all(c == (True, True) for c in mine)  # RULE, DIST-ONLY, NO-LAYER x 8
     assert [c for c in calls if not c[0] and c[1]] == []
     assert len([c for c in calls if not c[0]]) >= 1  # the FLAT-KERNEL arm ran
 
@@ -458,3 +459,21 @@ def test_judge_refuses_a_nonfinite_difference(kind, bad):
         U.judge("bad", [bad] * 8, kind)
     with pytest.raises(ValueError):
         U.judge("bad", [0.5, 0.1, 0.2, 0.3, 0.4, 0.6, 0.7, bad], kind)
+
+
+@pytest.mark.parametrize("n_pairs", [0, 1, 7, 9, 16])
+def test_judge_decides_on_exactly_the_registered_eight_pairs(n_pairs):
+    # T_BAR = 1.895 is the 7-d.f. bar of S = 8; Codex D+E: judge("x", [1], "noninferiority") was MET
+    for kind in ("superiority", "noninferiority"):
+        with pytest.raises(ValueError):
+            U.judge("x", [1.0 + i for i in range(n_pairs)], kind)
+
+
+def test_ir2_refuses_unmatched_or_short_seed_lists():
+    for seeds, twins in (
+        ((), ()),
+        (U.IR_SEEDS, U.IR_TWIN_SEEDS[:1]),
+        (U.IR_SEEDS[:7], U.IR_TWIN_SEEDS),
+    ):
+        with pytest.raises(ValueError):
+            U.ir2(30, 60, seeds=seeds, twin_seeds=twins, louvain_seeds=(0,))
