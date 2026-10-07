@@ -967,3 +967,7 @@ Run at 5254306d..b917f5b8 (author-tested only; fold range "battery-verified only
 - **F2: NOT READ** (turnover 0 on a confirmatory seed). C5 degenerate NOT MET; C5-NI, C5-NI-B MET (degenerate). Claim NOT MADE.
 - **F3: NULL** (C6 NOT MET, t 1.303, mean 0.0306). Claim NOT MADE.
 - **F4: "EXT credited: a sleep-duration benefit (C9 MET)"**. C7 MET 4.255, C7-NI 7.514, C7-NI-B 5.916, C8 MET 2.000 (lb95 0.0026), C8-NI 3.055, C8-NI-B 5.292, C9 MET 5.465; 7 of 7 primary; K checks all 0. Claim stands per the final guarded row. C8's t is 2.000 against the 1.895 bar, a thin margin; this note reports it, it does not interpret it.
+
+## DATED NOTE 2026-10-07 (owner decisions that settle the confirmatory dispositions; additive)
+
+F2 (NOT READ, turnover 0 on 8/8 S-ON seeds): OWNER_DECISIONS_2026-10-04 item 11 already decided the structural rewirer -> "dated P3 exemption until a zero-crossing writer exists" (G6 records it; no new question). F1 and F3: item 15 (R3 O1) holds, "the 2026-09-27 sleep requirement is never deleted by a null", so the requirement stands either way; the retire-vs-exemption question for the replay cap, the benna_fusi rest and attractor.sleep learning is owner question #124. Nothing is applied before the answer.
