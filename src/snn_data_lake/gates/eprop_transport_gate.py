@@ -524,6 +524,7 @@ def signal_sites_in(tree):
             ):
                 continue
             targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
+            snapshot, added, cleared = set(tainted), set(), set()
             for t in targets:
                 pairs = [(t, stmt.value)]
                 if (
@@ -533,15 +534,19 @@ def signal_sites_in(tree):
                 ):  # `a, b = err, x`: each destination takes ITS source only
                     pairs = list(zip(t.elts, stmt.value.elts, strict=True))
                 for dst, src in pairs:
-                    carry = hit or _carries(src, tainted)
+                    # every destination is judged against the PRE-assignment taint, then all changes apply together
+                    own = hit if len(pairs) == 1 else _hits(ast.walk(src), snapshot, set())
+                    carry = own or _carries(src, snapshot)
                     for d in dst.elts if isinstance(dst, ast.Tuple) else [dst]:
                         name = _base(d)
                         if carry and name:
-                            tainted.add(name)
+                            added.add(name)
                         elif (
                             name and not isinstance(stmt, ast.AugAssign) and isinstance(d, ast.Name)
                         ):
-                            tainted.discard(name)  # a clean reassignment clears the taint
+                            cleared.add(name)  # a clean reassignment clears the taint
+            tainted -= cleared
+            tainted |= added
     return sorted(out)
 
 
@@ -1189,6 +1194,23 @@ def fwd(x, W):
     return h @ W.T
 """,
             0,
+        ),
+        (
+            "a tuple unpack reads the PRE-assignment taint: `a = err; a, b = x, a; b @ W` carries a into b",
+            """def f(err, x, W):
+    a = err
+    a, b = x, a
+    return b @ W
+""",
+            1,
+        ),
+        (
+            "a product in one destination's source does not taint its sibling: `a, b = err @ W_out, x; b @ W.T`",
+            """def f(err, x, W_out, W):
+    a, b = err @ W_out, x
+    return b @ W.T
+""",
+            1,
         ),
         (
             "tuple unpack `a, b = err, 1; a @ W_out`",
