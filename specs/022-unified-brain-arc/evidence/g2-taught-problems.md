@@ -626,3 +626,20 @@ as a shared control with `texts=` (G5); `delay_turns` (G5); the NGSNN feature-mo
 ## 5. Results
 
 (Empty until the campaign's results record.)
+
+### 5.1 Confirmatory taught campaign, item (i), seeds 8200-8207, read ONCE (2026-10-07; head `a1f4cebf`)
+
+Command: `NORD_HOME=D:\sndl-homes\g2-conf-home PYTHONPATH=<tree>\src python -m snn_data_lake.instruments.taught_campaign --run D:\sndl-homes\g2-conf-out`
+(E 400, H 64, no `g1c_construct`, so (ii) NOT RUN under 2.12). Raw record: `D:\sndl-homes\g2-conf-out\g2_campaign.json` (outside the repo).
+Live lake `brain_lake.bin` before and after: size 3318607701, mtime 1790489959, unchanged. Clean tree at launch; no re-run.
+
+- **Reading:** `C1-d REPRESENTABLE, NOT SHOWN LEARNABLE; (i) PASS on its other cells`. (ii): `NOT RUN: G1(c)'s construct-stage PASS was not supplied`.
+- **Flags:** b8_ok, reds_fired, construction_ok, b3_ok true; presized_solves_s1c0, incumbent_solves_s1_or_c1, history_solves_s1c1, incumbent_solves_c1d,
+  incumbent_fails_s0c0, history_fails_s1c0, presized_fails_capacity all false; `c1d_presized_fails` true; `a_fails` true.
+- **B8** (twin identity) true on every seed 8200-8207; P2 checks b9, b11, b12 true; P1, P2 and campaign reds all fired.
+- **Per-arm (`met` = the registered expectation held; max accuracy per seed):** inc.S0C0 8/8 met (1.0); inc.S1C0 8/8 (0.5); inc.S0C1 8/8 (0.75);
+  inc.S1C1 8/8 (0.5); hist.S0C0 8/8 (1.0); hist.S1C0 8/8 (1.0); hist.S1C1 8/8 (0.75); pre.S0C1 8/8 (1.0); pre.S1C1h 8/8 (1.0); pre.S1C0 8/8 (0.5);
+  inc.c1d 8/8 (0.75); inc.ac1d 8/8 (1.0); **pre.c1d 0/8** (0.625-1.0); **inc.aii 0/8** (max 0.5 or 1.0, never stable-solved).
+- **Disposition:** S0C0 positive; S1C0 STATE; S0C1 CAPACITY; S1C1 STATE + CAPACITY: valid G2 problems (2.1). C1-d: REPRESENTABLE, NOT SHOWN
+  LEARNABLE (O11 is the owner's). `A_c1d` solved by the incumbent on every seed. `A_ii` is not solved by the canonical incumbent (`a_fails`):
+  Q-AII (parked); the verdict string's branch order masks it, reported here separately as registered. Nothing about (ii), growth, the reservoir or the engine is licensed.
