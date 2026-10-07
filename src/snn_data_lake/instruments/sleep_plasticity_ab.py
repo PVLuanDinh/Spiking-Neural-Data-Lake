@@ -1055,7 +1055,8 @@ def claims_report(family, contrasts, recs, row, set_name=None):
             else "NOT MADE"
         )
         + f" (the family's final guarded row decides: {row[:60]})",
-        f"endpoint quantum E_all = 1/{len(recs[0]['restored'])}",
+        "endpoint quantum E_all = "
+        + (f"1/{len(recs[0]['restored'])}" if recs else "n/a (no records)"),
         "secondary correct-label margin (mean over seeds, per arm): "
         + str(
             {

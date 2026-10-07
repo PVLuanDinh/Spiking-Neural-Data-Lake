@@ -349,6 +349,14 @@ def test_a_dev_set_never_claims_even_on_a_met_row():
     assert "NOT MADE" in line and "STANDS" not in line and "dev" in line
 
 
+def test_a_halted_incomplete_set_reports_without_crashing():
+    """Found reproducing the fold lens: `decide` on an incomplete set (HALT, no contrasts, and
+    possibly no records of the family at all) died in claims_report on recs[0]."""
+    halt = "HALT (instrument defect, no verdict): the record set is incomplete"
+    for recs in ([], [_record("MED", 16130, "F4")]):
+        assert "NOT MADE" in m.claims_report("F4", {}, recs, halt)[0]
+
+
 KE_PLANTS = {
     "short": lambda rs: rs[0].update(restored=[1] * 6 + [0] * 6, inproc=[1] * 12, n_a=6),
     "empty_b": lambda rs: rs[0].update(restored=[1] * 8, inproc=[1] * 8, n_a=8),
