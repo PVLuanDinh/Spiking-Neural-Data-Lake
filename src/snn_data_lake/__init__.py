@@ -452,6 +452,8 @@ REGIONS = {
         "neuron_zoo",
         # every grown unit gets a cortical depth, a layer and an immutable Dale sign
         "placement",
+        # specs/022 T112 (G4) Part C: the anatomical attachment rule (layer target x tangential kernel x shared partners); fixtures only until T3/Part B gate its consumers
+        "wiring_prior",
         "resonate_and_fire",
         # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
         "similarity_sized_growth",

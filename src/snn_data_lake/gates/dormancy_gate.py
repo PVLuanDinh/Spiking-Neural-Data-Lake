@@ -186,7 +186,17 @@ EXEMPT = {
         "shape. Reachable from run_selfchecks (its synthetic self-check) and its campaign CLI, "
         "never from a tick. Its CONSUMERS are records, not imports: tools/g4_t3_campaign.json's "
         "reading and width decide the kernel FORM of growth/wiring_prior.py (Part C, not yet "
-        "built) and gate G7's T2/T4 kernel arms (2.14 A13)"
+        "built) and gate G7's T2/T4 kernel arms (2.14 A13)",
+    ),
+    "wiring_prior": (
+        "wire",
+        "specs/022 T112 (G4) Part C, DATED 2026-10-07: the anatomical attachment rule "
+        "(layer target from CONN_PROB x a Part B tangential kernel x shared-partner bonus), built "
+        "on fixtures (tests/test_wiring_prior.py). Consumer-to-be: G3's grown-unit wiring "
+        "(growth_campaign attachment arms) and G7's T4 RULE generator; neither calls it yet, and "
+        "no deciding use before T3 READ (met 2026-10-07) AND Part B's tangential record "
+        "(2.14 A13). It refuses T3's 3-D record and any non-Part-B record, so no hand width can "
+        "reach a consumer. Retire this row when G3's arm imports it.",
     ),
     "brian2_backend": (
         "permanent",
