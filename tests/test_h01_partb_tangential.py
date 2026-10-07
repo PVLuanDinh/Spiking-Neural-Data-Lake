@@ -583,6 +583,27 @@ def test_a_source_change_during_the_campaign_cannot_be_stamped_with_the_new_iden
         pb.score_h01("x.npz", {}, t3_ref=pb.check_t3_record(T3_PATH))
 
 
+def test_h01_read_holds_one_seeds_histograms_at_a_time(monkeypatch, pop):
+    """s2 / F10 (fold-lens round 2): the previous seed's histogram set is freed before the next
+    one is allocated (about 1.7 GB each at the archived 4,000-bin size)."""
+    import weakref
+
+    refs, alive_at_build = [], []
+
+    def build(pop_, seed, edges=None, **kw):
+        alive_at_build.append(sum(r() is not None for r in refs))
+        z = np.zeros((1, 1, 1, 1), dtype=np.int64)
+        h = pb.Hists(*([z] * 6))
+        refs.append(weakref.ref(h))
+        return h, None
+
+    monkeypatch.setattr(pb, "build_hists", build)
+    monkeypatch.setattr(pb, "score_unit", lambda pop_, h: {})
+    units, first = pb._score_seeds(pop, (np.zeros(1), np.ones(1)), (1, 2, 3))
+    assert alive_at_build == [0, 0, 0] and [u["seed"] for u in units] == [1, 2, 3]
+    assert first[0].shape == (1, 1) and len(refs) == 3
+
+
 def test_pathway_recovery_is_derived_from_the_authorised_truth_not_the_record():
     """F6 (fold-lens round 2): the record's own `planted` and `cells` are never trusted."""
     truth = next(r.truth for r in pb.PLAN if r.truth.get("pathway"))

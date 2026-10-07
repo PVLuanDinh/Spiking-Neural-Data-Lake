@@ -747,6 +747,20 @@ def validate_planted(record, pop, plan=PLAN, n_edges=t3.N_EDGES):
     return bands
 
 
+def _score_seeds(pop, edges, seeds):
+    """Each registered seed's units and the first seed's pooled aggregates (n, k) only."""
+    units, first = [], None
+    for s in seeds:
+        h, _ = build_hists(pop, s, edges=edges)
+        if first is None:
+            first = (h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1)))  # aggregates only
+        u = score_unit(pop, h)
+        u["seed"] = int(s)
+        units.append(u)
+        del h, _  # free this seed's histogram set BEFORE the next is allocated (amendment (f) F10)
+    return units, first
+
+
 def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
     """The only edge read. Refuses unless the planted record validates (and the seeds are the registered 8)."""
     verify_t3_ref(t3_ref)
@@ -761,16 +775,7 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
         return {"reading": "REFUSED_FRAME", "artifact_sha256": sha}
     start = identity()
     edges = (np.asarray(z["pre_idx"]), np.asarray(z["post_idx"]))
-    units, first = [], None
-    for s in seeds:
-        h, _ = build_hists(pop, s, edges=edges)
-        first = first or (
-            h.n_fold.sum((0, 1)),
-            h.k_fold.sum((0, 1)),
-        )  # aggregates only: the Hists is freed
-        u = score_unit(pop, h)
-        u["seed"] = int(s)
-        units.append(u)
+    units, first = _score_seeds(pop, edges, seeds)
     _refuse_drift(start)
     st = states(units, bands)
     sighted = pooling_sighted(PLAN, planted_record["rows"], bands, pop)

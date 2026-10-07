@@ -917,3 +917,7 @@ only; they were NOT re-panelled (a third panel round needs the owner). Each fold
   `pathway_widths` field by silently serving the global kernel, against the frozen rule that a consumer reading a field absent from the record
   refuses (item 6). Now a pooled record without the mapping raises `RecordRefused`; an empty mapping (every offset zero) and a pathway absent
   from a present mapping keep the global width as before. Red on `5c6ecba2`: `keep = "pooled"` with no widths returned the global probability.
+- **F10 (one seed's histograms at a time; fold-lens MINOR).** (e)s2 kept only the first seed's aggregates, but the loop still held the previous
+  seed's histogram set while the next was allocated (two sets at once, about 1.66 GB at the archived 4,000-bin size). The per-seed loop is now
+  `_score_seeds`, which frees each set after scoring. Red on the extraction alone: the previous set was alive at the next build
+  (alive counts `[0, 1, 1]`, now `[0, 0, 0]`).
