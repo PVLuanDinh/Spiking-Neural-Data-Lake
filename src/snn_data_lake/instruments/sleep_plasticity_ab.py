@@ -746,6 +746,22 @@ N_A, N_B = 8, 12  # the evaluation's fixed item counts (2.2): E_A 8 items, E_B 1
 N_ALL = N_A + N_B
 
 
+def expected_heldout_keys(a, b):
+    """The 20 endpoint identities, in endpoint order: session A's held-out lines, then session B's."""
+    from snn_data_lake.readout.interaction_learning import _utterance_key
+
+    return [_utterance_key(line) for line, _ in heldout(a) + heldout(b)]
+
+
+def endpoint_identity_ok(r):
+    """Codex round 2: the record's ordered identities ARE the 20 frozen A/B endpoint items (not merely equal
+    across arms), so a wrong, empty, repeated or reordered list cannot read as an endpoint."""
+    try:
+        return r["heldout_keys"] == expected_heldout_keys(r["a"], r["b"])
+    except (KeyError, TypeError):
+        return False
+
+
 def endpoint_shape_ok(r):
     """Codex lens-r3-amend: a record's endpoints are 8 + 12 BINARY outcomes, in-process and restored, or
     nothing downstream may divide by an item count taken from one arm."""
@@ -757,7 +773,12 @@ def endpoint_shape_ok(r):
             and all(type(x) is int and x in (0, 1) for x in v)
         )
 
-    return r.get("n_a") == N_A and binary(r.get("restored")) and binary(r.get("inproc"))
+    return (
+        type(r.get("n_a")) is int
+        and r["n_a"] == N_A
+        and binary(r.get("restored"))
+        and binary(r.get("inproc"))
+    )
 
 
 def _e(rec, which, key="restored"):
@@ -796,7 +817,7 @@ def check_records(family, recs):
             fails["KE"].append((seed, "held-out identity"))
     for r in recs:
         tag = (r["arm"], r["seed"])
-        if not endpoint_shape_ok(r):
+        if not (endpoint_shape_ok(r) and endpoint_identity_ok(r)):
             fails["KE"].append(tag)
         if r["tick"]["presentations"] != [K] * r["budget"]:
             fails["K2"].append(tag)
@@ -838,7 +859,7 @@ def _d(by, seeds, arm, ctrl, which, eps=0):
     out = []
     for s in seeds:
         x, y = by[s][arm], by[s][ctrl]
-        if not (endpoint_shape_ok(x) and endpoint_shape_ok(y)):
+        if not all(f(z) for f in (endpoint_shape_ok, endpoint_identity_ok) for z in (x, y)):
             raise ValueError(f"{arm} vs {ctrl} seed {s}: endpoint shape is not {N_A}+{N_B} binary")
         out.append(Fraction(_e(x, which) - _e(y, which), n_items) + eps)
     return out
