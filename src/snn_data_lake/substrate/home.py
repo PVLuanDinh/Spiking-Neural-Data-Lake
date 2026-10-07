@@ -461,7 +461,10 @@ def assert_not_live_home(path, live_home=None):
         raise LiveHomeRefused(
             f"home refused (device namespace): {path} is not a drive or share path"
         )
-    p = _resolve(path, strict=True)
+    try:
+        p = _resolve(path, strict=True)
+    except OSError as exc:
+        raise LiveHomeRefused(f"home refused (missing/unresolvable): {path} ({exc})") from exc
     if p.startswith(
         "\\\\"
     ):  # the loopback admin share (C$) names a local drive realpath cannot fold

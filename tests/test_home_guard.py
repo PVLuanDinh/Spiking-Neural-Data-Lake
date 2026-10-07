@@ -273,6 +273,17 @@ def test_a_live_home_over_the_entry_bound_is_refused_not_silently_truncated(tmp_
     assert H.require_isolated_home(live_home=str(live))
 
 
+def test_a_missing_home_is_a_named_refusal_not_a_raw_oserror(tmp_path, monkeypatch, decoy):
+    # R2's probe: strict resolution raised FileNotFoundError, which a harness catching only
+    # LiveHomeRefused (the class docstring: one type for every refusal) would print as a traceback
+    missing = tmp_path / "never_created"
+    with pytest.raises(H.LiveHomeRefused, match="missing"):
+        H.assert_not_live_home(str(missing), live_home=str(decoy))
+    monkeypatch.setenv("NORD_HOME", str(missing))
+    with pytest.raises(H.LiveHomeRefused, match="missing"):
+        H.require_isolated_home(live_home=str(decoy))
+
+
 def test_namespace_prefix_normalisation_covers_unc():
     # `\\?\UNC\server\share` is the extended spelling of `\\server\share`
     assert H._strip_namespace("\\\\?\\UNC\\srv\\share\\x") == "\\\\srv\\share\\x"
