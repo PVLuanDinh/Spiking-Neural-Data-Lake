@@ -66,9 +66,13 @@ def pathway_cell(pre, post):
 
 
 def _widths(rec, cell):
-    """(sigma_um, lambda_um) of a pathway when the record kept the pooled widths, else the global ones."""
+    """(sigma_um, lambda_um) of a pathway when the record kept the pooled widths, else the global ones. A pooled
+    record MUST carry its `pathway_widths` mapping (a pathway absent from it kept the global width: zero offset);
+    a pooled record without the field is refused, never served the global kernel."""
     if cell is not None and rec.get("keep") == "pooled":
-        w = rec.get("pathway_widths") or {}
+        if not isinstance(rec.get("pathway_widths"), dict):
+            raise RecordRefused("a pooled Part B record carries no pathway_widths mapping")
+        w = rec["pathway_widths"]
         hit = w.get(cell, w.get(str(cell)))  # JSON round trips turn int keys into strings
         if hit:
             return hit[0], hit[1]

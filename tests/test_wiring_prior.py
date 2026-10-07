@@ -153,6 +153,17 @@ def test_pooled_record_delivers_the_pathway_width_that_was_read():
     assert _p(s, other, _pooled_rec(160.0)) == _p(s, other, REC)
 
 
+def test_pooled_record_without_its_widths_is_refused_not_served_the_global_kernel():
+    """B2 / F9 (fold-lens round 2): the frozen text refuses a field the record should carry; a
+    pooled record with no `pathway_widths` must not quietly deliver the global kernel."""
+    s, t = _u("s", 0, 0), _u("t", 100, 0)
+    with pytest.raises(wp.RecordRefused, match="pathway_widths"):
+        _p(s, t, {**REC, "keep": "pooled"})
+    empty = {**REC, "keep": "pooled", "pathway_widths": {}}  # pooled, every offset zero: all global
+    assert _p(s, t, empty) == _p(s, t, REC)
+    assert wp.kernel_shape({**REC, "keep": "pooled"})  # no pathway asked for: nothing to refuse
+
+
 def test_pathway_cell_matches_part_b_class_arithmetic():
     assert wp.pathway_cell(_u("a", 0, 0, "Layer 4", 1), _u("b", 0, 0, "Layer 4", 1)) == 105
     assert wp.pathway_cell(_u("a", 0, 0, "Layer 2", -1), _u("b", 0, 0, "Layer 6", 1)) == 2 * 14 + 11

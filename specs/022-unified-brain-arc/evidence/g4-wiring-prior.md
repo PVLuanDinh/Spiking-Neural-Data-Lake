@@ -913,3 +913,7 @@ only; they were NOT re-panelled (a third panel round needs the owner). Each fold
   drawn under source A could leave stamped with B's hashes if the file changed mid-run. Now `run_planted` and `score_h01` capture the identity
   before any draw, stamp the START identity, and refuse (`ExposureRefused`, "changed during the campaign") if it differs at the end.
   Red on `0189433b`: a source flip during the draws was stamped and returned.
+- **F9 (a pooled record must carry its widths; fold-lens MAJOR).** (d)B2's `kernel_shape(record, cell)` answered a pooled record with no
+  `pathway_widths` field by silently serving the global kernel, against the frozen rule that a consumer reading a field absent from the record
+  refuses (item 6). Now a pooled record without the mapping raises `RecordRefused`; an empty mapping (every offset zero) and a pathway absent
+  from a present mapping keep the global width as before. Red on `5c6ecba2`: `keep = "pooled"` with no widths returned the global probability.
