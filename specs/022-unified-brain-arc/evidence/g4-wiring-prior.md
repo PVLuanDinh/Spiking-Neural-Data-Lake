@@ -818,3 +818,18 @@ did not read the clone and are pending. Fold commits `f148b7a7`..the one after `
 - **m1 (seeds).** The synthetic tests now draw development seeds only (10020-10062); the earlier build and three scratch scripts drew
   campaign seeds 10316-10335, 10332-10335, 10340-10342, 10350-10351 and 10300-10315 on SYNTHETIC populations (no H01 edge, no H01
   position), disclosed; none of those draws is a reading, and the campaign's own draws on H01 positions are unaffected.
+
+### Dated pre-data amendment 2026-10-07 (d) to the Part B amendment -- the p8 lens's folds (Codex gpt-6.1-sol, clone c28c7d7b); no edge read
+
+Pointers (no frozen passage is edited); adds to (c). The p8 lens re-found B1, M1, M5 and M7 independently and added four:
+- **B2 (delivered kernel = read kernel).** `growth/wiring_prior.py` now applies a pooled record's per-pathway widths: `pathway_cell(pre, post)`
+  reproduces Part B's cell id (pre class x 14 + post class, class = band index x 2 + sign > 0) and `kernel_shape(record, cell)` returns the
+  pathway's own widths when `keep` is "pooled" (int or string keys), the global ones otherwise. A global-keeping record ignores any
+  stored widths. A test builds a pooled record from a planted pathway world and checks the consumer kernel against it.
+- **N1 (amplitudes after the final offsets).** A pooled record's per-pathway amplitudes are profiled AFTER the fitted offsets, so they
+  belong to the widths the record delivers (a test recomputes them).
+- **N2 (inner validation).** The penalty search refits the global shape on EVERY inner training split (warm start from the outer shape,
+  optimum decided by that split's counts); a spy test checks each fit sees exactly the inner-training counts and never the held-out edges.
+  Cost rises (about one Nelder-Mead per inner split, 4 per outer fold); H01-scale runtime remains unmeasured.
+- **N3 (zero exposure).** A cell with no exposure in the training counts takes the POOLED amplitude (pooled profile for G and P, the pooled
+  rate for the flat twin) instead of the pseudo-count over a vanishing denominator; both arms treat it identically so no contrast is manufactured.
