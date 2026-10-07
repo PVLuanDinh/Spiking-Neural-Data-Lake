@@ -906,3 +906,45 @@ Refit cadence (`refit_every` 20) and `buffer_cap` (1000) are the incumbent's, in
 row count and the schedule are frozen in X2. HIST-I's alternation rule is the ported LifelongConsolidator interleave
 (within-task order kept, two tasks never joined as a transition). F7 waits as 2.11/X-15
 say: R2 P3's ACCEPTED results, G3 P2, this amendment frozen, then the dev oracle run, then confirmation (16210-16217).
+
+## DATED AMENDMENT 2026-10-07 (E_B non-inferiority guard for F1, F2 and F4; written AFTER the exposed dev data was read)
+
+Written after the F1-F4 dev rehearsal (16000-16007, EXPOSED) was read, and before any CONFIRMATORY seed (16100-16137) has run; additive (a zero-removed-lines diff); it ADDS a guard and removes, loosens or re-weights nothing. Reviewed: lead read and two Codex gpt-6.1-sol rounds; every finding folded. Its code half (EPS_B, C1/C5/C7/C8-NI-B, the new table rows with K11 inputs) is the commit that follows this one.
+
+**Disclosure first.** This amendment was written after the F1-F4 dev rehearsal (seeds 16000-16007, EXPOSED) had been read
+by R3, and it was prompted by that reading. The reading (MEASURED from the 144 dev records, restored-process E, paired
+over 8 dev seeds): F1 ON - OFF on E_all +0.019 (t 0.704) hides R (replay only) - OFF +0.100 (t 7.48, 8/8) and BF (rest
+only) - OFF -0.375 (t -5.56); ON - OFF on E_B is -0.094 (t -3.21) while on E_A it is +0.19 (t 3.55). F1's frozen NI bar
+(2.4, C1-NI) reads E_A only, so a loss on the session taught second is not guarded.
+
+**The gap.** The pre-registration's interference bound protects only the OLD session. A sleep arm that buys a gain on E_A
+(or E_all) by damaging session B would pass C1-NI. P1 case (a) of the bound's own rationale ("the arm loses less than one
+item relative to its control") applies equally to B; F6 already carries "+NI on E_B" (C12) and F7 "NI on E_B" (C17), so F1
+and F4 were the inconsistent rows.
+
+**The added guard (E_B-NI).**
+- eps_B = 1/12 = 0.0833, one E_B item (the smallest change E_B can register; the same rule as eps = 0.125 for E_A).
+- For a contrast with arm X and control Y, d'_s = E_B(X, s) - E_B(Y, s) + eps_B over the same 8 seeds, through the same
+  P-8 NI wrapper (degenerate d': MET iff the common value > 0; otherwise t > 1.895). NOT MET = INTERFERENCE RED on B.
+- Where it applies (all additive, each beside the existing E_A bar, never instead of it): C1-NI-B (F1: ON vs OFF),
+  C7-NI-B (MED vs SHORT), C8-NI-B (EXT vs MED). It is a conjunct of the family's MET row: F1 MET needs C1, C1-NI AND
+  C1-NI-B; F4's chain steps C7/C8 need their NI-B too. C3 / C4 / C2 / C9 stay reported, never claims (P-6). F2's C5-NI
+  gets its B bar the same way if turnover ever reads > 0.
+- Decision-table effect (F1, rows read top to bottom): any K red HALT | C-SENS NOT MET REFUSED | C1 NOT MET NULL | C1 MET
+  and (C1-NI NOT MET or C1-NI-B NOT MET) RED | else MET. The NULL row is unchanged; the E_B bar can only turn a MET
+  into a RED, never a NULL or RED into a MET.
+- Census (P-6, Codex 27): C1-NI-B, C7-NI-B, C8-NI-B join the printed NI bars; "claims made: m" is unchanged by them
+  (they gate claims, they are not claims).
+
+**What it would have read on the exposed dev data (not a confirmatory reading, not tuned; stated so the guard cannot be
+accused of fitting dev).** F1 ON - OFF on E_B + eps_B: mean -0.0104, sd 0.0826, t -0.357 -> NOT MET (RED on B), had C1
+been MET. F4 on dev: MED - SHORT +eps_B t 7.94, EXT - MED t 4.58 (both MET); E_A bars t 4.25 and 2.93. The guard
+therefore fires on F1's dev reading and passes F4's.
+
+**What it does not do.** It does not change C1's statistic or bar, any seed set, any budget, W, or any positive control;
+it does not read a per-cap verdict (the BF-alone loss is attribution, C4); it does not turn the held HOLD on the null
+disposition into a routing claim.
+
+**Reachability (K11).** The new row has a constructed reaching input: C1 MET with a C1-NI-B NOT MET (a constructed
+d' with mean < 0 on E_B) must read RED; the instrument's decision-table test adds it. A constructed C1 MET with both
+NI bars MET must still read MET.
