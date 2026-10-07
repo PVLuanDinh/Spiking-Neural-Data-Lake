@@ -192,11 +192,10 @@ def select_unearned(base, costs, tol=0.0):
     empty set. An infeasible removal is passed as +inf: never droppable, never the survivor. Fewer than two
     units: nothing to prune. Returns (drop, survivor): drop excludes the survivor, survivor is None unless the
     all-droppable case fired."""
-    if not (
-        math.isfinite(base) and math.isfinite(tol)
-    ):  # an inf threshold would make a +inf removal droppable
+    # an inf threshold (even from finite operands: 1e308 + 1e308) would make a +inf removal droppable
+    if not (math.isfinite(base) and math.isfinite(tol) and math.isfinite(base + tol)):
         raise ValueError(
-            f"select_unearned: base and tol must be finite, got base={base!r}, tol={tol!r}"
+            f"select_unearned: base, tol and base + tol must be finite, got {base!r}, {tol!r}"
         )
     n = len(costs)
     if n < 2:

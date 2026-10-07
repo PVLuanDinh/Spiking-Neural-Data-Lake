@@ -236,3 +236,9 @@ def test_select_unearned_refuses_a_non_finite_base_or_tolerance():
     for base, tol in ((inf, 0.0), (1.0, inf), (float("nan"), 0.0), (1.0, float("nan"))):
         with pytest.raises(ValueError, match="finite"):
             candidate_lifecycle.select_unearned(base, [inf, 0.5], tol=tol)
+
+
+def test_select_unearned_refuses_a_threshold_that_overflows_to_inf():
+    # Codex b2 p2p3 m2: finite base and tol whose SUM is inf bypassed the finite guard (1e308 + 1e308)
+    with pytest.raises(ValueError, match="finite"):
+        candidate_lifecycle.select_unearned(1e308, [float("inf"), 0.5], tol=1e308)
