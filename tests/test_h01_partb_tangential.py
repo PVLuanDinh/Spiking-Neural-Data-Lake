@@ -640,3 +640,37 @@ def test_a_stale_planted_record_cannot_authorise_a_changed_instrument(pop, monke
         edit(bad)
         with pytest.raises(pb.ExposureRefused):
             pb.validate_planted(bad, pop, plan, 1200)
+
+
+def test_penalty_grid_is_computed_once_per_inner_split_and_picks_match_fit_delta(monkeypatch):
+    rng = np.random.default_rng(3)
+    n = np.full((pb.K, pb.K, pb.N_CELL, 12), 40, dtype=np.int64)
+    k = rng.binomial(n, 0.05)
+    calls = []
+    real = pb.delta_table
+
+    def spy(*a, **kw):
+        calls.append(1)
+        return real(*a, **kw)
+
+    monkeypatch.setattr(pb, "delta_table", spy)
+    pb.choose_penalty(np.arange(12) + 0.5, n, k, 0, np.log([4.0, 4.0, 1.0]), "gauss")
+    assert len(calls) == pb.K - 1  # one table per inner split, not len(PENALTIES) of them
+    monkeypatch.undo()
+    d, th = np.arange(12) + 0.5, np.log([4.0, 4.0, 1.0])
+    nn, kk = n.sum((0, 1)), k.sum((0, 1))
+    table = pb.delta_table(d, nn, kk, th, "gauss")
+    for pen in pb.PENALTIES:
+        assert np.array_equal(pb.pick_delta(table, pen), pb.fit_delta(d, nn, kk, th, "gauss", pen))
+
+
+def test_build_record_takes_aggregates_only_and_matches_the_full_histogram(pop, n_all):
+    h, _ = pb.build_hists(
+        pop, 10020, n_all=n_all, truth={"form": "gauss", "width": 60.0}, n_edges=1200
+    )
+    units = [_fake_unit(10020 + i) for i in range(8)]
+    edges = (np.zeros(2, dtype=int), np.ones(2, dtype=int))
+    args = (units, "PASS", "global", edges, "a" * 64, {"K": "gauss"}, {"form_gap": 0.5})
+    full = pb.build_record(pop, h, *args)
+    agg = pb.build_record(pop, (h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))), *args)
+    assert full == agg

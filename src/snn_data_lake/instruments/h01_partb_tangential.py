@@ -343,10 +343,21 @@ def shaped_p(d, ntr, ktr, th, kind, delta=None):
     return a[:, None] * g
 
 
+def delta_table(d, n, k, th, kind):
+    """The unpenalised per-cell NLL at every offset in DELTAS: independent of the penalty, so a split computes it
+    ONCE and every penalty picks from it (s1)."""
+    return np.stack(
+        [-_profile(n, k, shape(d[None, :] * math.exp(-x), th, kind))[1] for x in DELTAS]
+    )
+
+
+def pick_delta(table, pen):
+    return DELTAS[np.argmin(table + 0.5 * pen * DELTAS[:, None] ** 2, axis=0)]
+
+
 def fit_delta(d, n, k, th, kind, pen):
     """Per-cell offset by a 1-D grid on the penalised cell NLL, the shape fixed."""
-    nll = np.stack([-_profile(n, k, shape(d[None, :] * math.exp(-x), th, kind))[1] for x in DELTAS])
-    return DELTAS[np.argmin(nll + 0.5 * pen * DELTAS[:, None] ** 2, axis=0)]
+    return pick_delta(delta_table(d, n, k, th, kind), pen)
 
 
 def leak_free(train_folds, test_folds, f, g):
@@ -374,8 +385,9 @@ def choose_penalty(d, hist_n, hist_k, f, th, kind):
         th_in = fit_global(
             d, ntr, ktr, kind, init=th
         )  # N2: the shape never sees the inner-held-out edges
+        table = delta_table(d, ntr, ktr, th_in, kind)  # once per inner split, not once per penalty
         for pen in PENALTIES:
-            delta = fit_delta(d, ntr, ktr, th_in, kind, pen)
+            delta = pick_delta(table, pen)
             score[pen] += _ll(shaped_p(d, ntr, ktr, th_in, kind, delta), nte, kte)
     return max(PENALTIES, key=lambda p: score[p])
 
@@ -711,7 +723,10 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
     units, first = [], None
     for s in seeds:
         h, _ = build_hists(pop, s, edges=edges)
-        first = first or h
+        first = first or (
+            h.n_fold.sum((0, 1)),
+            h.k_fold.sum((0, 1)),
+        )  # aggregates only: the Hists is freed
         u = score_unit(pop, h)
         u["seed"] = int(s)
         units.append(u)
@@ -757,7 +772,7 @@ def build_record(pop, h, units, verdict, keep, edges, sha, t3_ref=None, bands=No
     (select_form) fitted on ALL pairs and edges, so a tangential disagreement with T3's form changes what is
     delivered; the disagreement is recorded. Per-cell amplitudes, per-cell widths if pooled, beta = 0 until B2."""
     d = (np.arange(pop.nb) + 0.5) * BIN
-    n, k = h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))
+    n, k = h if isinstance(h, tuple) else (h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1)))
     kind = select_form(units, bands)
     th = fit_global(d, n, k, kind)
     a_w, c_w, sigma, lam = export_params(kind, th)
