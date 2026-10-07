@@ -1101,3 +1101,9 @@ The surviving runner is hardened separately, one commit each: scoring evidence v
 live-lake check on `BaseException` (m3), `--pa3` exits non-zero on a False result (m2), a DELTA - BATCH positive-control
 test through the surviving wiring (m1), and per-seed records persisted (json + sha256) by `run_cells` so a future read can
 be re-derived.
+
+Addendum to the 2026-10-07 note (Codex g5_b lens 2). The panel also found that the archived reader let a failed B-R0
+positive control still permit a B-R1 verdict (0fba900c:624). B-R0 was MET in the confirmatory (DELTA - BATCH +0.1509,
+t +4.551, log above), so this hole did not fire; it was in the deleted reader. The surviving-runner findings of lenses 1
+and 2 (scored-nothing cells, the BaseException lake check, `--pa3` exit code, NaN floors, the persisted records) and the
+five uncaught-mutation tests are folded as separate commits on claude/g5.
