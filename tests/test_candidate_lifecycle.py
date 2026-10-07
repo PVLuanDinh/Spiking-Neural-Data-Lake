@@ -228,3 +228,11 @@ def test_select_unearned_is_the_rule_heldout_prune_runs():
 
     res = candidate_lifecycle.heldout_prune(S, Y, y, solve)
     assert res.keep is not None and res.n_drop == 3 - len(res.keep)
+
+
+def test_select_unearned_refuses_a_non_finite_base_or_tolerance():
+    # Codex b2 MINOR: base=inf or tol=inf made a +inf (infeasible) removal droppable
+    inf = float("inf")
+    for base, tol in ((inf, 0.0), (1.0, inf), (float("nan"), 0.0), (1.0, float("nan"))):
+        with pytest.raises(ValueError, match="finite"):
+            candidate_lifecycle.select_unearned(base, [inf, 0.5], tol=tol)

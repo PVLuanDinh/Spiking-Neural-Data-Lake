@@ -12,6 +12,7 @@ commit with its own before/after fingerprint (owner question O5).
 fingerprint); no live caller passes it.
 """
 
+import math
 from dataclasses import dataclass
 
 import torch
@@ -191,6 +192,12 @@ def select_unearned(base, costs, tol=0.0):
     empty set. An infeasible removal is passed as +inf: never droppable, never the survivor. Fewer than two
     units: nothing to prune. Returns (drop, survivor): drop excludes the survivor, survivor is None unless the
     all-droppable case fired."""
+    if not (
+        math.isfinite(base) and math.isfinite(tol)
+    ):  # an inf threshold would make a +inf removal droppable
+        raise ValueError(
+            f"select_unearned: base and tol must be finite, got base={base!r}, tol={tol!r}"
+        )
     n = len(costs)
     if n < 2:
         return [], None
