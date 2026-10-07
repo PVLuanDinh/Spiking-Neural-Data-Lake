@@ -134,7 +134,7 @@ RETENTION: dict[int, tuple[str, bool, str]] = {
         "own intentions and their LP/outcome history are never reclaimed -- the store's "
         "materialized view folds every row, so each is load-bearing. Append budget: "
         "BASELINED 2026-10-06 on the growth-loop unit journal (one 9-unit batch burst, "
-        "15,241 B (labeled codec; remeasured 2026-10-06); tools/lake_append_baseline.json: a fixture measurement, not a brain's) -- "
+        "15,242 B (labeled codec; remeasured 2026-10-06, reproduced 2026-10-07); tools/lake_append_baseline.json: a fixture measurement, not a brain's) -- "
         "re-measure at the first live per-tick writer",
     ),
 }
