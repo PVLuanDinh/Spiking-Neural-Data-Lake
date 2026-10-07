@@ -251,6 +251,11 @@ def _fake_unit(seed, gf=0.0, pg=0.0, form="gauss", w=60.0, block_gf=None, pathwa
     }
 
 
+def _fb(x):
+    """A form-band pair, the same width for both comparisons."""
+    return {"form_gap_gauss": x, "form_gap_exp": x}
+
+
 def _fake_rows(plan, pg_gate):
     rows = {}
     for r in plan:
@@ -305,9 +310,7 @@ def test_record_is_readable_by_wiring_prior(pop, n_all):
     rng = np.random.default_rng(0)
     edges = (rng.integers(0, N, 400), rng.integers(0, N, 400))
     units = [_fake_unit(10020 + i) for i in range(8)]
-    bands = {
-        "form_gap": 0.5
-    }  # constant gaps: the mixture is not a MET upgrade, the Gaussian is exported
+    bands = _fb(0.5)  # constant gaps: the mixture is not a MET upgrade, the Gaussian is selected
     t3_ref = {"blob_sha256": "b" * 64, "K": "mix"}
     rec = pb.build_record(pop, h, units, "PASS", "pooled", edges, "a" * 64, t3_ref, bands)
     for key in (
@@ -449,6 +452,29 @@ def test_planted_plan_is_compared_in_full_not_by_names(pop):
             pb.validate_planted(bad, pop, plan, 1200)
 
 
+def test_form_bands_are_calibrated_for_the_contrast_selection_uses():
+    """F4 (fold-lens round 2): the band for 'mixture over the chosen single form' is calibrated on
+    that contrast, one band per single form, not on the mixture over the better of the two."""
+
+    def units(triples):
+        return [
+            dict(_fake_unit(10020 + i), forms={"gauss": g, "exp": e, "mix": m})
+            for i, (g, e, m) in enumerate(triples * 4)
+        ]
+
+    cal = units(
+        [(100.0, 0.0, 101.0), (0.0, 100.0, 101.0)]
+    )  # the mixture beats the better form by 1
+    bands = pb.calibrate_bands(cal)
+    assert bands["form_gap_gauss"] == 101.0 and bands["form_gap_exp"] == 101.0
+    # its edge over the CHOSEN single form swings 1 / 101 (mean 51): inside its own band, no upgrade
+    assert pb.select_form(cal, bands) == "gauss"
+    clear = units(
+        [(0.0, -500.0, 300.0), (0.0, -500.0, 310.0)]
+    )  # a large, varying advantage over Gaussian
+    assert pb.select_form(clear, _fb(1.0)) == "mix"
+
+
 def test_pathway_recovery_is_derived_from_the_authorised_truth_not_the_record():
     """F6 (fold-lens round 2): the record's own `planted` and `cells` are never trusted."""
     truth = next(r.truth for r in pb.PLAN if r.truth.get("pathway"))
@@ -505,12 +531,12 @@ def test_exported_form_is_the_scored_form_and_the_selection_is_disclosure_only(p
 
     def rec(units, t3_k, gap):
         return pb.build_record(
-            pop, h, units, "PASS", "global", edges, "a" * 64, {"K": t3_k}, {"form_gap": gap}
+            pop, h, units, "PASS", "global", edges, "a" * 64, {"K": t3_k}, _fb(gap)
         )
 
     gauss_units = [_fake_unit(10020 + i) for i in range(8)]
     r = rec(gauss_units, "mix", 0.5)
-    assert pb.select_form(gauss_units, {"form_gap": 0.5}) == "gauss"
+    assert pb.select_form(gauss_units, _fb(0.5)) == "gauss"
     assert (
         r["form"] == "mix" and r["a"] == 1.0 and r["c"] > 0.0
     )  # the scored kernel, not the selected one
@@ -527,7 +553,7 @@ def test_exported_form_is_the_scored_form_and_the_selection_is_disclosure_only(p
         }  # a varying, large mixture advantage
     r = rec(mix_units, "mix", 5.0)
     assert r["form"] == "mix" and r["form_selected"] == "mix" and r["form_disagrees_t3"] is False
-    assert pb.select_form(mix_units, {"form_gap": 50.0}) == "gauss"  # inside the band: no upgrade
+    assert pb.select_form(mix_units, _fb(50.0)) == "gauss"  # inside the band: no upgrade
 
 
 def test_pooled_record_amplitudes_belong_to_the_delivered_widths_and_the_consumer_uses_them(
@@ -547,9 +573,7 @@ def test_pooled_record_amplitudes_belong_to_the_delivered_widths_and_the_consume
     )
     units = [_fake_unit(10020 + i, form="gauss") for i in range(8)]
     edges = (np.zeros(2, dtype=int), np.ones(2, dtype=int))
-    rec = pb.build_record(
-        p2, h, units, "PASS", "pooled", edges, "a" * 64, {"K": "gauss"}, {"form_gap": 9}
-    )
+    rec = pb.build_record(p2, h, units, "PASS", "pooled", edges, "a" * 64, {"K": "gauss"}, _fb(9))
     d = (np.arange(p2.nb) + 0.5) * pb.BIN
     n, k = h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))
     th = pb.fit_global(d, n, k, "mix")
@@ -582,9 +606,7 @@ def test_pathway_check_measures_the_scored_estimator_the_record_exports(pop):
     chk = pb.pathway_check(p2, h, truth, unit)
     edges = (np.zeros(2, dtype=int), np.ones(2, dtype=int))
     units = [_fake_unit(10020 + i) for i in range(8)]
-    rec = pb.build_record(
-        p2, h, units, "PASS", "pooled", edges, "a" * 64, {"K": "mix"}, {"form_gap": 9}
-    )
+    rec = pb.build_record(p2, h, units, "PASS", "pooled", edges, "a" * 64, {"K": "mix"}, _fb(9))
     assert rec["penalty"] == 4.0 and chk["cells"]
     for c, w in zip(chk["cells"], chk["fitted"], strict=True):
         assert math.isclose(w, rec["pathway_widths"][c][0], rel_tol=1e-9), (c, w)
@@ -734,7 +756,7 @@ def test_build_record_takes_aggregates_only_and_matches_the_full_histogram(pop, 
     )
     units = [_fake_unit(10020 + i) for i in range(8)]
     edges = (np.zeros(2, dtype=int), np.ones(2, dtype=int))
-    args = (units, "PASS", "global", edges, "a" * 64, {"K": "gauss"}, {"form_gap": 0.5})
+    args = (units, "PASS", "global", edges, "a" * 64, {"K": "gauss"}, _fb(0.5))
     full = pb.build_record(pop, h, *args)
     agg = pb.build_record(pop, (h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))), *args)
     assert full == agg

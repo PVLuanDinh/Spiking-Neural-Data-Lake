@@ -440,14 +440,16 @@ def score_unit(pop, h, kind=SCORED_KIND):
 
 
 # ---- bands and the reading (the T3 tri-state machinery, reused) --------------------------------
-def form_gap(u):
-    """The mixture's held-out advantage over the better single form, one seed (neuron folds)."""
-    return u["forms"]["mix"] - max(u["forms"]["gauss"], u["forms"]["exp"])
+def form_gap(u, single):
+    """The mixture's held-out advantage over one single form, one seed (neuron folds)."""
+    return u["forms"]["mix"] - u["forms"][single]
 
 
 def calibrate_bands(units):
     return {
-        "form_gap": max(abs(form_gap(u)) for u in units),
+        # one band per comparison selection makes (mixture over the chosen single form; amendment (f) F4)
+        "form_gap_gauss": max(abs(form_gap(u, "gauss")) for u in units),
+        "form_gap_exp": max(abs(form_gap(u, "exp")) for u in units),
         "neuron": {c: max(abs(u["neuron"][c]) for u in units) for c in CONTRASTS},
         "interior": {c: max(abs(u["interior"][c]) for u in units) for c in CONTRASTS},
         "region": [
@@ -769,11 +771,11 @@ def select_form(units, bands):
     """The form the tangential held-out scores prefer, DISCLOSED in the record (`form_selected`; the record exports
     SCORED_KIND, the form its verdict was earned by -- amendment (f) F1). T3's A2 shape on the Part B forms: the better
     single kernel by summed held-out LL (tie order: Gaussian), upgraded to the mixture iff the mixture's advantage
-    over that single form is a MET paired contrast over the 8 seeds above the calibrated `form_gap` band."""
+    over that single form is a MET paired contrast over the 8 seeds above the band calibrated on that same contrast (`form_gap_gauss` / `form_gap_exp`)."""
     ll = {f: math.fsum(u["forms"][f] for u in units) for f in KINDS}
     single = "gauss" if ll["gauss"] >= ll["exp"] else "exp"
-    gaps = [u["forms"]["mix"] - u["forms"][single] for u in units]
-    return "mix" if _state(gaps, bands["form_gap"]) == 1 else single
+    gaps = [form_gap(u, single) for u in units]
+    return "mix" if _state(gaps, bands[f"form_gap_{single}"]) == 1 else single
 
 
 def export_params(kind, th):

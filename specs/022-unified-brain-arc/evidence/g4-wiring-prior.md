@@ -890,3 +890,9 @@ only; they were NOT re-panelled (a third panel round needs the owner). Each fold
   loses its `init` argument and `choose_penalty` its outer-shape argument. Cost: one grid scan per inner split (the fast test file
   went from about 53 s to 65 s); the H01-scale cost is unmeasured and waits for the machine. Red on `d6358c24`: the spy saw a non-None
   initialiser on every inner fit.
+- **F4 (the form band is calibrated on the contrast selection makes; fold-lens MAJOR).** (c)M2's `form_gap` was calibrated as the mixture over the
+  BETTER single form per unit, while selection tests the mixture against the single form chosen by the summed scores. Registered:
+  two bands, `form_gap_gauss` and `form_gap_exp` (max |mixture - that form| over the calibration units), and selection uses the band of the
+  form it chose. Since F1 the selection is disclosure only, so this governs `form_selected` and `form_disagrees_t3`, not what is delivered.
+  Red on `aaa34e12`: calibration units alternating Gaussian 100 / exponential 100 with the mixture at 101 gave band 1, and selection
+  (gaps 1 / 101, mean 51, t about 2.70) upgraded to the mixture.
