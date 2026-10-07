@@ -72,6 +72,12 @@ def check_feed(w_feed, units):
                 )
 
 
+def _l2(x):
+    """L2 norm without squaring the raw magnitudes (1e200 overflows, 1e-200 underflows to 0)."""
+    m = np.max(np.abs(x))
+    return float(m * np.linalg.norm(x / m)) if m > 0 else 0.0
+
+
 def random_feed(w_feed, units, seed):
     """The norm-matched random arm: each column keeps its L2 norm and its unit's Dale sign."""
     w = _matrix(w_feed, units)
@@ -81,5 +87,5 @@ def random_feed(w_feed, units, seed):
         col = np.abs(rng.standard_normal(w.shape[0])) * u.sign
         norm = np.linalg.norm(col)
         if norm > 0:
-            out[:, j] = col * (np.linalg.norm(w[:, j]) / norm)
+            out[:, j] = col * (_l2(w[:, j]) / norm)
     return out

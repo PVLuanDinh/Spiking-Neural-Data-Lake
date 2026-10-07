@@ -149,3 +149,14 @@ def test_a_non_real_feed_is_refused_before_conversion():
             fn(wc, UNITS)
     with pytest.raises(ValueError, match="REFUSED"):
         gf.random_feed(wc, UNITS, 9901)
+
+
+def test_random_feed_is_scale_safe_and_finite_at_extreme_magnitudes():
+    # Codex b2 MINOR: the squared-sum norm overflowed at 1e200 (and underflowed to 0 at 1e-200)
+    for scale in (1e200, 1e-200):
+        out = gf.random_feed(W_FEED * scale, UNITS, 9901)
+        assert np.isfinite(out).all()
+        for j, u in enumerate(sorted(UNITS, key=lambda u: u.unit_id)):
+            assert (out[:, j] * u.sign >= 0).all()
+            ratio = np.max(np.abs(out[:, j])) / np.max(np.abs(W_FEED[:, j] * scale))
+            assert 0.0 < ratio < 1e3  # same magnitude order, not inf and not collapsed to zero
