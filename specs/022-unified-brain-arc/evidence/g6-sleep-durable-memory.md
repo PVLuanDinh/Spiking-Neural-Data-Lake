@@ -801,6 +801,19 @@ structural rewirer (turnover 0) takes a dated P3 exemption until a zero-crossing
 future 0x08 reclaimer must first move pruned-unit weights into an immortal record. Q6 (legacy circuits in the
 eligible-brain arm) is NOT answered there and stays with the owner. This note changes no frozen clause.
 
+**DATED NOTE 2026-10-07 (the fold re-panel's findings and their folds; no deciding data read).** Additive; zero lines removed.
+Codex's fold lens on df3fb60d^..e372ec32 (archive `codex_panels_1006/g6_fold/g6_fold_out.txt`) returned 4 MAJOR and 1 MINOR,
+each reproduced red first and folded as its own commit: M4 `run_instance` at n == 0 divided by zero before A13's refusal
+could report (a8a48f4e; q is 0.0 and both arms are reported refused); M3 a restored circuit row with no bound reader still
+drove the pressure median (507aa7b9; `pressure()` and `request()` refuse, naming the unbound rows -- a fail-closed guard, no
+frozen A7 clause (field, threshold, K_MIN) moved); M1 an unreadable root read as absent in the isolation stamp (d138ef9e;
+absence is a stable stamp, any other failure on the root a never-equal marker); M2 a directory link hid its contents from
+the stamp (8fe878ff; a never-equal marker); m1 a same-size rewrite with a preserved mtime read as unchanged (80d9387c; every
+file carries a blake2b digest, ~6 s per stamp on the 3.3 GB live lake). These folds are battery-verified only: the panel's
+one round is used, R3 has not challenged them. The commits 41dec890 and 0f50f692 (D20, Q1-Q5) and this note are docs-only,
+outside the panel. The stamp helper is one of three copies of one job (R3's lake_snapshot, R1's live-walk); the lead picks
+the survivor at batch-2 integration and G6's `_live_mtime` is deleted if it loses.
+
 ## 3. Results
 
 None. Nothing is measured beyond section 1; no deciding test has run.
