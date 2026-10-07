@@ -668,7 +668,8 @@ def row_growth_findings(src_root=None, known=None, out_of_scope=None, segments=N
         if out_of_scope is None
         else out_of_scope
     )
-    segments = GROWN_SEGMENTS if segments is None else segments
+    if segments is None:  # the declared admit points name paths in THIS tree, not a caller's root
+        segments = GROWN_SEGMENTS if src_root is None else {}
     admit_points = {seg[4] for seg in segments.values() if seg[4]}
     findings = [
         k
