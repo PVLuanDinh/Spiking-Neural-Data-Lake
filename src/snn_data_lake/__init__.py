@@ -422,6 +422,8 @@ REGIONS = {
         "growth_loop",
         # specs/022 T111 (G3) P1: the taught learner's grown latency segment (frozen code never re-ranked)
         "grown_code",
+        # specs/022 T111 (G3) P5: the grown units' projection into the G1 reservoir (connection 2)
+        "grown_feed",
         # specs/022 T062: the H01 c3 SYNAPSE graph, 8 gates, a seeded population
         "h01_ingest",
         # Brain-Cog-adopted: LIF+Izhikevich+AdEx worked EXAMPLE of the basic_components palette (not on the live tick)

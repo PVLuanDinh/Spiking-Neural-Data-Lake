@@ -973,6 +973,13 @@ EXEMPT = {
         "campaign instrument (P4) and G6's ledger/solved_sink readers; it reaches the live path only "
         "when G9 wires the engine, and this exemption retires that day",
     ),
+    "grown_feed": (
+        "wire",
+        "specs/022 T111 (G3) P5: the grown units' projection into the G1 reservoir (connection 2). Its "
+        "consumers are the feed arms of G3's campaign instrument (P4/P5) and G5's reservoir readout "
+        "(Part D); the pool's port (percept_fed) is charged by test_grown_feed, not by an import. It "
+        "reaches the live path only when G9 wires the engine, and this exemption retires that day",
+    ),
     "unit_label_gate": (
         "wire",
         "specs/022 T115 (G7) / T111 (G3), lead ruling 29: the label gate for every grown unit. Its consumer "

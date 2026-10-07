@@ -12,7 +12,8 @@ percept. Constructed fixtures on seeds 9900-9999 only; nothing here builds a Bra
 import numpy as np
 import pytest
 
-from snn_data_lake.growth.grown_code import GrownUnit
+from snn_data_lake.growth import grown_feed as gf
+from snn_data_lake.growth.grown_code import GrownUnit, segment_psp
 from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner, text_features
 from snn_data_lake.reservoir import recurrent_pool as rp
 
@@ -49,6 +50,24 @@ W_FEED = np.array([[2.0, 1.0, -1.5], [0.0, 3.0, -2.0], [1.0, 0.5, -3.0]])
 X = np.linspace(0.0, 1.0, 64)
 
 
+def test_the_witness_units_actually_spike_so_the_feed_is_not_vacuous():
+    s = segment_psp(UNITS, _ranks(), TAU, T_POST)
+    assert len(s) == 3 and all(v > 0.0 for v in s), s  # the detector fires on a known positive
+
+
+def test_feed_drive_is_the_segment_through_the_declared_synapses_in_unit_id_order():
+    s = np.array(segment_psp(UNITS, _ranks(), TAU, T_POST))
+    got = gf.feed_drive(UNITS, _ranks(), TAU, T_POST, W_FEED)
+    assert got.shape == (N_POOL,) and np.allclose(got, W_FEED @ s)
+    shuffled = (UNITS[2], UNITS[0], UNITS[1])  # insertion order never matters
+    assert gf.feed_drive(shuffled, _ranks(), TAU, T_POST, W_FEED).tolist() == got.tolist()
+    silenced = (UNITS[0], UNITS[1].silenced(), UNITS[2])
+    off = gf.feed_drive(silenced, _ranks(), TAU, T_POST, W_FEED)
+    assert np.allclose(
+        off, W_FEED[:, [0, 1]] @ s[[0, 1]]
+    )  # silenced unit 7 (column 2) contributes nothing
+
+
 def test_port_off_is_todays_bytes():
     base, fed = _pool(), _pool()
     a = base.percept(X)
@@ -60,3 +79,55 @@ def test_port_refuses_a_bad_feed():
     for bad in (np.zeros(N_POOL + 1), np.zeros((N_POOL, 1)), np.array([0.0, np.nan, 0.0])):
         with pytest.raises(ValueError, match="REFUSED"):
             _pool().percept_fed(X, bad)
+
+
+def _carriers_after(feed_matrix):
+    pool = _pool(window=1)
+    drive = gf.feed_drive(UNITS, _ranks(), TAU, T_POST, feed_matrix)
+    pool.percept_fed(X, drive)
+    pool.percept_fed(X, drive)
+    return pool.fingerprint(), {k: v.tolist() for k, v in pool.carriers().items()}
+
+
+def test_C15_random_feed_differs_from_fed_and_the_instrument_has_a_positive_control():
+    fed = _carriers_after(W_FEED)
+    rand = gf.random_feed(W_FEED, UNITS, 9901)
+    assert _carriers_after(rand) != fed  # the norm-matched random arm is a different input
+    # positive control: an arm equal to the fed matrix does NOT differ (not always-on)
+    assert _carriers_after(W_FEED.copy()) == fed
+    # a no-feed arm also differs from fed (the feed reaches the carriers at all)
+    assert _carriers_after(np.zeros_like(W_FEED)) != fed
+
+
+def test_random_feed_is_norm_matched_sign_consistent_and_seeded():
+    r = gf.random_feed(W_FEED, UNITS, 9901)
+    assert np.allclose(np.linalg.norm(r, axis=0), np.linalg.norm(W_FEED, axis=0))
+    assert (r[:, 0] >= 0).all() and (r[:, 1] >= 0).all() and (r[:, 2] <= 0).all()
+    assert r.tolist() == gf.random_feed(W_FEED, UNITS, 9901).tolist()
+    assert r.tolist() != gf.random_feed(W_FEED, UNITS, 9902).tolist()
+    assert r.tolist() != W_FEED.tolist()
+
+
+def test_C17_clip_flips_to_the_unit_sign_and_sign_consistent_deposits_pass_unchanged():
+    assert gf.clip_feed(W_FEED, UNITS).tolist() == W_FEED.tolist()
+    bad = W_FEED.copy()
+    bad[1, 2] = +4.0  # an I unit's deposit that would flip positive
+    bad[2, 0] = -4.0  # an E unit's deposit that would flip negative
+    clipped = gf.clip_feed(bad, UNITS)
+    assert clipped[1, 2] == 0.0 and clipped[2, 0] == 0.0
+    assert clipped.tolist() == [[2.0, 1.0, -1.5], [0.0, 3.0, 0.0], [0.0, 0.5, -3.0]]
+    assert bad[1, 2] == 4.0  # the input is never mutated
+
+
+def test_C17_restore_refuses_a_sign_violating_synapse_and_names_it():
+    gf.check_feed(W_FEED, UNITS)  # sign-consistent: accepted
+    bad = W_FEED.copy()
+    bad[1, 2] = 4.0
+    with pytest.raises(ValueError, match=r"unit 7.*pool unit 1"):
+        gf.check_feed(bad, UNITS)
+    with pytest.raises(ValueError, match="REFUSED"):
+        gf.check_feed(W_FEED[:, :2], UNITS)  # one column per unit, no more, no fewer
+    nan = W_FEED.copy()
+    nan[0, 0] = np.nan
+    with pytest.raises(ValueError, match=r"unit 3.*pool unit 0"):
+        gf.check_feed(nan, UNITS)
