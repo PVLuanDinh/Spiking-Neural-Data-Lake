@@ -27,6 +27,14 @@ import numpy as np
 
 from snn_data_lake.readout.interaction_learning import text_features
 
+GRADIENT_CLAIM = {
+    "_constraints": (
+        "NOT_A_RULE",
+        "lists the multiclass constraint index pairs (item, competitor label) in a fixed order for the "
+        "Farkas check; it reads labels and returns a list, changes no weight and computes no update",
+    ),
+}
+
 _TOL = 1e-9  # LP support threshold: a multiplier below it is treated as zero before the exact check
 
 

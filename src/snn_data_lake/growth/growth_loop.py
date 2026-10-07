@@ -42,6 +42,18 @@ from snn_data_lake.growth.learning_progress import GoalStore
 from snn_data_lake.growth.placement import place_labeled
 from snn_data_lake.substrate.home import LiveHomeRefused, assert_not_live_home
 
+GRADIENT_CLAIM = {
+    "trace_train": (
+        "LOCAL",
+        "one capacity candidate's input row, each synapse updated from its OWN PSP eligibility trace times ONE "
+        "broadcast scalar L = sum_c B_c (y_c - p_c), with B a FIXED random vector drawn at birth from the seed "
+        "and never learned (2.5, 2.9 C7). No error crosses a layer, no forward weight is transported or "
+        "transposed, and the pre-registration claims no gradient (it states the update, never that it tracks "
+        "one), so there is no cosine to owe; its alignment with the true gradient is neither measured nor "
+        "claimed. Re-classify as a claimant, and owe the cosine > 0.5 bar, the day any text says it tracks one",
+    ),
+}
+
 #: diagnoses that license growth (2.4); every other kind attempts without growth or not at all
 GROWTH_KINDS = ("CAPACITY", "STATE", "STATE+CAPACITY")
 A_MAX = 3  # consecutive no-growth attempts per budget (2.6 D3), a disclosed session call
