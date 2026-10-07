@@ -256,3 +256,11 @@ def test_seed_row_maps_a_run_instance_result_to_decide_b_s_row():
     refused = jms.seed_row(jms.run_instance(small(), 12001), **kw)
     assert "random" not in refused and "SA" not in refused and "greedy" in refused
     assert jms.decide_b([refused] * jms.N_SEEDS, instrument_gates_fired=True).outcome == "REFUSED"
+
+
+def test_an_empty_mask_domain_reports_random_and_sa_refused_instead_of_dividing_by_zero():
+    """Codex fold lens M4: n == 0 divided by zero deriving q before the A13 refusal could report."""
+    empty = type("Zero", (_Cover,), {"n": 0})
+    res = jms.run_instance(empty(), 12001)
+    assert res["_refused"] == ("random", "SA")
+    assert "random" not in res and "SA" not in res

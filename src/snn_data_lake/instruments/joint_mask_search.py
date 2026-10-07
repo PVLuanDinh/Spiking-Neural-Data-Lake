@@ -258,7 +258,9 @@ def run_instance(problem, seed, *, feasibility=True, budget=None, q=None):
     g = Meter(problem)
     gm = arm_greedy(g, n, feasibility)
     B = g.spent if budget is None else int(budget)
-    q = sum(gm) / float(n) if q is None else float(q)
+    q = (
+        (sum(gm) / float(n) if n else 0.0) if q is None else float(q)
+    )  # n == 0: B == 0 refuses random/SA below
     masks = {"greedy": (gm, g)}
     inc = Meter(problem)
     masks["incumbent"] = (arm_incumbent(inc, n, feasibility), inc)
