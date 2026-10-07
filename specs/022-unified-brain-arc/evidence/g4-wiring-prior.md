@@ -766,3 +766,25 @@ left open or that the build forced; each is a named question for the panel, none
    (14,215 units) must show it fires there before any H01 edge distance is read.
 7. **Not yet built:** the per-band tangential density and dbar on H01 are implemented (`tangential_density`, `dbar`) but the record writer
    (`tools/g4_partb_campaign.json`) and the CLI are not; the run waits for the lead's go and the panel.
+
+### Dated addendum 2026-10-07 (b) to the Part B amendment -- the pooling-sighted gate, the record writer, the constructed reds (no edge read)
+
+Pointers (no frozen passage is edited): adds to the addendum above, item 4 and item 7; lead's ruling 2026-10-07 on finding (1).
+- **The gate (finding 1, an explicit reading row, not a caveat).** The planted `pathway_widths` row no longer expects PASS; it is the
+  POOLING GATE: its neuron-fold P-G state on H01 positions must be +1 (P sees pathway widths on these positions). It is excluded
+  from `all_rows_hold` and from `validate_planted`'s row checks (every other planted row still recomputes and must hold); its result is
+  `pooling_sighted`, recomputed from the planted record at the H01 read. The reading gains the row NOT_READ_POOLING_UNSIGHTED, placed
+  after REFUSED_FRAME, REFUSED, RED_PATHWAY_FLAT and the boundary and disagreement rows and BEFORE RED_POOL and PASS: an unsighted P
+  makes no P-G reading interpretable, while the kernel-versus-flat reading (G-F) stays read. Constructed reds in the test file cover
+  the row order, a record with the gate row unfired (the strict gate still validates it, the reading refuses P-G) and a record
+  with a recovered width 25 percent off (the strict gate refuses it).
+- **Writer and CLI.** `build_record` writes the schema agreed with G7 (source, frame, form, a = 1, c, sigma_um, lambda_um,
+  pathway_amplitudes, pathway_widths when pooled with the chosen penalty, beta 0 with beta_fallback true until B2, dbar and its
+  companions, the tangential density, the frame-violation number, the artifact sha256, the T3 record's committed-blob sha256); a test
+  feeds it to `growth/wiring_prior.attach_probabilities`. `h01_partb_tangential planted|h01 --artifact ... --out ...` is the CLI
+  (`h01` also takes `--planted` and `--t3`).
+- **Constructed reds added:** the unit trap (positions in nm, refused by an extent check), the nested split's leak check (`inner_split`
+  asserts, and a counts test shows nothing touching the outer or inner held-out fold is ever in train; `leak_free` rejects both
+  leaky variants). The theta-wrap mutant is covered by the d_tan value test.
+- **Not re-run after this addendum's code:** the two slow tests (the mini planted stage and the pooling positive control) were not
+  re-run (the lead asked for no multi-minute tests while the battery runs); the 24 fast tests pass.
