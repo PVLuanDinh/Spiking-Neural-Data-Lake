@@ -286,12 +286,18 @@ def shape(d, th, kind="mix"):
 
 
 def _profile(n, k, g):
-    a = (k.sum(1) + PSEUDO) / np.maximum((n * g).sum(1), 1e-300)
+    """Per-cell amplitude profiled on (n, k) for the shape g. A cell with NO exposure in these counts has no
+    amplitude of its own: it takes the pooled amplitude (all cells), as the flat twin does (N3)."""
+    denom = (n * g).sum(1)
+    a = (k.sum(1) + PSEUDO) / np.maximum(denom, 1e-300)
+    empty = n.sum(1) == 0
+    if empty.any():
+        a = np.where(empty, k.sum() / max(float((n * g).sum()), 1e-300), a)
     p = np.clip(a[:, None] * g, t3.P_LO, t3.P_HI)
     return a, (k * np.log(p) + (n - k) * np.log1p(-p)).sum(1)
 
 
-def fit_global(d, n, k, kind="mix"):
+def fit_global(d, n, k, kind="mix", init=None):
     keep = n.sum(1) > 0
     n, k = n[keep], k[keep]
 
@@ -300,6 +306,8 @@ def fit_global(d, n, k, kind="mix"):
             v = -_profile(n, k, shape(d[None, :], th, kind))[1].sum()
         return v if math.isfinite(v) else math.inf
 
+    if init is not None:  # warm start only: the optimum is decided by THIS (n, k)
+        return t3.nelder_mead(nll, np.asarray(init, dtype=float))[0]
     grid = t3.WIDTH_GRID[::5]
     best = min(
         (
@@ -316,6 +324,9 @@ def fit_global(d, n, k, kind="mix"):
 
 def flat_ll(ntr, ktr, nte, kte):
     a = (ktr.sum(1) + PSEUDO) / np.maximum(ntr.sum(1), 1.0)
+    a = np.where(
+        ntr.sum(1) == 0, ktr.sum() / max(float(ntr.sum()), 1.0), a
+    )  # N3: pooled rate, no exposure
     return _ll(np.broadcast_to(a[:, None], nte.shape), nte, kte)
 
 
@@ -360,9 +371,12 @@ def choose_penalty(d, hist_n, hist_k, f, th, kind):
     score = dict.fromkeys(PENALTIES, 0.0)
     for g in (h for h in range(hist_n.shape[0]) if h != f):
         ntr, ktr, nte, kte = inner_split(hist_n, hist_k, f, g)
+        th_in = fit_global(
+            d, ntr, ktr, kind, init=th
+        )  # N2: the shape never sees the inner-held-out edges
         for pen in PENALTIES:
-            delta = fit_delta(d, ntr, ktr, th, kind, pen)
-            score[pen] += _ll(shaped_p(d, ntr, ktr, th, kind, delta), nte, kte)
+            delta = fit_delta(d, ntr, ktr, th_in, kind, pen)
+            score[pen] += _ll(shaped_p(d, ntr, ktr, th_in, kind, delta), nte, kte)
     return max(PENALTIES, key=lambda p: score[p])
 
 

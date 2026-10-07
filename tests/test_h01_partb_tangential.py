@@ -523,3 +523,50 @@ def test_pooled_record_amplitudes_belong_to_the_delivered_widths_and_the_consume
     f = wp.kernel_shape(rec, c)
     sg = rec["pathway_widths"][c][0]
     assert math.isclose(float(f(np.array([40.0]))[0]), math.exp(-(40.0**2) / (2 * sg**2)))
+
+
+def test_zero_exposure_cell_takes_the_pooled_amplitude_in_both_arms():
+    nb = 50
+    d = (np.arange(nb) + 0.5) * pb.BIN
+    ntr = np.zeros((pb.N_CELL, nb))
+    ktr = np.zeros_like(ntr)
+    ntr[1], ktr[1, :5] = 1000.0, 20.0  # one trained cell; cell 0 has no training exposure
+    nte = np.zeros_like(ntr)
+    kte = np.zeros_like(ntr)
+    nte[0], kte[0, :3] = 200.0, 6.0
+    th = np.log([20.0, 30.0, 0.1])
+    p = pb.shaped_p(d, ntr, ktr, th, "gauss")
+    g = pb.shape(d[None, :], th, "gauss")
+    pooled = ktr.sum() / float((ntr * g).sum())
+    assert np.allclose(p[0], pooled * g[0])  # not 0.5 / 1e-300
+    flat_rate = ktr.sum() / ntr.sum()
+    ll_f = pb.flat_ll(ntr, ktr, nte, kte)
+    want = float((kte[0] * math.log(flat_rate) + (nte[0] - kte[0]) * math.log1p(-flat_rate)).sum())
+    assert math.isclose(ll_f, want)
+    ll_g = pb._ll(p, nte, kte)
+    assert ll_g > -2000.0 and ll_f > -2000.0  # neither arm is flung to the probability clip
+
+
+def test_inner_penalty_shape_never_sees_the_inner_held_out_edges(monkeypatch):
+    n = np.full((pb.K, pb.K, pb.N_CELL, 8), 50, dtype=np.int64)
+    k = np.zeros_like(n)
+    for g in range(
+        pb.K
+    ):  # a distinct, huge edge count touching each fold, so any leak shows in k.sum()
+        k[g, :, 1, 0] += 3**g
+        k[:, g, 1, 0] += 3**g
+    seen = []
+    real = pb.fit_global
+
+    def spy(d, nn, kk, kind="mix", init=None):
+        seen.append(float(kk.sum()))
+        return real(d, nn, kk, kind, init=init)
+
+    monkeypatch.setattr(pb, "fit_global", spy)
+    f = 1
+    pb.choose_penalty(np.arange(8) + 0.5, n, k, f, np.log([5.0, 5.0, 1.0]), "gauss")
+    expect = []
+    for g in (h for h in range(pb.K) if h != f):
+        _, ktr, _, _ = pb.inner_split(n, k, f, g)
+        expect.append(float(ktr.sum()))
+    assert seen == expect  # fitted once per inner TRAINING split, on that split's counts only
