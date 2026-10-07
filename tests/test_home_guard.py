@@ -273,6 +273,31 @@ def test_a_live_home_over_the_entry_bound_is_refused_not_silently_truncated(tmp_
     assert H.require_isolated_home(live_home=str(live))
 
 
+def test_an_unreadable_live_subdir_is_refused_but_an_absent_live_root_is_not(tmp_path, monkeypatch):
+    # Codex fold re-panel: `except OSError: continue` let an unreadable live subdirectory pass, so a
+    # hardlink to a file under it was accepted. Any scan error refuses; only an ABSENT root is [].
+    live = tmp_path / "live"
+    (live / "locked").mkdir(parents=True)
+    (live / "locked" / "x.bin").write_bytes(b"live")
+    iso = tmp_path / "iso"
+    iso.mkdir()
+    monkeypatch.setenv("NORD_HOME", str(iso))
+    assert H.require_isolated_home(live_home=str(live))  # the positive: everything readable
+    real_scandir = os.scandir
+
+    def deny_locked(path="."):
+        if os.path.basename(os.fspath(path)) == "locked":
+            raise PermissionError(13, "denied", os.fspath(path))
+        return real_scandir(path)
+
+    monkeypatch.setattr(os, "scandir", deny_locked)
+    with pytest.raises(H.LiveHomeRefused, match="unreadable"):
+        H.require_isolated_home(live_home=str(live))
+    monkeypatch.undo()
+    monkeypatch.setenv("NORD_HOME", str(iso))
+    assert H.require_isolated_home(live_home=str(tmp_path / "absent_live"))  # absent root: fine
+
+
 def test_a_missing_home_is_a_named_refusal_not_a_raw_oserror(tmp_path, monkeypatch, decoy):
     # R2's probe: strict resolution raised FileNotFoundError, which a harness catching only
     # LiveHomeRefused (the class docstring: one type for every refusal) would print as a traceback

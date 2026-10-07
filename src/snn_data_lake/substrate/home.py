@@ -496,11 +496,14 @@ def _live_file_stats(live):
     ([] when it does not exist): the identity a hardlink shares with its original (a resolved path
     cannot see one). `os.stat`, not `DirEntry.stat()`: on Windows the latter leaves st_ino / st_dev at
     0 and every file would match. Directory aliases are not descended into. A live home of more than
-    _MAX_HOME_ENTRIES files is refused: a truncated walk would silently skip later files' identity."""
+    _MAX_HOME_ENTRIES files is refused: a truncated walk would silently skip later files' identity.
+    Any scan error (an unreadable subdirectory, a vanished file) is refused for the same reason; only
+    an ABSENT live root is [] (nothing there to alias)."""
     out, todo = [], [live]
     while todo:
+        d = todo.pop()
         try:
-            with os.scandir(todo.pop()) as it:
+            with os.scandir(d) as it:
                 for e in it:
                     if e.is_file(follow_symlinks=False):
                         out.append(os.stat(e.path))
@@ -511,8 +514,16 @@ def _live_file_stats(live):
                             )
                     elif e.is_dir(follow_symlinks=False) and not e.is_junction():
                         todo.append(e.path)
-        except OSError:
-            continue
+        except FileNotFoundError:
+            if d == live and not os.path.lexists(live):
+                continue
+            raise LiveHomeRefused(
+                f"live home refused (unreadable): {d} vanished mid-scan"
+            ) from None
+        except OSError as exc:
+            raise LiveHomeRefused(
+                f"live home refused (unreadable): {d} ({exc}) -- hardlink identity would be incomplete"
+            ) from exc
     return out
 
 
