@@ -742,6 +742,24 @@ def table_reach_ok():
 
 
 # ------------------------------------------------------------------------------- record checks (K1-K8, K13)
+N_A, N_B = 8, 12  # the evaluation's fixed item counts (2.2): E_A 8 items, E_B 12, E_all 20
+N_ALL = N_A + N_B
+
+
+def endpoint_shape_ok(r):
+    """Codex lens-r3-amend: a record's endpoints are 8 + 12 BINARY outcomes, in-process and restored, or
+    nothing downstream may divide by an item count taken from one arm."""
+
+    def binary(v):
+        return (
+            isinstance(v, list)
+            and len(v) == N_ALL
+            and all(type(x) is int and x in (0, 1) for x in v)
+        )
+
+    return r.get("n_a") == N_A and binary(r.get("restored")) and binary(r.get("inproc"))
+
+
 def _e(rec, which, key="restored"):
     """Endpoint COUNTS (exact integers): all / A / B."""
     v, na = rec[key], rec["n_a"]
@@ -750,7 +768,7 @@ def _e(rec, which, key="restored"):
 
 def check_records(family, recs):
     """The record-level checks over one family's arm-seeds; returns {check: [failures]} (empty = green)."""
-    fails = {k: [] for k in ("K1", "K2", "K3", "K4", "K5", "K6", "K8a", "K8b", "K13", "K14")}
+    fails = {k: [] for k in ("K1", "K2", "K3", "K4", "K5", "K6", "K8a", "K8b", "K13", "K14", "KE")}
     by_seed = {}
     for r in recs:
         by_seed.setdefault(r["seed"], {})[r["arm"]] = r
@@ -773,8 +791,13 @@ def check_records(family, recs):
             if g:
                 groups.setdefault(g, set()).add(r["d1"])
         fails["K1"] += [(seed, "D1", g) for g, v in groups.items() if len(v) > 1]
+        # KE (Codex lens-r3-amend): one ordered held-out identity per seed across every arm
+        if len({tuple(r["heldout_keys"]) for r in arms.values()}) > 1:
+            fails["KE"].append((seed, "held-out identity"))
     for r in recs:
         tag = (r["arm"], r["seed"])
+        if not endpoint_shape_ok(r):
+            fails["KE"].append(tag)
         if r["tick"]["presentations"] != [K] * r["budget"]:
             fails["K2"].append(tag)
         held = set(r["heldout_keys"])
@@ -808,15 +831,15 @@ def check_records(family, recs):
 
 # --------------------------------------------------------------------------------- contrasts per family
 def _d(by, seeds, arm, ctrl, which, eps=0):
-    """Paired differences arm - control on an endpoint, as exact Fractions over the item count."""
-    n = {"all": None, "A": None, "B": None}
+    """Paired differences arm - control on an endpoint, as exact Fractions over the FIXED item count
+    (KE has already halted any record whose shape differs; this refuses again rather than divide by one
+    arm's length)."""
+    n_items = {"all": N_ALL, "A": N_A, "B": N_B}[which]
     out = []
     for s in seeds:
         x, y = by[s][arm], by[s][ctrl]
-        n_items = {"all": len(x["restored"]), "A": x["n_a"], "B": len(x["restored"]) - x["n_a"]}[
-            which
-        ]
-        n[which] = n_items
+        if not (endpoint_shape_ok(x) and endpoint_shape_ok(y)):
+            raise ValueError(f"{arm} vs {ctrl} seed {s}: endpoint shape is not {N_A}+{N_B} binary")
         out.append(Fraction(_e(x, which) - _e(y, which), n_items) + eps)
     return out
 
@@ -886,6 +909,15 @@ def decide_family(family, recs, seeds, k7_sighted=False, restore=None, set_name=
         }
     fails = check_records(family, recs)
     checks_ok = not any(fails.values())
+    if (
+        not checks_ok
+    ):  # a red check halts BEFORE any contrast is built (malformed input never divides)
+        return {
+            "checks": fails,
+            "checks_ok": False,
+            "contrasts": {},
+            "row": "HALT (instrument defect, no verdict)",
+        }
     v = {c.name: c for c in contrasts(family, recs, seeds)}
     m = {k: c.met for k, c in v.items()}
     if family == "F1":

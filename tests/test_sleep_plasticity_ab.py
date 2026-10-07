@@ -197,7 +197,8 @@ def _record(arm="ON", seed=16000, family="F1"):
         "att_calls": [[1, 3], [2, 3]], "k8a": [], "stored_any": False,
         "chrono_before": {"nights": 0, "wake_ticks": 0, "arm_ticks": 0, "step": 0},
         "chrono_after": {"nights": 1, "wake_ticks": 0, "arm_ticks": 0, "step": 0},
-        "inproc": [1, 0], "restored": [1, 0], "n_a": 1, "eval_before": "e", "eval_after": "e",
+        "inproc": [1] * 10 + [0] * 10, "restored": [1] * 10 + [0] * 10, "n_a": 8,
+        "eval_before": "e", "eval_after": "e",
         "margin": 0.5,
         "live_lake_untouched": True,
     }  # fmt: skip
@@ -208,7 +209,7 @@ PLANTS = {
     "K2": lambda r: r["tick"].update(presentations=[m.K - 1, m.K]),
     "K3": lambda r: r.update(drawn=["h1"]),
     "K4": lambda r: r.update(eval_after="moved"),
-    "K5": lambda r: r.update(restored=[0, 0]),
+    "K5": lambda r: r.update(restored=[0] * 20),
     "K6": lambda r: r.update(weights_post="moved"),
     "K8a": lambda r: r.update(k8a=[{"before": {}, "after": {}}]),
     "K8b": lambda r: r["chrono_after"].update(nights=2),
@@ -290,3 +291,41 @@ def test_cp2_12_margin_is_correct_minus_best_other_and_claims_read_primary():
         assert "met: 1 of 2" in m.claims_report("F1", {"C1": c}, recs)[0]
     finally:
         m.PRIMARY["F1"] = ("C1", "C1-NI")
+
+
+# ---- Codex lens-r3-amend: endpoint shapes are checked (KE)
+KE_PLANTS = {
+    "short": lambda rs: rs[0].update(restored=[1] * 6 + [0] * 6, inproc=[1] * 12, n_a=6),
+    "empty_b": lambda rs: rs[0].update(restored=[1] * 8, inproc=[1] * 8, n_a=8),
+    "empty": lambda rs: rs[0].update(restored=[], inproc=[], n_a=0),
+    "non_binary": lambda rs: rs[0].update(restored=[2] * 20),
+    "bool": lambda rs: rs[0].update(restored=[True] * 20),
+    "inproc_len": lambda rs: rs[0].update(inproc=[1] * 19),
+    "identity": lambda rs: rs[1].update(heldout_keys=["h2"]),
+}
+
+
+@pytest.mark.parametrize("plant", sorted(KE_PLANTS))
+def test_ke_endpoint_shape_reds(plant):
+    base = [_record("ON"), _record("OFF")]
+    assert not m.check_records("F1", base)["KE"]
+    planted = copy.deepcopy(base)
+    KE_PLANTS[plant](planted)
+    assert m.check_records("F1", planted)["KE"], plant
+
+
+def test_malformed_endpoint_halts_before_any_contrast_and_never_crashes():
+    seeds = m.SEED_SETS["F1"]
+    full = [_record(a, s) for a in m.registered_arms("F1", "F1") for s in seeds]
+    bad = copy.deepcopy(full)
+    on = next(r for r in bad if r["arm"] == "ON" and r["seed"] == seeds[0])
+    on.update(restored=[1] * 8, inproc=[1] * 8, n_a=8)  # an EMPTY B endpoint
+    res = m.decide_family("F1", bad, seeds, set_name="F1")
+    assert res["row"].startswith("HALT") and res["contrasts"] == {}
+    assert res["checks"]["KE"]
+    # Codex's false-B-NI shape: ON with 20 items against an OFF of 6 must not reach a contrast
+    short = copy.deepcopy(full)
+    off = next(r for r in short if r["arm"] == "OFF" and r["seed"] == seeds[0])
+    off.update(restored=[1] * 6, inproc=[1] * 6, n_a=6)
+    res = m.decide_family("F1", short, seeds, set_name="F1")
+    assert res["row"].startswith("HALT") and res["contrasts"] == {}
