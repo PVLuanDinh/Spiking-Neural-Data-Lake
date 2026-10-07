@@ -169,11 +169,17 @@ def short_runs():
 def _live_mtime(home=LIVE_HOME):
     """{relpath: (size, mtime_ns)} of every file under a home, recursively (the live home has
     skills/). A file that cannot be stat'd FAILS CLOSED: it gets a fresh object that never equals
-    another stamp's, so a stamp pair that cannot be read reads as changed, never as unchanged."""
+    another stamp's, so an unreadable pair reads as changed, never as unchanged. A directory that
+    cannot be listed fails closed the same way."""
     if not os.path.isdir(home):
         return None
     out = {}
-    for root, _dirs, files in os.walk(home):
+
+    def unlistable(err):  # os.walk skips a directory it cannot list: record a never-equal marker
+        where = os.path.relpath(err.filename or home, home)
+        out[os.path.join(where, "<unlistable>")] = object()
+
+    for root, _dirs, files in os.walk(home, onerror=unlistable):
         for f in files:
             full = os.path.join(root, f)
             try:
@@ -207,6 +213,24 @@ def test_the_live_stamp_detects_change_appearance_nested_rewrite_and_fails_close
     assert _live_mtime(str(decoy)) != base  # a new nested file
     monkeypatch.setattr(os, "stat", lambda *_a, **_k: (_ for _ in ()).throw(PermissionError()))
     assert _live_mtime(str(decoy)) != _live_mtime(str(decoy))  # unreadable fails closed
+
+
+def test_the_live_stamp_fails_closed_on_an_unlistable_directory(tmp_path, monkeypatch):
+    """R3: os.walk skips a directory it cannot list, so a rewrite under it read as unchanged."""
+    decoy = tmp_path / "decoy_live"
+    (decoy / "sub").mkdir(parents=True)
+    (decoy / "sub" / "a.bin").write_bytes(b"1")
+    real = os.scandir
+
+    def deny(path="."):
+        if os.path.basename(str(path)) == "sub":
+            raise PermissionError(13, "denied", str(path))
+        return real(path)
+
+    monkeypatch.setattr(os, "scandir", deny)
+    first = _live_mtime(str(decoy))
+    (decoy / "sub" / "a.bin").write_bytes(b"22")
+    assert _live_mtime(str(decoy)) != first  # an unlistable directory never reads as unchanged
 
 
 def test_c6_the_live_arm_is_byte_repeatable(short_runs):
