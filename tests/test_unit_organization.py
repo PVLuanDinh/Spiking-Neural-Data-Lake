@@ -554,3 +554,26 @@ def test_t1_struct_red_names_the_deletion_scope_amendment_e_registers():
     assert out["deletes_structure"] is True
     assert "E->I" in text and "I->E" in text and "E/E" not in text and "E->E" not in text
     assert "neuron count" in text
+
+
+def test_ir1_refuses_on_the_nmi_conjunct_alone():
+    # Codex D+E: the 0.9-between fixture also fails superiority, so dropping NMI left it green.
+    # This plant keeps superiority (MET) and misses the bar (min NMI ~0.63): only NMI can refuse it.
+    pytest.importorskip("networkx")
+    pytest.importorskip("sklearn")
+    ir1 = U.ir1(300, 1500, blocks=10, between=0.5, louvain_seeds=_FAST)
+    assert ir1["verdict"].met and min(ir1["nmi"]) < U.NMI_BAR
+    assert ir1["ok"] is False
+    assert U.t4_instruments_refuse(ir1, {"ok": True}) is True
+
+
+def test_ir2_fails_on_a_constructed_positive_contrast_and_t4_is_refused(monkeypatch):
+    # Codex D+E: forcing ir2 to ok=True left both IR tests green. Here RANDOM scores above its twin
+    # (a spread, so not degenerate): the control must read MET and ok False.
+    q = {s: 0.50 + 0.01 * (i % 3) for i, s in enumerate(U.IR_SEEDS)}
+    q.update({t: 0.30 + 0.01 * (i % 2) for i, t in enumerate(U.IR_TWIN_SEEDS)})
+    monkeypatch.setattr(U, "random_graph", lambda n, m, *, seed: seed)
+    monkeypatch.setattr(U, "modularity", lambda edges, n, seeds=None: q[edges])
+    ir2 = U.ir2(30, 60, louvain_seeds=(0,))
+    assert ir2["verdict"].met is True and ir2["ok"] is False
+    assert U.t4_instruments_refuse({"ok": True}, ir2) is True
