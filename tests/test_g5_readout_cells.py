@@ -140,6 +140,7 @@ def _fake_cell(args):
         "widened": 0,
         "live_pers": 0.5,
         "live_acc": 0.5,
+        "live_n": 10,
         "floors": [],
         "unified": True,
     }
@@ -206,3 +207,23 @@ def test_a_fallback_perception_seed_is_replaced_whole_from_the_reserve(monkeypat
         g.run_cells(
             (1, 2), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell
         )
+
+
+def test_a_seed_that_scored_nothing_is_an_instrument_failure_not_a_later_crash(monkeypatch):
+    # Codex g5_b lens-1 M3: unified=True with live_n=0 / None metrics scored no prediction; it must
+    # fail INSIDE the seed block (replaceable), not crash the contrast later
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(g, "live_lake_stamp", lambda: ("a", "b"))
+    for bad in ({"live_n": 0}, {"live_acc": None}, {"live_pers": None}):
+
+        def cell(args, bad=bad):
+            out = _fake_cell(args)
+            if args[1] != "RECORD":
+                out.update(bad)
+            return out
+
+        with pytest.raises(g.InstrumentFailure, match="scored no prediction"):
+            g.run_cells(
+                (1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell
+            )

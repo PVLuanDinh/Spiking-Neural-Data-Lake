@@ -345,6 +345,13 @@ class InstrumentFailure(RuntimeError):
     seed that fails this way is replaced WHOLE from the reserve; a result never triggers it."""
 
 
+def _scored(c):
+    """True iff the cell scored predictions: live_n > 0 and both live metrics present (Codex g5_b M3)."""
+    return (
+        bool(c.get("live_n")) and c.get("live_acc") is not None and c.get("live_pers") is not None
+    )
+
+
 def _run_seed(seed, arms, before, workers, pool, cell):
     """One seed's block: RECORD, then every arm on that sequence; both stages validated (Codex cp4 #9)."""
     with pool(max_workers=workers) as ex:
@@ -356,6 +363,9 @@ def _run_seed(seed, arms, before, workers, pool, cell):
             )
         cells = list(ex.map(cell, [(seed, a, rec["cats"]) for a in arms]))
         _lake_unmoved(before, "the arm stage")
+    for c in [rec, *cells]:
+        if not _scored(c):
+            raise InstrumentFailure(f"seed {seed} arm {c['arm']}: scored no prediction")
     for c in cells:
         if not c["unified"]:
             raise InstrumentFailure(
