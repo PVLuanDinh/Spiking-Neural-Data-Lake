@@ -354,3 +354,10 @@ def test_t4_half_a_refused_imposed_arm_is_reported_not_decisive():
         louvain_seeds=(0,),
     )
     assert out["refused"] == ["IMPOSED"] and out["rule_credited"] is not None
+
+
+def test_random_graph_refuses_a_density_it_cannot_place_exactly():
+    # networkx gnm silently returns the complete graph (fewer than M edges) when M exceeds the pairs
+    with pytest.raises(U.Infeasible):
+        U.random_graph(10, 46, seed=13254)
+    assert len(U.random_graph(10, 45, seed=13254)) == 45

@@ -297,6 +297,8 @@ def random_graph(n, m, *, seed):
     """RANDOM: networkx.gnm_random_graph(N, M, seed) -- simple, undirected, exactly M."""
     import networkx as nx
 
+    if m > n * (n - 1) // 2:  # gnm would return the complete graph, silently short of M
+        raise Infeasible(f"M = {m} exceeds the {n * (n - 1) // 2} pairs of N = {n}")
     return sorted((min(a, b), max(a, b)) for a, b in nx.gnm_random_graph(n, m, seed=seed).edges())
 
 
