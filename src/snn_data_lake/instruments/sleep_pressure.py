@@ -58,10 +58,10 @@ class PressureMeter:
     """Per-circuit wake load relative to the circuit's own persisted baseline. `circuits` maps a name to a
     zero-argument callable returning the circuit's current flat weight list (read, never written)."""
 
-    def __init__(self, circuits=None, state=None):
+    def __init__(self, circuits=None, state=None, tick=0):
         self.circuits = dict(circuits or {})
         self.c = {}  # name -> {"base", "n", "admitted", "load", "prev"}
-        self.tick = 0
+        self.tick = int(tick)  # the cursor is not an A7 carrier field: the restorer supplies it
         for name, row in (state or {}).items():
             self.c[name] = {
                 "base": float(row["baseline_load_per_wake"]),

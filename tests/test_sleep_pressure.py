@@ -198,3 +198,14 @@ def test_a7_a_restored_meter_continues_exactly_like_the_uninterrupted_one():
     _drive(head, w2, script)
     restored = sp.PressureMeter({"c": lambda: list(w2)}, state=head.state())
     assert _drive(restored, w2, tail) == full
+
+
+def test_a7_a_circuit_admitted_after_a_restore_carries_the_true_tick_not_zero():
+    """The tick cursor is not in A7's carrier fields; the restorer supplies it (Codex panel safety#4)."""
+    w = [0.0]
+    m = sp.PressureMeter({"c": lambda: list(w)})
+    for _ in range(5):
+        m.observe_wake()
+    restored = sp.PressureMeter({"c": lambda: list(w)}, state=m.state(), tick=m.tick)
+    restored.admit("late", lambda: [0.0])
+    assert restored.state()["late"]["admission_tick"] == 5
