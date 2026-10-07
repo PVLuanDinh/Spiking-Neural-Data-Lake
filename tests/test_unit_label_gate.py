@@ -740,3 +740,36 @@ def test_a_restored_row_with_a_non_int_unit_id_is_refused_never_derived(bad_id):
         G.classify_restored([row], journal)
     with pytest.raises(G.UnitLabelRefused, match="unit_id"):
         G.census({"fx": [row]}, journal, open_debt={"fx"})
+
+
+_AFTER = "        ticket.consume(rows)\n        return rows\n"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "        seg = list(rows)\n        return seg\n" + _AFTER,
+        "        if rows:\n            return list(rows)\n" + _AFTER,
+        "        for r in rows:\n            return [r]\n" + _AFTER,
+        "        try:\n            return list(rows)\n        finally:\n            pass\n"
+        + _AFTER,
+    ],
+)
+def test_an_admit_point_with_a_return_before_the_ticket_is_spent_is_refused(tmp_path, body):
+    # Codex fold re-panel: the segment was returned (units admitted) with ticket.consume unreachable
+    # or skipped on a conditional early return, and the gate read it as spending the ticket
+    head = "class Seg:\n    def admit_rows(self, rows, ticket):\n"
+    seg = {"fx": ("fakepkg/mod.py", "fixture rows", "G7", (), _ADMIT)}
+    root = _tree(tmp_path, head + body)
+    found = G.row_growth_findings(src_root=root, known={}, out_of_scope={}, segments=seg)
+    assert found == [f"{_ADMIT} [admit point does not spend its ticket]"]
+
+
+def test_an_admit_point_may_raise_before_the_ticket_is_spent(tmp_path):
+    # control: a refusal path is not a successful return
+    head = "class Seg:\n    def admit_rows(self, rows, ticket):\n"
+    body = "        if not rows:\n            raise ValueError('empty')\n" + _AFTER
+    seg = {"fx": ("fakepkg/mod.py", "fixture rows", "G7", (), _ADMIT)}
+    root = _tree(tmp_path, head + body)
+    found = G.row_growth_findings(src_root=root, known={}, out_of_scope={}, segments=seg)
+    assert found == []

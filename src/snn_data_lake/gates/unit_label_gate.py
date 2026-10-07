@@ -611,18 +611,34 @@ def _row_growth_functions(root):
     return out
 
 
+def _returns(stmt):
+    """True iff `stmt` holds a `return` outside any nested function or lambda."""
+    todo = [stmt]
+    while todo:
+        node = todo.pop()
+        if isinstance(node, ast.Return):
+            return True
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            todo.extend(ast.iter_child_nodes(node))
+    return False
+
+
 # distinct-from: reasoning/nengo_gui_brain.py -- its _module_scope_is_inert checks THAT file's
 #   module-level statements for import side effects; this checks a function body's statement order
 #   for a ticket spent before an append. Site read.
-def _consumes_first(fn, growth_line):
+def _consumes_first(fn, growth_line, *, strict=False):
     """True iff `fn`'s body holds, as a TOP-LEVEL statement before `growth_line`, a call
     `<parameter>.consume(...)` -- a ticket passed IN and spent before any row grows (Codex cp3 #5: a call
-    nested under a branch, on an unrelated object, or after the append does not count)."""
+    nested under a branch, on an unrelated object, or after the append does not count).
+    `strict` (a declared admit point) also fails when ANY return, however nested, precedes the consume: that
+    path admits the segment with the ticket unspent (Codex fold re-panel)."""
     a = fn.args
     params = {p.arg for p in (*a.posonlyargs, *a.args, *a.kwonlyargs)}
     for stmt in fn.body:
         if stmt.lineno >= growth_line:
             break
+        if strict and _returns(stmt):
+            return False
         call = stmt.value if isinstance(stmt, ast.Expr) else None
         if (
             isinstance(call, ast.Call)
@@ -695,7 +711,7 @@ def _admit_point_findings(root, admit_points):
                 fn = None
         if fn is None:
             out.append(f"{point} [admit point not found]")
-        elif not _consumes_first(fn, 10**9):
+        elif not _consumes_first(fn, 10**9, strict=True):
             out.append(f"{point} [admit point does not spend its ticket]")
     return out
 
