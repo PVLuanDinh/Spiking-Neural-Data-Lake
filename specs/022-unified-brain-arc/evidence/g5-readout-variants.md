@@ -1069,3 +1069,35 @@ The owner's relational requirement is untouched and stays Part D build work (3.6
   assertion. They are weak reds.
 - The cell reading's own first fixtures (commit 0fba900c's test) failed twice on fixture defects (a degenerate B-R0
   contrast and a periodic recording that read vacuous); only the fixtures changed.
+
+## Dated note 2026-10-07 (Codex panel g5_b lens 1 on e9c8aab7, M1/M2; append-only; no frozen text, threshold or result changes)
+
+The panel (`codex_panels_1006\g5_b\out_lens1.txt`) found two MAJOR defects in the archived reader `read_part_b` at
+0fba900c (the reader that produced the confirmatory reading above; both are in code deleted at e9c8aab7):
+
+- **M1.** The B-R4 gate omitted COUPLED_PERM from the arms whose learning it checks to be untouched.
+- **M2.** The reader accepted fewer than 8 seeds or an empty `recorded` as "all hold".
+
+**Deletion stands.** What was checked, without importing the reader:
+
+- The six contrast means in the confirmatory log are reproduced by subtracting the log's separately printed per-arm mean
+  live accuracies: DELTA - BATCH 0.8774 - 0.7265 = +0.1509; COUPLED - DELTA 0.8795 - 0.8774 = +0.0021;
+  COUPLED - COUPLED_MARG -0.0020; COUPLED - COUPLED_SHUF +0.4832; COUPLED_SHUF - DELTA -0.4811;
+  COUPLED_PERM - DELTA -0.5354.
+- The log carries 8 distinct seed lines (11100-11107), `replacements: []` and "gate PASSED on 8 seeds", so M2's
+  hole did not fire.
+- The sign string of B-R1 is `++-++--+`: 5 of 8 positive. An exact two-sided sign test gives p = 0.7266
+  (2 x 93 / 256). That is a reader-independent statement that the per-seed signs carry no evidence of a positive
+  coupling effect, alongside the reproduced mean +0.0021.
+- M1 can only let a run pass its reach gate; a halt would have produced no B-R1 reading, never a MET. M2 did not fire.
+  Neither can have produced a MET.
+
+**Not reproducible: t +0.444.** The per-seed contrasts of 11100-11107 were never persisted (the driver printed only the
+sign string and the summary), and the seeds are spent (read once, 3.4), so t was not recomputed. It is carried as printed
+by the reader. The historical coverage limit is disclosed: the confirmatory reading was produced by a reader whose reach
+gate did not cover COUPLED_PERM and which did not enforce an eight-seed cohort.
+
+The surviving runner is hardened separately, one commit each: scoring evidence validated inside `_run_seed` (M3), the
+live-lake check on `BaseException` (m3), `--pa3` exits non-zero on a False result (m2), a DELTA - BATCH positive-control
+test through the surviving wiring (m1), and per-seed records persisted (json + sha256) by `run_cells` so a future read can
+be re-derived.
