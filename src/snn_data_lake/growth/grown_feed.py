@@ -81,6 +81,7 @@ def _l2(x):
 def random_feed(w_feed, units, seed):
     """The norm-matched random arm: each column keeps its L2 norm and its unit's Dale sign."""
     w = _matrix(w_feed, units)
+    check_feed(w, units)  # a non-finite or sign-violating source must not become a silent zero arm
     rng = np.random.default_rng(seed)
     out = np.zeros_like(w)
     for j, u in enumerate(_by_id(units)):

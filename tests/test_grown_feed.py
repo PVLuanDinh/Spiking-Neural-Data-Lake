@@ -160,3 +160,11 @@ def test_random_feed_is_scale_safe_and_finite_at_extreme_magnitudes():
             assert (out[:, j] * u.sign >= 0).all()
             ratio = np.max(np.abs(out[:, j])) / np.max(np.abs(W_FEED[:, j] * scale))
             assert 0.0 < ratio < 1e3  # same magnitude order, not inf and not collapsed to zero
+
+
+def test_random_feed_refuses_a_non_finite_source_column():
+    # Codex b2 p2p3 m1: a NaN source column silently became a zero feed arm
+    nan = W_FEED.copy()
+    nan[0, 1] = np.nan
+    with pytest.raises(ValueError, match="REFUSED"):
+        gf.random_feed(nan, UNITS, 9901)
