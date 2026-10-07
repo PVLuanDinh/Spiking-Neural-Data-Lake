@@ -61,7 +61,12 @@ class PressureMeter:
     def __init__(self, circuits=None, state=None, tick=0):
         self.circuits = dict(circuits or {})
         self.c = {}  # name -> {"base", "n", "admitted", "load", "prev"}
-        self.tick = int(tick)  # the cursor is not an A7 carrier field: the restorer supplies it
+        if isinstance(tick, bool) or not isinstance(tick, int) or tick < 0:
+            raise ValueError(f"tick cursor must be a non-negative int, got {tick!r}")
+        # The cursor is not an A7 carrier field: the restorer MUST supply it (no in-repo restorer exists
+        # yet; a future one reads it from its own checkpoint), and it must also restore the circuits'
+        # weights as of `state()` -- weights that moved between the two are snapshotted away.
+        self.tick = tick
         for name, row in (state or {}).items():
             self.c[name] = {
                 "base": float(row["baseline_load_per_wake"]),

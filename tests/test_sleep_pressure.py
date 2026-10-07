@@ -209,3 +209,10 @@ def test_a7_a_circuit_admitted_after_a_restore_carries_the_true_tick_not_zero():
     restored = sp.PressureMeter({"c": lambda: list(w)}, state=m.state(), tick=m.tick)
     restored.admit("late", lambda: [0.0])
     assert restored.state()["late"]["admission_tick"] == 5
+
+
+@pytest.mark.parametrize("bad", [-1, 2.5, "3", None, True])
+def test_a7_the_restored_tick_cursor_must_be_a_non_negative_int(bad):
+    """R3 on 08d5592c: `int(tick)` accepted a negative or fractional cursor."""
+    with pytest.raises(ValueError):
+        sp.PressureMeter({}, tick=bad)
