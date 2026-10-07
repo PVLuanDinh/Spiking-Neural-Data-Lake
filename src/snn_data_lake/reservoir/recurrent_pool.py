@@ -416,7 +416,12 @@ class _Pool:
 
         A zero feed is byte-identical to percept; a wrong-length or non-finite feed is REFUSED.
         """
-        feed = np.asarray(feed, dtype=np.float64)
+        feed = np.asarray(feed)
+        if (
+            feed.dtype.kind not in "fiu"
+        ):  # never cast a complex/object feed (1j -> 0, complex NaN hidden)
+            raise ValueError(f"REFUSED: the feed must be real numbers, got dtype {feed.dtype}")
+        feed = feed.astype(np.float64)
         if feed.shape != (self.n,) or not np.all(np.isfinite(feed)):
             raise ValueError(f"REFUSED: the feed must be {self.n} finite drives, got {feed.shape}")
         if self.w_in is None:

@@ -33,7 +33,12 @@ def _by_id(units):
 
 
 def _matrix(w_feed, units):
-    w = np.asarray(w_feed, dtype=np.float64)
+    w = np.asarray(w_feed)
+    if (
+        w.dtype.kind not in "fiu"
+    ):  # never cast a complex/object matrix (the imaginary part would vanish)
+        raise ValueError(f"REFUSED: w_feed must be real numbers, got dtype {w.dtype}")
+    w = w.astype(np.float64)
     if w.ndim != 2 or w.shape[1] != len(units):
         raise ValueError(
             f"REFUSED: w_feed {w.shape} needs one column per grown unit ({len(units)} units)"

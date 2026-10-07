@@ -131,3 +131,21 @@ def test_C17_restore_refuses_a_sign_violating_synapse_and_names_it():
     nan[0, 0] = np.nan
     with pytest.raises(ValueError, match=r"unit 3.*pool unit 0"):
         gf.check_feed(nan, UNITS)
+
+
+def test_a_non_real_feed_is_refused_before_conversion():
+    # Codex b2 MAJOR: asarray(float64) dropped a complex part (1j became 0) and hid a complex NaN
+    for bad in (
+        np.full(N_POOL, 1j),
+        np.array(["a", "b", "c"]),
+        np.array([None, 1.0, 2.0], dtype=object),
+    ):
+        with pytest.raises(ValueError, match="REFUSED"):
+            _pool().percept_fed(np.zeros(64), bad)
+    wc = W_FEED.astype(complex)
+    wc[0, 0] = complex(2.0, np.nan)
+    for fn in (gf.check_feed, gf.clip_feed):
+        with pytest.raises(ValueError, match="REFUSED"):
+            fn(wc, UNITS)
+    with pytest.raises(ValueError, match="REFUSED"):
+        gf.random_feed(wc, UNITS, 9901)
