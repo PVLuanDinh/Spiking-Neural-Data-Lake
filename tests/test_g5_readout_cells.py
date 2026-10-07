@@ -1,6 +1,7 @@
 """G5 / T113's instrument reds (specs/022 evidence/g5-readout-variants.md 2.4, 2.6): the bare
 self-check (a deterministic runner, the frozen generator, the reading's NOT MET cases). Part A's
-trace code and its 2.7a gate were deleted on the gate's null (commit 4ecc90d9 keeps them as run)."""
+trace code and its 2.7a gate were deleted on the gate's null (commit 4ecc90d9 keeps them as run);
+Part B's coupling, arms and planted checks were deleted on B-R1 NOT MET (record 3.6)."""
 
 import os
 
@@ -9,7 +10,6 @@ import pytest
 torch = pytest.importorskip("torch")
 
 from snn_data_lake.instruments import g5_readout_cells as g  # noqa: E402
-from snn_data_lake.readout.online_readout import OnlineReadout  # noqa: E402
 
 
 def test_bare_self_check():
@@ -35,53 +35,20 @@ def test_the_trace_is_gone():
         assert not hasattr(g, name), f"{name} survived its deletion (record 2.7a)"
 
 
-def test_planted_readout_refuses_an_unknown_plant():
-    with pytest.raises(ValueError):
-        g.planted_readout(20261003, "shuffle")
-
-
-def test_coupled_accuracies_are_prequential_and_bounded():
-    acc = g.coupled_accuracies(g.planted_readout(20261003, "iid_errors", n=100))
-    assert set(acc) == {"uncoupled", "full", "marg"}
-    assert all(0.0 <= v <= 1.0 for v in acc.values())
-
-
-def _wired(arm, n=300):
-    from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
-
-    torch.set_num_threads(1)
-    chain = g.planted_chain(20261003, "burst", 2.0, n=n)
-    seq = [c for _, c in chain]
-    M = 1 + max(seq)
-    eng = NeurogenesisSelfImprove(
-        seed=20261003,
-        device="cpu",
-        refit_every=1,
-        online_readout=None,
-        growth_gate=g.ClosingGate(3),
-    )
-    ro, cc, cl, te = g.arm_parts(arm, M, seq, 20261003)
-    rec = g.instrument_engine(eng, ro, M, cc, cl, te)
-    for i, (x, c) in enumerate(chain):
-        eng.observe(x, c)
-        if i % 20 == 19:
-            eng.tick()
-    return g.summarize(eng, rec, 20261003, arm), cc
-
-
-def test_coupled0_is_delta_bit_for_bit_and_learning_is_untouched():
-    d, _ = _wired("DELTA")
-    c0, cc0 = _wired("COUPLED0")
-    c, cc = _wired("COUPLED")
-    assert c0["live_acc"] == d["live_acc"] and c0["beta_hash"] == d["beta_hash"]  # B-R2's reach
-    assert cc0.moved == 0 and cc.decisions > 0 and cc.state()["counts"] == cc.decisions
-    assert c["beta_hash"] == d["beta_hash"] and c["traj"] == d["traj"]  # B-R4: learning untouched
-    g.same_rows([d, c0, c])
-
-
-def test_unknown_arm_refuses():
-    with pytest.raises(ValueError):
-        g.arm_parts("TRACE", 4, [0, 1], 20261003)
+def test_the_coupling_is_gone_and_only_the_incumbent_arms_remain():
+    for name in (
+        "planted_readout",
+        "coupled_accuracies",
+        "planted_checks",
+        "read_part_b",
+        "b_reach_gate",
+    ):
+        assert not hasattr(g, name), f"{name} survived its deletion (record 3.6)"
+    for arm in ("TRACE", "COUPLED", "COUPLED0", "COUPLED_MARG", "COUPLED_SHUF", "COUPLED_PERM"):
+        with pytest.raises(ValueError):
+            g.arm_parts(arm, 4, [0, 1], 20261003)
+    assert g.arm_parts("BATCH", 4, [0, 1], 20261003) == (None, None)
+    assert g.arm_parts("DELTA", 4, [0, 1], 20261003)[0] is not None
 
 
 def test_contrast_cells_pairs_one_seed():
@@ -109,30 +76,6 @@ def test_brain_cell_refuses_a_live_home_before_any_brain(monkeypatch, tmp_path):
     with pytest.raises(home.LiveHomeRefused):
         g.brain_cell((20261003, "DELTA", [0, 1, 0]))
     assert built == [], "a Brain was constructed past a refused home"
-
-
-def test_pb4_a_count_before_scoring_through_the_harness_raises():
-    # Codex cp4 #4: the leak is built through the ACTUAL harness path (instrument_engine), where
-    # the truth is counted after the decision but before the live instrument scores it
-    from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
-    from snn_data_lake.readout.categorical_coupling import CategoricalCoupling
-
-    torch.set_num_threads(1)
-    chain = g.planted_chain(20261003, "burst", 2.0, n=300)
-    M = 1 + max(c for _, c in chain)
-    eng = NeurogenesisSelfImprove(
-        seed=20261003,
-        device="cpu",
-        refit_every=1,
-        online_readout=None,
-        growth_gate=g.ClosingGate(3),
-    )
-    g.instrument_engine(eng, OnlineReadout("delta"), M, CategoricalCoupling(M), _leak=True)
-    with pytest.raises(RuntimeError, match="before it is scored"):
-        for i, (x, c) in enumerate(chain):
-            eng.observe(x, c)
-            if i % 20 == 19:
-                eng.tick()
 
 
 def test_beta_identity_is_exact_bytes_and_a_sub_rounding_perturbation_breaks_it():
@@ -263,75 +206,3 @@ def test_a_fallback_perception_seed_is_replaced_whole_from_the_reserve(monkeypat
         g.run_cells(
             (1, 2), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell
         )
-
-
-def _b_cells(coupled_accs, z_acc=0.5, z_beta="b", c_traj=()):
-    out = []
-    for i, ca in enumerate(coupled_accs):
-        base = {"seed": i, "beta_hash": "b", "traj": [(1, 1, 0.5)], "live_acc": 0.5}
-        out += [
-            {**base, "arm": "DELTA"},
-            {**base, "arm": "COUPLED0", "live_acc": z_acc, "beta_hash": z_beta},
-            {**base, "arm": "COUPLED", "live_acc": ca, "traj": list(c_traj) or base["traj"]},
-        ]
-    return out
-
-
-def test_reach_gate_halts_before_b_r1_and_a_significant_negative_reads_harmful():
-    # amendment 2026-10-06 points 1 and 3
-    neg = [-0.05, -0.04, -0.06, -0.05, -0.04, -0.07, -0.05, -0.06]
-    met, line = g.read_b_r1(_b_cells([0.5 + d for d in neg]))
-    assert not met and "HARMFUL" in line and "NOT MET" in line
-    pos = [0.05, 0.04, 0.06, 0.05, 0.04, 0.07, 0.05, 0.06]
-    met, line = g.read_b_r1(_b_cells([0.5 + d for d in pos]))
-    assert met and "HARMFUL" not in line
-    null = [0.01, -0.01, 0.01, -0.01, 0.01, -0.01, 0.01, -0.01]
-    assert "HARMFUL" not in g.read_b_r1(_b_cells([0.5 + d for d in null]))[1]
-    with pytest.raises(g.ReachHalt, match="B-R2"):  # COUPLED0 != DELTA: no verdict at all
-        g.read_b_r1(_b_cells([0.6] * 8, z_acc=0.51))
-    with pytest.raises(g.ReachHalt, match="B-R4"):  # a coupled arm moved the refit trajectory
-        g.read_b_r1(_b_cells([0.6] * 8, c_traj=[(1, 1, 0.9)]))
-
-
-def _conf_cells(coupled, shuf, marg, perm):
-    out = []
-    for i in range(8):
-        base = {
-            "seed": i,
-            "beta_hash": "b",
-            "traj": [(1, 1, 0.5)],
-            "live_acc": 0.5,
-            "live_pers": 0.9,
-        }
-        out += [
-            {**base, "arm": "BATCH", "live_acc": 0.3 + 0.01 * i},
-            {**base, "arm": "DELTA"},
-            {**base, "arm": "COUPLED0"},
-            {**base, "arm": "COUPLED", "live_acc": 0.5 + coupled[i]},
-            {**base, "arm": "COUPLED_SHUF", "live_acc": 0.5 + shuf[i]},
-            {**base, "arm": "COUPLED_MARG", "live_acc": 0.5 + marg[i]},
-            {**base, "arm": "COUPLED_PERM", "live_acc": 0.5 + perm[i]},
-        ]
-    return out
-
-
-def test_read_part_b_lands_only_when_every_conjunct_holds_and_prints_the_gate():
-    # a non-periodic recording, so the circular shift moves many teaching labels
-    rec = {i: {"cats": [(k * k // 3) % 4 for k in range(40)]} for i in range(8)}
-    up = [0.06, 0.05, 0.07, 0.06, 0.05, 0.08, 0.06, 0.07]
-    zero = [0.0, 0.01, -0.01, 0.0, 0.01, -0.01, 0.0, 0.01]
-    lines, landed = g.read_part_b(_conf_cells(up, zero, zero, zero), rec)
-    assert landed and "reach gate: PASSED" in lines[0] and any("conjunct 4" in x for x in lines)
-    assert any("acc - floor" in x for x in lines)  # the persistence context is printed
-    # COUPLED_SHUF - DELTA MET adds a refusal (conjunct 4), so the reading does not land
-    assert not g.read_part_b(_conf_cells(up, up, zero, zero), rec)[1]
-    # the control that is not the method ties the method: conjunct 1 NOT MET
-    assert not g.read_part_b(_conf_cells(up, zero, up, zero), rec)[1]
-    # a vacuous (one-category) recording refuses conjunct 3
-    vac = {i: {"cats": [2] * 40} for i in range(8)}
-    assert not g.read_part_b(_conf_cells(up, zero, zero, zero), vac)[1]
-    # a failed reach gate halts the whole read
-    bad = _conf_cells(up, zero, zero, zero)
-    bad[2]["live_acc"] = 0.9  # COUPLED0 != DELTA on seed 0
-    with pytest.raises(g.ReachHalt):
-        g.read_part_b(bad, rec)

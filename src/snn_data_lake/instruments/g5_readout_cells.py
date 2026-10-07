@@ -3,30 +3,22 @@
 ONE instrument for the row's in-brain and planted cells. PART A IS DELETED: its 2.7a reachability gate read
 PA1 NOT MET -- 1 of 12 frozen configurations met on discovery (11900-11907), 0 replicated (11936-11943) --
 so the trace-delta challenger, its schedule control and the gate were removed before any in-brain cell
-(P8 F11: a criterion with no reachable red is deleted, not weakened). The record's "Results: 2.7a" section
-carries every contrast verbatim; commit 4ecc90d9 keeps the code as it was run. `OnlineReadout("delta")`
-stays the incumbent.
+(P8 F11: a criterion with no reachable red is deleted, not weakened). PART B IS DELETED: on the confirmatory
+seeds 11100-11107 B-R1 read NOT MET (COUPLED - DELTA mean +0.0021, t +0.444), so `categorical_coupling`, its
+arms, its planted checks (PB1/PB2/PB5) and the Part B reading were removed (record 3.6; P8 deletion on a
+null). The record's results sections carry every contrast verbatim; commits 4ecc90d9 (Part A) and 0fba900c
+(Part B's reading) keep the code as it was run. `OnlineReadout("delta")` stays the incumbent.
 
 WHAT STAYS (the record's deletion scope): the frozen generator `planted_chain` (record 2.6, Codex #11), the
-brain-free engine runner `run_planted` under the closing growth gate L1c's reds use, and the reading (record
-2.4) -- the machinery Part B's planted checks (PB1/PB2/PB5), the shift's positive control (PA3) and the
-in-brain cells reuse.
+brain-free engine runner `run_planted` under the closing growth gate L1c's reds use, the reading (record
+2.4), and the in-brain cell machinery (`run_cells`, `brain_cell`, `same_rows`, the shift's positive control
+PA3, PA4/PA8/PA10) that Part D reuses.
 
 THE STATISTIC (record 2.4): `paired_contrast.contrast` at T_BAR; MET iff non-degenerate (ruling 9: a
 zero-variance contrast reads NOT MET) AND t > T_BAR AND >= 5 seeds non-tied (|d| > 1e-6, a separate named
 restriction). The exact FPR is a DIAGNOSTIC, printed, gating nothing (Codex #9).
 
-PART B'S PLANTED CHECKS (record 3.5, PB1 / PB2 / PB5), brain-free on a SYNTHETIC readout (`planted_readout`:
-class probabilities q from a planted error process, no engine), each contrast over 8 seeds:
-  PB1 (positive; 11924-11931) a cyclic relabelling 0->1->2->0 of uniform truths: contrast(COUPLED - uncoupled)
-      MET AND contrast(COUPLED - COUPLED_MARG) MET (equal marginals: the diagonal control cannot move it).
-  PB2 (negative; 11924-11931) non-systematic errors: contrast(COUPLED - uncoupled) NOT met.
-  PB5 (the marginal control's own positive; 11944-11951) a pure base-rate miscalibration (skewed truths, a
-      logit bias toward one class): contrast(COUPLED_MARG - uncoupled) MET decides; contrast(COUPLED -
-      COUPLED_MARG) NOT met is the secondary conjunct.
-The fixture parameters (PLANT_*) are fixed in this file BEFORE the registered seeds are run, once.
-
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.g5_readout_cells [--planted]
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.g5_readout_cells [--pa3]
 """
 
 import math
@@ -36,21 +28,11 @@ import sys
 import torch
 
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
-from snn_data_lake.readout.categorical_coupling import CategoricalCoupling
 from snn_data_lake.readout.online_readout import ClosingGate, OnlineReadout
 
 TIE_TOL = 1e-6  # |d| <= this is a tie (L1c's harness value)
 MIN_NONTIED = 5  # the separate named restriction (record 2.4)
 CHAIN_KINDS = ("burst", "drift", "iid")
-PB12_SEEDS = tuple(range(11924, 11932))
-PB5_SEEDS = tuple(range(11944, 11952))
-# the synthetic-readout fixture, fixed before the first registered run (CHOSEN; never tuned after a look)
-PLANT_N, PLANT_K = 400, 4
-PLANT_STRENGTH = 2.0  # logit of the readout's chosen class, beside N(0, 1) logit noise
-PLANT_HIT = 0.85  # PB1: the planted relabelling's rate; PB2: the readout's accuracy
-PLANT_PRIOR = (0.55, 0.15, 0.15, 0.15)  # PB5: skewed truths
-PLANT_BIAS = 1.0  # PB5: the logit bias toward class k - 1
-PLANTS = ("relabel", "iid_errors", "prior")
 
 
 # --------------------------------------------------------------------------------------------------
@@ -128,101 +110,11 @@ def _line(name, met, c, x):
 
 
 # --------------------------------------------------------------------------------------------------
-# Part B's planted checks (record 3.5)
-# --------------------------------------------------------------------------------------------------
-# distinct-from: readout/snn_moe_classifier.py -- `_new_rng` seeds a numpy Generator from `random`;
-#   no planted readout. Read 2026-10-04.
-# distinct-from: faculties/interoceptive_integration.py -- `record_charge` is a port A/B. Read 2026-10-04.
-# distinct-from: infra/cockpit.py -- `_http_get` drives a handler without a socket. Read 2026-10-04.
-# distinct-from: instruments/everyday_battery.py -- `spawn_seeds` runs one process per seed. Read 2026-10-04.
-# distinct-from: instruments/report_order_probe.py -- `t081_constructed_read` reads a constructed recording;
-#   none synthesizes a readout's class probabilities under a planted error process. Read 2026-10-04.
-def planted_readout(seed, plant, n=PLANT_N, k=PLANT_K):
-    """[(q, truth)] from a synthetic readout with a planted error process (one torch.Generator).
-    relabel: the readout names (truth + 1) % 3 for truths 0-2 (k - 1 is answered right) at rate
-    PLANT_HIT, else a uniform class; iid_errors: right at rate PLANT_HIT, else a uniform OTHER class;
-    prior: truths drawn from PLANT_PRIOR, logits = STRENGTH * onehot(truth) + BIAS on class k - 1."""
-    if plant not in PLANTS:
-        raise ValueError(f"plant must be one of {PLANTS}, got {plant!r}")
-    g = torch.Generator().manual_seed(int(seed))
-    out = []
-    for _ in range(n):
-        noise = torch.randn(k, generator=g)
-        if plant == "prior":
-            t = int(torch.multinomial(torch.tensor(PLANT_PRIOR), 1, generator=g))
-            logits = noise
-            logits[t] += PLANT_STRENGTH
-            logits[k - 1] += PLANT_BIAS
-        else:
-            t = int(torch.randint(0, k, (1,), generator=g))
-            hit = float(torch.rand(1, generator=g)) < PLANT_HIT
-            if plant == "relabel":
-                said = (
-                    ((t + 1) % 3 if t < 3 else t)
-                    if hit
-                    else int(torch.randint(0, k, (1,), generator=g))
-                )
-            else:
-                other = int(torch.randint(0, k - 1, (1,), generator=g))
-                said = t if hit else (other if other < t else other + 1)
-            logits = noise
-            logits[said] += PLANT_STRENGTH
-        out.append((torch.softmax(logits, dim=0), t))
-    return out
-
-
-def coupled_accuracies(stream, k=PLANT_K):
-    """Prequential accuracy of the uncoupled argmax, COUPLED ("full") and COUPLED_MARG ("marg") on one
-    stream. Counts take the READOUT's own argmax as the prediction (record 3.2), after scoring."""
-    full, marg = CategoricalCoupling(k, "full"), CategoricalCoupling(k, "marg")
-    hits = {"uncoupled": 0, "full": 0, "marg": 0}
-    for q, t in stream:
-        said = int(q.argmax())
-        hits["uncoupled"] += int(said == t)
-        hits["full"] += int(full.decide(q) == t)
-        hits["marg"] += int(marg.decide(q) == t)
-        for cc in (full, marg):  # scored above; only now counted (PB4)
-            cc.scored()
-            cc.update(said, t)
-    n = len(stream)
-    return {a: h / n for a, h in hits.items()}
-
-
-def planted_checks(pb12=PB12_SEEDS, pb5=PB5_SEEDS, log=print):
-    """Record 3.5: PB1, PB2 and PB5 on their registered seeds. Returns {name: bool}."""
-
-    def contrasts(seeds, plant, pairs):
-        accs = [coupled_accuracies(planted_readout(s, plant)) for s in seeds]
-        res = {}
-        for a, b in pairs:
-            met, c, x = reading(f"{plant}: {a} - {b}", [r[a] - r[b] for r in accs])
-            log(_line(c.name, met, c, x))
-            res[(a, b)] = met
-        return res
-
-    r1 = contrasts(pb12, "relabel", [("full", "uncoupled"), ("full", "marg")])
-    r2 = contrasts(pb12, "iid_errors", [("full", "uncoupled")])
-    r5 = contrasts(pb5, "prior", [("marg", "uncoupled"), ("full", "marg")])
-    out = {
-        "PB1": r1[("full", "uncoupled")] and r1[("full", "marg")],
-        "PB2": not r2[("full", "uncoupled")],
-        "PB5": r5[("marg", "uncoupled")] and not r5[("full", "marg")],
-    }
-    log("  " + "; ".join(f"{k} {'MET' if v else 'NOT MET'}" for k, v in out.items()))
-    return out
-
-
-# --------------------------------------------------------------------------------------------------
 # the cells: arms wired onto a live engine (record 2.3 / 3.3; common vocabulary init, Codex #8)
 # --------------------------------------------------------------------------------------------------
 VACUITY_FLOOR = 0.20  # record 2.3 (CHOSEN): a shift that moves fewer teaching labels is VACUOUS
 CELL_TICKS = 800  # the L1c harness shape
-DEV_SEEDS = tuple(range(11000, 11008))
-CONF_SEEDS = tuple(range(11100, 11108))
-RESERVE_SEEDS = tuple(range(11108, 11116))
 PA3_SEEDS = tuple(range(11916, 11924))
-B_ARMS = ("BATCH", "DELTA", "COUPLED", "COUPLED0", "COUPLED_MARG", "COUPLED_SHUF", "COUPLED_PERM")
-DEV_ARMS = ("BATCH", "DELTA", "COUPLED", "COUPLED0", "COUPLED_MARG")
 SAME_TOL = 1e-6
 
 
@@ -260,16 +152,11 @@ class _Taught:
         return self.readout.state()
 
 
-def instrument_engine(
-    eng, readout, M=None, coupling=None, count_labels=None, teach_labels=None, _leak=False
-):
+def instrument_engine(eng, readout, M=None, teach_labels=None):
     """Wire one arm onto a NeurogenesisSelfImprove. Returns its record: the true categories, the
     column count at every scoring (the vocabulary schedule) and the readout. M: the common vocabulary
     -- every new model object is widened to M columns before its first scoring (None: the deployed
-    lazy widen). coupling: the live decision is re-read through it on non-silent rows, and it counts
-    (the readout's own decision, count_labels[k] or the truth) AFTER scoring -- `real_observe` scores the
-    event, then the harness marks it `scored()` and counts it. `_leak` is PB4's planted red only: it counts
-    the truth after the decision but BEFORE the scoring, which the coupling must refuse."""
+    lazy widen)."""
     rec = {"cats": [], "cols": [], "k": 0}
     if teach_labels is not None and readout is not None:
         readout = _Taught(readout, teach_labels, lambda: rec["k"])
@@ -287,42 +174,13 @@ def instrument_engine(
             return out
 
         eng._refit = _refit
-    real_predict, real_observe, said = eng.predict_next, eng.observe, {}
-    if coupling is not None:
-
-        def predict_next():
-            d = real_predict()
-            if d is None:
-                return d
-            k, m = rec["k"], eng._model
-            if said.get("k") == k and said.get("model") is m:
-                return said["pick"]
-            pend = eng._pending_prediction
-            pick, decided = d, False
-            if not pend[4]:  # a silent row keeps NGSNN.decide's fallback (record 3.2)
-                pick, decided = coupling.decide(torch.softmax(pend[2] @ m.beta, dim=0)), True
-            said.update(k=k, model=m, said=d, pick=pick, decided=decided)
-            return pick
-
-        eng.predict_next = predict_next
+    real_observe = eng.observe
 
     def observe(features, category):
         k, cat, m = rec["k"], int(category), eng._model
         if m is not None and getattr(m, "beta", None) is not None and eng._prev is not None:
             rec["cols"].append(int(m.beta.shape[1]))
-        if (
-            _leak
-            and coupling is not None
-            and eng.predict_next() is not None
-            and said.get("decided")
-        ):
-            coupling.update(
-                said["said"], cat
-            )  # PB4's planted leak: counted before scoring -> raises
         out = real_observe(features, category)  # the live instrument scores the event here
-        if coupling is not None and said.get("k") == k and said.get("decided"):
-            coupling.scored()
-            coupling.update(said["said"], cat if count_labels is None else count_labels[k])
         rec["cats"].append(cat)
         rec["k"] = k + 1
         return out
@@ -332,25 +190,12 @@ def instrument_engine(
 
 
 def arm_parts(arm, M, seq, seed):
-    """(readout, coupling, count_labels, teach_labels) for one arm on one seed's recorded sequence."""
-    from snn_data_lake.readout.categorical_coupling import CategoricalCoupling as CC
-
+    """(readout, teach_labels) for one arm on one seed's recorded sequence. Only the incumbent arms remain:
+    Part A's trace and Part B's coupling arms were deleted on their nulls."""
     if arm == "BATCH":
-        return None, None, None, None
-    delta = OnlineReadout("delta")
+        return None, None
     if arm in ("RECORD", "DELTA"):
-        return delta, None, None, None
-    if arm == "COUPLED":
-        return delta, CC(M, "full"), None, None
-    if arm == "COUPLED0":
-        return delta, CC(M, "full", frozen=True), None, None
-    if arm == "COUPLED_MARG":
-        return delta, CC(M, "marg"), None, None
-    if arm == "COUPLED_SHUF":
-        return delta, CC(M, "full"), circular_shift(seq), None
-    if arm == "COUPLED_PERM":
-        perm = torch.randperm(M, generator=torch.Generator().manual_seed(int(seed))).tolist()
-        return delta, CC(M, "full"), [perm[c] for c in seq], None
+        return OnlineReadout("delta"), None
     raise ValueError(f"unknown arm {arm!r}")
 
 
@@ -472,8 +317,8 @@ def brain_cell(args):
         b = make_brain(seed=seed, persist=False)
         try:
             M = None if seq is None else 1 + max(seq)
-            readout, coupling, count_labels, teach = arm_parts(arm, M, seq, seed)
-            rec = instrument_engine(b.neuro, readout, M, coupling, count_labels, teach)
+            readout, teach = arm_parts(arm, M, seq, seed)
+            rec = instrument_engine(b.neuro, readout, M, teach)
             for _ in range(CELL_TICKS):
                 b.tick()
             out = summarize(b.neuro, rec, seed, arm)
@@ -580,73 +425,6 @@ def contrast_cells(cells, a, b, label=""):
     return reading(f"{label}{a} - {b}", diffs)
 
 
-class ReachHalt(SameRowsHalt):
-    """B-R2 or B-R4 failed: no B-R1 verdict may be read (amendment 2026-10-06, point 3)."""
-
-
-COUPLED_ARMS = ("COUPLED", "COUPLED0", "COUPLED_MARG", "COUPLED_SHUF")
-
-
-def b_reach_gate(cells):
-    """B-R2 (COUPLED0 == DELTA: live accuracy and beta bytes, every seed) and B-R4 (every coupled arm leaves
-    beta and the refit trajectory identical to DELTA's) -- evaluated BEFORE B-R1 is read. Raises ReachHalt."""
-    by = {(c["seed"], c["arm"]): c for c in cells}
-    for s in sorted({c["seed"] for c in cells}):
-        d, z = by[(s, "DELTA")], by.get((s, "COUPLED0"))
-        if z is None or z["live_acc"] != d["live_acc"] or z["beta_hash"] != d["beta_hash"]:
-            raise ReachHalt(f"seed {s}: B-R2 -- COUPLED0 != DELTA; no B-R1 verdict is read")
-        for a in COUPLED_ARMS:
-            c = by.get((s, a))
-            if c is not None and (c["beta_hash"] != d["beta_hash"] or c["traj"] != d["traj"]):
-                raise ReachHalt(
-                    f"seed {s}: B-R4 -- {a} moved beta or the refits; no B-R1 verdict is read"
-                )
-    return True
-
-
-def read_b_r1(cells, label=""):
-    """B-R1 = contrast(COUPLED - DELTA) MET, read only after the reach gate; a significantly NEGATIVE
-    contrast reads HARMFUL, not null (amendment 2026-10-06, point 1). Returns (met, line)."""
-    b_reach_gate(cells)
-    met, c, x = contrast_cells(cells, "COUPLED", "DELTA", label)
-    harm = (not met) and (not c.degenerate) and c.t < -T_BAR
-    return met, _line(c.name, met, c, x) + ("  HARMFUL" if harm else "")
-
-
-def read_part_b(cells, recorded, label=""):
-    """The confirmatory reading of record 3.4, printed once: the reach gate (B-R2 / B-R4) first, then B-R0's
-    positive control, B-R1 (with HARMFUL), B-R3's four conjuncts, COUPLED_PERM as REPORTED only, and each
-    arm's accuracy against its persistence floor. Returns (lines, landed)."""
-    b_reach_gate(cells)
-    lines = [f"{label}B-R2 / B-R4 reach gate: PASSED on {len({c['seed'] for c in cells})} seeds"]
-    met0, c, x = contrast_cells(cells, "DELTA", "BATCH", label)
-    lines.append(_line(c.name, met0, c, x) + "  (B-R0 positive control)")
-    met1, line1 = read_b_r1(cells, label)
-    lines.append(line1 + "  (B-R1)")
-    m1, c, x = contrast_cells(cells, "COUPLED", "COUPLED_MARG", label)
-    m2, c2, x2 = contrast_cells(cells, "COUPLED", "COUPLED_SHUF", label)
-    nv = [
-        s
-        for s, r in recorded.items()
-        if shift_fraction(r["cats"], circular_shift(r["cats"])) < VACUITY_FLOOR
-    ]
-    m4, c4, x4 = contrast_cells(cells, "COUPLED_SHUF", "DELTA", label)
-    lines += [
-        _line(c.name, m1, c, x) + "  (B-R3 conjunct 1)",
-        _line(c2.name, m2, c2, x2) + "  (B-R3 conjunct 2)",
-        f"{label}shift non-vacuous on {len(recorded) - len(nv)} of {len(recorded)} seeds"
-        f"  (B-R3 conjunct 3; vacuous: {nv})",
-        _line(c4.name, m4, c4, x4) + "  (B-R3 conjunct 4: must be NOT MET)",
-    ]
-    r3 = m1 and m2 and not nv and not m4
-    mp, cp, xp = contrast_cells(cells, "COUPLED_PERM", "DELTA", label)
-    lines.append(_line(cp.name, mp, cp, xp) + "  (REPORTED only, never a bar)")
-    arm_table(cells, log=lines.append)
-    landed = met0 and met1 and r3
-    lines.append(f"{label}B-R0..B-R4 all hold: {landed}  (B-R3 {r3})")
-    return lines, landed
-
-
 # --------------------------------------------------------------------------------------------------
 # the brain-free reds of the cell machinery (record 2.6: PA3, PA4, PA8, PA10)
 # --------------------------------------------------------------------------------------------------
@@ -744,24 +522,8 @@ def pa10():
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     torch.set_num_threads(1)
-    if "--planted" in argv:
-        planted_checks()
-        return
     if "--pa3" in argv:
         pa3()
-        return
-    if "--confirm" in argv:  # in-brain, read ONCE (record 3.4): only on the lead's go
-        rec, cells, rep = run_cells(CONF_SEEDS, B_ARMS, reserve=RESERVE_SEEDS)
-        print("replacements:", rep)
-        for line in read_part_b(cells, rec, "CONF ")[0]:
-            print(line)
-        return
-    if "--dev" in argv:  # in-brain: run only on the lead's go (board rule)
-        _, cells, _ = run_cells(DEV_SEEDS, DEV_ARMS)
-        print(read_b_r1(cells, "DEV ")[1])  # gate first: B-R2 / B-R4 halt before any B-R1 line
-        for a, b in (("DELTA", "BATCH"), ("COUPLED_MARG", "DELTA")):
-            met, c, x = contrast_cells(cells, a, b, "DEV ")
-            print(_line(c.name, met, c, x))
         return
     # PA4: the vacuity detector fires on a known positive (a one-category sequence reads f = 0)
     assert shift_fraction([2] * 40, circular_shift([2] * 40)) == 0.0 < VACUITY_FLOOR
@@ -803,21 +565,10 @@ def main(argv=None):
     assert not reading("ties", [0.3, 0.2, 0.25, 0.4, 0.0, 0.0, 0.0, 0.0])[0], "4 non-tied < 5"
     assert not reading("noise", [0.1, -0.1, 0.12, -0.11, 0.09, -0.1, 0.1, -0.12])[0]
     assert reading("up", [0.2, 0.3, 0.25, 0.4, 0.15, 0.35, 0.3, 0.2])[0]
-    # Part B's synthetic readout (fixture seed only; the registered PB seeds run under --planted)
-    rel = coupled_accuracies(planted_readout(20261003, "relabel"))
-    assert rel["full"] > rel["uncoupled"] + 0.2 and rel["full"] > rel["marg"] + 0.2, rel
-    pri = coupled_accuracies(planted_readout(20261003, "prior"))
-    assert pri["marg"] > pri["uncoupled"], pri
-    assert (
-        planted_readout(20261003, "iid_errors", n=50)[0][1]
-        == planted_readout(20261003, "iid_errors", n=50)[0][1]
-    )
     print(
         "g5_readout_cells self-check OK: the runner is deterministic and the online readout moves; the frozen "
         "generator is deterministic and iid is not run-structured; the reading says NOT MET on degenerate, "
-        "mostly-tied and sign-balanced samples; the planted relabelling is recovered by full coupling and not by "
-        "the marginal control, which does correct a planted base-rate miscalibration; PA4 vacuity, PA8 "
-        "same-rows halt and PA10 early-category halt (with the common init passing) all fire"
+        "mostly-tied and sign-balanced samples; PA4 vacuity, PA8 same-rows halt and PA10 early-category halt (with the common init passing) all fire"
     )
 
 
