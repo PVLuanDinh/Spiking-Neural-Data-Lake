@@ -134,7 +134,7 @@ PLASTICITY_FREE = {"OFF", "ORACLE", "A-ONLY", "A-ONLY-TWIN"}  # every cap off an
 #   (per-channel status) -- term overlaps only; none stamps files on disk.
 def lake_snapshot(path):
     """mtime_ns + size of every file under `path` (an absent path snapshots as empty). A file whose stat fails
-    is recorded as None, never skipped, and so is a directory that cannot be listed:
+    is recorded as None, never skipped, and so is a directory that cannot be listed or a directory link:
     `live_lake_untouched` cannot read either as untouched."""
     snap = {}
 
@@ -144,7 +144,13 @@ def lake_snapshot(path):
             return  # the ROOT is absent: that is the documented empty snapshot, not an unlistable directory
         snap[os.path.join(os.path.relpath(where, path), "<unlistable>")] = None
 
-    for root, _dirs, files in os.walk(path, onerror=unlistable):
+    for root, dirs, files in os.walk(path, onerror=unlistable):
+        for d in (
+            dirs
+        ):  # a directory link is listed here but never descended: what is behind it is unread
+            p = os.path.join(root, d)
+            if os.path.islink(p) or os.path.isjunction(p):
+                snap[os.path.relpath(p, path)] = None
         for f in files:
             p = os.path.join(root, f)
             try:

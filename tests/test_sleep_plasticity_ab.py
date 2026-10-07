@@ -533,3 +533,20 @@ def test_an_absent_lake_snapshots_empty_and_reads_untouched(tmp_path):
     before = m.lake_snapshot(gone)
     assert before == {}
     assert m.live_lake_untouched(gone, before) == (True, [])
+
+
+def test_a_directory_link_under_the_root_fails_the_live_lake_check_closed(tmp_path, monkeypatch):
+    """os.walk never descends a directory link: a change behind one was invisible.
+    The link itself is recorded as None (never equal), so the check cannot read untouched."""
+    decoy = tmp_path / "decoy_live"
+    (decoy / "real").mkdir(parents=True)
+    (decoy / "real" / "a.bin").write_bytes(b"abc")
+    (
+        decoy / "link"
+    ).mkdir()  # stands in for a link: islink is patched, so no symlink privilege is needed
+    real = os.path.islink
+    monkeypatch.setattr(os.path, "islink", lambda p: str(p).endswith("link") or real(p))
+    snap = m.lake_snapshot(str(decoy))
+    assert snap["link"] is None
+    ok, changed = m.live_lake_untouched(str(decoy), snap)
+    assert not ok and "link" in changed
