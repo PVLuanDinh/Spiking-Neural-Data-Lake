@@ -74,6 +74,7 @@ CORE = [
     "growth.arealization",  # T040+T041: exhaustive GRN censuses + prosomeric grid + graded arm
     "growth.growth_program",  # T042: sealed view, shared-program counter, dilution, refusal reds
     "instruments.h01_distance_kernel",  # 022 T112 (G4) T3: the reading rows, the optimizer, a planted recovery, a degenerate flat width, the units guard -- synthetic, no H01 file
+    "instruments.h01_partb_tangential",  # 022 T112 (G4) Part B: tangential frame, F/G/P arms, the pooling gate, the exposure gate -- synthetic, no H01 file
     "instruments.prior_drift_harness",  # 022 T063: both reds, the PLANTED positive control, the WRONG validity precondition and every nuisance refusal, on a 64-unit synthetic population
     "growth.placement",  # grown units ordered into cortical layers by measured H01 occupancy
     "growth.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause

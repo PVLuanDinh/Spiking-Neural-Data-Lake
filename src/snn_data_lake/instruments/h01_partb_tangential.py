@@ -912,12 +912,61 @@ def provenance():
     return {"git_head": head, "harness_sha256": sha}
 
 
+def _synthetic_pop(n=240, seed=0):
+    """A few hundred units near the white-matter circle, bands monotone in r: no H01 file."""
+    rng = np.random.default_rng(seed)
+    cx, cy = t3.region_centre()
+    r, th = rng.uniform(1500.0, 1800.0, n), rng.uniform(-1.0, -0.85, n)
+    xyz = np.c_[cx + r * np.cos(th), cy + r * np.sin(th), rng.uniform(0.0, 60.0, n)]
+    band = np.minimum(((1800.0 - r) / 300.0 * 7).astype(int), 6)
+    return make_pop(xyz, band, rng.choice([-1, 1], n))
+
+
+def _selfcheck():
+    """No-argument self-check (run_selfchecks): synthetic, no H01 file, no Brain, no lake, development seeds."""
+    pop = _synthetic_pop()
+    assert frame_violation(pop.layer, pop.fr[0]) == (0.0, 0), "frame statistic"
+    try:
+        make_pop(pop.xyz * 1000.0, pop.layer, pop.sign)
+        raise AssertionError("the unit trap did not fire")
+    except t3.ArtifactRefused:
+        pass
+    n_all = _all_pairs_n(pop)
+    assert int(n_all.sum()) == len(pop.xyz) * (len(pop.xyz) - 1), "pair count"
+    truth = {"form": "gauss", "width": 60.0}
+    h, _ = build_hists(pop, 10004, n_all=n_all, truth=truth, n_edges=1200)
+    h2, _ = build_hists(pop, 10004, n_all=n_all, truth=truth, n_edges=1200)
+    assert np.array_equal(h.k_fold, h2.k_fold) and int(h.n_fold.sum()) == int(h.n_block.sum())
+    kernel = _unit(pop, 10005, n_all, truth, 1200)["neuron"]["G-F"]
+    assert kernel > 100.0, (
+        f"a planted Gaussian world must beat its distance-free twin, got {kernel:.1f}"
+    )
+    ok = {
+        "neuron": {"G-F": 1, "P-G": 1},
+        "interior": {"G-F": 1, "P-G": 1},
+        "region_aggregate": {"G-F": 1, "P-G": 1},
+        "region_blocks": [{"G-F": 1, "P-G": 1}] * NB_REG,
+    }
+    assert read_partb(ok) == ("PASS", "pooled")
+    assert read_partb(ok, pooling_sighted=False)[0] == "NOT_READ_POOLING_UNSIGHTED"
+    assert read_partb(ok, frame_ok=False)[0] == "REFUSED_FRAME"
+    try:
+        validate_planted(None, pop)
+        raise AssertionError("the exposure gate did not refuse")
+    except ExposureRefused:
+        pass
+    assert leak_free([0, 2, 4], [0, 2, 3, 4], 1, 3) and not leak_free([0, 1], [0, 3], 1, 3)
+    print(
+        f"self-check OK: frame, trap, histograms, planted kernel +{kernel:.0f} nats over flat, reading, gate"
+    )
+
+
 def main(argv=None):
     import argparse
     import time
 
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub = ap.add_subparsers(dest="cmd")
     p = sub.add_parser("planted", help="the planted stage (positions, layer, sign only)")
     h = sub.add_parser("h01", help="the H01 edge read; refuses without a valid planted record")
     for q in (p, h):
@@ -926,6 +975,9 @@ def main(argv=None):
     h.add_argument("--planted", required=True)
     h.add_argument("--t3", required=True, help="tools/g4_t3_campaign.json, cited in the record")
     a = ap.parse_args(argv)
+    if a.cmd is None:
+        _selfcheck()
+        return 0
     ins = [a.artifact, *(getattr(a, x) for x in ("planted", "t3") if hasattr(a, x))]
     out_path = t3.safe_output(a.out, ins)  # before ANY computation (safety S1)
     t0 = time.time()

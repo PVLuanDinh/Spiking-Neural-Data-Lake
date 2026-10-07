@@ -674,3 +674,8 @@ def test_build_record_takes_aggregates_only_and_matches_the_full_histogram(pop, 
     full = pb.build_record(pop, h, *args)
     agg = pb.build_record(pop, (h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))), *args)
     assert full == agg
+
+
+def test_no_argument_self_check_runs_and_passes(capsys):
+    assert pb.main([]) == 0
+    assert "self-check OK" in capsys.readouterr().out
