@@ -477,3 +477,21 @@ def test_ir2_refuses_unmatched_or_short_seed_lists():
     ):
         with pytest.raises(ValueError):
             U.ir2(30, 60, seeds=seeds, twin_seeds=twins, louvain_seeds=(0,))
+
+
+def test_t4_half_reads_its_seed_iterables_once_not_per_arm():
+    # Codex D+E: seeds=iter(...) gave RULE eight scores, every later arm none, rule_credited False
+    xy = _blobs(40, 13280)
+    kw = dict(pops=None, kernel=lambda d: np.exp(-d / 60.0), beta=0.0, columns=None)
+    tup = U.t4_wiring_half(40, 100, xy=xy, seeds=U.IR_SEEDS, louvain_seeds=(0,), **kw)
+    gen = U.t4_wiring_half(40, 100, xy=xy, seeds=iter(U.IR_SEEDS), louvain_seeds=iter((0,)), **kw)
+    assert tup["q"] == gen["q"] and tup["rule_credited"] == gen["rule_credited"]
+    assert all(len(v) == 8 for v in gen["q"].values())
+
+
+def test_t4_half_refuses_an_empty_louvain_seed_list():
+    with pytest.raises(ValueError):
+        U.t4_wiring_half(
+            10, 12, xy=_flat_units(10, 13281), pops=None, kernel=lambda d: 1.0, beta=0.0,
+            columns=None, seeds=U.IR_SEEDS, louvain_seeds=(),
+        )  # fmt: skip

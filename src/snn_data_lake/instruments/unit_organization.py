@@ -402,6 +402,9 @@ def best_partition(edges, n, seeds=LOUVAIN_SEEDS):
     as one community label per node; unweighted."""
     import networkx as nx
 
+    seeds = tuple(seeds)
+    if not seeds:
+        raise ValueError("Louvain needs at least one restart seed")
     g = nx.Graph()
     g.add_nodes_from(range(n))
     g.add_edges_from(edges)
@@ -433,6 +436,12 @@ def t4_wiring_half(
     the half (rule_credited None); a refused attribution variant leaves its term NOT CLAIMED; IMPOSED is
     reported and decides nothing. The caller runs ir1/ir2 first (t4_instruments_refuse)."""
     flat = lambda d: 1.0  # noqa: E731 -- a removed kernel term
+    seeds, louvain_seeds = (
+        tuple(seeds),
+        tuple(louvain_seeds),
+    )  # read once: an iterator is spent by arm 1
+    if not louvain_seeds:
+        raise ValueError("Louvain needs at least one restart seed")
     arms = {
         "RULE": dict(kernel=kernel, pops=pops, beta=beta, pathway=pathway),
         "DIST-ONLY": dict(kernel=kernel, pops=pops, beta=0.0, pathway=pathway),
@@ -488,6 +497,7 @@ NMI_BAR = 0.9  # CHOSEN, disclosed (2.7)
 def ir1(n, m, *, blocks, between=0.2, seeds=IR_SEEDS, louvain_seeds=LOUVAIN_SEEDS):
     """IR1: a planted block model at the same N and M must beat RANDOM (gnm) by Part F's contrast AND its
     Louvain partition must recover the plant (NMI >= NMI_BAR on EVERY seed). Fails -> T4 REFUSED."""
+    seeds, louvain_seeds = tuple(seeds), tuple(louvain_seeds)
     truth = list(np.arange(n) * blocks // n)
     diffs, nmis = [], []
     for s in seeds:
@@ -502,6 +512,7 @@ def ir1(n, m, *, blocks, between=0.2, seeds=IR_SEEDS, louvain_seeds=LOUVAIN_SEED
 
 def ir2(n, m, *, seeds=IR_SEEDS, twin_seeds=IR_TWIN_SEEDS, louvain_seeds=LOUVAIN_SEEDS):
     """IR2, the false-positive control: RANDOM against a RANDOM twin must NOT pass. Passes -> T4 REFUSED."""
+    seeds, twin_seeds, louvain_seeds = tuple(seeds), tuple(twin_seeds), tuple(louvain_seeds)
     diffs = [
         modularity(random_graph(n, m, seed=s), n, louvain_seeds)
         - modularity(random_graph(n, m, seed=t), n, louvain_seeds)
@@ -513,6 +524,7 @@ def ir2(n, m, *, seeds=IR_SEEDS, twin_seeds=IR_TWIN_SEEDS, louvain_seeds=LOUVAIN
 
 def ir3(n, m, *, blocks, seeds=IR_SEEDS, louvain_seeds=LOUVAIN_SEEDS):
     """IR3: the planted model at 50 % between-block edges vs RANDOM -- REPORTED only, to locate the floor."""
+    seeds, louvain_seeds = tuple(seeds), tuple(louvain_seeds)
     diffs = [
         modularity(planted_blocks(n, m, blocks=blocks, between=0.5, seed=s), n, louvain_seeds)
         - modularity(random_graph(n, m, seed=s), n, louvain_seeds)
