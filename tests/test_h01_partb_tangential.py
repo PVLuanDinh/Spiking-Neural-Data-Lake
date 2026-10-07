@@ -293,9 +293,11 @@ def test_record_is_readable_by_wiring_prior(pop, n_all):
     rng = np.random.default_rng(0)
     edges = (rng.integers(0, N, 400), rng.integers(0, N, 400))
     units = [_fake_unit(10020 + i) for i in range(8)]
-    rec = pb.build_record(
-        pop, h, units, "PASS", "pooled", edges, "a" * 64, {"blob_sha256": "b" * 64}
-    )
+    bands = {
+        "form_gap": 0.5
+    }  # constant gaps: the mixture is not a MET upgrade, the Gaussian is exported
+    t3_ref = {"blob_sha256": "b" * 64, "K": "mix"}
+    rec = pb.build_record(pop, h, units, "PASS", "pooled", edges, "a" * 64, t3_ref, bands)
     for key in (
         "source",
         "frame",
@@ -454,3 +456,32 @@ def test_pathway_recovery_is_enforced_by_the_gate_on_both_widths():
         ]
         rows = {**base, gate.name: {"units": units}}
         assert pb.pooling_sighted(plan, rows, bands) is ok, fitted  # P-G fires in every case
+
+
+def test_selected_form_is_what_is_exported_and_a_disagreement_is_recorded(pop, n_all):
+    truth = {"form": "gauss", "width": 60.0}
+    h, _ = pb.build_hists(pop, 10020, n_all=n_all, truth=truth, n_edges=1200)
+    edges = (np.zeros(2, dtype=int), np.ones(2, dtype=int))
+    args = (pop, h)
+
+    def rec(units, t3_k, gap):
+        return pb.build_record(
+            *args, units, "PASS", "global", edges, "a" * 64, {"K": t3_k}, {"form_gap": gap}
+        )
+
+    gauss_units = [_fake_unit(10020 + i) for i in range(8)]
+    r = rec(gauss_units, "mix", 0.5)
+    assert r["form"] == "gauss" and r["c"] == 0.0 and r["form_disagrees_t3"] is True
+    exp_units = [_fake_unit(10020 + i, form="exp") for i in range(8)]
+    r = rec(exp_units, "exp", 0.5)
+    assert r["form"] == "exp" and r["a"] == 0.0 and r["form_disagrees_t3"] is False
+    mix_units = [_fake_unit(10020 + i) for i in range(8)]
+    for i, u in enumerate(mix_units):
+        u["forms"] = {
+            "gauss": 10.0,
+            "exp": 0.0,
+            "mix": 20.0 + i,
+        }  # a varying, large mixture advantage
+    r = rec(mix_units, "mix", 5.0)
+    assert r["form"] == "mix" and r["a"] == 1.0 and r["c"] > 0.0 and r["form_disagrees_t3"] is False
+    assert pb.select_form(mix_units, {"form_gap": 50.0}) == "gauss"  # inside the band: no upgrade

@@ -413,8 +413,14 @@ def score_unit(pop, h, kind="mix"):
 
 
 # ---- bands and the reading (the T3 tri-state machinery, reused) --------------------------------
+def form_gap(u):
+    """The mixture's held-out advantage over the better single form, one seed (neuron folds)."""
+    return u["forms"]["mix"] - max(u["forms"]["gauss"], u["forms"]["exp"])
+
+
 def calibrate_bands(units):
     return {
+        "form_gap": max(abs(form_gap(u)) for u in units),
         "neuron": {c: max(abs(u["neuron"][c]) for u in units) for c in CONTRASTS},
         "interior": {c: max(abs(u["interior"][c]) for u in units) for c in CONTRASTS},
         "region": [
@@ -666,28 +672,53 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
         "artifact_sha256": sha,
     }
     if verdict in ("PASS", "RED_POOL"):
-        out["record"] = build_record(pop, first, units, verdict, keep, edges, sha, t3_ref)
+        out["record"] = build_record(pop, first, units, verdict, keep, edges, sha, t3_ref, bands)
     return out
 
 
-def build_record(pop, h, units, verdict, keep, edges, sha, t3_ref=None):
-    """The record growth/wiring_prior.py reads (schema agreed with G7): the global mixture on ALL pairs and edges,
-    per-cell amplitudes, per-cell widths if pooled, beta = 0 until B2, dbar, tangential density."""
+def select_form(units, bands):
+    """The form the record exports (frozen before any H01 read; T3's A2 shape on the Part B forms): the better
+    single kernel by summed held-out LL (tie order: Gaussian), upgraded to the mixture iff the mixture's advantage
+    over that single form is a MET paired contrast over the 8 seeds above the calibrated `form_gap` band."""
+    ll = {f: math.fsum(u["forms"][f] for u in units) for f in KINDS}
+    single = "gauss" if ll["gauss"] >= ll["exp"] else "exp"
+    gaps = [u["forms"]["mix"] - u["forms"][single] for u in units]
+    return "mix" if _state(gaps, bands["form_gap"]) == 1 else single
+
+
+def export_params(kind, th):
+    """(a, c, sigma_um, lambda_um) of the exported kernel: an unused component carries weight 0 (a Gaussian-only
+    kernel c = 0 with lambda_um a placeholder = sigma; an exponential-only kernel a = 0 with sigma_um = 1)."""
+    sigma, lam, rho = (math.exp(float(x)) for x in th)
+    if kind == "gauss":
+        return 1.0, 0.0, sigma, sigma
+    if kind == "exp":
+        return 0.0, 1.0, 1.0, lam
+    return 1.0, rho, sigma, lam
+
+
+def build_record(pop, h, units, verdict, keep, edges, sha, t3_ref=None, bands=None):
+    """The record growth/wiring_prior.py reads (schema agreed with G7). The exported kernel is the SELECTED form
+    (select_form) fitted on ALL pairs and edges, so a tangential disagreement with T3's form changes what is
+    delivered; the disagreement is recorded. Per-cell amplitudes, per-cell widths if pooled, beta = 0 until B2."""
     d = (np.arange(pop.nb) + 0.5) * BIN
     n, k = h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))
-    th = fit_global(d, n, k, "mix")
-    amp, _ = _profile(n, k, shape(d[None, :], th, "mix"))
-    sigma, lam, rho = (math.exp(float(x)) for x in th)
+    kind = select_form(units, bands)
+    th = fit_global(d, n, k, kind)
+    amp, _ = _profile(n, k, shape(d[None, :], th, kind))
+    a_w, c_w, sigma, lam = export_params(kind, th)
     live = np.flatnonzero(n.sum(1) > 0)
+    t3_k = (t3_ref or {}).get("K")
     rec = {
         "source": "part_b",
         "frame": "tangential",
         "reading": verdict,
         "keep": keep,
-        "form": "mix",
-        "form_selected": max(KINDS, key=lambda f: math.fsum(u["forms"][f] for u in units)),
-        "a": 1.0,
-        "c": rho,
+        "form": kind,
+        "form_t3": t3_k,
+        "form_disagrees_t3": t3_k is not None and t3_k != kind,
+        "a": a_w,
+        "c": c_w,
         "sigma_um": sigma,
         "lambda_um": lam,
         "pathway_amplitudes": {int(c): float(amp[c]) for c in live},
@@ -702,10 +733,13 @@ def build_record(pop, h, units, verdict, keep, edges, sha, t3_ref=None):
     if keep == "pooled":
         pens = [p for u in units for p in u["pen"]]
         pen = max(set(pens), key=pens.count)
-        delta = fit_delta(d, n, k, th, "mix", pen)
+        delta = fit_delta(d, n, k, th, kind, pen)
         rec["penalty"] = pen
         rec["pathway_widths"] = {
-            int(c): [sigma * math.exp(float(delta[c])), lam * math.exp(float(delta[c]))]
+            int(c): [
+                sigma * math.exp(float(delta[c])),
+                lam * math.exp(float(delta[c])),
+            ]  # (sigma_um, lambda_um)
             for c in live
             if delta[c] != 0
         }
