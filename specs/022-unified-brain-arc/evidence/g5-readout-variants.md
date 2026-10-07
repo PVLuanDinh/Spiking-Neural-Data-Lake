@@ -1002,3 +1002,20 @@ one word; no threshold, arm, seed or bar changes.
    This conjunct can only add a refusal." All four conjuncts must hold (hard rule 5: no relabelling a failed conjunct).
 3. **Order of evaluation.** B-R2 (COUPLED0 == DELTA on 8 of 8) and B-R4 are evaluated and printed BEFORE B-R1 is read.
    A failed B-R2 or B-R4 HALTS the read: no B-R1 verdict is printed, so a zero-count arm cannot read MET by noise.
+
+## Provenance correction 2026-10-07 (Codex cp4 #16, MINOR; append-only; no frozen text, threshold or result changes)
+
+Frozen 2.2's P2 clause required that the build either declare the trace update through `eligibility_algebra` or state
+why it cannot, and record a `distinct-from` note against `r_stdp`. The measurement commit 4ecc90d9 carried neither. Both
+are recorded here, after the fact, for the citable record:
+
+- **eligibility_algebra not used, and why.** `plasticity/eligibility_algebra.py` evaluates SCALAR terms only: its header
+  says "evaluate is SCALAR-only: float(tensor) raises", `AuthoredRule.evaluate` converts every binding with `float()`,
+  and `author` accepts (coefficient, factors) pairs of floats. The trace update is a vector outer product
+  `dbeta = c * e (x) err` over a feature vector e and an error vector p, which the contract cannot express. This is an
+  operand-shape incompatibility, not a preference. Section 2.2 sent that case to the panel; no algebra extension was built, because
+  the 2.7a gate deleted the module (d446d9f0) before any merge.
+- **distinct-from `r_stdp`.** The candidate's e is an EMA of the readout's input RATES (presynaptic, readout-local).
+  `r_stdp`'s trace is a spike-timing coincidence trace. They share a word, not a mechanism, and neither reuses the other.
+
+This correction documents a gap in what 4ecc90d9 disclosed. It does not change its measurement (PA1 NOT MET) or the deletion.
