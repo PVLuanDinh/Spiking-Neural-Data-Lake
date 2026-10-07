@@ -42,6 +42,7 @@ coefficients and initial simplex; the test cross-checks it against scipy when sc
 """
 
 import hashlib
+import io
 import json
 import math
 import sys
@@ -153,10 +154,13 @@ def pinned_artifact():
 def _verified(path, pin):
     path = Path(path)
     sha, n_nodes, n_edges = pin or pinned_artifact()
-    got = hashlib.sha256(path.read_bytes()).hexdigest()
+    raw = (
+        path.read_bytes()
+    )  # ONE read: the bytes hashed are the bytes loaded (no swap window between them)
+    got = hashlib.sha256(raw).hexdigest()
     if got != sha:
         raise ArtifactRefused(f"artifact sha256 {got} != pin {sha}")
-    z = np.load(path, allow_pickle=False)
+    z = np.load(io.BytesIO(raw), allow_pickle=False)
     if z["xyz_nm"].shape[0] != n_nodes or z["pre_idx"].shape[0] != n_edges:
         raise ArtifactRefused(
             f"artifact holds {z['xyz_nm'].shape[0]} nodes / {z['pre_idx'].shape[0]} edges, pin {n_nodes} / {n_edges}"

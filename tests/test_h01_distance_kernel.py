@@ -720,3 +720,29 @@ def test_cp2_h1_a_resaved_copy_under_a_caller_pin_is_still_production(
     ):
         with pytest.raises(KD.ExposureRefused, match="registered plan"):
             call()
+
+
+def test_a_the_verified_bytes_are_the_loaded_bytes_even_if_the_file_is_swapped_after_the_hash(
+    tmp_path, artifact, monkeypatch
+):
+    """S2: hash and load were two reads, so a swap between them passed the pin. One read now."""
+    path, pin = artifact
+    copy = tmp_path / "swap.npz"
+    copy.write_bytes(path.read_bytes())
+    original = KD.Path.read_bytes
+    evil = tmp_path / "evil.npz"
+    np.savez(
+        evil, xyz_nm=np.zeros((N_SYN, 3), dtype=np.int64), pre_idx=np.zeros(pin[2], dtype=np.int32)
+    )
+
+    def read_then_swap(self):
+        data = original(self)
+        if self == copy:
+            copy.write_bytes(evil.read_bytes())  # the attacker's swap, right after our read
+        return data
+
+    monkeypatch.setattr(KD.Path, "read_bytes", read_then_swap)
+    z, sha = KD._verified(copy, pin)
+    assert (
+        sha == pin[0] and int(np.abs(z["xyz_nm"]).sum()) > 0
+    )  # the good positions, not the swapped zeros
