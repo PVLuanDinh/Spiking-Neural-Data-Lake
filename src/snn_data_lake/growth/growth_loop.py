@@ -523,6 +523,7 @@ class GrowthLoop:
             return False
         self._mark_run()
         self.ledger.record_spend(self.problem_id, len(units), evals=evals)
+        before = tuple(self.learner.segment)
         self.learner.admit(
             units, labels, ticket
         )  # a conforming adapter appends through grown_code.admit_rows (none exists in src yet: the learner port waits on R2's P1)
@@ -531,6 +532,16 @@ class GrowthLoop:
         ):  # detection after the fact: the loop cannot un-admit (2026-10-06 amendment (e))
             raise LedgerError(
                 f"problem {self.problem_id!r}: the adapter admitted a batch without consuming its ticket"
+            )
+        # G7 finding 4: a spent ticket proves the labels were gated, not that the segment grew by THESE units
+        old_ids = {u.unit_id for u in before}
+        after = tuple(self.learner.segment)
+        added = sorted((u for u in after if u.unit_id not in old_ids), key=lambda u: u.unit_id)
+        kept = tuple(u for u in after if u.unit_id in old_ids)
+        if added != sorted(units, key=lambda u: u.unit_id) or kept != before:
+            raise LedgerError(
+                f"problem {self.problem_id!r}: the adapter's segment is not the incumbent plus exactly the "
+                "admitted units (an extra, substituted or altered unit); the loop cannot un-admit"
             )
         return True
 

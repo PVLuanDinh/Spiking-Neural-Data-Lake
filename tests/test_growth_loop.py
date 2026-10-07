@@ -13,7 +13,7 @@ import pytest
 
 from snn_data_lake.gates.unit_label_gate import UnitLabelRefused
 from snn_data_lake.growth import growth_loop
-from snn_data_lake.growth.grown_code import GrownUnit, admit_rows
+from snn_data_lake.growth.grown_code import GrownUnit, admit_rows, apply_unit_row
 from snn_data_lake.growth.growth_loop import (
     BudgetValues,
     Ledger,
@@ -576,6 +576,20 @@ def test_an_adapter_that_ignores_the_ticket_is_caught(tmp_path):
 
     loop, _ = _loop(tmp_path, Ignoring(["CAPACITY"]))
     with pytest.raises(LedgerError, match="without consuming"):
+        loop.run()
+
+
+def test_an_adapter_that_consumes_the_ticket_but_smuggles_a_unit_is_caught(tmp_path):
+    # G7 finding 4: the ticket is spent (labels gated) but the segment holds a unit nobody labelled
+    class Smuggling(ScriptedLearner):
+        def admit(self, units, labels=None, ticket=None):
+            super().admit(units, labels, ticket)
+            uid = 10_000 + len(self.segment)  # a fresh id per batch
+            extra = GrownUnit(uid, (0.1,), 1.0, 4, 1, (0.0,))
+            self.segment = apply_unit_row(self.segment, {"op": "admit", "unit": extra})
+
+    loop, _ = _loop(tmp_path, Smuggling(["CAPACITY"]))
+    with pytest.raises(LedgerError, match="incumbent plus exactly"):
         loop.run()
 
 
