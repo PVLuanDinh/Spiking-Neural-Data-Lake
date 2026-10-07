@@ -475,3 +475,12 @@ def test_an_unlistable_directory_fails_the_live_lake_check_closed(tmp_path, monk
     assert any(v is None for v in blind.values())  # the unlistable directory is recorded
     ok, changed = m.live_lake_untouched(str(decoy), blind)  # unlistable on both reads
     assert not ok and changed
+
+
+def test_an_absent_lake_snapshots_empty_and_reads_untouched(tmp_path):
+    """An absent path snapshots as empty (documented); an absent ROOT is not an unlistable directory
+    (fold lens: it raised K14 RED in run_arm)."""
+    gone = str(tmp_path / "never_created")
+    before = m.lake_snapshot(gone)
+    assert before == {}
+    assert m.live_lake_untouched(gone, before) == (True, [])

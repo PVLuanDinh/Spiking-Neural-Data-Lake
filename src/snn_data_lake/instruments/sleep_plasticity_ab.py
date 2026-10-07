@@ -140,6 +140,8 @@ def lake_snapshot(path):
 
     def unlistable(err):  # os.walk skips a directory it cannot list unless told: record it instead
         where = err.filename if err.filename is not None else path
+        if isinstance(err, FileNotFoundError) and os.path.normpath(where) == os.path.normpath(path):
+            return  # the ROOT is absent: that is the documented empty snapshot, not an unlistable directory
         snap[os.path.join(os.path.relpath(where, path), "<unlistable>")] = None
 
     for root, _dirs, files in os.walk(path, onerror=unlistable):
