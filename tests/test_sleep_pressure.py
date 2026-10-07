@@ -165,3 +165,36 @@ def test_the_pressure_arm_counts_learning_done_on_the_tick_it_is_taught():
         row["baseline_load_per_wake"] * row["n_wake_periods"] + row["load_since_last_wake_onset"]
     )
     assert total == pytest.approx(sum(1 for a in run.plan if not a))
+
+
+def _drive(m, w, script):
+    """Replay a wake/sleep/onset script on meter `m` over weight cell `w`; return its trace."""
+    trace = []
+    for kind, dw in script:
+        w[0] += dw
+        if kind == "wake":
+            m.observe_wake()
+        elif kind == "sleep":
+            m.observe_sleep()
+        else:  # onset
+            m.wake_period_done()
+        trace.append((m.state(), m.request()))
+    return trace
+
+
+def test_a7_a_restored_meter_continues_exactly_like_the_uninterrupted_one():
+    """Codex panel MAJOR (safety#4) REFUTED: a meter restored from `state()` over the same weights
+    re-snapshots them (PressureMeter.__init__), so the next wake update is kept. Written red-able;
+    it passed on its first run, so the claim is refuted and this stays as a regression pin.
+    """
+    script = [("wake", 1.0), ("wake", 1.0), ("onset", 0.0), ("sleep", 50.0), ("wake", 1.0)]
+    tail = [("wake", 2.0), ("wake", 0.5), ("onset", 0.0), ("sleep", 9.0), ("wake", 3.0)]
+    w1 = [0.0]
+    whole = sp.PressureMeter({"c": lambda: list(w1)})
+    _drive(whole, w1, script)
+    full = _drive(whole, w1, tail)
+    w2 = [0.0]
+    head = sp.PressureMeter({"c": lambda: list(w2)})
+    _drive(head, w2, script)
+    restored = sp.PressureMeter({"c": lambda: list(w2)}, state=head.state())
+    assert _drive(restored, w2, tail) == full
