@@ -542,6 +542,47 @@ def test_a_wholly_inverted_band_order_is_refused_though_few_somata_straddle_a_bo
     assert out["reading"] == "REFUSED_FRAME"
 
 
+def test_a_source_change_during_the_campaign_cannot_be_stamped_with_the_new_identity(
+    pop, monkeypatch
+):
+    """S3 / F8 (fold-lens round 2): results drawn under source A must not leave stamped with B's
+    hashes, in the planted stage or in the H01 read."""
+    state = {"src": "A"}
+    monkeypatch.setattr(pb, "_file_sha", lambda rel: state["src"])
+    real_unit = pb._unit
+
+    def unit(*a, **k):
+        state["src"] = "B"  # the file changes on disk while the campaign draws
+        return real_unit(*a, **k)
+
+    monkeypatch.setattr(pb, "_unit", unit)
+    plan = (pb.PlanRow("flat_calibration", {"form": "flat"}, (10020, 10021), None),)
+    with pytest.raises(pb.ExposureRefused, match="changed"):
+        pb.run_planted(pop, plan=plan, n_edges=600)
+    state["src"] = "A"
+    monkeypatch.setattr(pb, "_unit", real_unit)
+    assert pb.run_planted(pop, plan=plan, n_edges=600)["identity"]["impl_sha256"]  # no drift: fine
+    # the H01 read: same guard around its draws
+    z = {
+        "xyz_nm": pop.xyz * 1000.0,
+        "layer": pop.layer,
+        "sign": pop.sign,
+        "pre_idx": [0, 1],
+        "post_idx": [1, 2],
+    }
+    monkeypatch.setattr(t3, "_verified", lambda path, pin=None: (z, "s" * 64))
+    monkeypatch.setattr(pb, "validate_planted", lambda *a, **k: {})
+
+    def flip_unit(*a, **k):
+        state["src"] = "B"
+        return {}
+
+    monkeypatch.setattr(pb, "score_unit", flip_unit)
+    state["src"] = "A"
+    with pytest.raises(pb.ExposureRefused, match="changed"):
+        pb.score_h01("x.npz", {}, t3_ref=pb.check_t3_record(T3_PATH))
+
+
 def test_pathway_recovery_is_derived_from_the_authorised_truth_not_the_record():
     """F6 (fold-lens round 2): the record's own `planted` and `cells` are never trusted."""
     truth = next(r.truth for r in pb.PLAN if r.truth.get("pathway"))

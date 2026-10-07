@@ -909,3 +909,7 @@ only; they were NOT re-panelled (a third panel round needs the owner). Each fold
   bytes anywhere are accepted. `score_h01` calls `verify_t3_ref`, which requires that blob hash, a READ verdict and a kernel in the reference.
   The record also names the commit (`commit`). Integration note for the lead: the check reads `git show cbd8ce14:...`, so that commit must stay
   reachable on the integration head. Red on `9404c930`: the fake-field file returned a reference with K "mix".
+- **F8 (identity is captured before the draws; fold-lens MAJOR).** (e)S3 stamped the planted record with `identity()` AFTER the campaign, so results
+  drawn under source A could leave stamped with B's hashes if the file changed mid-run. Now `run_planted` and `score_h01` capture the identity
+  before any draw, stamp the START identity, and refuse (`ExposureRefused`, "changed during the campaign") if it differs at the end.
+  Red on `0189433b`: a source flip during the draws was stamped and returned.

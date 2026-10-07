@@ -666,6 +666,15 @@ def identity():
     }
 
 
+def _refuse_drift(start):
+    """The identity captured BEFORE the draws must still be the identity AFTER them: results drawn under one
+    source or configuration are never stamped with, or accepted under, another (amendment (f) F8)."""
+    if identity() != start:
+        raise ExposureRefused(
+            "the instrument's source or configuration changed during the campaign"
+        )
+
+
 def plan_dicts(plan):
     return [r._asdict() | {"truth": dict(r.truth)} for r in plan]
 
@@ -677,6 +686,7 @@ def _plan_json(plan_like):
 
 def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
     """Positions + layer/sign only. Calibration -> bands (locked by hash) -> every other row."""
+    start = identity()  # before any draw
     n_all = _all_pairs_n(pop)
     rows, bands = {}, None
     for row in plan:
@@ -691,11 +701,12 @@ def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
             rows[row.name]["holds"] = _holds(row, units, bands, pop)
         if log:
             log(row.name, rows[row.name].get("reading"))
+    _refuse_drift(start)
     return {
         "plan": plan_dicts(plan),
         "population_sha256": fingerprint(pop),
         "n_edges_target": n_edges,
-        "identity": identity(),
+        "identity": start,
         "bands": bands,
         "bands_sha256": hashlib.sha256(json.dumps(bands, sort_keys=True).encode()).hexdigest(),
         "rows": rows,
@@ -748,6 +759,7 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
         pop.layer, pop.fr[0]
     ):
         return {"reading": "REFUSED_FRAME", "artifact_sha256": sha}
+    start = identity()
     edges = (np.asarray(z["pre_idx"]), np.asarray(z["post_idx"]))
     units, first = [], None
     for s in seeds:
@@ -759,6 +771,7 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
         u = score_unit(pop, h)
         u["seed"] = int(s)
         units.append(u)
+    _refuse_drift(start)
     st = states(units, bands)
     sighted = pooling_sighted(PLAN, planted_record["rows"], bands, pop)
     verdict, keep = read_partb(st, pooling_sighted=sighted)
