@@ -286,15 +286,15 @@ def test_cp2_12_margin_is_correct_minus_best_other_and_claims_read_primary():
     assert m.margin(Ixn(), items) == (1.0 + -1.0) / 2
     recs = [_record("ON", s) for s in (16000, 16001)]
     c = type("C", (), {"met": True})()
-    lines = m.claims_report("F1", {"C1": c, "C1-NI": c}, recs, "MET")
-    assert "met: 2 of 2" in lines[0] and "STANDS" in lines[0] and "1/2" in lines[1]
+    lines = m.claims_report("F1", {"C1": c, "C1-NI": c, "C1-NI-B": c}, recs, "MET")
+    assert "met: 3 of 3" in lines[0] and "STANDS" in lines[0] and "1/2" in lines[1]
     n = type("N", (), {"met": False})()  # F1 dev reading: C1 NOT MET, C1-NI MET -> no claim
     assert "NOT MADE" in m.claims_report("F1", {"C1": n, "C1-NI": c}, recs, "NULL")[0]
     m.PRIMARY["F1"] = ("C1", "C9")  # the declaration is CONSUMED: changing it changes the report
     try:
         assert "met: 1 of 2" in m.claims_report("F1", {"C1": c}, recs, "MET")[0]
     finally:
-        m.PRIMARY["F1"] = ("C1", "C1-NI")
+        m.PRIMARY["F1"] = ("C1", "C1-NI", "C1-NI-B")
 
 
 # ---- Codex lens-r3-amend: endpoint shapes are checked (KE)
@@ -372,3 +372,61 @@ def test_malformed_endpoint_halts_before_any_contrast_and_never_crashes():
     off.update(restored=[1] * 6, inproc=[1] * 6, n_a=6)
     res = m.decide_family("F1", short, seeds, set_name="F1")
     assert res["row"].startswith("HALT") and res["contrasts"] == {}
+
+
+# ---- the E_B non-inferiority guard (dated amendment; Codex round 2 #1): a B loss blocks the claim
+def _f1_set(overrides):
+    seeds = m.SEED_SETS["F1"]
+    recs = []
+    for a in m.registered_arms("F1", "F1"):
+        for i, sd in enumerate(seeds):
+            r = _record(a, sd)
+            r["restored"] = r["inproc"] = list(
+                overrides.get((a.replace("-TWIN", ""), i), r["restored"])
+            )
+            recs.append(r)
+    return seeds, recs
+
+
+def _vec(a_ones, b_ones):
+    return [1] * a_ones + [0] * (8 - a_ones) + [1] * b_ones + [0] * (12 - b_ones)
+
+
+def test_eb_guard_blocks_an_f1_claim_when_session_b_loses_one_item():
+    ov = {}
+    for i in range(8):
+        ov["OFF", i] = _vec(4, 10)
+        ov["ON", i] = _vec(7 + i % 2, 9)  # A +3/+4 items, B -1 item on every seed: d'_B = 0
+        ov["ORACLE", i] = _vec(7 + i % 2, 10)  # C-SENS MET
+    seeds, recs = _f1_set(ov)
+    res = m.decide_family("F1", recs, seeds, set_name="F1")
+    c = res["contrasts"]
+    assert c["C1"].met and c["C1-NI"].met and c["C-SENS"].met
+    assert "C1-NI-B" in c and not c["C1-NI-B"].met and c["C1-NI-B"].degenerate
+    assert res["row"].startswith("INTERFERENCE RED") and "session B" in res["row"], res["row"]
+    assert "NOT MADE" in m.claims_report("F1", c, recs, res["row"])[0]
+
+
+def test_eb_guard_is_a_conjunct_not_a_substitute_and_a_lossless_arm_passes():
+    ov = {}
+    for i in range(8):
+        ov["OFF", i] = _vec(4, 10)
+        ov["ON", i] = _vec(7 + i % 2, 10)  # B unchanged: d'_B = +1/12 constant -> MET (ruling 9a)
+        ov["ORACLE", i] = _vec(7 + i % 2, 10)
+    seeds, recs = _f1_set(ov)
+    res = m.decide_family("F1", recs, seeds, set_name="F1")
+    assert res["contrasts"]["C1-NI-B"].met and res["row"].startswith("MET"), res["row"]
+
+
+def test_eb_rows_precede_the_c_if_row_and_f4_keeps_med_but_blocks_ext():
+    # F1: C-IF NOT MET must not hide a B-bar failure (the B row is read first)
+    assert m.table_f1(True, 1, 0, 1, 1, 1, 0).startswith("INTERFERENCE RED")
+    assert m.table_f1(True, 1, 1, 1, 0, 1, 1).startswith("INTERFERENCE RED")  # the A bar still reds
+    # F4: a failed C7-NI-B blocks MED credit; a failed C8-NI-B keeps MED, blocks EXT
+    assert m.table_f4(True, 1, 1, 1, 1, 1, 0, 0).startswith("INTERFERENCE RED at MED")
+    kept = m.table_f4(True, 1, 1, 1, 1, 1, 1, 0)
+    assert kept.startswith("MED credited") and "EXT" in kept and not kept.startswith("EXT credited")
+    assert m.claim_stands(kept)
+    assert m.table_f4(True, 1, 1, 1, 1, 1, 1, 1).startswith("EXT credited: a")
+    # F2: the B bar reds a structural claim too
+    assert m.table_f2(True, True, True, 1, 1, True, 0).startswith("INTERFERENCE RED")

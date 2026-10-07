@@ -70,6 +70,7 @@ RED_SEEDS = tuple(range(16900, 17000))  # constructed reds and positive controls
 BUDGETS = {"SHORT": 10, "MED": 40, "EXT": 160}  # sleep ticks (2.3)
 REPS = 3  # teaching reps per session (2.2)
 EPS_A = Fraction(1, 8)  # one A item (2.4's NI margin)
+EPS_B = Fraction(1, 12)  # one B item (the E_B non-inferiority amendment)
 # F3's constructed wake stores W (2.3; the dated amendment 2026-10-04): W = 30 put the attractor at ceiling on
 # dev (AT-OFF and AT-NONE 36/36 on 8/8), so W is chosen by the frozen dev ladder below and written here by a
 # dated note BEFORE any F3 confirmatory seed. None = not yet frozen: an F3 arm without an explicit W refuses.
@@ -626,7 +627,7 @@ def verdict(name, diffs, seeds, kind="sup"):
 
 
 # ----------------------------------------------------------------------------- decision tables (K11, pure)
-def table_f1(checks_ok, c_sens, c_if, c1, c1_ni, c2):
+def table_f1(checks_ok, c_sens, c_if, c1, c1_ni, c2, c1_ni_b):
     if not checks_ok:
         return "HALT (instrument defect, no verdict)"
     if not c_sens:
@@ -635,6 +636,8 @@ def table_f1(checks_ok, c_sens, c_if, c1, c1_ni, c2):
         return "NULL: sleep synaptic plasticity not shown on held-out at the medium budget"
     if not c1_ni:
         return "INTERFERENCE RED (C1 MET, C1-NI NOT MET)"
+    if not c1_ni_b:
+        return "INTERFERENCE RED on session B (C1 MET, C1-NI-B NOT MET)"
     if not c_if:
         return "MET; no interference was present to fix (C-IF NOT MET), C2 reported, not read"
     if c2:
@@ -642,7 +645,7 @@ def table_f1(checks_ok, c_sens, c_if, c1, c1_ni, c2):
     return "MET; no benefit over recency-only replay demonstrated (C2 NOT MET)"
 
 
-def table_f2(checks_ok, k7_sighted, turnover_all_positive, c5, c5_ni, restore):
+def table_f2(checks_ok, k7_sighted, turnover_all_positive, c5, c5_ni, restore, c5_ni_b):
     """restore: True / False / None (None = the r2.v1 restart reading is still pending, X-15)."""
     if not checks_ok:
         return "HALT (instrument defect, no verdict)"
@@ -654,6 +657,8 @@ def table_f2(checks_ok, k7_sighted, turnover_all_positive, c5, c5_ni, restore):
         return "NULL"
     if not c5_ni:
         return "INTERFERENCE RED (C5 MET, its NI NOT MET)"
+    if not c5_ni_b:
+        return "INTERFERENCE RED on session B (C5 MET, C5-NI-B NOT MET)"
     if restore is False:
         return "NOT CLAIMED (gain not restorable)"
     if restore is None:
@@ -673,17 +678,21 @@ def table_f3(checks_ok, stored_any, c6):
     )
 
 
-def table_f4(checks_ok, c7, c7_ni, c8, c8_ni, c9):
+def table_f4(checks_ok, c7, c7_ni, c8, c8_ni, c9, c7_ni_b, c8_ni_b):
     if not checks_ok:
         return "HALT (instrument defect, no verdict)"
     if not c7:
         return "no budget step shown (MED vs SHORT NOT MET)"
     if not c7_ni:
         return "INTERFERENCE RED at MED (C7 MET, its NI NOT MET)"
+    if not c7_ni_b:
+        return "INTERFERENCE RED at MED on session B (C7 MET, C7-NI-B NOT MET)"
     if not c8:
         return "MED credited over SHORT; the EXT step is not shown"
     if not c8_ni:
         return "MED credited; INTERFERENCE RED at EXT (C8 MET, its NI NOT MET)"
+    if not c8_ni_b:
+        return "MED credited; INTERFERENCE RED at EXT on session B (C8 MET, C8-NI-B NOT MET)"
     if c9:
         return "EXT credited: a sleep-duration benefit (C9 MET)"
     return "EXT credited; no sleep-duration benefit over massed wake demonstrated (C9 NOT MET)"
@@ -693,22 +702,28 @@ TABLES = {"F1": table_f1, "F2": table_f2, "F3": table_f3, "F4": table_f4}
 # K11: one constructed input per row of every table (the row's text prefix), each must be reached.
 TABLE_REACH = {
     "F1": [
-        ((False, 1, 1, 1, 1, 1), "HALT"), ((True, 0, 1, 1, 1, 1), "REFUSED"), ((True, 1, 1, 0, 1, 1), "NULL"),
-        ((True, 1, 1, 1, 0, 1), "INTERFERENCE RED"), ((True, 1, 0, 1, 1, 1), "MET; no interference"),
-        ((True, 1, 1, 1, 1, 1), "MET: old"), ((True, 1, 1, 1, 1, 0), "MET; no benefit"),
+        ((False, 1, 1, 1, 1, 1, 1), "HALT"), ((True, 0, 1, 1, 1, 1, 1), "REFUSED"), ((True, 1, 1, 0, 1, 1, 1), "NULL"),
+        ((True, 1, 1, 1, 0, 1, 1), "INTERFERENCE RED (C1"), ((True, 1, 1, 1, 1, 1, 0), "INTERFERENCE RED on session B"),
+        ((True, 1, 0, 1, 1, 1, 1), "MET; no interference"),
+        ((True, 1, 1, 1, 1, 1, 1), "MET: old"), ((True, 1, 1, 1, 1, 0, 1), "MET; no benefit"),
     ],
     "F2": [
-        ((False, 1, 1, 1, 1, True), "HALT"), ((True, 0, 1, 1, 1, True), "REFUSED"),
-        ((True, 1, 0, 1, 1, True), "NOT READ"), ((True, 1, 1, 0, 1, True), "NULL"),
-        ((True, 1, 1, 1, 0, True), "INTERFERENCE RED"), ((True, 1, 1, 1, 1, False), "NOT CLAIMED"),
-        ((True, 1, 1, 1, 1, None), "MET; the restart"), ((True, 1, 1, 1, 1, True), "MET"),
+        ((False, 1, 1, 1, 1, True, 1), "HALT"), ((True, 0, 1, 1, 1, True, 1), "REFUSED"),
+        ((True, 1, 0, 1, 1, True, 1), "NOT READ"), ((True, 1, 1, 0, 1, True, 1), "NULL"),
+        ((True, 1, 1, 1, 0, True, 1), "INTERFERENCE RED (C5"), ((True, 1, 1, 1, 1, True, 0), "INTERFERENCE RED on session B"),
+        ((True, 1, 1, 1, 1, False, 1), "NOT CLAIMED"),
+        ((True, 1, 1, 1, 1, None, 1), "MET; the restart"), ((True, 1, 1, 1, 1, True, 1), "MET"),
     ],
     "F3": [((False, 1, 1), "HALT"), ((True, 0, 1), "NOT READ"), ((True, 1, 0), "NULL"), ((True, 1, 1), "MET")],
     "F4": [
-        ((False, 1, 1, 1, 1, 1), "HALT"), ((True, 0, 1, 1, 1, 1), "no budget"),
-        ((True, 1, 0, 1, 1, 1), "INTERFERENCE RED at MED"), ((True, 1, 1, 0, 1, 1), "MED credited over"),
-        ((True, 1, 1, 1, 0, 1), "MED credited; INTERFERENCE"), ((True, 1, 1, 1, 1, 1), "EXT credited: a"),
-        ((True, 1, 1, 1, 1, 0), "EXT credited; no"),
+        ((False, 1, 1, 1, 1, 1, 1, 1), "HALT"), ((True, 0, 1, 1, 1, 1, 1, 1), "no budget"),
+        ((True, 1, 0, 1, 1, 1, 1, 1), "INTERFERENCE RED at MED ("),
+        ((True, 1, 1, 1, 1, 1, 0, 1), "INTERFERENCE RED at MED on session B"),
+        ((True, 1, 1, 0, 1, 1, 1, 1), "MED credited over"),
+        ((True, 1, 1, 1, 0, 1, 1, 1), "MED credited; INTERFERENCE RED at EXT ("),
+        ((True, 1, 1, 1, 1, 1, 1, 0), "MED credited; INTERFERENCE RED at EXT on session B"),
+        ((True, 1, 1, 1, 1, 1, 1, 1), "EXT credited: a"),
+        ((True, 1, 1, 1, 1, 0, 1, 1), "EXT credited; no"),
     ],
 }  # fmt: skip
 
@@ -884,19 +899,23 @@ def contrasts(family, recs, seeds):
         add("C-IF", "ctl", _d(by, seeds, "A-ONLY", "OFF", "A"))
         add("C1", "sup", _d(by, seeds, "ON", "OFF", "all"))
         add("C1-NI", "ni", _d(by, seeds, "ON", "OFF", "A", EPS_A))
+        add("C1-NI-B", "ni", _d(by, seeds, "ON", "OFF", "B", EPS_B))
         add("C2", "sup", _d(by, seeds, "ON", "Rec", "all"))
         add("C3", "sup", _d(by, seeds, "R", "OFF", "all"))
         add("C4", "sup", _d(by, seeds, "BF", "OFF", "all"))
     elif family == "F2":
         add("C5", "sup", _d(by, seeds, "S-ON", "S-OFF", "all"))
         add("C5-NI", "ni", _d(by, seeds, "S-ON", "S-OFF", "A", EPS_A))
+        add("C5-NI-B", "ni", _d(by, seeds, "S-ON", "S-OFF", "B", EPS_B))
     elif family == "F3":
         add("C6", "sup", [_cacc(by[s]["AT-ON"]) - _cacc(by[s]["AT-OFF"]) for s in seeds])
     elif family == "F4":
         add("C7", "sup", _d(by, seeds, "MED", "SHORT", "all"))
         add("C7-NI", "ni", _d(by, seeds, "MED", "SHORT", "A", EPS_A))
+        add("C7-NI-B", "ni", _d(by, seeds, "MED", "SHORT", "B", EPS_B))
         add("C8", "sup", _d(by, seeds, "EXT", "MED", "all"))
         add("C8-NI", "ni", _d(by, seeds, "EXT", "MED", "A", EPS_A))
+        add("C8-NI-B", "ni", _d(by, seeds, "EXT", "MED", "B", EPS_B))
         add("C9", "sup", _d(by, seeds, "EXT", "MASSED", "all"))
     return out
 
@@ -942,27 +961,31 @@ def decide_family(family, recs, seeds, k7_sighted=False, restore=None, set_name=
     v = {c.name: c for c in contrasts(family, recs, seeds)}
     m = {k: c.met for k, c in v.items()}
     if family == "F1":
-        row = table_f1(checks_ok, m["C-SENS"], m["C-IF"], m["C1"], m["C1-NI"], m["C2"])
+        row = table_f1(
+            checks_ok, m["C-SENS"], m["C-IF"], m["C1"], m["C1-NI"], m["C2"], m["C1-NI-B"]
+        )
     elif family == "F2":
         on = [r for r in recs if r["arm"] == "S-ON"]
         pos = len(on) == S and all(
             sum(x for x in r["tick"]["turnover"] if x) / max(1, len(r["tick"]["turnover"])) > 0
             for r in on
         )
-        row = table_f2(checks_ok, k7_sighted, pos, m["C5"], m["C5-NI"], restore)
+        row = table_f2(checks_ok, k7_sighted, pos, m["C5"], m["C5-NI"], restore, m["C5-NI-B"])
     elif family == "F3":
         stored = all(r["stored_any"] for r in recs)
         row = table_f3(checks_ok, stored, m["C6"])
     else:
-        row = table_f4(checks_ok, m["C7"], m["C7-NI"], m["C8"], m["C8-NI"], m["C9"])
+        row = table_f4(
+            checks_ok, m["C7"], m["C7-NI"], m["C8"], m["C8-NI"], m["C9"], m["C7-NI-B"], m["C8-NI-B"]
+        )
     return {"checks": fails, "checks_ok": checks_ok, "contrasts": v, "row": row}
 
 
 PRIMARY = {
-    "F1": ("C1", "C1-NI"),
-    "F2": ("C5", "C5-NI"),
+    "F1": ("C1", "C1-NI", "C1-NI-B"),
+    "F2": ("C5", "C5-NI", "C5-NI-B"),
     "F3": ("C6",),
-    "F4": ("C7", "C7-NI", "C8", "C8-NI", "C9"),
+    "F4": ("C7", "C7-NI", "C7-NI-B", "C8", "C8-NI", "C8-NI-B", "C9"),
 }
 
 
