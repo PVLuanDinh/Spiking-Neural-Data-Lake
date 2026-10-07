@@ -870,3 +870,10 @@ only; they were NOT re-panelled (a third panel round needs the owner). Each fold
   and its result is recorded as `form_selected`, with `form_disagrees_t3` = (T3's K differs from the tangentially selected form), routed to
   the owner as 2.8 requires. T3's verdict does not change. Constructed red: a unit set whose selection is Gaussian while the verdict is PASS
   exported Gaussian on `48c6ea71`.
+- **F2 (B1's recovery check measures the deciding estimator; fold-lens MAJOR).** (c)B1 left the estimator of the pathway-width recovery check
+  open and the build used a separate Gaussian-only fit, which could recover the planted widths while the mixture P that scored P-G and is
+  exported did not. Registered: the check fits the MIXTURE (`SCORED_KIND`) on all pairs with the nested folds' modal penalty and reads a
+  pathway's width as sigma x exp(delta) -- the record's own `pathway_widths`. The 15 percent tolerance is unchanged. Measured on a
+  synthetic two-class slab (development seeds, planted 60 / 160 um, 1,500 edges): seed 10052 the Gaussian fit read 62.2 / 138.5 while the
+  mixture read 44.0 / 132.1 (P-G +70.4); seed 10051 the mixture read 53.9 / 295.2. A gate row the mixture does not recover therefore reads
+  NOT_READ_POOLING_UNSIGHTED: that is the honest reading, not a defect to tune away, and may be the outcome on H01.

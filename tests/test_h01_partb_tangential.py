@@ -537,6 +537,25 @@ def test_pooled_record_amplitudes_belong_to_the_delivered_widths_and_the_consume
     assert math.isclose(float(f(np.array([40.0]))[0]), want)
 
 
+def test_pathway_check_measures_the_scored_estimator_the_record_exports(pop):
+    """F2 (fold-lens round 2): B1's recovery check fits the SAME mixture P that decides and exports,
+    not a separate Gaussian fit: its fitted widths are the record's own pathway widths."""
+    rng = np.random.default_rng(1)
+    p2 = pb.make_pop(pop.xyz, np.where(rng.random(N) < 0.5, 1, 2), np.ones(N, dtype=int))
+    truth = {"form": "gauss", "width": 100.0, "pathway": (60.0, 160.0)}
+    h, _ = pb.build_hists(p2, 10052, n_all=pb._all_pairs_n(p2), truth=truth, n_edges=1500)
+    unit = {"pen": [4.0] * pb.K}
+    chk = pb.pathway_check(p2, h, truth, unit)
+    edges = (np.zeros(2, dtype=int), np.ones(2, dtype=int))
+    units = [_fake_unit(10020 + i) for i in range(8)]
+    rec = pb.build_record(
+        p2, h, units, "PASS", "pooled", edges, "a" * 64, {"K": "mix"}, {"form_gap": 9}
+    )
+    assert rec["penalty"] == 4.0 and chk["cells"]
+    for c, w in zip(chk["cells"], chk["fitted"], strict=True):
+        assert math.isclose(w, rec["pathway_widths"][c][0], rel_tol=1e-9), (c, w)
+
+
 def test_zero_exposure_cell_takes_the_pooled_amplitude_in_both_arms():
     nb = 50
     d = (np.arange(nb) + 0.5) * pb.BIN

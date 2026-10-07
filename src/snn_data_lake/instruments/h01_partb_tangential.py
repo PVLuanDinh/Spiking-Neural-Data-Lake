@@ -531,13 +531,14 @@ def _unit(pop, seed, n_all, truth, n_edges):
 
 
 def pathway_check(pop, h, truth, unit):
-    """B1: P's fitted per-pathway widths against the planted ones. The single-kernel (Gaussian) shape and the
-    per-cell offsets are fitted on ALL pairs with the penalty this seed's nested folds chose most often."""
+    """B1: P's fitted per-pathway widths against the planted ones, by the estimator that decides and is exported
+    (the mixture, SCORED_KIND; amendment (f) F2): the global shape and the per-cell offsets are fitted on ALL
+    pairs with the penalty this seed's nested folds chose most often. A width is sigma x exp(delta)."""
     d = (np.arange(pop.nb) + 0.5) * BIN
     n, k = h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))
-    th = fit_global(d, n, k, "gauss")
+    th = fit_global(d, n, k, SCORED_KIND)
     pens = unit["pen"]
-    delta = fit_delta(d, n, k, th, "gauss", max(set(pens), key=pens.count))
+    delta = fit_delta(d, n, k, th, SCORED_KIND, max(set(pens), key=pens.count))
     scale = pathway_scales(truth, pop)
     cells = [int(c) for c in np.flatnonzero(scale != 1.0)]
     return {
