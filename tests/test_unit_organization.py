@@ -436,16 +436,18 @@ def test_t4_half_hands_the_pathway_to_every_kernel_arm_but_the_flat_one(monkeypa
         pops=None,
         kernel=user_kernel,
         beta=0.5,
-        columns=[i % 3 for i in range(30)],
+        columns=[0] * 30,
         seeds=tuple(range(13263, 13271)),
         louvain_seeds=(0,),
         pathway=pw,
     )
     # RULE, DIST-ONLY, NO-LAYER, IMPOSED carry kernel and pathway; FLAT-KERNEL neither
-    mine = [c for c in calls if c[0]]
-    assert len(mine) >= 24 and all(c == (True, True) for c in mine)  # RULE, DIST-ONLY, NO-LAYER x 8
-    assert [c for c in calls if not c[0] and c[1]] == []
-    assert len([c for c in calls if not c[0]]) >= 1  # the FLAT-KERNEL arm ran
+    # one column holds every unit, so IMPOSED never refuses (its refusal is pinned in
+    # test_t4_half_a_refused_imposed_arm_is_reported_not_decisive); exact arm-by-seed counts
+    assert [c for c in calls if c[0]] == [
+        (True, True)
+    ] * 32  # RULE, DIST-ONLY, NO-LAYER, IMPOSED x 8
+    assert [c for c in calls if not c[0]] == [(False, False)] * 16  # FLAT-KERNEL and RANDOM-SEQ x 8
 
 
 # ---- Codex D+E lens 1 folds (correctness + P8) ----
