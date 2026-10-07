@@ -495,3 +495,20 @@ def test_t4_half_refuses_an_empty_louvain_seed_list():
             10, 12, xy=_flat_units(10, 13281), pops=None, kernel=lambda d: 1.0, beta=0.0,
             columns=None, seeds=U.IR_SEEDS, louvain_seeds=(),
         )  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    "kw",
+    [
+        dict(kernel=lambda d: 1.0, beta=float("nan")),
+        dict(kernel=lambda d: 1.0, beta=float("inf")),
+        dict(kernel=lambda d: float("nan")),
+        dict(kernel=lambda d: float("inf")),
+        dict(kernel=lambda d: -1.0),
+    ],
+)
+def test_sampler_refuses_nonfinite_or_negative_weights(kw):
+    # Codex D+E: beta=NaN returned eight entries holding only seven distinct edges
+    with pytest.raises(ValueError) as e:
+        U.sample_exact_m(8, 8, xy=np.zeros((8, 2)), seed=13230, **kw)
+    assert not isinstance(e.value, U.Infeasible)  # a malformed input, not a density refusal

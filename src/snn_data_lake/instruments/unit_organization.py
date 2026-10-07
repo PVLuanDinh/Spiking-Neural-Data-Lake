@@ -242,6 +242,8 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None,
     cell for a pooled Part B record. Infeasible -> REFUSED."""
     if m > n * (n - 1) // 2:
         raise Infeasible(f"M = {m} exceeds the {n * (n - 1) // 2} pairs of N = {n}")
+    if not math.isfinite(beta):
+        raise ValueError(f"beta must be finite, got {beta!r}")
     rng = np.random.default_rng(seed)
     order = rng.permutation(n)
     xy = np.asarray(xy, dtype=float)[order]
@@ -271,6 +273,10 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None,
             w0 *= np.array([layer_term(int(pop[t]), int(p)) for p in pop[:t]])
         if col is not None:
             w0[col[:t] != col[t]] = 0.0
+        if not (
+            np.isfinite(w0).all() and (w0 >= 0.0).all()
+        ):  # Codex D+E: NaN weights drew duplicates
+            raise ValueError(f"arrival {t}: kernel x layer weights must be finite and non-negative")
         if int(np.count_nonzero(w0 > 0)) < alloc[t]:
             raise Infeasible(
                 f"arrival {t} has fewer positive-weight candidates than its {alloc[t]} edges"
@@ -278,6 +284,10 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None,
         shared = np.zeros(t)
         for _ in range(alloc[t]):
             w = w0 * (1.0 + beta * shared)
+            if not (np.isfinite(w).all() and (w >= 0.0).all()):
+                raise ValueError(
+                    f"arrival {t}: shared-partner weights must be finite and non-negative"
+                )
             cum = np.cumsum(w)
             j = int(np.searchsorted(cum, rng.random() * cum[-1], side="right"))
             j = min(j, t - 1)
@@ -293,6 +303,7 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None,
             nbrs[t].append(j)
             a, b = int(order[j]), int(order[t])
             edges.append((min(a, b), max(a, b)))
+    assert len(set(edges)) == m, "sample_exact_m drew a duplicate edge"
     return sorted(edges)
 
 
