@@ -659,3 +659,32 @@ starts from the fitted Gaussian and exponential unchanged (2.3), and DEGENERATE 
 with a different edge count and a matching caller-supplied pin reads as a fixture and could expose a subset of H01's edge
 distances under a caller-named plan. Closing it needs H01's population fingerprint in the pin file (a pin-file change, not
 made here); the campaign entry points (`main`) take no caller pin, so the production path cannot reach this.
+
+## RECORD 2026-10-07 -- T3 campaign (P2): planted stage holds, H01 reads RED-exp, K = mixture
+
+Head at run: `447aad42` (worktree `claude/g4`, clean); record commit `tools/g4_t3_campaign.json` = `cbd8ce14`. Artifact sha256
+`a1d0491a...0549` verified before both runs. Both runs build no Brain; `brain_lake.bin` 3318607701 bytes, mtime 2026-09-27 01:19:19,
+unchanged before and after each. Written after the run; no frozen passage is edited.
+
+- **1b, the planted stage** (2.14 A5-A6, A8 whitelist: positions, layer bands, degree marginals; no H01 edge read):
+  `h01_distance_kernel planted --artifact data/h01/h01_c3_graph.npz --out planted.json`, 2995.7 s, rc 0, `all_rows_hold` True,
+  `region_valid` True (the 2026-10-04 polar-angle blocks), `bands_sha256` `82b894cf...2a32`, file sha256 `9f27f1d1...b82f`
+  (the lead reproduced it). Every row read its A6 expectation: flat validation RED_FLAT; G100, G50, G200, G400 and degree-corrected
+  G100 PASS "favours the Gaussian" K = G; E100, E50, E200, E400 and degree-corrected E100 RED-exp K = E; mixture K = mixture
+  (RED-exp, upgraded from E). Planted G100 sigma fitted 99.52-100.34 um on 10120-10127 (inside [90, 110]). The reserve block
+  10600-10703 was not used.
+- **1c, the H01 reading** (confirmatory partition seeds 10100-10107, read once): `h01_distance_kernel h01 --artifact ...
+  --planted planted.json --out h01.json`, 103.0 s, rc 0, file sha256 `ed268766...80e0`. **T3 reads RED-exp (K = mixture,
+  upgraded from the exponential, a = +1).** Every contrast (G-flat, E-flat, mix-flat, E-G, mix-E, mix-G) is state +1 on the neuron
+  folds, the z-interior, the region aggregate and each of the four region blocks; C = {G, E, mixture}. Neuron-fold mean E-G =
+  39,180 nats (0.311 nats per edge instance against the planted discrimination 0.072), mix-E 7,535 (0.060 against 0.097). No
+  resolution flag raised. As 2.5 discloses, the neuron-fold t's measure partition stability only; the region-block agreement is
+  the second instrument and it agrees.
+- **Width (2.8):** fitted once on all 202,052,010 eligible pairs and 70,001 edges, non-degenerate: mixture sigma 42.757 um,
+  lambda 104.266 um (40-fold range 40.54-106.82); refit by `verify_width_record` reproduces it to 1e-6 (2.11 (f)), run 2026-10-07.
+  This is the 3-D soma-distance width, not the attachment rule's tangential width (Part B refits).
+- **What it licenses and does not (2.1, 2.10):** on the c3 graph as released, the exponential beats the Gaussian on held-out
+  neurons, regions and the z-interior, and a Gaussian-core mixture beats both. Under the owner's item 7 the literal clause reads
+  RED-exp: the Gaussian is deleted as the attachment rule's kernel FORM, the mixture is adopted, the owner is told (Q2). Observed
+  kernel = anatomy times reconstruction completeness (2.1), not separated here. Part B, B2 and C stay gated by A13 (T3 READ,
+  K != none: met).
