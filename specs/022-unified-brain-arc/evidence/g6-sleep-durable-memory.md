@@ -760,6 +760,18 @@ live home is still stamped (it is the safety gate); the stamp itself was weak (m
 (extended-path bypass, aliased lake file, create-before-check) are R1's guard, folded on batch 1 (claude/int1b); this
 branch has the old guard until the integration rebase. The `g2-taught-problems.md` finding is G2's.
 
+**DATED NOTE 2026-10-07 (R3's refutation of the batch-1 folds; no deciding data read).** Additive; zero lines removed.
+R3 ran df3fb60d..05edea07 and found: (1) a REAL defect in the isolation stamp (579f0f8d): it was flat, so an in-place
+rewrite of a nested file (the live home has skills/) read as unchanged; fixed in 0ab011a7 (recursive, fails closed on
+an unreadable file, nested cases in the decoy control). (2) A13 deviation in df3fb60d: a raise at B < 4 is not what A13
+registers (REFUSED and REPORTED, the contrast REFUSED by decide_b's arm-missing row); fixed in 1fb08f83 (`run_instance`
+returns the instance with random and SA absent and named in `_refused`). (3) Notes on 08d5592c: the tick cursor is
+validated as a non-negative int and the restorer contract (supply the cursor and the weights as of `state()`; weights
+that moved in between are snapshotted away) is stated in the code, in the next commit. R3's own checks held: the
+continuation pin is a real control (a mutant clearing `prev` makes it red), `_one_pass` n <= 1 matches ng_snn, no pinned
+evaluation count moved, and 05edea07 is additive. P2 (`_one_pass` onto G3's `select_unearned`, 71aee53f) waits for the
+batch-2 rebase.
+
 ## 3. Results
 
 None. Nothing is measured beyond section 1; no deciding test has run.
