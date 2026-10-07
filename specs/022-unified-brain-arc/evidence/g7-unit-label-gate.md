@@ -934,3 +934,13 @@ Additive; no clause above changes. Nothing confirmatory has run. Unreviewed amen
    `wiring_prior` is on the integration head. (b) `t4_wiring_half` takes one kernel callable for every pair, while G4's
    `kernel_shape(record, cell)` returns per-pathway widths for a pooled record; before the run the half takes the kernel
    per pair, or REFUSES a pooled record. Neither obligation can move a verdict rule.
+
+## DATED PRE-DATA AMENDMENT 2026-10-07 (l) -- D20's pointer: what "committed" means to check_saved (no data read)
+
+Additive; no clause above changes. Unreviewed amendment text, stated plainly.
+
+G6 committed the resolver contract as 41dec890 (claude/g6, docs only). `check_saved` (2.4 R9b, D20) reads no sleep row: it
+calls the caller-supplied `resolve_committed(sleep_id, mask_digest) -> bool`, and a false result is `PENDING`, never
+`REFUSED`. G6 supplies the one resolver; it is true iff a `sleep_mask_commit` row exists whose `sleep_id` AND `mask_digest`
+equal the record's (a prepared-only row, a rolled-back prepared mask, or a commit with a different digest is false). The
+gate takes no `phase` or `applied_mask_digest` field and no code change follows from this amendment.
