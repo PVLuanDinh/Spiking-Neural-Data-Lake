@@ -24,6 +24,7 @@ import json
 import math
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import NamedTuple
 
 import numpy as np
@@ -69,7 +70,10 @@ PLAN = (
     _row("gauss100", {"form": "gauss", "width": 100.0}, 10316, "red_pool"),
     _row("exp100", {"form": "exp", "width": 100.0}, 10324, "red_pool"),
     _row(
-        "pathway_widths", {"form": "gauss", "width": 100.0, "pathway": (60.0, 160.0)}, 10332, "pass"
+        "pathway_widths",
+        {"form": "gauss", "width": 100.0, "pathway": (60.0, 160.0)},
+        10332,
+        "pooling_gate",
     ),
     _row("pathway_flat", {"form": "gauss", "width": 100.0}, 10340, "red_pool"),
 )
@@ -123,6 +127,11 @@ class Pop:
 
 def make_pop(xyz, layer, sign):
     xyz = np.asarray(xyz, dtype=np.float64)
+    diag = float(np.sqrt(((xyz.max(0) - xyz.min(0)) ** 2).sum()))
+    if diag > t3.MAX_EXTENT_UM:  # the unit trap (check (a)): nm fed as um
+        raise t3.ArtifactRefused(
+            f"units: extent diagonal {diag:.4g} um > {t3.MAX_EXTENT_UM} um (nm?)"
+        )
     fr = frame(xyz)
     r, th, z = fr
     arc = float(r.max() * (th.max() - th.min()))
@@ -329,15 +338,27 @@ def fit_delta(d, n, k, th, kind, pen):
     return DELTAS[np.argmin(nll + 0.5 * pen * DELTAS[:, None] ** 2, axis=0)]
 
 
+def leak_free(train_folds, test_folds, f, g):
+    """The nested split's disjointness (check (b)): no inner-train unit group is the outer-held-out f or the
+    inner-held-out g, and the inner test folds contain g and avoid f."""
+    return f not in train_folds and g not in train_folds and g in test_folds and f not in test_folds
+
+
+def inner_split(hist_n, hist_k, f, g):
+    """Outer fold f held out; inner fold g held out of the rest. Returns ntr, ktr, nte, kte."""
+    tr = [h for h in range(K) if h != f]
+    ok = [h for h in tr if h != g]
+    assert leak_free(ok, tr, f, g), f"inner split leaks held-out folds {f}, {g}"
+    ntr, ktr = (a[np.ix_(ok, ok)].sum((0, 1)) for a in (hist_n, hist_k))
+    nin, kin = (a[np.ix_(tr, tr)].sum((0, 1)) for a in (hist_n, hist_k))
+    return ntr, ktr, nin - ntr, kin - ktr
+
+
 def choose_penalty(d, hist_n, hist_k, f, th, kind):
     """Nested folds on the TRAINING folds only: the penalty with the best summed inner held-out LL."""
-    tr = [g for g in range(K) if g != f]
     score = dict.fromkeys(PENALTIES, 0.0)
-    for g in tr:
-        ok = [h for h in tr if h != g]
-        ntr, ktr = (a[np.ix_(ok, ok)].sum((0, 1)) for a in (hist_n, hist_k))
-        nin, kin = (a[np.ix_(tr, tr)].sum((0, 1)) for a in (hist_n, hist_k))
-        nte, kte = nin - ntr, kin - ktr
+    for g in (h for h in range(K) if h != f):
+        ntr, ktr, nte, kte = inner_split(hist_n, hist_k, f, g)
         for pen in PENALTIES:
             delta = fit_delta(d, ntr, ktr, th, kind, pen)
             score[pen] += _ll(shaped_p(d, ntr, ktr, th, kind, delta), nte, kte)
@@ -435,8 +456,9 @@ def states(units, bands):
     return out
 
 
-def read_partb(st, frame_ok=True, planted_ok=True):
-    """A pure function of the states, rows top to bottom. Returns (verdict, kernel kept)."""
+def read_partb(st, frame_ok=True, planted_ok=True, pooling_sighted=True):
+    """A pure function of the states, rows top to bottom. Returns (verdict, kernel kept). `pooling_sighted`: the
+    planted pathway-width row fired P-G on H01 positions; without it a P-G reading is uninterpretable."""
     if not frame_ok:
         return "REFUSED_FRAME", None
     if not planted_ok:
@@ -449,6 +471,8 @@ def read_partb(st, frame_ok=True, planted_ok=True):
             return "NOT_READ_BOUNDARY", None
         if t3._opposite(sn[c], sr[c]):
             return "NOT_READ_DISAGREE", None
+    if not pooling_sighted:
+        return "NOT_READ_POOLING_UNSIGHTED", None
     if sn["P-G"] != 1:
         return "RED_POOL", "global"  # the global width alone is kept
     return "PASS", "pooled"
@@ -481,8 +505,17 @@ def recovered(truth, units):
 
 def _holds(row, units, bands):
     verdict, _ = read_partb(states(units, bands))
-    want = {"red_flat": "RED_PATHWAY_FLAT", "pass": "PASS", "red_pool": "RED_POOL"}[row.expect]
+    want = {"red_flat": "RED_PATHWAY_FLAT", "red_pool": "RED_POOL"}[row.expect]
     return verdict == want and recovered(row.truth, units)
+
+
+def pooling_sighted(plan, rows, bands):
+    """The explicit gate: the planted pathway-width row's neuron-fold P-G state is +1 (P sees pathway widths on
+    these positions). Not part of `all_rows_hold`: its failure turns every P-G reading into NOT_READ."""
+    gate = [r for r in plan if r.expect == "pooling_gate"]
+    return bool(gate) and all(
+        states(rows[r.name]["units"], bands)["neuron"]["P-G"] == 1 for r in gate
+    )
 
 
 def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
@@ -494,6 +527,8 @@ def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
         rows[row.name] = {"units": units}
         if row.expect is None:
             bands = calibrate_bands(units)
+        elif row.expect == "pooling_gate":
+            rows[row.name]["sighted"] = pooling_sighted((row,), rows, bands)
         else:
             rows[row.name]["reading"] = read_partb(states(units, bands))[0]
             rows[row.name]["holds"] = _holds(row, units, bands)
@@ -507,6 +542,7 @@ def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
         "bands_sha256": hashlib.sha256(json.dumps(bands, sort_keys=True).encode()).hexdigest(),
         "rows": rows,
         "all_rows_hold": all(r.get("holds", True) for r in rows.values()),
+        "pooling_sighted": pooling_sighted(plan, rows, bands),
     }
 
 
@@ -531,12 +567,12 @@ def validate_planted(record, pop, plan=PLAN, n_edges=t3.N_EDGES):
     if bands != record["bands"]:
         raise ExposureRefused("the planted bands do not recompute from the calibration units")
     for r in plan[1:]:
-        if not _holds(r, record["rows"][r.name]["units"], bands):
+        if r.expect != "pooling_gate" and not _holds(r, record["rows"][r.name]["units"], bands):
             raise ExposureRefused(f"planted row {r.name} does not hold on recomputation")
     return bands
 
 
-def score_h01(path, planted_record, seeds=SEEDS, pin=None):
+def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
     """The only edge read. Refuses unless the planted record validates (and the seeds are the registered 8)."""
     z, sha = t3._verified(path, pin)
     pop = make_pop(t3.xyz_um(z["xyz_nm"]), z["layer"], z["sign"])
@@ -546,15 +582,69 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None):
     if frame_violation(pop.layer, pop.fr[0]) > FRAME_VIOLATION_MAX:
         return {"reading": "REFUSED_FRAME", "artifact_sha256": sha}
     edges = (np.asarray(z["pre_idx"]), np.asarray(z["post_idx"]))
-    units = []
+    units, first = [], None
     for s in seeds:
         h, _ = build_hists(pop, s, edges=edges)
+        first = first or h
         u = score_unit(pop, h)
         u["seed"] = int(s)
         units.append(u)
     st = states(units, bands)
-    verdict, keep = read_partb(st)
-    return {"reading": verdict, "keep": keep, "states": st, "units": units, "artifact_sha256": sha}
+    sighted = pooling_sighted(PLAN, planted_record["rows"], bands)
+    verdict, keep = read_partb(st, pooling_sighted=sighted)
+    out = {
+        "reading": verdict,
+        "keep": keep,
+        "pooling_sighted": sighted,
+        "states": st,
+        "units": units,
+        "artifact_sha256": sha,
+    }
+    if verdict in ("PASS", "RED_POOL"):
+        out["record"] = build_record(pop, first, units, verdict, keep, edges, sha, t3_ref)
+    return out
+
+
+def build_record(pop, h, units, verdict, keep, edges, sha, t3_ref=None):
+    """The record growth/wiring_prior.py reads (schema agreed with G7): the global mixture on ALL pairs and edges,
+    per-cell amplitudes, per-cell widths if pooled, beta = 0 until B2, dbar, tangential density."""
+    d = (np.arange(pop.nb) + 0.5) * BIN
+    n, k = h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))
+    th = fit_global(d, n, k, "mix")
+    amp, _ = _profile(n, k, shape(d[None, :], th, "mix"))
+    sigma, lam, rho = (math.exp(float(x)) for x in th)
+    live = np.flatnonzero(n.sum(1) > 0)
+    rec = {
+        "source": "part_b",
+        "frame": "tangential",
+        "reading": verdict,
+        "keep": keep,
+        "form": "mix",
+        "form_selected": max(KINDS, key=lambda f: math.fsum(u["forms"][f] for u in units)),
+        "a": 1.0,
+        "c": rho,
+        "sigma_um": sigma,
+        "lambda_um": lam,
+        "pathway_amplitudes": {int(c): float(amp[c]) for c in live},
+        "beta": 0.0,
+        "beta_fallback": True,
+        "dbar": dbar(pop.layer, edges[0], edges[1]),
+        "density_per_mm2": tangential_density(pop),
+        "frame_violation": frame_violation(pop.layer, pop.fr[0]),
+        "artifact_sha256": sha,
+        "t3_record": t3_ref,
+    }
+    if keep == "pooled":
+        pens = [p for u in units for p in u["pen"]]
+        pen = max(set(pens), key=pens.count)
+        delta = fit_delta(d, n, k, th, "mix", pen)
+        rec["penalty"] = pen
+        rec["pathway_widths"] = {
+            int(c): [sigma * math.exp(float(delta[c])), lam * math.exp(float(delta[c]))]
+            for c in live
+            if delta[c] != 0
+        }
+    return rec
 
 
 def dbar(layer, pre, post):
@@ -588,8 +678,54 @@ def tangential_density(pop):
     return out
 
 
+def _jsonable(o):
+    if isinstance(o, dict):
+        return {str(k): _jsonable(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_jsonable(v) for v in o]
+    if isinstance(o, np.generic):
+        return o.item()
+    if isinstance(o, np.ndarray):
+        return o.tolist()
+    return o
+
+
+CRLF, LF = bytes([13, 10]), bytes([10])
+
+
+def _t3_ref(path):
+    raw = (
+        Path(path).read_bytes().replace(CRLF, LF)
+    )  # the committed (LF) blob, never the working copy
+    return {"path": str(path), "blob_sha256": hashlib.sha256(raw).hexdigest()}
+
+
 def main(argv=None):
-    sys.stdout.write("h01_partb_tangential: run its tests (tests/test_h01_partb_tangential.py)\n")
+    import argparse
+    import time
+
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("planted", help="the planted stage (positions, layer, sign only)")
+    h = sub.add_parser("h01", help="the H01 edge read; refuses without a valid planted record")
+    for q in (p, h):
+        q.add_argument("--artifact", required=True)
+        q.add_argument("--out", required=True)
+    h.add_argument("--planted", required=True)
+    h.add_argument("--t3", required=True, help="tools/g4_t3_campaign.json, cited in the record")
+    a = ap.parse_args(argv)
+    t0 = time.time()
+    if a.cmd == "planted":
+        out = run_planted(load_pop(a.artifact), log=lambda n, r: print(n, r, flush=True))
+    else:
+        out = score_h01(
+            a.artifact,
+            json.loads(Path(a.planted).read_text(encoding="utf-8")),
+            t3_ref=_t3_ref(a.t3),
+        )
+        print("Part B reads:", out["reading"], out.get("keep"))
+    out["wall_s"] = time.time() - t0
+    Path(a.out).write_text(json.dumps(_jsonable(out), indent=1, sort_keys=True), encoding="utf-8")
     return 0
 
 

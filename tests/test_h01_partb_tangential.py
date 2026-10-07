@@ -181,3 +181,135 @@ def test_pooling_positive_control_and_its_null():
     pw = [pb._unit(p2, s, n_all, wide, 1500)["neuron"]["P-G"] for s in (10332, 10333, 10334)]
     nl = [pb._unit(p2, s, n_all, flat, 1500)["neuron"]["P-G"] for s in (10340, 10341, 10342)]
     assert min(pw) > 50.0 and max(nl) < 25.0
+
+
+# ---- constructed reds, the pooling gate and the record (fast: no planted stage) ----
+def test_unit_trap_nm_fed_as_um_is_refused(pop):
+    with pytest.raises(t3.ArtifactRefused):
+        pb.make_pop(pop.xyz * 1000.0, pop.layer, pop.sign)
+
+
+def test_inner_split_never_trains_on_a_held_out_fold():
+    n = np.ones((pb.K, pb.K, 1, 1), dtype=np.int64)
+    k = np.zeros_like(n)
+    f, g = 1, 3
+    k[g, :, :, :] = 1  # a pair touching the inner-held-out fold g, any partner
+    k[:, g, :, :] = 1
+    k[f, :, :, :] = 1  # a pair touching the outer-held-out fold f
+    k[:, f, :, :] = 1
+    ntr, ktr, nte, kte = pb.inner_split(n, k, f, g)
+    assert int(ktr.sum()) == 0 and int(kte.sum()) > 0  # nothing touching f or g is in train
+    assert (
+        int(ntr.sum()) == 3 * 3 and int(nte.sum()) == 4 * 4 - 3 * 3
+    )  # test = pairs touching g, not f
+
+
+def test_leak_check_catches_a_leaky_split():
+    assert pb.leak_free([0, 2, 4], [0, 2, 3, 4], f=1, g=3)
+    assert not pb.leak_free([0, 2, 3, 4], [0, 2, 3, 4], f=1, g=3)  # g left in train
+    assert not pb.leak_free([0, 1, 2], [0, 1, 2, 3], f=1, g=3)  # f left in train
+
+
+def test_unsighted_pooling_turns_pg_into_not_read_and_keeps_earlier_rows():
+    assert pb.read_partb(_st(), pooling_sighted=False) == ("NOT_READ_POOLING_UNSIGHTED", None)
+    assert pb.read_partb(_st(g_f=0), pooling_sighted=False) == ("RED_PATHWAY_FLAT", None)
+    assert pb.read_partb(_st(), frame_ok=False, pooling_sighted=False) == ("REFUSED_FRAME", None)
+
+
+def _fake_unit(seed, gf=0.0, pg=0.0, form="gauss", w=60.0):
+    z = {"G-F": gf, "P-G": pg}
+    return {
+        "seed": seed,
+        "neuron": dict(z),
+        "interior": dict(z),
+        "region": [dict(z) for _ in range(pb.NB_REG)],
+        "forms": {
+            "gauss": 10.0 if form == "gauss" else 0.0,
+            "exp": 0.0 if form == "gauss" else 10.0,
+            "mix": 11.0,
+        },
+        "th_forms": {f: [[math.log(w), math.log(w), 0.0]] * pb.K for f in pb.KINDS},
+        "pen": [4.0] * pb.K,
+        "edge_instances": 100,
+    }
+
+
+def _fake_rows(plan, pg_gate):
+    rows = {}
+    for r in plan:
+        ramp = [100.0 + i for i in range(8)]
+        if r.expect is None or r.expect == "red_flat":
+            units = [_fake_unit(s) for s in r.seeds]
+        elif r.expect == "pooling_gate":
+            units = [
+                _fake_unit(s, gf=ramp[i], pg=ramp[i] if pg_gate else 0.0)
+                for i, s in enumerate(r.seeds)
+            ]
+        else:
+            units = [
+                _fake_unit(s, gf=ramp[i], form=r.truth["form"], w=r.truth.get("width", 60.0))
+                for i, s in enumerate(r.seeds)
+            ]
+        rows[r.name] = {"units": units}
+    return rows
+
+
+def test_pooling_gate_is_a_gate_not_a_caveat(pop):
+    plan = pb.PLAN
+    for sighted in (True, False):
+        rows = _fake_rows(plan, sighted)
+        bands = pb.calibrate_bands(rows[plan[0].name]["units"])
+        assert pb.pooling_sighted(plan, rows, bands) is sighted
+    assert pb.pooling_sighted(plan[:2], rows, bands) is False  # no gate row at all: not sighted
+    # the strict gate does not refuse an unsighted record; the reading does
+    rec = {
+        "population_sha256": pb.fingerprint(pop),
+        "n_edges_target": 1200,
+        "plan": [r._asdict() for r in plan],
+        "rows": _fake_rows(plan, False),
+        "bands": pb.calibrate_bands(_fake_rows(plan, False)[plan[0].name]["units"]),
+    }
+    assert pb.validate_planted(rec, pop, plan, 1200) == rec["bands"]
+    rec["rows"]["gauss100"]["units"] = [
+        _fake_unit(s, w=75.0) for s in plan[2].seeds
+    ]  # width off by 25%
+    with pytest.raises(pb.ExposureRefused):
+        pb.validate_planted(rec, pop, plan, 1200)
+
+
+def test_record_is_readable_by_wiring_prior(pop, n_all):
+    from snn_data_lake.growth import wiring_prior as wp
+
+    truth = {"form": "gauss", "width": 60.0}
+    h, _ = pb.build_hists(pop, 10350, n_all=n_all, truth=truth, n_edges=1200)
+    rng = np.random.default_rng(0)
+    edges = (rng.integers(0, N, 400), rng.integers(0, N, 400))
+    units = [_fake_unit(10350 + i) for i in range(8)]
+    rec = pb.build_record(
+        pop, h, units, "PASS", "pooled", edges, "a" * 64, {"blob_sha256": "b" * 64}
+    )
+    for key in (
+        "source",
+        "frame",
+        "a",
+        "c",
+        "sigma_um",
+        "lambda_um",
+        "beta",
+        "beta_fallback",
+        "dbar",
+    ):
+        assert key in rec
+    assert rec["beta"] == 0.0 and rec["beta_fallback"] is True and rec["pathway_amplitudes"]
+    assert (
+        20.0 < rec["sigma_um"] < 200.0
+    )  # the planted 60 um, recovered to within a factor of a few
+    cells = {int(c): v for c, v in rec["pathway_amplitudes"].items()}
+    assert all(0.0 < v for v in cells.values())
+    a = {"unit_id": "a", "position": (0, 0, 0.0, 0.0, 0.5), "layer": "Layer 4", "sign": 1}
+    b = dict(a, unit_id="b", position=(0, 0, 25.0, 0.0, 0.5))
+    p = wp.attach_probabilities([a], [b], rec)[0, 0]
+    assert (
+        0.0 < p < 1.0
+        and p < wp.attach_probabilities([a], [dict(b, position=(0, 0, 1.0, 0.0, 0.5))], rec)[0, 0]
+    )
