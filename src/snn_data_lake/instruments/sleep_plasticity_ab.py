@@ -134,9 +134,15 @@ PLASTICITY_FREE = {"OFF", "ORACLE", "A-ONLY", "A-ONLY-TWIN"}  # every cap off an
 #   (per-channel status) -- term overlaps only; none stamps files on disk.
 def lake_snapshot(path):
     """mtime_ns + size of every file under `path` (an absent path snapshots as empty). A file whose stat fails
-    is recorded as None, never skipped: `live_lake_untouched` cannot read it as untouched."""
+    is recorded as None, never skipped, and so is a directory that cannot be listed:
+    `live_lake_untouched` cannot read either as untouched."""
     snap = {}
-    for root, _dirs, files in os.walk(path):
+
+    def unlistable(err):  # os.walk skips a directory it cannot list unless told: record it instead
+        where = err.filename if err.filename is not None else path
+        snap[os.path.join(os.path.relpath(where, path), "<unlistable>")] = None
+
+    for root, _dirs, files in os.walk(path, onerror=unlistable):
         for f in files:
             p = os.path.join(root, f)
             try:

@@ -453,3 +453,25 @@ def test_an_unreadable_file_fails_the_live_lake_check_closed(tmp_path, monkeypat
     assert unreadable["latch.json"] is None  # recorded, never skipped
     ok, changed = m.live_lake_untouched(str(decoy), unreadable)  # None on both reads
     assert not ok and "latch.json" in changed
+
+
+def test_an_unlistable_directory_fails_the_live_lake_check_closed(tmp_path, monkeypatch):
+    """os.walk skips a directory it cannot list unless told otherwise, so a persistently unlistable
+    nested directory hid every change under it. It is now recorded as None."""
+    decoy = tmp_path / "decoy_live"
+    (decoy / "sub").mkdir(parents=True)
+    (decoy / "sub" / "a.bin").write_bytes(b"abc")
+    before = m.lake_snapshot(str(decoy))
+    assert before["sub" + os.sep + "a.bin"] is not None
+    real = os.scandir
+
+    def deny(path="."):
+        if str(path).endswith("sub"):
+            raise PermissionError(13, "denied", str(path))
+        return real(path)
+
+    monkeypatch.setattr(os, "scandir", deny)
+    blind = m.lake_snapshot(str(decoy))
+    assert any(v is None for v in blind.values())  # the unlistable directory is recorded
+    ok, changed = m.live_lake_untouched(str(decoy), blind)  # unlistable on both reads
+    assert not ok and changed
