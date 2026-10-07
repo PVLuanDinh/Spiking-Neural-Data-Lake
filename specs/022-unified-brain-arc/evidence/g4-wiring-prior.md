@@ -788,3 +788,33 @@ Pointers (no frozen passage is edited): adds to the addendum above, item 4 and i
   leaky variants). The theta-wrap mutant is covered by the d_tan value test.
 - **Not re-run after this addendum's code:** the two slow tests (the mini planted stage and the pooling positive control) were not
   re-run (the lead asked for no multi-minute tests while the battery runs); the 24 fast tests pass.
+
+### Dated pre-data amendment 2026-10-07 (c) to the Part B amendment -- the panel's folds (Codex gpt-6.1-sol, prereg lens, clone c28c7d7b); no edge read
+
+Pointers (no frozen passage is edited): where the amendment and the code disagreed the CODE was fixed to the frozen text; where the
+text left a statistic or a rule open, the choice is registered here, panel-prompted, before any Part B run. The p8 and safety lenses
+did not read the clone and are pending. Fold commits `f148b7a7`..the one after `105779d7`.
+- **M1 (5% frame bar).** The bar is the SOMA-level fraction (amendment 1's words), no longer the cross-band pair fraction. Registered
+  statistic: somata ordered by r descending; a soma violates when any of its 5 r-order neighbours on either side is out of order (an
+  earlier neighbour with a deeper band, or a later one with a shallower band); the fraction and the count are recorded; the bar stays 5
+  percent. W = 5 is a session choice, named for the panel.
+- **M2 (form).** The exported kernel is the SELECTED form. Rule (T3's A2 shape): the better single kernel by summed neuron-fold held-out LL
+  (tie order: Gaussian), upgraded to the mixture iff the mixture's advantage over it is a MET paired contrast over the 8 seeds above a
+  band calibrated on the planted-flat seeds (`form_gap`, locked with the other bands). The record exports that form's parameters (an
+  unused component weighted 0), `form_t3` and `form_disagrees_t3`; a disagreement with T3's K is routed to the owner (2.8), T3's
+  verdict unchanged.
+- **M3 (regions).** Every held-out region must read G-F +1: a new row RED_PATHWAY_FLAT_REGION (T3's A3 row 6 analogue), after the boundary and
+  disagreement rows and before the pooling rows.
+- **M4 (flat validation).** The validation row must read RED_PATHWAY_FLAT AND carry no G-F +1 under any scoring (neuron, interior,
+  every region block, the region aggregate): A5's bar.
+- **M5 (exposure validator).** It compares the whole plan (names, truths, seeds, expectations, order), not names only.
+- **M6 (T3 reference and provenance).** `--t3` is validated: the artifact is the pinned one, the T3 reading is RED_EXP or a PASS with K
+  not none, and the file carries its git head and harness hashes (A13); `score_h01` refuses without it, before reading any file. Every
+  output serialises the git head and the LF-normalised hashes of the harness files.
+- **M7 (regions' penalty).** Region blocks choose the penalty by the same nested training-only split as the neuron folds.
+- **B1 (pathway recovery).** The pooling gate now requires, beside P-G +1 on the neuron folds, that P's fitted per-pathway widths recover
+  both planted widths within 15 percent on EVERY seed (single-kernel Gaussian shape and per-cell offsets fitted on all pairs, the
+  penalty the nested folds chose most often). A gate row unrecovered reads the same as unfired: P-G is NOT_READ.
+- **m1 (seeds).** The synthetic tests now draw development seeds only (10020-10062); the earlier build and three scratch scripts drew
+  campaign seeds 10316-10335, 10332-10335, 10340-10342, 10350-10351 and 10300-10315 on SYNTHETIC populations (no H01 edge, no H01
+  position), disclosed; none of those draws is a reading, and the campaign's own draws on H01 positions are unaffected.
