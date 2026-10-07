@@ -325,3 +325,21 @@ def test_run_cells_persists_per_seed_records_that_rederive_the_contrast_and_refu
     path.write_bytes(path.read_bytes() + b" ")
     with pytest.raises(ValueError, match="sha256"):
         g.load_records(str(path))
+
+
+def test_same_rows_refuses_a_nan_floor_or_persistence():
+    # Codex g5_b lens-2: abs(NaN) > tol is False, so a NaN floor passed the comparison
+    nan = float("nan")
+    row = {
+        "seed": 1,
+        "arm": "DELTA",
+        "widened": 0,
+        "cats_hash": "x",
+        "cols_hash": "y",
+        "live_pers": 0.9,
+        "floors": [(0.5, 0.9)],
+    }
+    with pytest.raises(g.SameRowsHalt, match="refit floors"):
+        g.same_rows([row, {**row, "arm": "B", "floors": [(nan, 0.9)]}])
+    with pytest.raises(g.SameRowsHalt, match="live persistence"):
+        g.same_rows([row, {**row, "arm": "B", "live_pers": nan}])

@@ -255,11 +255,13 @@ def same_rows(cells):
             for key in ("cats_hash", "cols_hash"):
                 if c[key] != ref[key]:
                     raise SameRowsHalt(f"seed {seed}: {key} {c['arm']} != {ref['arm']}")
-            if abs((c["live_pers"] or 0.0) - (ref["live_pers"] or 0.0)) > SAME_TOL:
+            if (
+                not abs((c["live_pers"] or 0.0) - (ref["live_pers"] or 0.0)) <= SAME_TOL
+            ):  # NaN refuses
                 raise SameRowsHalt(f"seed {seed}: live persistence {c['arm']} != {ref['arm']}")
             fa, fr = c.get("floors", []), ref.get("floors", [])
             if len(fa) != len(fr) or any(
-                abs(x - y) > SAME_TOL for a, b in zip(fa, fr) for x, y in zip(a, b)
+                not abs(x - y) <= SAME_TOL for a, b in zip(fa, fr) for x, y in zip(a, b)
             ):
                 raise SameRowsHalt(f"seed {seed}: refit floors {c['arm']} != {ref['arm']}")
     return True
