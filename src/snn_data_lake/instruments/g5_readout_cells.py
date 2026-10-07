@@ -401,12 +401,12 @@ def run_cells(seeds, arms, workers=4, log=print, pool=None, cell=None, reserve=(
                 break
             except (LiveLakeMoved, LiveHomeRefused):
                 raise
-            except Exception as e:
+            except BaseException as e:
                 _lake_unmoved(
                     before, "a stage that raised"
-                )  # a violation outranks the exception it hides
-                if not spare:
-                    raise
+                )  # a violation outranks the exception it hides (KeyboardInterrupt included)
+                if not isinstance(e, Exception) or not spare:
+                    raise  # a terminal exception is never an instrument failure to replace
                 nxt = spare.pop(0)
                 log(
                     f"  seed {s} FAILED on the instrument ({type(e).__name__}: {e}); replaced by {nxt}"

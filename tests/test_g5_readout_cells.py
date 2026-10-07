@@ -227,3 +227,32 @@ def test_a_seed_that_scored_nothing_is_an_instrument_failure_not_a_later_crash(m
             g.run_cells(
                 (1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=cell
             )
+
+
+def test_a_terminal_exception_still_gets_the_lake_check_and_is_never_replaced(monkeypatch):
+    # Codex g5_b lens-1 m3: KeyboardInterrupt (a BaseException) bypassed the lake check; with the
+    # lake moved it must report the move, with the lake still it must propagate, not use a reserve
+    from concurrent.futures import ThreadPoolExecutor
+
+    def stop(args):
+        raise KeyboardInterrupt
+
+    stamps = iter([("a", "b"), ("a2", "b")])
+    monkeypatch.setattr(g, "live_lake_stamp", lambda: next(stamps))
+    with pytest.raises(g.LiveLakeMoved, match="raised"):
+        g.run_cells(
+            (1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=stop
+        )
+    monkeypatch.setattr(g, "live_lake_stamp", lambda: ("a", "b"))
+    lines = []
+    with pytest.raises(KeyboardInterrupt):
+        g.run_cells(
+            (1,),
+            ("DELTA",),
+            workers=1,
+            log=lines.append,
+            pool=ThreadPoolExecutor,
+            cell=stop,
+            reserve=(9,),
+        )
+    assert not any("replaced" in s for s in lines)
