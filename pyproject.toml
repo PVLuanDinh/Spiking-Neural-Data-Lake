@@ -1,5 +1,5 @@
 # Installable src/ package (snn_data_lake). torch + numpy + mujoco + pyarrow + Brian2 + psutil +
-# threadpoolctl are UNCONDITIONAL core dependencies, so
+# threadpoolctl + scipy are UNCONDITIONAL core dependencies, so
 # `pip install .` gives the full brain tier out of the box. `pip install ".[all]"` adds every addon
 # (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
 #
@@ -98,7 +98,7 @@ build-backend = "hatchling.build"
 [project]
 name = "spiking-neural-data-lake"
 version = "4.80.0"
-description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy, pyarrow, mujoco, Brian2, psutil, and threadpoolctl are core dependencies."
+description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy, pyarrow, mujoco, Brian2, psutil, threadpoolctl, and scipy are core dependencies."
 readme = "README.md"
 # FLOOR RAISED 3.12 -> 3.14, 2026-08-05 (owner decision), and this floor is NOT the whole
 # requirement. The project requires the FREE-THREADED (PEP 703) build, and `requires-python` cannot
@@ -197,6 +197,13 @@ dependencies = [
     # for left with g2, section 3.5). Installed only as scikit-learn's transitive dependency until
     # 2026-09-25, so the ledger reddened. Unpinned: a measurement library, not part of the numerical contract.
     "threadpoolctl",
+    # THE LP SOLVER. growth/capacity_certificate.py::farkas_witness (G3's multiclass infeasibility
+    # certificate) and instruments/delayed_cue.py::float_separability_lp (G2's float separability
+    # read) import scipy.optimize.linprog directly (in-function imports). Installed only as
+    # scikit-learn's transitive dependency until 2026-10-07, so the ledger reddened at the batch-1
+    # battery. Unpinned: a solver whose answer is checked exactly downstream (the certificate's
+    # exact check; the LP is a measurement), not part of the numerical contract.
+    "scipy",
 ]   # TORCH TIER ON BY DEFAULT (user policy, 2026-07-18)
 
 # TORCH TIER = ON BY DEFAULT (user policy, 2026-07-18). torch is now a HARD default dependency: a plain
