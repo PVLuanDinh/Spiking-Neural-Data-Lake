@@ -222,3 +222,37 @@ def test_one_active_unit_is_never_probed_for_removal_like_the_incumbent():
     mask, removed = jms._one_pass(meter, (1,))
     assert (mask, removed) == ((1,), 0)
     assert meter.spent == 0
+
+
+class _Cover:
+    n = 4
+
+    def evaluate(self, mask):
+        return True, 1.0
+
+    def cost(self, mask):
+        return sum(mask)
+
+    def judge(self, mask):
+        return True, True
+
+    def work_per_tick(self, mask):
+        return float(sum(mask))
+
+
+def test_seed_row_maps_a_run_instance_result_to_decide_b_s_row():
+    """R3's disclosed gap: ONE producer from run_instance to a decide_b seed row. Every competitor
+    present is keyed with decide_b's four fields (net = net_savings); keys that start with `_` are
+    skipped; a refused arm is absent so decide_b reads it as REFUSED."""
+    res = jms.run_instance(_Cover(), 12001)
+    kw = {"horizon": 10, "eval_cost": 1.0, "restart_cost": 2.0}
+    row = jms.seed_row(res, **kw)
+    assert set(row) == set(jms.COMPETITORS)
+    for a, r in row.items():
+        assert set(r) == {"cost", "future_ok", "retention_ok", "net"}
+        assert r["net"] == jms.net_savings(res[a], res["no_prune"], **kw)
+        assert r["cost"] == res[a].cost
+    small = type("One", (_Cover,), {"n": 1})
+    refused = jms.seed_row(jms.run_instance(small(), 12001), **kw)
+    assert "random" not in refused and "SA" not in refused and "greedy" in refused
+    assert jms.decide_b([refused] * jms.N_SEEDS, instrument_gates_fired=True).outcome == "REFUSED"

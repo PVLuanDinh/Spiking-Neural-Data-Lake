@@ -304,6 +304,24 @@ def break_even_horizon(res, no_prune, *, eval_cost, restart_cost):
     return (res.evaluations * eval_cost + restart_cost) / saved if saved > 0 else math.inf
 
 
+def seed_row(res, *, horizon, eval_cost, restart_cost):
+    # distinct-from: faculties/agency_monitor.py -- it reads per-arm rows of agency-monitor arms; this maps
+    #   one run_instance result to decide_b's row. Sites read (graph-exists lexical hits, none is this job).
+    """One `run_instance` result -> one `decide_b` seed row. Only the competitors that ran are keyed (a
+    refused arm stays absent, so decide_b reads it as REFUSED); `_`-prefixed keys are metadata."""
+    kw = {"horizon": horizon, "eval_cost": eval_cost, "restart_cost": restart_cost}
+    return {
+        a: {
+            "cost": res[a].cost,
+            "future_ok": res[a].future_ok,
+            "retention_ok": res[a].retention_ok,
+            "net": net_savings(res[a], res["no_prune"], **kw),
+        }
+        for a in COMPETITORS
+        if a in res
+    }
+
+
 # ================================================================================================
 # decide_b -- A3's ordered decision function
 # ================================================================================================
