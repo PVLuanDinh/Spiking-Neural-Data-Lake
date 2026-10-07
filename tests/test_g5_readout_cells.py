@@ -343,3 +343,32 @@ def test_same_rows_refuses_a_nan_floor_or_persistence():
         g.same_rows([row, {**row, "arm": "B", "floors": [(nan, 0.9)]}])
     with pytest.raises(g.SameRowsHalt, match="live persistence"):
         g.same_rows([row, {**row, "arm": "B", "live_pers": nan}])
+
+
+def test_brain_cell_itself_refuses_a_home_that_is_not_the_one_it_was_given(monkeypatch, tmp_path):
+    # Codex g5_b lens-2 (bf92393c mutation): the mismatch must be refused through brain_cell, before
+    # any Brain is built, not only by the helper
+    import contextlib
+
+    import snn_data_lake.engine.brain as brain
+    import snn_data_lake.substrate.home as home
+
+    other = tmp_path / "populated_B"
+    other.mkdir()
+    real = home.throwaway_home
+
+    @contextlib.contextmanager
+    def swapped():
+        with real() as fresh:
+            monkeypatch.setenv("NORD_HOME", str(other))  # yields A, but the process points at B
+            try:
+                yield fresh
+            finally:
+                monkeypatch.setenv("NORD_HOME", fresh)
+
+    built = []
+    monkeypatch.setattr(home, "throwaway_home", swapped)
+    monkeypatch.setattr(brain, "make_brain", lambda **kw: built.append(kw))
+    with pytest.raises(home.LiveHomeRefused, match="not the fresh one"):
+        g.brain_cell((20261003, "DELTA", [0, 1, 0]))
+    assert built == []
