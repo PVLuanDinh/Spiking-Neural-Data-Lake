@@ -738,10 +738,7 @@ def validate_planted(record, pop, plan=PLAN, n_edges=t3.N_EDGES):
 
 def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
     """The only edge read. Refuses unless the planted record validates (and the seeds are the registered 8)."""
-    if not t3_ref:
-        raise ExposureRefused(
-            "Part B reads only after a READ T3 record with a kernel (A13): none given"
-        )
+    verify_t3_ref(t3_ref)
     z, sha = t3._verified(path, pin)
     pop = make_pop(t3.xyz_um(z["xyz_nm"]), z["layer"], z["sign"])
     if tuple(seeds) != SEEDS:
@@ -900,7 +897,44 @@ def _jsonable(o):
 CRLF, LF = bytes([13, 10]), bytes([10])
 
 
+T3_RECORD_COMMIT = (
+    "cbd8ce14"  # the frozen text's T3 record: g4-wiring-prior.md, Part B amendment item 6
+)
+T3_RECORD_PATH = "tools/g4_t3_campaign.json"
 T3_READ = ("RED_EXP", "PASS_FAVOURS_GAUSSIAN", "PASS_GAUSSIAN_NOT_REFUSED", "PASS_MIXTURE")
+
+
+def _committed_t3_blob_sha():
+    """The LF-normalised sha256 of the T3 record as committed at T3_RECORD_COMMIT (amendment (f) F7)."""
+    import subprocess
+
+    try:
+        raw = subprocess.check_output(
+            ["git", "show", f"{T3_RECORD_COMMIT}:{T3_RECORD_PATH}"],
+            cwd=t3.REPO,
+            stderr=subprocess.DEVNULL,
+        )
+    except (subprocess.CalledProcessError, OSError) as e:
+        raise ExposureRefused(
+            f"the committed T3 record {T3_RECORD_COMMIT} cannot be read: {e}"
+        ) from e
+    return hashlib.sha256(raw.replace(CRLF, LF)).hexdigest()
+
+
+def verify_t3_ref(ref):
+    """The reference the H01 read is gated on: the committed blob's hash, a READ verdict and a kernel. Not any
+    truthy value (amendment (f) F7)."""
+    ok = (
+        isinstance(ref, dict)
+        and ref.get("blob_sha256") == _committed_t3_blob_sha()
+        and ref.get("verdict") in T3_READ
+        and ref.get("K") in KINDS
+    )
+    if not ok:
+        raise ExposureRefused(
+            "Part B reads only after a READ T3 record with a kernel (A13), named by its committed blob"
+        )
+    return ref
 
 
 def check_t3_record(path, pin=None):
@@ -919,9 +953,15 @@ def check_t3_record(path, pin=None):
         )
     if not rec.get("git_head") or not rec.get("harness_sha256"):
         raise ExposureRefused("the T3 record carries no git head or harness hashes")
+    blob = hashlib.sha256(raw.replace(CRLF, LF)).hexdigest()
+    if blob != _committed_t3_blob_sha():
+        raise ExposureRefused(
+            f"the T3 record is not the blob committed at {T3_RECORD_COMMIT} (untracked, edited or another file)"
+        )
     return {
         "path": str(path),
-        "blob_sha256": hashlib.sha256(raw.replace(CRLF, LF)).hexdigest(),
+        "blob_sha256": blob,
+        "commit": T3_RECORD_COMMIT,
         "verdict": reading["verdict"],
         "K": reading["K"],
         "git_head": rec["git_head"],

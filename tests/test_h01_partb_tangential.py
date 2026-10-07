@@ -401,20 +401,48 @@ def test_t3_gate_accepts_the_real_record_and_refuses_each_defect(tmp_path):
     )
     good = json.loads(T3_PATH.read_text(encoding="utf-8"))
 
-    def defect(name, edit):
+    def defect(name, edit, why):
         rec = json.loads(json.dumps(good))
         edit(rec)
         f = tmp_path / f"{name}.json"
         f.write_text(json.dumps(rec), encoding="utf-8")
-        with pytest.raises(pb.ExposureRefused):
+        with pytest.raises(pb.ExposureRefused, match=why):
             pb.check_t3_record(f)
 
-    defect("sha", lambda r: r.__setitem__("artifact_sha256", "0" * 64))
-    defect("verdict", lambda r: r["h01"]["reading"].__setitem__("verdict", "RED_FLAT"))
-    defect("refused", lambda r: r["h01"]["reading"].__setitem__("verdict", "REFUSED"))
-    defect("nokernel", lambda r: r["h01"]["reading"].__setitem__("K", None))
-    defect("head", lambda r: r.pop("git_head"))
-    defect("harness", lambda r: r.pop("harness_sha256"))
+    defect("sha", lambda r: r.__setitem__("artifact_sha256", "0" * 64), "different artifact")
+    defect(
+        "verdict", lambda r: r["h01"]["reading"].__setitem__("verdict", "RED_FLAT"), "not a READ"
+    )
+    defect("refused", lambda r: r["h01"]["reading"].__setitem__("verdict", "REFUSED"), "not a READ")
+    defect("nokernel", lambda r: r["h01"]["reading"].__setitem__("K", None), "not a READ")
+    defect("head", lambda r: r.pop("git_head"), "no git head")
+    defect("harness", lambda r: r.pop("harness_sha256"), "no git head")
+    # F7 (fold-lens round 2): fields that all look right on a file that is NOT the committed blob
+    fake = json.loads(json.dumps(good))
+    fake["git_head"], fake["harness_sha256"] = "fake", {"x": "y"}
+    f = tmp_path / "fake.json"
+    f.write_text(json.dumps(fake), encoding="utf-8")
+    with pytest.raises(pb.ExposureRefused, match="committed"):
+        pb.check_t3_record(f)
+    copy = tmp_path / "copy.json"
+    copy.write_bytes(T3_PATH.read_bytes())  # the same bytes anywhere are the same record
+    assert pb.check_t3_record(copy)["blob_sha256"] == ref["blob_sha256"]
+
+
+def test_score_h01_demands_the_verified_t3_reference_not_any_truthy_value():
+    ref = pb.check_t3_record(T3_PATH)
+    pb.verify_t3_ref(ref)
+    for bad in (
+        {"K": "mix"},
+        {**ref, "blob_sha256": "0" * 64},
+        {**ref, "verdict": "REFUSED"},
+        {**ref, "K": None},
+        "yes",
+    ):
+        with pytest.raises(pb.ExposureRefused):
+            pb.verify_t3_ref(bad)
+    with pytest.raises(pb.ExposureRefused, match="T3"):
+        pb.score_h01("no-such-artifact.npz", {"rows": {}}, t3_ref={"K": "mix"})
 
 
 def test_score_h01_needs_a_t3_ref_and_provenance_names_the_harness():
@@ -510,7 +538,7 @@ def test_a_wholly_inverted_band_order_is_refused_though_few_somata_straddle_a_bo
     }
     monkeypatch.setattr(t3, "_verified", lambda path, pin=None: (z, "s" * 64))
     monkeypatch.setattr(pb, "validate_planted", lambda *a, **k: {})
-    out = pb.score_h01("x.npz", {}, t3_ref={"K": "mix"})
+    out = pb.score_h01("x.npz", {}, t3_ref=pb.check_t3_record(T3_PATH))
     assert out["reading"] == "REFUSED_FRAME"
 
 

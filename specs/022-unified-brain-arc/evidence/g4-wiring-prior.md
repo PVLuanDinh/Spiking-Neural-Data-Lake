@@ -902,3 +902,10 @@ only; they were NOT re-panelled (a third panel round needs the owner). Each fold
   outermost; ties allowed). It is a refusal only, never a recorded statistic. NEVER EVALUATED ON H01 POSITIONS: per the lead's ruling the
   rule was not fitted to, or checked against, the 14,215 H01 somata; if it fires there the reading is REFUSED_FRAME and the owner is told,
   not the rule retuned. Constructed red on `1f13ef06`: the inverted frame above passed the frame gate and `score_h01` proceeded to read.
+- **F7 (the T3 reference is the committed blob; fold-lens MAJOR).** (c)M6 checked the T3 file's fields but not that it IS the record the frozen text
+  names, and `score_h01` accepted any truthy `t3_ref`. A JSON carrying the pinned artifact sha, an accepted verdict and K, `git_head = "fake"`
+  and a dummy harness mapping passed. Now `check_t3_record` also requires the file's LF-normalised bytes to equal the blob committed at
+  `cbd8ce14` (`tools/g4_t3_campaign.json`, the commit the frozen text names): an untracked, edited or other file is refused, identical
+  bytes anywhere are accepted. `score_h01` calls `verify_t3_ref`, which requires that blob hash, a READ verdict and a kernel in the reference.
+  The record also names the commit (`commit`). Integration note for the lead: the check reads `git show cbd8ce14:...`, so that commit must stay
+  reachable on the integration head. Red on `9404c930`: the fake-field file returned a reference with K "mix".
