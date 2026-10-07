@@ -65,6 +65,17 @@ learner = (
 )  # the ONE factory (P2); B8 below proves it equal to the Brain's learner
 
 
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "Frozen.learn_turn": (
+        "NOT_A_RULE",
+        "a one-line pass-through: forwards the frozen front-end's stimulus vector and the label to the "
+        "canonical learner's own interact(). The rule lives in that learner (declared in its module); "
+        "nothing here touches a weight",
+    ),
+}
+
+
 # ---- the front-ends -----------------------------------------------------------------------------------------
 class Frozen:
     """A frozen front-end + the incumbent's class over it. `features(text)` -> the H-dim stimulus."""

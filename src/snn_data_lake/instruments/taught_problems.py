@@ -308,6 +308,16 @@ def check_b11(rule=None, opener=None):
     return {"ok": all(conditions.values()), "conditions": conditions, "floors": floors}
 
 
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "learner_state": (
+        "NOT_A_RULE",
+        "serialises the learner's checkpoint tree and authority to bytes so B12 can compare before and "
+        "after a read. A reader of state; it updates no weight",
+    ),
+}
+
+
 # ---- learning OFF (B12) -------------------------------------------------------------------------------------
 def learner_state(unit):
     """The learner's full state as bytes: its G0(c) checkpoint tree (weights, ring, stack, rng) plus
