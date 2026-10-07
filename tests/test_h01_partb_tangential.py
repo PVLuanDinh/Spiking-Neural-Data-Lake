@@ -570,3 +570,38 @@ def test_inner_penalty_shape_never_sees_the_inner_held_out_edges(monkeypatch):
         _, ktr, _, _ = pb.inner_split(n, k, f, g)
         expect.append(float(ktr.sum()))
     assert seen == expect  # fitted once per inner TRAINING split, on that split's counts only
+
+
+def test_output_guard_refuses_protected_inputs_aliases_and_existing_files(tmp_path):
+    art = tmp_path / "a.npz"
+    art.write_bytes(b"x")
+    alias = tmp_path / "alias.json"
+    try:
+        alias.symlink_to(art)
+    except OSError:  # symlinks need privileges on Windows: a hard link is the same alias
+        import os
+
+        os.link(art, alias)
+    for bad in (
+        art,  # an input
+        alias,  # an alias of an input (resolved path / samefile)
+        t3.LIVE_HOME / "out.json",  # inside the live lake
+        tmp_path / "brain_lake.bin",
+        tmp_path / "no_such_dir" / "o.json",
+    ):
+        with pytest.raises(t3.OutputRefused):
+            t3.safe_output(bad, [art])
+    fresh = t3.safe_output(tmp_path / "ok.json", [art])
+    t3.write_exclusive(fresh, "{}")
+    with pytest.raises(t3.OutputRefused):  # now it exists: never truncated
+        t3.safe_output(fresh, [art])
+    with pytest.raises(FileExistsError):  # a path that appeared after the check: O_EXCL
+        t3.write_exclusive(fresh, "{}")
+
+
+def test_cli_refuses_before_computing_when_out_is_an_input(tmp_path):
+    art = tmp_path / "a.npz"
+    art.write_bytes(b"not an artifact")  # never read: the refusal comes first
+    with pytest.raises(t3.OutputRefused):
+        pb.main(["planted", "--artifact", str(art), "--out", str(art)])
+    assert art.read_bytes() == b"not an artifact"

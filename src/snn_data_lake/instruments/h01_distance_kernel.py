@@ -45,6 +45,7 @@ import hashlib
 import io
 import json
 import math
+import os
 import sys
 import time
 from dataclasses import dataclass, field
@@ -101,6 +102,37 @@ class ArtifactRefused(ValueError):
 
 class ExposureRefused(RuntimeError):
     """An edge read was attempted before the planted record holds (A8)."""
+
+
+class OutputRefused(OSError):
+    """An --out path that is protected, an input, or already exists (outputs are created exclusively)."""
+
+
+LIVE_HOME = Path.home() / ".snn_data_lake"  # the lake: nothing here is ever an output (hard rule 2)
+
+
+def safe_output(out, inputs=()):
+    """Checked BEFORE any computation. Refuses the live lake (its directory or any `brain_lake.bin`), any input
+    (resolved path and samefile, so an alias is caught), anything that already exists, and a missing parent.
+    The write itself is then `write_exclusive` (O_EXCL), so a path that appears in between is refused too."""
+    p = Path(out).resolve()
+    live = LIVE_HOME.resolve()
+    if p == live or live in p.parents or p.name == "brain_lake.bin":
+        raise OutputRefused(f"{out}: the live lake is never an output")
+    for i in inputs:
+        i = Path(i)
+        if i.exists() and (i.resolve() == p or (p.exists() and os.path.samefile(i, p))):
+            raise OutputRefused(f"{out}: an input of this command")
+    if p.exists():
+        raise OutputRefused(f"{out}: exists (outputs are created exclusively)")
+    if not p.parent.is_dir():
+        raise OutputRefused(f"{out}: its directory does not exist")
+    return p
+
+
+def write_exclusive(p, text):
+    with open(p, "x", encoding="utf-8") as f:  # O_CREAT | O_EXCL: never truncates
+        f.write(text)
 
 
 class RecordRefused(ValueError):
@@ -1246,6 +1278,7 @@ def main(argv=None):
     if a.cmd is None:
         _selfcheck()
         return 0
+    out = safe_output(a.out, [a.artifact, getattr(a, "planted", None) or a.artifact])
     t0 = time.perf_counter()
     if a.cmd == "planted":
         pop = load_population(a.artifact)
@@ -1260,7 +1293,7 @@ def main(argv=None):
         )
         print(f"T3 reads: {rec['reading']['verdict']} (K = {rec['reading']['K']})")
     rec["wall_s"] = round(time.perf_counter() - t0, 1)
-    Path(a.out).write_text(json.dumps(_jsonable(rec), indent=1, sort_keys=True), encoding="utf-8")
+    write_exclusive(out, json.dumps(_jsonable(rec), indent=1, sort_keys=True))
     print(f"wrote {a.out} in {rec['wall_s']} s")
     return 0
 

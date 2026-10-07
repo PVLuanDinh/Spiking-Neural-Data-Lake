@@ -870,6 +870,8 @@ def main(argv=None):
     h.add_argument("--planted", required=True)
     h.add_argument("--t3", required=True, help="tools/g4_t3_campaign.json, cited in the record")
     a = ap.parse_args(argv)
+    ins = [a.artifact, *(getattr(a, x) for x in ("planted", "t3") if hasattr(a, x))]
+    out_path = t3.safe_output(a.out, ins)  # before ANY computation (safety S1)
     t0 = time.time()
     if a.cmd == "planted":
         out = run_planted(load_pop(a.artifact), log=lambda n, r: print(n, r, flush=True))
@@ -884,7 +886,7 @@ def main(argv=None):
     if "record" in out:
         out["record"]["provenance"] = provenance()
     out["wall_s"] = time.time() - t0
-    Path(a.out).write_text(json.dumps(_jsonable(out), indent=1, sort_keys=True), encoding="utf-8")
+    t3.write_exclusive(out_path, json.dumps(_jsonable(out), indent=1, sort_keys=True))
     return 0
 
 

@@ -746,3 +746,23 @@ def test_a_the_verified_bytes_are_the_loaded_bytes_even_if_the_file_is_swapped_a
     assert (
         sha == pin[0] and int(np.abs(z["xyz_nm"]).sum()) > 0
     )  # the good positions, not the swapped zeros
+
+
+def test_cli_refuses_an_output_that_is_an_input_or_the_live_lake_before_computing(tmp_path):
+    art = tmp_path / "a.npz"
+    art.write_bytes(b"not an artifact")  # never read: the refusal comes first
+    with pytest.raises(KD.OutputRefused):
+        KD.main(["planted", "--artifact", str(art), "--out", str(art)])
+    with pytest.raises(KD.OutputRefused):
+        KD.main(
+            [
+                "h01",
+                "--artifact",
+                str(art),
+                "--planted",
+                str(art),
+                "--out",
+                str(KD.LIVE_HOME / "o.json"),
+            ]
+        )
+    assert art.read_bytes() == b"not an artifact"
