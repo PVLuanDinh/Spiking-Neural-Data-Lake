@@ -1107,3 +1107,8 @@ positive control still permit a B-R1 verdict (0fba900c:624). B-R0 was MET in the
 t +4.551, log above), so this hole did not fire; it was in the deleted reader. The surviving-runner findings of lenses 1
 and 2 (scored-nothing cells, the BaseException lake check, `--pa3` exit code, NaN floors, the persisted records) and the
 five uncaught-mutation tests are folded as separate commits on claude/g5.
+
+Charge note (lead, 2026-10-07; lens 3). The persisted records (`run_cells(record_path=...)`, `load_records`, commit
+1d48e496) are reachable only through `run_cells`, which no driver calls until Part D's driver does. They are therefore
+NOT yet charged (P3): `g5_readout_cells` is a registered permanent benchmark harness (dormancy_gate.py), reusable by Part D, and
+its charge is established only when a driver runs it.
