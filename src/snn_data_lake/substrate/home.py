@@ -492,14 +492,20 @@ def _live_file_stats(live):
     """stat() of every regular file under the live home, at every depth, up to _MAX_HOME_ENTRIES
     ([] when it does not exist): the identity a hardlink shares with its original (a resolved path
     cannot see one). `os.stat`, not `DirEntry.stat()`: on Windows the latter leaves st_ino / st_dev at
-    0 and every file would match. Directory aliases are not descended into."""
+    0 and every file would match. Directory aliases are not descended into. A live home of more than
+    _MAX_HOME_ENTRIES files is refused: a truncated walk would silently skip later files' identity."""
     out, todo = [], [live]
-    while todo and len(out) <= _MAX_HOME_ENTRIES:
+    while todo:
         try:
             with os.scandir(todo.pop()) as it:
                 for e in it:
                     if e.is_file(follow_symlinks=False):
                         out.append(os.stat(e.path))
+                        if len(out) > _MAX_HOME_ENTRIES:
+                            raise LiveHomeRefused(
+                                f"live home refused (entries): more than {_MAX_HOME_ENTRIES} files"
+                                f" under {live} -- hardlink identity would be incomplete"
+                            )
                     elif e.is_dir(follow_symlinks=False) and not e.is_junction():
                         todo.append(e.path)
         except OSError:

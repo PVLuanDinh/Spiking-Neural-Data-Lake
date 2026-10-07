@@ -255,6 +255,24 @@ def test_a_hardlink_of_a_file_nested_in_the_live_home_is_refused(tmp_path, monke
         H.require_isolated_home(live_home=str(live))
 
 
+def test_a_live_home_over_the_entry_bound_is_refused_not_silently_truncated(tmp_path, monkeypatch):
+    # the live-side walk used to stop at the bound without saying so, so a later file's hardlink
+    # identity was never collected: the guard now fails closed when it cannot see the live home
+    live = tmp_path / "live"
+    live.mkdir()
+    for i in range(4):
+        (live / f"f{i}.bin").write_bytes(b"live%d" % i)
+    iso = tmp_path / "iso"
+    iso.mkdir()
+    monkeypatch.setenv("NORD_HOME", str(iso))
+    assert H.require_isolated_home(live_home=str(live))  # the positive: under the default bound
+    monkeypatch.setattr(H, "_MAX_HOME_ENTRIES", 2)
+    with pytest.raises(H.LiveHomeRefused, match="live home"):
+        H.require_isolated_home(live_home=str(live))
+    monkeypatch.setattr(H, "_MAX_HOME_ENTRIES", 4)  # exactly at the bound: still fully seen
+    assert H.require_isolated_home(live_home=str(live))
+
+
 def test_namespace_prefix_normalisation_covers_unc():
     # `\\?\UNC\server\share` is the extended spelling of `\\server\share`
     assert H._strip_namespace("\\\\?\\UNC\\srv\\share\\x") == "\\\\srv\\share\\x"
