@@ -187,16 +187,25 @@ def test_census_counts_the_tests_read():
     assert "C1-NI=MET (degenerate)" in lines[2]
 
 
-A_INTENTS, B_INTENTS = ["GREET", "GOAL"], ["MEMORY", "CONSCIOUS", "ARM"]
+def _split(seed):
+    """The seed's frozen A / B split (fold lens M1: a record's a / b must be THIS one)."""
+    a, b, *_ = m.split_and_order(seed)
+    return a, b
+
+
+A_INTENTS, B_INTENTS = _split(16000)
 HELD_KEYS = m.expected_heldout_keys(A_INTENTS, B_INTENTS)
 
 
 def _record(arm="ON", seed=16000, family="F1"):
     """A synthetic record that every record-level check reads green."""
+    a_intents, b_intents = _split(seed)
     return {
         "family": family, "arm": arm, "seed": seed, "budget": 2, "d0": "d0", "d1": "d1",
         "weights_d1": "w", "weights_post": "w", "taught": ["t1"], "ring_keys": ["t1"],
-        "a": A_INTENTS, "b": B_INTENTS, "heldout_keys": list(HELD_KEYS), "drawn": ["t1"],
+        "a": a_intents, "b": b_intents,
+        "heldout_keys": m.expected_heldout_keys(a_intents, b_intents),
+        "drawn": ["t1"],
         "tick": {"presentations": [m.K, m.K], "turnover": [None, None], "cacc": [None, None]},
         "att_calls": [[1, 3], [2, 3]], "k8a": [], "stored_any": False,
         "chrono_before": {"nights": 0, "wake_ticks": 0, "arm_ticks": 0, "step": 0},
@@ -344,6 +353,27 @@ KE_PLANTS = {
     "duplicate": lambda rs: [r.update(heldout_keys=HELD_KEYS[:19] + HELD_KEYS[:1]) for r in rs],
     "reordered": lambda rs: [r.update(heldout_keys=HELD_KEYS[::-1]) for r in rs],
     "unknown_intent": lambda rs: [r.update(a=["NOPE", "GOAL"]) for r in rs],
+    # fold lens M1: a / b / keys can agree with each other and still not be the seed's split
+    "empty_split": lambda rs: [r.update(a=[], b=[], heldout_keys=[]) for r in rs],
+    "repeated_definition": lambda rs: [
+        r.update(
+            a=["GREET", "GREET"],
+            b=["GREET"] * 3,
+            heldout_keys=m.expected_heldout_keys(["GREET", "GREET"], ["GREET"] * 3),
+        )
+        for r in rs
+    ],
+    "foreign_split": lambda rs: [
+        r.update(
+            a=_split(16001)[0],
+            b=_split(16001)[1],
+            heldout_keys=m.expected_heldout_keys(*_split(16001)),
+        )
+        for r in rs
+    ],
+    # fold lens m1: malformed identities HALT under KE, they never raise
+    "none_ids": lambda rs: [r.update(heldout_keys=None) for r in rs],
+    "unhashable_ids": lambda rs: [r.update(heldout_keys=[{}] * 20) for r in rs],
     "float_n_a": lambda rs: rs[0].update(n_a=8.0),  # Codex round 2 MINOR: crashed, now HALTs
 }
 

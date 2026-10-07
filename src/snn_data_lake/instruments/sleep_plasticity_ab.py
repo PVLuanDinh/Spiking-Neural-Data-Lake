@@ -784,10 +784,12 @@ def expected_heldout_keys(a, b):
 
 
 def endpoint_identity_ok(r):
-    """Codex round 2: the record's ordered identities ARE the 20 frozen A/B endpoint items (not merely equal
-    across arms), so a wrong, empty, repeated or reordered list cannot read as an endpoint."""
+    """Codex round 2 + fold lens M1: the record's A / B definitions ARE the seed's frozen split
+    (`split_and_order(seed)`, not whatever the record claims) and its ordered identities ARE the 20 endpoint
+    items of that split, so an empty, repeated, foreign or reordered list cannot read as an endpoint."""
     try:
-        return r["heldout_keys"] == expected_heldout_keys(r["a"], r["b"])
+        a, b = split_and_order(r["seed"])[:2]
+        return r["a"] == a and r["b"] == b and r["heldout_keys"] == expected_heldout_keys(a, b)
     except (KeyError, TypeError):
         return False
 
@@ -843,7 +845,9 @@ def check_records(family, recs):
                 groups.setdefault(g, set()).add(r["d1"])
         fails["K1"] += [(seed, "D1", g) for g, v in groups.items() if len(v) > 1]
         # KE (Codex lens-r3-amend): one ordered held-out identity per seed across every arm
-        if len({tuple(r["heldout_keys"]) for r in arms.values()}) > 1:
+        # (a malformed identity is KE-red per record below and never reaches the set / tuple construction)
+        well_formed = [r for r in arms.values() if endpoint_identity_ok(r)]
+        if len({tuple(r["heldout_keys"]) for r in well_formed}) > 1:
             fails["KE"].append((seed, "held-out identity"))
     for r in recs:
         tag = (r["arm"], r["seed"])
@@ -851,7 +855,7 @@ def check_records(family, recs):
             fails["KE"].append(tag)
         if r["tick"]["presentations"] != [K] * r["budget"]:
             fails["K2"].append(tag)
-        held = set(r["heldout_keys"])
+        held = set(r["heldout_keys"]) if endpoint_identity_ok(r) else set()  # malformed: KE is red
         if held & (set(r["taught"]) | set(r["ring_keys"]) | set(r["drawn"])):
             fails["K3"].append(tag)
         if r["eval_before"] != r["eval_after"]:
