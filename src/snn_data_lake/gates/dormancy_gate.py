@@ -188,6 +188,15 @@ EXEMPT = {
         "reading and width decide the kernel FORM of growth/wiring_prior.py (Part C, not yet "
         "built) and gate G7's T2/T4 kernel arms (2.14 A13)",
     ),
+    "h01_partb_tangential": (
+        "permanent",
+        "specs/022 T112 (G4) Part B, DATED 2026-10-07: the tangential-kernel and pathway-width "
+        "instrument (evidence/g4-wiring-prior.md, dated pre-data amendment 2026-10-07). A "
+        "MEASUREMENT INSTRUMENT on positions, layer and sign and the pinned artifact -- it builds "
+        "no Brain, ticks nothing and never touches the lake (the h01_distance_kernel shape). Its "
+        "consumer is a RECORD, not an import: tools/g4_partb_campaign.json, which "
+        "growth/wiring_prior.py reads; its H01 entry point refuses until its planted record holds.",
+    ),
     "wiring_prior": (
         "wire",
         "specs/022 T112 (G4) Part C, DATED 2026-10-07: the anatomical attachment rule "

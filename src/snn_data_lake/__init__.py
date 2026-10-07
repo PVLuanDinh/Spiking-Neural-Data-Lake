@@ -299,6 +299,8 @@ REGIONS = {
         # specs/022 T112 (G4) T3: H01 connection probability vs soma distance -- flat / Gaussian / exponential / mixture,
         # held-out on neuron folds, region blocks and the z-interior; the planted stage gates every edge read
         "h01_distance_kernel",
+        # specs/022 T112 (G4) Part B: the TANGENTIAL kernel with pathway structure (F / G / P arms), gated by its own planted record
+        "h01_partb_tangential",
         "ignition_instrument",
         # G2(ii)'s inseparable-mapping generator and G-R2's construction check on it (g1c-carried-state.md 2.8)
         "inseparable_mapping",
