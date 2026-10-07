@@ -30,9 +30,13 @@ def _pop(seed=0, n=N, monotone=True):
     return pb.make_pop(xyz, band, rng.choice([-1, 1], n))
 
 
+_POP = _pop()
+_PATH_CELLS = pb.pathway_expected(next(r.truth for r in pb.PLAN if r.truth.get("pathway")), _POP)[0]
+
+
 @pytest.fixture(scope="module")
 def pop():
-    return _pop()
+    return _POP
 
 
 @pytest.fixture(scope="module")
@@ -225,7 +229,11 @@ def _fake_unit(seed, gf=0.0, pg=0.0, form="gauss", w=60.0, block_gf=None, pathwa
     region = [dict(z) for _ in range(pb.NB_REG)]
     if block_gf is not None:
         region[0] = {"G-F": block_gf, "P-G": pg}
-    chk = {"cells": [47, 73], "planted": [60.0, 160.0], "fitted": list(pathway or (60.0, 160.0))}
+    chk = {
+        "cells": list(_PATH_CELLS),
+        "planted": [60.0, 160.0],
+        "fitted": list(pathway or (60.0, 160.0)),
+    }
     return {
         "seed": seed,
         "pathway_check": chk,
@@ -268,8 +276,10 @@ def test_pooling_gate_is_a_gate_not_a_caveat(pop):
     for sighted in (True, False):
         rows = _fake_rows(plan, sighted)
         bands = pb.calibrate_bands(rows[plan[0].name]["units"])
-        assert pb.pooling_sighted(plan, rows, bands) is sighted
-    assert pb.pooling_sighted(plan[:2], rows, bands) is False  # no gate row at all: not sighted
+        assert pb.pooling_sighted(plan, rows, bands, _POP) is sighted
+    assert (
+        pb.pooling_sighted(plan[:2], rows, bands, _POP) is False
+    )  # no gate row at all: not sighted
     # the strict gate does not refuse an unsighted record; the reading does
     rec = {
         "population_sha256": pb.fingerprint(pop),
@@ -369,10 +379,10 @@ def test_flat_validation_bar_is_no_positive_under_any_scoring():
     calib = [_fake_unit(s) for s in pb.PLAN[0].seeds]
     bands = pb.calibrate_bands(calib)
     quiet = [_fake_unit(s) for s in row.seeds]
-    assert pb._holds(row, quiet, bands)
+    assert pb._holds(row, quiet, bands, _POP)
     # a positive in ONE region block alone (neuron folds quiet): RED verdict, but the bar fails
     leak = [_fake_unit(s, block_gf=ramp[i]) for i, s in enumerate(row.seeds)]
-    assert not pb._holds(row, leak, bands)
+    assert not pb._holds(row, leak, bands, _POP)
     assert not pb.no_positive_kernel(pb.states(leak, bands))
 
 
@@ -439,11 +449,35 @@ def test_planted_plan_is_compared_in_full_not_by_names(pop):
             pb.validate_planted(bad, pop, plan, 1200)
 
 
+def test_pathway_recovery_is_derived_from_the_authorised_truth_not_the_record():
+    """F6 (fold-lens round 2): the record's own `planted` and `cells` are never trusted."""
+    truth = next(r.truth for r in pb.PLAN if r.truth.get("pathway"))
+    cells, planted = pb.pathway_expected(truth, _POP)
+    assert len(cells) == 2 and planted == [60.0, 160.0]
+
+    def rec(**edit):
+        chk = {"cells": list(cells), "planted": list(planted), "fitted": [60.0, 160.0]}
+        return [{"pathway_check": {**chk, **edit}}]
+
+    assert pb.pathway_recovered(truth, rec(), _POP)
+    assert not pb.pathway_recovered(truth, rec(planted=[], fitted=[75.0, 190.0]), _POP)
+    assert not pb.pathway_recovered(truth, rec(fitted=[75.0, 190.0], planted=[75.0, 190.0]), _POP)
+    assert not pb.pathway_recovered(
+        truth, rec(cells=[1, 2]), _POP
+    )  # wrong pathways, self-consistent
+    assert not pb.pathway_recovered(truth, rec(fitted=[60.0]), _POP)
+    assert not pb.pathway_recovered(truth, rec(fitted=[60.0, float("nan")]), _POP)
+    assert not pb.pathway_recovered(truth, [{}], _POP)
+    assert not pb.pathway_recovered(
+        {"form": "gauss", "width": 100.0}, rec(), _POP
+    )  # no pathway truth
+
+
 def test_pathway_recovery_is_enforced_by_the_gate_on_both_widths():
     plan = pb.PLAN
     base = _fake_rows(plan, True)
     bands = pb.calibrate_bands(base[plan[0].name]["units"])
-    assert pb.pooling_sighted(plan, base, bands) is True
+    assert pb.pooling_sighted(plan, base, bands, _POP) is True
     gate = next(r for r in plan if r.expect == "pooling_gate")
     cases = (
         ((60.0, 160.0), True),
@@ -458,7 +492,7 @@ def test_pathway_recovery_is_enforced_by_the_gate_on_both_widths():
             for u in base[gate.name]["units"]
         ]
         rows = {**base, gate.name: {"units": units}}
-        assert pb.pooling_sighted(plan, rows, bands) is ok, fitted  # P-G fires in every case
+        assert pb.pooling_sighted(plan, rows, bands, _POP) is ok, fitted  # P-G fires in every case
 
 
 def test_exported_form_is_the_scored_form_and_the_selection_is_disclosure_only(pop, n_all):

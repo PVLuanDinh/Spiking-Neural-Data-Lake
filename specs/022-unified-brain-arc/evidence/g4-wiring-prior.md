@@ -877,3 +877,9 @@ only; they were NOT re-panelled (a third panel round needs the owner). Each fold
   synthetic two-class slab (development seeds, planted 60 / 160 um, 1,500 edges): seed 10052 the Gaussian fit read 62.2 / 138.5 while the
   mixture read 44.0 / 132.1 (P-G +70.4); seed 10051 the mixture read 53.9 / 295.2. A gate row the mixture does not recover therefore reads
   NOT_READ_POOLING_UNSIGHTED: that is the honest reading, not a defect to tune away, and may be the outcome on H01.
+- **F6 (B1's recovery is derived from the authorised truth; fold-lens MAJOR).** `pathway_recovered` zipped the record's own `fitted` against
+  its own `planted`, so an empty `planted`, or cells and widths that were wrong but self-consistent, passed. Fixed to (c)B1's words: the
+  expected cells and widths are derived from the registered truth and the H01 positions (`pathway_expected`; the two most populous
+  cross-class cells at 60 and 160 um); a record must carry exactly those two cells with two finite fits within 15 percent on every seed.
+  `recovered`, `_holds`, `pooling_sighted` and `validate_planted` take the population. Red on `32b8a615`: `planted = []` with fits 75 / 190,
+  and a self-consistent wrong-cell record, both returned True.

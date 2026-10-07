@@ -539,34 +539,49 @@ def pathway_check(pop, h, truth, unit):
     th = fit_global(d, n, k, SCORED_KIND)
     pens = unit["pen"]
     delta = fit_delta(d, n, k, th, SCORED_KIND, max(set(pens), key=pens.count))
-    scale = pathway_scales(truth, pop)
-    cells = [int(c) for c in np.flatnonzero(scale != 1.0)]
+    cells, planted = pathway_expected(truth, pop)
     return {
         "cells": cells,
-        "planted": [float(truth["width"] * scale[c]) for c in cells],
+        "planted": planted,
         "fitted": [float(math.exp(th[0]) * math.exp(delta[c])) for c in cells],
     }
 
 
-def pathway_recovered(units):
-    """Every planted pathway's fitted width within PATHWAY_RECOVERY_TOL of the planted one, on EVERY seed."""
+def pathway_expected(truth, pop):
+    """The authorised truth on this population: the planted pathway cells and their widths, derived from the
+    registered truth and the positions, never read back from a serialised record."""
+    scale = pathway_scales(truth, pop)
+    cells = [int(c) for c in np.flatnonzero(scale != 1.0)]
+    return cells, [float(truth["width"] * scale[c]) for c in cells]
+
+
+def pathway_recovered(truth, units, pop):
+    """Every planted pathway's fitted width within PATHWAY_RECOVERY_TOL of the planted one, on EVERY seed. The
+    expected cells and widths are DERIVED from the authorised truth and population (amendment (f) F6): a record
+    must carry exactly those two cells with two finite fits; its own `planted` values are never consulted."""
+    cells, planted = pathway_expected(truth, pop)
+    if len(cells) != 2:
+        return False
     for u in units:
         chk = u.get("pathway_check")
-        if not chk or len(chk["cells"]) != 2 or len(chk["fitted"]) != 2:
+        if not chk or chk.get("cells") != cells or len(chk.get("fitted", ())) != 2:
+            return False
+        if not all(isinstance(f, (int, float)) and math.isfinite(f) for f in chk["fitted"]):
             return False
         if any(
-            abs(f - p) > PATHWAY_RECOVERY_TOL * p for f, p in zip(chk["fitted"], chk["planted"])
+            abs(f - p) > PATHWAY_RECOVERY_TOL * p
+            for f, p in zip(chk["fitted"], planted, strict=True)
         ):
             return False
     return True
 
 
-def recovered(truth, units):
+def recovered(truth, units, pop):
     """Amendment 4 (i): on a single-width kernel row the width is recovered within 10% on every seed (the
     fold-mean of the fitted width) and the matching form beats the other single form on held-out LL."""
     form = truth["form"]
     if truth.get("pathway"):
-        return pathway_recovered(units)
+        return pathway_recovered(truth, units, pop)
     if form not in ("gauss", "exp"):
         return True
     col = 0 if form == "gauss" else 1
@@ -586,22 +601,22 @@ def no_positive_kernel(st):
     return all(x != 1 for x in states_ + [blk["G-F"] for blk in st["region_blocks"]])
 
 
-def _holds(row, units, bands):
+def _holds(row, units, bands, pop):
     st = states(units, bands)
     verdict, _ = read_partb(st)
     want = {"red_flat": "RED_PATHWAY_FLAT", "red_pool": "RED_POOL"}[row.expect]
     if row.expect == "red_flat" and not no_positive_kernel(st):
         return False
-    return verdict == want and recovered(row.truth, units)
+    return verdict == want and recovered(row.truth, units, pop)
 
 
-def pooling_sighted(plan, rows, bands):
+def pooling_sighted(plan, rows, bands, pop):
     """The explicit gate: the planted pathway-width row's neuron-fold P-G state is +1 (P sees pathway widths on
     these positions). Not part of `all_rows_hold`: its failure turns every P-G reading into NOT_READ."""
     gate = [r for r in plan if r.expect == "pooling_gate"]
     return bool(gate) and all(
         states(rows[r.name]["units"], bands)["neuron"]["P-G"] == 1
-        and recovered(r.truth, rows[r.name]["units"])
+        and recovered(r.truth, rows[r.name]["units"], pop)
         for r in gate
     )
 
@@ -661,10 +676,10 @@ def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
         if row.expect is None:
             bands = calibrate_bands(units)
         elif row.expect == "pooling_gate":
-            rows[row.name]["sighted"] = pooling_sighted((row,), rows, bands)
+            rows[row.name]["sighted"] = pooling_sighted((row,), rows, bands, pop)
         else:
             rows[row.name]["reading"] = read_partb(states(units, bands))[0]
-            rows[row.name]["holds"] = _holds(row, units, bands)
+            rows[row.name]["holds"] = _holds(row, units, bands, pop)
         if log:
             log(row.name, rows[row.name].get("reading"))
     return {
@@ -676,7 +691,7 @@ def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
         "bands_sha256": hashlib.sha256(json.dumps(bands, sort_keys=True).encode()).hexdigest(),
         "rows": rows,
         "all_rows_hold": all(r.get("holds", True) for r in rows.values()),
-        "pooling_sighted": pooling_sighted(plan, rows, bands),
+        "pooling_sighted": pooling_sighted(plan, rows, bands, pop),
     }
 
 
@@ -705,7 +720,9 @@ def validate_planted(record, pop, plan=PLAN, n_edges=t3.N_EDGES):
     if bands != record["bands"]:
         raise ExposureRefused("the planted bands do not recompute from the calibration units")
     for r in plan[1:]:
-        if r.expect != "pooling_gate" and not _holds(r, record["rows"][r.name]["units"], bands):
+        if r.expect != "pooling_gate" and not _holds(
+            r, record["rows"][r.name]["units"], bands, pop
+        ):
             raise ExposureRefused(f"planted row {r.name} does not hold on recomputation")
     return bands
 
@@ -735,7 +752,7 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
         u["seed"] = int(s)
         units.append(u)
     st = states(units, bands)
-    sighted = pooling_sighted(PLAN, planted_record["rows"], bands)
+    sighted = pooling_sighted(PLAN, planted_record["rows"], bands, pop)
     verdict, keep = read_partb(st, pooling_sighted=sighted)
     out = {
         "reading": verdict,
