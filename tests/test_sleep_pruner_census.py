@@ -171,7 +171,7 @@ def _live_mtime(home=LIVE_HOME):
     """{relpath: (size, mtime_ns)} of every file under a home, recursively (the live home has
     skills/). A file that cannot be stat'd FAILS CLOSED: it gets a fresh object that never equals
     another stamp's, so an unreadable pair reads as changed, never as unchanged. A directory that
-    cannot be listed fails closed the same way."""
+    cannot be listed, or is a link, fails closed the same way."""
     try:
         root = os.stat(home)
     except FileNotFoundError:
@@ -186,7 +186,11 @@ def _live_mtime(home=LIVE_HOME):
         where = os.path.relpath(err.filename or home, home)
         out[os.path.join(where, "<unlistable>")] = object()
 
-    for root, _dirs, files in os.walk(home, onerror=unlistable):
+    for root, dirs, files in os.walk(home, onerror=unlistable):
+        for d in dirs:  # os.walk does not descend into a linked directory: fail closed on it
+            full = os.path.join(root, d)
+            if os.path.islink(full) or os.path.isjunction(full):
+                out[os.path.join(os.path.relpath(full, home), "<linked>")] = object()
         for f in files:
             full = os.path.join(root, f)
             try:
@@ -259,6 +263,21 @@ def test_the_live_stamp_tells_an_absent_root_from_an_unreadable_one(tmp_path, mo
     monkeypatch.setattr(
         os.path, "isdir", lambda *_a, **_k: False
     )  # what isdir answers on a stat error
+    assert _live_mtime(str(decoy)) != _live_mtime(str(decoy))
+
+
+def test_the_live_stamp_fails_closed_on_a_linked_directory(tmp_path, monkeypatch):
+    """Codex fold lens M2: os.walk does not descend into a directory symlink or junction, so a
+    rewrite beneath one read as unchanged. A linked directory is a never-equal marker."""
+    decoy = tmp_path / "decoy_live"
+    elsewhere = tmp_path / "elsewhere"
+    decoy.mkdir()
+    elsewhere.mkdir()
+    (elsewhere / "unit.npz").write_bytes(b"1")
+    (decoy / "linked").mkdir()
+    real_islink = os.path.islink
+    link = str(decoy / "linked")
+    monkeypatch.setattr(os.path, "islink", lambda p: os.fspath(p) == link or real_islink(p))
     assert _live_mtime(str(decoy)) != _live_mtime(str(decoy))
 
 
