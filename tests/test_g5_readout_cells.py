@@ -264,3 +264,26 @@ def test_pa3_exits_nonzero_when_the_positive_control_fails(monkeypatch):
     assert g.main(["--pa3"]) == 1
     monkeypatch.setattr(g, "pa3", lambda: True)
     assert g.main(["--pa3"]) == 0
+
+
+def _delta_minus_batch(neuter):
+    # the B-R0 shape through the surviving wiring: arm_parts -> run_instrumented, brain-free
+    diffs = []
+    for s in g.PA3_SEEDS[:6]:
+        ch = g.oracle_chain(s)
+        M = 1 + max(c for _, c in ch)
+        batch, _ = g.arm_parts("BATCH", M, None, s)
+        delta, _ = g.arm_parts("BATCH" if neuter else "DELTA", M, None, s)
+        diffs.append(
+            g.run_instrumented(s, ch, delta, M)["live_acc"]
+            - g.run_instrumented(s, ch, batch, M)["live_acc"]
+        )
+    return g.reading("DELTA - BATCH", diffs)
+
+
+def test_delta_minus_batch_positive_control_is_met_and_a_neutered_delta_is_not():
+    # Codex g5_b lens-1 m1: the deletion left no DELTA - BATCH test through the real arm wiring
+    met, _, x = _delta_minus_batch(neuter=False)
+    assert met and x["nontied"] >= g.MIN_NONTIED
+    met0, c0, _ = _delta_minus_batch(neuter=True)  # DELTA wired as BATCH: contrast identically 0
+    assert not met0 and c0.degenerate
