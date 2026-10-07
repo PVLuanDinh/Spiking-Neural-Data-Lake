@@ -4,6 +4,7 @@ Pre-registration: specs/022-unified-brain-arc/evidence/g6-sleep-durable-memory.m
 Brain-backed cases build ONE short scratch brain per arm under throwaway_home (never the live lake).
 """
 
+import hashlib
 import os
 import stat
 
@@ -167,8 +168,18 @@ def short_runs():
     return runs
 
 
+def _digest(path):
+    """Content digest (a same-size rewrite with a preserved mtime must not read as unchanged)."""
+    h = hashlib.blake2b(digest_size=16)
+    with open(path, "rb") as f:
+        while block := f.read(8 << 20):
+            h.update(block)
+    return h.hexdigest()
+
+
 def _live_mtime(home=LIVE_HOME):
-    """{relpath: (size, mtime_ns)} of every file under a home, recursively (the live home has
+    """{relpath: (size, mtime_ns, blake2b)} of every file under a home, recursively (the live home
+    has
     skills/). A file that cannot be stat'd FAILS CLOSED: it gets a fresh object that never equals
     another stamp's, so an unreadable pair reads as changed, never as unchanged. A directory that
     cannot be listed, or is a link, fails closed the same way."""
@@ -195,7 +206,7 @@ def _live_mtime(home=LIVE_HOME):
             full = os.path.join(root, f)
             try:
                 st = os.stat(full)
-                out[os.path.relpath(full, home)] = (st.st_size, st.st_mtime_ns)
+                out[os.path.relpath(full, home)] = (st.st_size, st.st_mtime_ns, _digest(full))
             except OSError:
                 out[os.path.relpath(full, home)] = object()
     return out
@@ -222,7 +233,14 @@ def test_the_live_stamp_detects_change_appearance_nested_rewrite_and_fails_close
     base = _live_mtime(str(decoy))
     (decoy / "skills" / "new.npz").write_text("x")
     assert _live_mtime(str(decoy)) != base  # a new nested file
-    monkeypatch.setattr(os, "stat", lambda *_a, **_k: (_ for _ in ()).throw(PermissionError()))
+    real_stat = os.stat
+
+    def deny_files(path, *a, **k):  # the root stays readable; every file stat fails
+        if os.fspath(path) == str(decoy):
+            return real_stat(path, *a, **k)
+        raise PermissionError(13, "denied", str(path))
+
+    monkeypatch.setattr(os, "stat", deny_files)
     assert _live_mtime(str(decoy)) != _live_mtime(str(decoy))  # unreadable fails closed
 
 
@@ -279,6 +297,19 @@ def test_the_live_stamp_fails_closed_on_a_linked_directory(tmp_path, monkeypatch
     link = str(decoy / "linked")
     monkeypatch.setattr(os.path, "islink", lambda p: os.fspath(p) == link or real_islink(p))
     assert _live_mtime(str(decoy)) != _live_mtime(str(decoy))
+
+
+def test_the_live_stamp_sees_a_same_size_rewrite_with_a_preserved_mtime(tmp_path):
+    """Codex fold lens m1: size and mtime alone miss b"abc" -> b"xyz" with the mtime restored."""
+    decoy = tmp_path / "decoy_live"
+    decoy.mkdir()
+    f = decoy / "brain_lake.bin"
+    f.write_bytes(b"abc")
+    os.utime(f, ns=(5, 5))
+    base = _live_mtime(str(decoy))
+    f.write_bytes(b"xyz")
+    os.utime(f, ns=(5, 5))
+    assert _live_mtime(str(decoy)) != base
 
 
 def test_c6_the_live_arm_is_byte_repeatable(short_runs):
