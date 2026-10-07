@@ -1019,3 +1019,53 @@ are recorded here, after the fact, for the citable record:
   `r_stdp`'s trace is a spike-timing coincidence trace. They share a word, not a mechanism, and neither reuses the other.
 
 This correction documents a gap in what 4ecc90d9 disclosed. It does not change its measurement (PA1 NOT MET) or the deletion.
+
+## Results: Part B in-brain cells, dev 11000-11007 and confirmatory 11100-11107 (2026-10-07; appended below the frozen text and its amendments, which are unchanged)
+
+Both reads are from the driver `g5_readout_cells --dev` (dev, HEAD 3d5ca4df) and `--confirm` (confirmatory, HEAD
+0fba900c, which adds the printed reading `read_part_b`; the cell machinery and arms are unchanged between them). Each
+ran once in one process tree under a fresh NORD_HOME and TEMP on D:, pool of 4, with the live lake's size and mtime
+recorded before and after: LAKE UNCHANGED 3318607701|639260867593316840 both times. No seed was re-run on a red and no
+reserve seed was used (`replacements: []`). Logs: the G5 scratchpad, `g5_dev_11000-11007.log` and
+`g5_conf_11100-11107.log` (verbatim below).
+
+**Dev, 11000-11007 (rc 0, 1347 s).** The reach gate did not halt, so COUPLED0 == DELTA and every coupled arm left beta
+and the refit trajectory identical to DELTA's on 8 of 8. COUPLED - DELTA mean -0.0007, t -0.158, NOT MET;
+COUPLED_MARG - DELTA mean -0.0058, t -0.396, NOT MET; DELTA - BATCH mean +0.1519, t +3.385, MET (8 of 8 positive).
+The dev read is the registered instrument dry-run (record 4), not B's disposition.
+
+**Confirmatory, 11100-11107 (rc 0, 1519 s), read once:**
+
+```
+  seed 11102: M 3  events 397  shift f 0.091  VACUOUS            (other seeds f 0.592-1.000, all non-vacuous)
+CONF B-R2 / B-R4 reach gate: PASSED on 8 seeds
+  DELTA - BATCH          mean +0.1509  t +4.551  ++0+++++  MET   (B-R0 positive control)
+  COUPLED - DELTA        mean +0.0021  t +0.444  ++-++--+  NOT MET  (B-R1)
+  COUPLED - COUPLED_MARG mean -0.0020  t -0.380  --+---++  NOT MET  (B-R3 conjunct 1)
+  COUPLED - COUPLED_SHUF mean +0.4832  t +4.855  ++-+++++  MET      (B-R3 conjunct 2)
+  shift non-vacuous on 7 of 8 seeds (B-R3 conjunct 3; vacuous: [11102])
+  COUPLED_SHUF - DELTA   mean -0.4811  t -4.843  --0-----  NOT MET  (B-R3 conjunct 4: must be NOT MET)
+  COUPLED_PERM - DELTA   mean -0.5354  t -4.560  --------  NOT MET  (REPORTED only)
+  live acc / persistence floor / acc - floor: BATCH 0.7265 / 0.9525 / -0.2260; COUPLED 0.8795 / 0.9525 / -0.0729;
+  COUPLED0 0.8774 / -0.0751; COUPLED_MARG 0.8815 / -0.0709; DELTA 0.8774 / -0.0751; COUPLED_SHUF 0.3963; COUPLED_PERM 0.3420
+CONF B-R0..B-R4 all hold: False  (B-R3 False)
+```
+
+**Disposition.** B-R1 is NOT MET (mean +0.0021, t +0.444; not significantly negative, so not HARMFUL). B-R3 conjuncts 1 and 3
+also fail; conjunct 2 holds and conjunct 4 holds only by being NOT MET. Per 3.4 and 3.6 the reading does not land, and
+`categorical_coupling.py` and its arms are deleted in the next commit (P8, deletion on a null). The null reads: the
+readout's errors on this stream are not a consistent relabelling that a prior-free counts matrix recovers; COUPLED sits
+within 0.002 of both DELTA and the marginal-prior control, and every arm remains 0.07 below the persistence floor.
+Seed 11102's vacuous shift is a result, not an instrument failure (record 4's reserve rule lists crash, TIMEOUT,
+`unified` False and a same-rows halt), so it was not replaced; it counts against conjunct 3 and changes no other verdict.
+The owner's relational requirement is untouched and stays Part D build work (3.6).
+
+**Caveats, disclosed.**
+- The reach gate (B-R2 / B-R4) prints a line only through `read_part_b`, which was added after the dev read. In the dev
+  log a pass is therefore silent: the dev "gate passed" is inferred from the absence of a ReachHalt, not from a printed
+  line. The confirmatory log prints it.
+- The red-first claims for the four cp4 folds bf92393c, d7d20f63, 35f92a98 and 4bdbd14c were reproduced as: the new test
+  fails on the parent source, but each failure is a missing-API error (AttributeError / TypeError), not a wrong-behaviour
+  assertion. They are weak reds.
+- The cell reading's own first fixtures (commit 0fba900c's test) failed twice on fixture defects (a degenerate B-R0
+  contrast and a periodic recording that read vacuous); only the fixtures changed.
