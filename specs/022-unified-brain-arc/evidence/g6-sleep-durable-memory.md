@@ -743,6 +743,23 @@ tying or winning makes R2 REFUSED (blind outcome), and a missing twin on any see
 survives only if it beats both. P-DP and P-EY keep their single adversarial twin. The random twin is therefore a GATE
 for P-LL, no longer only a reported contrast.
 
+**DATED NOTE 2026-10-07 (batch-1 Codex panel dispositions on G6's arc; no deciding data read).** Additive; zero lines
+removed. Panel replies archived at `memory/archive/sndl-board-live/codex_panels_1006/batch1/` (final_correctness,
+final_safety, final_p2p3). Folded earlier as their own commits: --out guard 8527c5eb, seed block 35e5f358, replay split
+filter 2e8a34ae, seed-count refusals fd1039b0, sabotage-schedule shortfall 71112a40, all-circuit meter and
+anchor-before/observe-after-teach cac35543 + 8bb6a088, freeze binds the winner a1e644cf, restart compute bc278e97, C25
+through the real counter f862e17a, structural budget refusal 34eefe6e, superiority helper 817d5db7, private wrapper
+deleted cf9a2aea. This round: (1) correctness MINOR, small budget -> `run_instance` refuses B < 4 for random and SA both
+before either runs (df3fb60d). (2) safety MAJOR, restored PressureMeter -> the lost-update claim is REFUTED:
+`PressureMeter.__init__` re-snapshots weights at restore, and a continuation-equality test written to be red passed on
+its first run (c4e2fd7c, a regression pin); the panel's tick-cursor remark was real and is fixed (08d5592c, `tick=`).
+(3) safety MINOR, test depends on the operator's home -> PARTLY REFUTED: the arms run under the real guard, so the real
+live home is still stamped (it is the safety gate); the stamp itself was weak (max mtime) and is now per-file
+(size, mtime_ns) with a decoy-home positive control (579f0f8d). (4) p2p3 MAJOR, `_one_pass` -> the n <= 1 guard landed
+(5079a776); the wider one-rule-or-two question is OPEN with G3 and the lead. The three `substrate/home.py` findings
+(extended-path bypass, aliased lake file, create-before-check) are R1's guard, folded on batch 1 (claude/int1b); this
+branch has the old guard until the integration rebase. The `g2-taught-problems.md` finding is G2's.
+
 ## 3. Results
 
 None. Nothing is measured beyond section 1; no deciding test has run.
