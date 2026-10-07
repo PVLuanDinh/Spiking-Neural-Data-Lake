@@ -269,3 +269,11 @@ nothing in the console scripts consumes a fetched corpus any more; (2) docs nami
 left as they were, `docs/TRAINING.md` is now the retirement note, `docs/POLICIES.md:1076` is the owner's (text proposed
 above). The `snn-train` console script (`pyproject.toml:303`) stays DECLARED on purpose and only refuses; it is not a live
 trainer. "The same export format exists elsewhere" was not checked and is not claimed.
+
+### 2.11 Dated note, 2026-10-07 -- corrected wordings from the D17 closing report (additive; no earlier line is edited)
+
+Source: the D17 closing report, Codex gpt-6.1-sol, on `c84a2e5b`. The two defects it found in W6 and in the converter are folded in
+`4a9ba265`, `81778879` (gate) and `877967de` (converter). The wordings below replace, for reading purposes, the earlier ones:
+
+- Claim 2: W6 reports 3/3/3 candidate sites in an incomplete census; its disclosed blind fixtures behave as printed. The candidate count is not a proven lower bound on actual violations.
+- Claim 6: The checkpoint bridge is ported with enforced dimensions and tested refusals; exhaustive malformed-format rejection is not established. No checkpoint was found in the recorded bounded search, rather than anywhere on disk. The scores remain unreproduced historical readings.
