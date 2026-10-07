@@ -48,7 +48,7 @@ EPOCHS = 400  # [PROJECTION, 2.7]: re-derived by the dated pre-data amendment (d
 H = 64  # [PROJECTION, 2.4]: re-derived on GREET / GOAL by the pre-data amendment (2.13's rule)
 # The dated pre-data amendment (2.13's second freeze step) that fixes EPOCHS, H and the NGSNN disposition. None
 # until the lead commits it; while None, preflight refuses every confirmatory / reserve seed (cp1 #7).
-AMENDMENT = None
+AMENDMENT = "2026-10-06 dated pre-data amendment 2.17 (99d6193d) + 2.17.1 correction (e3f64dfc)"
 DEV_SEEDS = (8000, 8001, 8002, 8003)
 CONFIRMATORY_SEEDS = tuple(range(8200, 8208))
 RESERVE_SEEDS = tuple(range(8300, 8308))

@@ -120,6 +120,7 @@ def test_preflight_refuses_an_arm_naming_future_d(tmp_path):
 
 def test_preflight_accepts_the_registered_campaign_only_after_the_amendment(tmp_path, monkeypatch):
     # cp1 #7: confirmation is refused until the dated pre-data amendment is entered
+    monkeypatch.setattr(tc, "AMENDMENT", None)
     with pytest.raises(PermissionError):
         tc.preflight(tc.CONFIRMATORY_SEEDS, str(tmp_path), require_clean=False)
     with pytest.raises(PermissionError):
