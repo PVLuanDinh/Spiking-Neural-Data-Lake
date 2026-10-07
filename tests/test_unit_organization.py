@@ -544,3 +544,13 @@ def test_zero_edge_graph_is_an_instrument_refusal_not_a_zero_division():
     )
     assert {"RULE", "RANDOM", "RANDOM-SEQ"} <= set(out["refused"])
     assert out["rule_credited"] is None and out["verdicts"] == {}
+
+
+def test_t1_struct_red_names_the_deletion_scope_amendment_e_registers():
+    # Codex D+E: the RED text claimed E/E wiring deleted; COL has none (amendment (e)): the shared
+    # inhibitory unit with E->I and I->E wiring is what goes, the neuron count does not
+    out = U.t1_struct_decision(_v(True), _v(False), owner_o9=True, censored=_NONE)
+    text = out["disposition"]
+    assert out["deletes_structure"] is True
+    assert "E->I" in text and "I->E" in text and "E/E" not in text and "E->E" not in text
+    assert "neuron count" in text

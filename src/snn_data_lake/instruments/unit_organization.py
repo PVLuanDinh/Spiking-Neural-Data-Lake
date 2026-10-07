@@ -152,8 +152,8 @@ def t1_struct_decision(u_verdict, e_verdict, *, owner_o9, censored):
         disposition = "column structure kept"
     elif owner_o9:
         disposition = (
-            "column structure not shown non-inferior within delta_NI / 20 %: shared "
-            "inhibition and E/E wiring deleted, owner told"
+            "column structure not shown non-inferior within delta_NI / 20 %: the shared "
+            "inhibitory unit with its E->I and I->E wiring deleted (the neuron count stays), owner told"
         )
     else:
         disposition = "RED reported to the owner; nothing deleted until O9 is answered"
