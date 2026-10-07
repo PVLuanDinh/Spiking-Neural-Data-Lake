@@ -895,3 +895,18 @@ Ties to the state-branch amendment (98d92203) and its ctxread row types (21ca1bc
   `Ledger.open_problem`, `_born` + `record_spend`, bytes = file size delta per batch), twice, deterministic:
   15,236 / 15,216 / 15,240 / 15,242 / 15,197 B. The lead reproduced it and re-pinned tag 11 to 15,242 (int1b 732a72e8). The
   fold's figures are HISTORICAL; the flood test's 8x bar is unaffected.
+
+## DATED ADDENDUM 2026-10-07 (b) (G2's confirmatory (i) read; gradient declarations; no G3 data read)
+
+- **C11 for B = S0C1 is UNREAD, never MET, until Q-AII resolves.** G2's confirmatory (i) (8200-8207, claude/g2 e6a4a75e,
+  record 5.1) has the canonical incumbent solving task A in C1-d's shape 8/8 (`inc.ac1d`; lr 0 never solves it, so it is
+  learned) but the curriculum-A twin for B = S0C1 (`inc.aii`) 0/8, parked as Q-AII. The retention row (task A for B,
+  2.9 C11, option (a) of ruling 15) therefore has no readable A for S0C1; C11 on C1-d is separately gated by G2's
+  `pre.c1d` 0/8 (REPRESENTABLE, NOT SHOWN LEARNABLE). Neither is relaxed or relabelled here.
+- **What G2's 8/8 is not.** `pre.S0C1` is a presized frozen random-feature expansion (H = 64) feeding the canonical
+  learner: no grown segment, no witness units, no decoys. It supports only "a nonlinear layer of H = 64 solves S0C1"; it is
+  NOT C16's grown-segment-masked-off arm, which stays G3's own unrun cell.
+- **Gradient-claim declarations (dfedf10c).** `growth_loop.trace_train` is declared LOCAL (own PSP eligibility trace x one
+  broadcast scalar from a FIXED random vector drawn at birth; no transposed forward weight; this pre-registration states the
+  update and never claims it tracks a gradient). Accepted by the lead. The guard stands: the day any text says it tracks a
+  gradient it is reclassified a claimant and owes the cosine > 0.5 bar. `capacity_certificate._constraints` is NOT_A_RULE.
