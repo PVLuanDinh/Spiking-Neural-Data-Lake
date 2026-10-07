@@ -6,8 +6,8 @@
   ],
   "note": "dispositions per T050's expressibility categories; UNDISPOSITIONED is the honest day-one state for unadjudicated LOCAL rules -- the WAVE (T051c-wave) fills rows; regen_rule_census enforces per-row monotonicity through the sanctioned edit path, rule_composer 1e polices membership vs the live census, and the ADVANCE direction (whether a disposition's text is honest) is review-grade, said plainly",
   "ratchet_baseline": {
-   "rows": 104,
-   "undispositioned": 56
+   "rows": 105,
+   "undispositioned": 57
   },
   "source": "gradient_claim_gate.census() via rule_composer.regen_rule_census -- regeneration is the only edit path for rows; new adjudications join _CENSUS_ADJUDICATED there; the regen refuses disposition retractions and dead entries",
   "task": "specs/022 T051c"
@@ -189,6 +189,11 @@
    "kind": "LOCAL"
   },
   "growth/autapse_neuron.py::_LinearReadout.train": {
+   "disposition": "UNDISPOSITIONED",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "growth/growth_loop.py::trace_train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
    "kind": "LOCAL"
