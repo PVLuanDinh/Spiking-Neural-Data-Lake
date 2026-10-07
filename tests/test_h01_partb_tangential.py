@@ -41,8 +41,8 @@ def n_all(pop):
 
 def test_frame_violation_monotone_vs_shuffled():
     p, q = _pop(), _pop(monotone=False)
-    assert pb.frame_violation(p.layer, p.fr[0]) == 0.0
-    assert pb.frame_violation(q.layer, q.fr[0]) > 0.25
+    assert pb.frame_violation(p.layer, p.fr[0]) == (0.0, 0)
+    assert pb.frame_violation(q.layer, q.fr[0])[0] > 0.25
 
 
 def test_dtan_wraps_theta_and_ignores_nothing_in_z():
@@ -337,3 +337,15 @@ def test_development_seeds_only_in_the_synthetic_tests():
     campaign = set(range(10100, 10300)) | set(range(10300, 10358)) | {10007}
     drawn = {int(m) for m in re.findall(r"\b(1\d{4})\b", text)}
     assert not drawn & campaign, sorted(drawn & campaign)
+
+
+def test_frame_statistic_is_soma_level_and_a_small_disorder_is_a_small_fraction():
+    r = np.linspace(2000.0, 1000.0, 1000)  # pia outward first
+    layer = np.repeat(np.arange(7), [143, 143, 143, 143, 143, 143, 142])
+    assert pb.frame_violation(layer, r) == (0.0, 0)  # a clean boundary is not a violation
+    mixed = layer.copy()
+    mixed[500], mixed[501] = mixed[501] + 3, mixed[500]  # one deep soma stranded among shallow ones
+    frac, count = pb.frame_violation(mixed, r)
+    assert (
+        0 < count <= 2 * pb.FRAME_WINDOW + 1 and frac == count / 1000
+    )  # per soma, not per cross-band pair

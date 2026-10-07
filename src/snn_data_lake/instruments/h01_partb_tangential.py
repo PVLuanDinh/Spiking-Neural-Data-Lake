@@ -94,20 +94,20 @@ def d_tan(fr, i, j):
     return np.sqrt((0.5 * (r[i] + r[j]) * dth) ** 2 + (z[i] - z[j]) ** 2)
 
 
+FRAME_WINDOW = 5  # neighbours each side in the r-order: a session choice (amendment 1 names the statistic, not W)
+
+
 def frame_violation(layer, r):
-    """Discordant fraction over pairs of units in different bands: layer a < b should sit at larger r
-    (pia outward of the white matter). 0 = r is monotone in the band; 0.5 = no order."""
-    bands = np.unique(layer)
-    srt = {b: np.sort(r[layer == b]) for b in bands}
-    bad = tot = 0
-    for ia, a in enumerate(bands):
-        for b in bands[ia + 1 :]:
-            ra, rb = srt[a], srt[b]
-            # pairs (i in a, j in b), a < b: concordant when r_i > r_j
-            conc = int(np.searchsorted(rb, ra, side="left").sum())
-            bad += len(ra) * len(rb) - conc
-            tot += len(ra) * len(rb)
-    return bad / tot
+    """Soma-level, amendment 1: somata ordered by r (pia outward of the white matter), the band index must be
+    non-decreasing along it. A soma violates when one of its FRAME_WINDOW r-order neighbours on either side
+    disagrees with the order (an earlier neighbour in a deeper band, or a later one in a shallower band).
+    Returns (fraction of somata, count): 0 = r is monotone in the band; the bar is on the fraction."""
+    b = np.asarray(layer)[np.argsort(-np.asarray(r), kind="stable")]
+    bad = np.zeros(len(b), dtype=bool)
+    for w in range(1, FRAME_WINDOW + 1):
+        bad[w:] |= b[:-w] > b[w:]  # an earlier (further-out) neighbour carries a deeper band
+        bad[:-w] |= b[w:] < b[:-w]  # a later neighbour carries a shallower band
+    return float(bad.mean()), int(bad.sum())
 
 
 def unit_class(layer, sign):
@@ -580,7 +580,7 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
     if tuple(seeds) != SEEDS:
         raise ExposureRefused("H01's edges are read on the registered confirmatory seeds only")
     bands = validate_planted(planted_record, pop)
-    if frame_violation(pop.layer, pop.fr[0]) > FRAME_VIOLATION_MAX:
+    if frame_violation(pop.layer, pop.fr[0])[0] > FRAME_VIOLATION_MAX:
         return {"reading": "REFUSED_FRAME", "artifact_sha256": sha}
     edges = (np.asarray(z["pre_idx"]), np.asarray(z["post_idx"]))
     units, first = [], None
@@ -631,7 +631,7 @@ def build_record(pop, h, units, verdict, keep, edges, sha, t3_ref=None):
         "beta_fallback": True,
         "dbar": dbar(pop.layer, edges[0], edges[1]),
         "density_per_mm2": tangential_density(pop),
-        "frame_violation": frame_violation(pop.layer, pop.fr[0]),
+        "frame_violation": dict(zip(("fraction", "count"), frame_violation(pop.layer, pop.fr[0]))),
         "artifact_sha256": sha,
         "t3_record": t3_ref,
     }
