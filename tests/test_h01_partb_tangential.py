@@ -400,9 +400,9 @@ def test_t3_gate_accepts_the_real_record_and_refuses_each_defect(tmp_path):
 
 def test_score_h01_needs_a_t3_ref_and_provenance_names_the_harness():
     with pytest.raises(pb.ExposureRefused):
-        pb.score_h01("data/h01/h01_c3_graph.npz", {"rows": {}}, t3_ref=None) if (
-            t3.REPO / "data/h01/h01_c3_graph.npz"
-        ).exists() else (_ for _ in ()).throw(pb.ExposureRefused("fixture"))
+        pb.score_h01(
+            "no-such-artifact.npz", {"rows": {}}, t3_ref=None
+        )  # refused before any file is read
     prov = pb.provenance()
     assert len(prov["git_head"]) == 40 and set(prov["harness_sha256"]) == set(pb.HARNESS)
 

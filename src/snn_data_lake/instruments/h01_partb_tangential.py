@@ -599,11 +599,11 @@ def validate_planted(record, pop, plan=PLAN, n_edges=t3.N_EDGES):
 
 def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
     """The only edge read. Refuses unless the planted record validates (and the seeds are the registered 8)."""
-    z, sha = t3._verified(path, pin)
     if not t3_ref:
         raise ExposureRefused(
             "Part B reads only after a READ T3 record with a kernel (A13): none given"
         )
+    z, sha = t3._verified(path, pin)
     pop = make_pop(t3.xyz_um(z["xyz_nm"]), z["layer"], z["sign"])
     if tuple(seeds) != SEEDS:
         raise ExposureRefused("H01's edges are read on the registered confirmatory seeds only")
