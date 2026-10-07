@@ -534,6 +534,15 @@ def pooling_sighted(plan, rows, bands):
     )
 
 
+def plan_dicts(plan):
+    return [r._asdict() | {"truth": dict(r.truth)} for r in plan]
+
+
+def _plan_json(plan_like):
+    """Names, truths, seeds, expectations and ORDER, normalised through JSON (tuples read back as lists)."""
+    return json.loads(json.dumps(plan_like))
+
+
 def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
     """Positions + layer/sign only. Calibration -> bands (locked by hash) -> every other row."""
     n_all = _all_pairs_n(pop)
@@ -551,7 +560,7 @@ def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
         if log:
             log(row.name, rows[row.name].get("reading"))
     return {
-        "plan": [r._asdict() | {"truth": dict(r.truth)} for r in plan],
+        "plan": plan_dicts(plan),
         "population_sha256": fingerprint(pop),
         "n_edges_target": n_edges,
         "bands": bands,
@@ -572,7 +581,7 @@ def validate_planted(record, pop, plan=PLAN, n_edges=t3.N_EDGES):
         or record.get("n_edges_target") != n_edges
     ):
         raise ExposureRefused("the planted record was drawn on a different population or density")
-    if [r["name"] for r in record["plan"]] != [r.name for r in plan] or set(record["rows"]) != {
+    if _plan_json(record["plan"]) != _plan_json(plan_dicts(plan)) or set(record["rows"]) != {
         r.name for r in plan
     }:
         raise ExposureRefused("the planted record's plan differs from the authorized plan")
@@ -591,6 +600,10 @@ def validate_planted(record, pop, plan=PLAN, n_edges=t3.N_EDGES):
 def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
     """The only edge read. Refuses unless the planted record validates (and the seeds are the registered 8)."""
     z, sha = t3._verified(path, pin)
+    if not t3_ref:
+        raise ExposureRefused(
+            "Part B reads only after a READ T3 record with a kernel (A13): none given"
+        )
     pop = make_pop(t3.xyz_um(z["xyz_nm"]), z["layer"], z["sign"])
     if tuple(seeds) != SEEDS:
         raise ExposureRefused("H01's edges are read on the registered confirmatory seeds only")
@@ -709,11 +722,53 @@ def _jsonable(o):
 CRLF, LF = bytes([13, 10]), bytes([10])
 
 
-def _t3_ref(path):
-    raw = (
-        Path(path).read_bytes().replace(CRLF, LF)
-    )  # the committed (LF) blob, never the working copy
-    return {"path": str(path), "blob_sha256": hashlib.sha256(raw).hexdigest()}
+T3_READ = ("RED_EXP", "PASS_FAVOURS_GAUSSIAN", "PASS_GAUSSIAN_NOT_REFUSED", "PASS_MIXTURE")
+
+
+def check_t3_record(path, pin=None):
+    """A13's gate on the T3 record Part B cites: its artifact is the pinned one, its reading is a READ with a
+    kernel (not REFUSED, NOT READ, RED-flat), and it carries its git head and harness hashes. Returns the ref the
+    record serialises: the committed (LF) blob hash, the verdict, K, the head."""
+    raw = Path(path).read_bytes()
+    rec = json.loads(raw)
+    sha = (pin or t3.pinned_artifact())[0]
+    reading = (rec.get("h01") or {}).get("reading") or {}
+    if rec.get("artifact_sha256") != sha:
+        raise ExposureRefused("the T3 record names a different artifact than the pin")
+    if reading.get("verdict") not in T3_READ or reading.get("K") not in ("gauss", "exp", "mix"):
+        raise ExposureRefused(
+            f"T3 is not a READ with a kernel: {reading.get('verdict')!r} K={reading.get('K')!r}"
+        )
+    if not rec.get("git_head") or not rec.get("harness_sha256"):
+        raise ExposureRefused("the T3 record carries no git head or harness hashes")
+    return {
+        "path": str(path),
+        "blob_sha256": hashlib.sha256(raw.replace(CRLF, LF)).hexdigest(),
+        "verdict": reading["verdict"],
+        "K": reading["K"],
+        "git_head": rec["git_head"],
+    }
+
+
+HARNESS = (
+    "src/snn_data_lake/instruments/h01_partb_tangential.py",
+    "src/snn_data_lake/instruments/h01_distance_kernel.py",
+    "src/snn_data_lake/instruments/paired_contrast.py",
+    "src/snn_data_lake/growth/wiring_prior.py",
+    "tests/test_h01_partb_tangential.py",
+    "tests/test_wiring_prior.py",
+)
+
+
+def provenance():
+    """The commit and the harness files' hashes (LF-normalised) a campaign record must carry (A8's ledger)."""
+    import subprocess
+
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=t3.REPO, text=True).strip()
+    sha = {
+        f: hashlib.sha256((t3.REPO / f).read_bytes().replace(CRLF, LF)).hexdigest() for f in HARNESS
+    }
+    return {"git_head": head, "harness_sha256": sha}
 
 
 def main(argv=None):
@@ -737,9 +792,12 @@ def main(argv=None):
         out = score_h01(
             a.artifact,
             json.loads(Path(a.planted).read_text(encoding="utf-8")),
-            t3_ref=_t3_ref(a.t3),
+            t3_ref=check_t3_record(a.t3),
         )
         print("Part B reads:", out["reading"], out.get("keep"))
+    out.update(provenance())
+    if "record" in out:
+        out["record"]["provenance"] = provenance()
     out["wall_s"] = time.time() - t0
     Path(a.out).write_text(json.dumps(_jsonable(out), indent=1, sort_keys=True), encoding="utf-8")
     return 0

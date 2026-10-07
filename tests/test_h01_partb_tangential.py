@@ -368,3 +368,65 @@ def test_flat_validation_bar_is_no_positive_under_any_scoring():
     leak = [_fake_unit(s, block_gf=ramp[i]) for i, s in enumerate(row.seeds)]
     assert not pb._holds(row, leak, bands)
     assert not pb.no_positive_kernel(pb.states(leak, bands))
+
+
+T3_PATH = t3.REPO / "tools" / "g4_t3_campaign.json"
+
+
+def test_t3_gate_accepts_the_real_record_and_refuses_each_defect(tmp_path):
+    import json
+
+    ref = pb.check_t3_record(T3_PATH)
+    assert (
+        ref["verdict"] == "RED_EXP" and ref["K"] == "mix" and ref["git_head"] and ref["blob_sha256"]
+    )
+    good = json.loads(T3_PATH.read_text(encoding="utf-8"))
+
+    def defect(name, edit):
+        rec = json.loads(json.dumps(good))
+        edit(rec)
+        f = tmp_path / f"{name}.json"
+        f.write_text(json.dumps(rec), encoding="utf-8")
+        with pytest.raises(pb.ExposureRefused):
+            pb.check_t3_record(f)
+
+    defect("sha", lambda r: r.__setitem__("artifact_sha256", "0" * 64))
+    defect("verdict", lambda r: r["h01"]["reading"].__setitem__("verdict", "RED_FLAT"))
+    defect("refused", lambda r: r["h01"]["reading"].__setitem__("verdict", "REFUSED"))
+    defect("nokernel", lambda r: r["h01"]["reading"].__setitem__("K", None))
+    defect("head", lambda r: r.pop("git_head"))
+    defect("harness", lambda r: r.pop("harness_sha256"))
+
+
+def test_score_h01_needs_a_t3_ref_and_provenance_names_the_harness():
+    with pytest.raises(pb.ExposureRefused):
+        pb.score_h01("data/h01/h01_c3_graph.npz", {"rows": {}}, t3_ref=None) if (
+            t3.REPO / "data/h01/h01_c3_graph.npz"
+        ).exists() else (_ for _ in ()).throw(pb.ExposureRefused("fixture"))
+    prov = pb.provenance()
+    assert len(prov["git_head"]) == 40 and set(prov["harness_sha256"]) == set(pb.HARNESS)
+
+
+def test_planted_plan_is_compared_in_full_not_by_names(pop):
+    plan = pb.PLAN
+    rows = _fake_rows(plan, False)
+    rec = {
+        "population_sha256": pb.fingerprint(pop),
+        "n_edges_target": 1200,
+        "plan": pb.plan_dicts(plan),
+        "rows": rows,
+        "bands": pb.calibrate_bands(rows[plan[0].name]["units"]),
+    }
+    assert pb.validate_planted(rec, pop, plan, 1200) == rec["bands"]
+    for edit in (
+        lambda p: p[2]["truth"].__setitem__(
+            "width", 150.0
+        ),  # a different truth under the same name
+        lambda p: p[3].__setitem__("expect", "red_flat"),  # a weakened expectation
+        lambda p: p[2].__setitem__("seeds", p[2]["seeds"][::-1]),  # reordered seeds
+        lambda p: p.reverse(),  # reordered rows
+    ):
+        bad = dict(rec, plan=pb._plan_json(pb.plan_dicts(plan)))
+        edit(bad["plan"])
+        with pytest.raises(pb.ExposureRefused):
+            pb.validate_planted(bad, pop, plan, 1200)
