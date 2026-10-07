@@ -206,13 +206,31 @@ def _allotment(n, m, capacity):
     return alloc
 
 
-def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None):
+def _check_pathway(n, pathway):
+    """(classes, n_class, kernels): per-unit pathway class, the class count, and {cell: kernel} with
+    cell = class(arrival) * n_class + class(earlier unit) -- G4's `pathway_cell(pre = arrival, post = earlier)`.
+    A cell absent from `kernels` reads the global kernel. Malformed -> ValueError, never repaired."""
+    classes, n_class, kernels = pathway
+    classes = np.asarray(classes)
+    if classes.shape != (n,) or not np.issubdtype(classes.dtype, np.integer):
+        raise ValueError(f"pathway classes must be {n} integers")
+    if not isinstance(n_class, int) or n_class < 1 or classes.min() < 0 or classes.max() >= n_class:
+        raise ValueError(f"pathway classes must lie in [0, {n_class})")
+    if not isinstance(kernels, dict) or any(
+        not isinstance(c, int) or not 0 <= c < n_class * n_class for c in kernels
+    ):
+        raise ValueError("pathway kernels must be a dict of cells in [0, n_class ** 2)")
+    return classes, n_class, kernels
+
+
+def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None, pathway=None):
     """Sorted (i, j) edges, i < j, exactly m of them, simple and undirected (2.7, frozen construction):
     units arrive in a seeded order; arrival t draws m_t partners among earlier units ONE AT A TIME,
     without replacement, with probability proportional to
         c(pop_i, pop_j) x kernel(distance) x (1 + beta x shared_partners_so_far).
     `pops` None drops the layer term (c = 1); `kernel` takes a numpy distance array; `columns` restricts
-    candidates to the unit's own column (IMPOSED). Infeasible -> REFUSED."""
+    candidates to the unit's own column (IMPOSED); `pathway` (see `_check_pathway`) replaces `kernel` cell by
+    cell for a pooled Part B record. Infeasible -> REFUSED."""
     if m > n * (n - 1) // 2:
         raise Infeasible(f"M = {m} exceeds the {n * (n - 1) // 2} pairs of N = {n}")
     rng = np.random.default_rng(seed)
@@ -220,6 +238,8 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None)
     xy = np.asarray(xy, dtype=float)[order]
     pop = None if pops is None else np.asarray(pops)[order]
     col = None if columns is None else np.asarray(columns)[order]
+    pw = None if pathway is None else _check_pathway(n, pathway)
+    cls = None if pw is None else pw[0][order]
     # ONE common allotment, computed BEFORE any column restriction: an IMPOSED arrival short of earlier
     # column mates is REFUSED below, never given fewer edges (Codex cp3 #9)
     alloc = _allotment(n, m, list(range(n)))
@@ -230,6 +250,14 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None)
             continue
         d = np.hypot(xy[:t, 0] - xy[t, 0], xy[:t, 1] - xy[t, 1])
         w0 = np.broadcast_to(np.asarray(kernel(d), dtype=float), (t,)).copy()
+        if pw is not None:
+            cells = cls[t] * pw[1] + cls[:t]
+            for cell in np.unique(cells):
+                if int(cell) in pw[2]:
+                    hit = cells == cell
+                    w0[hit] = np.broadcast_to(
+                        np.asarray(pw[2][int(cell)](d[hit]), dtype=float), (int(hit.sum()),)
+                    )
         if pop is not None:
             w0 *= np.array([layer_term(int(pop[t]), int(p)) for p in pop[:t]])
         if col is not None:
@@ -386,20 +414,22 @@ def modularity(edges, n, seeds=LOUVAIN_SEEDS):
     return best_partition(edges, n, seeds)[0]
 
 
-def t4_wiring_half(n, m, *, xy, pops, kernel, beta, columns, seeds, louvain_seeds=LOUVAIN_SEEDS):
+def t4_wiring_half(
+    n, m, *, xy, pops, kernel, beta, columns, seeds, louvain_seeds=LOUVAIN_SEEDS, pathway=None
+):
     """T4's wiring half (2.7) on caller-supplied substrate: per seed, Q (Louvain, max over restarts) of every
-    arm at the same N and EXACTLY M edges. `kernel` is G4's tangential kernel (a callable on a distance array),
+    arm at the same N and EXACTLY M edges. `kernel` is G4's tangential kernel (a callable on a distance array; `pathway` its per-cell form for a pooled record),
     `beta` G4's Part B2 value (0.0 = the clause reported untested). Returns {"refused": [...], "q": {arm:
     [Q per seed]}, "verdicts": {...}, "rule_credited": bool|None}. A refused RULE / RANDOM / RANDOM-SEQ arm refuses
     the half (rule_credited None); a refused attribution variant leaves its term NOT CLAIMED; IMPOSED is
     reported and decides nothing. The caller runs ir1/ir2 first (t4_instruments_refuse)."""
     flat = lambda d: 1.0  # noqa: E731 -- a removed kernel term
     arms = {
-        "RULE": dict(kernel=kernel, pops=pops, beta=beta),
-        "DIST-ONLY": dict(kernel=kernel, pops=pops, beta=0.0),
+        "RULE": dict(kernel=kernel, pops=pops, beta=beta, pathway=pathway),
+        "DIST-ONLY": dict(kernel=kernel, pops=pops, beta=0.0, pathway=pathway),
         "FLAT-KERNEL": dict(kernel=flat, pops=pops, beta=beta),
-        "NO-LAYER": dict(kernel=kernel, pops=None, beta=beta),
-        "IMPOSED": dict(kernel=kernel, pops=pops, beta=beta, columns=columns),
+        "NO-LAYER": dict(kernel=kernel, pops=None, beta=beta, pathway=pathway),
+        "IMPOSED": dict(kernel=kernel, pops=pops, beta=beta, columns=columns, pathway=pathway),
     }
     q, refused = {}, []
     for name, kw in arms.items():

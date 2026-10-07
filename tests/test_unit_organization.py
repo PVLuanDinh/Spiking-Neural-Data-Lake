@@ -361,3 +361,87 @@ def test_random_graph_refuses_a_density_it_cannot_place_exactly():
     with pytest.raises(U.Infeasible):
         U.random_graph(10, 46, seed=13254)
     assert len(U.random_graph(10, 45, seed=13254)) == 45
+
+
+# ---- a pooled Part B record: the kernel is per pathway cell (G4 kernel_shape(record, cell)) ----
+
+
+def _two_classes(n):
+    return [i % 2 for i in range(n)]
+
+
+def _cross_fraction(edges, classes):
+    return sum(classes[i] != classes[j] for i, j in edges) / len(edges)
+
+
+def test_pathway_with_one_kernel_in_every_cell_equals_the_single_kernel():
+    n, cls = 40, _two_classes(40)
+    k = lambda d: np.exp(-d / 300.0)  # noqa: E731
+    xy = _flat_units(n, 13260)
+    base = U.sample_exact_m(n, 80, xy=xy, kernel=k, seed=13260)
+    same = U.sample_exact_m(
+        n, 80, xy=xy, kernel=k, seed=13260, pathway=(cls, 2, {c: k for c in range(4)})
+    )
+    assert base == same
+
+
+def test_pathway_kernel_of_a_cell_is_applied_to_that_cell_only():
+    # known positive: nearly closed cross-class cells remove the cross edges a single kernel keeps
+    n, cls = 40, _two_classes(40)
+    k = lambda d: np.ones_like(d)  # noqa: E731
+    closed = lambda d: np.full_like(d, 1e-9)  # noqa: E731
+    xy = _flat_units(n, 13261)
+    pw = (
+        cls,
+        2,
+        {0 * 2 + 1: closed, 1 * 2 + 0: closed},
+    )  # cells 0 and 3 absent = the global kernel
+    single = U.sample_exact_m(n, 80, xy=xy, kernel=k, seed=13261)
+    split = U.sample_exact_m(n, 80, xy=xy, kernel=k, seed=13261, pathway=pw)
+    assert _cross_fraction(single, cls) > 0.3
+    assert _cross_fraction(split, cls) < 0.05 and len(split) == 80
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        ([0, 1, 0], 2, {}),  # classes shorter than n
+        ([0, 1] * 20, 1, {}),  # a class outside n_class
+        ([0, 1] * 20, 2, [lambda d: d]),  # kernels is not a mapping
+        ([0, 1] * 20, 2, {4: lambda d: d}),  # a cell outside n_class ** 2
+    ],
+)
+def test_pathway_is_validated_not_repaired(bad):
+    with pytest.raises(ValueError):
+        U.sample_exact_m(
+            40, 80, xy=_flat_units(40, 13262), kernel=lambda d: 1.0, seed=1, pathway=bad
+        )
+
+
+def test_t4_half_hands_the_pathway_to_every_kernel_arm_but_the_flat_one(monkeypatch):
+    calls = []
+    real = U.sample_exact_m
+    user_kernel = lambda d: np.ones_like(d)  # noqa: E731
+
+    def spy(n, m, **kw):
+        calls.append((kw["kernel"] is user_kernel, kw.get("pathway") is not None))
+        return real(n, m, **kw)
+
+    monkeypatch.setattr(U, "sample_exact_m", spy)
+    pw = (_two_classes(30), 2, {c: user_kernel for c in range(4)})
+    U.t4_wiring_half(
+        30,
+        60,
+        xy=_flat_units(30, 13263),
+        pops=None,
+        kernel=user_kernel,
+        beta=0.5,
+        columns=[i % 3 for i in range(30)],
+        seeds=(13263,),
+        louvain_seeds=(0,),
+        pathway=pw,
+    )
+    # RULE, DIST-ONLY, NO-LAYER, IMPOSED carry kernel and pathway; FLAT-KERNEL neither
+    assert [c for c in calls if c[0]] == [(True, True)] * 4
+    assert [c for c in calls if not c[0] and c[1]] == []
+    assert len([c for c in calls if not c[0]]) >= 1  # the FLAT-KERNEL arm ran
