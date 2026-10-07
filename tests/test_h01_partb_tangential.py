@@ -219,13 +219,15 @@ def test_unsighted_pooling_turns_pg_into_not_read_and_keeps_earlier_rows():
     assert pb.read_partb(_st(), frame_ok=False, pooling_sighted=False) == ("REFUSED_FRAME", None)
 
 
-def _fake_unit(seed, gf=0.0, pg=0.0, form="gauss", w=60.0, block_gf=None):
+def _fake_unit(seed, gf=0.0, pg=0.0, form="gauss", w=60.0, block_gf=None, pathway=None):
     z = {"G-F": gf, "P-G": pg}
     region = [dict(z) for _ in range(pb.NB_REG)]
     if block_gf is not None:
         region[0] = {"G-F": block_gf, "P-G": pg}
+    chk = {"cells": [47, 73], "planted": [60.0, 160.0], "fitted": list(pathway or (60.0, 160.0))}
     return {
         "seed": seed,
+        "pathway_check": chk,
         "neuron": dict(z),
         "interior": dict(z),
         "region": region,
@@ -430,3 +432,25 @@ def test_planted_plan_is_compared_in_full_not_by_names(pop):
         edit(bad["plan"])
         with pytest.raises(pb.ExposureRefused):
             pb.validate_planted(bad, pop, plan, 1200)
+
+
+def test_pathway_recovery_is_enforced_by_the_gate_on_both_widths():
+    plan = pb.PLAN
+    base = _fake_rows(plan, True)
+    bands = pb.calibrate_bands(base[plan[0].name]["units"])
+    assert pb.pooling_sighted(plan, base, bands) is True
+    gate = next(r for r in plan if r.expect == "pooling_gate")
+    cases = (
+        ((60.0, 160.0), True),
+        ((68.0, 150.0), True),
+        ((75.0, 160.0), False),
+        ((60.0, 190.0), False),
+        ((60.0, 160.0, 1.0), False),
+    )
+    for fitted, ok in cases:
+        units = [
+            dict(u, pathway_check={**u["pathway_check"], "fitted": list(fitted)})
+            for u in base[gate.name]["units"]
+        ]
+        rows = {**base, gate.name: {"units": units}}
+        assert pb.pooling_sighted(plan, rows, bands) is ok, fitted  # P-G fires in every case

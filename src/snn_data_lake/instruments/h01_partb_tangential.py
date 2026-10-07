@@ -488,16 +488,50 @@ def read_partb(st, frame_ok=True, planted_ok=True, pooling_sighted=True):
 def _unit(pop, seed, n_all, truth, n_edges):
     h, _ = build_hists(pop, seed, n_all=n_all, truth=truth, n_edges=n_edges)
     u = score_unit(pop, h)
+    if truth.get("pathway"):
+        u["pathway_check"] = pathway_check(pop, h, truth, u)
     u["seed"] = int(seed)
     u["edges_drawn"] = int(h.k_fold.sum())
     return u
+
+
+def pathway_check(pop, h, truth, unit):
+    """B1: P's fitted per-pathway widths against the planted ones. The single-kernel (Gaussian) shape and the
+    per-cell offsets are fitted on ALL pairs with the penalty this seed's nested folds chose most often."""
+    d = (np.arange(pop.nb) + 0.5) * BIN
+    n, k = h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))
+    th = fit_global(d, n, k, "gauss")
+    pens = unit["pen"]
+    delta = fit_delta(d, n, k, th, "gauss", max(set(pens), key=pens.count))
+    scale = pathway_scales(truth, pop)
+    cells = [int(c) for c in np.flatnonzero(scale != 1.0)]
+    return {
+        "cells": cells,
+        "planted": [float(truth["width"] * scale[c]) for c in cells],
+        "fitted": [float(math.exp(th[0]) * math.exp(delta[c])) for c in cells],
+    }
+
+
+def pathway_recovered(units):
+    """Every planted pathway's fitted width within PATHWAY_RECOVERY_TOL of the planted one, on EVERY seed."""
+    for u in units:
+        chk = u.get("pathway_check")
+        if not chk or len(chk["cells"]) != 2 or len(chk["fitted"]) != 2:
+            return False
+        if any(
+            abs(f - p) > PATHWAY_RECOVERY_TOL * p for f, p in zip(chk["fitted"], chk["planted"])
+        ):
+            return False
+    return True
 
 
 def recovered(truth, units):
     """Amendment 4 (i): on a single-width kernel row the width is recovered within 10% on every seed (the
     fold-mean of the fitted width) and the matching form beats the other single form on held-out LL."""
     form = truth["form"]
-    if form not in ("gauss", "exp") or truth.get("pathway"):
+    if truth.get("pathway"):
+        return pathway_recovered(units)
+    if form not in ("gauss", "exp"):
         return True
     col = 0 if form == "gauss" else 1
     other = "exp" if form == "gauss" else "gauss"
@@ -530,7 +564,9 @@ def pooling_sighted(plan, rows, bands):
     these positions). Not part of `all_rows_hold`: its failure turns every P-G reading into NOT_READ."""
     gate = [r for r in plan if r.expect == "pooling_gate"]
     return bool(gate) and all(
-        states(rows[r.name]["units"], bands)["neuron"]["P-G"] == 1 for r in gate
+        states(rows[r.name]["units"], bands)["neuron"]["P-G"] == 1
+        and recovered(r.truth, rows[r.name]["units"])
+        for r in gate
     )
 
 
