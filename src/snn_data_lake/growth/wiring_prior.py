@@ -47,16 +47,35 @@ def _check(record):
     return record
 
 
-def _shape(d, rec):
-    a, c = rec["a"], rec["c"]
-    v = a * np.exp(-(d**2) / (2.0 * rec["sigma_um"] ** 2)) + c * np.exp(-d / rec["lambda_um"])
-    return v / (a + c)
+def kernel_shape(record):
+    """f(d) on a numpy distance array (um): the record's mixture, 1 at d = 0; only relative values matter."""
+    rec = _check(record)
+    a, c, sg, lam = rec["a"], rec["c"], rec["sigma_um"], rec["lambda_um"]
+    return lambda d: (
+        (a * np.exp(-(np.asarray(d) ** 2) / (2.0 * sg**2)) + c * np.exp(-np.asarray(d) / lam))
+        / (a + c)
+    )
+
+
+def layer_term(source_pop, target_pop):
+    """Directed layer target: CONN_PROB[target][source] (population indices)."""
+    return CONN_PROB[target_pop][source_pop]
+
+
+def layer_term_sym(a_pop, b_pop):
+    """Undirected layer target for symmetrised graphs: an edge if either direction exists, 1-(1-C[a][b])(1-C[b][a])."""
+    return 1.0 - (1.0 - CONN_PROB[a_pop][b_pop]) * (1.0 - CONN_PROB[b_pop][a_pop])
+
+
+def xy(units):
+    """(N, 2) tangential positions (x_um, y_um) of label records."""
+    return np.array([[u["position"][2], u["position"][3]] for u in units], dtype=float)
 
 
 def attach_probabilities(new_units, existing_units, record, partners=None):
     """Array [len(new_units), len(existing_units)] of p(new -> existing), each in [0, 1]."""
     rec = _check(record)
-    beta = rec.get("beta", 0.0)
+    beta, shape = rec.get("beta", 0.0), kernel_shape(rec)
     partners = partners or {}
     out = np.zeros((len(new_units), len(existing_units)))
     for i, u in enumerate(new_units):
@@ -66,7 +85,7 @@ def attach_probabilities(new_units, existing_units, record, partners=None):
             va, vd, vx, vy, _ = v["position"]
             if (ua, ud) != (va, vd):
                 continue
-            target = CONN_PROB[population(v["layer"], v["sign"])][pu]
+            target = layer_term(pu, population(v["layer"], v["sign"]))
             m = len(set(partners.get(u["unit_id"], ())) & set(partners.get(v["unit_id"], ())))
-            out[i, j] = target * _shape(np.hypot(ux - vx, uy - vy), rec) * (1.0 + beta * m)
+            out[i, j] = target * shape(np.hypot(ux - vx, uy - vy)) * (1.0 + beta * m)
     return np.clip(out, 0.0, 1.0)

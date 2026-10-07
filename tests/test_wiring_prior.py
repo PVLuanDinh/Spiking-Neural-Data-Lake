@@ -105,3 +105,27 @@ def test_deterministic_and_inputs_not_mutated():
     a = wp.attach_probabilities(new, old, REC)
     b = wp.attach_probabilities(new, old, REC)
     assert np.array_equal(a, b) and repr((new, old)) == snap
+
+
+def test_kernel_shape_is_one_at_zero_and_matches_attach():
+    f = wp.kernel_shape(dict(REC, c=0.3, lambda_um=80.0))
+    d = np.array([0.0, 25.0, 90.0])
+    assert math.isclose(f(d)[0], 1.0) and np.all(np.diff(f(d)) < 0)
+    s, t = _u("s", 0, 0), _u("t", 25, 0)
+    assert math.isclose(
+        _p(s, t, dict(REC, c=0.3, lambda_um=80.0)), CONN_PROB[2][2] * float(f(np.array([25.0]))[0])
+    )
+
+
+def test_layer_term_directed_and_symmetrised():
+    assert wp.layer_term(2, 4) == CONN_PROB[4][2]
+    assert wp.layer_term(2, 4) != wp.layer_term(4, 2)
+    want = 1 - (1 - CONN_PROB[2][4]) * (1 - CONN_PROB[4][2])
+    assert math.isclose(wp.layer_term_sym(2, 4), want) and wp.layer_term_sym(
+        2, 4
+    ) == wp.layer_term_sym(4, 2)
+
+
+def test_xy_shape_and_values():
+    got = wp.xy([_u("a", 1.5, -2.0), _u("b", 3.0, 4.0)])
+    assert got.shape == (2, 2) and got.tolist() == [[1.5, -2.0], [3.0, 4.0]]
