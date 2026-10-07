@@ -792,6 +792,15 @@ No `phase` field exists; the two row kinds are the discriminator. Agreed with G7
 Test owed at G6's P4: a red per false case, and a green for the committed pair. D21 (where R2's checkpoint carries
 `applied_mask_digest`) stays OPEN, held by the lead until owner question X1 is answered.
 
+**DATED NOTE 2026-10-07 (owner answers to 2.14 Q1-Q5; no deciding data read).** Additive; zero lines removed. Q1-Q5 are
+settled by the owner's decisions of 2026-10-04 (board `OWNER_DECISIONS_2026-10-04.md`, item 11 for Q1-Q4 and item 12 for Q5;
+the batch text is `OWNER_BATCH_2026-10-04.md` items 11-12), applied under the owner's ratification of 2026-10-06 (board
+`OWNER_RATIFIED_2026-10-06.md`). Q1: `LakeConsolidation` is out of G6(a)'s scope. Q2: the savings horizon H is one measured
+wake period. Q3: a pruner is kept only on non-inferiority AND a measured saving (R4 alone does not keep it). Q4: the
+structural rewirer (turnover 0) takes a dated P3 exemption until a zero-crossing writer exists. Q5: a gate condition -- any
+future 0x08 reclaimer must first move pruned-unit weights into an immortal record. Q6 (legacy circuits in the
+eligible-brain arm) is NOT answered there and stays with the owner. This note changes no frozen clause.
+
 ## 3. Results
 
 None. Nothing is measured beyond section 1; no deciding test has run.
