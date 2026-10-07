@@ -405,6 +405,24 @@ class _Pool:
             raise ValueError("REFUSED: this pool was built without an encoder")
         return self.percept_drive(drive(self.w_in, x))
 
+    # distinct-from: faculties/affect_integrator.py -- a jittered LIF unit pool, no external reservoir drive
+    # distinct-from: faculties/task_set.py -- advances a working-memory pool with no external input
+    # distinct-from: faculties/vital_nuclei.py -- a respiratory drive from CO2, not a reservoir's input
+    # distinct-from: growth/neurogenesis_engine.py -- feeds an engine percepts; no pool drive is added
+    # distinct-from: instruments/carried_state_driver.py -- runs stages under pool_selection's protocol
+    # (all five read 2026-10-07; no caller of percept_drive or percept_fed exists outside this module)
+    def percept_fed(self, x, feed):
+        """G3 P5 feed port: percept with `feed` (one external drive per pool unit) added to W_in x.
+
+        A zero feed is byte-identical to percept; a wrong-length or non-finite feed is REFUSED.
+        """
+        feed = np.asarray(feed, dtype=np.float64)
+        if feed.shape != (self.n,) or not np.all(np.isfinite(feed)):
+            raise ValueError(f"REFUSED: the feed must be {self.n} finite drives, got {feed.shape}")
+        if self.w_in is None:
+            raise ValueError("REFUSED: this pool was built without an encoder")
+        return self.percept_drive(drive(self.w_in, x) + feed)
+
     def percept_drive(self, u):
         u = np.asarray(u, dtype=np.float64)
         self.count += 1
