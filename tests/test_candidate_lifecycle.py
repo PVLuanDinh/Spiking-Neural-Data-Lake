@@ -186,3 +186,45 @@ def test_match_feasibility_rule():
     assert not ok({s: 5 for s in S[:6]}, {s: 9 for s in S[:6]})
     assert not ok({**d(*[5] * 8), 9099: 5}, d(*[9] * 8))
     assert not ok({s: 5 for s in (*S[:7], 9099)}, d(*[9] * 8))
+
+
+# ---- the pure unearned-unit rule (P2: ONE rule for every pruner; G6 imports it) ----
+
+
+def test_select_unearned_drops_every_unit_whose_removal_is_no_worse_than_base_plus_tol():
+    base = 1.0
+    assert candidate_lifecycle.select_unearned(base, [1.5, 1.0, 0.7, 2.0]) == ([1, 2], None)
+    # <= : a cost exactly at base + tol is droppable; just above is not
+    assert candidate_lifecycle.select_unearned(base, [1.25, 1.2500001], tol=0.25) == ([0], None)
+    assert candidate_lifecycle.select_unearned(base, [3.0, 2.0]) == ([], None)  # none droppable
+
+
+def test_select_unearned_keeps_exactly_the_costliest_removal_when_all_are_droppable():
+    # costs 0.5 / 0.9 / 0.9 / 0.2 all <= base 1.0: survivor = largest cost, ties -> lowest index
+    assert candidate_lifecycle.select_unearned(1.0, [0.5, 0.9, 0.9, 0.2]) == ([0, 2, 3], 1)
+    assert candidate_lifecycle.select_unearned(1.0, [0.9, 0.9]) == ([1], 0)
+
+
+def test_select_unearned_never_drops_or_keeps_an_infinite_cost_and_one_unit_is_never_pruned():
+    inf = float("inf")
+    # an infeasible removal (cost +inf) is not droppable and is never the all-droppable survivor
+    assert candidate_lifecycle.select_unearned(1.0, [inf, 0.5, 0.9]) == ([1, 2], None)
+    assert candidate_lifecycle.select_unearned(1.0, [inf, inf]) == ([], None)
+    # n <= 1: nothing to prune
+    assert candidate_lifecycle.select_unearned(1.0, [0.0]) == ([], None)
+    assert candidate_lifecycle.select_unearned(1.0, []) == ([], None)
+
+
+def test_select_unearned_is_the_rule_heldout_prune_runs():
+    # control: planted duplicate column through the real held-out prune drops the same index set
+    S = torch.tensor([[1.0, 1.0, 0.0]] * 12 + [[0.0, 0.0, 1.0]] * 12)
+    Y = torch.zeros(24, 2)
+    Y[:12, 0] = 1.0
+    Y[12:, 1] = 1.0
+    y = [0] * 12 + [1] * 12
+
+    def solve(Sx, Yx):
+        return torch.linalg.lstsq(Sx, Yx).solution
+
+    res = candidate_lifecycle.heldout_prune(S, Y, y, solve)
+    assert res.keep is not None and res.n_drop == 3 - len(res.keep)

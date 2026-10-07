@@ -184,6 +184,23 @@ class PruneResult:
     tr_idx: torch.Tensor = None  # the fitted rows the caller re-solves its readout on
 
 
+def select_unearned(base, costs, tol=0.0):
+    """The ONE unearned-unit rule (P2), pure: `costs[j]` is the cost (LOWER is better) with unit j removed, `base`
+    the cost with every unit. A unit is dropped when its removal is no worse than `base + tol` (<=); when ALL
+    are droppable exactly the unit whose removal costs most survives (ties -> the lowest index; L3), never an
+    empty set. An infeasible removal is passed as +inf: never droppable, never the survivor. Fewer than two
+    units: nothing to prune. Returns (drop, survivor): drop excludes the survivor, survivor is None unless the
+    all-droppable case fired."""
+    n = len(costs)
+    if n < 2:
+        return [], None
+    drop = [j for j, c in enumerate(costs) if c <= base + tol]
+    if len(drop) < n:
+        return drop, None
+    survivor = max(range(n), key=lambda j: (costs[j], -j))
+    return [j for j in drop if j != survivor], survivor
+
+
 def heldout_prune(S, Y, y_list, solve_beta, tol=0.0):
     """Consumer-agnostic one-pass held-out prune over a rate matrix S (N, L) and one-hot targets Y (N, m): a unit
     is dropped when removing it leaves held-out RMSE (on `marginal_holdout`'s window) no worse than `tol`; an
@@ -207,19 +224,10 @@ def heldout_prune(S, Y, y_list, solve_beta, tol=0.0):
 
     allc = list(range(L))
     base = _val_rmse(allc)
-    drop, cost = [], {}
-    for j in range(L):
-        keep = [c for c in allc if c != j]
-        if not keep:
-            continue
-        cost[j] = _val_rmse(keep)
-        if cost[j] <= base + tol:  # removing it costs nothing -> it earns nothing
-            drop.append(j)
-    if not drop:
+    costs = [_val_rmse([c for c in allc if c != j]) if L > 1 else float("inf") for j in allc]
+    drop, survivor = select_unearned(base, costs, tol)
+    if not drop and survivor is None:
         return PruneResult(None, 0, tr_idx)
-    if len(drop) >= L:
-        survivor = max(allc, key=lambda j: (cost.get(j, float("-inf")), -j))
-        drop = [c for c in allc if c != survivor]
     keep = [c for c in allc if c not in set(drop)]
     return PruneResult(keep, len(drop), tr_idx)
 
