@@ -432,3 +432,12 @@ def test_same_rows_halts_on_a_majority_only_floor_difference():
     }
     with pytest.raises(g.SameRowsHalt, match="refit floors"):
         g.same_rows([row, {**row, "arm": "B", "floors": [(0.5, 0.9), (0.7, 0.92)]}])
+
+
+def test_tensor_digest_sees_a_change_at_any_position():
+    # Codex g5_b lens-2 (d0acd8f1 mutation): a digest of only the leading bytes passed
+    beta = torch.randn(5, 4, generator=torch.Generator().manual_seed(20261003))
+    for idx in ((0, 1), (2, 2), (4, 3)):
+        nudged = beta.clone()
+        nudged[idx] = torch.nextafter(nudged[idx], torch.tensor(float("inf")))
+        assert g.tensor_digest(nudged) != g.tensor_digest(beta), idx
