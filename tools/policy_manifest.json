@@ -75,6 +75,13 @@
             "snn_data_lake.gates.lake_rebuild_gate"
           ],
           "source": "gates/lake_rebuild_gate.py"
+        },
+        {
+          "argv": [
+            "-m",
+            "snn_data_lake.gates.unit_label_gate"
+          ],
+          "source": "gates/unit_label_gate.py"
         }
       ],
       "id": "P4",
