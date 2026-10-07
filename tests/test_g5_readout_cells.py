@@ -390,3 +390,29 @@ def test_a_lake_move_during_a_successful_arm_stage_halts(monkeypatch):
             pool=ThreadPoolExecutor,
             cell=_fake_cell,
         )
+
+
+def test_an_arm_only_fallback_perception_replaces_the_whole_seed(monkeypatch):
+    # Codex g5_b lens-2 (35f92a98 mutation): RECORD is unified, one arm is not; the arm-level check
+    # must reject it, and the whole seed (recording and every arm) is replaced from the reserve
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(g, "live_lake_stamp", lambda: ("a", "b"))
+
+    def cell(args):
+        out = _fake_cell(args)
+        out["unified"] = not (args[0] == 2 and args[1] == "BATCH")  # seed 2's BATCH arm falls back
+        return out
+
+    lines = []
+    rec, cells, rep = g.run_cells(
+        (1, 2),
+        ("DELTA", "BATCH"),
+        workers=1,
+        log=lines.append,
+        pool=ThreadPoolExecutor,
+        cell=cell,
+        reserve=(9,),
+    )
+    assert sorted(rec) == [1, 9] and {c["seed"] for c in cells} == {1, 9} and len(cells) == 4
+    assert rep == [(2, 2, 9)] and any("fallback perception" in s for s in lines)
