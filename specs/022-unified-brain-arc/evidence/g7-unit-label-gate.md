@@ -911,3 +911,26 @@ Additive; G3 built (h)'s form and refuted three omissions, all accepted. Unrevie
    BOTH directions with a mutant per direction; causality (structural: psp(0) = 0 makes a "same-step spikes act" mutant
    equivalent, so it is disclosed as not killable at runtime); Dale on I's output lives in `clip_to_sign` / `apply_unit_row`
    (cp1 #17), not in this function.
+
+## DATED PRE-DATA AMENDMENT 2026-10-07 (k) -- review status of the instrument arcs, T4 run inputs as placeholders (no data read)
+
+Additive; no clause above changes. Nothing confirmatory has run. Unreviewed amendment text, stated plainly.
+
+1. **Review status, as of this date.** The gate folds b2c5f91d..c088489a (claude/int1b) were reviewed by the G3 panel
+   (codex_panels_1006\g3) and re-panelled once on int1b @8ea4d59c (1 MAJOR, folded as c7f4e7f9 / int1b 3e3610f1):
+   battery-verified only, not re-panelled. The instrument arcs have NO Codex panel: `instruments/unit_organization.py`
+   and `tests/test_unit_organization.py` through 5f8c523d..24cff9db, 90923817 (`t4_wiring_half`) and 76447037 (RANDOM
+   refuses M beyond the pairs). They are not in batch 1 (the file is absent on int1b). Their reds ran on this row's
+   branch only; a panel is owed before any T1 or T4 run reads them.
+2. **T4's wiring-run inputs are named placeholders until G4's records land; no number is chosen here.** N and M
+   (`M = round(N x dbar / 2)`, D22) come from the Part B record's `dbar` (read as `record["dbar"]["dbar"]` per G4's
+   current writer, to be confirmed by G4); `<KERNEL>` = G4's Part B kernel for the arm (see 3); `<BETA>` = G4's Part B2
+   value (0.0 with `beta_fallback` leaves the shared-partner clause reported untested); `<COLUMNS>` = the imposed
+   composition. Seeds are 2.10's blocks (dev 13200-13207, confirmatory 13210-13217, reserve 13220-13227; Louvain
+   13900-13909); this amendment adds none.
+3. **Two obligations found reading G4's branch (claude/g4), pending G4's answer, no clause changed.** (a) P2: `population`
+   and the symmetrized layer term exist in `growth/wiring_prior.py` and in `instruments/unit_organization.py`; exactly one
+   survives, G4's (L1 raises there; this arm drops L1 and white matter per D22), and this row deletes its copy once
+   `wiring_prior` is on the integration head. (b) `t4_wiring_half` takes one kernel callable for every pair, while G4's
+   `kernel_shape(record, cell)` returns per-pathway widths for a pooled record; before the run the half takes the kernel
+   per pair, or REFUSES a pooled record. Neither obligation can move a verdict rule.
