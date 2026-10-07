@@ -216,3 +216,25 @@ def test_a7_the_restored_tick_cursor_must_be_a_non_negative_int(bad):
     """R3 on 08d5592c: `int(tick)` accepted a negative or fractional cursor."""
     with pytest.raises(ValueError):
         sp.PressureMeter({}, tick=bad)
+
+
+def test_a_restored_row_without_a_bound_reader_refuses_pressure():
+    """Codex fold lens M3: a restored circuit with no reader kept its stale load and still drove the
+    median (kept 0 and removed 100, only `kept` bound -> pressure 50, request True). Refuse until
+    every restored row has a reader; with all rows bound the same carrier is evaluated normally."""
+    row = {
+        "baseline_load_per_wake": 1.0,
+        "n_wake_periods": sp.K_MIN,
+        "admission_tick": 0,
+    }
+    carrier = {
+        "kept": {**row, "load_since_last_wake_onset": 0.0},
+        "removed": {**row, "load_since_last_wake_onset": 100.0},
+    }
+    half = sp.PressureMeter({"kept": lambda: [0.0]}, state=carrier)
+    with pytest.raises(ValueError, match="removed"):
+        half.pressure()
+    with pytest.raises(ValueError, match="removed"):
+        half.request()
+    full = sp.PressureMeter({"kept": lambda: [0.0], "removed": lambda: [0.0]}, state=carrier)
+    assert full.pressure() == 50.0 and full.request()

@@ -123,6 +123,11 @@ class PressureMeter:
         return sorted(k for k, r in self.c.items() if r["n"] >= K_MIN and r["base"] > 0.0)
 
     def pressure(self):
+        unbound = sorted(k for k in self.c if k not in self.circuits)
+        if (
+            unbound
+        ):  # a restored row nobody reads keeps its stale load: it must not drive the median
+            raise ValueError(f"restored circuit rows without a bound reader: {unbound}")
         ratios = [self.c[k]["load"] / self.c[k]["base"] for k in self.eligible()]
         return statistics.median(ratios) if ratios else None
 
