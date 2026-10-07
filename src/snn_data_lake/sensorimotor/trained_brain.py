@@ -197,6 +197,8 @@ def brain_from_genn_checkpoint(path):
         raise ValueError(f"{path}: every weight must be a JSON number (not a boolean or a string)")
     if not (0.0 < beta < 1.0 and math.isfinite(thr) and thr > 0.0):
         raise ValueError(f"{path}: need 0 < beta < 1 and a finite threshold > 0, got {beta}, {thr}")
+    if not (type(hidden) is int and hidden > 0):
+        raise ValueError(f"{path}: hidden must be a positive int, got {hidden!r}")
     if hidden != len(w1):
         raise ValueError(f"{path}: hidden={hidden!r} != len(W1)={len(w1)}")
     if (
@@ -306,6 +308,9 @@ def main():
             ("W2", [[0.1, 0.2]] * 9),
         )
     ]
+    # `hidden` must be a real int: True == 1 and 1.0 == 1 would otherwise pass for one hidden unit
+    one = dict(good, W1=[[0.001] * GENN_IN], W2=[[0.1] for _ in range(GENN_OUT)])
+    bad += [dict(one, hidden=h) for h in (True, 1.0)]
     bad += [{a: b for a, b in good.items() if a != k} for k in good if k != "format"]
     genn_ok = genn_ok and all(_refused(x) for x in bad)
     with open(cp, "w", encoding="utf-8") as f:
