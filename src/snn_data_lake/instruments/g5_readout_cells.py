@@ -533,8 +533,7 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     torch.set_num_threads(1)
     if "--pa3" in argv:
-        pa3()
-        return
+        return 0 if pa3() else 1  # a failed positive control must not exit 0 (Codex g5_b lens-1 m2)
     # PA4: the vacuity detector fires on a known positive (a one-category sequence reads f = 0)
     assert shift_fraction([2] * 40, circular_shift([2] * 40)) == 0.0 < VACUITY_FLOOR
     assert shift_fraction([0] * 20 + [1] * 20, circular_shift([0] * 20 + [1] * 20)) == 1.0
@@ -583,4 +582,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

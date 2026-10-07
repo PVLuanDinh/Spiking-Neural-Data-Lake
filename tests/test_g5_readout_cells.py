@@ -256,3 +256,11 @@ def test_a_terminal_exception_still_gets_the_lake_check_and_is_never_replaced(mo
             reserve=(9,),
         )
     assert not any("replaced" in s for s in lines)
+
+
+def test_pa3_exits_nonzero_when_the_positive_control_fails(monkeypatch):
+    # Codex g5_b lens-1 m2: `--pa3` printed NOT MET and still exited 0
+    monkeypatch.setattr(g, "pa3", lambda: False)
+    assert g.main(["--pa3"]) == 1
+    monkeypatch.setattr(g, "pa3", lambda: True)
+    assert g.main(["--pa3"]) == 0
