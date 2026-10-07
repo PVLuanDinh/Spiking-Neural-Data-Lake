@@ -255,15 +255,17 @@ def run_instance(problem, seed, *, feasibility=True, budget=None, q=None):
     g = Meter(problem)
     gm = arm_greedy(g, n, feasibility)
     B = g.spent if budget is None else int(budget)
+    # A13: random and SA are BOTH refused below four evaluations, before either runs or is judged
+    if B < 4:
+        raise ValueError(f"budget B={B} < 4: random and SA are refused (A13)")
     q = sum(gm) / float(n) if q is None else float(q)
     masks = {"greedy": (gm, g)}
     inc = Meter(problem)
     masks["incumbent"] = (arm_incumbent(inc, n, feasibility), inc)
     rm = Meter(problem, budget=B)
     masks["random"] = (arm_random(rm, n, q, random.Random(f"g6.random:{seed}"), feasibility), rm)
-    if B >= 4:
-        sm = Meter(problem, budget=B)
-        masks["SA"] = (arm_sa(sm, n, random.Random(f"g6.sa:{seed}"), feasibility), sm)
+    sm = Meter(problem, budget=B)
+    masks["SA"] = (arm_sa(sm, n, random.Random(f"g6.sa:{seed}"), feasibility), sm)
     masks["no_prune"] = (_full(n), Meter(problem, budget=0))
     out = {}
     for arm, (mask, meter) in masks.items():

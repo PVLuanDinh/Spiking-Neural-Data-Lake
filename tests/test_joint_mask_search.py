@@ -172,3 +172,32 @@ def test_c26_judge_reads_only_the_frozen_winner():
     with pytest.raises(jms.SelectionLeak):
         m.judge(tuple([1] * (fx.n - 1) + [0]))
     m.judge(tuple([1] * fx.n))
+
+
+def test_a13_a_budget_below_four_refuses_random_too_before_any_evaluation_or_judging():
+    """Codex panel MINOR: a one-element problem (B=2) ran random and judged it; A13 refuses BOTH."""
+
+    class One:
+        n = 1
+        calls = 0
+
+        def evaluate(self, mask):
+            One.calls += 1
+            return True, 1.0
+
+        def cost(self, mask):
+            return sum(mask)
+
+        def judge(self, mask):
+            One.calls += 1
+            return True, True
+
+        def work_per_tick(self, mask):
+            return float(sum(mask))
+
+    jms.arm_greedy(jms.Meter(One()), 1)
+    greedy_only = One.calls  # what the measuring greedy pass alone costs
+    One.calls = 0
+    with pytest.raises(ValueError):
+        jms.run_instance(One(), 12001)
+    assert One.calls == greedy_only  # no random draw and no judging read happened
