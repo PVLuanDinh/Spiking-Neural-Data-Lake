@@ -833,3 +833,28 @@ Pointers (no frozen passage is edited); adds to (c). The p8 lens re-found B1, M1
   Cost rises (about one Nelder-Mead per inner split, 4 per outer fold); H01-scale runtime remains unmeasured.
 - **N3 (zero exposure).** A cell with no exposure in the training counts takes the POOLED amplitude (pooled profile for G and P, the pooled
   rate for the flat twin) instead of the pseudo-count over a vanishing denominator; both arms treat it identically so no contrast is manufactured.
+
+### Dated pre-data amendment 2026-10-07 (e) to the Part B amendment -- the safety lens's folds (Codex gpt-6.1-sol, clone c28c7d7b); no edge read
+
+Pointers (no frozen passage is edited); adds to (c) and (d). The safety lens re-found B2, M5 and M6 and added six:
+- **S1 (output paths; live-lake risk).** Both campaign CLIs (`h01_distance_kernel`, `h01_partb_tangential`) call `safe_output` BEFORE any
+  computation: it refuses the live lake directory and any `brain_lake.bin`, any input (resolved path and samefile, so an alias is caught),
+  anything that already exists and a missing parent; the write is `write_exclusive` (O_EXCL, never truncates). Constructed reds: the
+  artifact, a hard-link or symlink alias of it, a path inside the live lake, a `brain_lake.bin` name, a missing directory, an existing
+  output, a path that appears after the check (FileExistsError).
+- **S2 (artifact swap).** `_verified` hashes ONE read of the file and loads those same bytes through BytesIO; a test swaps the file on disk
+  right after the read and still gets the verified data. (A change to `h01_distance_kernel.py`, an instrument already read once; its
+  behaviour is unchanged on an unswapped file.)
+- **S3 (record identity).** A planted record carries its identity (frozen configuration, frame centre, planted-amplitude fingerprint, LF-
+  normalised hashes of the instrument's source files) and `validate_planted` refuses a record whose identity differs or is missing: a
+  changed PENALTIES, a moved centre, a changed source file, or a stripped identity each read as refused. The git head is recorded in the
+  provenance, not compared (documentation commits move it without changing the instrument).
+- **s1 (cost).** Each split's per-cell offset grid is computed once (`delta_table`) and every penalty picks from it (`pick_delta`); a spy
+  test counts one table per inner split.
+- **s2 (memory).** `score_h01` keeps only the first seed's pooled aggregates (n, k), not its histogram set.
+- **s3 (self-check).** `h01_partb_tangential` with no arguments runs a synthetic self-check (frame, unit trap, histograms, a planted kernel
+  beating its distance-free twin, reading rows, the exposure gate, the leak check; about 30 s) and is registered in `run_selfchecks.py`.
+  Observed while building it (disclosed, not acted on): on a 120-unit population with 300 planted edges the kernel arm LOST to its
+  distance-free twin by 173 nats held-out (196 per-cell amplitudes against 300 edges); at 240 units and 1,200 edges it wins by about 800.
+  The instrument's small-sample behaviour is overfitting-limited, not blind; H01's 70,001 edges are the regime that matters, and the
+  planted rows on H01 positions are what decides whether the arms are sighted there.
