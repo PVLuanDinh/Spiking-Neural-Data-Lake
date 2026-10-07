@@ -948,3 +948,9 @@ disposition into a routing claim.
 **Reachability (K11).** The new row has a constructed reaching input: C1 MET with a C1-NI-B NOT MET (a constructed
 d' with mean < 0 on E_B) must read RED; the instrument's decision-table test adds it. A constructed C1 MET with both
 NI bars MET must still read MET.
+
+## DATED NOTE 2026-10-07 (record corrections; additive, changes no frozen number, seed, bar or clause)
+
+- **Review status, stated plainly.** Commits fcdb9d84, 72128b30, a44437fd, f8730471 (the FINAL X-F7 text, which differs from the draft Codex round 2 read), d68bc492 and edc86a96 are TESTS-BY-AUTHOR ONLY: no Codex panel has read them and no battery has run on them. Section 2.17's "Not yet reviewed: the X-F7 amendment" is therefore still true of the final text. A fold-lens panel over 10b59f95^..edc86a96 is requested through the lead; this note is replaced by its disposition when it returns.
+- **Section 2.10, row 16500-16799.** The derived stream seeds (task B = s+500, evaluations s+520/s+540) are WITHDRAWN by X-F7 X2 (string-seed streams, no numeric derived seeds). The range 16500-16799 is unused by F7 and holds no primary seed; the 16900-16999 reds range and every confirmatory set are unchanged.
+- **Carried owner-open (no board post; none changes code, a decision table or a run now).** O1 (sleep never deleted by a null), O2 (percept-transition record retention class and append budget; gates F7's journaling, not F1-F4), O3 (structural slow clock, cited from G6's Q4), O4 (LifelongConsolidator survival), O5 (E_all quantum 0.05 vs a larger constructed workload; F1-F4 run at 20 items as frozen), O6 (budgets in ticks). Each is posted with ask-owner only when its answer would change a run.
