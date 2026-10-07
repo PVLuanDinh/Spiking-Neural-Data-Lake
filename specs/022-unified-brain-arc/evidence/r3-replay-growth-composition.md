@@ -784,3 +784,125 @@ seeds 16000-16007 at the frozen W = 1 as the positive control that C6 is reachab
   REACHABLE at W = 1, but the margin is small and seed-dependent. Run log sha256 `ca4fa2393dd54a63f7dc46e1eb65ad6f1d4267e73700852e4649585af3657779`.
 - **Not read here:** AT-OFF at W = 1 (the confirmatory contrast's other arm; "AT-OFF still prunes", self-defect 5). Whether
   C6 = AT-ON - AT-OFF clears t > 1.895 on 8 seeds is the confirmatory question and stays unread. No W change follows.
+
+## DATED PRE-DATA AMENDMENT 2026-10-07 (X-F7: F7's workload, splits, admission and growth-OFF control)
+
+Written before any F7 data of any kind (dev included) exists; additive (a zero-removed-lines diff). Reviewed: lead read and two Codex gpt-6.1-sol rounds (reply texts in the lead's scratchpad, lens-r3-amend.out and lens-r3b.out); every finding was folded, none refuted. It satisfies R7a-R7d and K15/K9 as frozen in 2.16 (K17 is new here), or withdraws the claim an item protects (stated per item). Everything not marked MEASURED is a [PROJECTION]. Upstream forms still owed to it are cited as OPEN: R2 P3's `hydrate_transitions(events)` (return value; method or free function) and R2's percept `pseq` rule; G3 P2's matched-control picker (`silence_units(consumer, unit_ids)` exists at `growth/candidate_lifecycle.py:110`; the picker does not). G3's `grown_code.admit_rows` (grown_code.py:191) is the unit-LABEL gate, not an ADMIT split, and is not used here.
+
+### X1. Tasks are frozen definitions, not stream seeds (R7a, R7b)
+
+- A task T = (codebook, transition matrix), built ONCE per primary seed s by an instrument-side class `TaskDefinition`
+  in `instruments/replay_growth_composition.py` (a P1 case, disclosed: the incumbent `SyntheticPerceptStream` seeds the
+  matrix and the trajectory from one RNG, `_markov_matrix(k, peak, seed)` and `self._chain`, so a second seed is another
+  TASK, which is the R7a defect; no edit to `neurogenesis_engine.py` beyond `replay_rows`).
+- Task A: k_A = 5 modes, categories 0-4. Task B: k_B = 8 modes, categories 5-12. The transition matrix is the
+  incumbent `_markov_matrix(k, 0.75, seed)` (imported, not copied) with the STRING seed
+  `f"r3.f7|def|{task}|{s}"` (`random.Random` accepts it; deterministic). Trajectories use separate string seeds (X2).
+- **Disjoint percept support (R7b, first option).** The percept is 64 wide (the buffer's width). Task A's modes occupy
+  dims 0-31 and task B's dims 32-63; the other half of the vector is exactly 0.0. Within its half, mode i sits at the
+  incumbent `_mode_features` band centre (i + 0.5) / k with the incumbent seeded jitter 0.12, so a jitter cloud never
+  leaves its band by more than the incumbent's own. A percept of A and a percept of B therefore differ on at least 32
+  dims by construction; the mode clouds of ONE task still overlap as in the incumbent (that difficulty is what makes
+  growth matter and is not changed).
+- **Task oracle (R7b's gate, not the method).** A nearest-codebook decoder that is GIVEN the true codebooks and the true
+  transition matrices: decode the current mode from the percept, answer the matrix row's argmax. It is built from the
+  definition only and never trains. Frozen level: on dev seeds 16000-16007 with 1,000 fresh TRAIN-style rows per task,
+  the oracle's accuracy on A, on B and on A u B must each be >= 0.70 (Bayes optimum = peak = 0.75; 0.70 leaves 0.05 for
+  mode-decoding error) **[PROJECTION: the dev oracle run confirms; the number is frozen here, before it runs, and is not
+  tuned afterwards; a miss on any dev seed -> F7 REFUSED (ambiguous workload), nothing read as forgetting]**.
+- Forgetting must exist or nothing is earned. Gate, frozen here: per dev seed, in the NONE / growth-ON arm, the
+  accuracy on A-JUDGE after stage 1 (A trained) minus the accuracy on A-JUDGE after stage 2 (B filled the 1000-row
+  buffer) must be >= 0.10 absolute. Denominator: A-JUDGE has 599 pairs (X2), so one pair = 0.00167 and 0.10 = 60 pairs;
+  at accuracy ~0.7 the binomial s.e. of one such accuracy is ~0.019, so 0.10 is ~5 s.e. of a single reading. (The
+  earlier wording "two quanta at 8 items" was an arithmetic slip -- an 8-item quantum is 0.125 -- and is not used.) If the
+  gate fails on any dev seed: "retention has nothing to protect", F7 REFUSED, C17 not read.
+
+### X2. Splits by immutable source ID, assigned at generation (R7c)
+
+- A trajectory is a seeded draw of n percepts from a definition; id `s{S}/{task}/{role}/{idx}`. The earlier "stream
+  seeds s+520 / s+540" evaluation sessions are WITHDRAWN (2.16 R7a). **Frozen seed mapping:** every random stream is
+  `random.Random(<string>)` with the strings `r3.f7|def|{task}|{s}` (matrix), `r3.f7|traj|{task}|{role}|{s}` (one
+  trajectory per task and role, roles TRAIN / ADMIT / JUDGE), and `r3.f7|replay|{s}` (every replay draw, shared by all
+  arms of one seed), where `s` is the PRIMARY seed (so K12's block rule applies to it unchanged) and task is A or B.
+  Six trajectory streams and two definition streams per primary seed; string namespaces make a cross-role collision
+  impossible by construction, so 2.10's reserved derived range 16500-16899 is simply unused by F7 (disclosed; no
+  numeric derived seeds exist). The build prints all eight strings per seed and the instrument asserts the set has
+  eight distinct members.
+- **Frozen sizes (pairs = percepts - 1, formed inside one trajectory; counts chosen now, before any F7 run).** TRAIN: 1500
+  percepts per task (1499 pairs; the incumbent's `buffer_cap` 1000 then forgets A while B trains). ADMIT: 300 percepts per
+  task (299 pairs). JUDGE: 600 percepts per task (599 pairs; E quantum 1/599). The F7 non-inferiority eps of 2.4 ("one
+  quantum of its A evaluation session") is therefore 1/599.
+- **Frozen schedule.** Stage 1: `drive` A-TRAIN, 1500 observe+tick steps (refit_every 20, 75 refits), no replay. **Stage
+  boundary (Codex round 2, finding 4; checked: `observe` keeps `_prev` across calls, `neurogenesis_engine.py` 314-343, so a
+  continuous drive WOULD buffer the pair (A's last percept -> B's first category)).** The boundary is a REAL PROCESS RESTART,
+  the case the engine already defines: `growth_state_bytes` is taken, a fresh process runs `restore_growth_state`, and R2's
+  hydration refills the buffer and the category set from the lake; `_prev`, `_prev_cat` and the pending prediction are
+  not restored, so no cross-boundary pair can form (R2 2.3.2 / debate 4.1: pairs are never formed across a restart). The
+  model and the buffer are kept. This is upstream-compatible and needs no engine edit. If R2's hydration is not
+  available when F7 builds, F7 waits (2.11 / X-15), it does not fall back to setting private fields. **New check K17
+  (F7):** every pair the engine buffers or is handed has both endpoints in ONE trajectory (source ids), and the
+  restart boundary is present; red: drive B-TRAIN continuously after A-TRAIN in one process and K17 must fire on the pair
+  (A_last, B_first).
+- Stage 2: `drive` B-TRAIN, 1500 steps; at every refit during stage 2 the instrument calls `replay_rows` once, immediately
+  before that refit's tick, with **R = 64 rows at every refit** (the hydrated buffer holds up to 1000 A pairs at the start of stage 2, so NONE's
+  draw of 64 is always supplied), identical across NONE / HIST-U / HIST-I and across growth ON / OFF / PRESIZED at
+  every refit. **Draw rules, frozen, all WITHOUT replacement inside one refit's draw, RNG
+  `random.Random(f"r3.f7|replay|{s}")` consumed in refit order, one stream per arm family restart-equal:**
+  NONE draws 64 rows uniformly from the pairs currently in the buffer (duplicates of rows the refit already trains on).
+  Eligible history for HIST-U and HIST-I = every TRAIN pair already observed at that refit (all A pairs of stage 1 + the
+  B pairs observed so far in stage 2; a pair becomes eligible the tick it is buffered, never earlier; ADMIT and JUDGE
+  never). HIST-U draws 64 uniformly from that pool. HIST-I draws b = min(32, number of eligible B pairs) from B and a = 64 - b from A
+  (the first stage-2 refit follows 20 B percepts = 19 B pairs: b = 19, a = 45; from the second refit on, 39 or more B
+  pairs exist: b = 32, a = 32; A always has >= 1499 eligible pairs, so the shortfall is always filled from A and
+  a is never short);
+  within each task the drawn pairs are sorted by source index ascending (within-task order kept), then merged by
+  strict alternation A, B, A, B, ... starting with A, with the remainder (when a > b) appended in order. After stage 2:
+  `growth_state_bytes`, a fresh process, `restore_growth_state`, then `model.predict` on A-JUDGE and B-JUDGE (readout not
+  learning). These numbers are design constants, not tuned to any F7 outcome; the dev design step may report cost and
+  the forgetting gate but may change a constant only by a further dated amendment. K15 compares each refit's drawn
+  multiset and, for HIST-I, its order against the rules above; reds in X3 plus: (iv) HIST-I with b = 32 at the first
+  refit (a draw the pool cannot supply) must fire.
+- Roles. TRAIN: written through R2's `transition_sink` and observed; replay-eligible. ADMIT: scores unit admission
+  ONLY; never observed, deposited or replayed. JUDGE: final evaluation only. Pairs (percept_{t-1}, category_t) form WITHIN
+  a trajectory through R2 P3's `hydrate_transitions` or R2's pseq-adjacency rule (OPEN; never a second pairing rule);
+  JUDGE and ADMIT items are pairs inside their own trajectory.
+- **K9 (widened, 2.16 R7c):** no source ID of a TRAIN or replayed item appears in ADMIT or JUDGE; every id carries its
+  role; red 1: plant one TRAIN id into ADMIT; red 2: plant one replayed id into JUDGE; red 3 (R2's): an interposed
+  held-out percept yields no bridging pair. Each must fire.
+- **Admission scoring.** The incumbent `_refit` scores admission on `marginal_holdout` of the OBSERVED buffer, i.e. on
+  rows the live `OnlineReadout("delta")` already learned from (R7c's defect). F7 does NOT assume a pointable ADMIT
+  slice. Default: C16 reads retention on JUDGE only, and the claim "units earn admission on untouched data" is NOT made
+  (disclosed). That claim is made only if a mechanism exists that points the existing `_refit` admission score at ADMIT
+  rows WITHOUT a second refit path; if one exists at the build, it is added by a further dated amendment before data.
+
+### X3. Growth OFF changes only additions (R7d) and K15
+
+- ON, OFF and PRESIZED run the same fit/validation partitions and the same stopping protocol. The incumbent pinned-`l_max`
+  OFF arm is WITHDRAWN (it switches NGSNN's internal validation split off, `ng_snn.py` 437, `n_val = 0 if self.l_max is
+  not None ...`).
+- **OFF mechanism: a cap on additions, not on `l_max`.** [OPEN, needs G3's/the build's static read of `NGSNN.fit` growth
+  loop]: the instrument wraps the growth step so that, at the A->B boundary, a candidate unit that would be ADDED is
+  discarded (the add decision is read and refused), with `l_max` and the validation split untouched. If the fit
+  loop's structure admits no such refusal without a second fit path, **C14 is withdrawn** and the F7 conjunction becomes
+  C15 AND C16 AND C17 (+NI) AND restore equality, restated here BEFORE data; C15's PRESIZED twin (same rows, same refits,
+  an NGSNN built at the ON arm's final unit count) then carries the "growth vs capacity" question alone.
+- **K15 (widened, multiset form):** per refit, the three arms' consumed rows are compared as MULTISETS of
+  (source id, role), role in {fit, validation}, with multiplicity (so [a, a, b] differs from [a, b, b]); where order
+  matters (HIST-I's alternation, the fit/validation partition order) the ORDERED sequence is compared too; admission rows
+  are compared the same way where the mechanism exists. Reds, each must fire: (i) route the OFF arm through the closed-gate
+  branch (it consumes no replay rows); (ii) substitute one row for a duplicate of another in one arm ([a, a, b] against
+  [a, b, b], same set, same count); (iii) swap two HIST-I draws in one arm (same multiset, different order).
+
+### X4. The F7 acceptance conjunction (restated; 2.16 X-20 row 2 reads it)
+
+F7 MET = C14 (if kept) AND C15 AND C16 AND C17 AND C17-NI AND restore equality (a fresh process after
+`restore_growth_state`, `model.predict` on JUDGE of A and B, readout not learning), each at t > 1.895 over 8 seeds, the
+P-8 degenerate rules, the 2^8 operative FPR printed. C16 additionally needs its matched pool (dead units excluded; a pool
+too small to match HALTS). C18 is reported and decides P2 only through X-20 rows 3-4.
+
+### X5. What this amendment does not decide
+
+Refit cadence (`refit_every` 20) and `buffer_cap` (1000) are the incumbent's, inherited and not chosen; sizes, the replay
+row count and the schedule are frozen in X2. HIST-I's alternation rule is the ported LifelongConsolidator interleave
+(within-task order kept, two tasks never joined as a transition). F7 waits as 2.11/X-15
+say: R2 P3's ACCEPTED results, G3 P2, this amendment frozen, then the dev oracle run, then confirmation (16210-16217).
