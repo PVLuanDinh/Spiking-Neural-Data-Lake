@@ -62,6 +62,10 @@ def judge(name, diffs, kind):
     if kind not in ("superiority", "noninferiority"):
         raise ValueError(f"kind must be superiority or noninferiority, got {kind!r}")
     diffs = tuple(float(d) for d in diffs)
+    if not all(
+        math.isfinite(d) for d in diffs
+    ):  # Codex D+E: [inf] * 8 read as a MET non-inferiority
+        raise ValueError(f"{name}: every paired difference must be finite, got {diffs!r}")
     degenerate = len(set(diffs)) <= 1
     hits = 0
     for mask in range(1 << len(diffs)):

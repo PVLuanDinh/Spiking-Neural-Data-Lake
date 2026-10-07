@@ -445,3 +445,16 @@ def test_t4_half_hands_the_pathway_to_every_kernel_arm_but_the_flat_one(monkeypa
     assert [c for c in calls if c[0]] == [(True, True)] * 4
     assert [c for c in calls if not c[0] and c[1]] == []
     assert len([c for c in calls if not c[0]]) >= 1  # the FLAT-KERNEL arm ran
+
+
+# ---- Codex D+E lens 1 folds (correctness + P8) ----
+
+
+@pytest.mark.parametrize("kind", ["superiority", "noninferiority"])
+@pytest.mark.parametrize("bad", [float("inf"), float("-inf"), float("nan")])
+def test_judge_refuses_a_nonfinite_difference(kind, bad):
+    # Codex D+E correctness: judge("bad", [inf] * 8, "noninferiority").met was True
+    with pytest.raises(ValueError):
+        U.judge("bad", [bad] * 8, kind)
+    with pytest.raises(ValueError):
+        U.judge("bad", [0.5, 0.1, 0.2, 0.3, 0.4, 0.6, 0.7, bad], kind)
