@@ -780,6 +780,18 @@ isolation stamp's `os.walk` skipped a directory it cannot list, so a rewrite und
 (the test builds it); the campaign harness must add ONE producer (absent arms omitted, `_refused` carried, keys that start
 with `_` skipped when iterating results). The PressureMeter tick cursor stays a disclosed carrier gap (lead, 2026-10-07).
 
+**DATED PRE-DATA AMENDMENT 2026-10-07 (D20: what "committed" means to G7's `check_saved`; no deciding data read).** Additive to
+A12; zero lines removed. G7's `unit_label_gate.check_saved(record, *, resolve_problem, resolve_committed, first_sign)` reads no
+sleep rows; it takes the saved unit record's `sleep_id`, `mask_digest` and `verdict` and calls the caller-supplied
+`resolve_committed(sleep_id, mask_digest) -> bool` (a false result is PENDING, never REFUSED). G6 supplies that resolver
+and it is the ONE reader of sleep rows for this question: it returns true iff a `sleep_mask_commit` row exists whose
+`sleep_id` AND `mask_digest` both equal the record's (`mask_digest` = `joint_mask_search.mask_digest(prepared_row)`).
+A `sleep_mask_prepared` row alone, a prepared mask rolled back by A12's restore rule (the restored checkpoint's
+`applied_mask_digest` differs from the prepared digest), and a commit row with a different digest all return false.
+No `phase` field exists; the two row kinds are the discriminator. Agreed with G7 (message, 2026-10-07); no gate change.
+Test owed at G6's P4: a red per false case, and a green for the committed pair. D21 (where R2's checkpoint carries
+`applied_mask_digest`) stays OPEN, held by the lead until owner question X1 is answered.
+
 ## 3. Results
 
 None. Nothing is measured beyond section 1; no deciding test has run.
