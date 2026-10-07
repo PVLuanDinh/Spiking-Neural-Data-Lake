@@ -613,6 +613,40 @@ def read_b_r1(cells, label=""):
     return met, _line(c.name, met, c, x) + ("  HARMFUL" if harm else "")
 
 
+def read_part_b(cells, recorded, label=""):
+    """The confirmatory reading of record 3.4, printed once: the reach gate (B-R2 / B-R4) first, then B-R0's
+    positive control, B-R1 (with HARMFUL), B-R3's four conjuncts, COUPLED_PERM as REPORTED only, and each
+    arm's accuracy against its persistence floor. Returns (lines, landed)."""
+    b_reach_gate(cells)
+    lines = [f"{label}B-R2 / B-R4 reach gate: PASSED on {len({c['seed'] for c in cells})} seeds"]
+    met0, c, x = contrast_cells(cells, "DELTA", "BATCH", label)
+    lines.append(_line(c.name, met0, c, x) + "  (B-R0 positive control)")
+    met1, line1 = read_b_r1(cells, label)
+    lines.append(line1 + "  (B-R1)")
+    m1, c, x = contrast_cells(cells, "COUPLED", "COUPLED_MARG", label)
+    m2, c2, x2 = contrast_cells(cells, "COUPLED", "COUPLED_SHUF", label)
+    nv = [
+        s
+        for s, r in recorded.items()
+        if shift_fraction(r["cats"], circular_shift(r["cats"])) < VACUITY_FLOOR
+    ]
+    m4, c4, x4 = contrast_cells(cells, "COUPLED_SHUF", "DELTA", label)
+    lines += [
+        _line(c.name, m1, c, x) + "  (B-R3 conjunct 1)",
+        _line(c2.name, m2, c2, x2) + "  (B-R3 conjunct 2)",
+        f"{label}shift non-vacuous on {len(recorded) - len(nv)} of {len(recorded)} seeds"
+        f"  (B-R3 conjunct 3; vacuous: {nv})",
+        _line(c4.name, m4, c4, x4) + "  (B-R3 conjunct 4: must be NOT MET)",
+    ]
+    r3 = m1 and m2 and not nv and not m4
+    mp, cp, xp = contrast_cells(cells, "COUPLED_PERM", "DELTA", label)
+    lines.append(_line(cp.name, mp, cp, xp) + "  (REPORTED only, never a bar)")
+    arm_table(cells, log=lines.append)
+    landed = met0 and met1 and r3
+    lines.append(f"{label}B-R0..B-R4 all hold: {landed}  (B-R3 {r3})")
+    return lines, landed
+
+
 # --------------------------------------------------------------------------------------------------
 # the brain-free reds of the cell machinery (record 2.6: PA3, PA4, PA8, PA10)
 # --------------------------------------------------------------------------------------------------
@@ -715,6 +749,12 @@ def main(argv=None):
         return
     if "--pa3" in argv:
         pa3()
+        return
+    if "--confirm" in argv:  # in-brain, read ONCE (record 3.4): only on the lead's go
+        rec, cells, rep = run_cells(CONF_SEEDS, B_ARMS, reserve=RESERVE_SEEDS)
+        print("replacements:", rep)
+        for line in read_part_b(cells, rec, "CONF ")[0]:
+            print(line)
         return
     if "--dev" in argv:  # in-brain: run only on the lead's go (board rule)
         _, cells, _ = run_cells(DEV_SEEDS, DEV_ARMS)

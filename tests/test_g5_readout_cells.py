@@ -291,3 +291,47 @@ def test_reach_gate_halts_before_b_r1_and_a_significant_negative_reads_harmful()
         g.read_b_r1(_b_cells([0.6] * 8, z_acc=0.51))
     with pytest.raises(g.ReachHalt, match="B-R4"):  # a coupled arm moved the refit trajectory
         g.read_b_r1(_b_cells([0.6] * 8, c_traj=[(1, 1, 0.9)]))
+
+
+def _conf_cells(coupled, shuf, marg, perm):
+    out = []
+    for i in range(8):
+        base = {
+            "seed": i,
+            "beta_hash": "b",
+            "traj": [(1, 1, 0.5)],
+            "live_acc": 0.5,
+            "live_pers": 0.9,
+        }
+        out += [
+            {**base, "arm": "BATCH", "live_acc": 0.3 + 0.01 * i},
+            {**base, "arm": "DELTA"},
+            {**base, "arm": "COUPLED0"},
+            {**base, "arm": "COUPLED", "live_acc": 0.5 + coupled[i]},
+            {**base, "arm": "COUPLED_SHUF", "live_acc": 0.5 + shuf[i]},
+            {**base, "arm": "COUPLED_MARG", "live_acc": 0.5 + marg[i]},
+            {**base, "arm": "COUPLED_PERM", "live_acc": 0.5 + perm[i]},
+        ]
+    return out
+
+
+def test_read_part_b_lands_only_when_every_conjunct_holds_and_prints_the_gate():
+    # a non-periodic recording, so the circular shift moves many teaching labels
+    rec = {i: {"cats": [(k * k // 3) % 4 for k in range(40)]} for i in range(8)}
+    up = [0.06, 0.05, 0.07, 0.06, 0.05, 0.08, 0.06, 0.07]
+    zero = [0.0, 0.01, -0.01, 0.0, 0.01, -0.01, 0.0, 0.01]
+    lines, landed = g.read_part_b(_conf_cells(up, zero, zero, zero), rec)
+    assert landed and "reach gate: PASSED" in lines[0] and any("conjunct 4" in x for x in lines)
+    assert any("acc - floor" in x for x in lines)  # the persistence context is printed
+    # COUPLED_SHUF - DELTA MET adds a refusal (conjunct 4), so the reading does not land
+    assert not g.read_part_b(_conf_cells(up, up, zero, zero), rec)[1]
+    # the control that is not the method ties the method: conjunct 1 NOT MET
+    assert not g.read_part_b(_conf_cells(up, zero, up, zero), rec)[1]
+    # a vacuous (one-category) recording refuses conjunct 3
+    vac = {i: {"cats": [2] * 40} for i in range(8)}
+    assert not g.read_part_b(_conf_cells(up, zero, zero, zero), vac)[1]
+    # a failed reach gate halts the whole read
+    bad = _conf_cells(up, zero, zero, zero)
+    bad[2]["live_acc"] = 0.9  # COUPLED0 != DELTA on seed 0
+    with pytest.raises(g.ReachHalt):
+        g.read_part_b(bad, rec)
