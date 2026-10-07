@@ -705,10 +705,14 @@ def build_record(pop, h, units, verdict, keep, edges, sha, t3_ref=None, bands=No
     n, k = h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))
     kind = select_form(units, bands)
     th = fit_global(d, n, k, kind)
-    amp, _ = _profile(n, k, shape(d[None, :], th, kind))
     a_w, c_w, sigma, lam = export_params(kind, th)
     live = np.flatnonzero(n.sum(1) > 0)
     t3_k = (t3_ref or {}).get("K")
+    pens = [p for u in units for p in u["pen"]]
+    pen = max(set(pens), key=pens.count)
+    delta = fit_delta(d, n, k, th, kind, pen) if keep == "pooled" else np.zeros(N_CELL)
+    # N1: amplitudes are profiled AFTER the final offsets, so they belong to the widths the record delivers
+    amp, _ = _profile(n, k, shape(d[None, :] * np.exp(-delta)[:, None], th, kind))
     rec = {
         "source": "part_b",
         "frame": "tangential",
@@ -731,9 +735,6 @@ def build_record(pop, h, units, verdict, keep, edges, sha, t3_ref=None, bands=No
         "t3_record": t3_ref,
     }
     if keep == "pooled":
-        pens = [p for u in units for p in u["pen"]]
-        pen = max(set(pens), key=pens.count)
-        delta = fit_delta(d, n, k, th, kind, pen)
         rec["penalty"] = pen
         rec["pathway_widths"] = {
             int(c): [

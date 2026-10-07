@@ -129,3 +129,33 @@ def test_layer_term_directed_and_symmetrised():
 def test_xy_shape_and_values():
     got = wp.xy([_u("a", 1.5, -2.0), _u("b", 3.0, 4.0)])
     assert got.shape == (2, 2) and got.tolist() == [[1.5, -2.0], [3.0, 4.0]]
+
+
+def _pooled_rec(width=160.0, keep="pooled", key=105):
+    return dict(REC, keep=keep, pathway_widths={key: [width, width]})
+
+
+def test_pooled_record_delivers_the_pathway_width_that_was_read():
+    # L4e -> L4e is Part B cell 105 (class 7; 7*14+7): its width 160 um replaces the global 50 um
+    s, t = _u("s", 0, 0), _u("t", 100, 0)
+    base = CONN_PROB[2][2]
+    assert math.isclose(_p(s, t, _pooled_rec(160.0)), base * math.exp(-(100.0**2) / (2 * 160.0**2)))
+    assert math.isclose(
+        _p(s, t, _pooled_rec(160.0, key="105")), _p(s, t, _pooled_rec(160.0))
+    )  # JSON keys
+    assert math.isclose(
+        _p(s, t, REC), base * math.exp(-(100.0**2) / (2 * 50.0**2))
+    )  # no widths: global
+    assert _p(s, t, _pooled_rec(160.0, keep="global")) == _p(
+        s, t, REC
+    )  # a global-keeping record ignores them
+    other = _u("o", 100, 0, "Layer 5", 1)  # another pathway keeps the global width
+    assert _p(s, other, _pooled_rec(160.0)) == _p(s, other, REC)
+
+
+def test_pathway_cell_matches_part_b_class_arithmetic():
+    assert wp.pathway_cell(_u("a", 0, 0, "Layer 4", 1), _u("b", 0, 0, "Layer 4", 1)) == 105
+    assert wp.pathway_cell(_u("a", 0, 0, "Layer 2", -1), _u("b", 0, 0, "Layer 6", 1)) == 2 * 14 + 11
+    assert (
+        wp.pathway_cell(_u("a", 0, 0, 3, 1), _u("b", 0, 0, 3, 1)) == 105
+    )  # a layer index works too

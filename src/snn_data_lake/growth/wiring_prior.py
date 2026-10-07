@@ -47,10 +47,40 @@ def _check(record):
     return record
 
 
-def kernel_shape(record):
-    """f(d) on a numpy distance array (um): the record's mixture, 1 at d = 0; only relative values matter."""
+N_CLASS = 14  # Part B's pathway classes: 7 bands x 2 signs
+
+
+def pathway_cell(pre, post):
+    """Part B's cell id for a (source, target) pair of label records: pre class * 14 + post class, class =
+    band index * 2 + (sign > 0); band index = LAYER_NAMES position (the artifact's layer code)."""
+
+    def cls(u):
+        li = (
+            u["layer"]
+            if isinstance(u["layer"], (int, np.integer))
+            else LAYER_NAMES.index(u["layer"])
+        )
+        return int(li) * 2 + (1 if u["sign"] > 0 else 0)
+
+    return cls(pre) * N_CLASS + cls(post)
+
+
+def _widths(rec, cell):
+    """(sigma_um, lambda_um) of a pathway when the record kept the pooled widths, else the global ones."""
+    if cell is not None and rec.get("keep") == "pooled":
+        w = rec.get("pathway_widths") or {}
+        hit = w.get(cell, w.get(str(cell)))  # JSON round trips turn int keys into strings
+        if hit:
+            return hit[0], hit[1]
+    return rec["sigma_um"], rec["lambda_um"]
+
+
+def kernel_shape(record, cell=None):
+    """f(d) on a numpy distance array (um): the record's kernel, 1 at d = 0; only relative values matter. With
+    `cell` and a pooled record, the pathway's own widths (B2: the delivered kernel is the one that was read)."""
     rec = _check(record)
-    a, c, sg, lam = rec["a"], rec["c"], rec["sigma_um"], rec["lambda_um"]
+    a, c = rec["a"], rec["c"]
+    sg, lam = _widths(rec, cell)
     return lambda d: (
         (a * np.exp(-(np.asarray(d) ** 2) / (2.0 * sg**2)) + c * np.exp(-np.asarray(d) / lam))
         / (a + c)
@@ -75,7 +105,8 @@ def xy(units):
 def attach_probabilities(new_units, existing_units, record, partners=None):
     """Array [len(new_units), len(existing_units)] of p(new -> existing), each in [0, 1]."""
     rec = _check(record)
-    beta, shape = rec.get("beta", 0.0), kernel_shape(rec)
+    beta = rec.get("beta", 0.0)
+    shapes = {}
     partners = partners or {}
     out = np.zeros((len(new_units), len(existing_units)))
     for i, u in enumerate(new_units):
@@ -87,5 +118,8 @@ def attach_probabilities(new_units, existing_units, record, partners=None):
                 continue
             target = layer_term(pu, population(v["layer"], v["sign"]))
             m = len(set(partners.get(u["unit_id"], ())) & set(partners.get(v["unit_id"], ())))
-            out[i, j] = target * shape(np.hypot(ux - vx, uy - vy)) * (1.0 + beta * m)
+            cell = pathway_cell(u, v)
+            if cell not in shapes:
+                shapes[cell] = kernel_shape(rec, cell)
+            out[i, j] = target * shapes[cell](np.hypot(ux - vx, uy - vy)) * (1.0 + beta * m)
     return np.clip(out, 0.0, 1.0)

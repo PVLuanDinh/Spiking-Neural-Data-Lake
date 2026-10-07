@@ -485,3 +485,41 @@ def test_selected_form_is_what_is_exported_and_a_disagreement_is_recorded(pop, n
     r = rec(mix_units, "mix", 5.0)
     assert r["form"] == "mix" and r["a"] == 1.0 and r["c"] > 0.0 and r["form_disagrees_t3"] is False
     assert pb.select_form(mix_units, {"form_gap": 50.0}) == "gauss"  # inside the band: no upgrade
+
+
+def test_pooled_record_amplitudes_belong_to_the_delivered_widths_and_the_consumer_uses_them(
+    pop, n_all
+):
+    from snn_data_lake.growth import wiring_prior as wp
+
+    p2 = pb.make_pop(
+        pop.xyz, np.where(np.random.default_rng(1).random(N) < 0.5, 1, 2), np.ones(N, dtype=int)
+    )
+    h, _ = pb.build_hists(
+        p2,
+        10020,
+        n_all=pb._all_pairs_n(p2),
+        truth={"form": "gauss", "width": 60.0, "pathway": (20.0, 250.0)},
+        n_edges=1500,
+    )
+    units = [_fake_unit(10020 + i, form="gauss") for i in range(8)]
+    edges = (np.zeros(2, dtype=int), np.ones(2, dtype=int))
+    rec = pb.build_record(
+        p2, h, units, "PASS", "pooled", edges, "a" * 64, {"K": "gauss"}, {"form_gap": 9}
+    )
+    d = (np.arange(p2.nb) + 0.5) * pb.BIN
+    n, k = h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))
+    th = pb.fit_global(d, n, k, "gauss")
+    delta = pb.fit_delta(d, n, k, th, "gauss", rec["penalty"])
+    amp, _ = pb._profile(n, k, pb.shape(d[None, :] * np.exp(-delta)[:, None], th, "gauss"))
+    for c, v in rec["pathway_amplitudes"].items():
+        assert math.isclose(
+            v, float(amp[int(c)]), rel_tol=1e-9
+        )  # N1: profiled AFTER the final offsets
+    cells = [int(c) for c in rec["pathway_widths"]]
+    assert cells, "no pooled pathway widths: the consumer half would be vacuous"
+    # B2: the consumer's kernel for that pathway is the record's own width, not the global one
+    c = cells[0]
+    f = wp.kernel_shape(rec, c)
+    sg = rec["pathway_widths"][c][0]
+    assert math.isclose(float(f(np.array([40.0]))[0]), math.exp(-(40.0**2) / (2 * sg**2)))
