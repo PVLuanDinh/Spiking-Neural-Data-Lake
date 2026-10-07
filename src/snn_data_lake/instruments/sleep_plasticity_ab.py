@@ -966,15 +966,25 @@ def census(read):
     return lines
 
 
-def claims_report(family, contrasts, recs):
+CLAIM_ROWS = ("MET", "EXT credited", "MED credited")  # the decision-table rows that make a claim
+
+
+def claim_stands(row):
+    """A claim stands only if the family's FINAL guarded table row says so (Codex lens-r3-amend: the primary
+    contrasts alone ignore C-SENS, the interference bars and HALT)."""
+    return row.startswith(CLAIM_ROWS)
+
+
+def claims_report(family, contrasts, recs, row):
     """P-6 (Codex cp2 #12): the claims made through the family's ONE declared primary (PRIMARY, read here),
-    beside the tests read; plus the endpoint quantum and the secondary correct-label margin."""
+    beside the tests read; the verdict is the family's final table `row`, never the primaries alone; plus
+    the endpoint quantum and the secondary correct-label margin."""
     prim = PRIMARY[family]
     made = [n for n in prim if n in contrasts and contrasts[n].met]
     lines = [
         f"primary met: {len(made)} of {len(prim)} {list(prim)} -> {made}; claim "
-        + ("STANDS" if len(made) == len(prim) else "NOT MADE")
-        + " (a family claims only through its whole primary)",
+        + ("STANDS" if claim_stands(row) else "NOT MADE")
+        + f" (the family's final guarded row decides: {row[:60]})",
         f"endpoint quantum E_all = 1/{len(recs[0]['restored'])}",
         "secondary correct-label margin (mean over seeds, per arm): "
         + str(
@@ -1225,7 +1235,7 @@ def _main_cmd(a):
         else:
             print("table:", res["row"], "(set", a.set + ")")
         for line in census(res["contrasts"].values()) + claims_report(
-            a.family, res["contrasts"], recs
+            a.family, res["contrasts"], recs, res["row"]
         ):
             print(line)
         walls = {}

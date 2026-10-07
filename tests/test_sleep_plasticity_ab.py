@@ -282,18 +282,49 @@ def test_cp2_12_margin_is_correct_minus_best_other_and_claims_read_primary():
     assert m.margin(Ixn(), items) == (1.0 + -1.0) / 2
     recs = [_record("ON", s) for s in (16000, 16001)]
     c = type("C", (), {"met": True})()
-    lines = m.claims_report("F1", {"C1": c, "C1-NI": c}, recs)
+    lines = m.claims_report("F1", {"C1": c, "C1-NI": c}, recs, "MET")
     assert "met: 2 of 2" in lines[0] and "STANDS" in lines[0] and "1/2" in lines[1]
     n = type("N", (), {"met": False})()  # F1 dev reading: C1 NOT MET, C1-NI MET -> no claim
-    assert "NOT MADE" in m.claims_report("F1", {"C1": n, "C1-NI": c}, recs)[0]
+    assert "NOT MADE" in m.claims_report("F1", {"C1": n, "C1-NI": c}, recs, "NULL")[0]
     m.PRIMARY["F1"] = ("C1", "C9")  # the declaration is CONSUMED: changing it changes the report
     try:
-        assert "met: 1 of 2" in m.claims_report("F1", {"C1": c}, recs)[0]
+        assert "met: 1 of 2" in m.claims_report("F1", {"C1": c}, recs, "MET")[0]
     finally:
         m.PRIMARY["F1"] = ("C1", "C1-NI")
 
 
 # ---- Codex lens-r3-amend: endpoint shapes are checked (KE)
+def _met_all():
+    return type("C", (), {"met": True})()
+
+
+@pytest.mark.parametrize(
+    "row, stands",
+    [
+        ("REFUSED (blind harness: C-SENS NOT MET)", False),  # C1 and C1-NI MET, C-SENS NOT MET
+        ("NULL: sleep synaptic plasticity not shown", False),
+        ("INTERFERENCE RED (C1 MET, C1-NI NOT MET)", False),  # also the row of any added NI guard
+        ("HALT (instrument defect, no verdict)", False),
+        ("MET: old-experience replay carries the gain (C2 MET)", True),
+        ("MET; no benefit over recency-only replay demonstrated (C2 NOT MET)", True),
+    ],
+)
+def test_claims_follow_the_final_guarded_row(row, stands):
+    recs = [_record("ON", s) for s in (16000, 16001)]
+    c = _met_all()
+    line = m.claims_report("F1", {"C1": c, "C1-NI": c}, recs, row)[0]
+    assert ("STANDS" in line) is stands and ("NOT MADE" in line) is not stands, line
+
+
+def test_claims_f4_partial_credit_stands_and_red_does_not():
+    recs = [_record("MED", s, "F4") for s in (16130, 16131)]
+    c = _met_all()
+    ok = "EXT credited; no sleep-duration benefit over massed wake demonstrated (C9 NOT MET)"
+    assert "STANDS" in m.claims_report("F4", {}, recs, ok)[0]
+    red = "INTERFERENCE RED at MED (C7 MET, its NI NOT MET)"
+    assert "NOT MADE" in m.claims_report("F4", {"C7": c}, recs, red)[0]
+
+
 KE_PLANTS = {
     "short": lambda rs: rs[0].update(restored=[1] * 6 + [0] * 6, inproc=[1] * 12, n_a=6),
     "empty_b": lambda rs: rs[0].update(restored=[1] * 8, inproc=[1] * 8, n_a=8),
