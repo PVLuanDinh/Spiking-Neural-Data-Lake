@@ -346,7 +346,8 @@ def leak_free(train_folds, test_folds, f, g):
 
 def inner_split(hist_n, hist_k, f, g):
     """Outer fold f held out; inner fold g held out of the rest. Returns ntr, ktr, nte, kte."""
-    tr = [h for h in range(K) if h != f]
+    groups = range(hist_n.shape[0])  # K unit folds or the four region blocks
+    tr = [h for h in groups if h != f]
     ok = [h for h in tr if h != g]
     assert leak_free(ok, tr, f, g), f"inner split leaks held-out folds {f}, {g}"
     ntr, ktr = (a[np.ix_(ok, ok)].sum((0, 1)) for a in (hist_n, hist_k))
@@ -357,7 +358,7 @@ def inner_split(hist_n, hist_k, f, g):
 def choose_penalty(d, hist_n, hist_k, f, th, kind):
     """Nested folds on the TRAINING folds only: the penalty with the best summed inner held-out LL."""
     score = dict.fromkeys(PENALTIES, 0.0)
-    for g in (h for h in range(K) if h != f):
+    for g in (h for h in range(hist_n.shape[0]) if h != f):
         ntr, ktr, nte, kte = inner_split(hist_n, hist_k, f, g)
         for pen in PENALTIES:
             delta = fit_delta(d, ntr, ktr, th, kind, pen)
@@ -371,7 +372,7 @@ def score_labels(d, n, k, labels_n, kind="mix", forms=False):
     for f in range(labels_n):
         ntr, ktr, nte, kte = t3.split(n, k, np.arange(n.shape[0]), f)
         th = fit_global(d, ntr, ktr, kind)
-        pen = choose_penalty(d, n, k, f, th, kind) if n.shape[0] == K else PENALTIES[1]
+        pen = choose_penalty(d, n, k, f, th, kind)
         delta = fit_delta(d, ntr, ktr, th, kind, pen)
         rec = {
             "F": flat_ll(ntr, ktr, nte, kte),

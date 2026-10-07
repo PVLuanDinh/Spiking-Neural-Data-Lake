@@ -63,13 +63,13 @@ def test_all_pairs_counts_every_ordered_pair_once(pop, n_all):
 
 def test_hists_partition_the_same_pairs_and_are_deterministic(pop, n_all):
     truth = {"form": "gauss", "width": 60.0}
-    h, _ = pb.build_hists(pop, 10350, n_all=n_all, truth=truth, n_edges=1200)
+    h, _ = pb.build_hists(pop, 10020, n_all=n_all, truth=truth, n_edges=1200)
     assert int(h.n_fold.sum()) == int(h.n_block.sum()) == N * (N - 1)
     assert int(h.k_fold.sum()) == int(h.k_block.sum()) > 0
     assert 0.85 * 1200 < int(h.k_fold.sum()) < 1.15 * 1200
-    h2, _ = pb.build_hists(pop, 10350, n_all=n_all, truth=truth, n_edges=1200)
+    h2, _ = pb.build_hists(pop, 10020, n_all=n_all, truth=truth, n_edges=1200)
     assert np.array_equal(h.k_fold, h2.k_fold) and np.array_equal(h.n_fold, h2.n_fold)
-    h3, _ = pb.build_hists(pop, 10351, n_all=n_all, truth=truth, n_edges=1200)
+    h3, _ = pb.build_hists(pop, 10021, n_all=n_all, truth=truth, n_edges=1200)
     assert not np.array_equal(h.n_fold, h3.n_fold)
 
 
@@ -79,8 +79,8 @@ def test_planted_scale_refuses_a_clipped_world(pop, n_all):
 
 
 def test_kernel_world_beats_its_flat_twin_and_flat_world_does_not(pop, n_all):
-    g = pb._unit(pop, 10316, n_all, {"form": "gauss", "width": 60.0}, 1200)
-    f = pb._unit(pop, 10308, n_all, {"form": "flat"}, 1200)
+    g = pb._unit(pop, 10030, n_all, {"form": "gauss", "width": 60.0}, 1200)
+    f = pb._unit(pop, 10031, n_all, {"form": "flat"}, 1200)
     assert g["neuron"]["G-F"] > 100.0 and g["interior"]["G-F"] != 0.0
     assert all(r["G-F"] > 0 for r in g["region"])
     assert abs(f["neuron"]["G-F"]) < 0.05 * g["neuron"]["G-F"]
@@ -150,9 +150,9 @@ def _mk(name, truth, first, expect):
 
 def _mini_plan():
     return (
-        _mk("flat_calibration", {"form": "flat"}, 10300, None),
-        _mk("flat_validation", {"form": "flat"}, 10308, "red_flat"),
-        _mk("gauss", {"form": "gauss", "width": 60.0}, 10316, "red_pool"),
+        _mk("flat_calibration", {"form": "flat"}, 10040, None),
+        _mk("flat_validation", {"form": "flat"}, 10048, "red_flat"),
+        _mk("gauss", {"form": "gauss", "width": 60.0}, 10030, "red_pool"),
     )
 
 
@@ -178,8 +178,8 @@ def test_pooling_positive_control_and_its_null():
     n_all = pb._all_pairs_n(p2)
     wide = {"form": "gauss", "width": 60.0, "pathway": (20.0, 250.0)}
     flat = {"form": "gauss", "width": 60.0}
-    pw = [pb._unit(p2, s, n_all, wide, 1500)["neuron"]["P-G"] for s in (10332, 10333, 10334)]
-    nl = [pb._unit(p2, s, n_all, flat, 1500)["neuron"]["P-G"] for s in (10340, 10341, 10342)]
+    pw = [pb._unit(p2, s, n_all, wide, 1500)["neuron"]["P-G"] for s in (10050, 10051, 10052)]
+    nl = [pb._unit(p2, s, n_all, flat, 1500)["neuron"]["P-G"] for s in (10060, 10061, 10062)]
     assert min(pw) > 50.0 and max(nl) < 25.0
 
 
@@ -281,10 +281,10 @@ def test_record_is_readable_by_wiring_prior(pop, n_all):
     from snn_data_lake.growth import wiring_prior as wp
 
     truth = {"form": "gauss", "width": 60.0}
-    h, _ = pb.build_hists(pop, 10350, n_all=n_all, truth=truth, n_edges=1200)
+    h, _ = pb.build_hists(pop, 10020, n_all=n_all, truth=truth, n_edges=1200)
     rng = np.random.default_rng(0)
     edges = (rng.integers(0, N, 400), rng.integers(0, N, 400))
-    units = [_fake_unit(10350 + i) for i in range(8)]
+    units = [_fake_unit(10020 + i) for i in range(8)]
     rec = pb.build_record(
         pop, h, units, "PASS", "pooled", edges, "a" * 64, {"blob_sha256": "b" * 64}
     )
@@ -313,3 +313,27 @@ def test_record_is_readable_by_wiring_prior(pop, n_all):
         0.0 < p < 1.0
         and p < wp.attach_probabilities([a], [dict(b, position=(0, 0, 1.0, 0.0, 0.5))], rec)[0, 0]
     )
+
+
+def test_region_blocks_use_the_nested_training_only_split():
+    n = np.ones((pb.NB_REG, pb.NB_REG, 1, 1), dtype=np.int64)
+    k = np.zeros_like(n)
+    k[2, :], k[:, 2], k[0, :], k[:, 0] = (
+        1,
+        1,
+        1,
+        1,
+    )  # touching the inner-held-out block 2 or outer block 0
+    ntr, ktr, nte, kte = pb.inner_split(n, k, 0, 2)
+    assert int(ktr.sum()) == 0 and int(ntr.sum()) == 2 * 2 and int(nte.sum()) == 3 * 3 - 2 * 2
+
+
+def test_development_seeds_only_in_the_synthetic_tests():
+    import pathlib
+    import re
+
+    lines = pathlib.Path(__file__).read_text(encoding="utf-8").splitlines()
+    text = " ".join(ln for ln in lines if "campaign" not in ln and "findall" not in ln)
+    campaign = set(range(10100, 10300)) | set(range(10300, 10358)) | {10007}
+    drawn = {int(m) for m in re.findall(r"\b(1\d{4})\b", text)}
+    assert not drawn & campaign, sorted(drawn & campaign)
