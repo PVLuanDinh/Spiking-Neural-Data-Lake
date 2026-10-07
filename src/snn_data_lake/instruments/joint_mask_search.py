@@ -130,8 +130,11 @@ def _one_pass(meter, mask, feasibility=True):
     """The incumbent's discipline (`prune_unearned`): score every single removal against the CURRENT mask,
     drop ALL that are individually droppable at once (feasible and score no worse), keep >= 1 element.
     Returns (new_mask, removed_count). Its known ceiling (jointly necessary pairs both dropped) is kept."""
-    _, base = meter.evaluate(mask, feasibility=feasibility)
     active = [i for i, b in enumerate(mask) if b]
+    # prune_unearned (ng_snn.py) returns at <= 1 unit: nothing is probed or charged
+    if len(active) <= 1:
+        return tuple(mask), 0
+    _, base = meter.evaluate(mask, feasibility=feasibility)
     drop, cost = [], {}
     for i in active:
         trial = list(mask)

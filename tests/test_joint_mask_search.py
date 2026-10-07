@@ -201,3 +201,19 @@ def test_a13_a_budget_below_four_refuses_random_too_before_any_evaluation_or_jud
     with pytest.raises(ValueError):
         jms.run_instance(One(), 12001)
     assert One.calls == greedy_only  # no random draw and no judging read happened
+
+
+def test_one_active_unit_is_never_probed_for_removal_like_the_incumbent():
+    """Codex panel MAJOR (p2p3#1, guard half): prune_unearned returns at <= 1 unit (ng_snn.py:359);
+    the instrument's incumbent pass evaluated the removal too and charged two evaluations."""
+
+    class Problem:
+        n = 1
+
+        def evaluate(self, mask):
+            return True, 1.0
+
+    meter = jms.Meter(Problem())
+    mask, removed = jms._one_pass(meter, (1,))
+    assert (mask, removed) == ((1,), 0)
+    assert meter.spent == 0
