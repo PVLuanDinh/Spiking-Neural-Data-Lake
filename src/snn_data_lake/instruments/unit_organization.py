@@ -384,6 +384,59 @@ def modularity(edges, n, seeds=LOUVAIN_SEEDS):
     return best_partition(edges, n, seeds)[0]
 
 
+def t4_wiring_half(n, m, *, xy, pops, kernel, beta, columns, seeds, louvain_seeds=LOUVAIN_SEEDS):
+    """T4's wiring half (2.7) on caller-supplied substrate: per seed, Q (Louvain, max over restarts) of every
+    arm at the same N and EXACTLY M edges. `kernel` is G4's tangential kernel (a callable on a distance array),
+    `beta` G4's Part B2 value (0.0 = the clause reported untested). Returns {"refused": [...], "q": {arm:
+    [Q per seed]}, "verdicts": {...}, "rule_credited": bool|None}. A refused RULE / RANDOM / RANDOM-SEQ arm refuses
+    the half (rule_credited None); a refused attribution variant leaves its term NOT CLAIMED; IMPOSED is
+    reported and decides nothing. The caller runs ir1/ir2 first (t4_instruments_refuse)."""
+    flat = lambda d: 1.0  # noqa: E731 -- a removed kernel term
+    arms = {
+        "RULE": dict(kernel=kernel, pops=pops, beta=beta),
+        "DIST-ONLY": dict(kernel=kernel, pops=pops, beta=0.0),
+        "FLAT-KERNEL": dict(kernel=flat, pops=pops, beta=beta),
+        "NO-LAYER": dict(kernel=kernel, pops=None, beta=beta),
+        "IMPOSED": dict(kernel=kernel, pops=pops, beta=beta, columns=columns),
+    }
+    q, refused = {}, []
+    for name, kw in arms.items():
+        try:
+            q[name] = [
+                modularity(sample_exact_m(n, m, xy=xy, seed=s, **kw), n, louvain_seeds)
+                for s in seeds
+            ]
+        except Infeasible:
+            refused.append(name)
+    try:
+        q["RANDOM"] = [modularity(random_graph(n, m, seed=s), n, louvain_seeds) for s in seeds]
+        q["RANDOM-SEQ"] = [modularity(random_seq(n, m, seed=s), n, louvain_seeds) for s in seeds]
+    except Infeasible:
+        refused += [a for a in ("RANDOM", "RANDOM-SEQ") if a not in q]
+
+    def diff(a, b):
+        return [x - y for x, y in zip(q[a], q[b])]
+
+    out = {"refused": refused, "q": q, "verdicts": {}, "rule_credited": None}
+    if {"RULE", "RANDOM", "RANDOM-SEQ"} & set(refused):
+        return out  # the half is REFUSED, nothing is deleted
+    out["verdicts"] = {
+        "RULE>RANDOM": judge("RULE vs RANDOM", diff("RULE", "RANDOM"), "superiority"),
+        "RULE>RANDOM-SEQ": judge("RULE vs RANDOM-SEQ", diff("RULE", "RANDOM-SEQ"), "superiority"),
+    }
+    for term, ref in (
+        ("shared-partner", "DIST-ONLY"),
+        ("distance", "FLAT-KERNEL"),
+        ("layer", "NO-LAYER"),
+    ):
+        if ref in q:  # a refused variant leaves its term NOT CLAIMED (absent here)
+            out["verdicts"][term] = judge(f"RULE vs {ref}", diff("RULE", ref), "superiority")
+    out["rule_credited"] = t4_rule_credited(
+        out["verdicts"]["RULE>RANDOM"], out["verdicts"]["RULE>RANDOM-SEQ"]
+    )
+    return out
+
+
 #: IR seeds (dev block, pre-registration 2.10): the planted / RANDOM pairs; RANDOM's TWIN draws from the
 #: second range (13240-13247, the build's addition, disclosed in the dated amendment).
 IR_SEEDS = tuple(range(13230, 13238))

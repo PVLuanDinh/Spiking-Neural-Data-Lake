@@ -290,3 +290,67 @@ def test_modularity_separates_a_planted_partition_from_random():
     assert len(planted) == m and len(rand) == m
     q_p, q_r = U.modularity(planted, n), U.modularity(rand, n)
     assert q_p > 0.6 and q_r < 0.35, (q_p, q_r)
+
+
+# ---- T4 wiring half on caller-supplied substrate (synthetic: no G4 data) -----------------------
+
+
+def _blobs(n, seed):
+    rng = np.random.default_rng(seed)
+    centres = np.array([[0.0, 0.0], [1000.0, 0.0], [0.0, 1000.0], [1000.0, 1000.0]])
+    return centres[np.arange(n) % 4] + rng.normal(0.0, 40.0, (n, 2))
+
+
+def test_t4_half_credits_a_planted_distance_rule_and_never_decides_on_imposed():
+    # known positive: a local kernel over four blobs must beat both random arms, or it is dead
+    out = U.t4_wiring_half(
+        80,
+        200,
+        xy=_blobs(80, 13250),
+        pops=None,
+        kernel=lambda d: np.exp(-d / 60.0),
+        beta=0.0,
+        columns=None,
+        seeds=tuple(range(13250, 13256)),
+        louvain_seeds=(0, 1),
+    )
+    assert out["refused"] == [] and out["rule_credited"] is True
+    assert out["verdicts"]["RULE>RANDOM"].met and out["verdicts"]["RULE>RANDOM-SEQ"].met
+    assert not any("IMPOSED" in k for k in out["verdicts"])
+
+
+def test_t4_half_is_refused_whole_when_the_density_is_infeasible():
+    out = U.t4_wiring_half(
+        10,
+        46,
+        xy=_flat_units(10, 13251),
+        pops=None,
+        kernel=lambda d: 1.0,
+        beta=0.0,
+        columns=None,
+        seeds=(13251, 13252),
+        louvain_seeds=(0,),
+    )
+    assert {"RULE", "RANDOM-SEQ"} <= set(out["refused"])
+    assert out["rule_credited"] is None and out["verdicts"] == {}
+
+
+def test_t4_half_a_refused_imposed_arm_is_reported_not_decisive():
+    cols = [0] * 8 + [1] * 8  # cp3 #9: some seeds hand an arrival no earlier column mate
+    seed = next(
+        s
+        for s in range(13250, 13300)
+        if len({cols[i] for i in np.random.default_rng(s).permutation(16)[:2]}) == 2
+    )
+    out = U.t4_wiring_half(
+        16,
+        16,
+        xy=_flat_units(16, 13253),
+        pops=None,
+        kernel=lambda d: 1.0,
+        beta=0.0,
+        columns=cols,
+        seeds=(seed,),
+        louvain_seeds=(0,),
+    )
+    assert out["refused"] == ["IMPOSED"] and out["rule_credited"] is not None
