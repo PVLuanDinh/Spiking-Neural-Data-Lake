@@ -287,3 +287,41 @@ def test_delta_minus_batch_positive_control_is_met_and_a_neutered_delta_is_not()
     assert met and x["nontied"] >= g.MIN_NONTIED
     met0, c0, _ = _delta_minus_batch(neuter=True)  # DELTA wired as BATCH: contrast identically 0
     assert not met0 and c0.degenerate
+
+
+def test_run_cells_persists_per_seed_records_that_rederive_the_contrast_and_refuse_tampering(
+    monkeypatch, tmp_path
+):
+    # the confirmatory read could not be re-derived (per-seed contrasts were never persisted):
+    # run_cells now writes the recorded sequences and every cell as json + sha256, and load_records
+    # verifies it
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(g, "live_lake_stamp", lambda: ("a", "b"))
+
+    def cell(args):
+        out = _fake_cell(args)
+        out["live_acc"] = 0.5 + 0.01 * args[0] + (0.02 if args[1] == "DELTA" else 0.0)
+        return out
+
+    path = tmp_path / "records.json"
+    rec, cells, rep = g.run_cells(
+        (1, 2, 3, 4, 5, 6),
+        ("DELTA", "BATCH"),
+        workers=1,
+        log=lambda *_: None,
+        pool=ThreadPoolExecutor,
+        cell=cell,
+        record_path=str(path),
+    )
+    loaded = g.load_records(str(path))
+    import json
+
+    assert loaded["cells"] == json.loads(json.dumps(cells))
+    assert loaded["replaced"] == json.loads(json.dumps(rep))
+    assert sorted(loaded["recorded"]) == sorted(str(s) for s in rec)
+    a = g.contrast_cells(loaded["cells"], "DELTA", "BATCH")
+    assert a[2]["mean"] == pytest.approx(0.02)
+    path.write_bytes(path.read_bytes() + b" ")
+    with pytest.raises(ValueError, match="sha256"):
+        g.load_records(str(path))

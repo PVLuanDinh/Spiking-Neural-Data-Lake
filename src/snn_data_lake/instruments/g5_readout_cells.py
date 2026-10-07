@@ -377,13 +377,47 @@ def _run_seed(seed, arms, before, workers, pool, cell):
     return rec, cells
 
 
-def run_cells(seeds, arms, workers=4, log=print, pool=None, cell=None, reserve=()):
+def write_records(path, recorded, cells, replaced):
+    """Persist one campaign's per-seed records as json + a sha256 sidecar (`path`.sha256) so a read can be
+    re-derived without re-running spent seeds. Returns the digest of the json bytes."""
+    import hashlib
+    import json
+
+    body = json.dumps(
+        {"recorded": recorded, "cells": cells, "replaced": replaced}, sort_keys=True, indent=1
+    ).encode()
+    digest = hashlib.sha256(body).hexdigest()
+    with open(path, "wb") as f:
+        f.write(body)
+    with open(path + ".sha256", "w") as f:
+        f.write(digest)
+    return digest
+
+
+def load_records(path):
+    """The records `write_records` wrote; ValueError if the json no longer matches its sha256 sidecar."""
+    import hashlib
+    import json
+
+    with open(path, "rb") as f:
+        body = f.read()
+    with open(path + ".sha256") as f:
+        want = f.read().strip()
+    if hashlib.sha256(body).hexdigest() != want:
+        raise ValueError(f"{path}: sha256 does not match its sidecar -- the records were altered")
+    return json.loads(body)
+
+
+def run_cells(
+    seeds, arms, workers=4, log=print, pool=None, cell=None, reserve=(), record_path=None
+):
     """Per seed: RECORD (the deployed wiring) records the sequence, then every arm runs under the common
     vocabulary init on it. The live lake's mtimes must not move: checked after EACH stage and on the way
     out of an exception (record 2.6 PA9; Codex cp4 #13). A seed whose block fails on the INSTRUMENT
     (crash, `unified` False, same-rows halt) is discarded WHOLE and replaced by the next reserve seed,
     printed beside it (record sec. 4's reserve rule; Codex cp4 #9); a live-lake or live-home violation is
-    a halt, never replaced. `pool` / `cell` are test seams. Returns (recorded, cells, replacements)."""
+    a halt, never replaced. `pool` / `cell` are test seams. `record_path` persists every seed's record
+    and cell (json + sha256, `write_records`) before returning. Returns (recorded, cells, replacements)."""
     from concurrent.futures import ProcessPoolExecutor
 
     from snn_data_lake.substrate.home import LiveHomeRefused
@@ -420,6 +454,10 @@ def run_cells(seeds, arms, workers=4, log=print, pool=None, cell=None, reserve=(
         f = shift_fraction(seq, circular_shift(seq))
         vac = "  VACUOUS" if f < VACUITY_FLOOR else ""
         log(f"  seed {s}: M {1 + max(seq)}  events {len(seq)}  shift f {f:.3f}{vac}")
+    if record_path:
+        log(
+            f"  records {record_path} sha256 {write_records(record_path, recorded, cells, replaced)}"
+        )
     return recorded, cells, replaced
 
 
