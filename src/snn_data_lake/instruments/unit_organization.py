@@ -426,6 +426,10 @@ def best_partition(edges, n, seeds=LOUVAIN_SEEDS):
     g = nx.Graph()
     g.add_nodes_from(range(n))
     g.add_edges_from(edges)
+    if (
+        g.number_of_edges() == 0
+    ):  # Newman Q divides by the degree sum: undefined, refused not crashed
+        raise Infeasible("modularity is undefined on a graph with no edges")
     best = None
     for s in seeds:
         comms = nx.community.louvain_communities(g, resolution=1.0, seed=s)

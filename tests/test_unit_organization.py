@@ -525,3 +525,22 @@ def test_planted_blocks_refuses_an_allocation_that_exceeds_a_pair_class():
         10, 20, blocks=2, between=0.2, seed=13230
     )  # 16 within (of 20) + 4 between
     assert len(ok) == 20 and len(set(ok)) == 20
+
+
+def test_zero_edge_graph_is_an_instrument_refusal_not_a_zero_division():
+    # Codex D+E: t4_wiring_half(10, 0, ...) raised ZeroDivisionError out of networkx's modularity
+    with pytest.raises(U.Infeasible):
+        U.modularity([], 10, (0,))
+    out = U.t4_wiring_half(
+        10,
+        0,
+        xy=_flat_units(10, 13282),
+        pops=None,
+        kernel=lambda d: 1.0,
+        beta=0.0,
+        columns=None,
+        seeds=U.IR_SEEDS,
+        louvain_seeds=(0,),
+    )
+    assert {"RULE", "RANDOM", "RANDOM-SEQ"} <= set(out["refused"])
+    assert out["rule_credited"] is None and out["verdicts"] == {}
