@@ -76,6 +76,22 @@ def test_share_spelling_of_a_live_child_is_refused_before_creation(monkeypatch, 
     assert not child.exists()
 
 
+@pytest.mark.parametrize("alias", ["hardlink", "symlink"])
+def test_aliased_lake_file_in_an_isolated_home_is_refused(monkeypatch, tmp_path, decoy, alias):
+    """Panel (BLOCKER, all three lenses): a directory check misses a lake-file alias; home() must
+    run the shared alias scan (require_isolated_home), not only the directory guard."""
+    iso = tmp_path / "iso"
+    iso.mkdir()
+    link = os.link if alias == "hardlink" else os.symlink
+    try:
+        link(decoy / "brain_lake.bin", iso / "brain_lake.bin")
+    except OSError as e:
+        pytest.skip(f"{alias} unavailable: {e}")
+    monkeypatch.setenv("NORD_HOME", str(iso))
+    with pytest.raises(H.LiveHomeRefused):
+        H.home()
+
+
 def test_control_an_isolated_home_passes(monkeypatch, tmp_path, decoy):
     """The control that is not the method: an isolated home resolves and is returned unchanged."""
     before = _listing(decoy)

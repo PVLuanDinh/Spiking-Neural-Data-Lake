@@ -384,8 +384,8 @@ def home():
             )
         _refuse_if_live(p, _resolve(_default_live_home()))
     os.makedirs(d, exist_ok=True)
-    if under_test:
-        assert_not_live_home(d)
+    if under_test:  # panel: the shared alias scan too (hardlinked / symlinked lake files)
+        require_isolated_home()
     return d
 
 
