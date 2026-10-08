@@ -30,6 +30,16 @@ import torch
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.readout.online_readout import ClosingGate, OnlineReadout
 
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "_Taught.learn": (
+        "NOT_A_RULE",
+        "a delegation wrapper: it swaps the teaching label for the event's substituted one (the shifted-"
+        "teaching control) and calls the wrapped readout's own learn; it changes no weight and computes "
+        "no error or update itself. The rule that runs is OnlineReadout.learn, declared LOCAL there",
+    ),
+}
+
 TIE_TOL = 1e-6  # |d| <= this is a tie (L1c's harness value)
 MIN_NONTIED = 5  # the separate named restriction (record 2.4)
 CHAIN_KINDS = ("burst", "drift", "iid")
