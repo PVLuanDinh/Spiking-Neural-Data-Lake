@@ -1400,3 +1400,26 @@ PD-R1 reverts the producer adaptor (P4d) and claims nothing.
 - **G2 #162 points 2-4:** the HALT label is corrected in note (c). An EXPANSION_H at H = 256 is certified on Part D's own
   seeds before its comparison is read (D.4 PD-R2); the primary endpoint's future split for a same-item reading is G2's
   caution, carried as a disclosure (the future split is never-taught presentations of the same finite items, section 6).
+
+### Dated note 2026-10-08 (f): G7's challenge #207 on the producer ablation and the D2 id handling (pre-data; append-only; amends D.3(d) and D.4 PD-R1)
+
+1. **PRODNEUTER is the same learner as NOTUNE (G7 point 3, ACCEPTED and measured).** With m pinned to 0, `interact`'s scalar
+   branch deposits d = 0. Fixture check, brain-free, no seed block: 50 `interact(x, 0.0)` calls leave
+   `SpikingInteractionLearner.weights()` equal to an untouched same-seed learner's (True). So `RSTDP_BRAIN_PRODNEUTER` and
+   `RSTDP_NOTUNE` are one learner on the same seeds, and the contrasts `BRAIN - PRODNEUTER` and `BRAIN - NOTUNE` are ONE read,
+   not two. The build carries a test that asserts the weight equality (so it can go red if a deposit with d = 0 ever
+   changes a weight) and the reader counts them once.
+2. **PD-R1 is split into what it licenses (amends D.4).**
+   - **PD-R1 ("outcome-driven scalar tuning"):** on S0C1, contrast(RSTDP_BRAIN - RSTDP_NOTUNE) MET AND
+     contrast(RSTDP_BRAIN - RSTDP_BRAIN_SHUF) MET. It licenses "the label neurons are tuned by an outcome-driven scalar
+     delivered through the dopamine nucleus's output"; it does NOT license "the nucleus's transformation tunes".
+   - **PD-R1b ("the nucleus adds", a bar):** `RSTDP_BYPASS` is defined as `interact(stimulus, r)` with r in {+1, -1}
+     directly (the same outcome the nucleus receives, no nucleus). PD-R1b is MET iff contrast(RSTDP_BRAIN - RSTDP_BYPASS)
+     is MET (superiority, stated before data). PD-R1b NOT MET leaves PD-R1 as the claim, and the record says in those
+     words that the producer's transformation was not shown to add beyond relaying the outcome.
+   - Item 9's "tuned by the brain" credit therefore reads: PD-R1 MET gives the external-outcome-through-a-brain-module
+     claim; only PD-R1 AND PD-R1b MET give "the brain producer tunes". This is stricter than D.4 as committed.
+3. **D2 id handling (G7 points 1 and 2, carried into D2's amendment):** `labels_by(records, 'problem_id')[P]` raises
+   `KeyError` for an absent P; D2 treats that as a REFUSAL of the return path (no target set), never an empty target set. D2
+   canonicalises synapse and target ids to Python `int` before `require_labeled_targets` and does not rely on the gate to
+   reject `True` / `1.0` aliases (G7 proposes the hardening to the gate; numpy integer ids stay accepted).
