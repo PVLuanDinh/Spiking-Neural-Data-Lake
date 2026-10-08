@@ -623,3 +623,17 @@ def test_res_neuter_zeroes_the_recurrent_weights_and_only_the_reset_form_is_stat
 def test_pd_pool_refuses_an_unknown_mode():
     with pytest.raises(ValueError):
         g.pd_pool(POOL_SEED, "stateful")
+
+
+def test_a_deposit_with_d_zero_moves_no_weight_so_prodneuter_is_notune():
+    import random
+
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner as L
+
+    touched, fresh = L(["a", "b", "c"], 16, seed=5), L(["a", "b", "c"], 16, seed=5)
+    rng = random.Random(1)
+    for _ in range(50):
+        touched.interact([rng.gauss(0.0, 1.0) for _ in range(16)], 0.0)
+    assert touched.weights() == fresh.weights()  # note (f): one learner, so one read
+    touched.interact([rng.gauss(0.0, 1.0) for _ in range(16)], 1.0)
+    assert touched.weights() != fresh.weights()  # the check can go red when a deposit does land
