@@ -161,7 +161,7 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # 286 -> 292 on 2026-10-03: G1(c)'s six new instruments modules joined REGIONS
     # (carried_state_campaign, inseparable_mapping, carried_state_driver, carried_state_stages,
     # carried_state_controls, carried_state_report)
-    assert len(S._MOVED) == 299 and "claustrum" not in S._MOVED
+    assert len(S._MOVED) == 306 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture
