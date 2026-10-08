@@ -494,10 +494,14 @@ def test_producer_factor_is_signed_zero_at_zero_rpe_and_uses_the_one_modulator()
     for _ in range(20):
         p2.factor("s0", 1.0)  # V("s0") learns to expect the outcome
     assert p2.factor("s0", 0.0) < 0.0  # an omitted expected reward: a dip, the sign interact needs
-    lr = p.modulator.LR_MIN + (p.modulator.LR_MAX - p.modulator.LR_MIN) * p.nucleus.da_level(0.3)
+    m, tl = p.modulator, p.modulator.tonic_lr
     assert (
-        abs((lr / p.modulator.tonic_lr - 1.0) - g.BrainProducer.to_signed(p.modulator, lr)) < 1e-12
+        g.BrainProducer.to_signed(m, m.LR_MAX) == 1.0
+        and g.BrainProducer.to_signed(m, m.LR_MIN) == -1.0
     )
+    assert (
+        g.BrainProducer.to_signed(m, tl) == 0.0
+    )  # symmetric in [-1, +1], zero at the tonic (note (g))
 
 
 def test_producer_rpe_and_the_modulators_agree_and_a_perturbed_expectation_is_refused():

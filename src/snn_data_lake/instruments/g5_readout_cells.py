@@ -587,20 +587,24 @@ PD_OUTCOME = (
     1.0,
     -1.0,
 )  # (right, wrong): the teacher's d as +-1, the incumbent's own sign convention
-PD_CLASSES, PD_N_IN, PD_PER_CLASS = (
-    3,
-    16,
-    4,
-)  # the planted separable stream (a fixture, not a result)
-PD_NOISE, PD_HELD = 0.3, 20
+#: PD-P1's planted stream goes THROUGH the pool feature path (lead ruling 2026-10-08, note (g)): three class
+#: texts, each presented with one filler word, so the 256-unit T_in = 1 fired mask is the label neurons' input.
+PD_CLASS_TEXTS = (
+    "greet the user warmly please",
+    "what is the capital of france",
+    "set a timer for ten minutes",
+)
+PD_FILLERS = ("now", "today", "quickly", "kindly", "again", "soon", "right", "maybe")
+PD_PER_CLASS, PD_HELD = 4, 20
 
 
 class BrainProducer:
     """The item-9 producer: the harness's own DopamineNuclei behind competence_executive.DopamineModulator
     (the ONE RPE -> modulation step, P2). Input: the one-bit outcome r (+1 right, -1 wrong) and the stimulus key, never a label.
     The modulator computes rpe = r - V(stim_key) and the nucleus's da_level; `to_signed` is the single
-    affine unit conversion (the modulator's output is an unsigned learning-rate multiplier; interact's
-    scalar branch needs a signed reward). `neutered` delivers r to the nucleus and modulator but pins the
+    unit conversion (the modulator's output is an unsigned learning-rate multiplier; interact's scalar
+    branch needs a signed reward): the deviation from tonic_lr scaled by the modulator's OWN bound on
+    that side, so m is in [-1, +1], zero at zero RPE, and symmetric (note (g)). `neutered` delivers r to the nucleus and modulator but pins the
     output to the tonic and never updates V (the path-breaking ablation, D.3(d))."""
 
     def __init__(self, seed, neutered=False):
@@ -613,7 +617,10 @@ class BrainProducer:
 
     @staticmethod
     def to_signed(modulator, lr_gain):
-        return lr_gain / modulator.tonic_lr - 1.0
+        t = modulator.tonic_lr
+        if lr_gain >= t:
+            return (lr_gain - t) / (modulator.LR_MAX - t)
+        return (lr_gain - t) / (t - modulator.LR_MIN)
 
     @staticmethod
     def agree(expected, r, rpe_n):
@@ -631,32 +638,36 @@ class BrainProducer:
 
 
 def pd_p1_arm(seed, neutered, epochs=30):
-    """Held-out accuracy of the label neurons tuned ONLY by the producer's scalar, on a planted separable
-    stream (synthetic stimulus vectors, no pool, no Brain). Same seed -> same stream for both arms."""
+    """Held-out accuracy of the label neurons tuned ONLY by the producer's scalar, on a planted separable text
+    stream read through the Part D pool feature path (pd_pool "reset" -> pool_features, T_in = 1 binary mask).
+    Brain-free: a pool, no Brain, no lake. Same seed -> same stream for both arms."""
     import random
 
     from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
 
     rng = random.Random(seed)
-    protos = [[rng.gauss(0.0, 1.0) for _ in range(PD_N_IN)] for _ in range(PD_CLASSES)]
+    pool = pd_pool(seed, "reset")
+    n = len(PD_CLASS_TEXTS)
 
     def draw(c):
-        return [x + PD_NOISE * rng.gauss(0.0, 1.0) for x in protos[c]]
+        return f"{PD_CLASS_TEXTS[c]} {rng.choice(PD_FILLERS)}"
 
-    labels = [f"c{i}" for i in range(PD_CLASSES)]
-    train = [(draw(c), c) for c in range(PD_CLASSES) for _ in range(PD_PER_CLASS)]
+    labels = [f"c{i}" for i in range(n)]
+    train = [(draw(c), c) for c in range(n) for _ in range(PD_PER_CLASS)]
     train = [
-        (i, x, c) for i, (x, c) in enumerate(train)
+        (i, t, c) for i, (t, c) in enumerate(train)
     ]  # i = the stimulus key, stable across epochs
-    held = [(draw(c), c) for c in range(PD_CLASSES) for _ in range(PD_HELD)]
-    learner = SpikingInteractionLearner(labels, PD_N_IN, seed=seed)
+    held = [(draw(c), c) for c in range(n) for _ in range(PD_HELD)]
+    feats = {t: pool_features(pool, t).tolist() for _, t, _ in train}
+    feats.update({t: pool_features(pool, t).tolist() for t, _ in held})
+    learner = SpikingInteractionLearner(labels, len(next(iter(feats.values()))), seed=seed)
     prod = BrainProducer(seed, neutered=neutered)
     for _ in range(epochs):
         rng.shuffle(train)
-        for i, x, c in train:
-            r = PD_OUTCOME[0] if learner.respond(x) == labels[c] else PD_OUTCOME[1]
-            learner.interact(x, float(prod.factor(f"s{i}", r)))
-    return sum(learner.respond(x) == labels[c] for x, c in held) / len(held)
+        for i, t, c in train:
+            r = PD_OUTCOME[0] if learner.respond(feats[t]) == labels[c] else PD_OUTCOME[1]
+            learner.interact(feats[t], float(prod.factor(f"s{i}", r)))
+    return sum(learner.respond(feats[t]) == labels[c] for t, c in held) / len(held)
 
 
 def pd_p1(seeds=None):
