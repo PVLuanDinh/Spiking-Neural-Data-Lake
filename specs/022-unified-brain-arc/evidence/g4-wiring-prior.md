@@ -921,3 +921,4 @@ only; they were NOT re-panelled (a third panel round needs the owner). Each fold
   seed's histogram set while the next was allocated (two sets at once, about 1.66 GB at the archived 4,000-bin size). The per-seed loop is now
   `_score_seeds`, which frees each set after scoring. Red on the extraction alone: the previous set was alive at the next build
   (alive counts `[0, 1, 1]`, now `[0, 0, 0]`).
+- **Record 2026-10-07 (f) slot 2 -- slow tests and F5 cost; no edge read.** `test_planted_stage_holds_and_the_gate_recomputes_it` (613 s) and `test_pooling_positive_control_and_its_null` (23 s) pass at `0f5d4681`, RC 0, live lake unchanged. F5 cost, a SYNTHETIC BOUND ONLY (H01 unmeasured; the F5 increment is not isolated, the pre-F5 version was not timed): one outer fold of `choose_penalty` on random counts took 2.3 s at nb 300 and 38.3 s at nb 4000, about 70 min of penalty search per H01 read at nb 4000 single-threaded (14 calls x 8 seeds, an extrapolation).
