@@ -922,3 +922,7 @@ Ties to the state-branch amendment (98d92203) and its ctxread row types (21ca1bc
   the same.
 - **Addendum (c), later the same day.** The `growth.grown_feed` `__main__` self-check and its run_selfchecks CORE registration
   (91a1cc8e, with the E501 comment fix dc843042) were added after every panel and are **battery-verified only**; Codex never read them.
+- **Corrected wording (Codex int2 closing report; additive).** Zero-feed identity is verified on the N=3 fixture only (identical output,
+  carrier bytes and fingerprints), not at N=256. Finite `random_feed` output requires a REPRESENTABLE column norm: a finite, sign-valid
+  column whose L2 norm exceeds the float max is REFUSED, not scaled (the batch-2 fold that fixed it is battery-verified only). The
+  adapter refusal in `growth_loop` (6fed31ed) DETECTS corruption after admission and cannot undo it.
