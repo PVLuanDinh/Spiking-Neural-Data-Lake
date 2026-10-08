@@ -1112,3 +1112,5 @@ Charge note (lead, 2026-10-07; lens 3). The persisted records (`run_cells(record
 1d48e496) are reachable only through `run_cells`, which no driver calls until Part D's driver does. They are therefore
 NOT yet charged (P3): `g5_readout_cells` is a registered permanent benchmark harness (dormancy_gate.py), reusable by Part D, and
 its charge is established only when a driver runs it.
+
+Wording correction (batch-2 Codex closing report, 2026-10-07; narrows the claim in the dated note above and in 1d48e496's message). The surviving runner "supports opt-in JSON/SHA256 persistence": `run_cells(..., record_path=None)` writes nothing by default and persists the per-seed records only when a `record_path` is given (g5_readout_cells.py `run_cells`, `write_records`, `load_records`). It does not persist every campaign. Part D's future driver must pass `record_path` (a Part D precondition). The deletion of Part B stands: the B-R1 mean +0.0021 and the sign test p = 0.7265625 (2 x 93 / 256) were re-derived.
