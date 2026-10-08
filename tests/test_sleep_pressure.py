@@ -254,7 +254,7 @@ def _fake_runner(calls, totals=None):
 
 
 def test_campaign_c_pipes_the_pressure_offsets_into_the_shuffled_twin():
-    """The shuffled arm replays the PRESSURE arm's advances (A6): it runs after it, fed its `advanced`."""
+    """The shuffled arm replays the PRESSURE arm's advances (A6), so it runs after it."""
     calls = []
     rows = sp.campaign_c(range(12001, 12009), runner=_fake_runner(calls))
     assert len(rows) == 8 and set(rows[0]) == {"clock", "oracle", "pressure", "shuffled"}
