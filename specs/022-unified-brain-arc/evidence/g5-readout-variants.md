@@ -1114,3 +1114,163 @@ NOT yet charged (P3): `g5_readout_cells` is a registered permanent benchmark har
 its charge is established only when a driver runs it.
 
 Wording correction (batch-2 Codex closing report, 2026-10-07; narrows the claim in the dated note above and in 1d48e496's message). The surviving runner "supports opt-in JSON/SHA256 persistence": `run_cells(..., record_path=None)` writes nothing by default and persists the per-seed records only when a `record_path` is given (g5_readout_cells.py `run_cells`, `write_records`, `load_records`). It does not persist every campaign. Part D's future driver must pass `record_path` (a Part D precondition). The deletion of Part B stands: the B-R1 mean +0.0021 and the sign test p = 0.7265625 (2 x 93 / 256) were re-derived.
+
+## Amendment 2026-10-08 (Part D, pre-data: no Part D cell has run; append-only; the frozen text above is unchanged)
+
+Scope. This is Part D's own amendment (frozen section 6 said "numbers and seeds are frozen at its own amendment before its
+first run"). It registers the harness, the arms, the brain producer of the tuning signal (owner decision item 9), the
+reds, the seeds and the split between what can run now and what waits on G3's port. It registers NO trace arm (owner
+question 4 stays batched; a trace on the stateful substrate needs its own amendment with the 2.7a replication lesson).
+It does not touch Part C (stays NOT READ). Hyperparameters not named here are module defaults, FROZEN as defaults; a
+changed default after the dev read is a further dated amendment.
+
+Facts read at origin/main 117aada0 (file:line, read-only):
+- `reservoir/recurrent_pool.py:527` `KernelLsmPool`, the one pool (G1(c) 2.9). Carriers `v`, `s`, `acc`; `step(u)` is one
+  tick; `reset_carriers()` is the episode-boundary reset; constructor `(pre, w, config, form="carried", ...)`.
+- `readout/interaction_learning.py:320` `SpikingInteractionLearner`: one `RSTDPNeuron` per response label, `n_in`
+  synapses, rank-order code. `interact(stimulus, feedback)` (:554): a str `feedback` is the TEACHING label (reinforce the
+  taught neuron d=+1, depress the wrong answer d=-1); a number is a SCALAR reward for the answer just given (only the
+  answering neuron is deposited). `respond(stimulus)` (:547) is pure inference.
+- `faculties/dopamine_nuclei.py:89` `DopamineNuclei`: a TD critic cache `v: state -> value` and a 24-cell LIF population.
+  `present(trial, learn)` (:152) returns `rpe[state]` = r_next + gamma V(next) - V(prev) and updates V(prev) by TD(0);
+  `phasic(rpe)` (:148) is the population rate in [0, 1]; `declare_ports` (:65) declares OUT `da_out` (region midbrain,
+  the "diffuse neuromodulatory broadcast"). It is not a `Brain` member today (one `distinct-from` mention in
+  `engine/brain.py:5135`); it is reachable from a harness by import.
+- `instruments/taught_problems.py:56` `Problem`, `teaching_sequence` (:175); `instruments/taught_campaign.py:105`
+  `presized_expansion(problem, h, seed, texts=None, ...)`; `gates/unit_label_gate.py:362`
+  `require_labeled_targets(target_ids, records, *, resolve_problem)` (the keyword `resolve_problem` is new relative to
+  section 6's text; the build calls it with G7's resolver); `growth/placement.py:555` `labels_by`.
+- `grep "segment" readout/interaction_learning.py` at 117aada0: 0 hits. G3's port asks (1)-(5) of section 6 are NOT landed.
+
+### D.1 Substrate and harness (turn-to-tick is the harness's, per section 10 row 7)
+
+- Substrate: `KernelLsmPool`, N = 256, form `carried`, the lineage's recorded policy (no frac_bits override).
+- Feature vector per turn: the per-unit spike count over the pool's own settle window after the turn's `percept_drive`
+  (G1(c)'s encoder, inherited unchanged), a 256-vector fed as the label neurons' `stimulus` (`n_in` = 256).
+- Reset-vs-carry is an arm: RESET zeroes the carriers at every turn, CARRY carries within an episode and resets at the
+  episode boundary (the episode tuple is the boundary unit). The primary reservoir arm is CARRY. Memory span is reported
+  as `delay_turns` x ticks per turn.
+- Every pool is built once per (cell, seed) from the same draws; no cell touches the live lake. The harness calls
+  `home.require_isolated_home()` before any lake-binding import and stamps the live lake with `home.lake_snapshot`
+  before and after each stage (one mechanism, P2).
+- Persistence: `run_cells(..., record_path=...)` is passed on every campaign run (the wording correction's precondition);
+  records are json + sha256 so a read can be re-derived.
+
+### D.2 Arms (each is one rule against the incumbent R-STDP; teaching enters through ONE named argument)
+
+All arms read the same CARRY features, the same teach/validation/future episodes and the same seeds.
+- `RSTDP_D` (INCUMBENT of the posed-problem job): label neurons, teaching label from the teacher's external d via
+  `interact(stimulus, label)`.
+- `RSTDP_BRAIN` (the item-9 arm): the same label neurons and rule, but the tuning signal is the SCALAR produced by the
+  brain producer in D.3, delivered through `interact(stimulus, scalar)`. The label never enters the learner.
+- `RSTDP_NOTUNE`: label neurons at their seeded initial weights, no deposit (the neutered tuning port).
+- `RSTDP_D_SHUF` and `RSTDP_BRAIN_SHUF`: the same arm with the teaching signal time-shuffled by a circular shift of the
+  recorded `teaching_sequence` (the 2.3 shift, vacuity floor and same-rows check REUSED from `g5_readout_cells`).
+- `DELTA`: `OnlineReadout("delta")`'s rule ported to the 256-input label neurons (a linear readout trained by the delta
+  rule on the same labels).
+- `PC`: `readout/predictive_coding.py` ADOPTED (cite its 2026-08-14 adjudication and open exact-symmetry scope);
+  `eprop_transport_gate` must be green and the new site is judged at its own readout by the distinguishing test.
+- `SOM`: `reasoning/spiking_som.py` ADOPTED (promoted out of `reasoning/`, P2/P4c); its control is the neighbourhood width
+  at zero (`SOM0`). BMU-to-label assignment is a read-out table over the TEACH split only.
+- The adaptors for DELTA, PC and SOM are read-out-only, never touch the pool, and print their code hash; the adaptor
+  details are build-time (step 2) and are frozen by the D1 dev-freeze amendment; none may see a validation/future label.
+- Controls beside the arms: `RES_NEUTER` (recurrent weights zeroed in the pool's own constructor, input path identical:
+  a STATELESS spiking LIF expansion of matched size; step 2 proves by a carrier-difference check that the neuter changes
+  the carriers), `EXPANSION_H` (G2's `presized_expansion(problem, 256, seed)` and its `texts=` non-adapted twin; carried
+  disclosures (a)-(c) of section 6 apply unchanged), `RESET` (the reset arm of D.1).
+- No unsupervised STDP arm is registered; if one is added later it carries L1b's co-adaptation controls (section 6).
+
+### D.3 The brain producer of the tuning signal (owner decision item 9; naming, not TBD)
+
+- (a) PRODUCER: `faculties/dopamine_nuclei.py::DopamineNuclei` (VTA/SNc, midbrain; OUT port `da_out`), constructed per
+  (cell, seed) with `seed = cell seed`, gamma 0.9, alpha 0.3, tonic_baseline 0.2, gain 0.8, n_cells 24 (module defaults,
+  frozen). It receives, per posed episode, the teacher's outcome d as r = 1.0 if the label neurons' `respond()` answer
+  equals the taught label, else 0.0, together with the episode's stimulus key (the probe text id). It never receives the
+  label itself; the readout's answer and the one-bit outcome are all that reach it.
+- (b) TRANSFORMATION into the modulatory factor: the harness presents the trial chain
+  `[("ITI", 0), (stim_key, 0), ("OUT", r)]` to `present(trial, learn=True)`; the emitted `rpe["OUT"]` = r - V(stim_key)
+  (V is the nucleus's learned expectation of correctness for that stimulus, updated by TD(0)). The factor is
+  `m = (phasic(rpe) - phasic(0)) / (phasic(1) - phasic(0))`, computed from the nucleus's own population rate (a dip is
+  negative, a burst positive, both normalised by the frozen constants printed at construction). No other transform.
+- (c) RECEIVING PORT: the scalar branch of `SpikingInteractionLearner.interact(stimulus, feedback=m)`, which deposits d = m
+  on the answering neuron only. This is the named reward argument; no learner edit is needed for it (G3's ask (3) is
+  therefore already satisfied for this arm).
+- (d) PATH-BREAKING ABLATION of the producer (item 9): `RSTDP_BRAIN_PRODNEUTER`: the teacher's outcome r is still
+  delivered to the nucleus, but its output is pinned to the tonic level (m = 0 for every episode, V frozen at 0). The
+  readout neurons must lose the gain. A second ablation, `RSTDP_BRAIN_SHUF`, time-shuffles m across episodes within a
+  seed. DIAGNOSTIC (not a bar): `RSTDP_BYPASS` hands r - 0.5 straight to `interact` with no nucleus, to show whether the
+  producer's transformation adds anything beyond relaying the outcome.
+- Positive control of the ablation, brain-free and BEFORE any in-brain cell (PD-P1): on a planted separable stream with a
+  synthetic stimulus vector, `RSTDP_BRAIN` must beat `RSTDP_BRAIN_PRODNEUTER` (MET); if the ablation cannot fire, the
+  producer reading HALTS (a red that cannot fire is not a red, P8).
+- Claim limit stands in the section 6 words. D.3 makes PD-R1 reachable; it does NOT make the producer a Brain member.
+  A PD-R1 win is recorded as "tuned by a brain producer module run from the harness"; wiring it into `Brain` is a charge
+  consequence for G9 (P3), and the results record says so.
+
+### D.4 Cells, endpoint and reds (each MET/NOT MET by its letter; `paired_contrast`, T_BAR 1.895, 8 paired seeds, the
+2.4 statistic, degenerate = NOT MET, per-difference seed-key assert; no majority rule; each cell stands alone)
+
+Cells: G2's (i) 2x2: S0C0 (sanity, the incumbent solves it), S0C1 (capacity), S1C0 and S1C1 (state), plus (ii) (capacity).
+Primary endpoint: held-out (future split, never-taught presentations) accuracy of the brain-tuned label neurons, S0C1 for
+the tuning claim and S1C1 for the state claim; secondary numbers and structural statistics are printed beside, never
+bars. G2's `solved(reads)` predicate is the solved reading.
+- PD-R0 (instrument sanity; opens the read): on S0C0, contrast(RSTDP_D - RSTDP_NOTUNE) MET. NOT MET halts the D1 read.
+- PD-R1 (connection 5, "tuned by the brain"): on S0C1, ALL of contrast(RSTDP_BRAIN - RSTDP_NOTUNE),
+  contrast(RSTDP_BRAIN - RSTDP_BRAIN_PRODNEUTER) and contrast(RSTDP_BRAIN - RSTDP_BRAIN_SHUF) are MET. Any NOT MET: the
+  claim stays "external d", nothing is credited as connection 5, the producer adaptor is reverted (P4d), the readout
+  neurons stay.
+- PD-R2 (reservoir): on S0C1, contrast(RSTDP_D on CARRY - RSTDP_D on EXPANSION_H) MET AND contrast(CARRY - RES_NEUTER)
+  MET, read only beside EXPANSION_H solving S0C1 at G2's certified H = 64 (else NOT READ, not red). On S1C0/S1C1,
+  contrast(CARRY - RESET) MET and the exact bound 0.5 respected by RES_NEUTER/EXPANSION_H (an expansion solving an S1
+  cell reads HALT, "construction wrong", per G2 log rows 14-16).
+- PD-R3 (rule vs incumbent, P2): per rule R in {DELTA, PC, SOM}: R replaces R-STDP for the posed-problem job only if
+  contrast(R - RSTDP_D) MET on S0C1 AND R's own control is NOT MET (SOM0 for SOM; for PC the neutered-coupling twin; for
+  DELTA the shuffled twin). Otherwise R's implementation is reverted and the incumbent stays; ties keep the incumbent.
+- PD-R4 (the return path, connection 6) and the feed neuter belong to D2 (D.6); not read in D1.
+- Seeds, shift, vacuity floor and same-rows machinery are `g5_readout_cells`' (PA3/PA4/PA8/PA10 reused). The reserve rule
+  of record 4 applies unchanged (a whole seed block, only on an instrument failure).
+
+### D.5 Seeds (inside the held 11400-11479; grep-checked 2026-10-08)
+
+| set | seeds | use |
+|---|---|---|
+| D1 dev | 11400-11407 | reach/vacuity, feature and window sanity; EXPOSED after use |
+| D1 confirmatory | 11410-11417 | PD-R0..R3, read once on the frozen D1 amendment |
+| D1 reserve | 11418-11425 | whole-block replacement, instrument failure only |
+| D2 dev / confirmatory / reserve | 11430-11437 / 11440-11447 / 11448-11455 | HELD for D2 (D.6) |
+| PD-P1 planted (producer-ablation positive control) | 11456-11463 | brain-free |
+| PD-P2 planted (return-path neuter and time-shuffle reds) | 11464-11471 | brain-free, used by D2 |
+| held | 11472-11479 | replication set if a trace arm is amended in; unassigned |
+
+Grep, run 2026-10-08 with the read-only Grep tool over specs/, src/ and tests/ (.py/.md/.txt/.yaml): the positive control
+`\b4242\b` over specs/, src/, tests/ and tools/ fired, 65 occurrences in 26 files. The pattern for 11400-11479 (digit-bounded, excluding
+decimals) hit only this file's own lines 517 and 655 and a hash prefix in `trainer-retirement.md:142`
+(`11464d3fa5d9...`); tools/*.json hits were decimal fractions (0.114xx) and are not seeds. Never run here: 300-361, 6000,
+6001, 6100-6107, 7000-7007.
+
+### D.6 What runs without G3's port, and what waits (the split the lead asked for)
+
+- D1, port-free, may run once the lead says the machine is free: PD-R0..PD-R3, because every D1 arm goes through public
+  surfaces on main today (`interact(stimulus, float)`, `respond`, `KernelLsmPool`, `presized_expansion`,
+  `DopamineNuclei`, the three adopted rules over a 256-vector). The producer's scalar enters the existing `feedback`
+  argument, so G3's ask (3) is not needed here.
+- D2 WAITS: PD-R4 (the return path; P6's red: neutering it leaves the brain's own next answer and next attempt unchanged
+  vs the time-shuffled return), the feed-neuter control (needs G3's feed on the label neurons' grown segment), segment
+  tagged ablation, per-synapse G7 unit ids, the strict problem_id target (`labels_by(records, 'problem_id')[P]` through
+  `require_labeled_targets(target_ids, records, resolve_problem=...)` at projection build, never per tick) and the
+  lineage-inclusive secondary (needs G3's reuse record). These wait on G3's port (asks 1, 2, 4, 5; hot-file order R2 P1 ->
+  G3 port -> G5, R2 parked on owner #1/#2) and a labeled grown population. D2 gets its own amendment before its first run.
+- Disclosed: D1 can show the readout neurons tuned by a brain producer over the reservoir; it cannot show the return to
+  the brain. Connection 6 is NOT credited by D1, and G9 charges the connection.
+
+### D.7 Null disposition, cost and open items
+
+- P4d: a null reverts the implementation (the producer adaptor, a rule's adaptor) and claims nothing; readout neurons,
+  brain tuning and the return path are owner-drawn and are never deleted on a null; the owner decides on the evidence.
+- P1 debts disclosed (owner question 3 stays batched): the S0C1 primary cell, the feature window and the shift are chosen
+  here, not derived; the producer's constants are module defaults, not tuned.
+- Cost, projected not measured: a 256-unit pool at the lineage's step cost x turns x 8 seeds x about 14 arms x 5 cells; the
+  figure is measured at the D1 dev read, not guessed here. D1 is HEAVY (a brain-free pool campaign) and runs only on the
+  lead's go; step 2 (build) is light.
+- Owner question 5 (two readout jobs) and 6 (strict target primary) are settled by OWNER_DECISIONS item 10; question 7 by
+  item 9, applied here as D.3. Questions 1, 2, 3 and 4 stay batched and block nothing in D1.
