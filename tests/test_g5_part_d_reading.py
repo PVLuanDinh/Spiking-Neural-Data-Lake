@@ -108,3 +108,19 @@ def test_pd_r3_reverts_a_rule_whose_own_control_also_beats_the_incumbent():
     gaps = _good()
     del gaps[("S0C1", "DELTA")]  # the rule does not beat the incumbent: ties keep the incumbent
     assert r.read_d1(_rec(gaps), CERT, log=lambda *_: None)["PD-R3"]["DELTA"] == "REVERT"
+
+
+def test_pd_r2_s0c1_needs_carry_to_beat_neuter_carry_too():
+    gaps = _good()
+    gaps[("S0C1", "RSTDP_D@neuter_carry")] = (
+        1.0  # the zero-weight carry does as well: not the recurrence
+    )
+    v = r.read_d1(_rec(gaps), CERT, log=lambda *_: None)
+    assert v["PD-R2"]["S0C1"] is False
+
+
+def test_pd_r2_s1_compares_carry_with_the_reset_arm_not_with_untuned():
+    gaps = _good()
+    gaps[("S1C0", "RSTDP_D@reset")] = 1.0  # reset does as well as carry: no state is being used
+    v = r.read_d1(_rec(gaps), CERT, log=lambda *_: None)
+    assert v["PD-R2"]["S1C0"] is False and v["PD-R2"]["S1C1"] is True
