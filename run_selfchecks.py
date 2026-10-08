@@ -79,6 +79,7 @@ CORE = [
     "growth.capacity_certificate",  # G3 P1: XOR fires with an exact witness, twin separable, doubled-multiplier red
     "growth.grown_code",  # G3 P1: C1 widening red, C17 sign-violating restore red, version on silencing
     "growth.growth_loop",  # G3 P3: pause at 45/52, attempt cap, ledger rebuild, seq-gap red, live lake refused
+    "growth.grown_feed",  # G3 P5: C17 sign/dtype reds, C15 random arm norm-matched + seeded + scale-safe, unseeded refused
     "instruments.memory_diagnostic",  # G1 causal contract synthetic reds
     "reservoir.recurrent_pool",  # G1(b)/G1(c) 2.9: the one pool implementation's R-b0 draws, R-b3, R-b4 pool noise, R-b5 and every red
     "instruments.pool_selection",  # G1(b) campaign: ordering, power, R-b7 reds, step order, exit codes

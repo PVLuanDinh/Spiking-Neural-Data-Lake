@@ -16,7 +16,7 @@ the unit's label record through the journal -- no second label store. The drive 
 
 import numpy as np
 
-from snn_data_lake.growth.grown_code import clip_to_sign, segment_psp
+from snn_data_lake.growth.grown_code import GrownUnit, clip_to_sign, segment_psp
 from snn_data_lake.growth.growth_loop import SEED_BLOCK
 
 # distinct-from: growth/grown_code.py -- the unit contract and the label-neuron segment; this module is the
@@ -96,3 +96,34 @@ def random_feed(w_feed, units, seed):
                 w[:, j]
             )  # unit direction first: no intermediate above the target norm
     return out
+
+
+def main():
+    units = (GrownUnit(0, (0.0,), 1.0, 4, +1, (0.0,)), GrownUnit(1, (0.0,), 1.0, 4, -1, (0.0,)))
+    w = np.array([[1.0, -2.0], [0.5, -1.0]])
+    check_feed(w, units)  # sign-consistent: accepted
+
+    def refused(fn, *args):
+        try:
+            fn(*args)
+        except ValueError as exc:
+            return "REFUSED" in str(exc)
+        return False
+
+    flip = w.copy()
+    flip[0, 1] = 3.0  # an I unit's synapse flipped positive
+    assert refused(check_feed, flip, units), "red: a sign-violating synapse must be refused"
+    assert clip_feed(flip, units)[0, 1] == 0.0 and flip[0, 1] == 3.0, (
+        "red: clip flips, never mutates"
+    )
+    assert refused(check_feed, w.astype(complex), units), "red: a complex matrix must be refused"
+    r = random_feed(w, units, 9900)
+    assert np.allclose(np.linalg.norm(r, axis=0), np.linalg.norm(w, axis=0)), "red: norm-matched"
+    assert r.tolist() == random_feed(w, units, 9900).tolist() and r.tolist() != w.tolist()
+    assert np.isfinite(random_feed(w * 1e200, units, 9900)).all(), "red: finite at 1e200"
+    assert refused(random_feed, w, units, None), "red: an unseeded stream must be refused"
+    print("grown_feed: C17 sign/dtype reds fire; C15 random arm norm-matched, seeded, scale-safe")
+
+
+if __name__ == "__main__":
+    main()
