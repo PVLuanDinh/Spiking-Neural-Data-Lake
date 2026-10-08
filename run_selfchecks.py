@@ -494,7 +494,6 @@ RESEARCH = [
 TORCH_GATED = [
     "growth.ng_snn",
     "growth.candidate_lifecycle",  # G3 P2: seed 9000 fingerprint byte-identical, reversed tie-break red, prune
-    "readout.categorical_coupling",  # T113 (G5) Part B: frozen counts == argmax, count-before-score raises, full recovers a relabelling, marg diagonal
     "readout.online_readout",  # L1c: delta beats batch-only on a drifting chain, sign flip below, neutered bit-identical
     "readout.growable_readout",  # PROMOTED 2026-08-11 (#10 lane 4b): grow-preservation 1.9e-06, freeze retention delta (8.4s)
     "engine.brain",
