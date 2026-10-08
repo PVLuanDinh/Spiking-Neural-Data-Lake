@@ -1423,3 +1423,36 @@ PD-R1 reverts the producer adaptor (P4d) and claims nothing.
    `KeyError` for an absent P; D2 treats that as a REFUSAL of the return path (no target set), never an empty target set. D2
    canonicalises synapse and target ids to Python `int` before `require_labeled_targets` and does not rely on the gate to
    reject `True` / `1.0` aliases (G7 proposes the hardening to the gate; numpy integer ids stay accepted).
+
+### Dated note 2026-10-08 (g): the T_in = 1 feature path through PD-P1, a conversion change on fixture-seed evidence, and the coarse binary mask (pre-data for the clean PD-P1; code 14c00860)
+
+1. **The feature mask is coarse (lead ruling: KEEP T_in = 1, no graded arm).** The pool's feature vector at the registered
+   `TUNED` config (T_in = 1) is a BINARY fired mask over 256 units (about 21 active for one probe text). The label neurons
+   rank-code the stimulus with a stable reverse sort (`sensorimotor/rank_order_coding.py:23-29`), so the ~235 tied zeros are
+   ranked by unit index: a fixed ordering independent of the stimulus; only WHICH units are active varies. No graded arm
+   is added (it would add a family and a multiplicity cost). The clean PD-P1 below runs through this same path.
+2. **PD-P1 now runs through the same T_in = 1 pool feature path (amends note (d)'s frozen fixture; pre-data, no registered
+   block read).** The planted stream is three class texts ("greet the user warmly please", "what is the capital of
+   france", "set a timer for ten minutes"), each drawn with one of eight filler words, 4 training exemplars per class
+   (stable keys), 20 held-out draws per class, 30 epochs; features = `pool_features(pd_pool(seed, "reset"), text)`;
+   the recording seed is the PD-P1 seed. r = +1 / -1, `BrainProducer` and the bar are unchanged. It is brain-free (a pool,
+   no Brain, no lake), so the path IS reachable brain-free.
+3. **A design fault found on FIXTURE seeds 20261003-20261010 (the only seeds read; the T_in = 1 mask, label teaching and
+   bypass arms were read at the same time):**
+   - label teaching `interact(x, label)`: 0.93, 0.72, 0.93, 0.97, 0.85, 1.0, 0.97, 0.87;
+   - `RSTDP_BYPASS` (`interact(x, r)`, r = +-1): 0.60, 0.65, 0.67, 0.50, 0.67, 0.65, 0.48, 0.62;
+   - the producer with the committed affine `to_signed` (`lr_gain / tonic_lr - 1`: a dip is at most -0.375, a burst up to
+     +1.5): 0.48, 0.33, 0.33, 0.33, 0.62, 0.33, 0.33, 0.33 (a one-label collapse on 6 of 8). The positive-dominant
+     asymmetry rewards the answering neuron far more than it punishes an error, which collapses the readout to one label on
+     these features. On the earlier synthetic stream (note (b)) it had read 0.67; the cause was masked there.
+4. **Change (a dated pre-data amendment of D.3(b)'s conversion, made on fixture-seed evidence BEFORE the clean PD-P1 read):**
+   `to_signed(lr)` = (lr - tonic_lr) / (LR_MAX - tonic_lr) for lr >= tonic_lr, and (lr - tonic_lr) / (tonic_lr - LR_MIN)
+   below it: the modulator's deviation scaled by its OWN bound on that side, so m is in [-1, +1], zero at zero RPE, and
+   symmetric, the same range as the incumbent's d = +-1. It computes no RPE and no dopamine level. No constant is
+   introduced. Fixture-seed result with it: the producer arm 0.92, 0.92, 0.67, 0.97, 0.97, 0.88, 0.83, 0.90 against the
+   neutered/untuned 0.25, 0.35, 0.33, 0.33, 0.33, 0.33, 0.07, 0.33 (fixture PD-P1 `mean +0.5896 t +13.339 ++++++++` MET;
+   not a registered read).
+5. **What this does to the pre-registered readings.** Note (b)'s `to_signed` is superseded (the committed 520b7b52 formula
+   is deleted, not kept). Attempt 2 of PD-P1 stays "second attempt, post-data design change" and is not cited. The clean
+   PD-P1 (11500-11507) is read once through the pool path on the lead's go, bar unchanged (T_in-independent T_BAR 1.895,
+   >= 5 non-tied). PD-R1b's expected sign changes with this fix; it is read, not predicted.
