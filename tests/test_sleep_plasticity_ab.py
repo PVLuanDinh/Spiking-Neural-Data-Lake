@@ -550,3 +550,16 @@ def test_a_directory_link_under_the_root_fails_the_live_lake_check_closed(tmp_pa
     assert snap["link"] is None
     ok, changed = m.live_lake_untouched(str(decoy), snap)
     assert not ok and "link" in changed
+
+
+def test_no_instrument_function_reclaims_a_record_outside_a_scratch_home():
+    """Batch-2 precheck: the retention gate flagged run_evaluate (K5 deleted the lake in a
+    child that only knows NORD_HOME). The delete is now in run_arm, which makes the throwaway
+    home it deletes in; the gate lists it as a scratch deletion; run_evaluate no longer reclaims."""
+    from snn_data_lake.gates import immortal_retention as gate
+
+    bad, scratch = gate.reclaimers(with_scratch=True)
+    mine = "instruments/sleep_plasticity_ab.py"
+    assert (mine, "run_evaluate") not in bad and (mine, "run_evaluate") not in scratch
+    assert (mine, "run_arm") not in bad
+    assert (mine, "run_arm") in scratch  # K5's delete: counted and listed, never silent

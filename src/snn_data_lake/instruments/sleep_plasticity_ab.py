@@ -480,11 +480,7 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
 
 def run_evaluate(seed, red=None):
     """The fresh-process restore + held-out evaluation, learning off (the `evaluate` child)."""
-    home = require_scratch_home()
-    if red == "K5":  # the checkpoint is gone before the restore (a scratch home only)
-        lake = os.path.join(home, "brain_lake.bin")
-        if os.path.exists(lake):
-            os.remove(lake)
+    require_scratch_home()
     t0 = time.perf_counter()
     from snn_data_lake.engine.brain import make_brain
 
@@ -558,6 +554,14 @@ def run_arm(out, family, arm_name, seed, budget=None, red=None, stores=None):
     err = path[: -len(".json")] + ".stderr.txt"
     with throwaway_home(live_home=LIVE_LAKE, parent=homes) as home:
         rec = _child(bout_args, home, err_path=err)
+        if (
+            red == "K5"
+        ):  # the red: the checkpoint is gone before the fresh-process restore. It is deleted HERE,
+            # in the home this function just made with throwaway_home, never by the child that only knows
+            # NORD_HOME (the immortal-retention gate counts this as a scratch-home deletion, listed).
+            lake = os.path.join(home, "brain_lake.bin")
+            if os.path.exists(lake):
+                os.remove(lake)
         rec.update(_child(["evaluate", str(seed), red or ""], home, err_path=err))
     rec["stderr_lines"] = 0
     if os.path.exists(err):
