@@ -498,7 +498,7 @@ def test_no_instrument_function_reclaims_a_record_outside_a_scratch_home():
 def _f5_block(arm):
     stages = m.FAMILIES["F5"][arm].stages
     st = [
-        {"name": nm, "budget": n, "presentations": n, "starved": 0, "deposits": 0}
+        {"name": nm, "budget": n, "presentations": n, "starved": 0, "refused": 0, "deposits": 0}
         for nm, n in stages
     ]
     drives = sum(n for nm, n in stages if nm in ("nrem", "flat"))
@@ -538,6 +538,7 @@ F5_PLANTS = {
     "K2F5-total": lambda r: r["f5"].update(runner_total=256),
     "K2F5-count": lambda r: r["f5"].update(log_total=319),
     "K2F5-pause": lambda r: r["f5"].update(pause="plateau"),
+    "K2F5-refused": lambda r: r["f5"]["stages"][0].update(refused=1),
     "K10a-member": lambda r: r["f5"].update(interact_in_ring=False),
     "K10a-count": lambda r: r["f5"].update(n_interact=r["f5"]["n_interact"] + 1),
     "K10b": lambda r: r["f5"].update(ring_post="grown"),
@@ -683,3 +684,32 @@ def test_f5_brain_level_reds_fire(tmp_path, name, arm):
     red = m.run_arm(out, "F5", arm, seed, red=name)
     check = name.split("-")[0]
     assert m.check_records("F5", [red])[check], (name, red["f5"])
+
+
+def test_k18_planted_c10_gaps_are_read_through_the_whole_decision_path():
+    """F5-8: C10 reads MET and NULL on the real path (records -> _d -> verdict -> table)."""
+    flat = _GOOD["FLAT"]
+    plants = {  # name -> (STAGED endpoints per seed, expected table-row prefix)
+        "gap +2": (lambda i: (4 + 1, 6 + 1 + i % 2), m.F5_MET),
+        "gap 0": (lambda i: (4 + (1 if i % 2 else -1), 6), "NULL"),
+        "gap -2": (lambda i: (4 - 1, 6 - 1 - i % 2), "NULL"),
+        "gap +2, costs 3 on A": (lambda i: (1, 6 + 5 + i % 2), "INTERFERENCE RED (C10"),
+        "gap +1.5, costs 3 on B": (lambda i: (8, 3 + i % 2), "INTERFERENCE RED on session B"),
+    }
+    for name, (staged, prefix) in plants.items():
+        row = _f5_row(dict(_GOOD, FLAT=flat, STAGED=staged))["row"]
+        assert row.startswith(prefix), (name, row)
+
+
+def test_c10_detectable_gap_is_the_smallest_planted_gap_that_reads_met():
+    noise = [Fraction(x, 20) for x in (1, -1, 2, -2, 0, 1, -1, 0)]  # mean 0, sd ~1.2 items
+    g = m.c10_detectable_gap(noise)
+    assert g is not None and g >= 1
+    shifted = [x + Fraction(g, 20) for x in noise]
+    assert m._met(tuple(float(x) for x in shifted), "sup")
+    below = [x + Fraction(g - 1, 20) for x in noise]
+    assert g == 1 or not m._met(tuple(float(x) for x in below), "sup")
+    # a mean offset in the dev diffs is removed first: the control reads NOISE, not the dev signal
+    assert m.c10_detectable_gap([x + Fraction(1, 2) for x in noise]) == g
+    # zero-variance noise: every constant reads NOT MET (ruling 9), so nothing is readable
+    assert m.c10_detectable_gap([Fraction(1, 20)] * 8) is None

@@ -907,7 +907,7 @@ def _check_f5(r, tag, fails):
     st = f5["stages"]
     if not (
         f5["runner_total"] == F5_P == f5["log_total"]
-        and all(x["starved"] == 0 for x in st)
+        and all(x["starved"] == 0 and x["refused"] == 0 for x in st)
         and f5["pause"] == "budget"
     ):
         fails["K2F5"].append(tag)
@@ -1139,6 +1139,18 @@ def f5_dev_gate(recs, seeds):
     if Fraction(sum(f - n for f, n in zip(flat, none)), N_ALL * len(seeds)) <= 0:
         why.append("FLAT does not move held-out routing: mean E_all(FLAT) - E_all(NONE) <= 0")
     return why
+
+
+def c10_detectable_gap(diffs):
+    """F5-8: the smallest planted uniform gap g (E_all items of 20, 1..20) that reads MET when added to the C10
+    differences re-centred to mean 0 (the observed noise, no signal), by the superiority rule of ruling 9.
+    None = no planted gap is readable (zero-variance noise: every constant reads NOT MET). Reported, never a gate."""
+    d = [Fraction(x) for x in diffs]
+    mean = sum(d) / len(d)
+    for g in range(1, N_ALL + 1):
+        if _met(tuple(float(x - mean + Fraction(g, N_ALL)) for x in d), "sup"):
+            return g
+    return None
 
 
 def census(read):
@@ -1440,6 +1452,8 @@ def _main_cmd(a):
         print("checks:", {k: len(v) for k, v in res["checks"].items()})
         if a.family == "F5" and a.set == "dev" and res["checks_ok"]:
             print("F5 dev reachability gate (F5-5):", f5_dev_gate(recs, seeds) or "passes")
+            c10 = res["contrasts"]["C10"]
+            print("F5 c10_detectable_gap (items of 20, F5-8):", c10_detectable_gap(c10.diffs))
         if a.set == "dev":  # Codex cp2 #5: a dev reading is never printed as a claim
             print("DEV READING (EXPOSED seeds, never a verdict) -- table row:", res["row"])
         else:
