@@ -975,3 +975,76 @@ F2 (NOT READ, turnover 0 on 8/8 S-ON seeds): OWNER_DECISIONS_2026-10-04 item 11 
 ## DATED NOTE 2026-10-07 (wording after the batch-2 Codex closing report; additive)
 
 The F1-F4 numbers in section 5 are RECORDED RESULTS, reproduced by the lead from sha256-verified copies of the 136 records; the Codex re-derivation confirms the decision logic (the pure decision tables reproduce F1 NULL, F2 NOT READ, F3 NULL, F4 EXT credited) but its clone did not hold the record bodies, so it could not re-derive the statistics. lake_snapshot now also carries a content digest (the closing report's MAJOR; the confirmatory runs above used the size-and-mtime stamp, and their lake was additionally verified by stat before and after each process).
+
+## DATED PRE-DATA AMENDMENT 2026-10-08 (F5 staged arms, K10 and the run_bout adapter; no F5 data of any kind exists)
+
+Written on `claude/r3-b3` (base 117aada0) before any F5 code and before any F5 run, dev included; additive (a zero-removed-lines diff). It freezes what 2.3's F5 row, 2.4's C10 / C11 rows and 2.7's K10 left open. It touches no F1-F4 bar, seed set, budget or W. Every number not marked MEASURED is a [PROJECTION]. The 2.11 / X-15 dependency is met: G6's runner BUILD is on main (`instruments/staged_sleep_bout.py`, 117aada0), and F5 waits on nothing else.
+
+### F5-1. The adapter (the interface differs from 4.3's text)
+- 4.3 registered `run_bout(brain, stages, *, rng_seed) -> BoutReport`. The landed signature is `run_bout(brain, stages, *, rng_seed, validate=None, wake_request=None, extra_populations=None)` (`staged_sleep_bout.py:163`), a superset. R3 calls it ONLY as `run_bout(b, stages, rng_seed=s)`: `validate` and `wake_request` stay None, so no pause can fire; any `pause_reason != "budget"` HALTS. It is imported as `g6_run_bout` (the instrument already owns a child function named `run_bout`). `structural_candidates` is passed as None (the runner refuses anything else).
+- The runner is not edited and its draw rules, fabrication guard and `check_compute` are used as landed (P2: one mechanism). The runner owns stage execution; R3 owns the PS(s) fork, the evaluation, the counts and the verdict.
+
+### F5-2. Arms (all from the shared PS(s) of 2.2, same seed, learner restored in a fresh process for evaluation as in F1)
+
+Bout shape: `b._enter_sleep()`; `g6_run_bout(b, stages, rng_seed=s)`; `b._enter_wake()`; `b.close()`; fresh-process restore and evaluation, learning OFF (2.2). **No incumbent `_sleep_tick` runs in an F5 bout** (the runner "never ticks the brain"). The caps of 2.3's row ("as F1-ON") are applied exactly as F1-ON applies them (replay and Benna-Fusi on, structural off, set through `neuter_sleep` before the bout) but are inert except inside `_enter_sleep` / `_enter_wake`, which run identically in every arm. Disclosed: F5 reads the runner's `nrem` / `rem` / `flat` stages and not the tick-level incumbent.
+
+Total budget P = 320 presentations (= F1's MED, 40 ticks x K = 8; the unit is the runner's presentation, 2.2's ledger unit).
+
+| arm | stages [(name, presentations)] | role |
+|---|---|---|
+| STAGED | nrem 128, rem 64, nrem 128 | the registered staged bout |
+| FLAT | flat 320 | equal-compute control (`flat_of(STAGED)`; nrem's unit, summed) |
+| SHUFFLED | nrem 128, nrem 128, rem 64 | stage-order control: the same multiset of stages, rem moved to the end |
+| NONE | none (enter sleep, wake) | sensitivity baseline, no presentations |
+| ORACLE | none; session A re-taught once (8 turns) at wake before `_enter_sleep` (F1's ORACLE) | sensitivity positive control |
+
+`rng_seed` = the primary seed s for every arm. The stage lists are design constants fixed now, not tuned to any F5 outcome. SHUFFLED is a fixed, seed-independent permutation, chosen so rem never precedes the first nrem (a rem-first order starves and is refused, K2-F5 below); it is not a random shuffle.
+
+### F5-3. Compute ledger and the matching claim
+- Presentations are counted twice and both must match: (i) the runner's `BoutReport.total_presentations()` and (ii) the instrument's `counted_argmax` wrapper (one forward drive of a stored stimulus = one presentation, as in F1). Required: STAGED, FLAT and SHUFFLED each = 320 on both counts, `starved == 0` on every stage, `pause_reason == "budget"`.
+- Reported beside it, never claimed matched: deposits (STAGED 256, SHUFFLED 256, FLAT 320 by the runner's rule: rem deposits nothing), consolidate calls, wall. FLAT therefore receives 64 more deposits than STAGED; C10 reads a staged bout against a deposit-richer control, which can only make C10 harder to MET.
+
+### F5-4. Contrasts, statistic and decision table
+Statistic: 2.4 (S = 8, `paired_contrast`, P-8 wrapper, 2^8 operative FPR, quantum and minimal detectable mean printed).
+
+| contrast | d | reads |
+|---|---|---|
+| C10 (primary) | E_all(STAGED) - E_all(FLAT) | stage benefit |
+| C10-NI | E_A(STAGED) - E_A(FLAT) + eps (1/8) | interference bound, session A |
+| C10-NI-B | E_B(STAGED) - E_B(FLAT) + eps_B (1/12) | interference bound, session B (the 2026-10-07 guard, applied to F5 now rather than after data) |
+| C11 | E_all(STAGED) - E_all(SHUFFLED) | stage-order credit; read only if C10 MET; attribution, not a claim (P-6) |
+| C-SENS5 (gate) | E_A(ORACLE) - E_A(NONE) | the harness can see a retention gain at S = 8 |
+
+F5 claims only through C10 with its two NI bars (P-6). Rows, top to bottom, first that applies decides:
+1. any K check red -> HALT.
+2. C-SENS5 NOT MET -> REFUSED (blind harness).
+3. restore check K5 red -> NOT CLAIMED.
+4. C10 NOT MET -> NULL "no stage benefit over the flat control shown at 320 presentations" (X-19 wording; never an affirmative explanation).
+5. C10 MET and (C10-NI NOT MET or C10-NI-B NOT MET) -> RED (interference beyond bound).
+6. else MET "staged nrem/rem/nrem beats the equal-presentation flat bout on held-out, within both bounds"; C11 is then read: MET -> "stage order credited vs rem-last"; NOT MET -> "no stage-order benefit over SHUFFLED demonstrated".
+
+Licenses only that worded claim at 320 presentations on this corpus; never "REM-like integration helps" in general, never a biological stage claim (2.14), never a reservoir or engine claim.
+
+### F5-5. Dev reachability gate (frozen BEFORE the dev rehearsal; the F3 W lesson applied in advance)
+On dev seeds 16000-16007 the dev rehearsal prints, per seed, E_all for NONE, FLAT, STAGED, SHUFFLED. The harness is declared BLIND, and F5 is REFUSED before any confirmatory seed runs, if either (a) FLAT = 1.0 on E_all on all 8 dev seeds (ceiling: a stage effect cannot show), or (b) the mean over dev seeds of E_all(FLAT) - E_all(NONE) is <= 0 (the bout does not move held-out routing at all, so staging has nothing to modulate). There is no budget or stage ladder and no constant is changed after the dev read; a REFUSED F5 is reported as such, not repaired. Dev reads are EXPOSED and are never confirmatory evidence.
+
+### F5-6. K10 and the new F5 checks (each with a constructed, reachable red; a red that does not fire halts the arc)
+
+| id | check | constructed red (must fire) |
+|---|---|---|
+| K10a | no synthetic item reaches `interact`: every `interact` stimulus during the bout is a member of the pre-bout ring's stimuli, and the `interact` count equals the nrem + flat presentations | route one rem-stage mean code through `interact` |
+| K10b | the ring is unchanged by the bout: digest of (stimulus, label, key) before = after | append one synthetic item to `ixn._replay` after the first rem presentation |
+| K10c | no lake write during the bout: the arm's scratch-lake event record count is unchanged from before `g6_run_bout` to after it | append one lake event inside the bout |
+| K10d | no synthetic code is labelled or enters any held-out read: the held-out keys of 2.2 are disjoint from every key the bout drove (K3's key test over the bout's drawn keys) | plant one `_CONV_TEST` line into the ring before the bout |
+| K2-F5 | STAGED / FLAT / SHUFFLED report equal presentations on both counts of F5-3, `starved == 0`, `pause_reason == "budget"` | run SHUFFLED as rem 64, nrem 128, nrem 128 (rem first: it starves, the runner's own refutation R1) |
+| K1-F5 | D0 equal across NONE, FLAT, STAGED, SHUFFLED (shared PS(s)); D1 equal across the same four (no pre-bout action differs); ORACLE differs by design and carries its own D0 | split RNG offset by 1 in one arm (as K1) |
+| K8-F5 | K8a around every `interact`, every forward drive and the whole `g6_run_bout` call (`_step`, `_nights`, `_wake_ticks`, grower `observed` / `live_n`, arm command count unchanged; the runner's own `_step` assert is not relied on); K8b over `_enter_sleep` .. `_enter_wake` | bump `_step` inside one nrem draw; call `_enter_wake` twice |
+| K5, K3, K4, K12, K14 | as 2.7 unchanged (restore equality in-process vs restored; no held-out in teaching or ring; evaluation learning-OFF; seed rule; live-lake safety) | as 2.7 |
+
+K11 gains the F5 table: each of its six rows has a constructed reaching input, tested as a pure function: (1) any K red; (2) C-SENS5 d all zero (degenerate -> NOT MET); (3) K5 red with a clean MET; (4) a C10 d with zero variance and common value > 0 (superiority degenerate -> NOT MET -> NULL) and a C10 d of mean <= 0; (5) a C10 MET vector with each NI d' of negative mean in turn (E_A bar, then E_B bar) -> RED; (6) a MET with C11 MET and a MET with C11 NOT MET.
+
+### F5-7. Seeds, cost, files, and what this amendment does not decide
+- Seeds: dev 16000-16007; confirmatory 16140-16147 (read once; `SEED_SETS` gains F5); reserve 16300-16347 only under 2.10's repair rule; constructed reds 16900-16999. F5 uses no numeric derived seeds.
+- Cost [PROJECTION]: per arm-seed ~ build 2.2 s + teach < 0.02 s + `_enter_sleep` + 320 presentations (< 2 s) + close + restore and evaluation ~ 6-8 s; 5 arms x 8 seeds = 40 units ~ 5 min per set in ONE process; the dev rehearsal prints measured wall per phase. Light tests only until the lead assigns the machine slot; the dev rehearsal and the confirmatory run each need the lead's explicit go.
+- Files (P5): `src/snn_data_lake/instruments/sleep_plasticity_ab.py` (F5 family, adapter, K10a-d, K2-F5, decision table), `tests/test_sleep_plasticity_ab.py`. No edit to `staged_sleep_bout.py`, `engine/brain.py` or any envelope file.
+- Not decided here: any F1-F4 verdict, the owner's #124, F6 / F7, whether a longer or differently staged bout would differ (a different design needs its own amendment and its own seeds).
