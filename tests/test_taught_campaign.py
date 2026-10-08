@@ -4,6 +4,8 @@ identical, teach-only medians for C1-d), the readers and the attempt on short sc
 live reader with its stateful red, and B8's channel identity under throwaway_home() (the one
 test that builds a Brain). Seeds: scratch 8900-8901 and the reds block 8500 only."""
 
+import os
+
 import pytest
 
 from snn_data_lake.instruments import delayed_cue as dc
@@ -38,13 +40,21 @@ def test_preflight_refuses_the_live_home_before_creating_anything(sub):
     assert out.exists() == existed
 
 
-def test_isolation_failure_halts(monkeypatch):
-    # cp1 #1: a moved live-home mtime after the last write raises, never reports
-    stamps = iter([1.0, 2.0])
-    monkeypatch.setattr(tc, "_live_mtime", lambda: next(stamps))
-    before = tc._live_mtime()
+def test_isolation_failure_halts(tmp_path):
+    # cp1 #1 + P2: a same-size, same-mtime rewrite of the (decoy) live lake is caught by the
+    # content digest (the old top-level (size, mtime_ns) stamp read it as untouched)
+    from snn_data_lake.substrate.home import lake_snapshot
+
+    lake = tmp_path / "brain_lake.bin"
+    lake.write_bytes(b"AAAA")
+    mtime = lake.stat().st_mtime_ns
+    before = lake_snapshot(tmp_path)
+    tc._assert_isolated(before, tmp_path)  # untouched: no raise
+    lake.write_bytes(b"BBBB")
+    os.utime(lake, ns=(mtime, mtime))
+    assert lake.stat().st_size == 4 and lake.stat().st_mtime_ns == mtime
     with pytest.raises(RuntimeError):
-        tc._assert_isolated(before)
+        tc._assert_isolated(before, tmp_path)
 
 
 def _ii_rows(seeds, override=None):

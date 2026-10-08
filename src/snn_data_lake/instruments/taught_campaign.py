@@ -345,10 +345,15 @@ def b8_twin(seed, epochs, *, bare=False):
     read through `brain.brain.route`, against the factory incumbent (or the bare class, the red) on the same
     sequence: weights and every validation read equal at every epoch end. The live home's mtime must not move."""
     from snn_data_lake.engine.brain import make_brain
-    from snn_data_lake.substrate.home import require_isolated_home, throwaway_home
+    from snn_data_lake.substrate.home import (
+        lake_snapshot,
+        live_lake_untouched,
+        require_isolated_home,
+        throwaway_home,
+    )
 
     problem = tp.PROBLEMS["i.S0C0"]
-    before = _live_mtime()
+    before = lake_snapshot(LIVE_HOME)
     factory = im._incumbent(seed) if bare else learner(seed)
     equal = True
     with throwaway_home():
@@ -366,25 +371,23 @@ def b8_twin(seed, epochs, *, bare=False):
                 problem, seed, "validation", lambda t: factory.route_text(t[-1].text)
             )
             equal &= reads_b == reads_f and brain.brain._ixn.weights() == factory.weights()
+    untouched = live_lake_untouched(LIVE_HOME, before)[0]
     return {
-        "ok": equal and _live_mtime() == before,
-        "conditions": {"twin_equal": equal, "live_home_untouched": _live_mtime() == before},
+        "ok": equal and untouched,
+        "conditions": {"twin_equal": equal, "live_home_untouched": untouched},
     }
 
 
-def _live_mtime():
-    """The live home's stamp, REUSED from the move gate's census guard (P2: one guard): every top-level
-    file's (size, mtime_ns)."""
-    from snn_data_lake.gates.move_gate import _live_home_stamp
+def _assert_isolated(before, path=LIVE_HOME):
+    """Halt if anything under the live home moved since `before` (a `lake_snapshot`: mtime, size and content
+    digest; P2: home.py's stamp is the one guard). Called AFTER the campaign's last write."""
+    from snn_data_lake.substrate.home import live_lake_untouched
 
-    return _live_home_stamp()
-
-
-def _assert_isolated(before):
-    """Halt if the live home's stamp moved since `before` (called AFTER the campaign's last write)."""
-    after = _live_mtime()
-    if after != before:
-        raise RuntimeError("isolation failure: the live home changed; campaign halted")
+    ok, changed = live_lake_untouched(path, before)
+    if not ok:
+        raise RuntimeError(
+            f"isolation failure: the live home changed ({changed[:3]}); campaign halted"
+        )
 
 
 # ---- the G-R2 reading (2.9, 2.15.1; first row that applies decides) -----------------------------------------------
@@ -755,7 +758,9 @@ def run_campaign(seeds, out_dir, *, epochs=EPOCHS, h=H, g1c_construct=None, requ
     arms = ARMS + (ARMS_II if include_ii else ())
     preflight(seeds, out_dir, arms, require_clean=require_clean)
     Path(out_dir).mkdir(parents=True, exist_ok=True)
-    before = _live_mtime()
+    from snn_data_lake.substrate.home import lake_snapshot
+
+    before = lake_snapshot(LIVE_HOME)
     record = {"seeds": list(seeds), "epochs": epochs, "h": h}
 
     def conclude(verdict):
