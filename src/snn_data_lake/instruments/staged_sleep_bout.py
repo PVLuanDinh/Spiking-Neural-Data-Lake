@@ -187,6 +187,7 @@ def run_bout(brain, stages, *, rng_seed, validate=None, wake_request=None, extra
     flat_checks = 0
     deposits = [0]
     o_dep = ixn._deposit
+    had_own = "_deposit" in vars(ixn)  # a class-level method must not become instance state
 
     def dep(*a, **k):
         deposits[0] += 1
@@ -259,7 +260,10 @@ def run_bout(brain, stages, *, rng_seed, validate=None, wake_request=None, extra
             if pause != "budget":
                 break
     finally:
-        ixn._deposit = o_dep
+        if had_own:
+            ixn._deposit = o_dep
+        else:
+            del ixn._deposit
     if brain._step != step0:
         raise AssertionError("the runner advanced wake chronology")
     if carriers:
