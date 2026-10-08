@@ -971,3 +971,7 @@ Run at 5254306d..b917f5b8 (author-tested only; fold range "battery-verified only
 ## DATED NOTE 2026-10-07 (owner decisions that settle the confirmatory dispositions; additive)
 
 F2 (NOT READ, turnover 0 on 8/8 S-ON seeds): OWNER_DECISIONS_2026-10-04 item 11 already decided the structural rewirer -> "dated P3 exemption until a zero-crossing writer exists" (G6 records it; no new question). F1 and F3: item 15 (R3 O1) holds, "the 2026-09-27 sleep requirement is never deleted by a null", so the requirement stands either way; the retire-vs-exemption question for the replay cap, the benna_fusi rest and attractor.sleep learning is owner question #124. Nothing is applied before the answer.
+
+## DATED NOTE 2026-10-07 (wording after the batch-2 Codex closing report; additive)
+
+The F1-F4 numbers in section 5 are RECORDED RESULTS, reproduced by the lead from sha256-verified copies of the 136 records; the Codex re-derivation confirms the decision logic (the pure decision tables reproduce F1 NULL, F2 NOT READ, F3 NULL, F4 EXT credited) but its clone did not hold the record bodies, so it could not re-derive the statistics. lake_snapshot now also carries a content digest (the closing report's MAJOR; the confirmatory runs above used the size-and-mtime stamp, and their lake was additionally verified by stat before and after each process).
