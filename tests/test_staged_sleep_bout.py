@@ -103,3 +103,20 @@ def test_a_nonzero_structural_budget_is_refused_until_a_consumer_exists():
         ssb.run_bout(
             ssb._Brain(), [("nrem", {"presentations": 1, "structural_candidates": ok})], rng_seed=0
         )
+
+
+def test_run_bout_leaves_no_deposit_wrapper_in_the_learner_dict():
+    """R3 finding: a bound method left in the learner __dict__ makes the checkpoint encoder refuse the
+    save. A learner with no instance-level `_deposit` must have none after the bout."""
+    b = ssb._Brain()
+    assert "_deposit" not in vars(b.brain._ixn)
+    ssb.run_bout(b, STAGES, rng_seed=3)
+    assert "_deposit" not in vars(b.brain._ixn)
+
+
+def test_run_bout_restores_an_instance_level_deposit_it_found():
+    b = ssb._Brain()
+    own = b.brain._ixn._deposit
+    b.brain._ixn._deposit = own
+    ssb.run_bout(b, STAGES, rng_seed=3)
+    assert vars(b.brain._ixn)["_deposit"] is own
