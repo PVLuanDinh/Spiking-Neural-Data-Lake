@@ -910,3 +910,13 @@ Ties to the state-branch amendment (98d92203) and its ctxread row types (21ca1bc
   broadcast scalar from a FIXED random vector drawn at birth; no transposed forward weight; this pre-registration states the
   update and never claims it tracks a gradient). Accepted by the lead. The guard stands: the day any text says it tracks a
   gradient it is reclassified a claimant and owes the cosine > 0.5 bar. `capacity_certificate._constraints` is NOT_A_RULE.
+
+## DATED ADDENDUM 2026-10-07 (c) (batch-2 panel record; no G3 data read)
+
+- **Review status of the batch-2 range bdf7d8a2..e61ac66e (additive; nothing above changes).** Codex gpt-6.1-sol read e793afc9
+  (correctness + P8 lens: 1 MAJOR, 2 MINOR), 84b1f840 (p2p3 retry: 3 MINOR) and 150daa76 (safety retry: 2 MINOR + the 15,241 B baseline already
+  re-pinned on int1b 732a72e8). Folds, each red-first on the parent: 989e5b00, be6da35d, 84b1f840 (correctness); 79a36615, 150daa76
+  (p2p3); e4529118, e61ac66e (safety). 6fed31ed (G7 finding 4: the loop checks the segment grew by exactly the admitted units) lies
+  outside every panel SHA. e4529118 and e61ac66e were never re-read by Codex: **battery-verified only** (tests/test_grown_feed.py,
+  test_growth_loop.py; dormancy_gate and method_dormancy_gate `--assert` green with grown_feed importing growth_loop). 6fed31ed is
+  the same.
