@@ -823,6 +823,15 @@ closing report's two P2 defects were folded on the int2 line: `_one_pass` delega
 (the duplicate rule deleted; a NaN full-mask score is now refused), and G6's test-side `_live_mtime` is deleted in favour
 of the one stamp (`lake_snapshot` / `live_lake_untouched`).
 
+**DATED NOTE 2026-10-08 (phase 2 on claude/g6-b3: campaign_c; Q6 handling; no deciding data read).** Additive; zero lines
+removed. (1) `sleep_pressure.campaign_c(seeds, *, total, runner)` (677a89a6) is the one producer from `run_seed_arm` to
+`decide_c`'s per-seed rows ({clock, oracle, pressure, shuffled}: pooled held-out rate); the shuffled twin runs after the
+same seed's pressure arm and replays its `advanced` offsets (A6); a zero-item read raises. Tested brain-free with a
+fake runner (red first: no `campaign_c`). (b)'s analogue already exists (`seed_row`, 9fda44bc). No frozen clause moves.
+(2) Owner question Q6 (board #94) is OPEN. Build choice only: the eligible-brain arm defaults to labeled (born) units;
+legacy circuits (`brain._ixn`, the percept grower, `AttractorNet.W`) enter only through an explicit parameter. NO reading
+of the eligible-brain arm is taken, or reported, until the owner answers #94.
+
 ## 3. Results
 
 None. Nothing is measured beyond section 1; no deciding test has run.
