@@ -492,3 +492,194 @@ def test_no_instrument_function_reclaims_a_record_outside_a_scratch_home():
     assert (mine, "run_evaluate") not in bad and (mine, "run_evaluate") not in scratch
     assert (mine, "run_arm") not in bad
     assert (mine, "run_arm") in scratch  # K5's delete: counted and listed, never silent
+
+
+# ------------------------------------------------------------------ F5 (the amendment 2026-10-08)
+def _f5_block(arm):
+    stages = m.FAMILIES["F5"][arm].stages
+    st = [
+        {"name": nm, "budget": n, "presentations": n, "starved": 0, "deposits": 0}
+        for nm, n in stages
+    ]
+    drives = sum(n for nm, n in stages if nm in ("nrem", "flat"))
+    return {
+        "stages": st, "pause": "budget", "runner_total": m.F5_P, "log_total": m.F5_P,
+        "n_interact": drives, "interact_in_ring": True, "ring_pre": "r", "ring_post": "r",
+        "lake_ok": True, "lake_changed": [],
+    }  # fmt: skip
+
+
+def _f5_record(arm, seed=16140, a_ok=4, b_ok=6):
+    r = _record(arm, seed, family="F5")
+    r["budget"] = 0
+    r["tick"] = {"presentations": [], "turnover": [], "cacc": []}
+    r["inproc"] = r["restored"] = [1] * a_ok + [0] * (8 - a_ok) + [1] * b_ok + [0] * (12 - b_ok)
+    r["f5"] = _f5_block(arm) if m.FAMILIES["F5"][arm].stages else None
+    return r
+
+
+def test_f5_design_constants_and_adapter():
+    from snn_data_lake.instruments import staged_sleep_bout as g6
+
+    assert m.g6_run_bout is g6.run_bout  # the one runner, used as landed (P2)
+    assert all(sum(n for _, n in v) == m.F5_P == 320 for v in m.F5_STAGES.values())
+    assert [nm for nm, _ in m.F5_STAGES["SHUFFLED"]] == ["nrem", "nrem", "rem"]  # rem last
+    assert m.F5_REM_FIRST[0][0] == "rem"  # the K2-F5 red order
+    assert set(m.FAMILIES["F5"]) == {"STAGED", "FLAT", "SHUFFLED", "NONE", "ORACLE"}
+    assert m.SEED_SETS["F5"] == tuple(range(16140, 16148))
+    assert m.BUDGETS["F5"] == 0  # no incumbent sleep tick in an F5 bout
+
+
+F5_PLANTS = {
+    "K1": lambda r: r.update(d0="other"),
+    "K3": lambda r: r.update(drawn=[r["heldout_keys"][0]]),
+    "K8a": lambda r: r.update(k8a=[{"before": {}, "after": {}}]),
+    "K2F5-starved": lambda r: r["f5"]["stages"][0].update(starved=1),
+    "K2F5-total": lambda r: r["f5"].update(runner_total=256),
+    "K2F5-count": lambda r: r["f5"].update(log_total=319),
+    "K2F5-pause": lambda r: r["f5"].update(pause="plateau"),
+    "K10a-member": lambda r: r["f5"].update(interact_in_ring=False),
+    "K10a-count": lambda r: r["f5"].update(n_interact=r["f5"]["n_interact"] + 1),
+    "K10b": lambda r: r["f5"].update(ring_post="grown"),
+    "K10c": lambda r: r["f5"].update(lake_ok=False),
+    "K10d": lambda r: r.update(drawn=[r["heldout_keys"][3]]),
+}
+
+
+@pytest.mark.parametrize("plant", sorted(F5_PLANTS))
+def test_f5_record_check_reds(plant):
+    base = [_f5_record(a) for a in ("STAGED", "FLAT")]
+    if plant == "K1":
+        base[1]["d0"] = base[0]["d0"]
+    assert not any(m.check_records("F5", base).values()), m.check_records("F5", base)
+    planted = copy.deepcopy(base)
+    F5_PLANTS[plant](planted[0])
+    check = plant.split("-")[0]
+    got = m.check_records("F5", planted)
+    assert got[check], (plant, got)
+
+
+def test_f5_missing_block_is_k2f5_red_and_no_stage_arm_needs_none():
+    r = _f5_record("STAGED")
+    r["f5"] = None
+    assert m.check_records("F5", [r])["K2F5"]
+    assert not any(m.check_records("F5", [_f5_record("NONE"), _f5_record("ORACLE")]).values())
+
+
+def _f5_set(seeds, per_arm):
+    """Records for every F5 arm x seed; per_arm[arm](i) -> (a_ok, b_ok) for the i-th seed."""
+    return [
+        _f5_record(arm, s, *per_arm[arm](i))
+        for i, s in enumerate(seeds)
+        for arm in m.FAMILIES["F5"]
+    ]
+
+
+F5_SEEDS = m.SEED_SETS["F5"]
+_GOOD = {  # varied (non-degenerate) per-seed endpoints
+    "NONE": lambda i: (3, 5),
+    "ORACLE": lambda i: (3 + 1 + i % 3, 5),
+    "FLAT": lambda i: (4, 6),
+    "SHUFFLED": lambda i: (4 - i % 2, 6),
+    "STAGED": lambda i: (4 + i % 2, 6 + i % 3),
+}
+
+
+def _f5_row(per_arm, mutate=None):
+    recs = _f5_set(F5_SEEDS, per_arm)
+    if mutate:
+        mutate(recs)
+    return m.decide_family("F5", recs, F5_SEEDS, set_name="F5")
+
+
+def test_f5_decision_flow_rows():
+    res = _f5_row(_GOOD)
+    assert res["row"].startswith(m.F5_MET), res["row"]
+    assert {"C-SENS5", "C10", "C10-NI", "C10-NI-B", "C11", "FLAT-NONE"} <= set(res["contrasts"])
+    assert res["contrasts"]["FLAT-NONE"].kind == "rep"  # F5-3a: reported beside C10, never a claim
+    lines = m.census(res["contrasts"].values())
+    assert any(x.startswith("reported only read: 1") for x in lines)
+    # NULL: STAGED equal to FLAT everywhere -> C10 degenerate zero -> NOT MET
+    assert _f5_row(dict(_GOOD, STAGED=_GOOD["FLAT"]))["row"].startswith("NULL")
+    # REFUSED: ORACLE == NONE -> C-SENS5 degenerate zero
+    assert _f5_row(dict(_GOOD, ORACLE=_GOOD["NONE"]))["row"].startswith("REFUSED")
+    # INTERFERENCE RED on A: STAGED gains on B but loses A items against FLAT on every seed
+    row = _f5_row(dict(_GOOD, STAGED=lambda i: (1, 11 + i % 2)))["row"]
+    assert row.startswith("INTERFERENCE RED (C10"), row
+    # INTERFERENCE RED on B: STAGED gains on A but loses B items
+    row = _f5_row(dict(_GOOD, STAGED=lambda i: (8, 3 + i % 2)))["row"]
+    assert row.startswith("INTERFERENCE RED on session B"), row
+
+    def break_restore(recs):
+        recs[0]["restored"] = [1 - x for x in recs[0]["restored"]]
+
+    res = _f5_row(_GOOD, break_restore)  # a restore red is NOT CLAIMED, not a halt (table row 3)
+    assert res["row"].startswith("NOT CLAIMED") and res["checks"]["K5"]
+
+    def break_digest(recs):
+        recs[0]["d0"] = "other"
+
+    assert _f5_row(_GOOD, break_digest)["row"].startswith("HALT")  # any OTHER red check halts
+
+
+def test_f5_dev_gate_blind_cases():
+    dev = m.SEED_SETS["dev"]
+
+    def recs(flat, none):
+        out = []
+        for s in dev:
+            out.append(_f5_record("FLAT", s, *flat))
+            out.append(_f5_record("NONE", s, *none))
+        return out
+
+    ceiling = m.f5_dev_gate(recs((8, 12), (3, 5)), dev)
+    assert len(ceiling) == 1 and "ceiling" in ceiling[0]
+    assert any("does not move" in x for x in m.f5_dev_gate(recs((4, 6), (4, 6)), dev))
+    assert any("does not move" in x for x in m.f5_dev_gate(recs((3, 5), (4, 6)), dev))
+    assert m.f5_dev_gate(recs((4, 6), (3, 5)), dev) == []  # the control: a moving, sub-ceiling FLAT
+
+
+def test_f5_real_staged_and_flat_arm_seeds(tmp_path):
+    """STAGED and FLAT on a red-block seed through the two-process path: every record check green
+    (K2-F5, K10a-d, K1, K3, K5, K8), 320 presentations on both counts, 256 vs 320 deposit-bearing
+    drives (F5-3), live lake untouched."""
+    out = str(tmp_path)
+    seed = m.RED_SEEDS[7]
+    recs = [m.run_arm(out, "F5", arm, seed) for arm in ("STAGED", "FLAT")]
+    fails = m.check_records("F5", recs)
+    assert not any(fails.values()), fails
+    st, fl = recs
+    assert st["f5"]["runner_total"] == fl["f5"]["runner_total"] == m.F5_P
+    assert st["f5"]["log_total"] == fl["f5"]["log_total"] == m.F5_P
+    # deposit-bearing drives are 256 vs 320 (F5-3); the runner counts every `_deposit` CALL and an
+    # error-driven interact can deposit more than once, so the call count is reported, not matched
+    assert (st["f5"]["n_interact"], fl["f5"]["n_interact"]) == (256, 320)
+    assert sum(x["deposits"] for x in st["f5"]["stages"]) >= 256
+    assert sum(x["deposits"] for x in fl["f5"]["stages"]) >= 320
+    print("F5 deposit calls", [sum(x["deposits"] for x in r["f5"]["stages"]) for r in recs])
+    assert st["d0"] == fl["d0"] and st["d1"] == fl["d1"]
+    assert all(r["live_lake_untouched"] for r in recs)
+    assert os.listdir(os.path.join(out, "homes")) == []
+
+
+@pytest.mark.parametrize(
+    "name,arm",
+    [
+        ("K10a", "STAGED"),
+        ("K10b", "STAGED"),
+        ("K10c", "STAGED"),
+        ("K10d", "STAGED"),
+        ("K2F5", "SHUFFLED"),
+        ("K8a-f5", "STAGED"),
+    ],
+)
+def test_f5_brain_level_reds_fire(tmp_path, name, arm):
+    """Each constructed red, built through the real child, is caught by its check on a record whose
+    unplanted twin is green (the unplanted run is the control)."""
+    seed = m.RED_SEEDS[8]
+    out = str(tmp_path)
+    base = m.run_arm(out, "F5", arm, seed)
+    assert not any(m.check_records("F5", [base]).values())
+    red = m.run_arm(out, "F5", arm, seed, red=name)
+    check = name.split("-")[0]
+    assert m.check_records("F5", [red])[check], (name, red["f5"])

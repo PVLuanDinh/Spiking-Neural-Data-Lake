@@ -4,8 +4,9 @@ The frozen pre-registration is specs/022-unified-brain-arc/evidence/r3-replay-gr
 (P0 f83c7c74 + the dated amendment 384fa78b); its sections 2.2-2.16 are the contract and this module only
 implements them. Families (2.3): F1 synaptic (ON / OFF / R / BF / Rec / ORACLE / A-ONLY, plus the K1 twins),
 F2 structural (S-ON / S-OFF), F3 attractor (AT-ON / AT-OFF, and the dev-only AT-NONE positive control),
-F4 budget (SHORT / MED / EXT / MASSED). F5 (staged) waits on G6's runner and F6 / F7 on R2's results; they are
-NOT here.
+F4 budget (SHORT / MED / EXT / MASSED), F5 staged (STAGED / FLAT / SHUFFLED + NONE / ORACLE; the dated
+amendment 2026-10-08, driven through G6's staged_sleep_bout.run_bout, no incumbent sleep tick). F6 / F7 wait on
+R2's results and are NOT here.
 
 HOW ONE ARM-SEED RUNS (2.2). Two fresh processes on one scratch home (NORD_HOME, NORD_PERSIST=1), never the
 live lake (board PROTOCOL 4b; K14 snapshots it before and after every child):
@@ -55,6 +56,7 @@ from fractions import Fraction
 from typing import NamedTuple
 
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast, paired_t
+from snn_data_lake.instruments.staged_sleep_bout import run_bout as g6_run_bout
 from snn_data_lake.substrate.home import lake_snapshot, live_lake_untouched
 
 S = 8  # confirmatory seeds per contrast (Part F)
@@ -66,9 +68,23 @@ SEED_SETS = {
     "F2": tuple(range(16110, 16118)),
     "F3": tuple(range(16120, 16128)),
     "F4": tuple(range(16130, 16138)),
+    "F5": tuple(range(16140, 16148)),
 }
 RED_SEEDS = tuple(range(16900, 17000))  # constructed reds and positive controls only (2.10)
-BUDGETS = {"SHORT": 10, "MED": 40, "EXT": 160}  # sleep ticks (2.3)
+BUDGETS = {
+    "SHORT": 10,
+    "MED": 40,
+    "EXT": 160,
+    "F5": 0,
+}  # sleep ticks (2.3); F5 runs no incumbent tick
+F5_P = 320  # F5 presentations per bout (the amendment 2026-10-08, F5-2): F1 MED = 40 ticks x K
+F5_STAGES = {  # (stage, presentations): design constants fixed before any F5 run
+    "STAGED": (("nrem", 128), ("rem", 64), ("nrem", 128)),
+    "FLAT": (("flat", F5_P),),
+    "SHUFFLED": (("nrem", 128), ("nrem", 128), ("rem", 64)),  # rem last; rem-first starves (K2-F5)
+}
+F5_REM_FIRST = (("rem", 64), ("nrem", 128), ("nrem", 128))  # K2-F5's constructed red
+assert all(sum(n for _, n in v) == F5_P for v in F5_STAGES.values())
 REPS = 3  # teaching reps per session (2.2)
 EPS_A = Fraction(1, 8)  # one A item (2.4's NI margin)
 EPS_B = Fraction(1, 12)  # one B item (the E_B non-inferiority amendment)
@@ -91,6 +107,7 @@ class Arm(NamedTuple):
         "learn"  # "learn" | "nolearn" (AT-OFF) | "none" (AT-NONE, dev positive control)
     )
     d1_group: str = ""  # arms whose bout-start digests D1 must be equal (P-2)
+    stages: tuple = ()  # F5: ((stage, presentations), ...) driven through G6's runner; () = no bout
 
 
 ON_CAPS, OFF_CAPS = (True, True, False), (False, False, False)
@@ -120,6 +137,13 @@ FAMILIES = {
         "MED": Arm(ON_CAPS, "none", "MED", d1_group="F4"),
         "EXT": Arm(ON_CAPS, "none", "EXT", d1_group="F4"),
         "MASSED": Arm((False, True, False), "fwd", "EXT", pre="massed"),
+    },
+    "F5": {
+        "STAGED": Arm(ON_CAPS, "none", "F5", d1_group="F5", stages=F5_STAGES["STAGED"]),
+        "FLAT": Arm(ON_CAPS, "none", "F5", d1_group="F5", stages=F5_STAGES["FLAT"]),
+        "SHUFFLED": Arm(ON_CAPS, "none", "F5", d1_group="F5", stages=F5_STAGES["SHUFFLED"]),
+        "NONE": Arm(ON_CAPS, "none", "F5", d1_group="F5"),
+        "ORACLE": Arm(ON_CAPS, "none", "F5", pre="oracle"),
     },
 }
 DEV_ONLY_ARMS = {("F3", "AT-NONE")}  # run on the dev set only (2.6's historical positive control)
@@ -245,12 +269,63 @@ def chrono(b):
 
 
 # --------------------------------------------------------------------------------------- the bout child
+def _ring_digest(ixn):
+    return _digest([[list(e[0]), e[1], e[2]] for e in ixn._replay])
+
+
+# distinct-from: staged_sleep_bout.py::run_bout -- G6's runner EXECUTES a staged bout; this wraps one call of
+#   it with R3's K10 / K8 / count instruments (ring, lake and chronology read before and after) and reports
+#   nothing the runner does not already do. Also read: engine/brain.py::_sleep_tick (the incumbent tick F5
+#   deliberately does not run). Site read.
+def _f5_bout(b, ixn, arm, seed, red, log):
+    """One F5 bout (the amendment 2026-10-08): `g6_run_bout(b, stages, rng_seed=seed)` with K10a-d read around it.
+    Only the registered call shape is used (no validate, no wake_request), so a pause other than budget is a
+    defect the K2-F5 check halts on."""
+    stages = F5_REM_FIRST if red == "K2F5" else arm.stages
+    g6_stages = [(nm, {"presentations": n, "structural_candidates": None}) for nm, n in stages]
+    home = os.environ["NORD_HOME"]
+    ring_pre = _ring_digest(ixn)
+    ring_stims = {_digest(list(e[0])) for e in ixn._replay}
+    lake0 = lake_snapshot(home)
+    n0, p0, c0 = len(log["istim"]), log["presentations"], chrono(b)
+    rep = g6_run_bout(b, g6_stages, rng_seed=seed)
+    # The runner restores `ixn._deposit = o_dep` in a finally, which leaves a BOUND METHOD in the learner's
+    # __dict__; the G0(c) checkpoint encoder refuses that, so the save at _enter_wake would be refused and the
+    # restore would read a fresh learner (K5 caught it on the first F5 run). Drop the instance attribute so the
+    # class method resolves again; the runner is not edited here (reported to G6).
+    ixn.__dict__.pop("_deposit", None)
+    if red == "K10a":  # the red: a synthetic (mean) code is driven through interact
+        s0, s1 = ixn._replay[0][0], ixn._replay[1][0]
+        ixn.interact([(x + y) / 2.0 for x, y in zip(s0, s1)], ixn._replay[0][1], _record=False)
+    if red == "K10c":  # the red: one write lands in the arm's scratch lake during the bout
+        with open(os.path.join(home, "k10c.red"), "a", encoding="ascii") as fh:
+            fh.write("x")
+    c1 = chrono(b)
+    if c1 != c0:  # K8a around the WHOLE call (each interact is also guarded on its own)
+        log["k8a"].append({"before": c0, "after": c1})
+    lake_ok, lake_changed = live_lake_untouched(home, lake0)
+    istim = log["istim"][n0:]
+    return {
+        "stages": rep.to_dict()["stages"],
+        "pause": rep.pause_reason,
+        "runner_total": rep.total_presentations(),
+        "log_total": log["presentations"] - p0,
+        "n_interact": len(istim),
+        "interact_in_ring": all(d in ring_stims for d in istim),
+        "ring_pre": ring_pre,
+        "ring_post": _ring_digest(ixn),
+        "lake_ok": lake_ok,
+        "lake_changed": [str(x) for x in lake_changed][:5],
+    }
+
+
 # distinct-from: growth/brian2_backend.py -- its child runner simulates Brian2 networks; also read:
 #   engine/learn_daemon.py (one-daemon lock), gates/gradient_claim_gate.py (run-age record),
 #   brainstem/arm_config.py + so101_arm.py (joint geometry) -- term overlaps only; none runs a sleep arm.
 def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
     """One arm's PS(s) + bout + in-process evaluation, in THIS process (the `bout` child). Returns a record."""
     require_scratch_home()
+    red = red[: -len("-f5")] if red and red.endswith("-f5") else red  # an F5 build of a shared red
     arm = FAMILIES[family][arm_name]
     n = BUDGETS[arm.budget] if budget is None else int(budget)
     w = F3_STORES if stores is None else int(stores)
@@ -280,7 +355,7 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
     wall["teach"] = time.perf_counter() - t0
     d0 = state_digest(b)
 
-    log = {"presentations": 0, "drawn": [], "k8a": [], "draws": 0, "in_guard": False}
+    log = {"presentations": 0, "drawn": [], "k8a": [], "draws": 0, "in_guard": False, "istim": []}
     real_argmax, real_interact, real_replay = ixn._argmax_label, ixn.interact, ixn.replay
 
     def counted_argmax(code):
@@ -290,7 +365,12 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
     def logged_interact(stimulus, feedback, _record=True, _key=None):
         if not _record:
             log["drawn"].append(_key)
-            return guarded(real_interact, stimulus, feedback, _record, _key)
+            out = guarded(real_interact, stimulus, feedback, _record, _key)
+            log["istim"].append(_digest(list(stimulus)))
+            n_first = arm.stages[0][1] if arm.stages else -1
+            if red == "K10b" and len(log["istim"]) == n_first:  # the red: a synthetic ring entry
+                ixn._replay.append((list(stimulus), feedback, "r3-planted-synthetic"))
+            return out
         return real_interact(stimulus, feedback, _record=_record, _key=_key)
 
     # K8a per draw (Codex cp2 #10): each incumbent replay, fwd, Rec and MASSED draw has its own
@@ -334,6 +414,9 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
         for _ in range(BUDGETS["EXT"] * K):
             stim, lab, key = ring[twin.randrange(len(ring))]
             guarded(ixn.interact, list(stim), lab, False, key)
+    if red == "K10d":  # the red: a held-out line of a B intent sits in the ring before the bout
+        stim0, lab0, _ = ixn._replay[0]
+        ixn._replay.append((list(stim0), lab0, _utterance_key(_CONV_TEST[bb[0]][0])))
     d1 = state_digest(b)
 
     for cap, on in zip(("replay", "benna_fusi", "structural"), arm.caps):
@@ -362,6 +445,7 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
     b._enter_sleep()
     wall["enter_sleep"] = time.perf_counter() - t0
     t0 = time.perf_counter()
+    f5 = _f5_bout(b, ixn, arm, seed, red, log) if arm.stages else None
     for t in range(n):
         p0, dep0 = log["presentations"], b._plasticity.consolidation_calls()
         ring = ixn._replay
@@ -424,6 +508,7 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
         "inproc": inproc,
         "n_a": len(heldout(a)),
         "wall": wall,
+        "f5": f5,
     }
     t0 = time.perf_counter()
     b.close()
@@ -676,7 +761,30 @@ def table_f4(checks_ok, c7, c7_ni, c8, c8_ni, c9, c7_ni_b, c8_ni_b):
     return "EXT credited; no sleep-duration benefit over massed wake demonstrated (C9 NOT MET)"
 
 
-TABLES = {"F1": table_f1, "F2": table_f2, "F3": table_f3, "F4": table_f4}
+F5_MET = "MET (C10, C10-NI, C10-NI-B): staged beats the equal-PRESENTATION flat bout, FLAT carries 64 more deposits"
+
+
+def table_f5(checks_ok, c_sens, restore, c10, c10_ni, c10_ni_b, c11):
+    """The amendment 2026-10-08 F5-4. `checks_ok` excludes K5, which is read as `restore` (row 3: a restore
+    red is NOT CLAIMED, not a halt); every other K check red halts."""
+    if not checks_ok:
+        return "HALT (instrument defect, no verdict)"
+    if not c_sens:
+        return "REFUSED (blind harness: C-SENS5 NOT MET)"
+    if not restore:
+        return "NOT CLAIMED (restore check K5 red: the in-process and restored readings differ)"
+    if not c10:
+        return "NULL: no stage benefit over the flat control shown at 320 presentations"
+    if not c10_ni:
+        return "INTERFERENCE RED (C10 MET, C10-NI NOT MET)"
+    if not c10_ni_b:
+        return "INTERFERENCE RED on session B (C10 MET, C10-NI-B NOT MET)"
+    if c11:
+        return F5_MET + "; stage order credited vs rem-last (C11 MET)"
+    return F5_MET + "; no stage-order benefit over SHUFFLED demonstrated (C11 NOT MET)"
+
+
+TABLES = {"F1": table_f1, "F2": table_f2, "F3": table_f3, "F4": table_f4, "F5": table_f5}
 # K11: one constructed input per row of every table (the row's text prefix), each must be reached.
 TABLE_REACH = {
     "F1": [
@@ -702,6 +810,14 @@ TABLE_REACH = {
         ((True, 1, 1, 1, 1, 1, 1, 0), "MED credited; INTERFERENCE RED at EXT on session B"),
         ((True, 1, 1, 1, 1, 1, 1, 1), "EXT credited: a"),
         ((True, 1, 1, 1, 1, 0, 1, 1), "EXT credited; no"),
+    ],
+    "F5": [
+        ((False, 1, 1, 1, 1, 1, 1), "HALT"), ((True, 0, 1, 1, 1, 1, 1), "REFUSED"),
+        ((True, 1, 0, 1, 1, 1, 1), "NOT CLAIMED"), ((True, 1, 1, 0, 1, 1, 1), "NULL"),
+        ((True, 1, 1, 1, 0, 1, 1), "INTERFERENCE RED (C10"),
+        ((True, 1, 1, 1, 1, 0, 1), "INTERFERENCE RED on session B"),
+        ((True, 1, 1, 1, 1, 1, 1), F5_MET + "; stage order credited"),
+        ((True, 1, 1, 1, 1, 1, 0), F5_MET + "; no stage-order"),
     ],
 }  # fmt: skip
 
@@ -782,9 +898,34 @@ def _e(rec, which, key="restored"):
     return {"all": sum(v), "A": sum(v[:na]), "B": sum(v[na:])}[which]
 
 
+def _check_f5(r, tag, fails):
+    """K2-F5 and K10a-d on one STAGED / FLAT / SHUFFLED record (the amendment 2026-10-08, F5-3 and F5-6)."""
+    f5 = r.get("f5")
+    if not isinstance(f5, dict):
+        fails["K2F5"].append((tag, "no f5 block"))
+        return
+    st = f5["stages"]
+    if not (
+        f5["runner_total"] == F5_P == f5["log_total"]
+        and all(x["starved"] == 0 for x in st)
+        and f5["pause"] == "budget"
+    ):
+        fails["K2F5"].append(tag)
+    drives = sum(x["presentations"] for x in st if x["name"] in ("nrem", "flat"))
+    if not (f5["interact_in_ring"] and f5["n_interact"] == drives):
+        fails["K10a"].append(tag)
+    if f5["ring_pre"] != f5["ring_post"]:
+        fails["K10b"].append(tag)
+    if not f5["lake_ok"]:
+        fails["K10c"].append(tag)
+    if endpoint_identity_ok(r) and set(r["heldout_keys"]) & set(r["drawn"]):
+        fails["K10d"].append(tag)
+
+
 def check_records(family, recs):
     """The record-level checks over one family's arm-seeds; returns {check: [failures]} (empty = green)."""
     fails = {k: [] for k in ("K1", "K2", "K3", "K4", "K5", "K6", "K8a", "K8b", "K13", "K14", "KE")}
+    fails.update({k: [] for k in ("K2F5", "K10a", "K10b", "K10c", "K10d")})
     by_seed = {}
     for r in recs:
         by_seed.setdefault(r["seed"], {})[r["arm"]] = r
@@ -827,7 +968,7 @@ def check_records(family, recs):
             family != "F3" and r["inproc"] != r["restored"]
         ):  # P-5: F3 reads in-process (Codex cp2 #13)
             fails["K5"].append(tag)
-        if r["arm"] in PLASTICITY_FREE and r["weights_d1"] != r["weights_post"]:
+        if family != "F5" and r["arm"] in PLASTICITY_FREE and r["weights_d1"] != r["weights_post"]:
             fails["K6"].append(tag)
         if r["k8a"]:
             fails["K8a"].append(tag)
@@ -839,6 +980,8 @@ def check_records(family, recs):
             fails["K8b"].append(tag)
         if not r.get("live_lake_untouched", False):
             fails["K14"].append(tag)
+        if family == "F5" and FAMILIES[family][r["arm"]].stages:
+            _check_f5(r, tag, fails)
     if family == "F3":
         by = {}
         for r in recs:
@@ -899,6 +1042,13 @@ def contrasts(family, recs, seeds):
         add("C8-NI", "ni", _d(by, seeds, "EXT", "MED", "A", EPS_A))
         add("C8-NI-B", "ni", _d(by, seeds, "EXT", "MED", "B", EPS_B))
         add("C9", "sup", _d(by, seeds, "EXT", "MASSED", "all"))
+    elif family == "F5":
+        add("C-SENS5", "ctl", _d(by, seeds, "ORACLE", "NONE", "A"))
+        add("C10", "sup", _d(by, seeds, "STAGED", "FLAT", "all"))
+        add("C10-NI", "ni", _d(by, seeds, "STAGED", "FLAT", "A", EPS_A))
+        add("C10-NI-B", "ni", _d(by, seeds, "STAGED", "FLAT", "B", EPS_B))
+        add("C11", "sup", _d(by, seeds, "STAGED", "SHUFFLED", "all"))
+        add("FLAT-NONE", "rep", _d(by, seeds, "FLAT", "NONE", "all"))  # F5-3a: reported beside C10
     return out
 
 
@@ -930,7 +1080,8 @@ def decide_family(family, recs, seeds, k7_sighted=False, restore=None, set_name=
             "row": "HALT (instrument defect, no verdict): the record set is incomplete",
         }
     fails = check_records(family, recs)
-    checks_ok = not any(fails.values())
+    # F5 reads K5 as `restore` (table row 3: NOT CLAIMED); every other red check halts
+    checks_ok = not any(v for k, v in fails.items() if not (family == "F5" and k == "K5"))
     if (
         not checks_ok
     ):  # a red check halts BEFORE any contrast is built (malformed input never divides)
@@ -956,6 +1107,10 @@ def decide_family(family, recs, seeds, k7_sighted=False, restore=None, set_name=
     elif family == "F3":
         stored = all(r["stored_any"] for r in recs)
         row = table_f3(checks_ok, stored, m["C6"])
+    elif family == "F5":
+        row = table_f5(
+            checks_ok, m["C-SENS5"], not fails["K5"], m["C10"], m["C10-NI"], m["C10-NI-B"], m["C11"]
+        )
     else:
         row = table_f4(
             checks_ok, m["C7"], m["C7-NI"], m["C8"], m["C8-NI"], m["C9"], m["C7-NI-B"], m["C8-NI-B"]
@@ -968,18 +1123,35 @@ PRIMARY = {
     "F2": ("C5", "C5-NI", "C5-NI-B"),
     "F3": ("C6",),
     "F4": ("C7", "C7-NI", "C7-NI-B", "C8", "C8-NI", "C8-NI-B", "C9"),
+    "F5": ("C10", "C10-NI", "C10-NI-B"),
 }
+
+
+def f5_dev_gate(recs, seeds):
+    """F5-5: the dev reachability gate, a pure function of the 8 dev FLAT / NONE records. Returns the list of
+    reasons the harness is BLIND (empty = F5 may proceed to its confirmatory set). No ladder, no retune."""
+    by = {(r["arm"], r["seed"]): r for r in recs}
+    flat = [_e(by[("FLAT", s)], "all") for s in seeds]
+    none = [_e(by[("NONE", s)], "all") for s in seeds]
+    why = []
+    if all(x == N_ALL for x in flat):
+        why.append("ceiling: FLAT E_all = 1.0 on every dev seed")
+    if Fraction(sum(f - n for f, n in zip(flat, none)), N_ALL * len(seeds)) <= 0:
+        why.append("FLAT does not move held-out routing: mean E_all(FLAT) - E_all(NONE) <= 0")
+    return why
 
 
 def census(read):
     """P-6 / Codex 27: the count is derived from the test IDs actually read, by category."""
-    cats = {"superiority": [], "positive controls": [], "NI bars": []}
+    cats = {"superiority": [], "positive controls": [], "NI bars": [], "reported only": []}
     for c in read:
         key = (
             "NI bars"
             if c.kind == "ni"
             else "positive controls"
             if c.kind == "ctl"
+            else "reported only"
+            if c.kind == "rep"
             else "superiority"
         )
         cats[key].append(
@@ -1235,6 +1407,8 @@ def _main_cmd(a):
             "K1": ("F1", "ON", 2), "K2": ("F1", "OFF", 10), "K3": ("F1", "ON", 2), "K4": ("F1", "ON", 2),
             "K5": ("F1", "ON", 2), "K6": ("F1", "OFF", 2), "K8a": ("F1", "ON", 2), "K8b": ("F1", "ON", 2),
             "K8a-obs": ("F1", "ON", 2), "K13": ("F3", "AT-OFF", 2),
+            "K10a": ("F5", "STAGED", 0), "K10b": ("F5", "STAGED", 0), "K10c": ("F5", "STAGED", 0),
+            "K10d": ("F5", "STAGED", 0), "K2F5": ("F5", "SHUFFLED", 0), "K8a-f5": ("F5", "STAGED", 0),
         }[a.name]  # fmt: skip
         seed = RED_SEEDS[1]
         w = F3_W_LADDER[0] if fam == "F3" else None  # a red needs stores, never the frozen W
@@ -1264,6 +1438,8 @@ def _main_cmd(a):
                 f"(ref {c.ref_fpr:.4f}) mean={c.mean:.4f} sd={c.sd:.4f} lb95={c.lower95:.4f} mde={c.mde:.4f}"
             )
         print("checks:", {k: len(v) for k, v in res["checks"].items()})
+        if a.family == "F5" and a.set == "dev" and res["checks_ok"]:
+            print("F5 dev reachability gate (F5-5):", f5_dev_gate(recs, seeds) or "passes")
         if a.set == "dev":  # Codex cp2 #5: a dev reading is never printed as a claim
             print("DEV READING (EXPOSED seeds, never a verdict) -- table row:", res["row"])
         else:
