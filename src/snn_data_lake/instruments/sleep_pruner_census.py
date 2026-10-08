@@ -59,6 +59,10 @@ PRUNERS = {
 # Vocabulary hits that are not prune operations, each with the reason (section 1 item 1's kept-out list).
 NOT_PRUNERS = {
     (
+        "?",
+        "heldout_prune",
+    ): "the shared one-pass selection rule beneath P-EY (growth/candidate_lifecycle.heldout_prune, G3 P2): it returns the drop decision to NGSNN.prune_unearned, which applies it and is classified as P-EY at its own site -- not a second pruner",
+    (
         "RecallTrace",
         "prune_to",
     ): "P-LAKE's own bookkeeping: drops trace entries of records P-LAKE already "
@@ -81,6 +85,10 @@ NOT_PRUNERS = {
 }
 # Vocabulary hits whose receiver no rule types, classified by (module, method) after reading the site.
 NOT_PRUNERS_AT = {
+    (
+        "growth.ng_snn",
+        "heldout_prune",
+    ): "the shared one-pass selection rule beneath P-EY (growth/candidate_lifecycle.heldout_prune, G3 P2): it returns the drop decision to NGSNN.prune_unearned, which applies it and is classified as P-EY at its own site -- not a second pruner",
     (
         "faculties.skill_builder",
         "consolidate",
