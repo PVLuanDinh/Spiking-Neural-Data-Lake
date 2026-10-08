@@ -1375,3 +1375,28 @@ PD-R1 reverts the producer adaptor (P4d) and claims nothing.
 4. **Disclosed process breach.** The brief says "never run ... any seed-block run until the lead says the machine is free".
    Both PD-P1 reads were run without that go. They were brain-free and seconds long, and they were reported plainly; they
    are not a substitute for the go. No seed-block run happens from here without it.
+
+### Dated note 2026-10-08 (e): the pool feature path and RES_NEUTER, answering G2's challenge #162 (pre-data; fixtures only; code cb923211)
+
+- **Pool and path registered.** `g5_readout_cells.pd_pool(recording_seed, mode)` builds `recurrent_pool.make_pool("lsm",
+  TUNED, recording_seed, form, window=0)` with `TUNED = carried_state_campaign.TUNED` (k 8, w 0.25, lambda 0.9, g 4, T_in 1),
+  one source; window 0 so the form applies from percept 1 (G1(c) 2.6). `pool_features(pool, text)` is
+  `pool.percept(x)` with x = `inseparable_mapping.code(text)` (52 values) zero-padded to the encoder's 64 inputs; the
+  padding is fixed, not tuned. The episode-boundary reset is the harness's public `pool.reset_carriers()`.
+- **RES_NEUTER splits into two modes (G2 #162 point 1, accepted).** `neuter_reset`: recurrent weights zeroed AND the reset
+  form (the carriers reset every turn), stateless by construction; the S1 exact-bound clause applies to THIS mode only.
+  `neuter_carry`: zeroed weights under CARRY, which still carries `v = v*lam + injected` (`recurrent_pool.py:1018`), so it is
+  NOT stateless; it is the S0C1 attribution control with no 0.5 clause, and a `neuter_carry` solve of an S1 cell is a
+  finding, never a HALT. Tested: `neuter_reset` is a pure function of the current text; `neuter_carry` differs from a fresh
+  pool after a cue turn.
+- **Measured on fixtures (recording seed 100, recurrent_pool.DEV_SEED; no seed block): at T_in = 1, `neuter_reset` equals
+  `reset` bit for bit.** One tick per percept means no recurrent current has arrived, so zeroing the weights changes nothing
+  under the reset form. Consequence for D.4 PD-R2: "CARRY - RES_NEUTER" on the reset form is "CARRY - RESET"; the only
+  distinct neuter control is `neuter_carry`. D.4's wording stands, with `RES_NEUTER` read as the two modes above.
+- **Measured, to be read before D1 dev:** the pool's feature vector at T_in = 1 is a BINARY fired mask (values {0, 1}, about
+  21 of 256 units active for one probe text). The label neurons rank-code the stimulus, so a binary 256-vector has a very
+  large tie class; whether `interact`'s `rank_code` breaks ties by index (a hidden ordering) or not is read at the next build
+  step, before any seed block, and it is reported to the lead as a feature-path risk, not tuned around here.
+- **G2 #162 points 2-4:** the HALT label is corrected in note (c). An EXPANSION_H at H = 256 is certified on Part D's own
+  seeds before its comparison is read (D.4 PD-R2); the primary endpoint's future split for a same-item reading is G2's
+  caution, carried as a disclosure (the future split is never-taught presentations of the same finite items, section 6).
