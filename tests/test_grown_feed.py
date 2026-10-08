@@ -175,3 +175,13 @@ def test_random_feed_does_not_overflow_when_the_source_norm_is_representable():
     unit = _unit(0, 0, +1)
     out = gf.random_feed(np.array([[1.7e308], [0.0]]), (unit,), 9900)
     assert np.isfinite(out).all() and np.abs(out).max() <= 1.7e308 * (1 + 1e-12)
+
+
+def test_random_feed_requires_an_integer_seed_in_g3s_block():
+    # Codex b2 safety m2: seed=None drew from OS entropy (non-reproducible); the block is 9000-9999
+    for bad in (None, True, 9000.0, "9901", 8999, 10000, 301):
+        with pytest.raises(ValueError, match="seed"):
+            gf.random_feed(W_FEED, UNITS, bad)
+    assert (
+        gf.random_feed(W_FEED, UNITS, 9000).tolist() == gf.random_feed(W_FEED, UNITS, 9000).tolist()
+    )

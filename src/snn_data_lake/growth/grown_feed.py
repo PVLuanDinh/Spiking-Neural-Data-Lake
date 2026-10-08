@@ -17,6 +17,7 @@ the unit's label record through the journal -- no second label store. The drive 
 import numpy as np
 
 from snn_data_lake.growth.grown_code import clip_to_sign, segment_psp
+from snn_data_lake.growth.growth_loop import SEED_BLOCK
 
 # distinct-from: growth/grown_code.py -- the unit contract and the label-neuron segment; this module is the
 #   second consumer of the same segment (the reservoir input), reusing its clip and PSP
@@ -80,6 +81,9 @@ def _l2(x):
 
 def random_feed(w_feed, units, seed):
     """The norm-matched random arm: each column keeps its L2 norm and its unit's Dale sign."""
+    lo, hi = SEED_BLOCK
+    if isinstance(seed, bool) or not isinstance(seed, int) or not lo <= seed < hi:
+        raise ValueError(f"REFUSED: seed {seed!r} must be an int in G3's block {lo}-{hi - 1}")
     w = _matrix(w_feed, units)
     check_feed(w, units)  # a non-finite or sign-violating source must not become a silent zero arm
     rng = np.random.default_rng(seed)
