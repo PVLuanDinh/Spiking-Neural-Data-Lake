@@ -476,7 +476,7 @@ def test_tensor_digest_sees_a_change_at_any_position():
 
 
 # ---- Part D D1: the brain producer and PD-P1 (see the 2026-10-08 notes) ----
-# pytest never reads a registered or exposed seed block: fixture seeds only (lead ruling 2026-10-08).
+# pytest reads fixture seeds only, never a registered or exposed block (lead ruling 2026-10-08).
 FIXTURE_SEEDS = tuple(range(20261003, 20261011))
 
 
@@ -559,3 +559,67 @@ def test_pd_p1_seeds_are_the_registered_block_and_cli_exits_nonzero_when_not_met
     )
     assert g.main(["--pd-p1"]) == 2  # no registered-block read without the lead go
     assert g.main(["--pd-p1", "--lead-go"]) == 1
+
+
+# ---- Part D D1: the pool feature path and RES_NEUTER (fixtures only) -------------------
+POOL_SEED = (
+    100  # G1's exposed development seed (recurrent_pool.DEV_SEED): fixtures, not a registered block
+)
+CUE, PROBE = "greet the user warmly", "what is the capital"
+
+
+def _feat(pool, text):
+    return g.pool_features(pool, text)
+
+
+def test_pool_features_are_256_finite_deterministic_and_padded_from_the_52_code():
+    a, b = g.pd_pool(POOL_SEED, "carry"), g.pd_pool(POOL_SEED, "carry")
+    fa = _feat(a, CUE)
+    assert fa.shape == (256,) and bool((fa >= 0).all()) and fa.any()
+    assert (fa == _feat(b, CUE)).all()
+    assert g.PD_POOL_CONFIG == {
+        "k": 8,
+        "w": 0.25,
+        "lambda": 0.9,
+        "g": 4,
+        "T_in": 1,
+    }  # TUNED, one source
+
+
+def test_reset_pool_is_a_pure_function_of_the_current_text_and_carry_is_not():
+    reset, carry = g.pd_pool(POOL_SEED, "reset"), g.pd_pool(POOL_SEED, "carry")
+    fresh = _feat(g.pd_pool(POOL_SEED, "reset"), PROBE)
+    _feat(reset, CUE)
+    assert (
+        _feat(reset, PROBE) == fresh
+    ).all()  # stateless by construction (carriers reset every turn)
+    _feat(carry, CUE)
+    assert not (
+        _feat(carry, PROBE) == _feat(g.pd_pool(POOL_SEED, "carry"), PROBE)
+    ).all()  # state carries
+    carry.reset_carriers()  # the episode boundary reset is the harness's public call
+    assert (_feat(carry, PROBE) == _feat(g.pd_pool(POOL_SEED, "carry"), PROBE)).all()
+
+
+def test_res_neuter_zeroes_the_recurrent_weights_and_only_the_reset_form_is_stateless():
+    nr, nc = g.pd_pool(POOL_SEED, "neuter_reset"), g.pd_pool(POOL_SEED, "neuter_carry")
+    assert not nr.w.any() and not nc.w.any()  # recurrent weights are zero
+    assert g.pd_pool(POOL_SEED, "carry").w.any()
+    fresh = _feat(g.pd_pool(POOL_SEED, "neuter_reset"), PROBE)
+    _feat(nr, CUE)
+    assert (_feat(nr, PROBE) == fresh).all()  # the S1 bound clause applies to this one
+    _feat(nc, CUE)  # G2 #162: zero weights still carry v = v*lam + injected under CARRY
+    assert not (_feat(nc, PROBE) == _feat(g.pd_pool(POOL_SEED, "neuter_carry"), PROBE)).all()
+    # T_in = 1: one tick per percept, no recurrent current has arrived, so zeroed weights change
+    # nothing under the reset form: RES_NEUTER_RESET == RESET exactly (note (e), not distinct)
+    assert (fresh == _feat(g.pd_pool(POOL_SEED, "reset"), PROBE)).all()
+    carry, nc2 = g.pd_pool(POOL_SEED, "carry"), g.pd_pool(POOL_SEED, "neuter_carry")
+    _feat(carry, CUE)
+    _feat(nc2, CUE)
+    # the recurrent term does change carried features
+    assert not (_feat(nc2, PROBE) == _feat(carry, PROBE)).all()
+
+
+def test_pd_pool_refuses_an_unknown_mode():
+    with pytest.raises(ValueError):
+        g.pd_pool(POOL_SEED, "stateful")

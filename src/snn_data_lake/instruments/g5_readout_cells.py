@@ -667,6 +667,64 @@ def pd_p1(seeds=None):
     return reading("PD-P1 BRAIN - PRODNEUTER", diffs)
 
 
+#: Part D's pool: G1(b)'s tuned g1 LSM (carried_state_campaign.TUNED), one source; window 0 so the form
+#: applies from percept 1 (G1(c) 2.6). Modes: carry / reset are the pool; neuter_* zero the recurrent
+#: weights (a stateless LIF expansion under neuter_reset; under neuter_carry the membrane still carries
+#: v = v*lam + injected, so it is NOT stateless -- G2 #162, the S1 bound clause applies to neuter_reset only).
+PD_POOL_MODES = {
+    "carry": ("carried", False),
+    "reset": ("reset", False),
+    "neuter_carry": ("carried", True),
+    "neuter_reset": ("reset", True),
+}
+
+
+def _pd_pool_config():
+    from snn_data_lake.instruments.carried_state_campaign import TUNED
+
+    return dict(TUNED)
+
+
+PD_POOL_CONFIG = _pd_pool_config()
+
+
+def pd_pool(recording_seed, mode):
+    """A KernelLsmPool for a Part D arm. Fixtures and registered reads alike go through here (one path)."""
+    if mode not in PD_POOL_MODES:
+        raise ValueError(f"mode must be one of {tuple(PD_POOL_MODES)}, got {mode!r}")
+    import numpy as np
+
+    from snn_data_lake.reservoir import recurrent_pool as rp
+
+    form, neuter = PD_POOL_MODES[mode]
+    pool = rp.make_pool("lsm", PD_POOL_CONFIG, recording_seed, form, window=0)
+    if not neuter:
+        return pool
+    return rp.KernelLsmPool(
+        pool.pre,
+        np.zeros_like(pool.w),
+        pool.config,
+        form,
+        pool.w_in,
+        window=0,
+        s_settle=pool.s_settle,
+    )
+
+
+def pool_features(pool, text):
+    """One turn's 256-vector: the pool's mean activity over T_in ticks for the text's 52-code zero-padded
+    to the encoder's 64 inputs (the padding is fixed, not tuned). The caller owns episode-boundary resets."""
+    import numpy as np
+
+    from snn_data_lake.instruments import inseparable_mapping as im
+    from snn_data_lake.reservoir.recurrent_pool import N_IN
+
+    x = np.zeros(N_IN)
+    code = im.code(text)
+    x[: len(code)] = code
+    return pool.percept(x)
+
+
 # --------------------------------------------------------------------------------------------------
 # SELF-CHECK: the cheap reds (never builds a Brain, never opens a lake)
 # --------------------------------------------------------------------------------------------------
