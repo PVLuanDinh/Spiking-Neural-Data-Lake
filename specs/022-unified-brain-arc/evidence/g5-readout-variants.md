@@ -1274,3 +1274,38 @@ decimals) hit only this file's own lines 517 and 655 and a hash prefix in `train
   lead's go; step 2 (build) is light.
 - Owner question 5 (two readout jobs) and 6 (strict target primary) are settled by OWNER_DECISIONS item 10; question 7 by
   item 9, applied here as D.3. Questions 1, 2, 3 and 4 stay batched and block nothing in D1.
+
+### Dated note 2026-10-08 (lead corrections 1 and 2 on a007b83b; append-only; D.1-D.7 above stay as committed)
+
+1. **The producer's live status, restated exactly (corrects D.3's "not a Brain member").** `engine/autonomous_loop.py:2298-2302`
+   lazily builds `self._dopa = DopamineNuclei(seed=self._seed)` (with `LateralHabenula` and `ValenceLearner`) on the live
+   `AutonomousArm` tick when `self._dopa_on` (the canonical Brain -> LiveBrain -> AutonomousArm stack). Its output is
+   `da = self._dopa.da_level(rpe)`, stored as `self._da_level` and `self._rpe` (`:2311`, `:2318-2326`); `_rpe` is read at
+   `:1504` to scale the arm's own `_plan_w` update, and `brain.py:4268` reads `_da_level` as telemetry.
+   `faculties/competence_executive.py:164` `DopamineModulator` "accepts an ALREADY-LIVE DopamineNuclei" (`nucleus=`). So the
+   producer EXISTS on the live tick. NO live path routes it into `SpikingInteractionLearner.interact(feedback=)`: the only
+   engine callers of `learn_turn`/`interact` are `engine/live_brain.py:938, 952, 978, 1127`, and those pass a LABEL
+   (`feedback=intent`), the teacher's external d. Part D's harness therefore runs its OWN `DopamineNuclei` instance on a
+   scratch brain; the claim it licenses is "the label neurons are tuned by the brain's dopamine nucleus (the module the
+   live tick already owns), through a port the harness builds", and the live routing of that output into the learner is the
+   missing connection, a G9 charge.
+2. **P2: one RPE -> modulation mechanism (D.3(b) amended; supersedes the phasic-rate transform).**
+   `DopamineModulator.modulate(competence_gain, expected_gain)` (`competence_executive.py:234`) already computes
+   rpe = gain - expected, calls the nucleus's `da_level(rpe)` and returns `LR_MIN + (LR_MAX - LR_MIN) * level`
+   (`LR_MIN` 0.5, `LR_MAX` 2.0, `:210-211`; resting value `tonic_lr`, `:226`). Part D USES it, constructed as
+   `DopamineModulator(seed, nucleus=<the harness's DopamineNuclei>)`, with `competence_gain` = the outcome r and
+   `expected_gain` = the nucleus's learned expectation `V(stim_key)` read BEFORE the update. The nucleus's TD critic is
+   updated by `present(trial, learn=True)` afterwards (the only place V changes). The earlier `phasic()`-based
+   normalised factor is NOT built.
+   - **The one conversion, and why it is not a second transform.** The modulator's output is an unsigned learning-rate
+     multiplier in [0.5, 2.0]; `interact`'s scalar branch needs a SIGNED reward (it deposits d on the answering neuron, so
+     a wrong answer must be able to depress). The port therefore applies one affine unit conversion
+     `m = lr_gain / tonic_lr - 1` (zero at zero RPE, negative on a dip, positive on a burst), using the modulator's own
+     `tonic_lr`. It computes no RPE and no dopamine level; if the build finds the conversion cannot be expressed without
+     recomputing either, it stops and goes to the lead.
+   - The modulator's RPE and the TD critic's `rpe["OUT"]` are the same number by construction (V(OUT) = 0); step 2 asserts
+     equality, and the self-check carries a constructed red (a modulator fed a perturbed expectation must fail it).
+   - `RSTDP_BRAIN_PRODNEUTER` is unchanged in kind: r is still delivered to the nucleus and the modulator, whose output is
+     pinned to `tonic_lr` (m = 0).
+   - Disclosed: `DopamineModulator`'s own docstring records an adjudicated P1/P2 history (fixed pair LR_MIN/LR_MAX, no P1
+     exception); Part D adds no new constant and reads those as the modulator's own.
