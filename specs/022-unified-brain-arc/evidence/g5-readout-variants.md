@@ -1456,3 +1456,21 @@ PD-R1 reverts the producer adaptor (P4d) and claims nothing.
    is deleted, not kept). Attempt 2 of PD-P1 stays "second attempt, post-data design change" and is not cited. The clean
    PD-P1 (11500-11507) is read once through the pool path on the lead's go, bar unchanged (T_in-independent T_BAR 1.895,
    >= 5 non-tied). PD-R1b's expected sign changes with this fix; it is read, not predicted.
+
+### Results 2026-10-08: the clean PD-P1 read, 11500-11507, ONCE (lead go; appended below the frozen text and notes (a)-(g), which are unchanged)
+
+Run on the committed head eebc223d, tree clean, `python -m snn_data_lake.instruments.g5_readout_cells --pd-p1 --lead-go`, import root
+the G5 worktree's `src`, `NORD_HOME` a fresh directory on D: (`D:/sndl-homes/g5-pdp1-181022`), brain-free (a pool, no Brain, no lake).
+The live lake `brain_lake.bin` read size|mtime 3318607701|1790489959 before and after (unchanged). Printed verbatim (rc 0):
+
+    PD-P1 BRAIN - PRODNEUTER                     mean +0.3688  t +4.374  +++++++-  FPR(diag) 0.0547  skew -0.55  MET
+
+Read: **MET** (bar T_BAR 1.895, >= 5 non-tied; signs 7 positive, 1 negative). Through the registered T_in = 1 pool feature path, the
+brain-tuned arm (symmetric `to_signed`, r = +-1) beat the producer-neutered arm by 0.369 held-out accuracy on average, so the
+producer-ablation contrast CAN fire on these features. It is the clean positive control for PD-R1's ablation, a single read with the
+design frozen by notes (b), (d) and (g). It is NOT a PD-R1 result (no S0C1 cell, no pool state).
+
+Disclosed: the per-seed accuracies were not persisted (the CLI prints the summary line only), so only the sign string and the mean are
+recorded and t is not re-derivable here; the seeds are spent. One negative seed of eight; the permutation FPR printed is a diagnostic.
+Ledger: 11500-11507 SPENT (never reused for a registered check). Still unrun: D1 confirmatory 11410-11417, D1 reserve 11418-11425,
+D2 11430-11455, planted 11464-11471.
