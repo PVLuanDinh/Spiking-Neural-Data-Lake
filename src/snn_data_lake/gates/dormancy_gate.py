@@ -133,6 +133,12 @@ EXEMPT = {
         "frozen at 500d3f58): the in-brain cell machinery Part D reuses (Part A deleted on PA1 NOT MET, Part B on B-R1 NOT MET); consumers: its CLI, run_selfchecks (bare, brain-free) "
         "and tests/test_g5_readout_cells.py; never on a tick",
     ),
+    "g5_part_d_reading": (
+        "permanent",
+        "G5 / T113 Part D D1's reader (a governed benchmark instrument; record evidence/g5-readout-variants.md D.4 and notes (c)-(f)): "
+        "pure functions over per-seed accuracy records that print the registered reds PD-R0..PD-R3; consumers: Part D's cell runner "
+        "(a later slice) and tests/test_g5_part_d_reading.py; never on a tick",
+    ),
     "pool_selection": (
         "permanent",
         "G1(b)'s selection campaign (a governed benchmark; its record is g1b section 3.4); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: its CLI and tests/test_pool_selection.py",

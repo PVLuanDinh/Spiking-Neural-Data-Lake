@@ -296,6 +296,8 @@ REGIONS = {
         "everyday_battery",
         # specs/022 T113 (G5): the retained cell HARNESS (frozen generator, reading, in-brain cell machinery, PA3/PA4/PA8/PA10 reds, persisted records); Parts A and B were deleted on their nulls (4ecc90d9 / 0fba900c keep them as run). Reuse by Part D is PENDING, so the harness is exempt-by-registration, not charged (P3); brain-free bare self-check
         "g5_readout_cells",
+        # specs/022 T113 (G5) Part D D1: the reader of the registered reds (PD-R0..R3) over per-seed accuracy records; pure functions, no pool or Brain
+        "g5_part_d_reading",
         "ignition_instrument",
         # G2(ii)'s inseparable-mapping generator and G-R2's construction check on it (g1c-carried-state.md 2.8)
         "inseparable_mapping",
