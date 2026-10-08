@@ -378,6 +378,26 @@ def test_r13_return_targets_must_be_admitted_born_units():
             G.require_labeled_targets([bad], records, resolve_problem=_resolve)
 
 
+def test_r13_target_ids_are_non_bool_integers_never_aliases():
+    import numpy as np
+
+    recs = [_with(_good(i=0), unit_id=1), _with(_good(i=1), unit_id=0)]
+    for ok in (1, 0, np.int64(1), np.int32(0)):  # numpy ints from a synapse array stay accepted
+        G.require_labeled_targets([ok], recs, resolve_problem=_resolve)
+    for alias in (
+        True,
+        False,
+        1.0,
+        0.0,
+        np.float64(1.0),
+        "1",
+        None,
+        -1,
+    ):  # == would alias these to unit 1 / 0
+        with pytest.raises(G.UnitLabelRefused):
+            G.require_labeled_targets([alias], recs, resolve_problem=_resolve)
+
+
 # R10: each check is load-bearing -- neuter ONE at a time; only its own red stops firing.
 _DEFECTS = {
     "unit_id": lambda g: {k: v for k, v in g.items() if k != "unit_id"},

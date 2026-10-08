@@ -31,6 +31,7 @@ from __future__ import annotations
 import ast
 import functools
 import math
+import numbers
 from collections import namedtuple
 from collections.abc import Mapping
 
@@ -362,6 +363,10 @@ def check_saved(record, *, resolve_problem, resolve_committed, first_sign):
 def require_labeled_targets(target_ids, records, *, resolve_problem):
     """Refuse any return-path target that is not an admitted born unit (D5; at projection build only)."""
     for tid in target_ids:
+        if (
+            isinstance(tid, bool) or not isinstance(tid, numbers.Integral) or tid < 0
+        ):  # label_of matches by ==: True / 1.0 would alias unit 1
+            raise UnitLabelRefused(tid, "unit_id", "target id is not a non-negative integer")
         rec = label_of(records, tid)
         if rec is None:
             raise UnitLabelRefused(tid, "unit_id", "unknown target unit")
