@@ -4,14 +4,12 @@ Pre-registration: specs/022-unified-brain-arc/evidence/g6-sleep-durable-memory.m
 Brain-backed cases build ONE short scratch brain per arm under throwaway_home (never the live lake).
 """
 
-import hashlib
 import os
-import stat
 
 import pytest
 
 from snn_data_lake.instruments import sleep_pruner_census as spc
-from snn_data_lake.substrate.home import require_isolated_home
+from snn_data_lake.substrate.home import lake_snapshot, live_lake_untouched, require_isolated_home
 
 LIVE_HOME = os.path.join(os.path.expanduser("~"), ".snn_data_lake")
 
@@ -156,7 +154,7 @@ SHORT = 60
 def short_runs():
     from snn_data_lake.substrate.home import throwaway_home
 
-    before = _live_mtime()
+    before = lake_snapshot(LIVE_HOME)
     runs = {}
     with throwaway_home():
         runs["live"] = spc.run_arm(12001, "live", ticks=SHORT)
@@ -164,75 +162,40 @@ def short_runs():
         runs["live2"] = spc.run_arm(12001, "live", ticks=SHORT)
     with throwaway_home():
         runs["dp_neuter"] = spc.run_arm(12001, "dp_neuter", ticks=SHORT)
-    assert _live_mtime() == before, "the live lake must not change"
+    assert _untouched(LIVE_HOME, before), "the live lake must not change"
     return runs
 
 
-def _digest(path):
-    """Content digest (a same-size rewrite with a preserved mtime must not read as unchanged)."""
-    h = hashlib.blake2b(digest_size=16)
-    with open(path, "rb") as f:
-        while block := f.read(8 << 20):
-            h.update(block)
-    return h.hexdigest()
+def _untouched(path, snap):
+    return live_lake_untouched(path, snap)[0]
 
 
-def _live_mtime(home=LIVE_HOME):
-    """{relpath: (size, mtime_ns, blake2b)} of every file under a home, recursively (the live home
-    has
-    skills/). A file that cannot be stat'd FAILS CLOSED: it gets a fresh object that never equals
-    another stamp's, so an unreadable pair reads as changed, never as unchanged. A directory that
-    cannot be listed, or is a link, fails closed the same way."""
-    try:
-        root = os.stat(home)
-    except FileNotFoundError:
-        return None  # ABSENT is a stable stamp (a lake not yet created)
-    except OSError:
-        return object()  # any other failure on the root fails closed, never equal to another stamp
-    if not stat.S_ISDIR(root.st_mode):
-        return None
-    out = {}
-
-    def unlistable(err):  # os.walk skips a directory it cannot list: record a never-equal marker
-        where = os.path.relpath(err.filename or home, home)
-        out[os.path.join(where, "<unlistable>")] = object()
-
-    for root, dirs, files in os.walk(home, onerror=unlistable):
-        for d in dirs:  # os.walk does not descend into a linked directory: fail closed on it
-            full = os.path.join(root, d)
-            if os.path.islink(full) or os.path.isjunction(full):
-                out[os.path.join(os.path.relpath(full, home), "<linked>")] = object()
-        for f in files:
-            full = os.path.join(root, f)
-            try:
-                st = os.stat(full)
-                out[os.path.relpath(full, home)] = (st.st_size, st.st_mtime_ns, _digest(full))
-            except OSError:
-                out[os.path.relpath(full, home)] = object()
-    return out
-
-
-def test_the_live_stamp_detects_change_appearance_nested_rewrite_and_fails_closed(
-    tmp_path, monkeypatch
-):
-    """Positive control for the isolation stamp (Codex safety#8, R3), driven on a DECOY home."""
+def test_the_stamp_detects_change_appearance_and_a_nested_rewrite(tmp_path):
+    """Positive control for the ONE isolation stamp (R3's lake_snapshot), driven on a DECOY home."""
     decoy = tmp_path / "decoy_live"
     (decoy / "skills").mkdir(parents=True)
     (decoy / "brain_lake.bin").write_bytes(b"abc")
     (decoy / "skills" / "a.npz").write_bytes(b"123")
-    base = _live_mtime(str(decoy))
+    snap = lake_snapshot(str(decoy))
+    assert _untouched(str(decoy), snap)
     (decoy / "brain_lake.bin").write_bytes(b"abcd")
-    assert _live_mtime(str(decoy)) != base  # a size change
+    assert not _untouched(str(decoy), snap)  # a size change
     (decoy / "brain_lake.bin").write_bytes(b"abc")
     os.utime(decoy / "brain_lake.bin", ns=(1, 1))
-    assert _live_mtime(str(decoy)) != base  # mtime alone
+    assert not _untouched(str(decoy), snap)  # mtime alone
     (decoy / "brain_lake.bin").write_bytes(b"abc")
-    base = _live_mtime(str(decoy))
+    snap = lake_snapshot(str(decoy))
     (decoy / "skills" / "a.npz").write_bytes(b"1234")
-    assert _live_mtime(str(decoy)) != base  # a NESTED rewrite in place (no dir mtime moves)
-    base = _live_mtime(str(decoy))
+    assert not _untouched(str(decoy), snap)  # a NESTED rewrite in place (no dir mtime moves)
+    snap = lake_snapshot(str(decoy))
     (decoy / "skills" / "new.npz").write_text("x")
-    assert _live_mtime(str(decoy)) != base  # a new nested file
+    assert not _untouched(str(decoy), snap)  # a new nested file
+
+
+def test_the_stamp_fails_closed_on_an_unreadable_file(tmp_path, monkeypatch):
+    decoy = tmp_path / "decoy_live"
+    decoy.mkdir()
+    (decoy / "brain_lake.bin").write_bytes(b"abc")
     real_stat = os.stat
 
     def deny_files(path, *a, **k):  # the root stays readable; every file stat fails
@@ -241,10 +204,11 @@ def test_the_live_stamp_detects_change_appearance_nested_rewrite_and_fails_close
         raise PermissionError(13, "denied", str(path))
 
     monkeypatch.setattr(os, "stat", deny_files)
-    assert _live_mtime(str(decoy)) != _live_mtime(str(decoy))  # unreadable fails closed
+    snap = lake_snapshot(str(decoy))
+    assert not _untouched(str(decoy), snap)  # an unreadable file never reads as unchanged
 
 
-def test_the_live_stamp_fails_closed_on_an_unlistable_directory(tmp_path, monkeypatch):
+def test_the_stamp_fails_closed_on_an_unlistable_directory(tmp_path, monkeypatch):
     """R3: os.walk skips a directory it cannot list, so a rewrite under it read as unchanged."""
     decoy = tmp_path / "decoy_live"
     (decoy / "sub").mkdir(parents=True)
@@ -257,59 +221,50 @@ def test_the_live_stamp_fails_closed_on_an_unlistable_directory(tmp_path, monkey
         return real(path)
 
     monkeypatch.setattr(os, "scandir", deny)
-    first = _live_mtime(str(decoy))
+    snap = lake_snapshot(str(decoy))
     (decoy / "sub" / "a.bin").write_bytes(b"22")
-    assert _live_mtime(str(decoy)) != first  # an unlistable directory never reads as unchanged
+    assert not _untouched(str(decoy), snap)
 
 
-def test_the_live_stamp_tells_an_absent_root_from_an_unreadable_one(tmp_path, monkeypatch):
-    """Codex fold lens M1: an unreadable root made os.path.isdir False, so both stamps were None
-    and read as unchanged. Absence (FileNotFoundError on the root) is a stable stamp; any other
-    failure on the root is a never-equal marker."""
+def test_the_stamp_tells_an_absent_root_from_an_unreadable_one(tmp_path, monkeypatch):
+    """Codex fold lens M1: absence is a stable, empty stamp; any other root failure is not."""
     gone = str(tmp_path / "never_created")
-    assert _live_mtime(gone) is None and _live_mtime(gone) == _live_mtime(gone)
+    assert lake_snapshot(gone) == {} and _untouched(gone, lake_snapshot(gone))
     decoy = tmp_path / "decoy_live"
     decoy.mkdir()
-    real_stat = os.stat
+    real = os.scandir
 
-    def deny_root(path, *a, **k):
+    def deny_root(path="."):
         if os.fspath(path) == str(decoy):
             raise PermissionError(13, "denied", str(path))
-        return real_stat(path, *a, **k)
+        return real(path)
 
-    monkeypatch.setattr(os, "stat", deny_root)
-    monkeypatch.setattr(
-        os.path, "isdir", lambda *_a, **_k: False
-    )  # what isdir answers on a stat error
-    assert _live_mtime(str(decoy)) != _live_mtime(str(decoy))
+    monkeypatch.setattr(os, "scandir", deny_root)
+    assert not _untouched(str(decoy), lake_snapshot(str(decoy)))
 
 
-def test_the_live_stamp_fails_closed_on_a_linked_directory(tmp_path, monkeypatch):
-    """Codex fold lens M2: os.walk does not descend into a directory symlink or junction, so a
-    rewrite beneath one read as unchanged. A linked directory is a never-equal marker."""
+def test_the_stamp_fails_closed_on_a_linked_directory(tmp_path, monkeypatch):
+    """Codex fold lens M2: os.walk does not descend into a directory link, so a rewrite beneath one
+    read as unchanged. The control patches os.path.islink (a real symlink needs privilege)."""
     decoy = tmp_path / "decoy_live"
-    elsewhere = tmp_path / "elsewhere"
-    decoy.mkdir()
-    elsewhere.mkdir()
-    (elsewhere / "unit.npz").write_bytes(b"1")
-    (decoy / "linked").mkdir()
+    (decoy / "linked").mkdir(parents=True)
     real_islink = os.path.islink
     link = str(decoy / "linked")
     monkeypatch.setattr(os.path, "islink", lambda p: os.fspath(p) == link or real_islink(p))
-    assert _live_mtime(str(decoy)) != _live_mtime(str(decoy))
+    assert not _untouched(str(decoy), lake_snapshot(str(decoy)))
 
 
-def test_the_live_stamp_sees_a_same_size_rewrite_with_a_preserved_mtime(tmp_path):
+def test_the_stamp_sees_a_same_size_rewrite_with_a_preserved_mtime(tmp_path):
     """Codex fold lens m1: size and mtime alone miss b"abc" -> b"xyz" with the mtime restored."""
     decoy = tmp_path / "decoy_live"
     decoy.mkdir()
     f = decoy / "brain_lake.bin"
     f.write_bytes(b"abc")
     os.utime(f, ns=(5, 5))
-    base = _live_mtime(str(decoy))
+    snap = lake_snapshot(str(decoy))
     f.write_bytes(b"xyz")
     os.utime(f, ns=(5, 5))
-    assert _live_mtime(str(decoy)) != base
+    assert not _untouched(str(decoy), snap)
 
 
 def test_c6_the_live_arm_is_byte_repeatable(short_runs):
