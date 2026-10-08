@@ -1309,3 +1309,36 @@ decimals) hit only this file's own lines 517 and 655 and a hash prefix in `train
      pinned to `tonic_lr` (m = 0).
    - Disclosed: `DopamineModulator`'s own docstring records an adjudicated P1/P2 history (fixed pair LR_MIN/LR_MAX, no P1
      exception); Part D adds no new constant and reads those as the modulator's own.
+
+### Dated note 2026-10-08 (b): PD-P1 -- the outcome coding, the re-registered planted seeds, the first run and the dev diagnostic (append-only; the code is 520b7b52)
+
+What happened, in order, with nothing re-run on a red:
+1. **First draft, run once on the registered PD-P1 seeds 11456-11463 (D.5): NOT MET.** `PD-P1 BRAIN - PRODNEUTER mean -0.0042
+   t -0.093 ++0+-++- NOT MET`. The first-draft fixture used r in {1, 0} and keyed the critic's expectation by the SHUFFLED
+   loop position, so the critic's V never attached to a stimulus (an implementation bug). Those seeds are EXPOSED and are
+   never reused for a registered check.
+2. **Attribution on the D1 dev seeds 11400-11407 (brain-free, exposed by this use).** With the key bug fixed and r in
+   {1, 0} the brain arm still read held-out accuracy 0.33 on all 8 seeds (a one-class collapse) against the untuned arm's
+   0.13-0.48. Cause: with V = 0 and r = 0 the modulator's rpe is 0, so a WRONG answer emits no dip and nothing ever depresses
+   the answering neuron; reinforcing only right answers collapses to one label. Same-seed references on the same stream:
+   label teaching (`interact(x, label)`) 1.0 on 8 of 8 (so the fixture is learnable); `RSTDP_BYPASS` (r - 0.5) 0.67 on 8 of 8;
+   the +-1 coding below, brain arm 0.67, 0.67, 0.33, 0.67, 0.37, 0.67, 0.67, 0.67 against untuned 0.33, 0.48, 0.33, 0.13,
+   0.25, 0.37, 0.23, 0.33.
+3. **Amendment of D.3's input (additive; supersedes "r = 1.0 if right, else 0.0").** The teacher's outcome enters the
+   producer as r = +1.0 (right) or -1.0 (wrong): the incumbent's own sign convention for d (`interact`'s label branch uses
+   +1 reinforce / -1 depress). Nothing else in D.3 changes: the producer is still `DopamineNuclei` behind
+   `DopamineModulator`, the only conversion is `m = lr_gain / tonic_lr - 1`, the label never reaches the producer.
+   `to_signed` is that conversion; its asymmetry is the modulator's own (level 0 -> m -0.375, level 1 -> m +1.5 at the
+   defaults) and is not tuned.
+4. **PD-P1 re-registered on the held seeds 11472-11479** (D.5's "held" row; not used before). Run ONCE on the committed code
+   520b7b52, printed verbatim by `python -m snn_data_lake.instruments.g5_readout_cells --pd-p1` (rc 0):
+
+       PD-P1 BRAIN - PRODNEUTER  mean +0.1604  t +2.128  ++0+-+++  FPR(diag) 0.0391  skew -0.56  MET
+
+   PD-P1 is MET, marginally (t +2.128 against the bar 1.895; 6 of 8 non-tied). It establishes ONLY that the producer
+   ablation can fire on a planted separable stream. It is not a result for PD-R1.
+
+Read this before D1's dev: on this fixture the scalar bandit signal tops out at about 0.67 while label teaching reaches
+1.0, so PD-R1 (brain-tuned beats untuned, neutered and shuffled) is reachable but the brain-tuned arm is a weaker
+learner than the incumbent by construction (one scalar per answer, no label). That is disclosed, not tuned; a null at
+PD-R1 reverts the producer adaptor (P4d) and claims nothing.
