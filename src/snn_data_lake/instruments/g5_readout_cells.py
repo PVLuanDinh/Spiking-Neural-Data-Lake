@@ -581,8 +581,8 @@ def pa10():
 # (record: Amendment 2026-10-08 D.3 and the dated note)
 # --------------------------------------------------------------------------------------------------
 PD_P1_SEEDS = range(
-    11472, 11480
-)  # re-registered by the dated note 2026-10-08 (b): 11456-11463 were exposed once
+    11500, 11508
+)  # note (d): the fresh block proposed for a clean PD-P1; UNRUN, lead go only
 PD_OUTCOME = (
     1.0,
     -1.0,
@@ -659,9 +659,11 @@ def pd_p1_arm(seed, neutered, epochs=30):
     return sum(learner.respond(x) == labels[c] for x, c in held) / len(held)
 
 
-def pd_p1():
+def pd_p1(seeds=None):
     """PD-P1: contrast(BRAIN - PRODNEUTER) over the registered planted seeds; MET means the ablation can fire."""
-    diffs = [pd_p1_arm(s, False) - pd_p1_arm(s, True) for s in PD_P1_SEEDS]
+    diffs = [
+        pd_p1_arm(s, False) - pd_p1_arm(s, True) for s in (PD_P1_SEEDS if seeds is None else seeds)
+    ]
     return reading("PD-P1 BRAIN - PRODNEUTER", diffs)
 
 
@@ -674,6 +676,9 @@ def main(argv=None):
     if "--pa3" in argv:
         return 0 if pa3() else 1  # a failed positive control must not exit 0 (Codex g5_b lens-1 m2)
     if "--pd-p1" in argv:  # Part D's producer-ablation positive control; a NOT MET must not exit 0
+        if "--lead-go" not in argv:  # the registered block is read once, on the lead's explicit go
+            print("REFUSED: --pd-p1 reads the registered PD_P1_SEEDS; it needs --lead-go")
+            return 2
         met, c, x = pd_p1()
         print(_line("PD-P1 BRAIN - PRODNEUTER", met, c, x))
         return 0 if met else 1

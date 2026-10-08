@@ -476,6 +476,10 @@ def test_tensor_digest_sees_a_change_at_any_position():
 
 
 # ---- Part D D1: the brain producer and PD-P1 (see the 2026-10-08 notes) ----
+# pytest never reads a registered or exposed seed block: fixture seeds only (lead ruling 2026-10-08).
+FIXTURE_SEEDS = tuple(range(20261003, 20261011))
+
+
 def test_producer_factor_is_signed_zero_at_zero_rpe_and_uses_the_one_modulator():
     from snn_data_lake.faculties.competence_executive import DopamineModulator
 
@@ -526,16 +530,16 @@ def test_producer_never_sees_the_label_and_the_learner_only_gets_scalars(monkeyp
     monkeypatch.setattr(
         L, "interact", lambda s, x, fb, **k: (seen.append(fb), real(s, x, fb, **k))[1]
     )
-    g.pd_p1_arm(11472, neutered=False, epochs=2)
+    g.pd_p1_arm(FIXTURE_SEEDS[0], neutered=False, epochs=2)
     assert seen and all(isinstance(fb, float) for fb in seen)  # never the str label
 
 
 def test_pd_p1_brain_beats_the_neutered_producer_and_the_contrast_can_say_not_met():
-    met, c, x = g.pd_p1()
+    met, c, x = g.pd_p1(FIXTURE_SEEDS)
     assert met, (c.t, x)  # the producer ablation can fire: PD-P1 MET
     same = g.reading(
         "self",
-        [g.pd_p1_arm(s, neutered=True) - g.pd_p1_arm(s, neutered=True) for s in g.PD_P1_SEEDS],
+        [g.pd_p1_arm(s, neutered=True) - g.pd_p1_arm(s, neutered=True) for s in FIXTURE_SEEDS],
     )
     assert not same[0], (
         "BRAIN-free control: an arm minus itself is degenerate and must read NOT MET"
@@ -543,7 +547,7 @@ def test_pd_p1_brain_beats_the_neutered_producer_and_the_contrast_can_say_not_me
 
 
 def test_pd_p1_seeds_are_the_registered_block_and_cli_exits_nonzero_when_not_met(monkeypatch):
-    assert list(g.PD_P1_SEEDS) == list(range(11472, 11480))
+    assert list(g.PD_P1_SEEDS) == list(range(11500, 11508))  # proposed in note (d), unrun
     monkeypatch.setattr(
         g,
         "pd_p1",
@@ -553,4 +557,5 @@ def test_pd_p1_seeds_are_the_registered_block_and_cli_exits_nonzero_when_not_met
             {"pattern": "0" * 8, "mean": 0.0, "skew": 0.0, "nontied": 0},
         ),
     )
-    assert g.main(["--pd-p1"]) == 1
+    assert g.main(["--pd-p1"]) == 2  # no registered-block read without the lead go
+    assert g.main(["--pd-p1", "--lead-go"]) == 1
