@@ -106,7 +106,7 @@ def test_a_nonzero_structural_budget_is_refused_until_a_consumer_exists():
 
 
 def test_run_bout_leaves_no_deposit_wrapper_in_the_learner_dict():
-    """R3 finding: a bound method left in the learner __dict__ makes the checkpoint encoder refuse the
+    """R3 finding: a bound method left in the learner __dict__ breaks the checkpoint
     save. A learner with no instance-level `_deposit` must have none after the bout."""
     b = ssb._Brain()
     assert "_deposit" not in vars(b.brain._ixn)
