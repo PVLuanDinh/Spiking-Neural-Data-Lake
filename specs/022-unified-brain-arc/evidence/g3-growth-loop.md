@@ -920,3 +920,5 @@ Ties to the state-branch amendment (98d92203) and its ctxread row types (21ca1bc
   outside every panel SHA. e4529118 and e61ac66e were never re-read by Codex: **battery-verified only** (tests/test_grown_feed.py,
   test_growth_loop.py; dormancy_gate and method_dormancy_gate `--assert` green with grown_feed importing growth_loop). 6fed31ed is
   the same.
+- **Addendum (c), later the same day.** The `growth.grown_feed` `__main__` self-check and its run_selfchecks CORE registration
+  (91a1cc8e, with the E501 comment fix dc843042) were added after every panel and are **battery-verified only**; Codex never read them.
