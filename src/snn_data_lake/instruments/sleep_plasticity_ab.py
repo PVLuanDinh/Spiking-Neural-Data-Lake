@@ -289,11 +289,6 @@ def _f5_bout(b, ixn, arm, seed, red, log):
     lake0 = lake_snapshot(home)
     n0, p0, c0 = len(log["istim"]), log["presentations"], chrono(b)
     rep = g6_run_bout(b, g6_stages, rng_seed=seed)
-    # The runner restores `ixn._deposit = o_dep` in a finally, which leaves a BOUND METHOD in the learner's
-    # __dict__; the G0(c) checkpoint encoder refuses that, so the save at _enter_wake would be refused and the
-    # restore would read a fresh learner (K5 caught it on the first F5 run). Drop the instance attribute so the
-    # class method resolves again; the runner is not edited here (reported to G6).
-    ixn.__dict__.pop("_deposit", None)
     if red == "K10a":  # the red: a synthetic (mean) code is driven through interact
         s0, s1 = ixn._replay[0][0], ixn._replay[1][0]
         ixn.interact([(x + y) / 2.0 for x, y in zip(s0, s1)], ixn._replay[0][1], _record=False)
