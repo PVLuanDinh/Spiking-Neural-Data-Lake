@@ -88,5 +88,7 @@ def random_feed(w_feed, units, seed):
         col = np.abs(rng.standard_normal(w.shape[0])) * u.sign
         norm = np.linalg.norm(col)
         if norm > 0:
-            out[:, j] = col * (_l2(w[:, j]) / norm)
+            out[:, j] = (col / norm) * _l2(
+                w[:, j]
+            )  # unit direction first: no intermediate above the target norm
     return out

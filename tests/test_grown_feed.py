@@ -168,3 +168,10 @@ def test_random_feed_refuses_a_non_finite_source_column():
     nan[0, 1] = np.nan
     with pytest.raises(ValueError, match="REFUSED"):
         gf.random_feed(nan, UNITS, 9901)
+
+
+def test_random_feed_does_not_overflow_when_the_source_norm_is_representable():
+    # Codex b2 safety m1: col * (norm_w / norm) overflowed to inf for a column at 1.7e308
+    unit = _unit(0, 0, +1)
+    out = gf.random_feed(np.array([[1.7e308], [0.0]]), (unit,), 9900)
+    assert np.isfinite(out).all() and np.abs(out).max() <= 1.7e308 * (1 + 1e-12)
