@@ -481,77 +481,6 @@ def test_eb_rows_precede_the_c_if_row_and_f4_keeps_med_but_blocks_ext():
     assert m.table_f2(True, True, True, 1, 1, True, 0).startswith("INTERFERENCE RED")
 
 
-def test_an_unreadable_file_fails_the_live_lake_check_closed(tmp_path, monkeypatch):
-    """A file whose stat fails used to be skipped, so a change under it was invisible. It is now
-    recorded as None, and the check cannot read untouched while any file is None."""
-    decoy = tmp_path / "decoy_live"
-    decoy.mkdir()
-    (decoy / "brain_lake.bin").write_bytes(b"abc")
-    (decoy / "latch.json").write_text("x")
-    before = m.lake_snapshot(str(decoy))
-    assert m.live_lake_untouched(str(decoy), before) == (True, [])
-    real = os.stat
-
-    def flaky(path, *a, **k):
-        if str(path).endswith("latch.json"):
-            raise PermissionError(path)
-        return real(path, *a, **k)
-
-    monkeypatch.setattr(os, "stat", flaky)
-    unreadable = m.lake_snapshot(str(decoy))
-    assert unreadable["latch.json"] is None  # recorded, never skipped
-    ok, changed = m.live_lake_untouched(str(decoy), unreadable)  # None on both reads
-    assert not ok and "latch.json" in changed
-
-
-def test_an_unlistable_directory_fails_the_live_lake_check_closed(tmp_path, monkeypatch):
-    """os.walk skips a directory it cannot list unless told otherwise, so a persistently unlistable
-    nested directory hid every change under it. It is now recorded as None."""
-    decoy = tmp_path / "decoy_live"
-    (decoy / "sub").mkdir(parents=True)
-    (decoy / "sub" / "a.bin").write_bytes(b"abc")
-    before = m.lake_snapshot(str(decoy))
-    assert before["sub" + os.sep + "a.bin"] is not None
-    real = os.scandir
-
-    def deny(path="."):
-        if str(path).endswith("sub"):
-            raise PermissionError(13, "denied", str(path))
-        return real(path)
-
-    monkeypatch.setattr(os, "scandir", deny)
-    blind = m.lake_snapshot(str(decoy))
-    assert any(v is None for v in blind.values())  # the unlistable directory is recorded
-    ok, changed = m.live_lake_untouched(str(decoy), blind)  # unlistable on both reads
-    assert not ok and changed
-
-
-def test_an_absent_lake_snapshots_empty_and_reads_untouched(tmp_path):
-    """An absent path snapshots as empty (documented); an absent ROOT is not an unlistable directory
-    (fold lens: it raised K14 RED in run_arm)."""
-    gone = str(tmp_path / "never_created")
-    before = m.lake_snapshot(gone)
-    assert before == {}
-    assert m.live_lake_untouched(gone, before) == (True, [])
-
-
-def test_a_directory_link_under_the_root_fails_the_live_lake_check_closed(tmp_path, monkeypatch):
-    """os.walk never descends a directory link: a change behind one was invisible.
-    The link itself is recorded as None (never equal), so the check cannot read untouched."""
-    decoy = tmp_path / "decoy_live"
-    (decoy / "real").mkdir(parents=True)
-    (decoy / "real" / "a.bin").write_bytes(b"abc")
-    (
-        decoy / "link"
-    ).mkdir()  # stands in for a link: islink is patched, so no symlink privilege is needed
-    real = os.path.islink
-    monkeypatch.setattr(os.path, "islink", lambda p: str(p).endswith("link") or real(p))
-    snap = m.lake_snapshot(str(decoy))
-    assert snap["link"] is None
-    ok, changed = m.live_lake_untouched(str(decoy), snap)
-    assert not ok and "link" in changed
-
-
 def test_no_instrument_function_reclaims_a_record_outside_a_scratch_home():
     """Batch-2 precheck: the retention gate flagged run_evaluate (K5 deleted the lake in a
     child that only knows NORD_HOME). The delete is now in run_arm, which makes the throwaway
@@ -563,19 +492,3 @@ def test_no_instrument_function_reclaims_a_record_outside_a_scratch_home():
     assert (mine, "run_evaluate") not in bad and (mine, "run_evaluate") not in scratch
     assert (mine, "run_arm") not in bad
     assert (mine, "run_arm") in scratch  # K5's delete: counted and listed, never silent
-
-
-def test_a_same_size_same_mtime_rewrite_fails_the_live_lake_check(tmp_path):
-    """Batch-2 closing report: size and mtime alone miss AAAA -> BBBB with the metadata put back."""
-    decoy = tmp_path / "decoy_live"
-    decoy.mkdir()
-    f = decoy / "brain_lake.bin"
-    f.write_bytes(b"AAAA")
-    st = os.stat(f)
-    before = m.lake_snapshot(str(decoy))
-    assert m.live_lake_untouched(str(decoy), before) == (True, [])
-    f.write_bytes(b"BBBB")
-    os.utime(f, ns=(st.st_atime_ns, st.st_mtime_ns))
-    assert (os.stat(f).st_size, os.stat(f).st_mtime_ns) == (st.st_size, st.st_mtime_ns)
-    ok, changed = m.live_lake_untouched(str(decoy), before)
-    assert not ok and changed == ["brain_lake.bin"]

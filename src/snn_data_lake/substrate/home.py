@@ -566,6 +566,71 @@ def _scan_home_entries(d, live, live_files, seen):
                 )
 
 
+# ---------------------------------------------------------------- the live-lake stamp (P2: the ONE copy)
+# specs/022 batch 2, lead ruling: lake_snapshot / live_lake_untouched moved here VERBATIM from
+# instruments/sleep_plasticity_ab.py (R3), beside the live-home guard, so no row imports another row's
+# experiment module. They replace G6's _live_mtime, G2's taught_campaign._live_mtime and G5's
+# g5_readout_cells._lake_unmoved.
+# distinct-from: gates/move_gate.py::_live_home_stamp -- that census stamp is private and hardwired to
+#   the default home's top-level files; K14 (P-3) needs the SAME stamp as a function of a PATH so its
+#   red can run on a decoy directory, never on the live lake, and it walks the whole tree.
+# distinct-from: engine/live_brain.py -- spike_snapshot reads per-region spike rates; also read:
+#   engine/report_channel.py::snapshot (a workspace report record), faculties/agency_monitor.py::snapshot
+#   (per-channel status) -- term overlaps only; none stamps files on disk.
+def _file_digest(path):
+    """blake2b of the file's bytes, read in 8 MiB chunks (a same-size rewrite with the mtime put back must
+    not read as unchanged)."""
+    h = hashlib.blake2b(digest_size=16)
+    with open(path, "rb") as fh:
+        while block := fh.read(8 << 20):
+            h.update(block)
+    return h.hexdigest()
+
+
+def lake_snapshot(path):
+    """(mtime_ns, size, blake2b) of every file under `path` (an absent path snapshots as empty). A file
+    that cannot be stat'd or read is recorded as None, never skipped, and so is a directory that cannot
+    be listed or a directory link: `live_lake_untouched` cannot read either as untouched. COST: the
+    digest reads every byte; the 3.3 GB live lake took ~6.4 s per stamp when G6 measured it (80d9387c),
+    so run_arm's before / after pair adds ~13 s per arm-seed against the live home."""
+    snap = {}
+
+    def unlistable(err):  # os.walk skips a directory it cannot list unless told: record it instead
+        where = err.filename if err.filename is not None else path
+        if isinstance(err, FileNotFoundError) and os.path.normpath(where) == os.path.normpath(path):
+            return  # the ROOT is absent: that is the documented empty snapshot, not an unlistable directory
+        snap[os.path.join(os.path.relpath(where, path), "<unlistable>")] = None
+
+    for root, dirs, files in os.walk(path, onerror=unlistable):
+        for d in (
+            dirs
+        ):  # a directory link is listed here but never descended: what is behind it is unread
+            p = os.path.join(root, d)
+            if os.path.islink(p) or os.path.isjunction(p):
+                snap[os.path.relpath(p, path)] = None
+        for f in files:
+            p = os.path.join(root, f)
+            try:
+                st = os.stat(p)
+                snap[os.path.relpath(p, path)] = (st.st_mtime_ns, st.st_size, _file_digest(p))
+            except OSError:
+                snap[os.path.relpath(p, path)] = None
+    return snap
+
+
+def live_lake_untouched(path, before):
+    """K14 (P-3): (ok, changed) -- every file under `path` reads the same mtime, size and content digest
+    as `before`; a file that could not be stat'd on either read is listed as changed (it cannot be
+    verified: fail closed)."""
+    after = lake_snapshot(path)
+    changed = sorted(
+        k
+        for k in set(before) | set(after)
+        if before.get(k) != after.get(k) or before.get(k) is None or after.get(k) is None
+    )
+    return not changed, changed
+
+
 @contextlib.contextmanager
 def throwaway_home(live_home=None, parent=None):
     """A self-check's home (specs/022 T037a): a fresh temp dir as NORD_HOME for the duration,
