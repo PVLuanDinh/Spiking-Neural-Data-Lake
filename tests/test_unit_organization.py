@@ -128,20 +128,14 @@ def test_t1_size_is_untested_when_its_u_half_is_refused():
 # ---- T4: the layer term, the exact-M sampler, modularity, the instrument reds --------------------
 
 
-def test_population_index_follows_conn_prob_and_excludes_layer_1():
-    from snn_data_lake.reservoir.cortical_microcircuit import POP_NAMES
+def test_the_layer_term_is_wiring_priors_and_this_module_keeps_no_copy():
+    from snn_data_lake.growth import wiring_prior as wp
 
-    assert POP_NAMES[U.population("Layer 2", 1)] == "L2/3e"
-    assert POP_NAMES[U.population("Layer 3", -1)] == "L2/3i"
-    assert POP_NAMES[U.population("Layer 6", 1)] == "L6e"
-    assert U.population("Layer 1", -1) is None
-
-
-def test_layer_term_is_symmetric_and_a_probability():
+    assert not hasattr(U, "population") and not hasattr(U, "layer_term")  # P2: one survivor
     for a in range(8):
         for b in range(8):
-            c = U.layer_term(a, b)
-            assert c == U.layer_term(b, a) and 0.0 <= c <= 1.0
+            c = wp.layer_term_sym(a, b)
+            assert c == wp.layer_term_sym(b, a) and 0.0 <= c <= 1.0
 
 
 def _flat_units(n, seed):

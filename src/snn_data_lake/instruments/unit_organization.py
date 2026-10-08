@@ -37,6 +37,7 @@ from collections import namedtuple
 import numpy as np
 
 from snn_data_lake.gates.growth_coverage_gate import nmi  # the ONE partition-agreement home (P2)
+from snn_data_lake.growth.wiring_prior import layer_term_sym
 from snn_data_lake.instruments.paired_contrast import T_BAR, paired_t, permutation_fpr
 
 #: Louvain restart seeds (estimator seeds, not recordings; pre-registration 2.10).
@@ -173,29 +174,6 @@ def t1_size_decision(u_verdict, e_verdict, *, censored):
 
 # ---- T4 --------------------------------------------------------------------------------------------------
 
-_POP_LAYER = {
-    "Layer 2": "L2/3",
-    "Layer 3": "L2/3",
-    "Layer 4": "L4",
-    "Layer 5": "L5",
-    "Layer 6": "L6",
-}
-
-
-def population(layer, sign):
-    """The CONN_PROB population index of a (layer, Dale sign); None for Layer 1 (no population)."""
-    from snn_data_lake.reservoir.cortical_microcircuit import POP_NAMES
-
-    group = _POP_LAYER.get(layer)
-    return None if group is None else POP_NAMES.index(group + ("e" if sign == 1 else "i"))
-
-
-def layer_term(a, b):
-    """Symmetrized layer term: the probability of at least one directed contact between a and b."""
-    from snn_data_lake.reservoir.cortical_microcircuit import CONN_PROB
-
-    return 1.0 - (1.0 - CONN_PROB[a][b]) * (1.0 - CONN_PROB[b][a])
-
 
 def _allotment(n, m, capacity):
     """m_t per arrival position: min(capacity_t, q), q = m // (n - 1), then one more edge each to the
@@ -270,7 +248,7 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None,
                         np.asarray(pw[2][int(cell)](d[hit]), dtype=float), (int(hit.sum()),)
                     )
         if pop is not None:
-            w0 *= np.array([layer_term(int(pop[t]), int(p)) for p in pop[:t]])
+            w0 *= np.array([layer_term_sym(int(pop[t]), int(p)) for p in pop[:t]])
         if col is not None:
             w0[col[:t] != col[t]] = 0.0
         if not (
