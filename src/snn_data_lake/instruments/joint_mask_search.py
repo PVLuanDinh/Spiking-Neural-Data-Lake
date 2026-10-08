@@ -26,6 +26,7 @@ import math
 import random
 from dataclasses import dataclass, field
 
+from snn_data_lake.growth.candidate_lifecycle import select_unearned
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.instruments.sleep_pruner_census import N_SEEDS
 
@@ -135,22 +136,17 @@ def _one_pass(meter, mask, feasibility=True):
     if len(active) <= 1:
         return tuple(mask), 0
     _, base = meter.evaluate(mask, feasibility=feasibility)
-    drop, cost = [], {}
+    costs = []  # select_unearned's cost is LOWER-better: the negated score; +inf = infeasible removal
     for i in active:
         trial = list(mask)
         trial[i] = 0
         f, s = meter.evaluate(trial, feasibility=feasibility)
-        cost[i] = s
-        if f and s >= base:
-            drop.append(i)
-    if not drop:
-        return tuple(mask), 0
-    if len(drop) >= len(active):  # all droppable: keep exactly the one whose removal costs the most
-        survivor = min(active, key=lambda i: (cost.get(i, math.inf), i))
-        drop = [i for i in active if i != survivor]
+        costs.append(-s if f else math.inf)
+    # the ONE selection rule (G3, P2); the evaluation accounting stays here
+    drop, _ = select_unearned(-base, costs)
     out = list(mask)
-    for i in drop:
-        out[i] = 0
+    for j in drop:
+        out[active[j]] = 0
     return tuple(out), len(drop)
 
 

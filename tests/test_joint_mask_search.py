@@ -264,3 +264,18 @@ def test_an_empty_mask_domain_reports_random_and_sa_refused_instead_of_dividing_
     res = jms.run_instance(empty(), 12001)
     assert res["_refused"] == ("random", "SA")
     assert "random" not in res and "SA" not in res
+
+
+def test_a_nan_full_mask_score_is_refused_not_silently_kept():
+    """Closing report MAJOR (P2): _one_pass owned a second selection rule; a feasible full mask
+    scored NaN returned ((1, 1), 0). Selection is G3's select_unearned, which refuses a non-finite
+    base."""
+
+    class Nan:
+        n = 2
+
+        def evaluate(self, mask):
+            return True, float("nan")
+
+    with pytest.raises(ValueError, match="finite"):
+        jms._one_pass(jms.Meter(Nan()), (1, 1))
