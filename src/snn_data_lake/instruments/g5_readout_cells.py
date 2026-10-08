@@ -577,6 +577,95 @@ def pa10():
 
 
 # --------------------------------------------------------------------------------------------------
+# Part D D1: the brain producer of the tuning signal and its brain-free positive control PD-P1
+# (record: Amendment 2026-10-08 D.3 and the dated note)
+# --------------------------------------------------------------------------------------------------
+PD_P1_SEEDS = range(
+    11472, 11480
+)  # re-registered by the dated note 2026-10-08 (b): 11456-11463 were exposed once
+PD_OUTCOME = (
+    1.0,
+    -1.0,
+)  # (right, wrong): the teacher's d as +-1, the incumbent's own sign convention
+PD_CLASSES, PD_N_IN, PD_PER_CLASS = (
+    3,
+    16,
+    4,
+)  # the planted separable stream (a fixture, not a result)
+PD_NOISE, PD_HELD = 0.3, 20
+
+
+class BrainProducer:
+    """The item-9 producer: the harness's own DopamineNuclei behind competence_executive.DopamineModulator
+    (the ONE RPE -> modulation step, P2). Input: the one-bit outcome r (+1 right, -1 wrong) and the stimulus key, never a label.
+    The modulator computes rpe = r - V(stim_key) and the nucleus's da_level; `to_signed` is the single
+    affine unit conversion (the modulator's output is an unsigned learning-rate multiplier; interact's
+    scalar branch needs a signed reward). `neutered` delivers r to the nucleus and modulator but pins the
+    output to the tonic and never updates V (the path-breaking ablation, D.3(d))."""
+
+    def __init__(self, seed, neutered=False):
+        from snn_data_lake.faculties.competence_executive import DopamineModulator
+        from snn_data_lake.faculties.dopamine_nuclei import DopamineNuclei
+
+        self.nucleus = DopamineNuclei(seed=seed)
+        self.modulator = DopamineModulator(seed=seed, nucleus=self.nucleus)
+        self.neutered = bool(neutered)
+
+    @staticmethod
+    def to_signed(modulator, lr_gain):
+        return lr_gain / modulator.tonic_lr - 1.0
+
+    @staticmethod
+    def agree(expected, r, rpe_n):
+        """The modulator's rpe (r - expected) and the nucleus's TD rpe are one number by construction."""
+        assert abs((r - expected) - rpe_n) < 1e-9, f"two RPEs: {r - expected} vs {rpe_n}"
+
+    def factor(self, stim_key, r):
+        expected = self.nucleus.v.get(stim_key, 0.0)
+        lr = self.modulator.modulate(float(r), expected_gain=expected)
+        if self.neutered:
+            return self.to_signed(self.modulator, self.modulator.tonic_lr)
+        trial = [("ITI", 0.0), (stim_key, 0.0), ("OUT", float(r))]
+        self.agree(expected, float(r), self.nucleus.present(trial, learn=True)["OUT"])
+        return self.to_signed(self.modulator, lr)
+
+
+def pd_p1_arm(seed, neutered, epochs=30):
+    """Held-out accuracy of the label neurons tuned ONLY by the producer's scalar, on a planted separable
+    stream (synthetic stimulus vectors, no pool, no Brain). Same seed -> same stream for both arms."""
+    import random
+
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
+
+    rng = random.Random(seed)
+    protos = [[rng.gauss(0.0, 1.0) for _ in range(PD_N_IN)] for _ in range(PD_CLASSES)]
+
+    def draw(c):
+        return [x + PD_NOISE * rng.gauss(0.0, 1.0) for x in protos[c]]
+
+    labels = [f"c{i}" for i in range(PD_CLASSES)]
+    train = [(draw(c), c) for c in range(PD_CLASSES) for _ in range(PD_PER_CLASS)]
+    train = [
+        (i, x, c) for i, (x, c) in enumerate(train)
+    ]  # i = the stimulus key, stable across epochs
+    held = [(draw(c), c) for c in range(PD_CLASSES) for _ in range(PD_HELD)]
+    learner = SpikingInteractionLearner(labels, PD_N_IN, seed=seed)
+    prod = BrainProducer(seed, neutered=neutered)
+    for _ in range(epochs):
+        rng.shuffle(train)
+        for i, x, c in train:
+            r = PD_OUTCOME[0] if learner.respond(x) == labels[c] else PD_OUTCOME[1]
+            learner.interact(x, float(prod.factor(f"s{i}", r)))
+    return sum(learner.respond(x) == labels[c] for x, c in held) / len(held)
+
+
+def pd_p1():
+    """PD-P1: contrast(BRAIN - PRODNEUTER) over the registered planted seeds; MET means the ablation can fire."""
+    diffs = [pd_p1_arm(s, False) - pd_p1_arm(s, True) for s in PD_P1_SEEDS]
+    return reading("PD-P1 BRAIN - PRODNEUTER", diffs)
+
+
+# --------------------------------------------------------------------------------------------------
 # SELF-CHECK: the cheap reds (never builds a Brain, never opens a lake)
 # --------------------------------------------------------------------------------------------------
 def main(argv=None):
@@ -584,6 +673,10 @@ def main(argv=None):
     torch.set_num_threads(1)
     if "--pa3" in argv:
         return 0 if pa3() else 1  # a failed positive control must not exit 0 (Codex g5_b lens-1 m2)
+    if "--pd-p1" in argv:  # Part D's producer-ablation positive control; a NOT MET must not exit 0
+        met, c, x = pd_p1()
+        print(_line("PD-P1 BRAIN - PRODNEUTER", met, c, x))
+        return 0 if met else 1
     # PA4: the vacuity detector fires on a known positive (a one-category sequence reads f = 0)
     assert shift_fraction([2] * 40, circular_shift([2] * 40)) == 0.0 < VACUITY_FLOOR
     assert shift_fraction([0] * 20 + [1] * 20, circular_shift([0] * 20 + [1] * 20)) == 1.0

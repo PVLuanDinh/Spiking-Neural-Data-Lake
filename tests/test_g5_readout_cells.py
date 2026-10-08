@@ -473,3 +473,84 @@ def test_tensor_digest_sees_a_change_at_any_position():
         nudged = beta.clone()
         nudged[idx] = torch.nextafter(nudged[idx], torch.tensor(float("inf")))
         assert g.tensor_digest(nudged) != g.tensor_digest(beta), idx
+
+
+# ---- Part D D1: the brain producer and PD-P1 (see the 2026-10-08 notes) ----
+def test_producer_factor_is_signed_zero_at_zero_rpe_and_uses_the_one_modulator():
+    from snn_data_lake.faculties.competence_executive import DopamineModulator
+
+    p = g.BrainProducer(seed=3)
+    assert isinstance(p.modulator, DopamineModulator) and p.modulator._nuc is p.nucleus
+    assert p.factor("s0", 0.0) == 0.0  # r == expected (V = 0): zero RPE rests on the tonic
+    assert p.factor("s0", 1.0) > 0.0  # a burst: reinforce
+    assert (
+        g.BrainProducer(seed=3).factor("s0", -1.0) < 0.0
+    )  # a wrong answer dips even at V = 0 (+-1 coding)
+    p2 = g.BrainProducer(seed=3)
+    for _ in range(20):
+        p2.factor("s0", 1.0)  # V("s0") learns to expect the outcome
+    assert p2.factor("s0", 0.0) < 0.0  # an omitted expected reward: a dip, the sign interact needs
+    lr = p.modulator.LR_MIN + (p.modulator.LR_MAX - p.modulator.LR_MIN) * p.nucleus.da_level(0.3)
+    assert (
+        abs((lr / p.modulator.tonic_lr - 1.0) - g.BrainProducer.to_signed(p.modulator, lr)) < 1e-12
+    )
+
+
+def test_producer_rpe_and_the_modulators_agree_and_a_perturbed_expectation_is_refused():
+    p = g.BrainProducer(seed=1)
+    p.factor(
+        "s0", 1.0
+    )  # the build asserts the nucleus's TD rpe equals the modulator's rpe, every call
+    g.BrainProducer.agree(0.25, 1.0, 0.75)
+    with pytest.raises(AssertionError):
+        g.BrainProducer.agree(
+            0.25, 1.0, 0.75 + 1e-3
+        )  # a perturbed expectation must fail the equality
+
+
+def test_neutered_producer_gets_the_outcome_but_emits_zero_and_learns_nothing():
+    p = g.BrainProducer(seed=2, neutered=True)
+    assert [p.factor("s0", 1.0) for _ in range(5)] == [0.0] * 5
+    assert p.nucleus.v == {}  # V frozen at 0
+    assert p.modulator._gain_n == 5  # the outcome WAS delivered to the modulator
+
+
+def test_producer_never_sees_the_label_and_the_learner_only_gets_scalars(monkeypatch):
+    import inspect
+
+    assert list(inspect.signature(g.BrainProducer.factor).parameters) == ["self", "stim_key", "r"]
+    seen = []
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner as L
+
+    real = L.interact
+    monkeypatch.setattr(
+        L, "interact", lambda s, x, fb, **k: (seen.append(fb), real(s, x, fb, **k))[1]
+    )
+    g.pd_p1_arm(11472, neutered=False, epochs=2)
+    assert seen and all(isinstance(fb, float) for fb in seen)  # never the str label
+
+
+def test_pd_p1_brain_beats_the_neutered_producer_and_the_contrast_can_say_not_met():
+    met, c, x = g.pd_p1()
+    assert met, (c.t, x)  # the producer ablation can fire: PD-P1 MET
+    same = g.reading(
+        "self",
+        [g.pd_p1_arm(s, neutered=True) - g.pd_p1_arm(s, neutered=True) for s in g.PD_P1_SEEDS],
+    )
+    assert not same[0], (
+        "BRAIN-free control: an arm minus itself is degenerate and must read NOT MET"
+    )
+
+
+def test_pd_p1_seeds_are_the_registered_block_and_cli_exits_nonzero_when_not_met(monkeypatch):
+    assert list(g.PD_P1_SEEDS) == list(range(11472, 11480))
+    monkeypatch.setattr(
+        g,
+        "pd_p1",
+        lambda: (
+            False,
+            g.contrast("x", [0.0] * 8, g.T_BAR),
+            {"pattern": "0" * 8, "mean": 0.0, "skew": 0.0, "nontied": 0},
+        ),
+    )
+    assert g.main(["--pd-p1"]) == 1
