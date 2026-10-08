@@ -814,6 +814,15 @@ one round is used, R3 has not challenged them. The commits 41dec890 and 0f50f692
 outside the panel. The stamp helper is one of three copies of one job (R3's lake_snapshot, R1's live-walk); the lead picks
 the survivor at batch-2 integration and G6's `_live_mtime` is deleted if it loses.
 
+**DATED NOTE 2026-10-08 (wording of the red-check claim; the batch-2 closing report's two P2 merges).** Additive; zero lines
+removed. The fold reds were reproduced against their parents by G6 (the five latest folds a8a48f4e, 507aa7b9, d138ef9e,
+8fe878ff, 80d9387c, plus df3fb60d, 08d5592c, 5079a776, 1fb08f83, 5d53cb88 and the stamp commits; 579f0f8d only fails on a
+signature mismatch, not a behavioural red). Codex independently reproduced the five LATEST fold reds only (per the lead's
+relay of the batch-2 closing report); "every fold red" beyond those five is G6's own historical claim, not Codex's. The
+closing report's two P2 defects were folded on the int2 line: `_one_pass` delegates selection to G3's `select_unearned`
+(the duplicate rule deleted; a NaN full-mask score is now refused), and G6's test-side `_live_mtime` is deleted in favour
+of the one stamp (`lake_snapshot` / `live_lake_untouched`).
+
 ## 3. Results
 
 None. Nothing is measured beyond section 1; no deciding test has run.
