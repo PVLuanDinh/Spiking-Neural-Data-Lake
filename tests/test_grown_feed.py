@@ -185,3 +185,10 @@ def test_random_feed_requires_an_integer_seed_in_g3s_block():
     assert (
         gf.random_feed(W_FEED, UNITS, 9000).tolist() == gf.random_feed(W_FEED, UNITS, 9000).tolist()
     )
+
+
+def test_random_feed_refuses_an_unrepresentable_column_norm():
+    # Codex int2 closing: finite entries whose L2 norm exceeds the float max gave [[inf], [inf]]
+    unit = _unit(0, 0, +1)
+    with pytest.raises(ValueError, match="REFUSED"):
+        gf.random_feed(np.array([[1.7e308], [1.7e308]]), (unit,), 9900)

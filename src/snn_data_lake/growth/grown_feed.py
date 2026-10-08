@@ -92,9 +92,14 @@ def random_feed(w_feed, units, seed):
         col = np.abs(rng.standard_normal(w.shape[0])) * u.sign
         norm = np.linalg.norm(col)
         if norm > 0:
-            out[:, j] = (col / norm) * _l2(
-                w[:, j]
-            )  # unit direction first: no intermediate above the target norm
+            target = _l2(w[:, j])
+            if not np.isfinite(target):
+                raise ValueError(
+                    f"REFUSED: unit {u.unit_id}: the source column's L2 norm is not representable"
+                )
+            out[:, j] = (col / norm) * target  # unit direction first: nothing above the target norm
+    if not np.isfinite(out).all():
+        raise ValueError("REFUSED: the random arm is not finite")
     return out
 
 
