@@ -29,6 +29,10 @@ import torch
 
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.readout.online_readout import ClosingGate, OnlineReadout
+from snn_data_lake.substrate.home import _default_live_home, lake_snapshot, live_lake_untouched
+
+#: The live home the cells must never touch (record 2.6 PA9 / board PROTOCOL 4b); a test seam.
+LIVE_LAKE = _default_live_home()
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -290,15 +294,6 @@ def arm_table(cells, log=print):
         )
 
 
-def live_lake_stamp():
-    """mtimes of the live home and its brain lake (record 2.6 PA9 / board PROTOCOL 4b)."""
-    import os
-
-    base = os.path.join(os.path.expanduser("~"), ".snn_data_lake")
-    lake = os.path.join(base, "brain_lake.bin")
-    return tuple(os.stat(p).st_mtime_ns if os.path.exists(p) else None for p in (base, lake))
-
-
 def check_fresh_home(fresh):
     """Codex cp4 #7 / record 2.6 PA9: NORD_HOME must BE the home throwaway_home yielded, not merely any
     non-live directory (a populated B swapped in for the fresh A would feed a Brain B's state)."""
@@ -342,13 +337,18 @@ def brain_cell(args):
 
 
 class LiveLakeMoved(RuntimeError):
-    """The live lake's mtime moved while cells ran: a HALT, never a replaceable instrument failure."""
+    """The live lake changed while cells ran: a HALT, never a replaceable instrument failure."""
 
 
 def _lake_unmoved(before, stage):
-    if live_lake_stamp() != before:
+    """The one shared check (home.live_lake_untouched: content digest, an unreadable file reads as changed).
+    COST: ~6.4 s per call on the 3.3 GB live lake; run_cells snapshots once up front, then checks twice
+    per seed (after RECORD, after the arm stage), and once more only on the way out of an exception."""
+    ok, changed = live_lake_untouched(LIVE_LAKE, before)
+    if not ok:
         raise LiveLakeMoved(
-            f"the live lake's mtime moved during {stage} -- halt (board PROTOCOL 4b; Codex cp4 #13)"
+            f"the live lake changed during {stage} ({len(changed)} file(s), e.g. {changed[:2]}) -- halt "
+            "(board PROTOCOL 4b; Codex cp4 #13)"
         )
 
 
@@ -436,7 +436,7 @@ def run_cells(
 
     pool = pool or ProcessPoolExecutor
     cell = cell or brain_cell
-    before = live_lake_stamp()
+    before = lake_snapshot(LIVE_LAKE)
     spare = list(reserve)
     recorded, cells, replaced = {}, [], []
     for seed in seeds:

@@ -12,6 +12,40 @@ torch = pytest.importorskip("torch")
 from snn_data_lake.instruments import g5_readout_cells as g  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def lake(monkeypatch, tmp_path):
+    """A decoy live lake (the module's LIVE_LAKE seam) so no test snapshots the real 3.3 GB lake.
+    Returns `move()`: a same-size, same-mtime rewrite of the decoy's brain_lake.bin -- the change
+    the retired mtime stamp could not see."""
+    root = tmp_path / "decoy_lake"
+    root.mkdir()
+    f = root / "brain_lake.bin"
+    f.write_bytes(b"AAAAAAAA")
+    monkeypatch.setattr(g, "LIVE_LAKE", str(root))
+
+    def move():
+        st = os.stat(f)
+        f.write_bytes(b"BBBBBBBB" if f.read_bytes() == b"AAAAAAAA" else b"AAAAAAAA")
+        os.utime(f, ns=(st.st_atime_ns, st.st_mtime_ns))
+
+    return move
+
+
+def test_a_same_size_same_mtime_rewrite_is_a_lake_change_the_old_stamp_missed(lake):
+    # the retired stamp read only the mtimes of the home and brain_lake.bin; the snapshot digests
+    # content
+    def stamp():
+        return [os.stat(os.path.join(g.LIVE_LAKE, n)).st_mtime_ns for n in (".", "brain_lake.bin")]
+
+    old = stamp()
+    before = g.lake_snapshot(g.LIVE_LAKE)
+    lake()
+    assert stamp() == old
+    with pytest.raises(g.LiveLakeMoved, match="brain_lake.bin"):
+        g._lake_unmoved(before, "a test stage")
+    g._lake_unmoved(g.lake_snapshot(g.LIVE_LAKE), "a still stage")  # an unchanged lake passes
+
+
 def test_bare_self_check():
     g.main()
 
@@ -146,16 +180,16 @@ def _fake_cell(args):
     }
 
 
-def test_the_live_lake_check_runs_after_each_stage_and_survives_an_exception(monkeypatch):
+def test_the_live_lake_check_runs_after_each_stage_and_survives_an_exception(lake):
     # Codex cp4 #13: a RECORD-stage violation must halt BEFORE the arm stage launches
     from concurrent.futures import ThreadPoolExecutor
 
-    stamps = iter([("a", "b"), ("a2", "b"), ("a2", "b"), ("a2", "b")])
-    monkeypatch.setattr(g, "live_lake_stamp", lambda: next(stamps))
     ran = []
 
     def cell(args):
         ran.append(args[1])
+        if args[1] == "RECORD":
+            lake()  # the RECORD stage changes the lake
         return _fake_cell(args)
 
     with pytest.raises(g.LiveLakeMoved, match="RECORD stage"):
@@ -165,11 +199,9 @@ def test_the_live_lake_check_runs_after_each_stage_and_survives_an_exception(mon
     assert ran == ["RECORD"]  # the arm stage never launched
 
     # an exception in a stage while the lake moved reports the move, not the hidden exception
-    stamps = iter([("a", "b"), ("a", "b"), ("a2", "b")])
-    monkeypatch.setattr(g, "live_lake_stamp", lambda: next(stamps))
-
     def boom(args):
         if args[1] != "RECORD":
+            lake()
             raise ValueError("arm crashed")
         return _fake_cell(args)
 
@@ -183,8 +215,6 @@ def test_a_fallback_perception_seed_is_replaced_whole_from_the_reserve(monkeypat
     # Codex cp4 #9: `unified` False is an instrument failure; the whole seed is discarded and the
     # next reserve seed replaces it, printed beside it; with no reserve left the failure surfaces
     from concurrent.futures import ThreadPoolExecutor
-
-    monkeypatch.setattr(g, "live_lake_stamp", lambda: ("a", "b"))
 
     def cell(args):
         out = _fake_cell(args)
@@ -214,7 +244,6 @@ def test_a_seed_that_scored_nothing_is_an_instrument_failure_not_a_later_crash(m
     # fail INSIDE the seed block (replaceable), not crash the contrast later
     from concurrent.futures import ThreadPoolExecutor
 
-    monkeypatch.setattr(g, "live_lake_stamp", lambda: ("a", "b"))
     for bad in ({"live_n": 0}, {"live_acc": None}, {"live_pers": None}):
 
         def cell(args, bad=bad):
@@ -230,9 +259,7 @@ def test_a_seed_that_scored_nothing_is_an_instrument_failure_not_a_later_crash(m
 
 
 @pytest.mark.parametrize("terminal", [KeyboardInterrupt, SystemExit])
-def test_a_terminal_exception_still_gets_the_lake_check_and_is_never_replaced(
-    monkeypatch, terminal
-):
+def test_a_terminal_exception_still_gets_the_lake_check_and_is_never_replaced(lake, terminal):
     # Codex g5_b lens-1 m3: KeyboardInterrupt (a BaseException) bypassed the lake check; with the
     # lake moved it must report the move, with the lake still it must propagate, not use a reserve
     from concurrent.futures import ThreadPoolExecutor
@@ -240,13 +267,19 @@ def test_a_terminal_exception_still_gets_the_lake_check_and_is_never_replaced(
     def stop(args):
         raise terminal
 
-    stamps = iter([("a", "b"), ("a2", "b")])
-    monkeypatch.setattr(g, "live_lake_stamp", lambda: next(stamps))
+    def stop_and_move(args):
+        lake()
+        raise terminal
+
     with pytest.raises(g.LiveLakeMoved, match="raised"):
         g.run_cells(
-            (1,), ("DELTA",), workers=1, log=lambda *_: None, pool=ThreadPoolExecutor, cell=stop
+            (1,),
+            ("DELTA",),
+            workers=1,
+            log=lambda *_: None,
+            pool=ThreadPoolExecutor,
+            cell=stop_and_move,
         )
-    monkeypatch.setattr(g, "live_lake_stamp", lambda: ("a", "b"))
     lines = []
     with pytest.raises(terminal):
         g.run_cells(
@@ -299,8 +332,6 @@ def test_run_cells_persists_per_seed_records_that_rederive_the_contrast_and_refu
     # run_cells now writes the recorded sequences and every cell as json + sha256, and load_records
     # verifies it
     from concurrent.futures import ThreadPoolExecutor
-
-    monkeypatch.setattr(g, "live_lake_stamp", lambda: ("a", "b"))
 
     def cell(args):
         out = _fake_cell(args)
@@ -374,13 +405,16 @@ def test_brain_cell_itself_refuses_a_home_that_is_not_the_one_it_was_given(monke
     assert built == []
 
 
-def test_a_lake_move_during_a_successful_arm_stage_halts(monkeypatch):
+def test_a_lake_move_during_a_successful_arm_stage_halts(lake):
     # Codex g5_b lens-2 (d7d20f63 mutation): RECORD leaves the lake still, an arm moves it and
     # returns normally -- the post-arm check, not an exception path, must catch it
     from concurrent.futures import ThreadPoolExecutor
 
-    stamps = iter([("a", "b"), ("a", "b"), ("a2", "b")])
-    monkeypatch.setattr(g, "live_lake_stamp", lambda: next(stamps))
+    def cell(args):
+        if args[1] != "RECORD":
+            lake()  # the arm stage changes the lake and returns normally
+        return _fake_cell(args)
+
     with pytest.raises(g.LiveLakeMoved, match="arm stage"):
         g.run_cells(
             (1,),
@@ -388,7 +422,7 @@ def test_a_lake_move_during_a_successful_arm_stage_halts(monkeypatch):
             workers=1,
             log=lambda *_: None,
             pool=ThreadPoolExecutor,
-            cell=_fake_cell,
+            cell=cell,
         )
 
 
@@ -396,8 +430,6 @@ def test_an_arm_only_fallback_perception_replaces_the_whole_seed(monkeypatch):
     # Codex g5_b lens-2 (35f92a98 mutation): RECORD is unified, one arm is not; the arm-level check
     # must reject it, and the whole seed (recording and every arm) is replaced from the reserve
     from concurrent.futures import ThreadPoolExecutor
-
-    monkeypatch.setattr(g, "live_lake_stamp", lambda: ("a", "b"))
 
     def cell(args):
         out = _fake_cell(args)
