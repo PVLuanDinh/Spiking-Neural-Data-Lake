@@ -563,3 +563,19 @@ def test_no_instrument_function_reclaims_a_record_outside_a_scratch_home():
     assert (mine, "run_evaluate") not in bad and (mine, "run_evaluate") not in scratch
     assert (mine, "run_arm") not in bad
     assert (mine, "run_arm") in scratch  # K5's delete: counted and listed, never silent
+
+
+def test_a_same_size_same_mtime_rewrite_fails_the_live_lake_check(tmp_path):
+    """Batch-2 closing report: size and mtime alone miss AAAA -> BBBB with the metadata put back."""
+    decoy = tmp_path / "decoy_live"
+    decoy.mkdir()
+    f = decoy / "brain_lake.bin"
+    f.write_bytes(b"AAAA")
+    st = os.stat(f)
+    before = m.lake_snapshot(str(decoy))
+    assert m.live_lake_untouched(str(decoy), before) == (True, [])
+    f.write_bytes(b"BBBB")
+    os.utime(f, ns=(st.st_atime_ns, st.st_mtime_ns))
+    assert (os.stat(f).st_size, os.stat(f).st_mtime_ns) == (st.st_size, st.st_mtime_ns)
+    ok, changed = m.live_lake_untouched(str(decoy), before)
+    assert not ok and changed == ["brain_lake.bin"]

@@ -132,10 +132,22 @@ PLASTICITY_FREE = {"OFF", "ORACLE", "A-ONLY", "A-ONLY-TWIN"}  # every cap off an
 # distinct-from: engine/live_brain.py -- spike_snapshot reads per-region spike rates; also read:
 #   engine/report_channel.py::snapshot (a workspace report record), faculties/agency_monitor.py::snapshot
 #   (per-channel status) -- term overlaps only; none stamps files on disk.
+def _file_digest(path):
+    """blake2b of the file's bytes, read in 8 MiB chunks (a same-size rewrite with the mtime put back must
+    not read as unchanged)."""
+    h = hashlib.blake2b(digest_size=16)
+    with open(path, "rb") as fh:
+        while block := fh.read(8 << 20):
+            h.update(block)
+    return h.hexdigest()
+
+
 def lake_snapshot(path):
-    """mtime_ns + size of every file under `path` (an absent path snapshots as empty). A file whose stat fails
-    is recorded as None, never skipped, and so is a directory that cannot be listed or a directory link:
-    `live_lake_untouched` cannot read either as untouched."""
+    """(mtime_ns, size, blake2b) of every file under `path` (an absent path snapshots as empty). A file
+    that cannot be stat'd or read is recorded as None, never skipped, and so is a directory that cannot
+    be listed or a directory link: `live_lake_untouched` cannot read either as untouched. COST: the
+    digest reads every byte; the 3.3 GB live lake took ~6.4 s per stamp when G6 measured it (80d9387c),
+    so run_arm's before / after pair adds ~13 s per arm-seed against the live home."""
     snap = {}
 
     def unlistable(err):  # os.walk skips a directory it cannot list unless told: record it instead
@@ -155,15 +167,14 @@ def lake_snapshot(path):
             p = os.path.join(root, f)
             try:
                 st = os.stat(p)
+                snap[os.path.relpath(p, path)] = (st.st_mtime_ns, st.st_size, _file_digest(p))
             except OSError:
                 snap[os.path.relpath(p, path)] = None
-                continue
-            snap[os.path.relpath(p, path)] = (st.st_mtime_ns, st.st_size)
     return snap
 
 
 def live_lake_untouched(path, before):
-    """K14 (P-3): (ok, changed) -- every file under `path` reads the same mtime and size as `before`; a file
+    """K14 (P-3): (ok, changed) -- every file under `path` reads the same mtime, size and content digest as `before`; a file
     that could not be stat'd on either read is listed as changed (it cannot be verified: fail closed)."""
     after = lake_snapshot(path)
     changed = sorted(
