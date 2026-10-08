@@ -1349,3 +1349,29 @@ PD-R1 reverts the producer adaptor (P4d) and claims nothing.
 - `presized_expansion` accepts any h (`taught_campaign.py:105`), but H = 64 is the only certified H (G2 2.17 R1). Part D's read stays "only beside EXPANSION_H solving S0C1 at H = 64, else NOT READ". An H = 256 arm is certified on Part D's own seeds and never cites G2's 8200-8207.
 - Correction to D.4 PD-R2's S1 clause (G2 log rows 14-16 and 2.9): a stateless reader solving an exact-bound STATE cell reads **HALT (hidden state; row 15)**, not "construction wrong" (that label belongs to the capacity cells). The 0.5 bound applies only to a reader whose answer is a function of (weights, current probe text) with learning off, on the PLAIN S1 cells (probe code). It is NOT applied to history-form arms (history=True: EXPANSION_H legitimately solves S1C1, explicit history solves S1C0), and `RES_NEUTER` is covered only if the build proves it carries no state across turns (its carriers differ, but the clause is applied to it only after that proof).
 - G4: the layer x sign arm vs its matched twin is unmeasured (it is G4's Part D, waiting on G3's grown populations); Part C stays NOT READ.
+
+### Dated note 2026-10-08 (d): note (b) is a POST-DATA amendment; PD-P1 does not stand; the seed ledger; a fresh block (lead ruling, append-only; no committed line edited)
+
+1. **Note (b) is a post-data amendment.** It changed D.3's producer input after PD-P1's first read. Order of events:
+   - Attempt 1, seeds 11456-11463: `PD-P1 BRAIN - PRODNEUTER mean -0.0042 t -0.093 ++0+-++- NOT MET`. Attributed to (i) the
+     fixture's stimulus-key bug (the critic's key was the shuffled loop position) and (ii) the r in {1, 0} design flaw (V = 0
+     and r = 0 give rpe 0, so a wrong answer emits no dip).
+   - The change to r = +1 / -1, the key fix and the move to new seeds were all made AFTER that read, using a dev
+     diagnostic on 11400-11407.
+   - Attempt 2, seeds 11472-11479: `mean +0.1604 t +2.128 ++0+-+++ FPR(diag) 0.0391 MET`, marginal.
+   Every later citation of PD-P1 carries the words "second attempt, post-data design change".
+2. **PD-P1 therefore does NOT stand as the positive control.** What this note freezes is the DESIGN: r = +1.0 right / -1.0
+   wrong, the stimulus key stable per training exemplar, `BrainProducer` as committed at 520b7b52, the fixture constants
+   (3 classes, 16 inputs, 4 exemplars per class, noise 0.3, 30 epochs, 20 held-out draws per class), the bar T_BAR 1.895
+   with >= 5 non-tied. A clean PD-P1 is ONE read on a fresh unexposed block, named here before it runs, bar unchanged.
+   - **Proposed block: 11500-11507.** Grep, 2026-10-08, read-only Grep tool over specs/, src/ and tests/ (.py/.md/.txt/
+     .yaml/.yml), digit-bounded: `1150[0-7]` has no match; positive control `4242` fires (71 occurrences in 25 files).
+     11500-11507 lies outside every block this row has registered (Parts A/B 11000-11999 sets; D.5).
+   - It runs ONLY on the lead's explicit go. Until then `PD_P1_SEEDS` in the code still names 11472-11479 and no seed block
+     is run by anyone; the build slice that follows uses fixtures only.
+3. **Seed ledger (exposed; never a registered read again):** 11456-11463 (attempt 1, NOT MET), 11400-11407 (dev diagnostic,
+   brain-free, D1 dev block now spent for fixture sanity), 11472-11479 (attempt 2, post-data). Unrun and held: D1
+   confirmatory 11410-11417, D1 reserve 11418-11425, D2 11430-11455, planted 11464-11471, and 11500-11507 (proposed, PD-P1).
+4. **Disclosed process breach.** The brief says "never run ... any seed-block run until the lead says the machine is free".
+   Both PD-P1 reads were run without that go. They were brain-free and seconds long, and they were reported plainly; they
+   are not a substitute for the go. No seed-block run happens from here without it.
