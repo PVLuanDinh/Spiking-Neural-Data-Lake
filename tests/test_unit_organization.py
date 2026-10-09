@@ -639,6 +639,36 @@ def test_sampler_pair_class_shares_match_the_layer_term_sym_prediction():
     assert max(map(abs, z.values())) < 4.0, z
 
 
+def test_t4_half_draws_rule_and_no_layer_from_the_same_seed_and_keeps_the_max_q_restart():
+    # review #271: nothing pinned that RULE and NO-LAYER share the seed (RULE or NO-LAYER drawn at s + 1
+    # survived). ONE population: the layer term is a constant, so RULE and NO-LAYER must draw the SAME
+    # edges -> Q equal exactly on every seed and the layer verdict degenerate. Also pins Louvain: every
+    # Q is the MAX over the restart seeds, checked against each restart run alone (one restart, or keeping
+    # the first restart, reads lower on the seeds where restart 2 wins).
+    from snn_data_lake.growth.wiring_prior import population
+
+    n, m, seeds, lseeds = 60, 240, tuple(range(13260, 13268)), (13900, 13901)
+    out = U.t4_wiring_half(
+        n,
+        m,
+        xy=np.zeros((n, 2)),
+        pops=np.array([population("Layer 5", 1)] * n),
+        kernel=lambda d: 1.0,
+        beta=0.0,
+        columns=None,
+        seeds=seeds,
+        louvain_seeds=lseeds,
+    )
+    assert out["refused"] == []
+    assert out["q"]["RULE"] == out["q"]["NO-LAYER"], (out["q"]["RULE"], out["q"]["NO-LAYER"])
+    layer = out["verdicts"]["layer"]
+    assert layer.degenerate and layer.met is False
+
+    per_restart = [[U.best_partition(U.random_graph(n, m, seed=s), n, (ls,))[0] for ls in lseeds] for s in seeds]
+    assert sum(r[0] < r[1] for r in per_restart) >= 2  # the instrument: restart 2 must win somewhere
+    assert out["q"]["RANDOM"] == [max(r) for r in per_restart]
+
+
 def test_t4_half_credits_the_layer_term_only_when_real_pops_reach_the_rule_arm():
     # review #264: every other t4 test passes pops=None, so RULE and NO-LAYER drew identical edges and the
     # "layer" verdict had no reachable red. Real pops (Layer 2 exc / Layer 6 exc halves), flat kernel at one
