@@ -664,9 +664,40 @@ def test_t4_half_draws_rule_and_no_layer_from_the_same_seed_and_keeps_the_max_q_
     layer = out["verdicts"]["layer"]
     assert layer.degenerate and layer.met is False
 
-    per_restart = [[U.best_partition(U.random_graph(n, m, seed=s), n, (ls,))[0] for ls in lseeds] for s in seeds]
-    assert sum(r[0] < r[1] for r in per_restart) >= 2  # the instrument: restart 2 must win somewhere
-    assert out["q"]["RANDOM"] == [max(r) for r in per_restart]
+    # review #297: EVERY arm's Q is the max over ALL restarts, recomputed from that arm's own graph (an arm
+    # given fewer restarts, or the worst one, survived a RANDOM-only check). Arm kwargs mirror t4_wiring_half.
+    pops = np.array([population("Layer 5", 1)] * n)
+    k1 = lambda d: 1.0  # noqa: E731
+    xy = np.zeros((n, 2))
+    graphs = {
+        "RULE": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0),
+        "DIST-ONLY": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0),
+        "FLAT-KERNEL": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0),
+        "NO-LAYER": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=None, beta=0.0),
+        "IMPOSED": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0, columns=None),
+        "RANDOM": lambda s: U.random_graph(n, m, seed=s),
+        "RANDOM-SEQ": lambda s: U.random_seq(n, m, seed=s),
+    }
+    assert set(out["q"]) == set(graphs)
+    # review #299: flat kernel + beta 0 + one population -> RULE, DIST-ONLY, FLAT-KERNEL, NO-LAYER are the
+    # same draw, and RULE's seeds[0] Q is pinned to a direct computation (a whole-arm seed shift moves it).
+    for arm in ("DIST-ONLY", "FLAT-KERNEL", "NO-LAYER"):
+        assert out["q"][arm] == out["q"]["RULE"], arm
+    assert out["q"]["RULE"][0] == U.modularity(graphs["RULE"](seeds[0]), n, lseeds)
+    for arm, g in graphs.items():
+        per_restart = [[U.best_partition(g(s), n, (ls,))[0] for ls in lseeds] for s in seeds]
+        # the instrument: restart 2 must win on some seed, else one-restart / worst-restart mutants are invisible
+        assert any(r[0] < r[1] for r in per_restart), arm
+        assert out["q"][arm] == [max(r) for r in per_restart], arm
+    # the labels come from the max-Q restart (they feed ir3 / NMI); restart 1 must win somewhere to see it
+    wins = []
+    for s in seeds:
+        g = graphs["RANDOM"](s)
+        single = [U.best_partition(g, n, (ls,)) for ls in lseeds]
+        top = max(range(len(lseeds)), key=lambda i: single[i][0])
+        wins.append(top)
+        assert U.best_partition(g, n, lseeds)[1] == single[top][1], s
+    assert 0 in wins and 1 in wins, wins
 
 
 def test_t4_half_credits_the_layer_term_only_when_real_pops_reach_the_rule_arm():
