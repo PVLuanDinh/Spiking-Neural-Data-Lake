@@ -596,6 +596,49 @@ def test_layer_term_biases_the_sampler_toward_within_population_edges():
     assert ctrl_frac > 0.35 > rule_frac, (rule_frac, ctrl_frac)  # seeded: 46/240 vs 120/240
 
 
+def test_sampler_pair_class_shares_match_the_layer_term_sym_prediction():
+    # review #266: the share test above cannot tell c from c**0.5, a one-sided term, an E/I swap or the one-way
+    # layer_term. Here the expected share of every unordered population-pair class is COMPUTED from
+    # layer_term_sym and compared per class. Pops: Layer 5 exc (4), Layer 5 inh (5), Layer 6 exc (6) - an
+    # inhibitory pop, and pairs whose two directional layer_term values differ strongly (5->4 0.373 vs
+    # 4->5 0.060). m = n - 1: every arrival t >= 1 takes exactly ONE partner, so with a flat kernel and no
+    # columns P(partner pop b | arriving pop a, earlier composition k) = k_b*s(a,b) / sum_b' k_b'*s(a,b'),
+    # and the earlier composition at a uniformly random arrival slot is hypergeometric - enumerated exactly.
+    import itertools
+
+    from snn_data_lake.growth.wiring_prior import layer_term_sym, population
+
+    per = 20
+    P = [population("Layer 5", 1), population("Layer 5", -1), population("Layer 6", 1)]
+    assert P == [4, 5, 6]
+    n = per * len(P)
+    pops = np.repeat(P, per)
+    classes = list(itertools.combinations_with_replacement(P, 2))
+    expected = dict.fromkeys(classes, 0.0)
+    for a in P:
+        rest = {b: per - (a == b) for b in P}
+        for t in range(1, n):  # arrival slot t: t earlier units drawn from the other n - 1
+            for k0, k1 in itertools.product(range(rest[4] + 1), range(rest[5] + 1)):
+                k = {4: k0, 5: k1, 6: t - k0 - k1}
+                if not 0 <= k[6] <= rest[6]:
+                    continue
+                pk = math.prod(math.comb(rest[b], k[b]) for b in P) / math.comb(n - 1, t)
+                w = {b: k[b] * layer_term_sym(a, b) for b in P}
+                for b in P:
+                    expected[tuple(sorted((a, b)))] += pk * w[b] / sum(w.values()) / len(P) / (n - 1)
+    assert abs(sum(expected.values()) - 1.0) < 1e-9
+
+    seeds = 40
+    counts = dict.fromkeys(classes, 0)
+    for s in range(seeds):
+        for i, j in U.sample_exact_m(n, n - 1, seed=s, pops=pops, xy=np.zeros((n, 2)), kernel=lambda d: 1.0):
+            counts[tuple(sorted((int(pops[i]), int(pops[j]))))] += 1
+    N = seeds * (n - 1)
+    z = {c: (counts[c] / N - p) / math.sqrt(p * (1 - p) / N) for c, p in expected.items()}
+    # binomial z per class; real max |z| over 50 disjoint 40-seed windows 2.85, every reviewed mutant >= 6.5
+    assert max(map(abs, z.values())) < 4.0, z
+
+
 def test_t4_half_credits_the_layer_term_only_when_real_pops_reach_the_rule_arm():
     # review #264: every other t4 test passes pops=None, so RULE and NO-LAYER drew identical edges and the
     # "layer" verdict had no reachable red. Real pops (Layer 2 exc / Layer 6 exc halves), flat kernel at one
