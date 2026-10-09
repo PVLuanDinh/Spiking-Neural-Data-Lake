@@ -398,6 +398,14 @@ def test_r13_target_ids_are_non_bool_integers_never_aliases():
             G.require_labeled_targets([alias], recs, resolve_problem=_resolve)
 
 
+def test_r13_negative_target_id_is_refused_by_the_type_branch_not_as_unknown():
+    # without `tid < 0`, -1 still refuses but as "unknown target unit": the reason pins WHICH branch fired
+    recs = [_with(_good(i=0), unit_id=0)]
+    with pytest.raises(G.UnitLabelRefused) as exc:
+        G.require_labeled_targets([-1], recs, resolve_problem=_resolve)
+    assert exc.value.reason == "target id is not a non-negative integer"
+
+
 # R10: each check is load-bearing -- neuter ONE at a time; only its own red stops firing.
 _DEFECTS = {
     "unit_id": lambda g: {k: v for k, v in g.items() if k != "unit_id"},

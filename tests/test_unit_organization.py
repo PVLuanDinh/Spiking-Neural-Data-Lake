@@ -573,3 +573,24 @@ def test_ir2_fails_on_a_constructed_positive_contrast_and_t4_is_refused(monkeypa
     ir2 = U.ir2(30, 60, louvain_seeds=(0,))
     assert ir2["verdict"].met is True and ir2["ok"] is False
     assert U.t4_instruments_refuse({"ok": True}, ir2) is True
+
+
+def test_layer_term_biases_the_sampler_toward_within_population_edges():
+    # the RULE arm's layer term (wiring_prior.layer_term_sym) must reach the sampler: real pops, Layer 2
+    # exc vs Layer 6 exc (c = 0.192 / 0.078 within, 0.023 across), flat kernel so the layer term is the
+    # ONLY non-flat factor. NO-LAYER (pops=None) is the control: ~1/2 cross edges, RULE far fewer.
+    from snn_data_lake.growth.wiring_prior import population
+
+    n, m, half = 40, 80, 20
+    pops = np.array([population("Layer 2", 1)] * half + [population("Layer 6", 1)] * half)
+    kw = dict(xy=np.zeros((n, 2)), kernel=lambda d: 1.0)
+
+    def cross(edges):
+        return sum((a < half) != (b < half) for a, b in edges)
+
+    rule = [U.sample_exact_m(n, m, seed=s, pops=pops, **kw) for s in range(3)]
+    ctrl = [U.sample_exact_m(n, m, seed=s, pops=None, **kw) for s in range(3)]
+    assert all(r != c for r, c in zip(rule, ctrl))  # a constant layer term draws the control's edges
+    rule_frac = sum(map(cross, rule)) / (3 * m)
+    ctrl_frac = sum(map(cross, ctrl)) / (3 * m)
+    assert ctrl_frac > 0.35 > rule_frac, (rule_frac, ctrl_frac)  # seeded: 46/240 vs 120/240
