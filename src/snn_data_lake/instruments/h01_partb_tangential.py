@@ -23,6 +23,8 @@ import hashlib
 import json
 import math
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
@@ -529,8 +531,29 @@ def read_partb(st, frame_ok=True, planted_ok=True, pooling_sighted=True):
 
 
 # ---- the planted stage and the gate ------------------------------------------------------------
+_BUILD = threading.Lock()
+
+
+def _build(*a, **k):
+    """One histogram build at a time: its chunk working set is the transient peak, and a unit holds its
+    finished set (~0.83 GB at nb 4000) for the whole scoring that follows (amendment 2026-10-08)."""
+    with _BUILD:
+        return build_hists(*a, **k)
+
+
+def _fan(fn, items, workers):
+    """Units are independent (own seed streams, read-only population): `workers` threads, results in input
+    order, so a threaded run equals the serial one byte for byte. Peak RAM ~ workers x one set + one build."""
+    if workers < 1:
+        raise ValueError("workers must be at least 1")
+    if workers == 1:
+        return [fn(x) for x in items]
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        return list(ex.map(fn, items))
+
+
 def _unit(pop, seed, n_all, truth, n_edges):
-    h, _ = build_hists(pop, seed, n_all=n_all, truth=truth, n_edges=n_edges)
+    h, _ = _build(pop, seed, n_all=n_all, truth=truth, n_edges=n_edges)
     u = score_unit(pop, h)
     if truth.get("pathway"):
         u["pathway_check"] = pathway_check(pop, h, truth, u)
@@ -684,13 +707,13 @@ def _plan_json(plan_like):
     return json.loads(json.dumps(plan_like))
 
 
-def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None):
+def run_planted(pop, plan=PLAN, n_edges=t3.N_EDGES, log=None, workers=1):
     """Positions + layer/sign only. Calibration -> bands (locked by hash) -> every other row."""
     start = identity()  # before any draw
     n_all = _all_pairs_n(pop)
     rows, bands = {}, None
     for row in plan:
-        units = [_unit(pop, s, n_all, row.truth, n_edges) for s in row.seeds]
+        units = _fan(lambda s, t=row.truth: _unit(pop, s, n_all, t, n_edges), row.seeds, workers)
         rows[row.name] = {"units": units}
         if row.expect is None:
             bands = calibrate_bands(units)
@@ -747,21 +770,22 @@ def validate_planted(record, pop, plan=PLAN, n_edges=t3.N_EDGES):
     return bands
 
 
-def _score_seeds(pop, edges, seeds):
+def _score_seed(pop, edges, s, keep_first):
+    h, _ = _build(pop, s, edges=edges)
+    first = (h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1))) if keep_first else None  # aggregates only
+    u = score_unit(pop, h)
+    u["seed"] = int(s)
+    del h, _  # free this seed's histogram set when its scoring ends (amendment (f) F10)
+    return u, first
+
+
+def _score_seeds(pop, edges, seeds, workers=1):
     """Each registered seed's units and the first seed's pooled aggregates (n, k) only."""
-    units, first = [], None
-    for s in seeds:
-        h, _ = build_hists(pop, s, edges=edges)
-        if first is None:
-            first = (h.n_fold.sum((0, 1)), h.k_fold.sum((0, 1)))  # aggregates only
-        u = score_unit(pop, h)
-        u["seed"] = int(s)
-        units.append(u)
-        del h, _  # free this seed's histogram set BEFORE the next is allocated (amendment (f) F10)
-    return units, first
+    pairs = _fan(lambda i: _score_seed(pop, edges, seeds[i], i == 0), range(len(seeds)), workers)
+    return [u for u, _ in pairs], pairs[0][1]
 
 
-def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
+def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None, workers=1):
     """The only edge read. Refuses unless the planted record validates (and the seeds are the registered 8)."""
     verify_t3_ref(t3_ref)
     z, sha = t3._verified(path, pin)
@@ -775,7 +799,7 @@ def score_h01(path, planted_record, seeds=SEEDS, pin=None, t3_ref=None):
         return {"reading": "REFUSED_FRAME", "artifact_sha256": sha}
     start = identity()
     edges = (np.asarray(z["pre_idx"]), np.asarray(z["post_idx"]))
-    units, first = _score_seeds(pop, edges, seeds)
+    units, first = _score_seeds(pop, edges, seeds, workers)
     _refuse_drift(start)
     st = states(units, bands)
     sighted = pooling_sighted(PLAN, planted_record["rows"], bands, pop)
@@ -1067,6 +1091,9 @@ def main(argv=None):
     for q in (p, h):
         q.add_argument("--artifact", required=True)
         q.add_argument("--out", required=True)
+        q.add_argument(
+            "--workers", type=int, default=1, help="unit threads (peak RAM ~ workers x 0.83 GB)"
+        )
     h.add_argument("--planted", required=True)
     h.add_argument("--t3", required=True, help="tools/g4_t3_campaign.json, cited in the record")
     a = ap.parse_args(argv)
@@ -1077,12 +1104,15 @@ def main(argv=None):
     out_path = t3.safe_output(a.out, ins)  # before ANY computation (safety S1)
     t0 = time.time()
     if a.cmd == "planted":
-        out = run_planted(load_pop(a.artifact), log=lambda n, r: print(n, r, flush=True))
+        out = run_planted(
+            load_pop(a.artifact), log=lambda n, r: print(n, r, flush=True), workers=a.workers
+        )
     else:
         out = score_h01(
             a.artifact,
             json.loads(Path(a.planted).read_text(encoding="utf-8")),
             t3_ref=check_t3_record(a.t3),
+            workers=a.workers,
         )
         print("Part B reads:", out["reading"], out.get("keep"))
     out.update(provenance())

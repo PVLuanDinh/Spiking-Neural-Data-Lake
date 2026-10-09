@@ -894,3 +894,52 @@ def test_build_record_takes_aggregates_only_and_matches_the_full_histogram(pop, 
 def test_no_argument_self_check_runs_and_passes(capsys):
     assert pb.main([]) == 0
     assert "self-check OK" in capsys.readouterr().out
+
+
+# ---- the fan-out (amendment 2026-10-08): threaded units equal the serial result -----
+def _fan_plan():
+    return (
+        pb.PlanRow("flat_calibration", {"form": "flat"}, (10020, 10021, 10022), None),
+        pb.PlanRow("gauss", {"form": "gauss", "width": 100.0}, (10023, 10024, 10025), "red_pool"),
+    )
+
+
+def test_the_threaded_planted_stage_is_byte_equal_to_the_serial_one(pop):
+    serial = pb.run_planted(pop, plan=_fan_plan(), n_edges=900)
+    threaded = pb.run_planted(pop, plan=_fan_plan(), n_edges=900, workers=3)
+    assert json.dumps(pb._jsonable(threaded), sort_keys=True) == json.dumps(
+        pb._jsonable(serial), sort_keys=True
+    )
+
+
+def test_a_source_change_during_a_threaded_campaign_is_still_refused(pop, monkeypatch):
+    state = {"src": "A"}
+    monkeypatch.setattr(pb, "_file_sha", lambda rel: state["src"])
+    real_unit = pb._unit
+
+    def unit(*a, **k):
+        state["src"] = "B"
+        return real_unit(*a, **k)
+
+    monkeypatch.setattr(pb, "_unit", unit)
+    with pytest.raises(pb.ExposureRefused, match="changed"):
+        pb.run_planted(pop, plan=_fan_plan(), n_edges=900, workers=3)
+
+
+def test_workers_are_bounded_and_builds_hold_one_histogram_set_at_a_time(pop, monkeypatch):
+    live, peak_build = [0], [0]
+    real = pb.build_hists
+
+    def watch(*a, **k):
+        live[0] += 1
+        peak_build[0] = max(peak_build[0], live[0])
+        try:
+            return real(*a, **k)
+        finally:
+            live[0] -= 1
+
+    monkeypatch.setattr(pb, "build_hists", watch)
+    pb.run_planted(pop, plan=_fan_plan(), n_edges=900, workers=3)
+    assert peak_build[0] == 1  # the build phase (the transient peak) is serialised
+    with pytest.raises(ValueError):
+        pb.run_planted(pop, plan=_fan_plan(), n_edges=900, workers=0)
