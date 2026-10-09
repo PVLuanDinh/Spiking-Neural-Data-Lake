@@ -323,6 +323,8 @@ REGIONS = {
         "sleep_pressure",
         # specs/022 G6 (T114) part (a): the live sleep-pruner census + per-pruner neuter-A/B (R0-R4, E)
         "sleep_pruner_census",
+        # specs/022 G6 (T114) P4: the transactional mask application -- the `sleep_mask_prepared` producer (A12 step 1), the commit row (step 5) and the `applied_mask_digest` check ruling 33 owes; retires when R2's learner_events imports it and the mask rows live on the live path
+        "sleep_mask_apply",
         # specs/022 R3 / T104 P1: the 2026-09-27 sleep-plasticity arms F1-F4 (two-process scratch-home arm-seeds, the presentation ledger, K1-K14, rulings 9 / 9a); never the live lake
         "sleep_plasticity_ab",
         "snn_mnist_stdp_genn",

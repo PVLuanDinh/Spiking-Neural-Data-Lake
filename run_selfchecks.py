@@ -389,6 +389,7 @@ CORE = [
     "instruments.joint_mask_search",  # G6 T114 (b): mask_digest, C7-C10, C22, C26 on the planted fixture
     "instruments.sleep_pressure",  # G6 T114 (c): rescheduling budget, C12, A6 shuffle, A7 C23/C24, carrier
     "instruments.staged_sleep_bout",  # G6 T114 (e): one-RNG redo, C16, C17, C19, pauses, carriers
+    "instruments.sleep_mask_apply",  # G6 T114 P4: sleep_mask_prepared producer + commit + the applied_mask check's three O_mask reds
     "faculties.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
     "gates.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
     "gates.region_charge_gate",  # 022 T022: registration-never-greens + constructed attribution + non-diverged-charges-nothing
