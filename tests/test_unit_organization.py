@@ -594,3 +594,30 @@ def test_layer_term_biases_the_sampler_toward_within_population_edges():
     rule_frac = sum(map(cross, rule)) / (3 * m)
     ctrl_frac = sum(map(cross, ctrl)) / (3 * m)
     assert ctrl_frac > 0.35 > rule_frac, (rule_frac, ctrl_frac)  # seeded: 46/240 vs 120/240
+
+
+def test_t4_half_credits_the_layer_term_only_when_real_pops_reach_the_rule_arm():
+    # review #264: every other t4 test passes pops=None, so RULE and NO-LAYER drew identical edges and the
+    # "layer" verdict had no reachable red. Real pops (Layer 2 exc / Layer 6 exc halves), flat kernel at one
+    # point so the layer term is the ONLY structure: RULE's within-population bias must raise Q over NO-LAYER
+    # on EVERY seed. Mutant RULE pops=pops -> pops=None: all diffs 0.0, verdict degenerate, not met.
+    from snn_data_lake.growth.wiring_prior import population
+
+    n, m, half = 60, 240, 30
+    pops = np.array([population("Layer 2", 1)] * half + [population("Layer 6", 1)] * half)
+    out = U.t4_wiring_half(
+        n,
+        m,
+        xy=np.zeros((n, 2)),
+        pops=pops,
+        kernel=lambda d: 1.0,
+        beta=0.0,
+        columns=None,
+        seeds=tuple(range(13260, 13268)),
+        louvain_seeds=(0, 1),
+    )
+    assert out["refused"] == []
+    layer = out["verdicts"]["layer"]
+    assert layer.met is True and not layer.degenerate
+    diffs = [r - c for r, c in zip(out["q"]["RULE"], out["q"]["NO-LAYER"], strict=True)]
+    assert min(diffs) > 0.02, diffs  # seeded: 0.036..0.074 per seed
