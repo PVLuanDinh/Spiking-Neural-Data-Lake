@@ -212,8 +212,14 @@ def test_the_imposed_arm_is_not_silently_degraded_to_rule_without_columns():
     n = 20
     xy = _flat_units(n, 13255)
     common = dict(
-        n=n, m=40, xy=xy, pops=None, kernel=lambda d: np.exp(-d / 60.0), beta=0.0,
-        seeds=U.IR_SEEDS, louvain_seeds=(0,),
+        n=n,
+        m=40,
+        xy=xy,
+        pops=None,
+        kernel=lambda d: np.exp(-d / 60.0),
+        beta=0.0,
+        seeds=U.IR_SEEDS,
+        louvain_seeds=(0,),
     )
     with pytest.raises(ValueError, match="IMPOSED needs columns"):
         U.t4_wiring_half(columns=None, **common)
@@ -612,9 +618,10 @@ def test_ir2_fails_on_a_constructed_positive_contrast_and_t4_is_refused(monkeypa
 
 
 def test_layer_term_biases_the_sampler_toward_within_population_edges():
-    # the RULE arm's layer term (wiring_prior.layer_term_sym) must reach the sampler: real pops, Layer 2
-    # exc vs Layer 6 exc (c = 0.192 / 0.078 within, 0.023 across), flat kernel so the layer term is the
-    # ONLY non-flat factor. NO-LAYER (pops=None) is the control: ~1/2 cross edges, RULE far fewer.
+    # the RULE arm's layer term (wiring_prior.layer_term_sym) must reach the sampler: real pops,
+    # Layer 2 exc vs Layer 6 exc (c = 0.192 / 0.078 within, 0.023 across), flat kernel so the
+    # layer term is the ONLY non-flat factor. NO-LAYER (pops=None) is the control: ~1/2 cross
+    # edges, RULE far fewer.
     from snn_data_lake.growth.wiring_prior import population
 
     n, m, half = 40, 80, 20
@@ -626,20 +633,24 @@ def test_layer_term_biases_the_sampler_toward_within_population_edges():
 
     rule = [U.sample_exact_m(n, m, seed=s, pops=pops, **kw) for s in range(3)]
     ctrl = [U.sample_exact_m(n, m, seed=s, pops=None, **kw) for s in range(3)]
-    assert all(r != c for r, c in zip(rule, ctrl))  # a constant layer term draws the control's edges
+    assert all(
+        r != c for r, c in zip(rule, ctrl, strict=True)
+    )  # a constant layer term draws the control's edges
     rule_frac = sum(map(cross, rule)) / (3 * m)
     ctrl_frac = sum(map(cross, ctrl)) / (3 * m)
     assert ctrl_frac > 0.35 > rule_frac, (rule_frac, ctrl_frac)  # seeded: 46/240 vs 120/240
 
 
 def test_sampler_pair_class_shares_match_the_layer_term_sym_prediction():
-    # review #266: the share test above cannot tell c from c**0.5, a one-sided term, an E/I swap or the one-way
-    # layer_term. Here the expected share of every unordered population-pair class is COMPUTED from
-    # layer_term_sym and compared per class. Pops: Layer 5 exc (4), Layer 5 inh (5), Layer 6 exc (6) - an
-    # inhibitory pop, and pairs whose two directional layer_term values differ strongly (5->4 0.373 vs
-    # 4->5 0.060). m = n - 1: every arrival t >= 1 takes exactly ONE partner, so with a flat kernel and no
-    # columns P(partner pop b | arriving pop a, earlier composition k) = k_b*s(a,b) / sum_b' k_b'*s(a,b'),
-    # and the earlier composition at a uniformly random arrival slot is hypergeometric - enumerated exactly.
+    # review #266: the share test above cannot tell c from c**0.5, a one-sided term, an E/I
+    # swap or the one-way layer_term. Here the expected share of every unordered
+    # population-pair class is COMPUTED from layer_term_sym and compared per class.
+    # Pops: Layer 5 exc (4), Layer 5 inh (5), Layer 6 exc (6) - an inhibitory pop, and pairs
+    # whose two directional layer_term values differ strongly (5->4 0.373 vs 4->5 0.060).
+    # m = n - 1: every arrival t >= 1 takes exactly ONE partner, so with a flat kernel and
+    # no columns P(partner pop b | arriving pop a, earlier composition k) = k_b*s(a,b) /
+    # sum_b' k_b'*s(a,b'), and the earlier composition at a uniformly random arrival slot is
+    # hypergeometric - enumerated exactly.
     import itertools
 
     from snn_data_lake.growth.wiring_prior import layer_term_sym, population
@@ -661,26 +672,32 @@ def test_sampler_pair_class_shares_match_the_layer_term_sym_prediction():
                 pk = math.prod(math.comb(rest[b], k[b]) for b in P) / math.comb(n - 1, t)
                 w = {b: k[b] * layer_term_sym(a, b) for b in P}
                 for b in P:
-                    expected[tuple(sorted((a, b)))] += pk * w[b] / sum(w.values()) / len(P) / (n - 1)
+                    expected[tuple(sorted((a, b)))] += (
+                        pk * w[b] / sum(w.values()) / len(P) / (n - 1)
+                    )
     assert abs(sum(expected.values()) - 1.0) < 1e-9
 
     seeds = 40
     counts = dict.fromkeys(classes, 0)
     for s in range(seeds):
-        for i, j in U.sample_exact_m(n, n - 1, seed=s, pops=pops, xy=np.zeros((n, 2)), kernel=lambda d: 1.0):
+        for i, j in U.sample_exact_m(
+            n, n - 1, seed=s, pops=pops, xy=np.zeros((n, 2)), kernel=lambda d: 1.0
+        ):
             counts[tuple(sorted((int(pops[i]), int(pops[j]))))] += 1
     N = seeds * (n - 1)
     z = {c: (counts[c] / N - p) / math.sqrt(p * (1 - p) / N) for c, p in expected.items()}
-    # binomial z per class; real max |z| over 50 disjoint 40-seed windows 2.85, every reviewed mutant >= 6.5
+    # binomial z per class; real max |z| over 50 disjoint 40-seed windows 2.85, every
+    # reviewed mutant >= 6.5
     assert max(map(abs, z.values())) < 4.0, z
 
 
 def test_t4_half_draws_rule_and_no_layer_from_the_same_seed_and_keeps_the_max_q_restart():
-    # review #271: nothing pinned that RULE and NO-LAYER share the seed (RULE or NO-LAYER drawn at s + 1
-    # survived). ONE population: the layer term is a constant, so RULE and NO-LAYER must draw the SAME
-    # edges -> Q equal exactly on every seed and the layer verdict degenerate. Also pins Louvain: every
-    # Q is the MAX over the restart seeds, checked against each restart run alone (one restart, or keeping
-    # the first restart, reads lower on the seeds where restart 2 wins).
+    # review #271: nothing pinned that RULE and NO-LAYER share the seed (RULE or NO-LAYER
+    # drawn at s + 1 survived). ONE population: the layer term is a constant, so RULE and
+    # NO-LAYER must draw the SAME edges -> Q equal exactly on every seed and the layer
+    # verdict degenerate. Also pins Louvain: every Q is the MAX over the restart seeds,
+    # checked against each restart run alone (one restart, or keeping the first restart,
+    # reads lower on the seeds where restart 2 wins).
     from snn_data_lake.growth.wiring_prior import population
 
     n, m, seeds, lseeds = 60, 240, tuple(range(13260, 13268)), (13900, 13901)
@@ -700,32 +717,42 @@ def test_t4_half_draws_rule_and_no_layer_from_the_same_seed_and_keeps_the_max_q_
     layer = out["verdicts"]["layer"]
     assert layer.degenerate and layer.met is False
 
-    # review #297: EVERY arm's Q is the max over ALL restarts, recomputed from that arm's own graph (an arm
-    # given fewer restarts, or the worst one, survived a RANDOM-only check). Arm kwargs mirror t4_wiring_half.
+    # review #297: EVERY arm's Q is the max over ALL restarts, recomputed from that arm's
+    # own graph (an arm given fewer restarts, or the worst one, survived a RANDOM-only
+    # check). Arm kwargs mirror t4_wiring_half.
     pops = np.array([population("Layer 5", 1)] * n)
     k1 = lambda d: 1.0  # noqa: E731
     xy = np.zeros((n, 2))
     graphs = {
         "RULE": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0),
-        "DIST-ONLY": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0),
-        "FLAT-KERNEL": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0),
+        "DIST-ONLY": lambda s: U.sample_exact_m(
+            n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0
+        ),
+        "FLAT-KERNEL": lambda s: U.sample_exact_m(
+            n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0
+        ),
         "NO-LAYER": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=None, beta=0.0),
-        "IMPOSED": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0, columns=[0] * n),
+        "IMPOSED": lambda s: U.sample_exact_m(
+            n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0, columns=[0] * n
+        ),
         "RANDOM": lambda s: U.random_graph(n, m, seed=s),
         "RANDOM-SEQ": lambda s: U.random_seq(n, m, seed=s),
     }
     assert set(out["q"]) == set(graphs)
-    # review #299: flat kernel + beta 0 + one population -> RULE, DIST-ONLY, FLAT-KERNEL, NO-LAYER are the
-    # same draw, and RULE's seeds[0] Q is pinned to a direct computation (a whole-arm seed shift moves it).
+    # review #299: flat kernel + beta 0 + one population -> RULE, DIST-ONLY, FLAT-KERNEL,
+    # NO-LAYER are the same draw, and RULE's seeds[0] Q is pinned to a direct computation
+    # (a whole-arm seed shift moves it).
     for arm in ("DIST-ONLY", "FLAT-KERNEL", "NO-LAYER"):
         assert out["q"][arm] == out["q"]["RULE"], arm
     assert out["q"]["RULE"][0] == U.modularity(graphs["RULE"](seeds[0]), n, lseeds)
     for arm, g in graphs.items():
         per_restart = [[U.best_partition(g(s), n, (ls,))[0] for ls in lseeds] for s in seeds]
-        # the instrument: restart 2 must win on some seed, else one-restart / worst-restart mutants are invisible
+        # the instrument: restart 2 must win on some seed, else one-restart /
+        # worst-restart mutants are invisible
         assert any(r[0] < r[1] for r in per_restart), arm
         assert out["q"][arm] == [max(r) for r in per_restart], arm
-    # the labels come from the max-Q restart (they feed ir3 / NMI); restart 1 must win somewhere to see it
+    # the labels come from the max-Q restart (they feed ir3 / NMI); restart 1 must win
+    # somewhere to see it
     wins = []
     for s in seeds:
         g = graphs["RANDOM"](s)
@@ -737,10 +764,11 @@ def test_t4_half_draws_rule_and_no_layer_from_the_same_seed_and_keeps_the_max_q_
 
 
 def test_t4_half_credits_the_layer_term_only_when_real_pops_reach_the_rule_arm():
-    # review #264: every other t4 test passes pops=None, so RULE and NO-LAYER drew identical edges and the
-    # "layer" verdict had no reachable red. Real pops (Layer 2 exc / Layer 6 exc halves), flat kernel at one
-    # point so the layer term is the ONLY structure: RULE's within-population bias must raise Q over NO-LAYER
-    # on EVERY seed. Mutant RULE pops=pops -> pops=None: all diffs 0.0, verdict degenerate, not met.
+    # review #264: every other t4 test passes pops=None, so RULE and NO-LAYER drew identical
+    # edges and the "layer" verdict had no reachable red. Real pops (Layer 2 exc / Layer 6
+    # exc halves), flat kernel at one point so the layer term is the ONLY structure: RULE's
+    # within-population bias must raise Q over NO-LAYER on EVERY seed. Mutant RULE pops=pops
+    # -> pops=None: all diffs 0.0, verdict degenerate, not met.
     from snn_data_lake.growth.wiring_prior import population
 
     n, m, half = 60, 240, 30
