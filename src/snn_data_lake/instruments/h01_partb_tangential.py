@@ -52,6 +52,35 @@ SCORED_KIND = (
     "mix"  # the form of the G / P arms (frozen text 2: T3's K, the mixture, refit tangentially)
 )
 
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
+#:
+GRADIENT_CLAIM = {
+    "fit_global": (
+        "NOT_A_RULE",
+        "Part B's arm G -- the ONE GLOBAL tangential kernel shape, not a learning rule. The call "
+        "takes the per-cell exposure / connected counts (n, k) and returns a 3-vector of PARAMETERS "
+        "(log s, log lam, log rho) for shape(). It is fitted by a 192-point grid over "
+        "t3.WIDTH_GRID[::5] squared with three rho values, then t3.nelder_mead on a binomial "
+        "negative log-likelihood whose per-cell amplitude is PROFILED analytically inside _profile. "
+        "It does NOT differentiate through anything, transport no gradient, and touches no weight: "
+        "measured, zero AugAssign in the body and the gate's own _mutates_weightlike False. The "
+        "parameters are read by shaped_p and export_params and land in an evidence record; no "
+        "synapse is ever set from them",
+    ),
+    "fit_delta": (
+        "NOT_A_RULE",
+        "Part B's per-cell log-width OFFSETS for arm P, not a learning rule. The call takes the "
+        "global shape `th` AS GIVEN and returns one offset per cell -- 196 of them -- by a 1-D "
+        "grid argmin over DELTAS of the penalised cell negative log-likelihood (0.5 * pen * "
+        "delta^2), so it profiles a pooled parameter rather than refitting anything. It does NOT "
+        "jointly refit the shape (amendment's disclosed simplification), computes no gradient, and "
+        "mutates nothing: measured, the body is a single return of pick_delta(delta_table(...)) "
+        "with zero assignments and zero AugAssign. It is a pooled estimator over counts, so naming "
+        "it LOCAL would claim a locality no synaptic update here has, and naming it DIRECT_SOLVE "
+        "would claim a closed form a 31-point grid search is not",
+    ),
+}
+
 
 class ExposureRefused(RuntimeError):
     """An edge read was attempted before the planted record holds (amendment 4)."""

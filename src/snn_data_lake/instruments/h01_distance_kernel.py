@@ -110,6 +110,32 @@ class OutputRefused(OSError):
 
 LIVE_HOME = Path.home() / ".snn_data_lake"  # the lake: nothing here is ever an output (hard rule 2)
 
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
+#:
+GRADIENT_CLAIM = {
+    "fit_model": (
+        "NOT_A_RULE",
+        "T3's MEASUREMENT-MODEL FITTER, not a learning rule. The call takes a per-distance-bin "
+        "exposure / connected histogram (n, k) and returns a numpy vector of PARAMETERS theta for "
+        "model_p -- log-amplitude and log-width, or the closed-form pooled rate for the flat arm. "
+        "The three shaped models are fitted by 40-point width-grid initialisation and then the "
+        "pre-registered Nelder-Mead (2.3) on a binomial log-likelihood. It does NOT differentiate "
+        "through, back-propagate through, or transport any gradient, and it touches no weight: "
+        "measured, zero AugAssign in the body and the gate's own _mutates_weightlike False. Nothing "
+        "it returns is ever applied to a synapse -- theta feeds _scored's held-out log-likelihood and "
+        "then a JSON evidence record",
+    ),
+    "fit_all": (
+        "NOT_A_RULE",
+        "the four-model SWEEP over fit_model (flat, gauss, exp, then mix seeded from their "
+        "parameters), returning {model: theta}. It owns no objective and no optimiser of its own -- "
+        "its whole body is a dict comprehension and one further call -- so it cannot update anything "
+        "even in principle. Declared NOT_A_RULE for the reason given on fit_model above: the walk "
+        "enumerates it on the 'fit' verb, and what it fits is a likelihood model for H01's edge "
+        "histogram, never a weight of this brain",
+    ),
+}
+
 
 def safe_output(out, inputs=()):
     """Checked BEFORE any computation. Refuses the live lake (its directory or any `brain_lake.bin`), any input
