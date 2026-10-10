@@ -161,7 +161,12 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # 286 -> 292 on 2026-10-03: G1(c)'s six new instruments modules joined REGIONS
     # (carried_state_campaign, inseparable_mapping, carried_state_driver, carried_state_stages,
     # carried_state_controls, carried_state_report)
-    assert len(S._MOVED) == 306 and "claustrum" not in S._MOVED
+    # 306 -> 310 on 2026-10-10: the integrator's single re-pin at batch-3 integration, for the four
+    # governed modules the G4/G7 ranges added (h01_distance_kernel, h01_partb_tangential,
+    # unit_organization, wiring_prior). Measured, not assumed: origin/main imports 306 (and its pin
+    # says 306), the stacked head imports 310, the set difference is exactly those four names and
+    # nothing was removed. No row bumps this pin.
+    assert len(S._MOVED) == 310 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture
