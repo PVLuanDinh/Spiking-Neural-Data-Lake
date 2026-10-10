@@ -468,6 +468,35 @@ def test_r11_creation_scan_reds_an_ungated_site_and_a_stale_debt_row(tmp_path):
     assert stale == ["fakepkg/mod.py::gone"]
 
 
+def test_r14b_a_same_root_rescan_sees_growth_added_since_the_last_scan(tmp_path):
+    # Codex REQUEST 1 finding 1 (MAJOR): the census memoized solely by root path, so a same-root
+    # re-scan after a source edit returned the FIRST scan's findings -- a warm census in one process
+    # hid newly added ungated growth. Both caches are now re-read at every public boundary.
+    root = _tree(
+        tmp_path,
+        (
+            "import numpy as np\n"
+            "class Grower:\n"
+            "    def grow(self, new):\n        self.W = np.vstack([self.W, new])\n"
+        ),
+    )
+    admit = "fakepkg/mod.py::Grower.grow"
+    assert G.row_growth_findings(src_root=root, known={}, out_of_scope={}, segments={}) == [admit]
+    (root / "fakepkg" / "second.py").write_text(
+        "import numpy as np\n"
+        "class Later:\n"
+        "    def grow(self, new):\n        self.W = np.vstack([self.W, new])\n",
+        encoding="utf-8",
+    )
+    (root / "fakepkg" / "site.py").write_text(
+        "from snn_data_lake.growth.placement import place\ndef grow():\n    return place(3)\n",
+        encoding="utf-8",
+    )
+    rows = G.row_growth_findings(src_root=root, known={}, out_of_scope={}, segments={})
+    assert admit in rows and "fakepkg/second.py::Later.grow" in rows, rows
+    assert "fakepkg/site.py::grow" in G.label_creation_findings(src_root=root, known={})
+
+
 def test_r14_row_growth_scan_sees_what_the_creation_scan_cannot(tmp_path):
     root = _tree(
         tmp_path,

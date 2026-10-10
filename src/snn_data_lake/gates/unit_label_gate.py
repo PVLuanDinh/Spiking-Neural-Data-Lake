@@ -29,7 +29,6 @@ cortex units pass today (O3).
 from __future__ import annotations
 
 import ast
-import functools
 import math
 import numbers
 from collections import namedtuple
@@ -490,9 +489,6 @@ def _calls(node, names):
     return False
 
 
-@functools.lru_cache(
-    maxsize=8
-)  # one parse per root per process: report + assert re-read the same tree
 def _creation_functions(root):
     """{"rel::qualname": gated?} for every function holding a resolved label-creation call."""
     from snn_data_lake.gates.growth_coverage_gate import live_growth_census
@@ -583,12 +579,6 @@ def _self_growth(node):
     return False
 
 
-@functools.lru_cache(maxsize=8)
-# distinct-from: engine/brain.py -- the growth-gate verdict callable; no source scan. Site read.
-# distinct-from: faculties/self_improvement_suite.py -- an eps-invariance rung; no scan. Site read.
-# distinct-from: faculties/self_model.py -- a bucketing helper; no scan. Site read.
-# distinct-from: faculties/time_cells.py -- a would-earn estimate; no scan. Site read.
-# distinct-from: gates/doc_budget_gate.py -- prose word ceilings; the matcher fired on "growth". Read.
 def _row_growth_functions(root):
     """{"rel::qualname": ticketed?} for every function that regrows rows (module harness fns skipped)."""
     from snn_data_lake.gates.growth_coverage_gate import _HARNESS_FNS
@@ -663,6 +653,7 @@ def _root(src_root):
 
 
 def label_creation_findings(src_root=None, known=None):
+    """Ungated label-creation sites; the tree is re-read on every call (see row_growth_findings)."""
     known = KNOWN_UNGATED_CREATION_SITES if known is None else known
     return sorted(
         k
@@ -682,7 +673,9 @@ def label_creation_findings(src_root=None, known=None):
 # distinct-from: growth/ng_snn.py -- prune_unearned drops units; it is a SCANNED site, not a scanner. Read.
 def row_growth_findings(src_root=None, known=None, out_of_scope=None, segments=None):
     """Row growth that is neither ADMITTED -- the declared admit point of a GROWN_SEGMENTS row, spending
-    its ticket first (_consumes_first) -- nor debt-listed, out of scope, or a reviewed false positive."""
+    its ticket first (_consumes_first) -- nor debt-listed, out of scope, or a reviewed false positive.
+    The tree is re-read on EVERY call: a scan cached by root path alone returns a stale clean census
+    when the source changes under it (Codex REQUEST 1 finding 1, MAJOR)."""
     known = KNOWN_UNGATED_ROW_GROWTH if known is None else known
     oos = (
         {**OUT_OF_SCOPE_ROW_GROWTH, **SCAN_FALSE_POSITIVES}
@@ -728,7 +721,8 @@ def _admit_point_findings(root, admit_points):
 #   matcher fired on "no longer" / "grows". All sites read.
 def stale_known(src_root=None, known_creation=None, known_rows=None, out_of_scope=None):
     """Debt and scope rows naming a function that no longer creates labels / grows rows (a table may
-    only shrink by retiring a row, never by quietly outliving its site)."""
+    only shrink by retiring a row, never by quietly outliving its site). The tree is re-read on every
+    call (see row_growth_findings)."""
     root = _root(src_root)
     kc = KNOWN_UNGATED_CREATION_SITES if known_creation is None else known_creation
     kr = KNOWN_UNGATED_ROW_GROWTH if known_rows is None else known_rows
