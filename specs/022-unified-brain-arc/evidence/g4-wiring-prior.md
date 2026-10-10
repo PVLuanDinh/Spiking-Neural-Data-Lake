@@ -931,3 +931,107 @@ Unchanged by construction: every statistic, band, row, seed, identity field and 
 RAM bound (projection, nb 4000): peak about workers x 0.83 GB + one build transient (about 1 GB, the T3 chunk figure) + the interpreter; workers = 4 about 4.5 GB, workers = 3 about 3.6 GB. The caller chooses `--workers` against the free memory at launch.
 Constructed reds (tests/test_h01_partb_tangential.py): the threaded planted stage serialises byte-equal to the serial one on a small plan (6 units, 3 threads); a source change during a threaded campaign is still refused (F8); builds never overlap (peak 1) and `workers = 0` raises.
 Label: this harness change is verified by those tests and the fast suite only; it was not panelled.
+
+---
+
+## DATED PRE-DATA AMENDMENT -- Part B2 (3.1b), committed by the lead 2026-10-10 under board ruling 26 (additive, zero-removed-lines) and ruling 22 (option B). Pre-data: no Part B2 number exists; seeds 10350-10399 unspent; beta = 0.0 with beta_fallback true in the module; tools/g4_partb_campaign.json absent. Body as drafted by the row and verified additive-only by the lead.
+# DRAFT (NOT COMMITTED) -- Part B2 (3.1b) dated pre-data amendment: the region blocks are ruling 22's polar-angle quartiles
+
+**Status: DRAFT ONLY, written by G4 (recovery worker) for the LEAD to commit.** No frozen passage is edited by this
+file; nothing here has been run, measured or read. Date: 2026-10-09 (pre-data); the lead sets the committed date.
+Target location when committed: `specs/022-unified-brain-arc/evidence/g4-wiring-prior.md`, as a new dated amendment
+after the 2026-10-06 (2.15) amendment and before Part B2's first run.
+
+## 1. Why it is owed
+
+- Section 3's intro: every part "owes a dated pre-registration amendment before its first run"; 2.14 A13 names the
+  Part B2 amendment explicitly -- "The Part B2 amendment freezes the rest before its first run."
+- Part B2 is unbuilt and unrun: `instruments/h01_partb_tangential.py` records `beta = 0.0` with `beta_fallback`
+  true and its docstring states "beta = 0 until B2"; `tools/g4_partb_campaign.json` is absent from the tree
+  (`git ls-tree -r --name-only HEAD` lists no such file), so no Part B2 number exists and the seeds 10350-10399 are
+  unspent.
+- 3.1b names no second instrument. Its hold-out is 2.14 A12's 5-fold split over ELIGIBLE PAIRS. Part B (3.1, the
+  Part B amendment item 2) is scored "per 2.4-2.5 (neuron folds decide, polar-angle region blocks agree)". Left
+  implicit, a Part B2 run could carry an agreement reading on any split, or none.
+
+## 2. Ruling 22 (board DEPENDENCIES.md), verbatim
+
+> 22. G4 check (j): option (B) as a DATED PRE-DATA AMENDMENT -- region blocks = quartiles of the polar angle about
+> the white-matter circle's centre (462.3, 2806.0) um, disclosed as chosen after positions-only tables of three
+> centres (one passed; its thin L1 cell 13 stated); the planted stage tests it before any edge is read. The dev
+> rehearsal on 10060-10099 (positions + degree marginals, one process, nothing to tools/) is approved now.
+
+## 3. The definition (nothing new; it re-points at the 2026-10-04 amendment)
+
+Part B2's region blocks are the four quartiles of each soma's polar angle about the white-matter circle's centre,
+(462.3, 2806.0) um: `theta = atan2(y - cy, x - cx)` in the x-y plane, z ignored. The centre is read from the code
+constant `placement.LAYER_CIRCLES["value"][0]` (never typed) and is the same centre the T3/Part B region blocks and
+Part B's tangential frame use. It is implemented once in `instruments/h01_distance_kernel.py::region_blocks`
+(`N_BLOCKS = 4`, the 2026-10-04 amendment, lead ruling 22 option B) and reused unchanged by Part B through
+`t3.region_blocks(pop.xyz)`; Part B2 reuses it the same way. No second implementation, no retyped centre, no
+re-derived split. This replaces 2.4's second bullet's x quartiles for Part B2 exactly as the 2026-10-04 amendment
+already replaced it for T3 and Part B; it introduces no new definition and reads no edge.
+
+## 4. Where the blocks enter Part B2 -- and where they do not
+
+- **The deciding hold-out is unchanged.** Beta is fitted and decided under A12's contract: every ordered pair
+  (connected or not) assigned to one of 5 folds by the pair-partition stream (A9 stream 2) of seed s; test = fold f,
+  train = every pair outside f; covariates `out_i`, `in_j` and `m_ij` computed from the TRAINING GRAPH only; thinning
+  disclosed (training graph ~4/5 of edges, covariates not rescaled, beta reported as fitted on the thinned graph).
+- **The region blocks are the agreement instrument, not a third hold-out.** The pair-fold fit decides. The four
+  region blocks carry per-block and aggregate readings of the same contrast for disclosure: a region block whose
+  state disagrees with the pair-fold decision is reported as a disagreement (2.8 routing), never averaged away and
+  never silently passing. The instrument's states follow 2.5/A2: one deterministic `d_r` per block, state +1 if
+  `d_r > B_r`, -1 if `d_r < -B_r`, else 0; the aggregate is `sum_r d_r` against the sum of the blocks' bands;
+  `T_BAR = 1.895` where the reading is t-based.
+- **A7 binds these blocks exactly as the old ones.** Every block spans every (laminar) layer; the per-block per-band
+  unit-count table (L1..L6, white matter) is recorded before any edge is read; a block with an empty band REFUSES the
+  region instrument and the reading takes NOT READ (region instrument invalid, A3 row 2) rather than substituting
+  another split. Check 2.11 (j) is re-run on these blocks and its table is recorded.
+- **The null bands are calibrated per scoring, per contrast, per block** on planted-flat seeds (2.5), so the region
+  reading of the beta contrast keeps its own positive and false-positive controls.
+
+## 5. Disclosures carried (positions only; no edge has been read)
+
+- Three distinct circle centres were tabled on positions only. Only the white-matter centre passes (j); the other
+  two, (1149.9, 2458.4) and (1158.2, 2411.7), leave block 0 without L1 (minimum cell 0) and would have made the
+  region instrument invalid.
+- The thin cell is stated: block 0's L1 = 13 units, so block 0's held-out set carries few pairs. Per-block counts
+  (L1..L6, white matter): [13, 719, 738, 737, 572, 516, 259] / [190, 1332, 714, 543, 467, 216, 91] /
+  [208, 1289, 705, 592, 483, 184, 93] / [116, 1369, 789, 637, 493, 124, 26].
+- The single-centre approximation stays disclosed beside Part B's frame-validity check (`layer_of` monotone in the
+  radial coordinate r on the 14,215 somata; the violation count and the neighbour-disagreement fraction recorded; a
+  violation fraction above 5% reads REFUSED, frame invalid, and Part B takes no edge read).
+
+## 6. What this amendment does NOT change
+
+A12's hold-out contract; the degree-corrected model `p_ij proportional to out_i x in_j x g(d_ij) x (1 + beta m_ij)`;
+the planted controls first (a kernel-only world must read beta not above its null -- the confound control, since
+distance and degree alone create shared partners -- and a planted beta > 0 world must recover beta; either failing
+reads REFUSED and T4 runs at beta = 0 with the shared-partner clause reported untested, G7's fallback); the seeds
+10350-10399; the ban on fitting beta on modularity; Part B's own reading and record.
+
+## 7. What tests it before any edge is read
+
+The planted stage (2.14 A5-A6; 2.15's `validate_planted`, recomputed from the record) runs Part B2's controls
+through the same split: the region instrument's positive controls (a planted kernel must read +1 on every block,
+A3 row 6) and its false-positive control (flat validation binds the new split exactly as it bound the old one).
+Check (j) is re-run on these blocks and its table recorded in the campaign record. The amendment itself carries no
+deciding number.
+
+## 8. What Part B2's record section carries
+
+In `tools/g4_partb_campaign.json` (one dict, schema confirmed with G7; a consumer reading a field absent from the
+record refuses): the fields the 2026-10-04 amendment froze for Part B (`source` "part_b", `frame` "tangential", `form`
+and the kernel parameters, `pathway_amplitudes`, `pathway_widths` if P is kept, `dbar` and companions, the tangential
+density disclosures, the frame-validity numbers, the T3 reference `cbd8ce14` and sha256s, the artifact sha256, the
+harness sha256s and the git head) plus, for B2: `beta`, `beta_fallback`, `centre_um` = [462.3, 2806.0], `blocks` (the
+per-block per-band unit-count table), `check_j` (its table and pass/fail), `region_blocks` (per-block states),
+`region_aggregate`, `region_valid` and `bands_sha256`.
+
+## 9. Note for the lead
+
+This draft is the only artifact changed; it lives in the run directory
+(`sndl-runs/2026-10-09-step5/rows/g4-b2-amendment-draft.md`), not in the worktree, and is NOT committed. Per ruling
+26 / the brief, dated pre-data amendments are committed by the lead. G4 has not touched the frozen evidence file.
+
