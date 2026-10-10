@@ -74,6 +74,10 @@ def _widths(rec, cell):
             raise RecordRefused("a pooled Part B record carries no pathway_widths mapping")
         w = rec["pathway_widths"]
         hit = w.get(cell, w.get(str(cell)))  # JSON round trips turn int keys into strings
+        if hit is not None and not hit:
+            # distinct from `not hit`: an EMPTY entry names a pathway the record carries and the
+            # global shape must not be substituted for it (G7 lens MINOR; docstring forbids it).
+            raise RecordRefused(f"pathway_widths[{cell!r}] is empty: a named pathway is required")
         if hit:
             return hit[0], hit[1]
     return rec["sigma_um"], rec["lambda_um"]

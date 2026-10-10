@@ -177,6 +177,16 @@ def test_pooled_record_without_its_widths_is_refused_not_served_the_global_kerne
     assert wp.kernel_shape({**REC, "keep": "pooled"})  # no pathway asked for: nothing to refuse
 
 
+def test_a_falsy_pathway_entry_is_refused_not_served_the_global_kernel():
+    """G7's own lens MINOR: `if hit:` treats an empty pooled pathway_widths entry as ABSENT and
+    silently serves the global kernel -- the repair shape this module's docstring forbids. A
+    pathway the pooled record names must be honoured or refused, never replaced."""
+    s, t = _u("s", 0, 0), _u("t", 100, 0)
+    for bad in ((), [], "", 0):  # every falsy shape an entry can take
+        with pytest.raises(wp.RecordRefused, match="pathway_widths"):
+            _p(s, t, {**REC, "keep": "pooled", "pathway_widths": {105: bad}})
+
+
 def test_pathway_cell_matches_part_b_class_arithmetic():
     assert wp.pathway_cell(_u("a", 0, 0, "Layer 4", 1), _u("b", 0, 0, "Layer 4", 1)) == 105
     assert wp.pathway_cell(_u("a", 0, 0, "Layer 2", -1), _u("b", 0, 0, "Layer 6", 1)) == 2 * 14 + 11
