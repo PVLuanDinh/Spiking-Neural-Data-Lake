@@ -1474,3 +1474,60 @@ Disclosed: the per-seed accuracies were not persisted (the CLI prints the summar
 recorded and t is not re-derivable here; the seeds are spent. One negative seed of eight; the permutation FPR printed is a diagnostic.
 Ledger: 11500-11507 SPENT (never reused for a registered check). Still unrun: D1 confirmatory 11410-11417, D1 reserve 11418-11425,
 D2 11430-11455, planted 11464-11471.
+
+---
+
+## DATED PRE-DATA AMENDMENT -- D1 dev freeze (design freeze; committed by the lead 2026-10-10 under board ruling 26). Pre-data for D1: no D1 number exists (dev 11400-11407 and confirmatory 11410-11417 unspent); it freezes values the committed code already carries and runs/reads nothing. Code hashes below were lead-verified against claude/g5-b3 5d3acc25 before this commit.
+# DRAFT (NOT COMMITTED) -- D1 dev-freeze amendment: PD_EPOCHS and the DELTA/PC/SOM adaptor details are the values below (design freeze; nothing upstream; runs and reads nothing)
+
+**Status: DRAFT ONLY, written by G5 (recovery worker) for the LEAD to commit.** No frozen passage is edited by this file; nothing here has been run, measured or read. Date: 2026-10-10 (pre-data for D1); the lead sets the committed date.
+Target location when committed: `specs/022-unified-brain-arc/evidence/g5-readout-variants.md`, appended at the end (after the 2026-10-08 (g) note, which closes the file at line 1476), as a new dated amendment before D1's first dev read. Additive only: when appended it adds lines and removes none (zero-removed-lines). Module delta: none -- this freezes values the code already carries; it runs and reads nothing.
+
+## 1. Why it is owed
+
+- D.2's own bullet (evidence line 1175): "the adaptor details are build-time (step 2) and are frozen by the D1 dev-freeze amendment; none may see a validation/future label."
+- The build names it twice: `g5_part_d_adaptors.py:29-31` ("Build-time details, to be frozen by the D1 dev-freeze amendment ... the PC dims and its learn hyper-parameters, SOM's g, SOM0's width-0 realisation and the SOM read-out table's rule") and `g5_part_d_cells.py:65` (`PD_EPOCHS = 30  # BUILD DEFAULT, not a frozen campaign value -- the D1 dev-freeze amendment sets it`).
+- D.5's D1 dev block (11400-11407) and confirmatory block (11410-11417) are unspent, so this freeze is pre-data: no D1 number exists. Left unfrozen, a D1 dev read could carry PD_EPOCHS or an adaptor hyper-parameter changed after the data was seen -- exactly what the 2026-10-08 Part D amendment's Scope forbids ("a changed default after the dev read is a further dated amendment"). This is that freeze, before the read.
+- DESIGN freeze only: it fixes the epoch count and the adaptor hyper-parameters below as the D1 campaign's frozen values, all "module defaults, FROZEN as defaults" or named build-time choices per that Scope. It introduces no new definition, no red, no seed, no arm; it runs and reads nothing.
+
+## 2. What is frozen
+
+Each value is read from the committed code (file:line) as of this draft and is FROZEN as the D1 campaign value.
+
+Epoch count:
+- `PD_EPOCHS = 30` -- `g5_part_d_cells.py:65`. The training length of every arm's learner (the label neurons' R-STDP epochs and, through the runner, every D.2 arm including the adaptors), a build default; matches the "30 epochs" named in the 2026-10-08 (d) and (g) notes.
+
+DELTA adaptor (`g5_part_d_adaptors.py`): `readout/online_readout.py::OnlineReadout("delta")` adopted unchanged. The adaptor is a model object carrying the (n_in x M) beta; every label's column is allocated from the first event (record 2.3's common-vocabulary init), so `learn`'s widen never fires (`widened` stays 0). Read-out-only; prints `code_hash()`. No adaptor-specific hyper-parameter beyond the delta rule the module owns.
+
+PC adaptor (`g5_part_d_adaptors.py:47-52`): `readout/predictive_coding.py::PredictiveCodingNetwork` adopted (its 2026-08-14 adjudication and open exact-symmetry scope stand). Frozen: dims `PC_DIMS_R1, PC_DIMS_R2 = (16, 4)` (256 -> 16 -> 4; a build-time choice, not the module's own (8, 4, 2)); learn hyper-parameters `PC_EPOCHS, PC_STEPS, PC_LR, PC_LRW = 12, 120, 0.05, 0.02` (PredictiveCodingNetwork.learn's own defaults). Coupling W1/W2 trained by the module's own offline `learn` on the TEACH split; the label read-out is a per-label prototype over the TEACH split's settled r1 causes. PC_CTRL is the neutered-coupling twin.
+
+SOM adaptor (`g5_part_d_adaptors.py:53-60`): `reasoning/spiking_som.py::SOM` adopted. Frozen: `SOM_G = 4` (a 4x4 map, 16 units); `SOM_EPOCHS, SOM_LR0 = 15, 0.5` (SOM.train's own defaults); `SOM0_WIDTH = 0.25` (the neighbourhood width at zero: at 0.25 every non-BMU unit's Gaussian h < 1e-3 == the module's own skip threshold, so the update is a pure WTA step on the BMU alone -- the reachable width-zero red the adaptors' `self_check` asserts). The read-out table maps every map unit to the label of the TEACH sample nearest its weight vector (TEACH only). SOM0 is its control.
+
+Code hashes as of this draft (what each module's `code_hash()` prints; recorded so a later byte change is a new dated amendment, never a silent re-freeze):
+- g5_part_d_adaptors.py  sha256 e47d893dc0e60b8a49b848f01d38074f8552fea600ed44782de9dab98b4b3b47
+- g5_part_d_cells.py     sha256 f24e314cbd7539be46c23e7698f4aab20513986c43d754fbf448abd2736f32dd
+
+## 3. What this amendment does NOT change
+
+- D.1's substrate and harness: KernelLsmPool N=256 carried, the one T_in = 1 pool feature path, reset/carry, the pool built once per (cell, seed), the isolated-home + lake-snapshot precondition, persistence.
+- D.2's arm set (RSTDP_D, RSTDP_BRAIN, RSTDP_NOTUNE, RSTDP_BRAIN_SHUF / BYPASS / PRODNEUTER, the shifted twins, RSTDP_D@reset / @neuter_carry / @neuter_reset, EXPANSION_H and its texts= twin) and D.2's read-out-only contract for the adaptors (never touch the pool, print the code hash, never see a validation/future label). This freeze fixes the adaptors' build-time hyper-parameters; it does not change what the adaptors are or what they may not do.
+- D.3's brain producer (DopamineNuclei: gamma 0.9, alpha 0.3, tonic_baseline 0.2, gain 0.8, n_cells 24, module defaults frozen) and its transform; PD-P1, the producer-ablation positive control, is not part of this freeze.
+- D.4's cells and reds (PD-R0..R3, T_BAR 1.895, the 8-seed cohort, the 2.4 paired statistic, degenerate = NOT MET, the reserve rule of record 4, the HALT / NOT READ clauses) and the reader `g5_part_d_reading` with its new run_selfchecks self-check (instruments, not frozen protocol).
+- D.5's seed ledger and the never-run-here set: 11400-11407 (D1 dev) and 11410-11417 (D1 confirmatory) stay unspent; reserve 11418-11425, the D2 blocks and the planted/held blocks are unchanged. The separately run clean PD-P1 (11500-11507, through the T_in = 1 pool path) is not a D1 read and is untouched.
+- Nothing upstream: G1(c) carried-state, G2 taught problems, G7 labelling, G3's port and R2's interaction_learning are not read, changed or named as results.
+- The SOM0 vs SOM_CTRL two-name divergence (D.2/D.4 register SOM0; the committed reader's ALL_ARMS names SOM_CTRL; the runner writes both keys with asserted equality) is NOT resolved here; the control stays frozen under the name SOM0 per D.2/D.4, and the naming divergence stays the disclosed item for the lead.
+
+## 4. What tests it before D1's first dev read
+
+Cheap and brain-free, already pinned and not re-run here: the adaptors' `python -m snn_data_lake.instruments.g5_part_d_adaptors` self-check (DELTA no-widen, PC's neutered-coupling twin, SOM0 width-zero -- only the BMU moves -- the read-out-only AST scan and the printed code hash); the reader's `python -m snn_data_lake.instruments.g5_part_d_reading` self-check with tests/test_g5_part_d_reading.py; the cell runner's self-check (PRODNEUTER == NOTUNE on the real path, determinism, the non-fixture seed-block refusal). These prove the frozen values are the ones the build uses; the runner reaches PD_EPOCHS as its default epochs and the adaptors' constants above. The D1 dev read itself (11400-11407) runs only on the lead's written go and is heavy (a brain-free pool campaign); this amendment does not authorize or schedule it.
+
+## 5. Pre-data disclosures
+
+- No D1 number exists: 11400-11407 (dev) and 11410-11417 (confirmatory) are unspent; the reserve rule of record 4 applies unchanged.
+- PD_EPOCHS is 30-as-build-default; the adaptor hyper-parameters are the modules' own defaults (PC learn, SOM train) or named build-time choices (PC dims 16/4, SOM g 4, SOM0 width 0.25). Adopting them here is "FROZEN as defaults", not a tuning decision.
+- Every seed used in any producing check is a fixture RNG seed (SEEDS.md's 20261003 row), not a recording seed. No Brain, no pool campaign, no live-lake write and no confirmatory / reserve / red block was run in producing this draft.
+
+## 6. Note for the lead
+
+This draft is the only artifact produced; it lives in the run directory (`sndl-runs/2026-10-09-step5/rows/g5-d1-dev-freeze-draft.md`), not in the worktree, and is NOT committed. Per ruling 26 / the brief, dated pre-data amendments are committed by the lead after the zero-removed-lines check. G5 has not touched the frozen evidence file `g5-readout-variants.md`. It is independent of the TASK-1 self-check + registration commit (`feat(g5): ...`), which ships on claude/g5-b3 and changes no frozen protocol.
+
