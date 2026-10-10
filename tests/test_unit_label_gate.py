@@ -230,6 +230,8 @@ def test_r7_value_rules():
             _with(good, sign=0),
             _with(good, sign=None),
             _with(good, sign=True),
+            _with(good, sign=1.0),  # a float is not a Dale sign: `1.0 in (1, -1)` was True
+            _with(good, sign=-1.0),
             _with(
                 good, layer="Layer 1", sign=1, position=(ap, dv, x, y, P.DEPTH_BANDS["Layer 1"][0])
             ),

@@ -113,6 +113,12 @@ def _ident(v):
     return isinstance(v, int) and not isinstance(v, bool) and v >= 0
 
 
+def _ident_like(v):
+    """A non-bool int: the Dale sign's one representation. `1.0 in (1, -1)` is True in Python, so a
+    plain membership test admits float +/-1.0 -- a G7 lens MINOR (unit_organization emits ints)."""
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
 def _check_unit_id(rec, ctx):
     return None if _ident(rec.get("unit_id")) else "missing or not a non-negative int unit_id"
 
@@ -159,8 +165,8 @@ def _check_sign(rec, ctx):
     sign = rec.get("sign")
     if "sign" not in rec:
         return "missing sign"
-    if isinstance(sign, bool) or sign not in (1, -1):
-        return f"sign must be +1 or -1, got {sign!r}"
+    if not _ident_like(sign) or sign not in (1, -1):
+        return f"sign must be the int +1 or -1, got {sign!r}"
     if sign == 1 and rec.get("layer") == "Layer 1":
         return "Layer 1 is never excitatory (assign_sign's structural rule)"
     return None
