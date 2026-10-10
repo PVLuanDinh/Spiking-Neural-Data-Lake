@@ -1063,3 +1063,48 @@ Two facts found while the adapter was built; neither changes a stage list, a bar
 - **K18 (machinery, brain-free, in the test file and the offline self-check).** Record sets are built with PLANTED per-seed E_all endpoints for STAGED against a fixed FLAT: a planted gap of +2 items with deterministic per-seed spread must read C10 MET and the table's MET row; a planted gap of 0 and of -2 must read NULL; a planted gap of +2 on E_all that costs 3 items on E_A (or 3 on E_B) must read INTERFERENCE RED on A (on B). The same records go through `decide_family` unchanged, so the whole path (counts, `_d`, `verdict`, the P-8 wrappers, the table) is exercised, not a copy of it. Red: a decision path that read the planted +2 as NOT MET, or the planted -2 as MET, fails the test.
 - **Detectable gap (reported, never a gate).** On the dev rehearsal, `decide` prints `c10_detectable_gap`: the smallest planted uniform gap g (in E_all items of 20, g = 1..20) that reads MET when added to the dev C10 differences re-centred to mean 0 (the observed per-seed noise, no signal), through the same superiority rule (ruling 9). `None` is printed as "no planted gap readable (zero-variance noise: ruling 9 reads any constant NOT MET)". It is not a threshold and gates nothing: it is the frozen way a NULL on the confirmatory set is worded. A confirmatory C10 NULL is read with the dev detectable gap beside it: "no stage benefit shown; a gap of g or more items at dev noise would have read MET". No claim of equivalence is made.
 **Refused fabrication starves (G2's second point; made explicit, no behaviour change in the table).** In the runner a refused synthetic item (`FabricationRefused`) does `rep.refused += 1; continue` and does not count as a presentation, so that rem stage spends less than its budget (`starved > 0`). That is an INSTRUMENT defect, not a staging result: K2-F5 goes red and the table reads HALT, never NULL. K2-F5 additionally requires `refused == 0` on every stage, so a refusal that happened to be masked by a rem budget filled elsewhere is also HALT. Red: plant `refused = 1` on a rem stage; K2-F5 must fire.
+
+## 5. Results -- F5 CONFIRMATORY (2026-10-09, seeds 16140-16147; read once, nothing re-run)
+
+**Provenance (no F5 confirmatory seed was run twice).** Runner session `ses_edfd5962effejUHnSy8ZNe8s3z`
+completed the FROZEN RUN -- 40 arm-seeds = 5 arms (STAGED / FLAT / SHUFFLED / NONE / ORACLE) x seeds
+16140-16147, `RUN_RC=0`, `RUN_WALL_S=916.994302` -- into `D:/sndl-homes/r3-f5-conf-052107` BEFORE the
+provider 429 killed the session, so it could not deliver the reading. NO seed was re-run. The lead executed
+the FROZEN DECIDE on those preserved records (the #316 plan's command, PYTHONPATH pinned to `claude/r3-b3`'s
+src, a fresh NORD_HOME, `GRAPHIFY_SKIP_HOOK=1`): rc=0. Live lake before and after: 3318607701 B /
+639260867593316840 ticks -- unchanged.
+
+**F5: NULL**, read on the verbatim decide output
+(`D:/sndl-homes/r3-conf-decide-home-1105/decide-lead.txt`, sha256
+`973acee7e746854c2e2964c8a9e404ab9a219ac03c80859609fe8da69dd3f781`):
+
+- C-SENS5 MET t 5.237
+- C10 NOT MET t 1.000 mean +0.0125 sd 0.0354
+- C10-NI MET t 5.000
+- C10-NI-B MET t 5.292
+- C11 NOT MET t 1.000
+- FLAT-NONE MET t 3.454
+- all 16 K checks 0 (K1, K2, K3, K4, K5, K6, K8a, K8b, K13, K14, KE, K2F5, K10a, K10b, K10c, K10d)
+
+**Row sentence, verbatim:** "NULL: no stage benefit over the flat control shown at 320 presentations".
+**Claim NOT MADE.** Frozen F5-4 path taken: (1) no K check red -> not HALT; (2) C-SENS5 MET -> not REFUSED;
+(3) K5 = 0 -> not NOT CLAIMED; (4) C10 NOT MET -> NULL (X-19 wording; never an affirmative explanation).
+The NULL is read beside F5-8's dev detectable gap (g = 1 E_all item, MEASURED on the EXPOSED dev set
+16000-16007): a staged-vs-flat gap of at least 1 of 20 held-out items at dev noise would have read MET. C11
+is not the deciding row (it is read only if C10 MET) and is reported NOT MET. Records: 40 JSON files, seeds
+16140-16147, manifest `run/r3-f5-conf-records.sha256` (40 entries; held at
+`C:/Users/vinhl/.config/opencode/sndl-runs/2026-10-09-step5/r3-f5-conf-records.sha256`), sha256
+`bc2b9c2749b937d08258033397675f150f463cda19db85ef2b86081f2bd6e916`.
+
+**The dev reading read the same row.** The F5 dev rehearsal on the EXPOSED seeds 16000-16007
+(`D:/sndl-homes/r3-f5dev-175553`; `decide.txt` sha256 `2ae595bbff23f8d351d0964fb845c4f1704420b3fe7cb84ae80fec146675c32c`,
+reproduced byte-identical by a decide re-run on the frozen records) read the identical row: "NULL: no stage
+benefit over the flat control shown at 320 presentations", with every K check 0, the dev reachability gate
+PASS and `c10_detectable_gap` = 1 item. Dev reads are EXPOSED and are never confirmatory evidence; they
+agree with the confirmatory row here.
+
+**Licenses only that row's wording** at 320 presentations on the learner's own 20-item in-tree corpus: never
+"REM-like integration helps" in general, never a biological stage claim (2.14), never a reservoir or engine
+claim, never a growth gain from a unit count, and no equivalence claim between the staged and flat bouts
+(F5-8: no claim of equivalence is made). Nothing in F1-F4, any bar, budget, W, seed set or the
+pre-registration is touched by this note; it is an additive results write.
