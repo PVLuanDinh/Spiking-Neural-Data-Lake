@@ -185,8 +185,9 @@ EXEMPT = {
         "nothing and never touches the lake, which is the prior_drift_harness / paired_contrast "
         "shape. Reachable from run_selfchecks (its synthetic self-check) and its campaign CLI, "
         "never from a tick. Its CONSUMERS are records, not imports: tools/g4_t3_campaign.json's "
-        "reading and width decide the kernel FORM of growth/wiring_prior.py (Part C, not yet "
-        "built) and gate G7's T2/T4 kernel arms (2.14 A13)",
+        "reading and width decide the kernel FORM of growth/wiring_prior.py (Part C, BUILT on "
+        "fixtures; DATED 2026-10-10 stack correction: instruments/unit_organization.py:40 "
+        "imports its layer_term_sym) and gate G7's T2/T4 kernel arms (2.14 A13)",
     ),
     "h01_partb_tangential": (
         "permanent",
@@ -199,18 +200,23 @@ EXEMPT = {
         "tools/g4_partb_campaign.json) is NOT written -- the H01 campaign awaits the lead's go and "
         "its entry point refuses until the planted record holds. The record SHAPE it emits "
         "(source 'part_b', frame 'tangential') is what growth/wiring_prior.py accepts as an "
-        "argument, but no code loads the file and wiring_prior itself has no caller (its own "
-        "'wire' row). Revisit this row when the campaign record lands.",
+        "argument, but no code loads that file; wiring_prior's caller is G7's T1/T4 decision "
+        "instrument (instruments/unit_organization.py:40, used at :251), which is itself an "
+        "EXEMPT wire row pending G3's/G4's campaign import -- DATED 2026-10-10 stack "
+        "correction. Revisit this row when the campaign record lands.",
     ),
     "wiring_prior": (
         "wire",
         "specs/022 T112 (G4) Part C, DATED 2026-10-07: the anatomical attachment rule "
         "(layer target from CONN_PROB x a Part B tangential kernel x shared-partner bonus), built "
-        "on fixtures (tests/test_wiring_prior.py). Consumer-to-be: G3's grown-unit wiring "
-        "(growth_campaign attachment arms) and G7's T4 RULE generator; neither calls it yet, and "
-        "no deciding use before T3 READ (met 2026-10-07) AND Part B's tangential record "
-        "(2.14 A13). It refuses T3's 3-D record and any non-Part-B record, so no hand width can "
-        "reach a consumer. Retire this row when G3's arm imports it.",
+        "on fixtures (tests/test_wiring_prior.py). Consumers: G3's grown-unit wiring "
+        "(growth_campaign attachment arms) and G7's T4 RULE generator -- which IMPORTS "
+        "layer_term_sym at instruments/unit_organization.py:40 and uses it at :251 (DATED "
+        "2026-10-10 stack correction); no deciding use before T3 READ (met 2026-10-07) AND "
+        "Part B's tangential record (2.14 A13). It refuses T3's 3-D record and any non-Part-B "
+        "record, so no hand width can reach a consumer. Retire this row when G3's arm imports "
+        "it -- note G7's arm already does (see above); the honest state today is a real import "
+        "inside a not-yet-charged pair, not a charged consumer and not a bare module.",
     ),
     "brian2_backend": (
         "permanent",

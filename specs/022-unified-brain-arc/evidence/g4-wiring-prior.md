@@ -1035,3 +1035,28 @@ This draft is the only artifact changed; it lives in the run directory
 (`sndl-runs/2026-10-09-step5/rows/g4-b2-amendment-draft.md`), not in the worktree, and is NOT committed. Per ruling
 26 / the brief, dated pre-data amendments are committed by the lead. G4 has not touched the frozen evidence file.
 
+
+## DATED SUPERSEDING NOTE 2026-10-10 (lead; additive; supersedes the draft scaffolding above)
+
+The block above is the Part B2 (3.1b) dated pre-data amendment, and it **IS committed** -- by the lead on
+2026-10-10 under board ruling 26 (purely additive, zero removed lines, the original an exact byte prefix),
+carried onto `claude/int3` as pick `26f40802`. Three statements printed above are therefore **superseded**:
+
+1. The heading `# DRAFT (NOT COMMITTED) -- Part B2 (3.1b) ...` and the line
+   `**Status: DRAFT ONLY, written by G4 (recovery worker) for the LEAD to commit.**` -- the amendment was
+   committed. Cause: the lead's commit stripped the draft's front matter only as far as the first `###`,
+   leaving this heading and its status line behind.
+2. This section 9's "it lives in the run directory ... and is NOT committed" -- superseded for the same
+   reason; the run-directory draft is retained as its provenance, not as its location.
+3. The cross-reference at line ~983, "reported as a disagreement (**2.8 routing**), never averaged away".
+   Section 2.8 is "The kernel adopted, and its width" and contains **no** disagreement routing. The routing
+   this amendment defines is its OWN section 4: the region blocks are the agreement instrument, the A12
+   pair-fold fit decides, and a block that disagrees is reported, never averaged, never a veto. Read
+   "(2.8 routing)" as "(this amendment's section 4)".
+
+Corrected byte figures for the additive claim, re-measured as raw bytes on both trees (an earlier lead post
+said 106580; that was a character count, not a byte count): parent blob 98387 B, commit blob **106579 B**,
+exact byte prefix, 0 CRLF, +104 lines / +8192 B. The `claude/int3` pick `26f40802` carries two blobs
+byte-identical to `claude/g4-b3` `68848e11`'s.
+
+No definition, statistic, band, row, seed, identity field or gate changes by this note.

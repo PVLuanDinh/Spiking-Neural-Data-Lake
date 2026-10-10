@@ -1108,3 +1108,28 @@ agree with the confirmatory row here.
 claim, never a growth gain from a unit count, and no equivalence claim between the staged and flat bouts
 (F5-8: no claim of equivalence is made). Nothing in F1-F4, any bar, budget, W, seed set or the
 pre-registration is touched by this note; it is an additive results write.
+
+## DATED DISCLOSURE 2026-10-10 (lead; additive) -- F5 confirmatory sensitivity: per-seed headroom
+
+Raised by the independent Codex closing report (REQUEST 4, finding m3) and re-measured by the lead from the
+40 preserved records at `D:/sndl-homes/r3-f5-conf-052107/records`. **No seed was re-run**; this is a
+disclosure about the sensitivity of the F5 reading, not a change to it.
+
+- `restored` counts out of 20 per seed -- FLAT: 20, 20, 18, 19, 19, 19, 19, 19. STAGED: 20, 19, 19, 20, 19,
+  20, 19, 19.
+- **Seeds 16140 and 16141 have FLAT already at 20/20, so no positive STAGED-over-FLAT contrast is attainable
+  on them.** Two of the eight confirmatory seeds therefore carry ZERO headroom for the C10 claim, and a
+  negative C10 cannot distinguish "no staged benefit" from "no room to show one".
+- The C10 statistic is unchanged and reproduces exactly from these counts: per-seed differences in count
+  0, -1, +1, +1, 0, +1, 0, 0; as fractions of 20 -> **mean +0.0125, sd 0.0354**, matching the decide line.
+- The instrument's other per-seed signal `margin` (STAGED - FLAT) is **negative on 7 of 8 seeds** (mean
+  -0.0367; only seed 16143 is positive, at +0.0059). It points the same way as the NULL row.
+- `c10_detectable_gap` (`src/snn_data_lake/instruments/sleep_plasticity_ab.py:1139-1148`) searches
+  `for g in range(1, N_ALL + 1)` with `N_ALL = N_A + N_B` (line 850) = 20, and is **not** capped by each
+  seed's remaining headroom. The reported sensitivity therefore **overstates** what this design could have
+  detected on the two zero-headroom seeds.
+
+**The NULL row stands.** F5 read no stage benefit over flat; C10 was NOT MET; the claim is NOT MADE. This
+note tightens what that NULL does and does not license: on 16140/16141 it is a ceiling effect, and a future
+re-test wanting a decisive C10 contrast must either use seeds with headroom or report per-seed headroom
+alongside the aggregate.
