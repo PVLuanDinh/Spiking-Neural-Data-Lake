@@ -94,6 +94,7 @@ CORE = [
     "instruments.delayed_cue",  # G2 P1: the problem generators' construction checks (B1, B2, B2-A, B10, B13, B14, witnesses) on dev seed 8000 and all 17 constructed reds; no learner taught
     "instruments.g5_readout_cells",  # T113 (G5): deterministic runner, frozen generator, the reading's NOT MET cases (Part A deleted at 2.7a)
     "instruments.g5_part_d_adaptors",  # T113 (G5) Part D D.2/PD-R3: the read-out-only DELTA/PC/SOM adaptors' reds (adopted rules, no widen, refusals, PC's twin, SOM0's BMU-only)
+    "instruments.g5_part_d_cells",  # T113 (G5) Part D D.1-D.5: the cell runner's halts, determinism, PRODNEUTER == NOTUNE and the seed-block refusal (fixture RNG seeds only)
     "sensorimotor.lca_sparse_coding",
     "readout.predictive_coding",
     "sensorimotor.pc_cortex_serve",

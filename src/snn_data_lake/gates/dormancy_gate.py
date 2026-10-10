@@ -145,6 +145,12 @@ EXEMPT = {
         "DELTA / PC / SOM adopted from their own modules over the label neurons' 256-input stimulus; consumers: Part D's cell runner, "
         "run_selfchecks (bare) and tests/test_g5_part_d_adaptors.py; never on a tick",
     ),
+    "g5_part_d_cells": (
+        "permanent",
+        "G5 / T113 Part D D1's cell runner (a governed benchmark instrument; record evidence/g5-readout-variants.md D.1, D.2, D.5): the "
+        "deterministic feature path over the one pool, the D.2 arms and the cert facts the reader needs; consumers: its own CLI (bare "
+        "self-check or fixture smoke), run_selfchecks (bare) and tests/test_g5_part_d_cells.py; never on a tick",
+    ),
     "pool_selection": (
         "permanent",
         "G1(b)'s selection campaign (a governed benchmark; its record is g1b section 3.4); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: its CLI and tests/test_pool_selection.py",

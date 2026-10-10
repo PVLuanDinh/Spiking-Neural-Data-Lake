@@ -298,6 +298,8 @@ REGIONS = {
         "g5_readout_cells",
         # specs/022 T113 (G5) Part D D1: the read-out-only DELTA / PC / SOM adaptors (D.2, D.4 PD-R3) -- adopted modules' own rules, never a second implementation; bare invocation is their self-check
         "g5_part_d_adaptors",
+        # specs/022 T113 (G5) Part D D1: the cell runner (feature path, D.2 arms, cert; D.1, D.5) -- fills the reader's records; bare invocation is its self-check, arguments run the fixture smoke
+        "g5_part_d_cells",
         # specs/022 T113 (G5) Part D D1: the reader of the registered reds (PD-R0..R3) over per-seed accuracy records; pure functions, no pool or Brain
         "g5_part_d_reading",
         "ignition_instrument",
