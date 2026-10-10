@@ -504,6 +504,15 @@ def test_sampler_rescales_finite_weights_so_a_common_scale_cannot_move_the_draw(
     assert big == small, (small, big)
 
 
+def test_sampler_refuses_an_arm_whose_positive_mass_is_exhausted_mid_stream():
+    # Codex REQUEST 1 finding 4 (MINOR): the positivity check runs once, per arrival, before the
+    # sequential loop, but the shared-partner term can zero every surviving candidate during it.
+    # n=3, m=3, kernel=1.0, seed=13260, beta=-1.0 -> IndexError: index -3 out of bounds (size 2).
+    # An arm that cannot place its M edges must be REFUSED, never crash.
+    with pytest.raises(U.Infeasible):
+        U.sample_exact_m(3, 3, xy=np.zeros((3, 2)), kernel=lambda d: 1.0, seed=13260, beta=-1.0)
+
+
 @pytest.mark.parametrize(
     "kw",
     [

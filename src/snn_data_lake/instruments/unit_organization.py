@@ -276,6 +276,16 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None,
                 # case, which the remaining-mass check below refuses.
                 w = w / peak
             cum = np.cumsum(w)
+            if not (
+                np.isfinite(cum[-1]) and cum[-1] > 0.0
+            ):  # Codex REQUEST 1 finding 4: the loop's positivity check runs once, per arrival,
+                # but the shared-partner term can zero the surviving candidates during it. Without
+                # a per-draw check the step-back below walks off the front of the array
+                # (index -3, size 2) instead of refusing the arm.
+                raise Infeasible(
+                    f"arrival {t} exhausted its positive-weight candidates before its "
+                    f"{alloc[t]} edges were drawn"
+                )
             j = int(np.searchsorted(cum, rng.random() * cum[-1], side="right"))
             j = min(j, t - 1)
             while (
