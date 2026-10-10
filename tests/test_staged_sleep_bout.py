@@ -120,3 +120,48 @@ def test_run_bout_restores_an_instance_level_deposit_it_found():
     b.brain._ixn._deposit = own
     ssb.run_bout(b, STAGES, rng_seed=3)
     assert vars(b.brain._ixn)["_deposit"] is own
+
+
+def _real_learner_brain():
+    """A REAL `SpikingInteractionLearner` behind the runner's `brain.brain._ixn` handle, taught
+    through the real teaching path so the replay ring is filled the way the live path fills it."""
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
+
+    class _LB:
+        pass
+
+    ixn = SpikingInteractionLearner(("A", "B"), 4, seed=7)
+    for code, label in (([1.0, 0, 0, 0], "A"), ([0, 1.0, 0, 0], "B")):
+        ixn.interact(list(code), label)
+    brain = type("B", (), {})()
+    brain.brain = _LB()
+    brain.brain._ixn = ixn
+    brain._plasticity = None
+    brain._step = 0
+    return brain, ixn
+
+
+def test_the_real_g0c_checkpoint_save_is_not_refused_after_a_bout():
+    """R3's challenge on G6-2 (#334, option a): 'no bound method left' is not 'the encoder accepts
+    the learner'. The K5 defect IS a refused checkpoint save -- G0(c)'s `_encode_state` refuses a
+    bound `_deposit` left in the learner's `__dict__` -- so this runs the REAL save over a REAL
+    learner after a real bout and restores the record into a fresh one."""
+    brain, ixn = _real_learner_brain()
+    rep = ssb.run_bout(brain, STAGES, rng_seed=3)
+    assert rep.stages[0].deposits > 0, "a bout that taught nothing proves nothing about the save"
+    blob = ixn.state_dict()  # raises ValueError while a bound `_deposit` is left in `__dict__`
+    fresh = type(ixn)(ixn.responses, ixn.n_in, seed=999)
+    fresh.load_state_dict(blob)
+    assert [n.w for n in fresh.neurons] == [n.w for n in ixn.neurons]
+    assert [c for c, _, _ in fresh._replay] == [c for c, _, _ in ixn._replay]
+
+
+def test_a_leftover_bound_deposit_still_makes_the_real_save_refuse():
+    # the constructed red for the test above: the defect R3 named, reproduced on the real encoder
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
+
+    _, ixn = _real_learner_brain()
+    ixn._deposit = ixn._deposit  # the defect the had_own restore-or-delete repairs
+    with pytest.raises(ValueError, match="unsupported checkpoint value"):
+        ixn.state_dict()
+    assert isinstance(ixn, SpikingInteractionLearner)
