@@ -201,7 +201,7 @@ EXEMPT = {
         "its entry point refuses until the planted record holds. The record SHAPE it emits "
         "(source 'part_b', frame 'tangential') is what growth/wiring_prior.py accepts as an "
         "argument, but no code loads that file; wiring_prior's caller is G7's T1/T4 decision "
-        "instrument (instruments/unit_organization.py:40, used at :251), which is itself an "
+        "instrument (instruments/unit_organization.py:40, used at :272), which is itself an "
         "EXEMPT wire row pending G3's/G4's campaign import -- DATED 2026-10-10 stack "
         "correction. Revisit this row when the campaign record lands.",
     ),
@@ -211,7 +211,7 @@ EXEMPT = {
         "(layer target from CONN_PROB x a Part B tangential kernel x shared-partner bonus), built "
         "on fixtures (tests/test_wiring_prior.py). Consumers: G3's grown-unit wiring "
         "(growth_campaign attachment arms) and G7's T4 RULE generator -- which IMPORTS "
-        "layer_term_sym at instruments/unit_organization.py:40 and uses it at :251 (DATED "
+        "layer_term_sym at instruments/unit_organization.py:40 and uses it at :272 (DATED "
         "2026-10-10 stack correction); no deciding use before T3 READ (met 2026-10-07) AND "
         "Part B's tangential record (2.14 A13). It refuses T3's 3-D record and any non-Part-B "
         "record, so no hand width can reach a consumer. Retire this row when G3's arm imports "
