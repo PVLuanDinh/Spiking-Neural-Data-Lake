@@ -101,7 +101,8 @@ def test_probabilities_are_in_unit_interval_and_shape_is_new_by_existing():
 
 def test_clip_fires_on_both_sides():
     # rv5 #292 / mutant M7: the case above never exceeds 0.2827, so it cannot see the clip. Here the
-    # unclipped product target * f(0) * (1 + beta * m) is driven past 1 and below 0 (a constructed record).
+    # unclipped product target * f(0) * (1 + beta * m) is driven past 1 and below 0
+    # (a constructed record).
     s, t = _u("s", 0, 0), _u("t", 0, 0)  # L4e -> L4e, d = 0: target CONN_PROB[2][2], f(0) = 1
     shared = {"s": {"q1", "q2", "q3"}, "t": {"q1", "q2", "q3"}}  # m = 3
     hi_beta, lo_beta = 100.0, -1.0
