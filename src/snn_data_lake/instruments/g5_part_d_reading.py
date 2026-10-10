@@ -106,3 +106,103 @@ def read_d1(records, cert, log=print):
         ctrl = _met(records, "S0C1", f"{rule}_CTRL", "RSTDP_D", log)
         v["PD-R3"][rule] = "REPLACES" if beats and not ctrl else "REVERT"
     return v
+
+
+# --------------------------------------------------------------------------------------------------
+# SELF-CHECK: the reader's constructed reds (pure records; no Brain, no pool, no seed block)
+# --------------------------------------------------------------------------------------------------
+_FIXTURE_SEEDS = range(20261003, 20261011)  # SEEDS.md's RNG fixture row; the pinned test's cohort
+_UP = (0.30, 0.25, 0.35, 0.28, 0.32, 0.27, 0.31, 0.26)  # eight clearly positive paired gaps
+
+
+def _records(gaps, base=0.4):
+    """records[seed][cell][arm] over the eight fixture seeds: every arm at `base` unless `gaps` raises
+    it by the seed's _UP scale -- the pinned test's fixture, so the self-check and the test agree."""
+    out = {}
+    for k, s in enumerate(_FIXTURE_SEEDS):
+        out[s] = {cell: {arm: base + 0.01 * (k % 3) for arm in ALL_ARMS} for cell in CELLS}
+        for (cell, arm), scale in gaps.items():
+            out[s][cell][arm] += _UP[k] * scale
+    return out
+
+
+def _clean_gaps():
+    """A clean fixture: RSTDP_D opens S0C0 and the S1 cells, the Brain producer beats NOTUNE / SHUF /
+    BYPASS on S0C1, and DELTA beats the incumbent while its own control does not."""
+    g = {("S0C0", "RSTDP_D"): 1.0, ("S1C0", "RSTDP_D"): 1.0, ("S1C1", "RSTDP_D"): 1.0}
+    g.update({("S0C1", a): 1.0 for a in ("RSTDP_BRAIN", "RSTDP_D")})
+    g.update({("S0C1", "DELTA"): 2.0, ("S0C1", "RSTDP_BRAIN_SHUF"): 0.0})
+    return g
+
+
+def self_check():
+    """The reader's constructed reds at gate cost: a clean fixture reads PD-R0/R1/R1b/R2/R3 MET; a
+    NOT-MET PD-R0 HALTS the read and prints no other verdict; a cohort that is not N_SEEDS, a missing
+    arm, PRODNEUTER != NOTUNE and a stateless S1 solve each HALT the instrument; PD-R2 S0C1 is NOT
+    READ without the certified expansion; a rule its own control also matches REVERTS; one records
+    object reads the same twice. The fuller pin of every red is tests/test_g5_part_d_reading.py.
+    Returns True; raises on the first failure."""
+    cert = {"expansion_solves_s0c1_at_64": True, "stateless_solved_s1": False}
+    quiet = []
+
+    def _halt(records, header):
+        try:
+            read_d1(records, cert, log=quiet.append)
+        except ReadHalt:
+            return
+        raise AssertionError(f"{header} did not halt the instrument")
+
+    clean = _records(_clean_gaps())
+    verdict = read_d1(_records(_clean_gaps()), cert, log=quiet.append)
+    assert verdict["PD-R0"] and verdict["PD-R1"] and verdict["PD-R1b"], verdict
+    assert verdict["PD-R2"] == {"S0C1": True, "S1C0": True, "S1C1": True}, verdict
+    assert verdict["PD-R3"]["DELTA"] == "REPLACES", verdict
+    assert verdict["prodneuter_equals_notune"] is True, verdict
+    assert read_d1(_records({}), cert, log=quiet.append) == {"halted": True, "PD-R0": False}
+    short = _records(_clean_gaps())
+    short.pop(_FIXTURE_SEEDS[0])
+    _halt(short, "a cohort of seven seeds")
+    no_arm = _records(_clean_gaps())
+    del no_arm[_FIXTURE_SEEDS[3]]["S0C1"]["RSTDP_BRAIN"]
+    _halt(no_arm, "a missing S0C1 arm")
+    prod = _records(_clean_gaps())
+    for seed in prod:
+        prod[seed]["S0C1"]["RSTDP_BRAIN_PRODNEUTER"] = prod[seed]["S0C1"]["RSTDP_NOTUNE"]
+    prod[_FIXTURE_SEEDS[0]]["S0C1"]["RSTDP_BRAIN_PRODNEUTER"] += 0.1
+    _halt(prod, "PRODNEUTER != NOTUNE")
+    try:
+        read_d1(_records(_clean_gaps()), {**cert, "stateless_solved_s1": True}, log=quiet.append)
+    except ReadHalt:
+        pass
+    else:
+        raise AssertionError("a stateless S1 solve did not halt the instrument")
+    blind = read_d1(
+        _records(_clean_gaps()), {**cert, "expansion_solves_s0c1_at_64": False}, log=quiet.append
+    )
+    assert blind["PD-R2"]["S0C1"] is None, blind
+    gaps = _clean_gaps()
+    gaps[("S0C1", "DELTA_CTRL")] = 2.0
+    assert read_d1(_records(gaps), cert, log=quiet.append)["PD-R3"]["DELTA"] == "REVERT"
+    once = read_d1(clean, dict(cert), log=quiet.append)
+    twice = read_d1(clean, dict(cert), log=quiet.append)
+    assert once == twice, once
+    print(
+        "g5_part_d_reading self-check OK: a clean fixture reads PD-R0/R1/R1b/R2/R3 MET; PD-R0 NOT MET "
+        "halts and prints no other verdict; seven seeds, a missing arm, PRODNEUTER != NOTUNE and a "
+        "stateless S1 solve each HALT the instrument; PD-R2 S0C1 is NOT READ without the certified "
+        "expansion; a rule its own control also matches REVERTS; one records object reads the same twice"
+    )
+    return True
+
+
+def main(argv=None):
+    # carried_state_driver's pattern: no arguments runs the self-check (the reader has no fixture
+    # smoke CLI -- it is pure functions over records, so `argv` is accepted and ignored)
+    self_check()
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())
