@@ -203,6 +203,22 @@ def test_the_shared_partner_term_is_live():
     assert t5 > 2 * t0, (t0, t5)
 
 
+def test_the_imposed_arm_is_not_silently_degraded_to_rule_without_columns():
+    # G7's own lens MINOR: t4_wiring_half forwarded the caller's col=None to sample_exact_m, which
+    # skips the column restriction, so the IMPOSED arm degenerated into an exact copy of RULE.
+    # State: the IMPOSED Q list equals RULE's. No verdict moves today (the arm decides nothing in
+    # the wiring half), but G9's task half builds on it -- an arm reported as run that never
+    # restricted anything is a live defect, not a cosmetic one.
+    n = 20
+    xy = _flat_units(n, 13255)
+    common = dict(
+        n=n, m=40, xy=xy, pops=None, kernel=lambda d: np.exp(-d / 60.0), beta=0.0,
+        seeds=U.IR_SEEDS, louvain_seeds=(0,),
+    )
+    with pytest.raises(ValueError, match="IMPOSED needs columns"):
+        U.t4_wiring_half(columns=None, **common)
+
+
 def test_random_seq_is_the_flat_sequential_sampler():
     xy = _flat_units(100, 13236)
     assert U.random_seq(100, 300, seed=13236) == U.sample_exact_m(
@@ -304,7 +320,7 @@ def test_t4_half_credits_a_planted_distance_rule_and_never_decides_on_imposed():
         pops=None,
         kernel=lambda d: np.exp(-d / 60.0),
         beta=0.0,
-        columns=None,
+        columns=[0] * 80,  # one declared column: no IMPOSED restriction intended here
         seeds=tuple(range(13250, 13258)),
         louvain_seeds=(0, 1),
     )
@@ -321,7 +337,7 @@ def test_t4_half_is_refused_whole_when_the_density_is_infeasible():
         pops=None,
         kernel=lambda d: 1.0,
         beta=0.0,
-        columns=None,
+        columns=[0] * 10,  # one declared column: no IMPOSED restriction intended here
         seeds=(13251, 13252),
         louvain_seeds=(0,),
     )
@@ -478,7 +494,7 @@ def test_ir2_refuses_unmatched_or_short_seed_lists():
 def test_t4_half_reads_its_seed_iterables_once_not_per_arm():
     # Codex D+E: seeds=iter(...) gave RULE eight scores, every later arm none, rule_credited False
     xy = _blobs(40, 13280)
-    kw = dict(pops=None, kernel=lambda d: np.exp(-d / 60.0), beta=0.0, columns=None)
+    kw = dict(pops=None, kernel=lambda d: np.exp(-d / 60.0), beta=0.0, columns=[0] * 40)
     tup = U.t4_wiring_half(40, 100, xy=xy, seeds=U.IR_SEEDS, louvain_seeds=(0,), **kw)
     gen = U.t4_wiring_half(40, 100, xy=xy, seeds=iter(U.IR_SEEDS), louvain_seeds=iter((0,)), **kw)
     assert tup["q"] == gen["q"] and tup["rule_credited"] == gen["rule_credited"]
@@ -489,7 +505,7 @@ def test_t4_half_refuses_an_empty_louvain_seed_list():
     with pytest.raises(ValueError):
         U.t4_wiring_half(
             10, 12, xy=_flat_units(10, 13281), pops=None, kernel=lambda d: 1.0, beta=0.0,
-            columns=None, seeds=U.IR_SEEDS, louvain_seeds=(),
+            columns=[0] * 10, seeds=U.IR_SEEDS, louvain_seeds=(),
         )  # fmt: skip
 
 
@@ -554,7 +570,7 @@ def test_zero_edge_graph_is_an_instrument_refusal_not_a_zero_division():
         pops=None,
         kernel=lambda d: 1.0,
         beta=0.0,
-        columns=None,
+        columns=[0] * 10,  # one declared column: no IMPOSED restriction intended here
         seeds=U.IR_SEEDS,
         louvain_seeds=(0,),
     )
@@ -675,7 +691,7 @@ def test_t4_half_draws_rule_and_no_layer_from_the_same_seed_and_keeps_the_max_q_
         pops=np.array([population("Layer 5", 1)] * n),
         kernel=lambda d: 1.0,
         beta=0.0,
-        columns=None,
+        columns=[0] * 60,  # one declared column: no IMPOSED restriction intended here
         seeds=seeds,
         louvain_seeds=lseeds,
     )
@@ -694,7 +710,7 @@ def test_t4_half_draws_rule_and_no_layer_from_the_same_seed_and_keeps_the_max_q_
         "DIST-ONLY": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0),
         "FLAT-KERNEL": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0),
         "NO-LAYER": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=None, beta=0.0),
-        "IMPOSED": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0, columns=None),
+        "IMPOSED": lambda s: U.sample_exact_m(n, m, xy=xy, seed=s, kernel=k1, pops=pops, beta=0.0, columns=[0] * n),
         "RANDOM": lambda s: U.random_graph(n, m, seed=s),
         "RANDOM-SEQ": lambda s: U.random_seq(n, m, seed=s),
     }
@@ -736,7 +752,7 @@ def test_t4_half_credits_the_layer_term_only_when_real_pops_reach_the_rule_arm()
         pops=pops,
         kernel=lambda d: 1.0,
         beta=0.0,
-        columns=None,
+        columns=[0] * 60,  # one declared column: no IMPOSED restriction intended here
         seeds=tuple(range(13260, 13268)),
         louvain_seeds=(0, 1),
     )

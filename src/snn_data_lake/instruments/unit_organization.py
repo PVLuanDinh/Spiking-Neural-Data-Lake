@@ -454,6 +454,11 @@ def t4_wiring_half(
     [Q per seed]}, "verdicts": {...}, "rule_credited": bool|None}. A refused RULE / RANDOM / RANDOM-SEQ arm refuses
     the half (rule_credited None); a refused attribution variant leaves its term NOT CLAIMED; IMPOSED is
     reported and decides nothing. The caller runs ir1/ir2 first (t4_instruments_refuse)."""
+    # IMPOSED is a restricted arm: the caller declares its column mapping, and an undeclared one is
+    # refused rather than degrading into a second copy of RULE (a G7 lens MINOR). `columns` is None
+    # elsewhere as "no restriction"; here it is a missing declaration.
+    if columns is None:
+        raise ValueError("IMPOSED needs columns")
     flat = lambda d: 1.0  # noqa: E731 -- a removed kernel term
     seeds, louvain_seeds = (
         tuple(seeds),
