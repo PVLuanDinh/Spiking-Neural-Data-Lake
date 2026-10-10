@@ -266,6 +266,15 @@ def sample_exact_m(n, m, *, xy, kernel, seed, beta=0.0, pops=None, columns=None,
                 raise ValueError(
                     f"arrival {t}: shared-partner weights must be finite and non-negative"
                 )
+            peak = float(np.max(w))
+            if peak > 0.0:  # Codex REQUEST 1 finding 3: a common positive scale on the weights
+                # must not overflow the cumulative mass. 3 x 1e308 -> inf without this, and
+                # searchsorted's last-index fallback then silently picks a different partner for
+                # the same probability. Dividing by the peak holds every cumulative entry at or
+                # below the arrival index, so the mass stays finite and the relative draw is
+                # unchanged (a peak of 1.0 divides out exactly). peak == 0 is the exhausted-mass
+                # case, which the remaining-mass check below refuses.
+                w = w / peak
             cum = np.cumsum(w)
             j = int(np.searchsorted(cum, rng.random() * cum[-1], side="right"))
             j = min(j, t - 1)

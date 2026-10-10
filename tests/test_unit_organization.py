@@ -493,6 +493,17 @@ def test_t4_half_refuses_an_empty_louvain_seed_list():
         )  # fmt: skip
 
 
+def test_sampler_rescales_finite_weights_so_a_common_scale_cannot_move_the_draw():
+    # Codex REQUEST 1 finding 3 (MINOR): finite per-edge weights can overflow the cumulative mass.
+    # Reproduced: a 1e308 kernel over the same distance draws DIFFERENT partners from a 1.0 kernel
+    # on the same seed, and NumPy warns -- the probabilities should be scale-invariant.
+    small = U.sample_exact_m(4, 3, xy=np.zeros((4, 2)), seed=13260, kernel=lambda d: 1.0)
+    with np.errstate(over="ignore"):
+        big = U.sample_exact_m(4, 3, xy=np.zeros((4, 2)), seed=13260, kernel=lambda d: 1.0e308)
+    assert small == [(0, 2), (1, 3), (2, 3)]  # the un-rescaled draw, pinned
+    assert big == small, (small, big)
+
+
 @pytest.mark.parametrize(
     "kw",
     [
