@@ -50,6 +50,27 @@ ContrastVerdict = namedtuple(
     "ContrastVerdict", "name kind diffs t met degenerate exact_flip_rate reference_fpr"
 )
 
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
+#:
+GRADIENT_CLAIM = {
+    "sample_exact_m": (
+        "NOT_A_RULE",
+        "the WIRING-PRIOR SAMPLER of the frozen 2.7 construction arms, not a learning rule. The "
+        "call returns exactly m sorted (i, j) edges, each partner drawn ONE AT A TIME without "
+        "replacement in a seeded arrival order, accepted with probability proportional to "
+        "c(pop_i, pop_j) x kernel(distance) x (1 + beta x shared_partners). It writes no weight "
+        "and iterates no gradient. The census enumerates the symbol from the AugAssign at the "
+        "layer-term line, `w0 *= np.array([layer_term_sym(...)])`, because `w0` is a weight-"
+        "shaped NAME; that multiply is on a PER-ARRIVAL local candidate-probability vector, "
+        "rebuilt from kernel(d) at the top of each arrival and discarded with it, never a "
+        "population parameter that persists past the return. `Infeasible` when m exceeds the "
+        "pair count and `ValueError` on a non-finite beta are REFUSALS OF THE ARM'S "
+        "CONSTRUCTION, not an error signal propagated anywhere; what this returns is an "
+        "independent variable the arms then MEASURE (triangles, modularity, planted-block "
+        "recovery), never one they train on",
+    ),
+}
+
 
 class Infeasible(ValueError):
     """An arm whose generator cannot place exactly M edges: REFUSED, never repaired (2.7)."""
