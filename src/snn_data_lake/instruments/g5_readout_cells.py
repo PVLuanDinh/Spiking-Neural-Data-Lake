@@ -577,6 +577,166 @@ def pa10():
 
 
 # --------------------------------------------------------------------------------------------------
+# Part D D1: the brain producer of the tuning signal and its brain-free positive control PD-P1
+# (record: Amendment 2026-10-08 D.3 and the dated note)
+# --------------------------------------------------------------------------------------------------
+PD_P1_SEEDS = range(
+    11500, 11508
+)  # note (d): the fresh block proposed for a clean PD-P1; UNRUN, lead go only
+PD_OUTCOME = (
+    1.0,
+    -1.0,
+)  # (right, wrong): the teacher's d as +-1, the incumbent's own sign convention
+#: PD-P1's planted stream goes THROUGH the pool feature path (lead ruling 2026-10-08, note (g)): three class
+#: texts, each presented with one filler word, so the 256-unit T_in = 1 fired mask is the label neurons' input.
+PD_CLASS_TEXTS = (
+    "greet the user warmly please",
+    "what is the capital of france",
+    "set a timer for ten minutes",
+)
+PD_FILLERS = ("now", "today", "quickly", "kindly", "again", "soon", "right", "maybe")
+PD_PER_CLASS, PD_HELD = 4, 20
+
+
+class BrainProducer:
+    """The item-9 producer: the harness's own DopamineNuclei behind competence_executive.DopamineModulator
+    (the ONE RPE -> modulation step, P2). Input: the one-bit outcome r (+1 right, -1 wrong) and the stimulus key, never a label.
+    The modulator computes rpe = r - V(stim_key) and the nucleus's da_level; `to_signed` is the single
+    unit conversion (the modulator's output is an unsigned learning-rate multiplier; interact's scalar
+    branch needs a signed reward): the deviation from tonic_lr scaled by the modulator's OWN bound on
+    that side, so m is in [-1, +1], zero at zero RPE, and symmetric (note (g)). `neutered` delivers r to the nucleus and modulator but pins the
+    output to the tonic and never updates V (the path-breaking ablation, D.3(d))."""
+
+    def __init__(self, seed, neutered=False):
+        from snn_data_lake.faculties.competence_executive import DopamineModulator
+        from snn_data_lake.faculties.dopamine_nuclei import DopamineNuclei
+
+        self.nucleus = DopamineNuclei(seed=seed)
+        self.modulator = DopamineModulator(seed=seed, nucleus=self.nucleus)
+        self.neutered = bool(neutered)
+
+    @staticmethod
+    def to_signed(modulator, lr_gain):
+        t = modulator.tonic_lr
+        if lr_gain >= t:
+            return (lr_gain - t) / (modulator.LR_MAX - t)
+        return (lr_gain - t) / (t - modulator.LR_MIN)
+
+    @staticmethod
+    def agree(expected, r, rpe_n):
+        """The modulator's rpe (r - expected) and the nucleus's TD rpe are one number by construction."""
+        assert abs((r - expected) - rpe_n) < 1e-9, f"two RPEs: {r - expected} vs {rpe_n}"
+
+    def factor(self, stim_key, r):
+        expected = self.nucleus.v.get(stim_key, 0.0)
+        lr = self.modulator.modulate(float(r), expected_gain=expected)
+        if self.neutered:
+            return self.to_signed(self.modulator, self.modulator.tonic_lr)
+        trial = [("ITI", 0.0), (stim_key, 0.0), ("OUT", float(r))]
+        self.agree(expected, float(r), self.nucleus.present(trial, learn=True)["OUT"])
+        return self.to_signed(self.modulator, lr)
+
+
+def pd_p1_arm(seed, neutered, epochs=30):
+    """Held-out accuracy of the label neurons tuned ONLY by the producer's scalar, on a planted separable text
+    stream read through the Part D pool feature path (pd_pool "reset" -> pool_features, T_in = 1 binary mask).
+    Brain-free: a pool, no Brain, no lake. Same seed -> same stream for both arms."""
+    import random
+
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
+
+    rng = random.Random(seed)
+    pool = pd_pool(seed, "reset")
+    n = len(PD_CLASS_TEXTS)
+
+    def draw(c):
+        return f"{PD_CLASS_TEXTS[c]} {rng.choice(PD_FILLERS)}"
+
+    labels = [f"c{i}" for i in range(n)]
+    train = [(draw(c), c) for c in range(n) for _ in range(PD_PER_CLASS)]
+    train = [
+        (i, t, c) for i, (t, c) in enumerate(train)
+    ]  # i = the stimulus key, stable across epochs
+    held = [(draw(c), c) for c in range(n) for _ in range(PD_HELD)]
+    feats = {t: pool_features(pool, t).tolist() for _, t, _ in train}
+    feats.update({t: pool_features(pool, t).tolist() for t, _ in held})
+    learner = SpikingInteractionLearner(labels, len(next(iter(feats.values()))), seed=seed)
+    prod = BrainProducer(seed, neutered=neutered)
+    for _ in range(epochs):
+        rng.shuffle(train)
+        for i, t, c in train:
+            r = PD_OUTCOME[0] if learner.respond(feats[t]) == labels[c] else PD_OUTCOME[1]
+            learner.interact(feats[t], float(prod.factor(f"s{i}", r)))
+    return sum(learner.respond(feats[t]) == labels[c] for t, c in held) / len(held)
+
+
+def pd_p1(seeds=None):
+    """PD-P1: contrast(BRAIN - PRODNEUTER) over the registered planted seeds; MET means the ablation can fire."""
+    diffs = [
+        pd_p1_arm(s, False) - pd_p1_arm(s, True) for s in (PD_P1_SEEDS if seeds is None else seeds)
+    ]
+    return reading("PD-P1 BRAIN - PRODNEUTER", diffs)
+
+
+#: Part D's pool: G1(b)'s tuned g1 LSM (carried_state_campaign.TUNED), one source; window 0 so the form
+#: applies from percept 1 (G1(c) 2.6). Modes: carry / reset are the pool; neuter_* zero the recurrent
+#: weights (a stateless LIF expansion under neuter_reset; under neuter_carry the membrane still carries
+#: v = v*lam + injected, so it is NOT stateless -- G2 #162, the S1 bound clause applies to neuter_reset only).
+PD_POOL_MODES = {
+    "carry": ("carried", False),
+    "reset": ("reset", False),
+    "neuter_carry": ("carried", True),
+    "neuter_reset": ("reset", True),
+}
+
+
+def _pd_pool_config():
+    from snn_data_lake.instruments.carried_state_campaign import TUNED
+
+    return dict(TUNED)
+
+
+PD_POOL_CONFIG = _pd_pool_config()
+
+
+def pd_pool(recording_seed, mode):
+    """A KernelLsmPool for a Part D arm. Fixtures and registered reads alike go through here (one path)."""
+    if mode not in PD_POOL_MODES:
+        raise ValueError(f"mode must be one of {tuple(PD_POOL_MODES)}, got {mode!r}")
+    import numpy as np
+
+    from snn_data_lake.reservoir import recurrent_pool as rp
+
+    form, neuter = PD_POOL_MODES[mode]
+    pool = rp.make_pool("lsm", PD_POOL_CONFIG, recording_seed, form, window=0)
+    if not neuter:
+        return pool
+    return rp.KernelLsmPool(
+        pool.pre,
+        np.zeros_like(pool.w),
+        pool.config,
+        form,
+        pool.w_in,
+        window=0,
+        s_settle=pool.s_settle,
+    )
+
+
+def pool_features(pool, text):
+    """One turn's 256-vector: the pool's mean activity over T_in ticks for the text's 52-code zero-padded
+    to the encoder's 64 inputs (the padding is fixed, not tuned). The caller owns episode-boundary resets."""
+    import numpy as np
+
+    from snn_data_lake.instruments import inseparable_mapping as im
+    from snn_data_lake.reservoir.recurrent_pool import N_IN
+
+    x = np.zeros(N_IN)
+    code = im.code(text)
+    x[: len(code)] = code
+    return pool.percept(x)
+
+
+# --------------------------------------------------------------------------------------------------
 # SELF-CHECK: the cheap reds (never builds a Brain, never opens a lake)
 # --------------------------------------------------------------------------------------------------
 def main(argv=None):
@@ -584,6 +744,13 @@ def main(argv=None):
     torch.set_num_threads(1)
     if "--pa3" in argv:
         return 0 if pa3() else 1  # a failed positive control must not exit 0 (Codex g5_b lens-1 m2)
+    if "--pd-p1" in argv:  # Part D's producer-ablation positive control; a NOT MET must not exit 0
+        if "--lead-go" not in argv:  # the registered block is read once, on the lead's explicit go
+            print("REFUSED: --pd-p1 reads the registered PD_P1_SEEDS; it needs --lead-go")
+            return 2
+        met, c, x = pd_p1()
+        print(_line("PD-P1 BRAIN - PRODNEUTER", met, c, x))
+        return 0 if met else 1
     # PA4: the vacuity detector fires on a known positive (a one-category sequence reads f = 0)
     assert shift_fraction([2] * 40, circular_shift([2] * 40)) == 0.0 < VACUITY_FLOOR
     assert shift_fraction([0] * 20 + [1] * 20, circular_shift([0] * 20 + [1] * 20)) == 1.0

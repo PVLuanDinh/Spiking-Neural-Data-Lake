@@ -173,7 +173,10 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # over REGIONS taking every module whose name differs from its region, so sleep_mask_apply
     # under 'instruments' enters it. No row bumps this pin. G5-3's three Part D registrations
     # will require a further re-pin at their landing.
-    assert len(S._MOVED) == 311 and "claustrum" not in S._MOVED
+    # 311 -> 314 on 2026-10-11: G5 Part D adds exactly g5_part_d_adaptors,
+    # g5_part_d_cells and g5_part_d_reading under instruments; no existing alias
+    # is removed. This is the integrator's separately reviewed exact count pin.
+    assert len(S._MOVED) == 314 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture

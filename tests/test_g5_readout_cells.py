@@ -473,3 +473,171 @@ def test_tensor_digest_sees_a_change_at_any_position():
         nudged = beta.clone()
         nudged[idx] = torch.nextafter(nudged[idx], torch.tensor(float("inf")))
         assert g.tensor_digest(nudged) != g.tensor_digest(beta), idx
+
+
+# ---- Part D D1: the brain producer and PD-P1 (see the 2026-10-08 notes) ----
+# pytest reads fixture seeds only, never a registered or exposed block (lead ruling 2026-10-08).
+FIXTURE_SEEDS = tuple(range(20261003, 20261011))
+
+
+def test_producer_factor_is_signed_zero_at_zero_rpe_and_uses_the_one_modulator():
+    from snn_data_lake.faculties.competence_executive import DopamineModulator
+
+    p = g.BrainProducer(seed=3)
+    assert isinstance(p.modulator, DopamineModulator) and p.modulator._nuc is p.nucleus
+    assert p.factor("s0", 0.0) == 0.0  # r == expected (V = 0): zero RPE rests on the tonic
+    assert p.factor("s0", 1.0) > 0.0  # a burst: reinforce
+    assert (
+        g.BrainProducer(seed=3).factor("s0", -1.0) < 0.0
+    )  # a wrong answer dips even at V = 0 (+-1 coding)
+    p2 = g.BrainProducer(seed=3)
+    for _ in range(20):
+        p2.factor("s0", 1.0)  # V("s0") learns to expect the outcome
+    assert p2.factor("s0", 0.0) < 0.0  # an omitted expected reward: a dip, the sign interact needs
+    m, tl = p.modulator, p.modulator.tonic_lr
+    assert (
+        g.BrainProducer.to_signed(m, m.LR_MAX) == 1.0
+        and g.BrainProducer.to_signed(m, m.LR_MIN) == -1.0
+    )
+    assert (
+        g.BrainProducer.to_signed(m, tl) == 0.0
+    )  # symmetric in [-1, +1], zero at the tonic (note (g))
+
+
+def test_producer_rpe_and_the_modulators_agree_and_a_perturbed_expectation_is_refused():
+    p = g.BrainProducer(seed=1)
+    p.factor(
+        "s0", 1.0
+    )  # the build asserts the nucleus's TD rpe equals the modulator's rpe, every call
+    g.BrainProducer.agree(0.25, 1.0, 0.75)
+    with pytest.raises(AssertionError):
+        g.BrainProducer.agree(
+            0.25, 1.0, 0.75 + 1e-3
+        )  # a perturbed expectation must fail the equality
+
+
+def test_neutered_producer_gets_the_outcome_but_emits_zero_and_learns_nothing():
+    p = g.BrainProducer(seed=2, neutered=True)
+    assert [p.factor("s0", 1.0) for _ in range(5)] == [0.0] * 5
+    assert p.nucleus.v == {}  # V frozen at 0
+    assert p.modulator._gain_n == 5  # the outcome WAS delivered to the modulator
+
+
+def test_producer_never_sees_the_label_and_the_learner_only_gets_scalars(monkeypatch):
+    import inspect
+
+    assert list(inspect.signature(g.BrainProducer.factor).parameters) == ["self", "stim_key", "r"]
+    seen = []
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner as L
+
+    real = L.interact
+    monkeypatch.setattr(
+        L, "interact", lambda s, x, fb, **k: (seen.append(fb), real(s, x, fb, **k))[1]
+    )
+    g.pd_p1_arm(FIXTURE_SEEDS[0], neutered=False, epochs=2)
+    assert seen and all(isinstance(fb, float) for fb in seen)  # never the str label
+
+
+def test_pd_p1_brain_beats_the_neutered_producer_and_the_contrast_can_say_not_met():
+    met, c, x = g.pd_p1(FIXTURE_SEEDS)
+    assert met, (c.t, x)  # the producer ablation can fire: PD-P1 MET
+    same = g.reading(
+        "self",
+        [g.pd_p1_arm(s, neutered=True) - g.pd_p1_arm(s, neutered=True) for s in FIXTURE_SEEDS],
+    )
+    assert not same[0], (
+        "BRAIN-free control: an arm minus itself is degenerate and must read NOT MET"
+    )
+
+
+def test_pd_p1_seeds_are_the_registered_block_and_cli_exits_nonzero_when_not_met(monkeypatch):
+    assert list(g.PD_P1_SEEDS) == list(range(11500, 11508))  # proposed in note (d), unrun
+    monkeypatch.setattr(
+        g,
+        "pd_p1",
+        lambda: (
+            False,
+            g.contrast("x", [0.0] * 8, g.T_BAR),
+            {"pattern": "0" * 8, "mean": 0.0, "skew": 0.0, "nontied": 0},
+        ),
+    )
+    assert g.main(["--pd-p1"]) == 2  # no registered-block read without the lead go
+    assert g.main(["--pd-p1", "--lead-go"]) == 1
+
+
+# ---- Part D D1: the pool feature path and RES_NEUTER (fixtures only) -------------------
+POOL_SEED = (
+    100  # G1's exposed development seed (recurrent_pool.DEV_SEED): fixtures, not a registered block
+)
+CUE, PROBE = "greet the user warmly", "what is the capital"
+
+
+def _feat(pool, text):
+    return g.pool_features(pool, text)
+
+
+def test_pool_features_are_256_finite_deterministic_and_padded_from_the_52_code():
+    a, b = g.pd_pool(POOL_SEED, "carry"), g.pd_pool(POOL_SEED, "carry")
+    fa = _feat(a, CUE)
+    assert fa.shape == (256,) and bool((fa >= 0).all()) and fa.any()
+    assert (fa == _feat(b, CUE)).all()
+    assert g.PD_POOL_CONFIG == {
+        "k": 8,
+        "w": 0.25,
+        "lambda": 0.9,
+        "g": 4,
+        "T_in": 1,
+    }  # TUNED, one source
+
+
+def test_reset_pool_is_a_pure_function_of_the_current_text_and_carry_is_not():
+    reset, carry = g.pd_pool(POOL_SEED, "reset"), g.pd_pool(POOL_SEED, "carry")
+    fresh = _feat(g.pd_pool(POOL_SEED, "reset"), PROBE)
+    _feat(reset, CUE)
+    assert (
+        _feat(reset, PROBE) == fresh
+    ).all()  # stateless by construction (carriers reset every turn)
+    _feat(carry, CUE)
+    assert not (
+        _feat(carry, PROBE) == _feat(g.pd_pool(POOL_SEED, "carry"), PROBE)
+    ).all()  # state carries
+    carry.reset_carriers()  # the episode boundary reset is the harness's public call
+    assert (_feat(carry, PROBE) == _feat(g.pd_pool(POOL_SEED, "carry"), PROBE)).all()
+
+
+def test_res_neuter_zeroes_the_recurrent_weights_and_only_the_reset_form_is_stateless():
+    nr, nc = g.pd_pool(POOL_SEED, "neuter_reset"), g.pd_pool(POOL_SEED, "neuter_carry")
+    assert not nr.w.any() and not nc.w.any()  # recurrent weights are zero
+    assert g.pd_pool(POOL_SEED, "carry").w.any()
+    fresh = _feat(g.pd_pool(POOL_SEED, "neuter_reset"), PROBE)
+    _feat(nr, CUE)
+    assert (_feat(nr, PROBE) == fresh).all()  # the S1 bound clause applies to this one
+    _feat(nc, CUE)  # G2 #162: zero weights still carry v = v*lam + injected under CARRY
+    assert not (_feat(nc, PROBE) == _feat(g.pd_pool(POOL_SEED, "neuter_carry"), PROBE)).all()
+    # T_in = 1: one tick per percept, no recurrent current has arrived, so zeroed weights change
+    # nothing under the reset form: RES_NEUTER_RESET == RESET exactly (note (e), not distinct)
+    assert (fresh == _feat(g.pd_pool(POOL_SEED, "reset"), PROBE)).all()
+    carry, nc2 = g.pd_pool(POOL_SEED, "carry"), g.pd_pool(POOL_SEED, "neuter_carry")
+    _feat(carry, CUE)
+    _feat(nc2, CUE)
+    # the recurrent term does change carried features
+    assert not (_feat(nc2, PROBE) == _feat(carry, PROBE)).all()
+
+
+def test_pd_pool_refuses_an_unknown_mode():
+    with pytest.raises(ValueError):
+        g.pd_pool(POOL_SEED, "stateful")
+
+
+def test_a_deposit_with_d_zero_moves_no_weight_so_prodneuter_is_notune():
+    import random
+
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner as L
+
+    touched, fresh = L(["a", "b", "c"], 16, seed=5), L(["a", "b", "c"], 16, seed=5)
+    rng = random.Random(1)
+    for _ in range(50):
+        touched.interact([rng.gauss(0.0, 1.0) for _ in range(16)], 0.0)
+    assert touched.weights() == fresh.weights()  # note (f): one learner, so one read
+    touched.interact([rng.gauss(0.0, 1.0) for _ in range(16)], 1.0)
+    assert touched.weights() != fresh.weights()  # the check can go red when a deposit does land
