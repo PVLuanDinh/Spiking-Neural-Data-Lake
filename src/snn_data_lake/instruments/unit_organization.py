@@ -25,7 +25,10 @@ unit has no neighbours yet -- so beta would be inert and its attribution contras
 With fixed weights the sequential draw has the same distribution as the keyed one. The arrival process
 alone is not uniform (older units collect edges), so RULE is credited only if it beats BOTH gnm and
 RANDOM-SEQ, the same sampler with every term flat (ruling 23).
-networkx is imported lazily (modularity, random_graph only): it is not yet a declared dependency.
+networkx is imported lazily (modularity, random_graph only) and is declared in pyproject.toml (P7,
+2026-10-10): the RANDOM arm is the reference RULE is credited only by beating, and Louvain is the
+partition the frozen NMI bar is measured against, so both are reference implementations rather than
+conveniences.
 """
 
 from __future__ import annotations
