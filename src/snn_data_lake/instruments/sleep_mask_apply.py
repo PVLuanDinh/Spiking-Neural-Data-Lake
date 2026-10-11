@@ -41,12 +41,20 @@ APPLIED_NOT_PREPARED = (
 APPLIED_MISSING = (
     "applied_mask_missing"  # a committed mask was prepared for this tick; the slot still says none
 )
+APPLIED_EMPTY_MASK = (
+    "applied_mask_empty"  # a claimed, committed mask with kept, pruned AND synapses all empty
+)
 
 
 def prepare(sleep_id, tick, *, kept=(), pruned=(), synapses=()):
     """A12 step 1's row: {kind, sleep_id, tick, kept, pruned, synapses, mask_digest}. The digest is
     `joint_mask_search.mask_digest` over THIS row (ruling 17a: one function, imported, never rewritten),
     so the row is self-identifying and the digest is order-invariant by construction."""
+    if not kept and not pruned and not synapses:
+        # EXACTLY the fully-empty shape (P2); a kept-only mask is NOT refused here
+        raise ValueError(
+            "prepare refuses the fully-empty mask: kept, pruned and synapses all empty"
+        )
     row = {
         "kind": "sleep_mask_prepared",
         "sleep_id": sleep_id,
@@ -107,13 +115,23 @@ def expected_mask(rows, sleep_id, tick):
     return found
 
 
+def _is_empty_mask_row(row):
+    """A fully-empty mask: nothing kept, nothing pruned, no synapse ref. The digest covers all three
+    fields, so every prepared row carrying one digest agrees on whether it is empty."""
+    return not row.get("kept") and not row.get("pruned") and not row.get("synapses")
+
+
 def check_applied_mask(event, rows):
     """Ruling 33's check (`learner_events.check_applied_mask` at integration): the applied-mask claim on
     one sleep progress event against the lake's mask rows. Returns the refusal reason, or None.
 
     `event` is any mapping carrying `applied_mask_digest`, `sleep_id` and `tick`; `rows` are the
     `sleep_mask_prepared` / `sleep_mask_commit` rows of the same lake. A planted inconsistency in any of
-    the three ways below is the O_mask red -- a check that cannot fire is deleted, not kept (P8)."""
+    the four ways below is the O_mask red -- a check that cannot fire is deleted, not kept (P8).
+
+    ORDER IS LOAD-BEARING: the sentinel branch returns before any digest check, so the empty-mask refusal
+    below sits only in the path where a digest is actually claimed. Run first, it would override the
+    pinned APPLIED_MISSING outcome for a "none"/absent-key event on the very row it refuses."""
     applied = str(event.get("applied_mask_digest", SENTINEL))
     sleep_id, tick = event.get("sleep_id"), event.get("tick")
     if applied == SENTINEL:
@@ -124,12 +142,22 @@ def check_applied_mask(event, rows):
         return APPLIED_UNCOMMITTED
     if expected_mask(rows, sleep_id, tick) != applied:
         return APPLIED_NOT_PREPARED
+    if any(
+        r.get("kind") == "sleep_mask_prepared"
+        and str(r.get("mask_digest")) == applied
+        and _is_empty_mask_row(r)
+        for r in rows
+    ):
+        # a forged fully-empty row (prepare() refuses it, so it can only be built by hand) with a valid
+        # digest, committed and claimed: proof of an applied mask that would apply nothing
+        return APPLIED_EMPTY_MASK
     return None
 
 
 def main():
-    """Self-check (lake-free): the three O_mask reds each fire on a planted row set, the honest case
-    reads None, and the prepared row's digest is the one the check matches on."""
+    """Self-check (lake-free): the four O_mask reds each fire on a planted row set, the honest cases
+    read None, the sentinel branch stays ahead of the empty-mask refusal, and the prepared row's digest
+    is the one the check matches on."""
     good = prepare("s1-n3", 41, kept=["u1", "u3"], pruned=["u2"], synapses=[("feed", 0, 1, True)])
     commit_good = {
         "kind": "sleep_mask_commit",
@@ -155,6 +183,52 @@ def main():
     )
     assert check_applied_mask(event, both) is None, (
         "the other tick's commit does not disturb this one"
+    )
+    # P2: prepare() refuses EXACTLY the fully-empty shape; a kept-only row still prepares
+    try:
+        prepare("s1-n3", 41)
+        raise AssertionError("prepare must refuse the fully-empty mask")
+    except ValueError:
+        pass
+    # P7 (corrected #662): the kept-only mask committed at ITS OWN tick stays accepted -- the new guard
+    # is keyed on kept AND pruned AND synapses all empty, so it must not broaden to non-pruning masks
+    claim_kept_only = {"applied_mask_digest": other["mask_digest"], "sleep_id": "s1-n3", "tick": 44}
+    assert check_applied_mask(claim_kept_only, both) is None, (
+        "a kept-only mask is not an empty mask"
+    )
+    # P3/P4: the forged bypass -- a fully-empty prepared row built BY HAND (prepare refuses it, so it
+    # can only be forged), digested by the one imported function, committed and claimed at its own tick
+    forged = {
+        "kind": "sleep_mask_prepared",
+        "sleep_id": "s1-n3",
+        "tick": 41,
+        "kept": [],
+        "pruned": [],
+        "synapses": [],
+    }
+    forged["mask_digest"] = mask_digest(forged)
+    commit_forged = {
+        "kind": "sleep_mask_commit",
+        "sleep_id": "s1-n3",
+        "mask_digest": forged["mask_digest"],
+        "state_digest": "ab" * 32,
+    }
+    forged_rows = [forged, commit_forged]
+    claim_forged = {"applied_mask_digest": forged["mask_digest"], "sleep_id": "s1-n3", "tick": 41}
+    assert check_applied_mask(claim_forged, forged_rows) == APPLIED_EMPTY_MASK, (
+        "a forged fully-empty committed mask is refused at its own tick"
+    )
+    # P5: the SAME forged committed row with the string sentinel -- and with the key absent -- stays
+    # APPLIED_MISSING: the sentinel branch returns before the empty-mask guard can fire
+    assert (
+        check_applied_mask({**claim_forged, "applied_mask_digest": SENTINEL}, forged_rows)
+        == APPLIED_MISSING
+    )
+    assert check_applied_mask({"sleep_id": "s1-n3", "tick": 41}, forged_rows) == APPLIED_MISSING
+    # P6: Python None is a separate claimed value (str(None) == "None"), not the string sentinel
+    assert (
+        check_applied_mask({**claim_forged, "applied_mask_digest": None}, forged_rows)
+        == APPLIED_UNCOMMITTED
     )
     assert len(good["mask_digest"]) == 64
     print(

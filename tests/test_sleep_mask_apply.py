@@ -66,7 +66,7 @@ def test_the_sentinel_slot_gains_its_live_input_from_the_producer():
     assert sma.expected_mask([ROW, COMMIT], "s1-n3", 44) == sma.SENTINEL  # another tick
 
 
-# ---- the O_mask red: three reachable refusals ------------------------------------------------
+# ---- the O_mask red: four reachable refusals ----------------------------------------------------
 def test_o_mask_red_an_applied_digest_no_committed_mask_carries_is_refused():
     assert sma.check_applied_mask({**EVENT, "applied_mask_digest": "0" * 64}, [ROW, COMMIT]) == (
         sma.APPLIED_UNCOMMITTED
@@ -92,3 +92,62 @@ def test_o_mask_red_the_sentinel_while_a_committed_mask_was_prepared_is_refused(
 def test_the_committed_case_is_honest_and_an_uncommitted_prepare_claims_nothing():
     assert sma.check_applied_mask(EVENT, [ROW, COMMIT]) is None
     assert sma.check_applied_mask({**EVENT, "applied_mask_digest": sma.SENTINEL}, [ROW]) is None
+
+
+# ---- the fourth O_mask red: the forged fully-empty committed mask (P2/P3) ------------------------
+def test_prepare_refuses_exactly_the_fully_empty_mask():
+    with pytest.raises(ValueError):
+        sma.prepare("s1-n3", 41)  # kept, pruned and synapses all empty (P2)
+    assert sma.prepare("s1-n3", 44, kept=["u1"])["mask_digest"]  # a kept-only row still prepares
+
+
+def _forged_empty_rows():
+    """The forged bypass (P3): a fully-empty prepared row built BY HAND -- prepare() refuses it,
+    so the attacker can only forge it -- carrying a VALID digest from the one imported
+    `mask_digest`, committed at its own tick. Plain dicts; nothing is written through the writer."""
+    forged = {
+        "kind": "sleep_mask_prepared",
+        "sleep_id": "s1-n3",
+        "tick": 41,
+        "kept": [],
+        "pruned": [],
+        "synapses": [],
+    }
+    forged["mask_digest"] = jms.mask_digest(forged)
+    commit = {
+        "kind": "sleep_mask_commit",
+        "sleep_id": "s1-n3",
+        "mask_digest": forged["mask_digest"],
+        "state_digest": "ab" * 32,
+    }
+    return forged, commit
+
+
+def test_o_mask_red_a_forged_fully_empty_committed_mask_is_refused():
+    forged, commit = _forged_empty_rows()
+    rows = [forged, commit]
+    claim = {"applied_mask_digest": forged["mask_digest"], "sleep_id": "s1-n3", "tick": 41}
+    assert sma.check_applied_mask(claim, rows) == (sma.APPLIED_EMPTY_MASK)
+
+
+def test_the_forged_committed_row_keeps_the_pinned_sentinel_and_none_outcomes():
+    # P5/P6, the ORDERING: the sentinel branch returns before the empty-mask guard can fire, so
+    # "none" and an absent key read APPLIED_MISSING while Python None reads APPLIED_UNCOMMITTED
+    forged, commit = _forged_empty_rows()
+    rows = [forged, commit]
+    claim = {"applied_mask_digest": forged["mask_digest"], "sleep_id": "s1-n3", "tick": 41}
+    assert sma.check_applied_mask({**claim, "applied_mask_digest": sma.SENTINEL}, rows) == (
+        sma.APPLIED_MISSING
+    )
+    assert sma.check_applied_mask({"sleep_id": "s1-n3", "tick": 41}, rows) == (sma.APPLIED_MISSING)
+    assert sma.check_applied_mask({**claim, "applied_mask_digest": None}, rows) == (
+        sma.APPLIED_UNCOMMITTED
+    )
+
+
+def test_the_empty_guard_does_not_broaden_to_a_kept_only_mask():
+    # P7 (corrected #662): kept nonempty, pruned=[], synapses=[], committed at ITS OWN tick
+    kept_only = sma.prepare("s1-n3", 44, kept=["u1"], pruned=[], synapses=[])
+    rows = [ROW, kept_only, COMMIT, {**COMMIT, "mask_digest": kept_only["mask_digest"]}]
+    own_tick = {"applied_mask_digest": kept_only["mask_digest"], "sleep_id": "s1-n3", "tick": 44}
+    assert sma.check_applied_mask(own_tick, rows) is None
