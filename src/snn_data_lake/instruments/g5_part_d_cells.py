@@ -4,8 +4,9 @@ Fills the record shape the committed reader `g5_part_d_reading` consumes:
 
     records[seed][cell][arm] -> held-out accuracy on the FUTURE split
 
-for every arm of D.2, on the cells of D.4 (G2's (i) 2x2 plus (ii)/A_ii), plus `cert`, the two facts that
-decide whether PD-R2 reads at all. Everything goes through the public surfaces of D.6's port-free split, so
+for every arm of D.2, on the cells of D.4 (G2's (i) 2x2 plus (ii)/A_ii). The separate `cert_for` function
+supplies the two facts that decide whether PD-R2 reads. An available fixture CLI entry is not evidence
+that a fixture smoke ran. Everything goes through the public surfaces of D.6's port-free split, so
 NOTHING here needs G3's port (asks 1, 2, 4, 5), a labeled grown population, or the return path (PD-R4 and
 the feed neuter are D2's).
 
@@ -365,7 +366,7 @@ def pd_cell(seed, cell, epochs=PD_EPOCHS, log=print):
 
 def pd_records(seeds, cells=None, epochs=PD_EPOCHS, log=print, stamp=False):
     """records[seed][cell][arm]. One arm per subprocess is the caller's split; this is the serial
-    reference the fixture smoke uses.
+    reference available to the explicit fixture entry; defining the entry does not record a run.
 
     D.1: `home.require_isolated_home()` runs before any lake-binding import (record 2.6 PA9, the shared
     guard R1 built -- one mechanism, P2, never a second one here). `stamp=True` adds the live-lake

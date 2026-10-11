@@ -100,8 +100,6 @@ def read_d1(records, cert, log=print):
     v["PD-R2"] = r2
     v["PD-R3"] = {}
     for rule in RULES:
-        if not any(rule in records[s]["S0C1"] for s in records):
-            continue
         beats = _met(records, "S0C1", rule, "RSTDP_D", log)
         ctrl = _met(records, "S0C1", f"{rule}_CTRL", "RSTDP_D", log)
         v["PD-R3"][rule] = "REPLACES" if beats and not ctrl else "REVERT"
@@ -165,6 +163,10 @@ def self_check():
     no_arm = _records(_clean_gaps())
     del no_arm[_FIXTURE_SEEDS[3]]["S0C1"]["RSTDP_BRAIN"]
     _halt(no_arm, "a missing S0C1 arm")
+    no_rule = _records(_clean_gaps())
+    for seed in no_rule:
+        del no_rule[seed]["S0C1"][RULES[0]]
+    _halt(no_rule, "a missing entire PD-R3 rule")
     prod = _records(_clean_gaps())
     for seed in prod:
         prod[seed]["S0C1"]["RSTDP_BRAIN_PRODNEUTER"] = prod[seed]["S0C1"]["RSTDP_NOTUNE"]

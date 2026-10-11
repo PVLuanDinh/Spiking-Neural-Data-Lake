@@ -149,7 +149,8 @@ EXEMPT = {
         "permanent",
         "G5 / T113 Part D D1's cell runner (a governed benchmark instrument; record evidence/g5-readout-variants.md D.1, D.2, D.5): the "
         "deterministic feature path over the one pool, the D.2 arms and the cert facts the reader needs; consumers: its own CLI (bare "
-        "self-check or fixture smoke), run_selfchecks (bare) and tests/test_g5_part_d_cells.py; never on a tick",
+        "self-check or opt-in fixture entry; entry existence is not execution evidence), run_selfchecks (bare) "
+        "and tests/test_g5_part_d_cells.py; never on a tick",
     ),
     "pool_selection": (
         "permanent",
