@@ -151,3 +151,22 @@ def test_the_empty_guard_does_not_broaden_to_a_kept_only_mask():
     rows = [ROW, kept_only, COMMIT, {**COMMIT, "mask_digest": kept_only["mask_digest"]}]
     own_tick = {"applied_mask_digest": kept_only["mask_digest"], "sleep_id": "s1-n3", "tick": 44}
     assert sma.check_applied_mask(own_tick, rows) is None
+
+
+def test_a_forged_empty_row_at_another_tick_cannot_refuse_the_honest_claim():
+    # lens #716 Finding 1 (upheld #717): the guard matches the (sleep_id, tick) the event names,
+    # like expected_mask, so a forged all-empty row at ANOTHER tick carrying a COPIED digest reads
+    # None -- and the own-tick forged red is unchanged, so the two cases cannot quietly invert
+    stolen = {
+        "kind": "sleep_mask_prepared",
+        "sleep_id": "s1-n3",
+        "tick": 44,
+        "kept": [],
+        "pruned": [],
+        "synapses": [],
+        "mask_digest": ROW["mask_digest"],
+    }
+    assert sma.check_applied_mask(EVENT, [ROW, COMMIT, stolen]) is None
+    forged, commit = _forged_empty_rows()
+    claim = {"applied_mask_digest": forged["mask_digest"], "sleep_id": "s1-n3", "tick": 41}
+    assert sma.check_applied_mask(claim, [forged, commit]) == (sma.APPLIED_EMPTY_MASK)

@@ -144,12 +144,17 @@ def check_applied_mask(event, rows):
         return APPLIED_NOT_PREPARED
     if any(
         r.get("kind") == "sleep_mask_prepared"
+        and str(r.get("sleep_id")) == str(sleep_id)
+        and int(r.get("tick")) == int(tick)
         and str(r.get("mask_digest")) == applied
         and _is_empty_mask_row(r)
         for r in rows
     ):
         # a forged fully-empty row (prepare() refuses it, so it can only be built by hand) with a valid
-        # digest, committed and claimed: proof of an applied mask that would apply nothing
+        # digest, committed and claimed at THIS (sleep_id, tick): proof of an applied mask that would
+        # apply nothing. The (sleep_id, tick) match mirrors expected_mask above with the same coercion,
+        # so a forged all-empty row at ANOTHER tick carrying a copied digest cannot refuse the honest
+        # claim it would otherwise shadow (lens #716 Finding 1, upheld at #717).
         return APPLIED_EMPTY_MASK
     return None
 
@@ -217,6 +222,21 @@ def main():
     claim_forged = {"applied_mask_digest": forged["mask_digest"], "sleep_id": "s1-n3", "tick": 41}
     assert check_applied_mask(claim_forged, forged_rows) == APPLIED_EMPTY_MASK, (
         "a forged fully-empty committed mask is refused at its own tick"
+    )
+    # the guard is scoped to the (sleep_id, tick) the event names, like expected_mask: a forged all-empty
+    # row at ANOTHER tick carrying a COPIED digest must not refuse the honest claim (lens #716 Finding 1,
+    # upheld at #717)
+    forged_stolen = {
+        "kind": "sleep_mask_prepared",
+        "sleep_id": "s1-n3",
+        "tick": 44,
+        "kept": [],
+        "pruned": [],
+        "synapses": [],
+        "mask_digest": good["mask_digest"],
+    }
+    assert check_applied_mask(event, [good, commit_good, forged_stolen]) is None, (
+        "a forged empty row at another tick cannot refuse the honest claim"
     )
     # P5: the SAME forged committed row with the string sentinel -- and with the key absent -- stays
     # APPLIED_MISSING: the sentinel branch returns before the empty-mask guard can fire
