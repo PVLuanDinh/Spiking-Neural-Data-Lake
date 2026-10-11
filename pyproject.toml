@@ -1,5 +1,5 @@
 # Installable src/ package (snn_data_lake). torch + numpy + mujoco + pyarrow + Brian2 + psutil +
-# threadpoolctl + scipy are UNCONDITIONAL core dependencies, so
+# threadpoolctl + scipy + networkx are UNCONDITIONAL core dependencies, so
 # `pip install .` gives the full brain tier out of the box. `pip install ".[all]"` adds every addon
 # (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
 #
@@ -98,7 +98,7 @@ build-backend = "hatchling.build"
 [project]
 name = "spiking-neural-data-lake"
 version = "4.80.0"
-description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy, pyarrow, mujoco, Brian2, psutil, threadpoolctl, and scipy are core dependencies."
+description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy, pyarrow, mujoco, Brian2, psutil, threadpoolctl, scipy, and networkx are core dependencies."
 readme = "README.md"
 # FLOOR RAISED 3.12 -> 3.14, 2026-08-05 (owner decision), and this floor is NOT the whole
 # requirement. The project requires the FREE-THREADED (PEP 703) build, and `requires-python` cannot
@@ -204,6 +204,17 @@ dependencies = [
     # battery. Unpinned: a solver whose answer is checked exactly downstream (the certificate's
     # exact check; the LP is a measurement), not part of the numerical contract.
     "scipy",
+    # THE GRAPH REFERENCE. instruments/unit_organization.py imports networkx in TWO functions for
+    # IR1/IR3's reference arms, both on purpose and neither replaceable by stdlib or scipy: ::random_graph
+    # is nx.gnm_random_graph(N, M, seed) -- the RANDOM arm that RULE must beat, needing a seeded
+    # simple graph with EXACTLY M edges and the same edge distribution the comparison assumes, which
+    # scipy.sparse.csgraph has no generator for; ::best_partition is nx.community.louvain_communities
+    # plus nx.community.modularity -- the Louvain partition the NMI >= 0.9 bar is frozen against, and
+    # rewriting Louvain would redefine the bar rather than meet it. Both are IN-FUNCTION imports, so
+    # the core self-check stays networkx-free. Installed only as torch's transitive dependency until
+    # 2026-10-10, so the ledger reddened at the batch-3 battery (G7). Unpinned: a reference library
+    # whose partitions and graphs are checked by the comparison, not part of the numerical contract.
+    "networkx",
 ]   # TORCH TIER ON BY DEFAULT (user policy, 2026-07-18)
 
 # TORCH TIER = ON BY DEFAULT (user policy, 2026-07-18). torch is now a HARD default dependency: a plain
