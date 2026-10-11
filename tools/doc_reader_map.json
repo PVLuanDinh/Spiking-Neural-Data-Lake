@@ -1,21 +1,22 @@
 {
- "built": "2026-10-08T06:54:00+00:00",
- "code_hash": "a34d5179c3d7e30695940984b2c80a6175f092d77a6269f7f366b0f3d7998974",
+ "built": "2026-10-11T05:54:59+00:00",
+ "code_hash": "7fb3dbd31f48d8b9ce37068cbbb7a258e48ec5eaf8637e7fb91b2a691df31854",
  "coverage": {
-  "listings_dropped_as_infrastructure": 2081,
-  "process_starts": 329,
-  "python_spawns_seen_by_parents": 320,
+  "listings_dropped_as_infrastructure": 2543,
+  "process_starts": 357,
+  "python_spawns_seen_by_parents": 348,
   "python_spawns_without_child_start": [
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]"
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]"
   ]
  },
- "fingerprint": "433d9c53ca98885800022c821ef87e26930308d529121201da143a78f32b3a7c",
- "head": "b480ae18a8400e26a8978666a60fbe59a15710e3",
+ "fingerprint": "54417c727a47ca859864bda28406ce0018a6c1feba8d67e4deeb77cebd5165ec",
+ "head": "a21f35d74f0b4a675a014b03b38dfe60c630f0b3",
  "pytest_all": {
   "blind": false,
   "git_scan": false,
@@ -642,6 +643,13 @@
   },
   "tests/test_growing_learner_restart.py": {
    "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_h01_partb_tangential.py": {
+   "blind": false,
    "git_scan": false,
    "list": [],
    "listr": [],
@@ -1437,6 +1445,7 @@
     "specs/022-unified-brain-arc/evidence/g1c-carried-state.md",
     "specs/022-unified-brain-arc/evidence/g2-taught-problems.md",
     "specs/022-unified-brain-arc/evidence/g3-growth-loop.md",
+    "specs/022-unified-brain-arc/evidence/g4-wiring-prior.md",
     "specs/022-unified-brain-arc/evidence/g5-readout-variants.md",
     "specs/022-unified-brain-arc/evidence/g6-sleep-durable-memory.md",
     "specs/022-unified-brain-arc/evidence/g7-organizing-unit.md",
