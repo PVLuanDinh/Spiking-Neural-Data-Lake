@@ -41,6 +41,8 @@ Pure standard library; deterministic; ASCII-only prints.
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.paired_contrast
 """
 
+import hashlib
+import json
 import math
 from bisect import bisect_left, bisect_right
 from typing import NamedTuple
@@ -282,6 +284,399 @@ def main():
         f"meet-in-the-middle == enumeration at n = 12 ({hits12}/4096); n = 31 at {T_BAR_S31}: FPR {fpr31:.6f} "
         f"(band {band31} flips), reversal- and negation-invariant; bar <= 0 and n = {MITM_MAX_N + 1} refused"
     )
+    assert _g9_constructed_selfcheck()
+
+
+def _g9_profile():
+    """The frozen constructed DATA profile, never an engine/resource attestation."""
+    expected = {}
+    for split, items in (("validation", 8), ("future", 12)):
+        expected[split] = [
+            {
+                "presentation_id": f"{split}-presentation-{i:02d}",
+                "source_item_id": f"{split}-item-{i % items:02d}",
+                "target": ("GREET", "GOAL", "GOAL", "GREET")[i % 4],
+            }
+            for i in range(4 * items)
+        ]
+    return {
+        "schema": "g9-constructed-v1",
+        "origin": "CONSTRUCTED",
+        "profile_id": "fixture-profile-v1",
+        "source_revision": "fixture-source-v1",
+        "protocol_id": "fixture-proposed-contract-v1",
+        "primary": {"problem_id": "c1d", "transport_form": "copy", "judging_split": "future"},
+        "pair_keys": [f"constructed-pair-{i}" for i in range(8)],
+        "stable_epochs": 10,
+        "t_bar": T_BAR,
+        "tie_tolerance": 1e-6,
+        "secondary_keys": [
+            {"problem_id": "c1d", "transport_form": "activity", "judging_split": "future"}
+        ],
+        "expected": expected,
+        "definitions": {
+            "resource": {
+                "inventory_id": "fixture-inventory-v1",
+                "boundary_id": "fixture-final-pre-sleep",
+                "signature": {
+                    "grown": {
+                        "allocated": 6,
+                        "active_e": 4,
+                        "active_i": 2,
+                        "input_shape": [6, 4],
+                        "dtype": "fixture-f64",
+                    },
+                    "pool": {
+                        "allocated": 8,
+                        "active": 8,
+                        "recurrent_shape": [8, 8],
+                        "dtype": "fixture-f64",
+                    },
+                    "feed": {
+                        "shape": [8, 6],
+                        "allocated_connections": 48,
+                        "effective_connections": 48,
+                        "dtype": "fixture-f64",
+                    },
+                    "readout": {"shape": [2, 8], "label_count": 2, "dtype": "fixture-f64"},
+                    "return": {"shape": [2, 2], "allocated_connections": 4, "dtype": "fixture-f64"},
+                    "state": {"shape": [8], "trace_shape": [6], "dtype": "fixture-f64"},
+                },
+            },
+            "reset": {
+                "policy_id": "fixture-reset-v1",
+                "episode_boundary": "RESET",
+                "between_turns": "CARRY",
+                "initial_state_id": "fixture-zero-state",
+            },
+            "exposure": {
+                "policy_id": "fixture-exposure-v1",
+                "teaching_order": [f"fixture-teach-{i}" for i in range(4)],
+                "candidate_order": [f"fixture-candidate-{i}" for i in range(3)],
+            },
+            "control": {
+                "policy_id": "fixture-control-v1",
+                "growth_off_arm": "A5",
+                "source_family": "FIXTURE_FROZEN",
+                "physical_credit": "NONE",
+            },
+            "retention": {
+                "policy_id": "fixture-retention-v1",
+                "old_task_ids": ["fixture-old-task"],
+                "predicate": "EXACT",
+                "measured_credit": "NONE",
+            },
+        },
+    }
+
+
+def _g9_same(value, expected):
+    """Exact nested schema/value equality, including bool versus int versus float."""
+    if type(value) is not type(expected):
+        return False
+    if type(expected) is dict:
+        return value.keys() == expected.keys() and all(
+            _g9_same(value[k], v) for k, v in expected.items()
+        )
+    if type(expected) is list:
+        return len(value) == len(expected) and all(
+            _g9_same(a, b) for a, b in zip(value, expected, strict=True)
+        )
+    return value == expected
+
+
+def _g9_require(condition, reason):
+    if not condition:
+        raise ValueError(reason)
+
+
+def _g9_metadata(profile, key, arm, form):
+    definitions = profile["definitions"]
+    return {
+        "origin": "CONSTRUCTED",
+        "profile_id": profile["profile_id"],
+        "source_revision": profile["source_revision"],
+        "protocol_id": profile["protocol_id"],
+        "problem_id": "c1d",
+        "transport_form": form,
+        "judging_split": "future",
+        "pair_key": key,
+        "arm": arm,
+        "terminal": "COMPLETED",
+        "growth_off": arm == "A5",
+        "attempt_id": "fixture-attempt-0",
+        "resource_receipt": definitions["resource"],
+        "reset_receipt": definitions["reset"],
+        "exposure_receipt": definitions["exposure"],
+        "control_policy_id": definitions["control"]["policy_id"],
+        "retention_policy_id": definitions["retention"]["policy_id"],
+    }
+
+
+def _g9_correct(answers, expected):
+    _g9_require(
+        type(answers) is list and len(answers) == len(expected), "incomplete judged answer list"
+    )
+    correct = 0
+    for answer, target in zip(answers, expected, strict=True):
+        _g9_require(
+            type(answer) is dict
+            and answer.keys() == {"presentation_id", "source_item_id", "answer"},
+            "answer schema must contain identities and an actual answer only",
+        )
+        _g9_require(
+            type(answer["presentation_id"]) is str
+            and answer["presentation_id"] == target["presentation_id"]
+            and type(answer["source_item_id"]) is str
+            and answer["source_item_id"] == target["source_item_id"],
+            "judged presentation/source identities differ from the ordered fixed list",
+        )
+        _g9_require(
+            type(answer["answer"]) is str and answer["answer"] in ("GREET", "GOAL"),
+            "invalid answer label",
+        )
+        correct += answer["answer"] == target["target"]
+    return correct
+
+
+def _g9_record_read(record, profile):
+    _g9_require(type(record) is dict, "record must be a plain dictionary")
+    key, arm, form = record.get("pair_key"), record.get("arm"), record.get("transport_form")
+    _g9_require(
+        type(key) is str and key in profile["pair_keys"], "unknown constructed pair identity"
+    )
+    _g9_require(type(arm) is str and arm in ("A0", "A5"), "unknown constructed arm")
+    _g9_require(
+        type(form) is str and form in ("copy", "activity"), "unknown primary/secondary form"
+    )
+    metadata = _g9_metadata(profile, key, arm, form)
+    _g9_require(
+        record.keys() == metadata.keys() | {"validation", "future"},
+        "unknown/incomplete record fields",
+    )
+    _g9_require(
+        _g9_same({k: record[k] for k in metadata}, metadata),
+        "record identity, terminal, growth-OFF or complete "
+        "resource/reset/exposure/control/retention mismatch",
+    )
+    validation = record["validation"]
+    _g9_require(
+        type(validation) is list and len(validation) == 10,
+        "missing ten consecutive validation reads",
+    )
+    stable = True
+    for epoch, read in enumerate(validation, 1):
+        _g9_require(
+            type(read) is dict and read.keys() == {"attempt_id", "epoch", "answers"},
+            "invalid epoch-end validation schema",
+        )
+        _g9_require(
+            type(read["epoch"]) is int
+            and read["epoch"] == epoch
+            and type(read["attempt_id"]) is str
+            and read["attempt_id"] == record["attempt_id"],
+            "validation must be consecutive epochs 1..10 in one fixed attempt",
+        )
+        correct = _g9_correct(read["answers"], profile["expected"]["validation"])
+        stable = stable and correct == len(profile["expected"]["validation"])
+    future_correct = _g9_correct(record["future"], profile["expected"]["future"])
+    return (form, key, arm), (stable, future_correct)
+
+
+def evaluate_g9_primary_records(contract, records, *, purpose):
+    """Pure fixed synthetic record logic; every real/deciding use is REFUSED.
+
+    A constructed MET supplies no engine growth, physical attribution, producer
+    provenance, retention or fresh-process evidence. The actual runtime contracts
+    remain unresolved even when these fixture records pass.
+    """
+    report = {
+        "scope": "G-R9(i) record logic only",
+        "constructed_status": "REFUSED",
+        "deciding_status": "REFUSED",
+        "campaign_eligible": False,
+        "unresolved_runtime": ["resource", "reset", "control", "retention"],
+        "reasons": [],
+    }
+    if type(purpose) is not str or purpose != "CONSTRUCTED":
+        report["reasons"] = ["this version unconditionally refuses real/deciding purposes"]
+        return report
+    profile = _g9_profile()
+    try:
+        _g9_require(
+            _g9_same(contract, profile), "contract is not the complete fixed constructed profile"
+        )
+        _g9_require(
+            type(records) is list and 16 <= len(records) <= 32,
+            "incomplete/excess constructed arm coverage",
+        )
+        readings = {}
+        for record in records:
+            identity, reading = _g9_record_read(record, profile)
+            _g9_require(identity not in readings, "duplicate constructed form/pair/arm identity")
+            readings[identity] = reading
+        _g9_require(
+            all(
+                ("copy", key, arm) in readings
+                for key in profile["pair_keys"]
+                for arm in ("A0", "A5")
+            ),
+            "missing primary A0/A5 pair coverage; secondary records cannot substitute",
+        )
+    except ValueError as error:
+        report["reasons"] = [str(error)]
+        return report
+    rows, diffs = [], []
+    count = len(profile["expected"]["future"])
+    for key in profile["pair_keys"]:
+        stable0, correct0 = readings[("copy", key, "A0")]
+        stable5, correct5 = readings[("copy", key, "A5")]
+        q0, q5 = correct0 / count, correct5 / count
+        # The same q0-q5 contrast, from integer counts to avoid cancellation.
+        diffs.append((correct0 - correct5) / count)
+        rows.append(
+            {
+                "pair_key": key,
+                "future_count": count,
+                "correct0": correct0,
+                "correct5": correct5,
+                "q0": q0,
+                "q5": q5,
+                "engine_validation_stable": stable0,
+                "twin_validation_stable": stable5,
+                "engine_future_solved": correct0 == count,
+                "twin_future_solved": correct5 == count,
+            }
+        )
+    t = paired_t(diffs)
+    degenerate = len(set(diffs)) == 1
+    advantage = not degenerate and t > T_BAR
+    engine_all8 = all(
+        row["engine_validation_stable"] and row["engine_future_solved"] for row in rows
+    )
+    twin_failure = all(not row["twin_future_solved"] for row in rows)
+    for flag, reason in (
+        (engine_all8, "not every primary engine is validation-stable and future-exact"),
+        (twin_failure, "not every valid growth-OFF twin fails its future exact predicate"),
+        (advantage, "paired advantage requires nondegenerate t strictly above the inherited bar"),
+    ):
+        if not flag:
+            report["reasons"].append(reason)
+    report.update(
+        {
+            "constructed_status": (
+                "MET" if engine_all8 and twin_failure and advantage else "NOT_MET"
+            ),
+            "primary": profile["primary"],
+            "profile_id": profile["profile_id"],
+            "source_revision": profile["source_revision"],
+            "protocol_id": profile["protocol_id"],
+            "contract_sha256": hashlib.sha256(
+                json.dumps(profile, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+            ).hexdigest(),
+            "sample_size": 8,
+            "secondary_count": sum(form == "activity" for form, _, _ in readings),
+            "diffs": diffs,
+            "t": t,
+            "bar": T_BAR,
+            "fpr": permutation_fpr(diffs, T_BAR),
+            "degenerate": degenerate,
+            "non_tied_count": sum(abs(d) > profile["tie_tolerance"] for d in diffs),
+            "advantage": advantage,
+            "engine_all8": engine_all8,
+            "twin_future_failure_all8": twin_failure,
+            "per_seed": rows,
+        }
+    )
+    return report
+
+
+def _g9_fixture_answers(expected, errors=0):
+    return [
+        {
+            "presentation_id": row["presentation_id"],
+            "source_item_id": row["source_item_id"],
+            "answer": (
+                ("GOAL" if row["target"] == "GREET" else "GREET") if i < errors else row["target"]
+            ),
+        }
+        for i, row in enumerate(expected)
+    ]
+
+
+def _g9_selfcheck_fixture():
+    profile, records = _g9_profile(), []
+    for i, key in enumerate(profile["pair_keys"]):
+        for arm in ("A0", "A5"):
+            record = _g9_metadata(profile, key, arm, "copy")
+            record["validation"] = [
+                {
+                    "attempt_id": "fixture-attempt-0",
+                    "epoch": epoch,
+                    "answers": _g9_fixture_answers(profile["expected"]["validation"]),
+                }
+                for epoch in range(1, 11)
+            ]
+            record["future"] = _g9_fixture_answers(
+                profile["expected"]["future"], i + 1 if arm == "A5" else 0
+            )
+            records.append(record)
+    return profile, records
+
+
+def _g9_constructed_selfcheck():
+    profile, records = _g9_selfcheck_fixture()
+    before = json.dumps([profile, records], sort_keys=True)
+    positive = evaluate_g9_primary_records(profile, records, purpose="CONSTRUCTED")
+    assert positive["constructed_status"] == "MET" and positive["engine_all8"]
+    assert positive["twin_future_failure_all8"] and math.isclose(positive["t"], math.sqrt(27))
+    assert before == json.dumps([profile, records], sort_keys=True)
+    assert positive == evaluate_g9_primary_records(
+        profile, list(reversed(records)), purpose="CONSTRUCTED"
+    )
+    readings = [("positive", positive)]
+    records[0]["future"][0]["answer"] = "GOAL"
+    wrong = evaluate_g9_primary_records(profile, records, purpose="CONSTRUCTED")
+    assert wrong["constructed_status"] == "NOT_MET" and not wrong["engine_all8"]
+    readings.append(("one wrong engine answer", wrong))
+    profile, records = _g9_selfcheck_fixture()
+    records[1]["future"] = _g9_fixture_answers(profile["expected"]["future"])
+    records[1]["validation"][-1]["answers"] = _g9_fixture_answers(
+        profile["expected"]["validation"], 1
+    )
+    twin = evaluate_g9_primary_records(profile, records, purpose="CONSTRUCTED")
+    assert twin["constructed_status"] == "NOT_MET" and not twin["twin_future_failure_all8"]
+    assert (
+        not twin["per_seed"][0]["twin_validation_stable"]
+        and twin["per_seed"][0]["twin_future_solved"]
+    )
+    readings.append(("seven twin failures with one future solve", twin))
+    profile, records = _g9_selfcheck_fixture()
+    for record in records:
+        if record["arm"] == "A5":
+            record["future"] = _g9_fixture_answers(profile["expected"]["future"], 3)
+    constant = evaluate_g9_primary_records(profile, records, purpose="CONSTRUCTED")
+    assert (
+        constant["constructed_status"] == "NOT_MET"
+        and constant["degenerate"]
+        and not constant["advantage"]
+    )
+    assert contrast("legacy positive constant", [0.25] * 8).met
+    readings.append(("constant-positive known cost", constant))
+    incomplete = evaluate_g9_primary_records(profile, records[:-1], purpose="CONSTRUCTED")
+    deciding = evaluate_g9_primary_records(None, None, purpose="DECIDING")
+    assert incomplete["constructed_status"] == deciding["constructed_status"] == "REFUSED"
+    readings.extend((("missing primary arm", incomplete), ("deciding request", deciding)))
+    for label, reading in readings:
+        assert reading["deciding_status"] == "REFUSED" and reading["campaign_eligible"] is False
+        print(
+            f"G9 CONSTRUCTED {label}: {reading['constructed_status']} "
+            f"t={reading.get('t')} FPR={reading.get('fpr')}"
+        )
+    print(
+        "G9 CONSTRUCTED record checks OK; deciding REFUSED; engine/provenance/retention unresolved"
+    )
+    return True
 
 
 if __name__ == "__main__":

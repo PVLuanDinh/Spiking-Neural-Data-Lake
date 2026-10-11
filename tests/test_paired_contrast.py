@@ -282,3 +282,304 @@ def test_fold_f3_a_trivial_sample_at_a_valid_bar_still_reads_zero():
         == pc.permutation_fpr([0.0] * 5, T_BAR)
         == 0.0
     )
+
+
+# G9-CONSTRUCTED-1011-V2: independent fixed DATA fixture, no engine or deciding seeds.
+def _g9_test_fixture(e0=None, e5=None, unstable0=(), unstable5=(), form="copy"):
+    import copy
+
+    e0 = [0] * 8 if e0 is None else e0
+    e5 = list(range(1, 9)) if e5 is None else e5
+    expected = {}
+    for split, items in (("validation", 8), ("future", 12)):
+        expected[split] = []
+        for pass_id in range(4):
+            for item in range(items):
+                expected[split].append(
+                    {
+                        "presentation_id": f"{split}-presentation-{pass_id * items + item:02d}",
+                        "source_item_id": f"{split}-item-{item:02d}",
+                        "target": ("GREET", "GOAL", "GOAL", "GREET")[item % 4],
+                    }
+                )
+    definitions = {
+        "resource": {
+            "inventory_id": "fixture-inventory-v1",
+            "boundary_id": "fixture-final-pre-sleep",
+            "signature": {
+                "grown": {
+                    "allocated": 6,
+                    "active_e": 4,
+                    "active_i": 2,
+                    "input_shape": [6, 4],
+                    "dtype": "fixture-f64",
+                },
+                "pool": {
+                    "allocated": 8,
+                    "active": 8,
+                    "recurrent_shape": [8, 8],
+                    "dtype": "fixture-f64",
+                },
+                "feed": {
+                    "shape": [8, 6],
+                    "allocated_connections": 48,
+                    "effective_connections": 48,
+                    "dtype": "fixture-f64",
+                },
+                "readout": {"shape": [2, 8], "label_count": 2, "dtype": "fixture-f64"},
+                "return": {
+                    "shape": [2, 2],
+                    "allocated_connections": 4,
+                    "dtype": "fixture-f64",
+                },
+                "state": {"shape": [8], "trace_shape": [6], "dtype": "fixture-f64"},
+            },
+        },
+        "reset": {
+            "policy_id": "fixture-reset-v1",
+            "episode_boundary": "RESET",
+            "between_turns": "CARRY",
+            "initial_state_id": "fixture-zero-state",
+        },
+        "exposure": {
+            "policy_id": "fixture-exposure-v1",
+            "teaching_order": [f"fixture-teach-{i}" for i in range(4)],
+            "candidate_order": [f"fixture-candidate-{i}" for i in range(3)],
+        },
+        "control": {
+            "policy_id": "fixture-control-v1",
+            "growth_off_arm": "A5",
+            "source_family": "FIXTURE_FROZEN",
+            "physical_credit": "NONE",
+        },
+        "retention": {
+            "policy_id": "fixture-retention-v1",
+            "old_task_ids": ["fixture-old-task"],
+            "predicate": "EXACT",
+            "measured_credit": "NONE",
+        },
+    }
+    contract = {
+        "schema": "g9-constructed-v1",
+        "origin": "CONSTRUCTED",
+        "profile_id": "fixture-profile-v1",
+        "source_revision": "fixture-source-v1",
+        "protocol_id": "fixture-proposed-contract-v1",
+        "primary": {"problem_id": "c1d", "transport_form": "copy", "judging_split": "future"},
+        "pair_keys": [f"constructed-pair-{i}" for i in range(8)],
+        "stable_epochs": 10,
+        "t_bar": 1.895,
+        "tie_tolerance": 1e-6,
+        "secondary_keys": [
+            {"problem_id": "c1d", "transport_form": "activity", "judging_split": "future"}
+        ],
+        "expected": expected,
+        "definitions": definitions,
+    }
+
+    def answers(split, errors):
+        return [
+            {
+                "presentation_id": row["presentation_id"],
+                "source_item_id": row["source_item_id"],
+                "answer": (
+                    {"GREET": "GOAL", "GOAL": "GREET"}[row["target"]]
+                    if index < errors
+                    else row["target"]
+                ),
+            }
+            for index, row in enumerate(expected[split])
+        ]
+
+    records = []
+    for pair in range(8):
+        for arm, errors, unstable in (("A0", e0[pair], unstable0), ("A5", e5[pair], unstable5)):
+            records.append(
+                {
+                    "origin": "CONSTRUCTED",
+                    "profile_id": "fixture-profile-v1",
+                    "source_revision": "fixture-source-v1",
+                    "protocol_id": "fixture-proposed-contract-v1",
+                    "problem_id": "c1d",
+                    "transport_form": form,
+                    "judging_split": "future",
+                    "pair_key": f"constructed-pair-{pair}",
+                    "arm": arm,
+                    "terminal": "COMPLETED",
+                    "growth_off": arm == "A5",
+                    "attempt_id": "fixture-attempt-0",
+                    "validation": [
+                        {
+                            "attempt_id": "fixture-attempt-0",
+                            "epoch": epoch,
+                            "answers": answers("validation", int(epoch == 10 and pair in unstable)),
+                        }
+                        for epoch in range(1, 11)
+                    ],
+                    "future": answers("future", errors),
+                    "resource_receipt": copy.deepcopy(definitions["resource"]),
+                    "reset_receipt": copy.deepcopy(definitions["reset"]),
+                    "exposure_receipt": copy.deepcopy(definitions["exposure"]),
+                    "control_policy_id": "fixture-control-v1",
+                    "retention_policy_id": "fixture-retention-v1",
+                }
+            )
+    return contract, records
+
+
+def test_g9_constructed_positive_statistic_identity_types_and_input_purity():
+    import copy
+    import hashlib
+    import json
+    import statistics
+
+    contract, records = _g9_test_fixture()
+    snapshot = copy.deepcopy((contract, records))
+    report = pc.evaluate_g9_primary_records(contract, records, purpose="CONSTRUCTED")
+    assert report["constructed_status"] == "MET"
+    assert report["deciding_status"] == "REFUSED" and report["campaign_eligible"] is False
+    assert report["engine_all8"] and report["twin_future_failure_all8"] and report["advantage"]
+    diffs = [i / 48 for i in range(1, 9)]
+
+    def independent_t(vector):
+        deviation = statistics.stdev(vector)
+        return statistics.mean(vector) * math.sqrt(8) / deviation if deviation else 0.0
+
+    assert report["t"] == pytest.approx(math.sqrt(27))
+    hits = sum(
+        independent_t([sign * d for sign, d in zip(signs, diffs, strict=True)]) > 1.895
+        for signs in itertools.product((-1, 1), repeat=8)
+    )
+    assert report["fpr"] == hits / 256
+    assert report["diffs"] == diffs
+    assert (
+        report["contract_sha256"]
+        == hashlib.sha256(
+            json.dumps(contract, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+        ).hexdigest()
+    )
+    assert all(type(report[k]) is int for k in ("sample_size", "secondary_count", "non_tied_count"))
+    assert (report["sample_size"], report["secondary_count"], report["non_tied_count"]) == (8, 0, 8)
+    for pair, row in enumerate(report["per_seed"]):
+        assert row["pair_key"] == f"constructed-pair-{pair}"
+        assert (row["future_count"], row["correct0"], row["correct5"]) == (48, 48, 47 - pair)
+    assert report == pc.evaluate_g9_primary_records(contract, records[::-1], purpose="CONSTRUCTED")
+    assert report == pc.evaluate_g9_primary_records(contract, records, purpose="CONSTRUCTED")
+    assert (contract, records) == snapshot
+
+
+@pytest.mark.parametrize(
+    "settings, failed_flag",
+    [
+        ({"e0": [1] + [0] * 7}, "engine_all8"),
+        ({"unstable0": (0,)}, "engine_all8"),
+        ({"e5": [0] + list(range(2, 9)), "unstable5": (0,)}, "twin_future_failure_all8"),
+        ({"e5": [3] * 8}, "advantage"),
+        ({"e5": [1] * 7 + [48]}, "advantage"),
+    ],
+)
+def test_g9_constructed_independent_exact_stability_twin_and_advantage_reds(settings, failed_flag):
+    contract, records = _g9_test_fixture(**settings)
+    report = pc.evaluate_g9_primary_records(contract, records, purpose="CONSTRUCTED")
+    assert report["constructed_status"] == "NOT_MET" and report[failed_flag] is False
+    assert report["sample_size"] == 8 and report["reasons"]
+    assert report["deciding_status"] == "REFUSED" and report["campaign_eligible"] is False
+    if "unstable5" in settings:
+        assert report["per_seed"][0]["twin_future_solved"] is True
+        assert report["per_seed"][0]["twin_validation_stable"] is False
+    if settings.get("e5") == [3] * 8:
+        assert report["engine_all8"] and report["twin_future_failure_all8"] and report["degenerate"]
+        assert pc.contrast("unchanged generic positive constant", [0.25] * 8).met is True
+
+
+def test_g9_constructed_secondary_cannot_rescue_or_replace_primary_and_ties_stay():
+    contract, primary = _g9_test_fixture(e0=[1] + [0] * 7)
+    _, secondary = _g9_test_fixture(form="activity")
+    report = pc.evaluate_g9_primary_records(contract, primary + secondary, purpose="CONSTRUCTED")
+    assert report["constructed_status"] == "NOT_MET"
+    assert report["sample_size"] == 8 and report["secondary_count"] == 16
+    missing = pc.evaluate_g9_primary_records(
+        contract, primary[:-1] + secondary, purpose="CONSTRUCTED"
+    )
+    assert missing["constructed_status"] == "REFUSED"
+    contract, records = _g9_test_fixture(e5=[0] * 4 + [1, 2, 3, 4])
+    tied = pc.evaluate_g9_primary_records(contract, records, purpose="CONSTRUCTED")
+    assert tied["sample_size"] == 8 and tied["non_tied_count"] == 4
+    assert tied["constructed_status"] == "NOT_MET" and tied["twin_future_failure_all8"] is False
+
+
+@pytest.mark.parametrize(
+    "defect",
+    (
+        "missing_arm",
+        "duplicate_arm",
+        "real_origin",
+        "mutable_target",
+        "boolean_epoch",
+        "mixed_attempt",
+        "reordered_future",
+        "truncated_future",
+        "duplicate_presentation",
+        "boolean_resource",
+        "float_resource",
+        "missing_pool_everywhere",
+        "wrong_feed_shape",
+        "wrong_reset",
+        "wrong_exposure",
+        "missing_retention",
+        "claimed_solved",
+    ),
+)
+def test_g9_constructed_identity_type_and_complete_definition_refusals(defect):
+    contract, records = _g9_test_fixture()
+    if defect == "missing_arm":
+        records.pop()
+    elif defect == "duplicate_arm":
+        records.append(records[0])
+    elif defect == "real_origin":
+        records[0]["origin"] = "REAL"
+    elif defect == "mutable_target":
+        contract["expected"]["future"][0]["target"] = "GOAL"
+    elif defect == "boolean_epoch":
+        records[0]["validation"][0]["epoch"] = True
+    elif defect == "mixed_attempt":
+        records[0]["validation"][4]["attempt_id"] = "fixture-another-attempt"
+    elif defect == "reordered_future":
+        records[0]["future"].reverse()
+    elif defect == "truncated_future":
+        records[0]["future"].pop()
+    elif defect == "duplicate_presentation":
+        records[0]["future"][1] = records[0]["future"][0]
+    elif defect in ("boolean_resource", "float_resource"):
+        records[0]["resource_receipt"]["signature"]["grown"]["allocated"] = (
+            True if defect == "boolean_resource" else 6.0
+        )
+    elif defect == "missing_pool_everywhere":
+        del contract["definitions"]["resource"]["signature"]["pool"]
+        for record in records:
+            del record["resource_receipt"]["signature"]["pool"]
+    elif defect == "wrong_feed_shape":
+        records[1]["resource_receipt"]["signature"]["feed"]["shape"] = [7, 6]
+    elif defect == "wrong_reset":
+        records[1]["reset_receipt"]["policy_id"] = "different-reset"
+    elif defect == "wrong_exposure":
+        records[1]["exposure_receipt"]["teaching_order"].reverse()
+    elif defect == "missing_retention":
+        del contract["definitions"]["retention"]
+    else:
+        records[0]["future"][0]["solved"] = True
+    report = pc.evaluate_g9_primary_records(contract, records, purpose="CONSTRUCTED")
+    assert report["constructed_status"] == "REFUSED" and report["reasons"]
+    assert report["deciding_status"] == "REFUSED" and report["campaign_eligible"] is False
+
+
+@pytest.mark.parametrize("purpose", ("DECIDING", "REAL", "UNKNOWN", None, True))
+def test_g9_constructed_real_requests_refused_before_records_or_fake_approvals(purpose):
+    report = pc.evaluate_g9_primary_records(None, None, purpose=purpose)
+    assert report["constructed_status"] == "REFUSED" and report["reasons"]
+    contract, records = _g9_test_fixture()
+    contract.update(approved=True, producer_receipts="synthetic-is-not-provenance")
+    report = pc.evaluate_g9_primary_records(contract, records, purpose=purpose)
+    assert report["constructed_status"] == "REFUSED" and report["campaign_eligible"] is False
+    assert report["deciding_status"] == "REFUSED"
+    assert {"resource", "reset", "control", "retention"} <= set(report["unresolved_runtime"])
