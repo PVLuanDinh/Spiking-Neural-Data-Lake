@@ -166,7 +166,14 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # unit_organization, wiring_prior). Measured, not assumed: origin/main imports 306 (and its pin
     # says 306), the stacked head imports 310, the set difference is exactly those four names and
     # nothing was removed. No row bumps this pin.
-    assert len(S._MOVED) == 310 and "claustrum" not in S._MOVED
+    # 310 -> 311 on 2026-10-11: the integrator's single re-pin at the G6-3 landing, for the
+    # one governed module the G6-3 range added (sleep_mask_apply). Measured, not assumed:
+    # origin/main imports 306, the batch-3 head imported 310, this head imports 311, and the
+    # set difference is exactly that one name with nothing removed. _MOVED is a comprehension
+    # over REGIONS taking every module whose name differs from its region, so sleep_mask_apply
+    # under 'instruments' enters it. No row bumps this pin. G5-3's three Part D registrations
+    # will require a further re-pin at their landing.
+    assert len(S._MOVED) == 311 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture

@@ -531,6 +531,26 @@ def run_seed_arm(seed, arm, *, total=900, shuffle_from=None, solve_requests=None
     return run, [sum(r[1] for r in run.retention), sum(r[2] for r in run.retention)]
 
 
+def campaign_c(seeds, *, total=900, runner=run_seed_arm):
+    # distinct-from: instruments/g5_readout_cells.py -- G5's per-seed arm loop over readout cells; this one
+    #   feeds decide_c with the sleep-pressure arms and pipes the pressure arm's offsets to the shuffled twin.
+    #   distinct-from: growth/neurogenesis_engine.py, faculties/time_cells.py -- docstring-word hits only. Sites read.
+    """(c)'s per-seed rows for `decide_c`: {arm: pooled held-out rate} per seed. The shuffled twin runs AFTER
+    the pressure arm of the SAME seed and replays its `advanced` offsets (A6). A zero-item read is refused."""
+    rows = []
+    for seed in seeds:
+        row, advanced = {}, None
+        for arm in ("clock", "oracle", "pressure", "shuffled"):
+            run, (right, n) = runner(seed, arm, total=total, shuffle_from=advanced)
+            if not n:
+                raise ValueError(f"seed {seed} arm {arm!r} read nothing; there is no rate")
+            row[arm] = right / n
+            if arm == "pressure":
+                advanced = run.advanced
+        rows.append(row)
+    return rows
+
+
 # ================================================================================================
 # self-check (brain-free)
 # ================================================================================================

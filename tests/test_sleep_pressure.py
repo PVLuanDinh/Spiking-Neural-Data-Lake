@@ -238,3 +238,34 @@ def test_a_restored_row_without_a_bound_reader_refuses_pressure():
         half.request()
     full = sp.PressureMeter({"kept": lambda: [0.0], "removed": lambda: [0.0]}, state=carrier)
     assert full.pressure() == 50.0 and full.request()
+
+
+def _fake_runner(calls, totals=None):
+    """Stands in for run_seed_arm: records each call; pressure carries an `advanced` map."""
+
+    def run(seed, arm, *, total=900, shuffle_from=None, solve_requests=None):
+        calls.append((seed, arm, shuffle_from))
+        base = {"clock": 5, "oracle": 7, "pressure": 6, "shuffled": 5}[arm]
+        r = sp.PressureRun(seed=seed, arm=arm)
+        r.advanced = {2: 3} if arm == "pressure" else {}
+        return r, [base + seed % 3, (totals or {}).get(arm, 10)]
+
+    return run
+
+
+def test_campaign_c_pipes_the_pressure_offsets_into_the_shuffled_twin():
+    """The shuffled arm replays the PRESSURE arm's advances (A6), so it runs after it."""
+    calls = []
+    rows = sp.campaign_c(range(12001, 12009), runner=_fake_runner(calls))
+    assert len(rows) == 8 and set(rows[0]) == {"clock", "oracle", "pressure", "shuffled"}
+    assert all(c[2] == {2: 3} for c in calls if c[1] == "shuffled")
+    assert all(c[2] is None for c in calls if c[1] != "shuffled")
+    assert rows[0]["oracle"] == pytest.approx((7 + 12001 % 3) / 10)
+    verdict, _, _ = sp.decide_c(rows)
+    assert verdict in {"REFUSED", "NULL", "PRESSURE-SPECIFIC"}
+
+
+def test_campaign_c_refuses_an_arm_that_read_nothing():
+    """A zero-item read is no rate: dividing it would hide a dead workload as a 0 or a crash."""
+    with pytest.raises(ValueError, match="read nothing"):
+        sp.campaign_c([12001], runner=_fake_runner([], {"clock": 0}))

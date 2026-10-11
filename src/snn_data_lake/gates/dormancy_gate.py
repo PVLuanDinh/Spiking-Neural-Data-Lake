@@ -1079,6 +1079,16 @@ EXEMPT = {
         "F5 staged/flat/shuffled arms in instruments/sleep_plasticity_ab.py. Instrument tier until a "
         "deciding test adopts it into sleep/ (then reachable from _sleep_tick) or its null deletes it",
     ),
+    "sleep_mask_apply": (
+        "wire",
+        "specs/022 G6 (T114) P4, evidence g6-sleep-durable-memory.md 2.16 A12 + the dated pre-data "
+        "amendment 2026-10-03 item 3 + DEPENDENCIES ruling 33: the transactional mask application -- "
+        "the `sleep_mask_prepared` producer (A12 step 1), the `sleep_mask_commit` row (step 5) and "
+        "`check_applied_mask`, whose four O_mask refusals give R2's `applied_mask_digest` sentinel "
+        "its live input. Retires when R2's learner_events imports the check (R2 is held per the 2026-10-09 "
+        "wave-1 launch #311) and the mask rows reach the live sleep path; lake-free apart from rows "
+        "written through G3's one Ledger.record_event",
+    ),
 }
 
 
