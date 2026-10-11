@@ -759,6 +759,41 @@ def _opposite(x, y):
     return x != 0 and y != 0 and x != y
 
 
+def verdict(planted_ok, region_valid, K, cands, a, upgraded_from, sn, sz, sb, sr):
+    """A2-A3's reading rows, top to bottom, as a PURE FUNCTION of the states `read_t3` derives.
+
+    P8 (`tools/red_reachability.py`): every value this row is read from is a PARAMETER, not a name
+    closed over by a nested scope. A criterion nested inside `read_t3` and taking no arguments is
+    invariant to the whole system under test at this gate's resolution -- the tri-state states it
+    decides on would have to be read out of the enclosing scope, which is exactly the shape a
+    criterion that cannot report a failure has. Taking them explicitly keeps the decision itself
+    byte-identical (same rows, same order, same tests) and makes the criterion failable through its
+    own interface.
+
+    `K`/`cands`/`a`/`upgraded_from` are the kernel selection, already decided verdict-INDEPENDENTLY
+    above; `sn`/`sz` are the per-contrast NEURON and Z-INTERIOR seed states, `sb` the per-block
+    REGION states and `sr` their aggregate; `planted_ok`/`region_valid` are the two refusal flags."""
+    if not planted_ok:
+        return "REFUSED"
+    if not region_valid:
+        return "NOT_READ_REGION_INVALID"
+    if K is None:
+        return "RED_FLAT"
+    kf = f"{K}-flat"
+    if _opposite(sn[kf], sz[kf]) or _opposite(sn["exp-gauss"], sz["exp-gauss"]):
+        return "NOT_READ_BOUNDARY"
+    if _opposite(sn["exp-gauss"], sr["exp-gauss"]):
+        return "NOT_READ_DISAGREE"
+    if any(sb[r][kf] != 1 for r in range(N_BLOCKS)):
+        return "RED_FLAT_REGION"
+    if K == "exp" or upgraded_from == "exp" or ("gauss" not in cands and "exp" in cands):
+        return "RED_EXP"
+    if K == "gauss":
+        # a = +1 with K = G (E beats G yet fails to beat flat) is not a row of A3; it reads "not refused".
+        return "PASS_FAVOURS_GAUSSIAN" if a == -1 else "PASS_GAUSSIAN_NOT_REFUSED"
+    return "PASS_MIXTURE"
+
+
 def read_t3(neuron, interior, region, bands, planted_ok=True, region_valid=True):
     """A2-A3, a pure function. `neuron`/`interior`: contrast -> 8 per-seed values; `region`: per block,
     contrast -> one value; `bands` as calibrate_bands returns."""
@@ -791,27 +826,6 @@ def read_t3(neuron, interior, region, bands, planted_ok=True, region_valid=True)
     if K in ("gauss", "exp") and sn[f"mix-{K}"] == 1 and sr[f"mix-{K}"] == 1:
         upgraded_from, K = K, "mix"
 
-    def verdict():
-        if not planted_ok:
-            return "REFUSED"
-        if not region_valid:
-            return "NOT_READ_REGION_INVALID"
-        if K is None:
-            return "RED_FLAT"
-        kf = f"{K}-flat"
-        if _opposite(sn[kf], sz[kf]) or _opposite(sn[eg], sz[eg]):
-            return "NOT_READ_BOUNDARY"
-        if _opposite(sn[eg], sr[eg]):
-            return "NOT_READ_DISAGREE"
-        if any(sb[r][kf] != 1 for r in range(N_BLOCKS)):
-            return "RED_FLAT_REGION"
-        if K == "exp" or upgraded_from == "exp" or ("gauss" not in cands and "exp" in cands):
-            return "RED_EXP"
-        if K == "gauss":
-            # a = +1 with K = G (E beats G yet fails to beat flat) is not a row of A3; it reads "not refused".
-            return "PASS_FAVOURS_GAUSSIAN" if a == -1 else "PASS_GAUSSIAN_NOT_REFUSED"
-        return "PASS_MIXTURE"
-
     detail = {}
     for name, vals in (("neuron", neuron), ("interior", interior)):
         detail[name] = {}
@@ -824,7 +838,7 @@ def read_t3(neuron, interior, region, bands, planted_ok=True, region_valid=True)
                 "degenerate": ct.degenerate,
             }
     return {
-        "verdict": verdict(),
+        "verdict": verdict(planted_ok, region_valid, K, cands, a, upgraded_from, sn, sz, sb, sr),
         "K": K,
         "C": cands,
         "a": a,
