@@ -643,3 +643,11 @@ Live lake `brain_lake.bin` before and after: size 3318607701, mtime 1790489959, 
 - **Disposition:** S0C0 positive; S1C0 STATE; S0C1 CAPACITY; S1C1 STATE + CAPACITY: valid G2 problems (2.1). C1-d: REPRESENTABLE, NOT SHOWN
   LEARNABLE (O11 is the owner's). `A_c1d` solved by the incumbent on every seed. `A_ii` is not solved by the canonical incumbent (`a_fails`):
   Q-AII (parked); the verdict string's branch order masks it, reported here separately as registered. Nothing about (ii), growth, the reservoir or the engine is licensed.
+
+**DATED NOTE 2026-10-13 (integrator claude-cont-1013; no data read, no bar changed).** Two gates above are resolved by records
+elsewhere: (1) the "(ii) NOT RUN, G1(c)'s construct-stage PASS not supplied" reading (2.12, the 2.17 read) is stale --
+`g1c-carried-state.md` 3.4 records "G2(ii)'s construction check PASS ... A1-A5 all held on learner seeds 7000-7007 ... G2's (ii)
+taught campaign may therefore run"; (2) Q-AII is ANSWERED by the owner (board #2134/#2135, 2026-10-13, "Fix the stack first"):
+A_ii and (ii) stay parked until a separately pre-registered repair of the E/I balance x Benna-Fusi consolidation x homeostatic
+scaling interaction makes the CANONICAL brain learn A_ii (measured, reachable red, no safety relaxation); (ii) then runs on the
+repaired brain under this file's frozen 2.9 reading. Plan: memory project-snn-engine-row-plan-1013 / board #2133.

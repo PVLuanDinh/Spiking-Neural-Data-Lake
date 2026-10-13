@@ -752,3 +752,9 @@ bar needs W_live and stays with the deciding run (14100-14107). A design measure
 ## 4. Results
 
 None. Nothing has been recorded under this pre-registration.
+
+**DATED NOTE 2026-10-13 (integrator claude-cont-1013; no data read, no bar changed).** Owner question X1 (#2) named above as
+blocking integration is ANSWERED: board #518, owner 2026-10-10 verbatim "X1: A" -- R2 keeps checkpoint schema r2.v1, G8's
+translation test takes a dated amendment, and existing g0c.v1 checkpoints must still load and translate. R2's accepted application
+is committed on the integrator (18ca5695, task R2-APPLICATION-1013-V2). R1's deciding run 14100-14107 still waits for its own
+pre-registration-vs-tree check (plan step 1.0, board #2133).
