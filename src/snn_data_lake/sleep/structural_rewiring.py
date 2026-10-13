@@ -177,6 +177,98 @@ class StructuralRewiring:
         self._last = {"turnover": 0.0, "pruned": 0, "regenerated": 0, "budget": 0}
         self._regen_signs = {}  # row -> (n_pos, n_neg) regen counts (MSP attribution, bounded)
 
+    STATE_FORMAT = "structural_rewiring.v1"
+
+    def state_dict(self):
+        """Existing structural topology and exact RNG position, with detached int-key entries."""
+        import copy
+        from snn_data_lake.readout.interaction_learning import _encode_state
+
+        state = {
+            "fmt": self.STATE_FORMAT, "rng": [self._rng.getstate()[0], list(self._rng.getstate()[1]), self._rng.getstate()[2]],
+            "signs": copy.deepcopy(self._signs), "budget": self._budget,
+            "cycles": self._cycles, "pairs_total": self._pairs_total,
+            "last": dict(self._last),
+            "regen_signs": [[r, list(v)] for r, v in sorted(self._regen_signs.items())],
+        }
+        _encode_state(state)  # canonical finite/type validation; no second codec
+        return state
+
+    def load_state_dict(self, state):
+        """Validate all fields and duplicate int keys BEFORE touching the real carrier."""
+        import copy
+        from snn_data_lake.readout.interaction_learning import _encode_state
+
+        fields = {"fmt", "rng", "signs", "budget", "cycles", "pairs_total", "last", "regen_signs"}
+        if type(state) is not dict or set(state) != fields or state["fmt"] != self.STATE_FORMAT:
+            raise ValueError("malformed structural checkpoint")
+        _encode_state(state)
+        raw_rng = state["rng"]
+        if type(raw_rng) is not list or len(raw_rng) != 3 or type(raw_rng[1]) is not list:
+            raise ValueError("malformed structural RNG carrier")
+        if type(raw_rng[0]) is not int or any(type(n) is not int for n in raw_rng[1]):
+            raise ValueError("invalid structural RNG integers")
+        if raw_rng[2] is not None and type(raw_rng[2]) is not float:
+            raise ValueError("invalid structural Gaussian cache")
+        rng = (raw_rng[0], tuple(raw_rng[1]), raw_rng[2])
+        probe = _random.Random(0)
+        try:
+            probe.setstate(rng)
+        except (TypeError, ValueError, IndexError, OverflowError) as exc:
+            raise ValueError("invalid structural RNG") from exc
+        signs, budget = state["signs"], state["budget"]
+        if signs is None:
+            if budget is not None:
+                raise ValueError("unborn structural budget must be absent")
+        else:
+            if type(signs) is not list or any(type(row) is not list for row in signs):
+                raise ValueError("malformed structural topology")
+            if any(type(s) is not int or s not in (-1, 0, 1) for row in signs for s in row):
+                raise ValueError("invalid structural sign")
+            if type(budget) is not int or not 0 <= budget <= sum(map(len, signs)):
+                raise ValueError("invalid structural budget")
+        for key in ("cycles", "pairs_total"):
+            if type(state[key]) is not int or state[key] < 0:
+                raise ValueError("invalid structural counter")
+        last = state["last"]
+        base = {"turnover", "pruned", "regenerated", "budget"}
+        if type(last) is not dict or set(last) not in (
+            base, base | {"external_vacancies", "readopted"},
+        ):
+            raise ValueError("malformed structural report")
+        if type(last["turnover"]) is not float or not math.isfinite(last["turnover"]):
+            raise ValueError("invalid structural turnover")
+        for key in set(last) - {"turnover"}:
+            if type(last[key]) is not int or last[key] < 0:
+                raise ValueError("invalid structural report count")
+        if type(state["regen_signs"]) is not list:
+            raise ValueError("malformed structural sign entries")
+        regen = {}
+        for entry in state["regen_signs"]:
+            if type(entry) is not list or len(entry) != 2:
+                raise ValueError("malformed structural sign entry")
+            row, counts = entry
+            if type(row) is not int or row < 0 or row in regen:
+                raise ValueError("duplicate or invalid structural row")
+            if signs is None or row >= len(signs):
+                raise ValueError("structural regen row outside topology")
+            if type(counts) is not list or len(counts) != 2:
+                raise ValueError("malformed structural sign counts")
+            if any(type(n) is not int or n < 0 for n in counts):
+                raise ValueError("invalid structural sign count")
+            regen[row] = tuple(counts)
+        if sum(sum(v) for v in regen.values()) != state["pairs_total"]:
+            raise ValueError("structural lifetime sign counts disagree")
+        if signs is None and (state["cycles"] or state["pairs_total"] or regen):
+            raise ValueError("unborn structural state carries completed cycles")
+        self._rng.setstate(rng)
+        self._signs = copy.deepcopy(signs)
+        self._budget = budget
+        self._cycles = state["cycles"]
+        self._pairs_total = state["pairs_total"]
+        self._last = dict(last)
+        self._regen_signs = regen
+
     # ---- the slow-clock pass -----------------------------------------------------------------
     def rewire(self, rows, activity=None):
         """One structural cycle over `rows` (list of mutable weight lists). `activity`:

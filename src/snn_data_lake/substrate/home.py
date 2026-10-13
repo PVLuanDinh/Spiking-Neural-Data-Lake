@@ -1324,23 +1324,103 @@ def save_episode(episode, path=None):
     return _w
 
 
-def load_episodes(path=None, limit=None, kinds=None):
-    """Autobiographical episodes by default, or explicitly selected kinds, oldest first.
+LEARNER_EVENT_KINDS = frozenset({"teach", "turn", "sleep", "percept", "ctxread"})
 
-    Foreign record types are skipped, exactly as KnowledgeLog skips non-FACT records -- one lake,
-    several tenants, each reading only its own.
-    """
-    out = []
-    for payload in _log(path).replay():
-        if payload[:1] == _T_EPISODE:
+
+def is_autobiographical_episode(episode):
+    return episode.get("kind") not in LEARNER_EVENT_KINDS
+
+
+def is_decimal_id(value):
+    s = str(value)
+    return s.isascii() and s.isdigit()
+
+
+def session_number(episode):
+    value = str(episode.get("session", ""))
+    return int(value) if is_decimal_id(value) else None
+
+
+def next_session(episodes=None, path=None):
+    if episodes is None:
+        episodes = load_episodes(path=path, all_kinds=True)
+    return 1 + max((n for n in map(session_number, episodes) if n is not None), default=0)
+
+
+def load_episodes(path=None, limit=None, kinds=None, *, all_kinds=False, strict=False,
+                  return_receipt=False):
+    """Compatibility read, or an opt-in same-pass complete-frame/canonical-episode receipt."""
+    if return_receipt and (not strict or not all_kinds or limit is not None or kinds is not None):
+        raise ValueError("R2 receipt requires a complete strict all-kinds pass")
+    if not strict:
+        out = []
+        for payload in _log(path).replay():
+            if payload[:1] != _T_EPISODE:
+                continue
             try:
                 episode = unpack_episode(payload[1:])
-                kind = episode.get("kind")
-                if (kind != "teach") if kinds is None else (kind in kinds):
+                if all_kinds or (
+                    is_autobiographical_episode(episode) if kinds is None
+                    else episode.get("kind") in kinds
+                ):
                     out.append(episode)
             except Exception:
-                continue  # a record we cannot read must not stop the ones after it
-    return out[-limit:] if limit else out
+                continue
+        return out[-limit:] if limit else out
+
+    import hashlib
+    from pathlib import Path
+    from snn_data_lake.substrate.binlog import _LEN, _MAGIC
+
+    selected = Path(path or knowledge_path()).resolve()
+    bound = Path(knowledge_path()).resolve()
+    if selected != bound:
+        raise ValueError("R2 strict read must bind the active canonical home lake")
+    def stat_record():
+        s = selected.stat() if selected.exists() else None
+        return None if s is None else {
+            "size": s.st_size, "mtime_ns": s.st_mtime_ns, "inode": s.st_ino,
+        }
+    before_log = stat_record()
+    log = _log()  # same canonical cache key as the common writer
+    out, rows, critical = [], [], []
+    byte_end = len(_MAGIC)
+    with log._lock:
+        start = stat_record()
+        for ordinal, payload in enumerate(log.replay()):
+            byte_end += _LEN.size + len(payload)
+            row = {
+                "ordinal": ordinal, "tag": payload[:1].hex(), "length": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(), "byte_end": byte_end,
+                "reason": "foreign_tag",
+            }
+            if payload[:1] == _T_EPISODE:
+                try:
+                    episode = unpack_episode(payload[1:])
+                    if pack_episode(episode) != payload[1:]:
+                        raise ValueError("noncanonical episode bytes")
+                    row.update({k: episode.get(k) for k in ("kind", "schema", "event_id", "session")})
+                    row["reason"] = "decoded"
+                    out.append(episode)
+                except (TypeError, ValueError, IndexError, OverflowError, UnicodeError) as exc:
+                    row["reason"] = "episode_decode_refused"
+                    row["cause"] = f"{type(exc).__name__}: {exc}"
+                    critical.append(ordinal)
+            rows.append(row)
+        end = stat_record()
+    complete = start == end and end is not None and byte_end == end["size"] and not critical
+    proof = {
+        "home": str(bound.parent), "lake": str(selected), "before_log": before_log,
+        "start": start, "end": end, "complete_byte_end": byte_end, "rows": rows,
+        "critical_ordinals": critical, "complete": complete,
+        "canonical_log_may_have_repaired_torn_tail": before_log != start,
+    }
+    receipt = json.dumps(proof, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    if return_receipt:
+        return out, receipt
+    if not complete:
+        raise ValueError("R2 strict episode prefix is incomplete")
+    return out
 
 
 def save_selfbuild(blob, path=None):

@@ -77,15 +77,17 @@ _REPLAY_CAP = 64  # sleep-replay ring size (T058): a memory bound, not a behavio
 
 
 def _state_attrs(obj):
-    """Declared runtime wiring stays owned by the freshly constructed instance."""
+    """Checkpoint fields, excluding only declared wiring and lake-derived caches."""
     excluded = set()
     if type(obj).__name__ == "SpikingInteractionLearner":
-        excluded = {"_authority", "teach_sink"}
+        excluded = {
+            "_authority", "teach_sink", "event_sink", "unit_roles", "_effect_depth",
+            "_replay", "_replay_ids", "_hydrated", "_hydration_count", "_hydration_refusals",
+        }
     elif type(obj).__name__ == "RuleComposer":
         excluded = {"_specs", "_names"}
     return {
-        k: v
-        for k, v in vars(obj).items()
+        k: v for k, v in vars(obj).items()
         if k not in excluded
         and not isinstance(v, (type(threading.Lock()), type(threading.RLock())))
     }
@@ -187,6 +189,10 @@ def _g0c_translate(name, legacy):
     return f"{module}.{qualname}"
 
 
+_G0C_OPTIONAL = frozenset({"snn_data_lake.plasticity.bcm_plasticity.BCMNeuron"})
+
+
+
 def _merge_state(target, saved):
     """Validate and stage the entire tree before mutating any existing instance."""
     import importlib
@@ -201,13 +207,29 @@ def _merge_state(target, saved):
             if fresh is not None and value is not None and type(fresh) is not type(value):
                 raise ValueError("checkpoint value type mismatch")
             if value is None and fresh is not None and hasattr(fresh, "__dict__"):
-                raise ValueError("checkpoint object replaced by null")
+                # An OPTIONAL cell may return to its saved absence (an R2 sleep rollback to a
+                # snapshot taken before the cell was built; panel M4, narrowed by fold panel F2).
+                # Any other object -- a synapse inside a built cascade row included -- is corrupt.
+                cls = type(fresh)
+                if f"{cls.__module__}.{cls.__qualname__}" not in _G0C_OPTIONAL:
+                    raise ValueError("checkpoint object replaced by null")
             return value
         if type(value) is list:
             if fresh is not None and type(fresh) is not list:
                 raise ValueError("checkpoint list type mismatch")
             old = fresh or []
-            return [stage(old[i] if i < len(old) else None, v) for i, v in enumerate(value)]
+            out = [stage(old[i] if i < len(old) else None, v) for i, v in enumerate(value)]
+            # Fold panel 2, F2: judged from the SAVED list, not the destination. A null element
+            # beside objects is legitimate only among OPTIONAL cells (a _bcm list); a null inside
+            # a built Benna-Fusi row is corrupt even when the destination row is cold. Ceiling: an
+            # all-null list carries no class to judge by, so it is accepted (it fails loudly later).
+            if any(v is None for v in value) and any(
+                hasattr(x, "__dict__")
+                and f"{type(x).__module__}.{type(x).__qualname__}" not in _G0C_OPTIONAL
+                for x in out
+            ):
+                raise ValueError("checkpoint object replaced by null")
+            return out
         if type(value) is not dict:
             raise ValueError("malformed checkpoint node")
         if "__cls__" in value:
@@ -286,6 +308,15 @@ def _merge_state(target, saved):
         else:
             obj.__dict__.update(attrs)
     return result
+
+
+def _event_order(event_id):
+    if type(event_id) is not str:
+        raise ValueError("R2 event identity must be a string")
+    parts = event_id.split("-")
+    if len(parts) != 2 or any(not p.isascii() or not p.isdigit() for p in parts):
+        raise ValueError("R2 event identity must contain two ASCII decimals")
+    return tuple(map(int, parts))
 
 
 def _utterance_key(utterance):
@@ -379,6 +410,19 @@ class SpikingInteractionLearner:
         # which is what makes the consolidation cascade actually reachable on sleep ticks).
         # A bounded ring, a memory bound rather than a behaviour-arbitrating threshold.
         self._replay = []
+        self._replay_ids = []
+        self._replay_counts = {}
+        self._replay_total = 0
+        self._last_drawn = []
+        self._cursor = None
+        self._unjournaled_refused = 0
+        self._redo_count = 0
+        self._hydrated = False
+        self._hydration_count = 0
+        self._hydration_refusals = {}
+        self.unit_roles = None
+        self.event_sink = None
+        self._effect_depth = 0
         # G0(a) provenance: normalized utterance -> AUTHORITATIVE label (a person's correction),
         # retained for the process lifetime. A later self-label on the same utterance is superseded
         # by it, and its older ring entries are rewritten to it.
@@ -454,6 +498,7 @@ class SpikingInteractionLearner:
         """One R-STDP deposit onto response neuron `li`: present the stimulus spike train, fire the
         post spike AFTER it (pre-before-post pairings build a spike-timing eligibility trace), then
         gate that trace into the weights by the reward/teaching sign d:  w[i] += lr * d * e[i]."""
+        self._require_effect_boundary()
         n = self.neurons[li]
         n.e = [0.0] * self.n_in  # fresh trial: clear eligibility + spike history
         n.t_pre = [None] * self.n_in
@@ -551,7 +596,7 @@ class SpikingInteractionLearner:
     # distinct-from: plasticity/benna_fusi.py, plasticity/inhibitory_stdp.py etc. -- their
     #   step/reward methods are the RULES; this is the incumbent learner entry being edited
     #   in place (the T058 replay-record flag added to the existing method). Sites read.
-    def interact(self, stimulus, feedback, _record=True, _key=None):
+    def interact(self, stimulus, feedback, _record=True, _key=None, _event_id=None):
         """One interaction / learning step, purely via reward-modulated spike-timing plasticity.
 
         `feedback` teaches the learner in one of two ways (both R-STDP, never a gradient):
@@ -561,9 +606,9 @@ class SpikingInteractionLearner:
         Returns the response the learner gave (its pre-update best answer). `_record=False` is the
         sleep-replay path: same learning, no re-recording (a replay that re-recorded itself would
         feed its own buffer forever)."""
+        self._require_effect_boundary()
         if _record:
-            self._replay.append((list(stimulus), feedback, _key))
-            del self._replay[:-_REPLAY_CAP]
+            self._remember(stimulus, feedback, _key, _event_id)
         code = self.encode(stimulus)
         pred = self._argmax_label(code)  # the learner's own current answer (the action taken)
         given = self.responses[pred]
@@ -591,13 +636,23 @@ class SpikingInteractionLearner:
         cascade REACHABLE on sleep ticks: before this, sleep could only relax() cascades that
         wake chat had happened to ensure, and the measured live state was every relax returning
         None. Samples with the instance rng (deterministic per seed); returns the replay count.
-        An empty buffer replays nothing and says so with 0, never a fake pass."""
+        An empty buffer replays nothing and says so with 0, never a fake pass.
+        R2: each draw's lake event id is recorded (`_last_drawn`) and counted (`_replay_counts`,
+        `_replay_total`); replay writes no lake event and advances no wake chronology."""
+        self._require_effect_boundary()
+        self._last_drawn = []
         if not self._replay:
             return 0
         n = 0
         for _ in range(int(k)):
-            code, fb, key = self._replay[self.rng.randrange(len(self._replay))]
+            i = self.rng.randrange(len(self._replay))
+            code, fb, key = self._replay[i]
+            eid = self._replay_ids[i]
             self.interact(list(code), fb, _record=False, _key=key)
+            self._last_drawn.append(eid)
+            if eid is not None:
+                self._replay_counts[eid] = self._replay_counts.get(eid, 0) + 1
+            self._replay_total += 1
             n += 1
         return n
 
@@ -618,54 +673,210 @@ class SpikingInteractionLearner:
         peak-response label. Pure inference: NO plasticity, NO rng."""
         return self.respond(text_features(utterance, self.n_in))
 
-    def learn_turn(self, utterance, firewall_intent, feedback=None):
-        """CONVERSE-AND-LEARN: improve the router from ONE conversational turn, via reward-modulated
-        spike-timing plasticity (R-STDP), NOT a gradient. `utterance` is spike-encoded (shared text
-        featurizer); the label is `firewall_intent` -- the fixed keyword router's OWN grounded routing
-        for this line, read back as an intent -- so the brain SELF-SUPERVISES from its own firewall
-        with no human labels (distillation). An OPTIONAL explicit `feedback` intent (what the human
-        actually meant) is AUTHORITATIVE: later self-labels for the same normalized utterance are
-        superseded, and its older replay-ring labels are rewritten. Returns the router's pre-update
-        answer. SAFETY: intent recognition only -- it adds no
-        actuator route (the encoder maps text -> a spike train -> an intent label, never a command)."""
-        key = _utterance_key(utterance)
-        if feedback is not None:
-            if feedback not in self.responses:
-                raise ValueError(f"unknown response label: {feedback!r}")
-            self._authority[key] = feedback
-            if self.teach_sink is not None:
-                self.teach_sink(key, feedback)
+    def _remember(self, stimulus, feedback, key, event_id, *, preserve_counts=False):
+        self._replay.append((list(stimulus), feedback, key))
+        self._replay_ids.append(event_id)
+        del self._replay[:-_REPLAY_CAP]
+        del self._replay_ids[:-_REPLAY_CAP]
+        if not preserve_counts:
+            live = set(self._replay_ids)
+            for eid in [e for e in self._replay_counts if e not in live]:
+                del self._replay_counts[eid]
+
+    def _require_effect_boundary(self):
+        if self.event_sink is not None and self._effect_depth == 0:
+            raise RuntimeError("persistent learner effect requires the common R2 boundary")
+
+    def _label_for(self, kind, key, target):
+        if kind == "teach" or not self.provenance_supersede:
+            return target
+        return self._authority.get(key, target)
+
+    def _apply_turn(self, kind, key, target, event_id, stimulus, *, cache_only=False):
+        """The same authority/ring/deposit effect is used for admission and redo."""
+        if kind not in ("teach", "turn") or target not in self.responses:
+            raise ValueError("unbound turn effect or unknown target")
+        if kind == "teach":
+            self._authority[key] = target
             if self.provenance_rewrite:
                 self._replay[:] = [
-                    (code, feedback if old_key == key else label, old_key)
+                    (code, target if old_key == key else label, old_key)
                     for code, label, old_key in self._replay
                 ]
-            label = feedback
-        else:
-            if firewall_intent is None:
-                raise ValueError("a firewall intent or authoritative feedback is required")
-            label = (
-                self._authority.get(key, firewall_intent)
-                if self.provenance_supersede
-                else firewall_intent
-            )
-        return self.interact(text_features(utterance, self.n_in), label, _key=key)
+        label = self._label_for(kind, key, target)
+        if cache_only:
+            self._remember(stimulus, label, key, event_id, preserve_counts=True)
+            return None
+        self._effect_depth += 1
+        try:
+            given = self.interact(stimulus, label, _key=key, _event_id=event_id)
+        finally:
+            self._effect_depth -= 1
+        if event_id is not None:
+            self._cursor = _event_order(event_id)
+        return given
+
+    def learn_turn(self, utterance, firewall_intent, feedback=None):
+        """The persist callback owns admission BEFORE authority or any learned effect."""
+        kind = "teach" if feedback is not None else "turn"
+        target = feedback if feedback is not None else firewall_intent
+        if target not in self.responses:
+            raise ValueError(f"unknown response label: {target!r}")
+        key = _utterance_key(utterance)
+        stimulus = text_features(utterance, self.n_in)
+        if self.event_sink is not None:
+            return self.event_sink(kind, key, target, stimulus)
+        return self._apply_turn(kind, key, target, None, stimulus)
 
     def provenance(self, utterance):
         """Read the utterance's teaching provenance without learning or changing it."""
         return "authoritative" if _utterance_key(utterance) in self._authority else "self"
 
     def state_dict(self):
-        """Continuation only: authoritative teaching has its own lake event source."""
-        return {"schema": "g0c.v1", "tree": _encode_state(self)}
+        """r2.v1 continuation; authority/ring are reconstructed from the same eligible prefix."""
+        return {"schema": "r2.v1", "tree": _encode_state(self)}
 
     def load_state_dict(self, d):
-        """A refused checkpoint leaves every live object untouched."""
-        if type(d) is not dict or set(d) != {"schema", "tree"} or d["schema"] != "g0c.v1":
+        """A refused checkpoint leaves every live object untouched. Returns the restore report:
+        `{"schema": ..., "ring_dropped": n}`. A G0(c) `g0c.v1` checkpoint is UPCAST: its weights,
+        stack and RNG are restored, its ring (self-labelled entries with no lake identity) is DROPPED
+        and counted, and it has no watermark (R2 2.1 "Legacy dispositions")."""
+        if (
+            type(d) is not dict
+            or set(d) != {"schema", "tree"}
+            or d["schema"]
+            not in (
+                "r2.v1",
+                "g0c.v1",
+            )
+        ):
             raise ValueError("unsupported interaction learner checkpoint schema")
         if type(d["tree"]) is not dict or "__cls__" not in d["tree"]:
             raise ValueError("missing interaction learner checkpoint tree")
-        _merge_state(self, d["tree"])
+        tree, dropped = d["tree"], 0
+        if d["schema"] == "g0c.v1":
+            attrs = tree.get("attrs")
+            if type(attrs) is not dict or type(attrs.get("_replay")) is not list:
+                raise ValueError("malformed g0c.v1 checkpoint: no ring")
+            attrs = dict(attrs)
+            dropped = len(attrs.pop("_replay"))
+            fresh = _encode_state(self)["attrs"]
+            for name in set(fresh) - set(attrs):
+                attrs[name] = fresh[name]
+            tree = {"__cls__": tree["__cls__"], "attrs": attrs}
+        _merge_state(self, tree)
+        return {"schema": d["schema"], "ring_dropped": dropped}
+    def _snapshot(self):
+        """Detached whole learned/RNG state, plus every lake-derived cache."""
+        return {
+            "state": self.state_dict(),
+            "cache": _encode_state((self._replay, self._replay_ids, self._authority)),
+        }
+
+    def _restore_snapshot(self, snap):
+        if type(snap) is not dict or set(snap) != {"state", "cache"}:
+            raise ValueError("malformed R2 snapshot")
+        cache = _merge_state(None, snap["cache"])
+        if type(cache) is not tuple or len(cache) != 3:
+            raise ValueError("malformed R2 cache")
+        ring, ids, authority = cache
+        if type(ring) is not list or type(ids) is not list or len(ring) != len(ids):
+            raise ValueError("malformed R2 ring identities")
+        if type(authority) is not dict or any(v not in self.responses for v in authority.values()):
+            raise ValueError("malformed R2 authority")
+        for item in ring:
+            if type(item) is not tuple or len(item) != 3 or type(item[0]) is not list:
+                raise ValueError("malformed R2 ring item")
+            if len(item[0]) != self.n_in:
+                raise ValueError("R2 ring width differs from the actual learner")
+        for eid in ids:
+            if eid is not None:
+                _event_order(eid)
+        self.load_state_dict(snap["state"])
+        self._replay[:] = ring
+        self._replay_ids[:] = ids
+        self._authority.clear()
+        self._authority.update(authority)
+
+    def hydrate(self, events, *, receipt, sleep_step):
+        """One staged COMPLETE prefix; errors propagate and never install partial progress."""
+        import json
+        from snn_data_lake.substrate.learner_events import (
+            SLEEP_DIGESTS, SLEEP_PROGRESS, sleep_digests,
+        )
+
+        if self._hydrated:
+            raise ValueError("R2 hydration is once per staged learner")
+        proof = json.loads(receipt)
+        ids = [e["event_id"] for e in events]
+        if not proof.get("complete") or proof.get("eligible_ids") != ids:
+            raise ValueError("R2 incomplete or mismatched same-pass receipt")
+        orders = [_event_order(eid) for eid in ids]
+        saved_cursor = self._cursor
+        if saved_cursor is not None and (
+            type(saved_cursor) is not tuple or len(saved_cursor) != 2
+            or any(type(n) is not int or n < 0 for n in saved_cursor)
+        ):
+            raise ValueError("R2 malformed checkpoint cursor")
+        if saved_cursor is not None and saved_cursor not in orders:
+            raise ValueError("R2 checkpoint cursor is not in the eligible prefix")
+        self._authority.clear()
+        self._replay.clear()
+        self._replay_ids.clear()
+        rewirer = sleep_step["rewirer"]
+        observations = None
+        processed, redone = [], 0
+        for event, order in zip(events, orders, strict=True):
+            kind = event["kind"]
+            before_checkpoint = saved_cursor is not None and order <= saved_cursor
+            if kind in ("teach", "turn"):
+                key, target = event["source"], event["target"]
+                if key != _utterance_key(key):
+                    raise ValueError("R2 noncanonical turn source")
+                self._apply_turn(
+                    kind, key, target, event["event_id"], text_features(key, self.n_in),
+                    cache_only=before_checkpoint,
+                )
+                if not before_checkpoint:
+                    self._redo_count += 1
+                    redone += 1
+            elif kind == "sleep":
+                if event["pending"] != "none" or event["applied_mask_digest"] != "none":
+                    raise ValueError("R2 deciding mask carrier is not bound")
+                if event["stage_index"] != "0" or event["stage_name"] != "night":
+                    raise ValueError("R2 sleep stage effect is not bound")
+                if not before_checkpoint:
+                    self._effect_depth += 1
+                    try:
+                        rewirer, observations = sleep_step["step"](self, rewirer)
+                    finally:
+                        self._effect_depth -= 1
+                    actual = {
+                        **sleep_digests(self, rewirer),
+                        "drawn": ",".join(str(i) for i in self._last_drawn) or "none",
+                        "presentations_spent": str(observations["_sleep_replayed"]),
+                    }
+                    if any(actual[k] != event[k] for k in SLEEP_DIGESTS + SLEEP_PROGRESS):
+                        raise ValueError("R2 sleep redo digest/progress mismatch")
+                    self._cursor = order
+                    self._redo_count += 1
+                    redone += 1
+            else:
+                raise ValueError(f"R2 unbound effect: {kind}")
+            processed.append(event["event_id"])
+        live = set(self._replay_ids)
+        if any(eid not in live for eid in self._replay_counts):
+            raise ValueError("R2 replay counts refer outside the rebuilt ring")
+        expected = orders[-1] if orders else None
+        if self._cursor != expected or processed != ids:
+            raise ValueError("R2 incomplete final cursor")
+        self._hydrated = True
+        self._hydration_count += 1
+        return {
+            "complete": True, "processed_ids": processed, "eligible_ids": ids,
+            "cursor": expected, "redone": redone, "rewirer": rewirer,
+            "observations": observations, "receipt_sha": __import__("hashlib").sha256(receipt).hexdigest(),
+        }
 
     def rebuild_authority(self, events):
         """Latest teaching per session/sequence wins; reconcile without drawing RNG."""
