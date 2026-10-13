@@ -76,14 +76,43 @@ def test_the_four_words_hash_to_the_plans_buckets_by_an_independent_derivation()
 
 
 def test_live_brain_source_pins_the_learners_construction_and_the_two_intents():
+    import ast
+    import hashlib
+    import json
+
+    from snn_data_lake import readout
+
     source = Path(inspect.getsourcefile(live_brain)).read_text(encoding="utf-8")
     assert re.search(
         r"SpikingInteractionLearner\(\s*list\(_IXN_INTENTS\),\s*n_in=52,\s*seed=seed,\s*t_post=6\s*\)",
         source,
     )
-    block = re.search(r"_IXN_INTENTS = \((.*?)\)", source, re.S).group(1)
-    names = re.findall(r'"([A-Z]+)"', block)
-    assert names == list(live_brain._IXN_INTENTS) and len(names) == 9
+    owner_source = Path(inspect.getsourcefile(readout)).read_text(encoding="utf-8")
+    owner_tree = ast.parse(owner_source)
+    definitions = [
+        node
+        for node in owner_tree.body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "_IXN_INTENTS"
+            for target in node.targets
+        )
+    ]
+    assert len(definitions) == 1
+    catalog = ast.literal_eval(definitions[0].value)
+    assert type(catalog) is tuple and all(type(name) is str for name in catalog)
+    encoded = json.dumps(
+        {"type": "tuple", "values": catalog}, separators=(",", ":"), ensure_ascii=True
+    ).encode("ascii")
+    assert hashlib.sha256(encoded).hexdigest() == (
+        "5eb72fe06dc8ba658d847f70bc46d9a7e2335e861587236f9ff8f7323a5e4840"
+    )
+    assert type(readout._IXN_INTENTS) is tuple
+    assert catalog == readout._IXN_INTENTS
+    assert live_brain._IXN_INTENTS is readout._IXN_INTENTS
+    assert im._IXN_INTENTS is readout._IXN_INTENTS
+    names = list(catalog)
+    assert len(names) == 9
     assert (im.N_IN, im.T_POST) == (52, 6)
     assert im.GREET in names and im.GOAL in names and im.GREET != im.GOAL
     unit = im._incumbent(0)

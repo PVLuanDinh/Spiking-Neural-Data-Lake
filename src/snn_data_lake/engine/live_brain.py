@@ -19,23 +19,10 @@ trips the reflex E-STOP before any action, and every motor command flows through
 
 from snn_data_lake.engine.autonomous_loop import ACTIONS, AutonomousArm
 from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
+from snn_data_lake.readout import _IXN_INTENTS
 from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner, text_features
 from snn_data_lake.readout.predictive_coding import PredictiveCodingNetwork
 from snn_data_lake.sensorimotor.nl_interface import NLInterface
-
-# the brain's conversational intent families -- the labels its spiking interaction learner routes to.
-_IXN_INTENTS = (
-    "GREET",
-    "INTEROCEPT",
-    "GOAL",
-    "MEMORY",
-    "ATTENTION",
-    "SAFETY",
-    "CONSCIOUS",
-    "ARM",
-    "EXPLORE",
-)
-
 
 _ROUTE_CUES = {
     "GOAL": ("what is your goal", "goal"),

@@ -861,3 +861,378 @@ def test_a_transposed_readout_in_the_trace_rule_is_flagged():
     )
     assert variant != src
     assert _gate_findings(variant), "the transport gate did not flag a transposed readout"
+
+
+def _canonical_fixture(pid="ii.xor"):
+    from snn_data_lake.instruments import taught_problems as tp
+
+    learner = tp.canonical_incumbent(seed=9900)
+    problem = tp.PROBLEMS[pid]
+    return learner, problem
+
+
+def _canonical_snapshot(learner):
+    import copy
+    import json
+
+    return (
+        json.dumps(learner.state_dict(), ensure_ascii=True, sort_keys=True).encode("ascii"),
+        tuple(tuple(row) for row in learner.weights()),
+        learner.rng.getstate(),
+        copy.deepcopy(learner._authority),
+        copy.deepcopy(learner._replay),
+    )
+
+
+def _canonical_expected_pairs(pid):
+    from snn_data_lake.instruments import inseparable_mapping as im
+
+    label = im.label_xor if pid == "ii.xor" else im.label_twin
+    return {(im.TEXTS[item], label(*item)) for item in im.UV}
+
+
+def _canonical_missing():
+    return (
+        "grown-reader/admission",
+        "retention_select",
+        "actual grown-source/admission binding",
+        "cold restore/Brain integration",
+    )
+
+
+def test_canonical_adapter_xor_diagnosis(monkeypatch):
+    from snn_data_lake.growth import capacity_certificate as cc
+
+    learner, problem = _canonical_fixture()
+    before = _canonical_snapshot(learner)
+    actual, calls = cc.diagnose, []
+
+    def delegated(unit, texts, labels, history_texts=None, units=()):
+        assert unit is learner
+        assert history_texts is None and units == ()
+        assert isinstance(texts, tuple) and isinstance(labels, tuple)
+        assert set(zip(texts, labels, strict=True)) == _canonical_expected_pairs("ii.xor")
+        result = actual(unit, texts, labels, history_texts=history_texts, units=units)
+        calls.append((unit, tuple(texts), tuple(labels), history_texts, units, result))
+        return result
+
+    monkeypatch.setattr(cc, "diagnose", delegated)
+    adapter = growth_loop.CanonicalGrowthAdapter(learner, problem, seed=9900)
+    assert adapter.diagnose() == "CAPACITY"
+    assert len(calls) == 1, "diagnosis must delegate once to the real certificate"
+    unit, texts, labels, history, units, result = calls[0]
+    assert unit is learner and history is None and units == ()
+    assert len(texts) == len(labels) == len(_canonical_expected_pairs("ii.xor"))
+    assert set(zip(texts, labels, strict=True)) == _canonical_expected_pairs("ii.xor")
+    assert isinstance(texts, tuple) and isinstance(labels, tuple)
+    assert adapter._reader.unit is learner and adapter._reader.history is False
+    assert adapter.last_diagnosis is result
+    assert result.kind == "CAPACITY" and result.k == 0 and result.witness is not None
+    assert _canonical_snapshot(learner) == before
+
+
+def test_canonical_adapter_exact_evidence():
+    import json
+    from fractions import Fraction
+
+    from snn_data_lake.growth import capacity_certificate as cc
+
+    learner, problem = _canonical_fixture()
+    before = _canonical_snapshot(learner)
+    adapter = growth_loop.CanonicalGrowthAdapter(learner, problem, seed=9900)
+    with pytest.raises(growth_loop.LedgerError, match="evidence is absent"):
+        adapter.evidence()
+    assert adapter.diagnose() == "CAPACITY"
+    diagnosis, evidence = adapter.last_diagnosis, adapter.evidence()
+    assert evidence["kind"] == diagnosis.kind
+    assert evidence["k"] == diagnosis.k and evidence["k_history"] == diagnosis.k_history
+    assert evidence["log"] == diagnosis.log
+    assert evidence["witness"]["path"] == diagnosis.witness.path
+    assert evidence["separator"] is None
+    assert evidence["scope"] == "canonical-frozen-code-only"
+    assert tuple(evidence["missing"]) == _canonical_missing()
+    rows = evidence["witness"]["lam"]
+    assert rows == sorted(rows, key=lambda row: (row[0], row[1]))
+    assert all(type(v) is int for row in rows for v in row)
+    assert all(row[3] > 0 for row in rows)
+    lam = {(i, c): Fraction(numerator, denominator) for i, c, numerator, denominator in rows}
+    assert lam == diagnosis.witness.lam
+    ranks = cc.item_ranks(learner, adapter._texts)
+    keys = cc.current_keys(learner, adapter._texts, units=())
+    assert keys == [cc.lift_keys(row) for row in ranks]
+    labels = [learner.responses.index(label) for label in adapter._labels]
+    assert cc.check_farkas(keys, labels, lam)
+    corrupted = dict(lam)
+    first = next(key for key, value in corrupted.items() if value > 0)
+    corrupted[first] *= 2
+    assert not cc.check_farkas(keys, labels, corrupted), "doubled multiplier must reach exact RED"
+    assert json.loads(json.dumps(evidence, sort_keys=True)) == evidence
+    intact = adapter.evidence()
+    evidence["witness"]["lam"][0][2] *= 2
+    evidence["log"]["planted"] = "must not reach the cached Diagnosis"
+    assert adapter.evidence() == intact
+    assert _canonical_snapshot(learner) == before
+
+
+def test_canonical_adapter_twin_real_separator():
+    import copy
+
+    learner, problem = _canonical_fixture("ii.twin")
+    before = _canonical_snapshot(learner)
+    adapter = growth_loop.CanonicalGrowthAdapter(learner, problem, seed=9900)
+    assert adapter.diagnose() == "SEPARABLE"
+    diagnosis, evidence = adapter.last_diagnosis, adapter.evidence()
+    assert diagnosis.separator is not None and diagnosis.witness is None
+    assert set(zip(adapter._texts, adapter._labels, strict=True)) == _canonical_expected_pairs(
+        "ii.twin"
+    )
+    assert evidence["separator"]["weights"] == diagnosis.separator.weights
+    assert evidence["separator"]["reads"] == diagnosis.separator.reads == list(adapter._labels)
+    assert evidence["log"] == diagnosis.log and evidence["witness"] is None
+    probe = copy.deepcopy(learner)
+    assert len(probe.neurons) == len(evidence["separator"]["weights"])
+    for neuron, row in zip(
+        probe.neurons,
+        evidence["separator"]["weights"],
+        strict=True,
+    ):
+        assert len(row) == learner.n_in
+        neuron.w = list(row)
+    assert [probe.route_text(text) for text in adapter._texts] == list(adapter._labels)
+    broken = copy.deepcopy(learner)
+    for neuron in broken.neurons:
+        neuron.w = [0.0] * learner.n_in
+    assert [broken.route_text(text) for text in adapter._texts] != list(adapter._labels)
+    changed_reads = list(evidence["separator"]["reads"])
+    changed_reads[0] = next(label for label in learner.responses if label != changed_reads[0])
+    assert changed_reads != [probe.route_text(text) for text in adapter._texts]
+    assert _canonical_snapshot(learner) == before
+
+
+def test_canonical_adapter_rejects_noncanonical_bindings():
+    import copy
+
+    from snn_data_lake.instruments import taught_problems as tp
+    from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
+
+    learner, problem = _canonical_fixture()
+    before = _canonical_snapshot(learner)
+
+    class LearnerSubclass(SpikingInteractionLearner):
+        pass
+
+    class StackSubclass(PlasticityRuleStack):
+        pass
+
+    with pytest.raises(ValueError, match="canonical learner class"):
+        growth_loop.CanonicalGrowthAdapter(ScriptedLearner(["CAPACITY"]), problem, seed=9900)
+    subclass = LearnerSubclass(
+        learner.responses,
+        n_in=learner.n_in,
+        seed=9900,
+        t_post=learner.t_post,
+    )
+    subclass.stack = copy.deepcopy(learner.stack)
+    with pytest.raises(ValueError, match="canonical learner class"):
+        growth_loop.CanonicalGrowthAdapter(subclass, problem, seed=9900)
+    for noncanonical in (copy.deepcopy(problem), tp.PROBLEMS["c1d"]):
+        with pytest.raises(ValueError, match="registered ii.xor/ii.twin"):
+            growth_loop.CanonicalGrowthAdapter(learner, noncanonical, seed=9900)
+    for field, value, reason in (
+        ("stack", None, "canonical plasticity stack"),
+        ("n_in", learner.n_in + 1, "canonical input width"),
+        ("t_post", learner.t_post + 1, "canonical post time"),
+        ("responses", list(reversed(learner.responses)), "canonical response order"),
+        ("seed", 0, "canonical seed must match"),
+    ):
+        altered = copy.deepcopy(learner)
+        setattr(altered, field, value)
+        with pytest.raises(ValueError, match=reason):
+            growth_loop.CanonicalGrowthAdapter(altered, problem, seed=9900)
+    altered = copy.deepcopy(learner)
+    altered.stack = StackSubclass(n_neurons=len(learner.responses), seed=9900)
+    with pytest.raises(ValueError, match="canonical plasticity stack"):
+        growth_loop.CanonicalGrowthAdapter(altered, problem, seed=9900)
+    for keyword in ("reader", "labels", "segment", "solved", "retention", "callback", "diagnosis"):
+        with pytest.raises(TypeError, match="unexpected keyword"):
+            growth_loop.CanonicalGrowthAdapter(learner, problem, seed=9900, **{keyword: object()})
+    assert _canonical_snapshot(learner) == before
+
+
+def test_canonical_adapter_seed_refuses_before_construction(monkeypatch):
+    from snn_data_lake.instruments import taught_problems as tp
+
+    learner, problem = _canonical_fixture()
+    before, called = _canonical_snapshot(learner), []
+
+    def bomb(*args, **kwargs):
+        called.append((args, kwargs))
+        assert not called, "invalid seed touched Problem construction"
+
+    with monkeypatch.context() as patch:
+        patch.setattr(tp.Problem, "teach_epochs", bomb)
+        patch.setattr(tp.Problem, "n_teach_codes", bomb)
+        patch.setattr(tp.Problem, "items", bomb)
+        for invalid in (0, 300, 6000, 7000, 10000, 8999, True, 9000.0):
+            with pytest.raises(ValueError, match="canonical seed must be an exact int"):
+                growth_loop.CanonicalGrowthAdapter(learner, problem, seed=invalid)
+    assert not called
+    assert _canonical_snapshot(learner) == before
+
+
+def test_canonical_adapter_unready_operations_are_pure(monkeypatch):
+    from snn_data_lake.instruments import taught_campaign as tc
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
+
+    learner, problem = _canonical_fixture()
+    adapter = growth_loop.CanonicalGrowthAdapter(learner, problem, seed=9900)
+    before, called = _canonical_snapshot(learner), []
+    assert adapter.readiness() == _canonical_missing()
+    adapter.ready = True  # an unapproved caller flag cannot license a port
+
+    class Poison:
+        def __iter__(self):
+            called.append("iterate")
+            assert not called, "unready port consumed iterable"
+
+        def __getattr__(self, name):
+            called.append(name)
+            assert not called, "unready port consumed ticket"
+
+        def __int__(self):
+            called.append("int")
+            assert not called, "unready port consumed epochs"
+
+    def bomb(*args, **kwargs):
+        called.append("learner/campaign")
+        assert not called, "unready port reached actual learner/campaign"
+
+    with monkeypatch.context() as patch:
+        for method in ("learn_turn", "interact", "route_text"):
+            patch.setattr(SpikingInteractionLearner, method, bomb)
+        patch.setattr(tc, "attempt", bomb)
+        for operation in (
+            adapter.require_ready,
+            lambda: adapter.segment,
+            lambda: adapter.admit(Poison(), Poison(), Poison()),
+            lambda: adapter.attempt(Poison()),
+        ):
+            with pytest.raises(growth_loop.LedgerError, match="G9_A_UNREADY") as refused:
+                operation()
+            assert all(missing in str(refused.value) for missing in _canonical_missing())
+    assert not called
+    assert _canonical_snapshot(learner) == before
+
+
+def test_canonical_adapter_loop_refuses_before_effects():
+    learner, problem = _canonical_fixture()
+    before, touched = _canonical_snapshot(learner), []
+
+    class ClaimsReady(growth_loop.CanonicalGrowthAdapter):
+        def require_ready(self):
+            touched.append("overridden readiness")
+            assert not touched, "unbound readiness guard dispatched to subclass override"
+
+    class Bomb:
+        def __call__(self, *args, **kwargs):
+            touched.append("source/admission/solved")
+            assert not touched, "unready loop effect"
+
+        def __getattr__(self, name):
+            touched.append("ledger:" + name)
+            assert not touched, "unready loop accessed ledger"
+
+    for adapter_type in (growth_loop.CanonicalGrowthAdapter, ClaimsReady):
+        adapter = adapter_type(learner, problem, seed=9900)
+        for gated, diagnosis in ((True, True), (False, True), (True, False), (False, False)):
+            with pytest.raises(growth_loop.LedgerError, match="G9_A_UNREADY"):
+                growth_loop.GrowthLoop(
+                    adapter,
+                    problem.id,
+                    Bomb(),
+                    Bomb(),
+                    batch=1,
+                    gated=gated,
+                    diagnosis=diagnosis,
+                    admission=Bomb(),
+                    resolve_problem=Bomb(),
+                    solved_sink=Bomb(),
+                )
+    assert not touched
+    assert _canonical_snapshot(learner) == before
+
+
+def test_canonical_adapter_no_label_or_future_access(monkeypatch):
+    import ast
+    import inspect
+    import textwrap
+
+    from snn_data_lake.instruments import inseparable_mapping as im
+    from snn_data_lake.instruments import taught_campaign as tc
+    from snn_data_lake.instruments import taught_problems as tp
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
+
+    learner, problem = _canonical_fixture()
+    before, epochs, splits, forbidden = _canonical_snapshot(learner), [], [], []
+    original_epochs, original_items = tp.Problem.teach_epochs, tp.Problem.items
+
+    def construction(unit_problem, seed, count):
+        assert unit_problem is problem
+        assert seed == 9900 and count == 1
+        assert not epochs, "construction schedule was invoked more than once"
+        epochs.append((unit_problem, seed, count))
+        yield from original_epochs(unit_problem, seed, count)
+
+    def teach_items(unit_problem, seed, split):
+        splits.append(split)
+        assert split == "teach", "adapter used an unapproved split"
+        return original_items(unit_problem, seed, split)
+
+    def bomb(*args, **kwargs):
+        forbidden.append((args, kwargs))
+        assert not forbidden, "adapter reached teaching/held-out"
+
+    with monkeypatch.context() as patch:
+        patch.setattr(tp.Problem, "teach_epochs", construction)
+        patch.setattr(tp.Problem, "items", teach_items)
+        patch.setattr(tp.Problem, "episodes", bomb)
+        patch.setattr(tp.Problem, "construction_episodes", bomb)
+        patch.setattr(tc.Reader, "teach", bomb)
+        patch.setattr(tc, "attempt", bomb)
+        for method in ("learn_turn", "interact", "_deposit"):
+            patch.setattr(SpikingInteractionLearner, method, bomb)
+        adapter = growth_loop.CanonicalGrowthAdapter(learner, problem, seed=9900)
+        frozen = adapter._texts, adapter._labels
+        assert isinstance(frozen[0], tuple) and isinstance(frozen[1], tuple)
+        assert adapter.diagnose() == "CAPACITY"
+        assert adapter.evidence()["scope"] == "canonical-frozen-code-only"
+        assert adapter._texts == frozen[0] and adapter._labels == frozen[1]
+    assert epochs == [(problem, 9900, 1)] and splits and set(splits) == {"teach"}
+    assert not forbidden
+    assert set(zip(adapter._texts, adapter._labels, strict=True)) == _canonical_expected_pairs(
+        "ii.xor"
+    )
+    tree = ast.parse(textwrap.dedent(inspect.getsource(growth_loop.CanonicalGrowthAdapter)))
+    constants = {
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    }
+    assert not constants.intersection(im.TEXTS.values()), "production copied the data texts"
+    assert not constants.intersection((im.GREET, im.GOAL)), "production copied label constants"
+    assert not any(
+        isinstance(node, ast.Attribute)
+        and node.attr
+        in {
+            "TEXTS",
+            "UV",
+            "label_xor",
+            "label_twin",
+            "future",
+            "future_d",
+            "validation",
+        }
+        for node in ast.walk(tree)
+    ), "production contains a dataset lookup or held-out access"
+    assert _canonical_snapshot(learner) == before

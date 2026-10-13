@@ -452,6 +452,8 @@ class GrowthLoop:
         admission,
         resolve_problem,
     ):
+        if isinstance(learner, CanonicalGrowthAdapter):
+            CanonicalGrowthAdapter.require_ready(learner)
         self.learner, self.problem_id, self.ledger = learner, problem_id, ledger
         if isinstance(batch, bool) or not isinstance(batch, int) or batch <= 0:
             raise ValueError(f"batch must be a positive int, got {batch!r}")
@@ -609,6 +611,120 @@ class GrowthLoop:
     def _paused(self):
         self.ledger.set_state(self.problem_id, "UNSOLVED")
         return self.ledger.ledger(self.problem_id)
+
+
+class CanonicalGrowthAdapter:
+    """The frozen canonical diagnosis/refusal slice; every grown port is unready."""
+
+    _MISSING = (
+        "grown-reader/admission",
+        "retention_select",
+        "actual grown-source/admission binding",
+        "cold restore/Brain integration",
+    )
+
+    def __init__(self, learner, problem, *, seed):
+        # Check the namespace BEFORE any Problem access or schedule RNG.
+        if type(seed) is not int or not SEED_BLOCK[0] <= seed < SEED_BLOCK[1]:
+            raise ValueError("canonical seed must be an exact int in SEED_BLOCK")
+
+        from snn_data_lake.instruments import inseparable_mapping as im
+        from snn_data_lake.instruments import taught_problems as tp
+        from snn_data_lake.instruments.taught_campaign import Reader
+        from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
+        from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
+
+        if type(learner) is not SpikingInteractionLearner:
+            raise ValueError("canonical learner class required")
+        if type(learner.stack) is not PlasticityRuleStack:
+            raise ValueError("canonical plasticity stack class required")
+        if learner.seed != seed:
+            raise ValueError("canonical seed must match learner.seed")
+        if learner.n_in != im.N_IN:
+            raise ValueError("canonical input width required")
+        if learner.t_post != im.T_POST:
+            raise ValueError("canonical post time required")
+        if tuple(learner.responses) != tuple(im._IXN_INTENTS):
+            raise ValueError("canonical response order required")
+        if type(problem) is not tp.Problem or not (
+            problem is tp.PROBLEMS["ii.xor"] or problem is tp.PROBLEMS["ii.twin"]
+        ):
+            raise ValueError("registered ii.xor/ii.twin problem required")
+
+        reader = Reader(learner, history=False)
+        epochs = list(problem.teach_epochs(seed, 1))
+        if len(epochs) != 1:
+            raise ValueError("one canonical construction epoch required")
+        epoch = epochs[0]
+        texts = tuple(reader.text(episode) for episode in epoch)
+        labels = tuple(episode[-1].label for episode in epoch)
+        if (
+            not texts
+            or len(texts) != len(labels)
+            or len(texts) != problem.n_teach_codes(seed)
+            or len(set(texts)) != len(texts)
+            or any(label not in learner.responses for label in labels)
+        ):
+            raise ValueError("complete canonical construction item set required")
+        self.learner, self.problem, self.seed = learner, problem, seed
+        self._reader, self._texts, self._labels = reader, texts, labels
+        self.last_diagnosis = None
+
+    def diagnose(self):
+        from snn_data_lake.growth import capacity_certificate
+
+        self.last_diagnosis = capacity_certificate.diagnose(
+            self.learner, self._texts, self._labels, history_texts=None, units=()
+        )
+        return self.last_diagnosis.kind
+
+    def evidence(self):
+        import copy
+
+        diagnosis = self.last_diagnosis
+        if diagnosis is None:
+            raise LedgerError("canonical diagnosis evidence is absent")
+        witness = None
+        if diagnosis.witness is not None:
+            witness = {
+                "path": diagnosis.witness.path,
+                "lam": [
+                    [item, competitor, value.numerator, value.denominator]
+                    for (item, competitor), value in sorted(diagnosis.witness.lam.items())
+                ],
+            }
+        separator = None
+        if diagnosis.separator is not None:
+            separator = {
+                "weights": [list(row) for row in diagnosis.separator.weights],
+                "reads": list(diagnosis.separator.reads),
+            }
+        return {
+            "kind": diagnosis.kind,
+            "k": diagnosis.k,
+            "k_history": diagnosis.k_history,
+            "log": copy.deepcopy(diagnosis.log),
+            "witness": witness,
+            "separator": separator,
+            "scope": "canonical-frozen-code-only",
+            "missing": list(CanonicalGrowthAdapter._MISSING),
+        }
+
+    def readiness(self):
+        return CanonicalGrowthAdapter._MISSING
+
+    def require_ready(self):
+        raise LedgerError("G9_A_UNREADY: " + ", ".join(CanonicalGrowthAdapter._MISSING))
+
+    @property
+    def segment(self):
+        CanonicalGrowthAdapter.require_ready(self)
+
+    def admit(self, units, labels, ticket):
+        CanonicalGrowthAdapter.require_ready(self)
+
+    def attempt(self, epochs):
+        CanonicalGrowthAdapter.require_ready(self)
 
 
 def main():

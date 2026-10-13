@@ -53,7 +53,7 @@ import json
 import math
 import random
 
-from snn_data_lake.engine.live_brain import _IXN_INTENTS
+from snn_data_lake.readout import _IXN_INTENTS
 from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner, text_features
 
 # distinct-from: instruments/memory_diagnostic.py::rb6_stream -- that builds the R-b6 symbol stream (categories are blocks of a permuted 64); `stream` here only BORROWS its frame (seed, grower config, policy, revision) and fills the events with the 52-dim PSP code of four texts, c_t = label(text_{t-1}), and a "g2ii" synthetic block
