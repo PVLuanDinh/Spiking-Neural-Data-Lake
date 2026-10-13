@@ -81,13 +81,22 @@ def _state_attrs(obj):
     excluded = set()
     if type(obj).__name__ == "SpikingInteractionLearner":
         excluded = {
-            "_authority", "teach_sink", "event_sink", "unit_roles", "_effect_depth",
-            "_replay", "_replay_ids", "_hydrated", "_hydration_count", "_hydration_refusals",
+            "_authority",
+            "teach_sink",
+            "event_sink",
+            "unit_roles",
+            "_effect_depth",
+            "_replay",
+            "_replay_ids",
+            "_hydrated",
+            "_hydration_count",
+            "_hydration_refusals",
         }
     elif type(obj).__name__ == "RuleComposer":
         excluded = {"_specs", "_names"}
     return {
-        k: v for k, v in vars(obj).items()
+        k: v
+        for k, v in vars(obj).items()
         if k not in excluded
         and not isinstance(v, (type(threading.Lock()), type(threading.RLock())))
     }
@@ -190,7 +199,6 @@ def _g0c_translate(name, legacy):
 
 
 _G0C_OPTIONAL = frozenset({"snn_data_lake.plasticity.bcm_plasticity.BCMNeuron"})
-
 
 
 def _merge_state(target, saved):
@@ -405,9 +413,9 @@ class SpikingInteractionLearner:
         ]
         self.rng = random.Random(self.seed)  # instance rng (e.g. training-order shuffles)
         self._last = None  # (label, eligibility, deltas, reward) of the last deposit
-        # T058 sleep-replay buffer: the last _REPLAY_CAP wake interactions, recorded so the
-        # SLEEP phase can re-drive them through the FULL learning path (deposits included --
-        # which is what makes the consolidation cascade actually reachable on sleep ticks).
+        # T058 history: the last _REPLAY_CAP wake interactions supported automatic sleep replay.
+        # Owner1039, 2026-10-13: that automatic path is retired; the explicit replay primitive
+        # and wake interaction ring remain, including their full learning deposits.
         # A bounded ring, a memory bound rather than a behaviour-arbitrating threshold.
         self._replay = []
         self._replay_ids = []
@@ -628,14 +636,13 @@ class SpikingInteractionLearner:
     #   driven attractor reactivation + covariance STDP; substrate/home.py::replay /
     #   substrate/binlog.py::replay -- durable-record iteration. Same word, four different
     #   jobs; THIS one re-drives recorded R-STDP teaching interactions through the live
-    #   learner so the consolidation cascade is reached on sleep ticks. Sites read.
+    #   learner on explicit invocation. Automatic sleep calls retired 2026-10-13. Sites read.
     def replay(self, k=8):
-        """SLEEP REPLAY (specs/022 T058): re-drive up to `k` recorded wake interactions through
-        the FULL learning path -- R-STDP deposit, neuromodulation, and the whole stack sandwich
-        including the Benna-Fusi consolidation deposit. This is what makes the consolidation
-        cascade REACHABLE on sleep ticks: before this, sleep could only relax() cascades that
-        wake chat had happened to ensure, and the measured live state was every relax returning
-        None. Samples with the instance rng (deterministic per seed); returns the replay count.
+        """Explicit replay primitive (specs/022 T058 history): re-drive up to `k` wake interactions
+        through the FULL learning path -- R-STDP deposit, neuromodulation, and the whole stack
+        sandwich including the Benna-Fusi consolidation deposit. Owner1039, 2026-10-13:
+        automatic sleep-owned replay/deposits are retired; explicit invocation remains.
+        Samples with the instance rng (deterministic per seed); returns the replay count.
         An empty buffer replays nothing and says so with 0, never a fake pass.
         R2: each draw's lake event id is recorded (`_last_drawn`) and counted (`_replay_counts`,
         `_replay_total`); replay writes no lake event and advances no wake chronology."""
@@ -766,6 +773,7 @@ class SpikingInteractionLearner:
             tree = {"__cls__": tree["__cls__"], "attrs": attrs}
         _merge_state(self, tree)
         return {"schema": d["schema"], "ring_dropped": dropped}
+
     def _snapshot(self):
         """Detached whole learned/RNG state, plus every lake-derived cache."""
         return {
@@ -798,11 +806,16 @@ class SpikingInteractionLearner:
         self._authority.clear()
         self._authority.update(authority)
 
-    def hydrate(self, events, *, receipt, sleep_step):
+    def hydrate(self, events, *, receipt, sleep_step, checkpoint_prefix_digest=None):
         """One staged COMPLETE prefix; errors propagate and never install partial progress."""
         import json
+
         from snn_data_lake.substrate.learner_events import (
-            SLEEP_DIGESTS, SLEEP_PROGRESS, sleep_digests,
+            KIND_SPECS,
+            SLEEP_DIGESTS,
+            SLEEP_PROGRESS,
+            prefix_digest,
+            sleep_digests,
         )
 
         if self._hydrated:
@@ -814,12 +827,21 @@ class SpikingInteractionLearner:
         orders = [_event_order(eid) for eid in ids]
         saved_cursor = self._cursor
         if saved_cursor is not None and (
-            type(saved_cursor) is not tuple or len(saved_cursor) != 2
+            type(saved_cursor) is not tuple
+            or len(saved_cursor) != 2
             or any(type(n) is not int or n < 0 for n in saved_cursor)
         ):
             raise ValueError("R2 malformed checkpoint cursor")
         if saved_cursor is not None and saved_cursor not in orders:
             raise ValueError("R2 checkpoint cursor is not in the eligible prefix")
+        if saved_cursor is not None and checkpoint_prefix_digest is None:
+            raise ValueError("R2 checkpoint canonical prefix binding missing")
+        # Round 5, 2026-10-13 (#2112): verify covered content BEFORE rebuilding caches,
+        # installing any event cursor, or allowing the Brain boundary to rearm.
+        if checkpoint_prefix_digest is not None and checkpoint_prefix_digest != prefix_digest(
+            events, saved_cursor
+        ):
+            raise ValueError("R2 checkpoint canonical prefix digest mismatch")
         self._authority.clear()
         self._replay.clear()
         self._replay_ids.clear()
@@ -834,10 +856,36 @@ class SpikingInteractionLearner:
                 if key != _utterance_key(key):
                     raise ValueError("R2 noncanonical turn source")
                 self._apply_turn(
-                    kind, key, target, event["event_id"], text_features(key, self.n_in),
+                    kind,
+                    key,
+                    target,
+                    event["event_id"],
+                    text_features(key, self.n_in),
                     cache_only=before_checkpoint,
                 )
                 if not before_checkpoint:
+                    self._redo_count += 1
+                    redone += 1
+            elif kind == "sleep_bout":
+                from snn_data_lake.instruments.staged_sleep_bout import (
+                    bout_progress,
+                    decode_bout,
+                    learner_bout,
+                )
+
+                stages, seed = decode_bout(event["bout"])
+                if set(event) != set(KIND_SPECS[kind]["slots"]):
+                    raise ValueError("R2 sleep_bout unknown event slots refused")
+                if not before_checkpoint:
+                    self._effect_depth += 1
+                    try:
+                        bout = learner_bout(self, stages, seed)
+                    finally:
+                        self._effect_depth -= 1
+                    actual = {**sleep_digests(self, rewirer), **bout_progress(bout)}
+                    if any(actual[k] != event[k] for k in SLEEP_DIGESTS + SLEEP_PROGRESS):
+                        raise ValueError("R2 sleep_bout redo digest/progress mismatch")
+                    self._cursor = order
                     self._redo_count += 1
                     redone += 1
             elif kind == "sleep":
@@ -851,10 +899,16 @@ class SpikingInteractionLearner:
                         rewirer, observations = sleep_step["step"](self, rewirer)
                     finally:
                         self._effect_depth -= 1
+                    # R3 2026-10-13: structural sleep has no replay presentations.
+                    # Reject retired/unknown profiles before cursor or progress installation.
+                    if type(observations) is not dict or set(observations) != {
+                        "_structural_report"
+                    }:
+                        raise ValueError("R3 structural-only sleep hydration observations refused")
                     actual = {
                         **sleep_digests(self, rewirer),
                         "drawn": ",".join(str(i) for i in self._last_drawn) or "none",
-                        "presentations_spent": str(observations["_sleep_replayed"]),
+                        "presentations_spent": "0",  # structural step; no replay presentations
                     }
                     if any(actual[k] != event[k] for k in SLEEP_DIGESTS + SLEEP_PROGRESS):
                         raise ValueError("R2 sleep redo digest/progress mismatch")
@@ -873,9 +927,15 @@ class SpikingInteractionLearner:
         self._hydrated = True
         self._hydration_count += 1
         return {
-            "complete": True, "processed_ids": processed, "eligible_ids": ids,
-            "cursor": expected, "redone": redone, "rewirer": rewirer,
-            "observations": observations, "receipt_sha": __import__("hashlib").sha256(receipt).hexdigest(),
+            "complete": True,
+            "processed_ids": processed,
+            "eligible_ids": ids,
+            "cursor": expected,
+            "redone": redone,
+            "rewirer": rewirer,
+            "observations": observations,
+            "receipt_sha": __import__("hashlib").sha256(receipt).hexdigest(),
+            "prefix_digest": prefix_digest(events, expected),
         }
 
     def rebuild_authority(self, events):
@@ -2151,7 +2211,10 @@ def _g0c_walk(value):
                 continue
             if type(value).__name__ == "RuleComposer" and name in ("_specs", "_names"):
                 continue
-            if type(value).__name__ == "SpikingInteractionLearner" and name in ("teach_sink",):
+            if type(value).__name__ == "SpikingInteractionLearner" and name in (
+                "teach_sink",
+                "event_sink",  # R2 boundary callback is wiring, not learned state.
+            ):
                 continue
             fields[name] = _g0c_walk(child)
         return {"class": f"{type(value).__module__}.{type(value).__qualname__}", "fields": fields}

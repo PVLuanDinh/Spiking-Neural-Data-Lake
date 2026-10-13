@@ -26,6 +26,7 @@ section 2.7 (the runner, its carriers, G6's own (e) instruments), 2.11 (C16, C17
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.staged_sleep_bout   (self-check, brain-free)
 """
 
+import json
 import random
 from dataclasses import asdict, dataclass, field
 
@@ -34,6 +35,15 @@ PAUSES = ("budget", "plateau", "interference", "wake_request")
 PLATEAU_CHECKS = (
     3  # sustained plateau = no validation gain over this many consecutive checks (session call)
 )
+
+# 2026-10-13 owner2106 composition: this helper delegates, it introduces no learning rule.
+GRADIENT_CLAIM = {
+    "learner_bout": (
+        "NOT_A_RULE",
+        "Delegates to the existing staged runner on the staged learner; no update formula is "
+        "computed here. The caller owns R2 effect admission.",
+    ),
+}
 
 # distinct-from: readout/interaction_learning.py::replay -- the live per-tick replay of k ring draws on the
 #   learner's OWN rng; this runner executes a STAGED bout of registered presentations on one runner RNG and
@@ -160,7 +170,88 @@ def _eligible_ring(ixn):
     return out
 
 
+def bout_payload(stages, rng_seed):
+    """Owner2106, 2026-10-13: versioned deterministic plan, without synthetic items."""
+    if type(rng_seed) is not int:
+        raise ValueError("R2 sleep_bout seed must be an integer")
+    plan = []
+    for name, budget in stages:
+        if (
+            type(budget) is not dict
+            or set(budget) != {"presentations", "structural_candidates"}
+            or type(name) is not str
+            or name not in STAGE_NAMES
+            or type(budget["presentations"]) is not int
+            or budget["presentations"] < 0
+            or not (
+                budget["structural_candidates"] is None
+                or type(budget["structural_candidates"]) is int
+                and budget["structural_candidates"] == 0
+            )
+        ):
+            raise ValueError("R2 sleep_bout stage plan refused")
+        plan.append([name, budget["presentations"], budget["structural_candidates"]])
+    return json.dumps(
+        {"profile": "staged-bout.v1", "seed": rng_seed, "stages": plan},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def decode_bout(payload):
+    """Unknown or malformed bout profiles refuse by name, even before a checkpoint cursor."""
+    try:
+        data = json.loads(payload)
+        if (
+            type(data) is not dict
+            or set(data) != {"profile", "seed", "stages"}
+            or data["profile"] != "staged-bout.v1"
+            or type(data["stages"]) is not list
+            or any(type(s) is not list or len(s) != 3 for s in data["stages"])
+        ):
+            raise ValueError("unknown profile or malformed plan")
+        stages = [
+            (s[0], {"presentations": s[1], "structural_candidates": s[2]}) for s in data["stages"]
+        ]
+        if bout_payload(stages, data["seed"]) != payload:
+            raise ValueError("noncanonical payload")
+        return stages, data["seed"]
+    except (TypeError, ValueError, KeyError) as exc:
+        raise ValueError(f"R2 sleep_bout payload refused: {exc}") from exc
+
+
+def bout_progress(report):
+    return {
+        "drawn": json.dumps(report.carriers, sort_keys=True, separators=(",", ":")),
+        "presentations_spent": str(report.total_presentations()),
+    }
+
+
+def learner_bout(ixn, stages, seed):
+    """Same runner on the staged learner during preview/reconciliation; no other Brain effects."""
+    from types import SimpleNamespace
+
+    proxy = SimpleNamespace(brain=SimpleNamespace(_ixn=ixn), _plasticity=ixn.stack, _step=0)
+    return _run_bout(proxy, stages, rng_seed=seed)
+
+
 def run_bout(brain, stages, *, rng_seed, validate=None, wake_request=None, extra_populations=None):
+    """Persistent bouts use the same R2 admission boundary (owner2106, 2026-10-13)."""
+    if getattr(brain, "_persist", False):
+        if validate is not None or wake_request is not None:
+            raise ValueError("R2 sleep_bout validation/wake callbacks are unbound")
+        return brain._r2_run_bout(stages, rng_seed=rng_seed, extra_populations=extra_populations)
+    return _run_bout(
+        brain,
+        stages,
+        rng_seed=rng_seed,
+        validate=validate,
+        wake_request=wake_request,
+        extra_populations=extra_populations,
+    )
+
+
+def _run_bout(brain, stages, *, rng_seed, validate=None, wake_request=None, extra_populations=None):
     """Execute one bout; see the module docstring. `validate()` -> a score (higher is better) read by the
     caller with learning OFF; `wake_request()` -> bool."""
     for name, b in stages:

@@ -145,6 +145,18 @@ EXEMPT = {
         "DELTA / PC / SOM adopted from their own modules over the label neurons' 256-input stimulus; consumers: Part D's cell runner, "
         "run_selfchecks (bare) and tests/test_g5_part_d_adaptors.py; never on a tick",
     ),
+    "eligible_circuit_census": (
+        "permanent",
+        "G6 / T114's all-eligible-circuit census under owner answer #1038 (a governed static instrument; record "
+        "rows/g6-owner-adopted-circuit-mapping-2026-10-11.md and board #1287/#1291): pure AST over the three driver "
+        "classes (engine/brain.py, engine/live_brain.py, engine/autonomous_loop.py) plus declared records; it imports "
+        "no engine, constructs no Brain or population, opens no home and reads no lake, so it has no tick behaviour to "
+        "charge. Consumers: run_selfchecks (bare, source-only) and tests/test_eligible_circuit_census.py. Its RUNTIME "
+        "half is deliberately UNBUILT: the guarded throwaway sequence was APPROVED by the owner at #1084 and "
+        "accepted at #1086 with hygiene cleared at #1226, but that approval does not implement runtime "
+        "eligible-brain mapping and admission, which needs its own separate grant -- so this row stays "
+        "permanent and not 'wire', having no tick behaviour to charge",
+    ),
     "g5_part_d_cells": (
         "permanent",
         "G5 / T113 Part D D1's cell runner (a governed benchmark instrument; record evidence/g5-readout-variants.md D.1, D.2, D.5): the "
@@ -502,10 +514,11 @@ EXEMPT = {
     # structural_rewiring's `wire` row RETIRED at T053-ii (2026-08-31): reachable through
     # rule_composer's harness imports, so an EXEMPT row would be the stale-exemption red.
     # THE WIRE LANDED AT T058 (2026-09-01), mandated by FR-024's sleep-owned structural
-    # slow clock: Brain._sleep_tick rewires the IXN rows per sleep tick, MSP-steered by
-    # the stack's meta theta, with the T051b-ii cascade-adoption fix
-    # (PlasticityRuleStack.adopt_structural) in the same block and rewire refusals
-    # COUNTED into state(). T048's live-regime measurement stands as the EXPECTATION,
+    # slow clock. DATED 2026-10-13 R3: Brain._sleep_tick calls _r2_sleep_learning;
+    # its _r2_sleep_step retains MSP-steered IXN rewire + PlasticityRuleStack.adopt_structural.
+    # Automatic interaction replay/rest are retired by owner1039. Structural errors propagate,
+    # roll back, and latch persistent learning/checkpoints until complete-prefix reconciliation;
+    # refusals are reported in state(). T058 history and the retained wire remain. T048's live-regime measurement stands as the EXPECTATION,
     # not a refusal: an all-positive-birth substrate crosses sign rarely, so live
     # turnover ~0 is the mechanism holding; the reachable red is the constructed
     # sign-flip arm in tests/test_sleep_capabilities.py. T054-ii's tissue-side refusal
@@ -1091,13 +1104,8 @@ EXEMPT = {
         "sleep/circadian_clock.py + Brain.tick after the deciding test (C13), or the input is deleted "
         "on its null and this harness with it",
     ),
-    "staged_sleep_bout": (
-        "wire",
-        "specs/022 G6 (T114) part (e), evidence g6-sleep-durable-memory.md 2.7: the staged sleep-bout "
-        "runner (R3's run_bout interface), participation census and fabrication guard. Consumer: R3's "
-        "F5 staged/flat/shuffled arms in instruments/sleep_plasticity_ab.py. Instrument tier until a "
-        "deciding test adopts it into sleep/ (then reachable from _sleep_tick) or its null deletes it",
-    ),
+    # 2026-10-13 owner2106: staged_sleep_bout is now reachable through Brain's common R2
+    # bout boundary; its instrument-only exemption is retired. Automatic R3 sleep is unchanged.
     "sleep_mask_apply": (
         "wire",
         "specs/022 G6 (T114) P4, evidence g6-sleep-durable-memory.md 2.16 A12 + the dated pre-data "

@@ -138,7 +138,6 @@ SELFBUILD_EVERY = 8  # autonomous self-build cadence: run the gated self-build o
 # Rest-phase DURATION applied to each synaptic cascade per sleep tick (a time-constant, like the
 # episode replay(steps=60) beside it -- NOT a threshold arbitrating behaviour). Consolidation
 # accumulates across the night: one shot of 400 recovered 0.75 of an overwritten trace in the A/B.
-_PLASTIC_REST_STEPS = 40
 
 _TOM_PLACE = re.compile(
     r"\b(?P<subj>i|we|you|someone|somebody)\s+(?:put|places?|placed|sets?|left|leaves?|hid|hides?|moved?|moves?)\s+"
@@ -315,13 +314,11 @@ class Brain:
         # buys BOUNDED, still-plastic weights + sleep-recoverable traces; it did NOT improve held-out
         # intent accuracy (5/14 either way), so it is wired for stability, not for recognition quality.
         self._plasticity = None
-        self._plastic_relaxed = 0  # neurons whose cascade was relaxed on the last sleep tick
         # T058 SLEEP OWNERSHIP (FR-024): per-capability switches + evidence counters. Each
         # sleep-owned capability is separately neuterable (neuter_sleep) so the sleep A/B
         # attributes per capability instead of certifying the phase wholesale.
-        self._sleep_caps = {"replay": True, "benna_fusi": True, "structural": True}
-        self._sleep_replayed = 0  # interactions re-driven through the full stack last sleep tick
-        self._sleep_consolidate_calls = 0  # Benna-Fusi deposits those replays actually reached
+        # Owner1039 retirement; required sleep keeps structural activity.
+        self._sleep_caps = {"structural": True}
         self._rewirer = None  # the slow-clock structural pass (constructed on first sleep tick)
         self._structural_report = None  # last cycle's turnover/prune/regen counts
         self._structural_refusals = 0  # rewire() ValueErrors, counted never swallowed (T048)
@@ -3250,8 +3247,7 @@ class Brain:
         if self._plasticity is not None:
             self._r2_sleep_learning()
         try:
-            s = self._seed * 7 + self._sleep_ticks + 1
-            self.attractor.sleep(seed=s, episodes=3, learn=True)
+            # Owner1039: automatic attractor sleep learning retired.
             # Zero the sub-eps synapses, then renormalize so the freed budget goes to the survivors.
             #
             # RE-LABELLED 2026-08-05. This line read "SHY: hard-prune the weakest synapses (energy
@@ -3496,33 +3492,19 @@ class Brain:
     #   (codon/mli/pf); a neuter has to know its own internals, which is why the tree keeps
     #   one per module rather than sharing one. Site read.
     def neuter_sleep(self, element):
-        """Neuter ONE sleep-owned capability IN PLACE -- FR-024's per-capability attribution arm.
+        """Neuter structural sleep; retired capabilities refuse explicitly.
 
-          "replay"     -- cuts the sleep replay of wake interactions: no re-driven deposits, so
-                          consolidate() is reached 0 times on the sleep tick (the pre-T058 state,
-                          reconstructed on purpose).
-          "benna_fusi" -- cuts the rest phase: cascades neither diffuse nor rebind the rows, so
-                          settled weights are never written back.
-          "structural" -- cuts the slow clock: no prune/regen, no turnover report.
-          "phase"      -- the AGGREGATE control over THIS BLOCK's three capabilities (the
-                          phase-level neuter FR-024 names for them): the sleep tick must
-                          then leave the INTERACTION substrate untouched. Scope, said
-                          plainly (panel): the pre-existing sleep lanes -- episode-attractor
-                          replay, attractor sleep learning, reasoning consolidation, the
-                          offline downscale/prune -- keep their own dispositions and are
-                          NOT gated here; this neuter attributes the T058-owned trio only.
-
-        Returns self so an arm can chain. Refuses an unknown element rather than silently
-        neutering nothing -- a no-op neuter reads as a passing control."""
-        if element == "phase":
-            for k in self._sleep_caps:
-                self._sleep_caps[k] = False
-        elif element in self._sleep_caps:
-            self._sleep_caps[element] = False
+        Owner1039 preserves the sleep requirement and the separate retained lanes.
+        """
+        if element in {"replay", "benna_fusi", "attractor"}:
+            raise ValueError(
+                f"retired sleep capability {element!r}: owner1039; amendment2026-10-13"
+            )
+        if element in {"phase", "structural"}:
+            self._sleep_caps["structural"] = False
         else:
             raise ValueError(
-                f"unknown element {element!r}: sleep-owned capabilities are "
-                f"{sorted(self._sleep_caps)} plus 'phase' (the aggregate)"
+                f"unknown element {element!r}: sleep capabilities are structural/phase"
             )
         return self
 
@@ -3907,9 +3889,11 @@ class Brain:
             # surfaced per structural_rewiring's own record ("state()-field surfacing lands
             # WITH the wire"). Per-tick observables (reset at each sleep tick), all MEASURED.
             "sleep_consolidation": {
-                "replayed": self._sleep_replayed,
-                "consolidate_calls": self._sleep_consolidate_calls,
-                "relaxed": self._plastic_relaxed,
+                "retired": (
+                    "interaction_replay_deposit",
+                    "benna_fusi_rest_rebind",
+                    "attractor_sleep_learning",
+                ),
                 "structural": self._structural_report,
                 "structural_refusals": self._structural_refusals,
             },
@@ -5082,6 +5066,7 @@ class Brain:
     def _r2_boot(self):
         """Fresh reconciliation only. A refusal always leaves the persistent callback CLOSED."""
         import threading
+
         self._r2_lock = threading.RLock()
         self._r2_fault = {"phase": "pending", "cause": "prefix not reconciled"}
         self._r2_booted = False
@@ -5092,33 +5077,62 @@ class Brain:
         self.brain._ixn.event_sink = self._record_learner_event
         self._r2_booted = True
         from snn_data_lake.substrate.home import load_state
-        from snn_data_lake.substrate.learner_events import KIND_SPECS, scan_learner_events
+        from snn_data_lake.substrate.learner_events import (
+            EMPTY_PREFIX_DIGEST,
+            KIND_SPECS,
+            scan_learner_events,
+        )
+
+        self._r2_prefix_digest = EMPTY_PREFIX_DIGEST
         with self._r2_lock:
             try:
                 live = self.brain._ixn
                 self._r2_supported(live)
                 staged = self._r2_fresh_learner(live)
                 events, refusals, session, receipt = scan_learner_events(
-                    tuple(KIND_SPECS), strict=True, return_receipt=True,
+                    tuple(KIND_SPECS),
+                    strict=True,
+                    return_receipt=True,
                 )
                 checkpoint = load_state("interaction_learner.json")
                 rewirer, saved_observations = None, None
+                checkpoint_prefix_digest = None
                 if checkpoint is not None:
+                    # Prospective pre-data change, Round 5 (2026-10-13), review #2112.
+                    # Old/unbound checkpoints refuse, never silently omit prefix history.
+                    if (
+                        type(checkpoint) is not dict
+                        or "prefix_digest" not in checkpoint
+                        or type(checkpoint["prefix_digest"]) is not str
+                    ):
+                        raise ValueError("R2 checkpoint canonical prefix binding missing/malformed")
+                    checkpoint_prefix_digest = checkpoint["prefix_digest"]
                     if type(checkpoint) is not dict or set(checkpoint) != {
-                        "schema", "tree", "rewirer", "sleep_observations",
+                        "schema",
+                        "tree",
+                        "rewirer",
+                        "sleep_observations",
+                        "prefix_digest",
                     }:
                         raise ValueError("R2 closed: checkpoint boundary/carrier is unbound")
                     if checkpoint["schema"] != "r2.v1":
                         raise ValueError("R2 closed: legacy g0c migration is unbound")
-                    staged.load_state_dict({"schema": checkpoint["schema"], "tree": checkpoint["tree"]})
+                    staged.load_state_dict(
+                        {"schema": checkpoint["schema"], "tree": checkpoint["tree"]}
+                    )
                     if checkpoint["rewirer"] is not None:
                         from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
                         rewirer = StructuralRewiring(seed=self._seed)
                         rewirer.load_state_dict(checkpoint["rewirer"])
-                    saved_observations = self._r2_validate_observations(checkpoint["sleep_observations"])
+                    saved_observations = self._r2_validate_observations(
+                        checkpoint["sleep_observations"]
+                    )
                 report = staged.hydrate(
-                    events, receipt=receipt,
+                    events,
+                    receipt=receipt,
                     sleep_step={"rewirer": rewirer, "step": self._r2_sleep_step},
+                    checkpoint_prefix_digest=checkpoint_prefix_digest,
                 )
                 if not self._r2_may_rearm(report):
                     raise ValueError("R2 closed: incomplete reconciliation")
@@ -5134,19 +5148,27 @@ class Brain:
                     self._plasticity = live.stack
                     self._session = str(session)
                     self._r2_receipt = receipt
+                    self._r2_prefix_digest = report["prefix_digest"]
                 except BaseException:
                     self._r2_restore(live, before)
                     raise
                 self._r2_fault = None
             except Exception as exc:
                 self._r2_close("reconcile", exc)
-                self._report_ixn_refusal("R2 reconciliation refused; writer and checkpoints closed", exc)
+                self._report_ixn_refusal(
+                    "R2 reconciliation refused; writer and checkpoints closed", exc
+                )
 
     def _r2_fresh_learner(self, live):
         """Use the actual live constructor profile, or refuse an unbound custom baseline."""
         from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
+
         fresh = SpikingInteractionLearner(
-            live.responses, live.n_in, seed=live.seed, lr=live.lr, tau=live.tau,
+            live.responses,
+            live.n_in,
+            seed=live.seed,
+            lr=live.lr,
+            tau=live.tau,
             t_post=live.t_post,
         )
         if live.stack is not None:
@@ -5168,9 +5190,8 @@ class Brain:
 
     @staticmethod
     def _r2_may_rearm(report):
-        return (
-            report.get("complete") is True
-            and report.get("processed_ids") == report.get("eligible_ids")
+        return report.get("complete") is True and report.get("processed_ids") == report.get(
+            "eligible_ids"
         )
 
     def _r2_close(self, phase, cause):
@@ -5179,6 +5200,7 @@ class Brain:
     def _r2_snapshot(self, ixn):
         from snn_data_lake.readout.interaction_learning import _encode_state
         from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
         if not callable(getattr(StructuralRewiring, "state_dict", None)) or not callable(
             getattr(StructuralRewiring, "load_state_dict", None)
         ):
@@ -5197,6 +5219,7 @@ class Brain:
     def _r2_restore(self, ixn, snapshot):
         from snn_data_lake.readout.interaction_learning import _merge_state
         from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
         observations = self._r2_validate_observations(_merge_state(None, snapshot["observations"]))
         carrier = snapshot["rewirer"]
         # Stage validation first; preserve an existing rewirer's object/RNG identity on rollback.
@@ -5215,23 +5238,15 @@ class Brain:
         self.__dict__.update(observations)
 
     def _r2_observations(self):
-        return {
-            k: getattr(self, k) for k in (
-                "_sleep_replayed", "_sleep_consolidate_calls", "_plastic_relaxed",
-                "_structural_report",
-            )
-        }
+        return {"_structural_report": self._structural_report}
 
     @staticmethod
     def _r2_validate_observations(values):
         from snn_data_lake.readout.interaction_learning import _encode_state
-        names = {"_sleep_replayed", "_sleep_consolidate_calls", "_plastic_relaxed", "_structural_report"}
-        if type(values) is not dict or set(values) != names:
-            raise ValueError("malformed R2 sleep observables")
+
+        if type(values) is not dict or set(values) != {"_structural_report"}:
+            raise ValueError("malformed R2 structural-only sleep observables")
         _encode_state(values)
-        for name in names - {"_structural_report"}:
-            if type(values[name]) is not int or values[name] < 0:
-                raise ValueError("invalid R2 sleep count")
         report = values["_structural_report"]
         if report is not None and type(report) is not dict:
             raise ValueError("invalid R2 structural report")
@@ -5240,28 +5255,52 @@ class Brain:
     def _append_learner_event(self, kind, slots):
         """The only R2 learner writer, under the common lock and all-kind latch."""
         from snn_data_lake.substrate.home import save_episode
-        from snn_data_lake.substrate.learner_events import KIND_SPECS, SCHEMA, _refusal
+        from snn_data_lake.substrate.learner_events import (
+            KIND_SPECS,
+            SCHEMA,
+            _refusal,
+            advance_prefix_digest,
+        )
+
         if self._r2_fault is not None:
             return None
         if kind not in KIND_SPECS or kind == "ctxread":
             raise ValueError("R2 effect/producer is not bound")
-        reserved = {"kind", "event_id", "stream", "session", "seq", "schema", "valid", "split", "encoder"}
+        reserved = {
+            "kind",
+            "event_id",
+            "stream",
+            "session",
+            "seq",
+            "schema",
+            "valid",
+            "split",
+            "encoder",
+        }
         expected = set(KIND_SPECS[kind]["slots"]) - reserved
         if type(slots) is not dict or set(slots) != expected:
             raise ValueError("R2 unknown, missing, or reserved writer slot")
         event = {
-            "kind": kind, "event_id": f"{self._session}-{self._r2_seq + 1}",
-            "stream": "chat", "session": self._session, "seq": str(self._r2_seq + 1),
-            "schema": SCHEMA, "valid": "1", "split": "train",
-            "encoder": "text_features n_in=52", **slots,
+            "kind": kind,
+            "event_id": f"{self._session}-{self._r2_seq + 1}",
+            "stream": "chat",
+            "session": self._session,
+            "seq": str(self._r2_seq + 1),
+            "schema": SCHEMA,
+            "valid": "1",
+            "split": "train",
+            "encoder": "text_features n_in=52",
+            **slots,
         }
-        if any(type(v) is not str for v in event.values()) or _refusal(
-            event, KIND_SPECS[kind], False
-        ) is not None:
+        if (
+            any(type(v) is not str for v in event.values())
+            or _refusal(event, KIND_SPECS[kind], False) is not None
+        ):
             raise ValueError("R2 event does not satisfy its real schema")
         self._r2_seq += 1  # consumed even if append raises after the frame landed
         if not save_episode(event):
             raise OSError("R2 learner append returned False")
+        self._r2_prefix_digest = advance_prefix_digest(self._r2_prefix_digest, event)
         return event["event_id"]
 
     def _record_learner_event(self, kind, key, target, stimulus):
@@ -5283,10 +5322,14 @@ class Brain:
                 raise
             admitted = False
             try:
-                eid = self._append_learner_event(kind, {
-                    "source": key, "target": target,
-                    "provenance": "authoritative" if kind == "teach" else "self",
-                })
+                eid = self._append_learner_event(
+                    kind,
+                    {
+                        "source": key,
+                        "target": target,
+                        "provenance": "authoritative" if kind == "teach" else "self",
+                    },
+                )
                 if eid is None:
                     raise RuntimeError("R2 closed before admission")
                 admitted = True
@@ -5305,20 +5348,86 @@ class Brain:
                     raise
                 return ixn.respond(stimulus)
 
+    def _r2_run_bout(self, stages, *, rng_seed, extra_populations=None):
+        """POST-DATA 2026-10-13, owner2105/2106: one append BEFORE the live bout effect."""
+        from snn_data_lake.instruments.staged_sleep_bout import (
+            _run_bout,
+            bout_payload,
+            bout_progress,
+            decode_bout,
+            learner_bout,
+        )
+        from snn_data_lake.readout.interaction_learning import (
+            SpikingInteractionLearner,
+            _event_order,
+        )
+        from snn_data_lake.substrate.learner_events import sleep_digests
+
+        payload = bout_payload(stages, rng_seed)
+        stages, rng_seed = decode_bout(payload)
+        ixn = self.brain._ixn
+        with self._r2_lock:
+            if self._r2_fault is not None:
+                raise RuntimeError("R2 sleep_bout refused by latch until restart")
+            try:
+                self._r2_supported(ixn)
+                snapshot = self._r2_snapshot(ixn)
+            except Exception as exc:
+                self._r2_close("snapshot", exc)
+                raise
+            admitted = False
+            try:
+                # ponytail: reuse the exact codec and runner; no second journal or learning rule.
+                preview = SpikingInteractionLearner(ixn.responses, ixn.n_in, seed=ixn.seed)
+                if ixn.stack is not None:
+                    if type(ixn.stack) is not PlasticityRuleStack:
+                        raise ValueError("R2 sleep_bout plasticity factory is unbound")
+                    preview.stack = PlasticityRuleStack(
+                        n_neurons=len(ixn.responses), seed=self._seed
+                    )
+                preview._restore_snapshot(snapshot["learner"])
+                expected_report = learner_bout(preview, stages, rng_seed)
+                expected = {
+                    **sleep_digests(preview, self._rewirer),
+                    **bout_progress(expected_report),
+                }
+                eid = self._append_learner_event("sleep_bout", {"bout": payload, **expected})
+                if eid is None:
+                    raise RuntimeError("R2 closed before sleep_bout admission")
+                admitted = True
+                ixn._effect_depth += 1
+                try:
+                    report = _run_bout(
+                        self, stages, rng_seed=rng_seed, extra_populations=extra_populations
+                    )
+                finally:
+                    ixn._effect_depth -= 1
+                actual = {**sleep_digests(ixn, self._rewirer), **bout_progress(report)}
+                if ixn._snapshot()["cache"] != snapshot["learner"]["cache"]:
+                    raise ValueError("R2 sleep_bout ring/authority mutation refused")
+                if actual != expected:
+                    raise ValueError("R2 sleep_bout digest/progress mismatch")
+                ixn._cursor = _event_order(eid)
+                return report
+            except Exception as exc:
+                self._r2_close("bout_effect" if admitted else "bout_append_or_preview", exc)
+                try:
+                    self._r2_restore(ixn, snapshot)
+                except Exception as rollback:
+                    self._r2_close("rollback", rollback)
+                    exc.add_note(f"R2 rollback refused: {type(rollback).__name__}: {rollback}")
+                    raise exc from rollback
+                self._report_ixn_refusal("R2 sleep_bout latched until restart", exc)
+                raise
+
     def _r2_sleep_step(self, ixn, rewirer):
-        """Actual replay -> structural -> rest; no affected exception is swallowed."""
+        """Retained structural slow clock; owner1039 retires replay/rest; errors propagate."""
         from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
         stack = ixn.stack
-        observations = {
-            "_sleep_replayed": 0, "_sleep_consolidate_calls": 0,
-            "_plastic_relaxed": 0, "_structural_report": None,
-        }
+        observations = {"_structural_report": None}
         if stack is None:
             return rewirer, observations
-        if self._sleep_caps["replay"]:
-            before = stack.consolidation_calls()
-            observations["_sleep_replayed"] = ixn.replay(k=8)
-            observations["_sleep_consolidate_calls"] = stack.consolidation_calls() - before
         if self._sleep_caps["structural"]:
             if rewirer is None:
                 rewirer = StructuralRewiring(seed=self._seed)
@@ -5335,12 +5444,6 @@ class Brain:
                     neuron.w = list(rows[i])
                     stack.adopt_structural(i, rows[i], changed)
             observations["_structural_report"] = rewirer.report()
-        if self._sleep_caps["benna_fusi"]:
-            for i, neuron in enumerate(ixn.neurons):
-                settled = stack.relax(i, _PLASTIC_REST_STEPS)
-                if settled is not None:
-                    neuron.w = list(settled)
-                    observations["_plastic_relaxed"] += 1
         return rewirer, observations
 
     def _r2_sleep_learning(self):
@@ -5350,9 +5453,12 @@ class Brain:
             self.__dict__.update(observations)
             return True
         from snn_data_lake.substrate.learner_events import sleep_digests
+
         with self._r2_lock:
             if self._r2_fault is not None:
-                self._report_ixn_refusal("R2 sleep learning refused by latch", RuntimeError("R2 closed"))
+                self._report_ixn_refusal(
+                    "R2 sleep learning refused by latch", RuntimeError("R2 closed")
+                )
                 return False
             try:
                 self._r2_supported(ixn)
@@ -5368,18 +5474,25 @@ class Brain:
                 finally:
                     ixn._effect_depth -= 1
                 self.__dict__.update(observations)
-                eid = self._append_learner_event("sleep", {
-                    "sleep_id": f"{self._session}-n{self._nights}",
-                    "night": str(self._nights), "tick": str(self._sleep_ticks),
-                    "stage_index": "0", "stage_name": "night",
-                    "presentations_spent": str(self._sleep_replayed),
-                    "drawn": ",".join(str(i) for i in ixn._last_drawn) or "none",
-                    "pending": "none", "applied_mask_digest": "none",
-                    **sleep_digests(ixn, self._rewirer),
-                })
+                eid = self._append_learner_event(
+                    "sleep",
+                    {
+                        "sleep_id": f"{self._session}-n{self._nights}",
+                        "night": str(self._nights),
+                        "tick": str(self._sleep_ticks),
+                        "stage_index": "0",
+                        "stage_name": "night",
+                        "presentations_spent": "0",  # structural step; no replay presentations
+                        "drawn": ",".join(str(i) for i in ixn._last_drawn) or "none",
+                        "pending": "none",
+                        "applied_mask_digest": "none",
+                        **sleep_digests(ixn, self._rewirer),
+                    },
+                )
                 if eid is None:
                     raise RuntimeError("R2 closed before sleep progress")
                 from snn_data_lake.readout.interaction_learning import _event_order
+
                 ixn._cursor = _event_order(eid)
                 return True
             except Exception as exc:
@@ -5398,16 +5511,21 @@ class Brain:
         if not self._persist or getattr(self.brain, "_ixn", None) is None:
             return False
         import json
+
         from snn_data_lake.substrate.home import load_state, save_state
+
         with self._r2_lock:
             if self._r2_fault is not None:
-                self._report_ixn_refusal("R2 checkpoint refused by latch", RuntimeError("R2 closed"))
+                self._report_ixn_refusal(
+                    "R2 checkpoint refused by latch", RuntimeError("R2 closed")
+                )
                 return False
             try:
                 requested = {
                     **self.brain._ixn.state_dict(),
                     "rewirer": None if self._rewirer is None else self._rewirer.state_dict(),
                     "sleep_observations": self._r2_observations(),
+                    "prefix_digest": self._r2_prefix_digest,
                 }
                 if save_state("interaction_learner.json", requested):
                     return True
@@ -5422,7 +5540,6 @@ class Brain:
                 self._r2_close("checkpoint", exc)
                 self._report_ixn_refusal("R2 checkpoint latched until restart", exc)
                 return False
-
 
     @staticmethod
     def _report_ixn_refusal(what, exc):
@@ -5793,25 +5910,31 @@ def _main():
 
     # ---- claim 4: DETERMINISTIC (byte-identical state INCLUDING self_state) ----
     schedule = [0.25, 0.25, 0.25] + [0.75] * 14 + [0.25]
-    d1 = Brain(seed=0, refit_every=10)
-    d2 = Brain(seed=0, refit_every=10)
-    for p in schedule:
-        d1.clock.phase = p
-        d1.tick()
-        d2.clock.phase = p
-        d2.tick()
-    s1, s2 = d1.state(), d2.state()
+    from snn_data_lake.substrate.home import throwaway_home
+
+    def deterministic_arm():
+        # 2026-10-13/R2: each writer owns a fresh lake; two live writers over the
+        # same prefix allocate the same session and collide on their first append.
+        with throwaway_home():
+            twin = Brain(seed=0, refit_every=10)
+            try:
+                for p in schedule:
+                    twin.clock.phase = p
+                    twin.tick()
+                return twin.state(), round(twin.clock.phase, 9), _qsum(twin)
+            finally:
+                twin.close()
+
+    (s1, phase1, q1), (s2, phase2, q2) = deterministic_arm(), deterministic_arm()
     c4_pass = (
         s1["grown_units"] == s2["grown_units"]
         and abs(s1["predict_accuracy"] - s2["predict_accuracy"]) < 1e-6
         and s1["wake_ticks"] == s2["wake_ticks"]
         and s1["sleep_ticks"] == s2["sleep_ticks"]
-        and round(d1.clock.phase, 9) == round(d2.clock.phase, 9)
+        and phase1 == phase2
         and s1["self_state"] == s2["self_state"]
-        and _qsum(d1) == _qsum(d2)
+        and q1 == q2
     )
-    d1.close()
-    d2.close()
     rows.append(
         (
             4,

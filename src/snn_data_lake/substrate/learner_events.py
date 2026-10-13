@@ -25,6 +25,7 @@ GRADIENT_CLAIM = {
 }
 
 SCHEMA = "r2.v1"
+EMPTY_PREFIX_DIGEST = hashlib.sha256(b"").hexdigest()
 #: G0(c)'s authoritative-teaching events (engine/brain.py `_record_teaching`, schema "g0c.v1") already
 #: carry every r2.v1 slot except `split`; the upcaster maps them and nothing else.
 LEGACY_SCHEMA = "g0c.v1"
@@ -72,6 +73,20 @@ KIND_SPECS = {
         ),
         "encoders": frozenset({"text_features n_in=52"}),
     },
+    # POST-DATA 2026-10-13, owner2105/2106: one durable aggregate bout, never REM items.
+    "sleep_bout": {
+        "slots": _IDENTITY
+        + (
+            "bout",
+            "rng_digest",
+            "weights_digest",
+            "rewirer_digest",
+            "drawn",
+            "presentations_spent",
+            "encoder",
+        ),
+        "encoders": frozenset({"text_features n_in=52"}),
+    },
 }
 
 _CTXREAD_DECIMALS = ("episode_id", "turn_index", "grown_version")
@@ -80,6 +95,25 @@ _SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 
 #: the sentinel for a slot that has no value yet (the reader treats an empty slot as `missing_slot`)
 NONE_SLOT = "none"
+
+
+def advance_prefix_digest(digest, event):
+    """Round 5 (#2112): bind ordered content using the existing canonical episode codec."""
+    from snn_data_lake.substrate.binlog import pack_episode
+
+    return hashlib.sha256(bytes.fromhex(digest) + pack_episode(event)).hexdigest()
+
+
+def prefix_digest(events, cursor):
+    """Digest exactly the validated eligible prefix covered by a checkpoint cursor."""
+    digest = EMPTY_PREFIX_DIGEST
+    if cursor is None:
+        return digest
+    for event in events:
+        digest = advance_prefix_digest(digest, event)
+        if _order(event) == cursor:
+            return digest
+    raise ValueError("R2 checkpoint cursor is not in the eligible prefix")
 
 
 def _sha(value):
@@ -208,8 +242,14 @@ def _identity_refusal(event, seen, last):
 
 
 def scan_learner_events(
-    kinds, *, path=None, include_sessions=None, exclude_sessions=None,
-    allow_instrument=False, strict=False, return_receipt=False,
+    kinds,
+    *,
+    path=None,
+    include_sessions=None,
+    exclude_sessions=None,
+    allow_instrument=False,
+    strict=False,
+    return_receipt=False,
 ):
     """Compatibility reader, or one immutable complete eligible-prefix receipt."""
     kinds = tuple(kinds)
@@ -218,15 +258,18 @@ def scan_learner_events(
     if return_receipt and not strict:
         raise ValueError("R2 complete receipt requires strict mode")
     if strict and (
-        set(kinds) != set(KIND_SPECS) or include_sessions is not None
-        or exclude_sessions is not None or allow_instrument
+        set(kinds) != set(KIND_SPECS)
+        or include_sessions is not None
+        or exclude_sessions is not None
+        or allow_instrument
     ):
         raise ValueError("R2 complete recovery cannot omit kinds/sessions or admit instruments")
     if allow_instrument and _is_production(path):
         raise ValueError("allow_instrument=True refused on production lake")
     if strict:
-        episodes, raw_receipt = _home.load_episodes(path=path, all_kinds=True, strict=True,
-                                                   return_receipt=True)
+        episodes, raw_receipt = _home.load_episodes(
+            path=path, all_kinds=True, strict=True, return_receipt=True
+        )
         proof = json.loads(raw_receipt)
         decoded_rows = [r for r in proof["rows"] if r["reason"] == "decoded"]
         if len(decoded_rows) != len(episodes):
@@ -264,15 +307,20 @@ def scan_learner_events(
         last = _order(event)
         events.append(event)
         if strict:
-            classified.append({"ordinal": row["ordinal"], "reason": "eligible",
-                               "event_id": event["event_id"]})
+            classified.append(
+                {"ordinal": row["ordinal"], "reason": "eligible", "event_id": event["event_id"]}
+            )
     if strict:
-        proof.update({
-            "eligible_ids": [e["event_id"] for e in events], "final_cursor": last,
-            "next_session": nxt, "classified_rows": classified,
-            "critical_event_ordinals": critical,
-            "complete": proof["complete"] and not critical,
-        })
+        proof.update(
+            {
+                "eligible_ids": [e["event_id"] for e in events],
+                "final_cursor": last,
+                "next_session": nxt,
+                "classified_rows": classified,
+                "critical_event_ordinals": critical,
+                "complete": proof["complete"] and not critical,
+            }
+        )
         receipt = json.dumps(proof, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
         if return_receipt:
             return events, dict(refusals), nxt, receipt

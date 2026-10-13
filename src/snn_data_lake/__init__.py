@@ -198,6 +198,7 @@ REGIONS = {
         "signal_calibrator",  # durable running-quantile of a live signal (Step-0 of data self-recalibration)
         "home",
         "binlog",
+        "learner_events",  # R2: strict common-boundary event reader; live Brain reconciliation.
         # PROMOTED from the repo root 2026-08-04 under P4c: the daemon is the brain's DRIVE (wake/
         # sleep cycle, tick loop, continuity), not a launcher beside it. It was 370 lines outside the
         # package in no gate, with no self-check and not one assert. `learn_daemon.py` at the root is
@@ -290,6 +291,8 @@ REGIONS = {
         # G2 / T110 P1: the problem generators ((i)'s delayed-cue 2x2, C1-d, A_c1d, A_ii, U, U_S) and their construction checks (evidence g2-taught-problems.md 2.2, 2.8, 2.15)
         "delayed_cue",
         "energy",
+        # specs/022 G6 (T114), owner answer #1038: the STATIC all-eligible-circuit census -- AST-only over the three driver classes; imports no engine, builds no Brain, opens no home, reads no lake; every discovered handle must carry an explicit disposition before the census may call itself complete
+        "eligible_circuit_census",
         # 022 T035: stimulus port + trial schedule (fixation/saccade) + G5-replayable trials
         "episode_driver",
         # specs/022 Phase 4 C0: the L12 audit's 20-item everyday battery as a GOVERNED SCORER -- the frozen answer key, 2.3's ordered classifier (abstention decided by route AND preamble before any key is tested) and the five-seed campaign on scratch brains; never the live lake

@@ -1324,7 +1324,7 @@ def save_episode(episode, path=None):
     return _w
 
 
-LEARNER_EVENT_KINDS = frozenset({"teach", "turn", "sleep", "percept", "ctxread"})
+LEARNER_EVENT_KINDS = frozenset({"teach", "turn", "sleep", "sleep_bout", "percept", "ctxread"})
 
 
 def is_autobiographical_episode(episode):
@@ -1347,8 +1347,9 @@ def next_session(episodes=None, path=None):
     return 1 + max((n for n in map(session_number, episodes) if n is not None), default=0)
 
 
-def load_episodes(path=None, limit=None, kinds=None, *, all_kinds=False, strict=False,
-                  return_receipt=False):
+def load_episodes(
+    path=None, limit=None, kinds=None, *, all_kinds=False, strict=False, return_receipt=False
+):
     """Compatibility read, or an opt-in same-pass complete-frame/canonical-episode receipt."""
     if return_receipt and (not strict or not all_kinds or limit is not None or kinds is not None):
         raise ValueError("R2 receipt requires a complete strict all-kinds pass")
@@ -1360,7 +1361,8 @@ def load_episodes(path=None, limit=None, kinds=None, *, all_kinds=False, strict=
             try:
                 episode = unpack_episode(payload[1:])
                 if all_kinds or (
-                    is_autobiographical_episode(episode) if kinds is None
+                    is_autobiographical_episode(episode)
+                    if kinds is None
                     else episode.get("kind") in kinds
                 ):
                     out.append(episode)
@@ -1370,17 +1372,26 @@ def load_episodes(path=None, limit=None, kinds=None, *, all_kinds=False, strict=
 
     import hashlib
     from pathlib import Path
+
     from snn_data_lake.substrate.binlog import _LEN, _MAGIC
 
     selected = Path(path or knowledge_path()).resolve()
     bound = Path(knowledge_path()).resolve()
     if selected != bound:
         raise ValueError("R2 strict read must bind the active canonical home lake")
+
     def stat_record():
         s = selected.stat() if selected.exists() else None
-        return None if s is None else {
-            "size": s.st_size, "mtime_ns": s.st_mtime_ns, "inode": s.st_ino,
-        }
+        return (
+            None
+            if s is None
+            else {
+                "size": s.st_size,
+                "mtime_ns": s.st_mtime_ns,
+                "inode": s.st_ino,
+            }
+        )
+
     before_log = stat_record()
     log = _log()  # same canonical cache key as the common writer
     out, rows, critical = [], [], []
@@ -1390,8 +1401,11 @@ def load_episodes(path=None, limit=None, kinds=None, *, all_kinds=False, strict=
         for ordinal, payload in enumerate(log.replay()):
             byte_end += _LEN.size + len(payload)
             row = {
-                "ordinal": ordinal, "tag": payload[:1].hex(), "length": len(payload),
-                "sha256": hashlib.sha256(payload).hexdigest(), "byte_end": byte_end,
+                "ordinal": ordinal,
+                "tag": payload[:1].hex(),
+                "length": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+                "byte_end": byte_end,
                 "reason": "foreign_tag",
             }
             if payload[:1] == _T_EPISODE:
@@ -1399,7 +1413,9 @@ def load_episodes(path=None, limit=None, kinds=None, *, all_kinds=False, strict=
                     episode = unpack_episode(payload[1:])
                     if pack_episode(episode) != payload[1:]:
                         raise ValueError("noncanonical episode bytes")
-                    row.update({k: episode.get(k) for k in ("kind", "schema", "event_id", "session")})
+                    row.update(
+                        {k: episode.get(k) for k in ("kind", "schema", "event_id", "session")}
+                    )
                     row["reason"] = "decoded"
                     out.append(episode)
                 except (TypeError, ValueError, IndexError, OverflowError, UnicodeError) as exc:
@@ -1410,9 +1426,15 @@ def load_episodes(path=None, limit=None, kinds=None, *, all_kinds=False, strict=
         end = stat_record()
     complete = start == end and end is not None and byte_end == end["size"] and not critical
     proof = {
-        "home": str(bound.parent), "lake": str(selected), "before_log": before_log,
-        "start": start, "end": end, "complete_byte_end": byte_end, "rows": rows,
-        "critical_ordinals": critical, "complete": complete,
+        "home": str(bound.parent),
+        "lake": str(selected),
+        "before_log": before_log,
+        "start": start,
+        "end": end,
+        "complete_byte_end": byte_end,
+        "rows": rows,
+        "critical_ordinals": critical,
+        "complete": complete,
         "canonical_log_may_have_repaired_torn_tail": before_log != start,
     }
     receipt = json.dumps(proof, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()

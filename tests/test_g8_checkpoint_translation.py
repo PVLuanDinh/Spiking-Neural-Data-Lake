@@ -6,7 +6,9 @@ modules, so a checkpoint written before a move names its classes by their OLD mo
 `interaction_learning._merge_state` maps a stored class path's MODULE through the one legacy map,
 `_g0c_legacy_modules()` (empty at S0, then re-pointed at S1b to the alias layer's table), before the
 lazy-class lookup and before the class comparison. Read side only: the lake is never rewritten, the
-schema stays g0c.v1, a save writes the CURRENT path, and a name the map cannot resolve refuses.
+schema stays r2.v1, a save writes the CURRENT path, and a name the map cannot resolve refuses.
+2026-10-13: owner1037-1039/R2 requires the structural carrier and complete-prefix reconciliation;
+the planted translation and all three refusal controls remain unchanged.
 
 R-L0, the mechanism before anything moves. A real brain (`make_brain(seed=100, persist=True)`)
 taught with the frozen `_g0c_schedule` and flushed writes the checkpoint in its own process and
@@ -144,7 +146,13 @@ with patch.object(Brain, "_report_ixn_refusal", staticmethod(refuse)):
             "answers": probe,
             "flushed": flushed,
             "probes_pure": digest(learner) == taught,
-            "checkpoint_is_live": load_state("interaction_learner.json") == learner.state_dict(),
+            "checkpoint_is_live": load_state("interaction_learner.json") == {
+                **learner.state_dict(),
+                "rewirer": None if brain._rewirer is None else brain._rewirer.state_dict(),
+                "sleep_observations": brain._r2_observations(),
+                # Round 5, 2026-10-13 (#2112): every R2 checkpoint binds its canonical prefix.
+                "prefix_digest": brain._r2_prefix_digest,
+            },
         }
     finally:
         brain.close()
@@ -223,6 +231,7 @@ def _run(script, home, *args):
         capture_output=True,
         text=True,
         env=env,
+        stdin=subprocess.DEVNULL,
         timeout=900,
     )
     for line in proc.stdout.splitlines():
@@ -258,7 +267,7 @@ def test_the_writer_and_the_plant_are_not_vacuous(r_l0):
         assert plant["before"].get(current, 0) >= 1, current
         assert current not in plant["after"], current
         assert plant["after"][planted] == plant["before"][current], planted
-    assert plant["schema"] == "g0c.v1"
+    assert plant["schema"] == "r2.v1"
     assert plant["written"] is True and plant["read_back"] is True
 
 
@@ -281,7 +290,9 @@ def test_r_l0_planted_legacy_names_restore_through_the_injected_map(r_l0):
 def test_r_l0_controls_refuse(r_l0, arm, message):
     refused = r_l0[2][arm]["refused"]
     assert refused is not None, arm
-    assert refused.startswith("restore refused; learner stays fresh: ValueError: "), refused
+    assert refused.startswith(
+        "R2 reconciliation refused; writer and checkpoints closed: ValueError: "
+    ), refused
     assert message in refused, refused
 
 
@@ -289,7 +300,7 @@ def test_s0_is_read_side_only(r_l0):
     _, plant, arms = r_l0
     arm = arms["pass"]
     assert arm["lake_unchanged_by_restore"] is True
-    assert arm["saved_schema"] == "g0c.v1"
+    assert arm["saved_schema"] == "r2.v1"
     assert arm["saved_census"] == plant["before"]  # the save writes the CURRENT class paths
 
 

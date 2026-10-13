@@ -348,6 +348,7 @@ CORE = [
     "infra.self_mod_harness",
     "substrate.home",
     "substrate.binlog",
+    "substrate.learner_events",  # R2: eligible prefix and every typed-refusal red.
     "growth.growable",
     "reservoir.spontaneous_activity",  # T045: OU stationarity + same-path A/B + nulls + refusals
     "gates.growth_coverage_gate",  # T046: coverage ratchet + refusals + sharpness + nulls + Allen
@@ -397,6 +398,8 @@ CORE = [
     "instruments.sleep_pressure",  # G6 T114 (c): rescheduling budget, C12, A6 shuffle, A7 C23/C24, carrier
     "instruments.staged_sleep_bout",  # G6 T114 (e): one-RNG redo, C16, C17, C19, pauses, carriers
     "instruments.sleep_mask_apply",  # G6 T114 P4: sleep_mask_prepared producer + commit + the applied_mask check's four O_mask reds
+    # G6 (owner answer #1038): the STATIC all-eligible-circuit census. Bare invocation is its own source-only self-check -- AST over the three driver classes, eight in-src P8 criteria, no Brain, no home, no lake
+    "instruments.eligible_circuit_census",
     "faculties.interoceptive_integration",  # 022 T021a: deviation-from-self salience + frozen-baseline red + habituation
     "gates.envelope_hash_gate",  # 022 T021b: live five-file control + tamper/stale-approval/unbaselined reds
     "gates.region_charge_gate",  # 022 T022: registration-never-greens + constructed attribution + non-diverged-charges-nothing

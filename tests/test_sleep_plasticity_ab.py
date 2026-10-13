@@ -145,7 +145,7 @@ def test_run_arm_refuses_the_live_lake_before_any_mutation(tmp_path, monkeypatch
     before = m.lake_snapshot(str(live))
     dirs_before = sorted(p for p, _d, _f in os.walk(live))
     with pytest.raises(LiveHomeRefused):
-        m.run_arm(str(live / sub) if sub else str(live), "F1", "ON", m.RED_SEEDS[6], budget=1)
+        m.run_arm(str(live / sub) if sub else str(live), "F5", "STAGED", m.RED_SEEDS[6])
     assert m.lake_snapshot(str(live)) == before
     assert sorted(p for p, _d, _f in os.walk(live)) == dirs_before
 
@@ -257,22 +257,12 @@ def test_f3_ladder_rule_and_the_unfrozen_refusal():
     assert m.F3_STORES == 1  # the first rung that qualified on dev (2026-10-06 amendment)
 
 
-def test_two_real_arm_seeds_restore_exactly(tmp_path):
-    """ON and OFF on a red-block seed, 2 sleep ticks: every record check green, restore exact, the
-    ledger k per tick, OFF's weights untouched by its bout, and the live lake untouched."""
-    out = str(tmp_path)
-    seed = m.RED_SEEDS[5]
-    recs = [m.run_arm(out, "F1", arm, seed, budget=2) for arm in ("ON", "OFF")]
-    fails = m.check_records("F1", recs)
-    assert not any(fails.values()), fails
-    on, off = recs
-    assert on["inproc"] == on["restored"] and off["inproc"] == off["restored"]
-    assert on["tick"]["presentations"] == off["tick"]["presentations"] == [m.K, m.K]
-    assert sum(on["tick"]["deposits"]) > 0 and sum(off["tick"]["deposits"]) == 0
-    assert on["d0"] == off["d0"] and on["d1"] == off["d1"]
-    assert off["weights_d1"] == off["weights_post"] and on["weights_d1"] != on["weights_post"]
-    assert all(r["live_lake_untouched"] for r in recs)
-    assert os.listdir(os.path.join(out, "homes")) == []  # every throwaway home removed
+def test_f1_arm_seeds_refuse_retired_production_before_writes(tmp_path):
+    """Owner1039, 2026-10-13: F1 is archival; production refuses before creating output."""
+    for arm in ("ON", "OFF"):
+        with pytest.raises(RuntimeError, match="retired live sleep family"):
+            m.run_arm(str(tmp_path), "F1", arm, m.RED_SEEDS[5], budget=2)
+    assert list(tmp_path.iterdir()) == [tmp_path / "nord_home"]
 
 
 def test_cp2_13_k5_does_not_apply_to_f3():
@@ -681,6 +671,17 @@ def test_f5_brain_level_reds_fire(tmp_path, name, arm):
     out = str(tmp_path)
     base = m.run_arm(out, "F5", arm, seed)
     assert not any(m.check_records("F5", [base]).values())
+    # 2026-10-13 owner1037-1039/2106: forbidden synthetic teaching/ring injection
+    # can refuse at the common R2 boundary before a record exists. K10a/b/d are unchanged.
+    refusal = {
+        "K10a": "persistent learner effect requires the common R2 boundary",
+        "K10b": "R2 sleep_bout ring/authority mutation refused",
+        "K10d": "malformed R2 ring identities",
+    }
+    if name in refusal:
+        with pytest.raises(RuntimeError, match=refusal[name]):
+            m.run_arm(out, "F5", arm, seed, red=name)
+        return
     red = m.run_arm(out, "F5", arm, seed, red=name)
     check = name.split("-")[0]
     assert m.check_records("F5", [red])[check], (name, red["f5"])

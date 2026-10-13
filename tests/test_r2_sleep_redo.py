@@ -5,14 +5,20 @@ import gc
 from pathlib import Path
 
 import pytest
-
 from test_r2_replay_hydration import (
-    _close_for_restart, _private_brain, _reference, _restart, _semantic, _teach_a, _teach_b,
+    _close_for_restart,
+    _private_brain,
+    _reference,
+    _restart,
+    _semantic,
+    _teach_a,
+    _teach_b,
 )
 
 
 def test_real_structural_carrier_roundtrip_preserves_next_rng_and_topology():
     from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
     # Existing local constructor default; this is a constructed carrier check, not a seed cohort.
     left, right = StructuralRewiring(), StructuralRewiring()
     rows = [[1.0, -1.0, 0.0], [1.0, 0.0, -1.0]]
@@ -39,6 +45,7 @@ def test_real_structural_carrier_roundtrip_preserves_next_rng_and_topology():
 @pytest.mark.parametrize("corruption", ["duplicate", "nonfinite", "boolrow", "sign", "rng"])
 def test_structural_carrier_refuses_bad_state_without_partial_install(corruption):
     from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
     carrier = StructuralRewiring()
     rows = [[1.0, -1.0]]
     carrier.rewire(rows)
@@ -64,6 +71,7 @@ def test_structural_carrier_refuses_bad_state_without_partial_install(corruption
 def test_missing_structural_carrier_refuses_before_wake_admission(monkeypatch):
     from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
     from snn_data_lake.substrate import home
+
     with _private_brain() as (brain, _):
         _teach_a(brain)
         before = _semantic(brain)
@@ -82,6 +90,7 @@ def test_missing_structural_carrier_refuses_before_wake_admission(monkeypatch):
 
 def test_real_sleep_redo_matches_complete_tick_in_new_process():
     from snn_data_lake.substrate import home
+
     with _private_brain() as (brain, private):
         _teach_a(brain)
         _teach_b(brain)
@@ -90,10 +99,12 @@ def test_real_sleep_redo_matches_complete_tick_in_new_process():
         # Exactly the common learner block, not the other grower/autotelic sleep capabilities.
         assert brain._r2_sleep_learning()
         expected = _semantic(brain)
-        assert brain._sleep_replayed == 8  # source's existing k=8, no new science duration
-        assert brain.brain._ixn.rng.getstate() != before_rng, "R2 D21 RNG control must draw"
+        # Owner1039, 2026-10-13: structural sleep has zero replay presentations.
+        assert set(brain._r2_observations()) == {"_structural_report"}
+        assert brain.brain._ixn.rng.getstate() == before_rng
+        assert brain._rewirer.state_dict()["cycles"] > 0
         event = home.load_episodes(kinds=("sleep",))[-1]
-        assert event["drawn"] != "none"
+        assert event["drawn"] == "none" and event["presentations_spent"] == "0"
         assert event["pending"] == "none" and event["applied_mask_digest"] == "none"
         assert brain.brain._ixn._cursor is not None
         # Preserve wake checkpoint A+B; do not replace it with post-sleep continuation.
@@ -106,6 +117,7 @@ def test_real_sleep_redo_matches_complete_tick_in_new_process():
 
 def test_partial_rewire_mutation_rolls_back_real_topology_aliases_and_rng(monkeypatch):
     from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
     with _private_brain() as (brain, _):
         _teach_a(brain)
         assert brain._r2_sleep_learning()
@@ -113,11 +125,15 @@ def test_partial_rewire_mutation_rolls_back_real_topology_aliases_and_rng(monkey
         rewirer, stack = brain._rewirer, brain._plasticity
         rng = rewirer._rng
         original, witnessed = StructuralRewiring.rewire, []
+
         def real_then_raise(carrier, rows, activity=None):
-            result = original(carrier, rows, activity=activity)
+            original(carrier, rows, activity=activity)
             witnessed.append(carrier.state_dict())
-            assert witnessed[-1] != before["rewirer"], "R2 structural control must mutate cycle state"
+            assert witnessed[-1] != before["rewirer"], (
+                "R2 structural control must mutate cycle state"
+            )
             raise RuntimeError("R2 actual post-rewire failure")
+
         with monkeypatch.context() as patch:
             patch.setattr(StructuralRewiring, "rewire", real_then_raise)
             with pytest.raises(RuntimeError, match="post-rewire failure"):
@@ -132,21 +148,24 @@ def test_partial_rewire_mutation_rolls_back_real_topology_aliases_and_rng(monkey
 
 def test_sleep_append_failure_restores_full_state_and_keeps_latch(monkeypatch):
     from snn_data_lake.substrate import home
+
     with _private_brain() as (brain, _):
         _teach_a(brain)
         before = _semantic(brain)
         real_save, witnessed = home.save_episode, []
+
         def sleep_refusal(event, path=None):
             if event["kind"] == "sleep":
                 witnessed.append(dict(event))
                 return False
             return real_save(event, path=path)
+
         with monkeypatch.context() as patch:
             patch.setattr(home, "save_episode", sleep_refusal)
             with pytest.raises(OSError, match="append returned False"):
                 brain._r2_sleep_learning()
         assert len(witnessed) == 1
-        assert witnessed[0]["presentations_spent"] == "8"
+        assert witnessed[0]["presentations_spent"] == "0"
         assert _semantic(brain) == before
         seq = brain._r2_seq
         assert not brain._r2_sleep_learning()
@@ -160,7 +179,9 @@ def test_checkpoint_failure_preserves_actual_event_prefix_and_reconciles_complet
     monkeypatch, tmp_path, arm
 ):
     import os
+
     from snn_data_lake.substrate import home
+
     expected = _reference(True)
     with _private_brain() as (brain, private):
         _teach_a(brain)
@@ -168,6 +189,7 @@ def test_checkpoint_failure_preserves_actual_event_prefix_and_reconciles_complet
         a_checkpoint = copy.deepcopy(home.load_state("interaction_learner.json"))
         _teach_b(brain)
         real_save, witnessed = home.save_state, []
+
         def refuse_checkpoint(name, value, *args, **kwargs):
             assert name == "interaction_learner.json"
             witnessed.append(copy.deepcopy(value))
@@ -180,6 +202,7 @@ def test_checkpoint_failure_preserves_actual_event_prefix_and_reconciles_complet
                     stream.flush()
                     os.fsync(stream.fileno())
             return False
+
         with monkeypatch.context() as patch:
             patch.setattr(home, "save_state", refuse_checkpoint)
             assert brain._flush_interaction_learner() is False
@@ -223,11 +246,14 @@ def test_rearm_neuter_and_always_refuse_have_reachable_positive_failures(monkeyp
     from snn_data_lake.engine.brain import Brain, make_brain
     from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
     from snn_data_lake.substrate import home
+
     real_hydrate = SpikingInteractionLearner.hydrate
+
     def declared_incomplete(learner, *args, **kwargs):
         report = real_hydrate(learner, *args, **kwargs)
         report["complete"] = False  # actual executed prefix, made explicitly non-admissible
         return report
+
     with home.throwaway_home():
         home.require_isolated_home()
         with monkeypatch.context() as patch:

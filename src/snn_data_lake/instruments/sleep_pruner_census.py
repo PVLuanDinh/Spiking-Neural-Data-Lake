@@ -577,11 +577,9 @@ def census_misses(static, seen):
 # 2. A/B -- arms, outcomes, executed-work counters
 # ================================================================================================
 def _teach(brain):
-    from snn_data_lake.readout.interaction_learning import text_features
-
-    ixn = brain.brain._ixn
+    # 2026-10-13 R2 composition: the existing journaled teaching boundary owns the deposit.
     for text, intent in TEACH:
-        ixn.interact(text_features(text, ixn.n_in), intent)
+        brain.brain.teach(text, intent)
 
 
 def _drive(brain, ticks, rec, teach=True):

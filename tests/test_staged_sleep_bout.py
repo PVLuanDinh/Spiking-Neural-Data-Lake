@@ -153,6 +153,10 @@ def test_the_real_g0c_checkpoint_save_is_not_refused_after_a_bout():
     fresh = type(ixn)(ixn.responses, ixn.n_in, seed=999)
     fresh.load_state_dict(blob)
     assert [n.w for n in fresh.neurons] == [n.w for n in ixn.neurons]
+    # 2026-10-13 owner1037-1039/2106: R2 checkpoints exclude the lake-derived ring.
+    # This standalone learner has no journal; exact object continuation uses the common snapshot.
+    assert fresh._replay == []
+    fresh._restore_snapshot(ixn._snapshot())
     assert [c for c, _, _ in fresh._replay] == [c for c, _, _ in ixn._replay]
 
 

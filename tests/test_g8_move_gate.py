@@ -176,7 +176,16 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # 311 -> 314 on 2026-10-11: G5 Part D adds exactly g5_part_d_adaptors,
     # g5_part_d_cells and g5_part_d_reading under instruments; no existing alias
     # is removed. This is the integrator's separately reviewed exact count pin.
-    assert len(S._MOVED) == 314 and "claustrum" not in S._MOVED
+    # 314 -> 315 on 2026-10-12: G6 (owner answer #1038) registers exactly one new module,
+    # instruments/eligible_circuit_census, under 'instruments'; no existing alias is removed
+    # and no name collides with a _LEGACY_PKGS package key, so it enters _MOVED. Measured, not
+    # assumed: all six literal tables were re-read and _MOVED re-derived from its own
+    # comprehension at __init__.py -- raw REGIONS members 315 -> 316, less the ONE unchanged
+    # claustrum legacy-package shadow, gives _MOVED 314 -> 315. The claustrum clause is
+    # unchanged and still holds.
+    # 2026-10-13/R2 composition: learner_events adds one substrate entry. Re-derived
+    # from the actual tables: REGIONS=317, less the claustrum package shadow -> 316.
+    assert len(S._MOVED) == 316 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture

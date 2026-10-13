@@ -60,6 +60,24 @@ def event(key="a goal", intent="GOAL", seq=1, session=1):
     }
 
 
+def checkpoint(lrn):
+    # 2026-10-13: owner1037-1039, R2 requires the complete persistent boundary carrier.
+    # Round 5 (#2112): fixtures also bind the actual canonical prefix, including an empty one.
+    from snn_data_lake.substrate.learner_events import (
+        KIND_SPECS,
+        prefix_digest,
+        scan_learner_events,
+    )
+
+    events, _, _ = scan_learner_events(tuple(KIND_SPECS), strict=True)
+    return {
+        **lrn.state_dict(),
+        "rewirer": None,
+        "sleep_observations": {"_structural_report": None},
+        "prefix_digest": prefix_digest(events, lrn._cursor),
+    }
+
+
 def test_scheduled_round_trip_shared_lazy_and_exact():
     with brain(persist=False) as b:
         ixn._g0c_schedule(b, 100)
@@ -77,9 +95,9 @@ def test_scheduled_round_trip_shared_lazy_and_exact():
         for obj in shared:
             assert any(obj is v for v in stack._pre + stack._post)
         assert fresh.state_dict() == saved
-        fresh.rebuild_authority(
-            [event(key, intent, seq=i) for i, (key, intent) in enumerate(source._authority.items())]
-        )
+        # 2026-10-13: owner1037-1039/R2 stores ring/authority in the journal, not the
+        # checkpoint. This persist=False round trip uses the complete in-memory snapshot.
+        fresh._restore_snapshot(source._snapshot())
         assert ixn._g0c_walk(fresh) == ixn._g0c_walk(source)
         for lrn in (source, fresh):
             lrn.learn_turn(ixn.G0_CORRECTED[0][0], "GREET")
@@ -178,7 +196,7 @@ def test_r_c3_events_without_checkpoint_supersede():
 def test_r_c3_checkpoint_without_events_does_not_supersede():
     source = learner()
     source.learn_turn("a goal", None, feedback="GOAL")
-    save_state("interaction_learner.json", source.state_dict())
+    save_state("interaction_learner.json", checkpoint(source))
     assert load_episodes(kinds=("teach",)) == []
     with brain() as b:
         assert b.brain._ixn._authority == {}
@@ -196,13 +214,18 @@ def test_r_c4_nonpersisting_brain_writes_no_learner_or_teaching():
 
 
 def test_r_c4_restore_refusal_is_visible_and_fresh(capsys):
-    bad = learner().state_dict()
+    bad = checkpoint(learner())
     bad["tree"]["attrs"]["stack"]["__cls__"] = "wrong.Class"
-    save_state("interaction_learner.json", bad)
+    save_state(
+        "interaction_learner.json",
+        bad,
+    )
     with brain() as b:
         assert b.brain._ixn.state_dict() == learner().state_dict()
         err = capsys.readouterr().err
-        assert err.count("restore refused; learner stays fresh") == 1
+        # 2026-10-13: owner1037-1039/FAILWRITE, refusal leaves the writer closed.
+        assert err.count("R2 reconciliation refused; writer and checkpoints closed") == 1
+        assert b._r2_fault is not None
         assert err.isascii()
 
 
@@ -230,25 +253,29 @@ def test_production_close_night_and_immediate_teaching():
         b.correct("a goal", "GOAL")
         events = load_episodes(kinds=("teach",))
         assert len(events) == 1
-        assert events[0] == event(session=b._teach_session)
+        # 2026-10-13: owner1037-1039, teaching uses the same R2 session/schema as turns.
+        assert events[0] == {**event(session=b._session), "schema": "r2.v1", "split": "train"}
         assert load_state("interaction_learner.json") is None
         b._enter_wake()
-        assert load_state("interaction_learner.json") == b.brain._ixn.state_dict()
-        assert b._flush_interaction_learner() is False
+        assert load_state("interaction_learner.json") == checkpoint(b.brain._ixn)
+        assert b._flush_interaction_learner() is True  # exact durable dedup remains successful
         b.brain._ixn.learn_turn("another goal", "GOAL")
-        before_close = copy.deepcopy(b.brain._ixn.state_dict())
+        before_close = copy.deepcopy(checkpoint(b.brain._ixn))
     assert load_state("interaction_learner.json") == before_close
     with brain() as restored:
-        assert restored.brain._ixn.state_dict() == before_close
+        assert checkpoint(restored.brain._ixn) == before_close
 
 
 def test_save_refusal_is_reported_without_a_record(capsys):
     with brain() as b:
         b.brain._ixn.unknown = object()
         assert b._flush_interaction_learner() is False
-        assert "save refused" in capsys.readouterr().err
+        # 2026-10-13: owner1037-1039/FAILWRITE forbids retry until restart.
+        assert "R2 checkpoint latched until restart" in capsys.readouterr().err
         assert load_state("interaction_learner.json") is None
         del b.brain._ixn.unknown
+        assert b._flush_interaction_learner() is False
+        assert load_state("interaction_learner.json") is None
 
 
 def verdict_fixture():
@@ -311,9 +338,7 @@ def test_each_exact_record_can_red_r_c1(part):
 
 
 def test_restore_failure_of_any_kind_leaves_a_working_fresh_brain(monkeypatch, capsys):
-    save_state(
-        "interaction_learner.json", {"schema": "g0c.v1", "tree": {"__cls__": "x", "attrs": {}}}
-    )
+    save_state("interaction_learner.json", checkpoint(learner()))
 
     def boom(self, state):
         raise RuntimeError("constructed restore failure")
@@ -388,14 +413,28 @@ def test_checkpoint_read_failure_leaves_a_working_brain(monkeypatch, capsys):
     assert "OSError: constructed checkpoint read failure" in capsys.readouterr().err
 
 
-def test_teaching_event_write_failure_does_not_break_a_correction(monkeypatch, capsys):
+def test_teaching_event_write_failure_latches_correction_until_restart(monkeypatch, capsys):
     import snn_data_lake.substrate.home as home_mod
 
     def boom(episode, path=None):
         raise OSError("constructed lake write failure")
 
     with brain() as b:
+        # 2026-10-13: owner1037-1039/FAILWRITE, append failure cannot install authority.
+        before = b.brain._ixn._snapshot()
         monkeypatch.setattr(home_mod, "save_episode", boom)
         b.correct("what are you pursuing right now", "GOAL")
-        assert b.brain._ixn.provenance("what are you pursuing right now") == "authoritative"
-    assert "teaching event not written" in capsys.readouterr().err
+        assert b.brain._ixn.provenance("what are you pursuing right now") == "self"
+        assert b._r2_fault["phase"] == "append"
+        assert b.brain._ixn._snapshot()["cache"] == before["cache"]
+        monkeypatch.undo()
+        b.correct("what are you pursuing right now", "GOAL")
+        assert b.brain._ixn.provenance("what are you pursuing right now") == "self"
+        assert load_episodes(kinds=("teach",)) == []
+        assert b._flush_interaction_learner() is False
+    assert "R2 learning latched until fresh reconciliation" in capsys.readouterr().err
+    with brain() as restarted:
+        assert restarted._r2_fault is None
+        restarted.correct("what are you pursuing right now", "GOAL")
+        assert restarted.brain._ixn.provenance("what are you pursuing right now") == "authoritative"
+        assert len(load_episodes(kinds=("teach",))) == 1

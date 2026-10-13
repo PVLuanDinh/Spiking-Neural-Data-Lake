@@ -1,5 +1,14 @@
 # G6 / T114 -- sleep and durable memory (pre-registration, wave 1; frozen by the lead's P0 commit; section 2.16 governs)
 
+**POST-DATA amendment, 2026-10-13, owner-question #2105 / owner-answer #2106:** the owner chose
+"A: journal the bout". Staged bout effects are durable brain learning: one aggregate `sleep_bout`
+event per bout passes the existing R2 writer/RLock/latch and complete-prefix codec before the live
+effect. The versioned seed/stage plan and digests/progress permit deterministic restart redo;
+unknown plans and digest/progress mismatches refuse by name. R3 automatic sleep remains structural-only.
+F5 K10c admits exactly the arm's own aggregate bout frame; every other bout-time scratch-lake write
+remains RED, including its planted write. K10a/b/d and all historical F5 records/results are unchanged.
+Synthetic REM items never become lake events, replay-ring entries or labels.
+
 Plan row: PLAN-FINAL G workstream, G6 / T114, parts (a)-(e) with every dated note (2026-09-25 the engine, the docs panel's
 fold, Astra owner-saved 2026-09-27), and Part F's G-R6. Owner text binding this row: POLICIES P4d's 2026-09-27 quotation
 (*"The brain should still be able to sharpen its understanding while sleeping, using synaptic plasticity, just like how the

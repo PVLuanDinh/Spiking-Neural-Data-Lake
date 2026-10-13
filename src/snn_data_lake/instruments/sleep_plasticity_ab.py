@@ -52,8 +52,11 @@ import random
 import subprocess
 import sys
 import time
+from contextlib import ExitStack
 from fractions import Fraction
+from pathlib import Path
 from typing import NamedTuple
+from unittest.mock import patch
 
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast, paired_t
 from snn_data_lake.instruments.staged_sleep_bout import run_bout as g6_run_bout
@@ -277,7 +280,7 @@ def _ring_digest(ixn):
 #   it with R3's K10 / K8 / count instruments (ring, lake and chronology read before and after) and reports
 #   nothing the runner does not already do. Also read: engine/brain.py::_sleep_tick (the incumbent tick F5
 #   deliberately does not run). Site read.
-def _f5_bout(b, ixn, arm, seed, red, log):
+def _f5_bout(b, ixn, arm, seed, red, log, observers):
     """One F5 bout (the amendment 2026-10-08): `g6_run_bout(b, stages, rng_seed=seed)` with K10a-d read around it.
     Only the registered call shape is used (no validate, no wake_request), so a pause other than budget is a
     defect the K2-F5 check halts on."""
@@ -287,11 +290,28 @@ def _f5_bout(b, ixn, arm, seed, red, log):
     ring_pre = _ring_digest(ixn)
     ring_stims = {_digest(list(e[0])) for e in ixn._replay}
     lake0 = lake_snapshot(home)
+    from snn_data_lake.substrate import home as durable
+
+    lake_path = Path(durable.knowledge_path())
+    lake_bytes = lake_path.read_bytes()
+    bout_id = f"{b._session}-{b._r2_seq + 1}"
     n0, p0, c0 = len(log["istim"]), log["presentations"], chrono(b)
-    rep = g6_run_bout(b, g6_stages, rng_seed=seed)
-    if red == "K10a":  # the red: a synthetic (mean) code is driven through interact
-        s0, s1 = ixn._replay[0][0], ixn._replay[1][0]
-        ixn.interact([(x + y) / 2.0 for x, y in zip(s0, s1)], ixn._replay[0][1], _record=False)
+    # 2026-10-13 R2 composition: class hooks observe only the live instance.
+    # Preview/restart learners use real methods; no callback enters checkpoint state.
+    with ExitStack() as hooks:
+        for name, observe in observers.items():
+            original = getattr(type(ixn), name)
+
+            def instrument(self, *args, _original=original, _observe=observe, **kwargs):
+                return (
+                    _observe(*args, **kwargs) if self is ixn else _original(self, *args, **kwargs)
+                )
+
+            hooks.enter_context(patch.object(type(ixn), name, instrument))
+        rep = g6_run_bout(b, g6_stages, rng_seed=seed)
+        if red == "K10a":  # unauthorized synthetic teaching is still refused by R2
+            s0, s1 = ixn._replay[0][0], ixn._replay[1][0]
+            ixn.interact([(x + y) / 2.0 for x, y in zip(s0, s1)], ixn._replay[0][1], _record=False)
     if red == "K10c":  # the red: one write lands in the arm's scratch lake during the bout
         with open(os.path.join(home, "k10c.red"), "a", encoding="ascii") as fh:
             fh.write("x")
@@ -299,6 +319,23 @@ def _f5_bout(b, ixn, arm, seed, red, log):
     if c1 != c0:  # K8a around the WHOLE call (each interact is also guarded on its own)
         log["k8a"].append({"before": c0, "after": c1})
     lake_ok, lake_changed = live_lake_untouched(home, lake0)
+    # POST-DATA amendment 2026-10-13, owner-question2105/owner-answer2106:
+    # K10c admits EXACTLY this arm's one R2 bout frame; every other scratch write is RED.
+    # K10a/b/d and historical records/results are unchanged.
+    from snn_data_lake.instruments.staged_sleep_bout import bout_payload
+    from snn_data_lake.substrate.binlog import _LEN
+    from snn_data_lake.substrate.learner_events import KIND_SPECS
+
+    events = [e for e in durable.load_episodes(kinds=("sleep_bout",)) if e["event_id"] == bout_id]
+    if len(events) == 1 and set(events[0]) == set(KIND_SPECS["sleep_bout"]["slots"]):
+        event = events[0]
+        payload = durable._T_EPISODE + durable.pack_episode(event)
+        exact_append = (
+            event["bout"] == bout_payload(g6_stages, seed)
+            and lake_path.read_bytes() == lake_bytes + _LEN.pack(len(payload)) + payload
+        )
+        lake_changed = [p for p in lake_changed if p != "brain_lake.bin" or not exact_append]
+        lake_ok = exact_append and not lake_changed
     istim = log["istim"][n0:]
     return {
         "stages": rep.to_dict()["stages"],
@@ -319,6 +356,10 @@ def _f5_bout(b, ixn, arm, seed, red, log):
 #   brainstem/arm_config.py + so101_arm.py (joint geometry) -- term overlaps only; none runs a sleep arm.
 def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
     """One arm's PS(s) + bout + in-process evaluation, in THIS process (the `bout` child). Returns a record."""
+    if family in {"F1", "F2", "F3", "F4"}:
+        raise RuntimeError(
+            "retired live sleep family: owner1039; amendment2026-10-13; archival reading retained"
+        )
     require_scratch_home()
     red = red[: -len("-f5")] if red and red.endswith("-f5") else red  # an F5 build of a shared red
     arm = FAMILIES[family][arm_name]
@@ -429,7 +470,13 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
         return real_sleep(seed, episodes=episodes, learn=(arm.attractor == "learn"), record=record)
 
     b.attractor.sleep = att_sleep
-    ixn._argmax_label, ixn.interact, ixn.replay = counted_argmax, logged_interact, logged_replay
+    observers = {
+        "_argmax_label": counted_argmax,
+        "interact": logged_interact,
+        "replay": logged_replay,
+    }
+    if family != "F5":
+        ixn._argmax_label, ixn.interact, ixn.replay = counted_argmax, logged_interact, logged_replay
     twin = random.Random()
     twin.setstate(ixn.rng.getstate())
     b_pool = [e for e in ixn._replay if e[1] in bb]
@@ -440,7 +487,7 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
     b._enter_sleep()
     wall["enter_sleep"] = time.perf_counter() - t0
     t0 = time.perf_counter()
-    f5 = _f5_bout(b, ixn, arm, seed, red, log) if arm.stages else None
+    f5 = _f5_bout(b, ixn, arm, seed, red, log, observers) if arm.stages else None
     for t in range(n):
         p0, dep0 = log["presentations"], b._plasticity.consolidation_calls()
         ring = ixn._replay
@@ -469,7 +516,8 @@ def run_bout(family, arm_name, seed, budget=None, red=None, stores=None):
     # learner's __dict__ is refused by the G0(c) checkpoint encoder, so the save at _enter_wake would be
     # refused and the restore would read a fresh learner (measured on the first smoke run; K5 caught it).
     for name in ("_argmax_label", "interact", "replay"):
-        del ixn.__dict__[name]
+        if family != "F5":
+            del ixn.__dict__[name]
     del b.attractor.__dict__["sleep"]
     b._enter_wake()
     if red == "K8b":
@@ -546,7 +594,9 @@ def _child(args, home, timeout=CHILD_TIMEOUT_S, err_path=None):
     env.update({"NORD_HOME": home, "NORD_PERSIST": "1", "PYTHONUTF8": "1"})
     env.pop("NORD_SELFMOD", None)
     cmd = [sys.executable, "-m", "snn_data_lake.instruments.sleep_plasticity_ab", *args]
-    proc = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout)
+    proc = subprocess.run(
+        cmd, env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout
+    )
     if (
         err_path and proc.stderr
     ):  # every refusal the brain prints (e.g. a refused learner save) is kept
@@ -565,6 +615,10 @@ def run_arm(out, family, arm_name, seed, budget=None, red=None, stores=None):
     """One arm-seed end to end: a guarded output dir, a throwaway home, the bout child, the evaluate child,
     K14 around both. Codex cp2 #1: `guard_out` runs BEFORE any mkdir / write / delete, and the home comes
     from the shared `throwaway_home` (guarded before NORD_HOME is set, resolved, removed after)."""
+    if family in {"F1", "F2", "F3", "F4"}:
+        raise RuntimeError(
+            "retired live sleep family: owner1039; amendment2026-10-13; archival reading retained"
+        )
     from snn_data_lake.substrate.home import throwaway_home
 
     guard_out(out)
@@ -629,6 +683,10 @@ def registered_arms(family, set_name):
 
 
 def run_family(out, family, set_name, arms=None):
+    if family in {"F1", "F2", "F3", "F4"}:
+        raise RuntimeError(
+            "retired live sleep family: owner1039; amendment2026-10-13; archival reading retained"
+        )
     seeds = check_set(family, set_name)
     names = arms or registered_arms(family, set_name)
     for seed in seeds:
@@ -912,6 +970,7 @@ def _check_f5(r, tag, fails):
     if f5["ring_pre"] != f5["ring_post"]:
         fails["K10b"].append(tag)
     if not f5["lake_ok"]:
+        # POST-DATA 2026-10-13 owner2105/2106: producer permits only its exact bout frame.
         fails["K10c"].append(tag)
     if endpoint_identity_ok(r) and set(r["heldout_keys"]) & set(r["drawn"]):
         fails["K10d"].append(tag)
@@ -1228,7 +1287,6 @@ def run_k7(seed):
         for rep in teach_a + teach_b:
             for line, lab in rep:
                 ixn.learn_turn(line, firewall_intent=lab)
-        b.neuter_sleep("replay").neuter_sleep("benna_fusi")
         b._sleep_tick()  # first sight records birth signs
         if planted:
             i, c = next(
