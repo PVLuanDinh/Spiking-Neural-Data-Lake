@@ -28,6 +28,7 @@ The learner is an adapter with diagnose() / admit(units, labels, ticket) / attem
 with the grown-segment port after R2's P1.
 """
 
+import copy
 import hashlib
 import json
 import os
@@ -75,7 +76,7 @@ def _int_id(value, what):
 @dataclass(frozen=True)
 class BudgetValues:
     first: float  # the first positive-spend problem's budget (G2: 52, the frozen code's width)
-    beta: float  # the multiple of the running baseline (G2's value, fixed on dev seeds)
+    beta: float | None  # None until G3's dated dev amendment; the first problem needs no beta
     k_max: int = 3  # fresh budgets per problem lifetime (O2)
 
 
@@ -214,7 +215,16 @@ class Ledger:
         if problem_id in self.problem_ids():
             return self.ledger(problem_id)
         base = self.baseline()
-        budget = self.values.first if base is None else self.values.beta * base
+        if base is None:
+            budget = self.values.first
+        elif self.values.beta is None:
+            # G3 2.8: SEQUENCE alone needs the source-owned beta. Preserve G2's
+            # named refusal BEFORE a new ledger row, never substitute first.
+            from snn_data_lake.instruments.taught_problems import budget as problem_budget
+
+            budget = problem_budget(None, (base,))
+        else:
+            budget = self.values.beta * base
         if budget < n_codes:
             raise LedgerError(
                 f"problem {problem_id!r}: budget {budget} < {n_codes} distinct taught codes -- a construction/budget "
@@ -568,6 +578,9 @@ class GrowthLoop:
         return solved
 
     def run(self):
+        from snn_data_lake.growth.batch_reconciler import reconcile_batches
+
+        reconcile_batches(self.ledger, self.problem_id)
         rec = self.ledger.open_problem(self.problem_id, self.n_codes)
         if not rec.open:
             return rec
@@ -614,7 +627,11 @@ class GrowthLoop:
 
 
 class CanonicalGrowthAdapter:
-    """The frozen canonical diagnosis/refusal slice; every grown port is unready."""
+    """Canonical diagnosis plus explicitly bound, same-writer posed operations.
+
+    G3 2.6 admission and A14 retention are ordinary APIs. The deciding loop
+    remains closed until the independent G6 mask/progress consumer is built.
+    """
 
     _MISSING = (
         "grown-reader/admission",
@@ -670,6 +687,169 @@ class CanonicalGrowthAdapter:
         self._reader, self._texts, self._labels = reader, texts, labels
         self.last_diagnosis = None
 
+    @classmethod
+    def for_brain(cls, owner, problem, *, factory, teach_schedule, projections):
+        """Bind the actual canonical owner, never a lookalike or a second learner."""
+        adapter = cls(owner.brain._ixn, problem, seed=factory["seed"])
+        adapter.bind_engine(owner, factory, teach_schedule, projections)
+        return adapter
+
+    def bind_engine(self, owner, factory, teach_schedule, projections):
+        """Freeze supplied schedules/routing in the existing typed factory carrier.
+
+        No schedule or projection is generated here. Births remain G3/G7 rows
+        written before installation, through the existing lake writer.
+        """
+        from snn_data_lake.engine.brain import Brain
+        from snn_data_lake.instruments import taught_problems as tp
+        from snn_data_lake.instruments.joint_mask_search import RetentionSets
+        from snn_data_lake.readout.posed_problem import _need, posed_source
+
+        _need(
+            type(owner) is Brain and owner.brain._ixn is self.learner,
+            "actual canonical Brain owner required",
+        )
+        _need(not hasattr(self, "_engine_binding"), "engine adapter binds once")
+        _need(
+            factory["problem_id"] == self.problem.id and factory["seed"] == self.seed,
+            "factory/problem/seed identity",
+        )
+        _need(
+            factory["population_origin"] == "born",
+            "growth adapter requires admitted population origin",
+        )
+        _need(
+            type(teach_schedule) is tuple
+            and teach_schedule
+            and all(type(epoch) is tuple and epoch for epoch in teach_schedule),
+            "pre-frozen teaching schedule required",
+        )
+        _need(
+            all(
+                type(episode) is tuple and episode and all(type(t) is tp.Turn for t in episode)
+                for epoch in teach_schedule
+                for episode in epoch
+            ),
+            "registered teaching turns required",
+        )
+        _need(factory["arm"] != "RSTDP_BRAIN_SHUF", "shuffle schedule remains unbound")
+        _need(
+            type(projections) is dict
+            and all(type(k) is str and k.isascii() and k.isdecimal() for k in projections),
+            "explicit future-unit projections required",
+        )
+        for entry in projections.values():
+            _need(
+                type(entry) is dict
+                and set(entry) == {"feed", "return"}
+                and type(entry["feed"]) is list
+                and len(entry["feed"]) == 256
+                and type(entry["return"]) is list,
+                "G9_POOL256_WIDTH: explicit projection column required",
+            )
+            _need(
+                all(
+                    type(row) is dict and set(row) == {"source", "sign", "weight", "delay"}
+                    for row in entry["return"]
+                ),
+                "explicit return descriptors required",
+            )
+        config = {
+            "schedule": [
+                [[[t.text, t.role, t.label] for t in episode] for episode in epoch]
+                for epoch in teach_schedule
+            ],
+            "projections": copy.deepcopy(projections),
+        }
+        config_source = json.dumps(config, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        bound_factory = copy.deepcopy(factory)
+        if "engine_binding" in bound_factory:
+            _need(
+                bound_factory["engine_binding"] == config,
+                "G9_ENGINE_CONFIG_DRIFT: frozen binding differs",
+            )
+        else:
+            bound_factory["engine_binding"] = config
+        posed_source({"op": "bind", "problem_id": self.problem.id, "factory": bound_factory})
+        with owner._r2_lock:
+            _need(owner._r2_fault is None, "common all-learning latch is closed")
+            # A14 freezes each OLD task's validation/future order before search.
+            retention = {
+                pid: RetentionSets.for_problem(tp.PROBLEMS[pid], actor.factory["seed"])
+                for pid, actor in owner._g9_actors.items()
+                if pid != self.problem.id
+            }
+            if self.problem.id in owner._g9_actors:
+                _need(
+                    owner._g9_actors[self.problem.id].factory == bound_factory,
+                    "G9_ENGINE_CONFIG_DRIFT: restored factory differs",
+                )
+            else:
+                owner.bind_part_d_reader(bound_factory)
+            self._engine_binding = {
+                "owner": owner,
+                "schedule": teach_schedule,
+                "config": config_source,
+                "sha256": hashlib.sha256(config_source.encode()).hexdigest(),
+                "retention": retention,
+            }
+
+    def _require_engine(self):
+        if not hasattr(self, "_engine_binding"):
+            CanonicalGrowthAdapter.require_ready(self)
+        binding = self._engine_binding
+        owner = binding["owner"]
+        if owner._r2_fault is not None or owner.brain._ixn is not self.learner:
+            raise LedgerError("G9 common owner/latch binding is closed")
+        if hashlib.sha256(binding["config"].encode()).hexdigest() != binding["sha256"]:
+            raise LedgerError("G9_ENGINE_CONFIG_DRIFT: binding source changed")
+        actor = owner._g9_actors[self.problem.id]
+        if actor.factory.get("engine_binding") != json.loads(binding["config"]):
+            raise LedgerError("G9_ENGINE_CONFIG_DRIFT: actual actor binding changed")
+        return binding, actor
+
+    def _retention_read(self, pid, episode):
+        """Learning OFF on actual old circuits; full caller snapshot is restored by A14.
+
+        This transient read never appends a durable event that could survive the
+        snapshot rollback. Labels remain solely in this judging consumer.
+        """
+        binding, _ = self._require_engine()
+        actor = binding["owner"]._g9_actors[pid]
+        turns = []
+        result = []
+        for turn in episode:
+            turns.append([turn.text, turn.role, None])
+            answer = actor._effect(
+                {
+                    "op": "read",
+                    "problem_id": pid,
+                    "turns": list(turns),
+                    "shifted_label": None,
+                    "neuron_mask": [True] * len(actor.reader.learner.neurons),
+                    "return_mask": [True] * (0 if actor.port is None else len(actor.port.rows)),
+                    "return_neutered": False,
+                },
+                event_id=f"g9.retention.off:{actor.reads}",
+            )
+            if turn.role == "probe":
+                result.append((answer, turn.label))
+        return tuple(result)
+
+    def read_retention(self, problem_id, *, meter=None):
+        """A14 select by default; final requires Meter's frozen winner and is ONCE."""
+        binding, _ = self._require_engine()
+        with binding["owner"]._r2_lock:
+            binding, _ = self._require_engine()
+            actor = binding["owner"]._g9_actors[problem_id]
+            sets = binding["retention"][problem_id]
+            args = {
+                "snapshot": actor.snapshot,
+                "restore": actor.rollback,
+                "read_off": lambda episode: self._retention_read(problem_id, episode),
+            }
+            return sets.read_select(**args) if meter is None else sets.read_final(meter, **args)
+
     def diagnose(self):
         from snn_data_lake.growth import capacity_certificate
 
@@ -710,21 +890,129 @@ class CanonicalGrowthAdapter:
             "missing": list(CanonicalGrowthAdapter._MISSING),
         }
 
-    def readiness(self):
-        return CanonicalGrowthAdapter._MISSING
+    def readiness(self, *, ledger=None, sequence=False):
+        """G3 2.6/2.8: first-problem budget is ready; SEQUENCE requires beta.
 
-    def require_ready(self):
-        raise LedgerError("G9_A_UNREADY: " + ", ".join(CanonicalGrowthAdapter._MISSING))
+        Independent grown/retention/restore debts continue to refuse effects.
+        An actual positive-spend baseline also requires beta, even when a caller
+        omits the sequence-family flag.
+        """
+        from snn_data_lake.instruments import taught_problems as tp
+
+        needs_beta = sequence or (ledger is not None and ledger.baseline() is not None)
+        beta = tp.BETA if ledger is None or ledger.values.beta is None else ledger.values.beta
+        missing = CanonicalGrowthAdapter._MISSING
+        if hasattr(self, "_engine_binding"):
+            self._require_engine()
+            # Ordinary ports are bound; the automatic search/source and its
+            # retention feasibility/mask consumer are the next deciding slice.
+            missing = (
+                "retention_select",
+                "actual grown-source/admission binding",
+                "G6 deciding mask/progress carrier",
+            )
+        if needs_beta and beta is None:
+            missing += ("source-owned BETA baseline",)
+        return missing
+
+    def require_ready(self, *, ledger=None, sequence=False):
+        missing = CanonicalGrowthAdapter.readiness(self, ledger=ledger, sequence=sequence)
+        raise LedgerError("G9_A_UNREADY: " + ", ".join(missing))
 
     @property
     def segment(self):
-        CanonicalGrowthAdapter.require_ready(self)
+        _, actor = self._require_engine()
+        return tuple(actor.units)
 
     def admit(self, units, labels, ticket):
-        CanonicalGrowthAdapter.require_ready(self)
+        """G3/G7: actual ticket and durable births precede actor installation."""
+        from snn_data_lake.readout.posed_problem import _need, unit_rows
+
+        binding, actor = self._require_engine()
+        owner = binding["owner"]
+        with owner._r2_lock:
+            binding, actor = self._require_engine()
+            config = json.loads(binding["config"])
+            new = tuple(sorted(units, key=lambda u: u.unit_id))
+            _need(
+                new
+                and len(new) == len(labels)
+                and {r["unit_id"] for r in labels} == {u.unit_id for u in new},
+                "exact actual G7 batch identities required",
+            )
+            complete = tuple((*actor.units, *new))
+            born = owner._g9_birth_records()
+            _need(
+                all(u.unit_id in born for u in complete),
+                "G9_DURABLE_BIRTH_REQUIRED: birth before actor installation",
+            )
+            births = [born[u.unit_id] for u in complete]
+            _need(
+                all(r["problem_id"] == self.problem.id for r in births),
+                "different posing birth owner",
+            )
+            feed = copy.deepcopy(actor.feed)
+            attachments = copy.deepcopy(actor.factory["attachments"])
+            for unit in new:
+                entry = config["projections"].get(str(unit.unit_id))
+                _need(entry is not None, "G9_PROJECTION_REQUIRED: source-owned column absent")
+                for row, weight in zip(feed, entry["feed"], strict=True):
+                    row.append(weight)
+                attachments += [
+                    {**row, "target": unit.unit_id, "receipt": binding["sha256"]}
+                    for row in entry["return"]
+                ]
+            owner._g9_apply_source(
+                {
+                    "op": "admit",
+                    "problem_id": self.problem.id,
+                    "units": unit_rows(complete),
+                    "birth_rows": births,
+                    "w_feed": feed,
+                    "attachments": attachments,
+                },
+                ticket=ticket,
+            )
 
     def attempt(self, epochs):
-        CanonicalGrowthAdapter.require_ready(self)
+        """Resume the durable teaching cursor; never redraw an epoch after restart."""
+        from snn_data_lake.instruments import taught_problems as tp
+
+        binding, actor = self._require_engine()
+        with binding["owner"]._r2_lock:
+            binding, actor = self._require_engine()
+            if type(epochs) is not int or epochs <= 0:
+                raise LedgerError("attempt needs a positive exact epoch count")
+            schedule = binding["schedule"]
+            completed, offset = 0, actor.teaches
+            while completed < len(schedule) and offset >= len(schedule[completed]):
+                offset -= len(schedule[completed])
+                completed += 1
+            if completed + epochs > len(schedule):
+                raise LedgerError("attempt would redraw or exceed its pre-frozen teaching schedule")
+            for epoch in schedule[completed : completed + epochs]:
+                for episode in epoch[offset:]:
+                    binding["owner"].learn_part_d_episode(
+                        self.problem.id,
+                        episode,
+                        neuron_mask=[True] * len(actor.reader.learner.neurons),
+                        return_mask=[True] * (0 if actor.port is None else len(actor.port.rows)),
+                        return_neutered=False,
+                    )
+                offset = 0
+            reads = tp.read_split(
+                self.problem,
+                self.seed,
+                "validation",
+                lambda episode: binding["owner"].read_part_d_episode(
+                    self.problem.id,
+                    episode,
+                    neuron_mask=[True] * len(actor.reader.learner.neurons),
+                    return_mask=[True] * (0 if actor.port is None else len(actor.port.rows)),
+                    return_neutered=False,
+                ),
+            )
+            return tp.solved(self.problem, self.seed, "validation", reads)
 
 
 def main():

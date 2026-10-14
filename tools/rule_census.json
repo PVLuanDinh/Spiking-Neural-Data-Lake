@@ -6,7 +6,7 @@
   ],
   "note": "dispositions per T050's expressibility categories; UNDISPOSITIONED is the honest day-one state for unadjudicated LOCAL rules -- the WAVE (T051c-wave) fills rows; regen_rule_census enforces per-row monotonicity through the sanctioned edit path, rule_composer 1e polices membership vs the live census, and the ADVANCE direction (whether a disposition's text is honest) is review-grade, said plainly",
   "ratchet_baseline": {
-   "rows": 105,
+   "rows": 108,
    "undispositioned": 57
   },
   "source": "gradient_claim_gate.census() via rule_composer.regen_rule_census -- regeneration is the only edit path for rows; new adjudications join _CENSUS_ADJUDICATED there; the regen refuses disposition retractions and dead entries",
@@ -193,6 +193,11 @@
    "governed": true,
    "kind": "LOCAL"
   },
+  "growth/grown_code.py::GrownReturnPort.apply": {
+   "disposition": "delegated -- G9 Round 6 (2026-10-13): calls plasticity/r_stdp.py decay_eligibility, accumulate_causal, accumulate_anticausal and reward_deltas on local afferent traces and scalar reward; gates deposits by the full G6 mask and preserves Dale sign; no independent replacement learning rule",
+   "governed": true,
+   "kind": "LOCAL"
+  },
   "growth/growth_loop.py::trace_train": {
    "disposition": "UNDISPOSITIONED",
    "governed": true,
@@ -257,6 +262,11 @@
    "disposition": "not-expressible -- the gradient/eprop tensor family (scalar-only evaluate; T050 census)",
    "governed": true,
    "kind": "APPROXIMATES_GRADIENT"
+  },
+  "instruments/g5_part_d_adaptors.py::DeltaAdaptor.learn": {
+   "disposition": "delegated -- G9 Item 0 (2026-10-13): forwards to readout/online_readout.py::OnlineReadout.learn, the existing single-sample output-local delta rule; no independent arithmetic, hidden error or forward-weight transport",
+   "governed": true,
+   "kind": "LOCAL"
   },
   "instruments/prior_drift_harness.py::fit_readout": {
    "disposition": "direct-solve -- no dw stream to compose (T050 census category)",
@@ -415,6 +425,11 @@
   },
   "readout/online_readout.py::OnlineReadout.learn": {
    "disposition": "expressed -- L1c (2026-09-06): a single-sample output-layer delta / error-sign step on beta; lr = mu / (||s||^2 + 1); no hidden error, no transpose (the module self-check holds the reds)",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "readout/posed_problem.py::chat_grown_deposit": {
+   "disposition": "delegated -- G9 Round 6 (2026-10-13): calls plasticity/r_stdp.py accumulate_causal and reward_deltas on each active eligible grown output's own pre/post trace and scalar reward, then clips to its Dale sign; no hidden error or forward-weight transport",
    "governed": true,
    "kind": "LOCAL"
   },

@@ -35,6 +35,10 @@ _IDENTITY = ("kind", "event_id", "stream", "session", "seq", "schema", "valid", 
 #: Per learner kind: the slots an event must carry (never padded) and the encoders it may name. A kind
 #: absent here is not yet written by any writer; asking for it is a caller error, not a refusal.
 KIND_SPECS = {
+    "posed_problem": {
+        "slots": _IDENTITY + ("source", "target", "provenance", "encoder"),
+        "encoders": frozenset({"g5.pool_features n_in=256"}),
+    },
     "teach": {
         "slots": _IDENTITY + ("source", "target", "provenance", "encoder"),
         "encoders": frozenset({"text_features n_in=52"}),
@@ -214,6 +218,22 @@ def _refusal(event, spec, allow_instrument):
         and _SHA256_HEX.fullmatch(str(event["encoded_ranks_digest"]))
     ):
         return "bad_identity"
+    if event["kind"] == "posed_problem":
+        if (
+            set(event) != set(spec["slots"])
+            or event["stream"] != "posed"
+            or event["provenance"] != "posed"
+            or event["split"] != "train"
+        ):
+            return "bad_posed_contract"
+        try:
+            from snn_data_lake.readout.posed_problem import posed_source
+
+            value = json.loads(event["source"])
+            if posed_source(value) != event["source"] or value["problem_id"] != event["target"]:
+                return "bad_posed_source"
+        except (ValueError, TypeError, KeyError):
+            return "bad_posed_source"
     if event["valid"] != "1":
         return "invalid"
     if event["split"] == "heldout":

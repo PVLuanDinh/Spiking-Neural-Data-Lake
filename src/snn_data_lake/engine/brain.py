@@ -42,6 +42,9 @@ Deterministic: per-instance seeding only (no wall-clock, no global RNG). ASCII-o
   PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.engine.brain
 """
 
+import copy
+import hashlib
+import json
 import math
 import re
 
@@ -86,6 +89,26 @@ PROTOTYPES_STATE = "growing_learners.json"
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
+    "Brain.learn_part_d_episode": (
+        "NOT_A_RULE",
+        "Typed same-writer posed-event orchestration; the existing Part D learner and canonical R-STDP return port own all weight updates.",
+    ),
+    "Brain._append_learner_event": (
+        "NOT_A_RULE",
+        "Validates and journals an event under R2 admission; computes no weight update.",
+    ),
+    "Brain._r2_fresh_learner": (
+        "NOT_A_RULE",
+        "Constructs and checks a fresh replay baseline; performs no learning.",
+    ),
+    "Brain._r2_sleep_learning": (
+        "NOT_A_RULE",
+        "Transactions the existing structural sleep step, journal and rollback; defines no rule.",
+    ),
+    "Brain._record_learner_event": (
+        "NOT_A_RULE",
+        "Admission and rollback wrapper around the learner's existing local turn rule.",
+    ),
     "Brain._flush_interaction_learner": (
         "NOT_A_RULE",
         "Serializes existing continuation state into the lake; computes no learning update.",
@@ -5063,6 +5086,256 @@ class Brain:
         except Exception:
             return False
 
+    def _g9_birth_records(self):
+        from snn_data_lake.growth.learning_progress import GoalStore
+        from snn_data_lake.readout.posed_problem import _need
+        from snn_data_lake.substrate.home import knowledge_path, require_isolated_home
+
+        require_isolated_home()
+        records = {}
+        for row in GoalStore(knowledge_path()).events():
+            if row.get("kind") == "unit" and row.get("origin") == "born":
+                uid = row.get("unit_id")
+                _need(type(uid) is int and uid not in records, "duplicate/malformed real birth")
+                records[uid] = row
+        return records
+
+    def _g9_snapshot(self, *, chat=True):
+        result = {
+            "actors": dict(self._g9_actors),
+            "states": {pid: actor.snapshot() for pid, actor in self._g9_actors.items()},
+        }
+        if chat:
+            result["chat"] = self.brain._ixn._snapshot()
+        return result
+
+    def _g9_restore(self, snapshot):
+        # The common R2 latch is deliberately not reset on a rollback.
+        if "chat" in snapshot:
+            self.brain._ixn._restore_snapshot(snapshot["chat"])
+        for pid, actor in snapshot["actors"].items():
+            actor.rollback(snapshot["states"][pid])
+        self._g9_actors = snapshot["actors"]
+
+    def _g9_publish_context(self, actor):
+        from snn_data_lake.readout.posed_problem import actor_context
+
+        self.brain._ixn._g9_context = actor_context(actor)
+        self.brain._ixn._g9_carriers = {
+            pid: value.state_dict() for pid, value in sorted(self._g9_actors.items())
+        }
+
+    def _g9_sync_context(self, *, ixn=None, actors=None):
+        from snn_data_lake.readout.posed_problem import sync_actor_context
+
+        ixn = self.brain._ixn if ixn is None else ixn
+        actors = self._g9_actors if actors is None else actors
+        sync_actor_context(ixn, actors)
+        ixn._g9_carriers = {pid: value.state_dict() for pid, value in sorted(actors.items())}
+
+    def _g9_stage_registry(self, staged):
+        from snn_data_lake.readout.posed_problem import PosedActor, _need
+
+        saved = staged._g9_carriers
+        _need(
+            type(saved) is dict and all(type(pid) is str for pid in saved),
+            "complete typed registry carrier required",
+        )
+        born = self._g9_birth_records()
+        actors = {}
+        for pid, state in sorted(saved.items()):
+            actor = PosedActor.restore(state, born)
+            _need(actor.factory["problem_id"] == pid, "carrier key/posing identity")
+            actors[pid] = actor
+        return actors
+
+    def _g9_replay_event(self, staged, actors, event, before_checkpoint):
+        """Uses the SAME effect body, only after hydrate validates its full same-pass receipt."""
+        from snn_data_lake.readout.posed_problem import (
+            PosedActor,
+            _need,
+            actor_context,
+            posed_source,
+        )
+
+        if event["kind"] != "posed_problem":
+            self._g9_sync_context(ixn=staged, actors=actors)
+            return
+        value = json.loads(event["source"])
+        _need(
+            posed_source(value) == event["source"] and value["problem_id"] == event["target"],
+            "noncanonical persisted posed source",
+        )
+        if before_checkpoint:
+            # Existing COMPLETE carrier includes all effects through the common cursor.
+            # Do not run those effects twice; the full global prefix is still verified.
+            _need(value["problem_id"] in actors, "checkpoint omitted its posed registry member")
+            return
+        pid = value["problem_id"]
+        op = value["op"]
+        born = self._g9_birth_records()
+        if op == "bind":
+            _need(pid not in actors, "duplicate posed binding in eligible prefix")
+            actor = PosedActor(value["factory"], born)
+            actors[pid] = actor
+        elif op == "admit":
+            _need(pid in actors, "admission before actual posed owner binding")
+            from snn_data_lake.gates.unit_label_gate import require_admissible
+            from snn_data_lake.instruments.taught_problems import PROBLEMS
+
+            new_rows = [
+                r
+                for r in value["birth_rows"]
+                if r["unit_id"] not in {u.unit_id for u in actors[pid].units}
+            ]
+            known = {u.unit_id for actor in actors.values() for u in actor.units}
+            # This is the existing pure G7 label/provenance contract, not a re-run
+            # of its deciding campaign or an invented runtime AdmissionTicket.
+            require_admissible(
+                new_rows,
+                resolve_problem=lambda p: p in PROBLEMS,
+                known_unit=lambda uid: uid in known,
+            )
+            actor = actors[pid].expanded(value, born)
+            actors[pid] = actor
+        else:
+            _need(pid in actors, "effect before actual posed owner binding")
+            actor = actors[pid]
+            actor._effect(value, event_id=event["event_id"])
+        actor.last_event_id = event["event_id"]
+        staged._g9_context = actor_context(actor)
+        staged._g9_carriers = {k: v.state_dict() for k, v in sorted(actors.items())}
+
+    def _g9_apply_source(self, value, *, ticket=None):
+        """Append is BEFORE constructor/pool/reader/producer/return/authority mutation."""
+        from snn_data_lake.gates.unit_label_gate import AdmissionTicket
+        from snn_data_lake.growth.grown_code import admit_rows
+        from snn_data_lake.readout.posed_problem import PosedActor, _need, posed_source
+        from snn_data_lake.substrate.home import require_isolated_home
+
+        source = posed_source(value)  # pure primitive validation, no feature extraction/RNG
+        pid, op = value["problem_id"], value["op"]
+        with self._r2_lock:
+            require_isolated_home()
+            _need(self._r2_fault is None, "common all-learning latch is closed")
+            _need(type(self._g9_actors) is dict, "actual registry boot not reconciled")
+            _need(
+                (op == "bind" and pid not in self._g9_actors)
+                or (op != "bind" and pid in self._g9_actors),
+                "binding/admission order",
+            )
+            born = self._g9_birth_records()
+            consumed_rows = None
+            if op == "admit":
+                from snn_data_lake.readout.posed_problem import units_from_rows
+
+                old = self._g9_actors[pid]
+                full = units_from_rows(value["units"], len(self.brain._ixn.responses))
+                old_ids = {u.unit_id for u in old.units}
+                new = tuple(u for u in full if u.unit_id not in old_ids)
+                consumed_rows = [r for r in value["birth_rows"] if r["unit_id"] not in old_ids]
+                _need(
+                    type(ticket) is AdmissionTicket and ticket._consumed is False and new,
+                    "actual unconsumed G7 ticket required",
+                )
+                _need(
+                    all(born.get(r["unit_id"]) == r for r in consumed_rows),
+                    "actual lake births differ from admitted labels",
+                )
+                _need(
+                    tuple(admit_rows(old.units, new, consumed_rows, copy.deepcopy(ticket))) == full,
+                    "full actual segment differs from G7 ticket admission",
+                )
+            else:
+                _need(ticket is None, "ticket belongs only to explicit admission")
+            try:
+                self._r2_supported(self.brain._ixn)
+                before = self._g9_snapshot()
+            except BaseException as exc:
+                self._r2_close("g9_snapshot", exc)
+                raise
+            admitted = False
+            try:
+                eid = self._append_learner_event(
+                    "posed_problem", {"source": source, "target": pid, "provenance": "posed"}
+                )
+                _need(type(eid) is str, "common writer refused before effect")
+                admitted = True
+                self._g9_apply_receipt = {
+                    "event_id": eid,
+                    "problem_id": pid,
+                    "source_sha256": hashlib.sha256(source.encode()).hexdigest(),
+                }
+                if op == "bind":
+                    actor = PosedActor(value["factory"], born)
+                    self._g9_actors[pid] = actor
+                    answer = None
+                elif op == "admit":
+                    actor = self._g9_actors[pid].expanded(value, born)
+                    self._g9_actors[pid] = actor
+                    answer = None
+                else:
+                    actor = self._g9_actors[pid]
+                    answer = actor.apply(value, owner=self, event_id=eid)
+                actor.last_event_id = eid
+                self._g9_publish_context(actor)
+                from snn_data_lake.readout.interaction_learning import _event_order
+
+                self.brain._ixn._cursor = _event_order(eid)
+                # Consume the original only AFTER staging, installation and carrier
+                # validation. The exact ticket method makes its flag change LAST.
+                if consumed_rows is not None:
+                    ticket.consume(consumed_rows)
+                return answer
+            except BaseException as exc:
+                self._r2_close("g9_admitted_effect" if admitted else "g9_append", exc)
+                try:
+                    self._g9_restore(before)
+                except BaseException as rollback:
+                    self._r2_close("g9_rollback", rollback)
+                    raise BaseExceptionGroup(
+                        "G9 effect and rollback refused", [exc, rollback]
+                    ) from exc
+                raise
+            finally:
+                self._g9_apply_receipt = None
+
+    def bind_part_d_reader(self, factory):
+        """The sealed old core's preconstructed bind is superseded by admitted typed bind."""
+        return self._g9_apply_source(
+            {"op": "bind", "problem_id": factory["problem_id"], "factory": factory}
+        )
+
+    def learn_part_d_episode(
+        self, problem_id, episode, *, neuron_mask, return_mask, return_neutered, shifted_label=None
+    ):
+        return self._g9_apply_source(
+            {
+                "op": "teach",
+                "problem_id": problem_id,
+                "turns": [[t.text, t.role, t.label] for t in episode],
+                "shifted_label": shifted_label,
+                "neuron_mask": list(neuron_mask),
+                "return_mask": list(return_mask),
+                "return_neutered": return_neutered,
+            }
+        )
+
+    def read_part_d_episode(
+        self, problem_id, episode, *, neuron_mask, return_mask, return_neutered
+    ):
+        return self._g9_apply_source(
+            {
+                "op": "read",
+                "problem_id": problem_id,
+                "turns": [[t.text, t.role, t.label] for t in episode],
+                "shifted_label": None,
+                "neuron_mask": list(neuron_mask),
+                "return_mask": list(return_mask),
+                "return_neutered": return_neutered,
+            }
+        )
+
     def _r2_boot(self):
         """Fresh reconciliation only. A refusal always leaves the persistent callback CLOSED."""
         import threading
@@ -5073,6 +5346,8 @@ class Brain:
         self._r2_seq = 0
         self._session = None
         self._r2_receipt = None
+        self._g9_actors = {}
+        self._g9_apply_receipt = None
         self.brain._ixn.teach_sink = None
         self.brain._ixn.event_sink = self._record_learner_event
         self._r2_booted = True
@@ -5128,17 +5403,23 @@ class Brain:
                     saved_observations = self._r2_validate_observations(
                         checkpoint["sleep_observations"]
                     )
+                staged_actors = self._g9_stage_registry(staged)
                 report = staged.hydrate(
                     events,
                     receipt=receipt,
                     sleep_step={"rewirer": rewirer, "step": self._r2_sleep_step},
+                    effect_actor=lambda ixn, row, before: self._g9_replay_event(
+                        ixn, staged_actors, row, before
+                    ),
                     checkpoint_prefix_digest=checkpoint_prefix_digest,
                 )
                 if not self._r2_may_rearm(report):
                     raise ValueError("R2 closed: incomplete reconciliation")
                 before = self._r2_snapshot(live)
+                old_actors = self._g9_actors
                 try:
                     live._restore_snapshot(staged._snapshot())
+                    self._g9_actors = staged_actors
                     live._hydrated = True
                     live._hydration_count = staged._hydration_count
                     self._rewirer = report["rewirer"]
@@ -5151,6 +5432,7 @@ class Brain:
                     self._r2_prefix_digest = report["prefix_digest"]
                 except BaseException:
                     self._r2_restore(live, before)
+                    self._g9_actors = old_actors
                     raise
                 self._r2_fault = None
             except Exception as exc:
@@ -5214,6 +5496,7 @@ class Brain:
             "learner": ixn._snapshot(),
             "rewirer": None if self._rewirer is None else self._rewirer.state_dict(),
             "observations": _encode_state(self._r2_observations()),
+            "posed": {pid: actor.state_dict() for pid, actor in sorted(self._g9_actors.items())},
         }
 
     def _r2_restore(self, ixn, snapshot):
@@ -5236,6 +5519,12 @@ class Brain:
             self._rewirer.load_state_dict(carrier)
         self._plasticity = ixn.stack
         self.__dict__.update(observations)
+        from snn_data_lake.readout.posed_problem import PosedActor
+
+        born = self._g9_birth_records()
+        self._g9_actors = {
+            pid: PosedActor.restore(state, born) for pid, state in snapshot["posed"].items()
+        }
 
     def _r2_observations(self):
         return {"_structural_report": self._structural_report}
@@ -5283,13 +5572,15 @@ class Brain:
         event = {
             "kind": kind,
             "event_id": f"{self._session}-{self._r2_seq + 1}",
-            "stream": "chat",
+            "stream": "posed" if kind == "posed_problem" else "chat",
             "session": self._session,
             "seq": str(self._r2_seq + 1),
             "schema": SCHEMA,
             "valid": "1",
             "split": "train",
-            "encoder": "text_features n_in=52",
+            "encoder": "g5.pool_features n_in=256"
+            if kind == "posed_problem"
+            else "text_features n_in=52",
             **slots,
         }
         if (
@@ -5333,7 +5624,9 @@ class Brain:
                 if eid is None:
                     raise RuntimeError("R2 closed before admission")
                 admitted = True
-                return ixn._apply_turn(kind, key, target, eid, stimulus)
+                answer = ixn._apply_turn(kind, key, target, eid, stimulus)
+                self._g9_sync_context()
+                return answer
             except Exception as exc:
                 self._r2_close("admitted_effect" if admitted else "append", exc)
                 try:

@@ -62,6 +62,18 @@ WHAT THIS RUNNER DOES NOT DO
 
 from snn_data_lake.instruments.g5_readout_cells import PD_POOL_MODES
 
+GRADIENT_CLAIM = {
+    "_learner": (
+        "NOT_A_RULE",
+        "Constructs the existing interaction learner; performs no learning.",
+    ),
+    "_run_adaptor_arm": (
+        "NOT_A_RULE",
+        "Experiment runner delegates teaching and inference to existing DELTA/PC/SOM adaptors; "
+        "defines no replacement learning arithmetic.",
+    ),
+}
+
 PD_H = 256  # section 6: the expansion control's H is set to the reservoir's unit count
 PD_EPOCHS = 30  # BUILD DEFAULT, not a frozen campaign value -- the D1 dev-freeze amendment sets it
 

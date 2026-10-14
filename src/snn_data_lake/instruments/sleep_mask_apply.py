@@ -24,6 +24,9 @@ network: the apply itself is the masked arm's, and the structural arm runs insid
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.sleep_mask_apply   (self-check, lake-free)
 """
 
+from os import PathLike
+from pathlib import Path
+
 from snn_data_lake.instruments.joint_mask_search import mask_digest
 
 #: The value a `sleep` event / checkpoint carries when NO mask was applied: R2's sentinel (ruling 33).
@@ -96,6 +99,19 @@ def _committed_digests(rows, sleep_id):
         for r in rows
         if r.get("kind") == "sleep_mask_commit" and str(r.get("sleep_id")) == str(sleep_id)
     }
+
+
+def mask_committed(rows_or_home, sleep_id, mask_digest) -> bool:
+    """D20: a commit must match BOTH fields; preparation alone proves nothing.
+
+    Accept event rows or an explicit home directory containing brain_lake.bin.
+    Reuse GoalStore's lake codec and the existing commit-row reader (P2).
+    """
+    if isinstance(rows_or_home, (str, PathLike)):
+        from snn_data_lake.growth.learning_progress import GoalStore
+
+        rows_or_home = GoalStore(str(Path(rows_or_home) / "brain_lake.bin")).events()
+    return str(mask_digest) in _committed_digests(rows_or_home, sleep_id)
 
 
 def expected_mask(rows, sleep_id, tick):

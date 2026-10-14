@@ -183,9 +183,11 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # comprehension at __init__.py -- raw REGIONS members 315 -> 316, less the ONE unchanged
     # claustrum legacy-package shadow, gives _MOVED 314 -> 315. The claustrum clause is
     # unchanged and still holds.
-    # 2026-10-13/R2 composition: learner_events adds one substrate entry. Re-derived
-    # from the actual tables: REGIONS=317, less the claustrum package shadow -> 316.
-    assert len(S._MOVED) == 316 and "claustrum" not in S._MOVED
+    # 2026-10-13/G9: posed_problem adds one readout entry. Re-derived from
+    # actual tables: REGIONS=318, less the claustrum package shadow -> 317.
+    # 2026-10-13/COMPOSE: actual REGIONS=320, _MOVED=319 after the two G3
+    # growth entries batch_reconciler/feed_readout; claustrum shadow unchanged.
+    assert len(S._MOVED) == 319 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture

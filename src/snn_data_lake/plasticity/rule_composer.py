@@ -744,6 +744,29 @@ def rule_census_check(artifact, rules):
 #: silently cost a disposition and loosened the ratchet).
 _CENSUS_ADJUDICATED = (
     (
+        "growth/grown_code.py",
+        "GrownReturnPort.apply",
+        "delegated -- G9 Round 6 (2026-10-13): calls plasticity/r_stdp.py "
+        "decay_eligibility, accumulate_causal, accumulate_anticausal and reward_deltas "
+        "on local afferent traces and scalar reward; gates deposits by the full G6 "
+        "mask and preserves Dale sign; no independent replacement learning rule",
+    ),
+    (
+        "readout/posed_problem.py",
+        "chat_grown_deposit",
+        "delegated -- G9 Round 6 (2026-10-13): calls plasticity/r_stdp.py "
+        "accumulate_causal and reward_deltas on each active eligible grown output's "
+        "own pre/post trace and scalar reward, then clips to its Dale sign; "
+        "no hidden error or forward-weight transport",
+    ),
+    (
+        "instruments/g5_part_d_adaptors.py",
+        "DeltaAdaptor.learn",
+        "delegated -- G9 Item 0 (2026-10-13): forwards to readout/online_readout.py::"
+        "OnlineReadout.learn, the existing single-sample output-local delta rule; "
+        "no independent arithmetic, hidden error or forward-weight transport",
+    ),
+    (
         "readout/online_readout.py",
         "OnlineReadout.learn",
         "expressed -- L1c (2026-09-06): a single-sample output-layer delta / error-sign step on beta; "

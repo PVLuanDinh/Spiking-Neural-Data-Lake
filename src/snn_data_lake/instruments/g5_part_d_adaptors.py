@@ -36,6 +36,18 @@ import hashlib
 import random
 from pathlib import Path
 
+GRADIENT_CLAIM = {
+    "DeltaAdaptor.learn": (
+        "LOCAL",
+        "Delegates to OnlineReadout.learn: output error times input activity on its own synapses; "
+        "no hidden error or transported weight.",
+    ),
+    "_Adaptor.learn": (
+        "NOT_A_RULE",
+        "Validates and buffers teaching rows; computes no weight update.",
+    ),
+}
+
 #: The read-out-only contract's red (D.2). It is checked over THIS module's AST, not its text, because a
 #: text scan cannot tell the words "the pool" in a docstring from a pool construction: a draft of this
 #: check failed on its own token list, which is the near-miss that argues for the parse. A pool import or

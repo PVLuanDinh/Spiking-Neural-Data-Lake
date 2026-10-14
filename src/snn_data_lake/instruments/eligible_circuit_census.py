@@ -182,6 +182,18 @@ class Excluded:
 # --------------------------------------------------------------------------------------
 
 RECORDS: tuple[Record, ...] = (
+    Record(
+        owner_path="Brain._g9_actors",
+        storage="Typed posed actors: Part D readout neurons, producer state, pool, grown output and return afferents",
+        identity="G7 same-lake born unit_id; readout label and return (source, target, index)",
+        boundary="Complete actor state uses the canonical R2 codec and real pool kernel carrier",
+        disposition="REQUIRED_UNMAPPED",
+        reason="Real learned state now exists in the registry; UNRESOLVED instance-level G6 deciding mask/progress integration. It must not be counted as a scalar or a non-population.",
+        sites=("Brain._g9_actors",),
+        file="src/snn_data_lake/engine/brain.py",
+        line=5349,
+        lazy=True,
+    ),
     # ---- the four named minimums (map section 3.1) ----
     Record(
         owner_path="Brain.brain._ixn",

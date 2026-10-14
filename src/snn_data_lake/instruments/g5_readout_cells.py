@@ -722,7 +722,7 @@ def pd_pool(recording_seed, mode):
     )
 
 
-def pool_features(pool, text):
+def pool_features(pool, text, *, feed=None):
     """One turn's 256-vector: the pool's mean activity over T_in ticks for the text's 52-code zero-padded
     to the encoder's 64 inputs (the padding is fixed, not tuned). The caller owns episode-boundary resets."""
     import numpy as np
@@ -733,7 +733,7 @@ def pool_features(pool, text):
     x = np.zeros(N_IN)
     code = im.code(text)
     x[: len(code)] = code
-    return pool.percept(x)
+    return pool.percept(x) if feed is None else pool.percept_fed(x, feed)
 
 
 # --------------------------------------------------------------------------------------------------

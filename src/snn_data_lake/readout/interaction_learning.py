@@ -430,6 +430,9 @@ class SpikingInteractionLearner:
         self._hydration_refusals = {}
         self.unit_roles = None
         self.event_sink = None
+        self._g9_context = None
+        self._g9_carriers = {}
+        self._g9_neuron_mask = None
         self._effect_depth = 0
         # G0(a) provenance: normalized utterance -> AUTHORITATIVE label (a person's correction),
         # retained for the process lifetime. A later self-label on the same utterance is superseded
@@ -498,6 +501,10 @@ class SpikingInteractionLearner:
 
     def _argmax_label(self, code):
         drives = [self._drive(n, code) for n in self.neurons]
+        if self._g9_context is not None:
+            from snn_data_lake.readout.posed_problem import chat_grown_drives
+
+            drives = [a + b for a, b in zip(drives, chat_grown_drives(self, code), strict=True)]
         return max(
             range(len(drives)), key=lambda k: drives[k]
         )  # ties -> lowest index (deterministic)
@@ -507,6 +514,16 @@ class SpikingInteractionLearner:
         post spike AFTER it (pre-before-post pairings build a spike-timing eligibility trace), then
         gate that trace into the weights by the reward/teaching sign d:  w[i] += lr * d * e[i]."""
         self._require_effect_boundary()
+        mask = self._g9_neuron_mask
+        if mask is not None:
+            if (
+                type(mask) is not list
+                or len(mask) != len(self.neurons)
+                or any(type(b) is not bool for b in mask)
+            ):
+                raise ValueError("G9 malformed actual readout eligibility mask")
+            if not mask[li]:
+                return [0.0] * self.n_in
         n = self.neurons[li]
         n.e = [0.0] * self.n_in  # fresh trial: clear eligibility + spike history
         n.t_pre = [None] * self.n_in
@@ -542,6 +559,10 @@ class SpikingInteractionLearner:
                 li, list(n.w), activity
             )  #   bound the live synapses + hold the firing rate
         self._record_synapse_delta(li, code)
+        if self._g9_context is not None:
+            from snn_data_lake.readout.posed_problem import chat_grown_deposit
+
+            chat_grown_deposit(self, li, code, d)
         return deltas
 
     # distinct-from: substrate/home.py::save_growth -- persists the grown-substrate BLOB; this
@@ -806,7 +827,9 @@ class SpikingInteractionLearner:
         self._authority.clear()
         self._authority.update(authority)
 
-    def hydrate(self, events, *, receipt, sleep_step, checkpoint_prefix_digest=None):
+    def hydrate(
+        self, events, *, receipt, sleep_step, checkpoint_prefix_digest=None, effect_actor=None
+    ):
         """One staged COMPLETE prefix; errors propagate and never install partial progress."""
         import json
 
@@ -915,8 +938,18 @@ class SpikingInteractionLearner:
                     self._cursor = order
                     self._redo_count += 1
                     redone += 1
+            elif kind == "posed_problem":
+                if not callable(effect_actor):
+                    raise ValueError("R2 posed effect actor is unbound")
+                effect_actor(self, event, before_checkpoint)
+                if not before_checkpoint:
+                    self._cursor = order
+                    self._redo_count += 1
+                    redone += 1
             else:
                 raise ValueError(f"R2 unbound effect: {kind}")
+            if kind != "posed_problem" and effect_actor is not None:
+                effect_actor(self, event, before_checkpoint)
             processed.append(event["event_id"])
         live = set(self._replay_ids)
         if any(eid not in live for eid in self._replay_counts):

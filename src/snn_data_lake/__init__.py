@@ -432,6 +432,7 @@ REGIONS = {
         # specs/022 T040: organizer fields + repression-GRN region emission (P8 #7)
         "arealization",
         "autapse_neuron",
+        "batch_reconciler",  # G3: restart journal refusal before any growth-loop effect.
         # Brain-Cog-adopted composition interface: node + local-rule + connection palette
         "basic_components",
         # Brian2 LIF authority + differentiable Torch bridge
@@ -441,6 +442,7 @@ REGIONS = {
         # H01 HUMAN cortex reference data: value + units + provenance + bound
         "cortical_prior",
         "dendritic_neuron",
+        "feed_readout",  # G3: reservoir/direct/random latency plumbing; teaching still open.
         "function_preserving_growth",
         "growable",
         "growing_learner",
@@ -491,6 +493,7 @@ REGIONS = {
         # PROMOTED 2026-08-11 (#10 lane 4b): function-preserving Net2Net growth + freeze; the specs/007 T022 origin copy
         "growable_readout",
         "interaction_learning",
+        "posed_problem",
         # PROMOTED from reasoning/brain_adapters/ 2026-08-12 (#10 lane 4c): the ONE live-tick
         # percept readout (feedback alignment + fixed-random L6, no weight transport) --
         # engine/brain.py constructs it lazily on every real percept; numpy-only, CORE tier.

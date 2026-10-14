@@ -1324,7 +1324,9 @@ def save_episode(episode, path=None):
     return _w
 
 
-LEARNER_EVENT_KINDS = frozenset({"teach", "turn", "sleep", "sleep_bout", "percept", "ctxread"})
+LEARNER_EVENT_KINDS = frozenset(
+    {"teach", "turn", "sleep", "sleep_bout", "percept", "ctxread", "posed_problem"}
+)
 
 
 def is_autobiographical_episode(episode):

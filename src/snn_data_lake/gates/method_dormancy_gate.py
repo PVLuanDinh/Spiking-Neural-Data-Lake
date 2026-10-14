@@ -62,6 +62,15 @@ LEARN_VERBS = (
 # name -> (disposition, reason). disposition in {"permanent", "wire", "retire"}.
 # "permanent" = legitimately not on the live tick. "wire"/"retire" are open work and are REPORTED.
 EXEMPT_METHOD = {
+    "engine.brain.Brain.learn_part_d_episode": (
+        "wire",
+        "G9 Round 4: tested same-writer typed teaching API with the ordinary real "
+        "CanonicalGrowthAdapter caller and RetentionSets consumer bound. Automatic "
+        "source/search admission, deciding retention feasibility and durable final-read "
+        "state across rebinding, and G6 deciding mask/progress remain unbuilt. Canonical "
+        "readiness still refuses. Retire this OPEN row only when those deciding consumers "
+        "are bound and their charge controls pass; ordinary-call tests do not prove live charge.",
+    ),
     "reservoir.spontaneous_activity.SpontaneousActivity.fit_to_traces": (
         "wire",
         "specs/022 T045: closed-form AR(1) theta fit (DIRECT_SOLVE under the class-qualified "

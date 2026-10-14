@@ -82,6 +82,53 @@ class SelectionLeak(Exception):
     """A judging set (`future`, `future_d`, `retention_final`) was read before the winner was frozen."""
 
 
+class RetentionSets:
+    """A14's frozen schedules and reset boundary; never draws a search schedule.
+
+    The actual stateful consumer supplies its full snapshot/restore and
+    learning-OFF read. This does not substitute for a G9 consumer binding.
+    """
+
+    def __init__(self, select, final):
+        self._select, self._final = tuple(select), tuple(final)
+        if not self._select or not self._final:
+            raise ValueError("A14 requires nonempty retention_select and retention_final")
+        self._judged = False
+
+    @classmethod
+    def for_problem(cls, problem, seed):
+        """Freeze G2 validation/future episodes BEFORE any mask search (A14)."""
+        select = tuple(tuple(episode) for episode in problem.episodes(seed, "validation"))
+        final = tuple(tuple(episode) for episode in problem.episodes(seed, "future"))
+        return cls(select, final)
+
+    @classmethod
+    def for_legacy(cls, heldout):
+        """Index parity in the supplied task's frozen held-out item order (A14)."""
+        items = tuple(heldout)
+        return cls(items[::2], items[1::2])
+
+    @staticmethod
+    def _read(items, snapshot, restore, read_off):
+        state = snapshot()
+        try:
+            restore(state)  # immediately BEFORE the set, including a stateful reader
+            return tuple(read_off(item) for item in items)
+        finally:
+            restore(state)  # no set's continuation can enter another set or search
+
+    def read_select(self, *, snapshot, restore, read_off):
+        return self._read(self._select, snapshot, restore, read_off)
+
+    def read_final(self, meter, *, snapshot, restore, read_off):
+        if type(meter) is not Meter or not meter.frozen:
+            raise SelectionLeak("retention_final read before the winner was frozen")
+        if self._judged:
+            raise SelectionLeak("retention_final read twice")
+        self._judged = True  # a partial/failed judgment cannot become a fresh read
+        return self._read(self._final, snapshot, restore, read_off)
+
+
 class Meter:
     """Wraps a problem for ONE arm: every `evaluate` is charged (calibration and infeasible included);
     `judge` refuses until `freeze()`, and refuses a second read."""

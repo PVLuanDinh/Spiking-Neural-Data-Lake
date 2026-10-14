@@ -119,31 +119,17 @@ _S6_PANEL_CORRECTION = (
 # ------------------------------------------------------------------------------------------------
 # key = module basename (unique across REGIONS per brain_atlas); value = (disposition, reason).
 EXEMPT = {
-    "memory_diagnostic": (
-        "permanent",
-        "G1's diagnostic harness (a governed benchmark); consumers: its CLI campaign and tests/test_memory_diagnostic.py",
-    ),
-    "recurrent_pool": (
-        "permanent",
-        "G1(b)'s selected pool, g1 LSM, a governed benchmark component, KEPT after G1(c)'s RED (stream-null; g1c 3.2: a null keeps the pool) for G5 Part D and G9's engine (g1b section 2.9); consumers: instruments/memory_diagnostic.py's pool arm, instruments/pool_selection.py's campaign, tests/test_recurrent_pool.py",
-    ),
-    "g5_readout_cells": (
-        "permanent",
-        "G5 / T113's readout-variant cells (a governed benchmark instrument; record evidence/g5-readout-variants.md, "
-        "frozen at 500d3f58): the in-brain cell machinery Part D reuses (Part A deleted on PA1 NOT MET, Part B on B-R1 NOT MET); consumers: its CLI, run_selfchecks (bare, brain-free) "
-        "and tests/test_g5_readout_cells.py; never on a tick",
+    "feed_readout": (
+        "wire",
+        "G3 reservoir/direct/random first-spike segment plumbing and paired-U rule; "
+        "same-label-neuron teaching consumer remains unbound. Retire this exemption "
+        "after measured consumer wiring; fixture reachability is not a charge claim.",
     ),
     "g5_part_d_reading": (
         "permanent",
         "G5 / T113 Part D D1's reader (a governed benchmark instrument; record evidence/g5-readout-variants.md D.4 and notes (c)-(f)): "
         "pure functions over per-seed accuracy records that print the registered reds PD-R0..PD-R3; consumers: Part D's cell runner "
         "(a later slice) and tests/test_g5_part_d_reading.py; never on a tick",
-    ),
-    "g5_part_d_adaptors": (
-        "permanent",
-        "G5 / T113 Part D D1's read-out-only adaptors (a governed benchmark instrument; record evidence/g5-readout-variants.md D.2, D.4 PD-R3): "
-        "DELTA / PC / SOM adopted from their own modules over the label neurons' 256-input stimulus; consumers: Part D's cell runner, "
-        "run_selfchecks (bare) and tests/test_g5_part_d_adaptors.py; never on a tick",
     ),
     "eligible_circuit_census": (
         "permanent",
@@ -156,21 +142,6 @@ EXEMPT = {
         "accepted at #1086 with hygiene cleared at #1226, but that approval does not implement runtime "
         "eligible-brain mapping and admission, which needs its own separate grant -- so this row stays "
         "permanent and not 'wire', having no tick behaviour to charge",
-    ),
-    "g5_part_d_cells": (
-        "permanent",
-        "G5 / T113 Part D D1's cell runner (a governed benchmark instrument; record evidence/g5-readout-variants.md D.1, D.2, D.5): the "
-        "deterministic feature path over the one pool, the D.2 arms and the cert facts the reader needs; consumers: its own CLI (bare "
-        "self-check or opt-in fixture entry; entry existence is not execution evidence), run_selfchecks (bare) "
-        "and tests/test_g5_part_d_cells.py; never on a tick",
-    ),
-    "pool_selection": (
-        "permanent",
-        "G1(b)'s selection campaign (a governed benchmark; its record is g1b section 3.4); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: its CLI and tests/test_pool_selection.py",
-    ),
-    "carried_state_campaign": (
-        "permanent",
-        "G1(c)'s campaign module (a governed benchmark; evidence g1c-carried-state.md); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: its CLI and tests/test_carried_state_campaign.py",
     ),
     "carried_state_stages": (
         "permanent",
@@ -187,22 +158,6 @@ EXEMPT = {
     "carried_state_driver": (
         "permanent",
         "G1(c)'s campaign driver (a governed benchmark; evidence g1c-carried-state.md 2.13); it recorded G1(c)'s RED (g1c 3.2) and stays as that record's re-runnable benchmark; consumers: its CLI and tests/test_carried_state_driver.py",
-    ),
-    "inseparable_mapping": (
-        "permanent",
-        "G2(ii)'s generator and G-R2's construction check (a governed benchmark; evidence g1c-carried-state.md 2.8); consumers: G1(c)'s campaign, G2/G3/G9 later, tests/test_inseparable_mapping.py",
-    ),
-    "taught_campaign": (
-        "permanent",
-        "G2 / T110's taught campaign driver (a governed benchmark; evidence g2-taught-problems.md 2.9, 2.13, 2.15); consumers: its CLI, G5 (presized_expansion as Part D's matched-size control), tests/test_taught_campaign.py",
-    ),
-    "taught_problems": (
-        "permanent",
-        "G2 / T110's Problem contract (a governed benchmark; evidence g2-taught-problems.md 2.6, 2.7, 2.15); consumers: taught_campaign (G2), G3's growth loop, G5 Part D, G6, G9, tests/test_taught_problems.py",
-    ),
-    "delayed_cue": (
-        "permanent",
-        "G2 / T110's problem generators and construction checks (a governed benchmark; evidence g2-taught-problems.md 2.2, 2.8, 2.15); consumers: taught_problems / taught_campaign (G2), G3, G4 (witness_units, decoy_units), G5, G6, G9, tests/test_delayed_cue.py",
     ),
     "sleep_plasticity_ab": (
         "permanent",
@@ -410,30 +365,6 @@ EXEMPT = {
         "DEEP_LOOP_REF). Wiring it to a live root would convert the permitted offline "
         "trainer into an e-prop violation",
     ),
-    "competence_executive": (
-        "permanent",
-        "EXECUTIVE ADAPTERS over a developmental COMPETENCE vector (promoted+RENAMED "
-        "reasoning/brain_adapters/executive_control.py -> faculties/competence_executive.py "
-        "2026-08-12, #10 lane 4f -- the LAST brain_adapters module; renamed because "
-        "faculties/executive_control holds the basename and brain_atlas.py:81 asserts "
-        "uniqueness). Three stdlib wrappers over governed mechanisms: dopamine RPE -> "
-        "bounded lr multiplier (faculties/dopamine_nuclei), objective broadcast "
-        "(faculties/global_workspace), competence planning (faculties/prefrontal_executive). "
-        "Its ONE consumer is instruments/developmental_loop_brain, lazily inside main() "
-        "and _mechanics_check(), and that consumer is itself EXEMPT-permanent TRAIN-TIER "
-        "and offline. NO CONVERSION CLAUSE IS WRITTEN HERE, and that is a measurement, "
-        "not caution: reachable() seeds only from _LIVE_ROOTS/_ENTRYPOINTS/_external_roots, "
-        "and the consumer has ZERO importers tree-wide (measured at promotion against the "
-        "unfiltered graph walk -- neither this module nor its consumer is in the raw "
-        "closure), so there is no downstream promotion that could ever convert this entry. "
-        "The three 'converts to reachable' clauses corrected wire->permanent on 2026-08-12 "
-        "are the precedent. DO NOT force-wire: the lr multiplier feeds an OFFLINE Adam "
-        "readout (no live consumer asks for one), and the workspace wrapper's live repoint "
-        "is blocked on a contract fix -- broadcast() steps a clock it does not own, "
-        "measured to perturb the arm's own (content, hold) on 20 of 20 ticks at thr*1.6 "
-        "and 3 of 20 even sub-threshold. A wire built to green this gate is exactly the "
-        "fake consumer P3 names",
-    ),
     "deep_stdp_latency": (
         "permanent",
         "TRAIN-TIER perception feature learner (promoted 2026-08-11, #10 lane 2c, region "
@@ -635,10 +566,6 @@ EXEMPT = {
         "permanent",
         "HARDWARE TWIN: out-of-core shard-streaming sibling of neuro_chip",
     ),
-    "energy": (
-        "permanent",
-        "BENCHMARK: analytical SynOps->Joules / NeuroBench harness; an accounting instrument, not a faculty",
-    ),
     "rsnn_encoder": (
         "permanent",
         "TRAIN-TIER: recurrent-spiking encoder trained offline and SERVED frozen; emits no live-tick value",
@@ -738,14 +665,6 @@ EXEMPT = {
     # a reading without its licensed sentence in view" clause enforced at the one surface where a
     # consciousness claim reaches a human. The gate read the stale entry on the same commit; the
     # entry is retired, never the gate.
-    "growth_coverage_gate": (
-        "permanent",
-        "specs/022 T046: invention register row 7's four instruments (coverage ratchet + "
-        "refusals, three-way partition, boundary sharpness via the PRODUCTION labelers, "
-        "spatial null, Allen elementwise external control) -- a CI/run_selfchecks "
-        "instrument, never on a tick -- the policy_manifest disposition. The coverage red "
-        "it reports (1 of 10, cortex-only) is the OPEN work; the gate is its counter",
-    ),
     "lake_rebuild_gate": (
         "permanent",
         "specs/022 T008: the index-is-derived gate (delete -> rebuild -> logical equality, "
@@ -823,76 +742,6 @@ EXEMPT = {
     # otherwise read as work: the single import in engine/brain.py flips this region to CHARGED on
     # its own, consumer or no consumer. The import is the cheap half; the charge is the measured
     # one, and only the second is evidence.
-    "replay_gate": (
-        "permanent",
-        "specs/022 T017: the G5 snapshot/replay criterion (RNG stream positions captured, "
-        "restore asserts position equality, continuation byte-identical, omit-positions and "
-        "parameter-mismatch refusals). A CI/run_selfchecks instrument that L7's battery will "
-        "consume; never on a tick -- the policy_manifest disposition",
-    ),
-    "determinism_gate": (
-        "permanent",
-        "specs/022 T015: the determinism criterion over kernel_tick (T=1..16 byte-equal at a "
-        "constructed fixed P, V_c/V_ermv zero, measured frac_bits, float-accumulation broken "
-        "arm in-command). A CI/run_selfchecks instrument, never on a tick -- the "
-        "policy_manifest disposition, same as lake_rebuild_gate",
-    ),
-    "kernel_tick": (
-        "wire",
-        "specs/022 T014: the two-phase deterministic tick over kernel_state (P fixed per "
-        "lineage, integer delivery, delay rings). Consumers in this same kernel block: the "
-        "determinism gate (T015) and replay gate (T017) drive it as instruments. THE PROMISED "
-        "T033+ CONSUMER LANDED WITHOUT IMPORTING THIS MODULE -- episode_driver drives the "
-        "brain path and carries only distinct-from prose about KernelTick (measured zero "
-        "imports, US1 audit B3). PRIOR READING, SUPERSEDED 2026-09-09 -- kept verbatim because "
-        "this row's value is that it records its own past falsehood, and an exemption that "
-        "quietly swaps in a new justification erases the evidence that the old one was wrong: "
-        "'The live consumer is the US3 kernel cutover (T064/T066/T070).' None of the three "
-        "carries the wire -- T064's deliverable is void, T066 was DELETED ON ITS NULL (T068 "
-        "LOSS), T070 is an instrument. CURRENT READING 2026-09-09, dated to T062: the live "
-        "consumer is the row that FIRST PLACES UNITS AT SCALE -- T062's H01 ingest, ~16k signed "
-        "neurons -- or growth reaching the MEASURED width trigger N*, a LOWER BOUND of "
-        "2,500-6,300 units at 0.15 of the tick (the profile and the neuter derivations disagree "
-        "1.5-2.5x and both are reported, the instrument's own finding; evidence/s6-kernel-wire.md "
-        "S3). S6 (2026-09-09) measured this wire's Amdahl ceiling AT THE DEPLOYED WIDTH (177-189 "
-        "live LIF units) at 0.005-0.017 raw, 95% bands inside 0.04 on two determinate seeds (one "
-        "seed INDETERMINATE twice), and DECLINED the conversion under specs/008 FR-010 / SC-006 "
-        "(declined-with-measurement, 0 sites unaccounted), FR-004 read contrapositively, plan.md "
-        "Standing Invariants 1 and 3, and contracts/conversion.md C1.3 -- 'a site whose ceiling "
-        "is below the noise floor of the tick is DECLINED, and the decline carries its number'. "
-        "CITATION CORRECTED 2026-09-09 (panel): this row cited FR-005, whose antecedent is a site "
-        "measured SLOWER AFTER vectorizing. No array version was built, so the Conversion-site "
-        "entity's measured array cost and equivalence result do not exist for this site and "
-        "FR-005 is not reached; the rule applied is the one written first, only its citation was "
-        "narrow. BOUND EXPIRED AT T039 UNMET (recorded, not re-dated). Printed by the "
-        "standing-TODO arm. " + _S6_PANEL_CORRECTION,
-    ),
-    "kernel_state": (
-        "wire",
-        "specs/022 T013: SoA substrate state (128B-aligned blocks, contiguous faculty slices, "
-        "_T_STATE-backed). Consumer is the two-phase tick in the SAME kernel block "
-        "(kernel_tick, T014, the very next task); the P2 retirement of the per-object neuron "
-        "state it supersedes executes at the cutover, faculty by faculty, with parity A/Bs. "
-        "PRIOR READING, SUPERSEDED 2026-09-09 -- kept verbatim for the same reason as "
-        "kernel_tick's, that a row which rewrites its own justification destroys the record of "
-        "having been wrong: 'now the US3 kernel cutover (T064/T066/T070)'. None of the three "
-        "carries the cutover -- T064's deliverable is void, T066 was DELETED ON ITS NULL (T068 "
-        "LOSS), T070 is an instrument. CURRENT READING 2026-09-09, dated to T062: the live "
-        "consumer is the row that FIRST PLACES UNITS AT SCALE -- T062's H01 ingest, ~16k signed "
-        "neurons -- or growth reaching the MEASURED width trigger N*, a LOWER BOUND of "
-        "2,500-6,300 units at 0.15 of the tick (two derivations, 1.5-2.5x apart, both reported; "
-        "evidence/s6-kernel-wire.md S3). S6 (2026-09-09) measured the wire's Amdahl ceiling at "
-        "the DEPLOYED width (177-189 live LIF units) at 0.005-0.017 raw, bands inside 0.04 on "
-        "two determinate seeds, and DECLINED the conversion under specs/008 FR-010 / SC-006 "
-        "(declined-with-measurement, 0 sites unaccounted), FR-004 read contrapositively, plan.md "
-        "Standing Invariants 1 and 3, and contracts/conversion.md C1.3 -- 'a site whose ceiling "
-        "is below the noise floor of the tick is DECLINED, and the decline carries its number'. "
-        "CITATION CORRECTED 2026-09-09 (panel): this row cited FR-005, whose antecedent is a site "
-        "measured SLOWER AFTER vectorizing, and no array version was built, so FR-005 is not "
-        "reached. The SoA state therefore waits on the same trigger its consumer does. BOUND "
-        "EXPIRED AT T039 UNMET (US1 audit B3, 2026-08-25; recorded, not re-dated). Printed by "
-        "the standing-TODO arm every run. " + _S6_PANEL_CORRECTION,
-    ),
     "h01_ingest": (
         "wire",
         "specs/022 T062, DATED 2026-09-09: the H01 c3 synapse-graph ingest and the population it "
@@ -1042,59 +891,6 @@ EXEMPT = {
         "tick and never constructed by one: it is stdlib-only and imports nothing of the package "
         "it measures, because the tree it censuses is an export, not the running brain -- the "
         "policy_manifest disposition",
-    ),
-    "capacity_certificate": (
-        "wire",
-        "specs/022 T111 (G3) P1: the growth trigger's diagnosis. Its consumer is G3's problem loop "
-        "(growth/growth_loop.py, P3), which reaches the live path only when G9 wires the engine; "
-        "this exemption retires the day that wire lands",
-    ),
-    "grown_code": (
-        "wire",
-        "specs/022 T111 (G3) P1: the taught learner's grown latency segment. Its consumers are the "
-        "default-off port on readout/interaction_learning.py (after R2's P1) and G3's problem loop "
-        "(growth_loop.py, itself EXEMPT until G9); RESTORED by cp1 #19 after the trace source moved out "
-        "of the live candidate_lifecycle -- a lazy import there had made it reachable without any use "
-        "(P3: reachability is not charge). It retires when G9 wires the engine",
-    ),
-    "growth_loop": (
-        "wire",
-        "specs/022 T111 (G3) P3: the posed-problem grow-attempt loop. Its consumers are G3's "
-        "campaign instrument (P4) and G6's ledger/solved_sink readers; it reaches the live path only "
-        "when G9 wires the engine, and this exemption retires that day",
-    ),
-    "grown_feed": (
-        "wire",
-        "specs/022 T111 (G3) P5: the grown units' projection into the G1 reservoir (connection 2). Its "
-        "consumers are the feed arms of G3's campaign instrument (P4/P5) and G5's reservoir readout "
-        "(Part D); the pool's port (percept_fed) is charged by test_grown_feed, not by an import. It "
-        "reaches the live path only when G9 wires the engine, and this exemption retires that day",
-    ),
-    "unit_label_gate": (
-        "wire",
-        "specs/022 T115 (G7) / T111 (G3), lead ruling 29: the label gate for every grown unit. Its consumer "
-        "is grown_code.admit_rows, which consumes the gate's AdmissionTicket (the single append of the grown "
-        "segment; charge proven by test_admit_rows_refuses_a_planted_unlabeled_row, not by an import), and "
-        "growth_loop.make_admission, which calls require_admissible. Both sit behind growth_loop, EXEMPT until "
-        "G9 wires the engine; this exemption retires that day, together with the gate's debt row for "
-        "NeurogenesisSelfImprove._refit. No import was added for reachability (cp1 #19)",
-    ),
-    "sleep_pruner_census": (
-        "permanent",
-        "specs/022 G6 (T114) part (a), evidence g6-sleep-durable-memory.md 2.3/2.16: the live sleep "
-        "pruners' census and per-pruner neuter-A/B -- a MEASUREMENT instrument. Its bare invocation "
-        "touches no brain; its brain paths (`run_arm`, `--census`) build their own scratch brains under "
-        "throwaway_home and refuse a NORD_HOME resolving to the live home; it is never constructed by a "
-        "brain. The world_red_probe / everyday_battery shape: wiring it to a tick would be the "
-        "instrument perturbing the pruners it neuters",
-    ),
-    "joint_mask_search": (
-        "wire",
-        "specs/022 G6 (T114) part (b), evidence g6-sleep-durable-memory.md 2.4/2.16 A3/A13/A14 + the "
-        "dated pre-data amendment 2026-10-03: the joint-mask search contract, decide_b and THE "
-        "mask_digest. Retires when R2's P2 redo imports mask_digest (ruling 17a), which makes it "
-        "reachable from the live sleep path; the search itself is adopted into the grower's prune or "
-        "deleted by decide_b at G6's deciding run (2.4's P2 on the result)",
     ),
     "sleep_pressure": (
         "wire",
