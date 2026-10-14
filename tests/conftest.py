@@ -45,6 +45,7 @@ mutates the environment mid-suite, which is the exact failure being defended aga
 """
 
 import os
+import warnings
 
 import pytest
 
@@ -65,8 +66,9 @@ def _hermetic_home(tmp_path, monkeypatch):
 # controller deadline. A battery stage that invokes pytest directly never created one, so the
 # promoted restart tests died with KeyError in an ordinary run (panel 04febad0, finding C1).
 # The deadline is generated ONCE, when the pytest session starts, so it cannot already be
-# expired by earlier battery stages; a STRICTER caller deadline is respected, never loosened,
-# and the wait stays bounded (no unlimited child wait is introduced).
+# expired by earlier battery stages. An expired caller value is discarded for the own 6 h bound
+# (with a warning); a future one is respected even if it is very near, never loosened, and the
+# wait stays bounded (no unlimited child wait is introduced).
 STAGE_DEADLINE_S = 6 * 3600
 
 
@@ -76,7 +78,14 @@ def bounded_stage_deadline(now_ns, caller=None, budget_s=STAGE_DEADLINE_S):
         caller_ns = int(caller) if caller not in (None, "") else None
     except ValueError:
         caller_ns = None
-    if caller_ns is None or caller_ns <= now_ns:
+    if caller_ns is not None and caller_ns <= now_ns:
+        warnings.warn(
+            f"SNDL_R2_CHILD_DEADLINE_NS={caller_ns} is already expired; discarded for the own "
+            f"{int(budget_s) // 3600} h stage bound",
+            stacklevel=2,
+        )
+        return str(own)
+    if caller_ns is None:
         return str(own)
     return str(min(own, caller_ns))
 

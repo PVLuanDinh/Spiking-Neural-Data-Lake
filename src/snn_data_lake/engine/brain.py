@@ -5272,6 +5272,13 @@ class Brain:
             except BaseException as exc:
                 self._r2_close("g9_snapshot", exc)
                 raise
+            # A deterministic constructor/expansion refusal must precede the append, or the
+            # refusal would leave an immortal event that faults every restart in `reconcile`.
+            staged_actor = None
+            if op == "bind":
+                staged_actor = PosedActor(value["factory"], born)
+            elif op == "admit":
+                staged_actor = self._g9_actors[pid].expanded(value, born)
             admitted = False
             try:
                 eid = self._append_learner_event(
@@ -5284,12 +5291,8 @@ class Brain:
                     "problem_id": pid,
                     "source_sha256": hashlib.sha256(source.encode()).hexdigest(),
                 }
-                if op == "bind":
-                    actor = PosedActor(value["factory"], born)
-                    self._g9_actors[pid] = actor
-                    answer = None
-                elif op == "admit":
-                    actor = self._g9_actors[pid].expanded(value, born)
+                if staged_actor is not None:
+                    actor = staged_actor
                     self._g9_actors[pid] = actor
                     answer = None
                 else:

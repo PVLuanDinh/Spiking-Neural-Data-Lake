@@ -184,6 +184,15 @@ def _assert_random_arm_delivers_its_own_drive():
     fed = consumer.arm_latencies("fed", *args, seed=9900, pool=pool(), observation=x, w_feed=w)
     assert got == expected, "the random arm did not deliver ITS drive to the pool"
     assert got != fed, "the random arm is indistinguishable from the unrandomized feed"
+    # A second seed: a consumer that ignores its seed delivers one fixed drive for both.
+    expected_b = pool_first_spikes(
+        pool(), x, feed_drive(us, code, 8.0, 14, random_feed(w, us, 9901))
+    )
+    got_b = consumer.arm_latencies(
+        "random-feed", *args, seed=9901, pool=pool(), observation=x, w_feed=w
+    )
+    assert got_b == expected_b, "the random arm ignored its seed (9901)"
+    assert got_b != got, "the random arm delivers the same drive for different seeds"
 
 
 def test_random_feed_arm_delivers_its_seeded_projection_to_the_pool():

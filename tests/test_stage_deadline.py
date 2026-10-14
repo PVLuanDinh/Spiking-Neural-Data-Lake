@@ -38,4 +38,6 @@ def test_an_expired_caller_env_deadline_does_not_reach_the_children():
     node = "tests/test_stage_deadline.py::test_session_start_generated_a_future_bounded_deadline"
     cmd = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "--no-cov", node]
     root = os.path.dirname(os.path.dirname(__file__))
-    assert subprocess.run(cmd, env=env, cwd=root).returncode == 0
+    remaining = (int(os.environ["SNDL_R2_CHILD_DEADLINE_NS"]) - time.time_ns()) / 1e9
+    result = subprocess.run(cmd, env=env, cwd=root, stdin=subprocess.DEVNULL, timeout=remaining)
+    assert result.returncode == 0

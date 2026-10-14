@@ -117,7 +117,8 @@ try:
  s=tuple(tuple(tuple(Turn(*t) for t in episode) for episode in epoch) for epoch in c['schedule'])
  adapter=CanonicalGrowthAdapter.for_brain(b,PROBLEMS['ii.xor'],factory=f,teach_schedule=s,projections=c['projections'])
  assert adapter.readiness()==(
-  'retention_select','actual grown-source/admission binding','G6 deciding mask/progress carrier')
+  'retention_select','actual grown-source/admission binding','G6 deciding mask/progress carrier',
+  'retention final read (G9_RETENTION_FINAL_UNRECORDED) until durable consumption exists')
  if os.environ['G9_RESUME']=='1': adapter.attempt(1)
  receipt={'actor':a.state_dict(),'births':b._g9_birth_records()}
  print('G9 RESTART '+json.dumps(receipt,sort_keys=True),flush=True)
@@ -154,6 +155,7 @@ def test_actual_adapter_admits_only_after_durable_birth_and_survives_restart():
             "retention_select",
             "actual grown-source/admission binding",
             "G6 deciding mask/progress carrier",
+            "retention final read (G9_RETENTION_FINAL_UNRECORDED) until durable consumption exists",
         )
         with pytest.raises(LedgerError, match="G6 deciding mask/progress carrier"):
             adapter.require_ready()
@@ -486,3 +488,69 @@ def test_final_retention_is_refused_in_a_fresh_process():
         line = [x for x in result.stdout.splitlines() if x.startswith(b"B1 CHILD ")][0]
         out = json.loads(line[len(b"B1 CHILD ") :])
         assert len(out) == 2 and all(x.startswith("G9_RETENTION_FINAL") for x in out), out
+
+
+_FAULT_CHILD = """
+import gc,json
+from snn_data_lake.engine.brain import make_brain
+b=make_brain(seed=9900,persist=True)
+try:
+ f=b._r2_fault
+ print('G9 FAULT '+json.dumps({'phase':None if f is None else f.get('phase')}),flush=True)
+finally:
+ b.close();del b;gc.collect()
+"""
+
+
+def _fresh_process_fault_phase(brain, private):
+    brain.close()
+    brain._r2_draft_closed = True
+    gc.collect()
+    remaining = (int(os.environ["SNDL_R2_CHILD_DEADLINE_NS"]) - time.time_ns()) / 1e9
+    assert remaining > 0
+    env = os.environ.copy()
+    env.update(NORD_HOME=str(private), NORD_PERSIST="1")
+    result = subprocess.run(
+        [sys.executable, "-B", "-X", "utf8", "-c", _FAULT_CHILD],
+        env=env,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        timeout=remaining,
+    )
+    assert result.returncode == 0, result.stderr.decode(errors="replace")[-800:]
+    lines = [line for line in result.stdout.decode().splitlines() if line.startswith("G9 FAULT ")]
+    assert len(lines) == 1
+    return json.loads(lines[0][len("G9 FAULT ") :])["phase"]
+
+
+def test_unregistered_problem_bind_refusal_is_not_an_immortal_event():
+    from snn_data_lake.readout.posed_problem import PosedRefused
+
+    with _owner() as (brain, private):
+        seq = brain._r2_seq
+        with pytest.raises(PosedRefused, match="registered problem"):
+            brain.bind_part_d_reader(_factory(brain, "no.such.problem"))
+        assert brain._r2_seq == seq
+        assert brain._r2_fault is None
+        assert _fresh_process_fault_phase(brain, private) is None
+
+
+def test_sign_violating_projection_admit_refusal_is_not_an_immortal_event():
+    with _owner() as (brain, private):
+        labels = list(brain.brain._ixn.responses)
+        bad = {
+            "0": {
+                "feed": [-0.1] * 256,
+                "return": [
+                    {"source": label, "sign": 1, "weight": 0.2, "delay": 0} for label in labels
+                ],
+            }
+        }
+        adapter = _bind(brain, projections=bad)
+        _, units, rows, ticket = _batch(brain, adapter)
+        seq = brain._r2_seq
+        with pytest.raises(ValueError, match="sign"):
+            adapter.admit(units, rows, ticket)
+        assert brain._r2_seq == seq
+        assert brain._r2_fault is None
+        assert _fresh_process_fault_phase(brain, private) is None

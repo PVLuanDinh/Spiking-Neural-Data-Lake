@@ -175,7 +175,9 @@ def test_pending_structural_sleep_retains_digest_and_progress_reds(monkeypatch, 
         assert restarted["cursor"] is None and restarted["hydrations"] == 0
 
 
-def test_retained_k7_turnover_detector_reaches_birth_and_planted_signs():
+def test_retained_k7_turnover_detector_reaches_birth_and_planted_signs(monkeypatch):
+    monkeypatch.setenv("NORD_PERSIST", "1")
+    monkeypatch.delenv("NORD_SELFMOD", raising=False)
     from snn_data_lake.instruments.sleep_plasticity_ab import run_k7
 
     result = run_k7(0)

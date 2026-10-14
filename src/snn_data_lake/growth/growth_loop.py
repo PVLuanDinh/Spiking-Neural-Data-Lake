@@ -938,6 +938,7 @@ class CanonicalGrowthAdapter:
                 "retention_select",
                 "actual grown-source/admission binding",
                 "G6 deciding mask/progress carrier",
+                "retention final read (G9_RETENTION_FINAL_UNRECORDED) until durable consumption exists",
             )
         if needs_beta and beta is None:
             missing += ("source-owned BETA baseline",)
