@@ -5100,6 +5100,17 @@ class Brain:
                 records[uid] = row
         return records
 
+    def _g9_reconcile(self, problem_ids):
+        """Run the G3 reconciler (named refusal, no repair append) for these born populations."""
+        from snn_data_lake.growth.batch_reconciler import reconcile_batches
+        from snn_data_lake.growth.growth_loop import BudgetValues, Ledger
+        from snn_data_lake.substrate.home import knowledge_path, require_isolated_home
+
+        require_isolated_home()
+        ledger = Ledger(knowledge_path(), BudgetValues(52, None))  # values unused by the fold
+        for pid in sorted(set(problem_ids)):
+            reconcile_batches(ledger, pid)
+
     def _g9_snapshot(self, *, chat=True):
         result = {
             "actors": dict(self._g9_actors),
@@ -5224,6 +5235,10 @@ class Brain:
                 or (op != "bind" and pid in self._g9_actors),
                 "binding/admission order",
             )
+            if op == "admit" or (op == "bind" and value["factory"]["population_origin"] == "born"):
+                # An unsettled batch (birth without its spend row) is refused by name BEFORE
+                # the common writer appends or any actor is installed; nothing is guessed.
+                self._g9_reconcile([pid])
             born = self._g9_birth_records()
             consumed_rows = None
             if op == "admit":
@@ -5248,6 +5263,9 @@ class Brain:
                 )
             else:
                 _need(ticket is None, "ticket belongs only to explicit admission")
+                if op != "bind":
+                    # Deterministic input errors are refused BEFORE the common writer appends.
+                    self._g9_actors[pid].validate_effect(value)
             try:
                 self._r2_supported(self.brain._ixn)
                 before = self._g9_snapshot()
@@ -5415,6 +5433,11 @@ class Brain:
                 )
                 if not self._r2_may_rearm(report):
                     raise ValueError("R2 closed: incomplete reconciliation")
+                self._g9_reconcile(
+                    pid
+                    for pid, actor in staged_actors.items()
+                    if actor.factory["population_origin"] == "born"
+                )
                 before = self._r2_snapshot(live)
                 old_actors = self._g9_actors
                 try:

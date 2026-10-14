@@ -157,3 +157,42 @@ def test_unratified_reservoir_growth_is_refused_before_any_pool_step():
             w_feed=np.zeros((3, 3)),
         )
     assert p.count == before
+
+
+def _assert_random_arm_delivers_its_own_drive():
+    """C2: the random arm must reach the pool with the SEEDED random projection, not the fed one."""
+    import snn_data_lake.growth.feed_readout as consumer
+    from snn_data_lake.growth.grown_feed import random_feed
+
+    us, code, x = units(), ranks(), np.zeros(64)
+    # Scaled so the constructed pool is NOT saturated: fed and random drives separate in latency.
+    w = 0.2 * np.array([[2.0, 1.0, 1.5], [0.0, 3.0, 2.0], [1.0, 0.5, 3.0]])
+    args = (us, code, 8.0, 14)
+    # Independent derivation through the incumbent implementation, never the consumer's name.
+    derived = random_feed(w, us, 9900)
+    assert not np.array_equal(derived, w), "degenerate projection: random equals the fed weights"
+    assert np.allclose(np.linalg.norm(derived, axis=0), np.linalg.norm(w, axis=0))
+    drive_random = feed_drive(us, code, 8.0, 14, derived)
+    drive_fed = feed_drive(us, code, 8.0, 14, w)
+    assert not np.allclose(drive_random, drive_fed), "the two arms must be driven differently"
+    expected = pool_first_spikes(pool(), x, drive_random)
+    unrandomized = pool_first_spikes(pool(), x, drive_fed)
+    assert expected != unrandomized, "constructed pool must separate the random and fed drives"
+    got = consumer.arm_latencies(
+        "random-feed", *args, seed=9900, pool=pool(), observation=x, w_feed=w
+    )
+    fed = consumer.arm_latencies("fed", *args, seed=9900, pool=pool(), observation=x, w_feed=w)
+    assert got == expected, "the random arm did not deliver ITS drive to the pool"
+    assert got != fed, "the random arm is indistinguishable from the unrandomized feed"
+
+
+def test_random_feed_arm_delivers_its_seeded_projection_to_the_pool():
+    _assert_random_arm_delivers_its_own_drive()
+
+
+def test_identity_random_feed_mutant_is_caught(monkeypatch):
+    import snn_data_lake.growth.feed_readout as consumer
+
+    monkeypatch.setattr(consumer, "random_feed", lambda weights, units, seed: weights)
+    with pytest.raises(AssertionError, match="random arm"):
+        _assert_random_arm_delivers_its_own_drive()

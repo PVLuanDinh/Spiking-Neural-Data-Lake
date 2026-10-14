@@ -59,3 +59,31 @@ def _hermetic_home(tmp_path, monkeypatch):
     directory those still pass, and still cannot reach the operator's lake."""
     monkeypatch.setenv("NORD_HOME", str(tmp_path / "nord_home"))
     os.makedirs(tmp_path / "nord_home", exist_ok=True)
+
+
+# Restart tests (R2/R3/G9) spawn real child processes and refuse to run without a bounded
+# controller deadline. A battery stage that invokes pytest directly never created one, so the
+# promoted restart tests died with KeyError in an ordinary run (panel 04febad0, finding C1).
+# The deadline is generated ONCE, when the pytest session starts, so it cannot already be
+# expired by earlier battery stages; a STRICTER caller deadline is respected, never loosened,
+# and the wait stays bounded (no unlimited child wait is introduced).
+STAGE_DEADLINE_S = 6 * 3600
+
+
+def bounded_stage_deadline(now_ns, caller=None, budget_s=STAGE_DEADLINE_S):
+    own = now_ns + int(budget_s) * 10**9
+    try:
+        caller_ns = int(caller) if caller not in (None, "") else None
+    except ValueError:
+        caller_ns = None
+    if caller_ns is None or caller_ns <= now_ns:
+        return str(own)
+    return str(min(own, caller_ns))
+
+
+def pytest_configure(config):
+    import time
+
+    os.environ["SNDL_R2_CHILD_DEADLINE_NS"] = bounded_stage_deadline(
+        time.time_ns(), os.environ.get("SNDL_R2_CHILD_DEADLINE_NS")
+    )

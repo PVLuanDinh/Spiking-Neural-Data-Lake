@@ -113,9 +113,17 @@ class RetentionSets:
         state = snapshot()
         try:
             restore(state)  # immediately BEFORE the set, including a stateful reader
-            return tuple(read_off(item) for item in items)
-        finally:
-            restore(state)  # no set's continuation can enter another set or search
+            result = tuple(read_off(item) for item in items)
+        except BaseException as exc:
+            try:
+                restore(state)  # no set's continuation can enter another set or search
+            except BaseException as rollback:
+                raise BaseExceptionGroup(
+                    "retention read and restore refused", [exc, rollback]
+                ) from exc
+            raise
+        restore(state)  # a failure here replaces nothing: the read had succeeded
+        return result
 
     def read_select(self, *, snapshot, restore, read_off):
         return self._read(self._select, snapshot, restore, read_off)

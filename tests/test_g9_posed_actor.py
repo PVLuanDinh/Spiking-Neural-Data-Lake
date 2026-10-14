@@ -524,3 +524,49 @@ def test_learned_return_changes_brains_own_next_answer_untrained_and_random_do_n
         assert brain.brain._ixn.route_text(query) == baseline
         actor.return_neutered = False
         brain._g9_publish_context(actor)
+
+
+def _malformed_teaches(actor):
+    """Deterministic input errors that the actor itself refuses (finding A1)."""
+    from snn_data_lake.instruments.taught_problems import Turn
+
+    width, rows = len(actor.reader.learner.neurons), len(actor.port.rows)
+    episode = _episode()
+    bad_target = [*episode[:-1], Turn(episode[-1].text, episode[-1].role, "NO_SUCH_LABEL")]
+    return {
+        "empty neuron mask": dict(neuron_mask=[], return_mask=[True] * rows),
+        "short return mask": dict(neuron_mask=[True] * width, return_mask=[True] * (rows - 1)),
+        "long neuron mask": dict(neuron_mask=[True] * (width + 1), return_mask=[True] * rows),
+        "unregistered target": dict(
+            neuron_mask=[True] * width, return_mask=[True] * rows, episode=bad_target
+        ),
+        "unregistered shuffle": dict(
+            neuron_mask=[True] * width, return_mask=[True] * rows, shifted_label="NO_SUCH_LABEL"
+        ),
+    }
+
+
+def test_malformed_effect_is_refused_before_append_and_restart_recovers():
+    from snn_data_lake.readout.posed_problem import PosedRefused
+
+    with _private_brain() as (brain, private):
+        _, _, actor = _bind(brain)
+        _teach(brain, actor)
+        assert brain._flush_interaction_learner()
+        for name, kw in _malformed_teaches(actor).items():
+            sequence, teaches = brain._r2_seq, actor.teaches
+            episode = kw.pop("episode", None) or _episode()
+            with pytest.raises(PosedRefused):
+                brain.learn_part_d_episode(
+                    actor.factory["problem_id"], episode, return_neutered=False, **kw
+                )
+            assert brain._r2_seq == sequence, name
+            assert actor.teaches == teaches, name
+            assert brain._r2_fault is None, name
+        _teach(brain, actor)
+        expected = _semantic(brain)
+        brain._r2_close("constructed_crash", RuntimeError("before checkpoint"))
+        _close_for_restart(brain)
+        restarted = _restart(private)
+        assert restarted["fault"] is None
+        assert restarted["semantic"] == expected

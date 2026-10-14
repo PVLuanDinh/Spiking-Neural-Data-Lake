@@ -837,18 +837,46 @@ class CanonicalGrowthAdapter:
         return tuple(result)
 
     def read_retention(self, problem_id, *, meter=None):
-        """A14 select by default; final requires Meter's frozen winner and is ONCE."""
+        """A14 select reads only; the one-shot final read is refused until its consumption is durable."""
         binding, _ = self._require_engine()
+        if meter is not None:
+            from snn_data_lake.instruments.joint_mask_search import Meter, SelectionLeak
+
+            if type(meter) is not Meter or not meter.frozen:
+                raise SelectionLeak("retention_final read before the winner was frozen")
+            # The consumed-once flag lives only in this adapter's RetentionSets, which a
+            # rebind or restart recreates; no durable record of consumption (keyed to the
+            # frozen experiment/winner and old task) exists in the carrier/journal yet.
+            # Until it does, the untouched final judgment is not callable from a Brain.
+            raise LedgerError(
+                "G9_RETENTION_FINAL_UNRECORDED: durable consumption record not built; "
+                "the one-shot final read is refused on the Brain-bound adapter"
+            )
         with binding["owner"]._r2_lock:
             binding, _ = self._require_engine()
             actor = binding["owner"]._g9_actors[problem_id]
             sets = binding["retention"][problem_id]
+            owner = binding["owner"]
+
+            def closing(fn):
+                # An unjournaled read relies on COMPLETE restoration. A snapshot/restore
+                # failure leaves the old actor in an unknown state, so it closes the SAME
+                # R2 all-learning latch (checkpoints and effects refuse) and propagates.
+                def run(*a):
+                    try:
+                        return fn(*a)
+                    except BaseException as exc:
+                        owner._r2_close("g9_retention_snapshot_restore", exc)
+                        raise
+
+                return run
+
             args = {
-                "snapshot": actor.snapshot,
-                "restore": actor.rollback,
+                "snapshot": closing(actor.snapshot),
+                "restore": closing(actor.rollback),
                 "read_off": lambda episode: self._retention_read(problem_id, episode),
             }
-            return sets.read_select(**args) if meter is None else sets.read_final(meter, **args)
+            return sets.read_select(**args)
 
     def diagnose(self):
         from snn_data_lake.growth import capacity_certificate

@@ -589,6 +589,31 @@ class PosedActor:
         )
         return self._effect(value, event_id=event_id)
 
+    def validate_effect(self, value):
+        # distinct-from: gates/selfcheck_cache.py -- that reads source-file inputs; this is the
+        # pure width/vocabulary refusal of a posed teach/read source against this actor.
+        # The owner runs it BEFORE the common writer appends (a deterministic input error must
+        # not become an immortal unreplayable event); replay runs it again through `_effect`.
+        posed_source(value)
+        if value["op"] not in {"teach", "read"}:
+            return
+        _need(
+            len(value["neuron_mask"]) == len(self.reader.learner.neurons)
+            and len(value["return_mask"]) == (0 if self.port is None else len(self.port.rows)),
+            "complete actual readout and return circuit masks",
+        )
+        if value["op"] == "teach":
+            label = (
+                value["shifted_label"]
+                if self.reader.arm == "RSTDP_BRAIN_SHUF"
+                else value["turns"][-1][2]
+            )
+            _need(
+                label in self.reader.labels
+                and (self.reader.arm == "RSTDP_BRAIN_SHUF" or value["shifted_label"] is None),
+                "registered target/shuffle vocabulary",
+            )
+
     def _effect(self, value, *, event_id):
         """One effect implementation; live caller admits first, boot caller validates full receipt."""
         from snn_data_lake.growth.grown_code import latencies, segment_psp
@@ -607,11 +632,7 @@ class PosedActor:
             value["op"] in {"teach", "read"}, "bind/admit belongs to owner atomic registry staging"
         )
         self.return_neutered = value["return_neutered"]
-        _need(
-            len(value["neuron_mask"]) == len(self.reader.learner.neurons)
-            and len(value["return_mask"]) == (0 if self.port is None else len(self.port.rows)),
-            "complete actual readout and return circuit masks",
-        )
+        self.validate_effect(value)
         pool = self.reader.drive._pool
         pool.reset_carriers()  # actual G5 episode reset, return continuation is explicitly separate.
         tau = self.reader.learner.tau
@@ -641,11 +662,6 @@ class PosedActor:
                 value["shifted_label"]
                 if self.reader.arm == "RSTDP_BRAIN_SHUF"
                 else value["turns"][-1][2]
-            )
-            _need(
-                label in self.reader.labels
-                and (self.reader.arm == "RSTDP_BRAIN_SHUF" or value["shifted_label"] is None),
-                "registered target/shuffle vocabulary",
             )
             if self.reader.arm != "RSTDP_NOTUNE":
                 if self.reader.producer is not None:
@@ -991,6 +1007,12 @@ def resource_receipt(actors, engine_arm, ledger, *, silenced=None):
         actors[engine_arm].factory["population_origin"] == "born",
         "G9 engine arm needs admitted units",
     )
+    from snn_data_lake.growth.batch_reconciler import reconcile_batches
+
+    for actor in actors.values():
+        if actor.factory["population_origin"] == "born":
+            # Accounting is never certified over an unsettled batch; the named refusal stands.
+            reconcile_batches(ledger, actor.factory["problem_id"])
     births = ledger.birth_records()
     result = {}
     for name, actor in actors.items():
