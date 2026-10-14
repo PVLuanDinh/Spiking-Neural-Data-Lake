@@ -5106,9 +5106,12 @@ class Brain:
         from snn_data_lake.growth.growth_loop import BudgetValues, Ledger
         from snn_data_lake.substrate.home import knowledge_path, require_isolated_home
 
+        problem_ids = sorted(set(problem_ids))
+        if not problem_ids:  # no posed population: nothing to reconcile, no home to guard
+            return
         require_isolated_home()
         ledger = Ledger(knowledge_path(), BudgetValues(52, None))  # values unused by the fold
-        for pid in sorted(set(problem_ids)):
+        for pid in problem_ids:
             reconcile_batches(ledger, pid)
 
     def _g9_snapshot(self, *, chat=True):
@@ -5152,6 +5155,8 @@ class Brain:
             type(saved) is dict and all(type(pid) is str for pid in saved),
             "complete typed registry carrier required",
         )
+        if not saved:  # posed events exist only in an isolated home; no carriers, no birth records
+            return {}
         born = self._g9_birth_records()
         actors = {}
         for pid, state in sorted(saved.items()):
@@ -5547,7 +5552,7 @@ class Brain:
         self.__dict__.update(observations)
         from snn_data_lake.readout.posed_problem import PosedActor
 
-        born = self._g9_birth_records()
+        born = self._g9_birth_records() if snapshot["posed"] else {}
         self._g9_actors = {
             pid: PosedActor.restore(state, born) for pid, state in snapshot["posed"].items()
         }
