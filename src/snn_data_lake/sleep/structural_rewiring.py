@@ -182,12 +182,20 @@ class StructuralRewiring:
     def state_dict(self):
         """Existing structural topology and exact RNG position, with detached int-key entries."""
         import copy
+
         from snn_data_lake.readout.interaction_learning import _encode_state
 
         state = {
-            "fmt": self.STATE_FORMAT, "rng": [self._rng.getstate()[0], list(self._rng.getstate()[1]), self._rng.getstate()[2]],
-            "signs": copy.deepcopy(self._signs), "budget": self._budget,
-            "cycles": self._cycles, "pairs_total": self._pairs_total,
+            "fmt": self.STATE_FORMAT,
+            "rng": [
+                self._rng.getstate()[0],
+                list(self._rng.getstate()[1]),
+                self._rng.getstate()[2],
+            ],
+            "signs": copy.deepcopy(self._signs),
+            "budget": self._budget,
+            "cycles": self._cycles,
+            "pairs_total": self._pairs_total,
             "last": dict(self._last),
             "regen_signs": [[r, list(v)] for r, v in sorted(self._regen_signs.items())],
         }
@@ -197,6 +205,7 @@ class StructuralRewiring:
     def load_state_dict(self, state):
         """Validate all fields and duplicate int keys BEFORE touching the real carrier."""
         import copy
+
         from snn_data_lake.readout.interaction_learning import _encode_state
 
         fields = {"fmt", "rng", "signs", "budget", "cycles", "pairs_total", "last", "regen_signs"}
@@ -233,7 +242,8 @@ class StructuralRewiring:
         last = state["last"]
         base = {"turnover", "pruned", "regenerated", "budget"}
         if type(last) is not dict or set(last) not in (
-            base, base | {"external_vacancies", "readopted"},
+            base,
+            base | {"external_vacancies", "readopted"},
         ):
             raise ValueError("malformed structural report")
         if type(last["turnover"]) is not float or not math.isfinite(last["turnover"]):

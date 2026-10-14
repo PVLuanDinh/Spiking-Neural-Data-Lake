@@ -23,6 +23,7 @@ import pytest
 def _private_brain():
     from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate import home
+
     with home.throwaway_home() as private:
         bound = home.require_isolated_home()
         brain = make_brain(seed=0, persist=True)
@@ -41,6 +42,7 @@ def _private_brain():
 
 def _close_for_restart(brain):
     from snn_data_lake.substrate import home
+
     home.require_isolated_home()
     brain.close()
     brain._r2_draft_closed = True
@@ -59,8 +61,10 @@ def _semantic(brain):
 def _diagnostics(brain):
     ixn = brain.brain._ixn
     return {
-        "redo": ixn._redo_count, "refused": ixn._unjournaled_refused,
-        "hydrations": ixn._hydration_count, "fault": copy.deepcopy(brain._r2_fault),
+        "redo": ixn._redo_count,
+        "refused": ixn._unjournaled_refused,
+        "hydrations": ixn._hydration_count,
+        "fault": copy.deepcopy(brain._r2_fault),
     }
 
 
@@ -89,12 +93,13 @@ def _reference(include_b):
 def _restart(private):
     """Actual OS restart, with no second writer/twin schedule and a required future deadline."""
     from snn_data_lake.substrate import home
+
     assert Path(home.require_isolated_home()).resolve() == private.resolve()
     assert not sys._is_gil_enabled(), "R2 restart requires the native no-GIL parent"
     deadline = int(os.environ["SNDL_R2_CHILD_DEADLINE_NS"])
     remaining = (deadline - time.time_ns()) / 1e9
     assert remaining > 0, "R2 future controller deadline expired"
-    child = r'''
+    child = r"""
 import gc, json, os, sys
 from pathlib import Path
 from snn_data_lake.substrate import home
@@ -105,11 +110,13 @@ assert not sys._is_gil_enabled()
 b=make_brain(seed=0,persist=True)
 try:
  s=b._r2_snapshot(b.brain._ixn)
- for k in ("_redo_count","_unjournaled_refused"): s["learner"]["state"]["tree"]["attrs"].pop(k)
+ for k in ("_redo_count","_unjournaled_refused"):
+  s["learner"]["state"]["tree"]["attrs"].pop(k)
  d={"semantic":json.loads(json.dumps(s,sort_keys=True,allow_nan=False)),
     "fault":b._r2_fault,"cursor":b.brain._ixn._cursor,
     "hydrations":b.brain._ixn._hydration_count,"redo":b.brain._ixn._redo_count,
-    "receipt_sha":None if b._r2_receipt is None else __import__("hashlib").sha256(b._r2_receipt).hexdigest()}
+    "receipt_sha":None if b._r2_receipt is None else
+    __import__("hashlib").sha256(b._r2_receipt).hexdigest()}
  print("R2 RESTART RECEIPT "+json.dumps(d,sort_keys=True,allow_nan=False),flush=True)
 finally:
  assert Path(home.home()).resolve()==bound
@@ -117,10 +124,11 @@ finally:
  b.close();del b;gc.collect()
  assert Path(home.home()).resolve()==bound
 print("R2 RESTART CLOSED",flush=True)
-'''
+"""
     result = subprocess.run(
         [sys.executable, "-B", "-X", "gil=0", "-X", "utf8", "-c", child],
-        capture_output=True, timeout=remaining,
+        capture_output=True,
+        timeout=remaining,
     )
     # Preserve all native bytes (including bypass/shutdown), not merely the final JSON.
     sys.stdout.buffer.write(result.stdout)
@@ -129,9 +137,11 @@ print("R2 RESTART CLOSED",flush=True)
     sys.stderr.buffer.flush()
     assert result.returncode == 0, "R2 fresh native process must close successfully"
     assert result.stdout.rstrip().endswith(b"R2 RESTART CLOSED")
-    matches = [line for line in result.stdout.splitlines() if line.startswith(b"R2 RESTART RECEIPT ")]
+    matches = [
+        line for line in result.stdout.splitlines() if line.startswith(b"R2 RESTART RECEIPT ")
+    ]
     assert len(matches) == 1, "R2 complete restart receipt must be uniquely attributed"
-    return json.loads(matches[0][len(b"R2 RESTART RECEIPT "):])
+    return json.loads(matches[0][len(b"R2 RESTART RECEIPT ") :])
 
 
 def test_complete_checkpoint_and_os_restart_match_completed_a_plus_b():
@@ -155,6 +165,7 @@ def test_complete_checkpoint_and_os_restart_match_completed_a_plus_b():
 def test_failed_b_latches_and_os_restart_uses_actual_durable_prefix(monkeypatch, tmp_path, arm):
     from snn_data_lake.substrate import home
     from snn_data_lake.substrate.binlog import _LEN, pack_episode
+
     _T_EPISODE = home._T_EPISODE
     expected_a, expected_ab = _reference(False), _reference(True)
     with _private_brain() as (brain, private):
@@ -164,6 +175,7 @@ def test_failed_b_latches_and_os_restart_uses_actual_durable_prefix(monkeypatch,
         a_checkpoint = copy.deepcopy(home.load_state("interaction_learner.json"))
         sequence = brain._r2_seq
         real_save, witnessed = home.save_episode, []
+
         def fail_b(event, path=None):
             assert event["source"] == "set a private goal"
             witnessed.append(dict(event))
@@ -177,6 +189,7 @@ def test_failed_b_latches_and_os_restart_uses_actual_durable_prefix(monkeypatch,
                     stream.flush()
                     os.fsync(stream.fileno())
             return False
+
         with monkeypatch.context() as patch:
             patch.setattr(home, "save_episode", fail_b)
             _teach_b(brain)
@@ -212,6 +225,7 @@ def test_failed_b_latches_and_os_restart_uses_actual_durable_prefix(monkeypatch,
 def test_class_stabilize_partial_b_rolls_back_then_replays_complete_b(monkeypatch):
     from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
     from snn_data_lake.substrate import home
+
     expected = _reference(True)
     with _private_brain() as (brain, private):
         _teach_a(brain)
@@ -220,11 +234,13 @@ def test_class_stabilize_partial_b_rolls_back_then_replays_complete_b(monkeypatc
         a_cursor = brain.brain._ixn._cursor
         real = PlasticityRuleStack.stabilize
         witnessed = []
+
         def mutate_then_raise(stack, *args, **kwargs):
-            result = real(stack, *args, **kwargs)
+            _result = real(stack, *args, **kwargs)
             witnessed.append(_semantic(brain))
             assert witnessed[-1] != a, "R2 B class control must witness actual partial mutation"
             raise RuntimeError("R2 witnessed class-level partial-B stabilize")
+
         with monkeypatch.context() as patch:
             patch.setattr(PlasticityRuleStack, "stabilize", mutate_then_raise)
             with pytest.raises(RuntimeError, match="partial-B stabilize"):
@@ -247,6 +263,7 @@ def test_latch_and_rollback_neuters_have_named_reachable_reds(monkeypatch):
     from snn_data_lake.engine.brain import Brain
     from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
     from snn_data_lake.substrate import home
+
     # Cause 1: removing the latch allows a real C frame/effect after a witnessed absent B.
     with _private_brain() as (brain, _):
         _teach_a(brain)
@@ -263,9 +280,11 @@ def test_latch_and_rollback_neuters_have_named_reachable_reds(monkeypatch):
         _teach_a(brain)
         before = _semantic(brain)
         real = PlasticityRuleStack.stabilize
+
         def broken(stack, *args, **kwargs):
             real(stack, *args, **kwargs)
             raise RuntimeError("R2 delegated rollback control")
+
         with monkeypatch.context() as patch:
             patch.setattr(PlasticityRuleStack, "stabilize", broken)
             patch.setattr(Brain, "_r2_restore", lambda *args: None)
@@ -278,13 +297,17 @@ def test_latch_and_rollback_neuters_have_named_reachable_reds(monkeypatch):
 def test_strict_same_pass_rejects_complete_noncanonical_episode_and_unbound_percept():
     from snn_data_lake.substrate import home
     from snn_data_lake.substrate.binlog import pack_episode
+
     _T_EPISODE = home._T_EPISODE
     from snn_data_lake.substrate.learner_events import KIND_SPECS, scan_learner_events
+
     with home.throwaway_home():
         home.require_isolated_home()
         assert home._log().append(_T_EPISODE + pack_episode({"kind": "teach"}) + b"trailing")
         events, _, _, receipt = scan_learner_events(
-            tuple(KIND_SPECS), strict=True, return_receipt=True,
+            tuple(KIND_SPECS),
+            strict=True,
+            return_receipt=True,
         )
         proof = json.loads(receipt)
         assert events == []
@@ -294,7 +317,9 @@ def test_strict_same_pass_rejects_complete_noncanonical_episode_and_unbound_perc
         home.require_isolated_home()
         assert home.save_episode({"kind": "percept", "schema": "r2.v1", "session": "7"})
         events, _, session, receipt = scan_learner_events(
-            tuple(KIND_SPECS), strict=True, return_receipt=True,
+            tuple(KIND_SPECS),
+            strict=True,
+            return_receipt=True,
         )
         assert session == 8, "all-session boot numbering includes the actual unbound row"
         assert events == []
@@ -304,6 +329,7 @@ def test_strict_same_pass_rejects_complete_noncanonical_episode_and_unbound_perc
 def test_failed_hydration_keeps_sink_bound_and_checkpoint_closed(monkeypatch):
     from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate import home
+
     with home.throwaway_home():
         home.require_isolated_home()
         assert home.save_episode({"kind": "percept", "schema": "r2.v1"})

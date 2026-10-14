@@ -94,8 +94,7 @@ def test_live_brain_source_pins_the_learners_construction_and_the_two_intents():
         for node in owner_tree.body
         if isinstance(node, ast.Assign)
         and any(
-            isinstance(target, ast.Name) and target.id == "_IXN_INTENTS"
-            for target in node.targets
+            isinstance(target, ast.Name) and target.id == "_IXN_INTENTS" for target in node.targets
         )
     ]
     assert len(definitions) == 1
