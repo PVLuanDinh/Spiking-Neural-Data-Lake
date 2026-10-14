@@ -1,10 +1,10 @@
 {
- "built": "2026-10-11T05:54:59+00:00",
- "code_hash": "7fb3dbd31f48d8b9ce37068cbbb7a258e48ec5eaf8637e7fb91b2a691df31854",
+ "built": "2026-10-14T19:45:59+00:00",
+ "code_hash": "812a0a156bad5938efd961e3e31a4a7775bddf8e0f911c4219e4a90345bdd176",
  "coverage": {
-  "listings_dropped_as_infrastructure": 2543,
-  "process_starts": 357,
-  "python_spawns_seen_by_parents": 348,
+  "listings_dropped_as_infrastructure": 3548,
+  "process_starts": 410,
+  "python_spawns_seen_by_parents": 401,
   "python_spawns_without_child_start": [
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
@@ -12,11 +12,32 @@
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]"
   ]
  },
  "fingerprint": "54417c727a47ca859864bda28406ce0018a6c1feba8d67e4deeb77cebd5165ec",
- "head": "a21f35d74f0b4a675a014b03b38dfe60c630f0b3",
+ "head": "becb96b7b991d7523ce53b86fd1092af37634f66",
  "pytest_all": {
   "blind": false,
   "git_scan": false,
@@ -113,6 +134,13 @@
     "src/snn_data_lake/training",
     "src/snn_data_lake/training/__pycache__"
    ],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_batch_reconciler.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
    "listr": [],
    "read": []
   },
@@ -494,6 +522,13 @@
    "listr": [],
    "read": []
   },
+  "tests/test_g6_mask_committed.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
   "tests/test_g8_checkpoint_translation.py": {
    "blind": true,
    "git_scan": false,
@@ -554,6 +589,20 @@
     "src/snn_data_lake/training",
     "src/snn_data_lake/training/__pycache__"
    ],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_g9_growth_adapter.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_g9_posed_actor.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
    "listr": [],
    "read": []
   },
@@ -968,6 +1017,41 @@
    ]
   },
   "tests/test_pool_selection.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_r2_checkpoint_prefix.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_r2_replay_hydration.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_r2_sleep_bout.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_r2_sleep_redo.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_r3_structural_hydration.py": {
    "blind": true,
    "git_scan": false,
    "list": [],
@@ -1446,6 +1530,7 @@
     "specs/022-unified-brain-arc/evidence/g2-taught-problems.md",
     "specs/022-unified-brain-arc/evidence/g3-growth-loop.md",
     "specs/022-unified-brain-arc/evidence/g4-wiring-prior.md",
+    "specs/022-unified-brain-arc/evidence/g5-handoff-repair-2026-10-11.md",
     "specs/022-unified-brain-arc/evidence/g5-readout-variants.md",
     "specs/022-unified-brain-arc/evidence/g6-sleep-durable-memory.md",
     "specs/022-unified-brain-arc/evidence/g7-organizing-unit.md",
@@ -1465,6 +1550,8 @@
     "specs/022-unified-brain-arc/evidence/l6-immortal-vs-consolidation.md",
     "specs/022-unified-brain-arc/evidence/memory-architecture-audit.md",
     "specs/022-unified-brain-arc/evidence/q2-surprise-context.md",
+    "specs/022-unified-brain-arc/evidence/r1-bounded-recall.md",
+    "specs/022-unified-brain-arc/evidence/r2-typed-replay-hydration.md",
     "specs/022-unified-brain-arc/evidence/r3-replay-growth-composition.md",
     "specs/022-unified-brain-arc/evidence/s0-exit.md",
     "specs/022-unified-brain-arc/evidence/s0-lake-bridge.md",
@@ -1576,6 +1663,13 @@
    "read": []
   },
   "tests/test_so101_arm.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_stage_deadline.py": {
    "blind": true,
    "git_scan": false,
    "list": [],
