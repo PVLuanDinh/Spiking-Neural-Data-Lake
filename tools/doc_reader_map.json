@@ -1,6 +1,6 @@
 {
- "built": "2026-10-14T19:45:59+00:00",
- "code_hash": "812a0a156bad5938efd961e3e31a4a7775bddf8e0f911c4219e4a90345bdd176",
+ "built": "2026-10-14T22:40:51+00:00",
+ "code_hash": "7567fbc9d9ead966596f87326872198bfb7c478e77abe1e8771919c6ed4f85b6",
  "coverage": {
   "listings_dropped_as_infrastructure": 3548,
   "process_starts": 410,
@@ -22,22 +22,12 @@
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
-   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_selfchecks.py]"
   ]
  },
  "fingerprint": "54417c727a47ca859864bda28406ce0018a6c1feba8d67e4deeb77cebd5165ec",
- "head": "becb96b7b991d7523ce53b86fd1092af37634f66",
+ "head": "4d5be85369a4ec9e1467015357efe5bd7d6d2c77",
  "pytest_all": {
   "blind": false,
   "git_scan": false,
