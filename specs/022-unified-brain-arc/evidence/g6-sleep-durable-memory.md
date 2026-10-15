@@ -846,3 +846,293 @@ of the eligible-brain arm is taken, or reported, until the owner answers #94.
 None. Nothing is measured beyond section 1; no deciding test has run.
 
 **DATED NOTE 2026-10-11 (G6-3 DEFECT REPAIR: the empty-mask guard and the sentinel-first ordering).** Additive; zero lines removed. This is a DEFECT REPAIR, not a functional T114 claim; the functional T114 status is unchanged. DEFECT, MEASURED: at base e3dd351b `prepare()` (sleep_mask_apply.py:46-61) refused nothing, so a fully-empty row (kept=[], pruned=[], synapses=[]) reached the lake carrying a valid `mask_digest`, and `check_applied_mask` accepted it as proof of an applied mask; the addendum's present-tense sentence "prepare() rejects exactly the fully-empty shape" was false for this tree (git log -S "empty" over the file returns nothing), and P7's "kept-only control remains accepted" was equally false -- the only kept-only fixture drove the wrong-tick APPLIED_NOT_PREPARED red. REPAIR, in the three owned paths only: `prepare()` now refuses EXACTLY the all-three-empty shape (kept AND pruned AND synapses; a kept-only row still prepares); `check_applied_mask` refuses a hand-forged fully-empty row with a valid digest, committed at the event tick and claimed there, with the new reason APPLIED_EMPTY_MASK = "applied_mask_empty", placed AFTER the sentinel branch so the pinned APPLIED_MISSING outcome for the string "none" and an absent key can never be shadowed (precedence APPLIED_MISSING > APPLIED_UNCOMMITTED > APPLIED_NOT_PREPARED > APPLIED_EMPTY_MASK); the own-tick kept-only acceptance control was ADDED to main() and the focused tests; the wrong-tick APPLIED_NOT_PREPARED control stays separate and unmodified; Python None keeps its distinct APPLIED_UNCOMMITTED outcome. MEASURED (lead grant #680, single lane, no battery): `python -B -m snn_data_lake.instruments.sleep_mask_apply` rc=0, stdout "applied_mask check: O_mask reds reachable, the committed case honest, sentinel preserved"; `python -B -m pytest --no-cov -q -p no:cacheprovider tests/test_sleep_mask_apply.py` rc=0, 12 passed / 0 failed; snn_data_lake.__file__ printed before the runs resolved inside the sndl-g6 worktree; free RAM never below 2.96 GiB during either run; ruff check and ruff format --check on the two owned files rc=0; the four protected files byte-identical to their tasks/G6-3.json pins; the live lake untouched (3318607701 bytes, LastWriteTime 2026-09-27T01:19:19-05:00). One launcher error is on record: a first pytest invocation at the wrong cwd exited rc=4 before any test ran; the frozen command then ran once, and that single run is the evidence. NOT MEASURED, NOT CLAIMED: no battery, no campaign, no seed, no deciding data; identity/no-op eligibility remains an explicit UNDECIDED gap with no discharge claim; the eligible-brain arm remains UNBUILT with no default before owner #94; no UnifiedSleepCycle; the actual result, two independent cited result reviews, the immutable score, the three per-arc lenses and the independent Codex closing report are all still owed. Cross-file count drift created by this repair, left to the integrator because it is outside the three owned paths: gates/dormancy_gate.py:1039 still reads "three O_mask refusals".
+
+## DATED PRE-DATA AMENDMENT 2026-10-15 (row-plan 1.0 against fbb1f38e; no confirmatory or reserve data read)
+
+The heading's pre-data qualification applies ONLY to (a)-(d), as bounded in A1. Part (e)/F5 is POST-DATA (A2(e)).
+Amends the changed/absent clauses of 2.3-2.7, 2.10-2.12, A4/A5/A7/A12-A14 and the dated notes by reference;
+every earlier byte remains. No instrument, result or owner-drawn requirement is deleted by this amendment.
+Basis: row-plan 1.0 report and census by codex-diff-g6-1015, board #2754, reviews #2758 and #2783, all read.
+Code below was independently checked by symbol with git grep/show at fbb1f38e, not inferred from census totals.
+
+### A1. Precondition: QUALIFIED pre-data licence, audited scope
+
+The comparison is the accumulated G6 registration tree 9b4231e8 against landed fbb1f38e, including 2.16 and all
+dated amendments. A fresh integer-token search covered committed md/py/json/txt/csv/jsonl/yaml/yml/sh/ps1/toml/
+sha256 text at BOTH trees for the confirmatory/reserve ranges below, plus all supplied G6 report/census/reviews.
+For (a)-(d), no execution evidence was found in that scope. Allocations and released blocks are not executions;
+the unrelated 12024/5 funding acknowledgments are not seeds. F5 records explicitly establish prior exposure.
+
+This is a QUALIFIED text-audit licence, never a categorical assertion of global non-exposure. Binary artifacts,
+external run manifests and lakes, untracked files, computed/range-selected seeds, other suffixes, other machines
+and execution histories outside those inputs were NOT audited. Instrument seed parameters can escape a literal
+token scan. Authoritative exposure manifests must be reconciled before any new deciding read is authorized.
+No campaign, Brain, seed, reserve record, external F5 result artifact or live lake was run/read by this lane.
+Reading the already-published F5 summary for this audit is disclosed; it is not a fresh confirmatory reading.
+
+| part | dev | confirmatory | reserve | constructed reds |
+|---|---|---|---|---|
+| (a) | 12001-12008 | 12011-12018 | 12021-12028 | 12031-12038 |
+| (b) | 12101-12108 | 12111-12118 | 12121-12128 | 12131-12138 |
+| (c) | 12201-12208 | 12211-12218 | 12221-12228 | 12231-12238 |
+| (d) | 12301-12308, fixtures | SAME (b) trajectory | SAME (b) reserve | 12331-12338 |
+| (e) | 12401-12408, fixtures | F5 16140-16147 ALREADY READ | R3 repair rule only | 12431-12438, fixtures |
+
+A5 governs: 12311-12328 and 12411-12428 are RELEASED, not new G6 confirmation. F5's dev is 16000-16007 and its
+constructed-red block is 16900-16999; R3's reserve 16300-16347 is available only under its frozen repair rule,
+not by this amendment. The nominal exclusion of 12000 and 12345 stands. Exposed dev data stays dev.
+ORDERING DISCLOSURE: this is pre-DATA only for the qualified (a)-(d) cohorts, but POST-implementation: journaled
+teaching, structural-only automatic sleep, aggregate bouts, retention helpers and static eligible census already
+landed. This text cannot retroactively precede those changes or their tests. No tests of them were run here.
+
+### A2. Per changed or absent clause: the mechanism at fbb1f38e
+
+Module names below are under src/snn_data_lake; all citations name symbols, not shifting source lines.
+
+- **2.3 workload and P-SR.** instruments.sleep_pruner_census._teach now calls brain.brain.teach for each TEACH
+  pair, through the journaled R2 authority/deposit path; the registration tree called ixn.interact directly.
+  TICKS = 900 and TEACH stay fixed. Reconcile this changed workload before each pruner's deciding data.
+  engine.brain.Brain._r2_sleep_step retains structural rewiring only. StructuralRewiring.state_dict and
+  load_state_dict, with Brain's R2 snapshot/checkpoint/redo, supersede the old wholly process-local restore claim.
+  R3 still owns P-SR's sign-flip control, all-seed positive turnover precondition and verdict; G6 adopts it.
+  The recorded zero-turnover exemption is historical; its expiry needs checking against today's writers (A6).
+- **2.3 P-DP/C4.** sleep.sleep_replay.AttractorNet.downscale_prune and the pooled _consolidation_acc read remain.
+  Brain's automatic AttractorNet.sleep learning was retired under #1039. The dp_floor branch of
+  sleep_pruner_census._arm_patches still patches that now-uncalled automatic operation. Thus the stock floor twin
+  no longer establishes its intended live contrast. C4 stays: public AttractorNet.sleep can construct a planted
+  learning/recall sensitivity input. A reviewed sensitive control on the actual prospective workload is owed
+  before P-DP's benefit is read; no INERT, NULL or REFUSED scientific result is inferred from this source audit.
+- **2.3 P-EY/P-LL, A1/A2/A8/A9/A11.** _ey_neuter, _ey_sabotage (training rows only), _ll_top_utility and the
+  prune_on/prune_mode handles survive. decide_pruner keeps ordered repeat/activity/sensitivity gates and
+  KEEP iff R4 AND (R3 OR E). BOTH P-LL sabotage twins must lose. _work_patches counts actual component work;
+  zeroing a dense synapse need not save a single operation. NIGHTS/DP_TRIALS/DELTA retain wake readings 2..36,
+  1260 pooled DP trials, delta_DP = 1/1260, delta_EY = 1/1111 and delta_LL = 1/120. The old dev calibration's
+  applicability to journaled teaching is UNVERIFIED; validate it on permitted dev data without quietly moving a
+  fixed margin/window. Any necessary change owes a further pre-data amendment. P-DP's own control defect alone
+  does not retire P-EY/P-LL or prevent their independent decisions after their shared dependencies are satisfied.
+- **2.4, A3/A13 search.** instruments.joint_mask_search._one_pass delegates to G3's select_unearned;
+  arm_incumbent/arm_greedy/arm_random/arm_sa, Meter, run_instance, seed_row and decide_b are present.
+  Infeasible proposals/refits/calibration consume B; B comes from greedy; B < 4 reports random/SA refused.
+  seed_row carries absent arms correctly; the old note saying no result-to-row producer exists is superseded.
+  arm_sa currently chooses the sorted upper-middle delta for even calibration sweeps, not the arithmetic median
+  of unequal middle values. This literal A13 discrepancy is UNVERIFIED for a general real-domain campaign:
+  resolve it against the registered median before new data; do not assert any effect on historical results.
+- **2.4/A4/A5/A14 contracts and consumers.** The real predicate is instruments.taught_problems.solved(problem,
+  seed, split, reads), present at both trees, not a missing Problem.solved method. Problem.episodes refuses
+  future_d; Problem.construction_episodes is its public construction/G6(d) path. Keep C1-d's four-word slots,
+  disjoint teach/validation/future/future_d, (b)'s frozen winner and (d)'s separate future_d read on that trajectory.
+  RetentionSets.for_problem/for_legacy/_read/read_final provide frozen sets, reset and local once-only judgment;
+  Meter.freeze/judge enforce the frozen winner. growth.growth_loop.CanonicalGrowthAdapter.read_retention can
+  select, but its final read explicitly refuses G9_RETENTION_FINAL_UNRECORDED: durable consumption is unbuilt.
+  Complete solved-problem unit/feed/readout/return mask application and eligible-brain reversible adapters are
+  ABSENT. CoverFixture and the posed actors/ledger are not the missing deciding mask consumer.
+- **2.4/Q6 and 10-08 default.** The already-adopted all-eligible scope (A3) supersedes Q6 OPEN and default-born/
+  legacy-opt-in wording. instruments.eligible_circuit_census.DRIVERS/RECORDS/REQUIRED_UNMAPPED implement a static
+  inventory, explicitly not runtime mapping/admission. Actual instance identity, stack aliases, _g9_actors,
+  other learned state and reversible eligibility mappings remain owed. No new owner answer is needed for scope.
+  staged_sleep_bout.populations observes three default weight snapshots plus caller extras; it neither drives
+  every eligible circuit nor proves that arbitrary supplied labels identify real independent populations.
+- **2.6/A12/D20/D21.** growth.growth_loop.Ledger._birth_row/birth_records, record_event, record_sleep_save and
+  growth.learning_progress.GoalStore.events provide real unit records and foreign-kind pass-through. G6 content
+  on _T_GOAL is distinct from R2's _T_EPISODE sleep_bout event; one spelling does not make them one carrier.
+  instruments.sleep_mask_apply.prepare/write_prepared/write_commit/check_applied_mask/mask_committed exist.
+  mask_committed matches BOTH sleep_id and mask_digest; unit_label_gate.check_saved returns PENDING on a false
+  resolver, not REFUSED. These readers/writers do not supply full mask apply, progress, recovery completion or
+  saved-record orchestration. Brain._r2_sleep_learning emits pending = "none", applied_mask_digest = "none";
+  SpikingInteractionLearner.hydrate refuses a deciding mask carrier. D21 and all seven C18 crash positions remain
+  UNVERIFIED. Keep complete-state equality (membership, labels, all synapse families, verdicts and weights), not
+  just a digest lookup. Schema answer #518 does not construct the absent carrier.
+- **2.5/A6/A7/P4.** instruments.sleep_pressure.PressureMeter, Rescheduler, shuffled_plan, check_budgets,
+  gate_from and decide_c retain per-circuit wake-only load, K_MIN = 2, positive baselines, median ratio > 1,
+  replacement nights and equal onset/tick budgets. run_seed_arm uses a persisting make_brain by default, but
+  BurstWorkload.__call__ still invokes ixn.interact outside R2. SpikingInteractionLearner._require_effect_boundary
+  refuses that persistent effect. The curriculum must use the legitimate journaled teaching boundary; switching
+  persist off is a changed experiment. Automatic sleep now has no replay/rest timing benefit carrier. Its
+  prospective replacement must be specified/reviewed before new (c) data; retirement is not permission to restore
+  those automatic capabilities. campaign_c produces clock/oracle/pressure/shuffled only. run_pressure_arm and
+  run_seed_arm accept solve requests, but no G3 solved_sink subscription supplies the fifth campaign arm.
+  PressureMeter.state provides the A7 dict; no sleep_pressure.json writer/restorer is bound and its restore tick
+  remains caller-supplied. CircadianClock.consolidation_gate stays is_rest; gate_from is a temporary harness
+  replacement. Live pressure/solve input and C13 await P4 AFTER deciding evidence, as registered.
+
+#### A2(e). POST-DATA: shared F5 and the aggregate bout boundary
+
+R3's r3-replay-growth-composition.md section 5 explicitly reports F5 confirmatory seeds 16140-16147 read once on
+2026-10-09: 40 arm-seeds, STAGED/FLAT/SHUFFLED/NONE/ORACLE. Preserve its source-reported row verbatim:
+"NULL: no stage benefit over the flat control shown at 320 presentations". Its C10 t = 1.000 and the disclosed
+FLAT ceiling on 16140/16141 stay historical. No reanalysis, rerun, new benefit or engine claim is licensed here.
+Section 3's old "no deciding test has run" cannot deny this R3-owned exposure adopted by A5.
+
+Owner #2106's POST-DATA 2026-10-13 amendment already heads this file. Persistent staged_sleep_bout.run_bout calls
+Brain._r2_run_bout: preview via learner_bout, versioned bout_payload/decode_bout (staged-bout.v1), ONE aggregate
+sleep_bout append under the common RLock/latch before live effects, then digests/progress and cache checks.
+SpikingInteractionLearner.hydrate redoes the plan through learner_bout and verifies SLEEP_DIGESTS/SLEEP_PROGRESS.
+Synthetic items themselves never become events, labels, rewards or ring entries; _run_bout guards _step.
+This is aggregate deterministic redo, not arbitrary-stage continuation. CARRIERS' per-tick sleep declaration is
+stale for persistent bouts: the operative aggregate plan, expected digests and bout_progress carry their redo.
+Automatic sleep's stage is 0/night with pending none. Persistent validation/wake callbacks and nonzero structural
+candidates are refused, not implemented pause/structural carriers. Those claims and their C20 omissions remain
+UNVERIFIED. Any prospective redesign needs its own dated scope and lawful cohort; nothing here reopens F5.
+
+sleep_plasticity_ab's K10c now admits exactly the arm's canonical appended bout frame and rejects every other
+scratch write; its public red = "K10c" creates k10c.red. K10a/b/d and the old F5 records are unchanged. F5_P stays
+320. check_compute matches realized presentations only; FLAT's deposit-bearing work differs from STAGED's.
+#2565's 7 x label-row repaired retention night is a separate, vocabulary-dependent design, not a reinterpretation
+of F5's fixed-budget result or proof that a label-scaled night is scheduled in the daemon.
+
+### A3. Owner rulings: verbatim words and exact attribution
+
+- **#1037/#1039, 2026-10-11.** The human's exact answer was "Adopt these three decisions", relayed by designated
+  coordinator codex-sndl-coord-1010. The adopted choices in the coordinator's exact bundled question were:
+  "R2 stops all learning writes after a write failure until restart, with its old failed-write test updated in a
+  dated amendment; G6 includes every plastic circuit in the eligible-brain arm; R3 retires the three capabilities
+  that failed their frozen tests, while keeping the sleep requirement."
+  The question is the coordinator's wording, not additional human speech. The adopted-dispositions record's
+  detailed interpretation (also coordinator-authored) includes eligible legacy beside born units with the existing
+  exclusions; retires automatic interaction replay/deposit, Benna-Fusi rest/rebinding and attractor.sleep learning;
+  preserves distinct wake/storage/recall/episodic-replay jobs and the sleep requirement. Inventory every actual
+  eligible population and mapping; three examples are not a complete list. No benefit follows from adoption.
+- **#2105 -> #2106, 2026-10-13, POST-DATA.** #2105 is integrator claude-cont-1013's question recommending detached
+  non-durable bouts (B), not the owner's decision. #2106 relays the owner's exact selection "A: journal the bout"
+  and selected-option text: "Add a new R2 event kind with deterministic restart redo, and a dated post-data
+  amendment loosening K10c to allow exactly that write. Bout effects become durable brain learning."
+- **#2564 -> #2565, 2026-10-14.** #2564 is the integrator's measured-retention question. Integrator
+  claude-cont-1013 relays the human's verbatim selection "Bouts scale with labels". The accompanying RULING is the
+  integrator's record: bouts = 7 x rows sharing the REM budget, vocabulary-dependent night length, and the A/B
+  shared-weight trade-off (B overlap lost when A recovers). It does not reopen the exposed 320-presentation F5.
+- **#518, 2026-10-10.** The Claude advisor relays the owner's verbatim "X1: A". The accompanying recorded ruling
+  keeps r2.v1 with G8's old-checkpoint translation obligation; it does not discharge the applied-mask carrier.
+- **#2135, 2026-10-13.** Integrator claude-cont-1013 relays the owner's verbatim selection "Fix the stack first".
+  Its recorded waits cover G2(ii)/A_ii, G3 C11 on S0C1 and G9; no blanket ban on independent G6 fixtures or C1-d
+  follows. #123 is a G5 note citing an older ruling, not new owner speech or a completed return-mask consumer.
+  #1779/#2719 are preparation/review, not owner seed-execution authority. #1048 is a claim, not an approval.
+
+UNREAD underlying sources: board #94 and #680, the older OWNER_DECISIONS/OWNER_BATCH 2026-10-04 and
+OWNER_RATIFIED 2026-10-06 files, p0_reports/G6.md, DEPENDENCIES rulings, codex_p0 critique/reply and archived
+panels were not supplied as primary artifacts. Their committed descriptions remain historical, not reauthenticated.
+Additional source-cited #1038/#1061/#1080/#1084/#1086/#1226 and #716/#717 are UNREAD. The independently supplied
+adopted-dispositions record settles Q6's scope without reconstructing #94's question or treating #680 as a grant.
+
+### A4. Campaign instrument: present helpers, missing deciding integration, required build arc
+
+The modules sleep_pruner_census, joint_mask_search, sleep_pressure, staged_sleep_bout, sleep_mask_apply,
+eligible_circuit_census and R3's sleep_plasticity_ab are present in REGIONS and run_selfchecks. Registration and
+fixtures are real; they do not make the complete G6 campaign runnable AS REGISTERED. This lane ran only the
+requested documentation checks, not those self-checks or campaigns. Overall disposition remains BLOCKED.
+The ABSENT deciding integration will be rebuilt on main in its own build arc against THIS amendment, reusing
+the surviving mechanisms under P2. No campaign instrument is built here. Its required contents are:
+
+- **(a):** runtime census of all current transitive prune paths; live/repeat, P-DP OFF/sabotage/sensitive-floor,
+  P-EY OFF/training-only sabotage, P-LL OFF/random/highest-utility twins. R3 supplies P-SR's independent disposition.
+  C1-C6/C25 before verdicts, complete windows, exact sabotage schedules and applicable dev calibration first.
+- **(b):** both solved-problem and all-eligible real mask domains, anatomical/safety exclusions, no-prune,
+  incumbent/greedy/random/SA, equal B including infeasible/calibration/refit costs, A3 ordered dispositions.
+  Bind actual unit/feed/readout/return membership, reversible application and measured costs; freeze A14 sets
+  before search, restore full state per read and durably consume final judgments once. C7-C10/C22/C26 must fire.
+  Preserve C1-d's four disjoint splits and the positive known-minimal-mask fixture. Resolve A13's even median.
+- **(c):** lawful persistent teaching plus a separately specified lawful sleep-learning carrier; clock, pressure,
+  shuffled-pressure, real G3 solve-trigger and oracle arms. Oracle > clock sensitivity precedes timing judgments;
+  pressure > shuffled is primary, with clock contrasts reported. C11-C13/C23/C24, A6 budgets/cold start and the
+  declared baseline/cursor restore controls remain. Do not alias solve requests to oracle burst ends. P4 wiring
+  follows the deciding evidence; it is not a prerequisite to constructing the isolated harness.
+- **(d):** save exactly (b)'s frozen (seed, sleep_id, mask_digest) winner, full units/labels/synapse refs and R2
+  teaching references, prepared/verdict/apply/progress/commit protocol, complete seven-boundary C18 recovery,
+  G7 committed-only C15 and the omitted-feed C14 red. Fresh-process future_d re-solve: no new teaching/regrowth,
+  with an uninterrupted equality twin. Use the shared (b) cohort, never the released 123xx confirmation block.
+- **(e), prospective only:** R3 remains the ONE campaign owner. Complete the eligible-brain structural arm,
+  measured outside-solved participation, C16/C17/C19/C20 fabrication/compute/carrier controls, stage-order and
+  replay/plasticity/structural/budget controls, and fresh-process gain/stage equality. Reconcile aggregate versus
+  per-tick declarations; register any new pause/structural/night-length design before new data. Preserve F5's
+  exposed cohorts/result; no new numeric confirmatory cohort is allocated here. Reconcile exposure/repair
+  manifests before the lead freezes a lawful prospective R3 schedule. Keep explicit failure on unknown plans,
+  altered digest/progress, extra scratch writes and held-out contamination.
+
+All inferential rules remain: S = 8 paired seeds, ties kept, one-sided t > 1.895, exact sign-flip FPR, A9's
+degenerate superiority NOT MET and positive-constant NI MET, three per-pruner dispositions, A1's 0.10 union bound.
+Use A1's seed table, dev/constructed controls before any deciding read, reviews and integrated amendment/instrument
+before confirmation. This text allocates no execution grant and never uses G9 constructed rows as G6 observations.
+Historical 76.8 ms/tick, 2.73 s build and pruner timings stay historical; the 72-run/~86-minute estimate stays a
+projection. Charge actual work, search/restart, R2 preview/redo and measured wake horizon H; report H* and wall time.
+Presentation equality is not deposit, plasticity, preview, total-compute or wall-time equality. Label-scaled cost
+and interference must be disclosed, not extrapolated from F5's old fixed budget and called measured.
+
+### A5. Reachable reds: public construction versus missing campaign path
+
+NONE is deleted here: no audited criterion is proved to lack every public failing input. A stock caller's absence
+or a fixture that never exercises the failure is not a P8 proof. Every constructed red must actually fire before
+its campaign is trusted; a failed control halts the arc. Deletion is allowed only after proving no input exists,
+never merely because a seed run failed to make the red fire. Static constructibility below is not execution.
+
+- **C1/C2:** sleep_pruner_census.census_static(sources=...) accepts added/deleted prune calls; Recorder and
+  counting_patches accept a planted k-removal pruner. Both mechanisms exist; updated runtime coverage is owed.
+- **C3/C4:** decide_pruner accepts tying/winning sabotage or a missing P-LL twin. _arm_patches supplies prune
+  neuters/sabotage. For the broken stock dp_floor contrast, public AttractorNet.sleep plus a planted attractor/
+  corrupted recall workload constructs sensitivity failure; C4 stays pending a valid actual-workload control.
+- **C5/C6:** surgical_ok accepts altered other-pruner activity; ArmRun series and decide_pruner(repeat_ok=False)
+  represent non-repeatability. No deletion follows from the changed teaching boundary.
+- **C7-C10/C22:** Meter.evaluate and run_instance(feasibility=False), CoverFixture(future_breaks=True), a mask
+  removing an old-task unit, net_savings with zero saving/positive costs, and explicit decide_b rows construct
+  unsolved/retention/cost/random-win/no-eligible failures. Real consumer/cost production remains blocked.
+- **C11/C12:** decide_c accepts oracle tie/loss; check_budgets accepts one extra sleep tick. Public failure inputs
+  exist even while BurstWorkload's persistent teaching is incompatible with main.
+- **C13:** gate_from/Rescheduler and public CircadianClock.consolidation_gate can receive differing traces.
+  The pressure/solve live input is absent: the comparison is BLOCKED, not an impossible/deleted criterion.
+- **C14:** Ledger.record_event/record_sleep_save can encode omitted feed refs; the real posed producer exposes
+  feed/return projections. A bad save is representable; full G6 winner-save/future_d restart detection is absent.
+- **C15/D20:** unit_label_gate.check_saved and sleep_mask_apply.mask_committed take ordinary records/rows;
+  missing sleep id, preparation alone, wrong digest and rolled-back preparation are expressible. A false resolver
+  is PENDING. A commit-matching reader alone does not prove A12 rollback or validate all saved state.
+- **C16/C17:** staged_sleep_bout.guard(Item(..., synthetic=True, observed=True)) and synthetic label/reward
+  inputs construct fabrication failure; participation_red accepts no changes or only solved-population changes.
+  Stock REM producing valid items only does not delete either red or complete runtime eligible admission.
+- **C18:** public prepare/write_prepared, Ledger.record_event, write_commit and check_applied_mask construct
+  partial or forged histories. An uncommitted-verdict-folding restore mutant must fail complete-state equality.
+  Seven-boundary real recovery remains unbuilt; successful digest matching cannot replace it.
+- **C19:** flat_of/check_compute accept an extra-presentation or starved REM-first stage list; realized totals
+  can differ. Matched realized totals alone never establish matched total compute.
+- **C20:** decode_bout and SpikingInteractionLearner.hydrate accept malformed/unknown plans or mismatching
+  digest/progress as refusal inputs. Existing aggregate refusals do not discharge each originally declared
+  per-tick stage/pending/RNG/pause omission; their real continuation carrier and omission harness remain owed.
+- **C21:** public Brain.respond is learning-bearing; an evaluator using it instead of brain.brain.route can
+  break zero-event/unchanged-weight purity. The missing complete G6 evaluator does not erase this input.
+- **C23/C24:** PressureMeter accepts a zero-baseline circuit or admit of a mid-run circuit with a large first
+  update; cold-start/no-request requirements can fail in a mutant. State/cursor/live restore integration is owed.
+- **C25:** _work_patches wraps actual forward loops. Dense zero-weight inputs that still iterate every matrix
+  element and a unit-removing twin construct equality versus exact saved-operation controls, not proxy counts.
+- **C26:** Meter.judge before freeze/on another winner/twice and RetentionSets.read_final before freeze/twice
+  are public failure inputs. Durable Brain-bound final-consumption refusal is a distinct missing capability.
+- **Applied-mask refusals:** prepare rejects the fully-empty shape, but public joint_mask_search.mask_digest
+  and Ledger.record_event can construct a hand-built empty prepared row, matching commit and own-tick digest
+  claim. APPLIED_EMPTY_MASK must remain. Sentinel-first precedence remains APPLIED_MISSING, then
+  APPLIED_UNCOMMITTED, APPLIED_NOT_PREPARED, APPLIED_EMPTY_MASK; Python None is distinct from string "none".
+  An empty row at another tick must not shadow an honest claim; a kept-only own-tick mask stays admissible.
+- **POST-DATA F5 K10c:** sleep_plasticity_ab's red = "K10c" creates k10c.red during the audited interval;
+  the one authorized aggregate frame does not authorize it. Keep this red and historical K10a/b/d unchanged.
+
+### A6. Openings carried: every outstanding clause is UNVERIFIED
+
+- **UNVERIFIED -- exposure manifests:** global (a)-(d) confirm/reserve non-exposure and any new R3 cohort;
+  A1 is the full text-audit limit, not execution authority. F5's known prior exposure is not an opening.
+- **UNVERIFIED -- incumbent campaign:** current transitive runtime census, journaled-workload calibration,
+  sensitive P-DP control, P-SR turnover/exemption expiry, and actual per-pruner benefit/efficiency dispositions.
+- **UNVERIFIED -- eligible mappings:** every actual population's identity/alias/admission and reversible mask,
+  including legacy and posed actors; static census/snapshot readers do not satisfy all-eligible participation.
+- **UNVERIFIED -- mask/search binding:** solved-problem feed/readout/return consumer, even-sweep median
+  reconciliation, real cost rows, durable once-only final retention consumption and A14 state-reset composition.
+- **UNVERIFIED -- A12/D21/durable save:** non-sentinel progress, real apply/recovery/missing-commit completion,
+  all seven full-state crash oracles, complete kept/pruned records and (b)-winner future_d fresh-process re-solve.
+  D20's existing matching reader does not close these or its rolled-back-preparation integration case.
+- **UNVERIFIED -- pressure:** lawful burst writer and declared sleep-learning carrier, real solved_sink campaign
+  arm, baseline/tick writer/restorer, and post-decision live scheduler/C13 equality. No current timing gain is claimed.
+- **UNVERIFIED -- extended bout continuation:** complete eligible participation, persistent pause/wake/structural
+  candidates, reconciled CARRIERS/C20 omissions, label-scaled scheduling and fresh-process gain/stage equality.
+  Aggregate redo and F5's historical NULL satisfy none of those broader claims by themselves.
+- **UNVERIFIED -- P-LAKE/percept retention:** retain P-LAKE's recorded scope exclusion and the condition that a
+  future 0x08 reclaimer first immortalizes pruned percept-unit weights. G3's problem-unit journal is not that port;
+  no live reclaimer, loss or successful retention proof was measured here. Older owner-batch originals are UNREAD.
+- **UNVERIFIED -- cost and external obligations:** workload-specific dev timing/work, search/restart/preview
+  overhead, label-scaled-night cost/interference and G8 old-checkpoint translation. Old estimates are not main's
+  measured ceiling. #2135's named waits remain; complete G6 acceptance still requires its reviewed build arcs.
+
+This amendment is documentation, not a scientific pass or an integrated engine completion. It preserves the
+surviving instruments, all reachable reds, historical measurements and owner-drawn sleep/save obligations.
