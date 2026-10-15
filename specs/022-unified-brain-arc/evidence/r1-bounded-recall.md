@@ -758,3 +758,217 @@ blocking integration is ANSWERED: board #518, owner 2026-10-10 verbatim "X1: A" 
 translation test takes a dated amendment, and existing g0c.v1 checkpoints must still load and translate. R2's accepted application
 is committed on the integrator (18ca5695, task R2-APPLICATION-1013-V2). R1's deciding run 14100-14107 still waits for its own
 pre-registration-vs-tree check (plan step 1.0, board #2133).
+
+## DATED PRE-DATA AMENDMENT 2026-10-15 (row-plan 1.0 against fbb1f38e; no confirmatory or reserve data read)
+
+Additive reconciliation of 2.2, 2.9, 2.16 and the absent implementation of 2.7/2.11/2.14/2.18-2.23.
+All earlier bytes and scientific bars remain. Basis: row-plan 1.0, codex-diff-r1-1015 REPORT.md and census.txt,
+board #2751, reviews #2759/#2780, integrator correction #2784. The amendment lane independently checked the symbols
+at fbb1f38eadb1a063fd15d7904dfcb858cfdb0bf9 against registration tree 4488fd9e24e26b3b01392b878715f63bb5244fd9.
+This is a documentation amendment, not a campaign result, implementation delivery, KEEP or ADOPT.
+
+### A1. Precondition: qualified pre-data licence
+
+No R1 confirmatory or reserve output was read or produced by this lane. The heading's broader pre-data statement is
+QUALIFIED: an exact-number textual audit of every tracked text blob at BOTH pinned trees found no execution/result
+evidence for 14100-14107, 14108-14115, 14300-14307 or 14308-14315. There were 25 matching lines at registration and
+26 on main: allocations, dated registration references, one pending-ADOPT declaration on the branch, and unrelated
+decimal values. The detector finds the actual allocation text at both pins; every non-registration hit was inspected.
+The old recall_audit.check_seed/seed_range accept ANY seed in 14000-14999, including reserved blocks. Absence of the
+campaign on main cannot prove non-exposure on claude/r1. External rows/ directories, untracked outputs, binary/NPZ
+artifacts, checkpoints, other logs, snapshots, processes and machines were not audited. The integrator must establish
+broader exposure provenance before confirmation; this is not a categorical never-read claim.
+
+Development 14000-14009, planted reds 14200-14239 and design 14900-14909 remain exposed allocations. In particular,
+2.25 ALREADY reports 14901-14903, including a partial earlier 14901 run. Those are historical design readings, not new
+measurements here and not confirmation. Selection stays on dev/design data, once-only confirmation on 14100-14107;
+reserve 14108-14115 is only for a named harness defect. A second implementation after a recorded first KEEP uses
+14300-14307 and reserve 14308-14315, never spent first-implementation confirmation to guide its build.
+
+### A2. Changed or absent clauses: mechanism at the main pin
+
+- 1.1/2.1/2.5: Brain.recall_episode_durable still tries EpisodeConsolidator.recall_episode, then LakeRecall.recall,
+  then newest-first home.load_episodes. Brain.respond still passes min_conf=1.0. Working/window tiers are preserved;
+  their FALSE answers remain incumbent findings under 2.14 D-a, never a successor null. Facts/chat remain other jobs.
+- 2.2/2.9/D5: home.LEARNER_EVENT_KINDS now contains teach, turn, sleep, sleep_bout, percept, ctxread, posed_problem.
+  home.is_autobiographical_episode is still the ONE exclusion predicate; home.load_episodes uses it by default.
+  C8 keeps expected MISS, and an answer to an excluded kind is FALSE. No local copy of this predicate is permitted.
+- 2.16/F3/D8: home.next_session still computes 1 + max session over ALL session-bearing episodes. The caller changed:
+  learner_events.scan_learner_events computes it from the all-kinds scan; Brain._r2_boot requests strict=True and
+  return_receipt=True. Brain._session starts None and becomes str(session) only after hydration, _r2_may_rearm and
+  the remaining reconciliation/install steps succeed. A helper definition alone does not establish a usable session.
+  F3 must consume that installed attribute, never allocate a second counter or call next_session per write. A failed
+  boot with no session must refuse the durable autobiographical write visibly; this F3 writer fix is NOT on main.
+- 2.2 admission: learner_events.KIND_SPECS has schemas for teach, turn, sleep, sleep_bout, ctxread, posed_problem,
+  but not percept. Its _refusal checks required slots/schema/encoder/identity before valid/split exclusions.
+  scan_learner_events marks malformed or unbound rows critical; an incomplete receipt cannot rearm Brain's writer.
+  The old make_workload's minimal non-teach learner rows are therefore NOT a healthy current recovery fixture.
+  Prospective fixture amendment: the intact workload keeps its 40 C8 cues, legacy/session autobiographical mix,
+  ten legacy teach records, C1-C7/C10 counts, collisions, None traps, filler and three-boot schedule. Supported-kind
+  distractors must carry every current schema/identity/encoder field, with valid="0" so they are classified invalid,
+  excluded from learning without a critical refusal, and still excluded from recall by the ONE predicate. Include
+  all six supported kinds, including sleep_bout/ctxread/posed_problem; posed source and ctxread numeric/digest slots
+  must pass their earlier validation. Legacy teach upcasting must be checked against the current _upcast contract.
+  Add a SEPARATE C8 admission-refusal arm for percept (unbound) and the old minimal/malformed records, on cloned
+  isolated homes. It must show incomplete recovery, a closed writer, no installed session, and expected MISS for
+  excluded-kind recall through the real consumer. A boot refusal is not a passing C8 recall answer. This adds
+  coverage; it neither removes the 40 intact probes nor permits REFUSED/ERROR on intact deep-required cues.
+  Freeze generator code, schemas, counts, cue schedule and lake digests on dev seeds before any confirmation. If the
+  port cannot realize this recipe, record another dated pre-data amendment first; do not silently omit a kind.
+- 2.7 F1/2.18: the main deep test remains all(str(ep.get(k)) == str(v) ...); LakeRecall._is_subcue has the same trap.
+  Public lake_recall.is_subcue and PROVENANCE_SLOTS are absent. Restore presence AND str-equality, including refusal
+  of empty/provenance-only cues; content+session still verifies session. Restore F3b's exclusion of session from the
+  window confidence denominator. Margin/retrieval still encode the whole cue: no margin-equivalence claim is made.
+- 2.7 F2/F3: Brain._w8_tick calls home.save_episode(_ep) and appends to _episode_window without checking its return;
+  the durable episode is not stamped with Brain._session. Restore the F2 gate and F3 durable-copy stamping before
+  A/B. The working episode stays unstamped. Existing R2 session machinery does not implement these R1 writer fixes.
+- 2.14 F4/B5w: Brain.recall_episode_durable still swallows deep-read exceptions into MISS; restore visible REFUSED
+  with exception type/message before equivalence. Brain._restore_episodes still swallows boot failures into
+  _episodes_restored=0. Its oracle count/content census remains a separate reported incumbent finding, not F4 credit.
+- 2.11 P3/S1/S2/S9: BinLog.replay remains the sequential framing reader; replay_located/read_at are absent. The port
+  must add the shared cached-instance interface without a second parser or BinLog, keeping order, torn-stop and no
+  replay repair. lake_bridge.located_records constructs another BinLog and is not a substitute for that interface.
+- 2.11/2.19-2.23: EpisodeIndex is absent; LakeIndex survives, including put_batch/logical_dump_digest, but iter_range,
+  clear and data_version are absent. Restore token rows, slot-verified source bytes, tail fold and rebuild/refusal.
+  Carry _key/FMT/ep_fmt frame checks, _row_hash/ep_digest/ep_rows, _guard_cache/data_version, _anchor_ok/ep_lake_id,
+  lazy cursor closure, transactional _reset, one index-only heal and watermark == anchor-frame end. These names
+  describe the registered candidate at 4488fd9e, NOT mechanisms implemented on fbb1f38e. Keep the accident-model
+  residuals in 2.21-2.22: consistent key/check/seq forgery, id reuse or zero identity, same-connection tampering and
+  file replacement under an open handle are not newly proved safe. The superseded last-anchor-only design stays dead.
+- 2.7 I7/2.14/2.22: home.LiveHomeRefused, assert_not_live_home, require_isolated_home and throwaway_home(parent=)
+  survive. Reuse this ONE resolved-path/alias/containment guard. The absent campaign must restore report_path,
+  make_guarded_dir, _stamped, _drop_scratch, _release_logs, chunked hashing, actual resolved D: homes and >=15 GiB
+  free-space preflight for cost runs; report hardlinks/aliases and cleanup paths remain guarded.
+- 2.11 registration: neither recall_audit nor episode_index is in REGIONS, run_selfchecks or dormancy exemptions
+  at main. Their dedicated test modules are absent too; the module/registration/test build is still owed together.
+- 2.4/2.20/2.25 deciding schedule: even the registration CLI is incomplete. recall_audit.SIZES has no W_live;
+  _cost_seed omits scale_ratio, so b6_bars returns scale=None, never True. bars aggregates only B1/B2/B5; B3/B4
+  fixtures live in test_episode_index. Rebuilding only the old CLI is insufficient: freeze full B1-B6 aggregation,
+  B3/B4 proof provenance and two-seed W_live scaling before deciding. No absent measurement counts as a pass.
+
+### A3. Owner rulings and attribution
+
+Board #1037/#1039, 2026-10-11, relayed by designated coordinator codex-sndl-coord-1010:
+the owner's exact answer was "Adopt these three decisions". The relevant choices put to the owner were:
+"R2 stops all learning writes after a write failure until restart, with its old failed-write test updated in a dated
+amendment"; and "R3 retires the three capabilities that failed their frozen tests, while keeping the sleep requirement."
+The first quoted choice is wrapped across lines here without changing its words. The coordinator's application,
+NOT additional owner speech, in owner-dispositions-adopted-2026-10-11.md names the retired capabilities:
+"interaction replay/deposit cap, Benna-Fusi rest/rebinding cap, attractor.sleep learning".
+The R2 latch changes R1's shared admission/session prerequisite. Those R3 retirements preserve distinct wake, storage,
+recall and episodic-replay jobs; they do not retire R1 tiers or any R1 red.
+
+ORDERING DISCLOSURE: the shared R2 latch/recovery mechanism and its tests already exist on fbb1f38e. This R1 amendment
+is pre-data on the QUALIFIED A1 basis, but POST-implementation of those inherited changes. It cannot retroactively
+satisfy the requirement to amend before implementing/checking them. R1's absent F1-F4/F3b and campaign remain unbuilt
+on this pin; their historical branch implementations/design readings are not erased by this amendment.
+
+Board #518, owner 2026-10-10 verbatim: "X1: A". The following is the advisor-relayed RULING, not extra owner speech:
+"R2 keeps checkpoint schema r2.v1." Its condition preserves loading/translating existing g0c.v1 checkpoints.
+X1 is ANSWERED, as the 2026-10-13 note already says. The condition remains UNVERIFIED here: Brain._r2_boot refuses
+unbound/legacy checkpoints on main despite a retained learner upcaster; do not infer translation from that helper.
+
+Board #2106, owner selection relayed by integrator claude-cont-1013, 2026-10-13: "A: journal the bout".
+The selected option's exact wording was: "Add a new R2 event kind with deterministic restart redo, and a dated
+post-data amendment loosening K10c to allow exactly that write. Bout effects become durable brain learning."
+#2105 was the integrator's question and recommendation. This is explicitly POST-DATA F5/K10c history, recorded at
+the head of g6-sleep-durable-memory.md; R1 does not reopen it or relabel it pre-data. Its R1 consequence is the new
+sleep_bout distractor/coverage contract in A2. Brain._r2_run_bout journals that kind; redo uses staged_sleep_bout.
+
+Other supplied rulings do not amend R1's bars: #2135's owner selection "Fix the stack first" governs A_ii; #2565's
+"Bouts scale with labels" governs the retention night. #123 is a G5 credit note; #1779 a preparation handoff;
+#1048 a claim; #2719 a Codex review. They confer no R1 campaign release or measured recall result.
+
+### A4. Campaign instrument: absent, rebuild owed before confirmation
+
+instruments/recall_audit.py, substrate/episode_index.py, test_recall_audit and test_episode_index are ABSENT at main,
+though present at 4488fd9e. The instrument/candidate main-lineage path history is empty. Existing consolidation,
+durability and lake-recall tests remain coverage, not the registered campaign; none was run by this lane.
+Independent census controls find recall_episode_durable/save_episode at BOTH trees; --r1-audit and --r1-cost each
+have TWO matching lines at registration and ZERO at main, as #2759/#2780/#2784 corrected, not one matching line.
+The campaign is not runnable as registered. It will be REBUILT ON MAIN IN ITS OWN BUILD ARC against this amendment;
+this lane builds no campaign, successor or source fix and reads no deciding seeds.
+
+That arc must contain the A2 fixture recipe and frozen generator/oracle, I1-I7 controls, incumbent/scan_only,
+working/window/deep neuters, successor/successor_deep and succ_bypass arms through the real consumer; F1-F4/F3b;
+S1-S9 plus all 2.21-2.23 corruption, cache, heal, framing and safety folds; B3/B4 fixtures and named result links;
+new-process B5 identity, B5w two identical 100-tick boots and independent lake-derived restore count/content census.
+Controls precede findings (ControlFailed halts). The oracle remains generator-side, stringified-deduplicated,
+presence-checked, importing only the home recallability predicate, never a storage/retrieval reader as its truth.
+
+B1 stays deterministic on every seed, deep-attributed plus deep-required cues; intact MISS/REFUSED/ERROR loses a
+present record and absent REFUSED/ERROR loses abstention. B2 compares exact returned episode identity on C3-C6 in
+successor_deep versus scan_only. Only explicitly faulted B4 arms permit VERIFIED or visible REFUSED. Report chain
+and by-tier outcomes beside these bars. Preserved-tier FALSE routes to the incumbent, not a successor failure.
+
+B6 retains warm W_real deep p95 <=25 ms AND <=scan p50/10, ABAB in one child, traced peak <=1 MiB, standing index
+RAM <=1 KiB/recallable episode and warm-open delta <=1.0 s (cold build separate). W_real remains 50,000 formed
+episodes plus 121,000 4,200-byte foreign records; episode count is a projection. Two W_live seeds must measure
+p95(W_live)/p95(W_real) <=2 at the registered approximately 6.5x scale; record actual byte mix/size, not a live scan.
+Use 2.20's 40 cost cues per C3/C4/C7/C6 (C6 half novel/half None), two rounds, separate traced sample and RSS delta.
+CostInvalid blocks scoring on wrong successor answers; scan faults remain reported incumbent findings. B7 drift
+>50%, a missing witness or a non-OK witness is VOID, with ONE same-seed retry then halt, never a reserve replacement.
+I5's planted timings test load_verdict only; real contention sensitivity remains UNVERIFIED.
+
+Rebuild and validate on exposed dev/design allocations first, without recasting 2.25 as a current-stack result.
+The derived file remains the selected first implementation; neither historical RAM-fallback trigger fired. New
+workload bytes/boot work need their own disclosed current-stack measurements before any fallback or ADOPT claim.
+All B1-B6 on all eight seeds, reachable reds and no unrefuted panel blocker are still required for ADOPT; only then
+does the live deep scan retire, with the scan retained instrument-side. A measured failure is KEEP under 2.5;
+missing implementation is BLOCKED, not a measured null. Require reviewed amendment/build on the stacked head,
+broader exposure provenance, campaign DONE and explicit fresh host release before any confirmation or cost arm.
+
+### A5. Reachable reds: missing apparatus never means impossible input
+
+No red was executed here. Every campaign invocation is absent on main, but NO R1 criterion is deleted under P8:
+public input constructions survive, or need the absent registered candidate restored first. Static constructions:
+
+- I1 and intact-refusal red: cue/result dictionaries through Brain.recall_episode_durable admit a planted wrong
+  episode or refused C7 result; restored scoring must read FALSE or L=1. A working-tier FALSE stays a chain finding.
+- I2: wrap LakeRecall.recall/home.load_episodes on the real consumer; a wrong-attribute wrap counts zero on a known
+  deep cue. I3/I4: caller-provided slow callable and 10 MiB allocation expose outside-call timing and peak errors.
+- I5/B7: supplied witness values, missing witness and second VOID reach the verdict/retry checks; spinners remain
+  possible but are not authorized here. I6: make_workload seed/digest/cue comparisons and an altered seeded stream.
+- I7/report/drive/cleanup: home.assert_not_live_home and throwaway_home accept DECOY aliases, containment, unset
+  NORD_HOME and safe scratch positives as inputs; decoy hardlinks, a C: resolution and planted low disk readings
+  reach the rebuilt campaign's entry/preflight checks. Never target the real live home to construct these reds.
+- F1/F4: home.save_episode of a slot-lacking episode plus a None cue through deep recall, and a load_episodes
+  callable raising a named error. Main currently permits the missing-slot match and swallows the read exception.
+- F2/B5w: two identical 100-tick boots with F3 neutered make duplicate save_episode returns; F2 reverted over-counts
+  the window, F2 fixed does not. F3 must be neutered so its new identities cannot mask this attribution red.
+- F3/D8/F3b: two boots writing only autobiographical episodes exercise next_session's all-kinds maximum; a mixed
+  learner/episode/learner boot detects per-write allocation. Public save_episode/next_session and recall cue
+  dictionaries construct these inputs. Provenance-only and content+session cues expose F3b confidence/matching.
+  A malformed learner record before boot constructs the new no-session/refused-write red; the fixed writer is owed.
+- S1/S2/S9: public BinLog append/replay, independent frame-length sums, a torn scratch tail and BinLog(path)
+  construct payload-offset, skipped-record, continue-after-torn, repair-side-effect and duplicate-instance reds;
+  restore replay_located/read_at before running the candidate contracts. Hash bytes before/after the torn read.
+- S3/S4/S5: save_episode behind the index, LakeIndex row redirection and KnowledgeLog.consolidate/BinLog.rewrite
+  construct lost-tail, unverified-wrong-offset and moved-offset inputs. Restore candidate interfaces first.
+- S6/S7: public LakeIndex/SQLite file damage, a read-error callable, planted rows, delete/rebuild and one appended
+  episode construct visible-refusal, logical-digest and lake-tracking checks; cross-compaction equality is logical.
+- S8: a BinLog.replay full pass per query constructs the bypass; retain both the deterministic frame-count red
+  and the measured W_real latency red. Old design readings are not proof on this composition.
+- 2.21-2.23: another SQLite connection deleting/changing rows, corrupted watermark/anchor metadata, file truncation,
+  same-last-frame rewrite and injected heal writes construct digest/cache/identity/reset/heal/cursor checks.
+  Keep the layered red: with frame checking/heal on, removing only the anchor may not lose an answer; remove the
+  visibility layer too as registered, and assert _anchor_ok identity independently. A masked single neuter does not
+  justify deleting its criterion. No current test result or claim beyond the stated accident model is made.
+
+### A6. Openings carried, each UNVERIFIED
+
+- UNVERIFIED: broader held-out non-exposure, fresh host release, current-stack campaign/controls and every B1-B7
+  reading. The four held-out blocks stay reserved on A1's qualified basis, pending integrator provenance.
+- UNVERIFIED: F1-F4/F3b, no-session writer refusal, current-schema C8 fixtures, shared-session behavior across boots,
+  full restored candidate and complete W_live/scale/conjunction driver. A2/A4 are build obligations,
+  not satisfied checks.
+- UNVERIFIED: Q1 teach recall, Q2 fact/chat widening, Q3 live episode count, Q4 session-byte change, Q5 working-tier
+  slot verification and Q7 BinLog dedup RAM. Q6 has the historical derived-file selection in 2.25, not new cost proof.
+- UNVERIFIED: _restore_episodes error visibility/count/content, F3b margin effects, real-contention witness sensitivity,
+  and every listed accident-model residual. No historical timing or projection is asserted to hold on current main.
+- UNVERIFIED: #518's legacy checkpoint translation condition; X1's ANSWERED status is kept and not reopened.
+- UNREAD primary records: board #2 and #2133 (no supplied dump); PROTOCOL 4b/5, p0_reports R1, DEPENDENCIES rulings
+  9-11/16, lead ruling 20, OWNER_QUESTIONS, b3/cp4 and r1_p3 panel artifacts, original probes/design raw outputs.
+  Their summaries in this file were read; their primary records were not independently verified by this lane.
+- UNVERIFIED: main delivery, independent amendment review, full stacked validation, final record and any adoption.
+  This append closes the bounded documentation task only; the integrator owns reviews, integration and the build arc.
