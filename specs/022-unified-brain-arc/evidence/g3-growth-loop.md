@@ -926,3 +926,280 @@ Ties to the state-branch amendment (98d92203) and its ctxread row types (21ca1bc
   carrier bytes and fingerprints), not at N=256. Finite `random_feed` output requires a REPRESENTABLE column norm: a finite, sign-valid
   column whose L2 norm exceeds the float max is REFUSED, not scaled (the batch-2 fold that fixed it is battery-verified only). The
   adapter refusal in `growth_loop` (6fed31ed) DETECTS corruption after admission and cannot undo it.
+
+## DATED PRE-DATA AMENDMENT 2026-10-15 (row-plan 1.0 against fbb1f38e; no confirmatory or reserve data read)
+
+### A1. Precondition: QUALIFIED, not a certificate of seed non-exposure
+
+Amends 2.1-2.16 and the dated disclosures only as specified below; every earlier byte is retained. Basis: G3 row-plan
+1.0 REPORT.md and census.txt, relayed at #2752 and independently reviewed at #2760 and #2781. Source claims below
+were checked by this lane's own git grep/show at fbb1f38e, against registration/build tree 5e608d6c where needed.
+The latter's 2026-10-08 branch addendum is supplemental history, absent from this evidence on main; it is not a
+replacement registration or a completed experiment. Main's old DRAFT header is historical, not a new licence.
+
+The heading means this lane read no confirmatory/reserve outcome or newly generated protected-seed construction.
+The supplied two-tree TEXT audit (src/tests/tools/specs) found no G3 trained-arm or deciding campaign result.
+It does NOT prove that no protected seed was read. `g7-unit-label-gate.md`, amendment (f), "T1's judging set",
+records, verbatim:
+"Future items counted in distinct items, reproduced at seeds 8000 and 9300" using
+`tp.PROBLEMS[id].items(seed, "future")`. This is recorded construction-only exposure at T1 seed 9300, not a trained
+T1 result. It requires an integrator provenance disposition before that family can be called pristine.
+`test_the_batch_seed_never_leaves_the_g3_block` contains seed 9300/batch 7 -> placement seed 9307; the feed tests
+contain protected numbers as refusal inputs. Test text alone establishes neither execution nor outcome exposure.
+The old campaign's `preflight(seeds, go=...)` accepted a caller-supplied go; missing main code cannot exclude its use.
+External rows/, binary lakes/checkpoints, untracked logs, other clones/machines and intermediate execution artifacts
+are UNEXAMINED. This lane did not audit them. The supplied audit is a qualified basis for prospective documentation,
+never permission to rerun an exposed cohort or read a protected family. Fresh provenance/go remains required.
+
+ORDERING DISCLOSURE: this is pre-outcome on that qualified basis but POST-implementation for the landed adapter,
+chat-grown/return carriers, reconciliation, latch and bout paths. It cannot retrospectively precede their build/tests.
+In particular the #1037 prospective-amendment-before-new-checks ordering was breached by the already-landed latch
+implementation and tests; this amendment records the breach, not a repaired chronology or a test result.
+
+### A2. Changed or absent clauses: mechanism actually landed
+
+Symbols below belong to src/snn_data_lake at fbb1f38e unless a historical tree is explicit. Presence is not charge.
+
+- **2.1/2.16 scope.** `growth_loop.GrowthLoop` now coexists with `CanonicalGrowthAdapter`,
+  `readout/posed_problem.PosedActor` and `Brain._g9_apply_source`. Bound ordinary operations exist; a deciding
+  G3 growth/engine result does not follow. `GrowthLoop.__init__` calls the canonical class's `require_ready`,
+  whose body unconditionally raises `LedgerError("G9_A_UNREADY: ...")`, including after engine binding.
+  The surviving generic loop and public admission APIs do not supply the registered deciding experiment.
+- **2.2 problems.** `taught_problems.Problem`, `read_split`, `solved` and `solves_stably` survive unchanged.
+  `CanonicalGrowthAdapter.__init__` accepts only the exact registered ii.xor/ii.twin objects and canonical stack.
+  C1-d primary and i.S0C1 secondary campaign coverage is ABSENT; ii.xor is not promoted to primary. C1-d remains
+  REPRESENTABLE, NOT SHOWN LEARNABLE in the G2 record; its learned positive and C16 are prerequisites, not results.
+- **2.2/2.9 C11 retention.** `CanonicalGrowthAdapter.read_retention` reads old-task selection sets with snapshot/
+  restore through `RetentionSets`; a final read with a meter raises `G9_RETENTION_FINAL_UNRECORDED` until durable
+  consumption exists. Selection is not untouched final judgement. A_ii/S0C1 repair gates remain as A3 states.
+- **2.3 real port.** `SpikingInteractionLearner._argmax_label` adds `posed_problem.chat_grown_drives` when
+  `_g9_context` is present; `_deposit` calls `chat_grown_deposit`. `actor_context` carries problem_id, unit rows,
+  return afferents, t_post_g and out_eligible; `sync_actor_context` transfers actual learned output weights back.
+  `grown_code.segment_psp` and `GrownReturnPort` supply the latency/return primitives. This is not proof of the
+  registered complete frozen52/grown/reservoir tagging, masks or six-arm port. Frozen text_features(text,52) and
+  separate unit_id-ordered segments remain required; None drive/deposit/checkpoint identity and C16 are UNVERIFIED
+  on the actual campaign consumer. Ablations must cover that consumer's real state and return contribution.
+- **2.3 redo/version.** `learner_events.KIND_SPECS` adds posed_problem; `Brain._g9_apply_source` and `PosedActor`
+  bind typed source effects to the common writer and restore path. `grown_version` covers ordered unit parameters,
+  active flags and output weights, not the entire return queue or column gamma/batch membership. Bind those actual
+  carriers and their replay/redo domain before data; crc presence is not the registered log-position redo proof.
+  Keep input weights frozen after admission, redo at each event's version and replay through current units.
+- **2.3 Dale/state branch.** `chat_grown_deposit` calls shared `clip_to_sign`; `apply_unit_row`, `clip_feed`,
+  `check_feed` and `unit_label_gate.check_saved` retain their limited checks. C17 still covers every actual deposit
+  and restore, not just isolated clipping. ctxread has typed schema slots in `KIND_SPECS`; `Brain._record_ctxread`
+  and `grown_code.reconstruct_state` remain ABSENT in src/tests/tools at both comparison trees. `GrownUnit` is a
+  stateless latency unit. The 10-06(f) parked step, three reconstruction reds and memory redo exclusion still stand;
+  no schema-only recovery claim, no confirmatory memory growth, and no C5 pass is asserted.
+- **2.4 diagnosis.** `capacity_certificate.current_keys`/`diagnose` survive byte-identically and accept grown units.
+  The canonical adapter instead passes `history_texts=None, units=()` and reports canonical-frozen-code-only;
+  the helper's grown-code separator is unbound and no-witness cases may remain UNRESOLVED. Full current-code,
+  history and actual return-aware diagnosis is owed. Frozen-only diagnosis cannot replace that gate.
+- **2.5 lifecycle/source.** `candidate_lifecycle` draw/score/select/prune, `NGSNN.fit`/`prune_unearned`, and
+  `NeurogenesisSelfImprove._refit`/`growth_fingerprint` are byte-identical across the compared trees; retained
+  equivalence tests are substantive tests, not a new execution. Preserve the 1e12 tie during this refactor.
+  `growth_loop.trace_train`/`label_probabilities` retain the LOCAL fixed-random-B, own-eligibility rule at T=1.
+  Actual grown-source search/selection/admission runners are ABSENT. R2 transition_sink/hydrate_transitions are
+  absent at both trees, an adjacent unbuilt obligation, not a newly measured G3 null.
+- **2.6 attempts.** `CanonicalGrowthAdapter.attempt` teaches the requested pre-frozen epochs, then calls
+  `tp.solved` once on validation. It does not test epoch-end stable-10 or stop at its first run. `GrowthLoop._attempt`
+  records configured epochs, not a demonstrated actual-exposure history. Restore the registered E=400 maximum,
+  STABLE=10 consecutive epoch-end solves, early stop and exact recorded exposure before deciding data, or obtain
+  a further reviewed prospective scientific amendment. A final all-correct read is not renamed stable-10.
+- **2.6 finite budgets.** `GrowthLoop.run`, `_paused`, GROWTH_KINDS, A_MAX=3, `Ledger.set_state`, `new_teaching`,
+  `record_run`, `GrowthStop.observe_problem`/`should_grow_problem` and solved_sink retain the finite generic paths.
+  Preserve DATA/open, LEARNING_RULE_DEFICIT and UNRESOLVED without scoring readiness refusal as scientific failure.
+  `Ledger.open_problem` now calls G2's named unset-beta refusal when a positive-spend baseline exists and beta is
+  None; `taught_problems.BETA` remains None. First/no-baseline budget=52 does not require beta. SEQUENCE or any
+  actual positive-spend baseline requires its dated dev fixing; sleep grants no fresh budget, teaching at most three.
+- **2.6/10-04/10-06 births.** `Ledger.record_units`, `_birth_row`, `known_unit`, `birth_records`, `first_sign`,
+  `make_admission` and `grown_code.admit_rows` retain weight-bearing immortal births and one-use ticket checks.
+  `CanonicalGrowthAdapter.admit`/`Brain._g9_apply_source` add actor admission with typed feed/return descriptors.
+  Capacity birth fields are not every promised kind/RNG/memory carrier or an R2 installation receipt.
+  NEW `batch_reconciler.reconcile_batches`, called by `GrowthLoop.run` and `Brain._g9_reconcile`, scans the same
+  journal for sequence/birth/batch/spend inconsistencies and refuses by name. This supersedes "no reconciler" in
+  10-06(d); it appends no repair, removes no birth and does not close every crash window. Ticket/segment checks
+  after admission still detect corruption without undoing it (10-06(e), 10-07(c)).
+- **2.7/2.10 columns.** `place_labeled`, `label_of`, `labels_by`, `require_admissible` and `column_latencies`
+  survive. `growth/column_batch.py` and its test are ABSENT on main, present at 5e608d6c. COL/SINGLE/BATCH9 assembly,
+  site/targeting, k={4,8,12} primary8, counting every E/I and gamma/config versioning remain build obligations.
+  G7 amendments (e)/(f) RECORD A2 resolving its O9 (= G3 O10): the T1 split is accepted and retention stands in.
+  Original OWNER_DECISIONS_2026-10-04.md is UNREAD here; this is a G7-recorded resolution, not fresh direct-owner
+  verification or a renewed request for the same ruling. G7 (i)/(j) retain Q-COL and version debt, and the entire
+  T1 family still waits on T3. Kernel-free primary arms do not wait on T3 solely because T1 does.
+- **2.8/2.9/2.10 instruments.** `instruments/growth_campaign.py` and its test are ABSENT on main, present at
+  5e608d6c; its old primary helper consumed supplied outcome dictionaries, not arm runs. Main's changed
+  `paired_contrast.contrast` alone can mark positive degenerate differences MET; G3 superiority must instead
+  read NOT MET for every zero-variance sample. Non-inferiority uses its common value (>0 MET, otherwise NOT MET).
+  The six-arm, T1 and Astra runners, real C1-C19 measurements and causal context experiment remain ABSENT.
+- **2.10 feed.** `grown_feed` and `recurrent_pool` are byte-identical across these trees. NEW registered
+  `feed_readout.arm_latencies`/`pool_first_spikes` return direct or hosted-pool first-spike latencies;
+  `_build_seed` permits dev/fixture seeds only, and the helper refuses N>256. `feed_u_contrasts` enforces the two
+  nondegenerate superiority contrasts on supplied U values; none is a trained arm runner or feed benefit.
+  N=3 fixture identity is not N=256 proof. G9's additional actual return/feed binding does not supply G3's campaign.
+- **2.11-2.16 guards/cost/closing.** Campaign preflight/go, child-home and paired-snapshot helpers are ABSENT on
+  main; common live-home/snapshot guards and an explicit Ledger path survive, without proving arm isolation.
+  `tools/lake_append_baseline.json` is byte-identical, tag11 fixture p95=15242 B, explicitly not a cumulative bound.
+  Old timings/projections are not measured costs for new posed events, return carriers, retries or scaled nights.
+  Measure actual append classes, evaluations, teaching, final reads and night cost on the authorized workload.
+  Old panel/battery statements retain their historical scope. Main's real tests and registrations do not include
+  the missing campaign/column modules. Stacked review, validation, closing record and engine credit remain owed.
+
+### A3. Owner rulings and their precise authority
+
+The following words are quotations, not new scientific results. Supplied board numbers refer to read text dumps.
+
+- **#1037/#1039, codex-sndl-coord-1010 relaying the owner's direct answer:** "Adopt these three decisions".
+  The exact question adopted was: "Three existing owner-only decisions block final validation. My proposed
+  choices are: R2 stops all learning writes after a write failure until restart, with its old failed-write test
+  updated in a dated amendment; G6 includes every plastic circuit in the eligible-brain arm; R3 retires the three
+  capabilities that failed their frozen tests, while keeping the sleep requirement. Which disposition should I
+  record?" The coordinator's application in owner-dispositions-adopted-2026-10-11.md is separately attributed:
+  "all kinds on the common R2 learner-event writer latch after an uncertain failed write until successful restart
+  reconciliation; write the dated prospective amendment of the old FAILWRITE schedule before implementing or running
+  its new checks." G3 inherits the actual `Brain._append_learner_event` all-learning latch and rollback boundary,
+  not per-kind retry after a failed write. A latched arm is unreadable, never silently scored unsolved or retried.
+  Main already implements/tests the latch: the ordering breach is disclosed in A1. R3's named interaction
+  replay/deposit, Benna-Fusi rest/rebinding and attractor.sleep learning caps are retired; sleep and distinct
+  wake/storage/recall/episodic-replay jobs survive. `Brain._r2_sleep_step` is structural-only. Explicit public
+  `SpikingInteractionLearner.replay` remains callable: retirement of a live cap is not API deletion or a P8 licence.
+- **#518, Claude advisor at the owner's instruction:** owner's verbatim "X1: A". The relay's condition is:
+  "the amended G8 translation test must load existing g0c.v1 checkpoints and translate them into r2.v1, so old
+  checkpoints keep working". r2.v1 approval is not proof of this: `Brain._r2_boot` refuses unbound legacy migration
+  despite a surviving learner upcaster. Translation remains an UNVERIFIED integration tension, not deleted.
+- **#2106, claude-cont-1013 verbatim relay of the owner's selection:** "A: journal the bout" -- "Add a new R2 event
+  kind with deterministic restart redo, and a dated post-data amendment loosening K10c to allow exactly that write.
+  Bout effects become durable brain learning." #2105 was the integrator's question, not an owner decision.
+  `staged_sleep_bout.run_bout` dispatches persistent bouts through `Brain._r2_run_bout`; redo uses `learner_bout`.
+  G6's labelled POST-DATA 2026-10-13 K10c amendment remains POST-DATA. G3 cannot reopen F5 or claim no bout writes.
+- **#2135, integrator claude-cont-1013 verbatim relay:** "Fix the stack first". The relay requires a measured
+  canonical E/I/Benna-Fusi/homeostatic repair with neuter A/B and a reachable red before G2(ii), G3 C11 on S0C1 and
+  G9 proceed. A bare learner or omission of A is no substitute; no release of that gate is inferred here.
+- **#2565, integrator claude-cont-1013 verbatim relay:** "Bouts scale with labels". The relay's rule is
+  "bouts = 7 x rows" for label rows sharing REM. Its disclosed trade-off is B's overlap lost as A recovers;
+  the night grows with vocabulary. #2564 is the integrator's question, not the answer. For G3's eventual matched
+  curriculum, freeze the participating label-row population L and one identical 7*L-bout schedule, RNG,
+  replay/REM budget, modulation and teaching exposure across the paired arms before data. Report L, bouts and
+  actual work per arm; no hidden per-arm night extension or match to nominal epochs. L and the operational
+  schedule remain UNVERIFIED here. This is not a C11 PASS or automatic release of #2135's prerequisites.
+
+#123 is G5's agent note about named brain-producer credit, not a direct owner answer or G3 connection-5 credit.
+#1779 is frozen R2 operation preparation, not G3 integration proof; #2719 is an R2 review, not scientific authority.
+G7-recorded A2 is handled in A2 above with its original UNREAD, without invented owner words.
+
+### A4. Campaign instrument: ABSENT; rebuild on main in its own build arc
+
+G3 cannot run as registered at fbb1f38e. Recovering branch helpers does not restore the missing arm runners or open
+the canonical readiness/final-retention refusals. The instrument will be rebuilt on main in its own build arc
+against THIS amendment, with its tests and registrations; this documentation lane does not build it or bypass gates.
+Before any protected seed, that arc owes reviewed, stacked implementation and the following registered contents:
+
+- Six arms: INCUMBENT, PRESIZED FROZEN, PRESIZED SELECTED, TARGETED, RANDOM GROWTH and SHAM; also literal/gated
+  loop comparison, SEQUENCE in separate homes, T1 COL/SINGLE/BATCH9 with paired PRESIZED and random attachment,
+  Astra shared/task-exclusive A+B, cross-batch neuter, LIF/ALIF, fixed/adaptive inhibition and causal/disconnected
+  context; feed fed/direct/norm-matched random-feed. N>256 stays owner-target gated.
+- C1-d remains primary: select/attempt on validation combos, future judged once after validation stable-10,
+  never steering the loop; future_d never read. Shared GREET/GOAL A-then-B retention primary, disjoint beside it.
+  Secondary ii/S0C1 retain the finite-same-item disclosure. C16 learned witness/masked/incapable controls on
+  9900-9907, C2/C6 and G2 construction/learnability precede confirmation; no presized H64 substitution for C16.
+- Restricted score, next-grid failure penalties (54 for batch9, 53 for batch1 at52), BOTH D_sel/D_rand t>1.895
+  and mean>=batch; report failure/solve rate and observed sizes separately. "Fewer neurons" additionally needs
+  >=6/8 uncensored solves in both compared arms and positive observed paired mean>=batch on jointly solved seeds.
+  Match actual cumulative teaching incl. no-growth attempts/early ends, candidate evaluations/training separately,
+  and A3's actual night work. Never substitute m*E or feed helpers for these outcomes.
+- Every C1-C19 red/control, stable-10 and finite-path checks, learnt C9 feasibility, C10 true/shuffled control,
+  C11 overwriting control and dev-fixed F_bound/delta_NI. S=8 paired t, ties counted, all 2^8 sign-flip masks
+  reported; superiority degeneracy NOT MET and NI by common value as above. T1 keeps >half censored REFUSED,
+  U_SINGLE median>=80 (k4:40) granularity guard, positive delta_NI and its T3/Q-COL waits. REFUSED deletes nothing.
+- Seed allocations stay 9000-9099 exposed dev, T1 power pilot9040-9047, C9 feasibility9000-9007 and retention-bound
+  fixing9000-9015; fixtures9900-9999; primary9100-9107/reserve9108-9115, feed9200-9207/reserve9208-9215,
+  T1/Astra9300-9307/reserve9308-9315: seed9300 is construction-exposed by G7 (f)'s item counts, not a trained result.
+  These are allocations, not run permission; A1's exposure still requires integrator disposition before any run.
+  Old G2 dev7100-7103 remains exposed only; the never-run list of 2.12 remains. Freeze provenance/go,
+  fresh explicit home/lake/output per seed/arm, child environment AND argument, identical paired ledger SHA and
+  separate SEQUENCE chains. Missing-home, live-home and differing-SHA reds precede writes; live lake untouched.
+
+No unreadable arm triggers 2.11's scientific-null deletion. Its conditional dispositions remain: retire the measured
+failed trace source/gate/column structure/Astra mechanism/feed implementation as registered, never an owner-drawn
+growth or reservoir part on missing code or a refusal. L2's re-proposal debt is not discharged.
+
+### A5. Reds retained: public constructions, with missing consumers distinguished
+
+These are STATIC constructions, not fired reds or measured effects. The canonical loop is closed. Where a runner
+or learned consumer is missing, the construction is a build obligation; failure of today's instrument to exercise
+it is not proof that no input can. No C1-C19 criterion is deleted or weakened under P8 by this amendment.
+
+- **C1:** public learner n_in=52 versus62 on the registered texts constructs the encoder red; two52 reads control.
+  `segment_psp`/actual port before-after identity remains owed.
+- **C2:** `capacity_certificate.check_farkas` accepts supplied multipliers/texts/labels: double one multiplier or
+  use separable-twin labels; `separating_witness` through route_text controls it.
+- **C3:** set the public bare learner's registered near-tie weights and compare actual route_text to exact witness,
+  with an off-tie control. The actual grown-reader disagreement logger is missing, so no agreement claim follows.
+- **C4:** `capacity_certificate.diagnose` accepts contradictory items/history; generic `GrowthLoop` accepts a DATA
+  adapter. Clean capacity twin controls it; canonical refusal is not this scientific red.
+- **C5:** delayed-cue/history inputs construct STATE diagnosis through `diagnose`; capacity inputs control it.
+  Memory drawing/step/reconstruction consumer remains parked/unbuilt; all three dropped/swapped/digest ctxread
+  reds survive as explicit unpark obligations, not satisfied checks.
+- **C6:** `candidate_lifecycle.select_block(reverse=True)` reverses the tie on fixed dev streams;
+  `growth_fingerprint` and original trajectory control it. Their retained tests were not run in this lane.
+- **C7:** supply transposed-forward-weight source text to `gates/eprop_transport_gate`; fixed random-B controls.
+- **C8:** public generic `GrowthLoop` accepts an unsolvable LITERAL adapter with diagnosis disabled or a fixture
+  budget override; under-budget solvable twin controls. Keep next-whole-batch pause, OPEN and no solved report.
+- **C9:** `silence_units` accepts real unit ids, `match_sources`/`match_feasible` accept norm/rate populations.
+  Build the actual learned C1-d reader and active distractor matches; unsilenced control, per-item effects, k>=1
+  every dev seed and >=half covered on >=6/8 remain required. Missing solves cannot be called a silencing result.
+- **C10:** `trace_train` takes supplied candidate labels; shuffle these while true diagnosis, true validation
+  selection, budget and admission schedule stay frozen. True-label twin controls; future superiority is owed.
+- **C11:** public teaching can deliberately relabel A's texts to construct overwrite; untouched A controls it.
+  `retention_ok` over invented numeric drops is not empirical retention. Readable A, F_bound, strictly positive
+  delta_NI and the real once-only final reader remain owed before a retention verdict.
+- **C12:** `require_admissible`/`admit_rows` accept missing-label, duplicate-id, uncovered/spent-ticket or tampered
+  input; fully labelled ticketed batch controls. Detection after admission does not undo installation.
+- **C13:** `Ledger`/`reconcile_batches` accept a constructed journal with a missing intermediate spend/sequence
+  row or unmatched births; untouched same-codec twin controls. Not every arbitrary trailing truncation is
+  detectable. Missing-home/live-home/differing-SHA child inputs remain constructible for the rebuilt guard.
+- **C14:** a supplied context adapter can attempt target/future access, with past-only input as control.
+  `posed_source`/`GrownReturnPort` types do not semantically detect every forbidden channel; rebuild that causal
+  channel instrument and its violating adapter before reading this check. Neither absence nor type safety passes it.
+- **C15:** `feed_drive`/`random_feed`/`percept_fed` accept distinct norm/sign-matched feed matrices; identical copy
+  and no-feed arms control. N=3 fixture proof does not certify the registered N=256 determinism/campaign control.
+- **C16:** `delayed_cue.witness_units` and public source/admission/learner interfaces permit witness versus masked
+  or provably incapable units. Learn stable-10 and B future solve through the actual port; certify incapable
+  equal-count/norm units by the augmented-code witness first. Random decoys remain comparator, never the red.
+- **C17:** `clip_to_sign`/`apply_unit_row`/`clip_feed`/`check_feed` accept sign-flipping deposits or violating
+  saved synapses, with sign-consistent control. Exercise the actual chat-grown/return/restore consumers too.
+- **C18:** public generic loop accepts SEPARABLE/UNRESOLVED adapters; construct verified-wrong real reads, freeze
+  ALL plasticity and assert full weight/checkpoint identity. Learning-on twin controls; scripted diagnoses alone
+  do not prove the registered three-attempt real-learner red.
+- **C19:** a public route callable can memorize teach/validation combinations and fail unknown future combinations;
+  XOR-core callable controls. Build its held-out runner; primary learnability still gates confirmation.
+
+The G7 (h)-(j) coupling checks also remain: gamma=0 identity, bidirectional liveness mutants and structural causal
+ordering; the same-step mutant's equivalence at PSP(0)=0 is disclosed there, not empirical evidence of a fired red.
+Configuration versioning, Dale and the rebuilt isolation guards retain their constructed violating inputs.
+
+### A6. Openings carried, each UNVERIFIED
+
+- **UNVERIFIED seed provenance:** external executions/binaries and T1 seed9300 construction-only exposure; fresh
+  integrator disposition/go before any protected family. The heading grants no categorical non-exposure claim.
+- **UNVERIFIED primary/readout:** C1-d learned positive; actual C16/None/masked/incapable port; full frozen52/
+  grown/reservoir segmentation; all-consumer Dale and return ablations; current augmented/history diagnosis.
+- **UNVERIFIED attempts/campaign:** six-arm/T1/Astra/feed runners, stable-10 actual exposure, future-once handling,
+  C9 feasibility, C10 causal comparison, finite real-reader caps and registered per-arm restart/isolation controls.
+- **UNVERIFIED retention/night:** readable A_ii and #2135 release, final durable once-only judgement, F_bound and
+  delta_NI, actual sharing-row count L and matched 7*L bouts; #2565's A/B trade-off is not a G3 C11 pass.
+- **UNVERIFIED T1/configuration:** Q-COL gamma, gamma/batch version carrier, family-level T3 and power pilot;
+  G7 records O10 answered, but the original A2/delegation remains UNREAD here.
+- **UNVERIFIED sequence/birth/restart:** BETA when a baseline applies, complete birth/RNG/kind carriers,
+  learner-installation receipt, repair beyond named refusal and full versioned redo/return-queue equivalence.
+- **UNVERIFIED memory/P3:** defined memory step, ctxread producer/reconstruction/three reds and exclusion counts;
+  adjacent R2 transition hydration. Parked is not recoverable or MET.
+- **UNVERIFIED translation:** #518's existing g0c.v1 -> r2.v1 guarantee versus Brain's unbound-legacy refusal.
+- **UNVERIFIED scale/cost:** real N=256 feed control and trained contrasts, N>256 owner target, actual immortal
+  append rates/retention reads/candidate/retry/night costs. Historic tag11 fixture15242 B is neither a cumulative
+  bound nor contradicted by a different workload's tick. Decision13's live rate remains owed to the integrator.
+- **UNVERIFIED delivery/closing:** future instrument registration, stacked independent reviews/panels, mapped
+  battery and closing record; this docs verification establishes no campaign or whole-engine acceptance.
+- **UNREAD originals cited above or by the historical registration:** OWNER_DECISIONS_2026-10-04.md;
+  OWNER_QUESTIONS O1-O11/Q-COL and board#2; p0_reports/G3.md and DEPENDENCIES.md lead rulings9/9a/10/12/14/18/29;
+  Codex P0 reply/critique; g3_encoding_red.py/g3_cost_probe.py; G7#204; #2133/#2134; #2556/#2562;
+  unsupplied original #1/#124/#430/#2112/#2689. Relayed excerpts do not make those originals independently read.
