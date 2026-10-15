@@ -20,7 +20,16 @@ def _load_tool():
     spec = importlib.util.spec_from_file_location("lang_coverage_under_test", _TOOL)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
-    spec.loader.exec_module(mod)
+    # The leaf tool isolates its imports; collection must preserve the pytest caller's env.
+    previous_env = {key: os.environ.get(key) for key in ("NORD_HOME", "NORD_PERSIST")}
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        for key, value in previous_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
     return mod
 
 
