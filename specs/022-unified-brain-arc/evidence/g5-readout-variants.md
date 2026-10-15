@@ -1531,3 +1531,291 @@ Cheap and brain-free, already pinned and not re-run here: the adaptors' `python 
 
 This draft is the only artifact produced; it lives in the run directory (`sndl-runs/2026-10-09-step5/rows/g5-d1-dev-freeze-draft.md`), not in the worktree, and is NOT committed. Per ruling 26 / the brief, dated pre-data amendments are committed by the lead after the zero-removed-lines check. G5 has not touched the frozen evidence file `g5-readout-variants.md`. It is independent of the TASK-1 self-check + registration commit (`feat(g5): ...`), which ships on claude/g5-b3 and changes no frozen protocol.
 
+## DATED PRE-DATA AMENDMENT 2026-10-15 (row-plan 1.0 against fbb1f38e; no confirmatory or reserve data read)
+
+Amends D.1-D.7 and the D1 dev freeze prospectively for pending Part D reads; all preceding bytes remain unchanged.
+Basis: G5 row-plan 1.0 report/census, board #2753 and cited reviews #2757/#2782. This lane independently checked
+Git objects at fbb1f38eadb1a063fd15d7904dfcb858cfdb0bf9 against effective registration/repair tree 9e3c4e6b.
+Fold round 2 addresses challenge #2812 on result #2806 and Codex agreement #2818; all challenge points accepted.
+The effective tree includes f6ba7403's committed dev freeze and the 2026-10-11 reader repair. Its leftover DRAFT
+wording does not undo the commit. Symbols below name source witnesses, not newly measured scientific results.
+
+### A1. Precondition: QUALIFIED, pending D1/D2 only
+
+The heading describes THIS amendment lane: no confirmatory or reserve data were run or read here. It does not
+mean that all G5 cohorts are unexposed. Part A's PA1 failure and deletion, Part B's 11100-11107 confirmatory
+negative/deletion, and the historical PD-P1 reads stand. No historical result is reopened by this section.
+
+Audit: textual Git-object search of all tracked blobs Git treats as nonbinary in 9e3c4e6b and fbb1f38e, using
+digit-bounded allocated-seed patterns, plus this file, the handoff, supplied report/census and review dumps.
+Positive controls (OnlineReadout, BrainProducer, PD_EPOCHS and PD-R0) fire in the same scoped census before zeros
+are interpreted. Matching seed text includes allocations, results already disclosed, refusal fixtures, hashes
+and unrelated numerical substrings. No pending D1/D2 confirmatory or reserve execution result was found there.
+This is a QUALIFIED pre-data licence: binary payloads, external run directories, other worktrees/machines,
+untracked outputs, computed seeds, canonical board SEEDS.md and the external acceptance supervisor were not
+audited. The existing --lead-go CLI accepts arbitrary ranges. Absence in this text cannot prove non-exposure.
+The integrator must reconcile external exposure/registry evidence before any pending block is called fresh.
+
+D1 dev 11400-11407 is EXPOSED: notes (b)/(d) record its producer diagnostic and mark it spent for fixture sanity.
+This supersedes every later dev-freeze assertion that those seeds are unspent; it does not erase those bytes
+or assert a deciding D1 read happened. No fresh D1 dev block is allocated here. A prospective registry-backed
+dev disposition is owed before dev execution; exposed seeds cannot silently become fresh again.
+D1 confirmatory 11410-11417 and reserve 11418-11425 remain HELD on the qualified audit above.
+D2 dev 11430-11437, confirmatory 11440-11447, reserve 11448-11455 and PD-P2 11464-11471 remain HELD.
+PD-P1 11456-11463 and 11472-11479 are SPENT; the latter remains "second attempt, post-data design change".
+Clean pool-path PD-P1 11500-11507 is SPENT; its recorded positive stands, with unpersisted per-seed values and
+unreconstructible t disclosed. Never rerun these blocks to recover missing records. Part B reserve 11108-11115
+does not revive B, and composition 11200-11207 remains unlicensed because both-land prerequisites failed.
+
+### A2. Mechanism at fbb1f38e, per changed or absent clause
+
+- D.1 feature interface CHANGED: instruments/g5_readout_cells.pool_features(pool, text, *, feed=None) selects
+  percept_fed only when feed is supplied. instruments/g5_part_d_cells._Drive.walk passes no feed; detached D1
+  therefore retains percept, 52-code zero-padding to 64, PD_H=256, TUNED k=8/w=.25/lambda=.9/g=4/T_in=1, window=0
+  and no frac_bits override. pd_pool/PD_POOL_MODES retain carry/reset/neuter_carry/neuter_reset; _Drive.walk
+  resets at episode boundaries. neuter_carry still carries membrane state. Only proven-stateless plain-S1 arms
+  receive the exact 0.5 bound; neither explicit history nor neuter_carry receives it.
+- D.2 learner implementation CHANGED: readout/interaction_learning.SpikingInteractionLearner.interact calls
+  _require_effect_boundary and _remember; _deposit checks that boundary, an optional _g9_neuron_mask and optional
+  grown-context deposits. __init__ sets event_sink, _g9_context and _g9_neuron_mask to None. D1 _learner creates
+  a detached instance, with no stack or persistent sink supplied; label teaching still reinforces the correct
+  neuron/depresses the wrong one, while a scalar deposits on the answering neuron. respond/encode source text
+  is unchanged; interact/_deposit text is changed. This is a static default-off argument, not measured parity.
+- D.3/D.6 ownership CHANGED: readout/posed_problem.OwnedPartDReader owns a BrainProducer under PosedActor;
+  PosedActor._effect supplies grown feed to pool_features. chat_grown_drives/chat_grown_deposit conditionally
+  couple the live learner. growth/grown_code.GrownReturnPort provides real plastic return attachments.
+  Brain._record_learner_event is bound as the live learner's event_sink. Thus "no live path" is obsolete as an
+  absolute statement. These available paths are neither a D1 result nor a registered D2/Part C campaign.
+  OwnedPartDReader/PosedActor._effect also implements RSTDP_BRAIN_SHUF through shifted_label and recomputed
+  outcomes, not scalar-stream replay. The D2 route inherits that label-shuffle mismatch until its own amendment;
+  D1's prospective scalar contract below does not certify or silently repair the owned D2 route.
+- D.1 isolation ABSENT as a complete ordering guarantee: pd_records calls home.require_isolated_home, but the
+  module-level PD_POOL_MODES import already reaches g5_readout_cells and its TUNED imports. The supervisor must
+  resolve and install the shared throwaway home BEFORE importing this module graph, then invoke the guard.
+- D.1 lake enforcement ABSENT: pd_records(stamp=False) is the default, main does not enable it, and stamp=True
+  snapshots home.home() (the isolated home). Its `not live_lake_untouched(...)` tests a nonempty (ok,changed)
+  tuple, so cannot raise the stated refusal when ok=False. The campaign must stamp the actual resolved LIVE
+  home read-only before/after each stage, unpack ok/changed and fail closed on any change or unreadable entry,
+  also on BaseException. Adopt home.lake_snapshot/live_lake_untouched and g5_readout_cells._lake_unmoved's
+  unpacking pattern; never add a second guard or write the live lake to test protection.
+- D.1 persistence ABSENT: g5_readout_cells.run_cells(record_path=None) supports opt-in write_records/load_records,
+  but D1 pd_records returns its own nested shape and main prints rounded values only. The rebuilt driver must
+  persist D1's full-precision per-seed inputs, outputs, certificates and provenance with JSON/SHA256 before any
+  verdict, and re-read them to reproduce it. Do not describe run_cells as an already connected D1 driver.
+- D.2 RSTDP_D_SHUF ABSENT in PD_MODES, LABEL_ARMS and _arms_of at both trees. RETAIN and implement this required
+  shifted-label incumbent on the same CARRY path, seeded learner and full vocabulary; shift only the recorded
+  TEACH labels by circular_shift. It is reported beside RSTDP_D; this amendment adds no new superiority bar.
+- D.2/D.3 shuffle mismatch: _run_label_arm currently recomputes outcomes against shifted labels for
+  RSTDP_BRAIN_SHUF, then presents the current probe key to BrainProducer. It does not time-shift an original
+  scalar m stream. Prospectively bind the deciding RSTDP_BRAIN_SHUF to D.3's literal scalar intervention:
+  record every m from the unshifted RSTDP_BRAIN TEACH pass, circular_shift that ordered finite sequence by
+  floor(n/2), and deliver those scalars to an independent same-seed initial learner on identical CARRY features.
+  No producer is re-fitted in the replay arm and no future label enters teaching. Preserve current shifted-label
+  outcome behavior separately as RSTDP_BRAIN_LABELSHUF, reported, never substituted for scalar-time-shuffle.
+  This is a prospective correction of the intervention, not a claim that the existing implementation does it.
+  PD-R1's existing BRAIN-versus-SHUF bar and PD-R1b's BYPASS bar are unchanged.
+- D.2 vacuity acceptance ABSENT: pd_cell stores _shift_f but read_d1 ignores it. shift_fraction counts exact
+  a != b; its scalar value can approach 1.0 on immaterial float noise. Keep label f from that helper and report
+  exact scalar f only as a diagnostic. Prospectively define scalar materiality per seed on the delivered
+  deposits: f_material = count(abs(m_shift[i] - m[i]) > TIE_TOL) / n, with TIE_TOL=1e-6 and n>0 finite pairs.
+  Require f_material >= VACUITY_FLOOR=.20 as well as the registered label floor for label-shuffle arms.
+  Persist original m, expected circular_shift(m), actually delivered scalars and answering-neuron ids in order.
+  Missing/nonfinite/wrong-length receipts or delivered != expected shift HALT the instrument; no approximate
+  match substitutes for the recorded scalar replay. A sub-tolerance shift can match exactly yet be VACUOUS.
+  A lower materiality fraction REFUSES the scalar alignment-dependent reading; no gain is credited and no
+  reserve replacement is allowed for this result. Label vacuity likewise refuses its own dependent reading.
+  This is a prospective material-change check, not proof of biological effect or a new superiority bar.
+  A same-row mismatch instead halts the instrument.
+  Keep _same_rows and add campaign receipts for TEACH/future order, feature identity per mode and common
+  vocabulary/no widening. Never confuse label movement with proof that the delivered scalars changed.
+- D.1 width preflight ABSENT from the producer path: _n_in checks PD_H; its only src caller is self_check.
+  tests/test_g5_part_d_cells.py also calls it, but pd_cell does not. Validate every driven vector against PD_H
+  before learner construction/teaching. The existing helper's constructed red is not proof of that wiring.
+- D.2 SOM naming: SomAdaptor(control=True), SOM0_WIDTH=.25 and SOM_CTRL_KEYS implement one BMU-only control;
+  pd_cell asserts SOM0==SOM_CTRL. Canonical campaign name is SOM0; SOM_CTRL remains the reader compatibility
+  alias with asserted equality, counted once. A literal sigma0=0 is not the implementation (it falls back).
+- D.4 certificates ABSENT from the CLI: cert_for/expansion_solves and each cell's _reads are separate APIs;
+  pd_records/main do not call cert_for or read_d1. The rebuilt campaign derives per-seed H64 expansion solves
+  and plain-S1 stateless solves through taught_problems.solved with exactly one pair per future PROBE.
+  Aggregate expansion_solves_s0c1_at_64 by ALL eight accepted seeds; stateless_solved_s1 by ANY accepted seed
+  across S1C0/S1C1 and STATELESS_ARMS. Missing/wrong-length reads refuse, never default to False.
+  Preserve per-seed certificates and their reads; missing/false H64 certification means S0C1 PD-R2 NOT READ,
+  never reservoir superiority. Any certified stateless plain-S1 solve HALTs for hidden state.
+- D.4 vocabulary preflight ABSENT: read_d1's repaired _diffs refuses a wholly absent PD-R3 rule once PD-R0 opens;
+  it is not an unconditional preflight. Before any hypothesis read, the driver must assert exact accepted seed
+  identities, every required cell and the cell-specific expected arms from _arms_of plus the additions above.
+  Adaptors and their controls belong only to S0C1; requiring ALL_ARMS in every cell repeats the rejected V1.
+  Check aliases once, complete records, finite accuracies, certificates, receipts and persisted round-trip.
+- D.4 endpoints/reporting ABSENT as assembled glue: PD_CELLS includes S0C0/S0C1/S1C0/S1C1/AII, but read_d1 has
+  no AII verdict. Report every cell and arm, future accuracy/solved reads, secondary expansion_texts, and memory
+  span delay_turns*T_in. Held out means new presentations of finite items, not novel items; validation/future
+  labels never train. AII remains the detached capacity diagnostic, not canonical G2(ii) acceptance or an extra
+  rule-replacement claim. PD-R3 remains on S0C1. No endpoint is silently dropped or promoted to a deciding bar.
+- D.5 cohort/reserve enforcement ABSENT: _diffs checks eight records, not registered identities. The campaign
+  must bind accepted seed keys to the chosen cohort and an ordered replacement ledger. Replace an entire seed's
+  arms, cells, certificates and dependent recordings only for a documented instrument failure, taking the next
+  reserve in order. Never replace a scientific NOT MET, vacuity result, H64 failure or exact-bound S1 solve.
+  A live-lake change is a stage HALT, never a replaceable instrument failure (LiveLakeMoved).
+  Repair-driven reruns require a dated amendment and exposure disposition first; this lane schedules none.
+- Frozen source identities CHANGED: 9e3c4e6b repaired the missing-rule skip and runner prose; 04febad0 added only
+  GRADIENT_CLAIM dictionaries in the runner/adaptors and the optional feed branch in pool_features. The learner's
+  R2/G9 changes are separate substantive source changes described above. Committed UTF-8/LF SHA256 witnesses:
+  src/snn_data_lake/instruments/g5_part_d_adaptors.py:
+    5d3acc25/9e3c4e6b: e47d893dc0e60b8a49b848f01d38074f8552fea600ed44782de9dab98b4b3b47
+    fbb1f38e:          36f88414222056e38f4893316b22fed38cd93f9448654be6724eb11ee5c24cab
+  src/snn_data_lake/instruments/g5_part_d_cells.py:
+    5d3acc25:          f24e314cbd7539be46c23e7698f4aab20513986c43d754fbf448abd2736f32dd
+    9e3c4e6b:          0e1769f3db70974f25ca47851620396a1eb83184c48ec65a3648326c018aa8ca
+    fbb1f38e:          3369a2d80ccac1b24f0a15f04a735b391b5f9ccb5b3b5126af9e74ce200141a9
+  src/snn_data_lake/instruments/g5_part_d_reading.py:
+    9e3c4e6b/fbb1f38e: 683f64fde1189956678398a76e02cf5d70689d552afe4886db289835d097407a
+  src/snn_data_lake/instruments/g5_readout_cells.py (producer, pool and shift helpers):
+    5d3acc25/9e3c4e6b: 85ac84555fb5cc4f2f22aabcbe4b14bce494232e3f72436ec624e56c58b296ca
+    fbb1f38e:          6c2c0bf4aa71efa89b8b86628e09b94af284dbd0c23c4a802658b3791fa410b9
+  src/snn_data_lake/readout/interaction_learning.py (learner shared by every label arm):
+    5d3acc25/9e3c4e6b: 1f51c2ffa6ae73e9ff047c6f4634c8aa31cdd3a67f02b41d05b62b62a36c976b
+    fbb1f38e:          7859bacddc35eb9205de10289d94704f320d4332aa8cc04c1972ef03b5afbb17
+  These bind this source audit, not installed bytes; code_hash reads actual working-file bytes. A rebuilt
+  campaign records both identities and explains CRLF/LF differences. Later source changes need another dated
+  source-binding amendment before data, never a silent replacement of these hashes.
+
+Unchanged commitments: PD_EPOCHS=30; DeltaAdaptor adopts OnlineReadout("delta") with all labels allocated;
+PCAdaptor uses dimensions 256/16/4 and PC_EPOCHS/STEPS/LR/LRW=12/120/.05/.02, TEACH-only prototypes and PC_CTRL;
+SomAdaptor uses SOM_G=4, SOM_EPOCHS/LR0=15/.5 and a TEACH-only table. _read_only_red and printed code_hash stay.
+BrainProducer.factor uses DopamineNuclei, DopamineModulator, PD_OUTCOME=(+1,-1), symmetric piecewise to_signed,
+modulation before TD update and agree's RPE equality. No obsolete phasic, affine or 0/1 design is restored.
+reading/paired_contrast.contrast/paired_t source text is unchanged: eight paired seeds, nondegenerate t>1.895,
+at least five non-tied at TIE_TOL=1e-6, FPR diagnostic only. PRODNEUTER=NOTUNE is asserted, counted once.
+PD-R1 supports scalar-through-module credit; the stronger producer-transformation claim requires PD-R1 AND
+PD-R1b. Null/replacement dispositions stay D.7's; the owner-drawn neurons/tuning/return requirements survive.
+
+ORDERING DISCLOSURE: the repair, metadata/feed extensions and shared R2/G9 mechanisms already landed before
+this source amendment. This is pre-data only on A1's qualified pending-cohort basis and POST-implementation;
+it cannot retroactively satisfy implementation-before-amendment ordering. Notes (b)/(d)'s historical PD-P1
+post-data design and missing lead-go breach remain disclosed. No pending-cohort result or runtime parity is
+asserted. The historical handoff/checker used false certificate flags and an early PD-R0 halt, not PD-R1..R3
+science. See g5-handoff-repair-2026-10-11.md in this directory for that bounded repair; that file is not edited.
+
+### A3. Owner rulings: exact words and attribution
+
+Board #1037/#1039 relay the human's direct Codex answer through coordinator codex-sndl-coord-1010. The owner's
+own words, verbatim: "Adopt these three decisions". The adopted choice relevant to shared sleep was:
+"R3 retires the three capabilities that failed their frozen tests, while keeping the sleep requirement."
+That sentence is the coordinator's proposed choice adopted by the owner, not a second owner utterance.
+The coordinator's adopted-dispositions record names interaction replay/deposit, Benna-Fusi rest/rebinding and
+attractor.sleep retirement; explicit SpikingInteractionLearner.replay remains public. Detached D1 neither
+sleeps nor supplies that stack; no D1 pool, producer or statistical bar changes follow from the retirement.
+The adopted R2 write-failure latch governs the live persistent route; it is not a new detached D1 sleep arm.
+
+Board #2106 relays the owner's Claude-chat selection through integrator claude-cont-1013. The selected option
+label is "A: journal the bout". The longer text is the integrator-written AskUserQuestion option description:
+"Add a new R2 event kind with deterministic restart redo, and a dated post-data amendment loosening K10c to allow
+exactly that write. Bout effects become durable brain learning."
+That description is not an additional owner utterance. #2105 is the integrator's question, not the owner's
+answer. This is the R2/G6/F5 POST-DATA history, not a G5 D1 sleep stage or a clean PD-P1 ruling.
+
+Board #2135, owner's Claude-chat selection relayed by claude-cont-1013, verbatim: "Fix the stack first".
+Its accompanying RULING is the integrator's engineering application: canonical G2(ii)/A_ii and G3 C11/G9 wait
+on measured stack repair. It does not certify completion. This amendment's scope reading, not ruling text:
+the named waits do not forbid independently ready detached D1; A1/A4's readiness and go requirements still bind.
+Board #2565, same relay provenance, owner selection verbatim: "Bouts scale with labels".
+The integrator's RULING gives bouts=7 x rows and the A/B shared-weight trade-off; these are not extra owner
+words or proof of current retention acceptance. Neither ruling authorizes G5 held-out execution here.
+
+Board #123 is a G5 WORKER NOTE relaying OWNER_DECISIONS_2026-10-04.md items 9/10, not an owner message.
+Its quoted item 9 is: 'Part D is credited "tuned by the brain" only with a named brain producer of the tuning signal'.
+Item 10's two jobs and strict-target primary are reported by that worker. The original decision file is UNREAD;
+the existing D.3/note (f) credit split and strict-target primary stay binding as registered, without inventing
+newly witnessed owner words. #518's owner "X1: A" concerns checkpoint translation, not a G5 criterion change.
+#1048 is a claim, #1779 an operation-preparation note, and #2757/#2782 are reviews, not owner authorization.
+
+### A4. Campaign instrument: components PRESENT; registered campaign ABSENT
+
+g5_part_d_cells, g5_part_d_adaptors and g5_part_d_reading are registered in REGIONS/run_selfchecks; their bare
+entries run self-checks. That registration does not assemble a scientific campaign. main defaults to S0C1,
+prints rounded producer values and calls neither cert_for nor read_d1; optional stamps are ineffective.
+The complete instrument is ABSENT and will be rebuilt on main in its own build arc against THIS amendment.
+This lane builds none of it and runs no G5 self-check, fixture, seed block, Brain or scientific campaign.
+
+The rebuilt instrument must contain all A2 clauses: isolated imports; all five PD_CELLS; cell-specific base
+LABEL_ARMS plus retained RSTDP_D_SHUF, literal scalar RSTDP_BRAIN_SHUF and reported BRAIN_LABELSHUF; S0C1's
+DELTA/DELTA_CTRL, PC/PC_CTRL and SOM/SOM0; expansion_texts beside expansion; one SOM_CTRL alias; real per-seed
+certifications; unconditional vocabulary/cohort preflight; vacuity and same-row receipts; full-precision
+JSON/SHA256 and re-read; actual live-home stamps including exception paths; ordered whole-seed reserve policy.
+No universal arm total is assumed: adaptor arms exist only in S0C1 and aliases count once.
+PD-R0 opens the hypothesis read; NOT MET halts with no later verdict. PD-R1/R1b, PD-R2 and PD-R3 retain their
+registered contrasts and HALT/NOT READ/REVERT distinctions. Missing records are instrument failures, not nulls.
+Run constructed controls before scientific readings: tied/noisy positive-control failure, seven-seed and
+missing-arm refusals including an entire rule, PRODNEUTER mismatch, H64 false certificate, stateless-S1 solve,
+wrong width, same-row/late-vocabulary perturbation, vacuous shift, mutated pool access, PC coupling neuter,
+SOM BMU-only control and BrainProducer.agree perturbed expectation. The scalar red must reject wrong delivered
+replay and refuse an exactly replayed sub-tolerance stream with f_material < .20 even if exact scalar f=1.
+Construct that second case as m[i]=.5+i*1e-9 for i=0..39: the half-shift changes each value by 2e-8, below
+TIE_TOL=1e-6, so exact f=1 but f_material=0. Also construct a materially shifted stream above the floor to show
+the materiality check can open; these synthetic checks establish instrument sensitivity, not learning benefit.
+Use decoy homes
+for live-home alias/change/exception reds; protection must never require changing the real live lake.
+Fixture checks use disclosed fixture RNG seeds, not fresh scientific evidence. The existing clean PD-P1 record
+is retained, never rerun. A1's dev disposition, actual configured source binding, independent reviews and the
+integrator's execution go precede any D1 block. Confirmatory/reserve stay 11410-11417/11418-11425, subject to
+external exposure reconciliation; no reserve is opened to test repairs. D2/PD-P2 stay held for their own arc.
+Part C and D2 require separate prospective designs and upstream evidence mapping the shipped feed/return
+components to layer/random-mask/shuffle, feed-neuter, return-neuter/time-shuffle and strict-target controls.
+Missing targets REFUSE, never become empty sets; canonical int ids and build-time require_labeled_targets
+with resolve_problem remain required. D1 supplies no connection-6 credit. D1 cost remains UNMEASURED; measure
+the complete configured dev campaign including certification/persistence/stamps, not historical A/B timing.
+
+### A5. Red reachability: retain every pending red; none deleted here
+
+These are construction witnesses on public/available source paths, not freshly executed controls. A missing
+default CLI connection is not proof that no input can fire a red. No such impossibility was established.
+
+- PD-R0/R1/R1b/R3: read_d1 accepts eight per-cell arm dictionaries; tied/noisy differences fail MET, a winning
+  own control forces REVERT. Its self_check constructs opening records then removes a complete RULES member.
+  Removing a seed/arm or changing PRODNEUTER versus NOTUNE reaches _diffs/EQ_TOL refusals. Keep all these reds.
+- Certificate/exact-state reds: cert_for/expansion_solves accept real reads through taught_problems.solved;
+  read_d1 consumes a false H64 certificate as NOT READ and a true stateless_solved_s1 as HALT. A wrong-length
+  solved input raises. A driver's fabricated False flags evade these, so actual reads must be persisted.
+- Vacuity/scalar-time reds: circular_shift/shift_fraction accept constant sequences (f=0), and public
+  SpikingInteractionLearner.interact accepts the caller-supplied shifted scalar sequence. Recording/replaying
+  m is constructible despite absent glue. A label-shift-only implementation fails the A2 scalar receipt check.
+  The same public shift helper accepts A4's sub-tolerance ramp: exact inequality is nonzero on every event,
+  but the prospective materiality check must refuse it. Wrong replay must HALT; correctly replayed but
+  immaterial change must REFUSE alignment credit. No current source implementation of that new check is claimed.
+- Same-rows/width/common-vocabulary reds: _same_rows/_n_in accept mismatched probe sequences or bad widths;
+  same_rows/pa10 provide the early-category/no-common-init construction. Keep the campaign connection owed.
+- Attribution/readout-only reds: pc(neutered=True), som(control=True), adaptor self_check and _read_only_red's
+  forbidden import/name/attribute checks provide failing constructions. BrainProducer.agree accepts perturbed
+  expectation/RPE values; PRODNEUTER zero-deposit equality and SOM0 alias equality remain tested obligations.
+- Isolation/lake reds: assert_not_live_home/require_isolated_home accept a decoy live-home parameter; a prefixed
+  alias or contained path refuses. lake_snapshot/live_lake_untouched expose a decoy changed file as ok=False;
+  _lake_unmoved correctly unpacks that tuple. Fix D1's target/unpacking/exception coverage; retain protection.
+- PD-R4/feed/Part C: pool_features(feed=...), PosedActor's neuron_mask/return_mask/return_neutered,
+  GrownReturnPort attachments and placement.labels_by provide mechanism-level contrasting inputs. They do not
+  prove that a matched G5 scientific control already exists. The future Part C/D2 instruments must implement
+  their layer shuffle, matched random mask, feed neuter and time-shuffled return before their own reads.
+
+Historical Part A/Part B implementation deletions remain their recorded dispositions. Their absence is not
+new evidence of universal unconstructibility; this amendment neither repeats their campaigns nor revives them.
+Under P8 a criterion is deleted only after proving NO input can construct its red, never because glue is absent.
+
+### A6. Carried openings: each UNVERIFIED
+
+- UNVERIFIED: pending cohorts' exposure outside A1's textual audit and a usable fresh-dev registry disposition.
+- UNVERIFIED: assembled D1 campaign, scalar-stream shift/retained missing arm, non-vacuity, complete preflight,
+  per-seed certificate aggregation, cohort/reserve wrapper, persisted re-read and real live-lake protection.
+- UNVERIFIED: detached arithmetic/runtime parity after shared R2/G9 changes and installed-source hashes;
+  metadata-only adaptor changes do not establish a new-site eprop gate or PC distinguishing-test acceptance.
+- UNVERIFIED: current G4 functional-layer/G7 target/G3 feed prerequisites, Part C matched-control acceptance,
+  D2 strict/lineage target handling and feed/return/time-shuffle deciding results. Presence grants no credit.
+- UNVERIFIED: canonical G2(ii)/G3 C11/G9 stack/retention reopening under #2135/#2565; detached AII is not proof.
+- UNVERIFIED: D1 measured cost and charge, full mapped battery/panels/integration, and whole-engine success.
+- UNVERIFIED: original external checker, scorer/acceptance outputs, registry and unavailable authority records.
+  Referenced board #1/#2/#19/#29/#162/#207/#803/#812/#813/#814/#816/#817/#822/#823/#824/#825/#826/#831/#832/
+  #841/#842/#843/#844/#846/#847 are UNREAD; a historical head seal or handoff summary does not replace them.
+  Board PROTOCOL 4b, rulings 11/16/26 and L1/L1b/L1c/L2/L3/L6, original OWNER_DECISIONS_2026-10-04.md and
+  CP4/Codex #8-#16 originals are UNREAD. Supplied relays are attributed above; no new acknowledgment is implied.
+
+This amendment supplies documentation and future build obligations only. Scientific readiness and acceptance
+remain unverified until their owning arcs satisfy these requirements on the reviewed stacked head.
+
