@@ -422,12 +422,12 @@ def test_teaching_event_write_failure_latches_correction_until_restart(monkeypat
     with brain() as b:
         # 2026-10-13: owner1037-1039/FAILWRITE, append failure cannot install authority.
         before = b.brain._ixn._snapshot()
-        monkeypatch.setattr(home_mod, "save_episode", boom)
-        b.correct("what are you pursuing right now", "GOAL")
-        assert b.brain._ixn.provenance("what are you pursuing right now") == "self"
-        assert b._r2_fault["phase"] == "append"
-        assert b.brain._ixn._snapshot()["cache"] == before["cache"]
-        monkeypatch.undo()
+        with monkeypatch.context() as fault:
+            fault.setattr(home_mod, "save_episode", boom)
+            b.correct("what are you pursuing right now", "GOAL")
+            assert b.brain._ixn.provenance("what are you pursuing right now") == "self"
+            assert b._r2_fault["phase"] == "append"
+            assert b.brain._ixn._snapshot()["cache"] == before["cache"]
         b.correct("what are you pursuing right now", "GOAL")
         assert b.brain._ixn.provenance("what are you pursuing right now") == "self"
         assert load_episodes(kinds=("teach",)) == []
