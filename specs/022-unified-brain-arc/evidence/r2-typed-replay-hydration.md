@@ -635,3 +635,385 @@ NORD_HOME scratch, p95 over nonzero per-tick byte sums), 120 ticks, live lake si
   0x04).
 - **Verified.** The baseline's consumers (test_append_budget_wire, test_growth_delta_chain, test_ratified_row_gates,
   test_synapse_delta, test_synapse_delta_writer) pass; python -m snn_data_lake.gates.immortal_retention OK.
+
+## DATED PRE-DATA AMENDMENT 2026-10-15 (R2 row-plan 1.0 against fbb1f38e; no confirmatory or reserve data read)
+
+Amends 2.1, 2.2, 2.3 (R2-c3, R2-c4), 2.4, 2.8, 2.10, 2.11 (D5(ii)) and 2.12 by the clauses below; nothing above
+this heading is edited.
+Not Codex-reviewed. Rounds 2 and 3 fold reviews #2710 and #2711 (both CHALLENGE) and Codex #2719. Round 4 folds
+rv-r2amend-b #2736 (CHALLENGE) and Codex #2740 (CHALLENGE). Round 5 folds rv-r2amend-b #2795 (CHALLENGE), the
+integrator reply #2796 and integrator ruling v3 #2779, which supersedes ruling #2714 (retracted by #2737) and the
+interim ruling #2738, before this lands.
+Basis: board #2689 (integrator disposition), reviewed by #2690 and #2691 (both AGREE), evidence
+`rows/r2-mechanism-diff-2026-10-15/REPORT.md`. Every symbol below was re-checked by `git.exe grep`/`show` on fbb1f38e
+(the main head this amendment is written against) by the amendment lane, not copied from REPORT.md. Symbols are cited
+by name, never by line. The only text hit for the base hash `e1b3ae3c` in src, tests and tools at fbb1f38e is
+`tests/test_candidate_lifecycle.py`, a comment about `ng_snn.py` (2026-10-04); it is unrelated to R2 and is not
+evidence for any clause here.
+
+### A1. Precondition
+
+No confirmatory or reserve seed of R2's block (15010-15067) has been read. Checked 2026-10-15 by a textual scan of
+`rows/` and `specs/` for those numbers: the only hits are the registered allocations (2.6, 2.10), copies of them, and
+float or byte substrings (`"bytes": 15022`); reviews #2690 and #2691 repeated the scan and agree. Reason it holds: the
+campaign instrument `instruments/replay_hydration.py` never existed on the main lineage (absent at fbb1f38e; 753 lines
+only at claude/r2 56031ab9). Codex #2719 repeated it over 4,252 text artifacts of `rows/` and both pinned trees:
+allocations, declarations, hashes and unrelated floats only.
+**The licence is QUALIFIED.** It rests on a TEXT audit of `rows/`, `specs/` and both trees. Binary artifacts and other
+execution locations were not audited, and the old instrument on claude/r2 accepted arbitrary `--seed`/`--campaign`
+inputs, so main-lineage absence alone does not prove non-exposure. A dated PRE-DATA amendment is licensed on that
+qualified basis, not as categorical proof. Only dev seeds 15000-15007 are exposed until A5.
+
+### A2. The mechanism as landed, per changed clause
+
+- **2.1 writer.** `Brain._append_learner_event` is the one writer of every kind in `learner_events.KIND_SPECS`
+  (`posed_problem`, `teach`, `turn`, `ctxread`, `sleep`, `sleep_bout`); it refuses `ctxread` ("R2 effect/producer is
+  not bound") and consumes `Brain._r2_seq` before the append. Wake turns reach it through
+  `Brain._record_learner_event`, attached as `SpikingInteractionLearner.event_sink`. Write-ahead, one boot session
+  (`Brain._session`) and one sequence are kept; the registered "sink in `learn_turn`" is this callback.
+- **2.1 failed write.** CHANGED by owner #1037: section A3 supersedes it. The counter `unjournaled_refused` now
+  exists as `SpikingInteractionLearner._unjournaled_refused`, incremented by `Brain._record_learner_event`.
+- **2.1 reader and receipt.** `learner_events.read_learner_events` is kept; boot uses
+  `learner_events.scan_learner_events(kinds, strict=True, return_receipt=True)` (all kinds, no session filter, no
+  instrument events), which returns the eligible events and one `receipt`. `SpikingInteractionLearner.hydrate(events,
+  *, receipt, sleep_step, checkpoint_prefix_digest, effect_actor)` refuses ("R2 incomplete or mismatched same-pass
+  receipt") unless the receipt is complete and its `eligible_ids` equal the events' ids. The one shared read stands;
+  the receipt is a new contract.
+- **2.1 session.** `home.next_session` is called once per boot (through `scan_learner_events`) and stored on
+  `Brain._session`: the 10-04 amendment is unchanged.
+- **2.1 kinds.** `home.LEARNER_EVENT_KINDS` = `teach`, `turn`, `sleep`, `sleep_bout`, `percept`, `ctxread`,
+  `posed_problem`; `home.is_autobiographical_episode` is kept. `percept` is a registry row only: it has no
+  `KIND_SPECS` schema and no writer (see A6). `posed_problem` is G9's kind; R2 registers no check for it here.
+- **2.1 checkpoint.** `r2.v1` carries exactly `schema`, `tree`, `rewirer`, `sleep_observations`, `prefix_digest`.
+  `prefix_digest` binds the checkpoint to the canonical event prefix its cursor covers
+  (`learner_events.prefix_digest`, advanced per append by `advance_prefix_digest`). 2.1 names one refused class
+  (an unknown schema). Main refuses three: (1) an unknown schema or key set; (2) a cursor not in the eligible
+  prefix ("R2 checkpoint cursor is not in the eligible prefix"); (3) NEW, a cursor with no `prefix_digest` binding
+  ("R2 checkpoint canonical prefix binding missing") or with a digest that differs from `prefix_digest(events,
+  cursor)` ("R2 checkpoint canonical prefix digest mismatch"). Each is refused before any cache or cursor install.
+- **2.1 legacy `g0c.v1` upcast. CORRECTS REPORT.md ("apparently unchanged").** `load_state_dict` and
+  `learner_events._upcast` still upcast, but `Brain._r2_boot` refuses a checkpoint with no `prefix_digest` before
+  `hydrate` runs, so a `g0c.v1` checkpoint is REFUSED and latched at boot, never upcast with its ring dropped.
+  Section 4's Q1 (drop the ring?) is therefore answered by refusal; it is an owner OPENING, not a check.
+- **2.1 hydration and redo.** `SpikingInteractionLearner.hydrate` redoes, in lake order after the cursor: `teach` and
+  `turn` through `_apply_turn(..., cache_only=<at or before cursor>)`; `sleep` through `sleep_step["step"]`, which is
+  `Brain._r2_sleep_step`; `sleep_bout` through `instruments.staged_sleep_bout.learner_bout`; `posed_problem` through
+  `effect_actor`. Each redone `sleep` or `sleep_bout` is verified against its `SLEEP_DIGESTS` and `SLEEP_PROGRESS`
+  slots and refused on mismatch. The Brain installs the staged learner only if `Brain._r2_may_rearm(report)` (complete
+  and `processed_ids == eligible_ids`), else the latch stays. D5(ii) CHANGED in type only: a second hydration raises
+  `ValueError("R2 hydration is once per staged learner")`, not the registered `RuntimeError`.
+- **2.8 P2 dispatch and report.** `_sleep_learner_step`, `_ixn_restore` and `sleep_refused` are absent. In place:
+  `Brain._r2_sleep_step(ixn, rewirer)` (structural rewiring only; returns `(rewirer, {"_structural_report"})`),
+  `Brain._r2_sleep_learning` (writes the `sleep` event), `Brain._report_ixn_refusal(what, exc)` (stderr, ASCII, no
+  stored attribute) and `Brain._r2_fault` (`{"phase", "cause"}`). Failure is latch-then-rollback: the `except` block of
+  `Brain._record_learner_event`, `Brain._r2_run_bout` and `Brain._r2_sleep_learning` calls `Brain._r2_close` FIRST,
+  then `Brain._r2_restore` returns learner, rewirer, observations and posed actors to their `Brain._r2_snapshot`
+  pre-effect state; a restore that raises replaces the fault with phase "rollback". Any check that read
+  `_ixn_restore["sleep_refused"]` must read `_r2_fault` and the
+  stderr receipt instead. The `sleep` event slots match 2.8 (`stage_index` "0", `stage_name` "night", digests via
+  `learner_events.sleep_digests`); `pending` and `applied_mask_digest` are "none" and `hydrate` refuses anything
+  else ("R2 deciding mask carrier is not bound").
+- **2.3 R2-c4 replay-OFF control (owner #1039 / R3 retirement; fact reported by lane r2inst, #2702, re-verified).**
+  `Brain.neuter_sleep` raises "retired sleep capability" for `replay`, `benna_fusi` and `attractor`, so the registered
+  replay-OFF twin cannot be built on main. The `sleep` event's `drawn` slot is written by `Brain._r2_sleep_learning`
+  as `",".join(ixn._last_drawn) or "none"`: it is "none" unless `SpikingInteractionLearner.replay` was explicitly
+  invoked (public, not retired; it sets `_last_drawn`, and nothing resets it before a sleep tick), and `hydrate`
+  compares a redone `sleep` event against that same live `_last_drawn`. `presentations_spent` is "0". The
+  `sleep_bout` event's `drawn` IS live: `instruments.staged_sleep_bout.bout_progress` writes
+  `json.dumps(report.carriers)`. R2-c4's must-differ control becomes, on 2.4's O_rw driven schedule:
+  (i) precondition: `ixn.stack` is present (with `stack` None, `Brain._r2_sleep_step` returns `rewirer` and
+  `{"_structural_report": None}` unchanged, so the twins are equal by construction);
+  (ii) the post-night `ixn.neurons[i].w` rows of the structural-ON twin and of the `neuter_sleep("structural")` twin
+  (which sets `_sleep_caps["structural"]` False) DIFFER in at least one row on EVERY seed; a rewirer object that
+  exists but moved no weight does not satisfy it, and None-versus-object is not a difference;
+  (iii) `rewirer.report()` turnover is reported separately, no bar. A seed where the precondition fails, or the rows
+  are equal, reads NOT MET (ruling 9), never skipped. The planted 1-ulp and swapped-ring-entry comparator checks are
+  unchanged. The I_K1/I_K2 arms run at base `e1b3ae3c` (D1), where replay still exists, so only they keep a replay
+  `drawn`.
+- **2.4 red O_rng (RNG carrier omitted at restore) and 2.3 R2-c3. Integrator ruling v3 #2779, which
+  supersedes #2714 and the interim #2738; found by rv-r2amend-b #2736.** History: lane r2inst found on dev seed 15000
+  (#2713) that O_rng did not fire in an instrument that never calls replay, and ruling #2714 then made it a
+  conditional P8 deletion.
+  #2714 was RETRACTED (#2737) because it was wrong: `SpikingInteractionLearner.replay(k)` is public and not retired
+  ("explicit invocation remains"), it is that learner's only `self.rng` draw after `Random(self.seed)` in
+  `__init__`, and main's G0C role runner (`G0C_ROLES` carries `O_rng`) calls `learner.replay(k=8)` and records
+  `draws` and `weights_after`. "Fires on no seed" was a property of an instrument that never calls replay, not of
+  the mechanism, so the deletion would have weakened a reachable red. Interim ruling #2738 (superseded by #2779
+  below), verbatim: "O_rng stays a LIVE red for
+  P1/P2 on main. The R2 instrument's O_rw driven schedule gains ONE explicit SpikingInteractionLearner.replay(k)
+  step after restore, run identically in the restoring process and its twin, recording RNG state and drawn ids per
+  2.2; O_rng (RNG carrier omitted at restore) must then fire on every dev seed 15000-15007, and per R2-c3 a red that
+  fires on no seed halts the arc (no deletion, no weakening)."
+  #2779 (v3), verbatim: "O_rng stays a LIVE red for P1/P2 on main. Construction (as amendment A2 (ii) and the
+  instrument #2749 already implement): the persisting process AND its twin each call
+  SpikingInteractionLearner.replay(k) BEFORE the boundary tick (so the checkpointed RNG has advanced) and again AFTER
+  restore, inside the learner effect boundary; the O_rng arm omits only the RNG carrier at restore. It must FIRE
+  (RNG state and drawn ids differ from the twin, no reconciliation fault) on EVERY dev seed 15000-15007, and the
+  instrument's verdict must require all 8 (a 1-of-8 fire does not pass); per R2-c3 a red firing on no seed halts
+  the arc. Explicit replay writes no lake event: this red tests the restored RNG carrier, not a durable effect."
+  Consequences: O_rng is neither deleted nor weakened; it counts in R2-c3's "every constructed red fires"; if it
+  fires on no seed the arc halts (P8). O_w and O_stack are unchanged. At base `e1b3ae3c` it stays a live red on the
+  I_K1/I_K2 arms.
+  Construction facts checked on fbb1f38e, which the ruling does not state:
+  (i) `SpikingInteractionLearner.replay` calls `_require_effect_boundary`, which raises "persistent learner effect
+  requires the common R2 boundary" when `event_sink` is bound and `_effect_depth` is 0. On a persisting Brain the
+  step runs inside `ixn._effect_depth += 1 ... -= 1`, as `Brain._r2_sleep_learning` does. Main's role runner calls
+  `learner.replay(k=8)` bare; the instrument lane confirms, per role, whether that learner has an `event_sink`.
+  (ii) The after-restore step alone cannot make the red fire. Nothing else draws the RNG, so a checkpoint written
+  before any replay holds a never-drawn `Random(seed)` state, and an omitted restore leaves the fresh `Random(seed)`
+  that `Brain._r2_fresh_learner` builds: equal states, identical draws in the omitted-restore process, its twin and
+  the correct restore. `rng`, `_last_drawn` and `_replay_counts` ride in the `r2.v1` tree (`_state_attrs` does not
+  exclude them). So the O_rng arm family also runs the same explicit `replay(k)` BEFORE the boundary tick that
+  writes the checkpoint, identically in the persisting process and its twin, then K1, then the ruled after-restore
+  step in both. The pre-boundary step is not part of the registered K0-K4 equality schedule, whose records are
+  unchanged. Its effects are not journaled and live only in that checkpoint: K0-K3 kill after it is written, K4
+  does not and is not an O_rng record. The pre-boundary step first appeared as this lane's verified correction of
+  #2738's wording and is now part of ruling #2779 itself; if the red fires on no dev seed, R2-c3 halts the arc and
+  no deletion is licensed.
+  (iii) Disclosure: explicit replay writes no lake event and advances no wake chronology (its docstring), so the
+  red tests the restored RNG carrier, not a durable effect.
+- **2.3 R2-c3 TIGHTENED (pre-data, 2026-10-15; from rv-r2amend-b #2795, accepted in integrator reply #2796; this
+  clause is in A2's R2-c3 row, not a new subsection).** Verbatim from #2796: "R2-c3 TIGHTENED (pre-data,
+  2026-10-15): every 2.4 red must fire on EVERY seed of the run (dev 15000-15007 first, then each
+  confirmatory/reserve set); a seed whose arm record is incomplete (crashed/missing) is INVALID, and any INVALID
+  seed makes R2-c3 NOT MET for that run (never PASS, never skipped); the registered weaker bar (fires on no seed
+  halts) is superseded, not deleted -- a red firing on no seed still halts the arc." The gate is therefore
+  all-seeds, not any-seed: a red that fires on 1 of 8 seeds is NOT MET (#2795: the instrument's `verdict()` used
+  `any_` over valid seeds only, so one firing seed gave PASS and an INVALID seed was excluded from the count; that
+  is not the registered bar and is wrong under this tightening). INVALID seeds count against the run. This
+  applies to every 2.4 red, O_rng included (#2779 states the same all-8 requirement for it).
+
+### A3. Owner #1037: the latch, and the PROSPECTIVE FAILWRITE schedule it requires
+
+Board #1037 (`owner-answer`, relayed by codex-sndl-coord-1010, 2026-10-11), by speaker, each verbatim:
+- The owner's own words: "Adopt these three decisions".
+- The choice put to the owner, which that answer adopts: "R2 stops all learning writes after a write failure until
+  restart, with its old failed-write test updated in a dated amendment".
+- The relayer's application (codex-sndl-coord-1010), NOT the owner's words: "Applied to original question#1: R2: stop
+  all common-writer learning-event kinds after a write failure until restart; update the old FAILWRITE schedule/test
+  in a dated prospective amendment before new checks."
+- The coordinator's record (`rows/owner-dispositions-adopted-2026-10-11.md`), NOT the owner's words, R2 #1: "all kinds
+  on the common R2 learner-event writer latch after an uncertain failed write until successful restart
+  reconciliation; write the dated prospective amendment of the old FAILWRITE schedule before implementing or running
+  its new checks."
+The owner's authority is the adopted choice; the "before new checks" ordering is the relayer's and coordinator's
+application of it, and this amendment treats it as binding.
+
+**ORDERING BREACH, disclosed.** #1037 required this amendment BEFORE the latch was implemented or its checks run.
+That did not happen. Main already implements the latch (`Brain._append_learner_event`,
+`Brain._record_learner_event`, `Brain._r2_boot`, `Brain._r2_close`) and carries tests of it:
+`tests/test_g0c_learner_persists.py` (comments "owner1037-1039/FAILWRITE"),
+`tests/test_r2_replay_hydration.py::test_failed_b_latches_and_os_restart_uses_actual_durable_prefix`,
+`tests/test_r2_sleep_redo.py::test_sleep_append_failure_restores_full_state_and_keeps_latch` and
+`::test_checkpoint_failure_preserves_actual_event_prefix_and_reconciles_complete_b`. This amendment is pre-DATA (no
+campaign result of the new arm exists; no confirmatory or reserve seed was read) but POST-implementation. It does not
+claim to precede the implementation. The docstring of `tests/test_r2_replay_hydration.py` says UNRUN; this lane
+ran nothing and claims no result of those tests. Its schedule is built on the prospective brief
+`rows/r2-owner-adopted-predata-amendment-2026-10-11.md` (claim #1048), never before folded into this file; each
+state transition there was re-verified on fbb1f38e. Where main's tests differ, the difference is named below.
+
+**This section supersedes 2.12's FAILWRITE arm (Codex 2) and 2.1's per-turn "refuses the durable effect of THAT
+turn" rule.** The old text above is not edited. 2.12's bar "equal to the twin, with the failure injected
+identically in the restoring process and its twin" is withdrawn: the twin would carry the same fault and never
+reconcile (board #1063), and the old red is not retained as an arm.
+
+**State machine (all verified).** `READY` is `Brain._r2_fault is None`. A process starts `pending`
+(`Brain._r2_boot`) and reaches READY only through a complete reconciliation (`_r2_may_rearm`). Any failed or
+unconfirmed common-writer append (raise, or `save_episode` returning False) calls `Brain._r2_close`
+(latching ALL kinds) BEFORE `Brain._r2_restore` rolls the survivor back to its pre-effect state; a restore that
+raises replaces the phase with "rollback". Nothing in-process clears the latch, including the
+fault injector being removed; only a fresh `Brain` construction that reconciles does. A latched `teach`/`turn`
+returns pure inference and increments `_unjournaled_refused`; a latched `sleep`, `sleep_bout`, `posed_problem` or
+checkpoint call is refused before its append and effect and is reported by `Brain._report_ixn_refusal` or an
+exception, not counted in `_unjournaled_refused`. `Brain._r2_seq` advances for the failed B (even when the frame
+landed) and never again while latched. `ctxread` and `percept` have no live producer on main: they are named gaps,
+not claims.
+
+**FAILWRITE arm (R2-c1 family; dev seeds 15000-15007 first, then the P1 seeds of 2.6).** Per seed, in one private
+persisting home:
+1. A: a successful `teach` of key K1, then the `_enter_wake` checkpoint. Retain the checkpoint bytes CP_A.
+2. B: one `correct`/`teach` of key K2 with the fault injected at `substrate.home.save_episode` (the writer's one
+   append). Three arms by what the lake holds afterwards: `absent` (nothing written), `landed` (the complete B frame
+   is written, then the call raises), `torn` (a frame header and a payload one byte short, then False).
+3. C, all in the survivor and all after B: (i) `Brain.respond` on K2 (the old step 2: a later turn on the same
+   key; `Brain.respond` calls `chat`, which calls `learn_turn(text, intent)` with no feedback: kind `turn`,
+   through `event_sink`, so latched it counts n_i = 1 refusal; if `chat` raised, `respond` falls back to
+   `converse`, which writes nothing, n_i = 0. n_i is read, not assumed: it is the number of `turn` events the
+   never-faulted reference appends for the same `respond` call); (ii) a `teach` of a new key;
+   (iii) a direct `learn_turn`; (iv) one learner-affecting sleep tick (`Brain._r2_sleep_learning`); (v) one
+   `Brain._r2_run_bout` call; (vi) the checkpoint, by calling `Brain._flush_interaction_learner` directly and
+   observing ITS return (`Brain._enter_wake` returns None and is not the observable); (vii) one
+   `posed_problem` source (`Brain._g9_apply_source`, a value the instrument builds to pass `posed_source`; if it
+   cannot, C(vii) reads UNVERIFIED, never skipped). Then the fault is removed and (i)-(vii) are repeated.
+4. Kill; restart in a fresh OS process with no fault; record.
+
+**Expected durable behaviour and the pass bar (equality, no tolerance, every seed).**
+- After B: `Brain._r2_fault["phase"]` is "append" (teach/turn) or "bout_append_or_preview" (`sleep_bout`, A4(d));
+  the survivor's full learner snapshot
+  (`Brain._r2_snapshot`, with exactly `_redo_count` and `_unjournaled_refused` popped from
+  `learner.state.tree.attrs`, as main's `_semantic` helper does) equals A's; `_r2_seq` is A's + 1.
+- After every C call, including the repeats: `_r2_seq` unchanged; the lake's raw bytes (length and sha256) equal
+  the after-B bytes; the checkpoint equals CP_A; the learner snapshot (same two counters popped) equals A's.
+  Return values: C(iv) returns False, C(v) raises `RuntimeError` naming the latch, C(vi) returns False with one
+  stderr line "R2 checkpoint refused by latch", C(vii) raises `PosedRefused` ("common all-learning latch is
+  closed"). C(vi) needs this bar: with the state restored to A the requested payload equals CP_A, so a build whose
+  checkpoint path ignores the latch still leaves the checkpoint equal to CP_A; only its True return and missing
+  refusal line expose it.
+- Excluded counters, each asserted on its own: `_unjournaled_refused` is read AFTER `Brain._r2_restore` has
+  returned (rollback restores it to its pre-effect value; `Brain._record_learner_event` increments it afterwards)
+  and equals b (B's own count) plus one per C call that reaches `Brain._record_learner_event`: C(i) counts n_i
+  (above), C(ii) `teach` 1, C(iii) `turn` 1 (`learn_turn` with no feedback); C(iv)-(vii) count 0. b is 1 when B is a
+  `teach`/`turn` and 0 when B is `sleep_bout` (`Brain._r2_run_bout` increments no counter). Totals: b + n_i + 2 after
+  the first pass and b + 2(n_i + 2) after the repeats: 4 and 7 for a teach/turn B with n_i = 1 (3 and 5 with n_i = 0);
+  3 and 6 for a `sleep_bout` B with n_i = 1 (2 and 4 with n_i = 0).
+  `_redo_count` is unchanged from its value after A in the survivor. The raw tree is retained. No other field is
+  dropped from the comparison.
+- Restart: `_r2_fault is None`, `_hydration_count == 1`, and the learner snapshot equals an INDEPENDENT reference:
+  for `absent` and `torn` the state after A alone; for `landed` the state after A then B, captured after B returns
+  and the cursor has advanced. Each reference is a separate, never-faulted persisting process on its own home that
+  runs the same calls (a reference built inside the faulting `save_episode` is a pre-cursor snapshot and is wrong).
+  The other arm's reference must differ from the restart (identical sides read NOT MET, ruling 9). For `torn`, the
+  before-repair raw tail and the complete-prefix length and hash are retained, and the after-repair prefix is the
+  last complete frame.
+- Rearm: after a successful restart, one separately injected failure latches again.
+- Report, no bar: the `phase` strings reached by each C kind.
+
+**Constructed reachable REDs (each must fire; a red that fires on no seed is deleted, never weakened, P8).**
+- **RED-KIND:** a build that latches only the failing turn's kind and lets the next kind through. ONE frozen
+  construction: run B in the correct build; after B returns and before C, set `Brain._r2_fault` to None (the latch
+  reopened) and wrap `Brain._record_learner_event` so B's kind (`teach`) returns pure inference and increments
+  `_unjournaled_refused` with no append and no `Brain._r2_close`. Raising instead goes through `Brain._r2_close` and
+  relatches ALL kinds, which is the correct build, and a mutation installed before B fails the B bars first. C(ii)
+  is refused as in the correct build, so the red fires only through a non-teach call: C(iii) `learn_turn` appends a
+  `turn` event (the raw-bytes and `_r2_seq` checks fail there at the latest, whatever n_i is), and C(iv)-(vii)
+  append a `sleep`, `sleep_bout`, checkpoint or `posed_problem` record. For B = `sleep_bout` wrap
+  `Brain._r2_run_bout` to raise before its `try`, as its own latch check does, with no `Brain._r2_close`.
+- **RED-RETRY:** the latch cleared in-process by a later successful append (or by the injector's removal). The
+  repeats of C append; the same checks fail.
+- **RED-GATE:** `Brain._r2_may_rearm` forced True over an incomplete report. Construction at the gate itself: in
+  the restarting process wrap `SpikingInteractionLearner.hydrate` to return the real report with `complete` set
+  False (or one id dropped from `processed_ids`) and neuter `Brain._r2_may_rearm` to return True. Malformed events
+  or receipts are NOT the injection: `hydrate` refuses them earlier ("R2 incomplete or mismatched same-pass
+  receipt"), before the gate is reached. The red build rearms (`_r2_fault` None) where the correct build latches
+  phase "reconcile", and the next real write is caught by the raw-bytes check.
+- **RED-ORACLE:** the A-only reference used for `landed` (and the pre-cursor snapshot) must each fail a named field
+  (`_cursor`, ring or authority) against the restart.
+- **RED-COUNT:** a build that does not count the refused `teach`/`turn` calls fails the exact-delta check.
+- **RED-CKPT:** the latch not covering the checkpoint path. Construction: `Brain._r2_fault` is set None for the
+  C(vi) call only (a build whose `_flush_interaction_learner` has no latch check behaves so). It must fail on
+  the True return and the missing "R2 checkpoint refused by latch" line, not on bytes (see the bar).
+- **RED-POSED:** the latch not covering `posed_problem`. Construction: `Brain._r2_fault` is set None for the
+  C(vii) call only (a build without the `_need(self._r2_fault is None, ...)` line of `Brain._g9_apply_source`).
+  A `posed_problem` frame is appended, so the raw-bytes and `_r2_seq` checks fail.
+
+**Disagreements with what main's tests assert (fbb1f38e), each named.**
+1. No main test calls `Brain.respond` on the failed key. In `tests/test_g0c_learner_persists.py`,
+   `test_teaching_event_write_failure_latches_correction_until_restart` re-issues `correct`;
+   `test_failed_b_latches_and_os_restart_uses_actual_durable_prefix` uses `teach` and `learn_turn`.
+   C(i) is new.
+2. `sleep_bout` and `posed_problem` as C calls under a latched state: only `tests/test_r2_sleep_bout.py` asserts
+   the bout refusal ("sleep_bout refused by latch"); `_g9_apply_source` under a latch is not exercised by a FAILWRITE
+   test. C(v) and C(vii) are new; C(vii) is the posed call and carries the bar above.
+3. Main restarts compare to `_reference(include_b)` (an independent persisting process), which agrees with the
+   schedule; the registered twin-with-identical-injection does not appear in main's tests and is withdrawn above.
+4. Main's tests run `make_brain(seed=0)` on one key pair; the arm runs the 2.2 schedule on the dev and P1 seeds.
+5. I found no main test for these crash points of #1048: after a successful event but before the checkpoint
+   (partly covered by the sleep redo test), after a complete checkpoint frame before success is reported, after a
+   successful checkpoint before exit, and after restart before the first new append. The instrument covers them or
+   reports each UNVERIFIED.
+6. Main's `test_failed_b_latches_and_os_restart_uses_actual_durable_prefix` asserts raw bytes, CP_A, the snapshot
+   and `_r2_seq` ONCE, after the first C pair (`teach` then `learn_turn`; refused == 3), then only
+   `_r2_sleep_learning() is False` and `_flush_interaction_learner() is False`; not after EACH C call. It has no
+   repeat-after-fault-removal pass and no rearm check (the restart asserts `fault is None` only; no second failure
+   is injected). It asserts `_r2_fault is not None`, not `phase == "append"`; that string is asserted only in
+   `test_g0c_learner_persists.py::test_teaching_event_write_failure_latches_correction_until_restart`. Its reds
+   (`test_latch_and_rollback_neuters_have_named_reachable_reds`) are latch-neuter and rollback-neuter; RED-KIND,
+   RED-RETRY and RED-COUNT are new, and RED-ORACLE is only partly there (other-arm reference must differ).
+7. STRICTER than main: A3 requires the raw bytes after every C call to equal the after-B bytes, and for `torn` the
+   after-repair prefix length and hash. Main compares only `frozen.read_bytes() == raw_prefix` (its own pre-restart
+   copy against the same variable), never after-B against after-C and never an after-repair prefix.
+8. Main has no named red for the latch missing from the checkpoint path (`Brain._flush_interaction_learner`) or from
+   `posed_problem`. RED-CKPT and RED-POSED are added above, constructed.
+
+### A4. Owner #2106: `sleep_bout`
+
+#2105 asked (owner question, R2 x G6 x F5): journal each staged sleep bout as a new R2 event kind and loosen F5's
+K10c after the data was read (A), or run it on a detached non-durable learner copy (B, the integrator's
+recommendation). #2106, verbatim: "Owner answer relayed verbatim by single integrator claude-cont-1013 from the
+Claude chat (2026-10-13, AskUserQuestion on #2105): selected option "A: journal the bout" -- "Add a new R2 event
+kind with deterministic restart redo, and a dated post-data amendment loosening K10c to allow exactly that write.
+Bout effects become durable brain learning.""
+
+Where K10c's dated post-data amendment lives: `specs/022-unified-brain-arc/evidence/g6-sleep-durable-memory.md`
+(its head, "POST-DATA amendment, 2026-10-13, owner-question #2105 / owner-answer #2106"). It is NOT in this file.
+`specs/022-unified-brain-arc/evidence/r3-replay-growth-composition.md` still carries only the original K10c row
+(its 2026-10-08 F5 amendment: "no lake write during the bout") with no 2026-10-13 text; the loosening is not
+restated there.
+
+The mechanism: `Brain._r2_run_bout` (the only caller is `instruments.staged_sleep_bout.run_bout`; there is no
+live-tick caller) predicts the bout on a preview learner through `learner_bout`, appends ONE `sleep_bout` event
+(slots `bout`, the three digests, `drawn`, `presentations_spent`) through `Brain._append_learner_event`, then
+runs the bout. After the effect it refuses on a digest/progress mismatch or on any change of the ring or authority
+cache, rolls back and latches. Restart redo goes through `instruments.staged_sleep_bout.learner_bout`.
+
+What R2's checks must now cover for kind `sleep_bout` (new check R2-c8, dev seeds first, equality, no tolerance):
+- (a) restart equals an independent never-killed reference on every 2.2 record after a bout, for a kill after the
+  event and before the effect, after the effect and before the checkpoint, and after the checkpoint;
+- (b) a planted `sleep_bout` event with one altered digest or progress slot is refused by redo by name and latches;
+  its red is a redo that skips the verification;
+- (c) exactly one `sleep_bout` record per bout, and no other lake write during the bout (the K10c reading as
+  amended); ring, ring ids and authority are unchanged by a bout (main enforces this: `Brain._r2_run_bout`
+  compares `ixn._snapshot()["cache"]`, which holds `_replay`, `_replay_ids` and `_authority`). Replay counts
+  are NOT compared by main; R2-c8 reads `_replay_counts` before and after, a new check;
+- (d) the FAILWRITE arm of A3 runs with `sleep_bout` as the failing kind B and as a C call. For B = `sleep_bout`
+  the fault is at its append in `Brain._r2_run_bout`: `phase` is "bout_append_or_preview" (not "append"); no
+  `_unjournaled_refused` increment (b = 0); `_r2_seq` still advances by one; the normal-chat totals are 3 after the
+  first pass and 6 after the repeats (A3's formula, n_i = 1), or 2 and 4 if `respond` emits no turn.
+
+### A5. The campaign instrument
+
+`instruments/replay_hydration.py` was never ported (not among #1779's 20 operations: 17 Edits and 3 Writes). Main's
+`tests/test_r2_replay_hydration.py` is not that instrument and not merely a helper: it holds seven test functions
+(complete restart, failed-B arms, partial-B rollback, the latch/rollback reds, strict same-pass, failed hydration,
+one-hydration/cache alias) plus helpers imported by five modules. It covers P1/P2 recovery mechanisms; it does not
+supply the registered campaign. Its docstring says UNRUN. The instrument is REBUILT on main in its own lane
+(claude-sonnet-r2inst-1015) against THIS amendment: kill points K0-K4 and twins as
+registered, I_K1/I_K2 at the base head per D1, the FAILWRITE arm per A3, R2-c4 per A2, R2-c8 per A4. R2-c1..c7 and
+2.5's positive controls run on dev seeds 15000-15007 first. No confirmatory seed is read before the rebuilt
+instrument and this amendment are both reviewed and on the stacked head.
+
+### A6. P3
+
+Owner, 2026-10-15 (chat): "Start the R2 arc: docs amendment (#1037 latch, #2106 sleep_bout) plus build the
+replay_hydration campaign instrument and P3, as parallel lanes. Get #2689 reviewed first." P3 was never built at
+either head: `transition_sink`, `hydrate_transitions`, `pseq` and `stale_proto` appear in no file of src, tests or
+tools at 56031ab9 or fbb1f38e (#2690, #2691, Codex #2719). `percept` is a registry row in
+`home.LEARNER_EVENT_KINDS` only. Nothing was measured, so this is not a null. P3 is built in its own
+lane (claude-sonnet-r2p3-1015) to 2.10 as registered (with 2.11 D2 and 2.12 Codex 3); any deviation lands as a
+further dated pre-data amendment before seeds 15050-15057.
+P3 does not block P1/P2 readiness: 2.3 and 2.10 give P1, P2 and P3 separate verdicts (a P3 red reverts P3, never P1),
+so P1/P2 work proceeds on its own readiness. Literal execution "as registered" still waits on A2-A4 and the rebuilt
+instrument. One consequence of A3, stated for that lane to confirm: a `percept` write goes through
+`Brain._append_learner_event`, so its failure latches every kind, not only that observation's buffering and `_prev`.
+
+### A7. Codex-14 gate `memory_unit_unreconstructible`
+
+Absent on main (none in src, tests or tools at fbb1f38e; at 56031ab9 it is in
+`readout/interaction_learning.py` and `tests/test_r2_replay_hydration.py`; at fbb1f38e only this file carries the
+registered text) and no successor found: a search of the Brain, the learner and
+`substrate/` for `memory unit`, `unreconstructible` and a memory/state role finds only the `ctxread` schema comment.
+`ctxread` is a schema with no live producer (the writer refuses it). So the gate is a carried OPENING, unverified
+on main, NOT a satisfied check. The instrument lane reports it UNVERIFIED. Any R2 verdict that covers memory
+units waits on it (2.12, Codex 14).
+
+### A8. B13 opening
+
+Opening, no diagnosis. B13's registered cost (the 2026-10-06 P2 amendment, "Cost, a claim with a check (B13)";
+2.11 D3 is the 0x04 append budget it is measured against; the 2026-10-07 addendum: per-tick p95 613 B, re-pinned
+113 -> 613 B) is UNVERIFIED on main: neither confirmed nor contradicted. The live daemon's /api/state
+(2026-10-15, read by the integrator, one live workload, not a dev-seed measurement) reports `append_floods` 36
+and a last flood "FLOOD: tag 0x04 (IMMORTAL) appended 5631 B this tick > 8.0x ... (625 B)". Measurement of the
+flood source is owed before or with the instrument arc, under the
+baseline's own method, and may re-pin the cost clause inside a further dated amendment. One 5631 B live tick is not a
+contradiction of a p95 (`tools/lake_append_baseline.json` still seeds tag 4 at 113 B and says "not a ceiling"); the
+clause stays UNVERIFIED pending that measurement.
