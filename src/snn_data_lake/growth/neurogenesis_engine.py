@@ -219,8 +219,7 @@ _PERCEPT_SLOTS = (
 
 def _percept_refusal(event, width, n_units, seen, last):
     """(reason, decoded x, category, proto_boot, proto_flushed) for one `percept` event: reason
-    None when it passes every check that needs only the event itself (the flushed-count proof
-    below needs its neighbours)."""
+    None when it passes every check that needs only the event itself."""
     none = (None, None, None)
     if any(event.get(slot) in (None, "") for slot in _PERCEPT_SLOTS):
         return ("missing_slot", *none)
@@ -264,17 +263,33 @@ def hydrate_transitions(events, *, width, n_units, buffer_cap, current_session=N
     id or a `(session, seq)` regression is not a percept and cannot bridge either.
 
     STALE PROTOTYPE (D2): an event `(s, c)` is eligible only if prototype `c` is PROVEN durable,
-    i.e. `c < F`, F being the largest `proto_flushed` of a LATER event of session `s`, or the
-    `proto_boot` of session `s + 1` read here, or the restored arm's own `n_units` when this
-    process is session `s + 1` (`current_session`). A crashed session's unflushed tail has no such
-    proof (its id may be reused by a later recruit) and is refused as `stale_proto`.
+    i.e. `c < F`: its OWN boot/flushed count, a later same-session flushed count, or the boot
+    count of session `s + 1`. Eligible teach/turn records carry these counts too (A9), retaining
+    proof across a session with no percept. The restored arm's `n_units` proves only session
+    `current_session - 1`. A crashed session's unflushed tail has no such proof (its id may be
+    reused by a later recruit) and is refused as `stale_proto`.
 
     Returns `{"x", "y", "categories", "refusals"}`: the last `buffer_cap` pairs, every eligible
     category, and a count per reason."""
     refusals, seen, last = Counter(), set(), None
+    boots, chat_flushes = {}, {}
     rows = []  # every percept event in lake order: [reason, session, pseq, x, category, proto]
     for event in events:
         if event.get("kind") != "percept":
+            # These are the SAME eligible records the shared reader gave learner hydration.
+            # A chat-only session's boot proves the preceding session, never an older reused id.
+            if event.get("kind") in ("teach", "turn"):
+                from snn_data_lake.substrate.learner_events import KIND_SPECS, _refusal
+
+                counts = [event.get(k, "") for k in ("proto_boot", "proto_flushed")]
+                if (
+                    _refusal(event, KIND_SPECS[event["kind"]], False) is None
+                    and event.get("split") == "train"
+                    and all(type(v) is str and v.isascii() and v.isdigit() for v in counts)
+                ):
+                    session = int(event["session"])
+                    boots.setdefault(session, int(counts[0]))
+                    chat_flushes[session] = max(chat_flushes.get(session, -1), int(counts[1]))
             continue
         reason, x, category, proto = _percept_refusal(event, width, n_units, seen, last)
         if reason in ("duplicate_id", "seq_regression"):
@@ -289,7 +304,7 @@ def hydrate_transitions(events, *, width, n_units, buffer_cap, current_session=N
         pseq = int(event["pseq"]) if reason is None else None
         rows.append([reason, session, pseq, x, category, proto])
     # the durability proof of each eligible event, from its eligible neighbours only
-    boots, later, run = {}, [None] * len(rows), {}
+    later, run = [None] * len(rows), {}
     for i in reversed(range(len(rows))):
         reason, session, _p, _x, _c, proto = rows[i]
         later[i] = run.get(session)
@@ -299,9 +314,9 @@ def hydrate_transitions(events, *, width, n_units, buffer_cap, current_session=N
         if reason is None:
             boots.setdefault(session, proto[0])
     prev, pairs, categories = None, [], set()
-    for i, (reason, session, pseq, x, category, _proto) in enumerate(rows):
+    for i, (reason, session, pseq, x, category, proto) in enumerate(rows):
         if reason is None:
-            proofs = [later[i], boots.get(session + 1)]
+            proofs = [*proto, later[i], boots.get(session + 1), chat_flushes.get(session)]
             if current_session == session + 1:
                 proofs.append(n_units)
             proofs = [v for v in proofs if v is not None]

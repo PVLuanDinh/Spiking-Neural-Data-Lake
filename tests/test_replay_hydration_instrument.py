@@ -83,6 +83,7 @@ def _arms():
     for kind in rh.PLANTED:
         for side in ("on", "off"):
             arms[f"{kind}_{side}"] = copy.deepcopy(base)
+    arms["O_cursor"]["cursor_probe"] = {"binding_valid": True, "redo_steps": 1}
     return arms
 
 
@@ -310,6 +311,32 @@ def test_real_k1_restart_equals_twin_and_an_omitted_weight_is_flagged(tmp_path):
     assert not rh.records_equal(arms["O_w"], arms["twin_K2"])
     assert rh.chrono_clean(arms["res_K2"])
     assert sys.version_info >= (3, 12)
+
+
+def test_real_cursor_red_reaches_sleep_redo_with_a_valid_prefix_binding(tmp_path):
+    arms = _run(tmp_path, "cursor", ("pre_K1", "twin_K1", "res_K1", "O_cursor"))
+    assert rh.records_equal(arms["res_K1"], arms["twin_K1"]), "clean cursor control"
+    red = arms["O_cursor"]
+    cause = (red["fault"] or {}).get("cause", "")
+    assert "prefix" not in cause, cause
+    assert red["cursor_probe"]["binding_valid"]
+    assert red["cursor_probe"]["redo_steps"] > 0, "must execute the sleep effect/comparison"
+    assert red["cursor_probe"]["saved_cursor"] != red["cursor_probe"]["mutated_cursor"]
+    assert not rh.records_equal(red, arms["twin_K1"])
+    assert not cause or cause.endswith("R2 sleep redo digest/progress mismatch"), cause
+
+
+def test_cursor_prefix_binding_refusal_never_counts_as_a_successful_red():
+    arms = _arms()
+    red = arms["O_cursor"]
+    red["fault"] = {"cause": "R2 checkpoint canonical prefix binding missing"}
+    assert not rh.seed_comparisons(arms)["reds"]["O_cursor"]
+    red["fault"] = None
+    red["before"]["cursor"] = [1, 1]
+    red["cursor_probe"]["redo_steps"] = 0
+    assert not rh.seed_comparisons(arms)["reds"]["O_cursor"]
+    red["cursor_probe"]["redo_steps"] = 1
+    assert rh.seed_comparisons(arms)["reds"]["O_cursor"]
 
 
 # ---- round 2: complete arms only, every seed, weight-only c4 (#2769, #2773, #2779, #2797) --------

@@ -5378,7 +5378,7 @@ class Brain:
         self._r2_seq = 0
         self._session = None
         self._r2_receipt = None
-        self._r2_percept_events = []  # P3: this boot's percept events, handed to the grower once
+        self._r2_percept_events = []  # P3: shared events/prototype evidence, handed to the grower once
         self._r2_pseq = 0  # P3: per-session percept counter, consumed on every write ATTEMPT
         self._g9_actors = {}
         self._g9_apply_receipt = None
@@ -5469,7 +5469,7 @@ class Brain:
                     self._session = str(session)
                     self._r2_receipt = receipt
                     self._r2_prefix_digest = report["prefix_digest"]
-                    self._r2_percept_events = [e for e in events if e["kind"] == "percept"]
+                    self._r2_percept_events = events  # A9: chat records also carry prototype proof
                 except BaseException:
                     self._r2_restore(live, before)
                     self._g9_actors = old_actors
@@ -5625,6 +5625,13 @@ class Brain:
             else "text_features n_in=52",
             **slots,
         }
+        if kind in ("teach", "turn") and (
+            getattr(self, "_r2_proto_boot", 0) or getattr(self, "_r2_proto_flushed", 0)
+        ):
+            # A9: preserve the inherited durability proof even in a session with no percept.
+            # These schemas admit optional metadata; no new event, store, or recovery read.
+            event["proto_boot"] = str(self._r2_proto_boot)
+            event["proto_flushed"] = str(self._r2_proto_flushed)
         if (
             any(type(v) is not str for v in event.values())
             or _refusal(event, KIND_SPECS[kind], False) is not None

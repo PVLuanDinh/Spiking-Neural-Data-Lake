@@ -1,13 +1,11 @@
 """R2 part P3 (r2-typed-replay-hydration.md 2.10): the grower's percept-transition record.
 Dev seeds 15000-15007 only; NEVER a seed >= 15010.
 
-`substrate/learner_events.py` (the `percept` kind) and `readout/interaction_learning.py::hydrate`
-(a no-effect branch for it) are outside this arc's three files and travel as patches
-(r2p3-percept-kind-substrate.diff, r2p3-hydrate-percept-readout.diff). `apply_foreign_patches` makes
-the same two edits in-process so the Brain tests exercise the real boot path; it is a no-op once
-the patches have landed.
+Exercises the shipped percept schema and hydrate branch, including in restart children.
+Missing-integration mutants must refuse; the tests never repair production functionality.
 """
 
+import ast
 import inspect
 import json
 import os
@@ -22,70 +20,6 @@ import pytest
 
 DEV_SEED = 15000
 WIDTH = 64
-
-_KIND_SPEC = {
-    "slots": (
-        "kind",
-        "event_id",
-        "stream",
-        "session",
-        "seq",
-        "schema",
-        "valid",
-        "split",
-        "x",
-        "category",
-        "n_protos",
-        "pseq",
-        "provenance",
-        "encoder",
-        "proto_boot",
-        "proto_flushed",
-    ),
-    "encoders": frozenset({"arm.percept gained width=64"}),
-}
-_HYDRATE_OLD = """            else:
-                raise ValueError(f"R2 unbound effect: {kind}")
-"""
-_HYDRATE_NEW = """            elif kind == "percept":
-                if not before_checkpoint:
-                    self._cursor = order
-            else:
-                raise ValueError(f"R2 unbound effect: {kind}")
-"""
-
-
-def apply_foreign_patches():
-    """The two out-of-scope edits, applied in-process. Returns an undo callable."""
-    from snn_data_lake.readout import interaction_learning as il
-    from snn_data_lake.substrate import learner_events as le
-
-    undo = []
-    if "percept" not in le.KIND_SPECS:
-        le.KIND_SPECS["percept"] = _KIND_SPEC
-        undo.append(lambda: le.KIND_SPECS.pop("percept", None))
-    src = inspect.getsource(il.SpikingInteractionLearner.hydrate)
-    if 'kind == "percept"' not in src:
-        patched = src.replace(_HYDRATE_OLD, _HYDRATE_NEW)
-        assert patched != src, "hydrate's unbound-effect branch moved: refresh the patch"
-        ns = {}
-        exec(compile(textwrap.dedent(patched), il.__file__, "exec"), il.__dict__, ns)
-        original = il.SpikingInteractionLearner.hydrate
-        il.SpikingInteractionLearner.hydrate = ns["hydrate"]
-        undo.append(lambda: setattr(il.SpikingInteractionLearner, "hydrate", original))
-
-    def _undo():
-        for fn in reversed(undo):
-            fn()
-
-    return _undo
-
-
-@pytest.fixture(autouse=True)
-def _foreign_patches():
-    undo = apply_foreign_patches()
-    yield
-    undo()
 
 
 # ---- constructed inputs ------------------------------------------------------------------------
@@ -282,6 +216,51 @@ def test_stale_proto_an_unflushed_crashed_tail_is_refused_not_hydrated():
     assert _hydrate(unflushed_b + c0, n_units=1, current_session=4)["refusals"] == {
         "stale_proto": 4
     }
+
+
+@pytest.mark.parametrize("boot,flushed", [("2", "2"), ("2", "0"), ("0", "2")])
+def test_own_durable_proof_survives_a_teach_only_intervening_session(boot, flushed):
+    """Panel A1: the last endpoint's OWN proof must survive arbitrary later restarts."""
+    events = [_ev(1, i, i, _vec(i), i - 1, boot=boot, flushed=flushed) for i in (1, 2)]
+    first = _hydrate(events, n_units=2, current_session=2)
+    events.append({"kind": "teach", "session": "2"})
+    third = _hydrate(events, n_units=2, current_session=3)
+    assert first["y"] == [1] and not first["refusals"]
+    assert third == first
+
+
+def test_chat_boot_proves_only_the_immediately_preceding_session():
+    """Panel B1's exact zero-count input, with refused/reused-id evidence controls."""
+    events = [_ev(1, i, i, _vec(i), 0, boot="0", flushed="0") for i in (1, 2, 3)]
+    chat = {
+        "kind": "teach",
+        "event_id": "2-4",
+        "session": "2",
+        "seq": "4",
+        "stream": "chat",
+        "schema": "r2.v1",
+        "valid": "1",
+        "split": "train",
+        "source": "hello private r2",
+        "target": "GREET",
+        "provenance": "self",
+        "encoder": "text_features n_in=52",
+        "proto_boot": "1",
+        "proto_flushed": "1",
+    }
+    twin = _hydrate(events, n_units=1, current_session=2)
+    assert twin["y"] == [0, 0] and not twin["refusals"]
+    assert _hydrate(events + [chat], n_units=1, current_session=3) == twin
+    for changes in (
+        {"proto_boot": "0"},  # session 2's reused id was flushed there, never in session 1
+        {"session": "3", "seq": "4", "event_id": "3-4"},
+        {"valid": "0"},
+        {"split": "heldout"},
+        {"provenance": "instrument"},
+        {"proto_boot": "unknown"},
+    ):
+        out = _hydrate(events + [{**chat, **changes}], n_units=1, current_session=4)
+        assert out["y"] == [] and out["refusals"] == {"stale_proto": 3}, changes
 
 
 def test_failed_write_leaves_a_pseq_gap_and_no_bridging_pair():
@@ -584,6 +563,53 @@ def test_proto_flushed_is_the_count_at_save_not_after_a_recruit_during_it(monkey
         assert brain._r2_proto_flushed == held
 
 
+@pytest.mark.parametrize("missing", ["schema", "hydrate_branch"])
+def test_missing_shipped_percept_integration_refuses_boot(missing, monkeypatch):
+    """Panel A3/B2: deliberately remove integration; no fixture may supply it again."""
+    from snn_data_lake.engine.brain import make_brain
+    from snn_data_lake.readout import interaction_learning as il
+    from snn_data_lake.substrate import home
+    from snn_data_lake.substrate import learner_events as le
+
+    with home.throwaway_home():
+        home.require_isolated_home()
+        brain = make_brain(seed=DEV_SEED, persist=True, device="cpu")
+        try:
+            assert brain._r2_fault is None
+            for _ in range(12):
+                brain.tick()
+            assert _percept_events(), "positive control: shipped production writes percepts"
+        finally:
+            brain.close()
+        if missing == "schema":
+            monkeypatch.delitem(le.KIND_SPECS, "percept")
+            cause = "R2 incomplete or mismatched same-pass receipt"
+        else:
+            tree = ast.parse(
+                textwrap.dedent(inspect.getsource(il.SpikingInteractionLearner.hydrate))
+            )
+            branches = [
+                n
+                for n in ast.walk(tree)
+                if isinstance(n, ast.If) and ast.unparse(n.test) == "kind == 'percept'"
+            ]
+            assert len(branches) == 1, "positive control: mutate the actual shipped percept branch"
+            branches[0].test = ast.Constant(False)
+            ns = {}
+            exec(compile(ast.fix_missing_locations(tree), il.__file__, "exec"), il.__dict__, ns)
+            monkeypatch.setattr(il.SpikingInteractionLearner, "hydrate", ns["hydrate"])
+            cause = "R2 unbound effect: percept"
+        restored = make_brain(seed=DEV_SEED, persist=True, device="cpu")
+        try:
+            assert restored._r2_fault is not None
+            assert cause in restored._r2_fault["cause"], restored._r2_fault
+            assert restored.neuro._buf_x == []
+            with pytest.raises(RuntimeError, match="not buffered"):
+                restored.neuro.observe(_vec(1), 0)
+        finally:
+            restored.close()
+
+
 def test_planted_events_in_a_persisting_lake_are_refused_by_hydration():
     """WIDTH, VOCAB and INSTRUMENT planted between real percepts of an earlier session: the next
     boot reconciles (the kind is bound), hydrates only the eligible chain and counts the rest."""
@@ -612,9 +638,6 @@ def test_planted_events_in_a_persisting_lake_are_refused_by_hydration():
 # ---- the restart: a real child killed after the night's flush, a real restoring process ----------
 _CHILD = r"""
 import json, os, sys
-sys.path.insert(0, sys.argv[2])
-import test_r2_p3_percept_transitions as T
-T.apply_foreign_patches()
 from snn_data_lake.engine.brain import make_brain
 
 mode = sys.argv[1]
@@ -667,6 +690,12 @@ if mode == "close":
         if i == 12:
             b.brain.teach("hello private r2", "GREET")
     emit("CLOSED", {**snap(), "log": log, "cursor": b.brain._ixn._cursor, "fault": b._r2_fault})
+    b.close()
+    sys.exit(0)
+
+if mode == "teach_only":
+    b.brain.teach("hello private r2", "GREET")
+    emit("TEACH_ONLY", {**snap(), "session": b._session, "fault": b._r2_fault})
     b.close()
     sys.exit(0)
 
@@ -783,3 +812,20 @@ def test_clean_close_checkpoint_and_restart_keeps_percepts_teach_and_the_chain_r
         assert got["cats"] == first["cats"] and not got["refusals"]
         assert got["prev_none"] and got["observed"] == 0
         assert got["cursor"] == first["cursor"]
+
+
+def test_three_process_restarts_preserve_pairs_after_a_teach_only_session():
+    """Panel B1: a close flush with no subsequent percept must retain its proof in the lake."""
+    from snn_data_lake.substrate import home
+
+    with home.throwaway_home() as private:
+        home.require_isolated_home()
+        first = _run_child("close", private)["CLOSED"]
+        second = _run_child("teach_only", private)["TEACH_ONLY"]
+        third = _run_child("restore", private)["RESTORED"]
+        assert second["session"] == "2" and second["observed"] == 0
+        assert first["buf_x"] and first["fault"] is second["fault"] is third["fault"] is None
+        for got in (second, third):
+            assert not got["refusals"], got["refusals"]
+            assert got["buf_x"] == first["buf_x"] and got["buf_y"] == first["buf_y"]
+            assert got["cats"] == first["cats"]

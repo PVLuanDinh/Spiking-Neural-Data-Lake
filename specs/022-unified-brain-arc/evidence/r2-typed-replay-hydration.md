@@ -1052,3 +1052,39 @@ flood source is owed before or with the instrument arc, under the
 baseline's own method, and may re-pin the cost clause inside a further dated amendment. One 5631 B live tick is not a
 contradiction of a p95 (`tools/lake_append_baseline.json` still seeds tag 4 at 113 B and says "not a ceiling"); the
 clause stays UNVERIFIED pending that measurement.
+
+### A9. Panel fold 2026-10-15 (pre-data)
+
+Panel A1/B1 identifies an over-refusal in 2.11 D2: a durable percept pair disappears on
+session 3 after session 2 records chat/teach but no percept. Register both failing inputs:
+the endpoints already carry `proto_boot=2, proto_flushed=2` (A1), or session 1 records
+three percepts with zero boot/flushed counts before its successful prototype flush (B1).
+Session 2 restores the prototypes, teaches without observing percepts, and closes; session 3
+must retain the same within-session pairs. These three-session regressions are registered REDs.
+
+Corrected evidence rule: admit a percept on its OWN durable-prototype evidence, category
+strictly below its `proto_boot` or `proto_flushed`, as well as the existing later same-session
+flush or immediately-next-session boot proof. Refuse `stale_proto` when these records cannot
+prove that category durable, including the original unflushed crashed tail whose id was reused.
+Today's count several sessions later is never proof for that tail. To preserve the B1 proof
+without another percept, the common writer records the restored `proto_boot` and successfully
+saved `proto_flushed` counts on ordinary `teach`/`turn` lake records too (optional metadata
+accepted by their shipped schemas). Their boot count proves ONLY their own session's inherited
+categories and the immediately preceding session's flush; their flushed count proves only
+their own session. P3 consumes these eligible records through the SAME shared recovery pass,
+alongside percepts, with no second read or store. Missing legacy metadata invents no proof.
+
+Panel A2: O_cursor must keep a valid canonical prefix binding for its mutated cursor and
+reach hydration's redo/state comparison. A prefix-binding refusal cannot count as this red.
+Panel A3/B2: P3 tests exercise the shipped percept schema and hydrate branch, with no fixture
+or restart-child repairs; removing either integration must produce a demonstrated refusal.
+
+Exposure: development inputs/seeds only (15000-15007); no confirmatory or reserve seed read.
+This addendum precedes code changes and new panel-fold measurements; the panels' reported
+development reproductions are disclosed above, not presented as untouched data.
+
+A9 clarification (2026-10-15, development verification): when BOTH durable counts are zero,
+ordinary teach/turn records retain their existing exact event format. Zero proves no category
+durable, so omitting that optional metadata changes no admission proof. Positive counts still
+travel in those same records. This addresses the G0(c) event-format regression found by the
+affected suite, without changing its test or weakening the reused-id refusal.

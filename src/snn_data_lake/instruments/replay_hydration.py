@@ -696,8 +696,11 @@ def _patch_restore(role):
 
         Learner.hydrate = no_watermark
     elif role == "O_cursor":
+        probe = {"binding_valid": False, "redo_steps": 0}
 
         def wake_cursor(learner, events, **kw):
+            from snn_data_lake.substrate.learner_events import prefix_digest
+
             # recovery ignores the cursor's sleep component and resumes from the last wake event
             cur = learner._cursor
             wake = [
@@ -707,9 +710,26 @@ def _patch_restore(role):
                 and (cur is None or ixn._event_order(e["event_id"]) <= cur)
             ]
             learner._cursor = max(wake) if wake else None
-            return real_hydrate(learner, events, **{**kw, "checkpoint_prefix_digest": None})
+            binding = prefix_digest(events, learner._cursor)
+            probe.update(saved_cursor=cur, mutated_cursor=learner._cursor, binding_valid=True)
+            step = kw["sleep_step"]["step"]
+
+            def counted_step(*a, **k):
+                probe["redo_steps"] += 1
+                return step(*a, **k)
+
+            return real_hydrate(
+                learner,
+                events,
+                **{
+                    **kw,
+                    "checkpoint_prefix_digest": binding,
+                    "sleep_step": {**kw["sleep_step"], "step": counted_step},
+                },
+            )
 
         Learner.hydrate = wake_cursor
+        return probe
     elif role == "O_sleepskip":
         _filtered_hydrate(
             lambda learner, e: (
@@ -819,7 +839,9 @@ def run_process(role, seed, home, out, head="r2"):
     motor = _MotorCount()
     restoring = not (role.startswith("pre_") or role.startswith("twin_"))
     if head == "r2":
-        _patch_restore(role)
+        probe = _patch_restore(role)
+        if role == "O_cursor":
+            result["cursor_probe"] = probe
         for kind in PLANTED:
             if role.startswith(kind + "_"):
                 result["planted"] = _plant(kind)
@@ -1692,6 +1714,13 @@ def seed_comparisons(arms, base=None):
         "c4_comparator": comparator_controls(get("twin_K2")),
         "c8": c8_seed(arms),
     }
+    cursor = get("O_cursor") or {}
+    probe = cursor.get("cursor_probe") or {}
+    c["reds"]["O_cursor"] &= (
+        probe.get("binding_valid") is True
+        and probe.get("redo_steps", 0) > 0
+        and "prefix" not in (cursor.get("fault") or {}).get("cause", "")
+    )
     c["reds"]["CHRONO"] = _complete(get("CHRONO")) and not chrono_clean(get("CHRONO"))
     c["reds"]["MOTOR"] = _complete(get("MOTOR")) and not chrono_clean(get("MOTOR"))
     fw = fw_seed(arms)
