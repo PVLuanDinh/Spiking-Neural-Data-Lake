@@ -232,7 +232,9 @@ def _percept_refusal(event, width, n_units, seen, last):
     ids = tuple(
         event[k] for k in ("session", "seq", "category", "pseq", "proto_boot", "proto_flushed")
     )
-    if not all(str(v).isascii() and str(v).isdigit() for v in ids):
+    if not all(str(v).isascii() and str(v).isdigit() for v in ids) or not all(
+        type(event[k]) is str for k in ("proto_boot", "proto_flushed")
+    ):
         return ("bad_identity", *none)
     if event["event_id"] in seen:
         return ("duplicate_id", *none)
@@ -268,29 +270,43 @@ def hydrate_transitions(events, *, width, n_units, buffer_cap, current_session=N
     proof across a session with no percept. The restored arm's `n_units` proves only session
     `current_session - 1`. A crashed session's unflushed tail has no such proof (its id may be
     reused by a later recruit) and is refused as `stale_proto`.
+    A11.1: boot witnesses must agree and flushed counts must not decrease in sequence
+    order. A conflict invalidates the whole session's proof; a landed flush may raise its count.
+    A11.3: absent counts supply no proof; present malformed counts invalidate the session.
 
     Returns `{"x", "y", "categories", "refusals"}`: the last `buffer_cap` pairs, every eligible
     category, and a count per reason."""
     refusals, seen, last = Counter(), set(), None
-    boots, chat_flushes = {}, {}
+    witness_counts, conflicts, witnesses = {}, {}, []
     rows = []  # every percept event in lake order: [reason, session, pseq, x, category, proto]
     for event in events:
+        count_slots = ("proto_boot", "proto_flushed")
+        malformed = any(
+            k in event and not (type(event[k]) is str and event[k].isascii() and event[k].isdigit())
+            for k in count_slots
+        )
         if event.get("kind") != "percept":
             # These are the SAME eligible records the shared reader gave learner hydration.
             # A chat-only session's boot proves the preceding session, never an older reused id.
             if event.get("kind") in ("teach", "turn"):
                 from snn_data_lake.substrate.learner_events import KIND_SPECS, _refusal
 
-                counts = [event.get(k, "") for k in ("proto_boot", "proto_flushed")]
                 if (
                     _refusal(event, KIND_SPECS[event["kind"]], False) is None
                     and event.get("split") == "train"
-                    and all(type(v) is str and v.isascii() and v.isdigit() for v in counts)
                 ):
                     session = int(event["session"])
-                    boots.setdefault(session, int(counts[0]))
-                    chat_flushes[session] = max(chat_flushes.get(session, -1), int(counts[1]))
+                    if malformed:
+                        conflicts.setdefault(session, set()).add("session_witness_malformed")
+                    elif all(k in event for k in count_slots):
+                        witnesses.append((session, *(int(event[k]) for k in count_slots)))
             continue
+        if malformed:
+            # Test the other eligibility checks independently of the broken counts.
+            # Row-level rejection must not erase this session-level contradiction.
+            without_counts = dict(event, proto_boot="0", proto_flushed="0")
+            if _percept_refusal(without_counts, width, n_units, seen, last)[0] is None:
+                conflicts.setdefault(int(event["session"]), set()).add("session_witness_malformed")
         reason, x, category, proto = _percept_refusal(event, width, n_units, seen, last)
         if reason in ("duplicate_id", "seq_regression"):
             refusals[reason] += 1  # not a percept: no row, no chain break
@@ -298,11 +314,34 @@ def hydrate_transitions(events, *, width, n_units, buffer_cap, current_session=N
         if reason is None:
             seen.add(event["event_id"])
             last = (int(event["session"]), int(event["seq"]))
+            session = int(event["session"])
+            witnesses.append((session, *proto))
         else:
             refusals[reason] += 1
         session = int(event["session"]) if str(event.get("session", "")).isdigit() else None
         pseq = int(event["pseq"]) if reason is None else None
         rows.append([reason, session, pseq, x, category, proto])
+    # A11.1: use the shared reader's sequence order. A contradiction invalidates ALL
+    # session witnesses; a non-decreasing flush count retains the latest landed proof.
+    for session, boot, flushed in witnesses:
+        previous = witness_counts.setdefault(session, (boot, flushed))
+        if previous[0] != boot:
+            conflicts.setdefault(session, set()).add("session_boot_conflict")
+        if flushed < previous[1]:
+            conflicts.setdefault(session, set()).add("session_flushed_conflict")
+        witness_counts[session] = (previous[0], flushed)
+    for reasons in conflicts.values():
+        refusals.update(sorted(reasons))
+    boots = {
+        session: proto[0] for session, proto in witness_counts.items() if session not in conflicts
+    }
+    chat_flushes = {
+        session: proto[1] for session, proto in witness_counts.items() if session not in conflicts
+    }
+    for row in rows:
+        if row[0] is None and row[1] in conflicts:
+            row[0] = "session_witness_conflict"
+            refusals[row[0]] += 1
     # the durability proof of each eligible event, from its eligible neighbours only
     later, run = [None] * len(rows), {}
     for i in reversed(range(len(rows))):
@@ -310,9 +349,6 @@ def hydrate_transitions(events, *, width, n_units, buffer_cap, current_session=N
         later[i] = run.get(session)
         if reason is None:
             run[session] = max(run.get(session, -1), proto[1])
-    for reason, session, _p, _x, _c, proto in rows:
-        if reason is None:
-            boots.setdefault(session, proto[0])
     prev, pairs, categories = None, [], set()
     for i, (reason, session, pseq, x, category, proto) in enumerate(rows):
         if reason is None:

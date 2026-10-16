@@ -187,7 +187,10 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # actual tables: REGIONS=318, less the claustrum package shadow -> 317.
     # 2026-10-13/COMPOSE: actual REGIONS=320, _MOVED=319 after the two G3
     # growth entries batch_reconciler/feed_readout; claustrum shadow unchanged.
-    assert len(S._MOVED) == 319 and "claustrum" not in S._MOVED
+    # 2026-10-16/R2: re-derived from the live tables against fcdfa7f6's parent:
+    # REGIONS=321, less the unchanged claustrum shadow -> _MOVED=320.
+    # Exactly instruments.replay_hydration was added by fcdfa7f6; nothing removed.
+    assert len(S._MOVED) == 320 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture

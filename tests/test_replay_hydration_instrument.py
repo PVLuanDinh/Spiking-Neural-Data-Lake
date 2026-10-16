@@ -29,6 +29,95 @@ REDS = (
 )
 
 
+@pytest.mark.parametrize("returncode", [37, 0])
+@pytest.mark.parametrize("reused", [True, False])
+def test_r4_child_without_output_never_inherits_a_result(tmp_path, monkeypatch, returncode, reused):
+    out = tmp_path / "r2-15000-twin_K1.json"
+    if reused:
+        out.write_text(json.dumps({"role": "twin_K1", "old_result": True}), encoding="utf-8")
+    existed_at_launch = []
+
+    def child(args, **kwargs):
+        existed_at_launch.append(Path(args[6]).exists())
+        return rh.subprocess.CompletedProcess(args, returncode, stdout="", stderr="")
+
+    monkeypatch.setattr(rh.subprocess, "run", child)
+    arms = rh.run_seed(15000, tmp_path, roles=("twin_K1",))
+    assert arms["twin_K1"] == {
+        "role": "twin_K1",
+        "error": f"exit {returncode}" if returncode else "no output",
+    }
+    assert existed_at_launch == [False]
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("outcome", ["success", "nonzero", "unparsable"])
+def test_r4_child_result_requires_success_and_fresh_parseable_output(
+    tmp_path, monkeypatch, outcome
+):
+    out = tmp_path / "r2-15000-twin_K1.json"
+    out.write_text(json.dumps({"role": "twin_K1", "old_result": True}), encoding="utf-8")
+    fresh = {"role": "twin_K1", "current_result": True}
+    existed_at_launch = []
+
+    def child(args, **kwargs):
+        target = Path(args[6])
+        existed_at_launch.append(target.exists())
+        target.write_text("{" if outcome == "unparsable" else json.dumps(fresh), encoding="utf-8")
+        return rh.subprocess.CompletedProcess(
+            args, 37 if outcome == "nonzero" else 0, stdout="", stderr="child evidence"
+        )
+
+    monkeypatch.setattr(rh.subprocess, "run", child)
+    arms = rh.run_seed(15000, tmp_path, roles=("twin_K1",))
+    if outcome == "success":
+        assert arms["twin_K1"] == fresh
+    else:
+        assert arms["twin_K1"] == {
+            "role": "twin_K1",
+            "error": "exit 37" if outcome == "nonzero" else "unparsable output",
+            "stderr": "child evidence",
+        }
+    assert existed_at_launch == [False]
+    assert (tmp_path / "r2-15000-twin_K1.stderr.txt").read_text(encoding="utf-8") == (
+        "child evidence"
+    )
+
+
+@pytest.mark.parametrize("kind", ["BOUTDIGEST", "BOUTPROGRESS"])
+def test_bout_plant_requires_its_bound_private_home(tmp_path, monkeypatch, kind):
+    private, token = rh._create_private_home(tmp_path)
+    monkeypatch.setattr(rh, "_throwaway_token", token)
+    monkeypatch.setenv("NORD_HOME", str(private))
+    assert home.save_episode(
+        {
+            "kind": "sleep_bout",
+            "event_id": "1-1",
+            "weights_digest": "a" * 64,
+            "presentations_spent": "2",
+        }
+    )
+    path = Path(home.knowledge_path())
+    original = path.read_bytes()
+    monkeypatch.setattr(rh, "_throwaway_home", None, raising=False)
+    with pytest.raises(ValueError, match="private home"):
+        rh._plant_bout(kind)
+    assert path.read_bytes() == original
+    monkeypatch.setattr(rh, "_throwaway_home", private.resolve())
+    # A changed NORD_HOME must not grant access to another lake, even another scratch lake.
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    monkeypatch.setenv("NORD_HOME", str(outside))
+    outside_path = Path(home.knowledge_path())
+    outside_path.write_bytes(original)
+    with pytest.raises(ValueError, match="private home"):
+        rh._plant_bout(kind)
+    assert outside_path.read_bytes() == original and path.read_bytes() == original
+    monkeypatch.setenv("NORD_HOME", str(private))
+    assert rh._plant_bout(kind) == "1-1"
+    assert path.read_bytes() != original
+
+
 def _walk():
     return {"class": "L", "fields": {"w": [[0.5, 0.25], [0.125, 0.0625]], "n": 3}}
 
@@ -286,6 +375,66 @@ def test_planted_ctxread_and_sleep_digest_rows_are_eligible_so_the_brain_must_re
     assert any(e["kind"] == "ctxread" for e in events)
 
 
+def test_ctxread_plant_follows_the_shared_sequence_including_p3_percepts(lake):
+    import base64
+    import struct
+
+    percept = {
+        "kind": "percept",
+        "event_id": "1-7",
+        "stream": "arm",
+        "session": "1",
+        "seq": "7",
+        "schema": "r2.v1",
+        "valid": "1",
+        "split": "train",
+        "x": base64.b64encode(struct.pack("<64d", *([0.25] * 64))).decode("ascii"),
+        "category": "0",
+        "n_protos": "1",
+        "proto_boot": "1",
+        "proto_flushed": "1",
+        "pseq": "1",
+        "provenance": "live",
+        "encoder": "arm.percept gained width=64",
+    }
+    assert home.save_episode(percept)
+    planted = rh._plant("CTXREAD")
+    events, refusals, _, receipt = _scan()
+    assert not refusals, refusals
+    assert json.loads(receipt)["complete"]
+    assert planted == "1-8"
+    assert events[-1]["kind"] == "ctxread"
+
+
+def test_real_k4_restart_equals_its_twin_at_the_precheckpoint_boundary(tmp_path):
+    arms = rh.run_seed(
+        15000,
+        tmp_path,
+        src=Path(rh.__file__).resolve().parents[2],
+        roles=("pre_K4", "twin_K1", "twin_K4", "res_K4"),
+    )
+    assert all("error" not in a for a in arms.values()), arms
+    assert rh.seed_comparisons(arms)["c6"]["K4"], {
+        role: a.get("before", {}).get("cursor") for role, a in arms.items()
+    }
+    twin = arms["twin_K4"]
+    assert twin["k4_checkpoint_ok"] is True, "the never-killed twin delegates the real flush"
+    assert twin["before"]["cursor"] == [1, 25]
+    assert twin["post_boundary_cursor"] == [1, 26], "the extra percept is after K4's cut"
+    assert not rh.records_equal(arms["res_K4"], arms["twin_K1"])
+    wrong = copy.deepcopy(twin)
+    wrong["before"]["cursor"][1] += 1
+    assert not rh.records_equal(arms["res_K4"], wrong), "cursor equality remains exact"
+
+
+def test_k4_comparison_uses_its_own_twin_and_rejects_a_changed_record():
+    arms = _arms()
+    _differ(arms["twin_K1"])
+    assert rh.seed_comparisons(arms)["c6"]["K4"]
+    _differ(arms["twin_K4"])
+    assert not rh.seed_comparisons(arms)["c6"]["K4"]
+
+
 def test_planted_sleep_digest_row_is_eligible_with_a_wrong_digest(lake):
     row = rh._plant("SLEEPDIGEST")
     events, refusals, _, _ = _scan()
@@ -339,7 +488,231 @@ def test_cursor_prefix_binding_refusal_never_counts_as_a_successful_red():
     assert rh.seed_comparisons(arms)["reds"]["O_cursor"]
 
 
+@pytest.mark.parametrize("foreign", [OSError, ValueError])
+def test_cursor_foreign_step_exception_is_invalid_not_a_red(monkeypatch, foreign):
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner as Learner
+    from snn_data_lake.substrate.learner_events import prefix_digest
+
+    events = [_ev("teach", 1), _sleep_ev(2, 1)]
+
+    def broken(*args):
+        # Even the intended message is foreign when raised INSIDE the step.
+        raise foreign("R2 sleep redo digest/progress mismatch")
+
+    def learner():
+        obj = Learner(["GREET", "GOAL", "MEMORY"], 52, seed=15000)
+        obj._cursor = (1, 2)
+        return obj
+
+    kw = {
+        "receipt": json.dumps({"complete": True, "eligible_ids": ["1-1", "1-2"]}).encode(),
+        "sleep_step": {"rewirer": None, "step": broken},
+        "checkpoint_prefix_digest": prefix_digest(events, (1, 2)),
+    }
+    learner().hydrate(events, **kw)  # Honest cursor covers the broken step: no execution.
+    monkeypatch.setattr(Learner, "hydrate", Learner.hydrate)
+    probe = rh._patch_restore("O_cursor")
+    with pytest.raises(foreign) as exc:
+        learner().hydrate(events, **kw)
+    arms = _arms()
+    arms["O_cursor"].update(fault={"cause": f"{foreign.__name__}: {exc.value}"}, cursor_probe=probe)
+    comparison = rh.seed_comparisons(arms, _base_arms())
+    assert not comparison["reds"]["O_cursor"], "foreign execution failure is never a red"
+    assert "O_cursor" in comparison["incomplete"] and not comparison["arms_complete"]
+    assert probe["redo_attempts"] == 1 and probe["redo_steps"] == 0
+    assert probe["foreign_exception"]
+
+
+def test_cursor_completed_step_intended_mismatch_still_fires(monkeypatch):
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner as Learner
+    from snn_data_lake.substrate.learner_events import prefix_digest
+
+    events = [_ev("teach", 1), _sleep_ev(2, 1)]
+    learner = Learner(["GREET", "GOAL", "MEMORY"], 52, seed=15000)
+    learner._cursor = (1, 2)
+    monkeypatch.setattr(Learner, "hydrate", Learner.hydrate)
+    probe = rh._patch_restore("O_cursor")
+    with pytest.raises(ValueError, match="^R2 sleep redo digest/progress mismatch$") as exc:
+        learner.hydrate(
+            events,
+            receipt=json.dumps({"complete": True, "eligible_ids": ["1-1", "1-2"]}).encode(),
+            sleep_step={"rewirer": None, "step": lambda *a: (None, {"_structural_report": {}})},
+            checkpoint_prefix_digest=prefix_digest(events, (1, 2)),
+        )
+    arms = _arms()
+    arms["O_cursor"].update(fault={"cause": f"ValueError: {exc.value}"}, cursor_probe=probe)
+    assert rh.seed_comparisons(arms)["reds"]["O_cursor"]
+    assert probe["redo_attempts"] == probe["redo_steps"] == 1
+    assert probe["mismatch_verified"] and probe["foreign_exception"] is None
+
+
+@pytest.mark.parametrize("populated", [False, True])
+def test_process_refuses_caller_directory_before_instrument_io(tmp_path, monkeypatch, populated):
+    private = tmp_path / "caller-owned"
+    private.mkdir()
+    sentinel = private / "brain_lake.bin"
+    if populated:
+        sentinel.write_bytes(b"durable caller lake: do not truncate")
+    before = {p.name: p.read_bytes() for p in private.iterdir()}
+    old_home = str(tmp_path / "previous-home")
+    monkeypatch.setenv("NORD_HOME", old_home)
+
+    def forbidden(*a, **kw):
+        pytest.fail("unowned directory reached instrument IO")
+
+    monkeypatch.setattr(rh, "_MotorCount", forbidden)
+    monkeypatch.setattr(rh, "_raw", forbidden)
+    monkeypatch.setattr(rh, "_patch_restore", forbidden)
+    with pytest.raises(ValueError, match="private home"):
+        rh.run_process("BOUTDIGEST_on", 15000, str(private), str(tmp_path / "unused.json"))
+    assert {p.name: p.read_bytes() for p in private.iterdir()} == before
+    assert rh.os.environ["NORD_HOME"] == old_home
+
+
+@pytest.mark.parametrize("alias", ["hardlink", "symlink", "outside"])
+def test_bout_plant_refuses_lake_aliases(tmp_path, monkeypatch, alias):
+    private, token = rh._create_private_home(tmp_path)
+    monkeypatch.setattr(rh, "_throwaway_home", private.resolve())
+    monkeypatch.setattr(rh, "_throwaway_token", token)
+    monkeypatch.setenv("NORD_HOME", str(private))
+    outside = tmp_path / "durable.bin"
+    outside.write_bytes(b"durable lake")
+    lake_path = private / "brain_lake.bin"
+    if alias == "outside":
+        monkeypatch.setattr(home, "knowledge_path", lambda: str(outside))
+    else:
+        try:
+            if alias == "hardlink":
+                rh.os.link(outside, lake_path)
+            else:
+                lake_path.symlink_to(outside)
+        except OSError as exc:
+            pytest.skip(f"filesystem cannot construct {alias}: {exc}")
+    with pytest.raises(ValueError, match="private home"):
+        rh._plant_bout("BOUTDIGEST")
+    assert outside.read_bytes() == b"durable lake"
+
+
+def test_bout_plant_rechecks_ownership_before_truncation(tmp_path, monkeypatch):
+    private, token = rh._create_private_home(tmp_path)
+    monkeypatch.setattr(rh, "_throwaway_home", private.resolve())
+    monkeypatch.setattr(rh, "_throwaway_token", token)
+    monkeypatch.setenv("NORD_HOME", str(private))
+    assert home.save_episode(
+        {
+            "kind": "sleep_bout",
+            "event_id": "1-1",
+            "weights_digest": "a" * 64,
+            "presentations_spent": "2",
+        }
+    )
+    path = Path(home.knowledge_path())
+    original = path.read_bytes()
+
+    def revoke():
+        (private / rh._HOME_MARK).unlink()
+        return original
+
+    monkeypatch.setattr(rh, "_raw", revoke)
+    with pytest.raises(ValueError, match="private home"):
+        rh._plant_bout("BOUTDIGEST")
+    assert path.read_bytes() == original
+
+
 # ---- round 2: complete arms only, every seed, weight-only c4 (#2769, #2773, #2779, #2797) --------
+
+
+@pytest.mark.parametrize("role", ["O_cursor", "O_wm", "O_stack"])
+@pytest.mark.parametrize("failure", ["actor", "step", "mismatch"])
+def test_r3_omission_fault_provenance(monkeypatch, role, failure):
+    from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner as Learner
+    from snn_data_lake.substrate.learner_events import prefix_digest, sleep_digests
+
+    events = [_sleep_ev(1, 1)]
+    learner = Learner(["GREET", "GOAL", "MEMORY"], 52, seed=15000)
+    if failure != "mismatch":
+        events[0].update(sleep_digests(learner, None), drawn="none", presentations_spent="0")
+    if role in ("O_cursor", "O_wm"):
+        learner._cursor = (1, 1)
+    kw = {
+        "receipt": json.dumps({"complete": True, "eligible_ids": ["1-1"]}).encode(),
+        "checkpoint_prefix_digest": prefix_digest(events, learner._cursor),
+    }
+
+    def step(*args):
+        if failure == "step":
+            raise OSError("unrelated structural worker failure")
+        return None, {"_structural_report": {}}
+
+    def actor(obj, event, covered):
+        if not covered and failure == "actor":
+            raise ValueError("R2 sleep redo digest/progress mismatch")
+
+    monkeypatch.setattr(Learner, "hydrate", Learner.hydrate)
+    monkeypatch.setattr(Learner, "load_state_dict", Learner.load_state_dict)
+    probe = rh._patch_restore(role)
+    with pytest.raises((OSError, ValueError)) as caught:
+        learner.hydrate(
+            events, sleep_step={"rewirer": None, "step": step}, effect_actor=actor, **kw
+        )
+    arms = _arms()
+    arms[role].update(
+        fault={"cause": f"{type(caught.value).__name__}: {caught.value}"},
+        omission_probe=probe,
+    )
+    if role == "O_cursor":
+        arms[role]["cursor_probe"] = probe
+    comparison = rh.seed_comparisons(arms)
+    if failure == "mismatch":
+        assert isinstance(caught.value, rh.RedoMismatch)
+        assert comparison["reds"][role]
+        assert role not in comparison["incomplete"]
+        assert probe["redo_steps"] == 1 and probe["mismatch_verified"]
+    else:
+        assert not comparison["reds"][role], "foreign faults must never fire an omission red"
+        assert role in comparison["incomplete"] and not comparison["arms_complete"]
+        assert probe["redo_attempts"] == 1
+        assert probe["redo_steps"] == (0 if failure == "step" else 1)
+        assert probe["foreign_exception"] and not probe["mismatch_verified"]
+
+
+@pytest.mark.parametrize("role", list(rh._RED_TWIN))
+def test_r3_every_omission_arm_rejects_unattributed_fault(role):
+    arms = _arms()
+    arms[role]["fault"] = {"cause": "ValueError: R2 sleep redo digest/progress mismatch"}
+    comparison = rh.seed_comparisons(arms)
+    assert not comparison["reds"][role]
+    assert role in comparison["incomplete"] and not comparison["arms_complete"]
+
+
+@pytest.mark.parametrize("mark", ["missing", "stale", "wrong-root"])
+def test_r3_process_launch_nonce_refuses_misdirected_home(tmp_path, monkeypatch, mark):
+    private, old_nonce = rh._create_private_home(tmp_path, prefix="earlier-launch-")
+    sentinel = private / "brain_lake.bin"
+    sentinel.write_bytes(b"durable caller lake")
+    if mark == "missing":
+        (private / rh._HOME_MARK).unlink()
+    elif mark == "wrong-root":
+        (private / rh._HOME_MARK).write_text(
+            json.dumps({"root": str(tmp_path), "token": old_nonce}), encoding="ascii"
+        )
+    # The previous environment-token scheme must confer no authority on this launch.
+    monkeypatch.setenv("R2_PRIVATE_HOME_TOKEN", old_nonce)
+    previous_home = rh.os.environ.get("NORD_HOME")
+    with pytest.raises(ValueError, match="private home"):
+        rh.run_process(
+            "BOUTDIGEST_on", 15000, private, tmp_path / "unused.json", nonce="new-launch"
+        )
+    assert sentinel.read_bytes() == b"durable caller lake"
+    assert rh.os.environ.get("NORD_HOME") == previous_home
+
+
+def test_r3_omission_control_foreign_fault_is_invalid():
+    arms = _arms()
+    arms["O_rngv"]["fault"] = {"cause": "OSError: unrelated structural worker failure"}
+    comparison = rh.seed_comparisons(arms)
+    assert not comparison["c3_controls"]["O_rng_lone_replay_equal"]
+    assert "O_rngv" in comparison["incomplete"] and not comparison["arms_complete"]
 
 
 def test_crashed_or_missing_arm_is_never_a_fire_and_the_seed_is_not_met():

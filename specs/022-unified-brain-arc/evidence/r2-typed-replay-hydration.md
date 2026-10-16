@@ -1088,3 +1088,116 @@ ordinary teach/turn records retain their existing exact event format. Zero prove
 durable, so omitting that optional metadata changes no admission proof. Positive counts still
 travel in those same records. This addresses the G0(c) event-format regression found by the
 affected suite, without changing its test or weakening the reused-id refusal.
+
+## A10. Development instrument attribution, 2026-10-16 (K4FIX)
+
+Development seeds 15000 and 15001 on 9f5a9d58 plus PANELFOLD reproduce a K4
+cursor-only inequality: respectively (1,25)/(1,26) and (1,27)/(1,28), restart/twin.
+The K4 hook exits before the first interaction checkpoint in `_enter_wake`;
+the reused K1 twin finishes that tick, including `_wake_tick` and its P3 percept.
+That extra event is after K4's declared cut (2.8 and the 2026-10-06 K4 clause),
+not an omitted restart event. No compared field, tolerance, or cursor is excluded.
+The instrument will use a dedicated never-killed K4 twin: sample its LIVE `before`
+record at the same pre-checkpoint hook, then delegate the real flush and continue
+the ordinary schedule and all six sleep records. Retain its later post-boundary
+record as diagnostic evidence, and compare K0/K1 to their original K1 twin.
+This aligns the measurement with K4's registered cut rather than treating a
+future wake percept as part of the crashed prefix. A planted cursor difference
+must still fail the unchanged exact comparator.
+
+The CTXREAD plant previously chose its new identity after only teach/turn/sleep,
+ignoring P3's later percept on the shared sequence. The reader therefore refused
+a duplicate ID before the intended unbound-effect guard could run. All constructed
+plants will allocate after the full eligible typed prefix; the guard-on CTXREAD
+arm must reach `R2 unbound effect: ctxread`, and its guard-off arm must bypass
+that exact guard and complete. This retains the control with a constructible input.
+It does not establish a live ctxread producer, memory-unit reconstruction, or
+Codex-14 success: the A7 opening remains UNVERIFIED. No confirmatory/reserve data
+were read; the new regression tests are red before the instrument repair.
+
+A10 diagnostic clarification, 2026-10-16: the later post-boundary diagnostic
+retained by the implementation is its `post_boundary_cursor`, not a second full
+learner record. The full live `before` record is sampled at K4's pre-checkpoint
+cut, and all six full registered sleep observations remain compared exactly.
+
+## A11. Re-panel 2 fold, 2026-10-16 (FOLD3, pre-fix; integrator claude-cont-1013)
+
+Codex lens A (re-panel 2) reported three MAJOR defects on the FOLD2 tree; the integrator reproduced
+all three with the lens's own script before this amendment was written. No campaign data, no
+confirmatory or reserve seed, is read by the fold. Each fix must ship red-first: a regression that
+fails on the FOLD2 tree and passes after the fix, plus a control that is not the fix itself.
+
+1. Witness authority (P3 hydration). A session whose prototype-durability witnesses disagree (any
+   two teach/turn/percept witnesses carrying different boot or flushed counts, in ANY order) is
+   refused as a whole: none of its witnesses may serve as durability proof for any earlier
+   session's pairs, and the refusal is counted by name. Red: false-then-truthful and
+   truthful-then-false orderings, for teach and for turn, must both restore zero stale pairs. Control:
+   an honest history with agreeing witnesses still restores its expected pairs.
+2. O_cursor attribution (instrument). The cursor red counts only when a redo step COMPLETED and the
+   intended digest/progress comparison then disagreed (or a carrier-dependent divergence was shown);
+   an exception raised inside the redo step, of any type other than the intended mismatch, makes the
+   arm INVALID, never fired. Red: lens A's unrelated-OSError construction must not score O_cursor
+   fired. Control: the intended mismatch still fires.
+3. Scratch-home ownership (instrument, P4b). `run_process` binds a home only when the instrument
+   itself created it fresh (a private, empty root created by the instrument, marked as owned) and
+   it is not, does not contain, and is not inside the live home; any other caller-supplied
+   directory is refused before any read or write, and `_plant_bout` re-checks the ownership
+   mark and the lake-file path before a destructive open. Red: lens A's existing non-temporary
+   directory must be refused. Control: the instrument's own fresh scratch root still runs.
+
+A11.1 correction, 2026-10-16 (integrator, pre-merge; no campaign data read). A11 item 1 as written
+("different boot or flushed counts ... refused") contradicts the registered successful-flush control
+(`test_stale_proto_an_unflushed_crashed_tail_is_refused_not_hydrated`): within one session the
+flushed count legitimately RISES after a landed flush. FOLD3-W found this before integration and did
+not weaken the control. Corrected rule: (a) every witness of one session must carry the SAME boot
+count; any boot disagreement, in any order, refuses the whole session as durability proof, counted as
+`session_boot_conflict`. (b) Flushed counts of one session, read in sequence order, must be
+non-decreasing; a decrease refuses the whole session, counted as `session_flushed_conflict`; a rise is
+a landed flush and is admitted. Reds: lens A's false-then-truthful and
+truthful-then-false boot orderings for teach, turn and a first percept; a flushed decrease. Controls:
+the successful-flush rise control unchanged, and the honest agreeing history.
+
+A11.2 correction, 2026-10-16 (integrator, after Codex lens A re-panel 3 on FOLD3-I; no campaign data read).
+Item 2 generalized: attribution is by EXCEPTION TYPE, never by message text. The intended comparison
+failure is raised only as one dedicated exception class defined by the instrument at the comparison
+itself; EVERY omission arm (O_cursor, O_wm and each sibling) fires only on a completed redo followed
+by that class (or a demonstrated carrier-dependent divergence). Any other exception, from the step,
+any callback (effect_actor included), or anywhere else, makes the arm INVALID, never fired, even if
+its message imitates the mismatch. Reds: lens A's effect_actor raising ValueError with the mismatch
+text; O_wm with the unrelated OSError step. Control: the intended mismatch fires each arm.
+Item 3 narrowed, with its structural reason (disclosed, not hidden): the ownership check defends
+MISDIRECTION and STALE REUSE, not deliberate forgery by a caller holding the instrument's own
+privileges -- such a caller can open the lake file directly, so no in-process check can bind it. Rule:
+the parent (`run_seed`) creates each arm home with `tempfile.mkdtemp` and a fresh per-launch nonce
+(`secrets.token_hex`), writes the owner mark, and hands the nonce to its child; `run_process` refuses
+any root whose mark is missing, names another root, or carries a nonce other than the one the
+current launch issued, and still refuses the live home in every case. Reds: an unmarked existing
+directory; a marked directory reused from an earlier launch (stale nonce). Control: the instrument's
+own fresh root runs end to end through `run_process` (a real subprocess, not a mock).
+
+A11.3 correction, 2026-10-16 (integrator, after Codex lens A re-panel 3 on FOLD3-W; no campaign data read).
+(1) Malformed witness metadata is never skipped. A teach/turn/percept witness whose `proto_boot` or
+`proto_flushed` is ABSENT is legacy and proves nothing (fails closed, as before); one whose field is
+PRESENT but not a non-negative decimal integer string (e.g. "unknown", "", None) invalidates its
+whole session as durability proof, counted by name as `session_witness_malformed`. Red: lens A's
+false-boot witness followed by a truthful-boot witness with malformed flushed metadata, for teach and
+turn, restores zero stale pairs. (2) Refusal accounting: every percept discarded by a session-level
+conflict is counted under the reason it is assigned, in addition to the session-level counters.
+(3) Disclosed narrowing, with its structural reason. A flushed-count RISE is admitted as written:
+the brain writes `proto_flushed` only after `save_state(PROTOTYPES_STATE)` returns True
+(`engine/brain.py`, the `_r2_proto_flushed = durable_units` advance in the prototype flush), so a
+well-formed rise with no landed save has no brain-producible path; it requires a forged lake record,
+and a writer of well-formed lake records can write the prototypes themselves -- the hydrator cannot
+authenticate the one lake against itself. Session-bound save evidence would need a new field in the
+prototype state record (P2/P4b work, not this fold) and is carried as a disclosed follow-up. The
+earlier boot-conflict refusal (A11.1) is kept as cheap defence in depth; it, too, was raised by a
+planted record. Stopping rule for this arc's reviews: a finding with no path the brain itself can
+produce (crash, torn write, ordering, stale state, schema drift) is DISCLOSED, not folded.
+
+A11.4 addition, 2026-10-16 (integrator, after Codex lens A re-panel 4 on FOLD3-I; no campaign data read).
+A child result counts only if it was produced by THIS launch: `run_seed` removes any existing output
+file for the arm before launching its child, and accepts the arm's JSON only when the child exited 0
+and wrote that file afresh; a non-zero exit, a missing file, or an unparsable file makes the arm an
+error (INVALID), recording the exit code. Red: lens A's reused output directory with a child that
+exits 37 without writing must yield an error, not the earlier result. Control: a successful child
+still yields its result.

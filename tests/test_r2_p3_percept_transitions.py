@@ -260,7 +260,310 @@ def test_chat_boot_proves_only_the_immediately_preceding_session():
         {"proto_boot": "unknown"},
     ):
         out = _hydrate(events + [{**chat, **changes}], n_units=1, current_session=4)
-        assert out["y"] == [] and out["refusals"] == {"stale_proto": 3}, changes
+        expected_refusals = {"stale_proto": 3}
+        if changes == {"proto_boot": "unknown"}:
+            expected_refusals["session_witness_malformed"] = 1
+        assert out["y"] == [] and out["refusals"] == expected_refusals, changes
+
+
+@pytest.mark.parametrize("kind", ["teach", "turn"])
+@pytest.mark.parametrize("later_percepts", [False, True])
+@pytest.mark.parametrize("chat_first", [False, True])
+def test_conflicting_chat_boot_cannot_revive_crashed_prototype(kind, later_percepts, chat_first):
+    """Re-panel A/B: schema-valid chat proof must agree with the session's percept boot."""
+    a = [_ev(1, i, i, _vec(i), 0, boot="0", flushed="0") for i in (1, 2, 3)]
+    b = [_ev(2, 4, 1, _vec(4), 0, boot="0", flushed="1")]
+    if later_percepts:
+        b += [_ev(2, i, i - 3, _vec(i), 0, boot="0", flushed="1") for i in (5, 6, 7)]
+    chat = {
+        "kind": kind,
+        "event_id": "2-8",
+        "session": "2",
+        "seq": "8",
+        "stream": "chat",
+        "schema": "r2.v1",
+        "valid": "1",
+        "split": "train",
+        "source": "hello private r2",
+        "target": "GREET",
+        "provenance": "self",
+        "encoder": "text_features n_in=52",
+        "proto_boot": "0",
+        "proto_flushed": "1",
+    }
+    if chat_first:
+        chat.update(event_id="2-4", seq="4")
+        b = [dict(e, event_id=f"2-{int(e['seq']) + 1}", seq=str(int(e["seq"]) + 1)) for e in b]
+
+    def history(witness):
+        return a + ([witness] + b if chat_first else b + [witness])
+
+    honest = _hydrate(history(chat), n_units=1, current_session=3)
+    assert honest["y"] == ([0, 0, 0] if later_percepts else [])
+    assert honest["refusals"] == {"stale_proto": 3}
+    forged = _hydrate(history(dict(chat, proto_boot="1")), n_units=1, current_session=3)
+    assert forged == {
+        "x": [],
+        "y": [],
+        "categories": set(),
+        "refusals": {
+            "stale_proto": 3,
+            "session_boot_conflict": 1,
+            "session_witness_conflict": 4 if later_percepts else 1,
+        },
+    }, "A11 refuses the conflicted session's own pairs too"
+
+
+def test_conflicting_chat_only_witness_is_refused_before_its_flush_proves_a_tail():
+    a = [_ev(1, i, i, _vec(i), 0, boot="0", flushed="0") for i in (1, 2, 3)]
+    chat = {
+        "kind": "teach",
+        "event_id": "2-4",
+        "session": "2",
+        "seq": "4",
+        "stream": "chat",
+        "schema": "r2.v1",
+        "valid": "1",
+        "split": "train",
+        "source": "hello private r2",
+        "target": "GREET",
+        "provenance": "self",
+        "encoder": "text_features n_in=52",
+        "proto_boot": "0",
+        "proto_flushed": "0",
+    }
+    forged = dict(chat, event_id="2-5", seq="5", proto_boot="1", proto_flushed="1")
+    out = _hydrate(a + [chat, forged], n_units=1, current_session=3)
+    assert out["y"] == []
+    assert out["refusals"] == {"stale_proto": 3, "session_boot_conflict": 1}
+
+
+def _durability_witness(kind, seq, *, boot="0", flushed="1"):
+    if kind == "percept":
+        return _ev(2, seq, seq - 3, _vec(seq), 0, boot=boot, flushed=flushed)
+    return {
+        "kind": kind,
+        "event_id": f"2-{seq}",
+        "session": "2",
+        "seq": str(seq),
+        "stream": "chat",
+        "schema": "r2.v1",
+        "valid": "1",
+        "split": "train",
+        "source": "hello private r2",
+        "target": "GREET",
+        "provenance": "self",
+        "encoder": "text_features n_in=52",
+        "proto_boot": boot,
+        "proto_flushed": flushed,
+    }
+
+
+def _read_witness_history(events, monkeypatch):
+    """Use the shipped strict reader, then the grower's actual restore path."""
+    from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
+    from snn_data_lake.substrate import home, learner_events
+
+    receipt = {
+        "complete": True,
+        "rows": [{"ordinal": i, "reason": "decoded"} for i in range(len(events))],
+    }
+    monkeypatch.setattr(home, "load_episodes", lambda **kw: (events, json.dumps(receipt).encode()))
+    got, refusals, session, proof = learner_events.scan_learner_events(
+        tuple(learner_events.KIND_SPECS), strict=True, return_receipt=True
+    )
+    assert got == events and not refusals and json.loads(proof)["complete"]
+    engine = NeurogenesisSelfImprove(device="cpu", seed=DEV_SEED)
+    engine.restore_transitions(got, n_units=1, current_session=session)
+    return engine
+
+
+@pytest.mark.parametrize(
+    "first_kind,second_kind",
+    [
+        ("teach", "teach"),
+        ("turn", "turn"),
+        ("percept", "teach"),
+        ("percept", "turn"),
+        ("teach", "percept"),
+        ("turn", "percept"),
+        ("percept", "percept"),
+    ],
+)
+@pytest.mark.parametrize("false_first", [False, True])
+def test_a11_conflicting_boot_refuses_whole_session_in_either_order(
+    first_kind, second_kind, false_first, monkeypatch
+):
+    """No first-witness authority, including a false first percept and its own pairs."""
+    crashed = [_ev(1, i, i, _vec(i), 0, boot="0", flushed="0") for i in (1, 2, 3)]
+    boots = ("1", "0") if false_first else ("0", "1")
+    witnesses = [
+        _durability_witness(first_kind, 4, boot=boots[0]),
+        _durability_witness(second_kind, 5, boot=boots[1]),
+        _ev(2, 6, 3, _vec(6), 0, boot="0", flushed="1"),
+        _ev(2, 7, 4, _vec(7), 0, boot="0", flushed="1"),
+    ]
+    restored = _read_witness_history(crashed + witnesses, monkeypatch)
+    assert restored._buf_x == restored._buf_y == [], "the entire conflicted session is refused"
+    assert restored._categories == set()
+    assert restored.transition_refusals.get("stale_proto") == 3
+    assert restored.transition_refusals.get("session_boot_conflict", 0) >= 1
+
+
+@pytest.mark.parametrize("kind", ["teach", "turn", "percept"])
+def test_a11_agreeing_witnesses_keep_honest_history(kind, monkeypatch):
+    """An independent positive control retains both older and same-session pairs."""
+    earlier = [_ev(1, i, i, _vec(i), 0, boot="0", flushed="0") for i in (1, 2, 3)]
+    witnesses = [
+        _durability_witness(kind, 4, boot="1"),
+        _durability_witness(kind, 5, boot="1"),
+        _ev(2, 6, 3, _vec(6), 0, boot="1", flushed="1"),
+        _ev(2, 7, 4, _vec(7), 0, boot="1", flushed="1"),
+    ]
+    restored = _read_witness_history(earlier + witnesses, monkeypatch)
+    expected = (
+        _naive(earlier + witnesses, across_sessions=False)
+        if kind == "percept"
+        else (_naive(earlier, across_sessions=False) + _naive(witnesses[2:], across_sessions=False))
+    )
+    assert list(zip(restored._buf_x, restored._buf_y, strict=True)) == expected
+    assert restored._categories == {0} and not restored.transition_refusals
+
+
+@pytest.mark.parametrize(
+    "first_kind,second_kind",
+    [
+        ("teach", "teach"),
+        ("turn", "turn"),
+        ("percept", "teach"),
+        ("percept", "turn"),
+        ("teach", "percept"),
+        ("turn", "percept"),
+        ("percept", "percept"),
+    ],
+)
+@pytest.mark.parametrize("flushed", [("1", "0", "0"), ("0", "2", "1")])
+def test_a11_1_decreasing_flushed_counts_refuse_whole_session(
+    first_kind, second_kind, flushed, monkeypatch
+):
+    """A decrease, including after a landed rise, invalidates all session proof."""
+    events = [
+        _durability_witness(first_kind, 4, flushed=flushed[0]),
+        _durability_witness(second_kind, 5, flushed=flushed[1]),
+        _ev(2, 6, 3, _vec(6), 0, boot="0", flushed=flushed[2]),
+        _ev(2, 7, 4, _vec(7), 0, boot="0", flushed=flushed[2]),
+    ]
+    restored = _read_witness_history(events, monkeypatch)
+    assert restored._buf_x == restored._buf_y == []
+    assert restored._categories == set()
+    assert restored.transition_refusals == {
+        "session_flushed_conflict": 1,
+        "session_witness_conflict": 2 + (first_kind == "percept") + (second_kind == "percept"),
+    }
+
+
+@pytest.mark.parametrize("kind", ["teach", "turn", "percept"])
+def test_a11_1_landed_flush_rise_keeps_same_session_pairs(kind, monkeypatch):
+    """A later landed flush proves earlier percepts even without a later percept."""
+    events = [_ev(2, i, i - 3, _vec(i), 0, boot="0", flushed="0") for i in (4, 5, 6)]
+    events += [
+        _durability_witness(kind, 7, flushed="0"),
+        _durability_witness(kind, 8, flushed="1"),
+    ]
+    # An unrelated teach-only third session prevents current n_units proving session 2.
+    next_session = dict(_durability_witness("teach", 9, flushed="0"), session="3", event_id="3-9")
+    restored = _read_witness_history(events + [next_session], monkeypatch)
+    expected = _naive([e for e in events if e["kind"] == "percept"], across_sessions=False)
+    assert list(zip(restored._buf_x, restored._buf_y, strict=True)) == expected
+    assert restored._categories == {0} and not restored.transition_refusals
+
+
+@pytest.mark.parametrize("kind", ["teach", "turn"])
+@pytest.mark.parametrize("field", ["proto_boot", "proto_flushed"])
+@pytest.mark.parametrize("bad", ["unknown", "", None, "-1", "1.0", 1, True, "\u0661"])
+def test_a11_3_malformed_chat_witness_cannot_hide_a_contradiction(kind, field, bad, monkeypatch):
+    """Lens A: present malformed optional metadata invalidates the whole session's proof."""
+    crashed = [_ev(1, i, i, _vec(i), 0, boot="0", flushed="0") for i in (1, 2, 3)]
+    false = _durability_witness("teach", 4, boot="1", flushed="1")
+    truthful = _durability_witness(kind, 5, boot="0", flushed="0")
+    truthful[field] = bad
+    later = dict(
+        _durability_witness("teach", 9, boot="0", flushed="1"),
+        session="3",
+        event_id="3-9",
+    )
+    restored = _read_witness_history(crashed + [false, truthful, later], monkeypatch)
+    assert restored._buf_x == restored._buf_y == []
+    assert restored._categories == set()
+    assert restored.transition_refusals.get("session_witness_malformed") == 1
+    assert restored.transition_refusals.get("stale_proto") == 3
+
+
+@pytest.mark.parametrize("kind", ["teach", "turn", "percept"])
+@pytest.mark.parametrize("field", ["proto_boot", "proto_flushed"])
+@pytest.mark.parametrize("bad", ["unknown", "", None, "-1", "1.0", 1, True, "\u0661"])
+@pytest.mark.parametrize("malformed_first", [False, True])
+def test_a11_3_malformed_witness_refuses_own_session(kind, field, bad, malformed_first):
+    """The pure hydrator also rejects malformed percept witnesses before row filtering."""
+    malformed = dict(_durability_witness(kind, 4), **{field: bad})
+    good = [_ev(2, i, i - 3, _vec(i), 0, boot="0", flushed="1") for i in (5, 6, 7)]
+    events = (
+        [malformed, *good] if malformed_first else [*good, dict(malformed, seq="8", event_id="2-8")]
+    )
+    out = _hydrate(events, n_units=1, current_session=3)
+    assert out["x"] == out["y"] == [] and out["categories"] == set()
+    assert out["refusals"].get("session_witness_malformed") == 1
+    assert out["refusals"].get("session_witness_conflict") == 3
+
+
+@pytest.mark.parametrize("reason", ["boot", "flushed"])
+def test_a11_3_session_conflict_counts_each_discarded_percept(reason, monkeypatch):
+    """A11.3 (2): three discarded percepts count three, alongside the session counter."""
+    events = [
+        _durability_witness("teach", 4, boot="1", flushed="1"),
+        _durability_witness(
+            "turn",
+            5,
+            boot="0" if reason == "boot" else "1",
+            flushed="0" if reason == "flushed" else "1",
+        ),
+    ]
+    events += [_ev(2, i, i - 5, _vec(i), 0, boot="1", flushed="1") for i in (6, 7, 8)]
+    restored = _read_witness_history(events, monkeypatch)
+    assert restored._buf_x == restored._buf_y == [] and restored._categories == set()
+    assert restored.transition_refusals == {
+        f"session_{reason}_conflict": 1,
+        "session_witness_conflict": 3,
+    }
+
+
+@pytest.mark.parametrize("kind", ["teach", "turn"])
+@pytest.mark.parametrize(
+    "missing", [("proto_boot",), ("proto_flushed",), ("proto_boot", "proto_flushed")]
+)
+def test_a11_3_absent_chat_counts_remain_legacy_without_proof(kind, missing, monkeypatch):
+    """Absent fields prove nothing and do not invalidate an otherwise honest session."""
+    crashed = [_ev(1, i, i, _vec(i), 0, boot="0", flushed="0") for i in (1, 2, 3)]
+    legacy = _durability_witness(kind, 4, boot="1", flushed="1")
+    legacy = {k: v for k, v in legacy.items() if k not in missing}
+    later = dict(_durability_witness("teach", 9), session="3", event_id="3-9")
+    restored = _read_witness_history(crashed + [legacy, later], monkeypatch)
+    assert restored._buf_x == restored._buf_y == []
+    assert restored.transition_refusals == {"stale_proto": 3}
+    good = [_ev(2, i, i - 4, _vec(i), 0, boot="0", flushed="1") for i in (5, 6, 7)]
+    honest = _read_witness_history([legacy, *good, later], monkeypatch)
+    assert honest._buf_y == [0, 0] and not honest.transition_refusals
+
+
+def test_a11_3_well_formed_forged_flush_rise_is_admitted(monkeypatch):
+    """A11.3 (3): a well-formed forged rise is admitted without save authentication."""
+    events = [_ev(1, i, i, _vec(i), 0, boot="0", flushed="0") for i in (1, 2, 3)]
+    forged = dict(_durability_witness("teach", 4), session="1", event_id="1-4")
+    next_session = _durability_witness("teach", 8, boot="0", flushed="0")
+    reused = dict(_durability_witness("teach", 9), session="3", event_id="3-9")
+    restored = _read_witness_history(events + [forged, next_session, reused], monkeypatch)
+    assert list(zip(restored._buf_x, restored._buf_y, strict=True)) == _naive(events)
+    assert restored._categories == {0} and not restored.transition_refusals
 
 
 def test_failed_write_leaves_a_pseq_gap_and_no_bridging_pair():

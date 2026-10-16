@@ -31,18 +31,23 @@ The percept arm (P3, K1g / R2-c7) is another lane's.
       sequential by default: each seed's processes are heavy)
 """
 
+import ast
 import contextlib
 import copy
 import hashlib
+import inspect
 import io
 import json
 import math
 import os
 import random
+import secrets
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
+import textwrap
 import traceback
 from pathlib import Path
 
@@ -75,7 +80,8 @@ R2_ROLES = (
     ("pre_Bpre", None),  # c8 crash point 1: killed after the event append, before the effect
     ("pre_Bpost", None),  # c8 crash point 3: killed after the checkpoint covering the bout
     ("pre_rw", None),  # K1 schedule with one explicit replay BEFORE the boundary (O_rng)
-    ("twin_K1", None),  # the K0, K1 and K4 twin: the same schedule, never closed, never killed
+    ("twin_K1", None),  # K0/K1: the complete boundary tick, never closed or killed
+    ("twin_K4", None),  # K4: sample before the checkpoint, before the boundary's wake percept
     ("twin_K2", None),
     ("twin_K3", None),
     ("twin_B", None),
@@ -532,11 +538,12 @@ def _sleep_rows(brain, draws):
 def _plant(kind):
     """Append one constructed record to the process's lake; returns its event_id."""
     from snn_data_lake.substrate.home import save_episode
-    from snn_data_lake.substrate.learner_events import read_learner_events
+    from snn_data_lake.substrate.learner_events import KIND_SPECS, read_learner_events
 
     if kind in ("BOUTDIGEST", "BOUTPROGRESS"):
         return _plant_bout(kind)
-    events, _ = read_learner_events(("teach", "turn", "sleep"))
+    # P3 percepts share this identity sequence and may follow the last sleep event.
+    events, _ = read_learner_events(tuple(KIND_SPECS))
     wake = [e for e in events if e["kind"] in ("teach", "turn")]
     last, base = events[-1], wake[-1]
     session, seq = int(last["session"]), int(last["seq"])
@@ -575,12 +582,69 @@ def _plant(kind):
     return e["event_id"]
 
 
+_HOME_MARK = ".replay-hydration-owner"
+_throwaway_home = None  # bound only after validating the instrument-created root and its token
+_throwaway_token = None
+
+
+def _create_private_home(parent, prefix="arm-"):
+    """Parent launch: allocate a fresh root and its independent per-launch nonce."""
+    parent = Path(parent).absolute()
+    _refuse_production(parent)
+    if parent.resolve() != parent:
+        raise ValueError("instrument: private home may not alias another directory")
+    path = Path(tempfile.mkdtemp(prefix=prefix, dir=parent))
+    token = secrets.token_hex(32)
+    with (path / _HOME_MARK).open("x", encoding="ascii") as mark:
+        json.dump({"root": str(path), "token": token}, mark)
+    return path, token
+
+
+def _owned_private_home(path, token):
+    """Validate the out-of-band token and root binding before any lake IO."""
+    if not path or not token:
+        raise ValueError("instrument: requires its marked private home")
+    path = Path(path).absolute()
+    _refuse_production(path)
+    if path.resolve() != path:
+        raise ValueError("instrument: private home may not alias another directory")
+    mark = path / _HOME_MARK
+    try:
+        info = mark.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise ValueError("instrument: invalid private home ownership mark")
+        owned = json.loads(mark.read_text(encoding="ascii"))
+    except (OSError, ValueError) as exc:
+        raise ValueError("instrument: missing or invalid private home ownership mark") from exc
+    if owned != {"root": str(path), "token": token}:
+        raise ValueError("instrument: private home ownership mismatch")
+    return path
+
+
+def _private_lake():
+    """An exact, unaliased, single-link lake in the still-owned active home."""
+    from snn_data_lake.substrate import home
+
+    root = _owned_private_home(_throwaway_home, _throwaway_token)
+    if Path(os.environ.get("NORD_HOME", "")).absolute() != root:
+        raise ValueError("instrument: bout plant requires its bound private home")
+    path = Path(home.knowledge_path()).absolute()
+    if path != root / "brain_lake.bin" or path.resolve() != path:
+        raise ValueError("instrument: lake is outside its exact private home path")
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+        raise ValueError("instrument: private home lake must have one regular-file link")
+    return path, info
+
+
 def _plant_bout(kind):
     """R2-c8 (b): the lake's own `sleep_bout` frame is replaced by itself with ONE slot altered (a
     digest or a progress slot), so redo's verification is the only thing that can tell."""
     from snn_data_lake.substrate import home
     from snn_data_lake.substrate.binlog import _LEN, unpack_episode
 
+    path, before = _private_lake()
+    home.assert_not_live_home(_throwaway_home)
     raw, tag, found = _raw(), home._T_EPISODE, None
     for a, b in _frames(raw)[0]:
         payload = raw[a + _LEN.size : b]
@@ -595,7 +659,13 @@ def _plant_bout(kind):
         ep["weights_digest"] = "0" * 64
     else:
         ep["presentations_spent"] = str(int(ep["presentations_spent"]) + 1)
-    with open(home.knowledge_path(), "r+b") as stream:
+    checked, info = _private_lake()  # re-check after scanning and before destructive access
+    if checked != path or (info.st_dev, info.st_ino) != (before.st_dev, before.st_ino):
+        raise ValueError("instrument: private home lake changed during the bout scan")
+    with open(path, "r+b") as stream:
+        opened = os.fstat(stream.fileno())
+        if opened.st_nlink != 1 or (opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino):
+            raise ValueError("instrument: private home lake changed before destructive access")
         stream.truncate(start)  # nothing has opened this private home's log yet
     if not home.save_episode(ep):
         raise OSError("instrument: altered bout record was not appended")
@@ -647,12 +717,72 @@ def _filtered_hydrate(drop):
     Learner.hydrate = hydrate
 
 
+class RedoMismatch(ValueError):
+    """Instrument-only failure raised at the learner's digest/progress comparison."""
+
+
+def _attributed_hydrate(real, probe):
+    """Bind the two actual comparison raises to a type, without editing the live learner.
+
+    Match syntax, never exception text. Refuse changed comparison/call structure rather than
+    silently losing attribution. All other raises and callbacks keep their original types.
+    """
+    tree = ast.parse(textwrap.dedent(inspect.getsource(real)))
+    comparison = ast.dump(
+        ast.parse("any(actual[k] != event[k] for k in SLEEP_DIGESTS + SLEEP_PROGRESS)")
+        .body[0]
+        .value
+    )
+    step = ast.dump(ast.parse('sleep_step["step"]').body[0].value)
+    comparisons = calls = 0
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If) and ast.dump(node.test) == comparison:
+            (failure,) = node.body
+            if not isinstance(failure, ast.Raise) or not isinstance(failure.exc, ast.Call):
+                raise RuntimeError("instrument: redo comparison structure changed")
+            failure.exc.func = ast.Name(id="_RedoMismatch", ctx=ast.Load())
+            comparisons += 1
+        if isinstance(node, ast.Call) and (
+            ast.dump(node.func) == step
+            or isinstance(node.func, ast.Name)
+            and node.func.id == "learner_bout"
+        ):
+            node.args.insert(0, node.func)
+            node.func = ast.Name(id="_redo_call", ctx=ast.Load())
+            calls += 1
+    if (comparisons, calls) != (2, 2):
+        raise RuntimeError("instrument: redo comparison/call sites changed")
+
+    def completed(call, *args, **kw):
+        probe["redo_attempts"] += 1
+        result = call(*args, **kw)
+        probe["redo_steps"] += 1
+        return result
+
+    namespace = dict(real.__globals__, _RedoMismatch=RedoMismatch, _redo_call=completed)
+    ast.fix_missing_locations(tree)
+    ast.increment_lineno(tree, real.__code__.co_firstlineno - 1)
+    exec(compile(tree, real.__code__.co_filename, "exec"), namespace)
+    return namespace[real.__name__]
+
+
 def _patch_restore(role):
     """Omission arms on the restoring side (2.4): each removes ONE carrier from the restore."""
     from snn_data_lake.readout import interaction_learning as ixn
 
     Learner = ixn.SpikingInteractionLearner
     real_load, real_hydrate = Learner.load_state_dict, Learner.hydrate
+    omission = role in _RED_TWIN or role == "O_rngv"
+    probe = {
+        "binding_valid": False,
+        "redo_attempts": 0,
+        "redo_steps": 0,
+        "foreign_exception": None,
+        "mismatch_verified": False,
+    }
+    if omission:
+        real_hydrate = _attributed_hydrate(real_hydrate, probe)
+        Learner.hydrate = real_hydrate
 
     if role in ("O_rng", "O_rngv", "O_w", "O_stack"):
 
@@ -696,7 +826,6 @@ def _patch_restore(role):
 
         Learner.hydrate = no_watermark
     elif role == "O_cursor":
-        probe = {"binding_valid": False, "redo_steps": 0}
 
         def wake_cursor(learner, events, **kw):
             from snn_data_lake.substrate.learner_events import prefix_digest
@@ -712,24 +841,9 @@ def _patch_restore(role):
             learner._cursor = max(wake) if wake else None
             binding = prefix_digest(events, learner._cursor)
             probe.update(saved_cursor=cur, mutated_cursor=learner._cursor, binding_valid=True)
-            step = kw["sleep_step"]["step"]
-
-            def counted_step(*a, **k):
-                probe["redo_steps"] += 1
-                return step(*a, **k)
-
-            return real_hydrate(
-                learner,
-                events,
-                **{
-                    **kw,
-                    "checkpoint_prefix_digest": binding,
-                    "sleep_step": {**kw["sleep_step"], "step": counted_step},
-                },
-            )
+            return real_hydrate(learner, events, **{**kw, "checkpoint_prefix_digest": binding})
 
         Learner.hydrate = wake_cursor
-        return probe
     elif role == "O_sleepskip":
         _filtered_hydrate(
             lambda learner, e: (
@@ -763,6 +877,22 @@ def _patch_restore(role):
 
         StructuralRewiring.load_state_dict = lambda self, d: None  # rewirer left fresh
 
+    if omission:
+        patched = Learner.hydrate
+
+        def observed(learner, events, **kw):
+            try:
+                return patched(learner, events, **kw)
+            except Exception as exc:
+                if isinstance(exc, RedoMismatch) and probe["redo_steps"] > 0:
+                    probe["mismatch_verified"] = True
+                else:
+                    probe["foreign_exception"] = f"{type(exc).__name__}: {exc}"
+                raise
+
+        Learner.hydrate = observed
+        return probe
+
 
 def _flip_one_weight(brain):
     """The O_rw construction (2.4): drive one live weight through zero identically in the twin and the
@@ -787,9 +917,10 @@ def _explicit_replay(brain, k=8):
 
 
 def _refuse_production(home):
-    live = os.path.abspath(os.path.join(os.path.expanduser("~"), ".snn_data_lake")).lower()
-    if os.path.abspath(home).lower().startswith(live):
-        raise ValueError("refused: the instrument never runs on the production home")
+    live = (Path.home() / ".snn_data_lake").resolve()
+    root = Path(home).resolve()
+    if root.is_relative_to(live) or live.is_relative_to(root):
+        raise ValueError("instrument: private home overlaps the production home")
 
 
 def _reader_view():
@@ -830,9 +961,13 @@ def _drive(brain, role, seed, result=None, out=None):
         _explicit_replay(brain)
 
 
-def run_process(role, seed, home, out, head="r2"):
-    os.environ["NORD_HOME"] = home
-    _refuse_production(home)
+def run_process(role, seed, home, out, head="r2", *, nonce=None):
+    global _throwaway_home, _throwaway_token
+
+    _throwaway_home, _throwaway_token = None, None
+    private = _owned_private_home(home, nonce)
+    _throwaway_home, _throwaway_token = private, nonce
+    os.environ["NORD_HOME"] = str(private)
     if role.startswith("fw_"):
         return run_failwrite(role, seed, out)
     result = {"role": role, "seed": seed, "head": head}
@@ -840,6 +975,8 @@ def run_process(role, seed, home, out, head="r2"):
     restoring = not (role.startswith("pre_") or role.startswith("twin_"))
     if head == "r2":
         probe = _patch_restore(role)
+        if probe is not None:
+            result["omission_probe"] = probe
         if role == "O_cursor":
             result["cursor_probe"] = probe
         for kind in PLANTED:
@@ -851,6 +988,7 @@ def run_process(role, seed, home, out, head="r2"):
             result["reader"] = _reader_view()
     from snn_data_lake.engine.brain import Brain, make_brain
 
+    k4_sample = {}
     if role == "pre_K4":  # the first flush is the night's `_enter_wake`: kill just before it
 
         def kill_before_checkpoint(self):
@@ -858,6 +996,21 @@ def run_process(role, seed, home, out, head="r2"):
             os._exit(0)
 
         Brain._flush_interaction_learner = kill_before_checkpoint
+    elif role == "twin_K4":
+        real_flush = Brain._flush_interaction_learner
+
+        def sample_before_checkpoint(self):
+            # A10: the K1 twin runs one more wake percept after this hook. Sample K4's
+            # exact cut, then let the never-killed twin flush and continue normally.
+            first = not k4_sample
+            if first:
+                k4_sample["before"] = _before(self)
+            flushed = real_flush(self)
+            if first:
+                k4_sample["checkpoint_ok"] = bool(flushed)
+            return flushed
+
+        Brain._flush_interaction_learner = sample_before_checkpoint
     brain = make_brain(seed=seed, persist=True)
     result["construct_motor"] = motor.n
     result["construct_chrono"] = _chrono(brain)
@@ -876,6 +1029,10 @@ def run_process(role, seed, home, out, head="r2"):
         _flip_one_weight(brain)
         _explicit_replay(brain)
     result["before"] = _before(brain)  # BEFORE the wrappers exist: the walk sees the live learner
+    if role == "twin_K4":
+        result["post_boundary_cursor"] = result["before"]["cursor"]
+        result["before"] = k4_sample["before"]
+        result["k4_checkpoint_ok"] = k4_sample["checkpoint_ok"]
     windows = []
     draws = _watch(brain, motor, windows)
     result["rows"] = _sleep_rows(brain, draws)
@@ -1689,7 +1846,7 @@ def seed_comparisons(arms, base=None):
         },
         "c6": {
             "K3": eq(get("res_K3"), get("twin_K3")),
-            "K4": eq(get("res_K4"), get("twin_K1")),
+            "K4": eq(get("res_K4"), get("twin_K4")),
             "B": eq(get("res_B"), get("twin_B")),
         },
         "chrono": {
@@ -1714,13 +1871,19 @@ def seed_comparisons(arms, base=None):
         "c4_comparator": comparator_controls(get("twin_K2")),
         "c8": c8_seed(arms),
     }
-    cursor = get("O_cursor") or {}
-    probe = cursor.get("cursor_probe") or {}
-    c["reds"]["O_cursor"] &= (
-        probe.get("binding_valid") is True
-        and probe.get("redo_steps", 0) > 0
-        and "prefix" not in (cursor.get("fault") or {}).get("cause", "")
-    )
+    for role in (*_RED_TWIN, "O_rngv"):
+        arm = get(role) or {}
+        probe = arm.get("omission_probe") or arm.get("cursor_probe") or {}
+        attributed = probe.get("mismatch_verified") is True and probe.get("redo_steps", 0) > 0
+        foreign = bool(probe.get("foreign_exception")) or (
+            arm.get("fault") is not None and not attributed
+        )
+        if foreign and role not in incomplete:
+            incomplete.append(role)
+        if role in c["reds"]:
+            c["reds"][role] &= not foreign
+        if role == "O_cursor":
+            c["reds"][role] &= probe.get("binding_valid") is True and probe.get("redo_steps", 0) > 0
     c["reds"]["CHRONO"] = _complete(get("CHRONO")) and not chrono_clean(get("CHRONO"))
     c["reds"]["MOTOR"] = _complete(get("MOTOR")) and not chrono_clean(get("MOTOR"))
     fw = fw_seed(arms)
@@ -1840,29 +2003,52 @@ def run_seed(seed, out_dir, head="r2", src=None, roles=None):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     table = R2_ROLES if head == "r2" else BASE_ROLES
-    arms = {}
-    with tempfile.TemporaryDirectory(prefix=f"r2h-{head}-{seed}-") as scratch:
+    arms, homes = {}, {}
+    with tempfile.TemporaryDirectory(prefix=f"r2h-{head}-{seed}-", dir=out_dir) as scratch:
         scratch = Path(scratch)
         for role, parent in table:
             if roles is not None and role not in roles:
                 continue
-            home = scratch / role
-            if parent is None:
-                home.mkdir()
-            else:
-                shutil.copytree(scratch / parent, home)
+            home, nonce = _create_private_home(scratch, prefix=f"{role}-")
+            homes[role] = home, nonce
+            if parent is not None:
+                source = _owned_private_home(*homes[parent])
+                shutil.copytree(
+                    source, home, dirs_exist_ok=True, ignore=shutil.ignore_patterns(_HOME_MARK)
+                )
             out = out_dir / f"{head}-{seed}-{role}.json"
+            out.unlink(missing_ok=True)
             proc = subprocess.run(
-                [sys.executable, str(here), "--proc", role, str(seed), str(home), str(out), head],
-                env=dict(os.environ, NORD_HOME=str(home), PYTHONPATH=str(src), PYTHONUTF8="1"),
+                [
+                    sys.executable,
+                    str(here),
+                    "--proc",
+                    role,
+                    str(seed),
+                    str(home),
+                    str(out),
+                    head,
+                    nonce,
+                ],
+                env=dict(
+                    os.environ,
+                    NORD_HOME=str(home),
+                    PYTHONPATH=str(src),
+                    PYTHONUTF8="1",
+                ),
                 capture_output=True,
                 text=True,
                 timeout=900,
             )
-            if out.exists():
-                arms[role] = json.loads(out.read_text(encoding="utf-8"))
-            else:
+            if proc.returncode != 0:
                 arms[role] = {"role": role, "error": f"exit {proc.returncode}"}
+            elif not out.exists():
+                arms[role] = {"role": role, "error": "no output"}
+            else:
+                try:
+                    arms[role] = json.loads(out.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    arms[role] = {"role": role, "error": "unparsable output"}
             if proc.stderr:  # kept even on success: refusal reports are evidence
                 (out_dir / f"{head}-{seed}-{role}.stderr.txt").write_text(
                     proc.stderr, encoding="utf-8"
@@ -1955,7 +2141,7 @@ def main(argv):
     sys.path[:] = [p for p in sys.path if Path(p or ".").resolve() != here]
     if argv[:1] == ["--proc"]:
         role, seed, home, out, head = argv[1], int(argv[2]), argv[3], argv[4], argv[5]
-        run_process(role, seed, home, out, head)
+        run_process(role, seed, home, out, head, nonce=argv[6] if len(argv) > 6 else None)
         return
     opt = lambda name: argv[argv.index(name) + 1] if name in argv else None  # noqa: E731
     if argv[:1] == ["--seed"]:
