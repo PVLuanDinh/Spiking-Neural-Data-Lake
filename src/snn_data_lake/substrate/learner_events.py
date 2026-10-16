@@ -1,6 +1,6 @@
 """Typed R2 reader candidate, UNRUN: strict same-pass receipt, no invented producers.
 
-Ctxread remains schema-only; percept has no schema. Brain refuses unbound effects.
+Ctxread remains schema-only. Percept (R2 P3) has no learner effect; hydrate moves the cursor.
 Sleep none sentinels do not establish deciding-mask recovery.
 """
 
@@ -76,6 +76,23 @@ KIND_SPECS = {
             "encoder",
         ),
         "encoders": frozenset({"text_features n_in=52"}),
+    },
+    # R2 part P3 (2.10): the grower's percept-transition record, written BEFORE the observation is
+    # buffered. `x` is base64 of little-endian float64, `pseq` the per-session attempt counter,
+    # `proto_boot` / `proto_flushed` the arm learner's durable prototype count (2.11 D2).
+    "percept": {
+        "slots": _IDENTITY
+        + (
+            "x",
+            "category",
+            "n_protos",
+            "proto_boot",
+            "proto_flushed",
+            "pseq",
+            "provenance",
+            "encoder",
+        ),
+        "encoders": frozenset({"arm.percept gained width=64"}),
     },
     # POST-DATA 2026-10-13, owner2105/2106: one durable aggregate bout, never REM items.
     "sleep_bout": {

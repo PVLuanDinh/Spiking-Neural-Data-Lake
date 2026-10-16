@@ -1067,6 +1067,7 @@ class Brain:
                 )
             except Exception as _e:  # a broken record must never block brain construction
                 self._prototypes_restore_note = f"restore raised: {_e}"
+        self._attach_percept_transitions()
 
         # C1 batch-2: three MORE brain-native pure-stdlib faculties -- N-agent recursive ToM (social),
         # neuromod-fusion affect integrator with self-organized emotions (affect), counterfactual do()
@@ -5061,7 +5062,8 @@ class Brain:
                 or (self._aud_learner is not None and self._aud_learner.n_units)
             ):
                 return False
-            return bool(
+            durable_units = int(self.brain.arm.learner.n_units)  # before the save: what it holds
+            saved = bool(
                 save_state(
                     PROTOTYPES_STATE,
                     {
@@ -5071,6 +5073,10 @@ class Brain:
                     },
                 )
             )
+            if saved and getattr(self, "_r2_proto_flushed", None) is not None:
+                # R2 P3 D2: the count the lake now provably holds (a percept's `proto_flushed`)
+                self._r2_proto_flushed = durable_units
+            return saved
         except Exception:
             return False
 
@@ -5372,6 +5378,8 @@ class Brain:
         self._r2_seq = 0
         self._session = None
         self._r2_receipt = None
+        self._r2_percept_events = []  # P3: this boot's percept events, handed to the grower once
+        self._r2_pseq = 0  # P3: per-session percept counter, consumed on every write ATTEMPT
         self._g9_actors = {}
         self._g9_apply_receipt = None
         self.brain._ixn.teach_sink = None
@@ -5461,6 +5469,7 @@ class Brain:
                     self._session = str(session)
                     self._r2_receipt = receipt
                     self._r2_prefix_digest = report["prefix_digest"]
+                    self._r2_percept_events = [e for e in events if e["kind"] == "percept"]
                 except BaseException:
                     self._r2_restore(live, before)
                     self._g9_actors = old_actors
@@ -5603,7 +5612,7 @@ class Brain:
         event = {
             "kind": kind,
             "event_id": f"{self._session}-{self._r2_seq + 1}",
-            "stream": "posed" if kind == "posed_problem" else "chat",
+            "stream": {"posed_problem": "posed", "percept": "wake"}.get(kind, "chat"),
             "session": self._session,
             "seq": str(self._r2_seq + 1),
             "schema": SCHEMA,
@@ -5611,6 +5620,8 @@ class Brain:
             "split": "train",
             "encoder": "g5.pool_features n_in=256"
             if kind == "posed_problem"
+            else f"arm.percept gained width={self.brain.arm.learner.dim}"
+            if kind == "percept"
             else "text_features n_in=52",
             **slots,
         }
@@ -5624,6 +5635,83 @@ class Brain:
             raise OSError("R2 learner append returned False")
         self._r2_prefix_digest = advance_prefix_digest(self._r2_prefix_digest, event)
         return event["event_id"]
+
+    def _attach_percept_transitions(self):
+        """R2 part P3 (2.10): hydrate the grower's transition buffer from the percept events of the
+        ONE strict boot pass (no second lake read), then attach the write-ahead sink. Construction
+        only. A NON-persisting brain (or none with a grower) is a no-op: the grower is byte-identical
+        to the one without P3. A PERSISTING brain always gets the sink, even when boot reconciliation
+        was refused or hydration raised (Codex #2844, owner #1037): the sink then refuses every
+        observation, so no pair is ever buffered that is not journaled."""
+        events, self._r2_percept_events = getattr(self, "_r2_percept_events", []), []
+        if not self._persist or self.neuro is None:
+            return False
+        from snn_data_lake.substrate.learner_events import KIND_SPECS
+
+        if (
+            getattr(self, "_r2_fault", True) is None
+            and getattr(self, "_session", None) is not None
+            and "percept" in KIND_SPECS
+        ):
+            try:
+                held = int(self.brain.arm.learner.n_units)
+                self.neuro.restore_transitions(
+                    events, n_units=held, current_session=int(self._session)
+                )
+                # D2: the durable prototype count, restored here and advanced only by a landed flush
+                self._r2_proto_boot = self._r2_proto_flushed = held
+            except (
+                Exception
+            ) as exc:  # never block construction; the sink refuses, so no chain forms
+                self._r2_percept_refused = True  # percepts only: no latch, but no unjournaled pair
+                self._report_ixn_refusal("R2 percept hydration refused", exc)
+        self.neuro.transition_sink = self._record_percept
+        return True
+
+    def _record_percept(self, features, category):
+        """The grower's write-ahead sink: True only when the percept's event is durable. Every
+        ATTEMPT consumes a `pseq`, so a refused or failed write leaves the visible gap hydration
+        breaks the chain at. Under the common lock and the all-kind latch (owner #1037): an
+        uncertain failed write closes EVERY learner kind until a fresh reconciliation."""
+        from snn_data_lake.growth.neurogenesis_engine import pack_percept
+        from snn_data_lake.readout.interaction_learning import _event_order
+        from snn_data_lake.substrate.learner_events import KIND_SPECS
+
+        lock = getattr(self, "_r2_lock", None)
+        if lock is None:  # a persisting brain whose R2 never booted cannot journal: refuse
+            return False
+        with lock:
+            self._r2_pseq = getattr(self, "_r2_pseq", 0) + 1
+            if (
+                self._r2_fault is not None
+                or getattr(self, "_r2_percept_refused", False)
+                or "percept" not in KIND_SPECS
+            ):
+                return False
+            width = f"arm.percept gained width={self.brain.arm.learner.dim}"
+            if width not in KIND_SPECS["percept"]["encoders"]:
+                return False  # an unregistered width is refused alone, never latched (rv-p3-a c)
+            try:
+                eid = self._append_learner_event(
+                    "percept",
+                    {
+                        "x": pack_percept(features),
+                        "category": str(int(category)),
+                        "n_protos": str(int(self.brain.arm.learner.n_units)),
+                        "pseq": str(self._r2_pseq),
+                        "provenance": "self",
+                        "proto_boot": str(self._r2_proto_boot),
+                        "proto_flushed": str(self._r2_proto_flushed),
+                    },
+                )
+                if eid is None:
+                    return False
+                self.brain._ixn._cursor = _event_order(eid)
+                return True
+            except Exception as exc:
+                self._r2_close("percept_append", exc)
+                self._report_ixn_refusal("R2 percept write latched until restart", exc)
+                return False
 
     def _record_learner_event(self, kind, key, target, stimulus):
         """Admission precedes every authority/ring/deposit; partial effects roll back then latch."""

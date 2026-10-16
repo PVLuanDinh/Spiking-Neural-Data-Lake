@@ -946,6 +946,11 @@ class SpikingInteractionLearner:
                     self._cursor = order
                     self._redo_count += 1
                     redone += 1
+            elif kind == "percept":
+                # R2 P3 (2.10): the grower's transition record. It has no learner effect; the grower
+                # reads it from the same pass. Only the cursor moves, so the final-cursor check holds.
+                if not before_checkpoint:
+                    self._cursor = order
             else:
                 raise ValueError(f"R2 unbound effect: {kind}")
             if kind != "posed_problem" and effect_actor is not None:

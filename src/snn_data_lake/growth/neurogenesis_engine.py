@@ -52,7 +52,11 @@ measured crossover on this machine is 262,144. The refit now hands its real elem
   PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.growth.neurogenesis_engine
 """
 
+import base64
 import random
+import re
+import struct
+from collections import Counter
 
 import torch
 
@@ -176,6 +180,150 @@ class SyntheticPerceptStream:
         return engine
 
 
+# ---- R2 part P3: the grower's percept-transition record (2.10; main's latch governs the write) ----
+#: A `percept` event's `encoder` slot names the width its `x` was written at; `None` for any other
+#: spelling (an instrument stream writes `synthetic.stream.k<k>` and is refused upstream).
+_PERCEPT_WIDTH = re.compile(r"arm\.percept gained width=(\d+)")
+
+
+def pack_percept(features):
+    """A percept's exact bytes as a lake string: base64 of little-endian float64."""
+    values = [float(v) for v in features]
+    return base64.b64encode(struct.pack(f"<{len(values)}d", *values)).decode("ascii")
+
+
+def unpack_percept(text):
+    """Inverse of `pack_percept`; None when the string is not whole float64s."""
+    try:
+        raw = base64.b64decode(text.encode("ascii"), validate=True)
+    except (ValueError, AttributeError):
+        return None
+    if not raw or len(raw) % 8:
+        return None
+    return list(struct.unpack(f"<{len(raw) // 8}d", raw))
+
+
+_PERCEPT_SLOTS = (
+    "event_id",
+    "session",
+    "seq",
+    "x",
+    "category",
+    "pseq",
+    "provenance",
+    "encoder",
+    "proto_boot",
+    "proto_flushed",
+)
+
+
+def _percept_refusal(event, width, n_units, seen, last):
+    """(reason, decoded x, category, proto_boot, proto_flushed) for one `percept` event: reason
+    None when it passes every check that needs only the event itself (the flushed-count proof
+    below needs its neighbours)."""
+    none = (None, None, None)
+    if any(event.get(slot) in (None, "") for slot in _PERCEPT_SLOTS):
+        return ("missing_slot", *none)
+    if event.get("valid") != "1":
+        return ("invalid", *none)
+    if event.get("split") != "train":
+        return ("heldout", *none)
+    if event["provenance"] == "instrument":
+        return ("instrument", *none)
+    ids = tuple(
+        event[k] for k in ("session", "seq", "category", "pseq", "proto_boot", "proto_flushed")
+    )
+    if not all(str(v).isascii() and str(v).isdigit() for v in ids):
+        return ("bad_identity", *none)
+    if event["event_id"] in seen:
+        return ("duplicate_id", *none)
+    order = (int(event["session"]), int(event["seq"]))
+    if last is not None and order <= last:
+        return ("seq_regression", *none)
+    x = unpack_percept(event["x"])
+    declared = _PERCEPT_WIDTH.fullmatch(str(event["encoder"]))
+    declared = None if declared is None else int(declared.group(1))
+    want = width if width is not None else declared
+    if x is None or want is None or len(x) != want or declared not in (None, want):
+        return ("width", *none)
+    category = int(event["category"])
+    # the cheap first check: a category the restored arm learner does not hold is not hydrated
+    if n_units is not None and declared is not None and category >= n_units:
+        return ("vocab", *none)
+    return None, x, category, (int(event["proto_boot"]), int(event["proto_flushed"]))
+
+
+def hydrate_transitions(events, *, width, n_units, buffer_cap, current_session=None):
+    """PURE (2.10, 2.11 D2): the training pairs `(x_{t-1}, category_t)` the `percept` events
+    describe.
+
+    Pairs follow the ORIGINAL percept adjacency, never the filtered list: a pair is admitted only
+    when both endpoints are eligible, share one session and have `pseq_t == pseq_{t-1} + 1`. A
+    refused endpoint (heldout, missing, wrong width, out-of-vocabulary, instrument, stale
+    prototype, failed write) BREAKS the chain and no bridging pair is formed across it; a repeated
+    id or a `(session, seq)` regression is not a percept and cannot bridge either.
+
+    STALE PROTOTYPE (D2): an event `(s, c)` is eligible only if prototype `c` is PROVEN durable,
+    i.e. `c < F`, F being the largest `proto_flushed` of a LATER event of session `s`, or the
+    `proto_boot` of session `s + 1` read here, or the restored arm's own `n_units` when this
+    process is session `s + 1` (`current_session`). A crashed session's unflushed tail has no such
+    proof (its id may be reused by a later recruit) and is refused as `stale_proto`.
+
+    Returns `{"x", "y", "categories", "refusals"}`: the last `buffer_cap` pairs, every eligible
+    category, and a count per reason."""
+    refusals, seen, last = Counter(), set(), None
+    rows = []  # every percept event in lake order: [reason, session, pseq, x, category, proto]
+    for event in events:
+        if event.get("kind") != "percept":
+            continue
+        reason, x, category, proto = _percept_refusal(event, width, n_units, seen, last)
+        if reason in ("duplicate_id", "seq_regression"):
+            refusals[reason] += 1  # not a percept: no row, no chain break
+            continue
+        if reason is None:
+            seen.add(event["event_id"])
+            last = (int(event["session"]), int(event["seq"]))
+        else:
+            refusals[reason] += 1
+        session = int(event["session"]) if str(event.get("session", "")).isdigit() else None
+        pseq = int(event["pseq"]) if reason is None else None
+        rows.append([reason, session, pseq, x, category, proto])
+    # the durability proof of each eligible event, from its eligible neighbours only
+    boots, later, run = {}, [None] * len(rows), {}
+    for i in reversed(range(len(rows))):
+        reason, session, _p, _x, _c, proto = rows[i]
+        later[i] = run.get(session)
+        if reason is None:
+            run[session] = max(run.get(session, -1), proto[1])
+    for reason, session, _p, _x, _c, proto in rows:
+        if reason is None:
+            boots.setdefault(session, proto[0])
+    prev, pairs, categories = None, [], set()
+    for i, (reason, session, pseq, x, category, _proto) in enumerate(rows):
+        if reason is None:
+            proofs = [later[i], boots.get(session + 1)]
+            if current_session == session + 1:
+                proofs.append(n_units)
+            proofs = [v for v in proofs if v is not None]
+            if not proofs or category >= max(proofs):
+                reason = "stale_proto"
+                refusals[reason] += 1
+        if reason is not None:
+            prev = None
+            continue
+        if prev is not None and prev[0] == session and prev[1] + 1 == pseq:
+            pairs.append((prev[2], category))
+        prev = (session, pseq, x)
+        categories.add(category)
+    keep = pairs[-int(buffer_cap) :] if buffer_cap > 0 else []
+    return {
+        "x": [p[0] for p in keep],
+        "y": [p[1] for p in keep],
+        "categories": categories,
+        "refusals": dict(refusals),
+    }
+
+
 class NeurogenesisSelfImprove:
     """Self-improvement by neurogenesis: grow NG-SNN neurons to predict the brain's own next
     perception. PERCEPTION-ONLY -- no arm, no motor command, no actuator route (see module
@@ -242,6 +390,12 @@ class NeurogenesisSelfImprove:
         self._eps_tol, self._T = float(eps_tol), int(T)
         self._buf_x = []  # percept_{t-1}
         self._buf_y = []  # the brain's own category of percept_t
+        #: R2 P3 (2.10): the write-ahead percept-transition record. None = no record at all and a
+        #: byte-identical engine; the persisting Brain attaches `(features, category) -> bool`.
+        self.transition_sink = None
+        self.transition_refusals = {}  # the last hydration's refusal tally, by reason
+        self.transition_write_refusals = 0  # observations refused because the sink did not land
+        self._transitions_hydrated = False
         self._prev = None  # the last percept observed, paired with the NEXT category
         self._categories = set()  # every category the brain has shown this engine
         self.observed = 0  # wake percepts received (the stimulus count; ticks counts sleep)
@@ -311,6 +465,19 @@ class NeurogenesisSelfImprove:
                 f"percept width {len(feats)} != buffered width {len(self._buf_x[0])}; "
                 "a widened percept needs a fresh engine"
             )
+        if self.transition_sink is not None:
+            # write-ahead (R2 2.10): the percept is a durable event BEFORE it is buffered. A write
+            # that did not land refuses this observation whole and BREAKS the chain, exactly as
+            # hydration breaks it at the gap the attempt leaves in `pseq`.
+            try:
+                written = bool(self.transition_sink(feats, cat))
+            except Exception:
+                written = False
+            if not written:
+                self.transition_write_refusals += 1
+                self._prev = None
+                self._pending_prediction = None
+                raise RuntimeError("percept transition write refused; observation not buffered")
         if self._prev is not None:
             self._buf_x.append(self._prev)
             self._buf_y.append(cat)
@@ -344,6 +511,29 @@ class NeurogenesisSelfImprove:
         self._categories.add(cat)
         self.observed += 1
         return cat
+
+    def restore_transitions(self, events, *, n_units=None, current_session=None):
+        """CONSTRUCTION ONLY (2.10): refill the transition buffer from the `percept` events of the
+        ONE shared read pass. Touches `_buf_x`, `_buf_y`, `_categories` and nothing the live
+        chronology owns (`_prev`, `_prev_cat`, `observed`, `live_n`, `live_correct`). A second call,
+        or a call on an engine that has already observed, is refused: a second redo would deposit
+        the same pairs twice. Returns the pair count."""
+        if self._transitions_hydrated or self.observed or self._buf_x:
+            raise RuntimeError("transition hydration is construction-only and runs once")
+        model = self._model
+        width = int(model.d_in) if model is not None and model.d_in else None
+        out = hydrate_transitions(
+            events,
+            width=width,
+            n_units=n_units,
+            buffer_cap=self.buffer_cap,
+            current_session=current_session,
+        )
+        self._buf_x, self._buf_y = out["x"], out["y"]
+        self._categories = set(out["categories"])
+        self.transition_refusals = out["refusals"]
+        self._transitions_hydrated = True
+        return len(self._buf_x)
 
     def tick(self):
         """SLEEP: one offline step; refit the NG-SNN on the buffered stream when due. Synthesizes
