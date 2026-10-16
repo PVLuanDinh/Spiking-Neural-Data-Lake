@@ -350,6 +350,8 @@ REGIONS = {
         "taught_problems",
         # specs/022 G6 (T114) part (e): the staged sleep-bout runner (R3's run_bout), participation census, fabrication guard
         "staged_sleep_bout",
+        # specs/022 R2 (T103): the typed-replay-hydration campaign instrument -- K0-K4 twins, base-head I_K1/I_K2, the 2.4 reds, FAILWRITE (evidence r2-typed-replay-hydration.md 2.2 + the 2026-10-15 amendment)
+        "replay_hydration",
         # specs/022 W3: the world-red instrument -- two-chain liveness at 4dp, category entropy, the derived refit gap (P8 #9)
         "world_red_probe",
     ],

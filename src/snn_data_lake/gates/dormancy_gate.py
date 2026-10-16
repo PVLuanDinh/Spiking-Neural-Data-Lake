@@ -892,6 +892,13 @@ EXEMPT = {
         "it measures, because the tree it censuses is an export, not the running brain -- the "
         "policy_manifest disposition",
     ),
+    "replay_hydration": (
+        "permanent",
+        "specs/022 R2 (T103), evidence r2-typed-replay-hydration.md 2.2 + the dated pre-data amendment 2026-10-15: the "
+        "R2 campaign INSTRUMENT (K0-K4 kill points, twins, base-head I_K1/I_K2, the 2.4 reds, FAILWRITE). A "
+        "benchmark harness run as an entrypoint (--campaign/--seed, confirmatory seeds refused without "
+        "R2_CONFIRMATORY_GO=1); it measures the brain's R2 mechanism and is never on the live tick by design",
+    ),
     "sleep_pressure": (
         "wire",
         "specs/022 G6 (T114) part (c), evidence g6-sleep-durable-memory.md 2.5/2.16 A6/A7: the "
