@@ -643,7 +643,10 @@ this heading is edited.
 Not Codex-reviewed. Rounds 2 and 3 fold reviews #2710 and #2711 (both CHALLENGE) and Codex #2719. Round 4 folds
 rv-r2amend-b #2736 (CHALLENGE) and Codex #2740 (CHALLENGE). Round 5 folds rv-r2amend-b #2795 (CHALLENGE), the
 integrator reply #2796 and integrator ruling v3 #2779, which supersedes ruling #2714 (retracted by #2737) and the
-interim ruling #2738, before this lands.
+interim ruling #2738, before this lands. Round 6 folds R2INST round 2 #2873 (claim=fail), Codex #2885 and the
+integrator retraction #2886 into A3 only (pre-data; dev seeds 15000-15007 seen, nothing else). Round 7 folds
+rv-r2amend-a #2902 and the Codex review of #2898 (relayed #2903) into A3's RED-PARTIAL and A2's R2-c3 row (same
+disclosure: dev seeds only).
 Basis: board #2689 (integrator disposition), reviewed by #2690 and #2691 (both AGREE), evidence
 `rows/r2-mechanism-diff-2026-10-15/REPORT.md`. Every symbol below was re-checked by `git.exe grep`/`show` on fbb1f38e
 (the main head this amendment is written against) by the amendment lane, not copied from REPORT.md. Symbols are cited
@@ -782,6 +785,12 @@ qualified basis, not as categorical proof. Only dev seeds 15000-15007 are expose
   `any_` over valid seeds only, so one firing seed gave PASS and an INVALID seed was excluded from the count; that
   is not the registered bar and is wrong under this tightening). INVALID seeds count against the run. This
   applies to every 2.4 red, O_rng included (#2779 states the same all-8 requirement for it).
+  Round 7 (2026-10-15, pre-data; Codex on #2898, relayed #2903; dev seeds 15000-15007 only seen): an INVALID seed
+  from ANY cause makes R2-c3 NOT MET, whether its arm record is incomplete (crashed/missing) OR the arm is
+  complete but INVALID by its incumbent control (I_K2 equals its twin, D4). The instrument's `verdict()` must not
+  count only valid-plus-incomplete seeds (a synthetic run with one control-INVALID seed returned PASS). D4's
+  once-only replacement of an INVALID confirmatory seed does NOT apply to R2-c3: replacing the seed would drop the
+  INVALID one from the count, which is the "never skipped" case. R2-c3 stays NOT MET for the run.
 
 ### A3. Owner #1037: the latch, and the PROSPECTIVE FAILWRITE schedule it requires
 
@@ -834,7 +843,9 @@ persisting home:
 1. A: a successful `teach` of key K1, then the `_enter_wake` checkpoint. Retain the checkpoint bytes CP_A.
 2. B: one `correct`/`teach` of key K2 with the fault injected at `substrate.home.save_episode` (the writer's one
    append). Three arms by what the lake holds afterwards: `absent` (nothing written), `landed` (the complete B frame
-   is written, then the call raises), `torn` (a frame header and a payload one byte short, then False).
+   is written, then the call raises), `torn` (a frame header and a payload one byte short, then False). The torn
+   tail differs by B: 255 B for `teach`, 1,663 B for `sleep_bout` (dev seeds 15000-15007, Codex #2885; an earlier
+   reading of 255 B for both was wrong).
 3. C, all in the survivor and all after B: (i) `Brain.respond` on K2 (the old step 2: a later turn on the same
    key; `Brain.respond` calls `chat`, which calls `learn_turn(text, intent)` with no feedback: kind `turn`,
    through `event_sink`, so latched it counts n_i = 1 refusal; if `chat` raised, `respond` falls back to
@@ -856,9 +867,10 @@ persisting home:
   the after-B bytes; the checkpoint equals CP_A; the learner snapshot (same two counters popped) equals A's.
   Return values: C(iv) returns False, C(v) raises `RuntimeError` naming the latch, C(vi) returns False with one
   stderr line "R2 checkpoint refused by latch", C(vii) raises `PosedRefused` ("common all-learning latch is
-  closed"). C(vi) needs this bar: with the state restored to A the requested payload equals CP_A, so a build whose
-  checkpoint path ignores the latch still leaves the checkpoint equal to CP_A; only its True return and missing
-  refusal line expose it.
+  closed"). C(vi) with the latch removed DOES change the checkpoint and the lake's raw bytes (observed on dev seeds,
+  #2873; this section's earlier text said the checkpoint would stay equal to CP_A and is superseded). The red fires
+  on the True return of `Brain._flush_interaction_learner` and on the missing "R2 checkpoint refused by latch" line;
+  the checkpoint and raw-bytes bars fail with them but are not what the red rests on.
 - Excluded counters, each asserted on its own: `_unjournaled_refused` is read AFTER `Brain._r2_restore` has
   returned (rollback restores it to its pre-effect value; `Brain._record_learner_event` increments it afterwards)
   and equals b (B's own count) plus one per C call that reaches `Brain._record_learner_event`: C(i) counts n_i
@@ -875,6 +887,14 @@ persisting home:
   The other arm's reference must differ from the restart (identical sides read NOT MET, ruling 9). For `torn`, the
   before-repair raw tail and the complete-prefix length and hash are retained, and the after-repair prefix is the
   last complete frame.
+- Observer rule (all arms, every seed; Codex #2885, retraction #2886): every measurement taken between C calls is
+  NON-MUTATING. Raw bytes are hashed once and the checkpoint, prefix and learner records are decoded from that same
+  immutable snapshot; the instrument never constructs a repairing `BinLog` and never calls `home.load_state` (or
+  `load_named_state`, `_log`) on the test home while the survivor is under test, because that path runs
+  `BinLog.__init__` -> `_repair_torn_tail` -> truncate and measures a file the observer itself shortened (the round-2
+  `torn` failure, 8 of 8 seeds, was this). A repair of the torn tail is licensed only where the restarted process
+  does it, and is then bound by the `torn` restart bar above. The strict raw-bytes bar is UNCHANGED for every arm:
+  length and sha256 after every C call equal the after-B bytes.
 - Rearm: after a successful restart, one separately injected failure latches again.
 - Report, no bar: the `phase` strings reached by each C kind.
 
@@ -905,6 +925,21 @@ persisting home:
 - **RED-POSED:** the latch not covering `posed_problem`. Construction: `Brain._r2_fault` is set None for the
   C(vii) call only (a build without the `_need(self._r2_fault is None, ...)` line of `Brain._g9_apply_source`).
   A `posed_problem` frame is appended, so the raw-bytes and `_r2_seq` checks fail.
+- **RED-PARTIAL (FW-PARTIAL; new 2026-10-15, registered BEFORE the instrument implements it; Codex #2885):** a
+  latched build that writes a PARTIAL learning record. Construction, in every arm and on every seed: at C(iii) (a
+  direct `learn_turn`), with the latch closed, a wrapper appends to the lake file a length header plus a learner-event
+  payload shorter than the header declares, leaves `_r2_seq` and the learner snapshot unchanged, and returns the
+  expected refusal (pure inference, `_unjournaled_refused` incremented as in the correct build). In the absent and
+  landed arms the complete prefix and the decoded learner records stay identical, so a prefix comparison alone
+  returns no difference there. That is FALSE in the torn arms: the torn tail is one byte short of a frame, the
+  partial append completes it, and the complete prefix moves (rv-r2amend-a #2902 measured prefix 17 -> 61 on
+  constructed bytes). The red therefore rests on the strict raw-bytes bar (length and sha256 equal to after-B) in
+  EVERY arm; it must fire in all six arms (teach and bout x absent, landed, torn) on every seed, and the
+  instrument records per arm whether the prefix moved, without using that as the bar. A red that fires on no seed
+  is deleted, never weakened (P8); an INVALID seed makes it NOT MET (R2-c3 as tightened above).
+  Round 7 (2026-10-15, pre-data; rv-r2amend-a #2902 and Codex on #2898, relayed #2903): this correction follows
+  a dev-seed observation (15000-15007; the instrument built the red on teach/absent only). No confirmatory or
+  reserve seed has been read.
 
 **Disagreements with what main's tests assert (fbb1f38e), each named.**
 1. No main test calls `Brain.respond` on the failed key. In `tests/test_g0c_learner_persists.py`,
