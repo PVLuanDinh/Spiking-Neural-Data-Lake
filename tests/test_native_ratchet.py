@@ -163,3 +163,34 @@ def test_the_tokenizer_control_reads_inline_imports_and_ignores_strings(tmp_path
     )
     counts = nr.line_counts(src)
     assert (counts["numpy"], counts["zlib"], counts["struct"]) == (1, 1, 0), counts
+
+
+def _rigged(monkeypatch, tmp_path, files, numpy_files, baseline_numpy=None):
+    """A src tree under tmp_path, its census rigged to `numpy_files`; the baseline equals the live
+    counts unless `baseline_numpy` overrides numpy."""
+    for rel, text in files.items():
+        p = tmp_path / "src" / "snn_data_lake" / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+    zones = {lib: (list(numpy_files) if lib == "numpy" else []) for lib in nr.LIBS}
+    union = sorted(numpy_files)
+    monkeypatch.setattr(nr, "ROOT", tmp_path)
+    monkeypatch.setattr(nr, "census", lambda imported=None: (zones, union))
+    live = nr.live_counts(zones, union)
+    held = dict(live, numpy=baseline_numpy) if baseline_numpy is not None else live
+    monkeypatch.setattr(nr, "_load_baseline", lambda: held)
+
+
+def test_an_unreadable_src_file_fails_closed(tmp_path, monkeypatch):
+    """Codex r4 N-4: a syntax-error file is skipped by the ast walk AND the tokenizer, so the
+    control agrees with the omission; the gate must red, not read the lost importers as a fall."""
+    _rigged(monkeypatch, tmp_path,
+            {"m.py": "import numpy\n", "broken.py": "import numpy\nx = (\n"},
+            ["src/snn_data_lake/m.py"])  # fmt: skip
+    assert nr.main(["--assert"]) == 1
+
+
+def test_numpy_zero_under_a_nonzero_baseline_is_an_instrument_failure(tmp_path, monkeypatch):
+    """PREREG: 'a count of 0 for numpy is an instrument failure' (walk and control both dead)."""
+    _rigged(monkeypatch, tmp_path, {"m.py": "x = 1\n"}, [], baseline_numpy=97)
+    assert nr.main(["--assert"]) == 1

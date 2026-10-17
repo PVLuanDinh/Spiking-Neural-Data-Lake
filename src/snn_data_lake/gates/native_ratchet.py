@@ -27,6 +27,7 @@ by path inside a function (no module-scope sys.path edit -- instrument_guard's r
 """
 
 # distinct-from: replication_guard.py docs_only_battery.py home.py g5_part_d_cells.py eligible_circuit_census.py -- those guard brain classes, hash docs, locate the lake or walk turns; none counts src importers of a library (this reuses tools/dependency_ledger._imported for that)
+import ast
 import contextlib
 import functools
 import importlib.util
@@ -162,6 +163,31 @@ def control(zones, src):
     return [(lib, n, lines[lib]) for lib, n in counts(zones).items() if n != lines[lib]]
 
 
+# distinct-from: h01_partb_tangential.py sleep_plasticity_ab.py sleep_pruner_census.py language_readout_slda.py g5_readout_cells.py -- campaign hashes, test-id counts, profile hooks, splits, tensor identity; these guard THIS ratchet's own import census against unreadable files and a dead walk+control
+def unreadable(src):
+    """src/ files neither the ast walk nor the tokenizer can read (Codex r4 N-4): both skip such a file,
+    so its importers vanish from BOTH counts and the control agrees with the omission. Fail CLOSED."""
+    bad = []
+    for p in sorted(src.rglob("*.py")):
+        text = p.read_text(encoding="utf-8", errors="replace")
+        try:
+            ast.parse(text)
+            list(tokenize.generate_tokens(io.StringIO(text).readline))
+        except (SyntaxError, tokenize.TokenError, ValueError):
+            bad.append(p.relative_to(src.parent).as_posix())
+    return bad
+
+
+def floor_findings(live, baseline):
+    """PREREG, mechanized: a numpy count of 0 is an instrument failure while the baseline holds numpy
+    importers (the walk AND the control dead together read 0 == 0). Retiring this row is the reviewed
+    act that ends L4 -- never --update-baseline, which this floor also blocks."""
+    held = (baseline or {}).get("numpy", 0)
+    if not live.get("numpy") and held:
+        return [f"numpy reads 0 importers while the baseline holds {held}"]
+    return []
+
+
 def counts(zones):
     return {lib: len(files) for lib, files in zones.items()}
 
@@ -274,6 +300,16 @@ def self_check():
     with _fixture_repo(shadows=("numpy", "zlib", "struct")) as src:
         shadowed = {k: v for k, v in counts(census()[0]).items() if v}
         dead = control({lib: [] for lib in LIBS}, src)
+        (src / "snn_data_lake" / "p" / "broken.py").write_text(
+            "import numpy\nx = (\n", encoding="utf-8"
+        )
+        dark = unreadable(src)
+    floor = floor_findings({"numpy": 0}, {"numpy": 97})
+    floor_ok = floor_findings({"numpy": 0}, {"numpy": 0}) == []
+    print(f"[RED     ] a src file with a syntax error -> {dark} (must name it: fail closed)")
+    print(
+        f"[RED     ] numpy 0 under a baseline of 97 -> {floor} (must red); baseline 0 -> clean: {floor_ok}"
+    )
     print(
         f"[RED     ] empty research/{{numpy,zlib,struct}}.py shadows -> {shadowed} (must be 1 each)"
     )
@@ -281,6 +317,9 @@ def self_check():
     ok = (
         shadowed == {"numpy": 1, "zlib": 1, "struct": 1}
         and dead == [("numpy", 0, 1), ("zlib", 0, 1), ("struct", 0, 1)]
+        and dark == ["src/snn_data_lake/p/broken.py"]
+        and len(floor) == 1
+        and floor_ok
         and pkg == [("sleep:numpy", 3, 2)]
         and steady == []
         and rise == [("numpy", 6, 5)]
@@ -305,12 +344,20 @@ def main(argv=None):
         live = live_counts(zones, union)
         _report(live, union, baseline)
         broken = control(zones, ROOT / "src")
+        dark = unreadable(ROOT / "src")
+        floor = floor_findings(live, baseline)
     except rust_facts.RustFactsUnavailable as e:
         print(f"GATE FAIL: native/ has .rs files but rust_facts is unavailable: {e}")
         return 1
     for lib, walk, lines in broken:
         print(f"GATE FAIL: instrument: {lib}: walk {walk} != {lines} line count under src/")
-    if broken:
+    for rel in dark:
+        print(
+            f"GATE FAIL: instrument: {rel} is unreadable (ast/tokenize): its importers are invisible"
+        )
+    for msg in floor:
+        print(f"GATE FAIL: instrument: {msg}")
+    if broken or dark or floor:
         return 1
     held = baseline or {}
 
