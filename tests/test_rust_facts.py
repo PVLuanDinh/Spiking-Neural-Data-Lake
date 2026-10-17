@@ -106,3 +106,30 @@ def test_a_crate_nested_under_tests_is_classified_by_its_own_root(tmp_path):
         "native/outer/tests/t.rs": True,
         "native/outer/tests/inner/src/lib.rs": False,
     }, flags
+
+
+def test_facts_are_attributed_to_the_innermost_enclosing_fn_by_id():
+    """Schema 2: `fn_id` is exact where names and lines collide (Codex r5 gradclaim F1/F3)."""
+    f = rust_facts.facts_for_source(
+        "impl T {\n    fn train_step(&mut self) {\n        trait Unused { fn train_step(); }\n"
+        "        self.opt.step(&g);\n    }\n}\n"
+        "impl S { fn train_step(&mut self) { self.w -= 1.0; } "
+        "fn other(&self) { self.optim.step(1); } }\n"
+    )
+    fns = {(r["impl"], r["name"]): r["id"] for r in f["fns"]}
+    assert [r["id"] for r in f["fns"]] == list(range(len(f["fns"])))
+    by_line = {(m["line"], m["name"]): m["fn_id"] for m in f["mcalls"]}
+    assert by_line[(4, "step")] == fns[("T", "train_step")]  # not the bodiless trait sig on line 3
+    assert by_line[(7, "step")] == fns[("S", "other")]  # same line as S::train_step
+    assert [a["fn_id"] for a in f["assigns"]] == [fns[("S", "train_step")]]
+
+
+def test_assignments_carry_their_end_position():
+    """Schema 2: an event inside a block RHS falls inside the assignment's start..end span."""
+    f = rust_facts.facts_for_source(
+        "fn f(s: &mut S) {\n    s.w1 = {\n        let mut y = s.fb.clone();\n"
+        "        y.tr_copy_from(&s.w2);\n        y\n    };\n}\n"
+    )
+    (a,) = [a for a in f["assigns"] if a["lhs"] == "s . w1"]
+    (m,) = [m for m in f["mcalls"] if m["name"] == "tr_copy_from"]
+    assert (a["line"], a["col"]) < (m["line"], m["col"]) < (a["end_line"], a["end_col"]), (a, m)

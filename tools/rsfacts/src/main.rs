@@ -12,7 +12,7 @@ use std::io::BufRead;
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 
-const SCHEMA: u32 = 1;
+const SCHEMA: u32 = 2;
 
 #[derive(Default)]
 struct Facts {
@@ -33,6 +33,8 @@ struct Facts {
     test_paths: Vec<String>,
     // context
     cur_fn: Vec<String>,
+    // index into `fns` of the innermost enclosing fn: exact attribution where names and lines collide
+    cur_fn_id: Vec<usize>,
     cur_impl: Vec<(String, Option<String>, Vec<String>)>,
     cur_mod: Vec<String>,
     cfg_test: usize,
@@ -163,7 +165,8 @@ impl Facts {
         };
         let params: Vec<String> = sig.inputs.iter().map(txt).collect();
         let (parent, modp, cfg) = self.ctx();
-        self.fns.push(json!({"name": sig.ident.to_string(), "line": line(&sig.ident),
+        let id = self.fns.len();
+        self.fns.push(json!({"id": id, "name": sig.ident.to_string(), "line": line(&sig.ident),
             "vis": vis_of(vis), "impl": imp, "trait": tr, "impl_attrs": iattrs, "attrs": attrs_of(attrs),
             "doc": docs_of(attrs), "params": params, "ret": txt(&sig.output), "has_body": has_body,
             "cfg_test": cfg || is_cfg_test(attrs), "parent": parent, "mod": modp}));
@@ -219,8 +222,10 @@ impl<'ast> Visit<'ast> for Facts {
         let t = is_cfg_test(&i.attrs) as usize;
         self.cfg_test += t;
         self.cur_fn.push(i.sig.ident.to_string());
+        self.cur_fn_id.push(self.fns.len() - 1);
         visit::visit_item_fn(self, i);
         self.cur_fn.pop();
+        self.cur_fn_id.pop();
         self.cfg_test -= t;
     }
     fn visit_impl_item_fn(&mut self, i: &'ast syn::ImplItemFn) {
@@ -228,8 +233,10 @@ impl<'ast> Visit<'ast> for Facts {
         let t = is_cfg_test(&i.attrs) as usize;
         self.cfg_test += t;
         self.cur_fn.push(i.sig.ident.to_string());
+        self.cur_fn_id.push(self.fns.len() - 1);
         visit::visit_impl_item_fn(self, i);
         self.cur_fn.pop();
+        self.cur_fn_id.pop();
         self.cfg_test -= t;
     }
     fn visit_trait_item_fn(&mut self, i: &'ast syn::TraitItemFn) {
@@ -242,8 +249,10 @@ impl<'ast> Visit<'ast> for Facts {
         let t = is_cfg_test(&i.attrs) as usize;
         self.cfg_test += t;
         self.cur_fn.push(i.sig.ident.to_string());
+        self.cur_fn_id.push(self.fns.len() - 1);
         visit::visit_trait_item_fn(self, i);
         self.cur_fn.pop();
+        self.cur_fn_id.pop();
         self.cfg_test -= t;
     }
     fn visit_item_impl(&mut self, i: &'ast syn::ItemImpl) {
@@ -354,7 +363,7 @@ impl<'ast> Visit<'ast> for Facts {
         if let syn::Expr::Path(p) = &*i.func {
             let (f, _, cfg) = self.ctx();
             self.calls.push(
-                json!({"path": txt(&p.path).replace(' ', ""), "line": line(i), "col": col(i), "fn": f,
+                json!({"path": txt(&p.path).replace(' ', ""), "line": line(i), "col": col(i), "fn": f, "fn_id": self.cur_fn_id.last(),
                 "args": i.args.iter().map(txt).collect::<Vec<_>>(), "cfg_test": cfg}),
             );
         }
@@ -363,7 +372,7 @@ impl<'ast> Visit<'ast> for Facts {
     fn visit_expr_method_call(&mut self, i: &'ast syn::ExprMethodCall) {
         let (f, _, cfg) = self.ctx();
         self.mcalls.push(
-            json!({"name": i.method.to_string(), "line": line(&i.method), "col": col(&i.method), "fn": f,
+            json!({"name": i.method.to_string(), "line": line(&i.method), "col": col(&i.method), "fn": f, "fn_id": self.cur_fn_id.last(),
             "recv": txt(&*i.receiver), "args": i.args.iter().map(txt).collect::<Vec<_>>(),
             "turbofish": i.turbofish.as_ref().map(txt), "cfg_test": cfg}),
         );
@@ -372,7 +381,7 @@ impl<'ast> Visit<'ast> for Facts {
     fn visit_expr_index(&mut self, i: &'ast syn::ExprIndex) {
         let (f, _, cfg) = self.ctx();
         self.index.push(
-            json!({"expr": txt(&*i.expr), "index": txt(&*i.index), "line": line(i), "col": col(i), "fn": f,
+            json!({"expr": txt(&*i.expr), "index": txt(&*i.index), "line": line(i), "col": col(i), "fn": f, "fn_id": self.cur_fn_id.last(),
             "cfg_test": cfg}),
         );
         visit::visit_expr_index(self, i);
@@ -381,7 +390,8 @@ impl<'ast> Visit<'ast> for Facts {
         let (f, _, cfg) = self.ctx();
         self.assigns.push(
             json!({"lhs": txt(&*i.left), "op": "=", "rhs": txt(&*i.right), "line": line(i), "col": col(i),
-            "fn": f, "cfg_test": cfg}),
+            "end_line": i.span().end().line, "end_col": i.span().end().column,
+            "fn": f, "fn_id": self.cur_fn_id.last(), "cfg_test": cfg}),
         );
         visit::visit_expr_assign(self, i);
     }
@@ -391,7 +401,8 @@ impl<'ast> Visit<'ast> for Facts {
             let (f, _, cfg) = self.ctx();
             self.assigns.push(
                 json!({"lhs": txt(&*i.left), "op": op, "rhs": txt(&*i.right), "line": line(i), "col": col(i),
-                "fn": f, "cfg_test": cfg}),
+                "end_line": i.span().end().line, "end_col": i.span().end().column,
+                "fn": f, "fn_id": self.cur_fn_id.last(), "cfg_test": cfg}),
             );
         }
         visit::visit_expr_binary(self, i);
@@ -401,14 +412,14 @@ impl<'ast> Visit<'ast> for Facts {
         let init = i.init.as_ref().map(|x| txt(&*x.expr));
         self.lets.push(
             json!({"pat": txt(&i.pat), "init": init, "line": line(i), "col": col(i),
-                "end_line": i.span().end().line, "end_col": i.span().end().column, "fn": f, "cfg_test": cfg}),
+                "end_line": i.span().end().line, "end_col": i.span().end().column, "fn": f, "fn_id": self.cur_fn_id.last(), "cfg_test": cfg}),
         );
         visit::visit_local(self, i);
     }
     fn visit_expr_for_loop(&mut self, i: &'ast syn::ExprForLoop) {
         let (f, _, cfg) = self.ctx();
         self.fors.push(
-            json!({"pat": txt(&*i.pat), "iter": txt(&*i.expr), "line": line(i), "col": col(i), "fn": f,
+            json!({"pat": txt(&*i.pat), "iter": txt(&*i.expr), "line": line(i), "col": col(i), "fn": f, "fn_id": self.cur_fn_id.last(),
             "cfg_test": cfg}),
         );
         visit::visit_expr_for_loop(self, i);
@@ -416,7 +427,7 @@ impl<'ast> Visit<'ast> for Facts {
     fn visit_macro(&mut self, i: &'ast syn::Macro) {
         let (f, _, cfg) = self.ctx();
         self.macros.push(
-            json!({"name": txt(&i.path).replace(' ', ""), "line": line(&i.path), "col": col(&i.path), "fn": f,
+            json!({"name": txt(&i.path).replace(' ', ""), "line": line(&i.path), "col": col(&i.path), "fn": f, "fn_id": self.cur_fn_id.last(),
             "tokens": i.tokens.to_string(), "cfg_test": cfg}),
         );
         visit::visit_macro(self, i);
