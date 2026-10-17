@@ -104,11 +104,16 @@ def test_update_baseline_refuses_a_rise(tmp_path, monkeypatch):
     assert nr.decode(json.loads(path.read_text(encoding="utf-8"))) == held
 
 
-def test_real_tree_native_absent_line(capsys):
-    assert nr.native_line(rust_facts.ROOT).startswith("native/ ABSENT")
+def test_native_absent_line(tmp_path):
+    assert nr.native_line(tmp_path).startswith("native/ ABSENT")
 
 
-def test_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch, capsys):
+def test_decode_rejects_a_row_of_the_wrong_width():
+    with pytest.raises(ValueError):
+        nr.decode("ALL=1,2,3")
+
+
+def test_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch):
     (tmp_path / "native").mkdir()
     (tmp_path / "native" / "lib.rs").write_text("fn x() {}\n", encoding="utf-8")
 

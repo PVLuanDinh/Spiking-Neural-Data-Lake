@@ -117,7 +117,7 @@ def decode(text):
     live = {}
     for seg in text.split(";"):
         name, csv = seg.split("=")
-        for col, n in zip(COLS, csv.split(","), strict=False):
+        for col, n in zip(COLS, csv.split(","), strict=True):
             live[col if name == "ALL" else f"{name}:{col}"] = int(n)
     return live
 
@@ -149,9 +149,8 @@ def _load_baseline():
     return decode(json.loads(BASELINE_PATH.read_text(encoding="utf-8-sig")))
 
 
-def _report(zones, union, baseline):
+def _report(live, union, baseline):
     allowed = baseline or {}
-    live = live_counts(zones, union)
     print(native_line(NATIVE_ROOT))
     print("rust blind spots: " + "; ".join(rust_facts.BLIND_SPOTS))
     print(f"{'library':<14}{'files':>7}{'baseline':>10}")
@@ -198,19 +197,14 @@ def main(argv=None):
         zones, union = census()
         baseline = _load_baseline()
         live = live_counts(zones, union)
-        _report(zones, union, baseline)
+        _report(live, union, baseline)
     except rust_facts.RustFactsUnavailable as e:
         print(f"GATE FAIL: native/ has .rs files but rust_facts is unavailable: {e}")
         return 1
     held = baseline or {}
 
     if "--update-baseline" in argv:
-        first_pkgs = not any(
-            ":" in k for k in held
-        )  # the one-time derivation of the per-package rows
-        rises = (
-            [r for r in compare(live, held) if not (first_pkgs and ":" in r[0])] if baseline else []
-        )
+        rises = compare(live, held) if baseline else []
         if rises:
             print(
                 "REFUSED: --update-baseline may only ratchet DOWN. These libraries ROSE or are new:"
