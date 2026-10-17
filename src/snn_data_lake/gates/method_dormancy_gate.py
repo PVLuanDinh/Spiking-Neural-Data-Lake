@@ -196,6 +196,16 @@ EXEMPT_METHOD = {
 # It is NOT exempted here, because an exemption is a disposition and this rule does not have one yet.
 
 
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "is_learn_verb": (
+        "NOT_A_RULE",
+        "this gate's NAME predicate (does a def name carry a learning verb), shared with "
+        "gates/native_dormancy; it reads a string and touches no weight",
+    ),
+}
+
+
 def is_learn_verb(name):
     """The one matcher for "this def is an update rule" -- shared with gates/native_dormancy (Rust)."""
     return not name.startswith("__") and any(v in name.lower() for v in LEARN_VERBS)
