@@ -28,7 +28,7 @@ def test_red_arm_fires_exactly_the_three_preregistered_findings(tmp_path):
 
 
 @pytest.mark.parametrize("name", sorted(nd.FOLD_CASES))
-def test_fold_round_1_red_fires_exactly_and_green_twin_is_clean(tmp_path, name):
+def test_fold_case_red_fires_exactly_and_green_twin_is_clean(tmp_path, name):
     red, green, (nd_d, nd_m) = nd.FOLD_CASES[name]
     nd._write(tmp_path / "red", red)
     res = nd.audit(tmp_path / "red", live=nd.FIXTURE_LIVE, src=tmp_path / "red" / "src")
