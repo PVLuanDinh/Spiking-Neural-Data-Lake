@@ -72,6 +72,18 @@ distribution name differ often enough that guessing produces FALSE UNDECLARED re
 dangerous direction (Standing Invariant 3: the negative verdict is the one that retires a working
 thing). `sklearn` is `scikit-learn`; `PIL` is `pillow`; `cv2` is `opencv-python`.
 
+CARGO HALF (R0.2, UNUSED direction only; UNDECLARED is the compiler's). Every git-tracked
+`Cargo.toml` (tools/rsfacts today, native/** when it lands) declares crates; a crate row
+`crates:<name>` is UNUSED when its lib name (`-` -> `_`; a `package =` rename is used under its KEY)
+is the first segment of no `use`, multi-segment path or `extern crate` in the files that package
+owns (src/ for [dependencies], tests/benches/examples AND src/ for [dev-dependencies], build.rs for
+[build-dependencies]). Facts come from `snn_data_lake.gates.rust_facts`, never a second parser. Rows
+are disjoint from the PyPI rows above: `use numpy::PyArray1;` in a `.rs` can never mark PyPI `numpy`
+used, because only `ast` over `.py` feeds `_imported`. `EXEMPT_CRATES` follows EXEMPT, staleness
+included. Blind spots: crate names reached only through attribute/derive paths
+(`#[derive(serde::Serialize)]`), `[lib] name` overrides of a dependency, and `[[bin]] path`.
+Unreadable Rust with manifests present is a red, never a skip.
+
 Reproduce:
     python tools/dependency_ledger.py             # report, exit 0
     python tools/dependency_ledger.py --assert    # exit 1 on any unexempted violation
@@ -81,7 +93,9 @@ Reproduce:
 import ast
 import pathlib
 import re
+import subprocess
 import sys
+import tempfile
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -423,6 +437,134 @@ def _repo_module_names():
     return _REPO_MODULES
 
 
+#: Crates declared in a tracked Cargo.toml and deliberately named by no source file. Same pattern as
+#: EXEMPT: a reason each, and a row that matches no UNUSED crate is STALE and fails the gate.
+EXEMPT_CRATES = {
+    "proc-macro2": (
+        "tools/rsfacts declares proc-macro2 ONLY to switch on its `span-locations` feature (syn's "
+        "line/column numbers come from it, and rsfacts prints lines); the crate is never named in "
+        "source, so no `use` or path can mark it used. Removing the declaration silently drops "
+        "every fact's line number."
+    ),
+}
+
+_DEP_SECTIONS = {"dependencies": "src", "dev-dependencies": "dev", "build-dependencies": "build"}
+_FILE_KIND = {
+    "src": "src",
+    "build.rs": "build",
+    "tests": "dev",
+    "benches": "dev",
+    "examples": "dev",
+}
+
+
+def _rust_facts():
+    """Lazy: this tool must still run with no PYTHONPATH, and only the Cargo half needs the package."""
+    here = str(pathlib.Path(__file__).resolve().parent.parent / "src")
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    from snn_data_lake.gates import rust_facts
+
+    return rust_facts
+
+
+def _repo_files(root):
+    """(Cargo.toml paths, .rs paths) in git's view; a fixture dir that is no repo falls back to a walk."""
+    try:
+        out = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "ls-files",
+                "-co",
+                "--exclude-standard",
+                "--",
+                "*Cargo.toml",
+                "*.rs",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.splitlines()
+        paths = [root / p for p in out if p.strip()]
+    except (OSError, subprocess.CalledProcessError):
+        paths = [p for p in root.rglob("*") if "target" not in p.parts]
+    paths = [p for p in paths if p.is_file()]
+    return (
+        sorted(p for p in paths if p.name == "Cargo.toml"),
+        sorted(p for p in paths if p.suffix == ".rs"),
+    )
+
+
+def _declared_crates(data, workspace):
+    """(section kind, lib name, package name) for every direct dep of one parsed Cargo.toml."""
+
+    def tables(sec):
+        return [data.get(sec, {})] + [t.get(sec, {}) for t in data.get("target", {}).values()]
+
+    for sec, kind in _DEP_SECTIONS.items():
+        for table in tables(sec):
+            for key, spec in table.items():
+                spec = spec if isinstance(spec, dict) else {}
+                if spec.get("workspace"):
+                    inherited = workspace.get(key)
+                    spec = {**(inherited if isinstance(inherited, dict) else {}), **spec}
+                yield kind, key.replace("-", "_"), spec.get("package", key)
+
+
+def crate_findings(root=None):
+    """{`crates:<name>`: message} for every declared crate no Rust source names (C1). The whole Cargo
+    half: `main()`, `--self-check` and the tests all come here. Raises RustFactsUnavailable when
+    manifests exist and the Rust cannot be read -- the caller turns that into a red."""
+    root = ROOT if root is None else pathlib.Path(root)
+    manifests, rs_files = _repo_files(root)
+    if not manifests:
+        return {}
+    parsed = {m.parent: tomllib.loads(m.read_text(encoding="utf-8")) for m in manifests}
+    workspaces = {
+        d: t["workspace"].get("dependencies", {}) for d, t in parsed.items() if "workspace" in t
+    }
+    used = {d: {"src": set(), "dev": set(), "build": set()} for d in parsed}
+    rf = _rust_facts()
+    for path, f in zip(rs_files, rf.facts(rs_files) if rs_files else [], strict=True):
+        owner = next((a for a in path.parents if a in parsed), None)
+        kind = _FILE_KIND.get(path.relative_to(owner).parts[0]) if owner else None
+        if kind:
+            used[owner][kind] |= {u["path"].lstrip(":").split("::")[0] for u in f["uses"]}
+            used[owner][kind] |= set(f["path_roots"])
+            used[owner][kind] |= {
+                m["name"].split("::")[0] for m in f["macros"] if "::" in m["name"]
+            }
+    rows = {}
+    for d, data in parsed.items():
+        ws = next((workspaces[a] for a in (d, *d.parents) if a in workspaces), {})
+        for kind, lib, package in _declared_crates(data, ws):
+            names = used[d][kind] | (used[d]["src"] if kind == "dev" else set())
+            ok, sites = rows.setdefault(f"crates:{package}", [False, []])
+            rows[f"crates:{package}"][0] = ok or lib in names
+            sites.append(f"{(d / 'Cargo.toml').relative_to(root).as_posix()} [{kind}]")
+    return {
+        row: f"declared in {', '.join(sites)}, named by no use/path/extern crate"
+        for row, (ok, sites) in sorted(rows.items())
+        if not ok
+    }
+
+
+def crate_ledger(root=None, exempt=None):
+    """(unexempted UNUSED rows, live EXEMPT_CRATES names, STALE EXEMPT_CRATES names)."""
+    exempt = EXEMPT_CRATES if exempt is None else exempt
+    found = crate_findings(root)
+    if not _repo_files(ROOT if root is None else pathlib.Path(root))[0]:
+        return {}, set(), []  # no manifest in scope: nothing for a row to be stale against
+    live = {c for c in exempt if f"crates:{c}" in found}
+    return (
+        {r: m for r, m in found.items() if r[len("crates:") :] not in exempt},
+        live,
+        sorted(set(exempt) - live),
+    )
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     do_assert = "--assert" in argv
@@ -481,6 +623,29 @@ def main(argv=None):
         print(f"  {tag:14s} {msg}")
     print()
 
+    print("--- UNUSED CRATES: declared in a tracked Cargo.toml, named by no Rust source ---")
+    try:
+        crates, live_crates, stale_crates = crate_ledger()
+        crates_unavailable = ""
+    except Exception as e:  # noqa: BLE001 -- RustFactsUnavailable must RED the gate, never skip it
+        crates, live_crates, stale_crates, crates_unavailable = (
+            {},
+            set(),
+            [],
+            f"{type(e).__name__}: {e}",
+        )
+    if crates_unavailable:
+        print(f"  UNAVAILABLE (fail closed): {crates_unavailable}")
+    elif not crates and not live_crates:
+        print("  (none)")
+    for row, msg in crates.items():
+        print(f"  {row:24s} {msg}")
+    for crate in sorted(live_crates):
+        print(f"  EXEMPT {crate}: {EXEMPT_CRATES[crate]}")
+    for crate in stale_crates:
+        print(f"  STALE EXEMPT_CRATES row (matches no unused crate -- delete it): {crate}")
+    print()
+
     # An exemption that blesses nothing is worse than no exemption: it reads as coverage. Assert
     # every EXEMPT entry still matches a real violation (the citation_guard.EXEMPT pattern).
     stale = sorted(set(EXEMPT) - live_exempt)
@@ -491,6 +656,7 @@ def main(argv=None):
         f"MISDESCRIBED: {len(mis)}   EXEMPT: {len(live_exempt)}   "
         f"ALL_EXCLUDES: {len(ALL_EXCLUDES)}"
     )
+    print(f"CRATES UNUSED: {len(crates)}   EXEMPT_CRATES: {len(live_crates)}")
     for dist in sorted(live_exempt):
         print(f"  EXEMPT {dist}: {EXEMPT[dist]}")
     if stale:
@@ -500,7 +666,9 @@ def main(argv=None):
             print(f"    {dist}")
     print()
 
-    failed = bool(n_undeclared or shown_unused or stale or mis)
+    failed = bool(
+        n_undeclared or shown_unused or stale or mis or crates or stale_crates or crates_unavailable
+    )
     if failed:
         print("gate FAIL: the dependency ledger does not balance")
     else:
@@ -572,6 +740,40 @@ _REDS = [
 ]
 
 
+def _cargo_reds():
+    """CONSTRUCT AND RUN the Cargo reds through `crate_ledger`: the planted unused crate fires once,
+    its fixed twin is clean, a stale EXEMPT_CRATES row reds, and `use numpy::` never reaches PyPI."""
+    cargo = '[package]\nname = "x"\n\n[dependencies]\nflate2 = "1"\nnumpy = "0.2"\n'
+    lib = "use numpy::PyArray1;\n"
+    bad = []
+    with tempfile.TemporaryDirectory() as d:
+        root = pathlib.Path(d)
+        (root / "src").mkdir()
+        (root / "Cargo.toml").write_text(cargo, encoding="utf-8")
+        (root / "src" / "lib.rs").write_text(lib, encoding="utf-8")
+        subprocess.run(["git", "-C", d, "init", "-q"], check=True)
+        red, _, _ = crate_ledger(root, {})
+        if list(red) != ["crates:flate2"]:
+            bad.append(("C1", f"planted unused crate should fire exactly once, got {sorted(red)}"))
+        (root / "src" / "lib.rs").write_text(
+            lib + "use flate2::read::GzDecoder;\n", encoding="utf-8"
+        )
+        green, _, _ = crate_ledger(root, {})
+        if green:
+            bad.append(("C1", f"fixed twin should be clean, got {sorted(green)}"))
+        _, _, stale = crate_ledger(root, {"ghost": "matches nothing"})
+        if stale != ["ghost"]:
+            bad.append(("EXEMPT_CRATES", f"stale row should red, got {stale}"))
+        global ROOT
+        saved, ROOT = ROOT, root
+        try:
+            if "numpy" in _imported(("src",)):
+                bad.append(("COLLISION", "a .rs `use numpy::` reached the PyPI importer"))
+        finally:
+            ROOT = saved
+    return bad
+
+
 def self_check():
     """CONSTRUCT AND RUN the red for every MISDESCRIBED criterion. Returns 0 iff all reachable."""
     text = PYPROJECT.read_text(encoding="utf-8")
@@ -593,6 +795,14 @@ def self_check():
         print(f"  {'RED OK' if ok else 'NO RED'}  {tag:14s} {what}")
         if not ok:
             bad.append((tag, what))
+    cargo_bad = _cargo_reds()
+    for tag, what in cargo_bad:
+        print(f"  NO RED  {tag:14s} {what}")
+    bad.extend(cargo_bad)
+    if not cargo_bad:
+        print(
+            "  RED OK  CARGO          UNUSED once / fixed twin clean / stale EXEMPT_CRATES / no PyPI collision"
+        )
     print()
     baseline = misdescribed(text)
     print(f"unmutated tree reports {len(baseline)} MISDESCRIBED finding(s)")

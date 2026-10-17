@@ -82,7 +82,13 @@ dormancy_gate._external_roots(): a hand-written list cannot see a wire nobody wr
 import ast
 import importlib
 import os
+import subprocess
 import sys
+import tempfile
+import types
+from pathlib import Path
+
+from snn_data_lake.gates import rust_facts
 
 # The tiers Policy 3 mechanizes (REGIONS keys + the top-level modules). A module here is covered by
 # brain_atlas parity, the dormancy gate, ruff and the coverage denominator.
@@ -185,7 +191,98 @@ def manifest():
     return {m: sorted(s) for m, s in sorted(out.items())}
 
 
-def broken(man=None):
+def native_refs(src=None):
+    """{governed python module -> `_native` names it uses}: rust_facts' reader (every import spelling,
+    `from snn_data_lake import _native` included) restricted to the GOVERNED tiers."""
+    refs = rust_facts.python_native_refs(Path(_PKG_DIR).parent if src is None else Path(src))
+    return {
+        m: names
+        for m, names in refs.items()
+        if m.split(".")[0] == "snn_data_lake" and m.split(".")[1:2] and m.split(".")[1] in GOVERNED
+    }
+
+
+def native_findings(refs, root=rust_facts.ROOT, importer=importlib.import_module):
+    """(native/ status, {key: message}) for the Rust half. E1 (static, no build): a referenced name
+    that is not a `pyo3_exports` entry -> BROKEN-STATIC. E2 (runtime): the extension must import and
+    carry every name E1 passed -> BROKEN; refs with native/ ABSENT -> BROKEN. A name E1 broke is not
+    re-reported by E2. Unreadable Rust is a red (`native/`), never a skip. ONE function: `broken()`,
+    `main()` and the tests all come here."""
+    name = rust_facts.NATIVE_MODULE
+    try:
+        files = rust_facts.rust_files(root)
+        nf = rust_facts.facts(
+            files
+        )  # rsfacts is built from the real tree; `root` only picks the .rs
+        status = (
+            f"native/ PRESENT ({len(files)} .rs files)" if files else "native/ ABSENT (0 .rs files)"
+        )
+    except rust_facts.RustFactsUnavailable as e:
+        return "native/ UNREADABLE", {"native/": f"BROKEN: unparseable/unavailable Rust: {e}"}
+    if not refs:
+        return status, {}
+    bad = {}
+    users = {}
+    for mod, names in sorted(refs.items()):
+        for n in names:
+            users.setdefault(n, []).append(mod)
+    if not nf:
+        return status, {name: f"BROKEN: {sorted(refs)} reference {name} but native/ is ABSENT"}
+    exports = rust_facts.pyo3_exports(nf)
+    checkable = {n for n in users if n not in ("<module>", "*")}
+    for n in sorted(checkable - set(exports)):
+        bad[f"{name}:{n}"] = f"BROKEN-STATIC: {n} is not a PyO3 export ({', '.join(users[n])})"
+    if not set(users) - {n for n in checkable if n not in exports}:
+        return status, bad
+    try:
+        ext = importer(name)
+    except Exception as e:  # noqa: BLE001 -- REPORT it, callers don't
+        bad[name] = f"BROKEN: {type(e).__name__}: {e}"
+        return status, bad
+    for n in sorted(checkable & set(exports)):
+        if not hasattr(ext, n):
+            bad[f"{name}:{n}"] = (
+                f"BROKEN: built extension has no attribute {n} ({', '.join(users[n])})"
+            )
+    return status, bad
+
+
+_RS_ADD = "#[pyfunction]\nfn add(a: i64) -> i64 { a }\n"
+_RS_LIF = "#[pyfunction]\nfn lif_step(v: f64) -> f64 { v }\n"
+
+
+def _native_reds():
+    """CONSTRUCT AND RUN the Rust half's reds through `native_findings`: governed `from snn_data_lake._native
+    import lif_step` against a crate exporting only `add` fires E1 exactly once; the twin that exports
+    it is clean. Returns the list of reds that did not behave."""
+    bad = []
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        for rel, text in {
+            "src/snn_data_lake/__init__.py": "",
+            "src/snn_data_lake/engine/__init__.py": "",
+            "src/snn_data_lake/engine/brain.py": "from snn_data_lake._native import lif_step\n",
+        }.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(text, encoding="utf-8")
+        (root / "native/sndl-python/src").mkdir(parents=True)
+        lib = root / "native/sndl-python/src/lib.rs"
+        subprocess.run(["git", "-C", d, "init", "-q"], check=True)
+        stub = lambda _n: types.SimpleNamespace(add=1, lif_step=1)  # noqa: E731
+        for arm, fns, want in (("RED", _RS_ADD, 1), ("GREEN", _RS_ADD + _RS_LIF, 0)):
+            exports = "".join(
+                f"    #[pymodule_export]\n    use super::{n};\n"
+                for n in ("add", "lif_step")
+                if f"fn {n}(" in fns
+            )
+            lib.write_text(f"{fns}#[pymodule]\nmod _native {{\n{exports}}}\n", encoding="utf-8")
+            _, found = native_findings(native_refs(root / "src"), root, importer=stub)
+            if len(found) != want:
+                bad.append(f"{arm} arm: expected {want} finding(s), got {sorted(found)}")
+    return bad
+
+
+def broken(man=None, native=None, root=rust_facts.ROOT):
     """The manifest entries that do NOT import. Each is a silent faculty loss on the live brain.
     A real import, not importlib.util.find_spec: find_spec would catch a DELETED target but not a
     BROKEN one, and the swallows hide both identically.
@@ -237,7 +334,7 @@ def broken(man=None):
     DOES repair it. This gate proves those modules EXIST AND LOAD; it does not prove brain.py can
     reach them from an arbitrary CWD, and it must not be read as if it did."""
     man = manifest() if man is None else man
-    bad = {}
+    bad = {} if native is None else native_findings(native, root)[1]
     added = _ROOT_DIR not in sys.path
     if added:
         sys.path.insert(0, _ROOT_DIR)
@@ -329,7 +426,13 @@ def main():
         "tier goes invisible again) or the name was added on hope rather than on a measurement"
     )
 
-    bad = broken(man)
+    red_bad = _native_reds()
+    assert not red_bad, "Rust half self-check failed: " + "; ".join(red_bad)
+    refs = native_refs()
+    bad = broken(man, refs)
+    native_bad = {
+        k: v for k, v in bad.items() if k.startswith(("snn_data_lake._native", "native/"))
+    }
 
     print("=" * 78)
     print("CROSS-TIER IMPORT MANIFEST (governed -> ungoverned, Policy 3)")
@@ -348,6 +451,17 @@ def main():
         "None of them is covered by ruff, brain_atlas parity, the dormancy gate, or the coverage gate."
     )
 
+    status = "native/ ABSENT" if not rust_facts.rust_files(rust_facts.ROOT) else "native/ PRESENT"
+    n_refs = sum(len(v) for v in refs.values())
+    print(
+        f"\nRUST HALF: {status}; {len(refs)} governed module(s) reference _native ({n_refs} names)."
+    )
+    for k, msg in native_bad.items():
+        print(f"  [BROKEN] {k}: {msg}")
+    print("  blind spots: " + "; ".join(rust_facts.BLIND_SPOTS))
+    print(
+        "  own blind spots: dynamic getattr(_native, name); names re-exported through a non-governed module"
+    )
     assert not bad, (
         "a module the live brain imports does not import: "
         + "; ".join(f"{m} ({e})" for m, e in bad.items())
