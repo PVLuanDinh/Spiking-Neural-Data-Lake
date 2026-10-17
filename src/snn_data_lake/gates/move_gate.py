@@ -938,6 +938,37 @@ def c2d_source(text: str, pairs, pkgs, source_package: str | None = None) -> lis
     return sorted(hits)
 
 
+#: The constructed tree the Rust/native reds share (R0.2 arc 2, DISPOSITION row 10; injected into the
+#: self-check and the tests, never forked): a tables `__init__`, a gitignored compiled extension beside
+#: it, a `Cargo.lock` under native/ and a PyO3 crate whose string literals name a legacy module and a
+#: legacy package. The GREEN twin's literals name current packages.
+# distinct-from: reasoning/self_improve.py -- _self_pkg_relpath derives ONE live module's path from
+#   __file__ for a PROTECTED check; this is constructed fixture TEXT for a temp tree, no path derived.
+_NATIVE_EXT = "src/snn_data_lake/_native.cp314t-win_amd64.pyd"
+_NATIVE_LIB_RED = """\
+use pyo3::prelude::*;
+pub fn load(py: Python<'_>) -> PyResult<()> {
+    let m = PyModule::import(py, "snn_data_lake.oldpkg.mod")?;
+    let prefix = "snn_data_lake.gonepkg.";
+    Ok(())
+}
+"""
+_NATIVE_LIB_GREEN = _NATIVE_LIB_RED.replace("oldpkg.mod", "newpkg.mod").replace("gonepkg.", "keptpkg.")
+
+
+def _native_fixture(red: bool, lock: str = "# Cargo.lock\nversion = 4\n") -> dict[str, str]:
+    """{path under the fixture root: text}; `lock` is the Cargo.lock text (the census hashes it)."""
+    return {
+        ".gitignore": "*.pyd\n*.pyc\n",
+        "a.py": "x = 1\n",
+        "src/snn_data_lake/__init__.py": "REGIONS = {}\nTORCH_TIER = {}\nTRAIN_TIER = {}\n",
+        _NATIVE_EXT: "",
+        "src/snn_data_lake/junk.pyc": "",
+        "native/sndl-core/Cargo.lock": lock,
+        "native/sndl-python/src/lib.rs": _NATIVE_LIB_RED if red else _NATIVE_LIB_GREEN,
+    }
+
+
 def c2d(root: Path, pairs=None, pkgs=None) -> tuple:
     """C2(d) over the tree's live `.py` files: ([(file, line, kind, name)], files scanned, files
     that do not parse). Without pairs/pkgs, the tree's own legacy names (its tables)."""

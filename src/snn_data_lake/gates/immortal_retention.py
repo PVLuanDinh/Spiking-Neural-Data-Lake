@@ -302,6 +302,71 @@ def stale_known() -> list[str]:
     ]
 
 
+# ---- the Rust half (R0.2 arc 2, DISPOSITION row 9): the same census over native/ -----------------
+#: The constructed `native/sndl-core/src/lake.rs` the self-check and tests share (injected, never forked).
+#: RED plants the four reclaim spellings of the pre-registration, each naming the lake and reading no label;
+#: the controls in the same file are a guarded twin, a scratch-file removal, a non-truncating open, a
+#: `#[cfg(test)]` purge and a plain writer. The GREEN twin gives each red fn a `retention_of` read.
+_RUST_LAKE_RED = """\
+use std::fs;
+use std::fs::{File, OpenOptions};
+use std::path::Path;
+use crate::retention::retention_of;
+
+pub fn compact_lake(tmp: &Path, p: &Path, recs: &[Vec<u8>], tag: u8) -> std::io::Result<()> {
+    write_records(tmp, recs)?;
+    let _label = ();
+    fs::rename(tmp, p)
+}
+pub fn evict(lake: &Path, tag: u8) -> std::io::Result<()> {
+    let _label = ();
+    fs::remove_file(lake)
+}
+pub fn truncate_log(lake: &File, tag: u8) -> std::io::Result<()> {
+    let _label = ();
+    lake.set_len(0)
+}
+pub fn reopen_empty(lake: &Path, tag: u8) -> std::io::Result<File> {
+    let _label = ();
+    OpenOptions::new().write(true).truncate(true).open(lake)
+}
+pub fn compact_guarded(tmp: &Path, p: &Path, recs: &[Vec<u8>], tag: u8) -> std::io::Result<()> {
+    if retention_of(tag).immortal {
+        return Ok(());
+    }
+    write_records(tmp, recs)?;
+    fs::rename(tmp, p)
+}
+pub fn tidy_scratch(dir: &Path) -> std::io::Result<()> {
+    fs::remove_file(dir.join("scratch.tmp"))
+}
+pub fn open_append(lake: &Path) -> std::io::Result<File> {
+    OpenOptions::new().append(true).truncate(false).open(lake)
+}
+#[cfg(test)]
+fn purge_all(lake: &Path) -> std::io::Result<()> {
+    fs::remove_file(lake)
+}
+fn write_records(p: &Path, recs: &[Vec<u8>]) -> std::io::Result<()> {
+    Ok(())
+}
+"""
+_RUST_LAKE_GREEN = _RUST_LAKE_RED.replace("let _label = ();", "let _label = retention_of(tag);")
+
+
+def _rust_fixture(red: bool) -> dict[str, str]:
+    """The fixture `native/` tree (paths relative to native/), in plan section 11's crate layout."""
+    return {
+        "sndl-core/src/lib.rs": "pub mod lake;\npub mod retention;\n",
+        "sndl-core/src/lake.rs": _RUST_LAKE_RED if red else _RUST_LAKE_GREEN,
+        "sndl-core/src/retention.rs": (
+            "pub struct Label {\n    pub immortal: bool,\n}\n"
+            "pub fn retention_of(tag: u8) -> Label {\n    Label { immortal: tag == 1 }\n}\n"
+        ),
+        "sndl-python/src/lib.rs": "#[pyfunction]\nfn add(a: f64, b: f64) -> f64 {\n    a + b\n}\n",
+    }
+
+
 def all_findings() -> list[str]:
     return (
         label_findings()
