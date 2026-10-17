@@ -119,6 +119,56 @@ def test_stale_exempt_crates_row_reds(tmp_path, monkeypatch, capsys):
     assert "ghost" in capsys.readouterr().out
 
 
+def _pkg(name, deps):
+    return f'[package]\nname = "{name}"\nversion = "0.1.0"\n\n{deps}'
+
+
+def test_usage_in_one_package_does_not_hide_an_unused_twin_in_another(tmp_path):
+    root = _repo(
+        tmp_path,
+        {
+            "a/Cargo.toml": _pkg("a", '[dependencies]\nflate2 = "1"\n'),
+            "a/src/lib.rs": "use flate2::read::GzDecoder;\n",
+            "b/Cargo.toml": _pkg("b", '[dependencies]\nflate2 = "1"\n'),
+            "b/src/lib.rs": "pub fn x() {}\n",
+        },
+    )
+    found = dependency_ledger.crate_findings(root)
+    assert list(found) == ["crates:flate2"], found
+    assert "b/Cargo.toml" in found["crates:flate2"], found
+    assert "a/Cargo.toml" not in found["crates:flate2"], found
+
+
+def test_dependencies_site_used_only_in_tests_is_not_hidden_by_its_dev_twin(tmp_path):
+    root = _repo(
+        tmp_path,
+        {
+            "x/Cargo.toml": _pkg(
+                "x", '[dependencies]\nflate2 = "1"\n\n[dev-dependencies]\nflate2 = "1"\n'
+            ),
+            "x/src/lib.rs": "pub fn x() {}\n",
+            "x/tests/t.rs": "use flate2::read::GzDecoder;\n",
+        },
+    )
+    found = dependency_ledger.crate_findings(root)
+    assert list(found) == ["crates:flate2"], found
+    assert "[src]" in found["crates:flate2"] and "[dev]" not in found["crates:flate2"], found
+
+
+def test_exempt_crates_name_covers_every_unused_site(tmp_path):
+    root = _repo(
+        tmp_path,
+        {
+            "a/Cargo.toml": _pkg("a", '[dependencies]\nflate2 = "1"\n'),
+            "a/src/lib.rs": "pub fn x() {}\n",
+            "b/Cargo.toml": _pkg("b", '[dependencies]\nflate2 = "1"\n'),
+            "b/src/lib.rs": "pub fn x() {}\n",
+        },
+    )
+    red, live, stale = dependency_ledger.crate_ledger(root, {"flate2": "both"})
+    assert (red, live, stale) == ({}, {"flate2"}, [])
+
+
 def test_real_tree_day_one_count_is_the_preregistered_one():
     assert list(dependency_ledger.crate_findings()) == ["crates:proc-macro2"]
     assert "proc-macro2" in dependency_ledger.EXEMPT_CRATES

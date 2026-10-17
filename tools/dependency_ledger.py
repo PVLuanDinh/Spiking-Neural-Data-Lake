@@ -93,6 +93,7 @@ Reproduce:
 import ast
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -514,7 +515,9 @@ def _declared_crates(data, workspace):
 
 
 def crate_findings(root=None):
-    """{`crates:<name>`: message} for every declared crate no Rust source names (C1). The whole Cargo
+    """{`crates:<name>`: message} for every declared crate no Rust source names (C1), judged PER
+    DECLARATION SITE (manifest, section): the message lists each unused site, so a package that uses
+    the crate never hides a sibling or a [dependencies]/[dev-dependencies] twin that does not. The whole Cargo
     half: `main()`, `--self-check` and the tests all come here. Raises RustFactsUnavailable when
     manifests exist and the Rust cannot be read -- the caller turns that into a red."""
     root = ROOT if root is None else pathlib.Path(root)
@@ -541,13 +544,12 @@ def crate_findings(root=None):
         ws = next((workspaces[a] for a in (d, *d.parents) if a in workspaces), {})
         for kind, lib, package in _declared_crates(data, ws):
             names = used[d][kind] | (used[d]["src"] if kind == "dev" else set())
-            ok, sites = rows.setdefault(f"crates:{package}", [False, []])
-            rows[f"crates:{package}"][0] = ok or lib in names
-            sites.append(f"{(d / 'Cargo.toml').relative_to(root).as_posix()} [{kind}]")
+            if lib not in names:
+                site = f"{(d / 'Cargo.toml').relative_to(root).as_posix()} [{kind}]"
+                rows.setdefault(f"crates:{package}", set()).add(site)
     return {
-        row: f"declared in {', '.join(sites)}, named by no use/path/extern crate"
-        for row, (ok, sites) in sorted(rows.items())
-        if not ok
+        row: f"declared in {', '.join(sorted(sites))}, named by no use/path/extern crate"
+        for row, sites in sorted(rows.items())
     }
 
 
@@ -761,6 +763,16 @@ def _cargo_reds():
         green, _, _ = crate_ledger(root, {})
         if green:
             bad.append(("C1", f"fixed twin should be clean, got {sorted(green)}"))
+        for pkg, src in (("a", lib + "use flate2::read::GzDecoder;\n"), ("b", lib)):
+            (root / pkg / "src").mkdir(parents=True)
+            (root / pkg / "Cargo.toml").write_text(
+                cargo.replace('"x"', f'"{pkg}"'), encoding="utf-8"
+            )
+            (root / pkg / "src" / "lib.rs").write_text(src, encoding="utf-8")
+        twin = crate_findings(root).get("crates:flate2", "")
+        if "b/Cargo.toml" not in twin or "a/Cargo.toml" in twin:
+            bad.append(("C1", f"flate2 used in a must not hide unused b, got {twin!r}"))
+        shutil.rmtree(root / "a"), shutil.rmtree(root / "b")
         _, _, stale = crate_ledger(root, {"ghost": "matches nothing"})
         if stale != ["ghost"]:
             bad.append(("EXEMPT_CRATES", f"stale row should red, got {stale}"))
