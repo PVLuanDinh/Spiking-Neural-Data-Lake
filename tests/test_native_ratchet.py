@@ -150,3 +150,16 @@ def test_dead_walk_is_red_even_though_every_count_reads_zero(tmp_path, monkeypat
         assert nr.main(["--assert"]) == 1
     out = capsys.readouterr().out
     assert "numpy: walk 0 != 1 line" in out and "gate OK" not in out
+
+
+def test_the_tokenizer_control_reads_inline_imports_and_ignores_strings(tmp_path):
+    """Codex r3 F-3: `if True: import numpy` and `x = 1; import zlib` are imports; `import struct`
+    inside a docstring is not. The control must agree with the ast walk on valid code."""
+    src = tmp_path / "src"
+    (src / "snn_data_lake").mkdir(parents=True)
+    (src / "snn_data_lake" / "m.py").write_text(
+        '"""import struct is prose here."""\nif True: import numpy\nx = 1; import zlib\n',
+        encoding="utf-8",
+    )
+    counts = nr.line_counts(src)
+    assert (counts["numpy"], counts["zlib"], counts["struct"]) == (1, 1, 0), counts

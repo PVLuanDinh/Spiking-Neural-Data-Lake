@@ -30,11 +30,12 @@ by path inside a function (no module-scope sys.path edit -- instrument_guard's r
 import contextlib
 import functools
 import importlib.util
+import io
 import json
 import pathlib
-import re
 import sys
 import tempfile
+import tokenize
 import types
 from unittest import mock
 
@@ -115,17 +116,43 @@ def census(imported=None):
     return zones, union
 
 
+# distinct-from: method_dormancy_gate.py selfcheck_cache.py move_gate.py brain_atlas.py vsa_structure_mapping.py -- those walk imports with ast or read paths; this is the P8 CONTROL that must NOT be the ast walk, so it lexes with tokenize
+def _token_imports(text):
+    """Top-level module names a file imports, read by the TOKENIZER (not ast): `import a.b as c, d`,
+    `from a.b import x`, inline forms (`if t: import a`, `x; import a`); strings/comments are not code.
+    Codex r3 F-3: the line regex this replaces false-redded `if True: import numpy`."""
+    sig = [t for t in tokenize.generate_tokens(io.StringIO(text).readline)
+           if t.type in (tokenize.NAME, tokenize.OP, tokenize.NEWLINE)]  # fmt: skip
+    found, seg_start = set(), 0
+    for i, t in enumerate(sig):
+        if t.type == tokenize.NEWLINE or (t.type == tokenize.OP and t.string in (";", ":")):
+            seg_start = i + 1
+        elif t.type == tokenize.NAME and t.string == "from" and i == seg_start:
+            if i + 1 < len(sig) and sig[i + 1].type == tokenize.NAME:  # `from .x` is relative
+                found.add(sig[i + 1].string)
+        elif t.type == tokenize.NAME and t.string == "import" and i == seg_start:
+            j, expect = i + 1, True
+            while j < len(sig) and sig[j].type != tokenize.NEWLINE and sig[j].string != ";":
+                if expect and sig[j].type == tokenize.NAME:
+                    found.add(sig[j].string)
+                    expect = False
+                elif sig[j].string == ",":
+                    expect = True
+                j += 1
+    return found
+
+
 def line_counts(src):
-    """{lib: distinct .py files under src with an `import <lib>` / `from <lib>` line}: NOT the walk."""
-    texts = [p.read_text(encoding="utf-8", errors="replace") for p in sorted(src.rglob("*.py"))]
-    out = {}
-    for lib in LIBS:
-        name = IMPORT_NAME.get(lib, lib)
-        pat = re.compile(
-            rf"^[ \t]*(?:from[ \t]+{name}\b|import[ \t]+(?:[\w.]+(?:[ \t]+as[ \t]+\w+)?[ \t]*,[ \t]*)*{name}\b)",
-            re.M,
-        )
-        out[lib] = sum(bool(pat.search(t)) for t in texts)
+    """{lib: distinct .py files under src that import it}, by the tokenizer -- NOT the ast walk."""
+    names = {IMPORT_NAME.get(lib, lib): lib for lib in LIBS}
+    out = dict.fromkeys(LIBS, 0)
+    for p in sorted(src.rglob("*.py")):
+        try:
+            mods = _token_imports(p.read_text(encoding="utf-8", errors="replace"))
+        except (tokenize.TokenError, SyntaxError):
+            continue  # an unlexable file is red elsewhere (ruff); the walk cannot read it either
+        for mod in mods & set(names):
+            out[names[mod]] += 1
     return out
 
 
