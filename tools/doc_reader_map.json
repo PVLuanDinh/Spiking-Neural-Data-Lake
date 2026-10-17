@@ -1,11 +1,31 @@
 {
- "built": "2026-10-14T22:40:51+00:00",
- "code_hash": "7567fbc9d9ead966596f87326872198bfb7c478e77abe1e8771919c6ed4f85b6",
+ "built": "2026-10-17T02:41:26+00:00",
+ "code_hash": "bfc6668a6dff602f9b0e521c74016e11b063cf9dbc7777bdcd13f3cfbf755e68",
  "coverage": {
-  "listings_dropped_as_infrastructure": 3548,
-  "process_starts": 410,
-  "python_spawns_seen_by_parents": 401,
+  "listings_dropped_as_infrastructure": 4462,
+  "process_starts": 471,
+  "python_spawns_seen_by_parents": 462,
   "python_spawns_without_child_start": [
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
@@ -27,7 +47,7 @@
   ]
  },
  "fingerprint": "54417c727a47ca859864bda28406ce0018a6c1feba8d67e4deeb77cebd5165ec",
- "head": "4d5be85369a4ec9e1467015357efe5bd7d6d2c77",
+ "head": "b24ea8e77f8f5a8653f17a873a243dcc32543d2c",
  "pytest_all": {
   "blind": false,
   "git_scan": false,
@@ -280,6 +300,13 @@
     "src/snn_data_lake/training",
     "src/snn_data_lake/training/__pycache__"
    ],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_collection_env_leak.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
    "listr": [],
    "read": []
   },
@@ -1020,6 +1047,13 @@
    "listr": [],
    "read": []
   },
+  "tests/test_r2_p3_percept_transitions.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
   "tests/test_r2_replay_hydration.py": {
    "blind": true,
    "git_scan": false,
@@ -1149,6 +1183,13 @@
     "src/snn_data_lake/training",
     "src/snn_data_lake/training/__pycache__"
    ],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_replay_hydration_instrument.py": {
+   "blind": true,
+   "git_scan": false,
+   "list": [],
    "listr": [],
    "read": []
   },
