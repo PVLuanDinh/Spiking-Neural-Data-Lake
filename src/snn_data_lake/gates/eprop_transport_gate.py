@@ -79,8 +79,11 @@ Reproduce:
 import ast
 import os
 import re
+import subprocess
 import sys
 import tempfile
+
+from snn_data_lake.gates import rust_facts
 
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PKG = "snn_data_lake"
@@ -371,6 +374,250 @@ def index_swaps_in(tree):
         if i != j and (j, i) in writes.get(name, ()):
             out.append((node.lineno, name, f"writes [{j}][{i}], reads [{i}][{j}]"))
     return out
+
+
+# ---------------------------------------------------------------------------------------------
+# THE RUST HALF (R0.2). The owner ordered the C/C++-backed libraries replaced with Rust, so weight
+# transport can move into `native/` where the AST walks above cannot see it. Everything under
+# `native/` is the governed tier (P4c): there is no ungoverned Rust, every finding asserts. The
+# reader is `rust_facts` (syn facts as JSON); fact texts are token-spaced, so they are normalised
+# (`self . w2 . t ()` -> `self.w2.t()`) before any match. ONE function, `scan_rust`, is what
+# `main()`, the self-check and the tests all call.
+# distinct-from: `_findings_in` / `index_swaps_in` above -- same two rules (T1 transpose reaching a
+#   weight update, T2 index swap) but over rust_facts' text facts, not a Python AST; the weight
+#   predicate `_is_weight` is shared, not re-derived.
+# distinct-from: gates/selfcheck_cache.py, gates/policy_manifest.py, growth/growth_loop.py,
+#   faculties/self_model.py, instruments/sleep_plasticity_ab.py -- read: they hash a Python AST,
+#   list registry basenames, take a median, rank signals and walk a rung ladder; the `_rs_*`
+#   helpers below only split and normalise Rust fact TEXT. Matched on docstring wording alone.
+# ---------------------------------------------------------------------------------------------
+_REPO_ROOT = rust_facts.ROOT
+
+#: Transpose spellings that need no argument check (ndarray / burn / nalgebra / faer).
+_RS_TRANSPOSE = frozenset(
+    {
+        "t", "reversed_axes", "transpose", "transpose_mut", "adjoint", "ad", "tr_mul", "ad_mul",
+        "gemv_tr", "tr_dot",
+    }
+)  # fmt: skip
+#: Spellings that transpose only for these (whitespace-free) argument texts.
+_RS_TRANSPOSE_ARGS = {
+    "permuted_axes": {"[1,0]", "(1,0)"},
+    "permute": {"[1,0]"},
+    "swap_axes": {"0,1", "1,0"},
+    "swap_dims": {"0,1", "1,0"},
+    "movedim": {"0,1", "1,0"},
+}
+_RS_CALL = re.compile(r"\.(" + "|".join([*_RS_TRANSPOSE, *_RS_TRANSPOSE_ARGS]) + r")\(")
+_RS_PATH = re.compile(r"[*&]*((?:[A-Za-z_]\w*)(?:\.[A-Za-z_]\w*)*)([\[(]?)")
+_RS_IDENT = re.compile(r"[A-Za-z_]\w*")
+_RS_ITER_MUT = re.compile(r"\.(iter_mut|rows_mut|axis_iter_mut)\(")
+
+_RUST_BLIND = (
+    "macro bodies (azip!, vec![w.t()]) are opaque tokens",
+    "row()/column()/index_axis element reads -- the mlp_q analogue -- are not a transpose here",
+    "flow stays inside ONE fn (cross-fn flow is invisible); same-named fns in one file share taint",
+    "flat w[a * N + b] indexing; a weight aliased to a differently-named local is not weight-ish",
+    "a tuple `let` taints every name it binds",
+)
+
+
+def _rs_norm(text):
+    return re.sub(r"\s+", "", re.sub(r"&\s*mut\s+", "&", text or ""))
+
+
+def _rs_name(text):
+    """The last field of the leading path: `self.w1` -> w1, `w1.view_mut()` -> w1, `*w` -> w."""
+    m = _RS_PATH.match(_rs_norm(text))
+    if not m:
+        return None
+    segs = m.group(1).split(".")[: -1 if m.group(2) == "(" else None]
+    return segs[-1] if segs and segs[-1] != "self" else None
+
+
+def _rs_operand_before(text, end):
+    """The operand text that ends at `end`, call and index groups included: `self.w1.view()`."""
+    i, depth = end, 0
+    while i:
+        c = text[i - 1]
+        if c in ")]":
+            depth += 1
+        elif c in "([":
+            if not depth:
+                break
+            depth -= 1
+        elif not depth and not (c.isalnum() or c in "_.:"):
+            break
+        i -= 1
+    return text[i:end]
+
+
+def _rs_args_after(text, start):
+    depth = 1
+    for i in range(start, len(text)):
+        depth += (text[i] == "(") - (text[i] == ")")
+        if not depth:
+            return text[start:i]
+    return text[start:]
+
+
+def _rs_transposes(text):
+    """Names of the weight-ish operands transposed anywhere in `text`."""
+    text = _rs_norm(text)
+    out = []
+    for m in _RS_CALL.finditer(text):
+        wanted = _RS_TRANSPOSE_ARGS.get(m.group(1))
+        if wanted is not None and _rs_args_after(text, m.end()) not in wanted:
+            continue
+        name = _rs_name(_rs_operand_before(text, m.start()))
+        if _is_weight(name):
+            out.append(name)
+    return out
+
+
+def _rs_carried(text, taint):
+    """The transposed weight `text` carries (directly or through a tainted local), else None."""
+    hits = _rs_transposes(text) + [
+        taint[n] for n in _RS_IDENT.findall(_rs_norm(text)) if n in taint
+    ]
+    return hits[0] if hits else None
+
+
+def _rs_bind(taint, pat, src):
+    for n in _RS_IDENT.findall(pat):
+        if n in ("mut", "ref", "_"):
+            continue
+        if src:
+            taint[n] = src
+        else:
+            taint.pop(n, None)
+
+
+def _rust_t1(f):
+    """(line, fn, rule, detail) for transposed weights reaching a weight update, per fn, by line."""
+    order = ("fors", "lets", "assigns", "mcalls")
+    by_fn = {}
+    for rank, kind in enumerate(order):
+        for r in f.get(kind, []):
+            by_fn.setdefault(r["fn"], []).append((r["line"], rank, kind, r))
+    out = []
+    for fn, events in by_fn.items():
+        taint, wbound = {}, set()
+        for line, _rank, kind, r in sorted(events, key=lambda e: e[:2]):
+            if kind == "fors":
+                if _RS_ITER_MUT.search(_rs_norm(r["iter"])) and _is_weight(_rs_name(r["iter"])):
+                    wbound |= set(_RS_IDENT.findall(r["pat"]))
+            elif kind == "lets":
+                _rs_bind(taint, r["pat"], _rs_carried(r["init"], taint))
+            elif kind == "assigns":
+                src, name = _rs_carried(r["rhs"], taint), _rs_name(r["lhs"])
+                if name in wbound or _is_weight(name):
+                    if src:
+                        out.append((line, fn, "T1", f"{src} transposed -> updates {name}"))
+                elif _RS_IDENT.fullmatch(_rs_norm(r["lhs"])):
+                    if src or r["op"] != "=":
+                        taint[name] = taint.get(name) or src
+                    else:
+                        taint.pop(name, None)
+            else:
+                name = _rs_name(r["recv"])
+                if not (name in wbound or _is_weight(name)):
+                    continue
+                args = ",".join(r["args"])
+                if r["name"] in rust_facts.INPLACE_UPDATE_METHODS:
+                    src = _rs_carried(args, taint)
+                    if src:
+                        out.append((line, fn, "T1", f"{src} transposed -> updates {name}"))
+                if r["name"] == "swap_axes" and _rs_norm(args) in _RS_TRANSPOSE_ARGS["swap_axes"]:
+                    taint[name] = name
+    return out
+
+
+def _rs_split_top(text):
+    parts, depth, start = [], 0, 0
+    for i, c in enumerate(text):
+        depth += (c in "([{") - (c in ")]}")
+        if c == "," and not depth:
+            parts.append(text[start:i])
+            start = i + 1
+    return [*parts, text[start:]]
+
+
+def _rs_pair(expr, index):
+    """(weight, a, b) for `w[[a,b]]`, `w[(a,b)]` and `w[a][b]`, else None."""
+    ex, idx = _rs_norm(expr), _rs_norm(index)
+    if re.fullmatch(r"\[.*\]|\(.*\)", idx) and len(parts := _rs_split_top(idx[1:-1])) == 2:
+        return _rs_name(ex), *parts
+    m = re.fullmatch(r"(.+)\[([^\[\]]+)\]", ex)
+    return (_rs_name(m.group(1)), m.group(2), idx) if m else None
+
+
+def _rust_t2(f):
+    """(line, fn, rule, detail) for weights READ in the reverse of the order they are WRITTEN."""
+    lhs = {(a["fn"], a["line"], _rs_norm(a["lhs"])) for a in f.get("assigns", [])}
+    sites = []
+    for ix in f.get("index", []):
+        got = _rs_pair(ix["expr"], ix["index"])
+        if got and _is_weight(got[0]):
+            text = _rs_norm(ix["expr"]) + "[" + _rs_norm(ix["index"]) + "]"
+            sites.append((ix["fn"], ix["line"], got, (ix["fn"], ix["line"], text) in lhs))
+    writes = {(w, a, b) for _fn, _ln, (w, a, b), is_write in sites if is_write}
+    return [
+        (line, fn, "T2", f"{w} writes [{b},{a}], reads [{a},{b}]")
+        for fn, line, (w, a, b), is_write in sites
+        if not is_write and a != b and (w, b, a) in writes
+    ]
+
+
+def scan_rust(root=None):
+    """(status, findings) for `native/` under `root` (default: the repo). Every finding is governed.
+
+    A finding is (file, line, fn, rule, detail). `RustFactsUnavailable` with `.rs` present is NOT
+    caught here: the caller turns it into a red, never a skip.
+    """
+    base = _REPO_ROOT if root is None else root
+    files = rust_facts.rust_files(base)
+    if not files:
+        return "native/ ABSENT (0 .rs files)", []
+    found = []
+    for f in rust_facts.facts(files):
+        rel = os.path.relpath(f["file"], base).replace(os.sep, "/")
+        found += [(rel, ln, fn, rule, d) for ln, fn, rule, d in _rust_t1(f) + _rust_t2(f)]
+    return f"native/ PRESENT ({len(files)} .rs files)", sorted(found)
+
+
+# The constructed fixture the self-check and the tests share (injected, never forked), in plan
+# section 11's layout. RED plants the two pre-registered defects; the GREEN twin fixes both and
+# keeps the controls: a transpose feeding an ACTIVATION, and `.t()` on a non-weight.
+_RUST_RED = """\
+impl Net {
+    pub fn learn(&mut self, err: &A, x: &A, lr: f64) {
+        let dh = self.w2.t().dot(err);
+        self.w1.scaled_add(-lr, &outer(&dh, x));
+        self.w[[i, j]] += d;
+    }
+    pub fn back(&mut self, lr: f64) {
+        let g = self.w[[j, i]];
+        self.v += lr * g;
+    }
+    pub fn forward(&self, x: &A) -> A {
+        let h = self.w.t().dot(x);
+        let u = x.t().dot(x);
+        h
+    }
+}
+"""
+_RUST_GREEN = _RUST_RED.replace("self.w2.t()", "self.fb.t()").replace(
+    "self.w[[j, i]]", "self.w[[i, j]]"
+)
+
+
+def _rust_fixture(red):
+    return {
+        "sndl-core/src/lib.rs": "pub mod plasticity;\n",
+        "sndl-core/src/plasticity.rs": _RUST_RED if red else _RUST_GREEN,
+        "sndl-python/src/lib.rs": "#[pyfunction]\nfn add(a: f64, b: f64) -> f64 { a + b }\n",
+    }
 
 
 # ---------------------------------------------------------------------------------------------
@@ -729,11 +976,33 @@ def main(argv=None):
     print("  clause REQUIRES) and it is ungoverned, so it REPORTS; but a module hand-rolling")
     print("  backprop in loops no longer passes this gate silently on the day it is promoted.")
     print()
-    failed = bool(gov) or bool(stale) or bool(gov_swaps)
+    print("--- RUST: native/ (ALL governed, asserted) ---")
+    try:
+        rust_status, rust_found = scan_rust()
+        rust_down = None
+    except rust_facts.RustFactsUnavailable as exc:
+        rust_status, rust_found, rust_down = "native/ UNAVAILABLE", [], exc
+    print(f"  {rust_status}")
+    for rel, ln, fn, rule, detail in rust_found:
+        print(f"  {rel}:{ln}   {fn}  [{rule}] {detail}")
+    if rust_down:
+        print(f"  RustFactsUnavailable: {rust_down}")
+    print(f"  RUST findings: {len(rust_found)}")
+    print("  RUST BLIND SPOTS: " + "; ".join(_RUST_BLIND))
+    print("  rust_facts BLIND SPOTS: " + "; ".join(rust_facts.BLIND_SPOTS))
+    print("  tools/rsfacts is gate tooling, out of scope for brain rules (named, not scanned).")
+    print()
+    failed = bool(gov) or bool(stale) or bool(gov_swaps) or bool(rust_found) or bool(rust_down)
     if gov:
         print("gate FAIL: weight transport on a governed module")
     elif gov_swaps:
         print("gate FAIL: index-swap weight transport on a governed module")
+    elif rust_found:
+        print("gate FAIL: Rust weight transport in native/")
+    elif rust_down:
+        print(
+            "gate FAIL: the Rust half could not run (RustFactsUnavailable) -- a red, never a skip"
+        )
     elif stale:
         # A stale row is a failure in its own right, not a nit. An allowlist entry that matches
         # nothing reads as coverage of a risk nobody is carrying, and it is how an exemption
@@ -811,6 +1080,30 @@ def _fires(source):
         for fn in ast.walk(ast.parse(source))
         if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef))
     )
+
+
+# The Rust half's check: planted and fixed trees, then the live one, all through `scan_rust`.
+# distinct-from: gates/doc_budget_gate.py, substrate/binlog.py, substrate/home.py -- read by
+#   title: a different gate's own `_selfcheck`, a file-changed flag and a sidecar-writer census;
+#   none builds or scans a Rust tree.
+def _check_rust_half():
+    counts = {}
+    for name, planted in (("planted", True), ("fixed", False)):
+        with tempfile.TemporaryDirectory() as d:
+            for rel, text in _rust_fixture(planted).items():
+                path = os.path.join(d, "native", *rel.split("/"))
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write(text)
+            subprocess.run(["git", "init", "-q", d], check=True)
+            counts[name] = [f[3] for f in scan_rust(d)[1]]
+    assert sorted(counts["planted"]) == ["T1", "T2"], (
+        f"the Rust RED must give exactly [T1, T2] through scan_rust, got {counts['planted']}"
+    )
+    assert not counts["fixed"], f"the Rust GREEN twin must give 0, got {counts['fixed']}"
+    status, live = scan_rust()
+    assert not live, f"governed Rust weight transport in native/: {live}"
+    print(f"  RED    Rust {counts['planted']}; green twin {len(counts['fixed'])}; live: {status}")
 
 
 def _selfcheck():
@@ -1317,6 +1610,7 @@ def fwd(x, W):
 
     gov = [v for v in violations if v[5] and not claims_transport_exemption(v[0], v[1])]
     assert not gov, f"governed weight-transport findings: {gov}"
+    _check_rust_half()
     print(f"self-check OK: {len(_CASES)} constructed cases, {census} modules scanned, 0 governed")
 
 
