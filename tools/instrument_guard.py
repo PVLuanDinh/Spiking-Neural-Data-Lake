@@ -153,6 +153,8 @@ import ast
 import pathlib
 import sys
 
+from snn_data_lake.gates import rust_facts
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 #: The instrument tiers. `tools`/`tests` are ungoverned by the three P3 gates; `src` is governed by
@@ -178,6 +180,7 @@ BANNED_MODULE_SCOPE = {
     "torch.random.manual_seed": "process-global seeding; use torch.Generator().manual_seed(seed)",
     "torch.cuda.manual_seed": "process-global seeding; use torch.Generator().manual_seed(seed)",
     "torch.cuda.manual_seed_all": "process-global seeding; use torch.Generator().manual_seed(seed)",
+    "snn_data_lake._native.set_seed": "seeds the extension's process-global RNG at import time; call it from the run",
 }
 
 #: seeder -> the call that puts back what it took. A seeder bracketed by its own restorer in the
@@ -196,6 +199,24 @@ RESTORERS = {
 #: seeder added to one list and forgotten in the other is the drift this file exists to catch.
 GLOBAL_SEEDERS = frozenset(RESTORERS)
 
+#: Rust (`native/`, R0.2 row 16): a call whose LAST path segment is one of these mutates process state
+#: shared by every module after it, the `os.chdir` / `os.environ` shape one tier down.
+NATIVE_PROCESS_MUTATORS = frozenset({"set_current_dir", "set_var"})
+
+#: Rust process-global RNG seeders, matched on the call path's last one or two segments: `fastrand::seed`
+#: (the crate-global generator) and any free `set_seed` (the extension's own global, `_native.set_seed`).
+NATIVE_SEEDERS = frozenset({"fastrand::seed", "set_seed"})
+
+#: What every `#[pymodule]` must DECLARE (Phase 0 item 5: pyo3 0.30.1's plain form no longer re-enables
+#: the GIL, so the declaration is the rule, not the effect). Spaces are ignored when matching.
+GIL_DECLARATION = "gil_used=false"
+
+RUST_BLIND_SPOTS = (
+    "calls inside macro bodies (println!/vec!/..) are not seen as calls",
+    "a seeder reached through a helper fn called from an init/ctor body is one hop away and unseen",
+    "init/ctor = #[pymodule] fn, #[new] fn, or an impl fn named new; other constructors are not scanned",
+)
+
 #: Every tag this gate can report. Named once so the self-check can state what fraction of the tags
 #: it actually fired a red for, rather than counting its own fixture table against itself.
 RULE_NAMES = (
@@ -204,6 +225,10 @@ RULE_NAMES = (
     "MODULE-SCOPE-MUTATION",
     "CONSTRUCTOR-SEED",
     "SYNTAX",
+    "NATIVE-PROCESS-MUTATION",
+    "PYMODULE-GIL",
+    "NATIVE-INIT-SEED",
+    "RUST-FACTS-UNAVAILABLE",
 )
 
 #: key: "relpath -> rule", value: why this site legitimately stays. Follows dormancy_gate.EXEMPT's
@@ -233,17 +258,18 @@ def _aliases(tree):
     and matching the name AS WRITTEN let both walk straight past rules 2-4. This is rule 1's
     2026-08-05 lesson generalized: a rule that an import style can evade is not a rule.
 
-    Relative `from . import x` is skipped -- resolving it needs the package path, and none of the
-    banned names is reachable that way (they are all stdlib/torch/numpy). A rebinding that is not an
-    import (`random = something_else`) is a known floor, stated rather than claimed away.
+    Relative `from . import x` is recorded with its leading dots (`._native`), since 2026-10-17: the
+    extension's `_native.set_seed` IS reachable that way from inside the package, and `_native_seed`
+    matches it by its last two segments. A rebinding that is not an import (`random = something_else`)
+    is a known floor, stated rather than claimed away.
     """
     tbl = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for a in node.names:
                 tbl[a.asname or a.name.split(".")[0]] = a.name if a.asname else a.name.split(".")[0]
-        elif isinstance(node, ast.ImportFrom) and not node.level:
-            mod = node.module or ""
+        elif isinstance(node, ast.ImportFrom):
+            mod = "." * node.level + (node.module or "")
             for a in node.names:
                 if a.name != "*":
                     tbl[a.asname or a.name] = f"{mod}.{a.name}" if mod else a.name
@@ -258,7 +284,14 @@ def _canon(dotted, tbl):
     base = tbl.get(head)
     if base is None:
         return dotted
-    return f"{base}.{rest}" if rest else base
+    return _native_seed(f"{base}.{rest}" if rest else base)
+
+
+def _native_seed(dotted):
+    """`._native.set_seed` / `snn_data_lake._native.set_seed` -> the one BANNED_MODULE_SCOPE key."""
+    if dotted.split(".")[-2:] == ["_native", "set_seed"]:
+        return "snn_data_lake._native.set_seed"
+    return dotted
 
 
 def _calls_in(node, tbl):
@@ -361,8 +394,12 @@ def _is_absolute(value):
     )
 
 
-def scan():
-    """(violations, census). A violation is (relpath, lineno, rule, detail)."""
+def scan(native=None):
+    """(violations, census). A violation is (relpath, lineno, rule, detail).
+
+    `native` injects a `(status, facts)` fixture for the Rust half (self-check and tests); None reads
+    the real `native/` through `rust_facts`. Both run through `rust_scan`, the ONE Rust entry point.
+    """
     violations, census = [], []
     for tier in TIERS:
         base = ROOT / tier
@@ -459,7 +496,96 @@ def scan():
                         "bracket it with torch.random.fork_rng / getstate+setstate",
                     )
                 )
+    violations.extend(rust_scan(native)[1])
     return violations, census
+
+
+def _init_or_ctor(fn):
+    """A `#[pymodule]` fn, a `#[new]` fn, or an impl fn named `new`: the bodies rule 5 means in Rust."""
+    return bool(
+        rust_facts._attr(fn["attrs"], "pymodule")
+        or rust_facts._attr(fn["attrs"], "new")
+        or (fn["impl"] and fn["name"] == "new")
+    )
+
+
+def _declares_gil(attr):
+    return GIL_DECLARATION in {a.replace(" ", "") for a in rust_facts._top_args(attr)}
+
+
+def _native():
+    """`(status, facts)` for the `.rs` under this ROOT (the reader's binary stays at its own root);
+    an unreadable tree is carried as the exception so the scan fails CLOSED, never skips."""
+    try:
+        files = rust_facts.rust_files(ROOT)
+        if not files:
+            return "native/ ABSENT (0 .rs files)", []
+        return f"native/ PRESENT ({len(files)} .rs files)", rust_facts.facts(files)
+    except rust_facts.RustFactsUnavailable as exc:
+        return "native/ UNREADABLE", exc
+
+
+def rust_scan(native=None):
+    """(status, violations) over every `.rs` under native/ -- the ONE Rust entry point (R0.2 row 16).
+
+    Rules 3-5 in Rust: `set_current_dir`/`set_var` anywhere (process state shared by every module after
+    it), every `#[pymodule]` declaring `gil_used = false`, and no process-global seeder in an init/ctor
+    body. Reads `rust_facts` only; `RustFactsUnavailable` with `.rs` present is a finding, never a skip.
+    """
+    status, file_facts = _native() if native is None else native
+    if isinstance(file_facts, Exception):
+        return status, [
+            ("native/", 0, "RUST-FACTS-UNAVAILABLE", f"RustFactsUnavailable: {file_facts}")
+        ]
+    out = []
+    for f in file_facts:
+        p = pathlib.Path(f["file"])
+        rel = (p.relative_to(ROOT) if p.is_absolute() and ROOT in p.parents else p).as_posix()
+        by_id = {fn["id"]: fn for fn in f["fns"]}
+        for c in f["calls"]:
+            tail = c["path"].split("::")
+            fn = by_id.get(c["fn_id"])
+            qual = f"{fn['impl']}::{fn['name']}" if fn and fn["impl"] else (fn or {}).get("name")
+            if tail[-1] in NATIVE_PROCESS_MUTATORS:
+                out.append(
+                    (
+                        rel,
+                        c["line"],
+                        "NATIVE-PROCESS-MUTATION",
+                        f"{c['path']}() in {qual}: mutates process state shared by every module after it",
+                    )
+                )
+            if (
+                fn
+                and _init_or_ctor(fn)
+                and ("::".join(tail[-2:]) in NATIVE_SEEDERS or tail[-1] in NATIVE_SEEDERS)
+            ):
+                out.append(
+                    (
+                        rel,
+                        c["line"],
+                        "NATIVE-INIT-SEED",
+                        f"{c['path']}() in {qual}: re-seeds a process-global RNG from an init/ctor body; "
+                        "seed a per-instance generator",
+                    )
+                )
+        for item in (*f["fns"], *f["mods"]):
+            attr = rust_facts._attr(item["attrs"], "pymodule")
+            if attr and not _declares_gil(attr):
+                how = (
+                    "declares gil_used = true"
+                    if "true" in attr
+                    else "does not declare gil_used = false"
+                )
+                out.append(
+                    (
+                        rel,
+                        item["line"],
+                        "PYMODULE-GIL",
+                        f"#[pymodule] {item['name']} {how}; pyo3 0.30.1 makes the declaration the rule",
+                    )
+                )
+    return status, out
 
 
 def guarded(entry, test_stems):
@@ -498,12 +624,15 @@ def census_split(census):
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     do_assert = "--assert" in argv
-    violations, census = scan()
+    native = _native()
+    violations, census = scan(native)
 
     print("=" * 78)
     print("instrument_guard -- the instruments are part of the brain too (P4c)")
     print("=" * 78)
     print(f"scanned {len(census)} modules across {', '.join(t + '/' for t in TIERS)}")
+    print(f"native/: {native[0]}")
+    print("  Rust BLIND SPOTS: " + "; ".join((*rust_facts.BLIND_SPOTS, *RUST_BLIND_SPOTS)))
     print()
 
     live_exempt = set()
@@ -631,7 +760,84 @@ _RED = {
     # An unparseable instrument is reported, never skipped: `ast.parse` failing is the one way a
     # file can carry every defect above and be counted clean, which is the silent-pass shape.
     "SYNTAX": ("def broken(\n", "SYNTAX"),
+    # R0.2 row 16, Python edge: the extension's global seeder at import time, in each import spelling.
+    "MODULE-SCOPE-MUTATION (_native.set_seed)": (
+        "from snn_data_lake import _native\n_native.set_seed(0)\n",
+        "MODULE-SCOPE-MUTATION",
+    ),
+    "MODULE-SCOPE-MUTATION (_native.set_seed, relative import)": (
+        "from . import _native\n_native.set_seed(0)\n",
+        "MODULE-SCOPE-MUTATION",
+    ),
 }
+
+#: R0.2 row 16: the Rust reds, one fixture `native/sndl-python/src/lib.rs` carrying all three defects
+#: (pre-registered: EXACTLY 6 findings, two per tag), and its repaired twin (EXACTLY 0).
+_RUST_RED = """
+use pyo3::prelude::*;
+use std::env::set_var;
+
+#[pyclass]
+pub struct Loop { seed: u64 }
+
+#[pymethods]
+impl Loop {
+    #[new]
+    fn new(seed: u64) -> Self { fastrand::seed(seed); Loop { seed } }
+}
+
+#[pymodule]
+fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    std::env::set_current_dir("..").ok();
+    set_var("NORD_GPU", "1");
+    set_seed(0);
+    m.add_class::<Loop>()?;
+    Ok(())
+}
+
+#[pymodule(gil_used = true)]
+mod _legacy { #[pymodule_export] use super::Loop; }
+
+fn set_seed(_s: u64) {}
+"""
+_RUST_RED_TAGS = {
+    "NATIVE-PROCESS-MUTATION": 2,
+    "PYMODULE-GIL": 2,
+    "NATIVE-INIT-SEED": 2,
+}
+_RUST_GREEN = """
+use pyo3::prelude::*;
+
+#[pyclass]
+pub struct Loop { rng: fastrand::Rng }
+
+#[pymethods]
+impl Loop {
+    #[new]
+    fn new(seed: u64) -> Self { Loop { rng: fastrand::Rng::with_seed(seed) } }
+}
+
+#[pymodule(gil_used = false)]
+fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<Loop>()?;
+    Ok(())
+}
+
+#[pyo3::pymodule(gil_used = false)]
+mod _legacy { #[pymodule_export] use super::Loop; }
+
+fn set_seed(_s: u64) {}
+fn reseed(s: u64) { set_seed(s) }
+"""
+
+
+def fixture_native(text):
+    """`(status, facts)` for a constructed one-file tree `native/sndl-python/src/lib.rs` carrying `text`."""
+    f = rust_facts.facts_for_source(text, name="lib.rs")
+    f["file"] = "native/sndl-python/src/lib.rs"
+    return "native/ PRESENT (1 .rs files, fixture)", [f]
+
+
 # The REPAIRED shape of all three reds, plus the two things that must NOT be flagged: a module-scope
 # `os.environ.setdefault` (deliberate, see the docstring) and an `os.chdir` inside a function body
 # (runs when called, not on import).
@@ -721,9 +927,29 @@ def _selfcheck():
     finally:
         ROOT = real_root
 
+    # R0.2 row 16: the Rust reds through the SAME entry point, injected; then the repaired twin.
+    rust = rust_scan(fixture_native(_RUST_RED))[1]
+    tags = {t: sum(1 for v in rust if v[2] == t) for t in _RUST_RED_TAGS}
+    assert tags == _RUST_RED_TAGS and len(rust) == 6, (
+        f"Rust RED arm: expected {_RUST_RED_TAGS}, saw {rust}"
+    )
+    rust_green = rust_scan(fixture_native(_RUST_GREEN))[1]
+    assert not rust_green, f"the repaired Rust shape was flagged: {rust_green}"
+    unreadable = rust_scan(("native/ UNREADABLE", rust_facts.RustFactsUnavailable("constructed")))[
+        1
+    ]
+    assert [v[2] for v in unreadable] == ["RUST-FACTS-UNAVAILABLE"], unreadable
+
     print("  reds constructed and fired: " + ", ".join(sorted(_RED)))
     print("  repaired shape and module-scope os.environ.setdefault: not flagged")
-    rules = {rule for _src, rule in _RED.values()}
+    print(
+        "  Rust reds fired: "
+        + ", ".join(f"{t} x{n}" for t, n in sorted(_RUST_RED_TAGS.items()))
+        + "; RUST-FACTS-UNAVAILABLE x1; repaired Rust twin: not flagged"
+    )
+    rules = (
+        {rule for _src, rule in _RED.values()} | set(_RUST_RED_TAGS) | {"RUST-FACTS-UNAVAILABLE"}
+    )
     print(
         f"self-check OK: {len(_RED)} of {len(_RED)} reds fired, covering "
         f"{len(rules)} of {len(RULE_NAMES)} rule tags"
