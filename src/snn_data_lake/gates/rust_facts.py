@@ -250,6 +250,11 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
             if in_decl(t) and _attr(t["attrs"], "pyclass"):
                 export_class(t["name"], {"file": f["file"], "line": t["line"]})
         modfns = {fn["name"] for fn in f.get("fns", []) if _attr(fn["attrs"], "pymodule")}
+        bound = {}  # `let f = wrap_pyfunction!(x, m)?;` inside a module fn: local name -> wrapped fn
+        for x in f.get("lets", []):
+            m = _WRAP.search(x["init"] or "") if x["fn"] in modfns else None
+            if m:
+                bound[(x["fn"], x["pat"].replace("mut ", "").strip())] = m.group(1)
         for c in f.get("mcalls", []):
             if c["fn"] not in modfns:
                 continue
@@ -257,11 +262,12 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
             if c["name"] in (
                 "add_function",
                 "add_wrapped",
-            ):  # only a wrapper that is ADDED registers
+            ):  # only a wrapper that is ADDED registers (inline, or through a let-bound local)
                 for a in c["args"]:
                     m = _WRAP.search(a)
-                    if m:
-                        export_fn(m.group(1).split("::")[-1], where)
+                    name = m.group(1) if m else bound.get((c["fn"], a.strip()))
+                    if name:
+                        export_fn(name.split("::")[-1], where)
             elif c["name"] == "add_class" and c.get("turbofish"):  # m.add_class::<T>()
                 export_class(c["turbofish"].replace(" ", "").strip(":<>").split("::")[-1], where)
     registered = {v["rust"]: py for py, v in out.items() if v["kind"] == "class"}
@@ -442,6 +448,16 @@ fn prod_only() { helper(); }
 #[test]
 fn check() { helper(); }
 fn helper() {}
+#[pyfunction]
+fn bound_fn() {}
+#[pymodule]
+fn bound(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    let f = wrap_pyfunction!(bound_fn, m)?;
+    m.add_function(f)?;
+    Ok(())
+}
+trait Checks { #[cfg(test)] fn tcheck() { helper(); } }
+fn uses_core() -> sndl_core::reservoir::Cell { let d = 1; let e = 2; d + e }
 """
 
 _PY_FIXTURE = {
@@ -477,12 +493,19 @@ def self_check(root: Path = ROOT) -> None:
     e = facts_for_source(_FIXTURE_EDGES, root=root)
     ex2 = pyo3_exports([e])
     want2 = {"qual_fn", "QNet", "Shown", "Shown.__new__", "Shown.weight", "Shown.bias", "Inner"}
+    want2 |= {"bound_fn"}  # Codex round 2 B-1: a let-bound wrapper that is then ADDED registers
     assert set(ex2) == want2, (
         f"edge export map wrong: {sorted(set(ex2) ^ want2)}"
     )  # no ghost, no Hidden.step
     cfg = {fn["name"]: fn["cfg_test"] for fn in e["fns"]}
     assert cfg["prod_only"] is False and cfg["check"] is True, cfg
-    assert [c["cfg_test"] for c in e["calls"] if c["path"] == "helper"] == [False, True], e["calls"]
+    # helper() is called from prod_only (production), check (#[test]) and tcheck (trait default,
+    # #[cfg(test)]: Codex round 2 B-2)
+    calls = [c["cfg_test"] for c in e["calls"] if c["path"] == "helper"]
+    assert calls == [False, True, True], e["calls"]
+    assert "sndl_core::reservoir::Cell" in e["paths"], "full multi-segment paths lost"
+    ds = sorted((x["line"], x["col"]) for x in e["lets"] if x["fn"] == "uses_core")
+    assert len(ds) == 2 and ds[0][0] == ds[1][0] and ds[0][1] < ds[1][1], f"same-line columns: {ds}"
     with tempfile.TemporaryDirectory() as d:
         for rel, text in _PY_FIXTURE.items():
             p = Path(d) / rel
@@ -513,7 +536,7 @@ def main() -> int:
     status, nf = native_status()
     tool = facts(rust_files(ROOT, str(RSFACTS)))
     print(
-        f"rust_facts: self-check OK (fixture: 7 fns, 2 transpose calls, 5 exports; edge fixture: 7 exports, "
+        f"rust_facts: self-check OK (fixture: 7 fns, 2 transpose calls, 5 exports; edge fixture: 8 exports, let-bound wrapper, "
         f"no unregistered wrapper/class methods, cfg(not(test)) is production; 5 _native importers; "
         f"unparseable-Rust RED fired) | {status} | tools/rsfacts: {len(tool)} file(s) parsed | "
         f"python _native importers in src: {len(python_native_refs())}"

@@ -29,6 +29,7 @@ struct Facts {
     lets: Vec<Value>,
     fors: Vec<Value>,
     path_roots: Vec<String>,
+    paths: Vec<String>,
     // context
     cur_fn: Vec<String>,
     cur_impl: Vec<(String, Option<String>, Vec<String>)>,
@@ -38,6 +39,10 @@ struct Facts {
 
 fn line<S: Spanned>(s: &S) -> usize {
     s.span().start().line
+}
+// Column orders events that share a line (e.g. `let d = ..; w += &d; let d = ..;` on one line).
+fn col<S: Spanned>(s: &S) -> usize {
+    s.span().start().column
 }
 fn txt<T: ToTokens>(t: &T) -> String {
     t.to_token_stream().to_string()
@@ -189,9 +194,12 @@ impl<'ast> Visit<'ast> for Facts {
             &i.attrs,
             i.default.is_some(),
         );
+        let t = is_cfg_test(&i.attrs) as usize;
+        self.cfg_test += t;
         self.cur_fn.push(i.sig.ident.to_string());
         visit::visit_trait_item_fn(self, i);
         self.cur_fn.pop();
+        self.cfg_test -= t;
     }
     fn visit_item_impl(&mut self, i: &'ast syn::ItemImpl) {
         let tr = i.trait_.as_ref().map(|(p, _)| txt(p).replace(' ', ""));
@@ -266,6 +274,8 @@ impl<'ast> Visit<'ast> for Facts {
     fn visit_path(&mut self, p: &'ast syn::Path) {
         if p.segments.len() >= 2 {
             self.path_roots.push(p.segments[0].ident.to_string());
+            let full: Vec<String> = p.segments.iter().map(|s| s.ident.to_string()).collect();
+            self.paths.push(full.join("::"));
         }
         visit::visit_path(self, p);
     }
@@ -273,7 +283,7 @@ impl<'ast> Visit<'ast> for Facts {
         if let syn::Expr::Path(p) = &*i.func {
             let (f, _, cfg) = self.ctx();
             self.calls.push(
-                json!({"path": txt(&p.path).replace(' ', ""), "line": line(i), "fn": f,
+                json!({"path": txt(&p.path).replace(' ', ""), "line": line(i), "col": col(i), "fn": f,
                 "args": i.args.iter().map(txt).collect::<Vec<_>>(), "cfg_test": cfg}),
             );
         }
@@ -282,7 +292,7 @@ impl<'ast> Visit<'ast> for Facts {
     fn visit_expr_method_call(&mut self, i: &'ast syn::ExprMethodCall) {
         let (f, _, cfg) = self.ctx();
         self.mcalls.push(
-            json!({"name": i.method.to_string(), "line": line(&i.method), "fn": f,
+            json!({"name": i.method.to_string(), "line": line(&i.method), "col": col(&i.method), "fn": f,
             "recv": txt(&*i.receiver), "args": i.args.iter().map(txt).collect::<Vec<_>>(),
             "turbofish": i.turbofish.as_ref().map(txt), "cfg_test": cfg}),
         );
@@ -291,7 +301,7 @@ impl<'ast> Visit<'ast> for Facts {
     fn visit_expr_index(&mut self, i: &'ast syn::ExprIndex) {
         let (f, _, cfg) = self.ctx();
         self.index.push(
-            json!({"expr": txt(&*i.expr), "index": txt(&*i.index), "line": line(i), "fn": f,
+            json!({"expr": txt(&*i.expr), "index": txt(&*i.index), "line": line(i), "col": col(i), "fn": f,
             "cfg_test": cfg}),
         );
         visit::visit_expr_index(self, i);
@@ -299,7 +309,7 @@ impl<'ast> Visit<'ast> for Facts {
     fn visit_expr_assign(&mut self, i: &'ast syn::ExprAssign) {
         let (f, _, cfg) = self.ctx();
         self.assigns.push(
-            json!({"lhs": txt(&*i.left), "op": "=", "rhs": txt(&*i.right), "line": line(i),
+            json!({"lhs": txt(&*i.left), "op": "=", "rhs": txt(&*i.right), "line": line(i), "col": col(i),
             "fn": f, "cfg_test": cfg}),
         );
         visit::visit_expr_assign(self, i);
@@ -309,7 +319,7 @@ impl<'ast> Visit<'ast> for Facts {
         if op.ends_with('=') && !matches!(op.as_str(), "==" | "!=" | "<=" | ">=") {
             let (f, _, cfg) = self.ctx();
             self.assigns.push(
-                json!({"lhs": txt(&*i.left), "op": op, "rhs": txt(&*i.right), "line": line(i),
+                json!({"lhs": txt(&*i.left), "op": op, "rhs": txt(&*i.right), "line": line(i), "col": col(i),
                 "fn": f, "cfg_test": cfg}),
             );
         }
@@ -319,14 +329,14 @@ impl<'ast> Visit<'ast> for Facts {
         let (f, _, cfg) = self.ctx();
         let init = i.init.as_ref().map(|x| txt(&*x.expr));
         self.lets.push(
-            json!({"pat": txt(&i.pat), "init": init, "line": line(i), "fn": f, "cfg_test": cfg}),
+            json!({"pat": txt(&i.pat), "init": init, "line": line(i), "col": col(i), "fn": f, "cfg_test": cfg}),
         );
         visit::visit_local(self, i);
     }
     fn visit_expr_for_loop(&mut self, i: &'ast syn::ExprForLoop) {
         let (f, _, cfg) = self.ctx();
         self.fors.push(
-            json!({"pat": txt(&*i.pat), "iter": txt(&*i.expr), "line": line(i), "fn": f,
+            json!({"pat": txt(&*i.pat), "iter": txt(&*i.expr), "line": line(i), "col": col(i), "fn": f,
             "cfg_test": cfg}),
         );
         visit::visit_expr_for_loop(self, i);
@@ -334,7 +344,7 @@ impl<'ast> Visit<'ast> for Facts {
     fn visit_macro(&mut self, i: &'ast syn::Macro) {
         let (f, _, cfg) = self.ctx();
         self.macros.push(
-            json!({"name": txt(&i.path).replace(' ', ""), "line": line(&i.path), "fn": f,
+            json!({"name": txt(&i.path).replace(' ', ""), "line": line(&i.path), "col": col(&i.path), "fn": f,
             "tokens": i.tokens.to_string(), "cfg_test": cfg}),
         );
         visit::visit_macro(self, i);
@@ -354,10 +364,12 @@ fn one(path: &str) -> Value {
             v.visit_file(&ast);
             v.path_roots.sort();
             v.path_roots.dedup();
+            v.paths.sort();
+            v.paths.dedup();
             json!({"schema": SCHEMA, "file": path, "ok": true, "file_attrs": attrs_of(&ast.attrs),
                 "fns": v.fns, "types": v.types, "mods": v.mods, "uses": v.uses, "consts": v.consts,
                 "calls": v.calls, "mcalls": v.mcalls, "macros": v.macros, "index": v.index,
-                "assigns": v.assigns, "lets": v.lets, "fors": v.fors, "path_roots": v.path_roots})
+                "assigns": v.assigns, "lets": v.lets, "fors": v.fors, "path_roots": v.path_roots, "paths": v.paths})
         }
         Err(e) => json!({"schema": SCHEMA, "file": path, "ok": false,
             "err": format!("{}:{} {}", e.span().start().line, e.span().start().column, e)}),
