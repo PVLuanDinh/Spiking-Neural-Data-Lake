@@ -27,6 +27,27 @@ def test_red_arm_fires_exactly_the_three_preregistered_findings(tmp_path):
     assert res["m"][0].startswith("M1") and "Stdp::potentiate" in res["m"][0]
 
 
+@pytest.mark.parametrize("name", sorted(nd.FOLD_CASES))
+def test_fold_round_1_red_fires_exactly_and_green_twin_is_clean(tmp_path, name):
+    red, green, (nd_d, nd_m) = nd.FOLD_CASES[name]
+    nd._write(tmp_path / "red", red)
+    res = nd.audit(tmp_path / "red", live=nd.FIXTURE_LIVE, src=tmp_path / "red" / "src")
+    assert (len(res["d"]), len(res["m"])) == (nd_d, nd_m), res
+    nd._write(tmp_path / "green", green)
+    res = nd.audit(tmp_path / "green", live=nd.FIXTURE_LIVE, src=tmp_path / "green" / "src")
+    assert res["d"] == [] and res["m"] == [], res
+
+
+def test_crates_nested_below_native_are_still_governed(tmp_path):
+    nd.write_fixture(tmp_path, red=True, prefix="crates/")
+    res = nd.audit(root=tmp_path, live=nd.FIXTURE_LIVE, src=tmp_path / "src")
+    assert len(res["d"]) == 2 and len(res["m"]) == 1, res
+    green = tmp_path / "green"
+    nd.write_fixture(green, red=False, prefix="crates/")
+    res = nd.audit(root=green, live=nd.FIXTURE_LIVE, src=green / "src")
+    assert res["d"] == [] and res["m"] == [], res
+
+
 def test_green_twin_is_clean(tmp_path):
     res = _run(tmp_path, red=False)
     assert res["d"] == [] and res["m"] == [], res
