@@ -18,9 +18,16 @@ This is not a Python symbolic interpreter: exceptions, arbitrary calls, external
 general control/data flow require review and constructed failing controls. All non-defective
 criteria remain reachability-UNPROVEN; neither parameter use nor gate exit 0 proves P8 compliance.
 
+The Rust half (R0.2, DISPOSITION row 20) reads `native/**/*.rs` through `snn_data_lake.gates.rust_facts`
+only: a criterion-shaped Rust fn with no formal inputs that owns no fact is NO_RED, and a Python
+criterion whose every return takes such a fn's verdict through `_native` inherits it. Everything the
+facts cannot see stays UNPROVEN (`RUST_BLIND_SPOTS`). `native/` absent prints as ABSENT; `.rs`
+present with cargo or a parse failure is a RED, never a skip.
+
 Reproduce:
-    python tools/red_reachability.py            # report, exit 0
-    python tools/red_reachability.py --assert   # exit 1 on unexempted supported defects
+    python tools/red_reachability.py              # report, exit 0
+    python tools/red_reachability.py --assert     # exit 1 on unexempted supported defects
+    python tools/red_reachability.py --self-check # the constructed Rust RED arm and GREEN twin
 """
 
 import ast
@@ -29,6 +36,17 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
+
+
+def _rust_facts():
+    """Lazy: this tool must still run with no PYTHONPATH (dependency_ledger's bootstrap)."""
+    here = str(SRC)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    from snn_data_lake.gates import rust_facts
+
+    return rust_facts
+
 
 #: A function is a CRITERION if its name matches one of these shapes. Kept NARROW on purpose: the
 #: method-dormancy-gate's recorded lesson is that widening the scan re-introduces a
@@ -43,6 +61,75 @@ VERDICT_NAMES = {"verdict", "present", "passes", "is_present"}
 #: EXEMPT follows dormancy_gate.EXEMPT: a disposition AND a reason, and every entry must still match
 #: a real violation or the gate fails loudly -- an exemption that blesses nothing reads as coverage.
 EXEMPT = {}
+
+#: Printed beside every Rust verdict, after `rust_facts.BLIND_SPOTS`.
+RUST_BLIND_SPOTS = (
+    "rsfacts records no return/tail expression: a Rust criterion is NO_RED only when it has no formal "
+    "inputs AND owns no fact (call, method call, index, assign, let, for, macro), so a literal FAILURE "
+    "and a single-segment const/static read also count as a literal result",
+    "a Rust criterion with formal inputs is UNPROVEN whether or not its body reads them",
+    "a Python wrapper takes the Rust verdict only through a call whose callee NAME is a `_native` name "
+    "of that module (python_native_refs); an alias or a helper in between leaves it UNPROVEN",
+    "tools/rsfacts is gate tooling, outside the brain rules",
+)
+_FACT_KINDS = ("calls", "mcalls", "index", "assigns", "lets", "fors", "macros")
+_RECEIVERS = {"self", "&self", "&mutself", "mutself"}
+
+#: The constructed Rust RED arm and GREEN twin (pre-registered; also tests/test_r02b_verdict_rust.py).
+RUST_RED_SRC = """use pyo3::prelude::*;
+#[pyfunction]
+pub fn probe_binding() -> (bool, &'static str) { (true, "spiking 100% vs rate control 0%") }
+#[pyfunction]
+pub fn reentry_present() -> bool { true }
+#[pyfunction]
+pub fn probe_measured(brain: &Brain) -> (bool, &'static str) { (brain.bound(), "measured") }
+pub fn probe_env() -> (bool, &'static str) { (std::env::var("X").is_ok(), "env") }
+#[cfg(test)]
+fn probe_test() -> bool { true }
+#[pymodule(gil_used = false)]
+mod _native {
+    #[pymodule_export]
+    use super::{probe_binding, reentry_present, probe_measured};
+}
+"""
+RUST_GREEN_SRC = """use pyo3::prelude::*;
+#[pyfunction]
+pub fn probe_binding(brain: &Brain) -> (bool, &'static str) { (brain.bound(), "measured") }
+#[pyfunction]
+pub fn reentry_present(trace: &[f64]) -> bool { trace.iter().any(|x| *x > 0.5) }
+#[pymodule(gil_used = false)]
+mod _native {
+    #[pymodule_export]
+    use super::{probe_binding, reentry_present};
+}
+"""
+PY_RED_SRC = """from snn_data_lake import _native
+import snn_data_lake._native as n
+
+
+def probe_binding():
+    return _native.probe_binding()
+
+
+def reentry_present():
+    return n.reentry_present()
+
+
+def probe_measured(brain):
+    return _native.probe_measured(brain)
+"""
+PY_GREEN_SRC = """from snn_data_lake import _native
+
+
+def probe_binding(brain):
+    return _native.probe_binding(brain)
+"""
+RED_NO_RED = {
+    "native/sndl-core/src/plasticity.rs::probe_binding",
+    "native/sndl-core/src/plasticity.rs::reentry_present",
+    "wrap.probe_binding",
+    "wrap.reentry_present",
+}
 
 
 def _is_criterion(name):
@@ -289,10 +376,12 @@ def _fixed_success(node, aliases):
     return False
 
 
-def _input_analysis(fn, params):
+def _input_analysis(fn, params, twin=None):
+    """`twin(return_value)` -> the NO_RED Rust criterion a `_native` call returns, else None."""
     facts = _BodyFacts(params)
     for stmt in fn.body:
         facts.visit(stmt)
+    twins = [twin(value) for value in facts.returns] if twin else []
     # A single, top-level scalar binding is the entire supported alias language. Dynamic access
     # or other unresolved bindings disable alias inference, but cannot alter a literal return.
     aliases = {}
@@ -324,6 +413,9 @@ def _input_analysis(fn, params):
             literal_results = False
     if fixed:
         reason = "invariant success on supported normal-return paths"
+        no_red = True
+    elif twins and all(twins) and not facts.refusal and _returns_on_all_paths(fn.body):
+        reason = "takes the Rust verdict of " + ", ".join(sorted({t["name"] for t in twins}))
         no_red = True
     elif facts.uncertain or facts.refusal or facts.controls_unproven:
         reason = "; ".join(sorted(facts.uncertain)) or (
@@ -421,16 +513,101 @@ def _referenced_names(node):
     return [n.id for n in ast.walk(node) if isinstance(n, ast.Name)]
 
 
-def scan():
+def native_status(root=None):
+    """(status line, file facts) for `native/`; `RustFactsUnavailable` -> a RED status and None."""
+    rf = _rust_facts()
+    try:
+        return rf.native_status(ROOT if root is None else root)
+    except rf.RustFactsUnavailable as exc:
+        return f"native/ UNAVAILABLE (RED: RustFactsUnavailable: {exc})", None
+
+
+def _criterion(name, file, line, params, no_red, reason):
+    return {
+        "name": name,
+        "file": file,
+        "line": line,
+        "params": params,
+        "reads_system": False,
+        "input_loads": [],
+        "has_formal_inputs": bool(params),
+        "no_red": no_red,
+        "analysis": "NO_RED" if no_red else "UNPROVEN",
+        "reason": reason,
+    }
+
+
+def rust_criteria(native):
+    """One criterion dict per criterion-shaped Rust fn -- the ONE Rust entry point `scan()` calls.
+
+    `native` is `(status, file_facts)` from `native_status()` or a fixture. Facts owned by a fn are
+    attributed by `fn_id` (rust_facts schema 2); a fn that owns none and takes no input returns a
+    literal or a const, which no input can change. An unavailable reader is one NO_RED entry.
+    """
+    status, file_facts = native
+    if file_facts is None:
+        return [_criterion("native/", "native/", 0, [], True, status)]
+    out = []
+    for f in file_facts:
+        p = pathlib.Path(f["file"])
+        rel = (p.relative_to(ROOT) if p.is_absolute() and ROOT in p.parents else p).as_posix()
+        for fn in f["fns"]:
+            if (
+                fn["cfg_test"]
+                or f.get("test_file")
+                or not fn["has_body"]
+                or not fn["ret"]
+                or not _is_criterion(fn["name"])
+            ):
+                continue
+            params = [a.split(":")[0].strip() for a in fn["params"]]
+            params = [a for a in params if a.replace(" ", "") not in _RECEIVERS]
+            owned = sum(1 for k in _FACT_KINDS for x in f.get(k, []) if x["fn_id"] == fn["id"])
+            if params:
+                no_red, reason = (
+                    False,
+                    "formal inputs: use unobservable in facts; reachability unproven",
+                )
+            elif owned:
+                no_red, reason = False, "computation observed; reachability unproven"
+            else:
+                no_red, reason = True, "no formal inputs; no computation (literal or const result)"
+            out.append(_criterion(f"{rel}::{fn['name']}", rel, fn["line"], params, no_red, reason))
+    return out
+
+
+def _twins(native, rust, src):
+    """{python module: {`_native` name: NO_RED Rust criterion}} -- the verdicts a wrapper may take."""
+    rf = _rust_facts()
+    by_key = {(c["file"], c["name"].rsplit("::", 1)[-1]): c for c in rust if c["no_red"]}
+    no_red = {}
+    for py, e in rf.pyo3_exports(native[1] or []).items():
+        p = pathlib.Path(e["file"])
+        rel = (p.relative_to(ROOT) if p.is_absolute() and ROOT in p.parents else p).as_posix()
+        if e["kind"] == "function" and (rel, e["rust"]) in by_key:
+            no_red[py] = by_key[(rel, e["rust"])]
+    refs = rf.python_native_refs(src) if no_red else {}
+    return {mod: {n: no_red[n] for n in names if n in no_red} for mod, names in refs.items()}
+
+
+def scan(native=None, src=None):
     """Return (criteria, tautologies). criteria: list of dicts, one per discovered criterion."""
-    criteria = []
+    src = SRC if src is None else src
+    native = native_status() if native is None else native
+    criteria = rust_criteria(native)
+    twins = _twins(native, criteria, src)
     tautologies = []
-    for path in sorted(SRC.rglob("*.py")):
+    for path in sorted(src.rglob("*.py")):
         try:
             tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
         except SyntaxError:
             continue
-        rel = path.relative_to(ROOT).as_posix()
+        rel = path.relative_to(ROOT if ROOT in path.parents else src.parent).as_posix()
+        mine = twins.get(_rust_facts()._module_of(path, src), {})
+
+        def twin(value, mine=mine):
+            return mine.get(_called_name(value)) if isinstance(value, ast.Call) else None
+
         names = set()
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_criterion(
@@ -444,7 +621,7 @@ def scan():
                         "file": rel,
                         "line": node.lineno,
                         "params": params,
-                        **_input_analysis(node, params),
+                        **_input_analysis(node, params, twin if mine else None),
                     }
                 )
         if names:
@@ -453,11 +630,35 @@ def scan():
     return criteria, tautologies
 
 
-def main(argv=None):
+def self_check():
+    """The constructed Rust RED arm and GREEN twin, through `scan()` with injected facts."""
+    import tempfile
+
+    from snn_data_lake.gates.gradient_claim_gate import fixture_native
+
+    with tempfile.TemporaryDirectory() as td:
+        src = pathlib.Path(td) / "src"
+        (src / "pkg").mkdir(parents=True)
+        (src / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+        wrap = src / "pkg" / "wrap.py"
+        wrap.write_text(PY_RED_SRC, encoding="utf-8")
+        red = {c["name"] for c in scan(fixture_native(RUST_RED_SRC), src)[0] if c["no_red"]}
+        assert red == RED_NO_RED, red
+        wrap.write_text(PY_GREEN_SRC, encoding="utf-8")
+        green = [c["name"] for c in scan(fixture_native(RUST_GREEN_SRC), src)[0] if c["no_red"]]
+        assert green == [], green
+    print(f"red_reachability self-check OK: Rust RED arm {len(red)} NO_RED, GREEN twin 0")
+    return 0
+
+
+def main(argv=None, native=None):
     argv = sys.argv[1:] if argv is None else argv
+    if "--self-check" in argv:
+        return self_check()
     do_assert = "--assert" in argv
 
-    criteria, tautologies = scan()
+    native = native_status() if native is None else native
+    criteria, tautologies = scan(native)
 
     no_red = [c for c in criteria if c["no_red"] and c["name"] not in EXEMPT]
     ok = [c for c in criteria if c["reads_system"]]
@@ -468,7 +669,10 @@ def main(argv=None):
     print("red_reachability -- a criterion that cannot fail is not a measurement (P8)")
     print("=" * 78)
     n_files = sum(1 for _ in SRC.rglob("*.py"))
-    print(f"scanned {n_files} files under src/, found {len(criteria)} criteria")
+    n_rust = sum(1 for c in criteria if c["file"].startswith("native/"))
+    print(f"scanned {n_files} files under src/, found {len(criteria) - n_rust} criteria")
+    print(f"{native[0]}; Rust criteria {n_rust}")
+    print("  Rust BLIND SPOTS: " + "; ".join((*_rust_facts().BLIND_SPOTS, *RUST_BLIND_SPOTS)))
     print()
 
     print("--- NO_RED: supported missing-input or invariant-success defects ---")
