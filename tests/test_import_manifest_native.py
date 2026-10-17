@@ -97,6 +97,17 @@ def test_e2_red_fires_through_the_real_broken_path(tmp_path, monkeypatch):
     assert not bad["snn_data_lake._native:lif_step"].startswith("BROKEN-STATIC"), bad
 
 
+def test_broken_without_native_computes_the_governed_refs_itself(tmp_path):
+    root = _tree(tmp_path, exports_lif=False)
+    bad = import_manifest.broken({}, root=root)
+    assert list(bad) == ["snn_data_lake._native:lif_step"], bad
+
+
+def test_broken_with_explicit_empty_native_skips_the_rust_half(tmp_path):
+    root = _tree(tmp_path, exports_lif=False)
+    assert import_manifest.broken({}, native={}, root=root) == {}
+
+
 def test_refs_with_native_absent_are_broken(tmp_path, monkeypatch):
     root = _tree(tmp_path, exports_lif=True)
     for f in (root / "native").rglob("*.rs"):
