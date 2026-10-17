@@ -67,6 +67,17 @@ BLIND_SPOTS = (
     "macro_rules!/proc-macro/build.rs generated code is invisible",
 )
 
+# Receiver methods that write their receiver in place (ndarray / nalgebra / faer / std), shared by
+# every gate that asks "is this a weight UPDATE" so no gate keeps its own copy (P2). Syntax only:
+# a gate still decides whether the receiver is weight-ish. Extend here, not in a gate.
+INPLACE_UPDATE_METHODS = frozenset(
+    {
+        "add_assign", "sub_assign", "mul_assign", "div_assign", "scaled_add", "assign", "fill",
+        "zip_mut_with", "mapv_inplace", "map_inplace", "copy_from", "copy_from_slice",
+        "clone_from", "ger", "gemm", "gemv", "axpy", "apply", "swap_axes",
+    }
+)  # fmt: skip
+
 
 class RustFactsUnavailable(RuntimeError):
     """The Rust half of a gate could not run. A gate must report this as a RED, never skip it."""
