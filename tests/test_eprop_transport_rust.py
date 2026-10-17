@@ -127,3 +127,51 @@ def test_t2_symmetry_check_and_same_order_read_are_clean(tmp_path):
     validator = "fn check(&self) -> bool { self.w[[i, j]] == self.w[[j, i]] }"
     assert _scan(tmp_path, same_order) == []
     assert _scan(tmp_path / "v", validator) == []
+
+
+FOLD1_RED = [
+    "self.w2.transpose_mut(); self.w1 += &self.w2;",  # T-1 in place, returns unit
+    "self.w2.transpose_mut(); self.w1.scaled_add(-lr, &self.w2);",
+    "y.gemv_tr(1.0, &self.w2, e, 0.0); self.w1.scaled_add(-lr, &y);",  # weight as the ARGUMENT
+    "self.w1.gemv_tr(1.0, &self.w2, e, 0.0);",
+    "let d = e.tr_mul(&self.w2); self.w1.scaled_add(-lr, &d);",
+    "let d = e.ad_mul(&self.w2); self.w1.scaled_add(-lr, &d);",
+    "let d = e.tr_dot(&self.w2); self.w1 += d;",
+    "let d = self.w2.t().to_owned(); self.w1 += &d; let d = e.clone();",  # T-2 same line
+    'let s = "x"; let d = self.w2.t().dot(e); self.w1.scaled_add(-lr, &d);',  # strip keeps code
+    'let s = r#"quote " inside"#; let d = self.w2.t().dot(e); self.w1.scaled_add(-lr, &d);',
+]
+
+
+@pytest.mark.parametrize("body", FOLD1_RED)
+def test_fold1_reds_fire_exactly_once(tmp_path, body):
+    found = _scan(tmp_path, f"fn f(&mut self, e: &A, lr: f64) {{ {body} }}")
+    assert _rules(found) == ["T1"], found
+
+
+FOLD1_CLEAN = [
+    'let s = "w2.t()"; *w += s.len() as f64;',  # T-3 transpose spelling inside a string
+    'let s = r#"w2.t()"#; *w += s.len() as f64;',
+    "self.fb.transpose_mut(); self.w1 += &self.fb;",  # fixed feedback, not forward
+    "self.w2.transpose_mut(); let h = self.w2.dot(e); h",  # activation only
+    "y.gemv_tr(1.0, &self.fb, e, 0.0); self.w1.scaled_add(-lr, &y);",
+    "y.gemv_tr(1.0, &self.w2, e, 0.0); y",  # activation only
+    "let d = self.w2.t().to_owned(); let d = e.clone(); self.w1 += &d;",  # shadow BEFORE update
+]
+
+
+@pytest.mark.parametrize("body", FOLD1_CLEAN)
+def test_fold1_controls_stay_clean(tmp_path, body):
+    assert _scan(tmp_path, f"fn f(&mut self, e: &A, w: &mut f64, lr: f64) {{ {body} }}") == []
+
+
+def test_fold1_red_arm_is_exactly_three_t1_and_the_string_fn_is_silent(tmp_path):
+    _tree(tmp_path, gate._rust_fixture(red=True, fold=True))
+    found = gate.scan_rust(tmp_path)[1]
+    assert _rules(found) == ["T1", "T1", "T1"], found
+    assert sorted(f[2] for f in found) == ["as_arg", "in_place", "same_line"], found
+
+
+def test_fold1_green_twin_is_zero(tmp_path):
+    _tree(tmp_path, gate._rust_fixture(red=False, fold=True))
+    assert gate.scan_rust(tmp_path)[1] == []

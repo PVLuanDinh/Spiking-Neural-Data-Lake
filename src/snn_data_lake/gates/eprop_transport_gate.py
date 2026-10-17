@@ -409,6 +409,12 @@ _RS_TRANSPOSE_ARGS = {
     "movedim": {"0,1", "1,0"},
 }
 _RS_CALL = re.compile(r"\.(" + "|".join([*_RS_TRANSPOSE, *_RS_TRANSPOSE_ARGS]) + r")\(")
+#: Spellings that transpose their ARGUMENT (nalgebra implicit-transpose products); only gemv_tr writes
+#: its receiver, the rest return the product.
+_RS_TRANSPOSE_ARG = frozenset({"gemv_tr", "tr_mul", "ad_mul", "tr_dot"})
+_RS_ARG_CALL = re.compile(r"\.(" + "|".join(_RS_TRANSPOSE_ARG) + r")\(")
+#: Rust string / char literals, raw and byte forms included (a spelling inside one is text, not code).
+_RS_LITERAL = re.compile(r"""b?r(#*)".*?"\1|b?"(?:\\.|[^"\\])*"|b?'(?:\\[^']+|[^\\'])'""", re.S)
 _RS_PATH = re.compile(r"[*&]*((?:[A-Za-z_]\w*)(?:\.[A-Za-z_]\w*)*)([\[(]?)")
 _RS_IDENT = re.compile(r"[A-Za-z_]\w*")
 _RS_ITER_MUT = re.compile(r"\.(iter_mut|rows_mut|axis_iter_mut)\(")
@@ -419,11 +425,14 @@ _RUST_BLIND = (
     "flow stays inside ONE fn (cross-fn flow is invisible); same-named fns in one file share taint",
     "flat w[a * N + b] indexing; a weight aliased to a differently-named local is not weight-ish",
     "a tuple `let` taints every name it binds",
+    "gemv_tr/tr_mul/ad_mul/tr_dot taint through a weight-ish ARGUMENT NAME only; only gemv_tr's "
+    "receiver is tainted (a bare `y` that aliases a weight is invisible)",
 )
 
 
 def _rs_norm(text):
-    return re.sub(r"\s+", "", re.sub(r"&\s*mut\s+", "&", text or ""))
+    text = _RS_LITERAL.sub('""', text or "")
+    return re.sub(r"\s+", "", re.sub(r"&\s*mut\s+", "&", text))
 
 
 def _rs_name(text):
@@ -472,7 +481,14 @@ def _rs_transposes(text):
         name = _rs_name(_rs_operand_before(text, m.start()))
         if _is_weight(name):
             out.append(name)
+    for m in _RS_ARG_CALL.finditer(text):
+        out += _rs_arg_weights(_rs_split_top(_rs_args_after(text, m.end())))
     return out
+
+
+def _rs_arg_weights(args):
+    """Names of the weight-ish operands among call arguments: `&self.w2` -> w2."""
+    return [n for n in map(_rs_name, args) if _is_weight(n)]
 
 
 def _rs_carried(text, taint):
@@ -495,15 +511,15 @@ def _rs_bind(taint, pat, src):
 
 def _rust_t1(f):
     """(line, fn, rule, detail) for transposed weights reaching a weight update, per fn, by line."""
-    order = ("fors", "lets", "assigns", "mcalls")
+    order = ("fors", "lets", "assigns", "mcalls")  # same (line, col): a let binds before its update
     by_fn = {}
     for rank, kind in enumerate(order):
         for r in f.get(kind, []):
-            by_fn.setdefault(r["fn"], []).append((r["line"], rank, kind, r))
+            by_fn.setdefault(r["fn"], []).append((r["line"], r["col"], rank, kind, r))
     out = []
     for fn, events in by_fn.items():
         taint, wbound = {}, set()
-        for line, _rank, kind, r in sorted(events, key=lambda e: e[:2]):
+        for line, _col, _rank, kind, r in sorted(events, key=lambda e: e[:3]):
             if kind == "fors":
                 if _RS_ITER_MUT.search(_rs_norm(r["iter"])) and _is_weight(_rs_name(r["iter"])):
                     wbound |= set(_RS_IDENT.findall(r["pat"]))
@@ -521,14 +537,22 @@ def _rust_t1(f):
                         taint.pop(name, None)
             else:
                 name = _rs_name(r["recv"])
-                if not (name in wbound or _is_weight(name)):
+                weight_recv = name in wbound or _is_weight(name)
+                if r["name"] == "gemv_tr" and (src := next(iter(_rs_arg_weights(r["args"])), None)):
+                    if weight_recv:
+                        out.append((line, fn, "T1", f"{src} transposed -> updates {name}"))
+                    elif name:
+                        taint[name] = src
+                if not weight_recv:
                     continue
                 args = ",".join(r["args"])
                 if r["name"] in rust_facts.INPLACE_UPDATE_METHODS:
                     src = _rs_carried(args, taint)
                     if src:
                         out.append((line, fn, "T1", f"{src} transposed -> updates {name}"))
-                if r["name"] == "swap_axes" and _rs_norm(args) in _RS_TRANSPOSE_ARGS["swap_axes"]:
+                if r["name"] == "transpose_mut" or (
+                    r["name"] == "swap_axes" and _rs_norm(args) in _RS_TRANSPOSE_ARGS["swap_axes"]
+                ):
                     taint[name] = name
     return out
 
@@ -612,10 +636,36 @@ _RUST_GREEN = _RUST_RED.replace("self.w2.t()", "self.fb.t()").replace(
 )
 
 
-def _rust_fixture(red):
+# Fold round 1: four reproduced misses, one fn each (distinct names: taint is per fn name). RED
+# plants three T1 (in-place `transpose_mut`, `gemv_tr` with the weight as its ARGUMENT, a same-line
+# shadow AFTER the update) and the fourth fn holds a transpose spelling in a STRING, which must stay
+# silent in both arms.
+_RUST_FOLD_RED = """\
+impl Net {
+    pub fn in_place(&mut self, lr: f64) {
+        self.w2.transpose_mut();
+        self.w1.scaled_add(-lr, &self.w2);
+    }
+    pub fn as_arg(&mut self, e: &A, lr: f64) {
+        y.gemv_tr(1.0, &self.w2, e, 0.0);
+        self.w1.scaled_add(-lr, &y);
+    }
+    pub fn same_line(&mut self, e: &A) {
+        let d = self.w2.t().to_owned(); self.w1 += &d; let d = e.clone();
+    }
+    pub fn in_text(&mut self, w: &mut f64) {
+        let s = "w2.t()"; *w += s.len() as f64;
+    }
+}
+"""
+_RUST_FOLD_GREEN = _RUST_FOLD_RED.replace("self.w2", "self.fb")
+
+
+def _rust_fixture(red, fold=False):
+    planted, fixed = (_RUST_FOLD_RED, _RUST_FOLD_GREEN) if fold else (_RUST_RED, _RUST_GREEN)
     return {
         "sndl-core/src/lib.rs": "pub mod plasticity;\n",
-        "sndl-core/src/plasticity.rs": _RUST_RED if red else _RUST_GREEN,
+        "sndl-core/src/plasticity.rs": planted if red else fixed,
         "sndl-python/src/lib.rs": "#[pyfunction]\nfn add(a: f64, b: f64) -> f64 { a + b }\n",
     }
 
@@ -1087,23 +1137,29 @@ def _fires(source):
 #   title: a different gate's own `_selfcheck`, a file-changed flag and a sidecar-writer census;
 #   none builds or scans a Rust tree.
 def _check_rust_half():
-    counts = {}
-    for name, planted in (("planted", True), ("fixed", False)):
-        with tempfile.TemporaryDirectory() as d:
-            for rel, text in _rust_fixture(planted).items():
-                path = os.path.join(d, "native", *rel.split("/"))
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                with open(path, "w", encoding="utf-8") as fh:
-                    fh.write(text)
-            subprocess.run(["git", "init", "-q", d], check=True)
-            counts[name] = [f[3] for f in scan_rust(d)[1]]
+    counts, fold = {}, {}
+    for into, kwargs in ((counts, {}), (fold, {"fold": True})):
+        for name, planted in (("planted", True), ("fixed", False)):
+            with tempfile.TemporaryDirectory() as d:
+                for rel, text in _rust_fixture(planted, **kwargs).items():
+                    path = os.path.join(d, "native", *rel.split("/"))
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                    with open(path, "w", encoding="utf-8") as fh:
+                        fh.write(text)
+                subprocess.run(["git", "init", "-q", d], check=True)
+                into[name] = [f[3] for f in scan_rust(d)[1]]
     assert sorted(counts["planted"]) == ["T1", "T2"], (
         f"the Rust RED must give exactly [T1, T2] through scan_rust, got {counts['planted']}"
     )
     assert not counts["fixed"], f"the Rust GREEN twin must give 0, got {counts['fixed']}"
+    assert fold["planted"] == ["T1", "T1", "T1"], (
+        f"the fold-1 Rust RED must give exactly [T1, T1, T1] through scan_rust, got {fold['planted']}"
+    )
+    assert not fold["fixed"], f"the fold-1 Rust GREEN twin must give 0, got {fold['fixed']}"
     status, live = scan_rust()
     assert not live, f"governed Rust weight transport in native/: {live}"
     print(f"  RED    Rust {counts['planted']}; green twin {len(counts['fixed'])}; live: {status}")
+    print(f"  RED    Rust fold-1 {fold['planted']}; green twin {len(fold['fixed'])}")
 
 
 def _selfcheck():
