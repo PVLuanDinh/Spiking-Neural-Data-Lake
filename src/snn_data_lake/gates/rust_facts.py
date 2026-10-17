@@ -72,8 +72,7 @@ BLIND_SPOTS = (
     "all #[cfg] items parsed regardless of features; #[cfg_attr(.., pyclass(..))] wrapped PyO3 attributes are not read",
     "macro_rules!/proc-macro/build.rs generated code is invisible",
     'export map: m.add("X", ..), add_wrapped(wrap_pymodule!(..)) and nested declarative #[pymodule] mods '
-    "are not resolved (nested names are flattened to the top level); a let-bound wrapper stays visible "
-    "through a NON-wrapper rebinding or an inner block that shadows its name",
+    "are not resolved (nested names are flattened to the top level)",
     "python refs: importlib.import_module / getattr(_native, name) are dynamic (getattr gives <module>); "
     "a .py that fails to parse is skipped here (ruff/import gates red it)",
 )
@@ -198,25 +197,50 @@ def crate_dirs(files) -> set[Path]:
     return dirs
 
 
+# distinct-from: docs_only_battery.py atlas_node_gate.py -- a git-index hash and a node census; this names the FILES a Rust `mod x;` declaration can load
+def _mod_files(declaring: Path, m: dict) -> list[Path]:
+    """Files a non-inline, non-cfg(test) `mod x;` in `declaring` can load: its `#[path = ".."]`, else
+    x.rs | x/mod.rs beside a mod.rs/lib.rs/main.rs (under <stem>/ for any other file), below the
+    enclosing inline module path."""
+    if m["inline"] or m["cfg_test"]:
+        return []
+    a = _attr(m["attrs"], "path")
+    hit = _PATH_ATTR.search(a) if a else None
+    if hit:
+        return [(declaring.parent / hit.group(1)).resolve()]
+    base = (
+        declaring.parent
+        if declaring.name in ("mod.rs", "lib.rs", "main.rs")
+        else declaring.with_suffix("")
+    )
+    base = base.joinpath(*m["mod"].split("::")) if m["mod"] else base
+    return [(base / f"{m['name']}.rs").resolve(), (base / m["name"] / "mod.rs").resolve()]
+
+
 def test_file_flags(file_facts) -> dict[str, bool]:
     """{file: is test code}: the ONE classification every gate uses (P2, Codex r4 N-3). A file is test
-    code iff its path relative to its DEEPEST crate root starts with tests/ benches/ examples/ --
-    unless a production `#[path = ".."] mod x;` includes it (Codex r4 N-2: then it is production)."""
+    code iff its path relative to its DEEPEST crate root starts with tests/ benches/ examples/ and no
+    PRODUCTION file reaches it through a `mod x;` declaration (`_mod_files`): production is the
+    FIXPOINT grown from the non-test files, so a test file's `#[path]` include promotes nothing
+    (Codex r5 R-2) and a production include reaches the included file's own children (r5 N5-1)."""
     files = [Path(f["file"]) for f in file_facts]
     dirs = crate_dirs(files)
-    included = set()
-    for f in file_facts:
-        for m in f.get("mods", []) if f.get("ok") else []:
-            a = _attr(m["attrs"], "path")
-            hit = _PATH_ATTR.search(a) if a and not m["cfg_test"] else None
-            if hit:
-                included.add((Path(f["file"]).parent / hit.group(1)).resolve())
-    out = {}
-    for f, p in zip(file_facts, files, strict=True):
+    by_path = {p.resolve(): f for f, p in zip(file_facts, files, strict=True)}
+    prod = set()
+    for p in files:
         crate = max((d for d in dirs if d in p.parents), key=lambda d: len(d.parts), default=None)
         rest = p.relative_to(crate).parts if crate else ()
-        out[f["file"]] = bool(rest) and rest[0] in _TEST_DIRS and p.resolve() not in included
-    return out
+        if not (rest and rest[0] in _TEST_DIRS):
+            prod.add(p.resolve())
+    todo = list(prod)
+    while todo:
+        f = by_path[todo.pop()]
+        for m in f.get("mods", []) if f.get("ok") else []:
+            for t in _mod_files(Path(f["file"]), m):
+                if t in by_path and t not in prod:
+                    prod.add(t)
+                    todo.append(t)
+    return {f["file"]: p.resolve() not in prod for f, p in zip(file_facts, files, strict=True)}
 
 
 def _mark_test_dir(f: dict, hit: bool) -> None:
@@ -258,6 +282,7 @@ _NAME_ARG = re.compile(r'\bname\s*=\s*"([^"]+)"')
 
 # distinct-from: amdahl_gate.py unit_label_gate.py eprop_transport_gate.py attention_schema.py rule_composer.py recursive_tom.py fear_conditioning.py proximity_replay.py -- those read Python AST nodes, objects or VSA content; these read the Rust ATTRIBUTE TEXT rsfacts prints
 _WRAP = re.compile(r"\bwrap_pyfunction\s*!\s*\(\s*([\w:]+)")
+_IDENT = re.compile(r"[A-Za-z_]\w*")
 
 
 def _attr_name(a: str) -> str:
@@ -379,22 +404,34 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
             if in_decl(t) and _attr(t["attrs"], "pyclass"):
                 export_class(t["name"], {"file": f["file"], "line": t["line"]})
         modfns = modcode
-        # `let f = wrap_pyfunction!(x, m)?;` inside a module fn: (fn, local) -> [(end, wrapped)],
-        # resolved per add_function call to the LATEST wrapper binding whose let ENDED before it
-        # (Codex r3 F-2: a rebound `f` must not retarget an earlier registration; Codex r4 N-1: a
-        # let is not visible inside its own initializer, so `let f = m.add_function(f)?` uses the
-        # old f). Non-wrapper rebindings and block scopes are not tracked (BLIND_SPOTS).
+        # `let f = <init>;` inside a module fn: (fn, local) -> [(end, start, scope, init)]. The
+        # binding visible at a use is the LATEST let of that name that ENDED before the use (Codex
+        # r3 F-2: a rebound `f` must not retarget an earlier registration; r4 N-1: a let is not
+        # visible inside its own initializer) and whose block scope is a prefix of the use's (r5
+        # R-1). A wrapper init binds, a plain identifier aliases (resolved through), anything else
+        # unbinds.
         bound: dict = {}
         for x in f.get("lets", []):
-            m = _WRAP.search(x["init"] or "") if x["fn"] in modfns else None
-            if m:
+            if x["fn"] in modfns:
                 key = (x["fn"], x["pat"].replace("mut ", "").strip())
                 end = (x.get("end_line", x["line"]), x.get("end_col", x.get("col", 0)))
-                bound.setdefault(key, []).append((end, m.group(1)))
+                start, scope = (x["line"], x.get("col", 0)), x.get("scope", [])
+                bound.setdefault(key, []).append((end, start, scope, x["init"] or ""))
 
-        def binding(fn, local, at, bound=bound):
-            prior = [w for end, w in sorted(bound.get((fn, local), [])) if end <= at]
-            return prior[-1] if prior else None
+        def binding(fn, local, at, scope, bound=bound):
+            prior = [
+                b
+                for b in sorted(bound.get((fn, local), []), key=lambda b: b[0])
+                if b[0] <= at and b[2] == scope[: len(b[2])]
+            ]
+            if not prior:
+                return None
+            _, start, let_scope, init = prior[-1]
+            m = _WRAP.search(init)
+            if m:
+                return m.group(1)
+            alias = _IDENT.fullmatch(init.strip())
+            return binding(fn, alias.group(0), start, let_scope) if alias else None
 
         for c in f.get("mcalls", []):
             if c["fn"] not in modfns:
@@ -407,7 +444,7 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
                 for a in c["args"]:
                     m = _WRAP.search(a)
                     at = (c["line"], c.get("col", 0))
-                    name = m.group(1) if m else binding(c["fn"], a.strip(), at)
+                    name = m.group(1) if m else binding(c["fn"], a.strip(), at, c.get("scope", []))
                     if name:
                         export_fn(name.split("::")[-1], where)
             elif c["name"] == "add_class" and c.get("turbofish"):  # m.add_class::<T>()
@@ -625,6 +662,43 @@ fn uses_core() -> sndl_core::reservoir::Cell { let d = 1; let e = 2; d + e }
 fn tpath() -> sndl_core::testonly::Probe { unimplemented!() }
 """
 
+# Let resolution inside a #[pymodule] fn (body, exports): Codex r3 F-2, r4 N-1, r5 R-1 and the three
+# shapes the fold-4 brief binds together -- a wrapper init binds, a plain identifier aliases, any
+# other init unbinds, an inner block does not shadow. The self-check and the tests share these.
+_REBINDING = (
+    "#[pyfunction]\nfn learn() {}\n#[pyfunction]\nfn decay() {}\n#[pymodule]\n"
+    "fn m(m: &Bound<'_, PyModule>) -> PyResult<()> {\n%s Ok(())\n}\n"
+)
+_REBINDING_CASES = (
+    (" let f = wrap_pyfunction!(learn, m)?;\n m.add_function(f)?;\n let f = wrap_pyfunction!(decay, m)?;\n", ["learn"]),
+    (" let f = wrap_pyfunction!(learn, m)?;\n let f = m.add_function(f)?;\n", ["learn"]),
+    (" let f = wrap_pyfunction!(learn, m)?;\n let g = wrap_pyfunction!(decay, m)?;\n let f = g;\n m.add_function(f)?;\n", ["decay"]),
+    (" let f = wrap_pyfunction!(learn, m)?;\n { let f = 0; }\n m.add_function(f)?;\n", ["learn"]),
+    (" let f = wrap_pyfunction!(learn, m)?;\n let f = 0;\n m.add_function(f)?;\n", []),
+)  # fmt: skip
+
+# Test-file flags are a fixpoint over `mod` declarations (Codex r4 N-2, r5 R-2, r5 N5-1): a production
+# `#[path]` include reaches the included file's children; a test file's include promotes nothing; a
+# cfg(test) include promotes nothing. The self-check and the tests share this tree.
+_MOD_TREE = {
+    "native/sndl-core/src/lib.rs": (
+        '#[path = "../tests/mod.rs"]\npub mod shared;\n#[cfg(test)]\n#[path = "../tests/other.rs"]\nmod other;\n'
+    ),
+    "native/sndl-core/tests/mod.rs": "pub mod reference;\n",
+    "native/sndl-core/tests/reference.rs": "pub fn reference() {}\n",
+    "native/sndl-core/tests/integration.rs": '#[path = "helper.rs"]\nmod helper;\n',
+    "native/sndl-core/tests/helper.rs": "pub fn helper() {}\n",
+    "native/sndl-core/tests/other.rs": "fn other() {}\n",
+}
+_MOD_FLAGS = {
+    "src/lib.rs": False,
+    "tests/mod.rs": False,
+    "tests/reference.rs": False,
+    "tests/integration.rs": True,
+    "tests/helper.rs": True,
+    "tests/other.rs": True,
+}
+
 _PY_FIXTURE = {
     "snn_data_lake/__init__.py": "",
     "snn_data_lake/f.py": "import snn_data_lake as s\nimport snn_data_lake._native\ns._native.missing()\n",
@@ -683,6 +757,23 @@ def self_check(root: Path = ROOT) -> None:
     assert (cfg["prod2"], cfg["t2"], cfg["maybe"]) == (False, True, False), cfg
     ds = sorted((x["line"], x["col"]) for x in e["lets"] if x["fn"] == "uses_core")
     assert len(ds) == 2 and ds[0][0] == ds[1][0] and ds[0][1] < ds[1][1], f"same-line columns: {ds}"
+    for body, want_let in _REBINDING_CASES:  # RED (r5 R-1): scope-aware let resolution
+        got = sorted(pyo3_exports([facts_for_source(_REBINDING % body, root=root)]))
+        assert got == want_let, f"let resolution wrong for {body!r}: {got} != {want_let}"
+    with (
+        tempfile.TemporaryDirectory() as d
+    ):  # RED (r5 R-2, N5-1): production is a mod-tree fixpoint
+        for rel, text in _MOD_TREE.items():
+            p = Path(d) / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(text, encoding="utf-8")
+        paths = sorted((Path(d) / "native").rglob("*.rs"))
+        crate = Path(d) / "native" / "sndl-core"
+        flags = {
+            p.relative_to(crate).as_posix(): x["test_file"]
+            for p, x in zip(paths, facts(paths, root), strict=True)
+        }
+    assert flags == _MOD_FLAGS, f"test-file flags wrong: {flags}"
     with tempfile.TemporaryDirectory() as d:
         for rel, text in _PY_FIXTURE.items():
             p = Path(d) / rel
@@ -727,7 +818,8 @@ def main() -> int:
     tool = facts(rust_files(ROOT, str(RSFACTS)))
     print(
         f"rust_facts: self-check OK (fixture: 7 fns, 2 transpose calls, 5 exports; edge fixture: 10 exports incl. let-bound + helper-registered, top-level name= only, cfg evaluated, "
-        f"no unregistered wrapper/class methods, cfg(not(test)) is production; 5 _native importers; "
+        f"no unregistered wrapper/class methods, cfg(not(test)) is production; 5 let-rebinding shapes; "
+        f"mod-tree flags fixpoint 6 files; 5 _native importers; "
         f"unparseable-Rust RED fired) | {status} | tools/rsfacts: {len(tool)} file(s) parsed | "
         f"python _native importers in src: {len(python_native_refs())}"
     )

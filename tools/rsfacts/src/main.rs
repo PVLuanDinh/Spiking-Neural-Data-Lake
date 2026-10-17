@@ -38,6 +38,9 @@ struct Facts {
     cur_impl: Vec<(String, Option<String>, Vec<String>)>,
     cur_mod: Vec<String>,
     cfg_test: usize,
+    // block scope path: the file-unique ordinal of every enclosing `{ .. }`, outermost first
+    scope: Vec<usize>,
+    blocks: usize,
 }
 
 fn line<S: Spanned>(s: &S) -> usize {
@@ -217,6 +220,13 @@ impl Facts {
 }
 
 impl<'ast> Visit<'ast> for Facts {
+    // A let is visible at a use only where the let's scope is a prefix of the use's scope.
+    fn visit_block(&mut self, i: &'ast syn::Block) {
+        self.blocks += 1;
+        self.scope.push(self.blocks);
+        visit::visit_block(self, i);
+        self.scope.pop();
+    }
     fn visit_item_fn(&mut self, i: &'ast syn::ItemFn) {
         self.fn_rec(&i.sig, &i.vis, &i.attrs, true);
         let t = is_cfg_test(&i.attrs) as usize;
@@ -364,7 +374,7 @@ impl<'ast> Visit<'ast> for Facts {
             let (f, _, cfg) = self.ctx();
             self.calls.push(
                 json!({"path": txt(&p.path).replace(' ', ""), "line": line(i), "col": col(i), "fn": f, "fn_id": self.cur_fn_id.last(),
-                "args": i.args.iter().map(txt).collect::<Vec<_>>(), "cfg_test": cfg}),
+                "scope": self.scope, "args": i.args.iter().map(txt).collect::<Vec<_>>(), "cfg_test": cfg}),
             );
         }
         visit::visit_expr_call(self, i);
@@ -373,7 +383,7 @@ impl<'ast> Visit<'ast> for Facts {
         let (f, _, cfg) = self.ctx();
         self.mcalls.push(
             json!({"name": i.method.to_string(), "line": line(&i.method), "col": col(&i.method), "fn": f, "fn_id": self.cur_fn_id.last(),
-            "recv": txt(&*i.receiver), "args": i.args.iter().map(txt).collect::<Vec<_>>(),
+            "scope": self.scope, "recv": txt(&*i.receiver), "args": i.args.iter().map(txt).collect::<Vec<_>>(),
             "turbofish": i.turbofish.as_ref().map(txt), "cfg_test": cfg}),
         );
         visit::visit_expr_method_call(self, i);
@@ -412,7 +422,8 @@ impl<'ast> Visit<'ast> for Facts {
         let init = i.init.as_ref().map(|x| txt(&*x.expr));
         self.lets.push(
             json!({"pat": txt(&i.pat), "init": init, "line": line(i), "col": col(i),
-                "end_line": i.span().end().line, "end_col": i.span().end().column, "fn": f, "fn_id": self.cur_fn_id.last(), "cfg_test": cfg}),
+                "end_line": i.span().end().line, "end_col": i.span().end().column, "fn": f, "fn_id": self.cur_fn_id.last(),
+                "scope": self.scope, "cfg_test": cfg}),
         );
         visit::visit_local(self, i);
     }
@@ -428,7 +439,7 @@ impl<'ast> Visit<'ast> for Facts {
         let (f, _, cfg) = self.ctx();
         self.macros.push(
             json!({"name": txt(&i.path).replace(' ', ""), "line": line(&i.path), "col": col(&i.path), "fn": f, "fn_id": self.cur_fn_id.last(),
-            "tokens": i.tokens.to_string(), "cfg_test": cfg}),
+            "scope": self.scope, "tokens": i.tokens.to_string(), "cfg_test": cfg}),
         );
         visit::visit_macro(self, i);
     }
