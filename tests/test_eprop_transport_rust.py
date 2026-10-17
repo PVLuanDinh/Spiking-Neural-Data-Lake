@@ -136,7 +136,6 @@ FOLD1_RED = [
     "self.w1.gemv_tr(1.0, &self.w2, e, 0.0);",
     "let d = e.tr_mul(&self.w2); self.w1.scaled_add(-lr, &d);",
     "let d = e.ad_mul(&self.w2); self.w1.scaled_add(-lr, &d);",
-    "let d = e.tr_dot(&self.w2); self.w1 += d;",
     "let d = self.w2.t().to_owned(); self.w1 += &d; let d = e.clone();",  # T-2 same line
     'let s = "x"; let d = self.w2.t().dot(e); self.w1.scaled_add(-lr, &d);',  # strip keeps code
     'let s = r#"quote " inside"#; let d = self.w2.t().dot(e); self.w1.scaled_add(-lr, &d);',
@@ -157,7 +156,41 @@ FOLD1_CLEAN = [
     "y.gemv_tr(1.0, &self.fb, e, 0.0); self.w1.scaled_add(-lr, &y);",
     "y.gemv_tr(1.0, &self.w2, e, 0.0); y",  # activation only
     "let d = self.w2.t().to_owned(); let d = e.clone(); self.w1 += &d;",  # shadow BEFORE update
+    "let d = e.tr_dot(&self.w2); self.w1 += d;",  # tr_dot is a SCALAR (Oja/Hebbian y = w . x)
+    "let y = x.tr_dot(&self.w); self.w += y * lr;",
 ]
+
+FOLD3_VERBS = {
+    "gemm_tr": "{r}.gemm_tr(1.0, &{w}, &e, 0.0);",
+    "gemm_ad": "{r}.gemm_ad(1.0, &{w}, &e, 0.0);",
+    "gemv_ad": "{r}.gemv_ad(1.0, &{w}, e, 0.0);",
+    "tr_copy_from": "{r}.tr_copy_from(&{w});",
+    "ad_copy_from": "{r}.ad_copy_from(&{w});",
+}
+FOLD3_RED = [
+    t.format(r=r, w="self.w2") + tail
+    for t in FOLD3_VERBS.values()
+    for r, tail in (("y", " self.w1.scaled_add(-lr, &y);"), ("self.w1", ""))
+]
+FOLD3_CLEAN = [
+    t.format(r=r, w=w) + tail
+    for t in FOLD3_VERBS.values()
+    for r, w, tail in (
+        ("y", "self.fb", " self.w1.scaled_add(-lr, &y);"),  # fixed feedback
+        ("y", "self.w2", " y"),  # activation only
+    )
+]
+
+
+@pytest.mark.parametrize("body", FOLD3_RED)
+def test_fold3_implicit_transpose_writers_fire_exactly_once(tmp_path, body):
+    found = _scan(tmp_path, f"fn f(&mut self, e: &A, lr: f64) {{ {body} }}")
+    assert _rules(found) == ["T1"], found
+
+
+@pytest.mark.parametrize("body", FOLD3_CLEAN)
+def test_fold3_feedback_and_activation_controls_stay_clean(tmp_path, body):
+    assert _scan(tmp_path, f"fn f(&mut self, e: &A, lr: f64) {{ {body} }}") == []
 
 
 @pytest.mark.parametrize("body", FOLD1_CLEAN)
@@ -166,14 +199,14 @@ def test_fold1_controls_stay_clean(tmp_path, body):
 
 
 def test_fold1_red_arm_is_exactly_three_t1_and_the_string_fn_is_silent(tmp_path):
-    _tree(tmp_path, gate._rust_fixture(red=True, fold=True))
+    _tree(tmp_path, gate._rust_fixture(red=True, fold=1))
     found = gate.scan_rust(tmp_path)[1]
     assert _rules(found) == ["T1", "T1", "T1"], found
     assert sorted(f[2] for f in found) == ["as_arg", "in_place", "same_line"], found
 
 
 def test_fold1_green_twin_is_zero(tmp_path):
-    _tree(tmp_path, gate._rust_fixture(red=False, fold=True))
+    _tree(tmp_path, gate._rust_fixture(red=False, fold=1))
     assert gate.scan_rust(tmp_path)[1] == []
 
 
@@ -207,4 +240,18 @@ def test_a_crate_tests_dir_reference_is_out_of_scope(tmp_path):
             ),
         },
     )
+    assert gate.scan_rust(tmp_path)[1] == []
+
+
+def test_fold3_red_arm_is_exactly_five_t1_and_the_tr_dot_fn_is_silent(tmp_path):
+    _tree(tmp_path, gate._rust_fixture(red=True, fold=3))
+    found = gate.scan_rust(tmp_path)[1]
+    assert _rules(found) == ["T1"] * 5, found
+    assert sorted(f[2] for f in found) == ["ad_copy", "gemm_ad", "gemm_tr", "gemv_ad", "tr_copy"], (
+        found
+    )
+
+
+def test_fold3_green_twin_is_zero(tmp_path):
+    _tree(tmp_path, gate._rust_fixture(red=False, fold=3))
     assert gate.scan_rust(tmp_path)[1] == []
