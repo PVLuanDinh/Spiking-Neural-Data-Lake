@@ -569,12 +569,18 @@ RUST_BLIND_SPOTS = (
     "CLAIM signals are lexical (one intra-crate hop by last path segment); a renamed re-export is missed",
     "GRADIENT_CLAIM is read per file, like the Python per-module constant",
     "tools/rsfacts is gate tooling, outside the brain rules",
+    "an optimizer step is an `x = ..step(..)` assign to a model/weight-ish target or `.step` on an optim* receiver; `let m = o.step(..)` is not seen",
 )
 
 
 def _ident(text):
-    """The last identifier of a receiver/target token string, before any index: `self . w [[i , j]]` -> w."""
-    ids = re.findall(r"[A-Za-z_]\w*", text.split("[")[0])
+    """The last field written in a receiver/target token string, index groups removed:
+    `self . w [[i , j]]` -> w; `self . layers [0] . w` -> w."""
+    while True:
+        text, n = re.subn(r"\[[^\[\]]*\]", "", text)
+        if not n:
+            break
+    ids = re.findall(r"[A-Za-z_]\w*", text)
     return ids[-1] if ids else ""
 
 
@@ -586,11 +592,39 @@ def _rust_qual(fn):
     )
 
 
+_RUST_TOKEN = re.compile(r'\s*(r(#*)"(.*?)"\2|"(?:[^"\\]|\\.)*"|[\[\](),])', re.S)
+
+
+def _rust_triples(text):
+    """`[("a", "b", r#"c"#), ..]` -> [(a, b, c), ..]; string literals and `[ ( , ) ]` only, else ValueError."""
+    toks, pos, text = [], 0, text.strip()
+    while pos < len(text):
+        m = _RUST_TOKEN.match(text, pos)
+        if not m:
+            raise ValueError(f"not a string literal or `[](),` at offset {pos}")
+        pos = m.end()
+        if m.group(1) in "[](),":
+            toks.append(m.group(1))
+        elif m.group(2) is not None and m.group(1).startswith("r"):
+            toks.append(("s", m.group(3)))
+        else:
+            toks.append(
+                ("s", ast.literal_eval(m.group(1)))
+            )  # a plain literal: ast evals literals only
+    # grammar: [ ( s , s , s ,? ) ,? ... ]
+    shape = "".join("s" if isinstance(t, tuple) else t for t in toks)
+    if not re.fullmatch(r"\[(\(s,s,s,?\),?)*\]", shape):
+        raise ValueError('not a `[("sym", "DISP", "reason"), ..]` list of string triples')
+    strs = [t[1] for t in toks if isinstance(t, tuple)]
+    return list(zip(strs[0::3], strs[1::3], strs[2::3]))
+
+
 def read_rust_declaration(file_facts):
     """{qualname: (disposition, reason)} from the file's `GRADIENT_CLAIM` const; ValueError if unreadable.
 
-    The expr text is `& [("Type::fn" , "LOCAL" , "reason") , ...]`: strip the `&`, `ast.literal_eval`
-    (literals only). Anything else is an error the caller turns into a RED, never a skip.
+    The expr text is `& [("Type::fn" , "LOCAL" , "reason") , ...]`: strip the `&`, then read ONLY
+    Rust string literals (plain, or raw `r#".."#`) and the `[ ( , ) ]` punctuation between them.
+    Anything else is an error the caller turns into a RED, never a skip.
     """
     out = {}
     for c in file_facts.get("consts", []):
@@ -600,15 +634,14 @@ def read_rust_declaration(file_facts):
         try:
             if not expr.startswith("&"):
                 raise ValueError("not a `&[...]` reference")
-            raw = ast.literal_eval(expr[1:].strip())
-            for sym, disp, reason in raw:
+            for sym, disp, reason in _rust_triples(expr[1:]):
                 if (
                     not all(isinstance(x, str) for x in (sym, disp, reason))
                     or disp not in DISPOSITIONS
                 ):
                     raise ValueError(f"bad entry {(sym, disp)!r}")
                 out[sym] = (disp, reason)
-        except (ValueError, SyntaxError, TypeError) as exc:
+        except (ValueError, SyntaxError) as exc:
             raise ValueError(f"{DECL_NAME} unparseable at line {c['line']}: {exc}") from exc
     return out
 
@@ -618,12 +651,33 @@ def _rust_body_text(f, name):
     parts = [p for k in ("params",) for fn in f["fns"] if fn["name"] == name for p in fn[k]]
     parts += [x for m in f["mcalls"] if m["fn"] == name for x in (m["recv"], m["name"])]
     parts += [c["path"] for c in f["calls"] if c["fn"] == name]
-    parts += [x["init"] for x in f["lets"] if x["fn"] == name]
-    return " ".join(parts)
+    parts += [x["init"] for x in f["lets"] if x["fn"] == name]  # `let d;` has init None
+    return " ".join(p for p in parts if p)
+
+
+_RUST_STEP = re.compile(r"\.\s*step\s*\(")
+_MODEL_TARGETS = frozenset(("model", "net", "network", "module", "params", "parameters"))
+
+
+def _rust_steps_optimizer(f, name):
+    """An optimizer-step result assigned to a model/weight target, or `.step(..)` on an optim receiver."""
+    for a in f["assigns"]:
+        tgt = _ident(a["lhs"]).lower()
+        if (
+            a["fn"] == name
+            and a["op"] == "="
+            and _RUST_STEP.search(a["rhs"] or "")
+            and (tgt in _MODEL_TARGETS or _is_weight_name(tgt))
+        ):
+            return True
+    return any(
+        m["fn"] == name and m["name"] == "step" and "optim" in m["recv"].lower()
+        for m in f["mcalls"]
+    )
 
 
 def _rust_mutates_weight(f, name):
-    """A compound assign / in-place method on a weight-ish target, or a burn `optim.step`."""
+    """A compound assign / in-place method on a weight-ish target, or a burn optimizer step."""
     for a in f["assigns"]:
         if a["fn"] == name and a["op"] != "=" and _is_weight_name(_ident(a["lhs"])):
             return True
@@ -632,9 +686,7 @@ def _rust_mutates_weight(f, name):
             continue
         if m["name"] in rust_facts.INPLACE_UPDATE_METHODS and _is_weight_name(_ident(m["recv"])):
             return True
-        if m["name"] == "step" and "optim" in m["recv"].lower():
-            return True
-    return False
+    return _rust_steps_optimizer(f, name)
 
 
 def _rust_claims(f, fn):
@@ -704,6 +756,13 @@ def rust_census(native=None, root=None):
                     if ofn is not fn
                 )
             disp = declared.get(qual, (None, ""))[0]
+            if disp == EXACT_GRADIENT and any(_rust_steps_optimizer(f, fn["name"]) for fn in fns):
+                failures.append(
+                    (
+                        rel,
+                        f"{qual}: declared {EXACT_GRADIENT} but steps an optimizer (POLICIES e-prop SCOPE)",
+                    )
+                )
             state = resolve(disp, "CLAIM" if claim else "UNKNOWN")
             if disp is not None and qual not in surface:
                 state = PHANTOM_DECLARATION
@@ -751,7 +810,70 @@ mod tests { #[test] fn train_smoke() {} }
 #: The GREEN twin: train_step declared, the phantom removed.
 RUST_GREEN_SRC = RUST_RED_SRC.replace(
     '    ("Ghost::learn", "LOCAL", "a rule that was deleted"),\n',
-    '    ("Trainer::train_step", "EXACT_GRADIENT", "burn autodiff reference"),\n',
+    '    ("Trainer::train_step", "APPROXIMATES_GRADIENT", "burn autodiff trainer: steps an optimizer"),\n',
+)
+
+_STRUCT_T = "pub struct T { model: M, optim: O, layers: Vec<L>, w: f64 }\n"
+_DECL = "pub const GRADIENT_CLAIM: &[(&str, &str, &str)] = &[{}];\n"
+_STEP = "self.model = self.optim.step(self.lr, self.model, grads);"
+#: Fold round 1 reds (each fails against the round-0 gate; see rows/r02-gradclaim/REPORT.md). Entries:
+#: (label, source, expected rule states in order, expected failure count, expected findings count).
+RUST_FOLD1_REDS = (
+    (
+        "G-1 `let d; d = 1.0;` (init None) does not crash the CLAIM scan",
+        _STRUCT_T + "impl T { pub fn nudge(&mut self) { let d; d = 1.0; self.w += d; } }\n",
+        [UNDETERMINABLE],
+        0,
+        1,
+    ),
+    (
+        'G-2 raw-string reason r#".."# is a literal, read',
+        _DECL.format('("T::nudge", "LOCAL", r#"local rule"#)')
+        + _STRUCT_T
+        + "impl T { pub fn nudge(&mut self) { self.w += 1.0; } }\n",
+        [CLASSIFIED_LOCAL],
+        0,
+        0,
+    ),
+    (
+        "A-1 `self.model = self.opt.step(..)` in a non-verb fn enters the census",
+        _STRUCT_T
+        + "impl T { pub fn tick(&mut self, b: B) { let grads = self.loss(&b).backward(); "
+        + "self.model = self.opt.step(1e-3, self.model.clone(), grads); } }\n",
+        [MISSING_DECLARATION],
+        0,
+        1,
+    ),
+    (
+        "A-2 `self.layers[0].w -= g` enters the census (index chain -> written field)",
+        _STRUCT_T
+        + "impl T { pub fn tick(&mut self, d: f64) { let g = self.loss().backward(); self.layers[0].w -= g; } }\n",
+        [MISSING_DECLARATION],
+        0,
+        1,
+    ),
+    (
+        "B-1 an optimizer-stepping fn declared EXACT_GRADIENT reds",
+        _DECL.format('("T::train_step", "EXACT_GRADIENT", "ref")')
+        + _STRUCT_T
+        + "impl T { pub fn train_step(&mut self, b: B) { let grads = self.loss(&b).backward(); "
+        + _STEP
+        + " } }\n",
+        [CLASSIFIED_REFERENCE],
+        1,
+        1,
+    ),
+    (
+        "C-1 a #[cfg(test)] GRADIENT_CLAIM is not a production declaration",
+        _STRUCT_T
+        + "impl T { pub fn train_step(&mut self, b: B) { let grads = self.loss(&b).backward(); "
+        + _STEP
+        + " } }\n#[cfg(test)]\n"
+        + _DECL.format('("T::train_step", "LOCAL", "lie")'),
+        [MISSING_DECLARATION],
+        0,
+        1,
+    ),
 )
 
 
@@ -1374,6 +1496,21 @@ def _selfcheck():
         f"RED (fail closed); an empty native tree stays green"
     )
     ok = ok and fired11
+
+    # RED 12 -- fold round 1: every reproduced defect, each with its exact expected counts.
+    for label, src, states, n_fail, n_find in RUST_FOLD1_REDS:
+        try:
+            rr, ff, _ = rust_census(fixture_native(src))
+            got = (
+                [r["state"] for r in rr],
+                len(ff),
+                len(assert_findings(counts(rr), counts(rr, False), 1, strict, ff)),
+            )
+        except Exception as exc:  # a crash is a miss, never a pass
+            got = (type(exc).__name__, -1, -1)
+        fired12 = got == (states, n_fail, n_find)
+        print(f"  {'RED  ' if fired12 else 'FAIL '}  Rust fold 1: {label} -> {got[1:]} findings")
+        ok = ok and fired12
 
     print("self-check: " + ("OK" if ok else "FAILED"))
     return ok
