@@ -30,6 +30,7 @@ struct Facts {
     fors: Vec<Value>,
     path_roots: Vec<String>,
     paths: Vec<String>,
+    test_paths: Vec<String>,
     // context
     cur_fn: Vec<String>,
     cur_impl: Vec<(String, Option<String>, Vec<String>)>,
@@ -322,7 +323,12 @@ impl<'ast> Visit<'ast> for Facts {
         if p.segments.len() >= 2 {
             self.path_roots.push(p.segments[0].ident.to_string());
             let full: Vec<String> = p.segments.iter().map(|s| s.ident.to_string()).collect();
-            self.paths.push(full.join("::"));
+            // production paths only: a test-scoped path must never make a module reachable
+            if self.cfg_test == 0 {
+                self.paths.push(full.join("::"));
+            } else {
+                self.test_paths.push(full.join("::"));
+            }
         }
         visit::visit_path(self, p);
     }
@@ -413,10 +419,12 @@ fn one(path: &str) -> Value {
             v.path_roots.dedup();
             v.paths.sort();
             v.paths.dedup();
+            v.test_paths.sort();
+            v.test_paths.dedup();
             json!({"schema": SCHEMA, "file": path, "ok": true, "file_attrs": attrs_of(&ast.attrs),
                 "fns": v.fns, "types": v.types, "mods": v.mods, "uses": v.uses, "consts": v.consts,
                 "calls": v.calls, "mcalls": v.mcalls, "macros": v.macros, "index": v.index,
-                "assigns": v.assigns, "lets": v.lets, "fors": v.fors, "path_roots": v.path_roots, "paths": v.paths})
+                "assigns": v.assigns, "lets": v.lets, "fors": v.fors, "path_roots": v.path_roots, "paths": v.paths, "test_paths": v.test_paths})
         }
         Err(e) => json!({"schema": SCHEMA, "file": path, "ok": false,
             "err": format!("{}:{} {}", e.span().start().line, e.span().start().column, e)}),

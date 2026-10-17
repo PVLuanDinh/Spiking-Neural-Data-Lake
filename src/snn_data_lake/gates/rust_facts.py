@@ -535,6 +535,8 @@ fn bound(m: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 trait Checks { #[cfg(test)] fn tcheck() { helper(); } }
 fn uses_core() -> sndl_core::reservoir::Cell { let d = 1; let e = 2; d + e }
+#[cfg(test)]
+fn tpath() -> sndl_core::testonly::Probe { unimplemented!() }
 """
 
 _PY_FIXTURE = {
@@ -585,6 +587,10 @@ def self_check(root: Path = ROOT) -> None:
     calls = [c["cfg_test"] for c in e["calls"] if c["path"] == "helper"]
     assert calls == [False, True, True], e["calls"]
     assert "sndl_core::reservoir::Cell" in e["paths"], "full multi-segment paths lost"
+    assert "sndl_core::testonly::Probe" not in e["paths"], (
+        "a test-scoped path counted as production"
+    )
+    assert "sndl_core::testonly::Probe" in e["test_paths"], "test-scoped paths lost"
     # panel A/B: cfg(test) on use/const items, and the cfg predicate evaluated, not text-matched
     assert [u["cfg_test"] for u in e["uses"] if u["alias"] == "test_helper"] == [True], e["uses"]
     assert [c["cfg_test"] for c in e["consts"] if c["name"] == "TEST_ONLY"] == [True], e["consts"]
