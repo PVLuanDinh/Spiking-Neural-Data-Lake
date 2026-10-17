@@ -184,3 +184,6 @@ scratchpad/
 
 # R0.2: cargo target dir of the Rust fact extractor behind the Rust-aware gates
 tools/rsfacts/target/
+
+# R0.4: cargo target dir of the native/ workspace (sndl-core); the .rs sources stay visible to git
+native/target/

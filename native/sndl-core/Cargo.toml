@@ -1,0 +1,15 @@
+[package]
+name = "sndl-core"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "SNDL engine components in Rust (plan section 11). R0.4: the RNG parity kit."
+
+[lib]
+name = "sndl_core"
+
+[dependencies]
+# sha512 for CPython's str-seed path, sha256 for the kit's post-state digests.
+sha2 = "0.11"
+# the fixture comparator (rng::parity) reads tests/fixtures_rng.json
+serde_json = "1"

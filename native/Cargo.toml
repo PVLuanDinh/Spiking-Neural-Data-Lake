@@ -1,0 +1,5 @@
+# Cargo workspace of the Rust port (plan section 9/11). `sndl-core` is the engine library; the PyO3
+# binding crate `sndl-python` joins with the first L-stage port. Build output: native/target/ (gitignored).
+[workspace]
+resolver = "3"
+members = ["sndl-core"]
