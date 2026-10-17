@@ -1,0 +1,131 @@
+"""Guardrails for `tools/native_ratchet.py` (R0.3 meter): per-library importers may only fall.
+
+Each test builds the thing the gate must catch (a rise, a new library, an unreadable Rust tree) and
+runs the gate's own comparator / entry point on it.
+
+Run: pytest tests/test_native_ratchet.py
+"""
+
+import json
+import pathlib
+import sys
+
+import pytest
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "tools"))
+
+import native_ratchet as nr  # noqa: E402
+
+from snn_data_lake.gates import rust_facts  # noqa: E402
+
+BASE = {"numpy": 3, "zlib": 1, "struct": 0}
+HITS = {
+    "numpy": [("a.py", 1, False), ("a.py", 2, True), ("b.py", 1, False)],
+    "zlib": [("a.py", 3, False)],
+}
+
+
+def test_census_counts_distinct_files_and_union():
+    zones, union = nr.census(imported=HITS)
+    assert {k: len(v) for k, v in zones.items()}["numpy"] == 2
+    assert zones["scipy"] == []
+    assert union == ["a.py", "b.py"] and nr.counts(zones)["zlib"] == 1
+
+
+def test_union_excludes_stdlib_only_files():
+    _, union = nr.census(imported={"zlib": [("z.py", 1, False)], "numpy": [("n.py", 1, False)]})
+    assert union == ["n.py"]
+
+
+P = "src/snn_data_lake/"
+PKG_HITS = {
+    "numpy": [(P + "sleep/a.py", 1, False), (P + "sleep/b.py", 1, False), (P + "top.py", 1, False)],
+    "torch": [(P + "sleep/a.py", 2, False)],
+}
+
+
+def test_live_counts_adds_union_and_per_package_keys():
+    live = nr.live_counts(*nr.census(imported=PKG_HITS))
+    assert live["numpy"] == 3 and live["union"] == 3
+    assert live["sleep:numpy"] == 2 and live["sleep:torch"] == 1 and live["sleep:union"] == 2
+    assert live["(root):numpy"] == 1 and "(root):zlib" in live
+
+
+def test_one_package_rises_while_library_total_does_not():
+    base = nr.live_counts(*nr.census(imported=PKG_HITS))
+    moved = {
+        "numpy": [
+            (P + "sleep/a.py", 1, False),
+            (P + "sleep/b.py", 1, False),
+            (P + "sleep/c.py", 1, False),
+        ],
+        "torch": [(P + "sleep/a.py", 2, False)],
+    }
+    live = nr.live_counts(*nr.census(imported=moved))
+    assert live["numpy"] == base["numpy"] == 3
+    assert ("sleep:numpy", 3, 2) in nr.compare(live, base)
+
+
+def test_new_package_with_imports_is_red_but_empty_one_is_not():
+    base = {"numpy": 1, "sleep:numpy": 1}
+    assert nr.compare({"numpy": 1, "sleep:numpy": 1, "lake:numpy": 0}, base) == []
+    assert nr.compare({"numpy": 1, "sleep:numpy": 1, "lake:numpy": 1}, base) == [
+        ("lake:numpy", 1, None)
+    ]
+
+
+def test_baseline_string_round_trips():
+    live = nr.live_counts(*nr.census(imported=PKG_HITS))
+    assert nr.decode(nr.encode(live)) == live and " " not in nr.encode(live)
+
+
+def test_component_view_is_labelled_provisional():
+    live = nr.live_counts(*nr.census(imported=PKG_HITS))
+    view = "\n".join(nr.component_view(live))
+    assert "provisional until G8 boundaries settle" in view and "sleep" in view
+
+
+def test_rise_is_red_and_fall_is_green():
+    assert nr.compare(dict(BASE, numpy=4), BASE) == [("numpy", 4, 3)]
+    assert nr.compare(dict(BASE, numpy=2), BASE) == []
+
+
+def test_library_missing_from_baseline_is_red():
+    assert nr.compare(dict(BASE, torch=1), BASE) == [("torch", 1, None)]
+
+
+def test_update_baseline_refuses_a_rise(tmp_path, monkeypatch):
+    path = tmp_path / "b.json"
+    held = {k: 5 for k in nr.COLS}
+    path.write_text(json.dumps(nr.encode(held)), encoding="utf-8")
+    monkeypatch.setattr(nr, "BASELINE_PATH", path)
+    monkeypatch.setattr(nr, "census", lambda **_: ({k: ["f"] * 6 for k in nr.LIBS}, ["f"] * 6))
+    assert nr.main(["--update-baseline"]) == 1
+    assert nr.decode(json.loads(path.read_text(encoding="utf-8"))) == held
+
+
+def test_native_absent_line(tmp_path):
+    assert nr.native_line(tmp_path).startswith("native/ ABSENT")
+
+
+def test_decode_rejects_a_row_of_the_wrong_width():
+    with pytest.raises(ValueError):
+        nr.decode("ALL=1,2,3")
+
+
+def test_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch):
+    (tmp_path / "native").mkdir()
+    (tmp_path / "native" / "lib.rs").write_text("fn x() {}\n", encoding="utf-8")
+
+    def boom(*a, **k):
+        raise rust_facts.RustFactsUnavailable("no cargo")
+
+    monkeypatch.setattr(rust_facts, "facts", boom)
+    monkeypatch.setattr(nr, "NATIVE_ROOT", tmp_path)
+    with pytest.raises(rust_facts.RustFactsUnavailable):
+        nr.native_line(tmp_path)
+    assert nr.main(["--assert"]) == 1
+
+
+def test_self_check_passes():
+    assert nr.self_check() == 0
