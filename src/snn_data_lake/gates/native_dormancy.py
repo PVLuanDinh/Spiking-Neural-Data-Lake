@@ -9,15 +9,20 @@ build is part of the brain, P4c) with no dormancy check at all.
 THREE ASSERTING RULES (Rust half active only when `native/` is PRESENT):
   D1 export liveness: every PyO3 class/function export (`rust_facts.pyo3_exports`) is referenced
      (`rust_facts.python_native_refs`) by a Python module `dormancy_gate.reachable()` proves live, else
-     a `NATIVE_EXEMPT {py_name: reason}` row.
-  D2 module liveness: (a) every `.rs` under `native/<crate>/src` is in its crate's `mod` tree from
+     a `NATIVE_EXEMPT {py_name: reason}` row. Members are live by use, not by import: a constructor
+     (`Cls.__new__`) iff the class name is loaded in a live `_native`-referencing module, a getter iff
+     its property is attribute-loaded there, a setter iff it is attribute-assigned or loaded.
+  D2 module liveness: (a) every `.rs` under `native/**/<crate>/src` (a crate = any directory holding a
+     `Cargo.toml` or a `src/lib.rs|main.rs`, at any depth) is in its crate's `mod` tree from
      `lib.rs`/`main.rs` (`mod x;` -> `x.rs` | `x/mod.rs`, `#[path]` wins); (b) every module of a
      library crate other than the binding crate (the one defining a `#[pymodule]`) is reached from
      the file of a LIVE export through `use`/path references (`crate::`, `super::`, `self::`,
      `<crate>::`, `use` aliases), transitively. Exempt key: the file path under `native/`.
   M1 learning-verb fns (`method_dormancy_gate.is_learn_verb`, same matcher as the Python half): an
      EXPORTED method is live iff its Python-visible name is a name/attribute in a live module that
-     references `_native` (an exported function is D1's, not counted twice); a non-exported fn needs a
+     references `_native`; an exported FUNCTION is live iff its name is LOADED (not merely imported)
+     in a live module that imports it (one imported nowhere is D1's, not counted twice); a
+     non-exported fn needs a
      Rust caller (call path or method call, last segment) outside `#[cfg(test)]`, `#[test]`,
      `tests/`, `benches/`, `examples/`. Exempt key: `Type::fn`, bare `fn`, or the Python name.
 REPORT only: `pub fn` items of library crates referenced by name nowhere in `native/`.
@@ -29,7 +34,8 @@ prints `native/ ABSENT`, distinct from "0 findings".
 OWN BLIND SPOTS (printed beside the verdict with `rust_facts.BLIND_SPOTS`): liveness is per FILE, not
 per item (a live export's file reaches a module even when the item it names is unused); a `use`
 inside an inline `mod` resolves from the file's module; trait dispatch and generics match by last
-segment name; a `#[path]` inside an inline `mod` is not followed.
+segment name; a `#[path]` inside an inline `mod` is not followed; `rust_facts` `paths` carry no
+cfg(test) flag, so a test-only path is dropped only when a test call or `use` spells it.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.gates.native_dormancy
 """
@@ -54,6 +60,7 @@ BLIND_SPOTS = (
     "liveness is per file, not per item (a live export's file reaches its modules)",
     "use inside an inline mod resolves from the file's module; #[path] in an inline mod not followed",
     "trait dispatch and generics match a caller by last segment name",
+    "rust_facts `paths` has no cfg(test) flag: a test-only path counts unless a test call/use spells it",
 )
 
 _NOT_SRC = ("tests", "benches", "examples")
@@ -64,14 +71,17 @@ def _rel(f, base):
     return Path(f["file"]).relative_to(base).as_posix()
 
 
-def _is_src(rel):
-    p = rel.split("/")
-    return len(p) > 2 and p[1] == "src"
+def _in_test_dir(rest):
+    p = rest.split("/")
+    return p[0] in _NOT_SRC or p[-1] == "build.rs"
 
 
-def _in_test_dir(rel):
-    p = rel.split("/")
-    return len(p) > 1 and (p[1] in _NOT_SRC or p[-1] == "build.rs")
+def _is_root(rel):
+    return rel.endswith(("/src/lib.rs", "/src/main.rs")) or rel in ("src/lib.rs", "src/main.rs")
+
+
+def _crate_of_root(rel):
+    return posixpath.dirname(posixpath.dirname(rel))
 
 
 def _aliases(f):
@@ -85,24 +95,41 @@ def _aliases(f):
 class _Tree:
     """Crates, their mod trees and the `use`-alias map of every file under native/."""
 
-    def __init__(self, by_rel):
+    def __init__(self, by_rel, cargo_dirs=()):
         self.facts = by_rel
         self.crate_of, self.root, self.children, self.parent, self.alias = {}, {}, {}, {}, {}
+        self.dirs = {*cargo_dirs, *(_crate_of_root(r) for r in by_rel if _is_root(r))}
         for rel in by_rel:
-            if _is_src(rel):
-                self.crate_of[rel] = rel.split("/")[0]
-        for c in sorted(set(self.crate_of.values())):
+            d = self.crate_dir(rel)
+            if d is not None and rel.startswith(posixpath.join(d, "src") + "/"):
+                self.crate_of[rel] = d
+        for c in sorted(self.dirs):
             r = next(
-                (f"{c}/src/{n}" for n in ("lib.rs", "main.rs") if f"{c}/src/{n}" in by_rel), None
+                (
+                    posixpath.join(c, "src", n)
+                    for n in ("lib.rs", "main.rs")
+                    if posixpath.join(c, "src", n) in by_rel
+                ),
+                None,
             )
             if r:
                 self.root[c] = r
-        self.names = {c.replace("-", "_"): c for c in self.root}
+        self.names = {posixpath.basename(c).replace("-", "_"): c for c in self.root if c}
         self.in_tree = set()
         for r in self.root.values():
             self._walk_decl(r)
         for rel, f in by_rel.items():
             self.alias[rel] = _aliases(f)
+
+    def crate_dir(self, rel):
+        """Deepest crate directory holding `rel` ("" is native/ itself), None if none does."""
+        return max(
+            (d for d in self.dirs if not d or rel.startswith(d + "/")), key=len, default=None
+        )
+
+    def in_test_dir(self, rel):
+        d = self.crate_dir(rel)
+        return _in_test_dir(rel[len(d) + 1 :] if d else rel)
 
     def _walk_decl(self, rel):
         if rel in self.in_tree:
@@ -164,18 +191,30 @@ class _Tree:
         paths = [u["path"] for u in f.get("uses", []) if not u["cfg_test"]]
         paths += [c["path"] for c in f.get("calls", []) if not c["cfg_test"]]
         paths += list(f.get("path_roots", []))
+        spelled = [(c["path"], c["cfg_test"]) for c in (*f.get("calls", []), *f.get("uses", []))]
+        test_only = {p for p, t in spelled if t} - {p for p, t in spelled if not t}
+        paths += [p for p in f.get("paths", []) if p not in test_only]
         return {x for p in paths for x in self.reach(rel, p.split("::"))}
 
 
 def _py_idents(src, dotted):
+    """(names loaded, attributes loaded, attributes stored) of one live module; an `import .. as x`
+    alias is not a use, but loading `x` loads the name it stands for."""
     base = Path(src, *dotted.split("."))
     for p in (base.with_suffix(".py"), base / "__init__.py"):
         if p.exists():
-            tree = ast.parse(p.read_text(encoding="utf-8"))
-            return {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)} | {
-                n.id for n in ast.walk(tree) if isinstance(n, ast.Name)
-            }
-    return set()
+            nodes = list(ast.walk(ast.parse(p.read_text(encoding="utf-8"))))
+            loads = {n.id for n in nodes if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+            for n in nodes:
+                if isinstance(n, ast.ImportFrom):
+                    loads |= {a.name for a in n.names if a.asname in loads}
+            attrs = [n for n in nodes if isinstance(n, ast.Attribute)]
+            return (
+                loads,
+                {n.attr for n in attrs if isinstance(n.ctx, ast.Load)},
+                {n.attr for n in attrs if isinstance(n.ctx, ast.Store)},
+            )
+    return set(), set(), set()
 
 
 def _gate(viol, universe, exempt):
@@ -217,20 +256,38 @@ def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
         from snn_data_lake.gates import dormancy_gate
 
         live = dormancy_gate.reachable()
-    tree = _Tree(by_rel)
+    cargo = {
+        "" if p.parent == base else p.parent.relative_to(base).as_posix()
+        for p in base.rglob("Cargo.toml")
+        if "target" not in p.relative_to(base).parts
+    }
+    tree = _Tree(by_rel, cargo)
     exports = rf.pyo3_exports(fl)
     refs = rf.python_native_refs(src)
     live_py = {m for m in refs if m in live}
     used = set().union(*(refs[m] for m in live_py)) if live_py else set()
     star = "*" in used
+    ids = {m: _py_idents(src, m) for m in live_py}
+    loads = set().union(*(i[0] for i in ids.values())) if ids else set()
+    attr_load = set().union(*(i[1] for i in ids.values())) if ids else set()
+    attr_store = set().union(*(i[2] for i in ids.values())) if ids else set()
     # D1
     d_viol, d_univ, live_files = {}, {}, set()
     for name, e in exports.items():
         if e["kind"] == "method":
             continue
+        cls, _, member = name.partition(".")
+        by_use = {  # a member is live by use of its class / property, not by importing the class
+            "constructor": cls in loads | attr_load,
+            "getter": member in attr_load,
+            "setter": member in attr_load | attr_store,
+        }
         msg = f"D1 {name}: PyO3 export {e['rust']} ({_rel(e, base)}:{e['line']}) has no live Python reference"
         d_univ[f"D1 {name}"] = (msg, {name})
-        if star or name in used:
+        if e["kind"] in by_use:
+            if not (star or by_use[e["kind"]]):
+                d_viol[f"D1 {name}"] = (msg, {name})
+        elif star or name in used:
             live_files.add(_rel(e, base))
         else:
             d_viol[f"D1 {name}"] = (msg, {name})
@@ -239,11 +296,7 @@ def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
         tree.crate_of[r]
         for r, f in by_rel.items()
         if r in tree.crate_of
-        and any(
-            a.startswith("pymodule")
-            for x in (*f.get("mods", []), *f.get("fns", []))
-            for a in x["attrs"]
-        )
+        and any(rf._attr(x["attrs"], "pymodule") for x in (*f.get("mods", []), *f.get("fns", [])))
     }
     reached, stack = set(live_files), list(live_files)
     while stack:
@@ -273,15 +326,15 @@ def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
     # M1
     callers = set()
     for rel, f in by_rel.items():
-        if _in_test_dir(rel):
+        if tree.in_test_dir(rel):
             continue
         callers |= {c["path"].split("::")[-1] for c in f.get("calls", []) if not c["cfg_test"]}
         callers |= {c["name"] for c in f.get("mcalls", []) if not c["cfg_test"]}
     pos = {(e["file"], e["line"]): (n, e["kind"]) for n, e in exports.items()}
-    idents = set().union(*(_py_idents(src, m) for m in live_py)) if live_py else set()
+    idents = loads | attr_load | attr_store
     m_viol, m_univ = {}, {}
     for rel, f in by_rel.items():
-        if _in_test_dir(rel) or not _is_src(rel):
+        if tree.in_test_dir(rel) or rel not in tree.crate_of:
             continue
         for fn in f.get("fns", []):
             if fn["cfg_test"] or not fn["has_body"] or not is_learn_verb(fn["name"]):
@@ -289,10 +342,13 @@ def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
             key = f"{fn['impl'].split('::')[-1]}::{fn['name']}" if fn["impl"] else fn["name"]
             ex = pos.get((f["file"], fn["line"]))
             keys = {key, fn["name"], *([ex[0]] if ex else [])}
-            if ex and ex[1] == "function":
-                continue
+            if ex and ex[1] == "function" and ex[0] not in used and not star:
+                continue  # imported nowhere: D1's finding
             why = None
-            if ex and ex[0].split(".")[-1] not in idents and not star:
+            if ex and ex[1] == "function":
+                if ex[0] not in loads | attr_load and not star:
+                    why = f"exported as {ex[0]} but no live Python module loads that name"
+            elif ex and ex[0].split(".")[-1] not in idents and not star:
                 why = f"exported as {ex[0]} but no live Python module uses that name"
             elif not ex and fn["name"] not in callers:
                 why = f"({rel}:{fn['line']}) no Rust caller outside #[cfg(test)]/#[test]/tests/"
@@ -312,7 +368,7 @@ def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
     report = [
         f"unreferenced pub fn {fn['name']} ({rel}:{fn['line']})"
         for rel, f in sorted(by_rel.items())
-        if _is_src(rel) and tree.crate_of[rel] not in binding and not _in_test_dir(rel)
+        if rel in tree.crate_of and tree.crate_of[rel] not in binding and not tree.in_test_dir(rel)
         for fn in f.get("fns", [])
         if fn["vis"].startswith("pub")
         and not fn["cfg_test"]
@@ -362,20 +418,8 @@ _USER_RED = "from snn_data_lake._native import decay\n\ndecay(1.0)\n"
 _USER_GREEN = "from snn_data_lake._native import decay, lif_step\n\ndecay(1.0)\nlif_step(1.0)\n"
 
 
-def write_fixture(root, red):
-    """Build the fixture native/ tree plus a Python package under `root`. RED arm plants exactly
-    three defects (exported lif_step unreferenced, `pub mod dendrite` unused, Stdp::potentiate only
-    called from #[cfg(test)]); the GREEN twin fixes each."""
+def _write(root, files):
     root = Path(root)
-    files = {
-        "native/sndl-core/src/lib.rs": _CORE_LIB,
-        "native/sndl-core/src/reservoir.rs": _NEURON,
-        "native/sndl-core/src/dendrite.rs": _DENDRITE,
-        "native/sndl-core/src/plasticity.rs": _STDP_RED if red else _STDP_GREEN,
-        "native/sndl-python/src/lib.rs": _PY_RED if red else _PY_GREEN,
-        "src/snn_data_lake/__init__.py": "",
-        "src/snn_data_lake/user.py": _USER_RED if red else _USER_GREEN,
-    }
     for rel, text in files.items():
         p = root / rel
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -383,11 +427,143 @@ def write_fixture(root, red):
     subprocess.run(["git", "init", "-q", str(root)], check=True)
 
 
+def write_fixture(root, red, prefix=""):
+    """Build the fixture native/ tree plus a Python package under `root`. RED arm plants exactly
+    three defects (exported lif_step unreferenced, `pub mod dendrite` unused, Stdp::potentiate only
+    called from #[cfg(test)]); the GREEN twin fixes each. `prefix` nests the crates under
+    `native/<prefix>` (e.g. `crates/`)."""
+    _write(
+        root,
+        {
+            f"native/{prefix}sndl-core/src/lib.rs": _CORE_LIB,
+            f"native/{prefix}sndl-core/src/reservoir.rs": _NEURON,
+            f"native/{prefix}sndl-core/src/dendrite.rs": _DENDRITE,
+            f"native/{prefix}sndl-core/src/plasticity.rs": _STDP_RED if red else _STDP_GREEN,
+            f"native/{prefix}sndl-python/src/lib.rs": _PY_RED if red else _PY_GREEN,
+            "src/snn_data_lake/__init__.py": "",
+            "src/snn_data_lake/user.py": _USER_RED if red else _USER_GREEN,
+        },
+    )
+
+
+# ---- fold round 1: one (RED, GREEN) fixture pair per reproduced defect ------------------------
+
+_PYO3 = "use pyo3::prelude::*;\n"
+_CORE_RES = {
+    "native/sndl-core/src/lib.rs": "pub mod reservoir;\n",
+    "native/sndl-core/src/reservoir.rs": "pub struct Cell;\nimpl Cell { pub fn tick(&mut self) {} }\n",
+}
+_CORE_DEN = {
+    "native/sndl-core/src/lib.rs": "pub mod dendrite;\n",
+    "native/sndl-core/src/dendrite.rs": _DENDRITE,
+}
+_LEARN_LIB = (
+    _PYO3
+    + "#[pyfunction]\nfn learn() {}\n#[pymodule]\nmod _native { #[pymodule_export] use super::learn; }\n"
+)
+_NET_LIB = (
+    _PYO3
+    + "#[pyclass]\nstruct Net;\n#[pymethods]\nimpl Net {\n #[new]\n fn new() -> Self { Net }\n"
+    " #[getter(weight)]\n fn read_weight(&self) -> usize { 1 }\n"
+    " #[setter(bias)]\n fn write_bias(&mut self, v: usize) {}\n}\n"
+    "#[pymodule]\nmod _native { #[pymodule_export] use super::Net; }\n"
+)
+
+
+def _cell_lib(field):
+    return (
+        _PYO3
+        + f"#[pyclass]\nstruct Net {{ {field} }}\n#[pymethods]\nimpl Net {{ fn tick(&mut self) {{}} }}\n"
+        "#[pymodule]\nmod _native { #[pymodule_export] use super::Net; }\n"
+    )
+
+
+def _test_lib(use):
+    return (
+        _PYO3 + f"{use}\n#[pyfunction]\nfn decay(v: f64) -> f64 {{ v }}\n"
+        "#[pymodule]\nmod _native { #[pymodule_export] use super::decay; }\n"
+        "#[cfg(test)]\nmod tests { #[test] fn t() { let _ = sndl_core::dendrite::integrate(1.0); } }\n"
+    )
+
+
+def _qualified_binding(py):
+    return {
+        "native/sndl-python/src/lib.rs": _PYO3
+        + "mod helpers;\n#[pyfunction]\nfn lif_step(v: f64) -> f64 { v }\n"
+        "#[pyo3::pymodule]\nmod _native { #[pymodule_export] use super::lif_step; }\n",
+        "native/sndl-python/src/helpers.rs": "pub fn aid() {}\n",
+        "src/snn_data_lake/user.py": py,
+    }
+
+
+# name -> (RED files, GREEN files, RED (D, M) counts); every GREEN twin is 0/0
+FOLD_CASES = {
+    "pyo3-qualified-pymodule": (
+        _qualified_binding(""),
+        _qualified_binding("from snn_data_lake._native import lif_step\n\nlif_step(1.0)\n"),
+        (1, 0),
+    ),
+    "d1-import-only-learn-fn": (
+        {
+            "native/sndl-python/src/lib.rs": _LEARN_LIB,
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import learn\n",
+        },
+        {
+            "native/sndl-python/src/lib.rs": _LEARN_LIB,
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import learn\n\nlearn()\n",
+        },
+        (0, 1),
+    ),
+    "d2-qualified-type-path": (
+        {
+            **_CORE_RES,
+            "native/sndl-python/src/lib.rs": _cell_lib("x: usize"),
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import Net\n\nNet()\n",
+        },
+        {
+            **_CORE_RES,
+            "native/sndl-python/src/lib.rs": _cell_lib("inner: sndl_core::reservoir::Cell"),
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import Net\n\nNet()\n",
+        },
+        (1, 0),
+    ),
+    "c1-constructor-getter-setter": (
+        {
+            "native/sndl-python/src/lib.rs": _NET_LIB,
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import Net\n",
+        },
+        {
+            "native/sndl-python/src/lib.rs": _NET_LIB,
+            "src/snn_data_lake/user.py": (
+                "from snn_data_lake._native import Net\n\nn = Net()\nn.weight\nn.bias = 2\n"
+            ),
+        },
+        (3, 0),
+    ),
+    "cfg-test-use-and-path": (
+        {
+            **_CORE_DEN,
+            "native/sndl-python/src/lib.rs": _test_lib(
+                "#[cfg(test)]\nuse sndl_core::dendrite::integrate;"
+            ),
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import decay\n\ndecay(1.0)\n",
+        },
+        {
+            **_CORE_DEN,
+            "native/sndl-python/src/lib.rs": _test_lib("use sndl_core::dendrite::integrate;"),
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import decay\n\ndecay(1.0)\n",
+        },
+        (1, 0),
+    ),
+}
+
+
 # ---- self-check and gate entry ----------------------------------------------------------------
 
 
 def selfcheck():
-    """RED arm = exactly 3 findings, GREEN twin = 0, unparseable Rust = red on both gates."""
+    """RED arm = exactly 3 findings, GREEN twin = 0, unparseable Rust = red on both gates, then the
+    nested-crate arm and every FOLD_CASES pair at their exact counts."""
     with tempfile.TemporaryDirectory() as t:
         write_fixture(t, red=True)
         res = audit(t, live=FIXTURE_LIVE, src=Path(t) / "src")
@@ -399,6 +575,19 @@ def selfcheck():
         (Path(t) / "native/sndl-core/src/reservoir.rs").write_text("fn broken( {", encoding="utf-8")
         res = audit(t, live=FIXTURE_LIVE, src=Path(t) / "src")
         assert res["d"] and res["m"], "unparseable Rust did not fail closed"
+    for prefix, red in (("crates/", True), ("crates/", False)):  # nested crates stay governed
+        with tempfile.TemporaryDirectory() as t:
+            write_fixture(t, red=red, prefix=prefix)
+            res = audit(t, live=FIXTURE_LIVE, src=Path(t) / "src")
+            want = (2, 1) if red else (0, 0)
+            assert (len(res["d"]), len(res["m"])) == want, f"nested {red=} arm: {res}"
+    for name, (red_files, green_files, want) in FOLD_CASES.items():
+        for files, want_arm in ((red_files, want), (green_files, (0, 0))):
+            with tempfile.TemporaryDirectory() as t:
+                _write(t, files)
+                res = audit(t, live=FIXTURE_LIVE, src=Path(t) / "src")
+                got = (len(res["d"]), len(res["m"]))
+                assert got == want_arm, f"fold case {name}: want {want_arm}, got {res}"
 
 
 def check(group):
@@ -416,7 +605,7 @@ def main():
     selfcheck()
     res = audit()
     print(
-        f"native_dormancy: self-check OK (RED 3 findings, GREEN 0, fail-closed) | {res['status']} | "
+        f"native_dormancy: self-check OK (RED 3 findings, GREEN 0, fail-closed, nested crates, fold reds) | {res['status']} | "
         f"D {len(res['d'])} M {len(res['m'])}"
     )
     print("native_dormancy BLIND SPOTS: " + "; ".join((*rf.BLIND_SPOTS, *BLIND_SPOTS)))
