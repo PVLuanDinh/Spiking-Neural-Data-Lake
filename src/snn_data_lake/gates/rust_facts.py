@@ -86,6 +86,7 @@ INPLACE_UPDATE_METHODS = frozenset(
         "add_assign", "sub_assign", "mul_assign", "div_assign", "scaled_add", "assign", "fill",
         "zip_mut_with", "mapv_inplace", "map_inplace", "copy_from", "copy_from_slice",
         "clone_from", "ger", "gemm", "gemv", "axpy", "apply", "swap_axes",
+        "gemm_tr", "gemm_ad", "gemv_tr", "gemv_ad", "tr_copy_from", "ad_copy_from",
     }
 )  # fmt: skip
 
