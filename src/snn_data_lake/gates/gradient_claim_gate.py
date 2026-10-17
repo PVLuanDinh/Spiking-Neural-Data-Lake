@@ -79,10 +79,14 @@ import json
 import math
 import os
 import random
+import re
 import sys
+import tempfile
 import time
+from pathlib import Path
 
 # THE safety envelope. Imported rather than retyped -- see the `_SAFETY_ENVELOPE` note below.
+from snn_data_lake.gates import rust_facts
 from snn_data_lake.gates.safety_envelope import ENVELOPE as _SAFETY_ENVELOPE
 
 _HERE = os.path.abspath(__file__)
@@ -549,6 +553,227 @@ def resolve(declared_disp, inferred):  # FR-002a: TWO signals -- declaration + i
     return UNDETERMINABLE  # classified, NOT decided (FR-016)
 
 
+# ---- the RUST half (R0.2) -----------------------------------------------------------------------
+# Rust rules enter the SAME census rows and the SAME resolve()/evaluate() as Python ones; the only
+# new code is how a Rust fn is recognised, declared and inferred, read from `rust_facts` (never a
+# second parser). Everything under native/ is governed (P4c).
+
+#: Lexical CLAIM signals in a Rust fn body (receivers, call paths, `let` initialisers, params): the
+#: burn autodiff stack and the two spellings of a backward pass. Doc/name tokens reuse _CLAIM_TOKENS.
+_RUST_CLAIM = re.compile(
+    r"\bbackward(_step)?\b|GradientsParams|Autodiff|\bburn\s*::\s*optim\b|\bAdam\w*|\bgrad\b"
+)
+
+RUST_BLIND_SPOTS = (
+    "Rust facts are keyed by fn NAME within a file: same-named fns in two impls of one file conflate",
+    "CLAIM signals are lexical (one intra-crate hop by last path segment); a renamed re-export is missed",
+    "GRADIENT_CLAIM is read per file, like the Python per-module constant",
+    "tools/rsfacts is gate tooling, outside the brain rules",
+)
+
+
+def _ident(text):
+    """The last identifier of a receiver/target token string, before any index: `self . w [[i , j]]` -> w."""
+    ids = re.findall(r"[A-Za-z_]\w*", text.split("[")[0])
+    return ids[-1] if ids else ""
+
+
+def _rust_qual(fn):
+    return (
+        f"{fn['impl'].split('<')[0].split('::')[-1].strip()}::{fn['name']}"
+        if fn["impl"]
+        else fn["name"]
+    )
+
+
+def read_rust_declaration(file_facts):
+    """{qualname: (disposition, reason)} from the file's `GRADIENT_CLAIM` const; ValueError if unreadable.
+
+    The expr text is `& [("Type::fn" , "LOCAL" , "reason") , ...]`: strip the `&`, `ast.literal_eval`
+    (literals only). Anything else is an error the caller turns into a RED, never a skip.
+    """
+    out = {}
+    for c in file_facts.get("consts", []):
+        if c["name"] != DECL_NAME or c["cfg_test"]:
+            continue
+        expr = c["expr"].strip()
+        try:
+            if not expr.startswith("&"):
+                raise ValueError("not a `&[...]` reference")
+            raw = ast.literal_eval(expr[1:].strip())
+            for sym, disp, reason in raw:
+                if (
+                    not all(isinstance(x, str) for x in (sym, disp, reason))
+                    or disp not in DISPOSITIONS
+                ):
+                    raise ValueError(f"bad entry {(sym, disp)!r}")
+                out[sym] = (disp, reason)
+        except (ValueError, SyntaxError, TypeError) as exc:
+            raise ValueError(f"{DECL_NAME} unparseable at line {c['line']}: {exc}") from exc
+    return out
+
+
+def _rust_body_text(f, name):
+    """Every fact attributed to fn `name` in file facts `f`, as one string for the CLAIM scan."""
+    parts = [p for k in ("params",) for fn in f["fns"] if fn["name"] == name for p in fn[k]]
+    parts += [x for m in f["mcalls"] if m["fn"] == name for x in (m["recv"], m["name"])]
+    parts += [c["path"] for c in f["calls"] if c["fn"] == name]
+    parts += [x["init"] for x in f["lets"] if x["fn"] == name]
+    return " ".join(parts)
+
+
+def _rust_mutates_weight(f, name):
+    """A compound assign / in-place method on a weight-ish target, or a burn `optim.step`."""
+    for a in f["assigns"]:
+        if a["fn"] == name and a["op"] != "=" and _is_weight_name(_ident(a["lhs"])):
+            return True
+    for m in f["mcalls"]:
+        if m["fn"] != name:
+            continue
+        if m["name"] in rust_facts.INPLACE_UPDATE_METHODS and _is_weight_name(_ident(m["recv"])):
+            return True
+        if m["name"] == "step" and "optim" in m["recv"].lower():
+            return True
+    return False
+
+
+def _rust_claims(f, fn):
+    doc = (fn["doc"] or "").lower()
+    if any(t in doc or t in fn["name"].lower() for t in _CLAIM_TOKENS):
+        return True
+    return bool(_RUST_CLAIM.search(_rust_body_text(f, fn["name"])))
+
+
+def _crate_of(rel):
+    return rel.split("/src/")[0] if "/src/" in rel else rel.rsplit("/", 1)[0]
+
+
+def rust_census(native=None, root=None):
+    """(rules, failures, n_rs_files) for the Rust under native/ -- the ONE Rust entry point.
+
+    `census()` (so main, --assert, --self-check) calls this with the real tree; tests and the
+    self-check call it with `native=(status, file_facts)` fixtures. `RustFactsUnavailable` with `.rs`
+    present is a FAILURE (red via the parse-failure bound), never a skip.
+    """
+    if native is None:
+        try:
+            native = rust_facts.native_status(rust_facts.ROOT if root is None else root)
+        except rust_facts.RustFactsUnavailable as exc:
+            return [], [("native/", f"RustFactsUnavailable: {exc}")], 0
+    _, file_facts = native
+    base = Path(rust_facts.ROOT if root is None else root)
+    rels = {}
+    for f in file_facts:
+        p = Path(f["file"])
+        rels[f["file"]] = (
+            p.relative_to(base) if p.is_absolute() and base in p.parents else p
+        ).as_posix()
+    by_crate = {}
+    for f in file_facts:
+        for fn in f["fns"]:
+            by_crate.setdefault(_crate_of(rels[f["file"]]), {}).setdefault(fn["name"], []).append(
+                (f, fn)
+            )
+    verbs = _rule_verbs()
+    rules, failures = [], []
+    for f in file_facts:
+        rel = rels[f["file"]]
+        try:
+            declared = read_rust_declaration(f)
+        except ValueError as exc:
+            failures.append((rel, str(exc)))
+            declared = {}
+        surface = {_rust_qual(fn) for fn in f["fns"]} | {fn["name"] for fn in f["fns"]}
+        surface |= {t["name"] for t in f["types"]}
+        live = [fn for fn in f["fns"] if not fn["cfg_test"] and fn["has_body"]]
+        names = {
+            _rust_qual(fn)
+            for fn in live
+            if any(v in fn["name"].lower() for v in verbs) or _rust_mutates_weight(f, fn["name"])
+        }
+        for qual in sorted(names | set(declared)):
+            fns = [fn for fn in live if _rust_qual(fn) == qual]
+            claim = any(_rust_claims(f, fn) for fn in fns)
+            for fn in fns:  # one hop: applying what a claiming fn in the same crate computed
+                callees = {c["path"].split("::")[-1] for c in f["calls"] if c["fn"] == fn["name"]}
+                callees |= {m["name"] for m in f["mcalls"] if m["fn"] == fn["name"]}
+                claim = claim or any(
+                    _rust_claims(of, ofn)
+                    for callee in callees
+                    for of, ofn in by_crate[_crate_of(rel)].get(callee, [])
+                    if ofn is not fn
+                )
+            disp = declared.get(qual, (None, ""))[0]
+            state = resolve(disp, "CLAIM" if claim else "UNKNOWN")
+            if disp is not None and qual not in surface:
+                state = PHANTOM_DECLARATION
+            rules.append(
+                {
+                    "qualname": f"{rel}::{qual}",
+                    "module_rel": rel,
+                    "governed": True,
+                    "declared": disp,
+                    "inferred": "CLAIM" if claim else "UNKNOWN",
+                    "state": state,
+                }
+            )
+    return rules, failures, len(file_facts)
+
+
+def _native_line(rules):
+    try:
+        n = len(rust_facts.rust_files())
+    except rust_facts.RustFactsUnavailable:
+        return "native/ UNAVAILABLE (RED: counted as a parse failure)"
+    if not n:
+        return "native/ ABSENT (0 .rs files)"
+    return f"native/ PRESENT ({n} .rs files, {sum(r['module_rel'].startswith('native/') for r in rules)} Rust rule rows)"
+
+
+RUST_RED_SRC = """
+pub struct Trainer { model: Model, w1: f64 }
+impl Trainer {
+    pub fn train_step(&mut self, batch: Batch) {
+        let grads = GradientsParams::from_grads(self.loss(&batch).backward(), &self.model);
+        self.model = self.optim.step(self.lr, self.model, grads);
+    }
+    pub fn local_update(&mut self, d: f64) { self.w1 += d; }
+    pub fn forward(&self, x: f64) -> f64 { x * self.w1 }
+}
+pub const GRADIENT_CLAIM: &[(&str, &str, &str)] = &[
+    ("Trainer::local_update", "LOCAL", "three-factor, no gradient"),
+    ("Ghost::learn", "LOCAL", "a rule that was deleted"),
+];
+#[cfg(test)]
+mod tests { #[test] fn train_smoke() {} }
+"""
+
+#: The GREEN twin: train_step declared, the phantom removed.
+RUST_GREEN_SRC = RUST_RED_SRC.replace(
+    '    ("Ghost::learn", "LOCAL", "a rule that was deleted"),\n',
+    '    ("Trainer::train_step", "EXACT_GRADIENT", "burn autodiff reference"),\n',
+)
+
+
+def fixture_native(text):
+    """(status, facts) for a constructed `native/` tree: sndl-core carrying `text`, plus the bindings crate."""
+    with tempfile.TemporaryDirectory() as d:
+        files = {
+            "native/sndl-core/src/plasticity.rs": text,
+            "native/sndl-python/src/lib.rs": "#[pyfunction]\nfn add(a: f64, b: f64) -> f64 { a + b }\n",
+        }
+        paths = []
+        for rel, body in files.items():
+            p = Path(d) / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(body, encoding="utf-8")
+            paths.append(p)
+        out = rust_facts.facts(paths)
+    for f, rel in zip(out, files):
+        f["file"] = rel
+    return f"native/ PRESENT ({len(out)} .rs files, fixture)", out
+
+
 # distinct-from: gates/selfcheck_cache.py -- its AST walk HASHES module structure for
 #   carry-forward verification; this one collects a NAME set for existence checks. Read.
 # distinct-from: substrate/home.py (sidecar census) -- a census of MODULES that can write
@@ -610,12 +835,13 @@ def _symbol_surface(tree):
     return surface
 
 
-def census(root=None, overlay=None, brain_modules=None):
+def census(root=None, overlay=None, brain_modules=None, native=None):
     """(rules, failures, n_found) where each rule is a dict.
 
     Walks the WHOLE package; `governed` marks which half the bounds may assert on (FR-001a). The
     governed predicate is `dormancy_gate.BRAIN_MODULES` -- the same set `eprop_transport_gate` uses,
     imported lazily for the same reason, so there is exactly one definition of "governed" in the tree.
+    The Rust under native/ joins the same rows through `rust_census` (everything there is governed).
     """
     if brain_modules is None:
         try:
@@ -669,7 +895,8 @@ def census(root=None, overlay=None, brain_modules=None):
                     "state": state,
                 }
             )
-    return rules, failures, n_found
+    rust_rules, rust_failures, n_rs = rust_census(native, root)
+    return rules + rust_rules, sorted(failures + rust_failures), n_found + n_rs
 
 
 def counts(rules, governed_only=True):
@@ -774,6 +1001,14 @@ def evaluate(c, baseline, n_found, c_all=None):
     return out
 
 
+def assert_findings(gov, allr, n_found, baseline, failures):
+    """main()'s ASSERT composition, shared with the self-check and tests so a red counts only through it."""
+    findings = evaluate(gov, baseline, n_found, c_all=allr)
+    if len(failures) != 0:
+        findings.append(f"parse_failures={len(failures)} (ABSOLUTE bound is 0)")
+    return findings
+
+
 def _report(rules, failures, n_found, baseline, elapsed):
     gov = counts(rules, governed_only=True)
     allr = counts(rules, governed_only=False)
@@ -785,6 +1020,8 @@ def _report(rules, failures, n_found, baseline, elapsed):
         f"  rules seen  ungov.   : {allr['rules_seen'] - gov['rules_seen']}        <- reported, never asserted"
     )
     print(f"  rules seen  TOTAL    : {allr['rules_seen']}")
+    print(f"  Rust                 : {_native_line(rules)}")
+    print("  Rust BLIND SPOTS     : " + "; ".join((*rust_facts.BLIND_SPOTS, *RUST_BLIND_SPOTS)))
     for key, label in (
         (CLASSIFIED_LOCAL, "classified local"),
         (CLASSIFIED_CLAIMANT, "classified claimant"),
@@ -1074,6 +1311,69 @@ def _selfcheck():
             f"unclassified red through the same composition"
         )
         ok = ok and clean9
+
+    # RED 10 / 11 -- the Rust half, through rust_census (the function census() calls). RED arm: a
+    # burn `train_step` with no declaration + a `GRADIENT_CLAIM` naming a Ghost -> exactly those two
+    # findings; GREEN twin -> 0; RustFactsUnavailable and an unreadable declaration -> RED, not skip.
+    strict = {"counts": {MISSING_DECLARATION: 0, UNDETERMINABLE: 0}, "rules_seen_floor": 0}
+
+    def _rust_reds(native):
+        rr, ff, _ = rust_census(native)
+        return rr, assert_findings(counts(rr), counts(rr, False), 1, strict, ff)
+
+    rr10, reds10 = _rust_reds(fixture_native(RUST_RED_SRC))
+    states10 = sorted(
+        r["state"] for r in rr10 if r["state"] in (MISSING_DECLARATION, PHANTOM_DECLARATION)
+    )
+    fired10 = len(reds10) == 2 and states10 == [MISSING_DECLARATION, PHANTOM_DECLARATION]
+    print(
+        f"  {'RED  ' if fired10 else 'FAIL '}  Rust: undeclared burn train_step -> "
+        f"{MISSING_DECLARATION} and a declared Ghost::learn -> {PHANTOM_DECLARATION} (exactly 2 findings)"
+    )
+    ok = ok and fired10
+    rr11, reds11 = _rust_reds(fixture_native(RUST_GREEN_SRC))
+    clean11 = not reds11 and len(rr11) == 2
+    print(
+        f"  {'green' if clean11 else 'FAIL '}  Rust GREEN twin (declared, phantom removed) -> 0 findings "
+        f"over {len(rr11)} classified rules"
+    )
+    ok = ok and clean11
+    _, bad_decl = _rust_reds(
+        fixture_native(
+            'pub const GRADIENT_CLAIM: &[(&str, &str, &str)] = &[("S::f", concat!("A"), "r")];'
+        )
+    )
+    _, bad_state = _rust_reds(
+        (
+            "native/ PRESENT",
+            [
+                {
+                    "file": "native/x/src/lib.rs",
+                    "consts": [],
+                    "fns": [],
+                    "types": [],
+                    "assigns": [],
+                    "mcalls": [],
+                    "calls": [],
+                    "lets": [],
+                }
+            ],
+        )
+    )
+    saved = rust_facts.native_status
+    try:
+        rust_facts.native_status = lambda root=None: (_ for _ in ()).throw(
+            rust_facts.RustFactsUnavailable("constructed")
+        )
+        _, unavailable = _rust_reds(None)
+    finally:
+        rust_facts.native_status = saved
+    fired11 = bool(bad_decl) and not bad_state and bool(unavailable)
+    print(
+        f"  {'RED  ' if fired11 else 'FAIL '}  Rust: unreadable GRADIENT_CLAIM and RustFactsUnavailable "
+        f"RED (fail closed); an empty native tree stays green"
+    )
+    ok = ok and fired11
 
     print("self-check: " + ("OK" if ok else "FAILED"))
     return ok
@@ -1886,9 +2186,7 @@ def main(argv=None):
                 "Generate it with: python -m snn_data_lake.gates.gradient_claim_gate --update-baseline"
             )
             return 1
-        findings = evaluate(gov, baseline, n_found, c_all=counts(rules, governed_only=False))
-        if len(failures) != 0:
-            findings.append(f"parse_failures={len(failures)} (ABSOLUTE bound is 0)")
+        findings = assert_findings(gov, allr, n_found, baseline, failures)
         if findings:
             print("gate FAIL:")
             for f in findings:
