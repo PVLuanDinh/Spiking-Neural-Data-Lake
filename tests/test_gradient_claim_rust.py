@@ -48,10 +48,29 @@ def test_green_twin_has_zero_findings_and_classifies_the_rules():
     rules, failures, _ = gate.rust_census(gate.fixture_native(gate.RUST_GREEN_SRC))
     states = {r["qualname"].split("::", 1)[1]: r["state"] for r in rules}
     assert states == {
-        "Trainer::train_step": gate.CLASSIFIED_REFERENCE,
+        "Trainer::train_step": gate.CLASSIFIED_CLAIMANT,
         "Trainer::local_update": gate.CLASSIFIED_LOCAL,
     }
     assert _findings(rules, failures) == []
+
+
+@pytest.mark.parametrize("case", gate.RUST_FOLD1_REDS, ids=lambda c: c[0].split()[0])
+def test_fold1_red_has_exact_counts_through_rust_census(case):
+    _, src, states, n_fail, n_find = case
+    rules, failures, _ = gate.rust_census(gate.fixture_native(src))
+    assert [r["state"] for r in rules] == states
+    assert len(failures) == n_fail
+    assert len(_findings(rules, failures)) == n_find
+
+
+def test_fold1_index_chain_and_raw_string_forms():
+    assert gate._ident("self . layers [0] . w") == "w"
+    assert gate._ident("self . w [[i , j]]") == "w"
+    ok = gate._rust_triples('[("a::b", "LOCAL", r##"x "# y"##), ("c", "CONTROL", "q\\n"),]')
+    assert ok == [("a::b", "LOCAL", 'x "# y'), ("c", "CONTROL", "q\n")]
+    for bad in ('[("a", "LOCAL", concat!("x"))]', '[("a", "LOCAL")]', '[(1, "LOCAL", "r")]'):
+        with pytest.raises(ValueError):
+            gate._rust_triples(bad)
 
 
 def test_enumeration_is_by_verb_or_weight_mutation_and_skips_tests():
