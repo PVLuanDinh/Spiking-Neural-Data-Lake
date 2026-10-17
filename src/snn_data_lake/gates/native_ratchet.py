@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """native_ratchet -- src files importing a C/C++-backed library may only go DOWN (R0.3 meter).
 
 Owner directive 2026-10-17: replace the C/C++-backed libraries with Rust, library by library. This
@@ -9,25 +8,41 @@ The importer walk is `dependency_ledger._imported`, not a second one. That walk 
 and zlib/struct are stdlib C modules, so they are counted by running the SAME walk with the stdlib
 filter switched off for the call.
 
-    python tools/native_ratchet.py                   # report
-    python tools/native_ratchet.py --assert          # red if any library rose / is not in the baseline
-    python tools/native_ratchet.py --update-baseline # re-derive after a fall; refuses a rise
-    python tools/native_ratchet.py --self-check      # constructed rise -> red, fall -> green
+LOCATION (integrator fold, 2026-10-17): plan section 10 named `tools/native_ratchet.py`, and the lane
+built it there; `p4c_ratchet` then RED the composed branch (tools 30 -> 31): P4c forbids a new build
+outside the governed tree. So it lives in the package, registered, and loads `tools/dependency_ledger.py`
+by path inside a function (no module-scope sys.path edit -- instrument_guard's rule).
+
+    python -m snn_data_lake.gates.native_ratchet                   # self-check + assert (run_selfchecks)
+    python -m snn_data_lake.gates.native_ratchet --report          # report only
+    python -m snn_data_lake.gates.native_ratchet --assert          # red if a library rose / is not in the baseline
+    python -m snn_data_lake.gates.native_ratchet --update-baseline # re-derive after a fall; refuses a rise
+    python -m snn_data_lake.gates.native_ratchet --self-check      # constructed rise -> red, fall -> green
 """
 
+# distinct-from: replication_guard.py docs_only_battery.py home.py g5_part_d_cells.py eligible_circuit_census.py -- those guard brain classes, hash docs, locate the lake or walk turns; none counts src importers of a library (this reuses tools/dependency_ledger._imported for that)
+import functools
+import importlib.util
 import json
 import pathlib
 import sys
 import types
 from unittest import mock
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "tools"))
-sys.path.insert(0, str(ROOT / "src"))
+from snn_data_lake.gates import rust_facts
 
-import dependency_ledger as dl  # noqa: E402
+ROOT = pathlib.Path(__file__).resolve().parents[3]
 
-from snn_data_lake.gates import rust_facts  # noqa: E402
+
+@functools.cache
+def _ledger():
+    """`tools/dependency_ledger.py`, the ONE importer walk, loaded by path (it is a tools/ script)."""
+    path = ROOT / "tools" / "dependency_ledger.py"
+    spec = importlib.util.spec_from_file_location("dependency_ledger", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
 
 BASELINE_PATH = ROOT / "tools" / "native_ratchet_baseline.json"
 NATIVE_ROOT = ROOT
@@ -57,6 +72,7 @@ COMPONENTS = {
 
 def _walk():
     """`dependency_ledger._imported` over src/ with stdlib kept, so zlib/struct are visible."""
+    dl = _ledger()
     with mock.patch.object(dl, "sys", types.SimpleNamespace(stdlib_module_names=frozenset())):
         return dl._imported(("src",))
 
@@ -193,6 +209,10 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if "--self-check" in argv:
         return self_check()
+    if not argv:  # bare (run_selfchecks CORE): prove the criteria can fire, then ratchet
+        if self_check():
+            return 1
+        argv = ["--assert"]
     try:
         zones, union = census()
         baseline = _load_baseline()
@@ -221,7 +241,7 @@ def main(argv=None):
         )
         return 0
 
-    if "--assert" not in argv:
+    if "--assert" not in argv:  # --report
         print("(report only -- pass --assert to ratchet, --self-check to prove it can fire)")
         return 0
     if baseline is None:

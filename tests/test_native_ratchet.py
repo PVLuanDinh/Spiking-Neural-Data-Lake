@@ -1,4 +1,4 @@
-"""Guardrails for `tools/native_ratchet.py` (R0.3 meter): per-library importers may only fall.
+"""Guardrails for `gates/native_ratchet.py` (R0.3 meter): per-library importers may only fall.
 
 Each test builds the thing the gate must catch (a rise, a new library, an unreadable Rust tree) and
 runs the gate's own comparator / entry point on it.
@@ -7,16 +7,11 @@ Run: pytest tests/test_native_ratchet.py
 """
 
 import json
-import pathlib
-import sys
 
 import pytest
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "tools"))
-
-import native_ratchet as nr  # noqa: E402
-
-from snn_data_lake.gates import rust_facts  # noqa: E402
+from snn_data_lake.gates import native_ratchet as nr
+from snn_data_lake.gates import rust_facts
 
 BASE = {"numpy": 3, "zlib": 1, "struct": 0}
 HITS = {

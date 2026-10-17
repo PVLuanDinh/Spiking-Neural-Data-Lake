@@ -647,6 +647,13 @@ EXEMPT = {
         "a tick -- the policy_manifest disposition. RETIRES when a tick faculty reads the "
         "register, which nothing should: a claim is about the brain, not an input to it",
     ),
+    "native_ratchet": (
+        "permanent",
+        "plan section 10 R0.3: the C/C++ -> Rust migration meter -- distinct src/ importers per "
+        "C/C++-backed library, per package and as a union, may only fall. A CI/run_selfchecks "
+        "instrument, never on a tick -- the policy_manifest / capability_bar disposition. RETIRES "
+        "with the migration (every count at zero and the libraries gone), never by a tick reading it",
+    ),
     "immortal_retention": (
         "permanent",
         "specs/022 L5 (T089): the never-forgets gate -- every lake tag labelled IMMORTAL or "

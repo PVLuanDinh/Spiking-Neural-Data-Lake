@@ -265,6 +265,20 @@ jobs:
       - name: Dependency ledger criteria can fail (--self-check)
         run: python tools/dependency_ledger.py --self-check
 
+      # plan section 10 R0.3: the C/C++ -> Rust migration meter. Counts DISTINCT src/ importers of
+      # each C/C++-backed library (numpy, torch, scipy, scikit-learn, pyarrow, pygenn, mujoco,
+      # brian2, zlib, struct), per library, per package and as a union, reusing the ledger's own
+      # import walk; every count may only FALL. First output 2026-10-17 reproduced section 10's
+      # scope exactly (numpy 97, torch 58, zlib 67, struct 22, mujoco 5, scipy 2, scikit-learn 2,
+      # pygenn 2, brian2 1, pyarrow 1; union 134).
+      - name: Native ratchet (C/C++-library importers may only go DOWN)
+        run: python -m snn_data_lake.gates.native_ratchet --assert
+
+      # ...and its criteria must be falsifiable: a constructed rise-by-one per library and a
+      # package-only rise must red, a fall must stay green.
+      - name: Native ratchet criteria can fail (--self-check)
+        run: python -m snn_data_lake.gates.native_ratchet --self-check
+
       # P6 (every build must reach every other AND actually use it). Was the last policy whose gate
       # existed but enforced nothing: `tools/p6_gate.py` ran clean, self-checked, and was MANUAL,
       # NON-ASSERTING and not in CI, so P6 stayed review-enforced and provisional.

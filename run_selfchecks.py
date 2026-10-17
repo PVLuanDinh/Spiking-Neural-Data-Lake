@@ -375,6 +375,9 @@ CORE = [
     "gates.capability_bar",  # X1: 4 constructed reds + the REFUSED arm + the surface check
     "gates.immortal_retention",  # L5: label reds, the reclaimer scan, the cross-process round trip
     "gates.unit_label_gate",  # G7 T115 (G-R7): R6 positive control + ten constructed reds, both scans vs their debt tables
+    "gates.rust_facts",  # R0.2: the shared Rust reader -- fixture + edge controls, export map, unparseable-Rust red (needs cargo)
+    "gates.native_dormancy",  # R0.2: Rust half of P3 -- D1/D2/M1 RED arm 3, GREEN twin 0, fail-closed (needs cargo)
+    "gates.native_ratchet",  # R0.3: C/C++-library src importers may only fall; bare == self-check + assert
     "gates.conclusion_protocol",  # C5: row reds, the verdict/aggregate refusals, the prose control  # POLICIES.md manifest: derivation reconciles, committed copy in sync, drift never worsens
     "gates.perf_baseline",  # 022 T001 wiring check: baseline parses + scorer discriminates (cheap; never measures)
     "gates.amdahl_gate",  # specs/008 Gate Zero / 022 S6: the three reds, then the neuter-and-measure ceiling reading

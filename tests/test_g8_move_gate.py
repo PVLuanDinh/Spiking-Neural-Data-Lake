@@ -190,7 +190,10 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # 2026-10-16/R2: re-derived from the live tables against fcdfa7f6's parent:
     # REGIONS=321, less the unchanged claustrum shadow -> _MOVED=320.
     # Exactly instruments.replay_hydration was added by fcdfa7f6; nothing removed.
-    assert len(S._MOVED) == 320 and "claustrum" not in S._MOVED
+    # 2026-10-17/R0.2 (plan section 10, Rust-aware gates): measured by diffing _MOVED between
+    # origin/main 06744945 (320) and claude/r02-gates-1017 (323): added exactly gates.rust_facts,
+    # gates.native_dormancy, gates.native_ratchet; nothing removed; claustrum shadow unchanged.
+    assert len(S._MOVED) == 323 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture

@@ -267,6 +267,12 @@ REGIONS = {
         "replay_gate",
         # Policy 4: the one-brain guard (canonical stack classes defined once)
         "replication_guard",
+        # plan section 10 R0.2: the ONE Rust reader the gates share (syn facts, PyO3 export map); bare == fixture controls + fail-closed red
+        "rust_facts",
+        # plan section 10 R0.2: the Rust half of P3 (export / module / learning-verb liveness) dormancy_gate and method_dormancy_gate call
+        "native_dormancy",
+        # plan section 10 R0.3: the C/C++ -> Rust migration meter (src importers per library / package may only fall)
+        "native_ratchet",
         # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "safety_envelope",
         # battery carry-forward: closure-hash-verified PASS carries; bare == dependency/poison/envelope/FAIL reds
