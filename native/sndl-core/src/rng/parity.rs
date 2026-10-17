@@ -25,6 +25,8 @@ pub const UNCLAIMED: &[&str] = &[
     "standard_normal",
     "randn_31",
 ];
+/// sha256 of the kit's `fixtures_rng.json` (RNG-KIT.md), as the kit wrote it.
+pub const KIT_SHA: &str = "1515bc47f7e3c598f5faa52f96ba212f6e635170a07b56f20dcf42ef0f381997";
 /// `carried_state_campaign.SHUFFLE_TAG` ("SHUF"), the list-entropy middle word.
 pub const SHUF_TAG: u128 = 0x5348_5546;
 
@@ -61,6 +63,26 @@ pub fn py_hex(f: f64) -> String {
         (0, m) => format!("{sign}0x0.{m:013x}p-1022"),
         (e, m) => format!("{sign}0x1.{m:013x}p{:+}", e - 1023),
     }
+}
+
+/// True when `bytes` is the kit's `fixtures_rng.json` (sha256 `KIT_SHA`), under either checkout line
+/// ending: the kit wrote the file in Windows text mode (CRLF) and the repo stores it LF-normalised, so
+/// a Linux checkout differs from the kit's bytes only by the newline (a `-text` attribute, requested
+/// from the integrator, makes the bytes identical everywhere; until then both forms are accepted).
+pub fn is_kit_fixture(bytes: &[u8]) -> bool {
+    if sha256_hex(bytes) == KIT_SHA {
+        return true;
+    }
+    let mut crlf = Vec::with_capacity(bytes.len() + bytes.len() / 32);
+    let mut prev = 0u8;
+    for &b in bytes {
+        if b == b'\n' && prev != b'\r' {
+            crlf.push(b'\r');
+        }
+        crlf.push(b);
+        prev = b;
+    }
+    sha256_hex(&crlf) == KIT_SHA
 }
 
 pub fn sha256_hex(b: &[u8]) -> String {
@@ -407,10 +429,9 @@ pub fn run(fixture_json: &str) -> Report {
 #[cfg(test)]
 mod tests {
     use super::super::{BAD_INC, NO_U32_BUFFER, RNG0_DRAWS, SINGLE_WORD_SEED, SWAP53, mutants};
-    use super::{Report, py_hex, run, sha256_hex};
+    use super::{KIT_SHA, Report, is_kit_fixture, py_hex, run, sha256_hex};
 
     const FIX: &str = include_str!("../../tests/fixtures_rng.json");
-    const SHA: &str = "1515bc47f7e3c598f5faa52f96ba212f6e635170a07b56f20dcf42ef0f381997";
 
     fn with(bits: u8) -> Report {
         mutants::set(bits);
@@ -445,7 +466,19 @@ mod tests {
 
     #[test]
     fn fixture_copy_is_the_kits() {
-        assert_eq!(sha256_hex(FIX.as_bytes()), SHA);
+        assert!(
+            is_kit_fixture(FIX.as_bytes()),
+            "sha256 {} != kit {KIT_SHA}",
+            sha256_hex(FIX.as_bytes())
+        );
+        assert!(
+            !is_kit_fixture(&FIX.as_bytes()[1..]),
+            "a changed copy must be refused"
+        );
+        // both checkout forms of the same bytes are the kit's
+        let lf = FIX.replace("\r\n", "\n");
+        let crlf = lf.replace('\n', "\r\n");
+        assert!(is_kit_fixture(lf.as_bytes()) && is_kit_fixture(crlf.as_bytes()));
     }
 
     #[test]
