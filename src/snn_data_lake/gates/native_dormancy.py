@@ -34,8 +34,9 @@ prints `native/ ABSENT`, distinct from "0 findings".
 OWN BLIND SPOTS (printed beside the verdict with `rust_facts.BLIND_SPOTS`): liveness is per FILE, not
 per item (a live export's file reaches a module even when the item it names is unused); a `use`
 inside an inline `mod` resolves from the file's module; trait dispatch and generics match by last
-segment name; a `#[path]` inside an inline `mod` is not followed; `rust_facts` `paths` carry no
-cfg(test) flag, so a test-only path is dropped only when a test call or `use` spells it.
+segment name; a `#[path]` inside an inline `mod` is not followed; a Python facade
+re-export of an exported learning fn (called only through the re-exporting module) gives a false M1.
+Test code is the reader's `test_file` (one classifier); only `build.rs` is excluded here by name.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.gates.native_dormancy
 """
@@ -60,10 +61,10 @@ BLIND_SPOTS = (
     "liveness is per file, not per item (a live export's file reaches its modules)",
     "use inside an inline mod resolves from the file's module; #[path] in an inline mod not followed",
     "trait dispatch and generics match a caller by last segment name",
-    "rust_facts `paths` has no cfg(test) flag: a test-only path counts unless a test call/use spells it",
+    "a Python facade re-export (`from ._native import f` in a live module that never calls it, "
+    "used elsewhere through that module) gives a false M1: loads are read only from _native-referencing modules",
 )
 
-_NOT_SRC = ("tests", "benches", "examples")
 _PATH_ATTR = re.compile(r'path\s*=\s*"([^"]+)"')
 
 
@@ -71,9 +72,9 @@ def _rel(f, base):
     return Path(f["file"]).relative_to(base).as_posix()
 
 
-def _in_test_dir(rest):
-    p = rest.split("/")
-    return p[0] in _NOT_SRC or p[-1] == "build.rs"
+def _is_test(rel, f):
+    """Test code per the reader's one classifier (`test_file`); a build script is its own rule."""
+    return f["test_file"] or posixpath.basename(rel) == "build.rs"
 
 
 def _is_root(rel):
@@ -126,10 +127,6 @@ class _Tree:
         return max(
             (d for d in self.dirs if not d or rel.startswith(d + "/")), key=len, default=None
         )
-
-    def in_test_dir(self, rel):
-        d = self.crate_dir(rel)
-        return _in_test_dir(rel[len(d) + 1 :] if d else rel)
 
     def _walk_decl(self, rel):
         if rel in self.in_tree:
@@ -191,9 +188,7 @@ class _Tree:
         paths = [u["path"] for u in f.get("uses", []) if not u["cfg_test"]]
         paths += [c["path"] for c in f.get("calls", []) if not c["cfg_test"]]
         paths += list(f.get("path_roots", []))
-        spelled = [(c["path"], c["cfg_test"]) for c in (*f.get("calls", []), *f.get("uses", []))]
-        test_only = {p for p, t in spelled if t} - {p for p, t in spelled if not t}
-        paths += [p for p in f.get("paths", []) if p not in test_only]
+        paths += list(f.get("paths", []))
         return {x for p in paths for x in self.reach(rel, p.split("::"))}
 
 
@@ -296,7 +291,10 @@ def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
         tree.crate_of[r]
         for r, f in by_rel.items()
         if r in tree.crate_of
-        and any(rf._attr(x["attrs"], "pymodule") for x in (*f.get("mods", []), *f.get("fns", [])))
+        and any(
+            rf._attr(x["attrs"], "pymodule") and not x["cfg_test"]
+            for x in (*f.get("mods", []), *f.get("fns", []))
+        )
     }
     reached, stack = set(live_files), list(live_files)
     while stack:
@@ -326,7 +324,7 @@ def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
     # M1
     callers = set()
     for rel, f in by_rel.items():
-        if tree.in_test_dir(rel):
+        if _is_test(rel, f):
             continue
         callers |= {c["path"].split("::")[-1] for c in f.get("calls", []) if not c["cfg_test"]}
         callers |= {c["name"] for c in f.get("mcalls", []) if not c["cfg_test"]}
@@ -334,7 +332,7 @@ def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
     idents = loads | attr_load | attr_store
     m_viol, m_univ = {}, {}
     for rel, f in by_rel.items():
-        if tree.in_test_dir(rel) or rel not in tree.crate_of:
+        if _is_test(rel, f) or rel not in tree.crate_of:
             continue
         for fn in f.get("fns", []):
             if fn["cfg_test"] or not fn["has_body"] or not is_learn_verb(fn["name"]):
@@ -368,7 +366,7 @@ def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
     report = [
         f"unreferenced pub fn {fn['name']} ({rel}:{fn['line']})"
         for rel, f in sorted(by_rel.items())
-        if rel in tree.crate_of and tree.crate_of[rel] not in binding and not tree.in_test_dir(rel)
+        if rel in tree.crate_of and tree.crate_of[rel] not in binding and not _is_test(rel, f)
         for fn in f.get("fns", [])
         if fn["vis"].startswith("pub")
         and not fn["cfg_test"]
@@ -496,6 +494,13 @@ def _qualified_binding(py):
     }
 
 
+_STDP_BIND = (
+    _PYO3
+    + "pub struct Stdp;\nimpl Stdp { pub fn potentiate(&mut self) {} }\n#[pyfunction]\nfn run() {}\n"
+    "#[pymodule]\nmod _native { #[pymodule_export] use super::run; }\n"
+)
+_DRIVER = "fn drive() { let mut s = super::Stdp; s.potentiate(); }\n"
+
 # name -> (RED files, GREEN files, RED (D, M) counts); every GREEN twin is 0/0
 FOLD_CASES = {
     "pyo3-qualified-pymodule": (
@@ -555,6 +560,49 @@ FOLD_CASES = {
         },
         (1, 0),
     ),
+    # fold round 3
+    "cfg-test-pymodule-is-not-a-binding-crate": (
+        {
+            "native/sndl-core/src/lib.rs": "pub mod dendrite;\n#[cfg(test)]\n#[pyo3::pymodule]\nmod _t {}\n",
+            "native/sndl-core/src/dendrite.rs": _DENDRITE,
+        },
+        {
+            "native/sndl-core/src/lib.rs": "pub mod dendrite;\n#[cfg(test)]\n#[pyo3::pymodule]\nmod _t {}\n",
+            "native/sndl-core/src/dendrite.rs": _DENDRITE,
+            "native/sndl-python/src/lib.rs": _test_lib("use sndl_core::dendrite::integrate;"),
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import decay\n\ndecay(1.0)\n",
+        },
+        (1, 0),
+    ),
+    "production-path-spelled-by-a-test-call": (
+        {
+            **_CORE_DEN,
+            "native/sndl-python/src/lib.rs": _test_lib(""),
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import decay\n\ndecay(1.0)\n",
+        },
+        {
+            **_CORE_DEN,
+            "native/sndl-python/src/lib.rs": _test_lib("").replace(
+                "{ v }", "{ let _f = sndl_core::dendrite::integrate; v }", 1
+            ),
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import decay\n\ndecay(1.0)\n",
+        },
+        (1, 0),
+    ),
+    "path-included-test-dir-file-is-production": (
+        {
+            "native/sndl-python/src/lib.rs": _STDP_BIND,
+            "native/sndl-python/tests/driver.rs": _DRIVER,
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import run\n\nrun()\n",
+        },
+        {
+            "native/sndl-python/src/lib.rs": _STDP_BIND
+            + '#[path = "../tests/driver.rs"]\nmod driver;\n',
+            "native/sndl-python/tests/driver.rs": _DRIVER,
+            "src/snn_data_lake/user.py": "from snn_data_lake._native import run\n\nrun()\n",
+        },
+        (0, 1),
+    ),
 }
 
 
@@ -605,7 +653,7 @@ def main():
     selfcheck()
     res = audit()
     print(
-        f"native_dormancy: self-check OK (RED 3 findings, GREEN 0, fail-closed, nested crates, fold reds) | {res['status']} | "
+        f"native_dormancy: self-check OK (RED 3 findings, GREEN 0, fail-closed, nested crates, fold-1 and fold-3 reds) | {res['status']} | "
         f"D {len(res['d'])} M {len(res['m'])}"
     )
     print("native_dormancy BLIND SPOTS: " + "; ".join((*rf.BLIND_SPOTS, *BLIND_SPOTS)))
