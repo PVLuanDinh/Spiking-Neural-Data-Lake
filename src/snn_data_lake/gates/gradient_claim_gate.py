@@ -569,6 +569,7 @@ RUST_BLIND_SPOTS = (
     "CLAIM signals are lexical (one intra-crate hop by last path segment); a renamed re-export is missed",
     "GRADIENT_CLAIM is read per file, like the Python per-module constant",
     "tools/rsfacts is gate tooling, outside the brain rules",
+    "an optimizer step is attributed to the same-named fn with the greatest start line at or before it: a nested fn/closure inside it misattributes; the receiver must spell opt/optim*",
     "an optimizer step is an `x = ..step(..)` assign to a model/weight-ish target or `.step` on an optim* receiver; `let m = o.step(..)` is not seen",
 )
 
@@ -592,25 +593,42 @@ def _rust_qual(fn):
     )
 
 
-_RUST_TOKEN = re.compile(r'\s*(r(#*)"(.*?)"\2|"(?:[^"\\]|\\.)*"|[\[\](),])', re.S)
+_RUST_ESC = re.compile(r"\\(u\{[0-9a-fA-F_]{1,6}\}|x[0-7][0-9a-fA-F]|[nrt\\0'\"]|\n\s*)?")
+_RUST_ESC_CHARS = {"n": "\n", "r": "\r", "t": "\t", "0": "\0"}
+
+
+def _rust_str_value(lit):
+    """The value of one `rust_facts.RUST_LITERAL` match that is a str literal (plain or raw), else ValueError."""
+    if lit[0] not in 'r"':
+        raise ValueError(f"not a str literal: {lit[:12]!r}")  # b"..", b'..', 'c'
+    if lit[0] == "r":
+        return lit[lit.index('"') + 1 : lit.rindex('"')]
+
+    def one(m):
+        e = m.group(1)
+        if e is None:
+            raise ValueError(f"bad escape in {lit[:20]!r}")
+        if e[0] == "u":
+            return chr(int(e[2:-1].replace("_", ""), 16))
+        if e[0] == "x":
+            return chr(int(e[1:], 16))
+        return "" if e.isspace() else _RUST_ESC_CHARS.get(e, e)
+
+    return _RUST_ESC.sub(one, lit[1:-1])
 
 
 def _rust_triples(text):
-    """`[("a", "b", r#"c"#), ..]` -> [(a, b, c), ..]; string literals and `[ ( , ) ]` only, else ValueError."""
-    toks, pos, text = [], 0, text.strip()
-    while pos < len(text):
-        m = _RUST_TOKEN.match(text, pos)
-        if not m:
-            raise ValueError(f"not a string literal or `[](),` at offset {pos}")
-        pos = m.end()
-        if m.group(1) in "[](),":
-            toks.append(m.group(1))
-        elif m.group(2) is not None and m.group(1).startswith("r"):
-            toks.append(("s", m.group(3)))
-        else:
-            toks.append(
-                ("s", ast.literal_eval(m.group(1)))
-            )  # a plain literal: ast evals literals only
+    """`[("a", "b", r#"c"#), ..]` -> [(a, b, c), ..]; str literals (shared RUST_LITERAL) and `[](),` only, else ValueError."""
+    toks, pos = [], 0
+    for m in (*rust_facts.RUST_LITERAL.finditer(text), None):
+        gap = text[pos : m.start() if m else len(text)]
+        bad = re.sub(r"[\s\[\](),]", "", gap)
+        if bad:
+            raise ValueError(f"not a string literal or `[](),` near {bad[:12]!r}")
+        toks += [c for c in gap if c in "[](),"]
+        if m:
+            toks.append(("s", _rust_str_value(m.group(0))))
+            pos = m.end()
     # grammar: [ ( s , s , s ,? ) ,? ... ]
     shape = "".join("s" if isinstance(t, tuple) else t for t in toks)
     if not re.fullmatch(r"\[(\(s,s,s,?\),?)*\]", shape):
@@ -657,38 +675,48 @@ def _rust_body_text(f, name):
 
 _RUST_STEP = re.compile(r"\.\s*step\s*\(")
 _MODEL_TARGETS = frozenset(("model", "net", "network", "module", "params", "parameters"))
+_OPTIM_RECV = re.compile(r"optim|\bopt\b|\bopt_|_opt\b", re.I)
 
 
-def _rust_steps_optimizer(f, name):
-    """An optimizer-step result assigned to a model/weight target, or `.step(..)` on an optim receiver."""
-    for a in f["assigns"]:
+def _own(f, key, fn):
+    """Production facts of kind `key` that sit in THIS fn: facts carry the fn NAME only, so a fact goes to
+    the same-named fn with the greatest start line at or before it (qualified, not bare-name; cfg(test) skipped)."""
+    same = [x["line"] for x in f["fns"] if x["name"] == fn["name"]]
+    return [
+        x
+        for x in f[key]
+        if x["fn"] == fn["name"]
+        and not x["cfg_test"]
+        and max((ln for ln in same if ln <= x["line"]), default=None) == fn["line"]
+    ]
+
+
+def _rust_steps_optimizer(f, fn):
+    """An optimizer-step result assigned to a model/weight target, or `.step(..)` on an optimizer receiver."""
+    for a in _own(f, "assigns", fn):
         tgt = _ident(a["lhs"]).lower()
         if (
-            a["fn"] == name
-            and a["op"] == "="
+            a["op"] == "="
             and _RUST_STEP.search(
                 rust_facts.strip_literals(a["rhs"])
             )  # Codex r3 F-4: not in a string
             and (tgt in _MODEL_TARGETS or _is_weight_name(tgt))
         ):
             return True
-    return any(
-        m["fn"] == name and m["name"] == "step" and "optim" in m["recv"].lower()
-        for m in f["mcalls"]
-    )
+    return any(m["name"] == "step" and _OPTIM_RECV.search(m["recv"]) for m in _own(f, "mcalls", fn))
 
 
-def _rust_mutates_weight(f, name):
+def _rust_mutates_weight(f, fn):
     """A compound assign / in-place method on a weight-ish target, or a burn optimizer step."""
     for a in f["assigns"]:
-        if a["fn"] == name and a["op"] != "=" and _is_weight_name(_ident(a["lhs"])):
+        if a["fn"] == fn["name"] and a["op"] != "=" and _is_weight_name(_ident(a["lhs"])):
             return True
     for m in f["mcalls"]:
-        if m["fn"] != name:
+        if m["fn"] != fn["name"]:
             continue
         if m["name"] in rust_facts.INPLACE_UPDATE_METHODS and _is_weight_name(_ident(m["recv"])):
             return True
-    return _rust_steps_optimizer(f, name)
+    return _rust_steps_optimizer(f, fn)
 
 
 def _rust_claims(f, fn):
@@ -743,7 +771,7 @@ def rust_census(native=None, root=None):
         names = {
             _rust_qual(fn)
             for fn in live
-            if any(v in fn["name"].lower() for v in verbs) or _rust_mutates_weight(f, fn["name"])
+            if any(v in fn["name"].lower() for v in verbs) or _rust_mutates_weight(f, fn)
         }
         for qual in sorted(names | set(declared)):
             fns = [fn for fn in live if _rust_qual(fn) == qual]
@@ -758,7 +786,7 @@ def rust_census(native=None, root=None):
                     if ofn is not fn
                 )
             disp = declared.get(qual, (None, ""))[0]
-            if disp == EXACT_GRADIENT and any(_rust_steps_optimizer(f, fn["name"]) for fn in fns):
+            if disp == EXACT_GRADIENT and any(_rust_steps_optimizer(f, fn) for fn in fns):
                 failures.append(
                     (
                         rel,
@@ -875,6 +903,71 @@ RUST_FOLD1_REDS = (
         [MISSING_DECLARATION],
         0,
         1,
+    ),
+)
+
+_EXACT_T = _DECL.format('("{}", "EXACT_GRADIENT", "ref")')
+#: Fold round 3 reds (each fails against the 240e95b8 gate; see rows/r02-gradclaim/REPORT.md). Same entry shape.
+RUST_FOLD3_REDS = (
+    (
+        "F3-1 `self.opt.step(&grads)?` (method step, `?`, receiver `opt`) in an EXACT_GRADIENT fn reds",
+        _EXACT_T.format("T::train_step")
+        + "pub struct T { opt: O }\n"
+        + "impl T { pub fn train_step(&mut self) -> R { let g = self.loss().backward(); self.opt.step(&g)?; Ok(()) } }\n",
+        [CLASSIFIED_REFERENCE],
+        1,
+        1,
+    ),
+    (
+        "F3-2a a same-named stepper in ANOTHER impl does not red the innocent EXACT_GRADIENT fn",
+        _DECL.format(
+            '("Clean::train_step", "EXACT_GRADIENT", "ref"), '
+            '("Stepper::train_step", "APPROXIMATES_GRADIENT", "steps")'
+        )
+        + "pub struct Clean { w: f64 }\npub struct Stepper { optim: O }\n"
+        + "impl Clean { pub fn train_step(&mut self) { let g = self.loss().backward(); self.w -= g; } }\n"
+        + "impl Stepper { pub fn train_step(&mut self) { let g = self.loss().backward(); self.optim.step(g); } }\n",
+        [CLASSIFIED_REFERENCE, CLASSIFIED_CLAIMANT],
+        0,
+        0,
+    ),
+    (
+        "F3-2b a #[cfg(test)] stepper of the same name does not red the innocent EXACT_GRADIENT fn",
+        _EXACT_T.format("Clean::train_step")
+        + "pub struct Clean { w: f64 }\n"
+        + "impl Clean { pub fn train_step(&mut self) { let g = self.loss().backward(); self.w -= g; } }\n"
+        + "#[cfg(test)]\nmod tests { struct X { optim: O }\n"
+        + " impl X { fn train_step(&mut self) { self.optim.step(1); } } }\n",
+        [CLASSIFIED_REFERENCE],
+        0,
+        0,
+    ),
+    (
+        "F3-3 a `\\u{e9}` escape in a reason is decoded, not a parse failure",
+        _DECL.format('("T::nudge", "LOCAL", "caf\\u{e9} rule")')
+        + _STRUCT_T
+        + "impl T { pub fn nudge(&mut self) { self.w += 1.0; } }\n",
+        [CLASSIFIED_LOCAL],
+        0,
+        0,
+    ),
+    (
+        "F3-3b an escaped backslash before `u` (`\\\\u`) is a backslash, not an escape",
+        _DECL.format('("T::nudge", "LOCAL", "a\\\\u b")')
+        + _STRUCT_T
+        + "impl T { pub fn nudge(&mut self) { self.w += 1.0; } }\n",
+        [CLASSIFIED_LOCAL],
+        0,
+        0,
+    ),
+    (
+        'F3-4 control: a byte string b".." is not a str literal (shared lexer, grammar still exact)',
+        _DECL.format('("T::nudge", "LOCAL", b"bytes")')
+        + _STRUCT_T
+        + "impl T { pub fn nudge(&mut self) { self.w += 1.0; } }\n",
+        [UNDETERMINABLE],
+        1,
+        2,
     ),
 )
 
@@ -1500,7 +1593,7 @@ def _selfcheck():
     ok = ok and fired11
 
     # RED 12 -- fold round 1: every reproduced defect, each with its exact expected counts.
-    for label, src, states, n_fail, n_find in RUST_FOLD1_REDS:
+    for label, src, states, n_fail, n_find in (*RUST_FOLD1_REDS, *RUST_FOLD3_REDS):
         try:
             rr, ff, _ = rust_census(fixture_native(src))
             got = (
@@ -1511,7 +1604,7 @@ def _selfcheck():
         except Exception as exc:  # a crash is a miss, never a pass
             got = (type(exc).__name__, -1, -1)
         fired12 = got == (states, n_fail, n_find)
-        print(f"  {'RED  ' if fired12 else 'FAIL '}  Rust fold 1: {label} -> {got[1:]} findings")
+        print(f"  {'RED  ' if fired12 else 'FAIL '}  Rust fold: {label} -> {got[1:]} findings")
         ok = ok and fired12
 
     print("self-check: " + ("OK" if ok else "FAILED"))
