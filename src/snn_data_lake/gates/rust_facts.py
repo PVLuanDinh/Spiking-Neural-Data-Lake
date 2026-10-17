@@ -168,21 +168,41 @@ def native_status(root: Path = ROOT) -> tuple[str, list[dict]]:
 _NAME_ARG = re.compile(r'\bname\s*=\s*"([^"]+)"')
 
 
+# distinct-from: amdahl_gate.py unit_label_gate.py eprop_transport_gate.py attention_schema.py rule_composer.py recursive_tom.py fear_conditioning.py proximity_replay.py -- those read Python AST nodes, objects or VSA content; these read the Rust ATTRIBUTE TEXT rsfacts prints
+_WRAP = re.compile(r"\bwrap_pyfunction\s*!\s*\(\s*([\w:]+)")
+
+
+def _attr_name(a: str) -> str:
+    """Last path segment of a Rust attribute text: `pyo3::pymodule(gil_used = false)` -> `pymodule`."""
+    return re.split(r"[(= ]", a, maxsplit=1)[0].split("::")[-1]
+
+
 def _attr(attrs, head):
-    """The first attribute whose path is `head` (exact), else None."""
-    for a in attrs:
-        if a == head or a.startswith(head + "("):
-            return a
-    return None
+    """The first Rust attribute whose LAST path segment is `head` (`pyclass` == `pyo3::pyclass`)."""
+    return next((a for a in attrs if _attr_name(a) == head), None)
 
 
 def _renamed(attrs, default):
     for a in attrs:
-        if a.startswith(("pyo3(", "pyclass(", "pyfunction(")):
+        if _attr_name(a) in ("pyo3", "pyclass", "pyfunction"):
             m = _NAME_ARG.search(a)
             if m:
                 return m.group(1)
     return default
+
+
+def _method_key(fn):
+    """(Python-visible member name, kind) of a #[pymethods] fn: `#[new]` is the constructor, getters and
+    setters expose a property (`#[getter(x)]`, else the fn name minus `get_`/`set_`, PyO3's rule)."""
+    if _attr(fn["attrs"], "new"):
+        return "__new__", "constructor"
+    for kind, prefix in (("getter", "get_"), ("setter", "set_")):
+        a = _attr(fn["attrs"], kind)
+        if a:
+            m = re.search(r"\(\s*\"?(\w+)\"?\s*\)", a)
+            name = m.group(1) if m else fn["name"].removeprefix(prefix)
+            return name, kind
+    return _renamed(fn["attrs"], fn["name"]), "method"
 
 
 def pyo3_exports(file_facts) -> dict[str, dict]:
@@ -212,36 +232,49 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
 
     for f in file_facts:
         decl = {m["name"] for m in f.get("mods", []) if _attr(m["attrs"], "pymodule")}
+
+        def in_decl(item, decl=decl):
+            return item["mod"].split("::")[-1] in decl
+
         for u in f.get(
             "uses", []
         ):  # declarative: #[pymodule] mod m { #[pymodule_export] use super::f; }
-            if "pymodule_export" in u["attrs"] and u["mod"].split("::")[-1] in decl:
+            if _attr(u["attrs"], "pymodule_export") and in_decl(u):
                 rust = u["path"].split("::")[-1]
                 where = {"file": f["file"], "line": u["line"]}
                 (export_class if rust in pyclasses else export_fn)(rust, where)
         for fn in f.get("fns", []):  # #[pyfunction] defined inside a declarative module
-            if fn["mod"].split("::")[-1] in decl and _attr(fn["attrs"], "pyfunction"):
+            if in_decl(fn) and _attr(fn["attrs"], "pyfunction"):
                 export_fn(fn["name"], {"file": f["file"], "line": fn["line"]})
+        for t in f.get("types", []):  # #[pyclass] defined inside a declarative module
+            if in_decl(t) and _attr(t["attrs"], "pyclass"):
+                export_class(t["name"], {"file": f["file"], "line": t["line"]})
         modfns = {fn["name"] for fn in f.get("fns", []) if _attr(fn["attrs"], "pymodule")}
-        for m in f.get("macros", []):  # function form: m.add_function(wrap_pyfunction!(f, m)?)
-            if m["name"].split("::")[-1] == "wrap_pyfunction" and m["fn"] in modfns:
-                rust = m["tokens"].split(",")[0].strip().split("::")[-1].strip()
-                export_fn(rust, {"file": f["file"], "line": m["line"]})
-        for c in f.get("mcalls", []):  # m.add_class::<T>()
-            if c["name"] == "add_class" and c["fn"] in modfns and c.get("turbofish"):
-                rust = c["turbofish"].replace(" ", "").strip(":<>").split("::")[-1]
-                export_class(rust, {"file": f["file"], "line": c["line"]})
-    for f in file_facts:  # #[pymethods] impl T -> "PyName.method"
+        for c in f.get("mcalls", []):
+            if c["fn"] not in modfns:
+                continue
+            where = {"file": f["file"], "line": c["line"]}
+            if c["name"] in (
+                "add_function",
+                "add_wrapped",
+            ):  # only a wrapper that is ADDED registers
+                for a in c["args"]:
+                    m = _WRAP.search(a)
+                    if m:
+                        export_fn(m.group(1).split("::")[-1], where)
+            elif c["name"] == "add_class" and c.get("turbofish"):  # m.add_class::<T>()
+                export_class(c["turbofish"].replace(" ", "").strip(":<>").split("::")[-1], where)
+    registered = {v["rust"]: py for py, v in out.items() if v["kind"] == "class"}
+    for f in file_facts:  # #[pymethods] impl T -> "PyName.member", for REGISTERED classes only
         for fn in f.get("fns", []):
-            if fn["impl"] and _attr(fn["impl_attrs"], "pymethods"):
-                cls = fn["impl"].split("::")[-1]
-                pycls = pyclasses.get(cls, (cls, None))[0]
-                py = _renamed(fn["attrs"], fn["name"])
-                out[f"{pycls}.{py}"] = {
+            cls = (fn["impl"] or "").split("::")[-1]
+            if fn["impl"] and _attr(fn["impl_attrs"], "pymethods") and cls in registered:
+                member, kind = _method_key(fn)
+                out[f"{registered[cls]}.{member}"] = {
                     "rust": f"{cls}::{fn['name']}",
                     "file": f["file"],
                     "line": fn["line"],
-                    "kind": "method",
+                    "kind": kind,
                 }
     return out
 
@@ -278,6 +311,7 @@ def python_native_refs(src: Path = ROOT / "src") -> dict[str, set[str]]:
         is_pkg = py.name == "__init__.py"
         aliases: set[str] = set()
         names: set[str] = set()
+        pkg_aliases: set[str] = set()  # names bound to the package itself: `s` in `s._native.f`
         for n in ast.walk(tree):
             if isinstance(n, ast.ImportFrom):
                 mod = _absolute(n.module, n.level, here, is_pkg)
@@ -287,8 +321,23 @@ def python_native_refs(src: Path = ROOT / "src") -> dict[str, set[str]]:
                     aliases |= {a.asname or a.name for a in n.names if a.name == leaf}
             elif isinstance(n, ast.Import):
                 for a in n.names:
-                    if a.name == NATIVE_MODULE:
-                        aliases.add(a.asname or NATIVE_MODULE)
+                    if a.name == NATIVE_MODULE and a.asname:
+                        aliases.add(a.asname)
+                    elif a.name == pkg or a.name.startswith(pkg + "."):
+                        pkg_aliases.add(a.asname if a.asname and a.name == pkg else pkg)
+        # `import snn_data_lake[.x] [as s]` then `s._native.f`: counted only where the module also
+        # imports the extension somewhere (else `s._native` is someone else's import side effect).
+        if (
+            aliases
+            or names
+            or any(
+                a.name == NATIVE_MODULE
+                for n in ast.walk(tree)
+                if isinstance(n, ast.Import)
+                for a in n.names
+            )
+        ):
+            aliases |= {f"{p}.{leaf}" for p in pkg_aliases}
         if aliases:
             for n in ast.walk(tree):
                 if isinstance(n, ast.Attribute):
@@ -353,8 +402,51 @@ fn _legacy(m: &Bound<'_, PyModule>) -> PyResult<()> {
 mod tests { #[test] fn t() {} }
 """
 
+# Codex review of the base (2026-10-17), six MAJORs, each kept here as a control: qualified PyO3
+# attributes, an inline declarative class, a wrapper built but never ADDED, methods of a class never
+# registered, #[new]/#[getter] member names, and cfg(not(test)) / #[test] scope.
+_FIXTURE_EDGES = r"""
+#[pyo3::pyfunction]
+fn qual_fn() {}
+#[pyo3::pyclass(name = "QNet")]
+struct QCore;
+#[pyfunction]
+fn ghost() {}
+#[pyclass]
+struct Hidden;
+#[pymethods]
+impl Hidden { fn step(&self) {} }
+#[pyclass]
+struct Shown;
+#[pymethods]
+impl Shown {
+    #[new]
+    fn new() -> Self { Shown }
+    #[getter(weight)]
+    fn read_weight(&self) -> usize { 1 }
+    #[getter]
+    fn get_bias(&self) -> usize { 1 }
+}
+#[pyo3::pymodule]
+fn edges(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(qual_fn, m)?)?;
+    m.add_class::<QCore>()?;
+    m.add_class::<Shown>()?;
+    let _ = wrap_pyfunction!(ghost, m)?;
+    Ok(())
+}
+#[pymodule]
+mod _inline { use pyo3::prelude::*; #[pyclass] struct Inner; }
+#[cfg(not(test))]
+fn prod_only() { helper(); }
+#[test]
+fn check() { helper(); }
+fn helper() {}
+"""
+
 _PY_FIXTURE = {
     "snn_data_lake/__init__.py": "",
+    "snn_data_lake/f.py": "import snn_data_lake as s\nimport snn_data_lake._native\ns._native.missing()\n",
     "snn_data_lake/a.py": "from snn_data_lake._native import native_learn\n",
     "snn_data_lake/b.py": "from snn_data_lake import _native as nat\nx = nat.decay(1.0)\n",
     "snn_data_lake/sub/__init__.py": "",
@@ -382,6 +474,15 @@ def self_check(root: Path = ROOT) -> None:
         ex["decay"]["rust"] == "decay_impl"
         and ex["Net.learn_now"]["rust"] == "NetCore::learn_inner"
     )
+    e = facts_for_source(_FIXTURE_EDGES, root=root)
+    ex2 = pyo3_exports([e])
+    want2 = {"qual_fn", "QNet", "Shown", "Shown.__new__", "Shown.weight", "Shown.bias", "Inner"}
+    assert set(ex2) == want2, (
+        f"edge export map wrong: {sorted(set(ex2) ^ want2)}"
+    )  # no ghost, no Hidden.step
+    cfg = {fn["name"]: fn["cfg_test"] for fn in e["fns"]}
+    assert cfg["prod_only"] is False and cfg["check"] is True, cfg
+    assert [c["cfg_test"] for c in e["calls"] if c["path"] == "helper"] == [False, True], e["calls"]
     with tempfile.TemporaryDirectory() as d:
         for rel, text in _PY_FIXTURE.items():
             p = Path(d) / rel
@@ -393,6 +494,7 @@ def self_check(root: Path = ROOT) -> None:
         "snn_data_lake.b": {"decay"},
         "snn_data_lake.sub.c": {"Net"},
         "snn_data_lake.sub.d": {"native_learn"},
+        "snn_data_lake.f": {"missing"},
     }
     assert refs == want_refs, f"python refs wrong: {refs}"
     # RED: a file rsfacts cannot parse must fail CLOSED, never be skipped.
@@ -411,7 +513,8 @@ def main() -> int:
     status, nf = native_status()
     tool = facts(rust_files(ROOT, str(RSFACTS)))
     print(
-        f"rust_facts: self-check OK (fixture: 7 fns, 2 transpose calls, 5 exports, 4 _native importers; "
+        f"rust_facts: self-check OK (fixture: 7 fns, 2 transpose calls, 5 exports; edge fixture: 7 exports, "
+        f"no unregistered wrapper/class methods, cfg(not(test)) is production; 5 _native importers; "
         f"unparseable-Rust RED fired) | {status} | tools/rsfacts: {len(tool)} file(s) parsed | "
         f"python _native importers in src: {len(python_native_refs())}"
     )

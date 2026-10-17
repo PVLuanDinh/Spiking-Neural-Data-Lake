@@ -71,10 +71,22 @@ fn docs_of(attrs: &[syn::Attribute]) -> String {
     }
     out.join("\n")
 }
+// Test-only code: `#[cfg(test)]` / `#[cfg(all(test, ..))]` / `#[cfg(any(test, ..))]`, or a test fn
+// (`#[test]`, `#[tokio::test]`, ...). `#[cfg(not(test))]` is PRODUCTION code, not test code.
 fn is_cfg_test(attrs: &[syn::Attribute]) -> bool {
-    attrs
-        .iter()
-        .any(|a| a.path().is_ident("cfg") && txt(&a.meta).contains("test"))
+    attrs.iter().any(|a| {
+        let last = a.path().segments.last().map(|s| s.ident.to_string());
+        if last.as_deref() == Some("test") {
+            return true;
+        }
+        if !a.path().is_ident("cfg") {
+            return false;
+        }
+        let s = txt(&a.meta).replace(' ', "").replace("not(test)", "");
+        ["(test)", "(test,", ",test)", ",test,"]
+            .iter()
+            .any(|p| s.contains(p))
+    })
 }
 fn vis_of(v: &syn::Visibility) -> String {
     txt(v).replace(' ', "")
@@ -163,9 +175,12 @@ impl<'ast> Visit<'ast> for Facts {
     }
     fn visit_impl_item_fn(&mut self, i: &'ast syn::ImplItemFn) {
         self.fn_rec(&i.sig, &i.vis, &i.attrs, true);
+        let t = is_cfg_test(&i.attrs) as usize;
+        self.cfg_test += t;
         self.cur_fn.push(i.sig.ident.to_string());
         visit::visit_impl_item_fn(self, i);
         self.cur_fn.pop();
+        self.cfg_test -= t;
     }
     fn visit_trait_item_fn(&mut self, i: &'ast syn::TraitItemFn) {
         self.fn_rec(
