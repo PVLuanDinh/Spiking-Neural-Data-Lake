@@ -696,7 +696,10 @@ def _rust_steps_optimizer(f, fn):
             and (tgt in _MODEL_TARGETS or _is_weight_name(tgt))
         ):
             return True
-    return any(m["name"] == "step" and _OPTIM_RECV.search(m["recv"]) for m in _own(f, "mcalls", fn))
+    return any(
+        m["name"] == "step" and _OPTIM_RECV.search(rust_facts.strip_literals(m["recv"]))
+        for m in _own(f, "mcalls", fn)
+    )  # Codex r5 N5-5: `self.clock_named("opt").step()` is not an optimizer
 
 
 def _rust_mutates_weight(f, fn):
@@ -1009,6 +1012,26 @@ RUST_FOLD4_REDS = (
         )
         + _ONE_LINE,
         [CLASSIFIED_CLAIMANT, CLASSIFIED_REFERENCE],
+        1,
+        1,
+    ),
+    (
+        'F4-3 `self.clock_named("opt").step()` in an EXACT_GRADIENT fn is not an optimizer step (Codex r5 N5-5)',
+        _EXACT_T.format("T::train_step")
+        + "pub struct T { w: f64 }\n"
+        + 'impl T { pub fn train_step(&mut self) { self.clock_named("opt").step(); '
+        + "let g = self.loss().backward(); self.w -= g; } }\n",
+        [CLASSIFIED_REFERENCE],
+        0,
+        0,
+    ),
+    (
+        'F4-3c control: `self.clock("x").opt.step()` (opt outside the literal) still reds',
+        _EXACT_T.format("T::train_step")
+        + "pub struct T { w: f64, opt: O }\n"
+        + 'impl T { pub fn train_step(&mut self) { self.clock("x").opt.step(); '
+        + "let g = self.loss().backward(); self.w -= g; } }\n",
+        [CLASSIFIED_REFERENCE],
         1,
         1,
     ),
