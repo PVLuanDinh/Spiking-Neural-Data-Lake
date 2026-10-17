@@ -37,6 +37,54 @@ def test_union_excludes_stdlib_only_files():
     assert union == ["n.py"]
 
 
+P = "src/snn_data_lake/"
+PKG_HITS = {
+    "numpy": [(P + "sleep/a.py", 1, False), (P + "sleep/b.py", 1, False), (P + "top.py", 1, False)],
+    "torch": [(P + "sleep/a.py", 2, False)],
+}
+
+
+def test_live_counts_adds_union_and_per_package_keys():
+    live = nr.live_counts(*nr.census(imported=PKG_HITS))
+    assert live["numpy"] == 3 and live["union"] == 3
+    assert live["sleep:numpy"] == 2 and live["sleep:torch"] == 1 and live["sleep:union"] == 2
+    assert live["(root):numpy"] == 1 and "(root):zlib" in live
+
+
+def test_one_package_rises_while_library_total_does_not():
+    base = nr.live_counts(*nr.census(imported=PKG_HITS))
+    moved = {
+        "numpy": [
+            (P + "sleep/a.py", 1, False),
+            (P + "sleep/b.py", 1, False),
+            (P + "sleep/c.py", 1, False),
+        ],
+        "torch": [(P + "sleep/a.py", 2, False)],
+    }
+    live = nr.live_counts(*nr.census(imported=moved))
+    assert live["numpy"] == base["numpy"] == 3
+    assert ("sleep:numpy", 3, 2) in nr.compare(live, base)
+
+
+def test_new_package_with_imports_is_red_but_empty_one_is_not():
+    base = {"numpy": 1, "sleep:numpy": 1}
+    assert nr.compare({"numpy": 1, "sleep:numpy": 1, "lake:numpy": 0}, base) == []
+    assert nr.compare({"numpy": 1, "sleep:numpy": 1, "lake:numpy": 1}, base) == [
+        ("lake:numpy", 1, None)
+    ]
+
+
+def test_baseline_string_round_trips():
+    live = nr.live_counts(*nr.census(imported=PKG_HITS))
+    assert nr.decode(nr.encode(live)) == live and " " not in nr.encode(live)
+
+
+def test_component_view_is_labelled_provisional():
+    live = nr.live_counts(*nr.census(imported=PKG_HITS))
+    view = "\n".join(nr.component_view(live))
+    assert "provisional until G8 boundaries settle" in view and "sleep" in view
+
+
 def test_rise_is_red_and_fall_is_green():
     assert nr.compare(dict(BASE, numpy=4), BASE) == [("numpy", 4, 3)]
     assert nr.compare(dict(BASE, numpy=2), BASE) == []
@@ -48,12 +96,12 @@ def test_library_missing_from_baseline_is_red():
 
 def test_update_baseline_refuses_a_rise(tmp_path, monkeypatch):
     path = tmp_path / "b.json"
-    held = [5] * len(nr.LIBS)
-    path.write_text(json.dumps(" ".join(map(str, held))), encoding="utf-8")
+    held = {k: 5 for k in nr.COLS}
+    path.write_text(json.dumps(nr.encode(held)), encoding="utf-8")
     monkeypatch.setattr(nr, "BASELINE_PATH", path)
-    monkeypatch.setattr(nr, "census", lambda **_: ({k: ["f"] * 6 for k in nr.LIBS}, []))
+    monkeypatch.setattr(nr, "census", lambda **_: ({k: ["f"] * 6 for k in nr.LIBS}, ["f"] * 6))
     assert nr.main(["--update-baseline"]) == 1
-    assert json.loads(path.read_text(encoding="utf-8")) == " ".join(map(str, held))
+    assert nr.decode(json.loads(path.read_text(encoding="utf-8"))) == held
 
 
 def test_real_tree_native_absent_line(capsys):

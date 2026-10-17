@@ -43,6 +43,16 @@ THIRD_PARTY = (
 )
 STDLIB_C = ("zlib", "struct")
 LIBS = THIRD_PARTY + STDLIB_C
+COLS = (*LIBS, "union")
+PKG_ROOT = "src/snn_data_lake/"
+#: provisional until G8 boundaries settle: a report-only view, not a rule.
+COMPONENTS = {
+    "lake": ("lakehouse", "substrate"),
+    "reservoir": ("reservoir",),
+    "brain/grower": ("engine", "growth", "faculties", "brainstem"),
+    "readouts": ("readout",),
+    "sleep": ("sleep",),
+}
 
 
 def _walk():
@@ -63,13 +73,66 @@ def counts(zones):
     return {lib: len(files) for lib, files in zones.items()}
 
 
+def _package(path):
+    head = path.removeprefix(PKG_ROOT)
+    return head.split("/")[0] if "/" in head else "(root)"
+
+
+def live_counts(zones, union):
+    """Flat {col: n} over the whole tree plus {'<pkg>:<col>': n} for each package importing anything."""
+    live = {**counts(zones), "union": len(union)}
+    by_pkg = {}
+    for lib, files in zones.items():
+        for f in files:
+            by_pkg.setdefault(_package(f), {}).setdefault(lib, set()).add(f)
+    for pkg, libs in by_pkg.items():
+        for col in COLS:
+            files = (
+                libs.get(col, set())
+                if col != "union"
+                else set().union(*(libs.get(t, set()) for t in THIRD_PARTY))
+            )
+            live[f"{pkg}:{col}"] = len(files)
+    return live
+
+
 def compare(live, baseline):
-    """[(lib, live, allowed)] for each library above its baseline; allowed None = not in the baseline."""
+    """[(key, live, allowed)] above baseline; allowed None = key absent (red unless a package row of 0)."""
     return [
-        (lib, n, baseline.get(lib))
-        for lib, n in sorted(live.items())
-        if baseline.get(lib) is None or n > baseline[lib]
+        (k, n, baseline.get(k))
+        for k, n in sorted(live.items())
+        if (baseline.get(k) is None and (n or ":" not in k))
+        or (baseline.get(k) is not None and n > baseline[k])
     ]
+
+
+def encode(live):
+    """Whitespace-free one-line form `ALL=<csv>;<pkg>=<csv>;...` (see _load_baseline for why)."""
+    pkgs = sorted({k.split(":")[0] for k in live if ":" in k})
+    row = lambda pre: ",".join(str(live.get(pre + c, 0)) for c in COLS)  # noqa: E731
+    return ";".join([f"ALL={row('')}", *(f"{p}={row(p + ':')}" for p in pkgs)])
+
+
+def decode(text):
+    live = {}
+    for seg in text.split(";"):
+        name, csv = seg.split("=")
+        for col, n in zip(COLS, csv.split(","), strict=False):
+            live[col if name == "ALL" else f"{name}:{col}"] = int(n)
+    return live
+
+
+def component_view(live):
+    """Report-only component -> packages table."""
+    out = ["components (provisional until G8 boundaries settle; a view, not a rule):"]
+    pkgs = {k.split(":")[0] for k in live if ":" in k}
+    for comp, members in {
+        **COMPONENTS,
+        "unassigned": tuple(sorted(pkgs - {m for v in COMPONENTS.values() for m in v})),
+    }.items():
+        union = sum(live.get(f"{m}:union", 0) for m in members)
+        out.append(f"  {comp:<14}{union:>5} files  <- {', '.join(members) or '-'}")
+    return out
 
 
 def native_line(root):
@@ -78,31 +141,31 @@ def native_line(root):
 
 
 def _load_baseline():
-    """{lib: allowed} from the baseline: one JSON string of counts in LIBS order. The verify line runs
-    ruff over the .json as Python, so only a lone string (a docstring) passes B018 and the formatter."""
+    """{key: allowed} from the baseline: ONE whitespace-free JSON string. The verify line runs ruff
+    over the .json as Python, so only a lone string (a docstring) passes B018 and the formatter, and
+    only a string with no whitespace passes E501 at this length."""
     if not BASELINE_PATH.exists():
         return None
-    return dict(
-        zip(
-            LIBS,
-            map(int, json.loads(BASELINE_PATH.read_text(encoding="utf-8-sig")).split()),
-            strict=False,
-        )
-    )
+    return decode(json.loads(BASELINE_PATH.read_text(encoding="utf-8-sig")))
 
 
 def _report(zones, union, baseline):
     allowed = baseline or {}
+    live = live_counts(zones, union)
     print(native_line(NATIVE_ROOT))
     print("rust blind spots: " + "; ".join(rust_facts.BLIND_SPOTS))
     print(f"{'library':<14}{'files':>7}{'baseline':>10}")
-    for lib, n in counts(zones).items():
-        print(f"{lib:<14}{n:>7}{allowed.get(lib, '-'):>10}")
+    for lib in LIBS:
+        print(f"{lib:<14}{live[lib]:>7}{allowed.get(lib, '-'):>10}")
     print(f"{len(union)} src files import >= 1 third-party C/C++ library")
+    for pkg in sorted({k.split(":")[0] for k in live if ":" in k}):
+        row = " ".join(f"{c}={live[f'{pkg}:{c}']}" for c in COLS if live[f"{pkg}:{c}"])
+        print(f"  pkg {pkg:<14}{row}")
+    print("\n".join(component_view(live)))
 
 
 def self_check():
-    base = {lib: 5 for lib in LIBS}
+    base = {col: 5 for col in COLS}
     print("native_ratchet --self-check")
     steady = compare(base, base)
     print(f"[control ] unmutated counts == baseline -> {len(steady)} findings (must be 0)")
@@ -114,7 +177,15 @@ def self_check():
     print(
         f"[GREEN   ] numpy 5 -> 4 -> {fall} (must be empty; update the baseline to lock the fall in)"
     )
-    ok = steady == [] and rise == [("numpy", 6, 5)] and new == [("torch", 5, None)] and fall == []
+    pkg = compare({**base, "sleep:numpy": 3}, {**base, "sleep:numpy": 2})
+    print(f"[RED     ] one package 2 -> 3, library total flat -> {pkg} (must name sleep:numpy)")
+    ok = (
+        pkg == [("sleep:numpy", 3, 2)]
+        and steady == []
+        and rise == [("numpy", 6, 5)]
+        and new == [("torch", 5, None)]
+        and fall == []
+    )
     print("self-check OK" if ok else "BROKEN: a constructed case did not behave")
     return 0 if ok else 1
 
@@ -126,15 +197,20 @@ def main(argv=None):
     try:
         zones, union = census()
         baseline = _load_baseline()
+        live = live_counts(zones, union)
         _report(zones, union, baseline)
     except rust_facts.RustFactsUnavailable as e:
         print(f"GATE FAIL: native/ has .rs files but rust_facts is unavailable: {e}")
         return 1
-    live = counts(zones)
     held = baseline or {}
 
     if "--update-baseline" in argv:
-        rises = compare(live, held) if baseline else []
+        first_pkgs = not any(
+            ":" in k for k in held
+        )  # the one-time derivation of the per-package rows
+        rises = (
+            [r for r in compare(live, held) if not (first_pkgs and ":" in r[0])] if baseline else []
+        )
         if rises:
             print(
                 "REFUSED: --update-baseline may only ratchet DOWN. These libraries ROSE or are new:"
@@ -143,10 +219,12 @@ def main(argv=None):
                 print(f"  {lib}: {n} > baseline {allowed}")
             return 1
         BASELINE_PATH.write_text(
-            json.dumps(" ".join(str(live[lib]) for lib in LIBS)) + "\n",
+            json.dumps(encode(live)) + "\n",
             encoding="utf-8",
         )
-        print(f"baseline written: {BASELINE_PATH.relative_to(ROOT).as_posix()}  union={len(union)}")
+        print(
+            f"baseline written: {BASELINE_PATH.relative_to(ROOT).as_posix()}  union={live['union']}"
+        )
         return 0
 
     if "--assert" not in argv:
