@@ -133,3 +133,20 @@ def test_absent_native_adds_nothing_and_census_python_counts_are_untouched():
 @pytest.mark.parametrize("flag", ["--assert", "--self-check"])
 def test_main_reaches_the_rust_half(flag):
     assert gate.main([flag]) == 0
+
+
+def test_an_optimizer_step_spelled_inside_a_string_is_not_a_step(tmp_path):
+    """Codex r3 F-4: `self.model = "opt.step(".len();` is an innocent length assignment."""
+    from snn_data_lake.gates import gradient_claim_gate as gcg
+
+    d = tmp_path / "native" / "sndl-core" / "src"
+    d.mkdir(parents=True)
+    p = d / "lib.rs"
+    p.write_text(
+        "pub struct T { model: usize }\nimpl T {\n    pub fn tick(&mut self) {\n"
+        '        self.model = "opt.step(".len();\n    }\n}\n',
+        encoding="utf-8",
+    )
+    rules, failures, _ = gcg.rust_census(native=("PRESENT", rust_facts.facts([p])), root=tmp_path)
+    assert not [r for r in rules if r["qualname"].endswith("tick")], rules
+    assert failures == []

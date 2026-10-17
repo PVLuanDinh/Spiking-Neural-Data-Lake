@@ -666,7 +666,9 @@ def _rust_steps_optimizer(f, name):
         if (
             a["fn"] == name
             and a["op"] == "="
-            and _RUST_STEP.search(a["rhs"] or "")
+            and _RUST_STEP.search(
+                rust_facts.strip_literals(a["rhs"])
+            )  # Codex r3 F-4: not in a string
             and (tgt in _MODEL_TARGETS or _is_weight_name(tgt))
         ):
             return True
