@@ -83,6 +83,18 @@ INPLACE_UPDATE_METHODS = frozenset(
 )  # fmt: skip
 
 
+# distinct-from: gradient_claim_gate.py -- its _rust_triples PARSES literal values out of one declaration grammar; this STRIPS literals from token text before spelling scans (consolidates eprop_transport_gate._RS_LITERAL)
+#: Rust string / char literals, raw and byte forms included. A spelling INSIDE one is text, not code:
+#: every gate that scans token text for a method/call spelling strips these first (shared, P2; moved
+#: here from eprop_transport_gate when gradient_claim_gate needed the same fix, Codex r3 F-4).
+RUST_LITERAL = re.compile(r"""b?r(#*)".*?"\1|b?"(?:\\.|[^"\\])*"|b?'(?:\\[^']+|[^\\'])'""", re.S)
+
+
+def strip_literals(text: str | None) -> str:
+    """`text` with every Rust string/char literal replaced by `""`."""
+    return RUST_LITERAL.sub('""', text or "")
+
+
 class RustFactsUnavailable(RuntimeError):
     """The Rust half of a gate could not run. A gate must report this as a RED, never skip it."""
 
@@ -157,7 +169,32 @@ def facts(paths, root: Path = ROOT, allow_errors: bool = False) -> list[dict]:
         raise RustFactsUnavailable(
             "unparseable Rust: " + "; ".join(f"{b['file']}: {b.get('err')}" for b in bad)
         )
+    for f in out:
+        _mark_test_dir(f)
     return out
+
+
+_TEST_DIRS = ("tests", "benches", "examples")
+
+
+def _mark_test_dir(f: dict) -> None:
+    """A file under a crate's tests/ benches/ examples/ is test code even without #[cfg(test)]
+    (Codex r3 F-5): every record in it gets cfg_test, ONE place for every gate (P2)."""
+    p = Path(f["file"])
+    hit = any(
+        a.name in _TEST_DIRS
+        and ((a.parent / "src").is_dir() or (a.parent / "Cargo.toml").is_file())
+        for a in p.parents
+    )
+    f["test_file"] = hit
+    if hit and f.get("ok"):
+        f["test_paths"] = sorted({*f.get("test_paths", []), *f.get("paths", [])})
+        f["paths"] = []
+        for recs in f.values():
+            if isinstance(recs, list):
+                for r in recs:
+                    if isinstance(r, dict) and "cfg_test" in r:
+                        r["cfg_test"] = True
 
 
 def facts_for_source(
@@ -306,11 +343,21 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
             if in_decl(t) and _attr(t["attrs"], "pyclass"):
                 export_class(t["name"], {"file": f["file"], "line": t["line"]})
         modfns = modcode
-        bound = {}  # `let f = wrap_pyfunction!(x, m)?;` inside a module fn: local name -> wrapped fn
+        # `let f = wrap_pyfunction!(x, m)?;` inside a module fn: (fn, local) -> [(position, wrapped)],
+        # resolved per add_function call to the LATEST binding BEFORE it (Codex r3 F-2: a rebound
+        # `f` must not retarget an earlier registration).
+        bound: dict = {}
         for x in f.get("lets", []):
             m = _WRAP.search(x["init"] or "") if x["fn"] in modfns else None
-            if m:
-                bound[(x["fn"], x["pat"].replace("mut ", "").strip())] = m.group(1)
+            key = (x["fn"], x["pat"].replace("mut ", "").strip())
+            bound.setdefault(key, []).append(
+                ((x["line"], x.get("col", 0)), m.group(1) if m else None)
+            )
+
+        def binding(fn, local, at, bound=bound):
+            prior = [w for pos, w in sorted(bound.get((fn, local), [])) if pos < at]
+            return prior[-1] if prior else None
+
         for c in f.get("mcalls", []):
             if c["fn"] not in modfns:
                 continue
@@ -321,7 +368,8 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
             ):  # only a wrapper that is ADDED registers (inline, or through a let-bound local)
                 for a in c["args"]:
                     m = _WRAP.search(a)
-                    name = m.group(1) if m else bound.get((c["fn"], a.strip()))
+                    at = (c["line"], c.get("col", 0))
+                    name = m.group(1) if m else binding(c["fn"], a.strip(), at)
                     if name:
                         export_fn(name.split("::")[-1], where)
             elif c["name"] == "add_class" and c.get("turbofish"):  # m.add_class::<T>()

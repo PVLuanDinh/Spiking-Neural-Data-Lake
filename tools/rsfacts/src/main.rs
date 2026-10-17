@@ -268,19 +268,31 @@ impl<'ast> Visit<'ast> for Facts {
     }
     fn visit_item_struct(&mut self, i: &'ast syn::ItemStruct) {
         self.type_rec("struct", &i.ident, &i.vis, &i.attrs);
+        let t = is_cfg_test(&i.attrs) as usize;
+        self.cfg_test += t;
         visit::visit_item_struct(self, i);
+        self.cfg_test -= t;
     }
     fn visit_item_enum(&mut self, i: &'ast syn::ItemEnum) {
         self.type_rec("enum", &i.ident, &i.vis, &i.attrs);
+        let t = is_cfg_test(&i.attrs) as usize;
+        self.cfg_test += t;
         visit::visit_item_enum(self, i);
+        self.cfg_test -= t;
     }
     fn visit_item_union(&mut self, i: &'ast syn::ItemUnion) {
         self.type_rec("union", &i.ident, &i.vis, &i.attrs);
+        let t = is_cfg_test(&i.attrs) as usize;
+        self.cfg_test += t;
         visit::visit_item_union(self, i);
+        self.cfg_test -= t;
     }
     fn visit_item_type(&mut self, i: &'ast syn::ItemType) {
         self.type_rec("type", &i.ident, &i.vis, &i.attrs);
+        let t = is_cfg_test(&i.attrs) as usize;
+        self.cfg_test += t;
         visit::visit_item_type(self, i);
+        self.cfg_test -= t;
     }
     fn visit_item_mod(&mut self, i: &'ast syn::ItemMod) {
         let (_, modp, cfg) = self.ctx();
@@ -311,13 +323,19 @@ impl<'ast> Visit<'ast> for Facts {
         let (_, modp, cfg) = self.ctx();
         self.consts.push(json!({"kind": "const", "name": i.ident.to_string(), "line": line(&i.ident),
             "ty": txt(&*i.ty), "expr": txt(&*i.expr), "attrs": attrs_of(&i.attrs), "cfg_test": cfg || is_cfg_test(&i.attrs), "mod": modp}));
+        let t = is_cfg_test(&i.attrs) as usize;
+        self.cfg_test += t;
         visit::visit_item_const(self, i);
+        self.cfg_test -= t;
     }
     fn visit_item_static(&mut self, i: &'ast syn::ItemStatic) {
         let (_, modp, cfg) = self.ctx();
         self.consts.push(json!({"kind": "static", "name": i.ident.to_string(), "line": line(&i.ident),
             "ty": txt(&*i.ty), "expr": txt(&*i.expr), "attrs": attrs_of(&i.attrs), "cfg_test": cfg || is_cfg_test(&i.attrs), "mod": modp}));
+        let t = is_cfg_test(&i.attrs) as usize;
+        self.cfg_test += t;
         visit::visit_item_static(self, i);
+        self.cfg_test -= t;
     }
     fn visit_path(&mut self, p: &'ast syn::Path) {
         if p.segments.len() >= 2 {
