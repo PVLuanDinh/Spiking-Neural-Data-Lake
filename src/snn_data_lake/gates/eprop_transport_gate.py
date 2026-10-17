@@ -708,14 +708,46 @@ impl Net {
 }
 """
 _RUST_FOLD3_GREEN = _RUST_FOLD3_RED.replace("self.w2", "self.fb")
+#: Fold 4 (Codex r5 N5-2/N5-3/N5-4): exactly 3 T1 (carried, block_rhs, tr_operand); shadow_block and
+#: b_operand stay silent. The GREEN twin swaps the forward weight for the fixed feedback matrix.
+_RUST_FOLD4_RED = """\
+impl Net {
+    pub fn carried(&mut self, x: &A, lr: f64) {
+        let d = self.w2.t().to_owned(); self.w1.gemm_tr(1.0, &x, &d, 0.0);
+    }
+    pub fn block_rhs(&mut self, x: &A, lr: f64) {
+        self.w1 = {
+            let mut y = self.fb.clone();
+            y.tr_copy_from(&self.w2);
+            y
+        };
+    }
+    pub fn tr_operand(&mut self, x: &A, lr: f64) {
+        y.gemm_tr(1.0, &self.w2, &x, 0.0); self.w1.scaled_add(-lr, &y);
+    }
+    pub fn shadow_block(&mut self, e: &A, lr: f64) {
+        let d = self.w2.t().to_owned();
+        self.w1 = {
+            let d = e.clone();
+            d
+        };
+    }
+    pub fn b_operand(&mut self, x: &A, lr: f64) {
+        y.gemm_tr(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);
+    }
+}
+"""
+_RUST_FOLD4_GREEN = _RUST_FOLD4_RED.replace("self.w2", "self.fb")
 
 
 def _rust_fixture(red, fold=0):
-    """fold: 0 = round-0 arm, 1 = fold-1 arm, 3 = fold-3 arm (implicit-transpose writers + tr_dot control)."""
+    """fold: 0 = round-0 arm, 1 = fold-1, 3 = fold-3 (implicit-transpose writers + tr_dot control),
+    4 = fold-4 (carried taint into a writer, writer inside a block RHS, the transposed operand only)."""
     planted, fixed = {
         0: (_RUST_RED, _RUST_GREEN),
         1: (_RUST_FOLD_RED, _RUST_FOLD_GREEN),
         3: (_RUST_FOLD3_RED, _RUST_FOLD3_GREEN),
+        4: (_RUST_FOLD4_RED, _RUST_FOLD4_GREEN),
     }[int(fold)]
     return {
         "sndl-core/src/lib.rs": "pub mod plasticity;\n",
@@ -1191,8 +1223,13 @@ def _fires(source):
 #   title: a different gate's own `_selfcheck`, a file-changed flag and a sidecar-writer census;
 #   none builds or scans a Rust tree.
 def _check_rust_half():
-    counts, fold, fold3 = {}, {}, {}
-    for into, kwargs in ((counts, {}), (fold, {"fold": 1}), (fold3, {"fold": 3})):
+    counts, fold, fold3, fold4 = {}, {}, {}, {}
+    for into, kwargs in (
+        (counts, {}),
+        (fold, {"fold": 1}),
+        (fold3, {"fold": 3}),
+        (fold4, {"fold": 4}),
+    ):
         for name, planted in (("planted", True), ("fixed", False)):
             with tempfile.TemporaryDirectory() as d:
                 for rel, text in _rust_fixture(planted, **kwargs).items():
@@ -1214,11 +1251,16 @@ def _check_rust_half():
         f"the fold-3 Rust RED must give exactly 5 T1 through scan_rust, got {fold3['planted']}"
     )
     assert not fold3["fixed"], f"the fold-3 Rust GREEN twin must give 0, got {fold3['fixed']}"
+    assert fold4["planted"] == ["T1"] * 3, (
+        f"the fold-4 Rust RED must give exactly 3 T1 through scan_rust, got {fold4['planted']}"
+    )
+    assert not fold4["fixed"], f"the fold-4 Rust GREEN twin must give 0, got {fold4['fixed']}"
     status, live = scan_rust()
     assert not live, f"governed Rust weight transport in native/: {live}"
     print(f"  RED    Rust {counts['planted']}; green twin {len(counts['fixed'])}; live: {status}")
     print(f"  RED    Rust fold-1 {fold['planted']}; green twin {len(fold['fixed'])}")
     print(f"  RED    Rust fold-3 {fold3['planted']}; green twin {len(fold3['fixed'])}")
+    print(f"  RED    Rust fold-4 {fold4['planted']}; green twin {len(fold4['fixed'])}")
 
 
 def _selfcheck():
