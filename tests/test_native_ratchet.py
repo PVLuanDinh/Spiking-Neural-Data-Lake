@@ -124,3 +124,29 @@ def test_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch):
 
 def test_self_check_passes():
     assert nr.self_check() == 0
+
+
+def test_empty_research_module_named_like_a_library_does_not_hide_a_src_importer():
+    with nr._fixture_repo(shadows=("numpy", "zlib", "struct")):
+        zones, union = nr.census()
+    assert {k: v for k, v in nr.counts(zones).items() if v} == {"numpy": 1, "zlib": 1, "struct": 1}
+    assert union == ["src/snn_data_lake/p/new.py"]
+
+
+def test_control_names_every_library_a_dead_walk_reads_as_zero():
+    with nr._fixture_repo() as src:
+        dead = nr.control({lib: [] for lib in nr.LIBS}, src)
+        assert nr.control(*nr.census()[:1], src) == []
+    assert dead == [("numpy", 0, 1), ("zlib", 0, 1), ("struct", 0, 1)]
+
+
+def test_dead_walk_is_red_even_though_every_count_reads_zero(tmp_path, monkeypatch, capsys):
+    path = tmp_path / "b.json"
+    path.write_text(json.dumps(nr.encode({k: 5 for k in nr.COLS})), encoding="utf-8")
+    monkeypatch.setattr(nr, "BASELINE_PATH", path)
+    monkeypatch.setattr(nr, "census", lambda **_: ({k: [] for k in nr.LIBS}, []))
+    with nr._fixture_repo() as src:
+        monkeypatch.setattr(nr, "ROOT", src.parent)
+        assert nr.main(["--assert"]) == 1
+    out = capsys.readouterr().out
+    assert "numpy: walk 0 != 1 line" in out and "gate OK" not in out
