@@ -72,6 +72,15 @@ def test_fold3_red_has_exact_counts_through_rust_census(case):
     assert len(_findings(rules, failures)) == n_find
 
 
+@pytest.mark.parametrize("case", gate.RUST_FOLD4_REDS, ids=lambda c: c[0].split()[0])
+def test_fold4_red_has_exact_counts_through_rust_census(case):
+    _, src, states, n_fail, n_find = case
+    rules, failures, _ = gate.rust_census(gate.fixture_native(src))
+    assert [r["state"] for r in rules] == states
+    assert len(failures) == n_fail
+    assert len(_findings(rules, failures)) == n_find
+
+
 def test_fold3_literals_use_the_shared_lexer_and_decode_escapes():
     got = gate._rust_triples(r'[("a", "LOCAL", "caf\u{e9}\x41\n\\u"), ("b", "CONTROL", r"\u{e9}")]')
     assert got == [("a", "LOCAL", "caf\u00e9A\n\\u"), ("b", "CONTROL", "\\u{e9}")]

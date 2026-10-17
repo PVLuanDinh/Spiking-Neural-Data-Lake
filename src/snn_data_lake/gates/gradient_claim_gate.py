@@ -565,11 +565,11 @@ _RUST_CLAIM = re.compile(
 )
 
 RUST_BLIND_SPOTS = (
-    "Rust facts are keyed by fn NAME within a file: same-named fns in two impls of one file conflate",
+    "Rust facts are owned by their innermost enclosing fn (`fn_id`); a closure's facts belong to the fn around it",
     "CLAIM signals are lexical (one intra-crate hop by last path segment); a renamed re-export is missed",
     "GRADIENT_CLAIM is read per file, like the Python per-module constant",
     "tools/rsfacts is gate tooling, outside the brain rules",
-    "an optimizer step is attributed to the same-named fn with the greatest start line at or before it: a nested fn/closure inside it misattributes; the receiver must spell opt/optim*",
+    "an optimizer-step receiver must spell opt/optim*",
     "an optimizer step is an `x = ..step(..)` assign to a model/weight-ish target or `.step` on an optim* receiver; `let m = o.step(..)` is not seen",
 )
 
@@ -664,31 +664,24 @@ def read_rust_declaration(file_facts):
     return out
 
 
-def _rust_body_text(f, name):
-    """Every fact attributed to fn `name` in file facts `f`, as one string for the CLAIM scan."""
-    parts = [p for k in ("params",) for fn in f["fns"] if fn["name"] == name for p in fn[k]]
-    parts += [x for m in f["mcalls"] if m["fn"] == name for x in (m["recv"], m["name"])]
-    parts += [c["path"] for c in f["calls"] if c["fn"] == name]
-    parts += [x["init"] for x in f["lets"] if x["fn"] == name]  # `let d;` has init None
+def _own(f, key, fn):
+    """Facts of kind `key` whose innermost enclosing fn is `fn` (rust_facts schema 2 `fn_id`): the ONE
+    attribution. Never by name or line -- two fns may share both, and a bodiless signature owns nothing."""
+    return [x for x in f[key] if x["fn_id"] == fn["id"]]
+
+
+def _rust_body_text(f, fn):
+    """Every fact owned by `fn` in file facts `f`, as one string for the CLAIM scan."""
+    parts = list(fn["params"])
+    parts += [x for m in _own(f, "mcalls", fn) for x in (m["recv"], m["name"])]
+    parts += [c["path"] for c in _own(f, "calls", fn)]
+    parts += [x["init"] for x in _own(f, "lets", fn)]  # `let d;` has init None
     return " ".join(p for p in parts if p)
 
 
 _RUST_STEP = re.compile(r"\.\s*step\s*\(")
 _MODEL_TARGETS = frozenset(("model", "net", "network", "module", "params", "parameters"))
 _OPTIM_RECV = re.compile(r"optim|\bopt\b|\bopt_|_opt\b", re.I)
-
-
-def _own(f, key, fn):
-    """Production facts of kind `key` that sit in THIS fn: facts carry the fn NAME only, so a fact goes to
-    the same-named fn with the greatest start line at or before it (qualified, not bare-name; cfg(test) skipped)."""
-    same = [x["line"] for x in f["fns"] if x["name"] == fn["name"]]
-    return [
-        x
-        for x in f[key]
-        if x["fn"] == fn["name"]
-        and not x["cfg_test"]
-        and max((ln for ln in same if ln <= x["line"]), default=None) == fn["line"]
-    ]
 
 
 def _rust_steps_optimizer(f, fn):
@@ -703,17 +696,18 @@ def _rust_steps_optimizer(f, fn):
             and (tgt in _MODEL_TARGETS or _is_weight_name(tgt))
         ):
             return True
-    return any(m["name"] == "step" and _OPTIM_RECV.search(m["recv"]) for m in _own(f, "mcalls", fn))
+    return any(
+        m["name"] == "step" and _OPTIM_RECV.search(rust_facts.strip_literals(m["recv"]))
+        for m in _own(f, "mcalls", fn)
+    )  # Codex r5 N5-5: `self.clock_named("opt").step()` is not an optimizer
 
 
 def _rust_mutates_weight(f, fn):
     """A compound assign / in-place method on a weight-ish target, or a burn optimizer step."""
-    for a in f["assigns"]:
-        if a["fn"] == fn["name"] and a["op"] != "=" and _is_weight_name(_ident(a["lhs"])):
+    for a in _own(f, "assigns", fn):
+        if a["op"] != "=" and _is_weight_name(_ident(a["lhs"])):
             return True
-    for m in f["mcalls"]:
-        if m["fn"] != fn["name"]:
-            continue
+    for m in _own(f, "mcalls", fn):
         if m["name"] in rust_facts.INPLACE_UPDATE_METHODS and _is_weight_name(_ident(m["recv"])):
             return True
     return _rust_steps_optimizer(f, fn)
@@ -723,7 +717,7 @@ def _rust_claims(f, fn):
     doc = (fn["doc"] or "").lower()
     if any(t in doc or t in fn["name"].lower() for t in _CLAIM_TOKENS):
         return True
-    return bool(_RUST_CLAIM.search(_rust_body_text(f, fn["name"])))
+    return bool(_RUST_CLAIM.search(_rust_body_text(f, fn)))
 
 
 def _crate_of(rel):
@@ -777,8 +771,8 @@ def rust_census(native=None, root=None):
             fns = [fn for fn in live if _rust_qual(fn) == qual]
             claim = any(_rust_claims(f, fn) for fn in fns)
             for fn in fns:  # one hop: applying what a claiming fn in the same crate computed
-                callees = {c["path"].split("::")[-1] for c in f["calls"] if c["fn"] == fn["name"]}
-                callees |= {m["name"] for m in f["mcalls"] if m["fn"] == fn["name"]}
+                callees = {c["path"].split("::")[-1] for c in _own(f, "calls", fn)}
+                callees |= {m["name"] for m in _own(f, "mcalls", fn)}
                 claim = claim or any(
                     _rust_claims(of, ofn)
                     for callee in callees
@@ -968,6 +962,78 @@ RUST_FOLD3_REDS = (
         [UNDETERMINABLE],
         1,
         2,
+    ),
+)
+
+
+#: Fold round 4 reds (each fails against the 7166aba4 gate; see rows/r02-gradclaim/REPORT.md). Same entry shape.
+_TRAIT_IN_BODY = (
+    _EXACT_T.format("T::train_step")
+    + "pub struct T { opt: O, optim: O }\n"
+    + "impl T {\n    pub fn train_step(&mut self) -> R {\n        trait Unused { fn train_step(); }\n"
+    + "        let g = self.loss().backward();\n        %s\n        Ok(())\n    }\n}\n"
+)
+_ONE_LINE = (
+    "pub struct Clean { w: f64 }\npub struct Stepper { opt: O }\n"
+    "impl Clean { pub fn train_step(&mut self) { self.w -= self.loss().backward(); } } "
+    "impl Stepper { pub fn train_step(&mut self) { self.opt.step(&self.loss().backward()); } }\n"
+)
+RUST_FOLD4_REDS = (
+    (
+        "F4-1 a bodiless same-named trait signature inside the body does not hide `self.optim.step(g)` (Codex r5 R-3)",
+        _TRAIT_IN_BODY % "self.optim.step(g);",
+        [CLASSIFIED_REFERENCE],
+        1,
+        1,
+    ),
+    (
+        "F4-1b the same with `self.opt.step(&g)?`",
+        _TRAIT_IN_BODY % "self.opt.step(&g)?;",
+        [CLASSIFIED_REFERENCE],
+        1,
+        1,
+    ),
+    (
+        "F4-2 Clean (EXACT) and Stepper (stepping) impls on ONE line: 0 for Clean (Codex r5 N5-6)",
+        _DECL.format(
+            '("Clean::train_step", "EXACT_GRADIENT", "ref"), '
+            '("Stepper::train_step", "APPROXIMATES_GRADIENT", "steps")'
+        )
+        + _ONE_LINE,
+        [CLASSIFIED_REFERENCE, CLASSIFIED_CLAIMANT],
+        0,
+        0,
+    ),
+    (
+        "F4-2c control: Stepper declared EXACT on that same line reds",
+        _DECL.format(
+            '("Clean::train_step", "APPROXIMATES_GRADIENT", "x"), '
+            '("Stepper::train_step", "EXACT_GRADIENT", "ref")'
+        )
+        + _ONE_LINE,
+        [CLASSIFIED_CLAIMANT, CLASSIFIED_REFERENCE],
+        1,
+        1,
+    ),
+    (
+        'F4-3 `self.clock_named("opt").step()` in an EXACT_GRADIENT fn is not an optimizer step (Codex r5 N5-5)',
+        _EXACT_T.format("T::train_step")
+        + "pub struct T { w: f64 }\n"
+        + 'impl T { pub fn train_step(&mut self) { self.clock_named("opt").step(); '
+        + "let g = self.loss().backward(); self.w -= g; } }\n",
+        [CLASSIFIED_REFERENCE],
+        0,
+        0,
+    ),
+    (
+        'F4-3c control: `self.clock("x").opt.step()` (opt outside the literal) still reds',
+        _EXACT_T.format("T::train_step")
+        + "pub struct T { w: f64, opt: O }\n"
+        + 'impl T { pub fn train_step(&mut self) { self.clock("x").opt.step(); '
+        + "let g = self.loss().backward(); self.w -= g; } }\n",
+        [CLASSIFIED_REFERENCE],
+        1,
+        1,
     ),
 )
 
@@ -1593,7 +1659,11 @@ def _selfcheck():
     ok = ok and fired11
 
     # RED 12 -- fold round 1: every reproduced defect, each with its exact expected counts.
-    for label, src, states, n_fail, n_find in (*RUST_FOLD1_REDS, *RUST_FOLD3_REDS):
+    for label, src, states, n_fail, n_find in (
+        *RUST_FOLD1_REDS,
+        *RUST_FOLD3_REDS,
+        *RUST_FOLD4_REDS,
+    ):
         try:
             rr, ff, _ = rust_census(fixture_native(src))
             got = (
