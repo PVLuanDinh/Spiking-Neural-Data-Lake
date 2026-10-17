@@ -6,7 +6,13 @@ NUMBER, not a verdict, and has no per-file allowlist (same design as `p4c_ratche
 
 The importer walk is `dependency_ledger._imported`, not a second one. That walk drops stdlib modules,
 and zlib/struct are stdlib C modules, so they are counted by running the SAME walk with the stdlib
-filter switched off for the call.
+filter switched off for the call. Its first-party shadow filter (`_is_sibling`) is switched off too: an
+empty `research/numpy.py` must not hide a `src/` importer, so the count is of src/ importers of LIBS
+whatever else in the repo shares the name.
+
+A count of 0 is a claim about the walk, so the walk is not the only witness: `control` counts the
+`import <lib>` / `from <lib>` lines under src/ with a regex and must agree with the walk per library
+(PREREG: "a count of 0 for numpy is an instrument failure"). A dead walk, or a disagreement, is red.
 
 LOCATION (integrator fold, 2026-10-17): plan section 10 named `tools/native_ratchet.py`, and the lane
 built it there; `p4c_ratchet` then RED the composed branch (tools 30 -> 31): P4c forbids a new build
@@ -21,11 +27,14 @@ by path inside a function (no module-scope sys.path edit -- instrument_guard's r
 """
 
 # distinct-from: replication_guard.py docs_only_battery.py home.py g5_part_d_cells.py eligible_circuit_census.py -- those guard brain classes, hash docs, locate the lake or walk turns; none counts src importers of a library (this reuses tools/dependency_ledger._imported for that)
+import contextlib
 import functools
 import importlib.util
 import json
 import pathlib
+import re
 import sys
+import tempfile
 import types
 from unittest import mock
 
@@ -57,6 +66,7 @@ THIRD_PARTY = (
     "brian2",
 )
 STDLIB_C = ("zlib", "struct")
+IMPORT_NAME = {"scikit-learn": "sklearn"}
 LIBS = THIRD_PARTY + STDLIB_C
 COLS = (*LIBS, "union")
 PKG_ROOT = "src/snn_data_lake/"
@@ -73,8 +83,28 @@ COMPONENTS = {
 def _walk():
     """`dependency_ledger._imported` over src/ with stdlib kept, so zlib/struct are visible."""
     dl = _ledger()
-    with mock.patch.object(dl, "sys", types.SimpleNamespace(stdlib_module_names=frozenset())):
+    with (
+        mock.patch.object(dl, "sys", types.SimpleNamespace(stdlib_module_names=frozenset())),
+        mock.patch.object(dl, "_is_sibling", lambda path, root: False),
+    ):
         return dl._imported(("src",))
+
+
+@contextlib.contextmanager
+def _fixture_repo(shadows=()):
+    """A throwaway repo whose one src file imports numpy, zlib and struct; `shadows` are empty
+    research/<name>.py modules. Points the ledger at it, yields its src/."""
+    dl = _ledger()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        pkg = root / "src" / "snn_data_lake" / "p"
+        pkg.mkdir(parents=True)
+        (pkg / "new.py").write_text("import numpy\nimport zlib\nimport struct\n", encoding="utf-8")
+        (root / "research").mkdir()
+        for name in shadows:
+            (root / "research" / f"{name}.py").write_text("", encoding="utf-8")
+        with mock.patch.object(dl, "ROOT", root), mock.patch.object(dl, "_REPO_MODULES", None):
+            yield root / "src"
 
 
 def census(imported=None):
@@ -83,6 +113,26 @@ def census(imported=None):
     zones = {lib: sorted({site[0] for site in hits.get(lib, [])}) for lib in LIBS}
     union = sorted({f for lib in THIRD_PARTY for f in zones[lib]})
     return zones, union
+
+
+def line_counts(src):
+    """{lib: distinct .py files under src with an `import <lib>` / `from <lib>` line}: NOT the walk."""
+    texts = [p.read_text(encoding="utf-8", errors="replace") for p in sorted(src.rglob("*.py"))]
+    out = {}
+    for lib in LIBS:
+        name = IMPORT_NAME.get(lib, lib)
+        pat = re.compile(
+            rf"^[ \t]*(?:from[ \t]+{name}\b|import[ \t]+(?:[\w.]+(?:[ \t]+as[ \t]+\w+)?[ \t]*,[ \t]*)*{name}\b)",
+            re.M,
+        )
+        out[lib] = sum(bool(pat.search(t)) for t in texts)
+    return out
+
+
+def control(zones, src):
+    """[(lib, walk, lines)] where the importer walk and the independent line count disagree."""
+    lines = line_counts(src)
+    return [(lib, n, lines[lib]) for lib, n in counts(zones).items() if n != lines[lib]]
 
 
 def counts(zones):
@@ -194,8 +244,17 @@ def self_check():
     )
     pkg = compare({**base, "sleep:numpy": 3}, {**base, "sleep:numpy": 2})
     print(f"[RED     ] one package 2 -> 3, library total flat -> {pkg} (must name sleep:numpy)")
+    with _fixture_repo(shadows=("numpy", "zlib", "struct")) as src:
+        shadowed = {k: v for k, v in counts(census()[0]).items() if v}
+        dead = control({lib: [] for lib in LIBS}, src)
+    print(
+        f"[RED     ] empty research/{{numpy,zlib,struct}}.py shadows -> {shadowed} (must be 1 each)"
+    )
+    print(f"[RED     ] dead walk, src has 3 importers -> {dead} (must name numpy, zlib, struct)")
     ok = (
-        pkg == [("sleep:numpy", 3, 2)]
+        shadowed == {"numpy": 1, "zlib": 1, "struct": 1}
+        and dead == [("numpy", 0, 1), ("zlib", 0, 1), ("struct", 0, 1)]
+        and pkg == [("sleep:numpy", 3, 2)]
         and steady == []
         and rise == [("numpy", 6, 5)]
         and new == [("torch", 5, None)]
@@ -218,8 +277,13 @@ def main(argv=None):
         baseline = _load_baseline()
         live = live_counts(zones, union)
         _report(live, union, baseline)
+        broken = control(zones, ROOT / "src")
     except rust_facts.RustFactsUnavailable as e:
         print(f"GATE FAIL: native/ has .rs files but rust_facts is unavailable: {e}")
+        return 1
+    for lib, walk, lines in broken:
+        print(f"GATE FAIL: instrument: {lib}: walk {walk} != {lines} line count under src/")
+    if broken:
         return 1
     held = baseline or {}
 
