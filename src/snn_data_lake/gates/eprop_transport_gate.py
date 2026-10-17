@@ -397,7 +397,7 @@ _REPO_ROOT = rust_facts.ROOT
 _RS_TRANSPOSE = frozenset(
     {
         "t", "reversed_axes", "transpose", "transpose_mut", "adjoint", "ad", "tr_mul", "ad_mul",
-        "gemv_tr", "tr_dot",
+        "gemv_tr",
     }
 )  # fmt: skip
 #: Spellings that transpose only for these (whitespace-free) argument texts.
@@ -409,9 +409,13 @@ _RS_TRANSPOSE_ARGS = {
     "movedim": {"0,1", "1,0"},
 }
 _RS_CALL = re.compile(r"\.(" + "|".join([*_RS_TRANSPOSE, *_RS_TRANSPOSE_ARGS]) + r")\(")
-#: Spellings that transpose their ARGUMENT (nalgebra implicit-transpose products); only gemv_tr writes
-#: its receiver, the rest return the product.
-_RS_TRANSPOSE_ARG = frozenset({"gemv_tr", "tr_mul", "ad_mul", "tr_dot"})
+#: Spellings that transpose their ARGUMENT (nalgebra implicit-transpose products); the rest return the
+#: product. tr_dot is NOT here: it returns a SCALAR (PREREG ADDENDUM 4), so Oja/Hebbian y = w . x is clean.
+_RS_TRANSPOSE_ARG = frozenset({"gemv_tr", "tr_mul", "ad_mul"})
+#: Spellings that WRITE their receiver from a transposed ARGUMENT (nalgebra in-place products/copies).
+_RS_TRANSPOSE_WRITERS = frozenset(
+    {"gemv_tr", "gemm_tr", "gemm_ad", "gemv_ad", "tr_copy_from", "ad_copy_from"}
+)
 _RS_ARG_CALL = re.compile(r"\.(" + "|".join(_RS_TRANSPOSE_ARG) + r")\(")
 _RS_PATH = re.compile(r"[*&]*((?:[A-Za-z_]\w*)(?:\.[A-Za-z_]\w*)*)([\[(]?)")
 _RS_IDENT = re.compile(r"[A-Za-z_]\w*")
@@ -423,8 +427,8 @@ _RUST_BLIND = (
     "flow stays inside ONE fn (cross-fn flow is invisible); same-named fns in one file share taint",
     "flat w[a * N + b] indexing; a weight aliased to a differently-named local is not weight-ish",
     "a tuple `let` taints every name it binds",
-    "gemv_tr/tr_mul/ad_mul/tr_dot taint through a weight-ish ARGUMENT NAME only; only gemv_tr's "
-    "receiver is tainted (a bare `y` that aliases a weight is invisible)",
+    "gemv_tr/tr_mul/ad_mul taint through a weight-ish ARGUMENT NAME only; only the writers "
+    "(gemv_tr, gemm_tr, gemm_ad, gemv_ad, tr_copy_from, ad_copy_from) taint their receiver (a bare `y` that aliases a weight is invisible)",
 )
 
 
@@ -538,7 +542,9 @@ def _rust_t1(f):
             else:
                 name = _rs_name(r["recv"])
                 weight_recv = name in wbound or _is_weight(name)
-                if r["name"] == "gemv_tr" and (src := next(iter(_rs_arg_weights(r["args"])), None)):
+                if r["name"] in _RS_TRANSPOSE_WRITERS and (
+                    src := next(iter(_rs_arg_weights(r["args"])), None)
+                ):
                     if weight_recv:
                         out.append((line, fn, "T1", f"{src} transposed -> updates {name}"))
                     elif name:
@@ -665,10 +671,38 @@ impl Net {
 }
 """
 _RUST_FOLD_GREEN = _RUST_FOLD_RED.replace("self.w2", "self.fb")
+_RUST_FOLD3_RED = """\
+impl Net {
+    pub fn gemm_tr(&mut self, e: &A, lr: f64) {
+        y.gemm_tr(1.0, &self.w2, &e, 0.0); self.w1.scaled_add(-lr, &y);
+    }
+    pub fn gemm_ad(&mut self, e: &A, lr: f64) {
+        y.gemm_ad(1.0, &self.w2, &e, 0.0); self.w1.scaled_add(-lr, &y);
+    }
+    pub fn gemv_ad(&mut self, e: &A, lr: f64) {
+        y.gemv_ad(1.0, &self.w2, e, 0.0); self.w1.scaled_add(-lr, &y);
+    }
+    pub fn tr_copy(&mut self, e: &A, lr: f64) {
+        y.tr_copy_from(&self.w2); self.w1.scaled_add(-lr, &y);
+    }
+    pub fn ad_copy(&mut self, e: &A, lr: f64) {
+        self.w1.ad_copy_from(&self.w2);
+    }
+    pub fn oja_scalar(&mut self, e: &A, lr: f64) {
+        let y = x.tr_dot(&self.w); self.w += y * lr;
+    }
+}
+"""
+_RUST_FOLD3_GREEN = _RUST_FOLD3_RED.replace("self.w2", "self.fb")
 
 
-def _rust_fixture(red, fold=False):
-    planted, fixed = (_RUST_FOLD_RED, _RUST_FOLD_GREEN) if fold else (_RUST_RED, _RUST_GREEN)
+def _rust_fixture(red, fold=0):
+    """fold: 0 = round-0 arm, 1 = fold-1 arm, 3 = fold-3 arm (implicit-transpose writers + tr_dot control)."""
+    planted, fixed = {
+        0: (_RUST_RED, _RUST_GREEN),
+        1: (_RUST_FOLD_RED, _RUST_FOLD_GREEN),
+        3: (_RUST_FOLD3_RED, _RUST_FOLD3_GREEN),
+    }[int(fold)]
     return {
         "sndl-core/src/lib.rs": "pub mod plasticity;\n",
         "sndl-core/src/plasticity.rs": planted if red else fixed,
@@ -1143,8 +1177,8 @@ def _fires(source):
 #   title: a different gate's own `_selfcheck`, a file-changed flag and a sidecar-writer census;
 #   none builds or scans a Rust tree.
 def _check_rust_half():
-    counts, fold = {}, {}
-    for into, kwargs in ((counts, {}), (fold, {"fold": True})):
+    counts, fold, fold3 = {}, {}, {}
+    for into, kwargs in ((counts, {}), (fold, {"fold": 1}), (fold3, {"fold": 3})):
         for name, planted in (("planted", True), ("fixed", False)):
             with tempfile.TemporaryDirectory() as d:
                 for rel, text in _rust_fixture(planted, **kwargs).items():
@@ -1162,10 +1196,15 @@ def _check_rust_half():
         f"the fold-1 Rust RED must give exactly [T1, T1, T1] through scan_rust, got {fold['planted']}"
     )
     assert not fold["fixed"], f"the fold-1 Rust GREEN twin must give 0, got {fold['fixed']}"
+    assert fold3["planted"] == ["T1"] * 5, (
+        f"the fold-3 Rust RED must give exactly 5 T1 through scan_rust, got {fold3['planted']}"
+    )
+    assert not fold3["fixed"], f"the fold-3 Rust GREEN twin must give 0, got {fold3['fixed']}"
     status, live = scan_rust()
     assert not live, f"governed Rust weight transport in native/: {live}"
     print(f"  RED    Rust {counts['planted']}; green twin {len(counts['fixed'])}; live: {status}")
     print(f"  RED    Rust fold-1 {fold['planted']}; green twin {len(fold['fixed'])}")
+    print(f"  RED    Rust fold-3 {fold3['planted']}; green twin {len(fold3['fixed'])}")
 
 
 def _selfcheck():
