@@ -413,8 +413,6 @@ _RS_CALL = re.compile(r"\.(" + "|".join([*_RS_TRANSPOSE, *_RS_TRANSPOSE_ARGS]) +
 #: its receiver, the rest return the product.
 _RS_TRANSPOSE_ARG = frozenset({"gemv_tr", "tr_mul", "ad_mul", "tr_dot"})
 _RS_ARG_CALL = re.compile(r"\.(" + "|".join(_RS_TRANSPOSE_ARG) + r")\(")
-#: Rust string / char literals, raw and byte forms included (a spelling inside one is text, not code).
-_RS_LITERAL = re.compile(r"""b?r(#*)".*?"\1|b?"(?:\\.|[^"\\])*"|b?'(?:\\[^']+|[^\\'])'""", re.S)
 _RS_PATH = re.compile(r"[*&]*((?:[A-Za-z_]\w*)(?:\.[A-Za-z_]\w*)*)([\[(]?)")
 _RS_IDENT = re.compile(r"[A-Za-z_]\w*")
 _RS_ITER_MUT = re.compile(r"\.(iter_mut|rows_mut|axis_iter_mut)\(")
@@ -431,7 +429,7 @@ _RUST_BLIND = (
 
 
 def _rs_norm(text):
-    text = _RS_LITERAL.sub('""', text or "")
+    text = rust_facts.strip_literals(text)  # a spelling inside a literal is text, not code (shared)
     return re.sub(r"\s+", "", re.sub(r"&\s*mut\s+", "&", text))
 
 

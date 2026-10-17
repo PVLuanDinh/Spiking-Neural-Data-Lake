@@ -194,3 +194,17 @@ def test_test_only_rust_is_out_of_scope_like_python_tests(tmp_path):
     analogue of tests/, which the Python half never scans -- so it must not red T1 or T2."""
     _tree(tmp_path, {"sndl-core/src/lib.rs": TEST_ONLY_REFERENCE})
     assert gate.scan_rust(tmp_path)[1] == []
+
+
+def test_a_crate_tests_dir_reference_is_out_of_scope(tmp_path):
+    """Codex r3 F-5: native/<crate>/tests/reference.rs (no #[cfg(test)]) is test code."""
+    _tree(
+        tmp_path,
+        {
+            "sndl-core/src/lib.rs": "pub struct N { w1: A, w2: A }\n",
+            "sndl-core/tests/reference.rs": (
+                "fn reference(n: &mut N, e: &A) { let d = n.w2.t().dot(e); n.w1 += &d; }\n"
+            ),
+        },
+    )
+    assert gate.scan_rust(tmp_path)[1] == []
