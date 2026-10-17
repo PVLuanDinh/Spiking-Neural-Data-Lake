@@ -970,6 +970,11 @@ _TRAIT_IN_BODY = (
     + "impl T {\n    pub fn train_step(&mut self) -> R {\n        trait Unused { fn train_step(); }\n"
     + "        let g = self.loss().backward();\n        %s\n        Ok(())\n    }\n}\n"
 )
+_ONE_LINE = (
+    "pub struct Clean { w: f64 }\npub struct Stepper { opt: O }\n"
+    "impl Clean { pub fn train_step(&mut self) { self.w -= self.loss().backward(); } } "
+    "impl Stepper { pub fn train_step(&mut self) { self.opt.step(&self.loss().backward()); } }\n"
+)
 RUST_FOLD4_REDS = (
     (
         "F4-1 a bodiless same-named trait signature inside the body does not hide `self.optim.step(g)` (Codex r5 R-3)",
@@ -982,6 +987,28 @@ RUST_FOLD4_REDS = (
         "F4-1b the same with `self.opt.step(&g)?`",
         _TRAIT_IN_BODY % "self.opt.step(&g)?;",
         [CLASSIFIED_REFERENCE],
+        1,
+        1,
+    ),
+    (
+        "F4-2 Clean (EXACT) and Stepper (stepping) impls on ONE line: 0 for Clean (Codex r5 N5-6)",
+        _DECL.format(
+            '("Clean::train_step", "EXACT_GRADIENT", "ref"), '
+            '("Stepper::train_step", "APPROXIMATES_GRADIENT", "steps")'
+        )
+        + _ONE_LINE,
+        [CLASSIFIED_REFERENCE, CLASSIFIED_CLAIMANT],
+        0,
+        0,
+    ),
+    (
+        "F4-2c control: Stepper declared EXACT on that same line reds",
+        _DECL.format(
+            '("Clean::train_step", "APPROXIMATES_GRADIENT", "x"), '
+            '("Stepper::train_step", "EXACT_GRADIENT", "ref")'
+        )
+        + _ONE_LINE,
+        [CLASSIFIED_CLAIMANT, CLASSIFIED_REFERENCE],
         1,
         1,
     ),
