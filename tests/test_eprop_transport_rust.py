@@ -193,6 +193,27 @@ def test_fold3_feedback_and_activation_controls_stay_clean(tmp_path, body):
     assert _scan(tmp_path, f"fn f(&mut self, e: &A, lr: f64) {{ {body} }}") == []
 
 
+FOLD4_RED = [
+    # N5-3: the writer inside the assignment's block RHS taints y BEFORE the assignment is evaluated
+    "self.w1 = {\n    let mut y = self.fb.clone();\n    y.tr_copy_from(&self.w2);\n    y\n};",
+]
+FOLD4_CLEAN = [
+    # N5-3: the inner let shadows the tainted name before the assignment ends
+    "let d = self.w2.t().to_owned(); self.w1 = {\n    let d = e.clone();\n    d\n};",
+]
+
+
+@pytest.mark.parametrize("body", FOLD4_RED)
+def test_fold4_reds_fire_exactly_once(tmp_path, body):
+    found = _scan(tmp_path, f"fn f(&mut self, e: &A, x: &A, lr: f64) {{ {body} }}")
+    assert _rules(found) == ["T1"], found
+
+
+@pytest.mark.parametrize("body", FOLD4_CLEAN)
+def test_fold4_controls_stay_clean(tmp_path, body):
+    assert _scan(tmp_path, f"fn f(&mut self, e: &A, x: &A, lr: f64) {{ {body} }}") == []
+
+
 @pytest.mark.parametrize("body", FOLD1_CLEAN)
 def test_fold1_controls_stay_clean(tmp_path, body):
     assert _scan(tmp_path, f"fn f(&mut self, e: &A, w: &mut f64, lr: f64) {{ {body} }}") == []

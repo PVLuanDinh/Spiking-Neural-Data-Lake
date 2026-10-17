@@ -513,17 +513,20 @@ def _rs_bind(taint, pat, src):
 
 def _rust_t1(f):
     """(line, fn, rule, detail) for transposed weights reaching a weight update, per fn, by line."""
-    order = ("fors", "lets", "assigns", "mcalls")  # same (line, col): a let binds before its update
+    order = ("fors", "lets", "assigns", "mcalls")  # same position: a let binds before its update
     by_fn = {}
     for rank, kind in enumerate(order):
         for r in f.get(kind, []):
             if r.get("cfg_test"):  # test-only Rust == tests/, which the Python half never scans
                 continue
-            by_fn.setdefault(r["fn"], []).append((r["line"], r["col"], rank, kind, r))
+            # an assignment is evaluated at its END, after the events inside its RHS (Codex r5 N5-3)
+            pos = (r["end_line"], r["end_col"]) if kind == "assigns" else (r["line"], r["col"])
+            by_fn.setdefault(r["fn"], []).append((*pos, rank, kind, r))
     out = []
     for fn, events in by_fn.items():
         taint, wbound = {}, set()
-        for line, _col, _rank, kind, r in sorted(events, key=lambda e: e[:3]):
+        for _line, _col, _rank, kind, r in sorted(events, key=lambda e: e[:3]):
+            line = r["line"]
             if kind == "fors":
                 if _RS_ITER_MUT.search(_rs_norm(r["iter"])) and _is_weight(_rs_name(r["iter"])):
                     wbound |= set(_RS_IDENT.findall(r["pat"]))
