@@ -279,11 +279,18 @@ def _native_reds():
             _, found = native_findings(native_refs(root / "src"), root, importer=stub)
             if len(found) != want:
                 bad.append(f"{arm} arm: expected {want} finding(s), got {sorted(found)}")
+            if want:  # RED only: E1 breaks every name, so the default-refs path never imports
+                implicit = sorted(broken({}, root=root))
+                if implicit != ["snn_data_lake._native:lif_step"]:
+                    bad.append(
+                        f"default native=None arm: expected the lif_step red, got {implicit}"
+                    )
     return bad
 
 
 def broken(man=None, native=None, root=rust_facts.ROOT):
-    """The manifest entries that do NOT import. Each is a silent faculty loss on the live brain.
+    """The manifest entries that do NOT import. `native=None` computes the governed `_native` refs from
+    `root`/src itself; pass `{}` to skip the Rust half. Each is a silent faculty loss on the live brain.
     A real import, not importlib.util.find_spec: find_spec would catch a DELETED target but not a
     BROKEN one, and the swallows hide both identically.
 
@@ -334,7 +341,8 @@ def broken(man=None, native=None, root=rust_facts.ROOT):
     DOES repair it. This gate proves those modules EXIST AND LOAD; it does not prove brain.py can
     reach them from an arbitrary CWD, and it must not be read as if it did."""
     man = manifest() if man is None else man
-    bad = {} if native is None else native_findings(native, root)[1]
+    native = native_refs(Path(root) / "src") if native is None else native
+    bad = native_findings(native, root)[1]
     added = _ROOT_DIR not in sys.path
     if added:
         sys.path.insert(0, _ROOT_DIR)
