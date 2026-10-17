@@ -196,6 +196,11 @@ EXEMPT_METHOD = {
 # It is NOT exempted here, because an exemption is a disposition and this rule does not have one yet.
 
 
+def is_learn_verb(name):
+    """The one matcher for "this def is an update rule" -- shared with gates/native_dormancy (Rust)."""
+    return not name.startswith("__") and any(v in name.lower() for v in LEARN_VERBS)
+
+
 def _modname(path):
     return os.path.relpath(path, _PKG_DIR)[:-3].replace(os.sep, ".")
 
@@ -288,9 +293,7 @@ def audit():
             for n in cls.body:
                 if not isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     continue
-                if n.name.startswith("__"):
-                    continue
-                if any(v in n.name.lower() for v in LEARN_VERBS):
+                if is_learn_verb(n.name):
                     # Keyed by (module, CLASS, name). The class was already in hand and thrown away,
                     # and dropping it cost twice: two same-named defs in one module COLLAPSED to one
                     # entry whose surviving lineno named whichever came last, and an exemption could
@@ -388,6 +391,9 @@ def main():
         f"self-check OK: {a['n_defs']} update rules, none dormant, "
         f"{len(a['uncertain'])} UNCERTAIN reported not asserted"
     )
+    from snn_data_lake.gates import native_dormancy
+
+    native_dormancy.check("m")  # Rust half (M1): learning-verb fns in native/; ABSENT today
 
 
 if __name__ == "__main__":

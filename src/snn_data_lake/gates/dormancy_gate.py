@@ -1197,6 +1197,9 @@ def main():
     )
     _assert_no_phantom(cov["phantom_exempt"])  # G8 S0b, with its own planted red next
     _phantom_selfcheck()
+    from snn_data_lake.gates import native_dormancy
+
+    native_dormancy.check("d")  # Rust half (D1 exports, D2 modules); native/ ABSENT today
     if cov["open_dispositions"]:
         print(
             f"STANDING TODO -- {len(cov['open_dispositions'])} non-permanent exemption(s) still "
