@@ -409,14 +409,20 @@ _RS_TRANSPOSE_ARGS = {
     "movedim": {"0,1", "1,0"},
 }
 _RS_CALL = re.compile(r"\.(" + "|".join([*_RS_TRANSPOSE, *_RS_TRANSPOSE_ARGS]) + r")\(")
-#: Spellings that transpose their ARGUMENT (nalgebra implicit-transpose products); the rest return the
-#: product. tr_dot is NOT here: it returns a SCALAR (PREREG ADDENDUM 4), so Oja/Hebbian y = w . x is clean.
-_RS_TRANSPOSE_ARG = frozenset({"gemv_tr", "tr_mul", "ad_mul"})
+#: Spellings that transpose ONE argument, by position (nalgebra 0.35 src/base/blas.rs, matrix.rs, ops.rs):
+#: `c.gemm_tr(alpha, a, b, beta)` = alpha * a^T * b + beta * c and gemv_tr / gemm_ad / gemv_ad alike
+#: transpose `a` (args[1]); `c.tr_copy_from(&a)` / `ad_copy_from` and `e.tr_mul(&w)` / `ad_mul` their only
+#: operand (args[0]). The other operands are NOT transposed (Codex r5 N5-4). tr_dot is NOT here: it returns
+#: a SCALAR (PREREG ADDENDUM 4), so Oja/Hebbian y = w . x is clean.
+_RS_TRANSPOSE_ARG_AT = {
+    "gemv_tr": 1, "gemm_tr": 1, "gemm_ad": 1, "gemv_ad": 1,
+    "tr_copy_from": 0, "ad_copy_from": 0, "tr_mul": 0, "ad_mul": 0,
+}  # fmt: skip
 #: Spellings that WRITE their receiver from a transposed ARGUMENT (nalgebra in-place products/copies).
 _RS_TRANSPOSE_WRITERS = frozenset(
     {"gemv_tr", "gemm_tr", "gemm_ad", "gemv_ad", "tr_copy_from", "ad_copy_from"}
 )
-_RS_ARG_CALL = re.compile(r"\.(" + "|".join(_RS_TRANSPOSE_ARG) + r")\(")
+_RS_ARG_CALL = re.compile(r"\.(" + "|".join(_RS_TRANSPOSE_ARG_AT) + r")\(")
 _RS_PATH = re.compile(r"[*&]*((?:[A-Za-z_]\w*)(?:\.[A-Za-z_]\w*)*)([\[(]?)")
 _RS_IDENT = re.compile(r"[A-Za-z_]\w*")
 _RS_ITER_MUT = re.compile(r"\.(iter_mut|rows_mut|axis_iter_mut)\(")
@@ -427,8 +433,9 @@ _RUST_BLIND = (
     "flow stays inside ONE fn (cross-fn flow is invisible); same-named fns in one file share taint",
     "flat w[a * N + b] indexing; a weight aliased to a differently-named local is not weight-ish",
     "a tuple `let` taints every name it binds",
-    "gemv_tr/tr_mul/ad_mul taint through a weight-ish ARGUMENT NAME only; only the writers "
-    "(gemv_tr, gemm_tr, gemm_ad, gemv_ad, tr_copy_from, ad_copy_from) taint their receiver (a bare `y` that aliases a weight is invisible)",
+    "tr_mul/ad_mul and the writers (gemv_tr, gemm_tr, gemm_ad, gemv_ad, tr_copy_from, ad_copy_from) taint "
+    "through a weight-ish ARGUMENT NAME at the ONE position nalgebra transposes; only the writers taint their "
+    "receiver (a bare `y` that aliases a weight is invisible); taint is flat per fn (a `let` in a block shadows for the rest of the fn)",
 )
 
 
@@ -484,13 +491,16 @@ def _rs_transposes(text):
         if _is_weight(name):
             out.append(name)
     for m in _RS_ARG_CALL.finditer(text):
-        out += _rs_arg_weights(_rs_split_top(_rs_args_after(text, m.end())))
+        if src := _rs_transposed_arg(m.group(1), _rs_split_top(_rs_args_after(text, m.end()))):
+            out.append(src)
     return out
 
 
-def _rs_arg_weights(args):
-    """Names of the weight-ish operands among call arguments: `&self.w2` -> w2."""
-    return [n for n in map(_rs_name, args) if _is_weight(n)]
+def _rs_transposed_arg(method, args):
+    """The weight-ish operand at the position `method` transposes: `gemm_tr(1.0, &self.w2, &e, 0.0)` -> w2."""
+    at = _RS_TRANSPOSE_ARG_AT[method]
+    name = _rs_name(args[at]) if at < len(args) else None
+    return name if _is_weight(name) else None
 
 
 def _rs_carried(text, taint):
@@ -546,10 +556,11 @@ def _rust_t1(f):
                 name = _rs_name(r["recv"])
                 weight_recv = name in wbound or _is_weight(name)
                 if r["name"] in _RS_TRANSPOSE_WRITERS and (
-                    src := next(iter(_rs_arg_weights(r["args"])), None)
+                    src := _rs_transposed_arg(r["name"], r["args"])
                 ):
                     if weight_recv:
                         out.append((line, fn, "T1", f"{src} transposed -> updates {name}"))
+                        continue  # one finding per update site (the carried-taint check below)
                     elif name:
                         taint[name] = src
                 if not weight_recv:

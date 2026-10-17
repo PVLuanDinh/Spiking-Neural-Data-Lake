@@ -196,10 +196,23 @@ def test_fold3_feedback_and_activation_controls_stay_clean(tmp_path, body):
 FOLD4_RED = [
     # N5-3: the writer inside the assignment's block RHS taints y BEFORE the assignment is evaluated
     "self.w1 = {\n    let mut y = self.fb.clone();\n    y.tr_copy_from(&self.w2);\n    y\n};",
+    # N5-4: w2 IS the transposed operand (`a` of alpha * a^T * b; the only operand of *_copy_from)
+    "y.gemm_tr(1.0, &self.w2, &x, 0.0); self.w1.scaled_add(-lr, &y);",
+    "y.gemm_ad(1.0, &self.w2, &x, 0.0); self.w1.scaled_add(-lr, &y);",
+    "y.gemv_tr(1.0, &self.w2, x, 0.0); self.w1.scaled_add(-lr, &y);",
+    "y.gemv_ad(1.0, &self.w2, x, 0.0); self.w1.scaled_add(-lr, &y);",
+    "self.w1.tr_copy_from(&self.w2);",
+    "let d = { let mut y = self.fb.clone(); y.ad_copy_from(&self.w2); y }; self.w1 += &d;",
 ]
 FOLD4_CLEAN = [
     # N5-3: the inner let shadows the tainted name before the assignment ends
     "let d = self.w2.t().to_owned(); self.w1 = {\n    let d = e.clone();\n    d\n};",
+    # N5-4: w2 is NOT the transposed operand (`b` / `x` of alpha * a^T * b)
+    "y.gemm_tr(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
+    "y.gemm_ad(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
+    "y.gemv_tr(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
+    "y.gemv_ad(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
+    "self.w1.gemm_tr(1.0, &x, &self.w2, 0.0);",
 ]
 
 
