@@ -197,24 +197,25 @@ def crate_dirs(files) -> set[Path]:
     return dirs
 
 
-# distinct-from: docs_only_battery.py atlas_node_gate.py -- a git-index hash and a node census; this names the FILES a Rust `mod x;` declaration can load
-def _mod_files(declaring: Path, m: dict) -> list[Path]:
-    """Files a non-inline, non-cfg(test) `mod x;` in `declaring` can load: its `#[path = ".."]`, else
-    x.rs | x/mod.rs beside a mod.rs/lib.rs/main.rs (under <stem>/ for any other file), below the
-    enclosing inline module path."""
+_MOD_RS = ("mod.rs", "lib.rs", "main.rs")
+
+
+# distinct-from: native_dormancy._walk_decl -- the dorm gate's own mod-tree walk (relative posix paths, cfg(test) mods included) that the integrator consolidates onto this one; docs_only_battery.py atlas_node_gate.py are a git-index hash and a node census
+def _mod_files(declaring: Path, m: dict, mod_rs: bool) -> tuple[bool, list[Path]]:
+    """(loaded through `#[path]`, files) a non-inline, non-cfg(test) `mod x;` in `declaring` can load,
+    by Rust's rules: the base is the file's directory for a mod-rs file (mod.rs, lib.rs, main.rs, or
+    any file itself loaded through `#[path]`), else `<stem>/`; inline module names are subdirectories;
+    a `#[path = ".."]` outside an inline module is relative to the file's directory, inside one to that
+    base; otherwise `x.rs` | `x/mod.rs`."""
     if m["inline"] or m["cfg_test"]:
-        return []
+        return False, []
+    base = declaring.parent if mod_rs else declaring.with_suffix("")
+    base = base.joinpath(*m["mod"].split("::")) if m["mod"] else base
     a = _attr(m["attrs"], "path")
     hit = _PATH_ATTR.search(a) if a else None
     if hit:
-        return [(declaring.parent / hit.group(1)).resolve()]
-    base = (
-        declaring.parent
-        if declaring.name in ("mod.rs", "lib.rs", "main.rs")
-        else declaring.with_suffix("")
-    )
-    base = base.joinpath(*m["mod"].split("::")) if m["mod"] else base
-    return [(base / f"{m['name']}.rs").resolve(), (base / m["name"] / "mod.rs").resolve()]
+        return True, [((base if m["mod"] else declaring.parent) / hit.group(1)).resolve()]
+    return False, [(base / f"{m['name']}.rs").resolve(), (base / m["name"] / "mod.rs").resolve()]
 
 
 def test_file_flags(file_facts) -> dict[str, bool]:
@@ -232,14 +233,18 @@ def test_file_flags(file_facts) -> dict[str, bool]:
         rest = p.relative_to(crate).parts if crate else ()
         if not (rest and rest[0] in _TEST_DIRS):
             prod.add(p.resolve())
-    todo = list(prod)
+    todo, via_path = list(prod), set()
     while todo:
-        f = by_path[todo.pop()]
+        p = todo.pop()
+        f = by_path[p]
         for m in f.get("mods", []) if f.get("ok") else []:
-            for t in _mod_files(Path(f["file"]), m):
+            is_path, targets = _mod_files(p, m, p.name in _MOD_RS or p in via_path)
+            for t in targets:
                 if t in by_path and t not in prod:
                     prod.add(t)
                     todo.append(t)
+                    if is_path:
+                        via_path.add(t)
     return {f["file"]: p.resolve() not in prod for f, p in zip(file_facts, files, strict=True)}
 
 
@@ -662,9 +667,10 @@ fn uses_core() -> sndl_core::reservoir::Cell { let d = 1; let e = 2; d + e }
 fn tpath() -> sndl_core::testonly::Probe { unimplemented!() }
 """
 
-# Let resolution inside a #[pymodule] fn (body, exports): Codex r3 F-2, r4 N-1, r5 R-1 and the three
-# shapes the fold-4 brief binds together -- a wrapper init binds, a plain identifier aliases, any
-# other init unbinds, an inner block does not shadow. The self-check and the tests share these.
+# Let resolution inside a #[pymodule] fn (body, exports): Codex r3 F-2, r4 N-1, r5 R-1. The visible
+# let is the latest one ENDED before the use whose block scope is a prefix of the use's; a wrapper init
+# binds, a plain identifier aliases (chains, `mut`), any other init unbinds; an inner or sibling block
+# does not shadow, a use inside a block sees the outer let.
 _REBINDING = (
     "#[pyfunction]\nfn learn() {}\n#[pyfunction]\nfn decay() {}\n#[pymodule]\n"
     "fn m(m: &Bound<'_, PyModule>) -> PyResult<()> {\n%s Ok(())\n}\n"
@@ -675,17 +681,36 @@ _REBINDING_CASES = (
     (" let f = wrap_pyfunction!(learn, m)?;\n let g = wrap_pyfunction!(decay, m)?;\n let f = g;\n m.add_function(f)?;\n", ["decay"]),
     (" let f = wrap_pyfunction!(learn, m)?;\n { let f = 0; }\n m.add_function(f)?;\n", ["learn"]),
     (" let f = wrap_pyfunction!(learn, m)?;\n let f = 0;\n m.add_function(f)?;\n", []),
+    (" let f = wrap_pyfunction!(learn, m)?;\n { m.add_function(f)?; }\n", ["learn"]),
+    (" let f = wrap_pyfunction!(learn, m)?;\n { let f = 0; m.add_function(f)?; }\n", []),
+    (" let f = wrap_pyfunction!(learn, m)?;\n { let f = wrap_pyfunction!(decay, m)?; m.add_function(f)?; }\n", ["decay"]),
+    (" { let f = wrap_pyfunction!(learn, m)?; }\n { m.add_function(f)?; }\n", []),
+    (" let g = wrap_pyfunction!(decay, m)?;\n let h = g;\n let f = h;\n m.add_function(f)?;\n", ["decay"]),
+    (" let f = g;\n m.add_function(f)?;\n", []),
+    (" let f = wrap_pyfunction!(learn, m)?;\n let f = f;\n m.add_function(f)?;\n", ["learn"]),
+    (" let g = wrap_pyfunction!(decay, m)?;\n let mut f = g;\n m.add_function(f)?;\n", ["decay"]),
 )  # fmt: skip
 
 # Test-file flags are a fixpoint over `mod` declarations (Codex r4 N-2, r5 R-2, r5 N5-1): a production
-# `#[path]` include reaches the included file's children; a test file's include promotes nothing; a
-# cfg(test) include promotes nothing. The self-check and the tests share this tree.
+# `#[path]` include reaches the included file's children (as siblings: a path-included file is a mod-rs
+# file), `mod x;` follows x.rs | x/mod.rs | <stem>/x.rs and inline-module directories; a test file's
+# include, a cfg(test) include (direct or inherited) and a missing target promote nothing.
 _MOD_TREE = {
     "native/sndl-core/src/lib.rs": (
-        '#[path = "../tests/mod.rs"]\npub mod shared;\n#[cfg(test)]\n#[path = "../tests/other.rs"]\nmod other;\n'
+        '#[path = "../tests/mod.rs"]\npub mod shared;\n#[path = "../tests/shared.rs"]\npub mod shared2;\n'
+        '#[cfg(test)]\n#[path = "../tests/other.rs"]\nmod other;\n'
+        '#[cfg(test)]\nmod t { #[path = "../tests/h.rs"] mod h; }\nmod gone;\n'
+        'mod q { #[path = "../../tests/x.rs"] mod b; }\n'
     ),
-    "native/sndl-core/tests/mod.rs": "pub mod reference;\n",
+    "native/sndl-core/tests/mod.rs": "pub mod reference;\nmod k;\n",
     "native/sndl-core/tests/reference.rs": "pub fn reference() {}\n",
+    "native/sndl-core/tests/k/mod.rs": "mod kk;\n",
+    "native/sndl-core/tests/k/kk.rs": "mod deep;\n",
+    "native/sndl-core/tests/k/kk/deep.rs": "fn deep() {}\n",
+    "native/sndl-core/tests/shared.rs": "pub mod child;\n",
+    "native/sndl-core/tests/child.rs": "fn child() {}\n",
+    "native/sndl-core/tests/x.rs": "fn x() {}\n",
+    "native/sndl-core/tests/h.rs": "fn h() {}\n",
     "native/sndl-core/tests/integration.rs": '#[path = "helper.rs"]\nmod helper;\n',
     "native/sndl-core/tests/helper.rs": "pub fn helper() {}\n",
     "native/sndl-core/tests/other.rs": "fn other() {}\n",
@@ -694,9 +719,16 @@ _MOD_FLAGS = {
     "src/lib.rs": False,
     "tests/mod.rs": False,
     "tests/reference.rs": False,
+    "tests/k/mod.rs": False,
+    "tests/k/kk.rs": False,
+    "tests/k/kk/deep.rs": False,
+    "tests/shared.rs": False,
+    "tests/child.rs": False,
+    "tests/x.rs": False,
+    "tests/h.rs": True,
+    "tests/other.rs": True,
     "tests/integration.rs": True,
     "tests/helper.rs": True,
-    "tests/other.rs": True,
 }
 
 _PY_FIXTURE = {
@@ -760,9 +792,8 @@ def self_check(root: Path = ROOT) -> None:
     for body, want_let in _REBINDING_CASES:  # RED (r5 R-1): scope-aware let resolution
         got = sorted(pyo3_exports([facts_for_source(_REBINDING % body, root=root)]))
         assert got == want_let, f"let resolution wrong for {body!r}: {got} != {want_let}"
-    with (
-        tempfile.TemporaryDirectory() as d
-    ):  # RED (r5 R-2, N5-1): production is a mod-tree fixpoint
+    # RED (r5 R-2, N5-1): production is a mod-tree fixpoint
+    with tempfile.TemporaryDirectory() as d:
         for rel, text in _MOD_TREE.items():
             p = Path(d) / rel
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -818,8 +849,8 @@ def main() -> int:
     tool = facts(rust_files(ROOT, str(RSFACTS)))
     print(
         f"rust_facts: self-check OK (fixture: 7 fns, 2 transpose calls, 5 exports; edge fixture: 10 exports incl. let-bound + helper-registered, top-level name= only, cfg evaluated, "
-        f"no unregistered wrapper/class methods, cfg(not(test)) is production; 5 let-rebinding shapes; "
-        f"mod-tree flags fixpoint 6 files; 5 _native importers; "
+        f"no unregistered wrapper/class methods, cfg(not(test)) is production; 13 let-rebinding shapes; "
+        f"mod-tree flags fixpoint 13 files; 5 _native importers; "
         f"unparseable-Rust RED fired) | {status} | tools/rsfacts: {len(tool)} file(s) parsed | "
         f"python _native importers in src: {len(python_native_refs())}"
     )
