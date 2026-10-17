@@ -400,7 +400,8 @@ impl<'ast> Visit<'ast> for Facts {
         let (f, _, cfg) = self.ctx();
         let init = i.init.as_ref().map(|x| txt(&*x.expr));
         self.lets.push(
-            json!({"pat": txt(&i.pat), "init": init, "line": line(i), "col": col(i), "fn": f, "cfg_test": cfg}),
+            json!({"pat": txt(&i.pat), "init": init, "line": line(i), "col": col(i),
+                "end_line": i.span().end().line, "end_col": i.span().end().column, "fn": f, "cfg_test": cfg}),
         );
         visit::visit_local(self, i);
     }

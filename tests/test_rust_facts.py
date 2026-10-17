@@ -59,3 +59,50 @@ def test_a_crate_tests_dir_file_is_test_code_without_cfg(tmp_path):
     assert ref["test_file"] is True and ref["paths"] == [] and "sndl_core::f" in ref["test_paths"]
     assert all(r["cfg_test"] for k in ("fns", "calls", "lets") for r in ref[k]), ref
     assert by["lib.rs"]["test_file"] is False
+
+
+def test_a_let_is_not_visible_inside_its_own_initializer():
+    """Codex r4 N-1: `let f = wrap(learn); let f = m.add_function(f)?;` registers learn."""
+    src = (
+        "#[pyfunction]\nfn learn() {}\n#[pymodule]\n"
+        "fn m(m: &Bound<'_, PyModule>) -> PyResult<()> {\n"
+        " let f = wrap_pyfunction!(learn, m)?;\n let f = m.add_function(f)?;\n Ok(())\n}\n"
+    )
+    assert sorted(rust_facts.pyo3_exports([rust_facts.facts_for_source(src)])) == ["learn"]
+
+
+def test_a_tests_dir_file_included_by_a_production_path_mod_is_production(tmp_path):
+    """Codex r4 N-2: `#[path = "../tests/reference.rs"] mod reference;` makes it production code."""
+    _git_tree(
+        tmp_path,
+        {
+            "native/sndl-core/src/lib.rs": '#[path = "../tests/reference.rs"]\nmod reference;\n',
+            "native/sndl-core/tests/reference.rs": "pub fn reference() {}\n",
+            "native/sndl-core/tests/t.rs": "fn t() {}\n",
+        },
+    )
+    files = rust_facts.rust_files(tmp_path)
+    flags = {p.name: f["test_file"] for p, f in zip(files, rust_facts.facts(files), strict=True)}
+    assert flags == {"lib.rs": False, "reference.rs": False, "t.rs": True}, flags
+
+
+def test_a_crate_nested_under_tests_is_classified_by_its_own_root(tmp_path):
+    """Codex r4 N-3: the DEEPEST crate root decides; a crate under tests/ stays production."""
+    _git_tree(
+        tmp_path,
+        {
+            "native/outer/Cargo.toml": '[package]\nname = "outer"\n',
+            "native/outer/src/lib.rs": "pub fn o() {}\n",
+            "native/outer/tests/t.rs": "fn t() {}\n",
+            "native/outer/tests/inner/Cargo.toml": '[package]\nname = "inner"\n',
+            "native/outer/tests/inner/src/lib.rs": "pub fn i() {}\n",
+        },
+    )
+    files = rust_facts.rust_files(tmp_path)
+    flags = {p.relative_to(tmp_path).as_posix(): f["test_file"]
+             for p, f in zip(files, rust_facts.facts(files), strict=True)}  # fmt: skip
+    assert flags == {
+        "native/outer/src/lib.rs": False,
+        "native/outer/tests/t.rs": True,
+        "native/outer/tests/inner/src/lib.rs": False,
+    }, flags

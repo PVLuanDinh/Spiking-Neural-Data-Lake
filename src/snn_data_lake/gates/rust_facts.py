@@ -66,7 +66,8 @@ BLIND_SPOTS = (
     "all #[cfg] items parsed regardless of features; #[cfg_attr(.., pyclass(..))] wrapped PyO3 attributes are not read",
     "macro_rules!/proc-macro/build.rs generated code is invisible",
     'export map: m.add("X", ..), add_wrapped(wrap_pymodule!(..)) and nested declarative #[pymodule] mods '
-    "are not resolved (nested names are flattened to the top level)",
+    "are not resolved (nested names are flattened to the top level); a let-bound wrapper stays visible "
+    "through a NON-wrapper rebinding or an inner block that shadows its name",
     "python refs: importlib.import_module / getattr(_native, name) are dynamic (getattr gives <module>); "
     "a .py that fails to parse is skipped here (ruff/import gates red it)",
 )
@@ -169,23 +170,52 @@ def facts(paths, root: Path = ROOT, allow_errors: bool = False) -> list[dict]:
         raise RustFactsUnavailable(
             "unparseable Rust: " + "; ".join(f"{b['file']}: {b.get('err')}" for b in bad)
         )
+    flags = test_file_flags(out)
     for f in out:
-        _mark_test_dir(f)
+        _mark_test_dir(f, flags[f["file"]])
     return out
 
 
 _TEST_DIRS = ("tests", "benches", "examples")
+_PATH_ATTR = re.compile(r'\bpath\s*=\s*"([^"]+)"')
 
 
-def _mark_test_dir(f: dict) -> None:
-    """A file under a crate's tests/ benches/ examples/ is test code even without #[cfg(test)]
-    (Codex r3 F-5): every record in it gets cfg_test, ONE place for every gate (P2)."""
-    p = Path(f["file"])
-    hit = any(
-        a.name in _TEST_DIRS
-        and ((a.parent / "src").is_dir() or (a.parent / "Cargo.toml").is_file())
-        for a in p.parents
-    )
+# distinct-from: policy_manifest.py docs_only_battery.py eligible_circuit_census.py sleep_plasticity_ab.py language_readout_slda.py -- heads, doc readers, census records, A/B arms, a readout split; this classifies RUST crate files as test code (native_dormancy's _in_test_dir copy is retired by the dorm fold-3 lane)
+def crate_dirs(files) -> set[Path]:
+    """Crate roots: every directory holding a Cargo.toml above a file, plus the parent of any
+    src/lib.rs / src/main.rs (fixture trees may have no manifest)."""
+    dirs = set()
+    for p in map(Path, files):
+        dirs |= {a for a in p.parents if (a / "Cargo.toml").is_file()}
+        if p.name in ("lib.rs", "main.rs") and p.parent.name == "src":
+            dirs.add(p.parent.parent)
+    return dirs
+
+
+def test_file_flags(file_facts) -> dict[str, bool]:
+    """{file: is test code}: the ONE classification every gate uses (P2, Codex r4 N-3). A file is test
+    code iff its path relative to its DEEPEST crate root starts with tests/ benches/ examples/ --
+    unless a production `#[path = ".."] mod x;` includes it (Codex r4 N-2: then it is production)."""
+    files = [Path(f["file"]) for f in file_facts]
+    dirs = crate_dirs(files)
+    included = set()
+    for f in file_facts:
+        for m in f.get("mods", []) if f.get("ok") else []:
+            a = _attr(m["attrs"], "path")
+            hit = _PATH_ATTR.search(a) if a and not m["cfg_test"] else None
+            if hit:
+                included.add((Path(f["file"]).parent / hit.group(1)).resolve())
+    out = {}
+    for f, p in zip(file_facts, files, strict=True):
+        crate = max((d for d in dirs if d in p.parents), key=lambda d: len(d.parts), default=None)
+        rest = p.relative_to(crate).parts if crate else ()
+        out[f["file"]] = bool(rest) and rest[0] in _TEST_DIRS and p.resolve() not in included
+    return out
+
+
+def _mark_test_dir(f: dict, hit: bool) -> None:
+    """A test-code file (see `test_file_flags`) gets cfg_test on every record and its paths moved to
+    test_paths, so no gate re-derives the rule (Codex r3 F-5)."""
     f["test_file"] = hit
     if hit and f.get("ok"):
         f["test_paths"] = sorted({*f.get("test_paths", []), *f.get("paths", [])})
@@ -343,19 +373,21 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
             if in_decl(t) and _attr(t["attrs"], "pyclass"):
                 export_class(t["name"], {"file": f["file"], "line": t["line"]})
         modfns = modcode
-        # `let f = wrap_pyfunction!(x, m)?;` inside a module fn: (fn, local) -> [(position, wrapped)],
-        # resolved per add_function call to the LATEST binding BEFORE it (Codex r3 F-2: a rebound
-        # `f` must not retarget an earlier registration).
+        # `let f = wrap_pyfunction!(x, m)?;` inside a module fn: (fn, local) -> [(end, wrapped)],
+        # resolved per add_function call to the LATEST wrapper binding whose let ENDED before it
+        # (Codex r3 F-2: a rebound `f` must not retarget an earlier registration; Codex r4 N-1: a
+        # let is not visible inside its own initializer, so `let f = m.add_function(f)?` uses the
+        # old f). Non-wrapper rebindings and block scopes are not tracked (BLIND_SPOTS).
         bound: dict = {}
         for x in f.get("lets", []):
             m = _WRAP.search(x["init"] or "") if x["fn"] in modfns else None
-            key = (x["fn"], x["pat"].replace("mut ", "").strip())
-            bound.setdefault(key, []).append(
-                ((x["line"], x.get("col", 0)), m.group(1) if m else None)
-            )
+            if m:
+                key = (x["fn"], x["pat"].replace("mut ", "").strip())
+                end = (x.get("end_line", x["line"]), x.get("end_col", x.get("col", 0)))
+                bound.setdefault(key, []).append((end, m.group(1)))
 
         def binding(fn, local, at, bound=bound):
-            prior = [w for pos, w in sorted(bound.get((fn, local), [])) if pos < at]
+            prior = [w for end, w in sorted(bound.get((fn, local), [])) if end <= at]
             return prior[-1] if prior else None
 
         for c in f.get("mcalls", []):
