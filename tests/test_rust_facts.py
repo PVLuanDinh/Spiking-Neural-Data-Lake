@@ -1,5 +1,7 @@
 """R0.2: the shared Rust reader's positive control and its fail-closed red, run under pytest."""
 
+import pytest
+
 from snn_data_lake.gates import rust_facts
 
 
@@ -133,3 +135,35 @@ def test_assignments_carry_their_end_position():
     (a,) = [a for a in f["assigns"] if a["lhs"] == "s . w1"]
     (m,) = [m for m in f["mcalls"] if m["name"] == "tr_copy_from"]
     assert (a["line"], a["col"]) < (m["line"], m["col"]) < (a["end_line"], a["end_col"]), (a, m)
+
+
+@pytest.mark.parametrize(("body", "want"), rust_facts._REBINDING_CASES)
+def test_let_bindings_resolve_by_end_scope_and_init_kind(body, want):
+    """Codex r5 R-1: every _REBINDING_CASES shape resolves to its expected exports."""
+    src = rust_facts._REBINDING % body
+    assert sorted(rust_facts.pyo3_exports([rust_facts.facts_for_source(src)])) == want
+
+
+def test_lets_and_calls_carry_their_block_scope():
+    """rsfacts emits `scope`: file-unique ordinals of the enclosing blocks, outermost first, so two
+    sibling blocks never share a scope."""
+    f = rust_facts.facts_for_source(
+        "fn m() {\n let a = 1;\n { let b = 2; }\n { let c = 3; }\n m.add(a);\n}\n"
+    )
+    scopes = {x["pat"]: x["scope"] for x in f["lets"]}
+    (call,) = f["mcalls"]
+    assert scopes["a"] == call["scope"] and len(scopes["a"]) == 1, (scopes, call)
+    assert scopes["b"][:1] == scopes["c"][:1] == scopes["a"], scopes
+    assert len(scopes["b"]) == len(scopes["c"]) == 2 and scopes["b"] != scopes["c"], scopes
+
+
+def test_production_is_a_fixpoint_over_mod_declarations(tmp_path):
+    """Codex r5 R-2 / N5-1: test-file flags over _MOD_TREE match _MOD_FLAGS."""
+    _git_tree(tmp_path, rust_facts._MOD_TREE)
+    files = rust_facts.rust_files(tmp_path)
+    crate = tmp_path / "native" / "sndl-core"
+    flags = {
+        p.relative_to(crate).as_posix(): f["test_file"]
+        for p, f in zip(files, rust_facts.facts(files), strict=True)
+    }
+    assert flags == rust_facts._MOD_FLAGS, flags
