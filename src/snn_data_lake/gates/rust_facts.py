@@ -63,8 +63,12 @@ SCHEMA = 1
 BLIND_SPOTS = (
     "macro bodies are opaque tokens (calls inside vec!/azip!/s! are not seen as calls)",
     "names resolve by last path segment within a crate (aliases/paths approximate)",
-    "all #[cfg] items parsed regardless of features",
+    "all #[cfg] items parsed regardless of features; #[cfg_attr(.., pyclass(..))] wrapped PyO3 attributes are not read",
     "macro_rules!/proc-macro/build.rs generated code is invisible",
+    'export map: m.add("X", ..), add_wrapped(wrap_pymodule!(..)) and nested declarative #[pymodule] mods '
+    "are not resolved (nested names are flattened to the top level)",
+    "python refs: importlib.import_module / getattr(_native, name) are dynamic (getattr gives <module>); "
+    "a .py that fails to parse is skipped here (ruff/import gates red it)",
 )
 
 # Receiver methods that write their receiver in place (ndarray / nalgebra / faer / std), shared by
@@ -97,7 +101,18 @@ def rust_files(root: Path = ROOT, sub: str = NATIVE_DIR) -> list[Path]:
         ).stdout
     except (OSError, subprocess.CalledProcessError) as exc:
         raise RustFactsUnavailable(f"git ls-files failed under {base / sub}: {exc}") from exc
-    return sorted(base / p for p in out.splitlines() if p.strip())
+    seen = sorted(base / p for p in out.splitlines() if p.strip())
+    # Fail CLOSED on Rust git does not show (gitignored): "native/ ABSENT" must never print while .rs
+    # exists on disk (panel A, 2026-10-17). Cargo build output (`target/`) is the only allowed exclusion.
+    disk = {
+        p for p in (base / sub).rglob("*.rs") if "target" not in p.relative_to(base / sub).parts
+    }
+    hidden = sorted(disk - set(seen))
+    if hidden:
+        raise RustFactsUnavailable(
+            f"{len(hidden)} .rs file(s) under {sub}/ are invisible to git (ignored?): {hidden[:3]}"
+        )
+    return seen
 
 
 def binary(root: Path = ROOT) -> Path:
@@ -182,12 +197,35 @@ def _attr(attrs, head):
     return next((a for a in attrs if _attr_name(a) == head), None)
 
 
+def _top_args(a: str) -> list[str]:
+    """Top-level comma-separated arguments of `head(...)`: `pyo3(signature = (x, name = "d"), name = "n")`
+    -> ['signature = (x, name = "d")', 'name = "n"']. Nested parens/brackets and strings are skipped."""
+    inner = a[a.find("(") + 1 : a.rfind(")")] if "(" in a else ""
+    out, depth, cur, quote = [], 0, "", False
+    for ch in inner:
+        if ch == '"':
+            quote = not quote
+        elif not quote and ch in "([{":
+            depth += 1
+        elif not quote and ch in ")]}":
+            depth -= 1
+        if ch == "," and depth == 0 and not quote:
+            out.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    return [*out, cur.strip()] if cur.strip() else out
+
+
 def _renamed(attrs, default):
+    """The Python name a TOP-LEVEL `name = "..."` argument gives (panel A: `signature = (x, name = "d")`
+    is a default argument value, not a rename)."""
     for a in attrs:
         if _attr_name(a) in ("pyo3", "pyclass", "pyfunction"):
-            m = _NAME_ARG.search(a)
-            if m:
-                return m.group(1)
+            for arg in _top_args(a):
+                m = _NAME_ARG.fullmatch(arg)
+                if m:
+                    return m.group(1)
     return default
 
 
@@ -230,6 +268,24 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
         py, info = pyclasses.get(rust, (rust, where))
         out[py] = {"rust": rust, "file": info["file"], "line": info["line"], "kind": "class"}
 
+    # Module code = every #[pymodule] fn plus every fn it calls, transitively and across files
+    # (panel B: `register_plasticity(m)?` registering exports in a helper).
+    defined = {fn["name"] for f in file_facts for fn in f.get("fns", [])}
+    modcode = {
+        fn["name"] for f in file_facts for fn in f.get("fns", []) if _attr(fn["attrs"], "pymodule")
+    }
+    grew = True
+    while grew:
+        more = {
+            c["path"].split("::")[-1]
+            for f in file_facts
+            for c in f.get("calls", [])
+            if c["fn"] in modcode
+        }
+        more &= defined
+        grew = not more <= modcode
+        modcode |= more
+
     for f in file_facts:
         decl = {m["name"] for m in f.get("mods", []) if _attr(m["attrs"], "pymodule")}
 
@@ -249,7 +305,7 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
         for t in f.get("types", []):  # #[pyclass] defined inside a declarative module
             if in_decl(t) and _attr(t["attrs"], "pyclass"):
                 export_class(t["name"], {"file": f["file"], "line": t["line"]})
-        modfns = {fn["name"] for fn in f.get("fns", []) if _attr(fn["attrs"], "pymodule")}
+        modfns = modcode
         bound = {}  # `let f = wrap_pyfunction!(x, m)?;` inside a module fn: local name -> wrapped fn
         for x in f.get("lets", []):
             m = _WRAP.search(x["init"] or "") if x["fn"] in modfns else None
@@ -433,8 +489,29 @@ impl Shown {
     #[getter]
     fn get_bias(&self) -> usize { 1 }
 }
+#[pyfunction]
+fn helper_fn() {}
+#[pyfunction]
+#[pyo3(signature = (x, name = "default"))]
+fn sig_fn(x: i64, name: &str) {}
+fn register_more(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(helper_fn, m)?)?;
+    m.add_function(wrap_pyfunction!(sig_fn, m)?)?;
+    Ok(())
+}
+#[cfg(test)]
+use crate::helper as test_helper;
+#[cfg(test)]
+const TEST_ONLY: u8 = 1;
+#[cfg(not(any(test, miri)))]
+fn prod2() {}
+#[cfg(all(test, feature = "x"))]
+fn t2() {}
+#[cfg(any(test, feature = "x"))]
+fn maybe() {}
 #[pyo3::pymodule]
 fn edges(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    register_more(m)?;
     m.add_function(wrap_pyfunction!(qual_fn, m)?)?;
     m.add_class::<QCore>()?;
     m.add_class::<Shown>()?;
@@ -494,6 +571,10 @@ def self_check(root: Path = ROOT) -> None:
     ex2 = pyo3_exports([e])
     want2 = {"qual_fn", "QNet", "Shown", "Shown.__new__", "Shown.weight", "Shown.bias", "Inner"}
     want2 |= {"bound_fn"}  # Codex round 2 B-1: a let-bound wrapper that is then ADDED registers
+    want2 |= {
+        "helper_fn",
+        "sig_fn",
+    }  # panel: helper-fn registration; signature `name =` is no rename
     assert set(ex2) == want2, (
         f"edge export map wrong: {sorted(set(ex2) ^ want2)}"
     )  # no ghost, no Hidden.step
@@ -504,6 +585,10 @@ def self_check(root: Path = ROOT) -> None:
     calls = [c["cfg_test"] for c in e["calls"] if c["path"] == "helper"]
     assert calls == [False, True, True], e["calls"]
     assert "sndl_core::reservoir::Cell" in e["paths"], "full multi-segment paths lost"
+    # panel A/B: cfg(test) on use/const items, and the cfg predicate evaluated, not text-matched
+    assert [u["cfg_test"] for u in e["uses"] if u["alias"] == "test_helper"] == [True], e["uses"]
+    assert [c["cfg_test"] for c in e["consts"] if c["name"] == "TEST_ONLY"] == [True], e["consts"]
+    assert (cfg["prod2"], cfg["t2"], cfg["maybe"]) == (False, True, False), cfg
     ds = sorted((x["line"], x["col"]) for x in e["lets"] if x["fn"] == "uses_core")
     assert len(ds) == 2 and ds[0][0] == ds[1][0] and ds[0][1] < ds[1][1], f"same-line columns: {ds}"
     with tempfile.TemporaryDirectory() as d:
@@ -529,6 +614,19 @@ def self_check(root: Path = ROOT) -> None:
         raise AssertionError("RED did not fire: unparseable Rust was accepted")
     bad = facts_for_source("fn broken( {", root=root, allow_errors=True)
     assert bad["ok"] is False and bad["err"], bad
+    # RED: a git-IGNORED .rs under native/ must fail closed, never read as "native/ ABSENT".
+    with tempfile.TemporaryDirectory() as d:
+        hidden = Path(d) / "native" / "sndl-core" / "src" / "hidden.rs"
+        hidden.parent.mkdir(parents=True)
+        hidden.write_text("fn broken( {", encoding="utf-8")
+        (Path(d) / ".gitignore").write_text("native/sndl-core/src/hidden.rs\n", encoding="utf-8")
+        subprocess.run(["git", "-C", d, "init", "-q"], check=True)
+        try:
+            rust_files(Path(d))
+        except RustFactsUnavailable:
+            pass
+        else:
+            raise AssertionError("RED did not fire: a gitignored .rs under native/ was not seen")
 
 
 def main() -> int:
@@ -536,7 +634,7 @@ def main() -> int:
     status, nf = native_status()
     tool = facts(rust_files(ROOT, str(RSFACTS)))
     print(
-        f"rust_facts: self-check OK (fixture: 7 fns, 2 transpose calls, 5 exports; edge fixture: 8 exports, let-bound wrapper, "
+        f"rust_facts: self-check OK (fixture: 7 fns, 2 transpose calls, 5 exports; edge fixture: 10 exports incl. let-bound + helper-registered, top-level name= only, cfg evaluated, "
         f"no unregistered wrapper/class methods, cfg(not(test)) is production; 5 _native importers; "
         f"unparseable-Rust RED fired) | {status} | tools/rsfacts: {len(tool)} file(s) parsed | "
         f"python _native importers in src: {len(python_native_refs())}"

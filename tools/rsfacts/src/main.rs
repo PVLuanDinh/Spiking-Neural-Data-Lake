@@ -76,8 +76,47 @@ fn docs_of(attrs: &[syn::Attribute]) -> String {
     }
     out.join("\n")
 }
-// Test-only code: `#[cfg(test)]` / `#[cfg(all(test, ..))]` / `#[cfg(any(test, ..))]`, or a test fn
-// (`#[test]`, `#[tokio::test]`, ...). `#[cfg(not(test))]` is PRODUCTION code, not test code.
+// Value of a cfg predicate in a NON-test build, three-valued: Some(false) = never compiled outside
+// tests, Some(true) = always compiled, None = depends on other cfg atoms (features, targets).
+fn cfg_outside_tests(m: &syn::Meta) -> Option<bool> {
+    let list = |l: &syn::MetaList| -> Vec<syn::Meta> {
+        l.parse_args_with(
+            syn::punctuated::Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
+        )
+        .map(|p| p.into_iter().collect())
+        .unwrap_or_default()
+    };
+    match m {
+        syn::Meta::Path(p) if p.is_ident("test") => Some(false),
+        syn::Meta::List(l) if l.path.is_ident("all") => {
+            let v: Vec<_> = list(l).iter().map(cfg_outside_tests).collect();
+            if v.contains(&Some(false)) {
+                Some(false)
+            } else if v.iter().all(|x| *x == Some(true)) {
+                Some(true)
+            } else {
+                None
+            }
+        }
+        syn::Meta::List(l) if l.path.is_ident("any") => {
+            let v: Vec<_> = list(l).iter().map(cfg_outside_tests).collect();
+            if v.contains(&Some(true)) {
+                Some(true)
+            } else if v.iter().all(|x| *x == Some(false)) {
+                Some(false)
+            } else {
+                None
+            }
+        }
+        syn::Meta::List(l) if l.path.is_ident("not") => {
+            list(l).first().and_then(cfg_outside_tests).map(|b| !b)
+        }
+        _ => None,
+    }
+}
+// Test-only code: a test fn (`#[test]`, `#[tokio::test]`, ...) or a `#[cfg(..)]` whose predicate is
+// FALSE in every non-test build: `cfg(test)`, `cfg(all(test, ..))`. `cfg(not(test))`,
+// `cfg(any(test, feature = ..))` and `cfg(not(any(test, ..)))` are production code.
 fn is_cfg_test(attrs: &[syn::Attribute]) -> bool {
     attrs.iter().any(|a| {
         let last = a.path().segments.last().map(|s| s.ident.to_string());
@@ -87,10 +126,15 @@ fn is_cfg_test(attrs: &[syn::Attribute]) -> bool {
         if !a.path().is_ident("cfg") {
             return false;
         }
-        let s = txt(&a.meta).replace(' ', "").replace("not(test)", "");
-        ["(test)", "(test,", ",test)", ",test,"]
-            .iter()
-            .any(|p| s.contains(p))
+        match &a.meta {
+            syn::Meta::List(l) => {
+                l.parse_args::<syn::Meta>()
+                    .ok()
+                    .and_then(|m| cfg_outside_tests(&m))
+                    == Some(false)
+            }
+            _ => false,
+        }
     })
 }
 fn vis_of(v: &syn::Visibility) -> String {
@@ -253,7 +297,10 @@ impl<'ast> Visit<'ast> for Facts {
     }
     fn visit_item_use(&mut self, i: &'ast syn::ItemUse) {
         let attrs = attrs_of(&i.attrs);
+        let t = is_cfg_test(&i.attrs) as usize;
+        self.cfg_test += t;
         self.flatten_use("", &i.tree, line(i), &attrs, &vis_of(&i.vis));
+        self.cfg_test -= t;
     }
     fn visit_item_extern_crate(&mut self, i: &'ast syn::ItemExternCrate) {
         self.path_roots.push(i.ident.to_string());
@@ -262,13 +309,13 @@ impl<'ast> Visit<'ast> for Facts {
     fn visit_item_const(&mut self, i: &'ast syn::ItemConst) {
         let (_, modp, cfg) = self.ctx();
         self.consts.push(json!({"kind": "const", "name": i.ident.to_string(), "line": line(&i.ident),
-            "ty": txt(&*i.ty), "expr": txt(&*i.expr), "attrs": attrs_of(&i.attrs), "cfg_test": cfg, "mod": modp}));
+            "ty": txt(&*i.ty), "expr": txt(&*i.expr), "attrs": attrs_of(&i.attrs), "cfg_test": cfg || is_cfg_test(&i.attrs), "mod": modp}));
         visit::visit_item_const(self, i);
     }
     fn visit_item_static(&mut self, i: &'ast syn::ItemStatic) {
         let (_, modp, cfg) = self.ctx();
         self.consts.push(json!({"kind": "static", "name": i.ident.to_string(), "line": line(&i.ident),
-            "ty": txt(&*i.ty), "expr": txt(&*i.expr), "attrs": attrs_of(&i.attrs), "cfg_test": cfg, "mod": modp}));
+            "ty": txt(&*i.ty), "expr": txt(&*i.expr), "attrs": attrs_of(&i.attrs), "cfg_test": cfg || is_cfg_test(&i.attrs), "mod": modp}));
         visit::visit_item_static(self, i);
     }
     fn visit_path(&mut self, p: &'ast syn::Path) {
