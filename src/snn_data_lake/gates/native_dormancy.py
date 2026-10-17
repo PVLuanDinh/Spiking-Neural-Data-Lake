@@ -45,11 +45,10 @@ from __future__ import annotations
 
 import ast
 import posixpath
-import re
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from snn_data_lake.gates import rust_facts as rf
 from snn_data_lake.gates.method_dormancy_gate import is_learn_verb
@@ -59,13 +58,11 @@ NATIVE_EXEMPT_METHOD: dict[str, str] = {}  # "Type::fn" | "fn" | python name -> 
 
 BLIND_SPOTS = (
     "liveness is per file, not per item (a live export's file reaches its modules)",
-    "use inside an inline mod resolves from the file's module; #[path] in an inline mod not followed",
+    "use inside an inline mod resolves from the file's module",
     "trait dispatch and generics match a caller by last segment name",
     "a Python facade re-export (`from ._native import f` in a live module that never calls it, "
     "used elsewhere through that module) gives a false M1: loads are read only from _native-referencing modules",
 )
-
-_PATH_ATTR = re.compile(r'path\s*=\s*"([^"]+)"')
 
 
 def _rel(f, base):
@@ -128,37 +125,27 @@ class _Tree:
             (d for d in self.dirs if not d or rel.startswith(d + "/")), key=len, default=None
         )
 
-    def _walk_decl(self, rel):
+    def _walk_decl(self, rel, via_path=False):
+        """Mod tree below `rel`, files resolved by the reader's ONE resolver (`rf.mod_files`, cfg(test)
+        declarations kept: a test-only module is still in the tree). A file loaded through `#[path]`
+        is a mod-rs file, so its children sit beside it."""
         if rel in self.in_tree:
             return
         self.in_tree.add(rel)
-        here = posixpath.dirname(rel)
-        base = (
-            here
-            if posixpath.basename(rel) in ("lib.rs", "main.rs", "mod.rs")
-            else posixpath.splitext(rel)[0]
-        )
         kids = self.children.setdefault(rel, {})
+        mod_rs = via_path or posixpath.basename(rel) in rf.MOD_RS
         for m in self.facts[rel].get("mods", []):
             if m["inline"]:
                 kids[m["name"]] = rel
                 continue
-            attr = next((a for a in m["attrs"] if _PATH_ATTR.fullmatch(a)), None)
-            d = posixpath.join(base, *m["mod"].split("::")) if m["mod"] else base
-            if attr:
-                cands = [
-                    posixpath.normpath(posixpath.join(here, _PATH_ATTR.fullmatch(attr).group(1)))
-                ]
-            else:
-                cands = [
-                    posixpath.join(d, m["name"] + ".rs"),
-                    posixpath.join(d, m["name"], "mod.rs"),
-                ]
-            hit = next((c for c in cands if c in self.facts), None)
+            is_path, cands = rf.mod_files(PurePosixPath(rel), m, mod_rs, cfg_test=True)
+            hit = next(
+                (c for c in (posixpath.normpath(str(c)) for c in cands) if c in self.facts), None
+            )
             if hit:
                 kids[m["name"]] = hit
                 self.parent[hit] = rel
-                self._walk_decl(hit)
+                self._walk_decl(hit, is_path)
 
     def reach(self, rel, segs, depth=0):
         """Files touched by resolving the path `segs` written in file `rel`."""

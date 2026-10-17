@@ -58,7 +58,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePath
 
 ROOT = Path(__file__).resolve().parents[3]
 NATIVE_DIR = "native"
@@ -197,31 +197,34 @@ def crate_dirs(files) -> set[Path]:
     return dirs
 
 
-_MOD_RS = ("mod.rs", "lib.rs", "main.rs")
+MOD_RS = ("mod.rs", "lib.rs", "main.rs")  # files whose `mod x;` children sit beside them
 
 
-# distinct-from: native_dormancy._walk_decl -- the dorm gate's own mod-tree walk (relative posix paths, cfg(test) mods included); docs_only_battery.py atlas_node_gate.py are a git-index hash and a node census
-def _mod_files(declaring: Path, m: dict, mod_rs: bool) -> tuple[bool, list[Path]]:
-    """(loaded through `#[path]`, files) a non-inline, non-cfg(test) `mod x;` in `declaring` can load,
-    by Rust's rules: the base is the file's directory for a mod-rs file (mod.rs, lib.rs, main.rs, or
-    any file itself loaded through `#[path]`), else `<stem>/`; inline module names are subdirectories;
-    a `#[path = ".."]` outside an inline module is relative to the file's directory, inside one to that
-    base; otherwise `x.rs` | `x/mod.rs`."""
-    if m["inline"] or m["cfg_test"]:
+# distinct-from: docs_only_battery.py atlas_node_gate.py -- a git-index hash and a node census; this names the FILES a Rust `mod x;` declaration can load (the ONE resolver: test_file_flags here and native_dormancy's mod tree)
+def mod_files(
+    declaring: PurePath, m: dict, mod_rs: bool, cfg_test: bool = False
+) -> tuple[bool, list[PurePath]]:
+    """(loaded through `#[path]`, candidate files -- not normalised) a non-inline `mod x;` in
+    `declaring` can load, by Rust's rules: the base is the file's directory for a mod-rs file (one of
+    `MOD_RS`, or any file itself loaded through `#[path]`), else `<stem>/`; inline module names are
+    subdirectories; a `#[path = ".."]` outside an inline module is relative to the file's directory,
+    inside one to that base; otherwise `x.rs` | `x/mod.rs`. cfg(test) declarations are skipped unless
+    `cfg_test` (the dormancy mod tree keeps them)."""
+    if m["inline"] or (m["cfg_test"] and not cfg_test):
         return False, []
     base = declaring.parent if mod_rs else declaring.with_suffix("")
     base = base.joinpath(*m["mod"].split("::")) if m["mod"] else base
     a = _attr(m["attrs"], "path")
     hit = _PATH_ATTR.search(a) if a else None
     if hit:
-        return True, [((base if m["mod"] else declaring.parent) / hit.group(1)).resolve()]
-    return False, [(base / f"{m['name']}.rs").resolve(), (base / m["name"] / "mod.rs").resolve()]
+        return True, [(base if m["mod"] else declaring.parent) / hit.group(1)]
+    return False, [base / f"{m['name']}.rs", base / m["name"] / "mod.rs"]
 
 
 def test_file_flags(file_facts) -> dict[str, bool]:
     """{file: is test code}: the ONE classification every gate uses (P2, Codex r4 N-3). A file is test
     code iff its path relative to its DEEPEST crate root starts with tests/ benches/ examples/ and no
-    PRODUCTION file reaches it through a `mod x;` declaration (`_mod_files`): production is the
+    PRODUCTION file reaches it through a `mod x;` declaration (`mod_files`): production is the
     FIXPOINT grown from the non-test files, so a test file's `#[path]` include promotes nothing
     (Codex r5 R-2) and a production include reaches the included file's own children (r5 N5-1)."""
     files = [Path(f["file"]) for f in file_facts]
@@ -238,8 +241,8 @@ def test_file_flags(file_facts) -> dict[str, bool]:
         p = todo.pop()
         f = by_path[p]
         for m in f.get("mods", []) if f.get("ok") else []:
-            is_path, targets = _mod_files(p, m, p.name in _MOD_RS or p in via_path)
-            for t in targets:
+            is_path, targets = mod_files(p, m, p.name in MOD_RS or p in via_path)
+            for t in (t.resolve() for t in targets):
                 if t in by_path and t not in prod:
                     prod.add(t)
                     todo.append(t)

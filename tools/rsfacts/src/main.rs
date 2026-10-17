@@ -374,7 +374,7 @@ impl<'ast> Visit<'ast> for Facts {
             let (f, _, cfg) = self.ctx();
             self.calls.push(
                 json!({"path": txt(&p.path).replace(' ', ""), "line": line(i), "col": col(i), "fn": f, "fn_id": self.cur_fn_id.last(),
-                "scope": self.scope, "args": i.args.iter().map(txt).collect::<Vec<_>>(), "cfg_test": cfg}),
+                "args": i.args.iter().map(txt).collect::<Vec<_>>(), "cfg_test": cfg}),
             );
         }
         visit::visit_expr_call(self, i);
@@ -439,7 +439,7 @@ impl<'ast> Visit<'ast> for Facts {
         let (f, _, cfg) = self.ctx();
         self.macros.push(
             json!({"name": txt(&i.path).replace(' ', ""), "line": line(&i.path), "col": col(&i.path), "fn": f, "fn_id": self.cur_fn_id.last(),
-            "scope": self.scope, "tokens": i.tokens.to_string(), "cfg_test": cfg}),
+            "tokens": i.tokens.to_string(), "cfg_test": cfg}),
         );
         visit::visit_macro(self, i);
     }
