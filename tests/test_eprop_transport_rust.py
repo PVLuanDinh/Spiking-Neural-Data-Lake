@@ -175,3 +175,22 @@ def test_fold1_red_arm_is_exactly_three_t1_and_the_string_fn_is_silent(tmp_path)
 def test_fold1_green_twin_is_zero(tmp_path):
     _tree(tmp_path, gate._rust_fixture(red=False, fold=True))
     assert gate.scan_rust(tmp_path)[1] == []
+
+
+TEST_ONLY_REFERENCE = """\
+pub struct N { w1: A, w2: A }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn bptt_reference(n: &mut N, e: &A) { let d = n.w2.t().dot(e); n.w1 += &d; }
+    #[test]
+    fn swapped_read() { let g = w[[j, i]]; w[[i, j]] += g; }
+}
+"""
+
+
+def test_test_only_rust_is_out_of_scope_like_python_tests(tmp_path):
+    """Panel lens C (MINOR): a #[cfg(test)] BPTT reference / test body is test code -- the Rust
+    analogue of tests/, which the Python half never scans -- so it must not red T1 or T2."""
+    _tree(tmp_path, {"sndl-core/src/lib.rs": TEST_ONLY_REFERENCE})
+    assert gate.scan_rust(tmp_path)[1] == []

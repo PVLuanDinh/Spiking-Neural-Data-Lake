@@ -515,6 +515,8 @@ def _rust_t1(f):
     by_fn = {}
     for rank, kind in enumerate(order):
         for r in f.get(kind, []):
+            if r.get("cfg_test"):  # test-only Rust == tests/, which the Python half never scans
+                continue
             by_fn.setdefault(r["fn"], []).append((r["line"], r["col"], rank, kind, r))
     out = []
     for fn, events in by_fn.items():
@@ -578,9 +580,15 @@ def _rs_pair(expr, index):
 
 def _rust_t2(f):
     """(line, fn, rule, detail) for weights READ in the reverse of the order they are WRITTEN."""
-    lhs = {(a["fn"], a["line"], _rs_norm(a["lhs"])) for a in f.get("assigns", [])}
+    lhs = {
+        (a["fn"], a["line"], _rs_norm(a["lhs"]))
+        for a in f.get("assigns", [])
+        if not a.get("cfg_test")
+    }
     sites = []
     for ix in f.get("index", []):
+        if ix.get("cfg_test"):  # test-only Rust is out of scope, as in T1
+            continue
         got = _rs_pair(ix["expr"], ix["index"])
         if got and _is_weight(got[0]):
             text = _rs_norm(ix["expr"]) + "[" + _rs_norm(ix["index"]) + "]"
