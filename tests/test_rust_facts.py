@@ -139,8 +139,7 @@ def test_assignments_carry_their_end_position():
 
 @pytest.mark.parametrize(("body", "want"), rust_facts._REBINDING_CASES)
 def test_let_bindings_resolve_by_end_scope_and_init_kind(body, want):
-    """Codex r5 R-1: the visible let is the latest one ENDED before the use whose block scope is
-    a prefix of the use's; a wrapper init binds, an identifier aliases, anything else unbinds."""
+    """Codex r5 R-1: every _REBINDING_CASES shape resolves to its expected exports."""
     src = rust_facts._REBINDING % body
     assert sorted(rust_facts.pyo3_exports([rust_facts.facts_for_source(src)])) == want
 
@@ -159,10 +158,7 @@ def test_lets_and_calls_carry_their_block_scope():
 
 
 def test_production_is_a_fixpoint_over_mod_declarations(tmp_path):
-    """Codex r5 R-2 / N5-1: a TEST file's #[path] include stays test code; a production include
-    reaches the included file's own `mod x;` children (as siblings: a path-included file is a mod-rs
-    file) through x.rs | x/mod.rs | <stem>/x.rs and inline-module dirs; a cfg(test) include, direct
-    or inherited, and a missing target promote nothing."""
+    """Codex r5 R-2 / N5-1: test-file flags over _MOD_TREE match _MOD_FLAGS."""
     _git_tree(tmp_path, rust_facts._MOD_TREE)
     files = rust_facts.rust_files(tmp_path)
     crate = tmp_path / "native" / "sndl-core"

@@ -38,7 +38,8 @@ struct Facts {
     cur_impl: Vec<(String, Option<String>, Vec<String>)>,
     cur_mod: Vec<String>,
     cfg_test: usize,
-    // block scope path: the file-unique ordinal of every enclosing `{ .. }`, outermost first
+    // enclosing `{ .. }` ordinals (file-unique), outermost first; Python treats a let as visible
+    // where its scope is a prefix of the use's
     scope: Vec<usize>,
     blocks: usize,
 }
@@ -220,7 +221,6 @@ impl Facts {
 }
 
 impl<'ast> Visit<'ast> for Facts {
-    // A let is visible at a use only where the let's scope is a prefix of the use's scope.
     fn visit_block(&mut self, i: &'ast syn::Block) {
         self.blocks += 1;
         self.scope.push(self.blocks);

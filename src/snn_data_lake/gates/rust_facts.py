@@ -200,7 +200,7 @@ def crate_dirs(files) -> set[Path]:
 _MOD_RS = ("mod.rs", "lib.rs", "main.rs")
 
 
-# distinct-from: native_dormancy._walk_decl -- the dorm gate's own mod-tree walk (relative posix paths, cfg(test) mods included) that the integrator consolidates onto this one; docs_only_battery.py atlas_node_gate.py are a git-index hash and a node census
+# distinct-from: native_dormancy._walk_decl -- the dorm gate's own mod-tree walk (relative posix paths, cfg(test) mods included); docs_only_battery.py atlas_node_gate.py are a git-index hash and a node census
 def _mod_files(declaring: Path, m: dict, mod_rs: bool) -> tuple[bool, list[Path]]:
     """(loaded through `#[path]`, files) a non-inline, non-cfg(test) `mod x;` in `declaring` can load,
     by Rust's rules: the base is the file's directory for a mod-rs file (mod.rs, lib.rs, main.rs, or
@@ -409,12 +409,10 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
             if in_decl(t) and _attr(t["attrs"], "pyclass"):
                 export_class(t["name"], {"file": f["file"], "line": t["line"]})
         modfns = modcode
-        # `let f = <init>;` inside a module fn: (fn, local) -> [(end, start, scope, init)]. The
-        # binding visible at a use is the LATEST let of that name that ENDED before the use (Codex
-        # r3 F-2: a rebound `f` must not retarget an earlier registration; r4 N-1: a let is not
-        # visible inside its own initializer) and whose block scope is a prefix of the use's (r5
-        # R-1). A wrapper init binds, a plain identifier aliases (resolved through), anything else
-        # unbinds.
+        # `let f = <init>;` in a module fn: (fn, local) -> [(end, start, scope, init)]. The binding
+        # visible at a use is the latest let of that name that ENDED before it (r3 F-2; r4 N-1: not
+        # visible in its own initializer) whose block scope is a prefix of the use's (r5 R-1). A
+        # wrapper init binds, a plain identifier aliases, anything else unbinds.
         bound: dict = {}
         for x in f.get("lets", []):
             if x["fn"] in modfns:
@@ -667,10 +665,7 @@ fn uses_core() -> sndl_core::reservoir::Cell { let d = 1; let e = 2; d + e }
 fn tpath() -> sndl_core::testonly::Probe { unimplemented!() }
 """
 
-# Let resolution inside a #[pymodule] fn (body, exports): Codex r3 F-2, r4 N-1, r5 R-1. The visible
-# let is the latest one ENDED before the use whose block scope is a prefix of the use's; a wrapper init
-# binds, a plain identifier aliases (chains, `mut`), any other init unbinds; an inner or sibling block
-# does not shadow, a use inside a block sees the outer let.
+# Let-resolution shapes inside a #[pymodule] fn as (body, exports): Codex r3 F-2, r4 N-1, r5 R-1.
 _REBINDING = (
     "#[pyfunction]\nfn learn() {}\n#[pyfunction]\nfn decay() {}\n#[pymodule]\n"
     "fn m(m: &Bound<'_, PyModule>) -> PyResult<()> {\n%s Ok(())\n}\n"
@@ -691,10 +686,10 @@ _REBINDING_CASES = (
     (" let g = wrap_pyfunction!(decay, m)?;\n let mut f = g;\n m.add_function(f)?;\n", ["decay"]),
 )  # fmt: skip
 
-# Test-file flags are a fixpoint over `mod` declarations (Codex r4 N-2, r5 R-2, r5 N5-1): a production
-# `#[path]` include reaches the included file's children (as siblings: a path-included file is a mod-rs
-# file), `mod x;` follows x.rs | x/mod.rs | <stem>/x.rs and inline-module directories; a test file's
-# include, a cfg(test) include (direct or inherited) and a missing target promote nothing.
+# Mod-tree fixture for the test-file fixpoint (Codex r4 N-2, r5 R-2, r5 N5-1): a production `#[path]`
+# include reaches the included file's children as siblings, `mod x;` follows x.rs | x/mod.rs | <stem>/x.rs
+# and inline-module dirs; a test file's include, a cfg(test) include (direct or inherited) and a missing
+# target promote nothing. Expected flags in _MOD_FLAGS.
 _MOD_TREE = {
     "native/sndl-core/src/lib.rs": (
         '#[path = "../tests/mod.rs"]\npub mod shared;\n#[path = "../tests/shared.rs"]\npub mod shared2;\n'
