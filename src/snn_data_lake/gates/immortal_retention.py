@@ -41,10 +41,14 @@ from __future__ import annotations
 
 import ast
 import json
+import os
+import re
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
+from snn_data_lake.gates import rust_facts
 from snn_data_lake.substrate.lake_engine import APPEND_BASELINE, RETENTION
 from snn_data_lake.substrate.lake_migrate import TAG_DISPOSITIONS
 
@@ -367,6 +371,116 @@ def _rust_fixture(red: bool) -> dict[str, str]:
     }
 
 
+#: The four reclaim spellings of the pre-registration: a call by its LAST path segment (`fs::rename`
+#: is the write-to-temp + rename rewrite this repo reclaims by), a method by name; `truncate` counts
+#: only with the single argument `true`. The Rust twin of `_RECLAIM_CALLS`, `_RECORD_REFS` and
+#: `_RETENTION_READS` above; the Python sets stay the Python scan's (different spellings, one rule).
+_RS_RECLAIM_CALLS = frozenset({"remove_file", "rename"})
+_RS_RECLAIM_METHODS = frozenset({"set_len"})
+_RS_RECORD_REF = re.compile(r"lake|binlog|record|retention|\btag", re.I)
+_RS_RETENTION_READ = re.compile(r"\b(?:retention_of|is_immortal|RETENTION)\b")
+#: The per-fn records whose token text says what a fn touches (schema 2: each carries `fn_id`).
+_RS_TEXT = {
+    "calls": ("path", "args"),
+    "mcalls": ("name", "recv", "args"),
+    "lets": ("pat", "init"),
+    "assigns": ("lhs", "rhs"),
+    "index": ("expr", "index"),
+    "fors": ("pat", "iter"),
+    "macros": ("tokens",),
+}
+RUST_BLIND_SPOTS = (
+    "names resolve by last path segment (a local `fn rename` counts as std's)",
+    "no scratch-home exclusion: a Rust self-check deleting a temp lake REDS (closed, not open)",
+    "one hop into same-file helpers by name only; a reclaim through another file's helper is unseen",
+    "fs::write / File::create over the lake path (an in-place rewrite) is not a reclaim spelling",
+)
+
+
+# distinct-from: infra/self_build_loop.py -- _firewalled_bytes maps firewalled FILES to bytes for a
+#   restore; this maps a Rust fn id to the token TEXT of its own facts for a reclaimer census.
+# distinct-from: gates/eprop_transport_gate.py -- scan_rust walks the same facts for weight-transport
+#   taint per fn; this walks them for reclaim calls + lake refs + label reads (one reader, two rules).
+def _rs_texts(f: dict) -> dict[int, str]:
+    """{fn id: the token text of its params and own records}, attributed by `fn_id`, never by name."""
+    out: dict[int, list[str]] = {fn["id"]: [" ".join(fn["params"])] for fn in f["fns"]}
+    for key, fields in _RS_TEXT.items():
+        for r in f.get(key, []):
+            if r.get("fn_id") in out:
+                for v in (r.get(k) for k in fields):
+                    out[r["fn_id"]].append(" ".join(v) if isinstance(v, list) else str(v or ""))
+    return {i: " ".join(t) for i, t in out.items()}
+
+
+def _rs_last(path: str) -> str:
+    return path.rsplit("::", 1)[-1]
+
+
+def _rs_reclaims(f: dict, fn_id: int) -> bool:
+    calls = {_rs_last(c["path"]) for c in f.get("calls", []) if c["fn_id"] == fn_id}
+    return bool(calls & _RS_RECLAIM_CALLS) or any(
+        m["name"] in _RS_RECLAIM_METHODS or (m["name"] == "truncate" and m["args"] == ["true"])
+        for m in f.get("mcalls", [])
+        if m["fn_id"] == fn_id
+    )
+
+
+def rust_reclaimers(root: Path | None = None) -> tuple[str, list[tuple[str, int, str]]]:
+    """(status, [(file, line, fn)]) for native/ under `root` (default: the repo) -- (b) over Rust.
+
+    A non-test fn that reclaims a lake file (`remove_file`, `rename`, `set_len`, `truncate(true)`)
+    while its text -- params, its own records, ONE hop into the same-file fns it calls -- names a lake
+    reference and reads no retention label. `RustFactsUnavailable` is NOT caught here: `rust_findings`
+    turns it into a red, never a skip."""
+    base = REPO if root is None else Path(root)
+    files = rust_facts.rust_files(base)
+    if not files:
+        return "native/ ABSENT (0 .rs files)", []
+    out = []
+    for f in rust_facts.facts(files):  # the reader's root is the repo (tools/rsfacts), not `base`
+        rel = os.path.relpath(f["file"], base).replace(os.sep, "/")
+        texts, by_name = _rs_texts(f), {fn["name"]: fn["id"] for fn in f["fns"]}
+        for fn in f["fns"]:
+            if fn["cfg_test"] or not _rs_reclaims(f, fn["id"]):
+                continue
+            hop = {
+                by_name[_rs_last(c["path"])]
+                for c in f.get("calls", [])
+                if c["fn_id"] == fn["id"] and _rs_last(c["path"]) in by_name
+            }
+            text = " ".join(texts[i] for i in (fn["id"], *sorted(hop)))
+            if _RS_RECORD_REF.search(text) and not _RS_RETENTION_READ.search(
+                rust_facts.strip_literals(text)
+            ):
+                out.append((rel, fn["line"], fn["name"]))
+    return f"native/ PRESENT ({len(files)} .rs files)", sorted(out)
+
+
+def rust_findings() -> tuple[str, list[str]]:
+    """(status line, the Rust half's lines for all_findings()): one per reclaimer, or ONE red when the
+    reader is down -- never a skip."""
+    try:
+        status, found = rust_reclaimers()
+    except rust_facts.RustFactsUnavailable as exc:
+        return "native/ UNAVAILABLE", [
+            f"native/ UNAVAILABLE (RustFactsUnavailable): {exc} -- a red, never a skip"
+        ]
+    return status, [
+        f"{rel}:{line} fn {fn} reclaims a lake file without a retention read"
+        for rel, line, fn in found
+    ]
+
+
+def _rust_tree(root: Path, red: bool) -> Path:
+    """The fixture written under `root/native` as a git repo (rust_facts reads git's view)."""
+    for rel, text in _rust_fixture(red).items():
+        p = root / "native" / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+    subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
+    return root
+
+
 def all_findings() -> list[str]:
     return (
         label_findings()
@@ -374,6 +488,7 @@ def all_findings() -> list[str]:
             f"{m}::{fn} destroys a lake record without consulting the retention label"
             for m, fn in unlisted_reclaimers()
         ]
+        + rust_findings()[1]
         + stale_known()
         + round_trip()
     )
@@ -384,6 +499,7 @@ def report() -> str:
     comp = sorted(t for t, row in RETENTION.items() if row[0] == "COMPACTABLE")
     bad, scratch = reclaimers(with_scratch=True)
     have, lack = budget_coverage()
+    status, rust = rust_findings()
     f = all_findings()
     lines = [
         f"IMMORTAL RETENTION -- {len(RETENTION)} tags: {len(imm)} IMMORTAL {[hex(t) for t in imm]}, "
@@ -393,6 +509,11 @@ def report() -> str:
         f"  of those, CARRIED as known debt with an owning row: {len(KNOWN_UNLABELED)}; unlisted (asserts): "
         f"{len(unlisted_reclaimers())}",
         f"excluded, scratch-home deletions (cannot reach the durable lake): {len(scratch)} {scratch}",
+        f"RUST ({status}): fns that reclaim a lake file without a retention read: {len(rust)} "
+        "(every finding in native/ asserts; the red is constructed in main())",
+        "  RUST BLIND SPOTS: " + "; ".join(RUST_BLIND_SPOTS),
+        "  rust_facts BLIND SPOTS: " + "; ".join(rust_facts.BLIND_SPOTS),
+        "  tools/rsfacts is gate tooling, out of scope for brain rules (named, not scanned).",
         f"append baseline present for {len(have)} of {len(imm)} immortal tags; missing {[hex(t) for t in lack]}",
         "the grown substrate: 0x03 _T_GROWTH and 0x08 _T_GROWTH_DELTA are COMPACTABLE-with-a-reconstruction-proof.",
         "  0x0D _T_BLOCKDELTA joined them on 2026-09-08 and was DELETED WITH THE PAGING LAYER on 2026-09-09 (T068",
@@ -511,6 +632,13 @@ def main() -> None:
         assert ("not_a_reclaimer.py", "tidy") not in found, found  # removeprefix is not a removal
         assert ("scratch_reclaimer.py", "selfcheck") in excluded, excluded  # excluded, and SEEN
         assert ("scratch_reclaimer.py", "selfcheck") not in found, found
+    # The Rust half, through the SAME entry point the real tree goes through: RED is exactly the four
+    # pre-registered reclaimers of the fixture lake.rs (its five controls silent); GREEN is 0.
+    with tempfile.TemporaryDirectory() as td:
+        red = [fn for _r, _l, fn in rust_reclaimers(_rust_tree(Path(td) / "red", True))[1]]
+        assert red == ["compact_lake", "evict", "truncate_log", "reopen_empty"], red
+        green = rust_reclaimers(_rust_tree(Path(td) / "green", False))[1]
+        assert green == [], f"the Rust GREEN twin must give 0, got {green}"
     print(report())
     print(
         "immortal_retention self-check OK: 5 constructed label reds caught, today's registry passes; the "
@@ -518,8 +646,10 @@ def main() -> None:
         "it; the reclaimer scan catches BOTH an unlink-shaped and a rewrite-shaped durable compactor, clears a "
         "guarded one, excludes a scratch-home deletion INTO THE REPORT, and does not mistake str.removeprefix "
         "for a removal; a label read is credited PER TAG, so a function that labels one class while a "
-        "one-hop helper drops another is caught while its compliant twin clears. Carried debt: "
-        f"{len(KNOWN_UNLABELED)} known reclaimer(s), {len(unlisted_reclaimers())} unlisted"
+        "one-hop helper drops another is caught while its compliant twin clears; the Rust half reds on "
+        "the four reclaim spellings of the fixture lake.rs and clears its five controls and the GREEN "
+        f"twin. Carried debt: {len(KNOWN_UNLABELED)} known reclaimer(s), "
+        f"{len(unlisted_reclaimers())} unlisted"
     )
 
 
