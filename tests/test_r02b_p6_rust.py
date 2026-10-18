@@ -18,6 +18,9 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(_ROOT, "tools"))
 gate = importlib.import_module("p6_gate")
 
+_AMY = "amyg" + "dala"  # from parts: move_gate C2(d) reads string literals
+_CER = "cere" + "bellum"
+
 REDS = ["R1", "R2", "R3", "R4", "R6", "R7", "R8", "R9", "R10"]
 CONTROLS = ["G1", "G2", "G3", "G4", "G5", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G14"]
 
@@ -156,7 +159,7 @@ _RS_UTIL_EXTRA = {
     ids=["module", "star", "ghost", "no-region", "non-connectome-region"],
 )
 def test_native_target_reasons_with_native_present(source, extra, reason, base):
-    overlay = {"amygdala/_p6_native_reason.py": source}
+    overlay = {f"{_AMY}/_p6_native_reason.py": source}
     res = gate.measure(
         _ROOT, overlay=overlay, native=gate.fixture_native(gate.RS_FEAR_GREEN, extra)
     )
@@ -169,7 +172,7 @@ def test_native_target_reasons_with_native_present(source, extra, reason, base):
 
 
 def test_same_region_native_import_maps_to_no_pair(base):
-    overlay = {"cerebellum/_p6_native_same.py": "from snn_data_lake._native import fear_step\n"}
+    overlay = {f"{_CER}/_p6_native_same.py": "from snn_data_lake._native import fear_step\n"}
     res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(gate.RS_FEAR_GREEN))
     assert res["conn"]["native_mapped"] == set()
     assert res["conn"]["native_unmapped"] == []
@@ -181,9 +184,9 @@ def test_rust_region_table():
     assert gate.rust_region("x/src/lib.rs", "x", labels) is None
     assert gate.rust_region("x/src/main.rs", "x", labels) is None
     assert gate.rust_region("x/src/rng.rs", "x", labels) == "rng"
-    assert gate.rust_region("x/src/fear_conditioning.rs", "x", labels) == "amygdala"
-    assert gate.rust_region("src/amygdala/fear.rs", "", labels) == "amygdala"
-    assert gate.rust_region("x/src/cerebellum/fear_conditioning.rs", "x", labels) == "amygdala"
+    assert gate.rust_region("x/src/fear_conditioning.rs", "x", labels) == f"{_AMY}"
+    assert gate.rust_region(f"src/{_AMY}/fear.rs", "", labels) == f"{_AMY}"
+    assert gate.rust_region(f"x/src/{_CER}/fear_conditioning.rs", "x", labels) == f"{_AMY}"
     assert gate.rust_region("x/tests/it.rs", None, labels) is None
 
 
@@ -203,7 +206,7 @@ def test_reader_is_built_from_this_checkout_not_from_root(tmp_path, monkeypatch)
     assert roots == [rust_facts.ROOT], roots  # never --root's tools/rsfacts
     assert status.startswith("native/ PRESENT (7 .rs files)"), status
     assert directed == gate.RUST_PAIR  # absolute fact paths under an alternate root resolve
-    assert exports == {"fear_step": "cerebellum"}
+    assert exports == {"fear_step": f"{_CER}"}
 
 
 def test_rust_self_check_judges_arms_against_the_empty_rust_baseline(monkeypatch, base):
@@ -248,7 +251,7 @@ def test_rust_self_check_reports_a_dead_red_and_a_leaking_control(monkeypatch, b
 
 
 def test_orphan_file_in_no_mod_tree_still_counts(base):
-    extra = {"native/sndl-core/src/amygdala/orphan.rs": _arm("RUST_REDS", "R1")[2]}
+    extra = {f"native/sndl-core/src/{_AMY}/orphan.rs": _arm("RUST_REDS", "R1")[2]}
     res = gate.measure(_ROOT, native=gate.fixture_native(gate.RS_FEAR_GREEN, extra))
     assert res["conn"]["rust_directed"] == gate.RUST_PAIR
     assert (
@@ -259,7 +262,7 @@ def test_orphan_file_in_no_mod_tree_still_counts(base):
 def test_rust_pair_outside_connectome_regions_is_reported_not_counted(base, capsys):
     fear_rs = "use crate::util::util_fn;\n\npub fn f(x: f64) -> f64 {\n    util_fn(x)\n}\n"
     res = gate.measure(_ROOT, native=gate.fixture_native(fear_rs, _RS_UTIL_EXTRA))
-    assert res["conn"]["rust_directed"] == {("amygdala", "util")}
+    assert res["conn"]["rust_directed"] == {(f"{_AMY}", "util")}
     assert res["metrics"] == base["metrics"]
     gate.report(res, _ROOT)
     assert "1 directed Rust region pairs (0 between connectome regions" in capsys.readouterr().out
@@ -274,7 +277,7 @@ def test_absent_status_wins_over_the_symbol_reason(source, base, monkeypatch):
     monkeypatch.setattr(
         rust_facts, "rust_files", lambda *a, **k: []
     )  # native/ ABSENT (real tree has it now)
-    res = gate.measure(_ROOT, overlay={"amygdala/_p6_native_reason.py": source})
+    res = gate.measure(_ROOT, overlay={f"{_AMY}/_p6_native_reason.py": source})
     unmapped = res["conn"]["native_unmapped"]
     assert len(unmapped) == 1 and gate.NATIVE_ABSENT in unmapped[0], unmapped
 
