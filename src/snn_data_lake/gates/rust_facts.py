@@ -102,7 +102,7 @@ INPLACE_UPDATE_METHODS = frozenset(
 )  # fmt: skip
 
 
-# distinct-from: gradient_claim_gate.py -- its _rust_triples PARSES literal values out of one declaration grammar; this STRIPS literals from token text before spelling scans (consolidates eprop_transport_gate._RS_LITERAL)
+# distinct-from: gradient_claim_gate.py -- its _rust_triples PARSES the declaration grammar AROUND literals; this STRIPS literals from token text before spelling scans (consolidates eprop_transport_gate._RS_LITERAL) and, below, DECODES one literal's value
 #: Rust string / char literals, raw and byte forms included. A spelling INSIDE one is text, not code:
 #: every gate that scans token text for a method/call spelling strips these first (shared, P2; moved
 #: here from eprop_transport_gate when gradient_claim_gate needed the same fix, Codex r3 F-4).
@@ -112,6 +112,56 @@ RUST_LITERAL = re.compile(r"""b?r(#*)".*?"\1|b?"(?:\\.|[^"\\])*"|b?'(?:\\[^']+|[
 def strip_literals(text: str | None) -> str:
     """`text` with every Rust string/char literal replaced by `""`."""
     return RUST_LITERAL.sub('""', text or "")
+
+
+# distinct-from: gradient_claim_gate.py -- _rust_str_value is this decoder's predecessor, LOOSER (Unicode
+#   `\s` after a continuation, no CRLF, `_` counted toward the 6 `\u{}` digits): delegating it here is a
+#   behaviour change (lane r02-1017 rows/f-lake, proposed patch); move_gate.py -- _RS_STR keeps a
+#   literal's SPELLING (the fallback), this returns its VALUE.
+#: One Rust escape (the Rust reference's grammar): `\u{` 1-6 hex digits with `_` separators `}`,
+#: `\x` two hex digits, the one-char escapes, or `\`+newline (CRLF kept by the source) plus the ASCII
+#: whitespace rustc skips after it (space, tab, CR, LF -- a NO-BREAK SPACE stays). No group: not an escape.
+_ESC = re.compile(r"\\(u\{(?:[0-9a-fA-F]_*){1,6}\}|x[0-9a-fA-F]{2}|[nrt\\0'\"]|\r?\n[ \t\r\n]*)?")
+_ESC_CHARS = {"n": "\n", "r": "\r", "t": "\t", "0": "\0"}
+
+
+def _literal_value(lit: str, byte: bool) -> str:
+    if lit[0] not in 'r"':
+        raise ValueError(f"not a str literal: {lit[:12]!r}")  # b"..", b'..', 'c'
+    if lit[0] == "r":
+        return lit[lit.index('"') + 1 : lit.rindex('"')]
+
+    def one(m):
+        e = m.group(1)
+        if e is None or (byte and e[0] == "u"):  # bad escape; `\u{}` in a byte string
+            raise ValueError(f"bad escape in {lit[:20]!r}")
+        if e[0] == "u":
+            return chr(int(e[2:-1].replace("_", ""), 16))
+        if e[0] == "x":
+            n = int(e[1:], 16)
+            if n > 0x7F and not byte:  # a str literal's `\x` stops at 7f; a byte string's at ff
+                raise ValueError(f"bad escape in {lit[:20]!r}")
+            return chr(n)
+        return "" if e.isspace() else _ESC_CHARS.get(e, e)
+
+    return _ESC.sub(one, lit[1:-1])
+
+
+def str_value(lit: str) -> str:
+    """The VALUE of one `RUST_LITERAL` match that is a str literal: escapes decoded (`\\x73` -> `s`,
+    `\\u{0_6_7}` -> `g`, `\\n`, `\\\\`, a `\\`+newline continuation and the ASCII whitespace after it ->
+    nothing), a raw string as written. ValueError for a byte or char literal or an escape Rust
+    rejects -- the caller's spelling-vs-skip decision."""
+    return _literal_value(lit, byte=False)
+
+
+def literal_value(lit: str) -> str:
+    """The VALUE of any double-quoted `RUST_LITERAL` match: a str literal through `str_value`; a
+    `b"..."`/`br"..."` byte literal read as UTF-8 text (`\\x00`-`\\xff` decoded, `\\u{}` rejected, an
+    undecodable byte -> U+FFFD). ValueError as `str_value`'s: the caller's spelling-vs-skip decision."""
+    if lit[:1] != "b":
+        return str_value(lit)
+    return _literal_value(lit[1:], byte=True).encode("latin-1").decode("utf-8", "replace")
 
 
 class RustFactsUnavailable(RuntimeError):
@@ -806,6 +856,30 @@ _PY_FIXTURE = {
 
 
 def self_check(root: Path = ROOT) -> None:
+    assert (
+        str_value('"\\x73nn.\\u{0_6_d}od\\n"') == "snn.mod\n" and str_value('r"\\x73"') == "\\x73"
+    )
+    assert str_value('"a\\\r\n \u00a0b"') == "a\u00a0b", "CRLF continuation; a NO-BREAK SPACE stays"
+    assert (
+        literal_value('b"\\x73\\xc3\\xa9"') == "s\u00e9" and literal_value('br"\\x73"') == "\\x73"
+    )
+    assert str_value('"\\\\x73"') == "\\x73" and str_value('"\\"q"') == '"q', (
+        "escapes read left to right"
+    )
+    assert literal_value('b"\\x80"') == "\ufffd" and literal_value('"\\x41"') == "A"
+    for fn, bad in (
+        (str_value, 'b"s"'),
+        (str_value, "'c'"),
+        (str_value, '"\\q"'),
+        (str_value, '"\\x80"'),
+        (str_value, '"\\u{1234567}"'),
+        (literal_value, 'b"\\u{67}"'),
+    ):
+        try:
+            fn(bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{fn.__name__} accepted {bad!r}")
     f = facts_for_source(_FIXTURE, root=root)
     fns = {fn["name"] for fn in f["fns"]}
     want = {"learn", "step", "learn_inner", "native_learn", "decay_impl", "_legacy", "t"}

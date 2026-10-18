@@ -1032,9 +1032,11 @@ _RS_TEXT = {
 #   a ledger, a brain tick, a finalizer and a niche filer, none a source scan.
 def c2d_rust(root: Path, pairs, pkgs) -> list:
     """C2(d) over the string literals of native/'s `.rs` files, through rust_facts' token text (the
-    reader's own `RUST_LITERAL`, judged by `_string_hits`): the import string a PyO3 crate hands
-    `PyModule::import` is a legacy name like any other. Sorted unique (file, line, "rs-string", name);
-    `RustFactsUnavailable` is the caller's red (R0.2 arc 2, row 10)."""
+    reader's own `RUST_LITERAL`, decoded to its VALUE by the reader's `literal_value` --
+    `"\\x73nn_..."` names `snn_...`, a raw string stays as written -- judged by `_string_hits`): the
+    import string a PyO3 crate hands `PyModule::import` is a legacy name like any other. Sorted unique
+    (file, line, "rs-string", name); `RustFactsUnavailable` is the caller's red (R0.2 arc 2, row 10).
+    Blind spot: a name assembled at runtime (`format!`, `concat!`, `+`) is not one literal."""
     root = Path(root)
     found = set()
     for f in rust_facts.facts(rust_facts.rust_files(root)):  # the reader's root is the repo
@@ -1046,10 +1048,18 @@ def c2d_rust(root: Path, pairs, pkgs) -> list:
                     for v in (r.get(k) for k in fields)
                 )
                 for lit in rust_facts.RUST_LITERAL.finditer(text):
-                    m = _RS_STR.fullmatch(lit.group(0))
-                    if m:
-                        hits = _string_hits(m.group(2), pairs, pkgs)
-                        found.update((rel, r["line"], "rs-string", x) for x in hits)
+                    t = lit.group(0)
+                    m = _RS_STR.fullmatch(t)
+                    if not m:
+                        continue
+                    # The VALUE, never a skip: a decoder stricter than the lexer falls back to the
+                    # SPELLING (syn refuses an escape Rust rejects upstream -- that is the reader's red).
+                    try:
+                        s = rust_facts.literal_value(t)
+                    except ValueError:
+                        s = m.group(2)
+                    hits = _string_hits(s, pairs, pkgs)
+                    found.update((rel, r["line"], "rs-string", x) for x in hits)
     return sorted(found)
 
 
@@ -1157,8 +1167,11 @@ def c2d_control(mover: Path, repo: Path = REPO, log=print) -> list:
 #   self-check; none a build-artifact record.
 def native_record(root: Path) -> dict:
     """What the census records of native/ (R0.2 arc 2, row 10): rust_facts' status (git's view, fail
-    closed), the sha256 of every Cargo.lock under native/ and the compiled extension beside the
-    package -- so a Rust edit or a rebuilt artifact is a census DIFFERENCE, never an invisible one."""
+    closed), the sha256 of every Cargo.lock under native/ and the PATH of each compiled extension
+    beside the package -- so a dependency change or an added/removed/renamed artifact is a census
+    DIFFERENCE. Recorded by path, as PREREG row 10 specifies ("artifact presence"): an in-place
+    rebuild at the same path, or a `.rs` edit that keeps the file count, is NOT a census difference
+    (the `.rs` text is C2(d)'s scan; the artifact's bytes are nobody's record here)."""
     root = Path(root)
     try:
         n = len(rust_facts.rust_files(root))
@@ -1880,6 +1893,19 @@ def constructed_reds() -> list:
         expect(c2d(red, pairs, pkgs)[0] == want, "red (G8-d): .rs string literals were not read")
         expect(
             c2d(green, pairs, pkgs)[0] == [], "control (G8-d): current names in .rs literals red"
+        )
+        # G8-d escaped
+        esc = Path(td) / "esc"
+        lib = _NATIVE_LIB_RED.replace(
+            '"snn_data_lake.oldpkg.mod"', '"\\x73nn_data_lake.oldpkg.mod"'
+        ).replace('"snn_data_lake.gonepkg."', 'r"\\x73nn_data_lake.gonepkg."')
+        for rel, text in _native_fixture(True).items():
+            (esc / rel).parent.mkdir(parents=True, exist_ok=True)
+            (esc / rel).write_text(lib if rel.endswith("lib.rs") else text, encoding="utf-8")
+        subprocess.run(["git", "-C", str(esc), "init", "-q"], check=True)
+        expect(
+            c2d(esc, pairs, pkgs)[0] == want[:1],
+            "red/control (G8-d esc): an escaped literal's value not judged, or a raw one judged",
         )
         (red / _NATIVE_EXT).unlink()
         expect(

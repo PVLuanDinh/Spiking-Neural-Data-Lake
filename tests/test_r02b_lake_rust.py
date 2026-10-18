@@ -49,9 +49,9 @@ def test_l5_rust_facts_unavailable_with_rs_present_is_one_red(tmp_path, monkeypa
     assert len(lines) == 1 and "RustFactsUnavailable" in lines[0], lines
 
 
-def test_l5_real_tree_prints_absent_and_python_counts_hold():
+def test_l5_real_tree_prints_native_status_and_python_counts_hold():
     out = l5.report()
-    assert "native/ ABSENT (0 .rs files)" in out
+    assert "native/ PRESENT (" in out  # the real tree has native/sndl-core: status PRESENT
     assert "reclaimers of DURABLE records that do not consult the label: 0" in out
     assert out.rstrip().endswith("findings: 0")
 
@@ -109,6 +109,79 @@ def test_g8d_green_twin_is_zero(tmp_path):
     assert mg.c2d(_g8(tmp_path, red=False), PAIRS, PKGS)[0] == []
 
 
+#: Codex B1 r02b-lake MAJOR 1 + review-code fold: the same legacy names spelled through Rust
+#: escapes (`\x73` = `s`, `\u{67}` = `g`, `\u{0_0_0_0_6_7}` = `g` with Rust's underscores), a raw
+#: string that only LOOKS escaped (its value is the backslash spelling: no legacy name), byte
+#: literals (`\x80`, UTF-8 `\xc3\xa9`), a `\`+newline continuation that splits a name, one followed
+#: by a NO-BREAK SPACE Rust keeps (the boundary before `snn_data_lake`), `r#"..."#` and `br"..."`.
+_NATIVE_LIB_ESCAPED = """\
+use pyo3::prelude::*;
+pub fn load(py: Python<'_>) -> PyResult<()> {
+    let m = PyModule::import(py, "\\x73nn_data_lake.oldpkg.mod")?;
+    let prefix = "snn_data_lake.\\u{67}onepkg.";
+    let raw = r"\\x73nn_data_lake.oldpkg.mod";
+    let bytes = b"snn_data_lake.oldpkg.mod\\x80";
+    let under = "snn_data_lake.\\u{0_0_0_0_6_7}onepkg.";
+    let split = "snn_data_lake.old\\
+        pkg.mod";
+    let nbsp = "prefix\\
+\u00a0snn_data_lake.gonepkg.";
+    let utf8 = b"\\x73nn_data_lake.oldpkg.mod.\\xc3\\xa9";
+    let hashed = r#"snn_data_lake.oldpkg.mod"#;
+    let braw = br"snn_data_lake.gonepkg.";
+    Ok(())
+}
+"""
+_ESCAPED_ROWS = [
+    (3, "oldpkg.mod"),
+    (4, "gonepkg"),
+    (6, "oldpkg.mod"),
+    (7, "gonepkg"),
+    (8, "oldpkg.mod"),
+    (10, "gonepkg"),
+    (12, "oldpkg.mod"),
+    (13, "oldpkg.mod"),
+    (14, "gonepkg"),
+]
+
+
+def test_g8d_c2d_decodes_rs_string_escapes_and_leaves_raw_strings_alone(tmp_path):
+    files = mg._native_fixture(True)
+    files["native/sndl-python/src/lib.rs"] = _NATIVE_LIB_ESCAPED
+    found, n, unparsed = mg.c2d(_tree(tmp_path, files), PAIRS, PKGS)
+    assert (n, unparsed) == (2, [])
+    rs = "native/sndl-python/src/lib.rs"
+    assert found == [(rs, ln, "rs-string", x) for ln, x in _ESCAPED_ROWS]
+
+
+def test_g8d_an_invalid_escape_is_the_readers_red_not_a_skip(tmp_path):
+    """`"..\\q"` is not Rust: syn refuses the file, so the reader's `unparseable Rust` row is the
+    red (fail closed): no literal with an escape Rust rejects ever reaches `c2d_rust`'s decoder."""
+    files = mg._native_fixture(True)
+    files["native/sndl-python/src/lib.rs"] = mg._NATIVE_LIB_RED.replace(
+        'oldpkg.mod"', 'oldpkg.mod\\q"'
+    )
+    found, n, unparsed = mg.c2d(_tree(tmp_path, files), PAIRS, PKGS)
+    assert found == [] and n == 2
+    assert len(unparsed) == 1 and "unparseable Rust" in unparsed[0], unparsed
+
+
+def test_g8d_a_literal_the_decoder_rejects_is_judged_by_its_spelling(tmp_path, monkeypatch):
+    """The fallback behind the reader: were the decoder ever stricter than the lexer, the literal's
+    spelling is judged, never skipped (every row of the RED fixture still found)."""
+
+    def refuse(_lit):
+        raise ValueError("decoder stricter than the lexer")
+
+    monkeypatch.setattr(mg.rust_facts, "literal_value", refuse)
+    found, _n, unparsed = mg.c2d(_g8(tmp_path), PAIRS, PKGS)
+    assert unparsed == []
+    assert found == [
+        ("native/sndl-python/src/lib.rs", 3, "rs-string", "oldpkg.mod"),
+        ("native/sndl-python/src/lib.rs", 4, "rs-string", "gonepkg"),
+    ]
+
+
 def test_g8d_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch):
     tree = _g8(tmp_path, red=False)
     monkeypatch.setattr(rust_facts.shutil, "which", lambda _name: None)
@@ -117,8 +190,23 @@ def test_g8d_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch
     assert mg.main(["--c2d", "--root", str(tree)]) == 1
 
 
-def test_g8_real_tree_c2d_unchanged_and_census_absent():
+#: Round 1b (r02-lead): the gate scans tests/ and tools/ by design (`_LIVE_PY_DIRS`), so a fixture
+#: string spelling a legacy package IS a C2(d) finding, owed by that fixture's author.
+def test_g8_real_tree_has_no_src_or_rs_string_finding_and_census_records_native():
     found, _n, unparsed = mg.c2d(mg.REPO)
-    assert (found, unparsed) == ([], [])
+    assert unparsed == []
+    debt = {  # r02b-p6 fixture strings, owed from parts: exactly these (file, legacy name) pairs
+        (f, n)
+        for f in ("tests/test_r02b_p6_rust.py", "tools/p6_gate.py")
+        for n in ("amygdala", "cerebellum")
+    }
+    assert [f for f in found if f[2] == "rs-string"] == []
+    assert {(f[0], f[3]) for f in found} == debt, (
+        "a paid-down debt is a stale exemption: delete it here"
+    )
     rec = mg.static(mg.REPO, mg.tables(mg.REPO)).get("native")
-    assert rec and rec["status"] == "native/ ABSENT (0 .rs files)" and rec["cargo_lock"] == {}, rec
+    assert rec and rec["status"].startswith("native/ PRESENT ("), rec
+    assert rec["cargo_lock"] and all(
+        k.startswith("native/") and k.endswith("Cargo.lock") and len(v) == 64
+        for k, v in rec["cargo_lock"].items()
+    ), rec
