@@ -13,6 +13,7 @@ from __future__ import annotations
 import importlib.machinery
 import importlib.util
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -135,7 +136,13 @@ def test_cache_derived_native_import_is_keyed_without_a_graph_node(tmp_path, pro
 
 @pytest.mark.parametrize(
     "name",
-    ["sndl-core/Cargo.toml", "sndl-core/Cargo.lock", "sndl-core/build.rs", "rust-toolchain.toml"],
+    [
+        "sndl-core/Cargo.toml",
+        "sndl-core/Cargo.lock",
+        "sndl-core/build.rs",
+        "rust-toolchain.toml",
+        "sndl-core/params.json",  # Codex B1 r02b-cache 1
+    ],
 )
 def test_cache_every_rust_input_under_native_flips_the_key(tmp_path, probe, name):
     store, m, _ = probe
@@ -310,6 +317,67 @@ def test_cache_real_tree_prints_native_absent_distinctly(probe):
     assert d["ext"].endswith((".pyd", ".so"))
 
 
+def test_cache_git_view_of_native_data_files(tmp_path, probe):
+    """Codex B1 r02b-cache 1 controls, in a fixture git repo: a tracked and an
+    untracked-unignored data file flip a `_native` reader's key, a gitignored one and target/
+    do not (the git branch, not the hash-everything fallback) while a gitignored .rs and
+    Cargo.lock still do (disk view); with `no_git=True` the fallback keys the ignored file
+    too (fail closed)."""
+    store, m, _ = probe
+    native, _, _ = _native_fixture(tmp_path)
+    crate = native / "sndl-core"
+    tracked, untracked, ignored = (crate / n for n in ("params.json", "new.json", "scratch.json"))
+    for p in (tracked, untracked, ignored):
+        p.write_text("{}\n", encoding="utf-8")
+    hidden_rs, hidden_lock = crate / "src" / "gen.rs", crate / "Cargo.lock"
+    hidden_rs.write_text("pub fn g() {}\n", encoding="utf-8")
+    hidden_lock.write_text("# lock\n", encoding="utf-8")
+    (tmp_path / ".gitignore").write_text("scratch.json\ngen.rs\nCargo.lock\n", encoding="utf-8")
+    built = crate / "target" / "debug" / "out.json"
+    built.parent.mkdir(parents=True)
+    built.write_text("{}\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "add", "--", "native/sndl-core/params.json"], check=True
+    )
+    inj = _inj(m)
+
+    def key(path, **kw):
+        fake = {str(path): "e" * 64}
+        return _cache(
+            store, native, graph_overrides=inj, file_hash_overrides=fake, **kw
+        ).closure_key(m)
+
+    k0 = _cache(store, native, graph_overrides=inj).closure_key(m)
+    assert key(tracked) != k0, "a tracked data file change did not flip the key"
+    assert key(untracked) != k0, "an untracked-unignored data file change did not flip the key"
+    assert key(ignored) == k0, "a gitignored data file flipped the key under git's view"
+    assert key(hidden_rs) != k0, "a gitignored .rs change did not flip the key"
+    assert key(hidden_lock) != k0, "a gitignored Cargo.lock change did not flip the key"
+    assert key(built) == k0, "a file under target/ flipped the key"
+    kn = _cache(store, native, graph_overrides=inj, no_git=True).closure_key(m)
+    assert key(ignored, no_git=True) != kn, "no_git fallback did not key the ignored file"
+
+
+def test_cache_tracked_native_data_file_flips_the_key_on_the_real_tree(probe):
+    """Codex B1 r02b-cache 1: every file git tracks under native/ (here the RNG parity
+    fixture the extension's tests read) keys a `_native` reader, not only .rs and manifests."""
+    store, m, _ = probe
+    data = ROOT / "native" / "sndl-core" / "tests" / "fixtures_rng.json"
+    if not data.is_file():
+        pytest.skip("no tracked non-Rust file under native/ on this tree")
+    inj = _inj(m)
+    k0 = _seam(sc.SelfcheckCache, store_path=store, env=ENV, graph_overrides=inj).closure_key(m)
+    fork = _seam(
+        sc.SelfcheckCache,
+        store_path=store,
+        env=ENV,
+        graph_overrides=inj,
+        file_hash_overrides={str(data): "e" * 64},
+    )
+    assert fork.closure_key(m) != k0, "a tracked native/ data file change did not flip the key"
+
+
 # ---- 2. doc_command_guard: cargo / maturin commands resolve against the Cargo manifests ----------
 
 
@@ -340,6 +408,88 @@ def test_doc_cargo_test_target_present_is_runnable(tmp_path):
     assert violations == [] and ok == 1
 
 
+@pytest.mark.parametrize(
+    "kind,name,decl,file,prefix",
+    [
+        ("test", "gone", 'name = "gone"\npath = "tests/deleted.rs"', None, "NO SUCH TEST TARGET"),
+        ("test", "gone", 'name = "gone"\npath = "t/x.rs"', "t/x.rs", None),
+        (
+            "test",
+            "gone",
+            'name = "gone"',
+            "tests/gone.rs",
+            None,
+        ),  # no `path`: tests/<name>.rs implied
+        (
+            "test",
+            "gone",
+            'name = "gone"',
+            None,
+            "NO SUCH TEST TARGET",
+        ),  # the name alone never counts
+        (
+            "test",
+            "gone",
+            'name = "gone"\npath = "tests/deleted.rs"',
+            "tests/gone.rs",
+            "NO SUCH TEST TARGET",
+        ),
+        (
+            "test",
+            "gone",
+            'name = "gone"\npath = 1',
+            "tests/gone.rs",
+            None,
+        ),  # non-str path: inferred
+        (
+            "test",
+            "gone",
+            'name = "other"\npath = "t/x.rs"',
+            "t/x.rs",
+            "NO SUCH TEST TARGET",
+        ),  # unrelated
+        ("test", "gone", 'name = "other"\npath = "tests/deleted.rs"', "tests/gone.rs", None),
+        ("bin", "gone", 'name = "gone"\npath = "src/bin/deleted.rs"', None, "NO SUCH BIN TARGET"),
+        ("bin", "gone", 'name = "gone"\npath = "src/cli.rs"', "src/cli.rs", None),
+        (
+            "bin",
+            "sndl-core",
+            'name = "sndl-core"\npath = "src/bin/deleted.rs"',
+            "src/main.rs",
+            "NO SUCH BIN TARGET",
+        ),
+        (
+            "example",
+            "gone",
+            'name = "gone"\npath = "examples/deleted.rs"',
+            None,
+            "NO SUCH EXAMPLE TARGET",
+        ),
+        ("example", "gone", 'name = "gone"\npath = "ex/demo.rs"', "ex/demo.rs", None),
+    ],
+)
+def test_doc_cargo_table_entry_needs_its_declared_source_on_disk(
+    tmp_path, kind, name, decl, file, prefix
+):
+    """Codex B1 r02b-cache 2: a same-name `[[kind]]` entry's declared `path` alone decides; an
+    unrelated entry neither satisfies a missing target nor overrides a valid inferred one; a
+    non-string `path` (cargo rejects the manifest) falls to the inferred layout here."""
+    crate = _crate(tmp_path)
+    (crate / "Cargo.toml").write_text(
+        f'[package]\nname = "sndl-core"\nversion = "0.1.0"\n[[{kind}]]\n{decl}\n',
+        encoding="utf-8",
+    )
+    if file:
+        (crate / file).parent.mkdir(parents=True, exist_ok=True)
+        (crate / file).write_text("fn main() {}\n", encoding="utf-8")
+    _doc(tmp_path, f"cargo {'test' if kind == 'test' else 'run'} -p sndl-core --{kind} {name}")
+    violations, ok = _scan(tmp_path)
+    if prefix is None:
+        assert violations == [] and ok == 1, violations
+    else:
+        assert ok == 0 and len(violations) == 1 and violations[0][3].startswith(prefix), violations
+
+
 def test_doc_cargo_unknown_crate_is_a_violation(tmp_path):
     _crate(tmp_path)
     _doc(tmp_path, "cargo test -p nope")
@@ -357,6 +507,8 @@ def _full_crate(root):
         '[[test]]\nname = "tabled"\npath = "t/x.rs"\n',
         encoding="utf-8",
     )
+    (crate / "t").mkdir()
+    (crate / "t" / "x.rs").write_text("#[test]\nfn t() {}\n", encoding="utf-8")
     (crate / "src" / "bin").mkdir()
     (crate / "src" / "bin" / "tool.rs").write_text("fn main() {}\n", encoding="utf-8")
     (crate / "src" / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
