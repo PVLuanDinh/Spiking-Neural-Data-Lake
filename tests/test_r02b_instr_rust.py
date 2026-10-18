@@ -121,8 +121,8 @@ RG_RED_REPLICAS = [
     ("LiveBrain", f"{LIB}::NativeLoop"),
 ]
 
-# Codex B1 r02b-instr MAJOR 1: the #[pyclass] and its #[pymodule_export] sit in DIFFERENT files;
-# exports resolve over the whole tree, and the finding names the export's own file.
+# Codex B1 r02b-instr MAJOR 1: the #[pyclass] and its #[pymodule_export] sit in DIFFERENT files
+# (definition-only replica.rs reached from the #[pymodule] file); the finding names that file.
 REPLICA = "native/sndl-python/src/replica.rs"
 RG_XFILE_LIB = """
 use pyo3::prelude::*;
@@ -137,7 +137,7 @@ mod _native {
 RG_XFILE_RED = {REPLICA: '#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'}
 RG_XFILE_GREEN = {REPLICA: '#[pyclass(name = "NativeLoop")]\npub struct NativeLoop;\n'}
 RG_XFILE_REPLICAS = [("LiveBrain", f"{REPLICA}::NativeLoop")]
-# review fold: a second file exporting its own `LiveBrain`; both sites survive.
+# a second file exporting its own `LiveBrain`; both sites survive.
 B_RS = "native/sndl-core/src/b.rs"
 RG_COLLIDE = {
     **RG_XFILE_RED,
@@ -145,6 +145,39 @@ RG_COLLIDE = {
     "#[pymodule(gil_used = false)]\nmod _b { #[pymodule_export] use super::Loop2; }\n",
 }
 RG_COLLIDE_REPLICAS = sorted([*RG_XFILE_REPLICAS, ("LiveBrain", f"{B_RS}::Loop2")])
+# the #[pymodule] only delegates to a helper in replica.rs that adds the renamed class.
+RG_HELPER_LIB = """
+use pyo3::prelude::*;
+mod replica;
+
+#[pymodule(gil_used = false)]
+fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    replica::register(m)
+}
+"""
+RG_HELPER_RED = {
+    REPLICA: 'use pyo3::prelude::*;\n#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'
+    "pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> { m.add_class::<NativeLoop>() }\n"
+}
+# known gap (RUST_BLIND_SPOTS): two helpers registering one `LiveBrain` through ONE #[pymodule]
+# share a view, where rust_facts keeps one entry per name; strict xfail so a multimap shows up here.
+RG_CHAIN_LIB = """
+use pyo3::prelude::*;
+mod a;
+mod b;
+
+#[pymodule(gil_used = false)]
+fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    a::reg_a(m)?;
+    b::reg_b(m)
+}
+"""
+_REG = 'use pyo3::prelude::*;\n#[pyclass(name = "LiveBrain")]\npub struct {c};\n'
+_REG += "pub fn {f}(m: &Bound<'_, PyModule>) -> PyResult<()> {{ m.add_class::<{c}>() }}\n"
+RG_CHAIN = {
+    "native/sndl-python/src/a.rs": _REG.format(c="LoopA", f="reg_a"),
+    "native/sndl-python/src/b.rs": _REG.format(c="LoopB", f="reg_b"),
+}
 
 CANON_SRC = {
     "engine/brain.py": "class Brain:\n    pass\n",
@@ -298,10 +331,22 @@ def test_rg_two_files_exporting_one_name_both_survive(tmp_path, monkeypatch):
     assert sorted(a["replicas"]) == RG_COLLIDE_REPLICAS, a
 
 
-def test_rg_allowlisting_one_colliding_export_keeps_the_other(tmp_path, monkeypatch):
-    monkeypatch.setattr(rg, "PENDING_RETIREMENT", {RG_COLLIDE_REPLICAS[1]: "scheduled"})
+@pytest.mark.parametrize("kept", [0, 1])
+def test_rg_allowlisting_one_colliding_export_keeps_the_other(tmp_path, monkeypatch, kept):
+    monkeypatch.setattr(rg, "PENDING_RETIREMENT", {RG_COLLIDE_REPLICAS[1 - kept]: "scheduled"})
     a = _rg(tmp_path, monkeypatch, RG_XFILE_LIB, RG_COLLIDE)
-    assert a["replicas"] == [RG_COLLIDE_REPLICAS[0]], a
+    assert a["replicas"] == [RG_COLLIDE_REPLICAS[kept]], a
+
+
+def test_rg_helper_registered_export_is_resolved(tmp_path, monkeypatch):
+    a = _rg(tmp_path, monkeypatch, RG_HELPER_LIB, RG_HELPER_RED)
+    assert a["replicas"] == RG_XFILE_REPLICAS, a
+
+
+@pytest.mark.xfail(strict=True, reason="RUST_BLIND_SPOTS: one view keeps one entry per Python name")
+def test_rg_two_helpers_registering_one_name_through_one_pymodule(tmp_path, monkeypatch):
+    a = _rg(tmp_path, monkeypatch, RG_CHAIN_LIB, RG_CHAIN)
+    assert len(a["replicas"]) == 2, a
 
 
 def test_rg_pending_retirement_allowlists_a_rust_replica(tmp_path, monkeypatch):
