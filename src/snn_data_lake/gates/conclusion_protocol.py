@@ -336,7 +336,7 @@ def aggregate_findings(root: Path | None = None) -> list[str]:
     return out
 
 
-# The hook matches the fixture text below on the instrument WORDS; each site read, none is a gate rule:
+# The hook matches the fixture text below on instrument words; none of these sites is a gate rule:
 # distinct-from: instruments/integration_measure.py -- computes the integration reading (LZ76/gzip); this block measures nothing.
 # distinct-from: instruments/binding_instrument.py -- scores the binding campaign (`_t080_score`); no score is produced here.
 # distinct-from: instruments/staged_sleep_bout.py -- runs a sleep bout and reads a validate() score; nothing runs here.
@@ -366,14 +366,14 @@ _ARITH = re.compile(r"[\w)\]]\s*[-+*/]=?\s*[-*&]*\s*[\w(\[]")
 _SCALAR_RET = re.compile(r"^->(f32|f64|i\d+|u\d+|isize|usize)$")
 _FACT_TEXT = {  # fact kind -> the text fields COMBINE-EXPR reads
     "lets": ("init",),
-    "assigns": ("lhs", "rhs"),  # a compound `op` is arithmetic by itself (below)
+    "assigns": ("lhs", "rhs"),  # a compound `op` is arithmetic by itself
     "index": ("expr", "index"),
     "calls": ("args",),
     "mcalls": ("recv", "args"),
     "macros": ("tokens",),
 }
 
-#: The constructed Rust RED arm and GREEN twin (pre-registered; also tests/test_r02b_verdict_rust.py).
+#: The constructed Rust RED arm and GREEN twin (pre-registered).
 RUST_RED_SRC = """pub fn score(integration: f64, agency: f64) -> f64 { (integration + agency) / 2.0 }
 pub fn total(integration: f64, agency: f64) -> f64 { [integration, agency].iter().sum() }
 pub fn blend(integration: f64, agency: f64) -> f64 { let s = integration * 0.5 + agency * 0.5; s }
@@ -511,12 +511,12 @@ RUST_FOLD_CASES = (
         ["COMBINE-EXPR"],
     ),
     (
-        "one-sided-arithmetic-call",  # blind spot 2: text-level, counts (pinned)
+        "one-sided-arithmetic-call",  # COMBINE-EXPR blind spot: text-level, counts (pinned)
         "pub fn c(integration: f64, agency: f64) -> f64 { pick(integration, 1.0 - agency) }\n",
         ["COMBINE-EXPR"],
     ),
     (
-        "one-sided-arithmetic-mcall",  # blind spot 2: text-level, counts (pinned)
+        "one-sided-arithmetic-mcall",  # COMBINE-EXPR blind spot: text-level, counts (pinned)
         "pub fn c(integration: f64, agency: f64) -> f64 { integration.max(agency * 2.0) }\n",
         ["COMBINE-EXPR"],
     ),
@@ -525,7 +525,6 @@ RUST_FOLD_CASES = (
 
 def _text(*parts) -> str:
     """Fact text fields (str or list of str) joined into one scan string."""
-    # ", " so a unary `*`/`-` opening the NEXT field never reads as an operator between two operands
     return ", ".join(p if isinstance(p, str) else ", ".join(p) for p in parts if p)
 
 
@@ -696,7 +695,7 @@ SURFACE_BASELINE = (
 
 
 def asserted_findings(native=None) -> list[str]:
-    """What --assert fails on: the rows and the aggregate refusal (Python and Rust), all in this arc's hands.
+    """What --assert fails on: the rows and the aggregate refusal (Python and Rust).
     `native` is ONE snapshot of `native_status()` shared with `report()` so the verdict and its text agree."""
     return row_findings() + aggregate_findings() + rust_aggregate_findings(native)
 

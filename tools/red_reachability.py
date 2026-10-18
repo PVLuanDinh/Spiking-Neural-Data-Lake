@@ -75,7 +75,7 @@ RUST_BLIND_SPOTS = (
 )
 _FACT_KINDS = ("calls", "mcalls", "index", "assigns", "lets", "fors", "macros")
 
-#: The constructed Rust RED arm and GREEN twin (pre-registered; also tests/test_r02b_verdict_rust.py).
+#: The constructed Rust RED arm and GREEN twin (pre-registered).
 RUST_RED_SRC = """use pyo3::prelude::*;
 #[pyfunction]
 pub fn probe_binding() -> (bool, &'static str) { (true, "spiking 100% vs rate control 0%") }
@@ -171,7 +171,7 @@ def probe_fallthrough(x):
     if x:
         return _native.probe_binding()
 """
-#: The exact verdicts of PY_WRAPPER_CONTROLS over RUST_RED_SRC (the self-check and the tests compare to this).
+#: The exact verdicts of PY_WRAPPER_CONTROLS over RUST_RED_SRC.
 PY_WRAPPER_EXPECTED = {
     "wrap.probe_mixed": "UNPROVEN",
     "wrap.probe_two_twins": "UNPROVEN",

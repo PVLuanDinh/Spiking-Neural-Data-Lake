@@ -108,7 +108,7 @@ def test_rr_injection_reaches_the_same_entry_point(tmp_path, monkeypatch):
     assert _no_red(criteria) == RR.RED_NO_RED
 
 
-# ---- PREREG addenda (review folds): receivers, filters, wrapper guards, detection paths, schema
+# ---- PREREG addenda: receivers, filters, wrapper guards, detection paths, schema rejection ----
 
 
 @pytest.mark.parametrize("case", RR.RUST_FOLD_CASES, ids=lambda c: c[0])
