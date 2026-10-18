@@ -618,7 +618,6 @@ def test_out_of_scope_row_growth_is_a_printed_scope_rule_not_debt():
     assert set(oos) == {
         "snn_data_lake/readout/growable_readout.py::GrowableReadout._grow_one",
         "snn_data_lake/readout/laminar_local_readout.py::LaminarLocalReadout.grow",
-        "snn_data_lake/reasoning/developmental_loop.py::GrowableSTDP.maybe_recruit",
     }
     assert not set(oos) & set(G.KNOWN_UNGATED_ROW_GROWTH)
     text = G.report()

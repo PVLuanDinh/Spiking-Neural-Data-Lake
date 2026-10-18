@@ -441,7 +441,6 @@ KNOWN_UNGATED_ROW_GROWTH = {
 OUT_OF_SCOPE_ROW_GROWTH = {
     "snn_data_lake/readout/growable_readout.py::GrowableReadout._grow_one": "a growable readout's rows (readout layer, not the engine's growth path)",
     "snn_data_lake/readout/laminar_local_readout.py::LaminarLocalReadout.grow": "a laminar readout's hidden rows (readout layer, not the engine's growth path)",
-    "snn_data_lake/reasoning/developmental_loop.py::GrowableSTDP.maybe_recruit": "a reasoning learner's recruited rows (not the engine's growth path)",
 }
 
 #: Reviewed FALSE POSITIVES of the row-growth scan (Codex cp3 #4 widened its forms; these hits grow no
