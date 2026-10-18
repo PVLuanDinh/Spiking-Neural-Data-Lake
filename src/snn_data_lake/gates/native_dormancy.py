@@ -328,9 +328,11 @@ def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
         c = tree.crate_of[rel]
         d_univ[f"D2 {rel}"] = ("", {rel})
         if rel not in tree.in_tree:
-            d_viol[f"D2 {rel}"] = (
+            d_viol[
+                f"D2 {rel}"
+            ] = (  # no exempt key: a row justifies D2b (no binding), never an orphan
                 f"D2a {rel}: not in the mod tree of crate {c} (orphan file)",
-                {rel},
+                set(),
             )
         elif (
             c not in binding

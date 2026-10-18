@@ -117,3 +117,30 @@ def test_the_module_self_check_passes():
 def test_learn_verb_matcher_is_the_method_gates():
     assert mdg.is_learn_verb("potentiate") and not mdg.is_learn_verb("lif_step")
     assert not mdg.is_learn_verb("__fit__")
+
+
+def test_an_exemption_never_hides_an_orphan_file(tmp_path):
+    """Codex B1 integrator 1: an exempt row justifies D2b (no binding yet), never a D2a orphan."""
+    import subprocess
+
+    files = {
+        "native/c/Cargo.toml": '[package]\nname = "c"\n',
+        "native/c/src/lib.rs": "pub mod kept;\n",
+        "native/c/src/kept.rs": "pub fn k() {}\n",
+        "native/c/src/orphan.rs": "pub fn o() {}\n",
+    }
+    for rel, text in files.items():
+        p = tmp_path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True)
+    res = nd.audit(
+        tmp_path,
+        live=set(),
+        src=tmp_path / "src",
+        exempt={"c/src/orphan.rs": "x", "c/src/kept.rs": "x"},
+    )
+    assert [d for d in res["d"] if d.startswith("D2a")] == [
+        "D2a c/src/orphan.rs: not in the mod tree of crate c (orphan file)"
+    ], res
+    assert not [d for d in res["d"] if d.startswith("D2b")], res
