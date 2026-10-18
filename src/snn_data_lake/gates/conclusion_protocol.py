@@ -348,14 +348,21 @@ RUST_BLIND_SPOTS = (
     "COMBINE-EXPR judges one fact's text, not an expression: two instruments and an operator in one `let` "
     "initialiser count even when the operator joins something else",
     "every .rs under native/ is read, test code included (P4c)",
+    "at the Python edge a `_native` callee is matched by NAME within a module that references it: a star import "
+    "or an `import ... as` alias is missed, and an unrelated `x.show()` in a module that also uses `_native.show` "
+    "is counted (python_native_refs exposes names, not bindings)",
     "tools/rsfacts is gate tooling, outside the brain rules",
 )
-_INSTRUMENT = re.compile(r"\b(" + "|".join(INSTRUMENTS) + r")\b")
-_ARITH = re.compile(r"[\w)\]]\s*[-+*/]\s*[\w(\[]")  # an operator with an operand on each side
+_INSTRUMENT = re.compile(
+    r"(?<![A-Za-z0-9])(" + "|".join(INSTRUMENTS) + r")(?![A-Za-z0-9])"
+)  # `_` passes
+_ARITH = re.compile(
+    r"[\w)\]]\s*[-+*/]=?\s*[\w(\[]"
+)  # an operator (or op=) with an operand on each side
 _SCALAR_RET = re.compile(r"^->(f32|f64|i\d+|u\d+|isize|usize)$")
 _FACT_TEXT = {  # fact kind -> the text fields COMBINE-EXPR reads
     "lets": ("init",),
-    "assigns": ("lhs", "rhs"),
+    "assigns": ("lhs", "op", "rhs"),
     "index": ("expr", "index"),
     "calls": ("args",),
     "mcalls": ("recv", "args"),
@@ -386,9 +393,22 @@ def show(integration, agency):
 """
 
 
+def _text(*parts) -> str:
+    """Fact text fields (str or list of str) joined into one scan string."""
+    return " ".join(p if isinstance(p, str) else " ".join(p) for p in parts if p)
+
+
 def _instruments(*texts) -> list[str]:
-    joined = " ".join(t if isinstance(t, str) else " ".join(t) for t in texts if t)
-    return sorted(set(_INSTRUMENT.findall(rust_facts.strip_literals(joined))))
+    return sorted(set(_INSTRUMENT.findall(rust_facts.strip_literals(_text(*texts)))))
+
+
+# distinct-from: tools/red_reachability.py::fixture_facts -- the same three lines; a gate cannot import a tools
+#   script and a tools script must not import a gate for a fixture. Both belong in rust_facts (integrator row).
+def fixture_facts(text):
+    """(status, facts) for one constructed sndl-core file, through `rust_facts.facts_for_source`."""
+    f = rust_facts.facts_for_source(text, name="plasticity.rs")
+    f["file"] = "native/sndl-core/src/plasticity.rs"
+    return "native/ PRESENT (1 .rs files, fixture)", [f]
 
 
 def native_status(root: Path | None = None):
@@ -413,7 +433,7 @@ def rust_aggregate_findings(native=None) -> list[str]:
         p = Path(f["file"])
         rel = (p.relative_to(REPO) if p.is_absolute() and REPO in p.parents else p).as_posix()
         for m in f["mcalls"]:
-            combining = m["name"] in ("sum", "fold") or "sum" in m["name"] or "mean" in m["name"]
+            combining = m["name"] == "fold" or "sum" in m["name"] or "mean" in m["name"]
             named = _instruments(m["recv"], m["args"])
             if combining and len(named) >= 2:
                 out.setdefault(
@@ -430,11 +450,7 @@ def rust_aggregate_findings(native=None) -> list[str]:
                 )
         for kind, fields in _FACT_TEXT.items():
             for x in f[kind]:
-                text = " ".join(
-                    v if isinstance(v, str) else " ".join(v)
-                    for v in (x.get(k) for k in fields)
-                    if v
-                )
+                text = _text(*(x.get(k) for k in fields))
                 named = _instruments(text)
                 if len(named) >= 2 and _ARITH.search(rust_facts.strip_literals(text)):
                     out.setdefault(
@@ -545,16 +561,19 @@ SURFACE_BASELINE = (
 #: without its licensed sentence. C4/T081 owes the fix; until then the debt may fall, never rise.
 
 
-def asserted_findings() -> list[str]:
-    """What --assert fails on: the rows and the aggregate refusal (Python and Rust), all in this arc's hands."""
-    return row_findings() + aggregate_findings() + rust_aggregate_findings()
+def asserted_findings(native=None) -> list[str]:
+    """What --assert fails on: the rows and the aggregate refusal (Python and Rust), all in this arc's hands.
+    `native` is ONE snapshot of `native_status()` shared with `report()` so the verdict and its text agree."""
+    return row_findings() + aggregate_findings() + rust_aggregate_findings(native)
 
 
 def all_findings() -> list[str]:
     return asserted_findings() + surface_findings()
 
 
-def report() -> str:
+def report(native=None) -> str:
+    native = native_status() if native is None else native
+    found = asserted_findings(native)
     reg = _registry_from_source()
     missing = [n for n in INSTRUMENTS if n not in reg]
     surf = surface_findings()
@@ -562,10 +581,10 @@ def report() -> str:
         f"CONCLUSION PROTOCOL -- {len(reg)} of {len(INSTRUMENTS)} instrument rows; missing {missing}",
         "no arrangement of these instruments concludes phenomenal consciousness: they dissociate mechanisms.",
         "  A pass licenses exactly the sentence its row states, and nothing beyond it.",
-        f"asserted findings (rows + the aggregate refusal): {len(asserted_findings())}",
+        f"asserted findings (rows + the aggregate refusal): {len(found)}",
     ]
-    lines += [f"  - {x}" for x in asserted_findings()]
-    lines.append(f"{native_status()[0]}; refusal 1 is read in Rust through gates/rust_facts")
+    lines += [f"  - {x}" for x in found]
+    lines.append(f"{native[0]}; refusal 1 is read in Rust through gates/rust_facts")
     lines.append("  Rust BLIND SPOTS: " + "; ".join((*rust_facts.BLIND_SPOTS, *RUST_BLIND_SPOTS)))
     lines.append(
         f"reported, not asserted -- surface + mechanism findings (the surface debt is owed to "
@@ -675,13 +694,11 @@ def main() -> None:
             "bridge.py:5: combines ['integration', 'agency'] into one number (no aggregate score)"
         ], agg
     # refusal 1 in RUST, on the pre-registered fixture through the one entry point (R0.2 row 12)
-    from snn_data_lake.gates.gradient_claim_gate import fixture_native
-
-    rust_red = rust_aggregate_findings(fixture_native(RUST_RED_SRC))
+    rust_red = rust_aggregate_findings(fixture_facts(RUST_RED_SRC))
     assert [x.split(" ")[1] for x in rust_red] == ["COMBINE-FN", "COMBINE-CALL", "COMBINE-EXPR"], (
         rust_red
     )
-    rust_green = rust_aggregate_findings(fixture_native(RUST_GREEN_SRC))
+    rust_green = rust_aggregate_findings(fixture_facts(RUST_GREEN_SRC))
     assert rust_green == [], rust_green
     print(report())
     print(
@@ -696,9 +713,10 @@ def main() -> None:
 
 
 def _assert() -> int:
-    f = asserted_findings()
+    native = native_status()
+    f = asserted_findings(native)
     surf = surface_findings()
-    print(report())
+    print(report(native))
     if f:
         print(f"CONCLUSION_PROTOCOL ASSERT FAILED: {len(f)} finding(s)", file=sys.stderr)
         return 1
