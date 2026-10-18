@@ -1032,9 +1032,11 @@ _RS_TEXT = {
 #   a ledger, a brain tick, a finalizer and a niche filer, none a source scan.
 def c2d_rust(root: Path, pairs, pkgs) -> list:
     """C2(d) over the string literals of native/'s `.rs` files, through rust_facts' token text (the
-    reader's own `RUST_LITERAL`, judged by `_string_hits`): the import string a PyO3 crate hands
-    `PyModule::import` is a legacy name like any other. Sorted unique (file, line, "rs-string", name);
-    `RustFactsUnavailable` is the caller's red (R0.2 arc 2, row 10)."""
+    reader's own `RUST_LITERAL`, decoded to its VALUE by the reader's `str_value` --
+    `"\\x73nn_..."` names `snn_...`, a raw string stays as written -- judged by `_string_hits`): the
+    import string a PyO3 crate hands `PyModule::import` is a legacy name like any other. Sorted unique
+    (file, line, "rs-string", name); `RustFactsUnavailable` is the caller's red (R0.2 arc 2, row 10).
+    Blind spot: a name assembled at runtime (`format!`, `concat!`, `+`) is not one literal."""
     root = Path(root)
     found = set()
     for f in rust_facts.facts(rust_facts.rust_files(root)):  # the reader's root is the repo
@@ -1047,9 +1049,14 @@ def c2d_rust(root: Path, pairs, pkgs) -> list:
                 )
                 for lit in rust_facts.RUST_LITERAL.finditer(text):
                     m = _RS_STR.fullmatch(lit.group(0))
-                    if m:
-                        hits = _string_hits(m.group(2), pairs, pkgs)
-                        found.update((rel, r["line"], "rs-string", x) for x in hits)
+                    if not m:
+                        continue
+                    try:  # the VALUE (escapes decoded, raw strings as written), not the spelling
+                        s = rust_facts.str_value(lit.group(0).removeprefix("b"))
+                    except ValueError:  # an escape the decoder rejects: the spelling, never a skip
+                        s = m.group(2)
+                    hits = _string_hits(s, pairs, pkgs)
+                    found.update((rel, r["line"], "rs-string", x) for x in hits)
     return sorted(found)
 
 

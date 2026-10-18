@@ -109,6 +109,33 @@ def test_g8d_green_twin_is_zero(tmp_path):
     assert mg.c2d(_g8(tmp_path, red=False), PAIRS, PKGS)[0] == []
 
 
+#: Codex B1 r02b-lake MAJOR 1: the same legacy names spelled through Rust escapes (`\x73` = `s`,
+#: `\u{67}` = `g`), a raw string that only LOOKS escaped (its value is the backslash spelling: no
+#: legacy name), and a byte literal with an escape the strict decoder rejects (kept by spelling).
+_NATIVE_LIB_ESCAPED = """\
+use pyo3::prelude::*;
+pub fn load(py: Python<'_>) -> PyResult<()> {
+    let m = PyModule::import(py, "\\x73nn_data_lake.oldpkg.mod")?;
+    let prefix = "snn_data_lake.\\u{67}onepkg.";
+    let raw = r"\\x73nn_data_lake.oldpkg.mod";
+    let bytes = b"snn_data_lake.oldpkg.mod\\x80";
+    Ok(())
+}
+"""
+
+
+def test_g8d_c2d_decodes_rs_string_escapes_and_leaves_raw_strings_alone(tmp_path):
+    files = mg._native_fixture(True)
+    files["native/sndl-python/src/lib.rs"] = _NATIVE_LIB_ESCAPED
+    found, n, unparsed = mg.c2d(_tree(tmp_path, files), PAIRS, PKGS)
+    assert (n, unparsed) == (2, [])
+    assert found == [
+        ("native/sndl-python/src/lib.rs", 3, "rs-string", "oldpkg.mod"),
+        ("native/sndl-python/src/lib.rs", 4, "rs-string", "gonepkg"),
+        ("native/sndl-python/src/lib.rs", 6, "rs-string", "oldpkg.mod"),
+    ]
+
+
 def test_g8d_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch):
     tree = _g8(tmp_path, red=False)
     monkeypatch.setattr(rust_facts.shutil, "which", lambda _name: None)
