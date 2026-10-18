@@ -29,11 +29,14 @@ gitignored), runs it, and returns the facts. It derives the two joins five gates
     `import snn_data_lake._native as n` then `n.f`, and the relative forms).
 Policy rules live in the gates, never here.
 
-ATTRIBUTION (schema 2). Every `fns` record carries `id` (its index in `fns`), and every call, method
-call, index, assignment, let, for and macro fact carries `fn_id`: the id of its INNERMOST enclosing
-fn, taken from the visitor's stack. Attribute facts to functions by `fn_id`, never by name or line:
-two fns may share a name and a line, and a bodiless trait signature nested in a body is a fn record
-that owns nothing.
+ATTRIBUTION (schema 3). Every `fns` record carries `id` (its index in `fns`), and every call, method
+call, index, assignment, let, for, macro, binary-op and exit fact carries `fn_id`: the id of its
+INNERMOST enclosing fn, taken from the visitor's stack. Attribute facts to functions by `fn_id`,
+never by name or line: two fns may share a name and a line, and a bodiless trait signature nested
+in a body is a fn record that owns nothing. Schema 3 (B1 fold 1, Codex r02b-verdict MAJOR 1+2)
+added `binops` (every NON-assign binary op: lhs, op, rhs; comparisons included) and `exits` (each
+`return` plus the fn body's tail expression, kind "return"|"tail"), so a gate can follow a value to
+where the fn gives it back instead of inferring that from the absence of other facts.
 
 FAIL-CLOSED CONTRACT. No `.rs` under `native/` -> `native_status()` says ABSENT, printed so it is
 never mistaken for "0 findings in N files". `.rs` present and cargo, the build or a parse fails ->
@@ -64,7 +67,7 @@ ROOT = Path(__file__).resolve().parents[3]
 NATIVE_DIR = "native"
 RSFACTS = Path("tools") / "rsfacts"
 NATIVE_MODULE = "snn_data_lake._native"
-SCHEMA = 2
+SCHEMA = 3
 
 BLIND_SPOTS = (
     "macro bodies are opaque tokens (calls inside vec!/azip!/s! are not seen as calls)",
@@ -87,6 +90,9 @@ BLIND_SPOTS = (
     "reference to the FIRST declared child (Codex r7 reader 2; prediction, not run)",
     "python refs: importlib.import_module / getattr(_native, name) are dynamic (getattr gives <module>); "
     "a .py that fails to parse is skipped here (ruff/import gates red it)",
+    "exits (schema 3): only the fn body's own tail is a tail exit (a nested block's tail is not), a `return` "
+    "inside a closure is attributed to the enclosing fn, and a `?` early return is no exit fact; binops are "
+    "syntax only (a call through a non-path callee `(f)()` is neither a call nor a binop fact)",
 )
 
 # Receiver methods that write their receiver in place (ndarray / nalgebra / faer / std), shared by

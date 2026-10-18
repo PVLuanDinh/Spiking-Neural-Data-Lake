@@ -19,7 +19,8 @@ general control/data flow require review and constructed failing controls. All n
 criteria remain reachability-UNPROVEN; neither parameter use nor gate exit 0 proves P8 compliance.
 
 The Rust half (R0.2, DISPOSITION row 20) reads `native/**/*.rs` through `snn_data_lake.gates.rust_facts`
-only: a criterion-shaped Rust fn with no formal inputs that owns no fact is NO_RED, and a Python
+only: a criterion-shaped Rust fn that owns no fact and either takes no formal input or reads none of
+them at its ONLY exit (schema 3 `exits`: each `return` + the body's tail) is NO_RED, and a Python
 criterion whose every return takes such a fn's verdict through `_native` inherits it. Everything the
 facts cannot see stays UNPROVEN (`RUST_BLIND_SPOTS`). `native/` absent prints as ABSENT; `.rs`
 present with cargo or a parse failure is a RED, never a skip.
@@ -32,6 +33,7 @@ Reproduce:
 
 import ast
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -64,11 +66,12 @@ EXEMPT = {}
 
 #: Printed beside every Rust verdict, after `rust_facts.BLIND_SPOTS`.
 RUST_BLIND_SPOTS = (
-    "rsfacts records no return/tail expression: a Rust criterion is NO_RED only when it has no formal "
-    "inputs AND owns no fact (call, method call, index, assign, let, for, macro), so a literal FAILURE "
-    "and a single-segment const/static read also count as a literal result",
-    "a Rust criterion with formal inputs (a receiver included: a field read has no fact) is UNPROVEN "
-    "whether or not its body reads them",
+    "a Rust criterion is NO_RED only when it owns no fact (call, method call, index, assign, let, for, "
+    "macro) and either has no formal input or names none of them at its ONLY exit (schema 3 exit facts), "
+    "so a literal FAILURE and a single-segment const/static read also count as a literal result; a call "
+    "through a non-path callee `(f)()` is no fact",
+    "a Rust criterion with a receiver (a field read has no fact) or with two or more exits is UNPROVEN "
+    "whether or not its body reads its inputs",
     "a Python wrapper takes the Rust verdict only through a call whose callee NAME is a `_native` name "
     "of that module (python_native_refs); an alias or a helper in between leaves it UNPROVEN",
     "tools/rsfacts is gate tooling, outside the brain rules",
@@ -144,6 +147,12 @@ RUST_FOLD_CASES = (
     ),
     ("bodiless-trait", "pub trait T { fn probe_t(&self) -> bool; }\n", []),
     ("unit-return", "pub fn probe_u() { }\n", []),
+    ("unused-input-literal", "pub fn probe_unused(x: f64) -> bool { true }\n", ["NO_RED"]),
+    (
+        "branch-exit-control",
+        "pub fn probe_branch(x: bool) -> bool { if x { return false } true }\n",
+        ["UNPROVEN"],
+    ),
 )
 #: Python wrappers over RUST_RED_SRC that must each stay UNPROVEN (one guard apiece).
 PY_WRAPPER_CONTROLS = """from snn_data_lake import _native
@@ -625,10 +634,18 @@ def rust_criteria(native):
                 continue
             params = [a.split(":")[0].strip() for a in fn["params"]]
             owned = sum(1 for k in _FACT_KINDS for x in f.get(k, []) if x["fn_id"] == fn["id"])
-            if params:
+            exits = [x["expr"] for x in f["exits"] if x["fn_id"] == fn["id"]]
+            names = set(re.findall(r"\w+", " ".join(params)))
+            read = "self" in names or names & set(re.findall(r"\w+", " ".join(exits)))
+            if params and (owned or len(exits) != 1 or read):
                 no_red, reason = (
                     False,
                     "formal inputs: use unobservable in facts; reachability unproven",
+                )
+            elif params:
+                no_red, reason = (
+                    True,
+                    "formal inputs unread at the only exit; no computation (literal or const result)",
                 )
             elif owned:
                 no_red, reason = False, "computation observed; reachability unproven"
