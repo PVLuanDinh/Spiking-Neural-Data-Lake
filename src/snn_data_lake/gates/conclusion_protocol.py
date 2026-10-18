@@ -24,10 +24,12 @@ unhedged; the claim without the measurement is what is forbidden.
 
 REFUSAL 1 IN RUST (R0.2, DISPOSITION row 12): `rust_aggregate_findings` reads `native/**/*.rs` through
 `gates/rust_facts` only -- a combining call (`sum`/`fold`/`*sum*`/`*mean*`) whose receiver and args name two
-instruments, any fact text that holds two instruments and an arithmetic operator, and a fn that returns one
-number from two instrument parameters with no fact in its body (a plain binary op has no fact in schema 2:
-`RUST_BLIND_SPOTS`). At the Python edge a `_native` call whose args name two instruments is no longer skipped
-by the sum/mean whitelist. `native/` absent prints ABSENT; `.rs` present and unreadable is a finding.
+instruments, any fact text that holds two instruments and an arithmetic operator, and an arithmetic binary
+op over two instruments whose value reaches an exit of its fn (a `return` or the body's tail: schema 3
+`binops` + `exits`; B1 fold 1 after Codex r02b-verdict MAJOR 1+2 showed the fact-only shape fired on a
+passthrough and was silenced by an irrelevant `let`). At the Python edge a `_native` call whose args name two
+instruments is no longer skipped by the sum/mean whitelist. `native/` absent prints ABSENT; `.rs` present
+and unreadable is a finding.
 
 Bare invocation (also run by run_selfchecks): the constructed reds, their positive control, and today's count.
 """
@@ -344,8 +346,9 @@ def aggregate_findings(root: Path | None = None) -> list[str]:
 # distinct-from: infra/brain_native_selfbuild.py -- a three-factor learner over gate outcomes; this block learns nothing.
 #: Printed beside the Rust verdict, after `rust_facts.BLIND_SPOTS`.
 RUST_BLIND_SPOTS = (
-    "a plain binary op has no fact (schema 2): a combination that is a bare return/tail expression is seen "
-    "only as COMBINE-FN (two instrument params, one numeric result, no fact in the body)",
+    "COMBINE-FN follows a binary op to an exit by TEXT containment (schema 3 exits): a combination bound by a "
+    "`let` and returned by name is COMBINE-EXPR's (the let), not COMBINE-FN's; a combination inside an exit's "
+    "`if` condition counts as reaching the exit; a `return` inside a closure reads as the fn's exit",
     "COMBINE-EXPR judges one fact's text, not an expression: two instruments and an operator in one `let` "
     "initialiser count even when the operator joins something else",
     "every .rs under native/ is read, test code included (P4c)",
@@ -363,7 +366,8 @@ _INSTRUMENT = re.compile(
 #: the right operand may carry a unary `-`/`*`/`&` prefix. Fields join with ", " (`_text`), so a unary
 #: prefix that OPENS the next field never sits after an operand character.
 _ARITH = re.compile(r"[\w)\]]\s*[-+*/]=?\s*[-*&]*\s*[\w(\[]")
-_SCALAR_RET = re.compile(r"^->(f32|f64|i\d+|u\d+|isize|usize)$")
+#: A `binops` fact's op that makes one number of two (COMBINE-FN); comparison and logic ops do not.
+_ARITH_OPS = frozenset("+-*/%")
 _FACT_TEXT = {  # fact kind -> the text fields COMBINE-EXPR reads
     "lets": ("init",),
     "assigns": ("lhs", "rhs"),  # a compound `op` is arithmetic by itself
@@ -520,6 +524,33 @@ RUST_FOLD_CASES = (
         "pub fn c(integration: f64, agency: f64) -> f64 { integration.max(agency * 2.0) }\n",
         ["COMBINE-EXPR"],
     ),
+    (
+        "codex-passthrough-control",  # Codex B1 r02b-verdict MAJOR 1: combines nothing
+        "pub fn score(integration: f64, _agency: f64) -> f64 { integration }\n",
+        [],
+    ),
+    (
+        "codex-unused-let",  # Codex B1 r02b-verdict MAJOR 2: an irrelevant let hides nothing
+        "pub fn score(integration: f64, agency: f64) -> f64 "
+        "{ let _unused = 0.0; (integration + agency) / 2.0 }\n",
+        ["COMBINE-FN"],
+    ),
+    (
+        "return-binop",
+        "pub fn s(integration: f64, agency: f64) -> f64 "
+        "{ if integration > 0.0 { return integration + agency; } 0.0 }\n",
+        ["COMBINE-FN"],
+    ),
+    (
+        "tuple-exit",
+        "pub fn t(integration: f64, agency: f64) -> (f64, f64) { (integration + agency, 0.0) }\n",
+        ["COMBINE-FN"],
+    ),
+    (
+        "comparison-control",
+        "pub fn c(integration: f64, agency: f64) -> bool { integration > agency }\n",
+        [],
+    ),
 )
 
 
@@ -590,19 +621,21 @@ def rust_aggregate_findings(native=None) -> list[str]:
                         (rel, x["line"]),
                         f"{rel}:{x['line']}: COMBINE-EXPR {kind} fact combines {named} in one expression",
                     )
-        owners = {x["fn_id"] for k in _FACT_TEXT for x in f[k]} | {x["fn_id"] for x in f["fors"]}
-        for fn in f["fns"]:
-            named = _instruments(fn["params"])
+        exits = {}
+        for x in f["exits"]:
+            exits.setdefault(x["fn_id"], []).append(x["expr"].replace(" ", ""))
+        for b in f["binops"]:
+            named = _instruments(b["lhs"], b["rhs"])
+            expr = f"{b['lhs']}{b['op']}{b['rhs']}".replace(" ", "")
             if (
-                fn["has_body"]
-                and _SCALAR_RET.match(fn["ret"].replace(" ", ""))
+                b["op"] in _ARITH_OPS
                 and len(named) >= 2
-                and fn["id"] not in owners
+                and any(expr in e for e in exits.get(b["fn_id"], ()))
             ):
                 out.setdefault(
-                    (rel, fn["line"]),
-                    f"{rel}:{fn['line']}: COMBINE-FN {fn['name']}() returns one number from {named} "
-                    "with no call in its body: arithmetic (no aggregate score)",
+                    (rel, b["line"]),
+                    f"{rel}:{b['line']}: COMBINE-FN {b['fn']}() returns one number from {named}: "
+                    f"`{b['lhs']} {b['op']} {b['rhs']}` reaches its exit (no aggregate score)",
                 )
     return [out[k] for k in sorted(out)]
 
