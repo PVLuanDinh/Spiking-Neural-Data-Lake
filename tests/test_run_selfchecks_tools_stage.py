@@ -26,11 +26,13 @@ def test_tools_stage_red_and_control(tmp_path):
 
 
 def test_default_gate_list_names_the_six_tools_gates():
+    """Six tools, seven invocations: red_reachability runs --assert and (R0.2b) --self-check."""
     names = [argv[0] for argv in rs.TOOLS_GATES]
     assert names == [
         "tools/p4c_ratchet.py",
         "tools/p6_gate.py",
         "tools/dependency_ledger.py",
+        "tools/red_reachability.py",
         "tools/red_reachability.py",
         "tools/citation_guard.py",
         "tools/doc_command_guard.py",
