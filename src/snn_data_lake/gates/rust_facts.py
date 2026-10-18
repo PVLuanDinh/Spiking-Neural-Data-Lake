@@ -102,7 +102,7 @@ INPLACE_UPDATE_METHODS = frozenset(
 )  # fmt: skip
 
 
-# distinct-from: gradient_claim_gate.py -- its _rust_triples PARSES literal values out of one declaration grammar; this STRIPS literals from token text before spelling scans (consolidates eprop_transport_gate._RS_LITERAL)
+# distinct-from: gradient_claim_gate.py -- its _rust_triples PARSES the declaration grammar AROUND literals; this STRIPS literals from token text before spelling scans (consolidates eprop_transport_gate._RS_LITERAL) and, below, DECODES one literal's value
 #: Rust string / char literals, raw and byte forms included. A spelling INSIDE one is text, not code:
 #: every gate that scans token text for a method/call spelling strips these first (shared, P2; moved
 #: here from eprop_transport_gate when gradient_claim_gate needed the same fix, Codex r3 F-4).
@@ -114,6 +114,9 @@ def strip_literals(text: str | None) -> str:
     return RUST_LITERAL.sub('""', text or "")
 
 
+# distinct-from: gradient_claim_gate.py -- _rust_str_value is this decoder's verbatim predecessor (delegate
+#   patch pending: rows/f-lake/gradient_claim_gate.proposed.patch); move_gate.py -- _RS_STR keeps a literal's
+#   SPELLING (the fallback), this returns its VALUE.
 #: One Rust escape (the Rust reference's grammar): `\u{` 1-6 hex digits with `_` separators `}`,
 #: `\x` two hex digits, the one-char escapes, or `\`+newline (CRLF kept by the source) plus the ASCII
 #: whitespace rustc skips after it (space, tab, CR, LF -- a NO-BREAK SPACE stays). No group: not an escape.
@@ -158,6 +161,12 @@ def bytes_value(lit: str) -> str:
     if lit[:1] != "b":
         raise ValueError(f"not a byte literal: {lit[:12]!r}")
     return _literal_value(lit[1:], byte=True).encode("latin-1").decode("utf-8", "replace")
+
+
+def literal_value(lit: str) -> str:
+    """The VALUE of any double-quoted `RUST_LITERAL` match: `bytes_value` for a `b` prefix, else
+    `str_value`; their ValueError is the caller's spelling-vs-skip decision."""
+    return bytes_value(lit) if lit[:1] == "b" else str_value(lit)
 
 
 class RustFactsUnavailable(RuntimeError):
@@ -857,6 +866,10 @@ def self_check(root: Path = ROOT) -> None:
     )
     assert str_value('"a\\\r\n \u00a0b"') == "a\u00a0b", "CRLF continuation; a NO-BREAK SPACE stays"
     assert bytes_value('b"\\x73\\xc3\\xa9"') == "s\u00e9" and bytes_value('br"\\x73"') == "\\x73"
+    assert str_value('"\\\\x73"') == "\\x73" and str_value('"\\"q"') == '"q', (
+        "escapes read left to right"
+    )
+    assert literal_value('b"\\x80"') == "\ufffd" and literal_value('"\\x41"') == "A"
     for fn, bad in (
         (str_value, 'b"s"'),
         (str_value, "'c'"),

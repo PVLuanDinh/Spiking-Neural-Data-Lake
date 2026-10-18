@@ -154,6 +154,34 @@ def test_g8d_c2d_decodes_rs_string_escapes_and_leaves_raw_strings_alone(tmp_path
     assert found == [(rs, ln, "rs-string", x) for ln, x in _ESCAPED_ROWS]
 
 
+def test_g8d_an_invalid_escape_is_the_readers_red_not_a_skip(tmp_path):
+    """`"..\\q"` is not Rust: syn refuses the file, so the reader's `unparseable Rust` row is the
+    red (fail closed): no literal with an escape Rust rejects ever reaches `c2d_rust`'s decoder."""
+    files = mg._native_fixture(True)
+    files["native/sndl-python/src/lib.rs"] = mg._NATIVE_LIB_RED.replace(
+        'oldpkg.mod"', 'oldpkg.mod\\q"'
+    )
+    found, n, unparsed = mg.c2d(_tree(tmp_path, files), PAIRS, PKGS)
+    assert found == [] and n == 2
+    assert len(unparsed) == 1 and "unparseable Rust" in unparsed[0], unparsed
+
+
+def test_g8d_a_literal_the_decoder_rejects_is_judged_by_its_spelling(tmp_path, monkeypatch):
+    """The fallback behind the reader: were the decoder ever stricter than the lexer, the literal's
+    spelling is judged, never skipped (every row of the RED fixture still found)."""
+
+    def refuse(_lit):
+        raise ValueError("decoder stricter than the lexer")
+
+    monkeypatch.setattr(mg.rust_facts, "literal_value", refuse)
+    found, _n, unparsed = mg.c2d(_g8(tmp_path), PAIRS, PKGS)
+    assert unparsed == []
+    assert found == [
+        ("native/sndl-python/src/lib.rs", 3, "rs-string", "oldpkg.mod"),
+        ("native/sndl-python/src/lib.rs", 4, "rs-string", "gonepkg"),
+    ]
+
+
 def test_g8d_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch):
     tree = _g8(tmp_path, red=False)
     monkeypatch.setattr(rust_facts.shutil, "which", lambda _name: None)
@@ -170,11 +198,12 @@ def test_g8d_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch
 def test_g8_real_tree_has_no_src_or_rs_string_finding_and_census_records_native():
     found, _n, unparsed = mg.c2d(mg.REPO)
     assert unparsed == []
-    debt = {
-        "tests/test_r02b_p6_rust.py",
-        "tools/p6_gate.py",
-    }  # r02b-p6 fixture strings, owed from parts
-    assert [f for f in found if f[0] not in debt or f[2] == "rs-string"] == []
+    debt = {  # r02b-p6 fixture strings, owed from parts: exactly these (file, legacy name) pairs
+        (f, n)
+        for f in ("tests/test_r02b_p6_rust.py", "tools/p6_gate.py")
+        for n in ("amygdala", "cerebellum")
+    }
+    assert [f for f in found if f[2] == "rs-string" or (f[0], f[3]) not in debt] == []
     rec = mg.static(mg.REPO, mg.tables(mg.REPO)).get("native")
     assert rec and rec["status"].startswith("native/ PRESENT ("), rec
     assert rec["cargo_lock"] and all(

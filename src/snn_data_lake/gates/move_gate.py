@@ -1032,7 +1032,7 @@ _RS_TEXT = {
 #   a ledger, a brain tick, a finalizer and a niche filer, none a source scan.
 def c2d_rust(root: Path, pairs, pkgs) -> list:
     """C2(d) over the string literals of native/'s `.rs` files, through rust_facts' token text (the
-    reader's own `RUST_LITERAL`, decoded to its VALUE by the reader's `str_value`/`bytes_value` --
+    reader's own `RUST_LITERAL`, decoded to its VALUE by the reader's `literal_value` --
     `"\\x73nn_..."` names `snn_...`, a raw string stays as written -- judged by `_string_hits`): the
     import string a PyO3 crate hands `PyModule::import` is a legacy name like any other. Sorted unique
     (file, line, "rs-string", name); `RustFactsUnavailable` is the caller's red (R0.2 arc 2, row 10).
@@ -1048,14 +1048,18 @@ def c2d_rust(root: Path, pairs, pkgs) -> list:
                     for v in (r.get(k) for k in fields)
                 )
                 for lit in rust_facts.RUST_LITERAL.finditer(text):
-                    m = _RS_STR.fullmatch(lit.group(0))
+                    t = lit.group(0)
+                    m = _RS_STR.fullmatch(t)
                     if not m:
                         continue
-                    t = lit.group(0)
-                    try:  # the VALUE (escapes decoded, raw strings as written), not the spelling
-                        s = (rust_facts.bytes_value if t[0] == "b" else rust_facts.str_value)(t)
-                    except ValueError:  # an escape the decoder rejects: the spelling, never a skip
-                        s = m.group(2)
+                    try:
+                        s = rust_facts.literal_value(t)
+                    except (
+                        ValueError
+                    ):  # a decoder stricter than the lexer: the spelling, never a skip
+                        s = m.group(
+                            2
+                        )  # (syn refuses an escape Rust rejects: that is the reader's red)
                     hits = _string_hits(s, pairs, pkgs)
                     found.update((rel, r["line"], "rs-string", x) for x in hits)
     return sorted(found)
