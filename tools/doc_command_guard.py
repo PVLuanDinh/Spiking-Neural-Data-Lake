@@ -34,11 +34,14 @@ WHAT IT CHECKS (static, ~1 s, no subprocess, no import of the target):
   4. (R0.2 row 15, 2026-10-17) `cargo test|run|bench [-p <pkg>] [--test X] [--bin X]
      [--example X] [--features F]` resolves against the tree's Cargo manifests (repo root,
      `native/**`, `tools/**`; `target/` skipped; read with `tomllib`): `<pkg>` is a
-     `[package].name`; `--test X` is `tests/X.rs` | `tests/X/main.rs` | a `[[test]] name`;
-     `--bin X` is `src/bin/X.rs` | `src/bin/X/main.rs` | a `[[bin]] name` | the package's own
+     `[package].name`; `--test X` is `tests/X.rs` | `tests/X/main.rs` | a `[[test]] path`;
+     `--bin X` is `src/bin/X.rs` | `src/bin/X/main.rs` | a `[[bin]] path` | the package's own
      `src/main.rs`; `--example X` is `examples/X.rs` | `examples/X/main.rs` | a `[[example]]
-     name`; every feature is a `[features]` key or an optional dependency. No `-p` resolves the
-     target against every crate (a workspace run);
+     path`; a same-name entry's declared `path` alone decides -- cargo never falls back to the
+     inferred layout (own `src/main.rs` included) (Codex B1 r02b-cache 2: a deleted source passed
+     by name); an entry without `path` resolves by the inferred layout; every feature is a
+     `[features]` key or an optional dependency. No `-p` resolves the target against every crate
+     (a workspace run);
   5. `maturin develop|build -m <path>` needs `<path>` to be an existing Cargo.toml under the
      root (no `-m`: a Cargo.toml at the repo root);
   6. `python -m snn_data_lake._native` is the compiled extension, reported as NATIVE EXTENSION
@@ -52,8 +55,10 @@ the second, and it is the right place for it -- this gate exists for the command
 Rust blind spots: Cargo manifests are found on DISK (the same git-independent view as the
 documents above; a gitignored crate resolves here and not in CI); `--manifest-path`, `--workspace`, `--all-targets`, cargo aliases and
 `.cargo/config.toml` are not read; a `[[test]]`-less test file whose name differs from its
-target (a `harness = false` layout) resolves only by the table. `native/` ABSENT is printed as
-such, never as 0 cargo findings.
+target (a `harness = false` layout) resolves only by a `[[test]] path`; cargo's deprecated
+edition-2015 pathless-`[[bin]]` inference (`src/main.rs`, `src/<name>.rs`, `src/bin/main.rs`) is
+not modelled: such a command reds here. `native/` ABSENT is printed as such, never as 0 cargo
+findings.
 
 Usage:
     python tools/doc_command_guard.py            # report, exit 0
@@ -186,12 +191,18 @@ def _opts(tokens, *flags):
 
 
 def _has_target(crate, table, kind, name):
+    declared = [
+        t["path"]
+        for t in table.get(kind, [])
+        if t.get("name") == name and isinstance(t.get("path"), str)
+    ]
+    if declared:  # an explicit `path` replaces cargo's inferred layout: it alone decides
+        return any((crate / p).is_file() for p in declared)
     d = crate / _TARGET_DIRS[kind]
-    in_table = any(t.get("name") == name for t in table.get(kind, []))
     own_bin = (
         kind == "bin" and name == table["package"]["name"] and (crate / "src/main.rs").is_file()
     )
-    return (d / f"{name}.rs").is_file() or (d / name / "main.rs").is_file() or in_table or own_bin
+    return (d / f"{name}.rs").is_file() or (d / name / "main.rs").is_file() or own_bin
 
 
 def _has_feature(table, feature):

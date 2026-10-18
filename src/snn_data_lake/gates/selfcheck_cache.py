@@ -70,12 +70,14 @@ THE KEY (all of it, or no carry) -- v3, ENVELOPE PRECISION (2026-08-21):
     `snn_data_lake._native` (any import spelling, derived per file like the scanner rule; or
     the graph node itself) carries a `native:` row -- sha256 over (path, sha256) of every
     `.rs`, Cargo.toml, Cargo.lock, build.rs and rust-toolchain(.toml) under native/ (target/
-    skipped) and at the repo root -- and an `ext:` row, the loaded extension's bytes (the
-    find_spec origin, else the canonical src/snn_data_lake/_native<suffix> maturin develop
-    fills). Before this row `_native` resolved to a missing .py, hashed as the constant
-    "ABSENT", and no Cargo file was listed anywhere: a Rust edit carried a STALE GREEN. The
-    extension is gitignored, so no tree surface sees it; a module that never reads
-    `_native` gets no such row (key invariance, red (m)). native/ missing prints ABSENT.
+    skipped) and at the repo root, plus every other file git lists under native/ (tracked or
+    untracked-unignored: runtime data the extension reads; every file when git cannot list) --
+    and an `ext:` row, the loaded extension's bytes (the find_spec origin, else the canonical
+    src/snn_data_lake/_native<suffix> maturin develop fills). Before this row `_native` resolved
+    to a missing .py, hashed as the constant "ABSENT", and no Cargo file was listed anywhere: a
+    Rust edit carried a STALE GREEN. The extension is gitignored, so no tree surface sees it; a
+    module that never reads `_native` gets no such row (key invariance, red (m)). native/
+    missing prints ABSENT.
     The import graph keys .py files only, so the reader flag is DERIVED per file (absolute
     and root-relative spellings, the roster form, and an `__all__` naming the extension); a
     package __init__ that re-exports the extension lifts both rows into the GLOBAL envelope
@@ -647,17 +649,47 @@ class SelfcheckCache:
 
     def _native_hash(self):
         """ "native:<sha256>" over (path, sha256) of every Rust input under native/ (target/
-        skipped) plus the manifest / toolchain names beside it (the repo root), or
+        skipped) and every other file git lists there -- tracked or untracked-unignored, the
+        `_tree_hash` view (runtime data the extension reads; Codex B1 r02b-cache 1 -- without
+        git's list EVERY file under native/ keys, fail closed), plus the manifest / toolchain
+        names beside it (the repo root), or
         "native:ABSENT" when nothing exists; memoised with the count of .rs files under native/
         (disk view, not git's: the key must move on bytes git cannot see)."""
         if self._native is None:
+            listed = None  # git's view of native/; None = unavailable, every file keys
+            if not self._no_git:
+                try:
+                    raw = subprocess.run(
+                        [
+                            "git",
+                            "-C",
+                            self._native_root,
+                            "ls-files",
+                            "-co",
+                            "--exclude-standard",
+                            "-z",
+                        ],
+                        capture_output=True,
+                        check=True,
+                    ).stdout
+                    # case-folded: an ignorecase checkout keeps git's spelling of a case-only rename
+                    listed = {
+                        p.lower() for p in raw.decode("utf-8", "surrogateescape").split("\0") if p
+                    }
+                except (OSError, subprocess.CalledProcessError):
+                    pass
             rows, n_rs = [], 0
             for r, dirs, files in os.walk(self._native_root):
                 dirs[:] = sorted(d for d in dirs if d != "target")
                 for f in sorted(files):
-                    if f.endswith(".rs") or f in _NATIVE_NAMES:
-                        p = os.path.join(r, f)
-                        rel = os.path.relpath(p, self._native_root).replace(os.sep, "/")
+                    p = os.path.join(r, f)
+                    rel = os.path.relpath(p, self._native_root).replace(os.sep, "/")
+                    if (
+                        f.endswith(".rs")
+                        or f in _NATIVE_NAMES
+                        or listed is None
+                        or rel.lower() in listed
+                    ):
                         rows.append("native/" + rel + ":" + self._hash_file(p))
                         n_rs += f.endswith(".rs")
             for f in sorted(_NATIVE_NAMES):
@@ -812,7 +844,9 @@ def banner_blind_spots():
         "string-dispatch imports; shared-home sequence coupling; unhashed host state; "
         "computed-name data/env reads (tools/, models/ and NORD_* fail closed); gitignored "
         "inputs read by name outside models/ and graphify-out/; a listing root imported "
-        "from another module; Rust build inputs outside native/ and the manifest names "
+        "from another module; gitignored non-Rust files under native/ (when git lists it); "
+        "directory symlinks under native/; "
+        "Rust build inputs outside native/ and the manifest names "
         "(.cargo/config.toml, RUSTFLAGS, the toolchain binary) (carries = local batteries "
         "only; any carried-run FAIL reruns FULL first)"
     )
@@ -1172,10 +1206,13 @@ def _self_check(store):
     os.makedirs(os.path.join(crate, "src"))
     lib = os.path.join(crate, "src", "lib.rs")
     manifest = os.path.join(crate, "Cargo.toml")
+    params = os.path.join(crate, "params.json")  # stand-in for non-Rust data under native/
     with open(lib, "w", encoding="utf-8") as f:
         f.write("pub fn f() {}\n")
     with open(manifest, "w", encoding="utf-8") as f:
         f.write('[package]\nname = "sndl-core"\n')
+    with open(params, "w", encoding="utf-8") as f:
+        f.write("{}\n")
     inj = {_PKG_PREFIX + probe: {_NATIVE}}
     reader = make(graph_overrides=inj, native_root=native_root)
     kn = reader.closure_key(probe)
@@ -1198,6 +1235,7 @@ def _self_check(store):
     flips = (
         (lib, "d" * 64, ".rs bytes"),
         (manifest, "e" * 64, "Cargo.toml"),
+        (params, "9" * 64, "native/ data file"),
         (ext, "f" * 64, "extension bytes"),
     )
     for path, fake, what in flips:
@@ -1206,11 +1244,11 @@ def _self_check(store):
             return fail(f"a {what} change did not flip the _native reader's key (STALE GREEN)")
     all_flips = {path: fake for path, fake, _ in flips}
     control = make(native_root=native_root, file_hash_overrides=all_flips)
-    if (r := unchanged(control, "a .rs + Cargo.toml + extension change")) is not None:
+    if (r := unchanged(control, "a .rs + Cargo.toml + data + extension change")) is not None:
         return r
     real = make(graph_overrides=inj).describe(probe)["native"]
     fired.append(
-        f"Rust surface (.rs, Cargo.toml, extension) -> {probe} flipped (graph node and derived "
+        f"Rust surface (.rs, Cargo.toml, data, extension) -> {probe} flipped (graph node and derived "
         f"import alike); real tree "
         f"{'native/ ABSENT (0 .rs files)' if real == 'ABSENT' else 'native/ PRESENT (' + real + ')'}"
         f", ext {os.path.basename(ext)}"
