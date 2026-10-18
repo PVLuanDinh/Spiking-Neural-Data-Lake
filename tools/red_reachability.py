@@ -130,6 +130,56 @@ RED_NO_RED = {
     "wrap.probe_binding",
     "wrap.reentry_present",
 }
+#: Review-fold cases (PREREG addenda): (label, Rust source, expected analyses through `rust_criteria`).
+RUST_FOLD_CASES = [
+    (
+        "receiver-field",
+        "pub struct B { ok: bool }\nimpl B { pub fn passes(&self) -> bool { self.ok } }\n",
+        ["UNPROVEN"],
+    ),
+    (
+        "mut-receiver-literal",
+        "pub struct B;\nimpl B { pub fn probe_x(&mut self) -> bool { true } }\n",
+        ["UNPROVEN"],
+    ),
+    ("bodiless-trait", "pub trait T { fn probe_t(&self) -> bool; }\n", []),
+    ("unit-return", "pub fn probe_u() { }\n", []),
+]
+#: Python wrappers over RUST_RED_SRC that must each stay UNPROVEN (one guard apiece).
+PY_WRAPPER_CONTROLS = """from snn_data_lake import _native
+import snn_data_lake._native as n
+
+
+def probe_mixed(x):
+    if x:
+        return _native.probe_binding()
+    return True, "literal"
+
+
+def probe_two_twins(x):
+    if x:
+        return _native.probe_binding()
+    return n.reentry_present()
+
+
+def probe_refusal():
+    assert _native.probe_binding()
+    return _native.probe_binding()
+
+
+def probe_fallthrough(x):
+    if x:
+        return _native.probe_binding()
+"""
+#: ...and the positive control: two returns, ONE Rust twin -> NO_RED.
+PY_WRAPPER_SAME_TWIN = """from snn_data_lake import _native
+
+
+def probe_same_twin(x):
+    if x:
+        return _native.probe_binding()
+    return _native.probe_binding()
+"""
 
 
 def _is_criterion(name):
@@ -660,7 +710,23 @@ def self_check():
         wrap.write_text(PY_GREEN_SRC, encoding="utf-8")
         green = [c["name"] for c in scan(fixture_facts(RUST_GREEN_SRC), src)[0] if c["no_red"]]
         assert green == [], green
-    print(f"red_reachability self-check OK: Rust RED arm {len(red)} NO_RED, GREEN twin 0")
+        # review-fold cases: receivers and filters, the wrapper guards, the one-twin positive
+        for label, rs, expected in RUST_FOLD_CASES:
+            got = [c["analysis"] for c in rust_criteria(fixture_facts(rs))]
+            assert got == expected, (label, got)
+        status, facts = fixture_facts(RUST_RED_SRC)
+        facts[0]["test_file"] = True
+        assert rust_criteria((status, facts)) == []
+        wrap.write_text(PY_WRAPPER_CONTROLS, encoding="utf-8")
+        py = {c["name"]: c["analysis"] for c in scan(fixture_facts(RUST_RED_SRC), src)[0]}
+        assert all(v == "UNPROVEN" for k, v in py.items() if k.startswith("wrap.")), py
+        wrap.write_text(PY_WRAPPER_SAME_TWIN, encoding="utf-8")
+        py = {c["name"]: c["analysis"] for c in scan(fixture_facts(RUST_RED_SRC), src)[0]}
+        assert py["wrap.probe_same_twin"] == "NO_RED", py
+    print(
+        f"red_reachability self-check OK: Rust RED arm {len(red)} NO_RED, GREEN twin 0, "
+        f"{len(RUST_FOLD_CASES)} fold cases + wrapper guards exact"
+    )
     return 0
 
 
