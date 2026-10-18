@@ -301,7 +301,8 @@ def row_findings(registry=None, instruments=None, tasks=None) -> list[str]:
 def aggregate_findings(root: Path | None = None) -> list[str]:
     """Refusal 1: no code combines two or more instrument readings into one number.
 
-    A call into `snn_data_lake._native` (any import spelling, via `rust_facts.python_native_refs`)
+    A call into `snn_data_lake._native` (callee matched by NAME via `rust_facts.python_native_refs`;
+    the star/alias/same-name limits are in RUST_BLIND_SPOTS)
     whose args name two instruments is a combination site too: the number is made in Rust, the
     readings are joined here (R0.2 PY-EDGE)."""
     base = (REPO / "src" / "snn_data_lake") if root is None else root
@@ -351,18 +352,18 @@ RUST_BLIND_SPOTS = (
     "at the Python edge a `_native` callee is matched by NAME within a module that references it: a star import "
     "or an `import ... as` alias is missed, and an unrelated `x.show()` in a module that also uses `_native.show` "
     "is counted (python_native_refs exposes names, not bindings)",
+    "an instrument is matched as a NAME PART: `integration_per_agency` names two instruments, as the Python "
+    "half's substring match already does",
     "tools/rsfacts is gate tooling, outside the brain rules",
 )
 _INSTRUMENT = re.compile(
     r"(?<![A-Za-z0-9])(" + "|".join(INSTRUMENTS) + r")(?![A-Za-z0-9])"
 )  # `_` passes
-_ARITH = re.compile(
-    r"[\w)\]]\s*[-+*/]=?\s*[\w(\[]"
-)  # an operator (or op=) with an operand on each side
+_ARITH = re.compile(r"[\w)\]]\s*[-+*/]\s*[\w(\[]")  # an operator with an operand on each side
 _SCALAR_RET = re.compile(r"^->(f32|f64|i\d+|u\d+|isize|usize)$")
 _FACT_TEXT = {  # fact kind -> the text fields COMBINE-EXPR reads
     "lets": ("init",),
-    "assigns": ("lhs", "op", "rhs"),
+    "assigns": ("lhs", "rhs"),  # a compound `op` is arithmetic by itself (below)
     "index": ("expr", "index"),
     "calls": ("args",),
     "mcalls": ("recv", "args"),
@@ -393,9 +394,106 @@ def show(integration, agency):
 """
 
 
+#: Review-fold reds and controls (PREREG addenda), each one fn through `rust_aggregate_findings`:
+#: (label, source, expected rule tags). The self-check and tests/test_r02b_verdict_rust.py both fire them.
+RUST_FOLD_REDS = [
+    (
+        "compound-assign",
+        "pub fn score(mut integration: f64, agency: f64) -> f64 "
+        "{ integration += agency; integration }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "snake-case",
+        "pub fn score(integration_reading: f64, agency_reading: f64) -> f64 "
+        "{ (integration_reading + agency_reading) / 2.0 }\n",
+        ["COMBINE-FN"],
+    ),
+    (
+        "free-mean-call",
+        "pub fn m(integration: f64, agency: f64) -> f64 { stats::mean(&[integration, agency]) }\n",
+        ["COMBINE-CALL"],
+    ),
+    (
+        "fold",
+        "pub fn f(integration: f64, agency: f64) -> f64 "
+        "{ [integration, agency].iter().fold(0.0, |a, b| a + b) }\n",
+        ["COMBINE-CALL"],
+    ),
+    (
+        "index",
+        "pub fn g(r: &[f64], integration: usize, agency: usize) -> f64 "
+        "{ r[integration + agency] }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "macro-tokens",
+        "pub fn h(integration: f64, agency: f64) -> f64 { dbg!(integration + agency) }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "mcall-receiver",
+        "pub fn k(integration: f64, agency: f64) -> f64 { (integration + agency).sqrt() }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "control-deref",
+        "pub fn c(integration: &f64, agency: &f64) -> Vec<f64> { vec![*integration, *agency] }\n",
+        [],
+    ),
+    (
+        "control-plain-call",
+        "pub fn c2(integration: f64, agency: f64) -> f64 { pick(integration, agency) }\n",
+        [],
+    ),
+    (
+        "control-deref-call",
+        "pub fn c(integration: &f64, agency: &f64) -> f64 { pick(*integration, *agency) }\n",
+        [],
+    ),
+    (
+        "control-deref-mcall",
+        "pub fn c(integration: f64, agency: &f64) -> f64 { integration.max(*agency) }\n",
+        [],
+    ),
+    (
+        "control-negation-call",
+        "pub fn c(integration: f64, agency: f64) -> f64 { pick(integration, -agency) }\n",
+        [],
+    ),
+    (
+        "control-deref-index",
+        "pub fn c(integration_w: &[f64], agency: &usize) -> f64 { integration_w[*agency] }\n",
+        [],
+    ),
+    (
+        "compound-assign-deref",
+        "pub fn s(integration: &mut f64, agency: &f64) -> f64 "
+        "{ *integration += *agency; *integration }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "compound-assign-negation",
+        "pub fn s(mut integration: f64, agency: f64) -> f64 { integration += -agency; integration }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "underscore-instrument",
+        "pub fn p(attention_schema_x: f64, agency_y: f64) -> f64 { attention_schema_x + agency_y }\n",
+        ["COMBINE-FN"],
+    ),
+    (
+        "name-part-match",  # disclosed: one identifier naming two instruments counts as two (Python half too)
+        "pub fn r(integration_per_agency: f64) -> f64 { integration_per_agency * 2.0 }\n",
+        ["COMBINE-FN"],
+    ),
+]
+
+
 def _text(*parts) -> str:
     """Fact text fields (str or list of str) joined into one scan string."""
-    return " ".join(p if isinstance(p, str) else " ".join(p) for p in parts if p)
+    # ", " so a unary `*`/`-` opening the NEXT field never reads as an operator between two operands
+    return ", ".join(p if isinstance(p, str) else ", ".join(p) for p in parts if p)
 
 
 def _instruments(*texts) -> list[str]:
@@ -452,7 +550,10 @@ def rust_aggregate_findings(native=None) -> list[str]:
             for x in f[kind]:
                 text = _text(*(x.get(k) for k in fields))
                 named = _instruments(text)
-                if len(named) >= 2 and _ARITH.search(rust_facts.strip_literals(text)):
+                arith = _ARITH.search(rust_facts.strip_literals(text)) or (
+                    kind == "assigns" and x["op"] != "="
+                )
+                if len(named) >= 2 and arith:
                     out.setdefault(
                         (rel, x["line"]),
                         f"{rel}:{x['line']}: COMBINE-EXPR {kind} fact combines {named} in one expression",
@@ -700,6 +801,9 @@ def main() -> None:
     )
     rust_green = rust_aggregate_findings(fixture_facts(RUST_GREEN_SRC))
     assert rust_green == [], rust_green
+    for label, src, tags in RUST_FOLD_REDS:  # the review-fold reds and controls, exact
+        got = [x.split(" ")[1] for x in rust_aggregate_findings(fixture_facts(src))]
+        assert got == tags, (label, got)
     print(report())
     print(
         f"conclusion_protocol self-check OK: {len(reds)} row reds caught, the positive control passes; a verdict and "
