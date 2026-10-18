@@ -168,8 +168,9 @@ class EpropLIFBase(nn.Module):
         logits_sum = torch.zeros(b, self.num_classes, device=dev)
         latent_sum = torch.zeros(b, self.hidden, device=dev)
         w_rec = self.W_rec * self.offdiag_mask(dev)
+        x_proj = x @ self.W_in.t()  # [B, T, hidden]; input drive has no recurrence
         for step in range(t):
-            cur = x[:, step] @ self.W_in.t() + z @ w_rec.t()
+            cur = x_proj[:, step] + z @ w_rec.t()
             v = self.alpha * v - self.v_th * z + cur  # soft reset: subtract V_TH on last spike
             z = (v >= self.v_th).float()
             y = self.kappa * y + z @ self.W_out.t()
