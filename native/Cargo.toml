@@ -1,5 +1,12 @@
-# Cargo workspace of the Rust port (plan section 9/11). `sndl-core` is the engine library; the PyO3
-# binding crate `sndl-python` joins with the first L-stage port. Build output: native/target/ (gitignored).
+# Cargo workspace of the Rust port (plan section 9/11). `sndl-core` is the engine library (no PyO3; `cargo test`
+# runs without Python); `sndl-python` is the ONE thin PyO3 binding (polars' crates/polars-python shape), built as
+# `snn_data_lake._native` by tools/native_build.py. Build output: native/target/ (gitignored).
 [workspace]
 resolver = "3"
-members = ["sndl-core"]
+members = ["sndl-core", "sndl-python"]
+
+[profile.release]
+# The binding's catch_unwind wrapper is void under panic = "abort" (Phase 0 item 8b: the process exits
+# 0xC0000409 with no traceback); tests/test_native_binding.py asserts the unwind behaviour.
+panic = "unwind"
+lto = "thin"

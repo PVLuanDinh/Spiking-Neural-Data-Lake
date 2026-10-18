@@ -187,3 +187,7 @@ tools/rsfacts/target/
 
 # R0.4: cargo target dir of the native/ workspace (sndl-core); the .rs sources stay visible to git
 native/target/
+
+# L1 (Rust port B2): the built binding `snn_data_lake._native` is placed INSIDE the package by
+# tools/native_build.py (polars' in-tree pattern); the .rs sources under native/ stay visible to git.
+src/snn_data_lake/_native.*

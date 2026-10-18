@@ -1,0 +1,13 @@
+# maturin config for the binding crate. Built by tools/native_build.py (never `maturin develop`: that would add
+# an editable .pth into the shared venv). The module is version-specific cp314t, never abi3 (Phase 0 item 8a).
+[build-system]
+requires = ["maturin>=1.15,<2"]
+build-backend = "maturin"
+
+[project]
+name = "sndl-native"
+version = "0.1.0"
+requires-python = ">=3.14"
+
+[tool.maturin]
+module-name = "snn_data_lake._native"
