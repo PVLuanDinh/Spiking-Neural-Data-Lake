@@ -409,14 +409,16 @@ _RS_TRANSPOSE_ARGS = {
     "movedim": {"0,1", "1,0"},
 }
 _RS_CALL = re.compile(r"\.(" + "|".join([*_RS_TRANSPOSE, *_RS_TRANSPOSE_ARGS]) + r")\(")
-#: Spellings that transpose ONE argument, by position (nalgebra 0.35 src/base/blas.rs, matrix.rs, ops.rs):
-#: `c.gemm_tr(alpha, a, b, beta)` = alpha * a^T * b + beta * c and gemv_tr / gemm_ad / gemv_ad alike
-#: transpose `a` (args[1]); `c.tr_copy_from(&a)` / `ad_copy_from` and `e.tr_mul(&w)` / `ad_mul` their only
-#: operand (args[0]). The other operands are NOT transposed (Codex r5 N5-4). tr_dot is NOT here: it returns
-#: a SCALAR (PREREG ADDENDUM 4), so Oja/Hebbian y = w . x is clean.
+#: Argument positions where a weight is used in the BACKWARD direction (nalgebra 0.35 src/base/blas.rs,
+#: matrix.rs, ops.rs). `c.gemm_tr(alpha, a, b, beta)` = alpha * a^T * b + beta * c contracts BOTH a and b
+#: over their row index, so a weight at args[1] OR args[2] counts (e^T W2 = (W2^T e)^T, PREREG ADDENDUM 7);
+#: gemv_tr / gemv_ad only args[1] (args[2] is a vector); `c.tr_copy_from(&a)` / `ad_copy_from` args[0].
+#: `e.tr_mul(&w)` / `ad_mul` = e^T * w transpose their RECEIVER, and the weight ARGUMENT is the same
+#: e^T W product as gemm_tr's b operand: one computation, one verdict (args[0]). tr_dot is NOT here: it
+#: returns a SCALAR (PREREG ADDENDUM 4), so Oja/Hebbian y = w . x is clean.
 _RS_TRANSPOSE_ARG_AT = {
-    "gemv_tr": 1, "gemm_tr": 1, "gemm_ad": 1, "gemv_ad": 1,
-    "tr_copy_from": 0, "ad_copy_from": 0, "tr_mul": 0, "ad_mul": 0,
+    "gemv_tr": (1,), "gemm_tr": (1, 2), "gemm_ad": (1, 2), "gemv_ad": (1,),
+    "tr_copy_from": (0,), "ad_copy_from": (0,), "tr_mul": (0,), "ad_mul": (0,),
 }  # fmt: skip
 #: Spellings that WRITE their receiver from a transposed ARGUMENT (nalgebra in-place products/copies).
 _RS_TRANSPOSE_WRITERS = frozenset(
@@ -434,8 +436,15 @@ _RUST_BLIND = (
     "flat w[a * N + b] indexing; a weight aliased to a differently-named local is not weight-ish",
     "a tuple `let` taints every name it binds",
     "tr_mul/ad_mul and the writers (gemv_tr, gemm_tr, gemm_ad, gemv_ad, tr_copy_from, ad_copy_from) taint "
-    "through a weight-ish ARGUMENT NAME at the ONE position nalgebra transposes; only the writers taint their "
-    "receiver (a bare `y` that aliases a weight is invisible); taint is flat per fn (a `let` in a block shadows for the rest of the fn)",
+    "through a weight-ish ARGUMENT NAME at the positions `_RS_TRANSPOSE_ARG_AT` lists (tr_mul transposes its "
+    "RECEIVER; the weight argument is the same e^T W product); only the writers taint their receiver (a bare "
+    "`y` that aliases a weight is invisible)",
+    "taint is scoped by rsfacts' block path on lets and method calls; an ASSIGNMENT carries none, so its scope "
+    "is inferred from the lets/calls inside its RHS and the nearest one before it: a shadow in a sibling block "
+    "that closes right before an assignment still hides the outer name there; names inside a nested block of "
+    "an RHS read the deepest inner scope; a `let` whose init holds a block is read at its START (its inner "
+    "events come later), so a writer temporary discarded inside a `let` block still taints the let; only an "
+    "ASSIGNMENT's RHS is cut to the value its blocks produce (their tail expressions)",
 )
 
 
@@ -497,28 +506,81 @@ def _rs_transposes(text):
 
 
 def _rs_transposed_arg(method, args):
-    """The weight-ish operand at the position `method` transposes: `gemm_tr(1.0, &self.w2, &e, 0.0)` -> w2."""
-    at = _RS_TRANSPOSE_ARG_AT[method]
-    name = _rs_name(args[at]) if at < len(args) else None
-    return name if _is_weight(name) else None
+    """The first weight-ish operand `method` uses backward: `gemm_tr(1.0, &e, &self.w2, 0.0)` -> w2."""
+    for at in _RS_TRANSPOSE_ARG_AT[method]:
+        if at < len(args) and _is_weight(name := _rs_name(args[at])):
+            return name
+    return None
 
 
-def _rs_carried(text, taint):
-    """The transposed weight `text` carries (directly or through a tainted local), else None."""
+def _rs_idents(text):
+    """(name, inside a nested `{}` block) for every identifier of normalised `text`."""
+    depth, out = 0, []
+    for tok in re.findall(r"[A-Za-z_]\w*|[{}]", text):
+        if tok in "{}":
+            depth += 1 if tok == "{" else -1
+        else:
+            out.append((tok, depth > 0))
+    return out
+
+
+def _rs_taint(taint, name, scope):
+    """The binding of `name` visible from block path `scope` (None = any): the latest one made in that
+    block or one around it, as `rust_facts.pyo3_exports` resolves a `let`."""
+    live = [src for s, src in taint.get(name, ()) if scope is None or s == scope[: len(s)]]
+    return live[-1] if live else None
+
+
+def _rs_carried(text, taint, scope, inner=None):
+    """The transposed weight `text` carries (directly or through a tainted local), else None. A name
+    reads the binding visible at `scope`; one inside a nested block reads `inner` (default `scope`)."""
+    inner = scope if inner is None else inner
     hits = _rs_transposes(text) + [
-        taint[n] for n in _RS_IDENT.findall(_rs_norm(text)) if n in taint
+        src
+        for n, nested in _rs_idents(_rs_norm(text))
+        if (src := _rs_taint(taint, n, inner if nested else scope))
     ]
     return hits[0] if hits else None
 
 
-def _rs_bind(taint, pat, src):
+def _rs_bind(taint, pat, src, scope):
+    """Bind every name in `pat` at block path `scope` (None = flat): the bindings of that block and of the
+    blocks inside it (closed by now) die; those of enclosing blocks stay and are hidden only inside it."""
+    scope = () if scope is None else scope
     for n in _RS_IDENT.findall(pat):
         if n in ("mut", "ref", "_"):
             continue
-        if src:
-            taint[n] = src
-        else:
-            taint.pop(n, None)
+        taint[n] = [b for b in taint.get(n, ()) if b[0][: len(scope)] != scope] + [(scope, src)]
+
+
+def _rs_value(text):
+    """Normalised `text` with every `{ stmts; tail }` block cut to `{ tail }`: the names and spellings
+    that make the block's VALUE, not the statements it discards (Codex r6 transport 2)."""
+    out, depth, start, tail = [], 0, 0, 0
+    for i, c in enumerate(text):
+        if c == "{":
+            if not depth:
+                out.append(text[start:i])
+                tail = i + 1
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if not depth:
+                out.append("{" + _rs_value(text[tail:i]) + "}")
+                start = i + 1
+        elif c == ";" and depth == 1:
+            tail = i + 1
+    return "".join([*out, text[start:]])
+
+
+def _rs_assign_scope(r, scoped):
+    """(outer, inner) block paths for an assignment, which rsfacts gives none: outer = the common prefix
+    of the lets/calls inside its RHS span and the nearest one before it; inner = the deepest inside."""
+    start, end = (r["line"], r["col"]), (r["end_line"], r["end_col"])
+    inside = [s for p, s in scoped if start < p < end]
+    paths = inside + [s for p, s in scoped if p < start][-1:]
+    outer = os.path.commonprefix(paths) if paths else None
+    return outer, (max(inside, key=len) if inside else outer)
 
 
 def _rust_t1(f):
@@ -535,23 +597,27 @@ def _rust_t1(f):
     out = []
     for fn, events in by_fn.items():
         taint, wbound = {}, set()
-        for _line, _col, _rank, kind, r in sorted(events, key=lambda e: e[:3]):
-            line = r["line"]
+        events.sort(key=lambda e: e[:3])
+        scoped = [(e[:2], tuple(e[4]["scope"])) for e in events if e[3] in ("lets", "mcalls")]
+        for _line, _col, _rank, kind, r in events:
+            line, scope = r["line"], tuple(r["scope"]) if "scope" in r else None
             if kind == "fors":
                 if _RS_ITER_MUT.search(_rs_norm(r["iter"])) and _is_weight(_rs_name(r["iter"])):
                     wbound |= set(_RS_IDENT.findall(r["pat"]))
             elif kind == "lets":
-                _rs_bind(taint, r["pat"], _rs_carried(r["init"], taint))
+                _rs_bind(taint, r["pat"], _rs_carried(r["init"], taint, scope), scope)
             elif kind == "assigns":
-                src, name = _rs_carried(r["rhs"], taint), _rs_name(r["lhs"])
+                scope, inner = _rs_assign_scope(r, scoped)
+                rhs = _rs_value(_rs_norm(r["rhs"]))
+                src, name = _rs_carried(rhs, taint, scope, inner), _rs_name(r["lhs"])
                 if name in wbound or _is_weight(name):
                     if src:
                         out.append((line, fn, "T1", f"{src} transposed -> updates {name}"))
                 elif _RS_IDENT.fullmatch(_rs_norm(r["lhs"])):
-                    if src or r["op"] != "=":
-                        taint[name] = taint.get(name) or src
-                    else:
-                        taint.pop(name, None)
+                    keep = src or r["op"] != "="
+                    _rs_bind(
+                        taint, name, (_rs_taint(taint, name, scope) or src) if keep else None, scope
+                    )
             else:
                 name = _rs_name(r["recv"])
                 weight_recv = name in wbound or _is_weight(name)
@@ -562,18 +628,18 @@ def _rust_t1(f):
                         out.append((line, fn, "T1", f"{src} transposed -> updates {name}"))
                         continue  # one finding per update site (the carried-taint check below)
                     elif name:
-                        taint[name] = src
+                        _rs_bind(taint, name, src, scope)
                 if not weight_recv:
                     continue
                 args = ",".join(r["args"])
                 if r["name"] in rust_facts.INPLACE_UPDATE_METHODS:
-                    src = _rs_carried(args, taint)
+                    src = _rs_carried(args, taint, scope)
                     if src:
                         out.append((line, fn, "T1", f"{src} transposed -> updates {name}"))
                 if r["name"] == "transpose_mut" or (
                     r["name"] == "swap_axes" and _rs_norm(args) in _RS_TRANSPOSE_ARGS["swap_axes"]
                 ):
-                    taint[name] = name
+                    _rs_bind(taint, name, name, scope)
     return out
 
 
@@ -708,8 +774,9 @@ impl Net {
 }
 """
 _RUST_FOLD3_GREEN = _RUST_FOLD3_RED.replace("self.w2", "self.fb")
-#: Fold 4 (Codex r5 N5-2/N5-3/N5-4): exactly 3 T1 (carried, block_rhs, tr_operand); shadow_block and
-#: b_operand stay silent. The GREEN twin swaps the forward weight for the fixed feedback matrix.
+#: Fold 4 (Codex r5 N5-2/N5-3/N5-4): exactly 3 T1 (carried, block_rhs, tr_operand). The GREEN twin swaps
+#: the forward weight for the fixed feedback matrix. Its two fold-4 controls were the mechanism's own
+#: limitations asserted as controls and moved to fold 5 as reds (PREREG ADDENDUM 7, re-panel B).
 _RUST_FOLD4_RED = """\
 impl Net {
     pub fn carried(&mut self, x: &A, lr: f64) {
@@ -725,29 +792,102 @@ impl Net {
     pub fn tr_operand(&mut self, x: &A, lr: f64) {
         y.gemm_tr(1.0, &self.w2, &x, 0.0); self.w1.scaled_add(-lr, &y);
     }
-    pub fn shadow_block(&mut self, e: &A, lr: f64) {
+}
+"""
+_RUST_FOLD4_GREEN = _RUST_FOLD4_RED.replace("self.w2", "self.fb")
+#: Fold 5 (regressions against e913fa84): the weight at args[2] of gemm_tr is used backward (b_operand,
+#: b_receiver; re-panel A TA-1/TA-2 under PREREG ADDENDUM 7); a `let` in an inner scope hides the tainted
+#: outer name only inside that scope (closure_shadow = Codex r6 transport 1, block_shadow = PB-T2a,
+#: block_shadow_after = PB-T2b, loop_shadow, match_shadow); a writer counts at an assignment only if its
+#: receiver flows into the assigned VALUE (flowing_temp; Codex r6 transport 2). no_weight_operand,
+#: block_shadow_clean (PB-T2c) and discarded_temp stay silent.
+_RUST_FOLD5_RED = """\
+impl Net {
+    pub fn b_operand(&mut self, e: &A, lr: f64) {
+        y.gemm_tr(1.0, &e, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);
+    }
+    pub fn b_receiver(&mut self, e: &A, lr: f64) {
+        self.w1.gemm_tr(1.0, &e, &self.w2, 0.0);
+    }
+    pub fn no_weight_operand(&mut self, e: &A, x: &A, lr: f64) {
+        y.gemm_tr(1.0, &x, &e, 0.0); self.w1.scaled_add(-lr, &y);
+    }
+    pub fn closure_shadow(&mut self, e: &A, lr: f64) {
+        let d = self.w2.t().to_owned();
+        self.w1 = d.mapv(|v| {
+            let d = 0.0;
+            v
+        });
+    }
+    pub fn block_shadow(&mut self, e: &A, lr: f64) {
+        let d = self.w2.t().to_owned();
+        self.w1 = d.clone() + {
+            let d = e.clone();
+            d
+        };
+    }
+    pub fn block_shadow_after(&mut self, e: &A, lr: f64) {
         let d = self.w2.t().to_owned();
         self.w1 = {
             let d = e.clone();
             d
         };
+        self.w1.scaled_add(-lr, &d);
     }
-    pub fn b_operand(&mut self, x: &A, lr: f64) {
-        y.gemm_tr(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);
+    pub fn loop_shadow(&mut self, e: &A, k: usize, lr: f64) {
+        let d = self.w2.t().to_owned();
+        for i in 0..k {
+            let d = e.clone();
+        }
+        self.w1.scaled_add(-lr, &d);
+    }
+    pub fn match_shadow(&mut self, e: &A, k: usize, lr: f64) {
+        let d = self.w2.t().to_owned();
+        match k {
+            0 => {
+                let d = e.clone();
+            }
+            _ => {}
+        }
+        self.w1.scaled_add(-lr, &d);
+    }
+    pub fn block_shadow_clean(&mut self, e: &A, lr: f64) {
+        let d = e.clone();
+        self.w1 = d.clone() + {
+            let d = e.clone();
+            d
+        };
+    }
+    pub fn flowing_temp(&mut self, e: &A, lr: f64) {
+        self.w1 = {
+            let mut y = self.fb.clone();
+            y.tr_copy_from(&self.w2);
+            let z = y.clone();
+            z
+        };
+    }
+    pub fn discarded_temp(&mut self, e: &A, lr: f64) {
+        self.w1 = {
+            let mut y = self.fb.clone();
+            y.tr_copy_from(&self.w2);
+            self.fb.clone()
+        };
     }
 }
 """
-_RUST_FOLD4_GREEN = _RUST_FOLD4_RED.replace("self.w2", "self.fb")
+_RUST_FOLD5_GREEN = _RUST_FOLD5_RED.replace("self.w2", "self.fb")
 
 
 def _rust_fixture(red, fold=0):
     """fold: 0 = round-0 arm, 1 = fold-1, 3 = fold-3 (implicit-transpose writers + tr_dot control),
-    4 = fold-4 (carried taint into a writer, writer inside a block RHS, the transposed operand only)."""
+    4 = fold-4 (carried taint into a writer, writer inside a block RHS, the transposed operand only),
+    5 = fold-5 (regressions against e913fa84: both gemm_* operands, inner-scope shadows, value flow)."""
     planted, fixed = {
         0: (_RUST_RED, _RUST_GREEN),
         1: (_RUST_FOLD_RED, _RUST_FOLD_GREEN),
         3: (_RUST_FOLD3_RED, _RUST_FOLD3_GREEN),
         4: (_RUST_FOLD4_RED, _RUST_FOLD4_GREEN),
+        5: (_RUST_FOLD5_RED, _RUST_FOLD5_GREEN),
     }[int(fold)]
     return {
         "sndl-core/src/lib.rs": "pub mod plasticity;\n",
@@ -1223,12 +1363,13 @@ def _fires(source):
 #   title: a different gate's own `_selfcheck`, a file-changed flag and a sidecar-writer census;
 #   none builds or scans a Rust tree.
 def _check_rust_half():
-    counts, fold, fold3, fold4 = {}, {}, {}, {}
+    counts, fold, fold3, fold4, fold5 = {}, {}, {}, {}, {}
     for into, kwargs in (
         (counts, {}),
         (fold, {"fold": 1}),
         (fold3, {"fold": 3}),
         (fold4, {"fold": 4}),
+        (fold5, {"fold": 5}),
     ):
         for name, planted in (("planted", True), ("fixed", False)):
             with tempfile.TemporaryDirectory() as d:
@@ -1255,12 +1396,17 @@ def _check_rust_half():
         f"the fold-4 Rust RED must give exactly 3 T1 through scan_rust, got {fold4['planted']}"
     )
     assert not fold4["fixed"], f"the fold-4 Rust GREEN twin must give 0, got {fold4['fixed']}"
+    assert fold5["planted"] == ["T1"] * 8, (
+        f"the fold-5 Rust RED must give exactly 8 T1 through scan_rust, got {fold5['planted']}"
+    )
+    assert not fold5["fixed"], f"the fold-5 Rust GREEN twin must give 0, got {fold5['fixed']}"
     status, live = scan_rust()
     assert not live, f"governed Rust weight transport in native/: {live}"
     print(f"  RED    Rust {counts['planted']}; green twin {len(counts['fixed'])}; live: {status}")
     print(f"  RED    Rust fold-1 {fold['planted']}; green twin {len(fold['fixed'])}")
     print(f"  RED    Rust fold-3 {fold3['planted']}; green twin {len(fold3['fixed'])}")
     print(f"  RED    Rust fold-4 {fold4['planted']}; green twin {len(fold4['fixed'])}")
+    print(f"  RED    Rust fold-5 {fold5['planted']}; green twin {len(fold5['fixed'])}")
 
 
 def _selfcheck():
