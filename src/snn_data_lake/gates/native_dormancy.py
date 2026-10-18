@@ -32,8 +32,8 @@ reader unavailable -> an UNAVAILABLE finding in both groups, never a skip. A `na
 prints `native/ ABSENT`, distinct from "0 findings".
 
 OWN BLIND SPOTS (printed beside the verdict with `rust_facts.BLIND_SPOTS`): liveness is per FILE, not
-per item (a live export's file reaches a module even when the item it names is unused); a `use`
-inside an inline `mod` resolves from the file's module; trait dispatch and generics match by last
+per item (a live export's file reaches a module even when the item it names is unused); a `use`, call
+or path inside an inline `mod` resolves from the file's module; trait dispatch and generics match by last
 segment name; a Python facade re-export of an exported learning fn (called only through the
 re-exporting module) gives a false M1.
 Test code is the reader's `test_file` (one classifier); only `build.rs` is excluded here by name.
@@ -58,7 +58,8 @@ NATIVE_EXEMPT_METHOD: dict[str, str] = {}  # "Type::fn" | "fn" | python name -> 
 
 BLIND_SPOTS = (
     "liveness is per file, not per item (a live export's file reaches its modules)",
-    "use inside an inline mod resolves from the file's module",
+    "a use, call or path inside an inline mod resolves from the file's module (the file's own children "
+    "first, then any inline module's)",
     "trait dispatch and generics match a caller by last segment name",
     "a Python facade re-export (`from ._native import f` in a live module that never calls it, "
     "used elsewhere through that module) gives a false M1: loads are read only from _native-referencing modules",
@@ -101,6 +102,7 @@ class _Tree:
     def __init__(self, by_rel, cargo_dirs=()):
         self.facts = by_rel
         self.crate_of, self.root, self.children, self.parent, self.alias = {}, {}, {}, {}, {}
+        self.flat = {}  # file -> children of its INLINE modules (a path written inside one resolves from the file)
         self.dirs = {*cargo_dirs, *(_crate_of_root(r) for r in by_rel if _is_root(r))}
         for rel in by_rel:
             d = self.crate_dir(rel)
@@ -135,25 +137,26 @@ class _Tree:
         declarations kept: a test-only module is still in the tree). A file loaded through `#[path]`
         is a mod-rs file, so its children sit beside it. Tree nodes are module PATHS: a file, or
         `<file>::<inline path>` for an inline module, so `lib::used` and `lib::alternate::used` never
-        share a children slot (Codex r6 reader 3)."""
+        share a children slot (Codex r6 reader 3); `flat` keeps the inline modules' children by file
+        for paths written inside them (blind spot: those resolve from the file)."""
         if rel in self.in_tree:
             return
         self.in_tree.add(rel)
         mod_rs = via_path or posixpath.basename(rel) in rf.MOD_RS
         for m in self.facts[rel].get("mods", []):
             node = f"{rel}::{m['mod']}" if m["mod"] else rel
-            kids = self.children.setdefault(node, {})
-            if m["inline"]:
-                kids[m["name"]] = inner = f"{node}::{m['name']}"
-                self.parent[inner] = node
-                continue
             is_path, cands = rf.mod_files(PurePosixPath(rel), m, mod_rs, cfg_test=True)
             hit = next(
-                (c for c in (posixpath.normpath(str(c)) for c in cands) if c in self.facts), None
+                (c for c in (posixpath.normpath(str(c)) for c in cands) if c in self.facts),
+                f"{node}::{m['name']}" if m["inline"] else None,
             )
-            if hit:
-                kids[m["name"]] = hit
-                self.parent[hit] = node
+            if not hit:
+                continue
+            self.children.setdefault(node, {})[m["name"]] = hit
+            self.parent[hit] = node
+            if m["mod"]:
+                self.flat.setdefault(rel, {}).setdefault(m["name"], hit)
+            if not m["inline"]:
                 self._walk_decl(hit, is_path)
 
     def reach(self, rel, segs, depth=0):
@@ -172,9 +175,10 @@ class _Tree:
                 cur = self.parent.get(cur, cur)
             elif s in self.children.get(cur, {}):
                 cur = self.children[cur][s]
-            elif depth < 6 and s in self.alias.get(_file(cur), {}):
-                alias = self.alias[_file(cur)][s].split("::")
-                out |= self.reach(_file(cur), alias + segs[k + 1 :], depth + 1)
+            elif s in self.flat.get(cur, {}):
+                cur = self.flat[cur][s]
+            elif depth < 6 and s in self.alias.get(f := _file(cur), {}):
+                out |= self.reach(f, self.alias[f][s].split("::") + segs[k + 1 :], depth + 1)
                 break
             else:
                 break
@@ -501,17 +505,33 @@ _DRIVER = "fn drive() { let mut s = super::Stdp; s.potentiate(); }\n"
 
 
 # distinct-from: mlp_q.py __init__.py immortal_retention.py sleep_pruner_census.py so101_arm.py -- a Q row, a module alias loader, a call walker, a class resolver, an arm disturbance; this WRITES a fixture tree (sibling of _qualified_binding / _cell_lib / _test_lib)
-def _used_twice(path):
+def _ping_fixture(core, body):
+    """`core` files under native/sndl-core/ plus a live, registered `ping` whose body is `body`."""
     return {
-        "native/sndl-core/src/lib.rs": (
-            'pub mod used;\nmod alternate {\n #[path = "../../tests/used.rs"]\n pub mod used;\n}\n'
-        ),
-        "native/sndl-core/src/used.rs": "pub struct Used;\n",
-        "native/sndl-core/tests/used.rs": "pub struct Other;\n",
-        "native/sndl-python/src/lib.rs": _PYO3 + f"#[pyfunction]\nfn ping() {{ let _ = {path}; }}\n"
+        **{f"native/sndl-core/{k}": v for k, v in core.items()},
+        "native/sndl-python/src/lib.rs": _PYO3 + f"#[pyfunction]\nfn ping() {{ {body} }}\n"
         "#[pymodule]\nmod _native { #[pymodule_export] use super::ping; }\n",
         "src/snn_data_lake/user.py": "from snn_data_lake._native import ping\n\nping()\n",
     }
+
+
+_USED_TWICE = {
+    "src/lib.rs": 'pub mod used;\nmod alternate {\n #[path = "../../tests/used.rs"]\n pub mod used;\n}\n',
+    "src/used.rs": "pub struct Used;\n",
+    "tests/used.rs": "pub struct Other;\n",
+}
+_INLINE_LOCAL = {
+    "src/lib.rs": "pub mod a {\n pub mod b;\n pub fn f() {}\n}\n",
+    "src/a/b.rs": "pub fn g() {}\n",
+}
+_NESTED_SIBLINGS = {
+    "src/lib.rs": (
+        'mod a {\n mod b {\n  #[path = "../../x1.rs"]\n  pub mod used;\n }\n}\n'
+        'mod c {\n #[path = "../x2.rs"]\n pub mod used;\n}\n'
+    ),
+    "src/x1.rs": "pub struct X1;\n",
+    "src/x2.rs": "pub struct X2;\n",
+}
 
 
 # name -> (RED files, GREEN files, RED (D, M) counts); every GREEN twin is 0/0
@@ -620,8 +640,48 @@ FOLD_CASES = {
     # include of tests/used.rs) are distinct tree nodes; a live path through the second leaves the
     # first unreached (RED), one through the first reaches it (GREEN).
     "same-named-modules-at-different-paths": (
-        _used_twice("sndl_core::alternate::used::Other"),
-        _used_twice("sndl_core::used::Used"),
+        _ping_fixture(_USED_TWICE, "let _ = sndl_core::alternate::used::Other;"),
+        _ping_fixture(_USED_TWICE, "let _ = sndl_core::used::Used;"),
+        (1, 0),
+    ),
+    # review panel on 8f2aee72: `super` climbs out of an inline node to the file (GREEN reaches src/used.rs
+    # through alternate -> lib -> used; RED's single super stays inside alternate)
+    "super-out-of-an-inline-node": (
+        _ping_fixture(
+            {
+                **_USED_TWICE,
+                "tests/used.rs": "pub struct Other;\nfn g() { let _ = super::used::Other; }\n",
+            },
+            "let _ = sndl_core::alternate::used::Other;",
+        ),
+        _ping_fixture(
+            {
+                **_USED_TWICE,
+                "tests/used.rs": "pub struct Other;\nfn g() { let _ = super::super::used::Used; }\n",
+            },
+            "let _ = sndl_core::alternate::used::Other;",
+        ),
+        (1, 0),
+    ),
+    # a path written INSIDE an inline module (`b::g()` in `mod a { pub mod b; .. }`) resolves from the file
+    # (blind spot) and must still reach the inline module's own child
+    "path-written-inside-an-inline-module": (
+        _ping_fixture(_INLINE_LOCAL, "sndl_core::a::f();"),
+        _ping_fixture(
+            {
+                **_INLINE_LOCAL,
+                "src/lib.rs": "pub mod a {\n pub mod b;\n pub fn f() { b::g(); }\n}\n",
+            },
+            "sndl_core::a::f();",
+        ),
+        (1, 0),
+    ),
+    # nested (`a::b::used`) and sibling (`c::used`) inline modules declaring one child name stay distinct
+    "nested-and-sibling-inline-modules": (
+        _ping_fixture(_NESTED_SIBLINGS, "let _ = sndl_core::a::b::used::X1;"),
+        _ping_fixture(
+            _NESTED_SIBLINGS, "let _ = sndl_core::a::b::used::X1; let _ = sndl_core::c::used::X2;"
+        ),
         (1, 0),
     ),
 }
