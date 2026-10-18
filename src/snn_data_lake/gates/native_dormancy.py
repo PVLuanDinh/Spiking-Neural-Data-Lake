@@ -34,8 +34,8 @@ prints `native/ ABSENT`, distinct from "0 findings".
 OWN BLIND SPOTS (printed beside the verdict with `rust_facts.BLIND_SPOTS`): liveness is per FILE, not
 per item (a live export's file reaches a module even when the item it names is unused); a `use`
 inside an inline `mod` resolves from the file's module; trait dispatch and generics match by last
-segment name; a `#[path]` inside an inline `mod` is not followed; a Python facade
-re-export of an exported learning fn (called only through the re-exporting module) gives a false M1.
+segment name; a Python facade re-export of an exported learning fn (called only through the
+re-exporting module) gives a false M1.
 Test code is the reader's `test_file` (one classifier); only `build.rs` is excluded here by name.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.gates.native_dormancy
@@ -80,6 +80,11 @@ def _is_root(rel):
 
 def _crate_of_root(rel):
     return posixpath.dirname(posixpath.dirname(rel))
+
+
+# distinct-from: rust_facts.mod_files import_manifest._targets atlas_node_gate._member_file -- those name files a Rust/Python module declaration loads; this reads the FILE back out of a dormancy tree node (`<file>` or `<file>::<inline path>`)
+def _file(node):
+    return node.partition("::")[0]
 
 
 def _aliases(f):
@@ -128,15 +133,19 @@ class _Tree:
     def _walk_decl(self, rel, via_path=False):
         """Mod tree below `rel`, files resolved by the reader's ONE resolver (`rf.mod_files`, cfg(test)
         declarations kept: a test-only module is still in the tree). A file loaded through `#[path]`
-        is a mod-rs file, so its children sit beside it."""
+        is a mod-rs file, so its children sit beside it. Tree nodes are module PATHS: a file, or
+        `<file>::<inline path>` for an inline module, so `lib::used` and `lib::alternate::used` never
+        share a children slot (Codex r6 reader 3)."""
         if rel in self.in_tree:
             return
         self.in_tree.add(rel)
-        kids = self.children.setdefault(rel, {})
         mod_rs = via_path or posixpath.basename(rel) in rf.MOD_RS
         for m in self.facts[rel].get("mods", []):
+            node = f"{rel}::{m['mod']}" if m["mod"] else rel
+            kids = self.children.setdefault(node, {})
             if m["inline"]:
-                kids[m["name"]] = rel
+                kids[m["name"]] = inner = f"{node}::{m['name']}"
+                self.parent[inner] = node
                 continue
             is_path, cands = rf.mod_files(PurePosixPath(rel), m, mod_rs, cfg_test=True)
             hit = next(
@@ -144,11 +153,12 @@ class _Tree:
             )
             if hit:
                 kids[m["name"]] = hit
-                self.parent[hit] = rel
+                self.parent[hit] = node
                 self._walk_decl(hit, is_path)
 
     def reach(self, rel, segs, depth=0):
-        """Files touched by resolving the path `segs` written in file `rel`."""
+        """Files touched by resolving the path `segs` written in file `rel` (an inline-module node
+        counts as its file)."""
         out, cur, i = set(), rel, 0
         if segs[0] == "crate":
             cur, i = self.root.get(self.crate_of.get(rel), rel), 1
@@ -162,13 +172,14 @@ class _Tree:
                 cur = self.parent.get(cur, cur)
             elif s in self.children.get(cur, {}):
                 cur = self.children[cur][s]
-            elif depth < 6 and s in self.alias.get(cur, {}):
-                out |= self.reach(cur, self.alias[cur][s].split("::") + segs[k + 1 :], depth + 1)
+            elif depth < 6 and s in self.alias.get(_file(cur), {}):
+                alias = self.alias[_file(cur)][s].split("::")
+                out |= self.reach(_file(cur), alias + segs[k + 1 :], depth + 1)
                 break
             else:
                 break
-            out.add(cur)
-        return out | {cur}
+            out.add(_file(cur))
+        return out | {_file(cur)}
 
     def refs(self, rel):
         f = self.facts[rel]
@@ -488,6 +499,21 @@ _STDP_BIND = (
 )
 _DRIVER = "fn drive() { let mut s = super::Stdp; s.potentiate(); }\n"
 
+
+# distinct-from: mlp_q.py __init__.py immortal_retention.py sleep_pruner_census.py so101_arm.py -- a Q row, a module alias loader, a call walker, a class resolver, an arm disturbance; this WRITES a fixture tree (sibling of _qualified_binding / _cell_lib / _test_lib)
+def _used_twice(path):
+    return {
+        "native/sndl-core/src/lib.rs": (
+            'pub mod used;\nmod alternate {\n #[path = "../../tests/used.rs"]\n pub mod used;\n}\n'
+        ),
+        "native/sndl-core/src/used.rs": "pub struct Used;\n",
+        "native/sndl-core/tests/used.rs": "pub struct Other;\n",
+        "native/sndl-python/src/lib.rs": _PYO3 + f"#[pyfunction]\nfn ping() {{ let _ = {path}; }}\n"
+        "#[pymodule]\nmod _native { #[pymodule_export] use super::ping; }\n",
+        "src/snn_data_lake/user.py": "from snn_data_lake._native import ping\n\nping()\n",
+    }
+
+
 # name -> (RED files, GREEN files, RED (D, M) counts); every GREEN twin is 0/0
 FOLD_CASES = {
     "pyo3-qualified-pymodule": (
@@ -590,6 +616,14 @@ FOLD_CASES = {
         },
         (0, 1),
     ),
+    # fold round 5 (Codex r6 reader 3): `lib::used` (src/used.rs) and `lib::alternate::used` (a #[path]
+    # include of tests/used.rs) are distinct tree nodes; a live path through the second leaves the
+    # first unreached (RED), one through the first reaches it (GREEN).
+    "same-named-modules-at-different-paths": (
+        _used_twice("sndl_core::alternate::used::Other"),
+        _used_twice("sndl_core::used::Used"),
+        (1, 0),
+    ),
 }
 
 
@@ -640,7 +674,7 @@ def main():
     selfcheck()
     res = audit()
     print(
-        f"native_dormancy: self-check OK (RED 3 findings, GREEN 0, fail-closed, nested crates, fold-1 and fold-3 reds) | {res['status']} | "
+        f"native_dormancy: self-check OK (RED 3 findings, GREEN 0, fail-closed, nested crates, fold-1, fold-3 and fold-5 reds) | {res['status']} | "
         f"D {len(res['d'])} M {len(res['m'])}"
     )
     print("native_dormancy BLIND SPOTS: " + "; ".join((*rf.BLIND_SPOTS, *BLIND_SPOTS)))
