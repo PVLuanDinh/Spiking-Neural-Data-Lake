@@ -120,6 +120,7 @@ from __future__ import annotations
 import argparse
 import ast
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -134,10 +135,29 @@ import tomllib
 from collections import Counter
 from pathlib import Path
 
-from snn_data_lake.gates import rust_facts
-
 PKG = "snn_data_lake"
 REPO = Path(__file__).resolve().parents[3]
+
+
+# distinct-from: gates/rust_facts.py -- mod_files resolves a Rust `mod x;` to its files; this
+#   loads rust_facts ITSELF by file, no second reader. Also read: gates/docs_only_battery.py
+#   (pth_line, a .pth hook line), gates/replication_guard.py (P4 replica census),
+#   gates/unit_label_gate.py (_pads_axis0), readout/language_readout_slda.py (_split) -- none a
+#   module loader.
+def _load_rust_facts():
+    """The ONE shared Rust reader (gates/rust_facts.py, itself stdlib-only), loaded by FILE: this
+    census imports nothing of the package it measures (tests/test_g8_move_gate.py pins the module
+    to stdlib imports), and a package import would run `snn_data_lake/__init__` -- the tables under
+    measurement. Same file, one mechanism; no copy of the reader lives here."""
+    spec = importlib.util.spec_from_file_location(
+        "move_gate.rust_facts", Path(__file__).with_name("rust_facts.py")
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+rust_facts = _load_rust_facts()
 SCHEMA = "g8.move_gate.census.v1"
 MARKER = ".g8_temp_copy"  # a self-check copy; the mover refuses any tree without it
 TABLES = ("REGIONS", "TORCH_TIER", "TRAIN_TIER")
