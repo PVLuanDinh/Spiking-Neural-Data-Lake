@@ -62,12 +62,12 @@ pip install ".[train]"      # core Torch + Brian2, plus torchvision/scikit-learn
 
 ## The 8×8 readout trainer (retired)
 
-`snn-train`'s default path trained a surrogate-gradient spiking classifier by BPTT on the core
+The `snn-train` console script's default path trained a surrogate-gradient spiking classifier by BPTT on the core
 `snn_classifier`'s 8×8 4-shape task and exported it in the core's `W[c][i]` layout (`--export-core`). It was
 RETIRED on 2026-10-02 with the other backprop trainers (owner: port-then-retire): on identical data over 8
 seeds it scored 0.714 mean test accuracy against 0.998 for the core's own LOCAL rule, so it had nothing to
-port (`specs/022-unified-brain-arc/evidence/trainer-retirement.md`). `snn-train` now
-refuses. A weight file in that layout (from `snn_classifier.save_weights`, or an earlier export) still loads
+port (`specs/022-unified-brain-arc/evidence/trainer-retirement.md`). The script itself was deleted on
+2026-10-17 (commit d803c77d, `training/cli.py`); a fresh install has no `snn-train` command. A weight file in that layout (from `snn_classifier.save_weights`, or an earlier export) still loads
 straight into the core:
 
 ```python
@@ -83,7 +83,7 @@ file fails loudly rather than silently misclassifying.
 
 The `--offload` trainer (gradient checkpointing and a CPU-offloaded optimizer around a BPTT loop) was
 RETIRED on 2026-10-02 with the other backprop trainers (owner: port-then-retire). It is a BPTT memory technique;
-e-prop keeps no sequence-length activation tape, so it has no e-prop analogue. `snn-train --offload` now refuses.
+e-prop keeps no sequence-length activation tape, so it has no e-prop analogue. `snn-train --offload` went with the script (deleted 2026-10-17).
 
 At production scale, use HuggingFace `accelerate` (`device_map`) or DeepSpeed ZeRO-Offload, which
 stream optimizer/parameter state between GPU, CPU, and disk during the **backward** pass. This is
@@ -95,7 +95,7 @@ The surrogate-gradient BPTT trainer that produced these brains (`training/mnist`
 was RETIRED on 2026-10-02 with the other backprop trainers (owner: port-then-retire). Its e-prop port was
 built and measured but NOT landed: it lost the pre-registered A/B to the BPTT trainer (test accuracy 0.942
 against 0.957 over 8 seeds at one epoch; `specs/022-unified-brain-arc/evidence/trainer-retirement.md`).
-`snn-train --mnist` now refuses. An existing brain file still serves with no torch:
+`snn-train` was deleted on 2026-10-17 (commit d803c77d). An existing brain file still serves with no torch:
 
 ```python
 from snn_data_lake import trained_brain as tb
@@ -112,7 +112,7 @@ calls `trained_brain.predict`/`accuracy`, no GPU or torch at serve time.
 
 `snn-train --mnist --genn` (`training/mnist_genn.py`, an ml_genn EventProp trainer) was RETIRED on 2026-10-06
 (owner decision 17c). Measured 2026-10-02: one epoch on the full training set scored chance (test accuracy
-0.0785); longer budgets were never run. It refuses now; the record is
+0.0785); longer budgets were never run. It went with the `snn-train` script (deleted 2026-10-17); the record is
 `specs/022-unified-brain-arc/evidence/trainer-retirement.md`. The `[genn]` extra (pygenn) stays for
 `instruments/snn_mnist_stdp_genn` (`reasoning/paradigm_b_genn` was retired by del-reasoning 1f).
 
