@@ -233,11 +233,25 @@ FOLD5_RED = [
     "y.gemm_ad(1.0, &e, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
     "self.w1.gemm_tr(1.0, &e, &self.w2, 0.0);",
     "self.w1.gemm_ad(1.0, &e, &self.w2, 0.0);",
+    # Codex r6 transport 1 / re-panel B PB-T2a, PB-T2b: a `let` in an INNER scope (closure, block,
+    # loop body, match arm) hides the tainted outer name only inside that scope
+    "let d = self.w2.t().to_owned(); self.w1 = d.mapv(|v| { let d = 0.0; v });",
+    "let d = self.w2.t().to_owned(); self.w1 = d.clone() + { let d = e.clone(); d };",
+    "let d = self.w2.t().to_owned(); self.w1 = { let d = e.clone(); d };"
+    " self.w1.scaled_add(-lr, &d);",
+    "let d = self.w2.t().to_owned(); for i in 0..k { let d = e.clone(); }"
+    " self.w1.scaled_add(-lr, &d);",
+    "let d = self.w2.t().to_owned(); match k { 0 => { let d = e.clone(); } _ => {} }"
+    " self.w1.scaled_add(-lr, &d);",
 ]
 FOLD5_CLEAN = [
     # item 1: neither operand is a weight
     "y.gemm_tr(1.0, &x, &e, 0.0); self.w1.scaled_add(-lr, &y);",
     "y.gemm_ad(1.0, &x, &e, 0.0); self.w1.scaled_add(-lr, &y);",
+    # item 2 (PB-T2c): the outer name is clean; a same-scope re-let still clears (T1_CLEAN)
+    "let d = e.clone(); self.w1 = d.clone() + { let d = e.clone(); d };",
+    "let d = self.w2.t().to_owned();"
+    " for i in 0..k { let d = e.clone(); self.w1.scaled_add(-lr, &d); }",
 ]
 
 
@@ -339,11 +353,14 @@ def test_fold4_green_twin_is_zero(tmp_path):
     assert gate.scan_rust(tmp_path)[1] == []
 
 
-def test_fold5_red_arm_is_exactly_two_t1_and_the_controls_are_silent(tmp_path):
+def test_fold5_red_arm_is_exactly_seven_t1_and_the_controls_are_silent(tmp_path):
     _tree(tmp_path, gate._rust_fixture(red=True, fold=5))
     found = gate.scan_rust(tmp_path)[1]
-    assert _rules(found) == ["T1"] * 2, found
-    assert sorted(f[2] for f in found) == ["b_operand", "b_receiver"], found
+    assert _rules(found) == ["T1"] * 7, found
+    assert sorted(f[2] for f in found) == [
+        "b_operand", "b_receiver", "block_shadow", "block_shadow_after", "closure_shadow",
+        "loop_shadow", "match_shadow",
+    ], found  # fmt: skip
 
 
 def test_fold5_green_twin_is_zero(tmp_path):
