@@ -301,7 +301,7 @@ _WRAP = re.compile(r"\bwrap_pyfunction\s*!\s*\(\s*([\w:]+)")
 _IDENT = re.compile(r"[A-Za-z_]\w*")
 # One layer an initializer may wrap an identifier in and still name the SAME value (re-panel A RA-5/RA-6):
 # a trailing `?`, `.clone()` or `.into()`, then `&` / `&mut`, then parentheses -- suffix first, so
-# `(g).clone()` peels to `(g)`, not to `g).clone(`. Peeled repeatedly by `alias_root` (fullmatch).
+# `(g).clone()` peels to `(g)`, not to `g).clone(`.
 _ALIAS_SKIN = re.compile(
     r"(.*?)\s*(?:\?|\.\s*(?:clone|into)\s*\(\s*\))|&\s*(?:mut\s+)?(.*)|\(\s*(.*?)\s*\)"
 )
@@ -735,7 +735,7 @@ _REBINDING_CASES = (
     (" let mut f = wrap_pyfunction!(learn, m)?;\n f = 0;\n m.add_function(f)?;\n", []),
     (" let mut f = wrap_pyfunction!(learn, m)?;\n m.add_function(f)?;\n f = wrap_pyfunction!(decay, m)?;\n", ["learn"]),
     (" let mut f = wrap_pyfunction!(learn, m)?;\n f += 1;\n m.add_function(f)?;\n", ["learn"]),
-    # review panel on 2c05e0ed: alias layers compose; an assignment rhs may itself alias
+    # review panel: alias layers compose; an assignment rhs may itself alias
     (" let g = wrap_pyfunction!(decay, m)?;\n let f = (g).clone();\n m.add_function(f)?;\n", ["decay"]),
     (" let g = wrap_pyfunction!(decay, m)?;\n let f = ((g).clone()).into();\n m.add_function(f)?;\n", ["decay"]),
     (" let g = wrap_pyfunction!(decay, m);\n let f = (&g)?;\n m.add_function(f)?;\n", ["decay"]),
@@ -907,7 +907,7 @@ def main() -> int:
     tool = facts(rust_files(ROOT, str(RSFACTS)))
     print(
         f"rust_facts: self-check OK (fixture: 7 fns, 2 transpose calls, 5 exports; edge fixture: 10 exports incl. let-bound + helper-registered, top-level name= only, cfg evaluated, "
-        f"no unregistered wrapper/class methods, cfg(not(test)) is production; 35 let-rebinding shapes; "
+        f"no unregistered wrapper/class methods, cfg(not(test)) is production; {len(_REBINDING_CASES)} let-rebinding shapes; "
         f"mod-tree flags fixpoint 13 files; 5 _native importers; "
         f"unparseable-Rust RED fired) | {status} | tools/rsfacts: {len(tool)} file(s) parsed | "
         f"python _native importers in src: {len(python_native_refs())}"

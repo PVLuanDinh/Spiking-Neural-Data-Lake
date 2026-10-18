@@ -139,8 +139,7 @@ class _Tree:
         declarations kept: a test-only module is still in the tree). A file loaded through `#[path]`
         is a mod-rs file, so its children sit beside it. Tree nodes are module PATHS: a file, or
         `<file>::<inline path>` for an inline module, so `lib::used` and `lib::alternate::used` never
-        share a children slot (Codex r6 reader 3); `flat` keeps the inline modules' children by file
-        for paths written inside them (blind spot: those resolve from the file)."""
+        share a children slot (Codex r6 reader 3)."""
         if rel in self.in_tree:
             return
         self.in_tree.add(rel)
@@ -551,7 +550,7 @@ _ALIASED = {
     "src/other.rs": "pub struct O;\n",
 }
 
-_REEXPORTED = {  # _ALIASED with the alias re-exported and no top-level use of it
+_REEXPORTED = {
     **_ALIASED,
     "src/lib.rs": _ALIASED["src/lib.rs"]
     .replace("let _ = helpers::deeper::D; ", "")
@@ -682,7 +681,7 @@ FOLD_CASES = {
         _ping_fixture(_USED_TWICE, "let _ = sndl_core::used::Used;"),
         (1, 0),
     ),
-    # fold round 5 review panel on 8f2aee72, 05b03cf1, 0bca6da7: inline-module nodes vs paths written inside them
+    # fold round 5 review panel: inline-module nodes vs paths written inside them
     # `super` climbs out of an inline node to the file (GREEN: alternate -> lib -> used; RED stays inside)
     "super-out-of-an-inline-node": (
         _ping_fixture(
@@ -721,7 +720,7 @@ FOLD_CASES = {
         ),
         (1, 0),
     ),
-    # a file's `use .. as helpers` alias beats a same-named inline child for a path written at top level
+    # for a path written at top level
     "use-alias-beats-an-inline-child": (
         _ping_fixture(
             {
