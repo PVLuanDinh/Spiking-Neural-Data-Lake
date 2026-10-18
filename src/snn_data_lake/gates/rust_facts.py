@@ -114,6 +114,34 @@ def strip_literals(text: str | None) -> str:
     return RUST_LITERAL.sub('""', text or "")
 
 
+_ESC = re.compile(r"\\(u\{[0-9a-fA-F_]{1,6}\}|x[0-7][0-9a-fA-F]|[nrt\\0'\"]|\n\s*)?")
+_ESC_CHARS = {"n": "\n", "r": "\r", "t": "\t", "0": "\0"}
+
+
+def str_value(lit: str) -> str:
+    """The VALUE of one `RUST_LITERAL` match that is a str literal: escapes decoded (`\\x73` -> `s`,
+    `\\u{e9}` -> `e`-acute, `\\n`, `\\\\`, a `\\`+newline continuation -> nothing), a raw string as written.
+    ValueError for a byte or char literal or an escape Rust rejects -- the caller's spelling vs skip
+    decision (gradient_claim_gate's `_rust_str_value` is this function; move_gate's C2(d) decodes
+    `PyModule::import(py, "...")` names with it)."""
+    if lit[0] not in 'r"':
+        raise ValueError(f"not a str literal: {lit[:12]!r}")  # b"..", b'..', 'c'
+    if lit[0] == "r":
+        return lit[lit.index('"') + 1 : lit.rindex('"')]
+
+    def one(m):
+        e = m.group(1)
+        if e is None:
+            raise ValueError(f"bad escape in {lit[:20]!r}")
+        if e[0] == "u":
+            return chr(int(e[2:-1].replace("_", ""), 16))
+        if e[0] == "x":
+            return chr(int(e[1:], 16))
+        return "" if e.isspace() else _ESC_CHARS.get(e, e)
+
+    return _ESC.sub(one, lit[1:-1])
+
+
 class RustFactsUnavailable(RuntimeError):
     """The Rust half of a gate could not run. A gate must report this as a RED, never skip it."""
 
@@ -806,6 +834,13 @@ _PY_FIXTURE = {
 
 
 def self_check(root: Path = ROOT) -> None:
+    assert str_value('"\\x73nn.\\u{6d}od\\n"') == "snn.mod\n" and str_value('r"\\x73"') == "\\x73"
+    for bad in ('b"s"', "'c'", '"\\q"'):
+        try:
+            str_value(bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"str_value accepted {bad!r}")
     f = facts_for_source(_FIXTURE, root=root)
     fns = {fn["name"] for fn in f["fns"]}
     want = {"learn", "step", "learn_inner", "native_learn", "decay_impl", "_legacy", "t"}
