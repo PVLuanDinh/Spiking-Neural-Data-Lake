@@ -571,6 +571,8 @@ RUST_BLIND_SPOTS = (
     "tools/rsfacts is gate tooling, outside the brain rules",
     "an optimizer-step receiver must spell opt/optim*",
     "an optimizer step is an `x = ..step(..)` assign to a model/weight-ish target or `.step` on an optim* receiver; `let m = o.step(..)` is not seen",
+    "a stepper NESTED as an inner fn and called from an EXACT_GRADIENT fn is owned by the inner fn, not seen (re-panel A)",
+    "`optim` is matched as a substring: `self.optimal_schedule.step()` counts as an optimizer step (re-panel A)",
 )
 
 
@@ -665,9 +667,11 @@ def read_rust_declaration(file_facts):
 
 
 def _own(f, key, fn):
-    """Facts of kind `key` whose innermost enclosing fn is `fn` (rust_facts schema 2 `fn_id`): the ONE
-    attribution. Never by name or line -- two fns may share both, and a bodiless signature owns nothing."""
-    return [x for x in f[key] if x["fn_id"] == fn["id"]]
+    """Production facts of kind `key` whose innermost enclosing fn is `fn` (rust_facts schema 2 `fn_id`): the
+    ONE attribution. Never by name or line -- two fns may share both, and a bodiless signature owns nothing.
+    Ownership and production are independent: a `#[cfg(test)]` item nested in a live fn carries its fn_id
+    and is still not production (Codex r6 gradclaim 1)."""
+    return [x for x in f[key] if x["fn_id"] == fn["id"] and not x["cfg_test"]]
 
 
 def _rust_body_text(f, fn):
@@ -1031,6 +1035,38 @@ RUST_FOLD4_REDS = (
         + "pub struct T { w: f64, opt: O }\n"
         + 'impl T { pub fn train_step(&mut self) { self.clock("x").opt.step(); '
         + "let g = self.loss().backward(); self.w -= g; } }\n",
+        [CLASSIFIED_REFERENCE],
+        1,
+        1,
+    ),
+)
+
+_CFG_CONST_T = (
+    _EXACT_T.format("T::train_step")
+    + "struct TestOpt;\nimpl TestOpt { const fn step(&self) {} }\nconst OPT: TestOpt = TestOpt;\n"
+    + "pub struct T { w: f64, opt: O }\n"
+    + "impl T {\n    fn train_step(&mut self) -> G {\n        %s\n"
+    + "        const CHECK: () = { OPT.step(); };\n        let g = self.loss().backward();\n        %s\n        g\n    }\n}\n"
+)
+#: Fold round 5 reds (each fails against the 7f9fc2bc gate; see rows/r02-gradclaim/REPORT.md). Same entry shape.
+RUST_FOLD5_REDS = (
+    (
+        "F5-1 a `#[cfg(test)] const` nested in an EXACT_GRADIENT fn that steps is not a production step (Codex r6 1)",
+        _CFG_CONST_T % ("#[cfg(test)]", ""),
+        [CLASSIFIED_REFERENCE],
+        0,
+        0,
+    ),
+    (
+        "F5-1c control: the same const without `#[cfg(test)]` reds",
+        _CFG_CONST_T % ("", ""),
+        [CLASSIFIED_REFERENCE],
+        1,
+        1,
+    ),
+    (
+        "F5-1d control: the cfg(test) const plus a production `self.opt.step(&g)` reds exactly once",
+        _CFG_CONST_T % ("#[cfg(test)]", "self.opt.step(&g);"),
         [CLASSIFIED_REFERENCE],
         1,
         1,
@@ -1663,6 +1699,7 @@ def _selfcheck():
         *RUST_FOLD1_REDS,
         *RUST_FOLD3_REDS,
         *RUST_FOLD4_REDS,
+        *RUST_FOLD5_REDS,
     ):
         try:
             rr, ff, _ = rust_census(fixture_native(src))
