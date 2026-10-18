@@ -114,9 +114,10 @@ def strip_literals(text: str | None) -> str:
     return RUST_LITERAL.sub('""', text or "")
 
 
-# distinct-from: gradient_claim_gate.py -- _rust_str_value is this decoder's verbatim predecessor (delegate
-#   patch pending: rows/f-lake/gradient_claim_gate.proposed.patch); move_gate.py -- _RS_STR keeps a literal's
-#   SPELLING (the fallback), this returns its VALUE.
+# distinct-from: gradient_claim_gate.py -- _rust_str_value is this decoder's predecessor, LOOSER (Unicode
+#   `\s` after a continuation, no CRLF, `_` counted toward the 6 `\u{}` digits): delegating it here is a
+#   behaviour change (lane r02-1017 rows/f-lake, proposed patch); move_gate.py -- _RS_STR keeps a
+#   literal's SPELLING (the fallback), this returns its VALUE.
 #: One Rust escape (the Rust reference's grammar): `\u{` 1-6 hex digits with `_` separators `}`,
 #: `\x` two hex digits, the one-char escapes, or `\`+newline (CRLF kept by the source) plus the ASCII
 #: whitespace rustc skips after it (space, tab, CR, LF -- a NO-BREAK SPACE stays). No group: not an escape.
@@ -154,19 +155,13 @@ def str_value(lit: str) -> str:
     return _literal_value(lit, byte=False)
 
 
-def bytes_value(lit: str) -> str:
-    """The VALUE of one `b"..."`/`br"..."` byte literal, read as UTF-8 text (an undecodable byte becomes
-    U+FFFD): `\\x00`-`\\xff` decoded, `\\u{}` rejected, raw as written. For a scan that judges the
-    name a byte string spells; ValueError for a non-byte literal or an escape Rust rejects."""
-    if lit[:1] != "b":
-        raise ValueError(f"not a byte literal: {lit[:12]!r}")
-    return _literal_value(lit[1:], byte=True).encode("latin-1").decode("utf-8", "replace")
-
-
 def literal_value(lit: str) -> str:
-    """The VALUE of any double-quoted `RUST_LITERAL` match: `bytes_value` for a `b` prefix, else
-    `str_value`; their ValueError is the caller's spelling-vs-skip decision."""
-    return bytes_value(lit) if lit[:1] == "b" else str_value(lit)
+    """The VALUE of any double-quoted `RUST_LITERAL` match: a str literal through `str_value`; a
+    `b"..."`/`br"..."` byte literal read as UTF-8 text (`\\x00`-`\\xff` decoded, `\\u{}` rejected, an
+    undecodable byte -> U+FFFD). ValueError as `str_value`'s: the caller's spelling-vs-skip decision."""
+    if lit[:1] != "b":
+        return str_value(lit)
+    return _literal_value(lit[1:], byte=True).encode("latin-1").decode("utf-8", "replace")
 
 
 class RustFactsUnavailable(RuntimeError):
@@ -865,7 +860,9 @@ def self_check(root: Path = ROOT) -> None:
         str_value('"\\x73nn.\\u{0_6_d}od\\n"') == "snn.mod\n" and str_value('r"\\x73"') == "\\x73"
     )
     assert str_value('"a\\\r\n \u00a0b"') == "a\u00a0b", "CRLF continuation; a NO-BREAK SPACE stays"
-    assert bytes_value('b"\\x73\\xc3\\xa9"') == "s\u00e9" and bytes_value('br"\\x73"') == "\\x73"
+    assert (
+        literal_value('b"\\x73\\xc3\\xa9"') == "s\u00e9" and literal_value('br"\\x73"') == "\\x73"
+    )
     assert str_value('"\\\\x73"') == "\\x73" and str_value('"\\"q"') == '"q', (
         "escapes read left to right"
     )
@@ -876,8 +873,7 @@ def self_check(root: Path = ROOT) -> None:
         (str_value, '"\\q"'),
         (str_value, '"\\x80"'),
         (str_value, '"\\u{1234567}"'),
-        (bytes_value, '"s"'),
-        (bytes_value, 'b"\\u{67}"'),
+        (literal_value, 'b"\\u{67}"'),
     ):
         try:
             fn(bad)

@@ -1052,14 +1052,12 @@ def c2d_rust(root: Path, pairs, pkgs) -> list:
                     m = _RS_STR.fullmatch(t)
                     if not m:
                         continue
+                    # The VALUE, never a skip: a decoder stricter than the lexer falls back to the
+                    # SPELLING (syn refuses an escape Rust rejects upstream -- that is the reader's red).
                     try:
                         s = rust_facts.literal_value(t)
-                    except (
-                        ValueError
-                    ):  # a decoder stricter than the lexer: the spelling, never a skip
-                        s = m.group(
-                            2
-                        )  # (syn refuses an escape Rust rejects: that is the reader's red)
+                    except ValueError:
+                        s = m.group(2)
                     hits = _string_hits(s, pairs, pkgs)
                     found.update((rel, r["line"], "rs-string", x) for x in hits)
     return sorted(found)
@@ -1895,6 +1893,20 @@ def constructed_reds() -> list:
         expect(c2d(red, pairs, pkgs)[0] == want, "red (G8-d): .rs string literals were not read")
         expect(
             c2d(green, pairs, pkgs)[0] == [], "control (G8-d): current names in .rs literals red"
+        )
+        # G8-d escaped: the decoded VALUE reds (`\x73nn...` names the module); a raw string spelled
+        # the same way is its own text and does not.
+        esc = Path(td) / "esc"
+        lib = _NATIVE_LIB_RED.replace(
+            '"snn_data_lake.oldpkg.mod"', '"\\x73nn_data_lake.oldpkg.mod"'
+        ).replace('"snn_data_lake.gonepkg."', 'r"\\x73nn_data_lake.gonepkg."')
+        for rel, text in _native_fixture(True).items():
+            (esc / rel).parent.mkdir(parents=True, exist_ok=True)
+            (esc / rel).write_text(lib if rel.endswith("lib.rs") else text, encoding="utf-8")
+        subprocess.run(["git", "-C", str(esc), "init", "-q"], check=True)
+        expect(
+            c2d(esc, pairs, pkgs)[0] == want[:1],
+            "red/control (G8-d esc): an escaped literal's value not judged, or a raw one judged",
         )
         (red / _NATIVE_EXT).unlink()
         expect(
