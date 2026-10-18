@@ -134,9 +134,17 @@ mod _native {
     use super::replica::NativeLoop;
 }
 """
-RG_XFILE_RED = {"replica.rs": '#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'}
-RG_XFILE_GREEN = {"replica.rs": '#[pyclass(name = "NativeLoop")]\npub struct NativeLoop;\n'}
+RG_XFILE_RED = {REPLICA: '#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'}
+RG_XFILE_GREEN = {REPLICA: '#[pyclass(name = "NativeLoop")]\npub struct NativeLoop;\n'}
 RG_XFILE_REPLICAS = [("LiveBrain", f"{REPLICA}::NativeLoop")]
+# review fold: a second file exporting its own `LiveBrain`; both sites survive.
+B_RS = "native/sndl-core/src/b.rs"
+RG_COLLIDE = {
+    **RG_XFILE_RED,
+    B_RS: 'use pyo3::prelude::*;\n#[pyclass(name = "LiveBrain")]\npub struct Loop2;\n'
+    "#[pymodule(gil_used = false)]\nmod _b { #[pymodule_export] use super::Loop2; }\n",
+}
+RG_COLLIDE_REPLICAS = sorted([*RG_XFILE_REPLICAS, ("LiveBrain", f"{B_RS}::Loop2")])
 
 CANON_SRC = {
     "engine/brain.py": "class Brain:\n    pass\n",
@@ -149,8 +157,9 @@ def _tree(tmp_path, text, extra=None):
     p = tmp_path / LIB
     p.parent.mkdir(parents=True)
     p.write_text(text, encoding="utf-8")
-    for name, src in (extra or {}).items():
-        (p.parent / name).write_text(src, encoding="utf-8")
+    for rel, src in (extra or {}).items():  # repo-relative paths, as p6_gate's fixture
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(src, encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True)
     return tmp_path
 
@@ -278,6 +287,21 @@ def test_rg_cross_file_export_is_attributed_to_the_pyclass_file(tmp_path, monkey
 
 def test_rg_cross_file_control_has_zero_replicas(tmp_path, monkeypatch):
     assert _rg(tmp_path, monkeypatch, RG_XFILE_LIB, RG_XFILE_GREEN)["replicas"] == []
+
+
+def test_rg_renamed_pyclass_without_an_export_is_not_flagged(tmp_path, monkeypatch):
+    assert _rg(tmp_path, monkeypatch, "mod replica;\n", RG_XFILE_RED)["replicas"] == []
+
+
+def test_rg_two_files_exporting_one_name_both_survive(tmp_path, monkeypatch):
+    a = _rg(tmp_path, monkeypatch, RG_XFILE_LIB, RG_COLLIDE)
+    assert sorted(a["replicas"]) == RG_COLLIDE_REPLICAS, a
+
+
+def test_rg_allowlisting_one_colliding_export_keeps_the_other(tmp_path, monkeypatch):
+    monkeypatch.setattr(rg, "PENDING_RETIREMENT", {RG_COLLIDE_REPLICAS[1]: "scheduled"})
+    a = _rg(tmp_path, monkeypatch, RG_XFILE_LIB, RG_COLLIDE)
+    assert a["replicas"] == [RG_COLLIDE_REPLICAS[0]], a
 
 
 def test_rg_pending_retirement_allowlists_a_rust_replica(tmp_path, monkeypatch):
