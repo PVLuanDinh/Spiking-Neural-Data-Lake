@@ -17,14 +17,32 @@ be introduced silently. The allowlist shrinks to empty as the consolidation wave
 The companion to this guard is engine.brain.make_brain(): the single sanctioned CONSTRUCTION path.
 Consumers obtain the brain through make_brain() rather than calling Brain(...) directly.
 
+RUST (R0.2 row 4, 2026-10-17): the port moves code into crates under `native/`, so a Rust `struct`/`enum`/
+`trait`/`type` named a CANON key, or a PyO3 export whose Python-visible name is one (`#[pyclass(name =
+"LiveBrain")]`, `#[pyo3(name = "Brain")]`), is the same replica spelled in Rust. Read through
+`rust_facts` only; keyed `(name, "<rel .rs>::<rust item>")` in PENDING_RETIREMENT; cfg(test) items and
+test files are not scanned (the Python half never scanned tests/ either). `native/` absent prints as
+ABSENT; `.rs` present and unreadable FAILS (closed). The bare run also executes `_selfcheck()`: the
+Python replica red and the Rust RED arm (exactly 3) / GREEN twin (0), so the gate is seen red.
+
   python -m snn_data_lake.gates.replication_guard   # (also run by run_selfchecks.py)
 """
 
 import ast
 import os
+import tempfile
+from pathlib import Path
+
+from snn_data_lake.gates import rust_facts
 
 _PKG = "snn_data_lake"
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../snn_data_lake
+ROOT = Path(_PKG_DIR).parents[1]  # the repo root `native/` sits under (tests inject a fixture root)
+RUST_KINDS = frozenset({"struct", "enum", "trait", "type", "union"})
+RUST_BLIND_SPOTS = (
+    '`m.add("Brain", ..)` string aliases are not in the rust_facts export map',
+    "cfg(test) items and test files are not scanned (the Python half never scanned tests/ either)",
+)
 
 # the canonical single-definition stack classes -> the ONE module each MUST be defined in
 CANON = {
@@ -48,15 +66,15 @@ CANON = {
 PENDING_RETIREMENT = {}
 
 
-def _mpath(pyfile):
-    rel = os.path.relpath(pyfile, os.path.dirname(_PKG_DIR)).replace("\\", "/")[:-3]
+def _mpath(pyfile, pkg_dir):
+    rel = os.path.relpath(pyfile, os.path.dirname(pkg_dir)).replace("\\", "/")[:-3]
     return rel.replace("/", ".")
 
 
-def _class_sites():
+def _class_sites(pkg_dir):
     """All definition sites of the canonical stack class NAMES: {name: [module_path, ...]}."""
     sites = {name: [] for name in CANON}
-    for root, _d, files in os.walk(_PKG_DIR):
+    for root, _d, files in os.walk(pkg_dir):
         for f in files:
             if not f.endswith(".py"):
                 continue
@@ -65,15 +83,47 @@ def _class_sites():
                 tree = ast.parse(open(p, encoding="utf-8").read())
             except (OSError, SyntaxError):
                 continue
-            mod = _mpath(p)
+            mod = _mpath(p, pkg_dir)
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef) and node.name in CANON:
                     sites[node.name].append(mod)
     return sites
 
 
-def audit():
-    sites = _class_sites()
+def _native():
+    """`(status, facts)` for the `.rs` under ROOT; an unreadable tree is carried as the exception."""
+    try:
+        files = rust_facts.rust_files(ROOT)
+        if not files:
+            return "native/ ABSENT (0 .rs files)", []
+        return f"native/ PRESENT ({len(files)} .rs files)", rust_facts.facts(files)
+    except rust_facts.RustFactsUnavailable as exc:
+        return "native/ UNREADABLE", exc
+
+
+def rust_replicas(native=None):
+    """(status, replicas, failures): Rust definitions and PyO3 exports named a CANON key -- the ONE Rust
+    entry point; `native=(status, facts)` injects a fixture, None reads the real tree."""
+    status, file_facts = _native() if native is None else native
+    if isinstance(file_facts, Exception):
+        return status, [], [f"RustFactsUnavailable: {file_facts}"]
+    found = []
+    for f in file_facts:
+        if f["test_file"]:
+            continue
+        p = Path(f["file"])
+        rel = (p.relative_to(ROOT) if p.is_absolute() and ROOT in p.parents else p).as_posix()
+        for t in f["types"]:
+            if t["kind"] in RUST_KINDS and t["name"] in CANON and not t["cfg_test"]:
+                found.append((t["name"], f"{rel}::{t['name']}"))
+        for py, ex in rust_facts.pyo3_exports([f]).items():
+            if py in CANON and (py, f"{rel}::{ex['rust']}") not in found:
+                found.append((py, f"{rel}::{ex['rust']}"))
+    return status, [k for k in found if k not in PENDING_RETIREMENT], []
+
+
+def audit(pkg_dir=None, native=None):
+    sites = _class_sites(_PKG_DIR if pkg_dir is None else pkg_dir)
     replicas, missing = [], []
     for name, canon_mod in CANON.items():
         found = sites[name]
@@ -84,7 +134,14 @@ def audit():
                 continue
             if (name, mod) not in PENDING_RETIREMENT:
                 replicas.append((name, mod))  # an UNSANCTIONED second definition
-    return {"sites": sites, "replicas": replicas, "missing": missing}
+    status, rust, failures = rust_replicas(native)
+    return {
+        "sites": sites,
+        "replicas": replicas + rust,
+        "missing": missing,
+        "native": status,
+        "failures": failures,
+    }
 
 
 def main():
@@ -100,7 +157,10 @@ def main():
         print("--- allowlisted replicas pending retirement ---")
         for (name, mod), reason in PENDING_RETIREMENT.items():
             print(f"  {name} @ {mod.replace(_PKG + '.', '')}: {reason[:60]}...")
+    print(f"  native/: {a['native']}")
+    print("  Rust BLIND SPOTS: " + "; ".join((*rust_facts.BLIND_SPOTS, *RUST_BLIND_SPOTS)))
     print("=" * 66)
+    assert not a["failures"], f"the Rust half could not run (fail closed): {a['failures']}"
     assert not a["missing"], f"canonical stack class not found where expected: {a['missing']}"
     assert not a["replicas"], (
         f"Policy 4: unsanctioned brain-stack replica(s) -- a second definition of a canonical class "
@@ -111,5 +171,81 @@ def main():
     print(f"replication guard OK: one canonical Brain/LiveBrain/AutonomousArm{_pend}")
 
 
+# R0.2 row 4: the gate's own reds. Python: a second `class Brain` beside the three canonical modules.
+# Rust: a renamed pyclass, a bare type and a renamed pyfunction, each wearing a CANON name (3), with a
+# cfg(test) `Brain` as the control that test scope is not counted; the twin keeps every item unrenamed.
+_PY_CANON = {
+    "engine/brain.py": "class Brain:\n    pass\n",
+    "engine/live_brain.py": "class LiveBrain:\n    pass\n",
+    "engine/autonomous_loop.py": "class AutonomousArm:\n    pass\n",
+}
+_RUST_RED = """
+use pyo3::prelude::*;
+
+#[pyclass(name = "LiveBrain")]
+pub struct NativeLoop;
+
+pub struct Brain;
+
+#[pyfunction]
+#[pyo3(name = "AutonomousArm")]
+fn arm() {}
+
+#[cfg(test)]
+mod tests { pub struct Brain; }
+
+#[pymodule(gil_used = false)]
+fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<NativeLoop>()?;
+    m.add_function(wrap_pyfunction!(arm, m)?)?;
+    Ok(())
+}
+"""
+_RUST_GREEN = (
+    _RUST_RED.replace('name = "LiveBrain"', 'name = "NativeLoop"')
+    .replace("pub struct Brain;", "pub struct Core;")
+    .replace('#[pyo3(name = "AutonomousArm")]\n', "")
+)
+_RUST_RED_REPLICAS = [
+    ("AutonomousArm", "native/sndl-python/src/lib.rs::arm"),
+    ("Brain", "native/sndl-python/src/lib.rs::Brain"),
+    ("LiveBrain", "native/sndl-python/src/lib.rs::NativeLoop"),
+]
+
+
+def fixture_native(text):
+    """`(status, facts)` for a constructed one-file tree `native/sndl-python/src/lib.rs` carrying `text`."""
+    f = rust_facts.facts_for_source(text, name="lib.rs")
+    f["file"] = "native/sndl-python/src/lib.rs"
+    return "native/ PRESENT (1 .rs files, fixture)", [f]
+
+
+def _selfcheck():
+    print("REPLICATION GUARD self-check")
+    with tempfile.TemporaryDirectory() as d:
+        pkg = Path(d) / "snn_data_lake"
+        for rel, text in {**_PY_CANON, "replica.py": "class Brain:\n    pass\n"}.items():
+            (pkg / rel).parent.mkdir(parents=True, exist_ok=True)
+            (pkg / rel).write_text(text, encoding="utf-8")
+        red = audit(pkg_dir=str(pkg), native=("native/ ABSENT (0 .rs files)", []))
+        assert red["replicas"] == [("Brain", "snn_data_lake.replica")] and not red["missing"], red
+        (pkg / "replica.py").unlink()
+        green = audit(pkg_dir=str(pkg), native=("native/ ABSENT (0 .rs files)", []))
+        assert not green["replicas"] and not green["missing"], green
+    _, rust, failures = rust_replicas(fixture_native(_RUST_RED))
+    assert sorted(rust) == _RUST_RED_REPLICAS and not failures, (rust, failures)
+    _, twin, _ = rust_replicas(fixture_native(_RUST_GREEN))
+    assert not twin, f"the repaired Rust shape was flagged: {twin}"
+    _, _, failures = rust_replicas(
+        ("native/ UNREADABLE", rust_facts.RustFactsUnavailable("constructed"))
+    )
+    assert failures, "RustFactsUnavailable with .rs present did not fail closed"
+    print(
+        "  reds fired: Python replica x1; Rust RED arm x3 (cfg(test) Brain not counted); repaired twin 0;"
+    )
+    print("  RustFactsUnavailable -> failure. self-check OK")
+
+
 if __name__ == "__main__":
     main()
+    _selfcheck()
