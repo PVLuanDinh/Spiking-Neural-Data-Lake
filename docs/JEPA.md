@@ -76,11 +76,7 @@ GPU and the **export -> core bridge is bit-identical** (max |diff| 3.33e-16 over
 ruff-excluded, not in CI, behind the `[gpu]` / `[train]` extra; without torch it prints a guidance message
 and exits cleanly. Train + serve:
 
-```bash
-pip install ".[gpu]"
-NORD_GPU=1 python -m snn_data_lake.reasoning.jepa_scaffold_torch   # trains on the 5070, exports snn_jepa/2, verify_transfer
-# then in the zero-dep core: JepaWorldModel(...).load_weights("<export>.json") serves the deep encoder, no torch
-```
+The trainer (`reasoning/jepa_scaffold_torch.py`) was retired by del-reasoning 1f; the zero-dep core still serves an exported encoder: `JepaWorldModel(...).load_weights("<export>.json")`, no torch.
 
 > Path corrected 2026-07-30: `research/` became `src/snn_data_lake/reasoning/` in v3.78 (`627b2e2b`),
 > so the runnable form is `python -m snn_data_lake.reasoning.<module>`. The files are the same files;
@@ -131,9 +127,6 @@ PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.faculties.jepa_world_model
 
 # JEPA wired live into the whole brain (safety + determinism with the flag ON)
 PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.engine.live_brain
-
-# the torch scale scaffold (prints a guidance banner without torch)
-PYTHONPATH=src python -m snn_data_lake.reasoning.jepa_scaffold_torch
 ```
 
 ## H-JEPA in the live brain (v3.14)

@@ -445,7 +445,6 @@ RESEARCH = [
     # "reasoning.polychronization" -> PROMOTED to CORE as "faculties.polychronization" (2026-08-04)
     "reasoning.sn_p_system",
     "reasoning.free_energy_control",
-    "reasoning.pc_active_inference",
     "reasoning.dishbrain_learning",
     "reasoning.triplet_stdp",
     "reasoning.cellular_neural_network",

@@ -64,7 +64,6 @@ MIGRATED_CALL_SITES = (
     "snn_data_lake.instruments.snn_mnist_stdp",
     "snn_data_lake.reasoning.snn_dreamer_6dof",
     "snn_data_lake.reasoning.snn_motor_control",
-    "snn_data_lake.reasoning.snn_ssm_shd",
     "snn_data_lake.reasoning.snn_world_model_rl",
 )
 # Section 1.3 actually enumerates twenty classes, plus KernelTick; retain every name.
