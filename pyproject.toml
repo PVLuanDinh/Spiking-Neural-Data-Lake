@@ -232,7 +232,6 @@ dependencies = [
 # GPU/training wheels (torchvision/tonic) on top of the default torch.
 [project.optional-dependencies]
 arm = ["pyserial"]                                                       # live_arm --serial / --actuate
-lake = ["polars", "deltalake"]  # lakehouse/medallion + delta_demo (pyarrow PROMOTED to core, 022 T005)
 # snntorch was removed from both extras when promoted in 2026 and retired entirely when Brian2
 # replaced it on 2026-09-22. Brian2 has one authority in the core dependency list above.
 # bindsnet REMOVED from [gpu] 2026-08-07 with its sole importer (reasoning/eth_mnist_bindsnet.py,

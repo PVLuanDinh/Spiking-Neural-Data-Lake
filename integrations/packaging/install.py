@@ -30,7 +30,6 @@ STAGES = [
     (None,     "core (pulls the default torch + numpy dependencies)",     True),
     ("dev",    "tests + lint (pytest, pytest-cov, ruff, pre-commit)",     False),
     ("arm",    "real serial robot arm (pyserial)",                        False),
-    ("lake",   "lakehouse query engine (polars, pyarrow, deltalake)",     False),
     ("nmnist", "N-MNIST event-camera data (tonic)",                       False),
     ("llm",    "on-device NL command backend (airllm)",                   False),
     ("exe",    "build the standalone Windows exe (pyinstaller)",          False),

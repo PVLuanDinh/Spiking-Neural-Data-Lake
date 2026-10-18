@@ -133,7 +133,6 @@ out of the core import path:
 
 - `[arm]` — `pyserial`, for the real ESP32/serial actuator path (lazily imported; CI never
   opens a port).
-- `[lake]` — `polars` + `pyarrow` + `deltalake`, for the Medallion/Delta lakehouse PoCs.
 - `[gpu]` — `torchvision` + `scikit-learn` on top of core Torch + Brian2, for MNIST/GPU and spiking-MBRL
   research (its own venv).
 - `[nmnist]` — `tonic`, for real N-MNIST event-camera data.

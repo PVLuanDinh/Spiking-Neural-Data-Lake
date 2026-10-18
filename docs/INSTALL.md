@@ -42,7 +42,6 @@ compiler-gated dependency can never break the base install:
 | `core` | the base package | **always installs** (pulls torch + numpy) |
 | `dev` | pytest, pytest-cov, ruff, pre-commit | run the tests + lint |
 | `arm` | pyserial | drive a **real** serial robot arm |
-| `lake` | polars, pyarrow, deltalake | the lakehouse query engine |
 | `nmnist` | tonic | real N-MNIST event-camera data |
 | `llm` | airllm | on-device natural-language command backend |
 | `exe` | pyinstaller | rebuild the standalone Windows `.exe` yourself |
