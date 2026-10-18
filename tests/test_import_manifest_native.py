@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from snn_data_lake.gates import import_manifest, rust_facts
+from snn_data_lake.gates import import_manifest
 
 PYO3 = """
 use pyo3::prelude::*;
@@ -133,6 +133,7 @@ def test_unparseable_rust_fails_closed(tmp_path):
 
 
 def test_real_tree_reports_native_absent():
-    assert rust_facts.rust_files(rust_facts.ROOT) == [], "native/ exists now: re-count the gate"
+    # Re-counted 2026-10-18: native/ exists since R0.4 (sndl-core, no binding yet) and no src module
+    # references _native, so the edge has nothing to judge: PRESENT, zero findings.
     status, bad = import_manifest.native_findings(import_manifest.native_refs())
-    assert status.startswith("native/ ABSENT") and bad == {}, (status, bad)
+    assert status.startswith(("native/ ABSENT", "native/ PRESENT")) and bad == {}, (status, bad)

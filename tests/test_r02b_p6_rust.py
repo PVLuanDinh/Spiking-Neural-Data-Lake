@@ -52,7 +52,10 @@ def test_real_tree_prints_absent_and_leaves_every_python_count_alone(base):
     assert "rust_status" in conn, (
         "the gate reports NOTHING about native/ (neither ABSENT nor a count)"
     )
-    assert conn["rust_status"].startswith("native/ ABSENT"), conn["rust_status"]
+    # native/ exists since R0.4 (sndl-core); it holds no region-mapped module, so every count stays.
+    assert conn["rust_status"].startswith(("native/ ABSENT", "native/ PRESENT")), conn[
+        "rust_status"
+    ]
     assert conn["rust_directed"] == set()
     assert conn["native_mapped"] == set()
     assert conn["native_unmapped"] == []
@@ -100,9 +103,12 @@ def test_control_stays_green_with_no_rust_pair(name, base):
     assert all(_verdict(res, base).values())
 
 
-def test_native_target_with_native_absent_is_printed_not_dropped(base, capsys):
+def test_native_target_with_native_absent_is_printed_not_dropped(base, capsys, monkeypatch):
+    monkeypatch.setattr(
+        rust_facts, "rust_files", lambda *a, **k: []
+    )  # native/ ABSENT (real tree has it now)
     _, _how, _fear_rs, overlay, _extra = _arm("RUST_CONTROLS", "G4")
-    res = gate.measure(_ROOT, overlay=overlay)  # the REAL tree: native/ ABSENT
+    res = gate.measure(_ROOT, overlay=overlay)
     conn = res["conn"]
     unmapped = conn.get("native_unmapped", "DROPPED SILENTLY (no record of the _native target)")
     assert isinstance(unmapped, list) and len(unmapped) == 1, unmapped
@@ -264,7 +270,10 @@ def test_rust_pair_outside_connectome_regions_is_reported_not_counted(base, caps
     ["import snn_data_lake._native\n", "from snn_data_lake._native import *\n"],
     ids=["module", "star"],
 )
-def test_absent_status_wins_over_the_symbol_reason(source, base):
+def test_absent_status_wins_over_the_symbol_reason(source, base, monkeypatch):
+    monkeypatch.setattr(
+        rust_facts, "rust_files", lambda *a, **k: []
+    )  # native/ ABSENT (real tree has it now)
     res = gate.measure(_ROOT, overlay={"amygdala/_p6_native_reason.py": source})
     unmapped = res["conn"]["native_unmapped"]
     assert len(unmapped) == 1 and gate.NATIVE_ABSENT in unmapped[0], unmapped
