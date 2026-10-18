@@ -80,6 +80,11 @@ BLIND_SPOTS = (
     "treated as a mod-rs file, so a `#[path]` inside its inline module resolves under <stem>/ (fixture: "
     'lib.rs `#[path = "shared.rs"] pub mod shared;` + shared.rs `mod q { #[path = "../../tests/reference.rs"] '
     "pub mod reference; }` leaves tests/reference.rs test code)",
+    "export map, known wrong (Codex r7, evidence/codex7-repro.log): an assignment whose block RHS creates and "
+    "discards a wrapper (`f = { let _u = wrap(decay)?; f };`) binds the discarded wrapper; binding convention "
+    "for sndl-python: declarative `#[pymodule_export]` only, no wrapper handles",
+    "native_dormancy: two inline modules with the same child name loaded through `#[path]` resolve an unqualified "
+    "reference to the FIRST declared child (Codex r7 reader 2; prediction, not run)",
     "python refs: importlib.import_module / getattr(_native, name) are dynamic (getattr gives <module>); "
     "a .py that fails to parse is skipped here (ruff/import gates red it)",
 )

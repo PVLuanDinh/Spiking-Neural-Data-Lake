@@ -445,6 +445,12 @@ _RUST_BLIND = (
     "an RHS read the deepest inner scope; a `let` whose init holds a block is read at its START (its inner "
     "events come later), so a writer temporary discarded inside a `let` block still taints the let; only an "
     "ASSIGNMENT's RHS is cut to the value its blocks produce (their tail expressions)",
+    "PROVISIONAL (R0.2 frozen at fold 5, PREREG addendum 8): the taint model is per-fn with inferred scopes, and "
+    "these shapes are KNOWN FALSE GREENS (evidence/codex7-repro.log, sweep-fold5): a writer inside an inner "
+    "block whose receiver is used after the block; if/else branches of one RHS (the first deepest scope is "
+    "read for both); a `loop { break <transposed> }` value; an outer tainted name used after a block that "
+    "shadowed it (`self.w3 += &d`). Re-panel this Rust half, or replace it with scoped dataflow, BEFORE any "
+    "Rust code that updates weights lands (L5 trainers are paused, plan section 12)",
 )
 
 
