@@ -119,6 +119,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import io
 import json
 import os
@@ -132,6 +133,8 @@ import time
 import tomllib
 from collections import Counter
 from pathlib import Path
+
+from snn_data_lake.gates import rust_facts
 
 PKG = "snn_data_lake"
 REPO = Path(__file__).resolve().parents[3]
@@ -689,10 +692,24 @@ _BY_FILE = (
 )
 
 
+_NATIVE_LEAF = rust_facts.NATIVE_MODULE.rpartition(".")[2]  # `_native`, the compiled extension
+_EXT_SUFFIXES = (".pyd", ".so")
+
+
+# distinct-from: brain_atlas.py -- _region_files lists the .py modules beside a REGION's members;
+#   this lists the compiled `_native` extension files beside the package root. Also read:
+#   gates/atlas_node_gate.py (node_references, a region census), gates/method_dormancy_gate.py
+#   (_parse_all, in-package imports) -- none names a build artifact.
+def _extensions(src: Path) -> list[Path]:
+    """The compiled `snn_data_lake._native` files beside the package (gitignored build artifacts)."""
+    return sorted(p for p in Path(src).glob(f"{_NATIVE_LEAF}*") if p.suffix in _EXT_SUFFIXES)
+
+
 def module_file(src: Path, name: str) -> Path | None:
     """The module FILE a registry name spells, or None: dotted (`pkg.mod`, `snn_data_lake.pkg.mod`
     with any attribute tail), a package-relative file path with an optional `::qualname`, or
-    `module:attr` (the attribute itself a module when it is one)."""
+    `module:attr` (the attribute itself a module when it is one). `snn_data_lake._native` (any tail)
+    is the compiled extension beside the package -- a file, never a `.py` (R0.2 arc 2, row 10)."""
     n = name.split("=", 1)[-1].split("::")[0]
     if n.endswith(".py"):
         p = src.parents[1] / n if n.startswith("src/") else src / n
@@ -701,6 +718,8 @@ def module_file(src: Path, name: str) -> Path | None:
     parts = [p for p in n.split(".") if p]
     if parts and parts[0] == PKG:
         parts = parts[1:]
+    if parts and parts[0] == _NATIVE_LEAF:
+        return next(iter(_extensions(src)), None)
     if attr and src.joinpath(*parts, attr).with_suffix(".py").is_file():
         return src.joinpath(*parts, attr).with_suffix(".py")
     for k in range(len(parts), 0, -1):
@@ -723,7 +742,9 @@ def by_file(root: Path, names_: dict) -> list:
             f = module_file(src, name)
             if f is None:
                 out.append(f"{reg}: {name}")
-            elif reg == "ci.m_targets" and "__main__" not in f.read_text(encoding="utf-8"):
+            elif reg == "ci.m_targets" and (
+                f.suffix != ".py" or "__main__" not in f.read_text(encoding="utf-8")
+            ):
                 out.append(f"{reg}: {name} has no __main__")
     return sorted(out)
 
@@ -953,7 +974,9 @@ pub fn load(py: Python<'_>) -> PyResult<()> {
     Ok(())
 }
 """
-_NATIVE_LIB_GREEN = _NATIVE_LIB_RED.replace("oldpkg.mod", "newpkg.mod").replace("gonepkg.", "keptpkg.")
+_NATIVE_LIB_GREEN = _NATIVE_LIB_RED.replace("oldpkg.mod", "newpkg.mod").replace(
+    "gonepkg.", "keptpkg."
+)
 
 
 def _native_fixture(red: bool, lock: str = "# Cargo.lock\nversion = 4\n") -> dict[str, str]:
@@ -969,9 +992,51 @@ def _native_fixture(red: bool, lock: str = "# Cargo.lock\nversion = 4\n") -> dic
     }
 
 
+_RS_STR = re.compile(r'b?r?(#*)"(.*)"\1', re.S)  # the contents of one double-quoted Rust literal
+#: The fact records whose token text can hold a string literal (schema 2).
+_RS_TEXT = {
+    "calls": ("args",),
+    "mcalls": ("recv", "args"),
+    "lets": ("init",),
+    "assigns": ("rhs",),
+    "consts": ("expr",),
+    "macros": ("tokens",),
+}
+
+
+# distinct-from: gates/immortal_retention.py -- its _rs_texts joins a fn's facts per fn_id for a
+#   reclaimer census; this reads each record's literals at its own line for the legacy-name scan.
+# distinct-from: gates/docs_only_battery.py -- code_hash hashes `git ls-files -s` lines; nothing
+#   here hashes. Also read: instruments/h01_partb_tangential.py (provenance), engine/live_brain.py
+#   (tick), substrate/proximity_index.py (_cleanup), faculties/quality_diversity.py (_consider) --
+#   a ledger, a brain tick, a finalizer and a niche filer, none a source scan.
+def c2d_rust(root: Path, pairs, pkgs) -> list:
+    """C2(d) over the string literals of native/'s `.rs` files, through rust_facts' token text (the
+    reader's own `RUST_LITERAL`, judged by `_string_hits`): the import string a PyO3 crate hands
+    `PyModule::import` is a legacy name like any other. Sorted unique (file, line, "rs-string", name);
+    `RustFactsUnavailable` is the caller's red (R0.2 arc 2, row 10)."""
+    root = Path(root)
+    found = set()
+    for f in rust_facts.facts(rust_facts.rust_files(root)):  # the reader's root is the repo
+        rel = os.path.relpath(f["file"], root).replace(os.sep, "/")
+        for key, fields in _RS_TEXT.items():
+            for r in f.get(key, []):
+                text = " ".join(
+                    " ".join(v) if isinstance(v, list) else str(v or "")
+                    for v in (r.get(k) for k in fields)
+                )
+                for lit in rust_facts.RUST_LITERAL.finditer(text):
+                    m = _RS_STR.fullmatch(lit.group(0))
+                    if m:
+                        hits = _string_hits(m.group(2), pairs, pkgs)
+                        found.update((rel, r["line"], "rs-string", x) for x in hits)
+    return sorted(found)
+
+
 def c2d(root: Path, pairs=None, pkgs=None) -> tuple:
-    """C2(d) over the tree's live `.py` files: ([(file, line, kind, name)], files scanned, files
-    that do not parse). Without pairs/pkgs, the tree's own legacy names (its tables)."""
+    """C2(d) over the tree's live `.py` files and native/'s `.rs` string literals: ([(file, line,
+    kind, name)], .py files scanned, files that do not parse -- a `.rs` tree the reader cannot read
+    is ONE such row, a red, never a skip). Without pairs/pkgs, the tree's own legacy names."""
     root = Path(root).resolve()
     if pairs is None or pkgs is None:
         tabs = tables(root)
@@ -988,6 +1053,10 @@ def c2d(root: Path, pairs=None, pkgs=None) -> tuple:
             unparsed.append(f)
         else:
             found += [(f, *h) for h in got]
+    try:
+        found += c2d_rust(root, pairs, pkgs)
+    except rust_facts.RustFactsUnavailable as exc:
+        unparsed.append(f"native/ UNAVAILABLE: {exc}")
     return found, len(files), unparsed
 
 
@@ -1060,6 +1129,39 @@ def c2d_control(mover: Path, repo: Path = REPO, log=print) -> list:
 
 
 # ---- C6's static invariants --------------------------------------------------------------------
+# distinct-from: growth/h01_ingest.py -- load_cells sha256-verifies a DATA source against a pinned
+#   digest; this RECORDS the digest of each Cargo.lock for a census to diff, verifying nothing.
+#   Also read: instruments/carried_state_report.py (_core), instruments/sleep_pruner_census.py
+#   (discovering), instruments/eligible_circuit_census.py (no_invented_born_identity),
+#   growth/wiring_prior.py (main) -- replay records, a profile hook, a born-identity rule, a
+#   self-check; none a build-artifact record.
+def native_record(root: Path) -> dict:
+    """What the census records of native/ (R0.2 arc 2, row 10): rust_facts' status (git's view, fail
+    closed), the sha256 of every Cargo.lock under native/ and the compiled extension beside the
+    package -- so a Rust edit or a rebuilt artifact is a census DIFFERENCE, never an invisible one."""
+    root = Path(root)
+    try:
+        n = len(rust_facts.rust_files(root))
+        status = f"native/ PRESENT ({n} .rs files)" if n else "native/ ABSENT (0 .rs files)"
+    except rust_facts.RustFactsUnavailable as exc:
+        status = f"native/ UNAVAILABLE: {exc}"
+    native = root / rust_facts.NATIVE_DIR
+    locks = sorted(p for p in native.rglob("Cargo.lock") if "target" not in p.parts)
+    return {
+        "status": status,
+        "cargo_lock": {
+            p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in locks
+        },
+        "extension": [p.relative_to(root).as_posix() for p in _extensions(root / "src" / PKG)],
+    }
+
+
+def _native_lines(c: dict) -> list:
+    rec = c["static"].get("native")
+    return sorted(f"{k}={v}" for k, v in _flat(rec).items()) if rec else []
+
+
 def static(root: Path, tabs: dict) -> dict:
     src = Path(root) / "src" / PKG
     files = sorted(
@@ -1098,6 +1200,7 @@ def static(root: Path, tabs: dict) -> dict:
         "module_depth": {f.rsplit("/", 1)[-1][:-3]: f.count("/") for f in files},
         "rule_dispositions": rules,
         "invariants": inv,
+        "native": native_record(root),
     }
 
 
@@ -1253,12 +1356,14 @@ def observed(pre: dict, post: dict, expected: dict | None = None) -> dict:
             "rule_dispositions": sorted(
                 f"{k}={v}" for k, v in pre["static"]["rule_dispositions"].items()
             ),
+            "native": _native_lines(pre),
         },
         {
             "module_depth": sorted(f"{m}={d}" for m, d in depth_b.items()),
             "rule_dispositions": sorted(
                 f"{k}={v}" for k, v in post["static"]["rule_dispositions"].items()
             ),
+            "native": _native_lines(post),
         },
         pa,
         pb,
@@ -1334,6 +1439,10 @@ def copy_tree(repo: Path, dest: Path, marker: bool) -> Path:
         if s.is_file():
             (Path(dest) / f).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(s, Path(dest) / f)
+    for s in _extensions(Path(repo) / "src" / PKG):  # the gitignored build artifact rides along
+        d = Path(dest) / s.relative_to(repo)
+        d.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(s, d)
     if marker:
         (Path(dest) / MARKER).write_text(
             "move_gate self-check copy -- never a checkout\n", encoding="utf-8"
@@ -1708,6 +1817,55 @@ def constructed_reds() -> list:
     )
     expect(bool(mode_problem({"mode": "export"}, {"mode": "checkout"})), "red: mixed modes diffed")
     expect(bool(mode_problem({}, {"mode": "export"})), "red: a census with no mode was diffed")
+    # R0.2 arc 2 (row 10): the native reds over the shared fixture, through the entry points the
+    # census, the self-check copies and --c2d use. RED and a GREEN twin whose Cargo.lock also differs.
+    with tempfile.TemporaryDirectory() as td:
+        red, green = Path(td) / "red", Path(td) / "green"
+        for tree, is_red in ((red, True), (green, False)):
+            lock = "# Cargo.lock\nversion = 4\n" + ("" if is_red else "[[package]]\n")
+            for rel, text in _native_fixture(is_red, lock).items():
+                (tree / rel).parent.mkdir(parents=True, exist_ok=True)
+                (tree / rel).write_text(text, encoding="utf-8")
+            subprocess.run(["git", "-C", str(tree), "init", "-q"], check=True)
+        regs = {
+            "run_selfchecks": [rust_facts.NATIVE_MODULE],
+            "ci.m_targets": [rust_facts.NATIVE_MODULE],
+        }
+        expect(
+            by_file(red, regs) == [f"ci.m_targets: {rust_facts.NATIVE_MODULE} has no __main__"],
+            "red (G8-a): module_file did not resolve the compiled extension",
+        )
+        ra, rb = (static(t, tables(t))["native"] for t in (red, green))
+        expect(
+            ra["status"] == "native/ PRESENT (1 .rs files)" and ra["extension"] == [_NATIVE_EXT],
+            f"red (G8-b): the census record misreads the fixture: {ra}",
+        )
+        expect(
+            ra["cargo_lock"] != rb["cargo_lock"], "red (G8-b): a Cargo.lock change left the hash"
+        )
+        pre, post = _mini(), _mini()
+        pre["static"]["native"], post["static"]["native"] = ra, rb
+        expect(len(diff(pre, post, {})[1]) == 2, "red (G8-b): a Cargo.lock change did not diff")
+        expect(diff(pre, pre, {})[1] == [], "control (G8-b): an unchanged native record diffed")
+        copy_tree(red, Path(td) / "copy", False)
+        expect(
+            (Path(td) / "copy" / _NATIVE_EXT).is_file(), "red (G8-c): the copy lost the extension"
+        )
+        expect(not (Path(td) / "copy/src/snn_data_lake/junk.pyc").exists(), "control (G8-c): .pyc")
+        want = [
+            ("native/sndl-python/src/lib.rs", 3, "rs-string", "oldpkg.mod"),
+            ("native/sndl-python/src/lib.rs", 4, "rs-string", "gonepkg"),
+        ]
+        pairs, pkgs = {("oldpkg", "mod"): "newpkg"}, {"gonepkg"}
+        expect(c2d(red, pairs, pkgs)[0] == want, "red (G8-d): .rs string literals were not read")
+        expect(
+            c2d(green, pairs, pkgs)[0] == [], "control (G8-d): current names in .rs literals red"
+        )
+        (red / _NATIVE_EXT).unlink()
+        expect(
+            by_file(red, regs) == sorted(f"{r}: {rust_facts.NATIVE_MODULE}" for r in regs),
+            "control (G8-a): an absent extension must stay a red",
+        )
     return fails
 
 
@@ -2101,6 +2259,7 @@ def main(argv=None) -> int:
         vacuous = (
             "" if pairs or pkgs else " (vacuous: nothing has moved; the control is --complete)"
         )
+        print(f"  {native_record(Path(a.root))['status']}")
         print(
             f"C2(d): {len(pairs)} legacy pair(s), {len(pkgs)} legacy package(s){vacuous}; {n} live "
             f".py files scanned, {len(unparsed)} unparsed {unparsed}; {len(found)} finding(s) "
