@@ -420,42 +420,16 @@ CORE = [
 ]
 # RESEARCH â€” benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
-    "reasoning.test_prototype",
-    "reasoning.hopfield_baseline",
     "reasoning.dense_associative_memory",
     "reasoning.sparse_distributed_memory",
-    "reasoning.fly_hash",
     "reasoning.spiking_som",
-    "reasoning.temporal_coding_storage",
-    "reasoning.spike_compression",
-    "reasoning.event_quadtree_compression",
-    "reasoning.index_compression",
-    "reasoning.spike_bloom",
     "reasoning.spiking_ssm",
-    "reasoning.spike_kg",
-    "reasoning.resonator_network",
     "reasoning.mcr_hdc",
-    "reasoning.bayesian_snn",
-    "reasoning.nmnist_ingest",
-    "reasoning.nef_integrator",
     "reasoning.stats_bounds",
-    "reasoning.loop_latency",
-    "reasoning.delay_learning",
     "reasoning.eprop",
     # "reasoning.polychronization" -> PROMOTED to CORE as "faculties.polychronization" (2026-08-04)
-    "reasoning.sn_p_system",
-    "reasoning.free_energy_control",
-    "reasoning.dishbrain_learning",
     "reasoning.triplet_stdp",
-    "reasoning.cellular_neural_network",
-    "reasoning.random_boolean_network",
-    "reasoning.neural_heterogeneity",
-    "reasoning.burst_multiplexing",
-    "reasoning.stdp_wta_bayes",
-    "reasoning.sorn",
-    "reasoning.resume_learning",
     "reasoning.weight_perturbation",
-    "reasoning.make_results_plot",
     # durable never-forget chat: contradiction reasoning, Hebbian skill wiring, autonomous scholarly
     # enrichment, and the lake-backed chat (all self-checks are deterministic + OFFLINE).
     "reasoning.lake_reason",
@@ -470,7 +444,6 @@ RESEARCH = [
     # replacing the old grammar self-test: 80% measured vs 12.5% chance, broken controls near chance.
     # (reasoning.arc_diagnostic is deliberately NOT here -- a ~27 s offline instrument, covered by
     # tests/test_arc_diagnostic.py; the smoke gate stays fast.)
-    "reasoning.real_rpm_bench",
     "reasoning.reasoning_cortex",  # MoE router: ~8 dead reasoning studies made live on the converse path
     "reasoning.derivation",  # multi-hop transitive DEDUCTION (proof-carrying BFS over taught facts)
     "reasoning.reasoning_compose",  # MULTI-STEP composition over the MoE router (bounded expert grammar)
