@@ -483,8 +483,6 @@ RESEARCH = [
     "reasoning.pragmatics",  # W8: speech-act recognition + Gricean implicature + indirect-request detection
     "reasoning.impact_analysis",  # pre-mutation blast radius (harness LSP principle, native ast + graphify) -> self-build prefers surgical changes
     "reasoning.ar_spiking_lm_serve",  # forward-only Spiking-RWKV serve: order-sensitive logprob (the BLiMP lever)
-    "reasoning.eprop_lm_serve",  # BRAIN-NATIVE e-prop recurrent-spiking LM serve: order-sensitive logprob (no backprop)
-    "reasoning.eprop_lm_alif_serve",  # deep-ALIF e-prop LM serve: adaptive-threshold long-range, order-sensitive logprob
     "reasoning.self_improve",
     "reasoning.godel_machine",
     # the two OUTSIDE yardsticks the depth ceilings are measured against. Both SKIP-with-notice when

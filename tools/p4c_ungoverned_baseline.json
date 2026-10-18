@@ -2,7 +2,7 @@
   "_generated_by": "tools/p4c_ratchet.py --update-baseline",
   "_policy": "P4c -- every build is part of the brain",
   "_contract": "counts may only go DOWN; 'paths' is DIAGNOSTICS ONLY, never asserted on",
-  "total": 181,
+  "total": 179,
   "zones": {
     "<repo root>": 2,
     "docs": 16,
@@ -10,7 +10,7 @@
     "research": 24,
     "src/snn_data_lake/<toplevel>": 2,
     "src/snn_data_lake/lakehouse": 2,
-    "src/snn_data_lake/reasoning": 92,
+    "src/snn_data_lake/reasoning": 90,
     "src/snn_data_lake/training": 1,
     "tools": 30,
     "training": 4
@@ -111,8 +111,6 @@
       "src/snn_data_lake/reasoning/developmental_loop_wm.py",
       "src/snn_data_lake/reasoning/dishbrain_learning.py",
       "src/snn_data_lake/reasoning/eprop.py",
-      "src/snn_data_lake/reasoning/eprop_lm_alif_serve.py",
-      "src/snn_data_lake/reasoning/eprop_lm_serve.py",
       "src/snn_data_lake/reasoning/event_quadtree_compression.py",
       "src/snn_data_lake/reasoning/fast_features.py",
       "src/snn_data_lake/reasoning/fly_hash.py",
