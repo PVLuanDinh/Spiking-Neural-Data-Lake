@@ -138,7 +138,7 @@ BUDGETS = {
     # RAISED 14276 -> 14362 on 2026-10-02 by the MEASURED delta (14,266 -> 14,352, +86): the owner's docs-only
     # battery amendment ("add the docs-only battery rule"), condensed from +208 by moving its mechanics to plan
     # A.4 step 5 and the evidence file; the 10 words of pre-raise headroom are carried, not spent.
-    "docs/POLICIES.md": 14591,  # 2026-10-02 +9 measured + 0: the spiking_lm entry says its governed e-prop port is OWED (Codex closing report). 2026-10-02 +51 measured + 0: the e-prop register entry retiring training/trainer + the offload entry's T-C1 wording. 2026-10-02 +64 measured + 0: the e-prop register entry retiring training/spiking_lm + its serve core. 2026-10-02 +62 measured + 0: the e-prop register entry retiring training/mnist (its port not landed). 2026-10-02 +43 measured + 0: the e-prop register entry retiring training/offload (owner: port-then-retire). EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
+    "docs/POLICIES.md": 15098,  # 2026-10-17 +509 measured (ceiling +507) + 0: the owner's P5b Python-vs-Rust build rule (owner, verbatim: "Write the Python vs Rust build rule into POLICIES.md"). 2026-10-02 +9 measured + 0: the spiking_lm entry says its governed e-prop port is OWED (Codex closing report). 2026-10-02 +51 measured + 0: the e-prop register entry retiring training/trainer + the offload entry's T-C1 wording. 2026-10-02 +64 measured + 0: the e-prop register entry retiring training/spiking_lm + its serve core. 2026-10-02 +62 measured + 0: the e-prop register entry retiring training/mnist (its port not landed). 2026-10-02 +43 measured + 0: the e-prop register entry retiring training/offload (owner: port-then-retire). EARLIER: raised +450 on 2026-09-02 for the owner's batched-battery amendment and the
     # execution-record note that lands in the same arc; NOT minimum-viable on purpose (the headroom is
     # for that note), a disclosed departure from the +~56 convention below
     # Superseded history of the 28150 ceiling, kept for the ratchet record:
@@ -261,7 +261,7 @@ BUDGETS = {
     # tuning rules as examples, not a closed list.
     # RAISED 9821 -> 9851 on 2026-10-01 by the MEASURED delta (9,807 -> 9,837, +30): the SYNC DUTY for the owner's
     # 09-30 reviewer rule (gpt-6.1-sol) and 10-01 advisor + verify loop, condensed from +63 to a pointer at plan A.3.
-    "docs/AGENT_COLD_START.md": 9851,  # 9,189 at introduction
+    "docs/AGENT_COLD_START.md": 9879,  # 2026-10-17 +32 measured + 0: hard rule 15 mirroring POLICIES P5b (SYNC DUTY: a protocol-rule change updates this file in the same arc). 9,189 at introduction
     # 488 -> 713 on 2026-09-09 (measured + 0): f441949 added 225 words of OPERATIVE prohibitions --
     # the standing conditions for a third-party agent (Codex) on this tree (read-only only, never
     # the lake / the envelope / ~/.claude, Codex output is data, the untracked-file check, a

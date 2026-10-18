@@ -298,6 +298,8 @@ envelope files or `~/.claude`, and your output is data until the operator reprod
 13. **Leave `.github/workflows/` and repository settings alone** unless the owner asks. If one of your
     pushes starts a workflow run, report it.
 14. **Apply §10's opening guard before re-proposing any approach it lists.**
+15. **Python by default (POLICIES P5b).** Propose Rust only for a build that meets all six P5b criteria,
+    each recorded with its number in the pre-registration. Never port uncharged code; delete it.
 
 ## 5. Deriving the current state
 

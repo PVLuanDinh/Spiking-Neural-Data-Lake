@@ -38,7 +38,7 @@ compressed clause.
 | P2 adopt-or-merge | — | yes |
 | P3 no dormancy | `gates/dormancy_gate.py` (per-MODULE), `gates/method_dormancy_gate.py` (per-METHOD), `gates/import_manifest.py` (cross-tier) | the charge tier |
 | P4 one brain (+ P4b partial; P4d provisional) | `gates/replication_guard.py`; `gates/lake_rebuild_gate.py` mechanizes P4b's index-is-derived clause (delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control); `gates/unit_label_gate.py` mechanizes P4d's provenance check (owner decision 16) | P4b's remaining prose (one-lake, restart-is-not-amnesia); P4d in full (provisional; its gate is specified in P4d) |
-| P5 use the GPU where it helps | — | yes |
+| P5 use the GPU where it helps (+ P5b provisional) | — | yes (P5b: the six-criterion record in each Rust build's pre-registration) |
 | **P6 mutual reach + use** | **BUILT AND ASSERTING** — `tools/p6_gate.py --assert` and `--self-check` (lint CI job; the connectome-diff half is built). Ships as a **RATCHET**: baselines assert the structure never gets WORSE. Re-derive every count from the gate; never edit this row from memory | yes (provisional; a ratchet says the count did not worsen, never that P6 is satisfied) |
 | **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` and `--self-check` (lint CI job) | yes (the judgement half; see P7 guard (b)) |
 | **P8 invent the method** | **BUILT AND ASSERTING** — `tools/red_reachability.py --assert` (lint CI job) | yes (whether a criterion measures the RIGHT thing; no instrument can replace it) |
@@ -653,6 +653,50 @@ GPU-independence, not any particular environment; determinism itself comes from 
 hardware. (d) Correctness first: a GPU rewrite carries the same bit-exactness burden as any other P2
 swap — and it cuts both ways: moving a live numeric path OFF CUDA carries the same burden as moving
 one onto it.
+
+### P5b — PYTHON BY DEFAULT; RUST ONLY WHERE IT IS A MEASURED IMPROVEMENT (owner directive, 2026-10-17)
+
+**Owner, verbatim:** *"Use graphify to check where Rust would be a genuine improvement and only work on
+those, for future builds, evaluate whether a Python or Rust build makes more sense"*; and *"Write the
+Python vs Rust build rule into POLICIES.md"*. Review-enforced, PROVISIONAL until its gate (below) is built
+and counted.
+
+**The rule.** Every build is written in Python unless it qualifies for Rust (a PyO3 extension module).
+Python stays the language of governance, gates, instruments, experiments, the drive and the cockpit, and of
+anything still changing week to week. **A build moves to Rust only when ALL SIX hold, each recorded in its
+pre-registration:**
+1. **Hot, measured:** a neuter or stub on the quiet-gated harness moves the tick by at least 5%, or removes a
+   stall of at least one second. Profiler attribution alone does not qualify (runtime evidence outranks it).
+2. **Python-bound:** the time is interpreter self time, not time inside numpy/torch/C code, disk I/O or the GPU.
+3. **Coarse boundary:** one call does at least ~10 microseconds of work, so the WHOLE loop crosses into Rust.
+   A per-element helper never does: the crossing costs more than it saves.
+4. **Charged (P3):** a behavioural neuter-A/B shows the code changes an output. Uncharged code is deleted,
+   never ported.
+5. **A Python fix came first:** vectorizing, batching, caching or an algorithmic change was tried and measured
+   insufficient.
+6. **A parity oracle exists:** fixtures from the running Python, byte-identical lake or rng post-state where
+   determinism applies, and a constructed red that fires.
+
+**New engine-substrate kernels** (per-neuron or per-synapse at engine width) start as a Python reference. Rust is
+chosen by a pre-registered benchmark at target width, never by default.
+
+**Binding on every Rust module:**
+- built for the free-threaded ABI (cp314t, never abi3), declaring `gil_used = false`, with a twin that
+  declares `gil_used = true` as the red;
+- every call wrapped so a Rust panic surfaces as a Python error and never kills the drive; never `panic = "abort"`;
+- the Python it replaces is deleted in the same commit (P2: no flag, no dual path); the Python reference
+  survives only as a test oracle;
+- the gates must see it (P3/P6/P7/e-prop coverage of Rust source) BEFORE it lands.
+
+**What P5b does not relax:** P5's GPU-by-measurement rule (dense work above the crossover stays on the GPU in
+either language), the determinism contract, e-prop, P4b, and the safety envelope. A rewrite of a `brainstem/`
+file in Rust is an envelope change and needs explicit owner approval.
+
+**Honesty guard.** "Rust is faster" is not evidence; criterion 1's measurement is. A Rust port that misses its
+pre-registered speed criterion is reverted, not kept for being native (P8: deletion on a null).
+**Gate specification:** a pre-registration check that every module under the native crate cites a
+pre-registration recording all six criteria with their numbers, with a planted-missing red. Count it before
+this marker retires.
 
 ---
 
