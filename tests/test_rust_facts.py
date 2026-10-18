@@ -178,3 +178,23 @@ def test_production_is_a_fixpoint_over_mod_declarations(tmp_path):
 def test_alias_root_peels_every_skin_and_stops_on_nothing(init, want):
     """RA-5/RA-6: order-sensitive skins reach the identifier; peeling to nothing is no alias."""
     assert rust_facts.alias_root(init) == want
+
+
+def test_binops_and_exits_are_facts_by_fn_id():
+    """Schema 3: every non-assign binary op and every exit (each `return` + the tail) is a fact."""
+    f = rust_facts.facts_for_source(
+        "pub fn score(a: f64, b: f64) -> f64 "
+        "{ let _u = 0.0; if a > b { return a - b; } (a + b) / 2.0 }\n"
+        "pub fn none() {}\n"
+    )
+    assert f["schema"] == 3
+    assert [(x["lhs"], x["op"], x["rhs"], x["fn_id"]) for x in f.get("binops", [])] == [
+        ("a", ">", "b", 0),
+        ("a", "-", "b", 0),
+        ("(a + b)", "/", "2.0", 0),
+        ("a", "+", "b", 0),
+    ]
+    assert [(x["kind"], x["expr"], x["fn_id"]) for x in f.get("exits", [])] == [
+        ("return", "a - b", 0),
+        ("tail", "(a + b) / 2.0", 0),
+    ]

@@ -12,7 +12,7 @@ use std::io::BufRead;
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 
-const SCHEMA: u32 = 2;
+const SCHEMA: u32 = 3;
 
 #[derive(Default)]
 struct Facts {
@@ -28,6 +28,9 @@ struct Facts {
     assigns: Vec<Value>,
     lets: Vec<Value>,
     fors: Vec<Value>,
+    // schema 3: every non-assign binary op, and every exit of a fn (each `return` + the body's tail)
+    binops: Vec<Value>,
+    exits: Vec<Value>,
     path_roots: Vec<String>,
     paths: Vec<String>,
     test_paths: Vec<String>,
@@ -175,6 +178,20 @@ impl Facts {
             "doc": docs_of(attrs), "params": params, "ret": txt(&sig.output), "has_body": has_body,
             "cfg_test": cfg || is_cfg_test(attrs), "parent": parent, "mod": modp}));
     }
+    fn exit_rec<S: Spanned>(&mut self, kind: &str, expr: String, at: &S) {
+        let (f, _, cfg) = self.ctx();
+        self.exits.push(
+            json!({"kind": kind, "expr": expr, "line": line(at), "col": col(at), "fn": f,
+            "fn_id": self.cur_fn_id.last(), "cfg_test": cfg}),
+        );
+    }
+    // The body's tail expression is an exit; a nested block's tail is not (a closure's `return`
+    // is attributed to the enclosing fn, disclosed in rust_facts.BLIND_SPOTS).
+    fn tail_rec(&mut self, block: &syn::Block) {
+        if let Some(syn::Stmt::Expr(e, None)) = block.stmts.last() {
+            self.exit_rec("tail", txt(e), e);
+        }
+    }
     fn type_rec(
         &mut self,
         kind: &str,
@@ -234,6 +251,7 @@ impl<'ast> Visit<'ast> for Facts {
         self.cur_fn.push(i.sig.ident.to_string());
         self.cur_fn_id.push(self.fns.len() - 1);
         visit::visit_item_fn(self, i);
+        self.tail_rec(&i.block);
         self.cur_fn.pop();
         self.cur_fn_id.pop();
         self.cfg_test -= t;
@@ -245,6 +263,7 @@ impl<'ast> Visit<'ast> for Facts {
         self.cur_fn.push(i.sig.ident.to_string());
         self.cur_fn_id.push(self.fns.len() - 1);
         visit::visit_impl_item_fn(self, i);
+        self.tail_rec(&i.block);
         self.cur_fn.pop();
         self.cur_fn_id.pop();
         self.cfg_test -= t;
@@ -261,6 +280,9 @@ impl<'ast> Visit<'ast> for Facts {
         self.cur_fn.push(i.sig.ident.to_string());
         self.cur_fn_id.push(self.fns.len() - 1);
         visit::visit_trait_item_fn(self, i);
+        if let Some(b) = &i.default {
+            self.tail_rec(b);
+        }
         self.cur_fn.pop();
         self.cur_fn_id.pop();
         self.cfg_test -= t;
@@ -414,8 +436,19 @@ impl<'ast> Visit<'ast> for Facts {
                 "end_line": i.span().end().line, "end_col": i.span().end().column,
                 "fn": f, "fn_id": self.cur_fn_id.last(), "scope": self.scope, "cfg_test": cfg}),
             );
+        } else {
+            let (f, _, cfg) = self.ctx();
+            self.binops.push(
+                json!({"lhs": txt(&*i.left), "op": op, "rhs": txt(&*i.right), "line": line(i), "col": col(i),
+                "fn": f, "fn_id": self.cur_fn_id.last(), "cfg_test": cfg}),
+            );
         }
         visit::visit_expr_binary(self, i);
+    }
+    fn visit_expr_return(&mut self, i: &'ast syn::ExprReturn) {
+        let expr = i.expr.as_ref().map(|e| txt(&**e)).unwrap_or_default();
+        self.exit_rec("return", expr, i);
+        visit::visit_expr_return(self, i);
     }
     fn visit_local(&mut self, i: &'ast syn::Local) {
         let (f, _, cfg) = self.ctx();
@@ -465,7 +498,8 @@ fn one(path: &str) -> Value {
             json!({"schema": SCHEMA, "file": path, "ok": true, "file_attrs": attrs_of(&ast.attrs),
                 "fns": v.fns, "types": v.types, "mods": v.mods, "uses": v.uses, "consts": v.consts,
                 "calls": v.calls, "mcalls": v.mcalls, "macros": v.macros, "index": v.index,
-                "assigns": v.assigns, "lets": v.lets, "fors": v.fors, "path_roots": v.path_roots, "paths": v.paths, "test_paths": v.test_paths})
+                "assigns": v.assigns, "lets": v.lets, "fors": v.fors, "binops": v.binops, "exits": v.exits,
+                "path_roots": v.path_roots, "paths": v.paths, "test_paths": v.test_paths})
         }
         Err(e) => json!({"schema": SCHEMA, "file": path, "ok": false,
             "err": format!("{}:{} {}", e.span().start().line, e.span().start().column, e)}),
