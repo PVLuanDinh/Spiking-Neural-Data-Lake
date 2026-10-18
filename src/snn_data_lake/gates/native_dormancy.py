@@ -34,9 +34,9 @@ prints `native/ ABSENT`, distinct from "0 findings".
 OWN BLIND SPOTS (printed beside the verdict with `rust_facts.BLIND_SPOTS`): liveness is per FILE, not
 per item (a live export's file reaches a module even when the item it names is unused); a `use`, call
 or path inside an inline `mod` resolves from the file's module (the file's own children, then its `use`
-aliases, then any inline module's children, first-declared winning a shared name); trait dispatch and generics match by last
-segment name; a Python facade re-export of an exported learning fn (called only through the
-re-exporting module) gives a false M1.
+aliases, then any inline module's children, first-declared winning a shared name); trait dispatch and
+generics match by last segment name; a Python facade re-export of an exported learning fn (called only
+through the re-exporting module) gives a false M1.
 Test code is the reader's `test_file` (one classifier); only `build.rs` is excluded here by name.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.gates.native_dormancy
@@ -184,9 +184,8 @@ class _Tree:
             elif depth < 6 and s in self.alias.get(f := _file(cur), {}):
                 out |= self.reach(f, self.alias[f][s].split("::") + segs[k + 1 :], depth + 1)
                 break
-            elif s in self.flat.get(
-                cur, {}
-            ):  # last: a name declared in one of the file's inline modules
+            # last: a name declared in one of the file's inline modules
+            elif s in self.flat.get(cur, {}):
                 cur = self.flat[cur][s]
             else:
                 break
@@ -552,6 +551,13 @@ _ALIASED = {
     "src/other.rs": "pub struct O;\n",
 }
 
+_REEXPORTED = {  # _ALIASED with the alias re-exported and no top-level use of it
+    **_ALIASED,
+    "src/lib.rs": _ALIASED["src/lib.rs"]
+    .replace("let _ = helpers::deeper::D; ", "")
+    .replace("use crate::real", "pub use crate::real"),
+}
+
 
 # distinct-from: sleep_plasticity_ab.py pool_selection.py access_consciousness.py evidence_accumulation.py prefrontal_executive.py -- a scratch-home guard, an instrument stepper, a GNW index, a drift-diffusion race, a WTA decision; this WRITES a fixture tree with two inline modules naming one child (sibling of _ping_fixture)
 def _two_inline_used(path):
@@ -676,7 +682,7 @@ FOLD_CASES = {
         _ping_fixture(_USED_TWICE, "let _ = sndl_core::used::Used;"),
         (1, 0),
     ),
-    # fold round 5 review panel (on 8f2aee72, 05b03cf1): inline-module nodes vs paths written inside them
+    # fold round 5 review panel on 8f2aee72, 05b03cf1, 0bca6da7: inline-module nodes vs paths written inside them
     # `super` climbs out of an inline node to the file (GREEN: alternate -> lib -> used; RED stays inside)
     "super-out-of-an-inline-node": (
         _ping_fixture(
@@ -734,6 +740,13 @@ FOLD_CASES = {
         _ping_fixture(_two_inline_used("crate::c::used::X2"), "sndl_core::h();"),
         (1, 0),
     ),
+    # a cross-crate `sndl_core::helpers::..` through `pub use crate::real as helpers` resolves the alias in
+    # the file reached by the crate hop (lib.rs), before that file's inline child named helpers
+    "cross-crate-alias-resolves-in-the-hopped-to-file": (
+        _ping_fixture(_REEXPORTED, "sndl_core::f();"),
+        _ping_fixture(_REEXPORTED, "let _ = sndl_core::helpers::deeper::D; sndl_core::f();"),
+        (1, 0),
+    ),
 }
 # RED arm of a fold-5 case -> the file its one D2b must name (the counts above cannot tell x1 from x2)
 FOLD_FILES = {
@@ -742,6 +755,7 @@ FOLD_FILES = {
     "path-written-inside-an-inline-module": "src/a/b.rs",
     "nested-and-sibling-inline-modules": "src/x2.rs",
     "use-alias-beats-an-inline-child": "src/real/deeper.rs",
+    "cross-crate-alias-resolves-in-the-hopped-to-file": "src/real/deeper.rs",
     "first-declared-inline-module-wins-a-shared-child": "src/x2.rs",
 }
 
