@@ -224,6 +224,14 @@
       "subclause_of": "P5",
       "table_only": false,
       "title": "TWO AXES, NEITHER SUBSTITUTES FOR THE OTHER (owner directive, 2026-08-05)"
+    },
+    {
+      "commands": [],
+      "id": "P5b",
+      "kind": "review-only",
+      "subclause_of": "P5",
+      "table_only": false,
+      "title": "PYTHON BY DEFAULT; RUST ONLY WHERE IT IS A MEASURED IMPROVEMENT (owner directive, 2026-10-17)"
     }
   ]
 }
