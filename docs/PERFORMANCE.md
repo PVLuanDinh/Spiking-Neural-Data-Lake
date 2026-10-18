@@ -41,8 +41,8 @@ calls `torch.set_default_device(...)` so every tensor and module built afterward
 GPU. Scripts that construct an explicit `torch.Generator()` bind it to the resolved device so the
 RNG matches the tensors.
 
-Covered scripts: `snn_mnist_stdp`, `snn_mnist_stdp_fast`, `snn_motor_control`,
-`snn_world_model_rl`, `snn_dreamer_6dof`, `snn_ssm_shd` (via the shared helper).
+Covered scripts: `snn_mnist_stdp`, `snn_mnist_stdp_fast` (via the shared helper; `snn_motor_control`,
+`snn_world_model_rl`, `snn_dreamer_6dof`, `snn_ssm_shd` were retired by del-reasoning 1f/1g).
 (`eth_mnist_bindsnet`, which carried its own `--gpu` flag, was RETIRED 2026-08-07 together with
 the `bindsnet` dependency it was the sole importer of.)
 
