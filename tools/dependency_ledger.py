@@ -198,36 +198,6 @@ ALL_EXCLUDES = {
     "desktop": "pywebview -- a native GUI toolkit for the cockpit window. The cockpit is already reachable in any browser at :8137, so this buys a window, not a capability, and it pulls a platform GUI stack.",
     "hf": "datasets + huggingface-hub -- a network-backed dataset tier. sensorimotor/hf_stream.py's self-check is deliberately OFFLINE and needs none of it (run_selfchecks CORE: 'offline self-check (no network, no datasets dep)'), so `[all]` stays installable with no network stack.",
     "nengo": "installing nengo CHANGES THE GATE: run_selfchecks grows NENGO_GATED from skipped to run, and nengo ships a pytest plugin whose hook signature is invalid under pytest 9.1.1 -- survivable only because `-p no:nengo` is in addopts. An aggregate extra must not silently move the gate count. RE-MEASURED 2026-08-05: `run_selfchecks.py --list` prints 280 modules in .venv-lake, where `importlib.util.find_spec('nengo')` is None and no NENGO_GATED entry is listed at all; installing nengo adds it. This entry quoted POLICIES.md P5's `277 -> 278` until today -- stale by the +3 that specs/010's CORE promotions produced, and re-running it is what showed that. The structural claim this exclusion actually rests on is that the count MOVES, which is unchanged; the absolute was decoration, so the new absolute is given only for the half that was measured here.",
-    "arc": (
-        "ADVERTISES A CAPABILITY THAT DOES NOT RUN. `[all]` is the capability path, and folding "
-        "`arc` into it would promise an ARC-AGI faculty that raises on its first call: "
-        "reasoning/arc_agi/play.py binds `arc_agi` to the FIRST-PARTY package (which is a single "
-        "docstring line) and then calls `arc_agi.Arcade()`, which does not exist there -- an "
-        "AttributeError on every interpreter, with arcengine installed or not. play_brain.py is "
-        "worse: bare `from play import ...` with its sys.path bootstrap gutted to `pass`, so it "
-        "cannot resolve from an installed wheel at all. Declaring the dependency makes both "
-        "modules IMPORTABLE, never RUNNABLE. "
-        "THIS REASON WAS PROMOTED FROM SECONDARY TO PRIMARY ON 2026-08-05, and the reason it "
-        "replaced is recorded because the replacement is the finding. The original argument was "
-        "INTERPRETER-CONDITIONAL: arcengine declares `Requires-Python: >=3.12` while pyproject "
-        'declared `requires-python = ">=3.11"`, so the spec carried the marker '
-        '`python_version >= "3.12"` and `pip install ".[all]"` RESOLVED on 3.11 by installing '
-        "nothing -- an aggregate that meant two different things on two supported interpreters. "
-        "Raising the floor to >=3.12 the same day made that argument describe nothing, so the "
-        "exclusion stood for several hours on a reason that had become void. "
-        "NO GATE CAUGHT IT, AND NONE CAN AS BUILT: STALE-EXCLUDE fires when an excluded extra IS "
-        "in [all] or does not exist -- it checks membership STRUCTURALLY and never whether the "
-        "written justification is still true. A prose reason is exactly the thing this file "
-        "verifies for pyproject (MISDESCRIBED) and does not verify for itself. Recorded rather "
-        "than silently rewritten, because 'the justification rotted while the gate stayed green' "
-        "is the defect this project keeps finding, and here it landed inside the ledger. "
-        "ALSO RECORDED, offered as a reason and rejected because it did "
-        "not survive re-running: play.py's docstring says the dependency 'requires ... "
-        "numpy>=2.2 (conflicts with tonic in .venv-cu128)', and that does NOT reproduce. "
-        "Measured: arcengine 0.9.3 declares `numpy>=1.24.0` (not >=2.2), arc-agi 0.9.9 declares "
-        "no numpy at all, and tonic 1.6.0 declares `numpy<2.0.0` -- 1.24 <= n < 2.0 satisfies "
-        "both, so there is no measured numpy conflict to exclude on."
-    ),
 }
 
 

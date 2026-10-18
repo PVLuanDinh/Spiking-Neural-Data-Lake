@@ -112,13 +112,8 @@ readme = "README.md"
 # mujoco-3.11.0-cp314-cp314t-win_amd64.whl, numpy-2.5.1-cp314-cp314t-win_amd64.whl. The mujoco one
 # was the gating question, since that pin is exact BECAUSE the solver version is the physics.
 requires-python = ">=3.14"
-# FLOOR RAISED 3.11 -> 3.12, 2026-08-05 (owner decision). The reason is the [arc] extra below:
-# `arcengine` declares `Requires-Python: >=3.12`, so under a ">=3.11" floor its spec needed the
-# environment marker `python_version >= "3.12"` to stay resolvable -- and that marker evaluates
-# False on 3.11, so `pip install ".[arc]"` resolved BY INSTALLING NOTHING while
-# reasoning/arc_agi/{play,play_brain}.py import `arcengine` UNGUARDED at module top and ship in the
-# wheel. There was no install command that made them importable on a supported interpreter. Raising
-# the floor makes the marker vacuously true on every supported interpreter, so the marker is gone.
+# FLOOR RAISED 3.11 -> 3.12, 2026-08-05 (owner decision), for the [arc] extra's arcengine; that extra and its two
+# importers (reasoning/arc_agi) were RETIRED by del-reasoning 1b, so the floor now stands on the cp314t ABI above.
 #
 # THE PRICE, WRITTEN DOWN RATHER THAN PAPERED OVER: THE CPU GATE VENV NO LONGER CONFORMS TO THIS
 # FLOOR. `.venv-lake` is **Python 3.11.15** -- measured 2026-08-05, twice: `.venv-lake/pyvenv.cfg`
@@ -254,33 +249,6 @@ train = ["torch", "torchvision", "numpy", "scikit-learn"]              # GPU tra
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
 nengo = ["nengo"]                                                       # infra/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, the default install never imports it
 nir = ["nir", "h5py", "numpy"]                                           # infra/nir_export.to_nir_graph -> canonical NIR HDF5 for Loihi 2 / SpiNNaker 2 / Speck / Xylo. ADDED 2026-08-04 (specs/010, P7): the import at nir_export.py:121 is lazy and raises a helpful ImportError, but it was declared NOWHERE, so `pip install ".[all]"` could not produce a tree where the export path runs. Distribution name confirmed from the module's own install hint ("pip install nir numpy"), not guessed. h5py ADDED 2026-08-20 (specs/022 T018): engine/wiring_manifest.py imports it DIRECTLY (the manifest artifact's JSON attr rides in the same HDF5 file nir writes), and a directly-imported transitive gets DECLARED, not assumed -- the pillow precedent; the dependency ledger caught the omission on landing day.
-arc = ["arcengine"]                                                      # src/snn_data_lake/reasoning/arc_agi/{play,play_brain}.py: the ARC-AGI-3 arcade bridge. ADDED 2026-08-05 (P7 ledger): `from arcengine import GameAction, GameState` is UNGUARDED at module top in BOTH, and both SHIP IN THE WHEEL (`[tool.hatch.build.targets.wheel] packages = ["src/snn_data_lake"]`), so `pip install .` produced a tree where `import snn_data_lake.reasoning.arc_agi.play` raised ModuleNotFoundError -- RE-RUN 2026-08-05 in .venv-lake, it does. DECLARED rather than guarded/retired: under P4c `reasoning/` is part of the brain and not a parking lot, so the honest fix for an unguarded import of a real distribution is to declare it; under P7 "it would be another dependency" is not a reason to reject one. Distribution name read from the INSTALLED metadata (.venv-arc/Lib/site-packages/arcengine-0.9.3.dist-info/METADATA -> `Name: arcengine`, `Author: arcprizefoundation`, INSTALLER `pip`, no direct_url.json so it came from an index, not a local path), NOT from play.py's docstring, which names the SIBLING `arc-agi` distribution (`Name: arc-agi` 0.9.9, `Requires-Dist: arcengine>=0.9.3`) that merely depends on it -- declaring on the docstring's word would have manufactured the false entry this file's ledger warns about.
-# THE MARKER IS GONE, 2026-08-05, AND THE COMMENT THAT JUSTIFIED IT WAS REWRITTEN RATHER THAN LEFT
-# TO ROT. This spec read `arcengine; python_version >= "3.12"` for as long as requires-python was
-# ">=3.11", and the paragraph here explained why: arcengine declares `Requires-Python: >=3.12`, so
-# an unmarked spec was unresolvable on 3.11. It then recorded the marker's price in its own words --
-# *"There is no install command that makes them importable on 3.11"* -- which was TRUE while the
-# floor was 3.11 and is FALSE now that the floor is 3.12. That sentence is deleted, not softened:
-# with `requires-python = ">=3.12"` (see the block beside it above) the marker is vacuously true on
-# every supported interpreter, so it buys nothing and is removed, and `pip install ".[arc]"` now
-# installs arcengine on every interpreter this project supports.
-#
-# WHAT THAT DOES *NOT* BUY -- THE MODULES ARE NOW IMPORTABLE AND ARE STILL NOT RUNNABLE. Raising the
-# floor fixes an INSTALL defect and nothing else. Both modules remain broken on 3.12 with arcengine
-# present, for reasons that have nothing to do with the interpreter, each MEASURED in .venv-lake on
-# 2026-08-05 rather than read off the source:
-#   * `play.py` binds `import snn_data_lake.reasoning.arc_agi as arc_agi` -- the FIRST-PARTY package
-#     -- and `play()` then calls `arc_agi.Arcade()`. `reasoning/arc_agi/__init__.py` is a single
-#     docstring line and defines no `Arcade`; measured, `hasattr(arc_agi, "Arcade")` is False, so
-#     that call raises AttributeError on 3.12 with arcengine installed exactly as it would on 3.11.
-#   * `play_brain.py` does bare `from play import _BY_VALUE, play` and `from rule_inducer import
-#     ...` after its sys.path bootstrap was gutted to a bare `pass` ("migrated: sys.path bootstrap
-#     removed"). There are no top-level `play` / `rule_inducer` distributions: measured,
-#     `importlib.util.find_spec("play")` and `find_spec("rule_inducer")` are both None, so it cannot
-#     resolve its siblings from an installed wheel at all, on any interpreter.
-# Fixing `Arcade` and the sibling imports is out of scope for the floor change and is open work in
-# files this commit does not touch. Declaring the dependency closes the P7 ledger's UNDECLARED
-# finding -- a finding about pyproject naming its imports -- and that is the whole of what it closes.
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference â€” no cloud)
 genn = ["pygenn @ https://github.com/genn-team/genn/archive/refs/tags/5.4.0.zip"]  # NOT on PyPI (measured 2026-08-07: /pypi/pygenn/json -> 404; GitHub releases carry no wheels) -- installs from source per GeNN's own docs, needs a C++ compiler + CUDA. Consumers: instruments/snn_mnist_stdp_genn + reasoning/paradigm_b_genn. ml_genn was dropped 2026-10-06 with training/mnist_genn, its only importer (owner 17c)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe (build-time only)
