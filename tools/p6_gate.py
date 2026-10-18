@@ -191,8 +191,11 @@ routed through any of them is invisible to `undeclared_import_pairs`.
 import argparse
 import ast
 import os
+import posixpath
 import sys
+import tempfile
 from collections import defaultdict
+from pathlib import Path, PurePosixPath
 
 # --------------------------------------------------------------------------------------------------
 # What counts as "the workspace". Two bus classes. (Until 2026-08-12 this set also carried
@@ -1068,11 +1071,10 @@ def parse_connectome(root, source=None):
     return node_region, edges, effector
 
 
-def region_imports(root, overlay=None):
-    """Region imports, attributed to frozen anatomy labels across G8 package moves."""
-    overlay = dict(overlay or {})
-    pkg = source_dir(root)
-    with open(os.path.join(pkg, "__init__.py"), encoding="utf-8") as fh:
+def frozen_labels(root):
+    """{module basename: frozen anatomy label} from __init__'s LEGACY_* tables -- the ONE region table,
+    shared by the Python walk and the Rust half (P2: a Rust module is labelled by the same rule)."""
+    with open(os.path.join(source_dir(root), "__init__.py"), encoding="utf-8") as fh:
         registry = ast.parse(fh.read())
     labels = {}
     for statement in registry.body:
@@ -1086,6 +1088,42 @@ def region_imports(root, overlay=None):
                 if module in labels and labels[module] != region:
                     raise AssertionError(f"conflicting frozen labels for {module}")
                 labels[module] = region
+    return labels
+
+
+def _native_target(relpath, parts, rust_status, export_region, regions, native_out):
+    """Connectome region of a `_native` import target, or None -- recorded in native_out["unmapped"] WITH
+    its reason, never dropped: `_native` is no region, so an unmapped target would otherwise leave the diff
+    silently; a target outside every connectome region is reported too (fold 2)."""
+    sym = parts[1] if len(parts) > 1 else "<module>"
+    region = export_region.get(sym)
+    if region in regions:
+        return region
+    if not rust_status.startswith("native/ PRESENT"):
+        why = rust_status
+    elif sym in ("<module>", "*"):
+        why = "module-level or star import names no symbol"
+    elif sym not in export_region:
+        why = "not a PyO3 export"
+    elif region is None:
+        why = "its Rust file has no region"
+    else:
+        why = f"its Rust file's region `{region}` is not a connectome region"
+    native_out["unmapped"].append(f"{relpath}: _native.{sym} ({why})")
+    return None
+
+
+def region_imports(root, overlay=None, labels=None, native=None, native_out=None, regions=()):
+    """Region imports, attributed to frozen anatomy labels across G8 package moves.
+
+    `native=(rust_status, {python-visible export: region})` maps a `from snn_data_lake._native import NAME`
+    target to its Rust file's region; the pair also lands in `native_out["mapped"]` (r02b-p6)."""
+    overlay = dict(overlay or {})
+    pkg = source_dir(root)
+    labels = frozen_labels(root) if labels is None else labels
+    rust_status, export_region = native or (NATIVE_ABSENT, {})
+    native_out = {"mapped": set(), "unmapped": []} if native_out is None else native_out
+    leaf = _gates()[0].NATIVE_MODULE.rpartition(".")[2]  # "_native"
     directed = set()
     paths = []
     for dirpath, dirnames, filenames in os.walk(pkg):
@@ -1143,6 +1181,14 @@ def region_imports(root, overlay=None):
             for parts in targets:
                 if not parts:
                     continue
+                if parts[0] == leaf:
+                    target = _native_target(
+                        relpath, parts, rust_status, export_region, regions, native_out
+                    )
+                    if target and target != src_region:
+                        directed.add((src_region, target))
+                        native_out["mapped"].add((src_region, target))
+                    continue
                 # A moved module keeps its pre-G8 anatomical label. Only use a basename
                 # when the import names a real module at that physical path; otherwise
                 # the final token may be a class, function or attribute.
@@ -1157,7 +1203,154 @@ def region_imports(root, overlay=None):
     return directed
 
 
-def connectome_diff(root, overlay=None, conn_source=None):
+# --------------------------------------------------------------------------------------------------
+# Half two's RUST side (R0.2 arc 2, r02b-p6; DISPOSITION row 18). A `use`/path under native/ that crosses a
+# region pair is an import pair exactly like a Python import, so the day a declared Python import becomes a
+# Rust `use` the SAME `undeclared_import_pairs` ceiling sees it. Reader: rust_facts only (P2); path
+# resolution: native_dormancy._Tree, the one crate/super/self resolver over rust_facts.mod_files.
+# --------------------------------------------------------------------------------------------------
+NATIVE_ABSENT = "native/ ABSENT (0 .rs files)"
+RUST_BLIND_SPOTS = (
+    "a path into ANOTHER crate (`sndl_core::x`) from a regioned file resolves only when that crate's "
+    "root is in the facts",
+    "a `#[path]`-relocated file keeps the region of its on-disk directory",
+    "attribute-style `_native.f` after `from snn_data_lake import _native` names no symbol here "
+    "(import_manifest's python_native_refs sees it)",
+    "`use` inside an inline mod resolves from the file's module (native_dormancy._Tree)",
+    "a `pub use` re-export met mid-path, or a path revisiting a module already walked, counts the walked chain",
+    "a file in no mod tree still counts (an unresolved `#[path]` include must not escape); `reach` follows the "
+    "LAST same-name declaration; `#[cfg_attr(test, path = ..)]` is one declaration; in a lib+bin crate "
+    "`crate::` from the bin resolves against lib.rs",
+)
+
+
+def _gates():
+    """Lazy: this tool runs with no PYTHONPATH; only the Rust half needs the package."""
+    here = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    from snn_data_lake.gates import native_dormancy, rust_facts
+
+    return rust_facts, native_dormancy
+
+
+def _native_rel(path, base):
+    """`path` (absolute on the real tree, native-relative in fixtures) relative to native/, POSIX."""
+    p = str(path)
+    return (os.path.relpath(p, base) if os.path.isabs(p) else p).replace(os.sep, "/")
+
+
+# distinct-from: brain_atlas.region_of -- labels a module of the LIVE package; this labels a Rust FILE of an
+#   arbitrary --root tree by the same frozen table (frozen_labels), the gate's own copy of the rule.
+def rust_region(rel, crate, labels):
+    """Region of a Rust file by the PYTHON rule (P2): the frozen label of its stem first (a moved module
+    keeps its label), else its first directory below `<crate>/src/`. The crate roots lib.rs / main.rs belong
+    to no region; a top-level `src/<stem>.rs` IS the `<stem>` module (Rust 2018 layout; folds 1-2)."""
+    if crate is None:
+        return None
+    parts = (rel if not crate else rel[len(crate) + 1 :]).split("/")[1:]  # below src/
+    stem = parts[-1][: -len(".rs")]
+    if len(parts) == 1:
+        return None if stem in ("lib", "main") else labels.get(stem, stem)
+    return labels.get(stem, parts[0])
+
+
+_PATH_HEADS = ("crate", "self", "super")
+_MAX_ALIAS_HOPS = 6
+
+
+def _terminal(tree, rel, segs):
+    """The module(s) a path finally lands on, by `_Tree.reach`: a leading `use` alias is expanded first, then
+    the target is what the LAST resolving segment added -- the Python rule labels only the module imported,
+    never the modules passed through (the physical parent of a relocated module; fold 3)."""
+    for _ in range(_MAX_ALIAS_HOPS):
+        head = segs[0]
+        if head in _PATH_HEADS or head in tree.names or head in tree.children.get(rel, {}):
+            break
+        if head not in tree.alias.get(rel, {}):
+            break
+        segs = tree.alias[rel][head].split("::") + segs[1:]
+    prev, hits = set(), set()
+    for k in range(1, len(segs) + 1):
+        cur = tree.reach(rel, segs[:k])
+        if cur - prev:
+            hits = cur - prev
+        prev = cur
+    return hits
+
+
+def rust_region_imports(root, labels, native=None):
+    """(status, directed Rust region pairs, {python-visible export: region}) -- the ONE Rust entry point.
+
+    `native=(status, file_facts)` injects facts in place of the real tree's. `.rs` present and the reader
+    failing is a status `liveness()` turns RED (fail closed), never a skip. Test code and cfg(test) reaches
+    are not wires."""
+    rust_facts, native_dormancy = _gates()
+    if native is None:
+        try:
+            # `.rs` are listed from `root`; the reader is built from THIS checkout (rust_facts.ROOT),
+            # never from --root's tools/rsfacts (panel fold 1: inspecting a tree must not run its code).
+            files = rust_facts.rust_files(Path(root))
+            status = f"native/ PRESENT ({len(files)} .rs files)" if files else NATIVE_ABSENT
+            native = (status, rust_facts.facts(files))
+        except rust_facts.RustFactsUnavailable as exc:
+            return f"native/ UNAVAILABLE (RED, fail closed: RustFactsUnavailable: {exc})", set(), {}
+    status, file_facts = native
+    base = os.path.join(root, rust_facts.NATIVE_DIR)
+    by_rel = {_native_rel(f["file"], base): f for f in file_facts}
+    tree = native_dormancy._Tree(by_rel)
+    roots = {rel for rel in by_rel if native_dormancy._is_root(rel)}
+    for rel in (
+        roots - tree.in_tree
+    ):  # a bin root beside lib.rs: the tree walks one root per crate (fold 3)
+        tree._walk_decl(rel)
+    # Production = crate roots + files reached from them through NON-cfg(test) `mod` edges (the tree already
+    # honours #[path]) + files in no mod tree; minus the reader's test files. A file ALSO declared under
+    # cfg(test) stays production (fold 2). Stopgap until rust_facts.test_file_flags classifies this itself.
+    production = roots | (set(by_rel) - tree.in_tree)
+    todo = list(production)
+    while todo:
+        rel = todo.pop()
+        mod_rs = posixpath.basename(rel) in rust_facts.MOD_RS
+        for m in by_rel[rel].get("mods", []):
+            if m["inline"] or m["cfg_test"]:
+                continue
+            # the tree keeps ONE child per name (last declaration wins); a `#[path]` declaration is re-resolved
+            # by the reader's rule so a cfg-swapped `mod imp;` pair keeps its production file (fold 3)
+            is_path, cands = rust_facts.mod_files(PurePosixPath(rel), m, mod_rs)
+            kids = (
+                [posixpath.normpath(str(c)) for c in cands]
+                if is_path and not m["mod"]
+                else [tree.children.get(rel, {}).get(m["name"])]
+            )
+            for kid in kids:
+                if kid in by_rel and kid not in production:
+                    production.add(kid)
+                    todo.append(kid)
+    production = {rel for rel in production if not by_rel[rel]["test_file"]}
+    region = {rel: rust_region(rel, tree.crate_of.get(rel), labels) for rel in production}
+    directed = set()
+    for rel, src_region in region.items():
+        if src_region is None:
+            continue
+        f = by_rel[rel]
+        # distinct-from: _Tree.refs -- the same resolver, WITHOUT `path_roots` (first segments the reader
+        # records with no cfg_test flag): an inline `#[cfg(test)] mod { super::.. }` is no wire (fold 2).
+        refs = [u["path"] for u in f.get("uses", []) if not u["cfg_test"]]
+        refs += [c["path"] for c in f.get("calls", []) if not c["cfg_test"]]
+        refs += list(f.get("paths", []))
+        for hit in {h for p in refs for h in _terminal(tree, rel, p.split("::"))}:
+            target = region.get(hit)
+            if target and target != src_region:
+                directed.add((src_region, target))
+    exports = {
+        name: region.get(_native_rel(e["file"], base))
+        for name, e in rust_facts.pyo3_exports(file_facts).items()
+    }
+    return status, directed, exports
+
+
+def connectome_diff(root, overlay=None, conn_source=None, native=None):
     node_region, edges, effector = parse_connectome(root, source=conn_source)
     regions = sorted({r for r in node_region.values() if r})
     declared_dir = set()
@@ -1166,12 +1359,20 @@ def connectome_diff(root, overlay=None, conn_source=None):
         if rs and rt and rs != rt:
             declared_dir.add((rs, rt))
     declared = {tuple(sorted(p)) for p in declared_dir}
-    imported_dir = {
-        (a, b) for a, b in region_imports(root, overlay) if a in regions and b in regions
-    }
+    labels = frozen_labels(root)
+    rust_status, rust_directed, export_region = rust_region_imports(root, labels, native)
+    native_out = {"mapped": set(), "unmapped": []}
+    py_directed = region_imports(
+        root, overlay, labels, (rust_status, export_region), native_out, regions
+    )
+    imported_dir = {(a, b) for a, b in py_directed | rust_directed if a in regions and b in regions}
     imported = {tuple(sorted(p)) for p in imported_dir}
     return {
         "regions": regions,
+        "rust_status": rust_status,
+        "rust_directed": rust_directed,
+        "native_mapped": native_out["mapped"],
+        "native_unmapped": sorted(native_out["unmapped"]),
         "n_nodes": len(node_region),
         "n_edges": len(edges),
         "n_effector": len(effector),
@@ -1190,7 +1391,7 @@ def connectome_diff(root, overlay=None, conn_source=None):
 # --------------------------------------------------------------------------------------------------
 # Measure -- everything the report and the criteria need, derived once.
 # --------------------------------------------------------------------------------------------------
-def measure(root, overlay=None, conn_source=None, api=None):
+def measure(root, overlay=None, conn_source=None, api=None, native=None):
     # dict() on BOTH sides deliberately: `api = API` would alias the global, and the `API.clear()`
     # below would then empty the very table it is about to be restored from -- measured, and the
     # result was 0 writes with the gate still printing OK, which is the silent-degradation shape this
@@ -1286,7 +1487,7 @@ def measure(root, overlay=None, conn_source=None, api=None):
         m for m in unread if write_targets.get(m) and all(o is None for o in write_targets[m])
     ]
 
-    conn = connectome_diff(root, overlay, conn_source)
+    conn = connectome_diff(root, overlay, conn_source, native)
 
     return {
         "walk": w,
@@ -1469,6 +1670,18 @@ def report(res, root):
         f"  imported: {len(c['imported_dir'])} directed region pairs -> {len(c['imported'])} undirected"
     )
     print(
+        f"  Rust half: {c['rust_status']} -> {len(c['rust_directed'])} directed Rust region pairs "
+        f"({sum(a in c['regions'] and b in c['regions'] for a, b in c['rust_directed'])} between connectome "
+        f"regions, counted above), {len(c['native_mapped'])} pairs via _native exports"
+    )
+    print(
+        f"  NATIVE TARGETS UNMAPPED: {len(c['native_unmapped'])} (printed, never dropped; "
+        "import_manifest asserts them)"
+    )
+    for line in c["native_unmapped"]:
+        print(f"      {line}")
+    print("  Rust blind spots: " + "; ".join((*_gates()[0].BLIND_SPOTS, *RUST_BLIND_SPOTS)))
+    print(
         f"  UNDIRECTED because an import is a REACH, not a signal direction: {len(c['reversed_artifact'])} "
         "of the directed\n  mismatches are the exact REVERSE of a declared edge, so a directed diff "
         "measures that artifact."
@@ -1628,6 +1841,316 @@ class ControlSharedBusFaculty:
 '''
 
 
+# ---- the Rust half's constructed arms (pre-registered in lanes/r0-arc2-1017/PREREG.md "r02b-p6") ----
+_RS_TIMING = (
+    "use pyo3::prelude::*;\n\npub struct Clock;\n\nimpl Clock {\n    pub fn new() -> Clock {\n"
+    "        Clock\n    }\n}\n\n#[pyfunction]\npub fn fear_step(x: f64) -> f64 {\n    x\n}\n"
+)
+RS_PY_LIB = (
+    "use pyo3::prelude::*;\n\n#[pymodule(gil_used = false)]\nmod _native {\n    #[pymodule_export]\n"
+    "    use sndl_core::cerebellum::timing::fear_step;\n}\n"
+)
+RS_CORE_LIB = "pub mod amygdala;\npub mod cerebellum;\n"
+RUST_FIXTURE = {
+    "native/sndl-core/src/lib.rs": RS_CORE_LIB,
+    "native/sndl-core/src/amygdala/mod.rs": "pub mod fear;\npub mod threat;\n",
+    "native/sndl-core/src/amygdala/threat.rs": "pub struct Level;\n",
+    "native/sndl-core/src/cerebellum/mod.rs": "pub mod timing;\n",
+    "native/sndl-core/src/cerebellum/timing.rs": _RS_TIMING,
+    "native/sndl-python/src/lib.rs": RS_PY_LIB,
+}
+RS_FEAR = "native/sndl-core/src/amygdala/fear.rs"
+RS_FEAR_GREEN = "use std::time::Instant;\n\npub fn f() -> Instant {\n    Instant::now()\n}\n"
+_RS_FEAR_CLOCK = "\n\npub fn f() -> Clock {\n    Clock\n}\n"
+_PY_NATIVE_MUTANT = (
+    '"""overlay mutant -- an amygdala module reaching cerebellum THROUGH a _native export."""\n\n'
+    "from snn_data_lake._native import fear_step\n\n\ndef use(x):\n    return fear_step(x)\n"
+)
+_PY_NATIVE_OVERLAY = {"amygdala/_p6_native_mutant.py": _PY_NATIVE_MUTANT}
+RUST_PAIR = {("amygdala", "cerebellum")}
+_RS_USE_CLOCK = "use crate::cerebellum::timing::Clock;\n"
+_RS_TESTS_FILE = _RS_USE_CLOCK + "\n#[test]\nfn t() {\n    let _c = Clock::new();\n}\n"
+_RS_CEREBELLUM_FC = {  # a relocated module: stem `fear_conditioning` is frozen amygdala
+    "native/sndl-core/src/cerebellum/mod.rs": "pub mod timing;\npub mod fear_conditioning;\n",
+}
+_RS_FC = "native/sndl-core/src/cerebellum/fear_conditioning.rs"
+# (name, how, amygdala/fear.rs, Python overlay, extra native files) -- each must move
+# undeclared_import_pairs by EXACTLY one pair, {(amygdala, cerebellum)}
+RUST_REDS = [
+    ("R1", "`use crate::cerebellum::timing::Clock;`", _RS_USE_CLOCK + _RS_FEAR_CLOCK, None, None),
+    (
+        "R2",
+        "the SAME wire spelled `use super::super::cerebellum::timing::Clock;`",
+        "use super::super::cerebellum::timing::Clock;" + _RS_FEAR_CLOCK,
+        None,
+        None,
+    ),
+    (
+        "R3",
+        "no `use` at all: the body path `crate::cerebellum::timing::Clock::new()`",
+        "pub fn f() {\n    let _c = crate::cerebellum::timing::Clock::new();\n}\n",
+        None,
+        None,
+    ),
+    (
+        "R4",
+        "a Python amygdala module importing `_native.fear_step`, defined in cerebellum/timing.rs",
+        RS_FEAR_GREEN,
+        _PY_NATIVE_OVERLAY,
+        None,
+    ),
+    (
+        "R6",
+        "a relocated module keeps its frozen label: cerebellum/fear_conditioning.rs (amygdala) uses timing",
+        RS_FEAR_GREEN,
+        None,
+        {**_RS_CEREBELLUM_FC, _RS_FC: _RS_USE_CLOCK + _RS_FEAR_CLOCK},
+    ),
+    (
+        "R7",
+        "Rust-2018 layout: src/cerebellum.rs IS the cerebellum module; fear.rs `use crate::cerebellum::Clock2;`",
+        "use crate::cerebellum::Clock2;\n\npub fn f() -> Clock2 {\n    Clock2\n}\n",
+        None,
+        {"native/sndl-core/src/cerebellum.rs": "pub mod timing;\n\npub struct Clock2;\n"},
+    ),
+    (
+        "R8",
+        "a relocated TOP-LEVEL module keeps its frozen label: src/fear_conditioning.rs (amygdala) uses timing",
+        RS_FEAR_GREEN,
+        None,
+        {
+            "native/sndl-core/src/lib.rs": RS_CORE_LIB + "pub mod fear_conditioning;\n",
+            "native/sndl-core/src/fear_conditioning.rs": _RS_USE_CLOCK + _RS_FEAR_CLOCK,
+        },
+    ),
+    (
+        "R9",
+        "R1 whose file is ALSO declared `#[cfg(test)] #[path = ..] mod test_fear;` in lib.rs: still a wire",
+        _RS_USE_CLOCK + _RS_FEAR_CLOCK,
+        None,
+        {
+            "native/sndl-core/src/lib.rs": RS_CORE_LIB
+            + '#[cfg(test)]\n#[path = "amygdala/fear.rs"]\nmod test_fear;\n'
+        },
+    ),
+    (
+        "R10",
+        "cfg-swapped `mod fear` (`#[cfg(not(test))] #[path = fear.rs]` + `#[cfg(test)] #[path = mock.rs]`): R1 stays a wire",
+        _RS_USE_CLOCK + _RS_FEAR_CLOCK,
+        None,
+        {
+            "native/sndl-core/src/amygdala/mod.rs": (
+                '#[cfg(not(test))]\n#[path = "fear.rs"]\nmod fear;\n'
+                '#[cfg(test)]\n#[path = "mock.rs"]\nmod fear;\npub mod threat;\n'
+            ),
+            "native/sndl-core/src/amygdala/mock.rs": "pub struct Mock;\n",
+        },
+    ),
+]
+_RS_INLINE_TESTS = (
+    "\n#[cfg(test)]\nmod tests {\n    use crate::cerebellum::timing::Clock;\n\n    #[test]\n"
+    "    fn t() {\n        let _ = crate::cerebellum::timing::Clock::new();\n    }\n}\n"
+)
+# same shape as RUST_REDS; fear.rs None = native/ ABSENT -- no Rust pair, every count == the empty-Rust
+# baseline; an ABSENT arm with an overlay prints exactly 1 UNMAPPED
+RUST_CONTROLS = [
+    ("G1", "`use std::time::Instant;` (no region reached)", RS_FEAR_GREEN, None, None),
+    (
+        "G2",
+        "G1 + `#[cfg(test)] use crate::cerebellum::...` + a tests/ file using it (test code is no wire)",
+        RS_FEAR_GREEN + "\n#[cfg(test)]\nuse crate::cerebellum::timing::Clock;\n",
+        None,
+        {"native/sndl-core/tests/fear_it.rs": _RS_TESTS_FILE.replace("crate::", "sndl_core::")},
+    ),
+    (
+        "G3",
+        "`use super::threat::Level;` (same region)",
+        "use super::threat::Level;\n\npub fn f() -> Level {\n    Level\n}\n",
+        None,
+        None,
+    ),
+    (
+        "G4",
+        "R4's `_native.fear_step` import with native/ ABSENT: PRINTED under NATIVE TARGETS UNMAPPED (1)",
+        None,
+        _PY_NATIVE_OVERLAY,
+        None,
+    ),
+    (
+        "G5",
+        "G1 + `#[cfg(test)] mod tests;` whose file amygdala/fear/tests.rs uses cerebellum (test code is no wire)",
+        RS_FEAR_GREEN + "\n#[cfg(test)]\nmod tests;\n",
+        None,
+        {"native/sndl-core/src/amygdala/fear/tests.rs": _RS_TESTS_FILE},
+    ),
+    (
+        "G7",
+        "G5 + a nested child of the cfg(test) module (fear/tests/helpers.rs uses cerebellum)",
+        RS_FEAR_GREEN + "\n#[cfg(test)]\nmod tests;\n",
+        None,
+        {
+            "native/sndl-core/src/amygdala/fear/tests.rs": "mod helpers;\n",
+            "native/sndl-core/src/amygdala/fear/tests/helpers.rs": _RS_TESTS_FILE,
+        },
+    ),
+    (
+        "G8",
+        "`#[cfg(test)] mod tests;` declared in a mod-rs file (amygdala/mod.rs -> amygdala/tests.rs)",
+        RS_FEAR_GREEN,
+        None,
+        {
+            "native/sndl-core/src/amygdala/mod.rs": "pub mod fear;\npub mod threat;\n#[cfg(test)]\nmod tests;\n",
+            "native/sndl-core/src/amygdala/tests.rs": _RS_TESTS_FILE,
+        },
+    ),
+    (
+        "G9",
+        "an inline `#[cfg(test)] mod tests { use ..; crate::..::new() }` in fear.rs",
+        RS_FEAR_GREEN + _RS_INLINE_TESTS,
+        None,
+        None,
+    ),
+    (
+        "G10",
+        "a relocated file (R6's) whose inline `#[cfg(test)] mod` reaches `super::super::timing` (no path_roots leak)",
+        RS_FEAR_GREEN,
+        None,
+        {
+            **_RS_CEREBELLUM_FC,
+            _RS_FC: RS_FEAR_GREEN + "\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn t() {\n"
+            "        let _ = super::super::timing::Clock::new();\n    }\n}\n",
+        },
+    ),
+    (
+        "G11",
+        'a `#[path]`-loaded parent: amygdala/mod.rs `#[path = "fear.rs"] pub mod fear;`, its `#[cfg(test)] mod checks;` sits beside it',
+        RS_FEAR_GREEN + "\n#[cfg(test)]\nmod checks;\n",
+        None,
+        {
+            "native/sndl-core/src/amygdala/mod.rs": '#[path = "fear.rs"]\npub mod fear;\npub mod threat;\n',
+            "native/sndl-core/src/amygdala/checks.rs": _RS_TESTS_FILE,
+        },
+    ),
+    (
+        "G12",
+        "a relocated amygdala module reached THROUGH cerebellum/mod.rs: `use crate::cerebellum::fear_conditioning::Cs;`",
+        "use crate::cerebellum::fear_conditioning::Cs;\n\npub fn f() -> Cs {\n    Cs\n}\n",
+        None,
+        {**_RS_CEREBELLUM_FC, _RS_FC: "pub struct Cs;\n"},
+    ),
+    (
+        "G13",
+        "a relocated module reaching its OWN region via its physical parent: `use super::super::amygdala::threat::Level;`",
+        RS_FEAR_GREEN,
+        None,
+        {
+            **_RS_CEREBELLUM_FC,
+            _RS_FC: "use super::super::amygdala::threat::Level;\n\npub fn f() -> Level {\n    Level\n}\n",
+        },
+    ),
+    (
+        "G14",
+        "lib+bin crate: main.rs declares `#[cfg(test)] #[path = amygdala/fear_test.rs] mod t;` (walked, not orphan production)",
+        RS_FEAR_GREEN,
+        None,
+        {
+            "native/sndl-core/src/main.rs": (
+                '#[cfg(test)]\n#[path = "amygdala/fear_test.rs"]\nmod t;\n\nfn main() {}\n'
+            ),
+            "native/sndl-core/src/amygdala/fear_test.rs": _RS_TESTS_FILE,
+        },
+    ),
+]
+
+
+def write_native(directory, fear_rs, extra=None):
+    """Write the constructed native/ tree (RUST_FIXTURE with amygdala/fear.rs = `fear_rs`, plus `extra`)
+    under `directory`; returns the written paths in table order."""
+    paths = []
+    for rel, body in {**RUST_FIXTURE, RS_FEAR: fear_rs, **(extra or {})}.items():
+        p = Path(directory) / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(body, encoding="utf-8")
+        paths.append(p)
+    return paths
+
+
+def fixture_native(fear_rs, extra=None):
+    """(status, facts) for the constructed native/ tree, facts keyed by native-relative path."""
+    rust_facts = _gates()[0]
+    with tempfile.TemporaryDirectory() as d:
+        paths = write_native(d, fear_rs, extra)
+        out = rust_facts.facts(paths)
+        for f, p in zip(out, paths, strict=True):
+            f["file"] = p.relative_to(Path(d) / rust_facts.NATIVE_DIR).as_posix()
+    return f"native/ PRESENT ({len(out)} .rs files, fixture)", out
+
+
+def rust_ceiling(empty):
+    """BASELINE with `undeclared_import_pairs` at the empty-Rust count (why: rust_self_check)."""
+    return {**BASELINE, "undeclared_import_pairs": empty["undeclared_import_pairs"]}
+
+
+def rust_self_check(root, empty):
+    """(rows, control_rows, lines) for the Rust arms, every one through measure(). `empty` = the EMPTY-RUST
+    metrics (real Python, no Rust): a future real native/ with wires cannot false-fail a fixture arm that
+    replaces the real facts, and `fired` is judged against the empty tree's OWN ceiling (panel folds 1-2)."""
+    from unittest import mock
+
+    base_undeclared = empty["undeclared_import_pairs"]
+    ceiling = rust_ceiling(empty)
+    rows, control_rows, lines = [], [], []
+    for name, how, fear_rs, overlay, extra in RUST_REDS:
+        mres = measure(root, overlay=overlay, native=fixture_native(fear_rs, extra))
+        after = mres["metrics"]["undeclared_import_pairs"]
+        pairs = mres["conn"]["native_mapped" if overlay else "rust_directed"]
+        verdict = {r[0]: r[4] for r in evaluate(mres["metrics"], ceiling)}
+        fired = (
+            not verdict["undeclared_import_pairs"]
+            and pairs == RUST_PAIR
+            and after == base_undeclared + 1
+        )
+        rows.append(
+            (
+                "undeclared_import_pairs",
+                f"Rust {name}: {how}",
+                base_undeclared,
+                after,
+                after != base_undeclared,
+                fired,
+            )
+        )
+    for name, how, fear_rs, overlay, extra in RUST_CONTROLS:
+        native = (NATIVE_ABSENT, []) if fear_rs is None else fixture_native(fear_rs, extra)
+        cres = measure(root, overlay=overlay, native=native)
+        reds = [r[0] for r in evaluate(cres["metrics"], ceiling) if not r[4]]
+        unmapped = cres["conn"]["native_unmapped"]
+        if (
+            cres["conn"]["rust_directed"]
+            or cres["metrics"] != empty
+            or len(unmapped) != (1 if overlay and fear_rs is None else 0)
+        ):
+            reds.append(
+                f"rust pairs {sorted(cres['conn']['rust_directed'])} / unmapped {unmapped} / metrics moved"
+            )
+        control_rows.append(
+            (f"Rust {name}: {how}", "not a brain wire; every count stays put", reds)
+        )
+    rust_facts = _gates()[0]
+    with mock.patch.object(
+        rust_facts, "rust_files", side_effect=rust_facts.RustFactsUnavailable("constructed")
+    ):
+        ures = measure(root)
+    _l, uproblems = liveness(root, ures)
+    assert ures["metrics"] == empty and any("RustFactsUnavailable" in p for p in uproblems), (
+        f"a constructed RustFactsUnavailable did not RED the liveness check (fail closed broken): {uproblems}"
+    )
+    lines.append(
+        "  rust fail-closed: constructed RustFactsUnavailable -> liveness INSTRUMENT DEAD (RED), metrics untouched"
+    )
+    return rows, control_rows, lines
+
+
 def _mutate_text(text, old, new, what):
     if old not in text:
         raise AssertionError(
@@ -1732,9 +2255,15 @@ def liveness(root, res):
         )
     if not c["imported"]:
         problems.append("the region import graph is EMPTY -- half two is measuring nothing")
+    if c["rust_status"].startswith("native/ UNAVAILABLE"):
+        problems.append(f"the Rust half cannot read native/ with .rs present -- {c['rust_status']}")
     lines.append(
         f"  connectome   : {c['n_edges']} edges -> {len(c['declared'])} declared pairs, "
         f"{len(c['imported'])} imported pairs"
+    )
+    lines.append(
+        f"  rust half    : {c['rust_status']}; {len(c['rust_directed'])} Rust region pairs, "
+        f"{len(c['native_mapped'])} via _native exports, {len(c['native_unmapped'])} _native targets unmapped"
     )
     return lines, problems
 
@@ -1965,6 +2494,13 @@ def self_check(root):
         cres = measure(root, overlay=overlay)
         reds = [r[0] for r in evaluate(cres["metrics"]) if not r[4]]
         control_rows.append((what, why, reds))
+
+    # ---- the RUST half (r02b-p6): every pre-registered arm through measure(); the real tree untouched ----
+    empty = measure(root, native=(NATIVE_ABSENT, []))["metrics"]
+    r_rows, r_controls, r_lines = rust_self_check(root, empty)
+    rows += r_rows
+    control_rows += r_controls
+    lines += r_lines
     return lines, rows, control_rows
 
 
