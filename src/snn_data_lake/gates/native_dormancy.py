@@ -32,10 +32,11 @@ reader unavailable -> an UNAVAILABLE finding in both groups, never a skip. A `na
 prints `native/ ABSENT`, distinct from "0 findings".
 
 OWN BLIND SPOTS (printed beside the verdict with `rust_facts.BLIND_SPOTS`): liveness is per FILE, not
-per item (a live export's file reaches a module even when the item it names is unused); a `use`
-inside an inline `mod` resolves from the file's module; trait dispatch and generics match by last
-segment name; a `#[path]` inside an inline `mod` is not followed; a Python facade
-re-export of an exported learning fn (called only through the re-exporting module) gives a false M1.
+per item (a live export's file reaches a module even when the item it names is unused); a `use`, call
+or path inside an inline `mod` resolves from the file's module (the file's own children, then its `use`
+aliases, then any inline module's children, first-declared winning a shared name); trait dispatch and
+generics match by last segment name; a Python facade re-export of an exported learning fn (called only
+through the re-exporting module) gives a false M1.
 Test code is the reader's `test_file` (one classifier); only `build.rs` is excluded here by name.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.gates.native_dormancy
@@ -58,7 +59,9 @@ NATIVE_EXEMPT_METHOD: dict[str, str] = {}  # "Type::fn" | "fn" | python name -> 
 
 BLIND_SPOTS = (
     "liveness is per file, not per item (a live export's file reaches its modules)",
-    "use inside an inline mod resolves from the file's module",
+    "a use, call or path inside an inline mod resolves from the file's module (the file's own children, "
+    "then its use aliases, then any inline module's children; the first-declared inline module wins a "
+    "shared child name)",
     "trait dispatch and generics match a caller by last segment name",
     "a Python facade re-export (`from ._native import f` in a live module that never calls it, "
     "used elsewhere through that module) gives a false M1: loads are read only from _native-referencing modules",
@@ -82,6 +85,11 @@ def _crate_of_root(rel):
     return posixpath.dirname(posixpath.dirname(rel))
 
 
+# distinct-from: rust_facts.mod_files import_manifest._targets atlas_node_gate._member_file -- those name files a Rust/Python module declaration loads; this reads the FILE back out of a dormancy tree node (`<file>` or `<file>::<inline path>`)
+def _file(node):
+    return node.partition("::")[0]
+
+
 def _aliases(f):
     return {
         u["alias"] or u["path"].split("::")[-1]: u["path"]
@@ -96,6 +104,7 @@ class _Tree:
     def __init__(self, by_rel, cargo_dirs=()):
         self.facts = by_rel
         self.crate_of, self.root, self.children, self.parent, self.alias = {}, {}, {}, {}, {}
+        self.flat = {}  # file -> children of its INLINE modules (a path written inside one resolves from the file)
         self.dirs = {*cargo_dirs, *(_crate_of_root(r) for r in by_rel if _is_root(r))}
         for rel in by_rel:
             d = self.crate_dir(rel)
@@ -128,27 +137,36 @@ class _Tree:
     def _walk_decl(self, rel, via_path=False):
         """Mod tree below `rel`, files resolved by the reader's ONE resolver (`rf.mod_files`, cfg(test)
         declarations kept: a test-only module is still in the tree). A file loaded through `#[path]`
-        is a mod-rs file, so its children sit beside it."""
+        is a mod-rs file, so its children sit beside it. Tree nodes are module PATHS: a file, or
+        `<file>::<inline path>` for an inline module, so `lib::used` and `lib::alternate::used` never
+        share a children slot (Codex r6 reader 3)."""
         if rel in self.in_tree:
             return
         self.in_tree.add(rel)
-        kids = self.children.setdefault(rel, {})
         mod_rs = via_path or posixpath.basename(rel) in rf.MOD_RS
         for m in self.facts[rel].get("mods", []):
-            if m["inline"]:
-                kids[m["name"]] = rel
-                continue
+            node = f"{rel}::{m['mod']}" if m["mod"] else rel
             is_path, cands = rf.mod_files(PurePosixPath(rel), m, mod_rs, cfg_test=True)
-            hit = next(
-                (c for c in (posixpath.normpath(str(c)) for c in cands) if c in self.facts), None
+            hit = (
+                f"{node}::{m['name']}"
+                if m["inline"]
+                else next(
+                    (c for c in (posixpath.normpath(str(c)) for c in cands) if c in self.facts),
+                    None,
+                )
             )
-            if hit:
-                kids[m["name"]] = hit
-                self.parent[hit] = rel
+            if not hit:
+                continue
+            self.children.setdefault(node, {})[m["name"]] = hit
+            self.parent[hit] = node
+            if m["mod"]:
+                self.flat.setdefault(rel, {}).setdefault(m["name"], hit)
+            if not m["inline"]:
                 self._walk_decl(hit, is_path)
 
     def reach(self, rel, segs, depth=0):
-        """Files touched by resolving the path `segs` written in file `rel`."""
+        """Files touched by resolving the path `segs` written in file `rel` (an inline-module node
+        counts as its file)."""
         out, cur, i = set(), rel, 0
         if segs[0] == "crate":
             cur, i = self.root.get(self.crate_of.get(rel), rel), 1
@@ -162,13 +180,16 @@ class _Tree:
                 cur = self.parent.get(cur, cur)
             elif s in self.children.get(cur, {}):
                 cur = self.children[cur][s]
-            elif depth < 6 and s in self.alias.get(cur, {}):
-                out |= self.reach(cur, self.alias[cur][s].split("::") + segs[k + 1 :], depth + 1)
+            elif depth < 6 and s in self.alias.get(f := _file(cur), {}):
+                out |= self.reach(f, self.alias[f][s].split("::") + segs[k + 1 :], depth + 1)
                 break
+            # last: a name declared in one of the file's inline modules
+            elif s in self.flat.get(cur, {}):
+                cur = self.flat[cur][s]
             else:
                 break
-            out.add(cur)
-        return out | {cur}
+            out.add(_file(cur))
+        return out | {_file(cur)}
 
     def refs(self, rel):
         f = self.facts[rel]
@@ -488,6 +509,68 @@ _STDP_BIND = (
 )
 _DRIVER = "fn drive() { let mut s = super::Stdp; s.potentiate(); }\n"
 
+
+# distinct-from: mlp_q.py __init__.py immortal_retention.py sleep_pruner_census.py so101_arm.py -- a Q row, a module alias loader, a call walker, a class resolver, an arm disturbance; this WRITES a fixture tree (sibling of _qualified_binding / _cell_lib / _test_lib)
+def _ping_fixture(core, body):
+    """`core` files under native/sndl-core/ plus a live, registered `ping` whose body is `body`."""
+    return {
+        **{f"native/sndl-core/{k}": v for k, v in core.items()},
+        "native/sndl-python/src/lib.rs": _PYO3 + f"#[pyfunction]\nfn ping() {{ {body} }}\n"
+        "#[pymodule]\nmod _native { #[pymodule_export] use super::ping; }\n",
+        "src/snn_data_lake/user.py": "from snn_data_lake._native import ping\n\nping()\n",
+    }
+
+
+# Crate-relative trees for `_ping_fixture` (it adds the native/sndl-core/ prefix); not for a bare `**` spread.
+_USED_TWICE = {
+    "src/lib.rs": 'pub mod used;\nmod alternate {\n #[path = "../../tests/used.rs"]\n pub mod used;\n}\n',
+    "src/used.rs": "pub struct Used;\n",
+    "tests/used.rs": "pub struct Other;\n",
+}
+_INLINE_LOCAL = {
+    "src/lib.rs": "pub mod a {\n pub mod b;\n pub fn f() {}\n}\n",
+    "src/a/b.rs": "pub fn g() {}\n",
+}
+_NESTED_SIBLINGS = {
+    "src/lib.rs": (
+        'mod a {\n mod b {\n  #[path = "../../x1.rs"]\n  pub mod used;\n }\n}\n'
+        'mod c {\n #[path = "../x2.rs"]\n pub mod used;\n}\n'
+    ),
+    "src/x1.rs": "pub struct X1;\n",
+    "src/x2.rs": "pub struct X2;\n",
+}
+_ALIASED = {
+    "src/lib.rs": (
+        "pub mod real;\nuse crate::real as helpers;\n"
+        "pub fn f() { let _ = helpers::deeper::D; let _ = t::helpers::O; }\n"
+        'mod t {\n #[path = "../other.rs"]\n pub mod helpers;\n}\n'
+    ),
+    "src/real.rs": "pub mod deeper;\n",
+    "src/real/deeper.rs": "pub struct D;\n",
+    "src/other.rs": "pub struct O;\n",
+}
+
+_REEXPORTED = {
+    **_ALIASED,
+    "src/lib.rs": _ALIASED["src/lib.rs"]
+    .replace("let _ = helpers::deeper::D; ", "")
+    .replace("use crate::real", "pub use crate::real"),
+}
+
+
+# distinct-from: sleep_plasticity_ab.py pool_selection.py access_consciousness.py evidence_accumulation.py prefrontal_executive.py -- a scratch-home guard, an instrument stepper, a GNW index, a drift-diffusion race, a WTA decision; this WRITES a fixture tree with two inline modules naming one child (sibling of _ping_fixture)
+def _two_inline_used(path):
+    return {
+        "src/lib.rs": (
+            'mod a {\n #[path = "../x1.rs"]\n pub mod used;\n}\n'
+            f'mod c {{\n #[path = "../x2.rs"]\n pub mod used;\n pub fn f() {{ let _ = {path}; }}\n}}\n'
+            "pub fn h() { c::f(); let _ = a::used::X1; }\n"
+        ),
+        "src/x1.rs": "pub struct X1;\n",
+        "src/x2.rs": "pub struct X2;\n",
+    }
+
+
 # name -> (RED files, GREEN files, RED (D, M) counts); every GREEN twin is 0/0
 FOLD_CASES = {
     "pyo3-qualified-pymodule": (
@@ -590,6 +673,89 @@ FOLD_CASES = {
         },
         (0, 1),
     ),
+    # fold round 5 (Codex r6 reader 3): `lib::used` (src/used.rs) and `lib::alternate::used` (a #[path]
+    # include of tests/used.rs) are distinct tree nodes; a live path through the second leaves the
+    # first unreached (RED), one through the first reaches it (GREEN).
+    "same-named-modules-at-different-paths": (
+        _ping_fixture(_USED_TWICE, "let _ = sndl_core::alternate::used::Other;"),
+        _ping_fixture(_USED_TWICE, "let _ = sndl_core::used::Used;"),
+        (1, 0),
+    ),
+    # fold round 5 review panel: inline-module nodes vs paths written inside them
+    # `super` climbs out of an inline node to the file (GREEN: alternate -> lib -> used; RED stays inside)
+    "super-out-of-an-inline-node": (
+        _ping_fixture(
+            {
+                **_USED_TWICE,
+                "tests/used.rs": "pub struct Other;\nfn g() { let _ = super::used::Other; }\n",
+            },
+            "let _ = sndl_core::alternate::used::Other;",
+        ),
+        _ping_fixture(
+            {
+                **_USED_TWICE,
+                "tests/used.rs": "pub struct Other;\nfn g() { let _ = super::super::used::Used; }\n",
+            },
+            "let _ = sndl_core::alternate::used::Other;",
+        ),
+        (1, 0),
+    ),
+    # `b::g()` written inside `mod a { pub mod b; .. }` resolves from the file yet reaches a's own child
+    "path-written-inside-an-inline-module": (
+        _ping_fixture(_INLINE_LOCAL, "sndl_core::a::f();"),
+        _ping_fixture(
+            {
+                **_INLINE_LOCAL,
+                "src/lib.rs": "pub mod a {\n pub mod b;\n pub fn f() { b::g(); }\n}\n",
+            },
+            "sndl_core::a::f();",
+        ),
+        (1, 0),
+    ),
+    # nested (`a::b::used`) and sibling (`c::used`) inline modules declaring one child name stay distinct
+    "nested-and-sibling-inline-modules": (
+        _ping_fixture(_NESTED_SIBLINGS, "let _ = sndl_core::a::b::used::X1;"),
+        _ping_fixture(
+            _NESTED_SIBLINGS, "let _ = sndl_core::a::b::used::X1; let _ = sndl_core::c::used::X2;"
+        ),
+        (1, 0),
+    ),
+    # for a path written at top level
+    "use-alias-beats-an-inline-child": (
+        _ping_fixture(
+            {
+                **_ALIASED,
+                "src/lib.rs": _ALIASED["src/lib.rs"].replace("let _ = helpers::deeper::D; ", ""),
+            },
+            "sndl_core::f();",
+        ),
+        _ping_fixture(_ALIASED, "sndl_core::f();"),
+        (1, 0),
+    ),
+    # BLIND SPOT pinned: inside `mod c`, the short `used::X2` lands on the FIRST inline module declaring
+    # `used` (a's x1.rs), so x2.rs reads dormant; Rust reaches x2 (GREEN spells crate::c::used::X2)
+    "first-declared-inline-module-wins-a-shared-child": (
+        _ping_fixture(_two_inline_used("used::X2"), "sndl_core::h();"),
+        _ping_fixture(_two_inline_used("crate::c::used::X2"), "sndl_core::h();"),
+        (1, 0),
+    ),
+    # a cross-crate `sndl_core::helpers::..` through `pub use crate::real as helpers` resolves the alias in
+    # the file reached by the crate hop (lib.rs), before that file's inline child named helpers
+    "cross-crate-alias-resolves-in-the-hopped-to-file": (
+        _ping_fixture(_REEXPORTED, "sndl_core::f();"),
+        _ping_fixture(_REEXPORTED, "let _ = sndl_core::helpers::deeper::D; sndl_core::f();"),
+        (1, 0),
+    ),
+}
+# RED arm of a fold-5 case -> the file its one D2b must name (the counts above cannot tell x1 from x2)
+FOLD_FILES = {
+    "same-named-modules-at-different-paths": "src/used.rs",
+    "super-out-of-an-inline-node": "src/used.rs",
+    "path-written-inside-an-inline-module": "src/a/b.rs",
+    "nested-and-sibling-inline-modules": "src/x2.rs",
+    "use-alias-beats-an-inline-child": "src/real/deeper.rs",
+    "cross-crate-alias-resolves-in-the-hopped-to-file": "src/real/deeper.rs",
+    "first-declared-inline-module-wins-a-shared-child": "src/x2.rs",
 }
 
 
@@ -623,6 +789,10 @@ def selfcheck():
                 res = audit(t, live=FIXTURE_LIVE, src=Path(t) / "src")
                 got = (len(res["d"]), len(res["m"]))
                 assert got == want_arm, f"fold case {name}: want {want_arm}, got {res}"
+                if files is red_files and name in FOLD_FILES:
+                    assert FOLD_FILES[name] in res["d"][0], (
+                        f"fold case {name} names the wrong file: {res['d']}"
+                    )
 
 
 def check(group):
@@ -640,7 +810,7 @@ def main():
     selfcheck()
     res = audit()
     print(
-        f"native_dormancy: self-check OK (RED 3 findings, GREEN 0, fail-closed, nested crates, fold-1 and fold-3 reds) | {res['status']} | "
+        f"native_dormancy: self-check OK (RED 3 findings, GREEN 0, fail-closed, nested crates, fold-1, fold-3, fold-5 and fold-5 review-panel reds) | {res['status']} | "
         f"D {len(res['d'])} M {len(res['m'])}"
     )
     print("native_dormancy BLIND SPOTS: " + "; ".join((*rf.BLIND_SPOTS, *BLIND_SPOTS)))
