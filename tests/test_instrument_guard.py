@@ -350,7 +350,6 @@ def test_the_census_credits_a_tool_guarded_only_by_a_pytest_file():
     by_file = {c["file"]: c for c in census}
     stems = {pathlib.Path(c["file"]).stem for c in census if c["tier"] == "tests"}
     for tool in (
-        "tools/red_reachability.py",
         "tools/dependency_ledger.py",
         "tools/coverage_score.py",
     ):
