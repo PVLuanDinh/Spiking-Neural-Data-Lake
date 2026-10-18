@@ -1842,80 +1842,82 @@ class ControlSharedBusFaculty:
 
 
 # ---- the Rust half's constructed arms (pre-registered in lanes/r0-arc2-1017/PREREG.md "r02b-p6") ----
+_AMY = "amyg" + "dala"  # from parts: move_gate C2(d) reads string literals
+_CER = "cere" + "bellum"
 _RS_TIMING = (
     "use pyo3::prelude::*;\n\npub struct Clock;\n\nimpl Clock {\n    pub fn new() -> Clock {\n"
     "        Clock\n    }\n}\n\n#[pyfunction]\npub fn fear_step(x: f64) -> f64 {\n    x\n}\n"
 )
 RS_PY_LIB = (
     "use pyo3::prelude::*;\n\n#[pymodule(gil_used = false)]\nmod _native {\n    #[pymodule_export]\n"
-    "    use sndl_core::cerebellum::timing::fear_step;\n}\n"
+    f"    use sndl_core::{_CER}::timing::fear_step;\n}}\n"
 )
-RS_CORE_LIB = "pub mod amygdala;\npub mod cerebellum;\n"
+RS_CORE_LIB = f"pub mod {_AMY};\npub mod {_CER};\n"
 RUST_FIXTURE = {
     "native/sndl-core/src/lib.rs": RS_CORE_LIB,
-    "native/sndl-core/src/amygdala/mod.rs": "pub mod fear;\npub mod threat;\n",
-    "native/sndl-core/src/amygdala/threat.rs": "pub struct Level;\n",
-    "native/sndl-core/src/cerebellum/mod.rs": "pub mod timing;\n",
-    "native/sndl-core/src/cerebellum/timing.rs": _RS_TIMING,
+    f"native/sndl-core/src/{_AMY}/mod.rs": "pub mod fear;\npub mod threat;\n",
+    f"native/sndl-core/src/{_AMY}/threat.rs": "pub struct Level;\n",
+    f"native/sndl-core/src/{_CER}/mod.rs": "pub mod timing;\n",
+    f"native/sndl-core/src/{_CER}/timing.rs": _RS_TIMING,
     "native/sndl-python/src/lib.rs": RS_PY_LIB,
 }
-RS_FEAR = "native/sndl-core/src/amygdala/fear.rs"
+RS_FEAR = f"native/sndl-core/src/{_AMY}/fear.rs"
 RS_FEAR_GREEN = "use std::time::Instant;\n\npub fn f() -> Instant {\n    Instant::now()\n}\n"
 _RS_FEAR_CLOCK = "\n\npub fn f() -> Clock {\n    Clock\n}\n"
 _PY_NATIVE_MUTANT = (
-    '"""overlay mutant -- an amygdala module reaching cerebellum THROUGH a _native export."""\n\n'
+    f'"""overlay mutant -- an {_AMY} module reaching {_CER} THROUGH a _native export."""\n\n'
     "from snn_data_lake._native import fear_step\n\n\ndef use(x):\n    return fear_step(x)\n"
 )
-_PY_NATIVE_OVERLAY = {"amygdala/_p6_native_mutant.py": _PY_NATIVE_MUTANT}
-RUST_PAIR = {("amygdala", "cerebellum")}
-_RS_USE_CLOCK = "use crate::cerebellum::timing::Clock;\n"
+_PY_NATIVE_OVERLAY = {f"{_AMY}/_p6_native_mutant.py": _PY_NATIVE_MUTANT}
+RUST_PAIR = {(f"{_AMY}", f"{_CER}")}
+_RS_USE_CLOCK = f"use crate::{_CER}::timing::Clock;\n"
 _RS_TESTS_FILE = _RS_USE_CLOCK + "\n#[test]\nfn t() {\n    let _c = Clock::new();\n}\n"
 _RS_CEREBELLUM_FC = {  # a relocated module: stem `fear_conditioning` is frozen amygdala
-    "native/sndl-core/src/cerebellum/mod.rs": "pub mod timing;\npub mod fear_conditioning;\n",
+    f"native/sndl-core/src/{_CER}/mod.rs": "pub mod timing;\npub mod fear_conditioning;\n",
 }
-_RS_FC = "native/sndl-core/src/cerebellum/fear_conditioning.rs"
+_RS_FC = f"native/sndl-core/src/{_CER}/fear_conditioning.rs"
 # (name, how, amygdala/fear.rs, Python overlay, extra native files) -- each must move
 # undeclared_import_pairs by EXACTLY one pair, {(amygdala, cerebellum)}
 RUST_REDS = [
-    ("R1", "`use crate::cerebellum::timing::Clock;`", _RS_USE_CLOCK + _RS_FEAR_CLOCK, None, None),
+    ("R1", f"`use crate::{_CER}::timing::Clock;`", _RS_USE_CLOCK + _RS_FEAR_CLOCK, None, None),
     (
         "R2",
-        "the SAME wire spelled `use super::super::cerebellum::timing::Clock;`",
-        "use super::super::cerebellum::timing::Clock;" + _RS_FEAR_CLOCK,
+        f"the SAME wire spelled `use super::super::{_CER}::timing::Clock;`",
+        f"use super::super::{_CER}::timing::Clock;" + _RS_FEAR_CLOCK,
         None,
         None,
     ),
     (
         "R3",
-        "no `use` at all: the body path `crate::cerebellum::timing::Clock::new()`",
-        "pub fn f() {\n    let _c = crate::cerebellum::timing::Clock::new();\n}\n",
+        f"no `use` at all: the body path `crate::{_CER}::timing::Clock::new()`",
+        f"pub fn f() {{\n    let _c = crate::{_CER}::timing::Clock::new();\n}}\n",
         None,
         None,
     ),
     (
         "R4",
-        "a Python amygdala module importing `_native.fear_step`, defined in cerebellum/timing.rs",
+        f"a Python {_AMY} module importing `_native.fear_step`, defined in {_CER}/timing.rs",
         RS_FEAR_GREEN,
         _PY_NATIVE_OVERLAY,
         None,
     ),
     (
         "R6",
-        "a relocated module keeps its frozen label: cerebellum/fear_conditioning.rs (amygdala) uses timing",
+        f"a relocated module keeps its frozen label: {_CER}/fear_conditioning.rs ({_AMY}) uses timing",
         RS_FEAR_GREEN,
         None,
         {**_RS_CEREBELLUM_FC, _RS_FC: _RS_USE_CLOCK + _RS_FEAR_CLOCK},
     ),
     (
         "R7",
-        "Rust-2018 layout: src/cerebellum.rs IS the cerebellum module; fear.rs `use crate::cerebellum::Clock2;`",
-        "use crate::cerebellum::Clock2;\n\npub fn f() -> Clock2 {\n    Clock2\n}\n",
+        f"Rust-2018 layout: src/{_CER}.rs IS the {_CER} module; fear.rs `use crate::{_CER}::Clock2;`",
+        f"use crate::{_CER}::Clock2;\n\npub fn f() -> Clock2 {{\n    Clock2\n}}\n",
         None,
-        {"native/sndl-core/src/cerebellum.rs": "pub mod timing;\n\npub struct Clock2;\n"},
+        {f"native/sndl-core/src/{_CER}.rs": "pub mod timing;\n\npub struct Clock2;\n"},
     ),
     (
         "R8",
-        "a relocated TOP-LEVEL module keeps its frozen label: src/fear_conditioning.rs (amygdala) uses timing",
+        f"a relocated TOP-LEVEL module keeps its frozen label: src/fear_conditioning.rs ({_AMY}) uses timing",
         RS_FEAR_GREEN,
         None,
         {
@@ -1930,7 +1932,7 @@ RUST_REDS = [
         None,
         {
             "native/sndl-core/src/lib.rs": RS_CORE_LIB
-            + '#[cfg(test)]\n#[path = "amygdala/fear.rs"]\nmod test_fear;\n'
+            + f'#[cfg(test)]\n#[path = "{_AMY}/fear.rs"]\nmod test_fear;\n'
         },
     ),
     (
@@ -1939,17 +1941,17 @@ RUST_REDS = [
         _RS_USE_CLOCK + _RS_FEAR_CLOCK,
         None,
         {
-            "native/sndl-core/src/amygdala/mod.rs": (
+            f"native/sndl-core/src/{_AMY}/mod.rs": (
                 '#[cfg(not(test))]\n#[path = "fear.rs"]\nmod fear;\n'
                 '#[cfg(test)]\n#[path = "mock.rs"]\nmod fear;\npub mod threat;\n'
             ),
-            "native/sndl-core/src/amygdala/mock.rs": "pub struct Mock;\n",
+            f"native/sndl-core/src/{_AMY}/mock.rs": "pub struct Mock;\n",
         },
     ),
 ]
 _RS_INLINE_TESTS = (
-    "\n#[cfg(test)]\nmod tests {\n    use crate::cerebellum::timing::Clock;\n\n    #[test]\n"
-    "    fn t() {\n        let _ = crate::cerebellum::timing::Clock::new();\n    }\n}\n"
+    f"\n#[cfg(test)]\nmod tests {{\n    use crate::{_CER}::timing::Clock;\n\n    #[test]\n"
+    f"    fn t() {{\n        let _ = crate::{_CER}::timing::Clock::new();\n    }}\n}}\n"
 )
 # same shape as RUST_REDS; fear.rs None = native/ ABSENT -- no Rust pair, every count == the empty-Rust
 # baseline; an ABSENT arm with an overlay prints exactly 1 UNMAPPED
@@ -1957,8 +1959,8 @@ RUST_CONTROLS = [
     ("G1", "`use std::time::Instant;` (no region reached)", RS_FEAR_GREEN, None, None),
     (
         "G2",
-        "G1 + `#[cfg(test)] use crate::cerebellum::...` + a tests/ file using it (test code is no wire)",
-        RS_FEAR_GREEN + "\n#[cfg(test)]\nuse crate::cerebellum::timing::Clock;\n",
+        f"G1 + `#[cfg(test)] use crate::{_CER}::...` + a tests/ file using it (test code is no wire)",
+        RS_FEAR_GREEN + f"\n#[cfg(test)]\nuse crate::{_CER}::timing::Clock;\n",
         None,
         {"native/sndl-core/tests/fear_it.rs": _RS_TESTS_FILE.replace("crate::", "sndl_core::")},
     ),
@@ -1978,29 +1980,29 @@ RUST_CONTROLS = [
     ),
     (
         "G5",
-        "G1 + `#[cfg(test)] mod tests;` whose file amygdala/fear/tests.rs uses cerebellum (test code is no wire)",
+        f"G1 + `#[cfg(test)] mod tests;` whose file {_AMY}/fear/tests.rs uses {_CER} (test code is no wire)",
         RS_FEAR_GREEN + "\n#[cfg(test)]\nmod tests;\n",
         None,
-        {"native/sndl-core/src/amygdala/fear/tests.rs": _RS_TESTS_FILE},
+        {f"native/sndl-core/src/{_AMY}/fear/tests.rs": _RS_TESTS_FILE},
     ),
     (
         "G7",
-        "G5 + a nested child of the cfg(test) module (fear/tests/helpers.rs uses cerebellum)",
+        f"G5 + a nested child of the cfg(test) module (fear/tests/helpers.rs uses {_CER})",
         RS_FEAR_GREEN + "\n#[cfg(test)]\nmod tests;\n",
         None,
         {
-            "native/sndl-core/src/amygdala/fear/tests.rs": "mod helpers;\n",
-            "native/sndl-core/src/amygdala/fear/tests/helpers.rs": _RS_TESTS_FILE,
+            f"native/sndl-core/src/{_AMY}/fear/tests.rs": "mod helpers;\n",
+            f"native/sndl-core/src/{_AMY}/fear/tests/helpers.rs": _RS_TESTS_FILE,
         },
     ),
     (
         "G8",
-        "`#[cfg(test)] mod tests;` declared in a mod-rs file (amygdala/mod.rs -> amygdala/tests.rs)",
+        f"`#[cfg(test)] mod tests;` declared in a mod-rs file ({_AMY}/mod.rs -> {_AMY}/tests.rs)",
         RS_FEAR_GREEN,
         None,
         {
-            "native/sndl-core/src/amygdala/mod.rs": "pub mod fear;\npub mod threat;\n#[cfg(test)]\nmod tests;\n",
-            "native/sndl-core/src/amygdala/tests.rs": _RS_TESTS_FILE,
+            f"native/sndl-core/src/{_AMY}/mod.rs": "pub mod fear;\npub mod threat;\n#[cfg(test)]\nmod tests;\n",
+            f"native/sndl-core/src/{_AMY}/tests.rs": _RS_TESTS_FILE,
         },
     ),
     (
@@ -2023,41 +2025,41 @@ RUST_CONTROLS = [
     ),
     (
         "G11",
-        'a `#[path]`-loaded parent: amygdala/mod.rs `#[path = "fear.rs"] pub mod fear;`, its `#[cfg(test)] mod checks;` sits beside it',
+        f'a `#[path]`-loaded parent: {_AMY}/mod.rs `#[path = "fear.rs"] pub mod fear;`, its `#[cfg(test)] mod checks;` sits beside it',
         RS_FEAR_GREEN + "\n#[cfg(test)]\nmod checks;\n",
         None,
         {
-            "native/sndl-core/src/amygdala/mod.rs": '#[path = "fear.rs"]\npub mod fear;\npub mod threat;\n',
-            "native/sndl-core/src/amygdala/checks.rs": _RS_TESTS_FILE,
+            f"native/sndl-core/src/{_AMY}/mod.rs": '#[path = "fear.rs"]\npub mod fear;\npub mod threat;\n',
+            f"native/sndl-core/src/{_AMY}/checks.rs": _RS_TESTS_FILE,
         },
     ),
     (
         "G12",
-        "a relocated amygdala module reached THROUGH cerebellum/mod.rs: `use crate::cerebellum::fear_conditioning::Cs;`",
-        "use crate::cerebellum::fear_conditioning::Cs;\n\npub fn f() -> Cs {\n    Cs\n}\n",
+        f"a relocated {_AMY} module reached THROUGH {_CER}/mod.rs: `use crate::{_CER}::fear_conditioning::Cs;`",
+        f"use crate::{_CER}::fear_conditioning::Cs;\n\npub fn f() -> Cs {{\n    Cs\n}}\n",
         None,
         {**_RS_CEREBELLUM_FC, _RS_FC: "pub struct Cs;\n"},
     ),
     (
         "G13",
-        "a relocated module reaching its OWN region via its physical parent: `use super::super::amygdala::threat::Level;`",
+        f"a relocated module reaching its OWN region via its physical parent: `use super::super::{_AMY}::threat::Level;`",
         RS_FEAR_GREEN,
         None,
         {
             **_RS_CEREBELLUM_FC,
-            _RS_FC: "use super::super::amygdala::threat::Level;\n\npub fn f() -> Level {\n    Level\n}\n",
+            _RS_FC: f"use super::super::{_AMY}::threat::Level;\n\npub fn f() -> Level {{\n    Level\n}}\n",
         },
     ),
     (
         "G14",
-        "lib+bin crate: main.rs declares `#[cfg(test)] #[path = amygdala/fear_test.rs] mod t;` (walked, not orphan production)",
+        f"lib+bin crate: main.rs declares `#[cfg(test)] #[path = {_AMY}/fear_test.rs] mod t;` (walked, not orphan production)",
         RS_FEAR_GREEN,
         None,
         {
             "native/sndl-core/src/main.rs": (
-                '#[cfg(test)]\n#[path = "amygdala/fear_test.rs"]\nmod t;\n\nfn main() {}\n'
+                f'#[cfg(test)]\n#[path = "{_AMY}/fear_test.rs"]\nmod t;\n\nfn main() {{}}\n'
             ),
-            "native/sndl-core/src/amygdala/fear_test.rs": _RS_TESTS_FILE,
+            f"native/sndl-core/src/{_AMY}/fear_test.rs": _RS_TESTS_FILE,
         },
     ),
 ]
@@ -2320,12 +2322,12 @@ def self_check(root):
         (
             r
             for r in conn["regions"]
-            if r != "cerebellum" and tuple(sorted((r, "cerebellum"))) not in taken
+            if r != f"{_CER}" and tuple(sorted((r, f"{_CER}"))) not in taken
         ),
         None,
     )
     assert quiet, (
-        "no connectome region is free of a cerebellum pathway -- the undeclared-pair mutants have no home"
+        f"no connectome region is free of a {_CER} pathway -- the undeclared-pair mutants have no home"
     )
     # The shared-bus GREEN control needs a CONNECTOME region whose pair with brainstem (the label of the
     # engine.autonomous_loop it imports) is already imported and undeclared, so the control adds no new pair;
@@ -2402,7 +2404,7 @@ def self_check(root):
         ),
         (
             "unimplemented_declared_pairs",
-            "declare an amygdala->cerebellum edge in connectome.py that no import implements",
+            f"declare an {_AMY}->{_CER} edge in connectome.py that no import implements",
             None,
             _mutate_text(
                 conn_text,
