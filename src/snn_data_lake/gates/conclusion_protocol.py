@@ -359,7 +359,10 @@ RUST_BLIND_SPOTS = (
 _INSTRUMENT = re.compile(
     r"(?<![A-Za-z0-9])(" + "|".join(INSTRUMENTS) + r")(?![A-Za-z0-9])"
 )  # `_` passes
-_ARITH = re.compile(r"[\w)\]]\s*[-+*/]\s*[\w(\[]")  # an operator with an operand on each side
+#: An operator (or `op=`, for a compound assignment inside macro tokens) with an operand on each side;
+#: the right operand may carry a unary `-`/`*`/`&` prefix. Fields join with ", " (`_text`), so a unary
+#: prefix that OPENS the next field never sits after an operand character.
+_ARITH = re.compile(r"[\w)\]]\s*[-+*/]=?\s*[-*&]*\s*[\w(\[]")
 _SCALAR_RET = re.compile(r"^->(f32|f64|i\d+|u\d+|isize|usize)$")
 _FACT_TEXT = {  # fact kind -> the text fields COMBINE-EXPR reads
     "lets": ("init",),
@@ -394,9 +397,8 @@ def show(integration, agency):
 """
 
 
-#: Review-fold reds and controls (PREREG addenda), each one fn through `rust_aggregate_findings`:
-#: (label, source, expected rule tags). The self-check and tests/test_r02b_verdict_rust.py both fire them.
-RUST_FOLD_REDS = [
+#: PREREG addenda cases, each one fn through `rust_aggregate_findings`: (label, source, expected rule tags).
+RUST_FOLD_CASES = (
     (
         "compound-assign",
         "pub fn score(mut integration: f64, agency: f64) -> f64 "
@@ -483,11 +485,42 @@ RUST_FOLD_REDS = [
         ["COMBINE-FN"],
     ),
     (
-        "name-part-match",  # disclosed: one identifier naming two instruments counts as two (Python half too)
+        "name-part-match",
         "pub fn r(integration_per_agency: f64) -> f64 { integration_per_agency * 2.0 }\n",
         ["COMBINE-FN"],
     ),
-]
+    (
+        "macro-compound-assign",
+        "pub fn score(mut integration: f64, agency: f64) -> f64 "
+        "{ dbg!({ integration += agency; integration }) }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "deref-right-operand-let",
+        "pub fn c(integration: &f64, agency: &f64) -> f64 { let s = *integration + *agency; s }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "deref-right-operand-call",
+        "pub fn c(integration: &f64, agency: &f64) -> f64 { pick(*integration * *agency, 0.0) }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "negated-right-operand",
+        "pub fn c(integration: f64, agency: f64) -> f64 { pick(integration - -agency, 0.0) }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "one-sided-arithmetic-call",  # blind spot 2: text-level, counts (pinned)
+        "pub fn c(integration: f64, agency: f64) -> f64 { pick(integration, 1.0 - agency) }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "one-sided-arithmetic-mcall",  # blind spot 2: text-level, counts (pinned)
+        "pub fn c(integration: f64, agency: f64) -> f64 { integration.max(agency * 2.0) }\n",
+        ["COMBINE-EXPR"],
+    ),
+)
 
 
 def _text(*parts) -> str:
@@ -801,7 +834,7 @@ def main() -> None:
     )
     rust_green = rust_aggregate_findings(fixture_facts(RUST_GREEN_SRC))
     assert rust_green == [], rust_green
-    for label, src, tags in RUST_FOLD_REDS:  # the review-fold reds and controls, exact
+    for label, src, tags in RUST_FOLD_CASES:
         got = [x.split(" ")[1] for x in rust_aggregate_findings(fixture_facts(src))]
         assert got == tags, (label, got)
     print(report())
