@@ -6,21 +6,24 @@ file magic, then a sequence of length-prefixed records -- [u32 little-endian len
 Every append is flushed + fsync'd, so a learned fact survives a crash / power loss; replay() streams
 every record back at the next boot, so a fresh PROCESS reconstructs everything learned in every prior
 run (cross-process never-forget). A torn trailing record (crash mid-append) is detected and ignored, so
-the log always reloads cleanly.
+the log always reloads cleanly. A dedup instance keeps its payloads resident and serves replay() from
+memory while stale() proves the file unchanged (Phase 1a, 2026-10-17; the proof hardened 2026-10-18).
 
 Payloads are arbitrary bytes -- the caller serializes. For the Spike Chat / developmental-loop fact
 schema {cue:[str], answer:str, triple?:[s,r,o], src?:str}, pack_fact / unpack_fact give a compact binary
 serialization (a u8 count + length-prefixed UTF-8 fields, struct-packed -- NOT JSON). So all learned
 knowledge is written to the SSD as raw binary.
 
-Zero runtime deps (struct + os). dedup=True skips a byte-identical record so the SSD stays lean.
+Zero runtime deps (stdlib only). dedup=True skips a byte-identical record so the SSD stays lean.
 
   python -m snn_data_lake.substrate.binlog   # self-check incl. a REAL cross-process binary never-forget proof
 """
 
 import os
 import struct
+import tempfile
 import threading
+import time
 
 _MAGIC = b"SNDLBIN1"  # 8-byte file magic: a raw-binary knowledge log, format v1
 _LEN = struct.Struct("<I")  # u32 little-endian per-record length prefix
@@ -45,10 +48,10 @@ class BinLog:
                 if f.read(len(_MAGIC)) != _MAGIC:
                     raise ValueError(f"{path}: not a {_MAGIC!r} raw-binary log")
             self._repair_torn_tail()  # a crash mid-append must not orphan future records
-        payloads = list(self.replay())  # the one boot-time full pass
+        self._stamp = self._fingerprint()  # see stale(): taken BEFORE the one boot pass, so any
+        payloads = list(self.replay())  # write landing during the pass leaves this instance stale
         self._seen = set(payloads) if self.dedup else None
         self._count = len(payloads)  # maintained -> count() is O(1), not a re-replay
-        self._size = os.path.getsize(self.path)  # see stale(): the cache's validity check
         # THE RESIDENT COPY (Phase 1a of the Rust port, 2026-10-17). A dedup instance already holds
         # every payload in `_seen`; keeping the same objects in append ORDER costs one pointer per
         # record (8 bytes x 8.0M = 64 MB on the 3.46 GB operator lake) and lets replay() serve the
@@ -70,19 +73,86 @@ class BinLog:
         and the record is silently lost -- which is precisely what `_repair_torn_tail` exists to
         prevent. Caught by tests/test_selfchecks.py::...[substrate.home].
 
-        Size is sufficient because every legitimate change goes through `append()`, `extend()` or
-        `rewrite()`, each of which updates `_size` under the same lock as the write. (This sentence
-        named `append()` ALONE until 2026-08-05, and it was accurate when written and wrong by the
-        time the other two took the lock -- extend/rewrite maintained no `_size` at all, so every
-        call left this instance permanently stale. A docstring that names one of three writers is
-        how the omission stayed invisible.) Any other size -- truncation, an external writer, a
-        restored backup -- means this instance's `_seen`/`_count` describe a file that no longer
-        exists, and the caller must rebuild rather than trust them.
+        Size was the whole check until 2026-10-18 (see below) because every legitimate change goes
+        through `append()`, `extend()` or `rewrite()`, each of which updated `_size` under the same
+        lock as the write. (This sentence named `append()` ALONE until 2026-08-05, and it was
+        accurate when written and wrong by the time the other two took the lock -- extend/rewrite
+        maintained no `_size` at all, so every call left this instance permanently stale. A
+        docstring that names one of three writers is how the omission stayed invisible.) Any other
+        size -- truncation, an external writer, a restored backup -- means this instance's
+        `_seen`/`_count` describe a file that no longer exists, and the caller must rebuild rather
+        than trust them.
+
+        SIZE ALONE WAS NOT SUFFICIENT once replay() served the resident copy (Codex B1 p1a MAJOR 1+2,
+        folded 2026-10-18, then a seven-lens review fold the same day). Reproduced holes: an
+        equal-size `rewrite()` by another instance kept the size and so kept this one's resident
+        records current-looking; a local `append()` after an external append re-read the size and
+        blessed a resident copy that had never seen the external record; an equal-size rewrite
+        landing between a writer's pre-write check and its post-write stat was blessed by size
+        alone; and a tail check that lived only in replay() let the next local write bless a copy
+        the tail check had just refused. The check is now TWO reads, both here so every reader
+        (`replay()`, `home._log`, the writers' pre-write `was_current`) shares one rule, kept
+        honest by ONE stamping rule:
+          1. the file's identity `_fingerprint()` = (size, mtime_ns, inode) equals `_stamp`
+             (`os.replace`, i.e. every `rewrite()`, changes the inode; an in-place edit the mtime);
+          2. the last frame on disk (4 B + the last payload, read below; never a pass) is the
+             resident copy's last payload -- needed because this box updates mtime per timer tick,
+             not per write: three writes in one tick measured identical `st_mtime_ns`;
+          3. THE STAMPING RULE (`_restamp`, not a read): a writer blesses a new stamp only when it was current
+             BEFORE writing and the path afterwards carries the SAME inode grown by EXACTLY its own
+             bytes; `rewrite()` only if the path carries the inode AND size of the temp file it
+             published; construction stamps BEFORE its one pass. Anything else keeps the old stamp:
+             this instance stays stale, replay() reads the disk, `home._log` rebuilds it.
+        RESIDUAL, STATED: an equal-size edit of an EARLIER record that keeps the last frame, the
+        inode and the mtime tick is invisible to stat + tail, and so is an in-place edit of the LAST
+        record that lands inside a writer's own window (between its pre-write check and its stamp)
+        -- both need an external in-place writer (reviewed 2026-10-18: no stdlib `os` field carries
+        NTFS ChangeTime, `st_ctime_ns` is creation time on Windows 3.14, the lake volume's USN
+        journal is inactive). No production writer edits the lake in place; the one raw in-place
+        writer in the tree, `instruments/replay_hydration._plant_bout` (r+b truncate on a throwaway
+        home), shrinks the file or changes its tail and is caught. Closing the residual for good
+        means a writer-side generation counter in the format, not more stat fields.
         """
         try:
-            return os.path.getsize(self.path) != self._size
+            if self._fingerprint() != self._stamp:
+                return True
+            resident = self._payloads  # None: nothing resident (dedup=False); []: a magic-only file
+            if not resident:
+                return False
+            last = resident[-1]
+            with open(self.path, "rb") as f:
+                f.seek(self._stamp[0] - _LEN.size - len(last))
+                return f.read(_LEN.size) != _LEN.pack(len(last)) or f.read(len(last)) != last
         except OSError:
-            return True  # deleted or unreadable: certainly not the file we replayed
+            return True  # deleted, unreadable or torn under us: certainly not the file we replayed
+
+    def _fingerprint(self):
+        """One-stat identity; see stale() for what it cannot see."""
+        st = os.stat(self.path)
+        return (st.st_size, st.st_mtime_ns, st.st_ino)
+
+    def _restamp(self, ino, size):
+        """Adopt the current fingerprint only if the path carries exactly the inode and size this writer
+        expects; otherwise keep the old stamp so stale() stays True."""
+        try:
+            now = self._fingerprint()
+        except OSError:
+            return
+        if now[2] == ino and now[0] == size:
+            self._stamp = now
+
+    def _replace(self, tmp):
+        """`os.replace(tmp, path)`, retried while a reader holds the log open: on Windows CPython opens
+        without FILE_SHARE_DELETE, so a handle open on the destination makes MoveFileEx fail with
+        PermissionError ([WinError 5]) -- stale()'s tail read holds one for one frame's read, a disk
+        replay for a whole pass. Bounded (5 s); then the error is the caller's."""
+        for _ in range(500):
+            try:
+                os.replace(tmp, self.path)
+                return
+            except PermissionError:
+                time.sleep(0.01)
+        os.replace(tmp, self.path)
 
     def _repair_torn_tail(self):
         """A crash mid-append can leave a partial length/payload frame at the end. replay() stops at it
@@ -160,6 +230,7 @@ class BinLog:
         with self._lock:
             if self.dedup and payload in self._seen:
                 return False
+            was_current = not self.stale()  # see _restamp(): a write never blesses a stale copy
             with open(self.path, "ab") as f:
                 f.write(
                     _LEN.pack(len(payload)) + payload
@@ -170,7 +241,8 @@ class BinLog:
                 self._seen.add(payload)
                 self._payloads.append(payload)  # the resident copy follows the disk, in order
             self._count += 1
-            self._size = os.path.getsize(self.path)  # keep stale() honest about our own writes
+            if was_current:  # keep stale() honest about our own writes
+                self._restamp(self._stamp[2], self._stamp[0] + _LEN.size + len(payload))
         return True
 
     def extend(self, payloads):
@@ -189,8 +261,10 @@ class BinLog:
         738.8 -> 0.334 us and FLATTENS at 0.264 us/rec from N=100,000 (identical at N=1,000,000),
         which is the floor left once the fsync is fully amortised. For contrast a per-record
         `append()` measured 459.0 us/rec with the same payloads, of which **fsync is 77.9 percent**,
-        open/close 13.4 percent, `os.path.getsize` 3.2 percent and the lock 0.015 percent. So the
-        gate on batching is NOT a width -- it is the durability paragraph below.
+        open/close 13.4 percent, `os.path.getsize` 3.2 percent and the lock 0.015 percent (since
+        2026-10-18 `append()` stats twice, before and after the write, and reads one tail frame;
+        the breakdown was not re-measured). So the gate on batching is NOT a width -- it is the
+        durability paragraph below.
 
         READ THE MULTIPLES AS AN ORDER, NOT AS CONSTANTS. Re-swept independently 2026-08-05 on the
         same machine and env: the SHAPE reproduced exactly -- N=1 a tie (1.00x on min, 0.99x on
@@ -227,7 +301,7 @@ class BinLog:
         triple under `budget=32` on every fourth night -- N up to 32, measured 21.3x, and it is the
         record set this paragraph's first bullet describes. Changing it is a one-line edit in a file
         this pass does not own; it is reported, not made."""
-        written = 0
+        written = grown = 0
         # SAME CRITICAL SECTION AS append(), added 2026-08-04. This method held no lock while
         # append() held one, and the justification append() gives applies here verbatim: the
         # instance is SHARED (substrate/home.py caches one per path), so an unlocked
@@ -243,6 +317,7 @@ class BinLog:
         # function of lake SIZE, so quote the derivation, not the number -- it grows as the brain
         # learns, which is the direction that makes losing the cache worse over time, not better.
         with self._lock:
+            was_current = not self.stale()  # see _restamp(): a write never blesses a stale copy
             with open(self.path, "ab") as f:
                 for payload in payloads:
                     if not isinstance(payload, (bytes, bytearray)):
@@ -261,11 +336,13 @@ class BinLog:
                         self._seen.add(payload)
                         self._payloads.append(payload)  # resident copy follows the disk
                     written += 1
+                    grown += _LEN.size + len(payload)
                 if written:
                     f.flush()
                     os.fsync(f.fileno())  # ONE fsync for the whole batch
             self._count += written
-            self._size = os.path.getsize(self.path)  # keep stale() honest about our own writes
+            if was_current and grown:  # keep stale() honest about our own writes
+                self._restamp(self._stamp[2], self._stamp[0] + grown)
         return written
 
     def replay(self):
@@ -293,12 +370,14 @@ class BinLog:
         SERVED FROM THE RESIDENT COPY WHILE THE FILE IS UNCHANGED (Phase 1a, 2026-10-17). A
         constructed dedup instance holds every payload in order (see `__init__`); if `stale()` says
         the file on disk is still the one this instance wrote, that list IS the log and is yielded
-        as-is -- the same append order, the same bytes, zero disk reads. Validity is the one rule
-        `substrate/home._log` already trusts to hand out a cached instance (size unchanged by any
-        writer but this one); a stale instance, an undedup'd one, or a bare `BinLog.__new__` falls
+        as-is -- the same append order, the same objects, no disk pass (since the 2026-10-18 fold
+        `stale()` reads one tail frame to say so). Validity is the one rule `substrate/home._log`
+        already trusts to hand out a cached instance (`stale()`: fingerprint and tail unchanged by
+        any writer but this one); a stale instance, an undedup'd one, or a bare `BinLog.__new__` falls
         through to the disk scan below, which is unchanged. The disk is the source of truth and the
         list is a cache over it (P4b's own wording), so an external truncation, restore or append
-        reaches every reader through the same stat that already invalidates `_seen` and `_count`."""
+        reaches every reader through the same `stale()` (stat + tail frame) that already
+        invalidates `_seen` and `_count`."""
         resident = getattr(self, "_payloads", None)  # a bare __new__ instance has no copy
         if resident is not None and not self.stale():
             yield from resident
@@ -331,15 +410,26 @@ class BinLog:
         file + fsync + os.replace), so a crash mid-compaction leaves the OLD log intact -- never a half lake.
         Returns the new record count.
 
-        NOTE FOR CALLERS THAT CACHE ANYTHING DERIVED FROM THIS LOG: `_size` is maintained here, so
-        `stale()` deliberately reports False after a rewrite -- this instance IS current, it is the
-        one that wrote the file. A caller that hung a derived index off this instance therefore gets
-        no signal that the records it was built from are gone, and has to drop it itself;
-        `home.KnowledgeLog.consolidate` does exactly that for its `_snn_state_index`. Clearing it
-        here instead would be the wrong side of the boundary -- a payload is opaque bytes to BinLog,
-        and it stays that way."""
+        NOTE FOR CALLERS THAT CACHE ANYTHING DERIVED FROM THIS LOG: `_stamp` (`_size` until
+        2026-10-18) is re-taken here, so `stale()` deliberately reports False after a rewrite --
+        this instance IS current, it is the one that wrote the file (unless another writer touched
+        the file between the swap and the stat; then the stamp is kept and `stale()` stays True). A
+        caller that hung a derived index off this instance therefore gets no signal that the records
+        it was built from are gone, and has to drop it itself; `home.KnowledgeLog.consolidate` does
+        exactly that for its `_snn_state_index`. Clearing it here instead would be the wrong side of
+        the boundary -- a payload is opaque bytes to BinLog, and it stays that way."""
         survivors = [bytes(p) for p in survivors]
-        tmp = self.path + ".compact.tmp"
+        if not all(survivors):  # same torn-frame refusal as append()/extend(); see PROPERTY 9
+            raise ValueError(
+                "BinLog.rewrite: every payload must be non-empty (a 0 length is a torn frame)"
+            )
+        # a private name per call: a fixed name lets a concurrent rewrite publish its bytes under
+        # another's inode
+        fd, tmp = tempfile.mkstemp(
+            dir=os.path.dirname(self.path) or ".",
+            prefix=os.path.basename(self.path) + ".",
+            suffix=".compact.tmp",
+        )
         # UNDER THE SAME LOCK as append()/extend(), added 2026-08-04. This ran unlocked on a SHARED
         # instance while the sleep tick calls it (engine/brain.py, `klog.consolidate(survivors)`).
         # An append that landed between building `tmp` and the os.replace was written to the file
@@ -349,19 +439,27 @@ class BinLog:
         # it is the kind of latency that ends the moment a second writer is added, and append()'s
         # own docstring already assumes request threads write here.
         with self._lock:
-            with open(tmp, "wb") as f:
-                f.write(_MAGIC)
-                for p in survivors:
-                    f.write(_LEN.pack(len(p)) + p)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(
-                tmp, self.path
-            )  # atomic swap: readers see either the whole old or the whole new log
+            try:
+                with os.fdopen(fd, "wb") as f:
+                    f.write(_MAGIC)
+                    for p in survivors:
+                        f.write(_LEN.pack(len(p)) + p)
+                    f.flush()
+                    os.fsync(f.fileno())
+                    published = os.fstat(f.fileno())  # the identity and extent the path will carry
+                self._replace(tmp)
+            # BaseException: ENOSPC, a refused swap or an interrupt must not leave a lake-sized temp
+            # file behind (unique names pile up)
+            except BaseException:
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
+                raise
             self._seen = set(survivors) if self.dedup else None
             self._payloads = survivors if self.dedup else None  # the resident copy IS the new log
             self._count = len(survivors)
-            self._size = os.path.getsize(self.path)  # a rewrite changes the size; keep stale() true
+            self._restamp(published.st_ino, published.st_size)
         return self._count
 
 
