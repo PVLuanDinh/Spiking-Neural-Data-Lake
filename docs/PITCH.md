@@ -66,7 +66,7 @@ Each contribution is tagged by its evidentiary status:
 **[PoC]** — working end-to-end but at prototype scale or with a stated simplification;
 **[prototype]** — a first working version, correctness/engineering demonstrated, not yet hardened or benchmarked against alternatives.
 
-### 2.1 Data systems over spike trains — three paradigms **[validated (A/B), PoC (C, lakehouse)]**
+### 2.1 Data systems over spike trains — three paradigms **[validated (A/B), PoC (C)]**
 
 Rather than treating spikes only as a neural-network activation, the repo implements three
 explicit data-system paradigms directly over spike trains:
@@ -86,10 +86,9 @@ explicit data-system paradigms directly over spike trains:
   ships in-core; the KG-embedding research lineage (TransE/RotatE, full relation algebra)
   lives in `research/`. **[PoC]** — link prediction and VSA composition work and are measured
   (see Results), but this is a research-scale KG, not a production reasoning engine.
-- **Local Medallion lakehouse.** Bronze→Silver→Gold over Parquet with a
-  data-quality gate and a Delta Lake PoC (transaction log, `OPTIMIZE`, time-travel).
-  **[PoC]** — a proof-of-concept lakehouse at Medallion scale, not a production query
-  engine (see Limitations).
+- **Retired: Medallion lakehouse PoC.** An earlier Bronze→Silver→Gold Parquet PoC with a
+  data-quality gate and a Delta Lake demo existed. It was retired on 2026-10-17
+  (commit 9e378fb2, with its `[lake]` extra) and ships nothing today.
 
 ### 2.2 ~90 neuromorphic primitives **[validated]**
 
@@ -148,7 +147,7 @@ Three pillars share one primitive layer:
 
 1. **Spiking-neural-network toolkit** — neuron models, plasticity, coding, cognitive-map
    mechanisms, streaming sketches (§2.2).
-2. **Spiking data-lakehouse** — Paradigms A/B/C plus the Medallion lakehouse (§2.1).
+2. **Spiking data-lakehouse** — Paradigms A/B/C (§2.1); the earlier Medallion PoC is retired.
 3. **Robot-arm control loop** — sense → think → act, safety-gated throughout (§2.3).
 
 End-to-end closed loop (text diagram, see `docs/OVERVIEW.md` for the fully annotated version):
@@ -312,7 +311,7 @@ Stated in the project's own voice (README "Limitations & open problems", CHANGEL
   generate synthetic sensor data for several demos rather than live sensor capture; the live
   ESP32 path currently covers distance + IR temperature only, with visual/audio bands held at
   zero pending hardware.
-- **The lakehouse is a PoC at Medallion scale, not a production query engine.**
+- **The Medallion lakehouse PoC is retired (2026-10-17, commit 9e378fb2);** the paradigms are research-scale, not a production query engine.
 - **The N-MNIST event-camera ingest is an explicitly flagged plumbing/pipeline demo** —
   nearest-prototype matching, no learning — off-theme relative to the project's core
   storage/robotics thesis (literature SOTA on comparable event benchmarks is ~99.3%); the
