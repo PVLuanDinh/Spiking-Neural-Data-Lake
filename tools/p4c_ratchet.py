@@ -81,10 +81,37 @@ THE TWO EXCLUSIONS -- stated, counted and REPORTED on every run, never silent
       `tests/` is the most-gated directory in the repo -- full ruff ruleset (the `src/**`
       per-file-ignores do not reach it), run by pytest, coverage-measured.
 
+  `tools/rsfacts/**` (R0.2 row 17, 2026-10-17: Cargo.toml + src/main.rs) -- the gate toolchain's own
+      build, the syn CLI behind `gates/rust_facts.py`. It joined the corpus the day `.rs` did, and it
+      carries the disposition every Rust-aware gate and `dependency_ledger` already give rsfacts'
+      Cargo.toml: gate tooling, out of scope for brain rules, NAMED and counted, never scanned.
+  `native/** test code` -- Rust test code per `rust_facts.test_file_flags` (a crate's `tests/`,
+      `benches/`, `examples/`, not reached by a production `mod`): the instrument, not a build, by the
+      same argument as `tests/**`.
+
 Nothing else is excluded. In particular `tools/` (this file included), `docs/coverage/artifacts/`
 and the repo root are COUNTED, because P4c names them and POLICIES.md already carries both as open
 debt. Adding a new ungoverned tool therefore reddens the build, and that is the gate working: the
 question it forces -- "why is this not a module in `substrate/`?" -- is the question P4c asks.
+
+
+THE RUST HALF (R0.2 row 17): `.rs` and Cargo manifests are in the corpus, with a MEMBERSHIP RULE
+------------------------------------------------------------------------------------------------
+The corpus is `*.py`, `*.rs` and every `Cargo.toml` (git's view, as before). The zone of a file under
+`native/<crate>/` is `native/<crate>`. A `.rs` there is GOVERNED iff its crate is in `NATIVE_TIER`
+(the hand-written table below, printed on every run: the Rust registration, as REGIONS is the Python
+one) AND the file is reachable from the crate's `src/lib.rs` / `src/main.rs` through `mod x;`
+declarations -- resolved by the reader's ONE resolver (`rust_facts.mod_files`, cfg(test) children kept,
+`#[path]` honoured) through the ONE walker (`native_dormancy._Tree`), never re-derived here. A tier
+crate's `Cargo.toml` and `build.rs` are governed with it; `native/Cargo.toml` (the workspace manifest)
+is governed while any tier crate directory exists. Everything else under `native/` is ungoverned and
+counts: an untracked `src/scratch.rs` outside the mod tree, or the first file of a crate the table does
+not list, reds its zone (no baseline entry = 0). Membership follows a tier crate's OWN roots (a file
+another crate reaches through `#[path]` is not thereby governed). Blind spot, inherited from the shared
+resolver: a `#[path]` on an ENCLOSING inline module is not applied to its children (they resolve under
+the module's name, not its path). Facts come from `rust_facts` (cargo-built `rsfacts`);
+`RustFactsUnavailable` with `.rs` present under `native/` exits 1 in EVERY mode (fail closed). `native/`
+absent prints `native/ ABSENT`, never 0 findings.
 
 
 THE BASELINE IS DERIVED, NOT A MAGIC CONSTANT (P1)
@@ -111,8 +138,8 @@ DETERMINISM
 -----------
   * The repo root is resolved from `__file__`, and git is invoked with `-C <root>`, so every run is
     identical from any CWD (verified from `C:\\` and from `tools/`).
-  * The corpus is `git ls-files --cached --others --exclude-standard -- *.py`: tracked files PLUS
-    untracked-but-not-ignored ones. Tracked-only would be reproducible but useless locally -- you
+  * The corpus is `git ls-files --cached --others --exclude-standard -- *.py *.rs *Cargo.toml`
+    (basename `Cargo.toml` kept): tracked files PLUS untracked-but-not-ignored ones. Tracked-only would be reproducible but useless locally -- you
     would only learn about the violation after committing it. A raw filesystem glob would be worse:
     it is the mistake `tools/doc_command_guard.py` had to correct, where the corpus depended on who
     ran it. `--exclude-standard` honours `.gitignore`, so `scratchpad/`, the venvs and
@@ -121,9 +148,11 @@ DETERMINISM
     locally it is what makes the run useful: it is how this file, written and not yet committed,
     appears in the `tools` zone at all rather than only after someone commits it.
   * All walks are sorted; no filesystem-order dependence anywhere.
-  * NO IMPORT of `snn_data_lake`. REGIONS is read with `ast`. The gate therefore needs no torch, no
-    numpy, no GPU and no Brain -- CI has no card, and an import-time side effect in the package
-    (the `learn_daemon` promotion found three at module scope) cannot reach this gate.
+  * NO IMPORT of `snn_data_lake` for the Python half. REGIONS is read with `ast`. The gate therefore
+    needs no torch, no numpy, no GPU and no Brain -- CI has no card, and an import-time side effect in
+    the package (the `learn_daemon` promotion found three at module scope) cannot reach this gate. The
+    Rust half imports `gates.rust_facts` + `gates.native_dormancy` (stdlib-only modules) LAZILY, and
+    only when `.rs` files exist under `native/`; on a tree without them nothing is imported.
 
 Reproduce:
     python tools/p4c_ratchet.py                    # report only, exit 0 always
@@ -140,23 +169,42 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PKG = "src/snn_data_lake"
-BASELINE_PATH = ROOT / "tools" / "p4c_ungoverned_baseline.json"
 
 #: The only hand-written list in this gate. Each entry is argued in the module docstring, and both
 #: are COUNTED and REPORTED on every run so the exclusion is visible rather than silent.
 EXCLUDE = (
     ("**/__init__.py", "package scaffolding, not a build"),
     ("tests/**", "the instrument that measures a build, not a build"),
+    (
+        "tools/rsfacts/**",
+        "the gate toolchain's own build (rust_facts' syn CLI): named, not scanned",
+    ),
+    (
+        "native/** test code",
+        "Rust test code per rust_facts.test_file_flags: the instrument, not a build",
+    ),
 )
 
+#: The Rust registration table (R0.2 row 17): a crate under native/ whose mod tree is governed.
+#: `sndl-python` (the PyO3 binding crate) is listed even before it exists, so its first file is governed.
+NATIVE_TIER = ("sndl-core", "sndl-python")
 
-def _excluded(rel):
-    """True if `rel` (repo-relative posix path) is one of the two documented exclusions."""
-    return rel.endswith("/__init__.py") or rel == "__init__.py" or rel.startswith("tests/")
+
+def _exclusion(rel, native_tests=frozenset()):
+    """The EXCLUDE key `rel` (repo-relative posix path) falls under, else None."""
+    if rel.endswith("/__init__.py") or rel == "__init__.py":
+        return "**/__init__.py"
+    if rel.startswith("tests/"):
+        return "tests/**"
+    if rel.startswith("tools/rsfacts/"):
+        return "tools/rsfacts/**"
+    if rel in native_tests:
+        return "native/** test code"
+    return None
 
 
 def _corpus(root=None):
-    """Sorted repo-relative posix .py paths: tracked + untracked-not-ignored. Deterministic."""
+    """Sorted repo-relative posix .py / .rs / Cargo.toml paths: tracked + untracked-not-ignored."""
     root = ROOT if root is None else root
     out = subprocess.run(
         [
@@ -169,12 +217,67 @@ def _corpus(root=None):
             "--exclude-standard",
             "--",
             "*.py",
+            "*.rs",
+            "*Cargo.toml",
         ],
         capture_output=True,
         text=True,
         check=True,
     ).stdout
-    return sorted({line.strip().replace("\\", "/") for line in out.splitlines() if line.strip()})
+    rels = {line.strip().replace("\\", "/") for line in out.splitlines() if line.strip()}
+    return sorted(
+        r for r in rels if r.endswith((".py", ".rs")) or r.rsplit("/", 1)[-1] == "Cargo.toml"
+    )
+
+
+def _rust_facts():
+    """The one Rust reader (stdlib-only modules), imported lazily and only when native/ exists."""
+    src = str(ROOT / "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
+    from snn_data_lake.gates import rust_facts
+
+    return rust_facts
+
+
+def _native(root, corpus):
+    """(status line, governed rels, test-code rels) for the Rust half of the corpus. Raises
+    `RustFactsUnavailable` when `.rs` is present but unreadable -- or hidden from git (fail closed)."""
+    tier = {c for c in NATIVE_TIER if (root / "native" / c).is_dir()}
+    candidates = {f"native/{c}/{n}" for c in tier for n in ("Cargo.toml", "build.rs")}
+    governed = (candidates | ({"native/Cargo.toml"} if tier else set())) & set(corpus)
+    absent = "native/ ABSENT (0 .rs files)"
+    if not (root / "native").is_dir():
+        return absent, governed, frozenset()
+    rf = _rust_facts()
+    files = rf.rust_files(root)  # raises on .rs that git cannot see: ABSENT never masks it
+    if not files:
+        return absent, governed, frozenset()
+    from snn_data_lake.gates.native_dormancy import _Tree
+
+    facts = rf.facts(files)  # rsfacts is built from THIS tree's tools/rsfacts; `root` picks the .rs
+    base = root / "native"
+    by_rel = {pathlib.Path(f["file"]).relative_to(base).as_posix(): f for f in facts}
+    tree = _Tree(by_rel)
+    for c in sorted(tier):  # membership follows EACH tier crate's OWN roots, inside that crate
+        roots = [r for r in (f"{c}/src/lib.rs", f"{c}/src/main.rs", f"{c}/build.rs") if r in by_rel]
+        bins = f"{c}/src/bin/"
+        roots += sorted(
+            r
+            for r in by_rel
+            if r.startswith(bins) and (r.count("/") == 3 or r.endswith("/main.rs"))
+        )
+        for r in roots:  # _Tree roots one file per crate (lib.rs first); the rest are walked here
+            tree._walk_decl(r, via_path=r.endswith("/build.rs"))
+        reached, todo = set(), list(roots)
+        while todo:
+            r = todo.pop()
+            if r not in reached:
+                reached.add(r)
+                todo += [k for k in tree.children.get(r, {}).values() if k != r]
+        governed |= {f"native/{r}" for r in reached if tree.crate_dir(r) == c}
+    tests = frozenset(f"native/{r}" for r, f in by_rel.items() if f["test_file"])
+    return f"native/ PRESENT ({len(files)} .rs files; NATIVE_TIER {NATIVE_TIER})", governed, tests
 
 
 def _governed(root=None):
@@ -216,18 +319,22 @@ def _zone(rel):
         rest = parts[2:]
         # a sub-package (reasoning/, substrate/, ...) vs a file sitting at the package top level
         return f"{PKG}/{rest[0]}" if len(rest) > 1 else f"{PKG}/<toplevel>"
+    if rel.startswith("native/") and len(parts) > 2:
+        return f"native/{parts[1]}"  # one zone per crate
     return parts[0] if len(parts) > 1 else "<repo root>"
 
 
 def census(root=None):
-    """(zone -> sorted ungoverned paths, exclusion counts, phantom REGIONS entries)."""
+    """(zone -> sorted ungoverned paths, exclusion counts, phantom REGIONS entries, native/ status)."""
     root = ROOT if root is None else root
     corpus = _corpus(root)
     governed = _governed(root)
+    native, native_governed, native_tests = _native(root, corpus)
+    governed |= native_governed
     zones, excl = {}, {name: 0 for name, _ in EXCLUDE}
     for rel in corpus:
-        if _excluded(rel):
-            key = "**/__init__.py" if rel.endswith("__init__.py") else "tests/**"
+        key = _exclusion(rel, native_tests)
+        if key:
             excl[key] += 1
             continue
         if rel in governed:
@@ -236,7 +343,7 @@ def census(root=None):
     for z in zones:
         zones[z].sort()
     phantom = sorted(g for g in governed if g not in set(corpus))
-    return zones, excl, phantom
+    return zones, excl, phantom, native
 
 
 def compare(counts, baseline):
@@ -252,7 +359,11 @@ def compare(counts, baseline):
     return findings
 
 
-def _load_baseline():
+def _baseline_path(root=None):
+    return (ROOT if root is None else root) / "tools" / "p4c_ungoverned_baseline.json"
+
+
+def _load_baseline(root=None):
     """Read the committed baseline. `utf-8-sig` is deliberate, not decoration.
 
     The baseline's documented escape hatch is a hand-edit in a reviewed commit, and this is a
@@ -263,16 +374,20 @@ def _load_baseline():
     whose documented edit path crashes it is an instrument people route around. `utf-8-sig`
     accepts a BOM and is identical to `utf-8` when there is none.
     """
-    if not BASELINE_PATH.exists():
+    path = _baseline_path(root)
+    if not path.exists():
         return None
-    return json.loads(BASELINE_PATH.read_text(encoding="utf-8-sig"))
+    return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
-def _report(zones, excl, phantom, baseline):
+def _report(zones, excl, phantom, baseline, native=""):
     total = sum(len(v) for v in zones.values())
     print("=" * 92)
     print("p4c_ratchet -- builds OUTSIDE the governed tree (P4c). The count may only go DOWN.")
     print("=" * 92)
+    print(
+        f"Rust half: {native}; governed = NATIVE_TIER {NATIVE_TIER} crate + reachable in its mod tree"
+    )
     base_zones = (baseline or {}).get("zones", {})
     print(f"{'zone':<40} {'live':>6} {'baseline':>9} {'delta':>7}")
     print("-" * 92)
@@ -321,12 +436,145 @@ def _fail_detail(findings, zones, baseline):
     print("Do NOT run --update-baseline to absorb it: that path refuses a rise by design.")
 
 
-def _selfcheck():
-    """Prove every criterion this gate carries can FIRE, on synthetic in-memory inputs.
+FIXTURE_GOVERNED = (  # every file the membership rule must reach in the fixture crate
+    "src/lib.rs",
+    "src/a.rs",
+    "src/rng/mod.rs",
+    "src/main.rs",
+    "src/cli.rs",
+    "src/tests.rs",
+    "src/bin/tool.rs",
+    "src/bin/tool/helper.rs",
+    "shared.rs",
+    "build.rs",
+    "gen.rs",
+    "Cargo.toml",
+)
 
-    Nothing on disk is read or written. Each case states the mutation and the expected direction,
-    and a mutation that changed nothing is reported BROKEN rather than passing quietly -- the
-    rotted-anchor failure `tools/dependency_ledger.py --self-check` exists to catch.
+
+def _fixture_repo(root, crate_name="sndl-core"):
+    """A throwaway git tree with one crate: a lib root (`mod a; mod rng;`, a `#[path]` module
+    beside src/, a cfg(test) child), a bin root (`main.rs -> cli.rs`), an auto bin target
+    (`src/bin/tool.rs -> tool/helper.rs`), `build.rs -> gen.rs`, test code, and `src/scratch.rs`
+    OUTSIDE the mod tree."""
+    subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
+    (root / PKG).mkdir(parents=True)
+    (root / PKG / "__init__.py").write_text("REGIONS = {}\n", encoding="utf-8")
+    crate = root / "native" / crate_name
+    (crate / "src" / "rng").mkdir(parents=True)
+    (root / "native" / "Cargo.toml").write_text(
+        f'[workspace]\nmembers = ["{crate_name}"]\n', encoding="utf-8"
+    )
+    (crate / "Cargo.toml").write_text(f'[package]\nname = "{crate_name}"\n', encoding="utf-8")
+    (crate / "src" / "lib.rs").write_text(
+        'mod a;\nmod rng;\n#[path = "../shared.rs"]\nmod shared;\n#[cfg(test)]\nmod tests;\n',
+        encoding="utf-8",
+    )
+    (crate / "src" / "a.rs").write_text("pub fn a() {}\n", encoding="utf-8")
+    (crate / "src" / "tests.rs").write_text("#[test]\nfn unit() {}\n", encoding="utf-8")
+    (crate / "src" / "rng" / "mod.rs").write_text("pub fn r() {}\n", encoding="utf-8")
+    (crate / "shared.rs").write_text("pub fn shared() {}\n", encoding="utf-8")
+    (crate / "src" / "main.rs").write_text("mod cli;\nfn main() {}\n", encoding="utf-8")
+    (crate / "src" / "cli.rs").write_text("pub fn cli() {}\n", encoding="utf-8")
+    (crate / "src" / "bin" / "tool").mkdir(parents=True)
+    (crate / "src" / "bin" / "tool.rs").write_text("mod helper;\nfn main() {}\n", encoding="utf-8")
+    (crate / "src" / "bin" / "tool" / "helper.rs").write_text("pub fn h() {}\n", encoding="utf-8")
+    (crate / "build.rs").write_text("mod gen;\nfn main() {}\n", encoding="utf-8")
+    (crate / "gen.rs").write_text("pub fn g() {}\n", encoding="utf-8")
+    (crate / "src" / "scratch.rs").write_text("pub fn s() {}\n", encoding="utf-8")
+    (crate / "tests").mkdir()
+    (crate / "tests" / "t.rs").write_text("#[test]\nfn t() {}\n", encoding="utf-8")
+    return crate
+
+
+def _selfcheck_native():
+    """The Rust reds, each CONSTRUCTED on a fixture tree and RUN through `census(root)` -- the same
+    walk `--assert` uses. -> (ok, not_ok) counts, printed like the comparator cases."""
+    import tempfile
+
+    unavailable = _rust_facts().RustFactsUnavailable
+
+    def counts(root):
+        return {z: len(v) for z, v in census(root)[0].items()}
+
+    def raises(root):
+        try:
+            counts(root)
+        except unavailable:
+            return True
+        return False
+
+    results = []
+
+    def case(kind, name, mutation, fired, expect_fire=True):
+        mark = "OK" if fired == expect_fire else "NO RED" if expect_fire else "FALSE RED"
+        print(f"[{kind:<8}] {name}")
+        print(f"           mutation: {mutation}")
+        print(
+            f"           expected {'FIRE' if expect_fire else 'PASS'}, got "
+            f"{'FIRE' if fired else 'PASS'}  -> {mark}"
+        )
+        results.append(fired == expect_fire)
+
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        crate = _fixture_repo(root)
+        try:
+            case(
+                "RED",
+                "untracked .rs outside the mod tree",
+                "native/sndl-core/src/scratch.rs -> zone native/sndl-core = 1",
+                counts(root).get("native/sndl-core") == 1,
+            )
+            (crate / "src" / "scratch.rs").unlink()
+            case(
+                "CONTROL",
+                "the GREEN twin",
+                f"scratch.rs removed; {len(FIXTURE_GOVERNED)} crate files reached (lib + bin roots, "
+                "#[path], build.rs, manifest), tests/t.rs test code -> no zone",
+                "native/sndl-core" in counts(root),
+                expect_fire=False,
+            )
+            (crate.parent / "other" / "src").mkdir(parents=True)
+            (crate.parent / "other" / "src" / "lib.rs").write_text(
+                "pub fn o() {}\n", encoding="utf-8"
+            )
+            case(
+                "RED",
+                "a crate NATIVE_TIER does not list",
+                "native/other/src/lib.rs -> zone native/other = 1",
+                counts(root).get("native/other") == 1,
+            )
+            (root / ".gitignore").write_text("*.rs\n", encoding="utf-8")
+            hidden = raises(root)
+            (root / ".gitignore").unlink()
+            case(
+                "RED",
+                "Rust hidden from git fails CLOSED",
+                ".gitignore `*.rs` -> RustFactsUnavailable, never `native/ ABSENT`",
+                hidden,
+            )
+        except unavailable as exc:
+            print(f"[NO RED  ] the Rust reader is unavailable on this host -- {exc}")
+            results.append(False)
+        (crate / "src" / "a.rs").write_text("pub fn a( {\n", encoding="utf-8")
+        case(
+            "RED",
+            "unreadable Rust fails CLOSED",
+            "src/a.rs made unparseable -> RustFactsUnavailable; main exits 1 with and without --assert",
+            raises(root) and main(["--assert"], root=root) == 1 and main([], root=root) == 1,
+        )
+    return sum(results), len(results) - sum(results)
+
+
+def _selfcheck():
+    """Prove every criterion this gate carries can FIRE: the comparator on synthetic in-memory inputs,
+    then the Rust membership rule on a throwaway fixture tree (`_selfcheck_native`; a temp dir is the
+    only disk touched, the real tree and baseline are never read or written).
+
+    Each case states the mutation and the expected direction, and a mutation that changed nothing is
+    reported BROKEN rather than passing quietly -- the rotted-anchor failure
+    `tools/dependency_ledger.py --self-check` exists to catch.
     """
     base = {"src/snn_data_lake/reasoning": 161, "tools": 30, "research": 25, "gcp": 0}
     clean = dict(base)
@@ -419,24 +667,38 @@ def _selfcheck():
     else:
         no_red += 1
 
+    native_ok, native_bad = _selfcheck_native()
+    red_ok += native_ok
+    no_red += native_bad
+
     print()
     print(f"RED OK {red_ok}   NO RED {no_red}   BROKEN {broken}")
     if no_red or broken:
         print("self-check FAIL: a criterion this gate carries cannot be made to fire")
         return 1
-    print(f"self-check OK: {red_ok}/{red_ok} criteria proven falsifiable (no disk was touched)")
+    print(
+        f"self-check OK: {red_ok}/{red_ok} criteria proven falsifiable (only a temp dir was touched)"
+    )
     return 0
 
 
-def main(argv=None):
+def main(argv=None, root=None):
     argv = sys.argv[1:] if argv is None else argv
+    root = ROOT if root is None else root
     if "--self-check" in argv:
         return _selfcheck()
 
-    zones, excl, phantom = census()
+    # .rs present but the reader is down (cargo, parse, hidden file) -- RED, never a skip
+    unreadable = (_rust_facts().RustFactsUnavailable,) if (root / "native").is_dir() else ()
+    try:
+        zones, excl, phantom, native = census(root)
+    except unreadable as exc:
+        print(f"GATE FAIL (fail closed): Rust under native/ cannot be read -- {exc}")
+        return 1
     counts = {z: len(v) for z, v in zones.items()}
-    baseline = _load_baseline()
-    total = _report(zones, excl, phantom, baseline)
+    baseline = _load_baseline(root)
+    total = _report(zones, excl, phantom, baseline, native)
+    baseline_path = _baseline_path(root)
 
     if "--update-baseline" in argv:
         if baseline is not None:
@@ -448,7 +710,7 @@ def main(argv=None):
                     print(f"  {zone}: {live} > baseline {allowed}")
                 print("Promote or retire the new build; do not absorb it into the baseline.")
                 return 1
-        BASELINE_PATH.write_text(
+        baseline_path.write_text(
             json.dumps(
                 {
                     "_generated_by": "tools/p4c_ratchet.py --update-baseline",
@@ -464,7 +726,7 @@ def main(argv=None):
             encoding="utf-8",
         )
         print()
-        print(f"baseline written: {BASELINE_PATH.relative_to(ROOT).as_posix()}  total={total}")
+        print(f"baseline written: {baseline_path.relative_to(root).as_posix()}  total={total}")
         return 0
 
     if "--assert" not in argv:
@@ -474,7 +736,7 @@ def main(argv=None):
 
     if baseline is None:
         print()
-        print(f"GATE FAIL: no baseline at {BASELINE_PATH.relative_to(ROOT).as_posix()}.")
+        print(f"GATE FAIL: no baseline at {baseline_path.relative_to(root).as_posix()}.")
         print("Generate it with: python tools/p4c_ratchet.py --update-baseline")
         return 1
 
