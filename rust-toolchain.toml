@@ -1,0 +1,6 @@
+# Pinned stable toolchain for every cargo invocation under this tree (tools/rsfacts and native/).
+# 1.96.0 is the rustc that built tools/rsfacts when this file landed (R0.4, 2026-10-17); CI installs it
+# through this file, so a runner-image Rust upgrade never changes what the gates and tests compile with.
+[toolchain]
+channel = "1.96.0"
+components = ["rustfmt", "clippy"]
