@@ -443,7 +443,8 @@ _RUST_BLIND = (
     "is inferred from the lets/calls inside its RHS and the nearest one before it: a shadow in a sibling block "
     "that closes right before an assignment still hides the outer name there; names inside a nested block of "
     "an RHS read the deepest inner scope; a `let` whose init holds a block is read at its START (its inner "
-    "events come later), so a writer temporary discarded inside a `let` block still taints the let",
+    "events come later), so a writer temporary discarded inside a `let` block still taints the let; only an "
+    "ASSIGNMENT's RHS is cut to the value its blocks produce (their tail expressions)",
 )
 
 
@@ -552,6 +553,26 @@ def _rs_bind(taint, pat, src, scope):
         taint[n] = [b for b in taint.get(n, ()) if b[0][: len(scope)] != scope] + [(scope, src)]
 
 
+def _rs_value(text):
+    """Normalised `text` with every `{ stmts; tail }` block cut to `{ tail }`: the names and spellings
+    that make the block's VALUE, not the statements it discards (Codex r6 transport 2)."""
+    out, depth, start, tail = [], 0, 0, 0
+    for i, c in enumerate(text):
+        if c == "{":
+            if not depth:
+                out.append(text[start:i])
+                tail = i + 1
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if not depth:
+                out.append("{" + _rs_value(text[tail:i]) + "}")
+                start = i + 1
+        elif c == ";" and depth == 1:
+            tail = i + 1
+    return "".join([*out, text[start:]])
+
+
 def _rs_assign_scope(r, scoped):
     """(outer, inner) block paths for an assignment, which rsfacts gives none: outer = the common prefix
     of the lets/calls inside its RHS span and the nearest one before it; inner = the deepest inside."""
@@ -587,7 +608,8 @@ def _rust_t1(f):
                 _rs_bind(taint, r["pat"], _rs_carried(r["init"], taint, scope), scope)
             elif kind == "assigns":
                 scope, inner = _rs_assign_scope(r, scoped)
-                src, name = _rs_carried(r["rhs"], taint, scope, inner), _rs_name(r["lhs"])
+                rhs = _rs_value(_rs_norm(r["rhs"]))
+                src, name = _rs_carried(rhs, taint, scope, inner), _rs_name(r["lhs"])
                 if name in wbound or _is_weight(name):
                     if src:
                         out.append((line, fn, "T1", f"{src} transposed -> updates {name}"))
@@ -776,8 +798,9 @@ _RUST_FOLD4_GREEN = _RUST_FOLD4_RED.replace("self.w2", "self.fb")
 #: Fold 5 (regressions against e913fa84): the weight at args[2] of gemm_tr is used backward (b_operand,
 #: b_receiver; re-panel A TA-1/TA-2 under PREREG ADDENDUM 7); a `let` in an inner scope hides the tainted
 #: outer name only inside that scope (closure_shadow = Codex r6 transport 1, block_shadow = PB-T2a,
-#: block_shadow_after = PB-T2b, loop_shadow, match_shadow). no_weight_operand and block_shadow_clean
-#: (PB-T2c) stay silent.
+#: block_shadow_after = PB-T2b, loop_shadow, match_shadow); a writer counts at an assignment only if its
+#: receiver flows into the assigned VALUE (flowing_temp; Codex r6 transport 2). no_weight_operand,
+#: block_shadow_clean (PB-T2c) and discarded_temp stay silent.
 _RUST_FOLD5_RED = """\
 impl Net {
     pub fn b_operand(&mut self, e: &A, lr: f64) {
@@ -833,6 +856,21 @@ impl Net {
         self.w1 = d.clone() + {
             let d = e.clone();
             d
+        };
+    }
+    pub fn flowing_temp(&mut self, e: &A, lr: f64) {
+        self.w1 = {
+            let mut y = self.fb.clone();
+            y.tr_copy_from(&self.w2);
+            let z = y.clone();
+            z
+        };
+    }
+    pub fn discarded_temp(&mut self, e: &A, lr: f64) {
+        self.w1 = {
+            let mut y = self.fb.clone();
+            y.tr_copy_from(&self.w2);
+            self.fb.clone()
         };
     }
 }
@@ -1358,8 +1396,8 @@ def _check_rust_half():
         f"the fold-4 Rust RED must give exactly 3 T1 through scan_rust, got {fold4['planted']}"
     )
     assert not fold4["fixed"], f"the fold-4 Rust GREEN twin must give 0, got {fold4['fixed']}"
-    assert fold5["planted"] == ["T1"] * 7, (
-        f"the fold-5 Rust RED must give exactly 7 T1 through scan_rust, got {fold5['planted']}"
+    assert fold5["planted"] == ["T1"] * 8, (
+        f"the fold-5 Rust RED must give exactly 8 T1 through scan_rust, got {fold5['planted']}"
     )
     assert not fold5["fixed"], f"the fold-5 Rust GREEN twin must give 0, got {fold5['fixed']}"
     status, live = scan_rust()

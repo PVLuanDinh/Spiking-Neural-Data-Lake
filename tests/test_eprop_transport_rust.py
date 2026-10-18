@@ -243,6 +243,9 @@ FOLD5_RED = [
     " self.w1.scaled_add(-lr, &d);",
     "let d = self.w2.t().to_owned(); match k { 0 => { let d = e.clone(); } _ => {} }"
     " self.w1.scaled_add(-lr, &d);",
+    # Codex r6 transport 2, the red twin: the writer's temporary flows into the assigned value
+    # through another local (the fold-4 block_rhs red is the direct tail)
+    "self.w1 = { let mut y = self.fb.clone(); y.tr_copy_from(&self.w2); let z = y.clone(); z };",
 ]
 FOLD5_CLEAN = [
     # item 1: neither operand is a weight
@@ -252,6 +255,9 @@ FOLD5_CLEAN = [
     "let d = e.clone(); self.w1 = d.clone() + { let d = e.clone(); d };",
     "let d = self.w2.t().to_owned();"
     " for i in 0..k { let d = e.clone(); self.w1.scaled_add(-lr, &d); }",
+    # Codex r6 transport 2: a writer whose temporary is DISCARDED does not reach the assigned value
+    "self.w1 = { let mut y = self.fb.clone(); y.tr_copy_from(&self.w2); self.fb.clone() };",
+    "self.w1 += { let mut y = self.fb.clone(); y.tr_copy_from(&self.w2); e.clone() };",
 ]
 
 
@@ -353,13 +359,13 @@ def test_fold4_green_twin_is_zero(tmp_path):
     assert gate.scan_rust(tmp_path)[1] == []
 
 
-def test_fold5_red_arm_is_exactly_seven_t1_and_the_controls_are_silent(tmp_path):
+def test_fold5_red_arm_is_exactly_eight_t1_and_the_controls_are_silent(tmp_path):
     _tree(tmp_path, gate._rust_fixture(red=True, fold=5))
     found = gate.scan_rust(tmp_path)[1]
-    assert _rules(found) == ["T1"] * 7, found
+    assert _rules(found) == ["T1"] * 8, found
     assert sorted(f[2] for f in found) == [
         "b_operand", "b_receiver", "block_shadow", "block_shadow_after", "closure_shadow",
-        "loop_shadow", "match_shadow",
+        "flowing_temp", "loop_shadow", "match_shadow",
     ], found  # fmt: skip
 
 
