@@ -121,6 +121,23 @@ RG_RED_REPLICAS = [
     ("LiveBrain", f"{LIB}::NativeLoop"),
 ]
 
+# Codex B1 r02b-instr MAJOR 1: the #[pyclass] and its #[pymodule_export] sit in DIFFERENT files;
+# exports resolve over the whole tree, and the finding names the export's own file.
+REPLICA = "native/sndl-python/src/replica.rs"
+RG_XFILE_LIB = """
+use pyo3::prelude::*;
+mod replica;
+
+#[pymodule(gil_used = false)]
+mod _native {
+    #[pymodule_export]
+    use super::replica::NativeLoop;
+}
+"""
+RG_XFILE_RED = {"replica.rs": '#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'}
+RG_XFILE_GREEN = {"replica.rs": '#[pyclass(name = "NativeLoop")]\npub struct NativeLoop;\n'}
+RG_XFILE_REPLICAS = [("LiveBrain", f"{REPLICA}::NativeLoop")]
+
 CANON_SRC = {
     "engine/brain.py": "class Brain:\n    pass\n",
     "engine/live_brain.py": "class LiveBrain:\n    pass\n",
@@ -128,10 +145,12 @@ CANON_SRC = {
 }
 
 
-def _tree(tmp_path, text):
+def _tree(tmp_path, text, extra=None):
     p = tmp_path / LIB
     p.parent.mkdir(parents=True)
     p.write_text(text, encoding="utf-8")
+    for name, src in (extra or {}).items():
+        (p.parent / name).write_text(src, encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True)
     return tmp_path
 
@@ -238,8 +257,8 @@ def test_rg_python_control_has_no_replica(tmp_path, monkeypatch):
     assert a["replicas"] == [] and a["missing"] == [], a
 
 
-def _rg(tmp_path, monkeypatch, text):
-    monkeypatch.setattr(rg, "ROOT", _tree(tmp_path, text), raising=False)
+def _rg(tmp_path, monkeypatch, text, extra=None):
+    monkeypatch.setattr(rg, "ROOT", _tree(tmp_path, text, extra), raising=False)
     return rg.audit()
 
 
@@ -250,6 +269,15 @@ def test_rg_red_arm_has_exactly_the_three_preregistered_replicas(tmp_path, monke
 
 def test_rg_green_twin_has_zero_replicas(tmp_path, monkeypatch):
     assert _rg(tmp_path, monkeypatch, RG_GREEN)["replicas"] == []
+
+
+def test_rg_cross_file_export_is_attributed_to_the_pyclass_file(tmp_path, monkeypatch):
+    a = _rg(tmp_path, monkeypatch, RG_XFILE_LIB, RG_XFILE_RED)
+    assert a["replicas"] == RG_XFILE_REPLICAS, a
+
+
+def test_rg_cross_file_control_has_zero_replicas(tmp_path, monkeypatch):
+    assert _rg(tmp_path, monkeypatch, RG_XFILE_LIB, RG_XFILE_GREEN)["replicas"] == []
 
 
 def test_rg_pending_retirement_allowlists_a_rust_replica(tmp_path, monkeypatch):
