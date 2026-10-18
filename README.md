@@ -113,7 +113,6 @@ Install only the extras needed for your work:
 ```bash
 python -m pip install -e ".[dev,nir]"  # tests, lint, and manifest/NIR checks
 python -m pip install -e ".[arm]"      # serial hardware interface
-python -m pip install -e ".[lake]"     # Polars and Delta Lake integration
 ```
 
 Other extras are declared in `pyproject.toml`. The `all` extra is a selected bundle and does not

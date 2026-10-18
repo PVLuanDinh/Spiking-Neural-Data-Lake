@@ -232,7 +232,6 @@ dependencies = [
 # GPU/training wheels (torchvision/tonic) on top of the default torch.
 [project.optional-dependencies]
 arm = ["pyserial"]                                                       # live_arm --serial / --actuate
-lake = ["polars", "deltalake"]  # lakehouse/medallion + delta_demo (pyarrow PROMOTED to core, 022 T005)
 # snntorch was removed from both extras when promoted in 2026 and retired entirely when Brian2
 # replaced it on 2026-09-22. Brian2 has one authority in the core dependency list above.
 # bindsnet REMOVED from [gpu] 2026-08-07 with its sole importer (reasoning/eth_mnist_bindsnet.py,
@@ -318,7 +317,6 @@ snn-loop = "snn_data_lake.sensorimotor.closed_loop:main"  # full closed loop: ge
 # a console script: the cockpit never constructs a Brain (Policy 4), so a standalone launcher would
 # either stand up a second brain against the same durable lake or duplicate the daemon's drive loop.
 # One brain, one loop, one frontend.
-snn-train = "snn_data_lake.training.cli:main"  # [train] extra: surrogate-gradient GPU trainer -> exports weights to the core
 snn-fetch-corpus = "snn_data_lake.sensorimotor.web_ingest:cli"  # firewalled web -> training-corpus fetch (stdlib urllib)
 snn-nengo-launch = "snn_data_lake.infra.nengo_bridge:launch"  # [nengo] extra: run the whole brain LIVE under nengo.Simulator (per-tick trace; NengoLoihi-deployable, observation-only)
 

@@ -2,16 +2,14 @@
   "_generated_by": "tools/p4c_ratchet.py --update-baseline",
   "_policy": "P4c -- every build is part of the brain",
   "_contract": "counts may only go DOWN; 'paths' is DIAGNOSTICS ONLY, never asserted on",
-  "total": 196,
+  "total": 193,
   "zones": {
     "<repo root>": 2,
     "docs": 16,
     "integrations": 8,
     "research": 24,
     "src/snn_data_lake/<toplevel>": 2,
-    "src/snn_data_lake/lakehouse": 2,
     "src/snn_data_lake/reasoning": 107,
-    "src/snn_data_lake/training": 1,
     "tools": 30,
     "training": 4
   },
@@ -77,10 +75,6 @@
     "src/snn_data_lake/<toplevel>": [
       "src/snn_data_lake/brain_atlas.py",
       "src/snn_data_lake/connectome.py"
-    ],
-    "src/snn_data_lake/lakehouse": [
-      "src/snn_data_lake/lakehouse/delta_demo.py",
-      "src/snn_data_lake/lakehouse/medallion.py"
     ],
     "src/snn_data_lake/reasoning": [
       "src/snn_data_lake/reasoning/_loop_common.py",
@@ -190,9 +184,6 @@
       "src/snn_data_lake/reasoning/vsa_synthesize.py",
       "src/snn_data_lake/reasoning/web_ingest_gate.py",
       "src/snn_data_lake/reasoning/weight_perturbation.py"
-    ],
-    "src/snn_data_lake/training": [
-      "src/snn_data_lake/training/cli.py"
     ],
     "tools": [
       "tools/ab_connectome_delay.py",

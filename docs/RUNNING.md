@@ -96,15 +96,6 @@ python -m snn_data_lake.brainstem.interpreter   # matched label -> robot command
 cat windows.csv | python -m snn_data_lake.sensorimotor.signal_loop --stdin --feedback --reflex
 ```
 
-### 3. The Medallion lakehouse PoC (needs polars)
-Bronze → Silver → Gold over Parquet:
-```bash
-python -m venv .venv-lake
-.venv-lake/bin/pip install -e ".[lake]"            # package + polars/pyarrow/deltalake (Windows: .venv-lake\Scripts\pip)
-.venv-lake/bin/python -m snn_data_lake.lakehouse.medallion   # Windows: .venv-lake\Scripts\python -m snn_data_lake.lakehouse.medallion
-# writes lakehouse/data/{bronze,silver,gold}.parquet + prints ICR, synchrony, SQL query
-```
-
 ### 4. Real event-camera data — N-MNIST (optional, needs tonic)
 ```bash
 python -m venv .venv-nmnist
