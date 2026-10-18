@@ -195,15 +195,9 @@ def test_g8d_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch
 def test_g8_real_tree_has_no_src_or_rs_string_finding_and_census_records_native():
     found, _n, unparsed = mg.c2d(mg.REPO)
     assert unparsed == []
-    debt = {  # r02b-p6 fixture strings, owed from parts: exactly these (file, legacy name) pairs
-        (f, n)
-        for f in ("tests/test_r02b_p6_rust.py", "tools/p6_gate.py")
-        for n in ("amygdala", "cerebellum")
-    }
-    assert [f for f in found if f[2] == "rs-string"] == []
-    assert {(f[0], f[3]) for f in found} == debt, (
-        "a paid-down debt is a stale exemption: delete it here"
-    )
+    # The r02b-p6 fixture-string debt was paid down (f-p6names builds the names from parts): no
+    # legacy-name string survives anywhere in the tree.
+    assert found == [], found
     rec = mg.static(mg.REPO, mg.tables(mg.REPO)).get("native")
     assert rec and rec["status"].startswith("native/ PRESENT ("), rec
     assert rec["cargo_lock"] and all(
