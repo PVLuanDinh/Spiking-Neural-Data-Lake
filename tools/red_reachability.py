@@ -67,13 +67,13 @@ RUST_BLIND_SPOTS = (
     "rsfacts records no return/tail expression: a Rust criterion is NO_RED only when it has no formal "
     "inputs AND owns no fact (call, method call, index, assign, let, for, macro), so a literal FAILURE "
     "and a single-segment const/static read also count as a literal result",
-    "a Rust criterion with formal inputs is UNPROVEN whether or not its body reads them",
+    "a Rust criterion with formal inputs (a receiver included: a field read has no fact) is UNPROVEN "
+    "whether or not its body reads them",
     "a Python wrapper takes the Rust verdict only through a call whose callee NAME is a `_native` name "
     "of that module (python_native_refs); an alias or a helper in between leaves it UNPROVEN",
     "tools/rsfacts is gate tooling, outside the brain rules",
 )
 _FACT_KINDS = ("calls", "mcalls", "index", "assigns", "lets", "fors", "macros")
-_RECEIVERS = {"self", "&self", "&mutself", "mutself"}
 
 #: The constructed Rust RED arm and GREEN twin (pre-registered; also tests/test_r02b_verdict_rust.py).
 RUST_RED_SRC = """use pyo3::prelude::*;
@@ -414,8 +414,14 @@ def _input_analysis(fn, params, twin=None):
     if fixed:
         reason = "invariant success on supported normal-return paths"
         no_red = True
-    elif twins and all(twins) and not facts.refusal and _returns_on_all_paths(fn.body):
-        reason = "takes the Rust verdict of " + ", ".join(sorted({t["name"] for t in twins}))
+    elif (
+        twins
+        and all(twins)
+        and len({t["name"] for t in twins}) == 1
+        and not facts.refusal
+        and _returns_on_all_paths(fn.body)
+    ):
+        reason = "takes the Rust verdict of " + twins[0]["name"]
         no_red = True
     elif facts.uncertain or facts.refusal or facts.controls_unproven:
         reason = "; ".join(sorted(facts.uncertain)) or (
@@ -561,7 +567,6 @@ def rust_criteria(native):
             ):
                 continue
             params = [a.split(":")[0].strip() for a in fn["params"]]
-            params = [a for a in params if a.replace(" ", "") not in _RECEIVERS]
             owned = sum(1 for k in _FACT_KINDS for x in f.get(k, []) if x["fn_id"] == fn["id"])
             if params:
                 no_red, reason = (
@@ -630,11 +635,19 @@ def scan(native=None, src=None):
     return criteria, tautologies
 
 
+# distinct-from: gates/gradient_claim_gate.py::fixture_native -- that one writes a two-crate tree and loads the
+#   whole gate module (and reasoning.eprop) into a tools script; this is the reader's own facts_for_source plus the
+#   fixture file name. Both belong in rust_facts (integrator row).
+def fixture_facts(text):
+    """(status, facts) for one constructed sndl-core file, through `rust_facts.facts_for_source`."""
+    f = _rust_facts().facts_for_source(text, name="plasticity.rs")
+    f["file"] = "native/sndl-core/src/plasticity.rs"
+    return "native/ PRESENT (1 .rs files, fixture)", [f]
+
+
 def self_check():
     """The constructed Rust RED arm and GREEN twin, through `scan()` with injected facts."""
     import tempfile
-
-    from snn_data_lake.gates.gradient_claim_gate import fixture_native
 
     with tempfile.TemporaryDirectory() as td:
         src = pathlib.Path(td) / "src"
@@ -642,22 +655,22 @@ def self_check():
         (src / "pkg" / "__init__.py").write_text("", encoding="utf-8")
         wrap = src / "pkg" / "wrap.py"
         wrap.write_text(PY_RED_SRC, encoding="utf-8")
-        red = {c["name"] for c in scan(fixture_native(RUST_RED_SRC), src)[0] if c["no_red"]}
+        red = {c["name"] for c in scan(fixture_facts(RUST_RED_SRC), src)[0] if c["no_red"]}
         assert red == RED_NO_RED, red
         wrap.write_text(PY_GREEN_SRC, encoding="utf-8")
-        green = [c["name"] for c in scan(fixture_native(RUST_GREEN_SRC), src)[0] if c["no_red"]]
+        green = [c["name"] for c in scan(fixture_facts(RUST_GREEN_SRC), src)[0] if c["no_red"]]
         assert green == [], green
     print(f"red_reachability self-check OK: Rust RED arm {len(red)} NO_RED, GREEN twin 0")
     return 0
 
 
-def main(argv=None, native=None):
+def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if "--self-check" in argv:
         return self_check()
     do_assert = "--assert" in argv
 
-    native = native_status() if native is None else native
+    native = native_status()
     criteria, tautologies = scan(native)
 
     no_red = [c for c in criteria if c["no_red"] and c["name"] not in EXEMPT]
