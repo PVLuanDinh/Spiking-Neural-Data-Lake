@@ -155,12 +155,15 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     replica::register(m)
 }
 """
-RG_HELPER_RED = {
-    REPLICA: 'use pyo3::prelude::*;\n#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'
-    "pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> { m.add_class::<NativeLoop>() }\n"
+_REG = (
+    'use pyo3::prelude::*;\n#[pyclass(name = "LiveBrain")]\npub struct {c};\n'
+    "pub fn {f}(m: &Bound<'_, PyModule>) -> PyResult<()> {{ m.add_class::<{c}>() }}\n"
+)
+RG_HELPER_RED = {REPLICA: _REG.format(c="NativeLoop", f="register")}
+RG_HELPER_GREEN = {
+    REPLICA: RG_HELPER_RED[REPLICA].replace('name = "LiveBrain"', 'name = "NativeLoop"')
 }
-# known gap (RUST_BLIND_SPOTS): two helpers registering one `LiveBrain` through ONE #[pymodule]
-# share a view, where rust_facts keeps one entry per name; strict xfail so a multimap shows up here.
+# two helpers registering one `LiveBrain` through ONE #[pymodule]: each gets its own pair view.
 RG_CHAIN_LIB = """
 use pyo3::prelude::*;
 mod a;
@@ -172,11 +175,55 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     b::reg_b(m)
 }
 """
-_REG = 'use pyo3::prelude::*;\n#[pyclass(name = "LiveBrain")]\npub struct {c};\n'
-_REG += "pub fn {f}(m: &Bound<'_, PyModule>) -> PyResult<()> {{ m.add_class::<{c}>() }}\n"
+A_RS, C_RS = "native/sndl-python/src/a.rs", "native/sndl-python/src/c.rs"
 RG_CHAIN = {
-    "native/sndl-python/src/a.rs": _REG.format(c="LoopA", f="reg_a"),
+    A_RS: _REG.format(c="LoopA", f="reg_a"),
     "native/sndl-python/src/b.rs": _REG.format(c="LoopB", f="reg_b"),
+}
+RG_CHAIN_REPLICAS = sorted(
+    [("LiveBrain", f"{A_RS}::LoopA"), ("LiveBrain", "native/sndl-python/src/b.rs::LoopB")]
+)
+# two #[pymodule]s (two crates) each delegating to a helper named `register`: rust_facts resolves
+# calls by last path segment, so the helpers must never share a view.
+RG_TWO_ROOTS_LIB = RG_HELPER_LIB.replace("mod replica;", "mod a;").replace("replica::", "a::")
+RG_TWO_ROOTS = {
+    A_RS: _REG.format(c="LoopA", f="register"),
+    "native/sndl-core/src/lib.rs": RG_HELPER_LIB.replace("mod replica;", "mod b;")
+    .replace("replica::", "b::")
+    .replace("fn _native", "fn _core"),
+    "native/sndl-core/src/b.rs": _REG.format(c="LoopB", f="register"),
+}
+RG_TWO_ROOTS_REPLICAS = sorted(
+    [("LiveBrain", f"{A_RS}::LoopA"), ("LiveBrain", "native/sndl-core/src/b.rs::LoopB")]
+)
+# an inert #[pymodule] in the definition file plus a later same-Rust-name decoy that exports itself
+# unrenamed: the renamed class still resolves in the (replica.rs, lib.rs) pair view.
+RG_INERT_DECOY = {
+    REPLICA: '#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'
+    "#[pymodule(gil_used = false)]\nmod _x {}\n",
+    "native/sndl-python/src/zz.rs": "use pyo3::prelude::*;\n#[pyclass]\npub struct NativeLoop;\n"
+    "#[pymodule(gil_used = false)]\nmod _zz { #[pymodule_export] use super::NativeLoop; }\n",
+}
+# the renamed #[pyclass] sits in ANOTHER #[pymodule] file; exported from b.rs.
+RG_OTHER_ROOT_LIB = (
+    'use pyo3::prelude::*;\n#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'
+    "#[pymodule(gil_used = false)]\nmod _native {}\n"
+)
+RG_OTHER_ROOT = {
+    B_RS: "use pyo3::prelude::*;\n#[pymodule(gil_used = false)]\n"
+    "mod _b { #[pymodule_export] use crate::NativeLoop; }\n"
+}
+RG_OTHER_ROOT_GREEN = {**RG_OTHER_ROOT}
+# only the whole-tree view: the chain runs through a helper that carries an inert #[pymodule] (so it
+# is in no helper-chain view) into a third file holding the renamed class.
+RG_DEEP_LIB = RG_CHAIN_LIB.replace("mod b;", "mod c;").replace(
+    "    a::reg_a(m)?;\n    b::reg_b(m)", "    a::register(m)"
+)
+RG_DEEP = {
+    A_RS: "use pyo3::prelude::*;\n#[pymodule(gil_used = false)]\nmod _inert {}\n"
+    "pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {"
+    " m.add_class::<crate::c::NativeLoop>() }\n",
+    C_RS: '#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n',
 }
 
 CANON_SRC = {
@@ -343,10 +390,43 @@ def test_rg_helper_registered_export_is_resolved(tmp_path, monkeypatch):
     assert a["replicas"] == RG_XFILE_REPLICAS, a
 
 
-@pytest.mark.xfail(strict=True, reason="RUST_BLIND_SPOTS: one view keeps one entry per Python name")
+def test_rg_helper_registered_control_has_zero_replicas(tmp_path, monkeypatch):
+    assert _rg(tmp_path, monkeypatch, RG_HELPER_LIB, RG_HELPER_GREEN)["replicas"] == []
+
+
+def test_rg_helper_root_and_a_colliding_root_both_survive(tmp_path, monkeypatch):
+    a = _rg(tmp_path, monkeypatch, RG_HELPER_LIB, {**RG_HELPER_RED, B_RS: RG_COLLIDE[B_RS]})
+    assert sorted(a["replicas"]) == RG_COLLIDE_REPLICAS, a
+
+
 def test_rg_two_helpers_registering_one_name_through_one_pymodule(tmp_path, monkeypatch):
     a = _rg(tmp_path, monkeypatch, RG_CHAIN_LIB, RG_CHAIN)
-    assert len(a["replicas"]) == 2, a
+    assert sorted(a["replicas"]) == RG_CHAIN_REPLICAS, a
+
+
+def test_rg_two_roots_with_same_named_helpers_both_survive(tmp_path, monkeypatch):
+    a = _rg(tmp_path, monkeypatch, RG_TWO_ROOTS_LIB, RG_TWO_ROOTS)
+    assert sorted(a["replicas"]) == RG_TWO_ROOTS_REPLICAS, a
+
+
+def test_rg_inert_pymodule_and_rust_name_decoy_do_not_hide_the_rename(tmp_path, monkeypatch):
+    a = _rg(tmp_path, monkeypatch, RG_XFILE_LIB, RG_INERT_DECOY)
+    assert a["replicas"] == RG_XFILE_REPLICAS, a
+
+
+def test_rg_pyclass_in_another_root_file_is_resolved(tmp_path, monkeypatch):
+    a = _rg(tmp_path, monkeypatch, RG_OTHER_ROOT_LIB, RG_OTHER_ROOT)
+    assert a["replicas"] == [("LiveBrain", f"{LIB}::NativeLoop")], a
+
+
+def test_rg_pyclass_in_another_root_file_control_has_zero_replicas(tmp_path, monkeypatch):
+    lib = RG_OTHER_ROOT_LIB.replace('name = "LiveBrain"', 'name = "NativeLoop"')
+    assert _rg(tmp_path, monkeypatch, lib, RG_OTHER_ROOT_GREEN)["replicas"] == []
+
+
+def test_rg_chain_through_a_root_carrying_helper_needs_the_whole_tree_view(tmp_path, monkeypatch):
+    a = _rg(tmp_path, monkeypatch, RG_DEEP_LIB, RG_DEEP)
+    assert a["replicas"] == [("LiveBrain", f"{C_RS}::NativeLoop")], a
 
 
 def test_rg_pending_retirement_allowlists_a_rust_replica(tmp_path, monkeypatch):
