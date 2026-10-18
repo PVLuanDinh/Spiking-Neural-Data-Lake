@@ -754,6 +754,7 @@ TOOLS_GATES = [
     ["tools/p6_gate.py", "--assert"],
     ["tools/dependency_ledger.py", "--assert"],
     ["tools/red_reachability.py", "--assert"],
+    ["tools/red_reachability.py", "--self-check"],  # R0.2b Rust NO_RED arms (r02b-verdict)
     ["tools/citation_guard.py"],
     ["tools/doc_command_guard.py", "--assert"],
 ]
