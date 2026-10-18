@@ -1164,8 +1164,11 @@ def c2d_control(mover: Path, repo: Path = REPO, log=print) -> list:
 #   self-check; none a build-artifact record.
 def native_record(root: Path) -> dict:
     """What the census records of native/ (R0.2 arc 2, row 10): rust_facts' status (git's view, fail
-    closed), the sha256 of every Cargo.lock under native/ and the compiled extension beside the
-    package -- so a Rust edit or a rebuilt artifact is a census DIFFERENCE, never an invisible one."""
+    closed), the sha256 of every Cargo.lock under native/ and the PATH of each compiled extension
+    beside the package -- so a dependency change or an added/removed/renamed artifact is a census
+    DIFFERENCE. Recorded by path, as PREREG row 10 specifies ("artifact presence"): an in-place
+    rebuild at the same path, or a `.rs` edit that keeps the file count, is NOT a census difference
+    (the `.rs` text is C2(d)'s scan; the artifact's bytes are nobody's record here)."""
     root = Path(root)
     try:
         n = len(rust_facts.rust_files(root))
