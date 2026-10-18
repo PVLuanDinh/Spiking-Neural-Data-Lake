@@ -156,12 +156,12 @@ The spike lake is built to grow beyond RAM without adding a heavy dependency. Tw
   index read/hold only a BOUNDED working set -- an old-range query SEEKS the file for the needed block instead
   of slurping the whole thing, so resident memory does not grow O(total-events) as the lake fills. (The seek-based
   indexed reader pattern is shared with `spike_telemetry_hub.load()`.)
-- **`[lake]` medallion (optional, polars/pyarrow/deltalake):** a partitioned bronze/silver/gold Parquet/Delta
-  lakehouse with the polars streaming engine (`scan_parquet(...).sink_parquet(...)`) + `optimize.compact()` +
-  time-travel, for large-scale out-of-core recompute. Never touches the core.
+- **Retired `[lake]` medallion:** a partitioned bronze/silver/gold Parquet/Delta lakehouse (polars, pyarrow,
+  deltalake) existed as an optional extra for out-of-core recompute. It was retired on 2026-10-17 with
+  `lakehouse/` and its `[lake]` extra (commit 9e378fb2); there is no such extra to install.
 
-Rule of thumb: keep resident memory bounded and let the disk hold the growth; add the `[lake]` extra only when
-you outgrow the stdlib `.spkl` path.
+Rule of thumb: keep resident memory bounded and let the disk hold the growth; the stdlib `.spkl` path is the
+only on-disk store.
 
 ## Status / caveat
 
