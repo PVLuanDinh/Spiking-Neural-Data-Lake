@@ -9,6 +9,20 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- B1 fold, lane f-instr: replication_guard sees PyO3 replicas registered across files (2026-10-18)
+
+Codex B1 r02b-instr MAJOR 1 + MINOR 2. Lane commits `d12e35c8..2d3e30a7` on `claude/sndl-f-instr-1018`, each
+red-first; unverified by any battery (no promotion).
+
+- Fix the Rust half of `replication_guard`: a `#[pyclass(name = "LiveBrain")]` in one file registered by a
+  `#[pymodule_export]` or a `register(m)` helper in another file is now reported as a Policy-4 replica, keyed by
+  the class's own file. The base resolved exports one file at a time and missed every cross-file shape.
+- Keep every colliding site: two files exporting one canonical name are both reported, so allowlisting one in
+  `PENDING_RETIREMENT` can never hide the other; an inert or `cfg(test)` `#[pymodule]` beside the class, or a
+  same-named unrenamed class elsewhere, no longer hides it either.
+- Print the residual as a blind spot: inside one resolution view `rust_facts` keeps one entry per name, so an
+  export that collides in every view that sees it keeps the later file.
+
 ## [Unreleased] -- Brian2 framework migration (2026-09-22)
 
 - Replaced the `snntorch==1.0.0` core dependency with `brian2==2.10.1`.
