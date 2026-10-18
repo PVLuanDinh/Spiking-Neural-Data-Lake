@@ -10,5 +10,6 @@ name = "sndl_python"
 crate-type = ["cdylib"]
 
 [dependencies]
+sndl-core = { path = "../sndl-core" }
 # =0.30.1 is the pyo3 Phase 0 gated (gil_used = false default, free-threaded 3.14t); pin, do not float.
 pyo3 = { version = "=0.30.1", features = ["extension-module"] }
