@@ -160,8 +160,7 @@ The spike lake is built to grow beyond RAM without adding a heavy dependency. Tw
   deltalake) existed as an optional extra for out-of-core recompute. It was retired on 2026-10-17 with
   `lakehouse/` and its `[lake]` extra (commit 9e378fb2); there is no such extra to install.
 
-Rule of thumb: keep resident memory bounded and let the disk hold the growth; the stdlib `.spkl` path is the
-only on-disk store.
+Rule of thumb: keep resident memory bounded and let the disk hold the growth.
 
 ## Status / caveat
 
