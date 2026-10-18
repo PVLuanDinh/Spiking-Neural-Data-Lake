@@ -22,12 +22,12 @@ RUST (R0.2 row 4, 2026-10-17): the port moves code into crates under `native/`, 
 "LiveBrain")]`, `#[pyo3(name = "Brain")]`), is the same replica spelled in Rust. Read through
 `rust_facts` only; keyed `(name, "<rel .rs>::<rust item>")` in PENDING_RETIREMENT; cfg(test) items and
 test files are not scanned (the Python half never scanned tests/ either). `native/` absent prints as
-ABSENT; `.rs` present and unreadable FAILS (closed). PyO3 exports resolve per registering file together
-with the definition-only files (a `#[pymodule_export]` may name a `#[pyclass]` in another file); a finding
-carries the export's own file.
-The bare run also executes `_selfcheck()`: the Python replica red, the Rust RED arm (exactly 3) / GREEN
-twin (0), the cross-file export red (1) / twin (0) and the two-file name collision (2), so the gate is seen
-red.
+ABSENT; `.rs` present and unreadable FAILS (closed). PyO3 exports resolve in views: each `#[pymodule]`
+file with the non-`#[pymodule]` files (a `#[pymodule_export]` or a registering helper may sit in another
+file), plus the whole tree; a finding carries the export's own file. The bare run also executes
+`_selfcheck()`: the Python replica red, the Rust RED arm (exactly 3) / GREEN twin (0), the cross-file
+export red (1) / twin (0), the two-file name collision (2) and the helper-registered export (1), so the
+gate is seen red.
 
   python -m snn_data_lake.gates.replication_guard   # (also run by run_selfchecks.py)
 """
@@ -46,9 +46,10 @@ RUST_KINDS = frozenset({"struct", "enum", "trait", "type", "union"})
 RUST_BLIND_SPOTS = (
     '`m.add("Brain", ..)` string aliases are not in the rust_facts export map',
     "cfg(test) items and test files are not scanned (the Python half never scanned tests/ either)",
-    "exports resolve per registering file plus the definition-only files (rust_facts keeps one entry per"
-    " name): an export whose #[pyclass]/#[pyfunction] lives in ANOTHER registering file is unresolved"
-    " (seen under its Rust name); two definition-only files sharing a Rust item name keep the later one",
+    "exports resolve in views (each #[pymodule] file with the non-#[pymodule] files, and the whole tree);"
+    " inside one view rust_facts keeps ONE entry per Python name and one #[pyclass] per Rust name, so"
+    " exports that collide in every view that sees them keep the later file (two helper files registering"
+    " `LiveBrain` through one #[pymodule]; two definition-only files sharing a Rust item name)",
 )
 
 # the canonical single-definition stack classes -> the ONE module each MUST be defined in
@@ -98,8 +99,10 @@ def _class_sites(pkg_dir):
 
 
 def _rel(file):
-    # distinct-from: tools/instrument_guard.rust_scan, tools/red_reachability (same inline expression) --
-    # the shared home is rust_facts (frozen for this lane; integrator row), gates cannot import tools/
+    # distinct-from: tools/instrument_guard.py::rust_scan -- the same inline expression; the shared home
+    #   is rust_facts (frozen for this lane; integrator row) and gates cannot import tools/
+    # distinct-from: tools/red_reachability.py::rust_criteria -- same
+    # distinct-from: tools/red_reachability.py::_twins -- same
     p = Path(file)
     return (p.relative_to(ROOT) if p.is_absolute() and ROOT in p.parents else p).as_posix()
 
@@ -115,6 +118,12 @@ def _native():
         return "native/ UNREADABLE", exc
 
 
+def _registers(f):
+    return any(
+        rust_facts._attr(x["attrs"], "pymodule") for x in (*f.get("fns", []), *f.get("mods", []))
+    )
+
+
 def rust_replicas(native=None):
     """(status, replicas, failures): Rust definitions and PyO3 exports named a CANON key -- the ONE Rust
     entry point; `native=(status, facts)` injects a fixture, None reads the real tree."""
@@ -128,13 +137,12 @@ def rust_replicas(native=None):
         for t in f["types"]:
             if t["kind"] in RUST_KINDS and t["name"] in CANON and not t["cfg_test"]:
                 found.append((t["name"], f"{rel}::{t['name']}"))
-    # each registering file resolves with the definition-only files (a #[pymodule_export] whose
-    # #[pyclass] lives in another file), never with another registering file: rust_facts keeps ONE
-    # entry per name, so two files exporting `LiveBrain` must not share a view; keyed by the export's file
-    own = {id(f): rust_facts.pyo3_exports([f]) for f in production}
-    defs = [f for f in production if not own[id(f)]]
-    for f in production:
-        group = [*defs, f] if own[id(f)] else []
+    # views: each #[pymodule] file with the non-#[pymodule] files (its exports may name a #[pyclass] or a
+    # registering helper in another file), never two #[pymodule] files together (rust_facts keeps ONE
+    # entry per name), plus the whole tree; a finding is keyed by the export's own file
+    regs = [f for f in production if _registers(f)]
+    defs = [f for f in production if not _registers(f)]
+    for group in [*([*defs, f] for f in regs), production]:
         for py, ex in rust_facts.pyo3_exports(group).items():
             key = (py, f"{_rel(ex['file'])}::{ex['rust']}")
             if py in CANON and key not in found:
@@ -246,14 +254,28 @@ _REPLICA_RS = "native/sndl-python/src/replica.rs"
 _RUST_XFILE_RED = {_REPLICA_RS: '#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'}
 _RUST_XFILE_GREEN = {_REPLICA_RS: '#[pyclass(name = "NativeLoop")]\npub struct NativeLoop;\n'}
 _RUST_XFILE_REPLICAS = [("LiveBrain", f"{_REPLICA_RS}::NativeLoop")]
-# review fold: a SECOND file exporting its own `LiveBrain` (rust_facts keeps one entry per name over the
-# whole tree) -- both sites must survive, so an allowlisted one can never hide the other.
+# a SECOND file exporting its own `LiveBrain` (rust_facts keeps one entry per name) -- both sites must
+# survive, so an allowlisted one can never hide the other.
 _RUST_COLLIDE = {
     **_RUST_XFILE_RED,
     "native/sndl-core/src/b.rs": 'use pyo3::prelude::*;\n#[pyclass(name = "LiveBrain")]\npub struct Loop2;\n'
     "#[pymodule(gil_used = false)]\nmod _b { #[pymodule_export] use super::Loop2; }\n",
 }
 _RUST_COLLIDE_REPLICAS = [*_RUST_XFILE_REPLICAS, ("LiveBrain", "native/sndl-core/src/b.rs::Loop2")]
+# the #[pymodule] only delegates: `replica::register(m)` adds the renamed class from replica.rs.
+_RUST_HELPER_LIB = """
+use pyo3::prelude::*;
+mod replica;
+
+#[pymodule(gil_used = false)]
+fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    replica::register(m)
+}
+"""
+_RUST_HELPER_RED = {
+    _REPLICA_RS: 'use pyo3::prelude::*;\n#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'
+    "pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> { m.add_class::<NativeLoop>() }\n"
+}
 
 
 def fixture_native(text, extra=None):
@@ -289,13 +311,15 @@ def _selfcheck():
     assert not xtwin, f"the unrenamed cross-file pyclass was flagged: {xtwin}"
     _, both, _ = rust_replicas(fixture_native(_RUST_XFILE_LIB, _RUST_COLLIDE))
     assert sorted(both) == sorted(_RUST_COLLIDE_REPLICAS), f"a colliding export was masked: {both}"
+    _, helper, _ = rust_replicas(fixture_native(_RUST_HELPER_LIB, _RUST_HELPER_RED))
+    assert helper == _RUST_XFILE_REPLICAS, f"helper-registered export not resolved: {helper}"
     _, _, failures = rust_replicas(
         ("native/ UNREADABLE", rust_facts.RustFactsUnavailable("constructed"))
     )
     assert failures, "RustFactsUnavailable with .rs present did not fail closed"
     print(
         "  reds fired: Python replica x1; Rust RED arm x3 (cfg(test) Brain not counted); repaired twin 0;"
-        " cross-file export x1, twin 0; two files exporting one name x2;"
+        " cross-file export x1, twin 0; two files exporting one name x2; helper-registered x1;"
     )
     print("  RustFactsUnavailable -> failure. self-check OK")
 
