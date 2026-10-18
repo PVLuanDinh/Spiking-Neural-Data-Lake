@@ -213,7 +213,6 @@ RG_OTHER_ROOT = {
     B_RS: "use pyo3::prelude::*;\n#[pymodule(gil_used = false)]\n"
     "mod _b { #[pymodule_export] use crate::NativeLoop; }\n"
 }
-RG_OTHER_ROOT_GREEN = {**RG_OTHER_ROOT}
 # only the whole-tree view: the chain runs through a helper that carries an inert #[pymodule] (so it
 # is in no helper-chain view) into a third file holding the renamed class.
 RG_DEEP_LIB = RG_CHAIN_LIB.replace("mod b;", "mod c;").replace(
@@ -237,7 +236,7 @@ def _tree(tmp_path, text, extra=None):
     p = tmp_path / LIB
     p.parent.mkdir(parents=True)
     p.write_text(text, encoding="utf-8")
-    for rel, src in (extra or {}).items():  # repo-relative paths, as p6_gate's fixture
+    for rel, src in (extra or {}).items():
         (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / rel).write_text(src, encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True)
@@ -421,7 +420,7 @@ def test_rg_pyclass_in_another_root_file_is_resolved(tmp_path, monkeypatch):
 
 def test_rg_pyclass_in_another_root_file_control_has_zero_replicas(tmp_path, monkeypatch):
     lib = RG_OTHER_ROOT_LIB.replace('name = "LiveBrain"', 'name = "NativeLoop"')
-    assert _rg(tmp_path, monkeypatch, lib, RG_OTHER_ROOT_GREEN)["replicas"] == []
+    assert _rg(tmp_path, monkeypatch, lib, RG_OTHER_ROOT)["replicas"] == []
 
 
 def test_rg_chain_through_a_root_carrying_helper_needs_the_whole_tree_view(tmp_path, monkeypatch):

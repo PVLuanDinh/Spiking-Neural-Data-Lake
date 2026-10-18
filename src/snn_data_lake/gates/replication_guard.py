@@ -22,8 +22,7 @@ RUST (R0.2 row 4, 2026-10-17): the port moves code into crates under `native/`, 
 "LiveBrain")]`, `#[pyo3(name = "Brain")]`), is the same replica spelled in Rust. Read through
 `rust_facts` only; keyed `(name, "<rel .rs>::<rust item>")` in PENDING_RETIREMENT; cfg(test) items and
 test files are not scanned (the Python half never scanned tests/ either). `native/` absent prints as
-ABSENT; `.rs` present and unreadable FAILS (closed). PyO3 exports resolve in views (each `#[pymodule]`
-file paired with every other file, each with all the non-`#[pymodule]` files, and the whole tree; a
+ABSENT; `.rs` present and unreadable FAILS (closed). PyO3 exports resolve across files (a
 `#[pymodule_export]` or a registering helper may sit in another file) and a finding carries the export's
 own file. The bare run also executes `_selfcheck()`: the Python replica red, the Rust RED arm (exactly 3)
 / GREEN twin (0), the cross-file export red (1) / twin (0), the two-file name collision (2) and the
@@ -140,11 +139,9 @@ def rust_replicas(native=None):
         for t in f["types"]:
             if t["kind"] in RUST_KINDS and t["name"] in CANON and not t["cfg_test"]:
                 found.append((t["name"], f"{rel}::{t['name']}"))
-    # views (rust_facts keeps ONE entry per name inside a view, so an export must get a view where nothing
-    # else wears its name): each #[pymodule] file paired with every other file (a #[pyclass] or a
-    # registering helper anywhere, incl. a file that carries an inert #[pymodule]); each with all the
-    # non-#[pymodule] files (helper chains); the whole tree (a chain through a #[pymodule]-carrying
-    # helper into a third file). The root goes last so its own #[pyclass] wins a Rust-name tie.
+    # rust_facts keeps ONE entry per name per view, so each export needs a view where nothing else wears
+    # its name: root + each other file, root + all helpers (helper chains), the whole tree (chains through
+    # a #[pymodule]-carrying helper). The root goes last so its own #[pyclass] wins a Rust-name tie.
     roots = [f for f in production if _has_pymodule(f)]
     helpers = [f for f in production if not _has_pymodule(f)]
     pairs = [[d, f] for f in roots for d in production if d is not f]
@@ -289,7 +286,7 @@ _RUST_HELPER_GREEN = {
 
 def fixture_native(text, extra=None):
     """`(status, facts)` for a constructed tree: `native/sndl-python/src/lib.rs` carrying `text`, plus the
-    `extra` {repo-relative path: text} files (as p6_gate.fixture_native)."""
+    `extra` {repo-relative path: text} files."""
     facts = []
     for rel, src in {"native/sndl-python/src/lib.rs": text, **(extra or {})}.items():
         f = rust_facts.facts_for_source(src, name=rel.rsplit("/", 1)[-1])
