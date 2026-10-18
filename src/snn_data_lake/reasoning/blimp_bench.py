@@ -165,12 +165,10 @@ def cached_logprob(serve):
     return logprob
 
 
-# The frozen char-LM serves this bench scores, in artifact order. All three are ORDER-SENSITIVE
+# The frozen char-LM serve this bench scores (the e-prop serves were retired by del-reasoning 1c). It is an ORDER-SENSITIVE
 # full-sentence AR log-prob models (unlike the order-invariant SLDA-RFF language head).
 SERVES = (
     ("AR spik-RWKV", "ar_spiking_lm_serve", "SpikingLMServe"),
-    ("e-prop ALIF-LM", "eprop_lm_alif_serve", "EpropAlifLMServe"),
-    ("e-prop flat LM", "eprop_lm_serve", "EpropLMServe"),
 )
 
 
@@ -197,7 +195,7 @@ def main():
         return 0
 
     print(f"blimp_bench: {len(names)} paradigms at {DATA}")
-    # Pairs per paradigm. 25 keeps the self-check affordable now that it scores three real LMs twice
+    # Pairs per paradigm. 25 keeps the self-check affordable now that it scores the real LM twice
     # each, and it is the sample size the numbers recorded in docs/DEPTH_CEILINGS.md were measured at,
     # so the printed table is directly comparable to the record. Full runs use per_paradigm=None.
     n = 25

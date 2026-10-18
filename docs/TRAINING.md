@@ -114,7 +114,7 @@ calls `trained_brain.predict`/`accuracy`, no GPU or torch at serve time.
 (owner decision 17c). Measured 2026-10-02: one epoch on the full training set scored chance (test accuracy
 0.0785); longer budgets were never run. It refuses now; the record is
 `specs/022-unified-brain-arc/evidence/trainer-retirement.md`. The `[genn]` extra (pygenn) stays for
-`instruments/snn_mnist_stdp_genn` and `reasoning/paradigm_b_genn`.
+`instruments/snn_mnist_stdp_genn` (`reasoning/paradigm_b_genn` was retired by del-reasoning 1f).
 
 ## The AR spiking char-LM artifact carries its own provenance
 

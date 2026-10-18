@@ -43,7 +43,7 @@ each piece work:
 python -m snn_data_lake.faculties.spiking_storage_prototype  # factored associative-memory storage
 python -m snn_data_lake.substrate.spike_telemetry_hub          # Paradigm A: sparse .spk store + windowed queries
 python -m snn_data_lake.substrate.paradigm_b_engine               # Paradigm B: in-storage spike-query engine
-python -m snn_data_lake.reasoning.spike_kg                     # Paradigm C: relational spike embeddings
+# Paradigm C (reasoning/spike_kg) was retired by del-reasoning 1h
 ```
 
 > **Use the FULL dotted path.** The flat back-compat alias (`python -m snn_data_lake.interpreter`)
@@ -100,8 +100,7 @@ cat windows.csv | python -m snn_data_lake.sensorimotor.signal_loop --stdin --fee
 ```bash
 python -m venv .venv-nmnist
 .venv-nmnist/bin/pip install -e ".[nmnist]"        # the package + tonic; pulls ~1 GB N-MNIST on first run
-.venv-nmnist/bin/python -m snn_data_lake.reasoning.nmnist_ingest
-# no tonic? the same command runs on deterministic synthetic events (no tonic needed)
+# the ingest runner (reasoning/nmnist_ingest) was retired by del-reasoning 1h
 ```
 
 ### 5. GPU training (optional, needs CUDA + torch)

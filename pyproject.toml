@@ -249,8 +249,8 @@ train = ["torch", "torchvision", "numpy", "scikit-learn"]              # GPU tra
 # The snntorch half of that record was retired by the Brian2 migration; torchvision remains extra.
 # Per P7 this needs no justification beyond what it buys: SVC/StandardScaler for the SVM readouts.
 # 2026-08-12 status of those four sites: deep_stdp_2stage_svm RETIRED (2026-08-07);
-# ensemble_rbf settled as tests/instruments/ensemble_rbf_ab.py; lake99 + ng_snn/validate_uci
-# remain reasoning-tier. The gate env carries scikit-learn 1.9.0 (cp314t wheel, measured).
+# ensemble_rbf settled as tests/instruments/ensemble_rbf_ab.py; ng_snn/validate_uci RETIRED
+# (del-reasoning 1a); lake99 remains reasoning-tier. The gate env carries scikit-learn 1.9.0 (cp314t wheel, measured).
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
 nengo = ["nengo"]                                                       # infra/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, the default install never imports it
 nir = ["nir", "h5py", "numpy"]                                           # infra/nir_export.to_nir_graph -> canonical NIR HDF5 for Loihi 2 / SpiNNaker 2 / Speck / Xylo. ADDED 2026-08-04 (specs/010, P7): the import at nir_export.py:121 is lazy and raises a helpful ImportError, but it was declared NOWHERE, so `pip install ".[all]"` could not produce a tree where the export path runs. Distribution name confirmed from the module's own install hint ("pip install nir numpy"), not guessed. h5py ADDED 2026-08-20 (specs/022 T018): engine/wiring_manifest.py imports it DIRECTLY (the manifest artifact's JSON attr rides in the same HDF5 file nir writes), and a directly-imported transitive gets DECLARED, not assumed -- the pillow precedent; the dependency ledger caught the omission on landing day.
