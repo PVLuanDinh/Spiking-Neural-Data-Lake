@@ -33,7 +33,8 @@ prints `native/ ABSENT`, distinct from "0 findings".
 
 OWN BLIND SPOTS (printed beside the verdict with `rust_facts.BLIND_SPOTS`): liveness is per FILE, not
 per item (a live export's file reaches a module even when the item it names is unused); a `use`, call
-or path inside an inline `mod` resolves from the file's module; trait dispatch and generics match by last
+or path inside an inline `mod` resolves from the file's module (the file's own children, then its `use`
+aliases, then any inline module's children, first-declared winning a shared name); trait dispatch and generics match by last
 segment name; a Python facade re-export of an exported learning fn (called only through the
 re-exporting module) gives a false M1.
 Test code is the reader's `test_file` (one classifier); only `build.rs` is excluded here by name.
@@ -58,8 +59,9 @@ NATIVE_EXEMPT_METHOD: dict[str, str] = {}  # "Type::fn" | "fn" | python name -> 
 
 BLIND_SPOTS = (
     "liveness is per file, not per item (a live export's file reaches its modules)",
-    "a use, call or path inside an inline mod resolves from the file's module (the file's own children "
-    "first, then any inline module's)",
+    "a use, call or path inside an inline mod resolves from the file's module (the file's own children, "
+    "then its use aliases, then any inline module's children; the first-declared inline module wins a "
+    "shared child name)",
     "trait dispatch and generics match a caller by last segment name",
     "a Python facade re-export (`from ._native import f` in a live module that never calls it, "
     "used elsewhere through that module) gives a false M1: loads are read only from _native-referencing modules",
@@ -146,9 +148,13 @@ class _Tree:
         for m in self.facts[rel].get("mods", []):
             node = f"{rel}::{m['mod']}" if m["mod"] else rel
             is_path, cands = rf.mod_files(PurePosixPath(rel), m, mod_rs, cfg_test=True)
-            hit = next(
-                (c for c in (posixpath.normpath(str(c)) for c in cands) if c in self.facts),
-                f"{node}::{m['name']}" if m["inline"] else None,
+            hit = (
+                f"{node}::{m['name']}"
+                if m["inline"]
+                else next(
+                    (c for c in (posixpath.normpath(str(c)) for c in cands) if c in self.facts),
+                    None,
+                )
             )
             if not hit:
                 continue
@@ -175,11 +181,13 @@ class _Tree:
                 cur = self.parent.get(cur, cur)
             elif s in self.children.get(cur, {}):
                 cur = self.children[cur][s]
-            elif s in self.flat.get(cur, {}):
-                cur = self.flat[cur][s]
             elif depth < 6 and s in self.alias.get(f := _file(cur), {}):
                 out |= self.reach(f, self.alias[f][s].split("::") + segs[k + 1 :], depth + 1)
                 break
+            elif s in self.flat.get(
+                cur, {}
+            ):  # last: a name declared in one of the file's inline modules
+                cur = self.flat[cur][s]
             else:
                 break
             out.add(_file(cur))
@@ -515,6 +523,7 @@ def _ping_fixture(core, body):
     }
 
 
+# Crate-relative trees for `_ping_fixture` (it adds the native/sndl-core/ prefix); not for a bare `**` spread.
 _USED_TWICE = {
     "src/lib.rs": 'pub mod used;\nmod alternate {\n #[path = "../../tests/used.rs"]\n pub mod used;\n}\n',
     "src/used.rs": "pub struct Used;\n",
@@ -532,6 +541,29 @@ _NESTED_SIBLINGS = {
     "src/x1.rs": "pub struct X1;\n",
     "src/x2.rs": "pub struct X2;\n",
 }
+_ALIASED = {
+    "src/lib.rs": (
+        "pub mod real;\nuse crate::real as helpers;\n"
+        "pub fn f() { let _ = helpers::deeper::D; let _ = t::helpers::O; }\n"
+        'mod t {\n #[path = "../other.rs"]\n pub mod helpers;\n}\n'
+    ),
+    "src/real.rs": "pub mod deeper;\n",
+    "src/real/deeper.rs": "pub struct D;\n",
+    "src/other.rs": "pub struct O;\n",
+}
+
+
+# distinct-from: sleep_plasticity_ab.py pool_selection.py access_consciousness.py evidence_accumulation.py prefrontal_executive.py -- a scratch-home guard, an instrument stepper, a GNW index, a drift-diffusion race, a WTA decision; this WRITES a fixture tree with two inline modules naming one child (sibling of _ping_fixture)
+def _two_inline_used(path):
+    return {
+        "src/lib.rs": (
+            'mod a {\n #[path = "../x1.rs"]\n pub mod used;\n}\n'
+            f'mod c {{\n #[path = "../x2.rs"]\n pub mod used;\n pub fn f() {{ let _ = {path}; }}\n}}\n'
+            "pub fn h() { c::f(); let _ = a::used::X1; }\n"
+        ),
+        "src/x1.rs": "pub struct X1;\n",
+        "src/x2.rs": "pub struct X2;\n",
+    }
 
 
 # name -> (RED files, GREEN files, RED (D, M) counts); every GREEN twin is 0/0
@@ -644,8 +676,8 @@ FOLD_CASES = {
         _ping_fixture(_USED_TWICE, "let _ = sndl_core::used::Used;"),
         (1, 0),
     ),
-    # review panel on 8f2aee72: `super` climbs out of an inline node to the file (GREEN reaches src/used.rs
-    # through alternate -> lib -> used; RED's single super stays inside alternate)
+    # fold round 5 review panel (on 8f2aee72, 05b03cf1): inline-module nodes vs paths written inside them
+    # `super` climbs out of an inline node to the file (GREEN: alternate -> lib -> used; RED stays inside)
     "super-out-of-an-inline-node": (
         _ping_fixture(
             {
@@ -663,8 +695,7 @@ FOLD_CASES = {
         ),
         (1, 0),
     ),
-    # a path written INSIDE an inline module (`b::g()` in `mod a { pub mod b; .. }`) resolves from the file
-    # (blind spot) and must still reach the inline module's own child
+    # `b::g()` written inside `mod a { pub mod b; .. }` resolves from the file yet reaches a's own child
     "path-written-inside-an-inline-module": (
         _ping_fixture(_INLINE_LOCAL, "sndl_core::a::f();"),
         _ping_fixture(
@@ -684,6 +715,34 @@ FOLD_CASES = {
         ),
         (1, 0),
     ),
+    # a file's `use .. as helpers` alias beats a same-named inline child for a path written at top level
+    "use-alias-beats-an-inline-child": (
+        _ping_fixture(
+            {
+                **_ALIASED,
+                "src/lib.rs": _ALIASED["src/lib.rs"].replace("let _ = helpers::deeper::D; ", ""),
+            },
+            "sndl_core::f();",
+        ),
+        _ping_fixture(_ALIASED, "sndl_core::f();"),
+        (1, 0),
+    ),
+    # BLIND SPOT pinned: inside `mod c`, the short `used::X2` lands on the FIRST inline module declaring
+    # `used` (a's x1.rs), so x2.rs reads dormant; Rust reaches x2 (GREEN spells crate::c::used::X2)
+    "first-declared-inline-module-wins-a-shared-child": (
+        _ping_fixture(_two_inline_used("used::X2"), "sndl_core::h();"),
+        _ping_fixture(_two_inline_used("crate::c::used::X2"), "sndl_core::h();"),
+        (1, 0),
+    ),
+}
+# RED arm of a fold-5 case -> the file its one D2b must name (the counts above cannot tell x1 from x2)
+FOLD_FILES = {
+    "same-named-modules-at-different-paths": "src/used.rs",
+    "super-out-of-an-inline-node": "src/used.rs",
+    "path-written-inside-an-inline-module": "src/a/b.rs",
+    "nested-and-sibling-inline-modules": "src/x2.rs",
+    "use-alias-beats-an-inline-child": "src/real/deeper.rs",
+    "first-declared-inline-module-wins-a-shared-child": "src/x2.rs",
 }
 
 
@@ -717,6 +776,10 @@ def selfcheck():
                 res = audit(t, live=FIXTURE_LIVE, src=Path(t) / "src")
                 got = (len(res["d"]), len(res["m"]))
                 assert got == want_arm, f"fold case {name}: want {want_arm}, got {res}"
+                if files is red_files and name in FOLD_FILES:
+                    assert FOLD_FILES[name] in res["d"][0], (
+                        f"fold case {name} names the wrong file: {res['d']}"
+                    )
 
 
 def check(group):
@@ -734,7 +797,7 @@ def main():
     selfcheck()
     res = audit()
     print(
-        f"native_dormancy: self-check OK (RED 3 findings, GREEN 0, fail-closed, nested crates, fold-1, fold-3 and fold-5 reds) | {res['status']} | "
+        f"native_dormancy: self-check OK (RED 3 findings, GREEN 0, fail-closed, nested crates, fold-1, fold-3, fold-5 and fold-5 review-panel reds) | {res['status']} | "
         f"D {len(res['d'])} M {len(res['m'])}"
     )
     print("native_dormancy BLIND SPOTS: " + "; ".join((*rf.BLIND_SPOTS, *BLIND_SPOTS)))
