@@ -9,6 +9,32 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- B1 fold, lane p1a-fix: the resident BinLog replay is served only when provably current (2026-10-18)
+
+Codex B1 (LANE p1a, MAJOR 1+2) reproduced two ways Phase 1a's resident `BinLog.replay()` copy served
+stale records from the one durable lake: an equal-size external `rewrite()` kept the size-only
+`stale()` green, and a local `append()` after an external append re-read the size and blessed a copy
+that had never seen the foreign record. Both reproduced RED on base `5974c807`, then folded through
+three seven-lens review rounds (`lanes/r02-1017/rows/p1a-fix/`).
+
+- Fix `BinLog.stale()` so a cached instance proves the file unchanged before serving records: the
+  (size, mtime_ns, inode) fingerprint must match AND the last frame on disk must be the resident
+  copy's last payload (one small read, never a pass); any stat/read error reads as stale.
+- Prevent a local write from blessing a copy another writer invalidated: `append()`/`extend()`
+  re-stamp only when current before the write and the path afterwards carries the same inode grown
+  by exactly their own bytes; `rewrite()` only when the path carries the inode and size of the temp
+  file it published; construction stamps before its one boot pass (a mid-boot write leaves the
+  instance stale, never a hang).
+- Prevent a concurrent reader's open handle from failing compaction on Windows: `rewrite()` retries
+  `os.replace` on `PermissionError` (bounded, 5 s), publishes from a private temp file, and removes
+  it on any failure so a full disk never accumulates lake-sized partials.
+- Refuse empty payloads in `rewrite()` as `append()`/`extend()` already do (a 0 length is a torn
+  frame that caps the log).
+- Stated residual: an equal-size in-place edit of an earlier record that keeps the last frame, inode
+  and mtime tick, or one landing inside a writer's own window, is invisible to stat + tail; no
+  production writer edits the lake in place. Closing it for good means a writer-side generation
+  counter in the format.
+
 ## [Unreleased] -- Brian2 framework migration (2026-09-22)
 
 - Replaced the `snntorch==1.0.0` core dependency with `brian2==2.10.1`.
