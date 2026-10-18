@@ -144,15 +144,17 @@ def test_let_bindings_resolve_by_end_scope_and_init_kind(body, want):
     assert sorted(rust_facts.pyo3_exports([rust_facts.facts_for_source(src)])) == want
 
 
-def test_lets_and_calls_carry_their_block_scope():
+def test_lets_assigns_and_calls_carry_their_block_scope():
     """rsfacts emits `scope`: file-unique ordinals of the enclosing blocks, outermost first, so two
-    sibling blocks never share a scope."""
+    sibling blocks never share a scope; assigns carry it too (Codex r6 R-1)."""
     f = rust_facts.facts_for_source(
-        "fn m() {\n let a = 1;\n { let b = 2; }\n { let c = 3; }\n m.add(a);\n}\n"
+        "fn m() {\n let mut a = 1;\n { let b = 2; a = 3; }\n { let c = 3; }\n m.add(a);\n}\n"
     )
-    scopes = {x["pat"]: x["scope"] for x in f["lets"]}
+    scopes = {x["pat"].removeprefix("mut "): x["scope"] for x in f["lets"]}
     (call,) = f["mcalls"]
+    (assign,) = f["assigns"]
     assert scopes["a"] == call["scope"] and len(scopes["a"]) == 1, (scopes, call)
+    assert assign["scope"] == scopes["b"], (assign, scopes)
     assert scopes["b"][:1] == scopes["c"][:1] == scopes["a"], scopes
     assert len(scopes["b"]) == len(scopes["c"]) == 2 and scopes["b"] != scopes["c"], scopes
 

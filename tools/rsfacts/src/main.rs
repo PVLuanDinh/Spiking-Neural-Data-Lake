@@ -401,7 +401,7 @@ impl<'ast> Visit<'ast> for Facts {
         self.assigns.push(
             json!({"lhs": txt(&*i.left), "op": "=", "rhs": txt(&*i.right), "line": line(i), "col": col(i),
             "end_line": i.span().end().line, "end_col": i.span().end().column,
-            "fn": f, "fn_id": self.cur_fn_id.last(), "cfg_test": cfg}),
+            "fn": f, "fn_id": self.cur_fn_id.last(), "scope": self.scope, "cfg_test": cfg}),
         );
         visit::visit_expr_assign(self, i);
     }
@@ -412,7 +412,7 @@ impl<'ast> Visit<'ast> for Facts {
             self.assigns.push(
                 json!({"lhs": txt(&*i.left), "op": op, "rhs": txt(&*i.right), "line": line(i), "col": col(i),
                 "end_line": i.span().end().line, "end_col": i.span().end().column,
-                "fn": f, "fn_id": self.cur_fn_id.last(), "cfg_test": cfg}),
+                "fn": f, "fn_id": self.cur_fn_id.last(), "scope": self.scope, "cfg_test": cfg}),
             );
         }
         visit::visit_expr_binary(self, i);
