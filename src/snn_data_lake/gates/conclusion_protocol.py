@@ -22,6 +22,13 @@ prompt, and that a capability dies under a neuter that should abolish it. The st
 to "there is something it is like to be this system" is not a measurement this project contains. The goal stays
 unhedged; the claim without the measurement is what is forbidden.
 
+REFUSAL 1 IN RUST (R0.2, DISPOSITION row 12): `rust_aggregate_findings` reads `native/**/*.rs` through
+`gates/rust_facts` only -- a combining call (`sum`/`fold`/`*sum*`/`*mean*`) whose receiver and args name two
+instruments, any fact text that holds two instruments and an arithmetic operator, and a fn that returns one
+number from two instrument parameters with no fact in its body (a plain binary op has no fact in schema 2:
+`RUST_BLIND_SPOTS`). At the Python edge a `_native` call whose args name two instruments is no longer skipped
+by the sum/mean whitelist. `native/` absent prints ABSENT; `.rs` present and unreadable is a finding.
+
 Bare invocation (also run by run_selfchecks): the constructed reds, their positive control, and today's count.
 """
 
@@ -38,8 +45,11 @@ Bare invocation (also run by run_selfchecks): the constructed reds, their positi
 from __future__ import annotations
 
 import ast
+import re
 import sys
 from pathlib import Path
+
+from snn_data_lake.gates import rust_facts
 
 REPO = Path(__file__).resolve().parents[3]
 SELF = Path(__file__).resolve()
@@ -289,8 +299,15 @@ def row_findings(registry=None, instruments=None, tasks=None) -> list[str]:
 
 
 def aggregate_findings(root: Path | None = None) -> list[str]:
-    """Refusal 1: no code combines two or more instrument readings into one number."""
+    """Refusal 1: no code combines two or more instrument readings into one number.
+
+    A call into `snn_data_lake._native` (callee matched by NAME via `rust_facts.python_native_refs`;
+    the star/alias/same-name limits are in RUST_BLIND_SPOTS)
+    whose args name two instruments is a combination site too: the number is made in Rust, the
+    readings are joined here (R0.2 PY-EDGE)."""
     base = (REPO / "src" / "snn_data_lake") if root is None else root
+    src = base.parent if root is None else base  # python_native_refs keys modules relative to src/
+    refs = rust_facts.python_native_refs(src)
     out: list[str] = []
     for path in sorted(base.rglob("*.py")):
         if "__pycache__" in path.parts or path.name == "conclusion_protocol.py":
@@ -299,6 +316,7 @@ def aggregate_findings(root: Path | None = None) -> list[str]:
             tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
         except SyntaxError:
             continue
+        native = refs.get(rust_facts._module_of(path, src), set())
         for node in ast.walk(tree):
             if not isinstance(node, (ast.BinOp, ast.Call)):
                 continue
@@ -309,13 +327,284 @@ def aggregate_findings(root: Path | None = None) -> list[str]:
             if isinstance(node, ast.Call):
                 f = node.func
                 fname = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
-                if fname not in ("sum", "mean", "fmean", "prod", "average"):
+                if fname not in ("sum", "mean", "fmean", "prod", "average") and fname not in native:
                     continue
             rel = str(path.relative_to(base)).replace(chr(92), "/")
             out.append(
                 f"{rel}:{getattr(node, 'lineno', 0)}: combines {named} into one number (no aggregate score)"
             )
     return out
+
+
+# The hook matches the fixture text below on instrument words; none of these sites is a gate rule:
+# distinct-from: instruments/integration_measure.py -- computes the integration reading (LZ76/gzip); this block measures nothing.
+# distinct-from: instruments/binding_instrument.py -- scores the binding campaign (`_t080_score`); no score is produced here.
+# distinct-from: instruments/staged_sleep_bout.py -- runs a sleep bout and reads a validate() score; nothing runs here.
+# distinct-from: faculties/agency_monitor.py -- the agency channel status; this block only names the word in a fixture.
+# distinct-from: infra/brain_native_selfbuild.py -- a three-factor learner over gate outcomes; this block learns nothing.
+#: Printed beside the Rust verdict, after `rust_facts.BLIND_SPOTS`.
+RUST_BLIND_SPOTS = (
+    "a plain binary op has no fact (schema 2): a combination that is a bare return/tail expression is seen "
+    "only as COMBINE-FN (two instrument params, one numeric result, no fact in the body)",
+    "COMBINE-EXPR judges one fact's text, not an expression: two instruments and an operator in one `let` "
+    "initialiser count even when the operator joins something else",
+    "every .rs under native/ is read, test code included (P4c)",
+    "at the Python edge a `_native` callee is matched by NAME within a module that references it: a star import "
+    "or an `import ... as` alias is missed, and an unrelated `x.show()` in a module that also uses `_native.show` "
+    "is counted (python_native_refs exposes names, not bindings)",
+    "an instrument is matched as a NAME PART: `integration_per_agency` names two instruments, as the Python "
+    "half's substring match already does",
+    "tools/rsfacts is gate tooling, outside the brain rules",
+)
+_INSTRUMENT = re.compile(
+    r"(?<![A-Za-z0-9])(" + "|".join(INSTRUMENTS) + r")(?![A-Za-z0-9])"
+)  # `_` passes
+#: An operator (or `op=`, for a compound assignment inside macro tokens) with an operand on each side;
+#: the right operand may carry a unary `-`/`*`/`&` prefix. Fields join with ", " (`_text`), so a unary
+#: prefix that OPENS the next field never sits after an operand character.
+_ARITH = re.compile(r"[\w)\]]\s*[-+*/]=?\s*[-*&]*\s*[\w(\[]")
+_SCALAR_RET = re.compile(r"^->(f32|f64|i\d+|u\d+|isize|usize)$")
+_FACT_TEXT = {  # fact kind -> the text fields COMBINE-EXPR reads
+    "lets": ("init",),
+    "assigns": ("lhs", "rhs"),  # a compound `op` is arithmetic by itself
+    "index": ("expr", "index"),
+    "calls": ("args",),
+    "mcalls": ("recv", "args"),
+    "macros": ("tokens",),
+}
+
+#: The constructed Rust RED arm and GREEN twin (pre-registered).
+RUST_RED_SRC = """pub fn score(integration: f64, agency: f64) -> f64 { (integration + agency) / 2.0 }
+pub fn total(integration: f64, agency: f64) -> f64 { [integration, agency].iter().sum() }
+pub fn blend(integration: f64, agency: f64) -> f64 { let s = integration * 0.5 + agency * 0.5; s }
+pub fn show(integration: f64, agency: f64) -> String { format!("{} {}", integration, agency) }
+pub fn each(integration: f64) -> f64 { integration * 2.0 }
+"""
+RUST_GREEN_SRC = """pub fn show(integration: f64, agency: f64) -> String { format!("{} {}", integration, agency) }
+pub fn each(integration: f64) -> f64 { integration * 2.0 }
+pub fn report(integration: f64, agency: f64) -> (f64, f64) { (integration, agency) }
+"""
+PY_BRIDGE_SRC = """from snn_data_lake import _native
+
+
+def score(integration, agency):
+    return _native.combine(integration, agency)
+
+
+def show(integration, agency):
+    render(integration, agency)
+    return _native.show(integration)
+"""
+
+
+#: PREREG addenda cases, each one fn through `rust_aggregate_findings`: (label, source, expected rule tags).
+RUST_FOLD_CASES = (
+    (
+        "compound-assign",
+        "pub fn score(mut integration: f64, agency: f64) -> f64 "
+        "{ integration += agency; integration }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "snake-case",
+        "pub fn score(integration_reading: f64, agency_reading: f64) -> f64 "
+        "{ (integration_reading + agency_reading) / 2.0 }\n",
+        ["COMBINE-FN"],
+    ),
+    (
+        "free-mean-call",
+        "pub fn m(integration: f64, agency: f64) -> f64 { stats::mean(&[integration, agency]) }\n",
+        ["COMBINE-CALL"],
+    ),
+    (
+        "fold",
+        "pub fn f(integration: f64, agency: f64) -> f64 "
+        "{ [integration, agency].iter().fold(0.0, |a, b| a + b) }\n",
+        ["COMBINE-CALL"],
+    ),
+    (
+        "index",
+        "pub fn g(r: &[f64], integration: usize, agency: usize) -> f64 "
+        "{ r[integration + agency] }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "macro-tokens",
+        "pub fn h(integration: f64, agency: f64) -> f64 { dbg!(integration + agency) }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "mcall-receiver",
+        "pub fn k(integration: f64, agency: f64) -> f64 { (integration + agency).sqrt() }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "control-deref",
+        "pub fn c(integration: &f64, agency: &f64) -> Vec<f64> { vec![*integration, *agency] }\n",
+        [],
+    ),
+    (
+        "control-plain-call",
+        "pub fn c2(integration: f64, agency: f64) -> f64 { pick(integration, agency) }\n",
+        [],
+    ),
+    (
+        "control-deref-call",
+        "pub fn c(integration: &f64, agency: &f64) -> f64 { pick(*integration, *agency) }\n",
+        [],
+    ),
+    (
+        "control-deref-mcall",
+        "pub fn c(integration: f64, agency: &f64) -> f64 { integration.max(*agency) }\n",
+        [],
+    ),
+    (
+        "control-negation-call",
+        "pub fn c(integration: f64, agency: f64) -> f64 { pick(integration, -agency) }\n",
+        [],
+    ),
+    (
+        "control-deref-index",
+        "pub fn c(integration_w: &[f64], agency: &usize) -> f64 { integration_w[*agency] }\n",
+        [],
+    ),
+    (
+        "compound-assign-deref",
+        "pub fn s(integration: &mut f64, agency: &f64) -> f64 "
+        "{ *integration += *agency; *integration }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "compound-assign-negation",
+        "pub fn s(mut integration: f64, agency: f64) -> f64 { integration += -agency; integration }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "underscore-instrument",
+        "pub fn p(attention_schema_x: f64, agency_y: f64) -> f64 { attention_schema_x + agency_y }\n",
+        ["COMBINE-FN"],
+    ),
+    (
+        "name-part-match",
+        "pub fn r(integration_per_agency: f64) -> f64 { integration_per_agency * 2.0 }\n",
+        ["COMBINE-FN"],
+    ),
+    (
+        "macro-compound-assign",
+        "pub fn score(mut integration: f64, agency: f64) -> f64 "
+        "{ dbg!({ integration += agency; integration }) }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "deref-right-operand-let",
+        "pub fn c(integration: &f64, agency: &f64) -> f64 { let s = *integration + *agency; s }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "deref-right-operand-call",
+        "pub fn c(integration: &f64, agency: &f64) -> f64 { pick(*integration * *agency, 0.0) }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "negated-right-operand",
+        "pub fn c(integration: f64, agency: f64) -> f64 { pick(integration - -agency, 0.0) }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "one-sided-arithmetic-call",  # COMBINE-EXPR blind spot: text-level, counts (pinned)
+        "pub fn c(integration: f64, agency: f64) -> f64 { pick(integration, 1.0 - agency) }\n",
+        ["COMBINE-EXPR"],
+    ),
+    (
+        "one-sided-arithmetic-mcall",  # COMBINE-EXPR blind spot: text-level, counts (pinned)
+        "pub fn c(integration: f64, agency: f64) -> f64 { integration.max(agency * 2.0) }\n",
+        ["COMBINE-EXPR"],
+    ),
+)
+
+
+def _text(*parts) -> str:
+    """Fact text fields (str or list of str) joined into one scan string."""
+    return ", ".join(p if isinstance(p, str) else ", ".join(p) for p in parts if p)
+
+
+def _instruments(*texts) -> list[str]:
+    return sorted(set(_INSTRUMENT.findall(rust_facts.strip_literals(_text(*texts)))))
+
+
+# distinct-from: tools/red_reachability.py::fixture_facts -- the same three lines; a gate cannot import a tools
+#   script and a tools script must not import a gate for a fixture. Both belong in rust_facts (integrator row).
+def fixture_facts(text):
+    """(status, facts) for one constructed sndl-core file, through `rust_facts.facts_for_source`."""
+    f = rust_facts.facts_for_source(text, name="plasticity.rs")
+    f["file"] = "native/sndl-core/src/plasticity.rs"
+    return "native/ PRESENT (1 .rs files, fixture)", [f]
+
+
+def native_status(root: Path | None = None):
+    """(status line, file facts) for `native/`; `RustFactsUnavailable` -> a RED status and None."""
+    try:
+        return rust_facts.native_status(REPO if root is None else root)
+    except rust_facts.RustFactsUnavailable as exc:
+        return f"native/ UNAVAILABLE (RED: RustFactsUnavailable: {exc})", None
+
+
+def rust_aggregate_findings(native=None) -> list[str]:
+    """Refusal 1 over `native/` -- the ONE Rust entry point `asserted_findings()` calls.
+
+    `native` is `(status, file_facts)` from `native_status()` or a fixture. Three shapes, one finding
+    per (file, line): COMBINE-CALL, COMBINE-EXPR, COMBINE-FN (module docstring). Unreadable Rust is a
+    finding, never a skip."""
+    status, file_facts = native_status() if native is None else native
+    if file_facts is None:
+        return [f"native/: {status}"]
+    out: dict[tuple[str, int], str] = {}
+    for f in file_facts:
+        p = Path(f["file"])
+        rel = (p.relative_to(REPO) if p.is_absolute() and REPO in p.parents else p).as_posix()
+        for m in f["mcalls"]:
+            combining = m["name"] == "fold" or "sum" in m["name"] or "mean" in m["name"]
+            named = _instruments(m["recv"], m["args"])
+            if combining and len(named) >= 2:
+                out.setdefault(
+                    (rel, m["line"]),
+                    f"{rel}:{m['line']}: COMBINE-CALL .{m['name']}() combines {named} into one number",
+                )
+        for c in f["calls"]:
+            last = c["path"].split("::")[-1]
+            named = _instruments(c["args"])
+            if ("sum" in last or "mean" in last) and len(named) >= 2:
+                out.setdefault(
+                    (rel, c["line"]),
+                    f"{rel}:{c['line']}: COMBINE-CALL {last}() combines {named} into one number",
+                )
+        for kind, fields in _FACT_TEXT.items():
+            for x in f[kind]:
+                text = _text(*(x.get(k) for k in fields))
+                named = _instruments(text)
+                arith = _ARITH.search(rust_facts.strip_literals(text)) or (
+                    kind == "assigns" and x["op"] != "="
+                )
+                if len(named) >= 2 and arith:
+                    out.setdefault(
+                        (rel, x["line"]),
+                        f"{rel}:{x['line']}: COMBINE-EXPR {kind} fact combines {named} in one expression",
+                    )
+        owners = {x["fn_id"] for k in _FACT_TEXT for x in f[k]} | {x["fn_id"] for x in f["fors"]}
+        for fn in f["fns"]:
+            named = _instruments(fn["params"])
+            if (
+                fn["has_body"]
+                and _SCALAR_RET.match(fn["ret"].replace(" ", ""))
+                and len(named) >= 2
+                and fn["id"] not in owners
+            ):
+                out.setdefault(
+                    (rel, fn["line"]),
+                    f"{rel}:{fn['line']}: COMBINE-FN {fn['name']}() returns one number from {named} "
+                    "with no call in its body: arithmetic (no aggregate score)",
+                )
+    return [out[k] for k in sorted(out)]
 
 
 # distinct-from: instruments/report_order_probe.py::t081_seed and instruments/prior_drift_harness.py::
@@ -405,16 +694,19 @@ SURFACE_BASELINE = (
 #: without its licensed sentence. C4/T081 owes the fix; until then the debt may fall, never rise.
 
 
-def asserted_findings() -> list[str]:
-    """What --assert fails on: the rows and the aggregate refusal, both fully in this arc's hands."""
-    return row_findings() + aggregate_findings()
+def asserted_findings(native=None) -> list[str]:
+    """What --assert fails on: the rows and the aggregate refusal (Python and Rust).
+    `native` is ONE snapshot of `native_status()` shared with `report()` so the verdict and its text agree."""
+    return row_findings() + aggregate_findings() + rust_aggregate_findings(native)
 
 
 def all_findings() -> list[str]:
     return asserted_findings() + surface_findings()
 
 
-def report() -> str:
+def report(native=None) -> str:
+    native = native_status() if native is None else native
+    found = asserted_findings(native)
     reg = _registry_from_source()
     missing = [n for n in INSTRUMENTS if n not in reg]
     surf = surface_findings()
@@ -422,9 +714,11 @@ def report() -> str:
         f"CONCLUSION PROTOCOL -- {len(reg)} of {len(INSTRUMENTS)} instrument rows; missing {missing}",
         "no arrangement of these instruments concludes phenomenal consciousness: they dissociate mechanisms.",
         "  A pass licenses exactly the sentence its row states, and nothing beyond it.",
-        f"asserted findings (rows + the aggregate refusal): {len(asserted_findings())}",
+        f"asserted findings (rows + the aggregate refusal): {len(found)}",
     ]
-    lines += [f"  - {x}" for x in asserted_findings()]
+    lines += [f"  - {x}" for x in found]
+    lines.append(f"{native[0]}; refusal 1 is read in Rust through gates/rust_facts")
+    lines.append("  Rust BLIND SPOTS: " + "; ".join((*rust_facts.BLIND_SPOTS, *RUST_BLIND_SPOTS)))
     lines.append(
         f"reported, not asserted -- surface + mechanism findings (the surface debt is owed to "
         f"C4/T081): {len(surf)} (baseline {SURFACE_BASELINE}, may fall never rise)"
@@ -524,23 +818,41 @@ def main() -> None:
         (scratch / "reporter.py").write_text(
             "def show(integration):@    return integration@".replace("@", chr(10)), encoding="utf-8"
         )
+        (scratch / "bridge.py").write_text(PY_BRIDGE_SRC, encoding="utf-8")
         agg = aggregate_findings(scratch)
         assert any("aggregator.py" in x for x in agg), agg
         assert not any("reporter.py" in x for x in agg), agg
+        # the _native edge: two readings joined into one Rust call red, one reading does not
+        assert [x for x in agg if "bridge.py" in x] == [
+            "bridge.py:5: combines ['integration', 'agency'] into one number (no aggregate score)"
+        ], agg
+    # refusal 1 in RUST, on the pre-registered fixture through the one entry point (R0.2 row 12)
+    rust_red = rust_aggregate_findings(fixture_facts(RUST_RED_SRC))
+    assert [x.split(" ")[1] for x in rust_red] == ["COMBINE-FN", "COMBINE-CALL", "COMBINE-EXPR"], (
+        rust_red
+    )
+    rust_green = rust_aggregate_findings(fixture_facts(RUST_GREEN_SRC))
+    assert rust_green == [], rust_green
+    for label, src, tags in RUST_FOLD_CASES:
+        got = [x.split(" ")[1] for x in rust_aggregate_findings(fixture_facts(src))]
+        assert got == tags, (label, got)
     print(report())
     print(
         f"conclusion_protocol self-check OK: {len(reds)} row reds caught, the positive control passes; a verdict and "
         "a bare reading are caught on a surface while the same word in prose is not, and an aggregate across two "
         "instruments is caught; refusal 3 ARMS ITSELF -- a symbol-less row whose C4 task is complete reds, and "
         "the unarmed control stays clean; the MECHANISM clause serves the live registry with 0 findings and "
-        "refuses a constructed charged row whose licensed or refused sentence is blank"
+        "refuses a constructed charged row whose licensed or refused sentence is blank; in Rust the RED arm "
+        f"fires {len(rust_red)} findings (COMBINE-FN/CALL/EXPR) and the GREEN twin 0, and a _native call "
+        "joining two readings is caught at the Python edge"
     )
 
 
 def _assert() -> int:
-    f = asserted_findings()
+    native = native_status()
+    f = asserted_findings(native)
     surf = surface_findings()
-    print(report())
+    print(report(native))
     if f:
         print(f"CONCLUSION_PROTOCOL ASSERT FAILED: {len(f)} finding(s)", file=sys.stderr)
         return 1
