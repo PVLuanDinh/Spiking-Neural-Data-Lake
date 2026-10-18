@@ -128,12 +128,7 @@ def test_rr_wrapper_guards_each_keep_unproven(tmp_path, monkeypatch):
     _rr_tree(tmp_path, monkeypatch, "", RR.PY_WRAPPER_CONTROLS)
     criteria, _ = red_reachability.scan(native=RR.fixture_facts(RR.RUST_RED_SRC))
     py = {c["name"]: c["analysis"] for c in criteria if c["name"].startswith("wrap.")}
-    assert py == {
-        "wrap.probe_mixed": "UNPROVEN",
-        "wrap.probe_two_twins": "UNPROVEN",
-        "wrap.probe_refusal": "UNPROVEN",
-        "wrap.probe_fallthrough": "UNPROVEN",
-    }, py
+    assert py == RR.PY_WRAPPER_EXPECTED, py
     assert len([c for c in criteria if c["no_red"]]) == 2  # the two Rust NO_REDs only
 
 
@@ -154,7 +149,11 @@ def test_rr_schema_rejection_is_red(tmp_path, monkeypatch, capsys):
 
 def test_rr_self_check_runs_both_arms(capsys):
     assert red_reachability.main(["--self-check"]) == 0
-    assert "self-check OK: Rust RED arm 4 NO_RED, GREEN twin 0" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert (
+        "self-check OK: Rust RED arm 4 NO_RED, GREEN twin 0, 4 fold cases + wrapper guards exact"
+        in out
+    )
 
 
 def test_cp_red_arm_has_exactly_the_three_preregistered_findings(
@@ -201,7 +200,7 @@ def test_cp_injection_reaches_the_same_entry_point():
     assert cp.rust_aggregate_findings(native=CP.fixture_facts(CP.RUST_GREEN_SRC)) == []
 
 
-@pytest.mark.parametrize("case", CP.RUST_FOLD_REDS, ids=lambda c: c[0])
+@pytest.mark.parametrize("case", CP.RUST_FOLD_CASES, ids=lambda c: c[0])
 def test_cp_each_detection_path_fires_or_stays_quiet(case):
     _, src, expected = case
     found = cp.rust_aggregate_findings(native=CP.fixture_facts(src))
