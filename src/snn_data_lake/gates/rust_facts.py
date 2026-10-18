@@ -73,12 +73,11 @@ BLIND_SPOTS = (
     "macro_rules!/proc-macro/build.rs generated code is invisible",
     'export map: m.add("X", ..), add_wrapped(wrap_pymodule!(..)) and nested declarative #[pymodule] mods '
     "are not resolved (nested names are flattened to the top level)",
-    "export map bindings: only `let` and plain `=` assignments to a bare name are tracked (re-panel A RA-2/3/4/9); "
-    "for / if-let / match / closure parameters and typed or destructured patterns are not, so a wrapper rebound by "
-    "one keeps the earlier binding; an assignment inside an inner block or branch is read with let visibility "
-    "(not seen outside that block)",
+    "export map bindings: only `let` and plain `=` assignments to a bare name are tracked; for / if-let / match / "
+    "closure parameters and typed or destructured patterns are not, so a wrapper rebound by one keeps the earlier "
+    "binding; an assignment inside an inner block or branch is read with let visibility (not seen outside that block)",
     "production fixpoint: a file seeded production (under src/) that is ALSO loaded through `#[path]` is not "
-    "treated as a mod-rs file, so a `#[path]` inside its inline module resolves under <stem>/ (Codex r6 reader 2: "
+    "treated as a mod-rs file, so a `#[path]` inside its inline module resolves under <stem>/ (fixture: "
     'lib.rs `#[path = "shared.rs"] pub mod shared;` + shared.rs `mod q { #[path = "../../tests/reference.rs"] '
     "pub mod reference; }` leaves tests/reference.rs test code)",
     "python refs: importlib.import_module / getattr(_native, name) are dynamic (getattr gives <module>); "
@@ -301,9 +300,10 @@ _NAME_ARG = re.compile(r'\bname\s*=\s*"([^"]+)"')
 _WRAP = re.compile(r"\bwrap_pyfunction\s*!\s*\(\s*([\w:]+)")
 _IDENT = re.compile(r"[A-Za-z_]\w*")
 # One layer an initializer may wrap an identifier in and still name the SAME value (re-panel A RA-5/RA-6):
-# parentheses, `&` / `&mut`, a trailing `?`, `.clone()` or `.into()`. Peeled repeatedly by `alias_root`.
+# a trailing `?`, `.clone()` or `.into()`, then `&` / `&mut`, then parentheses -- suffix first, so
+# `(g).clone()` peels to `(g)`, not to `g).clone(`. Peeled repeatedly by `alias_root` (fullmatch).
 _ALIAS_SKIN = re.compile(
-    r"^\(\s*(.*?)\s*\)$|^&\s*(?:mut\s+)?(.*)$|^(.*?)\s*(?:\?|\.\s*(?:clone|into)\s*\(\s*\))$"
+    r"(.*?)\s*(?:\?|\.\s*(?:clone|into)\s*\(\s*\))|&\s*(?:mut\s+)?(.*)|\(\s*(.*?)\s*\)"
 )
 
 
@@ -312,7 +312,7 @@ def alias_root(init: str) -> str | None:
     None: any other expression (a call, a literal, another method) is a NEW value."""
     s = init.strip()
     while m := _ALIAS_SKIN.fullmatch(s):
-        s = next(g for g in m.groups() if g is not None)
+        s = m.group(m.lastindex)
     m = _IDENT.fullmatch(s)
     return m.group(0) if m else None
 
@@ -439,8 +439,8 @@ def pyo3_exports(file_facts) -> dict[str, dict]:
         # `let f = <init>;` or a plain `f = <rhs>;` in a module fn: (fn, local) -> [(end, start, scope,
         # init)]. The binding visible at a use is the latest one of that name that ENDED before it
         # (r3 F-2; r4 N-1: not visible in its own initializer) whose block scope is a prefix of the
-        # use's (r5 R-1; Codex r6 R-1: an assignment rebinds under the same rule). A wrapper init
-        # binds, an identifier under `alias_root` layers aliases (RA-5), anything else unbinds.
+        # use's (r5 R-1; Codex r6 reader 1: an assignment rebinds under the same rule). A wrapper init
+        # binds, an identifier under `alias_root` layers aliases (RA-5/RA-6), anything else unbinds.
         bound: dict = {}
         rebinds = [
             *f.get("lets", []),
@@ -702,8 +702,8 @@ fn tpath() -> sndl_core::testonly::Probe { unimplemented!() }
 """
 
 # Let-resolution shapes inside a #[pymodule] fn as (body, exports): Codex r3 F-2, r4 N-1, r5 R-1,
-# re-panel A RA-5/RA-6 (alias layers; `.other()` / `helper(g)` stay unbindings), Codex r6 R-1 (a plain
-# `=` assignment rebinds at its end; one after the use or a compound `+=` does not).
+# re-panel A RA-5/RA-6 (alias layers; `.other()` / `helper(g)` stay unbindings), Codex r6 reader 1 (a
+# plain `=` assignment rebinds at its end; one after the use or a compound `+=` does not).
 _REBINDING = (
     "#[pyfunction]\nfn learn() {}\n#[pyfunction]\nfn decay() {}\n#[pymodule]\n"
     "fn m(m: &Bound<'_, PyModule>) -> PyResult<()> {\n%s Ok(())\n}\n"
@@ -735,6 +735,17 @@ _REBINDING_CASES = (
     (" let mut f = wrap_pyfunction!(learn, m)?;\n f = 0;\n m.add_function(f)?;\n", []),
     (" let mut f = wrap_pyfunction!(learn, m)?;\n m.add_function(f)?;\n f = wrap_pyfunction!(decay, m)?;\n", ["learn"]),
     (" let mut f = wrap_pyfunction!(learn, m)?;\n f += 1;\n m.add_function(f)?;\n", ["learn"]),
+    # review panel on 2c05e0ed: alias layers compose; an assignment rhs may itself alias
+    (" let g = wrap_pyfunction!(decay, m)?;\n let f = (g).clone();\n m.add_function(f)?;\n", ["decay"]),
+    (" let g = wrap_pyfunction!(decay, m)?;\n let f = ((g).clone()).into();\n m.add_function(f)?;\n", ["decay"]),
+    (" let g = wrap_pyfunction!(decay, m);\n let f = (&g)?;\n m.add_function(f)?;\n", ["decay"]),
+    (" let g = wrap_pyfunction!(decay, m)?;\n let f = g.clone()?;\n m.add_function(f)?;\n", ["decay"]),
+    (" let g = wrap_pyfunction!(decay, m)?;\n let f = g.other().clone();\n m.add_function(f)?;\n", []),
+    (" let g = wrap_pyfunction!(decay, m)?;\n let mut f = wrap_pyfunction!(learn, m)?;\n f = g;\n m.add_function(f)?;\n", ["decay"]),
+    (" let mut f = wrap_pyfunction!(learn, m)?;\n f = f.clone();\n m.add_function(f)?;\n", ["learn"]),
+    # BLIND SPOT pinned: an assignment inside an inner block has let visibility (Rust would export decay)
+    (" let mut f = wrap_pyfunction!(learn, m)?;\n { f = wrap_pyfunction!(decay, m)?; }\n m.add_function(f)?;\n", ["learn"]),
+    (" let mut f = wrap_pyfunction!(learn, m)?;\n { f = wrap_pyfunction!(decay, m)?; m.add_function(f)?; }\n", ["decay"]),
 )  # fmt: skip
 
 # Mod-tree fixture for the test-file fixpoint (Codex r4 N-2, r5 R-2, r5 N5-1): a production `#[path]`
@@ -835,7 +846,10 @@ def self_check(root: Path = ROOT) -> None:
     assert (cfg["prod2"], cfg["t2"], cfg["maybe"]) == (False, True, False), cfg
     ds = sorted((x["line"], x["col"]) for x in e["lets"] if x["fn"] == "uses_core")
     assert len(ds) == 2 and ds[0][0] == ds[1][0] and ds[0][1] < ds[1][1], f"same-line columns: {ds}"
-    for body, want_let in _REBINDING_CASES:  # RED (r5 R-1, RA-5): scope-aware let resolution
+    for (
+        body,
+        want_let,
+    ) in _REBINDING_CASES:  # RED (r5 R-1, RA-5/6, r6 reader 1): let + assign bindings
         got = sorted(pyo3_exports([facts_for_source(_REBINDING % body, root=root)]))
         assert got == want_let, f"let resolution wrong for {body!r}: {got} != {want_let}"
     # RED (r5 R-2, N5-1): production is a mod-tree fixpoint
@@ -895,7 +909,7 @@ def main() -> int:
     tool = facts(rust_files(ROOT, str(RSFACTS)))
     print(
         f"rust_facts: self-check OK (fixture: 7 fns, 2 transpose calls, 5 exports; edge fixture: 10 exports incl. let-bound + helper-registered, top-level name= only, cfg evaluated, "
-        f"no unregistered wrapper/class methods, cfg(not(test)) is production; 26 let-rebinding shapes; "
+        f"no unregistered wrapper/class methods, cfg(not(test)) is production; 35 let-rebinding shapes; "
         f"mod-tree flags fixpoint 13 files; 5 _native importers; "
         f"unparseable-Rust RED fired) | {status} | tools/rsfacts: {len(tool)} file(s) parsed | "
         f"python _native importers in src: {len(python_native_refs())}"

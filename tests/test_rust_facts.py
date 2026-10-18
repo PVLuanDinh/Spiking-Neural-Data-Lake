@@ -138,8 +138,8 @@ def test_assignments_carry_their_end_position():
 
 
 @pytest.mark.parametrize(("body", "want"), rust_facts._REBINDING_CASES)
-def test_let_bindings_resolve_by_end_scope_and_init_kind(body, want):
-    """Codex r5 R-1, RA-5: every _REBINDING_CASES shape resolves to its expected exports."""
+def test_let_and_assign_bindings_resolve_by_end_scope_and_init_kind(body, want):
+    """r5 R-1, RA-5/RA-6, r6 reader 1: every _REBINDING_CASES shape gives its expected exports."""
     src = rust_facts._REBINDING % body
     assert sorted(rust_facts.pyo3_exports([rust_facts.facts_for_source(src)])) == want
 
