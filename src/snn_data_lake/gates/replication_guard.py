@@ -22,8 +22,10 @@ RUST (R0.2 row 4, 2026-10-17): the port moves code into crates under `native/`, 
 "LiveBrain")]`, `#[pyo3(name = "Brain")]`), is the same replica spelled in Rust. Read through
 `rust_facts` only; keyed `(name, "<rel .rs>::<rust item>")` in PENDING_RETIREMENT; cfg(test) items and
 test files are not scanned (the Python half never scanned tests/ either). `native/` absent prints as
-ABSENT; `.rs` present and unreadable FAILS (closed). The bare run also executes `_selfcheck()`: the
-Python replica red and the Rust RED arm (exactly 3) / GREEN twin (0), so the gate is seen red.
+ABSENT; `.rs` present and unreadable FAILS (closed). PyO3 exports resolve ONCE over the whole tree (a
+`#[pymodule_export]` may name a `#[pyclass]` in another file) and a finding carries the export's own file.
+The bare run also executes `_selfcheck()`: the Python replica red, the Rust RED arm (exactly 3) / GREEN
+twin (0) and the cross-file export red (1) / twin (0), so the gate is seen red.
 
   python -m snn_data_lake.gates.replication_guard   # (also run by run_selfchecks.py)
 """
@@ -90,6 +92,11 @@ def _class_sites(pkg_dir):
     return sites
 
 
+def _rel(file):
+    p = Path(file)
+    return (p.relative_to(ROOT) if p.is_absolute() and ROOT in p.parents else p).as_posix()
+
+
 def _native():
     """`(status, facts)` for the `.rs` under ROOT; an unreadable tree is carried as the exception."""
     try:
@@ -108,17 +115,16 @@ def rust_replicas(native=None):
     if isinstance(file_facts, Exception):
         return status, [], [f"RustFactsUnavailable: {file_facts}"]
     found = []
-    for f in file_facts:
-        if f["test_file"]:
-            continue
-        p = Path(f["file"])
-        rel = (p.relative_to(ROOT) if p.is_absolute() and ROOT in p.parents else p).as_posix()
+    production = [f for f in file_facts if not f["test_file"]]
+    for f in production:
+        rel = _rel(f["file"])
         for t in f["types"]:
             if t["kind"] in RUST_KINDS and t["name"] in CANON and not t["cfg_test"]:
                 found.append((t["name"], f"{rel}::{t['name']}"))
-        for py, ex in rust_facts.pyo3_exports([f]).items():
-            if py in CANON and (py, f"{rel}::{ex['rust']}") not in found:
-                found.append((py, f"{rel}::{ex['rust']}"))
+    for py, ex in rust_facts.pyo3_exports(production).items():  # once: exports resolve across files
+        key = (py, f"{_rel(ex['file'])}::{ex['rust']}")
+        if py in CANON and key not in found:
+            found.append(key)
     return status, [k for k in found if k not in PENDING_RETIREMENT], []
 
 
@@ -211,13 +217,31 @@ _RUST_RED_REPLICAS = [
     ("Brain", "native/sndl-python/src/lib.rs::Brain"),
     ("LiveBrain", "native/sndl-python/src/lib.rs::NativeLoop"),
 ]
+# Codex B1 r02b-instr 1: the pyclass and its #[pymodule_export] in DIFFERENT files; the twin only unrenames.
+_RUST_XFILE_LIB = """
+use pyo3::prelude::*;
+mod replica;
+
+#[pymodule(gil_used = false)]
+mod _native {
+    #[pymodule_export]
+    use super::replica::NativeLoop;
+}
+"""
+_RUST_XFILE_RED = {"replica.rs": '#[pyclass(name = "LiveBrain")]\npub struct NativeLoop;\n'}
+_RUST_XFILE_GREEN = {"replica.rs": '#[pyclass(name = "NativeLoop")]\npub struct NativeLoop;\n'}
+_RUST_XFILE_REPLICAS = [("LiveBrain", "native/sndl-python/src/replica.rs::NativeLoop")]
 
 
-def fixture_native(text):
-    """`(status, facts)` for a constructed one-file tree `native/sndl-python/src/lib.rs` carrying `text`."""
-    f = rust_facts.facts_for_source(text, name="lib.rs")
-    f["file"] = "native/sndl-python/src/lib.rs"
-    return "native/ PRESENT (1 .rs files, fixture)", [f]
+def fixture_native(text, extra=None):
+    """`(status, facts)` for a constructed tree: `native/sndl-python/src/lib.rs` carrying `text`, plus the
+    `extra` {name: text} siblings."""
+    facts = []
+    for name, src in {"lib.rs": text, **(extra or {})}.items():
+        f = rust_facts.facts_for_source(src, name=name)
+        f["file"] = f"native/sndl-python/src/{name}"
+        facts.append(f)
+    return f"native/ PRESENT ({len(facts)} .rs files, fixture)", facts
 
 
 def _selfcheck():
@@ -236,12 +260,17 @@ def _selfcheck():
     assert sorted(rust) == _RUST_RED_REPLICAS and not failures, (rust, failures)
     _, twin, _ = rust_replicas(fixture_native(_RUST_GREEN))
     assert not twin, f"the repaired Rust shape was flagged: {twin}"
+    _, xfile, _ = rust_replicas(fixture_native(_RUST_XFILE_LIB, _RUST_XFILE_RED))
+    assert xfile == _RUST_XFILE_REPLICAS, f"cross-file export not attributed to replica.rs: {xfile}"
+    _, xtwin, _ = rust_replicas(fixture_native(_RUST_XFILE_LIB, _RUST_XFILE_GREEN))
+    assert not xtwin, f"the unrenamed cross-file pyclass was flagged: {xtwin}"
     _, _, failures = rust_replicas(
         ("native/ UNREADABLE", rust_facts.RustFactsUnavailable("constructed"))
     )
     assert failures, "RustFactsUnavailable with .rs present did not fail closed"
     print(
         "  reds fired: Python replica x1; Rust RED arm x3 (cfg(test) Brain not counted); repaired twin 0;"
+        " cross-file export x1, twin 0;"
     )
     print("  RustFactsUnavailable -> failure. self-check OK")
 
