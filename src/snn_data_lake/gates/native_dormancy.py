@@ -54,7 +54,17 @@ from pathlib import Path, PurePosixPath
 from snn_data_lake.gates import rust_facts as rf
 from snn_data_lake.gates.method_dormancy_gate import is_learn_verb
 
-NATIVE_EXEMPT: dict[str, str] = {}  # py export name | native-relative .rs path -> reason
+_R04 = "R0.4 prerequisite (RNG parity kit) consumed by the first L-stage port; retire when that port lands"
+NATIVE_EXEMPT: dict[str, str] = {  # py export name | native-relative .rs path -> reason
+    "sndl-core/src/rng/mod.rs": _R04,
+    "sndl-core/src/rng/mt19937.rs": _R04,
+    "sndl-core/src/rng/pyrandom.rs": _R04,
+    "sndl-core/src/rng/legacy.rs": _R04,
+    "sndl-core/src/rng/seedseq.rs": _R04,
+    "sndl-core/src/rng/pcg64.rs": _R04,
+    "sndl-core/src/rng/lcg.rs": _R04,
+    "sndl-core/src/rng/parity.rs": _R04,
+}
 NATIVE_EXEMPT_METHOD: dict[str, str] = {}  # "Type::fn" | "fn" | python name -> reason
 
 BLIND_SPOTS = (
@@ -234,8 +244,12 @@ def _gate(viol, universe, exempt):
 
 def audit(root=rf.ROOT, live=None, src=None, exempt=None, exempt_method=None):
     """-> {"status", "d": D1/D2 findings, "m": M1 findings, "report": [...]}; fails closed."""
-    exempt = NATIVE_EXEMPT if exempt is None else exempt
-    exempt_method = NATIVE_EXEMPT_METHOD if exempt_method is None else exempt_method
+    # The exempt tables name the REAL tree's files: a constructed fixture tree never inherits them.
+    real = Path(root).resolve() == Path(rf.ROOT).resolve()
+    exempt = (NATIVE_EXEMPT if real else {}) if exempt is None else exempt
+    exempt_method = (
+        (NATIVE_EXEMPT_METHOD if real else {}) if exempt_method is None else exempt_method
+    )
     src = Path(src) if src is not None else Path(root) / "src"
     try:
         files = rf.rust_files(

@@ -95,10 +95,11 @@ def test_an_exempt_row_silences_exactly_its_finding(tmp_path):
     assert res["d"] == [] and res["m"] == [], res
 
 
-def test_real_tree_is_absent_and_clean():
+def test_real_tree_is_clean():
+    """native/ exists since R0.4 (sndl-core); the real tree is clean via its NATIVE_EXEMPT rows."""
     res = nd.audit()
-    assert res["status"].startswith("native/ ABSENT"), res["status"]
-    assert res["d"] == [] and res["m"] == []
+    assert res["status"].startswith(("native/ ABSENT", "native/ PRESENT")), res["status"]
+    assert res["d"] == [] and res["m"] == [], res
 
 
 def test_the_method_gate_reds_on_an_m1_finding(monkeypatch):
