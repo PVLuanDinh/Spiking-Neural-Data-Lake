@@ -846,10 +846,8 @@ def self_check(root: Path = ROOT) -> None:
     assert (cfg["prod2"], cfg["t2"], cfg["maybe"]) == (False, True, False), cfg
     ds = sorted((x["line"], x["col"]) for x in e["lets"] if x["fn"] == "uses_core")
     assert len(ds) == 2 and ds[0][0] == ds[1][0] and ds[0][1] < ds[1][1], f"same-line columns: {ds}"
-    for (
-        body,
-        want_let,
-    ) in _REBINDING_CASES:  # RED (r5 R-1, RA-5/6, r6 reader 1): let + assign bindings
+    # RED (r5 R-1, RA-5/RA-6, r6 reader 1): let + assign bindings resolve to their expected exports
+    for body, want_let in _REBINDING_CASES:
         got = sorted(pyo3_exports([facts_for_source(_REBINDING % body, root=root)]))
         assert got == want_let, f"let resolution wrong for {body!r}: {got} != {want_let}"
     # RED (r5 R-2, N5-1): production is a mod-tree fixpoint

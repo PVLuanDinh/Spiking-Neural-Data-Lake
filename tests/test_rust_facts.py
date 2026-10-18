@@ -146,7 +146,7 @@ def test_let_and_assign_bindings_resolve_by_end_scope_and_init_kind(body, want):
 
 def test_lets_assigns_and_calls_carry_their_block_scope():
     """rsfacts emits `scope`: file-unique ordinals of the enclosing blocks, outermost first, so two
-    sibling blocks never share a scope; assigns carry it too (Codex r6 R-1)."""
+    sibling blocks never share a scope; assigns carry it too (Codex r6 reader 1)."""
     f = rust_facts.facts_for_source(
         "fn m() {\n let mut a = 1;\n { let b = 2; a = 3; }\n { let c = 3; }\n m.add(a);\n}\n"
     )
@@ -169,3 +169,12 @@ def test_production_is_a_fixpoint_over_mod_declarations(tmp_path):
         for p, f in zip(files, rust_facts.facts(files), strict=True)
     }
     assert flags == rust_facts._MOD_FLAGS, flags
+
+
+@pytest.mark.parametrize(
+    ("init", "want"),
+    [("&(g)", "g"), ("(g)?", "g"), ("(&mut g)", "g"), ("?", None), ("()", None), ("(?)", None)],
+)
+def test_alias_root_peels_every_skin_and_stops_on_nothing(init, want):
+    """RA-5/RA-6: order-sensitive skins reach the identifier; peeling to nothing is no alias."""
+    assert rust_facts.alias_root(init) == want
