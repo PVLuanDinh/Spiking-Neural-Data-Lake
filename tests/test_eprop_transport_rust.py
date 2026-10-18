@@ -220,13 +220,36 @@ FOLD4_CLEAN = [
     *("let d = e.clone(); " + t.format(d="d") for t in FOLD4_WRITERS.values()),
     # N5-3: the inner let shadows the tainted name before the assignment ends
     "let d = self.w2.t().to_owned(); self.w1 = {\n    let d = e.clone();\n    d\n};",
-    # N5-4: w2 is NOT the transposed operand (`b` / `x` of alpha * a^T * b)
-    "y.gemm_tr(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
-    "y.gemm_ad(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
+    # N5-4: a VECTOR at args[2] of gemv_* is never a transposed weight (the gemm_* b-operand
+    # cases moved to FOLD5_RED under PREREG ADDENDUM 7)
     "y.gemv_tr(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
     "y.gemv_ad(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
-    "self.w1.gemm_tr(1.0, &x, &self.w2, 0.0);",
 ]
+
+FOLD5_RED = [
+    # TA-1/TA-2 (PREREG ADDENDUM 7): alpha * a^T * b contracts BOTH operands over their row index,
+    # so a weight at args[2] of gemm_tr / gemm_ad is used backward too (e^T W2 = (W2^T e)^T)
+    "y.gemm_tr(1.0, &e, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
+    "y.gemm_ad(1.0, &e, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);",
+    "self.w1.gemm_tr(1.0, &e, &self.w2, 0.0);",
+    "self.w1.gemm_ad(1.0, &e, &self.w2, 0.0);",
+]
+FOLD5_CLEAN = [
+    # item 1: neither operand is a weight
+    "y.gemm_tr(1.0, &x, &e, 0.0); self.w1.scaled_add(-lr, &y);",
+    "y.gemm_ad(1.0, &x, &e, 0.0); self.w1.scaled_add(-lr, &y);",
+]
+
+
+@pytest.mark.parametrize("body", FOLD5_RED)
+def test_fold5_reds_fire_exactly_once(tmp_path, body):
+    found = _scan(tmp_path, f"fn f(&mut self, e: &A, x: &A, k: usize, lr: f64) {{ {body} }}")
+    assert _rules(found) == ["T1"], found
+
+
+@pytest.mark.parametrize("body", FOLD5_CLEAN)
+def test_fold5_controls_stay_clean(tmp_path, body):
+    assert _scan(tmp_path, f"fn f(&mut self, e: &A, x: &A, k: usize, lr: f64) {{ {body} }}") == []
 
 
 @pytest.mark.parametrize("body", FOLD4_RED)
@@ -313,6 +336,18 @@ def test_fold4_red_arm_is_exactly_three_t1_and_the_controls_are_silent(tmp_path)
 
 def test_fold4_green_twin_is_zero(tmp_path):
     _tree(tmp_path, gate._rust_fixture(red=False, fold=4))
+    assert gate.scan_rust(tmp_path)[1] == []
+
+
+def test_fold5_red_arm_is_exactly_two_t1_and_the_controls_are_silent(tmp_path):
+    _tree(tmp_path, gate._rust_fixture(red=True, fold=5))
+    found = gate.scan_rust(tmp_path)[1]
+    assert _rules(found) == ["T1"] * 2, found
+    assert sorted(f[2] for f in found) == ["b_operand", "b_receiver"], found
+
+
+def test_fold5_green_twin_is_zero(tmp_path):
+    _tree(tmp_path, gate._rust_fixture(red=False, fold=5))
     assert gate.scan_rust(tmp_path)[1] == []
 
 

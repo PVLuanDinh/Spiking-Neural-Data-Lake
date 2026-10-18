@@ -409,14 +409,16 @@ _RS_TRANSPOSE_ARGS = {
     "movedim": {"0,1", "1,0"},
 }
 _RS_CALL = re.compile(r"\.(" + "|".join([*_RS_TRANSPOSE, *_RS_TRANSPOSE_ARGS]) + r")\(")
-#: Spellings that transpose ONE argument, by position (nalgebra 0.35 src/base/blas.rs, matrix.rs, ops.rs):
-#: `c.gemm_tr(alpha, a, b, beta)` = alpha * a^T * b + beta * c and gemv_tr / gemm_ad / gemv_ad alike
-#: transpose `a` (args[1]); `c.tr_copy_from(&a)` / `ad_copy_from` and `e.tr_mul(&w)` / `ad_mul` their only
-#: operand (args[0]). The other operands are NOT transposed (Codex r5 N5-4). tr_dot is NOT here: it returns
-#: a SCALAR (PREREG ADDENDUM 4), so Oja/Hebbian y = w . x is clean.
+#: Argument positions where a weight is used in the BACKWARD direction (nalgebra 0.35 src/base/blas.rs,
+#: matrix.rs, ops.rs). `c.gemm_tr(alpha, a, b, beta)` = alpha * a^T * b + beta * c contracts BOTH a and b
+#: over their row index, so a weight at args[1] OR args[2] counts (e^T W2 = (W2^T e)^T, PREREG ADDENDUM 7);
+#: gemv_tr / gemv_ad only args[1] (args[2] is a vector); `c.tr_copy_from(&a)` / `ad_copy_from` args[0].
+#: `e.tr_mul(&w)` / `ad_mul` = e^T * w transpose their RECEIVER, and the weight ARGUMENT is the same
+#: e^T W product as gemm_tr's b operand: one computation, one verdict (args[0]). tr_dot is NOT here: it
+#: returns a SCALAR (PREREG ADDENDUM 4), so Oja/Hebbian y = w . x is clean.
 _RS_TRANSPOSE_ARG_AT = {
-    "gemv_tr": 1, "gemm_tr": 1, "gemm_ad": 1, "gemv_ad": 1,
-    "tr_copy_from": 0, "ad_copy_from": 0, "tr_mul": 0, "ad_mul": 0,
+    "gemv_tr": (1,), "gemm_tr": (1, 2), "gemm_ad": (1, 2), "gemv_ad": (1,),
+    "tr_copy_from": (0,), "ad_copy_from": (0,), "tr_mul": (0,), "ad_mul": (0,),
 }  # fmt: skip
 #: Spellings that WRITE their receiver from a transposed ARGUMENT (nalgebra in-place products/copies).
 _RS_TRANSPOSE_WRITERS = frozenset(
@@ -497,10 +499,11 @@ def _rs_transposes(text):
 
 
 def _rs_transposed_arg(method, args):
-    """The weight-ish operand at the position `method` transposes: `gemm_tr(1.0, &self.w2, &e, 0.0)` -> w2."""
-    at = _RS_TRANSPOSE_ARG_AT[method]
-    name = _rs_name(args[at]) if at < len(args) else None
-    return name if _is_weight(name) else None
+    """The first weight-ish operand `method` uses backward: `gemm_tr(1.0, &e, &self.w2, 0.0)` -> w2."""
+    for at in _RS_TRANSPOSE_ARG_AT[method]:
+        if at < len(args) and _is_weight(name := _rs_name(args[at])):
+            return name
+    return None
 
 
 def _rs_carried(text, taint):
@@ -708,8 +711,9 @@ impl Net {
 }
 """
 _RUST_FOLD3_GREEN = _RUST_FOLD3_RED.replace("self.w2", "self.fb")
-#: Fold 4 (Codex r5 N5-2/N5-3/N5-4): exactly 3 T1 (carried, block_rhs, tr_operand); shadow_block and
-#: b_operand stay silent. The GREEN twin swaps the forward weight for the fixed feedback matrix.
+#: Fold 4 (Codex r5 N5-2/N5-3/N5-4): exactly 3 T1 (carried, block_rhs, tr_operand). The GREEN twin swaps
+#: the forward weight for the fixed feedback matrix. Its two fold-4 controls were the mechanism's own
+#: limitations asserted as controls and moved to fold 5 as reds (PREREG ADDENDUM 7, re-panel B).
 _RUST_FOLD4_RED = """\
 impl Net {
     pub fn carried(&mut self, x: &A, lr: f64) {
@@ -725,29 +729,37 @@ impl Net {
     pub fn tr_operand(&mut self, x: &A, lr: f64) {
         y.gemm_tr(1.0, &self.w2, &x, 0.0); self.w1.scaled_add(-lr, &y);
     }
-    pub fn shadow_block(&mut self, e: &A, lr: f64) {
-        let d = self.w2.t().to_owned();
-        self.w1 = {
-            let d = e.clone();
-            d
-        };
-    }
-    pub fn b_operand(&mut self, x: &A, lr: f64) {
-        y.gemm_tr(1.0, &x, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);
-    }
 }
 """
 _RUST_FOLD4_GREEN = _RUST_FOLD4_RED.replace("self.w2", "self.fb")
+#: Fold 5 (regressions against e913fa84: re-panel A TA-1/TA-2 under PREREG ADDENDUM 7): the weight at
+#: args[2] of gemm_tr is used backward (b_operand, b_receiver); no_weight_operand stays silent.
+_RUST_FOLD5_RED = """\
+impl Net {
+    pub fn b_operand(&mut self, e: &A, lr: f64) {
+        y.gemm_tr(1.0, &e, &self.w2, 0.0); self.w1.scaled_add(-lr, &y);
+    }
+    pub fn b_receiver(&mut self, e: &A, lr: f64) {
+        self.w1.gemm_tr(1.0, &e, &self.w2, 0.0);
+    }
+    pub fn no_weight_operand(&mut self, e: &A, x: &A, lr: f64) {
+        y.gemm_tr(1.0, &x, &e, 0.0); self.w1.scaled_add(-lr, &y);
+    }
+}
+"""
+_RUST_FOLD5_GREEN = _RUST_FOLD5_RED.replace("self.w2", "self.fb")
 
 
 def _rust_fixture(red, fold=0):
     """fold: 0 = round-0 arm, 1 = fold-1, 3 = fold-3 (implicit-transpose writers + tr_dot control),
-    4 = fold-4 (carried taint into a writer, writer inside a block RHS, the transposed operand only)."""
+    4 = fold-4 (carried taint into a writer, writer inside a block RHS, the transposed operand only),
+    5 = fold-5 (regressions against e913fa84: both gemm_* operands, inner-scope shadows, value flow)."""
     planted, fixed = {
         0: (_RUST_RED, _RUST_GREEN),
         1: (_RUST_FOLD_RED, _RUST_FOLD_GREEN),
         3: (_RUST_FOLD3_RED, _RUST_FOLD3_GREEN),
         4: (_RUST_FOLD4_RED, _RUST_FOLD4_GREEN),
+        5: (_RUST_FOLD5_RED, _RUST_FOLD5_GREEN),
     }[int(fold)]
     return {
         "sndl-core/src/lib.rs": "pub mod plasticity;\n",
@@ -1223,12 +1235,13 @@ def _fires(source):
 #   title: a different gate's own `_selfcheck`, a file-changed flag and a sidecar-writer census;
 #   none builds or scans a Rust tree.
 def _check_rust_half():
-    counts, fold, fold3, fold4 = {}, {}, {}, {}
+    counts, fold, fold3, fold4, fold5 = {}, {}, {}, {}, {}
     for into, kwargs in (
         (counts, {}),
         (fold, {"fold": 1}),
         (fold3, {"fold": 3}),
         (fold4, {"fold": 4}),
+        (fold5, {"fold": 5}),
     ):
         for name, planted in (("planted", True), ("fixed", False)):
             with tempfile.TemporaryDirectory() as d:
@@ -1255,12 +1268,17 @@ def _check_rust_half():
         f"the fold-4 Rust RED must give exactly 3 T1 through scan_rust, got {fold4['planted']}"
     )
     assert not fold4["fixed"], f"the fold-4 Rust GREEN twin must give 0, got {fold4['fixed']}"
+    assert fold5["planted"] == ["T1"] * 2, (
+        f"the fold-5 Rust RED must give exactly 2 T1 through scan_rust, got {fold5['planted']}"
+    )
+    assert not fold5["fixed"], f"the fold-5 Rust GREEN twin must give 0, got {fold5['fixed']}"
     status, live = scan_rust()
     assert not live, f"governed Rust weight transport in native/: {live}"
     print(f"  RED    Rust {counts['planted']}; green twin {len(counts['fixed'])}; live: {status}")
     print(f"  RED    Rust fold-1 {fold['planted']}; green twin {len(fold['fixed'])}")
     print(f"  RED    Rust fold-3 {fold3['planted']}; green twin {len(fold3['fixed'])}")
     print(f"  RED    Rust fold-4 {fold4['planted']}; green twin {len(fold4['fixed'])}")
+    print(f"  RED    Rust fold-5 {fold5['planted']}; green twin {len(fold5['fixed'])}")
 
 
 def _selfcheck():
