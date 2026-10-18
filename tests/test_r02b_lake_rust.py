@@ -49,9 +49,9 @@ def test_l5_rust_facts_unavailable_with_rs_present_is_one_red(tmp_path, monkeypa
     assert len(lines) == 1 and "RustFactsUnavailable" in lines[0], lines
 
 
-def test_l5_real_tree_prints_absent_and_python_counts_hold():
+def test_l5_real_tree_prints_native_status_and_python_counts_hold():
     out = l5.report()
-    assert "native/ ABSENT (0 .rs files)" in out
+    assert "native/ PRESENT (" in out  # R0.4 landed native/sndl-core; the status line is printed
     assert "reclaimers of DURABLE records that do not consult the label: 0" in out
     assert out.rstrip().endswith("findings: 0")
 
