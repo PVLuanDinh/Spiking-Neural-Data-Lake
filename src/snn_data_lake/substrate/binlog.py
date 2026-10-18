@@ -34,7 +34,6 @@ class BinLog:
         self.path = path
         self.dedup = bool(dedup)
         self._lock = threading.Lock()  # see append(): instances are shared across threads
-        self._payloads = None  # None until the boot pass below has run: replay() reads the disk
         if not os.path.exists(path) or os.path.getsize(path) == 0:
             with open(path, "wb") as f:  # create: write the magic header once
                 f.write(_MAGIC)
@@ -49,16 +48,6 @@ class BinLog:
         self._seen = set(payloads) if self.dedup else None
         self._count = len(payloads)  # maintained -> count() is O(1), not a re-replay
         self._size = os.path.getsize(self.path)  # see stale(): the cache's validity check
-        # THE RESIDENT COPY (Phase 1a of the Rust port, 2026-10-17). A dedup instance already holds
-        # every payload in `_seen`; keeping the same objects in append ORDER costs one pointer per
-        # record (8 bytes x 8.0M = 64 MB on the 3.46 GB operator lake) and lets replay() serve the
-        # log from memory while stale() says the file is unchanged. Before this, every consumer
-        # paid a full disk pass: MEASURED on the operator lake (7,998,985 records, 3,456,242,033 B,
-        # warm page cache) a disk replay() costs 2.9-3.5 s and a pass over this list 0.2-0.6 s, and
-        # a boot ran 7 full passes, a consolidation night 9 plus the rewrite. Not kept for
-        # dedup=False (nothing is resident there, so keeping it would ADD 3.46 GB, not 64 MB):
-        # those instances keep reading the disk, exactly as before.
-        self._payloads = payloads if self.dedup else None
 
     def stale(self):
         """True if the file changed underneath this instance, so its state can no longer be trusted.
@@ -168,7 +157,6 @@ class BinLog:
                 os.fsync(f.fileno())  # durable past process death
             if self.dedup:
                 self._seen.add(payload)
-                self._payloads.append(payload)  # the resident copy follows the disk, in order
             self._count += 1
             self._size = os.path.getsize(self.path)  # keep stale() honest about our own writes
         return True
@@ -259,7 +247,6 @@ class BinLog:
                     )  # ONE write per record (atomic-append friendly)
                     if self.dedup:
                         self._seen.add(payload)
-                        self._payloads.append(payload)  # resident copy follows the disk
                     written += 1
                 if written:
                     f.flush()
@@ -288,21 +275,7 @@ class BinLog:
         THE NULL IS NOT AN ARTEFACT OF A DEAD POOL: the same threading pattern running a CPU-bound
         spin scaled 2.00x / 3.80x / 6.49x / 8.23x / 9.68x at 2 / 4 / 8 / 14 / 28 threads in the
         same process, and a per-thread start/stop witness recorded up to 27 genuinely concurrent
-        workers during the replay runs. The pool runs; the work does not divide.
-
-        SERVED FROM THE RESIDENT COPY WHILE THE FILE IS UNCHANGED (Phase 1a, 2026-10-17). A
-        constructed dedup instance holds every payload in order (see `__init__`); if `stale()` says
-        the file on disk is still the one this instance wrote, that list IS the log and is yielded
-        as-is -- the same append order, the same bytes, zero disk reads. Validity is the one rule
-        `substrate/home._log` already trusts to hand out a cached instance (size unchanged by any
-        writer but this one); a stale instance, an undedup'd one, or a bare `BinLog.__new__` falls
-        through to the disk scan below, which is unchanged. The disk is the source of truth and the
-        list is a cache over it (P4b's own wording), so an external truncation, restore or append
-        reaches every reader through the same stat that already invalidates `_seen` and `_count`."""
-        resident = getattr(self, "_payloads", None)  # a bare __new__ instance has no copy
-        if resident is not None and not self.stale():
-            yield from resident
-            return
+        workers during the replay runs. The pool runs; the work does not divide."""
         if not os.path.exists(self.path):
             return
         with open(self.path, "rb") as f:
@@ -359,7 +332,6 @@ class BinLog:
                 tmp, self.path
             )  # atomic swap: readers see either the whole old or the whole new log
             self._seen = set(survivors) if self.dedup else None
-            self._payloads = survivors if self.dedup else None  # the resident copy IS the new log
             self._count = len(survivors)
             self._size = os.path.getsize(self.path)  # a rewrite changes the size; keep stale() true
         return self._count

@@ -3583,31 +3583,17 @@ class Brain:
                 self._criticality = round(self._critic.sigma(), 4)
         except Exception:
             pass
-        # ONE KnowledgeLog and ONE replay of the symbolic lake serve BOTH sleep blocks below (Phase 1a
-        # of the Rust port, 2026-10-17). Each block built its own KnowledgeLog (a fact-count pass) and
-        # replayed the facts again (a second pass): on a nights%8 tick that was four full lake
-        # passes before consolidation's own. `records` is kept exactly what the second block's
-        # replay would have yielded: schema induction appends go on the END of it, round-tripped
-        # through pack_fact/unpack_fact so they are the dicts a replay returns, and only when the
-        # dedup'd append actually landed.
-        klog = records = None
-        if self._persist and self._nights % 4 == 0:
-            try:
-                from snn_data_lake.substrate.home import KnowledgeLog
-
-                klog = KnowledgeLog()
-                records = list(klog.replay())
-            except Exception:
-                klog = records = None
-        if records is not None:  # SCHEMA INDUCTION (gap #5): consolidate durable episodes into
+        if (
+            self._persist and self._nights % 4 == 0
+        ):  # SCHEMA INDUCTION (gap #5): consolidate durable episodes into
             try:  # deduped prototype/schema triples (ART firewall + DistMult gate)
                 from snn_data_lake.reasoning.schema_induction import SchemaInducer
-                from snn_data_lake.substrate.binlog import pack_fact, unpack_fact
+                from snn_data_lake.substrate.home import KnowledgeLog
 
-                log = klog
+                log = KnowledgeLog()
                 triples = [
                     r["triple"]
-                    for r in records
+                    for r in log.replay()
                     if isinstance(r.get("triple"), list) and len(r["triple"]) == 3
                 ]
                 if len(triples) >= 4:  # enough real episodes to abstract from
@@ -3621,14 +3607,14 @@ class Brain:
                         out = {"derived": [], "kept": 0}
                     for row in out.get("derived", []):
                         h, rel, t = row[0], row[1], row[2]
-                        rec = {
-                            "cue": [rel, h],
-                            "answer": f"{h}'s {rel} is {t}.",
-                            "triple": [h, rel, t],
-                            "src": "schema",
-                        }
-                        if log.append(rec):  # KnowledgeLog dedups
-                            records.append(unpack_fact(pack_fact(rec)))
+                        log.append(
+                            {
+                                "cue": [rel, h],
+                                "answer": f"{h}'s {rel} is {t}.",
+                                "triple": [h, rel, t],
+                                "src": "schema",
+                            }
+                        )  # KnowledgeLog dedups
                     self._schemas = int(out.get("kept", 0))
                     try:  # ROSE forward-only refit (SLDA + Forward-Forward, no backprop)
                         rose = self._rose_serve()
@@ -3639,7 +3625,7 @@ class Brain:
             except Exception:
                 pass
         if (
-            records is not None and self._nights % 8 == 0
+            self._persist and self._nights % 8 == 0
         ):  # SLEEP CONSOLIDATION of the symbolic durable lake:
             try:  # the PRUNE half -- cap re-derivable dictionary bulk (WordNet/ConceptNet re-derive at boot)
                 #     + keep genuinely-learned, so a never-off brain's lake stays LIVE + BOUNDED, not ballooning.
@@ -3647,8 +3633,10 @@ class Brain:
                     LakeConsolidation,
                     RecallTrace,
                 )
-                from snn_data_lake.substrate.home import ImmortalRefusal
+                from snn_data_lake.substrate.home import ImmortalRefusal, KnowledgeLog
 
+                klog = KnowledgeLog()
+                records = list(klog.replay())
                 trace = (
                     RecallTrace()
                 )  # USE IT OR LOSE IT: never-recalled learned records fall out first
