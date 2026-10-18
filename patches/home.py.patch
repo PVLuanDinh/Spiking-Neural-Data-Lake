@@ -1,0 +1,52 @@
+diff --git a/src/snn_data_lake/substrate/home.py b/src/snn_data_lake/substrate/home.py
+index b1c3c014..d7fedcd7 100644
+--- a/src/snn_data_lake/substrate/home.py
++++ b/src/snn_data_lake/substrate/home.py
+@@ -868,22 +868,31 @@ class KnowledgeLog:
+         # per-record exemption RETENTION[0x01] declares (bulk re-derivable ingests, which reconstruct at
+         # boot) may be dropped. Before specs/022 L6 (2026-09-06) nothing here read the label at all, and the
+         # sleep tick's cap could silently discard learned knowledge the registry called never-reclaimed.
+-        if not retention_of(_T_FACT[0])[1]:
+-            keep_keys = {record_key(r) for r in keep_records}
+-            lost = [
+-                r
+-                for r in self.replay()
+-                if _src_class(r) != "re-derivable" and record_key(r) not in keep_keys
+-            ]
+-            if lost:
+-                raise ImmortalRefusal(
+-                    f"consolidate would drop {len(lost)} LEARNED _T_FACT record(s), but 0x01 is "
+-                    f"{retention_of(_T_FACT[0])[0]} with reclaimable=False. Only the per-record "
+-                    "exemption in RETENTION[0x01]'s reason (bulk re-derivable ingests) may be reclaimed."
+-                )
+-        foreign = _prune_state_history(
+-            [p for p in self._bin.replay() if p[:1] != _T_FACT]  # growth/episode/spike stay as-is
+-        )
++        # ONE pass over the lake serves both halves (Phase 1a of the Rust port, 2026-10-17; this was
++        # two full passes, the guard's `self.replay()` and the pass-through's `_bin.replay()`): a
++        # FACT record is decoded for the guard exactly as `replay()` decodes it (a malformed one is
++        # skipped there, so it is skipped here), every other tag is kept as raw bytes for the
++        # pass-through. Same `lost`, same `foreign`, same refusal, half the reads.
++        guard = not retention_of(_T_FACT[0])[1]
++        keep_keys = {record_key(r) for r in keep_records} if guard else None
++        lost, foreign = [], []
++        for payload in self._bin.replay():
++            if payload[:1] != _T_FACT:
++                foreign.append(payload)  # growth/episode/spike stay as-is
++            elif guard:
++                try:
++                    r = unpack_fact(payload[1:])
++                except Exception:  # noqa: BLE001 - replay() skips a malformed record; so does the guard
++                    continue
++                if _src_class(r) != "re-derivable" and record_key(r) not in keep_keys:
++                    lost.append(r)
++        if lost:
++            raise ImmortalRefusal(
++                f"consolidate would drop {len(lost)} LEARNED _T_FACT record(s), but 0x01 is "
++                f"{retention_of(_T_FACT[0])[0]} with reclaimable=False. Only the per-record "
++                "exemption in RETENTION[0x01]'s reason (bulk re-derivable ingests) may be reclaimed."
++            )
++        foreign = _prune_state_history(foreign)
+         before = self._count
+         self._bin.rewrite(foreign + [_T_FACT + pack_fact(r) for r in keep_records])
+         self._count = self._bin.count() - len(foreign)
