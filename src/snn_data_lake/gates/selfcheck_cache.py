@@ -66,6 +66,20 @@ THE KEY (all of it, or no carry) -- v3, ENVELOPE PRECISION (2026-08-21):
     for this surface at all: an edit outside a gate's import closure (the method-dormancy
     gate scans modules it never imports) could carry its stale PASS. It was safe only
     because the global envelope changed on every task anyway.
+  * RUST SURFACE (R0.2 row 13, 2026-10-17): a module whose closure READS the extension
+    `snn_data_lake._native` (any import spelling, derived per file like the scanner rule; or
+    the graph node itself) carries a `native:` row -- sha256 over (path, sha256) of every
+    `.rs`, Cargo.toml, Cargo.lock, build.rs and rust-toolchain(.toml) under native/ (target/
+    skipped) and at the repo root -- and an `ext:` row, the loaded extension's bytes (the
+    find_spec origin, else the canonical src/snn_data_lake/_native<suffix> maturin develop
+    fills). Before this row `_native` resolved to a missing .py, hashed as the constant
+    "ABSENT", and no Cargo file was listed anywhere: a Rust edit carried a STALE GREEN. The
+    extension is gitignored, so no tree surface sees it; a module that never reads
+    `_native` gets no such row (key invariance, red (m)). native/ missing prints ABSENT.
+    The import graph keys .py files only, so the reader flag is DERIVED per file (absolute
+    and root-relative spellings, the roster form, and an `__all__` naming the extension); a
+    package __init__ that re-exports the extension lifts both rows into the GLOBAL envelope
+    (it is in no closure, and every star importer loads what its `__all__` names).
   * GLOBAL envelope: cache version, interpreter tag (free-threaded marked), every NORD_*
     variable, the two normalized AST hashes above, every non-root package __init__
     (executed on import of any module in the region, present in no closure), the five
@@ -137,11 +151,15 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import importlib.machinery
+import importlib.util
 import json
 import os
 import re
 import subprocess
 import sys
+
+from snn_data_lake.gates.rust_facts import NATIVE_MODULE as _NATIVE  # stdlib-only reader
 
 _CACHE_VERSION = 3  # v3: envelope precision -- rosters split out, data inputs, named
 # environment variables and the tree surface keyed to their DERIVED readers. v2 (review
@@ -149,6 +167,10 @@ _CACHE_VERSION = 3  # v3: envelope precision -- rosters split out, data inputs, 
 # hashed is still hashed here, now keyed to the modules whose verdict can see it.
 _PKG = "snn_data_lake"
 _PKG_PREFIX = _PKG + "."
+_NATIVE_LEAF = _NATIVE.rpartition(".")[2]  # "_native": the extension has no .py of its own
+_NATIVE_NAMES = frozenset(
+    {"Cargo.toml", "Cargo.lock", "build.rs", "rust-toolchain", "rust-toolchain.toml"}
+)
 _SCAN_CALLS = frozenset({"walk", "listdir", "scandir", "glob", "iglob", "rglob", "iterdir"})
 # (directory, accepted extensions | None = every file, minus .py) -- DATA INPUTS keyed to
 # their derived readers.
@@ -286,6 +308,7 @@ _UNPARSEABLE = {
     "roster": frozenset(),
     "envs": frozenset(),
     "scans": True,
+    "native": True,
 }
 
 
@@ -331,7 +354,7 @@ def _facts(text, pkg_parts, marker_re):
                 and isinstance(body[0].value.value, str)
             ):
                 doc_ids.add(id(body[0].value))
-    mentions, roster, envs, scans = set(), set(), set(), False
+    mentions, roster, envs, scans, native = set(), set(), set(), False, False
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             if id(node) not in doc_ids:
@@ -342,6 +365,23 @@ def _facts(text, pkg_parts, marker_re):
             )
             if from_root:
                 roster.update(a.name for a in node.names)
+            # absolute, or relative from the file's own depth (`from .._native import f`
+            # two packages down): the root-relative spelling python_native_refs resolves
+            native = native or (
+                node.module == _NATIVE or (node.level == pkg_parts and node.module == _NATIVE_LEAF)
+            )
+        elif isinstance(node, ast.Import):
+            native = native or any(a.name == _NATIVE for a in node.names)
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            # a package `__all__` naming the extension loads it for every star importer
+            # (list or tuple literal, plain or annotated assignment)
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if any(isinstance(t, ast.Name) and t.id == "__all__" for t in targets) and isinstance(
+                node.value, (ast.List, ast.Tuple)
+            ):
+                native = native or any(
+                    isinstance(e, ast.Constant) and e.value == _NATIVE_LEAF for e in node.value.elts
+                )
         elif isinstance(node, ast.Attribute):
             if isinstance(node.value, ast.Name) and node.value.id == _PKG:
                 roster.add(node.attr)
@@ -365,7 +405,25 @@ def _facts(text, pkg_parts, marker_re):
         "roster": frozenset(roster),
         "envs": frozenset(envs),
         "scans": scans,
+        "native": native or _NATIVE_LEAF in roster,
     }
+
+
+# distinct-from: infra/brain_native_selfbuild.py -- its DataIngestSource is a self-build
+#   "extension point" (a plug-in slot for data ingestion); this locates the compiled
+#   `_native` extension MODULE FILE whose bytes the carry key must hash. Read.
+def _native_ext():
+    """The compiled extension's file, else the canonical path `maturin develop` fills (hashed
+    as ABSENT until it exists, so an override on it -- and the real file later -- flips)."""
+    try:
+        spec = importlib.util.find_spec(_NATIVE)
+    except (ImportError, ValueError):
+        spec = None
+    if spec is not None and spec.origin and os.path.isfile(spec.origin):
+        return spec.origin
+    return os.path.join(
+        _repo_root(), "src", _PKG, _NATIVE_LEAF + importlib.machinery.EXTENSION_SUFFIXES[0]
+    )
 
 
 class SelfcheckCache:
@@ -378,15 +436,21 @@ class SelfcheckCache:
         env=None,
         store_path=None,
         no_git=False,
+        graph_overrides=None,
+        native_root=None,
     ):
         # `file_hash_overrides` ({path: fake_hash}), `file_text_overrides` ({path: source}),
-        # `env`, `store_path` and `no_git` are the TESTING SEAMS for the self-check's reds:
-        # they prove an input change flips exactly the keys it should WITHOUT mutating the
-        # tree, the process env or the REAL store (a record() from a probe is a PASS nobody
-        # ran -- found by doing exactly that once), and they reach the git-less branch on a
-        # host that has git. Never set otherwise.
+        # `env`, `store_path`, `no_git`, `graph_overrides` ({dotted: {dotted dep}} merged
+        # into the import graph) and `native_root` (a fixture native/ tree) are the TESTING
+        # SEAMS for the self-check's reds: they prove an input change flips exactly the keys
+        # it should WITHOUT mutating the tree, the process env or the REAL store (a record()
+        # from a probe is a PASS nobody ran -- found by doing exactly that once), and they
+        # reach the git-less branch on a host that has git. Never set otherwise.
         self._store_path = store_path or _cache_path()
         self._no_git = bool(no_git)
+        self._graph_overrides = {k: set(v) for k, v in (graph_overrides or {}).items()}
+        self._native_root = native_root or os.path.join(_repo_root(), "native")
+        self._native = None  # (row, files under native/) memo, like _tree
         # every path is normpath'ed at the boundary: git prints forward slashes, os.walk
         # prints os.sep, and an override keyed one way must match a lookup made the other
         self._hash_overrides = {
@@ -523,13 +587,20 @@ class SelfcheckCache:
             "root_init_ast:" + self._norm_root,
             "nord:" + nord,
         ] + [os.path.relpath(p, root) + ":" + self._hash_file(p) for p in gov]
+        # a package __init__ (root or region; in no closure) that re-exports the extension
+        # makes the Rust surface a GLOBAL input: every verdict in that region loads it
+        inits = [self._root_init] + [p for p in gov if p.endswith("__init__.py")]
+        if any(self._facts_for(p)["native"] for p in inits):
+            parts += [self._native_hash(), self._ext_row()]
         return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
     def _import_graph(self):
         if self._graph is None:
             from snn_data_lake.gates.dormancy_gate import import_graph
 
-            self._graph = import_graph()
+            self._graph = dict(import_graph())
+            for node, deps in self._graph_overrides.items():
+                self._graph[node] = set(self._graph.get(node, ())) | deps
         return self._graph
 
     def _closure(self, mod):
@@ -574,6 +645,33 @@ class SelfcheckCache:
             self._tree = _sha256_text("\n".join(rows))
         return self._tree
 
+    def _native_hash(self):
+        """ "native:<sha256>" over (path, sha256) of every Rust input under native/ (target/
+        skipped) plus the manifest / toolchain names beside it (the repo root), or
+        "native:ABSENT" when nothing exists; memoised with the count of .rs files under native/
+        (disk view, not git's: the key must move on bytes git cannot see)."""
+        if self._native is None:
+            rows, n_rs = [], 0
+            for r, dirs, files in os.walk(self._native_root):
+                dirs[:] = sorted(d for d in dirs if d != "target")
+                for f in sorted(files):
+                    if f.endswith(".rs") or f in _NATIVE_NAMES:
+                        p = os.path.join(r, f)
+                        rel = os.path.relpath(p, self._native_root).replace(os.sep, "/")
+                        rows.append("native/" + rel + ":" + self._hash_file(p))
+                        n_rs += f.endswith(".rs")
+            for f in sorted(_NATIVE_NAMES):
+                p = os.path.join(os.path.dirname(self._native_root), f)
+                if os.path.isfile(p):
+                    rows.append(f + ":" + self._hash_file(p))
+            row = "native:" + (_sha256_text("\n".join(rows)) if rows else "ABSENT")
+            self._native = (row, n_rs)
+        return self._native[0]
+
+    def _ext_row(self):
+        ext = _native_ext()
+        return "ext:" + os.path.basename(ext) + ":" + self._hash_file(ext)
+
     def describe(self, mod):
         """The key's composition for one module: closure size, data inputs and env vars
         carried, whether it imports from the root package or scans the tree. Attribution,
@@ -586,6 +684,8 @@ class SelfcheckCache:
         d = self.describe(mod)
         if d["scans"]:
             return "scanner"
+        if d["native"]:
+            return "native"
         if d["roster"]:
             return "root-import"
         if d["data"] or d["envs"]:
@@ -598,8 +698,11 @@ class SelfcheckCache:
         if mod in self._closure_keys:
             return self._closure_keys[mod]
         root = _repo_root()
-        rows, mentions, roster, envs, scans = [], set(), set(), set(), False
+        rows, mentions, roster, envs, scans, native = [], set(), set(), set(), False, False
         for d in sorted(self._closure(mod)):
+            if d == _NATIVE:  # no .py: its bytes are the native + ext rows below
+                native = True
+                continue
             path = _module_file(d)
             rows.append(f"{d}={self._hash_file(path)}")
             facts = self._facts_for(path)
@@ -607,6 +710,7 @@ class SelfcheckCache:
             roster |= facts["roster"]
             envs |= facts["envs"]
             scans = scans or facts["scans"]
+            native = native or facts["native"]
         data = [p for p in self._data if os.path.basename(p) in mentions]
         if self._runner in self._data and "run_selfchecks" in mentions:
             data.append(self._runner)
@@ -618,6 +722,8 @@ class SelfcheckCache:
             data_rows.append("roster:" + self._roster_hash)
         if scans:
             data_rows.append("tree:" + self._tree_hash())
+        if native:
+            data_rows += [self._native_hash(), self._ext_row()]
         key = hashlib.sha256(
             (self.envelope + "||" + "||".join(rows) + "||" + "||".join(data_rows)).encode()
         ).hexdigest()
@@ -628,6 +734,8 @@ class SelfcheckCache:
             "envs": named_envs,
             "roster": reads_roster,
             "scans": scans,
+            "native": native and (f"{self._native[1]} .rs files" if self._native[1] else "ABSENT"),
+            "ext": native and _native_ext(),
         }
         return key
 
@@ -669,6 +777,7 @@ class SelfcheckCache:
         self._closure_keys.pop(mod, None)
         self._describe.pop(mod, None)
         self._tree = None  # re-listed + re-stat'ed; only changed files re-hash
+        self._native = None
         self._refresh_derived()
         self._store[mod] = {
             "key": self.closure_key(mod),
@@ -690,7 +799,8 @@ class SelfcheckCache:
             f"CARRY-FORWARD ON (envelope v{_CACHE_VERSION} {self.envelope[:12]}..., "
             f"{len(self._store)} cached verdicts): a PASS carries only when the module's "
             "ENTIRE static import closure + the data files / named env vars / root-package "
-            "roster / tree surface its closure reads (DERIVED per module) + the global "
+            "roster / tree surface / Rust surface (native/**, Cargo manifests, the loaded "
+            "extension; for _native readers) its closure reads (DERIVED per module) + the global "
             "envelope (runner and root __init__ logic, region __init__s, brainstem safety "
             "files, SECURITY.md, POLICIES.md, NORD_* env, interpreter) are byte-identical. "
             f"BLIND to {banner_blind_spots()}.{absent_note}"
@@ -702,8 +812,9 @@ def banner_blind_spots():
         "string-dispatch imports; shared-home sequence coupling; unhashed host state; "
         "computed-name data/env reads (tools/, models/ and NORD_* fail closed); gitignored "
         "inputs read by name outside models/ and graphify-out/; a listing root imported "
-        "from another module (carries = local batteries only; any carried-run FAIL reruns "
-        "FULL first)"
+        "from another module; Rust build inputs outside native/ and the manifest names "
+        "(.cargo/config.toml, RUSTFLAGS, the toolchain binary) (carries = local batteries "
+        "only; any carried-run FAIL reruns FULL first)"
     )
 
 
@@ -741,6 +852,12 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         "envs",
         frozenset({"ZZZ_SEED", "ZZZ_X", "ZZZ_Y", "ZZZ_Z"}),
     ),
+    "native_from_import": ("from snn_data_lake._native import f\n", "native", True),
+    "native_relative": ("from ._native import f\n", "native", True),  # pkg_parts 1 = root-relative
+    "native_other_package": ("from .other._native import f\n", "native", False),
+    "native_import": ("import snn_data_lake._native\n", "native", True),
+    "native_from_root": ("from snn_data_lake import _native\n", "native", True),
+    "native_not_read": ("import os\n", "native", False),
 }
 
 
@@ -771,7 +888,11 @@ def self_check() -> int:
         nonce is refused by a fresh instance over the SAME store, and the two keys differ
         (the red fires if the nonce ever degenerates into a constant);
     (l) NAMED ENV -- a variable a module reads by name flips that module and not a plain
-        one."""
+        one;
+    (m) RUST SURFACE -- with `{probe: {_native}}` injected into the graph and a fixture
+        native/ tree: a `.rs` byte change, a Cargo.toml change and an extension-bytes change
+        each flip the probe's key; the same flips leave the uninjected plain probe alone;
+        the real tree's status (ABSENT today) is printed distinctly."""
     # distinct-from: reasoning/analogy_bench.py -- its controls() are NEGATIVE ANALOGY
     #   cases a structure mapper must fail to recover; these are cache-KEY invariance
     #   checks (a key that must not move). Read.
@@ -831,11 +952,11 @@ def _self_check(store):
     )
     desc = {m: base.describe(m) for m in mods}
 
-    def is_plain(m):
-        d = desc[m]
-        return not d["scans"] and not d["roster"] and not d["data"] and not d["envs"]
-
-    plain = [m for m in mods if is_plain(m)]
+    plain = [
+        m
+        for m in mods
+        if not any(desc[m][k] for k in ("scans", "roster", "data", "envs", "native"))
+    ]
     scanners = [m for m in mods if desc[m]["scans"]]
     root_importers = [m for m in mods if desc[m]["roster"]]
     data_readers = [m for m in mods if desc[m]["data"]]
@@ -1043,6 +1164,58 @@ def _self_check(store):
         fired.append(
             "red (j) UNCONSTRUCTIBLE on this tree: every tools/models artifact has a named reader"
         )
+
+    # (m) RUST SURFACE: inject the extension dependency, point native_root at a fixture
+    # crate, flip each Rust input in turn; the plain probe must not move under any of them
+    native_root = os.path.join(os.path.dirname(store), "native")
+    crate = os.path.join(native_root, "sndl-core")
+    os.makedirs(os.path.join(crate, "src"))
+    lib = os.path.join(crate, "src", "lib.rs")
+    manifest = os.path.join(crate, "Cargo.toml")
+    with open(lib, "w", encoding="utf-8") as f:
+        f.write("pub fn f() {}\n")
+    with open(manifest, "w", encoding="utf-8") as f:
+        f.write('[package]\nname = "sndl-core"\n')
+    inj = {_PKG_PREFIX + probe: {_NATIVE}}
+    reader = make(graph_overrides=inj, native_root=native_root)
+    kn = reader.closure_key(probe)
+    if kn == k0 or reader.describe(probe)["native"] in (False, "ABSENT"):
+        return fail(f"the injected _native dependency was not keyed: {reader.describe(probe)}")
+    # the PRODUCTION path: no graph node (the import graph keys .py files only) -- the
+    # probe's own source gains an `_native` import and must be keyed by derivation alone
+    probe_file = _module_file(_PKG_PREFIX + probe)
+    src = base._read_text(probe_file) + f"\nfrom {_NATIVE} import zzz_probe_v3\n"
+    derived = make(file_text_overrides={probe_file: src}, native_root=native_root)
+    kd = derived.closure_key(probe)
+    kd_flipped = make(
+        file_text_overrides={probe_file: src},
+        native_root=native_root,
+        file_hash_overrides={lib: "d" * 64},
+    ).closure_key(probe)
+    if not derived.describe(probe)["native"] or kd_flipped == kd:
+        return fail("a DERIVED _native reader (no graph node) was not keyed to the Rust surface")
+    ext = _native_ext()
+    flips = (
+        (lib, "d" * 64, ".rs bytes"),
+        (manifest, "e" * 64, "Cargo.toml"),
+        (ext, "f" * 64, "extension bytes"),
+    )
+    for path, fake, what in flips:
+        fork = make(graph_overrides=inj, native_root=native_root, file_hash_overrides={path: fake})
+        if fork.closure_key(probe) == kn:
+            return fail(f"a {what} change did not flip the _native reader's key (STALE GREEN)")
+    all_flips = {path: fake for path, fake, _ in flips}
+    control = make(native_root=native_root, file_hash_overrides=all_flips)
+    if (r := unchanged(control, "a .rs + Cargo.toml + extension change")) is not None:
+        return r
+    real = make(graph_overrides=inj).describe(probe)["native"]
+    fired.append(
+        f"Rust surface (.rs, Cargo.toml, extension) -> {probe} flipped (graph node and derived "
+        f"import alike); real tree "
+        f"{'native/ ABSENT (0 .rs files)' if real == 'ABSENT' else 'native/ PRESENT (' + real + ')'}"
+        f", ext {os.path.basename(ext)}"
+        f"{'' if os.path.isfile(ext) else ' ABSENT'}"
+    )
 
     surface_note = (
         f"the {surface}-file tracked surface" if surface else "an UNAVAILABLE tracked surface"
