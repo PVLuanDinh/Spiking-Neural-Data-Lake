@@ -188,7 +188,16 @@ def test_a_non_importing_module_is_still_classified():
     import subprocess
     import sys
 
-    rules, _, _ = gate.census()
+    # del-reasoning 1b-1h deleted every real rule-carrying module that failed to import (arc_agi, ng_snn
+    # -> arcengine / retired siblings), so the non-importing member is CONSTRUCTED: an overlay module is
+    # in the census but absent from disk, hence unimportable by the child below.
+    claimant = (
+        "class Rule:\n"
+        "    def learn(self, x):\n"
+        '        """Approximates the gradient by backprop."""\n'
+        "        self.w -= x\n"
+    )
+    rules, _, _ = gate.census(overlay={"reasoning/zz_probe_unimportable.py": claimant})
     mods = sorted({r["module_rel"] for r in rules})
     probe = (
         "import importlib, json, sys, contextlib, io\n"
@@ -220,6 +229,7 @@ def test_a_non_importing_module_is_still_classified():
         "no module carrying a rule fails to import, so this test cannot demonstrate SC-010. "
         "Either the tree changed or the census stopped seeing the ungoverned subtree."
     )
+    assert "reasoning/zz_probe_unimportable.py" in not_importable, not_importable
     for m in not_importable:
         assert any(r["module_rel"] == m for r in rules), (
             f"{m} does not import AND is absent from the census"
