@@ -116,10 +116,7 @@ claims the linear version failed (`[GPU-VERIFY]` lines).
 beats L0 fine-roll (0.706). The nonlinear hierarchy genuinely beats flat where the linear version could
 not. (Also confirmed on CPU torch; the results are device-agnostic.)
 
-```bash
-pip install ".[gpu]"   # a cu128 / Blackwell-sm_120 build for the 5070
-NORD_GPU=1 python -m snn_data_lake.reasoning.hjepa_torch   # trains the nonlinear H-JEPA, prints [GPU-VERIFY] hierarchy-vs-flat
-```
+The script that ran this (`reasoning/hjepa_torch.py`) was retired by del-reasoning 1d; the verdict above stays here and the governed H-JEPA is `faculties/hjepa_serve.py`.
 
 **AirLLM does not apply here.** AirLLM is disk-streaming *inference* for a transformer too big for
 VRAM; it has no training path and would only slow a compute-bound H-JEPA that fits the 5070 many times

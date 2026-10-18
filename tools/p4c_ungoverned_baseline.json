@@ -2,7 +2,7 @@
   "_generated_by": "tools/p4c_ratchet.py --update-baseline",
   "_policy": "P4c -- every build is part of the brain",
   "_contract": "counts may only go DOWN; 'paths' is DIAGNOSTICS ONLY, never asserted on",
-  "total": 179,
+  "total": 177,
   "zones": {
     "<repo root>": 2,
     "docs": 16,
@@ -10,7 +10,7 @@
     "research": 24,
     "src/snn_data_lake/<toplevel>": 2,
     "src/snn_data_lake/lakehouse": 2,
-    "src/snn_data_lake/reasoning": 90,
+    "src/snn_data_lake/reasoning": 88,
     "src/snn_data_lake/training": 1,
     "tools": 30,
     "training": 4
@@ -117,8 +117,6 @@
       "src/snn_data_lake/reasoning/free_energy_control.py",
       "src/snn_data_lake/reasoning/gf.py",
       "src/snn_data_lake/reasoning/godel_machine.py",
-      "src/snn_data_lake/reasoning/hjepa_arm_torch.py",
-      "src/snn_data_lake/reasoning/hjepa_torch.py",
       "src/snn_data_lake/reasoning/hopfield_baseline.py",
       "src/snn_data_lake/reasoning/impact_analysis.py",
       "src/snn_data_lake/reasoning/index_compression.py",
