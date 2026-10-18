@@ -114,16 +114,14 @@ def strip_literals(text: str | None) -> str:
     return RUST_LITERAL.sub('""', text or "")
 
 
-_ESC = re.compile(r"\\(u\{[0-9a-fA-F_]{1,6}\}|x[0-7][0-9a-fA-F]|[nrt\\0'\"]|\n\s*)?")
+#: One Rust escape (the Rust reference's grammar): `\u{` 1-6 hex digits with `_` separators `}`,
+#: `\x` two hex digits, the one-char escapes, or `\`+newline (CRLF kept by the source) plus the ASCII
+#: whitespace rustc skips after it (space, tab, CR, LF -- a NO-BREAK SPACE stays). No group: not an escape.
+_ESC = re.compile(r"\\(u\{(?:[0-9a-fA-F]_*){1,6}\}|x[0-9a-fA-F]{2}|[nrt\\0'\"]|\r?\n[ \t\r\n]*)?")
 _ESC_CHARS = {"n": "\n", "r": "\r", "t": "\t", "0": "\0"}
 
 
-def str_value(lit: str) -> str:
-    """The VALUE of one `RUST_LITERAL` match that is a str literal: escapes decoded (`\\x73` -> `s`,
-    `\\u{e9}` -> `e`-acute, `\\n`, `\\\\`, a `\\`+newline continuation -> nothing), a raw string as written.
-    ValueError for a byte or char literal or an escape Rust rejects -- the caller's spelling vs skip
-    decision (gradient_claim_gate's `_rust_str_value` is this function; move_gate's C2(d) decodes
-    `PyModule::import(py, "...")` names with it)."""
+def _literal_value(lit: str, byte: bool) -> str:
     if lit[0] not in 'r"':
         raise ValueError(f"not a str literal: {lit[:12]!r}")  # b"..", b'..', 'c'
     if lit[0] == "r":
@@ -131,15 +129,35 @@ def str_value(lit: str) -> str:
 
     def one(m):
         e = m.group(1)
-        if e is None:
+        if e is None or (byte and e[0] == "u"):  # bad escape; `\u{}` in a byte string
             raise ValueError(f"bad escape in {lit[:20]!r}")
         if e[0] == "u":
             return chr(int(e[2:-1].replace("_", ""), 16))
         if e[0] == "x":
-            return chr(int(e[1:], 16))
+            n = int(e[1:], 16)
+            if n > 0x7F and not byte:  # a str literal's `\x` stops at 7f; a byte string's at ff
+                raise ValueError(f"bad escape in {lit[:20]!r}")
+            return chr(n)
         return "" if e.isspace() else _ESC_CHARS.get(e, e)
 
     return _ESC.sub(one, lit[1:-1])
+
+
+def str_value(lit: str) -> str:
+    """The VALUE of one `RUST_LITERAL` match that is a str literal: escapes decoded (`\\x73` -> `s`,
+    `\\u{0_6_7}` -> `g`, `\\n`, `\\\\`, a `\\`+newline continuation and the ASCII whitespace after it ->
+    nothing), a raw string as written. ValueError for a byte or char literal or an escape Rust
+    rejects -- the caller's spelling-vs-skip decision."""
+    return _literal_value(lit, byte=False)
+
+
+def bytes_value(lit: str) -> str:
+    """The VALUE of one `b"..."`/`br"..."` byte literal, read as UTF-8 text (an undecodable byte becomes
+    U+FFFD): `\\x00`-`\\xff` decoded, `\\u{}` rejected, raw as written. For a scan that judges the
+    name a byte string spells; ValueError for a non-byte literal or an escape Rust rejects."""
+    if lit[:1] != "b":
+        raise ValueError(f"not a byte literal: {lit[:12]!r}")
+    return _literal_value(lit[1:], byte=True).encode("latin-1").decode("utf-8", "replace")
 
 
 class RustFactsUnavailable(RuntimeError):
@@ -834,13 +852,25 @@ _PY_FIXTURE = {
 
 
 def self_check(root: Path = ROOT) -> None:
-    assert str_value('"\\x73nn.\\u{6d}od\\n"') == "snn.mod\n" and str_value('r"\\x73"') == "\\x73"
-    for bad in ('b"s"', "'c'", '"\\q"'):
+    assert (
+        str_value('"\\x73nn.\\u{0_6_d}od\\n"') == "snn.mod\n" and str_value('r"\\x73"') == "\\x73"
+    )
+    assert str_value('"a\\\r\n \u00a0b"') == "a\u00a0b", "CRLF continuation; a NO-BREAK SPACE stays"
+    assert bytes_value('b"\\x73\\xc3\\xa9"') == "s\u00e9" and bytes_value('br"\\x73"') == "\\x73"
+    for fn, bad in (
+        (str_value, 'b"s"'),
+        (str_value, "'c'"),
+        (str_value, '"\\q"'),
+        (str_value, '"\\x80"'),
+        (str_value, '"\\u{1234567}"'),
+        (bytes_value, '"s"'),
+        (bytes_value, 'b"\\u{67}"'),
+    ):
         try:
-            str_value(bad)
+            fn(bad)
         except ValueError:
             continue
-        raise AssertionError(f"str_value accepted {bad!r}")
+        raise AssertionError(f"{fn.__name__} accepted {bad!r}")
     f = facts_for_source(_FIXTURE, root=root)
     fns = {fn["name"] for fn in f["fns"]}
     want = {"learn", "step", "learn_inner", "native_learn", "decay_impl", "_legacy", "t"}

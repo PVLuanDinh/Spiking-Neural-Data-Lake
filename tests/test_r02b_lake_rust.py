@@ -109,9 +109,11 @@ def test_g8d_green_twin_is_zero(tmp_path):
     assert mg.c2d(_g8(tmp_path, red=False), PAIRS, PKGS)[0] == []
 
 
-#: Codex B1 r02b-lake MAJOR 1: the same legacy names spelled through Rust escapes (`\x73` = `s`,
-#: `\u{67}` = `g`), a raw string that only LOOKS escaped (its value is the backslash spelling: no
-#: legacy name), and a byte literal with an escape the strict decoder rejects (kept by spelling).
+#: Codex B1 r02b-lake MAJOR 1 + review-code fold: the same legacy names spelled through Rust
+#: escapes (`\x73` = `s`, `\u{67}` = `g`, `\u{0_0_0_0_6_7}` = `g` with Rust's underscores), a raw
+#: string that only LOOKS escaped (its value is the backslash spelling: no legacy name), byte
+#: literals (`\x80`, UTF-8 `\xc3\xa9`), a `\`+newline continuation that splits a name, one followed
+#: by a NO-BREAK SPACE Rust keeps (the boundary before `snn_data_lake`), `r#"..."#` and `br"..."`.
 _NATIVE_LIB_ESCAPED = """\
 use pyo3::prelude::*;
 pub fn load(py: Python<'_>) -> PyResult<()> {
@@ -119,9 +121,28 @@ pub fn load(py: Python<'_>) -> PyResult<()> {
     let prefix = "snn_data_lake.\\u{67}onepkg.";
     let raw = r"\\x73nn_data_lake.oldpkg.mod";
     let bytes = b"snn_data_lake.oldpkg.mod\\x80";
+    let under = "snn_data_lake.\\u{0_0_0_0_6_7}onepkg.";
+    let split = "snn_data_lake.old\\
+        pkg.mod";
+    let nbsp = "prefix\\
+\u00a0snn_data_lake.gonepkg.";
+    let utf8 = b"\\x73nn_data_lake.oldpkg.mod.\\xc3\\xa9";
+    let hashed = r#"snn_data_lake.oldpkg.mod"#;
+    let braw = br"snn_data_lake.gonepkg.";
     Ok(())
 }
 """
+_ESCAPED_ROWS = [
+    (3, "oldpkg.mod"),
+    (4, "gonepkg"),
+    (6, "oldpkg.mod"),
+    (7, "gonepkg"),
+    (8, "oldpkg.mod"),
+    (10, "gonepkg"),
+    (12, "oldpkg.mod"),
+    (13, "oldpkg.mod"),
+    (14, "gonepkg"),
+]
 
 
 def test_g8d_c2d_decodes_rs_string_escapes_and_leaves_raw_strings_alone(tmp_path):
@@ -129,11 +150,8 @@ def test_g8d_c2d_decodes_rs_string_escapes_and_leaves_raw_strings_alone(tmp_path
     files["native/sndl-python/src/lib.rs"] = _NATIVE_LIB_ESCAPED
     found, n, unparsed = mg.c2d(_tree(tmp_path, files), PAIRS, PKGS)
     assert (n, unparsed) == (2, [])
-    assert found == [
-        ("native/sndl-python/src/lib.rs", 3, "rs-string", "oldpkg.mod"),
-        ("native/sndl-python/src/lib.rs", 4, "rs-string", "gonepkg"),
-        ("native/sndl-python/src/lib.rs", 6, "rs-string", "oldpkg.mod"),
-    ]
+    rs = "native/sndl-python/src/lib.rs"
+    assert found == [(rs, ln, "rs-string", x) for ln, x in _ESCAPED_ROWS]
 
 
 def test_g8d_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch):
@@ -147,12 +165,16 @@ def test_g8d_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch
 #: Round 1b (r02-lead): the gate scans tests/ and tools/ by design (`_LIVE_PY_DIRS`; its own
 #: `c2d_control` builds legacy names from parts so as not to be a finding), so a fixture string
 #: spelling a legacy package IS a C2(d) finding, owed by that fixture's author -- this test asserts
-#: the package under measurement (src/) and the Rust half (rs-string), and native/ PRESENT with
+#: everything outside that named debt and the Rust half (rs-string), and native/ PRESENT with
 #: each Cargo.lock hash recorded, now that R0.4 landed native/sndl-core.
 def test_g8_real_tree_has_no_src_or_rs_string_finding_and_census_records_native():
     found, _n, unparsed = mg.c2d(mg.REPO)
     assert unparsed == []
-    assert [f for f in found if f[0].startswith("src/") or f[2] == "rs-string"] == []
+    debt = {
+        "tests/test_r02b_p6_rust.py",
+        "tools/p6_gate.py",
+    }  # r02b-p6 fixture strings, owed from parts
+    assert [f for f in found if f[0] not in debt or f[2] == "rs-string"] == []
     rec = mg.static(mg.REPO, mg.tables(mg.REPO)).get("native")
     assert rec and rec["status"].startswith("native/ PRESENT ("), rec
     assert rec["cargo_lock"] and all(

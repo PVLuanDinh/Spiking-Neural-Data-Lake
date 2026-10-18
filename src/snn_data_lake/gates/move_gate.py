@@ -1032,7 +1032,7 @@ _RS_TEXT = {
 #   a ledger, a brain tick, a finalizer and a niche filer, none a source scan.
 def c2d_rust(root: Path, pairs, pkgs) -> list:
     """C2(d) over the string literals of native/'s `.rs` files, through rust_facts' token text (the
-    reader's own `RUST_LITERAL`, decoded to its VALUE by the reader's `str_value` --
+    reader's own `RUST_LITERAL`, decoded to its VALUE by the reader's `str_value`/`bytes_value` --
     `"\\x73nn_..."` names `snn_...`, a raw string stays as written -- judged by `_string_hits`): the
     import string a PyO3 crate hands `PyModule::import` is a legacy name like any other. Sorted unique
     (file, line, "rs-string", name); `RustFactsUnavailable` is the caller's red (R0.2 arc 2, row 10).
@@ -1051,8 +1051,9 @@ def c2d_rust(root: Path, pairs, pkgs) -> list:
                     m = _RS_STR.fullmatch(lit.group(0))
                     if not m:
                         continue
+                    t = lit.group(0)
                     try:  # the VALUE (escapes decoded, raw strings as written), not the spelling
-                        s = rust_facts.str_value(lit.group(0).removeprefix("b"))
+                        s = (rust_facts.bytes_value if t[0] == "b" else rust_facts.str_value)(t)
                     except ValueError:  # an escape the decoder rejects: the spelling, never a skip
                         s = m.group(2)
                     hits = _string_hits(s, pairs, pkgs)
