@@ -1894,8 +1894,7 @@ def constructed_reds() -> list:
         expect(
             c2d(green, pairs, pkgs)[0] == [], "control (G8-d): current names in .rs literals red"
         )
-        # G8-d escaped: the decoded VALUE reds (`\x73nn...` names the module); a raw string spelled
-        # the same way is its own text and does not.
+        # G8-d escaped
         esc = Path(td) / "esc"
         lib = _NATIVE_LIB_RED.replace(
             '"snn_data_lake.oldpkg.mod"', '"\\x73nn_data_lake.oldpkg.mod"'

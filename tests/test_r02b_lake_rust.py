@@ -51,7 +51,7 @@ def test_l5_rust_facts_unavailable_with_rs_present_is_one_red(tmp_path, monkeypa
 
 def test_l5_real_tree_prints_native_status_and_python_counts_hold():
     out = l5.report()
-    assert "native/ PRESENT (" in out  # R0.4 landed native/sndl-core; the status line is printed
+    assert "native/ PRESENT (" in out  # the real tree has native/sndl-core: status PRESENT
     assert "reclaimers of DURABLE records that do not consult the label: 0" in out
     assert out.rstrip().endswith("findings: 0")
 
@@ -190,11 +190,8 @@ def test_g8d_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch
     assert mg.main(["--c2d", "--root", str(tree)]) == 1
 
 
-#: Round 1b (r02-lead): the gate scans tests/ and tools/ by design (`_LIVE_PY_DIRS`; its own
-#: `c2d_control` builds legacy names from parts so as not to be a finding), so a fixture string
-#: spelling a legacy package IS a C2(d) finding, owed by that fixture's author -- this test asserts
-#: everything outside that named debt and the Rust half (rs-string), and native/ PRESENT with
-#: each Cargo.lock hash recorded, now that R0.4 landed native/sndl-core.
+#: Round 1b (r02-lead): the gate scans tests/ and tools/ by design (`_LIVE_PY_DIRS`), so a fixture
+#: string spelling a legacy package IS a C2(d) finding, owed by that fixture's author.
 def test_g8_real_tree_has_no_src_or_rs_string_finding_and_census_records_native():
     found, _n, unparsed = mg.c2d(mg.REPO)
     assert unparsed == []
