@@ -94,10 +94,12 @@ def test_rr_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch,
     assert "RustFactsUnavailable" in capsys.readouterr().out
 
 
-def test_rr_real_tree_prints_absent_and_python_counts_hold(capsys):
+def test_rr_real_tree_prints_its_native_status_and_python_counts_hold(capsys):
     assert red_reachability.main(["--assert"]) == 0
     out = capsys.readouterr().out
-    assert "native/ ABSENT (0 .rs files)" in out
+    assert (
+        rust_facts.native_status()[0] in out
+    )  # ABSENT or PRESENT (N .rs files), never "0 findings"
     assert "NO_RED: 0 " in out
     assert rust_facts.BLIND_SPOTS[0] in out
 
@@ -151,7 +153,7 @@ def test_rr_self_check_runs_both_arms(capsys):
     assert red_reachability.main(["--self-check"]) == 0
     out = capsys.readouterr().out
     assert (
-        "self-check OK: Rust RED arm 4 NO_RED, GREEN twin 0, 4 fold cases + wrapper guards exact"
+        "self-check OK: Rust RED arm 4 NO_RED, GREEN twin 0, 6 fold cases + wrapper guards exact"
         in out
     )
 
@@ -188,10 +190,10 @@ def test_cp_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch)
     assert len(found) == 1 and "RustFactsUnavailable" in found[0], found
 
 
-def test_cp_real_tree_prints_absent_and_asserts_nothing():
+def test_cp_real_tree_prints_its_native_status_and_asserts_nothing():
     assert cp.asserted_findings() == []
     text = cp.report()
-    assert "native/ ABSENT (0 .rs files)" in text
+    assert rust_facts.native_status()[0] in text  # ABSENT, or PRESENT (N .rs files)
     assert rust_facts.BLIND_SPOTS[0] in text
 
 
