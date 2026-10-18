@@ -20,3 +20,4 @@ src/snn_data_lake/brainstem/so101/SO-ARM100-LICENSE -text
 
 # The perception packs vendored for CI are zip containers; never translate them.
 *.npz binary
+native/sndl-core/tests/fixtures_rng.json -text
