@@ -317,7 +317,6 @@ snn-loop = "snn_data_lake.sensorimotor.closed_loop:main"  # full closed loop: ge
 # a console script: the cockpit never constructs a Brain (Policy 4), so a standalone launcher would
 # either stand up a second brain against the same durable lake or duplicate the daemon's drive loop.
 # One brain, one loop, one frontend.
-snn-train = "snn_data_lake.training.cli:main"  # [train] extra: surrogate-gradient GPU trainer -> exports weights to the core
 snn-fetch-corpus = "snn_data_lake.sensorimotor.web_ingest:cli"  # firewalled web -> training-corpus fetch (stdlib urllib)
 snn-nengo-launch = "snn_data_lake.infra.nengo_bridge:launch"  # [nengo] extra: run the whole brain LIVE under nengo.Simulator (per-tick trace; NengoLoihi-deployable, observation-only)
 

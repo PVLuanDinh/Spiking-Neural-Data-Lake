@@ -61,7 +61,6 @@ _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-pack
     f"{_PKG}.sensorimotor.live_arm",
     f"{_PKG}.sensorimotor.closed_loop",
     f"{_PKG}.infra.cockpit",  # THE frontend (served by the daemon); replaced control_panel
-    f"{_PKG}.training.cli",
     f"{_PKG}.sensorimotor.web_ingest",
     f"{_PKG}.infra.nengo_bridge",
     f"{_PKG}.infra.region_wiring",  # the daemon charges faculties through this registry
