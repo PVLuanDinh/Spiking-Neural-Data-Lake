@@ -73,6 +73,14 @@ BLIND_SPOTS = (
     "macro_rules!/proc-macro/build.rs generated code is invisible",
     'export map: m.add("X", ..), add_wrapped(wrap_pymodule!(..)) and nested declarative #[pymodule] mods '
     "are not resolved (nested names are flattened to the top level)",
+    "export map bindings: only `let` and plain `=` assignments to a bare name are tracked (re-panel A RA-2/3/4/9); "
+    "for / if-let / match / closure parameters and typed or destructured patterns are not, so a wrapper rebound by "
+    "one keeps the earlier binding; an assignment inside an inner block or branch is read with let visibility "
+    "(not seen outside that block)",
+    "production fixpoint: a file seeded production (under src/) that is ALSO loaded through `#[path]` is not "
+    "treated as a mod-rs file, so a `#[path]` inside its inline module resolves under <stem>/ (Codex r6 reader 2: "
+    'lib.rs `#[path = "shared.rs"] pub mod shared;` + shared.rs `mod q { #[path = "../../tests/reference.rs"] '
+    "pub mod reference; }` leaves tests/reference.rs test code)",
     "python refs: importlib.import_module / getattr(_native, name) are dynamic (getattr gives <module>); "
     "a .py that fails to parse is skipped here (ruff/import gates red it)",
 )
