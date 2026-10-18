@@ -167,9 +167,7 @@ def cached_logprob(serve):
 
 # The frozen char-LM serve this bench scores (the e-prop serves were retired by del-reasoning 1c). It is an ORDER-SENSITIVE
 # full-sentence AR log-prob models (unlike the order-invariant SLDA-RFF language head).
-SERVES = (
-    ("AR spik-RWKV", "ar_spiking_lm_serve", "SpikingLMServe"),
-)
+SERVES = (("AR spik-RWKV", "ar_spiking_lm_serve", "SpikingLMServe"),)
 
 
 def frozen_serves():

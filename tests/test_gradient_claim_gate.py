@@ -188,9 +188,9 @@ def test_a_non_importing_module_is_still_classified():
     import subprocess
     import sys
 
-    # del-reasoning 1b-1h deleted every real rule-carrying module that failed to import (arc_agi, ng_snn
-    # -> arcengine / retired siblings), so the non-importing member is CONSTRUCTED: an overlay module is
-    # in the census but absent from disk, hence unimportable by the child below.
+    # del-reasoning 1b-1h deleted every real rule-carrying module that failed to import (arc_agi,
+    # ng_snn -> arcengine / retired siblings), so the non-importing member is CONSTRUCTED: an
+    # overlay module is in the census but absent from disk, hence unimportable by the child below.
     claimant = (
         "class Rule:\n"
         "    def learn(self, x):\n"
