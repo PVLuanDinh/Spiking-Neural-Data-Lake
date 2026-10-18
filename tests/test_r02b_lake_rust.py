@@ -144,8 +144,18 @@ def test_g8d_rust_facts_unavailable_with_rs_present_is_red(tmp_path, monkeypatch
     assert mg.main(["--c2d", "--root", str(tree)]) == 1
 
 
-def test_g8_real_tree_c2d_unchanged_and_census_absent():
+#: Round 1b (r02-lead): the gate scans tests/ and tools/ by design (`_LIVE_PY_DIRS`; its own
+#: `c2d_control` builds legacy names from parts so as not to be a finding), so a fixture string
+#: spelling a legacy package IS a C2(d) finding, owed by that fixture's author -- this test asserts
+#: the package under measurement (src/) and the Rust half (rs-string), and native/ PRESENT with
+#: each Cargo.lock hash recorded, now that R0.4 landed native/sndl-core.
+def test_g8_real_tree_has_no_src_or_rs_string_finding_and_census_records_native():
     found, _n, unparsed = mg.c2d(mg.REPO)
-    assert (found, unparsed) == ([], [])
+    assert unparsed == []
+    assert [f for f in found if f[0].startswith("src/") or f[2] == "rs-string"] == []
     rec = mg.static(mg.REPO, mg.tables(mg.REPO)).get("native")
-    assert rec and rec["status"] == "native/ ABSENT (0 .rs files)" and rec["cargo_lock"] == {}, rec
+    assert rec and rec["status"].startswith("native/ PRESENT ("), rec
+    assert rec["cargo_lock"] and all(
+        k.startswith("native/") and k.endswith("Cargo.lock") and len(v) == 64
+        for k, v in rec["cargo_lock"].items()
+    ), rec
