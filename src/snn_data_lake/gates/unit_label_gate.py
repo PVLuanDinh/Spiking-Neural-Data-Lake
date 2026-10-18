@@ -449,7 +449,6 @@ OUT_OF_SCOPE_ROW_GROWTH = {
 SCAN_FALSE_POSITIVES = {
     "snn_data_lake/faculties/learned_attention.py::LearnedAttention._goal_gain": "np.resize of a 1-D gain vector to the attention width -- an input reshape, no unit rows",
     "snn_data_lake/faculties/learned_attention.py::LearnedAttention.attend": "np.resize of a 1-D input vector to the attention width -- an input reshape, no unit rows",
-    "snn_data_lake/reasoning/ng_snn/softhebb_mnist.py::HebbConv2d.forward": "F.pad of a convolution INPUT tensor -- spatial padding of activations, no unit rows",
 }
 
 _GATE_CALLS = frozenset({"require_admissible", "check_admission"})
