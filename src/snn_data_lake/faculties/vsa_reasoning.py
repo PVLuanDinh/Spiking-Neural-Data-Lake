@@ -56,16 +56,16 @@ def mean_std(xs):
     return m, (sum((x - m) ** 2 for x in xs) / len(xs)) ** 0.5  # population std
 
 
-_HV_CACHE = {}  # label -> atomic spike code (never handed out; hv returns copies)
+_HV_CACHE = {}  # (label, D) -> atomic spike code (never handed out; hv returns copies)
 
 
 def hv(label):
     """Deterministic atomic SPIKE CODE for a symbol (crc32-seeded, like signal_loop._proto).
     Every dimension fires exactly one spike -- on the UP line (+1) or the DOWN line (-1)."""
-    code = _HV_CACHE.get(label)
+    code = _HV_CACHE.get((label, D))  # keyed on D too: a changed width never serves a stale code
     if code is None:  # pure in `label`: the crc32 seed fixes the whole draw, so compute it once
         rng = random.Random(zlib.crc32(label.encode()))
-        code = _HV_CACHE[label] = [rng.choice((-1, 1)) for _ in range(D)]
+        code = _HV_CACHE[(label, D)] = [rng.choice((-1, 1)) for _ in range(D)]
     return list(code)  # a copy: callers own (and may mutate) what they get back
 
 
