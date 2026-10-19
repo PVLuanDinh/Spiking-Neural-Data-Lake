@@ -96,3 +96,18 @@ def pytest_configure(config):
     os.environ["SNDL_R2_CHILD_DEADLINE_NS"] = bounded_stage_deadline(
         time.time_ns(), os.environ.get("SNDL_R2_CHILD_DEADLINE_NS")
     )
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(items):
+    """Under `-n --dist loadgroup`, keep every test that uses a module-scoped fixture on ONE worker.
+
+    xdist otherwise spreads a module's tests across workers and each worker rebuilds that module's
+    `scope="module"` fixture (carried_state's driver setup alone is minutes). Serial runs ignore the
+    mark. A test that already carries an explicit `xdist_group` keeps its own group."""
+    for item in items:
+        if item.get_closest_marker("xdist_group") is not None:
+            continue
+        defs = getattr(getattr(item, "_fixtureinfo", None), "name2fixturedefs", {})
+        if any(fd[-1].scope == "module" for fd in defs.values()):
+            item.add_marker(pytest.mark.xdist_group(item.module.__name__))
