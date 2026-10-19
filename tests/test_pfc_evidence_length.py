@@ -1,11 +1,9 @@
 """Codex B2 pfc-p2 MINOR 2: evidence LONGER than the executive's option count.
-The deleted Python body returned `(0, 1)` for all-zero evidence of ANY length before it indexed
-`_dec_bias`, and raised IndexError (after consuming draws) for positive evidence longer than the
-option count. The B2 binding raised RuntimeError for both from its `dec_bias` length check.
 Contract: no evidence (no entry > 0: zeros, negatives, NaN) of any length is `(0, 1)` with no
-draw; positive evidence longer than the option count is an explicit RuntimeError naming the
-mismatch, with no draw. Shorter positive evidence is a narrower race, not an error: oracle chain B
-(3 options, evidence of length 1..3) pins it in tests/test_native_pfc.py.
+draw, as the deleted Python body returned before it indexed `_dec_bias`; positive evidence longer
+than the option count is an explicit RuntimeError naming the mismatch, with no draw (the body
+raised IndexError after consuming draws). Shorter positive evidence is a narrower race, not an
+error: oracle chain B (3 options, evidence of length 1..3) pins it in tests/test_native_pfc.py.
 """
 
 import pytest

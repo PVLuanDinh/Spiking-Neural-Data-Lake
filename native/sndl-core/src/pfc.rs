@@ -63,9 +63,8 @@ fn argmax(values: &[f64]) -> usize {
     best
 }
 
-/// Whether `decide_spiking` races at all: some drive is `> 0` (NaN is not). The binding checks its
-/// `dec_bias` length only when this holds, so no-evidence calls of any length stay `(0, 1)` as the
-/// Python body they replaced returned before it indexed `_dec_bias`.
+/// Whether `decide_spiking` races at all: some drive is `> 0` (NaN is not). Without it the race
+/// reads nothing, so the binding checks its `dec_bias` length only when this holds.
 pub fn has_evidence(evidence: &[f64]) -> bool {
     evidence.iter().any(|&e| e > 0.0)
 }

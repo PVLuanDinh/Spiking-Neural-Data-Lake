@@ -16,7 +16,7 @@ from test_native_pfc import FIX, _executive
 
 import snn_data_lake.faculties.prefrontal_executive as pe
 
-EVIDENCE = [1.0, 0.5] + [0.0] * 11  # the review's reproducer: a real race, not the zero path
+EVIDENCE = [1.0, 0.5] + [0.0] * 11  # positive drive: a real race, not the no-evidence path
 
 
 def _chain_a():
@@ -44,7 +44,7 @@ class _Contended:
     """`_rng_lock` wrapper that records a second thread trying the lock while it is held (the
     positive evidence that the lock, not scheduling, kept the second call out of the binding) and
     which thread holds it, so each step of the handoff can be checked to run under its caller's
-    own hold -- on every schedule, not one run in twenty."""
+    own hold."""
 
     def __init__(self, lock):
         self.lock = lock
@@ -107,7 +107,7 @@ def test_two_overlapping_decisions_advance_the_rng_twice(monkeypatch):
     one_call = p.rng.getstate()
     assert one_call != two_calls
 
-    # control: the lockless handoff (the B2 shape) on this schedule loses an advance -- the red the
+    # control: the lockless handoff on this schedule loses an advance -- the red the
     # lock is judged against; if the two threads do not meet, the schedule was not established
     p = _chain_a()
     p._rng_lock = contextlib.nullcontext()

@@ -47,7 +47,7 @@ fn panic_probe(py: Python<'_>, x: i64) -> PyResult<i64> {
 /// shape for `setstate`, so the Python object's stream continues exactly where the race left it. `ints` =
 /// `(n_dec, n_inh, t_max)`, `floats` = `(md, g_ext, b0, w_plus, w_inh, w_ie, w_cross, trace_decay, theta,
 /// noise_amp, init_v)`, `dec_bias` = `_dec_bias` (at least `n_dec * len(evidence)` entries when there is evidence;
-/// no evidence of any length is `(0, 1)` with no draw and no length check, as the Python body it replaced).
+/// no evidence of any length is `(0, 1)` with no draw and no length check).
 #[pyfunction]
 #[allow(clippy::type_complexity)]
 fn pfc_decide(
