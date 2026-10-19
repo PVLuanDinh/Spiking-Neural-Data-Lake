@@ -404,3 +404,32 @@ def test_overlapping_rewrites_publish_from_separate_temp_files(tmp_path, monkeyp
     assert len(set(sources)) == 2 and not _leftovers(tmp_path)
     assert list(a.replay()) == [b"AA"] == _disk(p) and not a.stale() and _served_resident(a)
     assert b.stale() and list(b.replay()) == [b"AA"]
+
+
+def test_rewrite_racing_a_resident_replay_is_not_served_the_old_list(tmp_path, monkeypatch):
+    """Codex B2 p1a-fix MAJOR 1: replay() took the resident list, then stale() judged whatever
+    generation was current. A rewrite landing in that window swapped BOTH the list and the stamp, so
+    stale() blessed the NEW pair and replay yielded the OLD list -- records already gone before this
+    replay began (b's rewrite below), i.e. neither the whole old log nor the whole new one. The race
+    is injected at stale()'s first I/O (the instance's stat); the rewrite runs on another thread so
+    a validation that held `_lock` would show up as a timeout, not a pass."""
+    a = BinLog(p := str(tmp_path / "lake.bin"))
+    a.extend([b"AAAA", b"ZZZZ"])
+    BinLog(p).rewrite([b"BBBB", b"ZZZZ"])  # AAAA is gone from the log before a's replay starts
+    real = a._fingerprint
+    fired = []
+
+    def racing_fingerprint():  # immediately before replay's validity check
+        if not fired:
+            fired.append(True)
+            t = threading.Thread(target=a.rewrite, args=([b"CCCC", b"ZZZZ"],))
+            t.start()
+            t.join(timeout=5)
+            assert not t.is_alive(), "rewrite blocked: replay validates while holding the lock"
+        return real()
+
+    monkeypatch.setattr(a, "_fingerprint", racing_fingerprint)
+    got = list(a.replay())
+    assert fired
+    assert got == [b"CCCC", b"ZZZZ"] == _disk(p), got  # never [AAAA, ZZZZ]: that log is gone
+    assert list(a.replay()) == [b"CCCC", b"ZZZZ"] and _served_resident(a)  # control: current again

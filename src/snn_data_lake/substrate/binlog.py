@@ -113,15 +113,20 @@ class BinLog:
         home), shrinks the file or changes its tail and is caught. Closing the residual for good
         means a writer-side generation counter in the format, not more stat fields.
         """
+        return self._stale(self._payloads, self._stamp)
+
+    def _stale(self, resident, stamp):
+        """stale() for ONE (resident list, stamp) pair. replay() snapshots the pair under `_lock` and
+        validates exactly what it yields: judged separately, a rewrite landing between the two swaps
+        both and the NEW pair blesses the OLD list (Codex B2 p1a-fix MAJOR 1, 2026-10-18)."""
         try:
-            if self._fingerprint() != self._stamp:
+            if self._fingerprint() != stamp:
                 return True
-            resident = self._payloads  # None: nothing resident (dedup=False); []: a magic-only file
-            if not resident:
+            if not resident:  # None: nothing resident (dedup=False); []: a magic-only file
                 return False
             last = resident[-1]
             with open(self.path, "rb") as f:
-                f.seek(self._stamp[0] - _LEN.size - len(last))
+                f.seek(stamp[0] - _LEN.size - len(last))
                 return f.read(_LEN.size) != _LEN.pack(len(last)) or f.read(len(last)) != last
         except OSError:
             return True  # deleted, unreadable or torn under us: certainly not the file we replayed
@@ -373,15 +378,20 @@ class BinLog:
         as-is -- the same append order, the same objects, no disk pass (since the 2026-10-18 fold
         `stale()` reads one tail frame to say so). Validity is the one rule `substrate/home._log`
         already trusts to hand out a cached instance (`stale()`: fingerprint and tail unchanged by
-        any writer but this one); a stale instance, an undedup'd one, or a bare `BinLog.__new__` falls
+        any writer but this one), applied to the (list, stamp) pair snapshotted together under
+        `_lock`, so a rewrite racing this call either lands before the snapshot (its list is yielded)
+        or after it (the old stamp fails and the disk is read) -- never the new stamp blessing the old
+        list; a stale instance, an undedup'd one, or a bare `BinLog.__new__` falls
         through to the disk scan below, which is unchanged. The disk is the source of truth and the
         list is a cache over it (P4b's own wording), so an external truncation, restore or append
         reaches every reader through the same `stale()` (stat + tail frame) that already
         invalidates `_seen` and `_count`."""
-        resident = getattr(self, "_payloads", None)  # a bare __new__ instance has no copy
-        if resident is not None and not self.stale():
-            yield from resident
-            return
+        if getattr(self, "_payloads", None) is not None:  # a bare __new__ instance has no copy
+            with self._lock:  # ONE generation: the list and the stamp a writer published together
+                resident, stamp = self._payloads, self._stamp
+            if not self._stale(resident, stamp):  # outside the lock: a reader never blocks a writer
+                yield from resident
+                return
         if not os.path.exists(self.path):
             return
         with open(self.path, "rb") as f:
