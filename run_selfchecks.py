@@ -694,7 +694,7 @@ def _latch_report_lines(latch_left, latch_stray):
 
 
 @contextlib.contextmanager
-def _gate_home():
+def _gate_home(home=None):
     """Point NORD_HOME at the runner's shared isolated home for the duration, then RESTORE the
     caller's value -- never a bare pop of a value that was set (substrate.home records why: a
     bare pop deletes the caller's own isolation). What the 2026-08-31 probe established: home()
@@ -707,7 +707,7 @@ def _gate_home():
     substrate.home.throwaway_home(), which gates a FRESH temp dir per use; this points at the
     runner's one SHARED home so persistence checks can prove persistence (the _ENV rationale)."""
     prev = os.environ.get("NORD_HOME")
-    os.environ["NORD_HOME"] = _HOME
+    os.environ["NORD_HOME"] = home or _HOME  # home: a per-check fresh home (run_all_in_process)
     try:
         yield
     finally:
@@ -890,7 +890,7 @@ def run_all(carry=False):
     return not failed and not tools_failed
 
 
-def run_one_in_process(mod):
+def run_one_in_process(mod, home=None):
     """Run one module's self-check IN-PROCESS via runpy, capturing its output. Returns (ok, text).
 
     run_all() uses subprocesses, which is the better isolation and stays the default. This exists for
@@ -919,7 +919,7 @@ def run_one_in_process(mod):
     saved_argv = sys.argv
     sys.argv = [mod]
     try:
-        with _gate_home(), redirect_stdout(buf), redirect_stderr(buf):
+        with _gate_home(home), redirect_stdout(buf), redirect_stderr(buf):
             runpy.run_module(f"snn_data_lake.{mod}", run_name="__main__")
         return True, buf.getvalue()
     except SystemExit as e:  # a module may sys.exit(0) on success
@@ -967,18 +967,26 @@ def run_all_in_process(emit=print):
             emit("GATE-HOME E-STOP SIDECAR from a previous run cleared before this in-process run")
         cwd = os.getcwd()
         for m in mods:
-            scratch = tempfile.mkdtemp(prefix="selfcheck-cwd-")
+            # one scratch dir per check: its cwd AND its fresh NORD_HOME (as the retired pytest copy
+            # had via conftest's _hermetic_home) -- no state carries between checks or across runs,
+            # and a concurrent runner's shared _HOME is never touched. Cross-module PROCESS-global
+            # leaks (env, RNG, singletons) are still visible: every check shares this interpreter.
+            scratch = tempfile.mkdtemp(prefix="selfcheck-")
+            home = os.path.join(scratch, "home")
+            os.makedirs(home)
             os.chdir(scratch)
             try:
                 w0 = time.time()
-                ok, out = run_one_in_process(m)
+                ok, out = run_one_in_process(m, home=home)
                 w1 = time.time()
+                if ESTOP_LATCH:
+                    _sweep_latch(
+                        os.path.join(home, ESTOP_LATCH), m, w0, w1, latch_left, latch_stray
+                    )
             finally:
                 os.chdir(cwd)
                 shutil.rmtree(scratch, ignore_errors=True)
             emit(f"{'PASS' if ok else 'FAIL'}  {m}")
-            if latch:
-                _sweep_latch(latch, m, w0, w1, latch_left, latch_stray)
             if not ok:
                 failed.append(m)
                 emit(out[-8000:])
