@@ -94,3 +94,17 @@ def test_xdist_worker_collection_reads_are_mapped_not_dropped():
     assert (
         "docs/gate_only.md" not in m["pytest_all"]["read"]
     )  # a non-pytest parent's child is not pytest
+
+
+def test_xdist_worker_child_listed_before_its_worker_is_still_mapped():
+    # pid "10234" (the worker's child) sorts before "9876" (the worker) as a string
+    recs = [
+        {"k": "start", "_pid": "10234", "argv": ["python", "-c", "pass"], "tok": "c1"},
+        {"k": "read", "_pid": "10234", "t": "", "p": "docs/grandchild.md", "c": "x"},
+        {"k": "start", "_pid": "1", "argv": ["python", "-m", "pytest", "-n", "2"], "tok": "t0"},
+        {"k": "spawn", "_pid": "1", "t": "", "a": ["python", "-u", "-c", "boot"], "tok": "w1"},
+        {"k": "start", "_pid": "9876", "argv": ["python", "-u", "-c", "boot"], "tok": "w1"},
+        {"k": "spawn", "_pid": "9876", "t": "", "a": ["python", "-c", "pass"], "tok": "c1"},
+    ]
+    m = dob.build_map(recs, "head", "chash")
+    assert "docs/grandchild.md" in m["pytest_all"]["read"]  # red under a single pass

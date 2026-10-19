@@ -401,10 +401,13 @@ def build_map(records: list[dict], head: str, chash: str, fingerprint: str = "")
     # started by a spawn that a pytest process made OUTSIDE any test is a pytest worker (fails closed:
     # it is mapped, not skipped). Owner 2026-10-19 lifted the no-parallel rule; panel lens 3 finding 4.
     spawn_tok = {r["tok"]: r for r in records if r.get("k") == "spawn" and r.get("tok")}
-    for rec in records:
-        s = spawn_tok.get(rec.get("tok")) if rec.get("k") == "start" else None
-        if s and not s.get("t") and is_pytest.get(s["_pid"]):
-            is_pytest[rec["_pid"]] = True
+    changed = True
+    while changed:  # to a fixpoint: records sort by pid STRING, so a worker's child may come first
+        changed = False
+        for rec in records:
+            s = spawn_tok.get(rec.get("tok")) if rec.get("k") == "start" else None
+            if s and not s.get("t") and is_pytest.get(s["_pid"]) and not is_pytest.get(rec["_pid"]):
+                is_pytest[rec["_pid"]] = changed = True
     for rec in records:
         k = rec.get("k")
         t = rec.get("t") or ""
