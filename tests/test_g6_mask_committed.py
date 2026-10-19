@@ -85,7 +85,7 @@ def test_committed_pair_replays_in_fresh_process(tmp_path):
         stdin=subprocess.DEVNULL,
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=300,
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr

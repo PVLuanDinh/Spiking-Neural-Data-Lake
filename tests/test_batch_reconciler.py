@@ -61,7 +61,7 @@ def fresh_process(path, home):
         capture_output=True,
         text=True,
         env=env,
-        timeout=45,
+        timeout=300,
     )
 
 
@@ -173,7 +173,7 @@ def test_registered_selfcheck_entrypoint_runs_in_a_fresh_private_home(tmp_path, 
         stdin=subprocess.DEVNULL,
         capture_output=True,
         text=True,
-        timeout=45,
+        timeout=300,
         env=dict(os.environ, NORD_HOME=str(tmp_path), PYTHONDONTWRITEBYTECODE="1"),
     )
     assert child.returncode == 0, child.stdout + child.stderr

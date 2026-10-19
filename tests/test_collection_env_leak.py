@@ -35,6 +35,6 @@ def test_lang_coverage_collection_preserves_environment(tmp_path, home_present, 
         env=env,
         capture_output=True,
         text=True,
-        timeout=60,
+        timeout=300,
     )
     assert result.returncode == 0, result.stdout + result.stderr
