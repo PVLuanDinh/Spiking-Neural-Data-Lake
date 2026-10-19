@@ -614,7 +614,7 @@ def _assert_tiers_agree_with_regions():
     in_research = sorted(governed & set(RESEARCH))
     assert not in_research, (
         "GOVERNED modules registered in RESEARCH -- they run out-of-process and escape the "
-        f"in-process pytest set while every other surface calls them governed: {in_research}"
+        f"in-process battery set while every other surface calls them governed: {in_research}"
     )
     unregistered = sorted(governed - _ALL_TIERS)
     assert not unregistered, (
@@ -931,7 +931,11 @@ def run_one_in_process(mod):
 
 
 def run_all_in_process(emit=print):
-    """Every CORE module's self-check, in-process. True iff all passed. See run_one_in_process.
+    """Every CORE (+ TORCH_GATED when torch imports) module's self-check, in-process, each in its own
+    temp working directory (so a check's ./data writes never land in the checkout). True iff all
+    passed. See run_one_in_process. Owner 2026-10-19 (option A): this is the battery's ONE self-check
+    run, under coverage; it replaced tests/test_selfchecks.py's in-process copy, and the subprocess
+    isolation run (run_all) is CI's.
 
     Carries the same E-STOP sidecar discipline as run_all (added 2026-08-31): pre-clear, a
     per-check _sweep_latch against the isolated home, and the shared report lines -- until
@@ -952,24 +956,35 @@ def run_all_in_process(emit=print):
         )
     latch = os.path.join(_HOME, ESTOP_LATCH) if ESTOP_LATCH else None
     latch_left, latch_stray = [], []
+    import shutil
+    import tempfile
+
+    mods = CORE + (TORCH_GATED if _TORCH else [])
     failed = []
     with _gate_home():
         if latch and os.path.exists(latch):
             os.remove(latch)
             emit("GATE-HOME E-STOP SIDECAR from a previous run cleared before this in-process run")
-        for m in CORE:
-            w0 = time.time()
-            ok, out = run_one_in_process(m)
-            w1 = time.time()
+        cwd = os.getcwd()
+        for m in mods:
+            scratch = tempfile.mkdtemp(prefix="selfcheck-cwd-")
+            os.chdir(scratch)
+            try:
+                w0 = time.time()
+                ok, out = run_one_in_process(m)
+                w1 = time.time()
+            finally:
+                os.chdir(cwd)
+                shutil.rmtree(scratch, ignore_errors=True)
             emit(f"{'PASS' if ok else 'FAIL'}  {m}")
             if latch:
                 _sweep_latch(latch, m, w0, w1, latch_left, latch_stray)
             if not ok:
                 failed.append(m)
-                emit(out[-2000:])
+                emit(out[-8000:])
     emit("=" * 56)
     emit(
-        f"{len(CORE) - len(failed)}/{len(CORE)} core self-checks passed (in-process)"
+        f"{len(mods) - len(failed)}/{len(mods)} core self-checks passed (in-process)"
         + (f"   FAILED: {', '.join(failed)}" if failed else "")
     )
     for line in _latch_report_lines(latch_left, latch_stray):

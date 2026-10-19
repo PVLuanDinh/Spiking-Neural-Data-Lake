@@ -341,11 +341,9 @@ source = ["snn_data_lake"]
 # run_selfchecks self-checks, not the unit suite -- omit them from the coverage denominator (they are
 # ruff-excluded for the same reason).
 omit = ["*/reasoning/*", "*/training/*"]
-# `patch = ["subprocess"]` (coverage >= 7.10) makes run_selfchecks.py -- which runs every module as an
-# isolated subprocess -- the ONE self-check mechanism AND the coverage signal: every child is
-# measured and writes its own data file (it forces parallel = true). Battery order: `coverage erase`,
-# `coverage run -p run_selfchecks.py`, `coverage combine`, then `pytest --cov-append`.
-patch = ["subprocess"]
+# Self-check coverage (owner 2026-10-19, option A): the battery runs `coverage run run_selfchecks.py
+# --in-process` (CORE + TORCH_GATED in one interpreter), then `pytest --cov-append`, so the 70% bar
+# counts the self-checks once. pytest no longer re-runs them in-process.
 
 # ruff: scoped to the core + tests. research/ and the standalone "robot arm/" sketch are
 # excluded on purpose (linting them means editing quarantined / optional-dep code â€” out of scope
