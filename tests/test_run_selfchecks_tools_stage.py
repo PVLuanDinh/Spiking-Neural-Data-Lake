@@ -77,11 +77,12 @@ def test_in_process_exit_code_matches_a_real_interpreter(monkeypatch):
         assert rs.run_one_in_process("brain_atlas")[0] is want, code
 
 
-def test_in_process_run_arms_the_live_home_tripwire(monkeypatch):
+def test_in_process_run_arms_the_live_home_tripwire(monkeypatch, tmp_path):
     # Codex re-review MAJOR 2: a check that pops NORD_HOME is refused, never handed the live lake.
     import run_selfchecks as rs
     from snn_data_lake.substrate import home as H
 
+    monkeypatch.setattr(rs, "_HOME", str(tmp_path))  # never the runner's shared home
     seen = []
 
     def probe(mod, home=None):
@@ -98,3 +99,32 @@ def test_in_process_run_arms_the_live_home_tripwire(monkeypatch):
     assert rs.run_all_in_process(emit=lambda *_: None)
     assert seen == ["1"]  # red if the runner stops arming SNDL_LIVE_HOME_GUARD
     assert os.environ.get("SNDL_LIVE_HOME_GUARD") is None  # restored after the run
+
+
+def test_each_runner_process_gets_its_own_home_unless_pinned(tmp_path):
+    # Codex closing report MAJOR 1: concurrent runners must never share the E-STOP latch's home.
+    # Red on the old fixed %TEMP%/snn_selfchecks_home: both processes printed the same path.
+    import subprocess
+    import sys
+
+    probe = "import run_selfchecks as r, os; print(r._HOME); print(os.path.isdir(r._HOME))"
+    env = {k: v for k, v in os.environ.items() if k != "SNDL_SELFCHECK_HOME"}
+
+    def home(extra=None):
+        out = subprocess.run(
+            [sys.executable, "-c", probe],
+            cwd=ROOT,
+            env={**env, **(extra or {})},
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=True,
+        ).stdout.split()
+        return out[0], out[1]
+
+    (a, a_live), (b, _) = home(), home()
+    assert a != b and a_live == "True"
+    assert not os.path.isdir(a), "a home the process made must be removed at its exit"
+    pinned = str(tmp_path / "pinned")
+    assert home({"SNDL_SELFCHECK_HOME": pinned})[0] == pinned
+    assert os.path.isdir(pinned), "a pinned home is the caller's: never removed"

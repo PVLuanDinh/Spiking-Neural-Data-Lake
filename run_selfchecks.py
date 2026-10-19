@@ -38,8 +38,18 @@ import time
 # warm in-process build does. NORD_PERSIST is deliberately NOT set to 0: several self-checks exist to
 # prove persistence works, and one shared isolated home lets them do that without touching the
 # operator's brain.
-_HOME = os.path.join(tempfile.gettempdir(), "snn_selfchecks_home")
+# PER RUNNER PROCESS since 2026-10-19 (it was one fixed %TEMP%\snn_selfchecks_home): the battery runs
+# the self-checks CONCURRENTLY with pytest, and a fixed path let one runner pre-clear the other's
+# E-STOP latch mid-run (Codex closing report, MAJOR 1). Still ONE home for a whole run (all its
+# children share it via _ENV); SNDL_SELFCHECK_HOME pins it explicitly. A home this process made is
+# removed at exit (registered first, so it runs after every check's own atexit handler).
+_HOME = os.environ.get("SNDL_SELFCHECK_HOME") or tempfile.mkdtemp(prefix="snn_selfchecks_home_")
 os.makedirs(_HOME, exist_ok=True)
+if not os.environ.get("SNDL_SELFCHECK_HOME"):
+    import atexit
+    import shutil
+
+    atexit.register(shutil.rmtree, _HOME, True)
 _ENV = {
     **os.environ,
     "PYTHONUTF8": "1",
