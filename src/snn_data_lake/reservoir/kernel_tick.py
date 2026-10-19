@@ -266,9 +266,17 @@ class KernelTick:
         np = self._np
         slot = self._rings[p][(self.tick_index + 1) % (self.syn.max_delay + 1)]
         acc = self._acc[p]
-        for key in slot:
-            posts, q = self.syn.bundles[key]
-            np.add.at(acc, posts, q)
+        if len(slot) == 1:
+            posts, q = self.syn.bundles[slot[0]]
+        elif slot:
+            # one scatter-add for the whole slot, not one per bundle: the sums are int64, so
+            # they are exact and independent of the order the bundles are applied in
+            bundles = [self.syn.bundles[key] for key in slot]
+            posts = np.concatenate([b[0] for b in bundles])
+            q = np.concatenate([b[1] for b in bundles])
+        else:
+            return
+        np.add.at(acc, posts, q)
         slot.clear()
 
     def tick(self, ext_q=None):
