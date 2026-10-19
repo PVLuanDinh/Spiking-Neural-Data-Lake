@@ -193,7 +193,9 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # 2026-10-17/R0.2 (plan section 10, Rust-aware gates): measured by diffing _MOVED between
     # origin/main 06744945 (320) and claude/r02-gates-1017 (323): added exactly gates.rust_facts,
     # gates.native_dormancy, gates.native_ratchet; nothing removed; claustrum shadow unchanged.
-    assert len(S._MOVED) == 323 and "claustrum" not in S._MOVED
+    # 2026-10-18/B2: diffing _MOVED between origin/main d501c7aa (323) and claude/b2-int-1018 (324):
+    # added exactly infra.native_build (ba23b3dd's REGIONS row); nothing removed.
+    assert len(S._MOVED) == 324 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture
