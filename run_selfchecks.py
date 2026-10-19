@@ -583,8 +583,8 @@ MODULES = (
 def _assert_tiers_agree_with_regions():
     """A GOVERNED module may not sit in RESEARCH, and every governed module must be registered.
 
-    RESEARCH runs out-of-process and is excluded from the in-process pytest set
-    (`tests/test_selfchecks.py`: `_IN_PROCESS = CORE + TORCH_GATED`). So a module that is in
+    RESEARCH runs out-of-process and is outside the CORE + TORCH_GATED set whose subprocess runs
+    coverage measures (the in-process pytest copy of that set is retired). So a module that is in
     `REGIONS`/`TORCH_TIER` but listed in RESEARCH *looks* governed at every surface -- right
     directory, REGIONS entry, p4c count falling -- while never being held to the CORE bar. Nothing
     detected that, because each half is individually correct.
@@ -849,7 +849,7 @@ def run_all(carry=False):
         _sweep_latch(latch, m, w0, w1, latch_left, latch_stray)
         if not ok:
             failed.append(m)
-            sys.stderr.write(r.stdout[-2000:] + r.stderr[-2000:] + "\n")
+            sys.stderr.write(r.stdout[-2000:] + r.stderr[-8000:] + "\n")
         elif cache is not None:
             import datetime
 
