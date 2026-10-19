@@ -653,6 +653,13 @@ EXEMPT = {
         "instrument, never on a tick -- the policy_manifest / capability_bar disposition. RETIRES "
         "with the migration (every count at zero and the libraries gone), never by a tick reading it",
     ),
+    "native_build": (
+        "permanent",
+        "the build step for snn_data_lake._native (native/sndl-python via maturin, cp314t wheel TAG "
+        "asserted, extension placed in the package): a developer/CI/run_selfchecks tool, never on a "
+        "tick -- the brain IMPORTS what it builds (_native.pfc_decide). RETIRES only if the native "
+        "extension does",
+    ),
     "immortal_retention": (
         "permanent",
         "specs/022 L5 (T089): the never-forgets gate -- every lake tag labelled IMMORTAL or "

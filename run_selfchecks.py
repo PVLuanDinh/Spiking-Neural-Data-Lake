@@ -216,6 +216,8 @@ CORE = [
     # Reachable on the live sleep path but only under NORD_SELFMOD=1, so charge is UNMEASURED here.
     "infra.self_build_loop",
     "infra.brain_native_selfbuild",
+    # builds + places snn_data_lake._native (the PFC kernel is a hard build dependency); ~12 s warm
+    "infra.native_build",
     # amygdala â€” aversive/threat learning (CS-US fear conditioning)
     "faculties.fear_conditioning",
     "faculties.affective_appraisal",  # C1: learned multi-dim affective appraisal (three-factor)

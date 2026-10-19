@@ -409,6 +409,8 @@ REGIONS = {
         "brain_telemetry",
         # THE one frontend: live brain + arm + hardware target + chat, one page
         "cockpit",
+        # builds snn_data_lake._native from native/sndl-python (maturin wheel, cp314t TAG asserted)
+        "native_build",
         "demo",
         "device",
         "drift_monitor",
