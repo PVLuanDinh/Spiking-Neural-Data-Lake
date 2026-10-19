@@ -50,6 +50,19 @@ import warnings
 import pytest
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _hermetic_module_home(tmp_path_factory):
+    """A module's OWN NORD_HOME for module-scoped fixtures, set up BEFORE the function-scoped
+    _hermetic_home below. Without it a `scope="module"` fixture that builds a Brain found NORD_HOME
+    unset and home() refused (pytest -n, 2026-10-19: 18 interoceptive errors); serially it was
+    masked by a NORD_HOME an earlier test leaked into the process. Autouse fixtures run first
+    within their scope, so module fixtures see this; _hermetic_home still overrides it per test."""
+    mp = pytest.MonkeyPatch()
+    mp.setenv("NORD_HOME", str(tmp_path_factory.mktemp("module_home") / "nord_home"))
+    yield
+    mp.undo()
+
+
 @pytest.fixture(autouse=True)
 def _hermetic_home(tmp_path, monkeypatch):
     """Every test gets its own NORD_HOME. Re-applied per test, never once.
