@@ -558,12 +558,12 @@ def _scan_home_entries(d, live, live_files, seen):
                 _refuse_if_live(real, live, what=f"home entry {e.path!r} (an alias); its target")
             elif e.is_dir(follow_symlinks=False):
                 _scan_home_entries(e.path, live, live_files, seen)
-            elif e.is_file(follow_symlinks=False) and any(
-                os.path.samestat(os.stat(e.path), st) for st in live_files
-            ):
-                raise LiveHomeRefused(
-                    f"home refused (hardlink): entry {e.path!r} is the same file as one in the live home"
-                )
+            elif e.is_file(follow_symlinks=False):
+                st_e = os.stat(e.path)  # once per entry, not once per live file
+                if any(os.path.samestat(st_e, st) for st in live_files):
+                    raise LiveHomeRefused(
+                        f"home refused (hardlink): entry {e.path!r} is the same file as one in the live home"
+                    )
 
 
 # ---------------------------------------------------------------- the live-lake stamp (P2: the ONE copy)
