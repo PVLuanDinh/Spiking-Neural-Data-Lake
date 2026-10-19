@@ -63,18 +63,25 @@ fn argmax(values: &[f64]) -> usize {
     best
 }
 
+/// Whether `decide_spiking` races at all: some drive is `> 0` (NaN is not). The binding checks its
+/// `dec_bias` length only when this holds, so no-evidence calls of any length stay `(0, 1)` as the
+/// Python body they replaced returned before it indexed `_dec_bias`.
+pub fn has_evidence(evidence: &[f64]) -> bool {
+    evidence.iter().any(|&e| e > 0.0)
+}
+
 /// One spiking winner-take-all decision over `evidence` (>= 0 drive per option) on `rng`, the instance's
 /// `random.Random` stream. Returns `(winner_index, rt_steps)`; no evidence -> `(0, 1)` without a draw.
 pub fn decide_spiking(p: &Params, evidence: &[f64], rng: &mut PyRandom) -> (usize, usize) {
+    if !has_evidence(evidence) {
+        return (0, 1); // no evidence -> no race (tie -> index 0)
+    }
     let n = evidence.len();
     let mut e_ref = 0.0;
     for &e in evidence {
         if e > e_ref {
             e_ref = e;
         }
-    }
-    if e_ref <= 0.0 {
-        return (0, 1); // no evidence -> no race (tie -> index 0)
     }
     if mutant(EXTRA_DRAW) {
         rng.random();
@@ -232,6 +239,14 @@ mod tests {
             v[0].as_u64().unwrap() as usize,
             v[1].as_u64().unwrap() as usize,
         )
+    }
+
+    #[test]
+    fn has_evidence_is_the_no_race_predicate() {
+        assert!(!has_evidence(&[]));
+        assert!(!has_evidence(&[0.0; 14]));
+        assert!(!has_evidence(&[-1.0, f64::NAN]));
+        assert!(has_evidence(&[0.0, 1e-300]));
     }
 
     #[test]
