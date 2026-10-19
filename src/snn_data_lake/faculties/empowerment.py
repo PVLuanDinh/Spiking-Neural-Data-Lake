@@ -77,7 +77,9 @@ class Empowerment:
             if memo is None:
                 z = self.wm.predict(z, a)
                 continue
-            key = tuple(seq[:k])
+            # keyed on object IDENTITY: seq holds the very objects of self.A (product/choice return them),
+            # so this is exact and works for unhashable actions (e.g. [[0], [1]], Codex re-review)
+            key = tuple(map(id, seq[:k]))
             if key not in memo:
                 memo[key] = self.wm.predict(z, a)
             z = memo[key]
