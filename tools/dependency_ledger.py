@@ -152,6 +152,8 @@ TOOL_DISTS = {
     "pre-commit",
     "pyinstaller",
     "hatchling",
+    "maturin",  # builds snn_data_lake._native from native/sndl-python (infra.native_build); a
+    # build tool, never imported -- the PFC kernel (B2) made the extension a hard build dependency
 }
 
 #: EXEMPT entries follow dormancy_gate.EXEMPT's pattern: each carries a disposition and a REASON,

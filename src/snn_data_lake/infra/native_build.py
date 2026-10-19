@@ -31,7 +31,12 @@ MANIFEST = ROOT / "native" / "sndl-python" / "Cargo.toml"
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--maturin", default=shutil.which("maturin"), help="maturin executable")
+    # PATH first, then the interpreter's own scripts dir: the [dev] extra installs maturin into the venv,
+    # whose Scripts/ (bin/) is not on PATH when the venv python is called by absolute path.
+    venv_maturin = shutil.which("maturin", path=str(pathlib.Path(sys.executable).parent))
+    ap.add_argument(
+        "--maturin", default=shutil.which("maturin") or venv_maturin, help="maturin executable"
+    )
     ap.add_argument("--python", default=sys.executable, help="interpreter to build for")
     ap.add_argument("--out", default=ROOT / "native" / "target" / "wheels", help="wheel directory")
     a = ap.parse_args(argv)
