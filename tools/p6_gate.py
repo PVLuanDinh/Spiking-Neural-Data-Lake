@@ -1113,6 +1113,12 @@ def _native_target(relpath, parts, rust_status, export_region, regions, native_o
     return None
 
 
+def own_unmapped(conn, overlay):
+    """The `_native` targets an arm's OWN overlay files produced. The real tree carries its own (the PFC's
+    `_native` import since pfc-p2, printed by `report`); an arm judges only what it constructed."""
+    return [u for u in conn["native_unmapped"] if u.split(":", 1)[0] in (overlay or {})]
+
+
 def region_imports(root, overlay=None, labels=None, native=None, native_out=None, regions=()):
     """Region imports, attributed to frozen anatomy labels across G8 package moves.
 
@@ -2126,7 +2132,7 @@ def rust_self_check(root, empty):
         native = (NATIVE_ABSENT, []) if fear_rs is None else fixture_native(fear_rs, extra)
         cres = measure(root, overlay=overlay, native=native)
         reds = [r[0] for r in evaluate(cres["metrics"], ceiling) if not r[4]]
-        unmapped = cres["conn"]["native_unmapped"]
+        unmapped = own_unmapped(cres["conn"], overlay)
         if (
             cres["conn"]["rust_directed"]
             or cres["metrics"] != empty

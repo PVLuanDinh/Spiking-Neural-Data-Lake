@@ -55,13 +55,19 @@ def test_real_tree_prints_absent_and_leaves_every_python_count_alone(base):
     assert "rust_status" in conn, (
         "the gate reports NOTHING about native/ (neither ABSENT nor a count)"
     )
-    # native/ exists since R0.4 (sndl-core); it holds no region-mapped module, so every count stays.
+    # native/ exists since R0.4 (sndl-core). Since pfc-p2 the PFC kernel (pfc.rs) uses the rng
+    # kit and the PFC imports `_native` module-level: neither `pfc` nor `rng` is a connectome
+    # region and the import names no symbol, so both are PRINTED (pinned here so a change is
+    # seen) and every count stays.
     assert conn["rust_status"].startswith(("native/ ABSENT", "native/ PRESENT")), conn[
         "rust_status"
     ]
-    assert conn["rust_directed"] == set()
+    assert conn["rust_directed"] == {("pfc", "rng")}
     assert conn["native_mapped"] == set()
-    assert conn["native_unmapped"] == []
+    assert conn["native_unmapped"] == [
+        "faculties/prefrontal_executive.py: _native.<module> "
+        "(module-level or star import names no symbol)"
+    ]
     assert res["metrics"] == base["metrics"]
     assert res["metrics"]["undeclared_import_pairs"] == gate.BASELINE["undeclared_import_pairs"]
     assert all(_verdict(res, base).values())
@@ -79,7 +85,7 @@ def test_red_arm_crosses_exactly_the_preregistered_pair_and_fires_the_ceiling(na
     )
     assert conn[via] == gate.RUST_PAIR
     assert conn[other] == set()
-    assert conn["native_unmapped"] == []
+    assert gate.own_unmapped(conn, overlay) == []
     expect = dict(base["metrics"])
     expect["undeclared_import_pairs"] += 1
     assert res["metrics"] == expect
@@ -98,10 +104,11 @@ def test_control_stays_green_with_no_rust_pair(name, base):
     assert conn["rust_directed"] == set()
     assert conn["native_mapped"] == set()
     if fear_rs is None and overlay:
-        assert len(conn["native_unmapped"]) == 1, conn["native_unmapped"]
-        assert "fear_step" in conn["native_unmapped"][0] and "ABSENT" in conn["native_unmapped"][0]
+        own = gate.own_unmapped(conn, overlay)
+        assert len(own) == 1, own
+        assert "fear_step" in own[0] and "ABSENT" in own[0]
     else:
-        assert conn["native_unmapped"] == []
+        assert gate.own_unmapped(conn, overlay) == []
     assert res["metrics"] == base["metrics"]
     assert all(_verdict(res, base).values())
 
@@ -113,12 +120,13 @@ def test_native_target_with_native_absent_is_printed_not_dropped(base, capsys, m
     _, _how, _fear_rs, overlay, _extra = _arm("RUST_CONTROLS", "G4")
     res = gate.measure(_ROOT, overlay=overlay)
     conn = res["conn"]
-    unmapped = conn.get("native_unmapped", "DROPPED SILENTLY (no record of the _native target)")
-    assert isinstance(unmapped, list) and len(unmapped) == 1, unmapped
+    assert "native_unmapped" in conn, "DROPPED SILENTLY (no record of the _native target)"
+    unmapped = gate.own_unmapped(conn, overlay)
+    assert len(unmapped) == 1, unmapped
     assert res["metrics"] == base["metrics"]
     gate.report(res, _ROOT)
     out = capsys.readouterr().out
-    assert "NATIVE TARGETS UNMAPPED: 1" in out
+    assert "NATIVE TARGETS UNMAPPED: 2" in out  # the arm's + the real PFC's (both printed)
     assert "_native.fear_step" in out and "ABSENT" in out
     assert "Rust half: native/ ABSENT" in out
 
@@ -164,9 +172,8 @@ def test_native_target_reasons_with_native_present(source, extra, reason, base):
         _ROOT, overlay=overlay, native=gate.fixture_native(gate.RS_FEAR_GREEN, extra)
     )
     conn = res["conn"]
-    assert len(conn["native_unmapped"]) == 1 and reason in conn["native_unmapped"][0], conn[
-        "native_unmapped"
-    ]
+    own = gate.own_unmapped(conn, overlay)
+    assert len(own) == 1 and reason in own[0], own
     assert conn["native_mapped"] == set()
     assert res["metrics"] == base["metrics"]
 
@@ -175,7 +182,7 @@ def test_same_region_native_import_maps_to_no_pair(base):
     overlay = {f"{_CER}/_p6_native_same.py": "from snn_data_lake._native import fear_step\n"}
     res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(gate.RS_FEAR_GREEN))
     assert res["conn"]["native_mapped"] == set()
-    assert res["conn"]["native_unmapped"] == []
+    assert gate.own_unmapped(res["conn"], overlay) == []
     assert res["metrics"] == base["metrics"]
 
 
@@ -277,15 +284,17 @@ def test_absent_status_wins_over_the_symbol_reason(source, base, monkeypatch):
     monkeypatch.setattr(
         rust_facts, "rust_files", lambda *a, **k: []
     )  # native/ ABSENT (real tree has it now)
-    res = gate.measure(_ROOT, overlay={f"{_AMY}/_p6_native_reason.py": source})
-    unmapped = res["conn"]["native_unmapped"]
+    overlay = {f"{_AMY}/_p6_native_reason.py": source}
+    res = gate.measure(_ROOT, overlay=overlay)
+    unmapped = gate.own_unmapped(res["conn"], overlay)
     assert len(unmapped) == 1 and gate.NATIVE_ABSENT in unmapped[0], unmapped
 
 
 def test_unavailable_status_is_the_reason_for_an_unmapped_target(monkeypatch, base):
     monkeypatch.setattr(rust_facts, "rust_files", _boom)
-    res = gate.measure(_ROOT, overlay=_arm("RUST_CONTROLS", "G4")[3])
-    unmapped = res["conn"]["native_unmapped"]
+    overlay = _arm("RUST_CONTROLS", "G4")[3]
+    res = gate.measure(_ROOT, overlay=overlay)
+    unmapped = gate.own_unmapped(res["conn"], overlay)
     assert len(unmapped) == 1 and "UNAVAILABLE" in unmapped[0], unmapped
 
 
