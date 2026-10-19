@@ -138,8 +138,12 @@ jobs:
           # distribution's own metadata excludes is a stale declaration, not because a red was run.
           python-version: "3.14t"
           cache: pip
+      # f2-pkg (Codex B2 MAJOR 1): the hatch wheel hook (infra.native_build) compiles snn_data_lake._native
+      # inside the isolated build env, so the pinned compiler must be present here too.
+      - name: Rust toolchain (pinned by rust-toolchain.toml)
+        run: rustup toolchain install 1.96.0 --profile minimal
       - run: python -m pip install build
-      - name: Build the wheel
+      - name: Build the wheel (the hook builds and ships snn_data_lake._native; tag cp314t, never py3-none-any)
         run: python -m build --wheel
       # The editable install CI otherwise uses resolves assets through the source tree, so a
       # packaging mistake is invisible until someone installs the wheel. Assert the model is in it.
@@ -158,6 +162,13 @@ jobs:
               sys.exit("WHEEL IS MISSING THE VENDORED MODEL -- check .gitignore does not "
                        "swallow the asset directory (hatchling honours it)")
           PY
+      # The extension is gitignored and the wheel is the only artifact an installer sees, so the check
+      # is on the INSTALLED copy, imported from outside the source tree (src/ would otherwise shadow it).
+      - name: Install the wheel into a temp target and import snn_data_lake._native from it
+        run: |
+          python -m pip install --no-deps --target "$RUNNER_TEMP/wheel-target" dist/*.whl
+          cd "$RUNNER_TEMP/wheel-target"
+          python -c "import snn_data_lake._native as n; print(n.__file__); assert 'wheel-target' in n.__file__, n.__file__"
 
   lint:
     name: lint (ruff) + repo hygiene
