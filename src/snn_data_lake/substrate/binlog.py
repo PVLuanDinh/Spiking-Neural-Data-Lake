@@ -37,7 +37,10 @@ class BinLog:
     def __init__(self, path, dedup=True):
         self.path = path
         self.dedup = bool(dedup)
-        self._lock = threading.Lock()  # see append(): instances are shared across threads
+        # see append(): instances are shared across threads. RE-ENTRANT since 2026-10-18: replay()
+        # snapshots under it and home.load_episodes freezes writers with `with log._lock:` around a
+        # replay() -- a plain Lock deadlocks that caller on its own thread.
+        self._lock = threading.RLock()
         self._payloads = None  # None until the boot pass below has run: replay() reads the disk
         if not os.path.exists(path) or os.path.getsize(path) == 0:
             with open(path, "wb") as f:  # create: write the magic header once

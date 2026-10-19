@@ -433,3 +433,23 @@ def test_rewrite_racing_a_resident_replay_is_not_served_the_old_list(tmp_path, m
     assert fired
     assert got == [b"CCCC", b"ZZZZ"] == _disk(p), got  # never [AAAA, ZZZZ]: that log is gone
     assert list(a.replay()) == [b"CCCC", b"ZZZZ"] and _served_resident(a)  # control: current again
+
+
+def test_replay_is_served_resident_under_the_callers_held_lock(tmp_path):
+    """`substrate/home.load_episodes` freezes writers with `with log._lock:` and then calls
+    `log.replay()` inside that block. replay() now takes the same lock for its snapshot, so the lock
+    must be re-entrant or every such caller deadlocks (the first fold of B2 p1a-fix hung the home
+    tests for 10 min). Runs on a thread: a regression reads as a failed join, never a hung suite."""
+    a = BinLog(str(tmp_path / "lake.bin"))
+    a.extend([b"A", b"Z"])
+    out = []
+
+    def under_lock():
+        with a._lock:
+            out.append(list(a.replay()))
+
+    t = threading.Thread(target=under_lock, daemon=True)
+    t.start()
+    t.join(timeout=5)
+    assert not t.is_alive(), "replay() deadlocked on the caller's held lock"
+    assert out == [[b"A", b"Z"]] and _served_resident(a)
