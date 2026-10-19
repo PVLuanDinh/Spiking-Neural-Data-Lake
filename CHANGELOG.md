@@ -9,6 +9,20 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- B2 fold, lane f2-p1a: the resident replay validates the exact generation it yields (2026-10-18)
+
+Codex B2 (LANE p1a-fix, MAJOR 1) reproduced `BinLog.replay()` capturing the resident list and then
+`stale()` judging whatever generation was current: a `rewrite()` landing in that window swaps both
+the list and the stamp, the new pair passes, and the old list is yielded -- records already gone
+before the replay began, so neither the whole old log nor the whole new one. Reproduced RED on base
+`4e4e9a23` (`lanes/r02-1017/rows/f2-p1a/`).
+
+- `replay()` snapshots the (resident list, stamp) pair under the instance lock and validates that
+  pair through `_stale()` (the body of `stale()`, factored) outside the lock: a racing rewrite lands
+  before the snapshot (its list is yielded) or after it (the old stamp fails and the disk is read).
+- Wording (Codex NOTE 2): `stale()` never "proved" the file unchanged; it finds the stat and the
+  last frame unchanged, and the equal-size in-place residual it cannot see stays stated in its docstring.
+
 ## [Unreleased] -- B1 fold, lane f-instr: replication_guard sees PyO3 replicas registered across files (2026-10-18)
 
 Codex B1 r02b-instr MAJOR 1 + MINOR 2. Lane commits `d12e35c8..2d3e30a7` on `claude/sndl-f-instr-1018`, each
@@ -23,7 +37,7 @@ red-first; unverified by any battery (no promotion).
 - Print the residual as a blind spot: inside one resolution view `rust_facts` keeps one entry per name, so an
   export that collides in every view that sees it keeps the later file.
 
-## [Unreleased] -- B1 fold, lane p1a-fix: the resident BinLog replay is served only when provably current (2026-10-18)
+## [Unreleased] -- B1 fold, lane p1a-fix: the resident BinLog replay is served only while stat + tail frame find it current (2026-10-18)
 
 Codex B1 (LANE p1a, MAJOR 1+2) reproduced two ways Phase 1a's resident `BinLog.replay()` copy served
 stale records from the one durable lake: an equal-size external `rewrite()` kept the size-only
@@ -31,7 +45,7 @@ stale records from the one durable lake: an equal-size external `rewrite()` kept
 that had never seen the foreign record. Both reproduced RED on base `5974c807`, then folded through
 three seven-lens review rounds (`lanes/r02-1017/rows/p1a-fix/`).
 
-- Fix `BinLog.stale()` so a cached instance proves the file unchanged before serving records: the
+- Fix `BinLog.stale()` so a cached instance checks the file unchanged, as far as stat + tail see, before serving records: the
   (size, mtime_ns, inode) fingerprint must match AND the last frame on disk must be the resident
   copy's last payload (one small read, never a pass); any stat/read error reads as stale.
 - Prevent a local write from blessing a copy another writer invalidated: `append()`/`extend()`

@@ -1,8 +1,8 @@
 """BinLog.replay() served from the resident copy (Phase 1a, 2026-10-17): the stored objects in
-order and no disk pass while the file is provably unchanged -- and the disk again the moment another
-writer changes it, even when the change keeps the size, the inode or the mtime tick (Codex B1 p1a
-MAJOR 1+2 and two review folds, 2026-10-18). Races are injected at their exact window by
-monkeypatching the I/O call that opens it (open, fsync, replace, replay, the instance's stat)."""
+order and no disk pass while stat + tail frame find the file unchanged -- and the disk again the
+moment another writer changes it, even when the change keeps the size, the inode or the mtime tick
+(Codex B1 p1a MAJOR 1+2 and two review folds, 2026-10-18). Races are injected at their exact window
+by monkeypatching the I/O call that opens it (open, fsync, replace, replay, the instance's stat)."""
 
 import builtins
 import os

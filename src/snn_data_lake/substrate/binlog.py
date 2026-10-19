@@ -7,7 +7,8 @@ Every append is flushed + fsync'd, so a learned fact survives a crash / power lo
 every record back at the next boot, so a fresh PROCESS reconstructs everything learned in every prior
 run (cross-process never-forget). A torn trailing record (crash mid-append) is detected and ignored, so
 the log always reloads cleanly. A dedup instance keeps its payloads resident and serves replay() from
-memory while stale() proves the file unchanged (Phase 1a, 2026-10-17; the proof hardened 2026-10-18).
+memory while stale() finds the file's stat and last frame unchanged (Phase 1a, 2026-10-17; hardened
+2026-10-18; what that check cannot see is stated in stale()).
 
 Payloads are arbitrary bytes -- the caller serializes. For the Spike Chat / developmental-loop fact
 schema {cue:[str], answer:str, triple?:[s,r,o], src?:str}, pack_fact / unpack_fact give a compact binary
