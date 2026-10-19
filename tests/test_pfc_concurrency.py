@@ -3,14 +3,13 @@
 3.14t) that both snapshot before either restores lose one advance: the final state equals ONE
 call. The deleted Python body advanced the `random.Random` through atomic method calls, so two
 overlapping calls always left two advances. Contract: the final state after two overlapping
-calls equals two sequential calls. Oracle start state: chain A of
-`native/sndl-core/tests/fixtures_pfc.json` (shared with tests/test_native_pfc.py).
+calls equals two sequential calls, and every step of the handoff runs under the caller's own
+hold of `_rng_lock`. Oracle start state: chain A of `native/sndl-core/tests/fixtures_pfc.json`
+(shared with tests/test_native_pfc.py).
 """
 
 import contextlib
-import random
 import threading
-import time
 from concurrent.futures import ThreadPoolExecutor
 
 from test_native_pfc import FIX, _executive
@@ -42,48 +41,60 @@ class _Rendezvous:
 
 
 class _Contended:
-    """`_rng_lock` wrapper that records a second thread trying the lock while it is held: the
-    positive evidence that the lock, not scheduling, kept the second call out of the binding."""
+    """`_rng_lock` wrapper that records a second thread trying the lock while it is held (the
+    positive evidence that the lock, not scheduling, kept the second call out of the binding) and
+    which thread holds it, so each step of the handoff can be checked to run under its caller's
+    own hold -- on every schedule, not one run in twenty."""
 
     def __init__(self, lock):
         self.lock = lock
         self.contended = threading.Event()
+        self.owner = None
 
     def __enter__(self):
         if not self.lock.acquire(blocking=False):
             self.contended.set()
             self.lock.acquire()
+        self.owner = threading.get_ident()
 
     def __exit__(self, *exc):
+        self.owner = None
         self.lock.release()
 
-
-class _SlowRestore(random.Random):
-    """`setstate` takes 0.2 s, long enough for the other thread's whole call: a restore left
-    OUTSIDE the lock then loses an advance on every run, not one run in twenty."""
-
-    def setstate(self, state):
-        time.sleep(0.2)
-        super().setstate(state)
+    def held_by_me(self):
+        return self.owner == threading.get_ident()
 
 
-def _two_overlapping(p, monkeypatch, real):
+def _two_overlapping(p, monkeypatch, real, lock=None):
     """Both workers are running (start barrier) before either enters `_decide_spiking`, so the
-    second is at most a lock away from the binding. Returns (outputs, rendezvous)."""
-    state = p.rng.getstate()
-    p.rng = _SlowRestore()
-    random.Random.setstate(p.rng, state)
+    second is at most a lock away from the binding. With `lock` (the executive's `_Contended`),
+    the snapshot, the race and the restore each record a violation when not run under the
+    caller's own hold. Returns (outputs, rendezvous, violations)."""
+    outside = []
+
+    def guard(step, fn):
+        def run(*args):
+            if lock is not None and not lock.held_by_me():
+                outside.append(step)
+            return fn(*args)
+
+        return run
+
     met = _Rendezvous(real)
-    monkeypatch.setattr(pe, "_native", met)
     start = threading.Barrier(2)
 
     def worker():
         start.wait()
         return list(p._decide_spiking(EVIDENCE))
 
-    with ThreadPoolExecutor(2) as pool:
-        outs = [f.result() for f in [pool.submit(worker) for _ in range(2)]]
-    return outs, met
+    with monkeypatch.context() as m:
+        m.setattr(p.rng, "getstate", guard("getstate", p.rng.getstate))
+        m.setattr(p.rng, "setstate", guard("setstate", p.rng.setstate))
+        m.setattr(met, "pfc_decide", guard("race", met.pfc_decide))
+        m.setattr(pe, "_native", met)
+        with ThreadPoolExecutor(2) as pool:
+            outs = [f.result() for f in [pool.submit(worker) for _ in range(2)]]
+    return outs, met, outside
 
 
 def test_two_overlapping_decisions_advance_the_rng_twice(monkeypatch):
@@ -100,14 +111,15 @@ def test_two_overlapping_decisions_advance_the_rng_twice(monkeypatch):
     # lock is judged against; if the two threads do not meet, the schedule was not established
     p = _chain_a()
     p._rng_lock = contextlib.nullcontext()
-    _, met = _two_overlapping(p, monkeypatch, real)
+    _, met, _ = _two_overlapping(p, monkeypatch, real)
     assert not met.barrier.broken, "both threads must meet inside the binding"
     assert p.rng.getstate() == one_call
 
     p = _chain_a()
     lock = p._rng_lock = _Contended(p._rng_lock)
-    outs, met = _two_overlapping(p, monkeypatch, real)
+    outs, met, outside = _two_overlapping(p, monkeypatch, real, lock)
     assert lock.contended.is_set(), "the second call never tried the lock while the first held it"
     assert met.barrier.broken, "the second call entered the binding while the first was inside"
+    assert outside == [], f"handoff steps outside the caller's own hold: {outside}"
     assert p.rng.getstate() == two_calls
     assert sorted(outs) == sorted(sequential)
