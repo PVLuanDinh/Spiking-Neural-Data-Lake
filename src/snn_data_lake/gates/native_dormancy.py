@@ -56,9 +56,8 @@ from snn_data_lake.gates.method_dormancy_gate import is_learn_verb
 
 _R04 = "R0.4 prerequisite (RNG parity kit) consumed by the first L-stage port; retire when that port lands"
 NATIVE_EXEMPT: dict[str, str] = {  # py export name | native-relative .rs path -> reason
-    "sndl-core/src/rng/mod.rs": _R04,
-    "sndl-core/src/rng/mt19937.rs": _R04,
-    "sndl-core/src/rng/pyrandom.rs": _R04,
+    "panic_probe": "Phase 0 item 8b instrument: the one entry point that panics on purpose so "
+    "tests/test_native_binding.py proves a panic surfaces as RuntimeError; test-only by design",
     "sndl-core/src/rng/legacy.rs": _R04,
     "sndl-core/src/rng/seedseq.rs": _R04,
     "sndl-core/src/rng/pcg64.rs": _R04,
