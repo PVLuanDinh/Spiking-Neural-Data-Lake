@@ -396,6 +396,15 @@ def build_map(records: list[dict], head: str, chash: str, fingerprint: str = "")
             is_pytest[rec["_pid"]] = "pytest" in " ".join(rec.get("argv", []))
             if rec.get("tok"):
                 started_toks.add(rec["tok"])
+    # An xdist worker starts as `python -u -c <execnet bootstrap>`: its argv never says "pytest", so
+    # its collection-time reads/spawns (no test id) would be dropped as "outside pytest". A process
+    # started by a spawn that a pytest process made OUTSIDE any test is a pytest worker (fails closed:
+    # it is mapped, not skipped). Owner 2026-10-19 lifted the no-parallel rule; panel lens 3 finding 4.
+    spawn_tok = {r["tok"]: r for r in records if r.get("k") == "spawn" and r.get("tok")}
+    for rec in records:
+        s = spawn_tok.get(rec.get("tok")) if rec.get("k") == "start" else None
+        if s and not s.get("t") and is_pytest.get(s["_pid"]):
+            is_pytest[rec["_pid"]] = True
     for rec in records:
         k = rec.get("k")
         t = rec.get("t") or ""

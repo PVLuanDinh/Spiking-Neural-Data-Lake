@@ -59,3 +59,38 @@ def test_committed_map_if_present_is_well_formed():
     assert set(m["pytest_all"]) == {"read", "list", "listr", "git_scan", "blind"}
     for t, e in m["tests"].items():
         assert t.startswith("tests/") and set(e) == {"read", "list", "listr", "git_scan", "blind"}
+
+
+def _xdist_records():
+    """An xdist-shaped run. The pytest master spawns a worker OUTSIDE any test; the worker's argv
+    is the execnet bootstrap (no "pytest" in it) and it reads a doc at collection time (no test
+    id). A gate process (not pytest) also spawns a python child that reads a doc: unmapped."""
+    return [
+        {"k": "start", "_pid": "m", "argv": ["python", "-m", "pytest", "-n", "8"], "tok": "t0"},
+        {
+            "k": "spawn",
+            "_pid": "m",
+            "t": "",
+            "a": ["python", "-u", "-c", "import sys;exec(...)"],
+            "tok": "w1",
+        },
+        {
+            "k": "start",
+            "_pid": "w",
+            "argv": ["python", "-u", "-c", "import sys;exec(...)"],
+            "tok": "w1",
+        },
+        {"k": "read", "_pid": "w", "t": "", "p": "docs/collected.md", "c": "conftest"},
+        {"k": "start", "_pid": "g", "argv": ["python", "tools/some_gate.py"], "tok": "g0"},
+        {"k": "spawn", "_pid": "g", "t": "", "a": ["python", "-c", "pass"], "tok": "g1"},
+        {"k": "start", "_pid": "gc", "argv": ["python", "-c", "pass"], "tok": "g1"},
+        {"k": "read", "_pid": "gc", "t": "", "p": "docs/gate_only.md", "c": "x"},
+    ]
+
+
+def test_xdist_worker_collection_reads_are_mapped_not_dropped():
+    m = dob.build_map(_xdist_records(), "head", "chash")
+    assert "docs/collected.md" in m["pytest_all"]["read"]  # red without the worker mapping
+    assert (
+        "docs/gate_only.md" not in m["pytest_all"]["read"]
+    )  # a non-pytest parent's child is not pytest
