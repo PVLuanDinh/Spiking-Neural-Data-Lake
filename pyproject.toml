@@ -345,8 +345,10 @@ source = ["snn_data_lake"]
 # ruff-excluded for the same reason).
 omit = ["*/reasoning/*", "*/training/*"]
 # Self-check coverage (owner 2026-10-19, option A): the battery runs `coverage run run_selfchecks.py
-# --in-process` (CORE + TORCH_GATED in one interpreter), then `pytest --cov-append`, so the 70% bar
-# counts the self-checks once. pytest no longer re-runs them in-process.
+# --battery` (CORE + TORCH_GATED in one interpreter, the other tiers as subprocesses) into its own data
+# file, pytest into another; the two are combined and the 70% bar is checked ONCE on the combined
+# report. CI runs the in-process self-checks, then pytest --cov-append, bar on the last run.
+# pytest no longer re-runs the self-checks in-process.
 
 # ruff: scoped to the core + tests. research/ and the standalone "robot arm/" sketch are
 # excluded on purpose (linting them means editing quarantined / optional-dep code â€” out of scope

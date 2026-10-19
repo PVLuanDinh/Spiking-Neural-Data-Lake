@@ -1,12 +1,11 @@
 """
 Pins run_selfchecks' latch-attribution and gate-home helpers.
 
-The per-module self-checks (CORE + TORCH_GATED) are NOT re-run here any more: run_selfchecks.py
-runs them as isolated subprocesses, and coverage.py (`patch = ["subprocess"]`) measures every
-child of that run, so the battery's one runner is also the coverage signal:
-`python -m coverage run -p run_selfchecks.py`, `python -m coverage combine`, then pytest with
-`--cov-append`. An in-process copy here re-ran all 331 checks for coverage alone (P2: one
-mechanism).
+The per-module self-checks (CORE + TORCH_GATED) are NOT re-run here any more (owner 2026-10-19):
+the battery's `coverage run run_selfchecks.py --battery` runs them once, in-process (the
+cross-module leak detector) under coverage, plus the other tiers as subprocesses; its coverage is
+combined with pytest's and the 70% bar is checked on the combined report. An in-process copy here
+re-ran all 331 checks for coverage alone (P2: one mechanism).
 """
 
 import os
