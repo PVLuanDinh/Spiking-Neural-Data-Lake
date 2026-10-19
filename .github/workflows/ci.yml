@@ -463,7 +463,12 @@ jobs:
         run: cargo test --manifest-path native/Cargo.toml
       - name: Build the native extension into the package (maturin from the [dev] extra)
         run: python -m snn_data_lake.infra.native_build
-      - run: pytest   # addopts in pyproject run --cov with a >=70% gate
+      # Owner 2026-10-19 (option A): the self-checks run ONCE, in-process (CORE + TORCH_GATED in one
+      # interpreter: the cross-module leak detector) under coverage; pytest then APPENDS, so the 70% bar
+      # counts them. The subprocess isolation run is the selfchecks job above (run_selfchecks.py).
+      - name: Self-checks in-process under coverage
+        run: python -m coverage run run_selfchecks.py --in-process
+      - run: pytest -n auto --dist loadgroup --cov-append   # addopts in pyproject run --cov with a >=70% gate
 
   # Release audit (specs/021, FR-014): every push to main gets audited -- --certify runs every
   # manifest row's real gate command and refuses while any policy is FAIL / CANNOT_RUN / NO_GATE
