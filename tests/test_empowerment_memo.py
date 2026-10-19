@@ -26,8 +26,11 @@ def test_unhashable_actions_on_the_exhaustive_path_still_work():
 
 
 def test_memo_is_bit_identical_to_no_memo_on_the_sampling_path():
+    # every terminal VECTOR, not just the cell count (Codex re-review MINOR 4: a memo that shifted
+    # every terminal by a constant kept the count and passed the old check)
     emp = Empowerment(_Pure(), [(i,) for i in range(5)], horizon=3, max_seqs=20, seed=3)
     z0 = [0.3, -0.2]
-    assert emp.empowerment(z0) == _no_memo(
-        Empowerment(_Pure(), emp.A, horizon=3, max_seqs=20, seed=3), z0
-    )
+    seqs = emp._seqs()
+    memo = {}
+    assert [emp._roll(z0, s, memo) for s in seqs] == [emp._roll(z0, s) for s in seqs]
+    assert len(memo) > 0
