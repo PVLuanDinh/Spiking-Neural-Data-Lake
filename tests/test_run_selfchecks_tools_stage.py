@@ -39,3 +39,14 @@ def test_default_gate_list_names_the_six_tools_gates():
     ]
     for name in names:
         assert (ROOT / name).exists(), name
+
+
+def test_battery_partition_runs_every_module_exactly_once():
+    # Owner 2026-10-19 option A + Codex closing report MAJOR 1: the battery's in-process run must
+    # not drop RESEARCH / NENGO_GATED / TRAIN_GATED -- they go to the subprocess half.
+    import run_selfchecks as rs
+
+    in_proc, rest = rs.battery_partition()
+    assert set(in_proc).isdisjoint(rest)
+    assert sorted(in_proc + rest) == sorted(rs.MODULES)
+    assert set(rs.RESEARCH) <= set(rest) and rs.RESEARCH  # red if the subprocess half is dropped

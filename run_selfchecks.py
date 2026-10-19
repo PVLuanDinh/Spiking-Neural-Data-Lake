@@ -759,7 +759,9 @@ def run_tools_gates(gates=None, emit=print):
     return failed
 
 
-def run_all(carry=False):
+def run_all(carry=False, modules=None):
+    """Every module in `modules` (default MODULES) as an isolated subprocess, then the tools gates."""
+    mods = MODULES if modules is None else modules
     if not _TORCH:
         # torch is a CORE dependency, so this is a BROKEN INSTALL, not a supported configuration.
         # The old message said "zero-dep matrix stays green" and reassured the reader that skipping
@@ -808,7 +810,7 @@ def run_all(carry=False):
         os.remove(latch)
         print("GATE-HOME E-STOP SIDECAR from a previous run cleared before this battery")
     failed, artifact_skipped = [], []
-    for m in MODULES:
+    for m in mods:
         missing = ARTIFACT_GATED.get(m)
         if missing and not os.path.exists(os.path.join(_ROOT, missing)):
             # ARTIFACT-GATED, added 2026-07-29. A module's own self-check should RAISE when its input
@@ -854,7 +856,7 @@ def run_all(carry=False):
             import datetime
 
             cache.record(m, datetime.datetime.now().isoformat(timespec="seconds"), secs)
-    ran = len(MODULES) - len(artifact_skipped)
+    ran = len(mods) - len(artifact_skipped)
     print("=" * 56)
     if carried:
         # the split is stated, never folded: "N passed" where some were carried would be
@@ -1000,6 +1002,12 @@ def run_all_in_process(emit=print):
     return not failed
 
 
+def battery_partition():
+    """(in-process, subprocess) module lists for --battery: together exactly MODULES, disjoint."""
+    in_proc = CORE + (TORCH_GATED if _TORCH else [])
+    return in_proc, [m for m in MODULES if m not in set(in_proc)]
+
+
 if __name__ == "__main__":
     if "--list" in sys.argv:
         print("\n".join(MODULES))
@@ -1010,4 +1018,14 @@ if __name__ == "__main__":
         # when they run. This process exits right after, so no restore is owed.
         os.environ["NORD_HOME"] = _HOME
         sys.exit(0 if run_all_in_process() else 1)
+    if "--battery" in sys.argv:
+        # Owner 2026-10-19 option A, as the battery's ONE self-check stage: CORE + TORCH_GATED once,
+        # in-process (cross-module leak detector, coverage, the frozen-exe runpy path); every OTHER
+        # MODULES tier (RESEARCH, NENGO_GATED, TRAIN_GATED -- they need the repo-root cwd and were
+        # never in the in-process set) once as subprocesses; then all TOOLS_GATES. Nothing twice,
+        # nothing dropped (Codex closing report on the fold, MAJORs 1+2).
+        os.environ["NORD_HOME"] = _HOME
+        ok_in = run_all_in_process()
+        ok_rest = run_all(modules=battery_partition()[1])
+        sys.exit(0 if ok_in and ok_rest else 1)
     sys.exit(0 if run_all(carry="--carry" in sys.argv) else 1)
