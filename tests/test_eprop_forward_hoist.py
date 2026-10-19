@@ -54,10 +54,13 @@ def wrong_forward(net, x, pick):
     return logits_sum, latent_sum
 
 
-def make(kind, seed):
+def make(kind, seed, b=None, t=None):
+    shape = list(SHAPES[kind])
+    if b is not None:
+        shape[0], shape[1] = b, t
     net = _TinyNet(n_in=N_IN[kind], hidden=8, num_classes=3, seed=seed)
     g = torch.Generator().manual_seed(100 + seed)
-    return net, (torch.rand(*SHAPES[kind], generator=g) < 0.4).float()
+    return net, (torch.rand(*shape, generator=g) < 0.4).float()
 
 
 def identical(fn_a, fn_b, kind, seed):
@@ -76,6 +79,38 @@ def test_control_old_vs_old(kind, seed):
 @pytest.mark.parametrize("kind", SHAPES)
 def test_hoisted_forward_bit_identical(kind, seed):
     assert identical(old_forward, lambda net, x: net(x), kind, seed)
+
+
+@pytest.mark.parametrize("t", (1, 3, 15))
+@pytest.mark.parametrize("b", (1, 2, 5))
+@pytest.mark.parametrize("kind", SHAPES)
+def test_forward_bit_identical_over_batch_time_grid(kind, b, t):
+    for seed in range(3):
+        net, x = make(kind, seed, b, t)
+        (la, za), (lb, zb) = old_forward(net, x), net(x)
+        assert torch.equal(la, lb) and torch.equal(za, zb)
+
+
+def test_forward_matmul_and_transpose_counts():
+    """Counts, not clocks: 1 (W_in) + 1 (w_rec) per step + 1 (W_out) per step; 3 transposes total."""
+    net, x = make("audio", 0, 5, 15)
+    n_mm, n_t = [0], [0]
+    mm0, t0 = torch.Tensor.__matmul__, torch.Tensor.t
+
+    def mm(a, o):
+        n_mm[0] += 1
+        return mm0(a, o)
+
+    def tr(a):
+        n_t[0] += 1
+        return t0(a)
+
+    torch.Tensor.__matmul__, torch.Tensor.t = mm, tr
+    try:
+        net(x)
+    finally:
+        torch.Tensor.__matmul__, torch.Tensor.t = mm0, t0
+    assert (n_mm[0], n_t[0]) == (1 + 2 * 15, 3)
 
 
 RED = {

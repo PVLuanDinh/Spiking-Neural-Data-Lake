@@ -167,13 +167,16 @@ class EpropLIFBase(nn.Module):
         y = torch.zeros(b, self.num_classes, device=dev)  # leaky readout integrator
         logits_sum = torch.zeros(b, self.num_classes, device=dev)
         latent_sum = torch.zeros(b, self.hidden, device=dev)
-        w_rec = self.W_rec * self.offdiag_mask(dev)
+        w_rec_t = (self.W_rec * self.offdiag_mask(dev)).t()
+        w_out_t = self.W_out.t()
         x_proj = x @ self.W_in.t()  # [B, T, hidden]; input drive has no recurrence
+        # The readout `z @ W_out.t()` stays per-step: one batched matmul over all T spike vectors
+        # is NOT bit-identical to the per-step ones (measured 15/45 equal at SHD width).
         for step in range(t):
-            cur = x_proj[:, step] + z @ w_rec.t()
+            cur = x_proj[:, step] + z @ w_rec_t
             v = self.alpha * v - self.v_th * z + cur  # soft reset: subtract V_TH on last spike
             z = (v >= self.v_th).float()
-            y = self.kappa * y + z @ self.W_out.t()
+            y = self.kappa * y + z @ w_out_t
             logits_sum = logits_sum + (y + self.b_out)
             latent_sum = latent_sum + z
         return logits_sum, latent_sum
