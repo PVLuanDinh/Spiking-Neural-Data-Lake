@@ -125,6 +125,9 @@ FOLD DISCLOSURES (panel, 2026-09-01), each measured:
 import math
 import random
 
+from snn_data_lake import (
+    _native,
+)  # the binding crate native/sndl-python: the decision race (Phase 2)
 from snn_data_lake.faculties.wm_capacity import CapacityRefusal, derive_capacity, seed_viability
 from snn_data_lake.plasticity.short_term_plasticity import DynamicSynapse
 
@@ -423,78 +426,33 @@ class PrefrontalExecutive:
 
         Each option is a recurrently self-exciting LIF pool; a shared inhibitory LIF pool drives the
         competition. The first option pool whose population firing rate reaches a sustained high level
-        (crosses `bound`) WINS; a wider evidence gap commits sooner. Returns (winner_index, rt_steps)."""
-        n = len(evidence)
-        e_ref = 0.0
-        for e in evidence:
-            if e > e_ref:
-                e_ref = e
-        if e_ref <= 0.0:
-            return 0, 1  # no evidence -> no race (tie -> index 0)
-        scaled = [(e if e > 0.0 else 0.0) / e_ref for e in evidence]
-        sum_scaled = 0.0
-        for s in scaled:
-            sum_scaled += s
-        nd, ni, md = self._n_dec, self._n_inh, self._md
-        g_ext, b0, w_plus = self._g_ext, self._b0, self._w_plus
-        w_inh, w_ie, w_cross = self._w_inh, self._w_ie, self._w_cross
-        td, theta, namp = self._trace_decay, self._theta, self._noise_amp
-        dec_bias = self._dec_bias
-        rnd = self.rng.random
-        # feed-forward cross-inhibition: each pool is suppressed by the MEAN drive of the others, so a
-        # wider evidence gap gives the leader a higher net current from step 1 -> a faster commit.
-        denom = (n - 1) if n > 1 else 1
-        cross = [w_cross * (sum_scaled - scaled[i]) / denom for i in range(n)]
-        # LIF membranes (seed-dependent random initial charge -> the seed changes the whole trajectory)
-        init_v = self._init_v
-        Vd = [[init_v * rnd() for _ in range(nd)] for _ in range(n)]
-        Vi = [init_v * rnd() for _ in range(ni)]
-        trace = [0.0] * n  # per option-pool firing-rate proxy
-        trace_i = 0.0  # inhibitory-pool firing-rate proxy
-        winner = None
-        rt = self._t_max
-        for t in range(1, self._t_max + 1):
-            inh = w_inh * trace_i  # shared spiking inhibition this step
-            spk = [0] * n
-            for i in range(n):
-                cur = (
-                    g_ext * scaled[i]
-                    - cross[i]
-                    + w_plus * trace[i]
-                    - inh
-                    + b0
-                    + namp * (rnd() - 0.5)
-                )
-                base = i * nd
-                col = Vd[i]
-                s = 0
-                for k in range(nd):
-                    v = md * col[k] + cur + dec_bias[base + k]  # LIF: leak + integrate current
-                    if v >= 1.0:  # threshold -> discrete spike -> reset
-                        s += 1
-                        v = 0.0
-                    col[k] = v
-                spk[i] = s
-            exc = w_ie * (
-                trace[0] if n == 1 else sum(trace)
-            )  # option pools excite the inhibitory pool
-            si = 0
-            for k in range(ni):
-                v = md * Vi[k] + exc + namp * (rnd() - 0.5)
-                if v >= 1.0:
-                    si += 1
-                    v = 0.0
-                Vi[k] = v
-            for i in range(n):
-                trace[i] = td * trace[i] + (1.0 - td) * (spk[i] / nd)
-            trace_i = td * trace_i + (1.0 - td) * (si / ni)
-            best = _argmax(trace)
-            if trace[best] >= theta:  # first pool to sustained high firing wins
-                winner = best
-                rt = t
-                break
-        if winner is None:
-            winner = _argmax(trace)  # timed out -> the strongest pool so far
+        (crosses `bound`) WINS; a wider evidence gap commits sooner. Returns (winner_index, rt_steps).
+
+        THE RACE IS NATIVE (Phase 2 of the Rust port, 2026-10-17): `sndl-core` `pfc::decide_spiking`
+        through `_native.pfc_decide`, on THIS instance's `random.Random` stream -- its internal state goes
+        in and comes back, so the draws are the ones the deleted Python body made (judged call-for-call
+        and state-for-state by tests/test_native_pfc.py against the oracle recorded from that body)."""
+        version, internal, gauss_next = self.rng.getstate()
+        winner, rt, internal = _native.pfc_decide(
+            evidence,
+            (self._n_dec, self._n_inh, self._t_max),
+            (
+                self._md,
+                self._g_ext,
+                self._b0,
+                self._w_plus,
+                self._w_inh,
+                self._w_ie,
+                self._w_cross,
+                self._trace_decay,
+                self._theta,
+                self._noise_amp,
+                self._init_v,
+            ),
+            self._dec_bias,
+            internal,
+        )
+        self.rng.setstate((version, internal, gauss_next))
         return winner, rt
 
     def deliberate(self, evidence):

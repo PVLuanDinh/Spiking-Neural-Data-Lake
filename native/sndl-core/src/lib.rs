@@ -1,6 +1,7 @@
 //! sndl-core: the Rust home of SNDL engine components (plan section 11: lake, brain, reservoir,
-//! plasticity, readout, sleep, rng). Stage R0.4 ships `rng` only; no PyO3 here (the binding crate
-//! `sndl-python` arrives with the first L-stage port).
+//! plasticity, readout, sleep, rng). R0.4 ships `rng`; Phase 2 ships `pfc` (the prefrontal decision
+//! race). No PyO3 here: the binding crate is `sndl-python`.
 #![forbid(unsafe_code)]
 
+pub mod pfc;
 pub mod rng;
