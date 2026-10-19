@@ -1,6 +1,6 @@
 """Phase 2 of the Rust port: `PrefrontalExecutive._decide_spiking` runs in `sndl-core`
-(`prefrontal_executive::decide_spiking`) through `_native.pfc_decide`, on the instance's own CPython MT19937 stream
-(the state round-trips through getstate/setstate).
+(`prefrontal_executive::decide_spiking`) through `_native.pfc_decide`, on the instance's own
+CPython MT19937 stream (the state round-trips through getstate/setstate).
 Oracle: `native/sndl-core/tests/fixtures_pfc.json`
 recorded from the deleted Python body at c612c244 (the 5 Phase 0 `cnt220` full cases + three chains,
 460 calls; lane pfc-p2 REPORT.md 1.2 C2/C2'/R1). Each assert here goes through the PYTHON method,
