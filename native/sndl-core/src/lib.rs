@@ -3,5 +3,5 @@
 //! race). No PyO3 here: the binding crate is `sndl-python`.
 #![forbid(unsafe_code)]
 
-pub mod pfc;
+pub mod prefrontal_executive;
 pub mod rng;

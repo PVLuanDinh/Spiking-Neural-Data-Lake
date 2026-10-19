@@ -55,14 +55,15 @@ def test_real_tree_prints_absent_and_leaves_every_python_count_alone(base):
     assert "rust_status" in conn, (
         "the gate reports NOTHING about native/ (neither ABSENT nor a count)"
     )
-    # native/ exists since R0.4 (sndl-core). Since pfc-p2 the PFC kernel (pfc.rs) uses the rng
-    # kit and the PFC imports `_native` module-level: neither `pfc` nor `rng` is a connectome
-    # region and the import names no symbol, so both are PRINTED (pinned here so a change is
-    # seen) and every count stays.
+    # native/ exists since R0.4 (sndl-core). Since pfc-p2 the PFC kernel
+    # (prefrontal_executive.rs: the stem carries the Python module's frozen label, cortex) uses the
+    # rng kit, and the PFC imports `_native` module-level: `rng` is no connectome region and the
+    # import names no symbol, so both are PRINTED (pinned here so a change is seen) and every
+    # count stays.
     assert conn["rust_status"].startswith(("native/ ABSENT", "native/ PRESENT")), conn[
         "rust_status"
     ]
-    assert conn["rust_directed"] == {("pfc", "rng")}
+    assert conn["rust_directed"] == {("cortex", "rng")}
     assert conn["native_mapped"] == set()
     assert conn["native_unmapped"] == [
         "faculties/prefrontal_executive.py: _native.<module> "
@@ -191,6 +192,8 @@ def test_rust_region_table():
     assert gate.rust_region("x/src/lib.rs", "x", labels) is None
     assert gate.rust_region("x/src/main.rs", "x", labels) is None
     assert gate.rust_region("x/src/rng.rs", "x", labels) == "rng"
+    # a ported body named after its Python module inherits that module's label (Codex B2-fold)
+    assert gate.rust_region("x/src/prefrontal_executive.rs", "x", labels) == "cortex"
     assert gate.rust_region("x/src/fear_conditioning.rs", "x", labels) == f"{_AMY}"
     assert gate.rust_region(f"src/{_AMY}/fear.rs", "", labels) == f"{_AMY}"
     assert gate.rust_region(f"x/src/{_CER}/fear_conditioning.rs", "x", labels) == f"{_AMY}"

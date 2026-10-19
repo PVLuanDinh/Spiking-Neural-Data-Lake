@@ -430,7 +430,7 @@ class PrefrontalExecutive:
         competition. The first option pool whose population firing rate reaches a sustained high level
         (crosses `bound`) WINS; a wider evidence gap commits sooner. Returns (winner_index, rt_steps).
 
-        THE RACE IS NATIVE (Phase 2 of the Rust port, 2026-10-17): `sndl-core` `pfc::decide_spiking`
+        THE RACE IS NATIVE (Phase 2 of the Rust port, 2026-10-17): `sndl-core` `prefrontal_executive::decide_spiking`
         through `_native.pfc_decide`, on THIS instance's `random.Random` stream -- its internal state goes
         in and comes back, so the draws are the ones the deleted Python body made (judged call-for-call
         and state-for-state by tests/test_native_pfc.py against the oracle recorded from that body).

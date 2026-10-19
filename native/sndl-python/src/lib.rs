@@ -4,7 +4,7 @@
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
-use sndl_core::pfc::{Params, decide_spiking, has_evidence};
+use sndl_core::prefrontal_executive::{Params, decide_spiking, has_evidence};
 use sndl_core::rng::mt19937::N;
 use sndl_core::rng::pyrandom::{PyRandom, State};
 use std::panic::{AssertUnwindSafe, catch_unwind};
