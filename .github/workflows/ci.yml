@@ -468,7 +468,9 @@ jobs:
       # counts them. The subprocess isolation run is the selfchecks job above (run_selfchecks.py).
       - name: Self-checks in-process under coverage
         run: python -m coverage run run_selfchecks.py --in-process
-      - run: pytest -n auto --dist loadgroup --cov-append   # addopts in pyproject run --cov with a >=70% gate
+      - run: pytest -n auto --dist loadgroup --cov-append -m "not timing"   # addopts: --cov with a >=70% gate
+      - name: Wall-clock repeatability tests, serially (marker `timing`)
+        run: pytest --cov-append -m timing
 
   # Release audit (specs/021, FR-014): every push to main gets audited -- --certify runs every
   # manifest row's real gate command and refuses while any policy is FAIL / CANNOT_RUN / NO_GATE

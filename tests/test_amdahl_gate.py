@@ -30,6 +30,9 @@ import pytest
 
 from snn_data_lake.gates import amdahl_gate
 
+# wall-clock repeatability: run serially, after the parallel pass (battery: -m timing)
+pytestmark = pytest.mark.timing
+
 
 def test_a_padded_object_path_reads_a_large_ceiling():
     """POSITIVE CONTROL: pad the object path with a known cost per unit; the ceiling must rise."""

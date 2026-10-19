@@ -333,7 +333,10 @@ filterwarnings = ["ignore:.*found in sys.modules.*:RuntimeWarning"]
 # default -- registering the marker only stops PytestUnknownMarkWarning, which is a real hazard here:
 # an unregistered marker is a silent typo, and a typo'd `pytest.mark.slwo` would mark nothing while
 # reading exactly like it did. Deselect locally with `-m "not slow"`.
-markers = ["slow: spawns subprocesses and drives many ticks (minutes, not seconds)"]
+markers = [
+    "slow: spawns subprocesses and drives many ticks (minutes, not seconds)",
+    "timing: asserts wall-clock REPEATABILITY -- the battery runs these serially, after the parallel pass",
+]
 
 [tool.coverage.run]
 source = ["snn_data_lake"]
