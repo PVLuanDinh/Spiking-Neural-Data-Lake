@@ -8,7 +8,9 @@ calls equals two sequential calls. Oracle start state: chain A of
 """
 
 import contextlib
+import random
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from test_native_pfc import FIX, _executive
@@ -39,9 +41,38 @@ class _Rendezvous:
         return self.real.pfc_decide(*args)
 
 
+class _Contended:
+    """`_rng_lock` wrapper that records a second thread trying the lock while it is held: the
+    positive evidence that the lock, not scheduling, kept the second call out of the binding."""
+
+    def __init__(self, lock):
+        self.lock = lock
+        self.contended = threading.Event()
+
+    def __enter__(self):
+        if not self.lock.acquire(blocking=False):
+            self.contended.set()
+            self.lock.acquire()
+
+    def __exit__(self, *exc):
+        self.lock.release()
+
+
+class _SlowRestore(random.Random):
+    """`setstate` takes 0.2 s, long enough for the other thread's whole call: a restore left
+    OUTSIDE the lock then loses an advance on every run, not one run in twenty."""
+
+    def setstate(self, state):
+        time.sleep(0.2)
+        super().setstate(state)
+
+
 def _two_overlapping(p, monkeypatch, real):
     """Both workers are running (start barrier) before either enters `_decide_spiking`, so the
     second is at most a lock away from the binding. Returns (outputs, rendezvous)."""
+    state = p.rng.getstate()
+    p.rng = _SlowRestore()
+    random.Random.setstate(p.rng, state)
     met = _Rendezvous(real)
     monkeypatch.setattr(pe, "_native", met)
     start = threading.Barrier(2)
@@ -74,7 +105,9 @@ def test_two_overlapping_decisions_advance_the_rng_twice(monkeypatch):
     assert p.rng.getstate() == one_call
 
     p = _chain_a()
+    lock = p._rng_lock = _Contended(p._rng_lock)
     outs, met = _two_overlapping(p, monkeypatch, real)
+    assert lock.contended.is_set(), "the second call never tried the lock while the first held it"
     assert met.barrier.broken, "the second call entered the binding while the first was inside"
     assert p.rng.getstate() == two_calls
     assert sorted(outs) == sorted(sequential)

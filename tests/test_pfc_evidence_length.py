@@ -2,10 +2,10 @@
 The deleted Python body returned `(0, 1)` for all-zero evidence of ANY length before it indexed
 `_dec_bias`, and raised IndexError (after consuming draws) for positive evidence longer than the
 option count. The B2 binding raised RuntimeError for both from its `dec_bias` length check.
-Contract: zero evidence of any length is `(0, 1)` with no draw; positive evidence longer than the
-option count is an explicit RuntimeError naming the mismatch, with no draw. Shorter positive
-evidence is a narrower race, not an error: oracle chain B (3 options, evidence of length 1..3)
-pins it in tests/test_native_pfc.py.
+Contract: no evidence (no entry > 0: zeros, negatives, NaN) of any length is `(0, 1)` with no
+draw; positive evidence longer than the option count is an explicit RuntimeError naming the
+mismatch, with no draw. Shorter positive evidence is a narrower race, not an error: oracle chain B
+(3 options, evidence of length 1..3) pins it in tests/test_native_pfc.py.
 """
 
 import pytest
@@ -17,11 +17,13 @@ def _chain_a():  # 13 options
     return _executive(ch)
 
 
-@pytest.mark.parametrize("n", [0, 1, 13, 14, 40])
-def test_zero_evidence_of_any_length_is_no_race_and_no_draw(n):
+@pytest.mark.parametrize(
+    "evidence", [[0.0] * n for n in (0, 1, 13, 14, 40)] + [[-1.0, float("nan")] * 7]
+)
+def test_no_evidence_of_any_length_is_no_race_and_no_draw(evidence):
     p = _chain_a()
     pre = p.rng.getstate()
-    assert list(p._decide_spiking([0.0] * n)) == [0, 1]
+    assert list(p._decide_spiking(evidence)) == [0, 1]
     assert p.rng.getstate() == pre
 
 
