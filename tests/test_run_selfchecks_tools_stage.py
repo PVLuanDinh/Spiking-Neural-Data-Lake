@@ -101,30 +101,46 @@ def test_in_process_run_arms_the_live_home_tripwire(monkeypatch, tmp_path):
     assert os.environ.get("SNDL_LIVE_HOME_GUARD") is None  # restored after the run
 
 
-def test_each_runner_process_gets_its_own_home_unless_pinned(tmp_path):
-    # Codex closing report MAJOR 1: concurrent runners must never share the E-STOP latch's home.
-    # Red on the old fixed %TEMP%/snn_selfchecks_home: both processes printed the same path.
+def test_each_runner_process_gets_its_own_home_and_ignores_any_pin(tmp_path):
+    # Codex MAJOR 1: concurrent runners never share the E-STOP latch's home (red on the old fixed
+    # %TEMP%/snn_selfchecks_home: both processes printed the same path). Opus MAJOR 1: no env var
+    # can point the runner at another home -- a pin at the live lake would let the runner os.remove
+    # the operator's real latch (red on the SNDL_SELFCHECK_HOME version: the pin was honoured).
     import subprocess
     import sys
 
+    fake_live = tmp_path / "fake live" / ".snn_data_lake"
+    fake_live.mkdir(parents=True)
+    latch = fake_live / "estop.latch"
+    latch.write_text("planted")
     probe = "import run_selfchecks as r, os; print(r._HOME); print(os.path.isdir(r._HOME))"
-    env = {k: v for k, v in os.environ.items() if k != "SNDL_SELFCHECK_HOME"}
+    env = {**os.environ, "SNDL_SELFCHECK_HOME": str(fake_live)}
 
-    def home(extra=None):
+    def home():
         out = subprocess.run(
             [sys.executable, "-c", probe],
             cwd=ROOT,
-            env={**env, **(extra or {})},
+            env=env,
             capture_output=True,
             text=True,
             timeout=120,
             check=True,
-        ).stdout.split()
+        ).stdout.splitlines()
         return out[0], out[1]
 
     (a, a_live), (b, _) = home(), home()
     assert a != b and a_live == "True"
+    assert os.path.normcase(a) != os.path.normcase(str(fake_live)), "the pin must be ignored"
     assert not os.path.isdir(a), "a home the process made must be removed at its exit"
-    pinned = str(tmp_path / "pinned")
-    assert home({"SNDL_SELFCHECK_HOME": pinned})[0] == pinned
-    assert os.path.isdir(pinned), "a pinned home is the caller's: never removed"
+    assert latch.read_text() == "planted"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="only Windows refuses to delete a file held open")
+def test_home_cleanup_reports_what_it_could_not_remove(tmp_path, capsys):
+    # Opus MINOR 3: a straggler holding a handle used to leak the home silently
+    d = tmp_path / "home"
+    d.mkdir()
+    with open(d / "held.bin", "wb") as held:
+        held.write(b"x")
+        rs._remove_home(str(d))
+    assert "could not remove" in capsys.readouterr().err

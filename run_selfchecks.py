@@ -19,6 +19,7 @@ package (src/snn_data_lake/, run as `-m snn_data_lake.<mod>`); RESEARCH = benchm
   python run_selfchecks.py --list   # print the module list, one per line
 """
 
+import atexit
 import contextlib
 import os
 import sys
@@ -41,15 +42,26 @@ import time
 # PER RUNNER PROCESS since 2026-10-19 (it was one fixed %TEMP%\snn_selfchecks_home): the battery runs
 # the self-checks CONCURRENTLY with pytest, and a fixed path let one runner pre-clear the other's
 # E-STOP latch mid-run (Codex closing report, MAJOR 1). Still ONE home for a whole run (all its
-# children share it via _ENV); SNDL_SELFCHECK_HOME pins it explicitly. A home this process made is
-# removed at exit (registered first, so it runs after every check's own atexit handler).
-_HOME = os.environ.get("SNDL_SELFCHECK_HOME") or tempfile.mkdtemp(prefix="snn_selfchecks_home_")
-os.makedirs(_HOME, exist_ok=True)
-if not os.environ.get("SNDL_SELFCHECK_HOME"):
-    import atexit
+# children share it via _ENV). There is deliberately NO env override: a pinned path reaches
+# os.remove(<home>/estop.latch) below without home()'s live-home refusal, so a pin pointed at the
+# operator's lake would clear the real E-STOP latch (Opus closing review, MAJOR 1). The home is
+# removed at exit (registered first, so it runs after every check's own atexit handler), and
+# anything that cannot be removed is reported, never silently leaked (Opus MINOR 3).
+_HOME = tempfile.mkdtemp(prefix="snn_selfchecks_home_")
+
+
+def _remove_home(path=_HOME):
     import shutil
 
-    atexit.register(shutil.rmtree, _HOME, True)
+    left = []
+    shutil.rmtree(path, onexc=lambda _fn, p, exc: left.append(f"{p} ({type(exc).__name__})"))
+    if left:
+        sys.stderr.write(
+            f"run_selfchecks: could not remove {len(left)} path(s) of {path}: {left[:3]}" + chr(10)
+        )
+
+
+atexit.register(_remove_home)  # at import: before any check can register its own
 _ENV = {
     **os.environ,
     "PYTHONUTF8": "1",
