@@ -92,7 +92,7 @@ def test_forward_bit_identical_over_batch_time_grid(kind, b, t):
 
 
 def test_forward_matmul_and_transpose_counts():
-    """Counts, not clocks: 1 (W_in) + 1 (w_rec) per step + 1 (W_out) per step; 3 transposes total."""
+    """Counts, not clocks: 1 (W_in) + 1 (w_rec) + 1 (W_out) per step; 3 transposes total."""
     net, x = make("audio", 0, 5, 15)
     n_mm, n_t = [0], [0]
     mm0, t0 = torch.Tensor.__matmul__, torch.Tensor.t

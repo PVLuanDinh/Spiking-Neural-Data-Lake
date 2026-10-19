@@ -1,4 +1,7 @@
-"""NightlySkills.save writes uncompressed npz; files written by the old savez_compressed call still load."""
+"""NightlySkills.save writes uncompressed npz.
+
+Files written by the old savez_compressed call still load.
+"""
 
 import types
 import zipfile
@@ -51,9 +54,7 @@ def _raw(skills_dir):
 
 def _methods(skills_dir):
     return {
-        zi.compress_type
-        for p in skills_dir.glob("*.npz")
-        for zi in zipfile.ZipFile(p).infolist()
+        zi.compress_type for p in skills_dir.glob("*.npz") for zi in zipfile.ZipFile(p).infolist()
     }
 
 
@@ -87,7 +88,9 @@ def test_save_is_uncompressed_and_round_trips(monkeypatch, tmp_path):
 def test_old_compressed_files_load_and_match_new(monkeypatch, tmp_path):
     a = _built(monkeypatch, tmp_path / "old")
     real = ns.np
-    monkeypatch.setattr(ns, "np", types.SimpleNamespace(**{**vars(real), "savez": real.savez_compressed}))
+    monkeypatch.setattr(
+        ns, "np", types.SimpleNamespace(**{**vars(real), "savez": real.savez_compressed})
+    )
     a.save()
     monkeypatch.setattr(ns, "np", real)
     old = tmp_path / "old" / "skills"

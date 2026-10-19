@@ -434,7 +434,9 @@ def choose_penalty(d, hist_n, hist_k, f, kind, memo=None):
     for g in (h for h in range(hist_n.shape[0]) if h != f):
         ntr, ktr, nte, kte = inner_split(hist_n, hist_k, f, g)
         if frozenset((f, g)) not in memo:
-            th_in = fit_global(d, ntr, ktr, kind)  # N2: the shape never sees the inner-held-out edges
+            th_in = fit_global(
+                d, ntr, ktr, kind
+            )  # N2: the shape never sees the inner-held-out edges
             # once per inner split, not once per penalty
             memo[frozenset((f, g))] = (th_in, delta_table(d, ntr, ktr, th_in, kind))
         th_in, table = memo[frozenset((f, g))]
