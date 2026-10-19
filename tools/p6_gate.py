@@ -1222,6 +1222,9 @@ RUST_BLIND_SPOTS = (
     "a `#[path]`-relocated file keeps the region of its on-disk directory",
     "attribute-style `_native.f` after `from snn_data_lake import _native` names no symbol here "
     "(import_manifest's python_native_refs sees it)",
+    "a crate root (lib.rs / main.rs) belongs to no region, so the BINDING crate's own `use` of a regioned "
+    "module forms no pair and its exports map to no region (Codex B2-fold: keep the binding a thin shim; "
+    "the attribution owed is export -> its Python importer's region)",
     "`use` inside an inline mod resolves from the file's module (native_dormancy._Tree)",
     "a `pub use` re-export met mid-path, or a path revisiting a module already walked, counts the walked chain",
     "a file in no mod tree still counts (an unresolved `#[path]` include must not escape); `reach` follows the "

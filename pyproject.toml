@@ -298,8 +298,8 @@ Homepage = "https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake"
 packages = ["src/snn_data_lake"]
 artifacts = ["src/snn_data_lake/_native.*"]   # gitignored (.gitignore: in-tree built binding) -- shipped anyway
 
-# The hook IS infra.native_build (one build path, P2): `get_build_hook` runs its `main` when this
-# interpreter's extension is absent and tags the wheel for the interpreter (never py3-none-any). No root
+# The hook IS infra.native_build (one build path, P2): `get_build_hook` runs its `main` on every build
+# (a present extension may be stale) and tags the wheel for the interpreter (never py3-none-any). No root
 # hatch_build.py: that would be an ungoverned build under P4c (p4c_ratchet's `<repo root>` zone).
 [tool.hatch.build.targets.wheel.hooks.custom]
 path = "src/snn_data_lake/infra/native_build.py"

@@ -17,7 +17,7 @@ closed to new files.)
 
 This file is ALSO the hatch build hook (`[tool.hatch.build.targets.wheel.hooks.custom] path` names it;
 hatchling calls `get_build_hook`), so `pip install .`, `pip install -e .`, `pip install --target` and
-`python -m build --wheel` run the same `main` when THIS interpreter's extension is absent, and the wheel
+`python -m build --wheel` run the same `main` on EVERY build (a present extension may be stale), and the wheel
 ships it tagged for this interpreter (Codex B2 integrator MAJOR 1: the PFC made `_native` a hard runtime
 dependency that no install path built). No `hatch_build.py` at the repo root: a root `.py` is an
 ungoverned build under P4c (p4c_ratchet's `<repo root>` zone may only fall), and the hook belongs to the
