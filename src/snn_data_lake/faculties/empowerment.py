@@ -40,6 +40,7 @@ class Empowerment:
     """Intrinsic controllability drive over an action-conditioned forward model.
 
     world_model: any object with `.predict(state, action) -> next_state` (state = list of floats).
+`.predict` must be PURE (no RNG, no state): `empowerment` memoizes shared action prefixes per call.
     actions:     the discrete action set the agent can take.
     horizon H:   how many steps ahead the reachable-future set is measured over.
     grid:        quantization step for a "distinguishable" future state (coarser -> fewer cells).

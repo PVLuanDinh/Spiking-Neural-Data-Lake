@@ -558,7 +558,7 @@ def _scan_home_entries(d, live, live_files, seen):
                 _refuse_if_live(real, live, what=f"home entry {e.path!r} (an alias); its target")
             elif e.is_dir(follow_symlinks=False):
                 _scan_home_entries(e.path, live, live_files, seen)
-            elif e.is_file(follow_symlinks=False):
+            elif e.is_file(follow_symlinks=False) and live_files:
                 st_e = os.stat(e.path)  # once per entry, not once per live file
                 if any(os.path.samestat(st_e, st) for st in live_files):
                     raise LiveHomeRefused(
