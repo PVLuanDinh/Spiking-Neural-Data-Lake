@@ -4,7 +4,7 @@
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
-use sndl_core::pfc::{Params, decide_spiking};
+use sndl_core::pfc::{Params, decide_spiking, has_evidence};
 use sndl_core::rng::mt19937::N;
 use sndl_core::rng::pyrandom::{PyRandom, State};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -46,7 +46,8 @@ fn panic_probe(py: Python<'_>, x: i64) -> PyResult<i64> {
 /// `random.Random` stream. `internal` is `random.getstate()[1]` (624 words + position) and comes back in the same
 /// shape for `setstate`, so the Python object's stream continues exactly where the race left it. `ints` =
 /// `(n_dec, n_inh, t_max)`, `floats` = `(md, g_ext, b0, w_plus, w_inh, w_ie, w_cross, trace_decay, theta,
-/// noise_amp, init_v)`, `dec_bias` = `_dec_bias` (at least `n_dec * len(evidence)` entries).
+/// noise_amp, init_v)`, `dec_bias` = `_dec_bias` (at least `n_dec * len(evidence)` entries when there is evidence;
+/// no evidence of any length is `(0, 1)` with no draw and no length check).
 #[pyfunction]
 #[allow(clippy::type_complexity)]
 fn pfc_decide(
@@ -65,7 +66,7 @@ fn pfc_decide(
                 internal.len()
             ));
         }
-        if dec_bias.len() < ints.0 * evidence.len() {
+        if has_evidence(&evidence) && dec_bias.len() < ints.0 * evidence.len() {
             return Err(format!(
                 "dec_bias has {} entries, the race needs n_dec * n_options = {} * {}",
                 dec_bias.len(),

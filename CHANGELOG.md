@@ -22,6 +22,20 @@ before the replay began, so neither the whole old log nor the whole new one. Rep
   before the snapshot (its list is yielded) or after it (the old stamp fails and the disk is read).
 - Wording (Codex NOTE 2): `stale()` never "proved" the file unchanged; it finds the stat and the
   last frame unchanged, and the equal-size in-place residual it cannot see stays stated in its docstring.
+## [Unreleased] -- B2 fold, lane f2-pfc: the PFC decision's rng handoff is one transaction; zero evidence of any length is no race (2026-10-18)
+
+Codex B2 pfc-p2 MAJOR 1 + MINOR 2. Lane commits `cd6cad50..0950d376` on `claude/sndl-f2-pfc-1018`, each
+red-first on base `4e4e9a23`; unverified by any battery (no promotion).
+
+- Fix `PrefrontalExecutive._decide_spiking` losing an rng advance when two threads decide on one executive at
+  once (free-threaded 3.14t): the `getstate` -> `_native.pfc_decide` -> `setstate` handoff now runs under the
+  executive's own lock, so two overlapping decisions leave the two advances the deleted Python body's atomic
+  draws always left. Eight threads of real `deliberate()` calls now end on the same rng state as the sequential
+  run; the unpatched tree did not.
+- Restore `(0, 1)` with no draw for all-zero (or negative/NaN) evidence of ANY length, as the deleted Python body
+  returned before it ever indexed `_dec_bias`; the binding's `dec_bias` length check binds only when the race
+  will run. Positive evidence longer than the option count stays an explicit `RuntimeError` naming the mismatch,
+  with no draw.
 
 ## [Unreleased] -- B1 fold, lane f-instr: replication_guard sees PyO3 replicas registered across files (2026-10-18)
 

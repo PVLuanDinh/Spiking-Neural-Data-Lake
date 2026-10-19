@@ -124,6 +124,7 @@ FOLD DISCLOSURES (panel, 2026-09-01), each measured:
 
 import math
 import random
+import threading
 
 from snn_data_lake import (
     _native,
@@ -285,6 +286,7 @@ class PrefrontalExecutive:
         self.tau_f = tau_f  # facilitation / RETENTION time constant
         self.tau_d = tau_d  # depression / RELEASE (resource-recovery) time constant
         self.rng = random.Random(seed)
+        self._rng_lock = threading.Lock()  # the _decide_spiking handoff is one transaction
         self._stack = []  # goal stack: [[index, drive, Vs, rehearsal-frame], ...] base .. top
         self._wm_spikes = 0  # spikes emitted by the active WM pool on the last maintain()
         self._t = 0.0  # the maintenance clock (one tick per maintain())
@@ -431,28 +433,34 @@ class PrefrontalExecutive:
         THE RACE IS NATIVE (Phase 2 of the Rust port, 2026-10-17): `sndl-core` `pfc::decide_spiking`
         through `_native.pfc_decide`, on THIS instance's `random.Random` stream -- its internal state goes
         in and comes back, so the draws are the ones the deleted Python body made (judged call-for-call
-        and state-for-state by tests/test_native_pfc.py against the oracle recorded from that body)."""
-        version, internal, gauss_next = self.rng.getstate()
-        winner, rt, internal = _native.pfc_decide(
-            evidence,
-            (self._n_dec, self._n_inh, self._t_max),
-            (
-                self._md,
-                self._g_ext,
-                self._b0,
-                self._w_plus,
-                self._w_inh,
-                self._w_ie,
-                self._w_cross,
-                self._trace_decay,
-                self._theta,
-                self._noise_amp,
-                self._init_v,
-            ),
-            self._dec_bias,
-            internal,
-        )
-        self.rng.setstate((version, internal, gauss_next))
+        and state-for-state by tests/test_native_pfc.py against the oracle recorded from that body).
+
+        getstate -> race -> setstate is ONE transaction under `_rng_lock`, the executive's own lock
+        because this instance is the only drawer from `self.rng`: on free-threaded 3.14t two calls that
+        both snapshot before either restores would lose an advance, where the deleted body's draws
+        were atomic `Random` method calls (tests/test_pfc_concurrency.py)."""
+        with self._rng_lock:
+            version, internal, gauss_next = self.rng.getstate()
+            winner, rt, internal = _native.pfc_decide(
+                evidence,
+                (self._n_dec, self._n_inh, self._t_max),
+                (
+                    self._md,
+                    self._g_ext,
+                    self._b0,
+                    self._w_plus,
+                    self._w_inh,
+                    self._w_ie,
+                    self._w_cross,
+                    self._trace_decay,
+                    self._theta,
+                    self._noise_amp,
+                    self._init_v,
+                ),
+                self._dec_bias,
+                internal,
+            )
+            self.rng.setstate((version, internal, gauss_next))
         return winner, rt
 
     def deliberate(self, evidence):
