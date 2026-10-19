@@ -342,7 +342,9 @@ def _profile(n, k, g):
 
 def fit_global(d, n, k, kind="mix"):
     keep = n.sum(1) > 0
-    n, k = n[keep], k[keep]
+    # float64 counts are exact (integers far below 2**53), so the profile is bit-identical and skips the
+    # int64 -> float64 cast of three (cells x bins) temporaries on each of the ~460 evaluations of a fit
+    n, k = n[keep].astype(np.float64), k[keep].astype(np.float64)
 
     def nll(th):
         with np.errstate(over="ignore", under="ignore", invalid="ignore", divide="ignore"):
@@ -387,6 +389,7 @@ def shaped_p(d, ntr, ktr, th, kind, delta=None):
 def delta_table(d, n, k, th, kind):
     """The unpenalised per-cell NLL at every offset in DELTAS: independent of the penalty, so a split computes it
     ONCE and every penalty picks from it (s1)."""
+    n, k = n.astype(np.float64), k.astype(np.float64)  # exact; see fit_global
     return np.stack(
         [-_profile(n, k, shape(d[None, :] * math.exp(-x), th, kind))[1] for x in DELTAS]
     )
@@ -418,15 +421,23 @@ def inner_split(hist_n, hist_k, f, g):
     return ntr, ktr, nin - ntr, kin - ktr
 
 
-def choose_penalty(d, hist_n, hist_k, f, kind):
+def choose_penalty(d, hist_n, hist_k, f, kind, memo=None):
     """Nested folds on the TRAINING folds only: the penalty with the best summed inner held-out LL. Each inner
     fit starts from its OWN training counts (no initialiser from the outer fit, which saw the inner-held-out
-    edges: on a flat objective the initialiser is the answer; amendment (f) F5)."""
+    edges: on a flat objective the initialiser is the answer; amendment (f) F5).
+
+    The inner training counts exclude {f, g} and so are the same set for the split (f, g) and (g, f): `memo`
+    (one dict per histogram set, owned by score_labels) holds that split's fit and table so the pair is
+    fitted once. Both are pure functions of the counts, so a hit is the value a refit would return."""
+    memo = {} if memo is None else memo
     score = dict.fromkeys(PENALTIES, 0.0)
     for g in (h for h in range(hist_n.shape[0]) if h != f):
         ntr, ktr, nte, kte = inner_split(hist_n, hist_k, f, g)
-        th_in = fit_global(d, ntr, ktr, kind)  # N2: the shape never sees the inner-held-out edges
-        table = delta_table(d, ntr, ktr, th_in, kind)  # once per inner split, not once per penalty
+        if frozenset((f, g)) not in memo:
+            th_in = fit_global(d, ntr, ktr, kind)  # N2: the shape never sees the inner-held-out edges
+            # once per inner split, not once per penalty
+            memo[frozenset((f, g))] = (th_in, delta_table(d, ntr, ktr, th_in, kind))
+        th_in, table = memo[frozenset((f, g))]
         for pen in PENALTIES:
             delta = pick_delta(table, pen)
             score[pen] += _ll(shaped_p(d, ntr, ktr, th_in, kind, delta), nte, kte)
@@ -435,11 +446,11 @@ def choose_penalty(d, hist_n, hist_k, f, kind):
 
 def score_labels(d, n, k, labels_n, kind="mix", forms=False):
     """Held-out per label: LL of F, G, P (and the three forms if `forms`), fit on train, scored on test."""
-    out = []
+    out, memo = [], {}
     for f in range(labels_n):
         ntr, ktr, nte, kte = t3.split(n, k, np.arange(n.shape[0]), f)
         th = fit_global(d, ntr, ktr, kind)
-        pen = choose_penalty(d, n, k, f, kind)
+        pen = choose_penalty(d, n, k, f, kind, memo)
         delta = fit_delta(d, ntr, ktr, th, kind, pen)
         rec = {
             "F": flat_ll(ntr, ktr, nte, kte),
