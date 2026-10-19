@@ -44,7 +44,7 @@ durable MEMORY store: no episode, fact or chat record is kept, and no record is 
 from brain_lake.bin. (2) The json summary goes through substrate/home.py's sanctioned STATE route
 (save_state), which is where that module puts this class of blob ("Weights/calibration stay separate
 STATE (save_state), never in the memory lake" -- home.py, verbatim). (3) The learned ARRAYS do NOT use
-that route: <home>/skills/*.npz is written with np.savez_compressed directly, so citing save_state does
+that route: <home>/skills/*.npz is written with np.savez directly, so citing save_state does
 not cover them, and the earlier draft's wording implied it did. That third fact is unchanged from
 before this module's redesign and is left for the owner rather than settled here, because the tree
 settles the same question the other way for grown substrate -- neurogenesis persists fitted weights
@@ -699,7 +699,7 @@ class NightlySkills:
             if isinstance(d, _NightKB):
                 mk, mp, mg, mgv = _rng_state_arrays(d.model.rng)
                 ek, ep, eg, egv = _rng_state_arrays(d.rng)
-                np.savez_compressed(
+                np.savez(
                     tmp,
                     E=d.model.E,
                     R=d.model.R,
@@ -720,7 +720,7 @@ class NightlySkills:
                 )
             else:
                 s = d.slda
-                np.savez_compressed(
+                np.savez(
                     tmp,
                     W=s.W,
                     b=s.b,
@@ -742,7 +742,7 @@ class NightlySkills:
             dids = sorted(self._ow.cents)
             path = os.path.join(sk, "open_world.npz")
             tmp = path + ".tmp.npz"
-            np.savez_compressed(
+            np.savez(
                 tmp,
                 cents=np.array([self._ow.cents[k] for k in dids], dtype=np.float64),
                 dids=np.array(dids, dtype=np.int64),
