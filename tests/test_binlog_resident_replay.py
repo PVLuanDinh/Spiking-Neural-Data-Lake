@@ -1,8 +1,8 @@
 """BinLog.replay() served from the resident copy (Phase 1a, 2026-10-17): the stored objects in
-order and no disk pass while the file is provably unchanged -- and the disk again the moment another
-writer changes it, even when the change keeps the size, the inode or the mtime tick (Codex B1 p1a
-MAJOR 1+2 and two review folds, 2026-10-18). Races are injected at their exact window by
-monkeypatching the I/O call that opens it (open, fsync, replace, replay, the instance's stat)."""
+order and no disk pass while stat + tail frame find the file unchanged -- and the disk again the
+moment another writer changes it, even when the change keeps the size, the inode or the mtime tick
+(Codex B1 p1a MAJOR 1+2 and two review folds, 2026-10-18). Races are injected at their exact window
+by monkeypatching the I/O call that opens it (open, fsync, replace, replay, the instance's stat)."""
 
 import builtins
 import os
@@ -404,3 +404,52 @@ def test_overlapping_rewrites_publish_from_separate_temp_files(tmp_path, monkeyp
     assert len(set(sources)) == 2 and not _leftovers(tmp_path)
     assert list(a.replay()) == [b"AA"] == _disk(p) and not a.stale() and _served_resident(a)
     assert b.stale() and list(b.replay()) == [b"AA"]
+
+
+def test_rewrite_racing_a_resident_replay_is_not_served_the_old_list(tmp_path, monkeypatch):
+    """Codex B2 p1a-fix MAJOR 1: replay() took the resident list, then stale() judged whatever
+    generation was current. A rewrite landing in that window swapped BOTH the list and the stamp, so
+    stale() blessed the NEW pair and replay yielded the OLD list -- records already gone before this
+    replay began (b's rewrite below), i.e. neither the whole old log nor the whole new one. The race
+    is injected at stale()'s first I/O (the instance's stat); the rewrite runs on another thread so
+    a validation that held `_lock` would show up as a timeout, not a pass."""
+    a = BinLog(p := str(tmp_path / "lake.bin"))
+    a.extend([b"AAAA", b"ZZZZ"])
+    BinLog(p).rewrite([b"BBBB", b"ZZZZ"])  # AAAA is gone from the log before a's replay starts
+    real = a._fingerprint
+    fired = []
+
+    def racing_fingerprint():  # immediately before replay's validity check
+        if not fired:
+            fired.append(True)
+            t = threading.Thread(target=a.rewrite, args=([b"CCCC", b"ZZZZ"],))
+            t.start()
+            t.join(timeout=5)
+            assert not t.is_alive(), "rewrite blocked: replay validates while holding the lock"
+        return real()
+
+    monkeypatch.setattr(a, "_fingerprint", racing_fingerprint)
+    got = list(a.replay())
+    assert fired
+    assert got == [b"CCCC", b"ZZZZ"] == _disk(p), got  # never [AAAA, ZZZZ]: that log is gone
+    assert list(a.replay()) == [b"CCCC", b"ZZZZ"] and _served_resident(a)  # control: current again
+
+
+def test_replay_is_served_resident_under_the_callers_held_lock(tmp_path):
+    """`substrate/home.load_episodes` freezes writers with `with log._lock:` and then calls
+    `log.replay()` inside that block. replay() now takes the same lock for its snapshot, so the lock
+    must be re-entrant or every such caller deadlocks (the first fold of B2 p1a-fix hung the home
+    tests for 10 min). Runs on a thread: a regression reads as a failed join, never a hung suite."""
+    a = BinLog(str(tmp_path / "lake.bin"))
+    a.extend([b"A", b"Z"])
+    out = []
+
+    def under_lock():
+        with a._lock:
+            out.append(list(a.replay()))
+
+    t = threading.Thread(target=under_lock, daemon=True)
+    t.start()
+    t.join(timeout=5)
+    assert not t.is_alive(), "replay() deadlocked on the caller's held lock"
+    assert out == [[b"A", b"Z"]] and _served_resident(a)
