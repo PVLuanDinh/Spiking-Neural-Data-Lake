@@ -24,6 +24,10 @@ from snn_data_lake.instruments import paired_contrast as pc
 from snn_data_lake.instruments import pool_selection as ps
 from snn_data_lake.reservoir import recurrent_pool as rp
 
+# under xdist one worker owns the family, so its module fixtures are built once
+pytestmark = pytest.mark.xdist_group("carried_state")
+
+
 BLIND = "blind harness: oracle incomplete"
 
 

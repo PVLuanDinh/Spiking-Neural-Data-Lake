@@ -31,6 +31,10 @@ from snn_data_lake.instruments import memory_diagnostic as md
 from snn_data_lake.instruments import pool_selection as ps
 from snn_data_lake.reservoir import recurrent_pool as rp
 
+# under xdist one worker owns the family, so its module fixtures are built once
+pytestmark = pytest.mark.xdist_group("carried_state")
+
+
 SCALE = {"window": 16, "b": 16, "percepts": 64, "kicks": 48}
 LIVE = (300, 301, 302)
 RB6 = 4243  # exposed; never 6000

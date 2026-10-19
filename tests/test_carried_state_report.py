@@ -22,6 +22,10 @@ from snn_data_lake.instruments import memory_diagnostic as md
 from snn_data_lake.instruments import pool_selection as ps
 from snn_data_lake.reservoir import recurrent_pool as rp
 
+# under xdist one worker owns the family, so its module fixtures are built once
+pytestmark = pytest.mark.xdist_group("carried_state")
+
+
 SEEDS = [str(seed) for seed in cs.LIVE_SEEDS]
 _RAW = [((i * 7) % 11 - 5) / 500 for i in range(31)]
 JITTER = [x - statistics.fmean(_RAW) for x in _RAW]  # zero-mean, non-degenerate (a symmetric null)

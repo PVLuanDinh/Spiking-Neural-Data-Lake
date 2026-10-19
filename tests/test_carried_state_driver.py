@@ -28,6 +28,10 @@ from snn_data_lake.instruments import inseparable_mapping as im
 from snn_data_lake.instruments import memory_diagnostic as md
 from snn_data_lake.instruments import pool_selection as ps
 
+# under xdist one worker owns the family, so its module fixtures are built once
+pytestmark = pytest.mark.xdist_group("carried_state")
+
+
 REST = (203, 204, 205, 206, 207)  # recorded with the live seeds after seed 100 (2.13)
 
 
