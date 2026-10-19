@@ -166,7 +166,9 @@ def _mini_plan():
 
 def test_planted_stage_holds_and_the_gate_recomputes_it(pop):
     plan = _mini_plan()
-    rec = pb.run_planted(pop, plan=plan, n_edges=1200)
+    # workers=4: the units are independent and the threaded record is byte-equal to the serial one (proved in
+    # test_the_threaded_planted_stage_is_byte_equal_to_the_serial_one); this test is about the gate, not the path
+    rec = pb.run_planted(pop, plan=plan, n_edges=1200, workers=4)
     assert rec["all_rows_hold"], {k: v.get("reading") for k, v in rec["rows"].items()}
     assert pb.validate_planted(rec, pop, plan, 1200) == rec["bands"]
     bad = dict(rec, bands={**rec["bands"], "neuron": {c: 0.0 for c in pb.CONTRASTS}})
