@@ -64,10 +64,15 @@ def main(argv=None):
     suffix = sysconfig.get_config_var("EXT_SUFFIX")  # .cp314t-win_amd64.pyd / .cpython-314t-...so
     with zipfile.ZipFile(wheel) as z:
         (name,) = [n for n in z.namelist() if pathlib.PurePosixPath(n).name == "_native" + suffix]
-        for stale in PKG.glob("_native.*"):
-            stale.unlink()  # one extension in the package, never two interpreters' worth
         target = PKG / pathlib.PurePosixPath(name).name
-        target.write_bytes(z.read(name))
+        for stale in PKG.glob("_native.*"):
+            if stale != target:
+                stale.unlink()  # one extension in the package, never two interpreters' worth
+        data = z.read(name)
+        # Identical bytes are left in place: Windows refuses to overwrite a LOADED .pyd, and a process that
+        # already imported the extension (run_selfchecks in-process, a live daemon) rebuilds to the same bytes.
+        if not (target.exists() and target.read_bytes() == data):
+            target.write_bytes(data)
     print(f"native: {wheel.name} ({tag}) -> {target.relative_to(ROOT)}")
     return 0
 
