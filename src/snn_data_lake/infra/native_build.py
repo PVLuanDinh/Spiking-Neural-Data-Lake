@@ -14,6 +14,14 @@ would land `snn_data_lake/_native.pyd` in a site-packages directory that `src/sn
 usage: python -m snn_data_lake.infra.native_build [--maturin PATH] [--python PATH] [--out DIR]
 (lives in the governed package, not tools/: P4c, every build is governed; the p4c_ratchet tools zone is
 closed to new files.)
+
+This file is ALSO the hatch build hook (`[tool.hatch.build.targets.wheel.hooks.custom] path` names it;
+hatchling calls `get_build_hook`), so `pip install .`, `pip install -e .`, `pip install --target` and
+`python -m build --wheel` run the same `main` when THIS interpreter's extension is absent, and the wheel
+ships it tagged for this interpreter (Codex B2 integrator MAJOR 1: the PFC made `_native` a hard runtime
+dependency that no install path built). No `hatch_build.py` at the repo root: a root `.py` is an
+ungoverned build under P4c (p4c_ratchet's `<repo root>` zone may only fall), and the hook belongs to the
+one governed build module anyway.
 """
 
 import argparse
@@ -62,6 +70,39 @@ def main(argv=None):
         target.write_bytes(z.read(name))
     print(f"native: {wheel.name} ({tag}) -> {target.relative_to(ROOT)}")
     return 0
+
+
+# distinct-from: infra/brain_native_selfbuild.py -- DataIngestSource is a self-build PROPOSAL stub (learned
+# changes from ingested data); nothing below proposes anything, it packages the compiled binding.
+# distinct-from: reservoir/recurrent_pool.py, faculties/theta_gamma_code.py -- encoder transport and LIF
+# population builders: "build" there is a network, here a wheel.
+# distinct-from: reasoning/ar_spiking_lm_serve.py -- build_random_artifact writes a test serve artifact.
+def placed():
+    """THIS interpreter's extension inside the package (built or not): the suffix is the key, so another
+    interpreter's `_native.*` never counts as present."""
+    return PKG / ("_native" + sysconfig.get_config_var("EXT_SUFFIX"))
+
+
+def hook_initialize(build_data, build=None):
+    """The build hook's body: build+place the extension when absent, and stop the wheel claiming
+    `py3-none-any` -- a .pyd in a pure wheel installs anywhere and imports nowhere else. `build` is
+    injected by tests/test_hatch_build.py; the hook passes `main`."""
+    if not placed().exists():
+        (build or main)([])
+    build_data["pure_python"] = False
+    build_data["infer_tag"] = True
+
+
+def get_build_hook():
+    """hatchling's custom-hook finder. Imported lazily: hatchling lives in the isolated build env (with
+    maturin, both in [build-system].requires), never in .venv-lake."""
+    from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+
+    class NativeBuildHook(BuildHookInterface):
+        def initialize(self, version, build_data):
+            hook_initialize(build_data)
+
+    return NativeBuildHook
 
 
 if __name__ == "__main__":

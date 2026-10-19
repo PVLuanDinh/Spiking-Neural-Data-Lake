@@ -18,6 +18,12 @@ If you just want to click and use the app, grab the **Standalone app** zip — u
 
 ### Requirements
 - **Python 3.11, 3.12, or 3.13** on your PATH. Get it from <https://www.python.org/downloads/> (on Windows, tick *"Add python.exe to PATH"*).
+- **A Rust toolchain** (`rustup` from <https://rustup.rs>; `rust-toolchain.toml` at the repo root pins the
+  compiler version, which rustup installs on first use). `pip install .` (and `-e .`, and a wheel build)
+  compiles the `snn_data_lake._native` extension from `native/sndl-python` through maturin **at install
+  time** -- the prefrontal kernel is a hard runtime dependency, so an install without the toolchain fails
+  at the build step rather than later at import. To rebuild it in place after a Rust change:
+  `python -m snn_data_lake.infra.native_build`.
 - Network access (the installer downloads the optional dependencies).
 - Disk: a few hundred MB for the base extras; **~2 GB more** if the `gpu` (torch) stack installs.
 
