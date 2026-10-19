@@ -29,6 +29,12 @@ from snn_data_lake.faculties.interoceptive_integration import BODY_CHANNELS
 from snn_data_lake.faculties.region_coherence import RegionCoherence
 
 TICKS = 40
+# The OUTCOME A/B runs longer (2026-10-19): on a HERMETIC home the insula moves the
+# threshold from tick 4 but first changes WHAT WINS at tick 84 (winner differs on 28 of 200
+# ticks; deterministic, seed 0). At 40 ticks that assert had only passed on a NORD_HOME leaked
+# from an earlier test in serial order -- with a module home under pytest -n it read thr_diff 35,
+# outcome diff 0. TICKS stays 40 for the tests calibrated on it (distinct-value bar TICKS // 2).
+OUTCOME_TICKS = 200
 GAIN = RegionCoherence.IGNITION_GAIN
 CTX = dict(visual=0.55, temperature=24.0, audio=0.3, distance=0.6)
 
@@ -116,7 +122,7 @@ def test_ignition_bias_default_is_the_pre_T039f_call():
 # ==================================================================================================
 # The live brain. One construction per arm, module-scoped, because ticking is the expensive part.
 # ==================================================================================================
-def _run(neuter):
+def _run(neuter, ticks=TICKS):
     """Tick a real brain and record what the ignition path did. `neuter` removes the insula --
     the A/B whose difference IS the attribution."""
     from snn_data_lake.engine.brain import make_brain
@@ -135,7 +141,7 @@ def _run(neuter):
 
         arm.intero.sense = _spy
     rows = []
-    for _ in range(TICKS):
+    for _ in range(ticks):
         b.tick()
         base = b._reentrant.base_ignition_threshold
         c = float(getattr(b, "_region_coherence_val", 0.0) or 0.0)
@@ -174,6 +180,16 @@ def live():
 @pytest.fixture(scope="module")
 def neutered():
     return _run(neuter=True)
+
+
+@pytest.fixture(scope="module")
+def live_long():
+    return _run(neuter=False, ticks=OUTCOME_TICKS)
+
+
+@pytest.fixture(scope="module")
+def neutered_long():
+    return _run(neuter=True, ticks=OUTCOME_TICKS)
 
 
 def test_the_accessor_reads_the_cache_and_never_takes_a_second_draw(live):
@@ -260,14 +276,14 @@ def test_a_CONSTANT_salience_control_does_not_reproduce_the_live_threshold_trace
     )
 
 
-def test_neutering_the_insula_changes_the_brains_own_output(live, neutered):
+def test_neutering_the_insula_changes_the_brains_own_output(live_long, neutered_long):
     """PER-ITEM ATTRIBUTION, and the measurement the exemption row bound its retirement to. Two
     real runs at the same seed differing only in whether the insula exists. If the brain's own
     ignition record is identical, the wire changed nothing and P8 requires deleting it rather than
     reporting it."""
-    live_rows, _ = live
-    neut_rows, _ = neutered
-    assert len(live_rows) == len(neut_rows) == TICKS
+    live_rows, _ = live_long
+    neut_rows, _ = neutered_long
+    assert len(live_rows) == len(neut_rows) == OUTCOME_TICKS
 
     neut_sal = [r["salience"] for r in neut_rows]
     assert set(round(x, 9) for x in neut_sal) == {0.0}, (
