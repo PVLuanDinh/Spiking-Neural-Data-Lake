@@ -925,7 +925,10 @@ def run_one_in_process(mod, home=None):
             runpy.run_module(f"snn_data_lake.{mod}", run_name="__main__")
         return True, buf.getvalue()
     except SystemExit as e:  # a module may sys.exit(0) on success
-        return (e.code in (0, None)), buf.getvalue()
+        # exactly what a real interpreter treats as success: None or an int/bool zero. SystemExit(0.0)
+        # exits 1 in a real process (it prints "0.0"), so it must FAIL here too (Codex MAJOR 1).
+        code = e.code
+        return (code is None or (type(code) in (int, bool) and code == 0)), buf.getvalue()
     except BaseException as e:  # AssertionError / any self-check failure
         return False, f"{buf.getvalue()}\n{type(e).__name__}: {e}"
     finally:
@@ -963,35 +966,49 @@ def run_all_in_process(emit=print):
 
     mods = CORE + (TORCH_GATED if _TORCH else [])
     failed = []
-    with _gate_home():
-        if latch and os.path.exists(latch):
-            os.remove(latch)
-            emit("GATE-HOME E-STOP SIDECAR from a previous run cleared before this in-process run")
-        cwd = os.getcwd()
-        for m in mods:
-            # one scratch dir per check: its cwd AND its fresh NORD_HOME (as the retired pytest copy
-            # had via conftest's _hermetic_home) -- no state carries between checks or across runs,
-            # and a concurrent runner's shared _HOME is never touched. Cross-module PROCESS-global
-            # leaks (env, RNG, singletons) are still visible: every check shares this interpreter.
-            scratch = tempfile.mkdtemp(prefix="selfcheck-")
-            home = os.path.join(scratch, "home")
-            os.makedirs(home)
-            os.chdir(scratch)
-            try:
-                w0 = time.time()
-                ok, out = run_one_in_process(m, home=home)
-                w1 = time.time()
-                if ESTOP_LATCH:
-                    _sweep_latch(
-                        os.path.join(home, ESTOP_LATCH), m, w0, w1, latch_left, latch_stray
-                    )
-            finally:
-                os.chdir(cwd)
-                shutil.rmtree(scratch, ignore_errors=True)
-            emit(f"{'PASS' if ok else 'FAIL'}  {m}")
-            if not ok:
-                failed.append(m)
-                emit(out[-8000:])
+    # home()'s live-lake tripwire, armed for the whole in-process run (Codex re-review MAJOR 2): a check
+    # that pops NORD_HOME and calls home() is REFUSED instead of falling back to ~/.snn_data_lake --
+    # the guard the retired pytest copy had through PYTEST_CURRENT_TEST.
+    prev_guard = os.environ.get("SNDL_LIVE_HOME_GUARD")
+    os.environ["SNDL_LIVE_HOME_GUARD"] = "1"
+    try:
+        with _gate_home():
+            if latch and os.path.exists(latch):
+                os.remove(latch)
+                emit(
+                    "GATE-HOME E-STOP SIDECAR from a previous run cleared before this in-process run"
+                )
+            cwd = os.getcwd()
+            for m in mods:
+                # one scratch dir per check: its cwd AND its fresh NORD_HOME (as the retired pytest copy
+                # had via conftest's _hermetic_home) -- no home state carries between checks or across
+                # runs. Between checks (and for stragglers) NORD_HOME still points at the shared _HOME
+                # span, and its stale E-STOP latch is pre-cleared there. Cross-module PROCESS-global
+                # leaks (env, RNG, singletons) stay visible: every check shares this interpreter.
+                scratch = tempfile.mkdtemp(prefix="selfcheck-")
+                home = os.path.join(scratch, "home")
+                os.makedirs(home)
+                os.chdir(scratch)
+                try:
+                    w0 = time.time()
+                    ok, out = run_one_in_process(m, home=home)
+                    w1 = time.time()
+                    if ESTOP_LATCH:
+                        _sweep_latch(
+                            os.path.join(home, ESTOP_LATCH), m, w0, w1, latch_left, latch_stray
+                        )
+                finally:
+                    os.chdir(cwd)
+                    shutil.rmtree(scratch, ignore_errors=True)
+                emit(f"{'PASS' if ok else 'FAIL'}  {m}")
+                if not ok:
+                    failed.append(m)
+                    emit(out[-8000:])
+    finally:
+        if prev_guard is None:
+            os.environ.pop("SNDL_LIVE_HOME_GUARD", None)
+        else:
+            os.environ["SNDL_LIVE_HOME_GUARD"] = prev_guard
     emit("=" * 56)
     emit(
         f"{len(mods) - len(failed)}/{len(mods)} core self-checks passed (in-process)"

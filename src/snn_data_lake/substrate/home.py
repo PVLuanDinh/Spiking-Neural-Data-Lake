@@ -368,12 +368,17 @@ def home():
     Pytest tripwire (owner 2026-10-06, after the 15:42 live-lake write): while a test RUNS
     (`PYTEST_CURRENT_TEST` is set -- pytest sets it per test phase, and monkeypatch.undo() cannot
     remove it), the live home is refused. R2's test undid conftest's hermetic NORD_HOME mid-test and a
-    persisting Brain appended to the operator's lake; now that path raises LiveHomeRefused instead."""
-    under_test = bool(os.environ.get("PYTEST_CURRENT_TEST"))
+    persisting Brain appended to the operator's lake; now that path raises LiveHomeRefused instead.
+    `SNDL_LIVE_HOME_GUARD` arms the same tripwire outside pytest: run_selfchecks' in-process battery
+    sets it (owner 2026-10-19 option A moved the in-process self-checks out of pytest; Codex re-review
+    MAJOR 2 proved a check that pops NORD_HOME would otherwise reach the live lake)."""
+    under_test = bool(
+        os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("SNDL_LIVE_HOME_GUARD")
+    )
     d = os.environ.get("NORD_HOME")
     if under_test and not d:
         raise LiveHomeRefused(
-            "home refused (unset under pytest): NORD_HOME is gone, so home() would be the live lake"
+            "home refused (unset under pytest/guard): NORD_HOME is gone, so home() would be the live lake"
         )
     d = d or _default_live_home()
     if under_test:  # panel: refuse BEFORE creating, else a refused home is made inside the live one
