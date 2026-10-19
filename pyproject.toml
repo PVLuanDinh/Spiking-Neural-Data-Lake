@@ -92,7 +92,10 @@
 # Brian2 reference runs in an isolated subprocess and the parent brain remains free-threaded. Torch
 # remains core because it is still the tensor/autograd engine.
 [build-system]
-requires = ["hatchling"]
+# maturin ADDED 2026-10-18 (f2-pkg, Codex B2 MAJOR 1): the wheel hook below builds snn_data_lake._native
+# (native/sndl-python, a HARD runtime dependency of the PFC) inside the isolated build env, so every
+# install path produces an importable extension. The Rust toolchain is a host requirement (docs/INSTALL.md).
+requires = ["hatchling", "maturin>=1.15,<2"]
 build-backend = "hatchling.build"
 
 [project]
@@ -293,6 +296,13 @@ Homepage = "https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/snn_data_lake"]
+artifacts = ["src/snn_data_lake/_native.*"]   # gitignored (.gitignore: in-tree built binding) -- shipped anyway
+
+# The hook IS infra.native_build (one build path, P2): `get_build_hook` runs its `main` when this
+# interpreter's extension is absent and tags the wheel for the interpreter (never py3-none-any). No root
+# hatch_build.py: that would be an ungoverned build under P4c (p4c_ratchet's `<repo root>` zone).
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "src/snn_data_lake/infra/native_build.py"
 
 [tool.hatch.metadata]
 # The [genn] extra is a PEP 508 direct reference (pygenn is not on PyPI -- see the extra's
