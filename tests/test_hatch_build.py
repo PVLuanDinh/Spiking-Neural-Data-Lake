@@ -2,7 +2,7 @@
 `snn_data_lake._native` became a hard runtime dependency of the PFC, yet `pip install .` never
 built it and the extension is gitignored, so an ordinary install imported nothing). pyproject's
 custom wheel hook must name that module (ONE build path, P2 -- the hook does not fork
-native_build's logic), the hook body must build only when THIS interpreter's extension is absent,
+native_build's logic), the hook body must build EVERY time (an existing extension may be stale),
 and the wheel must stop claiming `py3-none-any` once it carries a compiled extension (`infer_tag`
 + non-pure: a .pyd in a pure wheel installs anywhere and imports nowhere else).
 
@@ -11,6 +11,7 @@ needs the Rust toolchain and ~12 s of maturin. Run: pytest tests/test_hatch_buil
 """
 
 import pathlib
+import sysconfig
 import tomllib
 
 from snn_data_lake.infra import native_build as nb
@@ -27,11 +28,12 @@ def test_pyproject_wheel_hook_is_native_build():
     assert "src/snn_data_lake/_native.*" in WHEEL["artifacts"]  # gitignored, shipped anyway
 
 
-def test_hook_builds_only_when_this_interpreters_extension_is_absent(tmp_path, monkeypatch):
+def test_hook_rebuilds_even_when_an_extension_is_present(tmp_path, monkeypatch):
     monkeypatch.setattr(nb, "PKG", tmp_path)
     calls, data = [], {}
     nb.hook_initialize(data, build=calls.append)
     assert calls == [[]] and data == {"pure_python": False, "infer_tag": True}
-    nb.placed().touch()  # another interpreter's _native.* would NOT count: the suffix is the key
+    # THIS interpreter's extension, present and possibly stale, proves nothing about its Rust source
+    (tmp_path / ("_native" + sysconfig.get_config_var("EXT_SUFFIX"))).touch()
     nb.hook_initialize(data, build=calls.append)
-    assert calls == [[]], "rebuilt although this interpreter's extension is present"
+    assert calls == [[], []], "skipped the build because an extension file exists (stale ship)"

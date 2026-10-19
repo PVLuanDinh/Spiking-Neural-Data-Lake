@@ -82,18 +82,13 @@ def main(argv=None):
 # distinct-from: reservoir/recurrent_pool.py, faculties/theta_gamma_code.py -- encoder transport and LIF
 # population builders: "build" there is a network, here a wheel.
 # distinct-from: reasoning/ar_spiking_lm_serve.py -- build_random_artifact writes a test serve artifact.
-def placed():
-    """THIS interpreter's extension inside the package (built or not): the suffix is the key, so another
-    interpreter's `_native.*` never counts as present."""
-    return PKG / ("_native" + sysconfig.get_config_var("EXT_SUFFIX"))
-
-
 def hook_initialize(build_data, build=None):
-    """The build hook's body: build+place the extension when absent, and stop the wheel claiming
-    `py3-none-any` -- a .pyd in a pure wheel installs anywhere and imports nowhere else. `build` is
-    injected by tests/test_hatch_build.py; the hook passes `main`."""
-    if not placed().exists():
-        (build or main)([])
+    """The build hook's body: ALWAYS build+place the extension (an existing file proves nothing about
+    the Rust source it came from -- Codex B2-fold MAJOR: a stale .pyd shipped; cargo no-ops when fresh
+    and `main` leaves identical bytes in place), and stop the wheel claiming `py3-none-any` -- a .pyd in
+    a pure wheel installs anywhere and imports nowhere else. `build` is injected by
+    tests/test_hatch_build.py; the hook passes `main`."""
+    (build or main)([])
     build_data["pure_python"] = False
     build_data["infer_tag"] = True
 
