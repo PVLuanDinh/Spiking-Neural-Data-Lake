@@ -65,11 +65,21 @@ class Empowerment:
             seqs.add(tuple(self.rng.choice(self.A) for _ in range(self.H)))
         return sorted(seqs)
 
-    def _roll(self, z0, seq):
-        """Roll an action sequence forward through the model from state z0 -> terminal state."""
+    def _roll(self, z0, seq, memo=None):
+        """Roll an action sequence forward through the model from state z0 -> terminal state.
+
+        `memo` (one z0 only) maps an action-prefix to the state it reaches, so sequences that share a
+        prefix share its `predict` calls. `predict` is a pure function of (state, action) for a fixed
+        model, so the terminal state is bit-identical; only the repeated calls are skipped."""
         z = z0
-        for a in seq:
-            z = self.wm.predict(z, a)
+        for k, a in enumerate(seq, 1):
+            if memo is None:
+                z = self.wm.predict(z, a)
+                continue
+            key = tuple(seq[:k])
+            if key not in memo:
+                memo[key] = self.wm.predict(z, a)
+            z = memo[key]
         return z
 
     def _cell(self, z):
@@ -80,7 +90,8 @@ class Empowerment:
 
     def empowerment(self, z0):
         """Bits of DISTINGUISHABLE future the agent controls from z0 = log2(#reachable grid cells)."""
-        cells = {self._cell(self._roll(z0, s)) for s in self._seqs()}
+        memo = {}  # action-prefix -> state, for this z0 only
+        cells = {self._cell(self._roll(z0, s, memo)) for s in self._seqs()}
         return math.log2(len(cells)) if cells else 0.0
 
     def reward(self, z_before, z_after):
