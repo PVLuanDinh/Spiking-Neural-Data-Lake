@@ -122,5 +122,10 @@ def pytest_collection_modifyitems(items):
         if item.get_closest_marker("xdist_group") is not None:
             continue
         defs = getattr(getattr(item, "_fixtureinfo", None), "name2fixturedefs", {})
-        if any(fd[-1].scope == "module" for fd in defs.values()):
+        # _hermetic_module_home is autouse + module-scoped but costs one mktemp per worker;
+        # counting it grouped EVERY module onto one worker (file-level split, 2026-10-19).
+        if any(
+            fd[-1].scope == "module" and name != "_hermetic_module_home"
+            for name, fd in defs.items()
+        ):
             item.add_marker(pytest.mark.xdist_group(item.module.__name__))
