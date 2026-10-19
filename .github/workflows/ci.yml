@@ -73,6 +73,12 @@ jobs:
       # dependency red; changing either equation is the parity red.
       - name: Brian2 reference simulator agrees with the Torch training bridge
         run: python -m snn_data_lake.growth.brian2_backend
+      # B2 (Phase 2 PFC kernel): snn_data_lake._native is a HARD build dependency -- the Python PFC body is
+      # deleted -- so the extension is built and placed in the package before anything imports the brain.
+      - name: Build the native extension into the package (wheel TAG asserted cp314t)
+        run: |
+          python -m pip install "maturin>=1.15,<2"
+          python -m snn_data_lake.infra.native_build
       - name: Run every self-check with the full dependency set
         run: python run_selfchecks.py       # canonical module list lives in run_selfchecks.py
       # specs/022 T001: PERMANENTLY report-only on CI ("CI never hosts performance claims",
@@ -444,6 +450,8 @@ jobs:
       # P8 mutants) run here, on the pinned toolchain, before the Python suite.
       - name: cargo test (native workspace)
         run: cargo test --manifest-path native/Cargo.toml
+      - name: Build the native extension into the package (maturin from the [dev] extra)
+        run: python -m snn_data_lake.infra.native_build
       - run: pytest   # addopts in pyproject run --cov with a >=70% gate
 
   # Release audit (specs/021, FR-014): every push to main gets audited -- --certify runs every
