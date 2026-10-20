@@ -559,10 +559,31 @@ def test_sign_violating_projection_admit_refusal_is_not_an_immortal_event():
         assert _fresh_process_fault_phase(brain, private) is None
 
 
+def _module_runs_whole(config):
+    """True when this module's tests all run in this process, in collection order: serially, or
+    on an xdist worker whose controller kept modules together. A worker's own config reports
+    dist='no' whatever the controller used, so read the controller's argv (xdist workerinput)."""
+    wi = getattr(config, "workerinput", None)
+    if wi is None:
+        return True
+    argv = list(wi.get("mainargv", ())) + os.environ.get("PYTEST_ADDOPTS", "").split()
+    mode = "load"  # xdist's default under -n
+    for a, b in zip(argv, [*argv[1:], ""], strict=True):
+        if a == "--dist":
+            mode = b
+        elif a.startswith("--dist="):
+            mode = a.split("=", 1)[1]
+    return mode in ("loadgroup", "loadscope", "loadfile")
+
+
 def test_no_g9_test_leaves_its_home_behind(_post_test_homes, request):
-    # an empty record is legitimate only when no earlier g9 test was selected (run alone / -k);
-    # a skip here would hide a broken recorder (Opus n5; the isolation sibling's pattern)
+    # an empty record is legitimate only when no earlier g9 test ran before this one IN THIS
+    # PROCESS; a skip here would hide a broken recorder (Opus n5). The collection order is that
+    # evidence only when the module runs whole on one worker: serially, or under an xdist mode
+    # that keeps a module together (the battery and CI use loadgroup, and conftest groups this
+    # module). Under plain `-n` (load) its tests can split across workers, so no earlier test is
+    # assumed there (Opus fold re-review m1: that was a false red, never a false green).
     mine = [i for i in request.session.items if i.module is request.module]
-    earlier = mine[: mine.index(request.node)]
+    earlier = mine[: mine.index(request.node)] if _module_runs_whole(request.config) else []
     assert _post_test_homes.homes or not earlier, "recorder saw none of the earlier g9 tests"
     assert set(_post_test_homes.homes) <= {_post_test_homes.module_home}, _post_test_homes.homes
