@@ -1040,7 +1040,7 @@ def _rearm_guard():
     os.environ["NORD_HOME"] = _HOME
 
 
-def run_all_in_process(emit=print):
+def run_all_in_process(emit=print, modules=None):
     """Every CORE (+ TORCH_GATED when torch imports) module's self-check, in-process, each in its own
     temp working directory (so a check's ./data writes never land in the checkout). True iff all
     passed. See run_one_in_process. Owner 2026-10-19 (option A): this is the battery's ONE self-check
@@ -1068,7 +1068,7 @@ def run_all_in_process(emit=print):
     latch_left, latch_stray = [], []
     import tempfile
 
-    mods = CORE + (TORCH_GATED if _TORCH else [])
+    mods = CORE + (TORCH_GATED if _TORCH else []) if modules is None else list(modules)
     failed = []
     # home()'s live-lake tripwire, armed for the whole in-process run (Codex re-review MAJOR 2): a check
     # that pops NORD_HOME and calls home() is REFUSED instead of falling back to ~/.snn_data_lake --
@@ -1129,30 +1129,65 @@ def run_all_in_process(emit=print):
     return not failed
 
 
-def battery_partition():
-    """(in-process, subprocess) module lists for --battery: together exactly MODULES, disjoint."""
+# CORE self-checks whose own timed measurement NOISE-REFUSES under parallel load. The battery runs the
+# self-checks concurrently with pytest; these run AFTER both finish, serially (`--timing-only`), while
+# `--battery --defer-timing` runs everything else. The union of the two runs is exactly `--battery`.
+TIMING_DEFERRED = ["gates.amdahl_gate"]
+
+
+def battery_partition(defer_timing=False, timing_only=False):
+    """(in-process, subprocess) module lists for --battery: together exactly MODULES, disjoint.
+
+    defer_timing drops TIMING_DEFERRED from both halves; timing_only keeps ONLY TIMING_DEFERRED, in the
+    in-process half (the subprocess half is then empty). A TIMING_DEFERRED entry outside the
+    in-process set would be silently dropped by timing_only, so that raises instead."""
     in_proc = CORE + (TORCH_GATED if _TORCH else [])
-    return in_proc, [m for m in MODULES if m not in set(in_proc)]
+    rest = [m for m in MODULES if m not in set(in_proc)]
+    stray = [m for m in TIMING_DEFERRED if m not in in_proc]
+    if stray:
+        raise ValueError(f"TIMING_DEFERRED entries not in the in-process set: {stray}")
+    if timing_only:
+        return [m for m in in_proc if m in TIMING_DEFERRED], []
+    if defer_timing:
+        in_proc = [m for m in in_proc if m not in TIMING_DEFERRED]
+    return in_proc, rest
 
 
-if __name__ == "__main__":
-    if "--list" in sys.argv:
+def main(argv=None):
+    """The CLI dispatch, returning the exit code (a function so the flag wiring is testable)."""
+    argv = sys.argv if argv is None else argv
+    if "--list" in argv:
         print("\n".join(MODULES))
-        sys.exit(0)
-    if "--in-process" in sys.argv:
+        return 0
+    if ("--defer-timing" in argv and "--battery" not in argv) or (
+        "--defer-timing" in argv and "--timing-only" in argv
+    ):
+        sys.stderr.write("run_selfchecks: --defer-timing goes with --battery only" + chr(10))
+        return 2
+    if "--timing-only" in argv:
+        # the TIMING_DEFERRED half of --battery: in-process, same guard/home/latch discipline
+        os.environ["NORD_HOME"] = _HOME
+        return 0 if run_all_in_process(modules=battery_partition(timing_only=True)[0]) else 1
+    if "--in-process" in argv:
         # PROCESS-scope isolation: atexit handlers registered by in-process checks fire after
         # every context manager has restored, so the env must still point at the gate home
         # when they run. This process exits right after, so no restore is owed.
         os.environ["NORD_HOME"] = _HOME
-        sys.exit(0 if run_all_in_process() else 1)
-    if "--battery" in sys.argv:
+        return 0 if run_all_in_process() else 1
+    if "--battery" in argv:
         # Owner 2026-10-19 option A, as the battery's ONE self-check stage: CORE + TORCH_GATED once,
         # in-process (cross-module leak detector, coverage, the frozen-exe runpy path); every OTHER
         # MODULES tier (RESEARCH, NENGO_GATED, TRAIN_GATED -- they need the repo-root cwd and were
         # never in the in-process set) once as subprocesses; then all TOOLS_GATES. Nothing twice,
-        # nothing dropped (Codex closing report on the fold, MAJORs 1+2).
+        # nothing dropped (Codex closing report on the fold, MAJORs 1+2). --defer-timing leaves
+        # TIMING_DEFERRED out; `--timing-only` is the rest, so the two runs together are --battery.
         os.environ["NORD_HOME"] = _HOME
-        ok_in = run_all_in_process()
-        ok_rest = run_all(modules=battery_partition()[1])
-        sys.exit(0 if ok_in and ok_rest else 1)
-    sys.exit(0 if run_all(carry="--carry" in sys.argv) else 1)
+        in_proc, rest = battery_partition(defer_timing="--defer-timing" in argv)
+        ok_in = run_all_in_process(modules=in_proc)
+        ok_rest = run_all(modules=rest)
+        return 0 if ok_in and ok_rest else 1
+    return 0 if run_all(carry="--carry" in argv) else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

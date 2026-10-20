@@ -378,3 +378,55 @@ def test_reaper_removes_only_old_selfcheck_homes(tmp_path):
     assert reaped == [str(old)]
     assert not old.exists() and young.exists() and other.exists() and afile.exists()
     assert rs._reap_stale_homes(str(tmp_path / "missing"), now=now) == []
+
+
+def test_timing_deferral_partitions_the_battery_exactly():
+    # The interface lane b3-battery codes against: `--battery --defer-timing` + `--timing-only` ==
+    # `--battery`. RED if a module is dropped from either run or run in both.
+    assert rs.TIMING_DEFERRED == ["gates.amdahl_gate"]
+    full_in, full_rest = rs.battery_partition()
+    d_in, d_rest = rs.battery_partition(defer_timing=True)
+    t_in, t_rest = rs.battery_partition(timing_only=True)
+    assert t_in == rs.TIMING_DEFERRED and t_rest == []
+    assert set(d_in).isdisjoint(t_in) and d_rest == full_rest
+    assert sorted(d_in + d_rest + t_in + t_rest) == sorted(full_in + full_rest)
+    assert sorted(full_in + full_rest) == sorted(rs.MODULES)
+    assert not set(rs.TIMING_DEFERRED) & set(d_in + d_rest)
+
+
+def test_timing_deferral_partition_refuses_a_module_it_would_drop(monkeypatch):
+    # a TIMING_DEFERRED entry that is not in-process would silently vanish from --timing-only
+    monkeypatch.setattr(rs, "TIMING_DEFERRED", ["research.nothing"])
+    with pytest.raises(ValueError, match="not in the in-process set"):
+        rs.battery_partition(timing_only=True)
+
+
+def test_cli_timing_flags_run_exactly_the_battery(monkeypatch):
+    # main() wiring: the two flagged runs together execute --battery's modules once each, and
+    # --timing-only runs in-process only (no subprocess half, no tools gates).
+    monkeypatch.setenv("NORD_HOME", rs._HOME)
+    calls = []
+    monkeypatch.setattr(
+        rs,
+        "run_all_in_process",
+        lambda emit=print, modules=None: calls.append(("in", list(modules))) or True,
+    )
+    monkeypatch.setattr(
+        rs,
+        "run_all",
+        lambda carry=False, modules=None: calls.append(("sub", list(modules))) or True,
+    )
+
+    def run(*argv):
+        calls.clear()
+        assert rs.main(["run_selfchecks.py", *argv]) == 0
+        return [(k, m) for k, mods in calls for m in mods]
+
+    battery = run("--battery")
+    deferred = run("--battery", "--defer-timing")
+    timing = run("--timing-only")
+    assert sorted(deferred + timing) == sorted(battery)
+    assert all(k == "in" for k, _ in timing) and [m for _, m in timing] == rs.TIMING_DEFERRED
+    assert ("in", "gates.amdahl_gate") in battery and ("in", "gates.amdahl_gate") not in deferred
+    assert rs.main(["run_selfchecks.py", "--defer-timing"]) == 2
+    assert rs.main(["run_selfchecks.py", "--timing-only", "--defer-timing"]) == 2
