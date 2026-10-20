@@ -6,7 +6,7 @@
         "-m",
         "snn_data_lake.gates.dormancy_gate"
       ],
-      "seconds": 13.1,
+      "seconds": 11.74,
       "verdict": "PASS"
     },
     {
@@ -14,7 +14,7 @@
         "-m",
         "snn_data_lake.gates.method_dormancy_gate"
       ],
-      "seconds": 16.1,
+      "seconds": 15.67,
       "verdict": "PASS"
     },
     {
@@ -22,7 +22,7 @@
         "-m",
         "snn_data_lake.gates.import_manifest"
       ],
-      "seconds": 4.34,
+      "seconds": 4.21,
       "verdict": "PASS"
     },
     {
@@ -30,7 +30,7 @@
         "-m",
         "snn_data_lake.gates.replication_guard"
       ],
-      "seconds": 2.94,
+      "seconds": 2.68,
       "verdict": "PASS"
     },
     {
@@ -38,7 +38,7 @@
         "-m",
         "snn_data_lake.gates.lake_rebuild_gate"
       ],
-      "seconds": 0.15,
+      "seconds": 0.14,
       "verdict": "PASS"
     },
     {
@@ -46,7 +46,7 @@
         "-m",
         "snn_data_lake.gates.unit_label_gate"
       ],
-      "seconds": 32.55,
+      "seconds": 33.28,
       "verdict": "PASS"
     },
     {
@@ -54,7 +54,7 @@
         "tools/p6_gate.py",
         "--assert"
       ],
-      "seconds": 6.34,
+      "seconds": 6.09,
       "verdict": "PASS"
     },
     {
@@ -62,7 +62,7 @@
         "tools/dependency_ledger.py",
         "--assert"
       ],
-      "seconds": 7.64,
+      "seconds": 6.99,
       "verdict": "PASS"
     },
     {
@@ -70,7 +70,7 @@
         "tools/red_reachability.py",
         "--assert"
       ],
-      "seconds": 2.04,
+      "seconds": 1.92,
       "verdict": "PASS"
     },
     {
@@ -78,7 +78,7 @@
         "-m",
         "snn_data_lake.gates.eprop_transport_gate"
       ],
-      "seconds": 25.45,
+      "seconds": 24.64,
       "verdict": "PASS"
     },
     {
@@ -86,7 +86,7 @@
         "-m",
         "snn_data_lake.gates.gradient_claim_gate"
       ],
-      "seconds": 2.85,
+      "seconds": 2.76,
       "verdict": "PASS"
     },
     {
@@ -94,7 +94,7 @@
         "tools/p4c_ratchet.py",
         "--assert"
       ],
-      "seconds": 0.28,
+      "seconds": 0.24,
       "verdict": "PASS"
     }
   ],
@@ -200,7 +200,7 @@
     "P5b"
   ],
   "tree": {
-    "commit": "5a1a00fe64a9f98573393b087709c827c34ed612",
+    "commit": "4b9eb6af7263847403c62091044456362f8ff7da",
     "dirty": false
   }
 }
