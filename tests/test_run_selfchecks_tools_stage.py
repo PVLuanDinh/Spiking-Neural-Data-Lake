@@ -313,6 +313,39 @@ def test_in_process_run_never_clears_a_latch_outside_its_own_home(monkeypatch, t
     assert any("from a previous run cleared" in line for line in lines), lines
 
 
+def test_in_process_per_check_sweep_never_reaches_the_live_latch(monkeypatch, tmp_path):
+    # Opus n2: the test above exercises only the pre-clear (CORE is empty). This drives the sweep
+    # that runs after EACH live check: a check that leaves a latch in ITS home has it cleared and
+    # attributed, while the planted live latch survives. RED on a sweep pointed at the live path.
+    from snn_data_lake.brainstem.so101_arm import ESTOP_LATCH
+
+    _, live = _fake_user(tmp_path, monkeypatch)
+    planted = live / ESTOP_LATCH
+    mine = tmp_path / "runner home"
+    mine.mkdir()
+    monkeypatch.setattr(rs, "_HOME", str(mine))
+    monkeypatch.setattr(rs, "CORE", ["fake.latch_leaver"])
+    monkeypatch.setattr(rs, "TORCH_GATED", [])
+    left = []
+
+    def leaver(mod, home=None):
+        latch = os.path.join(home, ESTOP_LATCH)
+        with open(latch, "w", encoding="utf-8") as f:
+            f.write("left by the check")
+        left.append(latch)
+        return True, ""
+
+    monkeypatch.setattr(rs, "run_one_in_process", leaver)
+    lines = []
+    assert rs.run_all_in_process(emit=lines.append)
+    assert planted.exists() and planted.read_text() == "planted", lines
+    # positive control: the sweep ran on the check's own home and attributed it
+    assert left and not os.path.exists(left[0]), lines
+    # (attributed in-slot, or UNATTRIBUTED when the file mtime reads just before the slot start --
+    # NTFS mtime vs time.time() skew; either way the sweep saw THIS check's latch)
+    assert any("E-STOP SIDECAR" in line and "fake.latch_leaver" in line for line in lines), lines
+
+
 def _rmtree_leaves_one(monkeypatch):
     """shutil.rmtree that really removes `path`, then reports one undeletable leftover via onexc."""
     import shutil
