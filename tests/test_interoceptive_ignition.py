@@ -13,7 +13,11 @@ consumer; what follows tests the consumer.
 The P8 burden, one test each:
   * a REACHABLE RED          -- the law must be able to fail (monotonicity, the bound, additivity)
   * a CONTROL that is not the method -- a CONSTANT-salience arm, which the s0-exit's own
-                                        adversarial measurement used to kill the previous route
+                                        adversarial measurement used to kill the previous route.
+                                        It separates live from constant at the THRESHOLD only: at
+                                        the OUTCOME a constant at the live mean reproduces live on
+                                        200/200 ticks (measured 2026-10-19; see the PREREGISTERED
+                                        test, whose docstring carries the level arms)
   * PER-ITEM ATTRIBUTION     -- neuter the insula and show the brain's own output moves
   * DELETION ON A NULL       -- a salience that never varies, or a threshold that never moves,
                                 fails here rather than being reported as a wire
@@ -309,7 +313,11 @@ def test_a_CONSTANT_salience_control_does_not_reproduce_the_live_threshold_trace
     the arm that killed the PREVIOUS route into this region (it left the brain byte-identical on
     120/120 ticks). Here it must NOT reproduce the live trace: if a constant offset gave the same
     thresholds, the build would be a calibration change wearing a wire's clothes, and what is
-    doing the work would be the mean rather than the body."""
+    doing the work would be the mean rather than the body.
+
+    It separates them at the THRESHOLD only. At the OUTCOME (200 ticks, seed 0) a constant at the
+    live mean reproduces the live (ignited, winner) record on 200/200 ticks: the threshold
+    differences this test counts reach no outcome. See the PREREGISTERED test."""
     rows, _ = live
     mean_s = statistics.fmean(r["salience"] for r in rows)
     live_thr = [
@@ -417,7 +425,7 @@ def test_an_exhausted_replay_is_flagged_not_swallowed():
     assert all(r["salience"] == 0.0 for r in consulted)
 
 
-def test_PREREGISTERED_the_live_signal_moves_the_outcome_more_than_its_own_controls(
+def test_PREREGISTERED_removing_the_insula_moves_the_outcome_more_than_destroying_its_timing(
     live_long, neutered_long, constant_long, shuffled_long
 ):
     """PRE-REGISTERED 2026-10-19, written BEFORE the control arms were first run (seed 0,
@@ -439,8 +447,14 @@ def test_PREREGISTERED_the_live_signal_moves_the_outcome_more_than_its_own_contr
     controls move live_thr on 197 and 196 of the 200 ticks, yet never the outcome. Reading: at
     this horizon the outcome depends on the insula being present (its contribution to the
     threshold), NOT on the timing of its salience. A claim that salience timing drives the
-    ignition outcome is unsupported by this test; sensitivity to the level beyond presence is
-    untested."""
+    ignition outcome is unsupported by this test.
+
+    LEVEL ARMS (closing review 2026-10-19, re-derived by the integrator; constant salience, same
+    seed/horizon; D_out from live): 2x mean -> 23, 0.5x mean -> 5, 0.0 -> 28 (identical to the
+    neutered arm, D_out=0 and D_thr=0 against it). Reading: at this horizon the insula's outcome
+    charge is its LEVEL; its tick-to-tick variation is outcome-inert -- P3 dormancy shape 5 at the
+    outcome level, OWNER ADJUDICATION PENDING. This bar cannot see that: it passes maximally
+    exactly when variation does nothing."""
     _assert_control_arms_real(live_long, constant_long, shuffled_long)
     n = _outcome_distance(live_long[0], neutered_long[0])
     c = _outcome_distance(live_long[0], constant_long[0])
