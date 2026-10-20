@@ -1091,14 +1091,31 @@ def frozen_labels(root):
     return labels
 
 
-def _native_target(relpath, parts, rust_status, export_region, regions, native_out):
-    """Connectome region of a `_native` import target, or None -- recorded in native_out["unmapped"] WITH
-    its reason, never dropped: `_native` is no region, so an unmapped target would otherwise leave the diff
-    silently; a target outside every connectome region is reported too (fold 2)."""
-    sym = parts[1] if len(parts) > 1 else "<module>"
+def _native_out():
+    """The `_native` accumulator region_imports fills: pairs mapped, targets unmapped (with reasons), crate-root
+    exports attributed -- the last two printed, never dropped."""
+    return {"mapped": set(), "unmapped": [], "attributed": []}
+
+
+def _reach_line(user, sym, reach):
+    """One printed line per (Python user, crate-root export); `user` None = no regioned module uses it."""
+    user = user or "<no regioned Python module>"
+    reached = ", ".join(reach) or "no regioned Rust module"
+    return f"{user}: _native.{sym} (crate-root export; its body reaches {reached})"
+
+
+def _native_targets(relpath, sym, rust_status, export_region, export_reach, regions, native_out):
+    """Connectome regions of a `_native` target: its Rust file's region, or -- for a crate-root export (the
+    binding's own #[pyfunction], p6x) -- every region its body reaches, printed in native_out["attributed"].
+    Empty when unmapped, recorded in native_out["unmapped"] WITH its reason, never dropped: `_native` is no
+    region, so an unmapped target would otherwise leave the diff silently; a target outside every connectome
+    region is reported too (fold 2)."""
     region = export_region.get(sym)
     if region in regions:
-        return region
+        return {region}
+    if sym in export_reach:
+        native_out["attributed"].append(_reach_line(relpath, sym, export_reach[sym]))
+        return {r for r in export_reach[sym] if r in regions}
     if not rust_status.startswith("native/ PRESENT"):
         why = rust_status
     elif sym in ("<module>", "*"):
@@ -1106,29 +1123,65 @@ def _native_target(relpath, parts, rust_status, export_region, regions, native_o
     elif sym not in export_region:
         why = "not a PyO3 export"
     elif region is None:
-        why = "its Rust file has no region"
+        why = "its Rust file is not production code (no region)"
     else:
         why = f"its Rust file's region `{region}` is not a connectome region"
     native_out["unmapped"].append(f"{relpath}: _native.{sym} ({why})")
-    return None
+    return set()
+
+
+def _native_users(texts):
+    """{relpath: `_native` names it uses} in every import spelling, attribute style (`_native.f` after a
+    module-level import) included, by rust_facts.python_native_refs -- the ONE reader import_manifest.native_refs
+    wraps (P2) -- run over copies of the live files that spell `_native` (an overlay module has no path)."""
+    rust_facts = _gates()[0]
+    pkg_name = rust_facts.NATIVE_MODULE.rpartition(".")[0]
+    out, later = {}, {}
+    with tempfile.TemporaryDirectory() as d:
+        modules = {}
+        for relpath, text in texts.items():
+            p = Path(d, pkg_name, *relpath.split("/"))
+            module = rust_facts._module_of(p, Path(d))  # the reader's own naming (P2)
+            if (
+                module in modules
+            ):  # `x.py` beside `x/__init__.py`: one name, two files -> a second batch
+                later[relpath] = text
+                continue
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(text, encoding="utf-8")
+            modules[module] = relpath
+        refs = rust_facts.python_native_refs(Path(d))
+    out = {modules[m]: names for m, names in refs.items() if m in modules}
+    return {**out, **_native_users(later)} if later else out
+
+
+def _own(lines, overlay):
+    return [u for u in lines if u.split(":", 1)[0] in (overlay or {})]
 
 
 def own_unmapped(conn, overlay):
     """The `_native` targets an arm's OWN overlay files produced. The real tree carries its own (the PFC's
     `_native` import since pfc-p2, printed by `report`); an arm judges only what it constructed."""
-    return [u for u in conn["native_unmapped"] if u.split(":", 1)[0] in (overlay or {})]
+    return _own(conn["native_unmapped"], overlay)
+
+
+def own_attributed(conn, overlay):
+    """The crate-root export attributions an arm's OWN overlay files produced (same rule as own_unmapped)."""
+    return _own(conn["native_attributed"], overlay)
 
 
 def region_imports(root, overlay=None, labels=None, native=None, native_out=None, regions=()):
     """Region imports, attributed to frozen anatomy labels across G8 package moves.
 
-    `native=(rust_status, {python-visible export: region})` maps a `from snn_data_lake._native import NAME`
-    target to its Rust file's region; the pair also lands in `native_out["mapped"]` (r02b-p6)."""
+    `native=(rust_status, {python-visible export: region}, {crate-root export: regions its body reaches})`
+    maps a `_native` target: an export in a regioned Rust file to that region, a crate-root export (the
+    binding's own #[pyfunction], p6x) to what its body reaches -- from every Python user (any spelling, via
+    `_native_users`); the pair also lands in `native_out["mapped"]` (r02b-p6)."""
     overlay = dict(overlay or {})
     pkg = source_dir(root)
     labels = frozen_labels(root) if labels is None else labels
-    rust_status, export_region = native or (NATIVE_ABSENT, {})
-    native_out = {"mapped": set(), "unmapped": []} if native_out is None else native_out
+    rust_status, export_region, export_reach = native or (NATIVE_ABSENT, {}, {})
+    native_out = _native_out() if native_out is None else native_out
     leaf = _gates()[0].NATIVE_MODULE.rpartition(".")[2]  # "_native"
     directed = set()
     paths = []
@@ -1140,18 +1193,28 @@ def region_imports(root, overlay=None, labels=None, native=None, native_out=None
     live_paths = (set(paths) | set(overlay)) - {
         relpath for relpath, source in overlay.items() if source is None
     }
+    texts = {}
     for relpath in sorted(live_paths):
         if "/" not in relpath:
             continue  # top-level modules (connectome.py, brain_atlas.py) belong to no region
-        src_region = labels.get(os.path.basename(relpath)[:-3], relpath.split("/")[0])
         if relpath in overlay:
-            text = overlay[relpath]
+            texts[relpath] = overlay[relpath]
         else:
             try:
                 with open(os.path.join(pkg, relpath.replace("/", os.sep)), encoding="utf-8") as fh:
-                    text = fh.read()
+                    texts[relpath] = fh.read()
             except (OSError, UnicodeDecodeError):
                 continue
+    used = _native_users({r: t for r, t in texts.items() if leaf in t})
+    for relpath, text in texts.items():
+        src_region = labels.get(os.path.basename(relpath)[:-3], relpath.split("/")[0])
+        for sym in sorted(used.get(relpath, ())):
+            for target in _native_targets(
+                relpath, sym, rust_status, export_region, export_reach, regions, native_out
+            ):
+                if target != src_region:
+                    directed.add((src_region, target))
+                    native_out["mapped"].add((src_region, target))
         try:
             tree = ast.parse(text)
         except SyntaxError:
@@ -1188,13 +1251,7 @@ def region_imports(root, overlay=None, labels=None, native=None, native_out=None
                 if not parts:
                     continue
                 if parts[0] == leaf:
-                    target = _native_target(
-                        relpath, parts, rust_status, export_region, regions, native_out
-                    )
-                    if target and target != src_region:
-                        directed.add((src_region, target))
-                        native_out["mapped"].add((src_region, target))
-                    continue
+                    continue  # `_native` targets were read above, by the reader
                 # A moved module keeps its pre-G8 anatomical label. Only use a basename
                 # when the import names a real module at that physical path; otherwise
                 # the final token may be a class, function or attribute.
@@ -1206,6 +1263,8 @@ def region_imports(root, overlay=None, labels=None, native=None, native_out=None
                         break
                 if target != src_region:
                     directed.add((src_region, target))
+    for name in sorted(set(export_reach).difference(*used.values())):  # printed, never dropped
+        native_out["attributed"].append(_reach_line(None, name, export_reach[name]))
     return directed
 
 
@@ -1220,11 +1279,12 @@ RUST_BLIND_SPOTS = (
     "a path into ANOTHER crate (`sndl_core::x`) from a regioned file resolves only when that crate's "
     "root is in the facts",
     "a `#[path]`-relocated file keeps the region of its on-disk directory",
-    "attribute-style `_native.f` after `from snn_data_lake import _native` names no symbol here "
-    "(import_manifest's python_native_refs sees it)",
-    "a crate root (lib.rs / main.rs) belongs to no region, so the BINDING crate's own `use` of a regioned "
-    "module forms no pair and its exports map to no region (Codex B2-fold: keep the binding a thin shim; "
-    "the attribution owed is export -> its Python importer's region)",
+    "a crate-root export (the binding's own #[pyfunction]) is attributed to its Python users' regions by what "
+    "its body CALLS through the file's `use` aliases, following same-file FREE helpers called by bare name "
+    "(the last non-test fn of that name wins; a #[pyclass]: every fn of its #[pymethods] impls); a non-call "
+    "path in its body (a struct literal, a const), a helper called by a qualified path or a method call "
+    "(`self.helper()`) or defined in another file, and a `*` import's uses are not read; a crate root's own "
+    "`use` that no export body calls forms no pair (the crate root belongs to no region)",
     "`use` inside an inline mod resolves from the file's module (native_dormancy._Tree)",
     "a `pub use` re-export met mid-path, or a path revisiting a module already walked, counts the walked chain",
     "a file in no mod tree still counts (an unresolved `#[path]` include must not escape); `reach` follows the "
@@ -1288,8 +1348,48 @@ def _terminal(tree, rel, segs):
     return hits
 
 
+def _hits(tree, rel, paths):
+    """(`paths` are use / call / qualified paths as spelled in `rel`.)"""
+    return {h for p in paths for h in _terminal(tree, rel, p.split("::"))}
+
+
+def _export_reach(f, rel, export, tree, region):
+    """Regions a crate-root export's body reaches (p6x): its non-cfg(test) calls (the reader's `fn_id`), plus
+    those of every same-file helper it calls by bare name (transitively: what a helper reaches is attributed
+    to every export that calls it), resolved through the file's `use` aliases by `_terminal` exactly like a
+    regioned file's refs."""
+    rust_facts = _gates()[0]
+    fns = [fn for fn in f.get("fns", []) if not fn["cfg_test"]]
+    by_name = {fn["name"]: fn["id"] for fn in fns if not fn["impl"]}
+    if export["kind"] == "class":
+        # every fn of the type's #[pymethods] impls, from the FACTS: the export map keeps one entry per
+        # Python name, so a #[getter]/#[setter] pair would otherwise lose a body
+        ids = {
+            fn["id"]
+            for fn in fns
+            if fn["impl"] == export["rust"] and rust_facts._attr(fn["impl_attrs"], "pymethods")
+        }
+    else:
+        ids = {
+            fn["id"] for fn in fns if fn["name"] == export["rust"] and fn["line"] == export["line"]
+        }
+    todo, paths = list(ids), []
+    while todo:
+        fid = todo.pop()
+        for c in f.get("calls", []):
+            if c["fn_id"] != fid or c["cfg_test"]:
+                continue
+            paths.append(c["path"])
+            helper = by_name.get(c["path"])
+            if helper is not None and helper not in ids:
+                ids.add(helper)
+                todo.append(helper)
+    return tuple(sorted({region[h] for h in _hits(tree, rel, paths) if region.get(h)}))
+
+
 def rust_region_imports(root, labels, native=None):
-    """(status, directed Rust region pairs, {python-visible export: region}) -- the ONE Rust entry point.
+    """(status, directed Rust region pairs, {python-visible export: region}, {crate-root export: the regions
+    its body reaches}) -- the ONE Rust entry point.
 
     `native=(status, file_facts)` injects facts in place of the real tree's. `.rs` present and the reader
     failing is a status `liveness()` turns RED (fail closed), never a skip. Test code and cfg(test) reaches
@@ -1303,7 +1403,12 @@ def rust_region_imports(root, labels, native=None):
             status = f"native/ PRESENT ({len(files)} .rs files)" if files else NATIVE_ABSENT
             native = (status, rust_facts.facts(files))
         except rust_facts.RustFactsUnavailable as exc:
-            return f"native/ UNAVAILABLE (RED, fail closed: RustFactsUnavailable: {exc})", set(), {}
+            return (
+                f"native/ UNAVAILABLE (RED, fail closed: RustFactsUnavailable: {exc})",
+                set(),
+                {},
+                {},
+            )
     status, file_facts = native
     base = os.path.join(root, rust_facts.NATIVE_DIR)
     by_rel = {_native_rel(f["file"], base): f for f in file_facts}
@@ -1348,15 +1453,19 @@ def rust_region_imports(root, labels, native=None):
         refs = [u["path"] for u in f.get("uses", []) if not u["cfg_test"]]
         refs += [c["path"] for c in f.get("calls", []) if not c["cfg_test"]]
         refs += list(f.get("paths", []))
-        for hit in {h for p in refs for h in _terminal(tree, rel, p.split("::"))}:
+        for hit in _hits(tree, rel, refs):
             target = region.get(hit)
             if target and target != src_region:
                 directed.add((src_region, target))
-    exports = {
-        name: region.get(_native_rel(e["file"], base))
-        for name, e in rust_facts.pyo3_exports(file_facts).items()
-    }
-    return status, directed, exports
+    exports, reach = {}, {}
+    for name, e in rust_facts.pyo3_exports(file_facts).items():
+        rel = _native_rel(e["file"], base)
+        exports[name] = region.get(rel)
+        # a crate-root export (a production file with no region): attributed by its body's reach; a
+        # `Cls.meth` entry rides with its #[pyclass] (Python names the class, never a method)
+        if rel in region and region[rel] is None and "." not in name:
+            reach[name] = _export_reach(by_rel[rel], rel, e, tree, region)
+    return status, directed, exports, reach
 
 
 def connectome_diff(root, overlay=None, conn_source=None, native=None):
@@ -1369,10 +1478,12 @@ def connectome_diff(root, overlay=None, conn_source=None, native=None):
             declared_dir.add((rs, rt))
     declared = {tuple(sorted(p)) for p in declared_dir}
     labels = frozen_labels(root)
-    rust_status, rust_directed, export_region = rust_region_imports(root, labels, native)
-    native_out = {"mapped": set(), "unmapped": []}
+    rust_status, rust_directed, export_region, export_reach = rust_region_imports(
+        root, labels, native
+    )
+    native_out = _native_out()
     py_directed = region_imports(
-        root, overlay, labels, (rust_status, export_region), native_out, regions
+        root, overlay, labels, (rust_status, export_region, export_reach), native_out, regions
     )
     imported_dir = {(a, b) for a, b in py_directed | rust_directed if a in regions and b in regions}
     imported = {tuple(sorted(p)) for p in imported_dir}
@@ -1382,6 +1493,7 @@ def connectome_diff(root, overlay=None, conn_source=None, native=None):
         "rust_directed": rust_directed,
         "native_mapped": native_out["mapped"],
         "native_unmapped": sorted(native_out["unmapped"]),
+        "native_attributed": sorted(native_out["attributed"]),
         "n_nodes": len(node_region),
         "n_edges": len(edges),
         "n_effector": len(effector),
@@ -1689,6 +1801,12 @@ def report(res, root):
     )
     for line in c["native_unmapped"]:
         print(f"      {line}")
+    print(
+        f"  NATIVE EXPORTS ATTRIBUTED: {len(c['native_attributed'])} (crate-root exports -> the regions of "
+        "their Python users; printed, never dropped)"
+    )
+    for line in c["native_attributed"]:
+        print(f"      {line}")
     print("  Rust blind spots: " + "; ".join((*_gates()[0].BLIND_SPOTS, *RUST_BLIND_SPOTS)))
     print(
         f"  UNDIRECTED because an import is a REACH, not a signal direction: {len(c['reversed_artifact'])} "
@@ -1862,13 +1980,14 @@ RS_PY_LIB = (
     f"    use sndl_core::{_CER}::timing::fear_step;\n}}\n"
 )
 RS_CORE_LIB = f"pub mod {_AMY};\npub mod {_CER};\n"
+RS_BINDING = "native/sndl-python/src/lib.rs"
 RUST_FIXTURE = {
     "native/sndl-core/src/lib.rs": RS_CORE_LIB,
     f"native/sndl-core/src/{_AMY}/mod.rs": "pub mod fear;\npub mod threat;\n",
     f"native/sndl-core/src/{_AMY}/threat.rs": "pub struct Level;\n",
     f"native/sndl-core/src/{_CER}/mod.rs": "pub mod timing;\n",
     f"native/sndl-core/src/{_CER}/timing.rs": _RS_TIMING,
-    "native/sndl-python/src/lib.rs": RS_PY_LIB,
+    RS_BINDING: RS_PY_LIB,
 }
 RS_FEAR = f"native/sndl-core/src/{_AMY}/fear.rs"
 RS_FEAR_GREEN = "use std::time::Instant;\n\npub fn f() -> Instant {\n    Instant::now()\n}\n"
@@ -1885,6 +2004,49 @@ _RS_CEREBELLUM_FC = {  # a relocated module: stem `fear_conditioning` is frozen 
     f"native/sndl-core/src/{_CER}/mod.rs": "pub mod timing;\npub mod fear_conditioning;\n",
 }
 _RS_FC = f"native/sndl-core/src/{_CER}/fear_conditioning.rs"
+
+
+def rs_binding(items, export):
+    """RS_PY_LIB (the fixture binding, a crate root) carrying `items` and exporting `export` as well -- a
+    bare name is one of `items` (`super::name`), a `::` path is used as spelled."""
+    prelude, _, module = RS_PY_LIB.partition("\n\n")
+    path = export if "::" in export else f"super::{export}"
+    exporting = module.replace("}\n", f"    #[pymodule_export]\n    use {path};\n}}\n")
+    return f"{prelude}\nuse sndl_core::{_CER}::timing::Clock;\n\n{items}\n{exporting}"
+
+
+_RS_BIND_STEP = (  # the binding's OWN #[pyfunction] (a crate-root export) whose body reaches cerebellum
+    "#[pyfunction]\npub fn bind_step(x: f64) -> f64 {\n    let _c = Clock::new();\n    x\n}\n"
+)
+_RS_BIND_CFG = (  # bind_step whose only reach sits in a #[cfg(test)] helper it calls: test code is no wire
+    "#[cfg(test)]\nfn probe() {\n    let _c = Clock::new();\n}\n\n"
+    "#[pyfunction]\npub fn bind_step(x: f64) -> f64 {\n    probe();\n    x\n}\n"
+)
+_RS_BIND_CLASS = (  # a crate-root #[pyclass] whose #[pymethods] body reaches cerebellum
+    "#[pyclass]\npub struct Probe;\n\n#[pymethods]\nimpl Probe {\n    #[new]\n    fn new() -> Probe {\n"
+    "        Probe\n    }\n\n    fn go(&self) {\n        let _c = Clock::new();\n    }\n}\n"
+)
+_RS_BINDING_REACH = {RS_BINDING: rs_binding(_RS_BIND_STEP, "bind_step")}
+_RS_BINDING_CFG = {RS_BINDING: rs_binding(_RS_BIND_CFG, "bind_step")}
+_RS_BINDING_CLASS = {RS_BINDING: rs_binding(_RS_BIND_CLASS, "Probe")}
+_PY_BIND_IMPORT = {
+    f"{_AMY}/_p6_bind_import.py": (
+        f'"""overlay mutant -- an {_AMY} module importing the binding\'s OWN export, which reaches {_CER}."""\n\n'
+        "from snn_data_lake._native import bind_step\n\n\ndef use(x):\n    return bind_step(x)\n"
+    )
+}
+_PY_BIND_ATTR = {
+    f"{_AMY}/_p6_bind_attr.py": (
+        '"""overlay mutant -- the same use spelled attribute-style after a module-level import."""\n\n'
+        "from snn_data_lake import _native\n\n\ndef use(x):\n    return _native.bind_step(x)\n"
+    )
+}
+_PY_CLASS_IMPORT = {
+    f"{_AMY}/_p6_bind_class.py": (
+        f'"""overlay mutant -- an {_AMY} module importing the binding\'s OWN #[pyclass] (reaches {_CER})."""\n\n'
+        "from snn_data_lake._native import Probe\n\n\ndef use():\n    return Probe().go()\n"
+    )
+}
 # (name, how, amygdala/fear.rs, Python overlay, extra native files) -- each must move
 # undeclared_import_pairs by EXACTLY one pair, {(amygdala, cerebellum)}
 RUST_REDS = [
@@ -1956,6 +2118,27 @@ RUST_REDS = [
             ),
             f"native/sndl-core/src/{_AMY}/mock.rs": "pub struct Mock;\n",
         },
+    ),
+    (
+        "R11",
+        f"the binding's OWN #[pyfunction] bind_step (crate root, no region) reaches {_CER}; a Python {_AMY} module imports it",
+        RS_FEAR_GREEN,
+        _PY_BIND_IMPORT,
+        _RS_BINDING_REACH,
+    ),
+    (
+        "R12",
+        "R11 used attribute-style: `from snn_data_lake import _native` + `_native.bind_step(x)`",
+        RS_FEAR_GREEN,
+        _PY_BIND_ATTR,
+        _RS_BINDING_REACH,
+    ),
+    (
+        "R13",
+        f"a crate-root #[pyclass] Probe whose #[pymethods] `go` reaches {_CER}; a Python {_AMY} module imports the class",
+        RS_FEAR_GREEN,
+        _PY_CLASS_IMPORT,
+        _RS_BINDING_CLASS,
     ),
 ]
 _RS_INLINE_TESTS = (
@@ -2071,6 +2254,20 @@ RUST_CONTROLS = [
             f"native/sndl-core/src/{_AMY}/fear_test.rs": _RS_TESTS_FILE,
         },
     ),
+    (
+        "G15",
+        "R11's binding export used by NO Python module: no pair, printed under NATIVE EXPORTS ATTRIBUTED",
+        RS_FEAR_GREEN,
+        None,
+        _RS_BINDING_REACH,
+    ),
+    (
+        "G16",
+        f"R11's bind_step whose only {_CER} reach sits in a `#[cfg(test)] fn probe()` it calls (test code is no wire)",
+        RS_FEAR_GREEN,
+        _PY_BIND_IMPORT,
+        _RS_BINDING_CFG,
+    ),
 ]
 
 
@@ -2086,15 +2283,20 @@ def write_native(directory, fear_rs, extra=None):
     return paths
 
 
+def native_facts(paths, base, tag):
+    """(status, facts) for the `.rs` files `paths` under `base` (a native/ dir), facts keyed by
+    native-relative path -- the shape `rust_region_imports` is injected with."""
+    out = _gates()[0].facts(paths)
+    for f, p in zip(out, paths, strict=True):
+        f["file"] = Path(p).relative_to(base).as_posix()
+    return f"native/ PRESENT ({len(out)} .rs files, {tag})", out
+
+
 def fixture_native(fear_rs, extra=None):
-    """(status, facts) for the constructed native/ tree, facts keyed by native-relative path."""
-    rust_facts = _gates()[0]
+    """(status, facts) for the constructed native/ tree."""
     with tempfile.TemporaryDirectory() as d:
-        paths = write_native(d, fear_rs, extra)
-        out = rust_facts.facts(paths)
-        for f, p in zip(out, paths, strict=True):
-            f["file"] = p.relative_to(Path(d) / rust_facts.NATIVE_DIR).as_posix()
-    return f"native/ PRESENT ({len(out)} .rs files, fixture)", out
+        base = Path(d) / _gates()[0].NATIVE_DIR
+        return native_facts(write_native(d, fear_rs, extra), base, "fixture")
 
 
 def rust_ceiling(empty):
@@ -2274,7 +2476,8 @@ def liveness(root, res):
     )
     lines.append(
         f"  rust half    : {c['rust_status']}; {len(c['rust_directed'])} Rust region pairs, "
-        f"{len(c['native_mapped'])} via _native exports, {len(c['native_unmapped'])} _native targets unmapped"
+        f"{len(c['native_mapped'])} via _native exports, {len(c['native_unmapped'])} _native targets unmapped, "
+        f"{len(c['native_attributed'])} crate-root exports attributed"
     )
     return lines, problems
 

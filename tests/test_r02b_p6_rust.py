@@ -1,14 +1,23 @@
-"""The Rust half of P6's connectome diff (arc 2, r02b-p6).
+"""The Rust half of P6's connectome diff (arc 2, r02b-p6; binding-export attribution, lane p6x).
 
 A Rust `use`/path that crosses a region pair is an import pair, a `_native` symbol maps to its Rust
-file's region, and the reader failing with `.rs` present is RED. Every test drives
-`rust_region_imports` through `measure(root, overlay, native=...)` with fixture facts injected;
-logic is never forked.
+file's region, and the reader failing with `.rs` present is RED. A crate-root export (the binding's
+own `#[pyfunction]` / `#[pyclass]`) belongs to no region: the OLD gate formed no pair for it (Codex
+B2-fold MAJOR 1, both reviews: `use sndl_core::medulla::step;` + `step()` inside pfc_decide left
+undeclared_import_pairs at 11), so it is attributed to the regions of the Python modules that USE
+it (import or attribute style, read by rust_facts.python_native_refs) and forms (importer region,
+target) for every connectome region its body reaches. Every test drives `rust_region_imports`
+through `measure(root, overlay, native=...)` with fixture facts injected; logic is never forked.
+The p6x reds were pre-registered in rows/p6x-REPORT.md and run against the pre-fix gate, where
+each failed.
 """
 
 import importlib
 import os
+import shutil
 import sys
+import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -21,8 +30,18 @@ gate = importlib.import_module("p6_gate")
 _AMY = "amyg" + "dala"  # from parts: move_gate C2(d) reads string literals
 _CER = "cere" + "bellum"
 
-REDS = ["R1", "R2", "R3", "R4", "R6", "R7", "R8", "R9", "R10"]
+REDS = ["R1", "R2", "R3", "R4", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13"]
 CONTROLS = ["G1", "G2", "G3", "G4", "G5", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G14"]
+CONTROLS += ["G15", "G16"]
+_PFC = "faculties/prefrontal_executive.py"
+_USE_LINE = "use std::panic::{AssertUnwindSafe, catch_unwind};"
+_IN_PFC = "        let mut words = [0u32; N];"  # the first statement of pfc_decide's closure
+_IN_ENTER = (
+    "    match py.detach(|| catch_unwind(AssertUnwindSafe(f))) {"  # enter(): called by every export
+)
+_MEDULLA_PAIR = {("cortex", "medulla")}
+_NOBODY = "<no regioned Python module>"
+_NO_RUST = "no regioned Rust module"
 
 
 def _verdict(res, base):
@@ -43,6 +62,11 @@ def _boom(*_args, **_kwargs):
     raise rust_facts.RustFactsUnavailable("constructed")
 
 
+*_, _RS_BINDING_REACH = _arm(
+    "RUST_REDS", "R11"
+)  # the binding whose own bind_step reaches cerebellum
+
+
 @pytest.fixture(scope="module")
 def base():
     """The EMPTY-RUST baseline (real Python, no Rust) every arm is judged against."""
@@ -57,19 +81,24 @@ def test_real_tree_prints_absent_and_leaves_every_python_count_alone(base):
     )
     # native/ exists since R0.4 (sndl-core). Since pfc-p2 the PFC kernel
     # (prefrontal_executive.rs: the stem carries the Python module's frozen label, cortex) uses the
-    # rng kit, and the PFC imports `_native` module-level: `rng` is no connectome region and the
-    # import names no symbol, so both are PRINTED (pinned here so a change is seen) and every
-    # count stays.
+    # rng kit, and the PFC uses `_native.pfc_decide` after a module-level import: `rng` is no
+    # connectome region, and pfc_decide (a crate-root export, p6x) is attributed to its cortex
+    # importer and reaches cortex (same region) and rng -- no pair; panic_probe is used by no
+    # regioned module and reaches no region; all PRINTED (pinned here so a change is seen) and
+    # every count stays.
     assert conn["rust_status"].startswith(("native/ ABSENT", "native/ PRESENT")), conn[
         "rust_status"
     ]
     assert conn["rust_directed"] == {("cortex", "rng")}
     assert conn["native_mapped"] == set()
-    assert conn["native_unmapped"] == [
-        "faculties/prefrontal_executive.py: _native.<module> "
-        "(module-level or star import names no symbol)"
+    assert conn["native_unmapped"] == []
+    assert conn["native_attributed"] == [
+        f"{_NOBODY}: _native.panic_probe (crate-root export; its body reaches {_NO_RUST})",
+        f"{_PFC}: _native.pfc_decide (crate-root export; its body reaches cortex, rng)",
     ]
     assert res["metrics"] == base["metrics"]
+    lines, _problems = gate.liveness(_ROOT, res)
+    assert any("2 crate-root exports attributed" in line for line in lines), lines
     assert res["metrics"]["undeclared_import_pairs"] == gate.BASELINE["undeclared_import_pairs"]
     assert all(_verdict(res, base).values())
 
@@ -128,23 +157,26 @@ def test_native_target_with_native_absent_is_printed_not_dropped(base, capsys, m
     gate.report(res, _ROOT)
     out = capsys.readouterr().out
     assert "NATIVE TARGETS UNMAPPED: 2" in out  # the arm's + the real PFC's (both printed)
+    assert f"{_PFC}: _native.pfc_decide ({gate.NATIVE_ABSENT})" in conn["native_unmapped"]
     assert "_native.fear_step" in out and "ABSENT" in out
     assert "Rust half: native/ ABSENT" in out
 
 
-_RS_ROOT_FN = (
-    "use pyo3::prelude::*;\n\n#[pyfunction]\npub fn root_fn(x: f64) -> f64 {\n    x\n}\n\n"
-    "#[pymodule(gil_used = false)]\nmod _native {\n    #[pymodule_export]\n"
-    "    use super::root_fn;\n}\n"
+_RS_ROOT_FN = gate.rs_binding(
+    "#[pyfunction]\npub fn root_fn(x: f64) -> f64 {\n    x\n}\n", "root_fn"
 )
+_RS_TEST_EXPORT_EXTRA = {  # a #[pyfunction] in a tests/ file: not production -> no region, no reach
+    "native/sndl-core/tests/helper.rs": (
+        "use pyo3::prelude::*;\n\n#[pyfunction]\npub fn test_fn() {}\n"
+    ),
+    gate.RS_BINDING: gate.rs_binding("", "test_fn"),
+}
 _RS_UTIL_EXTRA = {
     "native/sndl-core/src/lib.rs": gate.RS_CORE_LIB + "pub mod util;\n",
     "native/sndl-core/src/util.rs": (
         "use pyo3::prelude::*;\n\n#[pyfunction]\npub fn util_fn(x: f64) -> f64 {\n    x\n}\n"
     ),
-    "native/sndl-python/src/lib.rs": gate.RS_PY_LIB.replace(
-        "}\n", "    #[pymodule_export]\n    use sndl_core::util::util_fn;\n}\n"
-    ),
+    gate.RS_BINDING: gate.rs_binding("", "sndl_core::util::util_fn"),
 }
 
 
@@ -155,17 +187,25 @@ _RS_UTIL_EXTRA = {
         ("from snn_data_lake._native import *\n", None, "module-level or star import"),
         ("from snn_data_lake._native import ghost\n", None, "not a PyO3 export"),
         (
-            "from snn_data_lake._native import root_fn\n",
-            {"native/sndl-python/src/lib.rs": _RS_ROOT_FN},
-            "its Rust file has no region",
+            "from snn_data_lake._native import test_fn\n",
+            _RS_TEST_EXPORT_EXTRA,
+            "its Rust file is not production code (no region)",
         ),
+        ("from snn_data_lake._native import *\n", _RS_BINDING_REACH, "module-level or star import"),
         (
             "from snn_data_lake._native import util_fn\n",
             _RS_UTIL_EXTRA,
             "region `util` is not a connectome region",
         ),
     ],
-    ids=["module", "star", "ghost", "no-region", "non-connectome-region"],
+    ids=[
+        "module",
+        "star",
+        "ghost",
+        "not-production",
+        "star-with-crate-root-export",
+        "non-connectome-region",
+    ],
 )
 def test_native_target_reasons_with_native_present(source, extra, reason, base):
     overlay = {f"{_AMY}/_p6_native_reason.py": source}
@@ -177,6 +217,230 @@ def test_native_target_reasons_with_native_present(source, extra, reason, base):
     assert len(own) == 1 and reason in own[0], own
     assert conn["native_mapped"] == set()
     assert res["metrics"] == base["metrics"]
+    assert gate.own_attributed(conn, overlay) == []
+
+
+def test_crate_root_export_with_an_empty_reach_is_attributed_not_unmapped(base):
+    overlay = {f"{_AMY}/_p6_native_reason.py": "from snn_data_lake._native import root_fn\n"}
+    extra = {gate.RS_BINDING: _RS_ROOT_FN}
+    native = gate.fixture_native(gate.RS_FEAR_GREEN, extra)
+    res = gate.measure(_ROOT, overlay=overlay, native=native)
+    conn = res["conn"]
+    assert gate.own_unmapped(conn, overlay) == []
+    assert (
+        f"{_AMY}/_p6_native_reason.py: _native.root_fn "
+        f"(crate-root export; its body reaches {_NO_RUST})"
+    ) in conn["native_attributed"]
+    assert conn["native_mapped"] == set()
+    assert res["metrics"] == base["metrics"]
+
+
+_RS_BIND_QUALIFIED = {  # the helper is called by a QUALIFIED path: disclosed as not followed
+    gate.RS_BINDING: gate.rs_binding(
+        "fn probe() {\n    let _c = Clock::new();\n}\n\n"
+        "#[pyfunction]\npub fn bind_step(x: f64) -> f64 {\n    self::probe();\n    x\n}\n",
+        "bind_step",
+    )
+}
+
+
+@pytest.mark.parametrize(
+    ("relpath", "source"),
+    [
+        (
+            f"{_AMY}/_p6_bind_spelling.py",
+            "import snn_data_lake._native as n\n\n\ndef use(x):\n    return n.bind_step(x)\n",
+        ),
+        (
+            f"{_AMY}/_p6_bind_spelling.py",
+            "from .. import _native\n\n\ndef use(x):\n    return _native.bind_step(x)\n",
+        ),
+        (
+            f"{_AMY}/_p6_pkg/__init__.py",
+            "from ... import _native\n\n\ndef use(x):\n    return _native.bind_step(x)\n",
+        ),
+    ],
+    ids=["import-as", "relative", "package-init"],
+)
+def test_other_module_level_spellings_of_a_crate_root_export_count(relpath, source, base):
+    overlay = {relpath: source}
+    native = gate.fixture_native(gate.RS_FEAR_GREEN, _RS_BINDING_REACH)
+    res = gate.measure(_ROOT, overlay=overlay, native=native)
+    assert res["conn"]["native_mapped"] == gate.RUST_PAIR
+    assert gate.own_unmapped(res["conn"], overlay) == []
+    assert (
+        res["metrics"]["undeclared_import_pairs"] == base["metrics"]["undeclared_import_pairs"] + 1
+    )
+
+
+def test_a_helper_called_by_a_qualified_path_is_not_followed_as_disclosed(base):
+    _, _how, fear_rs, overlay, _extra = _arm("RUST_REDS", "R11")
+    res = gate.measure(
+        _ROOT, overlay=overlay, native=gate.fixture_native(fear_rs, _RS_BIND_QUALIFIED)
+    )
+    assert res["conn"]["native_mapped"] == set()
+    assert gate.own_unmapped(res["conn"], overlay) == []
+    own = gate.own_attributed(res["conn"], overlay)
+    assert len(own) == 1 and _NO_RUST in own[0], own
+    assert res["metrics"] == base["metrics"]
+    assert "qualified path" in " ".join(gate.RUST_BLIND_SPOTS)
+
+
+def test_a_cfg_test_twin_does_not_shadow_the_production_helper(base):
+    _, _how, fear_rs, overlay, _extra = _arm("RUST_REDS", "R11")
+    items = (
+        "fn probe() {\n    let _c = Clock::new();\n}\n\n#[cfg(test)]\nfn probe() {}\n\n"
+        "#[pyfunction]\npub fn bind_step(x: f64) -> f64 {\n    probe();\n    x\n}\n"
+    )
+    extra = {gate.RS_BINDING: gate.rs_binding(items, "bind_step")}
+    res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(fear_rs, extra))
+    assert res["conn"]["native_mapped"] == gate.RUST_PAIR
+
+
+def test_a_plain_impl_method_is_not_part_of_the_pyclass_reach(base):
+    _, _how, fear_rs, overlay, _extra = _arm("RUST_REDS", "R13")
+    items = (
+        "#[pyclass]\npub struct Probe;\n\n#[pymethods]\nimpl Probe {\n    #[new]\n"
+        "    fn new() -> Probe {\n        Probe\n    }\n}\n\nimpl Probe {\n"
+        "    fn inner(&self) {\n        let _c = Clock::new();\n    }\n}\n"
+    )
+    extra = {gate.RS_BINDING: gate.rs_binding(items, "Probe")}
+    res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(fear_rs, extra))
+    assert res["conn"]["native_mapped"] == set()
+    assert res["metrics"] == base["metrics"]
+
+
+def test_a_decoy_module_beside_a_package_does_not_hide_the_package_use(base):
+    overlay = {
+        f"{_AMY}/_p6_decoy/__init__.py": "from snn_data_lake._native import bind_step\n",
+        f"{_AMY}/_p6_decoy.py": "from snn_data_lake import _native\n",
+    }
+    native = gate.fixture_native(gate.RS_FEAR_GREEN, _RS_BINDING_REACH)
+    res = gate.measure(_ROOT, overlay=overlay, native=native)
+    assert res["conn"]["native_mapped"] == gate.RUST_PAIR
+    assert gate.own_attributed(res["conn"], overlay) == [
+        f"{_AMY}/_p6_decoy/__init__.py: _native.bind_step "
+        f"(crate-root export; its body reaches {_CER})"
+    ]
+
+
+def test_a_self_recursive_helper_terminates_and_still_reaches(base):
+    _, _how, fear_rs, overlay, _extra = _arm("RUST_REDS", "R11")
+    items = (
+        "fn probe() {\n    probe();\n    let _c = Clock::new();\n}\n\n"
+        "#[pyfunction]\npub fn bind_step(x: f64) -> f64 {\n    probe();\n    x\n}\n"
+    )
+    extra = {gate.RS_BINDING: gate.rs_binding(items, "bind_step")}
+    res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(fear_rs, extra))
+    assert res["conn"]["native_mapped"] == gate.RUST_PAIR
+
+
+def test_a_pyclass_is_one_export_and_its_methods_are_not_printed(base):
+    _, _how, fear_rs, overlay, extra = _arm("RUST_REDS", "R13")
+    res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(fear_rs, extra))
+    assert res["conn"]["native_mapped"] == gate.RUST_PAIR
+    assert res["conn"]["native_attributed"] == [
+        f"{_AMY}/_p6_bind_class.py: _native.Probe (crate-root export; its body reaches {_CER})"
+    ]
+
+
+def test_a_getter_setter_pair_keeps_both_bodies_in_the_pyclass_reach(base):
+    _, _how, fear_rs, overlay, _extra = _arm("RUST_REDS", "R13")
+    items = (
+        "#[pyclass]\npub struct Probe;\n\n#[pymethods]\nimpl Probe {\n    #[getter]\n"
+        "    fn get_x(&self) -> f64 {\n        let _c = Clock::new();\n        0.0\n    }\n\n"
+        "    #[setter]\n    fn set_x(&mut self, _v: f64) {}\n}\n"
+    )
+    extra = {gate.RS_BINDING: gate.rs_binding(items, "Probe")}
+    res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(fear_rs, extra))
+    assert res["conn"]["native_mapped"] == gate.RUST_PAIR
+
+
+def test_an_export_used_by_nobody_forms_no_pair_and_is_printed(base, capsys):
+    _, _how, fear_rs, overlay, extra = _arm("RUST_CONTROLS", "G15")
+    res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(fear_rs, extra))
+    line = f"{_NOBODY}: _native.bind_step (crate-root export; its body reaches {_CER})"
+    assert res["conn"]["native_attributed"] == [line]
+    gate.report(res, _ROOT)
+    out = capsys.readouterr().out
+    assert "NATIVE EXPORTS ATTRIBUTED: 1" in out and line in out
+
+
+def test_a_deleted_user_turns_its_export_into_used_by_nobody():
+    res = gate.measure(_ROOT, overlay={_PFC: None})
+    line = f"{_NOBODY}: _native.pfc_decide (crate-root export; its body reaches cortex, rng)"
+    assert line in res["conn"]["native_attributed"]
+    assert not [line for line in res["conn"]["native_attributed"] if line.startswith(_PFC)]
+
+
+def _injected(step_site):
+    """Facts for a COPY of the real native/ tree carrying Codex's medulla reproducer (`step();` at
+    `step_site`)."""
+    with tempfile.TemporaryDirectory() as d:
+        shutil.copytree(
+            os.path.join(_ROOT, "native"),
+            os.path.join(d, "native"),
+            ignore=shutil.ignore_patterns("target"),
+        )
+        core = Path(d, "native/sndl-core/src/lib.rs")
+        core.write_text(core.read_text(encoding="utf-8") + "pub mod medulla;\n", encoding="utf-8")
+        Path(d, "native/sndl-core/src/medulla.rs").write_text(
+            "pub fn step() {}\n", encoding="utf-8"
+        )
+        lib = Path(d, gate.RS_BINDING)
+        text = lib.read_text(encoding="utf-8")
+        assert text.count(_USE_LINE) == 1 and text.count(step_site) == 1, "binding changed shape"
+        text = text.replace(_USE_LINE, _USE_LINE + "\nuse sndl_core::medulla::step;")
+        lib.write_text(text.replace(step_site, "        step();\n" + step_site), encoding="utf-8")
+        root = Path(d, "native")
+        return gate.native_facts(sorted(root.rglob("*.rs")), root, "medulla injected")
+
+
+def _medulla_fired(res, base):
+    conn = res["conn"]
+    assert conn["native_mapped"] == _MEDULLA_PAIR, conn["native_mapped"]
+    assert conn["rust_directed"] == {("cortex", "rng")}  # the kernel's own wires are untouched
+    expect = dict(base["metrics"])
+    expect["undeclared_import_pairs"] += 1
+    assert res["metrics"] == expect
+    verdict = _verdict(res, base)
+    assert verdict["undeclared_import_pairs"] is False
+    assert all(ok for k, ok in verdict.items() if k != "undeclared_import_pairs")
+
+
+def test_r_a_symbol_import_of_a_crate_root_export_counts_its_body_reach(base):
+    overlay = {"cortex/_p6x_symbol_use.py": "from snn_data_lake._native import pfc_decide\n"}
+    res = gate.measure(_ROOT, overlay=overlay, native=_injected(_IN_PFC))
+    _medulla_fired(res, base)
+    assert gate.own_unmapped(res["conn"], overlay) == []
+    assert (
+        "cortex/_p6x_symbol_use.py: _native.pfc_decide "
+        "(crate-root export; its body reaches cortex, medulla, rng)"
+    ) in res["conn"]["native_attributed"]
+
+
+def test_r_b_attribute_style_use_by_the_real_pfc_counts_its_body_reach(base):
+    res = gate.measure(_ROOT, native=_injected(_IN_PFC))
+    _medulla_fired(res, base)
+    assert res["conn"]["native_unmapped"] == []
+    assert [line for line in res["conn"]["native_attributed"] if "pfc_decide" in line] == [
+        f"{_PFC}: _native.pfc_decide (crate-root export; its body reaches cortex, medulla, rng)"
+    ]
+
+
+def test_r_c_what_a_helper_reaches_is_attributed_to_every_export_that_calls_it(base):
+    res = gate.measure(_ROOT, native=_injected(_IN_ENTER))
+    _medulla_fired(res, base)
+    assert res["conn"]["native_attributed"] == [
+        f"{_NOBODY}: _native.panic_probe (crate-root export; its body reaches medulla)",
+        f"{_PFC}: _native.pfc_decide (crate-root export; its body reaches cortex, medulla, rng)",
+    ]
+
+
+def test_blind_spots_disclose_what_export_attribution_does_not_read():
+    text = " ".join(gate.RUST_BLIND_SPOTS)
+    assert "names no symbol here" not in text and "exports map to no region" not in text
+    assert "non-call path" in text and "#[pyclass]" in text and "self.helper()" in text
 
 
 def test_same_region_native_import_maps_to_no_pair(base):
@@ -212,11 +476,14 @@ def test_reader_is_built_from_this_checkout_not_from_root(tmp_path, monkeypatch)
 
     monkeypatch.setattr(rust_facts, "rust_files", lambda root=None, sub=None: paths)
     monkeypatch.setattr(rust_facts, "facts", spy)
-    status, directed, exports = gate.rust_region_imports(str(tmp_path), gate.frozen_labels(_ROOT))
+    status, directed, exports, reach = gate.rust_region_imports(
+        str(tmp_path), gate.frozen_labels(_ROOT)
+    )
     assert roots == [rust_facts.ROOT], roots  # never --root's tools/rsfacts
     assert status.startswith("native/ PRESENT (7 .rs files)"), status
     assert directed == gate.RUST_PAIR  # absolute fact paths under an alternate root resolve
     assert exports == {"fear_step": f"{_CER}"}
+    assert reach == {}  # fear_step lives in a regioned file: the file-region rule, not body reach
 
 
 def test_rust_self_check_judges_arms_against_the_empty_rust_baseline(monkeypatch, base):
