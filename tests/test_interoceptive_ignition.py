@@ -21,6 +21,7 @@ The P8 burden, one test each:
 Run: pytest tests/test_interoceptive_ignition.py
 """
 
+import random
 import statistics
 
 import pytest
@@ -122,14 +123,28 @@ def test_ignition_bias_default_is_the_pre_T039f_call():
 # ==================================================================================================
 # The live brain. One construction per arm, module-scoped, because ticking is the expensive part.
 # ==================================================================================================
-def _run(neuter, ticks=TICKS):
+def _run(neuter, ticks=TICKS, salience=None):
     """Tick a real brain and record what the ignition path did. `neuter` removes the insula --
-    the A/B whose difference IS the attribution."""
+    the A/B whose difference IS the attribution. `salience` is a per-tick sequence that REPLACES
+    the value the insula hands the brain (the organ still observes, so its baseline advances as
+    in the live arm): the control arms, which feed a constant or shuffled signal through the
+    brain's own consumer."""
     from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=False)
     if neuter:
         b._insula = None
+    observed = {"n": 0}
+    if b._insula is not None:
+        replay = iter(salience) if salience is not None else None
+        real_observe = b._insula.observe
+
+        def _observe(_real=real_observe, **frame):
+            observed["n"] += 1
+            value = _real(**frame)
+            return value if replay is None else next(replay)
+
+        b._insula.observe = _observe
     arm = b.brain.arm
     draws = {"n": 0}
     if arm.intero is not None:  # spy on the ORGAN so a second draw per tick would be visible
@@ -142,6 +157,7 @@ def _run(neuter, ticks=TICKS):
         arm.intero.sense = _spy
     rows = []
     for _ in range(ticks):
+        before = observed["n"]
         b.tick()
         base = b._reentrant.base_ignition_threshold
         c = float(getattr(b, "_region_coherence_val", 0.0) or 0.0)
@@ -151,6 +167,7 @@ def _run(neuter, ticks=TICKS):
         rows.append(
             {
                 "salience": s,
+                "observed": observed["n"] > before,
                 "bound": bound,
                 "coh_gated": c_gated,
                 "base": base,
@@ -190,6 +207,28 @@ def live_long():
 @pytest.fixture(scope="module")
 def neutered_long():
     return _run(neuter=True, ticks=OUTCOME_TICKS)
+
+
+def _observed_trace(rows):
+    """Salience on the ticks the insula was actually consulted -- the ticks before the arm's first
+    interoceptive reading hand the brain 0.0 without calling it, and a replay must not spend its
+    values there."""
+    return [r["salience"] for r in rows if r["observed"]]
+
+
+@pytest.fixture(scope="module")
+def constant_long(live_long):
+    """The live mean, held constant: same level, no timing."""
+    mean_s = statistics.fmean(_observed_trace(live_long[0]))
+    return _run(neuter=False, ticks=OUTCOME_TICKS, salience=[mean_s] * OUTCOME_TICKS)
+
+
+@pytest.fixture(scope="module")
+def shuffled_long(live_long):
+    """The live trace, permuted (random.Random(0)): same distribution, no timing."""
+    trace = _observed_trace(live_long[0])
+    random.Random(0).shuffle(trace)
+    return _run(neuter=False, ticks=OUTCOME_TICKS, salience=trace)
 
 
 def test_the_accessor_reads_the_cache_and_never_takes_a_second_draw(live):
@@ -311,6 +350,66 @@ def test_neutering_the_insula_changes_the_brains_own_output(live_long, neutered_
         f"(ignited-diff {ign_diff}, winner-diff {win_diff}) -- a moved number that reaches no "
         "outcome is the worked example this tree keeps re-finding, and it fails here"
     )
+
+
+def _outcome_distance(a_rows, b_rows):
+    """Ticks on which the brain's own ignition record (ignited, winner) differs."""
+    return sum(
+        1
+        for a, b in zip(a_rows, b_rows, strict=True)
+        if (a["ignited"], a["winner"]) != (b["ignited"], b["winner"])
+    )
+
+
+def test_the_control_arms_feed_their_signal_through_the_live_consumer(
+    live_long, constant_long, shuffled_long
+):
+    """The control arms must be REAL: the injected signal reaches the brain's own threshold write.
+    Asserts on the recorded live_thr (the value the workspace actually held), which the
+    recomputing control above never reads."""
+    live_sal = _observed_trace(live_long[0])
+    const_rows, shuf_rows = constant_long[0], shuffled_long[0]
+    assert len(const_rows) == len(shuf_rows) == OUTCOME_TICKS
+    assert [r["observed"] for r in const_rows] == [r["observed"] for r in live_long[0]]
+    assert len({round(x, 12) for x in _observed_trace(const_rows)}) == 1
+    assert sorted(_observed_trace(shuf_rows)) == sorted(live_sal)
+    assert _observed_trace(shuf_rows) != live_sal, "the shuffle was the identity"
+    for rows in (const_rows, shuf_rows):
+        moved = sum(
+            1
+            for a, b in zip(live_long[0], rows, strict=True)
+            if abs(a["live_thr"] - b["live_thr"]) > 1e-9
+        )
+        assert moved > 0, "the control arm held the live threshold trace -- the injection is inert"
+        recomputed = [r["with_s"] for r in rows]
+        # coherence is brain state and may differ from the live arm; what must hold is that the
+        # live threshold the workspace held IS the law applied to this arm's own signal
+        assert max(abs(r["live_thr"] - w) for r, w in zip(rows, recomputed, strict=True)) < 1e-6, (
+            "the workspace threshold is not the law applied to the injected salience -- the "
+            "control signal did not reach the consumer"
+        )
+
+
+def test_PREREGISTERED_the_live_signal_moves_the_outcome_more_than_its_own_controls(
+    live_long, neutered_long, constant_long, shuffled_long
+):
+    """PRE-REGISTERED 2026-10-19, written BEFORE the control arms were first run (seed 0,
+    OUTCOME_TICKS=200, hermetic home). D(x, y) = ticks on which (ignited, winner) differs.
+
+      N = D(live, neutered)   -- the insula removed
+      C = D(live, constant)   -- live mean held constant (level kept, timing destroyed)
+      S = D(live, shuffled)   -- live trace permuted     (distribution kept, timing destroyed)
+
+    BAR: N > max(C, S). Removing the body signal must move the outcome more than keeping its
+    level or its distribution while destroying only its timing. If the data refute this, the
+    null is reported as measured and the bar is NOT retuned.
+
+    Both live_thr arms are asserted real by the previous test, so a refutation cannot be an
+    artefact of an injection that never reached the consumer."""
+    n = _outcome_distance(live_long[0], neutered_long[0])
+    c = _outcome_distance(live_long[0], constant_long[0])
+    s = _outcome_distance(live_long[0], shuffled_long[0])
+    assert n > max(c, s), f"bar refuted: N={n} C={c} S={s}"
 
 
 def test_the_declared_channel_layout_is_what_the_brain_feeds():
