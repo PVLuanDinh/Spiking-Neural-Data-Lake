@@ -14,19 +14,24 @@ The P8 burden, one test each:
   * a REACHABLE RED          -- the law must be able to fail (monotonicity, the bound, additivity)
   * a CONTROL that is not the method -- a CONSTANT-salience arm, which the s0-exit's own
                                         adversarial measurement used to kill the previous route.
-                                        It separates live from constant at the THRESHOLD only: at
-                                        the OUTCOME a constant at the live mean reproduces live on
-                                        200/200 ticks (measured 2026-10-19; see the PREREGISTERED
-                                        test, whose docstring carries the level arms)
+                                        It separates live from constant at the THRESHOLD; at the
+                                        OUTCOME it depends on the PERCEPTION TIER: with no encoder
+                                        checkpoints a constant at the live mean reproduces live on
+                                        200/200 ticks (2026-10-19), on the production tier it does
+                                        not (2026-10-20; see the PREREGISTERED test)
   * PER-ITEM ATTRIBUTION     -- neuter the insula and show the brain's own output moves
   * DELETION ON A NULL       -- a threshold that never moves fails here rather than being
-                                reported as a wire; a salience that never varies fails too,
-                                though the level arms show a constant at the live mean still
-                                moves the outcome (it is the variation that is outcome-inert)
+                                reported as a wire; a salience that never varies fails too
+
+PERCEPTION TIER IS AN INPUT (2026-10-20). engine/brain.py loads the gitignored encoders
+models/eprop_nmnist.pt and models/eprop_shd.pt by CWD-RELATIVE default path, so a checkout without
+them (every lane worktree) runs a different brain. The outcome arms pin the production tier by
+absolute path and skip, named, where the encoders are absent; each row records the tier it ran on.
 
 Run: pytest tests/test_interoceptive_ignition.py
 """
 
+import pathlib
 import random
 import statistics
 
@@ -38,12 +43,22 @@ from snn_data_lake.faculties.region_coherence import RegionCoherence
 TICKS = 40
 # The OUTCOME A/B runs longer (2026-10-19): on a HERMETIC home the insula moves the
 # threshold from tick 4 but first changes WHAT WINS at tick 84 (winner differs on 28 of 200
-# ticks; deterministic, seed 0). At 40 ticks that assert had only passed on a NORD_HOME leaked
+# ticks; deterministic, seed 0 -- on the NO-ENCODER tier; 6 of 200 on the production tier,
+# 2026-10-20). At 40 ticks that assert had only passed on a NORD_HOME leaked
 # from an earlier test in serial order -- with a module home under pytest -n it read thr_diff 35,
 # outcome diff 0. TICKS stays 40 for the tests calibrated on it (distinct-value bar TICKS // 2).
 OUTCOME_TICKS = 200
 GAIN = RegionCoherence.IGNITION_GAIN
 CTX = dict(visual=0.55, temperature=24.0, audio=0.3, distance=0.6)
+# The production perception tier: what the daemon loads (learn_daemon.bat runs from the repo root).
+# Absolute, so the arms no longer depend on the cwd. The packs are tracked; the encoders are not.
+_MODELS = pathlib.Path(__file__).resolve().parents[1] / "models"
+PRODUCTION_TIER = {
+    "SNN_EPROP_CKPT": _MODELS / "eprop_nmnist.pt",
+    "SNN_PERCEPTION_PACK": _MODELS / "nmnist_pack.npz",
+    "SNN_EPROP_AUDIO_CKPT": _MODELS / "eprop_shd.pt",
+    "SNN_SHD_PACK": _MODELS / "shd_pack.npz",
+}
 
 
 # ==================================================================================================
@@ -138,6 +153,7 @@ def _run(neuter, ticks=TICKS, salience=None):
     from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=False)
+    tier = (b._perception_tier, b._audio_enc is not None)  # (vision tier, audio encoder loaded)
     if neuter:
         b._insula = None
     observed = {"n": 0, "exhausted": False}
@@ -189,6 +205,7 @@ def _run(neuter, ticks=TICKS, salience=None):
                 "without_s": RegionCoherence._adjust(base, c_gated, GAIN, 0.0),
                 "ignited": bool(b._access_state.get("ignited", False)),
                 "winner": b._reentrant._last.get("winner"),
+                "tier": tier,
             }
         )
         # THE ACCESSOR IS EXERCISED HARD HERE ON PURPOSE: three extra reads per tick. If it took
@@ -213,12 +230,26 @@ def neutered():
 
 
 @pytest.fixture(scope="module")
-def live_long():
+def production_tier():
+    """Pin the outcome arms to the production perception tier, or refuse by name. A skip, never
+    a silent fall back to the no-encoder brain: that brain is the one the 2026-10-19 numbers came
+    from, and it is not the one the daemon runs."""
+    missing = [p.name for p in PRODUCTION_TIER.values() if not p.exists()]
+    if missing:
+        pytest.skip(f"production perception tier unavailable here (absent: {missing})")
+    with pytest.MonkeyPatch.context() as mp:
+        for var, path in PRODUCTION_TIER.items():
+            mp.setenv(var, str(path))
+        yield ("eprop-snn", True)
+
+
+@pytest.fixture(scope="module")
+def live_long(production_tier):
     return _run(neuter=False, ticks=OUTCOME_TICKS)
 
 
 @pytest.fixture(scope="module")
-def neutered_long():
+def neutered_long(production_tier):
     return _run(neuter=True, ticks=OUTCOME_TICKS)
 
 
@@ -430,8 +461,8 @@ def test_an_exhausted_replay_is_flagged_not_swallowed():
     assert all(r["salience"] == 0.0 for r in consulted)
 
 
-def test_PREREGISTERED_removing_the_insula_moves_the_outcome_more_than_destroying_its_timing(
-    live_long, neutered_long, constant_long, shuffled_long
+def test_PREREGISTERED_insula_bar_is_REFUTED_on_the_production_perception_tier(
+    production_tier, live_long, neutered_long, constant_long, shuffled_long
 ):
     """PRE-REGISTERED 2026-10-19, written BEFORE the control arms were first run (seed 0,
     OUTCOME_TICKS=200, hermetic home). D(x, y) = ticks on which (ignited, winner) differs.
@@ -448,23 +479,37 @@ def test_PREREGISTERED_removing_the_insula_moves_the_outcome_more_than_destroyin
     computed, so a refutation cannot be an artefact of an injection that never reached the
     consumer.
 
-    MEASURED 2026-10-19 (lane b3-intero, re-derived by the integrator): N=28 C=0 S=0. Both
-    controls move live_thr on 197 and 196 of the 200 ticks, yet never the outcome. Reading: at
-    this horizon the outcome depends on the insula being present (its contribution to the
-    threshold), NOT on the timing of its salience. A claim that salience timing drives the
-    ignition outcome is unsupported by this test.
+    MEASURED 2026-10-19 ON THE NO-ENCODER TIER (lane b3-intero, re-derived by the integrator and
+    both Opus reviewers -- every one of them in a worktree without the gitignored
+    models/eprop_*.pt, so NOT the brain the daemon runs): N=28 C=0 S=0. Both controls moved
+    live_thr on 197 and 196 of the 200 ticks, yet never the outcome.
 
-    LEVEL ARMS (closing review 2026-10-19, re-derived by the integrator; constant salience, same
-    seed/horizon; D_out from live): 2x mean -> 23, 0.5x mean -> 5, 0.0 -> 28 (identical to the
-    neutered arm, D_out=0 and D_thr=0 against it). Reading: at this horizon the insula's outcome
-    charge is its LEVEL; its tick-to-tick variation is outcome-inert -- P3 dormancy shape 5 at the
-    outcome level, OWNER ADJUDICATION PENDING. This bar cannot see that: it passes maximally
-    exactly when variation does nothing."""
+    LEVEL ARMS, SAME NO-ENCODER TIER (closing review 2026-10-19; constant salience; D_out from
+    live): 2x mean -> 23, 0.5x mean -> 5, 0.0 -> 28 (identical to the neutered arm). The reading
+    "variation is outcome-inert, P3 dormancy shape 5" was put to the owner; it is WITHDRAWN
+    (2026-10-20): measured on the wrong tier. Level arms on the production tier are owed.
+
+    MEASURED 2026-10-20 ON THE PRODUCTION TIER (both encoders, the daemon's brain; the B3
+    battery's red, then reproduced alone in a fresh process): N=6 C=9 S=20 -- THE BAR IS
+    REFUTED: destroying the salience timing moves the outcome MORE than removing the insula.
+    Repeatability control: two further identical live arms in the same process differ from the
+    first on 0 ticks (outcome and threshold), so C and S are treatment effects, not arm drift.
+    Tier sweep, same commit and seed (N/C/S): no encoders 28/0/0, vision only 102/8/28, audio
+    only 21/0/4, both 6/9/20. Nothing was a cross-test leak; the battery read the production
+    tier and the lane did not.
+
+    DISPOSITION (owner 2026-10-20, option a): the null is reported as measured and the bar is
+    NOT retuned; this test asserts the REFUTATION on the production tier. If it ever goes red,
+    the brain changed: re-measure and re-adjudicate, never edit the numbers to match."""
+    for arm in (live_long, neutered_long, constant_long, shuffled_long):
+        assert {r["tier"] for r in arm[0]} == {production_tier}, "an arm ran off the pinned tier"
     _assert_control_arms_real(live_long, constant_long, shuffled_long)
     n = _outcome_distance(live_long[0], neutered_long[0])
     c = _outcome_distance(live_long[0], constant_long[0])
     s = _outcome_distance(live_long[0], shuffled_long[0])
-    assert n > max(c, s), f"bar refuted: N={n} C={c} S={s}"
+    assert n <= max(c, s), (
+        f"the recorded refutation no longer holds: N={n} C={c} S={s} (2026-10-20: 6/9/20)"
+    )
 
 
 def test_the_declared_channel_layout_is_what_the_brain_feeds():
