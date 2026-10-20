@@ -2324,6 +2324,9 @@ RUST_CONTROLS = [
         _RS_BINDING_CFG,
     ),
 ]
+# the NATIVE EXPORTS ATTRIBUTED lines a control's label promises, checked by rust_self_check (b4p P3: G15
+# held only its counts, so a gate that dropped the used-by-nobody line passed it)
+RUST_CONTROL_PRINTS = {"G15": (_reach_line(None, "bind_step", (_CER,)),)}
 
 
 def write_native(directory, fear_rs, extra=None):
@@ -2401,6 +2404,10 @@ def rust_self_check(root, empty):
             reds.append(
                 f"rust pairs {sorted(cres['conn']['rust_directed'])} / unmapped {unmapped} / metrics moved"
             )
+        attributed = cres["conn"]["native_attributed"]
+        missing = [line for line in RUST_CONTROL_PRINTS.get(name, ()) if line not in attributed]
+        if missing:
+            reds.append(f"NOT PRINTED under NATIVE EXPORTS ATTRIBUTED: {missing}")
         control_rows.append(
             (f"Rust {name}: {how}", "not a brain wire; every count stays put", reds)
         )

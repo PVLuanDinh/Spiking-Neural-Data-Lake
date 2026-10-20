@@ -650,6 +650,26 @@ def test_rust_self_check_reports_a_dead_red_and_a_leaking_control(monkeypatch, b
     assert control_rows[0][2], control_rows
 
 
+def test_rust_self_check_reds_g15_when_its_attributed_line_is_not_printed(monkeypatch, base):
+    """b4p P3 (Opus p6x MINOR-3): G15's label promises the used-by-nobody line, but its row read
+    only rust_directed, the metrics and its own unmapped list. A gate that drops the line (here:
+    region_imports' output stripped of every `<no regioned Python module>` line) must red G15."""
+    monkeypatch.setattr(gate, "RUST_REDS", [])
+    monkeypatch.setattr(gate, "RUST_CONTROLS", [_arm("RUST_CONTROLS", "G15")])
+    real = gate.region_imports
+
+    def dropping(root, overlay, labels, native, native_out, regions):
+        directed = real(root, overlay, labels, native, native_out, regions)
+        kept = [line for line in native_out["attributed"] if not line.startswith(_NOBODY)]
+        native_out["attributed"][:] = kept
+        return directed
+
+    monkeypatch.setattr(gate, "region_imports", dropping)
+    _rows, control_rows, _lines = gate.rust_self_check(_ROOT, base["metrics"])
+    assert len(control_rows) == 1 and control_rows[0][2], control_rows
+    assert "NOT PRINTED" in " ".join(control_rows[0][2])
+
+
 def test_orphan_file_in_no_mod_tree_still_counts(base):
     extra = {f"native/sndl-core/src/{_AMY}/orphan.rs": _arm("RUST_REDS", "R1")[2]}
     res = gate.measure(_ROOT, native=gate.fixture_native(gate.RS_FEAR_GREEN, extra))
