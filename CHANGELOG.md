@@ -9,6 +9,22 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- B4 fold, lane b4c: the carryfix closing-review folds (2026-10-20)
+
+selfcheck_cache (lane b4c; integrator r02-lead). The carryfix pytest reds now list the tree surface directly, so on the
+defective logic they fail (4 failed / 2 passed) instead of skipping with a false "no git" reason. The listing-root
+resolver is DELETED: every listing the derivation recognises is a tree scan, whatever its root -- the resolver moved no
+module (173 plain / 206 scanners before and after, identical as a set) and failed open on six constructed shapes, one
+live-shaped (`os.walk(os.environ["PYTHONPATH"])` under the runner's PYTHONPATH=src). Any `git` argv now scans (`git diff
+--name-only`, `git status --short`); that moves one module, instruments.h01_partb_tangential, whose registered self-check
+spawns git 0 times -- disclosed as pure cost. getattr string dispatch is a disclosed blind spot pinned by a strict xfail.
+A whole-string repo-relative path naming an existing tracked file now keys that file to its reader as a data row: this
+closes two LIVE stale carries -- instruments.eligible_circuit_census read 8 src files under a 1-file closure (a brain.py
+edit flipped nothing), and gates.capability_bar's TRACKED_SURFACES include infra/cockpit.py, unkeyed. Census after: 394
+graph modules, 172 plain, 207 tree scanners, 193 data readers. Lane-verified and r02-lead-verified (brain.py ->
+eligible_circuit_census, cockpit.py -> capability_bar, impact_analysis.py -> replication_guard all flip); not yet
+battery-run.
+
 ## [Unreleased] -- B4 fold, lane b4p: the p6x closing-review folds (2026-10-20)
 
 Opus closing review of p6x (`lanes/b4-reviews-1020/opus-review-p6x.md`, APPROVE-WITH-FOLDS: 1 MAJOR, 3 MINOR,
