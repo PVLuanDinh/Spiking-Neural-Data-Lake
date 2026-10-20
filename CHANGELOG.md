@@ -9,7 +9,7 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
-## [Unreleased] -- B3 fold, lane p6x: p6 attributes a binding crate-root export to its Python users' regions and what its body reaches (2026-10-20)
+## [Unreleased] -- B4, lane p6x: p6 attributes a binding crate-root export to its Python users' regions and what its body reaches (2026-10-20)
 
 Codex B2-fold MAJOR 1 (both `codex-review-b2f` rounds): the binding crate root `native/sndl-python/src/lib.rs`
 belongs to no region, so a `#[pyfunction]` there formed NO pair -- adding `pub mod medulla;` to sndl-core and
