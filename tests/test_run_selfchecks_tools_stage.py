@@ -351,3 +351,30 @@ def test_in_process_scratch_cleanup_reports_leftovers(monkeypatch):
     lines = []
     assert rs.run_all_in_process(emit=lines.append)
     assert any("could not remove" in line and "brain_atlas" in line for line in lines), lines
+
+
+def test_reaper_removes_only_old_selfcheck_homes(tmp_path):
+    # Opus final NOTE. Never younger than 24 h (a concurrent runner), never another name, a plain
+    # file, or a symlink. RED on a reaper with no age floor (young dir gone) or none (old stays).
+    import time
+
+    now = time.time()
+
+    def mk(name, age_h, kind="dir"):
+        p = tmp_path / name
+        if kind == "dir":
+            p.mkdir()
+            (p / "estop.latch").write_text("x")
+        else:
+            p.write_text("x")
+        os.utime(p, (now - age_h * 3600, now - age_h * 3600))
+        return p
+
+    old = mk("snn_selfchecks_home_old", 25)
+    young = mk("snn_selfchecks_home_young", 23)
+    other = mk("other_dir_old", 48)
+    afile = mk("snn_selfchecks_home_file", 48, kind="file")
+    reaped = rs._reap_stale_homes(str(tmp_path), now=now)
+    assert reaped == [str(old)]
+    assert not old.exists() and young.exists() and other.exists() and afile.exists()
+    assert rs._reap_stale_homes(str(tmp_path / "missing"), now=now) == []

@@ -47,7 +47,43 @@ import time
 # operator's lake would clear the real E-STOP latch (Opus closing review, MAJOR 1). The home is
 # removed at exit (registered first, so it runs after every check's own atexit handler), and
 # anything that cannot be removed is reported, never silently leaked (Opus MINOR 3).
-_HOME = tempfile.mkdtemp(prefix="snn_selfchecks_home_")
+_HOME_PREFIX = "snn_selfchecks_home_"
+_REAP_AFTER_S = 24 * 3600
+
+
+def _reap_stale_homes(tmp=None, max_age=_REAP_AFTER_S, now=None):
+    """Remove `snn_selfchecks_home_*` DIRECTORIES under `tmp` whose mtime is older than `max_age`.
+
+    A runner killed before its atexit handler (taskkill, power loss) leaks its per-process home; the
+    battery launches many runners, so the leaks accumulate. Never touches a younger dir (a concurrent
+    runner's live home), a symlink, a plain file, or any other name. Best-effort: a dir another reaper
+    removed first, or one a straggler still holds, is skipped and retried on the next import."""
+    import shutil
+
+    tmp = tempfile.gettempdir() if tmp is None else tmp
+    now = time.time() if now is None else now
+    reaped = []
+    try:
+        names = os.listdir(tmp)
+    except OSError:
+        return reaped
+    for name in names:
+        p = os.path.join(tmp, name)
+        if not name.startswith(_HOME_PREFIX):
+            continue
+        try:
+            st = os.lstat(p)
+            if not os.path.isdir(p) or os.path.islink(p) or now - st.st_mtime <= max_age:
+                continue
+            shutil.rmtree(p)
+            reaped.append(p)
+        except OSError:
+            continue
+    return reaped
+
+
+_reap_stale_homes()  # at import, BEFORE this process makes its own home: it can never reap itself
+_HOME = tempfile.mkdtemp(prefix=_HOME_PREFIX)
 
 
 def _rmtree_report(path):
