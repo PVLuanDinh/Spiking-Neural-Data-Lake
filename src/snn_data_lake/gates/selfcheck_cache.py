@@ -53,11 +53,21 @@ THE KEY (all of it, or no carry) -- v3, ENVELOPE PRECISION (2026-08-21):
     runner passes the whole process environment to every child, so an unnamed variable is
     an undeclared input; the review found 48 of them with 5 registered checks reading at
     module load (the N-MNIST seed and sizes among them).
-  * TREE SCANNERS: a module whose closure lists a directory ROOTED AT `__file__` --
-    os.walk / listdir / scandir / glob / iglob / rglob / iterdir whose path derives from
-    `__file__` (bare or as `pkg.__file__`) through the file's own assignments, loop targets
-    and return values: os.walk(_PKG_DIR), a glob over src/, brain_atlas's
-    listdir(dirname(pkg.__file__)) -- reads files no import closure names. The dormancy /
+  * TREE SCANNERS (FAIL-CLOSED since carryfix, 2026-10-20): a module whose closure lists a
+    directory -- a _SCAN_CALLS call (os.walk / fwalk / listdir / scandir / glob / iglob /
+    rglob / iterdir / pkgutil.iter_modules / walk_packages), resolved through the file's
+    import aliases, or such a lister taken as a value -- whose root is not PROVABLY
+    excluded, or names a git tree read (_GIT_TREE_READS: `ls-files`, `ls-tree`,
+    `--porcelain`) in a non-docstring string, reads files no import closure names. A root is excluded only when it is bound, through the file's own
+    assignments, loop targets, with-items and return values (every bind of the name, never
+    a parameter), from substrate.home() (the per-run store) or an environment read (a
+    dataset dir), or wraps such a value in a pure path combinator; a root entering as a
+    function parameter (replication_guard's os.walk(pkg_dir), native_ratchet's src.rglob),
+    from cwd (a bare glob), from another module, from an unknown call, or mixing `__file__`
+    into an excluded one (`os.environ.get("R", dirname(__file__))`) is a scan.
+    The landing rule keyed only roots derived from `__file__` IN THE SAME FILE, and the
+    Opus B3 review measured the hole: an impact_analysis.py override left replication_guard,
+    native_ratchet and rust_facts UNCHANGED although each walks the package. The dormancy /
     method-dormancy / import-manifest / replication / transport gates, the atlas, the
     atlas-node gate, brain_geometry, self_mod_harness, nightly_skills, and by closure
     everything that imports them (the brain itself imports the dormancy gate). Their key
@@ -65,7 +75,9 @@ THE KEY (all of it, or no carry) -- v3, ENVELOPE PRECISION (2026-08-21):
     --exclude-standard`), so they re-run on any tree change, and only then. v2 had NO row
     for this surface at all: an edit outside a gate's import closure (the method-dormancy
     gate scans modules it never imports) could carry its stale PASS. It was safe only
-    because the global envelope changed on every task anyway.
+    because the global envelope changed on every task anyway. A closure containing
+    gates.rust_facts also carries the `native:` row below, which folds in tools/rsfacts/**
+    (the fixture crate its self-check parses; a tools/ SUBdirectory no data row lists).
   * RUST SURFACE (R0.2 row 13, 2026-10-17): a module whose closure READS the extension
     `snn_data_lake._native` (any import spelling, derived per file like the scanner rule; or
     the graph node itself) carries a `native:` row -- sha256 over (path, sha256) of every
@@ -126,15 +138,16 @@ DISCLOSED BLIND SPOTS (banner() prints them at every carrying run):
      the tree reads by name are keyed as data inputs (models/*, graphify-out/*.json --
      connectome's self-check asserts on graph.json, found by the review); any other
      gitignored path read by literal name elsewhere is unkeyed. None known at landing.
-  6. (v3) The scanner derivation roots a listing at `__file__` PER FILE: a root that
-     enters from ANOTHER module (an imported `_PKG_DIR`, a helper imported from
-     self_mod_harness) is not seen in that file. Counted at landing: 0 module-class
-     changes from it -- every such file already reaches a direct scanner through its own
-     closure. Each rooting rule is counted too: the return-value rule classifies exactly
-     one file (this one, whose package walk is rooted through _repo_root()); a parameter-
-     binding rule was built, measured at 0 files and DELETED (P8: a null is removed, not
-     parked). The self-check pins the surviving rules on synthetic sources so they cannot
-     rot silently. A listing of home() or a dataset dir is deliberately NOT a scan.
+  6. (v3, carryfix 2026-10-20) The scanner derivation is FAIL-CLOSED per file: a listing
+     is a scan unless a root it takes is provably substrate.home() or an environment read
+     (through this file's own binds; a parameter, an imported value, a module attribute,
+     an unknown call or `__file__` anywhere in a root makes it a scan). What stays unkeyed
+     is therefore the CONTENT of those excluded listings (the per-run store, an env-named
+     dataset dir -- the env VALUE is keyed, the directory it names is not) and a tree
+     listed by a subprocess other than the _GIT_TREE_READS forms of git (find, rg, git
+     grep). Red (n) pins
+     the three walkers the Opus B3 review measured carrying; the derivation pins in
+     _SYNTHETIC hold every rule, including the fail-open shapes the polish review found.
 THE PROTOCOL those blind spots buy: carries are a LOCAL-battery accelerator only (CI,
 act containers and exit-certification batteries run FULL -- --carry is opt-in and nothing
 in .github/ passes it), and ANY FAIL in a carrying battery is re-run FULL before it is
@@ -161,7 +174,7 @@ import re
 import subprocess
 import sys
 
-from snn_data_lake.gates.rust_facts import NATIVE_MODULE as _NATIVE  # stdlib-only reader
+from snn_data_lake.gates import rust_facts as _rf  # stdlib-only reader; owns the crate paths
 
 _CACHE_VERSION = 3  # v3: envelope precision -- rosters split out, data inputs, named
 # environment variables and the tree surface keyed to their DERIVED readers. v2 (review
@@ -169,11 +182,42 @@ _CACHE_VERSION = 3  # v3: envelope precision -- rosters split out, data inputs, 
 # hashed is still hashed here, now keyed to the modules whose verdict can see it.
 _PKG = "snn_data_lake"
 _PKG_PREFIX = _PKG + "."
+_NATIVE = _rf.NATIVE_MODULE
 _NATIVE_LEAF = _NATIVE.rpartition(".")[2]  # "_native": the extension has no .py of its own
 _NATIVE_NAMES = frozenset(
     {"Cargo.toml", "Cargo.lock", "build.rs", "rust-toolchain", "rust-toolchain.toml"}
 )
-_SCAN_CALLS = frozenset({"walk", "listdir", "scandir", "glob", "iglob", "rglob", "iterdir"})
+_SCAN_CALLS = frozenset(
+    {"walk", "fwalk", "listdir", "scandir", "glob", "iglob", "rglob", "iterdir"}
+    | {"iter_modules", "walk_packages"}  # pkgutil: a package's modules, loaded outside any closure
+)
+_LISTING_MODULES = frozenset({"os", "glob", "pathlib", "pkgutil"})  # a lister taken as a value
+_GIT_TREE_READS = ("ls-files", "ls-tree", "--porcelain")  # argv strings that read the tree via git
+# The DELIBERATELY excluded listing roots (fail-closed derivation, carryfix 2026-10-20):
+# substrate.home() -- resolved through its import, `from ...substrate.home import home` or
+# `from ...substrate import home` -- is the per-run store, an environment read names a dataset
+# dir. Every other provenance is the tree. _PATH_WRAPPERS are the root-preserving path
+# combinators whose result is excluded iff their arguments are (os.path.join(home(), "x"),
+# Path(home()) ...); dirname / basename are NOT (a climb, a relativisation).
+_HOME_MODULE = "substrate.home"
+_HOME_PACKAGE = "substrate"
+_PATH_WRAPPERS = frozenset(
+    {"join", "abspath", "normpath", "realpath", "fspath"}
+    | {"Path", "PurePath", "PosixPath", "WindowsPath", "str", "sorted", "list", "tuple", "next"}
+)
+_WRAPPER_MODULES = frozenset({"os", "posixpath", "ntpath", "pathlib"})
+_ROOT_KEEPING_METHODS = frozenset({"resolve", "absolute", "expanduser", "joinpath", "rstrip"})
+_MUTATORS = frozenset({"append", "extend", "insert", "update", "setdefault", "add", "pop", "clear"})
+_ABSOLUTE = re.compile(r"^(?:[A-Za-z]:|[\\/])")  # a constant joined onto a root that REPLACES it
+# red (n)'s subjects, shared with tests/test_selfcheck_cache_unflagged_scanners.py: the three
+# walkers the Opus B3 review measured carrying (parameter-rooted walks, `git ls-files`), the
+# rust_facts reader that already flipped, and the two files whose override must flip them
+_WALKERS = ("gates.replication_guard", "gates.native_ratchet", "gates.rust_facts")
+_RUST_FACTS_READER = "gates.native_dormancy"
+_IMPACT_FILE = ("src", _PKG, "reasoning", "impact_analysis.py")
+_LIB_RS_FILE = (_rf.NATIVE_DIR, "sndl-core", "src", "lib.rs")
+_NULL_RE = re.compile(r"(?!x)x")  # the derivation pins name no data artifact
+_RUST_FACTS = _rf.__name__
 # (directory, accepted extensions | None = every file, minus .py) -- DATA INPUTS keyed to
 # their derived readers.
 _DATA_DIRS = (
@@ -280,28 +324,15 @@ def split_rosters(text):
     return _sha256_text(ast.dump(tree)), _sha256_text("|".join(dumps)), tuple(names)
 
 
-def _names(node):
-    """Names an expression references; `x.__file__` counts as `__file__` (the attribute
-    form a package-relative listing uses -- brain_atlas roots on `pkg.__file__`)."""
-    out = set()
-    for n in ast.walk(node):
-        if isinstance(n, ast.Name):
-            out.add(n.id)
-        elif isinstance(n, ast.Attribute) and n.attr == "__file__":
-            out.add("__file__")
-    return out
-
-
 def _env_name(node):
     """The literal variable name of an os.environ.get / os.getenv / os.environ[...] /
     os.environ.setdefault read, else None."""
     if isinstance(node, ast.Call):
         f = node.func
         attr = f.attr if isinstance(f, ast.Attribute) else None
-        via_environ = (
-            isinstance(f, ast.Attribute)
-            and isinstance(f.value, ast.Attribute)
-            and f.value.attr == "environ"
+        via_environ = isinstance(f, ast.Attribute) and (
+            (isinstance(f.value, ast.Attribute) and f.value.attr == "environ")
+            or (isinstance(f.value, ast.Name) and f.value.id == "environ")  # from os import environ
         )
         if (attr == "getenv" or (via_environ and attr in ("get", "setdefault"))) and node.args:
             a = node.args[0]
@@ -309,7 +340,9 @@ def _env_name(node):
                 return a.value
     elif isinstance(node, ast.Subscript):
         v, s = node.value, node.slice
-        if isinstance(v, ast.Attribute) and v.attr == "environ":
+        if (isinstance(v, ast.Attribute) and v.attr == "environ") or (
+            isinstance(v, ast.Name) and v.id == "environ"
+        ):
             if isinstance(s, ast.Constant) and isinstance(s.value, str):
                 return s.value
     return None
@@ -327,34 +360,220 @@ _UNPARSEABLE = {
 def _facts(text, pkg_parts, marker_re):
     """What one source file can READ beyond its imports: the data-input basenames it names
     in non-docstring string constants, the names it imports from the root package, the
-    environment variables it reads by literal name, and whether it lists a directory
-    ROOTED AT `__file__` (a tree scanner: the listing's path derives from `__file__`
-    through this file's own assignments, loop targets and return values -- a home() or
-    dataset listing is not a tree input). Unparseable => scanner (fail-closed)."""
+    environment variables it reads by literal name, and whether it lists a directory that
+    is not PROVABLY excluded -- a tree scanner, FAIL-CLOSED. A listing call (_SCAN_CALLS,
+    resolved through the file's import aliases; only ast.walk is not a listing) is a scan
+    unless at least one root it takes classifies EXCLUDED and none classifies TREE --
+    EXCLUDED being substrate.home(), an os.environ read, a name EVERY bind of which is
+    excluded, or a pure path wrapper of those; see classify() for the per-node rules and
+    the never-provable binding forms. A lister taken as a VALUE (`ls = os.listdir`) and a
+    non-docstring string naming a git tree read (_GIT_TREE_READS) are scans. Unparseable
+    => scanner."""
     try:
         tree = ast.parse(text)
     except SyntaxError:
         return dict(_UNPARSEABLE)
-    rooted = {"__file__"}
-    binds = []
+    aliases = {}  # local name -> (module, original name | None for `import module [as name]`)
+    never = set()  # names whose value this file cannot derive: never provably excluded
+    defined = set()  # functions defined here (methods excluded): a bare call to one is no listing
+    methods = set()
+    binds = {}  # name -> every expression bound to it; EXCLUDED only when all of them are
+    callees = set()  # id() of every Call.func: a lister referenced anywhere else is a scan
+    star = False
+
+    def alias(name, value):
+        # the same local name imported two ways (a function-local `import ast as os` beside
+        # the module's `import os`) is UNKNOWN: it exempts nothing and wraps nothing
+        aliases[name] = value if aliases.get(name, value) == value else ("?", "?")
+
+    def bind(target, value):
+        if isinstance(target, ast.Name):
+            binds.setdefault(target.id, []).append(value)
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            for e in target.elts:
+                bind(e, value)
+        elif isinstance(target, ast.Starred):
+            bind(target.value, value)
+        else:  # `roots[0] = ...`, `self.x = ...`: the container's own value is now unknown
+            while isinstance(target, (ast.Subscript, ast.Attribute)):
+                target = target.value
+            if isinstance(target, ast.Name):
+                never.add(target.id)
+
     for n in ast.walk(tree):
-        if isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign)) and n.value is not None:
-            binds.append((n.targets if isinstance(n, ast.Assign) else [n.target], n.value))
+        if isinstance(n, ast.Call):
+            callees.add(id(n.func))
+            f = n.func
+            if (
+                isinstance(f, ast.Attribute)
+                and f.attr in _MUTATORS
+                and isinstance(f.value, ast.Name)
+            ):
+                never.add(f.value.id)  # `roots.append(...)`: the literal no longer proves it
+        if isinstance(n, ast.Import):
+            for a in n.names:
+                top = a.name.partition(".")[0]
+                alias(a.asname or top, (top, None))
+        elif isinstance(n, ast.ImportFrom):
+            for a in n.names:
+                star = star or a.name == "*"
+                alias(a.asname or a.name, (n.module or "", a.name))
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            ar = n.args
+            never.update(a.arg for a in ar.posonlyargs + ar.args + ar.kwonlyargs)
+            never.update(a.arg for a in (ar.vararg, ar.kwarg) if a is not None)
+            if not isinstance(n, ast.Lambda):
+                # a function's name is bound to every value it returns or yields, and to
+                # None when its body can fall off the end (os.listdir(None) lists cwd)
+                values = [
+                    r.value or ast.Constant(None)
+                    for r in ast.walk(n)
+                    if isinstance(r, (ast.Return, ast.Yield, ast.YieldFrom))
+                ]
+                if not values or not isinstance(n.body[-1], (ast.Return, ast.Raise)):
+                    values.append(ast.Constant(None))
+                binds.setdefault(n.name, []).extend(values)
+                defined.add(n.name)
+        elif isinstance(n, ast.ClassDef):
+            never.add(n.name)
+            methods.update(
+                b.name for b in n.body if isinstance(b, (ast.FunctionDef, ast.AsyncFunctionDef))
+            )
+        elif isinstance(n, (ast.ExceptHandler, ast.MatchAs, ast.MatchStar)) and n.name:
+            never.add(n.name)
+        elif isinstance(n, ast.MatchMapping) and n.rest:
+            never.add(n.rest)
+        elif isinstance(n, (ast.Global, ast.Nonlocal)):
+            never.update(n.names)
+        elif isinstance(n, ast.Assign):
+            for t in n.targets:
+                bind(t, n.value)
+        elif isinstance(n, (ast.AnnAssign, ast.NamedExpr)) and n.value is not None:
+            bind(n.target, n.value)
+        elif isinstance(n, ast.AugAssign):
+            bind(n.target, ast.BinOp(left=n.target, op=n.op, right=n.value))
         elif isinstance(n, (ast.For, ast.comprehension)):
-            binds.append(([n.target], n.iter))
-        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            for r in ast.walk(n):  # a function RETURNING a rooted value roots its name
-                if isinstance(r, ast.Return) and r.value is not None:
-                    binds.append(([ast.Name(id=n.name)], r.value))
-    changed = True
-    while changed:  # fixpoint: a name bound from a rooted expression is rooted
+            bind(n.target, n.iter)
+        elif isinstance(n, ast.withitem) and n.optional_vars is not None:
+            bind(n.optional_vars, n.context_expr)
+    never |= set(aliases)
+    defined -= methods  # a method named glob/walk never cancels an imported lister
+
+    def module_of(expr):
+        """The imported module a dotted callee / receiver chain is rooted at, else None."""
+        while isinstance(expr, ast.Attribute):
+            expr = expr.value
+        if isinstance(expr, ast.Name) and expr.id in aliases and aliases[expr.id][1] is None:
+            return aliases[expr.id][0]
+        return None
+
+    def resolve(expr):
+        """(module, name) a callee or a referenced attribute / name stands for: the module
+        is None for a method of a non-module receiver and for the file's own functions."""
+        if isinstance(expr, ast.Attribute):
+            return module_of(expr.value), expr.attr
+        fid = getattr(expr, "id", None)
+        if fid in aliases:
+            return aliases[fid]
+        return None, (None if fid in defined else fid)
+
+    def is_home(call):
+        f = call.func
+        if isinstance(f, ast.Name) and f.id not in binds:
+            mod, name = aliases.get(f.id, ("", None))
+            return name == "home" and mod.endswith(_HOME_MODULE)
+        if isinstance(f, ast.Attribute) and f.attr == "home" and isinstance(f.value, ast.Name):
+            mod, name = aliases.get(f.value.id, ("", None))
+            return name == "home" and mod.endswith(_HOME_PACKAGE) and f.value.id not in binds
+
+    def is_env(e):
+        """An os.environ / os.getenv read -- the holder must resolve to the os module (or
+        `from os import environ`): `cfg.environ[...]` is any object, not the environment."""
+        if _env_name(e) is None:
+            return False
+        holder = e.func.value if isinstance(e, ast.Call) else e.value
+        if isinstance(holder, ast.Name) and aliases.get(holder.id) == ("os", "environ"):
+            return True
+        return module_of(holder) == "os"
+
+    def combine(parts):
+        return False if False in parts else (True if True in parts else None)
+
+    excluded = set()
+
+    def root(e):
+        """classify() for a position that IS a root of its own (an env default, a list
+        element, an `or` / if-else branch): a constant there is a relative path -- cwd."""
+        return False if isinstance(e, ast.Constant) else classify(e)
+
+    def classify(e):
+        """True: EXCLUDED; False: TREE; None: carries no root (a constant, a module)."""
+        if is_env(e):
+            rest = e.args[1:] + [k.value for k in e.keywords] if isinstance(e, ast.Call) else []
+            return combine([True] + [root(a) for a in rest])
+        if isinstance(e, ast.Call):
+            if is_home(e):
+                return True
+            f = e.func
+            args = [classify(a) for a in e.args] + [classify(k.value) for k in e.keywords]
+            mod, name = resolve(f)
+            if isinstance(f, ast.Name):
+                if f.id in excluded:
+                    return True
+                builtin = f.id not in aliases and f.id not in binds and f.id not in defined
+                if name in _PATH_WRAPPERS and (builtin or mod in _WRAPPER_MODULES):
+                    return combine(args) if args else False
+                return False  # an in-file or unknown function: provenance unknown
+            if isinstance(f, ast.Attribute):
+                if mod is not None:
+                    wrapper = name in _PATH_WRAPPERS and mod in _WRAPPER_MODULES
+                    return combine(args) if args and wrapper else False
+                if name in _ROOT_KEEPING_METHODS:
+                    return combine([classify(f.value)] + args)
+                return False  # .relative_to, .replace, .rsplit ...: no longer the root
+            return False
+        if isinstance(e, ast.Name):
+            return e.id in excluded
+        if isinstance(e, ast.Constant):
+            v = e.value
+            return False if isinstance(v, str) and (".." in v or _ABSOLUTE.match(v)) else None
+        if isinstance(e, (ast.Attribute, ast.Subscript)):
+            return False  # a climb (.parent), a relativisation (.name), an unknown element
+        if isinstance(e, ast.Lambda):
+            return False
+        if isinstance(e, ast.BoolOp):
+            return combine([root(v) for v in e.values])
+        if isinstance(e, ast.IfExp):
+            return combine([root(e.body), root(e.orelse)])
+        if isinstance(e, (ast.List, ast.Tuple, ast.Set)):
+            return combine([root(v) for v in e.elts])
+        if isinstance(e, (ast.BinOp, ast.JoinedStr)):
+            # a suffix concatenated (`d + "/x"`, f"{d}/x") stays under the root; only pathlib's
+            # `/` lets an absolute right operand REPLACE it (like os.path.join above)
+            divides = isinstance(e, ast.BinOp) and isinstance(e.op, ast.Div)
+
+            def suffix(c):
+                if isinstance(c, ast.Constant) and isinstance(c.value, str):
+                    replaces = ".." in c.value or (divides and _ABSOLUTE.match(c.value))
+                    return False if replaces else None
+                return classify(c)
+
+            return combine([suffix(c) for c in ast.iter_child_nodes(e) if isinstance(c, ast.expr)])
+        parts = [classify(c) for c in ast.iter_child_nodes(e) if isinstance(c, ast.expr)]
+        return combine(parts)
+
+    changed = not star  # `from x import *` can rebind any name: nothing is provable
+    while changed:  # least fixpoint: a name joins only when EVERY bind of it is excluded
         changed = False
-        for targets, value in binds:
-            if _names(value) & rooted:
-                for t in targets:
-                    for nm in _names(t) - rooted:
-                        rooted.add(nm)
-                        changed = True
+        for name, values in binds.items():
+            if name in excluded or name in never:
+                continue
+            excluded.add(name)  # tentatively: `d = home(); d += "/x"` refers to itself
+            if all(classify(v) is True for v in values):
+                changed = True
+            else:
+                excluded.discard(name)
+
     doc_ids = set()
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -371,6 +590,7 @@ def _facts(text, pkg_parts, marker_re):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             if id(node) not in doc_ids:
                 mentions.update(marker_re.findall(node.value))
+                scans = scans or any(g in node.value for g in _GIT_TREE_READS)
         elif isinstance(node, ast.ImportFrom):
             from_root = (node.module == _PKG and not node.level) or (
                 node.module is None and node.level == pkg_parts
@@ -397,20 +617,23 @@ def _facts(text, pkg_parts, marker_re):
         elif isinstance(node, ast.Attribute):
             if isinstance(node.value, ast.Name) and node.value.id == _PKG:
                 roster.add(node.attr)
+        if isinstance(node, (ast.Attribute, ast.Name)) and id(node) not in callees:
+            # a lister taken as a value (`ls = os.listdir`, `map(os.listdir, dirs)`): a
+            # listing this file cannot classify -- a scan
+            mod, name = resolve(node)
+            scans = scans or (name in _SCAN_CALLS and mod in _LISTING_MODULES)
         env_name = _env_name(node)
         if env_name is not None:
             envs.add(env_name)
         if isinstance(node, ast.Call):
             f = node.func
-            name = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", None)
-            is_os_walk = isinstance(f, ast.Attribute) and getattr(f.value, "id", None) == "os"
-            if name in _SCAN_CALLS and (name != "walk" or is_os_walk):  # ast.walk is not a listing
-                used = set().union(
-                    *(_names(a) for a in node.args), *(_names(k.value) for k in node.keywords)
-                )
-                if isinstance(f, ast.Attribute):
-                    used |= _names(f.value)
-                if used & rooted:
+            mod, name = resolve(f)
+            if name in _SCAN_CALLS and mod != "ast":  # ast.walk is the one non-listing walk
+                roots = list(node.args) + [k.value for k in node.keywords]
+                if isinstance(f, ast.Attribute) and mod is None:
+                    roots.append(f.value)
+                proofs = [classify(r) for r in roots]
+                if False in proofs or True not in proofs:  # a tree root, or no root at all (cwd)
                     scans = True
     return {
         "mentions": frozenset(mentions),
@@ -450,18 +673,24 @@ class SelfcheckCache:
         no_git=False,
         graph_overrides=None,
         native_root=None,
+        rsfacts_root=None,
     ):
         # `file_hash_overrides` ({path: fake_hash}), `file_text_overrides` ({path: source}),
         # `env`, `store_path`, `no_git`, `graph_overrides` ({dotted: {dotted dep}} merged
-        # into the import graph) and `native_root` (a fixture native/ tree) are the TESTING
-        # SEAMS for the self-check's reds: they prove an input change flips exactly the keys
+        # into the import graph), `native_root` (a fixture native/ tree) and `rsfacts_root`
+        # (a fixture tools/rsfacts) are the TESTING SEAMS for
+        # the self-check's reds: they prove an input change flips exactly the keys
         # it should WITHOUT mutating the tree, the process env or the REAL store (a record()
         # from a probe is a PASS nobody ran -- found by doing exactly that once), and they
         # reach the git-less branch on a host that has git. Never set otherwise.
         self._store_path = store_path or _cache_path()
         self._no_git = bool(no_git)
         self._graph_overrides = {k: set(v) for k, v in (graph_overrides or {}).items()}
-        self._native_root = native_root or os.path.join(_repo_root(), "native")
+        self._native_root = native_root or os.path.join(_repo_root(), _rf.NATIVE_DIR)
+        # beside native/ by default, so a fixture native_root brings its own (absent) rsfacts
+        self._rsfacts_root = rsfacts_root or os.path.join(
+            os.path.dirname(self._native_root), *_rf.RSFACTS.parts
+        )
         self._native = None  # (row, files under native/) memo, like _tree
         # every path is normpath'ed at the boundary: git prints forward slashes, os.walk
         # prints os.sep, and an override keyed one way must match a lookup made the other
@@ -635,21 +864,12 @@ class SelfcheckCache:
         scanner never carries rather than carrying on an unverified surface."""
         if self._tree is None:
             root = _repo_root()
-            raw = None
-            if not self._no_git:
-                try:
-                    raw = subprocess.run(
-                        ["git", "-C", root, "ls-files", "-co", "--exclude-standard", "-z"],
-                        capture_output=True,
-                        check=True,
-                    ).stdout
-                except (OSError, subprocess.CalledProcessError):
-                    raw = None
-            if raw is None:
+            listed = self._git_files(root)
+            if listed is None:
                 self._tree = "TREE-SURFACE-UNAVAILABLE:" + os.urandom(8).hex()
                 return self._tree
             rows = []
-            for rel in sorted(p for p in raw.decode("utf-8", "surrogateescape").split("\0") if p):
+            for rel in sorted(listed):
                 p = os.path.join(root, rel)
                 if os.path.isfile(p):
                     rows.append(rel + ":" + self._hash_file(p))
@@ -657,51 +877,49 @@ class SelfcheckCache:
             self._tree = _sha256_text("\n".join(rows))
         return self._tree
 
+    def _git_files(self, root):
+        """git's view of `root` (tracked + untracked-unignored, root-relative, forward
+        slashes), or None when git cannot list it (no_git seam, no git, not a checkout)."""
+        if self._no_git:
+            return None
+        try:
+            raw = subprocess.run(
+                ["git", "-C", root, "ls-files", "-co", "--exclude-standard", "-z"],
+                capture_output=True,
+                check=True,
+            ).stdout
+        except (OSError, subprocess.CalledProcessError):
+            return None
+        return [p for p in raw.decode("utf-8", "surrogateescape").split("\0") if p]
+
     def _native_hash(self):
-        """ "native:<sha256>" over (path, sha256) of every Rust input under native/ (target/
-        skipped) and every other file git lists there -- tracked or untracked-unignored, the
-        `_tree_hash` view (runtime data the extension reads; Codex B1 r02b-cache 1 -- without
-        git's list EVERY file under native/ keys, fail closed), plus the manifest / toolchain
-        names beside it (the repo root), or
-        "native:ABSENT" when nothing exists; memoised with the count of .rs files under native/
-        (disk view, not git's: the key must move on bytes git cannot see)."""
+        """ "native:<sha256>" over (path, sha256) of the Rust surface, or "native:ABSENT" when
+        nothing exists. Roots: native/ and tools/rsfacts/ (the fixture crate rust_facts parses),
+        target/ skipped under both. Rows: every .rs / manifest / toolchain file, plus every
+        other file git lists there -- tracked or untracked-unignored, the `_tree_hash` view
+        (runtime data the extension reads; Codex B1 r02b-cache 1) -- and the manifest names
+        beside native/ at the repo root. Without git's list EVERY file keys (fail closed). The
+        .rs files are counted from disk, not git: the key must move on bytes git cannot see."""
         if self._native is None:
-            listed = None  # git's view of native/; None = unavailable, every file keys
-            if not self._no_git:
-                try:
-                    raw = subprocess.run(
-                        [
-                            "git",
-                            "-C",
-                            self._native_root,
-                            "ls-files",
-                            "-co",
-                            "--exclude-standard",
-                            "-z",
-                        ],
-                        capture_output=True,
-                        check=True,
-                    ).stdout
-                    # case-folded: an ignorecase checkout keeps git's spelling of a case-only rename
-                    listed = {
-                        p.lower() for p in raw.decode("utf-8", "surrogateescape").split("\0") if p
-                    }
-                except (OSError, subprocess.CalledProcessError):
-                    pass
             rows, n_rs = [], 0
-            for r, dirs, files in os.walk(self._native_root):
-                dirs[:] = sorted(d for d in dirs if d != "target")
-                for f in sorted(files):
-                    p = os.path.join(r, f)
-                    rel = os.path.relpath(p, self._native_root).replace(os.sep, "/")
-                    if (
-                        f.endswith(".rs")
-                        or f in _NATIVE_NAMES
-                        or listed is None
-                        or rel.lower() in listed
-                    ):
-                        rows.append("native/" + rel + ":" + self._hash_file(p))
-                        n_rs += f.endswith(".rs")
+            for root, label in ((self._native_root, "native/"), (self._rsfacts_root, "rsfacts/")):
+                listed = self._git_files(root)  # None = unavailable, every file keys
+                # case-folded: an ignorecase checkout keeps git's spelling of a case-only rename
+                listed = None if listed is None else {p.lower() for p in listed}
+                for r, dirs, files in os.walk(root):
+                    dirs[:] = sorted(d for d in dirs if d != "target")
+                    for f in sorted(files):
+                        p = os.path.join(r, f)
+                        rel = os.path.relpath(p, root).replace(os.sep, "/")
+                        if (
+                            f.endswith(".rs")
+                            or f in _NATIVE_NAMES
+                            or listed is None
+                            or rel.lower() in listed
+                        ):
+                            rows.append(label + rel + ":" + self._hash_file(p))
+                            # native/ only: n_rs is the "native/ PRESENT (n .rs files)" status
+                            n_rs += f.endswith(".rs") and label == "native/"
             for f in sorted(_NATIVE_NAMES):
                 p = os.path.join(os.path.dirname(self._native_root), f)
                 if os.path.isfile(p):
@@ -745,6 +963,7 @@ class SelfcheckCache:
             if d == _NATIVE:  # no .py: its bytes are the native + ext rows below
                 native = True
                 continue
+            native = native or d == _RUST_FACTS  # reads native/**.rs and tools/rsfacts/**
             path = _module_file(d)
             rows.append(f"{d}={self._hash_file(path)}")
             facts = self._facts_for(path)
@@ -853,8 +1072,10 @@ def banner_blind_spots():
     return (
         "string-dispatch imports; shared-home sequence coupling; unhashed host state; "
         "computed-name data/env reads (tools/, models/ and NORD_* fail closed); gitignored "
-        "inputs read by name outside models/ and graphify-out/; a listing root imported "
-        "from another module; gitignored non-Rust files under native/ (when git lists it); "
+        "inputs read by name outside models/ and graphify-out/; the contents of a home() or "
+        "env-named dataset listing; a tree listed by a subprocess other than git ls-files / "
+        "ls-tree / status --porcelain (find, rg, git grep); "
+        "gitignored non-Rust files under native/ (when git lists it); "
         "directory symlinks under native/; "
         "Rust build inputs outside native/ and the manifest names "
         "(.cargo/config.toml, RUSTFLAGS, the toolchain binary) (carries = local batteries "
@@ -867,6 +1088,31 @@ def _insert_after(text, anchor, snippet):
     return text[:i] + snippet + text[i:]
 
 
+def plain_probe(cache):
+    """(desc, plain modules, probe): the census and the key-invariance control subject. desc
+    is describe() for every in-package module the ONE import graph knows whose file exists
+    (no runner import -- run_selfchecks.py probes torch at import; the graph is the census);
+    a PLAIN module carries no derived class at all (scans / roster / data / envs / native);
+    the probe is the first plain module whose closure spans more than one file --
+    engine.signal_ring when it qualifies -- or None. The self-check and the pytest reds must
+    share this census: a forked copy drifts on the next derived class."""
+    mods = sorted(
+        d[len(_PKG_PREFIX) :]
+        for d in cache._import_graph()
+        if d.startswith(_PKG_PREFIX) and os.path.isfile(_module_file(d))
+    )
+    desc = {m: cache.describe(m) for m in mods}
+    plain = [
+        m
+        for m in desc
+        if not any(desc[m][k] for k in ("scans", "roster", "data", "envs", "native"))
+    ]
+    first = ["engine.signal_ring"] if "engine.signal_ring" in plain else []
+    probe = next((m for m in first + plain if len(cache._closure(m)) > 1), None)
+    return desc, plain, probe
+
+
+_HOME_IMPORT = "import os\nfrom snn_data_lake.substrate.home import home\n"
 _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that cannot rot
     "attr_file_scan": (
         "import os\ndef files(pkg):\n    d = os.path.dirname(pkg.__file__)\n"
@@ -880,13 +1126,540 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         "scans",
         True,
     ),
-    "home_listing_not_scan": (
-        "import os\nfrom snn_data_lake.substrate.home import home\nnames = os.listdir(home())\n",
+    "home_listing_not_scan": (_HOME_IMPORT + "names = os.listdir(home())\n", "scans", False),
+    "ast_walk_not_scan": (
+        "import ast\ntree = ast.parse('x')\nfor n in ast.walk(tree):\n    pass\n",
         "scans",
         False,
     ),
-    "ast_walk_not_scan": (
-        "import ast\ntree = ast.parse('x')\nfor n in ast.walk(tree):\n    pass\n",
+    # carryfix (Opus B3 M1): fail-closed -- a root that is not provably excluded is a scan
+    "parameter_root_scan": (
+        "import os\ndef sites(pkg_dir):\n    for r, d, f in os.walk(pkg_dir):\n        pass\n",
+        "scans",
+        True,
+    ),
+    "parameter_rglob_scan": (
+        "from pathlib import Path\ndef n(src):\n    return sorted(Path(src).rglob('*.py'))\n",
+        "scans",
+        True,
+    ),
+    "keyword_root_scan": ("import os\ndef s(d):\n    os.walk(top=d)\n", "scans", True),
+    "annassign_root_scan": (
+        "import os\ndef s(p):\n    d: str = p\n    os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "comprehension_root_scan": (
+        "import os\ndef s(ps):\n    return [os.listdir(p) for p in ps]\n",
+        "scans",
+        True,
+    ),
+    "cwd_glob_scan": ("import glob\nnames = glob.glob('*.py')\n", "scans", True),
+    "no_root_listdir_scan": ("import os\nnames = os.listdir()\n", "scans", True),
+    "ls_files_scan": (
+        'import subprocess\nsubprocess.run(["git", "ls-files", "-co"], check=True)\n',
+        "scans",
+        True,
+    ),
+    "ls_files_docstring_not_scan": ('"""keyed like git ls-files"""\nimport os\n', "scans", False),
+    # the polish review's fail-open shapes (correctness / security / coverage, 2026-10-20):
+    # an excluded call INSIDE a tree root, name collisions, aliases -- each pinned as a scan
+    "env_default_file_scan": (
+        "import os\nos.walk(os.environ.get('R', os.path.dirname(__file__)))\n",
+        "scans",
+        True,
+    ),
+    "env_or_file_scan": (
+        "import os\nR = os.environ.get('R') or os.path.dirname(__file__)\nos.listdir(R)\n",
+        "scans",
+        True,
+    ),
+    "home_joined_file_scan": (
+        _HOME_IMPORT + "os.listdir(os.path.join(home(), os.path.dirname(__file__)))\n",
+        "scans",
+        True,
+    ),
+    "parameter_collision_scan": (
+        _HOME_IMPORT + "def a():\n    root = home()\ndef b(root):\n    os.walk(root)\n",
+        "scans",
+        True,
+    ),
+    "rebind_scan": (
+        _HOME_IMPORT + "d = home()\nd = os.path.dirname(__file__)\nos.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "two_returns_scan": (
+        _HOME_IMPORT + "def r(x):\n    if x:\n        return home()\n    return "
+        "os.path.dirname(__file__)\nos.listdir(r(1))\n",
+        "scans",
+        True,
+    ),
+    "self_attribute_scan": (
+        _HOME_IMPORT + "class C:\n    def __init__(s, pkg):\n        s.store = home()\n"
+        "        s.pkg = pkg\n    def f(s):\n        return list(s.pkg.glob('*'))\n",
+        "scans",
+        True,
+    ),
+    "imported_root_mixed_scan": (
+        _HOME_IMPORT + "from snn_data_lake.paths import PKG_DIR\nh = home()\n"
+        "os.listdir(os.path.join(PKG_DIR, h))\n",
+        "scans",
+        True,
+    ),
+    "module_attribute_root_scan": (
+        "import os\nfrom snn_data_lake.gates import rust_facts\nos.walk(rust_facts.ROOT)\n",
+        "scans",
+        True,
+    ),
+    "unknown_call_scan": ("import os, tempfile\nos.listdir(tempfile.mkdtemp())\n", "scans", True),
+    "method_named_home_scan": (
+        "import os\nclass C:\n    def home(self):\n        return '/x'\nos.walk(C().home())\n",
+        "scans",
+        True,
+    ),
+    "os_alias_walk_scan": ("import os as o\ndef f(p):\n    o.walk(p)\n", "scans", True),
+    "from_os_walk_scan": ("from os import walk\ndef f(p):\n    walk(p)\n", "scans", True),
+    "from_os_listdir_alias_scan": (
+        "from os import listdir as ls\ndef f(p):\n    ls(p)\n",
+        "scans",
+        True,
+    ),
+    "pathlib_walk_scan": (
+        "from pathlib import Path\nfor r, d, f in Path(__file__).parent.walk():\n    pass\n",
+        "scans",
+        True,
+    ),
+    "mixed_roots_scan": (
+        _HOME_IMPORT + "import glob\ndef f(p):\n    glob.glob(home(), root_dir=p)\n",
+        "scans",
+        True,
+    ),
+    # the exclusions that must survive the fail-closed rule
+    "env_dataset_dir_not_scan": (
+        'import os\nd = os.environ.get("ZZZ_DATA")\nfor f in os.listdir(d):\n    pass\n',
+        "scans",
+        False,
+    ),
+    "home_package_import_not_scan": (
+        "import os\nfrom snn_data_lake.substrate import home\nos.listdir(home.home())\n",
+        "scans",
+        False,
+    ),
+    "home_relative_import_not_scan": (
+        "import os\nfrom ..substrate.home import home\nos.listdir(home())\n",
+        "scans",
+        False,
+    ),
+    "home_path_method_not_scan": (
+        _HOME_IMPORT
+        + "from pathlib import Path\nfor p in Path(home()).rglob('*.json'):\n    pass\n",
+        "scans",
+        False,
+    ),
+    "home_augassign_not_scan": (
+        _HOME_IMPORT + "d = home()\nd += '/x'\nos.listdir(d)\n",
+        "scans",
+        False,
+    ),
+    "home_with_item_not_scan": (
+        _HOME_IMPORT + "with home() as d:\n    os.listdir(d)\n",
+        "scans",
+        False,
+    ),
+    "home_return_rooted_not_scan": (
+        _HOME_IMPORT
+        + "def _store():\n    return os.path.join(home(), 'x')\nos.listdir(_store())\n",
+        "scans",
+        False,
+    ),
+    "os_alias_callee_not_scan": (
+        "import os as _os\nfrom snn_data_lake.substrate.home import home\n_os.listdir(home())\n",
+        "scans",
+        False,
+    ),
+    "local_def_walk_not_scan": (
+        "def walk(a, depth):\n    walk(a, depth + 1)\nwalk(1, 0)\n",
+        "scans",
+        False,
+    ),
+    "method_walk_scan": ("def f(drive, ep):\n    return drive.walk(ep)\n", "scans", True),
+    "nested_def_walk_not_scan": (
+        "def census():\n    def walk(a, depth):\n        walk(a, depth + 1)\n    walk(1, 0)\n",
+        "scans",
+        False,
+    ),
+    # polish round 2 (correctness / security / coverage mutants, 2026-10-20)
+    "lambda_param_scan": (
+        _HOME_IMPORT + "d = home()\nf = lambda d: os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "kwonly_param_scan": (
+        _HOME_IMPORT + "d = home()\ndef f(*, d):\n    os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "posonly_param_scan": (
+        _HOME_IMPORT + "d = home()\ndef f(d, /):\n    os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "kwargs_param_scan": (
+        _HOME_IMPORT + "d = home()\ndef f(**d):\n    os.listdir(d['x'])\n",
+        "scans",
+        True,
+    ),
+    "augassign_tree_rebind_scan": (
+        _HOME_IMPORT + "d = home()\nd += os.path.dirname(__file__)\nos.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "for_tree_rebind_scan": (
+        _HOME_IMPORT + "d = home()\nfor d in [os.path.dirname(__file__)]:\n    os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "comprehension_tree_rebind_scan": (
+        _HOME_IMPORT + "d = home()\nx = [os.listdir(d) for d in [os.path.dirname(__file__)]]\n",
+        "scans",
+        True,
+    ),
+    "walrus_tree_rebind_scan": (
+        _HOME_IMPORT + "d = home()\nif (d := os.path.dirname(__file__)):\n    os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "tuple_tree_rebind_scan": (
+        _HOME_IMPORT + "d = home()\nd, e = os.path.dirname(__file__), 1\nos.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "foreign_home_scan": (
+        "import os\nfrom mypkg.util import home\nos.listdir(home())\n",
+        "scans",
+        True,
+    ),
+    "substrate_other_module_home_scan": (
+        "import os\nfrom snn_data_lake.substrate import paths as hm\nos.listdir(hm.home())\n",
+        "scans",
+        True,
+    ),
+    "home_module_alias_not_scan": (
+        "import os\nfrom snn_data_lake.substrate import home as hm\nos.listdir(hm.home())\n",
+        "scans",
+        False,
+    ),
+    "shadowed_wrapper_scan": (
+        _HOME_IMPORT + "def sorted(x):\n    return os.path.dirname(__file__)\n"
+        "os.listdir(sorted(home()))\n",
+        "scans",
+        True,
+    ),
+    "no_arg_wrapper_scan": (
+        _HOME_IMPORT
+        + "import glob\nfrom pathlib import Path\nglob.glob(home(), root_dir=Path())\n",
+        "scans",
+        True,
+    ),
+    "module_non_wrapper_call_scan": (
+        _HOME_IMPORT + "import shutil\nos.listdir(shutil.copytree(home(), home()))\n",
+        "scans",
+        True,
+    ),
+    "method_in_root_scan": (
+        _HOME_IMPORT + "def f(p):\n    os.listdir(os.path.join(home(), p.strip()))\n",
+        "scans",
+        True,
+    ),
+    "bare_return_scan": (
+        _HOME_IMPORT
+        + "def r(x):\n    if x:\n        return\n    return home()\nos.listdir(r(1))\n",
+        "scans",
+        True,
+    ),
+    "fallthrough_return_scan": (
+        _HOME_IMPORT + "def r(x):\n    if x:\n        return home()\nos.listdir(r(0))\n",
+        "scans",
+        True,
+    ),
+    "generator_yield_param_scan": (
+        _HOME_IMPORT + "def roots(p):\n    yield p\n    return home()\ndef g(x):\n"
+        "    for r in roots(x):\n        os.walk(r)\n",
+        "scans",
+        True,
+    ),
+    "env_subscript_not_scan": ("import os\nos.listdir(os.environ['ZZZ_DATA'])\n", "scans", False),
+    "env_default_cwd_scan": ("import os\nos.walk(os.environ.get('X', '.'))\n", "scans", True),
+    "env_or_cwd_scan": ("import os\nR = os.environ.get('W') or '.'\nos.walk(R)\n", "scans", True),
+    "list_mixed_constant_scan": (
+        _HOME_IMPORT + "for r in [home(), 'src']:\n    os.walk(r)\n",
+        "scans",
+        True,
+    ),
+    "ifexp_constant_scan": (
+        _HOME_IMPORT + "os.walk(home() if os.environ.get('A') else 'src')\n",
+        "scans",
+        True,
+    ),
+    "import_fallback_scan": (
+        _HOME_IMPORT + "try:\n    from .cfg import ROOT\nexcept ImportError:\n    ROOT = home()\n"
+        "os.walk(ROOT)\n",
+        "scans",
+        True,
+    ),
+    "except_as_rebind_scan": (
+        _HOME_IMPORT + "def a():\n    d = home()\ndef b():\n    try:\n        pass\n"
+        "    except Exception as d:\n        os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "match_capture_scan": (
+        _HOME_IMPORT + "d = home()\ndef f(v):\n    match v:\n        case str(d):\n"
+        "            os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "class_name_scan": (
+        _HOME_IMPORT + "def a():\n    C = home()\nclass C:\n    pass\nos.listdir(C)\n",
+        "scans",
+        True,
+    ),
+    "star_import_scan": (
+        _HOME_IMPORT + "from snn_data_lake.paths import *\nROOT = home()\nos.walk(ROOT)\n",
+        "scans",
+        True,
+    ),
+    "method_shadow_glob_scan": (
+        "from glob import glob\nclass C:\n    def glob(self, p):\n        pass\nglob('src/**/*.py')\n",
+        "scans",
+        True,
+    ),
+    "method_shadow_listdir_scan": (
+        "from os import listdir\nclass S:\n    def listdir(self):\n        pass\n"
+        "def f(p):\n    return listdir(p)\n",
+        "scans",
+        True,
+    ),
+    "lister_assigned_scan": (
+        "import os\ndef f(p):\n    ls = os.listdir\n    return ls(p)\n",
+        "scans",
+        True,
+    ),
+    "lister_mapped_scan": (
+        "import os\ndef f(ps):\n    return list(map(os.listdir, ps))\n",
+        "scans",
+        True,
+    ),
+    "from_import_lister_value_scan": (
+        "from os import listdir\ndef f(ps):\n    return list(map(listdir, ps))\n",
+        "scans",
+        True,
+    ),
+    "fwalk_scan": ("import os\ndef f(p):\n    os.fwalk(p)\n", "scans", True),
+    "pkgutil_walk_packages_scan": (
+        "import pkgutil\ndef f(pkg):\n    pkgutil.walk_packages(pkg.__path__)\n",
+        "scans",
+        True,
+    ),
+    "home_parent_scan": (_HOME_IMPORT + "os.walk(home().parent.parent)\n", "scans", True),
+    "home_dotdot_scan": (_HOME_IMPORT + "os.walk(os.path.join(home(), '..'))\n", "scans", True),
+    "git_porcelain_scan": (
+        'import subprocess\nsubprocess.run(["git", "status", "--porcelain"])\n',
+        "scans",
+        True,
+    ),
+    "git_ls_tree_scan": (
+        'import subprocess\nsubprocess.run(["git", "ls-tree", "-r", "HEAD"])\n',
+        "scans",
+        True,
+    ),
+    # polish round 3 (peer + correctness / security / coverage, 2026-10-20)
+    "local_alias_shadow_scan": (
+        "import os\nlist(os.walk(os.path.dirname(__file__)))\ndef helper():\n"
+        "    import ast as os\n    return os.walk\n",
+        "scans",
+        True,
+    ),
+    "fake_environ_scan": (
+        "import os\nclass Config:\n    pass\ncfg = Config()\n"
+        "cfg.environ = {'ROOT': os.path.dirname(__file__)}\nos.listdir(cfg.environ['ROOT'])\n",
+        "scans",
+        True,
+    ),
+    "home_fstring_suffix_not_scan": (_HOME_IMPORT + "os.listdir(f'{home()}/x')\n", "scans", False),
+    "home_concat_suffix_not_scan": (_HOME_IMPORT + "os.listdir(home() + '/x')\n", "scans", False),
+    "home_div_relative_not_scan": (
+        _HOME_IMPORT + "from pathlib import Path\nos.listdir(Path(home()) / 'x' / 'y')\n",
+        "scans",
+        False,
+    ),
+    "from_os_environ_not_scan": (
+        "import os\nfrom os import environ\nos.listdir(environ.get('ZZZ_DATA'))\n",
+        "scans",
+        False,
+    ),
+    "env_keyword_default_scan": (
+        "import os\nos.listdir(os.getenv('ZZZ_D', default='.'))\n",
+        "scans",
+        True,
+    ),
+    "list_append_scan": (
+        _HOME_IMPORT + "roots = [home()]\nroots.append(os.path.dirname(__file__))\n"
+        "for r in roots:\n    os.listdir(r)\n",
+        "scans",
+        True,
+    ),
+    "subscript_assign_scan": (
+        _HOME_IMPORT
+        + "roots = [home()]\nroots[0] = os.path.dirname(__file__)\nos.listdir(roots[0])\n",
+        "scans",
+        True,
+    ),
+    "dict_assign_scan": (
+        _HOME_IMPORT + "d = {'a': home()}\nd['a'] = __file__\nos.listdir(d['a'])\n",
+        "scans",
+        True,
+    ),
+    "dirname_home_scan": (_HOME_IMPORT + "os.listdir(os.path.dirname(home()))\n", "scans", True),
+    "basename_home_scan": (_HOME_IMPORT + "os.listdir(os.path.basename(home()))\n", "scans", True),
+    "absolute_join_scan": (
+        _HOME_IMPORT + "os.listdir(os.path.join(home(), '/mnt/d/AI-project'))\n",
+        "scans",
+        True,
+    ),
+    "drive_join_scan": (
+        _HOME_IMPORT
+        + "from pathlib import Path\nlist((Path(home()) / 'D:/AI-project').iterdir())\n",
+        "scans",
+        True,
+    ),
+    "slice_home_scan": (_HOME_IMPORT + "os.walk(home()[:-15])\n", "scans", True),
+    "replace_home_scan": (_HOME_IMPORT + "os.walk(home().replace('home', 'src'))\n", "scans", True),
+    "home_name_scan": (
+        _HOME_IMPORT + "from pathlib import Path\nos.listdir(Path(home()).name)\n",
+        "scans",
+        True,
+    ),
+    "home_relative_to_scan": (
+        _HOME_IMPORT + "from pathlib import Path\nos.listdir(Path(home()).relative_to(home()))\n",
+        "scans",
+        True,
+    ),
+    "home_parents_scan": (_HOME_IMPORT + "os.walk(home().parents[1])\n", "scans", True),
+    "home_rebound_scan": (_HOME_IMPORT + "home = os.getcwd\nos.listdir(home())\n", "scans", True),
+    "home_redefined_scan": (
+        _HOME_IMPORT + "def home():\n    return '.'\nos.listdir(home())\n",
+        "scans",
+        True,
+    ),
+    "foreign_join_scan": (
+        _HOME_IMPORT + "from snn_data_lake.util import join\nos.listdir(join(home()))\n",
+        "scans",
+        True,
+    ),
+    "shlex_join_scan": (
+        _HOME_IMPORT + "import shlex\nos.listdir(shlex.join([home()]))\n",
+        "scans",
+        True,
+    ),
+    "home_resolve_not_scan": (
+        _HOME_IMPORT
+        + "from pathlib import Path\nfor p in Path(home()).resolve().iterdir():\n    pass\n",
+        "scans",
+        False,
+    ),
+    "home_joinpath_not_scan": (
+        _HOME_IMPORT + "from pathlib import Path\nos.listdir(Path(home()).joinpath('x'))\n",
+        "scans",
+        False,
+    ),
+    "ifexp_body_constant_scan": (
+        _HOME_IMPORT + "d = 'data' if os.sep else home()\nos.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "tuple_mixed_constant_scan": (
+        _HOME_IMPORT + "for d in ('data', home()):\n    os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "set_mixed_constant_scan": (
+        _HOME_IMPORT + "for d in {'data', home()}:\n    os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "glob_value_scan": ("import glob\nx = list(map(glob.glob, ['src/**']))\n", "scans", True),
+    "from_glob_value_scan": (
+        "from glob import glob\nx = list(map(glob, ['src/**']))\n",
+        "scans",
+        True,
+    ),
+    "pathlib_value_scan": ("import pathlib\nls = pathlib.Path.iterdir\n", "scans", True),
+    "pkgutil_value_scan": (
+        "import pkgutil\nit = pkgutil.walk_packages\nit(['src'])\n",
+        "scans",
+        True,
+    ),
+    "star_import_method_shadow_scan": (
+        "from glob import *\nclass C:\n    def glob(self, p):\n        pass\nglob('src/**/*.py')\n",
+        "scans",
+        True,
+    ),
+    "async_method_shadow_scan": (
+        "from os import listdir\nclass S:\n    async def listdir(self):\n        pass\n"
+        "def f(p):\n    return listdir(p)\n",
+        "scans",
+        True,
+    ),
+    "iter_modules_scan": (
+        "import pkgutil\nfor m in pkgutil.iter_modules(['src']):\n    pass\n",
+        "scans",
+        True,
+    ),
+    "scandir_scan": ("import os\nfor e in os.scandir('src'):\n    pass\n", "scans", True),
+    "iglob_scan": ("import glob\nfor p in glob.iglob('src/**'):\n    pass\n", "scans", True),
+    "iterdir_scan": (
+        "from pathlib import Path\nfor p in Path('src').iterdir():\n    pass\n",
+        "scans",
+        True,
+    ),
+    "yield_from_param_scan": (
+        _HOME_IMPORT + "def g(p):\n    yield from p\n    return home()\n"
+        "def f(x):\n    for d in g(x):\n        os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "match_star_scan": (
+        _HOME_IMPORT
+        + "d = home()\ndef f(v):\n    match v:\n        case [*d]:\n            os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "match_mapping_rest_scan": (
+        _HOME_IMPORT
+        + "d = home()\ndef f(v):\n    match v:\n        case {**d}:\n            os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "vararg_scan": (
+        _HOME_IMPORT + "d = home()\ndef f(*d):\n    return os.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "starred_target_scan": (
+        _HOME_IMPORT + "import sys\nd = home()\n_, *d = sys.argv\nos.listdir(d)\n",
+        "scans",
+        True,
+    ),
+    "from_import_lister_on_home_not_scan": (
+        "from os import listdir\nfrom snn_data_lake.substrate.home import home\nlistdir(home())\n",
+        "scans",
+        False,
+    ),
+    "ast_walk_value_not_scan": ("import ast\nx = list(map(ast.walk, []))\n", "scans", False),
+    "from_ast_walk_not_scan": (
+        "from ast import walk\nimport ast\nfor n in walk(ast.parse('x')):\n    pass\n",
         "scans",
         False,
     ),
@@ -936,7 +1709,10 @@ def self_check() -> int:
     (m) RUST SURFACE -- with `{probe: {_native}}` injected into the graph and a fixture
         native/ tree: a `.rs` byte change, a Cargo.toml change and an extension-bytes change
         each flip the probe's key; the same flips leave the uninjected plain probe alone;
-        the real tree's status (ABSENT today) is printed distinctly."""
+        the real tree's status (ABSENT today) is printed distinctly;
+    (n) UNFLAGGED TREE-WALKERS -- a parameter-rooted walk (replication_guard, native_ratchet)
+        and a `git ls-files` lister (rust_facts) flip on a file no closure names / a .rs
+        edit, and the plain probe holds under both."""
     # distinct-from: reasoning/analogy_bench.py -- its controls() are NEGATIVE ANALOGY
     #   cases a structure mapper must fail to recover; these are cache-KEY invariance
     #   checks (a key that must not move). Read.
@@ -967,13 +1743,15 @@ def _self_check(store):
     fired, held = [], []
 
     # (0) the derivation, pinned on synthetic sources
-    null_re = re.compile(r"(?!x)x")
     for name, (src, field, want) in _SYNTHETIC.items():
-        got = _facts(src, 1, null_re)[field]
+        got = _facts(src, 1, _NULL_RE)[field]
         if got != want:
             return fail(f"derivation red {name}: {field} = {got!r}, expected {want!r}")
+    n_scan_pins = sum(1 for _s, field, _w in _SYNTHETIC.values() if field == "scans")
     fired.append(
-        "derivation pins (attribute __file__, return-rooted, home()/ast.walk excluded, env names)"
+        f"{n_scan_pins} scanner-derivation pins (parameter / keyword / imported / module-attribute"
+        " / aliased / cwd / ls-files / env-default / name-collision roots scan; home() and"
+        " env-dir roots, their wrappers and ast.walk excluded) + env-name pins"
     )
 
     base = make()
@@ -987,20 +1765,8 @@ def _self_check(store):
             f"runner rosters {base._runner_rosters} != pinned {_EXPECTED_ROSTERS['runner']}"
         )
 
-    # The universe: every in-package module the ONE import graph knows (no runner import --
-    # run_selfchecks.py probes torch and asserts tiers at import; the graph is the census).
-    mods = sorted(
-        d[len(_PKG_PREFIX) :]
-        for d in base._import_graph()
-        if d.startswith(_PKG_PREFIX) and os.path.isfile(_module_file(d))
-    )
-    desc = {m: base.describe(m) for m in mods}
-
-    plain = [
-        m
-        for m in mods
-        if not any(desc[m][k] for k in ("scans", "roster", "data", "envs", "native"))
-    ]
+    desc, plain, probe = plain_probe(base)
+    mods = sorted(desc)
     scanners = [m for m in mods if desc[m]["scans"]]
     root_importers = [m for m in mods if desc[m]["roster"]]
     data_readers = [m for m in mods if desc[m]["data"]]
@@ -1012,11 +1778,7 @@ def _self_check(store):
             f"readers {len(env_readers)}) -- a cache whose every module is a scanner carries "
             "nothing on a row append"
         )
-    first = "engine.signal_ring" if "engine.signal_ring" in plain else plain[0]
-    for probe in [first] + plain:
-        if len(base._closure(probe)) > 1:
-            break
-    else:
+    if probe is None:
         return fail("no plain module with a multi-file closure to probe")
     k0 = base.closure_key(probe)
 
@@ -1210,19 +1972,28 @@ def _self_check(store):
         )
 
     # (m) RUST SURFACE: inject the extension dependency, point native_root at a fixture
-    # crate, flip each Rust input in turn; the plain probe must not move under any of them
+    # crate (tools/rsfacts derived beside it), flip each Rust input in turn; the plain probe
+    # must not move under any of them, and a cargo target/ artifact must not move the reader
     native_root = os.path.join(os.path.dirname(store), "native")
     crate = os.path.join(native_root, "sndl-core")
     os.makedirs(os.path.join(crate, "src"))
     lib = os.path.join(crate, "src", "lib.rs")
     manifest = os.path.join(crate, "Cargo.toml")
     params = os.path.join(crate, "params.json")  # stand-in for non-Rust data under native/
+    rsfacts = os.path.join(os.path.dirname(store), *_rf.RSFACTS.parts)
+    os.makedirs(os.path.join(rsfacts, "target"))
+    rsfacts_src = os.path.join(rsfacts, "fixture.rs")
+    rsfacts_target = os.path.join(rsfacts, "target", "built.bin")
     with open(lib, "w", encoding="utf-8") as f:
         f.write("pub fn f() {}\n")
     with open(manifest, "w", encoding="utf-8") as f:
         f.write('[package]\nname = "sndl-core"\n')
     with open(params, "w", encoding="utf-8") as f:
         f.write("{}\n")
+    with open(rsfacts_src, "w", encoding="utf-8") as f:
+        f.write("pub fn g() {}\n")
+    with open(rsfacts_target, "wb") as f:
+        f.write(b"\0")
     inj = {_PKG_PREFIX + probe: {_NATIVE}}
     reader = make(graph_overrides=inj, native_root=native_root)
     kn = reader.closure_key(probe)
@@ -1246,24 +2017,68 @@ def _self_check(store):
         (lib, "d" * 64, ".rs bytes"),
         (manifest, "e" * 64, "Cargo.toml"),
         (params, "9" * 64, "native/ data file"),
+        (rsfacts_src, "7" * 64, "tools/rsfacts source"),
         (ext, "f" * 64, "extension bytes"),
     )
     for path, fake, what in flips:
         fork = make(graph_overrides=inj, native_root=native_root, file_hash_overrides={path: fake})
         if fork.closure_key(probe) == kn:
             return fail(f"a {what} change did not flip the _native reader's key (STALE GREEN)")
+    built = make(
+        graph_overrides=inj, native_root=native_root, file_hash_overrides={rsfacts_target: "8" * 64}
+    )
+    if built.closure_key(probe) != kn:
+        return fail("a tools/rsfacts/target build artifact flipped the _native reader's key")
     all_flips = {path: fake for path, fake, _ in flips}
     control = make(native_root=native_root, file_hash_overrides=all_flips)
-    if (r := unchanged(control, "a .rs + Cargo.toml + data + extension change")) is not None:
+    if (
+        r := unchanged(control, "a .rs + Cargo.toml + data + rsfacts + extension change")
+    ) is not None:
         return r
     real = make(graph_overrides=inj).describe(probe)["native"]
     fired.append(
-        f"Rust surface (.rs, Cargo.toml, data, extension) -> {probe} flipped (graph node and derived "
-        f"import alike); real tree "
+        f"Rust surface (.rs, Cargo.toml, data, tools/rsfacts, extension) -> {probe} flipped (graph "
+        f"node and derived import alike; rsfacts target/ held); real tree "
         f"{'native/ ABSENT (0 .rs files)' if real == 'ABSENT' else 'native/ PRESENT (' + real + ')'}"
         f", ext {os.path.basename(ext)}"
         f"{'' if os.path.isfile(ext) else ' ABSENT'}"
     )
+
+    # (n) UNFLAGGED TREE-WALKERS (carryfix, Opus B3 M1): a listing whose root enters as a
+    # parameter (replication_guard's os.walk(pkg_dir), native_ratchet's src.rglob) or through
+    # `git ls-files` (rust_facts) is keyed to the tree; the Rust surface flips every rust_facts
+    # reader; the plain probe moves under neither. Like (i): constructible only with git (without
+    # it every scanner key is a per-instance nonce and the flip would be vacuous)
+    for m in _WALKERS + (_RUST_FACTS_READER,):
+        if m not in desc:
+            return fail(f"{m} left the graph -- red (n) lost its subject; re-pin it")
+        if not desc[m]["scans"]:
+            return fail(f"{m} lists the tree yet is not a scanner (stale PASS would carry)")
+    impact = os.path.join(root, *_IMPACT_FILE)
+    lib_rs = os.path.join(root, *_LIB_RS_FILE)
+    if surface > 0 and os.path.isfile(lib_rs):
+        walk_fork = make(file_hash_overrides={impact: "0" * 64})
+        for m in _WALKERS[:2]:
+            if walk_fork.closure_key(m) == base.closure_key(m):
+                return fail(f"a change to impact_analysis.py did not flip walker {m}")
+        if (r := unchanged(walk_fork, "an impact_analysis.py change")) is not None:
+            return r
+        rs_fork = make(file_hash_overrides={lib_rs: "0" * 64})
+        for m in (_WALKERS[2], _RUST_FACTS_READER):
+            if rs_fork.closure_key(m) == base.closure_key(m):
+                return fail(f"a lib.rs change did not flip rust_facts reader {m}")
+        if (r := unchanged(rs_fork, "a lib.rs change")) is not None:
+            return r
+        fired.append(
+            "impact_analysis.py -> replication_guard, native_ratchet flipped; lib.rs -> rust_facts, "
+            "native_dormancy flipped (parameter-rooted / ls-files walkers)"
+        )
+    else:
+        fired.append(
+            "red (n) UNCONSTRUCTIBLE here ("
+            + ("no git: tree surface unavailable" if surface == 0 else "native/ lib.rs absent")
+            + ")"
+        )
 
     surface_note = (
         f"the {surface}-file tracked surface" if surface else "an UNAVAILABLE tracked surface"
