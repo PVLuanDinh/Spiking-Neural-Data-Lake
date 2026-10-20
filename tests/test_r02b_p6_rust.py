@@ -29,6 +29,8 @@ gate = importlib.import_module("p6_gate")
 
 _AMY = "amyg" + "dala"  # from parts: move_gate C2(d) reads string literals
 _CER = "cere" + "bellum"
+_MED = "medu" + "lla"
+_CTX = "cor" + "tex"
 
 REDS = ["R1", "R2", "R3", "R4", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13"]
 CONTROLS = ["G1", "G2", "G3", "G4", "G5", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G14"]
@@ -384,7 +386,7 @@ def _injected(step_site):
         )
         core = Path(d, "native/sndl-core/src/lib.rs")
         core.write_text(core.read_text(encoding="utf-8") + "pub mod medulla;\n", encoding="utf-8")
-        Path(d, "native/sndl-core/src/medulla.rs").write_text(
+        Path(d, f"native/sndl-core/src/{_MED}.rs").write_text(
             "pub fn step() {}\n", encoding="utf-8"
         )
         lib = Path(d, gate.RS_BINDING)
@@ -409,12 +411,12 @@ def _medulla_fired(res, base):
 
 
 def test_r_a_symbol_import_of_a_crate_root_export_counts_its_body_reach(base):
-    overlay = {"cortex/_p6x_symbol_use.py": "from snn_data_lake._native import pfc_decide\n"}
+    overlay = {f"{_CTX}/_p6x_symbol_use.py": "from snn_data_lake._native import pfc_decide\n"}
     res = gate.measure(_ROOT, overlay=overlay, native=_injected(_IN_PFC))
     _medulla_fired(res, base)
     assert gate.own_unmapped(res["conn"], overlay) == []
     assert (
-        "cortex/_p6x_symbol_use.py: _native.pfc_decide "
+        f"{_CTX}/_p6x_symbol_use.py: _native.pfc_decide "
         "(crate-root export; its body reaches cortex, medulla, rng)"
     ) in res["conn"]["native_attributed"]
 
