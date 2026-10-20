@@ -30,7 +30,10 @@ def store(tmp_path_factory):
 @pytest.fixture(scope="module")
 def base(store):
     cache = sc.SelfcheckCache(store_path=store, env=ENV)
-    cache.closure_key(sc._WALKERS[0])  # lists the tree surface once
+    # list the tree surface DIRECTLY (B4 C1): reaching it through closure_key(_WALKERS[0]) lists
+    # it only if that walker is ALREADY a scanner, so on the defective logic every red here
+    # skipped with this message's false reason instead of failing
+    cache._tree_hash()
     if cache.tree_surface == 0:
         pytest.skip("no git: the tree surface is a nonce, the real-tree reds are vacuous")
     return cache
