@@ -53,21 +53,24 @@ THE KEY (all of it, or no carry) -- v3, ENVELOPE PRECISION (2026-08-21):
     runner passes the whole process environment to every child, so an unnamed variable is
     an undeclared input; the review found 48 of them with 5 registered checks reading at
     module load (the N-MNIST seed and sizes among them).
-  * TREE SCANNERS (FAIL-CLOSED since carryfix, 2026-10-20): a module whose closure lists a
+  * TREE SCANNERS (every listing, since B4 C2, 2026-10-20): a module whose closure lists a
     directory -- a _SCAN_CALLS call (os.walk / fwalk / listdir / scandir / glob / iglob /
     rglob / iterdir / pkgutil.iter_modules / walk_packages), resolved through the file's
-    import aliases, or such a lister taken as a value -- whose root is not PROVABLY
-    excluded, or names a git tree read (_GIT_TREE_READS: `ls-files`, `ls-tree`,
-    `--porcelain`) in a non-docstring string, reads files no import closure names. A root is excluded only when it is bound, through the file's own
-    assignments, loop targets, with-items and return values (every bind of the name, never
-    a parameter), from substrate.home() (the per-run store) or an environment read (a
-    dataset dir), or wraps such a value in a pure path combinator; a root entering as a
-    function parameter (replication_guard's os.walk(pkg_dir), native_ratchet's src.rglob),
-    from cwd (a bare glob), from another module, from an unknown call, or mixing `__file__`
-    into an excluded one (`os.environ.get("R", dirname(__file__))`) is a scan.
-    The landing rule keyed only roots derived from `__file__` IN THE SAME FILE, and the
-    Opus B3 review measured the hole: an impact_analysis.py override left replication_guard,
-    native_ratchet and rust_facts UNCHANGED although each walks the package. The dormancy /
+    import aliases (ast.walk and the file's own functions are not listings), or such a lister
+    taken as a value -- or names a git tree read (_GIT_TREE_READS: `ls-files`, `ls-tree`,
+    `--porcelain`) in a non-docstring string, reads files no import closure names. No root
+    is exempt: a listing of substrate.home() or of an environment-named directory scans like
+    any other. The landing rule keyed only roots derived from `__file__` IN THE SAME FILE,
+    and the Opus B3 review measured the hole: an impact_analysis.py override left
+    replication_guard, native_ratchet and rust_facts UNCHANGED although each walks the
+    package. The carryfix replaced it with a root RESOLVER (home() and env-read roots
+    exempt, through every bind of a name); the B4 closing review found it changed no
+    module's class on the real tree and failed open on constructed shapes -- an env value
+    seeded from `__file__` (S2), `os.walk(os.environ["PYTHONPATH"])` (S3, live-shaped: the
+    runner's _ENV sets PYTHONPATH=src), a rebound `home.home` (S4) or `globals()["home"]`
+    (S5), a home() snapshot of the tree (S6), a split `..` (S8) -- so it was DELETED. The
+    exemption it bought is ZERO modules at deletion (173 plain / 206 scanners before and
+    after); a future home()-lister only loses its carry -- slower, never wrong. The dormancy /
     method-dormancy / import-manifest / replication / transport gates, the atlas, the
     atlas-node gate, brain_geometry, self_mod_harness, nightly_skills, and by closure
     everything that imports them (the brain itself imports the dormancy gate). Their key
@@ -138,16 +141,13 @@ DISCLOSED BLIND SPOTS (banner() prints them at every carrying run):
      the tree reads by name are keyed as data inputs (models/*, graphify-out/*.json --
      connectome's self-check asserts on graph.json, found by the review); any other
      gitignored path read by literal name elsewhere is unkeyed. None known at landing.
-  6. (v3, carryfix 2026-10-20) The scanner derivation is FAIL-CLOSED per file: a listing
-     is a scan unless a root it takes is provably substrate.home() or an environment read
-     (through this file's own binds; a parameter, an imported value, a module attribute,
-     an unknown call or `__file__` anywhere in a root makes it a scan). What stays unkeyed
-     is therefore the CONTENT of those excluded listings (the per-run store, an env-named
-     dataset dir -- the env VALUE is keyed, the directory it names is not) and a tree
-     listed by a subprocess other than the _GIT_TREE_READS forms of git (find, rg, git
-     grep). Red (n) pins
-     the three walkers the Opus B3 review measured carrying; the derivation pins in
-     _SYNTHETIC hold every rule, including the fail-open shapes the polish review found.
+  6. (v3, B4 C2 2026-10-20) The scanner derivation is SYNTACTIC, not fail-closed: every
+     listing call it RECOGNISES scans, whatever its root, but recognition is by name through
+     the file's import aliases, so a lister reached another way is invisible, and so is a
+     tree listed by a subprocess other than the _GIT_TREE_READS forms of git (find, rg, git
+     grep, git diff / status without --porcelain). Red (n) pins the
+     three walkers the Opus B3 review measured carrying; the derivation pins in _SYNTHETIC
+     hold every rule, including the closing review's constructed stale shapes S2-S6, S8.
 THE PROTOCOL those blind spots buy: carries are a LOCAL-battery accelerator only (CI,
 act containers and exit-certification batteries run FULL -- --carry is opt-in and nothing
 in .github/ passes it), and ANY FAIL in a carrying battery is re-run FULL before it is
@@ -193,22 +193,9 @@ _SCAN_CALLS = frozenset(
 )
 _LISTING_MODULES = frozenset({"os", "glob", "pathlib", "pkgutil"})  # a lister taken as a value
 _GIT_TREE_READS = ("ls-files", "ls-tree", "--porcelain")  # argv strings that read the tree via git
-# The DELIBERATELY excluded listing roots (fail-closed derivation, carryfix 2026-10-20):
-# substrate.home() -- resolved through its import, `from ...substrate.home import home` or
-# `from ...substrate import home` -- is the per-run store, an environment read names a dataset
-# dir. Every other provenance is the tree. _PATH_WRAPPERS are the root-preserving path
-# combinators whose result is excluded iff their arguments are (os.path.join(home(), "x"),
-# Path(home()) ...); dirname / basename are NOT (a climb, a relativisation).
-_HOME_MODULE = "substrate.home"
-_HOME_PACKAGE = "substrate"
-_PATH_WRAPPERS = frozenset(
-    {"join", "abspath", "normpath", "realpath", "fspath"}
-    | {"Path", "PurePath", "PosixPath", "WindowsPath", "str", "sorted", "list", "tuple", "next"}
-)
-_WRAPPER_MODULES = frozenset({"os", "posixpath", "ntpath", "pathlib"})
-_ROOT_KEEPING_METHODS = frozenset({"resolve", "absolute", "expanduser", "joinpath", "rstrip"})
-_MUTATORS = frozenset({"append", "extend", "insert", "update", "setdefault", "add", "pop", "clear"})
-_ABSOLUTE = re.compile(r"^(?:[A-Za-z]:|[\\/])")  # a constant joined onto a root that REPLACES it
+# No listing root is excluded (B4 C2, 2026-10-20): the root resolver that once exempted
+# substrate.home() and environment-read roots was DELETED -- it moved zero modules on the real
+# tree and failed open on constructed shapes (S2-S5 below), one of them live-shaped.
 # red (n)'s subjects, shared with tests/test_selfcheck_cache_unflagged_scanners.py: the three
 # walkers the Opus B3 review measured carrying (parameter-rooted walks, `git ls-files`), the
 # rust_facts reader that already flipped, and the two files whose override must flip them
@@ -360,103 +347,42 @@ _UNPARSEABLE = {
 def _facts(text, pkg_parts, marker_re):
     """What one source file can READ beyond its imports: the data-input basenames it names
     in non-docstring string constants, the names it imports from the root package, the
-    environment variables it reads by literal name, and whether it lists a directory that
-    is not PROVABLY excluded -- a tree scanner, FAIL-CLOSED. A listing call (_SCAN_CALLS,
-    resolved through the file's import aliases; only ast.walk is not a listing) is a scan
-    unless at least one root it takes classifies EXCLUDED and none classifies TREE --
-    EXCLUDED being substrate.home(), an os.environ read, a name EVERY bind of which is
-    excluded, or a pure path wrapper of those; see classify() for the per-node rules and
-    the never-provable binding forms. A lister taken as a VALUE (`ls = os.listdir`) and a
-    non-docstring string naming a git tree read (_GIT_TREE_READS) are scans. Unparseable
-    => scanner."""
+    environment variables it reads by literal name, and whether it lists a directory -- a
+    tree scanner. EVERY listing is a scan, whatever its root (B4 C2, 2026-10-20): a
+    _SCAN_CALLS call resolved through the file's import aliases (ast.walk and a bare call to a
+    function this file defines are not listings; a method call on any receiver is), a lister
+    taken as a VALUE (`ls = os.listdir`), and a non-docstring string naming a git tree read
+    (_GIT_TREE_READS). Unparseable => scanner."""
     try:
         tree = ast.parse(text)
     except SyntaxError:
         return dict(_UNPARSEABLE)
     aliases = {}  # local name -> (module, original name | None for `import module [as name]`)
-    never = set()  # names whose value this file cannot derive: never provably excluded
     defined = set()  # functions defined here (methods excluded): a bare call to one is no listing
     methods = set()
-    binds = {}  # name -> every expression bound to it; EXCLUDED only when all of them are
     callees = set()  # id() of every Call.func: a lister referenced anywhere else is a scan
-    star = False
 
     def alias(name, value):
         # the same local name imported two ways (a function-local `import ast as os` beside
-        # the module's `import os`) is UNKNOWN: it exempts nothing and wraps nothing
+        # the module's `import os`) is UNKNOWN: it resolves to no module, so it exempts nothing
         aliases[name] = value if aliases.get(name, value) == value else ("?", "?")
-
-    def bind(target, value):
-        if isinstance(target, ast.Name):
-            binds.setdefault(target.id, []).append(value)
-        elif isinstance(target, (ast.Tuple, ast.List)):
-            for e in target.elts:
-                bind(e, value)
-        elif isinstance(target, ast.Starred):
-            bind(target.value, value)
-        else:  # `roots[0] = ...`, `self.x = ...`: the container's own value is now unknown
-            while isinstance(target, (ast.Subscript, ast.Attribute)):
-                target = target.value
-            if isinstance(target, ast.Name):
-                never.add(target.id)
 
     for n in ast.walk(tree):
         if isinstance(n, ast.Call):
             callees.add(id(n.func))
-            f = n.func
-            if (
-                isinstance(f, ast.Attribute)
-                and f.attr in _MUTATORS
-                and isinstance(f.value, ast.Name)
-            ):
-                never.add(f.value.id)  # `roots.append(...)`: the literal no longer proves it
         if isinstance(n, ast.Import):
             for a in n.names:
                 top = a.name.partition(".")[0]
                 alias(a.asname or top, (top, None))
         elif isinstance(n, ast.ImportFrom):
             for a in n.names:
-                star = star or a.name == "*"
                 alias(a.asname or a.name, (n.module or "", a.name))
-        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
-            ar = n.args
-            never.update(a.arg for a in ar.posonlyargs + ar.args + ar.kwonlyargs)
-            never.update(a.arg for a in (ar.vararg, ar.kwarg) if a is not None)
-            if not isinstance(n, ast.Lambda):
-                # a function's name is bound to every value it returns or yields, and to
-                # None when its body can fall off the end (os.listdir(None) lists cwd)
-                values = [
-                    r.value or ast.Constant(None)
-                    for r in ast.walk(n)
-                    if isinstance(r, (ast.Return, ast.Yield, ast.YieldFrom))
-                ]
-                if not values or not isinstance(n.body[-1], (ast.Return, ast.Raise)):
-                    values.append(ast.Constant(None))
-                binds.setdefault(n.name, []).extend(values)
-                defined.add(n.name)
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            defined.add(n.name)
         elif isinstance(n, ast.ClassDef):
-            never.add(n.name)
             methods.update(
                 b.name for b in n.body if isinstance(b, (ast.FunctionDef, ast.AsyncFunctionDef))
             )
-        elif isinstance(n, (ast.ExceptHandler, ast.MatchAs, ast.MatchStar)) and n.name:
-            never.add(n.name)
-        elif isinstance(n, ast.MatchMapping) and n.rest:
-            never.add(n.rest)
-        elif isinstance(n, (ast.Global, ast.Nonlocal)):
-            never.update(n.names)
-        elif isinstance(n, ast.Assign):
-            for t in n.targets:
-                bind(t, n.value)
-        elif isinstance(n, (ast.AnnAssign, ast.NamedExpr)) and n.value is not None:
-            bind(n.target, n.value)
-        elif isinstance(n, ast.AugAssign):
-            bind(n.target, ast.BinOp(left=n.target, op=n.op, right=n.value))
-        elif isinstance(n, (ast.For, ast.comprehension)):
-            bind(n.target, n.iter)
-        elif isinstance(n, ast.withitem) and n.optional_vars is not None:
-            bind(n.optional_vars, n.context_expr)
-    never |= set(aliases)
     defined -= methods  # a method named glob/walk never cancels an imported lister
 
     def module_of(expr):
@@ -476,103 +402,6 @@ def _facts(text, pkg_parts, marker_re):
         if fid in aliases:
             return aliases[fid]
         return None, (None if fid in defined else fid)
-
-    def is_home(call):
-        f = call.func
-        if isinstance(f, ast.Name) and f.id not in binds:
-            mod, name = aliases.get(f.id, ("", None))
-            return name == "home" and mod.endswith(_HOME_MODULE)
-        if isinstance(f, ast.Attribute) and f.attr == "home" and isinstance(f.value, ast.Name):
-            mod, name = aliases.get(f.value.id, ("", None))
-            return name == "home" and mod.endswith(_HOME_PACKAGE) and f.value.id not in binds
-
-    def is_env(e):
-        """An os.environ / os.getenv read -- the holder must resolve to the os module (or
-        `from os import environ`): `cfg.environ[...]` is any object, not the environment."""
-        if _env_name(e) is None:
-            return False
-        holder = e.func.value if isinstance(e, ast.Call) else e.value
-        if isinstance(holder, ast.Name) and aliases.get(holder.id) == ("os", "environ"):
-            return True
-        return module_of(holder) == "os"
-
-    def combine(parts):
-        return False if False in parts else (True if True in parts else None)
-
-    excluded = set()
-
-    def root(e):
-        """classify() for a position that IS a root of its own (an env default, a list
-        element, an `or` / if-else branch): a constant there is a relative path -- cwd."""
-        return False if isinstance(e, ast.Constant) else classify(e)
-
-    def classify(e):
-        """True: EXCLUDED; False: TREE; None: carries no root (a constant, a module)."""
-        if is_env(e):
-            rest = e.args[1:] + [k.value for k in e.keywords] if isinstance(e, ast.Call) else []
-            return combine([True] + [root(a) for a in rest])
-        if isinstance(e, ast.Call):
-            if is_home(e):
-                return True
-            f = e.func
-            args = [classify(a) for a in e.args] + [classify(k.value) for k in e.keywords]
-            mod, name = resolve(f)
-            if isinstance(f, ast.Name):
-                if f.id in excluded:
-                    return True
-                builtin = f.id not in aliases and f.id not in binds and f.id not in defined
-                if name in _PATH_WRAPPERS and (builtin or mod in _WRAPPER_MODULES):
-                    return combine(args) if args else False
-                return False  # an in-file or unknown function: provenance unknown
-            if isinstance(f, ast.Attribute):
-                if mod is not None:
-                    wrapper = name in _PATH_WRAPPERS and mod in _WRAPPER_MODULES
-                    return combine(args) if args and wrapper else False
-                if name in _ROOT_KEEPING_METHODS:
-                    return combine([classify(f.value)] + args)
-                return False  # .relative_to, .replace, .rsplit ...: no longer the root
-            return False
-        if isinstance(e, ast.Name):
-            return e.id in excluded
-        if isinstance(e, ast.Constant):
-            v = e.value
-            return False if isinstance(v, str) and (".." in v or _ABSOLUTE.match(v)) else None
-        if isinstance(e, (ast.Attribute, ast.Subscript)):
-            return False  # a climb (.parent), a relativisation (.name), an unknown element
-        if isinstance(e, ast.Lambda):
-            return False
-        if isinstance(e, ast.BoolOp):
-            return combine([root(v) for v in e.values])
-        if isinstance(e, ast.IfExp):
-            return combine([root(e.body), root(e.orelse)])
-        if isinstance(e, (ast.List, ast.Tuple, ast.Set)):
-            return combine([root(v) for v in e.elts])
-        if isinstance(e, (ast.BinOp, ast.JoinedStr)):
-            # a suffix concatenated (`d + "/x"`, f"{d}/x") stays under the root; only pathlib's
-            # `/` lets an absolute right operand REPLACE it (like os.path.join above)
-            divides = isinstance(e, ast.BinOp) and isinstance(e.op, ast.Div)
-
-            def suffix(c):
-                if isinstance(c, ast.Constant) and isinstance(c.value, str):
-                    replaces = ".." in c.value or (divides and _ABSOLUTE.match(c.value))
-                    return False if replaces else None
-                return classify(c)
-
-            return combine([suffix(c) for c in ast.iter_child_nodes(e) if isinstance(c, ast.expr)])
-        parts = [classify(c) for c in ast.iter_child_nodes(e) if isinstance(c, ast.expr)]
-        return combine(parts)
-
-    changed = not star  # `from x import *` can rebind any name: nothing is provable
-    while changed:  # least fixpoint: a name joins only when EVERY bind of it is excluded
-        changed = False
-        for name, values in binds.items():
-            if name in excluded or name in never:
-                continue
-            excluded.add(name)  # tentatively: `d = home(); d += "/x"` refers to itself
-            if all(classify(v) is True for v in values):
-                changed = True
-            else:
-                excluded.discard(name)
 
     doc_ids = set()
     for node in ast.walk(tree):
@@ -626,15 +455,9 @@ def _facts(text, pkg_parts, marker_re):
         if env_name is not None:
             envs.add(env_name)
         if isinstance(node, ast.Call):
-            f = node.func
-            mod, name = resolve(f)
-            if name in _SCAN_CALLS and mod != "ast":  # ast.walk is the one non-listing walk
-                roots = list(node.args) + [k.value for k in node.keywords]
-                if isinstance(f, ast.Attribute) and mod is None:
-                    roots.append(f.value)
-                proofs = [classify(r) for r in roots]
-                if False in proofs or True not in proofs:  # a tree root, or no root at all (cwd)
-                    scans = True
+            mod, name = resolve(node.func)
+            # every listing scans, whatever its root; ast.walk is the one non-listing walk
+            scans = scans or (name in _SCAN_CALLS and mod != "ast")
     return {
         "mentions": frozenset(mentions),
         "roster": frozenset(roster),
@@ -1072,8 +895,8 @@ def banner_blind_spots():
     return (
         "string-dispatch imports; shared-home sequence coupling; unhashed host state; "
         "computed-name data/env reads (tools/, models/ and NORD_* fail closed); gitignored "
-        "inputs read by name outside models/ and graphify-out/; the contents of a home() or "
-        "env-named dataset listing; a tree listed by a subprocess other than git ls-files / "
+        "inputs read by name outside models/ and graphify-out/; a lister not named through "
+        "the file's imports; a tree listed by a subprocess other than git ls-files / "
         "ls-tree / status --porcelain (find, rg, git grep); "
         "gitignored non-Rust files under native/ (when git lists it); "
         "directory symlinks under native/; "
@@ -1126,13 +949,12 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         "scans",
         True,
     ),
-    "home_listing_not_scan": (_HOME_IMPORT + "names = os.listdir(home())\n", "scans", False),
     "ast_walk_not_scan": (
         "import ast\ntree = ast.parse('x')\nfor n in ast.walk(tree):\n    pass\n",
         "scans",
         False,
     ),
-    # carryfix (Opus B3 M1): fail-closed -- a root that is not provably excluded is a scan
+    # carryfix (Opus B3 M1): a parameter / keyword / cwd / git-listed root is a scan
     "parameter_root_scan": (
         "import os\ndef sites(pkg_dir):\n    for r, d, f in os.walk(pkg_dir):\n        pass\n",
         "scans",
@@ -1235,49 +1057,7 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         "scans",
         True,
     ),
-    # the exclusions that must survive the fail-closed rule
-    "env_dataset_dir_not_scan": (
-        'import os\nd = os.environ.get("ZZZ_DATA")\nfor f in os.listdir(d):\n    pass\n',
-        "scans",
-        False,
-    ),
-    "home_package_import_not_scan": (
-        "import os\nfrom snn_data_lake.substrate import home\nos.listdir(home.home())\n",
-        "scans",
-        False,
-    ),
-    "home_relative_import_not_scan": (
-        "import os\nfrom ..substrate.home import home\nos.listdir(home())\n",
-        "scans",
-        False,
-    ),
-    "home_path_method_not_scan": (
-        _HOME_IMPORT
-        + "from pathlib import Path\nfor p in Path(home()).rglob('*.json'):\n    pass\n",
-        "scans",
-        False,
-    ),
-    "home_augassign_not_scan": (
-        _HOME_IMPORT + "d = home()\nd += '/x'\nos.listdir(d)\n",
-        "scans",
-        False,
-    ),
-    "home_with_item_not_scan": (
-        _HOME_IMPORT + "with home() as d:\n    os.listdir(d)\n",
-        "scans",
-        False,
-    ),
-    "home_return_rooted_not_scan": (
-        _HOME_IMPORT
-        + "def _store():\n    return os.path.join(home(), 'x')\nos.listdir(_store())\n",
-        "scans",
-        False,
-    ),
-    "os_alias_callee_not_scan": (
-        "import os as _os\nfrom snn_data_lake.substrate.home import home\n_os.listdir(home())\n",
-        "scans",
-        False,
-    ),
+    # the non-listings that must survive: a bare call to the file's own function
     "local_def_walk_not_scan": (
         "def walk(a, depth):\n    walk(a, depth + 1)\nwalk(1, 0)\n",
         "scans",
@@ -1345,11 +1125,6 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         "scans",
         True,
     ),
-    "home_module_alias_not_scan": (
-        "import os\nfrom snn_data_lake.substrate import home as hm\nos.listdir(hm.home())\n",
-        "scans",
-        False,
-    ),
     "shadowed_wrapper_scan": (
         _HOME_IMPORT + "def sorted(x):\n    return os.path.dirname(__file__)\n"
         "os.listdir(sorted(home()))\n",
@@ -1389,7 +1164,6 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         "scans",
         True,
     ),
-    "env_subscript_not_scan": ("import os\nos.listdir(os.environ['ZZZ_DATA'])\n", "scans", False),
     "env_default_cwd_scan": ("import os\nos.walk(os.environ.get('X', '.'))\n", "scans", True),
     "env_or_cwd_scan": ("import os\nR = os.environ.get('W') or '.'\nos.walk(R)\n", "scans", True),
     "list_mixed_constant_scan": (
@@ -1487,18 +1261,6 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         "scans",
         True,
     ),
-    "home_fstring_suffix_not_scan": (_HOME_IMPORT + "os.listdir(f'{home()}/x')\n", "scans", False),
-    "home_concat_suffix_not_scan": (_HOME_IMPORT + "os.listdir(home() + '/x')\n", "scans", False),
-    "home_div_relative_not_scan": (
-        _HOME_IMPORT + "from pathlib import Path\nos.listdir(Path(home()) / 'x' / 'y')\n",
-        "scans",
-        False,
-    ),
-    "from_os_environ_not_scan": (
-        "import os\nfrom os import environ\nos.listdir(environ.get('ZZZ_DATA'))\n",
-        "scans",
-        False,
-    ),
     "env_keyword_default_scan": (
         "import os\nos.listdir(os.getenv('ZZZ_D', default='.'))\n",
         "scans",
@@ -1562,17 +1324,6 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         _HOME_IMPORT + "import shlex\nos.listdir(shlex.join([home()]))\n",
         "scans",
         True,
-    ),
-    "home_resolve_not_scan": (
-        _HOME_IMPORT
-        + "from pathlib import Path\nfor p in Path(home()).resolve().iterdir():\n    pass\n",
-        "scans",
-        False,
-    ),
-    "home_joinpath_not_scan": (
-        _HOME_IMPORT + "from pathlib import Path\nos.listdir(Path(home()).joinpath('x'))\n",
-        "scans",
-        False,
     ),
     "ifexp_body_constant_scan": (
         _HOME_IMPORT + "d = 'data' if os.sep else home()\nos.listdir(d)\n",
@@ -1652,16 +1403,46 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         "scans",
         True,
     ),
-    "from_import_lister_on_home_not_scan": (
-        "from os import listdir\nfrom snn_data_lake.substrate.home import home\nlistdir(home())\n",
-        "scans",
-        False,
-    ),
     "ast_walk_value_not_scan": ("import ast\nx = list(map(ast.walk, []))\n", "scans", False),
     "from_ast_walk_not_scan": (
         "from ast import walk\nimport ast\nfor n in walk(ast.parse('x')):\n    pass\n",
         "scans",
         False,
+    ),
+    # B4 C2: the closing review's constructed stale shapes the deleted root resolver passed
+    # (S2-S5 also pass a home()/env-literal-only exclusion; S6, S8 only its wrappers) -- each a scan
+    "s2_env_seeded_from_file_scan": (
+        "import os\nos.environ.setdefault('ZZZ_S2', os.path.dirname(__file__))\n"
+        "os.listdir(os.environ['ZZZ_S2'])\n",
+        "scans",
+        True,
+    ),
+    "s3_env_pythonpath_walk_scan": (
+        "import os\nfor r, d, f in os.walk(os.environ['PYTHONPATH']):\n    pass\n",
+        "scans",
+        True,
+    ),
+    "s4_home_attribute_rebound_scan": (
+        "import os\nfrom snn_data_lake.substrate import home\n"
+        "home.home = lambda: os.path.dirname(__file__)\nos.listdir(home.home())\n",
+        "scans",
+        True,
+    ),
+    "s5_globals_home_rebound_scan": (
+        _HOME_IMPORT + "globals()['home'] = os.getcwd\nos.listdir(home())\n",
+        "scans",
+        True,
+    ),
+    "s6_home_snapshot_of_tree_scan": (
+        _HOME_IMPORT + "import shutil\nsnap = os.path.join(home(), 'snap')\n"
+        "shutil.copytree(os.path.dirname(__file__), snap)\nos.walk(snap)\n",
+        "scans",
+        True,
+    ),
+    "s8_home_split_dotdot_scan": (
+        _HOME_IMPORT + "os.listdir(home() + '/.' + './x')\n",
+        "scans",
+        True,
     ),
     "env_reads": (
         'import os\nSEED = int(os.environ.get("ZZZ_SEED", 0))\nX = os.getenv("ZZZ_X")\n'
@@ -1749,9 +1530,10 @@ def _self_check(store):
             return fail(f"derivation red {name}: {field} = {got!r}, expected {want!r}")
     n_scan_pins = sum(1 for _s, field, _w in _SYNTHETIC.values() if field == "scans")
     fired.append(
-        f"{n_scan_pins} scanner-derivation pins (parameter / keyword / imported / module-attribute"
-        " / aliased / cwd / ls-files / env-default / name-collision roots scan; home() and"
-        " env-dir roots, their wrappers and ast.walk excluded) + env-name pins"
+        f"{n_scan_pins} scanner-derivation pins (every recognised listing scans whatever its root:"
+        " parameter / keyword / imported / aliased / cwd / home() / env-dir roots, the closing"
+        " review's S2-S6 and S8, ls-files; ast.walk and the file's own functions are no listing)"
+        " + env-name pins"
     )
 
     base = make()

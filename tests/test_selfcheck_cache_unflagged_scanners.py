@@ -6,7 +6,11 @@ the impact_analysis override left replication_guard / native_ratchet unchanged, 
 override left rust_facts unchanged -- and pass after the fail-closed derivation. C1 / C2 are the
 key-invariance controls that must hold on both sides. The subjects are the module's own red (n)
 constants; like red (i) / (n), the real-tree reds need git (without it every scanner key is a
-per-instance nonce and the flip would be vacuous). Every cache here uses a tmp store."""
+per-instance nonce and the flip would be vacuous). Every cache here uses a tmp store.
+
+B4 (Opus closing review of the carryfix): R4 / R5 FAIL on the root resolver (675fd358) -- the
+review's constructed shapes S2-S6, S8 are no scan there and a tree change leaves the key -- and
+pass once every listing scans."""
 
 from __future__ import annotations
 
@@ -88,6 +92,49 @@ def test_rust_facts_readers_carry_the_native_and_rsfacts_rows(base, store, probe
 def test_c1_plain_module_unchanged_by_the_overrides(base, store, probe):
     assert _fork(store, {IMPACT: "0" * 64}).closure_key(probe) == base.closure_key(probe)
     assert _fork(store, {LIB_RS: "0" * 64}).closure_key(probe) == base.closure_key(probe)
+
+
+# B4 C2: the Opus closing review's constructed stale shapes (MAJOR 2) that its root resolver
+# passed. Inline, NOT read from sc._SYNTHETIC: against the pre-fix module that table holds none
+# of them, so a table-driven red could never fire there.
+BYPASS = {
+    "S2": "import os\nos.environ.setdefault('ZZZ_S2', os.path.dirname(__file__))\n"
+    "os.listdir(os.environ['ZZZ_S2'])\n",
+    "S3": "import os\nfor r, d, f in os.walk(os.environ['PYTHONPATH']):\n    pass\n",
+    "S4": "import os\nfrom snn_data_lake.substrate import home\n"
+    "home.home = lambda: os.path.dirname(__file__)\nos.listdir(home.home())\n",
+    "S5": "import os\nfrom snn_data_lake.substrate.home import home\n"
+    "globals()['home'] = os.getcwd\nos.listdir(home())\n",
+    "S6": "import os, shutil\nfrom snn_data_lake.substrate.home import home\n"
+    "snap = os.path.join(home(), 'snap')\nshutil.copytree(os.path.dirname(__file__), snap)\n"
+    "os.walk(snap)\n",
+    "S8": "import os\nfrom snn_data_lake.substrate.home import home\n"
+    "os.listdir(home() + '/.' + './x')\n",
+}
+
+
+@pytest.mark.parametrize("shape", sorted(BYPASS))
+def test_r4_bypass_shape_is_a_scan(shape):
+    assert sc._facts(BYPASS[shape], 1, sc._NULL_RE)["scans"] is True, f"{shape} is not a scan"
+
+
+@pytest.mark.parametrize("shape", sorted(BYPASS))
+def test_r5_bypass_shape_on_the_probe_flips_on_a_tree_change(base, store, probe, shape):
+    """The review's harness: the shape appended to the plain probe's source, then a file no
+    closure names (impact_analysis.py) overridden -- the probe's key must flip. Every fork
+    carries the shape; a second fork without the override is the quiet-instrument control."""
+    path = os.path.normpath(sc._module_file(sc._PKG_PREFIX + probe))
+    text = base._read_text(path) + "\n" + BYPASS[shape]
+
+    def fork(over=None):
+        return sc.SelfcheckCache(
+            store_path=store, env=ENV, file_text_overrides={path: text}, file_hash_overrides=over
+        )
+
+    quiet = fork().closure_key(probe)
+    assert fork().closure_key(probe) == quiet, "the instrument moved with no input change"
+    moved = fork({IMPACT: "0" * 64}).closure_key(probe)
+    assert moved != quiet, f"{shape} on {probe}: a tree change left the key (stale PASS carries)"
 
 
 @pytest.mark.parametrize("name", sorted(sc._SYNTHETIC))
