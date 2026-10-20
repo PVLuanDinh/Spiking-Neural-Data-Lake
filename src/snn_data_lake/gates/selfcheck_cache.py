@@ -61,10 +61,11 @@ THE KEY (all of it, or no carry) -- v3, ENVELOPE PRECISION (2026-08-21):
     the scanner rule would re-run eligible_circuit_census and capability_bar on every tree
     change. Scanners gain the rows too, redundantly (their tree row already holds every
     tracked file). Its `_callee_kind` also parses the modules the DRIVERS import, by a
-    COMPUTED path -- outside this rule (blind spot 4) and outside the verdict: CLASS /
-    FACTORY / UNRESOLVED all count as object handles (measured: permuting the three leaves
-    main() rc 0; one injected undisposed site reds it), so only the printed sites_by_kind
-    can go stale.
+    COMPUTED path -- outside this rule (blind spot 4). The KIND it computes is outside the
+    verdict: CLASS / FACTORY / UNRESOLVED all count as object handles (measured: permuting
+    the three leaves main() rc 0; one injected undisposed site reds it). The PARSE is not:
+    eligible_circuit_census.py:1116's ast.parse is uncaught, so a callee module that stops
+    parsing turns the check red while its key holds still (B4 re-review N3).
   * ENVIRONMENT: every NORD_* variable is GLOBAL (read under computed names); any other
     variable a closure reads by literal name -- `os.environ.get("NMNIST_SEED")`,
     `os.getenv(...)`, `os.environ[...]` -- is keyed to that reader with its value. The
