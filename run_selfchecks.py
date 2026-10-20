@@ -951,10 +951,12 @@ def run_one_in_process(mod, home=None):
             runpy.run_module(f"snn_data_lake.{mod}", run_name="__main__")
         return True, buf.getvalue()
     except SystemExit as e:  # a module may sys.exit(0) on success
-        # exactly what a real interpreter treats as success: None or an int/bool zero. SystemExit(0.0)
-        # exits 1 in a real process (it prints "0.0"), so it must FAIL here too (Codex MAJOR 1).
+        # exactly what a real interpreter treats as success: None, or anything PyLong_Check accepts
+        # (an int SUBCLASS: bool, an IntEnum) that equals zero. SystemExit(0.0) and a numpy integer
+        # are not PyLong, so a real process prints them and exits 1 -- they must FAIL here too
+        # (Codex MAJOR 1; bfix3 MINOR 4: the old `type(code) in (int, bool)` refused an IntEnum zero).
         code = e.code
-        return (code is None or (type(code) in (int, bool) and code == 0)), buf.getvalue()
+        return (code is None or (isinstance(code, int) and code == 0)), buf.getvalue()
     except BaseException as e:  # AssertionError / any self-check failure
         return False, f"{buf.getvalue()}\n{type(e).__name__}: {e}"
     finally:

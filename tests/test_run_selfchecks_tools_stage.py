@@ -247,3 +247,41 @@ def test_each_in_process_check_is_rearmed(monkeypatch, tmp_path):
     monkeypatch.setattr(rs, "TORCH_GATED", [])
     assert rs.run_all_in_process(emit=lambda *_: None)
     assert seen == [("1", str(tmp_path))] * 3, seen
+
+
+def test_in_process_exit_code_follows_cpython_for_int_subclasses(monkeypatch):
+    # bfix3 MINOR 4: the expected value is what a REAL interpreter exits with, not our guess of it.
+    # RED on `type(code) in (int, bool)`: an IntEnum zero exits 0 in CPython and failed here.
+    import runpy
+    import subprocess
+    import sys
+
+    prelude = "import enum\nimport numpy as np\nclass Z(enum.IntEnum):\n    ZERO = 0\n    ONE = 1\n"
+    exprs = ["None", "0", "1", "False", "True", "0.0", "'x'", "Z.ZERO", "Z.ONE", "np.int64(0)"]
+    real = {}
+    for e in exprs:
+        r = subprocess.run(
+            [sys.executable, "-c", f"{prelude}raise SystemExit({e})"],
+            capture_output=True,
+            timeout=60,
+        )
+        real[e] = r.returncode == 0
+    assert real["Z.ZERO"] is True and real["True"] is False and real["np.int64(0)"] is False
+
+    import enum
+
+    import numpy as np
+
+    class Z(enum.IntEnum):
+        ZERO = 0
+        ONE = 1
+
+    values = {"Z.ZERO": Z.ZERO, "Z.ONE": Z.ONE, "np.int64(0)": np.int64(0)}
+    values |= {e: eval(e) for e in exprs if e not in values}
+    for e in exprs:
+
+        def boom(*a, code=values[e], **k):
+            raise SystemExit(code)
+
+        monkeypatch.setattr(runpy, "run_module", boom)
+        assert rs.run_one_in_process("brain_atlas")[0] is real[e], e
