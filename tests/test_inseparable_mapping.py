@@ -522,6 +522,8 @@ def test_the_stream_replays_and_reads_the_twin_but_not_xor_through_arm_a(streams
 
 
 # ---- the self-check ---------------------------------------------------------------------------
+# wall-clock budget (20 s): serial pass only
+@pytest.mark.timing
 def test_main_is_fast_and_cwd_independent(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     started = time.perf_counter()
