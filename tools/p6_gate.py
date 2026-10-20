@@ -1838,7 +1838,10 @@ def report(res, root):
     for line in c["native_attributed"]:
         print(f"      {line}")
     print("  Rust blind spots: " + "; ".join((*_gates()[0].BLIND_SPOTS, *RUST_BLIND_SPOTS)))
-    print("  Python-side blind spots: " + "; ".join(PY_NATIVE_BLIND_SPOTS))
+    from snn_data_lake.gates import import_manifest  # src/ is on sys.path: _gates() ran just above
+
+    py_spots = (*import_manifest.NATIVE_REF_BLIND_SPOTS, *PY_NATIVE_BLIND_SPOTS)
+    print("  Python-side blind spots: " + "; ".join(py_spots))
     print(
         f"  UNDIRECTED because an import is a REACH, not a signal direction: {len(c['reversed_artifact'])} "
         "of the directed\n  mismatches are the exact REVERSE of a declared edge, so a directed diff "

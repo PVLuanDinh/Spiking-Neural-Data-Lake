@@ -140,6 +140,13 @@ UNGOVERNED_ROOT = ()
 # `reasoning/eprop_lm_serve.py` does `sys.path.insert` on <root>/training and then
 # `import eprop_lm as trainer` -- a bare-NAME import that `_targets()` cannot see by construction.
 
+# The blind spots of reading `_native` users through native_refs (rust_facts.python_native_refs), ONE
+# constant (P2): printed beside this gate's verdict and beside tools/p6_gate.py's (b4p P4).
+NATIVE_REF_BLIND_SPOTS = (
+    "dynamic getattr(_native, name)",
+    "names re-exported through a non-governed module",
+)
+
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # <repo>, the parent of `src/`. Pure path arithmetic evaluated at import -- no side effect (nothing is
 # inserted on sys.path here; see broken(), which scopes and undoes that itself).
@@ -467,9 +474,7 @@ def main():
     for k, msg in native_bad.items():
         print(f"  [BROKEN] {k}: {msg}")
     print("  blind spots: " + "; ".join(rust_facts.BLIND_SPOTS))
-    print(
-        "  own blind spots: dynamic getattr(_native, name); names re-exported through a non-governed module"
-    )
+    print("  own blind spots: " + "; ".join(NATIVE_REF_BLIND_SPOTS))
     assert not bad, (
         "a module the live brain imports does not import: "
         + "; ".join(f"{m} ({e})" for m, e in bad.items())
