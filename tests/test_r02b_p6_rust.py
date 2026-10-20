@@ -32,7 +32,7 @@ _CER = "cere" + "bellum"
 _MED = "medu" + "lla"
 _CTX = "cor" + "tex"
 
-REDS = ["R1", "R2", "R3", "R4", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13"]
+REDS = ["R1", "R2", "R3", "R4", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", "R15"]
 CONTROLS = ["G1", "G2", "G3", "G4", "G5", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G14"]
 CONTROLS += ["G15", "G16"]
 _PFC = "faculties/prefrontal_executive.py"
@@ -343,6 +343,39 @@ def test_a_plain_impl_method_is_not_part_of_the_pyclass_reach(base):
     assert res["metrics"] == base["metrics"]
 
 
+def test_r16_pymethods_in_a_sibling_file_count_in_the_pyclass_reach(base):
+    """b4p P2 (Opus p6x MINOR-2): only the export's own file was read, so a #[pymethods] impl in a
+    sibling file left the class reaching nothing. R16's own wire (methods, cerebellum) is a Rust
+    pair outside the connectome (dropped); the counted pair comes through the class's importer."""
+    _, _how, fear_rs, overlay, extra = _arm("RUST_REDS", "R16")
+    res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(fear_rs, extra))
+    conn = res["conn"]
+    assert conn["native_mapped"] == gate.RUST_PAIR
+    assert conn["rust_directed"] == {("methods", _CER)}
+    assert gate.own_attributed(conn, overlay) == [
+        f"{_AMY}/_p6_bind_class.py: _native.Probe (crate-root export; its body reaches {_CER})"
+    ]
+    expect = dict(base["metrics"])
+    expect["undeclared_import_pairs"] += 1
+    assert res["metrics"] == expect
+
+
+def test_pymethods_of_another_type_are_not_part_of_the_pyclass_reach(base):
+    """The control for the last-segment rule: `impl crate::Other` is not Probe's impl."""
+    _, _how, fear_rs, overlay, _extra = _arm("RUST_REDS", "R13")
+    items = (
+        "#[pyclass]\npub struct Probe;\n\n#[pyclass]\npub struct Other;\n\n#[pymethods]\n"
+        "impl crate::Other {\n    fn go(&self) {\n        let _c = Clock::new();\n    }\n}\n"
+    )
+    extra = {gate.RS_BINDING: gate.rs_binding(items, "Probe")}
+    res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(fear_rs, extra))
+    assert res["conn"]["native_mapped"] == set()
+    assert gate.own_attributed(res["conn"], overlay) == [
+        f"{_AMY}/_p6_bind_class.py: _native.Probe (crate-root export; its body reaches {_NO_RUST})"
+    ]
+    assert res["metrics"] == base["metrics"]
+
+
 def test_a_decoy_module_beside_a_package_does_not_hide_the_package_use(base):
     overlay = {
         f"{_AMY}/_p6_decoy/__init__.py": "from snn_data_lake._native import bind_step\n",
@@ -527,6 +560,8 @@ def test_blind_spots_disclose_what_export_attribution_does_not_read():
     text = " ".join(gate.RUST_BLIND_SPOTS)
     assert "names no symbol here" not in text and "exports map to no region" not in text
     assert "non-call path" in text and "#[pyclass]" in text and "self.helper()" in text
+    assert "every fn of its #[pymethods] impls" not in text  # the p6x overclaim (Opus MINOR-2)
+    assert "LAST path segment" in text and "conflated" in text
 
 
 def test_same_region_native_import_maps_to_no_pair(base):

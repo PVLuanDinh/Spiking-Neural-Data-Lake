@@ -1284,8 +1284,10 @@ RUST_BLIND_SPOTS = (
     "a `#[path]`-relocated file keeps the region of its on-disk directory",
     "an export in no connectome region (the binding's own #[pyfunction] in a crate root or a binding "
     "submodule) is attributed to its Python users' regions by what its body CALLS through the file's `use` "
-    "aliases, following same-file FREE helpers called by bare name (the last non-test fn of that name wins; a "
-    "#[pyclass]: every fn of its #[pymethods] impls); a non-call path in its body (a struct literal, a const), "
+    "aliases, following same-file FREE helpers called by bare name (the last non-test fn of that name wins); a "
+    "#[pyclass] reaches through the fns of every production #[pymethods] impl, in any file, whose self type's "
+    "LAST path segment is its Rust name (a same-named type elsewhere is conflated, a `type` alias as the self "
+    "type is missed); a non-call path in its body (a struct literal, a const), "
     "a helper called by a qualified path or a method call (`self.helper()`) or defined in another file, and a "
     "`*` import's uses are not read; a binding file's own `use` that no export body calls forms no connectome "
     "pair (a crate root has no region, a binding submodule's is no connectome region)",
@@ -1357,38 +1359,45 @@ def _hits(tree, rel, paths):
     return {h for p in paths for h in _terminal(tree, rel, p.split("::"))}
 
 
-def _export_reach(f, rel, export, tree, region):
+def _export_reach(by_rel, rel, export, tree, region):
     """Regions an export's body reaches (p6x; its file is in no connectome region): its non-cfg(test) calls
     (the reader's `fn_id`), plus those of every same-file helper it calls by bare name (transitively: what a
-    helper reaches is attributed to every export that calls it), resolved through the file's `use` aliases by
-    `_terminal` exactly like a regioned file's refs."""
+    helper reaches is attributed to every export that calls it), each resolved through ITS file's `use`
+    aliases by `_terminal` exactly like a regioned file's refs. A #[pyclass] reaches through the fns of its
+    #[pymethods] impls in every production file, the impl's self type matched by its LAST path segment --
+    rust_facts.pyo3_exports' rule for the same impls (b4p P2)."""
     rust_facts = _gates()[0]
-    fns = [fn for fn in f.get("fns", []) if not fn["cfg_test"]]
-    by_name = {fn["name"]: fn["id"] for fn in fns if not fn["impl"]}
+    fns = {r: [fn for fn in by_rel[r].get("fns", []) if not fn["cfg_test"]] for r in region}
+    by_name = {r: {fn["name"]: fn["id"] for fn in fs if not fn["impl"]} for r, fs in fns.items()}
     if export["kind"] == "class":
-        # every fn of the type's #[pymethods] impls, from the FACTS: the export map keeps one entry per
-        # Python name, so a #[getter]/#[setter] pair would otherwise lose a body
+        # from the FACTS, not the export map's `Cls.member` entries: the map keeps one entry per Python
+        # name, so a #[getter]/#[setter] pair would otherwise lose a body
         ids = {
-            fn["id"]
-            for fn in fns
-            if fn["impl"] == export["rust"] and rust_facts._attr(fn["impl_attrs"], "pymethods")
+            (r, fn["id"])
+            for r, fs in fns.items()
+            for fn in fs
+            if (fn["impl"] or "").split("::")[-1] == export["rust"]
+            and rust_facts._attr(fn["impl_attrs"], "pymethods")
         }
     else:
         ids = {
-            fn["id"] for fn in fns if fn["name"] == export["rust"] and fn["line"] == export["line"]
+            (rel, fn["id"])
+            for fn in fns[rel]
+            if fn["name"] == export["rust"] and fn["line"] == export["line"]
         }
-    todo, paths = list(ids), []
+    todo, paths = list(ids), {}
     while todo:
-        fid = todo.pop()
-        for c in f.get("calls", []):
+        r, fid = todo.pop()
+        for c in by_rel[r].get("calls", []):
             if c["fn_id"] != fid or c["cfg_test"]:
                 continue
-            paths.append(c["path"])
-            helper = by_name.get(c["path"])
-            if helper is not None and helper not in ids:
-                ids.add(helper)
-                todo.append(helper)
-    return tuple(sorted({region[h] for h in _hits(tree, rel, paths) if region.get(h)}))
+            paths.setdefault(r, []).append(c["path"])
+            helper = by_name[r].get(c["path"])
+            if helper is not None and (r, helper) not in ids:
+                ids.add((r, helper))
+                todo.append((r, helper))
+    hits = {h for r, ps in paths.items() for h in _hits(tree, r, ps)}
+    return tuple(sorted({region[h] for h in hits if region.get(h)}))
 
 
 def rust_region_imports(root, labels, native=None, *, regions):
@@ -1469,7 +1478,7 @@ def rust_region_imports(root, labels, native=None, *, regions):
         # such as src/bindings.rs; b4p P1): attributed by its body's reach; a `Cls.meth` entry rides with its
         # #[pyclass] (Python names the class, never a method)
         if rel in region and region[rel] not in regions and "." not in name:
-            reach[name] = _export_reach(by_rel[rel], rel, e, tree, region)
+            reach[name] = _export_reach(by_rel, rel, e, tree, region)
     return status, directed, exports, reach
 
 
@@ -2034,6 +2043,19 @@ _RS_BIND_CLASS = (  # a crate-root #[pyclass] whose #[pymethods] body reaches ce
 _RS_BINDING_REACH = {RS_BINDING: rs_binding(_RS_BIND_STEP, "bind_step")}
 _RS_BINDING_CFG = {RS_BINDING: rs_binding(_RS_BIND_CFG, "bind_step")}
 _RS_BINDING_CLASS = {RS_BINDING: rs_binding(_RS_BIND_CLASS, "Probe")}
+_RS_BIND_CLASS_PATH = (  # R13's class whose #[pymethods] impl names its self type by a PATH
+    "#[pyclass]\npub struct Probe;\n\n#[pymethods]\nimpl crate::Probe {\n    fn go(&self) {\n"
+    "        let _c = Clock::new();\n    }\n}\n"
+)
+_RS_BINDING_CLASS_PATH = {RS_BINDING: rs_binding(_RS_BIND_CLASS_PATH, "Probe")}
+RS_METHODS = "native/sndl-python/src/methods.rs"  # a sibling file of the binding's crate root
+_RS_BINDING_SIBLING = {  # R13's #[pyclass] in lib.rs, its #[pymethods] impl in the SIBLING file
+    RS_BINDING: rs_binding("mod methods;\n\n#[pyclass]\npub struct Probe;\n", "Probe"),
+    RS_METHODS: (
+        f"use pyo3::prelude::*;\nuse sndl_core::{_CER}::timing::Clock;\nuse crate::Probe;\n\n"
+        "#[pymethods]\nimpl Probe {\n    fn go(&self) {\n        let _c = Clock::new();\n    }\n}\n"
+    ),
+}
 RS_BINDING_SUBMOD = (
     "native/sndl-python/src/bindings.rs"  # a binding SUBMODULE: region `bindings`, no connectome
 )
@@ -2158,6 +2180,20 @@ RUST_REDS = [
         RS_FEAR_GREEN,
         _PY_BIND_IMPORT,
         _RS_BINDING_SUBMODULE,
+    ),
+    (
+        "R15",
+        "R13 with its #[pymethods] impl spelled `impl crate::Probe` (a path-qualified self type)",
+        RS_FEAR_GREEN,
+        _PY_CLASS_IMPORT,
+        _RS_BINDING_CLASS_PATH,
+    ),
+    (
+        "R16",
+        f"R13's #[pyclass] Probe in lib.rs, its #[pymethods] `go` (reaches {_CER}) in the sibling file src/methods.rs",
+        RS_FEAR_GREEN,
+        _PY_CLASS_IMPORT,
+        _RS_BINDING_SIBLING,
     ),
 ]
 _RS_INLINE_TESTS = (
