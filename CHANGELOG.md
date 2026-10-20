@@ -9,6 +9,33 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- B3 fold, lane p6x: p6 attributes a binding crate-root export to its Python users' regions and what its body reaches (2026-10-20)
+
+Codex B2-fold MAJOR 1 (both `codex-review-b2f` rounds): the binding crate root `native/sndl-python/src/lib.rs`
+belongs to no region, so a `#[pyfunction]` there formed NO pair -- adding `pub mod medulla;` to sndl-core and
+`use sndl_core::medulla::step;` + `step()` inside `pfc_decide` left `undeclared_import_pairs` at 11 with every
+metric unchanged, and the PFC's module-level `from snn_data_lake import _native` + `_native.pfc_decide(...)`
+read as "names no symbol". Reproduced RED on base `ab2f68c1` (`lanes/r02-1017/rows/p6x/`, pre-registered reds
+R-a/R-b/R-c in `rows/p6x-REPORT.md`); lane branch `claude/sndl-p6x-1020`, unverified by any battery (no promotion).
+
+- `tools/p6_gate.py` attributes a crate-root export (the binding's own `#[pyfunction]` or `#[pyclass]`) to the
+  regions of the Python modules that USE it -- by import or attribute style, every spelling the ONE reader
+  `rust_facts.python_native_refs` knows (the function `import_manifest.native_refs` wraps; P2) -- and forms
+  (importer region, target) for every connectome region the export's body reaches: its calls (reader `fn_id`),
+  following same-file free helpers by bare name, a `#[pyclass]` through every fn of its `#[pymethods]` impls.
+  Codex's medulla reproducer now counts 11 -> 12 with `(cortex, medulla)`; the real tree stays at 11
+  (`pfc_decide` <- `faculties/prefrontal_executive.py` [cortex] reaches cortex and rng: same region / not a
+  connectome region, no pair).
+- A new `NATIVE EXPORTS ATTRIBUTED` listing in the report (and `native_attributed` in `connectome_diff`) prints
+  every crate-root export with its users and reach, an unused one as `<no regioned Python module>` -- printed,
+  never dropped. The PFC's import leaves `NATIVE TARGETS UNMAPPED` (now 0 on the real tree).
+- `RUST_BLIND_SPOTS` drops the two lines the fix covers and discloses what it does not read: a non-call path in an
+  export body (struct literal, const), a helper called by a qualified path or a method call (`self.helper()`) or
+  defined in another file, a `*` import's uses, a crate root's own unused `use`.
+- Self-check arms R11-R13 (symbol import, attribute style, pyclass) and controls G15-G16 (unused export printed;
+  a `#[cfg(test)]` reach is no wire); `tests/test_r02b_p6_rust.py` grows the pre-registered reds, the real-tree
+  pins and the disclosed-limit tests (63 tests).
+
 ## [Unreleased] -- B2 fold, lane f2-p1a: the resident replay validates the exact generation it yields (2026-10-18)
 
 Codex B2 (LANE p1a-fix, MAJOR 1) reproduced `BinLog.replay()` capturing the resident list and then
