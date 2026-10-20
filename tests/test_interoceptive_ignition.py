@@ -19,8 +19,10 @@ The P8 burden, one test each:
                                         200/200 ticks (measured 2026-10-19; see the PREREGISTERED
                                         test, whose docstring carries the level arms)
   * PER-ITEM ATTRIBUTION     -- neuter the insula and show the brain's own output moves
-  * DELETION ON A NULL       -- a salience that never varies, or a threshold that never moves,
-                                fails here rather than being reported as a wire
+  * DELETION ON A NULL       -- a threshold that never moves fails here rather than being
+                                reported as a wire; a salience that never varies fails too,
+                                though the level arms show a CONSTANT salience still moves the
+                                outcome (it is the variation that is outcome-inert)
 
 Run: pytest tests/test_interoceptive_ignition.py
 """
@@ -266,14 +268,16 @@ def test_the_accessor_returns_a_copy_not_the_cache(live):
 
 
 def test_the_live_signal_is_not_constant(live):
-    """DELETION ON A NULL. A signal that never moves cannot modulate anything, and reporting it as
-    a wire would be exactly the dormancy P3 forbids. This is the test that would have killed the
-    build; it is here because it nearly does not pass on a shorter run."""
+    """The live signal VARIES. Written as DELETION ON A NULL ("a signal that never moves cannot
+    modulate anything"); the level arms in the PREREGISTERED test refute that premise -- a
+    constant at the live mean differs from neutered on the same 28 outcome ticks as live does,
+    and from live on none -- so this asserts variation, not that variation is what modulates.
+    It nearly does not pass on a shorter run."""
     rows, _ = live
     sal = [r["salience"] for r in rows]
     assert len(set(round(x, 6) for x in sal)) > TICKS // 2, (
         f"feeling_salience took only {len(set(round(x, 6) for x in sal))} distinct values over "
-        f"{TICKS} ticks -- a near-constant signal modulates nothing"
+        f"{TICKS} ticks -- the live signal is near-constant"
     )
     assert max(sal) > 0.05, f"feeling_salience never left the floor (max {max(sal):.4f})"
 
@@ -315,9 +319,10 @@ def test_a_CONSTANT_salience_control_does_not_reproduce_the_live_threshold_trace
     thresholds, the build would be a calibration change wearing a wire's clothes, and what is
     doing the work would be the mean rather than the body.
 
-    It separates them at the THRESHOLD only. At the OUTCOME (200 ticks, seed 0) a constant at the
-    live mean reproduces the live (ignited, winner) record on 200/200 ticks: the threshold
-    differences this test counts reach no outcome. See the PREREGISTERED test."""
+    It separates them at the THRESHOLD only. This test's constant is the 40-tick mean over all
+    ticks (unconsulted zeros included); the outcome result is for a different constant: at 200
+    ticks a constant at the mean over CONSULTED ticks (constant_long) reproduces the live
+    (ignited, winner) record on 200/200 ticks. See the PREREGISTERED test."""
     rows, _ = live
     mean_s = statistics.fmean(r["salience"] for r in rows)
     live_thr = [
