@@ -73,6 +73,8 @@ BLIND_SPOTS = (
     "macro bodies are opaque tokens (calls inside vec!/azip!/s! are not seen as calls)",
     "names resolve by last path segment within a crate (aliases/paths approximate)",
     "all #[cfg] items parsed regardless of features; #[cfg_attr(.., pyclass(..))] wrapped PyO3 attributes are not read",
+    "#[cfg(test)] on a let/expression STATEMENT inside a production fn is not marked cfg_test (only test fns, "
+    "test mods and test-gated items are), so that test-only call counts as a wire (over-count only)",
     "macro_rules!/proc-macro/build.rs generated code is invisible",
     'export map: m.add("X", ..), add_wrapped(wrap_pymodule!(..)) and nested declarative #[pymodule] mods '
     "are not resolved (nested names are flattened to the top level)",
