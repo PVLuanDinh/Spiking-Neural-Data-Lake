@@ -111,6 +111,14 @@ def pytest_configure(config):
     )
 
 
+@pytest.hookimpl(optionalhook=True)
+def pytest_configure_node(node):
+    """xdist controller -> each worker: the RESOLVED --dist mode. A worker's own config reports
+    dist='no' whatever the controller used, and its argv copy misses pytest.main() args and
+    PYTEST_ADDOPTS precedence; tests that must know whether a module runs whole read this."""
+    node.workerinput["sndl_dist"] = node.config.getoption("dist")
+
+
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(items):
     """Under `-n --dist loadgroup`, keep every test that uses a module-scoped fixture on ONE worker.

@@ -561,19 +561,12 @@ def test_sign_violating_projection_admit_refusal_is_not_an_immortal_event():
 
 def _module_runs_whole(config):
     """True when this module's tests all run in this process, in collection order: serially, or
-    on an xdist worker whose controller kept modules together. A worker's own config reports
-    dist='no' whatever the controller used, so read the controller's argv (xdist workerinput)."""
+    on an xdist worker whose controller kept modules together. The controller hands each worker
+    its resolved --dist mode (tests/conftest.py pytest_configure_node)."""
     wi = getattr(config, "workerinput", None)
     if wi is None:
         return True
-    argv = list(wi.get("mainargv", ())) + os.environ.get("PYTEST_ADDOPTS", "").split()
-    mode = "load"  # xdist's default under -n
-    for a, b in zip(argv, [*argv[1:], ""], strict=True):
-        if a == "--dist":
-            mode = b
-        elif a.startswith("--dist="):
-            mode = a.split("=", 1)[1]
-    return mode in ("loadgroup", "loadscope", "loadfile")
+    return wi.get("sndl_dist") in ("loadgroup", "loadscope", "loadfile")
 
 
 def test_no_g9_test_leaves_its_home_behind(_post_test_homes, request):
