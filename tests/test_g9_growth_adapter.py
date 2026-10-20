@@ -559,7 +559,10 @@ def test_sign_violating_projection_admit_refusal_is_not_an_immortal_event():
         assert _fresh_process_fault_phase(brain, private) is None
 
 
-def test_no_g9_test_leaves_its_home_behind(_post_test_homes):
-    if not _post_test_homes.homes:
-        pytest.skip("no earlier g9 test ran before this one in this run")
+def test_no_g9_test_leaves_its_home_behind(_post_test_homes, request):
+    # an empty record is legitimate only when no earlier g9 test was selected (run alone / -k);
+    # a skip here would hide a broken recorder (Opus n5; the isolation sibling's pattern)
+    mine = [i for i in request.session.items if i.module is request.module]
+    earlier = mine[: mine.index(request.node)]
+    assert _post_test_homes.homes or not earlier, "recorder saw none of the earlier g9 tests"
     assert set(_post_test_homes.homes) <= {_post_test_homes.module_home}, _post_test_homes.homes
