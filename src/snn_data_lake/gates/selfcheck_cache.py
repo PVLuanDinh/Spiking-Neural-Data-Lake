@@ -224,7 +224,8 @@ _LISTING_MODULES = frozenset({"os", "glob", "pathlib", "pkgutil"})  # a lister t
 _GIT_TREE_READS = ("ls-files", "ls-tree", "--porcelain")  # argv strings that read the tree via git
 # B4 C3: ANY git argv is a scan -- `git diff --name-only`, `git status --short`, `git show`
 # read the tree or its history beyond these three forms (review S7); a string that IS the
-# program name, or starts a shell command line with it
+# program name, or starts a shell command line with it. `.match` anchors at the START: git
+# later in a shell line or behind a path prefix is not seen (B4 re-review D2, in the banner)
 _GIT_ARGV = re.compile(r"git(?:\.exe)?(?:\s|$)")
 # B4 C4: a whole non-docstring string that IS a repo-relative path (a directory component, no
 # `..`, no spaces) names a file the module may READ without importing it -- its bytes key the
@@ -956,7 +957,8 @@ def banner_blind_spots():
         "computed-name data/env reads (tools/, models/ and NORD_* fail closed); gitignored "
         "inputs read by name outside models/ and graphify-out/; a lister not named through "
         "the file's imports (string dispatch: getattr(os, 'walk')); a tree listed by a "
-        "subprocess other than git, or by git with no literal 'git' argv (find, rg); "
+        "subprocess other than git (find, rg), or by git where no argv string STARTS with 'git' "
+        "('cd src && git status', '/usr/bin/git ...', a git path in a variable); "
         "gitignored non-Rust files under native/ (when git lists it); "
         "directory symlinks under native/; "
         "Rust build inputs outside native/ and the manifest names "
