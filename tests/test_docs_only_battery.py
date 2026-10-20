@@ -108,3 +108,40 @@ def test_xdist_worker_child_listed_before_its_worker_is_still_mapped():
     ]
     m = dob.build_map(recs, "head", "chash")
     assert "docs/grandchild.md" in m["pytest_all"]["read"]  # red under a single pass
+
+
+@pytest.fixture
+def build_map_env(tmp_path, monkeypatch):
+    """--build-map with a current hook and a map path inside tmp_path, so a map written by mistake
+    is visible and never lands in the tree."""
+    pth = tmp_path / "hook.pth"
+    pth.write_text(dob.pth_line(), encoding="utf-8")
+    monkeypatch.setattr(dob, "pth_path", lambda: pth)
+    monkeypatch.setattr(dob, "MAP_PATH", tmp_path / "map.json")
+    return tmp_path
+
+
+def test_build_map_refuses_a_missing_audit_dir(build_map_env, capsys):
+    """The battery's `mkdir -p "$B/audit"` can fail: SNDL_DOC_AUDIT then points at nothing."""
+    assert dob.main(["--build-map", str(build_map_env / "no-such-audit")]) == 2
+    assert "does not exist" in capsys.readouterr().out
+    assert not dob.MAP_PATH.exists()
+
+
+def test_build_map_refuses_an_empty_audit_dir(build_map_env, capsys):
+    audit = build_map_env / "audit"
+    audit.mkdir()
+    assert dob.main(["--build-map", str(audit)]) == 2
+    assert "no pytest root" in capsys.readouterr().out
+    assert not dob.MAP_PATH.exists()
+
+
+def test_build_map_empty_audit_dir_red_when_the_capture_check_is_neutered(
+    build_map_env, monkeypatch
+):
+    """Reachable red for the empty-dir refusal: without validate_capture an empty map IS written."""
+    monkeypatch.setattr(dob, "validate_capture", lambda records, hid: [])
+    audit = build_map_env / "audit"
+    audit.mkdir()
+    assert dob.main(["--build-map", str(audit)]) == 0
+    assert dob.MAP_PATH.exists()

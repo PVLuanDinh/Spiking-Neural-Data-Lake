@@ -888,6 +888,11 @@ def main(argv: list[str] | None = None) -> int:
                 "REFUSED: the installed hook is missing or stale -- run --install-hook, then re-run pytest"
             )
             return 2
+        if not Path(argv[1]).is_dir():
+            print(
+                f"REFUSED: the audit directory {argv[1]} does not exist -- the pytest run captured nothing"
+            )
+            return 2
         recs = load_records(Path(argv[1]))
         problems = validate_capture(recs, hook_id())
         if problems:
