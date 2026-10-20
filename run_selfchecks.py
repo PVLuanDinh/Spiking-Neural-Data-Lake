@@ -1159,10 +1159,14 @@ def main(argv=None):
     if "--list" in argv:
         print("\n".join(MODULES))
         return 0
-    if ("--defer-timing" in argv and "--battery" not in argv) or (
-        "--defer-timing" in argv and "--timing-only" in argv
-    ):
-        sys.stderr.write("run_selfchecks: --defer-timing goes with --battery only" + chr(10))
+    # ONE mode per run, and --defer-timing only beside --battery: a one-token typo in the battery
+    # script must refuse, never run a narrower set and exit 0 (closing review m2)
+    modes = [f for f in ("--battery", "--in-process", "--timing-only", "--carry") if f in argv]
+    if len(modes) > 1 or ("--defer-timing" in argv and modes != ["--battery"]):
+        sys.stderr.write(
+            f"run_selfchecks: incompatible flags {modes}; use one of --battery [--defer-timing], "
+            "--in-process, --timing-only, --carry" + chr(10)
+        )
         return 2
     if "--timing-only" in argv:
         # the TIMING_DEFERRED half of --battery: in-process, same guard/home/latch discipline

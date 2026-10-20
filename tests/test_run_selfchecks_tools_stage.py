@@ -453,3 +453,16 @@ def test_cli_timing_flags_run_exactly_the_battery(monkeypatch):
     assert ("in", "gates.amdahl_gate") in battery and ("in", "gates.amdahl_gate") not in deferred
     assert rs.main(["run_selfchecks.py", "--defer-timing"]) == 2
     assert rs.main(["run_selfchecks.py", "--timing-only", "--defer-timing"]) == 2
+    # closing review m2: each of these ran a narrower set and exited 0 before the one-mode rule
+    calls.clear()
+    for bad in (
+        ("--battery", "--timing-only"),
+        ("--timing-only", "--in-process"),
+        ("--timing-only", "--carry"),
+        ("--battery", "--in-process"),
+        ("--battery", "--defer-timing", "--in-process"),
+        ("--in-process", "--defer-timing"),
+        ("--carry", "--battery"),
+    ):
+        assert rs.main(["run_selfchecks.py", *bad]) == 2, bad
+    assert calls == [], "a refused flag combination still ran checks"
