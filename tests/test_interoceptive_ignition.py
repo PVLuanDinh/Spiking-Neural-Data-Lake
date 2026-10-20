@@ -27,6 +27,8 @@ PERCEPTION TIER IS AN INPUT (2026-10-20). engine/brain.py loads the gitignored e
 models/eprop_nmnist.pt and models/eprop_shd.pt by CWD-RELATIVE default path, so a checkout without
 them (every lane worktree) runs a different brain. The outcome arms pin the production tier by
 absolute path and skip, named, where the encoders are absent; each row records the tier it ran on.
+The 40-tick tests (the `live`/`neutered` fixtures, the exhausted-replay test) run on whatever tier
+the cwd gives; none of their claims depends on it.
 
 Run: pytest tests/test_interoceptive_ignition.py
 """
@@ -41,9 +43,9 @@ from snn_data_lake.faculties.interoceptive_integration import BODY_CHANNELS
 from snn_data_lake.faculties.region_coherence import RegionCoherence
 
 TICKS = 40
-# The OUTCOME A/B runs longer (2026-10-19): on a HERMETIC home the insula moves the
-# threshold from tick 4 but first changes WHAT WINS at tick 84 (winner differs on 28 of 200
-# ticks; deterministic, seed 0 -- on the NO-ENCODER tier; 6 of 200 on the production tier,
+# The OUTCOME A/B runs longer (2026-10-19, measured on the NO-ENCODER tier): on a HERMETIC home
+# the insula moves the threshold from tick 4 but first changes WHAT WINS at tick 84 (winner
+# differs on 28 of 200 ticks; deterministic, seed 0; 6 of 200 on the production tier,
 # 2026-10-20). At 40 ticks that assert had only passed on a NORD_HOME leaked
 # from an earlier test in serial order -- with a module home under pytest -n it read thr_diff 35,
 # outcome diff 0. TICKS stays 40 for the tests calibrated on it (distinct-value bar TICKS // 2).
@@ -153,7 +155,8 @@ def _run(neuter, ticks=TICKS, salience=None):
     from snn_data_lake.engine.brain import make_brain
 
     b = make_brain(seed=0, persist=False)
-    tier = (b._perception_tier, b._audio_enc is not None)  # (vision tier, audio encoder loaded)
+    # (vision tier, audio encoder loaded, encoder device): _load_enc falls back to cpu silently
+    tier = (b._perception_tier, b._audio_enc is not None, b._perception_device)
     if neuter:
         b._insula = None
     observed = {"n": 0, "exhausted": False}
@@ -300,10 +303,12 @@ def test_the_accessor_returns_a_copy_not_the_cache(live):
 
 def test_the_live_signal_is_not_constant(live):
     """The live signal VARIES. Written as DELETION ON A NULL ("a signal that never moves cannot
-    modulate anything"); the level arms in the PREREGISTERED test refute that premise -- a
-    constant at the live mean differs from neutered on the same 28 outcome ticks as live does,
-    and from live on none -- so this asserts variation, not that variation is what modulates.
-    It nearly does not pass on a shorter run."""
+    modulate anything"). On the NO-ENCODER tier (2026-10-19) the level arms refuted that premise
+    -- a constant at the live mean differed from neutered on the same 28 outcome ticks as live
+    did, and from live on none; on the PRODUCTION tier (2026-10-20) it differs from live on 9
+    ticks and a shuffled trace on 20, so the premise stands there (see the PREREGISTERED test).
+    This asserts variation, not that variation is what modulates. It nearly does not pass on a
+    shorter run."""
     rows, _ = live
     sal = [r["salience"] for r in rows]
     assert len(set(round(x, 6) for x in sal)) > TICKS // 2, (
@@ -352,8 +357,10 @@ def test_a_CONSTANT_salience_control_does_not_reproduce_the_live_threshold_trace
 
     It separates them at the THRESHOLD only. This test's constant is the 40-tick mean over all
     ticks (unconsulted zeros included); the outcome result is for a different constant: at 200
-    ticks a constant at the mean over CONSULTED ticks (constant_long) reproduces the live
-    (ignited, winner) record on 200/200 ticks. See the PREREGISTERED test."""
+    ticks a constant at the mean over CONSULTED ticks (constant_long) reproduced the live
+    (ignited, winner) record on 200/200 ticks on the NO-ENCODER tier (2026-10-19), and matches
+    it on 191/200 (C=9) on the production tier it is now pinned to (2026-10-20). See the
+    PREREGISTERED test."""
     rows, _ = live
     mean_s = statistics.fmean(r["salience"] for r in rows)
     live_thr = [
@@ -487,7 +494,8 @@ def test_PREREGISTERED_insula_bar_is_REFUTED_on_the_production_perception_tier(
     LEVEL ARMS, SAME NO-ENCODER TIER (closing review 2026-10-19; constant salience; D_out from
     live): 2x mean -> 23, 0.5x mean -> 5, 0.0 -> 28 (identical to the neutered arm). The reading
     "variation is outcome-inert, P3 dormancy shape 5" was put to the owner; it is WITHDRAWN
-    (2026-10-20): measured on the wrong tier. Level arms on the production tier are owed.
+    (2026-10-20): measured on the wrong tier, and on the production tier C=9 and S=20 contradict
+    it directly. Level arms on the production tier are owed.
 
     MEASURED 2026-10-20 ON THE PRODUCTION TIER (both encoders, the daemon's brain; the B3
     battery's red, then reproduced alone in a fresh process): N=6 C=9 S=20 -- THE BAR IS
@@ -495,18 +503,23 @@ def test_PREREGISTERED_insula_bar_is_REFUTED_on_the_production_perception_tier(
     Repeatability control: two further identical live arms in the same process differ from the
     first on 0 ticks (outcome and threshold), so C and S are treatment effects, not arm drift.
     Tier sweep, same commit and seed (N/C/S): no encoders 28/0/0, vision only 102/8/28, audio
-    only 21/0/4, both 6/9/20. Nothing was a cross-test leak; the battery read the production
-    tier and the lane did not.
+    only 21/0/4, both 6/9/20 -- the bar HOLDS on the three degraded tiers and is refuted only on
+    the production one. Nothing was a cross-test leak; the battery read the production tier and
+    the lane did not. Encoder device of the 6/9/20 runs: cuda (the cpu fallback is recorded in
+    the tier tuple; whether cpu reads the same numbers is unmeasured).
 
     DISPOSITION (owner 2026-10-20, option a): the null is reported as measured and the bar is
     NOT retuned; this test asserts the REFUTATION on the production tier. If it ever goes red,
     the brain changed: re-measure and re-adjudicate, never edit the numbers to match."""
-    for arm in (live_long, neutered_long, constant_long, shuffled_long):
-        assert {r["tier"] for r in arm[0]} == {production_tier}, "an arm ran off the pinned tier"
+    arms = (live_long, neutered_long, constant_long, shuffled_long)
+    tiers = {r["tier"] for arm in arms for r in arm[0]}
+    assert len(tiers) == 1, f"the arms ran on different tiers or devices: {tiers}"
+    assert next(iter(tiers))[:2] == production_tier, f"an arm ran off the pinned tier: {tiers}"
     _assert_control_arms_real(live_long, constant_long, shuffled_long)
     n = _outcome_distance(live_long[0], neutered_long[0])
     c = _outcome_distance(live_long[0], constant_long[0])
     s = _outcome_distance(live_long[0], shuffled_long[0])
+    # N > 0 is not asserted here: test_neutering_the_insula_changes_the_brains_own_output owns it
     assert n <= max(c, s), (
         f"the recorded refutation no longer holds: N={n} C={c} S={s} (2026-10-20: 6/9/20)"
     )
