@@ -50,14 +50,47 @@ import time
 _HOME = tempfile.mkdtemp(prefix="snn_selfchecks_home_")
 
 
-def _remove_home(path=_HOME):
+def _rmtree_report(path):
+    """rmtree `path`; return the leftovers as `p (ExcType)` strings. A path that is already gone
+    (FileNotFoundError) is not a leftover: the goal -- it is not there -- is met."""
     import shutil
 
     left = []
-    shutil.rmtree(path, onexc=lambda _fn, p, exc: left.append(f"{p} ({type(exc).__name__})"))
+
+    def _note(_fn, p, exc):
+        if not isinstance(exc, FileNotFoundError):
+            left.append(f"{p} ({type(exc).__name__})")
+
+    shutil.rmtree(path, onexc=_note)
+    return left
+
+
+def _say_at_exit(msg, anchor):
+    """Report `msg` even when stderr is closed or None (pythonw, a closed pipe): sys.stderr, then a raw
+    os.write(2), then a file beside `anchor` -- so a leaked home is never silent."""
+    try:
+        sys.stderr.write(msg)
+        sys.stderr.flush()
+        return "stderr"
+    except Exception:
+        pass
+    try:
+        os.write(2, msg.encode("utf-8", "replace"))
+        return "fd2"
+    except OSError:
+        pass
+    parent = os.path.dirname(os.path.abspath(anchor))
+    with open(os.path.join(parent, "snn_selfchecks_unremoved.log"), "a", encoding="utf-8") as f:
+        f.write(msg)
+    return "file"
+
+
+def _remove_home(path=_HOME):
+    left = _rmtree_report(path)
     if left:
-        sys.stderr.write(
-            f"run_selfchecks: could not remove {len(left)} path(s) of {path}: {left[:3]}" + chr(10)
+        _say_at_exit(
+            f"run_selfchecks: could not remove {len(left)} path(s) of {path}: {left[:3]}" + chr(10),
+            path,
         )
 
 
@@ -997,7 +1030,6 @@ def run_all_in_process(emit=print):
         )
     latch = os.path.join(_HOME, ESTOP_LATCH) if ESTOP_LATCH else None
     latch_left, latch_stray = [], []
-    import shutil
     import tempfile
 
     mods = CORE + (TORCH_GATED if _TORCH else [])
@@ -1036,7 +1068,12 @@ def run_all_in_process(emit=print):
                         )
                 finally:
                     os.chdir(cwd)
-                    shutil.rmtree(scratch, ignore_errors=True)
+                    left = _rmtree_report(scratch)
+                if left:
+                    emit(
+                        f"run_selfchecks: could not remove {len(left)} path(s) of {m}'s scratch "
+                        f"{scratch}: {left[:3]}"
+                    )
                 emit(f"{'PASS' if ok else 'FAIL'}  {m}")
                 if not ok:
                     failed.append(m)

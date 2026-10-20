@@ -285,3 +285,69 @@ def test_in_process_exit_code_follows_cpython_for_int_subclasses(monkeypatch):
 
         monkeypatch.setattr(runpy, "run_module", boom)
         assert rs.run_one_in_process("brain_atlas")[0] is real[e], e
+
+
+def _rmtree_leaves_one(monkeypatch):
+    """shutil.rmtree that really removes `path`, then reports one undeletable leftover via onexc."""
+    import shutil
+
+    real = shutil.rmtree
+
+    def fake(path, onexc=None, **kw):
+        real(path)
+        onexc(os.unlink, os.path.join(path, "held.bin"), PermissionError("held"))
+
+    monkeypatch.setattr(shutil, "rmtree", fake)
+
+
+def test_home_cleanup_is_silent_when_the_home_is_already_gone(tmp_path, capsys):
+    # Opus final NOTE. RED on the old onexc: FileNotFoundError was reported as a leftover.
+    rs._remove_home(str(tmp_path / "already gone"))
+    assert capsys.readouterr().err == ""
+
+
+@pytest.mark.parametrize("stderr", ["closed", None])
+def test_home_cleanup_reports_when_stderr_is_closed(tmp_path, capfd, monkeypatch, stderr):
+    # Opus final NOTE. RED on the old sys.stderr.write: ValueError/AttributeError, no report.
+    import io
+    import sys
+
+    d = tmp_path / "home"
+    d.mkdir()
+    _rmtree_leaves_one(monkeypatch)
+    dead = io.StringIO()
+    dead.close()
+    monkeypatch.setattr(sys, "stderr", dead if stderr == "closed" else None)
+    rs._remove_home(str(d))
+    assert "could not remove" in capfd.readouterr().err
+
+
+def test_home_cleanup_falls_back_to_a_file_when_fd2_is_dead_too(tmp_path, monkeypatch):
+    import io
+    import sys
+
+    d = tmp_path / "home"
+    d.mkdir()
+    _rmtree_leaves_one(monkeypatch)
+    dead = io.StringIO()
+    dead.close()
+    monkeypatch.setattr(sys, "stderr", dead)
+
+    def no_fd2(*a, **k):
+        raise OSError("fd 2 closed")
+
+    monkeypatch.setattr(os, "write", no_fd2)
+    rs._remove_home(str(d))
+    monkeypatch.undo()  # os.write back before reading
+    assert "could not remove" in (tmp_path / "snn_selfchecks_unremoved.log").read_text()
+
+
+def test_in_process_scratch_cleanup_reports_leftovers(monkeypatch):
+    # Opus final NOTE. RED on rmtree(ignore_errors=True): a scratch dir that would not go is silent.
+    _rmtree_leaves_one(monkeypatch)
+    monkeypatch.setattr(rs, "run_one_in_process", lambda mod, home=None: (True, ""))
+    monkeypatch.setattr(rs, "CORE", ["brain_atlas"])
+    monkeypatch.setattr(rs, "TORCH_GATED", [])
+    lines = []
+    assert rs.run_all_in_process(emit=lines.append)
+    assert any("could not remove" in line and "brain_atlas" in line for line in lines), lines
