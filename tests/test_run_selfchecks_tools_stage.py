@@ -83,6 +83,9 @@ def test_in_process_run_arms_the_live_home_tripwire(monkeypatch, tmp_path):
     from snn_data_lake.substrate import home as H
 
     monkeypatch.setattr(rs, "_HOME", str(tmp_path))  # never the runner's shared home
+    # a known-unset baseline, so the restore assert below holds whatever the caller exported
+    # (Opus n4: a developer shell with the guard set made this red); monkeypatch puts theirs back
+    monkeypatch.delenv("SNDL_LIVE_HOME_GUARD", raising=False)
     seen = []
 
     def probe(mod, home=None):
