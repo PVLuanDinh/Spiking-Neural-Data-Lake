@@ -160,7 +160,9 @@ DISCLOSED BLIND SPOTS (banner() prints them at every carrying run):
      The same holds for a file path built from PARTS (`os.path.join(root, "src", ...)`,
      a tuple of components), an absolute path, a path inside a longer string, and a path
      derived from another read (eligible_circuit_census._callee_kind) -- only a whole
-     literal relpath string is a LITERAL RELPATH READ above.
+     literal relpath string is a LITERAL RELPATH READ above, and it is resolved against the
+     REPO ROOT only: a whole package-relative ('engine/brain.py') or src-relative
+     ('snn_data_lake/engine/brain.py') literal is unkeyed (B4 re-review D1; none live at landing).
   5. (v3) Gitignored files are outside the tree surface a scanner is keyed on. The ones
      the tree reads by name are keyed as data inputs (models/*, graphify-out/*.json --
      connectome's self-check asserts on graph.json, found by the review); any other
