@@ -46,8 +46,10 @@ unverified by any battery.
   (a `_native` name re-exported through `snn_data_lake/__init__.py` prints as used by nobody; the submodule
   path). Sharing `import_manifest`'s own blind-spot line as ONE constant needs a change to that read-only
   reader: held as `rows/b4p-held.patch` in the lane worktree, not applied.
-- P5 (NIT-5) declined: the reader marks a call `cfg_test` only when its enclosing fn is `cfg_test`, which the
-  fn-level filter already excludes, so the call-level filter has no reachable red.
+- P5 (NIT-5) was first declined as having no reachable red; the re-review refuted that: a `#[cfg(test)]` ITEM
+  inside a production fn's body (`#[cfg(test)] const _C: () = { Clock::new(); };`) is marked `cfg_test` at call
+  level only, so the call-level filter is load-bearing. Control G17 now pins it (red with the filter removed).
+  Still disclosed in `rust_facts.BLIND_SPOTS`: a `#[cfg(test)]` let/expression STATEMENT is not marked at all.
 - The real tree is unchanged (`undeclared_import_pairs` 11 <= 11, 2 exports attributed);
   `tests/test_r02b_p6_rust.py` grows to 74 tests.
 
