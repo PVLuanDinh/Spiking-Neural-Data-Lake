@@ -167,6 +167,40 @@ def test_r7_git_argv_on_the_probe_flips_on_a_tree_change(base, store, probe, sha
     assert moved != quiet, f"{shape} on {probe}: a tree change left the key (stale PASS carries)"
 
 
+# B4 C4: instruments.eligible_circuit_census reads src files by LITERAL relpath (its DRIVERS and
+# every RECORDS citation) under a 1-file import closure. Built from parts, never one literal.
+# capability_bar's surface check reads infra/cockpit.py the same way (TRACKED_SURFACES): the
+# second live stale carry the rule closes.
+READS = {
+    "instruments.eligible_circuit_census": ("engine", "brain.py"),
+    "gates.capability_bar": ("infra", "cockpit.py"),
+}
+
+
+@pytest.mark.parametrize("reader", sorted(READS))
+def test_r8_literal_relpath_read_flips_its_reader(base, store, probe, reader):
+    path = os.path.join(ROOT, "src", "snn_data_lake", *READS[reader])
+    dotted = sc._PKG_PREFIX + ".".join(READS[reader])[: -len(".py")]
+    assert os.path.isfile(path)
+    assert dotted not in base._closure(reader), "the red needs a NON-import read"
+    assert not base.describe(reader)["scans"], f"{reader} is a scanner: the red would be vacuous"
+    fork = _fork(store, {path: "0" * 64})
+    assert fork.closure_key(reader) != base.closure_key(reader), (
+        f"a {READS[reader][1]} change did not flip {reader} (stale PASS carries)"
+    )
+    if dotted not in base._closure(probe):
+        assert fork.closure_key(probe) == base.closure_key(probe), "the read moved the plain probe"
+
+
+def test_r9_literal_relpath_derivation():
+    src = (
+        "A = 'src/snn_data_lake/engine/brain.py'\nB = 'docs\\\\x.md'\n"
+        "C = ('see src/x.py', '../escape/x.py', 'no_slash.py', 'a/../b.py')\n"
+    )
+    paths = sc._facts(src, 1, sc._NULL_RE)["paths"]
+    assert paths == frozenset({"src/snn_data_lake/engine/brain.py", "docs/x.md"}), paths
+
+
 @pytest.mark.xfail(
     strict=True,
     reason="DISCLOSED blind spot (selfcheck_cache docstring 6, review S1): string dispatch hides "

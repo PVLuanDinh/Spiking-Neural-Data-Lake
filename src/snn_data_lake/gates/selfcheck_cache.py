@@ -47,6 +47,24 @@ THE KEY (all of it, or no carry) -- v3, ENVELOPE PRECISION (2026-08-21):
     models/ artifact that NO module names stays GLOBAL (fail-closed: a read under a
     computed name would be invisible). models/ and graphify-out/ are gitignored, which is
     exactly why they must be keyed here: no tree surface sees them.
+  * LITERAL RELPATH READS (B4 C4, 2026-10-20): a NON-DOCSTRING string that is, whole, a
+    repo-relative path (a directory component; `/` or `\\`; no `..`) naming an EXISTING file
+    keys that file's bytes to every module whose closure holds the string, as a data row --
+    unless the file is already a closure row. The closing review found the live stale carry:
+    instruments.eligible_circuit_census reads 8 src files by literal relpath (its DRIVERS'
+    `_read`, every RECORDS citation's line-count check) under a 1-file closure, so a brain.py
+    edit pushing a cited line out of range carried the old PASS. Chosen over "such a module
+    is a scanner" because both are correct for its verdict and this one is smaller: it moves
+    ONE module's class (eligible_circuit_census, plain -> data) and adds a row to two more
+    non-scanners -- capability_bar (infra/cockpit.py, one of its TRACKED_SURFACES: a SECOND
+    live stale carry, closed) and doc_budget_gate (docs/POLICIES.md, already global) -- where
+    the scanner rule would re-run eligible_circuit_census and capability_bar on every tree
+    change. Scanners gain the rows too, redundantly (their tree row already holds every
+    tracked file). Its `_callee_kind` also parses the modules the DRIVERS import, by a
+    COMPUTED path -- outside this rule (blind spot 4) and outside the verdict: CLASS /
+    FACTORY / UNRESOLVED all count as object handles (measured: permuting the three leaves
+    main() rc 0; one injected undisposed site reds it), so only the printed sites_by_kind
+    can go stale.
   * ENVIRONMENT: every NORD_* variable is GLOBAL (read under computed names); any other
     variable a closure reads by literal name -- `os.environ.get("NMNIST_SEED")`,
     `os.getenv(...)`, `os.environ[...]` -- is keyed to that reader with its value. The
@@ -139,6 +157,10 @@ DISCLOSED BLIND SPOTS (banner() prints them at every carrying run):
      string-dispatch shape for data: invisible to the literal derivation. Bounded by the
      fail-closed rule for tools/ and models/ (unreferenced => global) and by NORD_* being
      global; docs/, .github/, graphify-out/ and non-NORD variables carry no such floor.
+     The same holds for a file path built from PARTS (`os.path.join(root, "src", ...)`,
+     a tuple of components), an absolute path, a path inside a longer string, and a path
+     derived from another read (eligible_circuit_census._callee_kind) -- only a whole
+     literal relpath string is a LITERAL RELPATH READ above.
   5. (v3) Gitignored files are outside the tree surface a scanner is keyed on. The ones
      the tree reads by name are keyed as data inputs (models/*, graphify-out/*.json --
      connectome's self-check asserts on graph.json, found by the review); any other
@@ -202,6 +224,10 @@ _GIT_TREE_READS = ("ls-files", "ls-tree", "--porcelain")  # argv strings that re
 # read the tree or its history beyond these three forms (review S7); a string that IS the
 # program name, or starts a shell command line with it
 _GIT_ARGV = re.compile(r"git(?:\.exe)?(?:\s|$)")
+# B4 C4: a whole non-docstring string that IS a repo-relative path (a directory component, no
+# `..`, no spaces) names a file the module may READ without importing it -- its bytes key the
+# reader as a data row when the file exists (eligible_circuit_census reads src/**/*.py so)
+_RELPATH = re.compile(r"[\w.\-]+(?:[\\/][\w.\-]+)+")
 # No listing root is excluded (B4 C2, 2026-10-20): the root resolver that once exempted
 # substrate.home() and environment-read roots was DELETED -- it moved zero modules on the real
 # tree and failed open on constructed shapes (S2-S5 below), one of them live-shaped.
@@ -212,6 +238,9 @@ _WALKERS = ("gates.replication_guard", "gates.native_ratchet", "gates.rust_facts
 _RUST_FACTS_READER = "gates.native_dormancy"
 _IMPACT_FILE = ("src", _PKG, "reasoning", "impact_analysis.py")
 _LIB_RS_FILE = (_rf.NATIVE_DIR, "sndl-core", "src", "lib.rs")
+# red (o)'s subject (B4 C4): a module reading src files by literal relpath, and one it reads
+_RELPATH_READER = "instruments.eligible_circuit_census"
+_BRAIN_FILE = ("src", _PKG, "engine", "brain.py")
 _NULL_RE = re.compile(r"(?!x)x")  # the derivation pins name no data artifact
 _RUST_FACTS = _rf.__name__
 # (directory, accepted extensions | None = every file, minus .py) -- DATA INPUTS keyed to
@@ -346,6 +375,7 @@ def _env_name(node):
 
 _UNPARSEABLE = {
     "mentions": frozenset(),
+    "paths": frozenset(),
     "roster": frozenset(),
     "envs": frozenset(),
     "scans": True,
@@ -424,10 +454,15 @@ def _facts(text, pkg_parts, marker_re):
             ):
                 doc_ids.add(id(body[0].value))
     mentions, roster, envs, scans, native = set(), set(), set(), False, False
+    paths = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             if id(node) not in doc_ids:
                 mentions.update(marker_re.findall(node.value))
+                if _RELPATH.fullmatch(node.value):
+                    parts = [p for p in re.split(r"[\\/]", node.value) if p != "."]
+                    if ".." not in parts:
+                        paths.add("/".join(parts))
                 scans = (
                     scans
                     or any(g in node.value for g in _GIT_TREE_READS)
@@ -473,6 +508,7 @@ def _facts(text, pkg_parts, marker_re):
             scans = scans or (name in _SCAN_CALLS and mod != "ast")
     return {
         "mentions": frozenset(mentions),
+        "paths": frozenset(paths),
         "roster": frozenset(roster),
         "envs": frozenset(envs),
         "scans": scans,
@@ -795,23 +831,30 @@ class SelfcheckCache:
             return self._closure_keys[mod]
         root = _repo_root()
         rows, mentions, roster, envs, scans, native = [], set(), set(), set(), False, False
+        paths, files = set(), set()
         for d in sorted(self._closure(mod)):
             if d == _NATIVE:  # no .py: its bytes are the native + ext rows below
                 native = True
                 continue
             native = native or d == _RUST_FACTS  # reads native/**.rs and tools/rsfacts/**
             path = _module_file(d)
+            files.add(os.path.normpath(path))
             rows.append(f"{d}={self._hash_file(path)}")
             facts = self._facts_for(path)
             mentions |= facts["mentions"]
+            paths |= facts["paths"]
             roster |= facts["roster"]
             envs |= facts["envs"]
             scans = scans or facts["scans"]
             native = native or facts["native"]
-        data = [p for p in self._data if os.path.basename(p) in mentions]
+        data = {os.path.normpath(p) for p in self._data if os.path.basename(p) in mentions}
         if self._runner in self._data and "run_selfchecks" in mentions:
-            data.append(self._runner)
-        data_rows = [os.path.relpath(p, root) + ":" + self._hash_file(p) for p in sorted(set(data))]
+            data.add(os.path.normpath(self._runner))
+        # B4 C4: a file the closure names by literal repo-relative path and that exists is
+        # read without an import (its bytes are no closure row); a file already a row is not
+        named = (os.path.normpath(os.path.join(root, *s.split("/"))) for s in paths)
+        data |= {p for p in named if p not in files and os.path.isfile(p)}
+        data_rows = [os.path.relpath(p, root) + ":" + self._hash_file(p) for p in sorted(data)]
         named_envs = sorted(e for e in envs if not e.startswith("NORD_"))
         data_rows += [f"${e}={self._env.get(e, '<unset>')}" for e in named_envs]
         reads_roster = bool(roster)
@@ -895,7 +938,8 @@ class SelfcheckCache:
         return (
             f"CARRY-FORWARD ON (envelope v{_CACHE_VERSION} {self.envelope[:12]}..., "
             f"{len(self._store)} cached verdicts): a PASS carries only when the module's "
-            "ENTIRE static import closure + the data files / named env vars / root-package "
+            "ENTIRE static import closure + the data files / literal-relpath files / named env "
+            "vars / root-package "
             "roster / tree surface / Rust surface (native/**, Cargo manifests, the loaded "
             "extension; for _native readers) its closure reads (DERIVED per module) + the global "
             "envelope (runner and root __init__ logic, region __init__s, brainstem safety "
@@ -1480,6 +1524,12 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         "envs",
         frozenset({"ZZZ_SEED", "ZZZ_X", "ZZZ_Y", "ZZZ_Z"}),
     ),
+    # B4 C4: a whole-string repo-relative path is a literal read; prose, `..` and bare names are not
+    "relpath_reads": (
+        "A = 'src/pkg/mod.py'\nB = 'docs\\\\x.md'\nC = ('see src/x.py', '../e/x.py', 'x.py', 'a/../b')\n",
+        "paths",
+        frozenset({"src/pkg/mod.py", "docs/x.md"}),
+    ),
     "native_from_import": ("from snn_data_lake._native import f\n", "native", True),
     "native_relative": ("from ._native import f\n", "native", True),  # pkg_parts 1 = root-relative
     "native_other_package": ("from .other._native import f\n", "native", False),
@@ -1523,7 +1573,10 @@ def self_check() -> int:
         the real tree's status (ABSENT today) is printed distinctly;
     (n) UNFLAGGED TREE-WALKERS -- a parameter-rooted walk (replication_guard, native_ratchet)
         and a `git ls-files` lister (rust_facts) flip on a file no closure names / a .rs
-        edit, and the plain probe holds under both."""
+        edit, and the plain probe holds under both;
+    (o) LITERAL RELPATH READS (B4 C4) -- an engine/brain.py change flips
+        eligible_circuit_census (it reads brain.py by literal relpath, never imports it) and
+        leaves the plain probe alone."""
     # distinct-from: reasoning/analogy_bench.py -- its controls() are NEGATIVE ANALOGY
     #   cases a structure mapper must fail to recover; these are cache-KEY invariance
     #   checks (a key that must not move). Read.
@@ -1891,6 +1944,25 @@ def _self_check(store):
             + ("no git: tree surface unavailable" if surface == 0 else "native/ lib.rs absent")
             + ")"
         )
+
+    # (o) LITERAL RELPATH READS (B4 C4): eligible_circuit_census reads src files by literal
+    # relpath under a 1-file closure -- a brain.py change must flip it and not the plain probe
+    if _RELPATH_READER not in desc:
+        return fail(f"{_RELPATH_READER} left the graph -- red (o) lost its subject; re-pin it")
+    brain_mod = _PKG_PREFIX + ".".join(_BRAIN_FILE[2:])[: -len(".py")]
+    if brain_mod in base._closure(_RELPATH_READER):
+        return fail(f"red (o) needs a NON-import read: {brain_mod} joined the reader's closure")
+    read_fork = make(file_hash_overrides={os.path.join(root, *_BRAIN_FILE): "0" * 64})
+    if read_fork.closure_key(_RELPATH_READER) == base.closure_key(_RELPATH_READER):
+        return fail(f"a brain.py change did not flip literal-relpath reader {_RELPATH_READER}")
+    if brain_mod not in base._closure(probe):
+        if (r := unchanged(read_fork, "a brain.py change")) is not None:
+            return r
+    fired.append(
+        f"engine/brain.py -> {_RELPATH_READER} flipped (a literal-relpath read of "
+        f"{len(desc[_RELPATH_READER]['data'])} files under a {desc[_RELPATH_READER]['closure']}"
+        "-file closure)"
+    )
 
     surface_note = (
         f"the {surface}-file tracked surface" if surface else "an UNAVAILABLE tracked surface"
