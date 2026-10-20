@@ -2064,6 +2064,11 @@ _RS_BIND_CLASS = (  # a crate-root #[pyclass] whose #[pymethods] body reaches ce
 )
 _RS_BINDING_REACH = {RS_BINDING: rs_binding(_RS_BIND_STEP, "bind_step")}
 _RS_BINDING_CFG = {RS_BINDING: rs_binding(_RS_BIND_CFG, "bind_step")}
+_RS_BIND_CFG_ITEM = (  # bind_step whose only reach sits in a #[cfg(test)] ITEM inside its own body
+    "#[pyfunction]\npub fn bind_step(x: f64) -> f64 {\n    #[cfg(test)]\n    const _C: () = {\n"
+    "        Clock::new();\n    };\n    x\n}\n"
+)
+_RS_BINDING_CFG_ITEM = {RS_BINDING: rs_binding(_RS_BIND_CFG_ITEM, "bind_step")}
 _RS_BINDING_CLASS = {RS_BINDING: rs_binding(_RS_BIND_CLASS, "Probe")}
 _RS_BIND_CLASS_PATH = (  # R13's class whose #[pymethods] impl names its self type by a PATH
     "#[pyclass]\npub struct Probe;\n\n#[pymethods]\nimpl crate::Probe {\n    fn go(&self) {\n"
@@ -2344,6 +2349,14 @@ RUST_CONTROLS = [
         RS_FEAR_GREEN,
         _PY_BIND_IMPORT,
         _RS_BINDING_CFG,
+    ),
+    (
+        "G17",
+        f"R11's bind_step whose only {_CER} reach sits in a `#[cfg(test)]` item inside its own body (test code "
+        "is no wire: the call-level cfg_test filter)",
+        RS_FEAR_GREEN,
+        _PY_BIND_IMPORT,
+        _RS_BINDING_CFG_ITEM,
     ),
 ]
 # the NATIVE EXPORTS ATTRIBUTED lines a control's label promises, checked by rust_self_check (b4p P3: G15

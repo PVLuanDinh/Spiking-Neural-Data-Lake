@@ -34,7 +34,7 @@ _CTX = "cor" + "tex"
 
 REDS = ["R1", "R2", "R3", "R4", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", "R15"]
 CONTROLS = ["G1", "G2", "G3", "G4", "G5", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G14"]
-CONTROLS += ["G15", "G16"]
+CONTROLS += ["G15", "G16", "G17"]
 _PFC = "faculties/prefrontal_executive.py"
 _USE_LINE = "use std::panic::{AssertUnwindSafe, catch_unwind};"
 _IN_PFC = "        let mut words = [0u32; N];"  # the first statement of pfc_decide's closure
