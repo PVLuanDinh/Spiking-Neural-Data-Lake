@@ -131,9 +131,12 @@ def _remove_home(path=_HOME):
 
 
 atexit.register(_remove_home)  # at import: before any check can register its own
-# SNDL_LIVE_HOME_GUARD arms home()'s live-home tripwire in every child -- the 39 subprocess modules
-# and the TOOLS_GATES -- as run_all_in_process arms it in-process: a child that pops NORD_HOME and
-# calls home() is REFUSED instead of handed ~/.snn_data_lake (Codex bfix3 MAJOR 1).
+# SNDL_LIVE_HOME_GUARD arms home()'s live-home tripwire in every child run_all spawns -- every MODULES
+# entry on a bare or --carry run (CI's selfchecks job), the subprocess half of --battery, and the
+# TOOLS_GATES -- as run_all_in_process arms it in-process: a child that pops NORD_HOME and calls home()
+# is REFUSED instead of handed ~/.snn_data_lake (Codex bfix3 MAJOR 1; scope corrected, Opus m4).
+# Cost: a guarded home() also stats the live lake to recognise it; it fails CLOSED (refuses) if a
+# file vanishes mid-scan, so a racing daemon write can red a check, never green one.
 _ENV = {
     **os.environ,
     "PYTHONUTF8": "1",
@@ -1020,10 +1023,13 @@ def run_one_in_process(mod, home=None):
             runpy.run_module(f"snn_data_lake.{mod}", run_name="__main__")
         return True, buf.getvalue()
     except SystemExit as e:  # a module may sys.exit(0) on success
-        # exactly what a real interpreter treats as success: None, or anything PyLong_Check accepts
-        # (an int SUBCLASS: bool, an IntEnum) that equals zero. SystemExit(0.0) and a numpy integer
-        # are not PyLong, so a real process prints them and exits 1 -- they must FAIL here too
-        # (Codex MAJOR 1; bfix3 MINOR 4: the old `type(code) in (int, bool)` refused an IntEnum zero).
+        # what a real interpreter treats as success, for every code a self-check actually raises:
+        # None, or anything PyLong_Check accepts (an int SUBCLASS: bool, an IntEnum) that equals
+        # zero. SystemExit(0.0) and a numpy integer are not PyLong, so a real process prints them
+        # and exits 1 -- they must FAIL here too (Codex MAJOR 1; bfix3 MINOR 4: the old
+        # `type(code) in (int, bool)` refused an IntEnum zero). Not exact at the edges (Opus n1):
+        # SystemExit(2**32) exits 0 for real (status truncated) but FAILs here -- the safe side --
+        # and an int subclass overriding __eq__ can disagree; no self-check raises either.
         code = e.code
         return (code is None or (isinstance(code, int) and code == 0)), buf.getvalue()
     except BaseException as e:  # AssertionError / any self-check failure
@@ -1132,6 +1138,10 @@ def run_all_in_process(emit=print, modules=None):
 # CORE self-checks whose own timed measurement NOISE-REFUSES under parallel load. The battery runs the
 # self-checks concurrently with pytest; these run AFTER both finish, serially (`--timing-only`), while
 # `--battery --defer-timing` runs everything else. The union of the two runs is exactly `--battery`.
+# Roster from ONE incident (2026-10-19), not a census. Other CORE self-checks with wall-clock asserts
+# that still run under the overlap, margins measured at the B3 closing review (Opus n8):
+# substrate/binlog.py:708 speedup > 5 (357x-835x); instruments/prior_drift_harness.py:1701 < 60 s
+# (3.4 s); sensorimotor/spike_preprocessing.py:329 precomputed < on-the-fly (8 epochs vs 1).
 TIMING_DEFERRED = ["gates.amdahl_gate"]
 
 
