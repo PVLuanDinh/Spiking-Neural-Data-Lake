@@ -339,10 +339,10 @@ def test_in_process_per_check_sweep_never_reaches_the_live_latch(monkeypatch, tm
     lines = []
     assert rs.run_all_in_process(emit=lines.append)
     assert planted.exists() and planted.read_text() == "planted", lines
-    # positive control: the sweep ran on the check's own home and attributed it
-    assert left and not os.path.exists(left[0]), lines
-    # (attributed in-slot, or UNATTRIBUTED when the file mtime reads just before the slot start --
-    # NTFS mtime vs time.time() skew; either way the sweep saw THIS check's latch)
+    assert left, lines  # the stub check ran (its latch is gone with the scratch either way)
+    # POSITIVE CONTROL: the per-check sweep saw THIS check's latch -- attributed in-slot, or
+    # UNATTRIBUTED when the file mtime reads just before the slot start (NTFS mtime vs time.time()
+    # skew, limit (b) at run_selfchecks.py's latch_in_window); a no-op sweep reds here
     assert any("E-STOP SIDECAR" in line and "fake.latch_leaver" in line for line in lines), lines
 
 
