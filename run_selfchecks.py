@@ -961,6 +961,14 @@ def run_one_in_process(mod, home=None):
         sys.argv = saved_argv
 
 
+def _rearm_guard():
+    """Re-arm the live-home tripwire and the span's NORD_HOME. Called before EACH in-process check: a
+    check that pops SNDL_LIVE_HOME_GUARD / NORD_HOME (and does not restore) would otherwise run every
+    later check disarmed -- with NORD_HOME gone, home() falls back to the live lake (bfix3 MAJOR 2)."""
+    os.environ["SNDL_LIVE_HOME_GUARD"] = "1"
+    os.environ["NORD_HOME"] = _HOME
+
+
 def run_all_in_process(emit=print):
     """Every CORE (+ TORCH_GATED when torch imports) module's self-check, in-process, each in its own
     temp working directory (so a check's ./data writes never land in the checkout). True iff all
@@ -1011,6 +1019,7 @@ def run_all_in_process(emit=print):
                 # runs. Between checks (and for stragglers) NORD_HOME still points at the shared _HOME
                 # span, and its stale E-STOP latch is pre-cleared there. Cross-module PROCESS-global
                 # leaks (env, RNG, singletons) stay visible: every check shares this interpreter.
+                _rearm_guard()
                 scratch = tempfile.mkdtemp(prefix="selfcheck-")
                 home = os.path.join(scratch, "home")
                 os.makedirs(home)

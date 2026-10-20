@@ -227,3 +227,23 @@ def test_run_all_hands_every_module_the_guarded_env(monkeypatch):
     assert rs.run_all(modules=["brain_atlas"])
     assert len(seen) == 1 and seen[0]["SNDL_LIVE_HOME_GUARD"] == "1", seen
     assert seen[0]["NORD_HOME"] == rs._HOME
+
+
+def test_each_in_process_check_is_rearmed(monkeypatch, tmp_path):
+    # bfix3 MAJOR 2. RED on the old loop (armed once before the loop): check 1 pops the guard and
+    # NORD_HOME and checks 2 and 3 then start with neither.
+    monkeypatch.setattr(rs, "_HOME", str(tmp_path))
+    monkeypatch.setenv("NORD_HOME", str(tmp_path))
+    seen = []
+
+    def disarming_check(mod, home=None):
+        seen.append((os.environ.get("SNDL_LIVE_HOME_GUARD"), os.environ.get("NORD_HOME")))
+        os.environ.pop("SNDL_LIVE_HOME_GUARD", None)
+        os.environ.pop("NORD_HOME", None)
+        return True, ""
+
+    monkeypatch.setattr(rs, "run_one_in_process", disarming_check)
+    monkeypatch.setattr(rs, "CORE", ["a", "b", "c"])
+    monkeypatch.setattr(rs, "TORCH_GATED", [])
+    assert rs.run_all_in_process(emit=lambda *_: None)
+    assert seen == [("1", str(tmp_path))] * 3, seen
