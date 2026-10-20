@@ -213,7 +213,7 @@ def test_s1_string_dispatch_stays_a_disclosed_blind_spot():
 
 @pytest.mark.parametrize("name", sorted(sc._SYNTHETIC))
 def test_c2_derivation_pins(name):
-    """Every synthetic pin the self-check holds, from the one source table: the home() /
-    env-dir exclusions (C2) and every scan shape, including the review's fail-open ones."""
+    """Every synthetic pin the self-check holds, from the one source table: every scan shape,
+    including the review's fail-open ones (C2 deleted the home() / env-dir exclusions)."""
     src, field, want = sc._SYNTHETIC[name]
     assert sc._facts(src, 1, sc._NULL_RE)[field] == want
