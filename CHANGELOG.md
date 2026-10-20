@@ -9,6 +9,32 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- B4 fold, lane b4p: the p6x closing-review folds (2026-10-20)
+
+Opus closing review of p6x (`lanes/b4-reviews-1020/opus-review-p6x.md`, APPROVE-WITH-FOLDS: 1 MAJOR, 3 MINOR,
+1 NIT). One commit per fold on lane branch `claude/sndl-b4p-1020`, each red shown against the pre-fix gate;
+unverified by any battery.
+
+- P1 (MAJOR-1): `tools/p6_gate.py` reads the body reach of every production export whose file is in no
+  connectome region -- a binding SUBMODULE such as `src/bindings.rs`, not only `lib.rs`/`main.rs` -- printed as
+  "export in non-connectome region `<region>`". Codex's medulla reproducer moved into a binding submodule now
+  counts 11 -> 12 with `(cortex, medulla)`; the unmapped reason "region X is not a connectome region" became
+  unreachable and is gone. Self-check arm R14.
+- P2 (MINOR-2): a `#[pyclass]` reaches through the fns of every production `#[pymethods]` impl, in any file,
+  whose self type's LAST path segment is its Rust name (`rust_facts.pyo3_exports`' rule; a same-named type
+  elsewhere is conflated, a `type` alias as the self type is missed -- both disclosed). Arms R15
+  (`impl crate::Probe`) and R16 (the impl in a sibling file).
+- P3 (MINOR-3): control G15 now checks the used-by-nobody line its label promises (`RUST_CONTROL_PRINTS`).
+- P4 (MINOR-4): a `_native` SUBMODULE import (`from snn_data_lake._native.sub import x`) prints under
+  `NATIVE TARGETS UNMAPPED` again (silent since p6x), and the report prints p6's own Python-side blind spots
+  (a `_native` name re-exported through `snn_data_lake/__init__.py` prints as used by nobody; the submodule
+  path). Sharing `import_manifest`'s own blind-spot line as ONE constant needs a change to that read-only
+  reader: held as `rows/b4p-held.patch` in the lane worktree, not applied.
+- P5 (NIT-5) declined: the reader marks a call `cfg_test` only when its enclosing fn is `cfg_test`, which the
+  fn-level filter already excludes, so the call-level filter has no reachable red.
+- The real tree is unchanged (`undeclared_import_pairs` 11 <= 11, 2 exports attributed);
+  `tests/test_r02b_p6_rust.py` grows to 74 tests.
+
 ## [Unreleased] -- B4, lane p6x: p6 attributes a binding crate-root export to its Python users' regions and what its body reaches (2026-10-20)
 
 Codex B2-fold MAJOR 1 (both `codex-review-b2f` rounds): the binding crate root `native/sndl-python/src/lib.rs`
@@ -16,13 +42,16 @@ belongs to no region, so a `#[pyfunction]` there formed NO pair -- adding `pub m
 `use sndl_core::medulla::step;` + `step()` inside `pfc_decide` left `undeclared_import_pairs` at 11 with every
 metric unchanged, and the PFC's module-level `from snn_data_lake import _native` + `_native.pfc_decide(...)`
 read as "names no symbol". Reproduced RED on base `ab2f68c1` (`lanes/r02-1017/rows/p6x/`, pre-registered reds
-R-a/R-b/R-c in `rows/p6x-REPORT.md`); lane branch `claude/sndl-p6x-1020`, unverified by any battery (no promotion).
+R-a/R-b/R-c in `rows/p6x-REPORT.md`); lane branch `claude/sndl-p6x-1020`, promoted into B4 (int3 fast-forwarded
+to `claude/b4-1020` @ `058d69d9`, 2026-10-20); the B4 battery runs after its review folds (lane b4p, above).
 
 - `tools/p6_gate.py` attributes a crate-root export (the binding's own `#[pyfunction]` or `#[pyclass]`) to the
   regions of the Python modules that USE it -- by import or attribute style, every spelling the ONE reader
   `rust_facts.python_native_refs` knows (the function `import_manifest.native_refs` wraps; P2) -- and forms
   (importer region, target) for every connectome region the export's body reaches: its calls (reader `fn_id`),
-  following same-file free helpers by bare name, a `#[pyclass]` through every fn of its `#[pymethods]` impls.
+  following same-file free helpers by bare name, a `#[pyclass]` through the fns of the `#[pymethods]` impls in
+  the export's OWN file whose self type is spelled exactly as the struct's name (a path-qualified self type or an
+  impl in a sibling file was missed: Opus B4 review MINOR-2, folded by lane b4p, above).
   Codex's medulla reproducer now counts 11 -> 12 with `(cortex, medulla)`; the real tree stays at 11
   (`pfc_decide` <- `faculties/prefrontal_executive.py` [cortex] reaches cortex and rng: same region / not a
   connectome region, no pair).
