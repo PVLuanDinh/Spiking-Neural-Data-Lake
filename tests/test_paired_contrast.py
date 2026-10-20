@@ -167,6 +167,8 @@ def test_d_larger_n_equals_the_oracle(n):
 
 
 # ---- (e) n = 31: no oracle, so invariance ------------------------------------------------------
+# wall-clock budget (5.0 s per call): serial pass only
+@pytest.mark.timing
 def test_e_n31_invariance_and_time():
     rng = random.Random(20261031)
     d = [rng.gauss(0.005, 0.02) for _ in range(31)]
@@ -251,6 +253,8 @@ def test_g_a_sum_of_squares_out_of_range_is_refused():
             permutation_fpr([scale, 2 * scale, -scale, 3 * scale])
 
 
+# wall-clock budget (30 s): serial pass only
+@pytest.mark.timing
 def test_g_a_band_of_billions_of_flips_is_refused_at_once():
     # 36 ones at bar 1.0: thr = 36 * sqrt(1 / 36) = 6.0 and C(36, 15) = 5.6e9 flips sit on it
     t0 = time.perf_counter()
