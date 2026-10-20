@@ -134,7 +134,7 @@ def _run(neuter, ticks=TICKS, salience=None):
     b = make_brain(seed=0, persist=False)
     if neuter:
         b._insula = None
-    observed = {"n": 0}
+    observed = {"n": 0, "exhausted": False}
     if b._insula is not None:
         replay = iter(salience) if salience is not None else None
         real_observe = b._insula.observe
@@ -142,7 +142,13 @@ def _run(neuter, ticks=TICKS, salience=None):
         def _observe(_real=real_observe, **frame):
             observed["n"] += 1
             value = _real(**frame)
-            return value if replay is None else next(replay)
+            if replay is None:
+                return value
+            # the brain swallows exceptions from this call into salience 0.0, so exhaustion is
+            # flagged rather than raised
+            replacement = next(replay, None)
+            observed["exhausted"] |= replacement is None
+            return 0.0 if replacement is None else replacement
 
         b._insula.observe = _observe
     arm = b.brain.arm
@@ -168,6 +174,7 @@ def _run(neuter, ticks=TICKS, salience=None):
             {
                 "salience": s,
                 "observed": observed["n"] > before,
+                "replay_exhausted": observed["exhausted"],
                 "bound": bound,
                 "coh_gated": c_gated,
                 "base": base,
@@ -210,15 +217,16 @@ def neutered_long():
 
 
 def _observed_trace(rows):
-    """Salience on the ticks the insula was actually consulted -- the ticks before the arm's first
-    interoceptive reading hand the brain 0.0 without calling it, and a replay must not spend its
-    values there."""
+    """Salience on the ticks the insula was actually consulted. On the other ticks the brain
+    uses 0.0 without calling the insula, and a replay must not spend its values there."""
     return [r["salience"] for r in rows if r["observed"]]
 
 
 @pytest.fixture(scope="module")
 def constant_long(live_long):
-    """The live mean, held constant: same level, no timing."""
+    """The mean of the live salience over the consulted ticks, held constant: same level, no
+    timing. (The CONSTANT-control test averages every tick, unconsulted zeros included, so its mean
+    differs.)"""
     mean_s = statistics.fmean(_observed_trace(live_long[0]))
     return _run(neuter=False, ticks=OUTCOME_TICKS, salience=[mean_s] * OUTCOME_TICKS)
 
@@ -329,11 +337,7 @@ def test_neutering_the_insula_changes_the_brains_own_output(live_long, neutered_
         "the neutered arm still produced salience -- the A/B is not isolating the insula"
     )
 
-    thr_diff = sum(
-        1
-        for a, b in zip(live_rows, neut_rows, strict=True)
-        if abs(a["live_thr"] - b["live_thr"]) > 1e-9
-    )
+    thr_diff = _threshold_distance(live_rows, neut_rows)
     assert thr_diff > 0, (
         "the live ignition threshold is identical with and without the insula -- reachability "
         "without charge, which P3 says is not charge"
@@ -352,6 +356,13 @@ def test_neutering_the_insula_changes_the_brains_own_output(live_long, neutered_
     )
 
 
+def _threshold_distance(a_rows, b_rows):
+    """Ticks on which the threshold the workspace actually held differs."""
+    return sum(
+        1 for a, b in zip(a_rows, b_rows, strict=True) if abs(a["live_thr"] - b["live_thr"]) > 1e-9
+    )
+
+
 def _outcome_distance(a_rows, b_rows):
     """Ticks on which the brain's own ignition record (ignited, winner) differs."""
     return sum(
@@ -361,26 +372,26 @@ def _outcome_distance(a_rows, b_rows):
     )
 
 
-def test_the_control_arms_feed_their_signal_through_the_live_consumer(
-    live_long, constant_long, shuffled_long
-):
+def _assert_control_arms_real(live_long, constant_long, shuffled_long):
     """The control arms must be REAL: the injected signal reaches the brain's own threshold write.
-    Asserts on the recorded live_thr (the value the workspace actually held), which the
-    recomputing control above never reads."""
+    Asserts on the recorded live_thr (the value the workspace actually held), not a
+    recomputation of the law."""
     live_sal = _observed_trace(live_long[0])
     const_rows, shuf_rows = constant_long[0], shuffled_long[0]
     assert len(const_rows) == len(shuf_rows) == OUTCOME_TICKS
-    assert [r["observed"] for r in const_rows] == [r["observed"] for r in live_long[0]]
-    assert len({round(x, 12) for x in _observed_trace(const_rows)}) == 1
+    live_schedule = [r["observed"] for r in live_long[0]]
+    for rows in (const_rows, shuf_rows):
+        assert [r["observed"] for r in rows] == live_schedule
+        assert not any(r["replay_exhausted"] for r in rows), "the replay ran out of values"
+    assert _observed_trace(const_rows) == pytest.approx(
+        [statistics.fmean(live_sal)] * len(live_sal)
+    )
     assert sorted(_observed_trace(shuf_rows)) == sorted(live_sal)
     assert _observed_trace(shuf_rows) != live_sal, "the shuffle was the identity"
     for rows in (const_rows, shuf_rows):
-        moved = sum(
-            1
-            for a, b in zip(live_long[0], rows, strict=True)
-            if abs(a["live_thr"] - b["live_thr"]) > 1e-9
+        assert _threshold_distance(live_long[0], rows) > 0, (
+            "the control arm held the live threshold trace -- the injection is inert"
         )
-        assert moved > 0, "the control arm held the live threshold trace -- the injection is inert"
         recomputed = [r["with_s"] for r in rows]
         # coherence is brain state and may differ from the live arm; what must hold is that the
         # live threshold the workspace held IS the law applied to this arm's own signal
@@ -388,6 +399,22 @@ def test_the_control_arms_feed_their_signal_through_the_live_consumer(
             "the workspace threshold is not the law applied to the injected salience -- the "
             "control signal did not reach the consumer"
         )
+
+
+def test_the_control_arms_feed_their_signal_through_the_live_consumer(
+    live_long, constant_long, shuffled_long
+):
+    _assert_control_arms_real(live_long, constant_long, shuffled_long)
+
+
+def test_an_exhausted_replay_is_flagged_not_swallowed():
+    """REACHABLE RED for the exhaustion guard: an empty replay must raise the flag on every
+    consulted tick."""
+    rows, _ = _run(neuter=False, ticks=10, salience=[])
+    consulted = [r for r in rows if r["observed"]]
+    assert consulted, "no tick consulted the insula in 10 ticks -- the red is unreachable"
+    assert all(r["replay_exhausted"] for r in consulted)
+    assert all(r["salience"] == 0.0 for r in consulted)
 
 
 def test_PREREGISTERED_the_live_signal_moves_the_outcome_more_than_its_own_controls(
@@ -404,8 +431,10 @@ def test_PREREGISTERED_the_live_signal_moves_the_outcome_more_than_its_own_contr
     level or its distribution while destroying only its timing. If the data refute this, the
     null is reported as measured and the bar is NOT retuned.
 
-    Both live_thr arms are asserted real by the previous test, so a refutation cannot be an
-    artefact of an injection that never reached the consumer."""
+    The control arms are verified real by `_assert_control_arms_real` before the bar is
+    computed, so a refutation cannot be an artefact of an injection that never reached the
+    consumer."""
+    _assert_control_arms_real(live_long, constant_long, shuffled_long)
     n = _outcome_distance(live_long[0], neutered_long[0])
     c = _outcome_distance(live_long[0], constant_long[0])
     s = _outcome_distance(live_long[0], shuffled_long[0])
