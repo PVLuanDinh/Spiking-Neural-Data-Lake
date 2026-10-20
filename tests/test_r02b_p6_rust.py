@@ -216,6 +216,53 @@ def test_native_target_reasons_with_native_present(source, extra, reason, base):
     assert gate.own_attributed(conn, overlay) == []
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from snn_data_lake._native.sub import x\n",
+        "from snn_data_lake._native.sub import x, y\n",
+        "import snn_data_lake._native.sub\n",
+        "from .._native.sub import x\n",
+    ],
+    ids=["from", "from-two-names", "import", "relative"],
+)
+def test_a_native_submodule_import_is_printed_unmapped_not_silent(source, base):
+    """b4p P4 (Opus p6x MINOR-4): the reader reads only `_native`'s own names, and since p6x the
+    walk skipped every `_native` target, so this import printed nothing (it used to print as
+    unmapped). One printed line per importing statement; the counts stay put."""
+    overlay = {f"{_AMY}/_p6_native_sub.py": source}
+    native = gate.fixture_native(gate.RS_FEAR_GREEN, _RS_BINDING_REACH)
+    res = gate.measure(_ROOT, overlay=overlay, native=native)
+    own = gate.own_unmapped(res["conn"], overlay)
+    assert len(own) == 1 and "_native.sub (" in own[0] and "SUBMODULE" in own[0], own
+    assert res["conn"]["native_mapped"] == set()
+    assert res["metrics"] == base["metrics"]
+
+
+def test_a_reexport_through_the_package_init_counts_as_used_by_nobody_as_disclosed(base, capsys):
+    """b4p P4: a `_native` name re-exported by snn_data_lake/__init__.py is invisible to the walk
+    (a top-level module belongs to no region): its importer forms no pair and the export prints as
+    used by nobody. Pinned as a DISCLOSED gap, and the disclosure prints beside the verdict."""
+    init = Path(_ROOT, "src", "snn_data_lake", "__init__.py").read_text(encoding="utf-8")
+    use = "from snn_data_lake import bind_step\n\n\ndef use(x):\n    return bind_step(x)\n"
+    overlay = {
+        "__init__.py": init + "\nfrom ._native import bind_step  # noqa: E402\n",
+        f"{_AMY}/_p6_reexport_use.py": use,
+    }
+    native = gate.fixture_native(gate.RS_FEAR_GREEN, _RS_BINDING_REACH)
+    res = gate.measure(_ROOT, overlay=overlay, native=native)
+    assert res["conn"]["native_mapped"] == set()
+    assert res["conn"]["native_attributed"] == [
+        f"{_NOBODY}: _native.bind_step (crate-root export; its body reaches {_CER})"
+    ]
+    assert res["metrics"] == base["metrics"]
+    gate.report(res, _ROOT)
+    lines = capsys.readouterr().out.splitlines()
+    shown = [line for line in lines if line.startswith("  Python-side blind spots: ")]
+    assert len(shown) == 1, "the Python-side blind spots are not printed beside the verdict"
+    assert "re-exported" in shown[0] and "__init__.py" in shown[0] and "SUBMODULE" in shown[0]
+
+
 def test_an_export_in_a_non_connectome_region_is_attributed_by_its_body_reach(base):
     """b4p P1: before, an export in src/util.rs (region `util`) was UNMAPPED "not a connectome
     region" and its body never read; now its body's reach is read like a crate root's (none)."""

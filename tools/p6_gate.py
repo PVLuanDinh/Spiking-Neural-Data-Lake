@@ -1170,6 +1170,18 @@ def own_attributed(conn, overlay):
     return _own(conn["native_attributed"], overlay)
 
 
+_NATIVE_SUBMODULE = (
+    "a `_native` SUBMODULE path: the reader reads only the names of `_native` itself"
+)
+PY_NATIVE_BLIND_SPOTS = (  # half two's OWN Python-side gaps, printed beside the verdict (b4p P4)
+    "a `_native` name re-exported through another module (`snn_data_lake/__init__.py`, a facade) counts only "
+    "that module's own use, never its importers': a top-level module belongs to no region, so an export used "
+    "only that way prints as `<no regioned Python module>`",
+    "a `_native` SUBMODULE path (`from snn_data_lake._native.sub import x`, `import "
+    "snn_data_lake._native.sub`) is printed UNMAPPED, never mapped",
+)
+
+
 def region_imports(root, overlay=None, labels=None, native=None, native_out=None, regions=()):
     """Region imports, attributed to frozen anatomy labels across G8 package moves.
 
@@ -1251,8 +1263,12 @@ def region_imports(root, overlay=None, labels=None, native=None, native_out=None
             for parts in targets:
                 if not parts:
                     continue
-                if parts[0] == leaf:
-                    continue  # `_native` targets were read above, by the reader
+                if parts[0] == leaf:  # `_native`'s own names were read above, by the reader
+                    sub = parts[1:] if isinstance(node, ast.Import) else parts[1:-1]
+                    line = f"{relpath}: _native.{'.'.join(sub)} ({_NATIVE_SUBMODULE})"
+                    if sub and line not in native_out["unmapped"]:  # printed, never silent (b4p P4)
+                        native_out["unmapped"].append(line)
+                    continue
                 # A moved module keeps its pre-G8 anatomical label. Only use a basename
                 # when the import names a real module at that physical path; otherwise
                 # the final token may be a class, function or attribute.
@@ -1822,6 +1838,7 @@ def report(res, root):
     for line in c["native_attributed"]:
         print(f"      {line}")
     print("  Rust blind spots: " + "; ".join((*_gates()[0].BLIND_SPOTS, *RUST_BLIND_SPOTS)))
+    print("  Python-side blind spots: " + "; ".join(PY_NATIVE_BLIND_SPOTS))
     print(
         f"  UNDIRECTED because an import is a REACH, not a signal direction: {len(c['reversed_artifact'])} "
         "of the directed\n  mismatches are the exact REVERSE of a declared edge, so a directed diff "
