@@ -1307,6 +1307,8 @@ RUST_BLIND_SPOTS = (
     "a helper called by a qualified path or a method call (`self.helper()`) or defined in another file, and a "
     "`*` import's uses are not read; a binding file's own `use` that no export body calls forms no connectome "
     "pair (a crate root has no region, a binding submodule's is no connectome region)",
+    "a #[pyclass] DEFINED in a regioned file (src/<region>.rs) whose #[pymethods] impl sits in a binding "
+    "file is not read for reach: its pair from the binding body is dropped and nothing prints (B4 re-review E1)",
     "`use` inside an inline mod resolves from the file's module (native_dormancy._Tree)",
     "a `pub use` re-export met mid-path, or a path revisiting a module already walked, counts the walked chain",
     "a file in no mod tree still counts (an unresolved `#[path]` include must not escape); `reach` follows the "
