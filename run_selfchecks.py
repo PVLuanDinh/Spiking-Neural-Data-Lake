@@ -62,12 +62,16 @@ def _remove_home(path=_HOME):
 
 
 atexit.register(_remove_home)  # at import: before any check can register its own
+# SNDL_LIVE_HOME_GUARD arms home()'s live-home tripwire in every child -- the 39 subprocess modules
+# and the TOOLS_GATES -- as run_all_in_process arms it in-process: a child that pops NORD_HOME and
+# calls home() is REFUSED instead of handed ~/.snn_data_lake (Codex bfix3 MAJOR 1).
 _ENV = {
     **os.environ,
     "PYTHONUTF8": "1",
     "PYTHONIOENCODING": "utf-8",
     "PYTHONPATH": "src",
     "NORD_HOME": _HOME,
+    "SNDL_LIVE_HOME_GUARD": "1",
 }
 
 # CORE â€” the product: arm-loop + data-lake, clone-and-run (root). As of 3.0 organized by

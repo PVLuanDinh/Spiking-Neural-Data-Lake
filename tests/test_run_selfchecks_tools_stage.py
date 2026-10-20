@@ -144,3 +144,86 @@ def test_home_cleanup_reports_what_it_could_not_remove(tmp_path, capsys):
         held.write(b"x")
         rs._remove_home(str(d))
     assert "could not remove" in capsys.readouterr().err
+
+
+# --- b3-selfchecks (2026-10-20): the guard reaches children, is re-armed per check, CPython's exit
+# rule, the latch survives, cleanup reports, the timing-deferral partition. Each test names its red.
+
+_PROBE_POP_NORD_HOME = (
+    "import os, sys\n"
+    "os.environ.pop('NORD_HOME', None)\n"
+    "from snn_data_lake.substrate import home as H\n"
+    "try:\n"
+    "    H.home()\n"
+    "except H.LiveHomeRefused:\n"
+    "    print('REFUSED')\n"
+    "    sys.exit(0)\n"
+    "print('REACHED', H.home())\n"
+    "sys.exit(3)\n"
+)
+
+
+def _fake_user(tmp_path, monkeypatch):
+    """A fake USERPROFILE/HOME; its ~/.snn_data_lake (the live lake) holds a planted latch."""
+    fake = tmp_path / "fake user"
+    live = fake / ".snn_data_lake"
+    live.mkdir(parents=True)
+    (live / "estop.latch").write_text("planted")
+    for key in ("USERPROFILE", "HOME"):
+        monkeypatch.setenv(key, str(fake))
+        monkeypatch.setitem(rs._ENV, key, str(fake))  # children are built from _ENV, not os.environ
+    assert os.path.expanduser("~") == str(fake)  # the fake IS what home() resolves as live
+    return fake, live
+
+
+def _probe_env(monkeypatch):
+    """rs._ENV as every child gets it, importable from any cwd, outside a pytest phase."""
+    monkeypatch.setitem(rs._ENV, "PYTHONPATH", str(ROOT / "src"))
+    monkeypatch.delitem(rs._ENV, "PYTEST_CURRENT_TEST", raising=False)
+    return rs._ENV
+
+
+def test_subprocess_env_arms_the_live_home_tripwire(tmp_path, monkeypatch):
+    # bfix3 MAJOR 1. RED on the old _ENV (no SNDL_LIVE_HOME_GUARD): the probe pops NORD_HOME, home()
+    # falls back to the fake live home and the probe prints REACHED / exits 3.
+    import subprocess
+    import sys
+
+    _fake_user(tmp_path, monkeypatch)
+    env = _probe_env(monkeypatch)
+    r = subprocess.run(
+        [sys.executable, "-c", _PROBE_POP_NORD_HOME],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert (r.returncode, r.stdout.strip()) == (0, "REFUSED"), (r.stdout, r.stderr[-500:])
+
+
+def test_tools_gates_run_with_the_live_home_tripwire(tmp_path, monkeypatch):
+    # bfix3 MAJOR 1, the TOOLS_GATES half. RED on the old _ENV: the gate reaches the fake live home.
+    _fake_user(tmp_path, monkeypatch)
+    _probe_env(monkeypatch)
+    gate = tmp_path / "pop_home_gate.py"
+    gate.write_text(_PROBE_POP_NORD_HOME, encoding="utf-8")
+    lines = []
+    assert rs.run_tools_gates([[str(gate)]], emit=lines.append) == [], lines
+
+
+def test_run_all_hands_every_module_the_guarded_env(monkeypatch):
+    # bfix3 MAJOR 1, the subprocess-module half: run_all passes env=_ENV, the guard is in it.
+    import subprocess
+
+    seen = []
+
+    def fake_run(cmd, **kw):
+        seen.append(kw.get("env"))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(rs.subprocess, "run", fake_run)
+    monkeypatch.setattr(rs, "run_tools_gates", lambda *a, **k: [])
+    assert rs.run_all(modules=["brain_atlas"])
+    assert len(seen) == 1 and seen[0]["SNDL_LIVE_HOME_GUARD"] == "1", seen
+    assert seen[0]["NORD_HOME"] == rs._HOME
