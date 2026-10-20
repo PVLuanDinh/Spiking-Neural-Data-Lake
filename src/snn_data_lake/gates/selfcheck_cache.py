@@ -57,8 +57,10 @@ THE KEY (all of it, or no carry) -- v3, ENVELOPE PRECISION (2026-08-21):
     directory -- a _SCAN_CALLS call (os.walk / fwalk / listdir / scandir / glob / iglob /
     rglob / iterdir / pkgutil.iter_modules / walk_packages), resolved through the file's
     import aliases (ast.walk and the file's own functions are not listings), or such a lister
-    taken as a value -- or names a git tree read (_GIT_TREE_READS: `ls-files`, `ls-tree`,
-    `--porcelain`) in a non-docstring string, reads files no import closure names. No root
+    taken as a value -- or names git in a non-docstring string (any `git` argv since B4 C3:
+    `git diff --name-only`, `git status --short`, `git show`; plus the _GIT_TREE_READS forms
+    `ls-files`, `ls-tree`, `--porcelain` however git itself is spelled), reads files no
+    import closure names. No root
     is exempt: a listing of substrate.home() or of an environment-named directory scans like
     any other. The landing rule keyed only roots derived from `__file__` IN THE SAME FILE,
     and the Opus B3 review measured the hole: an impact_analysis.py override left
@@ -143,11 +145,14 @@ DISCLOSED BLIND SPOTS (banner() prints them at every carrying run):
      gitignored path read by literal name elsewhere is unkeyed. None known at landing.
   6. (v3, B4 C2 2026-10-20) The scanner derivation is SYNTACTIC, not fail-closed: every
      listing call it RECOGNISES scans, whatever its root, but recognition is by name through
-     the file's import aliases, so a lister reached another way is invisible, and so is a
-     tree listed by a subprocess other than the _GIT_TREE_READS forms of git (find, rg, git
-     grep, git diff / status without --porcelain). Red (n) pins the
-     three walkers the Opus B3 review measured carrying; the derivation pins in _SYNTHETIC
-     hold every rule, including the closing review's constructed stale shapes S2-S6, S8.
+     the file's import aliases, so a lister reached another way is invisible: STRING
+     DISPATCH -- `getattr(os, "walk")(pkg)`, `getattr(Path(d), name)()` (the closing review's
+     S1; stale under every rule it measured, and pinned stale by an xfail(strict) in
+     tests/test_selfcheck_cache_unflagged_scanners.py so a fix must update this line) -- and a
+     tree listed by a subprocess that is not git or is git without a literal `git` argv (find,
+     rg, a git path read from a variable with none of the _GIT_TREE_READS forms). Red (n)
+     pins the three walkers the Opus B3 review measured carrying; the derivation pins in
+     _SYNTHETIC hold every rule, incl. the closing review's constructed stale shapes S2-S8.
 THE PROTOCOL those blind spots buy: carries are a LOCAL-battery accelerator only (CI,
 act containers and exit-certification batteries run FULL -- --carry is opt-in and nothing
 in .github/ passes it), and ANY FAIL in a carrying battery is re-run FULL before it is
@@ -193,6 +198,10 @@ _SCAN_CALLS = frozenset(
 )
 _LISTING_MODULES = frozenset({"os", "glob", "pathlib", "pkgutil"})  # a lister taken as a value
 _GIT_TREE_READS = ("ls-files", "ls-tree", "--porcelain")  # argv strings that read the tree via git
+# B4 C3: ANY git argv is a scan -- `git diff --name-only`, `git status --short`, `git show`
+# read the tree or its history beyond these three forms (review S7); a string that IS the
+# program name, or starts a shell command line with it
+_GIT_ARGV = re.compile(r"git(?:\.exe)?(?:\s|$)")
 # No listing root is excluded (B4 C2, 2026-10-20): the root resolver that once exempted
 # substrate.home() and environment-read roots was DELETED -- it moved zero modules on the real
 # tree and failed open on constructed shapes (S2-S5 below), one of them live-shaped.
@@ -419,7 +428,11 @@ def _facts(text, pkg_parts, marker_re):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             if id(node) not in doc_ids:
                 mentions.update(marker_re.findall(node.value))
-                scans = scans or any(g in node.value for g in _GIT_TREE_READS)
+                scans = (
+                    scans
+                    or any(g in node.value for g in _GIT_TREE_READS)
+                    or _GIT_ARGV.match(node.value) is not None
+                )
         elif isinstance(node, ast.ImportFrom):
             from_root = (node.module == _PKG and not node.level) or (
                 node.module is None and node.level == pkg_parts
@@ -896,8 +909,8 @@ def banner_blind_spots():
         "string-dispatch imports; shared-home sequence coupling; unhashed host state; "
         "computed-name data/env reads (tools/, models/ and NORD_* fail closed); gitignored "
         "inputs read by name outside models/ and graphify-out/; a lister not named through "
-        "the file's imports; a tree listed by a subprocess other than git ls-files / "
-        "ls-tree / status --porcelain (find, rg, git grep); "
+        "the file's imports (string dispatch: getattr(os, 'walk')); a tree listed by a "
+        "subprocess other than git, or by git with no literal 'git' argv (find, rg); "
         "gitignored non-Rust files under native/ (when git lists it); "
         "directory symlinks under native/; "
         "Rust build inputs outside native/ and the manifest names "
@@ -1439,6 +1452,23 @@ _SYNTHETIC = {  # unit reds for the derivation itself, pinned on sources that ca
         "scans",
         True,
     ),
+    # B4 C3: any git argv (review S7) -- and the names that merely contain "git" stay quiet
+    "s7_git_diff_name_only_scan": (
+        "import subprocess\nout = subprocess.run(['git', 'diff', '--name-only'], "
+        "capture_output=True).stdout\n",
+        "scans",
+        True,
+    ),
+    "s7_git_status_short_shell_scan": (
+        "import subprocess\nout = subprocess.check_output('git status --short', shell=True)\n",
+        "scans",
+        True,
+    ),
+    "git_named_paths_not_scan": (
+        "IGNORED = ('.git', '.gitignore', 'gitattributes', 'github', '.github/workflows')\n",
+        "scans",
+        False,
+    ),
     "s8_home_split_dotdot_scan": (
         _HOME_IMPORT + "os.listdir(home() + '/.' + './x')\n",
         "scans",
@@ -1532,7 +1562,7 @@ def _self_check(store):
     fired.append(
         f"{n_scan_pins} scanner-derivation pins (every recognised listing scans whatever its root:"
         " parameter / keyword / imported / aliased / cwd / home() / env-dir roots, the closing"
-        " review's S2-S6 and S8, ls-files; ast.walk and the file's own functions are no listing)"
+        " review's S2-S8, ls-files, any git argv; ast.walk and the file's own functions are no listing)"
         " + env-name pins"
     )
 

@@ -137,6 +137,46 @@ def test_r5_bypass_shape_on_the_probe_flips_on_a_tree_change(base, store, probe,
     assert moved != quiet, f"{shape} on {probe}: a tree change left the key (stale PASS carries)"
 
 
+# B4 C3: any git argv is a scan (review S7). Inline for the same reason as BYPASS.
+GIT_ARGV = {
+    "S7-diff": "import subprocess\nout = subprocess.run(['git', 'diff', '--name-only'], "
+    "capture_output=True).stdout\n",
+    "S7-status": "import subprocess\n"
+    "out = subprocess.check_output('git status --short', shell=True)\n",
+}
+
+
+@pytest.mark.parametrize("shape", sorted(GIT_ARGV))
+def test_r6_git_argv_is_a_scan(shape):
+    assert sc._facts(GIT_ARGV[shape], 1, sc._NULL_RE)["scans"] is True, f"{shape} is not a scan"
+
+
+@pytest.mark.parametrize("shape", sorted(GIT_ARGV))
+def test_r7_git_argv_on_the_probe_flips_on_a_tree_change(base, store, probe, shape):
+    path = os.path.normpath(sc._module_file(sc._PKG_PREFIX + probe))
+    text = base._read_text(path) + "\n" + GIT_ARGV[shape]
+
+    def fork(over=None):
+        return sc.SelfcheckCache(
+            store_path=store, env=ENV, file_text_overrides={path: text}, file_hash_overrides=over
+        )
+
+    quiet = fork().closure_key(probe)
+    assert fork().closure_key(probe) == quiet, "the instrument moved with no input change"
+    moved = fork({IMPACT: "0" * 64}).closure_key(probe)
+    assert moved != quiet, f"{shape} on {probe}: a tree change left the key (stale PASS carries)"
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="DISCLOSED blind spot (selfcheck_cache docstring 6, review S1): string dispatch hides "
+    "the lister. If this passes, the derivation learned it: update the disclosure, drop the xfail",
+)
+def test_s1_string_dispatch_stays_a_disclosed_blind_spot():
+    src = "import os\nfor r, d, f in getattr(os, 'walk')(os.path.dirname(__file__)):\n    pass\n"
+    assert sc._facts(src, 1, sc._NULL_RE)["scans"] is True
+
+
 @pytest.mark.parametrize("name", sorted(sc._SYNTHETIC))
 def test_c2_derivation_pins(name):
     """Every synthetic pin the self-check holds, from the one source table: the home() /
