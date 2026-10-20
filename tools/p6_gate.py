@@ -1092,29 +1092,31 @@ def frozen_labels(root):
 
 
 def _native_out():
-    """The `_native` accumulator region_imports fills: pairs mapped, targets unmapped (with reasons), crate-root
-    exports attributed -- the last two printed, never dropped."""
+    """The `_native` accumulator region_imports fills: pairs mapped, targets unmapped (with reasons), exports
+    in no connectome region attributed -- the last two printed, never dropped."""
     return {"mapped": set(), "unmapped": [], "attributed": []}
 
 
-def _reach_line(user, sym, reach):
-    """One printed line per (Python user, crate-root export); `user` None = no regioned module uses it."""
+def _reach_line(user, sym, reach, home=None):
+    """One printed line per (Python user, export in no connectome region); `user` None = no regioned module
+    uses it; `home` = the export's own file region (None: a crate root)."""
     user = user or "<no regioned Python module>"
     reached = ", ".join(reach) or "no regioned Rust module"
-    return f"{user}: _native.{sym} (crate-root export; its body reaches {reached})"
+    where = "crate-root export" if home is None else f"export in non-connectome region `{home}`"
+    return f"{user}: _native.{sym} ({where}; its body reaches {reached})"
 
 
 def _native_targets(relpath, sym, rust_status, export_region, export_reach, regions, native_out):
-    """Connectome regions of a `_native` target: its Rust file's region, or -- for a crate-root export (the
-    binding's own #[pyfunction], p6x) -- every region its body reaches, printed in native_out["attributed"].
-    Empty when unmapped, recorded in native_out["unmapped"] WITH its reason, never dropped: `_native` is no
-    region, so an unmapped target would otherwise leave the diff silently; a target outside every connectome
-    region is reported too (fold 2)."""
+    """Connectome regions of a `_native` target: its Rust file's region, or -- for an export whose file is in
+    no connectome region (the binding's own #[pyfunction] in a crate root, p6x, or in a binding submodule,
+    b4p P1) -- every region its body reaches, printed in native_out["attributed"]. Empty when unmapped,
+    recorded in native_out["unmapped"] WITH its reason, never dropped: `_native` is no region, so an unmapped
+    target would otherwise leave the diff silently (fold 2)."""
     region = export_region.get(sym)
     if region in regions:
         return {region}
     if sym in export_reach:
-        native_out["attributed"].append(_reach_line(relpath, sym, export_reach[sym]))
+        native_out["attributed"].append(_reach_line(relpath, sym, export_reach[sym], region))
         return {r for r in export_reach[sym] if r in regions}
     if not rust_status.startswith("native/ PRESENT"):
         why = rust_status
@@ -1122,10 +1124,8 @@ def _native_targets(relpath, sym, rust_status, export_region, export_reach, regi
         why = "module-level or star import names no symbol"
     elif sym not in export_region:
         why = "not a PyO3 export"
-    elif region is None:
-        why = "its Rust file is not production code (no region)"
     else:
-        why = f"its Rust file's region `{region}` is not a connectome region"
+        why = "its Rust file is not production code (no region)"
     native_out["unmapped"].append(f"{relpath}: _native.{sym} ({why})")
     return set()
 
@@ -1166,17 +1166,18 @@ def own_unmapped(conn, overlay):
 
 
 def own_attributed(conn, overlay):
-    """The crate-root export attributions an arm's OWN overlay files produced (same rule as own_unmapped)."""
+    """The export attributions an arm's OWN overlay files produced (same rule as own_unmapped)."""
     return _own(conn["native_attributed"], overlay)
 
 
 def region_imports(root, overlay=None, labels=None, native=None, native_out=None, regions=()):
     """Region imports, attributed to frozen anatomy labels across G8 package moves.
 
-    `native=(rust_status, {python-visible export: region}, {crate-root export: regions its body reaches})`
-    maps a `_native` target: an export in a regioned Rust file to that region, a crate-root export (the
-    binding's own #[pyfunction], p6x) to what its body reaches -- from every Python user (any spelling, via
-    `_native_users`); the pair also lands in `native_out["mapped"]` (r02b-p6)."""
+    `native=(rust_status, {python-visible export: region}, {export in no connectome region: regions its body
+    reaches})` maps a `_native` target: an export in a connectome-regioned Rust file to that region, any other
+    production export (the binding's own #[pyfunction], p6x; one in a binding submodule, b4p P1) to what its
+    body reaches -- from every Python user (any spelling, via `_native_users`); the pair also lands in
+    `native_out["mapped"]` (r02b-p6)."""
     overlay = dict(overlay or {})
     pkg = source_dir(root)
     labels = frozen_labels(root) if labels is None else labels
@@ -1264,7 +1265,9 @@ def region_imports(root, overlay=None, labels=None, native=None, native_out=None
                 if target != src_region:
                     directed.add((src_region, target))
     for name in sorted(set(export_reach).difference(*used.values())):  # printed, never dropped
-        native_out["attributed"].append(_reach_line(None, name, export_reach[name]))
+        native_out["attributed"].append(
+            _reach_line(None, name, export_reach[name], export_region.get(name))
+        )
     return directed
 
 
@@ -1279,12 +1282,13 @@ RUST_BLIND_SPOTS = (
     "a path into ANOTHER crate (`sndl_core::x`) from a regioned file resolves only when that crate's "
     "root is in the facts",
     "a `#[path]`-relocated file keeps the region of its on-disk directory",
-    "a crate-root export (the binding's own #[pyfunction]) is attributed to its Python users' regions by what "
-    "its body CALLS through the file's `use` aliases, following same-file FREE helpers called by bare name "
-    "(the last non-test fn of that name wins; a #[pyclass]: every fn of its #[pymethods] impls); a non-call "
-    "path in its body (a struct literal, a const), a helper called by a qualified path or a method call "
-    "(`self.helper()`) or defined in another file, and a `*` import's uses are not read; a crate root's own "
-    "`use` that no export body calls forms no pair (the crate root belongs to no region)",
+    "an export in no connectome region (the binding's own #[pyfunction] in a crate root or a binding "
+    "submodule) is attributed to its Python users' regions by what its body CALLS through the file's `use` "
+    "aliases, following same-file FREE helpers called by bare name (the last non-test fn of that name wins; a "
+    "#[pyclass]: every fn of its #[pymethods] impls); a non-call path in its body (a struct literal, a const), "
+    "a helper called by a qualified path or a method call (`self.helper()`) or defined in another file, and a "
+    "`*` import's uses are not read; a binding file's own `use` that no export body calls forms no connectome "
+    "pair (a crate root has no region, a binding submodule's is no connectome region)",
     "`use` inside an inline mod resolves from the file's module (native_dormancy._Tree)",
     "a `pub use` re-export met mid-path, or a path revisiting a module already walked, counts the walked chain",
     "a file in no mod tree still counts (an unresolved `#[path]` include must not escape); `reach` follows the "
@@ -1354,10 +1358,10 @@ def _hits(tree, rel, paths):
 
 
 def _export_reach(f, rel, export, tree, region):
-    """Regions a crate-root export's body reaches (p6x): its non-cfg(test) calls (the reader's `fn_id`), plus
-    those of every same-file helper it calls by bare name (transitively: what a helper reaches is attributed
-    to every export that calls it), resolved through the file's `use` aliases by `_terminal` exactly like a
-    regioned file's refs."""
+    """Regions an export's body reaches (p6x; its file is in no connectome region): its non-cfg(test) calls
+    (the reader's `fn_id`), plus those of every same-file helper it calls by bare name (transitively: what a
+    helper reaches is attributed to every export that calls it), resolved through the file's `use` aliases by
+    `_terminal` exactly like a regioned file's refs."""
     rust_facts = _gates()[0]
     fns = [fn for fn in f.get("fns", []) if not fn["cfg_test"]]
     by_name = {fn["name"]: fn["id"] for fn in fns if not fn["impl"]}
@@ -1387,9 +1391,9 @@ def _export_reach(f, rel, export, tree, region):
     return tuple(sorted({region[h] for h in _hits(tree, rel, paths) if region.get(h)}))
 
 
-def rust_region_imports(root, labels, native=None):
-    """(status, directed Rust region pairs, {python-visible export: region}, {crate-root export: the regions
-    its body reaches}) -- the ONE Rust entry point.
+def rust_region_imports(root, labels, native=None, *, regions):
+    """(status, directed Rust region pairs, {python-visible export: region}, {export whose file region is not
+    one of the connectome `regions`: the regions its body reaches}) -- the ONE Rust entry point.
 
     `native=(status, file_facts)` injects facts in place of the real tree's. `.rs` present and the reader
     failing is a status `liveness()` turns RED (fail closed), never a skip. Test code and cfg(test) reaches
@@ -1461,9 +1465,10 @@ def rust_region_imports(root, labels, native=None):
     for name, e in rust_facts.pyo3_exports(file_facts).items():
         rel = _native_rel(e["file"], base)
         exports[name] = region.get(rel)
-        # a crate-root export (a production file with no region): attributed by its body's reach; a
-        # `Cls.meth` entry rides with its #[pyclass] (Python names the class, never a method)
-        if rel in region and region[rel] is None and "." not in name:
+        # an export in a production file outside every connectome region (a crate root, a binding submodule
+        # such as src/bindings.rs; b4p P1): attributed by its body's reach; a `Cls.meth` entry rides with its
+        # #[pyclass] (Python names the class, never a method)
+        if rel in region and region[rel] not in regions and "." not in name:
             reach[name] = _export_reach(by_rel[rel], rel, e, tree, region)
     return status, directed, exports, reach
 
@@ -1479,7 +1484,7 @@ def connectome_diff(root, overlay=None, conn_source=None, native=None):
     declared = {tuple(sorted(p)) for p in declared_dir}
     labels = frozen_labels(root)
     rust_status, rust_directed, export_region, export_reach = rust_region_imports(
-        root, labels, native
+        root, labels, native, regions=regions
     )
     native_out = _native_out()
     py_directed = region_imports(
@@ -1802,8 +1807,8 @@ def report(res, root):
     for line in c["native_unmapped"]:
         print(f"      {line}")
     print(
-        f"  NATIVE EXPORTS ATTRIBUTED: {len(c['native_attributed'])} (crate-root exports -> the regions of "
-        "their Python users; printed, never dropped)"
+        f"  NATIVE EXPORTS ATTRIBUTED: {len(c['native_attributed'])} (exports in no connectome region -> the "
+        "regions of their Python users; printed, never dropped)"
     )
     for line in c["native_attributed"]:
         print(f"      {line}")
@@ -2029,6 +2034,13 @@ _RS_BIND_CLASS = (  # a crate-root #[pyclass] whose #[pymethods] body reaches ce
 _RS_BINDING_REACH = {RS_BINDING: rs_binding(_RS_BIND_STEP, "bind_step")}
 _RS_BINDING_CFG = {RS_BINDING: rs_binding(_RS_BIND_CFG, "bind_step")}
 _RS_BINDING_CLASS = {RS_BINDING: rs_binding(_RS_BIND_CLASS, "Probe")}
+RS_BINDING_SUBMOD = (
+    "native/sndl-python/src/bindings.rs"  # a binding SUBMODULE: region `bindings`, no connectome
+)
+_RS_BINDING_SUBMODULE = {  # R11's bind_step moved out of the crate root (lib.rs:1's polars-python shape)
+    RS_BINDING: rs_binding("mod bindings;\n", "super::bindings::bind_step"),
+    RS_BINDING_SUBMOD: f"use pyo3::prelude::*;\nuse sndl_core::{_CER}::timing::Clock;\n\n{_RS_BIND_STEP}",
+}
 _PY_BIND_IMPORT = {
     f"{_AMY}/_p6_bind_import.py": (
         f'"""overlay mutant -- an {_AMY} module importing the binding\'s OWN export, which reaches {_CER}."""\n\n'
@@ -2139,6 +2151,13 @@ RUST_REDS = [
         RS_FEAR_GREEN,
         _PY_CLASS_IMPORT,
         _RS_BINDING_CLASS,
+    ),
+    (
+        "R14",
+        f"R11's bind_step in a binding SUBMODULE (src/bindings.rs, region `bindings`, no connectome region); a Python {_AMY} module imports it",
+        RS_FEAR_GREEN,
+        _PY_BIND_IMPORT,
+        _RS_BINDING_SUBMODULE,
     ),
 ]
 _RS_INLINE_TESTS = (
@@ -2477,7 +2496,7 @@ def liveness(root, res):
     lines.append(
         f"  rust half    : {c['rust_status']}; {len(c['rust_directed'])} Rust region pairs, "
         f"{len(c['native_mapped'])} via _native exports, {len(c['native_unmapped'])} _native targets unmapped, "
-        f"{len(c['native_attributed'])} crate-root exports attributed"
+        f"{len(c['native_attributed'])} exports in no connectome region attributed"
     )
     return lines, problems
 

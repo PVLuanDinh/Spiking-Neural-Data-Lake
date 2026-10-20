@@ -100,7 +100,7 @@ def test_real_tree_prints_absent_and_leaves_every_python_count_alone(base):
     ]
     assert res["metrics"] == base["metrics"]
     lines, _problems = gate.liveness(_ROOT, res)
-    assert any("2 crate-root exports attributed" in line for line in lines), lines
+    assert any("2 exports in no connectome region attributed" in line for line in lines), lines
     assert res["metrics"]["undeclared_import_pairs"] == gate.BASELINE["undeclared_import_pairs"]
     assert all(_verdict(res, base).values())
 
@@ -194,11 +194,6 @@ _RS_UTIL_EXTRA = {
             "its Rust file is not production code (no region)",
         ),
         ("from snn_data_lake._native import *\n", _RS_BINDING_REACH, "module-level or star import"),
-        (
-            "from snn_data_lake._native import util_fn\n",
-            _RS_UTIL_EXTRA,
-            "region `util` is not a connectome region",
-        ),
     ],
     ids=[
         "module",
@@ -206,7 +201,6 @@ _RS_UTIL_EXTRA = {
         "ghost",
         "not-production",
         "star-with-crate-root-export",
-        "non-connectome-region",
     ],
 )
 def test_native_target_reasons_with_native_present(source, extra, reason, base):
@@ -220,6 +214,43 @@ def test_native_target_reasons_with_native_present(source, extra, reason, base):
     assert conn["native_mapped"] == set()
     assert res["metrics"] == base["metrics"]
     assert gate.own_attributed(conn, overlay) == []
+
+
+def test_an_export_in_a_non_connectome_region_is_attributed_by_its_body_reach(base):
+    """b4p P1: before, an export in src/util.rs (region `util`) was UNMAPPED "not a connectome
+    region" and its body never read; now its body's reach is read like a crate root's (none)."""
+    overlay = {f"{_AMY}/_p6_native_reason.py": "from snn_data_lake._native import util_fn\n"}
+    native = gate.fixture_native(gate.RS_FEAR_GREEN, _RS_UTIL_EXTRA)
+    res = gate.measure(_ROOT, overlay=overlay, native=native)
+    conn = res["conn"]
+    assert gate.own_unmapped(conn, overlay) == []
+    assert gate.own_attributed(conn, overlay) == [
+        f"{_AMY}/_p6_native_reason.py: _native.util_fn "
+        f"(export in non-connectome region `util`; its body reaches {_NO_RUST})"
+    ]
+    assert conn["native_mapped"] == set()
+    assert res["metrics"] == base["metrics"]
+
+
+def test_r14_an_export_in_a_binding_submodule_counts_its_body_reach(base):
+    """b4p P1 (Opus p6x MAJOR-1): R14's own wire (bindings, cerebellum) is a Rust pair outside the
+    connectome (dropped, as before); the pair that counts comes through its Python importer."""
+    _, _how, fear_rs, overlay, extra = _arm("RUST_REDS", "R14")
+    res = gate.measure(_ROOT, overlay=overlay, native=gate.fixture_native(fear_rs, extra))
+    conn = res["conn"]
+    assert conn["native_mapped"] == gate.RUST_PAIR
+    assert conn["rust_directed"] == {("bindings", _CER)}
+    assert gate.own_unmapped(conn, overlay) == []
+    assert gate.own_attributed(conn, overlay) == [
+        f"{_AMY}/_p6_bind_import.py: _native.bind_step "
+        f"(export in non-connectome region `bindings`; its body reaches {_CER})"
+    ]
+    expect = dict(base["metrics"])
+    expect["undeclared_import_pairs"] += 1
+    assert res["metrics"] == expect
+    verdict = _verdict(res, base)
+    assert verdict["undeclared_import_pairs"] is False
+    assert all(ok for k, ok in verdict.items() if k != "undeclared_import_pairs")
 
 
 def test_crate_root_export_with_an_empty_reach_is_attributed_not_unmapped(base):
@@ -375,27 +406,56 @@ def test_a_deleted_user_turns_its_export_into_used_by_nobody():
     assert not [line for line in res["conn"]["native_attributed"] if line.startswith(_PFC)]
 
 
+def _native_with_medulla(d):
+    """A COPY of the real native/ tree under `d` whose sndl-core carries `medulla::step` (the target
+    of Codex's reproducer); returns the binding's lib.rs."""
+    shutil.copytree(
+        os.path.join(_ROOT, "native"),
+        os.path.join(d, "native"),
+        ignore=shutil.ignore_patterns("target"),
+    )
+    core = Path(d, "native/sndl-core/src/lib.rs")
+    core.write_text(core.read_text(encoding="utf-8") + f"pub mod {_MED};\n", encoding="utf-8")
+    Path(d, f"native/sndl-core/src/{_MED}.rs").write_text("pub fn step() {}\n", encoding="utf-8")
+    return Path(d, gate.RS_BINDING)
+
+
+def _copy_facts(d, tag):
+    root = Path(d, "native")
+    return gate.native_facts(sorted(root.rglob("*.rs")), root, tag)
+
+
 def _injected(step_site):
     """Facts for a COPY of the real native/ tree carrying Codex's medulla reproducer (`step();` at
     `step_site`)."""
     with tempfile.TemporaryDirectory() as d:
-        shutil.copytree(
-            os.path.join(_ROOT, "native"),
-            os.path.join(d, "native"),
-            ignore=shutil.ignore_patterns("target"),
-        )
-        core = Path(d, "native/sndl-core/src/lib.rs")
-        core.write_text(core.read_text(encoding="utf-8") + "pub mod medulla;\n", encoding="utf-8")
-        Path(d, f"native/sndl-core/src/{_MED}.rs").write_text(
-            "pub fn step() {}\n", encoding="utf-8"
-        )
-        lib = Path(d, gate.RS_BINDING)
+        lib = _native_with_medulla(d)
         text = lib.read_text(encoding="utf-8")
         assert text.count(_USE_LINE) == 1 and text.count(step_site) == 1, "binding changed shape"
-        text = text.replace(_USE_LINE, _USE_LINE + "\nuse sndl_core::medulla::step;")
+        text = text.replace(_USE_LINE, _USE_LINE + f"\nuse sndl_core::{_MED}::step;")
         lib.write_text(text.replace(step_site, "        step();\n" + step_site), encoding="utf-8")
-        root = Path(d, "native")
-        return gate.native_facts(sorted(root.rglob("*.rs")), root, "medulla injected")
+        return _copy_facts(d, "medulla injected")
+
+
+_PYMODULE = "#[pymodule(gil_used = false)]\nmod _native {\n"
+_RS_SUBMOD = "native/sndl-python/src/bindings.rs"  # region `bindings`: no connectome region
+
+
+def _injected_submodule():
+    """Codex's reproducer moved into a binding SUBMODULE (b4p P1): src/bindings.rs holds `sub_step`,
+    whose body calls medulla's `step()`; lib.rs declares `mod bindings;` and exports it."""
+    with tempfile.TemporaryDirectory() as d:
+        lib = _native_with_medulla(d)
+        text = lib.read_text(encoding="utf-8")
+        assert text.count(_PYMODULE) == 1, "binding changed shape"
+        exporting = _PYMODULE + "    #[pymodule_export]\n    use super::bindings::sub_step;\n"
+        lib.write_text(text.replace(_PYMODULE, "mod bindings;\n\n" + exporting), encoding="utf-8")
+        Path(d, _RS_SUBMOD).write_text(
+            f"use pyo3::prelude::*;\nuse sndl_core::{_MED}::step;\n\n"
+            "#[pyfunction]\npub fn sub_step() {\n    step();\n}\n",
+            encoding="utf-8",
+        )
+        return _copy_facts(d, "medulla in a binding submodule")
 
 
 def _medulla_fired(res, base):
@@ -439,6 +499,30 @@ def test_r_c_what_a_helper_reaches_is_attributed_to_every_export_that_calls_it(b
     ]
 
 
+def test_r_d_the_reproducer_in_a_binding_submodule_counts_its_body_reach(base):
+    """b4p P1 (Opus p6x MAJOR-1): the old gate left this UNMAPPED ("region `bindings` is not a
+    connectome region") and undeclared_import_pairs at 11."""
+    overlay = {f"{_CTX}/_p6x_submodule_use.py": "from snn_data_lake._native import sub_step\n"}
+    res = gate.measure(_ROOT, overlay=overlay, native=_injected_submodule())
+    conn = res["conn"]
+    assert conn["native_mapped"] == _MEDULLA_PAIR, conn["native_mapped"]
+    assert conn["rust_directed"] == {
+        ("cortex", "rng"),
+        ("bindings", _MED),
+    }  # its own: no connectome
+    assert gate.own_unmapped(conn, overlay) == []
+    assert (
+        f"{_CTX}/_p6x_submodule_use.py: _native.sub_step "
+        f"(export in non-connectome region `bindings`; its body reaches {_MED})"
+    ) in conn["native_attributed"]
+    expect = dict(base["metrics"])
+    expect["undeclared_import_pairs"] += 1
+    assert res["metrics"] == expect
+    verdict = _verdict(res, base)
+    assert verdict["undeclared_import_pairs"] is False
+    assert all(ok for k, ok in verdict.items() if k != "undeclared_import_pairs")
+
+
 def test_blind_spots_disclose_what_export_attribution_does_not_read():
     text = " ".join(gate.RUST_BLIND_SPOTS)
     assert "names no symbol here" not in text and "exports map to no region" not in text
@@ -466,7 +550,7 @@ def test_rust_region_table():
     assert gate.rust_region("x/tests/it.rs", None, labels) is None
 
 
-def test_reader_is_built_from_this_checkout_not_from_root(tmp_path, monkeypatch):
+def test_reader_is_built_from_this_checkout_not_from_root(tmp_path, monkeypatch, base):
     _, _how, fear_rs, _overlay, _extra = _arm("RUST_REDS", "R1")
     paths = gate.write_native(tmp_path, fear_rs)
     roots = []
@@ -479,13 +563,15 @@ def test_reader_is_built_from_this_checkout_not_from_root(tmp_path, monkeypatch)
     monkeypatch.setattr(rust_facts, "rust_files", lambda root=None, sub=None: paths)
     monkeypatch.setattr(rust_facts, "facts", spy)
     status, directed, exports, reach = gate.rust_region_imports(
-        str(tmp_path), gate.frozen_labels(_ROOT)
+        str(tmp_path), gate.frozen_labels(_ROOT), regions=base["conn"]["regions"]
     )
     assert roots == [rust_facts.ROOT], roots  # never --root's tools/rsfacts
     assert status.startswith("native/ PRESENT (7 .rs files)"), status
     assert directed == gate.RUST_PAIR  # absolute fact paths under an alternate root resolve
     assert exports == {"fear_step": f"{_CER}"}
-    assert reach == {}  # fear_step lives in a regioned file: the file-region rule, not body reach
+    assert (
+        reach == {}
+    )  # fear_step lives in a connectome region: the file-region rule, not body reach
 
 
 def test_rust_self_check_judges_arms_against_the_empty_rust_baseline(monkeypatch, base):
