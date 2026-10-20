@@ -21,8 +21,8 @@ The P8 burden, one test each:
   * PER-ITEM ATTRIBUTION     -- neuter the insula and show the brain's own output moves
   * DELETION ON A NULL       -- a threshold that never moves fails here rather than being
                                 reported as a wire; a salience that never varies fails too,
-                                though the level arms show a CONSTANT salience still moves the
-                                outcome (it is the variation that is outcome-inert)
+                                though the level arms show a constant at the live mean still
+                                moves the outcome (it is the variation that is outcome-inert)
 
 Run: pytest tests/test_interoceptive_ignition.py
 """
