@@ -198,7 +198,17 @@ _EXPECTED_ROSTERS = {
         "LEGACY_TORCH_TIER",
         "LEGACY_TRAIN_TIER",
     ),
-    "runner": ("CORE", "RESEARCH", "TORCH_GATED", "NENGO_GATED", "TRAIN_GATED", "ARTIFACT_GATED"),
+    # B3 adjudicated TIMING_DEFERRED (2026-10-19): a str roster of CORE modules that only moves a
+    # module between the --defer-timing and --timing-only runs; no module's behaviour depends on it
+    "runner": (
+        "CORE",
+        "RESEARCH",
+        "TORCH_GATED",
+        "NENGO_GATED",
+        "TRAIN_GATED",
+        "ARTIFACT_GATED",
+        "TIMING_DEFERRED",
+    ),
 }
 _FACTS_MEMO = {}  # (path, size, mtime_ns, markers) -> facts; shared across instances
 
