@@ -25,6 +25,8 @@ import random
 import threading
 import time
 
+import pytest
+
 from snn_data_lake.instruments import integration_measure as IM
 
 COST_CHARS = 200_000
@@ -136,6 +138,8 @@ def test_equal_to_the_oracle_on_structured_and_edge_strings():
 # =============================================================================================
 # COST: the campaign-shaped string, bounded by a thread so the RED is 5 s and not an afternoon
 # =============================================================================================
+# wall-clock budget (COST_BUDGET_S = 5 s, measured 1.82 s cold): serial pass only
+@pytest.mark.timing
 def test_a_200k_character_sparse_string_parses_in_under_five_seconds():
     s = _sparse(random.Random(7), COST_CHARS, COST_DENSITY)
     out = {}
