@@ -11,8 +11,11 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
+import test_module_home_isolation
 
 SEED = 9900
+
+_post_test_homes = test_module_home_isolation.post_test_homes
 
 
 @contextmanager
@@ -351,9 +354,9 @@ def test_resource_receipt_refuses_an_unreconciled_population(monkeypatch):
         adapter = _bind(brain)
         ledger, units, rows, ticket, *_ = _unspent_second_batch(brain, adapter)
         # Plant the pre-fix condition: an admission that skipped reconciliation.
-        monkeypatch.setattr(type(brain), "_g9_reconcile", lambda self, pids: None, raising=False)
-        adapter.admit(units, rows, ticket)
-        monkeypatch.undo()
+        with monkeypatch.context() as patch:
+            patch.setattr(type(brain), "_g9_reconcile", lambda self, pids: None, raising=False)
+            adapter.admit(units, rows, ticket)
         assert ledger.unsettled(adapter.problem.id) == 1
         with pytest.raises(LedgerError, match="no spend row"):
             resource_receipt({"engine": brain._g9_actors[adapter.problem.id]}, "engine", ledger)
@@ -554,3 +557,9 @@ def test_sign_violating_projection_admit_refusal_is_not_an_immortal_event():
         assert brain._r2_seq == seq
         assert brain._r2_fault is None
         assert _fresh_process_fault_phase(brain, private) is None
+
+
+def test_no_g9_test_leaves_its_home_behind(_post_test_homes):
+    if not _post_test_homes.homes:
+        pytest.skip("no earlier g9 test ran before this one in this run")
+    assert set(_post_test_homes.homes) <= {_post_test_homes.module_home}, _post_test_homes.homes
