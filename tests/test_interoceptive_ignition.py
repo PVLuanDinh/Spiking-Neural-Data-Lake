@@ -433,7 +433,14 @@ def test_PREREGISTERED_the_live_signal_moves_the_outcome_more_than_its_own_contr
 
     The control arms are verified real by `_assert_control_arms_real` before the bar is
     computed, so a refutation cannot be an artefact of an injection that never reached the
-    consumer."""
+    consumer.
+
+    MEASURED 2026-10-19 (lane b3-intero, re-derived by the integrator): N=28 C=0 S=0. Both
+    controls move live_thr on 197 and 196 of the 200 ticks, yet never the outcome. Reading: at
+    this horizon the outcome depends on the insula being present (its contribution to the
+    threshold), NOT on the timing of its salience. A claim that salience timing drives the
+    ignition outcome is unsupported by this test; sensitivity to the level beyond presence is
+    untested."""
     _assert_control_arms_real(live_long, constant_long, shuffled_long)
     n = _outcome_distance(live_long[0], neutered_long[0])
     c = _outcome_distance(live_long[0], constant_long[0])
