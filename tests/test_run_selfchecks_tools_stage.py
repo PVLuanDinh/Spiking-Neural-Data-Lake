@@ -287,6 +287,29 @@ def test_in_process_exit_code_follows_cpython_for_int_subclasses(monkeypatch):
         assert rs.run_one_in_process("brain_atlas")[0] is real[e], e
 
 
+def test_in_process_run_never_clears_a_latch_outside_its_own_home(monkeypatch, tmp_path):
+    # Opus final M1. CORE/TORCH patched empty, so nothing can write a latch: whatever the pre-clear
+    # removes is the pre-clear's own doing. RED on a runner that pre-clears a pinned/live path
+    # (latch = ~/.snn_data_lake/estop.latch): the planted latch is gone.
+    from snn_data_lake.brainstem.so101_arm import ESTOP_LATCH
+
+    _, live = _fake_user(tmp_path, monkeypatch)
+    planted = live / ESTOP_LATCH
+    mine = tmp_path / "runner home"
+    mine.mkdir()
+    stale = mine / ESTOP_LATCH
+    stale.write_text("stale")
+    monkeypatch.setattr(rs, "_HOME", str(mine))
+    monkeypatch.setattr(rs, "CORE", [])
+    monkeypatch.setattr(rs, "TORCH_GATED", [])
+    lines = []
+    assert rs.run_all_in_process(emit=lines.append)
+    assert planted.exists() and planted.read_text() == "planted", lines
+    # positive control: the sweep is live (a vacuous run would leave BOTH latches alone)
+    assert not stale.exists(), lines
+    assert any("from a previous run cleared" in line for line in lines), lines
+
+
 def _rmtree_leaves_one(monkeypatch):
     """shutil.rmtree that really removes `path`, then reports one undeletable leftover via onexc."""
     import shutil
