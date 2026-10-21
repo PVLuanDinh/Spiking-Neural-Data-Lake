@@ -24,11 +24,12 @@ The P8 burden, one test each:
                                 reported as a wire; a salience that never varies fails too
 
 PERCEPTION TIER IS AN INPUT (2026-10-20). engine/brain.py loads the gitignored encoders
-models/eprop_nmnist.pt and models/eprop_shd.pt by CWD-RELATIVE default path, so a checkout without
-them (every lane worktree) runs a different brain. The outcome arms pin the production tier by
+models/eprop_nmnist.pt and models/eprop_shd.pt; a checkout without them (every lane worktree) runs a
+different brain. Until fd69bcb1 the default path was CWD-RELATIVE as well (ENC: it now resolves
+against the repo root; the checkout input remains). The outcome arms pin the production tier by
 absolute path and skip, named, where the encoders are absent; each row records the tier it ran on.
 The 40-tick tests (the `live`/`neutered` fixtures, the exhausted-replay test) run on whatever tier
-the cwd gives; none of their claims depends on it.
+the checkout gives; none of their claims depends on it.
 
 Run: pytest tests/test_interoceptive_ignition.py
 """
