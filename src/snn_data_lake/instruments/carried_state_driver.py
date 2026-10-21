@@ -144,7 +144,8 @@ def _inside(path, root):
 
 def preflight(out, *, cwd=None, root=None, env=None, assets=None):
     """What forbids starting a campaign, as a list of reasons (empty: clear). The working directory must be
-    the repository root (brain.py reads models/ relative to it); OUT must lie outside it (a file written
+    the repository root (the campaigns' recorded launch condition; brain.py read models/ relative to the cwd
+    until ENC fd69bcb1 -- whether this refusal is still needed is an open question); OUT must lie outside it (a file written
     inside would dirty the head); no asset or device override may be set; the four assets must be present
     and hash. `cwd`, `root`, `env` and `assets` stand in for the real ones in a test."""
     root = repo_root() if root is None else Path(root)
