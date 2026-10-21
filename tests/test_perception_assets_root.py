@@ -53,3 +53,12 @@ def test_an_env_override_still_governs(tmp_path, monkeypatch, encoders_present):
     monkeypatch.setenv("SNN_EPROP_CKPT", str(tmp_path / "absent.pt"))
     tier, _audio = _tier_from(tmp_path, monkeypatch)
     assert tier == "stdlib"
+
+
+def test_an_empty_override_is_still_an_override(tmp_path, monkeypatch, encoders_present):
+    """An empty SNN_EPROP_CKPT means "no checkpoint", as before the fix (memory_diagnostic and
+    carried_state_driver read set-but-empty the same way). RED on fd69bcb1's `or`, which fell
+    back to the repo-root default and loaded the encoder."""
+    monkeypatch.setenv("SNN_EPROP_CKPT", "")
+    tier, _audio = _tier_from(tmp_path, monkeypatch)
+    assert tier == "stdlib"

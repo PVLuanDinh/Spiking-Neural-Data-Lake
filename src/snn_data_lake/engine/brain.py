@@ -202,7 +202,9 @@ def _model_asset(env, rel):
 
     from snn_data_lake.engine.wiring_manifest import REPO
 
-    return os.environ.get(env) or str(REPO / rel)
+    # `is not None`, not `or`: an empty override stays an override (no asset)
+    v = os.environ.get(env)
+    return v if v is not None else str(REPO / rel)
 
 
 def _lvl(mod, default=0.0):
