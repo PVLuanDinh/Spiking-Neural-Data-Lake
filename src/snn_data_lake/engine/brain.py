@@ -191,6 +191,20 @@ def _mean(xs):
     return sum(xs) / len(xs) if xs else 0.0
 
 
+def _model_asset(env, rel):
+    """Path of a gitignored model asset: the env override exactly as given, else `rel` under the
+    REPOSITORY ROOT. The default used to resolve against the CWD, so a process started anywhere
+    else (every in-process self-check, every asset-less lane cwd) silently built the no-encoder
+    brain -- measured 2026-10-20, specs/022 evidence/encoder-path-root.md. The root is the checkout
+    imported, so an asset-less worktree still builds the no-encoder brain (obs 2534)."""
+    # distinct-from: src/snn_data_lake/infra/self_mod_harness.py -- _rel_to_repo turns a path INTO a repo-relative whitelist key (the inverse direction); this resolves an env-or-default asset to an absolute path, reusing engine.wiring_manifest.REPO rather than minting another root
+    import os
+
+    from snn_data_lake.engine.wiring_manifest import REPO
+
+    return os.environ.get(env) or str(REPO / rel)
+
+
 def _lvl(mod, default=0.0):
     """Read a diffuse modulator's .level, tolerating a module that failed to construct.
 
@@ -713,7 +727,7 @@ class Brain:
             # SHARED setup above (os, the device probe, _load_enc): if that fails neither tier can
             # load, and rolling back both is then correct rather than collateral.
             try:
-                _eprop = os.environ.get("SNN_EPROP_CKPT", "models/eprop_nmnist.pt")
+                _eprop = _model_asset("SNN_EPROP_CKPT", "models/eprop_nmnist.pt")
                 # The ONE vision perception encoder. The surrogate-BPTT fallback that used to sit in
                 # an `else:` here was RETIRED 2026-08-13 (specs/013): two encoders selected by
                 # checkpoint existence is the "both paths behind a flag" shape P2 calls additive with
@@ -730,7 +744,7 @@ class Brain:
                 ):  # load the REAL event-frame pack (numpy only at runtime)
                     import numpy as _np
 
-                    _pack = os.environ.get("SNN_PERCEPTION_PACK", "models/nmnist_pack.npz")
+                    _pack = _model_asset("SNN_PERCEPTION_PACK", "models/nmnist_pack.npz")
                     if os.path.exists(_pack):
                         _d = _np.load(_pack)
                         self._real_frames, self._real_labels = _d["frames"], _d["labels"]
@@ -749,7 +763,7 @@ class Brain:
                 self._perceiving_real = False
 
             try:
-                _audio = os.environ.get("SNN_EPROP_AUDIO_CKPT", "models/eprop_shd.pt")
+                _audio = _model_asset("SNN_EPROP_AUDIO_CKPT", "models/eprop_shd.pt")
                 if os.path.exists(
                     _audio
                 ):  # AUDITORY tier (brain-native): e-prop SHD encoder, parallel to vision
@@ -758,7 +772,7 @@ class Brain:
                     self._audio_enc = _load_enc(EpropAudioEncoder.load, _audio)
                     import numpy as _np2
 
-                    _apack = os.environ.get("SNN_SHD_PACK", "models/shd_pack.npz")
+                    _apack = _model_asset("SNN_SHD_PACK", "models/shd_pack.npz")
                     if os.path.exists(_apack):
                         _ad = _np2.load(_apack)
                         self._audio_frames, self._audio_labels = _ad["frames"], _ad["labels"]
@@ -1193,7 +1207,7 @@ class Brain:
         try:
             import os
 
-            _pc_ckpt = os.environ.get("SNN_PC_CKPT", "models/pc_cortex_nmnist.json")
+            _pc_ckpt = _model_asset("SNN_PC_CKPT", "models/pc_cortex_nmnist.json")
             if os.path.exists(_pc_ckpt):
                 from snn_data_lake.sensorimotor.pc_cortex_serve import PcCortexServe
 
