@@ -10,6 +10,8 @@ Skips BY NAME where the encoders are absent from this checkout's models/ (CI, as
 the fix removes the cwd input, not the checkout input.
 """
 
+from pathlib import Path
+
 import pytest
 
 from snn_data_lake.engine.wiring_manifest import REPO
@@ -31,27 +33,39 @@ def _tier_from(cwd, monkeypatch):
     monkeypatch.chdir(cwd)
     b = make_brain(seed=0, persist=False)
     try:
-        return b._perception_tier, b._audio_enc is not None
+        # (vision tier, audio encoder, vision PACK rows, audio PACK rows): all four asset sites
+        return (
+            b._perception_tier,
+            b._audio_enc is not None,
+            bool(b._perceiving_real),
+            bool(b._perceiving_audio),
+        )
     finally:
         b.close()
+
+
+def test_the_root_is_this_checkout():
+    """The package under test and the models it resolves come from the SAME tree; a test run from
+    a worktree that imported another checkout's package would otherwise pass on its assets."""
+    assert REPO == Path(__file__).resolve().parents[1]
 
 
 def test_a_cwd_without_models_still_builds_the_production_brain(
     tmp_path, monkeypatch, encoders_present
 ):
     """THE RED: on the parent this tmp cwd has no models/, so the defaults missed and the tier fell
-    to stdlib with no audio encoder."""
+    to stdlib with no audio encoder and no pack rows."""
     for var in _ASSET_VARS:
         monkeypatch.delenv(var, raising=False)
     assert not (tmp_path / "models").exists()
-    assert _tier_from(tmp_path, monkeypatch) == ("eprop-snn", True)
+    assert _tier_from(tmp_path, monkeypatch) == ("eprop-snn", True, True, True)
 
 
 def test_an_env_override_still_governs(tmp_path, monkeypatch, encoders_present):
     """CONTROL, not the method: an override is used exactly as given -- a nonexistent checkpoint
     gives the stdlib vision tier, so the positive assertion above is not vacuous."""
     monkeypatch.setenv("SNN_EPROP_CKPT", str(tmp_path / "absent.pt"))
-    tier, _audio = _tier_from(tmp_path, monkeypatch)
+    tier, *_ = _tier_from(tmp_path, monkeypatch)
     assert tier == "stdlib"
 
 
@@ -60,5 +74,5 @@ def test_an_empty_override_is_still_an_override(tmp_path, monkeypatch, encoders_
     carried_state_driver read set-but-empty the same way). RED on fd69bcb1's `or`, which fell
     back to the repo-root default and loaded the encoder."""
     monkeypatch.setenv("SNN_EPROP_CKPT", "")
-    tier, _audio = _tier_from(tmp_path, monkeypatch)
+    tier, *_ = _tier_from(tmp_path, monkeypatch)
     assert tier == "stdlib"
