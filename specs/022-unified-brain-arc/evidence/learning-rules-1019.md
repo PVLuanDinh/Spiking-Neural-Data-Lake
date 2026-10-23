@@ -12,20 +12,20 @@ machine, and are named here as provenance only, not as a reproduction path in th
 - E1: `D:\AI-project\lanes\e1-rpe-charge-1019-work\` (`REPORT.md`, `PREREG.md` with addenda 1-6, `REPORT-TABLES.md`,
   `results\*.json`, and the lane's own harness scripts); board #4245 (lane result), #4246 (integrator re-derivation).
 
-Two corrections carried from the brief into every place below: the **perception-tier caveat** (E1 measured the
-no-encoder brain) and the `_plan_w` count (**6 of 8 seeds**, not 7 of 8; seed 1 is an exact tie).
+Two corrections carried from the brief: the **perception-tier caveat** (E1 measured the no-encoder brain; every E1
+verdict below is tagged "no-encoder tier") and the `_plan_w` count (**6 of 8 seeds**, not 7 of 8; seed 1 is an exact tie).
 
 ## 1. Bottom line
 
 1. **Do not add learning rules.** All four tiers of the owner's plasticity table (2026-10-19: STDP + WTA, e-prop,
    three-factor, homeostatic + structural) already exist in some form. The gaps are CHARGE (live rules with no measured
-   effect on their objective) and the STREAM (inputs with no first-order succession, W2), not a missing rule. Adding
+   effect on their objective; for the two RPE rules, measured on the no-encoder tier) and the STREAM (inputs with no first-order succession, W2), not a missing rule. Adding
    rules now adds P3 dormancy and P2 duplicates.
 2. **E1 measured the two live three-factor rules** (valid run: 8 seeds, N = 600 ticks, repeat floor 0 flips, positive
    control 379 / 439 flips):
-   - `ValenceLearner.learn` charges behaviour, NOT its objective. E-V1 t -1.02 / +1.98; E-V2 (same-stream replay)
+   - `ValenceLearner.learn` charges behaviour, NOT its objective (no-encoder tier). E-V1 t -1.02 / +1.98; E-V2 (same-stream replay)
      t +0.54 / +1.66; the zero-weight frozen predictor beat the learner on 6 of 8 seeds in the replay.
-   - The `AutonomousArm._plan_w` update charges behaviour (E-P1, 7 of 8 seeds above the floor), but neutering it RAISED
+   - The `AutonomousArm._plan_w` update (no-encoder tier) charges behaviour (E-P1, 7 of 8 seeds above the floor), but neutering it RAISED
      held-out reward on 6 of 8 seeds (seed 1 an exact tie), t(pfrozen - real) = +2.82, past the mirrored bar. That is
      a HARM SIGNAL, not a pre-registered harm endpoint: replicate (E1b) before any disposition.
    - **TIER CAVEAT (found by the SNDL protocol session 2026-10-20, confirmed by file check):** E1 ran with the working
@@ -56,12 +56,16 @@ no-encoder brain) and the `_plan_w` count (**6 of 8 seeds**, not 7 of 8; seed 1 
    worktree, or `SNN_EPROP_CKPT` / `SNN_EPROP_AUDIO_CKPT` exported as absolute paths) and the no-encoder tier E1 used;
    the harness prints `perception_tier` beside every result and refuses a run whose tier differs from the one requested.
    A harm that replicates on both tiers is the finding; one that appears on a single tier is a tier finding. Needs
-   `resource:timing`. About 35 min of brain runs (40 runs at about 45 s each).
-   *Integrator note, 2026-10-23, under the P8 null-scale amendment landing in this arc:* a harm past a pre-registered
-   bar is deleted without a scale re-test (amendment item 4), so E1b's `_plan_w` harm endpoint, if it replicates, is a
-   harm disposition, not a null; ValenceLearner's objective null, if it replicates, owes a NULL-RECORD and the one 10x
-   re-test (axis = ticks for a learning rule) before any deletion. The brief's earlier wording ("a P8 deletion
-   candidate") predates the amendment.
+   `resource:timing`. About 35 min of brain runs (40 runs at about 45 s each) per tier. E1's harness is lane scripts,
+   untracked; E1b owes its harness committed with its pre-registration before it runs.
+   *Integrator note, 2026-10-23, under the P8 null-scale amendment (landed in the same arc as this file):* a harm past a
+   pre-registered bar is deleted without a scale re-test (amendment item 4), so E1b's `_plan_w` harm endpoint, if it
+   replicates, is a harm disposition, not a null. ValenceLearner's objective, if it fails again, is a null only if E1b
+   is powered for the claimed effect; an underpowered failure is INCONCLUSIVE and licenses nothing (item 4). A powered
+   null owes a NULL-RECORD and the one 10x re-test (axis = ticks for a learning rule) before any deletion. Neither rule
+   is an owner-drawn P4d part (those are the two networks, the reservoir and the return path), so the no-deletion clause
+   for owner-drawn parts does not apply to them. The brief's earlier wording ("a P8 deletion candidate") predates the
+   amendment.
 2. **Grower merge** (research-1016 `design/DESIGN.md` T0-T13; owner #3403 / #3423 / O-D). It is what makes grown units
    fire.
 3. **E2:** `OnlineReadout` charge on a brain whose grown units fire (blocked until 2; a re-run today returns 0.0).
@@ -79,7 +83,7 @@ no-encoder brain) and the `_plan_w` count (**6 of 8 seeds**, not 7 of 8; seed 1 
 |---|---|---|---|
 | 1. Primary representation | STDP + WTA | Do not add to the brain network now; park Q-T1. No unsupervised rule changes tissue weights on the live tick. The sensory front-end is the FROZEN offline e-prop encoders (`EpropEncoder.load`, only when the perception tier is armed); on top sit ART prototypes (`growth.growing_learner::GrowingLearner.observe`, not a spiking mechanism), NG-SNN residual admission and predictive coding (`readout.predictive_coding::PredictiveCodingNetwork.learn_step`, every wake tick). | STDP + WTA beside ART is a P2 adopt-or-merge event that needs a benchmark that exists; none does, so build the benchmark first (E5). Whether the representation layer MUST be spiking is an owner decision, not a benchmark. |
 | 2. Credit assignment | e-prop | Use it only where a recurrent network needs multi-step credit. The readout keeps the online delta rule (`readout.online_readout::OnlineReadout.learn`, LOCAL). Grown taught units: `growth.growth_loop::trace_train` (LOCAL, fixed-random broadcast) is the merged grower's rule, not live today. Symmetric e-prop is forbidden (weight transport). | Delta: +0.143 live accuracy, t 4.13 (L1c), but charge 0.0 on the deployed brain (one silent unit, `l-exit.md`, not re-measured). e-prop proper is APPROXIMATES_GRADIENT and owes cosine > 0.5. |
-| 3. Neuromodulation | R-STDP / dopaminergic e-prop | Already built and LIVE; what is missing is its charge. `plasticity.valence_stdp::ValenceLearner.learn` and the `_plan_w` RPE update run every arm tick; R-STDP (`readout.interaction_learning::SpikingInteractionLearner`) runs on chat turns. | E1 (section 6) measured the first two. |
+| 3. Neuromodulation | R-STDP / dopaminergic e-prop | Already built and LIVE; what is missing is its charge. `plasticity.valence_stdp::ValenceLearner.learn` and the `_plan_w` RPE update run every arm tick; R-STDP (`readout.interaction_learning::SpikingInteractionLearner`) runs on chat turns. | E1 (section 7) measured the first two, on the no-encoder tier. |
 | 4. Stability and capacity | homeostatic scaling + structural plasticity | Already LIVE in parts; open items are charge and sleep. Scaling + IP + STP + Benna-Fusi (`plasticity.homeostatic_plasticity_stack` via `PlasticityRuleStack`, chat turns); four sleep pruners; `sleep.structural_rewiring::StructuralRewiring.rewire` LIVE but INERT (turnover 0 on 8/8 seeds). | G6(a)'s pruner neuter-A/B returned no result. The literature says slow scaling alone is too slow; the fast partners (IP, iSTDP) are already in the stack. |
 
 **Why not the full four-tier stack as drawn.** The literature does say several plasticity forms must act together
@@ -196,14 +200,14 @@ Per-seed values (lower MAE is better; reward is mean r over H):
 Seed 1 is degenerate on reward (mean r -0.99 in every arm; `_plan_w` minimum 0.0033) and is the outlier in E-V1 / E-V2.
 `_plan_w` moved well off its 0.1 initial value on every seed (max |deviation| 0.165-0.277).
 
-**Pre-registered dispositions.** ValenceLearner: charges behaviour, not its objective. `_plan_w`: charges behaviour,
-objective unresolved. Disclosed without a pre-registered branch: neutering `_plan_w` raised held-out reward on 6 of 8
+**Pre-registered dispositions (all on the no-encoder tier).** ValenceLearner: charges behaviour, not its objective.
+`_plan_w`: charges behaviour, objective unresolved. Disclosed without a pre-registered branch: neutering `_plan_w` raised held-out reward on 6 of 8
 seeds (seed 1 tied), t +2.82 for pfrozen - real; in the replay the zero-weight frozen predictor beat the learning
 ValenceLearner on 6 of 8 seeds. Both are harm SIGNALS, not confirmatory findings: E1b, pre-registered as a harm test on
 both perception tiers, is owed before either drives a change. Consequence: E3 and E6 assumed a tier-3 rule with a
-charged objective; neither live RPE rule has one today.
+charged objective; neither live RPE rule has one on the no-encoder tier, and the production tier is unmeasured.
 
-**Scale of these results (P8 null-scale amendment item 1, which lands in this arc).** Every arm acted on the arm's own
+**Scale of these results (P8 null-scale amendment item 1, landed 2026-10-23 in the same arc as this file).** Every arm acted on the arm's own
 single `ValenceLearner` instance and its `_plan_w` vector (units: n/a for a rule's objective); 600 ticks per run, 300
 held out; 8 seeds. Power: for E-P2 the SD of the paired difference was 0.0695 against a mean reward of 0.1311, so a
 10% effect needs about 174 seeds (one-sided .05, power .8); E-P2 is therefore UNDERPOWERED for a 10% effect and is
