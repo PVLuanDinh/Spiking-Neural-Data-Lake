@@ -679,3 +679,33 @@ implemented on main.
   none exists today.
 
 **What A6 read:** nothing from organoid data. Its facts are the board items cited above.
+
+## Amendment A7, 2026-10-23 (PROCESS ONLY: the owner's ruling on A6.4's first decision; append-only)
+
+**Owner decision, verbatim: "2".** It answered the integrator's question about a readable FAIL with no 10x source
+(A4.9; A6.3 item 6):
+> "1. **Hold (recommended):** no census code goes into `src/` and Stage 1 reads no organoid data until a 10x source
+> exists. 2. **Hold and build the source:** a Stage 0b that spike-sorts DANDI 001872, or uses your lab's recordings.
+> 3. **Run now:** a FAIL turns every later SNDL battery red. Which one: 1, 2 or 3?"
+
+**A7.1 The real-data Stage 1 run HOLDS.** No census code enters `src/`, and no Stage 1 function reads an organoid
+byte, until a re-test source that meets A4.9 is ingested by a pushed Stage 0 mechanism. A4.9's bar: at least 40
+distinct held-out organoid recordings, or 10x the held-out recording-seconds, with the same endpoint, bar and
+control. Pinning the source first means a readable FAIL can be re-tested at once, so it never leaves a PENDING record
+that reds later batteries.
+
+**A7.2 The synthetic work continues unchanged.** A6.3 items 1-5 stand: one independently frozen acceptance battery,
+one candidate, one run, synthetic only (lanes og1-acc and og1-census5, thread OG1-STAGE1).
+
+**A7.3 Stage 0b is PLANNED, not built.** It is a mechanism that produces the 10x source. Two candidate routes:
+- **(a) Spike-sorting DANDI 001872's raw ecephys.** This is a new Stage 0 mechanism. It owes its own pre-registration,
+  its own refusal gates, and a sorter positive control (ground-truth recordings with a pinned accuracy bar), frozen
+  before any 001872 byte beyond the DANDI metadata API is read.
+- **(b) The lab's recordings,** under the owner-interprets rule (Claude never opens raw lab files). How a census could
+  read them under that rule is an owner question, asked with the Stage 0b plan.
+The Stage 0b pre-registration is a separate dated amendment. Research for it (sources, licences, sizes, sorter,
+validation) reads public metadata and documentation only.
+
+**A7.4 Still open:** whether an ENVELOPE outcome may be typed as a non-null result (A6.4, second item).
+
+**What A7 read:** nothing from organoid data.
