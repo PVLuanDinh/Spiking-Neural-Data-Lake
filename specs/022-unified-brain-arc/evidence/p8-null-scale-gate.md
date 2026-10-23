@@ -137,3 +137,35 @@ Lanes build on branches cut from `claude/p8-nullscale-1023`; the integrator comp
    - Disclosed, not fixed: one NULL-RECORD covers every statement in its section, and a section runs to the next heading of
      the same or higher level (spec-literal, printed in the gate's LIMIT line); the battery's `run_selfchecks` runs the gate
      bare, while `--self-check` runs in the lint CI job (C minor-4, the policy_manifest precedent).
+6. 2026-10-23, GATE FOLD COUNTS (lane `p8-gatefold`, commit "null_scale_gate panel fold F1-F10", task P8-GATEFOLD scored
+   total=1) plus one integrator fold, before the re-panel.
+   - **Final `--assert` on the folded head:** files scanned 128; statements 34; grandfathered 33; NULL-RECORDs 14 (all in
+     the triage list); RETEST-RECORDs 0; R-* reds 0; three STRUCTURAL arguments printed; rc 0. These replace addendum 4's
+     35 / 34 / 13, which predate the folds.
+   - **Section 0's regex, as amended (F10):** `(delet(ed|ion|e|ing|es)|retir(ed|e|ing|es)|remov(ed|e|es|ing|al)) on
+     (its|a|the|their) (own )?null`, case-insensitive. It found no new statement in the tree (census unchanged by F10).
+   - **Section 1's R-UNRECORDED, as amended (F1 + the integrator fold):** the regex runs over each prose paragraph
+     (consecutive non-blank lines that are not heading or fence lines, joined by single spaces, located at its first line),
+     and over each heading line and each fenced line on its own. The integrator fold restores the last half: F1 alone
+     dropped headings and fenced lines, so `t069-cerebellar-rule.md:109` (a heading that records a deletion) left the
+     census; four tests were red on F1 and are green on the fold (`lanes/p8-nullscale-1023-row/R1-heading.red.txt`).
+     Known limit, disclosed: a numbered or bulleted list with no blank lines is ONE paragraph, so editing any item of such a
+     list rewords its key (R-UNRECORDED plus R-STALE-GRANDFATHER until the key is regenerated in the same commit); a heading
+     or fenced statement wrapped across lines is still missed, as before the join.
+   - **New statement found by the paragraph census:** one, `trajectory-audit-2026-09-01.md:558-559` (a plan item wrapped
+     across two lines, keyed on its list paragraph at :454); triage block 36, class restatement. Census arithmetic: the
+     line census's 35 statements, minus two pairs that now share one paragraph (`l-exit.md` blocks 11+12, `s5-paging-null.md`
+     blocks 26+27), plus that one = 34. The triage list keeps line keys; `check_triage.py` (line census) stays OK at 35
+     statements, 36 blocks.
+   - **GRANDFATHERED diff (e6e10b0c -> folded head):** 34 -> 33 keys; kept 4 (`l1b-synaptic-online.md`@8a7ac8989836,
+     `s3-neuron-pager.md`@6ef10f902e5c, `s4-lake-compactor.md`@0cc96a9e8077, `t069-cerebellar-rule.md`@948a3b350b92); 30
+     removed and 29 added, every one a re-key of the same statement onto its joined paragraph (full list in
+     `lanes/p8-gatefold-1023-row/logs/F1.keydiff.txt` plus `lanes/p8-nullscale-1023-row/R1-regen.txt`).
+   - **Other semantics the folds changed (each with red-first tests and a killed mutant, `lanes/p8-gatefold-1023-row/`):**
+     R-EXPIRED dates an entry from the first commit that added its record (`git log -S`), counts closing records from that
+     commit INCLUSIVE, treats a closing record as a non-merge commit that modifies `tools/policy_certification.json`, and
+     ignores merge commits (F2, F4, F8); R-EXEMPT requires the named path to hold a `PENDING since` record (F3); a new code
+     R-RETEST-CHARGED reds a deletion whose re-test charged (F5); setext headings bound sections (F6);
+     `NOT-NEEDED: harm` is allowed in every in-scope file (F7).
+   - **Panel MINORs still open, disclosed for the closing record:** false reds on a BOM, on bold or numbered record lines, on
+     a `~~~` fence and on backslash paths; untracked files in the scan (red team m2, m3).

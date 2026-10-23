@@ -8,6 +8,8 @@ Spec: `p8-null-scale-gate.md` sections 0-4 and addenda 1-3 (`unknown` allowed fo
 
 Regex of spec section 0 over `specs/**/evidence/*.md` at base 89f3af14 plus the pre-registration commits: **35 statements** (the spec expected 31; the difference is disclosed in REPORT.md). The pre-registration's own line (`p8-null-scale-gate.md:4`) is counted because the integrator's checker counts it, and is triaged as a restatement. Key = `<repo path>@<first 12 hex of sha256(stripped line)>`.
 
+Integrator addendum, 2026-10-23 (after gate fold F1): the gate now reads paragraphs (headings and fenced lines kept one each), so its census is 34 statements; block 36 is the one statement it sees that the line census did not (wrapped across two lines). Blocks 1-35 keep their line keys; the gate's keys for multi-line paragraphs differ from them (pre-registration addendum 6 lists the change).
+
 ## Today's capacity per axis (the reference for 'more than 10x below')
 
 | axis | capacity today | source |
@@ -169,6 +171,10 @@ evidence: Audit prose praising the deletion discipline (trajectory-audit-2026-09
 ### 35. specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md:689  key=specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md@3c47b4420774
 class: restatement
 evidence: Audit finding quoting the policy for the spiking half of gf.solve_series (trajectory-audit-2026-09-01.md:689); it proposes, and no file in the evidence tree records the removal.
+
+### 36. specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md:454  key=specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md@f1104c223cfa
+class: restatement
+evidence: Plan item 5 of the audit's numbered list (trajectory-audit-2026-09-01.md:558-559, wrapped across two lines, so only the gate's paragraph census after fold F1 sees it; the key is the whole list paragraph starting at :454) proposes a fix to the answering path and cites the policy; it records no removal. Added by the integrator, 2026-10-23.
 
 ## Untracked sources (memory ledger `project-snn-refuted-and-negatives.md`)
 
