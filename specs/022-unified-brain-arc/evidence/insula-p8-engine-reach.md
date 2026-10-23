@@ -107,3 +107,86 @@ committed before any Stage 1 arm.
 - E4's probe set is read, never taught. A learner that answers identically after different tick histories is
   reach-null on E4 for that probe set only; the state digest is the wider check.
 - Unmeasured: cpu; seeds beyond 4; runs longer than 1000 ticks; chat-driven runs.
+
+## 4. Results (2026-10-23)
+
+Sections 0-3 above are unchanged (frozen at 37384760). Lane `insula-reach`, worktree `lanes/insula-reach-1023`, branch
+`claude/insula-reach-1023` off 37384760. Harness, raw JSON, logs and the full report are in the row folder
+`D:\AI-project\lanes\insula-reach-1023-row` (`arm.py`, `driver.py`, `results/<seed>-<arm>.json`, `table.json`, `REPORT.md`).
+Every arm: T = 1000 ticks, one arm per subprocess, OMP_NUM_THREADS=4, `make_brain(seed, persist=False)` under
+`throwaway_home()`, tier ("eprop-snn", True, "cuda") on all 35 arms (all arms of a seed share the device).
+
+**Reading: REACHES** (applied literally). Deciding columns E1 (`map_position`) and E2 (lake records) differ from live for
+neutered, const and shuf on at least one seed. E3 and E4 differ for no arm on any seed. Stage 1 is owed against E1 and E2.
+The static prior (REACH-NULL on E1-E3) is contradicted on E1 and E2 and holds on E3; the prior's unsure E4 came out null.
+
+### Controls (run before the census)
+1. **Repeat pair: PASS.** live2 equals live on E1, E2, E3, E4 and every diagnostic, on all 5 seeds.
+2. **Positive control per deciding column, seed 0, plant on tick 500, each against live:** all four register.
+   E1: the least-preferred action's score in `Autonomous._route_signals` forced +100 (the column's own input); 370 ticks of
+   `map_position` differ, first 502. E2: one extra record through `KnowledgeLog.append`; 6 of 10 checkpoints differ (500..1000).
+   E3: one birth through `Ledger.record_units` with `make_admission` labels; `e3` count differs on 501 ticks (and E2 on 6
+   checkpoints, as expected, since the birth row is a lake record). E4: one `learn_turn(..., feedback=...)`; the learner digest
+   differs at 6 checkpoints and the tick-1000 answers differ. **No column is unplugged.**
+   *Disclosed:* my first E1 plant fired at tick 500 only, and the arm steps on about 493 of 1000 ticks, so tick 500 had no arm
+   step and the plant never fired (0 differences). It was a harness defect, not an unplugged column. The plant now fires on the
+   first arm decision at or after tick 500 (it fired on tick 502). Only the ctl-e1 path of `arm.py` changed; live and live2 ran
+   on the earlier file and contain no plant code path.
+3. **Tier gate red:** `SNN_EPROP_CKPT` set to a nonexistent absolute path gives tier ("stdlib", True, "cuda"), REFUSED, rc 3
+   (`results/tier-gate-red.log`).
+
+### Table: which deciding columns differ from live (k of 5 seeds; first and last differing tick or checkpoint)
+| arm | column | k of 5 | per seed |
+|---|---|---|---|
+| neutered | E1 | 2 of 5 [1, 2] | seed 1: 527 ticks, first 474, last 1000; seed 2: 944 ticks, first 57, last 1000 |
+| neutered | E2 | 2 of 5 [1, 2] | seed 1: 6 reads, first 500, last 1000; seed 2: 10 reads, first 100, last 1000 |
+| neutered | E3 | 0 of 5  | - |
+| neutered | E4 | 0 of 5  | - |
+| const | E1 | 2 of 5 [3, 4] | seed 3: 378 ticks, first 623, last 1000; seed 4: 485 ticks, first 516, last 1000 |
+| const | E2 | 2 of 5 [3, 4] | seed 3: 4 reads, first 700, last 1000; seed 4: 5 reads, first 600, last 1000 |
+| const | E3 | 0 of 5  | - |
+| const | E4 | 0 of 5  | - |
+| shuf | E1 | 1 of 5 [4] | seed 4: 485 ticks, first 516, last 1000 |
+| shuf | E2 | 1 of 5 [4] | seed 4: 5 reads, first 600, last 1000 |
+| shuf | E3 | 0 of 5  | - |
+| shuf | E4 | 0 of 5  | - |
+| forced | E1 | 3 of 5 [1, 3, 4] | seed 1: 305 ticks, first 696, last 1000; seed 3: 379 ticks, first 622, last 1000; seed 4: 485 ticks, first 516, last 1000 |
+| forced | E2 | 3 of 5 [1, 3, 4] | seed 1: 4 reads, first 700, last 1000; seed 3: 4 reads, first 700, last 1000; seed 4: 5 reads, first 600, last 1000 |
+| forced | E3 | 0 of 5  | - |
+| forced | E4 | 0 of 5  | - |
+
+E1 means `map_position`: `arm_stopped` differs on 0 ticks in every arm. Every E1 difference that starts persists to tick 1000 (last =
+1000 in all 8 cells), i.e. a divergence that does not return, not a startup transient. E2 differences are all `0a` (fact-type)
+records. In all 8 cells the first differing E2 checkpoint is at or after the first differing E1 tick, so E2 never differs on a seed
+and arm where E1 does not; the data do not show the path from one to the other. E4 "reads" include the tick-1000 `route_text`
+answers (a 32-presentation read of the G2 family (i) validation probe texts for `i.S0C0`, seed 0, read only).
+
+By seed, the union of neutered, const and shuf reaches E1 and E2 on seeds 1, 2, 3, 4 (4 of 5) and neither on seed 0.
+
+### Forced-winner (diagnostic, reported whatever the reading)
+Session call, as the brief fixed it: on every ignition the reentrant winner is replaced by ONE fixed coalition, the first
+coalition name sorted by `str()` among the names submitted to the workspace in live that is not live's most frequent winner.
+The pool in live on every seed was [0..9, novel, self]; live's most frequent winner was `self` on every seed; the forced name was
+the digit coalition `0` on every seed. Implementation: the workspace's `_simulate` return is patched in the subprocess so
+the fixed coalition takes the sustained-firing max on every tick that ignited (490-498 ticks per seed); no `src/` edit.
+Forced-winner reaches E1 and E2 on seeds 1, 3, 4 and neither on seeds 0 and 2; E3 and E4 on none.
+Stated per the rule: it reaches E1 and E2, so a winner change CAN reach the engine's decision and the lake. It does NOT bound the
+insula: on seed 2 neutered reaches E1 at tick 57 and forced reaches nothing, and on seed 3 const reaches where neutered does not.
+Forced keeps the ignition threshold path unchanged while neutering changes it (`live_thr` differs on 995+ of 1000 ticks in every
+insula arm), so the insula arms are not a subset of what a winner change does.
+
+### What surprised me
+- The insula-removed arm reaches E1 within 57 ticks on seed 2 while the winner-only forced arm does not reach on that seed at all.
+- E3 and E4 are structurally constant, not merely unmoved by the insula: a default 1000-tick brain writes no birth row in any
+  arm (max births 0) and its learner digest is identical at all ten checkpoints in every arm, including live. Their positive
+  controls register, so the null is real for this schedule, but they could not have registered any insula effect on it.
+- The reentrant workspace and the insula observe on about 493 of 1000 ticks, so half the ticks carry no insula input.
+- The tick-1000 `route_text` answers differ across seeds (the learner is seed-specific) but not across arms of one seed.
+
+### Scope, unmeasured, and what REACHES does not say
+Differences are exact (determinism makes any difference causal under the pre-registered rule). A difference in `map_position` or in
+fact-record bytes is reach, not function: this census does not say the insula's charge helps or harms the engine. cuda only; no chat,
+no teaching; seeds 0-4; 1000 ticks (section 3 disclosures stand). The E1 read is the arm's `map_position` from `state()`; the
+decision-argmax inside the arm is not recorded separately. The E3 read is the immortal `unit`/`born` rows in the throwaway lake
+(the G9 `_g9_birth_records` read), so growth that leaves no such row is not seen. The raw JSON is in the row folder for the lead's
+own re-derivation. Stage 1 is owed against E1 and E2 and is not designed here.
