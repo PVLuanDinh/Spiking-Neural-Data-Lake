@@ -97,6 +97,7 @@ GRANDFATHERED: frozenset[tuple[str, str]] = frozenset(
         ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "71dae1592a93"),
         ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "a9a3aa842cde"),
         ("specs/022-unified-brain-arc/evidence/sc-012a-width.md", "114c3fddb61a"),
+        ("specs/022-unified-brain-arc/evidence/t069-cerebellar-rule.md", "948a3b350b92"),
         ("specs/022-unified-brain-arc/evidence/trainer-retirement.md", "8361c2027d5d"),
         ("specs/022-unified-brain-arc/evidence/trainer-retirement.md", "7c121e85fd83"),
         ("specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md", "58d3a54f653f"),
@@ -450,16 +451,21 @@ def _scan(root: Path) -> _Scan:
 
 def _paragraphs(lines: list[Line]) -> list[Line]:
     """Each paragraph (consecutive non-blank lines that are not headings or fence lines) joined with single
-    spaces, as one Line at the paragraph's first line: a statement wrapped across lines is still one statement."""
+    spaces, as one Line at the paragraph's first line: a statement wrapped across lines is still one statement.
+    Heading and fenced lines stay one Line each, as the line census read them (a heading can record a deletion).
+    ponytail: a heading or fenced statement wrapped across lines is still missed, as it was before the join."""
     out: list[Line] = []
     run: list[Line] = []
     owned = _structure(lines)[1]
     for j, ln in enumerate([*lines, None]):
         if ln is not None and ln.text.strip() and not ln.fenced and j not in owned:
             run.append(ln)
-        elif run:
+            continue
+        if run:
             out.append(Line(run[0].path, run[0].no, " ".join(r.text.strip() for r in run), False))
             run = []
+        if ln is not None and ln.text.strip():
+            out.append(ln)
     return out
 
 

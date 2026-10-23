@@ -265,6 +265,28 @@ def test_the_live_tree_counts_the_trajectory_audit_wrapped_statement():
     assert any('`reason_out` branch (P8 "deletion on a null")' in st.text for st in found)
 
 
+# ---------------- integrator fold: the F1 join must not drop headings or fenced lines
+
+
+@pytest.mark.parametrize(
+    ("text", "where"),
+    [
+        ("# t\n\n## Results: the rule was deleted on its own null\n\nbody\n", "a.md:3"),
+        ("# t\n\nthe rule was deleted on its own null\n=======\n\nbody\n", "a.md:3"),
+        ("# t\n\n```\nthe rule was deleted on its own null\n```\n", "a.md:4"),
+    ],
+)
+def test_a_statement_in_a_heading_or_a_fence_is_still_r_unrecorded(tmp_path, text, where):
+    report = run(tmp_path, {EV + "a.md": text})
+    assert [r.where for r in reds(report, "R-UNRECORDED")] == [EV + where]
+
+
+def test_the_live_tree_counts_the_t069_heading_statement():
+    path = "specs/022-unified-brain-arc/evidence/t069-cerebellar-rule.md"
+    found = [st for st in ng.statements(ng._scan(ng.REPO)) if st.path == path]
+    assert [st.no for st in found if st.text.startswith("## 3. Results")] == [109]
+
+
 # ---------------------------------------- F6: setext headings are section boundaries
 
 
