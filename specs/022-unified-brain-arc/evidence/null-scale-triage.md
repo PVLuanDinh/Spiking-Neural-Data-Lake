@@ -63,14 +63,14 @@ NULL-RECORD: reservoir build of the live latent floor (commit D, not landed) | u
 evidence: R4 NOT MET at jepa-live-floor.md:603-605: the planted k=1 read fails in the in-tree test (seed 0) and on all three harness seeds; R5 also broke two self-checks (jepa-live-floor.md:606-611). The build was archived, not landed (jepa-live-floor.md:612-614). Why harm and not null (integrator fold of reviews #4485/#4486, MINOR): R4 is a pre-registered NON-REGRESSION read (jepa-live-floor.md:129, :203, the in-tree tests stay green at k=1), and the build turned one red while its reservoir read 1.61 / 5.87 / 18.9 where the incumbent ring buffer reads 0.069 (jepa-live-floor.md:450-452): a measured regression against the incumbent. A read that only misses its bar would be a null. Ticks and units are not stated in these lines.
 
 ### 11. specs/022-unified-brain-arc/evidence/l-exit.md:20  key=specs/022-unified-brain-arc/evidence/l-exit.md@6a99ed3ae91e
-class: harm
-NULL-RECORD: Oja local rule on the grown units' input rows (L1b) | units=unknown | ticks=800 | seeds=8 | mde=unknown | retest=NOT-NEEDED: harm the record states Oja fell past the bar against frozen rows (t -1.96), a measured harm
-evidence: Row L1b (l-exit.md:20) records Oja as a measured harm, t -1.96 vs frozen rows, 8 seeds x 800 ticks on the synthetic stream; owner answer 3 lets a measured harm skip the re-test. Integrator fold of review #4486 (m2): the lane's draft had overridden the record with the stale-readout mechanism (l1b-synaptic-online.md:268-277); the record's own reading is kept for Oja, and BCM, which did not fall past the bar, is split out as U4. Whether that mechanism should reopen Oja is a panel question, not a triage override.
+class: small-scale
+NULL-RECORD: Oja local rule on the grown units' input rows (L1b) | units=38 | ticks=800 | seeds=8 | mde=unknown | retest=CANDIDATE
+evidence: Row L1b (l-exit.md:20) records Oja at t -1.96 vs frozen rows, 8 seeds x 800 ticks on the synthetic stream. Panel fold (#4528 B-M5): this is NOT a measured harm under POLICIES P8 amendment item 4 ("past its pre-registered bar in the harm direction"), because L1b's only pre-registered bar was "beats the control" (l1b-synaptic-online.md:113, :229) and the harm reading was a mirrored read (:266), the same ruling the E1 `_plan_w` signal got; its stated cause was later found wrong (:367, M-1). So Oja is a CANDIDATE, like BCM (U4). units=38 is the top of the recorded 2-38 grown-unit range (l2-grow-on-plateau.md:165), so a 10x re-test means at least 380 units (panel B-M6). AXIS = units.
 
 ### 12. specs/022-unified-brain-arc/evidence/l-exit.md:22  key=specs/022-unified-brain-arc/evidence/l-exit.md@7e97ad3d8373
 class: small-scale
-NULL-RECORD: plateau trigger inside the growth gate (L2) | units=unknown | ticks=1200 | seeds=8 | mde=unknown | retest=CANDIDATE
-evidence: Row L2 (l-exit.md:22): outcome effect +0.625 units/seed at t 0.141, readout-neuter effect t 1.135; 8 seeds x 1200 ticks on SyntheticPerceptStream (l2-grow-on-plateau.md:256, :327). The record itself says the stream is near ceiling for the incumbent, so little exists for a trigger to prevent (ledger, 2026-09-06 entry). Grown units per seed run from 2 to 38 (l2-grow-on-plateau.md:165). AXIS = units: the trigger acts on the unit count; 1200 ticks is only 8x below 9,600, so ticks does not qualify.
+NULL-RECORD: plateau trigger inside the growth gate (L2) | units=38 | ticks=1200 | seeds=8 | mde=unknown | retest=CANDIDATE
+evidence: Row L2 (l-exit.md:22): outcome effect +0.625 units/seed at t 0.141, readout-neuter effect t 1.135; 8 seeds x 1200 ticks on SyntheticPerceptStream (l2-grow-on-plateau.md:256, :327). The record itself says the stream is near ceiling for the incumbent, so little exists for a trigger to prevent (ledger, 2026-09-06 entry). Grown units per seed run from 2 to 38 (l2-grow-on-plateau.md:165); units=38 records the top of that range so a 10x re-test means at least 380 units (panel #4528 B-M6). AXIS = units: the trigger acts on the unit count; 1200 ticks is only 8x below 9,600, so ticks does not qualify.
 
 ### 13. specs/022-unified-brain-arc/evidence/l1b-synaptic-online.md:327  key=specs/022-unified-brain-arc/evidence/l1b-synaptic-online.md@3a870391338a
 class: restatement
@@ -151,7 +151,7 @@ evidence: Disposition item 2 (sc-012a-width.md:271-273) says the L2 removal stan
 ### 31. specs/022-unified-brain-arc/evidence/t069-cerebellar-rule.md:109  key=specs/022-unified-brain-arc/evidence/t069-cerebellar-rule.md@948a3b350b92
 class: small-scale
 NULL-RECORD: cerebellar climbing-fibre LTD rule (cf_ltd_rule) | units=32 | ticks=900 | seeds=8 | mde=unknown | retest=CANDIDATE
-evidence: t069-cerebellar-rule.md:157-163: taught vs shuffled teaching signal t 1.242 (p 0.133; row at :163) on held-out seeds 100-107, 900 steps; the plant's tissue sizes were n_mossy 4-32 (t069:19). The gain was uniform-dominated (best uniform +0.0188 vs rule +0.0189), so a larger tissue could still open headroom the uniform scale cannot take. AXIS = units: the rule's job is credit assignment across mossy channels; 32 is 512x below 16,384.
+evidence: t069-cerebellar-rule.md:157-163: taught vs shuffled teaching signal t 1.242 (p 0.133; row at :163) on held-out seeds 100-107, 900 steps; the plant's tissue sizes were n_mossy 4-32 (t069:19). The gain was uniform-dominated (best uniform +0.0188 vs rule +0.0189), so a larger tissue could still open headroom the uniform scale cannot take. AXIS = units: the rule's job is credit assignment across mossy channels; 32 is 512x below 16,384. Underpowered (panel #4528 B-M4): the record gives 29% power at S=8 (t069-cerebellar-rule.md:261), so under POLICIES P8 amendment item 4 this result was INCONCLUSIVE; its re-test must first reach power .8 on seeds, then run at 10x units.
 
 ### 32. specs/022-unified-brain-arc/evidence/trainer-retirement.md:67  key=specs/022-unified-brain-arc/evidence/trainer-retirement.md@7edd5f76fa51
 class: restatement
@@ -175,7 +175,7 @@ evidence: Audit finding quoting the policy for the spiking half of gf.solve_seri
 ### U1. ledger  key=untracked:w1-goal-curriculum
 class: small-scale
 NULL-RECORD: goal curriculum for the arm (basal_ganglia/curriculum.py, W1/T076) | units=n/a | ticks=400 | seeds=8 | mde=unknown | retest=CANDIDATE
-evidence: Ledger section 'W1 / T076' (project-snn-refuted-and-negatives.md:172-200) records the retirement by owner decision after t -0.34 / -0.52 / -0.50 on 400 ticks x 8 seeds; the same ledger states a 10% effect needs about 96 seeds and the observed effect needs ~437 (matches w1-goal-curriculum.md:490). The tracked file records the measurement but its wording sits outside the census regex, so it has no census key. AXIS = ticks: curriculum progress is a long-horizon quantity; 400 is 24x below 9,600. Unit-dependence is not the question, so units=n/a.
+evidence: Ledger section 'W1 / T076' (project-snn-refuted-and-negatives.md:172-200) records the retirement by owner decision after t -0.34 / -0.52 / -0.50 on 400 ticks x 8 seeds; the same ledger states a 10% effect needs about 96 seeds and the observed effect needs ~437 (matches w1-goal-curriculum.md:490). The tracked file records the measurement but its wording sits outside the census regex, so it has no census key. AXIS = ticks: curriculum progress is a long-horizon quantity; 400 is 24x below 9,600. Unit-dependence is not the question, so units=n/a. Underpowered (panel #4528 B-M4): the record says a 10% effect needs about 96 seeds, so under POLICIES P8 amendment item 4 the result was INCONCLUSIVE; its re-test must first reach power .8 on seeds, then run at 10x ticks.
 
 ### U2. ledger  key=untracked:l1b-ach-gate
 class: small-scale
@@ -189,7 +189,7 @@ evidence: Ledger section 'Hierarchy / world-model negatives' (project-snn-refute
 
 ### U4. ledger  key=untracked:l1b-bcm
 class: small-scale
-NULL-RECORD: BCM local rule on the grown units' input rows (L1b) | units=unknown | ticks=800 | seeds=8 | mde=unknown | retest=CANDIDATE
+NULL-RECORD: BCM local rule on the grown units' input rows (L1b) | units=38 | ticks=800 | seeds=8 | mde=unknown | retest=CANDIDATE
 evidence: Split from block 11 by the integrator's fold of review #4486 (m2). Row L1b (l-exit.md:20) records BCM at t -1.36 vs frozen rows, which did not fall past the bar, 8 seeds x 800 ticks; grown units stay in the single digits to low tens (l2-grow-on-plateau.md:165, sc-012a-width.md:188). The record's mechanism for the L1b fall is a readout held stale by the closed growth gate (l1b-synaptic-online.md:268-277), and L1c (co-adapting readout) has since landed, so that cause is now testable. AXIS = units: the rule acts on the grown units' input rows, 2-38 units vs 16,384.
 
 ## Candidates ranked by how load-bearing the removed job was (P8's transferable rule)
@@ -197,7 +197,7 @@ evidence: Split from block 11 by the integrator's fold of review #4486 (m2). Row
 | rank | key | method | axis | recorded scale | why it matters |
 |---|---|---|---|---|---|
 | 1 | untracked:w1-goal-curriculum | goal curriculum (W1/T076) | ticks | 400 ticks x 8 seeds | The only mechanism aimed at autonomous goal-driven exploration; the record itself says the effect was unresolvable at 8 seeds (needs ~96). |
-| 2 | untracked:l1b-bcm | BCM local rule on grown input rows (L1b; Oja is a recorded harm, block 11) | units | 8 seeds x 800 ticks, 2-38 units | Online synaptic learning is a named brain job; the stated cause of the L1b fall (stale readout under a closed gate) is gone since L1c landed. |
+| 2 | specs/022-unified-brain-arc/evidence/l-exit.md@6a99ed3ae91e + untracked:l1b-bcm | Oja (block 11) and BCM (U4) local rules on grown input rows (L1b) | units | 8 seeds x 800 ticks, 2-38 units | Online synaptic learning is a named brain job; the stated cause of the L1b fall (stale readout under a closed gate) is gone since L1c landed. Neither rule's fall is a pre-registered harm (panel #4528 B-M5). |
 | 3 | specs/022-unified-brain-arc/evidence/s0-exit.md@c326a826a698 | interoceptive charge route (T039b) | ticks | 120 ticks | A later 1000-tick x 5-seed read already shows the insula reaching two deciding columns, so the early null may not hold. |
 | 4 | specs/022-unified-brain-arc/evidence/l-exit.md@7e97ad3d8373 | plateau growth trigger (L2) | units | 8 seeds x 1200 ticks, 2-38 units | Growth decisions are the engine's core loop; the record names a missing stream where growth substitutes for learning. |
 | 5 | specs/022-unified-brain-arc/evidence/t069-cerebellar-rule.md@948a3b350b92 | cerebellar LTD rule (T069) | units | n_mossy 4-32, 900 steps, 8 seeds | Credit assignment in the cerebellum; the null came from a plant whose headroom was uniform, so the plant, not the rule, limited the test. |

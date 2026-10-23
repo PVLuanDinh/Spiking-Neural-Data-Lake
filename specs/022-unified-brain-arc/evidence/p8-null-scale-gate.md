@@ -116,3 +116,24 @@ Lanes build on branches cut from `claude/p8-nullscale-1023`; the integrator comp
    statement is this file's own line 4, excluded by name (addendum 3). The lane `p8-triage` counted the same 35 by an
    independent census. Red-first record: 73 of 82 tests failed against a stub before the gate existed; 19 mutants, all
    killed (`lanes/p8-gate-1023-row/logs/`).
+5. 2026-10-23, PANEL FOLD (item #4498: red team #4519, integration #4520, policy #4528) and an owner ruling.
+   - **Owner ruling on B-M1 (verbatim):** "B-M1: strict. No deletion without the 10x re-test: when a scale-retest entry
+     expires, the next arc's battery stays red until a RETEST-RECORD (or a checked STRUCTURAL argument) exists. Remove the
+     'delete it with not re-tested at scale disclosed' exit." POLICIES item 3 now says so; the gate already reds an expired
+     entry until it resolves, so no gate change follows from the ruling.
+   - Gate-code findings go to lane `p8-gatefold` (thread P8-GATEFOLD): statements matched per paragraph (A-M1, which also
+     changes the census and the grandfather keys); expiry dated from the commit that added the record, not the written sha
+     (A-M2); R-EXEMPT must name a file holding a PENDING record (A-M3); merge commits do not expire an entry (A-M4); a
+     deletion whose re-test charged reds (A-M5); setext headings, with the spec-literal section scope disclosed (A-M6);
+     `NOT-NEEDED: harm` allowed in every file per owner answer 3 (B-M2); a closing record is a commit that modifies
+     `tools/policy_certification.json`, not a subject string (B-M3); verb variants added to the statement regex (A-m1).
+     Section 0's regex and section 1's R-UNRECORDED text are AMENDED by those items; their final counts go in addendum 6.
+   - Integrator folds: full-history checkout on every CI job that runs the gate (self-checks, test, certify; A-M4,
+     C-M1); POLICIES item 2 drops the seeds axis and item 4 restores "until a run with enough seeds is done" (B-M4);
+     triage block 11 (Oja) back to CANDIDATE because L1b set no pre-registered harm bar (B-M5); numeric units for the
+     units-axis candidates (B-M6); underpowered notes on W1 and T069; doc_budget ceiling +103 measured.
+   - The write set of section 4 also included `src/snn_data_lake/gates/doc_budget_gate.py` and `tools/policy_manifest.json`
+     (C minor-3; both were disclosed in their commit messages).
+   - Disclosed, not fixed: one NULL-RECORD covers every statement in its section, and a section runs to the next heading of
+     the same or higher level (spec-literal, printed in the gate's LIMIT line); the battery's `run_selfchecks` runs the gate
+     bare, while `--self-check` runs in the lint CI job (C minor-4, the policy_manifest precedent).
