@@ -380,3 +380,30 @@ claude/og1-census-1023), measured on SYNTHETIC streams only.
   seeing pooled rates; disclosed.
 - **F2:** the "R2/R3 must fail on >= 3 of 4" bar falsely voids a sound harness about 3% of the time. That error runs
   in the conservative direction; disclosed.
+
+## Amendment A3, 2026-10-23 (PRE-DATA for Stage 1; append-only; the text above is unchanged)
+
+**Trigger.** Reviewer og1-rv-a's challenge C-1 (board #4529) on the census lane's Round 3 code:
+- A VOID subject was dropped before the transfer guard counted unreadable subjects.
+- So {one VOID, one unreadable, two E > 0} returned FAIL.
+- FAIL opens the arbiter and deletion path, yet only two subjects were informative.
+
+The integrator ruled on the board at 2026-10-23 03:20 (#4534). The ruling is that board record, and this text records
+it. It was committed here at promotion, because int3 was frozen for another arc's battery. Stage 1 had read nothing.
+
+**A3.1 One guard, on the UNION.**
+- A held-out subject is NON-INFORMATIVE if it is VOID (A2.2) OR unreadable at the frozen (W, lam) (section 3's
+  transfer guard).
+- If 2 or more of the 4 held-out subjects are non-informative, the outcome is INSTRUMENT REFUSAL.
+- Otherwise PASS iff E > 0 on at least 3 of 4, with a non-informative subject counting as not passing; else FAIL.
+- VOID subjects are still read for readability; no E of theirs enters the verdict.
+
+This replaces the two separate counts (VOID >= 2 in A2.2; unreadable >= 2 in section 3) with their union. Each
+separate count still implies a refusal, so the rule is stricter and never looser: FAIL, and with it the arbiter and
+any deletion, now needs at least 3 informative subjects.
+
+**A3.2 Built and reviewed before any data read.**
+- Lane og1-census Round 4 (36898fc9, result #4537) built it. Its tests show rv-a's case red on the Round 3 code
+  (FAIL) and green as INSTRUMENT_REFUSAL.
+- Both reviewers agreed (#4540, #4541), and rv-a resolved C-1 (#4539).
+- The same round verified the R1 pack digests before any compute and recorded the campaign's wall time.
