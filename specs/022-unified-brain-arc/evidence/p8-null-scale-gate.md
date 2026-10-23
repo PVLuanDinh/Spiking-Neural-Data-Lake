@@ -92,3 +92,9 @@ Lanes build on branches cut from `claude/p8-nullscale-1023`; the integrator comp
 - A panel MAJOR that the gate cannot be made to catch is disclosed in the closing record, not hidden.
 
 ## 6. Addenda (dated, appended only)
+
+1. 2026-10-23, before any lane started and before the gate exists (no data). Retroactive records often do not state
+   every field. Inside `null-scale-triage.md` ONLY, `unknown` is allowed for `units`, `ticks`, `seeds` and `mde` (not
+   only `mde`). Forward records are unchanged: `seeds` is always an int, `mde` a number. The triage file cites each
+   statement by `path:line` and its grandfather key and never quotes the statement's wording, so the file itself
+   carries no delete-on-null statement for R-UNRECORDED to read.
