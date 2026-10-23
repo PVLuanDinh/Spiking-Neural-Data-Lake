@@ -13,7 +13,7 @@ Records (specs/**/evidence/*.md and docs/*.md; lines inside a fenced code block 
     NULL-RECORD: <method> | units=<int|n/a> | ticks=<int|n/a> | seeds=<int> | mde=<number> | retest=<R>
     R := REF:<repo path>#<method> | PENDING since <40-hex sha> | STRUCTURAL: <reason, >= 20 chars>
          | NOT-NEEDED: harm <reason, >= 20 chars>
-    RETEST-RECORD: <method> | axis=<units|ticks|seeds> | <axis>=<int> | result=<null|charges> | of=<repo path>
+    RETEST-RECORD: <method> | axis=<units|ticks> | <axis>=<int> | result=<null|charges> | of=<repo path>
 
 What it reds: R-FIELD, R-UNRECORDED, R-RETEST-REF, R-RETEST-SCALE, R-RETEST-CHARGED, R-EXPIRED,
 R-STALE-GRANDFATHER here; R-EXEMPT through `exempt_problems`, the ONE check `dormancy_gate` imports for its
@@ -52,7 +52,7 @@ DORMANCY_GATE = "src/snn_data_lake/gates/dormancy_gate.py"
 CERT = "tools/policy_certification.json"  # the battery's execution record: a commit that modifies it closes an arc
 # Owner answer 1, verbatim: "Scale factor: 10x minimum on the scaling axis."
 SCALE_FACTOR = 10
-AXES = ("units", "ticks", "seeds")
+AXES = ("units", "ticks")
 
 STATEMENT_RE = re.compile(
     r"(delet(ed|ion|e|ing|es)|retir(ed|e|ing|es)|remov(ed|e|es|ing|al)) on (its|a|the|their) (own )?null",
@@ -152,6 +152,7 @@ class Report:
     reds: list[Red] = field(default_factory=list)
     counts: dict[str, int] = field(default_factory=dict)
     structural: list[str] = field(default_factory=list)
+    harm: list[str] = field(default_factory=list)
 
     def codes(self) -> set[str]:
         return {r.code for r in self.reds}
@@ -270,15 +271,14 @@ def exempt_problems(module: str, reason: str, history=git_history, root: Path = 
     """R-EXEMPT: what is wrong with a dormancy_gate EXEMPT entry whose disposition is "scale-retest"."""
     problems = []
     named = re.search(r"NULL-RECORD:([\w./-]+\.md)", reason)
+    since = re.search(rf"since=({_SHA})(?![0-9a-f])", reason)
+    pending = f"PENDING since {since.group(1)}" if since else "PENDING since"
     if not named:
         problems.append(f"{module}: reason names no `NULL-RECORD:<repo path>`")
-    elif not any(
-        n.retest.startswith("PENDING since") for n in _scan(root).nulls.get(named.group(1), [])
-    ):
+    elif not any(n.retest == pending for n in _scan(root).nulls.get(named.group(1), [])):
         problems.append(
-            f"{module}: {named.group(1)} is not an in-scope file holding a NULL-RECORD whose retest is PENDING"
+            f"{module}: {named.group(1)} is not an in-scope file holding a NULL-RECORD whose retest is `{pending}`"
         )
-    since = re.search(rf"since=({_SHA})(?![0-9a-f])", reason)
     if not since:
         problems.append(f"{module}: reason names no `since=<full 40-hex sha>`")
     elif (expired := expiry_problem(since.group(1), history, module=module)) is not None:
@@ -519,18 +519,19 @@ def _check_unrecorded(scan: _Scan, grandfathered) -> list[Red]:
 
 
 def _check_charged(scan: _Scan) -> list[Red]:
-    """R-RETEST-CHARGED: a statement whose section's NULL-RECORD resolves (REF) to a re-test that charged.
-    Grandfathered statements are read too: a charge is a measurement, not a dated omission."""
+    """R-RETEST-CHARGED: a statement whose section holds a NULL-RECORD that ANY in-scope RETEST-RECORD charged,
+    whatever the null's own retest says. Grandfathered statements are read too: a charge is a measurement,
+    not a dated omission."""
     reds = []
     for st in statements(scan):
         if st.path in UNRECORDED_EXCLUDED:
             continue
         section = {ln.no for ln in _section(scan.lines[st.path], st.no - 1)}
         for n in (n for n in scan.nulls.get(st.path, []) if n.no in section):
-            ref = re.fullmatch(r"REF:([^\s#]+)#(.+)", n.retest)
-            if ref and any(
+            if any(
                 r.method == n.method and r.of == n.path and r.result == "charges"
-                for r in scan.retests.get(ref.group(1), [])
+                for recs in scan.retests.values()
+                for r in recs
             ):
                 reds.append(
                     Red(
@@ -634,6 +635,15 @@ def _check_expired(scan: _Scan, history) -> list[Red]:
     return reds
 
 
+def _printed(scan: _Scan, prefix: str) -> list[str]:
+    return [
+        f"{n.path}:{n.no} {n.method}: {n.retest}"
+        for recs in scan.nulls.values()
+        for n in recs
+        if n.retest.startswith(prefix)
+    ]
+
+
 def check(root: Path = REPO, grandfathered=GRANDFATHERED, history=git_history) -> Report:
     scan = _scan(root)
     reds = [
@@ -655,12 +665,8 @@ def check(root: Path = REPO, grandfathered=GRANDFATHERED, history=git_history) -
             "NULL-RECORDs": sum(map(len, scan.nulls.values())),
             "RETEST-RECORDs": sum(map(len, scan.retests.values())),
         },
-        structural=[
-            f"{n.path}:{n.no} {n.method}: {n.retest}"
-            for recs in scan.nulls.values()
-            for n in recs
-            if n.retest.startswith("STRUCTURAL:")
-        ],
+        structural=_printed(scan, "STRUCTURAL:"),
+        harm=_printed(scan, "NOT-NEEDED: harm"),
     )
 
 
@@ -676,9 +682,11 @@ def render(report: Report) -> str:
     out += [f"  {name}: {n}" for name, n in report.counts.items()]
     out.append(f"  R-UNRECORDED skips by name: {', '.join(UNRECORDED_EXCLUDED)}")
     out += [f"  STRUCTURAL (printed for review): {s}" for s in report.structural]
+    out += [f"  HARM (printed for review): {s}" for s in report.harm]
     out.append(
-        "  LIMIT: the gate cannot judge a STRUCTURAL argument or whether a re-test used the right axis; "
-        "both stay review-enforced. Scoping is spec-literal: a section runs from its heading (# or setext "
+        "  LIMIT: the gate cannot judge a STRUCTURAL argument, whether a NOT-NEEDED: harm claim passed its "
+        "pre-registered bar, or whether a re-test used the right axis; all three stay review-enforced. "
+        "Scoping is spec-literal: a section runs from its heading (# or setext "
         "=== / ---) to the next heading of the same or higher level, so one NULL-RECORD of any method "
         "covers every statement in its section, a record under a sub-heading included."
     )

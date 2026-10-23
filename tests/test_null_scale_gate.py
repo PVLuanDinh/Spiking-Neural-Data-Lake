@@ -416,6 +416,41 @@ def test_a_charged_retest_reds_a_grandfathered_statement_too(tmp_path):
     assert [r.code for r in report.reds] == ["R-RETEST-CHARGED"]
 
 
+# ---------------------------------------- G2: any charged re-test of the record reds the statement
+
+
+@pytest.mark.parametrize(
+    "retest",
+    [
+        STRUCT,
+        "NOT-NEEDED: harm the pre-registered R4 read turned red against the incumbent",
+        "PENDING since " + SHA,
+    ],
+)
+def test_a_charged_retest_reds_the_statement_whatever_the_null_retest_is(tmp_path, retest):
+    files = {
+        EV + "a.md": f"# t\n{STATEMENT}\n\n{rec(retest=retest)}\n",
+        EV + "b.md": "# r\n" + retest_rec(result="charges") + "\n",
+    }
+    assert [r.code for r in run(tmp_path, files, history=alive).reds] == ["R-RETEST-CHARGED"]
+
+
+def test_a_charged_retest_in_a_third_file_reds_a_ref_to_a_null_retest(tmp_path):
+    files = charged_files(result="null")
+    files[EV + "c.md"] = "# r\n" + retest_rec(result="charges") + "\n"
+    assert [r.code for r in run(tmp_path, files).reds] == ["R-RETEST-CHARGED"]
+
+
+def test_a_charged_retest_of_another_method_or_file_does_not_red_the_statement(tmp_path):
+    other = f"{EV}z.md"
+    files = {
+        EV + "a.md": f"# t\n{STATEMENT}\n\n{rec()}\n{rec(method='n')}\n",
+        other: f"# z\n{rec(method='n')}\n",
+        EV + "b.md": "# r\n" + retest_rec(method="n", of=other, result="charges") + "\n",
+    }
+    assert not reds(run(tmp_path, files), "R-RETEST-CHARGED")
+
+
 # ---------------------------------------- R-EXPIRED: the four points of an arc
 
 
@@ -897,6 +932,34 @@ def test_structural_reasons_are_printed_for_review_and_the_limit_is_stated(tmp_p
     assert "zero call sites" in out and "cannot judge a STRUCTURAL argument" in out
 
 
+# ---------------------------------------- G4: the seeds axis is not a re-test axis
+
+
+def test_axis_seeds_is_r_field(tmp_path):
+    files = {
+        EV + "a.md": f"# t\n{rec(retest='REF:' + EV + 'b.md#m')}\n",
+        EV + "b.md": "# r\n" + retest_rec(axis="seeds", value="80") + "\n",
+    }
+    assert "R-FIELD" in run(tmp_path, files).codes()
+
+
+def test_the_re_test_axes_are_units_and_ticks():
+    assert ng.AXES == ("units", "ticks")
+
+
+# ---------------------------------------- G5: a harm claim is printed for review beside STRUCTURAL
+
+HARM = "NOT-NEEDED: harm the pre-registered R4 read turned red against the incumbent"
+
+
+def test_every_harm_record_is_printed_for_review_and_the_limit_says_the_bar_is_unjudged(tmp_path):
+    report = run(tmp_path, {EV + "a.md": f"# t\n{rec(retest=HARM)}\n{rec(method='n')}\n"})
+    assert report.reds == [] and len(report.harm) == 1
+    out = ng.render(report)
+    assert f"HARM (printed for review): {EV}a.md:2 m: {HARM}" in out
+    assert "pre-registered bar" in out.split("LIMIT:")[1]
+
+
 # ---------------------------------------- R-EXEMPT, and dormancy_gate's disposition
 
 
@@ -956,6 +1019,18 @@ def test_a_named_record_file_outside_the_scope_is_r_exempt(tmp_path):
 def test_a_named_record_file_inside_docs_with_a_pending_record_passes(tmp_path):
     root = tree(tmp_path, {"docs/x.md": f"{rec(retest='PENDING since ' + SHA)}\n"})
     assert exempt_with(root, "docs/x.md") == []
+
+
+def test_a_named_record_whose_pending_since_differs_from_the_entrys_is_r_exempt(tmp_path):
+    root = tree(tmp_path, {EV + "a.md": f"# t\n{rec(retest='PENDING since ' + 'b' * 40)}\n"})
+    problems = exempt_with(root, EV + "a.md")
+    assert problems and "PENDING since " + SHA in problems[0]
+
+
+def test_a_named_file_with_a_second_pending_record_at_the_entrys_since_passes(tmp_path):
+    other = rec(method="n", retest="PENDING since " + "b" * 40)
+    root = tree(tmp_path, {EV + "a.md": f"# t\n{other}\n{rec(retest='PENDING since ' + SHA)}\n"})
+    assert exempt_with(root, EV + "a.md") == []
 
 
 def test_the_default_root_is_the_repo_and_a_phantom_path_is_r_exempt():
