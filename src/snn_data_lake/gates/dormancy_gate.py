@@ -127,6 +127,16 @@ EXEMPT = {
         "same-label-neuron teaching consumer remains unbound. Retire this exemption "
         "after measured consumer wiring; fixture reachability is not a charge claim.",
     ),
+    "rpe_charge": (
+        "permanent",
+        "E1b's governed measurement harness (record evidence/e1b-rpe-harm.md, FROZEN before any run): the neuter arms for "
+        "ValenceLearner.learn and the `_plan_w` update, the tier pin, the replay, the compare and cross-tier rules. A campaign "
+        "instrument like g5_part_d_reading: it patches two LIVE learning rules in-process, instance-scoped (only the positive-control `pc` arm stubs PrefrontalExecutive._decide_spiking class-wide), all restored on exit, and "
+        "adds no rule and no tick path. Consumers: run_selfchecks (its brain-free self-check), tests/test_rpe_charge.py and the "
+        "E1b campaign CLI (`python -m snn_data_lake.instruments.rpe_charge run|replay|compare|cross|fixture`), which the integrator "
+        "runs once on the pushed head of the engine arc; never on a tick. Re-decide after the campaign: a harm disposition "
+        "deletes the rule it measured, not this harness.",
+    ),
     "g5_part_d_reading": (
         "permanent",
         "G5 / T113 Part D D1's reader (a governed benchmark instrument; record evidence/g5-readout-variants.md D.4 and notes (c)-(f)): "

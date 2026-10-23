@@ -502,6 +502,7 @@ CORE = [
     "sensorimotor.afferent_boundary",  # 022 T036: sentinel->MISSING + 014-normalizer reuse + proprio neuter A/B
     "sensorimotor.efferent_boundary",  # 022 T037: passage counting + paired copy-cut charge + missing-body honesty
     "instruments.port_charge_probe",  # 022 T021: sensitivity flip + specificity hold + margin varied-vs-frozen separation
+    "instruments.rpe_charge",  # E1b: planted-learning/harm/null controls, MET/VOID status, 3 fixtures, exact mde, neuter scope; no brain
     "instruments.sleep_pruner_census",  # G6 T114 (a): static census = section 1 table + C1 reds, C2, decision branches, C25
     "instruments.joint_mask_search",  # G6 T114 (b): mask_digest, C7-C10, C22, C26 on the planted fixture
     "instruments.sleep_pressure",  # G6 T114 (c): rescheduling budget, C12, A6 shuffle, A7 C23/C24, carrier

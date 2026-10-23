@@ -345,6 +345,8 @@ REGIONS = {
         "prior_drift_harness",
         # specs/022 T081 [US4]: the C5 report_order instrument -- the live arm's report channel read against LESIONED CLONES of the workspace state that produced it (named pool vs a scrambled one); the lesion never touches the live brain
         "report_order_probe",
+        # specs/022 E1b: the RPE-harm harness (neuter arms, tier pin, replay, compare); bound to evidence/e1b-rpe-harm.md; bare == brain-free self-check
+        "rpe_charge",
         # specs/022 G6 (T114) part (c): the sleep-pressure HARNESS (rescheduling, A6 shuffle, A7 meter); never a scheduler
         "sleep_pressure",
         # specs/022 G6 (T114) part (a): the live sleep-pruner census + per-pruner neuter-A/B (R0-R4, E)
