@@ -1,7 +1,8 @@
 {
   "battery": {
     "changed": [
-      "A specs/022-unified-brain-arc/evidence/insula-level-arms-production.md"
+      "M specs/022-unified-brain-arc/evidence/insula-level-arms-production.md",
+      "A specs/022-unified-brain-arc/evidence/insula-p8-engine-reach.md"
     ],
     "kind": "docs-only",
     "map_code_hash": "1af1f836ba709a5a06a4fca7d1aa20c091b5dcbdb50a741db637dc8a7db37fed",
@@ -53,7 +54,7 @@
         "-m",
         "snn_data_lake.gates.dormancy_gate"
       ],
-      "seconds": 17.24,
+      "seconds": 16.71,
       "verdict": "PASS"
     },
     {
@@ -61,7 +62,7 @@
         "-m",
         "snn_data_lake.gates.method_dormancy_gate"
       ],
-      "seconds": 15.87,
+      "seconds": 19.54,
       "verdict": "PASS"
     },
     {
@@ -69,7 +70,7 @@
         "-m",
         "snn_data_lake.gates.import_manifest"
       ],
-      "seconds": 4.69,
+      "seconds": 5.39,
       "verdict": "PASS"
     },
     {
@@ -77,7 +78,7 @@
         "-m",
         "snn_data_lake.gates.replication_guard"
       ],
-      "seconds": 2.83,
+      "seconds": 3.56,
       "verdict": "PASS"
     },
     {
@@ -85,7 +86,7 @@
         "-m",
         "snn_data_lake.gates.lake_rebuild_gate"
       ],
-      "seconds": 0.36,
+      "seconds": 0.21,
       "verdict": "PASS"
     },
     {
@@ -93,7 +94,7 @@
         "-m",
         "snn_data_lake.gates.unit_label_gate"
       ],
-      "seconds": 34.71,
+      "seconds": 38.14,
       "verdict": "PASS"
     },
     {
@@ -101,7 +102,7 @@
         "tools/p6_gate.py",
         "--assert"
       ],
-      "seconds": 8.59,
+      "seconds": 7.19,
       "verdict": "PASS"
     },
     {
@@ -109,7 +110,7 @@
         "tools/dependency_ledger.py",
         "--assert"
       ],
-      "seconds": 9.1,
+      "seconds": 9.98,
       "verdict": "PASS"
     },
     {
@@ -117,7 +118,7 @@
         "tools/red_reachability.py",
         "--assert"
       ],
-      "seconds": 2.33,
+      "seconds": 2.48,
       "verdict": "PASS"
     },
     {
@@ -125,7 +126,7 @@
         "-m",
         "snn_data_lake.gates.eprop_transport_gate"
       ],
-      "seconds": 28.38,
+      "seconds": 33.55,
       "verdict": "PASS"
     },
     {
@@ -133,7 +134,7 @@
         "-m",
         "snn_data_lake.gates.gradient_claim_gate"
       ],
-      "seconds": 2.93,
+      "seconds": 3.45,
       "verdict": "PASS"
     },
     {
@@ -141,7 +142,7 @@
         "tools/p4c_ratchet.py",
         "--assert"
       ],
-      "seconds": 0.26,
+      "seconds": 0.39,
       "verdict": "PASS"
     }
   ],
@@ -247,7 +248,7 @@
     "P5b"
   ],
   "tree": {
-    "commit": "33a5dc08f2cfc794aadfce211fe45bd9d8a7aa46",
+    "commit": "89f3af14e4c4b1a8b7cc6f7f521a29a2a67ce6d7",
     "dirty": false
   }
 }
