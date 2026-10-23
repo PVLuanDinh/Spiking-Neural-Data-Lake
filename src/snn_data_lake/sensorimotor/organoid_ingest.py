@@ -3,7 +3,7 @@
 Frozen pre-registration: specs/022-unified-brain-arc/evidence/og1-organoid-stream.md section 2.
 Data: DANDI 001603 version 0.260923.0623 (CC-BY-4.0), subjects HO1-HO8, the spike-sorted file of every
 session (never `_ecephys`). The pin `tools/og1_dandi_pin.json` lists every file with its size and
-`dandi:sha2-256`. This module reads a pinned file through four refusal gates and writes the artifact
+`dandi:sha2-256`. This module reads a pinned file through five refusal gates and writes the artifact
 the census reads. It never touches a Brain or the lake (P4b): "the lake is what the brain LEARNED;
 this is what an electrode saw".
 

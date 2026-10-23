@@ -766,12 +766,15 @@ EXEMPT = {
         "self-check (run_selfchecks), no download in CI. NEVER on a tick. Pushed WITHOUT its consumer "
         "(owner 2026-10-23, path 1 of the OG1 debate verdict, board #4729; Amendment A6): the Stage 1 "
         "census is NOT BUILT -- an acceptance battery frozen by a lane other than the null's author "
-        "comes first, then ONE candidate gets ONE run. Retire conditions: a Stage 1 PASS -> this row "
-        "retires when Stage 2's afferent modality row reaches the module; a Stage 1 candidate that "
-        "fails the acceptance battery -> Stage 1 is recorded NOT BUILT and this row stands as the "
-        "ingest of reference data with no live consumer, re-dated, the owner deciding its future; a "
-        "readable census FAIL -> 'scale-retest' under the P8 amendment (no deletion before ONE 10x "
-        "data re-test).",
+        "comes first, then ONE candidate gets ONE run. Owner 2026-10-23 (A7): the real-data Stage 1 "
+        "run HOLDS until a 10x re-test source is ingested by a pushed Stage 0 mechanism (Stage 0b, A8). "
+        "Retire conditions: a Stage 1 PASS -> this row retires when Stage 2's afferent modality row "
+        "reaches the module; a Stage 1 candidate that fails the acceptance battery -> Stage 1 is "
+        "recorded NOT BUILT and this row stands as the ingest of reference data with no live "
+        "consumer, re-dated, the owner deciding its future; a Stage 1 INSTRUMENT REFUSAL or BLIND -> "
+        "this row stands, re-dated, until A4.9's dated amendment resolves; a readable census FAIL -> "
+        "after A4.9's arbiter amendment and the NULL-RECORD, 'scale-retest' under the P8 amendment (no "
+        "deletion before ONE 10x data re-test), then A8 section 11.",
     ),
     "h01_ingest": (
         "wire",

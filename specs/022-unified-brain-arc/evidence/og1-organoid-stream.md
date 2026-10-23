@@ -1139,3 +1139,13 @@ The 0b text appended to its reason:
 
 **What A8 read:** registry, package and paper metadata (via the lanes); the 001872 asset listing's paths,
 ages, sizes and start/end times; our Stage 0 manifest's held-out durations. No data file, no NWB header, no lab file.
+
+## Erratum E1, 2026-10-23 (PROCESS ONLY: wording; append-only; from the Stage 0 closing review, board #4822 F3)
+
+A6.4's second item and A7.4 ask "whether an ENVELOPE outcome may be typed as a non-null result". Read alone, that
+can sound like a positive. The judge's term (#4729) is meant: an ENVELOPE outcome would be recorded as a
+**no-NULL-RECORD outcome**, never as succession and never as a positive. A6.3 item 5 stands: an envelope read is never
+cited as succession, for E4 or Stage 2, under any typing. The open owner question is only whether such an outcome
+may close Stage 1 without a NULL-RECORD.
+
+**What E1 read:** nothing from organoid data.

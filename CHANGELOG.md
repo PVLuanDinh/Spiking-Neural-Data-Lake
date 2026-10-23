@@ -12,10 +12,14 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 ## [Unreleased] -- OG1 Stage 0: the organoid ingest, pushed without Stage 1 (2026-10-23)
 
 OG1 / T118 (owner 2026-10-23). Pre-registration: `specs/022-unified-brain-arc/evidence/og1-organoid-stream.md`, with
-Amendments A1-A6.
+Amendments A1-A8 and erratum E1.
 - A1-A5 are pre-data for Stage 1. A1 and A2 were written after Stage 0 reads, and A2.1 after its gate refused all 24
   files under the first convention; all are disclosed there.
 - A6 records the owner's path: push Stage 0 alone after an agent-fleet debate (#4729).
+- A7 records the owner's ruling "2": the real-data Stage 1 run HOLDS until a 10x re-test source is ingested by a
+  pushed Stage 0 mechanism.
+- A8 pre-registers that mechanism, Stage 0b: DANDI 001872 raw ecephys sorted by Kilosort4 under a ground-truth
+  control. It is approved by the owner and NOT BUILT here.
 
 **Added `sensorimotor/organoid_ingest` (Stage 0).**
 - Pinned DANDI 001603 spike-sorted human-organoid NWB files (`tools/og1_dandi_pin.json`: 24 files, CC-BY-4.0, van
@@ -29,9 +33,18 @@ Amendments A1-A6.
 - The npz carries unit positions.
 - Duplicate session files collapse to 14 distinct recordings, with duplicate-timestamp counts per file.
 - Offline, never the lake.
+- **Known latent (closing review F5):** gate (d) compares absolute spike times with the span, while (e') and A5 use
+  t - t0. All 24 pinned files have t0 = 0, so nothing is affected today. The fix lands with Stage 0b's rework of
+  gate (d).
+
+**Fixed: a battery-red for every arc after P8.**
+`tests/test_null_scale_gate.py::test_real_history_an_exempt_row_switched_to_scale_retest_is_green` judged expiry at
+live HEAD, so it passed only while HEAD was the P8 closing record (20e1e742). It is now pinned to that record, as its
+sibling test already was. The real `null_scale_gate --assert` was green throughout.
 
 **Not added: the Stage 1 succession census is NOT BUILT.**
-- Four null designs were retired on synthetic real-shaped data, before any organoid read.
+- Four null designs were retired before any Stage 1 read of organoid data. They were retired on synthetic data,
+  real-shaped in part from Stage 0's manifests (real unit counts) [closing review F1].
 - An independent acceptance battery comes first; then one candidate gets one run, and a failure is recorded as NOT
   BUILT (A6).
 - An envelope read is never cited as succession.
