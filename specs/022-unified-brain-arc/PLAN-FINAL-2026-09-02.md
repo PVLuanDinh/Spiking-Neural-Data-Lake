@@ -2023,6 +2023,23 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
 
   G-R9.
 
+- **OG1 / T118: public organoid recordings as the first input stream with measured succession.** *(Added
+  2026-10-23. Owner, verbatim: "Approve OG1 as written, including the KCL exclusion. Register it and freeze it on
+  int3, then start Arc 1.")*
+  - **The gap.** The live stream carries no first-order succession (W2 3.1c; Phase 2's persistence-only
+    transitions). E4's plastic-reservoir test is blocked on such a stream.
+  - **The data.** DANDI 001603 (van der Molen et al. 2025, CC-BY-4.0): spike-sorted human-organoid recordings from
+    two labs.
+  - **The stages,** in `evidence/og1-organoid-stream.md`, FROZEN before any data read:
+    - Stage 0: an H01-pattern ingest with five refusal gates, each with a constructed red, never in the lake.
+    - Stage 1: a brain-free succession census against a run-length-preserving null; dev lab vs held-out lab; the
+      paper's own statistic as the arbiter before any deletion.
+    - Stage 2 (on a PASS, under its own amendment): the stream as an engine problem with persistence, the
+      reservoir removed, and a run-null stream as controls.
+    - Stage 3: HNOCA into `cortical_prior`, gated on the one-grower merge.
+  - **Excluded:** KCL figshare.
+  - **Order:** independent of G9's order; Arc 1 = Stages 0-1. It claims E4's stream half only.
+
 **Order and limits.**
 - **Order:** G0; G1 alongside it (the session's call on "R0 first", since G1 needs no chat repair);
   then G2; then G3; then G4 and G5; then G6, after R2/R3. G3 waits for G2's capacity cell.
