@@ -29,6 +29,7 @@ Bare invocation is --assert (the run_selfchecks.py convention).
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import re
 import subprocess
@@ -41,6 +42,7 @@ REPO = Path(__file__).resolve().parents[3]
 
 EVIDENCE_GLOB = "specs/**/evidence/*.md"
 DOCS_GLOB = "docs/*.md"
+SCOPE = (EVIDENCE_GLOB, DOCS_GLOB)
 PREREG = "specs/022-unified-brain-arc/evidence/p8-null-scale-gate.md"
 TRIAGE = "specs/022-unified-brain-arc/evidence/null-scale-triage.md"
 # Addendum 3: both files quote or list delete-on-null wording without making a statement. R-UNRECORDED skips
@@ -159,29 +161,19 @@ def line_key(text: str) -> str:
     return hashlib.sha256(text.strip().encode("utf-8")).hexdigest()[:12]
 
 
-class Commit(NamedTuple):
-    sha: str
-    subject: str = ""
-    merge: bool = False
-    closing: bool = False
-
-
 class History(NamedTuple):
-    """`commits`: sha..HEAD, oldest first, HEAD last. `created`: the commit that first ADDED the record
-    (None: the record is not in history yet, so it counts as created at HEAD). `anchored`: the written sha
-    is an ancestor of `created`."""
+    """What `git_history` reads for one `since=<S>`. `closed`: the closing records in S..HEAD that a non-merge
+    commit descends from. `nulls`: every NULL-RECORD line (path, line no, text) of the in-scope files in S's
+    tree. `dormancy`: dormancy_gate.py as of S."""
 
-    commits: list[Commit]
-    created: str | None = None
-    anchored: bool = True
+    closed: list[str]
+    nulls: tuple[tuple[str, int, str], ...] = ()
+    dormancy: str = ""
 
 
-def git_history(
-    sha: str, added: tuple[str, str] | None = None, repo: Path = REPO
-) -> History | None:
-    """The History of `sha..HEAD`; `added` = (repo path, literal text) finds the commit that first added the
-    text to the path (git log -S, oldest first). None when the history cannot answer: unknown sha, `sha` not
-    an ancestor of HEAD, shallow clone, git missing. The one place git is read."""
+def git_history(sha: str, repo: Path = REPO, head: str = "HEAD") -> History | None:
+    """The History of `sha`, judged at `head`. None when the history cannot answer: unknown sha, `sha` not an
+    ancestor of `head`, shallow clone, git missing. The one place git is read."""
 
     def git(*argv: str) -> subprocess.CompletedProcess:
         return subprocess.run(["git", *argv], cwd=repo, capture_output=True, text=True, timeout=60)
@@ -189,64 +181,88 @@ def git_history(
     try:
         if git("rev-parse", "--verify", "--quiet", f"{sha}^{{commit}}").returncode:
             return None
-        if git("merge-base", "--is-ancestor", sha, "HEAD").returncode:
+        if git("merge-base", "--is-ancestor", sha, head).returncode:
             return None
-        log = git("log", "--reverse", "--topo-order", "--format=%H%x1f%P%x1f%s", f"{sha}..HEAD")
-        record = git(
-            "log", "--no-merges", "--full-history", "--format=%H", f"{sha}..HEAD", "--", CERT
+        log = git(
+            "log",
+            "--no-merges",
+            "--full-history",
+            "--format=%H%x1f%s",
+            f"{sha}..{head}",
+            "--",
+            CERT,
         )
-        if log.returncode or record.returncode:
-            return None
-        created, anchored = None, True
-        if added is not None:
-            path, text = added
-            first = git(
-                "log", "--reverse", "--full-history", "--format=%H", f"-S{text}", "--", path
-            )
-            if first.returncode:
+        grep = git("grep", "-F", "-n", "NULL-RECORD:", sha, "--", *(f":(glob){g}" for g in SCOPE))
+        dormancy = git("show", f"{sha}:{DORMANCY_GATE}")
+        closed = []
+        for row in log.stdout.splitlines():
+            commit, _, subject = row.partition("\x1f")
+            if "closing" not in subject.lower():
+                continue
+            later = git("rev-list", "--ancestry-path", "--no-merges", f"{commit}..{head}")
+            if later.returncode:
                 return None
-            if first.stdout.split():
-                created = first.stdout.split()[0]
-                anchored = git("merge-base", "--is-ancestor", sha, created).returncode == 0
+            if later.stdout.strip():
+                closed.append(commit)
     except (OSError, subprocess.SubprocessError):
         return None
-    rows = [row.split("\x1f", 2) for row in log.stdout.splitlines() if row]
-    closed = set(record.stdout.split())
-    commits = [
-        Commit(sha, subject, len(parents.split()) > 1, sha in closed)
-        for sha, parents, subject in rows
-    ]
-    return History(commits, created, anchored)
+    if log.returncode or grep.returncode > 1:
+        return None
+    nulls = tuple(
+        (path, int(no), text)
+        for path, no, text in (row.split(":", 3)[1:] for row in grep.stdout.splitlines())
+    )
+    return History(closed, nulls, dormancy.stdout if not dormancy.returncode else "")
+
+
+def _scale_retest_modules(source: str) -> set[str]:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return set()
+    return {
+        key.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Dict)
+        for key, value in zip(node.keys, node.values)
+        if isinstance(key, ast.Constant)
+        and isinstance(value, ast.Tuple)
+        and value.elts
+        and isinstance(value.elts[0], ast.Constant)
+        and value.elts[0].value == "scale-retest"
+    }
+
+
+def _pending_methods(lines) -> set[str]:
+    parsed = (
+        (path, no, m.group(2))
+        for path, no, text in lines
+        if (m := RECORD_RE.match(text)) and m.group(1) == "NULL-RECORD"
+    )
+    return {
+        n.method
+        for path, no, body in parsed
+        if isinstance(n := parse_null(path, no, body, triage=path == TRIAGE), NullRecord)
+        and n.retest.startswith("PENDING since")
+    }
 
 
 def expiry_problem(
-    sha: str, history=git_history, added: tuple[str, str] | None = None
+    sha: str, history=git_history, method: str | None = None, module: str | None = None
 ) -> str | None:
-    """R-EXPIRED: a PENDING entry rides in the arc that created it, up to and including that arc's closing
-    record (the commit that modifies the execution record, whatever its subject); any non-merge commit after a closing record (a PR merge ref or --no-ff integration on top of it is
-    not one) means the next arc is being built. The arc
-    starts at the commit that first ADDED the record (`added`), never at the written sha: editing the sha
-    forward cannot reset the clock, and a sha that is not an ancestor of that commit is red."""
-    found = history(sha, added)
+    """R-EXPIRED for a `PENDING since <sha>` entry of `method` (or a dormancy "scale-retest" row of `module`).
+    It rides in the arc that created it, up to and including the arc's closing record; a closing record is a
+    commit that modifies the execution record and says "closing", and it expires the entry only when a
+    non-merge commit descends from it on the way to HEAD. A `since` whose own tree already holds the PENDING
+    record (or the row) was moved forward past it. No creation-commit lookup: a moved, renamed or respelled
+    record cannot hide from either read."""
+    found = history(sha)
     if found is None:
         return f"history unavailable for {sha} (unknown sha, not an ancestor of HEAD, or shallow clone)"
-    start = len(found.commits)
-    if found.created is not None:
-        shas = [c.sha for c in found.commits]
-        if not found.anchored or found.created not in shas:
-            return (
-                f"expired: {sha[:12]} is not an ancestor of {found.created[:12]}, the commit that "
-                "added the record (was the sha edited forward?)"
-            )
-        start = shas.index(found.created)
-    commits = found.commits
-    closing = [
-        c.sha[:12]
-        for i, c in enumerate(commits[start:], start)
-        if c.closing and not all(later.merge for later in commits[i + 1 :])
-    ]
-    if closing:
-        return f"expired: {sha[:12]} predates closing record(s) {closing} and HEAD is past them"
+    if method in _pending_methods(found.nulls) or module in _scale_retest_modules(found.dormancy):
+        return f"expired: {sha[:12]} postdates its own PENDING record (a forward edit)"
+    if found.closed:
+        return f"expired: {sha[:12]} predates closing record(s) {[c[:12] for c in found.closed]} and HEAD is past them"
     return None
 
 
@@ -265,9 +281,7 @@ def exempt_problems(module: str, reason: str, history=git_history, root: Path = 
     since = re.search(rf"since=({_SHA})(?![0-9a-f])", reason)
     if not since:
         problems.append(f"{module}: reason names no `since=<full 40-hex sha>`")
-    elif (
-        expired := expiry_problem(since.group(1), history, (DORMANCY_GATE, f'"{module}": ('))
-    ) is not None:
+    elif (expired := expiry_problem(since.group(1), history, module=module)) is not None:
         problems.append(f"{module}: {expired}")
     return problems
 
@@ -615,11 +629,7 @@ def _check_expired(scan: _Scan, history) -> list[Red]:
     for recs in scan.nulls.values():
         for n in recs:
             pending = re.fullmatch(rf"PENDING since ({_SHA})", n.retest)
-            added = (n.path, f"NULL-RECORD: {n.method} | ")
-            if (
-                pending
-                and (problem := expiry_problem(pending.group(1), history, added)) is not None
-            ):
+            if pending and (problem := expiry_problem(pending.group(1), history, n.method)):
                 reds.append(Red("R-EXPIRED", f"{n.path}:{n.no}", problem))
     return reds
 
@@ -704,7 +714,7 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
         ),
         "R-EXPIRED": (
             {f"{_EV}a.md": f"# t\n{_REC}PENDING since {'a' * 40}\n"},
-            {"history": lambda sha, added=None: None},
+            {"history": lambda sha: None},
         ),
         "R-STALE-GRANDFATHER": (
             {f"{_EV}a.md": "# t\n"},
@@ -740,7 +750,7 @@ def self_check() -> int:
             f"# t\n{_REC}PENDING since {'a' * 40}\n", encoding="utf-8"
         )
         entry = f"NULL-RECORD:{_EV}a.md since={'a' * 40}"
-        history = lambda sha, added=None: History([Commit(sha, "x")])  # noqa: E731
+        history = lambda sha: History([])  # noqa: E731
         if exempt_problems("m", entry, history=history, root=Path(tmp)):
             failures.append("clean R-EXEMPT entry reds")
         if not exempt_problems(

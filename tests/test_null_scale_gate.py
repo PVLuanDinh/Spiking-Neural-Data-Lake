@@ -423,66 +423,21 @@ def pending(tmp_path):
     return {EV + "a.md": f"# t\n{rec(retest='PENDING since ' + SHA)}\n"}
 
 
-def history_of(*subjects, created=None):
-    """Rows are subjects (CLOSING models a commit that touches the execution record) or Commits."""
-    commits = [
-        s if isinstance(s, ng.Commit) else ng.Commit(f"{i:040x}", s, closing=s == CLOSING)
-        for i, s in enumerate(subjects)
-    ]
-    return lambda sha, added=None: ng.History(commits, created)
-
-
 CLOSING = "chore(record): closing execution record, arc 7"
 FIRST = f"{0:040x}"
 
 
 def test_expired_before_the_record_is_green(tmp_path):
-    assert run(tmp_path, pending(tmp_path), history=history_of("feat: a", "feat: b")).reds == []
-
-
-def test_expired_with_the_record_as_head_is_green(tmp_path):
-    assert run(tmp_path, pending(tmp_path), history=history_of("feat: a", CLOSING)).reds == []
-
-
-def test_expired_one_commit_after_the_record_is_red(tmp_path):
-    report = run(
-        tmp_path,
-        pending(tmp_path),
-        history=history_of("feat: a", CLOSING, "feat: next arc", created=FIRST),
-    )
-    assert [r.code for r in report.reds] == ["R-EXPIRED"]
+    assert run(tmp_path, pending(tmp_path), history=lambda sha: ng.History([])).reds == []
 
 
 def test_expired_with_an_unknown_sha_is_red_never_a_pass(tmp_path):
-    report = run(tmp_path, pending(tmp_path), history=lambda sha, added=None: None)
+    report = run(tmp_path, pending(tmp_path), history=lambda sha: None)
     assert [r.code for r in report.reds] == ["R-EXPIRED"]
     assert "history unavailable" in report.reds[0].message
 
 
-def test_expired_when_the_entry_is_created_at_head_is_green(tmp_path):
-    assert run(tmp_path, pending(tmp_path), history=history_of()).reds == []
-
-
 # ---------------------------------------- F4: only non-merge commits after the record count
-
-
-def test_a_merge_commit_after_the_closing_record_does_not_expire_the_entry(tmp_path):
-    merge = ng.Commit(f"{9:040x}", "Merge pull request #7 from x/arc", merge=True)
-    commits = [
-        ng.Commit(f"{i:040x}", s, closing=s == CLOSING) for i, s in enumerate(("feat: a", CLOSING))
-    ]
-    history = lambda sha, added=None: ng.History([*commits, merge], FIRST)  # noqa: E731
-    assert run(tmp_path, pending(tmp_path), history=history).reds == []
-
-
-def test_a_non_merge_commit_after_a_merge_after_the_closing_record_still_expires(tmp_path):
-    merge = ng.Commit(f"{8:040x}", "Merge branch x", merge=True)
-    last = ng.Commit(f"{9:040x}", "feat: next arc")
-    commits = [
-        ng.Commit(f"{i:040x}", s, closing=s == CLOSING) for i, s in enumerate(("feat: a", CLOSING))
-    ]
-    history = lambda sha, added=None: ng.History([*commits, merge, last], FIRST)  # noqa: E731
-    assert [r.code for r in run(tmp_path, pending(tmp_path), history=history).reds] == ["R-EXPIRED"]
 
 
 def test_real_git_a_no_ff_merge_on_top_of_the_closing_record_is_green(tmp_path):
@@ -506,21 +461,7 @@ OTHER_SUBJECTS = [
     "chore(record): batch 4 closing record",
     "G1(c) closing record",
     "docs(evidence): closing record",
-    "record(022): battery GREEN on 89f3af14",
 ]
-
-
-@pytest.mark.parametrize("subject", OTHER_SUBJECTS)
-def test_a_closing_record_with_a_non_standard_subject_expires_the_entry(tmp_path, subject):
-    row = ng.Commit(f"{1:040x}", subject, closing=True)
-    history = history_of("feat: a", row, "feat: next arc", created=FIRST)
-    assert [r.code for r in run(tmp_path, pending(tmp_path), history=history).reds] == ["R-EXPIRED"]
-
-
-def test_the_standard_subject_without_a_change_to_the_record_is_not_a_closing_record(tmp_path):
-    row = ng.Commit(f"{1:040x}", CLOSING, closing=False)
-    history = history_of("feat: a", row, "feat: next arc", created=FIRST)
-    assert run(tmp_path, pending(tmp_path), history=history).reds == []
 
 
 @pytest.mark.parametrize("subject", OTHER_SUBJECTS)
@@ -604,76 +545,273 @@ def test_real_git_an_honest_entry_is_green_until_a_commit_follows_its_arcs_recor
     assert [r.code for r in real_check(repo).reds] == ["R-EXPIRED"]
 
 
-def test_real_git_an_expired_sha_edited_forward_stays_expired(tmp_path):
-    # review #4519 M2: moving `since` past the closing record must not reset the clock
-    repo = Repo(tmp_path)
-    base = repo.commit("feat: base", {"README.md": "x\n"})
-    repo.commit("feat: add the null", record_file(base))
-    closing = close_arc(repo)
-    repo.commit("feat: next arc", {"README.md": "y\n"})
-    repo.commit("fix: re-point the sha", record_file(closing))
-    report = real_check(repo)
-    assert [r.code for r in report.reds] == ["R-EXPIRED"]
-    assert "ancestor" in report.reds[0].message
+# ---------------------------------------- G1: expiry without a creation-commit lookup
 
 
-def test_real_git_a_record_not_yet_committed_is_created_at_head(tmp_path):
+def pending_file(sha, prefix="NULL-RECORD: ", path=EV + "a.md"):
+    return {
+        path: f"# t\n{rec(retest='PENDING since ' + sha).replace('NULL-RECORD: ', prefix, 1)}\n"
+    }
+
+
+def armed_repo(tmp_path, files=None):
+    """base, then a commit that adds the PENDING record; returns (repo, base)."""
     repo = Repo(tmp_path)
     base = repo.commit("feat: base", {"README.md": "x\n"})
+    repo.commit("feat: add the null", files or record_file(base))
+    return repo, base
+
+
+def expires_after_close(repo):
+    assert real_check(repo).reds == []
     close_arc(repo)
-    repo.commit("feat: next arc", {"README.md": "y\n"})
-    repo.write(record_file(base))
     assert real_check(repo).reds == []
+    repo.commit("feat: next arc", {"README.md": "y\n"})
+    return [r.code for r in real_check(repo).reds]
 
 
-def test_real_git_a_sha_that_is_not_an_ancestor_of_the_creation_commit_is_red(tmp_path):
+@pytest.mark.parametrize("prefix", ["NULL-RECORD:", "NULL-RECORD:  ", "NULL-RECORD:\t"])
+def test_real_git_a_record_spelled_off_the_canonical_spacing_still_expires(tmp_path, prefix):
     repo = Repo(tmp_path)
     base = repo.commit("feat: base", {"README.md": "x\n"})
-    repo.git("checkout", "-q", "-b", "side")
-    side = repo.commit("feat: side work", {"side.md": "s\n"})
-    repo.git("checkout", "-q", "-")
-    repo.commit("feat: add the null", record_file(base))
-    repo.git("merge", "-q", "--no-edit", "side")
-    assert real_check(repo).reds == []
-    repo.write(record_file(side))
-    repo.git("commit", "-q", "-am", "fix: point at the side commit")
+    repo.commit("feat: add the null", pending_file(base, prefix))
+    assert expires_after_close(repo) == ["R-EXPIRED"]
+
+
+def test_real_git_a_record_moved_to_another_file_still_expires(tmp_path):
+    repo, base = armed_repo(tmp_path)
+    close_arc(repo)
+    repo.git("mv", EV + "a.md", EV + "b.md")
+    repo.git("commit", "-q", "-m", "feat: next arc moves the record")
     assert [r.code for r in real_check(repo).reds] == ["R-EXPIRED"]
 
 
-def test_expiry_reads_the_creation_commit_through_the_injected_history(tmp_path):
+def test_real_git_a_record_moved_with_the_rest_of_the_file_still_expires(tmp_path):
+    repo, base = armed_repo(tmp_path)
+    close_arc(repo)
+    repo.commit(
+        "feat: next arc", {EV + "a.md": "# t\n", EV + "b.md": record_file(base)[EV + "a.md"]}
+    )
+    assert [r.code for r in real_check(repo).reds] == ["R-EXPIRED"]
+
+
+def test_real_git_an_older_record_of_the_same_method_does_not_red_a_fresh_one(tmp_path):
+    repo = Repo(tmp_path)
+    repo.commit("feat: an old null", {EV + "a.md": f"# t\n{rec()}\n"})
+    repo.commit("feat: the old null is removed", {EV + "a.md": "# t\n"})
+    base = repo.commit("feat: base", {"README.md": "x\n"})
+    repo.commit("feat: a fresh PENDING null", record_file(base))
+    assert real_check(repo).reds == []
+
+
+def test_real_git_a_triage_candidate_switched_to_pending_is_green(tmp_path):
+    candidate = rec(
+        units="unknown", ticks="unknown", seeds="unknown", mde="unknown", retest="CANDIDATE"
+    )
+    repo = Repo(tmp_path)
+    repo.commit("docs: the triage list", {ng.TRIAGE: f"# t\n{candidate}\n"})
+    base = repo.commit("feat: base", {"README.md": "x\n"})
+    repo.commit("docs: the owner picks it", pending_file(base, path=ng.TRIAGE))
+    assert real_check(repo).reds == []
+
+
+def test_real_git_a_since_moved_past_its_own_pending_record_is_a_forward_edit(tmp_path):
+    repo, base = armed_repo(tmp_path)
+    record = repo.git("rev-parse", "HEAD")
+    repo.commit("fix: re-point the sha", record_file(record))
+    report = real_check(repo)
+    assert [r.code for r in report.reds] == ["R-EXPIRED"]
+    assert "forward edit" in report.reds[0].message
+
+
+def test_real_git_a_since_moved_past_an_expired_arc_is_red(tmp_path):
+    # review #4519 M2: moving `since` past the closing record must not reset the clock
+    repo, base = armed_repo(tmp_path)
+    closing = close_arc(repo)
+    repo.commit("feat: next arc", {"README.md": "y\n"})
+    repo.commit("fix: re-point the sha", record_file(closing))
+    assert [r.code for r in real_check(repo).reds] == ["R-EXPIRED"]
+
+
+def test_real_git_a_mid_arc_recertification_is_not_a_closing_record(tmp_path):
+    repo, base = armed_repo(tmp_path)
+    repo.commit("chore(record): execution record -- battery GREEN on becb96b7", {CERT: "1\n"})
+    repo.commit(
+        "chore(record): re-certify at d07d4fd6 so the arc battery's record assert can open",
+        {CERT: "2\n"},
+    )
+    repo.commit("feat: more of the same arc", {"README.md": "y\n"})
+    assert real_check(repo).reds == []
+    repo.commit("chore(record): closing execution record -- arc 7", {CERT: "3\n"})
+    assert real_check(repo).reds == []
+    repo.commit("feat: next arc", {"README.md": "z\n"})
+    assert [r.code for r in real_check(repo).reds] == ["R-EXPIRED"]
+
+
+def test_real_git_a_closing_subject_that_does_not_touch_the_record_is_not_a_closing_record(
+    tmp_path,
+):
+    repo, base = armed_repo(tmp_path)
+    repo.commit(CLOSING, {"README.md": "z\n"})
+    repo.commit("feat: next arc", {"README.md": "y\n"})
+    assert real_check(repo).reds == []
+
+
+@pytest.mark.parametrize(
+    "subject", ["chore(record): Closing Execution Record -- arc 7", "G1 CLOSING"]
+)
+def test_real_git_the_closing_subject_is_matched_without_case(tmp_path, subject):
+    repo, base = armed_repo(tmp_path)
+    close_arc(repo, subject=subject)
+    repo.commit("feat: next arc", {"README.md": "y\n"})
+    assert [r.code for r in real_check(repo).reds] == ["R-EXPIRED"]
+
+
+def test_real_git_a_parallel_commit_on_main_does_not_expire_the_arcs_own_entry(tmp_path):
+    repo, base = armed_repo(tmp_path)
+    main = repo.git("rev-parse", "--abbrev-ref", "HEAD")
+    repo.git("checkout", "-q", "-b", "pr")
+    close_arc(repo)
+    repo.git("checkout", "-q", main)
+    repo.commit("feat: another lane lands on main", {"other.md": "o\n"})
+    repo.git("checkout", "-q", "pr")
+    repo.git("merge", "-q", "--no-ff", "-m", "merge main into the arc", main)
+    assert real_check(repo).reds == []
+    repo.commit("feat: next arc", {"README.md": "y\n"})
+    assert [r.code for r in real_check(repo).reds] == ["R-EXPIRED"]
+
+
+def test_real_git_main_closing_record_merged_into_the_arc_then_work_expires_it(tmp_path):
+    repo, base = armed_repo(tmp_path)
+    main = repo.git("rev-parse", "--abbrev-ref", "HEAD")
+    repo.git("checkout", "-q", "-b", "arc", base)
+    repo.commit("feat: arc work", {"arc.md": "a\n"})
+    repo.git("checkout", "-q", main)
+    close_arc(repo)
+    repo.git("checkout", "-q", "arc")
+    repo.git("merge", "-q", "--no-ff", "-m", "merge main into arc", main)
+    assert real_check(repo).reds == []
+    repo.commit("feat: arc keeps working", {"arc.md": "b\n"})
+    assert [r.code for r in real_check(repo).reds] == ["R-EXPIRED"]
+
+
+def test_the_history_function_is_called_with_the_sha_alone(tmp_path):
     seen = []
 
-    def history(sha, added=None):
-        seen.append((sha, added))
-        return ng.History([ng.Commit("1" * 40, "feat: a")])
+    def history(sha):
+        seen.append(sha)
+        return ng.History([])
 
     run(tmp_path, pending(tmp_path), history=history)
-    assert seen == [(SHA, (EV + "a.md", "NULL-RECORD: m | "))]
+    assert seen == [SHA]
 
 
-def test_an_entry_created_before_the_closing_record_that_is_head_past_is_red(tmp_path):
-    created = f"{1:040x}"
-    history = history_of("feat: a", "feat: b", CLOSING, "feat: next", created=created)
-    assert [r.code for r in run(tmp_path, pending(tmp_path), history=history).reds] == ["R-EXPIRED"]
+def test_a_closing_record_in_the_history_expires_and_none_is_green(tmp_path):
+    expired = run(tmp_path, pending(tmp_path), history=lambda sha: ng.History([FIRST]))
+    assert [r.code for r in expired.reds] == ["R-EXPIRED"] and FIRST[:12] in expired.reds[0].message
+    assert (
+        run(tmp_path / "ok", pending(tmp_path / "ok"), history=lambda sha: ng.History([])).reds
+        == []
+    )
 
 
-def test_an_entry_created_after_the_closing_record_rides_its_own_arc(tmp_path):
-    created = f"{3:040x}"
-    history = history_of("feat: a", CLOSING, "feat: next", "feat: add the null", created=created)
+def test_a_pending_record_of_the_method_in_the_tree_of_since_is_a_forward_edit(tmp_path):
+    line = rec(retest="PENDING since " + SHA)
+    history = lambda sha: ng.History([], [(EV + "a.md", 2, line)])  # noqa: E731
+    report = run(tmp_path, pending(tmp_path), history=history)
+    assert [r.code for r in report.reds] == ["R-EXPIRED"] and "forward edit" in report.reds[
+        0
+    ].message
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        rec(retest="STRUCTURAL: zero call sites, the proposer is empty"),
+        rec(method="other", retest="PENDING since " + SHA),
+        rec(units="unknown", ticks="unknown", seeds="unknown", mde="unknown", retest="CANDIDATE"),
+        "NULL-RECORD: m | not a record",
+    ],
+)
+def test_other_records_in_the_tree_of_since_are_not_a_forward_edit(tmp_path, line):
+    history = lambda sha: ng.History([], [(ng.TRIAGE, 2, line)])  # noqa: E731
     assert run(tmp_path, pending(tmp_path), history=history).reds == []
 
 
-def test_a_creation_commit_outside_the_written_shas_range_is_red(tmp_path):
-    history = history_of("feat: a", created="f" * 40)
-    report = run(tmp_path, pending(tmp_path), history=history)
-    assert [r.code for r in report.reds] == ["R-EXPIRED"] and "ancestor" in report.reds[0].message
+def dormancy_file(*modules):
+    rows = "".join(
+        f'    "{m}": (\n        "scale-retest",\n        "x",\n    ),\n' for m in modules
+    )
+    return {ng.DORMANCY_GATE: f"EXEMPT = {{\n{rows}}}\n"}
 
 
-def test_a_creation_commit_the_sha_is_not_an_ancestor_of_is_red(tmp_path):
-    commits = [ng.Commit(f"{1:040x}", "feat: a")]
-    history = lambda sha, added=None: ng.History(commits, f"{1:040x}", anchored=False)  # noqa: E731
-    report = run(tmp_path, pending(tmp_path), history=history)
-    assert [r.code for r in report.reds] == ["R-EXPIRED"]
+def exempt_real(repo, base):
+    reason = f"unwired on a null; NULL-RECORD:{EV}a.md since={base}; re-test before the next arc"
+    history = functools.partial(ng.git_history, repo=repo.root)
+    return ng.exempt_problems("m", reason, history=history, root=repo.root)
+
+
+def test_real_git_an_exempt_row_is_green_in_its_arc_and_expires_after_the_closing_record(tmp_path):
+    repo = Repo(tmp_path)
+    base = repo.commit("feat: base", {"README.md": "x\n", **dormancy_file()})
+    repo.commit("feat: the row and its record", {**record_file(base), **dormancy_file("m")})
+    assert exempt_real(repo, base) == []
+    close_arc(repo)
+    assert exempt_real(repo, base) == []
+    repo.commit("feat: next arc", {"README.md": "y\n"})
+    assert any("expired" in p for p in exempt_real(repo, base))
+
+
+def test_real_git_an_exempt_since_moved_past_its_own_row_is_a_forward_edit(tmp_path):
+    repo = Repo(tmp_path)
+    repo.commit("feat: base", {"README.md": "x\n", **dormancy_file()})
+    row = repo.commit("feat: the row and its record", {**dormancy_file("m"), **record_file(SHA)})
+    repo.commit("fix: re-point the sha", record_file(row))
+    assert any("forward edit" in p for p in exempt_real(repo, row))
+
+
+def test_real_git_a_second_row_for_another_module_is_not_a_forward_edit(tmp_path):
+    repo = Repo(tmp_path)
+    base = repo.commit("feat: base", {"README.md": "x\n", **dormancy_file("other")})
+    repo.commit(
+        "feat: the row and its record", {**record_file(base), **dormancy_file("other", "m")}
+    )
+    assert exempt_real(repo, base) == []
+
+
+@pytest.fixture
+def real_history():
+    """This repository's own history; skips on a clone too shallow to hold the arc."""
+    if ng.git_history("4be0d691ec38fd20160dd3eba9b15d71981a911c") is None:
+        pytest.skip("the arc 4be0d691..fbb1f38e is not in this checkout's history")
+
+
+FBB = "fbb1f38eadb1a063fd15d7904dfcb858cfdb0bf9"
+
+
+def repo_git(*argv):
+    return subprocess.run(
+        ["git", *argv], cwd=ng.REPO, capture_output=True, text=True, check=True
+    ).stdout.split()
+
+
+def test_real_history_the_arc_4be0d691_is_green_at_its_closing_record_and_red_after(real_history):
+    base = "4be0d691ec38fd20160dd3eba9b15d71981a911c"
+    at = lambda head: ng.expiry_problem(base, functools.partial(ng.git_history, head=head), "m")  # noqa: E731
+    assert at(FBB) is None
+    after = repo_git("rev-list", "--reverse", "--no-merges", "--ancestry-path", f"{FBB}..HEAD")[0]
+    assert "expired" in at(after)
+
+
+def test_real_history_a_triage_candidate_switched_to_pending_later_is_green(real_history):
+    later = repo_git("rev-parse", "HEAD")[0]
+    method = "categorical coupling (counts-matrix relabelling prior on the readout)"
+    assert ng.expiry_problem(later, ng.git_history, method) is None
+
+
+def test_real_history_an_exempt_row_switched_to_scale_retest_is_green(real_history):
+    cb = "cb294e571e7a48b5fc66c26b3b39de84c2725fa0"
+    assert ng.expiry_problem(cb, ng.git_history, module="feed_readout") is None
 
 
 # ---------------------------------------- addendum 3: the exclusion is by name
@@ -767,8 +905,8 @@ GOOD_REASON = (
 )
 
 
-def alive(sha, added=None):
-    return ng.History([ng.Commit(sha, "feat: x")])
+def alive(sha):
+    return ng.History([])
 
 
 @pytest.fixture
@@ -787,24 +925,6 @@ def test_a_reason_with_no_null_record_is_r_exempt():
 
 def test_a_reason_with_no_full_sha_is_r_exempt():
     assert ng.exempt_problems("m", f"NULL-RECORD:{EV}a.md since=abc1234", history=alive)
-
-
-def test_exempt_expiry_reads_the_creation_of_the_exempt_row(home):
-    seen = []
-
-    def history(sha, added=None):
-        seen.append(added)
-        return alive(sha)
-
-    ng.exempt_problems("m", GOOD_REASON, history=history, root=home)
-    assert seen == [(ng.DORMANCY_GATE, '"m": (')]
-
-
-def test_exempt_since_edited_forward_past_the_creation_is_r_exempt(home):
-    history = history_of("feat: a", created="f" * 40)
-    assert any(
-        "ancestor" in p for p in ng.exempt_problems("m", GOOD_REASON, history=history, root=home)
-    )
 
 
 def exempt_with(root, reason_path):
@@ -844,8 +964,7 @@ def test_the_default_root_is_the_repo_and_a_phantom_path_is_r_exempt():
 
 
 def test_a_reason_with_an_expired_since_is_r_exempt(home):
-    history = history_of("feat: a", CLOSING, "feat: next", created=FIRST)
-    assert ng.exempt_problems("m", GOOD_REASON, history=history, root=home)
+    assert ng.exempt_problems("m", GOOD_REASON, history=lambda sha: ng.History([FIRST]), root=home)
 
 
 def test_dormancy_gate_reds_a_planted_bad_scale_retest_entry():
