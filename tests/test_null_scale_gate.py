@@ -186,6 +186,28 @@ def test_a_grandfathered_line_survives_a_move_and_not_a_reword(tmp_path):
     assert {r.code for r in reworded.reds} == {"R-UNRECORDED", "R-STALE-GRANDFATHER"}
 
 
+def test_a_verbatim_copy_of_a_grandfathered_line_in_a_new_section_is_red(tmp_path):
+    # review #4483 m1 / #4484 (a): one grandfather key exempts ONE statement, not every copy
+    key = (EV + "a.md", ng.line_key(STATEMENT))
+    report = run(
+        tmp_path,
+        {EV + "a.md": f"# old\n{STATEMENT}\n\n# new\n{STATEMENT}\n"},
+        grandfathered=frozenset({key}),
+    )
+    assert [r.code for r in report.reds] == ["R-UNRECORDED"]
+    assert report.counts["grandfathered"] == 1
+
+
+def test_a_reason_that_carries_the_field_separator_is_r_field(tmp_path):
+    # review #4483 m2: "STRUCTURAL: <reason> | note=x" must not hide an unknown key in the reason
+    reason = "the path has no synapses at any scale whatsoever"
+    head = "NULL-RECORD: m | units=n/a | ticks=n/a | seeds=1 | mde=0.1 | retest=STRUCTURAL: "
+    bad = run(tmp_path / "bad", {EV + "a.md": f"# t\n{head}{reason} | note=x\n"})
+    good = run(tmp_path / "good", {EV + "a.md": f"# t\n{head}{reason}\n"})
+    assert [r.code for r in bad.reds] == ["R-FIELD"]
+    assert good.reds == []
+
+
 # ---------------------------------------------------------------- R-STALE-GRANDFATHER
 
 

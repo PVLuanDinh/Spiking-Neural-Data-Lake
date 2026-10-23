@@ -219,12 +219,15 @@ def _count_ok(value: str, extra: tuple[str, ...]) -> bool:
 def _retest_ok(value: str, triage: bool) -> bool:
     if re.fullmatch(r"REF:[^\s#]+#.+", value) or re.fullmatch(rf"PENDING since {_SHA}", value):
         return True
+    # A reason may not carry the field separator: "STRUCTURAL: ... | note=x" would hide an unknown key (review #4483 m2).
     if value.startswith("STRUCTURAL:"):
-        return len(value[len("STRUCTURAL:") :].strip()) >= 20
+        reason = value[len("STRUCTURAL:") :].strip()
+        return len(reason) >= 20 and " | " not in reason
     if triage and value == "CANDIDATE":
         return True
     not_needed = re.fullmatch(rf"NOT-NEEDED: ({_HARM_KINDS}) (.+)", value)
-    return bool(triage and not_needed and len(not_needed.group(2).strip()) >= 20)
+    reason = not_needed.group(2).strip() if not_needed else ""
+    return bool(triage and not_needed and len(reason) >= 20 and " | " not in reason)
 
 
 def parse_null(path: str, no: int, body: str, triage: bool = False) -> NullRecord | str:
@@ -352,8 +355,13 @@ def statements(scan: _Scan) -> list[Line]:
 
 def _check_unrecorded(scan: _Scan, grandfathered) -> list[Red]:
     reds = []
+    used = set()  # one grandfather key exempts ONE statement: a verbatim copy elsewhere is checked as new (review #4483/#4484)
     for st in statements(scan):
-        if st.path in UNRECORDED_EXCLUDED or (st.path, line_key(st.text)) in grandfathered:
+        if st.path in UNRECORDED_EXCLUDED:
+            continue
+        key = (st.path, line_key(st.text))
+        if key in grandfathered and key not in used:
+            used.add(key)
             continue
         lines = scan.lines[st.path]
         section = _section(lines, st.no - 1)
@@ -478,7 +486,7 @@ def check(root: Path = REPO, grandfathered=GRANDFATHERED, history=git_history) -
         counts={
             "files scanned": len(scan.lines),
             "statements": len(found),
-            "grandfathered": sum((s.path, line_key(s.text)) in grandfathered for s in found),
+            "grandfathered": len({(s.path, line_key(s.text)) for s in found} & set(grandfathered)),
             "NULL-RECORDs": sum(map(len, scan.nulls.values())),
             "RETEST-RECORDs": sum(map(len, scan.retests.values())),
         },

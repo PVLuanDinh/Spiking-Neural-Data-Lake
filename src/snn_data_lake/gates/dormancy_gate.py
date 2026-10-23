@@ -115,7 +115,8 @@ _S6_PANEL_CORRECTION = (
 # ------------------------------------------------------------------------------------------------
 # EXEMPT: brain modules that are legitimately NOT reachable from a live path, each with a disposition
 # and a reason. Dispositions: "retire" (pending deletion), "wire" (pending a verify-first wave),
-# "permanent" (train-tier / benchmark / entry-serve / awaiting-prerequisite). The gate shrinks this
+# "permanent" (train-tier / benchmark / entry-serve / awaiting-prerequisite), "scale-retest" (P8 null-scale:
+# a null awaiting its one 10x re-test, checked by null_scale_gate, expires before the next pushed arc). The gate shrinks this
 # list as Policy-3 waves land; a "retire"/"wire" entry that outlives its wave is a standing TODO.
 # ------------------------------------------------------------------------------------------------
 # key = module basename (unique across REGIONS per brain_atlas); value = (disposition, reason).
