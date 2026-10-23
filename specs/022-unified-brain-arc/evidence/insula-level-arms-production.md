@@ -155,3 +155,17 @@ control this shows the record depends on the constant's value, not a dose-respon
 does not replace the pre-registered one above. The OWNER adjudicates P3 shape 5.
 
 **Unmeasured.** cpu device; seeds beyond 0-4; ticks beyond 200.
+
+## 3. Owner adjudication (2026-10-22)
+
+Owner ruling, in chat, on the pre-registered and post-hoc results above: **not P3 dormancy shape 5.** The
+insula's tick-to-tick variation changes the outcome on the production tier (VARIATION matters on 5 of 5 seeds),
+so "a constant wearing a signal's clothes" does not describe it.
+
+**P8 question opened** (owner pick "Open a P8 question"). The charge measured here is narrow: winner-only (the
+ignition sequence never differs across arms), the injected arms' effects end by tick 47-61, and the removal
+effect is seed-dependent (N from 0 to 112). Whether that charge is load-bearing for the engine's function is not
+settled by this probe. It is to be judged by the engine's function (owner 2026-09-30: a brain-tuned readout
+recovering relational content on held-out data, against controls that break the path), and it owes what P8 asks
+of an invented method: a reachable red, a control that is not the method itself, per-item attribution, and
+deletion on a null. Not yet pre-registered; nothing measured.
