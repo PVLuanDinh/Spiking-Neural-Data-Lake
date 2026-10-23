@@ -587,3 +587,38 @@ NULL-RECORD: og1_succession | units=<total units over the 4 held-out recordings>
 - **h5py:** it is now also imported by `organoid_ingest`, recorded in the `pyproject.toml` `[nir]` comment.
 - **The CHANGELOG's "persistence alone cannot pass"** was untrue (A2.3 F1 measured 6-9%) and is corrected in the same
   fold.
+
+## Amendment A5, 2026-10-23 (PRE-DATA for Stage 1; append-only; the text above is unchanged)
+
+**Trigger.** Lane og1-ingest4's STOP (board #4570, commits 86eb2337..a2cd0fc3). A4.8's new refusal, "any spike at or
+past `duration_s`", with `duration_s` = `t_spk_mat` rows / rate, refused 5 of 24 real files:
+
+| file | last spike | span | spikes past |
+|---|---|---|---|
+| HO3, 2 files | 180.14945 s | 180.149 s | 2 |
+| HO5 | 600.0184 s | 600.018 s | 1 |
+| HO7 | 599.9404 s | 599.94 s | 1 |
+| HO8 | 599.9701 s | 599.97 s | 1 |
+
+The overshoot is 0.1-0.45 ms. The lane did not weaken the gate. A4.8's sentence "lens A measured ... last spike <=
+`duration_s`" did not hold at that rule.
+
+**Cause: the rule's span was inconsistent with A2.1, not a data defect.**
+- Under A2.1's declared convention, row = floor((t - starting_time) x rate - 0.5).
+- A spike lands in the last row, n_rows - 1, for t up to (n_rows + 0.5) / rate.
+- So the depositors' raster itself covers [0.5 / rate, (n_rows + 0.5) / rate).
+- Every one of the 5 overshooting spikes falls inside that upper edge, because each overshoot is below 0.5 ms. Gate
+  (e') had already reproduced these rasters exactly with those spikes in them.
+
+**A5.1 The span is the A2.1 raster's own upper edge.**
+- `duration_s` = (n_rows + 0.5) / rate.
+- A spike is OUT OF SPAN iff its A2.1 row is >= n_rows, equivalently t >= (n_rows + 0.5) / rate.
+- Gate (d)'s new refusal uses that rule.
+- No tolerance is introduced: the edge follows from A2.1, which was fixed before this rule was written.
+- Constructed reds stay: a 1.0 s raster with spikes to 1.9 s is still refused, and a spike at exactly
+  (n_rows + 0.5) / rate is refused.
+- The census's bin grid covers [0, `duration_s`) under the same definition.
+
+**Disclosed:** A4.8's "last spike <= `duration_s`" statement is withdrawn by this amendment. The rule A5 replaces was
+written by the integrator without checking it against A2.1. What A5 read: the 5 refusals' last-spike times and
+spans, from Stage 0 only. Stage 1 has read nothing.
