@@ -950,10 +950,11 @@ credited at its measured scale only.
 **Mechanization: `gates/null_scale_gate.py`** (`--assert` + `--self-check`): the record formats, an
 unrecorded deletion statement in an evidence file (matched per paragraph), a re-test below 10x, a deletion
 whose re-test charged, an expired `PENDING` or `scale-retest` entry, and a stale grandfather entry. Expiry
-is dated from the commit that added the record, and an arc's closing record is a commit that modifies
-`tools/policy_certification.json`; a missing git history is red, never a pass, so every CI job that runs
-the gate checks out full history. It cannot judge a STRUCTURAL argument, whether the named axis is the right
-one, or which of several statements in one section a NULL-RECORD covers, and it says so in its output.
+runs from the written `since` (which must predate its own PENDING record) to the arc's closing record, a
+non-merge commit modifying `tools/policy_certification.json` with "closing" in its subject, once a non-merge
+commit follows. Missing git history is red, never a pass (CI checks out full history). It cannot judge a
+STRUCTURAL argument, a harm's bar, the named axis, or which statement in a section a NULL-RECORD covers, and
+says so.
 
 ### Real past incidents, each re-verified against the tree 2026-08-04
 
