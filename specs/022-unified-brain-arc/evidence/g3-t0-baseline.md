@@ -85,3 +85,39 @@ P5b: Python (no kernel added).
 - Seeds 0-2 at 300 ticks reach one or two grown units; a fingerprint over so few catches a changed tie-break only if it changes which
   of a few candidates is admitted. The bare-engine pins carry the strong half of T1's gate.
 - Nondeterminism across processes, GPU or a differently loaded host is not sampled.
+
+---
+
+# RESULTS (appended after the freeze; section above unchanged)
+
+Capture: 2026-10-23, `tests/test_g3_t0_baseline.py::capture()` on the tree at `78af459c` (parent: base `20e1e742`), torch 2.11.0+cu128,
+`resource:timing` held by g3-t0 for the run (~8 min, 21 brains at ~21 s each). **Perception tier: `eprop-snn` and
+`perceiving_audio` read at construction and after the last tick for all 21 arms; no `stdlib`.**
+
+| verdict | result | detail |
+|---|---|---|
+| H0a baseline = wall clock only | PASS, seeds 0-2 | extra baseline keys: none; tier stable between live_a/live_b (eprop-snn) |
+| H0b growth_off | PASS, seeds 0-2 | grown_units 0, `state.grown_units` moved |
+| H0c seed shift (same stage) | PASS | placement record moved at 0,1,2; fingerprint/grown/accuracy moved at 0,1,2 |
+| H0d admission shift | PASS, seeds 0-2 | grown 20 / 3 / 17 vs live 2 / 2 / 4 |
+| H0e reversed tie-break | PASS | fingerprint moved at 0,1,2 |
+| R-T0-6 one-ulp plant | PASS | differ names `state.b` |
+| bare-engine pins (8 STREAM/TRAJ, 6 ONLINE) | EQUAL | all 14 re-captured equal to `tests/test_candidate_lifecycle.py` |
+
+Per arm (tier `eprop-snn` throughout), `grown_units` / `growth_fingerprint`:
+
+| arm | seed 0 | seed 1 | seed 2 |
+|---|---|---|---|
+| live_a = live_b | 2 / 2972569911 | 2 / 591512334 | 4 / 3187185308 |
+| growth_off | 0 / None | 0 / None | 0 / None |
+| engine_seed_shift | 1 / 3685142944 | 2 / 3871622976 | 5 / 663085608 |
+| engine_admission_shift | 20 / 1839442027 | 3 / 1624306126 | 17 / 2402822048 |
+| neuter_place | 2 / 2972569911 | 2 / 591512334 | 4 / 3187185308 |
+| reverse_tiebreak | 3 / 2934012809 | 2 / 1178296799 | 4 / 138808646 |
+
+`neuter_place` equals live on every fingerprint (the pinned placement null, not a criterion). The harness is SEEING `_refit`: T1 may
+use it as its control. All values are in `g3-t0-baseline.json`; the harness's fast tests recompute the verdicts from that file.
+
+## Does NOT establish (results)
+- Nothing about competence: accuracies are differencer keys on a 300-tick, 1-4 unit stream.
+- Single process, CPU refits, one host load; cross-process nondeterminism is unsampled. No null asserted (P8 clause not engaged).
