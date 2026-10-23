@@ -908,8 +908,13 @@ def test_real_history_a_triage_candidate_switched_to_pending_later_is_green(real
 
 
 def test_real_history_an_exempt_row_switched_to_scale_retest_is_green(real_history):
+    # Judged at the P8 arc's own closing record, not at HEAD: at HEAD the verdict expires as soon
+    # as any commit lands on top of 20e1e742 (measured 2026-10-23 on the OG1 stack), so a
+    # live-HEAD form reds every later arc.
     cb = "cb294e571e7a48b5fc66c26b3b39de84c2725fa0"
-    assert ng.expiry_problem(cb, ng.git_history, module="feed_readout") is None
+    close = "20e1e742f6d1d9deb19dee0b443e6737592a1200"
+    at_close = functools.partial(ng.git_history, head=close)
+    assert ng.expiry_problem(cb, at_close, module="feed_readout") is None
 
 
 # ---------------------------------------- G3: block quotes, G6: emphasis
