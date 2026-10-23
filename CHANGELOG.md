@@ -9,6 +9,33 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- OG1 Stage 0: the organoid ingest, pushed without Stage 1 (2026-10-23)
+
+OG1 / T118 (owner 2026-10-23). Pre-registration: `specs/022-unified-brain-arc/evidence/og1-organoid-stream.md`, with
+Amendments A1-A6.
+- A1-A5 are pre-data for Stage 1. A1 and A2 were written after Stage 0 reads, and A2.1 after its gate refused all 24
+  files under the first convention; all are disclosed there.
+- A6 records the owner's path: push Stage 0 alone after an agent-fleet debate (#4729).
+
+**Added `sensorimotor/organoid_ingest` (Stage 0).**
+- Pinned DANDI 001603 spike-sorted human-organoid NWB files (`tools/og1_dandi_pin.json`: 24 files, CC-BY-4.0, van
+  der Molen et al. 2025) pass refusal gates before any npz is written:
+  - licence (`ingest_guard.license_ok`);
+  - streamed bytes;
+  - index, including non-finite and negative times;
+  - time units, with the span taken at the raster's own edge, (n_rows + 0.5)/rate;
+  - an EXACT rebuild of the depositors' own 1 ms raster. The rebuild uses MATLAB 1-based round, row =
+    floor(t*rate - 0.5), and reproduces all 24 files with 0 mismatched cells.
+- The npz carries unit positions.
+- Duplicate session files collapse to 14 distinct recordings, with duplicate-timestamp counts per file.
+- Offline, never the lake.
+
+**Not added: the Stage 1 succession census is NOT BUILT.**
+- Four null designs were retired on synthetic real-shaped data, before any organoid read.
+- An independent acceptance battery comes first; then one candidate gets one run, and a failure is recorded as NOT
+  BUILT (A6).
+- An envelope read is never cited as succession.
+
 ## [Unreleased] -- B4 fold, lane b4c: the carryfix closing-review folds (2026-10-20)
 
 selfcheck_cache (lane b4c; integrator r02-lead). The carryfix pytest reds now list the tree surface directly, so on the
