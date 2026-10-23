@@ -407,3 +407,183 @@ any deletion, now needs at least 3 informative subjects.
   (FAIL) and green as INSTRUMENT_REFUSAL.
 - Both reviewers agreed (#4540, #4541), and rv-a resolved C-1 (#4539).
 - The same round verified the R1 pack digests before any compute and recorded the campaign's wall time.
+
+## Amendment A4, 2026-10-23 (PRE-DATA for Stage 1; append-only; the text above is unchanged)
+
+**Trigger.** The three-lens panel on the Arc 1 stack (`claude/og1-arc1-1023` 0b382dd3; lens files
+`D:\AI-project\lanes\og1-panel-{a,b,c}-1023-row\LENS-{A,B,C}.md`, with their probes):
+- Lens A: BLOCK, A-1 to A-12.
+- Lens B: APPROVE-WITH-FOLDS, B1 to B16.
+- Lens C: APPROVE-WITH-FOLDS, C1 to C10.
+
+The integrator then measured the frozen encoding on synthetic, real-shaped sessions. The files are in
+`D:\AI-project\lanes\organoid-og1-1023\`:
+- `og1_timing.py` and `og1_timing.out.txt`
+- `og1_pos_probe.py` and `og1_pos_probe.out.txt`
+
+**What had been read when A4 was written, disclosed:**
+- Stage 0 metadata of the 24 files: unit counts, and per-unit `x_pos` / `y_pos` (all 24 carry them, no NaN).
+- State counts and run counts of the frozen encoding on SYNTHETIC streams.
+- No Stage 1 statistic, state sequence, transition count or MI on organoid data. Stage 1 has still read nothing.
+
+**Scope, stated first.** After A4 the census reads SPATIALLY ORGANISED succession at the grain of electrode-position
+groups. A sequence whose unit order is spatially interleaved within a group is invisible to it. That is a disclosed
+limit of the encoding, and it narrows what a PASS or a FAIL means: neither verdict is about "the published
+preconfigured sequences" in general.
+
+**A4.1 The encoding is REPLACED (A-3, and the integrator's measurement).**
+
+*Why the frozen encoding goes.* Population vectors are L2-normalised and non-negative, so every pairwise distance is at
+most sqrt(2), and two bins that each hold a single spike from different units sit at exactly sqrt(2). On sparse bins,
+DP-means therefore has no middle ground:
+- with lam below sqrt(2), every single-unit bin opens its own state;
+- with lam at or above sqrt(2), everything merges into one state.
+
+Measured on synthetic sessions shaped like HO1 (131 units, 180 s, 31,756 spikes):
+- bursty firing gives 107 / 129 / 130 / 131 states at W = 50 / 20 / 10 / 5 ms, i.e. about one state per unit;
+- uniform firing gives 17 / 90 / 20 states at W = 50 / 20 / 10 ms, varying erratically with the float tie lens A
+  found.
+
+With K about 130 states, the distinct pairs dwarf the 3,000-11,000 runs, so every dev session would be unreadable:
+an INSTRUMENT REFUSAL by construction. `_dpmeans` is retired from this instrument together with this measurement.
+That is P2 applied as written: a mechanism measured unfit for the job leaves it; it is not duplicated. The median
+split below adds no clustering mechanism.
+
+*The replacement.* For each SESSION:
+- its units are split into G spatial groups from the Units table's positions (metadata, blind to activity):
+  - G = 2: x below or at the session's median x -> group 0, else group 1;
+  - G = 4: the same split on x, crossed with the same split on y;
+  - a unit exactly at the median goes to the lower group;
+- a bin's state is the bit code of the groups holding at least 1 spike in that bin; 0 is silent.
+
+So G = 2 gives at most 4 states and G = 4 at most 16, and readability (runs >= 10 x distinct observed pairs) needs
+at most 120 or 2,400 runs. The lam quantile grid, `LAM_SAMPLE` and the float32/float64 question all go with DP-means.
+
+**A4.2 The grid is W x G.** W in {5, 10, 20, 50} ms x G in {2, 4}: 8 cells.
+- The selection rule is section 3's: the best dev-median E among cells readable on all 4 dev subjects; ties go to the
+  larger W, then the smaller G.
+- An EMPTY readable set is an INSTRUMENT REFUSAL: a dated amendment follows, never a silent fallback.
+
+**A4.3 The statistic is read on RUN transitions (A-1).**
+- r is a session's run-state sequence: consecutive equal bin states are collapsed, so r has no self-transitions.
+- E = `mi_bits(r[:-1], r[1:])` minus the q95 of the same quantity over 200 null surrogates.
+- The bin-level statistic is retired. Lens A measured why: a deterministic burst cycle separated by long silences gave
+  bin-level E of about -2 bits (pass 0 of 10). The same null on run transitions separated a true chain (1.620 against
+  null q95 0.284) from no succession (0.261 against 0.287).
+- Persistence is excluded by construction, because a run sequence has no self-transitions.
+- `_marginal_dev` is retired: at run level there is no bin marginal for the null to distort. That also closes B11's
+  duplicate of `reservoir/neural_sampling._tv`.
+
+**A4.4 The null is BLOCK-LOCAL (A-2).**
+- A session's R runs are split into B contiguous blocks of near-equal run count, B = max(1, min(10, floor(R / 50))).
+- Each surrogate run's state is drawn from the run-state distribution of its OWN block, excluding the previous run's
+  state and renormalised.
+- B is recorded per session. At B = 1, drift is uncontrolled; that is recorded as such and disclosed in the verdict.
+- Seeds stay `og1.null:{subject}:{k}`.
+
+**A4.5 Controls and reds.**
+- PC1: the 3-bit successor map at run level.
+- PC2 now keeps the real (state, length) coupling. It is the dev session (with the most runs) at the chosen cell, its
+  silent runs kept in place, and its NON-silent run codes replaced in order by a deterministic cycle over the
+  non-silent codes it actually shows. It must PASS.
+- R1 stays vacuous (A2.2).
+- R2 is one set-aside draw of the block-local null.
+- R3 is per-unit Poisson at each unit's mean rate on the real bin grid, with the units' real positions.
+- At least ONE held-out subject must carry a non-vacuous R3 (readable and failing), else the harness is BLIND (B9).
+- Synthetic, SPIKE-level tests, each with positions and with its red shown against the Round 4 code where it
+  differs. The shapes are those of lens A's probes, used as a specification rather than as scripts:
+  - planted spatial propagation (units ordered by x fire in sequence after a shared onset, long silences between)
+    -> PASS;
+  - the same units and onsets with no propagation order -> FAIL;
+  - drift halves and slow drift with no succession -> FAIL;
+  - semi-Markov dwell with no succession -> FAIL.
+
+**A4.6 Declared choices, now in the tracked text (B5).**
+1. The fit unit is the SESSION, not the subject. This is a dated correction of section 3's "per subject": the
+   sessions of HO2 and HO3 differ in units (4 distinct recordings each), so a subject-level fit is undefined.
+2. PC1 uses 400 runs (`PC1_RUNS`).
+3. The R2/R3 ">= 3 of 4 fail" bar stands, with vacuous fails counted as failing (A2.2), plus A4.5's non-vacuous R3.
+4. The grid tie rule is as in A4.2.
+5. PC2's session is chosen as in A4.5.
+6. R3's seed string is `og1.poisson:{subject}:{session}`.
+7. R2 and R3 use the subject's first kept session; each held-out subject has 1.
+8. Campaign order: dev grid -> chosen cell -> controls -> held-out census. The held-out census is not run if any
+   control fails.
+9. The W2 whole-sequence shuffle is a disclosure on the final readings only.
+10. VOID subjects are read for readability only; no E is computed for them (A-8, B10.1).
+11. Record JSON uses `default=float`.
+
+**A4.7 Campaign entry and provenance (A-5, A-6, A-10, B4, B7, B14, C2-C6, C8).**
+- The entry is `python -m snn_data_lake.instruments.og1_succession --campaign <data_dir> <record_path>`. Any other
+  argv is refused, and an existing record path is refused (run once).
+- **Before any compute:**
+  - the session manifest must cover every pinned asset (24) and every DEV and HELD_OUT subject;
+  - its splits must equal the instrument's DEV and HELD_OUT;
+  - the pack digests must verify, and `PACK_SHA256` must equal `memory_diagnostic.ASSETS`, checked by a test that
+    reads it via `ast`.
+  Otherwise the campaign refuses, and the refusal itself is written as the record.
+- **The record carries:**
+  - git HEAD;
+  - the freeze, cited as `a3a15806 (= ccf6a45b by patch-id 968e796794d13546f2a57cb123d64ea0a2c900c3)`;
+  - the sha256 of `og1_succession.py`, `attention_schema.py`, `infra/_mathutils.py`, `organoid_ingest.py`, the
+    manifest and every npz;
+  - B and the run count per session;
+  - the wall time.
+- **Data:** the campaign reads the main checkout's gitignored `data/organoid/`, filled with the 24 npz files and
+  `og1_sessions.json`. The record names the directory and the exact invocation. The files are
+  `og1_<subject>_<session>.npz`; that supersedes section 1's single-session pattern. Pass Windows-form paths: the
+  venv is a Windows interpreter, and a `/mnt/...` path silently resolves to `D:\mnt\...` (C5).
+
+**A4.8 Stage 0 additions (A-4, A-11, A-12; contract change for A4.1).**
+- Gate (c) refuses non-finite and negative spike times.
+- Gate (d) refuses any spike at or past `duration_s`.
+- The npz gains `x_pos` and `y_pos` (float64, one per unit, NWB order).
+- The session manifest records, per file, the counts of within-unit duplicate timestamps and of out-of-order spikes.
+  Lens A measured more duplicates in held-out than in dev, which is confounded with lab and disclosed.
+- Lens A measured all 24 real files clean on the new refusals: 0 NaN, 0 negative, last spike <= `duration_s`.
+
+**A4.9 What a FAIL means now (B1, B2, C1; it supersedes section 3's FAIL rows).** The P8 arc's amendment to
+`docs/POLICIES.md` is to land on int3 before this arc. Its items 1-3 bind OG1. Outcomes:
+- **PASS:** Stage 2, under its own dated amendment.
+- **INSTRUMENT REFUSAL or BLIND:** no scientific reading; a dated amendment; nothing else changes.
+- **FAIL (readable, controls green):** the outcome HALTS. No negative is recorded and the tree does not change until
+  two things exist:
+  1. a dated amendment that pins the arbiter in full (the burst definition, the rank-order statistic, its shuffle,
+     its bar, the subjects it reads) BEFORE the arbiter reads any byte (B2);
+  2. the NULL-RECORD, written into this file.
+  Then P8 amendment items 2 and 3 apply:
+  - both modules stay off every live path (they already are);
+  - their dormancy rows take the `scale-retest` disposition, naming the NULL-RECORD, `since=<the arc's base on
+    origin/main>`;
+  - ONE re-test is owed, at least 10x larger on the DATA axis: at least 40 distinct held-out organoid recordings, or 10x
+    the held-out recording-seconds, with the same endpoint, bar and control.
+  - Section 3's "DELETED (P8 item 5)" branch is superseded: item 3 allows no deletion before that re-test.
+- **The record format** (an example, not a record):
+```
+NULL-RECORD: og1_succession | units=<total units over the 4 held-out recordings> | ticks=<total bins at the chosen W> | seeds=200 | mde=<(z.95 + z.80) x sd of the 200 null values, median over subjects, bits> | retest=PENDING since <40-hex base sha>
+```
+- **Re-test state today:** no spike-sorted human organoid source at 10x exists on DANDI.
+  - 001872: human, 48 wells, raw ecephys only, so it would need spike sorting, a new Stage 0 mechanism.
+  - 001336: human, 3 subjects, raw only.
+  - 001374: mouse.
+  - The organoid lab's data (owner's channel) is the other candidate.
+  - Under P8 amendment item 3, an OG1 null would keep every later battery red until a RETEST-RECORD exists. Whether to
+    launch the campaign before a 10x source is pinned is the owner's call, asked on 2026-10-23.
+
+**A4.10 Disclosures owed (B4, B10, B12, B13, C10).**
+- **The freeze re-landing:**
+  - ccf6a45b was authored 2026-10-23 01:21:21. The first Stage 0 real-file read was about 01:35.
+  - The re-landed freeze is a3a15806, authored 02:32:15, after that read.
+  - Their patch-ids are equal (968e7967...).
+  - ccf6a45b is kept on the local branch `claude/og1-freeze-1023` and is not pushed.
+- **The census lane's HOLD-window load:** pytest, a 500-seed calibration and benchmarks, synthetic only, about
+  01:31-01:45, inside the insula docs-battery window. Disclosed to its lead (#4435). A1.4 named only the ingest lane's
+  load.
+- **"Pre-data" means pre-Stage-1-data.** A1 and A2 were written after Stage 0 reads; A2.1 was written after (e')
+  refused all 24 files under A1.1.
+- **A3's order:** its code (af49969d) preceded its text (8b306943); ruling #4534 preceded both.
+- **P2 debt:** `organoid_ingest.stream_sha256` sits beside `gates/selfcheck_cache._sha256_file`. Consolidation is
+  deferred; only the byte count differs.
+- **h5py:** it is now also imported by `organoid_ingest`, recorded in the `pyproject.toml` `[nir]` comment.
+- **The CHANGELOG's "persistence alone cannot pass"** was untrue (A2.3 F1 measured 6-9%) and is corrected in the same
+  fold.
