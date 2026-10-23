@@ -102,3 +102,8 @@ Lanes build on branches cut from `claude/p8-nullscale-1023`; the integrator comp
    ONLY: `CANDIDATE` (a past small-scale deletion the owner may pick for a re-test; no expiry, because no code is
    unwired by it) and `NOT-NEEDED: <harm|at-scale|restatement> <reason, >= 20 chars>`. Elsewhere either value is
    R-FIELD.
+3. 2026-10-23, same point. This file quotes the owner's words, and line 4 matches the delete-on-null regex: it states
+   the RULE, not a deletion. R-UNRECORDED therefore skips exactly two files BY NAME, this pre-registration
+   (`p8-null-scale-gate.md`) and the triage list (`null-scale-triage.md`, which addendum 1 already keeps free of quoted
+   statements). The exclusion list is a named constant, printed on every `--assert` run, and a test asserts that a
+   statement placed in any other evidence file still reds. R-FIELD and the record checks still read both files.
