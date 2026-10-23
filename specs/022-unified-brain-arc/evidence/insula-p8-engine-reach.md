@@ -1,7 +1,7 @@
 # Insula P8 question: does its charge reach the engine?
 
-**Status: DRAFT for owner review, 2026-10-22. Not frozen; nothing measured.** It freezes at the commit that removes
-"DRAFT" after the owner approves, and that commit precedes any arm. Origin: the owner's pick "Open a P8 question"
+**Status: FROZEN 2026-10-23 on the owner's approval in chat ("approve, run the census"), unchanged from the draft
+reviewed (1e2961c8) except this line. This commit precedes every arm; nothing is measured yet.** Origin: the owner's pick "Open a P8 question"
 (`insula-level-arms-production.md` section 3): the insula is not P3 shape 5, and whether its winner-only charge is
 load-bearing for the engine's function is open.
 
