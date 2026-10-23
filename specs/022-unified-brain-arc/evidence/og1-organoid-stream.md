@@ -323,3 +323,60 @@ the spikes, not an independent clock. Disclosed as such.
 - The pin matches the freeze census on all 24 paths and sha256, and on sizes at the census's 0.1 MB precision only.
 - Load during the insula battery: the lane's real-file conversion (about 01:35-01:38) ran before it read the
   integrator's HOLD (board #4416), inside the insula docs-only battery's window. That is disclosed to the insula lead.
+
+## Amendment A2, 2026-10-23 (PRE-DATA for Stage 1; append-only; the text above is unchanged)
+
+**Trigger 1: (e') refused all 24 real files under A1.1's declared convention** (board #4458, lane og1-ingest, commit
+2533719f).
+- Mismatch fraction: 0.0004-0.0014 of cells.
+- The ones counts were equal.
+- Every mismatch was an adjacent-bin pair.
+
+The integrator then probed the depositors' representation itself (`og1_raster_probe.py` and `og1_raster_exact.py`,
+kept in the OG1 lane folder). It read Stage 0 representation only: spike-time grid, stored-bin offsets, per-file
+mismatch counts. It computed no activity statistic. Findings:
+- Every spike time sits on the 20 kHz sample grid.
+- A spike whose sub-millisecond remainder is >= 0.5 lands where floor puts it, every time; a remainder < 0.5 misses
+  floor every time.
+- Stored bins start 10-29 samples before the spike.
+
+That is MATLAB writing `raster(round(t x rate), u) = 1` with 1-BASED indexing (each file's `identifier` is
+`HO*_sorted.mat`), i.e. 0-based row = floor(t x rate - 0.5). **A1.1's floor declaration was the INSTRUMENT'S DEFECT,
+not the data's**: the H01 gate (e) precedent, whose replacement was likewise written after its own measurement.
+
+**A2.1 (e')'s declared convention is REPLACED:** row = floor((t - starting_time) x rate - 0.5). Spikes whose row
+falls below 0 (t < 0.5 ms; 28 spikes across 4 files: 8 + 8 in two HO2 files, 6 + 6 in two HO3 files) are dropped, as the stored raster does.
+- Measured on all 24 files: this convention rebuilds every stored raster with **0 mismatched cells (24 of 24, about
+  3.6e8 cells)**.
+- The alternatives tried, with total mismatched cells: floor 365,476; round-half-even 704,145; floor(x + 0.5) 728,849.
+  The lane's own runs also showed ceil and floor +/- 1 to be inexact.
+- Seven conventions were tried in all; exactly one is exact. That count is disclosed, so the exactness is not read as
+  a first guess.
+- The extremum rule stands: the declared convention must be exact, and floor, round-half-even, floor(x + 0.5) and a
+  one-column unit shift must each be strictly worse.
+- The reds stay: times x 1000, a unit-index off-by-one, a planted single-bin flip.
+- Exact equality is still required; nothing is toleranced.
+
+**Trigger 2: the census lane's findings F1-F4** (board #4490; `rows/og1-census-REPORT.md` on
+claude/og1-census-1023), measured on SYNTHETIC streams only.
+
+**A2.2 What "a red must FAIL" means.**
+- A red FAILS iff it does not PASS the verdict's own test (readable and E > 0). This adopts the lane's F3 reading.
+  Each red's readability is recorded beside its outcome.
+- An UNREADABLE red is VACUOUS. It is run and reported, and carries no evidential weight; P8 item 4 requires the
+  disclosure.
+- **R1** (SNDL's live packs, 256 frames, both packs unreadable) is therefore VACUOUS by construction (F4). It stays
+  in the record and is never counted as a demonstrated red.
+- **Per-subject rule:** each held-out subject needs at least one NON-vacuous red, readable and failing, among R2 and
+  R3. A subject without one is VOID: neither pass nor fail.
+- **Refusal rule:** if 2 or more of the 4 held-out subjects are VOID, the outcome is an INSTRUMENT REFUSAL, mirroring
+  the transfer guard. The verdict reads only non-VOID subjects and still needs E > 0 on at least 3 of the 4 subjects,
+  so a VOID subject counts against PASS.
+
+**A2.3 Disclosed, bar unchanged.**
+- **F1:** on streams generated as the run null, the census passes 6-9% of the time, not 5%, because the run-state
+  distribution is estimated from the data under test. The family-wise P(>= 3 of 4) is therefore about 0.001-0.003,
+  not the frozen 0.0005. The bar is kept, because 0.003 is still a strong bar. The t3 configuration was chosen after
+  seeing pooled rates; disclosed.
+- **F2:** the "R2/R3 must fail on >= 3 of 4" bar falsely voids a sound harness about 3% of the time. That error runs
+  in the conservative direction; disclosed.
