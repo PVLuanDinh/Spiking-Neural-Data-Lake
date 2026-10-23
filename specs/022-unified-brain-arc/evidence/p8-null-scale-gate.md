@@ -98,3 +98,7 @@ Lanes build on branches cut from `claude/p8-nullscale-1023`; the integrator comp
    only `mde`). Forward records are unchanged: `seeds` is always an int, `mde` a number. The triage file cites each
    statement by `path:line` and its grandfather key and never quotes the statement's wording, so the file itself
    carries no delete-on-null statement for R-UNRECORDED to read.
+2. 2026-10-23, same point (no lane started, no data). Two more `retest` values, allowed inside `null-scale-triage.md`
+   ONLY: `CANDIDATE` (a past small-scale deletion the owner may pick for a re-test; no expiry, because no code is
+   unwired by it) and `NOT-NEEDED: <harm|at-scale|restatement> <reason, >= 20 chars>`. Elsewhere either value is
+   R-FIELD.
