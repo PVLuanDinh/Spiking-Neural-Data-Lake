@@ -63,7 +63,10 @@ HEADING_RE = re.compile(r"^(#{1,6})\s")
 SETEXT_RE = re.compile(r"^ {0,3}(=+|-+)\s*$")
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
 QUOTE_RE = re.compile(r"^(?:> ?)+")
-EMPHASIS_RE = re.compile(r"[*_]")
+EMPHASIS_RE = re.compile(r"[*_`]")
+CLOSING_RE = re.compile(
+    r"\bclosing\b", re.I
+)  # a closing record's subject names it; "disclosing" does not
 _INT = r"[1-9][0-9]*"
 _NUM = r"[0-9]+(?:\.[0-9]+)?(?:[eE]-?[0-9]+)?"
 _SHA = r"[0-9a-f]{40}"
@@ -167,11 +170,15 @@ def line_key(text: str) -> str:
 class History(NamedTuple):
     """What `git_history` reads for one `since=<S>`. `closed`: the closing records in S..HEAD that a non-merge
     commit descends from. `nulls`: every NULL-RECORD line (path, line no, text) of the in-scope files in S's
-    tree. `dormancy`: dormancy_gate.py as of S."""
+    tree. `dormancy`: dormancy_gate.py as of S. `passed`, `passed_nulls`, `passed_dormancy`: the newest closing
+    record HEAD is past (whatever S says) and the same two reads of its tree."""
 
     closed: list[str]
     nulls: tuple[tuple[str, int, str], ...] = ()
     dormancy: str = ""
+    passed: str = ""
+    passed_nulls: tuple[tuple[str, int, str], ...] = ()
+    passed_dormancy: str = ""
 
 
 def git_history(sha: str, repo: Path = REPO, head: str = "HEAD") -> History | None:
@@ -195,27 +202,50 @@ def git_history(sha: str, repo: Path = REPO, head: str = "HEAD") -> History | No
             "--",
             CERT,
         )
-        grep = git("grep", "-F", "-n", "NULL-RECORD:", sha, "--", *(f":(glob){g}" for g in SCOPE))
-        dormancy = git("show", f"{sha}:{DORMANCY_GATE}")
+
+        # distinct-from: infra/region_wiring.py -- that derives same-tick connectome dependencies; these two
+        # helpers read git history (a commit HEAD descends from; the NULL-RECORD lines and EXEMPT rows of a tree)
+        def past(commit: str) -> bool | None:
+            later = git("rev-list", "--ancestry-path", "--no-merges", f"{commit}..{head}")
+            return None if later.returncode else bool(later.stdout.strip())
+
+        def reads(commit: str):
+            grep = git(
+                "grep", "-F", "-n", "NULL-RECORD:", commit, "--", *(f":(glob){g}" for g in SCOPE)
+            )
+            if grep.returncode > 1:
+                return None
+            rows = (row.split(":", 3)[1:] for row in grep.stdout.splitlines())
+            show = git("show", f"{commit}:{DORMANCY_GATE}")
+            return tuple(
+                (p, int(no), t) for p, no, t in rows
+            ), show.stdout if not show.returncode else ""
+
         closed = []
         for row in log.stdout.splitlines():
             commit, _, subject = row.partition("\x1f")
-            if "closing" not in subject.lower():
-                continue
-            later = git("rev-list", "--ancestry-path", "--no-merges", f"{commit}..{head}")
-            if later.returncode:
-                return None
-            if later.stdout.strip():
+            if CLOSING_RE.search(subject) and (is_past := past(commit)) is not False:
+                if is_past is None:
+                    return None
                 closed.append(commit)
+        # re-panel 2 #4627 M1: a record already PENDING at the newest closing record HEAD is past has ridden an
+        # arc, whatever `since` now says (a since laundered through a commit that parked the record is expired)
+        passed = ""
+        everyone = git("log", "--no-merges", "--format=%H%x1f%s", head, "--", CERT)
+        for row in everyone.stdout.splitlines():
+            commit, _, subject = row.partition("\x1f")
+            if CLOSING_RE.search(subject) and (is_past := past(commit)) is not False:
+                if is_past is None:
+                    return None
+                passed = commit
+                break
+        at_since = reads(sha)
+        at_passed = reads(passed) if passed else ((), "")
     except (OSError, subprocess.SubprocessError):
         return None
-    if log.returncode or grep.returncode > 1:
+    if log.returncode or everyone.returncode or at_since is None or at_passed is None:
         return None
-    nulls = tuple(
-        (path, int(no), text)
-        for path, no, text in (row.split(":", 3)[1:] for row in grep.stdout.splitlines())
-    )
-    return History(closed, nulls, dormancy.stdout if not dormancy.returncode else "")
+    return History(closed, *at_since, passed, *at_passed)
 
 
 def _scale_retest_modules(source: str) -> set[str]:
@@ -257,13 +287,18 @@ def expiry_problem(
     It rides in the arc that created it, up to and including the arc's closing record; a closing record is a
     commit that modifies the execution record and says "closing", and it expires the entry only when a
     non-merge commit descends from it on the way to HEAD. A `since` whose own tree already holds the PENDING
-    record (or the row) was moved forward past it. No creation-commit lookup: a moved, renamed or respelled
-    record cannot hide from either read."""
+    record (or the row) was moved forward past it; a record (or row) already PENDING at the newest closing record
+    HEAD is past has ridden an arc, whatever `since` says. No creation-commit lookup: a moved or renamed record is
+    read wherever it sits in scope (a record whose METHOD is respelled is a new record to these reads)."""
     found = history(sha)
     if found is None:
         return f"history unavailable for {sha} (unknown sha, not an ancestor of HEAD, or shallow clone)"
     if method in _pending_methods(found.nulls) or module in _scale_retest_modules(found.dormancy):
         return f"expired: {sha[:12]} postdates its own PENDING record (a forward edit)"
+    if method in _pending_methods(found.passed_nulls) or module in _scale_retest_modules(
+        found.passed_dormancy
+    ):
+        return f"expired: already PENDING at closing record {found.passed[:12]}, which HEAD is past"
     if found.closed:
         return f"expired: {sha[:12]} predates closing record(s) {[c[:12] for c in found.closed]} and HEAD is past them"
     return None

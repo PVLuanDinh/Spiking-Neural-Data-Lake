@@ -805,6 +805,69 @@ def test_real_git_an_exempt_since_moved_past_its_own_row_is_a_forward_edit(tmp_p
     assert any("forward edit" in p for p in exempt_real(repo, row))
 
 
+def structural_file(sha):
+    reason = "STRUCTURAL: the path has no synapses at any scale whatsoever"
+    return {EV + "a.md": f"# t\n{rec(retest=reason)}\n"}
+
+
+@pytest.mark.parametrize(
+    "parked",
+    [
+        {EV + "a.md": "# t\n"},  # removed
+        "structural",  # flipped to a non-PENDING retest
+        {EV + "a.md": "# t\n", "notes/a.md": "parked here\n"},  # moved out of scope
+    ],
+)
+def test_real_git_a_since_laundered_through_one_commit_after_the_closing_record_is_red(
+    tmp_path, parked
+):
+    # re-panel 2 #4627 M1: the record leaves the tree for a commit, then returns PENDING since it
+    repo, base = armed_repo(tmp_path)
+    close_arc(repo)
+    x1 = repo.commit(
+        "feat: next arc parks it", structural_file(base) if parked == "structural" else parked
+    )
+    repo.commit("feat: next arc restores it", record_file(x1))
+    assert [r.code for r in real_check(repo).reds] == ["R-EXPIRED"]
+
+
+def test_real_git_an_exempt_row_laundered_through_one_commit_is_red(tmp_path):
+    repo = Repo(tmp_path)
+    base = repo.commit("feat: base", {"README.md": "x\n", **dormancy_file()})
+    repo.commit("feat: the row and its record", {**record_file(base), **dormancy_file("m")})
+    close_arc(repo)
+    x1 = repo.commit("feat: next arc drops the row", dormancy_file())
+    repo.commit("feat: next arc restores it", {**record_file(x1), **dormancy_file("m")})
+    assert any("expired" in p for p in exempt_real(repo, x1))
+
+
+def test_real_git_a_candidate_at_the_closing_record_may_turn_pending_in_the_next_arc(tmp_path):
+    candidate = rec(
+        units="unknown", ticks="unknown", seeds="unknown", mde="unknown", retest="CANDIDATE"
+    )
+    repo = Repo(tmp_path)
+    repo.commit("docs: the triage list", {ng.TRIAGE: f"# t\n{candidate}\n"})
+    closing = close_arc(repo)
+    repo.commit("docs: the owner picks it", pending_file(closing, path=ng.TRIAGE))
+    assert real_check(repo).reds == []
+
+
+def test_real_git_a_subject_that_only_contains_the_letters_closing_is_not_a_closing_record(
+    tmp_path,
+):
+    # re-panel 2 #4627 m2: a word, not a substring ("disclosing")
+    repo, base = armed_repo(tmp_path)
+    repo.commit("chore(record): re-certify, disclosing the CRLF note", {CERT: "1\n"})
+    repo.commit("feat: same arc", {"README.md": "y\n"})
+    assert real_check(repo).reds == []
+
+
+def test_backtick_emphasis_inside_the_phrase_does_not_hide_a_statement(tmp_path):
+    # re-panel 2 #4627 m9
+    report = run(tmp_path, {EV + "a.md": "# t\nthe rule was deleted on its `own` null\n"})
+    assert [r.code for r in report.reds] == ["R-UNRECORDED"]
+
+
 def test_real_git_a_second_row_for_another_module_is_not_a_forward_edit(tmp_path):
     repo = Repo(tmp_path)
     base = repo.commit("feat: base", {"README.md": "x\n", **dormancy_file("other")})
