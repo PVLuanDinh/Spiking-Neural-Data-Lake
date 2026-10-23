@@ -62,6 +62,8 @@ RECORD_RE = re.compile(r"^\s*(?:[-*]\s+)?(NULL-RECORD|RETEST-RECORD):\s*(.*?)\s*
 HEADING_RE = re.compile(r"^(#{1,6})\s")
 SETEXT_RE = re.compile(r"^ {0,3}(=+|-+)\s*$")
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
+QUOTE_RE = re.compile(r"^(?:> ?)+")
+EMPHASIS_RE = re.compile(r"[*_]")
 _INT = r"[1-9][0-9]*"
 _NUM = r"[0-9]+(?:\.[0-9]+)?(?:[eE]-?[0-9]+)?"
 _SHA = r"[0-9a-f]{40}"
@@ -91,8 +93,8 @@ GRANDFATHERED: frozenset[tuple[str, str]] = frozenset(
         ("specs/022-unified-brain-arc/evidence/r3-replay-growth-composition.md", "2d4c0d656797"),
         ("specs/022-unified-brain-arc/evidence/s0-exit.md", "accb2e772aa0"),
         ("specs/022-unified-brain-arc/evidence/s0-exit.md", "921dcde40836"),
-        ("specs/022-unified-brain-arc/evidence/s3-neuron-pager.md", "6ef10f902e5c"),
-        ("specs/022-unified-brain-arc/evidence/s4-lake-compactor.md", "0cc96a9e8077"),
+        ("specs/022-unified-brain-arc/evidence/s3-neuron-pager.md", "ff26b6b3cdaf"),
+        ("specs/022-unified-brain-arc/evidence/s4-lake-compactor.md", "5b5edb284961"),
         ("specs/022-unified-brain-arc/evidence/s4-lake-compactor.md", "0f636bff2344"),
         ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "01cb45021e8a"),
         ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "b9f3a73eb473"),
@@ -466,6 +468,7 @@ def _scan(root: Path) -> _Scan:
 def _paragraphs(lines: list[Line]) -> list[Line]:
     """Each paragraph (consecutive non-blank lines that are not headings or fence lines) joined with single
     spaces, as one Line at the paragraph's first line: a statement wrapped across lines is still one statement.
+    A block quote's leading `>` markers are not part of the paragraph.
     Heading and fenced lines stay one Line each, as the line census read them (a heading can record a deletion).
     ponytail: a heading or fenced statement wrapped across lines is still missed, as it was before the join."""
     out: list[Line] = []
@@ -476,7 +479,8 @@ def _paragraphs(lines: list[Line]) -> list[Line]:
             run.append(ln)
             continue
         if run:
-            out.append(Line(run[0].path, run[0].no, " ".join(r.text.strip() for r in run), False))
+            joined = " ".join(QUOTE_RE.sub("", r.text.strip()) for r in run)
+            out.append(Line(run[0].path, run[0].no, joined, False))
             run = []
         if ln is not None and ln.text.strip():
             out.append(ln)
@@ -488,7 +492,7 @@ def statements(scan: _Scan) -> list[Line]:
         para
         for rel in scan.evidence
         for para in _paragraphs(scan.lines[rel])
-        if STATEMENT_RE.search(para.text)
+        if STATEMENT_RE.search(EMPHASIS_RE.sub("", para.text))
     ]
 
 

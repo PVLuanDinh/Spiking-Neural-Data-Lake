@@ -849,6 +849,51 @@ def test_real_history_an_exempt_row_switched_to_scale_retest_is_green(real_histo
     assert ng.expiry_problem(cb, ng.git_history, module="feed_readout") is None
 
 
+# ---------------------------------------- G3: block quotes, G6: emphasis
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "> The method was deleted on its\n> own null.",
+        ">The method was deleted on its\n>own null.",
+        "> > The method was deleted on its\n> > own null.",
+        "  > The method was deleted on its\n  > own null.",
+        "The method was deleted\n> on its own null.",
+    ],
+)
+def test_a_block_quoted_statement_wrapped_across_lines_is_r_unrecorded(tmp_path, text):
+    report = run(tmp_path, {EV + "a.md": f"# t\n{text}\n"})
+    assert [(r.code, r.where) for r in report.reds] == [("R-UNRECORDED", EV + "a.md:2")]
+
+
+def test_a_block_quoted_statement_is_satisfied_by_a_record_in_its_section(tmp_path):
+    text = f"# t\n> The method was deleted on its\n> own null.\n\n{rec()}\n"
+    assert run(tmp_path, {EV + "a.md": text}).reds == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The method was deleted on *its own* null.",
+        "The method was deleted on _its own_ null.",
+        "The method was **deleted** on its own null.",
+        "The method was deleted on __its__ own null.",
+        "The method was deleted on *its*\n*own* null.",
+    ],
+)
+def test_emphasis_inside_the_phrase_does_not_hide_a_statement(tmp_path, text):
+    report = run(tmp_path, {EV + "a.md": f"# t\n{text}\n"})
+    assert [r.code for r in report.reds] == ["R-UNRECORDED"]
+
+
+def test_the_grandfather_key_is_computed_on_the_text_with_its_emphasis(tmp_path):
+    text = "The method was deleted on *its own* null."
+    key = (EV + "a.md", ng.line_key(text))
+    report = run(tmp_path, {EV + "a.md": f"# t\n{text}\n"}, grandfathered=frozenset({key}))
+    assert report.reds == [] and report.counts["grandfathered"] == 1
+
+
 # ---------------------------------------- addendum 3: the exclusion is by name
 
 
