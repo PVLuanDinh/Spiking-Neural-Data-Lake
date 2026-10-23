@@ -84,6 +84,15 @@ tier. Z = D_out(x0 vs neutered) = 0 on all 5 seeds. Injected arms: same observed
 replay exhausted, D_thr from live > 0 (const 197-200, shuf 184-200, x2 197-200, x05 197-200, x0 195-198),
 max |live_thr - law(own salience)| = 0.0 on every arm.
 
+**Harness vs `_run`** (closing-review fold, 2026-10-22). `arm.py` is not byte-for-byte `_run`: it drops the
+organ-sense spy, the three extra `interoception()` reads per tick and the `stress=-999` copy poison (accessor
+checks the test covers, not the outcome), and it builds the brain under `throwaway_home()` where the test uses
+conftest's `NORD_HOME` fixture. `driver.py` PRINTS the controls above and asserts only one tier per seed; it
+does not assert R = 0 or the trace checks. The Opus reviewer and the lead each re-derived every control from
+the raw JSON with their own code (trace equality and shuffle-not-identity included, error 0.0); seed 0
+reproduces 6/9/20 through the same `random.Random(0)`, runtime evidence the arms match `_run`'s semantics.
+The rc 3 of the tier-gate red is the harness's refusal exit (arm.py); the log holds the message, not the rc.
+
 **Table** (D_out from live, 200 ticks):
 
 | seed | N | C | S | x2 | x05 | x0 | Z | R | N > max(C,S) |
@@ -96,19 +105,34 @@ max |live_thr - law(own salience)| = 0.0 on every arm.
 
 Seed 0 reproduces the 2026-10-20 reading (N=6 C=9 S=20).
 
+**What every count is** (closing-review fold MAJOR-1, re-derived by the lead). Every D_out tick above is a
+WINNER change: the `ignited` sequence is identical across all 8 arms on every seed (seed 0 first ignites at
+tick 29, seeds 2-4 at 26, seed 1 never), so no arm changes WHETHER ignition happens, only which coalition wins.
+The injected arms' differences are transient: their last differing tick is 61 (seed 0), 47 (1), 53 (2), 48 (3),
+47 (4). Removal is not: neutered (= x0) keeps differing until tick 176 on seed 1 and 199 on seed 2. An
+ignition bit that never varies across arms has not been shown to be a property of the brain rather than of
+this probe (the instrument rule); it is reported, not interpreted.
+
 **Pre-registered readings, applied literally.**
 - LEVEL-ONLY: does NOT hold (max(C,S) = 0 on 0 of 5 seeds).
 - VARIATION matters: HOLDS (max(C,S) > 0 on 5 of 5 seeds).
 - BOTH: HOLDS (max(L2,L05) > 0 on 5 of 5 seeds), so the pre-registered label is BOTH, not VARIATION-ONLY.
   Confound, stated as the lead flagged: x2 and x05 are constants, so they also destroy timing; whenever
-  VARIATION matters, max(L2,L05) > 0 follows regardless of level. The "level matters" part of BOTH is not
+  VARIATION matters, max(L2,L05) > 0 is expected regardless of level. The "level matters" part of BOTH is not
   separated from timing by the pre-registered design.
 - NEITHER: does NOT hold (N = 0 on 1 of 5 seeds, bar is 3).
 - Bar N > max(C,S) holds on 3 of 5 seeds (1, 2, 3); fails on seeds 0 and 4.
 
-**Surprises.** N varies from 0 to 112 across seeds, so the insula's removal effect is seed-dependent;
-on seed 4 removing it changes nothing (N = 0) while holding its mean constant or shuffling it changes 45
-ticks. x0 equals neutered on every seed (Z = 0), so the injection control is clean.
+**Surprises.** N varies from 0 to 112 across seeds, so the insula's removal effect on the winner record is
+seed-dependent. Seed 4, data only (closing-review fold MAJOR-2, re-derived by the lead; no cause claimed):
+removing the insula moves the threshold on 198 of 200 ticks yet changes no winner (N = 0); const and shuf give
+the SAME winner record (D_out(const, shuf) = 0, differing from live on the same ticks 3-47), so on seed 4 they
+are one effect, not two; x2 differs from const on 3 ticks; x05 differs from live only around ticks 24-26.
+D_out(const, shuf) on the other seeds: 11, 17, 5, 3. On every seed the live trace is 0.0 on its first two
+consulted ticks; on seeds 1-4 the first consulted tick is 0, so live and neutered share threshold 0.55 there
+while the constant arms start lower (0.446-0.458); on seed 0 the first consulted tick is 3 and all arms share
+0.55 at tick 0.
+x0 equals neutered on every seed (Z = 0), so the injection control is clean.
 
 ### 2a. POST-HOC (not pre-registered; added after data collection began, at the lead request)
 
@@ -123,8 +147,11 @@ the level differs. `posthoc.py`, same cached rows.
 | 3 | 6 | 200 | 21 | 200 |
 | 4 | 3 | 200 | 45 | 200 |
 
-Level moves the outcome with timing held out: both comparisons are > 0 on 5 of 5 seeds. D_thr is
-saturated (about every tick) and carries no information here. This reading was not pre-registered and
+The winner record changes with the constant's level, timing held out: both comparisons are > 0 on 5 of 5
+seeds. Qualified (closing-review fold MINOR-4): winner only, early ticks only (see "What every count is"),
+and not monotone in level (seed 4, D_out from live: x0 0, x05 3, C 45, x2 43); with no small-perturbation
+control this shows the record depends on the constant's value, not a dose-response. D_thr is saturated
+(about every tick) and carries no information here. This reading was not pre-registered and
 does not replace the pre-registered one above. The OWNER adjudicates P3 shape 5.
 
 **Unmeasured.** cpu device; seeds beyond 0-4; ticks beyond 200.
