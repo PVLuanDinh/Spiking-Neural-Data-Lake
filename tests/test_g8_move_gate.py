@@ -195,7 +195,10 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # gates.native_dormancy, gates.native_ratchet; nothing removed; claustrum shadow unchanged.
     # 2026-10-18/B2: diffing _MOVED between origin/main d501c7aa (323) and claude/b2-int-1018 (324):
     # added exactly infra.native_build (ba23b3dd's REGIONS row); nothing removed.
-    assert len(S._MOVED) == 324 and "claustrum" not in S._MOVED
+    # 2026-10-23/P8: diffing _MOVED between int3 b6e3fc9e (324) and the P8 gate commit (325):
+    # added exactly gates.null_scale_gate (its REGIONS row); nothing removed; LEGACY_REGIONS
+    # unchanged (G8 froze it).
+    assert len(S._MOVED) == 325 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture

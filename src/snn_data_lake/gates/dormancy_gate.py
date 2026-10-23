@@ -21,8 +21,9 @@ defect `tools/citation_guard.py`'s narrow rule exists for, and the guard does no
 because a prose mention is outside its STRICT scope. The tracked instrument is `tools/charge_probe.py`.)
 
 The EXEMPT allowlist is the honest record of "not reachable from a live path, and why": every entry is
-one of three dispositions -- "retire" (superseded, pending deletion in a Policy-2/3 wave), "wire"
-(valuable, pending a verify-first wiring wave), or "permanent" (legitimately not on the live tick:
+one of four dispositions -- "retire" (superseded, pending deletion in a Policy-2/3 wave), "wire"
+(valuable, pending a verify-first wiring wave), "scale-retest" (unwired after a null, awaiting one 10x
+re-test; null_scale_gate.exempt_problems decides the entry and it expires before the next pushed arc), or "permanent" (legitimately not on the live tick:
 [train]-tier offline trainers, benchmark/measurement harnesses, arm/GUI/serve entrypoints reached only
 by a console script, or a faculty awaiting a prerequisite such as a real sensor). The gate FAILS if a
 brain module is neither reachable nor exempt; it also reports (soft) any EXEMPT entry that has since
@@ -35,6 +36,7 @@ import ast
 import os
 
 from snn_data_lake import REGIONS, TORCH_TIER, TRAIN_TIER, module_path
+from snn_data_lake.gates import null_scale_gate
 
 _PKG = "snn_data_lake"
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../snn_data_lake
@@ -1136,6 +1138,40 @@ def _phantom_selfcheck():
     _assert_no_phantom(_phantom_rows(EXEMPT))
 
 
+# distinct-from: null_scale_gate.py -- that module OWNS the one check (`exempt_problems`); the two functions
+#   below only apply it to this gate's EXEMPT rows and carry this gate's planted red, the same split as
+#   `_phantom_rows` / `_phantom_selfcheck` above. reservoir/recurrent_pool.py, instruments/taught_campaign.py,
+#   faculties/recursive_tom.py, growth/growth_program.py, growth/h01_ingest.py, growth/batch_reconciler.py --
+#   phrase overlap on "planted red" only; each builds a fixture for its own domain.
+# P8 null-scale amendment (specs/022 evidence p8-null-scale-gate.md, R-EXEMPT): a "scale-retest" row is a
+# method unwired after a null and awaiting its larger-scale re-test. Its reason must name the NULL-RECORD and
+# the `since=<full sha>` it was created on, and it expires before the next pushed arc. The check is
+# null_scale_gate's one `exempt_problems`; this gate imports it and never restates the rule.
+def _assert_scale_retest(exempt, history=null_scale_gate.git_history):
+    problems = [
+        p
+        for m, (disposition, reason) in sorted(exempt.items())
+        if disposition == "scale-retest"
+        for p in null_scale_gate.exempt_problems(m, reason, history)
+    ]
+    assert not problems, f"P8 null-scale: bad scale-retest EXEMPT row(s): {problems}"
+
+
+# The assert's reachable red: a bad row planted in a COPY of EXEMPT must red, the real table must not.
+def _scale_retest_selfcheck():
+    planted = {
+        **EXEMPT,
+        "g_p8_planted_scale_retest": ("scale-retest", "planted; no record, no sha"),
+    }
+    try:
+        _assert_scale_retest(planted)
+    except AssertionError as exc:
+        assert "g_p8_planted_scale_retest" in str(exc), f"the planted red names no row: {exc}"
+    else:
+        raise AssertionError("dormancy self-check: a planted scale-retest EXEMPT row did not red")
+    _assert_scale_retest(EXEMPT)
+
+
 def coverage():
     reach = reachable()
     exempt = {_CANON[m] for m in EXEMPT if m in _CANON}
@@ -1210,6 +1246,8 @@ def main():
     )
     _assert_no_phantom(cov["phantom_exempt"])  # G8 S0b, with its own planted red next
     _phantom_selfcheck()
+    _assert_scale_retest(EXEMPT)  # P8 null-scale R-EXEMPT, with its own planted red next
+    _scale_retest_selfcheck()
     from snn_data_lake.gates import native_dormancy
 
     native_dormancy.check("d")  # Rust half (D1 exports, D2 modules); native/ ABSENT today

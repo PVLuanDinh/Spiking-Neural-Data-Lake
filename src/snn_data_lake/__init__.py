@@ -258,6 +258,8 @@ REGIONS = {
         "manifest_gate",
         # Policy 3 amendment: per-METHOD dormancy (update rules with no live caller)
         "method_dormancy_gate",
+        # P8 null-scale: NULL-RECORD / RETEST-RECORD scale, 10x re-test, arc expiry; dormancy_gate's scale-retest check
+        "null_scale_gate",
         # specs/022 T001: pinned-host perf ratchet; bare == cheap wiring check, never a measurement
         "perf_baseline",
         "policy_manifest",
