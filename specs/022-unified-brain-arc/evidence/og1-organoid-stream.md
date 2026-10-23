@@ -709,3 +709,433 @@ validation) reads public metadata and documentation only.
 **A7.4 Still open:** whether an ENVELOPE outcome may be typed as a non-null result (A6.4, second item).
 
 **What A7 read:** nothing from organoid data.
+
+## Amendment A8, 2026-10-23 (Stage 0b pre-registration: the sorted 10x re-test source; FROZEN)
+
+**Status: FROZEN 2026-10-23 on the owner's approval in chat, verbatim: "I approve Stage 0b v6 D1-D6 as recommended".**
+D7 was decided earlier the same day, verbatim: "a" (board #4745).
+- **Text:** the integrator's draft v6 (`lanes\og1-stage0b-PREREG-DRAFT.md`), unchanged except this header and the
+  heading levels. Section numbers below are A8's own ("section 2.4" means A8 section 2.4). "This draft" means A8.
+- **Review:** five rounds by og1-0b-rv-a (instrument lens) and og1-0b-rv-b (policy and integration lens):
+  - round 1: #4735, #4736;
+  - round 2: #4737, #4738;
+  - round 3: #4739, #4740;
+  - round 4: #4741, #4742;
+  - round 5: #4743, #4744.
+  - Round 5 found 0 BLOCKs, and both lanes reproduced the k table cell for cell.
+  - The round-5 folds (V5-1, V5-2, N5-1..5, the census row, the D6 citation) are integrator-only, not re-reviewed.
+    This is disclosed, and they go to the Stage 0b arc's panel.
+- **Nothing is built, and no data byte has been read.**
+- **Process:** A8 is process and design only. Its first build step is the C0 synthetic calibration, whose addendum
+  needs the panel and the owner before any raw byte (section 5).
+
+**Origin:** the owner's ruling "2" (A7, commit 86e25877). A7.1 holds the real-data Stage 1 run until a re-test source
+that meets A4.9 is ingested by a pushed Stage 0 mechanism.
+
+**Inputs:**
+- `lanes\og1-0bsrc-1023-row\SOURCES.md` and `lanes\og1-0bsort-1023-row\SORTER.md`, with the raw JSON in `api/`;
+- the reviews `lanes\og1-0b-rv-{a,b}-1023-row\REVIEW{,2,3,4,5}.md`.
+- Fold tags: [a-V3-n] / [b-R3-xx] (round 3), [a-V4-n] / [b-R4-xx] (round 4), [a-V5-n] / [b-R5-xx] (round 5). Earlier
+  tags are kept where a text still carries them [a N5-5].
+
+**What Stage 0b is for, and only for:** the ONE re-test source a readable Stage 1 FAIL would owe under A4.9 and P8
+amendment item 3. It stays sealed until a NULL-RECORD exists (section 8).
+
+---
+
+### A8.0 Owner decisions (approved as recommended; D7 = "a")
+
+| # | Decision | Recommendation | Why |
+|---|---|---|---|
+| D1 | When to build | Build now on lane worktrees, where the code, C0, the control and the bridge all run. **Push only after the A6.3 candidate PASSES.** 001872 is sorted after the push. | A control or bridge FAIL then truly means NOT BUILT. A failed candidate leaves nothing dormant on main. |
+| D2 | A separate CPython 3.12 venv for the sorter, located by env var `OG1_SORT_VENV` | Yes (an exception to the 3.14t rule, for one tool) | Kilosort4 needs `faiss-cpu`, which has no cp314t wheel. The brain, `src/` and the tests stay on 3.14t. |
+| D3 | Kilosort4 (GPL-3.0 per GitHub) as a subprocess tool | Yes | It is never imported under `src/`. P7's ledger scans `src/` only, so no `sort` extra is declared. The tool env is held to P7 by gate (f): the hashed lock, a normalised `pip freeze --all` that must equal the lock, and the script's sha. Under `tools/instrument_guard.py`: no module-scope seeding (the GT seeds live inside functions), no relative `sys.path` and no module-scope `chdir`, and the file must parse under 3.14t `ast`. Tests and (f) HASH `og1_sort.py`; they never import it [b-R3-N3]. |
+| D4 | The lab route (section 10) | (ii) if the lab agrees, otherwise (i) | Option (iii) cannot be the re-test. |
+| D5 | Selection | The seeded prefix (about 44 files, ~121 GB, all 24 wells). The alternative is all 96 (249 GB, about twice the GPU). | **Disclosure:** the seed was fixed in v1, at the 47th size percentile. Reviewer A's well-first fix changed the RULE, which moved the same seed to the 97th percentile of 2,000 seeds (121.0 GB; median 114). Only seed shopping was avoided. File size tracks channels and activity. |
+| D6 | **P4c `tools` baseline +1** for the ONE new script `tools/og1_sort.py` | Yes. The ratchet's own hatch allows "a hand-edit of the JSON inside a reviewed commit" (`p4c_ratchet.py:124-125`, re-read at round 5). | **Why the governed route is unavailable:** a `src/` home would put kilosort and spikeinterface under P7's `DECLARE_ROOTS` ledger, and it needs Python 3.12. The same edit raises `zones.tools` and `total` by 1 and inserts the path into `paths.tools` in sorted order. The removal arc lowers the baseline with `p4c_ratchet --update-baseline` (a down-ratchet), never to a hard-coded number [a-V4-5, b-R4-N2]. |
+| D7 | **What a RETEST BLIND writes. DECIDED by the owner, 2026-10-23, verbatim: "a".** P8 has no honest exit for "the re-test ran and could not read". Item 4's "structural" means a null with no path at all, and such a null is deleted without a re-test [a-V4-1, b-R4-B2]. | **(a), as an owner-approved exception to P8 item 3,** stated in A8 and inside the record itself: `retest=STRUCTURAL: NOT an item-4 structural null; the 001872 re-test read BLIND or REFUSED (A8 s11); no deletion licensed; lab-route re-test owed` [a N5-3]. A lab-route RETEST-RECORD replaces it with `REF:` in the same commit. Both `scale-retest` rows move to `permanent` (awaiting-prerequisite: the lab-route re-test), re-dated, in the same commit, which avoids R-EXEMPT and R-EXPIRED (reviewer A verified this against `exempt_problems` and `_assert_scale_retest`). | The options offered and not chosen were (b) a P8 token amendment and (c) keeping PENDING with red batteries. **Disclosed: one clause of (a) is enforced by text only.** "While STRUCTURAL stands, no delete-on-null statement may name `og1_succession` or `organoid_ingest`" has no mechanical check, because R-UNRECORDED is satisfied by any NULL-RECORD in the section. Review enforces it, and the gate prints the STRUCTURAL reason on every run [a V5 Part 3]. |
+
+---
+
+### A8.1 Sources and pins (`tools/og1_dandi_pin_0b.json`; every entry has a `role`)
+
+- **`role: retest`: DANDI 001872, version `0.260630.1038`.**
+  - CC-BY-4.0, human brain organoid, MaxTwo 24-well.
+  - 120 NWB files, 261,232,362,266 B; `ElectricalSeries` only.
+  - Each entry: `dandi:sha2-256`, size, path, age.
+  - Eligible: the 96 `sub-sample-well*` files.
+- **`role: bridge`:** 001603 HO1 raw `ca0fba55-...` (`sub-HO1_ses-20250924T011900`, 2,149,923,599 B), paired to
+  Stage 0 DEV sorted asset `27acb682`; and HO4 raw `95c70f1e-...` (`sub-HO4_ses-20250924T011900`, 2,178,130,991 B),
+  paired to `0ca461d3`.
+  - **The pairing is by SUBJECT,** because the raw and sorted session stamps differ. It is confirmed from NWB
+    identifiers only after the freeze; a mismatch is BRIDGE FAIL [b-R3-B1].
+- **Disclosures:**
+  - **Same lab as the held-out set:** a scale re-test within one lab, never a cross-lab replication.
+  - **Ages are inconsistent:** one well index carries 4 ages within 6 h, and a well's files mix P52-P75 labels.
+  - **The 96 files come from 24 subjects.**
+  - **Spontaneity is Unknown** (gate (l) decides it).
+  - **No paper is linked.**
+  - **The seed and the rule were fixed after the metadata was seen.**
+
+### A8.2 Stage 1 clause (P8 item 2; the integrator authored A4.9 and the Stage 1 pre-registration; this panel reviews it)
+
+1. **The OG1 NULL-RECORD is written, superseding A4.9's format, as**
+   ```
+   NULL-RECORD: og1_succession_w<W>ms | units=n/a | ticks=<int> | seeds=200 | mde=<number> | retest=<R>
+   ```
+   - `units=n/a` makes a units-axis re-test red mechanically.
+   - The 423 held-out units are recorded in prose.
+   - W in the method name makes a re-test at another W red R-RETEST-REF.
+   - Every example record in A8 sits inside a code fence [b-R3-N1].
+2. **One bin count, for the NULL-RECORD, the RETEST-RECORD and the census's own grid** (which drops the partial last
+   bin): `bins(d, W_ms) = round(d * 1_000_000) // (W_ms * 1000)`, per file.
+3. **Null ticks**, from the Stage 0 manifest's HO5-HO8 `duration_s` (2,399.942 s in total):
+
+| W | null ticks | 10x (PASS bar) | 11x (stop target) |
+|---|---|---|---|
+| 5 ms | 479,987 | 4,799,870 | 5,279,857 |
+| 10 ms | 239,993 | 2,399,930 | 2,639,923 |
+| 20 ms | 119,995 | 1,199,950 | 1,319,945 |
+| 50 ms | 47,997 | 479,970 | 527,967 |
+
+4. **The re-test verdict rule** follows Stage 1's A3.1/A2.2 rule with the well as the subject. It keeps Stage 1's
+   per-subject aggregation, the median, and it differs only in the binomial-matched k, which is disclosed. It is
+   pinned now, so the ONE final re-test's bar is never chosen after a held-out FAIL is seen [b-R3-B2, a-V3-2, b-R4-F5]:
+   - **p0:** nominally 0.05, since a subject passes the null "with probability about 0.05" (evidence L145-146) and
+     E = MI - q95 of 200 nulls (L469). A2.3 F1 (L379-382) measured 6-9%, but on the run null that A6.2 RETIRED
+     [a-V5-2]. The census that reads 001872 uses the A6.3 candidate's null, whose rate is not yet measured. So:
+     - **p0 range = [0.05, max(0.09, p0_hi)] in steps of 0.01.**
+     - p0_hi is the upper 95% Clopper-Pearson limit of the candidate's `E>0` rate over every seed of the frozen A6.3
+       battery's must-FAIL (no spatial order) rows.
+     - That battery is synthetic and run once, before any held-out read, so k is still fixed before any FAIL is
+       seen.
+     - The table below is the floor, at p0_hi <= 0.09.
+   - **Per file:** the frozen census reads each accepted file with the same endpoint, statistic, bar and control as
+     the held-out read. It yields `E` and one of `informative`, `VOID` or `unreadable`.
+   - **Per well (24 wells; the independent unit):**
+     - NON-INFORMATIVE iff none of its accepted files is informative. A well with no accepted file is also
+       non-informative, but it is counted separately in the disclosure [a N-5].
+     - Otherwise its class is `E>0` iff the **median** E over its informative files is > 0 (Stage 1's own aggregation,
+       evidence L66-68).
+     - A median > 0 needs at least one file with E > 0. So the per-well null rate is at most
+       `p_well = 1 - (1 - p0)^m_max`, where `m_max` is the largest number of informative files in any one well. The
+       bound is exact for ANY-file under independence, so it is conservative for the median.
+   - **BLIND** iff 12 or more of the 24 wells are non-informative (half, which Stage 1 refuses at), OR no well has a
+     non-vacuous R3 (A4.5).
+   - **Otherwise the denominator is fixed at n = 24,** with non-informative wells counted as not passing.
+     - **Charges** iff `#wells(E>0) >= k`. k is the LARGEST, over the p0 range, of the smallest integer with
+       `P(Binomial(24, p_well(p0)) >= k) <= P(Binomial(4, p0) >= 3)`.
+     - So at every p0 in the range, the re-test's false-positive tail is at or below Stage 1's own bar.
+     - Else `null`.
+     - Pinned k:
+
+| m_max | matched k at p0 = .05/.06/.07/.08/.09 | **pinned k** | worst tail / Stage 1 tail |
+|---|---|---|---|
+| 1 | 7/7/7/8/8 | **8** | 0.31 |
+| 2 | 9/10/10/10/11 | **11** | 0.39 |
+| 3 | 11/12/12/13/13 | **13** | 0.67 |
+| 4 | 12/13/14/15/15 | **15** | 0.61 |
+
+     - The 44-file prefix gives m_max = 2, so k = 11 at the floor. A p0_hi above 0.09 raises k by the same formula.
+     - **Disclosed:**
+       - m_max is fixed by post-read informativeness (a readability count, never an E sign), so k depends on the data
+         but never on E;
+       - the median rule has lower power than an ANY-file rule at the same k. The faithful rule is kept anyway
+         [a N5-1].
+   - The RETEST-RECORD's `ticks` = the sum of `bins()` over every accepted file at W.
+
+### A8.3 Selection, acceptance and the bar
+
+- **Re-test duration:** `d_i = n_samples / rate` of the file's single ElectricalSeries. The og1b manifest records it
+  as `duration_s`.
+  - This gives the same bins as `(n + 0.5)/rate`, because rate x W is an integer number of samples at every grid W.
+- **PASS bar:** `sum_i bins(d_i, W) >= 10 x null ticks` at EVERY W in {5, 10, 20, 50} ms.
+- **Stop target:** at least 11x at every W.
+- **The order is content-blind; acceptance is gated, and the gates read content.**
+- **The order:**
+```python
+rng = random.Random(20261023)
+by_well = {well: {age: asset}}        # the 96 role:retest `sub-sample-well*` assets; age = wasAttributedTo[0].age.value
+wells = sorted(by_well); rng.shuffle(wells)
+ages = ["P52D", "P57D", "P71D", "P75D"]; rng.shuffle(ages)     # identity order at this seed (disclosed)
+order = [by_well[w][ages[(i + r) % 4]] for r in range(4) for i, w in enumerate(wells)]
+```
+  - First 8:
+    1. well014 P52D `ses-20260622T185903`
+    2. well009 P57D `T202514`
+    3. well012 P71D `T225444`
+    4. well020 P75D `20260623T005311`
+    5. well016 P52D `T185903`
+    6. well002 P57D `T195034`
+    7. well018 P71D `T231116`
+    8. well022 P75D `20260623T005311`
+  - Planning estimate: 11x at file 44 (26,401.8 s, 121.0 GB, 24 wells).
+- **Each file's first completed verdict binds, per pin.** Only a run with no verdict is re-run. Every run is logged,
+  and gate (m) reds on two completed runs of one file under one pin.
+- **A pin change re-runs the WHOLE processed prefix (accepted AND refused files) under the new pin,** after C0, the
+  control and the bridge re-run under it [a-V3-4].
+- **Disclosed with the result:**
+  - accepted and refused counts per age block and per gate, against bytes per second;
+  - the G3 refusal rate against channel count [a N-4].
+
+### A8.4 Pipeline and code placement
+
+```
+main venv, organoid_ingest (orchestrator; ordered driver for (m)):
+  (f) tool pin  ->  (n) overlap rule by role  ->  download  ->  (b)=(g) stream_sha256 + size  ->  (a) licence
+  ->  (l) endpoint and format: no stimulation; exactly ONE ElectricalSeries with a rate; record its HDF5 filters; refuse an
+      unsupported one before the sorter  ->  read rate, n_samples, map (attributes + electrodes table only)
+  ->  subprocess: $OG1_SORT_VENV/python tools/og1_sort.py sort <raw> <out>        [COMPUTE]
+       G3 control on this map  ->  Kilosort4 (pinned params, drift correction OFF)  ->  motion estimate
+       ->  quality metrics  ->  unit locations  ->  hand-off artifact + peak VRAM
+  ->  VERIFY (h, i, j, k) on the recorded numbers, plus an EXACT RECOMPUTE from spike_samples (below)
+  ->  (c) index  ->  (d) span, seconds passed to gate_time_units  ->  (e'') round-trip
+  ->  write og1b_* to data/organoid_0b/ (retest) or og1bb_* to data/organoid_bridge/ (bridge)
+```
+
+- **Pinned definitions.** The tool computes these in numpy, and VERIFY recomputes them. They are compared with
+  exact equality, where two NaNs count as equal (`numpy.array_equal(a, b, equal_nan=True)`). A disagreement refuses
+  the file; a NaN alone never does [a-V5-1]:
+  - `spike_samples` is sorted ascending per unit. An unsorted unit is refused by (c) [a-V4-3].
+  - `isi_violation_fraction = count(diff(spike_samples) < round(0.0015 * rate)) / (n_spikes - 1)`, with
+    **NaN when n_spikes < 2**. A NaN fails that unit only under (i), and is never a crash [a-V4-3, b-R4-F6]. This is
+    JHU's criterion, the fraction of ISIs under 1.5 ms. It is NOT SpikeInterface's `isi_violations_ratio`.
+  - `firing_rate_hz = n_spikes / (n_samples / rate)`, evaluated in exactly that expression order. The floats in
+    `sort.json` round-trip through Python `json` repr.
+- **Hand-off artifact** (`sort.npz` + `sort.json`):
+  - per unit: `spike_samples` int64, `unit_id`, `x_um`, `y_um`, `isi_violation_fraction`, `firing_rate_hz`, `snr`,
+    `amplitude_cutoff`, `presence_ratio`;
+  - per file: `rate_hz`, `n_samples`, `motion_peak_um`, the G3 metrics, the tool pin hash and peak VRAM.
+- **The `organoid_ingest` sorted path** shares licence, `stream_sha256`, the index checks and the manifest writer. It
+  adds: a pin path, a role and an attribution parameter; 10 kHz `TIME_READINGS`; the ordered driver.
+  - (e') and `gate_reproduce` are unchanged for 001603.
+  - hdf5plugin goes into the sort lock.
+- **`tools/og1_sort.py`** is the ONE new script (D6), with subcommands `sort`, `c0` and `control`.
+- **Tridesclous2** (MIT, CPU, in the lock) is a disclosure cross-check on the control and the bridge only.
+
+### A8.5 Calibration C0 and the sorter control
+
+**C0 (synthetic only) comes first.** Its outputs go into ONE dated addendum to A8, reviewed by the three-lens panel
+and **approved by the owner in chat** before any raw byte (bridge included). **The rules are fixed here, so C0
+measures values but chooses none.**
+- **`batch_size`:** the largest of {4 s, 2 s, 1 s} of samples whose peak VRAM is at most (card total - 1 GB), with
+  the card otherwise idle under the `resource:gpu` claim. If none fits, CONTROL FAIL [a N-2].
+- **Drift:**
+  - doses {0, 2.5, 5, 10, 20} um, plus 40 um only if all up to 20 pass;
+  - **bound = the largest d such that EVERY dose <= d passes bars 1-5**;
+  - (j) accepts iff the measured peak is at or below bound - 2.5 um;
+  - if bound - 2.5 <= 0, CONTROL FAIL;
+  - the estimator (SpikeInterface `estimate_motion`, method and params pinned, run in x and in y) must recover every
+    planted dose within 2.5 um, or CONTROL FAIL.
+  - R4, "the dose above the bound fails", is true by definition, so it is **reported, never counted as evidence**.
+  - The independent drift red is (j)'s planted 2x-bound file [a N-3].
+- **Bar 3b, overmerge:**
+  - **The 20 close pairs are planted rate-matched,** with a firing-rate ratio of at most 2 within each pair, and
+    **17.5-35 um apart on G1** (one to two pitches), drawn in the GT design. SpikeInterface then flags every merged
+    pair, because each member's agreement is at least 1/3 > 0.2 [a-V3-1, b-R3-B3, b-R4-N5].
+  - N = 5 (25% of the planted close pairs).
+  - **3b counts ALL sorter units,** not only quality-passing ones.
+  - **3b binds on G1 only.** On G2 (electrodes at least 35 um apart), pairs closer than 35 um can share an electrode,
+    so a correct sorter may over-merge them. G2's 3b count is reported.
+  - **R2's margin: R2 >= N + 1 = 6 overmerged.**
+  - R5's margin: the shuffled-position median error is at least 3x bar 5.
+  - A missed margin is CONTROL FAIL.
+- **Presence-ratio trigger:** if more than 10% of GT units with SNR >= 5 fail presence ratio > 0.8, that threshold
+  is dropped. It is the only threshold C0 may drop.
+- **Rejected addendum:** if the panel or the owner rejects the C0 addendum, the result is CONTROL FAIL, and a
+  redesign needs a new amendment [b-R3-N4].
+
+**Ground truth:** SpikeInterface `generate_ground_truth_recording`.
+- Geometries:
+  - G1 dense: 32 x 32 at 17.5 um;
+  - G2 sparse: 1,020 electrodes, at least 35 um apart, seeded;
+  - G3: each file's own map.
+- GT units: 100 on G1; `max(100, round(300 x n_channels / 1,020))` on G2/G3.
+- Rates: 10 and 20 kHz. Noise: 2.2 uV rms, and 2x. SNR 3-20.
+- Organoid-shaped bursting trains: shared-envelope bursts (20-50x for 100-500 ms, every 2-20 s), background
+  0.05-5 Hz, 1.5 ms refractory. 600 s each.
+- G3 runs one arm per file: 1x noise, no drift.
+
+**Metrics:** `compare_sorter_to_ground_truth` at its 0.105.3 defaults, **with `exhaustive_gt=True`** (the GT is
+synthetic, so it is exhaustive). This is the one non-default, and is disclosed. Without it, SpikeInterface asserts
+before counting false, redundant or overmerged units (`paircomparisons.py:562, 608, 649`) [b-R4-B1].
+
+**Definitions:**
+- **SNR** = `compute_snrs` at the arm's noise.
+- **"Median accuracy"** is over ALL GT units with SNR >= 5, with 0 for an unmatched unit.
+
+**PASS bars, on GT units with SNR >= 5, no drift:**
+1. At least 80% well-detected on G1 and G2 at 1x noise; at least 70% at 2x.
+2. Median accuracy >= 0.85, and median precision >= 0.9.
+3. Of the quality-passing units, at most 10% false or redundant. Zero quality-passing units = FAIL.
+   - 3b: at most 5 overmerged (G1).
+4. Burst-window recall no more than 0.1 below whole-recording recall.
+5. Median localization error at most 1.0 x the map's median nearest-electrode spacing.
+6. Each file's G3 passes bars 1-5 (3b excluded) at 1x noise. A failure refuses that file under (h).
+
+**Reds (each must FAIL its named bar):**
+- R1: +1.0 ms shift reds bar 1.
+- R2: rate-matched pairs merged red bar 3b, with at least 6.
+- R3: one unit per channel reds bars 1 and 3.
+- R5: shuffled positions red bar 5, by at least 3x.
+- R6: burst-window spikes deleted red bar 4.
+- (j)'s red: a planted 2x-bound file is refused.
+
+**Anti-vacuity:** the GT compared with itself PASSES every bar.
+
+**Where it runs:**
+- The COMPUTE halves and the reds run in the sort venv. The results go to the tracked artifact
+  `tools/og1_sort_control.json`.
+- The battery does not re-run them (GPU-hours); this is disclosed.
+- run_selfchecks VERIFY checks the artifact against every bar, checks each red's recorded FAIL, and checks the pin
+  hash against (f). Its red is a planted below-bar artifact.
+
+### A8.6 The real-data bridge (HO1/HO4, `role: bridge`, DEV), run before the push
+
+- **Run:** the pinned pipeline on each raw file, then `compare_two_sorters(depositor, ours, delta_time=0.4)`.
+- **Floor:** at least 50% of depositor units with SNR >= 5 matched at agreement >= 0.5 (chosen, not derived).
+- **Red:** an ISI shuffle of our units must fall under the floor.
+- **Outputs:** `data/organoid_bridge/og1bb_*`, with their own manifest. They are UNSEALED (DEV) and read by
+  `organoid_ingest.load_bridge()` [a-V3-5, b-R3-F6].
+- **Sorter-dependence typing (binding):**
+  - **When:** after SOURCE PASS, and before the held-out campaign.
+  - **How:** the frozen candidate reads HO1/HO4 on both unit sets, and each read gets a per-subject class (`E>0` /
+    `E<=0` / non-informative).
+  - **Mismatch:** any class difference types the source **SORTER-DEPENDENT**. With 2 subjects, a mismatch is
+    reachable by chance; that errs conservative, and is disclosed.
+  - **Owner rules before the held-out campaign:**
+    - **"yes":** the campaign proceeds, and every RETEST-RECORD's prose carries "sorter-dependent".
+    - **"no":** the lab route, then NO SOURCE. This strands the 48-97 h campaign; A7.1 forces that order, and this
+      is disclosed.
+  - The MaxOne-to-MaxTwo transfer is assumed, and disclosed.
+
+### A8.7 Gates
+
+| Gate | Passes when | Red runs in |
+|---|---|---|
+| (a) licence | `license_ok` | run_selfchecks (existing) |
+| (b)=(g) bytes | `stream_sha256` + size equal the pin, before any reader | run_selfchecks (existing hasher) |
+| (c) index | non-finite or negative sample indices refused | run_selfchecks |
+| (d) span (sorted kind) | every spike is in [0, n_samples); seconds passed to `gate_time_units`; 10/20 kHz | run_selfchecks |
+| (e'') round-trip (sorted kind) | the npz rebuilds the tool's spikes exactly; red: one spike moved by one sample | run_selfchecks |
+| (f) tool pin | the `og1_sort.py` sha, the lock sha, normalised `pip freeze --all` (`name==ver`) == the lock, the params sha, and the control artifact's pin hash all agree | run_selfchecks (planted mismatches) |
+| (h) control bound | the control artifact passes, and this file's G3 passed | VERIFY on the tracked artifact |
+| (i) unit quality | per unit: `isi_violation_fraction` <= 0.01, FR >= 0.05 Hz, SNR >= 5, amp cutoff < 0.1, presence ratio > 0.8 (unless C0 drops it). A per-unit non-finite metric fails that unit only. At least 1 unit kept; drop counts recorded | VERIFY + exact recompute (a planted disagreement must be refused; a planted 1-spike unit must give "unit dropped, file kept") |
+| (j) drift | the recorded peak is at or below bound - 2.5 um | VERIFY (2x-bound red) |
+| (k) positions | finite (x, y) inside the routed hull, from the pinned method | VERIFY |
+| (l) endpoint and format | no stimulation; one ElectricalSeries with a rate; supported filters | run_selfchecks (HDF5 fixtures) |
+| (m) selection (retest) | exactly the section 3 order prefix; no two completed runs per file per pin; refusals logged | run_selfchecks |
+| (n) overlap | retest: no shared sha, session or subject with the 24 Stage 0 assets (pre-download). bridge: its subject MUST equal its paired Stage 0 DEV sorted asset's subject | run_selfchecks |
+| seal | no file in `src/`, `tools/`, `tests/` or `run_selfchecks.py`, other than `organoid_ingest` itself, contains `organoid_0b/` or `og1b_`. The check lives in organoid_ingest's self-check and excludes its own module | run_selfchecks (static) |
+
+### A8.8 HELD-OUT seal
+
+- **Separation:** the retest outputs go only to `data/organoid_0b/` (prefix `og1b_`, their own
+  `og1b_sessions.json`). The bridge goes to `data/organoid_bridge/` (`og1bb_`).
+- **`load_0b()` refuses unless** a new public `null_scale_gate.nulls_for(path, method_re)`, restricted to
+  `og1-organoid-stream.md`, returns an `og1_succession_w*ms` NULL-RECORD whose `retest=` is EITHER:
+  - `PENDING since <sha>`, with the sha on or after A8's landing commit. This uses git ancestry, which fails closed
+    without git history (disclosed) [b-R3-N5]; OR
+  - `REF:` to an existing OG1 RETEST-RECORD, so the data can be re-read for audit, reproduction or Stage 2 [b-R3-F2,
+    a-V3-5].
+  - Red: no such record, refused.
+- **Disclosed holes:** a string built at runtime, and a person running `np.load` by hand, are not caught by any
+  gate. This text forbids both.
+- **Only counts leave the seal:** the npz, the manifest, and the per-gate drop and acceptance counts.
+
+### A8.9 Resources and claims
+
+- **Disk:** 746 GB free. Raw kept is 121-175 GB (up to 249 GB if refusals push toward all 96). Scratch is about 50 GB
+  per file, deleted after each sort.
+- **GPU:** 12,227 MiB. `batch_size` is set by C0's rule. OOM is an INSTRUMENT REFUSAL.
+- **Claims:**
+  - Each file claims `resource:gpu` and `resource:timing` with `--ttl 8h`, renewed, and releases both between files.
+  - It never starts under another session's battery or CUDA claim.
+- **Time (T4-class anchors):**
+  - C0 + control: 13-28 h;
+  - with the bridge: 17-36 h;
+  - the campaign: 48-97 h;
+  - **each pin change: up to another 17-36 h plus 48-97 h** [a-V3-4].
+
+### A8.10 The lab route (D4)
+
+**The ASK:**
+- at least 40 distinct organoids, at least 600 s each, spontaneous only;
+- NWB 2.x;
+- sorted units with positions, plus sorter, params and curation; or raw with geometry;
+- HD-MEA, preferably MaxWell;
+- the lab named;
+- CC0, CC-BY-4.0 or written permission.
+
+**How a census could read it:**
+- **(i) Owner-run:** the frozen pushed pipeline runs on the owner's machine outside any Claude session; only the
+  RETEST-RECORD fields and the verdict come back.
+- **(ii) Licensed:** an ordinary pinned ingest from an independent lab.
+- **(iii) Interpreted only:** not usable as the re-test.
+
+### A8.11 Outcomes (exhaustive; each writes a dated evidence line)
+
+| State | When | Consequence |
+|---|---|---|
+| NOT BUILT (candidate) | the A6.3 candidate fails its one run | 0b is not pushed; the branches are kept |
+| CONTROL FAIL | C0 or the control misses a bar or a margin; (j) cannot be built; bound - 2.5 <= 0; no batch_size fits; the C0 addendum is rejected (all pre-push). **The expected main risk is bar 3b:** 20 rate-matched pairs 17.5-35 um apart that share the burst envelope are hard for any sorter, so "at most 5 overmerged" may fail a sound sorter. That is a fair, pre-registered failure [a N5-2] | not pushed; lab route only |
+| BRIDGE FAIL | under the floor, non-finite, or the post-freeze subject pairing fails (pre-push) | not pushed |
+| PUSHED | reviewed, ONE battery green, pushed | the campaign may start |
+| INSTRUMENT REFUSAL (campaign) | OOM; pin drift; a claim that never frees; a non-finite PER-FILE value; a tool crash | HALT; the prefix is not consumed. A fix that changes ANY pin re-runs C0, the control and the bridge, then the WHOLE processed prefix, under the new pin |
+| CONTROL FAIL (G3) | 10 consecutive G3 refusals (chosen: at a true per-file rate <= 20%, a given run of 10 has probability 1.0e-7, about 1e-5 over the campaign). G3 refusals are logged under (m) and consume the prefix | halt; recorded apart from SOURCE FAIL; lab route |
+| SOURCE FAIL | all 96 processed and some W under 10x | per-gate counts; lab route |
+| SOURCE PASS | 10x at every W; all gates green | A7.1's hold lifts for the census code; then the bridge typing |
+| SORTER-DEPENDENT | the bridge typing finds a mismatch | the owner rules: "yes" proceeds with the typing in the prose; "no" goes to the lab route, then NO SOURCE |
+| SOURCE UNUSED | Stage 1 PASSES on held-out (only then) [b-R3-F5] | 001872 is never read by Stage 1; it retires with organoid_ingest at Stage 2 unless Stage 2 consumes it |
+| SOURCE HELD | Stage 1 is INSTRUMENT REFUSAL or BLIND on held-out | sealed until the dated amendment's re-run resolves (A4.9); then this table again |
+| RETEST REFUSAL | the census crashes, or yields a non-finite E, on the 001872 read | halt. **The fix is bounded, pinned now** [a-V4-2, b-R4-F3]: it may touch only the crashing or non-finite code path, never the endpoint, statistic, bar, controls or aggregation. The fixed census must reproduce the held-out per-subject E and verdict byte-exactly before the re-read. The fix diff is reviewed by the panel and by a lane that has not seen the crash's data. **ONE re-read only;** a second REFUSAL, or one unresolved at the arc's closing record, is RETEST BLIND |
+| RETEST BLIND | 12 or more wells non-informative, or no non-vacuous R3 (census controls such as PC1/PC2 failing count here) | the 001872 read happens while the record is `PENDING` (so `load_0b` opens). The record is then REWRITTEN per **D7** in the same arc, and the rows take D7's disposition. `load_0b` refuses after STRUCTURAL until a lab `REF:` re-admits; any audit re-read of the BLIND data happens before the rewrite [b-R4-N4]. Lab route |
+| RETEST null | the rule in section 2.4 reads `null` | RETEST-RECORD `result=null`; then the A4.9 arbiter branch, read from the arbiter's RUN and dated RESULT on the subjects its amendment pins [a-V4-4, b-R4-F2]. **Arbiter PASS:** `og1_succession` is deleted (P8 deletion via amendment item 2) and an ENCODING negative is recorded. `organoid_ingest` (both kinds) and `tools/og1_sort.py` stay, and its row moves to `permanent` (awaiting-prerequisite: a successor encoding's pre-registration), re-dated [b-R4-F1]. **Arbiter REFUSAL or BLIND:** `og1_succession` is deleted (item 2 still applies), and the ingest stays as in the PASS branch (section 3 deletes the ingest only on an arbiter FAIL). **Arbiter FAIL:** `og1_succession`, `organoid_ingest` (both kinds) and `tools/og1_sort.py` are removed IN THE SAME ARC, together with every registration [b-R4-N1]: REGIONS (`__init__.py`), the g8 `_MOVED` pin, `run_selfchecks.py`, both dormancy rows, `tests/test_organoid_ingest.py`, the `pyproject.toml` h5py comment, the pins, the lock, the control JSON and `data/organoid_*`. The P4c baseline is down-ratcheted |
+| RETEST charges | the rule reads `charges` | RETEST-RECORD `result=charges`. The census stands; both rows move to `wire` in the same commit [b-R4-F1]; the sorted kind stands until Stage 2 |
+| NO SOURCE | 001872 fails and the lab route fails | the A7.1 hold stands |
+
+**The lab route keeps the sorter alive** [b-R4-F4]. On SOURCE FAIL, CONTROL FAIL (G3) or a SORTER-DEPENDENT "no", the
+sorted kind and `tools/og1_sort.py` STAY while a raw lab route (section 10) is open. They are removed only once the
+lab declines, or delivers sorted units. While they stay, the row is re-dated in every arc, and the owner is asked
+again after 3 arcs with no lab delivery [a N5-4].
+
+**The arc that writes `PENDING` also lands** the arbiter amendment, the arbiter's RUN and its dated RESULT, the
+NULL-RECORD, the 001872 census read, and the RETEST-RECORD (or D7's rewrite). So no PENDING record crosses a closing
+record. **Rebase hazard (disclosed)** [b-R4-N3]: if another arc's closing record reaches main first, rebasing onto it
+fires R-EXPIRED. The cure is to re-set `since` to the new base, which is legal because that tree lacks the record.
+Until then, a RETEST REFUSAL fix holds the arc open.
+
+### A8.12 Build rhythm and the P3 row
+
+**Lanes, in parallel on disjoint files:**
+- L-sortdrv: `tools/og1_sort.py` (claimed) and the lock;
+- L-sortctl: delivers the `c0` and `control` subcommands as a patch, plus `tools/og1_sort_control.json`;
+- L-ingest0b: `organoid_ingest`'s sorted path, the VERIFY halves and recompute, `load_0b`/`load_bridge`, the gates and
+  reds, and `null_scale_gate.nulls_for`.
+
+**Order:** reviewers as results land; C0 and its addendum (panel plus owner); then the control and the bridge on the
+lane heads; then panel, fold, Opus closing review, ONE battery (including D6's baseline edit), the closing record.
+The push is gated on D1.
+
+**P3, the two rows.** The `organoid_ingest` EXEMPT row (`dormancy_gate.py:761-775`) exists today. The census's own
+row for `og1_succession` does not exist until the census lands in `src/`; it is created then, and takes
+`scale-retest` on a readable FAIL (A4.9) [b-R5]. Each row holds one disposition at a time: `organoid_ingest` is
+`wire` today, and `scale-retest` after a readable census FAIL. Both rows then move, in the same commit as the record
+change, to:
+- `wire` on RETEST charges;
+- `permanent` (awaiting-prerequisite) on RETEST null with an arbiter PASS, REFUSAL or BLIND, or on D7(a);
+- deletion with the module on an arbiter FAIL.
+
+The 0b text appended to its reason:
+- "Stage 0b's sorted kind (A8) is 001872's re-test reader.
+- SOURCE UNUSED: it retires with organoid_ingest at Stage 2 unless Stage 2 consumes it.
+- SOURCE FAIL, CONTROL FAIL (G3), or a 'no' on SORTER-DEPENDENT: it stays while a raw lab route is open, and is then
+  removed in the next arc, re-dated, with the P4c baseline down-ratcheted.
+- RETEST BLIND: D7.
+- RETEST null: the A8 section 11 arbiter branch, in the same arc.
+- RETEST charges: it stands until Stage 2."
+
+**Estimates, not commitments:** build about a day of lane time; GPU 17-36 h pre-push, plus 48-97 h for the campaign.
+
+**What A8 read:** registry, package and paper metadata (via the lanes); the 001872 asset listing's paths,
+ages, sizes and start/end times; our Stage 0 manifest's held-out durations. No data file, no NWB header, no lab file.
