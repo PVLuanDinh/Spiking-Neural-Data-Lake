@@ -29,9 +29,11 @@ def test_green_control_converts_and_round_trips(good, tmp_path):
             5,
             6,
         ]
-        assert float(z["duration_s"]) == 2.0 and z["duration_s"].ndim == 0
+        assert float(z["duration_s"]) == 2.0005 and z["duration_s"].ndim == 0
         assert str(z["subject"]) == "HO1" and str(z["session"]) == "20250101T000000"
         assert str(z["source_sha256"]) == e["sha256"]
+        assert z["x_pos"].dtype == np.float64 and list(z["x_pos"]) == [0.0, 100.0, 200.0]
+        assert z["y_pos"].dtype == np.float64 and list(z["y_pos"]) == [0.0, 50.0, 100.0]
     assert r["devices"] == "none recorded in the file" and r["e_reproduce"]["mismatch_cells"] == 0
 
 
@@ -255,7 +257,10 @@ def test_duplicates_identical_arrays_keep_the_lexicographically_first(tmp_path):
         ("20250101T000009", "20250101T000001"),
     ]
     saved = json.loads((tmp_path / "o" / "og1_sessions.json").read_text(encoding="utf-8"))
-    keys = "npz subject session split source_sha256 units duration_s duplicate_of".split()
+    keys = (
+        "npz subject session split source_sha256 units duration_s duplicate_of "
+        "dup_timestamps out_of_order"
+    ).split()
     assert set(saved[0]) == set(keys)
     assert saved[0]["split"] == "dev" and saved[0]["units"] == 3
 
@@ -278,3 +283,130 @@ def test_equal_counts_but_different_spikes_are_not_duplicates(tmp_path):
         tmp_path / "o", _rows(tmp_path, [("20250101T000001", a), ("20250101T000002", b)]), PIN
     )
     assert [m["duplicate_of"] for m in man] == [None, None]
+
+
+def _refused(tmp_path, name, match, **kw):
+    p = oi.write_fixture_nwb(tmp_path / name, **kw)
+    e = oi.fixture_entry(p)
+    with pytest.raises(IngestRefused, match=match):
+        oi.ingest_file(p, e, oi.fixture_pin(e), tmp_path / "out")
+    assert not (tmp_path / "out").exists()
+
+
+def test_c_nan_spike_time_is_refused(tmp_path):
+    _refused(tmp_path, "nan.nwb", r"\(c\).*not finite", units=[[0.1006, float("nan")], [0.3009]])
+
+
+def test_c_infinite_spike_time_is_refused(tmp_path):
+    _refused(tmp_path, "inf.nwb", r"\(c\).*not finite", units=[[0.1006, float("inf")], [0.3009]])
+
+
+def test_c_negative_spike_time_is_refused(tmp_path):
+    _refused(tmp_path, "neg.nwb", r"\(c\).*negative \(-0\.4", units=[[-0.4, 0.5004], [0.3009]])
+
+
+def test_d_spikes_past_the_recorded_span_are_refused(tmp_path):
+    _refused(
+        tmp_path,
+        "late.nwb",
+        r"\(d\).*at or past the recorded span 1\.0005 s",
+        units=[[0.1006, 1.9003], [0.3009]],
+        bins=1000,
+    )
+
+
+def test_d_a_spike_exactly_at_the_span_is_refused_and_just_inside_is_not():
+    with pytest.raises(IngestRefused, match=r"at or past"):
+        oi.gate_time_units(np.array([0.5, 2.0]), 2.0)
+    assert oi.gate_time_units(np.array([0.5, 1.999]), 2.0)["last_spike"] == 1.999
+
+
+def _drop(path, key):
+    import h5py
+
+    with h5py.File(str(path), "a") as f:
+        del f["units/" + key]
+
+
+@pytest.mark.parametrize("key", ["x_pos", "y_pos"])
+def test_c_units_table_without_positions_is_refused(tmp_path, key):
+    p = oi.write_fixture_nwb(tmp_path / "np.nwb")
+    _drop(p, key)
+    e = oi.fixture_entry(p)
+    with pytest.raises(IngestRefused, match=rf"\(c\).*no {key}"):
+        oi.ingest_file(p, e, oi.fixture_pin(e), tmp_path / "out")
+    assert not (tmp_path / "out").exists()
+
+
+def test_c_positions_wrong_length_or_nan_are_refused(tmp_path):
+    import h5py
+
+    p = oi.write_fixture_nwb(tmp_path / "short.nwb")
+    _drop(p, "x_pos")
+    with h5py.File(str(p), "a") as f:
+        f.create_dataset("units/x_pos", data=np.array([1.0, 2.0]))
+    e = oi.fixture_entry(p)
+    with pytest.raises(IngestRefused, match=r"x_pos has shape"):
+        oi.ingest_file(p, e, oi.fixture_pin(e), tmp_path / "out")
+    q = oi.write_fixture_nwb(tmp_path / "nanpos.nwb")
+    _drop(q, "y_pos")
+    with h5py.File(str(q), "a") as f:
+        f.create_dataset("units/y_pos", data=np.array([1.0, np.nan, 3.0]))
+    e = oi.fixture_entry(q)
+    with pytest.raises(IngestRefused, match=r"y_pos holds a non-finite"):
+        oi.ingest_file(q, e, oi.fixture_pin(e), tmp_path / "out")
+
+
+def test_positions_are_the_units_table_values_in_nwb_order(tmp_path):
+    import h5py
+
+    p = oi.write_fixture_nwb(tmp_path / "pos.nwb")
+    _drop(p, "x_pos")
+    with h5py.File(str(p), "a") as f:
+        f.create_dataset("units/x_pos", data=np.array([700.5, 122.0, 3798.0]))
+    e = oi.fixture_entry(p)
+    oi.ingest_file(p, e, oi.fixture_pin(e), tmp_path / "out")
+    with np.load(tmp_path / "out" / oi.artifact_name(e), allow_pickle=False) as z:
+        assert list(z["x_pos"]) == [700.5, 122.0, 3798.0] and list(z["y_pos"]) == [0.0, 50.0, 100.0]
+
+
+def test_order_counts_skip_the_unit_boundary():
+    st = np.array([1.0, 1.0, 0.5, 2.0, 0.1])  # unit 0 = first four, unit 1 = [0.1]
+    assert oi.order_counts(st, np.array([4, 5])) == (1, 1)
+    assert oi.order_counts(np.array([5.0, 1.0]), np.array([1, 2])) == (0, 0)
+    assert oi.order_counts(np.array([1.0]), np.array([1])) == (0, 0)
+
+
+def test_manifest_records_planted_duplicates_and_out_of_order(tmp_path):
+    planted = [[0.1006, 0.1006, 0.7002, 0.5004], [0.3009, 1.9003]]
+    clean = oi._FIXTURE_UNITS
+    rows = _rows(tmp_path, [("20250101T000001", planted), ("20250101T000002", clean)])
+    man = oi.session_manifest(tmp_path / "o", rows, PIN)
+    assert [(m["dup_timestamps"], m["out_of_order"]) for m in man] == [(1, 1), (0, 0)]
+    saved = json.loads((tmp_path / "o" / "og1_sessions.json").read_text(encoding="utf-8"))
+    assert [(m["dup_timestamps"], m["out_of_order"]) for m in saved] == [(1, 1), (0, 0)]
+
+
+def test_d_span_is_the_a21_raster_edge_n_rows_plus_half_over_rate(tmp_path):
+    p = oi.write_fixture_nwb(tmp_path / "s.nwb", bins=1000)
+    import h5py
+
+    with h5py.File(str(p), "r") as f:
+        assert oi.recorded_span(f)[0] == 1.0005
+
+
+def test_d_spike_at_exactly_the_raster_edge_is_refused(tmp_path):
+    _refused(
+        tmp_path,
+        "edge.nwb",
+        r"\(d\).*at or past the recorded span 1\.0005 s",
+        units=[[0.1006, 1.0005], [0.3009]],
+        bins=1000,
+    )
+
+
+def test_d_spike_just_below_the_raster_edge_is_accepted(tmp_path):
+    p = oi.write_fixture_nwb(tmp_path / "in.nwb", units=[[0.1006, 1.0004], [0.3009]], bins=1000)
+    e = oi.fixture_entry(p)
+    r = oi.ingest_file(p, e, oi.fixture_pin(e), tmp_path / "out")
+    assert r["duration_s"] == 1.0005 and r["d_time_units"]["last_spike"] == 1.0004

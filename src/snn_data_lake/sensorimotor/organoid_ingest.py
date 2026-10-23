@@ -16,9 +16,12 @@ GATES. Each is a refusal (`IngestRefused`, reused from `growth/h01_ingest`: it a
 `.readings`, so a refusal arrives with the evidence of every gate) and a refusal yields no artifact.
   (a) LICENSE   the pin's DANDI license passes `ingest_guard.license_ok` (deny-by-default).
   (b) BYTES     streamed sha256 and size equal the pin, BEFORE h5py opens the file.
-  (c) INDEX     `spike_times_index` non-decreasing, last entry == len(spike_times), >= 1 unit.
+  (c) INDEX     `spike_times_index` non-decreasing, last entry == len(spike_times), >= 1 unit; every
+                spike time finite and >= 0 (Amendment A4.8); the units table carries one finite
+                `x_pos` and `y_pos` per unit (a file without them is refused).
   (d) TIME UNITS  of {seconds, milliseconds, samples at 20 kHz} the declared-seconds reading puts the
-                last spike closest to the recording span the file records.
+                last spike closest to the recording span the file records, and no spike lies at or
+                past that span (Amendment A4.8).
   (e') REPRODUCE THE DEPOSITORS' BINNING (Amendment A1.1 replaced the frozen (e): the papers publish no
                 per-recording unit count). The 1 ms raster `t_spk_mat` is rebuilt from the units table,
                 row = floor((t - starting_time) x rate - 0.5) (Amendment A2.1: the depositors' MATLAB 1-based
@@ -28,15 +31,20 @@ GATES. Each is a refusal (`IngestRefused`, reused from `growth/h01_ingest`: it a
                 is tuned.
 DUPLICATES (A1.2). Within a subject, files whose decoded `spike_times` and `spike_times_index` are exactly
 equal are duplicates; the lexicographically first session id is kept. `session_manifest` writes
-`og1_sessions.json` (npz, subject, session, split, source_sha256, units, duration_s, duplicate_of).
+`og1_sessions.json` (npz, subject, session, split, source_sha256, units, duration_s, duplicate_of,
+dup_timestamps, out_of_order); the last two count, per file, the within-unit equal-timestamp pairs and
+the within-unit decreasing steps (disclosed, never a refusal).
 
 THE RECORDED SPAN. These files carry no `obs_intervals` and no devices. What they record is a binned
 raster, `processing/curated_binning/t_spk_mat` (time_bins x units, `starting_time.rate` = 1000 Hz);
-gate (d)'s duration is `time_bins / rate`. It is the depositors' own span, stored beside the spikes.
+gate (d)'s duration is `(time_bins + 0.5) / rate` (Amendment A5.1): the upper edge of the raster under
+the A2.1 row rule, row = floor(t x rate - 0.5), so a spike is out of span iff its row is >= time_bins. It is
+the depositors' own span, stored beside the spikes.
 
 ARTIFACT (interface contract of the OG1 brief): `og1_<subject>_<session-id>.npz`, `np.savez`, loadable
 with `allow_pickle=False`: spike_times f8 (seconds, all units in NWB order), spike_times_index i8 (NWB
-cumulative END index), duration_s f8 0-d, subject / session / source_sha256 0-d unicode.
+cumulative END index), x_pos / y_pos f8 (one per unit, NWB order; Amendment A4.8), duration_s f8 0-d,
+subject / session / source_sha256 0-d unicode.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.organoid_ingest            # self-check
   ... organoid_ingest --convert <data dir>   # gates + npz for the 24 pinned files (data dir/nwb -> data
@@ -185,8 +193,41 @@ def read_units(h5):
     )
 
 
+def read_positions(h5, n_units):
+    """(c) The units table's `x_pos` / `y_pos` as float64, one finite value per unit in table order.
+    A file whose units table lacks either column is refused (Amendment A4.8)."""
+    import numpy as np
+
+    out = []
+    for key in ("x_pos", "y_pos"):
+        if "units" not in h5 or key not in h5["units"]:
+            raise IngestRefused(f"(c) the units table has no {key}: the census needs positions")
+        v = np.asarray(h5["units"][key][()], dtype=np.float64)
+        if v.shape != (n_units,):
+            raise IngestRefused(f"(c) {key} has shape {v.shape}, expected ({n_units},)")
+        if not bool(np.all(np.isfinite(v))):
+            raise IngestRefused(f"(c) {key} holds a non-finite value")
+        out.append(v)
+    return out[0], out[1]
+
+
+def order_counts(spike_times, index):
+    """`(dup_timestamps, out_of_order)`: within-unit consecutive equal steps and decreasing steps. The
+    step across a unit boundary is not a within-unit step."""
+    import numpy as np
+
+    if len(spike_times) < 2:
+        return 0, 0
+    d = np.diff(spike_times)
+    keep = np.ones(len(d), dtype=bool)
+    edges = np.asarray(index[:-1], dtype=np.int64)
+    keep[edges[(edges > 0) & (edges < len(spike_times))] - 1] = False
+    return int(np.count_nonzero((d == 0) & keep)), int(np.count_nonzero((d < 0) & keep))
+
+
 def gate_index(spike_times, index):
-    """(c) At least one unit; index non-decreasing; last entry == len(spike_times)."""
+    """(c) At least one unit; index non-decreasing; last entry == len(spike_times); every spike time
+    finite and >= 0."""
     import numpy as np
 
     n = len(index)
@@ -201,11 +242,15 @@ def gate_index(spike_times, index):
             f"(c) last index {int(index[-1])} != len(spike_times) {len(spike_times)} "
             "(truncated or wrapped index)"
         )
+    if not bool(np.all(np.isfinite(spike_times))):
+        raise IngestRefused("(c) a spike time is not finite")
+    if len(spike_times) and float(spike_times.min()) < 0.0:
+        raise IngestRefused(f"(c) a spike time is negative ({float(spike_times.min()):.6g} s)")
     return n
 
 
 def recorded_span(h5):
-    """`(duration_s, where)` from the file's own time series: bins / rate of the first
+    """`(duration_s, where)` from the file's own time series: (bins + 0.5) / rate of the first
     `processing/*/*` series that has a `data` and a `starting_time.rate`. Refuses when none."""
     root = h5.get(_SPAN_ROOT)
     if root is not None:
@@ -217,13 +262,19 @@ def recorded_span(h5):
                     if rate:
                         n = int(grp["data"].shape[0])
                         t0 = float(grp["starting_time"][()])
-                        return n / float(rate), f"{_SPAN_ROOT}/{mod}/{name}", t0, float(rate)
+                        return (
+                            (n + 0.5) / float(rate),
+                            f"{_SPAN_ROOT}/{mod}/{name}",
+                            t0,
+                            float(rate),
+                        )
     raise IngestRefused("(d) the file records no recording span to compare against")
 
 
 def gate_time_units(spike_times, duration_s):
     """(d) Of {seconds, milliseconds, samples at 20 kHz}, the declared seconds reading puts the last
-    spike STRICTLY closest to the recorded span. Returns every reading's distance."""
+    spike STRICTLY closest to the recorded span, and no spike lies at or past the span. Returns every
+    reading's distance."""
     if len(spike_times) == 0:
         raise IngestRefused("(d) no spikes: nothing to compare to the recorded span")
     last = float(spike_times.max())
@@ -233,6 +284,10 @@ def gate_time_units(spike_times, duration_s):
         raise IngestRefused(
             f"(d) last spike {last:.6g} fits {best!r}, not seconds, against span {duration_s:.6g} s "
             f"(distances {dist})"
+        )
+    if last >= duration_s:
+        raise IngestRefused(
+            f"(d) last spike {last:.6g} s is at or past the recorded span {duration_s:.6g} s"
         )
     return {"last_spike": last, "distance_s": dist}
 
@@ -350,6 +405,7 @@ def ingest_file(path, entry, pin, out_dir=None):
         try:
             spikes, index = read_units(h5)
             readings["n_units"] = gate_index(spikes, index)
+            x_pos, y_pos = read_positions(h5, readings["n_units"])
             dur, where, t0, rate = recorded_span(h5)
             readings.update(duration_s=dur, span_from=where, span_start_s=t0, span_rate_hz=rate)
             readings["d_time_units"] = gate_time_units(spikes, dur)
@@ -368,6 +424,8 @@ def ingest_file(path, entry, pin, out_dir=None):
         out,
         spike_times=spikes,
         spike_times_index=index,
+        x_pos=x_pos,
+        y_pos=y_pos,
         duration_s=np.float64(readings["duration_s"]),
         subject=np.array(entry["subject"]),
         session=np.array(session_id(entry["path"])),
@@ -424,6 +482,7 @@ def session_manifest(out_dir, rows, pin=None):
         with np.load(out_dir / r["artifact"], allow_pickle=False) as z:
             st, ix = z["spike_times"], z["spike_times_index"]
             session = str(z["session"])
+        dups, ooo = order_counts(st, ix)
         dup = None
         for k_session, k_st, k_ix in kept.setdefault(r["subject"], []):
             if np.array_equal(st, k_st) and np.array_equal(ix, k_ix):
@@ -441,6 +500,8 @@ def session_manifest(out_dir, rows, pin=None):
                 "units": r["n_units"],
                 "duration_s": r["duration_s"],
                 "duplicate_of": dup,
+                "dup_timestamps": dups,
+                "out_of_order": ooo,
             }
         )
     (out_dir / "og1_sessions.json").write_text(
@@ -456,9 +517,12 @@ def session_manifest(out_dir, rows, pin=None):
 _FIXTURE_UNITS = [[0.1006, 0.5004, 1.2007], [0.3009, 1.9003], [0.7002]]
 
 
-def write_fixture_nwb(path, units=None, bins=2000, rate=1000.0, index=None, span=True, raster=None):
+def write_fixture_nwb(
+    path, units=None, bins=2000, rate=1000.0, index=None, span=True, raster=None, positions=True
+):
     """A small NWB-shaped HDF5 file. `units` = list of per-unit spike-time lists (seconds). The stored
-    raster is the declared-convention rebuild of the TRUE units unless `raster` is given."""
+    raster is the declared-convention rebuild of the TRUE units unless `raster` is given. `positions`
+    writes the units table's x_pos / y_pos (unit i at (100 i, 50 i)); False leaves them out."""
     import h5py
     import numpy as np
 
@@ -471,10 +535,14 @@ def write_fixture_nwb(path, units=None, bins=2000, rate=1000.0, index=None, span
         f.create_dataset("units/spike_times", data=flat)
         f.create_dataset("units/spike_times_index", data=idx)
         f.create_dataset("general/institution", data=np.bytes_("Fixture University"))
+        if positions:
+            f.create_dataset("units/x_pos", data=100.0 * np.arange(len(units)))
+            f.create_dataset("units/y_pos", data=50.0 * np.arange(len(units)))
         if span:
             if raster is None:
                 true_idx = np.cumsum([len(u) for u in units]).astype(np.int64)
-                raster = rebuild_raster(flat, true_idx, bins, rate).astype("u1")
+                with np.errstate(invalid="ignore"):  # a NaN fixture time draws no cell
+                    raster = rebuild_raster(flat, true_idx, bins, rate).astype("u1")
             f.create_dataset("processing/curated_binning/t_spk_mat/data", data=raster)
             st = f.create_dataset("processing/curated_binning/t_spk_mat/starting_time", data=0.0)
             st.attrs["rate"] = rate
@@ -517,9 +585,15 @@ def _selfcheck():
             if not (
                 z["spike_times"].size == 6
                 and int(z["spike_times_index"][-1]) == 6
-                and float(z["duration_s"]) == 2.0
+                and float(z["duration_s"]) == 2.0005
             ):
                 failures.append("green control: artifact does not round-trip")
+            if not (
+                list(z["x_pos"]) == [0.0, 100.0, 200.0]
+                and list(z["y_pos"]) == [0.0, 50.0, 100.0]
+                and z["x_pos"].dtype == np.float64
+            ):
+                failures.append("green control: positions do not round-trip")
         if (
             rows["d_time_units"]["distance_s"]["seconds"]
             >= rows["d_time_units"]["distance_s"]["milliseconds"]
@@ -541,6 +615,25 @@ def _selfcheck():
             lambda: ingest_file(bad_c, fixture_entry(bad_c), fixture_pin(fixture_entry(bad_c)), td),
             "(c)",
         )
+        # (c) a NaN time, a negative time
+        for label, units in (
+            ("(c nan)", [[0.1006, float("nan")], [0.3009]]),
+            ("(c neg)", [[-0.4, 0.5004], [0.3009]]),
+        ):
+            bad = write_fixture_nwb(td / f"{label[3:6]}.nwb", units=units)
+            e_bad = fixture_entry(bad)
+            must_refuse(
+                label,
+                lambda b=bad, e=e_bad: ingest_file(b, e, fixture_pin(e), td),
+                "(c)",
+            )
+        # (c) a units table without positions
+        nopos = write_fixture_nwb(td / "nopos.nwb", positions=False)
+        must_refuse(
+            "(c pos)",
+            lambda: ingest_file(nopos, fixture_entry(nopos), fixture_pin(fixture_entry(nopos)), td),
+            "no x_pos",
+        )
         # (d) spike times x 1000
         bad_d = write_fixture_nwb(
             td / "d.nwb", units=[[100.0, 500.0, 1200.0], [300.0, 1900.0], [700.0]]
@@ -549,6 +642,13 @@ def _selfcheck():
             "(d)",
             lambda: ingest_file(bad_d, fixture_entry(bad_d), fixture_pin(fixture_entry(bad_d)), td),
             "(d)",
+        )
+        # (d) spikes up to 1.9 s in a 1.0 s span
+        late = write_fixture_nwb(td / "late.nwb", units=[[0.1006, 1.9003], [0.3009]], bins=1000)
+        must_refuse(
+            "(d span end)",
+            lambda: ingest_file(late, fixture_entry(late), fixture_pin(fixture_entry(late)), td),
+            "at or past",
         )
         # (d) no recorded span
         nospan = write_fixture_nwb(td / "n.nwb", span=False)
@@ -595,6 +695,8 @@ def _selfcheck():
         )
         if [m["duplicate_of"] for m in man] != [None, "20250101T000001", None]:
             failures.append(f"duplicates: wrong grouping {[m['duplicate_of'] for m in man]}")
+        if order_counts(np.array([1.0, 1.0, 0.5, 2.0, 0.1]), np.array([4, 5])) != (1, 1):
+            failures.append("order_counts: wrong count on a planted unit")
         # pin != freeze
         freeze = [{"path": entry["path"], "MB": entry["size"] / 1e6, "sha": "0" * 64}]
         must_refuse("pin", lambda: check_pin_against_freeze(pin, freeze), "pin != freeze")
@@ -605,7 +707,7 @@ def _selfcheck():
             print(f"organoid_ingest self-check FAILED: {f}")
         return 1
     print(
-        "organoid_ingest self-check OK: reds (a)(b)(c)(d)(d-span)(e' x1000, column shift, flip)(pin) "
+        "organoid_ingest self-check OK: reds (a)(b)(c)(c nan, negative, no positions)(d)(d-span)(d past span)(e' x1000, column shift, flip)(pin) "
         "refuse, green control converts, duplicate rule groups"
     )
     return 0
