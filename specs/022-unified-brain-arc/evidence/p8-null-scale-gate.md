@@ -226,3 +226,18 @@ Lanes build on branches cut from `claude/p8-nullscale-1023`; the integrator comp
      record reads as expired at the next arc (fail-closed); R-EXEMPT ties the entry to its record by `since`, not by method;
      HTML emphasis inside the phrase and a respelled method escape; any non-merge commit after a closing record starts the
      next arc, so a riding entry reds at it (item 3's "expires before the next pushed arc", read strictly).
+9. 2026-10-23, BATTERY 1 RED and restack v3. Battery battery-20261023-051932 on the v2 head (int3 fast-forwarded to it):
+   every stage green except pytest, 3 failed / 4,389 passed / 3 xfailed. Attributed by re-running the failing tests alone on
+   the head and on the base b6e3fc9e, and the third also as a stage:
+   - `tests/test_g8_move_gate.py` (two tests) red on the head, green on the base: the arc's wiring commit added
+     `null_scale_gate` to `LEGACY_REGIONS`, the table G8 froze (its digest moved), and registering the gate in `REGIONS`
+     moves the derived `_MOVED` count 324 -> 325 (measured by diffing `_MOVED` base vs head: exactly `null_scale_gate` added;
+     the pin precedent is the 323 -> 324 raise for `infra.native_build`). An arc defect present since the original wiring
+     commit; no review lens ran this test and the per-commit check did not include it.
+   - `tests/test_carried_state_stages.py` (the carried-red halt test) red once: `git rev-parse HEAD` exited 128 inside the
+     instrument's thread pool while seven pytest workers ran. It passes alone on the head and as a 7-worker stage (42 of 42),
+     and the arc touches none of its code: environmental, not attributed to any commit; the next battery re-tests it.
+   - Fix, restack v3 (`restack3.sh`): the gate commit carries only the `REGIONS` row (never `LEGACY_REGIONS`) and the G8
+     pin 325 with its measured provenance; the wiring commit keeps only its `run_selfchecks` entry. The head tree differs
+     from the v2 head by exactly those two files. The per-commit check now also runs `tests/test_g8_move_gate.py` on every
+     commit. The closing record lists the v3 shas.
