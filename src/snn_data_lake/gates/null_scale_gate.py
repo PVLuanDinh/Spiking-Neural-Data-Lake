@@ -12,10 +12,12 @@ Records (specs/**/evidence/*.md and docs/*.md; lines inside a fenced code block 
 
     NULL-RECORD: <method> | units=<int|n/a> | ticks=<int|n/a> | seeds=<int> | mde=<number> | retest=<R>
     R := REF:<repo path>#<method> | PENDING since <40-hex sha> | STRUCTURAL: <reason, >= 20 chars>
+         | NOT-NEEDED: harm <reason, >= 20 chars>
     RETEST-RECORD: <method> | axis=<units|ticks|seeds> | <axis>=<int> | result=<null|charges> | of=<repo path>
 
-What it reds: R-FIELD, R-UNRECORDED, R-RETEST-REF, R-RETEST-SCALE, R-EXPIRED, R-STALE-GRANDFATHER here;
-R-EXEMPT through `exempt_problems`, the ONE check `dormancy_gate` imports for its "scale-retest" disposition.
+What it reds: R-FIELD, R-UNRECORDED, R-RETEST-REF, R-RETEST-SCALE, R-RETEST-CHARGED, R-EXPIRED,
+R-STALE-GRANDFATHER here; R-EXEMPT through `exempt_problems`, the ONE check `dormancy_gate` imports for its
+"scale-retest" disposition.
 What it cannot do, and says so on every run: judge a STRUCTURAL argument (the reason is printed for review),
 or decide whether a method's null was measured on the RIGHT axis (the pre-registration author decides).
 
@@ -33,6 +35,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import NamedTuple
 
 REPO = Path(__file__).resolve().parents[3]
 
@@ -43,15 +46,19 @@ TRIAGE = "specs/022-unified-brain-arc/evidence/null-scale-triage.md"
 # Addendum 3: both files quote or list delete-on-null wording without making a statement. R-UNRECORDED skips
 # exactly these two BY NAME; R-FIELD and the record checks still read them. Printed on every --assert run.
 UNRECORDED_EXCLUDED = (PREREG, TRIAGE)
-CLOSING_SUBJECT = "chore(record): closing execution record"
+DORMANCY_GATE = "src/snn_data_lake/gates/dormancy_gate.py"
+CERT = "tools/policy_certification.json"  # the battery's execution record: a commit that modifies it closes an arc
+# Owner answer 1, verbatim: "Scale factor: 10x minimum on the scaling axis."
 SCALE_FACTOR = 10
 AXES = ("units", "ticks", "seeds")
 
 STATEMENT_RE = re.compile(
-    r"(delet(ed|ion|e)|retir(ed|e)|removed) on (its|a|the|their) (own )?null", re.I
+    r"(delet(ed|ion|e|ing|es)|retir(ed|e|ing|es)|remov(ed|e|es|ing|al)) on (its|a|the|their) (own )?null",
+    re.I,
 )
 RECORD_RE = re.compile(r"^\s*(?:[-*]\s+)?(NULL-RECORD|RETEST-RECORD):\s*(.*?)\s*$")
 HEADING_RE = re.compile(r"^(#{1,6})\s")
+SETEXT_RE = re.compile(r"^ {0,3}(=+|-+)\s*$")
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
 _INT = r"[1-9][0-9]*"
 _NUM = r"[0-9]+(?:\.[0-9]+)?(?:[eE]-?[0-9]+)?"
@@ -63,40 +70,38 @@ _HARM_KINDS = "harm|at-scale|restatement"
 # an entry in the same commit as its line (R-STALE-GRANDFATHER). Regenerate with `--census`.
 GRANDFATHERED: frozenset[tuple[str, str]] = frozenset(
     {
-        ("specs/022-unified-brain-arc/evidence/c0-everyday-battery.md", "f823f1fef028"),
-        ("specs/022-unified-brain-arc/evidence/g5-readout-variants.md", "8b94a63cd542"),
-        ("specs/022-unified-brain-arc/evidence/g5-readout-variants.md", "4fe8589dc323"),
-        ("specs/022-unified-brain-arc/evidence/g5-readout-variants.md", "3057ca1110fe"),
-        ("specs/022-unified-brain-arc/evidence/g6-sleep-durable-memory.md", "b2b6465f1f03"),
-        ("specs/022-unified-brain-arc/evidence/g6-sleep-durable-memory.md", "622b1d1a619a"),
-        ("specs/022-unified-brain-arc/evidence/insula-level-arms-production.md", "2fbda974ff4c"),
-        ("specs/022-unified-brain-arc/evidence/insula-p8-engine-reach.md", "b6838817cbf7"),
-        ("specs/022-unified-brain-arc/evidence/insula-p8-engine-reach.md", "fd339a7f9e38"),
-        ("specs/022-unified-brain-arc/evidence/jepa-live-floor.md", "ceb93e50d738"),
-        ("specs/022-unified-brain-arc/evidence/l-exit.md", "6a99ed3ae91e"),
-        ("specs/022-unified-brain-arc/evidence/l-exit.md", "7e97ad3d8373"),
-        ("specs/022-unified-brain-arc/evidence/l1b-synaptic-online.md", "3a870391338a"),
+        ("specs/022-unified-brain-arc/evidence/c0-everyday-battery.md", "2b7b457e999a"),
+        ("specs/022-unified-brain-arc/evidence/g5-readout-variants.md", "972ae33ba3a3"),
+        ("specs/022-unified-brain-arc/evidence/g5-readout-variants.md", "6a37684ba1a2"),
+        ("specs/022-unified-brain-arc/evidence/g5-readout-variants.md", "f775c9b65d2e"),
+        ("specs/022-unified-brain-arc/evidence/g6-sleep-durable-memory.md", "5b5293c96aa6"),
+        ("specs/022-unified-brain-arc/evidence/g6-sleep-durable-memory.md", "c52cb3e92600"),
+        ("specs/022-unified-brain-arc/evidence/insula-level-arms-production.md", "ab9c69434dc7"),
+        ("specs/022-unified-brain-arc/evidence/insula-p8-engine-reach.md", "ea385a5d26d5"),
+        ("specs/022-unified-brain-arc/evidence/insula-p8-engine-reach.md", "f3ffa203b1d7"),
+        ("specs/022-unified-brain-arc/evidence/jepa-live-floor.md", "aec6060c978b"),
+        ("specs/022-unified-brain-arc/evidence/l-exit.md", "c466ec73c3b6"),
+        ("specs/022-unified-brain-arc/evidence/l1b-synaptic-online.md", "c2d13723a832"),
         ("specs/022-unified-brain-arc/evidence/l1b-synaptic-online.md", "8a7ac8989836"),
-        ("specs/022-unified-brain-arc/evidence/l2-grow-on-plateau.md", "9202bf9204a9"),
-        ("specs/022-unified-brain-arc/evidence/l2-grow-on-plateau.md", "719e8f98fb86"),
-        ("specs/022-unified-brain-arc/evidence/r1-bounded-recall.md", "9297ddb1d509"),
-        ("specs/022-unified-brain-arc/evidence/r3-replay-growth-composition.md", "0edb6ea1a6fe"),
-        ("specs/022-unified-brain-arc/evidence/s0-exit.md", "d4914f4163e5"),
-        ("specs/022-unified-brain-arc/evidence/s0-exit.md", "c326a826a698"),
+        ("specs/022-unified-brain-arc/evidence/l2-grow-on-plateau.md", "a6b0e7a61c88"),
+        ("specs/022-unified-brain-arc/evidence/l2-grow-on-plateau.md", "9afba4db4f5a"),
+        ("specs/022-unified-brain-arc/evidence/r1-bounded-recall.md", "9c1189e1fd1c"),
+        ("specs/022-unified-brain-arc/evidence/r3-replay-growth-composition.md", "2d4c0d656797"),
+        ("specs/022-unified-brain-arc/evidence/s0-exit.md", "accb2e772aa0"),
+        ("specs/022-unified-brain-arc/evidence/s0-exit.md", "921dcde40836"),
         ("specs/022-unified-brain-arc/evidence/s3-neuron-pager.md", "6ef10f902e5c"),
         ("specs/022-unified-brain-arc/evidence/s4-lake-compactor.md", "0cc96a9e8077"),
-        ("specs/022-unified-brain-arc/evidence/s4-lake-compactor.md", "b198632d46ad"),
-        ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "a1ad953913a7"),
-        ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "a977fd8e7138"),
-        ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "8de96c3725db"),
-        ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "bf906c5f281f"),
-        ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "c95b15ab106e"),
-        ("specs/022-unified-brain-arc/evidence/sc-012a-width.md", "b4005869fac4"),
-        ("specs/022-unified-brain-arc/evidence/t069-cerebellar-rule.md", "948a3b350b92"),
-        ("specs/022-unified-brain-arc/evidence/trainer-retirement.md", "7edd5f76fa51"),
-        ("specs/022-unified-brain-arc/evidence/trainer-retirement.md", "2d523a869ab2"),
-        ("specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md", "d7287e22638d"),
-        ("specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md", "3c47b4420774"),
+        ("specs/022-unified-brain-arc/evidence/s4-lake-compactor.md", "0f636bff2344"),
+        ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "01cb45021e8a"),
+        ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "b9f3a73eb473"),
+        ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "71dae1592a93"),
+        ("specs/022-unified-brain-arc/evidence/s5-paging-null.md", "a9a3aa842cde"),
+        ("specs/022-unified-brain-arc/evidence/sc-012a-width.md", "114c3fddb61a"),
+        ("specs/022-unified-brain-arc/evidence/trainer-retirement.md", "8361c2027d5d"),
+        ("specs/022-unified-brain-arc/evidence/trainer-retirement.md", "7c121e85fd83"),
+        ("specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md", "58d3a54f653f"),
+        ("specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md", "f1104c223cfa"),
+        ("specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md", "b7994c2b2f50"),
     }
 )
 
@@ -153,9 +158,29 @@ def line_key(text: str) -> str:
     return hashlib.sha256(text.strip().encode("utf-8")).hexdigest()[:12]
 
 
-def git_history(sha: str, repo: Path = REPO) -> list[tuple[str, str]] | None:
-    """(sha, subject) of each commit in `sha..HEAD`, oldest first, HEAD last. None when the history cannot
-    answer: unknown sha, `sha` not an ancestor of HEAD, shallow clone, git missing. The one place git is read."""
+class Commit(NamedTuple):
+    sha: str
+    subject: str = ""
+    merge: bool = False
+    closing: bool = False
+
+
+class History(NamedTuple):
+    """`commits`: sha..HEAD, oldest first, HEAD last. `created`: the commit that first ADDED the record
+    (None: the record is not in history yet, so it counts as created at HEAD). `anchored`: the written sha
+    is an ancestor of `created`."""
+
+    commits: list[Commit]
+    created: str | None = None
+    anchored: bool = True
+
+
+def git_history(
+    sha: str, added: tuple[str, str] | None = None, repo: Path = REPO
+) -> History | None:
+    """The History of `sha..HEAD`; `added` = (repo path, literal text) finds the commit that first added the
+    text to the path (git log -S, oldest first). None when the history cannot answer: unknown sha, `sha` not
+    an ancestor of HEAD, shallow clone, git missing. The one place git is read."""
 
     def git(*argv: str) -> subprocess.CompletedProcess:
         return subprocess.run(["git", *argv], cwd=repo, capture_output=True, text=True, timeout=60)
@@ -165,35 +190,83 @@ def git_history(sha: str, repo: Path = REPO) -> list[tuple[str, str]] | None:
             return None
         if git("merge-base", "--is-ancestor", sha, "HEAD").returncode:
             return None
-        log = git("log", "--reverse", "--format=%H%x1f%s", f"{sha}..HEAD")
+        log = git("log", "--reverse", "--topo-order", "--format=%H%x1f%P%x1f%s", f"{sha}..HEAD")
+        record = git(
+            "log", "--no-merges", "--full-history", "--format=%H", f"{sha}..HEAD", "--", CERT
+        )
+        if log.returncode or record.returncode:
+            return None
+        created, anchored = None, True
+        if added is not None:
+            path, text = added
+            first = git(
+                "log", "--reverse", "--full-history", "--format=%H", f"-S{text}", "--", path
+            )
+            if first.returncode:
+                return None
+            if first.stdout.split():
+                created = first.stdout.split()[0]
+                anchored = git("merge-base", "--is-ancestor", sha, created).returncode == 0
     except (OSError, subprocess.SubprocessError):
         return None
-    if log.returncode:
-        return None
-    return [tuple(row.split("\x1f", 1)) for row in log.stdout.splitlines() if row]
+    rows = [row.split("\x1f", 2) for row in log.stdout.splitlines() if row]
+    closed = set(record.stdout.split())
+    commits = [
+        Commit(sha, subject, len(parents.split()) > 1, sha in closed)
+        for sha, parents, subject in rows
+    ]
+    return History(commits, created, anchored)
 
 
-def expiry_problem(sha: str, history=git_history) -> str | None:
+def expiry_problem(
+    sha: str, history=git_history, added: tuple[str, str] | None = None
+) -> str | None:
     """R-EXPIRED: a PENDING entry rides in the arc that created it, up to and including that arc's closing
-    record; any commit after a closing record that is not HEAD means the next arc is being built."""
-    commits = history(sha)
-    if commits is None:
+    record (the commit that modifies the execution record, whatever its subject); any non-merge commit after a closing record (a PR merge ref or --no-ff integration on top of it is
+    not one) means the next arc is being built. The arc
+    starts at the commit that first ADDED the record (`added`), never at the written sha: editing the sha
+    forward cannot reset the clock, and a sha that is not an ancestor of that commit is red."""
+    found = history(sha, added)
+    if found is None:
         return f"history unavailable for {sha} (unknown sha, not an ancestor of HEAD, or shallow clone)"
-    closing = [c[:12] for c, subject in commits[:-1] if subject.startswith(CLOSING_SUBJECT)]
+    start = len(found.commits)
+    if found.created is not None:
+        shas = [c.sha for c in found.commits]
+        if not found.anchored or found.created not in shas:
+            return (
+                f"expired: {sha[:12]} is not an ancestor of {found.created[:12]}, the commit that "
+                "added the record (was the sha edited forward?)"
+            )
+        start = shas.index(found.created)
+    commits = found.commits
+    closing = [
+        c.sha[:12]
+        for i, c in enumerate(commits[start:], start)
+        if c.closing and not all(later.merge for later in commits[i + 1 :])
+    ]
     if closing:
         return f"expired: {sha[:12]} predates closing record(s) {closing} and HEAD is past them"
     return None
 
 
-def exempt_problems(module: str, reason: str, history=git_history) -> list[str]:
+def exempt_problems(module: str, reason: str, history=git_history, root: Path = REPO) -> list[str]:
     """R-EXEMPT: what is wrong with a dormancy_gate EXEMPT entry whose disposition is "scale-retest"."""
     problems = []
-    if not re.search(r"NULL-RECORD:[\w./-]+\.md", reason):
+    named = re.search(r"NULL-RECORD:([\w./-]+\.md)", reason)
+    if not named:
         problems.append(f"{module}: reason names no `NULL-RECORD:<repo path>`")
+    elif not any(
+        n.retest.startswith("PENDING since") for n in _scan(root).nulls.get(named.group(1), [])
+    ):
+        problems.append(
+            f"{module}: {named.group(1)} is not an in-scope file holding a NULL-RECORD whose retest is PENDING"
+        )
     since = re.search(rf"since=({_SHA})(?![0-9a-f])", reason)
     if not since:
         problems.append(f"{module}: reason names no `since=<full 40-hex sha>`")
-    elif (expired := expiry_problem(since.group(1), history)) is not None:
+    elif (
+        expired := expiry_problem(since.group(1), history, (DORMANCY_GATE, f'"{module}": ('))
+    ) is not None:
         problems.append(f"{module}: {expired}")
     return problems
 
@@ -225,9 +298,12 @@ def _retest_ok(value: str, triage: bool) -> bool:
         return len(reason) >= 20 and " | " not in reason
     if triage and value == "CANDIDATE":
         return True
+    # Owner answer 3: "a measured harm is enough to delete; no scale re-test required" -- harm is allowed in
+    # every in-scope file; at-scale and restatement stay triage-only.
     not_needed = re.fullmatch(rf"NOT-NEEDED: ({_HARM_KINDS}) (.+)", value)
     reason = not_needed.group(2).strip() if not_needed else ""
-    return bool(triage and not_needed and len(reason) >= 20 and " | " not in reason)
+    allowed = bool(not_needed) and (triage or not_needed.group(1) == "harm")
+    return allowed and len(reason) >= 20 and " | " not in reason
 
 
 def parse_null(path: str, no: int, body: str, triage: bool = False) -> NullRecord | str:
@@ -249,10 +325,15 @@ def parse_null(path: str, no: int, body: str, triage: bool = False) -> NullRecor
             return f"{key}={got[key]!r} is not an integer >= 1" + (
                 " or n/a" if "n/a" in extra else ""
             )
+    # mde: the minimum detectable effect at one-sided alpha .05, power .8 (P8 amendment item 1; section 0 of
+    # the pre-registration defines the field). The gate checks that it is a number, not how it was derived.
     if re.fullmatch(_NUM, got["mde"]) is None and got["mde"] not in unknown:
         return f"mde={got['mde']!r} is not a number"
     if not _retest_ok(got["retest"], triage):
-        return f"retest={got['retest']!r} is not REF:<path>#<method>, PENDING since <sha>, or STRUCTURAL: <20+ chars>"
+        return (
+            f"retest={got['retest']!r} is not REF:<path>#<method>, PENDING since <sha>, "
+            "STRUCTURAL: <20+ chars>, or NOT-NEEDED: harm <20+ chars>"
+        )
     return NullRecord(
         path,
         no,
@@ -303,13 +384,31 @@ def _lines(root: Path, rel: str) -> list[Line]:
     return out
 
 
+def _structure(lines: list[Line]) -> tuple[list[tuple[int, int]], set[int]]:
+    """(start index, level) of every heading outside a fence, and the indexes of the lines that make them up.
+    A paragraph underlined by === or --- is a setext heading (level 1 or 2); the same underline after a blank
+    line is a thematic break, not a heading."""
+    heads: list[tuple[int, int]] = []
+    owned: set[int] = set()
+    run = None
+    for j, ln in enumerate(lines):
+        plain = bool(ln.text.strip()) and not ln.fenced
+        if plain and (m := HEADING_RE.match(ln.text)):
+            heads.append((j, len(m.group(1))))
+            owned.add(j)
+            run = None
+        elif plain and run is not None and (u := SETEXT_RE.match(ln.text)):
+            heads.append((run, 1 if u.group(1)[0] == "=" else 2))
+            owned.update(range(run, j + 1))
+            run = None
+        else:
+            run = (j if run is None else run) if plain else None
+    return heads, owned
+
+
 def _section(lines: list[Line], i: int) -> list[Line]:
     """Lines from the nearest heading at or above `i` to the next heading of the same or higher level."""
-    heads = [
-        (j, len(m.group(1)))
-        for j, ln in enumerate(lines)
-        if not ln.fenced and (m := HEADING_RE.match(ln.text))
-    ]
+    heads = _structure(lines)[0]
     above = [(j, lvl) for j, lvl in heads if j <= i]
     start, level = above[-1] if above else (0, 7)
     end = next((j for j, lvl in heads if j > i and lvl <= level), len(lines))
@@ -349,8 +448,28 @@ def _scan(root: Path) -> _Scan:
     return scan
 
 
+def _paragraphs(lines: list[Line]) -> list[Line]:
+    """Each paragraph (consecutive non-blank lines that are not headings or fence lines) joined with single
+    spaces, as one Line at the paragraph's first line: a statement wrapped across lines is still one statement."""
+    out: list[Line] = []
+    run: list[Line] = []
+    owned = _structure(lines)[1]
+    for j, ln in enumerate([*lines, None]):
+        if ln is not None and ln.text.strip() and not ln.fenced and j not in owned:
+            run.append(ln)
+        elif run:
+            out.append(Line(run[0].path, run[0].no, " ".join(r.text.strip() for r in run), False))
+            run = []
+    return out
+
+
 def statements(scan: _Scan) -> list[Line]:
-    return [ln for rel in scan.evidence for ln in scan.lines[rel] if STATEMENT_RE.search(ln.text)]
+    return [
+        para
+        for rel in scan.evidence
+        for para in _paragraphs(scan.lines[rel])
+        if STATEMENT_RE.search(para.text)
+    ]
 
 
 def _check_unrecorded(scan: _Scan, grandfathered) -> list[Red]:
@@ -376,6 +495,31 @@ def _check_unrecorded(scan: _Scan, grandfathered) -> list[Red]:
                     "delete-on-null statement with no NULL-RECORD in its section",
                 )
             )
+    return reds
+
+
+def _check_charged(scan: _Scan) -> list[Red]:
+    """R-RETEST-CHARGED: a statement whose section's NULL-RECORD resolves (REF) to a re-test that charged.
+    Grandfathered statements are read too: a charge is a measurement, not a dated omission."""
+    reds = []
+    for st in statements(scan):
+        if st.path in UNRECORDED_EXCLUDED:
+            continue
+        section = {ln.no for ln in _section(scan.lines[st.path], st.no - 1)}
+        for n in (n for n in scan.nulls.get(st.path, []) if n.no in section):
+            ref = re.fullmatch(r"REF:([^\s#]+)#(.+)", n.retest)
+            if ref and any(
+                r.method == n.method and r.of == n.path and r.result == "charges"
+                for r in scan.retests.get(ref.group(1), [])
+            ):
+                reds.append(
+                    Red(
+                        "R-RETEST-CHARGED",
+                        f"{st.path}:{st.no}",
+                        "re-test charged: a scale-dependent finding; deletion not licensed",
+                    )
+                )
+                break
     return reds
 
 
@@ -465,7 +609,11 @@ def _check_expired(scan: _Scan, history) -> list[Red]:
     for recs in scan.nulls.values():
         for n in recs:
             pending = re.fullmatch(rf"PENDING since ({_SHA})", n.retest)
-            if pending and (problem := expiry_problem(pending.group(1), history)) is not None:
+            added = (n.path, f"NULL-RECORD: {n.method} | ")
+            if (
+                pending
+                and (problem := expiry_problem(pending.group(1), history, added)) is not None
+            ):
                 reds.append(Red("R-EXPIRED", f"{n.path}:{n.no}", problem))
     return reds
 
@@ -475,6 +623,7 @@ def check(root: Path = REPO, grandfathered=GRANDFATHERED, history=git_history) -
     reds = [
         *scan.reds,
         *_check_unrecorded(scan, grandfathered),
+        *_check_charged(scan),
         *_check_retest_ref(scan),
         *_check_retest_scale(scan),
         *_check_expired(scan, history),
@@ -513,7 +662,9 @@ def render(report: Report) -> str:
     out += [f"  STRUCTURAL (printed for review): {s}" for s in report.structural]
     out.append(
         "  LIMIT: the gate cannot judge a STRUCTURAL argument or whether a re-test used the right axis; "
-        "both stay review-enforced."
+        "both stay review-enforced. Scoping is spec-literal: a section runs from its heading (# or setext "
+        "=== / ---) to the next heading of the same or higher level, so one NULL-RECORD of any method "
+        "covers every statement in its section, a record under a sub-heading included."
     )
     out += [f"  RED {r.code} {r.where}: {r.message}" for r in report.reds]
     return "\n".join(out)
@@ -531,6 +682,13 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
         "R-FIELD": ({f"{_EV}a.md": "# t\nNULL-RECORD: m | units=4\n"}, {}),
         "R-UNRECORDED": ({f"{_EV}a.md": "# t\nThe method was deleted on its own null.\n"}, {}),
         "R-RETEST-REF": ({f"{_EV}a.md": f"# t\n{_REC}REF:{ref_b}#m\n", ref_b: "# r\n"}, {}),
+        "R-RETEST-CHARGED": (
+            {
+                f"{_EV}a.md": f"# t\nThe method was deleted on its own null.\n\n{_REC}REF:{ref_b}#m\n",
+                ref_b: f"# r\nRETEST-RECORD: m | axis=units | units=40 | result=charges | of={_EV}a.md\n",
+            },
+            {},
+        ),
         "R-RETEST-SCALE": (
             {
                 f"{_EV}a.md": f"# t\n{_REC}REF:{ref_b}#m\n",
@@ -540,7 +698,7 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
         ),
         "R-EXPIRED": (
             {f"{_EV}a.md": f"# t\n{_REC}PENDING since {'a' * 40}\n"},
-            {"history": lambda sha: None},
+            {"history": lambda sha, added=None: None},
         ),
         "R-STALE-GRANDFATHER": (
             {f"{_EV}a.md": "# t\n"},
@@ -570,10 +728,19 @@ def self_check() -> int:
                 failures.append(f"planted {name} did not red (got {sorted(codes)})")
     if not exempt_problems("m", "no record, no sha"):
         failures.append("planted R-EXEMPT did not red")
-    if exempt_problems(
-        "m", f"NULL-RECORD:{_EV}a.md since={'a' * 40}", history=lambda sha: [(sha, "x")]
-    ):
-        failures.append("clean R-EXEMPT entry reds")
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / _EV).mkdir(parents=True)
+        (Path(tmp) / _EV / "a.md").write_text(
+            f"# t\n{_REC}PENDING since {'a' * 40}\n", encoding="utf-8"
+        )
+        entry = f"NULL-RECORD:{_EV}a.md since={'a' * 40}"
+        history = lambda sha, added=None: History([Commit(sha, "x")])  # noqa: E731
+        if exempt_problems("m", entry, history=history, root=Path(tmp)):
+            failures.append("clean R-EXEMPT entry reds")
+        if not exempt_problems(
+            "m", entry.replace("a.md", "gone.md", 1), history=history, root=Path(tmp)
+        ):
+            failures.append("planted R-EXEMPT phantom NULL-RECORD path did not red")
     for failure in failures:
         print(f"null_scale_gate self-check FAILED: {failure}")
     if not failures:

@@ -1148,12 +1148,12 @@ def _phantom_selfcheck():
 # method unwired after a null and awaiting its larger-scale re-test. Its reason must name the NULL-RECORD and
 # the `since=<full sha>` it was created on, and it expires before the next pushed arc. The check is
 # null_scale_gate's one `exempt_problems`; this gate imports it and never restates the rule.
-def _assert_scale_retest(exempt, history=null_scale_gate.git_history):
+def _assert_scale_retest(exempt, history=null_scale_gate.git_history, root=null_scale_gate.REPO):
     problems = [
         p
         for m, (disposition, reason) in sorted(exempt.items())
         if disposition == "scale-retest"
-        for p in null_scale_gate.exempt_problems(m, reason, history)
+        for p in null_scale_gate.exempt_problems(m, reason, history, root)
     ]
     assert not problems, f"P8 null-scale: bad scale-retest EXEMPT row(s): {problems}"
 
