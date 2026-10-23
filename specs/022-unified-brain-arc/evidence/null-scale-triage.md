@@ -13,7 +13,7 @@ Regex of spec section 0 over `specs/**/evidence/*.md` at base 89f3af14 plus the 
 | axis | capacity today | source |
 |---|---|---|
 | units | 16,384 units run through the brain in one 226-cell campaign; 14,215 signed units ingested (H01, T062); the engine's measured binding width is 222,193 units at a 64 MB budget | `s5-paging-null.md:403`; `s2-exit.md:104`; `s2-state-per-unit.md:55-58` |
-| ticks | 9,600 ticks in one planned single-campaign run; kernel throughput 23,823 ticks/s | `t078-attention-schema.md:379`; `g1b-pool-selection.md:65` |
+| ticks | 9,600 ticks in one single-campaign run, which landed at 644.1 s (review #4486 m3; the lane's draft called it planned); kernel throughput 23,823 ticks/s | `t078-attention-schema.md:379-381`; `g1b-pool-selection.md:65` |
 | seeds | S = 31 in one registered contrast (power-driven, not a scaling axis for most mechanisms) | `g1c-carried-state.md:74` |
 
 Thresholds used: units below 1,638 (16,384 / 10); ticks below 960 (9,600 / 10). A candidate must fall under one of them on the axis named in its block. Seeds are never the axis alone.
@@ -60,12 +60,12 @@ evidence: Pre-registered reading for REACH-NULL (insula-p8-engine-reach.md:73-75
 ### 10. specs/022-unified-brain-arc/evidence/jepa-live-floor.md:614  key=specs/022-unified-brain-arc/evidence/jepa-live-floor.md@ceb93e50d738
 class: harm
 NULL-RECORD: reservoir build of the live latent floor (commit D, not landed) | units=unknown | ticks=unknown | seeds=3 | mde=unknown | retest=NOT-NEEDED: harm the planted k=1 order read failed on every seed, 1.61 / 5.87 / 18.9 at 10 cycles
-evidence: R4 NOT MET at jepa-live-floor.md:603-605: the planted k=1 read fails in the in-tree test (seed 0) and on all three harness seeds; R5 also broke two self-checks (jepa-live-floor.md:606-611). The build was archived, not landed (jepa-live-floor.md:612-614). A measured failure of a pre-registered required read is a harm, not a null; ticks and units are not stated in these lines.
+evidence: R4 NOT MET at jepa-live-floor.md:603-605: the planted k=1 read fails in the in-tree test (seed 0) and on all three harness seeds; R5 also broke two self-checks (jepa-live-floor.md:606-611). The build was archived, not landed (jepa-live-floor.md:612-614). Why harm and not null (integrator fold of reviews #4485/#4486, MINOR): R4 is a pre-registered NON-REGRESSION read (jepa-live-floor.md:129, :203, the in-tree tests stay green at k=1), and the build turned one red while its reservoir read 1.61 / 5.87 / 18.9 where the incumbent ring buffer reads 0.069 (jepa-live-floor.md:450-452): a measured regression against the incumbent. A read that only misses its bar would be a null. Ticks and units are not stated in these lines.
 
 ### 11. specs/022-unified-brain-arc/evidence/l-exit.md:20  key=specs/022-unified-brain-arc/evidence/l-exit.md@6a99ed3ae91e
-class: small-scale
-NULL-RECORD: Oja and BCM local rules on the grown units' input rows (L1b) | units=unknown | ticks=800 | seeds=8 | mde=unknown | retest=CANDIDATE
-evidence: Row L1b (l-exit.md:20) cites t -1.96 (Oja) and t -1.36 (BCM) vs frozen rows, 8 seeds x 800 ticks on the synthetic stream (l1b-synaptic-online.md record; grown units stay in the single digits to low tens, l2-grow-on-plateau.md:165, sc-012a-width.md:188). The harm exemption is NOT applied: the record's own mechanism for the Oja fall is a readout held stale by the closed growth gate (l1b-synaptic-online.md:268-277), not the rule, and BCM did not fall past the bar. L1c (co-adapting readout) has since landed, so the stated cause is now testable. AXIS = units: the rule acts on the grown units' input rows, 2-38 units vs 16,384.
+class: harm
+NULL-RECORD: Oja local rule on the grown units' input rows (L1b) | units=unknown | ticks=800 | seeds=8 | mde=unknown | retest=NOT-NEEDED: harm the record states Oja fell past the bar against frozen rows (t -1.96), a measured harm
+evidence: Row L1b (l-exit.md:20) records Oja as a measured harm, t -1.96 vs frozen rows, 8 seeds x 800 ticks on the synthetic stream; owner answer 3 lets a measured harm skip the re-test. Integrator fold of review #4486 (m2): the lane's draft had overridden the record with the stale-readout mechanism (l1b-synaptic-online.md:268-277); the record's own reading is kept for Oja, and BCM, which did not fall past the bar, is split out as U4. Whether that mechanism should reopen Oja is a panel question, not a triage override.
 
 ### 12. specs/022-unified-brain-arc/evidence/l-exit.md:22  key=specs/022-unified-brain-arc/evidence/l-exit.md@7e97ad3d8373
 class: small-scale
@@ -138,7 +138,7 @@ evidence: Continuation of the same amendment text (s5-paging-null.md:306-308); n
 ### 28. specs/022-unified-brain-arc/evidence/s5-paging-null.md:512  key=specs/022-unified-brain-arc/evidence/s5-paging-null.md@bf906c5f281f
 class: at-scale
 NULL-RECORD: activation-driven neuron pager (residency layer) | units=16384 | ticks=unknown | seeds=8 | mde=unknown | retest=NOT-NEEDED: at-scale ran 226 cells at 16,384 units (above the 14,215-unit ingest) and failed its cost bound by 11.7x
-evidence: s5-paging-null.md:403 (226 cells, 16,384 units, S = 8) and :475 (raw tick-cost ratio 35.2x against a 3.0x bound). The recorded units equal the largest run-through-the-brain scale in the capacity table, so nothing is 10x below. The measured memory win (s5-paging-null.md:461-475) is part of the record.
+evidence: s5-paging-null.md:403 (226 cells, 16,384 units, S = 8) and :475 (raw tick-cost ratio 35.2x against a 3.0x bound). The recorded units equal the largest run-through-the-brain scale in the capacity table, so nothing is 10x below. The measured memory win (s5-paging-null.md:461-475) is part of the record. This class depends on the capacity chosen (review #4486 m3): against the engine's 222,193-unit binding width (s2-state-per-unit.md:56) the run would sit 13.6x below; run-through capacity is used because it is what the brain has actually run.
 
 ### 29. specs/022-unified-brain-arc/evidence/s5-paging-null.md:761  key=specs/022-unified-brain-arc/evidence/s5-paging-null.md@c95b15ab106e
 class: restatement
@@ -151,16 +151,16 @@ evidence: Disposition item 2 (sc-012a-width.md:271-273) says the L2 removal stan
 ### 31. specs/022-unified-brain-arc/evidence/t069-cerebellar-rule.md:109  key=specs/022-unified-brain-arc/evidence/t069-cerebellar-rule.md@948a3b350b92
 class: small-scale
 NULL-RECORD: cerebellar climbing-fibre LTD rule (cf_ltd_rule) | units=32 | ticks=900 | seeds=8 | mde=unknown | retest=CANDIDATE
-evidence: t069-cerebellar-rule.md:157-162: taught vs shuffled teaching signal t 1.242 (p 0.133) on held-out seeds 100-107, 900 steps; the plant's tissue sizes were n_mossy 4-32 (t069:19). The gain was uniform-dominated (best uniform +0.0188 vs rule +0.0189), so a larger tissue could still open headroom the uniform scale cannot take. AXIS = units: the rule's job is credit assignment across mossy channels; 32 is 512x below 16,384.
+evidence: t069-cerebellar-rule.md:157-163: taught vs shuffled teaching signal t 1.242 (p 0.133; row at :163) on held-out seeds 100-107, 900 steps; the plant's tissue sizes were n_mossy 4-32 (t069:19). The gain was uniform-dominated (best uniform +0.0188 vs rule +0.0189), so a larger tissue could still open headroom the uniform scale cannot take. AXIS = units: the rule's job is credit assignment across mossy channels; 32 is 512x below 16,384.
 
 ### 32. specs/022-unified-brain-arc/evidence/trainer-retirement.md:67  key=specs/022-unified-brain-arc/evidence/trainer-retirement.md@7edd5f76fa51
 class: restatement
 evidence: Pre-registered null disposition for the trainer port (trainer-retirement.md:65-68); it states the rule, no result.
 
 ### 33. specs/022-unified-brain-arc/evidence/trainer-retirement.md:242  key=specs/022-unified-brain-arc/evidence/trainer-retirement.md@2d523a869ab2
-class: at-scale
-NULL-RECORD: mnist_genn one-epoch smoke (retired module) | units=unknown | ticks=unknown | seeds=unknown | mde=unknown | retest=NOT-NEEDED: at-scale the full training set was used; the 3-epoch budget is within 10x of one epoch and the readings are unreproduced
-evidence: trainer-retirement.md:242-250: chance after one epoch on the full set (test 0.0785); the lines say the four numbers are unreproduced and the removal rests on the owner's decision 17c and the module's unverified status. The only untested scale is a longer budget (3 epochs, 3x, below the 10x factor). A judgment call, flagged in REPORT.md.
+class: small-scale
+NULL-RECORD: mnist_genn one-epoch smoke (retired module) | units=unknown | ticks=unknown | seeds=unknown | mde=unknown | retest=CANDIDATE
+evidence: trainer-retirement.md:242-250: chance after one epoch on the full set (test 0.0785); the lines say the four numbers are unreproduced and the removal rests on the owner's decision 17c and the module's self-declared UNVERIFIED status (trainer-retirement.md:247-249). Integrator fold of reviews #4485 (MAJOR-1) and #4486 (M1): the lane's draft classed this at-scale because a 3-epoch budget is within 10x of one epoch, which misreads the rule; the rule asks whether the null was measured within 10x of what can run today, and this record states no scale at all, while a 10-epoch re-test is runnable. AXIS = training budget (epochs, the ticks axis). Lowest value: the deletion rests on decision 17c, not only on this smoke.
 
 ### 34. specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md:435  key=specs/022-unified-brain-arc/evidence/trajectory-audit-2026-09-01.md@d7287e22638d
 class: restatement
@@ -187,16 +187,22 @@ class: structural
 NULL-RECORD: linear two-level H-JEPA core module (v3.13) | units=unknown | ticks=unknown | seeds=unknown | mde=unknown | retest=STRUCTURAL: both levels use spectrally contractive linear predictors that saturate to a fixed point under multi-step rollout
 evidence: Ledger section 'Hierarchy / world-model negatives' (project-snn-refuted-and-negatives.md:94-102): the module was removed uncommitted after L0 fast-roll MSE 0.35 beat L1 coarse-roll 0.48; the stated mechanism is a property of linear contractive predictors, not of run size, and the ledger names the fix (nonlinearity on all three axes). No scale is recorded.
 
+### U4. ledger  key=untracked:l1b-bcm
+class: small-scale
+NULL-RECORD: BCM local rule on the grown units' input rows (L1b) | units=unknown | ticks=800 | seeds=8 | mde=unknown | retest=CANDIDATE
+evidence: Split from block 11 by the integrator's fold of review #4486 (m2). Row L1b (l-exit.md:20) records BCM at t -1.36 vs frozen rows, which did not fall past the bar, 8 seeds x 800 ticks; grown units stay in the single digits to low tens (l2-grow-on-plateau.md:165, sc-012a-width.md:188). The record's mechanism for the L1b fall is a readout held stale by the closed growth gate (l1b-synaptic-online.md:268-277), and L1c (co-adapting readout) has since landed, so that cause is now testable. AXIS = units: the rule acts on the grown units' input rows, 2-38 units vs 16,384.
+
 ## Candidates ranked by how load-bearing the removed job was (P8's transferable rule)
 
 | rank | key | method | axis | recorded scale | why it matters |
 |---|---|---|---|---|---|
 | 1 | untracked:w1-goal-curriculum | goal curriculum (W1/T076) | ticks | 400 ticks x 8 seeds | The only mechanism aimed at autonomous goal-driven exploration; the record itself says the effect was unresolvable at 8 seeds (needs ~96). |
-| 2 | specs/022-unified-brain-arc/evidence/l-exit.md@6a99ed3ae91e | local synaptic rules on grown input rows (L1b) | units | 8 seeds x 800 ticks, 2-38 units | Online synaptic learning is a named brain job; the stated cause of the fall (stale readout under a closed gate) is gone since L1c landed. |
+| 2 | untracked:l1b-bcm | BCM local rule on grown input rows (L1b; Oja is a recorded harm, block 11) | units | 8 seeds x 800 ticks, 2-38 units | Online synaptic learning is a named brain job; the stated cause of the L1b fall (stale readout under a closed gate) is gone since L1c landed. |
 | 3 | specs/022-unified-brain-arc/evidence/s0-exit.md@c326a826a698 | interoceptive charge route (T039b) | ticks | 120 ticks | A later 1000-tick x 5-seed read already shows the insula reaching two deciding columns, so the early null may not hold. |
 | 4 | specs/022-unified-brain-arc/evidence/l-exit.md@7e97ad3d8373 | plateau growth trigger (L2) | units | 8 seeds x 1200 ticks, 2-38 units | Growth decisions are the engine's core loop; the record names a missing stream where growth substitutes for learning. |
 | 5 | specs/022-unified-brain-arc/evidence/t069-cerebellar-rule.md@948a3b350b92 | cerebellar LTD rule (T069) | units | n_mossy 4-32, 900 steps, 8 seeds | Credit assignment in the cerebellum; the null came from a plant whose headroom was uniform, so the plant, not the rule, limited the test. |
 | 6 | specs/022-unified-brain-arc/evidence/g5-readout-variants.md@4fe8589dc323 | categorical coupling of the readout (G5 Part B) | ticks | 800 ticks, N=256, 8 seeds | A readout prior; the readout stays below the persistence floor, but the test used a single short stream. |
-| 7 | untracked:l1b-ach-gate | acetylcholine plasticity gate wire | ticks | 800 ticks, 8 seeds | Only matters if a rule needing a third factor is re-tested; lowest value. |
+| 7 | untracked:l1b-ach-gate | acetylcholine plasticity gate wire | ticks | 800 ticks, 8 seeds | Only matters if a rule needing a third factor is re-tested. |
+| 8 | specs/022-unified-brain-arc/evidence/trainer-retirement.md@2d523a869ab2 | mnist_genn one-epoch smoke (retired module) | ticks (training budget) | 1 epoch on the full set; units, ticks and seeds not recorded | The deletion rests on owner decision 17c and the module's UNVERIFIED status; a 10-epoch re-test is runnable. Lowest value. |
 
 Nothing in this list is restored by it. The axis choice is the author's (owner answer 5) and is for the panel to review.
