@@ -114,11 +114,11 @@ Sections 0-3 above are unchanged (frozen at 37384760). Lane `insula-reach`, work
 `claude/insula-reach-1023` off 37384760. Harness, raw JSON, logs and the full report are in the row folder
 `D:\AI-project\lanes\insula-reach-1023-row` (`arm.py`, `driver.py`, `results/<seed>-<arm>.json`, `table.json`, `REPORT.md`).
 Every arm: T = 1000 ticks, one arm per subprocess, OMP_NUM_THREADS=4, `make_brain(seed, persist=False)` under
-`throwaway_home()`, tier ("eprop-snn", True, "cuda") on all 35 arms (all arms of a seed share the device).
+`throwaway_home()`, tier ("eprop-snn", True, "cuda") on all 35 arms [34 measured arms plus the tier-red run: section 5, item 12] (all arms of a seed share the device).
 
 **Reading: REACHES** (applied literally). Deciding columns E1 (`map_position`) and E2 (lake records) differ from live for
 neutered, const and shuf on at least one seed. E3 and E4 differ for no arm on any seed. Stage 1 is owed against E1 and E2.
-The static prior (REACH-NULL on E1-E3) is contradicted on E1 and E2 and holds on E3; the prior's unsure E4 came out null.
+The static prior (REACH-NULL on E1-E3) is contradicted on E1 and E2 and holds on E3; the prior's unsure E4 came out null [corrected: not eligible, section 5, item 6].
 
 ### Controls (run before the census)
 1. **Repeat pair: PASS.** live2 equals live on E1, E2, E3, E4 and every diagnostic, on all 5 seeds.
@@ -131,7 +131,7 @@ The static prior (REACH-NULL on E1-E3) is contradicted on E1 and E2 and holds on
    *Disclosed:* my first E1 plant fired at tick 500 only, and the arm steps on about 493 of 1000 ticks, so tick 500 had no arm
    step and the plant never fired (0 differences). It was a harness defect, not an unplugged column. The plant now fires on the
    first arm decision at or after tick 500 (it fired on tick 502). Only the ctl-e1 path of `arm.py` changed; live and live2 ran
-   on the earlier file and contain no plant code path.
+   on the earlier file and contain no plant code path [inaccurate: section 5, item 9].
 3. **Tier gate red:** `SNN_EPROP_CKPT` set to a nonexistent absolute path gives tier ("stdlib", True, "cuda"), REFUSED, rc 3
    (`results/tier-gate-red.log`).
 
@@ -156,9 +156,9 @@ The static prior (REACH-NULL on E1-E3) is contradicted on E1 and E2 and holds on
 | forced | E4 | 0 of 5  | - |
 
 E1 means `map_position`: `arm_stopped` differs on 0 ticks in every arm. Every E1 difference that starts persists to tick 1000 (last =
-1000 in all 8 cells), i.e. a divergence that does not return, not a startup transient. E2 differences are all `0a` (fact-type)
+1000 in all 8 cells), i.e. a divergence that does not return, not a startup transient [corrected: section 5, item 5]. E2 differences are all `0a` (fact-type) [mislabelled: section 5, item 2]
 records. In all 8 cells the first differing E2 checkpoint is at or after the first differing E1 tick, so E2 never differs on a seed
-and arm where E1 does not; the data do not show the path from one to the other. E4 "reads" include the tick-1000 `route_text`
+and arm where E1 does not; the data do not show the path from one to the other [corrected: section 5, item 3]. E4 "reads" include the tick-1000 `route_text`
 answers (a 32-presentation read of the G2 family (i) validation probe texts for `i.S0C0`, seed 0, read only).
 
 By seed, the union of neutered, const and shuf reaches E1 and E2 on seeds 1, 2, 3, 4 (4 of 5) and neither on seed 0.
@@ -172,7 +172,7 @@ the fixed coalition takes the sustained-firing max on every tick that ignited (4
 Forced-winner reaches E1 and E2 on seeds 1, 3, 4 and neither on seeds 0 and 2; E3 and E4 on none.
 Stated per the rule: it reaches E1 and E2, so a winner change CAN reach the engine's decision and the lake. It does NOT bound the
 insula: on seed 2 neutered reaches E1 at tick 57 and forced reaches nothing, and on seed 3 const reaches where neutered does not.
-Forced keeps the ignition threshold path unchanged while neutering changes it (`live_thr` differs on 995+ of 1000 ticks in every
+Forced keeps the ignition threshold path unchanged [false: section 5, item 1] while neutering changes it (`live_thr` differs on 995+ of 1000 ticks in every
 insula arm), so the insula arms are not a subset of what a winner change does.
 
 ### What surprised me
@@ -190,3 +190,71 @@ no teaching; seeds 0-4; 1000 ticks (section 3 disclosures stand). The E1 read is
 decision-argmax inside the arm is not recorded separately. The E3 read is the immortal `unit`/`born` rows in the throwaway lake
 (the G9 `_g9_birth_records` read), so growth that leaves no such row is not seen. The raw JSON is in the row folder for the lead's
 own re-derivation. Stage 1 is owed against E1 and E2 and is not designed here.
+
+## 5. Closing review and corrections (2026-10-23)
+
+Opus closing review (read-only and independent; it rebuilt every cell of the section 4 table from the raw JSON, and every cell
+matched): **APPROVE-WITH-FOLDS**. The pre-registered reading **REACHES stands**: section 1's rules, applied literally, select it.
+The lead re-derived every fact below from the raw JSON and the source with its own code. This section is the fold. It is not
+re-reviewed; it is checked only by the lead's re-derivation and the docs-only battery. Section 4 stays as the lane wrote it,
+with bracketed pointers to the items here.
+
+**Corrections and additions (MAJOR)**
+1. Forced-winner DOES change the threshold path: its `live_thr` differs from live on 995-999 ticks per seed, because the
+   insula's top-down term reads the winner's broadcast (`faculties/interoceptive_integration.py`). The conclusion that forced
+   does not bound the insula still stands on the seed data alone (seed 2: neutered reaches and forced does not; seed 3: const
+   reaches and neutered does not).
+2. The `0a` records are `_T_COALITION`, the workspace's coalition journal (`substrate/home.py`), not facts (`_T_FACT` is
+   `0x01`). They are the WHOLE lake in every run (3204 of 3204 live records at tick 1000 over the 5 seeds), because
+   `make_brain(seed, persist=False)` gates off the episode write, the nightly facts, skill formation and the growth flush
+   (`engine/brain.py` lines 2395, 3610, 3693, 3708 at 2ff11373). On this harness E2 is the coalition journal and nothing else.
+   Section 3 does not name `persist=False`; it is named here (P8 item 4).
+3. The E1 to E2 path IS shown. ctl-e1 plants only on the arm (winner and reroute identical to live on all 1000 ticks), and E2
+   still differs at checkpoints 700-1000. In every census cell the first differing coalition record is appended 1-26 ticks
+   after the first E1 tick (seed 1 neutered 474 to 480; seed 2 neutered 57 to 58; seed 3 const 623 to 642; seed 4
+   const/shuf 516 to 542; forced likewise). E2 is the trajectory's echo: one reach, not two.
+4. Removal is not winner-only: it changes whether the reentrant workspace ignites. Under neutered, `rw_ignited` differs from
+   live on 114 / 333 / 517 / 1 / 0 ticks (seeds 0-4), first at ticks 62 / 49 / 29 / 649, and the winner is None on
+   117 / 333 / 517 / 1 / 0 ticks against 3 / 0 / 0 / 0 / 0 in live. const and shuf never change `rw_ignited`. The
+   pre-registered `ignited` diagnostic (`_access_state["ignited"]`) is a different, near-constant bit. So removal darkens the
+   workspace on seeds 1-2 (a level effect), while the injected arms change only which coalition wins. The same holds in the
+   level arms (addendum, `insula-level-arms-production.md` section 4).
+5. Reach is a fork, not a graded effect. const and shuf differ from live only early (last winner difference at tick 62 or
+   earlier, last reroute difference at 129 or earlier, every seed): the start-up ramp, where live salience is 0.0 on its first
+   consulted ticks while const and shuf inject the mean from tick 1. A residue in the drive vector survives, and on some seeds
+   the trajectory forks hundreds of ticks later (516, 623). Which seeds fork is not ordered by perturbation size: on seed 0
+   nothing forks, forced and neutered included; on seed 4 const, shuf and forced give byte-identical positions while differing
+   from each other in winner. Exact inequality cannot tell a transient from a steady state: on seed 4 the const and shuf
+   positions come back within 1e-6 of live on 26 of the last 100 ticks. Removal's own effect is sustained (winner differences
+   to tick 970-1000 on seeds 0-2). The k-of-5 counts measure how often a seed hits a fork, not how much charge the insula
+   carries.
+6. E3 and E4 were NOT ELIGIBLE, not null. No run writes a birth row (max births 0), and the learner digest is constant at all
+   ten checkpoints in every non-control run, live included. The learner updates only on chat paths, Stage 0 drives no chat,
+   and `persist=False` closes the growth flush. The positive controls register, so the columns work; this schedule cannot move
+   them.
+7. `arm_stopped` is False on every tick of every run, live included: the act/hold half of E1 is a constant here. E1 is
+   `map_position` alone.
+
+**Minor**
+8. The ctl-e1 re-run is a deviation from section 1 (a control that does not register makes the census INVALID). The first
+   ctl-e1 plant missed (tick 500 is not an arm step), `arm.py` was edited, and ctl-e1 re-ran with the plant at tick 502. The
+   lane disclosed it; it is named here as a deviation for the owner to ratify. The first ctl-e1 JSON was overwritten.
+9. live and live2 ran on the earlier `arm.py` and the census arms on the edited one; live's JSON shows it passed through the
+   `_route` wrapper. Evidence that the edit is behaviour-neutral: seed-4 neutered (edited file) matches live (earlier file) on
+   winner, reroute, drive, position and E2 on all 1000 ticks.
+10. Neutered removes two things, the threshold term and the insula's bus drain (`report_use("interoception", ...)`); const
+    and shuf keep the drain. They are not separated here (P8 item 3).
+11. Forced injects coalition `0` with no bottom-up drive behind it (no re-entry recharge, zero drive, a Hebbian update with an
+    empty source set): a structural perturbation, not the "upper bound on any winner change" section 1 describes.
+12. Nits: 34 measured arms plus the tier-red run (35 runs); the tick-1000 `route_text` answers are near-constant per seed (1-2
+    distinct labels over 32 probes); ctl-e1 also moved E2 (item 3).
+
+**What this changes for Stage 1** (the owner decides; nothing here is a new rule)
+- Section 2's literal routing ("E4 or E2 reached: the G2 contract") fires on E2, which item 3 shows is the trajectory's echo,
+  while the G2 learner is the column this schedule cannot move (item 6). The reach that exists is E1, the arm's position,
+  which section 2 routes to G9's attribution.
+- A functional stage must beat a size-matched sham perturbation on a non-insula path across many seeds (item 5), keep live's
+  start-up ramp in the injected arms, and run with `persist=True` inside `throwaway_home()` so the episode, fact and growth
+  paths exist (items 2 and 6).
+- Removal's sustained effect is a darker workspace on some seeds (item 4); attribution between the threshold term and the bus
+  drain is owed (item 10).

@@ -169,3 +169,16 @@ settled by this probe. It is to be judged by the engine's function (owner 2026-0
 recovering relational content on held-out data, against controls that break the path), and it owes what P8 asks
 of an invented method: a reachable red, a control that is not the method itself, per-item attribution, and
 deletion on a null. Not yet pre-registered; nothing measured.
+
+## 4. Addendum (2026-10-23): what removal changes
+
+Section 2's sentence "Every D_out tick above is a WINNER change: the `ignited` sequence is identical across all 8 arms" read
+`_access_state["ignited"]`, a near-constant bit. The reentrant workspace's own ignition shows something different for REMOVAL:
+of N's ticks, the workspace did not ignite at all under neutered (winner None) on 1 of 6 (seed 0), 61 of 98 (seed 1),
+92 of 112 (seed 2) and 0 of 21 (seed 3); x0 matches neutered. The injected arms (const, shuf, x2, x05) change workspace
+ignition on no seed, so their counts are winner changes, as written. Removal's charge is therefore partly a LEVEL effect (the
+insula's salience keeps the workspace igniting on seeds 1-2), and the injected arms' charge is which coalition wins. The owner's
+ruling in section 3 (not P3 shape 5) rests on the injected arms' VARIATION result, which this does not change; section 3's
+phrase "winner-only (the ignition sequence never differs across arms)" holds for the injected arms, not for removal. Re-derived
+by the lead from `D:\AI-project\lanes\insula-lvl-1022-row\results`; found by the Opus closing review of
+`insula-p8-engine-reach.md` (section 5, item 4).
