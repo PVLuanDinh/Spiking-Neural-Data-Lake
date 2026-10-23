@@ -71,3 +71,60 @@ seems needed, it goes in the row's REPORT.md and the lane stops.
 
 **Unmeasured, stated up front.** Encoder device is whatever the checkout resolves (cuda on the
 2026-10-20 runs); whether cpu reads the same numbers is not measured by this arc.
+
+## 2. Results (2026-10-22)
+
+Run: `driver.py` (row folder `D:\AI-project\lanes\insula-lvl-1022-row`), 5 seeds x 8 arms, 40 brains, one
+subprocess each, rc 0 on all 40. Tier of every arm: `("eprop-snn", True, "cuda")`; all arms of a seed
+share the device (cuda); the driver asserts it. Tier gate red shown (`SNN_EPROP_CKPT` set to a
+nonexistent path): the harness REFUSED with rc 3 (`results/tier-gate-red.log`).
+
+**Controls.** R = 0 (outcome) and D_thr(live2) = 0 on all 5 seeds, so the arm design is valid on this
+tier. Z = D_out(x0 vs neutered) = 0 on all 5 seeds. Injected arms: same observed schedule as live, no
+replay exhausted, D_thr from live > 0 (const 197-200, shuf 184-200, x2 197-200, x05 197-200, x0 195-198),
+max |live_thr - law(own salience)| = 0.0 on every arm.
+
+**Table** (D_out from live, 200 ticks):
+
+| seed | N | C | S | x2 | x05 | x0 | Z | R | N > max(C,S) |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 | 6 | 9 | 20 | 50 | 3 | 6 | 0 | 0 | no |
+| 1 | 98 | 33 | 16 | 28 | 17 | 98 | 0 | 0 | yes |
+| 2 | 112 | 48 | 48 | 27 | 18 | 112 | 0 | 0 | yes |
+| 3 | 21 | 3 | 2 | 7 | 18 | 21 | 0 | 0 | yes |
+| 4 | 0 | 45 | 45 | 43 | 3 | 0 | 0 | 0 | no |
+
+Seed 0 reproduces the 2026-10-20 reading (N=6 C=9 S=20).
+
+**Pre-registered readings, applied literally.**
+- LEVEL-ONLY: does NOT hold (max(C,S) = 0 on 0 of 5 seeds).
+- VARIATION matters: HOLDS (max(C,S) > 0 on 5 of 5 seeds).
+- BOTH: HOLDS (max(L2,L05) > 0 on 5 of 5 seeds), so the pre-registered label is BOTH, not VARIATION-ONLY.
+  Confound, stated as the lead flagged: x2 and x05 are constants, so they also destroy timing; whenever
+  VARIATION matters, max(L2,L05) > 0 follows regardless of level. The "level matters" part of BOTH is not
+  separated from timing by the pre-registered design.
+- NEITHER: does NOT hold (N = 0 on 1 of 5 seeds, bar is 3).
+- Bar N > max(C,S) holds on 3 of 5 seeds (1, 2, 3); fails on seeds 0 and 4.
+
+**Surprises.** N varies from 0 to 112 across seeds, so the insula's removal effect is seed-dependent;
+on seed 4 removing it changes nothing (N = 0) while holding its mean constant or shuffling it changes 45
+ticks. x0 equals neutered on every seed (Z = 0), so the injection control is clean.
+
+### 2a. POST-HOC (not pre-registered; added after data collection began, at the lead request)
+
+The level test free of the timing confound: x2 and x05 vs const. All three are constants (no timing); only
+the level differs. `posthoc.py`, same cached rows.
+
+| seed | D_out(x2, C) | D_thr(x2, C) | D_out(x05, C) | D_thr(x05, C) |
+|---|---|---|---|---|
+| 0 | 43 | 197 | 8 | 197 |
+| 1 | 36 | 200 | 37 | 200 |
+| 2 | 28 | 200 | 30 | 200 |
+| 3 | 6 | 200 | 21 | 200 |
+| 4 | 3 | 200 | 45 | 200 |
+
+Level moves the outcome with timing held out: both comparisons are > 0 on 5 of 5 seeds. D_thr is
+saturated (about every tick) and carries no information here. This reading was not pre-registered and
+does not replace the pre-registered one above. The OWNER adjudicates P3 shape 5.
+
+**Unmeasured.** cpu device; seeds beyond 0-4; ticks beyond 200.
