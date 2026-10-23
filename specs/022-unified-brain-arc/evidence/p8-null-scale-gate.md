@@ -169,3 +169,37 @@ Lanes build on branches cut from `claude/p8-nullscale-1023`; the integrator comp
      `NOT-NEEDED: harm` is allowed in every in-scope file (F7).
    - **Panel MINORs still open, disclosed for the closing record:** false reds on a BOM, on bold or numbered record lines, on
      a `~~~` fence and on backslash paths; untracked files in the scan (red team m2, m3).
+7. 2026-10-23, RE-PANEL FOLD (item #4561: red team #4562, policy #4565; lane `p8-gatefold2`, task P8-GATEFOLD2 scored
+   total=1; three commits "null_scale_gate re-panel fold G1", "G2 G4 G5 G7", "G3 G6"), before the battery.
+   - **Section 1 rule 5 (R-EXPIRED), as amended.** F2's creation-commit lookup is removed (it never expired a record written
+     with other spacing or moved to another file, and falsely redded a record whose method appeared earlier in its file;
+     real history reproduced the last). For `retest=PENDING since <S>` of method m (and a `scale-retest` entry of module x):
+     S must be an ancestor of HEAD (missing history stays red); if the tree of S already holds a PENDING record of m (or a
+     `scale-retest` row for x), the `since` was moved forward past its own record and reds; otherwise the entry expires at
+     the arc's closing record C: a non-merge commit in S..HEAD that modifies `tools/policy_certification.json` with
+     "closing" in its subject, counted only when a non-merge commit descends from C on the ancestry path to HEAD. The
+     mid-arc re-certifications 0a5e4b13 and 4d5be853 are not closing records (real-history test: since=4be0d691 is green at
+     its arc's closing record fbb1f38e and red at the next arc's first commit). A `since` must therefore be the arc's base
+     (the previous closing record) or later; POLICIES' mechanization sentence says the same.
+   - **Section 0 / rule 4:** the re-test axis is `units` or `ticks`; `axis=seeds` is R-FIELD (POLICIES item 2 and addendum 5
+     dropped the seeds axis; the gate now enforces it).
+   - **R-RETEST-CHARGED** reds a delete-on-null statement when ANY in-scope RETEST-RECORD with the same method, `of=` its
+     file and `result=charges` exists, whatever the null's own retest value. **R-EXEMPT** additionally requires the named
+     file to hold a record whose retest is `PENDING since` the entry's own `since`.
+   - **R-UNRECORDED reads** prose paragraphs with leading block-quote markers stripped and the statement regex run with `*`
+     and `_` removed (keys stay on the joined text). This re-keyed two existing block-quoted statements (`s3-neuron-pager.md`
+     6ef10f902e5c -> ff26b6b3cdaf, `s4-lake-compactor.md` 0cc96a9e8077 -> 5b5edb284961) and found no new statement.
+   - **Every `NOT-NEEDED: harm` record is printed for review**; the gate cannot judge whether the harm passed its bar.
+   - **Counts on the folded head:** files scanned 130 (the learning-rules evidence file and OG1's evidence file joined the
+     scope); statements 34; grandfathered 33; NULL-RECORDs 14; RETEST-RECORDs 0; R-* reds 0; three STRUCTURAL arguments and one
+     harm record printed; rc 0. The 13 -> 14 NULL-RECORD change since addendum 4 is the triage fold that split block 11 (Oja
+     harm kept, BCM moved to U4).
+   - **Restack (panel C minor-1).** The arc was restacked onto int3 so every commit is green alone; the integrator's
+     per-commit check (brain_atlas, policy_manifest --assert, dormancy_gate, doc_budget_gate, citation_guard,
+     doc_command_guard, this gate and its tests when present, test_policy_manifest when POLICIES/manifest/CI changed, ruff on
+     changed .py files) found three reds in a first restack and none in the second: the gate and its dormancy consumer are one
+     commit with the gate's REGIONS lines; the live-tree test's NULL-RECORDs == 0 pin is dropped where the triage list already
+     carries records; the POLICIES claim carries its CI steps. Old -> new sha map: the closing record lists it.
+   - **Known limits, disclosed:** a fenced same-method PENDING example in the tree of S would read as a forward edit (none
+     exists); a shallow clone reds every PENDING entry; a heading or fenced statement wrapped across lines is still missed;
+     the panel MINORs listed in addendum 6 remain.
