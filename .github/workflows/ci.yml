@@ -47,7 +47,11 @@ jobs:
         # broken CI rather than a wrong pin.
         python-version: ["3.14t"]
     steps:
+      # Full history: run_selfchecks runs gates/null_scale_gate.py bare and dormancy_gate's scale-retest check, which read
+      # git history to expire a PENDING re-test; a shallow clone reds "history unavailable" (panel #4519 M4 / #4520 M1).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -456,7 +460,10 @@ jobs:
     env:
       MUJOCO_GL: disable   # tests simulate, never render (see self-checks)
     steps:
+      # Full history for the same reason as self-checks: run_selfchecks --in-process runs the P8 null-scale gate.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           # 3.11 -> 3.12: same proven break as `lint` -- this job also runs `pip install -e ".[dev]"`.
@@ -497,7 +504,10 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
+      # Full history: --certify runs every policy's gate, the P8 null-scale gate among them.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           # "3.14t" NOT "3.14": the package's import guard requires the free-threaded build
