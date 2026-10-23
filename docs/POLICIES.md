@@ -916,37 +916,44 @@ nulls here were measured on single-digit grown units, 600 ticks and 8 seeds.
    units the method acted on, ticks per run, seeds, the minimum detectable effect (`mde`, one-sided .05,
    power .8) and the re-test state. The format is the pre-registration's section 0.
 2. **Deleting a null waits for ONE re-test at least 10x larger** on the axis the mechanism scales with:
-   units for a capacity mechanism, ticks for a learning rule, seeds when the first `mde` exceeded the claimed
-   effect. The pre-registration author names the axis; a disputed axis is decided by the author with a panel
-   review. Same endpoint, bar and control. A second null applies item 5. A charge is a **scale-dependent
-   finding**, credited only at its measured scale; it lands live when the live brain reaches that scale, or
-   when the owner decides.
+   units for a capacity mechanism, ticks for a learning rule. The pre-registration author names the axis; a
+   disputed axis is decided by the author with a panel review. Same endpoint, bar and control. A second null
+   applies item 5. A charge is a **scale-dependent finding**, credited only at its measured scale; its module
+   takes the existing `wire` disposition and lands live when the live brain reaches that scale, or when the
+   owner decides.
 3. **Until then the method is off the live path, and dated.** It leaves every live path at once (a null
    charges nothing, so leaving costs nothing), and its module carries a `dormancy_gate.EXEMPT` entry of the
-   disposition `scale-retest` naming its NULL-RECORD and `since=<origin/main sha>`. **The entry expires before
-   the next pushed arc**: it may ride in the arc that creates it, and the next arc's battery reds while it is
-   still there. Re-test it, or delete it with "not re-tested at scale" disclosed and the owner told. That
-   keeps item 5's "removed, not parked behind a flag".
+   disposition `scale-retest` naming its NULL-RECORD and `since=<the arc's base on origin/main>`. **The entry expires before
+   the next pushed arc**: it may ride in the arc that creates it, and from then on every battery stays red
+   until a RETEST-RECORD (or a checked STRUCTURAL argument) exists. **No deletion without the 10x re-test**
+   (owner, 2026-10-23); there is no disclosed-deletion exit. That keeps item 5's "removed, not parked behind a
+   flag": the code is off the live path, dated and gated.
 4. **Not covered.** A **measured harm** (past its pre-registered bar in the harm direction) is deleted
    without a re-test. A **structural** null (zero call sites, an empty proposer, a constant input, no
    synapses on the path) is deleted without a re-test; its record states the argument, and the argument owes
    its own check. An **underpowered** result (`mde` above the claimed effect) is INCONCLUSIVE, not a null,
-   and licenses no deletion at any scale. Owner-drawn P4d parts are never deleted on a null; they still get a
+   and licenses no deletion at any scale until a run with enough seeds (power .8 for the claimed effect) is
+   done; only that run can be the null whose 10x re-test item 2 asks for. Owner-drawn P4d parts are never deleted on a null; they still get a
    NULL-RECORD. The safety envelope is untouched.
 5. **Retroactive, once (option B).** The delete-on-null statements that predate this amendment are
    grandfathered for the gate and triaged once in
-   `specs/022-unified-brain-arc/evidence/null-scale-triage.md`: structural, harm, at-scale or small-scale.
+   `specs/022-unified-brain-arc/evidence/null-scale-triage.md`: restatement, structural, harm, at-scale or
+   small-scale.
    The small-scale ones are re-test CANDIDATES ranked by how load-bearing their job was. The owner picks
    which to re-test; the list restores no code.
 
 **Honesty guard.** "It might work bigger" is not evidence and never keeps a method on the live path. The
 re-test is ONE pre-registered run; its null is final unless a new mechanism-level argument for a still
-larger scale is itself pre-registered. A scale-dependent positive is credited at its measured scale only.
+larger scale is itself pre-registered, never a third rerun of the same test. A scale-dependent positive is
+credited at its measured scale only.
 
 **Mechanization: `gates/null_scale_gate.py`** (`--assert` + `--self-check`): the record formats, an
-unrecorded deletion statement in an evidence file, a re-test below 10x, an expired `PENDING` or
-`scale-retest` entry (a missing git history is red, never a pass), and a stale grandfather entry. It cannot
-judge a STRUCTURAL argument or whether the named axis is the right one, and it says so in its output.
+unrecorded deletion statement in an evidence file (matched per paragraph), a re-test below 10x, a deletion
+whose re-test charged, an expired `PENDING` or `scale-retest` entry, and a stale grandfather entry. Expiry
+is dated from the commit that added the record, and an arc's closing record is a commit that modifies
+`tools/policy_certification.json`; a missing git history is red, never a pass, so every CI job that runs
+the gate checks out full history. It cannot judge a STRUCTURAL argument, whether the named axis is the right
+one, or which of several statements in one section a NULL-RECORD covers, and it says so in its output.
 
 ### Real past incidents, each re-verified against the tree 2026-08-04
 
