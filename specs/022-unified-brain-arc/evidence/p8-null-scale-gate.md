@@ -107,3 +107,12 @@ Lanes build on branches cut from `claude/p8-nullscale-1023`; the integrator comp
    (`p8-null-scale-gate.md`) and the triage list (`null-scale-triage.md`, which addendum 1 already keeps free of quoted
    statements). The exclusion list is a named constant, printed on every `--assert` run, and a test asserts that a
    statement placed in any other evidence file still reds. R-FIELD and the record checks still read both files.
+4. 2026-10-23, COUNTED LANDING OUTPUT (section 2), before the POLICIES.md text lands. Run on the stacked head (origin/main
+   cb294e57 + this arc's prereg, triage list, gate and dormancy commits), `python -m snn_data_lake.gates.null_scale_gate
+   --assert`: files scanned 128; statements 35; grandfathered 34; NULL-RECORDs 13 (all in the triage list); RETEST-RECORDs
+   0; R-* reds 0; three STRUCTURAL arguments printed for review; rc 0. **The gate's count (34 grandfathered) wins over the
+   spec's 31.** Line by line, the census of 2026-10-23 ran at 2ff11373; three statements arrived afterwards with the
+   INSULA arc's evidence files: `insula-level-arms-production.md:171`, `insula-p8-engine-reach.md:27` and `:75`. The 35th
+   statement is this file's own line 4, excluded by name (addendum 3). The lane `p8-triage` counted the same 35 by an
+   independent census. Red-first record: 73 of 82 tests failed against a stub before the gate existed; 19 mutants, all
+   killed (`lanes/p8-gate-1023-row/logs/`).
