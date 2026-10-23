@@ -104,7 +104,9 @@ toward and beyond human scale. General intelligence and sentience are both build
    is the rule.
 3. Every mechanism CHARGES behaviour or is retired. Reachability is not charge.
 4. Every claim ships with a CONTROL and a RED that can fail.
-5. A null is recorded and applied, and a method that measures nothing is deleted.
+5. A null is recorded WITH ITS SCALE and applied. A method that measures nothing is deleted, but only after
+   one re-test at least 10x larger on its scaling axis (P8's null-scale amendment, 2026-10-23); measured
+   harms and structural nulls skip the re-test, and an underpowered result is inconclusive, not a null.
 
 The project's most valuable records say what did not work; §10 lists them so that you do not rebuild
 them.

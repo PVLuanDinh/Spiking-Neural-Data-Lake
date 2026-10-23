@@ -41,7 +41,7 @@ compressed clause.
 | P5 use the GPU where it helps (+ P5b provisional) | — | yes (P5b: the six-criterion record in each Rust build's pre-registration) |
 | **P6 mutual reach + use** | **BUILT AND ASSERTING** — `tools/p6_gate.py --assert` and `--self-check` (lint CI job; the connectome-diff half is built). Ships as a **RATCHET**: baselines assert the structure never gets WORSE. Re-derive every count from the gate; never edit this row from memory | yes (provisional; a ratchet says the count did not worsen, never that P6 is satisfied) |
 | **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` and `--self-check` (lint CI job) | yes (the judgement half; see P7 guard (b)) |
-| **P8 invent the method** | **BUILT AND ASSERTING** — `tools/red_reachability.py --assert` (lint CI job) | yes (whether a criterion measures the RIGHT thing; no instrument can replace it) |
+| **P8 invent the method** | **BUILT AND ASSERTING** — `tools/red_reachability.py --assert` (lint CI job); the null-scale amendment (2026-10-23): `gates/null_scale_gate.py` (`--assert` + `--self-check`, lint CI job) | yes (whether a criterion measures the RIGHT thing; whether a STRUCTURAL null's argument holds and the named scaling axis is the right one) |
 | e-prop not backprop | **PARTIALLY — TWO gates: `gates/eprop_transport_gate.py`** (CORE) asserts no GOVERNED module reads a weight transposed into a weight update, and reports the ungoverned tier without asserting on it — it is NOT a `.backward()` tripwire, and `mlp_q`'s single-row-indexing spelling evades both its rules, printed on every run; **and `gates/gradient_claim_gate.py`** (scope/census) asserts every governed learning rule is classified as owing a cosine or not, ratcheting MISSING_DECLARATION and UNDETERMINABLE, plus the ALL-scope PHANTOM_DECLARATION bound (`--assert` + `--self-check`, lint CI job) | yes (everything the static rule cannot reach: whether a second matrix is transported or independently maintained is semantic, and the cosine bar itself) |
 | *(not a policy — the safety envelope's own gate)* ONE envelope definition, five brainstem files | `gates/safety_envelope.py` (bare = assert, in run_selfchecks; envelope EDITS stay approval-gated) | — |
 | *(not a policy — repo hygiene)* standing docs keep their word ceilings | `gates/doc_budget_gate.py` (bare = assert, in run_selfchecks) | — |
@@ -557,7 +557,7 @@ clustering, predictive coding, simulated annealing) are examples, chosen by a be
 - **"The engine can work" is a P8 criterion,** pre-registered: a reachable red (on a problem the current
   network provably cannot solve, the engine with its reservoir removed, or its feed, transport or return
   path neutered, must lose), a control that is not the engine (a presized growth-OFF twin at the same
-  neuron budget; random growth), and per-part neuter attribution. A measured null never deletes an owner-drawn part (the two networks, the reservoir, the return path): its implementation is reverted, it is not claimed, and the owner decides on the evidence; a part of decision C whose deciding test reds (plan G7: T1-T4) is deleted and the owner told, as the brief the owner chose C from states;
+  neuron budget; random growth), and per-part neuter attribution. A measured null never deletes an owner-drawn part (the two networks, the reservoir, the return path): its implementation is reverted, it is not claimed, and the owner decides on the evidence; a part of decision C whose deciding test reds (plan G7: T1-T4) is deleted and the owner told, as the brief the owner chose C from states, after the one 10x re-test the P8 null-scale amendment requires (owner, 2026-10-23);
   transport, permitted "as long as the engine can work", lapses only on its own measured failure, the
   whole engine failing G-R9 (i) or G-R9 (ii)'s transport neuter changing nothing.
 - **Reservoir state in the lake, rebuilt at start (owner decision):** `make_brain()` builds the
@@ -904,6 +904,50 @@ The licence is broad, so the burden is explicit. An invented method ships with:
 forgotten: an invented method's debt is not proportional to how clever it is — it is proportional to
 how load-bearing its output is.**
 
+### P8 amendment — a null names its scale, and deletion waits for one 10x re-test
+
+**Owner directive, 2026-10-23,** verbatim answers in
+`specs/022-unified-brain-arc/evidence/p8-null-scale-gate.md` (section 0 header). Why: abilities can appear only at
+a larger scale, and this project has already recorded that its accuracy lever was the learner's scale, not the
+clever strategy. Item 5 deleted a method on a null with no regard to the scale it was measured at, and many
+nulls here were measured on single-digit grown units, 600 ticks and 8 seeds.
+
+1. **Every null names its scale.** The disposition writes one `NULL-RECORD:` line into its evidence file:
+   units the method acted on, ticks per run, seeds, the minimum detectable effect (`mde`, one-sided .05,
+   power .8) and the re-test state. The format is the pre-registration's section 0.
+2. **Deleting a null waits for ONE re-test at least 10x larger** on the axis the mechanism scales with:
+   units for a capacity mechanism, ticks for a learning rule, seeds when the first `mde` exceeded the claimed
+   effect. The pre-registration author names the axis; a disputed axis is decided by the author with a panel
+   review. Same endpoint, bar and control. A second null applies item 5. A charge is a **scale-dependent
+   finding**, credited only at its measured scale; it lands live when the live brain reaches that scale, or
+   when the owner decides.
+3. **Until then the method is off the live path, and dated.** It leaves every live path at once (a null
+   charges nothing, so leaving costs nothing), and its module carries a `dormancy_gate.EXEMPT` entry of the
+   disposition `scale-retest` naming its NULL-RECORD and `since=<origin/main sha>`. **The entry expires before
+   the next pushed arc**: it may ride in the arc that creates it, and the next arc's battery reds while it is
+   still there. Re-test it, or delete it with "not re-tested at scale" disclosed and the owner told. That
+   keeps item 5's "removed, not parked behind a flag".
+4. **Not covered.** A **measured harm** (past its pre-registered bar in the harm direction) is deleted
+   without a re-test. A **structural** null (zero call sites, an empty proposer, a constant input, no
+   synapses on the path) is deleted without a re-test; its record states the argument, and the argument owes
+   its own check. An **underpowered** result (`mde` above the claimed effect) is INCONCLUSIVE, not a null,
+   and licenses no deletion at any scale. Owner-drawn P4d parts are never deleted on a null; they still get a
+   NULL-RECORD. The safety envelope is untouched.
+5. **Retroactive, once (option B).** The delete-on-null statements that predate this amendment are
+   grandfathered for the gate and triaged once in
+   `specs/022-unified-brain-arc/evidence/null-scale-triage.md`: structural, harm, at-scale or small-scale.
+   The small-scale ones are re-test CANDIDATES ranked by how load-bearing their job was. The owner picks
+   which to re-test; the list restores no code.
+
+**Honesty guard.** "It might work bigger" is not evidence and never keeps a method on the live path. The
+re-test is ONE pre-registered run; its null is final unless a new mechanism-level argument for a still
+larger scale is itself pre-registered. A scale-dependent positive is credited at its measured scale only.
+
+**Mechanization: `gates/null_scale_gate.py`** (`--assert` + `--self-check`): the record formats, an
+unrecorded deletion statement in an evidence file, a re-test below 10x, an expired `PENDING` or
+`scale-retest` entry (a missing git history is red, never a pass), and a stale grandfather entry. It cannot
+judge a STRUCTURAL argument or whether the named axis is the right one, and it says so in its output.
+
 ### Real past incidents, each re-verified against the tree 2026-08-04
 
 *(Relocated byte-exact to `docs/POLICIES_EVIDENCE.md` -- specs/021 US4, 2026-08-18. Every
@@ -1072,7 +1116,7 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   **THE ENGINE'S TRANSPORT IS NOT THIS INVARIANT'S TRANSPORT (owner permission 2026-09-25, P4d; the
   distinction a disclosed session call).**
   Copying the brain's weight values into the reservoir, or driving it with the brain's activity, feeds
-  an ACTIVATION and is permitted. A measured null never deletes an owner-drawn part (the two networks, the reservoir, the return path): its implementation is reverted, it is not claimed, and the owner decides on the evidence; a part of decision C whose deciding test reds (plan G7: T1-T4) is deleted and the owner told, as the brief the owner chose C from states; transport, permitted "as long as the engine
+  an ACTIVATION and is permitted. A measured null never deletes an owner-drawn part (the two networks, the reservoir, the return path): its implementation is reverted, it is not claimed, and the owner decides on the evidence; a part of decision C whose deciding test reds (plan G7: T1-T4) is deleted and the owner told, as the brief the owner chose C from states, after the one 10x re-test the P8 null-scale amendment requires (owner, 2026-10-23); transport, permitted "as long as the engine
   can work", lapses only on its own measured failure, the whole engine failing G-R9 (i) or G-R9 (ii)'s
   transport neuter changing nothing. A transposed forward weight
   feeding a WEIGHT UPDATE stays forbidden, including through a transported copy; extending the

@@ -174,7 +174,11 @@ jobs:
     name: lint (ruff) + repo hygiene
     runs-on: ubuntu-latest
     steps:
+      # Full history: gates/null_scale_gate.py (P8 null-scale) reads git history to expire a PENDING re-test
+      # at the next pushed arc, and reds "history unavailable" on a shallow clone rather than passing.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           # 3.11 -> 3.12, AND THIS ONE IS A PROVEN BREAK, not a tidy-up. With
@@ -437,6 +441,14 @@ jobs:
       # reconciliation-mismatch and the certify-refusal red are each CONSTRUCTED and must fire.
       - name: Policy manifest verdicts can fail (--self-check)
         run: python -m snn_data_lake.gates.policy_manifest --self-check
+
+      # P8 null-scale amendment (2026-10-23): every null names its scale; deleting on a null waits for one
+      # 10x re-test; a PENDING re-test or scale-retest exemption expires before the next pushed arc.
+      - name: P8 null-scale gate (records, re-test scale, arc expiry)
+        run: python -m snn_data_lake.gates.null_scale_gate --assert
+
+      - name: P8 null-scale gate reds can fire (--self-check)
+        run: python -m snn_data_lake.gates.null_scale_gate --self-check
 
   test:
     name: tests + coverage

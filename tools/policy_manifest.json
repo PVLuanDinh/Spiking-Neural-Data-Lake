@@ -138,6 +138,13 @@
             "--assert"
           ],
           "source": "tools/red_reachability.py --assert"
+        },
+        {
+          "argv": [
+            "-m",
+            "snn_data_lake.gates.null_scale_gate"
+          ],
+          "source": "gates/null_scale_gate.py"
         }
       ],
       "id": "P8",
@@ -232,6 +239,14 @@
       "subclause_of": "P5",
       "table_only": false,
       "title": "PYTHON BY DEFAULT; RUST ONLY WHERE IT IS A MEASURED IMPROVEMENT (owner directive, 2026-10-17)"
+    },
+    {
+      "commands": [],
+      "id": "P8 amendment",
+      "kind": "review-only",
+      "subclause_of": "P8",
+      "table_only": false,
+      "title": "a null names its scale, and deletion waits for one 10x re-test"
     }
   ]
 }
