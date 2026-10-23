@@ -1,52 +1,4 @@
 {
-  "battery": {
-    "changed": [
-      "M specs/022-unified-brain-arc/evidence/insula-level-arms-production.md",
-      "A specs/022-unified-brain-arc/evidence/insula-p8-engine-reach.md"
-    ],
-    "kind": "docs-only",
-    "map_code_hash": "1af1f836ba709a5a06a4fca7d1aa20c091b5dcbdb50a741db637dc8a7db37fed",
-    "map_fingerprint": "ab3ee7e12b6212cdecd20e7afb62440ddd135535dc132d028952a062fdb97812",
-    "map_head": "1218763e2df53d824779faa312a9f7ec4511c64e",
-    "pytest": [
-      "tests/test_batch_reconciler.py",
-      "tests/test_brain_growth_restart.py",
-      "tests/test_brian2_backend.py",
-      "tests/test_dependency_ledger.py",
-      "tests/test_dependency_ledger_cargo.py",
-      "tests/test_docs_only_battery.py",
-      "tests/test_eprop_transport_rust.py",
-      "tests/test_g8_move_gate.py",
-      "tests/test_g9_posed_actor.py",
-      "tests/test_gradient_claim_gate.py",
-      "tests/test_gradient_claim_measure.py",
-      "tests/test_gradient_claim_rust.py",
-      "tests/test_growing_learner_restart.py",
-      "tests/test_import_manifest_native.py",
-      "tests/test_inseparable_mapping.py",
-      "tests/test_instrument_guard.py",
-      "tests/test_interoceptive_specialist.py",
-      "tests/test_native_dormancy.py",
-      "tests/test_native_ratchet.py",
-      "tests/test_p6_accessor_attribution.py",
-      "tests/test_policy_manifest.py",
-      "tests/test_r02b_cache_rust.py",
-      "tests/test_r02b_instr_rust.py",
-      "tests/test_r02b_lake_rust.py",
-      "tests/test_r02b_p6_rust.py",
-      "tests/test_r02b_verdict_rust.py",
-      "tests/test_r2_sleep_bout.py",
-      "tests/test_r3_structural_hydration.py",
-      "tests/test_ratified_row_gates.py",
-      "tests/test_red_reachability.py",
-      "tests/test_replay_hydration_instrument.py",
-      "tests/test_rust_facts.py",
-      "tests/test_selfcheck_cache_unflagged_scanners.py",
-      "tests/test_signal_calibrator_lake.py",
-      "tests/test_sleep_plasticity_ab.py"
-    ],
-    "verdict": "GREEN"
-  },
   "certified": true,
   "commands_run": [
     {
@@ -54,7 +6,7 @@
         "-m",
         "snn_data_lake.gates.dormancy_gate"
       ],
-      "seconds": 16.71,
+      "seconds": 13.88,
       "verdict": "PASS"
     },
     {
@@ -62,7 +14,7 @@
         "-m",
         "snn_data_lake.gates.method_dormancy_gate"
       ],
-      "seconds": 19.54,
+      "seconds": 17.66,
       "verdict": "PASS"
     },
     {
@@ -70,7 +22,7 @@
         "-m",
         "snn_data_lake.gates.import_manifest"
       ],
-      "seconds": 5.39,
+      "seconds": 4.26,
       "verdict": "PASS"
     },
     {
@@ -78,7 +30,7 @@
         "-m",
         "snn_data_lake.gates.replication_guard"
       ],
-      "seconds": 3.56,
+      "seconds": 2.7,
       "verdict": "PASS"
     },
     {
@@ -86,7 +38,7 @@
         "-m",
         "snn_data_lake.gates.lake_rebuild_gate"
       ],
-      "seconds": 0.21,
+      "seconds": 0.14,
       "verdict": "PASS"
     },
     {
@@ -94,7 +46,7 @@
         "-m",
         "snn_data_lake.gates.unit_label_gate"
       ],
-      "seconds": 38.14,
+      "seconds": 41.4,
       "verdict": "PASS"
     },
     {
@@ -102,7 +54,7 @@
         "tools/p6_gate.py",
         "--assert"
       ],
-      "seconds": 7.19,
+      "seconds": 8.78,
       "verdict": "PASS"
     },
     {
@@ -110,7 +62,7 @@
         "tools/dependency_ledger.py",
         "--assert"
       ],
-      "seconds": 9.98,
+      "seconds": 10.03,
       "verdict": "PASS"
     },
     {
@@ -118,7 +70,15 @@
         "tools/red_reachability.py",
         "--assert"
       ],
-      "seconds": 2.48,
+      "seconds": 2.55,
+      "verdict": "PASS"
+    },
+    {
+      "argv": [
+        "-m",
+        "snn_data_lake.gates.null_scale_gate"
+      ],
+      "seconds": 0.72,
       "verdict": "PASS"
     },
     {
@@ -126,7 +86,7 @@
         "-m",
         "snn_data_lake.gates.eprop_transport_gate"
       ],
-      "seconds": 33.55,
+      "seconds": 35.42,
       "verdict": "PASS"
     },
     {
@@ -134,7 +94,7 @@
         "-m",
         "snn_data_lake.gates.gradient_claim_gate"
       ],
-      "seconds": 3.45,
+      "seconds": 3.23,
       "verdict": "PASS"
     },
     {
@@ -142,7 +102,7 @@
         "tools/p4c_ratchet.py",
         "--assert"
       ],
-      "seconds": 0.39,
+      "seconds": 0.28,
       "verdict": "PASS"
     }
   ],
@@ -233,6 +193,11 @@
       "detail": "no machine decides this policy",
       "policy": "P5b",
       "verdict": "REVIEW_ONLY"
+    },
+    {
+      "detail": "no machine decides this policy",
+      "policy": "P8 amendment",
+      "verdict": "REVIEW_ONLY"
     }
   ],
   "review_only": [
@@ -245,10 +210,11 @@
     "P4c amendment",
     "P4d",
     "P5a",
-    "P5b"
+    "P5b",
+    "P8 amendment"
   ],
   "tree": {
-    "commit": "89f3af14e4c4b1a8b7cc6f7f521a29a2a67ce6d7",
+    "commit": "92d6ba040af97f25836f61b8eb9cae59bcd9f5ad",
     "dirty": false
   }
 }
