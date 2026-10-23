@@ -203,3 +203,26 @@ Lanes build on branches cut from `claude/p8-nullscale-1023`; the integrator comp
    - **Known limits, disclosed:** a fenced same-method PENDING example in the tree of S would read as a forward edit (none
      exists); a shallow clone reds every PENDING entry; a heading or fenced statement wrapped across lines is still missed;
      the panel MINORs listed in addendum 6 remain.
+8. 2026-10-23, RE-PANEL 2 FOLD (item #4625: red team p8-rp2-a #4627, policy + integration p8-rp2-b #4626), before the
+   battery. The restack was found clean (14 of 18 pairs patch-id identical, the 4 others exactly the named surgeries, the
+   whole-arc patch-id equal); the per-commit check covers all 23 commits, each green alone.
+   - **R-EXPIRED, completed (rp2-a M1).** Addendum 7's rule read only the tree of `since`, so an expired entry survived
+     the next arc when one intermediate commit removed the record, flipped it to STRUCTURAL or moved it out of scope and
+     the next restored it PENDING since that commit. The gate now also reads the tree of the newest closing record HEAD is
+     past: a record (or `scale-retest` row) already PENDING there has ridden an arc and is expired, whatever `since` says.
+     Integrator fold, red first (6 tests red on the previous head); rp2-a's own 40-case suite re-run against it: the five
+     laundering cases now red, every case rp2-a held stays as rule. The closing subject is matched as the WORD "closing";
+     backticks join `*` and `_` as emphasis stripped before the statement regex.
+   - **Addendum 7 corrected (rp2-b m6):** POLICIES' mechanization sentence says `since` must predate its own PENDING
+     record; "base or later" is this pre-registration's reading of item 3's "the arc's base on origin/main", not a POLICIES
+     text. **Section 0's grammar** still lists `axis=<units|ticks|seeds>`; it is frozen, and addendum 7 governs it (seeds is
+     R-FIELD).
+   - **Dispositions of the remaining MINORs (no change; each stays review-enforced):** a closing-record subject without
+     the word "closing" expires nothing (fail-open; every closing record since 2026-10-14 says "closing execution record",
+     and the lane playbook names it); a closing record made as a merge commit, or lost in a squash merge, is unseen (not this
+     repository's style: 0 of the last 300 commits); a next arc forked at the old base without the closing record passes
+     until it is integrated; a second closing record in the same arc reds that arc's own entries at the second record
+     (the protocol commits the record last, after every review); a method resolved by REF and then given a new PENDING
+     record reads as expired at the next arc (fail-closed); R-EXEMPT ties the entry to its record by `since`, not by method;
+     HTML emphasis inside the phrase and a respelled method escape; any non-merge commit after a closing record starts the
+     next arc, so a riding entry reds at it (item 3's "expires before the next pushed arc", read strictly).
