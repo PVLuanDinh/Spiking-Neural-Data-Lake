@@ -262,3 +262,64 @@ These points are fixed now; the amendment fills in the rest.
   freeze it on int3, then start Arc 1." That settles registration, the freeze and KCL.
 - **Still a build-time note:** `h5py` is imported from a sensorimotor module. It is already declared (`nir` extra), and
   the dependency ledger decides the tier at build.
+
+## Amendment A1, 2026-10-23 (PRE-DATA for Stage 1; append-only; the frozen text above is unchanged)
+
+**Trigger.** Stage 0's STOP rule fired (board #4421, lane og1-ingest). No per-recording unit count is published:
+- Sharf 2022 reports "224 units ... from four different organoids", an aggregate over a filtered subset.
+- Alam El Din 2025 reports one unlabelled recording.
+- van der Molen 2025 reports none.
+- The bioRxiv preprint was unreachable.
+
+**What had been read when A1 was written, disclosed.** Section 2 says (e)'s replacement lands "before any read". It did
+not. My brief let the lane build (a)-(d) meanwhile, and the lane ran (a)-(d) on all 24 real files and wrote the npz
+artifacts. The lane read, and the integrator saw in its REPORT:
+- file structure
+- unit counts per file
+- the recorded span (`processing/curated_binning/t_spk_mat` rows / rate)
+- the last spike time
+- total spike counts per file
+- the fact that some files share identical counts
+
+No activity statistic of any kind was computed: no rate, burst, state, transition or MI. Stage 1 has read nothing.
+Every rule below is fixed without reference to any Stage 1 quantity.
+
+**A1.1 Gate (e) is REPLACED by (e') REPRODUCE-THE-DEPOSITORS'-BINNING.**
+- Each file stores the depositors' own 1 ms binary raster `t_spk_mat` (rows = bins at `rate` = 1000 Hz, columns =
+  units, 1 = at least one spike in the bin), with its `starting_time`.
+- (e') rebuilds that raster from `units/spike_times` + `spike_times_index` and requires EXACT equality, cell for cell.
+- Declared convention: bin = floor((t - starting_time) x rate), and columns in units-table order.
+- Exactness is the point, as with H01's pinned 45,404 / 49,377: it proves the decoded index, the unit order and the
+  time unit are the depositors' own, on the same bytes.
+- **Extremum rule:** under the alternative convention (round instead of floor), and under a one-column unit-order
+  shift, the agreement must be strictly lower than under the declared convention. So the bar decides between readings
+  rather than being a threshold.
+- Constructed reds: spike times x 1000; a unit-index off-by-one; a planted single-bin flip.
+- **On a mismatch:** REFUSED, the mismatch fraction and the cells are reported, and nothing is tuned. A file that
+  stores no `t_spk_mat` is REFUSED under (e'); none of the 24 lacks it, per the structure probe.
+
+**A1.2 The DUPLICATE rule (it amends section 1's "several sessions per subject" and section 3's multi-session rule).**
+- Within one subject, two files are DUPLICATES iff their decoded `spike_times` (float64) and `spike_times_index`
+  (int64) arrays are exactly equal (`numpy.array_equal`).
+- One per duplicate group is kept, the lexicographically first session id; the dropped ones are counted and listed.
+- Files whose counts agree but whose arrays differ are DISTINCT recordings and are kept.
+- Stage 0 writes the grouping into its session manifest, and Stage 1's per-subject median runs over distinct recordings
+  only.
+- Every pinned file still passes gates (a)-(d) and (e'); the pin keeps all 24.
+- Why: the probe found HO2 and HO3 files in groups with identical unit counts, spike counts, byte sizes and last-spike
+  times under different sha256. Counting one recording several times would weight it several times in the median
+  without adding a measurement.
+
+**A1.3 Gate (d), clarified, not changed.** The span (d) compares against is the depositors' `t_spk_mat` rows / rate:
+180 s for HO1-HO4 (HO3 has two files at 180.149 s) and about 600 s for HO5-HO8. It is the depositors' record stored beside
+the spikes, not an independent clock. Disclosed as such.
+
+**A1.4 Disclosures.**
+- The files carry no device group, no electrodes table and no `obs_intervals`, so the HO5-HO8 device stays the
+  secondhand "MaxTwo".
+- The files name UCSB, not UCSC, for HO1-HO4.
+- The sorter is Kilosort2 with ISI / rate / SNR filtering, from `experiment_description`.
+- `spike_times_index` is stored as uint16 in 7 of 8 subjects; it is cast to int64, and (c) refuses a wrapped index.
+- The pin matches the freeze census on all 24 paths and sha256, and on sizes at the census's 0.1 MB precision only.
+- Load during the insula battery: the lane's real-file conversion (about 01:35-01:38) ran before it read the
+  integrator's HOLD (board #4416), inside the insula docs-only battery's window. That is disclosed to the insula lead.
