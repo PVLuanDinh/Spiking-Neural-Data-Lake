@@ -622,3 +622,60 @@ The overshoot is 0.1-0.45 ms. The lane did not weaken the gate. A4.8's sentence 
 **Disclosed:** A4.8's "last spike <= `duration_s`" statement is withdrawn by this amendment. The rule A5 replaces was
 written by the integrator without checking it against A2.1. What A5 read: the 5 refusals' last-spike times and
 spans, from Stage 0 only. Stage 1 has read nothing.
+
+## Amendment A6, 2026-10-23 (PROCESS ONLY: no statistic; append-only; the text above is unchanged)
+
+**Owner decision, verbatim: "1".** It answered the integrator's question:
+> "Which path for OG1? 1. Stage 0 plus a Stage 1 battery: push Stage 0 now, fund the independent acceptance battery and
+> one candidate (stop at Stage 0 if it fails), and rule on the battery-red cost before any census code. 2. Stage 0,
+> then redirect: ..."
+
+The owner had asked: "Compact and use agent-fleet to debate on the next step".
+
+**The debate.** Thread OG1-DEBATE: positions #4719 (continue) and #4720 (against), exchanges #4721-#4728, and the
+judge's verdict **#4729**. The lanes' files are in `D:\AI-project\lanes\og1-deb-{a,b,j}-1023-row\`.
+
+**A6.1 Stage 0 is pushed without Stage 1.**
+- This arc carries the ingest (`sensorimotor/organoid_ingest`, the pin, gates (a)-(e') and the A4.8/A5 refusals), its
+  registration, and Amendments A3-A6.
+- The census module is NOT on main:
+  - the A3-design census lives on branch `claude/og1-arc1-1023`, superseded and not pushed;
+  - the A4-design census lives on `claude/og1-census5-1023` (task OG1-CENSUS-R5), not pushed, and blind on a
+    real-shape no-sequence manifest (#4682).
+
+**A6.2 Stage 1 status: NOT BUILT.** Four null designs are retired, all on synthetic data, before any organoid Stage 1
+read:
+
+| null | retired by | evidence |
+|---|---|---|
+| bin-level, length-blind | panel lens A, A-1 | LENS-A.md |
+| run-level frequency redraw | the real-shape BLIND finding | #4682 |
+| quasi-independence (pooled Luce chain) | reads burst composition; its bin-permuted twins pass 10/10 | #4713, D2 |
+| the gate "E_full > E_popcount" as spatial attribution | envelope-only, no-order bursts gated "spatial" 10/10 at W = 5 ms, 3/10 at 10-20 ms | #4729 |
+
+The within-burst permutation null (#4713 D3) is a CANDIDATE only. A4's statistic sections stand frozen but are not
+implemented on main.
+
+**A6.3 The Stage 1 plan (the judge's conditions, #4729, adopted).**
+1. **An ACCEPTANCE BATTERY,** written and frozen by a lane that authored none of the nulls, BEFORE any candidate is
+   measured on it.
+   - Its must-FAIL "no spatial order" reds include x6 and a2 (at most 1/10) and the judge's envelope-only rows
+     (asymmetric, 600 s, sparse, at W = 5, 10 and 20 ms).
+   - The red class is "no spatial order", not "exchangeable".
+2. **Its must-PASS rows:** i, k, b4, and b's f = 0.25 dose (at least 8/10). The f = 0.1 dose is recorded as the
+   floor. x3 is dropped (one burst).
+3. **Attribution is a CONDITIONAL surrogate that keeps the envelope** (the population-count sequence and the run
+   lengths), never an E comparison across alphabets. This is unsolved: the judge's stratified first attempt leaks
+   (6/10).
+4. **ONE candidate gets ONE battery run.** If it fails, Stage 1 is recorded NOT BUILT, with the diagnosis (#4682,
+   #4692, #4713, #4729). No organoid byte has been read by Stage 1, so a failure carries no NULL-RECORD.
+5. **An envelope read is never cited as succession** for E4 or Stage 2, under any typing.
+6. **No census code enters `src/` before the owner rules on the battery-red cost of a readable FAIL** (A4.9; P8
+   amendment item 3; no 10x source exists).
+
+**A6.4 Owner decisions still open:**
+- the battery-red cost of a readable FAIL with no 10x source;
+- whether an ENVELOPE outcome may be typed as a non-null result, and only behind a validated attribution, of which
+  none exists today.
+
+**What A6 read:** nothing from organoid data. Its facts are the board items cited above.
