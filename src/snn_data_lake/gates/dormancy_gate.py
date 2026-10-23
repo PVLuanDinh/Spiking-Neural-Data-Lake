@@ -763,18 +763,17 @@ EXEMPT = {
         "specs/022 OG1 (T118) Stage 0, DATED 2026-10-23: the DANDI 001603 organoid NWB ingest -- "
         "refusal gates (licence, streamed bytes, index incl. non-finite/negative times, time units "
         "and the raster-edge span, exact depositor raster), each with its constructed red in its own "
-        "self-check (run_selfchecks), no download in CI. NEVER on a tick. Pushed WITHOUT its consumer "
-        "(owner 2026-10-23, path 1 of the OG1 debate verdict, board #4729; Amendment A6): the Stage 1 "
-        "census is NOT BUILT -- an acceptance battery frozen by a lane other than the null's author "
-        "comes first, then ONE candidate gets ONE run. Owner 2026-10-23 (A7): the real-data Stage 1 "
-        "run HOLDS until a 10x re-test source is ingested by a pushed Stage 0 mechanism (Stage 0b, A8). "
-        "Retire conditions: a Stage 1 PASS -> this row retires when Stage 2's afferent modality row "
-        "reaches the module; a Stage 1 candidate that fails the acceptance battery -> Stage 1 is "
-        "recorded NOT BUILT and this row stands as the ingest of reference data with no live "
-        "consumer, re-dated, the owner deciding its future; a Stage 1 INSTRUMENT REFUSAL or BLIND -> "
-        "this row stands, re-dated, until A4.9's dated amendment resolves; a readable census FAIL -> "
-        "after A4.9's arbiter amendment and the NULL-RECORD, 'scale-retest' under the P8 amendment (no "
-        "deletion before ONE 10x data re-test), then A8 section 11.",
+        "self-check (run_selfchecks), no download in CI. NEVER on a tick. Pushed WITHOUT a consumer "
+        "(owner 2026-10-23, path 1 of the OG1 debate verdict, board #4729; Amendment A6). OUTCOME, "
+        "re-dated 2026-10-23 (A9): the ONE Stage 1 candidate ran ONCE on the independently frozen "
+        "acceptance battery and FAILED it (#4854: P-b25 7/10 against a bar of 8; every red row "
+        "rejected), so Stage 1 is NOT BUILT, no NULL-RECORD, and Stage 0b (A8) is NOT BUILT. By the "
+        "pre-registered branch this row stands as the ingest of reference data with no live consumer, "
+        "the owner deciding its future. Retire conditions: the owner's ruling (retire by deletion with "
+        "its pin and tests, or keep for a successor Stage 1 under a NEW pre-registration); a future "
+        "Stage 1 PASS -> retires when Stage 2's afferent modality row reaches the module; a future "
+        "readable census FAIL -> A4.9's arbiter amendment and NULL-RECORD, 'scale-retest' under the P8 "
+        "amendment, then A8 section 11.",
     ),
     "h01_ingest": (
         "wire",

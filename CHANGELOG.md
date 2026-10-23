@@ -42,7 +42,13 @@ Amendments A1-A8 and erratum E1.
 live HEAD, so it passed only while HEAD was the P8 closing record (20e1e742). It is now pinned to that record, as its
 sibling test already was. The real `null_scale_gate --assert` was green throughout.
 
-**Not added: the Stage 1 succession census is NOT BUILT.**
+**Not added: the Stage 1 succession census is NOT BUILT (A9, the measured outcome).**
+- The ONE candidate (an envelope-preserving conditional surrogate) ran ONCE on the independently frozen acceptance
+  battery. It FAILED (board #4854): it rejected all 21 must-FAIL rows, including the envelope, composition and drift
+  rows that sank every earlier design, but it missed the f = 0.25 planted dose (P-b25 7/10 against a bar of 8).
+- There is no re-run and no NULL-RECORD, because Stage 1 read no organoid byte. Stage 0b (A8) is therefore NOT BUILT;
+  its lane branches are kept.
+- `organoid_ingest` stands with no live consumer; the owner decides its future.
 - Four null designs were retired before any Stage 1 read of organoid data. They were retired on synthetic data,
   real-shaped in part from Stage 0's manifests (real unit counts) [closing review F1].
 - An independent acceptance battery comes first; then one candidate gets one run, and a failure is recorded as NOT

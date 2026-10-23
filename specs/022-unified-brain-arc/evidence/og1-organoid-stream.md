@@ -1149,3 +1149,42 @@ cited as succession, for E4 or Stage 2, under any typing. The open owner questio
 may close Stage 1 without a NULL-RECORD.
 
 **What E1 read:** nothing from organoid data.
+
+## Amendment A9, 2026-10-23 (PROCESS ONLY: the Stage 1 outcome; append-only)
+
+**Result.** The frozen acceptance battery ran ONCE on the ONE candidate. The overall result is **FAIL** (board #4854).
+- **The battery:** lane og1-acc, which authored no null; `ACCEPTANCE.md` cabb7d9b..., `battery.py` d9a8a38b...,
+  frozen at #4761 before any candidate was measured.
+- **The candidate:** og1-census5 round 8, `rows/candidate.py` 51f622ae..., frozen at #4830 and copied by the integrator
+  at #4843.
+- **The run:** `RESULT.json` 897c3b93...; seeds 1000-1009; 0 errors; wall time 620 s. Scored task OG1-STAGE1 total=1.
+- **must-PASS** (spatial and readable, at least 8/10): P-i 10, P-k 10, P-b4 10, **P-b25 7 (MISS)**.
+- **must-FAIL** (at most 1/10): all 21 met. These include:
+  - the envelope rows at W = 5, 10 and 20 ms;
+  - the composition row (envgrad);
+  - drift d and e;
+  - semi-Markov, i.i.d., Poisson and random bursts;
+  - every twin.
+- **FLOOR** R-b10: 0/10. **INFO** S-b4 4, S-k 0, S-b25 1.
+
+**Consequences, as pre-registered:**
+1. **Stage 1 is NOT BUILT** (A6.3 item 4).
+   - Stage 1 read no organoid byte, so there is no NULL-RECORD.
+   - There is no re-run, and no second candidate under A6.
+2. **Stage 0b is "NOT BUILT (candidate)"** (A8 section 11).
+   - It is not pushed.
+   - The lane branches `claude/og1-0b-{drv,ctl,ing}-1023` are kept at their final heads, recorded on the board.
+   - A8 stays frozen as the plan for any future Stage 1 pre-registration that needs a 10x source.
+3. **`organoid_ingest`'s dormancy row takes its pre-registered branch.** It stands as the ingest of reference data with
+   no live consumer, re-dated, and the owner decides its future.
+
+**Diagnosis** (A6.3 item 4; with #4682, #4692, #4713 and #4729):
+- **The earlier designs:** the four retired designs read envelope or composition as order.
+- **This candidate's specificity:** it is an envelope-preserving conditional surrogate, and it is the first design
+  to reject every red row, those included.
+- **Where it misses:** sensitivity, at the weakest planted dose. P-b25 (f = 0.25) is og1-acc's disclosed
+  re-implementation of #4722 from its text, and the candidate scored 7/10 there. The reference within-burst
+  permutation null also scored 7/10 there (REFERENCE-RUNS.md).
+- This is a description, never a licence to re-run: A6.3 allows ONE run.
+
+**What A9 read:** no organoid data. It read the battery and its result, on synthetic data only.
