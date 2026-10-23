@@ -357,3 +357,30 @@ Both answers slot in by editing constants in one place; no section is rewritten.
   (and for ValenceLearner, the in-brain check) is the deletion candidate, with the no-encoder result and the correlated
   false-positive range reported beside it. If the owner answers "production only is THE tier", the no-encoder campaign becomes
   secondary and stages order production-first is already how stage A runs.
+
+---
+
+## Addendum 1 (2026-10-23, lane e1b-harness, before any E1b brain run)
+
+Append-only; no bar, constant or rule above is changed. Nothing here is a datum from an E1b campaign.
+
+- **Where the harness lives.** The jobs the body assigns to run-lane scratch scripts are subcommands of one governed module,
+  `src/snn_data_lake/instruments/rpe_charge.py` (lane brief E1B-HARNESS). Section 9's sentence "No new module, class or def under
+  `src/` is proposed" described lane-scratch code and is superseded for this module. Its graph-exists dispositions are in the
+  module docstring (nothing existing hosts the arms; `tools/charge_probe.py` and `instruments/port_charge_probe.py` are
+  distinct-from). P5b: Python, unchanged.
+- **Port choices** (module docstring, departures 1-6): a refusal raises `Refused` (a SystemExit, code 3) instead of `os._exit(3)`;
+  the `pc` arm stubs `PrefrontalExecutive._decide_spiking` class-wide as E1 did; with `SINGLE_TIER_HARM_DELETES = True` the cross-tier
+  verdict still needs both tiers to have a verdict; compare fixtures are built in memory, not written as `fixtures/` files; a
+  missing or wrong `tier_red.log` / `fixture.log` makes the tier VOID (harness validity) rather than refusing to print;
+  campaign homes and output dirs must sit under an existing directory that does not contain `~/.snn_data_lake`.
+- **Additions the body does not list.** A partial campaign marks missing arms, the repeat arm, pc runs and the replay record as
+  PENDING (an endpoint with fewer than all seed pairs prints NO VERDICT, as section 7 says) instead of VOID; runs must have
+  `ticks == 600`; `cross` is PENDING while either tier has a PENDING validity item; the bridge's runs carry the same validity
+  checks and must share the campaign's one tree sha.
+- **Controls measured brain-free, before any datum** (module self-check and `tests/test_rpe_charge.py`): planted-learning control
+  t(frozen-learn) = 13447.7, t(shuf-learn) = 39.5 (equal to E1's recorded values); planted-HARM control t(learn-frozen) = 4075.2
+  (> 1.895, so the stream is not strengthened); planted null t = 0; exact mde factor 0.978 against the pre-registered 1.00.
+- **Not done here.** The anchors of the header (`_rpe`, `_plan_lr`, `_pfc_bias`, `ValenceLearner` line numbers) are re-confirmed by
+  the run lane on the tree it uses; the R1/R2 reds are run by the run lane (the module's preflight and `tier_verdict` reds are
+  covered by the tests); no campaign run was made.
