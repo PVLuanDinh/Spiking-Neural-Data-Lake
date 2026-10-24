@@ -137,7 +137,6 @@ def _bare_pins():
 def capture(path=BASELINE):
     """Run all 21 brains and the bare-engine pins; write the baseline json (stdlib tier stops)."""
     import platform
-    import subprocess
 
     import torch
 
@@ -156,12 +155,9 @@ def capture(path=BASELINE):
                     f"STDLIB perception tier at seed {seed} arm {arm}: launch fault, stop"
                 )
             arms.append(rec)
-    try:
-        head = subprocess.run(
-            ["git", "rev-parse", "HEAD"], capture_output=True, text=True
-        ).stdout.strip()
-    except OSError:
-        head = ""
+    from snn_data_lake.instruments.prior_drift_harness import _git_head
+
+    head = _git_head()  # cwd=REPO, timeout; recorded only (R2 anchors on the capture commit)
     data = {
         "base_commit": head,
         "python": sys.version,
