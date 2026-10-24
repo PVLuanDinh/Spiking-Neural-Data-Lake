@@ -171,8 +171,9 @@ sweep is not a tuning problem — the blocking constraint is doing two jobs.**
 ### P1 amendment — sample size is measured, and a campaign runs sequentially
 
 **Owner directive, 2026-10-23** (verbatim, after asking why a campaign used a constant number of seeds): *"switch E1b to
-a sequential design, P1 policy, make sure all sessions understand that"*. Review-enforced, PROVISIONAL until its gate
-(below) is built and counted.
+a sequential design, P1 policy, make sure all sessions understand that"*. Placement confirmed by the owner, 2026-10-24
+(verbatim): *"Yes: "P1 policy" meant POLICIES section P1 (no-hardcode); keep the amendment there, covering seed counts
+too."* Review-enforced, PROVISIONAL until its gate (below) is built and counted.
 
 A campaign's seed count is a constant like any other, so P1 binds it: derived, never habitual. **The incident it would
 have caught:** E1 (2026-10-19) ran a fixed 8 seeds; its `_plan_w` harm signal needed about 26 for power .8 and
@@ -193,7 +194,8 @@ boundaries and the cap are checked by simulation (a planted null keeps the false
 claimed size crosses with the stated power) before the campaign runs. **Disclosed session call (integrator, 2026-10-23):**
 the owner's words name the rule and E1b; the mechanics (one-sided .05, the alpha-spending example Lan-DeMets
 O'Brien-Fleming, non-binding futility, the inflated cap, the simulation guard, and the scope over every pre-registration,
-read from "make sure all sessions understand that") are the session's derivation. **Gate specification:** a check that
+read from "make sure all sessions understand that") are the session's derivation; the placement in P1 and the coverage
+of seed counts are the owner's. **Gate specification:** a check that
 every pre-registration frozen in a commit descending from the one that lands this amendment carries the section's fields
 (measured SD, effect, target, looks or the one-shot reason, spending function, futility, cap), with a planted-missing red;
 G3 T0 and OG1 A8, frozen earlier, are grandfathered by name. Count it before this marker retires.
