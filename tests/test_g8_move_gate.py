@@ -206,7 +206,7 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # 2026-10-23/engine arc 1 union (integrator): G3-T1's grower and OG1's organoid_ingest
     # are disjoint additions, so the stacked tree holds both: 325 + 1 + 1 = 327 (measured).
     # 2026-10-24/P5b on engine arc 1 (rust-lead-1024 restack): diffing _MOVED between arc 1
-    # 7a72aa43 (327) and the P5b gate commit: added exactly p5b_gate (its gates REGIONS row);
+    # c9d0c097 (327) and the P5b gate commit: added exactly p5b_gate (its gates REGIONS row);
     # nothing removed; LEGACY_REGIONS unchanged. 327 + 1 = 328 (measured on the rebased head).
     # 2026-10-23/E1b-harness: diffing sorted(S._MOVED) between the E1b lane's base (326, G3-T1's
     # grower included; a lane-branch commit, not on this tree) and the harness tree (327): added
