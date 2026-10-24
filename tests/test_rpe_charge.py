@@ -314,34 +314,45 @@ def test_fixture_gate_checks_the_verdicts_not_just_the_log_against_itself(
 
 
 # ---------------------------------------------------------------------------------- cross-tier
+@pytest.fixture
+def both_tiers(monkeypatch):
+    """Revision 2's both-tiers rule (SINGLE_TIER_HARM_DELETES = False; addendum 3 sets True)."""
+    monkeypatch.setattr(R, "SINGLE_TIER_HARM_DELETES", False)
+
+
 def _tier(kind, tier):
     runs = R.fixture_runs(kind, tier)
     return R.analyse(tier, runs, R.fixture_e2(), logs_pass=True), runs
 
 
 def _stopped(kind, tier):
-    """`_tier` with the primaries' sequential design stopped at the cap.
+    """`_tier` with a still-running primary replaced by a real powered cap stop (32 seeds, SD .005).
 
-    Addendum 2 writes no null while the design continues."""
+    Addendum 2 writes no null while the design continues; addendum 3 none when underpowered."""
     a, runs = _tier(kind, tier)
-    for k in ("H-P1", "H-V1"):
+    for k, claimed in (("H-P1", R.DH), ("H-V1", R.DM)):
         if "seq" in a["hs"][k] and a["hs"][k]["seq"]["decision"] == "continue":
-            a["hs"][k]["seq"] = dict(a["hs"][k]["seq"], decision="cap")
+            a["hs"][k]["seq"] = R.seq_decision(_series(0.0, 0.005, 32), claimed)
     return a, runs
 
 
-def test_cross_tier_requires_agreement_and_a_tier_effect():
+def _same_real(pr, nr):
+    """No-encoder runs with the production `real` series: tiers indistinguishable here."""
+    return {k: dict(v, v=pr[k]["v"], series=pr[k]["series"]) for k, v in nr.items()}
+
+
+def test_cross_tier_requires_agreement_and_a_tier_effect(both_tiers):
     (pa, pr), (na, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
     both = R.cross(pa, pr, na, nr)
     assert both["agree"] >= R.AGREE_MIN and both["tier_effect"]
     assert both["h_p1"].startswith("harm on both tiers") and ".0025" in both["h_p1"]
     # tiers whose same-seed series are identical are replicates: no cross-tier wording
-    same = {k: dict(v, v=pr[k]["v"], series=pr[k]["series"]) for k, v in nr.items()}
+    same = _same_real(pr, nr)
     flat = R.cross(pa, pr, na, same)
     assert not flat["tier_effect"] and "indistinguishable" in flat["h_p1"]
 
 
-def test_both_tiers_met_but_disagreeing_in_sign_is_not_harm_on_both_tiers():
+def test_both_tiers_met_but_disagreeing_in_sign_is_not_harm_on_both_tiers(both_tiers):
     (pa, pr), (na, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
     na = copy.deepcopy(na)
     d = na["hs"]["H-P1"]["d"]
@@ -352,10 +363,10 @@ def test_both_tiers_met_but_disagreeing_in_sign_is_not_harm_on_both_tiers():
     assert "agrees on only" in out["h_p1"] and "tier finding" in out["h_p1"]
 
 
-def test_one_tier_harm_is_a_tier_finding_and_a_missing_verdict_is_pending():
+def test_one_tier_harm_is_a_tier_finding_and_a_missing_verdict_is_pending(both_tiers):
     (pa, pr), (na, nr) = _tier("harm", "production"), _tier("noharm", "no-encoder")
     one = R.cross(pa, pr, na, nr)
-    assert "tier finding" in one["h_p1"] and R.SINGLE_TIER_HARM_DELETES is False
+    assert "tier finding" in one["h_p1"]
     assert "candidate" not in one["h_p1"].replace("no deletion candidate", "")
     void = R.analyse("no-encoder", nr, R.fixture_e2(), logs_pass=False)
     assert R.cross(pa, pr, void, nr)["h_p1"].startswith("PENDING")
@@ -651,9 +662,8 @@ def test_a_partial_campaign_evaluates_the_complete_endpoints_and_marks_the_rest_
     runs = {k: v for k, v in R.fixture_runs("harm").items() if k[0] in ("real", "pfrozen")}
     a = R.analyse("production", runs, None, logs_pass=True)
     assert a["valid"] and a["pending"]
-    assert (
-        a["hs"]["H-P1"]["status"] == "MET"
-    )  # stage A alone still yields the primary harm endpoint
+    # stage A alone still yields the primary harm endpoint
+    assert a["hs"]["H-P1"]["status"].startswith("MET")
     assert a["hs"]["H-V1"]["status"].startswith("NO VERDICT") and a["hs"]["H-V3"][
         "status"
     ].startswith("NO VERDICT")
@@ -693,7 +703,7 @@ def test_cross_voids_the_pair_when_the_two_tiers_ran_on_different_trees():
     assert na["valid"] and "PENDING" in R.cross(pa, pr, na, other)["h_p1"]
 
 
-def test_h_v1_sign_agreement_is_its_own_not_h_p1s():
+def test_h_v1_sign_agreement_is_its_own_not_h_p1s(both_tiers):
     (pa, pr), (na, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
     for a in (pa, na):
         a["hs"]["H-V1"]["met"] = True  # force H-V1 MET on both tiers
@@ -706,7 +716,7 @@ def test_h_v1_sign_agreement_is_its_own_not_h_p1s():
     assert "agrees on only" in out["h_v1"] and out["h_p1"].startswith("harm on both tiers")
 
 
-def test_h_v1_both_tiers_names_the_in_brain_check_and_the_single_tier_flag(monkeypatch):
+def test_h_v1_both_tiers_names_the_in_brain_check_and_the_single_tier_flag(both_tiers, monkeypatch):
     (pa, pr), (na, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
     for a in (pa, na):
         a["hs"]["H-V1"]["met"] = True
@@ -718,13 +728,17 @@ def test_h_v1_both_tiers_names_the_in_brain_check_and_the_single_tier_flag(monke
     na["hs"]["H-V1"]["met"] = False
     monkeypatch.setattr(R, "SINGLE_TIER_HARM_DELETES", True)
     out = R.cross(pa, pr, na, nr)
-    assert "SINGLE_TIER_HARM_DELETES = True" in out["h_v1"] and "objective finding" in out["h_v1"]
+    assert "harm on the production tier" in out["h_v1"] and "objective finding" in out["h_v1"]
 
 
 def test_null_precondition_branches():
     pa, _ = _stopped("noharm", "production")
     na, _ = _stopped("noharm", "no-encoder")
-    assert R.null_precondition("ValenceLearner", pa, na)[0]  # the positive path
+    ok, why = R.null_precondition("ValenceLearner", pa, na)  # the positive path
+    assert ok and why.startswith("production stopped powered"), why
+    hn = copy.deepcopy(na)
+    hn["hs"]["H-P1"]["met"] = True
+    assert "tier finding" in R.null_precondition("_plan_w", pa, hn)[1]
 
     def with_(a, **ch):
         a = copy.deepcopy(a)
@@ -1037,7 +1051,7 @@ def test_cross_withholds_candidate_wording_while_validity_checks_are_pending():
         "PENDING (validity checks not yet run" in out["h_p1"]
         and "candidate" not in out["h_p1"].split("PENDING")[0]
     )
-    assert "harm on both tiers" not in out["h_p1"]
+    assert "harm on the production tier" not in out["h_p1"]
 
 
 def test_null_precondition_needs_one_tree_across_both_tiers():
@@ -1087,7 +1101,7 @@ def test_render_reports_the_per_seed_values_and_the_exact_mde_factor():
         assert needle in txt
 
 
-def test_cross_thresholds_are_pinned_at_their_boundaries():
+def test_cross_thresholds_are_pinned_at_their_boundaries(both_tiers):
     (pa, pr), (na, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
 
     def flipped(k):
@@ -1109,16 +1123,6 @@ def test_cross_thresholds_are_pinned_at_their_boundaries():
 
     assert not with_differing(5)["tier_effect"] and "indistinguishable" in with_differing(5)["h_p1"]
     assert with_differing(6)["tier_effect"]
-
-
-def test_the_single_tier_flag_only_ever_names_production(monkeypatch):
-    monkeypatch.setattr(R, "SINGLE_TIER_HARM_DELETES", True)
-    (pa, pr), (na, nr) = _tier("noharm", "production"), _tier("harm", "no-encoder")
-    out = R.cross(pa, pr, na, nr)
-    assert (
-        "no deletion candidate" in out["h_p1"]
-        and "SINGLE_TIER_HARM_DELETES = True" not in out["h_p1"]
-    )
 
 
 def test_null_precondition_refuses_a_tier_with_pending_checks():
@@ -1277,8 +1281,9 @@ def test_compare_at_look_2_decides_the_primaries_sequentially_and_pends_nothing_
     a = R.analyse("production", runs, e2, seeds=range(8, 24), logs_pass=True)
     assert a["valid"] and a["pending"] == [], a["pending"]
     sq = a["hs"]["H-P1"]["seq"]
-    assert sq["look"] == 2 and sq["decision"] == "harm" and a["hs"]["H-P1"]["met"]
-    assert "look 2 of 4" in R.render(a)
+    # the look-1 prefix already crossed: that first stop is the decision of record (addendum 2)
+    assert sq["look"] == 1 and sq["decision"] == "harm" and a["hs"]["H-P1"]["met"]
+    assert "look 1 of 4" in R.render(a)
     assert a["hs"]["H-V2"]["status"].startswith(
         "NO VERDICT"
     )  # secondaries are decided at look 1 only
@@ -1294,7 +1299,7 @@ def test_a_continuing_design_writes_no_null_record_and_says_continue():
     assert not ok and "sequential" in why
 
 
-def test_cross_tier_agreement_scales_with_the_look():
+def test_cross_tier_agreement_scales_with_the_look(both_tiers):
     runs, e2 = _look2_runs("harm")
     pa = R.analyse("production", runs, e2, seeds=range(8, 24), logs_pass=True)
     na = copy.deepcopy(pa)  # the other tier: MET too, but d_s flips sign on seeds 16-23
@@ -1306,3 +1311,208 @@ def test_cross_tier_agreement_scales_with_the_look():
     assert out["tier_effect"] and out["agree"] == 8
     # 8 of 16 would pass the look-1 count (6); at look 2 the rule is 12 of 16
     assert "both tiers MET but d_s sign agrees on only 8/16" in out["h_p1"], out["h_p1"]
+
+
+# ------------- addendum 3: owner ruling #4616 "production tier decides" + futility
+def test_ruling_production_met_alone_is_the_deletion_candidate():
+    assert R.SINGLE_TIER_HARM_DELETES is True
+    (pa, pr), (na, nr) = _tier("harm", "production"), _tier("noharm", "no-encoder")
+    out = R.cross(pa, pr, na, nr)["h_p1"]
+    assert "harm-deletion candidate" in out and "tier finding" not in out, out
+
+
+def test_ruling_a_no_encoder_only_crossing_is_a_tier_finding():
+    (pa, pr), (na, nr) = _tier("noharm", "production"), _tier("harm", "no-encoder")
+    out = R.cross(pa, pr, na, nr)["h_p1"]
+    assert "tier finding" in out and "harm on the production" not in out, out
+    assert "candidate" not in out.replace("no deletion candidate", ""), out
+
+
+def test_ruling_a_void_production_tier_is_refused_never_a_candidate():
+    (_, pr), (na, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
+    void = R.analyse("production", pr, R.fixture_e2(), logs_pass=False)
+    out = R.cross(void, pr, na, nr)
+    for key in ("h_p1", "h_v1"):
+        assert out[key].startswith("REFUSED") and "candidate" not in out[key], out[key]
+
+
+def test_ruling_sign_disagreement_is_reported_beside_not_a_gate():
+    (pa, pr), (na, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
+    na = copy.deepcopy(na)
+    d = na["hs"]["H-P1"]["d"]
+    na["hs"]["H-P1"]["d"] = [-abs(x) if i < 3 else x for i, x in enumerate(d)]
+    out = R.cross(pa, pr, na, nr)["h_p1"]
+    assert "harm-deletion candidate" in out and "agrees on 5/8" in out, out
+
+
+def _series(mean, sd_, n=8):
+    """n per-seed differences (n a multiple of 8) with exactly this mean and sample SD."""
+    z = [-1.5, -1.0, -0.5, 0.0, 0.0, 0.5, 1.0, 1.5] * (n // 8)
+    return [mean + sd_ * x / R.sd(z) for x in z]
+
+
+def _futility_at_look_1(sd_, m):
+    """Eight per-seed differences with mean -m * sd_ and sample SD sd_: a look-1 futility stop."""
+    return _series(-m * sd_, sd_)
+
+
+def test_futility_at_look_1_with_sd_above_the_bound_is_inconclusive_not_null():
+    from snn_data_lake.instruments.pool_selection import t_quantile
+
+    ds = _futility_at_look_1(0.0695, 2)  # E1's H-P1 SD; conditional power ~.003
+    q = R.seq_decision(ds, R.DH)
+    assert q["decision"] == "futility" and q["n"] == 8
+    want = (R.seq_boundaries()[0]["t"] + t_quantile(0.8, 7)) * R.sd(ds) / math.sqrt(8)
+    assert abs(q["mde"] - want) < 1e-9 and not q["powered"]  # the mde at the STOPPED seed count
+    assert "INCONCLUSIVE when underpowered" in q["status"] and "NULL-RECORD path" not in q["status"]
+    pa, _ = _stopped("noharm", "production")
+    na, _ = _stopped("noharm", "no-encoder")
+    pa["hs"]["H-P1"]["seq"] = q
+    ok, why = R.null_precondition("_plan_w", pa, na)
+    assert not ok and "INCONCLUSIVE" in why, why
+
+
+def test_a_powered_futility_stop_takes_the_null_record_path_and_its_10x_retest():
+    # a small SD turns the claimed effect into a large drift: only a far negative mean stops early
+    q = R.seq_decision(_futility_at_look_1(0.005, 25), R.DH)
+    assert q["decision"] == "futility" and q["powered"], q
+    assert "NULL-RECORD" in q["status"] and "10x" in q["status"]
+
+
+# ------------- decision of record and the NULL-RECORD gate
+def test_seq_record_walks_the_looks_to_the_first_stop():
+    look1 = _series(0.03, 0.07)  # t 1.21 < 7.20, conditional power ~.9: CONTINUE
+    assert R.seq_decision(look1, R.DH)["decision"] == "continue"
+    q = R.seq_record(look1 + [0.1] * 8, R.DH)
+    assert q["look"] == 2 and q["decision"] == "harm", q
+    # a look-1 futility stop stays the decision of record even when the next block would cross
+    q = R.seq_record(_futility_at_look_1(0.0695, 2) + [0.5] * 8, R.DH)
+    assert q["look"] == 1 and q["decision"] == "futility", q
+    assert R.seq_record(look1, R.DH)["decision"] == "continue"
+
+
+def test_the_decision_of_record_names_its_look_and_seeds():
+    runs, e2 = _look2_runs("harm")
+    a = R.analyse("production", runs, e2, seeds=range(8, 24), logs_pass=True)
+    assert a["hs"]["H-P1"]["status"] == "MET at look 1 (8 seeds)"
+    assert "decision of record" in R.render(a)
+    (pa, pr), (na, nr) = _tier("harm", "production"), _tier("noharm", "no-encoder")
+    assert "MET at look 1 (8 seeds)" in R.cross(pa, pr, na, nr)["h_p1"]
+
+
+def test_the_no_encoder_report_says_the_production_tier_decides():
+    na, _ = _tier("noharm", "no-encoder")
+    assert "the production tier decides" in R.render(na)
+    pa, _ = _tier("noharm", "production")
+    assert "the production tier decides" not in R.render(pa)
+
+
+def test_null_precondition_needs_a_stopped_powered_production_primary():
+    pa, _ = _stopped("noharm", "production")
+    na, _ = _stopped("noharm", "no-encoder")
+    no_seq = copy.deepcopy(pa)
+    del no_seq["hs"]["H-V1"]["seq"]
+    ok, why = R.null_precondition("ValenceLearner", no_seq, na)
+    assert not ok and "no sequential stop" in why, why
+    harmed = copy.deepcopy(pa)
+    harmed["hs"]["H-P1"]["met"] = True
+    harmed["hs"]["H-P1"]["seq"] = dict(harmed["hs"]["H-P1"]["seq"], decision="harm", powered=False)
+    assert "harm route" in R.null_precondition("_plan_w", harmed, na)[1]
+
+
+def test_a_no_encoder_continue_does_not_block_the_production_null():
+    pa, _ = _stopped("noharm", "production")
+    na, _ = _tier("noharm", "no-encoder")
+    assert na["hs"]["H-P1"]["seq"]["decision"] == "continue"
+    ok, why = R.null_precondition("_plan_w", pa, na)
+    assert ok, why
+
+
+def test_a_no_encoder_only_crossing_says_production_is_still_running():
+    (pa, pr), (na, nr) = _tier("noharm", "production"), _tier("harm", "no-encoder")
+    assert "CONTINUE" in R.cross(pa, pr, na, nr)["h_p1"]
+
+
+def test_render_cross_reports_agreement_and_tier_effect_as_no_gate():
+    txt = R.render_cross(R.cross(*_tier("harm", "production"), *_tier("harm", "no-encoder")))
+    assert "required >=" not in txt and "no gate" in txt, txt
+
+
+def test_ruling_a_void_no_encoder_tier_keeps_the_verdict_pending():
+    (pa, pr), (_, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
+    void = R.analyse("no-encoder", nr, R.fixture_e2(), logs_pass=False)
+    out = R.cross(pa, pr, void, nr)["h_p1"]
+    assert out.startswith("PENDING") and "candidate" not in out, out
+
+
+def test_ruling_indistinguishable_tiers_do_not_gate_the_production_candidate():
+    (pa, pr), (na, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
+    same = _same_real(pr, nr)
+    out = R.cross(pa, pr, na, same)
+    assert not out["tier_effect"], out
+    assert "harm-deletion candidate" in out["h_p1"] and "indistinguishable" in out["h_p1"]
+
+
+def test_ruling_neither_tier_met_is_neither_candidate_nor_tier_finding():
+    out = R.cross(*_tier("noharm", "production"), *_tier("noharm", "no-encoder"))["h_p1"]
+    assert out.startswith("not met on the production tier") and "tier finding" not in out, out
+
+
+def test_ruling_pending_checks_hold_the_candidate_even_without_a_tier_effect():
+    (pa, pr), (na, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
+    same = _same_real(pr, nr)
+    pa["pending"] = ["repeat arm missing"]
+    out = R.cross(pa, pr, na, same)["h_p1"]
+    assert (
+        "PENDING (validity checks not yet run" in out and "candidate" not in out.split("PENDING")[0]
+    )
+
+
+def test_render_cross_scales_the_both_tiers_thresholds_with_the_look(both_tiers):
+    runs, e2 = _look2_runs("harm")
+    pa = R.analyse("production", runs, e2, seeds=range(8, 24), logs_pass=True)
+    txt = R.render_cross(R.cross(pa, runs, copy.deepcopy(pa), runs))
+    assert "sign agreement 16/16 (required >= 12)" in txt, txt
+    assert "seeds; required >= 12)" in txt, txt
+
+
+def test_the_mde_is_taken_at_the_stopped_look_and_at_the_cap():
+    from snn_data_lake.instruments.pool_selection import t_quantile
+
+    bs = R.seq_boundaries()
+    q = R.seq_decision(_series(-0.2, 0.0695, 16), R.DH)  # look 2, far below zero
+    assert q["decision"] == "futility" and q["look"] == 2, q
+    assert abs(q["mde"] - (bs[1]["t"] + t_quantile(0.8, 15)) * 0.0695 / 4) < 1e-9
+    q = R.seq_decision(_series(0.0, 0.0695, 32), R.DH)  # E1's SD reaches the cap without crossing
+    assert q["decision"] == "cap" and q["powered"], q
+    assert abs(q["mde"] - (bs[3]["t"] + t_quantile(0.8, 31)) * 0.0695 / math.sqrt(32)) < 1e-9
+    assert "NOT MET at the cap" in q["status"] and "NULL-RECORD path" in q["status"]
+
+
+def test_seq_record_refuses_a_non_look_seed_count():
+    for n in (7, 12, 20, 33):
+        with pytest.raises(R.Refused):
+            R.seq_record([0.01] * n, R.DH)
+
+
+def test_the_in_brain_check_reads_the_look_1_block_at_later_looks():
+    runs, e2 = _look2_runs("harm")
+    pa = R.analyse("production", runs, e2, seeds=range(8, 24), logs_pass=True)
+    pa["hs"]["H-V1"]["met"], pa["in_brain"]["t"] = (
+        True,
+        0.0,
+    )  # vfrozen pairs exist for seeds 8-15 only
+    assert pa["in_brain"]["n"] == R.N_SEEDS
+    na = copy.deepcopy(pa)
+    na["hs"]["H-V1"]["met"] = False
+    nruns = copy.deepcopy(runs)
+    for k in [k for k in nruns if k[0] == "real"]:
+        nruns[k]["series"]["action"] = [x + 1 for x in nruns[k]["series"]["action"]]
+    out = R.cross(pa, runs, na, nruns)["h_v1"]
+    assert "in-brain check holds" in out, out
+
+
+def test_the_candidate_line_reprints_the_no_encoder_decision_of_record():
+    (pa, pr), (na, nr) = _tier("harm", "production"), _tier("noharm", "no-encoder")
+    out = R.cross(pa, pr, na, nr)["h_p1"]
+    assert "no-encoder NOT MET at look 1 of 4, n=8: CONTINUE" in out, out

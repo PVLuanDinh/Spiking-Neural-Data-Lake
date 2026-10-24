@@ -1,10 +1,10 @@
 """
-rpe_charge -- the E1b harness: does the RPE harm replicate, on both perception tiers?
+rpe_charge -- the E1b harness: does the RPE harm replicate? The production tier decides (addendum 3), no-encoder beside.
 
 Binds to specs/022-unified-brain-arc/evidence/e1b-rpe-harm.md (FROZEN at its commit, Revision 2). That text owns every
 bar, constant and rule; this module only executes them. It ports E1's lane scripts (e1_probe / e1_replay / e1_compare) into
 ONE governed module and adds Revision 2's changes: the tier pin, encoder-use counters, VOID status, the planted-HARM
-stream, brain-free compare fixtures, the cross-tier rule and the BRIDGE read-out.
+stream, brain-free compare fixtures, the cross-tier rule (addendum 3: production decides) and the BRIDGE read-out.
 
   python -m snn_data_lake.instruments.rpe_charge                       # brain-free self-check (planted series, no brain)
   python -m snn_data_lake.instruments.rpe_charge run --arm real --seed 8 --ticks 600 --tier production \
@@ -40,9 +40,8 @@ Six deliberate departures from the frozen text, disclosed here as its header ask
 (a SystemExit, code 3) instead of calling os._exit(3), so a test can see it; the process still exits 3 with no result file.
 (2) the `pc` arm stubs PrefrontalExecutive._decide_spiking on the CLASS (E1's exact code: every executive in the brain
 returns winner 0), unlike the other arms, which act on the arm's own instances only.
-(3) with SINGLE_TIER_HARM_DELETES = True the cross-tier verdict still needs BOTH tiers to have a verdict (PENDING otherwise),
-the stricter reading of "a tier with no verdict makes every cross-tier statement PENDING"; section 10's looser reading would
-let a valid production tier alone stand.
+(3) with SINGLE_TIER_HARM_DELETES = True (addendum 3) a VOID production tier is REFUSED, and a VOID no-encoder tier still
+makes the verdict PENDING: the stricter reading of "a tier with no verdict makes every cross-tier statement PENDING".
 (4) the compare fixtures are built in memory on every call (`fixture_runs`/`fixture_e2`), not written as `fixtures/` JSON files.
 (5) a missing or wrong `tier_red.log` / `fixture.log` makes the tier VOID (harness validity) and compare still prints its report
 with every status VOID, instead of refusing to print.
@@ -52,6 +51,10 @@ ADDENDUM 2 (sequential design, P1, owner 2026-10-23): H-P1 and H-V1 are decided 
 cap 32) by `seq_decision` against `seq_boundaries` (Lan-DeMets O'Brien-Fleming spending, one-sided .05, non-binding futility at
 conditional power < .10); a decision at a non-look seed count is refused. Looks after the first add only `real` + `pfrozen`;
 the secondary endpoints stay at look 1. `replay` / `compare` / `cross` take `--look K`.
+ADDENDUM 3 (owner ruling board #4906 to #4616, 2026-10-23, verbatim: "#4616: production tier decides"): the production tier
+alone decides each primary's deletion (SINGLE_TIER_HARM_DELETES = True); the no-encoder tier runs on the same looks and is
+reported beside it, its sign agreement and the tier effect no longer gate; a no-encoder-only crossing is a tier finding.
+A futility or cap stop writes the mde at the STOPPED seed count; powered -> NULL-RECORD path, else INCONCLUSIVE (P8 item 4).
 P5b: Python (criterion 1 fails: measurement code, no neuter of it moves a tick by >= 5%; no ported kernel exists).
 Locality: the `_plan_w` update and ValenceLearner.learn are LOCAL scalar three-factor rules; this module adds no rule.
 No open-weight model enters the brain: the two encoders are the project's own e-prop checkpoints already in production.
@@ -93,7 +96,9 @@ FUTILITY_CP = (
 # FROZEN literals, E1 no-encoder-tier numbers: harm (reward), E-P2/H-P2 (reward), valence MAE
 DH, DR, DM = 0.035, 0.0131, 0.048
 E1_HP1_T = 2.82  # E1's recorded H-P1 t (the "mirrored bar" signal), beside the BRIDGE read-out
-SINGLE_TIER_HARM_DELETES = False  # owner question board #4616 (draft default)
+# Addendum 3 (owner ruling #4616): the production tier alone decides deletion; no-encoder is reported beside, never deletes.
+SINGLE_TIER_HARM_DELETES = True
+NO_ENC_NOTE = "; no-encoder: reported beside, the production tier decides"
 N_TICKS = 600
 # a seed whose mean reward is below this in every arm of a tier is "degenerate"
 SENSITIVITY_R = -0.9
@@ -350,8 +355,9 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
     """Addendum 2: the decision at ONE look on the per-seed differences `ds` (all seeds so far). Refused unless len(ds)
     is a look. harm = t above the look's t boundary AND >= ceil(K_MIN * n / 8) seeds > 0; futility (non-binding, looks
     before the cap) = conditional power under the frozen claimed effect, observed SD, observed t in place of z, below
-    FUTILITY_CP; cap = the last look without a crossing. powered = mde at the cap with the observed SD,
-    (t_cap + t_{.80, cap-1}) * SD / sqrt(cap), <= claimed: a futility or cap stop is a null only when powered."""
+    FUTILITY_CP; cap = the last look without a crossing. Addendum 3: powered = the mde at the STOPPED seed count n with the
+    observed SD, (t_k + t_{.80, n-1}) * SD / sqrt(n), <= claimed. A futility or cap stop is never a null by itself (P8
+    null-scale item 4): powered -> the NULL-RECORD path (one 10x re-test before any deletion); else INCONCLUSIVE."""
     from snn_data_lake.instruments.pool_selection import t_quantile
 
     n = len(ds)
@@ -366,7 +372,7 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
     h, b = harm(ds), bs[looks.index(n)]
     k_min = math.ceil(K_MIN * n / N_SEEDS)
     crossed = h["t"] > b["t"] and h["k"] >= k_min
-    mde = (bs[-1]["t"] + t_quantile(0.8, cap - 1)) * h["sd"] / math.sqrt(cap)
+    mde = (b["t"] + t_quantile(0.8, n - 1)) * h["sd"] / math.sqrt(n)
     cp = None
     if not crossed and n < cap:
         tau = n / cap
@@ -378,12 +384,13 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
         "harm" if crossed else "cap" if n == cap else "futility" if cp < FUTILITY_CP else "continue"
     )
     where = f"look {j + 1} of {len(looks)}, n={n}"
-    power = (
-        f"mde at the cap {mde:.4f} {'<=' if mde <= claimed else '>'} claimed {claimed:.4f}: "
-        + ("powered" if mde <= claimed else "INCONCLUSIVE (underpowered)")
+    power = f"mde at n={n} {mde:.4f} {'<=' if mde <= claimed else '>'} claimed {claimed:.4f}: " + (
+        "powered: a null, NULL-RECORD path (one 10x re-test before any deletion)"
+        if mde <= claimed
+        else "INCONCLUSIVE when underpowered (P8 null-scale item 4): no NULL-RECORD, no deletion"
     )
     status_ = {
-        "harm": "MET",
+        "harm": f"MET at look {j + 1} ({n} seeds)",
         "continue": f"NOT MET at {where}: CONTINUE to n={looks[min(j + 1, len(looks) - 1)]} (no verdict yet)",
         "futility": f"NOT MET, stopped for futility at {where} (conditional power {cp or 0:.3f} < {FUTILITY_CP}), {power}",
         "cap": f"NOT MET at the cap ({where}), {power}",
@@ -402,6 +409,23 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
         "decision": decision,
         "status": status_,
     }
+
+
+# reuses: seq_decision (one look's decision) -- this walks it over the look prefixes; graph-exists: NO LEXICAL MATCH
+def seq_record(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
+    """Addendum 2's decision of record: the FIRST stop (harm, futility or the cap) over the look prefixes of the
+    seed-ordered `ds`; CONTINUE at len(ds) when no prefix has stopped. Refused unless len(ds) is a look."""
+    if len(ds) not in looks:
+        refuse(
+            "any",
+            "sequential",
+            f"a decision at {len(ds)} seeds is not a pre-registered look {looks}",
+        )
+    for n in looks[: looks.index(len(ds)) + 1]:
+        q = seq_decision(ds[:n], claimed, looks, alpha)
+        if q["decision"] != "continue":
+            break
+    return q
 
 
 # ---------------------------------------------------------------------------- arms (brain-bound)
@@ -1155,7 +1179,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         h["met"] = met(h, ns) and valid and (not needs_ctl or ctl_ok)
         if k in ("H-P1", "H-V1") and valid and h["n"] == ns and (not needs_ctl or ctl_ok):
             # a verdict is owed (complete, valid, controls PASS): the sequential rule of addendum 2 decides it
-            h["seq"] = seq_decision(h["d"], claimed[k])
+            h["seq"] = seq_record(h["d"], claimed[k])
             h["status"], h["met"] = h["seq"]["status"], h["seq"]["decision"] == "harm"
         elif ns > N_SEEDS and k not in ("H-P1", "H-V1"):
             h["status"], h["met"] = "NO VERDICT (secondary endpoints are decided at look 1)", False
@@ -1256,7 +1280,8 @@ def render(a):
         if "seq" in h:
             q = h["seq"]
             L.append(
-                f"  - sequential (addendum 2): look {q['look']} of {len(LOOKS)}, n={q['n']}: t={q['t']:.3f} vs boundary "
+                f"  - sequential decision of record (addendum 2: the first stop{NO_ENC_NOTE if a['tier'] == 'no-encoder' else ''}): "
+                f"look {q['look']} of {len(LOOKS)}, n={q['n']}: t={q['t']:.3f} vs boundary "
                 f"{q['bound_t']:.3f} (z {q['bound_z']:.3f}), {q['k']}/{q['n']} > 0 (need {q['k_min']}), conditional "
                 f"power {'n/a' if q['cp'] is None else format(q['cp'], '.3f')} (futility < {FUTILITY_CP}) -> {q['decision']}"
             )
@@ -1307,7 +1332,7 @@ def render(a):
         f"- E1b ValenceLearner (tier {tier}): H-V1 {a['hs']['H-V1']['status']}; H-V2 {a['hs']['H-V2']['status']}; E-V2 {'MET' if ev2['met'] else 'not met'}"
     )
     L.append(
-        "- NULL-RECORD precondition (per method): E-P2/E-V2 not met, mde <= the frozen literal, H-P1/H-V1 not MET, controls PASS, on BOTH tiers; any VOID or tier-split writes none"
+        "- NULL-RECORD precondition (per method): E-P2/E-V2 not met, mde <= the frozen literal, H-P1/H-V1 not MET, controls PASS, on BOTH tiers, and the production tier's sequential stop powered at its stopped seed count (addendum 3); any VOID or tier-split writes none"
     )
     L.append(f"- perception tier of every number above: {tier} (reported {WANT[tier][0]})")
     L.append(
@@ -1342,7 +1367,8 @@ def _agreement(pa, na, key):
 
 
 def cross(pa, pruns, na, nruns):
-    """Both tiers, from their `analyse` results and run dicts. The evidence file's sections 3, 4 and 6: sign agreement is
+    """Both tiers, from their `analyse` results and run dicts. Addendum 3 (SINGLE_TIER_HARM_DELETES): the production tier
+    decides, agreement and the tier effect are reported beside. Otherwise the evidence file's sections 3, 4 and 6: sign agreement is
     computed per endpoint (H-P1 and H-V1 each use their own d_s), both tiers must share ONE tree sha, and the tier effect
     must be present before any cross-tier wording is used."""
     seeds = pa["seeds"]
@@ -1368,12 +1394,16 @@ def cross(pa, pruns, na, nruns):
         "tree_ok": tree_ok,
         "table": agree["H-P1"]["table"],
         "table_v1": agree["H-V1"]["table"],
+        "need_agree": need(AGREE_MIN),
+        "need_effect": need(TIER_EFFECT_MIN),
     }
 
     def v1_tail(tiers):
         """The in-brain check (frozen section 6) on each COUNTED tier: complete pairs and t(r_real - r_vfrozen) not > BAR."""
         ib = [a["in_brain"] for a in tiers]
-        if any(x["n"] != len(seeds) for x in ib):
+        if any(
+            x["n"] != N_SEEDS for x in ib
+        ):  # vfrozen runs exist for the look-1 block only (addendum 2)
             return ": in-brain check incomplete (no full vfrozen pairs): objective finding only, owner decides"
         if all(not (x["t"] > BAR) for x in ib):
             return ": in-brain check holds, harm-deletion candidate for the learning update; owner decides"
@@ -1381,10 +1411,24 @@ def cross(pa, pruns, na, nruns):
             ": objective finding (replay harm, in-brain consequence present/unclear), owner decides"
         )
 
+    def single_tier(key, tail):
+        prod, other = pa["hs"][key]["status"], na["hs"][key]["status"]
+        if pa["hs"][key]["met"]:
+            beside = f"no-encoder {other}, d_s sign agrees on {agree[key]['n']}/{len(seeds)}"
+            beside += "" if effect else ", tiers indistinguishable on this path"
+            return f"harm on the production tier ({prod}; the confirmatory tier; {beside})" + tail(
+                (pa,)
+            )
+        if na["hs"][key]["met"]:
+            return f"tier finding: harm on no-encoder only; the production tier decides ({prod}): no deletion candidate (owner decides)"
+        return f"not met on the production tier: {prod}; beside it no-encoder {other}"
+
     def verdict(key, tail):
         """`tail(tiers)` words what the counted tiers allow; both tiers for 'harm on both', production alone for the flag."""
         ma, mb = pa["hs"][key]["met"], na["hs"][key]["met"]
         n_agree = agree[key]["n"]
+        if SINGLE_TIER_HARM_DELETES and not pa["valid"]:  # a verdict line, not a `refuse` exit
+            return "REFUSED (the production tier has no verdict: it alone decides, a no-encoder result never deletes)"
         if not (pa["valid"] and na["valid"]):
             who = [t for t, a in (("production", pa), ("no-encoder", na)) if not a["valid"]]
             return f"PENDING (no verdict on tier {', '.join(who)}; a tier with no verdict makes every cross-tier statement PENDING)"
@@ -1397,7 +1441,7 @@ def cross(pa, pruns, na, nruns):
         ]
         if short or not real_complete:
             return f"PENDING (endpoint {key} has no verdict on tier {', '.join(short) or 'either (real series incomplete)'})"
-        if not effect:
+        if not effect and not SINGLE_TIER_HARM_DELETES:
             return "tiers indistinguishable on this path: no cross-tier claim, every tier result is one replicate"
         held = pa["pending"] + na["pending"]
         if held and (ma or mb):
@@ -1405,6 +1449,8 @@ def cross(pa, pruns, na, nruns):
                 f"{key} MET on {'both tiers' if ma and mb else 'production' if ma else 'no-encoder'} but PENDING "
                 f"(validity checks not yet run: {'; '.join(held[:3])}): no tier finding and no candidate wording yet"
             )
+        if SINGLE_TIER_HARM_DELETES:
+            return single_tier(key, tail)
         if ma and mb:
             if n_agree >= need(AGREE_MIN):
                 return (
@@ -1413,13 +1459,7 @@ def cross(pa, pruns, na, nruns):
                 )
             return f"both tiers MET but d_s sign agrees on only {n_agree}/{len(seeds)}: tier finding, no deletion candidate"
         if ma or mb:
-            who = "production" if ma else "no-encoder"
-            if SINGLE_TIER_HARM_DELETES and ma:
-                return (
-                    f"tier finding: harm on {who} only; SINGLE_TIER_HARM_DELETES = True so the production result alone is the candidate"
-                    + tail((pa,))
-                )
-            return f"tier finding: harm on {who} only; no deletion candidate (owner decides)"
+            return f"tier finding: harm on {'production' if ma else 'no-encoder'} only; no deletion candidate (owner decides)"
         return f"not met on either tier: production {pa['hs'][key]['status']}; no-encoder {na['hs'][key]['status']}"
 
     out["h_p1"] = verdict(
@@ -1433,35 +1473,51 @@ def cross(pa, pruns, na, nruns):
 
 
 def null_precondition(method, pa, na):
-    """The ONE NULL-RECORD per method: written only when BOTH tiers have a verdict, are null at adequate power, show
-    no measured harm, and the controls PASS. Returns (ok, why); the record itself is the integrator's (needs the arc sha)."""
-    if not (pa["valid"] and na["valid"]) or pa["pending"] or na["pending"]:
-        return False, "a tier has no verdict (VOID/PENDING)"
-    if len(pa["shas"]) != 1 or pa["shas"] != na["shas"]:
-        return False, "the two tiers do not share one recorded tree sha"
+    """The ONE NULL-RECORD per method (addendum 3): a measured harm on either tier writes none (production: the harm
+    route; no-encoder: a tier finding); then BOTH tiers need a verdict, controls PASS and the objective endpoint null at
+    adequate power; and the production primary needs a stop of record, powered at its stopped n. Returns (ok, why); the
+    record itself is the integrator's (needs the arc sha)."""
     if method == "_plan_w":
         key, lit, obj = "H-P1", DR, lambda a: (not a["ep2"]["met"], a["ep2"]["mde"])
     else:
         key, lit, obj = "H-V1", DM, lambda a: (not a["ev2"]["met"], a["ev2"]["mde"])
+    if pa["hs"][key]["met"]:
+        return (
+            False,
+            f"production: {key} MET (a measured harm gets the harm route, never a null record)",
+        )
+    if na["hs"][key]["met"]:
+        return False, f"no-encoder: {key} MET (a tier finding, no null record)"
+    if not (pa["valid"] and na["valid"]) or pa["pending"] or na["pending"]:
+        return False, "a tier has no verdict (VOID/PENDING)"
+    if len(pa["shas"]) != 1 or pa["shas"] != na["shas"]:
+        return False, "the two tiers do not share one recorded tree sha"
     for t, a in (("production", pa), ("no-encoder", na)):
         not_met, mde = obj(a)
         if not a["ctl_ok"]:
             return False, f"{t}: a planted control failed"
-        if a["hs"][key]["met"]:
-            return (
-                False,
-                f"{t}: {key} MET (a measured harm gets the harm route, never a null record)",
-            )
-        if a["hs"][key].get("seq", {}).get("decision") == "continue":
-            return (
-                False,
-                f"{t}: {key} sequential design still running (CONTINUE): no null before a stop",
-            )
         if not not_met:
             return False, f"{t}: the objective endpoint was met"
         if not mde <= lit:
             return False, f"{t}: observed mde {mde:.4f} > frozen literal {lit} (INCONCLUSIVE)"
-    return True, "both tiers null at adequate power, no harm, controls PASS"
+    # the production stop of record decides; a no-encoder CONTINUE is reported only
+    q = pa["hs"][key].get("seq")
+    if q is None:
+        return False, f"production: {key} has no sequential stop (no verdict): no null"
+    if q["decision"] == "continue":
+        return (
+            False,
+            f"production: {key} sequential design still running (CONTINUE): no null before a stop",
+        )
+    if not q["powered"]:
+        return (
+            False,
+            f"production: {key} stopped at n={q['n']}, mde {q['mde']:.4f} above the claimed effect: INCONCLUSIVE",
+        )
+    return (
+        True,
+        f"production stopped powered at n={q['n']}; both tiers null on the objective, no harm, controls PASS",
+    )
 
 
 def bridge_readout(bridge_dir, e1_dir=None, seeds=PSEEDS, tree_shas=None):
@@ -1510,17 +1566,23 @@ def bridge_readout(bridge_dir, e1_dir=None, seeds=PSEEDS, tree_shas=None):
 
 
 def render_cross(c, br=None):
+    n = len(c["table"])
+    gates = (
+        ("reported beside, no gate (addendum 3)",) * 2
+        if SINGLE_TIER_HARM_DELETES
+        else (f"required >= {c['need_agree']}", f"required >= {c['need_effect']}")
+    )
     L = [
-        "## Cross-tier (e1b-rpe-harm.md sections 3, 4, 6)\n",
+        "## Cross-tier (e1b-rpe-harm.md sections 3, 4, 6; addendum 3)\n",
         "| seed | d_s production | d_s no-encoder | sign agrees |",
         "|---|---|---|---|",
     ]
     L += [f"| {s} | {x:+.4f} | {y:+.4f} | {ok} |" for s, x, y, ok in c["table"]]
     L.append(
-        f"\nsign agreement {c['agree']}/{len(c['table'])} (required >= {AGREE_MIN}); Pearson r of d_s across tiers {c['pearson']:.3f} (reported, no bar)"
+        f"\nsign agreement {c['agree']}/{n} ({gates[0]}); Pearson r of d_s across tiers {c['pearson']:.3f} (reported, no bar)"
     )
     L.append(
-        f"tier effect present: {c['tier_effect']} (same-seed `real` series differ on {len(c['differ_seeds'])} seeds; required >= {TIER_EFFECT_MIN})"
+        f"tier effect present: {c['tier_effect']} (same-seed `real` series differ on {len(c['differ_seeds'])} seeds; {gates[1]})"
     )
     L.append(
         f"H-V1 own d_s sign agreement {c['agree_v1']}/{len(c['table_v1'])}; Pearson r {c['pearson_v1']:.3f}"
