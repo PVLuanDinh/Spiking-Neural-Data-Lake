@@ -9,6 +9,21 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- Engine arc 1: G3 T0 baseline, G3 T1 Grower, the P1 sample-size amendment (2026-10-23)
+
+Owner 2026-10-23: "Make sure the engine is built first to accurately address the throttle gaps." Engine row G3 (ONE grower,
+owner #3403; design research-1016 `design/DESIGN.md` T0-T13), steps T0 and T1 of 14.
+- **G3 T0 baseline** (`specs/022-unified-brain-arc/evidence/g3-t0-baseline.md`, frozen before any brain run): a committed
+  capture of 21 brains (perception tier eprop-snn) that every later merge step must reproduce byte for byte; all five
+  controls H0a-H0e fire.
+- **G3 T1 `growth/grower.py`:** `Grower` + `PerceptProblem` wrap the B1 percept engine; the five-arm brain run matches the
+  T0 capture byte for byte. Merge step 1 of 3: `GrowthLoop` and `NeurogenesisEngine` still run and retire at T6. P5b: Python.
+- **P1 amendment, sample size is measured** (owner, verbatim: "switch E1b to a sequential design, P1 policy, make sure all
+  sessions understand that"): seed counts derive from a measured SD by power; campaigns run as pre-registered sequential
+  designs (looks, alpha spending, non-binding futility, an inflated cap); a futility stop is not a null (P8 item 4 reads its
+  mde). Review-enforced, PROVISIONAL; its gate (a "Sample size (P1)" field check) is specified, not built.
+- The P8 real-history scale-retest test is judged at its closing record, not live HEAD.
+
 ## [Unreleased] -- OG1 Stage 0: the organoid ingest, pushed without Stage 1 (2026-10-23)
 
 OG1 / T118 (owner 2026-10-23). Pre-registration: `specs/022-unified-brain-arc/evidence/og1-organoid-stream.md`, with
