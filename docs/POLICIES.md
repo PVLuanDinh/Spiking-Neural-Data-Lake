@@ -186,6 +186,8 @@ ValenceLearner's about 114, so a replication at 8 seeds would mostly have read I
    still at least .8. A campaign stops only at a look and only on a written boundary; seeds added after an unregistered
    look void the reading. **A futility stop, or a cap reached without crossing, is not a null by itself:** it reports the
    mde at the seed count reached, and P8 item 4 decides (INCONCLUSIVE unless that mde is at or below the claimed effect).
+   So a futility stop is taken only at a look where that mde is at or below the claimed effect; before such a look the
+   campaign continues, and the simulation reports the probability of every outcome, INCONCLUSIVE included.
 3. **A fixed count** only for a one-shot run, its power stated before data; a result at an underpowered count is
    INCONCLUSIVE (P8 item 4).
 
@@ -196,9 +198,10 @@ the owner's words name the rule and E1b; the mechanics (one-sided .05, the alpha
 O'Brien-Fleming, non-binding futility, the inflated cap, the simulation guard, and the scope over every pre-registration,
 read from "make sure all sessions understand that") are the session's derivation; the placement in P1 and the coverage
 of seed counts are the owner's. **Gate specification:** a check that
-every pre-registration frozen in a commit descending from the one that lands this amendment carries the section's fields
-(measured SD, effect, target, looks or the one-shot reason, spending function, futility, cap), with a planted-missing red;
-G3 T0 and OG1 A8, frozen earlier, are grandfathered by name. Count it before this marker retires.
+every pre-registration frozen in a commit descending from the one that lands this amendment on `origin/main` (its closing
+record names that commit) carries the section's fields, read from the file as it stands at HEAD (measured SD, effect,
+target, looks or the one-shot reason, spending function, futility, cap), with a planted-missing red; G3 T0 and OG1 A8,
+frozen earlier, are grandfathered by name. Count it before this marker retires.
 
 ## P2 — Adopt-better **or merge**, then retire the inferior (non-additive)
 
