@@ -631,7 +631,10 @@ The slice is four strata stacked on one primitive.
 - `learned_attention.py:62-68` — `lr=0.35`, `sigma=0.5`, `alpha_goal=1.5`, `alpha_surprise=0.6`, `exp_decay=0.2`, `lif_gain=5.0` on the **live** gate that feeds the arm's sensory channel; no P1 disposition. (Contrast `laminar_local_readout._observe_lr`, which did the conversion properly — that is the in-slice model to copy.)
 - `is_snn_forward.py:23-29` — `STABLE_GAIN=2.5`, `WEAK_GAIN=1.0`, `SPARSITY=0.4`, module-level and named "hard-coded" by the docstring itself.
 
-### P4b violation (live)
+### P4b violation (fixed in engine arc 2, policy audit pa-p4bd-1)
+
+Fixed 2026-10-24: the weights are a `_T_STATE` lake record (`save_named_state`); a legacy sidecar is imported once and never
+re-read. The paragraph below records the defect as it was.
 
 **`language_acquisition.py:232 save` / `:236 load`** write the learned language weights `W` to a `np.savez` **sidecar** (`language_acq.npz`) beside `brain_lake.bin` rather than into it — the arrangement P4b forbids in those exact words. Confirmed live: `brain.py:3124` (sleep consolidation), `:4209` (shutdown "never-forget"), `:4071` (load on the language-organ build path). The module documents this against itself at `:218-231`; the fix is a lake record tag plus three `brain.py` call sites.
 

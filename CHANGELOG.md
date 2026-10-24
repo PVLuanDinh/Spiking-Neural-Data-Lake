@@ -23,8 +23,8 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
 - **P5b gate** (`gates/p5b_gate.py`, rust-lead-1024): every native Rust module cites a pre-registration recording P5b's six
   criteria with numbers; the retroactive record names the eleven native modules; P5b's PROVISIONAL marker retires (its gate is
   built and counted).
-- **Engine arc 1 panel carry-overs (policy-enforcer #4979):** the sleep-pruner census reads imports only under `if TYPE_CHECKING:`
-  with one planted red per typing rule; the P1 amendment's closed grandfather list is named
+- **Engine arc 1 panel carry-overs (policy-enforcer #4979):** the sleep-pruner census reads the top-level imports plus those in a
+  top-level `if TYPE_CHECKING:` block (no other `if` block), with one planted red per typing rule; the P1 amendment's closed grandfather list is named
   (`evidence/p1-sample-size-grandfather.md`); a tasks.md row (T111a) for G3 T6's retirement of `GrowthLoop` and
   `NeurogenesisSelfImprove`.
 - **E1b harness `instruments/rpe_charge.py`** (learning-rules evidence, no brain run yet; `evidence/e1b-rpe-harm.md` and its
