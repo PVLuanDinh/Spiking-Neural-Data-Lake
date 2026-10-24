@@ -10,9 +10,12 @@ TWO HALVES
      `_enter_sleep`, once per night) through attribute calls, transitively, and collects every callee
      whose name is in the prune vocabulary. Receivers are typed by three static rules (`self.X =
      Cls(...)` anywhere in the class, function-local imports included, or `self.X = self.f(...)` where
-     f returns a constructed `Cls`; a local `v = Cls(...)`; a direct `Cls(...).m()`), plus, when a
-     scratch brain is handed in, the RUNTIME type of each `self.a.b` chain the hosts use. A receiver
-     neither rule types is COUNTED as unresolved, never chased. `census_runtime` wraps every found
+     f returns a constructed `Cls`, or `self.X = x` where x is a parameter annotated `Cls`, a
+     conditional `Cls(...) if c else None` counting as `Cls(...)`; a local `v = Cls(...)`; a direct
+     `Cls(...).m()`), a `self.a.b` chain typed hop by hop (G3 T1's `Brain.grower` ->
+     `Grower.percept` -> `PerceptProblem.engine`), plus, when a scratch brain is handed in, the RUNTIME
+     type of each `self.a.b` chain the hosts use. A receiver no rule types is COUNTED as unresolved,
+     never chased. `census_runtime` wraps every found
      site on a scratch brain and counts calls and removals per tick.
   2. A/B. `run_arm` drives one throwaway brain per (seed, arm) for 900 ticks, the four
      tests/test_sleep_capabilities.py TEACH pairs injected at every wake onset, under one surgical
@@ -205,7 +208,12 @@ class _Index:
 
     def module_imports(self, mod):
         t = self.tree(mod)
-        return self._imports(t.body) if t else {}
+        if t is None:
+            return {}
+        # top-level imports plus those in a top-level `if TYPE_CHECKING:` block (annotation-only imports)
+        return self._imports(
+            list(t.body) + [n for s in t.body if isinstance(s, ast.If) for n in s.body]
+        )
 
     def local_imports(self, fn):
         return self._imports([n for n in ast.walk(fn) if isinstance(n, ast.ImportFrom)])
@@ -241,8 +249,21 @@ class _Index:
         return None
 
     def _ctor(self, mod, fn, node):
+        if isinstance(node, ast.IfExp):  # `Cls(...) if c else None` types as Cls
+            return self._ctor(mod, fn, node.body) or self._ctor(mod, fn, node.orelse)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             return self.resolve_class(mod, fn, node.func.id)
+        return None
+
+    def _param_class(self, mod, fn, name):
+        """`def f(self, x: Cls)` then `self.X = x` -> Cls (the annotation as a Name or a string)."""
+        for a in fn.args.args + fn.args.kwonlyargs:
+            if a.arg != name or a.annotation is None:
+                continue
+            ann = a.annotation
+            if isinstance(ann, ast.Constant) and isinstance(ann.value, str):
+                return self.resolve_class(mod, fn, ann.value)
+            return self.resolve_class(mod, fn, ann.id) if isinstance(ann, ast.Name) else None
         return None
 
     def returned_class(self, mod, cls, fname):
@@ -302,6 +323,8 @@ class _Index:
                     and v.func.value.id == "self"
                 ):
                     got = self.returned_class(mod, cls, v.func.attr)
+                if got is None and isinstance(v, ast.Name):
+                    got = self._param_class(mod, fn, v.id)
                 if got and t.attr not in out:
                     out[t.attr] = got
         return out
@@ -346,9 +369,12 @@ def census_static(runtime_types=None, sources=None, max_depth=6):
             return None
         if at_brain and chain in runtime_types:
             return runtime_types[chain]
-        if "." not in chain:
-            return idx.attr_types(mod, cls).get(chain)
-        return None
+        cur = (mod, cls)
+        for part in chain.split("."):  # typed hop by hop; one untyped hop leaves it unresolved
+            cur = idx.attr_types(*cur).get(part)
+            if cur is None:
+                return None
+        return cur
 
     def walk(mod, cls, fname, host, chain, depth):
         key = (mod, cls, fname)
