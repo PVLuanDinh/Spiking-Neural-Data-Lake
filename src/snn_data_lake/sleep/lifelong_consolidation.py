@@ -46,6 +46,7 @@ ASCII-only output.
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sleep.lifelong_consolidation
 """
 
+import math
 import random
 
 from snn_data_lake.growth.growing_learner import GrowingLearner
@@ -124,6 +125,45 @@ class LifelongConsolidator:
     @property
     def n_units(self):
         return self.learner.n_units
+
+    # distinct-from: growth/growing_learner.py -- REUSED for the prototypes; this adds the labels and
+    #   utilities kept aligned to them. distinct-from: readout/growable_readout.py,
+    #   faculties/reasoning_curriculum.py -- other learners' state. distinct-from:
+    #   instruments/prior_drift_harness.py, carried_state_report.py -- harness/report code. Sites read.
+    STATE_FORMAT = "lifelong_consolidator.v1"
+
+    def state_dict(self):
+        """The learner with its per-unit labels and utilities (aligned to prototypes), JSON-able.
+        The replay memory is not part of it."""
+        return {
+            "fmt": self.STATE_FORMAT,
+            "learner": self.learner.state_dict(),
+            "labels": list(self.labels),
+            "utility": [float(u) for u in self.utility],
+        }
+
+    def load_state_dict(self, d):
+        """Restore `state_dict()`. True if restored. Refuses (this object untouched): a foreign
+        format tag, a learner of another width than `dim`, labels/utilities not one per prototype,
+        a non-finite utility, a consolidator that already grew, or anything `GrowingLearner`
+        refuses."""
+        if not isinstance(d, dict) or d.get("fmt") != self.STATE_FORMAT or self.labels:
+            return False
+        try:
+            rec = d["learner"]
+            labels = [int(y) for y in d["labels"]]
+            utility = [float(u) for u in d["utility"]]
+            n = len(rec["prototypes"])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return False
+        if rec.get("dim") != self.dim or len(labels) != n or len(utility) != n:
+            return False
+        if any(not math.isfinite(u) for u in utility):
+            return False
+        if not self.learner.load_state_dict(rec):
+            return False
+        self.labels, self.utility = labels, utility
+        return True
 
     # ---- learning primitives ------------------------------------------------
     def _observe(self, x, y):

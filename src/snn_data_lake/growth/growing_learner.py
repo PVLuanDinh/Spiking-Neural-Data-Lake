@@ -104,10 +104,8 @@ class GrowingLearner:
     # every daemon relaunch (the daemon relaunches on every commit), and since rank 2a the
     # neurogenesis grower's categories ARE the arm learner's prototype ids. The record is a plain
     # JSON-able dict so it rides the ONE named-state record (substrate/home.save_state), never a
-    # sidecar and never a new tag. WHICH instances persist is the consumer's business: Brain
-    # persists the arm's context learner and the vision/audio learners; the affect integrator's
-    # SOM and the lifelong consolidator's learner (two more live instances) and the arm's Q-table
-    # over these ids do NOT persist yet -- said in Brain._flush_prototypes' docstring too.
+    # sidecar and never a new tag. WHICH instances persist is the consumer's business (see
+    # Brain._flush_prototypes).
     # distinct-from: growth/neurogenesis_engine.py -- restore_growth_state() rebuilds NG-SNN tensors
     #   from an npz blob. distinct-from: faculties/spiking_jepa.py, sensorimotor/rsnn_encoder.py -- load
     #   weight matrices from tagged JSON. distinct-from: engine/wiring_manifest.py -- rebuilds

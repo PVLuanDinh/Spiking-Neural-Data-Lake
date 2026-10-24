@@ -186,6 +186,8 @@ def _lattice_ball_cells(r):
 #: tag a restore refuses to mis-read.
 COVERAGE_STATE = "coverage_cells"
 COVERAGE_FMT = 1
+#: The Q-table's format tag inside the `growing_learners.json` record (P4b restart restore).
+Q_STATE_FMT = "arm_q.v1"
 #: RESOLUTION of the live coverage RATE (new cells per tick over the last N coverage ticks) -- a
 #: measurement window like _COVER_CELLS_PER_REACH is a grid, not an arbitrating threshold: the
 #: rate is reported, never compared against a number. 200 ticks is the incumbent's 600-tick
@@ -792,6 +794,37 @@ class AutonomousArm:
         self._cover_restored = len(cells)
         self.coverage_restore_note = f"restored {len(cells)} cells from the lake"
         return len(cells), self.coverage_restore_note
+
+    # distinct-from: growth/growing_learner.py -- state_dict/load_state_dict persist the context
+    #   learner's PROTOTYPES; this persists the Q-table keyed by their ids (restored after them).
+    # distinct-from: faculties/reasoning_curriculum.py, growth/neurogenesis_engine.py -- codecs of
+    #   other objects. distinct-from: instruments/unit_organization.py, carried_state_stages.py,
+    #   carried_state_report.py, pool_selection.py -- report tables. Sites read.
+    def q_state_dict(self):
+        """The Q-table over the context learner's unit ids, JSON-able: a format tag and
+        {str(unit): {action: v}} rows."""
+        return {"fmt": Q_STATE_FMT, "rows": {str(u): dict(row) for u, row in self.q.items()}}
+
+    def load_q_state_dict(self, d):
+        """Adopt `q_state_dict()` WHOLESALE, or refuse and leave `q` exactly as it was. True if
+        restored. Refuses: a foreign format tag, a live table that already holds rows, a row for a
+        unit id the learner does not hold (restore the learner first), a row whose actions are not
+        exactly ACTIONS, a non-finite value."""
+        if not isinstance(d, dict) or d.get("fmt") != Q_STATE_FMT or self.q:
+            return False
+        try:
+            rows = d["rows"]
+            if any(set(row) != set(ACTIONS) for row in rows.values()):
+                return False
+            q = {int(u): {a: float(row[a]) for a in ACTIONS} for u, row in rows.items()}
+        except (KeyError, TypeError, ValueError, AttributeError):
+            return False
+        if any(not 0 <= u < self.learner.n_units for u in q):
+            return False
+        if any(not math.isfinite(v) for row in q.values() for v in row.values()):
+            return False
+        self.q = q
+        return True
 
     def coverage_reward(self, unit, action):
         """The physical objective: reward the end effector for REACHING somewhere it has not been.

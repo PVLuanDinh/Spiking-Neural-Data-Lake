@@ -205,6 +205,21 @@ class AffectIntegrator:
         """Number of emergent emotion prototypes grown so far."""
         return self._som.n_units
 
+    # distinct-from: growth/growing_learner.py -- REUSED: these delegate to it and add only the
+    #   width check against this integrator's population code. distinct-from:
+    #   growth/neurogenesis_engine.py, instruments/carried_state_report.py, sleep_plasticity_ab.py,
+    #   substrate/home.py -- other objects' codecs / report tables. Sites read.
+    def state_dict(self):
+        """The emotion SOM's `GrowingLearner` record."""
+        return self._som.state_dict()
+
+    def load_state_dict(self, d):
+        """Restore the emotion map. True if restored. Refuses (map untouched) a record of another
+        width than this integrator's population code, or anything `GrowingLearner` refuses."""
+        if not isinstance(d, dict) or d.get("dim") != self._som.dim:
+            return False
+        return self._som.load_state_dict(d)
+
     def signature(self):
         """Stable zlib.crc32 fingerprint of the persisted self-organized emotion map (NOT builtin
         hash) -- two identically-seeded, identically-driven integrators must share it."""

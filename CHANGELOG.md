@@ -24,6 +24,9 @@ owner #3403; design research-1016 `design/DESIGN.md` T0-T13), steps T0 and T1 of
   designs (looks, alpha spending, non-binding futility, an inflated cap); a futility stop is not a null (P8 item 4 reads its
   mde). Review-enforced, PROVISIONAL; its gate (a "Sample size (P1)" field check) is specified, not built.
 - The P8 real-history scale-retest test is judged at its closing record, not live HEAD.
+- **P4b restart-amnesia fix** (policy audit pa-p4bd-3): `arm.q`, the affect integrator's emotion SOM and the lifelong
+  consolidator's learner now ride the `growing_learners.json` record and restore at boot (a mismatched record -- wrong width,
+  unknown unit id, bad format -- is refused, store left empty); `tests/test_p4b_restart_restore.py`. The consolidator's replay memory is still not persisted.
 
 ## [Unreleased] -- OG1 Stage 0: the organoid ingest, pushed without Stage 1 (2026-10-23)
 

@@ -1056,49 +1056,6 @@ class Brain:
                 self.brain.arm.restore_coverage(_home.load_state(_CS, default=None))
             except Exception as _e:
                 self.brain.arm.coverage_restore_note = f"restore raised: {_e}"
-        # specs/022 audit s8 rank 2b (2026-09-02): the brain's PROTOTYPES of what it perceived come
-        # back from the ONE lake -- the arm loop's context learner (whose ids are the neurogenesis
-        # grower's categories since rank 2a) and the vision/audio prototype learners. Same gate as
-        # growth (persist), same named-state record family (`_T_STATE`). The vision/audio learners
-        # are CONSTRUCTED from their records here rather than lazily at the first real percept, so
-        # `real_perception_units` at tick 0 is what the lake holds; if the live percept turns out
-        # wider or narrower than the record, `_consume_perception` grows or drops them, counted. An
-        # arm record of another width than the arm's producer is REFUSED here: the panel measured a
-        # 32-wide record restored into a 64-wide arm raising out of every wake tick. A record that
-        # fails a refusal leaves the learner empty (never half-restored) and the note says so. NOT
-        # restored, said plainly: the arm's Q-table over these ids (`arm.q`, lazily re-created), the
-        # affect integrator's SOM and the lifelong consolidator's learner -- two more live
-        # GrowingLearner instances, still P4b debt.
-        self._prototypes_restore_note = None
-        if self._persist:
-            try:
-                from snn_data_lake.substrate import home as _home
-
-                _rec = _home.load_state(PROTOTYPES_STATE, default=None) or {}
-                _ok = {}
-                if _rec.get("arm"):
-                    _arm_l = self.brain.arm.learner
-                    if int(_rec["arm"].get("dim", -1)) != int(_arm_l.dim):
-                        _ok["arm"] = False  # the arm's width is its producer's; never a record's
-                    else:
-                        _ok["arm"] = _arm_l.load_state_dict(_rec["arm"])
-                for _key, _attr in (("vis", "_vis_learner"), ("aud", "_aud_learner")):
-                    if _rec.get(_key):
-                        _l = GrowingLearner(vigilance=0.86, dim=int(_rec[_key].get("dim", 1)))
-                        _ok[_key] = _l.load_state_dict(_rec[_key])
-                        if _ok[_key]:
-                            setattr(self, _attr, _l)
-                self._real_units = (self._vis_learner.n_units if self._vis_learner else 0) + (
-                    self._aud_learner.n_units if self._aud_learner else 0
-                )
-                self._prototypes_restore_note = (
-                    None
-                    if all(_ok.values())
-                    else f"refused: {[k for k, v in _ok.items() if not v]}"
-                )
-            except Exception as _e:  # a broken record must never block brain construction
-                self._prototypes_restore_note = f"restore raised: {_e}"
-        self._attach_percept_transitions()
 
         # C1 batch-2: three MORE brain-native pure-stdlib faculties -- N-agent recursive ToM (social),
         # neuromod-fusion affect integrator with self-organized emotions (affect), counterfactual do()
@@ -1121,6 +1078,70 @@ class Brain:
             self._cfsim = CounterfactualSim(dim=9, n_actions=len(_ACTS2), seed=self._seed)
         except Exception:
             self._recursive_tom = self._affect_int = self._cfsim = None
+
+        # specs/022 audit s8 rank 2b (2026-09-02): the brain's PROTOTYPES of what it perceived come
+        # back from the ONE lake -- the arm loop's context learner (whose ids are the neurogenesis
+        # grower's categories since rank 2a) and the vision/audio prototype learners. Same gate as
+        # growth (persist), same named-state record family (`_T_STATE`). The vision/audio learners
+        # are CONSTRUCTED from their records here rather than lazily at the first real percept, so
+        # `real_perception_units` at tick 0 is what the lake holds; if the live percept turns out
+        # wider or narrower than the record, `_consume_perception` grows or drops them, counted. An
+        # arm record of another width than the arm's producer is REFUSED here: the panel measured a
+        # 32-wide record restored into a 64-wide arm raising out of every wake tick. A record that
+        # fails a refusal leaves the learner empty (never half-restored) and the note says so. The
+        # same record carries the other live learned stores (P4b, policy audit pa-p4bd-3,
+        # 2026-10-24): the arm's Q-table over these ids (`arm.q`, AFTER the arm learner -- a row
+        # for a unit it does not hold is refused), the affect integrator's emotion SOM (hence this
+        # block runs after its construction) and the lifelong consolidator's learner with its
+        # labels, utilities and task index; `n_emotions` / `lifelong_units` read them at tick 0.
+        # Same refusal rule for each. NOT restored, said plainly: the consolidator's replay memory.
+        self._prototypes_restore_note = None
+        if self._persist:
+            try:
+                from snn_data_lake.substrate import home as _home
+
+                _rec = _home.load_state(PROTOTYPES_STATE, default=None) or {}
+                _ok = {}
+                if _rec.get("arm"):
+                    _arm_l = self.brain.arm.learner
+                    if int(_rec["arm"].get("dim", -1)) != int(_arm_l.dim):
+                        _ok["arm"] = False  # the arm's width is its producer's; never a record's
+                    else:
+                        _ok["arm"] = _arm_l.load_state_dict(_rec["arm"])
+                for _key, _attr in (("vis", "_vis_learner"), ("aud", "_aud_learner")):
+                    if _rec.get(_key):
+                        _l = GrowingLearner(vigilance=0.86, dim=int(_rec[_key].get("dim", 1)))
+                        _ok[_key] = _l.load_state_dict(_rec[_key])
+                        if _ok[_key]:
+                            setattr(self, _attr, _l)
+                if _rec.get("q"):
+                    _ok["q"] = self.brain.arm.load_q_state_dict(_rec["q"])
+                if _rec.get("affect"):
+                    _ok["affect"] = (
+                        self._affect_int is not None
+                        and self._affect_int.load_state_dict(_rec["affect"])
+                    )
+                    self._n_emotions = int(self._affect_int.n_emotions) if _ok["affect"] else 0
+                if _rec.get("lifelong"):
+                    _i = _rec["lifelong"].get("i") if isinstance(_rec["lifelong"], dict) else None
+                    _ok["lifelong"] = (
+                        isinstance(_i, int)
+                        and 0 <= _i <= len(self._ll_tasks)
+                        and self._ll.load_state_dict(_rec["lifelong"])
+                    )
+                    if _ok["lifelong"]:
+                        self._ll_i, self._ll_units = _i, self._ll.n_units
+                self._real_units = (self._vis_learner.n_units if self._vis_learner else 0) + (
+                    self._aud_learner.n_units if self._aud_learner else 0
+                )
+                self._prototypes_restore_note = (
+                    None
+                    if all(_ok.values())
+                    else f"refused: {[k for k, v in _ok.items() if not v]}"
+                )
+            except Exception as _e:  # a broken record must never block brain construction
+                self._prototypes_restore_note = f"restore raised: {_e}"
+        self._attach_percept_transitions()
 
         # C1 batch-3: whole-brain integration + learned perception faculties (numpy allowed now,
         # representation-only, guarded). Learned spiking attention gate over the real percept stream;
@@ -5090,10 +5111,11 @@ class Brain:
         `_flush_growth` -- the night's persist block and `close()` -- for the same reason: one
         persistence path. True if a record was written. Absent learners are recorded as None so a
         restore never invents one; a brain that has recruited NOTHING writes nothing (the
-        `save_growth` contract: "no substrate" is not a record). NOT written here, said plainly
-        (open P4b debt): the arm's Q-table over these ids (`arm.q`), the affect integrator's SOM
-        (`n_emotions`) and the lifelong consolidator's learner (`lifelong_units`) -- two more live
-        GrowingLearner instances that still re-grow from zero at a restart."""
+        `save_growth` contract: "no substrate" is not a record). The same record carries the other
+        live learned stores (P4b, policy audit pa-p4bd-3): the arm's Q-table over these ids
+        (`arm.q`), the affect integrator's emotion SOM (`n_emotions`) and the lifelong
+        consolidator's learner with its labels, utilities and task index (`lifelong_units`). Not
+        written, said plainly: the consolidator's replay memory."""
         if not self._persist:
             return False
         try:
@@ -5103,6 +5125,8 @@ class Brain:
                 self.brain.arm.learner.n_units
                 or (self._vis_learner is not None and self._vis_learner.n_units)
                 or (self._aud_learner is not None and self._aud_learner.n_units)
+                or (self._affect_int is not None and self._affect_int.n_emotions)
+                or self._ll.n_units
             ):
                 return False
             durable_units = int(self.brain.arm.learner.n_units)  # before the save: what it holds
@@ -5113,6 +5137,9 @@ class Brain:
                         "arm": self.brain.arm.learner.state_dict(),
                         "vis": self._vis_learner.state_dict() if self._vis_learner else None,
                         "aud": self._aud_learner.state_dict() if self._aud_learner else None,
+                        "q": self.brain.arm.q_state_dict(),
+                        "affect": self._affect_int.state_dict() if self._affect_int else None,
+                        "lifelong": dict(self._ll.state_dict(), i=int(self._ll_i)),
                     },
                 )
             )
