@@ -98,7 +98,7 @@ toward and beyond human scale. General intelligence and sentience are both build
 - A passing consciousness instrument licenses a sentence about a mechanism, never a verdict about
   experience (row C5).
 
-**The method, in five clauses:**
+**The method, in six clauses:**
 1. Growth is EARNED: a unit stays only if it lowers held-out error.
 2. Learning is LOCAL. Plan A.1 says "e-prop, not backprop"; POLICIES' e-prop invariant, with its SCOPE,
    is the rule.
@@ -107,6 +107,8 @@ toward and beyond human scale. General intelligence and sentience are both build
 5. A null is recorded WITH ITS SCALE and applied. A method that measures nothing is deleted, but only after
    one re-test at least 10x larger on its scaling axis (P8's null-scale amendment, 2026-10-23); measured
    harms and structural nulls skip the re-test, and an underpowered result is inconclusive, not a null.
+6. Sample size is MEASURED (P1's sample-size amendment, 2026-10-23): seeds come from a measured SD by power, and a
+   campaign runs as a pre-registered sequential design (looks, alpha spending, futility, cap), never a habitual count.
 
 The project's most valuable records say what did not work; §10 lists them so that you do not rebuild
 them.

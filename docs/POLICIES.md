@@ -34,7 +34,7 @@ compressed clause.
 | | mechanized in CI | enforced by review only |
 |---|---|---|
 | **P0 autonomous self-improvement** | — | yes (its guards are P2/P3/verify-first) |
-| P1 no-hardcode | — | yes |
+| P1 no-hardcode (+ sample-size amendment, provisional) | — | yes (the "Sample size (P1)" section of each pre-registration; its gate is specified in P1) |
 | P2 adopt-or-merge | — | yes |
 | P3 no dormancy | `gates/dormancy_gate.py` (per-MODULE), `gates/method_dormancy_gate.py` (per-METHOD), `gates/import_manifest.py` (cross-tier) | the charge tier |
 | P4 one brain (+ P4b partial; P4d provisional) | `gates/replication_guard.py`; `gates/lake_rebuild_gate.py` mechanizes P4b's index-is-derived clause (delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control); `gates/unit_label_gate.py` mechanizes P4d's provenance check (owner decision 16) | P4b's remaining prose (one-lake, restart-is-not-amnesia); P4d in full (provisional; its gate is specified in P4d) |
@@ -167,6 +167,28 @@ value could fix — both in `faculties/global_workspace.py`) is relocated to
 `docs/POLICIES_EVIDENCE.md`. Its two transferable tells stay: **a constant that only ever appears
 divided is a round trip written down as a number**, and **a constant that resists every value in a
 sweep is not a tuning problem — the blocking constraint is doing two jobs.**
+
+### P1 amendment — sample size is measured, and a campaign runs sequentially
+
+**Owner directive, 2026-10-23** (verbatim, after asking why a campaign used a constant number of seeds): *"switch E1b to
+a sequential design, P1 policy, make sure all sessions understand that"*. Review-enforced, PROVISIONAL until its gate
+(below) is built and counted.
+
+A campaign's seed count is a constant like any other, so P1 binds it: derived, never habitual.
+1. **Derived.** Every pre-registration carries a "Sample size (P1)" section: the measured SD the target comes from (a
+   prior run's paired SD or a pre-registered pilot), the effect the claim needs, and the power-derived target (power .8,
+   one-sided alpha .05 after the multiplicity rule).
+2. **Sequential where runs allow.** Named looks (seed blocks), a named alpha-spending boundary per look (e.g. Lan-DeMets
+   O'Brien-Fleming), a non-binding futility bound, and a hard cap at the target. A campaign stops only at a look and only
+   on a written boundary; seeds added after an unregistered look void the reading.
+3. **A fixed count** only for a one-shot run, its power stated; an underpowered count is declared INCONCLUSIVE-prone before
+   data (P8 null-scale amendment item 4).
+
+**Honesty guard.** Sequential means stopping early on a written boundary, never running until a number looks right; the
+boundaries are checked by simulation (a planted null keeps the false-positive rate, a planted effect crosses) before the
+campaign runs. **Gate specification:** a check that every pre-registration frozen after this date carries the section's
+fields (measured SD, effect, target, looks or the one-shot reason, spending function, futility, cap), with a planted-missing
+red. Count it before this marker retires.
 
 ## P2 — Adopt-better **or merge**, then retire the inferior (non-additive)
 

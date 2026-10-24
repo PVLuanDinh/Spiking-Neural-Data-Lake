@@ -178,6 +178,14 @@
     },
     {
       "commands": [],
+      "id": "P1 amendment",
+      "kind": "review-only",
+      "subclause_of": "P1",
+      "table_only": false,
+      "title": "sample size is measured, and a campaign runs sequentially"
+    },
+    {
+      "commands": [],
       "id": "P3 amendment",
       "kind": "review-only",
       "subclause_of": "P3",
