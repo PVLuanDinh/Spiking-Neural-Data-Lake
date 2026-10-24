@@ -682,11 +682,11 @@ def throwaway_home(live_home=None, parent=None):
 def state_path(name):
     """Path to `<home>/<name>` -- the LEGACY sidecar location, kept for two honest uses only.
 
-    (1) `_migrate_sidecar` reads it, once, to import a pre-2026-08-05 blob into the one lake.
-    (2) Binary blobs the JSON facade cannot carry are still written here by their own writers:
-        `engine/brain.py` -> `language_acq.npz` (numpy) and `sleep/nightly_skills.py (promoted 2026-08-11)`
-        -> `skills*.spkl`. Those are OPEN P4b debt, named in `save_state`'s docstring; the carrier
-        they need is `save_named_state`, which takes raw bytes.
+    (1) `_migrate_sidecar` reads it, once, to import a pre-P4b blob into the one lake (since
+        2026-10-24 that includes `language_acq.npz` and `skills/<domain>.npz`, which now go through
+        `save_named_state`, as in-memory `np.savez` blobs).
+    (2) The per-boot SCRATCH router index `skills*.spkl` of `sleep/nightly_skills.py`, which that
+        module empties before every construction and rebuilds from the lake -- not a durable store.
 
     It is NOT the place to put anything the brain LEARNS. That was what this returned a path for
     until 2026-08-05, and the record of what it cost is in the `_T_STATE` tag comment."""
@@ -1176,11 +1176,12 @@ def _migrate_sidecar(name):
     a _T_STATE record and `load_state` thereafter returns `default` (a cold start) while the junk
     stays in the lake; a BINARY sidecar imports whole. It cannot validate -- it is the raw-bytes
     carrier, and its JSON-shaped callers come through `load_state`, which is where the parse lives.
-    The blast radius is bounded and was checked, not assumed: the only names any live path asks for
-    are the seven JSON states, so the binary members of the operator's home (`language_acq.npz`
-    24,700 B, `prototypes.bin`, `skills*.spkl`) are never requested by name and never imported. That
-    is a fact about today's callers; a future caller that hands a binary name to `load_state` would
-    move 24 KB of npz into the one lake and read `default` back out of it.
+    The blast radius is bounded and was checked, not assumed: the names live paths ask for are the
+    seven JSON states plus, since 2026-10-24, the npz blob names
+    (`language_acq.npz`, `skills/<domain>.npz`, `skills/open_world.npz`), whose callers parse with
+    `np.load` and treat an unreadable blob as a cold start inside their own guards. `prototypes.bin`
+    and `skills*.spkl` are never requested by name and never imported. A future caller that hands a
+    binary name to `load_state` would move the npz into the one lake and read `default` back out.
 
     IT FIRES ON READ ONLY, and the ordering that makes that sufficient is a fact about the callers
     rather than a guarantee of this function -- stated because it is the way this could quietly lose
@@ -1227,10 +1228,10 @@ def save_state(name, obj):
     (gf_library.json, active_library.json), `sleep/nightly_skills.py (promoted 2026-08-11)`. Not one of them changed a
     line to move, and none of them can drift back.
 
-    STILL OPEN, and named so it stays countable: `language_acq.npz` and the `skills*.spkl` blobs do
-    NOT come through here -- they are numpy/pickle binaries written to `state_path(...)` directly, so
-    they need a carrier for raw bytes at their call sites (`save_named_state` already is one) rather
-    than a JSON facade. `language_acq.npz` is the LARGEST member of the family at 24,700 B.
+    CLOSED 2026-10-24: `language_acq.npz` (the LARGEST member, 24,700 B) and the nightly skills'
+    `skills/*.npz` arrays no longer come through a sidecar either -- they are in-memory `np.savez`
+    blobs, so they use the raw-bytes carrier `save_named_state` rather than this JSON facade. A
+    legacy file is imported once by `_migrate_sidecar`. `skills*.spkl` is per-boot scratch.
 
     Returns True if a record was written, False if the state was unchanged (see `save_named_state`);
     it returned the sidecar path until 2026-08-05, and no caller in the tree read that value."""

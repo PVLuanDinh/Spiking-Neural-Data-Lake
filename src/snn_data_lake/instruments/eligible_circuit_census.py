@@ -883,6 +883,11 @@ EXCLUDED: tuple[Excluded, ...] = (
         "LakeRecall is a lake reader. The census owns no lake reader and no lake writer.",
     ),
     Excluded(
+        "Brain._acq_lm_blob",
+        "The language_acq.npz lake bytes read at construction and dropped once _lm_serve "
+        "applies them; the learned population is Brain._acq_lm.",
+    ),
+    Excluded(
         "Brain._rewirer",
         "StructuralRewiring is the separately adjudicated structural "
         "mutator; its own budget and admission are governed by its own row, not by this "

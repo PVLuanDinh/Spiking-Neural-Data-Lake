@@ -24,10 +24,10 @@ SEVEN could not be fixed alongside. (Seven, re-counted from `home.py`'s `_T_STAT
 than inherited: recall_trace, time_cells, valence, gf_library, active_library, reasoning_curriculum,
 nightly_skills. Those seven rode `save_state`, so fixing that ONE function moved all of them and no
 caller changed; this module wrote its own `json.dump`, which is exactly why it did not come along.
-Measured after this change: the only remaining `state_path(...)` WRITER under `src/` is
-`engine/brain.py`'s `language_acq.npz`, a numpy binary the JSON facade cannot carry and which
-`home.save_state` already names as open debt -- plus `sensorimotor/signal_loop.py`'s `unknowns.jsonl`,
-which is not JSON-facade state and is NOT dispositioned here. Every other `state_path` hit in `src/`
+Measured after this change, the remaining `state_path(...)` WRITERS under `src/` were
+`engine/brain.py`'s `language_acq.npz` (a numpy binary, a lake record since 2026-10-24) and
+`sensorimotor/signal_loop.py`'s `unknowns.jsonl`; the latter is the only one left, is not
+JSON-facade state, and is NOT dispositioned here. Every other `state_path` hit in `src/`
 is a self-check asserting the sidecar is absent.) What it was: `save_all(path, calibrators)` wrote
 `json.dump` to
 `<home>/signal_calib.json`, a SIDECAR beside `brain_lake.bin`, holding LEARNED state that

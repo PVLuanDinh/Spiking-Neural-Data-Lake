@@ -432,6 +432,19 @@ class Brain:
                     self._reason_units = self._reason.n_units
             except Exception:
                 pass
+        # The acquired language organ's learned state is READ HERE, with the other persisted states,
+        # and applied when `_lm_serve` lazily builds the organ. Not read there: a lake read opens the
+        # BinLog, which repairs (truncates) a torn tail, and `_lm_serve` first runs inside respond() --
+        # on a write-latched survivor that would shorten the lake between two calls.
+        self._acq_lm_blob = None
+        if self._persist:
+            try:
+                from snn_data_lake.faculties.language_acquisition import STATE_NAME
+                from snn_data_lake.substrate.home import load_named_state
+
+                self._acq_lm_blob = load_named_state(STATE_NAME)
+            except Exception:
+                pass
 
         # ---- LIFELONG CONSOLIDATION (ladder L6+L11): the brain learns a SEQUENCE of tasks while it
         # SLEEPS, RETAINS old ones via interleaved replay (non-regression), and PRUNES to a capacity
@@ -3736,9 +3749,7 @@ class Brain:
                     self, "_acq_lm", None
                 )  # the acquired language organ, if built this run
                 if lm is not None:
-                    from snn_data_lake.substrate.home import state_path
-
-                    lm.save(state_path("language_acq.npz"))
+                    lm.save()
             except Exception:
                 pass
 
@@ -4907,17 +4918,12 @@ class Brain:
                 from snn_data_lake.faculties.language_acquisition import load_lm
 
                 self._acq_lm = load_lm(seed=self._seed)
-                if self._persist:  # never-forget: reload what it learned in prior runs
+                if self._acq_lm_blob is not None:  # never-forget: what it learned in prior runs
                     try:
-                        import os
-
-                        from snn_data_lake.substrate.home import state_path
-
-                        p = state_path("language_acq.npz")
-                        if os.path.exists(p):
-                            self._acq_lm.load(p)
+                        self._acq_lm.load(self._acq_lm_blob)
                     except Exception:
                         pass
+                    self._acq_lm_blob = None
             except Exception:
                 self._acq_lm = None
         return self._acq_lm
@@ -6050,9 +6056,7 @@ class Brain:
             pass
         try:  # final durable save (never-forget on shutdown)
             if self._persist and getattr(self, "_acq_lm", None) is not None:
-                from snn_data_lake.substrate.home import state_path
-
-                self._acq_lm.save(state_path("language_acq.npz"))
+                self._acq_lm.save()
         except Exception:
             pass
         try:  # Step-0: persist the recorded signal-calibration quantiles (resumable across restarts)

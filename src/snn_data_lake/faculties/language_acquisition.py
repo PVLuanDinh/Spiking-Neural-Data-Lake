@@ -32,12 +32,14 @@ NOT fluent English. That primitiveness is the correct evidence it is really lear
 the real proof is the DEVELOPMENTAL CURVE (surprise dropping over exposure). We never fake fluency.
 """
 
+import io
 import math
 import random
 
 import numpy as np
 
 from snn_data_lake.readout.predictive_coding import PredictiveCodingNetwork
+from snn_data_lake.substrate.home import load_named_state, save_named_state
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
@@ -53,6 +55,7 @@ GRADIENT_CLAIM = {
 VOCAB = "abcdefghijklmnopqrstuvwxyz .,'!?-\n"
 _STOI = {c: i for i, c in enumerate(VOCAB)}
 V = len(VOCAB)
+STATE_NAME = "language_acq.npz"  # the lake record name; also the legacy sidecar filename
 
 
 def _fold(ch):
@@ -222,31 +225,28 @@ class LanguageAcquisition:
                 best, best_s = text, s
         return best.strip()
 
-    # -- durability (optional): remember what it has learned across sessions ------------------------
+    # -- durability: remember what it has learned across sessions ----------------------------------
     #
-    # OPEN P4b VIOLATION, AND IT IS LIVE -- NOT "optional", and not unwired (recorded 2026-08-05
-    # against a claim that these two methods have "ZERO callers tree-wide", which is false).
-    # Measured call sites in `engine/brain.py`: `save()` on the sleep-consolidation path and again in
-    # the shutdown "final durable save (never-forget)" block, `load()` on the language-organ build
-    # path -- all three through `substrate.home.state_path("language_acq.npz")`. On the live operator
-    # home the file is 24,700 B and the running daemon had rewritten it within the minute; it is the
-    # LARGEST member of the sidecar family `home.py::save_state` censuses.
-    #
-    # So the acquired language does NOT die with the process. It persists -- into a `np.savez` blob
-    # beside `brain_lake.bin` instead of into it, which is the arrangement P4b forbids in those exact
-    # words ("not a sidecar file, not a JSON blob"). `W` is what the brain has LEARNED about
-    # language, so this is the same defect `_T_GROWTH` closed for grown substrate and `_T_SELFBUILD`
-    # closed for the self-build weights. The fix is a lake record tag plus the three `brain.py` call
-    # sites; neither file is this module's to change, so it is recorded HERE, at the writer.
-    def save(self, path):
-        np.savez(path, W=self.W, ctx=np.asarray(self._ctx_ids), n=self.n_seen)
-        return path
+    # INTO THE ONE LAKE (P4b), as a _T_STATE record named `STATE_NAME`. Until 2026-10-24 this wrote
+    # a `np.savez` sidecar beside `brain_lake.bin`. A pre-port `<home>/language_acq.npz` is imported
+    # once by `home._migrate_sidecar` on the first `load()` and never re-read.
+    def save(self):
+        buf = io.BytesIO()
+        np.savez(buf, W=self.W, ctx=np.asarray(self._ctx_ids), n=self.n_seen)
+        return save_named_state(STATE_NAME, buf.getvalue())
 
-    def load(self, path):
-        d = np.load(path, allow_pickle=False)
-        self.W = d["W"]
-        self._ctx_ids = list(d["ctx"])
-        self.n_seen = int(d["n"])
+    def load(self, blob=None):
+        """Restore from `blob` (a prefetched lake record), else from the lake now; cold if neither.
+
+        The serve path passes the blob `Brain.__init__` read: reading the lake from inside respond()
+        would open the BinLog and repair (truncate) a torn tail mid-conversation."""
+        blob = load_named_state(STATE_NAME) if blob is None else blob
+        if blob is None:
+            return self
+        with np.load(io.BytesIO(blob), allow_pickle=False) as d:
+            self.W = d["W"]
+            self._ctx_ids = list(d["ctx"])
+            self.n_seen = int(d["n"])
         return self
 
 

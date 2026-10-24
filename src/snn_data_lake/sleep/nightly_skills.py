@@ -15,14 +15,14 @@ skill formation" step the canonical brain's circadian sleep loop calls once per 
             persist EVERYTHING under substrate.home() so a reboot resumes instead of restarting.
 
 Persistence (real memory only, bounded, deduped -- never noise):
-  <home>/skills/<domain>.npz     the learned readout state per domain:
+  lake skills/<domain>.npz       the learned readout state per domain, one _T_STATE npz blob:
                                    SLDA-RFF head -> W, b, sum_c, cnt_c, ZZt (the order-invariant
                                    sufficient statistics: restoring them restores competence
                                    EXACTLY -- continual == joint, so reload never resets to 0);
                                    DistMult head -> E, R factor matrices + both MT19937 rng states;
                                  plus stream position, competence, visits, baseline and the
                                  signature exemplars that index the skill in the router lake.
-  <home>/skills/open_world.npz   discovered-domain centroids + counts + stream position (the
+  lake skills/open_world.npz     discovered-domain centroids + counts + stream position (the
                                  novelty buffer and per-domain item lists are ephemeral/bounded).
   <home>/skills.spkl             a per-boot SCRATCH proximity-router index (LakeMemory / StreamingHub).
                                  P4b: this is NOT a second durable store -- _ensure_lake() EMPTIES it
@@ -38,20 +38,12 @@ Persistence (real memory only, bounded, deduped -- never noise):
                                  is DERIVED FROM __file__ (see _STATE_JSON) so moving this module
                                  between regions cannot silently orphan the state it already wrote.
 
-P4b, stated for the promotion reviewer, and stated as three separate facts because an earlier draft of
-this paragraph ran them together into a clearance it had not earned. (1) Nothing here is a second
-durable MEMORY store: no episode, fact or chat record is kept, and no record is written to or read
-from brain_lake.bin. (2) The json summary goes through substrate/home.py's sanctioned STATE route
-(save_state), which is where that module puts this class of blob ("Weights/calibration stay separate
-STATE (save_state), never in the memory lake" -- home.py, verbatim). (3) The learned ARRAYS do NOT use
-that route: <home>/skills/*.npz is written with np.savez directly, so citing save_state does
-not cover them, and the earlier draft's wording implied it did. That third fact is unchanged from
-before this module's redesign and is left for the owner rather than settled here, because the tree
-settles the same question the other way for grown substrate -- neurogenesis persists fitted weights
-INTO the one lake under the growth tags (the _T_GROWTH_DELTA chain since specs/022 T010-ii) -- and
-choosing between "readout weights are STATE" and "readout
-weights are grown substrate" is a P4b adjudication, not an edit to this file. It is named here so the
-promotion decision is made with it visible.
+P4b. Nothing here is a second durable store: the json summary goes through home.save_state and
+the learned ARRAYS through home.save_named_state (np.savez blobs), both _T_STATE records IN
+brain_lake.bin. Until 2026-10-24 the arrays were np.savez files under <home>/skills/; per the
+owner's ruling they are learned state, so they live in the lake. A pre-port
+<home>/skills/<domain>.npz is imported ONCE by home._migrate_sidecar under the same name (see
+_skill_state) and never re-read.
 
 HONEST SCOPE (the ceiling, stated plainly): this is bounded nightly skill FORMATION with
 per-domain competence curves -- NOT general intelligence, and it does not "solve" any domain.
@@ -98,6 +90,7 @@ substrate.home. Deterministic: per-instance random.Random(seed) / np.random.Rand
 wall-clock; crc32 signatures only.
 """
 
+import io
 import os
 import random
 import tempfile
@@ -137,7 +130,14 @@ from snn_data_lake.sensorimotor.corpus_stream import (
     phoneme_stream,
 )
 from snn_data_lake.substrate.content_signature import SIG as _SIG_DIM
-from snn_data_lake.substrate.home import home, lake_path, load_state, save_state
+from snn_data_lake.substrate.home import (
+    home,
+    lake_path,
+    load_named_state,
+    load_state,
+    save_named_state,
+    save_state,
+)
 from snn_data_lake.substrate.proximity_replay import LakeMemory
 
 _SKILL_IDS = {"language": 0, "math": 1, "physics": 2, "world-kb": 3}
@@ -148,6 +148,27 @@ _ID_NAMES = {v: k for k, v in _SKILL_IDS.items()}
 # it; deriving it means the state blob is always named after whatever file is actually reading it. The
 # value is byte-identical to the former literal, so no existing home() is orphaned by this change.
 _STATE_JSON = os.path.splitext(os.path.basename(__file__))[0] + ".json"
+
+
+def _skill_state(name):
+    """The lake record name of one domain's learned arrays. It IS the pre-port sidecar's path under
+    home() ("skills/<name>.npz"), so `home._migrate_sidecar` imports an old file under it once."""
+    return f"skills/{name}.npz"
+
+
+def _save_arrays(name, **arrays):
+    buf = io.BytesIO()
+    np.savez(buf, **arrays)
+    return save_named_state(name, buf.getvalue())
+
+
+def _load_arrays(name):
+    blob = load_named_state(name)
+    if blob is None:
+        return None
+    with np.load(io.BytesIO(blob), allow_pickle=False) as z:
+        return {k: z[k] for k in z.files}
+
 
 #: This module's real dotted path, for the self-check banner. Also derived, for the same reason: a
 #: printed invocation line that is a literal survives a region move by staying wrong.
@@ -491,16 +512,11 @@ class NightlySkills:
             _say(f"[nightly-skills] load skipped ({exc!r}); starting fresh")
 
     # ------------------------------------------------------------------ lazy builds
-    def _skills_dir(self):
-        d = os.path.join(home(), "skills")
-        os.makedirs(d, exist_ok=True)
-        return d
-
     def _ensure_lake(self):
         """The per-boot SCRATCH proximity index. NOT a durable store, and this method is the reason:
         it EMPTIES the index before opening it, so it always starts blank and is rebuilt from the npz
         STATE. That is the P4b guarantee -- the exemplars have exactly one durable home
-        (<home>/skills/*.npz), and nothing here can accrete into a second one.
+        (the lake's skills/*.npz records), and nothing here can accrete into a second one.
 
         The OSError fallback is a MEASURED live-path fix, not defensive padding. On Windows a second
         NightlySkills over the same home cannot unlink the shared scratch file while the FIRST
@@ -547,7 +563,7 @@ class NightlySkills:
         holder makes os.remove raise on Windows, which is exactly the discriminator wanted: an
         orphan is a file nobody holds. On POSIX the unlink succeeds against a live holder too, and
         that is still safe -- the holder keeps its descriptor, the index is scratch, and its durable
-        source is <home>/skills/*.npz. Returns the number removed."""
+        source is the lake's skills/*.npz records. Returns the number removed."""
         removed = 0
         try:
             names = os.listdir(home())
@@ -682,14 +698,12 @@ class NightlySkills:
         d.registered = bool(int(z["registered"]))
 
     def save(self):
-        """Persist everything to home(): one npz per built domain (learned arrays + bookkeeping +
-        exemplars), the open-world controller's centroids, and the json summary. The router lake
+        """Persist everything INTO THE LAKE: one npz blob per built domain (learned arrays +
+        bookkeeping + exemplars), the open-world controller's centroids, and the json summary. The router lake
         (<home>/skills.spkl) is a rebuildable SCRATCH index (rebuilt from these npz exemplars on load),
-        NOT a durable store -- the durable skill memory is the npz STATE. Atomic writes."""
-        sk = self._skills_dir()
+        NOT a durable store -- the durable skill memory is the npz STATE. An unchanged blob is not
+        re-appended (save_named_state's skip)."""
         for name, d in (self._domains or {}).items():
-            path = os.path.join(sk, name + ".npz")
-            tmp = path + ".tmp.npz"
             ex = np.asarray(self._exemplars.get(name, []), dtype=np.float64)
             if ex.size == 0:
                 # width DERIVED from content_signature.SIG, not the literal 64 it used to be (P1).
@@ -699,8 +713,8 @@ class NightlySkills:
             if isinstance(d, _NightKB):
                 mk, mp, mg, mgv = _rng_state_arrays(d.model.rng)
                 ek, ep, eg, egv = _rng_state_arrays(d.rng)
-                np.savez(
-                    tmp,
+                _save_arrays(
+                    _skill_state(name),
                     E=d.model.E,
                     R=d.model.R,
                     mkeys=mk,
@@ -720,8 +734,8 @@ class NightlySkills:
                 )
             else:
                 s = d.slda
-                np.savez(
-                    tmp,
+                _save_arrays(
+                    _skill_state(name),
                     W=s.W,
                     b=s.b,
                     sum_c=s.sum_c,
@@ -737,19 +751,15 @@ class NightlySkills:
                     ctx=d.ctx,
                     exemplars=ex,
                 )
-            os.replace(tmp, path)
         if self._ow is not None and self._ow.cents:
             dids = sorted(self._ow.cents)
-            path = os.path.join(sk, "open_world.npz")
-            tmp = path + ".tmp.npz"
-            np.savez(
-                tmp,
+            _save_arrays(
+                _skill_state("open_world"),
                 cents=np.array([self._ow.cents[k] for k in dids], dtype=np.float64),
                 dids=np.array(dids, dtype=np.int64),
                 counts=np.array([self._ow.counts.get(k, 0) for k in dids], dtype=np.int64),
                 pos=self._ow_pos,
             )
-            os.replace(tmp, path)
         doms = dict(self._summary.get("domains", {}))
         if self._domains:
             for n, d in self._domains.items():
@@ -788,7 +798,7 @@ class NightlySkills:
         save_state(_STATE_JSON, summary)
 
     def load(self):
-        """Restore from home(); a no-op when nothing was saved. Rebuilds the proximity router from the
+        """Restore from the lake; a no-op when nothing was saved. Rebuilds the proximity router from the
         persisted npz exemplars into the freshly-emptied scratch index, and replays the bounded
         curiosity log into a fresh drive so selection resumes deterministically.
 
@@ -829,31 +839,25 @@ class NightlySkills:
         self._skill_ids = dict(_SKILL_IDS)
         self._skill_ids.update({k: int(v) for k, v in st.get("skill_ids", {}).items()})
         self._spawned_dids = set(int(x) for x in st.get("spawned_dids", []))
-        sk = os.path.join(home(), "skills")
         self._pending = {}
-        # iterate the npz files ON DISK, not the fixed seed roster -- a discovered-N skill's
-        # persisted readout would be invisible to a roster loop (the frontier-spawn port).
-        try:
-            npz_names = sorted(
-                fn[:-4]
-                for fn in os.listdir(sk)
-                if fn.endswith(".npz") and fn != "open_world.npz" and not fn.endswith(".tmp.npz")
-            )
-        except OSError:
-            npz_names = []
-        for name in npz_names:
-            p = os.path.join(sk, name + ".npz")
-            with np.load(p, allow_pickle=False) as z:
-                self._pending[name] = {k: z[k] for k in z.files}
-            ex = self._pending[name].get("exemplars")
+        self._pending_ow = _load_arrays(_skill_state("open_world"))
+        # Names come from the summary's saved domains, not the fixed seed roster, so a discovered-N
+        # skill's readout is found. The open-world dids are added too: a
+        # crash after save()'s array writes but before its summary write leaves a spawned domain's
+        # arrays with no summary entry.
+        names = set(st.get("domains", {}))
+        if self._pending_ow is not None:
+            names |= {f"discovered-{int(did)}" for did in self._pending_ow["dids"].tolist()}
+        for name in sorted(names):
+            z = _load_arrays(_skill_state(name))
+            if z is None:
+                continue
+            self._pending[name] = z
+            ex = z.get("exemplars")
             if ex is not None and ex.size:
                 # ndarray.tolist(), not a per-element float() loop over a (150, 64) array (P7).
                 # float64 -> python float is exact, so this is the identical nested list.
                 self._exemplars[name] = ex.tolist()
-        owp = os.path.join(sk, "open_world.npz")
-        if os.path.exists(owp):
-            with np.load(owp, allow_pickle=False) as z:
-                self._pending_ow = {k: z[k] for k in z.files}
         order = [n for n in st.get("router_order", []) if self._exemplars.get(n)]
         if order:
             self._router_order = order
