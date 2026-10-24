@@ -767,13 +767,15 @@ EXEMPT = {
         "(owner 2026-10-23, path 1 of the OG1 debate verdict, board #4729; Amendment A6). OUTCOME, "
         "re-dated 2026-10-23 (A9): the ONE Stage 1 candidate ran ONCE on the independently frozen "
         "acceptance battery and FAILED it (#4854: P-b25 7/10 against a bar of 8; every red row "
-        "rejected), so Stage 1 is NOT BUILT, no NULL-RECORD, and Stage 0b (A8) is NOT BUILT. By the "
-        "pre-registered branch this row stands as the ingest of reference data with no live consumer, "
-        "the owner deciding its future. Retire conditions: the owner's ruling (retire by deletion with "
-        "its pin and tests, or keep for a successor Stage 1 under a NEW pre-registration); a future "
-        "Stage 1 PASS -> retires when Stage 2's afferent modality row reaches the module; a future "
-        "readable census FAIL -> A4.9's arbiter amendment and NULL-RECORD, 'scale-retest' under the P8 "
-        "amendment, then A8 section 11.",
+        "rejected), so Stage 1 is NOT BUILT, no NULL-RECORD, and Stage 0b (A8) is NOT BUILT. OWNER "
+        "RULING 2026-10-23 (A10, verbatim): 'Keep organoid_ingest as a reference-data ingest for a "
+        "possible new Stage 1 pre-registration; its dormancy row stands, re-dated.' Re-dated "
+        "2026-10-23. Retire conditions: a NEW Stage 1 pre-registration that consumes it -> this row "
+        "follows that pre-registration (a PASS retires it when Stage 2's afferent modality row reaches "
+        "the module; a readable FAIL -> A4.9's arbiter amendment and NULL-RECORD, 'scale-retest' under "
+        "the P8 amendment, then A8 section 11); no new Stage 1 pre-registration frozen within 3 pushed "
+        "arcs -> the owner is asked again whether to keep it or retire it by deletion with its pin and "
+        "tests (an integrator review trigger, disclosed in A10).",
     ),
     "h01_ingest": (
         "wire",

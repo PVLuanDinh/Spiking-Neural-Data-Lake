@@ -1188,3 +1188,19 @@ may close Stage 1 without a NULL-RECORD.
 - This is a description, never a licence to re-run: A6.3 allows ONE run.
 
 **What A9 read:** no organoid data. It read the battery and its result, on synthetic data only.
+
+## Amendment A10, 2026-10-23 (PROCESS ONLY: the owner's ruling on organoid_ingest's future; append-only)
+
+**Owner ruling, verbatim:** "Keep organoid_ingest as a reference-data ingest for a possible new Stage 1
+pre-registration; its dormancy row stands, re-dated."
+
+- `sensorimotor/organoid_ingest` stays in the tree, off every live path, with its pin, tests and self-check.
+- Its EXEMPT `wire` row in `gates/dormancy_gate.py` is re-dated 2026-10-23 and quotes this ruling.
+- **A new Stage 1 needs a new dated pre-registration.** Nothing in A1-A9 authorizes another candidate or another
+  battery run. That pre-registration needs a "Sample size (P1)" section (the owner's rule, board #4876). If it needs
+  a 10x re-test source, it starts from A8 (frozen; Stage 0b NOT BUILT; branches kept).
+- **Integrator addition, disclosed:** the row carries a review trigger. If no new Stage 1 pre-registration is frozen
+  within 3 pushed arcs, the owner is asked again whether to keep the ingest or retire it by deletion. This is a P3
+  safeguard against a kept row standing unexamined; it does not change the ruling.
+
+**What A10 read:** nothing from organoid data.

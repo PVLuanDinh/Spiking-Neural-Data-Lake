@@ -54,7 +54,8 @@ sibling test already was. The real `null_scale_gate --assert` was green througho
 - There is no re-run, and no NULL-RECORD, because Stage 1 read no organoid byte.
 - Stage 0b (A8) is NOT BUILT because the candidate failed (A8 section 11: NOT BUILT (candidate)). Its lane branches
   are kept [closing review G2].
-- `organoid_ingest` stands with no live consumer; the owner decides its future.
+- `organoid_ingest` stands with no live consumer. The owner ruled (A10) to keep it as a reference-data ingest for a
+  possible new Stage 1 pre-registration. Its dormancy row stands, re-dated.
 - Four null designs were retired before any Stage 1 read of organoid data. They were retired on synthetic data,
   real-shaped in part from Stage 0's manifests (real unit counts) [closing review F1].
 - An independent acceptance battery comes first; then one candidate gets one run, and a failure is recorded as NOT
