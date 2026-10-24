@@ -208,13 +208,13 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # 2026-10-24/P5b on engine arc 1 (rust-lead-1024 restack): diffing _MOVED between arc 1
     # 7a72aa43 (327) and the P5b gate commit: added exactly p5b_gate (its gates REGIONS row);
     # nothing removed; LEGACY_REGIONS unchanged. 327 + 1 = 328 (measured on the rebased head).
+    # 2026-10-23/E1b-harness: diffing sorted(S._MOVED) between the E1b lane's base (326, G3-T1's
+    # grower included; a lane-branch commit, not on this tree) and the harness tree (327): added
+    # exactly instruments.rpe_charge (its REGIONS row only, never LEGACY_REGIONS); nothing removed.
     # 2026-10-24/engine arc 2 union (integrator): the P5b stack's p5b_gate and E1b's rpe_charge
     # are disjoint additions on c9d0c097 (327): 327 + 1 + 1 = 329, measured on the stacked tree.
     assert len(S._MOVED) == 329 and "claustrum" not in S._MOVED
     assert {"grower", "organoid_ingest", "p5b_gate", "rpe_charge"} <= set(S._MOVED)  # A-m2
-    # 2026-10-23/E1b-harness: diffing sorted(S._MOVED) between ae95833b (326, G3-T1's grower
-    # included) and the harness tree (327): added exactly instruments.rpe_charge (its REGIONS
-    # row only, never LEGACY_REGIONS); nothing removed.
 
 
 @pytest.fixture
