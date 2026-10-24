@@ -282,6 +282,7 @@ CORE = [
     "faculties.ring_attractor",
     "growth.growing_learner",
     "growth.function_preserving_growth",
+    "growth.grower",  # G3 T1: Grower + PerceptProblem forward to the B1 engine; brain-free, no torch
     "sleep.sleep_consolidation",
     "faculties.affective_memory",
     "faculties.contrastive_episode_analysis",

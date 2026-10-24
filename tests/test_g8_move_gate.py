@@ -198,7 +198,9 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # 2026-10-23/P8: diffing _MOVED between int3 b6e3fc9e (324) and the P8 gate commit (325):
     # added exactly gates.null_scale_gate (its REGIONS row); nothing removed; LEGACY_REGIONS
     # unchanged (G8 froze it).
-    assert len(S._MOVED) == 325 and "claustrum" not in S._MOVED
+    # 2026-10-23/G3-T1: diffing sorted(S._MOVED) between origin/main 20e1e742 (325) and the T1 tree
+    # (326): added exactly grower (its REGIONS row only, never LEGACY_REGIONS); nothing removed.
+    assert len(S._MOVED) == 326 and "claustrum" not in S._MOVED
 
 
 @pytest.fixture

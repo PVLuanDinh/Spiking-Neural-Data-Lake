@@ -464,6 +464,8 @@ REGIONS = {
         "growth_stop",
         # specs/022 T111 (G3) P3: the grow-attempt loop, the budget pause, the ledger + unit journal
         "growth_loop",
+        # specs/022 G3-T1 (P2 merge step 1): the Brain's one Grower + PerceptProblem wrapping the B1 engine
+        "grower",
         # specs/022 T111 (G3) P1: the taught learner's grown latency segment (frozen code never re-ranked)
         "grown_code",
         # specs/022 T111 (G3) P5: the grown units' projection into the G1 reservoir (connection 2)

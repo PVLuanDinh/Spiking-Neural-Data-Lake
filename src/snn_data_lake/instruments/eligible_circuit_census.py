@@ -247,10 +247,13 @@ RECORDS: tuple[Record, ...] = (
         reason="A unit bit must select the SAME rows of W and b, matching beta rows, placement "
         "entries, any batch-beta rows, category/class semantics and pending prediction/evidence. "
         "The staged census (staged_sleep_bout.py:118) reads _model.W only and misses b and beta.",
-        sites=("Brain.neuro",),
+        sites=("Brain.grower",),
         file="src/snn_data_lake/growth/ng_snn.py",
         line=267,
-        notes=("reached through Brain.neuro = self._make_neuro()",),
+        notes=(
+            "reached through Brain.grower = Grower(PerceptProblem(self._make_neuro())); "
+            "Brain.neuro is a read-through alias to grower.percept.engine until T6",
+        ),
     ),
     Record(
         owner_path="Brain.neuro.online_readout",
@@ -263,7 +266,7 @@ RECORDS: tuple[Record, ...] = (
         sites=(),
         file="src/snn_data_lake/growth/ng_snn.py",
         line=378,
-        nested_in="Brain.neuro",
+        nested_in="Brain.grower",
     ),
     Record(
         owner_path="Brain.attractor",

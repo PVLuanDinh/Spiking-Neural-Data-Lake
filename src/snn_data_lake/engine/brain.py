@@ -76,6 +76,7 @@ from snn_data_lake.faculties.set_points import (
     Homeostat,
     temp_setpoint,
 )
+from snn_data_lake.growth.grower import Grower, PerceptProblem
 from snn_data_lake.growth.growing_learner import GrowingLearner
 from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
 from snn_data_lake.sleep.circadian_clock import CircadianClock, light_cycle
@@ -644,7 +645,8 @@ class Brain:
         self._growth_feed_refusals = 0  # T047: poisoned trajectory rows refused at the feed
         self._neuro_feed_refusals = 0  # rank 2: wake percepts the grower refused (surfaced)
         self._prototype_faults = 0  # rank 2b: percepts the prototype learners could not take
-        self.neuro = self._make_neuro(self._seed, device)
+        eng = self._make_neuro(self._seed, device)
+        self.grower = Grower(PerceptProblem(eng)) if eng is not None else None
 
         # ---- language organ (brain-native, LAZY): the brain's CONVERSATION comes from the ACQUIRED
         # organ (faculties/language_acquisition, built lazily in _lm_serve -- spiking predictive coding +
@@ -1451,6 +1453,13 @@ class Brain:
         verdict, refused = feed_and_decide(self._growth_stop, trajectory)
         self._growth_feed_refusals += refused
         return verdict
+
+    @property
+    def neuro(self):
+        """Read-through alias to the percept engine inside the Grower (deleted at T6). None while
+        `_make_neuro` runs (the grower is not yet bound) or when the torch tier is absent."""
+        g = getattr(self, "grower", None)
+        return g.percept.engine if g is not None else None
 
     def _make_neuro(self, seed, device):
         """Lazily build the torch neurogenesis engine from THIS cortex package. torch is a core
@@ -2485,7 +2494,7 @@ class Brain:
         # otherwise read as "the brain perceives nothing" forever.
         if self.neuro is not None and res.get("unit") is not None:
             try:
-                self.neuro.observe(res["percept"], int(res["unit"]))
+                self.grower.observe(res["percept"], int(res["unit"]))
             except Exception:
                 self._neuro_feed_refusals += 1
         pcs = float(res.get("pc_surprise", 0.0) or 0.0)  # live generative-percept prediction-error
@@ -3266,7 +3275,7 @@ class Brain:
         night's growth/consolidation become real autobiographical episodes in the self-model."""
         if self.neuro is not None:
             try:
-                self.neuro.tick()  # GROW NG-SNN neurons (torch tier)
+                self.grower.tick()  # GROW NG-SNN neurons (torch tier)
             except Exception:
                 pass
         if self._drives is not None:
