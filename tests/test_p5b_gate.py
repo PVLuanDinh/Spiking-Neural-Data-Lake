@@ -26,9 +26,13 @@ def record(modules=MOD, drop=None, **over):
     return "\n".join([*rows.values(), f"P5b-MODULES: {modules}", ""])
 
 
-def run(tmp_path, files, grandfathered=None, cutoff=lambda root: set()):
+def same(root, rels):
+    return {rel: "h" for rel in rels}
+
+
+def run(tmp_path, files, grandfathered=None, cutoff=lambda root: {}, blobs=same):
     native_dormancy._write(tmp_path, files)
-    return pg.check(tmp_path, grandfathered=grandfathered or {}, cutoff=cutoff)
+    return pg.check(tmp_path, grandfathered=grandfathered or {}, cutoff=cutoff, blobs=blobs)
 
 
 def tree(src="//! x\n" + CITE, rec=None, **extra):
@@ -112,33 +116,119 @@ def test_record_naming_several_modules_serves_each(tmp_path):
 
 
 def test_grandfathered_module_is_green_and_counted(tmp_path):
-    files = tree(src="//! x\n", **{pg.RETRO: "x\n"})
-    report = run(tmp_path, files, {MOD: WHY}, cutoff=lambda root: {MOD})
+    files = tree(src="//! x\n", **{pg.RETRO: f"{MOD}\n"})
+    report = run(tmp_path, files, {MOD: WHY}, cutoff=lambda root: {MOD: "h"})
     assert report.reds == [] and report.counts["grandfathered"] == 1 and report.counts["cited"] == 0
 
 
 def test_grandfather_entry_for_a_missing_module_reds(tmp_path):
-    files = tree(src="//! x\n", **{pg.RETRO: "x\n"})
     gone = "c/src/gone.rs"
-    report = run(tmp_path, files, {MOD: WHY, gone: WHY}, cutoff=lambda root: {MOD, gone})
+    files = tree(src="//! x\n", **{pg.RETRO: f"{MOD}\n{gone}\n"})
+    report = run(tmp_path, files, {MOD: WHY, gone: WHY}, cutoff=lambda root: {MOD: "h", gone: "h"})
     assert [(r.code, r.where) for r in report.reds] == [("R-STALE-GRANDFATHER", gone)]
 
 
 def test_grandfathered_module_that_also_cites_reds(tmp_path):
-    files = tree(**{pg.RETRO: "x\n"})
-    report = run(tmp_path, files, {MOD: WHY}, cutoff=lambda root: {MOD})
+    files = tree(**{pg.RETRO: f"{MOD}\n"})
+    report = run(tmp_path, files, {MOD: WHY}, cutoff=lambda root: {MOD: "h"})
     assert report.codes() == {"R-STALE-GRANDFATHER"}
 
 
 def test_grandfather_reason_naming_a_missing_path_reds(tmp_path):
-    report = run(tmp_path, tree(src="//! x\n"), {MOD: WHY}, cutoff=lambda root: {MOD})
+    report = run(tmp_path, tree(src="//! x\n"), {MOD: WHY}, cutoff=lambda root: {MOD: "h"})
     assert report.codes() == {"R-MISSING"}
 
 
 def test_grandfather_entry_added_after_the_cutoff_reds(tmp_path):
-    files = tree(src="//! x\n", **{pg.RETRO: "x\n"})
-    report = run(tmp_path, files, {MOD: WHY}, cutoff=lambda root: set())
+    files = tree(src="//! x\n", **{pg.RETRO: f"{MOD}\n"})
+    report = run(tmp_path, files, {MOD: WHY}, cutoff=lambda root: {})
     assert report.codes() == {"R-GRANDFATHER-OPEN"}
+
+
+def test_grandfather_record_that_never_names_the_module_reds(tmp_path):
+    files = tree(src="//! x\n", **{pg.RETRO: "c/src/other.rs\n"})
+    report = run(tmp_path, files, {MOD: WHY}, cutoff=lambda root: {MOD: "h"})
+    assert [(r.code, r.where) for r in report.reds] == [("R-STALE-GRANDFATHER", MOD)]
+
+
+def test_grandfather_record_may_name_a_module_by_file_name_under_its_directory(tmp_path):
+    files = tree(src="//! x\n", **{pg.RETRO: "`c/src/*`: lib.rs\n"})
+    assert run(tmp_path, files, {MOD: WHY}, cutoff=lambda root: {MOD: "h"}).reds == []
+
+
+def test_grandfathered_module_edited_since_the_cutoff_reds(tmp_path):
+    files = tree(src="//! x\nmod hot { fn k() {} }\n", **{pg.RETRO: f"{MOD}\n"})
+    report = run(
+        tmp_path,
+        files,
+        {MOD: WHY},
+        cutoff=lambda root: {MOD: "h"},
+        blobs=lambda root, rels: {rel: "changed" for rel in rels},
+    )
+    assert report.codes() == {"R-GRANDFATHER-DRIFT"}
+
+
+def test_unhashable_grandfathered_module_fails_closed(tmp_path):
+    files = tree(src="//! x\n", **{pg.RETRO: f"{MOD}\n"})
+    report = run(
+        tmp_path, files, {MOD: WHY}, cutoff=lambda root: {MOD: "h"}, blobs=lambda root, rels: None
+    )
+    assert report.codes() == {"R-HISTORY"}
+
+
+def test_rs_file_outside_src_is_a_module(tmp_path):
+    report = run(tmp_path, tree(**{"native/c/kernels/hot.rs": "//! x\n"}))
+    assert [(r.code, r.where) for r in report.reds] == [("R-UNCITED", "c/kernels/hot.rs")]
+    assert report.counts["modules"] == 2
+
+
+@pytest.mark.parametrize("sub", ["tests", "benches", "examples"])
+def test_tests_benches_examples_are_not_modules(tmp_path, sub):
+    report = run(tmp_path, tree(**{f"native/c/{sub}/t.rs": "// t\n"}))
+    assert report.reds == [] and report.counts["modules"] == 1 and report.counts["test files"] == 1
+
+
+def test_build_script_is_excluded_by_name_and_counted(tmp_path):
+    report = run(tmp_path, tree(**{"native/c/build.rs": "fn main() {}\n"}))
+    assert report.reds == [] and report.counts["build.rs"] == 1
+    assert pg.count_line(report).endswith("test files 0, build.rs 1, reds 0")
+
+
+def test_a_src_file_named_build_rs_is_still_a_module(tmp_path):
+    assert run(tmp_path, tree(**{"native/c/src/build.rs": "//! x\n"})).codes() == {"R-UNCITED"}
+
+
+def test_module_citing_itself_with_a_block_comment_reds(tmp_path):
+    body = "/*\n" + record().replace("P5b-", " * P5b-") + "*/\n"
+    src = f"//! P5b-PREREG: native/{MOD}\n{body}"
+    assert run(tmp_path, {f"native/{MOD}": src}).codes() == {"R-RECORD-PLACE"}
+
+
+@pytest.mark.parametrize(
+    "cited",
+    ["docs/p.md", "specs/p.txt", "specs/../docs/p.md", "/specs/p.md", "specs\\p.md", "native/p.md"],
+)
+def test_record_must_be_a_specs_markdown_document(tmp_path, cited):
+    files = {f"native/{MOD}": f"//! P5b-PREREG: {cited}\n"}
+    assert run(tmp_path, files).codes() == {"R-RECORD-PLACE"}
+
+
+def test_git_ignored_record_reds(tmp_path):
+    files = tree(**{".gitignore": f"{EV}\n"})
+    assert run(tmp_path, files).codes() == {"R-RECORD-PLACE"}
+
+
+@pytest.mark.parametrize(
+    "evidence", ["see #3847", "per 2026-10-17", "at 7bc376d4faa0", "in notes/t018.md", "x.rs"]
+)
+def test_a_citation_is_not_a_number(tmp_path, evidence):
+    rec = record(**{"1": f"P5b-1 hot: MET -- {evidence}"})
+    assert run(tmp_path, tree(rec=rec)).codes() == {"R-NONUMBER"}
+
+
+def test_a_number_beside_a_citation_still_counts(tmp_path):
+    rec = record(**{"1": "P5b-1 hot: MET -- see #3847: 12 ms, 0.8 power"})
+    assert run(tmp_path, tree(rec=rec)).reds == []
 
 
 def test_unreadable_history_fails_closed(tmp_path):
@@ -148,6 +238,13 @@ def test_unreadable_history_fails_closed(tmp_path):
 def test_cutoff_modules_is_none_where_the_cutoff_commit_is_absent(tmp_path):
     native_dormancy._write(tmp_path, tree())
     assert pg.cutoff_modules(tmp_path) is None
+
+
+def test_real_grandfathered_modules_match_their_cutoff_blobs():
+    then = pg.cutoff_modules(Path(pg.REPO))
+    assert then is not None
+    now = pg.current_blobs(Path(pg.REPO), sorted(pg.GRANDFATHERED))
+    assert now == {rel: then[rel] for rel in pg.GRANDFATHERED}
 
 
 def test_census_lists_every_rs_with_a_status(tmp_path):
