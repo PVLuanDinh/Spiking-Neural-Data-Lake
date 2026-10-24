@@ -79,23 +79,43 @@ _needs_t0 = pytest.mark.skipif(
 )
 
 
-def _t0_base():
-    """The commit that ADDED T0's capture in HEAD's own history. The capture's `base_commit` names
-    the lane commit it ran on, which a restack leaves off every pushed ref (arc panel round 2 A-M1:
-    78af459c is absent from any clone); this one is in the lineage of any full clone, and its src
-    tree equals the captured one (T0 adds no src module; git diff 78af459c 4bc2a726 -- src)."""
+def _git(root, *args):
     import subprocess
 
-    rel = _T0_JSON.relative_to(_ROOT).as_posix()
-    sha = subprocess.run(
-        ["git", "log", "--diff-filter=A", "--format=%H", "-1", "--", rel],
-        cwd=_ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.strip()
-    assert sha, f"no commit adds {rel} in HEAD's history (shallow clone?)"
+    out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=True)
+    return out.stdout.strip()
+
+
+def _t0_base(root=_ROOT, rel=None):
+    """The LAST commit touching T0's capture in HEAD's history (an in-place re-capture moves it;
+    closing review A-2). The capture's `base_commit` names the lane commit it ran on, which a
+    restack leaves off every pushed ref (re-panel A-M1: 78af459c is in no clone); this one is in
+    any full clone's lineage, and its src tree equals the captured one (T0 adds no src module;
+    git diff 78af459c 4bc2a726 -- src is empty). A shallow clone refuses: its boundary commit
+    reads as touching every file (closing review A-1)."""
+    rel = rel or _T0_JSON.relative_to(_ROOT).as_posix()
+    assert _git(root, "rev-parse", "--is-shallow-repository") == "false", (
+        "R2's census anchor needs full history (shallow clone)"
+    )
+    sha = _git(root, "log", "--format=%H", "-1", "--", rel)
+    assert sha, f"no commit touches {rel} in HEAD's history"
     return sha
+
+
+def test_t0_anchor_is_the_last_capture_commit_and_refuses_a_shallow_clone(tmp_path):
+    """_t0_base on a scratch repo: a re-capture moves the anchor; a shallow clone refuses."""
+    repo, rel = tmp_path / "r", "cap.json"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    for body in ("1", "2"):
+        (repo / rel).write_text(body, encoding="utf-8")
+        _git(repo, "add", rel)
+        _git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", body)
+    assert _t0_base(repo, rel) == _git(repo, "rev-parse", "HEAD")
+    shallow = tmp_path / "s"
+    _git(tmp_path, "clone", "-q", "--depth", "1", repo.as_uri(), str(shallow))
+    with pytest.raises(AssertionError, match="shallow"):
+        _t0_base(shallow, rel)
 
 
 def _census_delta(base):
