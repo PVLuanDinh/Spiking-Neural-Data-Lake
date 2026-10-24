@@ -51,19 +51,21 @@ def test_percept_via_grower_is_byte_identical(seed, ticks):
 
 
 @pytest.mark.parametrize("seed,name", sorted(ONLINE))
-def test_online_engines_via_percept_problem_are_byte_identical(seed, name):
+def test_online_engines_via_grower_are_byte_identical(seed, name):
     from snn_data_lake.readout.online_readout import ClosingGate, OnlineReadout, _chain, _feed
 
     torch.set_num_threads(1)
     readout = None if name == "batch" else OnlineReadout("delta")
     gate = None if name == "delta_open" else ClosingGate(3)
-    p = PerceptProblem(
-        NeurogenesisSelfImprove(
-            seed=seed, device="cpu", refit_every=1, online_readout=readout, growth_gate=gate
+    g = Grower(
+        PerceptProblem(
+            NeurogenesisSelfImprove(
+                seed=seed, device="cpu", refit_every=1, online_readout=readout, growth_gate=gate
+            )
         )
     )
-    _feed(p.engine, _chain(seed, 600, flip_every=100))
-    eng = p.engine
+    _feed(g, _chain(seed, 600, flip_every=100))
+    eng = g.percept.engine
     assert (growth_fingerprint(eng), _traj(eng), int(eng.grown_units)) == ONLINE[(seed, name)]
 
 
