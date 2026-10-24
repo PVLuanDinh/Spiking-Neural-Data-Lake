@@ -72,6 +72,7 @@ def test_online_engines_via_grower_are_byte_identical(seed, name):
 _ROOT = Path(__file__).resolve().parents[1]
 _T0_JSON = _ROOT / "specs/022-unified-brain-arc/evidence/g3-t0-baseline.json"
 _CENSUS = ("total", "reachable", "exempt", "dormant")
+_KEY = "snap.derived.coverage_{}"
 _needs_t0 = pytest.mark.skipif(
     not _T0_JSON.exists(),
     reason="R2 needs g3-t0's committed g3-t0-baseline.json (thread G3-T0B); absent in this tree",
@@ -81,20 +82,20 @@ _needs_t0 = pytest.mark.skipif(
 def _census_delta(base):
     """How far the module census ("structural census of modules on disk") must move from T0's
     capture: each brain module ADDED since `base` (git), classified as live_coverage() classifies
-    it. Derived, never a literal: OG1's organoid_ingest stacked a second module on T1's +1 (A-B1).
-    A deleted module or a reclassified old one is not derived, so it reds the comparison."""
+    it. Derived, never a literal. A deleted module or a reclassified old one is not derived, so it
+    reds the comparison."""
     import subprocess
 
     from snn_data_lake.gates import dormancy_gate as dg
 
     out = subprocess.run(
-        ["git.exe", "diff", "--name-only", "--diff-filter=A", base, "--", "src/snn_data_lake"],
+        ["git", "diff", "--name-only", "--diff-filter=A", base, "--", "src/snn_data_lake"],
         cwd=_ROOT,
         capture_output=True,
         text=True,
         check=True,
     ).stdout.split()
-    added = {p[len("src/") : -len(".py")].replace("/", ".") for p in out} & dg.BRAIN_MODULES
+    added = {dg._mpath(str(_ROOT / p)) for p in out} & dg.BRAIN_MODULES
     reach = dg.reachable()
     exempt = {dg._CANON[m] for m in dg.EXEMPT if m in dg._CANON}
     return {
@@ -105,10 +106,12 @@ def _census_delta(base):
     }
 
 
-def _census_drift(old_view, new, base):
-    """{key: (T0, derived delta, new)} for each census key `new` does not reach from T0's view."""
-    delta = _census_delta(base)
-    t0 = {k: old_view[f"snap.derived.coverage_{k}"] for k in _CENSUS}
+def _census_of(view):
+    return {k: view[_KEY.format(k)] for k in _CENSUS}
+
+
+def _census_drift(t0, new, delta):
+    """{key: (T0, derived delta, new)} for each census key `new` does not reach from `t0`."""
     return {k: (t0[k], delta[k], new[k]) for k in _CENSUS if new[k] != t0[k] + delta[k]}
 
 
@@ -116,33 +119,35 @@ def _t0():
     return json.loads(_T0_JSON.read_text(encoding="utf-8"))
 
 
-@_needs_t0
-def test_live_census_moves_from_t0_by_the_derived_delta():
+def _live_drift():
     from snn_data_lake.infra.region_wiring import live_coverage
 
     old = _t0()
-    assert not _census_drift(old["arms"][0]["view"], live_coverage(), old["base_commit"])
+    return _census_drift(
+        _census_of(old["arms"][0]["view"]), live_coverage(), _census_delta(old["base_commit"])
+    )
+
+
+@_needs_t0
+def test_live_census_moves_from_t0_by_the_derived_delta():
+    assert not _live_drift()
 
 
 @_needs_t0
 def test_registered_module_outside_the_derivation_reds_the_census(monkeypatch):
     from snn_data_lake.gates import dormancy_gate as dg
-    from snn_data_lake.infra.region_wiring import live_coverage
 
     monkeypatch.setattr(dg, "BRAIN_MODULES", dg.BRAIN_MODULES | {"snn_data_lake.planted_module"})
-    old = _t0()
-    assert _census_drift(old["arms"][0]["view"], live_coverage(), old["base_commit"])
+    assert set(_live_drift()) == {"total", "dormant"}
 
 
 @_needs_t0
 def test_coverage_drift_without_a_registry_change_reds_the_census(monkeypatch):
     from snn_data_lake.gates import dormancy_gate as dg
-    from snn_data_lake.infra.region_wiring import live_coverage
 
     real = dg.reachable
     monkeypatch.setattr(dg, "reachable", lambda: real() - {"snn_data_lake.engine.brain"})
-    old = _t0()
-    assert _census_drift(old["arms"][0]["view"], live_coverage(), old["base_commit"])
+    assert set(_live_drift()) == {"reachable", "dormant"}
 
 
 @pytest.mark.slow
@@ -158,12 +163,12 @@ def test_brain_five_arm_matches_t0(tmp_path):
     assert [a["perception_tier"] for a in new["arms"]] == [
         a["perception_tier"] for a in old["arms"]
     ]
-    census = tuple(f"snap.derived.coverage_{k}" for k in _CENSUS)
+    census = tuple(_KEY.format(k) for k in _CENSUS)
+    delta = _census_delta(old["base_commit"])
     bad = {}
     for o, n in zip(old["arms"], new["arms"], strict=True):
         assert (o["seed"], o["arm"]) == (n["seed"], n["arm"])
-        moved = {k: n["view"][f"snap.derived.coverage_{k}"] for k in _CENSUS}
-        assert not _census_drift(o["view"], moved, old["base_commit"])
+        assert not _census_drift(_census_of(o["view"]), _census_of(n["view"]), delta)
         drift = [k for k in t0._diff(n["view"], o["view"], t0.WALL_CLOCK) if k not in census]
         rest = {k: (o[k], n[k]) for k in o if k not in ("view", "wall_s") and o[k] != n[k]}
         if drift or rest:
