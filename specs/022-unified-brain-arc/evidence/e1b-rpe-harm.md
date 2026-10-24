@@ -816,3 +816,100 @@ verdict reads, so H-V1 past look 19 is judged on 152 seeds, not the campaign's).
 narrowed (0.004 to 0.001 per step), so its planted harm still crosses look 1 (t > 64.0). Reds and greens:
 `lanes/engine-1024/e1b-hp1-row/REPORT.md`. The derivation is `lanes/engine-1024/e1b-hp1-row/derive_p1.py` (logs
 `logs/derive-*.log`). All numbers are brain-free simulations; no perception tier applies.
+
+## Addendum 6 (2026-10-24, lane e1b-fold, before any E1b brain run): erratum, supersession list, panel fold
+
+Append-only; written before any E1b brain run and before any E1b datum. Addenda 2-5 and every frozen section above are
+untouched; where this addendum and an earlier text differ, this addendum rules. It folds the arc-2 panel's E1b findings
+(`lanes/engine-1024/rv-arc2-a-row`, `-b-row`, `-c-row` REPORT.md): A-M3, A-M4, A-m3, A-m4, A-m6, B MAJOR-1, B MINOR-4,
+C-M1, C-M2, C-M3, C-m12, C-m13, C-m14. Nothing here changes a cap, a boundary, a claimed effect or a seed count.
+
+### Erratum: what decides `powered` (B MAJOR-1)
+
+Addendum 5's Futility / P(INCONCLUSIVE) bullet says: "A futility stop at n >= 72, or the cap without a crossing, is powered
+at E1's SD and takes the NULL-RECORD path". That sentence is withdrawn. It contradicts addendum 3 ("the OBSERVED SD at the
+stopped look decides `powered`"), the P1 amendment item 2 (a stop reports the mde at the seed count reached, and P8 item 4
+decides) and P8 null-scale item 4 (underpowered = INCONCLUSIVE). The rule is: **`powered` is decided at the OBSERVED SD at
+the stopped look** (addendum 3; `rpe_charge.seq_decision` / `seq_record`). The 0.0000 P(INCONCLUSIVE) figures of addenda
+4 and 5 are simulations at E1's NO-ENCODER SD; they predict, they do not decide. The production tier decides (#4616) and
+has no measured SD before look 1, so a production stop powered at E1's SD may still read INCONCLUSIVE at its own.
+
+Also from the fold (A-m4): an observed SD of exactly 0 (every d_s equal) gives mde 0. That is **not** powered. The stop
+reads "degenerate: zero variance, not powered: INCONCLUSIVE" and names the endpoint and its arm; a constant negative mean
+gives t = -inf (was 0.0).
+
+### Supersession list (C-M2, C-m13): the current values beside the earlier text they replace
+
+| earlier text | stated there | current (rules) | source |
+|---|---|---|---|
+| add. 2 / 3: hard cap | 32 per tier, looks 8/16/24/32 | H-P1 **184** (23 looks), H-V1 **152** (19 looks); the campaign runs H-P1's 23 | add. 4, 5; `P1_CAP`, `V1_CAP` |
+| add. 3 :531 H-V1 | capped at 32, power .303 | cap 152, shape power 0.8164 (harness) | add. 4 |
+| add. 3 :531 H-P1 | cap 32, power .816 | cap 184, shape power 0.8038 (harness) | add. 5 |
+| add. 3 :551 powered-SD bound at the cap | H-P1 0.075, H-V1 0.103 (DH or DM / 0.4650) | **H-P1 0.1758** = DH / ((1.8575 + 0.8436) / sqrt 184); **H-V1 0.1961** = DM / ((2.1730 + 0.8440) / sqrt 152) | `_mde` at each cap |
+| add. 3 :570-575 per-look table | 4 looks | the per-look bound is `DH or DM / _mde(n, _bound_t(n), 1)` at any look; the 4-look table is history | `rpe_charge._mde` |
+| add. 3 :577-580 consequence | "every H-V1 non-harm stop reads INCONCLUSIVE" | every stop is decided at its observed SD; at E1's SD an H-P1 cap stop is powered (0.0695 <= 0.1758; mde 0.0138) and an H-V1 cap stop is not (0.2040 > 0.1961: mde 0.0499 > DM 0.048, add. 4's P(INCONCLUSIVE) 0.3649) | this addendum |
+| add. 2 :448 futility drift | theta = delta sqrt(32) / SD_obs, tau = n / 32 | theta = delta sqrt(cap) / SD_obs, tau = n / cap, each primary its own cap | `seq_decision` |
+| add. 2 :560 "the look's O'Brien-Fleming t boundary" | normal-model LD-OBF t | H-P1: normal-model LD-OBF t (add. 5); H-V1: the shape-calibrated `V1_SHAPE_T` (add. 4) | `_bound_t` |
+| add. 2 :500 R-S2 | naive optional stopping 0.099 at 4000, 0.108 at 40 000 (4 looks) | over H-P1's 23 looks: naive **0.1310**, sequential 0.0075, at 4000 campaigns (seed 101) | `e1b-fold-row/logs/derive6.log` |
+| add. 4 / 5: "H-P1 / each primary carried from its cap" | carried from the cap | carried from its **own stop of record** (below, A-M4) | `_n_owed` |
+| add. 3 / 4 "a VOID no-encoder tier is reported beside" | VOID only; a valid but short / pending / other-tree no-encoder tier held production PENDING | the no-encoder tier is reported beside **in every state** (below, C-M3) | `cross` |
+| add. 5 :794 "its replay rows stop at seed 159" | rows stop | `replay` writes a row for every seed of the look; rows past 159 are **written and binding-checked, not read** (C-m12) | `replay`, `analyse` |
+
+### Each primary is carried from its own stop (A-M4)
+
+Addendum 3 makes the first stop the decision of record. The harness carried each primary from its CAP, so a primary that
+had stopped still owed its later runs: a missing later `pfrozen` run made the whole tier PENDING (H-P1 stopped, H-V1
+running), and a stopped H-V1 whose replay rows ended read NO VERDICT. Now each primary reads min(look, its stop of record);
+the stop is the first look whose complete prefix stops (`_n_owed`, which reuses `seq_record`). Runs past a stop are not
+owed, are not pending, and a later look reprints the stop. Cross-tier sign agreement counts the seeds both tiers read
+(the smaller of the two stops). `real` is still owed at every look while the campaign runs (H-V1's replay rows need it).
+
+### The seed-sensitivity flag reads the sequential bar (A-M3)
+
+`seed_sensitive` compared the full and the without-degenerate-seed t against the fixed-sample BAR = 1.895 and K_MIN = 5.
+It now uses the stopped look's `bound_t` and `k_min` (the bar of the decision it guards); with no sequential decision it
+keeps BAR / K_MIN. Degeneracy is screened on the `real` / `pfrozen` pair of every seed of the look, not only on the look-1
+block's five arms.
+
+### The no-encoder tier never holds the production decision (C-M3, A-m6)
+
+Owner #4616 (verbatim): "production tier decides". Addendum 3 and addendum 4 B-N4 named only a VOID no-encoder tier as
+"reported beside"; the code also held production PENDING when a VALID no-encoder tier was short, had pending checks, or ran
+on another tree. That hold is removed: the no-encoder tier is reported beside in every state ("no-encoder VOID / on another
+tree / short (n/owed seeds) / checks pending: reported beside") and never holds or vetoes the production decision. The
+NULL-RECORD precondition (addendum 3) is unchanged: it still needs the objective endpoint clean on BOTH tiers, which only
+ever withholds a record.
+
+### R-S1b is validated on its own calibration shape (A-m3)
+
+R-S1b resamples the same 8 E1 no-encoder d_s that `V1_SHAPE_T` was calibrated on, so its type-I check confirms the
+calibration on its fitting data. Type-I control under the shape boundaries is therefore established only for that
+no-encoder shape, not for the production tier's (which decides, and is first seen at look 1). One out-of-sample check is
+added (`test_rs1b_out_of_sample_shape_leave_one_out_keeps_type_one`): each of the 8 leave-one-out 7-value shapes, centred,
+500 campaigns each, RNG seeds 9000-9007. Result (`lanes/engine-1024/e1b-fold-row/derive6.py`, `logs/derive6.log`): H-P1 per-shape type I
+0.000-0.032, pooled **0.0043**; H-V1 per-shape 0.028-0.062, pooled **0.0450**. Both hold: pooled <= .05 + 3 SE (4000) =
+.0603 and every shape <= .05 + 3 SE (500) = .0792. A held-out H-V1 shape reaches .062, so the shape boundaries are not
+exactly .05 off their fitting data; the check bounds that excess, it does not remove it.
+
+### Family-wise false-harm rate per tier (B MINOR-4)
+
+H-P1 and H-V1 each decide at one-sided .05 with no correction (Revision 2's multiplicity rule), and a harm verdict is exempt
+from P8's re-test. Per tier the family-wise false-harm rate is at most 1 - .95^2 = **.0975** (independent endpoints; the
+Bonferroni bound is .10). Under the designs' simulated type I it is about **.0069 + .0510 = .058** under E1's shape
+(H-P1 0.0069, H-V1 0.0510, harness 40 000) and at most **.0077 + .05 = .058** under the normal null. Only the production
+tier decides a deletion (#4616), so this per-tier rate is the campaign's deletion FWER; the no-encoder tier's equal rate
+deletes nothing. Whether to correct is the owner's call (row folder `OPEN-QUESTIONS.md`, Q1); until answered, no correction.
+
+### The H-P1 cap's owner status (C-m14)
+
+One wording, which replaces addendum 5's "told to the owner, no objection" and "this addendum answers it": the H-P1 cap of
+184 is **a disclosed session call applying P1 item 2; the owner's choice (keep 184 / 32 as a disclosed departure /
+smoothed shape) is OPEN** (`lanes/engine-1024/e1b-hp1-row/OPEN-QUESTIONS.md` Q1). 184 binds until that question is
+answered.
+
+### Harness binding
+
+`src/snn_data_lake/instruments/rpe_charge.py`: `_n_owed(key, seeds, d_by_seed)` (each primary's stop of record), `analyse`
+(`n_owed`, the stopped-look sensitivity bar, the every-seed degeneracy screen, `ZERO_SD` / `ARM_OF` naming), `cross`
+(no-encoder beside in every state), `seq_decision` / `status` (zero SD never powered), `ttest` (-inf). Reds and greens:
+`lanes/engine-1024/e1b-fold-row/REPORT.md`. All numbers are brain-free simulations or arithmetic; no perception tier applies.
