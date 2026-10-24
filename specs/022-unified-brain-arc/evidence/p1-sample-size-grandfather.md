@@ -42,7 +42,7 @@ to pre-registrations, not pre-registrations, and are not on the list.
   frozen after the amendment, and a merge of its branch does not add it here (the closed list is by name, not by
   ancestry).
 
-## 3. The list (76)
+## 3. The list (71; five self-declared DRAFT rows moved to section 4 on 2026-10-24)
 
 | # | file | rule | grandfathered text (R1: the heading lines at `c9d0c097`) |
 |---|---|---|---|
@@ -55,12 +55,9 @@ to pre-registrations, not pre-registrations, and are not on the list.
 | 7 | `specs/022-unified-brain-arc/evidence/g1a-causal-contract.md` | R1 | L79 `## 2. Pre-registration (frozen at the commit that lands this file)` |
 | 8 | `specs/022-unified-brain-arc/evidence/g1b-pool-selection.md` | R1 | L111 `## 2. Pre-registration (frozen at the commit that lands the final text)` |
 | 9 | `specs/022-unified-brain-arc/evidence/g1c-carried-state.md` | R1 | L1 `# G1(c) / T109 part (c) -- carried state through the selected pool (pre-registration and record)`; L47 `## 2. Pre-registration (frozen at the commit that lands this text; later changes are dated amendments made ...` |
-| 10 | `specs/022-unified-brain-arc/evidence/g2-taught-problems.md` | R1 | L1 `# G2 / T110 -- problems the current weights provably cannot solve, taught through G0's channel (DRAFT pre-r...`; L63 `## 2. Pre-registration (DRAFT)` |
-| 11 | `specs/022-unified-brain-arc/evidence/g3-growth-loop.md` | R1 | L1 `# G3 / T111 -- growth where G2's capacity cell licenses it (DRAFT pre-registration, wave 1; not frozen)`; L60 `## 2. Pre-registration (DRAFT; frozen by the orchestrator; later changes are dated strengthenings before an...` |
 | 12 | `specs/022-unified-brain-arc/evidence/g3-t0-baseline.md` | R1 | L1 `# G3 T0: baseline capture for the one-grower merge -- PRE-REGISTRATION` |
 | 13 | `specs/022-unified-brain-arc/evidence/g4-wiring-prior.md` | R1 | L1 `# G4 / T112 -- the anatomical wiring prior: the H01 distance kernel first (G7's T3), then the attachment ru...`; L72 `## 2. Pre-registration: T3 -- does H01 favour a Gaussian distance kernel?`; L407 `## 3. Parts B-E (outlines; each owes a dated pre-registration amendment before its first run)`; L792 `### Dated pre-data amendment 2026-10-07 (c) to the Part B amendment -- the panel's folds (Codex gpt-6.1-sol...` |
 | 14 | `specs/022-unified-brain-arc/evidence/g5-handoff-repair-2026-10-11.md` | R1 | L9 `## Preregistration and rejected plan` |
-| 15 | `specs/022-unified-brain-arc/evidence/g5-readout-variants.md` | R1 | L1 `# G5 / T113 -- readout variants against the incumbent OnlineReadout (pre-registration DRAFT)` |
 | 16 | `specs/022-unified-brain-arc/evidence/g6-sleep-durable-memory.md` | R1 | L1 `# G6 / T114 -- sleep and durable memory (pre-registration, wave 1; frozen by the lead's P0 commit; section ...`; L77 `## 2. Pre-registration` |
 | 17 | `specs/022-unified-brain-arc/evidence/g7-unit-label-gate.md` | R1 | L1 `# G7 / T115 -- the unit-label gate (P4d's provenance check, red G-R7) and the designs of T1 and T4 (pre-reg...`; L61 `## 2. Pre-registration` |
 | 18 | `specs/022-unified-brain-arc/evidence/g8-reorganization.md` | R1 | L1 `# G8 / T116 -- the repository reorganized by engine function (pre-registration)`; L575 `## 2. Pre-registration (PRE-REGISTERED -- FROZEN 2026-09-25 at the design read's fold, the commit that land...`; L3205 `### 3.27 G8-3 pre-registration: M11a-M11e and D1 (Claude, work loop, 2026-10-02)` |
@@ -74,9 +71,7 @@ to pre-registrations, not pre-registrations, and are not on the list.
 | 26 | `specs/022-unified-brain-arc/evidence/og1-organoid-stream.md` | R1 | L713 `## Amendment A8, 2026-10-23 (Stage 0b pre-registration: the sorted 10x re-test source; FROZEN)`; L780 `### A8.2 Stage 1 clause (P8 item 2; the integrator authored A4.9 and the Stage 1 pre-registration; this pan...` |
 | 27 | `specs/022-unified-brain-arc/evidence/p8-null-scale-gate.md` | R1 | L1 `# P8 null-scale amendment: gate pre-registration (frozen before the gate is built)` |
 | 28 | `specs/022-unified-brain-arc/evidence/q2-surprise-context.md` | R1 | L127 `## 3. Results — 12 cells, 3000 ticks, 20:17–20:29 UTC, at f1a9bf8 (the pre-registration commit's head;` |
-| 29 | `specs/022-unified-brain-arc/evidence/r1-bounded-recall.md` | R1 | L1 `# R1 / T102 -- bound historical recall (pre-registration DRAFT and record)`; L97 `## 2. Pre-registration (DRAFT; becomes frozen at the commit that lands it; later changes are dated strength...` |
 | 30 | `specs/022-unified-brain-arc/evidence/r2-typed-replay-hydration.md` | R1 | L1 `# R2 / T103 -- sleep replay hydrated from typed lake records through the incumbent interaction learner (DRA...`; L76 `## 2. Pre-registration (frozen at the commit that lands this file)` |
-| 31 | `specs/022-unified-brain-arc/evidence/r3-replay-growth-composition.md` | R1 | L1 `# R3 / T104 -- eligible replay composed with the incumbent learner and grower; earned growth on held-out da...`; L84 `## 2. Pre-registration (DRAFT)` |
 | 32 | `specs/022-unified-brain-arc/evidence/s1-unit-blocks.md` | R1 | L30 `## 2. Pre-registration (written before unit_blocks.py existed)` |
 | 33 | `specs/022-unified-brain-arc/evidence/s2-exit.md` | R1 | L16 `## 0. Pre-registration -- the rules, written and COMMITTED BEFORE any command below was run` |
 | 34 | `specs/022-unified-brain-arc/evidence/s3-neuron-pager.md` | R1 | L88 `## 2. Pre-registration (written before neuron_pager.py existed)`; L381 `### 3.4 Deviations from the pre-registration, each with its reason` |
@@ -122,3 +117,20 @@ to pre-registrations, not pre-registrations, and are not on the list.
 | 74 | `specs/022-unified-brain-arc/evidence/w1-goal-curriculum.md` | R2 | whole file |
 | 75 | `specs/022-unified-brain-arc/evidence/w2-context-latents.md` | R2 | whole file |
 | 76 | `specs/022-unified-brain-arc/evidence/w3-world-baselines.md` | R2 | whole file |
+
+## 4. Owes a "Sample size (P1)" section at freeze (5; NOT grandfathered)
+
+Arc-2 panel, lens B MAJOR-5 (board #5196), fixed by the integrator 2026-10-24: P1 grandfathers only pre-registrations
+"frozen before this amendment landed". These five rows declare themselves DRAFT / not frozen in their own text at
+`c9d0c097` (four named by the panel; the r1 row found by the same grep for DRAFT), so freezing them later with their
+c9d0c097 text would have let the next engine rows (G2, G3, G5) run with a habitual seed count. Each must carry the
+section's fields when it freezes. The gate's reds (when built) add this case: a pre-registration on this list frozen
+without the section reds. Row numbers are those of the original 76-file list.
+
+| # | file | rule | text at `c9d0c097` |
+|---|---|---|---|
+| 10 | `specs/022-unified-brain-arc/evidence/g2-taught-problems.md` | R1 | L1 `# G2 / T110 -- problems the current weights provably cannot solve, taught through G0's channel (DRAFT pre-r...`; L63 `## 2. Pre-registration (DRAFT)` |
+| 11 | `specs/022-unified-brain-arc/evidence/g3-growth-loop.md` | R1 | L1 `# G3 / T111 -- growth where G2's capacity cell licenses it (DRAFT pre-registration, wave 1; not frozen)`; L60 `## 2. Pre-registration (DRAFT; frozen by the orchestrator; later changes are dated strengthenings before an...` |
+| 15 | `specs/022-unified-brain-arc/evidence/g5-readout-variants.md` | R1 | L1 `# G5 / T113 -- readout variants against the incumbent OnlineReadout (pre-registration DRAFT)` |
+| 29 | `specs/022-unified-brain-arc/evidence/r1-bounded-recall.md` | R1 | L1 `# R1 / T102 -- bound historical recall (pre-registration DRAFT and record)`; L97 `## 2. Pre-registration (DRAFT; becomes frozen at the commit that lands it; later changes are dated strength...` |
+| 31 | `specs/022-unified-brain-arc/evidence/r3-replay-growth-composition.md` | R1 | L1 `# R3 / T104 -- eligible replay composed with the incumbent learner and grower; earned growth on held-out da...`; L84 `## 2. Pre-registration (DRAFT)` |
