@@ -1,4 +1,10 @@
-"""specs/022 G3-T1 (P2, merge step 1 of 3): the Brain's ONE grower, wrapping the percept engine.
+"""specs/022 G3-T1 (P2, merge step 1 of 3): the Brain's grower, wrapping the percept engine.
+
+Step 1 of the merge owner #3403 ordered (ONE grower), not yet the one grower: at T1 it owns the
+percept problem only, and the taught problem still grows through `GrowthLoop`. `GrowthLoop` and
+`NeurogenesisSelfImprove` (neurogenesis_engine.py) retire at T6 (lanes/research-1016 DESIGN.md).
+P5b: Python. Criterion 3 (coarse boundary) fails by structure: each call forwards one method
+dispatch, far under ~10 us of work. (The T1 commit named criterion 1, which was never measured.)
 
 # distinct-from: neurogenesis_engine.py -- it WRAPS that engine (B1) and moves no refit code;
 # the hits (drive, growth-gate callable, lifecycle) are the engine's own surface, which this
@@ -30,7 +36,8 @@ class PerceptProblem:
 
 
 class Grower:
-    """The one owner of growth. `problems` maps a name to a Problem; T1 holds only `percept`."""
+    """Owner of percept growth (the one owner of growth from T6). `problems` maps a name to a
+    Problem; T1 holds only `percept`."""
 
     def __init__(self, percept: PerceptProblem):
         self.percept = percept
