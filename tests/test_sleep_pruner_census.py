@@ -37,6 +37,72 @@ def test_c1_a_planted_prune_call_appears_and_a_deleted_site_reds():
     assert gone.missing() == ["P-DP"], "C1: removing downscale_prune from the walk must red"
 
 
+_IMPORT = "from snn_data_lake.planted_ng import NGSNN"
+_PLANTED_NG = "class NGSNN:\n    def prune_unearned(self):\n        return 0\n"
+_HOLDER = f"{_IMPORT}\nclass Holder:\n    def __init__(self):\n        self.b = NGSNN()\n"
+
+
+def _planted_brain(head, params, body, call="self.g.prune_unearned()", holder=_HOLDER):
+    """A planted package: engine.brain's Brain reaches planted_ng.NGSNN through ONE typing rule."""
+    brain = (
+        f"{head}\nclass Brain:\n    def __init__({params}):\n        {body}\n"
+        f"    def _sleep_tick(self):\n        {call}\n"
+    )
+    return spc.census_static(
+        sources={"engine.brain": brain, "planted_ng": _PLANTED_NG, "planted_holder": holder}
+    )
+
+
+def _untyped_but_counted(cen):
+    """An untyped receiver is counted as unresolved, never chased: the call stays listed."""
+    return "P-EY" not in cen.found() and [
+        s for s in cen.unclassified() if s.method == "prune_unearned"
+    ]
+
+
+@pytest.mark.parametrize(
+    "body", ["self.g = NGSNN() if c else None", "self.g = None if c else NGSNN()"]
+)
+def test_the_conditional_constructor_rule_types_its_attribute(body):
+    assert "P-EY" in _planted_brain(_IMPORT, "self, c", body).found()
+
+
+@pytest.mark.parametrize("params", ["self, g: NGSNN", "self, *, g: NGSNN"])
+def test_the_annotated_parameter_rule_types_its_attribute(params):
+    assert "P-EY" in _planted_brain(_IMPORT, params, "self.g = g").found()
+
+
+@pytest.mark.parametrize(
+    "guard, cond",
+    [
+        ("from typing import TYPE_CHECKING", "TYPE_CHECKING"),
+        ("import typing", "typing.TYPE_CHECKING"),
+    ],
+)
+def test_a_type_checking_only_import_resolves_the_annotation(guard, cond):
+    head = f"{guard}\nif {cond}:\n    {_IMPORT}"
+    assert "P-EY" in _planted_brain(head, 'self, g: "NGSNN"', "self.g = g").found()
+
+
+def test_an_import_under_any_other_top_level_if_is_not_seen():
+    head = f"DEBUG = True\nif DEBUG:\n    {_IMPORT}"
+    assert _untyped_but_counted(_planted_brain(head, 'self, g: "NGSNN"', "self.g = g"))
+
+
+_TWO_HOP = ("from snn_data_lake.planted_holder import Holder", "self", "self.a = Holder()")
+
+
+def test_a_two_hop_self_chain_is_typed_hop_by_hop():
+    cen = _planted_brain(*_TWO_HOP, call="self.a.b.prune_unearned()")
+    assert "P-EY" in cen.found()
+
+
+def test_an_untyped_middle_hop_leaves_the_chain_unresolved():
+    holder = "class Holder:\n    def __init__(self):\n        self.b = object()\n"
+    cen = _planted_brain(*_TWO_HOP, call="self.a.b.prune_unearned()", holder=holder)
+    assert _untyped_but_counted(cen)
+
+
 def test_c2_each_removal_extractor_reads_a_planted_count():
     assert spc._removed_dict({"pruned": 3}, None, None) == 3
     assert spc._removed_int(2, None, None) == 2

@@ -211,9 +211,14 @@ class _Index:
         if t is None:
             return {}
         # top-level imports plus those in a top-level `if TYPE_CHECKING:` block (annotation-only imports)
-        return self._imports(
-            list(t.body) + [n for s in t.body if isinstance(s, ast.If) for n in s.body]
-        )
+        guarded = [
+            n
+            for s in t.body
+            if isinstance(s, ast.If)
+            and ast.unparse(s.test) in ("TYPE_CHECKING", "typing.TYPE_CHECKING")
+            for n in s.body
+        ]
+        return self._imports(list(t.body) + guarded)
 
     def local_imports(self, fn):
         return self._imports([n for n in ast.walk(fn) if isinstance(n, ast.ImportFrom)])
