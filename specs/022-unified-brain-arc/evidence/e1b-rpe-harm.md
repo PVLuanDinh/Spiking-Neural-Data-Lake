@@ -384,3 +384,122 @@ Append-only; no bar, constant or rule above is changed. Nothing here is a datum 
 - **Not done here.** The anchors of the header (`_rpe`, `_plan_lr`, `_pfc_bias`, `ValenceLearner` line numbers) are re-confirmed by
   the run lane on the tree it uses; the R1/R2 reds are run by the run lane (the module's preflight and `tier_verdict` reds are
   covered by the tests); no campaign run was made.
+
+## Addendum 2 (2026-10-23, lane e1b-seq, before any E1b brain run): the design becomes SEQUENTIAL (P1)
+
+Append-only; written before any E1b brain run and before any E1b datum. Owner, 2026-10-23 (verbatim, after asking "why a
+constant number of seeds?"): "switch E1b to a sequential design, P1 policy, make sure all sessions understand that" (board
+#4876). This addendum replaces the FIXED 8-seed decision of the two PRIMARY endpoints (H-P1, H-V1; sections 3, 5, 6) with a
+group-sequential decision. Everything else above stands: the arms, N = 600, H, the patch code, the tier pins, every validity
+check of section 4, the planted controls, the claimed effects (frozen literals DH = 0.035, DM = 0.048), the dispositions'
+vocabulary and the P8 null-scale rules. Every number below is re-derived by `lanes/engine-1024/e1b-seq-row/derive_seq.py`
+(brain-free; E1's recorded per-seed values only; output in that folder's `logs/derive-200k.log`).
+
+### Sample size (P1)
+
+Measured SDs (E1 REPORT-TABLES, no-encoder tier, seeds 0-7, the SD of the paired per-seed difference; Revision 2's outlier
+handling: the degenerate seed STAYS in, so E1 seed 1 is in both SDs):
+- H-P1, d_s = r_pfrozen - r_real: d = -0.0069, 0.0000, +0.1564, +0.0738, +0.1802, +0.0390, +0.0869, +0.0244; SD = **0.0695**.
+- H-V1, d_s = MAE_learn - MAE_frozen: d = +0.0405, -0.5355, +0.0378, +0.0083, +0.0591, -0.0441, +0.0709, +0.0537; SD = **0.2040**
+  (0.0391 without seed 1, reported only: the outlier decides power, as section 5 said).
+- The production tier has NO SD basis (section 5); E1's SDs are used for BOTH tiers by pre-registration. The observed SD
+  of each tier enters only the `powered` test at a stop (below), never the boundaries.
+
+| endpoint (both tiers) | SD | claimed effect | d_z | fixed-sample target (power .8, one-sided .05, t) | hard cap | sequential power at the cap | P(harm by look 2) |
+|---|---|---|---|---|---|---|---|
+| H-P1 | 0.0695 | DH = 0.035 | 0.504 | 26 seeds | **32** (26 rounded up to a block; the sequential design keeps power .816 >= .8 there) | **0.816** | 0.229 |
+| H-V1 | 0.2040 | DM = 0.048 | 0.235 | 114 seeds (120 at a block) | **32** (budget, below) | **0.303** | 0.045 |
+
+Alpha: one-sided .05 PER primary endpoint per tier (Revision 2's multiplicity rule, section 3: no correction; the cross-tier
+".0025" stays withdrawn). Target formula: the smallest S with (t_.95,S-1 + t_.80,S-1) SD / delta <= sqrt(S).
+
+**Budget and the H-V1 cap.** The hard cap is 32 seeds per tier (looks 8, 16, 24, 32) for BOTH primaries: it is H-P1's
+power-derived target rounded up to a block. H-V1's target (114, i.e. 120 at a block) exceeds it: reaching 120 would add 88 `real`
+runs per tier beyond the cap (about 60 min per tier at E1's no-encoder per-run time, production unknown) on a campaign whose
+production per-run cost is not yet measured. This addendum does NOT pre-register that extension. **H-V1 is pre-declared
+INCONCLUSIVE-prone at the cap**: power .303 for DM; with E1's SD its mde at the cap is 0.095 > DM, so a stop without a crossing
+is INCONCLUSIVE unless the tier's observed SD is <= DM / 0.4650 = 0.103 (half of E1's 0.204; H-P1's threshold is
+DH / 0.4650 = 0.075, above E1's 0.0695).
+Extending H-V1 alone to 120 seeds is an owner question (row folder `OPEN-QUESTIONS.md`); if the owner says yes it is a separately
+pre-registered extension, never a post-hoc one.
+
+### Looks, boundaries and the decision
+
+- **Looks** (seed blocks of 8, both tiers on the SAME seeds, synchronized): look 1 = seeds 8-15 (the owner's block, the full
+  campaign of sections 2 and 7), look 2 = 16-23, look 3 = 24-31, look 4 = 32-39 (the cap: 32 seeds). Looks 2-4 add ONLY the
+  `real` and `pfrozen` arms (all H-P1 and H-V1 need) plus the brain-free replay of the new `real` series; the secondary
+  endpoints, the repeat arm, the `pc` control and the bridge are evaluated at look 1 only, by the frozen text, unchanged.
+- **Alpha spending**: Lan-DeMets O'Brien-Fleming type, one-sided: a(tau) = 2 - 2 Phi(z_{0.975} / sqrt(tau)), tau = n / 32.
+  Boundaries solved on the z scale by recursive numerical integration of the B-value path (Armitage-McPherson-Rowe), with no
+  futility bound in the integration (futility is NON-BINDING).
+- **df handling**: each look's t boundary keeps that look's nominal one-sided p at df = n - 1: t_k = t_{1 - p_k, n_k - 1}.
+
+| look | seeds | n | cumulative alpha spent | z boundary | nominal p | **t boundary** (df) | sign count needed |
+|---|---|---|---|---|---|---|---|
+| 1 | 8-15 | 8 | 0.000089 | 3.7496 | 0.000089 | **7.2020** (7) | 5 |
+| 2 | 8-23 | 16 | 0.005575 | 2.5399 | 0.005544 | **2.8959** (15) | 10 |
+| 3 | 8-31 | 24 | 0.023625 | 2.0161 | 0.021897 | **2.1333** (23) | 15 |
+| 4 (cap) | 8-39 | 32 | 0.050000 | 1.7202 | 0.042702 | **1.7769** (31) | 20 |
+
+- **Harm boundary at look k**: t(d) over the n_k seeds > t_k AND #{d_s > 0} >= ceil(5 n_k / 8) (section 3's "5 of 8", scaled;
+  a tie is not in the direction). This replaces "t > 1.895 and >= 5 of 8" for H-P1 and H-V1. At look 1 the old bar 1.895 is
+  printed beside it as a reported statistic with no disposition.
+- **Futility (non-binding)**, looks 1-3: stop when the conditional power under the frozen claimed effect is < 0.10:
+  CP = 1 - Phi((z_cap - t sqrt(tau) - theta (1 - tau)) / sqrt(1 - tau)), theta = delta sqrt(32) / SD_obs, the observed t in place
+  of z, tau = n / 32. Non-binding: the boundaries above ignore it, so a futility stop never inflates the type-I rate.
+- **Powered** (decides what a non-harm stop means): mde at the cap with the tier's observed SD,
+  (t_cap + t_.80,31) SD_obs / sqrt(32) = (1.7769 + 0.8534) / 5.6569 SD_obs = 0.4650 SD_obs, <= the claimed effect. (Replaces the 1.00 * SD rule for the primaries.)
+- **Stop rule**: decide ONLY at a look, ONLY on a written boundary (harm, futility, or the cap). A decision at any other seed
+  count is refused by the harness (exit 3). A primary endpoint's FIRST stop on a tier is its decision of record; later looks
+  re-print it but never re-decide it. The campaign runs the next block while any primary endpoint on either tier is CONTINUE
+  and the cap is not reached; both tiers always run the same block (synchronized looks), so a tier that has stopped keeps
+  adding the shared seeds (reported, not re-decided).
+
+Simulated operating characteristics (200 000 campaigns per row, d_s ~ N(mu, SD), the harness's own decision function):
+
+| endpoint | truth | harm (type I or power) | futility stop | reaches the cap | expected seeds |
+|---|---|---|---|---|---|
+| H-P1 | zero effect, futility ignored | 0.0438 | n/a | | |
+| H-P1 | zero effect | 0.0435 | 0.658 | 0.299 | 24.9 |
+| H-P1 | DH = 0.035 | 0.816 (look 1 0.002, 2 0.226, 3 0.396, 4 0.190) | 0.022 | 0.162 | 25.0 |
+| H-V1 | zero effect, futility ignored | 0.0424 | n/a | | |
+| H-V1 | zero effect | 0.0423 | 0.812 | 0.146 | 18.9 |
+| H-V1 | DM = 0.048 | 0.303 (look 1 0.0004, 2 0.045, 3 0.134, 4 0.124) | 0.418 | 0.279 | 24.3 |
+
+### What each stop means for the Revision 2 dispositions (section 6; P8 null-scale rules unchanged)
+
+- **Stopped for harm** (boundary crossed at look k) = "H-P1 / H-V1 MET" in section 6, with every condition section 6 adds
+  (validity, controls PASS, the cross-tier requirement, the tier effect, the in-brain check for ValenceLearner). Wording names
+  the look: "MET at look k (n seeds)". A measured harm past its pre-registered boundary is the harm route (amendment item 4).
+- **Stopped for futility** or **reached the cap without crossing** = "not met" in section 6: an objective null at that
+  endpoint ONLY if `powered` (above) holds on the tier; otherwise **INCONCLUSIVE**: no deletion, no NULL-RECORD. A NULL-RECORD's
+  `seeds=` field is the n at the stop. No NULL-RECORD while either tier's primary is CONTINUE.
+- **CONTINUE** is no verdict: it is never "not met", never a tier finding, never a null.
+- Cross-tier (section 3): "harm on both tiers" needs both tiers' decisions of record to be harm, and the sign of d_s to agree on
+  >= ceil(6 n / 8) seeds at the later of the two stop looks (6, 12, 18, 24); the tier-effect test scales the same way
+  (>= ceil(6 n / 8) `real` seeds differ). The false-replication wording "between .0025 and .05" stands.
+- `_plan_w` objective E-P2 and every secondary endpoint: look 1 only (seeds 8-15), the frozen text; the `_plan_w` NULL-RECORD of
+  section 6 additionally needs H-P1 stopped without harm and `powered` on both tiers.
+
+### Run time per look (no brain was run for this estimate)
+
+Addendum 1 measured no per-run time (it measured brain-free controls only). The only measured per-run time is E1's: about
+34-38 s per 600-tick no-encoder run plus about 3 s construction (E1 REPORT, "Wall time and RAM"; 1435 s over 42 runs); about
+41 s per run is used. Look 1 = the frozen campaign: 86 runs + the 16-run bridge, about 70 min no-encoder-equivalent. Looks 2, 3
+and 4 each add 16 runs per tier (`real` + `pfrozen` x 8 seeds) = 32 runs, about 22 min per look at the no-encoder rate; the
+production tier's per-run time is measured at look 1 (stage A) and each later look is then re-estimated from it before its
+`resource:timing` claim. Worst case to the cap: 102 + 96 = 198 runs, about 2 h 15 min no-encoder-equivalent.
+
+### Harness binding
+
+`src/snn_data_lake/instruments/rpe_charge.py`: `LOOKS`, `SEQ_ALPHA`, `FUTILITY_CP`; `seq_boundaries()` (the table above) and
+`seq_decision(ds, claimed)` (one look's decision; refuses a non-look seed count); `analyse` decides H-P1 and H-V1 with it and
+refuses a non-look seed count; `null_precondition` refuses while a primary is CONTINUE; `cross` scales the agreement and
+tier-effect counts with the look; `replay` / `compare` / `cross` take `--look K`. Reds R-S1..R-S5 in `tests/test_rpe_charge.py`
+(fast, 4000 simulated campaigns; R-S1/R-S2 slow twin 40 000): R-S1 sequential type I <= .05 + 3 MC SE; R-S2 naive testing at
+.05 at every look on the same null series exceeds .05 + 3 SE (measured 0.099 at 4000, 0.108 at 40 000); R-S3 a planted harm of
+the claimed size crosses by look 2 and by the cap at the rates above (within 3 SE); R-S4 a planted zero effect stops for
+futility at the rates above; R-S5 a decision at 7, 12, 20 or 33 seeds is refused. graph-exists ("alpha spending", "group
+sequential", "interim analysis": NO LEXICAL MATCH; "power analysis sample size": three keyword hits, read, distinct): nothing in
+`src/` spends alpha or decides at interim looks; `instruments/paired_contrast.py` (fixed-S paired t) is distinct-from;
+`instruments/pool_selection.t_quantile` is REUSED. P5b: Python (criterion 1 fails: measurement code off the tick).
