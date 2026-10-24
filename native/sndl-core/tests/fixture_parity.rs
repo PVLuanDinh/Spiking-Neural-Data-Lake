@@ -5,7 +5,7 @@ use sndl_core::rng::parity::{KIT_SHA, UNCLAIMED, is_kit_fixture, run, sha256_hex
 const FIX: &str = include_str!("fixtures_rng.json");
 
 #[test]
-fn every_claimed_cell_matches_cpython_and_numpy() {
+fn every_claimed_cell_matches_cpython() {
     assert!(
         is_kit_fixture(FIX.as_bytes()),
         "fixture copy drifted from the kit's: sha256 {} != {KIT_SHA}",
@@ -19,7 +19,7 @@ fn every_claimed_cell_matches_cpython_and_numpy() {
         r.unclaimed.len(),
         r.unclaimed
     );
-    assert_eq!(r.claimed, 254);
-    assert_eq!(r.unclaimed.len(), 39);
+    assert_eq!(r.claimed, 125);
+    assert_eq!(r.unclaimed.len(), 40);
     assert!(r.failed.is_empty(), "failing cells: {:?}", r.failed);
 }

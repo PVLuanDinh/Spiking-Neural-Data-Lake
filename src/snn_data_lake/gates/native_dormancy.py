@@ -54,15 +54,11 @@ from pathlib import Path, PurePosixPath
 from snn_data_lake.gates import rust_facts as rf
 from snn_data_lake.gates.method_dormancy_gate import is_learn_verb
 
-_R04 = "R0.4 prerequisite (RNG parity kit) consumed by the first L-stage port; retire when that port lands"
 NATIVE_EXEMPT: dict[str, str] = {  # py export name | native-relative .rs path -> reason
     "panic_probe": "Phase 0 item 8b instrument: the one entry point that panics on purpose so "
     "tests/test_native_binding.py proves a panic surfaces as RuntimeError; test-only by design",
-    "sndl-core/src/rng/legacy.rs": _R04,
-    "sndl-core/src/rng/seedseq.rs": _R04,
-    "sndl-core/src/rng/pcg64.rs": _R04,
-    "sndl-core/src/rng/lcg.rs": _R04,
-    "sndl-core/src/rng/parity.rs": _R04,
+    "sndl-core/src/rng/parity.rs": "the PFC port's PyRandom parity oracle (test-only comparator over "
+    "fixtures_rng.json); retires with the PFC kernel",
 }
 NATIVE_EXEMPT_METHOD: dict[str, str] = {}  # "Type::fn" | "fn" | python name -> reason
 

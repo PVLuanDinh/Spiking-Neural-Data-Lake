@@ -1,28 +1,23 @@
-//! RNG parity kit (plan section 10, stage R0.4): bit-exact ports of every seeded stream SNDL's Python
-//! consumes, judged against `tests/fixtures_rng.json` (real CPython 3.14.6t `random` + numpy 2.5.1,
-//! RNG-KIT.md criteria C1-C8) by the one comparator in [`parity`].
+//! P5b-PREREG: specs/022-unified-brain-arc/evidence/p5b-pfc-rng-record.md
+//!
+//! RNG parity kit (plan section 10, stage R0.4), trimmed to what the PFC port consumes: bit-exact ports of
+//! CPython's seeded `random` stream, judged against `tests/fixtures_rng.json` (real CPython 3.14.6t
+//! `random`, RNG-KIT.md criteria C1-C8) by the one comparator in [`parity`].
 //!
 //! Ported: MT19937 as CPython seeds it ([`mt19937`]); `random.Random` int seeds of any size, str seeds
 //! (sha512 path), `random`, `getrandbits(k <= 128)`, `_randbelow` rejection, `randrange`/`randint`/
-//! `uniform`/`choice`/`choices`/`shuffle`/`sample`, `getstate`/`setstate` ([`pyrandom`]); numpy
-//! `SeedSequence` with hash mixing, list entropy and `spawn` ([`seedseq`]); `PCG64` XSL-RR with the
-//! `next_uint32` half buffer and `Generator.random`/`integers` (Lemire with rejection; a one-value range
-//! consumes no draw)/`uniform`/`permutation`/`shuffle`/`choice(n)` ([`pcg64`]); the legacy `RandomState`
-//! core `rand`/`permutation`/`choice` with keys+pos ([`legacy`]); `infra/_mathutils.py::Rng` ([`lcg`]);
-//! `zlib.crc32` for `reasoning_cortex._rng` ([`crc32`]).
+//! `uniform`/`choice`/`choices`/`shuffle`/`sample`, `getstate`/`setstate` ([`pyrandom`]); `zlib.crc32` for
+//! `reasoning_cortex._rng` ([`crc32`]). The numpy `SeedSequence`/`PCG64`/`RandomState` ports and the
+//! `infra/_mathutils.py::Rng` port were deleted (no live code used them; git keeps them at `623b4a14`).
 //!
 //! NOT ported, by RNG-KIT.md section 3 (OPEN items; the fixture sections stay UNCLAIMED and are never
-//! reported as passing): `random.gauss`, `random.expovariate`, `RandomState.randn` (OPEN-libm: bit-exact
-//! `log`/`sqrt`/`cos`/`sin` against the MSVC CRT is unmeasured) and `Generator.normal`/`standard_normal`
-//! (OPEN-ziggurat: numpy's 256-layer tables). `getstate` therefore always carries `gauss_next = None`.
+//! reported as passing): `random.gauss`, `random.expovariate` (OPEN-libm: bit-exact
+//! `log`/`sqrt`/`cos`/`sin` against the MSVC CRT is unmeasured). `getstate` therefore always carries
+//! `gauss_next = None`.
 
-pub mod lcg;
-pub mod legacy;
 pub mod mt19937;
 pub mod parity;
-pub mod pcg64;
 pub mod pyrandom;
-pub mod seedseq;
 
 /// |n| as little-endian u32 words, `0 -> [0]`: CPython's `random.seed(int)` key and numpy's
 /// `_coerce_to_uint32_array` agree on this shape.
@@ -96,9 +91,6 @@ pub fn crc32(b: &[u8]) -> u32 {
 // one bit at a time and count the fixture cells that go red (pre-registered in PREREG.md "## r04-rng").
 pub(crate) const SWAP53: u8 = 1;
 pub(crate) const SINGLE_WORD_SEED: u8 = 2;
-pub(crate) const BAD_INC: u8 = 4;
-pub(crate) const RNG0_DRAWS: u8 = 8;
-pub(crate) const NO_U32_BUFFER: u8 = 16;
 
 #[cfg(test)]
 #[inline]

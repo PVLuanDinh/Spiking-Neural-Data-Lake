@@ -40,3 +40,5 @@ batch B2 and is disclosed here, not repaired by back-dating.
 | `sndl-core/src/rng/mod.rs`, `sndl-core/src/lib.rs` | module and crate roots (shared helpers, the test-only mutant switch) | section 2 |
 | `sndl-python/src/lib.rs` | the binding crate (`pfc_decide`, plus the test-only `panic_probe`) | section 2 |
 | `sndl-core/src/rng/lcg.rs`, `sndl-core/src/rng/legacy.rs`, `sndl-core/src/rng/pcg64.rs`, `sndl-core/src/rng/seedseq.rs`, `sndl-core/src/rng/parity.rs` | R0.4 kit sections no live code uses | **no P5b record possible**: criteria 1-5 do not apply to code nothing runs. `native_dormancy.NATIVE_EXEMPT` keeps them under the reason "retire when that port lands"; the port landed in `5978bbcc` (2026-10-19). Their disposition is P3's (delete, or a new reason), not P5b's, and is put to review separately |
+
+2026-10-24: disposed (T119): lcg/legacy/pcg64/seedseq deleted; parity.rs trimmed to the PyRandom families, now cites p5b-pfc-rng-record.md.

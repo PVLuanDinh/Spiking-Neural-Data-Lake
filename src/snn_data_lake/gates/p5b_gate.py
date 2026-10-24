@@ -114,14 +114,8 @@ GRANDFATHERED: dict[str, str] = {
     for rel in (
         "sndl-core/src/lib.rs",
         _PFC,
-        "sndl-core/src/rng/mod.rs",
         "sndl-core/src/rng/mt19937.rs",
         "sndl-core/src/rng/pyrandom.rs",
-        "sndl-core/src/rng/lcg.rs",
-        "sndl-core/src/rng/legacy.rs",
-        "sndl-core/src/rng/parity.rs",
-        "sndl-core/src/rng/pcg64.rs",
-        "sndl-core/src/rng/seedseq.rs",
         "sndl-python/src/lib.rs",
     )
 }

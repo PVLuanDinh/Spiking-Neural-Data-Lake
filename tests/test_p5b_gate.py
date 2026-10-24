@@ -191,7 +191,7 @@ def test_the_pfc_reason_says_it_landed_under_p5b_and_the_others_do_not():
     pfc = pg.GRANDFATHERED["sndl-core/src/prefrontal_executive.rs"]
     assert "5978bbcc" in pfc and "66f2daac" in pfc and "p5b-pfc-retro-bench.md" in pfc
     others = [why for rel, why in pg.GRANDFATHERED.items() if "prefrontal" not in rel]
-    assert len(others) == 10 and set(others) == {pg._WHY}
+    assert len(others) == 4 and set(others) == {pg._WHY}
 
 
 def test_grandfathered_module_edited_since_the_cutoff_reds(tmp_path):
@@ -431,17 +431,17 @@ def test_self_check_passes():
     assert pg.self_check() == 0
 
 
-def test_real_tree_counts_eleven_grandfathered_and_no_reds():
+def test_real_tree_counts_five_grandfathered_two_cited_and_no_reds():
     report = pg.check(Path(pg.REPO))
     assert report.counts == {
-        "modules": 11,
-        "cited": 0,
-        "grandfathered": 11,
+        "modules": 7,
+        "cited": 2,
+        "grandfathered": 5,
         "test files": 1,
         "reds": 0,
     }, pg.render(report)
     assert report.reds == []
-    assert len(pg.GRANDFATHERED) == 11
+    assert len(pg.GRANDFATHERED) == 5
 
 
 # ---- arc-2 panel A-M2: out-of-tree crates, foreign sources, #[path]/include! escapes ----
