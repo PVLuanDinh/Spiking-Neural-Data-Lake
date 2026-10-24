@@ -712,3 +712,107 @@ and `SEQ` (each primary's claimed effect, looks, pre-registered SD and boundarie
 endpoints from the look-1 block; `replay_binding`; `cross` REFUSED / PENDING / VOID-beside. Reds and greens:
 `lanes/engine-1024/e1b-fix-row/REPORT.md`. The derivation is `lanes/engine-1024/e1b-fix-row/derive_v1.py` (logs
 `logs/derive-*.log`). All numbers are brain-free simulations; no perception tier applies.
+
+## Addendum 5 (2026-10-24, lane e1b-hp1, before any E1b brain run): H-P1's cap is raised to its power target
+
+Append-only; written before any E1b brain run and before any E1b datum. Addenda 2-4 and every frozen section above are
+untouched; where this addendum and an earlier text differ, this addendum rules. Owner, 2026-10-24 (verbatim, for H-V1):
+"Raise its cap to its power target". The integrator applies the same P1 rule (P1 amendment item 2: power at the cap >= .8)
+to H-P1 (lane brief E1B-HP1; told to the owner, no objection). Addendum 4 disclosed H-P1's power under E1's measured
+per-seed shape at its cap 32 as 0.6544 (the owner question Q2 of `lanes/engine-1024/e1b-fix-row/OPEN-QUESTIONS.md`); this
+addendum answers it.
+
+### Sample size (P1)
+
+**H-P1 (`_plan_w`, harm, claimed effect DH = 0.035, one-sided alpha .05, power target .8).**
+
+- **Pre-registered SD**: 0.0695, E1's NO-ENCODER paired SD (seed 1 kept). The production power is borrowed from it
+  (addendum 4, B-N3). The production tier decides (#4616). The OBSERVED SD at the stopped look decides `powered`.
+- **Statistic**: unchanged: the paired t and the sign gate ceil(5 n / 8) at each look, against the look's Lan-DeMets
+  O'Brien-Fleming t boundary.
+- **The shape, and why no fixed-sample target exists under it**: R-S1b resamples E1's eight centred H-P1 d_s, shifted by
+  the effect. Shifted by DH, exactly 5 of the 8 values are positive, so P(d > 0) = 5/8. That is the sign gate's own ratio
+  K_MIN / 8. One-look power with the gate therefore peaks at 0.584 (n = 24) and falls toward .5 as n grows (P(gate) at n
+  = 128: 0.5419). Without the gate, the t test alone would pass .8 by n = 24 (0.8468). (`lanes/engine-1024/e1b-hp1-row/
+  gate_probe.py`, 100 000 campaigns per n, `logs/gate-probe.log`.) So the brief's literal formula ("the seed count at which
+  shape power >= .8, times the design's inflation factor") has no solution: no one-look n reaches .8. The normal-model
+  fixed-sample target is 26 seeds, and 26 x the 4-look inflation gives addendum 2's cap of 32.
+- **The rule taken instead**: the cap is the first 8-seed look at which the SEQUENTIAL design's power under the shape plus
+  DH is >= .8. Each look is another chance at the gate, so sequential power rises with the cap. This is the rule
+  addendum 4 used for H-V1 (one more block while power at the cap < .8). The inflation factor is built in, because power
+  is simulated on the sequential design itself. Shown for reference: the LD-OBF inflation factor at 23 looks is 1.0644
+  (`derive_v1.py if 23`, 400 000 paths).
+  Sequential power under the shape, with addendum 2's normal-model boundaries (`derive_p1.py power <cap> plain`, numpy,
+  200 000 campaigns, RNG seed 62):
+
+  | cap | 32 | 48 | 64 | 96 | 128 | 160 | 168 | 176 | **184** | 192 | 256 |
+  |---|---|---|---|---|---|---|---|---|---|---|---|
+  | power | 0.6588 | 0.7029 | 0.7283 | 0.7616 | 0.7810 | 0.7952 | 0.7980 | 0.8010 | **0.8036** | 0.8063 | 0.8214 |
+
+  At 176 the numpy estimate is 0.8010, but the harness (`rpe_charge.seq_decision`, 40 000 campaigns, seed 9191) gives
+  **0.7987 < .8**. As addendum 4 did at 144, the cap takes one more block. **Hard cap = 184 seeds per tier, 23 looks of 8
+  seeds** (8, 16, ..., 184). Power there: **0.8036** (numpy, 200 000) and **0.8038** (harness, 40 000).
+- **Boundaries**: calibrated on the shape exactly as addendum 4 calibrated H-V1's (`derive_p1.py calib 184`, 200 000
+  campaigns, RNG seed 51). The shape-calibrated boundary is BELOW the normal-model boundary at every one of the 23 looks.
+  The rule "never below the normal-model boundary" therefore keeps the normal-model LD-OBF boundaries
+  (`SEQ["H-P1"]["bounds"] = None`):
+
+  | look | n | t | look | n | t | look | n | t |
+  |---|---|---|---|---|---|---|---|---|
+  | 1 | 8 | 64.0 (*) | 9 | 72 | 3.0889 | 17 | 136 | 2.1751 |
+  | 2 | 16 | 16.2946 | 10 | 80 | 2.9062 | 18 | 144 | 2.1106 |
+  | 3 | 24 | 7.5479 | 11 | 88 | 2.7537 | 19 | 152 | 2.0516 |
+  | 4 | 32 | 5.4969 | 12 | 96 | 2.6238 | 20 | 160 | 1.9973 |
+  | 5 | 40 | 4.5528 | 13 | 104 | 2.5112 | 21 | 168 | 1.9472 |
+  | 6 | 48 | 3.9879 | 14 | 112 | 2.4124 | 22 | 176 | 1.9007 |
+  | 7 | 56 | 3.6010 | 15 | 120 | 2.3247 | 23 (cap) | 184 | 1.8575 |
+  | 8 | 64 | 3.3137 | 16 | 128 | 2.2461 | | | |
+
+  (*) At n = 8 the LD-OBF z boundary is far in the tail, and `t_quantile` returns its 64.0 bisection ceiling. That ceiling
+  is the boundary the harness applies. Under the null, P(t_7 > 64) is about 3e-11, so the understatement adds at most about 3e-11 to the type I. Disclosed and not changed: `pool_selection.
+  t_quantile` is shared code outside this brief.
+- **Type I under the REAL shape** (planted-shape null): **0.0071** (numpy, 200 000, seed 61) and **0.0069** (harness,
+  40 000, seed 9090). Under the normal null: 0.0077 (harness); under the normal model at DH, power at the cap is 0.9938 (harness). R-S1b (<= .05 + 3 SE) holds.
+- **Futility** (non-binding, so continuing costs no type I; conditional power < .10, only where the mde from the
+  PRE-REGISTERED SD is <= DH; B-N2): it opens at **looks 9-22 (n = 72 to 176)**. mde_pre is 0.0361 at n = 64 (closed) and 0.0322 at n = 72 (open)
+  (`derive_p1.py futility 184 plain`). P(futility) under the null: 0.9081 (shape, harness) and 0.9010 (normal, harness).
+  At DH it is 0.0000 for both.
+- **P(INCONCLUSIVE)** (a non-harm stop whose mde at the observed SD exceeds DH): 0.0000 under the null and at DH, for both
+  the shape and the normal model (harness, 40 000). A futility stop at n >= 72, or the cap without a crossing, is powered
+  at E1's SD and takes the NULL-RECORD path (one 10x re-test before any deletion; addendum 3). It is never a deletion by
+  itself.
+- **Harm crossing by look 2**: 0.0000 (shape and normal).
+- **A disclosed limitation of the shape model** (owner question, `lanes/engine-1024/e1b-hp1-row/OPEN-QUESTIONS.md`): the
+  gap between shape power and normal-model power comes from an 8-point resample whose positive fraction sits exactly on
+  the sign gate. A smoother shape would move P(d > 0) off 5/8 and change the cap a lot in either direction. The cap above
+  applies the P1 rule as written to the shape model R-S1b uses. It does not re-open the frozen sign gate.
+
+### Shared looks (H-P1 and H-V1)
+
+Both primaries are decided at 8-seed blocks starting at seed 8, so H-V1's 19 looks are H-P1's first 19. The campaign runs
+`CAMPAIGN_LOOKS` = H-P1's 23 looks. Looks 1-19 decide both primaries. At looks 20-23 (160, 168, 176 and 184 seeds) only
+H-P1 is decided, and H-V1 is carried from its cap 152 (its replay rows stop at seed 159). Each primary stops for itself:
+once H-V1 has stopped, the campaign continues while H-P1 is CONTINUE and below its cap, and vice versa (addendum 3's stop
+rule, per primary). The E-* endpoints and the dispositions still read the look-1 block (addendum 4, A-B1).
+
+### Runs per look and hours (production tier decides, #4616; the no-encoder tier runs beside on the same looks)
+
+- Look 1 is the frozen campaign: 86 runs plus the 16-run bridge (unchanged).
+- **Looks 2-23 each add `real` + `pfrozen` x 8 seeds** = 16 runs per tier, 32 runs per look. Addendum 4's "looks 5-19
+  add `real` only" is replaced, because H-P1 now needs `pfrozen` at every look up to its cap.
+- Worst case to the H-P1 cap: 102 + 22 x 32 = **806 runs, about 9 h 11 min no-encoder-equivalent** (41 s per run, E1).
+  Addendum 4's worst case was 438 runs (about 5 h 0 min), so this adds **368 runs, about 4 h 11 min**. Of those, 240 are
+  the `pfrozen` runs at looks 5-19 and 128 are looks 20-23.
+- The production per-run time is measured at look 1 (stage A). Each later look is re-estimated from it before its
+  `resource:timing` claim.
+
+### Harness binding
+
+`src/snn_data_lake/instruments/rpe_charge.py`: `P1_CAP` = 184, `P1_LOOKS`, `P1_FUTILITY_LOOKS` (72..176) and `SEQ["H-P1"]`
+(bounds None, the normal-model boundaries), beside H-V1's constants in the same block. `CAMPAIGN_LOOKS` = the longer of
+the two primaries' looks; `analyse` refuses a seed count that is not a campaign look, and carries each primary from its own
+cap, including the cross-tier sign-agreement denominator and its AGREE_MIN bar (each endpoint counts only the seeds its own
+verdict reads, so H-V1 past look 19 is judged on 152 seeds, not the campaign's). `--look K` reaches 23. The brain-free harm fixture's per-seed spread is
+narrowed (0.004 to 0.001 per step), so its planted harm still crosses look 1 (t > 64.0). Reds and greens:
+`lanes/engine-1024/e1b-hp1-row/REPORT.md`. The derivation is `lanes/engine-1024/e1b-hp1-row/derive_p1.py` (logs
+`logs/derive-*.log`). All numbers are brain-free simulations; no perception tier applies.
