@@ -200,7 +200,13 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # unchanged (G8 froze it).
     # 2026-10-23/G3-T1: diffing sorted(S._MOVED) between origin/main 20e1e742 (325) and the T1 tree
     # (326): added exactly grower (its REGIONS row only, never LEGACY_REGIONS); nothing removed.
-    assert len(S._MOVED) == 326 and "claustrum" not in S._MOVED
+    # 2026-10-23/OG1 Stage 0: diffing REGIONS between origin/main 20e1e742 (326 members, _MOVED 325)
+    # and the OG1 Stage 0 stack (327, 326): added exactly sensorimotor.organoid_ingest (its REGIONS
+    # row); nothing removed; LEGACY_REGIONS and the claustrum shadow unchanged.
+    # 2026-10-23/engine arc 1 union (integrator): G3-T1's grower and OG1's organoid_ingest
+    # are disjoint additions, so the stacked tree holds both: 325 + 1 + 1 = 327 (measured).
+    assert len(S._MOVED) == 327 and "claustrum" not in S._MOVED
+    assert {"grower", "organoid_ingest"} <= set(S._MOVED)  # A-m2
 
 
 @pytest.fixture

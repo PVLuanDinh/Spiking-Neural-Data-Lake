@@ -758,6 +758,21 @@ EXEMPT = {
     # otherwise read as work: the single import in engine/brain.py flips this region to CHARGED on
     # its own, consumer or no consumer. The import is the cheap half; the charge is the measured
     # one, and only the second is evidence.
+    "organoid_ingest": (
+        "wire",
+        "specs/022 OG1 (T118) Stage 0, DATED 2026-10-23: the DANDI 001603 organoid NWB ingest -- "
+        "refusal gates (licence, streamed bytes, index incl. non-finite/negative times, time units "
+        "and the raster-edge span, exact depositor raster), each with its constructed red in its own "
+        "self-check (run_selfchecks), no download in CI. NEVER on a tick. Pushed WITHOUT its consumer "
+        "(owner 2026-10-23, path 1 of the OG1 debate verdict, board #4729; Amendment A6): the Stage 1 "
+        "census is NOT BUILT -- an acceptance battery frozen by a lane other than the null's author "
+        "comes first, then ONE candidate gets ONE run. Retire conditions: a Stage 1 PASS -> this row "
+        "retires when Stage 2's afferent modality row reaches the module; a Stage 1 candidate that "
+        "fails the acceptance battery -> Stage 1 is recorded NOT BUILT and this row stands as the "
+        "ingest of reference data with no live consumer, re-dated, the owner deciding its future; a "
+        "readable census FAIL -> 'scale-retest' under the P8 amendment (no deletion before ONE 10x "
+        "data re-test).",
+    ),
     "h01_ingest": (
         "wire",
         "specs/022 T062, DATED 2026-09-09: the H01 c3 synapse-graph ingest and the population it "

@@ -386,6 +386,8 @@ REGIONS = {
         "make_sensor_dataset",
         "multimodal_encoder",
         "nl_interface",
+        # specs/022 OG1 (T118) Stage 0: pinned DANDI 001603 organoid NWB -> npz behind five refusal gates (licence, bytes, index, time units, exact depositor raster); offline, never the lake
+        "organoid_ingest",
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
         "population_encoding",

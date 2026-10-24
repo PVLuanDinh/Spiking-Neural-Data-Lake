@@ -517,6 +517,7 @@ CORE = [
     "gates.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "sensorimotor.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "sensorimotor.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
+    "sensorimotor.organoid_ingest",  # OG1 Stage 0: five refusal gates (licence, bytes, index, time units, exact depositor raster), each red on a synthetic HDF5 fixture; no download, no lake
     "faculties.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
     "growth.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
     "growth.similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse

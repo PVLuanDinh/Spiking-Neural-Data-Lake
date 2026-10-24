@@ -1,0 +1,201 @@
+{
+ "dandiset": "001603",
+ "version": "0.260923.0623",
+ "license": "spdx:CC-BY-4.0",
+ "citation": "van der Molen, Tjitse; Spaeth, Alex; Chini, Mattia; Hernandez, Sebastian; Kaurala, Gregory; Schweiger, Hunter; Duncan, Cole; McKenna, Sawyer; Geng, Jinghui; Lim, Max; Bartram, Julian; Dendukuri, Aditya; Zhang, Zongren; Gonzalez-Ferrer, Jesus; Bhaskaran-Nair, Kiran; Morson, Aidan; Harder, Cole; Petzold, Linda; Alam El Din, Dowlette; Laird, Jason; Schenke, Maren; Smirnova, Lena; Colquitt, Bradley; Mostajo-Radji, Mohammed; Hansma, Paul; Teodorescu, Mircea; Hierlemann, Andreas; Hengen, Keith; Hanganu-Opatz, Ileana; Kosik, Kenneth; Sharf, Tal (2026) Preconfigured neuronal firing sequences in human brain organoids (Version 0.260923.0623) [Data set]. DANDI Archive. https://doi.org/10.48324/dandi.001603/0.260923.0623",
+ "doi": "10.48324/dandi.001603/0.260923.0623",
+ "assets": [
+  {
+   "path": "sub-HO1/sub-HO1_ses-20250924T002125.nwb",
+   "asset_id": "27acb682-482e-485f-9546-72705b4ceead",
+   "size": 24044512,
+   "sha256": "fcf777c3f2b37cf5303034f9405ab6add4585136a7920d5db807d5dfaafadb9b",
+   "subject": "HO1",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO2/sub-HO2_ses-20250916T190927_obj-1s1jcwl.nwb",
+   "asset_id": "5bc6228b-aa94-4acf-9423-b5a260844ff3",
+   "size": 31479240,
+   "sha256": "6b78a0188424e8b80d5ea136a3a9c016dba333afe17f38899c9aa63708bdce3d",
+   "subject": "HO2",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO2/sub-HO2_ses-20250916T190927_obj-vm83mt.nwb",
+   "asset_id": "c320780a-8fdf-4b40-b71b-480c5a9817c3",
+   "size": 16490528,
+   "sha256": "7abd2bb91dbd5781562ff320edfed25daffe536178d254eed4bee58f95632f23",
+   "subject": "HO2",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO2/sub-HO2_ses-20250916T190928_obj-86y47o.nwb",
+   "asset_id": "4087162f-664b-4ecb-97e9-d20e75ee77db",
+   "size": 16484448,
+   "sha256": "5b7b7d208da66f0e2e2e74a080921de2babd1a9520838a412ccade1c249a04a6",
+   "subject": "HO2",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO2/sub-HO2_ses-20250916T190936.nwb",
+   "asset_id": "1dbd10f8-3250-4b6d-b87f-dbb96dfc0f9a",
+   "size": 13616168,
+   "sha256": "b49362fbb744d4f083c3df8c3343f28a717c098d81e53c6815e0f30fa949fed8",
+   "subject": "HO2",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO2/sub-HO2_ses-20250924T002113.nwb",
+   "asset_id": "2e6c374c-69d5-4d60-b38b-b74a97afdf58",
+   "size": 31479240,
+   "sha256": "346a1b12118ce9bde242cfcb215cb8d726a79d6082e35baefe3dbf284c030b9a",
+   "subject": "HO2",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO2/sub-HO2_ses-20250926T121741.nwb",
+   "asset_id": "2d60a3ec-ca56-43fc-9727-c7a924975086",
+   "size": 13616168,
+   "sha256": "9cd2f43235ae249e6152de2a4048c8526277b5ed4367a5fa7d1fbe32f8c440f0",
+   "subject": "HO2",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO2/sub-HO2_ses-20250926T121745.nwb",
+   "asset_id": "68773f4e-8ca8-4b2d-861a-5b9d50793d07",
+   "size": 16484448,
+   "sha256": "18168950899ecb76ebbe3a76da4688526167293effc5bfe352670062d6748518",
+   "subject": "HO2",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO2/sub-HO2_ses-20250929T123538.nwb",
+   "asset_id": "65f29bb8-6ec7-454c-a384-e0537de516da",
+   "size": 16490528,
+   "sha256": "f635cef01a7a3fb23fc36009194589a250a0a3e494ec8f7ffda3ca3d24cda00a",
+   "subject": "HO2",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO2/sub-HO2_ses-20250929T123754.nwb",
+   "asset_id": "1958fc24-3e83-4dc1-a6ab-da1c768d0f26",
+   "size": 31479240,
+   "sha256": "41e3975698e619ba2302daf626f080feb390c011875ac7db2704a08bdba7ba12",
+   "subject": "HO2",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO3/sub-HO3_ses-20250916T190928.nwb",
+   "asset_id": "0993e54b-898f-4e33-b5ca-5dc4ef54c0c5",
+   "size": 21363257,
+   "sha256": "9f81c7d402ddd3902c27412a2988939a11519745e8715f8f3b33ddb14a45bd0e",
+   "subject": "HO3",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO3/sub-HO3_ses-20250916T190930_obj-2sqh9d.nwb",
+   "asset_id": "939e0920-8b09-449c-84f9-a54f512a1d47",
+   "size": 14691680,
+   "sha256": "acceea4b94de29350508d474af9e8050291da9c216abfcd3dc2d3ce98cd9ade6",
+   "subject": "HO3",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO3/sub-HO3_ses-20250916T190930_obj-ikzmsj.nwb",
+   "asset_id": "3513c0e3-51d7-4cd0-ad5c-6bfeb46d4485",
+   "size": 21159280,
+   "sha256": "d0c673e16f5e5e09860ab06aa06e81d878f1b82c2f76631a679f2a21fcb26c91",
+   "subject": "HO3",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO3/sub-HO3_ses-20250916T190937.nwb",
+   "asset_id": "356d4cb3-c817-419b-bf7d-3345931f41be",
+   "size": 9066104,
+   "sha256": "d5e5f72db06de01db28c7fbbe5ef2166b8e739a8810e1b548463edf02555c5b1",
+   "subject": "HO3",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO3/sub-HO3_ses-20250924T002116.nwb",
+   "asset_id": "dbac6946-2cc5-4902-987b-da0592c5518c",
+   "size": 14691680,
+   "sha256": "e8bf96df1f8f07b71cb700f24fb51c0c48148402093ca57a4e5eea2ecf26105f",
+   "subject": "HO3",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO3/sub-HO3_ses-20250926T121741.nwb",
+   "asset_id": "95722142-8aa0-43fa-a949-a70e68c27f4a",
+   "size": 21159280,
+   "sha256": "6f86665374f3efe026e4c36d29144e0753b26c08092123f9cd618212c90f96ef",
+   "subject": "HO3",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO3/sub-HO3_ses-20250926T121744.nwb",
+   "asset_id": "b9a9f6cb-bc19-4646-8b81-a547a91e4373",
+   "size": 14691680,
+   "sha256": "6e2f0fe928dd17ce64a7e204e8b52a3fd6b8da08f5a258ca512f627509241d96",
+   "subject": "HO3",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO3/sub-HO3_ses-20250926T121746.nwb",
+   "asset_id": "1037eacc-45bf-40f4-82e1-974fe9fa9378",
+   "size": 9066104,
+   "sha256": "4aea1b6e88467d4c77069e63cd6ad0fce1b9dc7655128756f150e7469219c376",
+   "subject": "HO3",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO3/sub-HO3_ses-20250929T121914.nwb",
+   "asset_id": "099fdf1b-db03-4187-8186-b0e704fa7160",
+   "size": 21363257,
+   "sha256": "ff65d87ebd7d62021d5e08e0acddbabb117dff54a5072f7b7eed54bee29a9ced",
+   "subject": "HO3",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO4/sub-HO4_ses-20250924T002126.nwb",
+   "asset_id": "0ca461d3-eaa0-4b9d-b85c-c730a74e55e6",
+   "size": 22451008,
+   "sha256": "88627424dd5ba99fce7062fc05f5e13aa21b6514500809ea897d5d3e974b5988",
+   "subject": "HO4",
+   "split": "dev"
+  },
+  {
+   "path": "sub-HO5/sub-HO5_ses-20250924T002125.nwb",
+   "asset_id": "b163806e-10ec-46fe-b08a-52a1fd1b9757",
+   "size": 185702104,
+   "sha256": "994089b04fee86bd987709e45826386d153f3c1ab6e54f7752f733865cfd84e7",
+   "subject": "HO5",
+   "split": "held-out"
+  },
+  {
+   "path": "sub-HO6/sub-HO6_ses-20250924T002106.nwb",
+   "asset_id": "fce5c6df-a5b0-4c4e-a653-8bc0f11add6d",
+   "size": 30375088,
+   "sha256": "2c28348b94804475f471a59a0bb1697bb1fe0cf28158d3eecab7f24034239a52",
+   "subject": "HO6",
+   "split": "held-out"
+  },
+  {
+   "path": "sub-HO7/sub-HO7_ses-20250924T002328.nwb",
+   "asset_id": "dd3587f6-57b9-4460-8f4c-8e9421481a16",
+   "size": 18321872,
+   "sha256": "34c80fcd8f558dd361c2aeded67596e2ee3b2b1bd75c847deab9b93ddec7488f",
+   "subject": "HO7",
+   "split": "held-out"
+  },
+  {
+   "path": "sub-HO8/sub-HO8_ses-20250924T002134.nwb",
+   "asset_id": "97231940-fd98-4ec0-be27-7962ad8b8cfb",
+   "size": 21343502,
+   "sha256": "95825eeca47e5448b3027bd7c05618dbb1587659c4eff94bbc07978b6b3cc41a",
+   "subject": "HO8",
+   "split": "held-out"
+  }
+ ]
+}
