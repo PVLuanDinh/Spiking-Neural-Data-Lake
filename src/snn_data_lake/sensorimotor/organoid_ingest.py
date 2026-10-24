@@ -21,7 +21,9 @@ GATES. Each is a refusal (`IngestRefused`, reused from `growth/h01_ingest`: it a
                 `x_pos` and `y_pos` per unit (a file without them is refused).
   (d) TIME UNITS  of {seconds, milliseconds, samples at 20 kHz} the declared-seconds reading puts the
                 last spike closest to the recording span the file records, and no spike lies at or
-                past that span (Amendment A4.8).
+                past that span (Amendment A4.8). The span must start at 0: a raster `starting_time`
+                != 0 is refused, because (d) and the artifact read absolute times (2026-10-23,
+                engine-arc panel A-M4).
   (e') REPRODUCE THE DEPOSITORS' BINNING (Amendment A1.1 replaced the frozen (e): the papers publish no
                 per-recording unit count). The 1 ms raster `t_spk_mat` is rebuilt from the units table,
                 row = floor((t - starting_time) x rate - 0.5) (Amendment A2.1: the depositors' MATLAB 1-based
@@ -271,6 +273,25 @@ def recorded_span(h5):
     raise IngestRefused("(d) the file records no recording span to compare against")
 
 
+# distinct-from: faculties/spiking_curiosity.py -- that is an LIF pool's membrane time-constant span; this checks an NWB raster's start time
+# distinct-from: faculties/claustrum.py -- that is a coincidence gate over area rasters; this is an ingest refusal on one file's span start
+# distinct-from: gates/replay_gate.py -- that refuses a snapshot restore; this extends this module's own gate (d) (sites read 2026-10-23)
+def gate_span_start(t0):
+    """(d), start of the span: refuse a raster whose `starting_time` is not 0. Gate (d) compares
+    ABSOLUTE spike times with the span and the npz stores absolute times, while (e') rebuilds rows
+    from t - t0 and drops negative rows. So a t0 > 0 file passed (c), (d) and (e') with spikes in
+    [0, t0) and wrote them into the artifact; a t0 < 0 file misjudges the span the other way (the
+    engine-arc panel's A-M4 probe, 2026-10-23). All 24 pinned 001603 files read t0 = 0.
+    ponytail: refuses instead of shifting; the upgrade is (d) and (e') on t - t0 with any spike
+    before t0 refused, under a dated amendment."""
+    if t0 != 0.0:
+        raise IngestRefused(
+            f"(d) the recorded span starts at t0 = {t0!r} s, not 0: gate (d) and the artifact read "
+            "absolute times, so a nonzero start is refused until both read t - t0"
+        )
+    return t0
+
+
 def gate_time_units(spike_times, duration_s):
     """(d) Of {seconds, milliseconds, samples at 20 kHz}, the declared seconds reading puts the last
     spike STRICTLY closest to the recorded span, and no spike lies at or past the span. Returns every
@@ -408,6 +429,7 @@ def ingest_file(path, entry, pin, out_dir=None):
             x_pos, y_pos = read_positions(h5, readings["n_units"])
             dur, where, t0, rate = recorded_span(h5)
             readings.update(duration_s=dur, span_from=where, span_start_s=t0, span_rate_hz=rate)
+            gate_span_start(t0)
             readings["d_time_units"] = gate_time_units(spikes, dur)
             readings["e_reproduce"] = gate_reproduce(
                 spikes, index, np.asarray(h5[where + "/data"][()]), t0, rate
@@ -518,11 +540,20 @@ _FIXTURE_UNITS = [[0.1006, 0.5004, 1.2007], [0.3009, 1.9003], [0.7002]]
 
 
 def write_fixture_nwb(
-    path, units=None, bins=2000, rate=1000.0, index=None, span=True, raster=None, positions=True
+    path,
+    units=None,
+    bins=2000,
+    rate=1000.0,
+    index=None,
+    span=True,
+    raster=None,
+    positions=True,
+    t0=0.0,
 ):
     """A small NWB-shaped HDF5 file. `units` = list of per-unit spike-time lists (seconds). The stored
     raster is the declared-convention rebuild of the TRUE units unless `raster` is given. `positions`
-    writes the units table's x_pos / y_pos (unit i at (100 i, 50 i)); False leaves them out."""
+    writes the units table's x_pos / y_pos (unit i at (100 i, 50 i)); False leaves them out. `t0` is the
+    raster's `starting_time` (seconds); the stored raster is rebuilt from it, as a depositor's would be."""
     import h5py
     import numpy as np
 
@@ -542,9 +573,9 @@ def write_fixture_nwb(
             if raster is None:
                 true_idx = np.cumsum([len(u) for u in units]).astype(np.int64)
                 with np.errstate(invalid="ignore"):  # a NaN fixture time draws no cell
-                    raster = rebuild_raster(flat, true_idx, bins, rate).astype("u1")
+                    raster = rebuild_raster(flat, true_idx, bins, rate, t0).astype("u1")
             f.create_dataset("processing/curated_binning/t_spk_mat/data", data=raster)
-            st = f.create_dataset("processing/curated_binning/t_spk_mat/starting_time", data=0.0)
+            st = f.create_dataset("processing/curated_binning/t_spk_mat/starting_time", data=t0)
             st.attrs["rate"] = rate
     return Path(path)
 
@@ -650,6 +681,21 @@ def _selfcheck():
             lambda: ingest_file(late, fixture_entry(late), fixture_pin(fixture_entry(late)), td),
             "at or past",
         )
+        # (d) span start: t0 > 0 with a spike before t0 (it passed (c), (d), (e') before A-M4), and
+        # t0 < 0. Both reuse the convention-discriminating fixture times, so only the span start can
+        # refuse them; 0.0503 s lies before t0 = 0.25.
+        early = [[0.0503, *_FIXTURE_UNITS[0]], *_FIXTURE_UNITS[1:]]
+        for label, t0, units_t0, n_bins in (
+            ("(d span start, t0 > 0)", 0.25, [[t + 0.25 for t in u] for u in early], 3000),
+            ("(d span start, t0 < 0)", -0.25, _FIXTURE_UNITS, 2000),
+        ):
+            shifted = write_fixture_nwb(td / f"t0_{t0}.nwb", units=units_t0, t0=t0, bins=n_bins)
+            entry_t0 = fixture_entry(shifted)
+            must_refuse(
+                label,
+                lambda p=shifted, e=entry_t0: ingest_file(p, e, fixture_pin(e), td),
+                "starts at t0",
+            )
         # (d) no recorded span
         nospan = write_fixture_nwb(td / "n.nwb", span=False)
         must_refuse(
@@ -707,7 +753,8 @@ def _selfcheck():
             print(f"organoid_ingest self-check FAILED: {f}")
         return 1
     print(
-        "organoid_ingest self-check OK: reds (a)(b)(c)(c nan, negative, no positions)(d)(d-span)(d past span)(e' x1000, column shift, flip)(pin) "
+        "organoid_ingest self-check OK: reds (a)(b)(c)(c nan, negative, no positions)(d)(d-span)(d past span)"
+        "(d span start t0>0, t0<0)(e' x1000, column shift, flip)(pin) "
         "refuse, green control converts, duplicate rule groups"
     )
     return 0

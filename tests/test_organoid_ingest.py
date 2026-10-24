@@ -192,6 +192,40 @@ def test_e_rows_below_zero_are_dropped_and_row_zero_is_kept():
     assert r.sum() == 1 and r[0, 1] and not r[:, 0].any()
 
 
+def _t0_fixture(tmp_path, t0, pre=0):
+    """The engine-arc panel's A-M4 probe as a fixture: 3 units after t0, plus `pre` spikes
+    before t0."""
+    rng = np.random.default_rng(0)
+    units = [sorted(rng.uniform(max(t0, 0.0) + 0.002, max(t0, 0.0) + 1.6, 40)) for _ in range(3)]
+    if pre:
+        units[0] = sorted(list(rng.uniform(0.0, t0 - 0.01, pre)) + list(units[0]))
+    p = oi.write_fixture_nwb(tmp_path / f"t0_{t0}.nwb", units=units, t0=t0)
+    e = oi.fixture_entry(p)
+    return p, e, oi.fixture_pin(e)
+
+
+def test_d_span_starting_after_zero_is_refused(tmp_path):
+    # A-M4: t0 > 0 with spikes in [0, t0) passed (c), (d) and (e') (rebuild_raster drops their
+    # negative rows) and wrote the pre-recording spikes into the npz. Refused until (d) reads
+    # t - t0.
+    p, e, pin = _t0_fixture(tmp_path, 0.25, pre=25)
+    with pytest.raises(IngestRefused, match="starts at t0"):
+        oi.ingest_file(p, e, pin, tmp_path / "out")
+    assert not (tmp_path / "out" / oi.artifact_name(e)).exists()
+
+
+def test_d_span_starting_before_zero_is_refused(tmp_path):
+    p, e, pin = _t0_fixture(tmp_path, -0.25)
+    with pytest.raises(IngestRefused, match="starts at t0"):
+        oi.ingest_file(p, e, pin, tmp_path / "out")
+
+
+def test_d_span_starting_at_zero_still_converts(tmp_path):
+    p, e, pin = _t0_fixture(tmp_path, 0.0)
+    rows = oi.ingest_file(p, e, pin, tmp_path / "out")
+    assert rows["span_start_s"] == 0.0 and rows["artifact"] == oi.artifact_name(e)
+
+
 def test_e_times_x1000_is_refused():
     fl, ix, r = _true()
     with pytest.raises(IngestRefused, match=r"\(e'\) rebuilt raster != stored"):
