@@ -503,3 +503,95 @@ futility at the rates above; R-S5 a decision at 7, 12, 20 or 33 seeds is refused
 sequential", "interim analysis": NO LEXICAL MATCH; "power analysis sample size": three keyword hits, read, distinct): nothing in
 `src/` spends alpha or decides at interim looks; `instruments/paired_contrast.py` (fixed-S paired t) is distinct-from;
 `instruments/pool_selection.t_quantile` is REUSED. P5b: Python (criterion 1 fails: measurement code off the tick).
+
+## Addendum 3 (2026-10-24, lane e1b-seq2, before any E1b brain run): the production tier decides (owner ruling #4616)
+
+Append-only; written before any E1b brain run and before any E1b datum. Addendum 2 and every frozen section above are
+untouched; where this addendum and an earlier text differ, this addendum rules. Owner, 2026-10-23 (board owner-answer #4906 to
+#4616, verbatim): "#4616: production tier decides". Integrator's binding reading (lane brief E1B-SEQ, section OWNER RULING):
+`SINGLE_TIER_HARM_DELETES = True`.
+
+### What the ruling changes
+
+- **The production tier alone decides** the deletion route of each primary endpoint (H-P1 `_plan_w`; H-V1 ValenceLearner). It
+  is THE confirmatory tier: one-sided alpha .05 per endpoint, power target .8, the looks and the Lan-DeMets O'Brien-Fleming
+  boundaries of addendum 2, unchanged.
+- **The no-encoder tier** runs on the same synchronized looks and the same seeds and is reported beside the production result.
+  It never deletes on its own: a no-encoder-only crossing is a **tier finding**, no deletion candidate (owner decides).
+- **Revision 2's cross-tier agreement rule** (section 3: sign of d_s agrees on >= 6 of 8 seeds, scaled by addendum 2 to
+  ceil(6 n / 8)) and the tier-effect test (section 4) **no longer gate** a deletion candidate. Both are still computed and
+  printed beside the production verdict ("d_s sign agrees on k/n", "tiers indistinguishable on this path"). The wording
+  "harm on both tiers" and its "between .0025 and .05" false-replication clause leave the deletion route, and so does section
+  10's "correlated false-positive range reported beside it" for TRUE (one confirmatory tier at one-sided .05 has no
+  cross-tier range); the route's wording is "harm on the production tier (MET at look k (n seeds); the confirmatory tier;
+  <no-encoder beside>)", naming the look of the decision of record as addendum 2 asks.
+- **Multiplicity**: Revision 2's rule across ENDPOINTS stays (two primaries, each one-sided .05, no correction). There is no
+  tier multiplicity: only one tier is confirmatory, so no alpha is split across tiers.
+- **Seed target unchanged.** Addendum 2 already sized the target per tier (one tier's paired t, one-sided .05, power .8):
+  H-P1 26 seeds, hard cap **32 per tier** (looks 8, 16, 24, 32), sequential power .816 at the cap; H-V1 114 seeds (120 at a block),
+  capped at 32, power .303. Those numbers are the production tier's design; no joint both-tiers crossing is sized for.
+- **Validity**: a VOID production tier (wrong perception tier, a failed section-4 check) is REFUSED for the deletion route: no
+  candidate, no tier finding, no record. This REFUSED is a verdict line in the cross report, not the harness's exit-3 refusal. A VOID no-encoder tier keeps the verdict PENDING (the stricter reading of "a tier with no
+  verdict makes every cross-tier statement PENDING"; harness departure 3).
+- **Stop rule** (replaces addendum 2's "while any primary endpoint on either tier is CONTINUE"): the campaign runs the next block
+  while a primary endpoint on the PRODUCTION tier is CONTINUE and the cap is not reached. The no-encoder tier runs the same block;
+  its decision of record (below, the same rule on both tiers) is re-printed beside, never re-decided; its CONTINUE never
+  extends the campaign and never blocks a
+  NULL-RECORD (this replaces addendum 2's "No NULL-RECORD while either tier's primary is CONTINUE": the production tier's
+  primary must have stopped).
+- **Decision of record** (addendum 2's rule, now carried by the harness): `analyse` walks the look prefixes of the seed-ordered
+  per-seed differences and keeps the FIRST stop (harm, futility or the cap) as the decision of record, with its look, n and mde;
+  a later look never re-decides it. The validity checks and controls are those of the look being analysed (they only grow
+  stricter as seeds are added).
+
+### The SDs, and what decides powered
+
+The SDs of addendum 2 (H-P1 0.0695, H-V1 0.2040) are E1's **NO-ENCODER** values: no production-tier SD exists. The production
+tier's SD is first seen at look 1. The `powered` rule then decides between a null and INCONCLUSIVE with the tier's OBSERVED SD;
+at the cap that is addendum 2's rule: powered iff observed SD <= **0.075** (H-P1, DH / 0.4650) / **0.103** (H-V1, DM / 0.4650).
+
+### A futility stop, or the cap without a crossing, is not a null by itself (arc panel B-M2, m6)
+
+The decision writes the **mde at the stopped seed count n**: mde = (t_k + t_.80,n-1) SD_obs / sqrt(n), where t_k is the look's
+t boundary (the test actually applied at that look). P8 null-scale amendment item 4 then decides:
+- mde <= the claimed effect (powered) -> the **NULL-RECORD path**: one NULL-RECORD, then the ONE 10x re-test before any
+  deletion (amendment item 2). The record's fields (replacing section 6's `seeds=8` and "the LARGER of the two tiers' observed
+  mde"): `seeds=<n at the production stop>` and `mde=<the production primary's mde at that n>` (H-P1 against DH = 0.035, H-V1
+  against DM = 0.048). That mde uses the look's O'Brien-Fleming t boundary, not the nominal one-sided .05 t of P8 item 1, so it
+  is the larger, conservative value. The objective endpoint's mde (E-P2 against DR, E-V2 against DM, look 1, both tiers) stays a
+  precondition and is reported in the record's surrounding prose;
+- mde > the claimed effect -> **INCONCLUSIVE when underpowered**: no NULL-RECORD, no deletion at any scale.
+A futility stop is never by itself the powered null that amendment item 2's re-test asks for. Addendum 2's word
+"INCONCLUSIVE-prone" is replaced by "INCONCLUSIVE when underpowered" (panel m6).
+
+Powered-SD bound per look (the observed SD at or below which a stop there is powered; `lanes/engine-1024/e1b-seq-row/
+derive_seq2.py`, output `logs2/derive-2.log`, from the harness's own `seq_boundaries`):
+
+| look | n | t_k | t_.80,n-1 | mde factor | H-P1 SD bound (DH 0.035) | H-V1 SD bound (DM 0.048) | mde at E1's SD (H-P1 / H-V1) |
+|---|---|---|---|---|---|---|---|
+| 1 | 8 | 7.2020 | 0.8960 | 2.8631 | 0.0122 | 0.0168 | 0.1990 / 0.5841 |
+| 2 | 16 | 2.8959 | 0.8662 | 0.9405 | 0.0372 | 0.0510 | 0.0654 / 0.1919 |
+| 3 | 24 | 2.1333 | 0.8575 | 0.6105 | 0.0573 | 0.0786 | 0.0424 / 0.1245 |
+| 4 (cap) | 32 | 1.7769 | 0.8534 | 0.4650 | 0.0753 | 0.1032 | 0.0323 / 0.0949 |
+
+Consequence, stated before data: with an SD near E1's, an H-P1 futility stop at looks 1-3 reads INCONCLUSIVE (only a cap stop
+can be the powered null), and every H-V1 non-harm stop reads INCONCLUSIVE. Whether an underpowered futility stop should instead
+continue (futility is non-binding, so continuing never inflates type I) is an owner question (row folder `OPEN-QUESTIONS.md`,
+Q3); until answered, addendum 2's futility stop stands and reads INCONCLUSIVE.
+
+### NULL-RECORD precondition (replaces addendum 2's "on both tiers" clause for the primaries)
+
+A NULL-RECORD for `_plan_w` / `ValenceLearner.learn` needs: the PRODUCTION tier's primary stopped (futility or cap) and powered
+at its stopped n; and, as section 6 states, on BOTH tiers (valid, not PENDING; a no-encoder CONTINUE on the primary does not
+block): the objective endpoint (E-P2 / E-V2) not met with mde
+<= its frozen literal, no measured harm (a no-encoder H-P1/H-V1 MET is a tier finding and writes no record), controls PASS, one
+tree sha. Requiring the no-encoder tier clean only ever withholds a record; it never adds a deletion.
+
+### Harness binding
+
+`rpe_charge.py`: `SINGLE_TIER_HARM_DELETES = True`; `cross` / `render_cross` carry "What the ruling changes" and the
+validity rule (for H-V1 a production MET is a deletion candidate only when section 6's in-brain check holds, else an
+objective finding); `seq_record` the decision of record; `seq_decision` the mde at the stopped n; `null_precondition` the
+NULL-RECORD precondition; the in-brain check reads the look-1 block's `vfrozen` pairs at every look, since looks 2-4 add no
+`vfrozen` runs (addendum 2). Revision 2's both-tiers rule stays in the code as the `SINGLE_TIER_HARM_DELETES = False` branch
+(the tests pin it). Test record: `lanes/engine-1024/e1b-seq-row/REPORT-2.md`.
