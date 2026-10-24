@@ -2,8 +2,8 @@
   "note": "The envelope-hash baseline: updating this file IS the owner-approval act for an envelope byte change, reviewable in the same commit's diff.",
   "files": {
     "brainstem/reflex.py": {
-      "sha256": "5c8afced322033ea204fcce5ab53bf98e02c82da43be7e4302f44361479e7ab4",
-      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
+      "sha256": "06c0d936a9f57fcc206862042f1960b2156f9262091a0279afb0acefa9b8d694",
+      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022 || 2026-10-24 line-ending fix (policy audit pa-p5env-1): sha256 re-baselined from the CRLF-checkout hash to the LF git-blob hash; the file's blob is UNCHANGED (b1faa1e92be3, identical at c9d0c097); .gitattributes eol=lf now makes every checkout hold these bytes. Owner, verbatim, in chat: \"Yes, approve the envelope-hash line-ending fix\"."
     },
     "brainstem/serial_arm.py": {
       "sha256": "b81874b063e6cfbe42c499771b508c9a9b78f64e65879b7c03b8d5218607df18",
@@ -14,12 +14,12 @@
       "approved": "specs/022 T037a -- the E-STOP latch becomes DURABLE ACROSS RESTART, authorised by owner decision OD-4 (delegated 2026-08-19: 'I authorize any decision made by you'; spec.md OD-4 row). The touch, enumerated: (1) ESTOP_LATCH + _latch_path() (the sidecar's name lives in this envelope file), _PROCESS_TOKEN (per-process identity; not the pid, which a reboot reuses); (2) __init__ adds latch_source / latch_restored_from / latch_persist_errors / latch_refusals and calls _honour_sidecar() -- a sidecar left by a DIFFERENT process comes up stopped, fail-closed on an unreadable one; (3) apply() gains a keyword-only `deliberate=False`: on the E-STOP edge it also writes the sidecar (_persist_latch); in the HOME/RETRACT_ALL branch a RESTORED latch is cleared only when deliberate (an automated clear is refused, frozen, counted) and the sidecar is removed only by a body that held the stop; (4) state() reports the four new keys; (5) main() runs under substrate.home.throwaway_home() and _durable_latch_checks() fires seven reds, one in a real second process; (6) the module docstring's new ruling, and the json/os/time imports. BYTE-UNCHANGED: apply()'s order (type -> latch -> E-STOP edge -> clears -> vocabulary -> clamp -> actuate -> report), the edge guard, _home()'s hard reset, the clamp, probe_contact, inject_disturbance and every other line."
     },
     "brainstem/arm_config.py": {
-      "sha256": "c06b4435620b803a65461309f7eb473fef681abffc5d5fd996bd352d3e20a38d",
-      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
+      "sha256": "562ad5d7053062b590a7e49c469ff7b853e3c7e1d1a68ffd7c175f68e8170276",
+      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022 || 2026-10-24 line-ending fix (policy audit pa-p5env-1): sha256 re-baselined from the CRLF-checkout hash to the LF git-blob hash; the file's blob is UNCHANGED (9a3f2fccfe7e, identical at c9d0c097); .gitattributes eol=lf now makes every checkout hold these bytes. Owner, verbatim, in chat: \"Yes, approve the envelope-hash line-ending fix\"."
     },
     "brainstem/interpreter.py": {
-      "sha256": "f742007645c18af9c4d072340ffd8c772303eeea6638450f94d69ea4020a3a60",
-      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022"
+      "sha256": "91d58718c1ba22357a80eb8e1360ee2f1abf1126c590084c29cedb17b68f98c9",
+      "approved": "T021b initial baseline: envelope bytes UNCHANGED by this commit (the gate is new, the envelope is not); recorded under the 2026-08-20 autonomous handoff, specs/022 || 2026-10-24 line-ending fix (policy audit pa-p5env-1): sha256 re-baselined from the CRLF-checkout hash to the LF git-blob hash; the file's blob is UNCHANGED (131b8ad1079c, identical at c9d0c097); .gitattributes eol=lf now makes every checkout hold these bytes. Owner, verbatim, in chat: \"Yes, approve the envelope-hash line-ending fix\"."
     }
   }
 }

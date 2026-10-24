@@ -21,3 +21,13 @@ src/snn_data_lake/brainstem/so101/SO-ARM100-LICENSE -text
 # The perception packs vendored for CI are zip containers; never translate them.
 *.npz binary
 native/sndl-core/tests/fixtures_rng.json -text
+
+# The safety envelope's five files are HASHED by gates/envelope_hash_gate.py from their working bytes, so their bytes must
+# not depend on the platform either (policy audit pa-p5env-1: the baseline held 3 CRLF-checkout and 2 LF-blob hashes, so
+# the gate was red on any fresh checkout). eol=lf makes every checkout hold the stored LF blob; the baseline holds the LF
+# blob hashes. Owner, verbatim, in chat 2026-10-24: "Yes, approve the envelope-hash line-ending fix".
+src/snn_data_lake/brainstem/reflex.py text eol=lf
+src/snn_data_lake/brainstem/serial_arm.py text eol=lf
+src/snn_data_lake/brainstem/so101_arm.py text eol=lf
+src/snn_data_lake/brainstem/arm_config.py text eol=lf
+src/snn_data_lake/brainstem/interpreter.py text eol=lf
