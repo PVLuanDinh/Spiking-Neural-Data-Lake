@@ -66,6 +66,10 @@ verdict below is tagged "no-encoder tier") and the `_plan_w` count (**6 of 8 see
    is an owner-drawn P4d part (those are the two networks, the reservoir and the return path), so the no-deletion clause
    for owner-drawn parts does not apply to them. The brief's earlier wording ("a P8 deletion candidate") predates the
    amendment.
+   *Integrator note, 2026-10-23, under the P1 sample-size amendment (owner, verbatim: "switch E1b to a sequential design,
+   P1 policy, make sure all sessions understand that"):* "Fresh seeds 8-15" above is superseded. Seeds 8-15 become look 1
+   of a sequential design; the looks, alpha spending, futility bound and cap derived from E1's measured SDs live in
+   pre-data addendum 2 of `specs/022-unified-brain-arc/evidence/e1b-rpe-harm.md`, which governs.
 2. **Grower merge** (research-1016 `design/DESIGN.md` T0-T13; owner #3403 / #3423 / O-D). It is what makes grown units
    fire.
 3. **E2:** `OnlineReadout` charge on a brain whose grown units fire (blocked until 2; a re-run today returns 0.0).
