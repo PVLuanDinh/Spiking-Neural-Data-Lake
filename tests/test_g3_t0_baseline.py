@@ -158,7 +158,7 @@ def capture(path=BASELINE):
             arms.append(rec)
     try:
         head = subprocess.run(
-            ["git.exe", "rev-parse", "HEAD"], capture_output=True, text=True
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True
         ).stdout.strip()
     except OSError:
         head = ""
