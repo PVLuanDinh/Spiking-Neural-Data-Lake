@@ -258,10 +258,13 @@ def _universe(root: Path) -> tuple[list[str], list[str], list[str]] | None:
     mods, tests, builds = [], [], []
     for f in files:
         rel = f.relative_to(root / NATIVE).as_posix()
+        # judged against the NEAREST crate root only: a crate nested under a workspace's examples/ or tests/
+        # is still a crate, and its src/ holds modules (rv-p5b-d #5032 item 2)
         subs = [f.relative_to(c).parts for c in crates if c in f.parents]
-        if ("build.rs",) in subs:
+        near = min(subs, key=len) if subs else ()
+        if near == ("build.rs",):
             builds.append(rel)
-        elif any(map(_excluded, subs)):
+        elif _excluded(near):
             tests.append(rel)
         else:
             mods.append(rel)
@@ -283,12 +286,28 @@ def _target_reds(root: Path, excluded: set[str], builds: list[str]) -> list[Red]
             continue
         for kind in ("lib", "bin", "example", "test", "bench"):
             targets = doc.get(kind, [])
-            for target in [targets] if isinstance(targets, dict) else targets:
+            targets = [targets] if isinstance(targets, dict) else targets
+            if not isinstance(targets, list) or not all(isinstance(t, dict) for t in targets):
+                # never a crash on a manifest Cargo itself would reject (rv-p5b-d #5032 hole a)
+                reds.append(
+                    Red("R-RUSTFACTS", f"{NATIVE}/{here}/Cargo.toml", f"[{kind}] is not a table")
+                )
+                continue
+            for target in targets:
                 path = target.get("path")
                 if not isinstance(path, str):
                     continue
                 hit = os.path.normpath(os.path.join(here, path)).replace(os.sep, "/")
-                if hit in builds or (kind in ("lib", "bin") and hit in excluded):
+                if os.path.isabs(path) or path.startswith(("/", "\\")) or hit.startswith(".."):
+                    # a target compiled from outside native/ never enters the universe (hole b)
+                    reds.append(
+                        Red(
+                            "R-TARGET-EXCLUDED",
+                            hit,
+                            f"{here}/Cargo.toml [{kind}] path leaves native/: {path!r}",
+                        )
+                    )
+                elif hit in builds or (kind in ("lib", "bin") and hit in excluded):
                     reds.append(
                         Red("R-TARGET-EXCLUDED", hit, f"{here}/Cargo.toml [{kind}] path = {path!r}")
                     )
@@ -447,7 +466,8 @@ def render(report: Report) -> str:
         "  LIMIT: the gate counts a MET verdict and a number per criterion (a digit left after issue numbers, "
         "dates, shas and path tokens are stripped); it cannot judge whether the evidence is true. That stays "
         "review-enforced. Ids that carry digits (T018, B2, PFC-NEUTER-1023) count as numbers; evidence written "
-        "only as ratios with `/` reds R-NONUMBER (fail closed); nothing checks that a record predates its module."
+        "only as ratios with `/` reds R-NONUMBER (fail closed); nothing checks that a record predates its module. "
+        "An [[example]]/[[test]]/[[bench]] target inside its own directory is not a module, even as a cdylib."
     )
     out += [f"  RED {r.code} {r.where}: {r.message}" for r in report.reds]
     return "\n".join(out)

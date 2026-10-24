@@ -270,6 +270,31 @@ def test_planted_lib_path_build_rs_is_the_one_new_red(tmp_path):
     assert [(r.code, r.where) for r in reds] == [("R-TARGET-EXCLUDED", "c/build.rs")]
 
 
+def test_a_crate_nested_under_a_workspace_examples_dir_holds_modules(tmp_path):
+    # rv-p5b-d #5032 item 2: native/ is a workspace root; a member under native/examples/ is a crate
+    files = tree(
+        **{
+            "native/Cargo.toml": '[workspace]\nmembers = ["c", "examples/fastk"]\n',
+            "native/examples/fastk/Cargo.toml": '[lib]\ncrate-type = ["cdylib"]\n',
+            "native/examples/fastk/src/lib.rs": "#[pyfunction]\nfn f() {}\n",
+        }
+    )
+    report = run(tmp_path, files)
+    assert [(r.code, r.where) for r in report.reds] == [("R-UNCITED", "examples/fastk/src/lib.rs")]
+
+
+@pytest.mark.parametrize("bad", ['lib = "x"', 'bin = ["x"]', "lib = 3"])
+def test_a_malformed_target_reds_instead_of_crashing(tmp_path, bad):
+    files = tree(**{"native/c/Cargo.toml": bad + "\n"})
+    assert "R-RUSTFACTS" in run(tmp_path, files).codes()
+
+
+@pytest.mark.parametrize("path", ["../../src/fast.rs", "/abs/fast.rs"])
+def test_a_target_path_leaving_native_reds(tmp_path, path):
+    files = tree(**{"native/c/Cargo.toml": f'[lib]\npath = "{path}"\n'})
+    assert "R-TARGET-EXCLUDED" in run(tmp_path, files).codes()
+
+
 def test_an_example_target_in_its_own_directory_and_the_default_lib_are_green(tmp_path):
     files = tree(
         **{
