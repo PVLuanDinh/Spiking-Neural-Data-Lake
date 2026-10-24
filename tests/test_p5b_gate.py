@@ -1,10 +1,13 @@
 """P5b gate: one reachable red per code, the clean pass, the real-tree count.
 
-docs/POLICIES.md P5b Gate specification. Every input is built by hand in a temporary git tree, so
-each red is shown to fire and the real-tree pass is not vacuous. The trees are not taken from the
-gate's own self-check plants: a test must not share its oracle with the code it tests.
+docs/POLICIES.md P5b (its Mechanization line). A module is any native `.rs` except a crate root's
+build.rs and its tests/benches/examples; a record is a specs/**.md file naming each grandfathered
+module by full path. Every input is built by hand in a temporary git tree, so each red is shown to
+fire and the real-tree pass is not vacuous. The trees are not taken from the gate's own self-check
+plants: a test must not share its oracle with the code it tests.
 """
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -151,9 +154,42 @@ def test_grandfather_record_that_never_names_the_module_reds(tmp_path):
     assert [(r.code, r.where) for r in report.reds] == [("R-STALE-GRANDFATHER", MOD)]
 
 
-def test_grandfather_record_may_name_a_module_by_file_name_under_its_directory(tmp_path):
-    files = tree(src="//! x\n", **{pg.RETRO: "`c/src/*`: lib.rs\n"})
+@pytest.mark.parametrize(
+    "record_text", ["`c/src/*`: lib.rs\n", f"x{MOD}\n", f"{MOD}x\n", "lib.rs\n"]
+)
+def test_grandfather_record_naming_a_module_by_file_name_or_inside_another_token_reds(
+    tmp_path, record_text
+):
+    files = tree(src="//! x\n", **{pg.RETRO: record_text})
+    report = run(tmp_path, files, {MOD: WHY}, cutoff=lambda root: {MOD: "h"})
+    assert [(r.code, r.where) for r in report.reds] == [("R-STALE-GRANDFATHER", MOD)]
+
+
+@pytest.mark.parametrize(
+    "record_text", [f"`{MOD}`\n", f"| {MOD} |\n", f"a, {MOD}, b\n", f"{MOD}", f"x {MOD} y\n"]
+)
+def test_grandfather_record_naming_a_module_as_a_whole_token_is_green(tmp_path, record_text):
+    files = tree(src="//! x\n", **{pg.RETRO: record_text})
     assert run(tmp_path, files, {MOD: WHY}, cutoff=lambda root: {MOD: "h"}).reds == []
+
+
+def test_record_that_drops_one_lib_rs_while_another_stays_reds(tmp_path):
+    other = "d/src/lib.rs"
+    files = tree(src="//! x\n", **{pg.RETRO: f"`{other}`\n", f"native/{other}": "//! x\n"})
+    report = run(
+        tmp_path,
+        files,
+        {MOD: WHY, other: WHY},
+        cutoff=lambda root: {MOD: "h", other: "h"},
+    )
+    assert [(r.code, r.where) for r in report.reds] == [("R-STALE-GRANDFATHER", MOD)]
+
+
+def test_the_pfc_reason_says_it_landed_under_p5b_and_the_others_do_not():
+    pfc = pg.GRANDFATHERED["sndl-core/src/prefrontal_executive.rs"]
+    assert "5978bbcc" in pfc and "c3079685" in pfc and "p5b-pfc-retro-bench.md" in pfc
+    others = [why for rel, why in pg.GRANDFATHERED.items() if "prefrontal" not in rel]
+    assert len(others) == 10 and set(others) == {pg._WHY}
 
 
 def test_grandfathered_module_edited_since_the_cutoff_reds(tmp_path):
@@ -192,6 +228,63 @@ def test_build_script_is_excluded_by_name_and_counted(tmp_path):
     report = run(tmp_path, tree(**{"native/c/build.rs": "fn main() {}\n"}))
     assert report.reds == [] and report.counts["build.rs"] == 1
     assert pg.count_line(report).endswith("test files 0, build.rs 1, reds 0")
+
+
+def test_a_tests_directory_inside_src_is_a_module(tmp_path):
+    report = run(tmp_path, tree(**{"native/c/src/tests/t.rs": "//! x\n"}))
+    assert [(r.code, r.where) for r in report.reds] == [("R-UNCITED", "c/src/tests/t.rs")]
+    assert report.counts["modules"] == 2 and report.counts["test files"] == 0
+
+
+def test_only_a_crate_roots_own_build_rs_is_excluded(tmp_path):
+    report = run(tmp_path, tree(**{"native/c/kernels/build.rs": "//! x\n"}))
+    assert report.codes() == {"R-UNCITED"} and "build.rs" not in report.counts
+
+
+@pytest.mark.parametrize(
+    ("head", "path"),
+    [
+        ("[lib]", "build.rs"),
+        ("[lib]", "tests/lib.rs"),
+        ("[lib]", "examples/lib.rs"),
+        ("[lib]", "benches/lib.rs"),
+        ("[[bin]]", "tests/main.rs"),
+        ("[[example]]", "build.rs"),
+    ],
+)
+def test_a_cargo_target_resolving_to_an_excluded_file_reds(tmp_path, head, path):
+    files = tree(
+        **{
+            "native/c/Cargo.toml": f'{head}\npath = "{path}"\n',
+            f"native/c/{path}": "#[pyfunction]\nfn f() {}\n",
+        }
+    )
+    assert "R-TARGET-EXCLUDED" in run(tmp_path, files).codes()
+
+
+def test_planted_lib_path_build_rs_is_the_one_new_red(tmp_path):
+    files = tree(
+        **{"native/c/Cargo.toml": '[lib]\npath = "build.rs"\n', "native/c/build.rs": "fn f() {}\n"}
+    )
+    reds = run(tmp_path, files).reds
+    assert [(r.code, r.where) for r in reds] == [("R-TARGET-EXCLUDED", "c/build.rs")]
+
+
+def test_an_example_target_in_its_own_directory_and_the_default_lib_are_green(tmp_path):
+    files = tree(
+        **{
+            "native/c/Cargo.toml": (
+                '[lib]\npath = "src/lib.rs"\n[[example]]\nname = "e"\npath = "examples/e.rs"\n'
+            ),
+            "native/c/examples/e.rs": "fn main() {}\n",
+        }
+    )
+    assert run(tmp_path, files).reds == []
+
+
+def test_an_unreadable_cargo_manifest_fails_closed(tmp_path):
+    report = run(tmp_path, tree(**{"native/c/Cargo.toml": "[lib\n"}))
+    assert report.codes() == {"R-RUSTFACTS"}
 
 
 def test_a_src_file_named_build_rs_is_still_a_module(tmp_path):
@@ -258,6 +351,39 @@ def test_census_lists_every_rs_with_a_status(tmp_path):
         "c/src/lib.rs": "CITED",
         "c/tests/t.rs": "TEST-FILE",
     }
+
+
+def _gone(tmp_path, files, rel):
+    native_dormancy._write(tmp_path, files)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    (tmp_path / rel).unlink()
+
+
+def test_a_listed_rs_gone_from_disk_reds_instead_of_crashing(tmp_path):
+    _gone(tmp_path, tree(), f"native/{MOD}")
+    report = pg.check(tmp_path, grandfathered={}, cutoff=lambda root: {}, blobs=same)
+    assert [(r.code, r.where) for r in report.reds] == [("R-RUSTFACTS", MOD)]
+
+
+def test_census_marks_a_listed_rs_gone_from_disk_instead_of_crashing(tmp_path):
+    _gone(tmp_path, tree(), f"native/{MOD}")
+    assert pg.census(tmp_path, {}) == [(MOD, "R-RUSTFACTS unreadable")]
+
+
+def test_census_survives_rust_facts_unavailable(tmp_path, monkeypatch):
+    native_dormancy._write(tmp_path, tree())
+
+    def boom(root, sub):
+        raise pg.rust_facts.RustFactsUnavailable("no git")
+
+    monkeypatch.setattr(pg.rust_facts, "rust_files", boom)
+    assert pg.census(tmp_path, {}) == [("native", "R-RUSTFACTS no git")]
+
+
+def test_limit_line_names_the_id_hole_the_ratio_rule_and_the_record_timing(tmp_path):
+    text = pg.render(run(tmp_path, tree()))
+    for needle in ("T018", "B2", "PFC-NEUTER-1023", "ratios", "predates its module"):
+        assert needle in text
 
 
 def test_main_exit_codes(tmp_path, capsys):

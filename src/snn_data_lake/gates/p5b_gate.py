@@ -1,34 +1,39 @@
 """P5b gate -- every native Rust module cites a pre-registration recording all six P5b criteria with numbers.
 
-Rule enforced: docs/POLICIES.md P5 "P5b" (Gate specification): "a pre-registration check that every module under
-the native crate cites a pre-registration recording all six criteria with their numbers, with a planted-missing
-red." Template for shape: gates/null_scale_gate.py (Red records, check(root=...), --assert / --self-check /
+Rule enforced: docs/POLICIES.md P5 "P5b", whose Mechanization line names this gate: every module under the native
+crate cites a pre-registration recording all six criteria with their numbers, with a planted-missing red.
+Template for shape: gates/null_scale_gate.py (Red records, check(root=...), --assert / --self-check /
 --census, a closed GRANDFATHERED table).
 
 # distinct-from: rust_facts.py -- reused here for the one `.rs` walk (`rust_files`); native_dormancy.py -- its
 # `_write` builds the constructed trees; null_scale_gate.py -- same CLI shape, different corpus (this reads
 # `//!` headers and the cited record, that reads evidence-file NULL-RECORD lines).
 
-A module (a `.rs` under a crate's `src/`) cites its pre-registration with exactly one line in its leading `//!`
-block:  //! P5b-PREREG: <repo-relative path>
-The cited file (any repo file) records, one line each (k = 1..6), then names every module citing it:
+A module cites its pre-registration with exactly one line in its leading `//!` block:
+    //! P5b-PREREG: <repo-relative path>
+The cited record (a reviewable document, below) holds one line each (k = 1..6), then names every module citing it:
 
     P5b-<k> <label>: <VERDICT> -- <evidence>     labels: hot, python-bound, coarse-boundary, charged,
                                                   python-fix-first, parity-oracle
     P5b-MODULES: <native-relative path>, ...
 
-A module is every `.rs` the crates can compile: any `.rs` under native/ that is not under a `tests/`, `benches/` or
-`examples/` directory (so `#[path]`, `include!` and `[lib] path` targets outside `src/` count); `build.rs` is the one
-file excluded by name, and is printed in the count line when present. The cited record must be a reviewable
-document: under `specs/`, a `.md`, outside `native/`, not git-ignored.
+A module is every `.rs` the crates can compile: any `.rs` under native/ except `<crate root>/build.rs` and
+`<crate root>/{tests,benches,examples}/` (a crate root is a directory holding a Cargo.toml), so `#[path]`,
+`include!` and `[lib] path` targets outside `src/` count and a `tests/` deeper inside `src/` is a module.
+`build.rs` is printed in the count line when present. A Cargo.toml `[lib]` or `[[bin]]` target (or any target
+`path = "build.rs"`) that resolves to an excluded file is R-TARGET-EXCLUDED. The cited record must be a reviewable
+document: under `specs/`, a `.md`, outside `native/`, not git-ignored. The record names each grandfathered
+module by its full native-relative path as a whole token (backtick, space, comma, `|` or line edge each side).
 
 What it reds: R-UNCITED, R-DUP-CITE, R-MISSING, R-RECORD-PLACE, R-CRITERION, R-NONUMBER, R-UNMET, R-UNLISTED,
-R-STALE-GRANDFATHER (a stale entry, or one whose record never names the module), R-GRANDFATHER-OPEN,
+R-TARGET-EXCLUDED, R-STALE-GRANDFATHER (a stale entry, or one whose record never names the module), R-GRANDFATHER-OPEN,
 R-GRANDFATHER-DRIFT (a grandfathered module whose content differs from its blob at the cutoff), R-HISTORY (and
-R-ZERO / R-RUSTFACTS: a present `native/` that yields no modules or cannot be listed). What it cannot do, and says
-so on every run: judge whether a criterion's evidence is TRUE -- a MET verdict and a number (a digit left after
-issue numbers, dates, shas and path tokens are stripped) are what it counts; the pre-registration's reviewer
-decides the rest.
+R-ZERO / R-RUSTFACTS: a present `native/` that yields no modules, cannot be listed, lists a `.rs` gone from disk
+or has an unreadable Cargo.toml). What it cannot do, and says so on every run: judge whether a criterion's
+evidence is TRUE -- a MET verdict and a number (a digit left after issue numbers, dates, shas and path tokens are
+stripped) are what it counts; the pre-registration's reviewer decides the rest. The drift check hashes the
+working copy with git hash-object, so it assumes the checkout's eol config: a Windows clone with autocrlf
+switched off after checkout reds R-GRANDFATHER-DRIFT falsely (CI is LF).
 
   python -m snn_data_lake.gates.p5b_gate [--assert | --self-check | --census]
 
@@ -38,9 +43,11 @@ Bare invocation is --assert (the run_selfchecks.py convention).
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import tempfile
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -73,11 +80,16 @@ NON_MODULE_DIRS = {"tests", "benches", "examples"}
 # retroactively. An entry leaves in the same commit its module gains a real `//! P5b-PREREG:` citation or is
 # deleted; a module added after the cutoff can never enter (R-GRANDFATHER-OPEN).
 _WHY = f"landed before P5b's gate; recorded retroactively in {RETRO}"
+_PFC = "sndl-core/src/prefrontal_executive.rs"
+_PFC_WHY = (
+    f"{_WHY}; the PFC kernel landed UNDER P5b's text (B2 5978bbcc) and criterion 5 was measured "
+    "insufficient after the fact (c3079685, specs/022-unified-brain-arc/evidence/p5b-pfc-retro-bench.md)"
+)
 GRANDFATHERED: dict[str, str] = {
-    rel: _WHY
+    rel: _PFC_WHY if rel == _PFC else _WHY
     for rel in (
         "sndl-core/src/lib.rs",
-        "sndl-core/src/prefrontal_executive.rs",
+        _PFC,
         "sndl-core/src/rng/mod.rs",
         "sndl-core/src/rng/mt19937.rs",
         "sndl-core/src/rng/pyrandom.rs",
@@ -108,7 +120,7 @@ class Report:
         return {r.code for r in self.reds}
 
 
-def cutoff_modules(root: Path = REPO) -> set[str] | None:
+def cutoff_modules(root: Path = REPO) -> dict[str, str] | None:
     """{native-relative path: blob sha} of every file under native/ at the cutoff commit. None when git cannot
     answer (no git, unknown commit, shallow clone): the caller reds R-HISTORY, never skips."""
     try:
@@ -161,9 +173,8 @@ def _ignored(root: Path, rel: str) -> bool:
 
 
 def _names(rel: str, text: str) -> bool:
-    """The record names `rel`: in full, or by file name under a directory it lists (`rng/*` ... `legacy.rs`)."""
-    folder, _, name = rel.rpartition("/")
-    return rel in text or (name in text and f"{folder}/" in text)
+    """The record names `rel` by its full native-relative path as a whole token (never by file name)."""
+    return re.search(rf"(?<![^\s`,|]){re.escape(rel)}(?![^\s`,|])", text, re.M) is not None
 
 
 def _has_number(evidence: str) -> bool:
@@ -233,21 +244,55 @@ def _check_record(root: Path, rel: str, cited: str) -> list[Red]:
     return reds
 
 
+def _excluded(sub: tuple[str, ...]) -> bool:
+    """`sub` is a path below a crate root: its build.rs, or anything under tests/ benches/ examples/."""
+    return sub == ("build.rs",) or (len(sub) > 1 and sub[0] in NON_MODULE_DIRS)
+
+
 def _universe(root: Path) -> tuple[list[str], list[str], list[str]] | None:
     """(modules, test files, build scripts), native-relative; None when native/ is absent."""
     if not (root / NATIVE).exists():
         return None
+    files = rust_facts.rust_files(root, NATIVE)
+    crates = rust_facts.crate_dirs(files)
     mods, tests, builds = [], [], []
-    for f in rust_facts.rust_files(root, NATIVE):
+    for f in files:
         rel = f.relative_to(root / NATIVE).as_posix()
-        dirs = rel.split("/")[:-1]
-        if NON_MODULE_DIRS & set(dirs):
-            tests.append(rel)
-        elif f.name == "build.rs" and "src" not in dirs:
+        subs = [f.relative_to(c).parts for c in crates if c in f.parents]
+        if ("build.rs",) in subs:
             builds.append(rel)
+        elif any(map(_excluded, subs)):
+            tests.append(rel)
         else:
             mods.append(rel)
     return sorted(mods), sorted(tests), sorted(builds)
+
+
+def _target_reds(root: Path, excluded: set[str], builds: list[str]) -> list[Red]:
+    """R-TARGET-EXCLUDED for a Cargo.toml `[lib]`/`[[bin]]` target, or any target, whose `path` is an excluded
+    file (an example/test/bench target may sit in its own excluded directory, but never on build.rs)."""
+    reds = []
+    for manifest in sorted((root / NATIVE).rglob("Cargo.toml")):
+        here = manifest.parent.relative_to(root / NATIVE).as_posix()
+        if "target" in manifest.relative_to(root / NATIVE).parts:
+            continue
+        try:
+            doc = tomllib.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            reds.append(Red("R-RUSTFACTS", f"{NATIVE}/{here}/Cargo.toml", f"unreadable: {exc}"))
+            continue
+        for kind in ("lib", "bin", "example", "test", "bench"):
+            targets = doc.get(kind, [])
+            for target in [targets] if isinstance(targets, dict) else targets:
+                path = target.get("path")
+                if not isinstance(path, str):
+                    continue
+                hit = os.path.normpath(os.path.join(here, path)).replace(os.sep, "/")
+                if hit in builds or (kind in ("lib", "bin") and hit in excluded):
+                    reds.append(
+                        Red("R-TARGET-EXCLUDED", hit, f"{here}/Cargo.toml [{kind}] path = {path!r}")
+                    )
+    return reds
 
 
 def check(
@@ -260,12 +305,16 @@ def check(
     if found is None:
         return Report(absent=True)
     mods, tests, builds = found
-    reds: list[Red] = []
+    reds: list[Red] = _target_reds(root, {*tests, *builds}, builds)
     if not mods:
         reds.append(Red("R-ZERO", NATIVE, "native/ is present and no module was found"))
     cited_n = 0
     for rel in mods:
-        text = (root / NATIVE / rel).read_text(encoding="utf-8", errors="replace")
+        try:
+            text = (root / NATIVE / rel).read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            reds.append(Red("R-RUSTFACTS", rel, f"git lists it but it cannot be read: {exc}"))
+            continue
         cites = citations(text)
         cited_n += bool(cites)
         if len(cites) > 1:
@@ -296,7 +345,9 @@ def check(
                         f"GRANDFATHERED reason names {named}, which does not exist",
                     )
                 )
-            elif not _names(rel, (root / named).read_text(encoding="utf-8", errors="replace")):
+            elif named == RETRO and not _names(
+                rel, (root / named).read_text(encoding="utf-8", errors="replace")
+            ):
                 reds.append(Red("R-STALE-GRANDFATHER", rel, f"{named} never names this module"))
     then = cutoff(root)
     if then is None:
@@ -359,15 +410,29 @@ def count_line(report: Report) -> str:
 
 
 def census(root: Path = REPO, grandfathered=GRANDFATHERED) -> list[tuple[str, str]]:
-    found = _universe(root)
+    try:
+        found = _universe(root)
+    except rust_facts.RustFactsUnavailable as exc:
+        return [(NATIVE, f"R-RUSTFACTS {exc}")]
     if found is None:
         return []
     mods, tests, builds = found
     rows = []
     for rel in mods:
-        cites = citations((root / NATIVE / rel).read_text(encoding="utf-8", errors="replace"))
+        try:
+            text = (root / NATIVE / rel).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            rows.append((rel, "R-RUSTFACTS unreadable"))
+            continue
         rows.append(
-            (rel, "CITED" if cites else "GRANDFATHERED" if rel in grandfathered else "UNCITED")
+            (
+                rel,
+                "CITED"
+                if citations(text)
+                else "GRANDFATHERED"
+                if rel in grandfathered
+                else "UNCITED",
+            )
         )
     rows += [(rel, "TEST-FILE") for rel in tests] + [(rel, "OUT-OF-SCOPE") for rel in builds]
     return sorted(rows)
@@ -381,7 +446,8 @@ def render(report: Report) -> str:
     out.append(
         "  LIMIT: the gate counts a MET verdict and a number per criterion (a digit left after issue numbers, "
         "dates, shas and path tokens are stripped); it cannot judge whether the evidence is true. That stays "
-        "review-enforced."
+        "review-enforced. Ids that carry digits (T018, B2, PFC-NEUTER-1023) count as numbers; evidence written "
+        "only as ratios with `/` reds R-NONUMBER (fail closed); nothing checks that a record predates its module."
     )
     out += [f"  RED {r.code} {r.where}: {r.message}" for r in report.reds]
     return "\n".join(out)
@@ -433,6 +499,19 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
             {_FILE: "//! none\n", RETRO: "nothing\n"},
             {"grandfathered": {_MOD: _WHY}, "cutoff": seen(_MOD)},
         ),
+        "R-STALE-GRANDFATHER:cross-name": (
+            {_FILE: "//! none\n", RETRO: f"x{_MOD}\n"},
+            {"grandfathered": {_MOD: _WHY}, "cutoff": seen(_MOD)},
+        ),
+        "R-TARGET-EXCLUDED": (
+            {
+                **ok,
+                f"{NATIVE}/c/Cargo.toml": '[lib]\npath = "build.rs"\n',
+                f"{NATIVE}/c/build.rs": "#[pyfunction]\nfn f() {}\n",
+            },
+            {},
+        ),
+        "R-RUSTFACTS:gone": (ok, {"gone": [_FILE]}),
         "R-GRANDFATHER-OPEN": (
             {_FILE: "//! none\n"},
             {"grandfathered": {_MOD: _WHY}, "cutoff": seen()},
@@ -467,6 +546,10 @@ def self_check() -> int:
         for name, (tree, kwargs) in [("clean", (clean, {})), *_planted().items()]:
             root = Path(tmp) / name.replace(":", "-")
             native_dormancy._write(root, tree)
+            kwargs = dict(kwargs)
+            for rel in kwargs.pop("gone", ()):
+                subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
+                (root / rel).unlink()
             codes = check(root, **{"grandfathered": {}, "cutoff": lambda r: {}, **kwargs}).codes()
             want = name.split(":")[0]
             if name == "clean" and codes:

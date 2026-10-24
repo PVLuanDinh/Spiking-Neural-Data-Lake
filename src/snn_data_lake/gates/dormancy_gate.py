@@ -660,8 +660,8 @@ EXEMPT = {
         "permanent",
         "POLICIES P5b: every native Rust module cites a pre-registration recording all six criteria with "
         "their numbers (planted-missing red, closed GRANDFATHERED table). A CI/run_selfchecks instrument, "
-        "never on a tick -- the native_ratchet / policy_manifest disposition. RETIRES when the P5b "
-        "PROVISIONAL marker does and the rule moves into the build, never by a tick reading it",
+        "never on a tick -- the native_ratchet / policy_manifest disposition. RETIRES only with P5b "
+        "itself (the PROVISIONAL marker already retired), never by a tick reading it",
     ),
     "native_build": (
         "permanent",
