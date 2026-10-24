@@ -915,6 +915,12 @@ def test_real_history_an_exempt_row_switched_to_scale_retest_is_green(real_histo
     close = "20e1e742f6d1d9deb19dee0b443e6737592a1200"
     at_close = functools.partial(ng.git_history, head=close)
     assert ng.expiry_problem(cb, at_close, module="feed_readout") is None
+    # ... and red one non-merge commit past it (engine-arc panel A-m1: the module path's red
+    # half). Every tree holding this test is past 20e1e742, so the descendant exists, as in the
+    # 4be0d691 sibling.
+    after = repo_git("rev-list", "--reverse", "--no-merges", "--ancestry-path", f"{close}..HEAD")[0]
+    at_after = functools.partial(ng.git_history, head=after)
+    assert "expired" in ng.expiry_problem(cb, at_after, module="feed_readout")
 
 
 # ---------------------------------------- G3: block quotes, G6: emphasis
