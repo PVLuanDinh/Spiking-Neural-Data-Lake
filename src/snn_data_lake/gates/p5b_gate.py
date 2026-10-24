@@ -35,8 +35,9 @@ member/default-member, `[patch]` or `[replace]` path or a `[package] build` path
 `.cargo/config[.toml]`; an exempt crate that depends on `pyo3` or
 declares a cdylib/dylib/staticlib crate-type), R-STALE-EXEMPT (shrink-only: an exempt entry naming no tracked
 file), R-FOREIGN-SOURCE (a tracked compiled source or prebuilt native binary anywhere in the repo) and
-R-PATH-ESCAPE (a `#[path = "lit"]` / `include!("lit")` in a module that resolves outside native/ or into an
-excluded dir of its crate, or an `include!` whose argument is not one string literal). What it cannot do, and says so on every run: judge whether a criterion's
+R-PATH-ESCAPE (a `#[path = "lit"]` / `include!("lit")` in a module that resolves outside native/, into an
+excluded dir of its crate, or to a file that is not a listed module -- a `target/` dir or no file at all -- or an
+`include!` whose argument is not one string literal). What it cannot do, and says so on every run: judge whether a criterion's
 evidence is TRUE -- a MET verdict and a number (a digit left after issue numbers, dates, shas and path tokens are
 stripped) are what it counts; the pre-registration's reviewer decides the rest. The drift check hashes the
 working copy with git hash-object, so it assumes the checkout's eol config: a Windows clone with autocrlf
@@ -530,9 +531,10 @@ def _outside_reds(
     return reds
 
 
-def _escape_reds(root: Path, rel: str, text: str, crates: set[Path]) -> list[Red]:
+def _escape_reds(root: Path, rel: str, text: str, crates: set[Path], mods: set[str]) -> list[Red]:
     """R-PATH-ESCAPE for each `#[path = "lit"]` / `include!("lit")` in module `rel` (native-relative) that
-    resolves outside native/ or under an excluded dir of its nearest crate, and for an `include!` whose
+    resolves outside native/, under an excluded dir of its nearest crate, or to a file that is not a listed
+    module (a `target/` dir rust_files skips, or no file at all), and for an `include!` whose
     argument is not one plain string literal (unverifiable, fail closed). Textual: include_str!/include_bytes!
     are data and not scanned."""
     base = posixpath.dirname(f"{NATIVE}/{rel}")
@@ -552,6 +554,12 @@ def _escape_reds(root: Path, rel: str, text: str, crates: set[Path]) -> list[Red
         target = root / hit
         if _excluded(crates | rust_facts.crate_dirs([target]), target):
             reds.append(Red("R-PATH-ESCAPE", rel, f"{lit!r} resolves into an excluded dir: {hit}"))
+        elif hit[len(NATIVE) + 1 :] not in mods:
+            reds.append(
+                Red(
+                    "R-PATH-ESCAPE", rel, f"{lit!r} resolves to {hit}, which is not a listed module"
+                )
+            )
     return reds
 
 
@@ -582,7 +590,7 @@ def check(
         except OSError as exc:
             reds.append(Red("R-RUSTFACTS", rel, f"git lists it but it cannot be read: {exc}"))
             continue
-        reds += _escape_reds(root, rel, text, crates)
+        reds += _escape_reds(root, rel, text, crates, set(mods))
         cites = citations(text)
         cited_n += bool(cites)
         if len(cites) > 1:
@@ -843,6 +851,15 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
         ),
         "R-PATH-ESCAPE:non-literal": (
             {**ok, _FILE: _CITE + 'include!(concat!(env!("OUT_DIR"), "/k.rs"));\n'},
+            {},
+        ),
+        "R-PATH-ESCAPE:unlisted": (
+            {
+                **ok,
+                _FILE: _CITE + '#[path = "../target/k.rs"]\nmod k;\n',
+                f"{NATIVE}/c/target/k.rs": "#[pyfunction]\nfn f() {}\n",
+                ".gitignore": "target/\n",
+            },
             {},
         ),
         "R-RUSTFACTS:gone": (ok, {"gone": [_FILE]}),

@@ -654,6 +654,18 @@ def test_a_non_literal_include_fails_closed(tmp_path, src):
     assert only(outside(tmp_path, tree(src="//! x\n" + CITE + src)), "R-PATH-ESCAPE")
 
 
+@pytest.mark.parametrize(
+    "src", ['#[path = "../target/k.rs"]\nmod k;\n', 'include!("../target/k.rs");\n']
+)
+@pytest.mark.parametrize("ignored", [True, False])
+def test_a_path_or_include_to_a_file_outside_the_module_list_reds(tmp_path, src, ignored):
+    # a .rs under a target/ dir (rust_files skips it, git ignores it) or a missing one is never a
+    # module, so it would compile into a local build with no citation (lead red-team, A-M2 fold)
+    extra = {"native/c/target/k.rs": "#[pyfunction]\nfn f() {}\n", ".gitignore": "target/\n"}
+    files = tree(src="//! x\n" + CITE + src, **(extra if ignored else {}))
+    assert only(outside(tmp_path, files), "R-PATH-ESCAPE").where == MOD
+
+
 def test_a_path_escape_in_build_rs_reds(tmp_path):
     files = tree(
         rec=record(modules=f"{MOD}, c/build.rs"),
