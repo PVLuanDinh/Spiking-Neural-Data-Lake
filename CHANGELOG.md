@@ -9,6 +9,35 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- Engine arc 2: P4b BLOCK fixes, restart amnesia, the P5b gate, the E1b harm harness (2026-10-24)
+
+Owner 2026-10-24 (verbatim, relayed by og1-int): "A get the BLOCK fixes"; "A fix the restart-amnesia MAJOR (pa-p4bd-3) in this
+arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
+- **P4b sidecar BLOCKs closed (policy audit pa-p4bd-1/2):** P4b forbids "a sidecar file", so the acquired language organ
+  (`language_acq.npz`) and the nightly skills' SLDA / DistMult arrays (`skills/*.npz`) now persist as records in the one lake
+  (`home.save_named_state`); a legacy sidecar is imported once (`_migrate_sidecar`) and never re-read
+  (`tests/test_p4b_sidecar_migration.py`). P5b: Python.
+- **P4b restart-amnesia fix** (policy audit pa-p4bd-3): `arm.q`, the affect integrator's emotion SOM and the lifelong
+  consolidator's learner now ride the `growing_learners.json` record and restore at boot (a mismatched record -- wrong width,
+  unknown unit id, bad format -- is refused, store left empty); `tests/test_p4b_restart_restore.py`. The consolidator's replay memory is still not persisted.
+- **P5b gate** (`gates/p5b_gate.py`, rust-lead-1024): every native Rust module cites a pre-registration recording P5b's six
+  criteria with numbers; the retroactive record names the eleven native modules; P5b's PROVISIONAL marker retires (its gate is
+  built and counted).
+- **Engine arc 1 panel carry-overs (policy-enforcer #4979):** the sleep-pruner census reads imports only under `if TYPE_CHECKING:`
+  with one planted red per typing rule; the P1 amendment's closed grandfather list is named
+  (`evidence/p1-sample-size-grandfather.md`); a tasks.md row (T111a) for G3 T6's retirement of `GrowthLoop` and
+  `NeurogenesisSelfImprove`.
+- **E1b harness `instruments/rpe_charge.py`** (learning-rules evidence, no brain run yet; `evidence/e1b-rpe-harm.md` and its
+  pre-data addenda 2-5): the pre-registered harm test of the `_plan_w` and ValenceLearner updates on both perception tiers, as
+  a sequential design under the P1 amendment (Lan-DeMets O'Brien-Fleming looks in 8-seed blocks; reds R-S1..R-S5 and the
+  real-shape type-I check R-S1b by simulation). Owner #4616 (verbatim: "production tier decides"): the production tier alone
+  decides a deletion; the no-encoder tier is reported beside it, and a VOID production tier is REFUSED. Futility is
+  non-binding, taken only at a look whose mde from the pre-registered SD is at or below the claimed effect; a futility or
+  cap stop is INCONCLUSIVE unless powered (P8 item 4). Addendum 4 (owner 2026-10-24, verbatim: "Raise its cap to its power
+  target"): H-V1's cap 152 seeds, 19 looks, shape-calibrated boundaries (type I .0510 under E1's shape, was .2185).
+  Addendum 5 (P1 item 2 applied to H-P1): H-P1's cap 184 seeds, 23 looks (shape power .8036); the owner's choice among
+  keeping 184, a disclosed departure at 32, or a smoothed shape is OPEN.
+
 ## [Unreleased] -- Engine arc 1: G3 T0 baseline, G3 T1 Grower, the P1 sample-size amendment (2026-10-23)
 
 Owner 2026-10-23: "Make sure the engine is built first to accurately address the throttle gaps." Engine row G3 (ONE grower,
@@ -24,9 +53,6 @@ owner #3403; design research-1016 `design/DESIGN.md` T0-T13), steps T0 and T1 of
   designs (looks, alpha spending, non-binding futility, an inflated cap); a futility stop is not a null (P8 item 4 reads its
   mde). Review-enforced, PROVISIONAL; its gate (a "Sample size (P1)" field check) is specified, not built.
 - The P8 real-history scale-retest test is judged at its closing record, not live HEAD.
-- **P4b restart-amnesia fix** (policy audit pa-p4bd-3): `arm.q`, the affect integrator's emotion SOM and the lifelong
-  consolidator's learner now ride the `growing_learners.json` record and restore at boot (a mismatched record -- wrong width,
-  unknown unit id, bad format -- is refused, store left empty); `tests/test_p4b_restart_restore.py`. The consolidator's replay memory is still not persisted.
 
 ## [Unreleased] -- OG1 Stage 0: the organoid ingest, pushed without Stage 1 (2026-10-23)
 
