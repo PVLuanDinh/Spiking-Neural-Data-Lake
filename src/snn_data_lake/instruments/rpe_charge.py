@@ -13,8 +13,8 @@ stream, brain-free compare fixtures, the cross-tier rule (addendum 3: production
   python -m snn_data_lake.instruments.rpe_charge compare <results dir> <tier> [out.md]
   python -m snn_data_lake.instruments.rpe_charge cross <production dir> <no-encoder dir> [out.md]
   (replay / compare / cross take `--look K`, K = 1..len(CAMPAIGN_LOOKS): seeds 8 .. 8 + CAMPAIGN_LOOKS[K-1] - 1;
-   addenda 2, 4 and 5, default look 1; every look adds `real` + `pfrozen` up to H-P1's cap, and replay rows up to
-   H-V1's)
+   addenda 2, 4 and 5, default look 1; every look adds `real` + `pfrozen` up to H-P1's cap; `replay` writes a row
+   for every seed of the look, and rows past H-V1's cap are written and binding-checked, not read)
   python -m snn_data_lake.instruments.rpe_charge fixture <logs dir>    # appends the three fixture lines to fixture.log
 
 ARMS (E1's exact patch code; only the arm's own `_valence` instance and the bound AutonomousArm are acted on
@@ -42,8 +42,9 @@ Six deliberate departures from the frozen text, disclosed here as its header ask
 (a SystemExit, code 3) instead of calling os._exit(3), so a test can see it; the process still exits 3 with no result file.
 (2) the `pc` arm stubs PrefrontalExecutive._decide_spiking on the CLASS (E1's exact code: every executive in the brain
 returns winner 0), unlike the other arms, which act on the arm's own instances only.
-(3) with SINGLE_TIER_HARM_DELETES = True (addendum 3) a VOID production tier is REFUSED; a VOID no-encoder tier is
-reported beside and never vetoes the production decision (addendum 4, re-panel B-N4; the NULL-RECORD precondition of
+(3) with SINGLE_TIER_HARM_DELETES = True (addendum 3) a VOID production tier is REFUSED; the no-encoder tier is
+reported beside in every state (VOID, short, pending, another tree) and never holds or vetoes the production decision
+(addendum 6, owner #4616 "production tier decides"; addendum 4, re-panel B-N4; the NULL-RECORD precondition of
 addendum 3 still reads the objective endpoint on both tiers, the conservative side).
 (4) the compare fixtures are built in memory on every call (`fixture_runs`/`fixture_e2`), not written as `fixtures/` JSON files.
 (5) a missing or wrong `tier_red.log` / `fixture.log` makes the tier VOID (harness validity) and compare still prints its report
@@ -71,6 +72,10 @@ ADDENDUM 5 (P1 item 2, the owner's H-V1 ruling applied to H-P1 by the integrator
 (the shape-calibrated ones are lower at every look). The campaign runs the longer of the two primaries' looks
 (CAMPAIGN_LOOKS); each primary past its own cap is carried from that cap. Every look up to P1_CAP adds `real` +
 `pfrozen` (this supersedes addendum 4's "Looks 5-19 add `real` only"); H-P1's looks are P1_LOOKS, not LOOKS.
+ADDENDUM 6 (arc-2 panel fold, before any brain run): each primary is carried from its OWN STOP of record (`_n_owed`),
+not from its cap: runs past a stop are not owed and a later look reprints the stop. The seed-sensitivity flag reads the
+stopped look's `bound_t` / `k_min` and screens degeneracy on the real/pfrozen pair of every seed. A zero observed SD is
+never powered (`ZERO_SD`). The no-encoder tier never holds the production decision (departure 3).
 ONE SEQUENTIAL MECHANISM (P2, re-panel B-N7): `seq_boundaries` / `seq_decision` / `seq_record` are the project's one
 alpha-spending implementation (graph-exists "alpha spending": no other site). G1(c)-2 and G2, and any later
 pre-registration under the P1 amendment, import them from here; moving them to a shared module is that consumer's change,
@@ -162,6 +167,14 @@ E1_HP1_T = 2.82  # E1's recorded H-P1 t (the "mirrored bar" signal), beside the 
 # Addendum 3 (owner ruling #4616): the production tier alone decides deletion; no-encoder is reported beside, never deletes.
 SINGLE_TIER_HARM_DELETES = True
 NO_ENC_NOTE = "; no-encoder: reported beside, the production tier decides"
+ZERO_SD = "degenerate: zero variance"  # A-m4: every d_s equal, so the mde is 0 and no power exists
+ARM_OF = {
+    "H-P1": "pfrozen",
+    "H-P2": "pshuf",
+    "H-V3": "vfrozen",
+    "H-V1": "replay frozen",
+    "H-V2": "replay shuf",
+}
 N_TICKS = 600
 # a seed whose mean reward is below this in every arm of a tier is "degenerate"
 SENSITIVITY_R = -0.9
@@ -263,12 +276,12 @@ def sd(x):
 
 
 def ttest(x):
-    """One-sample t; +inf for zero variance with a positive mean (E1's frozen rule)."""
+    """One-sample t; +inf for zero variance with a positive mean (E1's frozen rule), -inf with a negative one (A-m4)."""
     if len(x) < 2:
         return float("nan")
     m, s_ = sum(x) / len(x), sd(x)
     if s_ == 0:
-        return float("inf") if m > 0 else 0.0
+        return float("inf") if m > 0 else float("-inf") if m < 0 else 0.0
     return m / (s_ / math.sqrt(len(x)))
 
 
@@ -327,6 +340,8 @@ def status(h, claimed, ok=True, n_seeds=N_SEEDS, why="control failed"):
         return f"VOID ({why})"  # neither MET nor NOT MET, and feeds no NULL-RECORD
     if met(h, n_seeds):
         return "MET"
+    if h["sd"] == 0:  # A-m4: mde 0 is no power, every d_s is equal
+        return f"NOT MET, {ZERO_SD}: INCONCLUSIVE (not powered)"
     mde = MDE_F * h["sd"]
     if mde <= claimed:
         return f"NOT MET, mde {mde:.4f} <= claimed {claimed:.4f}: powered"
@@ -482,9 +497,12 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, boun
     else:
         decision = "futility" if is_open and cp < FUTILITY_CP else "continue"
     where = f"look {j + 1} of {len(looks)}, n={n}"
+    powered = h["sd"] > 0 and mde <= claimed  # A-m4: a zero observed SD gives mde 0, not power
     power = f"mde at n={n} {mde:.4f} {'<=' if mde <= claimed else '>'} claimed {claimed:.4f}: " + (
         "powered: a null, NULL-RECORD path (one 10x re-test before any deletion)"
-        if mde <= claimed
+        if powered
+        else f"{ZERO_SD}, not powered: INCONCLUSIVE (P8 null-scale item 4): no NULL-RECORD, no deletion"
+        if h["sd"] == 0
         else "INCONCLUSIVE when underpowered (P8 null-scale item 4): no NULL-RECORD, no deletion"
     )
     status_ = {
@@ -505,7 +523,7 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, boun
         "cp": cp,
         "futility_open": is_open,
         "mde": mde,
-        "powered": mde <= claimed,
+        "powered": powered,
         "decision": decision,
         "status": status_,
     }
@@ -1120,11 +1138,23 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         )
     # each endpoint reads the seed block its pre-registration names (re-panel A-B1): the secondaries and the
     # dispositions the look-1 block, H-P1 and H-V1 every look up to their own caps
-    n_exp = {k: _n_owed(k, seeds) for k in SEQ}  # past its cap, carried from it (addenda 4, 5)
-    block, p1_seeds, v1_seeds = seeds[:N_SEEDS], seeds[: n_exp["H-P1"]], seeds[: n_exp["H-V1"]]
-    a = {"tier": tier, "seeds": seeds}
     n_ticks = next((d["ticks"] for d in runs.values()), None)
     h0 = n_ticks // 2 if n_ticks else 0
+    rows_all = e2["real"] if e2 else {}
+    d_p1 = {
+        s: mean_r(runs[("pfrozen", s)], h0) - mean_r(runs[("real", s)], h0)
+        for s in seeds
+        if ("real", s) in runs and ("pfrozen", s) in runs
+    }
+    d_v1 = {
+        s: rows_all[str(s)]["learn"] - rows_all[str(s)]["frozen"]
+        for s in seeds
+        if str(s) in rows_all
+    }
+    # each primary carried from its own stop of record, else its cap (A-M4; addenda 3, 4, 5)
+    n_exp = {"H-P1": _n_owed("H-P1", seeds, d_p1), "H-V1": _n_owed("H-V1", seeds, d_v1)}
+    block, p1_seeds, v1_seeds = seeds[:N_SEEDS], seeds[: n_exp["H-P1"]], seeds[: n_exp["H-V1"]]
+    a = {"tier": tier, "seeds": seeds, "n_owed": n_exp}
     a.update(N=n_ticks, H0=h0)
     bad, val, pending, ctl_bad = (
         [],
@@ -1292,12 +1322,10 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
     )
     a["ep2"]["mde"] = MDE_F * a["ep2"]["sd_diff"]
     hs = {
-        "H-P1": harm(
-            [mr_("pfrozen", s) - mr_("real", s) for s in have("real", "pfrozen", among=p1_seeds)]
-        ),
+        "H-P1": harm([d_p1[s] for s in p1_seeds if s in d_p1]),
         "H-P2": harm([mr_("pshuf", s) - mr_("real", s) for s in have("real", "pshuf")]),
         "H-V3": harm([mae_("real", s) - mae_("vfrozen", s) for s in have("real", "vfrozen")]),
-        "H-V1": harm([r["learn"] - r["frozen"] for r in rows.values()]),
+        "H-V1": harm([d_v1[s] for s in v1_seeds if s in d_v1]),
         "H-V2": harm([r["learn"] - r["shuf"] for r in rows.values()]),
     }
     claimed = {"H-P1": DH, "H-P2": DR, "H-V1": DM, "H-V2": DM, "H-V3": DM}
@@ -1319,20 +1347,29 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
                 h["status"], h["met"] = h["seq"]["status"], h["seq"]["decision"] == "harm"
         elif ns > N_SEEDS and k not in SEQ:
             h["status"], h["met"] = "NO VERDICT (secondary endpoints are decided at look 1)", False
+        if h["sd"] == 0:  # A-m4: name the arm whose d_s carry no variance
+            h["status"] += f" [{ZERO_SD}: {k}, arm {ARM_OF[k]}]"
     a["hs"] = hs
+    # A-M3: screened on the real/pfrozen pair of EVERY seed of the look, not only the look-1 block's five arms
     degenerate = [
-        s for s in have(*ARMS) if all(mr_(x, s) < SENSITIVITY_R for x in ARMS if (x, s) in runs)
+        s
+        for s in have("real", "pfrozen")
+        if all(mr_(x, s) < SENSITIVITY_R for x in ARMS if (x, s) in runs)
     ]
     a["degenerate"] = degenerate
     a["sens"] = {}
     by_seed = {
-        "H-P1": dict(zip(have("real", "pfrozen", among=p1_seeds), hs["H-P1"]["d"], strict=True)),
-        "H-V1": dict(zip((int(k) for k in rows), hs["H-V1"]["d"], strict=True)),
+        "H-P1": {s: d_p1[s] for s in p1_seeds if s in d_p1},
+        "H-V1": {s: d_v1[s] for s in v1_seeds if s in d_v1},
     }
     for k, per_seed in by_seed.items():
         h = harm([d for s, d in per_seed.items() if s not in degenerate])
-        full = hs[k]["t"] > BAR and hs[k]["k"] >= K_MIN
-        without = h["t"] > BAR and h["k"] >= K_MIN
+        # A-M3: the bar of the decision the flag guards -- the stopped look's t boundary and sign count when a
+        # sequential decision exists, the fixed-sample BAR / K_MIN otherwise
+        q = hs[k].get("seq")
+        bar, k_min = (q["bound_t"], q["k_min"]) if q else (BAR, K_MIN)
+        full = hs[k]["t"] > bar and hs[k]["k"] >= k_min
+        without = h["t"] > bar and h["k"] >= k_min
         a["sens"][k] = {
             "t": h["t"],
             "k": h["k"],
@@ -1496,15 +1533,28 @@ def _series_differ(ra, rb, h0):
     return ia != ib
 
 
-def _n_owed(key, seeds):
-    """Seeds an endpoint's verdict reads at this look: H-P1 and H-V1 each stop at their own cap (addenda 4, 5)."""
-    return min(len(seeds), SEQ[key]["looks"][-1])
+# reuses: seq_record (the first stop over the look prefixes); graph-exists hits (sleep_plasticity_ab, pool_selection,
+#   gradient_claim_gate, ...) are term overlap only, none walks sequential looks (sites read)
+def _n_owed(key, seeds, d_by_seed):
+    """Seeds a primary's verdict reads at this look (A-M4): its own stop of record when a complete look prefix has
+    stopped, else this look or its cap, whichever is smaller (addenda 4, 5). Runs past a stop are never owed."""
+    looks, owed = SEQ[key]["looks"], min(len(seeds), SEQ[key]["looks"][-1])
+    done = next((i for i, s in enumerate(seeds) if s not in d_by_seed), len(seeds))
+    reach = [n for n in looks if n <= min(done, owed)]
+    if reach:
+        q = seq_record([d_by_seed[s] for s in seeds[: reach[-1]]], **SEQ[key])
+        if q["decision"] != "continue":
+            return q["n"]
+    return owed
 
 
 def _agreement(pa, na, key):
-    dp, dn, n = pa["hs"][key]["d"], na["hs"][key]["d"], _n_owed(key, pa["seeds"])
-    if not len(dp) == len(dn) == n:
+    # over the seeds both tiers read: each tier is carried from its own stop (A-M4)
+    n = min(pa["n_owed"][key], na["n_owed"][key])
+    dp, dn = pa["hs"][key]["d"], na["hs"][key]["d"]
+    if len(dp) < n or len(dn) < n:
         return {"n": 0, "of": n, "pearson": float("nan"), "table": []}
+    dp, dn = dp[:n], dn[:n]
     return {
         "n": sum((x > 0) == (y > 0) for x, y in zip(dp, dn, strict=True)),
         "of": n,
@@ -1587,16 +1637,17 @@ def cross(pa, pruns, na, nruns):
         n_agree = agree[key]["n"]
         if SINGLE_TIER_HARM_DELETES and not pa["valid"]:  # a verdict line, not a `refuse` exit
             return "REFUSED (the production tier has no verdict: it alone decides, a no-encoder result never deletes)"
-        # re-panel B-N4: under #4616 a VOID no-encoder tier is reported beside, never a veto on the production decision
-        void_ne = SINGLE_TIER_HARM_DELETES and not na["valid"]
-        counted = (("production", pa),) if void_ne else (("production", pa), ("no-encoder", na))
+        # #4616 "production tier decides" (C-M3, A-m6; re-panel B-N4): under addendum 3 the no-encoder tier is reported
+        # beside in EVERY state -- VOID, short, pending, or on another tree -- and never holds or vetoes the decision
+        beside = SINGLE_TIER_HARM_DELETES
+        counted = (("production", pa),) if beside else (("production", pa), ("no-encoder", na))
         if not all(a["valid"] for _, a in counted):
             who = [t for t, a in counted if not a["valid"]]
             return f"PENDING (no verdict on tier {', '.join(who)}; a tier with no verdict makes every cross-tier statement PENDING)"
-        if not (tree_ok or void_ne):
+        if not (tree_ok or beside):
             return f"PENDING (the two tiers do not share one recorded tree sha: {pa['shas']} vs {na['shas']})"
-        short = [t for t, a in counted if a["hs"][key]["n"] != _n_owed(key, seeds)]
-        real_ok = all(("real", s) in pruns for s in seeds) if void_ne else real_complete
+        short = [t for t, a in counted if a["hs"][key]["n"] != a["n_owed"][key]]
+        real_ok = all(("real", s) in pruns for s in seeds) if beside else real_complete
         if short or not real_ok:
             return f"PENDING (endpoint {key} has no verdict on tier {', '.join(short) or 'either (real series incomplete)'})"
         if not effect and not SINGLE_TIER_HARM_DELETES:
@@ -1613,8 +1664,18 @@ def cross(pa, pruns, na, nruns):
                 f"(validity checks not yet run: {'; '.join(held[:3])}): no tier finding and no candidate wording yet"
             )
         if SINGLE_TIER_HARM_DELETES:
+            ne = [
+                "VOID: reported beside, no verdict" if not na["valid"] else "",
+                "" if tree_ok else f"on another tree ({na['shas']}): reported beside",
+                f"short ({na['hs'][key]['n']}/{na['n_owed'][key]} seeds): reported beside"
+                if na["valid"] and na["hs"][key]["n"] != na["n_owed"][key]
+                else "",
+                f"checks pending ({'; '.join(na['pending'][:3])}): reported beside"
+                if na["valid"] and na["pending"]
+                else "",
+            ]
             line = single_tier(key, tail)
-            return f"{line}; no-encoder VOID: reported beside, no verdict" if void_ne else line
+            return "; ".join([line] + [f"no-encoder {x}" for x in ne if x])
         if ma and mb:
             if n_agree >= need(AGREE_MIN, agree[key]["of"]):
                 return (

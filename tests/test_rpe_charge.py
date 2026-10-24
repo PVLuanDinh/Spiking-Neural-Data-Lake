@@ -699,7 +699,9 @@ def test_render_prints_the_harm_block_and_the_tier():
 
 
 # ------------------------------------------------------------------------------ cross / null
-def test_cross_voids_the_pair_when_the_two_tiers_ran_on_different_trees():
+def test_cross_voids_the_pair_when_the_two_tiers_ran_on_different_trees(both_tiers):
+    # Revision 2's both-tiers rule; under addendum 3 the other tree is reported beside
+    # (addendum 6, C-M3)
     pa, pr = _tier("harm", "production")
     other = {
         k: dict(v, tier=dict(v["tier"], tree_sha="b" * 40))
@@ -886,7 +888,9 @@ def _drop(runs, pred):
     return {k: v for k, v in runs.items() if not pred(k)}
 
 
-def test_cross_is_pending_when_a_tiers_endpoint_is_incomplete():
+def test_cross_is_pending_when_a_tiers_endpoint_is_incomplete(both_tiers):
+    # Revision 2's both-tiers rule; under addendum 3 a short no-encoder tier never holds
+    # (addendum 6, C-M3)
     (pa, pr), _ = _tier("harm", "production"), _tier("harm", "no-encoder")
     runs = _drop(R.fixture_runs("harm", "no-encoder"), lambda k: k[0] == "pfrozen" and k[1] >= 11)
     na = R.analyse("no-encoder", runs, R.fixture_e2(tier="no-encoder"), logs_pass=True)
@@ -999,9 +1003,12 @@ def test_e_v2_needs_its_planted_control_not_only_the_t_bars():
 
 
 def test_seed_sensitive_is_flagged_when_dropping_the_degenerate_seed_flips_the_primary():
+    # A-M3: full t (~4.4) clears the fixed BAR but not look 1's boundary; without seed 9 t clears
+    # both, so a
+    # fixed-BAR check reads both sides as crossed and hides the flip
     runs = {}
     for s in R.SEEDS:
-        d = -0.05 if s == 9 else 0.02 + 0.002 * (s % 3)
+        d = -0.05 if s == 9 else 0.1 + 0.0002 * (s % 3)
         base = -0.99 if s == 9 else 0.2
         for arm in R.ARMS:
             r = base + (d if arm in ("pfrozen", "pshuf") else 0.0)
@@ -1012,9 +1019,13 @@ def test_seed_sensitive_is_flagged_when_dropping_the_degenerate_seed_flips_the_p
     runs[("real_r2", s0)] = copy.deepcopy(runs[("real", s0)])
     for s in (s0, s0 + 1):
         runs[("pc", s)] = R.synth_run("pc", s, "production", r=0.2, shift=2)
-    a = R.analyse("production", runs, R.fixture_e2(), logs_pass=True)
+    # the replay rows bound to these runs: a VOID tier takes no sequential decision to guard
+    a = R.analyse("production", runs, _bind(R.fixture_e2(), runs), logs_pass=True)
+    assert a["valid"], a["bad"]
     assert a["degenerate"] == [9]
     assert not a["hs"]["H-P1"]["met"]  # the degenerate seed hides the harm the other seven show
+    q = a["hs"]["H-P1"]["seq"]
+    assert R.BAR < a["hs"]["H-P1"]["t"] < q["bound_t"] < a["sens"]["H-P1"]["t"], (q, a["sens"])
     assert a["sens"]["H-P1"]["seed_sensitive"] is True
     assert "seed-sensitive" in R.render(a)
     assert (
@@ -1379,8 +1390,11 @@ def test_a_continuing_design_writes_no_null_record_and_says_continue():
 
 
 def test_cross_tier_agreement_scales_with_the_look(both_tiers):
-    runs, e2 = _look2_runs("harm")
+    # H-P1 continues at look 1 (no harm), so both tiers read it over 16 seeds at look 2 (A-M4)
+    runs, e2 = _look2_runs("noharm")
     pa = R.analyse("production", runs, e2, seeds=range(8, 24), logs_pass=True)
+    assert pa["n_owed"]["H-P1"] == 16, pa["n_owed"]
+    pa["hs"]["H-P1"]["met"], pa["hs"]["H-P1"]["d"] = True, [0.1] * 16
     na = copy.deepcopy(pa)  # the other tier: MET too, but d_s flips sign on seeds 16-23
     na["hs"]["H-P1"]["d"] = [x if i < 8 else -x for i, x in enumerate(pa["hs"]["H-P1"]["d"])]
     nruns = copy.deepcopy(runs)
@@ -1789,8 +1803,8 @@ def test_compare_at_a_look_past_32_decides_both_primaries():
     runs, e2 = _extend(*_look2_runs("noharm"), range(24, 48))  # looks 3-5 (addendum 5)
     a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 48), logs_pass=True)
     assert a["valid"] and a["pending"] == [], (a["bad"], a["pending"])
-    assert a["hs"]["H-P1"]["n"] == 40 and a["hs"]["H-P1"]["seq"]["n"] <= 40
-    assert a["hs"]["H-V1"]["n"] == 40 and a["hs"]["H-V1"]["seq"]["n"] <= 40
+    for k in ("H-P1", "H-V1"):  # each read at its own stop of record, else at the look (A-M4)
+        assert a["hs"][k]["n"] == a["n_owed"][k] == a["hs"][k]["seq"]["n"] <= 40, (k, a["n_owed"])
     with pytest.raises(R.Refused):  # 44 seeds is no look
         R.analyse("production", runs, e2, seeds=range(8, 52), logs_pass=True)
 
@@ -1816,19 +1830,21 @@ def _past_v1_cap(tier):
     return R.analyse(tier, runs, _bind(e2, runs), seeds=range(8, 168), logs_pass=True), runs
 
 
-def test_compare_past_the_h_v1_cap_decides_h_p1_and_carries_h_v1_from_its_cap():
+def test_compare_past_the_h_v1_cap_decides_h_p1_and_carries_h_v1_from_its_stop():
     a, _ = _past_v1_cap("production")
     assert a["valid"] and a["pending"] == [], (a["bad"], a["pending"])
     assert a["hs"]["H-P1"]["n"] == 160 and "seq" in a["hs"]["H-P1"]
-    assert a["hs"]["H-V1"]["n"] == R.V1_CAP and a["hs"]["H-V1"]["seq"]["n"] <= R.V1_CAP
+    n = a["n_owed"]["H-V1"]  # A-M4: its stop of record, never past its cap
+    assert a["hs"]["H-V1"]["n"] == n == a["hs"]["H-V1"]["seq"]["n"] <= R.V1_CAP
 
 
 def test_cross_past_the_h_v1_cap_counts_h_v1_over_its_own_cap():
     (pa, pr), (na, nr) = _past_v1_cap("production"), _past_v1_cap("no-encoder")
     assert pa["hs"]["H-V1"]["met"], pa["hs"]["H-V1"]["status"]  # the "agrees on" branch runs
     out = R.cross(pa, pr, na, nr)
-    assert len(out["table_v1"]) == R.V1_CAP and len(out["table"]) == 160
-    assert f"agrees on {out['agree_v1']}/{R.V1_CAP}" in out["h_v1"], out["h_v1"]
+    n = min(pa["n_owed"]["H-V1"], na["n_owed"]["H-V1"])  # A-M4: over the stops, never past the cap
+    assert n <= R.V1_CAP and len(out["table_v1"]) == n and len(out["table"]) == 160
+    assert f"agrees on {out['agree_v1']}/{n}" in out["h_v1"], out["h_v1"]
 
 
 def test_both_tiers_past_the_h_v1_cap_count_h_v1_agreement_over_its_own_cap(both_tiers):
@@ -1836,22 +1852,28 @@ def test_both_tiers_past_the_h_v1_cap_count_h_v1_agreement_over_its_own_cap(both
     na["hs"]["H-V1"]["d"] = [-x if i % 2 else x for i, x in enumerate(na["hs"]["H-V1"]["d"])]
     out = R.cross(pa, pr, na, nr)
     assert pa["hs"]["H-V1"]["met"] and na["hs"]["H-V1"]["met"]
-    assert f"agrees on only {out['agree_v1']}/{R.V1_CAP}" in out["h_v1"], out["h_v1"]
+    n = min(pa["n_owed"]["H-V1"], na["n_owed"]["H-V1"])
+    assert f"agrees on only {out['agree_v1']}/{n}" in out["h_v1"], out["h_v1"]
 
 
-@pytest.mark.parametrize(
-    "flipped,word", [(38, "harm on both tiers"), (39, "agrees on only 113/152")]
-)
-def test_both_tiers_agreement_bar_past_the_h_v1_cap_is_six_eighths_of_its_own_cap(
-    both_tiers, flipped, word
+@pytest.mark.parametrize("extra", [0, 1])
+def test_both_tiers_agreement_bar_past_the_h_v1_cap_is_six_eighths_of_its_own_stop(
+    both_tiers, extra
 ):
-    # ceil(6 * 152 / 8) = 114 agreeing seeds; scaled by the 160-seed look it would be 120
+    # ceil(6 * n / 8) agreeing seeds over H-V1's own stop n (A-M4), never scaled by the 160-seed
+    # look
     (pa, pr), (na, nr) = _past_v1_cap("production"), _past_v1_cap("no-encoder")
-    d = na["hs"]["H-V1"]["d"]  # seeds 16-159 are copied positive rows: flip from the end
-    na["hs"]["H-V1"]["d"] = [-x if i >= len(d) - flipped else x for i, x in enumerate(d)]
+    n = min(pa["n_owed"]["H-V1"], na["n_owed"]["H-V1"])
+    need = math.ceil(R.AGREE_MIN * n / R.N_SEEDS)
+    flipped = n - need + extra
+    d = na["hs"]["H-V1"]["d"]  # flip from the end of the seeds both tiers read
+    na["hs"]["H-V1"]["d"] = [-abs(x) if n - flipped <= i < n else abs(x) for i, x in enumerate(d)]
+    pa["hs"]["H-V1"]["d"] = [abs(x) for x in pa["hs"]["H-V1"]["d"]]
     out = R.cross(pa, pr, na, nr)
-    assert out["need_agree_v1"] == 114 and out["agree_v1"] == R.V1_CAP - flipped
-    assert out["h_v1"].startswith(word) or word in out["h_v1"], out["h_v1"]
+    assert out["need_agree_v1"] == need != math.ceil(R.AGREE_MIN * 160 / R.N_SEEDS)
+    assert out["agree_v1"] == n - flipped
+    word = "harm on both tiers" if not extra else f"agrees on only {need - 1}/{n}"
+    assert word in out["h_v1"], out["h_v1"]
 
 
 @pytest.mark.slow
@@ -1861,3 +1883,107 @@ def test_rs3_slow_twin_h_p1_shape_power_at_the_cap_is_at_least_point_8():
     walks = [_walk(ds) for ds in _shape_campaigns("H-P1", R.DH, n, 707)]
     power = sum(d == "harm" for d, _, _ in walks) / n
     assert power >= 0.8 - 3 * _se(0.8, n), power
+
+
+# ------------- e1b-fold (arc 2 panel): A-M3, A-M4, C-M3 + A-m6, A-m4, A-m3 -- addendum 6, before
+# any brain run
+def test_degeneracy_is_screened_on_every_seed_of_a_later_look():
+    # A-M3: seed 20 runs only real + pfrozen (look 2); the look-1 five-arm screen never saw it
+    runs, e2 = _look2_runs("harm")
+    for arm, r in (("real", -0.99), ("pfrozen", -0.98)):
+        runs[(arm, 20)] = R.synth_run(
+            arm, 20, "production", r=r, mae_value=0.4, wiggle=0.01, shift=arm != "real"
+        )
+    a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 24), logs_pass=True)
+    assert a["valid"] and 20 in a["degenerate"], (a["bad"], a["degenerate"])
+
+
+def test_a_primary_stopped_at_look_1_owes_no_later_runs_and_keeps_its_stop_verdict():
+    # A-M4 (a): H-P1 crosses at look 1; at look 2 its pfrozen runs for seeds 16-23 are not owed
+    runs, e2 = _look2_runs("harm")
+    runs = _drop(runs, lambda k: k[0] == "pfrozen" and k[1] >= 16)
+    a = R.analyse("production", runs, e2, seeds=range(8, 24), logs_pass=True)
+    assert a["valid"] and a["pending"] == [], a["pending"]
+    h = a["hs"]["H-P1"]
+    assert h["met"] and h["status"].startswith("MET at look 1"), h["status"]
+    assert a["n_owed"]["H-P1"] == h["n"] == 8 and h["seq"]["look"] == 1, a["n_owed"]
+    assert not a["hs"]["H-V1"]["status"].startswith("PENDING"), a["hs"]["H-V1"]["status"]
+
+
+def test_h_v1_stopped_at_look_1_keeps_its_verdict_when_its_replay_rows_stop():
+    # A-M4 (b): H-V1 crosses at look 1, so look 2's replay rows (seeds 16-23) are never written
+    runs, e2 = _look2_runs("noharm")
+    for s in R.SEEDS:
+        row = e2["real"][str(s)]
+        row["frozen"] = row["learn"] - 0.1 - 0.0001 * (s % 3)
+    for s in range(16, 24):
+        del e2["real"][str(s)]
+    a = R.analyse("production", runs, e2, seeds=range(8, 24), logs_pass=True)
+    h = a["hs"]["H-V1"]
+    assert a["valid"] and h["met"] and h["status"].startswith("MET at look 1"), h["status"]
+    assert a["n_owed"]["H-V1"] == h["n"] == 8, a["n_owed"]
+
+
+def test_ruling_production_met_with_a_short_no_encoder_tier_is_the_candidate():
+    # C-M3 + A-m6: #4616 "production tier decides" -- a short no-encoder tier is reported beside,
+    # never a hold
+    (pa, pr) = _tier("harm", "production")
+    runs = _drop(R.fixture_runs("harm", "no-encoder"), lambda k: k[0] == "pfrozen" and k[1] >= 11)
+    na = R.analyse("no-encoder", runs, R.fixture_e2(tier="no-encoder"), logs_pass=True)
+    assert na["valid"] and na["hs"]["H-P1"]["status"].startswith("NO VERDICT")
+    out = R.cross(pa, pr, na, runs)["h_p1"]
+    assert not out.startswith("PENDING") and "harm-deletion candidate" in out, out
+    assert "no-encoder short (3/8 seeds): reported beside" in out, out
+
+
+def test_ruling_a_no_encoder_tier_on_another_tree_or_with_pending_checks_never_holds():
+    pa, pr = _tier("harm", "production")
+    other = {
+        k: dict(v, tier=dict(v["tier"], tree_sha="b" * 40))
+        for k, v in R.fixture_runs("harm", "no-encoder").items()
+    }
+    na = R.analyse(
+        "no-encoder", other, _bind(R.fixture_e2(tier="no-encoder"), other), logs_pass=True
+    )
+    out = R.cross(pa, pr, na, other)["h_p1"]
+    assert na["valid"] and not out.startswith("PENDING") and "harm-deletion candidate" in out, out
+    assert "no-encoder on another tree" in out, out
+    nb, nr = _tier("harm", "no-encoder")
+    nb["pending"] = ["repeat arm missing"]
+    out = R.cross(pa, pr, nb, nr)["h_p1"]
+    assert "PENDING" not in out.split("; no-encoder")[0] and "harm-deletion candidate" in out, out
+    assert "no-encoder checks pending (repeat arm missing): reported beside" in out, out
+
+
+def test_a_zero_observed_sd_is_never_powered():
+    # A-m4: every d_s equal gives mde 0; that is no power, and a constant negative mean is t = -inf
+    assert R.ttest([-0.01] * 8) == float("-inf") and R.ttest([0.0] * 8) == 0.0
+    q = R.seq_decision([-0.01] * R.P1_CAP, **R.SEQ["H-P1"])
+    assert q["decision"] == "cap" and not q["powered"], q
+    assert R.ZERO_SD in q["status"] and "NULL-RECORD path" not in q["status"], q["status"]
+    assert R.ZERO_SD in R.status(R.harm([-0.01] * 8), R.DH) and "powered" not in R.status(
+        R.harm([-0.01] * 8), R.DH
+    ).replace("not powered", "")
+    a = _analysis("noharm")  # pfrozen == real on every seed: H-P1's d_s are all 0
+    assert f"{R.ZERO_SD}: H-P1, arm pfrozen" in a["hs"]["H-P1"]["status"], a["hs"]["H-P1"]["status"]
+
+
+def test_rs1b_out_of_sample_shape_leave_one_out_keeps_type_one():
+    # A-m3: R-S1b was calibrated on the 8 E1 values it resamples; each leave-one-out 7-value shape
+    # is a held-out shape the calibration never saw. Pooled type I (8 shapes x 500 campaigns) stays
+    # at .05 + 3 SE, and no single held-out shape exceeds .05 + 3 SE of its own 500
+    n_sim = 500
+    for key in ("H-P1", "H-V1"):
+        rates = []
+        for drop in range(len(E1_D[key])):
+            pool = [x for i, x in enumerate(E1_D[key]) if i != drop]
+            m = sum(pool) / len(pool)
+            pool = [x - m for x in pool]
+            rng, cap = random.Random(9000 + drop), R.SEQ[key]["looks"][-1]
+            camps = (
+                [rng.choice(pool) + rng.gauss(0, 1e-9) for _ in range(cap)] for _ in range(n_sim)
+            )
+            rates.append(sum(_walk(ds, key, futility=False)[0] == "harm" for ds in camps) / n_sim)
+        pooled = sum(rates) / len(rates)
+        assert pooled <= 0.05 + 3 * _se(0.05, n_sim * len(rates)), (key, rates)
+        assert max(rates) <= 0.05 + 3 * _se(0.05, n_sim), (key, rates)
