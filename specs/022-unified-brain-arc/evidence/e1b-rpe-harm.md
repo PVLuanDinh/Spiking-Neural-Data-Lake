@@ -595,3 +595,120 @@ objective finding); `seq_record` the decision of record; `seq_decision` the mde 
 NULL-RECORD precondition; the in-brain check reads the look-1 block's `vfrozen` pairs at every look, since looks 2-4 add no
 `vfrozen` runs (addendum 2). Revision 2's both-tiers rule stays in the code as the `SINGLE_TIER_HARM_DELETES = False` branch
 (the tests pin it). Test record: `lanes/engine-1024/e1b-seq-row/REPORT-2.md`.
+
+## Addendum 4 (2026-10-24, lane e1b-fix, before any E1b brain run): H-V1's cap is raised to its power target (owner ruling)
+
+Append-only; written before any E1b brain run and before any E1b datum. Addenda 2 and 3 and every frozen section above are
+untouched; where this addendum and an earlier text differ, this addendum rules. Owner, 2026-10-24 (verbatim): "Raise its cap
+to its power target". The integrator's binding reading (lane brief E1B-FIX, OWNER RULING): option (a) is decided. Option (b),
+keeping 32 as a disclosed P1 departure, was not chosen. Both texts are in `lanes/engine-1024/e1b-fix-row/OPTIONS.md`. This
+addendum also folds the round-2 re-panel findings A-B1, A-B2, A-M2, B-N2, B-N3, B-N4, B-N7 and C R2-M1.
+
+### Sample size (P1)
+
+**H-V1 (ValenceLearner, valence MAE, claimed effect DM = 0.048, one-sided alpha .05, power target .8).**
+
+- **Pre-registered SD**: 0.2040, E1's NO-ENCODER paired SD (seed 1 kept). No production-tier SD exists, so the production
+  tier's design power is borrowed from the no-encoder SD (re-panel B-N3). The production tier decides (#4616). The
+  OBSERVED SD at the stopped look decides `powered` (addendum 3).
+- **Why the plain design fails (R-S1b, re-panel A-B2)**: E1's eight per-seed d_s hold one degenerate seed (-0.5355). The
+  planted-SHAPE null resamples the centred d_s to the cap. Under that null, addendum 2's normal-model t boundaries cross at
+  **0.2185** (rv-arc1-a round 2, `typeI_shape.out`), four times the nominal .05. A shape-blind cap would be unsafe.
+- **The statistic**: the paired t and the sign gate ceil(5 n / 8), with each look's t boundary set by the shape. The boundary
+  is the value that keeps Lan-DeMets O'Brien-Fleming cumulative spending under the planted-SHAPE null. It is never below
+  the normal-model boundary. It was calibrated on 200 000 resampled campaigns (`derive_v1.py calib`, RNG seed 21) and frozen
+  here before data.
+- **Fixed-sample power target under the shape**: **134 seeds**. That is the smallest n where the single-look test at the
+  shape's own .05 critical value (1.9236) has power >= .8 at DM (0.8017; `derive_v1.py target`, 200 000 campaigns per n).
+  The normal-model target was 114.
+- **Inflation factor**: the LD-OBF power inflation for K equal looks, normal model, one-sided .05 and power .8 (400 000 paths,
+  `derive_v1.py if K`): K = 17: 1.0632; K = 18: **1.0624**; K = 19: 1.0628. 134 x 1.0624 = 142.4, rounded up to a whole
+  8-seed block = 144 (18 looks, a fixed point).
+- **Power check, then one block more**: at the 144 cap with its calibrated boundaries, simulated power under the shape plus
+  DM = **0.7935**, below .8 (`derive_v1.py power`, 200 000 campaigns, seeds 31/32, independent of the calibration seed). So the
+  cap goes up by one block. **Hard cap = 152 seeds per tier, 19 looks** (8, 16, ..., 152). Power there = **0.8155** (numpy
+  model). The harness (`rpe_charge.seq_decision`) gives 0.8164 at 40 000 campaigns (seed 8080). Cap 160 would give 0.8364;
+  it is not taken.
+- **Type I under the REAL shape** (planted-shape null, resampled centred E1 d_s): **0.0502** (numpy, 200 000) and **0.0510**
+  (harness, 40 000; seed 7070; 3 MC SE = 0.0033). Under the normal null the shape boundaries are at least the normal ones, so
+  type I <= .05 (test R-S1).
+- **Futility**: non-binding conditional power < .10. It is taken only at a look whose mde from the PRE-REGISTERED SD,
+  (t_k + t_.80,n-1) x 0.2040 / sqrt(n), is <= DM (re-panel B-N2). For H-V1 no look before the cap qualifies: the mde_pre at
+  n = 136 / 144 / 152 is 0.0556 / 0.0527 / 0.0499. So H-V1 has **no futility stop**: P(futility) = 0. The campaign runs to a
+  crossing or to the cap.
+- **P(INCONCLUSIVE)** (a non-harm stop whose mde at the observed SD exceeds DM): **0.3649** under the planted-shape null and
+  **0.1836** at DM (harness, 40 000). A cap stop that does not cross is **NOT a null**. It is INCONCLUSIVE unless powered at
+  its observed SD (P8 item 4).
+- **Harm crossing by look 2**: 0.0004 at DM. The early boundaries are near-unreachable by design. Before look 7 the spending is
+  < .0013. Before look 4 the shape boundary is the largest t among the calibration campaigns, so no calibration campaign
+  crosses there.
+
+The H-V1 boundaries (t; frozen in `rpe_charge.V1_SHAPE_T`). The normal-model boundary is shown beside for comparison. At
+n = 8 the normal value is t_quantile's 64.0 bisection ceiling, which is moot because the shape boundary rules there.
+
+| look | n | shape t | normal t | look | n | shape t | normal t |
+|---|---|---|---|---|---|---|---|
+| 1 | 8 | 152.4982 | 64.0 | 11 | 88 | 3.4068 | 2.4758 |
+| 2 | 16 | 42.7365 | 12.3056 | 12 | 96 | 3.1276 | 2.3605 |
+| 3 | 24 | 39.7059 | 6.3858 | 13 | 104 | 2.8925 | 2.2603 |
+| 4 | 32 | 27.9062 | 4.7985 | 14 | 112 | 2.7317 | 2.1722 |
+| 5 | 40 | 19.4013 | 4.0261 | 15 | 120 | 2.5690 | 2.0939 |
+| 6 | 48 | 15.4001 | 3.5500 | 16 | 128 | 2.4429 | 2.0236 |
+| 7 | 56 | 6.0660 | 3.2179 | 17 | 136 | 2.3370 | 1.9600 |
+| 8 | 64 | 5.5080 | 2.9684 | 18 | 144 | 2.2539 | 1.9022 |
+| 9 | 72 | 4.4073 | 2.7715 | 19 (cap) | 152 | 2.1730 | 1.8493 |
+| 10 | 80 | 3.7690 | 2.6106 | | | | |
+
+**H-P1 (`_plan_w`, harm, DH = 0.035): the cap stays at 32.** R-S1b on E1's centred H-P1 d_s gives a type I of **0.0356**
+(harness, 40 000; re-panel A's probe: 0.0352), below .05. R-S1b therefore does not move it. H-P1 keeps addendum 2's design:
+looks 8/16/24/32, the normal-model boundaries, and power .8155 at DH under the pre-registered SD 0.0695 (harness, 40 000).
+Harm crossing by look 2 = 0.2326; P(INCONCLUSIVE) under the normal null = 0.2293. The futility rule above closes every H-P1
+futility look: mde_pre = 0.1990 / 0.0654 / 0.0424 > 0.035 at looks 1-3. So H-P1 also runs to a crossing or to the cap.
+Disclosed, not acted on: under E1's resampled SHAPE, H-P1's power at DH is 0.6544 (harness, 40 000). P1 item 2's power
+target is stated on the pre-registered SD model. Whether H-P1's cap should also follow its shape power is an owner question
+(row folder `OPEN-QUESTIONS.md`, Q2). Until it is answered, the brief's rule stands: "H-P1's cap stays unless R-S1b moves it".
+
+Addendum 3's open question Q3 (should an underpowered futility stop continue?) is settled by B-N2: **it continues**. Futility
+is non-binding, so continuing costs no type I.
+
+### Runs per look and hours (production tier decides, #4616; the no-encoder tier runs beside on the same looks)
+
+- Look 1 is the frozen campaign: 86 runs plus the 16-run bridge.
+- Looks 2-4 each add `real` + `pfrozen` x 8 seeds = 16 runs per tier, 32 runs per look (addendum 2).
+- **Looks 5-19 add `real` only** (H-P1 stopped at its cap 32; the secondaries and dispositions read the look-1 block):
+  8 runs per tier, 16 runs per look, about 11 min per look at E1's 41 s no-encoder rate.
+- Worst case to the H-V1 cap: 102 + 96 + 15 x 16 = **438 runs, about 5 h 0 min no-encoder-equivalent** (41 s per run, E1).
+- The production tier's per-run time is measured at look 1 (stage A). Each later look is re-estimated from it before its
+  `resource:timing` claim. The stop rule is addendum 3's: the next block runs while a production primary is CONTINUE and its
+  cap is not reached.
+
+### Other changes (re-panel round 2)
+
+- **A-B1, each endpoint from its pre-registered seed block**: every E-* endpoint (E-P1, E-P2, E-V1, E-V2, E-V3), the in-brain
+  check and the dispositions are computed on the look-1 block (seeds 8-15) at every look. H-P1 reads its first 32 seeds after
+  its cap, and H-V1 reads all seeds. Example: an E-P2 MET at look 1 still blocks the `_plan_w` NULL-RECORD at look 2.
+- **A-M2, replay binding**: each replay row carries the tree sha and the sha256 of its `real` run's replayed (pattern, r, tick)
+  series (`replay_binding`). A row whose binding differs from the current `real` run voids the tier. No sequential decision
+  is taken while a validity check is pending. The primary reads "PENDING (validity checks not yet run: ...)", and the cross
+  verdict says PENDING with no candidate wording.
+- **C R2-M1, wording**: a look that continues prints "CONTINUE at look k of K, n=... (no verdict): next look n=...". It never
+  prints "NOT MET ... CONTINUE". The no-harm compare fixture accordingly reads "H-P1 CONTINUE at look 1"; section 4's
+  "no-harm -> NOT MET" is replaced for look 1.
+- **B-N4**: a VOID no-encoder tier is reported beside the production verdict ("no-encoder VOID: reported beside, no
+  verdict") and never vetoes it. This replaces addendum 3's "A VOID no-encoder tier keeps the verdict PENDING". The NULL-RECORD
+  precondition (addendum 3) is unchanged: it still needs the objective endpoint clean on BOTH tiers. That only ever withholds
+  a record (row folder `OPEN-QUESTIONS.md`, Q1).
+- **B-N7, one mechanism**: `seq_boundaries` / `seq_decision` / `seq_record` are the project's one alpha-spending
+  implementation (graph-exists "alpha spending": no other site). G1(c)-2, G2 and every later P1 pre-registration import them.
+- **Numerical fix**: with 19 looks, look 1's spending 2 - 2 Phi(z / sqrt(tau)) is 0.0 in floating point, and `seq_boundaries`
+  crashed. It now uses the tail form 2 Phi-bar(z / sqrt(tau)) and z = -Phi^-1(pi). The 4-look boundaries are unchanged
+  (their tests pin them).
+
+### Harness binding
+
+`src/snn_data_lake/instruments/rpe_charge.py`: `SD_PRE`, `V1_CAP` = 152, `V1_LOOKS`, `V1_SHAPE_T`, `V1_FUTILITY_LOOKS` = ()
+and `SEQ` (each primary's claimed effect, looks, pre-registered SD and boundaries, in one place); `futility_open`;
+`seq_decision` / `seq_record` take the design; `analyse` refuses a seed count that is not an H-V1 look and carries the E-*
+endpoints from the look-1 block; `replay_binding`; `cross` REFUSED / PENDING / VOID-beside. Reds and greens:
+`lanes/engine-1024/e1b-fix-row/REPORT.md`. The derivation is `lanes/engine-1024/e1b-fix-row/derive_v1.py` (logs
+`logs/derive-*.log`). All numbers are brain-free simulations; no perception tier applies.
