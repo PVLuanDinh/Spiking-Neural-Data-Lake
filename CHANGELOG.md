@@ -17,7 +17,8 @@ owner #3403; design research-1016 `design/DESIGN.md` T0-T13), steps T0 and T1 of
   capture of 21 brains (perception tier eprop-snn) that every later merge step must reproduce byte for byte; all five
   controls H0a-H0e fire.
 - **G3 T1 `growth/grower.py`:** `Grower` + `PerceptProblem` wrap the B1 percept engine; the five-arm brain run matches the
-  T0 capture byte for byte. Merge step 1 of 3: `GrowthLoop` and `NeurogenesisEngine` still run and retire at T6. P5b: Python.
+  T0 capture byte for byte. Merge step 1 of 3: `GrowthLoop` and `NeurogenesisSelfImprove` still run and retire
+  at T6. P5b: Python.
 - **P1 amendment, sample size is measured** (owner, verbatim: "switch E1b to a sequential design, P1 policy, make sure all
   sessions understand that"): seed counts derive from a measured SD by power; campaigns run as pre-registered sequential
   designs (looks, alpha spending, non-binding futility, an inflated cap); a futility stop is not a null (P8 item 4 reads its
