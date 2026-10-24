@@ -12,8 +12,9 @@ stream, brain-free compare fixtures, the cross-tier rule (addendum 3: production
   python -m snn_data_lake.instruments.rpe_charge replay <results dir> <tier> [N]
   python -m snn_data_lake.instruments.rpe_charge compare <results dir> <tier> [out.md]
   python -m snn_data_lake.instruments.rpe_charge cross <production dir> <no-encoder dir> [out.md]
-  (replay / compare / cross take `--look K`, K = 1..len(V1_LOOKS): seeds 8 .. 8 + V1_LOOKS[K-1] - 1; addenda 2 and 4,
-   default look 1; past look 4 (H-P1's cap) only `real` runs are added, for H-V1)
+  (replay / compare / cross take `--look K`, K = 1..len(CAMPAIGN_LOOKS): seeds 8 .. 8 + CAMPAIGN_LOOKS[K-1] - 1;
+   addenda 2, 4 and 5, default look 1; every look adds `real` + `pfrozen` up to H-P1's cap, and replay rows up to
+   H-V1's)
   python -m snn_data_lake.instruments.rpe_charge fixture <logs dir>    # appends the three fixture lines to fixture.log
 
 ARMS (E1's exact patch code; only the arm's own `_valence` instance and the bound AutonomousArm are acted on
@@ -65,6 +66,11 @@ A futility stop is taken only at a look whose mde from the pre-registered SD is 
 (`futility_open`). Each E-* endpoint and the dispositions read the look-1 block at every look; H-P1 is carried from its
 cap. Replay rows are bound to their real run by tree sha + series digest (`replay_binding`), and no sequential decision
 is taken while a validity check is pending.
+ADDENDUM 5 (P1 item 2, the owner's H-V1 ruling applied to H-P1 by the integrator): H-P1's cap P1_CAP is the first
+8-seed look at which its design's power under E1's measured per-seed shape is >= .8. It keeps the normal-model boundaries
+(the shape-calibrated ones are lower at every look). The campaign runs the longer of the two primaries' looks
+(CAMPAIGN_LOOKS); each primary past its own cap is carried from that cap. Every look up to P1_CAP adds `real` +
+`pfrozen` (this supersedes addendum 4's "Looks 5-19 add `real` only"); H-P1's looks are P1_LOOKS, not LOOKS.
 ONE SEQUENTIAL MECHANISM (P2, re-panel B-N7): `seq_boundaries` / `seq_decision` / `seq_record` are the project's one
 alpha-spending implementation (graph-exists "alpha spending": no other site). G1(c)-2 and G2, and any later
 pre-registration under the P1 amendment, import them from here; moving them to a shared module is that consumer's change,
@@ -102,7 +108,8 @@ AGREE_MIN = 6  # cross-tier sign agreement of d_s; owner slot: 12
 TIER_EFFECT_MIN = 6  # same-seed `real` series differ between tiers on >= 6 seeds; owner slot: 12
 MDE_F = 1.00  # pre-registered mde factor (0.987 rounded up); owner slot: 0.66
 # Addendum 2 (P1, owner 2026-10-23 "switch E1b to a sequential design"): H-P1 and H-V1 are decided at seed-block looks.
-LOOKS = (8, 16, 24, 32)  # seeds per tier at each look (seeds 8..8+n-1); the last is the hard cap
+# addendum 2's 4-look design (seeds 8..8+n-1): the seq_* helpers' default looks; each primary's own looks are in SEQ
+LOOKS = (8, 16, 24, 32)
 SEQ_ALPHA = 0.05  # one-sided, per primary endpoint (Revision 2's multiplicity rule: no correction)
 FUTILITY_CP = (
     0.10  # non-binding: stop for futility when conditional power under the claimed effect < .10
@@ -138,8 +145,17 @@ V1_SHAPE_T = (
     2.1730,
 )  # derive_v1.py calib 152 (200 000 campaigns)
 V1_FUTILITY_LOOKS = ()  # looks before the cap whose mde from SD_PRE["H-V1"] is <= DM: none (n=144 gives 0.0527)
+# Addendum 5: H-P1's power under E1's shape is .8036 at 184 (harness .8038); at 176 the harness gave .7987 < .8, so
+#   one block more. No fixed-sample shape target exists: the sign gate's 5/8 equals the shifted shape's P(d > 0), so
+#   one-look power peaks at .584 (n = 24). e1b-hp1-row/derive_p1.py `power` / `calib` / `futility` / `verify`
+P1_CAP = 184
+P1_LOOKS = tuple(range(N_SEEDS, P1_CAP + 1, N_SEEDS))
+# mde from SD_PRE["H-P1"] <= DH from n=72 (0.0322)
+P1_FUTILITY_LOOKS = tuple(range(72, P1_CAP, N_SEEDS))
+# both are 8-seed blocks from seed 8: the longer holds the other
+CAMPAIGN_LOOKS = max(P1_LOOKS, V1_LOOKS, key=len)
 SEQ = {
-    "H-P1": {"claimed": DH, "looks": LOOKS, "sd_pre": SD_PRE["H-P1"], "bounds": None},
+    "H-P1": {"claimed": DH, "looks": P1_LOOKS, "sd_pre": SD_PRE["H-P1"], "bounds": None},
     "H-V1": {"claimed": DM, "looks": V1_LOOKS, "sd_pre": SD_PRE["H-V1"], "bounds": V1_SHAPE_T},
 }
 E1_HP1_T = 2.82  # E1's recorded H-P1 t (the "mirrored bar" signal), beside the BRIDGE read-out
@@ -1096,13 +1112,16 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
     """All statistics for ONE tier, from run JSON only. `logs_pass` is the tier_red/fixture gate (`logs_gate(dir)`)."""
     seeds = list(seeds)
     s0, ns = seeds[0], len(seeds)
-    if ns not in V1_LOOKS:
+    if ns not in CAMPAIGN_LOOKS:
         refuse(
-            tier, "compare", f"{ns} seeds is not a pre-registered look {V1_LOOKS} (addenda 2, 4)"
+            tier,
+            "compare",
+            f"{ns} seeds is not a pre-registered look {CAMPAIGN_LOOKS} (addenda 2, 4, 5)",
         )
     # each endpoint reads the seed block its pre-registration names (re-panel A-B1): the secondaries and the
-    # dispositions the look-1 block, H-P1 its 32-seed cap, H-V1 every look up to its own cap
-    block, p1_seeds = seeds[:N_SEEDS], seeds[: LOOKS[-1]]
+    # dispositions the look-1 block, H-P1 and H-V1 every look up to their own caps
+    n_exp = {k: _n_owed(k, seeds) for k in SEQ}  # past its cap, carried from it (addenda 4, 5)
+    block, p1_seeds, v1_seeds = seeds[:N_SEEDS], seeds[: n_exp["H-P1"]], seeds[: n_exp["H-V1"]]
     a = {"tier": tier, "seeds": seeds}
     n_ticks = next((d["ticks"] for d in runs.values()), None)
     h0 = n_ticks // 2 if n_ticks else 0
@@ -1151,9 +1170,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
                 bad.append(f"pc seed {s} flips == 0")
         else:
             pending.append(f"pc seed {s} missing")
-    for arm in (
-        ARMS
-    ):  # later looks add `real` + `pfrozen` (addendum 2), past H-P1's cap `real` only (addendum 4)
+    for arm in ARMS:  # later looks add `real` + `pfrozen` up to H-P1's cap (addenda 2, 5)
         for s in seeds if arm == "real" else p1_seeds if arm == "pfrozen" else block:
             if (arm, s) not in runs:
                 pending.append(f"{arm}_{s} missing")
@@ -1219,7 +1236,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         and a["ev1"]["t"][1] > BAR
         and min(a["ev1"]["k"]) >= K_MIN
     )
-    rows = {str(s): e2["real"][str(s)] for s in seeds if e2 and str(s) in e2["real"]}
+    rows = {str(s): e2["real"][str(s)] for s in v1_seeds if e2 and str(s) in e2["real"]}
     rows_b = [rows[str(s)] for s in block if str(s) in rows]
     da = [r["frozen"] - r["learn"] for r in rows_b]
     dc = [r["shuf"] - r["learn"] for r in rows_b]
@@ -1284,7 +1301,6 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         "H-V2": harm([r["learn"] - r["shuf"] for r in rows.values()]),
     }
     claimed = {"H-P1": DH, "H-P2": DR, "H-V1": DM, "H-V2": DM, "H-V3": DM}
-    n_exp = {"H-P1": len(p1_seeds)}  # H-P1 past its cap is carried from the cap (addendum 4)
     for k, h in hs.items():
         needs_ctl, n_k = k in ("H-V1", "H-V2"), n_exp.get(k, ns)
         if not valid:
@@ -1481,16 +1497,17 @@ def _series_differ(ra, rb, h0):
 
 
 def _n_owed(key, seeds):
-    """Seeds an endpoint's verdict reads at this look: H-P1 stops at its cap, H-V1 at its own (addendum 4)."""
+    """Seeds an endpoint's verdict reads at this look: H-P1 and H-V1 each stop at their own cap (addenda 4, 5)."""
     return min(len(seeds), SEQ[key]["looks"][-1])
 
 
 def _agreement(pa, na, key):
     dp, dn, n = pa["hs"][key]["d"], na["hs"][key]["d"], _n_owed(key, pa["seeds"])
     if not len(dp) == len(dn) == n:
-        return {"n": 0, "pearson": float("nan"), "table": []}
+        return {"n": 0, "of": n, "pearson": float("nan"), "table": []}
     return {
         "n": sum((x > 0) == (y > 0) for x, y in zip(dp, dn, strict=True)),
+        "of": n,
         "pearson": pearson(dp, dn),
         "table": [
             (sd_, x, y, (x > 0) == (y > 0))
@@ -1514,12 +1531,15 @@ def cross(pa, pruns, na, nruns):
         and _series_differ(pruns[("real", s)], nruns[("real", s)], pa["H0"])
     ]
     real_complete = all(("real", s) in pruns and ("real", s) in nruns for s in seeds)
-    need = lambda m: math.ceil(m * len(seeds) / N_SEEDS)  # noqa: E731 -- the look-1 counts scale with the look
+    # the look-1 counts scale with the seeds a statement reads: the look, or an endpoint's own cap
+    need = lambda m, n=None: math.ceil(m * (len(seeds) if n is None else n) / N_SEEDS)  # noqa: E731
     effect = real_complete and len(differ) >= need(TIER_EFFECT_MIN)
     tree_ok = len(pa["shas"]) == 1 and pa["shas"] == na["shas"]
     out = {
         "agree": agree["H-P1"]["n"],
         "agree_v1": agree["H-V1"]["n"],
+        "agree_of": agree["H-P1"]["of"],
+        "agree_v1_of": agree["H-V1"]["of"],
         "pearson": agree["H-P1"]["pearson"],
         "pearson_v1": agree["H-V1"]["pearson"],
         "tier_effect": effect,
@@ -1527,7 +1547,8 @@ def cross(pa, pruns, na, nruns):
         "tree_ok": tree_ok,
         "table": agree["H-P1"]["table"],
         "table_v1": agree["H-V1"]["table"],
-        "need_agree": need(AGREE_MIN),
+        "need_agree": need(AGREE_MIN, agree["H-P1"]["of"]),
+        "need_agree_v1": need(AGREE_MIN, agree["H-V1"]["of"]),
         "need_effect": need(TIER_EFFECT_MIN),
     }
 
@@ -1547,7 +1568,7 @@ def cross(pa, pruns, na, nruns):
     def single_tier(key, tail):
         prod, other = pa["hs"][key]["status"], na["hs"][key]["status"]
         if pa["hs"][key]["met"]:
-            beside = f"no-encoder {other}, d_s sign agrees on {agree[key]['n']}/{len(seeds)}"
+            beside = f"no-encoder {other}, d_s sign agrees on {agree[key]['n']}/{agree[key]['of']}"
             beside += "" if effect else ", tiers indistinguishable on this path"
             return f"harm on the production tier ({prod}; the confirmatory tier; {beside})" + tail(
                 (pa,)
@@ -1595,12 +1616,12 @@ def cross(pa, pruns, na, nruns):
             line = single_tier(key, tail)
             return f"{line}; no-encoder VOID: reported beside, no verdict" if void_ne else line
         if ma and mb:
-            if n_agree >= need(AGREE_MIN):
+            if n_agree >= need(AGREE_MIN, agree[key]["of"]):
                 return (
                     "harm on both tiers (effective p between .0025 and .05, correlated tiers)"
                     + tail((pa, na))
                 )
-            return f"both tiers MET but d_s sign agrees on only {n_agree}/{len(seeds)}: tier finding, no deletion candidate"
+            return f"both tiers MET but d_s sign agrees on only {n_agree}/{agree[key]['of']}: tier finding, no deletion candidate"
         if ma or mb:
             return f"tier finding: harm on {'production' if ma else 'no-encoder'} only; no deletion candidate (owner decides)"
         return f"not met on either tier: production {pa['hs'][key]['status']}; no-encoder {na['hs'][key]['status']}"
@@ -1709,11 +1730,14 @@ def bridge_readout(bridge_dir, e1_dir=None, seeds=PSEEDS, tree_shas=None):
 
 
 def render_cross(c, br=None):
-    n = len(c["table"])
     gates = (
-        ("reported beside, no gate (addendum 3)",) * 2
+        ("reported beside, no gate (addendum 3)",) * 3
         if SINGLE_TIER_HARM_DELETES
-        else (f"required >= {c['need_agree']}", f"required >= {c['need_effect']}")
+        else (
+            f"required >= {c['need_agree']}",
+            f"required >= {c['need_effect']}",
+            f"required >= {c['need_agree_v1']}",
+        )
     )
     L = [
         "## Cross-tier (e1b-rpe-harm.md sections 3, 4, 6; addendum 3)\n",
@@ -1722,13 +1746,13 @@ def render_cross(c, br=None):
     ]
     L += [f"| {s} | {x:+.4f} | {y:+.4f} | {ok} |" for s, x, y, ok in c["table"]]
     L.append(
-        f"\nsign agreement {c['agree']}/{n} ({gates[0]}); Pearson r of d_s across tiers {c['pearson']:.3f} (reported, no bar)"
+        f"\nsign agreement {c['agree']}/{c['agree_of']} ({gates[0]}); Pearson r of d_s across tiers {c['pearson']:.3f} (reported, no bar)"
     )
     L.append(
         f"tier effect present: {c['tier_effect']} (same-seed `real` series differ on {len(c['differ_seeds'])} seeds; {gates[1]})"
     )
     L.append(
-        f"H-V1 own d_s sign agreement {c['agree_v1']}/{len(c['table_v1'])}; Pearson r {c['pearson_v1']:.3f}"
+        f"H-V1 own d_s sign agreement {c['agree_v1']}/{c['agree_v1_of']} ({gates[2]}); Pearson r {c['pearson_v1']:.3f}"
     )
     L.append(f"- `_plan_w` H-P1: **{c['h_p1']}**\n- ValenceLearner H-V1: **{c['h_v1']}**")
     if br and not br["complete"]:
@@ -1825,7 +1849,9 @@ def fixture_runs(kind, tier="production"):
     runs = {}
     for s in SEEDS:
         base = 0.2 + 0.01 * (s % 5)
-        noise = 0.004 * ((s * 7) % 5 - 2)
+        noise = 0.001 * (
+            (s * 7) % 5 - 2
+        )  # addendum 5: spread must stay small; H-P1's look-1 boundary (of 23) is t > 64.0
         dh = 0.1 + noise if kind in ("harm", "void") else 0.0
         for arm in ARMS:
             r = base + (dh if arm in ("pfrozen", "pshuf") else 0.0)
@@ -1912,12 +1938,15 @@ def main(argv=()):
         return _selfcheck()
     cmd, rest = argv[0], argv[1:]
     seeds = SEEDS
-    if "--look" in rest:  # addenda 2, 4: look K reads seeds 8 .. 8 + V1_LOOKS[K-1] - 1
+    if "--look" in rest:  # addenda 2, 4, 5
         i = rest.index("--look")
         look = int(rest[i + 1])
-        if not 1 <= look <= len(V1_LOOKS):
-            refuse("any", cmd, f"--look {look} is not one of 1..{len(V1_LOOKS)}")
-        seeds, rest = range(SEEDS[0], SEEDS[0] + V1_LOOKS[look - 1]), rest[:i] + rest[i + 2 :]
+        if not 1 <= look <= len(CAMPAIGN_LOOKS):
+            refuse("any", cmd, f"--look {look} is not one of 1..{len(CAMPAIGN_LOOKS)}")
+        seeds, rest = (
+            range(SEEDS[0], SEEDS[0] + CAMPAIGN_LOOKS[look - 1]),
+            rest[:i] + rest[i + 2 :],
+        )
     if cmd == "run":
         import argparse
 

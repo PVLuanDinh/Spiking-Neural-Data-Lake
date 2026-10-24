@@ -330,7 +330,7 @@ def _tier(kind, tier):
 
 
 def _stopped(kind, tier):
-    """`_tier` with a still-running primary replaced by a real powered cap stop (32 seeds, SD .005).
+    """`_tier` with a still-running primary replaced by a powered stop at its own cap (SD .005).
 
     Addendum 2 writes no null while the design continues; addendum 3 none when underpowered."""
     a, runs = _tier(kind, tier)
@@ -1178,14 +1178,19 @@ N_SIM = 4000  # fast twin; the slow twin runs 40000
 # not the tests' 303 / 404). "normal": d_s ~ N(mu, SD); "shape": E1's measured d_s, centred,
 # resampled, plus mu (R-S1b).
 STATED = {
-    ("H-P1", "normal", "harm_by_look2"): 0.2326,
-    ("H-P1", "normal", "power"): 0.8155,
     ("H-V1", "shape", "harm_by_look2"): 0.0004,
     ("H-V1", "shape", "power"): 0.8164,
-    ("H-P1", "normal", "futility_null"): 0.0,
     ("H-V1", "shape", "futility_null"): 0.0,
-    ("H-P1", "normal", "inconclusive_null"): 0.2293,
     ("H-V1", "shape", "inconclusive_null"): 0.3649,
+    # addendum 5 (H-P1 cap 184): e1b-hp1-row/derive_p1.py `verify 40000` (seeds 9090 / 9191)
+    ("H-P1", "normal", "harm_by_look2"): 0.0,
+    ("H-P1", "normal", "power"): 0.9938,
+    ("H-P1", "normal", "futility_null"): 0.9010,
+    ("H-P1", "normal", "inconclusive_null"): 0.0,
+    ("H-P1", "shape", "harm_by_look2"): 0.0,
+    ("H-P1", "shape", "power"): 0.8038,
+    ("H-P1", "shape", "futility_null"): 0.9081,
+    ("H-P1", "shape", "inconclusive_null"): 0.0,
 }
 # E1's measured per-seed d_s (addendum 2's table, no-encoder tier, seed 1 kept): the planted SHAPE
 # of R-S1b
@@ -1228,11 +1233,11 @@ def _walk(ds, key="H-P1", *, futility=True):
     return "cap", len(looks), dec["powered"]
 
 
-def _naive(ds):
+def _naive(ds, key="H-P1"):
     """Optional stopping the instrument must see: a fixed one-sided .05 t test at every look."""
     from snn_data_lake.instruments.pool_selection import t_quantile
 
-    for n in R.LOOKS:
+    for n in R.SEQ[key]["looks"]:
         h = R.harm(ds[:n])
         if h["t"] > t_quantile(0.95, n - 1) and h["k"] >= math.ceil(R.K_MIN * n / R.N_SEEDS):
             return True
@@ -1242,7 +1247,7 @@ def _naive(ds):
 def _type_one(n_sim, seed, key="H-P1"):
     camps = list(_campaigns(0.0, SD_OF[key], n_sim, seed, key))
     seq = sum(_walk(ds, key, futility=False)[0] == "harm" for ds in camps) / n_sim
-    naive = sum(_naive(ds) for ds in camps) / n_sim
+    naive = sum(_naive(ds, key) for ds in camps) / n_sim
     return seq, naive
 
 
@@ -1282,7 +1287,7 @@ def test_rs1_rs2_slow_twin_40000_campaigns():
         assert p <= 0.05 + 3 * _se(0.05, 40000), (key, p)
 
 
-@pytest.mark.parametrize("key,dist", [("H-P1", "normal"), ("H-V1", "shape")])
+@pytest.mark.parametrize("key,dist", [("H-P1", "normal"), ("H-P1", "shape"), ("H-V1", "shape")])
 def test_rs3_a_planted_harm_of_the_claimed_size_crosses_at_the_stated_rate(key, dist):
     if dist == "normal":
         camps = _campaigns(CLAIMED[key], SD_OF[key], N_SIM, 303, key)
@@ -1297,7 +1302,7 @@ def test_rs3_a_planted_harm_of_the_claimed_size_crosses_at_the_stated_rate(key, 
     assert power >= 0.8 - 3 * _se(0.8), (key, power)  # P1 item 2: power at the cap >= .8
 
 
-@pytest.mark.parametrize("key,dist", [("H-P1", "normal"), ("H-V1", "shape")])
+@pytest.mark.parametrize("key,dist", [("H-P1", "normal"), ("H-P1", "shape"), ("H-V1", "shape")])
 def test_rs4_a_planted_zero_effect_stops_and_reads_inconclusive_at_the_stated_rates(key, dist):
     if dist == "normal":
         camps = _campaigns(0.0, SD_OF[key], N_SIM, 404, key)
@@ -1328,19 +1333,25 @@ def test_boundaries_spend_alpha_by_obrien_fleming_and_tighten_toward_the_cap():
     assert all(x["t"] > x["z"] for x in b)  # t boundary at df n-1 sits above its z twin
 
 
-def _look2_runs(kind):
-    """Look 2: block 1 is the full campaign; seeds 16-23 add `real` + `pfrozen` + replay rows."""
-    runs, e2 = R.fixture_runs(kind), R.fixture_e2()
-    for s in range(16, 24):
+def _extend(runs, e2, seeds, kind="noharm", tier="production"):
+    """A later look's seeds: `real` + `pfrozen` (up to H-P1's cap) and a replay row each."""
+    wig = 0.01 if tier == "production" else 0.0  # as fixture_runs: the tiers' `real` series differ
+    for s in seeds:
         base, dh = (
             0.2 + 0.01 * (s % 5),
-            (0.1 + 0.004 * ((s * 7) % 5 - 2)) if kind == "harm" else 0.0,
+            (0.1 + 0.001 * ((s * 7) % 5 - 2)) if kind == "harm" else 0.0,  # as fixture_runs
         )
         for arm, r in (("real", base), ("pfrozen", base + dh)):
             runs[(arm, s)] = R.synth_run(
-                arm, s, "production", r=r, mae_value=0.4, wiggle=0.01, shift=arm != "real"
+                arm, s, tier, r=r, mae_value=0.4, wiggle=wig, shift=arm != "real"
             )
         e2["real"][str(s)] = dict(e2["real"]["8"])
+    return runs, e2
+
+
+def _look2_runs(kind):
+    """Look 2: block 1 is the full campaign; seeds 16-23 add `real` + `pfrozen` + replay rows."""
+    runs, e2 = _extend(R.fixture_runs(kind), R.fixture_e2(), range(16, 24), kind)
     return runs, _bind(e2, runs)
 
 
@@ -1351,7 +1362,7 @@ def test_compare_at_look_2_decides_the_primaries_sequentially_and_pends_nothing_
     sq = a["hs"]["H-P1"]["seq"]
     # the look-1 prefix already crossed: that first stop is the decision of record (addendum 2)
     assert sq["look"] == 1 and sq["decision"] == "harm" and a["hs"]["H-P1"]["met"]
-    assert "look 1 of 4" in R.render(a)
+    assert f"look 1 of {len(R.P1_LOOKS)}" in R.render(a)
     assert a["hs"]["H-V2"]["status"].startswith(
         "NO VERDICT"
     )  # secondaries are decided at look 1 only
@@ -1589,7 +1600,7 @@ def test_the_in_brain_check_reads_the_look_1_block_at_later_looks():
 def test_the_candidate_line_reprints_the_no_encoder_decision_of_record():
     (pa, pr), (na, nr) = _tier("harm", "production"), _tier("noharm", "no-encoder")
     out = R.cross(pa, pr, na, nr)["h_p1"]
-    assert "no-encoder CONTINUE at look 1 of 4, n=8 (no verdict)" in out, out
+    assert f"no-encoder CONTINUE at look 1 of {len(R.P1_LOOKS)}, n=8 (no verdict)" in out, out
 
 
 # ------------- e1b-fix (arc 2): re-panel round 2 A-B1, A-M2, C R2-M1, B N2 / N4, addendum 4 (owner
@@ -1703,16 +1714,21 @@ def test_futility_is_taken_only_at_a_look_powered_by_the_preregistered_sd():
     # pre-registered SD
     # is at or below the claimed effect; before that the campaign continues (non-binding: no type-I
     # cost)
-    for n in (8, 16, 24):  # H-P1 at E1's SD: mde 0.199 / 0.065 / 0.042 > DH at looks 1-3
-        q = R.seq_decision(_series(-0.2, SD_P1, n), **R.SEQ["H-P1"])
+    for n in (8, 16, 24):  # addendum 2's 4-look design at E1's SD: mde 0.199 / 0.065 / 0.042 > DH
+        q = R.seq_decision(_series(-0.2, SD_P1, n), R.DH, sd_pre=SD_P1)
         assert q["decision"] == "continue" and q["cp"] < R.FUTILITY_CP, q
         assert not q["futility_open"], q
+    for n in range(8, 72, 8):  # addendum 5, H-P1: closed before n=72 (mde_pre at 64: 0.0361)
+        q = R.seq_decision(_series(-0.2, SD_P1, n), **R.SEQ["H-P1"])
+        assert q["decision"] == "continue" and not q["futility_open"], q
     q = R.seq_decision(_futility_at_look_1(0.005, 25), R.DH, sd_pre=0.005)
     assert q["decision"] == "futility" and q["futility_open"], q
     # no pre-registered SD: no futility stop at all
     assert R.seq_decision(_futility_at_look_1(SD_P1, 2), R.DH)["decision"] == "continue"
     open_v1 = [n for n in R.SEQ["H-V1"]["looks"][:-1] if R.futility_open(n, **R.SEQ["H-V1"])]
     assert open_v1 == list(R.V1_FUTILITY_LOOKS), open_v1
+    open_p1 = [n for n in R.SEQ["H-P1"]["looks"][:-1] if R.futility_open(n, **R.SEQ["H-P1"])]
+    assert open_p1 == list(R.P1_FUTILITY_LOOKS), open_p1
 
 
 def test_addendum_4_fixes_the_h_v1_cap_and_its_looks_in_one_place():
@@ -1721,7 +1737,12 @@ def test_addendum_4_fixes_the_h_v1_cap_and_its_looks_in_one_place():
     # the addendum's number: 134 x 1.0624 -> 144 (power .7935), one block more
     assert R.V1_CAP == 152
     assert R.SEQ["H-V1"]["looks"] == tuple(range(8, R.V1_CAP + 1, 8))
-    assert R.SEQ["H-P1"]["looks"] == R.LOOKS == (8, 16, 24, 32)
+    assert R.LOOKS == (
+        8,
+        16,
+        24,
+        32,
+    )  # addendum 2's default design: the seq_* helpers' default looks
     assert len(R.SEQ["H-V1"]["bounds"]) == len(R.SEQ["H-V1"]["looks"])
     normal = R.seq_boundaries(R.SEQ["H-V1"]["looks"])
     assert all(b >= x["t"] for b, x in zip(R.SEQ["H-V1"]["bounds"], normal, strict=True))
@@ -1740,32 +1761,103 @@ def test_a_decision_past_the_h_v1_cap_is_refused_and_a_look_past_32_is_accepted(
     with pytest.raises(R.Refused):
         R.seq_record([0.01] * (cap + 8), **R.SEQ["H-V1"])
     assert R.seq_record([0.01] * 40, **R.SEQ["H-V1"])["n"] in R.SEQ["H-V1"]["looks"]
-    with pytest.raises(R.Refused):  # 40 seeds is past H-P1's cap: its looks stop at 32
-        R.seq_decision([0.01] * 40, **R.SEQ["H-P1"])
 
 
-def test_compare_at_a_look_past_32_decides_h_v1_and_carries_h_p1_from_its_cap():
-    runs, e2 = _look2_runs("noharm")
-    for s in range(24, 48):  # looks 3-4 add real + pfrozen; look 5 (seeds 40-47) adds real only
-        base = 0.2 + 0.01 * (s % 5)
-        for arm in ("real", "pfrozen") if s < 40 else ("real",):
-            runs[(arm, s)] = R.synth_run(
-                arm, s, "production", r=base, mae_value=0.4, wiggle=0.01, shift=arm != "real"
-            )
-        e2["real"][str(s)] = dict(e2["real"]["8"])
+def test_addendum_5_fixes_the_h_p1_cap_and_its_looks_in_one_place():
+    # addendum 5 (P1 item 2, owner's H-V1 ruling applied to H-P1): first 8-seed look with shape
+    # power >= .8 in numpy (200000) and harness (40000); 184: .8036 / .8038, 176: .8010 / .7987
+    assert R.P1_CAP == 184
+    assert R.SEQ["H-P1"]["looks"] == R.P1_LOOKS == tuple(range(8, R.P1_CAP + 1, 8))
+    # the shape-calibrated boundary is below the normal-model one at every look: the normal rules
+    assert R.SEQ["H-P1"]["bounds"] is None
+    assert R.P1_FUTILITY_LOOKS == tuple(range(72, 177, 8))
+    # one campaign: the longer primary's looks
+    assert R.CAMPAIGN_LOOKS == R.P1_LOOKS and set(R.V1_LOOKS) < set(R.CAMPAIGN_LOOKS)
+
+
+def test_a_decision_past_the_h_p1_cap_is_refused_and_a_look_between_32_and_it_is_accepted():
+    with pytest.raises(R.Refused):
+        R.seq_record([0.01] * (R.P1_CAP + 8), **R.SEQ["H-P1"])
+    for n in (40, 104, R.P1_CAP):
+        q = R.seq_decision([0.01 * (i % 3) for i in range(n)], **R.SEQ["H-P1"])
+        assert q["n"] == n and q["n_looks"] == len(R.P1_LOOKS), q
+    with pytest.raises(R.Refused):  # past H-V1's own cap
+        R.seq_decision([0.01] * 160, **R.SEQ["H-V1"])
+
+
+def test_compare_at_a_look_past_32_decides_both_primaries():
+    runs, e2 = _extend(*_look2_runs("noharm"), range(24, 48))  # looks 3-5 (addendum 5)
     a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 48), logs_pass=True)
     assert a["valid"] and a["pending"] == [], (a["bad"], a["pending"])
-    assert a["hs"]["H-P1"]["n"] == 32 and a["hs"]["H-P1"]["seq"]["n"] <= 32
+    assert a["hs"]["H-P1"]["n"] == 40 and a["hs"]["H-P1"]["seq"]["n"] <= 40
     assert a["hs"]["H-V1"]["n"] == 40 and a["hs"]["H-V1"]["seq"]["n"] <= 40
     with pytest.raises(R.Refused):  # 44 seeds is no look
         R.analyse("production", runs, e2, seeds=range(8, 52), logs_pass=True)
 
 
-def test_cli_look_reaches_the_h_v1_cap_and_no_further(monkeypatch):
+def test_cli_look_reaches_the_campaign_cap_and_no_further(monkeypatch):
     seen = []
     monkeypatch.setattr(R, "_analyse_dir", lambda d, tier, seeds: (seen.append(list(seeds)), None))
     monkeypatch.setattr(R, "render", lambda a: "")
     assert R.main(["compare", "x", "production", "--look", "5"]) == 0
     assert seen == [list(range(8, 48))]
     with pytest.raises(R.Refused):
-        R.main(["compare", "x", "production", "--look", str(len(R.V1_LOOKS) + 1)])
+        R.main(["compare", "x", "production", "--look", str(len(R.CAMPAIGN_LOOKS) + 1)])
+    assert R.main(["compare", "x", "production", "--look", str(len(R.CAMPAIGN_LOOKS))]) == 0
+    assert seen[-1] == list(range(8, 8 + R.P1_CAP))  # look 23: past H-V1's cap, for H-P1
+
+
+def _past_v1_cap(tier):
+    """Look 20 (160 seeds) on `tier`: real + pfrozen on every seed, replay rows on every seed too,
+    so the 8 rows past H-V1's cap (seeds 160-167) must be ignored, not read."""
+    runs, e2 = _extend(
+        R.fixture_runs("noharm", tier), R.fixture_e2(tier=tier), range(16, 168), tier=tier
+    )
+    return R.analyse(tier, runs, _bind(e2, runs), seeds=range(8, 168), logs_pass=True), runs
+
+
+def test_compare_past_the_h_v1_cap_decides_h_p1_and_carries_h_v1_from_its_cap():
+    a, _ = _past_v1_cap("production")
+    assert a["valid"] and a["pending"] == [], (a["bad"], a["pending"])
+    assert a["hs"]["H-P1"]["n"] == 160 and "seq" in a["hs"]["H-P1"]
+    assert a["hs"]["H-V1"]["n"] == R.V1_CAP and a["hs"]["H-V1"]["seq"]["n"] <= R.V1_CAP
+
+
+def test_cross_past_the_h_v1_cap_counts_h_v1_over_its_own_cap():
+    (pa, pr), (na, nr) = _past_v1_cap("production"), _past_v1_cap("no-encoder")
+    assert pa["hs"]["H-V1"]["met"], pa["hs"]["H-V1"]["status"]  # the "agrees on" branch runs
+    out = R.cross(pa, pr, na, nr)
+    assert len(out["table_v1"]) == R.V1_CAP and len(out["table"]) == 160
+    assert f"agrees on {out['agree_v1']}/{R.V1_CAP}" in out["h_v1"], out["h_v1"]
+
+
+def test_both_tiers_past_the_h_v1_cap_count_h_v1_agreement_over_its_own_cap(both_tiers):
+    (pa, pr), (na, nr) = _past_v1_cap("production"), _past_v1_cap("no-encoder")
+    na["hs"]["H-V1"]["d"] = [-x if i % 2 else x for i, x in enumerate(na["hs"]["H-V1"]["d"])]
+    out = R.cross(pa, pr, na, nr)
+    assert pa["hs"]["H-V1"]["met"] and na["hs"]["H-V1"]["met"]
+    assert f"agrees on only {out['agree_v1']}/{R.V1_CAP}" in out["h_v1"], out["h_v1"]
+
+
+@pytest.mark.parametrize(
+    "flipped,word", [(38, "harm on both tiers"), (39, "agrees on only 113/152")]
+)
+def test_both_tiers_agreement_bar_past_the_h_v1_cap_is_six_eighths_of_its_own_cap(
+    both_tiers, flipped, word
+):
+    # ceil(6 * 152 / 8) = 114 agreeing seeds; scaled by the 160-seed look it would be 120
+    (pa, pr), (na, nr) = _past_v1_cap("production"), _past_v1_cap("no-encoder")
+    d = na["hs"]["H-V1"]["d"]  # seeds 16-159 are copied positive rows: flip from the end
+    na["hs"]["H-V1"]["d"] = [-x if i >= len(d) - flipped else x for i, x in enumerate(d)]
+    out = R.cross(pa, pr, na, nr)
+    assert out["need_agree_v1"] == 114 and out["agree_v1"] == R.V1_CAP - flipped
+    assert out["h_v1"].startswith(word) or word in out["h_v1"], out["h_v1"]
+
+
+@pytest.mark.slow
+def test_rs3_slow_twin_h_p1_shape_power_at_the_cap_is_at_least_point_8():
+    # addendum 5, P1 item 2 inside the suite: power at H-P1's cap >= .8 (STATED H-P1 shape power)
+    n = 40000
+    walks = [_walk(ds) for ds in _shape_campaigns("H-P1", R.DH, n, 707)]
+    power = sum(d == "harm" for d, _, _ in walks) / n
+    assert power >= 0.8 - 3 * _se(0.8, n), power
