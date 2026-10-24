@@ -108,7 +108,9 @@ toward and beyond human scale. General intelligence and sentience are both build
    one re-test at least 10x larger on its scaling axis (P8's null-scale amendment, 2026-10-23); measured
    harms and structural nulls skip the re-test, and an underpowered result is inconclusive, not a null.
 6. Sample size is MEASURED (P1's sample-size amendment, 2026-10-23): seeds come from a measured SD by power, and a
-   campaign runs as a pre-registered sequential design (looks, alpha spending, futility, cap), never a habitual count.
+   campaign runs as a pre-registered sequential design (looks, alpha spending, futility, a cap inflated past the
+   fixed-sample target), never a habitual count; a fixed count only for a one-shot run with its power stated. A futility
+   stop is not a null: P8 item 4 reads its mde.
 
 The project's most valuable records say what did not work; §10 lists them so that you do not rebuild
 them.

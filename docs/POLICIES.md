@@ -174,21 +174,29 @@ sweep is not a tuning problem — the blocking constraint is doing two jobs.**
 a sequential design, P1 policy, make sure all sessions understand that"*. Review-enforced, PROVISIONAL until its gate
 (below) is built and counted.
 
-A campaign's seed count is a constant like any other, so P1 binds it: derived, never habitual.
+A campaign's seed count is a constant like any other, so P1 binds it: derived, never habitual. **The incident it would
+have caught:** E1 (2026-10-19) ran a fixed 8 seeds; its `_plan_w` harm signal needed about 26 for power .8 and
+ValenceLearner's about 114, so a replication at 8 seeds would mostly have read INCONCLUSIVE.
 1. **Derived.** Every pre-registration carries a "Sample size (P1)" section: the measured SD the target comes from (a
-   prior run's paired SD or a pre-registered pilot), the effect the claim needs, and the power-derived target (power .8,
-   one-sided alpha .05 after the multiplicity rule).
-2. **Sequential where runs allow.** Named looks (seed blocks), a named alpha-spending boundary per look (e.g. Lan-DeMets
-   O'Brien-Fleming), a non-binding futility bound, and a hard cap at the target. A campaign stops only at a look and only
-   on a written boundary; seeds added after an unregistered look void the reading.
-3. **A fixed count** only for a one-shot run, its power stated; an underpowered count is declared INCONCLUSIVE-prone before
-   data (P8 null-scale amendment item 4).
+   prior run's paired SD or a pre-registered pilot), the effect the claim needs, and the fixed-sample target at power .8
+   (P8 null-scale amendment item 4's bar) after the pre-registration's own multiplicity correction across endpoints.
+2. **Sequential where runs allow.** Named looks (seed blocks), a named alpha-spending boundary per look, a non-binding
+   futility bound, and a hard cap: the fixed-sample target times the design's inflation factor, so power at the cap is
+   still at least .8. A campaign stops only at a look and only on a written boundary; seeds added after an unregistered
+   look void the reading. **A futility stop, or a cap reached without crossing, is not a null by itself:** it reports the
+   mde at the seed count reached, and P8 item 4 decides (INCONCLUSIVE unless that mde is at or below the claimed effect).
+3. **A fixed count** only for a one-shot run, its power stated before data; a result at an underpowered count is
+   INCONCLUSIVE (P8 item 4).
 
 **Honesty guard.** Sequential means stopping early on a written boundary, never running until a number looks right; the
-boundaries are checked by simulation (a planted null keeps the false-positive rate, a planted effect crosses) before the
-campaign runs. **Gate specification:** a check that every pre-registration frozen after this date carries the section's
-fields (measured SD, effect, target, looks or the one-shot reason, spending function, futility, cap), with a planted-missing
-red. Count it before this marker retires.
+boundaries and the cap are checked by simulation (a planted null keeps the false-positive rate, a planted effect of the
+claimed size crosses with the stated power) before the campaign runs. **Disclosed session call (integrator, 2026-10-23):**
+the owner's words name the rule and E1b; the mechanics (one-sided .05, the alpha-spending example Lan-DeMets
+O'Brien-Fleming, non-binding futility, the inflated cap, the simulation guard, and the scope over every pre-registration,
+read from "make sure all sessions understand that") are the session's derivation. **Gate specification:** a check that
+every pre-registration frozen in a commit descending from the one that lands this amendment carries the section's fields
+(measured SD, effect, target, looks or the one-shot reason, spending function, futility, cap), with a planted-missing red;
+G3 T0 and OG1 A8, frozen earlier, are grandfathered by name. Count it before this marker retires.
 
 ## P2 — Adopt-better **or merge**, then retire the inferior (non-additive)
 
