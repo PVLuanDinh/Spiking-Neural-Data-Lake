@@ -236,10 +236,14 @@ def test_compare_reproduces_e1_numbers_from_the_recorded_json():
 
 
 # --------------------------------------------------------------------------- fixtures and validity
-def test_compare_fixtures_print_met_not_met_and_void():
+def test_compare_fixtures_print_met_continue_and_void():
     lines = R.fixture_lines()
     assert [ln.split(" ")[1] for ln in lines] == ["harm", "noharm", "void"]
-    assert "H-P1 MET" in lines[0] and "H-P1 NOT MET" in lines[1]
+    assert (
+        "H-P1 MET" in lines[0]
+        and "H-P1 CONTINUE at look 1" in lines[1]
+        and "NOT MET" not in lines[1]
+    )
     assert "H-V1 VOID (control failed)" in lines[2]
     void = R.analyse("production", R.fixture_runs("void"), R.fixture_e2("void"), logs_pass=True)
     other = R.analyse(
@@ -322,7 +326,7 @@ def both_tiers(monkeypatch):
 
 def _tier(kind, tier):
     runs = R.fixture_runs(kind, tier)
-    return R.analyse(tier, runs, R.fixture_e2(), logs_pass=True), runs
+    return R.analyse(tier, runs, R.fixture_e2(tier=tier), logs_pass=True), runs
 
 
 def _stopped(kind, tier):
@@ -330,9 +334,10 @@ def _stopped(kind, tier):
 
     Addendum 2 writes no null while the design continues; addendum 3 none when underpowered."""
     a, runs = _tier(kind, tier)
-    for k, claimed in (("H-P1", R.DH), ("H-V1", R.DM)):
+    for k, design in R.SEQ.items():
         if "seq" in a["hs"][k] and a["hs"][k]["seq"]["decision"] == "continue":
-            a["hs"][k]["seq"] = R.seq_decision(_series(0.0, 0.005, 32), claimed)
+            q = R.seq_decision(_series(0.0, 0.005, design["looks"][-1]), **design)
+            a["hs"][k]["seq"], a["hs"][k]["status"] = q, q["status"]
     return a, runs
 
 
@@ -662,8 +667,9 @@ def test_a_partial_campaign_evaluates_the_complete_endpoints_and_marks_the_rest_
     runs = {k: v for k, v in R.fixture_runs("harm").items() if k[0] in ("real", "pfrozen")}
     a = R.analyse("production", runs, None, logs_pass=True)
     assert a["valid"] and a["pending"]
-    # stage A alone still yields the primary harm endpoint
-    assert a["hs"]["H-P1"]["status"].startswith("MET")
+    # stage A alone is pending: no sequential decision before every validity check has run (re-panel
+    # A-M2)
+    assert a["hs"]["H-P1"]["status"].startswith("PENDING") and "seq" not in a["hs"]["H-P1"]
     assert a["hs"]["H-V1"]["status"].startswith("NO VERDICT") and a["hs"]["H-V3"][
         "status"
     ].startswith("NO VERDICT")
@@ -699,7 +705,9 @@ def test_cross_voids_the_pair_when_the_two_tiers_ran_on_different_trees():
         k: dict(v, tier=dict(v["tier"], tree_sha="b" * 40))
         for k, v in R.fixture_runs("harm", "no-encoder").items()
     }
-    na = R.analyse("no-encoder", other, R.fixture_e2(), logs_pass=True)
+    na = R.analyse(
+        "no-encoder", other, _bind(R.fixture_e2(tier="no-encoder"), other), logs_pass=True
+    )
     assert na["valid"] and "PENDING" in R.cross(pa, pr, na, other)["h_p1"]
 
 
@@ -881,12 +889,12 @@ def _drop(runs, pred):
 def test_cross_is_pending_when_a_tiers_endpoint_is_incomplete():
     (pa, pr), _ = _tier("harm", "production"), _tier("harm", "no-encoder")
     runs = _drop(R.fixture_runs("harm", "no-encoder"), lambda k: k[0] == "pfrozen" and k[1] >= 11)
-    na = R.analyse("no-encoder", runs, R.fixture_e2(), logs_pass=True)
+    na = R.analyse("no-encoder", runs, R.fixture_e2(tier="no-encoder"), logs_pass=True)
     assert na["valid"] and na["hs"]["H-P1"]["status"].startswith("NO VERDICT")
     out = R.cross(pa, pr, na, runs)
     assert out["h_p1"].startswith("PENDING") and "tier finding" not in out["h_p1"]
     short = _drop(R.fixture_runs("harm", "no-encoder"), lambda k: k[0] == "real" and k[1] == 15)
-    nb = R.analyse("no-encoder", short, R.fixture_e2(), logs_pass=True)
+    nb = R.analyse("no-encoder", short, R.fixture_e2(tier="no-encoder"), logs_pass=True)
     assert R.cross(pa, pr, nb, short)["h_p1"].startswith(
         "PENDING"
     )  # never "indistinguishable" on missing data
@@ -1060,7 +1068,9 @@ def test_null_precondition_needs_one_tree_across_both_tiers():
         k: dict(v, tier=dict(v["tier"], tree_sha="b" * 40))
         for k, v in R.fixture_runs("noharm", "no-encoder").items()
     }
-    na = R.analyse("no-encoder", other, R.fixture_e2(), logs_pass=True)
+    na = R.analyse(
+        "no-encoder", other, _bind(R.fixture_e2(tier="no-encoder"), other), logs_pass=True
+    )
     assert na["valid"] and "tree sha" in R.null_precondition("_plan_w", pa, na)[1]
 
 
@@ -1163,34 +1173,59 @@ def test_load_runs_maps_every_tag_to_its_own_seed(tmp_path):
 # prefixes, as the campaign would.
 SD_P1, SD_V1 = 0.0695, 0.2040
 N_SIM = 4000  # fast twin; the slow twin runs 40000
-# The addendum's stated rates (e1b-seq-row/derive_seq.py, 200000 campaigns, other RNG seeds).
+# The addendum's stated rates (addendum 4: e1b-fix-row/derive_v1.py `verify`, 40000 campaigns, RNG
+# seeds 7070 / 8080,
+# not the tests' 303 / 404). "normal": d_s ~ N(mu, SD); "shape": E1's measured d_s, centred,
+# resampled, plus mu (R-S1b).
 STATED = {
-    ("H-P1", "harm_by_look2"): 0.2288,
-    ("H-P1", "power"): 0.8156,
-    ("H-V1", "harm_by_look2"): 0.0451,
-    ("H-V1", "power"): 0.3032,
-    ("H-P1", "futility_null"): 0.6579,
-    ("H-V1", "futility_null"): 0.8121,
+    ("H-P1", "normal", "harm_by_look2"): 0.2326,
+    ("H-P1", "normal", "power"): 0.8155,
+    ("H-V1", "shape", "harm_by_look2"): 0.0004,
+    ("H-V1", "shape", "power"): 0.8164,
+    ("H-P1", "normal", "futility_null"): 0.0,
+    ("H-V1", "shape", "futility_null"): 0.0,
+    ("H-P1", "normal", "inconclusive_null"): 0.2293,
+    ("H-V1", "shape", "inconclusive_null"): 0.3649,
 }
+# E1's measured per-seed d_s (addendum 2's table, no-encoder tier, seed 1 kept): the planted SHAPE
+# of R-S1b
+E1_D = {
+    "H-P1": [-0.0069, 0.0000, 0.1564, 0.0738, 0.1802, 0.0390, 0.0869, 0.0244],
+    "H-V1": [0.0405, -0.5355, 0.0378, 0.0083, 0.0591, -0.0441, 0.0709, 0.0537],
+}
+CLAIMED = {"H-P1": R.DH, "H-V1": R.DM}
+SD_OF = {"H-P1": SD_P1, "H-V1": SD_V1}
 
 
 def _se(p, n=N_SIM):
     return math.sqrt(p * (1 - p) / n)
 
 
-def _campaigns(mu, sd, n_sim, seed):
+def _campaigns(mu, sd, n_sim, seed, key="H-P1"):
     rng = random.Random(seed)
     for _ in range(n_sim):
-        yield [rng.gauss(mu, sd) for _ in range(R.LOOKS[-1])]
+        yield [rng.gauss(mu, sd) for _ in range(R.SEQ[key]["looks"][-1])]
 
 
-def _walk(ds, claimed, *, futility=True):
-    """The pre-registered stop rule on one campaign: (decision, look) at the first boundary."""
-    for j, n in enumerate(R.LOOKS, 1):
-        dec = R.seq_decision(ds[:n], claimed)
-        if dec["decision"] == "harm" or (futility and dec["decision"] == "futility"):
-            return dec["decision"], j
-    return "cap", len(R.LOOKS)
+def _shape_campaigns(key, mu, n_sim, seed):
+    """R-S1b: resample E1's measured d_s, centred (no harm in the mean H-V1 / H-P1 test),
+    shifted by mu."""
+    m = sum(E1_D[key]) / len(E1_D[key])
+    pool = [x - m + mu for x in E1_D[key]]
+    rng = random.Random(seed)
+    for _ in range(n_sim):
+        yield [rng.choice(pool) + rng.gauss(0, 1e-9) for _ in range(R.SEQ[key]["looks"][-1])]
+
+
+def _walk(ds, key="H-P1", *, futility=True):
+    """The pre-registered stop rule of `key` on one campaign: (decision, look, powered) at the
+    first stop."""
+    looks = R.SEQ[key]["looks"]
+    for j, n in enumerate(looks, 1):
+        dec = R.seq_decision(ds[:n], **R.SEQ[key])
+        if dec["decision"] == "harm" or (futility and dec["decision"] in ("futility", "cap")):
+            return dec["decision"], j, dec["powered"]
+    return "cap", len(looks), dec["powered"]
 
 
 def _naive(ds):
@@ -1204,11 +1239,16 @@ def _naive(ds):
     return False
 
 
-def _type_one(n_sim, seed):
-    camps = list(_campaigns(0.0, SD_P1, n_sim, seed))
-    seq = sum(_walk(ds, R.DH, futility=False)[0] == "harm" for ds in camps) / n_sim
+def _type_one(n_sim, seed, key="H-P1"):
+    camps = list(_campaigns(0.0, SD_OF[key], n_sim, seed, key))
+    seq = sum(_walk(ds, key, futility=False)[0] == "harm" for ds in camps) / n_sim
     naive = sum(_naive(ds) for ds in camps) / n_sim
     return seq, naive
+
+
+def _type_one_shape(n_sim, seed, key):
+    camps = _shape_campaigns(key, 0.0, n_sim, seed)
+    return sum(_walk(ds, key, futility=False)[0] == "harm" for ds in camps) / n_sim
 
 
 def test_rs1_rs2_sequential_type_one_holds_and_naive_optional_stopping_is_seen():
@@ -1219,28 +1259,56 @@ def test_rs1_rs2_sequential_type_one_holds_and_naive_optional_stopping_is_seen()
     assert naive > 0.05 + 3 * _se(0.05), naive
 
 
+def test_rs1_h_v1_type_one_holds_under_the_normal_null_too():
+    assert _type_one(N_SIM, 111, "H-V1")[0] <= 0.05 + 3 * _se(0.05)
+
+
+@pytest.mark.parametrize("key", ["H-P1", "H-V1"])
+def test_rs1b_type_one_holds_under_e1s_measured_per_seed_shape(key):
+    # R-S1b (re-panel A-B2): 4000 campaigns, each resampling E1's centred d_s to the endpoint's cap.
+    # Under this
+    # shape the plain t boundaries of addendum 2 gave H-V1 a type I of 0.2185 (rv-arc1-a
+    # r2/typeI_shape.out).
+    p = _type_one_shape(N_SIM, 505, key)
+    assert p <= 0.05 + 3 * _se(0.05), (key, p)
+
+
 @pytest.mark.slow
 def test_rs1_rs2_slow_twin_40000_campaigns():
     seq, naive = _type_one(40000, 202)
     assert seq <= 0.05 + 3 * _se(0.05, 40000) and naive > 0.05 + 3 * _se(0.05, 40000), (seq, naive)
+    for key in ("H-P1", "H-V1"):
+        p = _type_one_shape(40000, 606, key)
+        assert p <= 0.05 + 3 * _se(0.05, 40000), (key, p)
 
 
-@pytest.mark.parametrize("key,claimed,sd_", [("H-P1", R.DH, SD_P1), ("H-V1", R.DM, SD_V1)])
-def test_rs3_a_planted_harm_of_the_claimed_size_crosses_at_the_stated_rate(key, claimed, sd_):
-    walks = [_walk(ds, claimed) for ds in _campaigns(claimed, sd_, N_SIM, 303)]
-    by2 = sum(d == "harm" and j <= 2 for d, j in walks) / N_SIM
-    power = sum(d == "harm" for d, _ in walks) / N_SIM
+@pytest.mark.parametrize("key,dist", [("H-P1", "normal"), ("H-V1", "shape")])
+def test_rs3_a_planted_harm_of_the_claimed_size_crosses_at_the_stated_rate(key, dist):
+    if dist == "normal":
+        camps = _campaigns(CLAIMED[key], SD_OF[key], N_SIM, 303, key)
+    else:
+        camps = _shape_campaigns(key, CLAIMED[key], N_SIM, 303)
+    walks = [_walk(ds, key) for ds in camps]
+    by2 = sum(d == "harm" and j <= 2 for d, j, _ in walks) / N_SIM
+    power = sum(d == "harm" for d, _, _ in walks) / N_SIM
     for got, what in ((by2, "harm_by_look2"), (power, "power")):
-        want = STATED[(key, what)]
+        want = STATED[(key, dist, what)]
         assert abs(got - want) <= 3 * _se(want), (key, what, got, want)
+    assert power >= 0.8 - 3 * _se(0.8), (key, power)  # P1 item 2: power at the cap >= .8
 
 
-@pytest.mark.parametrize("key,claimed,sd_", [("H-P1", R.DH, SD_P1), ("H-V1", R.DM, SD_V1)])
-def test_rs4_a_planted_zero_effect_stops_for_futility_at_the_stated_rate(key, claimed, sd_):
-    walks = [_walk(ds, claimed) for ds in _campaigns(0.0, sd_, N_SIM, 404)]
-    fut = sum(d == "futility" for d, _ in walks) / N_SIM
-    want = STATED[(key, "futility_null")]
-    assert abs(fut - want) <= 3 * _se(want), (key, fut, want)
+@pytest.mark.parametrize("key,dist", [("H-P1", "normal"), ("H-V1", "shape")])
+def test_rs4_a_planted_zero_effect_stops_and_reads_inconclusive_at_the_stated_rates(key, dist):
+    if dist == "normal":
+        camps = _campaigns(0.0, SD_OF[key], N_SIM, 404, key)
+    else:
+        camps = _shape_campaigns(key, 0.0, N_SIM, 404)
+    walks = [_walk(ds, key) for ds in camps]
+    fut = sum(d == "futility" for d, _, _ in walks) / N_SIM
+    inc = sum(d != "harm" and not pw for d, _, pw in walks) / N_SIM  # a non-harm stop, underpowered
+    for got, what in ((fut, "futility_null"), (inc, "inconclusive_null")):
+        want = STATED[(key, dist, what)]
+        assert abs(got - want) <= 3 * max(_se(want), _se(0.01)), (key, what, got, want)
 
 
 def test_rs5_a_decision_at_a_non_look_seed_count_is_refused():
@@ -1273,7 +1341,7 @@ def _look2_runs(kind):
                 arm, s, "production", r=r, mae_value=0.4, wiggle=0.01, shift=arm != "real"
             )
         e2["real"][str(s)] = dict(e2["real"]["8"])
-    return runs, e2
+    return runs, _bind(e2, runs)
 
 
 def test_compare_at_look_2_decides_the_primaries_sequentially_and_pends_nothing_else():
@@ -1360,7 +1428,9 @@ def test_futility_at_look_1_with_sd_above_the_bound_is_inconclusive_not_null():
     from snn_data_lake.instruments.pool_selection import t_quantile
 
     ds = _futility_at_look_1(0.0695, 2)  # E1's H-P1 SD; conditional power ~.003
-    q = R.seq_decision(ds, R.DH)
+    q = R.seq_decision(
+        ds, R.DH, sd_pre=0.01
+    )  # a pre-registration whose SD opened look 1 to futility
     assert q["decision"] == "futility" and q["n"] == 8
     want = (R.seq_boundaries()[0]["t"] + t_quantile(0.8, 7)) * R.sd(ds) / math.sqrt(8)
     assert abs(q["mde"] - want) < 1e-9 and not q["powered"]  # the mde at the STOPPED seed count
@@ -1374,7 +1444,7 @@ def test_futility_at_look_1_with_sd_above_the_bound_is_inconclusive_not_null():
 
 def test_a_powered_futility_stop_takes_the_null_record_path_and_its_10x_retest():
     # a small SD turns the claimed effect into a large drift: only a far negative mean stops early
-    q = R.seq_decision(_futility_at_look_1(0.005, 25), R.DH)
+    q = R.seq_decision(_futility_at_look_1(0.005, 25), R.DH, sd_pre=0.005)
     assert q["decision"] == "futility" and q["powered"], q
     assert "NULL-RECORD" in q["status"] and "10x" in q["status"]
 
@@ -1386,7 +1456,7 @@ def test_seq_record_walks_the_looks_to_the_first_stop():
     q = R.seq_record(look1 + [0.1] * 8, R.DH)
     assert q["look"] == 2 and q["decision"] == "harm", q
     # a look-1 futility stop stays the decision of record even when the next block would cross
-    q = R.seq_record(_futility_at_look_1(0.0695, 2) + [0.5] * 8, R.DH)
+    q = R.seq_record(_futility_at_look_1(0.0695, 2) + [0.5] * 8, R.DH, sd_pre=0.01)
     assert q["look"] == 1 and q["decision"] == "futility", q
     assert R.seq_record(look1, R.DH)["decision"] == "continue"
 
@@ -1438,11 +1508,14 @@ def test_render_cross_reports_agreement_and_tier_effect_as_no_gate():
     assert "required >=" not in txt and "no gate" in txt, txt
 
 
-def test_ruling_a_void_no_encoder_tier_keeps_the_verdict_pending():
+def test_ruling_a_void_no_encoder_tier_is_reported_beside_never_a_veto():
+    # re-panel B-N4: under #4616 the production tier decides; a VOID no-encoder tier has no verdict
+    # to give
     (pa, pr), (_, nr) = _tier("harm", "production"), _tier("harm", "no-encoder")
-    void = R.analyse("no-encoder", nr, R.fixture_e2(), logs_pass=False)
+    void = R.analyse("no-encoder", nr, R.fixture_e2(tier="no-encoder"), logs_pass=False)
     out = R.cross(pa, pr, void, nr)["h_p1"]
-    assert out.startswith("PENDING") and "candidate" not in out, out
+    assert not out.startswith("PENDING") and "harm-deletion candidate" in out, out
+    assert "no-encoder VOID: reported beside, no verdict" in out, out
 
 
 def test_ruling_indistinguishable_tiers_do_not_gate_the_production_candidate():
@@ -1454,8 +1527,9 @@ def test_ruling_indistinguishable_tiers_do_not_gate_the_production_candidate():
 
 
 def test_ruling_neither_tier_met_is_neither_candidate_nor_tier_finding():
-    out = R.cross(*_tier("noharm", "production"), *_tier("noharm", "no-encoder"))["h_p1"]
+    out = R.cross(*_stopped("noharm", "production"), *_stopped("noharm", "no-encoder"))["h_p1"]
     assert out.startswith("not met on the production tier") and "tier finding" not in out, out
+    assert "candidate" not in out, out
 
 
 def test_ruling_pending_checks_hold_the_candidate_even_without_a_tier_effect():
@@ -1480,7 +1554,7 @@ def test_the_mde_is_taken_at_the_stopped_look_and_at_the_cap():
     from snn_data_lake.instruments.pool_selection import t_quantile
 
     bs = R.seq_boundaries()
-    q = R.seq_decision(_series(-0.2, 0.0695, 16), R.DH)  # look 2, far below zero
+    q = R.seq_decision(_series(-0.2, 0.0695, 16), R.DH, sd_pre=0.01)  # look 2, far below zero
     assert q["decision"] == "futility" and q["look"] == 2, q
     assert abs(q["mde"] - (bs[1]["t"] + t_quantile(0.8, 15)) * 0.0695 / 4) < 1e-9
     q = R.seq_decision(_series(0.0, 0.0695, 32), R.DH)  # E1's SD reaches the cap without crossing
@@ -1515,4 +1589,183 @@ def test_the_in_brain_check_reads_the_look_1_block_at_later_looks():
 def test_the_candidate_line_reprints_the_no_encoder_decision_of_record():
     (pa, pr), (na, nr) = _tier("harm", "production"), _tier("noharm", "no-encoder")
     out = R.cross(pa, pr, na, nr)["h_p1"]
-    assert "no-encoder NOT MET at look 1 of 4, n=8: CONTINUE" in out, out
+    assert "no-encoder CONTINUE at look 1 of 4, n=8 (no verdict)" in out, out
+
+
+# ------------- e1b-fix (arc 2): re-panel round 2 A-B1, A-M2, C R2-M1, B N2 / N4, addendum 4 (owner
+# ruling)
+def _bind(e2, runs):
+    """Stamp each replay row with the binding of the `real` run it stands for (what `replay`
+    writes)."""
+    for k, row in e2["real"].items():
+        if ("real", int(k)) in runs:
+            row.update(R.replay_binding(runs[("real", int(k))]))
+    return e2
+
+
+def _probe_campaign(tier, n_seeds):
+    """rv-arc1-a r2/look2_null_probe.py: block 1 real beats pfrozen and pshuf by 0.1 (E-P2 MET);
+    later blocks add real + pfrozen only, pfrozen below real (no harm)."""
+    wig, runs = (0.01 if tier == "production" else 0.0), {}
+    for s in range(8, 8 + n_seeds):
+        base, dh = 0.3 + 0.01 * (s % 5), -0.1 - 0.004 * ((s * 7) % 5 - 2)
+        for arm in R.ARMS if s < 16 else ("real", "pfrozen"):
+            r = base + (dh if arm in ("pfrozen", "pshuf") else 0.0)
+            runs[(arm, s)] = R.synth_run(
+                arm, s, tier, r=r, mae_value=0.4 + 0.02 * (s % 3), wiggle=wig, shift=arm != "real"
+            )
+    runs[("real_r2", 8)] = copy.deepcopy(runs[("real", 8)])
+    for s in (8, 9):
+        runs[("pc", s)] = R.synth_run("pc", s, tier, r=0.2, mae_value=0.4, wiggle=wig, shift=2)
+    e2 = R.fixture_e2(tier=tier)
+    for s in range(16, 8 + n_seeds):
+        e2["real"][str(s)] = dict(e2["real"]["8"])
+    return R.analyse(tier, runs, _bind(e2, runs), seeds=range(8, 8 + n_seeds), logs_pass=True)
+
+
+def test_a_look_1_met_objective_still_blocks_the_null_record_at_look_2():
+    # re-panel A-B1: at look 2 E-P2 was recomputed over 16 seeds with no pshuf past look 1 (met ->
+    # False), and the
+    # _plan_w NULL-RECORD opened on data whose objective was met at t = 47
+    for n in (8, 16):
+        pa, na = _probe_campaign("production", n), _probe_campaign("no-encoder", n)
+        assert pa["valid"] and pa["pending"] == [], (n, pa["bad"], pa["pending"])
+        assert pa["ep2"]["full"] and pa["ep2"]["met"] and len(pa["ep2"]["d"][0]) == R.N_SEEDS, n
+        ok, why = R.null_precondition("_plan_w", pa, na)
+        assert not ok and "objective endpoint was met" in why, (n, why)
+
+
+def test_e_v2_and_the_dispositions_are_read_on_the_look_1_block_at_later_looks():
+    runs, e2 = _look2_runs("harm")
+    for s in range(16, 24):  # later replay rows that would move E-V2 if they were read
+        e2["real"][str(s)].update(learn=0.9, frozen=0.1, shuf=0.1)
+    a1 = R.analyse("production", R.fixture_runs("harm"), R.fixture_e2(), logs_pass=True)
+    a2 = R.analyse("production", runs, e2, seeds=range(8, 24), logs_pass=True)
+    assert len(a2["ev2"]["d"][0]) == R.N_SEEDS and a2["ev2"] == a1["ev2"]
+    assert (a2["ev1"], a2["ep1"], a2["ep2"], a2["disp"]) == (
+        a1["ev1"],
+        a1["ep1"],
+        a1["ep2"],
+        a1["disp"],
+    )
+
+
+def test_a_replay_row_bound_to_another_series_or_tree_voids_the_tier():
+    # re-panel A-M2: N and n_calls alone tie nothing (a re-run on a new tree keeps both)
+    runs = R.fixture_runs("noharm")
+    assert R.analyse("production", runs, R.fixture_e2(), logs_pass=True)["valid"]
+    for field, value in (("digest", "0" * 64), ("tree_sha", "b" * 40)):
+        e2 = R.fixture_e2()
+        e2["real"]["9"][field] = value
+        a = R.analyse("production", runs, e2, logs_pass=True)
+        assert not a["valid"] and any("replay row seed 9" in b for b in a["bad"]), (field, a["bad"])
+    e2 = R.fixture_e2()
+    del e2["real"]["9"]["digest"]  # a replay record written before the binding is stale
+    assert not R.analyse("production", runs, e2, logs_pass=True)["valid"]
+
+
+def test_replay_writes_the_binding_of_the_run_it_replayed():
+    run = R.fixture_runs("noharm")[("real", 8)]
+    row = R.replay({8: run})["real"]["8"]
+    assert row["tree_sha"] == run["tier"]["tree_sha"] == R.SYNTH_SHA
+    assert row["digest"] == R.replay_binding(run)["digest"] and len(row["digest"]) == 64
+    other = R.fixture_runs("noharm", "no-encoder")[("real", 8)]  # same seed, another series
+    assert R.replay_binding(other)["digest"] != row["digest"]
+
+
+def test_a_pending_check_withholds_the_sequential_decision():
+    runs = R.fixture_runs("harm")
+    del runs[("real_r2", 8)]  # the repeat arm has not run yet
+    a = R.analyse("production", runs, R.fixture_e2(), logs_pass=True)
+    assert a["valid"] and a["pending"], a["pending"]
+    for k in ("H-P1", "H-V1"):
+        h = a["hs"][k]
+        assert "seq" not in h and not h["met"] and h["status"].startswith("PENDING"), (
+            k,
+            h["status"],
+        )
+
+
+def test_a_continue_is_never_printed_as_not_met():
+    # re-panel C R2-M1: addendum 2 "CONTINUE is no verdict: it is never 'not met'"
+    q = R.seq_decision(_series(0.03, 0.07), R.DH)
+    assert q["decision"] == "continue", q
+    assert "NOT MET" not in q["status"] and q["status"].startswith("CONTINUE at look 1"), q[
+        "status"
+    ]
+    assert "(no verdict)" in q["status"]
+    out = R.cross(*_tier("noharm", "production"), *_tier("noharm", "no-encoder"))["h_p1"]
+    assert "NOT MET" not in out and "CONTINUE on the production tier (no verdict)" in out, out
+
+
+def test_futility_is_taken_only_at_a_look_powered_by_the_preregistered_sd():
+    # re-panel B-N2 + P1 amendment item 2 as folded: a futility stop only where the mde from the
+    # pre-registered SD
+    # is at or below the claimed effect; before that the campaign continues (non-binding: no type-I
+    # cost)
+    for n in (8, 16, 24):  # H-P1 at E1's SD: mde 0.199 / 0.065 / 0.042 > DH at looks 1-3
+        q = R.seq_decision(_series(-0.2, SD_P1, n), **R.SEQ["H-P1"])
+        assert q["decision"] == "continue" and q["cp"] < R.FUTILITY_CP, q
+        assert not q["futility_open"], q
+    q = R.seq_decision(_futility_at_look_1(0.005, 25), R.DH, sd_pre=0.005)
+    assert q["decision"] == "futility" and q["futility_open"], q
+    # no pre-registered SD: no futility stop at all
+    assert R.seq_decision(_futility_at_look_1(SD_P1, 2), R.DH)["decision"] == "continue"
+    open_v1 = [n for n in R.SEQ["H-V1"]["looks"][:-1] if R.futility_open(n, **R.SEQ["H-V1"])]
+    assert open_v1 == list(R.V1_FUTILITY_LOOKS), open_v1
+
+
+def test_addendum_4_fixes_the_h_v1_cap_and_its_looks_in_one_place():
+    # owner 2026-10-24 "Raise its cap to its power target": cap = target x inflation, in 8-seed
+    # looks
+    # the addendum's number: 134 x 1.0624 -> 144 (power .7935), one block more
+    assert R.V1_CAP == 152
+    assert R.SEQ["H-V1"]["looks"] == tuple(range(8, R.V1_CAP + 1, 8))
+    assert R.SEQ["H-P1"]["looks"] == R.LOOKS == (8, 16, 24, 32)
+    assert len(R.SEQ["H-V1"]["bounds"]) == len(R.SEQ["H-V1"]["looks"])
+    normal = R.seq_boundaries(R.SEQ["H-V1"]["looks"])
+    assert all(b >= x["t"] for b, x in zip(R.SEQ["H-V1"]["bounds"], normal, strict=True))
+
+
+def test_boundaries_past_17_looks_spend_a_positive_alpha_at_look_1():
+    # 2 - 2 Phi(z / sqrt(1/19)) is 0.0 in floating point: look 1 of the H-V1 design must not crash
+    # or spend nothing
+    bs = R.seq_boundaries(tuple(range(8, 153, 8)))
+    assert 0 < bs[0]["spent"] < 1e-12 and bs[0]["z"] > 8
+    assert abs(bs[-1]["spent"] - R.SEQ_ALPHA) < 1e-12
+
+
+def test_a_decision_past_the_h_v1_cap_is_refused_and_a_look_past_32_is_accepted():
+    cap = R.V1_CAP
+    with pytest.raises(R.Refused):
+        R.seq_record([0.01] * (cap + 8), **R.SEQ["H-V1"])
+    assert R.seq_record([0.01] * 40, **R.SEQ["H-V1"])["n"] in R.SEQ["H-V1"]["looks"]
+    with pytest.raises(R.Refused):  # 40 seeds is past H-P1's cap: its looks stop at 32
+        R.seq_decision([0.01] * 40, **R.SEQ["H-P1"])
+
+
+def test_compare_at_a_look_past_32_decides_h_v1_and_carries_h_p1_from_its_cap():
+    runs, e2 = _look2_runs("noharm")
+    for s in range(24, 48):  # looks 3-4 add real + pfrozen; look 5 (seeds 40-47) adds real only
+        base = 0.2 + 0.01 * (s % 5)
+        for arm in ("real", "pfrozen") if s < 40 else ("real",):
+            runs[(arm, s)] = R.synth_run(
+                arm, s, "production", r=base, mae_value=0.4, wiggle=0.01, shift=arm != "real"
+            )
+        e2["real"][str(s)] = dict(e2["real"]["8"])
+    a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 48), logs_pass=True)
+    assert a["valid"] and a["pending"] == [], (a["bad"], a["pending"])
+    assert a["hs"]["H-P1"]["n"] == 32 and a["hs"]["H-P1"]["seq"]["n"] <= 32
+    assert a["hs"]["H-V1"]["n"] == 40 and a["hs"]["H-V1"]["seq"]["n"] <= 40
+    with pytest.raises(R.Refused):  # 44 seeds is no look
+        R.analyse("production", runs, e2, seeds=range(8, 52), logs_pass=True)
+
+
+def test_cli_look_reaches_the_h_v1_cap_and_no_further(monkeypatch):
+    seen = []
+    monkeypatch.setattr(R, "_analyse_dir", lambda d, tier, seeds: (seen.append(list(seeds)), None))
+    monkeypatch.setattr(R, "render", lambda a: "")
+    assert R.main(["compare", "x", "production", "--look", "5"]) == 0
+    assert seen == [list(range(8, 48))]
+    with pytest.raises(R.Refused):
+        R.main(["compare", "x", "production", "--look", str(len(R.V1_LOOKS) + 1)])

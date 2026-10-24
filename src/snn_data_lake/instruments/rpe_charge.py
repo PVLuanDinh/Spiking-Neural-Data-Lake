@@ -12,7 +12,8 @@ stream, brain-free compare fixtures, the cross-tier rule (addendum 3: production
   python -m snn_data_lake.instruments.rpe_charge replay <results dir> <tier> [N]
   python -m snn_data_lake.instruments.rpe_charge compare <results dir> <tier> [out.md]
   python -m snn_data_lake.instruments.rpe_charge cross <production dir> <no-encoder dir> [out.md]
-  (replay / compare / cross take `--look K`, K = 1..4: seeds 8 .. 8 + LOOKS[K-1] - 1; addendum 2, default look 1)
+  (replay / compare / cross take `--look K`, K = 1..len(V1_LOOKS): seeds 8 .. 8 + V1_LOOKS[K-1] - 1; addenda 2 and 4,
+   default look 1; past look 4 (H-P1's cap) only `real` runs are added, for H-V1)
   python -m snn_data_lake.instruments.rpe_charge fixture <logs dir>    # appends the three fixture lines to fixture.log
 
 ARMS (E1's exact patch code; only the arm's own `_valence` instance and the bound AutonomousArm are acted on
@@ -40,8 +41,9 @@ Six deliberate departures from the frozen text, disclosed here as its header ask
 (a SystemExit, code 3) instead of calling os._exit(3), so a test can see it; the process still exits 3 with no result file.
 (2) the `pc` arm stubs PrefrontalExecutive._decide_spiking on the CLASS (E1's exact code: every executive in the brain
 returns winner 0), unlike the other arms, which act on the arm's own instances only.
-(3) with SINGLE_TIER_HARM_DELETES = True (addendum 3) a VOID production tier is REFUSED, and a VOID no-encoder tier still
-makes the verdict PENDING: the stricter reading of "a tier with no verdict makes every cross-tier statement PENDING".
+(3) with SINGLE_TIER_HARM_DELETES = True (addendum 3) a VOID production tier is REFUSED; a VOID no-encoder tier is
+reported beside and never vetoes the production decision (addendum 4, re-panel B-N4; the NULL-RECORD precondition of
+addendum 3 still reads the objective endpoint on both tiers, the conservative side).
 (4) the compare fixtures are built in memory on every call (`fixture_runs`/`fixture_e2`), not written as `fixtures/` JSON files.
 (5) a missing or wrong `tier_red.log` / `fixture.log` makes the tier VOID (harness validity) and compare still prints its report
 with every status VOID, instead of refusing to print.
@@ -55,6 +57,18 @@ ADDENDUM 3 (owner ruling board #4906 to #4616, 2026-10-23, verbatim: "#4616: pro
 alone decides each primary's deletion (SINGLE_TIER_HARM_DELETES = True); the no-encoder tier runs on the same looks and is
 reported beside it, its sign agreement and the tier effect no longer gate; a no-encoder-only crossing is a tier finding.
 A futility or cap stop writes the mde at the STOPPED seed count; powered -> NULL-RECORD path, else INCONCLUSIVE (P8 item 4).
+ADDENDUM 4 (owner 2026-10-24, verbatim: "Raise its cap to its power target"; re-panel round 2): every primary's design
+sits in ONE place, `SEQ` (claimed effect, looks, pre-registered SD, t boundaries). H-V1's cap V1_CAP is its fixed-sample
+power target under E1's measured per-seed shape times the LD-OBF inflation factor, in 8-seed looks, with shape-calibrated
+t boundaries V1_SHAPE_T (the plain t boundaries crossed at 0.2185 under that shape, R-S1b); looks past 32 add `real` only.
+A futility stop is taken only at a look whose mde from the pre-registered SD is at or below the claimed effect
+(`futility_open`). Each E-* endpoint and the dispositions read the look-1 block at every look; H-P1 is carried from its
+cap. Replay rows are bound to their real run by tree sha + series digest (`replay_binding`), and no sequential decision
+is taken while a validity check is pending.
+ONE SEQUENTIAL MECHANISM (P2, re-panel B-N7): `seq_boundaries` / `seq_decision` / `seq_record` are the project's one
+alpha-spending implementation (graph-exists "alpha spending": no other site). G1(c)-2 and G2, and any later
+pre-registration under the P1 amendment, import them from here; moving them to a shared module is that consumer's change,
+never a copy.
 P5b: Python (criterion 1 fails: measurement code, no neuter of it moves a tick by >= 5%; no ported kernel exists).
 Locality: the `_plan_w` update and ValenceLearner.learn are LOCAL scalar three-factor rules; this module adds no rule.
 No open-weight model enters the brain: the two encoders are the project's own e-prop checkpoints already in production.
@@ -95,6 +109,39 @@ FUTILITY_CP = (
 )
 # FROZEN literals, E1 no-encoder-tier numbers: harm (reward), E-P2/H-P2 (reward), valence MAE
 DH, DR, DM = 0.035, 0.0131, 0.048
+# Addendum 4 (owner 2026-10-24, verbatim: "Raise its cap to its power target"): each primary's design, in ONE place.
+# The pre-registered SDs are E1's NO-ENCODER paired SDs (no production-tier SD exists: the production power is borrowed).
+SD_PRE = {"H-P1": 0.0695, "H-V1": 0.2040}
+V1_CAP = 152  # H-V1: shape target 134 x LD-OBF inflation 1.0624 (18 looks) = 142.4 -> 144; power there .7935 < .8,
+#   so one more look block: 152 (power .8155). e1b-fix-row/derive_v1.py `target` / `if` / `calib` / `power`
+V1_LOOKS = tuple(range(N_SEEDS, V1_CAP + 1, N_SEEDS))
+# H-V1 t boundary per look: the shape-calibrated one (R-S1b), never below the normal-model one
+V1_SHAPE_T = (
+    152.4982,
+    42.7365,
+    39.7059,
+    27.9062,
+    19.4013,
+    15.4001,
+    6.0660,
+    5.5080,
+    4.4073,
+    3.7690,
+    3.4068,
+    3.1276,
+    2.8925,
+    2.7317,
+    2.5690,
+    2.4429,
+    2.3370,
+    2.2539,
+    2.1730,
+)  # derive_v1.py calib 152 (200 000 campaigns)
+V1_FUTILITY_LOOKS = ()  # looks before the cap whose mde from SD_PRE["H-V1"] is <= DM: none (n=144 gives 0.0527)
+SEQ = {
+    "H-P1": {"claimed": DH, "looks": LOOKS, "sd_pre": SD_PRE["H-P1"], "bounds": None},
+    "H-V1": {"claimed": DM, "looks": V1_LOOKS, "sd_pre": SD_PRE["H-V1"], "bounds": V1_SHAPE_T},
+}
 E1_HP1_T = 2.82  # E1's recorded H-P1 t (the "mirrored bar" signal), beside the BRIDGE read-out
 # Addendum 3 (owner ruling #4616): the production tier alone decides deletion; no-encoder is reported beside, never deletes.
 SINGLE_TIER_HARM_DELETES = True
@@ -317,10 +364,12 @@ def seq_boundaries(looks=LOOKS, alpha=SEQ_ALPHA):
     out, grid, dens, t_prev, spent = [], None, None, 0.0, 0.0
     for n in looks:
         tau = n / cap
-        a_k = 2 - 2 * nd.cdf(nd.inv_cdf(1 - alpha / 2) / math.sqrt(tau))
+        a_k = 2 * sf(
+            nd.inv_cdf(1 - alpha / 2) / math.sqrt(tau)
+        )  # tail form: 2 - 2 Phi underflows to 0 past ~17 looks
         pi = a_k - spent
         if grid is None:  # look 1: B_1 ~ N(0, tau_1)
-            z = nd.inv_cdf(1 - pi)
+            z = -nd.inv_cdf(pi)
         else:
             sd_ = math.sqrt(tau - t_prev)
 
@@ -351,15 +400,44 @@ def seq_boundaries(looks=LOOKS, alpha=SEQ_ALPHA):
     return tuple(out)
 
 
-def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
+# distinct-from: growth/similarity_sized_growth.py, instruments/sleep_plasticity_ab.py -- term overlap only (sites read);
+#   so are growth/capacity_certificate.py, faculties/reasoning_curriculum.py, instruments/integration_measure.py,
+#   engine/live_brain.py, growth/grower.py, growth/growable.py: none is a look boundary, an mde or a futility rule.
+#   graph-exists "t quantile cached per degrees of freedom": NO LEXICAL MATCH
+@functools.cache
+def _t80(df):
+    from snn_data_lake.instruments.pool_selection import t_quantile
+
+    return t_quantile(0.8, df)
+
+
+def _bound_t(n, looks, alpha, bounds):
+    """The look's t boundary: the design's frozen one (addendum 4, H-V1) or the normal-model LD-OBF one."""
+    return bounds[looks.index(n)] if bounds else seq_boundaries(looks, alpha)[looks.index(n)]["t"]
+
+
+def _mde(n, bound_t, sd_):
+    return (bound_t + _t80(n - 1)) * sd_ / math.sqrt(n)
+
+
+def futility_open(n, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, bounds=None):
+    """P1 amendment item 2 (re-panel B-N2): a futility stop is taken only at a look before the cap whose mde from the
+    PRE-REGISTERED SD is at or below the claimed effect. No pre-registered SD: no futility stop at all."""
+    return (
+        sd_pre is not None
+        and n < looks[-1]
+        and _mde(n, _bound_t(n, looks, alpha, bounds), sd_pre) <= claimed
+    )
+
+
+def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, bounds=None):
     """Addendum 2: the decision at ONE look on the per-seed differences `ds` (all seeds so far). Refused unless len(ds)
     is a look. harm = t above the look's t boundary AND >= ceil(K_MIN * n / 8) seeds > 0; futility (non-binding, looks
     before the cap) = conditional power under the frozen claimed effect, observed SD, observed t in place of z, below
-    FUTILITY_CP; cap = the last look without a crossing. Addendum 3: powered = the mde at the STOPPED seed count n with the
-    observed SD, (t_k + t_{.80, n-1}) * SD / sqrt(n), <= claimed. A futility or cap stop is never a null by itself (P8
-    null-scale item 4): powered -> the NULL-RECORD path (one 10x re-test before any deletion); else INCONCLUSIVE."""
-    from snn_data_lake.instruments.pool_selection import t_quantile
-
+    FUTILITY_CP, taken only where `futility_open` (addendum 4); cap = the last look without a crossing. Addendum 3:
+    powered = the mde at the STOPPED seed count n with the observed SD, (t_k + t_{.80, n-1}) * SD / sqrt(n), <= claimed.
+    A futility or cap stop is never a null by itself (P8 null-scale item 4): powered -> the NULL-RECORD path (one 10x
+    re-test before any deletion); else INCONCLUSIVE. `bounds` (addendum 4) replaces the normal-model t boundaries."""
     n = len(ds)
     if n not in looks:
         refuse("any", "sequential", f"a decision at {n} seeds is not a pre-registered look {looks}")
@@ -369,10 +447,10 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
         looks[-1],
         statistics.NormalDist(),
     )
-    h, b = harm(ds), bs[looks.index(n)]
+    h, b, bound_t = harm(ds), bs[looks.index(n)], _bound_t(n, looks, alpha, bounds)
     k_min = math.ceil(K_MIN * n / N_SEEDS)
-    crossed = h["t"] > b["t"] and h["k"] >= k_min
-    mde = (b["t"] + t_quantile(0.8, n - 1)) * h["sd"] / math.sqrt(n)
+    crossed = h["t"] > bound_t and h["k"] >= k_min
+    mde = _mde(n, bound_t, h["sd"])
     cp = None
     if not crossed and n < cap:
         tau = n / cap
@@ -380,9 +458,13 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
         cp = 1 - nd.cdf(
             (bs[-1]["z"] - h["t"] * math.sqrt(tau) - drift * (1 - tau)) / math.sqrt(1 - tau)
         )
-    decision = (
-        "harm" if crossed else "cap" if n == cap else "futility" if cp < FUTILITY_CP else "continue"
-    )
+    is_open = futility_open(n, claimed, looks, alpha, sd_pre=sd_pre, bounds=bounds)
+    if crossed:
+        decision = "harm"
+    elif n == cap:
+        decision = "cap"
+    else:
+        decision = "futility" if is_open and cp < FUTILITY_CP else "continue"
     where = f"look {j + 1} of {len(looks)}, n={n}"
     power = f"mde at n={n} {mde:.4f} {'<=' if mde <= claimed else '>'} claimed {claimed:.4f}: " + (
         "powered: a null, NULL-RECORD path (one 10x re-test before any deletion)"
@@ -391,19 +473,21 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
     )
     status_ = {
         "harm": f"MET at look {j + 1} ({n} seeds)",
-        "continue": f"NOT MET at {where}: CONTINUE to n={looks[min(j + 1, len(looks) - 1)]} (no verdict yet)",
+        "continue": f"CONTINUE at {where} (no verdict): next look n={looks[min(j + 1, len(looks) - 1)]}",
         "futility": f"NOT MET, stopped for futility at {where} (conditional power {cp or 0:.3f} < {FUTILITY_CP}), {power}",
         "cap": f"NOT MET at the cap ({where}), {power}",
     }[decision]
     return {
         "look": j + 1,
+        "n_looks": len(looks),
         "n": n,
         "t": h["t"],
         "k": h["k"],
         "k_min": k_min,
-        "bound_t": b["t"],
+        "bound_t": bound_t,
         "bound_z": b["z"],
         "cp": cp,
+        "futility_open": is_open,
         "mde": mde,
         "powered": mde <= claimed,
         "decision": decision,
@@ -412,7 +496,7 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
 
 
 # reuses: seq_decision (one look's decision) -- this walks it over the look prefixes; graph-exists: NO LEXICAL MATCH
-def seq_record(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
+def seq_record(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA, **design):
     """Addendum 2's decision of record: the FIRST stop (harm, futility or the cap) over the look prefixes of the
     seed-ordered `ds`; CONTINUE at len(ds) when no prefix has stopped. Refused unless len(ds) is a look."""
     if len(ds) not in looks:
@@ -422,7 +506,7 @@ def seq_record(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA):
             f"a decision at {len(ds)} seeds is not a pre-registered look {looks}",
         )
     for n in looks[: looks.index(len(ds)) + 1]:
-        q = seq_decision(ds[:n], claimed, looks, alpha)
+        q = seq_decision(ds[:n], claimed, looks, alpha, **design)
         if q["decision"] != "continue":
             break
     return q
@@ -861,13 +945,26 @@ def harm_control_pass(rows):
     return t, bool(t > BAR)
 
 
+# distinct-from: instruments/carried_state_report.py -- its digest_of is the same canonical-JSON sha256, but importing
+#   it pulls torch and the reservoir into the brain-free compare; a run's series is plain JSON already (stdlib suffices)
+def replay_binding(run):
+    """Re-panel A-M2: what ties a replay row to the `real` run it replayed (N / n_calls alone tie nothing): the run's
+    recorded tree sha and the sha256 of its replayed (pattern, r, tick) series."""
+    v = run["v"]
+    text = json.dumps([v["pattern"], v["r"], v["tick"]], allow_nan=False)
+    return {
+        "tree_sha": (run.get("tier") or {}).get("tree_sha"),
+        "digest": hashlib.sha256(text.encode()).hexdigest(),
+    }
+
+
 def replay(rows_by_seed_runs, n=None):
     """e2v2 dict from {seed: real-run json}: fresh ValenceLearner per mode, plus both planted controls."""
     out = {"real": {}, "planted": planted_rows("learn"), "planted_harm": planted_rows("harm")}
     for seed, d in rows_by_seed_runs.items():
         nn = n or d["ticks"]
         v = d["v"]
-        row = {"n_calls": len(v["r"]), "N": nn}
+        row = {"n_calls": len(v["r"]), "N": nn, **replay_binding(d)}
         for mode in ("learn", "frozen", "shuf"):
             row[mode], row["n_scored"] = score(v["pattern"], v["r"], v["tick"], nn // 2, mode, seed)
         out["real"][str(seed)] = row
@@ -911,13 +1008,14 @@ def load_runs(results_dir, tier, seeds=SEEDS):
 
 FIXTURE_WANT = (
     ("harm", "H-P1 MET"),
-    ("noharm", "H-P1 NOT MET"),
+    ("noharm", "H-P1 CONTINUE at look 1"),
     ("void", "H-V1 VOID (control failed)"),
 )
 
 
 def fixture_ok(lines):
-    """The three fixture verdicts of the frozen section 4: harm -> MET, no-harm -> NOT MET, failed control -> VOID."""
+    """The three fixture verdicts of the frozen section 4: harm -> MET, failed control -> VOID; no-harm -> NOT MET there,
+    CONTINUE at look 1 (no verdict) under addendum 2 (re-panel C R2-M1: a continuing look is never printed NOT MET)."""
     return len(lines) == len(FIXTURE_WANT) and all(
         ln.startswith(f"fixture {kind} ") and want in ln
         for (kind, want), ln in zip(FIXTURE_WANT, lines, strict=True)
@@ -998,8 +1096,13 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
     """All statistics for ONE tier, from run JSON only. `logs_pass` is the tier_red/fixture gate (`logs_gate(dir)`)."""
     seeds = list(seeds)
     s0, ns = seeds[0], len(seeds)
-    if ns not in LOOKS:
-        refuse(tier, "compare", f"{ns} seeds is not a pre-registered look {LOOKS} (addendum 2)")
+    if ns not in V1_LOOKS:
+        refuse(
+            tier, "compare", f"{ns} seeds is not a pre-registered look {V1_LOOKS} (addenda 2, 4)"
+        )
+    # each endpoint reads the seed block its pre-registration names (re-panel A-B1): the secondaries and the
+    # dispositions the look-1 block, H-P1 its 32-seed cap, H-V1 every look up to its own cap
+    block, p1_seeds = seeds[:N_SEEDS], seeds[: LOOKS[-1]]
     a = {"tier": tier, "seeds": seeds}
     n_ticks = next((d["ticks"] for d in runs.values()), None)
     h0 = n_ticks // 2 if n_ticks else 0
@@ -1048,8 +1151,10 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
                 bad.append(f"pc seed {s} flips == 0")
         else:
             pending.append(f"pc seed {s} missing")
-    for arm in ARMS:  # looks after the first add only `real` + `pfrozen` (addendum 2)
-        for s in seeds if arm in ("real", "pfrozen") else seeds[:N_SEEDS]:
+    for arm in (
+        ARMS
+    ):  # later looks add `real` + `pfrozen` (addendum 2), past H-P1's cap `real` only (addendum 4)
+        for s in seeds if arm == "real" else p1_seeds if arm == "pfrozen" else block:
             if (arm, s) not in runs:
                 pending.append(f"{arm}_{s} missing")
     for arm in ("vshuf", "pshuf"):
@@ -1071,6 +1176,10 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
                 bad.append(
                     f"replay row seed {k}: N/n_calls do not match the current real run (stale or mis-sized)"
                 )
+            elif run and any(r.get(f) != b for f, b in replay_binding(run).items()):
+                bad.append(
+                    f"replay row seed {k}: tree sha / series digest do not bind it to the current real run"
+                )
         if not e2.get("planted_harm"):
             ctl_bad.append("planted-harm control absent from the replay record")
         else:
@@ -1091,15 +1200,17 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
     a.update(bad=bad, val=val, valid=valid, pc_ok=pc_ok, ph_ok=ph_ok, ctl_ok=ctl_ok, floor=floor)
     a["pending"] = pending
 
-    have = lambda *arms: [s for s in seeds if all((x, s) in runs for x in arms)]  # noqa: E731
+    have = lambda *arms, among=seeds: [s for s in among if all((x, s) in runs for x in arms)]  # noqa: E731
     mr_ = lambda arm, s: mean_r(runs[(arm, s)], h0)  # noqa: E731
     mae_ = lambda arm, s: mae(runs[(arm, s)], h0)  # noqa: E731
-    d1 = [mae_("vfrozen", s) - mae_("real", s) for s in have("real", "vfrozen", "vshuf")]
-    d2 = [mae_("vshuf", s) - mae_("real", s) for s in have("real", "vfrozen", "vshuf")]
+    d1 = [
+        mae_("vfrozen", s) - mae_("real", s) for s in have("real", "vfrozen", "vshuf", among=block)
+    ]
+    d2 = [mae_("vshuf", s) - mae_("real", s) for s in have("real", "vfrozen", "vshuf", among=block)]
     a["ev1"] = {
         "t": [ttest(d1), ttest(d2)],
         "k": [sum(x > 0 for x in d1), sum(x > 0 for x in d2)],
-        "full": len(d1) == ns,
+        "full": len(d1) == N_SEEDS,
         "d": [d1, d2],
     }
     a["ev1"]["met"] = (
@@ -1109,13 +1220,14 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         and min(a["ev1"]["k"]) >= K_MIN
     )
     rows = {str(s): e2["real"][str(s)] for s in seeds if e2 and str(s) in e2["real"]}
-    da = [r["frozen"] - r["learn"] for r in rows.values()]
-    dc = [r["shuf"] - r["learn"] for r in rows.values()]
+    rows_b = [rows[str(s)] for s in block if str(s) in rows]
+    da = [r["frozen"] - r["learn"] for r in rows_b]
+    dc = [r["shuf"] - r["learn"] for r in rows_b]
     a["ev2"] = {
         "t": [ttest(da), ttest(dc)],
         "k": [sum(x > 0 for x in da), sum(x > 0 for x in dc)],
         "d": [da, dc],
-        "full": len(da) == ns,
+        "full": len(da) == N_SEEDS,
         "mde": MDE_F * sd(da),
     }
     a["ev2"]["met"] = (
@@ -1128,10 +1240,10 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
     a["ev3"] = any(
         flips(runs[("real", s)]["series"]["action"], runs[("vfrozen", s)]["series"]["action"])[0]
         > floor
-        for s in have("real", "vfrozen")
+        for s in have("real", "vfrozen", among=block)
     )
     nabove, devs = 0, []
-    for s in have("real", "pfrozen"):
+    for s in have("real", "pfrozen", among=block):
         nabove += (
             flips(runs[("real", s)]["series"]["action"], runs[("pfrozen", s)]["series"]["action"])[
                 0
@@ -1139,20 +1251,20 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
             > floor
         )
         devs.append(max(abs(x - 0.1) for x in runs[("real", s)]["series"]["plan_w"]))
-    full1 = len(have("real", "pfrozen")) == ns
+    full1 = len(have("real", "pfrozen", among=block)) == N_SEEDS
     a["ep1"] = {
         "n": nabove,
         "full": full1,
         "met": full1 and nabove >= ep1_min,
         "unchanged": bool(devs) and max(devs) <= 0.01,
     }
-    p1 = [mr_("real", s) - mr_("pfrozen", s) for s in have("real", "pfrozen", "pshuf")]
-    p2 = [mr_("real", s) - mr_("pshuf", s) for s in have("real", "pfrozen", "pshuf")]
+    p1 = [mr_("real", s) - mr_("pfrozen", s) for s in have("real", "pfrozen", "pshuf", among=block)]
+    p2 = [mr_("real", s) - mr_("pshuf", s) for s in have("real", "pfrozen", "pshuf", among=block)]
     a["ep2"] = {
         "t": [ttest(p1), ttest(p2)],
         "k": [sum(x > 0 for x in p1), sum(x > 0 for x in p2)],
         "sd_diff": sd(p1),
-        "full": len(p1) == ns,
+        "full": len(p1) == N_SEEDS,
         "d": [p1, p2],
     }
     a["ep2"]["met"] = (
@@ -1163,25 +1275,33 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
     )
     a["ep2"]["mde"] = MDE_F * a["ep2"]["sd_diff"]
     hs = {
-        "H-P1": harm([mr_("pfrozen", s) - mr_("real", s) for s in have("real", "pfrozen")]),
+        "H-P1": harm(
+            [mr_("pfrozen", s) - mr_("real", s) for s in have("real", "pfrozen", among=p1_seeds)]
+        ),
         "H-P2": harm([mr_("pshuf", s) - mr_("real", s) for s in have("real", "pshuf")]),
         "H-V3": harm([mae_("real", s) - mae_("vfrozen", s) for s in have("real", "vfrozen")]),
         "H-V1": harm([r["learn"] - r["frozen"] for r in rows.values()]),
         "H-V2": harm([r["learn"] - r["shuf"] for r in rows.values()]),
     }
     claimed = {"H-P1": DH, "H-P2": DR, "H-V1": DM, "H-V2": DM, "H-V3": DM}
+    n_exp = {"H-P1": len(p1_seeds)}  # H-P1 past its cap is carried from the cap (addendum 4)
     for k, h in hs.items():
-        needs_ctl = k in ("H-V1", "H-V2")
+        needs_ctl, n_k = k in ("H-V1", "H-V2"), n_exp.get(k, ns)
         if not valid:
-            h["status"] = status(h, claimed[k], ok=False, n_seeds=ns, why=void_why)
+            h["status"] = status(h, claimed[k], ok=False, n_seeds=n_k, why=void_why)
         else:
-            h["status"] = status(h, claimed[k], ok=not needs_ctl or ctl_ok, n_seeds=ns)
-        h["met"] = met(h, ns) and valid and (not needs_ctl or ctl_ok)
-        if k in ("H-P1", "H-V1") and valid and h["n"] == ns and (not needs_ctl or ctl_ok):
-            # a verdict is owed (complete, valid, controls PASS): the sequential rule of addendum 2 decides it
-            h["seq"] = seq_record(h["d"], claimed[k])
-            h["status"], h["met"] = h["seq"]["status"], h["seq"]["decision"] == "harm"
-        elif ns > N_SEEDS and k not in ("H-P1", "H-V1"):
+            h["status"] = status(h, claimed[k], ok=not needs_ctl or ctl_ok, n_seeds=n_k)
+        h["met"] = met(h, n_k) and valid and (not needs_ctl or ctl_ok)
+        if k in SEQ and valid and h["n"] == n_k and (not needs_ctl or ctl_ok):
+            # a verdict is owed (complete, valid, controls PASS): the sequential rule of addenda 2 and 4 decides it,
+            # and only once no validity check is pending (re-panel A-M2)
+            if pending:
+                h["status"] = f"PENDING (validity checks not yet run: {'; '.join(pending[:3])})"
+                h["met"] = False
+            else:
+                h["seq"] = seq_record(h["d"], **SEQ[k])
+                h["status"], h["met"] = h["seq"]["status"], h["seq"]["decision"] == "harm"
+        elif ns > N_SEEDS and k not in SEQ:
             h["status"], h["met"] = "NO VERDICT (secondary endpoints are decided at look 1)", False
     a["hs"] = hs
     degenerate = [
@@ -1190,7 +1310,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
     a["degenerate"] = degenerate
     a["sens"] = {}
     by_seed = {
-        "H-P1": dict(zip(have("real", "pfrozen"), hs["H-P1"]["d"], strict=True)),
+        "H-P1": dict(zip(have("real", "pfrozen", among=p1_seeds), hs["H-P1"]["d"], strict=True)),
         "H-V1": dict(zip((int(k) for k in rows), hs["H-V1"]["d"], strict=True)),
     }
     for k, per_seed in by_seed.items():
@@ -1203,7 +1323,9 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
             "n": h["n"],
             "seed_sensitive": bool(degenerate) and full != without,
         }
-    a["in_brain"] = harm([mr_("real", s) - mr_("vfrozen", s) for s in have("real", "vfrozen")])
+    a["in_brain"] = harm(
+        [mr_("real", s) - mr_("vfrozen", s) for s in have("real", "vfrozen", among=block)]
+    )
     if a["ev1"]["met"] and a["ev2"]["met"]:
         vd = "CHARGED"
     elif a["ev2"]["met"]:
@@ -1281,9 +1403,14 @@ def render(a):
             q = h["seq"]
             L.append(
                 f"  - sequential decision of record (addendum 2: the first stop{NO_ENC_NOTE if a['tier'] == 'no-encoder' else ''}): "
-                f"look {q['look']} of {len(LOOKS)}, n={q['n']}: t={q['t']:.3f} vs boundary "
+                f"look {q['look']} of {q['n_looks']}, n={q['n']}: t={q['t']:.3f} vs boundary "
                 f"{q['bound_t']:.3f} (z {q['bound_z']:.3f}), {q['k']}/{q['n']} > 0 (need {q['k_min']}), conditional "
-                f"power {'n/a' if q['cp'] is None else format(q['cp'], '.3f')} (futility < {FUTILITY_CP}) -> {q['decision']}"
+                f"power {'n/a' if q['cp'] is None else format(q['cp'], '.3f')} (futility < {FUTILITY_CP}, "
+                f"{'open' if q['futility_open'] else 'closed'} at this look) -> {q['decision']}"
+            )
+            L.append(
+                f"  - design power is borrowed: SD {SD_PRE[k]} is E1's no-encoder SD (no production-tier SD exists); "
+                f"the observed SD at the stopped look decides powered (re-panel B-N3)"
             )
     n_s = len(a["seeds"])
     L.append(
@@ -1353,15 +1480,21 @@ def _series_differ(ra, rb, h0):
     return ia != ib
 
 
+def _n_owed(key, seeds):
+    """Seeds an endpoint's verdict reads at this look: H-P1 stops at its cap, H-V1 at its own (addendum 4)."""
+    return min(len(seeds), SEQ[key]["looks"][-1])
+
+
 def _agreement(pa, na, key):
-    dp, dn = pa["hs"][key]["d"], na["hs"][key]["d"]
-    if not len(dp) == len(dn) == len(pa["seeds"]):
+    dp, dn, n = pa["hs"][key]["d"], na["hs"][key]["d"], _n_owed(key, pa["seeds"])
+    if not len(dp) == len(dn) == n:
         return {"n": 0, "pearson": float("nan"), "table": []}
     return {
         "n": sum((x > 0) == (y > 0) for x, y in zip(dp, dn, strict=True)),
         "pearson": pearson(dp, dn),
         "table": [
-            (sd_, x, y, (x > 0) == (y > 0)) for sd_, x, y in zip(pa["seeds"], dp, dn, strict=True)
+            (sd_, x, y, (x > 0) == (y > 0))
+            for sd_, x, y in zip(pa["seeds"][:n], dp, dn, strict=True)
         ],
     }
 
@@ -1421,6 +1554,10 @@ def cross(pa, pruns, na, nruns):
             )
         if na["hs"][key]["met"]:
             return f"tier finding: harm on no-encoder only; the production tier decides ({prod}): no deletion candidate (owner decides)"
+        if (
+            pa["hs"][key].get("seq", {}).get("decision") == "continue"
+        ):  # never "not met" (addendum 2)
+            return f"CONTINUE on the production tier (no verdict): {prod}; beside it no-encoder {other}"
         return f"not met on the production tier: {prod}; beside it no-encoder {other}"
 
     def verdict(key, tail):
@@ -1429,28 +1566,34 @@ def cross(pa, pruns, na, nruns):
         n_agree = agree[key]["n"]
         if SINGLE_TIER_HARM_DELETES and not pa["valid"]:  # a verdict line, not a `refuse` exit
             return "REFUSED (the production tier has no verdict: it alone decides, a no-encoder result never deletes)"
-        if not (pa["valid"] and na["valid"]):
-            who = [t for t, a in (("production", pa), ("no-encoder", na)) if not a["valid"]]
+        # re-panel B-N4: under #4616 a VOID no-encoder tier is reported beside, never a veto on the production decision
+        void_ne = SINGLE_TIER_HARM_DELETES and not na["valid"]
+        counted = (("production", pa),) if void_ne else (("production", pa), ("no-encoder", na))
+        if not all(a["valid"] for _, a in counted):
+            who = [t for t, a in counted if not a["valid"]]
             return f"PENDING (no verdict on tier {', '.join(who)}; a tier with no verdict makes every cross-tier statement PENDING)"
-        if not tree_ok:
+        if not (tree_ok or void_ne):
             return f"PENDING (the two tiers do not share one recorded tree sha: {pa['shas']} vs {na['shas']})"
-        short = [
-            t
-            for t, a in (("production", pa), ("no-encoder", na))
-            if a["hs"][key]["n"] != len(seeds)
-        ]
-        if short or not real_complete:
+        short = [t for t, a in counted if a["hs"][key]["n"] != _n_owed(key, seeds)]
+        real_ok = all(("real", s) in pruns for s in seeds) if void_ne else real_complete
+        if short or not real_ok:
             return f"PENDING (endpoint {key} has no verdict on tier {', '.join(short) or 'either (real series incomplete)'})"
         if not effect and not SINGLE_TIER_HARM_DELETES:
             return "tiers indistinguishable on this path: no cross-tier claim, every tier result is one replicate"
-        held = pa["pending"] + na["pending"]
+        held = [p for _, a in counted for p in a["pending"]]
+        if SINGLE_TIER_HARM_DELETES and pa["pending"]:
+            return (
+                f"PENDING (validity checks not yet run on the production tier: {'; '.join(pa['pending'][:3])}): "
+                "no verdict and no candidate wording yet"
+            )
         if held and (ma or mb):
             return (
                 f"{key} MET on {'both tiers' if ma and mb else 'production' if ma else 'no-encoder'} but PENDING "
                 f"(validity checks not yet run: {'; '.join(held[:3])}): no tier finding and no candidate wording yet"
             )
         if SINGLE_TIER_HARM_DELETES:
-            return single_tier(key, tail)
+            line = single_tier(key, tail)
+            return f"{line}; no-encoder VOID: reported beside, no verdict" if void_ne else line
         if ma and mb:
             if n_agree >= need(AGREE_MIN):
                 return (
@@ -1702,8 +1845,10 @@ def fixture_runs(kind, tier="production"):
     return runs
 
 
-def fixture_e2(kind="ok"):
-    """A brain-free replay result: synthetic per-seed rows plus the planted controls ('void' fails the learning control)."""
+def fixture_e2(kind="ok", tier="production"):
+    """A brain-free replay result: synthetic per-seed rows plus the planted controls ('void' fails the learning control).
+    Each row is bound to the `fixture_runs` real run of its seed on `tier` (the same series for every kind)."""
+    real = fixture_runs("noharm", tier)
     rows = {
         str(s): {
             "learn": 0.5 + 0.01 * (s % 4),
@@ -1712,6 +1857,7 @@ def fixture_e2(kind="ok"):
             "n_calls": N_TICKS,
             "N": N_TICKS,
             "n_scored": 150,
+            **replay_binding(real[("real", s)]),
         }
         for s in SEEDS
     }
@@ -1766,12 +1912,12 @@ def main(argv=()):
         return _selfcheck()
     cmd, rest = argv[0], argv[1:]
     seeds = SEEDS
-    if "--look" in rest:  # addendum 2: look K reads seeds 8 .. 8 + LOOKS[K-1] - 1
+    if "--look" in rest:  # addenda 2, 4: look K reads seeds 8 .. 8 + V1_LOOKS[K-1] - 1
         i = rest.index("--look")
         look = int(rest[i + 1])
-        if not 1 <= look <= len(LOOKS):
-            refuse("any", cmd, f"--look {look} is not one of 1..{len(LOOKS)}")
-        seeds, rest = range(SEEDS[0], SEEDS[0] + LOOKS[look - 1]), rest[:i] + rest[i + 2 :]
+        if not 1 <= look <= len(V1_LOOKS):
+            refuse("any", cmd, f"--look {look} is not one of 1..{len(V1_LOOKS)}")
+        seeds, rest = range(SEEDS[0], SEEDS[0] + V1_LOOKS[look - 1]), rest[:i] + rest[i + 2 :]
     if cmd == "run":
         import argparse
 
@@ -1843,7 +1989,11 @@ def _selfcheck():
         print("rpe_charge self-check FAILED: MET / VOID status")
         return 1
     fx = fixture_lines()
-    if "H-P1 MET" not in fx[0] or "H-P1 NOT MET" not in fx[1] or "H-V1 VOID" not in fx[2]:
+    if (
+        "H-P1 MET" not in fx[0]
+        or "H-P1 CONTINUE at look 1" not in fx[1]
+        or "H-V1 VOID" not in fx[2]
+    ):
         print(f"rpe_charge self-check FAILED: fixtures {fx}")
         return 1
     f = mde_exact_factor(N_SEEDS, BAR)
