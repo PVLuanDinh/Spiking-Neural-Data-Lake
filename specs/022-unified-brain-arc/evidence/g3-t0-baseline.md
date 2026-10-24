@@ -78,8 +78,9 @@ P8: T0 asserts no null. If the harness is declared BLIND (H0d and H0e fail) that
 ticks); the named scale axis is `ticks` (re-test at 3000, ten times) before T1 is declared un-gateable. Underpowered = inconclusive.
 P5b: Python (no kernel added).
 *Integrator note, 2026-10-24 (engine-arc panel B-m10, the same defect as T1's grower.py record):* stated the way P5b asks,
-criterion 3 (coarse boundary) fails by structure: the harness adds no per-tick kernel; it calls the existing engine once per
-arm and records its output.
+criterion 1 (hot, measured) fails by structure: the harness is a test that runs outside the brain's tick path, so no
+neuter of it can move the tick. (Criterion 3 holds: one call is one arm's whole brain run. Re-panel B-N5 corrected the
+first version of this note, which named criterion 3.)
 
 ## 7. Does NOT establish
 
