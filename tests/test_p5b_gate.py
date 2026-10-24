@@ -187,7 +187,7 @@ def test_record_that_drops_one_lib_rs_while_another_stays_reds(tmp_path):
 
 def test_the_pfc_reason_says_it_landed_under_p5b_and_the_others_do_not():
     pfc = pg.GRANDFATHERED["sndl-core/src/prefrontal_executive.rs"]
-    assert "5978bbcc" in pfc and "c3079685" in pfc and "p5b-pfc-retro-bench.md" in pfc
+    assert "5978bbcc" in pfc and "66f2daac" in pfc and "p5b-pfc-retro-bench.md" in pfc
     others = [why for rel, why in pg.GRANDFATHERED.items() if "prefrontal" not in rel]
     assert len(others) == 10 and set(others) == {pg._WHY}
 

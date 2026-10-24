@@ -83,7 +83,7 @@ _WHY = f"landed before P5b's gate; recorded retroactively in {RETRO}"
 _PFC = "sndl-core/src/prefrontal_executive.rs"
 _PFC_WHY = (
     f"{_WHY}; the PFC kernel landed UNDER P5b's text (B2 5978bbcc) and criterion 5 was measured "
-    "insufficient after the fact (c3079685, specs/022-unified-brain-arc/evidence/p5b-pfc-retro-bench.md)"
+    "insufficient after the fact (66f2daac, specs/022-unified-brain-arc/evidence/p5b-pfc-retro-bench.md)"
 )
 GRANDFATHERED: dict[str, str] = {
     rel: _PFC_WHY if rel == _PFC else _WHY
