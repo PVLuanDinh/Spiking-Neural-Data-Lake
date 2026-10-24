@@ -79,6 +79,25 @@ _needs_t0 = pytest.mark.skipif(
 )
 
 
+def _t0_base():
+    """The commit that ADDED T0's capture in HEAD's own history. The capture's `base_commit` names
+    the lane commit it ran on, which a restack leaves off every pushed ref (arc panel round 2 A-M1:
+    78af459c is absent from any clone); this one is in the lineage of any full clone, and its src
+    tree equals the captured one (T0 adds no src module; git diff 78af459c 4bc2a726 -- src)."""
+    import subprocess
+
+    rel = _T0_JSON.relative_to(_ROOT).as_posix()
+    sha = subprocess.run(
+        ["git", "log", "--diff-filter=A", "--format=%H", "-1", "--", rel],
+        cwd=_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    assert sha, f"no commit adds {rel} in HEAD's history (shallow clone?)"
+    return sha
+
+
 def _census_delta(base):
     """How far the module census ("structural census of modules on disk") must move from T0's
     capture: each brain module ADDED since `base` (git), classified as live_coverage() classifies
@@ -124,7 +143,7 @@ def _live_drift():
 
     old = _t0()
     return _census_drift(
-        _census_of(old["arms"][0]["view"]), live_coverage(), _census_delta(old["base_commit"])
+        _census_of(old["arms"][0]["view"]), live_coverage(), _census_delta(_t0_base())
     )
 
 
@@ -164,7 +183,7 @@ def test_brain_five_arm_matches_t0(tmp_path):
         a["perception_tier"] for a in old["arms"]
     ]
     census = tuple(_KEY.format(k) for k in _CENSUS)
-    delta = _census_delta(old["base_commit"])
+    delta = _census_delta(_t0_base())
     bad = {}
     for o, n in zip(old["arms"], new["arms"], strict=True):
         assert (o["seed"], o["arm"]) == (n["seed"], n["arm"])
