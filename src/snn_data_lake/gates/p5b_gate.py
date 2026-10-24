@@ -5,7 +5,8 @@ crate cites a pre-registration recording all six criteria with their numbers, wi
 Template for shape: gates/null_scale_gate.py (Red records, check(root=...), --assert / --self-check /
 --census, a closed GRANDFATHERED table).
 
-# distinct-from: rust_facts.py -- reused here for the one `.rs` walk (`rust_files`); native_dormancy.py -- its
+# distinct-from: rust_facts.py -- reused here for the one `.rs` walk (`rust_files`, `crate_dirs`); `_tracked` below
+# lists the NON-`.rs` files (Cargo.toml, foreign sources) repo-wide, which rust_files cannot; native_dormancy.py -- its
 # `_write` builds the constructed trees; null_scale_gate.py -- same CLI shape, different corpus (this reads
 # `//!` headers and the cited record, that reads evidence-file NULL-RECORD lines).
 
@@ -17,11 +18,10 @@ The cited record (a reviewable document, below) holds one line each (k = 1..6), 
                                                   python-fix-first, parity-oracle
     P5b-MODULES: <native-relative path>, ...
 
-A module is every `.rs` the crates can compile: any `.rs` under native/ except `<crate root>/build.rs` and
-`<crate root>/{tests,benches,examples}/` (a crate root is a directory holding a Cargo.toml), so `#[path]`,
-`include!` and `[lib] path` targets outside `src/` count and a `tests/` deeper inside `src/` is a module.
-`build.rs` is printed in the count line when present. A Cargo.toml `[lib]` or `[[bin]]` target (or any target
-`path = "build.rs"`) that resolves to an excluded file is R-TARGET-EXCLUDED. The cited record must be a reviewable
+A module is every `.rs` the crates can compile: any `.rs` under native/ except `<crate root>/{tests,benches,
+examples}/` (a crate root is a directory holding a Cargo.toml), so `build.rs`, `#[path]`, `include!` and `[lib]
+path` targets outside `src/` count and a `tests/` deeper inside `src/` is a module. A Cargo.toml `[lib]` or
+`[[bin]]` target, or a `[package] build` path, that resolves to an excluded file is R-TARGET-EXCLUDED. The cited record must be a reviewable
 document: under `specs/`, a `.md`, outside `native/`, not git-ignored. The record names each grandfathered
 module by its full native-relative path as a whole token (backtick, space, comma, `|` or line edge each side).
 
@@ -29,11 +29,23 @@ What it reds: R-UNCITED, R-DUP-CITE, R-MISSING, R-RECORD-PLACE, R-CRITERION, R-N
 R-TARGET-EXCLUDED, R-STALE-GRANDFATHER (a stale entry, or one whose record never names the module), R-GRANDFATHER-OPEN,
 R-GRANDFATHER-DRIFT (a grandfathered module whose content differs from its blob at the cutoff), R-HISTORY (and
 R-ZERO / R-RUSTFACTS: a present `native/` that yields no modules, cannot be listed, lists a `.rs` gone from disk
-or has an unreadable Cargo.toml). What it cannot do, and says so on every run: judge whether a criterion's
+or has an unreadable or wrongly typed Cargo.toml). Native code that would escape the universe reds too (arc-2
+panel A-M2): R-CRATE-OUTSIDE (a Cargo.toml outside native/ not in CARGO_EXEMPT; a path dependency, workspace
+member/default-member, `[patch]` or `[replace]` path or a `[package] build` path leaving native/, or any
+`.cargo/config[.toml]`; an exempt crate that depends on `pyo3` or
+declares a cdylib/dylib/staticlib crate-type), R-STALE-EXEMPT (shrink-only: an exempt entry naming no tracked
+file), R-FOREIGN-SOURCE (a tracked compiled source or prebuilt native binary anywhere in the repo) and
+R-PATH-ESCAPE (a `#[path = "lit"]` / `include!("lit")` in a module that resolves outside native/ or into an
+excluded dir of its crate, or an `include!` whose argument is not one string literal). What it cannot do, and says so on every run: judge whether a criterion's
 evidence is TRUE -- a MET verdict and a number (a digit left after issue numbers, dates, shas and path tokens are
 stripped) are what it counts; the pre-registration's reviewer decides the rest. The drift check hashes the
 working copy with git hash-object, so it assumes the checkout's eol config: a Windows clone with autocrlf
 switched off after checkout reds R-GRANDFATHER-DRIFT falsely (CI is LF).
+
+Not checked, and said so in LIMIT: registry and git dependencies (P7's, `dependency_ledger`); a ctypes/cffi load
+of a system library at runtime; `include_str!` / `include_bytes!` (data, not code); the `#[path]`/`include!` scan
+is textual (a commented-out attribute reds, fail closed) and resolves against the file's own directory (Rust's
+base for a `#[path]` inside a nested inline module differs).
 
   python -m snn_data_lake.gates.p5b_gate [--assert | --self-check | --census]
 
@@ -44,6 +56,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import posixpath
 import re
 import subprocess
 import tempfile
@@ -75,6 +88,17 @@ DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 SHA_RE = re.compile(r"\b(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b")
 EXT_RE = re.compile(r"\.[A-Za-z]\w*$")
 NON_MODULE_DIRS = {"tests", "benches", "examples"}
+DEP_KINDS = ("dependencies", "dev-dependencies", "build-dependencies")
+CARGO_CONFIGS = ("config", "config.toml")
+NATIVE_CRATE_TYPES = {"cdylib", "dylib", "staticlib"}
+FOREIGN_EXT = frozenset(
+    ".c .cc .cpp .cxx .h .hh .hpp .hxx .cu .cuh .s .asm .m .mm .f .f90 "
+    ".pyd .so .dll .dylib .a .lib .o .obj".split()
+)  # compared lower-cased, so `.S` is `.s`
+PATH_ATTR_RE = re.compile(r'#\s*!?\s*\[[^\]]*?\bpath\s*=\s*r?#*"([^"]*)"')
+INCLUDE_RE = re.compile(r"\binclude\s*!\s*")
+INCLUDE_LIT_RE = re.compile(r'[(\[{]\s*"((?:[^"\\]|\\.)*)"\s*,?\s*[)\]}]')
+GLOB_RE = re.compile(r"[*?\[]")
 
 # Shrink-only: the eleven native modules that landed before the gate (the 20e1e742 cutoff), recorded
 # retroactively. An entry leaves in the same commit its module gains a real `//! P5b-PREREG:` citation or is
@@ -101,6 +125,18 @@ GRANDFATHERED: dict[str, str] = {
         "sndl-python/src/lib.rs",
     )
 }
+
+# Shrink-only: a directory holding a Cargo.toml outside native/ that is not linked into the extension. An entry
+# whose directory has no tracked Cargo.toml reds R-STALE-EXEMPT. The exemption covers the crate EXISTING outside
+# native/; a native crate LINKING it (a path dependency) still reds, and so does the exempt crate gaining
+# pyo3 or a cdylib/dylib/staticlib crate-type.
+CARGO_EXEMPT: dict[str, str] = {
+    "tools/rsfacts": (
+        "gate tooling: the `syn` parser rust_facts.py builds and runs; never linked into snn_data_lake._native"
+    ),
+}
+# Closed and empty: no compiled non-Rust source or prebuilt native binary is tracked, and none may be added.
+FOREIGN_EXEMPT: dict[str, str] = {}
 
 
 @dataclass(frozen=True)
@@ -244,36 +280,123 @@ def _check_record(root: Path, rel: str, cited: str) -> list[Red]:
     return reds
 
 
-def _excluded(sub: tuple[str, ...]) -> bool:
-    """`sub` is a path below a crate root: its build.rs, or anything under tests/ benches/ examples/."""
-    return sub == ("build.rs",) or (len(sub) > 1 and sub[0] in NON_MODULE_DIRS)
+def _excluded(crates: set[Path], f: Path) -> bool:
+    """`f` sits under tests/ benches/ examples/ of its NEAREST crate root (judged against the nearest only: a crate
+    nested under a workspace's examples/ or tests/ is still a crate, and its src/ holds modules; rv-p5b-d #5032
+    item 2)."""
+    subs = [f.relative_to(c).parts for c in crates if c in f.parents]
+    near = min(subs, key=len) if subs else ()
+    return len(near) > 1 and near[0] in NON_MODULE_DIRS
 
 
-def _universe(root: Path) -> tuple[list[str], list[str], list[str]] | None:
-    """(modules, test files, build scripts), native-relative; None when native/ is absent."""
+def _universe(root: Path) -> tuple[list[str], list[str], set[Path]] | None:
+    """(modules, test files, crate roots), native-relative paths; None when native/ is absent. build.rs is a
+    module."""
     if not (root / NATIVE).exists():
         return None
     files = rust_facts.rust_files(root, NATIVE)
     crates = rust_facts.crate_dirs(files)
-    mods, tests, builds = [], [], []
+    mods, tests = [], []
     for f in files:
         rel = f.relative_to(root / NATIVE).as_posix()
-        # judged against the NEAREST crate root only: a crate nested under a workspace's examples/ or tests/
-        # is still a crate, and its src/ holds modules (rv-p5b-d #5032 item 2)
-        subs = [f.relative_to(c).parts for c in crates if c in f.parents]
-        near = min(subs, key=len) if subs else ()
-        if near == ("build.rs",):
-            builds.append(rel)
-        elif _excluded(near):
-            tests.append(rel)
+        (tests if _excluded(crates, f) else mods).append(rel)
+    return sorted(mods), sorted(tests), crates
+
+
+def _inside(rel: str) -> bool:
+    return rel == NATIVE or rel.startswith(f"{NATIVE}/")
+
+
+def _resolve(base: str, lit: str) -> str | None:
+    """`lit` resolved against the repo-relative directory `base`, as a normalised repo-relative path; None when
+    it is absolute or climbs above the repo root."""
+    lit = lit.replace("\\", "/")
+    if lit.startswith("/") or re.match(r"[A-Za-z]:", lit):
+        return None
+    hit = posixpath.normpath(posixpath.join(base, lit))
+    return None if hit == ".." or hit.startswith("../") else hit
+
+
+def _leaves(base: str, lit: str) -> bool:
+    hit = _resolve(base, lit)
+    return hit is None or not _inside(hit)
+
+
+def _dep_tables(doc: dict, bad: list[str]) -> list[tuple[str, dict]]:
+    """(label, {name: spec}) for every dependency-shaped table in a manifest: the three kinds at top level and
+    under `[target.<cfg>]`, `[workspace.dependencies]`, `[patch.<registry>]` and `[replace]`. A value of the
+    wrong TOML type is appended to `bad` (never a crash)."""
+    found: list[tuple[str, dict]] = []
+
+    def table(parent: dict, key: str, label: str) -> dict:
+        got = parent.get(key, {})
+        if isinstance(got, dict):
+            return got
+        bad.append(f"[{label}] is not a table")
+        return {}
+
+    def kinds(parent: dict, prefix: str) -> None:
+        found.extend((f"{prefix}{k}", table(parent, k, f"{prefix}{k}")) for k in DEP_KINDS)
+
+    kinds(doc, "")
+    found.append(
+        (
+            "workspace.dependencies",
+            table(table(doc, "workspace", "workspace"), "dependencies", "workspace.dependencies"),
+        )
+    )
+    for cfg, body in table(doc, "target", "target").items():
+        if isinstance(body, dict):
+            kinds(body, f"target.{cfg}.")
         else:
-            mods.append(rel)
-    return sorted(mods), sorted(tests), sorted(builds)
+            bad.append(f"[target.{cfg}] is not a table")
+    for registry, body in table(doc, "patch", "patch").items():
+        if isinstance(body, dict):
+            found.append((f"patch.{registry}", body))
+        else:
+            bad.append(f"[patch.{registry}] is not a table")
+    found.append(("replace", table(doc, "replace", "replace")))
+    return found
 
 
-def _target_reds(root: Path, excluded: set[str], builds: list[str]) -> list[Red]:
+def _manifest_reds(rel: str, here: str, doc: dict) -> list[Red]:
+    """R-CRATE-OUTSIDE for a path dependency, workspace member or patch path that leaves native/; R-RUSTFACTS
+    for a value of the wrong TOML type. `rel` is the manifest's repo-relative path, `here` its directory."""
+    bad: list[str] = []
+    reds = []
+    for label, deps in _dep_tables(doc, bad):
+        for name, spec in deps.items():
+            if isinstance(spec, str):
+                continue  # a bare version requirement
+            if not isinstance(spec, dict):
+                bad.append(f"{label}.{name}")
+                continue
+            path = spec.get("path")
+            if path is not None and not isinstance(path, str):
+                bad.append(f"{label}.{name}.path")
+            elif path is not None and _leaves(here, path):
+                reds.append(
+                    Red("R-CRATE-OUTSIDE", rel, f"[{label}] {name} path leaves native/: {path!r}")
+                )
+    ws = doc.get("workspace")
+    for key in ("members", "default-members") if isinstance(ws, dict) else ():
+        members = ws.get(key, [])
+        if not isinstance(members, list) or not all(isinstance(m, str) for m in members):
+            bad.append(f"workspace.{key}")
+            continue
+        for member in members:
+            # a glob is judged by its literal prefix: `../*` is the repo root, `d/*` is native/<here>/d
+            if _leaves(here, GLOB_RE.split(member)[0] or "."):
+                reds.append(
+                    Red("R-CRATE-OUTSIDE", rel, f"[workspace] {key} leaves native/: {member!r}")
+                )
+    return reds + [Red("R-RUSTFACTS", rel, f"{b} has the wrong TOML type") for b in bad]
+
+
+def _target_reds(root: Path, excluded: set[str]) -> list[Red]:
     """R-TARGET-EXCLUDED for a Cargo.toml `[lib]`/`[[bin]]` target, or any target, whose `path` is an excluded
-    file (an example/test/bench target may sit in its own excluded directory, but never on build.rs)."""
+    file (an example/test/bench target may sit in its own excluded directory); the dependency, member and patch
+    paths of the same manifest go through `_manifest_reds`."""
     reds = []
     for manifest in sorted((root / NATIVE).rglob("Cargo.toml")):
         here = manifest.parent.relative_to(root / NATIVE).as_posix()
@@ -307,24 +430,155 @@ def _target_reds(root: Path, excluded: set[str], builds: list[str]) -> list[Red]
                             f"{here}/Cargo.toml [{kind}] path leaves native/: {path!r}",
                         )
                     )
-                elif hit in builds or (kind in ("lib", "bin") and hit in excluded):
+                elif kind in ("lib", "bin") and hit in excluded:
                     reds.append(
                         Red("R-TARGET-EXCLUDED", hit, f"{here}/Cargo.toml [{kind}] path = {path!r}")
                     )
+        rel = manifest.relative_to(root).as_posix()
+        pkg = doc.get("package", {})
+        build = pkg.get("build") if isinstance(pkg, dict) else None
+        if not isinstance(pkg, dict) or not isinstance(build, (str, bool, type(None))):
+            reds.append(
+                Red("R-RUSTFACTS", rel, "[package] or package.build has the wrong TOML type")
+            )
+        elif isinstance(build, str):
+            # Cargo runs a build script from any path the manifest names: the same two escapes as a target
+            hit = _resolve(f"{NATIVE}/{here}", build)
+            if hit is None or not _inside(hit):
+                reds.append(
+                    Red("R-CRATE-OUTSIDE", rel, f"[package] build leaves native/: {build!r}")
+                )
+            elif (under := hit[len(NATIVE) + 1 :]) in excluded:
+                reds.append(Red("R-TARGET-EXCLUDED", under, f"{rel} [package] build = {build!r}"))
+        reds += _manifest_reds(rel, f"{NATIVE}/{here}", doc)
+    return reds
+
+
+def _tracked(root: Path) -> list[str]:
+    """Every file git lists (tracked, plus untracked-but-not-ignored), repo-relative: a local untracked `.c` or
+    `.so` reds before it is ever added (fail closed). Git failing is RustFactsUnavailable: the caller reds,
+    never skips."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "-z"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise rust_facts.RustFactsUnavailable(f"git ls-files failed under {root}: {exc}") from exc
+    return [p for p in out.split("\0") if p]
+
+
+def _exempt_reds(root: Path, rel: str) -> list[Red]:
+    """An exempt crate must not be able to ship native code: R-CRATE-OUTSIDE when it names pyo3 or builds a
+    cdylib/dylib/staticlib."""
+    try:
+        doc = tomllib.loads((root / rel).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return [Red("R-RUSTFACTS", rel, f"unreadable: {exc}")]
+    bad: list[str] = []
+    named = any(
+        n == "pyo3" or (isinstance(s, dict) and s.get("package") == "pyo3")
+        for _, deps in _dep_tables(doc, bad)
+        for n, s in deps.items()
+    )
+    lib = doc.get("lib")
+    types = [lib.get(k) for k in ("crate-type", "crate_type")] if isinstance(lib, dict) else []
+    builds = any(
+        isinstance(t, list) and NATIVE_CRATE_TYPES & {c for c in t if isinstance(c, str)}
+        for t in types
+    )
+    reds = [Red("R-RUSTFACTS", rel, f"{b} has the wrong TOML type") for b in bad]
+    if named or builds:
+        reds.append(Red("R-CRATE-OUTSIDE", rel, "exempt crate can build a native library"))
+    return reds
+
+
+def _outside_reds(
+    root: Path, tracked: list[str], cargo_exempt: dict[str, str], foreign_exempt: dict[str, str]
+) -> list[Red]:
+    """R-CRATE-OUTSIDE / R-STALE-EXEMPT for every Cargo.toml in the repo, R-FOREIGN-SOURCE for every compiled
+    non-Rust source or prebuilt native binary."""
+    reds = [
+        Red("R-CRATE-OUTSIDE", p, "cargo config can patch, override paths or add link args")
+        for p in tracked
+        if PurePosixPath(p).parent.name == ".cargo" and PurePosixPath(p).name in CARGO_CONFIGS
+    ]
+    manifests = {
+        p: PurePosixPath(p).parent.as_posix()
+        for p in tracked
+        if PurePosixPath(p).name == "Cargo.toml"
+    }
+    for p, d in sorted(manifests.items()):
+        if d in cargo_exempt:
+            reds += _exempt_reds(root, p)
+        elif not _inside(d):
+            reds.append(
+                Red("R-CRATE-OUTSIDE", p, "Cargo.toml outside native/ and not in CARGO_EXEMPT")
+            )
+    reds += [
+        Red("R-STALE-EXEMPT", d, "CARGO_EXEMPT entry has no tracked Cargo.toml")
+        for d in cargo_exempt
+        if d not in manifests.values()
+    ]
+    foreign = {p for p in tracked if PurePosixPath(p).suffix.lower() in FOREIGN_EXT}
+    reds += [
+        Red("R-FOREIGN-SOURCE", p, "compiled non-Rust source or prebuilt native binary")
+        for p in sorted(foreign - set(foreign_exempt))
+    ]
+    reds += [
+        Red("R-STALE-EXEMPT", p, "FOREIGN_EXEMPT entry names no tracked file")
+        for p in foreign_exempt
+        if p not in foreign
+    ]
+    return reds
+
+
+def _escape_reds(root: Path, rel: str, text: str, crates: set[Path]) -> list[Red]:
+    """R-PATH-ESCAPE for each `#[path = "lit"]` / `include!("lit")` in module `rel` (native-relative) that
+    resolves outside native/ or under an excluded dir of its nearest crate, and for an `include!` whose
+    argument is not one plain string literal (unverifiable, fail closed). Textual: include_str!/include_bytes!
+    are data and not scanned."""
+    base = posixpath.dirname(f"{NATIVE}/{rel}")
+    lits = [m.group(1) for m in PATH_ATTR_RE.finditer(text)]
+    reds = []
+    for m in INCLUDE_RE.finditer(text):
+        lit = INCLUDE_LIT_RE.match(text, m.end())
+        if lit:
+            lits.append(lit.group(1))
+        else:
+            reds.append(Red("R-PATH-ESCAPE", rel, "include! argument is not one string literal"))
+    for lit in lits:
+        hit = _resolve(base, lit)
+        if hit is None or not _inside(hit):
+            reds.append(Red("R-PATH-ESCAPE", rel, f"{lit!r} leaves native/"))
+            continue
+        target = root / hit
+        if _excluded(crates | rust_facts.crate_dirs([target]), target):
+            reds.append(Red("R-PATH-ESCAPE", rel, f"{lit!r} resolves into an excluded dir: {hit}"))
     return reds
 
 
 def check(
-    root: Path = REPO, grandfathered=GRANDFATHERED, cutoff=cutoff_modules, blobs=current_blobs
+    root: Path = REPO,
+    grandfathered=GRANDFATHERED,
+    cutoff=cutoff_modules,
+    blobs=current_blobs,
+    cargo_exempt=CARGO_EXEMPT,
+    foreign_exempt=FOREIGN_EXEMPT,
 ) -> Report:
     try:
         found = _universe(root)
+        tracked = _tracked(root) if found else []
     except rust_facts.RustFactsUnavailable as exc:
         return Report([Red("R-RUSTFACTS", NATIVE, str(exc))])
     if found is None:
         return Report(absent=True)
-    mods, tests, builds = found
-    reds: list[Red] = _target_reds(root, {*tests, *builds}, builds)
+    mods, tests, crates = found
+    reds: list[Red] = _target_reds(root, set(tests))
+    reds += _outside_reds(root, tracked, cargo_exempt, foreign_exempt)
     if not mods:
         reds.append(Red("R-ZERO", NATIVE, "native/ is present and no module was found"))
     cited_n = 0
@@ -334,6 +588,7 @@ def check(
         except OSError as exc:
             reds.append(Red("R-RUSTFACTS", rel, f"git lists it but it cannot be read: {exc}"))
             continue
+        reds += _escape_reds(root, rel, text, crates)
         cites = citations(text)
         cited_n += bool(cites)
         if len(cites) > 1:
@@ -412,8 +667,6 @@ def check(
         "test files": len(tests),
         "reds": len(reds),
     }
-    if builds:
-        counts["build.rs"] = len(builds)
     return Report(reds, counts)
 
 
@@ -421,10 +674,9 @@ def count_line(report: Report) -> str:
     if report.absent:
         return "native/ ABSENT"
     c = report.counts
-    builds = f", build.rs {c['build.rs']}" if "build.rs" in c else ""
     return (
         f"modules {c.get('modules', 0)}, cited {c.get('cited', 0)}, grandfathered {c.get('grandfathered', 0)}, "
-        f"test files {c.get('test files', 0)}{builds}, reds {len(report.reds)}"
+        f"test files {c.get('test files', 0)}, reds {len(report.reds)}"
     )
 
 
@@ -435,7 +687,7 @@ def census(root: Path = REPO, grandfathered=GRANDFATHERED) -> list[tuple[str, st
         return [(NATIVE, f"R-RUSTFACTS {exc}")]
     if found is None:
         return []
-    mods, tests, builds = found
+    mods, tests, _ = found
     rows = []
     for rel in mods:
         try:
@@ -453,7 +705,7 @@ def census(root: Path = REPO, grandfathered=GRANDFATHERED) -> list[tuple[str, st
                 else "UNCITED",
             )
         )
-    rows += [(rel, "TEST-FILE") for rel in tests] + [(rel, "OUT-OF-SCOPE") for rel in builds]
+    rows += [(rel, "TEST-FILE") for rel in tests]
     return sorted(rows)
 
 
@@ -467,7 +719,14 @@ def render(report: Report) -> str:
         "dates, shas and path tokens are stripped); it cannot judge whether the evidence is true. That stays "
         "review-enforced. Ids that carry digits (T018, B2, PFC-NEUTER-1023) count as numbers; evidence written "
         "only as ratios with `/` reds R-NONUMBER (fail closed); nothing checks that a record predates its module. "
-        "An [[example]]/[[test]]/[[bench]] target inside its own directory is not a module, even as a cdylib."
+        "An [[example]]/[[test]]/[[bench]] target inside its own directory is not a module, even as a cdylib. "
+        "Registry and git dependencies are P7's (dependency_ledger), not checked here; a ctypes/cffi load of a "
+        "system library at runtime is not seen; the #[path]/include! scan is textual (a commented-out attribute "
+        "reds, fail closed), resolves against the file's own directory (Rust's base for a #[path] inside a "
+        "nested inline module differs), and does not scan include_str!/include_bytes! (data, not code); "
+        "the extension build itself is pinned in infra/native_build.py (MANIFEST = "
+        "native/sndl-python/Cargo.toml) and this gate does not read that file; a .cargo/config in a directory "
+        "above the repo or in CARGO_HOME is not seen."
     )
     out += [f"  RED {r.code} {r.where}: {r.message}" for r in report.reds]
     return "\n".join(out)
@@ -477,6 +736,7 @@ _EV = "specs/s/evidence/p.md"
 _MOD = "c/src/lib.rs"
 _FILE = f"{NATIVE}/{_MOD}"
 _CITE = f"//! P5b-PREREG: {_EV}\n"
+_OUT_DEP = '[dependencies]\nk = { path = "../../tools/k" }\n'
 
 
 def _record_text(modules: str = _MOD, drop: int = 0, **over: str) -> str:
@@ -526,9 +786,69 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
         "R-TARGET-EXCLUDED": (
             {
                 **ok,
-                f"{NATIVE}/c/Cargo.toml": '[lib]\npath = "build.rs"\n',
-                f"{NATIVE}/c/build.rs": "#[pyfunction]\nfn f() {}\n",
+                f"{NATIVE}/c/Cargo.toml": '[lib]\npath = "tests/k.rs"\n',
+                f"{NATIVE}/c/tests/k.rs": "#[pyfunction]\nfn f() {}\n",
             },
+            {},
+        ),
+        "R-UNCITED:build-rs": ({**ok, f"{NATIVE}/c/build.rs": "fn main() {}\n"}, {}),
+        "R-CRATE-OUTSIDE": ({**ok, "tools/k/Cargo.toml": ""}, {}),
+        "R-CRATE-OUTSIDE:path-dep": ({**ok, f"{NATIVE}/c/Cargo.toml": _OUT_DEP}, {}),
+        "R-CRATE-OUTSIDE:member": (
+            {**ok, f"{NATIVE}/Cargo.toml": '[workspace]\nmembers = ["../tools/k"]\n'},
+            {},
+        ),
+        "R-CRATE-OUTSIDE:patch": (
+            {**ok, f"{NATIVE}/c/Cargo.toml": '[patch.crates-io]\nk = { path = "../../tools/k" }\n'},
+            {},
+        ),
+        "R-CRATE-OUTSIDE:exempt-pyo3": (
+            {**ok, "tools/k/Cargo.toml": '[dependencies]\npyo3 = "0.30"\n'},
+            {"cargo_exempt": {"tools/k": "tooling"}},
+        ),
+        "R-CRATE-OUTSIDE:exempt-cdylib": (
+            {**ok, "tools/k/Cargo.toml": '[lib]\ncrate-type = ["cdylib"]\n'},
+            {"cargo_exempt": {"tools/k": "tooling"}},
+        ),
+        "R-CRATE-OUTSIDE:build": (
+            {**ok, f"{NATIVE}/c/Cargo.toml": '[package]\nbuild = "../../tools/b.rs"\n'},
+            {},
+        ),
+        "R-CRATE-OUTSIDE:cargo-config": ({**ok, ".cargo/config.toml": "[net]\n"}, {}),
+        "R-TARGET-EXCLUDED:build": (
+            {
+                **ok,
+                f"{NATIVE}/c/Cargo.toml": '[package]\nbuild = "tests/b.rs"\n',
+                f"{NATIVE}/c/tests/b.rs": "fn main() {}\n",
+            },
+            {},
+        ),
+        "R-RUSTFACTS:build-type": (
+            {**ok, f"{NATIVE}/c/Cargo.toml": "[package]\nbuild = 3\n"},
+            {},
+        ),
+        "R-STALE-EXEMPT": (ok, {"cargo_exempt": {"tools/k": "tooling"}}),
+        "R-RUSTFACTS:dep-type": (
+            {**ok, f"{NATIVE}/c/Cargo.toml": "[dependencies]\nk = { path = 3 }\n"},
+            {},
+        ),
+        "R-FOREIGN-SOURCE": ({**ok, f"{NATIVE}/c/src/k.c": "int k;\n"}, {}),
+        "R-FOREIGN-SOURCE:outside": ({**ok, "tools/k/k.cu": "x\n"}, {}),
+        "R-FOREIGN-SOURCE:binary": ({**ok, "python/k.pyd": "x\n"}, {}),
+        "R-PATH-ESCAPE": (
+            {
+                **ok,
+                _FILE: _CITE + '#[path = "../tests/k.rs"]\nmod k;\n',
+                f"{NATIVE}/c/tests/k.rs": "// t\n",
+            },
+            {},
+        ),
+        "R-PATH-ESCAPE:include": (
+            {**ok, _FILE: _CITE + 'include!("../../../../tools/k.rs");\n'},
+            {},
+        ),
+        "R-PATH-ESCAPE:non-literal": (
+            {**ok, _FILE: _CITE + 'include!(concat!(env!("OUT_DIR"), "/k.rs"));\n'},
             {},
         ),
         "R-RUSTFACTS:gone": (ok, {"gone": [_FILE]}),
@@ -570,7 +890,10 @@ def self_check() -> int:
             for rel in kwargs.pop("gone", ()):
                 subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
                 (root / rel).unlink()
-            codes = check(root, **{"grandfathered": {}, "cutoff": lambda r: {}, **kwargs}).codes()
+            codes = check(
+                root,
+                **{"grandfathered": {}, "cutoff": lambda r: {}, "cargo_exempt": {}, **kwargs},
+            ).codes()
             want = name.split(":")[0]
             if name == "clean" and codes:
                 failures.append(f"clean tree reds: {sorted(codes)}")

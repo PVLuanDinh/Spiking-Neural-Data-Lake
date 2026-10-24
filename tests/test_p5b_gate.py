@@ -35,7 +35,9 @@ def same(root, rels):
 
 def run(tmp_path, files, grandfathered=None, cutoff=lambda root: {}, blobs=same):
     native_dormancy._write(tmp_path, files)
-    return pg.check(tmp_path, grandfathered=grandfathered or {}, cutoff=cutoff, blobs=blobs)
+    return pg.check(
+        tmp_path, grandfathered=grandfathered or {}, cutoff=cutoff, blobs=blobs, cargo_exempt={}
+    )
 
 
 def tree(src="//! x\n" + CITE, rec=None, **extra):
@@ -224,10 +226,17 @@ def test_tests_benches_examples_are_not_modules(tmp_path, sub):
     assert report.reds == [] and report.counts["modules"] == 1 and report.counts["test files"] == 1
 
 
-def test_build_script_is_excluded_by_name_and_counted(tmp_path):
+def test_build_script_is_a_module_and_needs_a_citation(tmp_path):
     report = run(tmp_path, tree(**{"native/c/build.rs": "fn main() {}\n"}))
-    assert report.reds == [] and report.counts["build.rs"] == 1
-    assert pg.count_line(report).endswith("test files 0, build.rs 1, reds 0")
+    assert [(r.code, r.where) for r in report.reds] == [("R-UNCITED", "c/build.rs")]
+    assert report.counts["modules"] == 2 and "build.rs" not in report.counts
+
+
+def test_a_cited_build_script_is_green(tmp_path):
+    files = tree(
+        rec=record(modules=f"{MOD}, c/build.rs"), **{"native/c/build.rs": "//! x\n" + CITE}
+    )
+    assert run(tmp_path, files).reds == []
 
 
 def test_a_tests_directory_inside_src_is_a_module(tmp_path):
@@ -236,7 +245,7 @@ def test_a_tests_directory_inside_src_is_a_module(tmp_path):
     assert report.counts["modules"] == 2 and report.counts["test files"] == 0
 
 
-def test_only_a_crate_roots_own_build_rs_is_excluded(tmp_path):
+def test_a_nested_build_rs_is_a_module_too(tmp_path):
     report = run(tmp_path, tree(**{"native/c/kernels/build.rs": "//! x\n"}))
     assert report.codes() == {"R-UNCITED"} and "build.rs" not in report.counts
 
@@ -244,12 +253,10 @@ def test_only_a_crate_roots_own_build_rs_is_excluded(tmp_path):
 @pytest.mark.parametrize(
     ("head", "path"),
     [
-        ("[lib]", "build.rs"),
         ("[lib]", "tests/lib.rs"),
         ("[lib]", "examples/lib.rs"),
         ("[lib]", "benches/lib.rs"),
         ("[[bin]]", "tests/main.rs"),
-        ("[[example]]", "build.rs"),
     ],
 )
 def test_a_cargo_target_resolving_to_an_excluded_file_reds(tmp_path, head, path):
@@ -262,12 +269,15 @@ def test_a_cargo_target_resolving_to_an_excluded_file_reds(tmp_path, head, path)
     assert "R-TARGET-EXCLUDED" in run(tmp_path, files).codes()
 
 
-def test_planted_lib_path_build_rs_is_the_one_new_red(tmp_path):
+def test_planted_lib_path_into_tests_is_the_one_new_red(tmp_path):
     files = tree(
-        **{"native/c/Cargo.toml": '[lib]\npath = "build.rs"\n', "native/c/build.rs": "fn f() {}\n"}
+        **{
+            "native/c/Cargo.toml": '[lib]\npath = "tests/k.rs"\n',
+            "native/c/tests/k.rs": "fn f() {}\n",
+        }
     )
     reds = run(tmp_path, files).reds
-    assert [(r.code, r.where) for r in reds] == [("R-TARGET-EXCLUDED", "c/build.rs")]
+    assert [(r.code, r.where) for r in reds] == [("R-TARGET-EXCLUDED", "c/tests/k.rs")]
 
 
 def test_a_crate_nested_under_a_workspace_examples_dir_holds_modules(tmp_path):
@@ -371,7 +381,7 @@ def test_census_lists_every_rs_with_a_status(tmp_path):
     )
     native_dormancy._write(tmp_path, files)
     assert dict(pg.census(tmp_path, {"c/src/g.rs": WHY})) == {
-        "c/build.rs": "OUT-OF-SCOPE",
+        "c/build.rs": "UNCITED",
         "c/src/g.rs": "GRANDFATHERED",
         "c/src/lib.rs": "CITED",
         "c/tests/t.rs": "TEST-FILE",
@@ -386,7 +396,7 @@ def _gone(tmp_path, files, rel):
 
 def test_a_listed_rs_gone_from_disk_reds_instead_of_crashing(tmp_path):
     _gone(tmp_path, tree(), f"native/{MOD}")
-    report = pg.check(tmp_path, grandfathered={}, cutoff=lambda root: {}, blobs=same)
+    report = run(tmp_path, {}, cutoff=lambda root: {})
     assert [(r.code, r.where) for r in report.reds] == [("R-RUSTFACTS", MOD)]
 
 
@@ -432,3 +442,303 @@ def test_real_tree_counts_eleven_grandfathered_and_no_reds():
     }, pg.render(report)
     assert report.reds == []
     assert len(pg.GRANDFATHERED) == 11
+
+
+# ---- arc-2 panel A-M2: out-of-tree crates, foreign sources, #[path]/include! escapes ----
+
+OUT = "tools/k"
+OUT_DEP = f'[dependencies]\nk = {{ path = "../../{OUT}" }}\n'
+EXEMPT = {OUT: "gate tooling, never linked into the extension"}
+
+
+def outside(tmp_path, files, **kw):
+    kw = {"cargo_exempt": {}, **kw}
+    native_dormancy._write(tmp_path, files)
+    return pg.check(tmp_path, grandfathered={}, cutoff=lambda root: {}, blobs=same, **kw)
+
+
+def only(report, code):
+    assert [r.code for r in report.reds] == [code], report.reds
+    return report.reds[0]
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [
+        OUT_DEP,
+        f'[dev-dependencies]\nk = {{ path = "../../{OUT}" }}\n',
+        f'[build-dependencies]\nk = {{ path = "../../{OUT}" }}\n',
+        f"[target.'cfg(unix)'.dependencies]\nk = {{ path = \"../../{OUT}\" }}\n",
+        f'[workspace.dependencies]\nk = {{ path = "../../{OUT}" }}\n',
+        f'[dependencies.k]\npath = "../../{OUT}"\n',
+        f'[patch.crates-io]\nk = {{ path = "../../{OUT}" }}\n',
+        f'[replace]\n"k:0.1.0" = {{ path = "../../{OUT}" }}\n',
+        '[dependencies]\nk = { path = "/abs/k" }\n',
+        '[dependencies]\nk = { path = "C:/k" }\n',
+    ],
+)
+def test_a_path_dependency_leaving_native_reds(tmp_path, manifest):
+    files = tree(**{"native/c/Cargo.toml": manifest, f"{OUT}/Cargo.toml": ""})
+    report = outside(tmp_path, files, cargo_exempt=EXEMPT)
+    assert only(report, "R-CRATE-OUTSIDE").where == "native/c/Cargo.toml"
+
+
+@pytest.mark.parametrize("members", ['["../tools/k"]', '["../*"]', '["c", "../tools/k*"]'])
+@pytest.mark.parametrize("key", ["members", "default-members"])
+def test_a_workspace_member_leaving_native_reds(tmp_path, key, members):
+    files = tree(**{"native/Cargo.toml": f"[workspace]\n{key} = {members}\n"})
+    assert only(outside(tmp_path, files), "R-CRATE-OUTSIDE").where == "native/Cargo.toml"
+
+
+def test_a_path_that_wanders_out_and_back_into_native_is_green(tmp_path):
+    files = tree(
+        **{
+            "native/Cargo.toml": '[workspace]\nmembers = ["c", "../native/d"]\n',
+            "native/c/Cargo.toml": '[dependencies]\nd = { path = "../../native/d" }\n',
+            "native/d/Cargo.toml": "",
+        }
+    )
+    assert outside(tmp_path, files).reds == []
+
+
+def test_native_path_dependencies_and_members_inside_native_are_green(tmp_path):
+    files = tree(
+        **{
+            "native/Cargo.toml": '[workspace]\nmembers = ["c", "d/*"]\n',
+            "native/c/Cargo.toml": '[dependencies]\nd = { path = "../d/e" }\nserde = "1"\n',
+            "native/d/e/Cargo.toml": "",
+        }
+    )
+    assert outside(tmp_path, files).reds == []
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [
+        "dependencies = 3\n",
+        "[dependencies]\nk = 3\n",
+        "[dependencies]\nk = { path = 3 }\n",
+        "[workspace]\nmembers = 3\n",
+        "[workspace]\nmembers = [3]\n",
+        "workspace = 3\n",
+        "target = 3\n",
+        "[target.x]\ndependencies = 3\n",
+        "patch = 3\n",
+        "[patch]\ncrates-io = 3\n",
+        "replace = 3\n",
+    ],
+)
+def test_a_dependency_table_of_the_wrong_type_reds_instead_of_crashing(tmp_path, manifest):
+    files = tree(**{"native/c/Cargo.toml": manifest})
+    assert "R-RUSTFACTS" in outside(tmp_path, files).codes()
+
+
+def test_a_manifest_outside_native_reds(tmp_path):
+    files = tree(**{f"{OUT}/Cargo.toml": ""})
+    assert only(outside(tmp_path, files), "R-CRATE-OUTSIDE").where == f"{OUT}/Cargo.toml"
+
+
+def test_an_exempt_outside_crate_leaves_the_clean_tree_green(tmp_path):
+    files = tree(**{f"{OUT}/Cargo.toml": '[package]\nname = "k"\n[dependencies]\nsyn = "2"\n'})
+    assert outside(tmp_path, files, cargo_exempt=EXEMPT).reds == []
+
+
+def test_a_native_path_dependency_into_the_exempt_crate_still_reds(tmp_path):
+    files = tree(**{"native/c/Cargo.toml": OUT_DEP, f"{OUT}/Cargo.toml": ""})
+    assert only(outside(tmp_path, files, cargo_exempt=EXEMPT), "R-CRATE-OUTSIDE").where == (
+        "native/c/Cargo.toml"
+    )
+
+
+def test_a_stale_cargo_exempt_entry_reds(tmp_path):
+    report = outside(tmp_path, tree(), cargo_exempt=EXEMPT)
+    assert [(r.code, r.where) for r in report.reds] == [("R-STALE-EXEMPT", OUT)]
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [
+        '[dependencies]\npyo3 = "0.30"\n',
+        '[dev-dependencies]\npyo3 = { version = "0.30" }\n',
+        '[build-dependencies]\npyo3 = "0.30"\n',
+        "[target.'cfg(unix)'.dependencies]\npyo3 = \"0.30\"\n",
+        '[workspace.dependencies]\npyo3 = "0.30"\n',
+        '[lib]\ncrate-type = ["cdylib"]\n',
+        '[lib]\ncrate-type = ["rlib", "dylib"]\n',
+        '[lib]\ncrate_type = ["staticlib"]\n',
+    ],
+)
+def test_an_exempt_crate_that_can_build_a_native_library_reds(tmp_path, manifest):
+    files = tree(**{f"{OUT}/Cargo.toml": manifest})
+    red = only(outside(tmp_path, files, cargo_exempt=EXEMPT), "R-CRATE-OUTSIDE")
+    assert red.where == f"{OUT}/Cargo.toml"
+    assert "exempt crate can build a native library" in red.message
+
+
+def test_an_exempt_binary_crate_with_a_plain_lib_is_green(tmp_path):
+    manifest = '[package]\nname = "k"\n[lib]\ncrate-type = ["rlib", "lib"]\n[[bin]]\nname = "k"\n'
+    files = tree(**{f"{OUT}/Cargo.toml": manifest})
+    assert outside(tmp_path, files, cargo_exempt=EXEMPT).reds == []
+
+
+def test_an_unreadable_exempt_manifest_fails_closed(tmp_path):
+    files = tree(**{f"{OUT}/Cargo.toml": "[lib\n"})
+    assert only(outside(tmp_path, files, cargo_exempt=EXEMPT), "R-RUSTFACTS")
+
+
+def test_the_real_exempt_crate_is_the_syn_binary_and_stays_green():
+    assert set(pg.CARGO_EXEMPT) == {"tools/rsfacts"}
+    assert pg.check(Path(pg.REPO)).reds == []
+
+
+@pytest.mark.parametrize("rel", ["native/c/src/k.c", "native/c/kernels/k.CU", "native/c/a.S"])
+def test_a_compiled_source_under_native_reds(tmp_path, rel):
+    assert only(outside(tmp_path, tree(**{rel: "x\n"})), "R-FOREIGN-SOURCE").where == rel
+
+
+@pytest.mark.parametrize(
+    "rel", ["tools/k/k.cu", "k.cpp", "x/y.h", "x/y.hpp", "x/y.f90", "x/y.mm", "x/y.asm"]
+)
+def test_a_compiled_source_outside_native_reds(tmp_path, rel):
+    assert only(outside(tmp_path, tree(**{rel: "x\n"})), "R-FOREIGN-SOURCE").where == rel
+
+
+@pytest.mark.parametrize("ext", ["pyd", "so", "dll", "dylib", "a", "lib", "o", "obj"])
+def test_a_tracked_prebuilt_native_binary_reds(tmp_path, ext):
+    assert only(outside(tmp_path, tree(**{f"x/k.{ext}": "x\n"})), "R-FOREIGN-SOURCE")
+
+
+def test_a_foreign_exemption_table_is_closed_and_shrink_only(tmp_path):
+    assert pg.FOREIGN_EXEMPT == {}
+    files = tree(**{"x/k.c": "x\n"})
+    assert outside(tmp_path, files, foreign_exempt={"x/k.c": "why"}).reds == []
+    report = outside(tmp_path / "b", tree(), foreign_exempt={"x/k.c": "why"})
+    assert [(r.code, r.where) for r in report.reds] == [("R-STALE-EXEMPT", "x/k.c")]
+
+
+@pytest.mark.parametrize(
+    "src",
+    [
+        '#[path = "../tests/k.rs"]\nmod k;\n',
+        '#[cfg_attr(unix, path = "../tests/k.rs")]\nmod k;\n',
+        '#[ path="../benches/k.rs" ] mod k;\n',
+        'include!("../tests/k.rs");\n',
+        'include ! ( "../examples/k.rs" , );\n',
+    ],
+)
+def test_a_path_or_include_into_an_excluded_dir_reds(tmp_path, src):
+    files = tree(
+        src="//! x\n" + CITE + src,
+        **{f"native/c/{d}/k.rs": "// t\n" for d in ("tests", "benches", "examples")},
+    )
+    assert only(outside(tmp_path, files), "R-PATH-ESCAPE").where == MOD
+
+
+@pytest.mark.parametrize(
+    "src",
+    ['#[path = "../../../tools/k.rs"]\nmod k;\n', 'include!("../../../../tools/k.rs");\n'],
+)
+def test_a_path_or_include_leaving_native_reds(tmp_path, src):
+    assert only(outside(tmp_path, tree(src="//! x\n" + CITE + src)), "R-PATH-ESCAPE")
+
+
+@pytest.mark.parametrize(
+    "src",
+    [
+        'include!(concat!(env!("OUT_DIR"), "/k.rs"));\n',
+        "include!(PATH);\n",
+        'include!("a.rs", "b.rs");\n',
+    ],
+)
+def test_a_non_literal_include_fails_closed(tmp_path, src):
+    assert only(outside(tmp_path, tree(src="//! x\n" + CITE + src)), "R-PATH-ESCAPE")
+
+
+def test_a_path_escape_in_build_rs_reds(tmp_path):
+    files = tree(
+        rec=record(modules=f"{MOD}, c/build.rs"),
+        **{
+            "native/c/build.rs": "//! x\n" + CITE + 'include!("tests/k.rs");\n',
+            "native/c/tests/k.rs": "// t\n",
+        },
+    )
+    assert only(outside(tmp_path, files), "R-PATH-ESCAPE").where == "c/build.rs"
+
+
+@pytest.mark.parametrize(
+    "src",
+    [
+        '#[path = "sibling.rs"]\nmod k;\n',
+        'include!("sibling.rs");\n',
+        'const S: &str = include_str!("../tests/data.txt");\n',
+        'const B: &[u8] = include_bytes!("../../../../tools/data.bin");\n',
+    ],
+)
+def test_an_in_native_path_or_include_and_data_includes_are_green(tmp_path, src):
+    files = tree(
+        src="//! x\n" + CITE + src,
+        **{"native/c/src/sibling.rs": "//! x\n" + CITE, "native/c/tests/data.txt": "x\n"},
+    )
+    files[EV] = record(modules=f"{MOD}, c/src/sibling.rs")
+    assert outside(tmp_path, files).reds == []
+
+
+def test_limit_line_says_what_is_not_checked(tmp_path):
+    text = pg.render(run(tmp_path, tree()))
+    for needle in (
+        "P7",
+        "ctypes",
+        "textual",
+        "include_str!",
+        "infra/native_build.py",
+        "CARGO_HOME",
+    ):
+        assert needle in text
+
+
+@pytest.mark.parametrize("build", ["../../tools/b.rs", "../../../b.rs", "/abs/b.rs", "C:/b.rs"])
+def test_a_package_build_path_leaving_native_reds(tmp_path, build):
+    files = tree(**{"native/c/Cargo.toml": f'[package]\nbuild = "{build}"\n'})
+    assert only(outside(tmp_path, files), "R-CRATE-OUTSIDE").where == "native/c/Cargo.toml"
+
+
+@pytest.mark.parametrize("build", ["tests/b.rs", "benches/b.rs", "examples/b.rs"])
+def test_a_package_build_path_into_an_excluded_dir_reds(tmp_path, build):
+    files = tree(
+        **{"native/c/Cargo.toml": f'[package]\nbuild = "{build}"\n', f"native/c/{build}": "x\n"}
+    )
+    red = only(outside(tmp_path, files), "R-TARGET-EXCLUDED")
+    assert red.where == f"c/{build}"
+
+
+@pytest.mark.parametrize("build", ["true", "false", '"build.rs"', '"src/gen/b.rs"'])
+def test_a_package_build_bool_or_in_native_path_is_green(tmp_path, build):
+    files = tree(
+        rec=record(modules=f"{MOD}, c/src/gen/b.rs"),
+        **{
+            "native/c/Cargo.toml": f"[package]\nbuild = {build}\n",
+            "native/c/src/gen/b.rs": "//! x\n" + CITE,
+        },
+    )
+    assert outside(tmp_path, files).reds == []
+
+
+@pytest.mark.parametrize(
+    "manifest", ["[package]\nbuild = 3\n", "[package]\nbuild = [1]\n", "package = 3\n"]
+)
+def test_a_package_build_of_the_wrong_type_reds_instead_of_crashing(tmp_path, manifest):
+    assert only(outside(tmp_path, tree(**{"native/c/Cargo.toml": manifest})), "R-RUSTFACTS")
+
+
+@pytest.mark.parametrize(
+    "rel",
+    [".cargo/config", ".cargo/config.toml", "native/.cargo/config.toml", "tools/k/.cargo/config"],
+)
+def test_a_cargo_config_file_anywhere_reds(tmp_path, rel):
+    red = only(outside(tmp_path, tree(**{rel: "[net]\n"})), "R-CRATE-OUTSIDE")
+    assert red.where == rel and "cargo config can patch" in red.message
+
+
+def test_a_dot_cargo_dir_without_a_config_and_a_config_elsewhere_are_green(tmp_path):
+    files = tree(**{".cargo/notes.md": "x\n", "docs/config.toml": "x\n", "cargo/config": "x\n"})
+    assert outside(tmp_path, files).reds == []
