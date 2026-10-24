@@ -33,9 +33,14 @@ Amendments A1-A8 and erratum E1.
 - The npz carries unit positions.
 - Duplicate session files collapse to 14 distinct recordings, with duplicate-timestamp counts per file.
 - Offline, never the lake.
-- **Known latent (closing review F5):** gate (d) compares absolute spike times with the span, while (e') and A5 use
-  t - t0. All 24 pinned files have t0 = 0, so nothing is affected today. The fix lands with Stage 0b's rework of
-  gate (d).
+- **Known latent, UNFIXED on this stack (closing review F5, G1):** gate (d) compares absolute spike times with the
+  span, while (e') and A5 use t - t0.
+  - A file with t0 > 0 can be refused for a valid spike.
+  - A file with t0 < 0 is the silent-drop direction.
+  - All 24 pinned files have t0 = 0, so nothing reads wrong today.
+  - Stage 0b, which would have reworked gate (d), is NOT BUILT. The only fix is WIP on the kept branch
+    `claude/og1-0b-ing-1023` (d0777de1).
+  - Any new pin must refuse t0 != 0 before this gate is trusted.
 
 **Fixed: a battery-red for every arc after P8.**
 `tests/test_null_scale_gate.py::test_real_history_an_exempt_row_switched_to_scale_retest_is_green` judged expiry at
@@ -46,8 +51,9 @@ sibling test already was. The real `null_scale_gate --assert` was green througho
 - The ONE candidate (an envelope-preserving conditional surrogate) ran ONCE on the independently frozen acceptance
   battery. It FAILED (board #4854): it rejected all 21 must-FAIL rows, including the envelope, composition and drift
   rows that sank every earlier design, but it missed the f = 0.25 planted dose (P-b25 7/10 against a bar of 8).
-- There is no re-run and no NULL-RECORD, because Stage 1 read no organoid byte. Stage 0b (A8) is therefore NOT BUILT;
-  its lane branches are kept.
+- There is no re-run, and no NULL-RECORD, because Stage 1 read no organoid byte.
+- Stage 0b (A8) is NOT BUILT because the candidate failed (A8 section 11: NOT BUILT (candidate)). Its lane branches
+  are kept [closing review G2].
 - `organoid_ingest` stands with no live consumer; the owner decides its future.
 - Four null designs were retired before any Stage 1 read of organoid data. They were retired on synthetic data,
   real-shaped in part from Stage 0's manifests (real unit counts) [closing review F1].
