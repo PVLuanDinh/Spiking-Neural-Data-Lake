@@ -38,7 +38,7 @@ compressed clause.
 | P2 adopt-or-merge | — | yes |
 | P3 no dormancy | `gates/dormancy_gate.py` (per-MODULE), `gates/method_dormancy_gate.py` (per-METHOD), `gates/import_manifest.py` (cross-tier) | the charge tier |
 | P4 one brain (+ P4b partial; P4d provisional) | `gates/replication_guard.py`; `gates/lake_rebuild_gate.py` mechanizes P4b's index-is-derived clause (delete → rebuild from a lake scan → logical-dump equality, planted-divergence red + lake-tracking control); `gates/unit_label_gate.py` mechanizes P4d's provenance check (owner decision 16) | P4b's remaining prose (one-lake, restart-is-not-amnesia); P4d in full (provisional; its gate is specified in P4d) |
-| P5 use the GPU where it helps (+ P5b provisional) | — | yes (P5b: the six-criterion record in each Rust build's pre-registration) |
+| P5 use the GPU where it helps (+ P5b) | — | yes (P5b: the six-criterion record in each Rust build's pre-registration) |
 | **P6 mutual reach + use** | **BUILT AND ASSERTING** — `tools/p6_gate.py --assert` and `--self-check` (lint CI job; the connectome-diff half is built). Ships as a **RATCHET**: baselines assert the structure never gets WORSE. Re-derive every count from the gate; never edit this row from memory | yes (provisional; a ratchet says the count did not worsen, never that P6 is satisfied) |
 | **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` and `--self-check` (lint CI job) | yes (the judgement half; see P7 guard (b)) |
 | **P8 invent the method** | **BUILT AND ASSERTING** — `tools/red_reachability.py --assert` (lint CI job); the null-scale amendment (2026-10-23): `gates/null_scale_gate.py` (`--assert` + `--self-check`, lint CI job) | yes (whether a criterion measures the RIGHT thing; whether a STRUCTURAL null's argument holds and the named scaling axis is the right one) |
@@ -696,8 +696,7 @@ one onto it.
 
 **Owner, verbatim:** *"Use graphify to check where Rust would be a genuine improvement and only work on
 those, for future builds, evaluate whether a Python or Rust build makes more sense"*; and *"Write the
-Python vs Rust build rule into POLICIES.md"*. Review-enforced, PROVISIONAL until its gate (below) is built
-and counted.
+Python vs Rust build rule into POLICIES.md"*. Gate-checked (below); the evidence's truth stays review-enforced.
 
 **The rule.** Every build is written in Python unless it qualifies for Rust (a PyO3 extension module).
 Python stays the language of governance, gates, instruments, experiments, the drive and the cockpit, and of
@@ -732,9 +731,9 @@ file in Rust is an envelope change and needs explicit owner approval.
 
 **Honesty guard.** "Rust is faster" is not evidence; criterion 1's measurement is. A Rust port that misses its
 pre-registered speed criterion is reverted, not kept for being native (P8: deletion on a null).
-**Gate specification:** a pre-registration check that every module under the native crate cites a
-pre-registration recording all six criteria with their numbers, with a planted-missing red. Count it before
-this marker retires.
+**Mechanization: BUILT AND ASSERTING — `gates/p5b_gate.py`** (`--assert`, `--self-check`; lint CI job): each native
+module cites a six-criterion record (`//! P5b-PREREG:`). Counted 2026-10-24 (native/ as at 20e1e742): modules 11,
+cited 0, grandfathered 11 (closed; `evidence/p5b-retroactive-record.md`), reds 0.
 
 ---
 
