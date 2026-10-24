@@ -775,7 +775,8 @@ EXEMPT = {
         "the module; a readable FAIL -> A4.9's arbiter amendment and NULL-RECORD, 'scale-retest' under "
         "the P8 amendment, then A8 section 11); no new Stage 1 pre-registration frozen within 3 pushed "
         "arcs -> the owner is asked again whether to keep it or retire it by deletion with its pin and "
-        "tests (an integrator review trigger, disclosed in A10).",
+        "tests (an integrator review trigger, disclosed in A10; REVIEW-ONLY, since nothing counts arcs, "
+        "and 3 is a chosen interval, not derived).",
     ),
     "h01_ingest": (
         "wire",

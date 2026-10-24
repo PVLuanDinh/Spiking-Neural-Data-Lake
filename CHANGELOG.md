@@ -12,7 +12,7 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 ## [Unreleased] -- OG1 Stage 0: the organoid ingest, pushed without Stage 1 (2026-10-23)
 
 OG1 / T118 (owner 2026-10-23). Pre-registration: `specs/022-unified-brain-arc/evidence/og1-organoid-stream.md`, with
-Amendments A1-A8 and erratum E1.
+Amendments A1-A10 and erratum E1 [engine-arc panel C-m3].
 - A1-A5 are pre-data for Stage 1. A1 and A2 were written after Stage 0 reads, and A2.1 after its gate refused all 24
   files under the first convention; all are disclosed there.
 - A6 records the owner's path: push Stage 0 alone after an agent-fleet debate (#4729).
@@ -31,16 +31,18 @@ Amendments A1-A8 and erratum E1.
   - an EXACT rebuild of the depositors' own 1 ms raster. The rebuild uses MATLAB 1-based round, row =
     floor(t*rate - 0.5), and reproduces all 24 files with 0 mismatched cells.
 - The npz carries unit positions.
-- Duplicate session files collapse to 14 distinct recordings, with duplicate-timestamp counts per file.
+- Duplicate session files collapse to 14 distinct recordings, with duplicate-timestamp counts per file. This was
+  measured by the Stage 0 conversion. Its manifest, `og1_sessions.json`, lies in the gitignored data folder, so the
+  sources are the board: the ingest lane's result #4511 ("24 entries, 14 distinct": HO2 4 of 9, HO3 4 of 9), and
+  the closing review's re-count #4822 [engine-arc panel C-m4].
 - Offline, never the lake.
-- **Known latent, UNFIXED on this stack (closing review F5, G1):** gate (d) compares absolute spike times with the
-  span, while (e') and A5 use t - t0.
-  - A file with t0 > 0 can be refused for a valid spike.
-  - A file with t0 < 0 is the silent-drop direction.
-  - All 24 pinned files have t0 = 0, so nothing reads wrong today.
-  - Stage 0b, which would have reworked gate (d), is NOT BUILT. The only fix is WIP on the kept branch
-    `claude/og1-0b-ing-1023` (d0777de1).
-  - Any new pin must refuse t0 != 0 before this gate is trusted.
+- **Fixed: gate (d) refuses a raster `starting_time` != 0** (closing review F5; engine-arc panel A-M4).
+  - Gate (d) and the npz read absolute spike times, while (e') rebuilds rows from t - t0 and drops negative rows. So
+    a t0 > 0 file passed (c), (d) and (e') with its pre-recording spikes, and those spikes were written to the npz. A
+    t0 < 0 file misjudges the span the other way.
+  - Both directions are now refused, with a red test each and two constructed self-check reds.
+  - All 24 pinned files read t0 = 0 (closing review #4822), so no real conversion changes. Any re-conversion now
+    re-checks that mechanically.
 
 **Fixed: a battery-red for every arc after P8.**
 `tests/test_null_scale_gate.py::test_real_history_an_exempt_row_switched_to_scale_retest_is_green` judged expiry at
@@ -56,6 +58,9 @@ sibling test already was. The real `null_scale_gate --assert` was green througho
   are kept [closing review G2].
 - `organoid_ingest` stands with no live consumer. The owner ruled (A10) to keep it as a reference-data ingest for a
   possible new Stage 1 pre-registration. Its dormancy row stands, re-dated.
+- The row's "ask the owner again after 3 pushed arcs" is a **review-only trigger**: nothing counts arcs, so it fires
+  only if a reviewer reads the row. The 3 is a chosen review interval, not a derived number [engine-arc panel B-m12,
+  C-m7].
 - Four null designs were retired before any Stage 1 read of organoid data. They were retired on synthetic data,
   real-shaped in part from Stage 0's manifests (real unit counts) [closing review F1].
 - An independent acceptance battery comes first; then one candidate gets one run, and a failure is recorded as NOT
