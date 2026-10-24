@@ -656,6 +656,13 @@ EXEMPT = {
         "instrument, never on a tick -- the policy_manifest / capability_bar disposition. RETIRES "
         "with the migration (every count at zero and the libraries gone), never by a tick reading it",
     ),
+    "p5b_gate": (
+        "permanent",
+        "POLICIES P5b: every native Rust module cites a pre-registration recording all six criteria with "
+        "their numbers (planted-missing red, closed GRANDFATHERED table). A CI/run_selfchecks instrument, "
+        "never on a tick -- the native_ratchet / policy_manifest disposition. RETIRES when the P5b "
+        "PROVISIONAL marker does and the rule moves into the build, never by a tick reading it",
+    ),
     "native_build": (
         "permanent",
         "the build step for snn_data_lake._native (native/sndl-python via maturin, cp314t wheel TAG "

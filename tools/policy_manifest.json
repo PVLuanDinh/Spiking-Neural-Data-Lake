@@ -241,9 +241,18 @@
       "title": "TWO AXES, NEITHER SUBSTITUTES FOR THE OTHER (owner directive, 2026-08-05)"
     },
     {
-      "commands": [],
+      "commands": [
+        {
+          "argv": [
+            "-m",
+            "snn_data_lake.gates.p5b_gate",
+            "--assert"
+          ],
+          "source": "gates/p5b_gate.py --assert"
+        }
+      ],
       "id": "P5b",
-      "kind": "review-only",
+      "kind": "absolute",
       "subclause_of": "P5",
       "table_only": false,
       "title": "PYTHON BY DEFAULT; RUST ONLY WHERE IT IS A MEASURED IMPROVEMENT (owner directive, 2026-10-17)"

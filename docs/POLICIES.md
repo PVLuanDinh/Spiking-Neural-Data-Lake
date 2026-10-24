@@ -64,6 +64,7 @@ here, and the corrections that earned this rule, are relocated to `docs/POLICIES
 | `tools/doc_command_guard.py --assert` | re-run it; scans tracked docs for `python -m` commands that do not run | `run_selfchecks`'s tools stage; re-derive from `policy_manifest`'s census, which counts that stage |
 | `tools/p6_gate.py` | re-run it; a RATCHET — green means "no worse", never "P6 satisfied" | yes; and `run_selfchecks`'s tools stage |
 | `tools/p4c_ratchet.py` | re-run it with `--assert`; per-ZONE ratchet, machine-generated baseline that refuses to write a rise | yes, and locally in `run_selfchecks`'s tools stage |
+| `gates/p5b_gate.py --assert` | re-run it | yes, `lint` |
 
 ---
 

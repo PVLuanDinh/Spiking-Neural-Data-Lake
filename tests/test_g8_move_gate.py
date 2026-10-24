@@ -205,8 +205,11 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # row); nothing removed; LEGACY_REGIONS and the claustrum shadow unchanged.
     # 2026-10-23/engine arc 1 union (integrator): G3-T1's grower and OG1's organoid_ingest
     # are disjoint additions, so the stacked tree holds both: 325 + 1 + 1 = 327 (measured).
-    assert len(S._MOVED) == 327 and "claustrum" not in S._MOVED
-    assert {"grower", "organoid_ingest"} <= set(S._MOVED)  # A-m2
+    # 2026-10-24/P5b on engine arc 1 (rust-lead-1024 restack): diffing _MOVED between arc 1
+    # 7a72aa43 (327) and the P5b gate commit: added exactly p5b_gate (its gates REGIONS row);
+    # nothing removed; LEGACY_REGIONS unchanged. 327 + 1 = 328 (measured on the rebased head).
+    assert len(S._MOVED) == 328 and "claustrum" not in S._MOVED
+    assert {"grower", "organoid_ingest", "p5b_gate"} <= set(S._MOVED)  # A-m2
 
 
 @pytest.fixture

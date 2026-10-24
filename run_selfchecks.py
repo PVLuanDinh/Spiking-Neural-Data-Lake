@@ -469,6 +469,7 @@ CORE = [
     "gates.import_manifest",  # Policy 3: assert every reasoning/ module the live brain lazily imports still imports
     "gates.method_dormancy_gate",  # Policy 3 amendment: assert no update rule on a live module lacks a live caller
     "gates.null_scale_gate",  # P8 null-scale: bare == --assert (counted records, re-test scale, arc expiry); its --self-check runs in the lint CI job
+    "gates.p5b_gate",  # P5b: bare == --assert (native modules cite a six-criterion pre-registration); its --self-check runs in the lint CI job
     "gates.eprop_transport_gate",  # e-prop invariant: assert no governed module transposes a weight into a weight update
     "gates.doc_budget_gate",  # word ceilings on the standing docs: a document may not grow unnoticed
     "gates.docs_only_battery",  # docs-only battery: R1/R2 refusals, reader selection, the audit hook's +/- and spawn-injection controls

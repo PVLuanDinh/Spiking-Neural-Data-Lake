@@ -454,6 +454,14 @@ jobs:
       - name: P8 null-scale gate reds can fire (--self-check)
         run: python -m snn_data_lake.gates.null_scale_gate --self-check
 
+      # P5b (2026-10-24): every native Rust module cites a pre-registration recording the six criteria with
+      # numbers; the eleven pre-gate modules are a closed GRANDFATHERED table checked against the cutoff commit.
+      - name: P5b gate (native modules cite a six-criterion pre-registration)
+        run: python -m snn_data_lake.gates.p5b_gate --assert
+
+      - name: P5b gate reds can fire (--self-check)
+        run: python -m snn_data_lake.gates.p5b_gate --self-check
+
   test:
     name: tests + coverage
     runs-on: ubuntu-latest
