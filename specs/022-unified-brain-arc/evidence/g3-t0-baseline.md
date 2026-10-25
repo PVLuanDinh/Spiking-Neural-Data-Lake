@@ -140,9 +140,22 @@ runs `-m "not slow"` and never ran this guard (obs 2698).
 description strings (provenance). No other view key, no non-view field (`grown_units`, `growth_fingerprint`, the trajectory
 crc, `placement`, the perception tier, `neuro.state()`) and no verdict H0a-H0e moved.
 
-**Rule applied.** Section 3's re-capture rule ("T1's byte-identity target is the NEW value, recorded here"), carried from the
+**Rule applied (a DISCLOSED SESSION CALL by the integrator after the red, not pre-registered text; policy-enforcer #5438 m1).** Section 3's re-capture rule ("T1's byte-identity target is the NEW value, recorded here"), carried from the
 bare-engine pins to the view, for a schema-only change: the capture below is re-taken on `8e662a6b` and is the byte-identity
 target for T2-T6. A future re-capture owes the same measured, full drift list first. A re-capture that moves any behavioural
 key is not this rule; it is a G3 red.
+
+**The measured drift, key by key** (all 21 arms identical; source `lanes/engine-1024/arc2-b1-attrib/t0_drift.txt`, re-derived by the policy-enforcer #5438; policy-enforcer m2 asks that it sit beside the capture):
+
+| key | 2026-10-23 | 2026-10-25 | kind |
+|---|---|---|---|
+| `state.prototypes_refused_kept` | absent | `0` | added counter |
+| `snap.cognition.prototypes_refused_kept` | absent | `0.0` | added counter |
+| `snap.provenance.prototypes_refused_kept` | absent | a description string | added provenance text |
+| `snap.provenance.prototypes_restore` | names 3 percept learners | names every store of `growing_learners.json` | rewritten provenance text |
+| `snap.derived.coverage_total` / `_reachable` / `_exempt` | 338 / 269 / 69 | 342 / 270 / 72 | module census (grower, organoid_ingest, p5b_gate, rpe_charge), read against the derived census delta |
+| `snap.t`, `wall_s` | wall clock | wall clock | excluded by the guard |
+
+Unmoved: every other view key, every non-view field, the bare-engine pins, host, python, torch; verdicts H0a-H0e equal.
 
 **Capture:** 2026-10-25, `tests/test_g3_t0_baseline.py::capture()` on the tree at `8e662a6b` (int3, the `.pyd` rebuilt from that tree's Rust source), torch 2.11.0+cu128, `resource:timing` held by claude-engine-1024 (~4 min, 21 brains at ~11 s each). Checked against the 2026-10-23 file before committing: every non-view field equal (`grown_units`, fingerprints, trajectory crc, placement, tier: the per-arm table above stands), bare-engine pins equal, host/python/torch equal; the view moved only in the four schema keys and the three module-census keys (`snap.derived.coverage_*`), which the test reads against its derived census delta, never as drift.
