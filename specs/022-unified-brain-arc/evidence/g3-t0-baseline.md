@@ -125,3 +125,24 @@ use it as its control. All values are in `g3-t0-baseline.json`; the harness's fa
 ## Does NOT establish (results)
 - Nothing about competence: accuracies are differencer keys on a 300-tick, 1-4 unit stream.
 - Single process, CPU refits, one host load; cross-process nondeterminism is unsampled. No null asserted (P8 clause not engaged).
+
+# RE-CAPTURE 2026-10-25 (engine arc 2; appended, every section above unchanged)
+
+**Why.** Engine arc 2's P4b commits changed the brain's telemetry SCHEMA, not its behaviour. `state.prototypes_refused_kept`,
+`snap.cognition.prototypes_refused_kept` and `snap.provenance.prototypes_refused_kept` were added (rv-arc2-r3 m4, the
+P4b round-3 fold), and the provenance text of `snap.provenance.prototypes_restore` was rewritten to name the stores P4b now
+restores (the restart-amnesia fix and its folds). `tests/test_grower.py::test_brain_five_arm_matches_t0` treats any view-key
+change as drift, so engine arc 2's battery 1 (`battery-20261025-090945` on `8e662a6b`) was red on it. The per-commit check
+runs `-m "not slow"` and never ran this guard (obs 2698).
+
+**Measured before re-capturing** (`lanes/engine-1024/arc2-b1-attrib/t0_drift.txt`, full and untruncated, all 21 arms, on
+`8e662a6b`): the drift is exactly those four keys on every arm. The new values are `0` (state), `0.0` (cognition) and two
+description strings (provenance). No other view key, no non-view field (`grown_units`, `growth_fingerprint`, the trajectory
+crc, `placement`, the perception tier, `neuro.state()`) and no verdict H0a-H0e moved.
+
+**Rule applied.** Section 3's re-capture rule ("T1's byte-identity target is the NEW value, recorded here"), carried from the
+bare-engine pins to the view, for a schema-only change: the capture below is re-taken on `8e662a6b` and is the byte-identity
+target for T2-T6. A future re-capture owes the same measured, full drift list first. A re-capture that moves any behavioural
+key is not this rule; it is a G3 red.
+
+**Capture:** 2026-10-25, `tests/test_g3_t0_baseline.py::capture()` on the tree at `8e662a6b` (int3, the `.pyd` rebuilt from that tree's Rust source), torch 2.11.0+cu128, `resource:timing` held by claude-engine-1024 (~4 min, 21 brains at ~11 s each). Checked against the 2026-10-23 file before committing: every non-view field equal (`grown_units`, fingerprints, trajectory crc, placement, tier: the per-arm table above stands), bare-engine pins equal, host/python/torch equal; the view moved only in the four schema keys and the three module-census keys (`snap.derived.coverage_*`), which the test reads against its derived census delta, never as drift.
