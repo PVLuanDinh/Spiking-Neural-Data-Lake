@@ -776,7 +776,7 @@ EXEMPT = {
     # its own, consumer or no consumer. The import is the cheap half; the charge is the measured
     # one, and only the second is evidence.
     "organoid_ingest": (
-        "wire",
+        "permanent",
         "specs/022 OG1 (T118) Stage 0, DATED 2026-10-23: the DANDI 001603 organoid NWB ingest -- "
         "refusal gates (licence, streamed bytes, index incl. non-finite/negative times, time units "
         "and the raster-edge span, exact depositor raster), each with its constructed red in its own "
@@ -793,7 +793,7 @@ EXEMPT = {
         "the P8 amendment, then A8 section 11); no new Stage 1 pre-registration frozen within 3 pushed "
         "arcs -> the owner is asked again whether to keep it or retire it by deletion with its pin and "
         "tests (an integrator review trigger, disclosed in A10; REVIEW-ONLY, since nothing counts arcs, "
-        "and 3 is a chosen interval, not derived).",
+        "and 3 is a chosen interval, not derived). Disposition 'wire' -> 'permanent' (awaiting-prerequisite: no wiring wave is pending after A9; rv-arc1-b B-m11), OWNER 2026-10-25, verbatim: 'I approve ... the organoid exempt wording'; the module, its pin and its tests are unchanged.",
     ),
     "h01_ingest": (
         "wire",
