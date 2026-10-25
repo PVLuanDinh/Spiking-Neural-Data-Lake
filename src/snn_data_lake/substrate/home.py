@@ -116,7 +116,9 @@ _T_EPISODE = b"\x04"
 # part of what the brain had learned. Same additive-tag safety argument as _T_GROWTH -- the FACT
 # view filters on `payload[:1] == _T_FACT` and consolidate() PRESERVES this tag (its one prune is
 # _T_STATE-only, and this history is deliberately outside it), so existing readers skip this and a
-# rewrite keeps it.
+# rewrite keeps it. T120 (2026-10-25): the pre-P4b `<home>/selfbuild_state.json` is imported
+# through `_migrate_sidecar`, and applied only to a lake with no _T_SELFBUILD record (see the
+# proposer's `_load`).
 _T_SELFBUILD = b"\x05"
 # _T_CALIB was added 2026-08-04 as a per-caller channel for ONE sidecar (`signal_calib.json`) and is
 # RETIRED 2026-08-05 WITHOUT EVER BEING WRITTEN, superseded by the generic `_T_STATE` record below.
@@ -691,7 +693,8 @@ def state_path(name):
         `_retire_sidecar` then renames it `<name>.imported`; `_retire_sidecar` also reads it to
         import bytes a rollback window wrote there beside a retired copy. Since 2026-10-24 the
         imported names include `language_acq.npz` and `skills/<domain>.npz`, which now go through
-        `save_named_state`, as in-memory `np.savez` blobs.
+        `save_named_state`, as in-memory `np.savez` blobs; since 2026-10-25 (T120) also
+        `selfbuild_state.json`.
     (1b) `sleep/nightly_skills.py` LISTS `<home>/skills/*.npz` (read-only) so a legacy domain
         missing from the summary is still imported through (1).
     (2) The novel-signal queue `unknowns.jsonl` of `sensorimotor/signal_loop.py`, a FILE of queued
@@ -1310,7 +1313,8 @@ def _migrate_sidecar(name):
     stays in the lake; a BINARY sidecar imports whole. It cannot validate -- it is the raw-bytes
     carrier, and its JSON-shaped callers come through `load_state`, which is where the parse lives.
     The blast radius is bounded and was checked, not assumed: the names live paths ask for are the
-    seven JSON states plus, since 2026-10-24, the npz blob names
+    seven JSON states plus `selfbuild_state.json` (since 2026-10-25, T120: the self-build learner's
+    pre-P4b weights, through `load_state`), plus, since 2026-10-24, the npz blob names
     (`language_acq.npz`, `skills/<domain>.npz`, `skills/open_world.npz`), whose callers parse with
     `np.load` and treat an unreadable blob as a cold start inside their own guards. `prototypes.bin`
     and `skills*.spkl` are never requested by name and never imported. A future caller that hands a
@@ -1323,8 +1327,9 @@ def _migrate_sidecar(name):
     disk, not destroyed, but not in the lake). Every live path
     loads first, checked by reading them: `Brain.__init__` reloads the reasoning curriculum and
     calls `TimeCellClock.restored()` at construction, `RecallTrace.__init__` loads before any
-    `bump`, `OpenGf.__init__` and `Library.load` load in the constructor, `closed_loop --persist`
-    loads before `run_episode`, and `signal_loop.load_library` runs at the top of `main()`."""
+    `bump`, `OpenGf.__init__`, `Library.load` and `BrainNativeSelfBuildProposer.__init__` load
+    in the constructor, `closed_loop --persist` loads before `run_episode`, and
+    `signal_loop.load_library` runs at the top of `main()`."""
     legacy = state_path(name)
     try:
         with open(legacy, "rb") as f:

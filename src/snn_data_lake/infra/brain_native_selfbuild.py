@@ -67,7 +67,7 @@ import zlib
 
 from snn_data_lake.infra.self_mod_harness import _PROTECTED
 from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
-from snn_data_lake.substrate.home import load_selfbuild, save_selfbuild
+from snn_data_lake.substrate.home import load_selfbuild, load_state, save_selfbuild
 
 # This module's own dotted name -- correct both when imported and when run as `python -m ...` (runpy
 # sets __spec__ to the real name even though __name__ becomes "__main__"). The self-check's toy patches
@@ -488,6 +488,9 @@ DEHARDCODE_TRANSFORMS = (
 # grows; existing persisted weights keep their index. A tiny fixed capacity avoids resizing the bank.
 _ALL_IDS = tuple(s["id"] for s in DEHARDCODE_TRANSFORMS) + tuple(r["id"] for r in RECALIB_TARGETS)
 
+# The pre-P4b home sidecar the learner's state is imported from once (see `_load`).
+_LEGACY_STATE = "selfbuild_state.json"
+
 
 # ================================================================================================
 # THE PROPOSER -- one three-factor learner over all sources' candidates + the gated apply.
@@ -543,20 +546,43 @@ class BrainNativeSelfBuildProposer:
     # could not see it, so sleep compaction reasoned about a lake missing part of what was learned.
     # Reads now come FROM the lake, which is the other half of P4b -- the in-memory `_cell.w` is a
     # CACHE of the newest _T_SELFBUILD record, never the source of truth.
+    #
+    # T120, 2026-10-25 -- ONE MIGRATION (P2). The pre-P4b file is a HOME sidecar now,
+    # `<home>/selfbuild_state.json`, read through `home.load_state` (-> `_migrate_sidecar`, which
+    # retires it `.imported`). The repo
+    # copy `<repo>/data/selfbuild_state.json` is NEVER read: every NORD_HOME shared it, so every
+    # temp-home brain imported it and none could retire it. The operator moves it into the home
+    # once, before the first boot of this build (docs/RUNNING.md); a home whose lake holds no
+    # _T_SELFBUILD record otherwise cold-starts. It holds real learned weights, so it is migrated,
+    # never deleted. An isolated lake (`lake_path`) pairs with no home sidecar, mirroring
+    # `load_named_state(path=...)`.
     def _load(self):
-        st = None
-        blob = None
+        st = blob = None
+        read_failed = False
         try:
             blob = load_selfbuild(self._lake_path)
         except Exception:  # a broken or absent record must never block construction
-            blob = None
-        if blob:
+            read_failed = True
+        try:
+            st = json.loads(bytes(blob).decode("ascii")) if blob else None
+        except (ValueError, UnicodeDecodeError):
+            pass
+        if self._lake_path is None:
+            # Asked on every default-lake boot, not only on a miss: the read is what retires a
+            # sidecar moved into a home whose lake already holds a _T_SELFBUILD record.
             try:
-                st = json.loads(bytes(blob).decode("ascii"))
-            except (ValueError, UnicodeDecodeError):
-                st = None
-        if st is None:
-            st = self._migrate_legacy_sidecar()
+                legacy = load_state(_LEGACY_STATE)
+            except Exception:
+                legacy = None
+            # Only a lake with NO _T_SELFBUILD record takes it: the import leaves a frozen _T_STATE
+            # copy nothing supersedes, and a corrupt or unreadable newest record cold-starts rather
+            # than restoring those Aug-2026 weights over the learned history.
+            if not blob and not read_failed and isinstance(legacy, dict):
+                st = legacy
+                try:
+                    save_selfbuild(json.dumps(st, sort_keys=True).encode("ascii"))
+                except Exception:  # best-effort; the in-memory restore below still happens
+                    pass
         if not isinstance(st, dict):
             return
         for tid, w in (st.get("weights") or {}).items():
@@ -570,36 +596,6 @@ class BrainNativeSelfBuildProposer:
             self._futile = st["futile"]
         if isinstance(st.get("last_cand_key"), list):
             self._last_cand_key = [str(x) for x in st["last_cand_key"]]
-
-    def _migrate_legacy_sidecar(self):
-        """One-time import of the pre-P4b `<repo>/data/selfbuild_state.json`, then write it INTO the
-        lake so the next load comes from the one store. Returns the parsed state, or None.
-
-        A migration rather than a delete because that file holds real learned weights -- dropping it
-        would reset the learner to its uniform init and call that a policy fix. The legacy file is
-        left on disk untouched: nothing reads it once a _T_SELFBUILD record exists, and removing a
-        user's data to tidy up a policy violation is not this function's call.
-
-        IT DIVERGES FROM `home._migrate_sidecar` ON PURPOSE (arc-2 panel B MAJOR-6, 2026-10-24): a
-        home sidecar is renamed `.imported` once its lake holds it, so a lake reset cannot import it
-        again; this file is not. It sits under the REPO, not `<home>`, so every NORD_HOME shares it,
-        and the first brain to read it -- a test or scratch home on a temp NORD_HOME, `Brain` builds
-        this proposer on the default lake -- would rename it away from the operator's home, whose
-        lake then never imports it. The cost of keeping it live: a lake reset, rebuild or new home
-        imports these Aug-2026 weights again (139 B in the main checkout on 2026-10-24)."""
-        legacy = os.path.join(self._repo, "data", "selfbuild_state.json")
-        try:
-            with open(legacy, encoding="utf-8") as f:
-                st = json.load(f)
-        except (OSError, ValueError):
-            return None
-        if not isinstance(st, dict):
-            return None
-        try:
-            save_selfbuild(json.dumps(st, sort_keys=True).encode("ascii"), self._lake_path)
-        except Exception:  # migration is best-effort; the in-memory restore below still happens
-            pass
-        return st
 
     def _save(self):
         weights = {tid: self._cell.w[self._idx[tid]] for tid in self._ids}

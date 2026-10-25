@@ -5,6 +5,7 @@ Every test runs on conftest's hermetic NORD_HOME and asserts it is not the live 
 
 import hashlib
 import io
+import json
 import os
 import shutil
 import time
@@ -15,6 +16,7 @@ import pytest
 from snn_data_lake.faculties import language_acquisition as la
 from snn_data_lake.faculties.language_acquisition import STATE_NAME, LanguageAcquisition
 from snn_data_lake.gates.lake_rebuild_gate import assert_rebuild
+from snn_data_lake.infra.brain_native_selfbuild import _LEGACY_STATE as _SB
 from snn_data_lake.sleep import nightly_skills as ns
 from snn_data_lake.substrate import home as h
 from tests.test_nightly_skills_savez import _built
@@ -35,8 +37,8 @@ def _restart():
     h._RETIRED.clear()
 
 
-def _probe_sidecar(root, text='{"v": 1}'):
-    path = os.path.join(root, "probe.json")
+def _probe_sidecar(root, text='{"v": 1}', name="probe.json"):
+    path = os.path.join(root, name)
     with open(path, "w", encoding="ascii") as f:
         f.write(text)
     return path
@@ -455,23 +457,118 @@ def test_a_stale_sidecar_never_overwrites_the_lake_record_it_was_imported_into()
     assert os.path.exists(path + ".imported") and not os.path.exists(path)
 
 
-def test_the_repo_selfbuild_sidecar_is_never_renamed_by_a_home_that_reads_it(tmp_path):
-    """B MAJOR-6, recorded divergence: `<repo>/data/selfbuild_state.json` is shared by every
-    NORD_HOME, so the home that imports it first never renames it away from the others; every
-    fresh lake imports it (the cost `_migrate_legacy_sidecar` states)."""
+def test_the_selfbuild_sidecar_in_the_home_is_imported_once_by_the_one_migration():
+    """T120: `<home>/selfbuild_state.json` restores the self-build learner through
+    `home._migrate_sidecar` (its `_T_STATE` record names the file), is retired `.imported`, and a
+    lake reset afterwards cold-starts instead of importing the Aug-2026 weights again."""
+    from snn_data_lake.infra.brain_native_selfbuild import _ALL_IDS
+    from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
+
+    tid = _ALL_IDS[0]
+    path = _probe_sidecar(_home(), json.dumps({"futile": 3, "weights": {tid: 0.77}}), _SB)
+    p = P(sources=[])
+    assert p._futile == 3 and p.weights()[tid] == 0.77
+    assert h.load_named_state(_SB, path=h.knowledge_path()) is not None
+    assert h.load_selfbuild() is not None
+    assert os.path.exists(path + ".imported") and not os.path.exists(path)
+    _restart()
+    assert P(sources=[])._futile == 3  # the next boot reads the lake
+    _restart()
+    os.remove(h.knowledge_path())  # a lake reset
+    _restart()
+    assert P(sources=[])._futile == 0
+
+
+def test_a_selfbuild_sidecar_moved_beside_a_learned_lake_is_imported_but_not_applied():
+    """The operator's case: the lake already holds a _T_SELFBUILD record (the pre-T120 migration
+    copied the repo file into it), so the moved file is older than the lake. The first boot imports
+    it as a frozen _T_STATE record and renames it `.imported`. The _T_SELFBUILD record wins, and the
+    rename means a lake reset cannot import the file again."""
+    from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
+
+    _home()
+    h.save_selfbuild(b'{"futile": 5}')
+    path = _probe_sidecar(h.home(), '{"futile": 3}', _SB)
+    assert P(sources=[])._futile == 5
+    assert os.path.exists(path + ".imported") and not os.path.exists(path)
+    assert h.load_named_state(_SB, path=h.knowledge_path()) == b'{"futile": 3}'
+
+
+def test_an_isolated_selfbuild_lake_leaves_the_home_sidecar_alone(tmp_path):
+    from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
+
+    path = _probe_sidecar(_home(), '{"futile": 3}', _SB)
+    assert P(sources=[], lake_path=str(tmp_path / "iso.bin"))._futile == 0
+    assert os.path.exists(path) and not os.path.exists(path + ".imported")
+    assert h.load_selfbuild() is None
+
+
+@pytest.mark.parametrize("sidecar", [False, True])
+def test_a_corrupt_selfbuild_record_cold_starts(sidecar):
+    """A corrupt newest record never brings the frozen legacy weights back over the learned
+    history; a sidecar beside it is still imported and retired."""
+    from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
+
+    _home()
+    h.save_selfbuild(b"\xff")
+    path = _probe_sidecar(h.home(), '{"futile": 3}', _SB) if sidecar else None
+    assert P(sources=[])._futile == 0
+    assert path is None or os.path.exists(path + ".imported")
+
+
+def test_an_unreadable_selfbuild_record_never_restores_the_legacy_state(monkeypatch):
+    from snn_data_lake.infra import brain_native_selfbuild as m
+
+    path = _probe_sidecar(_home(), '{"futile": 3}', _SB)
+
+    def unreadable(*_a):
+        raise OSError("replay failed")
+
+    monkeypatch.setattr(m, "load_selfbuild", unreadable)
+    assert m.BrainNativeSelfBuildProposer(sources=[])._futile == 0
+    assert os.path.exists(path + ".imported")  # retired all the same
+
+
+@pytest.mark.parametrize("text", ["[1]", "null", "{bad"])
+def test_a_selfbuild_sidecar_that_is_not_a_state_object_cold_starts(text):
+    """Imported and retired like any sidecar (`_migrate_sidecar` validates nothing), never parsed
+    into the learner and never copied into _T_SELFBUILD."""
+    from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
+
+    path = _probe_sidecar(_home(), text, _SB)
+    assert P(sources=[])._futile == 0
+    assert h.load_selfbuild() is None and os.path.exists(path + ".imported")
+
+
+def test_a_repo_selfbuild_sidecar_is_never_read(tmp_path):
+    """T120 (rv-arc2-r3 m8): `<repo>/data/selfbuild_state.json` is not a home's file; a temp-home
+    learner never imports it, and it stays untouched for the operator to move."""
     from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
 
     _home()
     legacy = tmp_path / "data" / "selfbuild_state.json"
     legacy.parent.mkdir()
     legacy.write_text('{"futile": 3}', encoding="ascii")
-    assert P(repo=str(tmp_path), sources=[])._futile == 3
-    assert h.load_selfbuild() is not None and legacy.exists()
+    assert P(repo=str(tmp_path), sources=[])._futile == 0
+    assert h.load_selfbuild() is None and legacy.read_text(encoding="ascii") == '{"futile": 3}'
     assert not list(legacy.parent.glob("*.imported*"))
-    _restart()
-    os.remove(h.knowledge_path())  # a lake reset, or a second home
-    _restart()
-    assert P(repo=str(tmp_path), sources=[])._futile == 3
+
+
+def test_one_function_migrates_legacy_sidecars():
+    """P2 census: exactly one legacy-sidecar migration survives in src/, `home._migrate_sidecar`."""
+    import re
+
+    src = os.path.join(os.path.dirname(h.__file__), os.pardir)
+    defs = []
+    for d, _, files in os.walk(src):
+        for f in files:
+            if f.endswith(".py"):
+                with open(os.path.join(d, f), encoding="utf-8") as fh:
+                    text = fh.read()
+                defs += [
+                    (f, m) for m in re.findall(r"^\s*def (_?migrate\w*sidecar\w*)\(", text, re.M)
+                ]
+    assert defs == [("home.py", "_migrate_sidecar")]
 
 
 def test_a_held_sidecar_keeps_its_name_and_is_retired_on_a_later_read(monkeypatch):

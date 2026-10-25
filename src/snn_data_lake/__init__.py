@@ -439,6 +439,8 @@ REGIONS = {
         # of this promotion (P4b) -- they were in <repo>/data/selfbuild_state.json, a second durable
         # store. Cross-process round-trip proven: writer pid wrote w=0.77/0.11, a separate reader
         # process read them back after the writer exited.
+        # T120, 2026-10-25 -- the repo copy is never read; the file migrates from <home>/
+        # (BrainNativeSelfBuildProposer._load).
         "self_build_loop",
         "self_mod_harness",
     ],
