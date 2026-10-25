@@ -34,15 +34,15 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   (`evidence/p1-sample-size-grandfather.md`); a tasks.md row (T111a) for G3 T6's retirement of `GrowthLoop` and
   `NeurogenesisSelfImprove`.
 - **E1b harness `instruments/rpe_charge.py`** (learning-rules evidence, no brain run yet; `evidence/e1b-rpe-harm.md` and its
-  pre-data addenda 2-5): the pre-registered harm test of the `_plan_w` and ValenceLearner updates on both perception tiers, as
+  pre-data addenda 2-7): the pre-registered harm test of the `_plan_w` and ValenceLearner updates on both perception tiers, as
   a sequential design under the P1 amendment (Lan-DeMets O'Brien-Fleming looks in 8-seed blocks; reds R-S1..R-S5 and the
   real-shape type-I check R-S1b by simulation). Owner #4616 (verbatim: "production tier decides"): the production tier alone
   decides a deletion; the no-encoder tier is reported beside it, and a VOID production tier is REFUSED. Futility is
   non-binding, taken only at a look whose mde from the pre-registered SD is at or below the claimed effect; a futility or
   cap stop is INCONCLUSIVE unless powered (P8 item 4). Addendum 4 (owner 2026-10-24, verbatim: "Raise its cap to its power
   target"): H-V1's cap 152 seeds, 19 looks, shape-calibrated boundaries (type I .0510 under E1's shape, was .2185).
-  Addendum 5 (P1 item 2 applied to H-P1): H-P1's cap 184 seeds, 23 looks (shape power .8036); the owner's choice among
-  keeping 184, a disclosed departure at 32, or a smoothed shape is OPEN.
+  Addendum 7 (owner 2026-10-24, verbatim: "Smoothed shape"): H-P1's cap 40 seeds, 5 looks, powered on a kernel-smoothed
+  resample of E1's shape (power .8097; addendum 5's 184 replaced), cutting the worst-case campaign from 806 to 454 runs.
 
 ## [Unreleased] -- Engine arc 1: G3 T0 baseline, G3 T1 Grower, the P1 sample-size amendment (2026-10-23)
 
