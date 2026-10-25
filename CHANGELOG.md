@@ -38,6 +38,13 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   those back or both organs cold-boot (R2-m1, C2-M2, MINOR-6). The self-build learner's repo-level
   `data/selfbuild_state.json` keeps its name, because every home shares it (divergence recorded, B MAJOR-6);
   `tests/test_p4b_restart_restore.py`, `tests/test_p4b_sidecar_migration.py`.
+- **P4b fold of the round-3 review (p4b-r3):** a refused growing-learner store is restored from its kept
+  `growing_learners.refused.<store>.*` records, newest first under the same acceptance rule, so a stray seed-k brain no
+  longer shelves the daemon's lifelong store (R3-M2); a sidecar that a rollback window rewrote beside a retired copy is
+  imported into the lake before it is renamed (same kind only), and UNDO/ROLLBACK copy, never rename, the highest
+  `.imported.<n>` (R3-M3); a failed keep never writes refused bytes over the live store; `state()['prototypes_refused_kept']`
+  counts the kept records. The renames happen at the first arc-2 read of each sidecar, for the daemon at its next boot;
+  operator steps in `docs/RUNNING.md`.
 - **P5b gate** (`gates/p5b_gate.py`, rust-lead-1024): every native Rust module cites a pre-registration recording P5b's six
   criteria with numbers; the retroactive record names the eleven native modules present at the 20e1e742 cutoff; P5b's
   PROVISIONAL marker retires (its gate is built and counted). The arc-2 panel folds (A-M2, R2-M2) close the ways native code
@@ -46,7 +53,9 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   leave native/; a `.cargo/config` reds; `build.rs` is a module that must cite; a tracked C/C++/CUDA/assembly source or a
   prebuilt native binary reds; a `#[path]`/`include!` may not leave native/, enter tests/benches/examples, or reach a file
   that is not a listed module; and these repo-wide checks run even when native/ is absent. New red codes R-CRATE-OUTSIDE,
-  R-STALE-EXEMPT, R-FOREIGN-SOURCE, R-PATH-ESCAPE.
+  R-STALE-EXEMPT, R-FOREIGN-SOURCE, R-PATH-ESCAPE. Round 3 (rv-arc2-r3 m2): more native languages and packaged
+  binaries, a first-bytes sniff that reds a native binary under any name, a stray `.rs` outside native/, and manifest
+  names matched in any case.
 - **R0.4 RNG kit disposal (T119, P3; arc-2 panel MAJOR-4):** the four kit generators no live code used
   (`rng/{lcg,legacy,pcg64,seedseq}.rs`) are deleted; `rng/parity.rs` is trimmed to the PyRandom families the PFC kernel draws
   from and kept as its parity oracle (the NumPy and LCG fixture families stay in `fixtures_rng.json`, listed as not
