@@ -15,13 +15,21 @@ Run everything on one machine.
   `eol=lf` and the envelope hash baseline holds their LF blob hashes, but git does not rewrite an unchanged file, so an older
   Windows checkout keeps CRLF copies and `envelope_hash_gate` reds there. From the repo root (the bytes are unchanged; only
   line endings): `cd src/snn_data_lake/brainstem && rm reflex.py serial_arm.py so101_arm.py arm_config.py interpreter.py && git checkout -- .`
-- **From engine arc 2, the brain renames the legacy sidecars it has imported into the lake** (P4b). At its next boot,
-  `<home>/language_acq.npz` and `<home>/skills/*.npz` become `<name>.imported` (or `<name>.imported.<n>` beside an earlier
-  one), so a lake reset does not import them again. The lake keeps the record. To undo, rename the file back. **After a
-  rollback** to a checkout older than engine arc 2, which reads the files and not the lake, rename them back or both organs
-  cold-boot: `for f in "$NORD_HOME"/language_acq.npz.imported "$NORD_HOME"/skills/*.npz.imported; do mv "$f" "${f%.imported}"; done`.
-  A record written by an unpushed arc-2 build before this fold lacks `q`'s arm id and `lifelong`'s seed. Those two stores
-  are refused (kept, not restored) and relearn once. `origin/main` before engine arc 2 writes neither, so it is unaffected.
+- **From engine arc 2, the brain renames the legacy sidecars it has imported into the lake** (P4b). The first arc-2
+  reader of each one (the daemon, at its next boot) renames it to `<name>.imported`, or to `<name>.imported.<n>` past the
+  highest earlier copy, so a lake reset does not import it again. The lake keeps the record. This covers
+  `<home>/language_acq.npz`, `<home>/skills/*.npz` and the JSON sidecars (`signal_calib.json`, `recall_trace.json`,
+  `time_cells.json`, ...). The JSON ones need nothing on a rollback.
+  - **Undo:** COPY (`cp -p`, never `mv`) the highest `.imported.<n>`, or `.imported` if there is no numbered one, back to
+    `<name>`.
+  - **After a rollback** to a checkout older than engine arc 2: it reads the npz files and not the lake, so copy them back
+    the same way or both organs cold-boot. From `$NORD_HOME`: `for b in language_acq.npz $(ls skills/ 2>/dev/null | grep -E '\.npz\.imported' | sed 's/\.imported.*//' | sort -u | sed 's|^|skills/|'); do f=$(ls -v "$b".imported* 2>/dev/null | tail -1); [ -e "$f" ] || continue; cp -p "$f" "$b"; done`.
+  - **Back on engine arc 2:** a copy the rollback window rewrote is imported into the lake before it is renamed (same
+    record kind only). A copy it did not rewrite is renamed unread. One case is still renamed unread: a sidecar saved over
+    before its first arc-2 read with no retired copy yet (policy-enforcer #5372 m3, narrowed).
+  A record written by an unpushed arc-2 build before the round-2 fold lacks `q`'s arm id and `lifelong`'s seed. Those two
+  stores are refused, kept and retried at every boot under the same rule, so they relearn once. `origin/main` before engine
+  arc 2 writes neither, so it is unaffected.
 
 ---
 
