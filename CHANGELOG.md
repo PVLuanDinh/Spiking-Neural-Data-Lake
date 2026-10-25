@@ -27,11 +27,19 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   reset cannot import it again (A-m1); a legacy `skills/*.npz` the summary never named is still found (A-m2); the language
   organ restores all-or-nothing through one npz codec (A-m5, A-m8); `tests/test_lifelong_consolidation.py`.
 - **P5b gate** (`gates/p5b_gate.py`, rust-lead-1024): every native Rust module cites a pre-registration recording P5b's six
-  criteria with numbers; the five modules that predate it are grandfathered by name to the retroactive record
-  (`evidence/p5b-retroactive-record.md`); P5b's PROVISIONAL marker retires (its gate is built and counted).
-- **P5b fold of the arc-2 panel (rust-lead-1024, T119):** the R0.4 RNG kit is disposed -- four native files deleted (`lcg`,
-  `legacy`, `pcg64`, `seedseq`) and `parity.rs` trimmed to the PFC's PyRandom families; GRANDFATHERED 11 -> 5; new
-  `p5b_gate` reds R-CRATE-OUTSIDE, R-STALE-EXEMPT, R-FOREIGN-SOURCE, R-PATH-ESCAPE, and `build.rs` now counts as a module.
+  criteria with numbers; the retroactive record names the eleven native modules present at the 20e1e742 cutoff; P5b's
+  PROVISIONAL marker retires (its gate is built and counted). The arc-2 panel folds (A-M2, R2-M2) close the ways native code
+  could escape it: every Cargo.toml in the repo is checked against a closed exemption list (only `tools/rsfacts`, which may
+  not gain pyo3 or a cdylib); path dependencies, workspace members, `[patch]`/`[replace]` and `[package] build` paths may not
+  leave native/; a `.cargo/config` reds; `build.rs` is a module that must cite; a tracked C/C++/CUDA/assembly source or a
+  prebuilt native binary reds; a `#[path]`/`include!` may not leave native/, enter tests/benches/examples, or reach a file
+  that is not a listed module; and these repo-wide checks run even when native/ is absent. New red codes R-CRATE-OUTSIDE,
+  R-STALE-EXEMPT, R-FOREIGN-SOURCE, R-PATH-ESCAPE.
+- **R0.4 RNG kit disposal (T119, P3; arc-2 panel MAJOR-4):** the four kit generators no live code used
+  (`rng/{lcg,legacy,pcg64,seedseq}.rs`) are deleted; `rng/parity.rs` is trimmed to the PyRandom families the PFC kernel draws
+  from and kept as its parity oracle (the NumPy and LCG fixture families stay in `fixtures_rng.json`, listed as not
+  compared; claimed cells 254 -> 125); `rng/mod.rs` and `parity.rs` cite `evidence/p5b-pfc-rng-record.md`, so the closed
+  `GRANDFATHERED` table shrinks 11 -> 5 and the gate reads modules 7, cited 2, grandfathered 5. P5b: no new native code.
 - **Safety envelope line endings** (policy audit pa-p5env-1; owner, verbatim, in chat 2026-10-24: "Yes, approve the
   envelope-hash line-ending fix"): the five `brainstem/` envelope files carry `eol=lf` (`.gitattributes`) and
   `tools/envelope_hashes.json` holds their LF blob hashes (three of five moved: reflex, arm_config, interpreter), so a fresh
