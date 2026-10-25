@@ -73,6 +73,8 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   sequential bound; the no-encoder tier never holds or vetoes production; a zero observed SD never reads as powered.
   Addendum 7 (owner 2026-10-24, verbatim: "Smoothed shape"): H-P1's cap 40 seeds, 5 looks, powered on a kernel-smoothed
   resample of E1's shape (power .8097; addendum 5's 184 replaced), cutting the worst-case campaign from 806 to 454 runs.
+  Erratum 2026-10-25 (R3-M1): the degenerate-seed screen now covers every seed of a look, so H-V1's seeds past H-P1's
+  cap (48-159) can again flag a seed-sensitive verdict; the report lists the seeds each primary drops.
 
 ## [Unreleased] -- Engine arc 1: G3 T0 baseline, G3 T1 Grower, the P1 sample-size amendment (2026-10-23)
 

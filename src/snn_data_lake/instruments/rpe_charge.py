@@ -75,9 +75,8 @@ ADDENDUM 5 (P1 item 2, the owner's H-V1 ruling applied to H-P1 by the integrator
 ADDENDUM 6 (arc-2 panel fold, before any brain run): each primary is carried from its OWN STOP of record (`_n_owed`),
 not from its cap: runs past a stop are not owed and a later look reprints the stop. The seed-sensitivity flag reads the
 stopped look's `bound_t` / `k_min` and screens degeneracy on every seed of the look, on the arms that ran for it
-(erratum 2026-10-25, R3-M1: addendum 6 said "the real/pfrozen pair", which stopped at seed 47 once addendum 7 cut
-H-P1's cap to 40 and left H-V1's later seeds unscreened). A zero observed SD is
-never powered (`ZERO_SD`). The no-encoder tier never holds the production decision (departure 3).
+(erratum 2026-10-25, R3-M1: was "the real/pfrozen pair", which after addendum 7's cap 40 left H-V1's seeds 48+
+unscreened). A zero observed SD is never powered (`ZERO_SD`). The no-encoder tier never holds the production decision (departure 3).
 ADDENDUM 7 (owner 2026-10-24, verbatim: "Smoothed shape"; before any brain run): H-P1's cap P1_CAP is re-derived under
 a smoothed planted shape (variance-corrected Gaussian kernel bootstrap of E1's centred d_s, Silverman bandwidth), which
 replaces addendum 5's 184. H-V1's 19 looks are now the longer, so the campaign runs CAMPAIGN_LOOKS = V1_LOOKS; looks up
@@ -181,7 +180,7 @@ ARM_OF = {
     "H-V2": "replay shuf",
 }
 N_TICKS = 600
-# a seed whose mean reward is below this in every arm of a tier is "degenerate"
+# a seed whose mean reward is below this in every arm it ran is "degenerate"
 SENSITIVITY_R = -0.9
 # pinned sha256 prefixes of the two e-prop checkpoints
 ENC = {"SNN_EPROP_CKPT": "9b471619e39acfa0", "SNN_EPROP_AUDIO_CKPT": "6b32f9eb38beeca3"}
@@ -1355,7 +1354,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         if h["sd"] == 0:  # A-m4: name the arm whose d_s carry no variance
             h["status"] += f" [{ZERO_SD}: {k}, arm {ARM_OF[k]}]"
     a["hs"] = hs
-    # A-M3, R3-M1: screened on EVERY seed of the look, on the arms that ran for it (past H-P1's cap: `real` only)
+    # A-M3, R3-M1: every seed of the look; past H-P1's cap a seed has run `real` only
     degenerate = [
         s for s in have("real") if all(mr_(x, s) < SENSITIVITY_R for x in ARMS if (x, s) in runs)
     ]
@@ -1366,7 +1365,8 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         "H-V1": {s: d_v1[s] for s in v1_seeds if s in d_v1},
     }
     for k, per_seed in by_seed.items():
-        h = harm([d for s, d in per_seed.items() if s not in degenerate])
+        dropped = [s for s in degenerate if s in per_seed]
+        h = harm([d for s, d in per_seed.items() if s not in dropped])
         # A-M3: the bar of the decision the flag guards -- the stopped look's t boundary and sign count when a
         # sequential decision exists, the fixed-sample BAR / K_MIN otherwise
         q = hs[k].get("seq")
@@ -1377,7 +1377,8 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
             "t": h["t"],
             "k": h["k"],
             "n": h["n"],
-            "seed_sensitive": bool(degenerate) and full != without,
+            "dropped": dropped,
+            "seed_sensitive": bool(dropped) and full != without,
         }
     a["in_brain"] = harm(
         [mr_("real", s) - mr_("vfrozen", s) for s in have("real", "vfrozen", among=block)]
@@ -1499,9 +1500,12 @@ def render(a):
     L.append(
         f"- in-brain check for ValenceLearner: t(r_real - r_vfrozen) = {ib['t']:.3f} (NOT > {BAR} is required before 'harm-deletion candidate for the learning update')"
     )
+    L.append(
+        f"- degenerate seeds (mean reward < {SENSITIVITY_R} in every arm it ran): {a['degenerate']}"
+    )
     for k, sv in a["sens"].items():
         L.append(
-            f"- sensitivity {k} without degenerate seeds {a['degenerate']}: t={sv['t']:.3f} ({sv['k']}/{sv['n']})"
+            f"- sensitivity {k} without degenerate seeds {sv['dropped']}: t={sv['t']:.3f} ({sv['k']}/{sv['n']})"
             + ("; **seed-sensitive**" if sv["seed_sensitive"] else "")
         )
     L.append("\n## Dispositions\n")

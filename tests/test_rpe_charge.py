@@ -1981,8 +1981,9 @@ def test_degeneracy_is_screened_on_every_seed_of_a_later_look():
 
 
 def test_degeneracy_is_screened_on_seeds_past_the_h_p1_cap():
-    # R3-M1 (rv-arc2-r3 probe_degenerate_past_cap.py): past H-P1's cap (seed 47) a seed runs `real`
-    # only, and H-V1 still reads it; the screen must not need a `pfrozen` run. Seed 20: the control
+    # R3-M1: past H-P1's cap (seed 47) a seed runs `real` only, and H-V1 still reads it; the screen
+    # must not need a `pfrozen` run. Seed 20 (`real` + `pfrozen`) is the in-cap control; every other
+    # seed, 48-63 included, is healthy and not flagged
     runs, e2 = _extend(R.fixture_runs("noharm"), R.fixture_e2(), range(16, 64))
     for s, arms in ((20, ("real", "pfrozen")), (50, ("real",))):
         for arm in arms:
@@ -1990,7 +1991,27 @@ def test_degeneracy_is_screened_on_seeds_past_the_h_p1_cap():
                 arm, s, "production", r=-0.95, mae_value=0.4, wiggle=0.01, shift=arm != "real"
             )
     a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 64), logs_pass=True)
-    assert 20 in a["degenerate"] and 50 in a["degenerate"], a["degenerate"]
+    assert a["valid"] and a["degenerate"] == [20, 50], (a["bad"], a["degenerate"])
+    # each endpoint drops only the degenerate seeds it reads: H-P1 stops at 47, H-V1 reads both
+    assert a["sens"]["H-P1"]["dropped"] == [20] and a["sens"]["H-V1"]["dropped"] == [20, 50]
+    assert a["sens"]["H-P1"]["n"] == a["hs"]["H-P1"]["n"] - 1, (a["sens"], a["hs"]["H-P1"]["n"])
+    assert a["sens"]["H-V1"]["n"] == a["hs"]["H-V1"]["n"] - 2, (a["sens"], a["hs"]["H-V1"]["n"])
+    txt = R.render(a)
+    assert "every arm it ran): [20, 50]" in txt
+    assert "H-P1 without degenerate seeds [20]:" in txt
+    assert "H-V1 without degenerate seeds [20, 50]:" in txt
+
+
+def test_a_degenerate_seed_past_the_h_p1_cap_leaves_h_p1_unchanged():
+    # R3-M1: H-P1 stops at seed 47, so seed 50 never enters it
+    runs, e2 = _extend(R.fixture_runs("noharm"), R.fixture_e2(), range(16, 64))
+    runs[("real", 50)] = R.synth_run("real", 50, "production", r=-0.95, mae_value=0.4, wiggle=0.01)
+    a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 64), logs_pass=True)
+    sv, h = a["sens"]["H-P1"], a["hs"]["H-P1"]
+    assert a["valid"] and a["degenerate"] == [50], (a["bad"], a["degenerate"])
+    assert sv["dropped"] == [] and not sv["seed_sensitive"]
+    assert (sv["t"], sv["k"], sv["n"]) == (h["t"], h["k"], h["n"])
+    assert "H-P1 without degenerate seeds []:" in R.render(a)
 
 
 @pytest.mark.parametrize("look_end,missing", [(24, 20), (64, 47)])

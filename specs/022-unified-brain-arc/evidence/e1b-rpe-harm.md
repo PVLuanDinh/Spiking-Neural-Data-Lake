@@ -1079,13 +1079,17 @@ One bandwidth and one variant were ever computed: `derive_smooth.py` has a singl
 variance by 1.344 (= 0.8626^-2) for H-P1. That lowers power at every cap, and its cap was not derived. Cap 40 therefore
 rests on the variance-preserving variant, which was chosen before any cap was seen.
 
-### Erratum 2026-10-25 (lane e1b-r3, before any E1b brain run): the degeneracy screen past H-P1's cap (R3-M1)
+## Erratum 2026-10-25 (lane e1b-r3, before any E1b brain run): the degeneracy screen past H-P1's cap (R3-M1)
 
 Addendum 6 (A-M3) says degeneracy "is screened on the `real` / `pfrozen` pair of every seed of the look". That stopped
 being true at addendum 7: cap 40 means `pfrozen` runs only on seeds 8-47, so the screen never saw H-V1's seeds 48-159
 and `seed_sensitive` read False for any degenerate seed there (rv-arc2-r3 R3-M1, policy-enforcer #5378). The screen now
-runs on every seed of the look, on the arms that ran for that seed (`have("real")`; a seed is degenerate when its mean
-reward is below SENSITIVITY_R in every arm it ran). No pre-registered number changes. Red:
-`tests/test_rpe_charge.py::test_degeneracy_is_screened_on_seeds_past_the_h_p1_cap` (seed 50, `real` only). The same
-fold writes `P1_FUTILITY_LOOKS = ()` outright: `range(72, P1_CAP, 8)` was already empty, and its comment reasoned from
-n=72 (rv-arc2-r3 m6).
+runs on every seed of the look (`have("real")`): a seed is degenerate when its mean reward is below SENSITIVITY_R in
+every arm it ran. This reads the pre-registration's "every arm of that tier" as the arms a seed ran: all five on the
+look-1 block (seeds 8-15), `real` + `pfrozen` up to H-P1's cap (seeds 16-47), `real` alone past it. A seed past the
+cap is judged on one arm, so it is easier to name degenerate there; this is disclosed and kept (rv-arc2-r3 fold
+review), because screening on the arms that ran is the R3-M1 fix. Each primary's sensitivity drops only the degenerate
+seeds it reads, and the report prints those per primary beside the look's full list. No pre-registered number
+changes. Red: `tests/test_rpe_charge.py::test_degeneracy_is_screened_on_seeds_past_the_h_p1_cap` (seed 50, `real`
+only). The same fold writes `P1_FUTILITY_LOOKS = ()` outright: `range(72, P1_CAP, 8)` was already empty, and its
+comment reasoned from n=72 (rv-arc2-r3 m6).
