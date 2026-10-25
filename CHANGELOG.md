@@ -9,6 +9,24 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- Engine arc 3: T120 one sidecar migration + hermeticity census, E1b addendum 8, owner rulings (2026-10-25)
+
+Owner 2026-10-25 (verbatim): "Schedule the self-build sidecar fix. I approve the H-V1 under smoothed shape and the organoid
+exempt wording"; "Fold the representational-drift report's items 3-4 into G5's relational-readout pre-registration and
+items 1-2 into G9's campaign, as design input."
+- **T120, one sidecar migration (P2):** the self-build learner's pre-P4b state is imported once from
+  `<home>/selfbuild_state.json` through `home._migrate_sidecar`, retired `.imported`, and applied only to a lake with no
+  `_T_SELFBUILD` record; the repo file is never read and the second migration `_migrate_legacy_sidecar` is deleted. New
+  `tests/test_brain_hermeticity.py` census: a temp-home Brain opens no learned state under the repo (403 files: 396 code,
+  7 allowlisted read-only assets); the pre-fix tree reds on `data/selfbuild_state.json`. Operator step in `docs/RUNNING.md`
+  (move the file into the home once).
+- **E1b addendum 8** (pre-data, no brain run): H-V1's cap 152 is also powered on the smoothed shape (type I .0477, power
+  .8145); the rule was committed before any run; a report-only smoothing-sensitivity table discloses that H-P1's cap-40
+  power falls to .68-.69 under an unshrunk or half-bandwidth kernel (owner question; no cap moves). Addenda 2-8.
+- **organoid_ingest** dormancy disposition 'wire' -> 'permanent' (awaiting-prerequisite; no wave pending after A9).
+- **Representational drift** (research `lanes/research-1025-drift/REPORT.md`) carried as design input on tasks.md T113 (G5)
+  and T117 (G9).
+
 ## [Unreleased] -- Engine arc 2: P4b BLOCK fixes, restart amnesia, the P5b gate, the E1b harm harness (2026-10-24)
 
 Owner 2026-10-24 (verbatim, relayed by og1-int): "A get the BLOCK fixes"; "A fix the restart-amnesia MAJOR (pa-p4bd-3) in this
@@ -73,7 +91,7 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   (`evidence/p1-sample-size-grandfather.md`); a tasks.md row (T111a) for G3 T6's retirement of `GrowthLoop` and
   `NeurogenesisSelfImprove`.
 - **E1b harness `instruments/rpe_charge.py`** (learning-rules evidence, no brain run yet; `evidence/e1b-rpe-harm.md` and its
-  pre-data addenda 2-8): the pre-registered harm test of the `_plan_w` and ValenceLearner updates on both perception tiers, as
+  pre-data addenda 2-7): the pre-registered harm test of the `_plan_w` and ValenceLearner updates on both perception tiers, as
   a sequential design under the P1 amendment (Lan-DeMets O'Brien-Fleming looks in 8-seed blocks; reds R-S1..R-S5 and the
   real-shape type-I check R-S1b by simulation). Owner #4616 (verbatim: "production tier decides"): the production tier alone
   decides a deletion; the no-encoder tier is reported beside it, and a VOID production tier is REFUSED. Futility is
@@ -86,9 +104,6 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   resample of E1's shape (power .8097; addendum 5's 184 replaced), cutting the worst-case campaign from 806 to 454 runs.
   Erratum 2026-10-25 (R3-M1): the degenerate-seed screen now covers every seed of a look, so H-V1's seeds past H-P1's
   cap (48-159) can again flag a seed-sensitive verdict; the report lists the seeds each primary drops.
-  Addendum 8 (owner 2026-10-25, verbatim: "I approve the H-V1 under smoothed shape"): H-V1's cap 152 is also powered on
-  the smoothed shape (type I .0477, power .8145), and a report-only smoothing-sensitivity table discloses that H-P1's
-  cap-40 power falls to .68-.69 under an unshrunk or half-bandwidth kernel (owner question; no cap moves).
 
 ## [Unreleased] -- Engine arc 1: G3 T0 baseline, G3 T1 Grower, the P1 sample-size amendment (2026-10-23)
 
