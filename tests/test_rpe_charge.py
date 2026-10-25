@@ -1980,6 +1980,19 @@ def test_degeneracy_is_screened_on_every_seed_of_a_later_look():
     assert a["valid"] and 20 in a["degenerate"], (a["bad"], a["degenerate"])
 
 
+def test_degeneracy_is_screened_on_seeds_past_the_h_p1_cap():
+    # R3-M1 (rv-arc2-r3 probe_degenerate_past_cap.py): past H-P1's cap (seed 47) a seed runs `real`
+    # only, and H-V1 still reads it; the screen must not need a `pfrozen` run. Seed 20: the control
+    runs, e2 = _extend(R.fixture_runs("noharm"), R.fixture_e2(), range(16, 64))
+    for s, arms in ((20, ("real", "pfrozen")), (50, ("real",))):
+        for arm in arms:
+            runs[(arm, s)] = R.synth_run(
+                arm, s, "production", r=-0.95, mae_value=0.4, wiggle=0.01, shift=arm != "real"
+            )
+    a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 64), logs_pass=True)
+    assert 20 in a["degenerate"] and 50 in a["degenerate"], a["degenerate"]
+
+
 @pytest.mark.parametrize("look_end,missing", [(24, 20), (64, 47)])
 def test_a_missing_pfrozen_run_up_to_the_h_p1_cap_is_pending(look_end, missing):
     # addendum 7: while H-P1 continues, every `pfrozen` run up to its cap (seed 47) is owed; a lost

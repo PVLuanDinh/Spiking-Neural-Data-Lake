@@ -1078,3 +1078,14 @@ One bandwidth and one variant were ever computed: `derive_smooth.py` has a singl
 `bw.log`. One choice remains disclosed and untested: the unshrunk smoothed bootstrap inflates the planted shape's
 variance by 1.344 (= 0.8626^-2) for H-P1. That lowers power at every cap, and its cap was not derived. Cap 40 therefore
 rests on the variance-preserving variant, which was chosen before any cap was seen.
+
+### Erratum 2026-10-25 (lane e1b-r3, before any E1b brain run): the degeneracy screen past H-P1's cap (R3-M1)
+
+Addendum 6 (A-M3) says degeneracy "is screened on the `real` / `pfrozen` pair of every seed of the look". That stopped
+being true at addendum 7: cap 40 means `pfrozen` runs only on seeds 8-47, so the screen never saw H-V1's seeds 48-159
+and `seed_sensitive` read False for any degenerate seed there (rv-arc2-r3 R3-M1, policy-enforcer #5378). The screen now
+runs on every seed of the look, on the arms that ran for that seed (`have("real")`; a seed is degenerate when its mean
+reward is below SENSITIVITY_R in every arm it ran). No pre-registered number changes. Red:
+`tests/test_rpe_charge.py::test_degeneracy_is_screened_on_seeds_past_the_h_p1_cap` (seed 50, `real` only). The same
+fold writes `P1_FUTILITY_LOOKS = ()` outright: `range(72, P1_CAP, 8)` was already empty, and its comment reasoned from
+n=72 (rv-arc2-r3 m6).

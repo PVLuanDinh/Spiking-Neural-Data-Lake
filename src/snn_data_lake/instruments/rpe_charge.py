@@ -74,7 +74,9 @@ ADDENDUM 5 (P1 item 2, the owner's H-V1 ruling applied to H-P1 by the integrator
 `pfrozen` (this supersedes addendum 4's "Looks 5-19 add `real` only"); H-P1's looks are P1_LOOKS, not LOOKS.
 ADDENDUM 6 (arc-2 panel fold, before any brain run): each primary is carried from its OWN STOP of record (`_n_owed`),
 not from its cap: runs past a stop are not owed and a later look reprints the stop. The seed-sensitivity flag reads the
-stopped look's `bound_t` / `k_min` and screens degeneracy on the real/pfrozen pair of every seed. A zero observed SD is
+stopped look's `bound_t` / `k_min` and screens degeneracy on every seed of the look, on the arms that ran for it
+(erratum 2026-10-25, R3-M1: addendum 6 said "the real/pfrozen pair", which stopped at seed 47 once addendum 7 cut
+H-P1's cap to 40 and left H-V1's later seeds unscreened). A zero observed SD is
 never powered (`ZERO_SD`). The no-encoder tier never holds the production decision (departure 3).
 ADDENDUM 7 (owner 2026-10-24, verbatim: "Smoothed shape"; before any brain run): H-P1's cap P1_CAP is re-derived under
 a smoothed planted shape (variance-corrected Gaussian kernel bootstrap of E1's centred d_s, Silverman bandwidth), which
@@ -159,8 +161,7 @@ V1_FUTILITY_LOOKS = ()  # looks before the cap whose mde from SD_PRE["H-V1"] is 
 #   shape (addendum 5, 184) pins P(d > 0) to the sign gate's 5/8. e1b-smooth-row/derive_smooth.py
 P1_CAP = 40
 P1_LOOKS = tuple(range(N_SEEDS, P1_CAP + 1, N_SEEDS))
-# mde from SD_PRE["H-P1"] <= DH from n=72 (0.0322): no look before the cap
-P1_FUTILITY_LOOKS = tuple(range(72, P1_CAP, N_SEEDS))
+P1_FUTILITY_LOOKS = ()  # looks before the cap whose mde from SD_PRE["H-P1"] is <= DH: none (n=32 gives 0.0356)
 # both are 8-seed blocks from seed 8: the longer holds the other
 CAMPAIGN_LOOKS = max(P1_LOOKS, V1_LOOKS, key=len)
 SEQ = {
@@ -1354,11 +1355,9 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         if h["sd"] == 0:  # A-m4: name the arm whose d_s carry no variance
             h["status"] += f" [{ZERO_SD}: {k}, arm {ARM_OF[k]}]"
     a["hs"] = hs
-    # A-M3: screened on the real/pfrozen pair of EVERY seed of the look, not only the look-1 block's five arms
+    # A-M3, R3-M1: screened on EVERY seed of the look, on the arms that ran for it (past H-P1's cap: `real` only)
     degenerate = [
-        s
-        for s in have("real", "pfrozen")
-        if all(mr_(x, s) < SENSITIVITY_R for x in ARMS if (x, s) in runs)
+        s for s in have("real") if all(mr_(x, s) < SENSITIVITY_R for x in ARMS if (x, s) in runs)
     ]
     a["degenerate"] = degenerate
     a["sens"] = {}
