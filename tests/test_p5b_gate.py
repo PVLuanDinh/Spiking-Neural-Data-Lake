@@ -634,6 +634,91 @@ def test_a_tracked_prebuilt_native_binary_reds(tmp_path, ext):
     assert only(outside(tmp_path, tree(**{f"x/k.{ext}": "x\n"})), "R-FOREIGN-SOURCE")
 
 
+# ---- arc-2 round 3 m2 (rv-arc2-r3): native code the gate read as ABSENT-and-green ----
+
+
+@pytest.mark.parametrize(
+    "rel",
+    [
+        "python/k.pyx",
+        "python/k.pxd",
+        "python/k.pxi",
+        "x/k.zig",
+        "x/k.go",
+        "x/k.ptx",
+        "x/k.cubin",
+        "x/k.fatbin",
+        "x/k.ll",
+        "dist/k-0.1-py3-none-any.whl",
+        "dist/k.egg",
+        "x/k.node",
+        "x/k.exe",
+        "x/k.wasm",
+        "x/libk.rlib",
+    ],
+)
+def test_a_round3_native_extension_reds(tmp_path, rel):
+    assert only(outside(tmp_path, tree(**{rel: "x\n"})), "R-FOREIGN-SOURCE").where == rel
+
+
+@pytest.mark.parametrize(
+    "head, kind",
+    [
+        ("\x7fELF\x02\x01\x01", "ELF"),
+        ("MZ" + "\0" * 58 + "@\0\0\0" + "PE\0\0", "PE"),
+        ("\0asm\x01\0\0\0", "wasm"),
+    ],
+)
+@pytest.mark.parametrize("rel", ["data/k.txt", "native/c/blob.bin", "k"])
+def test_a_native_binary_under_any_name_reds(tmp_path, head, kind, rel):
+    red = only(outside(tmp_path, tree(**{rel: head})), "R-FOREIGN-SOURCE")
+    assert red.where == rel and kind in red.message
+
+
+@pytest.mark.parametrize(
+    "text", ["MZ notes on a file format\n", "MZ" + "x" * 80, "ELF is a word\n"]
+)
+def test_text_that_merely_starts_like_a_binary_is_green(tmp_path, text):
+    assert outside(tmp_path, tree(**{"docs/k.md": text})).reds == []
+
+
+def test_the_sniffer_fires_on_a_real_pe_header(tmp_path):
+    # the positive control: a byte-exact PE header written as bytes, not text
+    k = tmp_path / "k.bin"
+    k.write_bytes(b"MZ" + b"\0" * 58 + b"\x40\0\0\0" + b"PE\0\0" + b"\0" * 20)
+    assert pg._native_format(k) == "PE"
+    assert pg._native_format(tmp_path / "missing") is None
+
+
+@pytest.mark.parametrize("rel", ["scripts/k.rs", "src/snn_data_lake/k.rs", "k.rs"])
+def test_a_rust_file_outside_native_and_the_exempt_crates_reds(tmp_path, rel):
+    assert only(outside(tmp_path, tree(**{rel: "fn main() {}\n"})), "R-CRATE-OUTSIDE").where == rel
+
+
+def test_a_rust_file_inside_an_exempt_crate_is_green(tmp_path):
+    files = tree(
+        **{f"{OUT}/Cargo.toml": "[package]\nname = 'k'\n", f"{OUT}/src/main.rs": "fn main() {}\n"}
+    )
+    assert outside(tmp_path, files, cargo_exempt=EXEMPT).reds == []
+
+
+@pytest.mark.parametrize("name", ["cargo.toml", "CARGO.TOML", "Cargo.Toml"])
+def test_a_manifest_name_in_any_case_outside_native_reds(tmp_path, name):
+    assert only(outside(tmp_path, tree(**{f"tools/k/{name}": ""})), "R-CRATE-OUTSIDE")
+
+
+def test_a_lowercase_native_manifest_is_still_read(tmp_path):
+    files = tree(**{"native/c/cargo.toml": OUT_DEP, f"{OUT}/Cargo.toml": ""})
+    assert only(outside(tmp_path, files, cargo_exempt=EXEMPT), "R-CRATE-OUTSIDE").where.lower() == (
+        "native/c/cargo.toml"
+    )
+
+
+@pytest.mark.parametrize("rel", [".CARGO/config.toml", ".Cargo/Config"])
+def test_a_cargo_config_in_any_case_reds(tmp_path, rel):
+    assert only(outside(tmp_path, tree(**{rel: "[net]\n"})), "R-CRATE-OUTSIDE").where == rel
+
+
 def test_a_foreign_exemption_table_is_closed_and_shrink_only(tmp_path):
     assert pg.FOREIGN_EXEMPT == {}
     files = tree(**{"x/k.c": "x\n"})

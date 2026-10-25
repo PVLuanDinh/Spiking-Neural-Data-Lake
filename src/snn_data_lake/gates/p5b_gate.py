@@ -33,8 +33,12 @@ or has an unreadable or wrongly typed Cargo.toml). Native code that would escape
 panel A-M2): R-CRATE-OUTSIDE (a Cargo.toml outside native/ not in CARGO_EXEMPT; a path dependency, workspace
 member/default-member, `[patch]` or `[replace]` path or a `[package] build` path leaving native/, or any
 `.cargo/config[.toml]`; an exempt crate that depends on `pyo3` or
-declares a cdylib/dylib/staticlib crate-type), R-STALE-EXEMPT (shrink-only: an exempt entry naming no tracked
-file), R-FOREIGN-SOURCE (a tracked compiled source or prebuilt native binary anywhere in the repo) and
+declares a cdylib/dylib/staticlib crate-type; a `.rs` outside native/ and the exempt crates, which `rustc`
+compiles without a crate; manifest and config names match in any case, as NTFS resolves them),
+R-STALE-EXEMPT (shrink-only: an exempt entry naming no tracked file), R-FOREIGN-SOURCE (a tracked compiled
+source -- C family, CUDA/PTX, assembly, Cython, Zig, Go, LLVM IR -- or a prebuilt native artifact -- shared or
+static library, object, .exe, .node, .wasm, wheel, egg -- anywhere in the repo, and any tracked file whose first
+bytes are a PE, ELF, Mach-O, wasm or ar binary whatever its name) and
 R-PATH-ESCAPE (a `#[path = "lit"]` / `include!("lit")` in a module that resolves outside native/, into an
 excluded dir of its crate, or to a file that is not a listed module -- a `target/` dir or no file at all -- or an
 `include!` whose argument is not one string literal). What it cannot do, and says so on every run: judge whether a criterion's
@@ -48,7 +52,9 @@ of a system library at runtime; `include_str!` / `include_bytes!` (data, not cod
 is textual (a commented-out attribute reds, fail closed) and resolves against the file's own directory (Rust's
 base for a `#[path]` inside a nested inline module differs); the extension build is pinned in
 `infra/native_build.py` (`MANIFEST = native/sndl-python/Cargo.toml`), which this gate does not read; a
-`.cargo/config` above the repo or in CARGO_HOME is not seen. With native/ ABSENT the repo-wide checks (Cargo.toml
+`.cargo/config` above the repo or in CARGO_HOME is not seen; a compiled language outside the extension list
+whose source is text (Nim, D, V, ...) is not seen, and a JVM `.class` reads as Mach-O fat (shared magic, fail
+closed). With native/ ABSENT the repo-wide checks (Cargo.toml
 outside native/, cargo config, foreign sources, exemptions) still run, so ABSENT is green only when they are.
 
   python -m snn_data_lake.gates.p5b_gate [--assert | --self-check | --census]
@@ -97,8 +103,20 @@ CARGO_CONFIGS = ("config", "config.toml")
 NATIVE_CRATE_TYPES = {"cdylib", "dylib", "staticlib"}
 FOREIGN_EXT = frozenset(
     ".c .cc .cpp .cxx .h .hh .hpp .hxx .cu .cuh .s .asm .m .mm .f .f90 "
-    ".pyd .so .dll .dylib .a .lib .o .obj".split()
-)  # compared lower-cased, so `.S` is `.s`
+    ".pyx .pxd .pxi .zig .go .ptx .cubin .fatbin .ll .bc "
+    ".pyd .so .dll .dylib .a .lib .o .obj .rlib .exe .node .wasm .whl .egg".split()
+)  # compared lower-cased, so `.S` is `.s` (rv-arc2-r3 m2 added Cython, Zig, cgo, PTX/cubin, wheels, .node, .exe)
+# A tracked file whose first bytes are a native binary format is native code whatever its name (rv-arc2-r3 m2).
+NATIVE_MAGIC = (
+    (b"\x7fELF", "ELF"),
+    (b"\xfe\xed\xfa\xce", "Mach-O"),
+    (b"\xfe\xed\xfa\xcf", "Mach-O"),
+    (b"\xce\xfa\xed\xfe", "Mach-O"),
+    (b"\xcf\xfa\xed\xfe", "Mach-O"),
+    (b"\xca\xfe\xba\xbe", "Mach-O fat"),
+    (b"\x00asm", "wasm"),
+    (b"!<arch>\n", "ar archive"),
+)
 PATH_ATTR_RE = re.compile(r'#\s*!?\s*\[[^\]]*?\bpath\s*=\s*r?#*"([^"]*)"')
 INCLUDE_RE = re.compile(r"\binclude\s*!\s*")
 INCLUDE_LIT_RE = re.compile(r'[(\[{]\s*"((?:[^"\\]|\\.)*)"\s*,?\s*[)\]}]')
@@ -397,7 +415,7 @@ def _target_reds(root: Path, excluded: set[str]) -> list[Red]:
     file (an example/test/bench target may sit in its own excluded directory); the dependency, member and patch
     paths of the same manifest go through `_manifest_reds`."""
     reds = []
-    for manifest in sorted((root / NATIVE).rglob("Cargo.toml")):
+    for manifest in sorted((root / NATIVE).rglob("[Cc][Aa][Rr][Gg][Oo].[Tt][Oo][Mm][Ll]")):
         here = manifest.parent.relative_to(root / NATIVE).as_posix()
         if "target" in manifest.relative_to(root / NATIVE).parts:
             continue
@@ -495,6 +513,22 @@ def _exempt_reds(root: Path, rel: str) -> list[Red]:
     return reds
 
 
+def _native_format(path: Path) -> str | None:
+    """The native binary format `path` starts with (PE, ELF, Mach-O, wasm, ar), or None. A PE needs `MZ` AND the
+    `PE\\0\\0` signature at its e_lfanew offset, so a text file that merely starts with "MZ" stays green. An
+    unreadable file is None: it cannot ship."""
+    try:
+        with path.open("rb") as fh:
+            head = fh.read(1024)
+    except OSError:
+        return None
+    if head[:2] == b"MZ" and len(head) >= 0x40:
+        off = int.from_bytes(head[0x3C:0x40], "little")
+        if head[off : off + 4] == b"PE\0\0":
+            return "PE"
+    return next((kind for magic, kind in NATIVE_MAGIC if head.startswith(magic)), None)
+
+
 def _outside_reds(
     root: Path, tracked: list[str], cargo_exempt: dict[str, str], foreign_exempt: dict[str, str]
 ) -> list[Red]:
@@ -503,12 +537,13 @@ def _outside_reds(
     reds = [
         Red("R-CRATE-OUTSIDE", p, "cargo config can patch, override paths or add link args")
         for p in tracked
-        if PurePosixPath(p).parent.name == ".cargo" and PurePosixPath(p).name in CARGO_CONFIGS
+        if PurePosixPath(p).parent.name.lower() == ".cargo"
+        and PurePosixPath(p).name.lower() in CARGO_CONFIGS
     ]
     manifests = {
         p: PurePosixPath(p).parent.as_posix()
         for p in tracked
-        if PurePosixPath(p).name == "Cargo.toml"
+        if PurePosixPath(p).name.lower() == "cargo.toml"  # NTFS resolves cargo.toml (rv-arc2-r3 m2)
     }
     for p, d in sorted(manifests.items()):
         if d in cargo_exempt:
@@ -522,7 +557,25 @@ def _outside_reds(
         for d in cargo_exempt
         if d not in manifests.values()
     ]
+    reds += [
+        Red(
+            "R-CRATE-OUTSIDE",
+            p,
+            ".rs outside native/ and CARGO_EXEMPT: rustc compiles it without a crate",
+        )
+        for p in tracked
+        if p.endswith(".rs")
+        and not _inside(p)
+        # a .rs inside any crate outside native/ is covered by that crate's own red (or its exemption)
+        and not any(p.startswith(f"{d}/") for d in (*cargo_exempt, *manifests.values()))
+    ]
     foreign = {p for p in tracked if PurePosixPath(p).suffix.lower() in FOREIGN_EXT}
+    sniffed = {p: kind for p in tracked if p not in foreign and (kind := _native_format(root / p))}
+    reds += [
+        Red("R-FOREIGN-SOURCE", p, f"native binary format ({kind}) under a non-native name")
+        for p, kind in sorted(sniffed.items())
+        if p not in foreign_exempt
+    ]
     reds += [
         Red("R-FOREIGN-SOURCE", p, "compiled non-Rust source or prebuilt native binary")
         for p in sorted(foreign - set(foreign_exempt))
@@ -734,7 +787,9 @@ def render(report: Report) -> str:
         "nested inline module differs), and does not scan include_str!/include_bytes! (data, not code); "
         "the extension build itself is pinned in infra/native_build.py (MANIFEST = "
         "native/sndl-python/Cargo.toml) and this gate does not read that file; a .cargo/config in a directory "
-        "above the repo or in CARGO_HOME is not seen."
+        "above the repo or in CARGO_HOME is not seen; a compiled language outside the extension list whose "
+        "source is text (Nim, D, V, ...) is not seen, and a JVM .class reads as Mach-O fat (shared magic, "
+        "fail closed)."
     )
     out += [f"  RED {r.code} {r.where}: {r.message}" for r in report.reds]
     return "\n".join(out)
@@ -744,6 +799,9 @@ _EV = "specs/s/evidence/p.md"
 _MOD = "c/src/lib.rs"
 _FILE = f"{NATIVE}/{_MOD}"
 _CITE = f"//! P5b-PREREG: {_EV}\n"
+# the smallest PE header the sniffer accepts: "MZ", e_lfanew = 0x40 at offset 0x3C, "PE\0\0" at 0x40 (ASCII-only,
+# so a text write keeps it byte-exact)
+_PE_HEAD = "MZ" + "\0" * 58 + "@\0\0\0" + "PE\0\0"
 _OUT_DEP = '[dependencies]\nk = { path = "../../tools/k" }\n'
 
 
@@ -843,6 +901,12 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
         "R-FOREIGN-SOURCE": ({**ok, f"{NATIVE}/c/src/k.c": "int k;\n"}, {}),
         "R-FOREIGN-SOURCE:outside": ({**ok, "tools/k/k.cu": "x\n"}, {}),
         "R-FOREIGN-SOURCE:binary": ({**ok, "python/k.pyd": "x\n"}, {}),
+        "R-FOREIGN-SOURCE:cython": ({**ok, "python/k.pyx": "x\n"}, {}),
+        "R-FOREIGN-SOURCE:wheel": ({**ok, "dist/k-0.1-py3-none-any.whl": "x"}, {}),
+        "R-FOREIGN-SOURCE:elf-renamed": ({**ok, "data/k.txt": "\x7fELF\x02\x01\x01"}, {}),
+        "R-FOREIGN-SOURCE:pe-renamed": ({**ok, "data/k.dat": _PE_HEAD}, {}),
+        "R-CRATE-OUTSIDE:stray-rs": ({**ok, "scripts/k.rs": "fn main() {}\n"}, {}),
+        "R-CRATE-OUTSIDE:lowercase-manifest": ({**ok, "tools/k/cargo.toml": ""}, {}),
         "R-PATH-ESCAPE": (
             {
                 **ok,
