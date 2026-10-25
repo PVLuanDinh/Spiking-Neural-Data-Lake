@@ -40,11 +40,14 @@ Run everything on one machine.
   arc 2 writes neither, so it is unaffected.
 
 - **From engine arc 3 (T120), the self-build learner's legacy state is read from the HOME, never the repo.** Before the
-  first boot of such a build, move `<repo>/data/selfbuild_state.json` into the home once (Windows:
-  `move data\selfbuild_state.json %USERPROFILE%\.snn_data_lake\`; elsewhere `mv data/selfbuild_state.json "$NORD_HOME"/`).
-  The first boot imports it into the lake and renames it `selfbuild_state.json.imported`. It restores the learner only
-  on a lake that holds no self-build record yet; on such a lake, skipping the move cold-starts the self-build learner.
-  A rollback to a pre-arc-3 checkout reads the REPO file again: copy `selfbuild_state.json.imported` back to `data/`.
+  daemon's first arc-3 boot, move `data/selfbuild_state.json` into the home once, from the repo root with the venv python
+  (it resolves the home the brain uses, `NORD_HOME` or the default):
+  `python -c "import shutil; from snn_data_lake.substrate import home as h; shutil.move('data/selfbuild_state.json', h.state_path('selfbuild_state.json'))"`.
+  The import is lazy: the first time the self-build learner loads (a wake with `NORD_SELFMOD=1`), it imports the file
+  into the lake and renames it `selfbuild_state.json.imported` (or `.imported.<n>`). It restores the learner only on a
+  lake that holds no self-build record yet; on such a lake, skipping the move cold-starts the self-build learner.
+  Rollback to a pre-arc-3 checkout: once the lake holds a self-build record, that checkout ignores the legacy file too,
+  so nothing is needed; before that first import, move the file back to `data/selfbuild_state.json`.
 ---
 
 ## Local
