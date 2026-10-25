@@ -1094,14 +1094,17 @@ class Brain:
         # for a unit it does not hold is refused), the affect integrator's emotion SOM (hence this
         # block runs after its construction) and the lifelong consolidator's learner with its
         # labels, utilities and task index; `n_emotions` / `lifelong_units` read them at tick 0.
-        # Same refusal rule for each. NOT restored, said plainly: the consolidator's replay memory.
+        # Same refusal rule for each. The consolidator's replay memory is DERIVED: rebuilt from the
+        # restored task streams, not stored; without it task 0 is pruned away (arc-2 panel A-B1).
+        # A refused or never-reached sub-record is carried forward by `_flush_prototypes` (A-M1).
         self._prototypes_restore_note = None
+        self._prototypes_carried = {}
         if self._persist:
+            _rec, _ok = {}, {}
             try:
                 from snn_data_lake.substrate import home as _home
 
                 _rec = _home.load_state(PROTOTYPES_STATE, default=None) or {}
-                _ok = {}
                 if _rec.get("arm"):
                     _arm_l = self.brain.arm.learner
                     if int(_rec["arm"].get("dim", -1)) != int(_arm_l.dim):
@@ -1131,6 +1134,7 @@ class Brain:
                     )
                     if _ok["lifelong"]:
                         self._ll_i, self._ll_units = _i, self._ll.n_units
+                        self._ll.rebuild_memory([t["train"] for t in self._ll_tasks[:_i]])
                 self._real_units = (self._vis_learner.n_units if self._vis_learner else 0) + (
                     self._aud_learner.n_units if self._aud_learner else 0
                 )
@@ -1141,6 +1145,8 @@ class Brain:
                 )
             except Exception as _e:  # a broken record must never block brain construction
                 self._prototypes_restore_note = f"restore raised: {_e}"
+            if isinstance(_rec, dict):
+                self._prototypes_carried = {k: v for k, v in _rec.items() if v and not _ok.get(k)}
         self._attach_percept_transitions()
 
         # C1 batch-3: whole-brain integration + learned perception faculties (numpy allowed now,
@@ -5114,8 +5120,10 @@ class Brain:
         `save_growth` contract: "no substrate" is not a record). The same record carries the other
         live learned stores (P4b, policy audit pa-p4bd-3): the arm's Q-table over these ids
         (`arm.q`), the affect integrator's emotion SOM (`n_emotions`) and the lifelong
-        consolidator's learner with its labels, utilities and task index (`lifelong_units`). Not
-        written, said plainly: the consolidator's replay memory."""
+        consolidator's learner with its labels, utilities and task index (`lifelong_units`); its
+        replay memory is derived and rebuilt at restore, not written. A sub-record the restore
+        refused is written back UNCHANGED until its store learns afresh; then the live store
+        supersedes it and the restore note says so (`superseded: [...]`)."""
         if not self._persist:
             return False
         try:
@@ -5130,19 +5138,26 @@ class Brain:
             ):
                 return False
             durable_units = int(self.brain.arm.learner.n_units)  # before the save: what it holds
-            saved = bool(
-                save_state(
-                    PROTOTYPES_STATE,
-                    {
-                        "arm": self.brain.arm.learner.state_dict(),
-                        "vis": self._vis_learner.state_dict() if self._vis_learner else None,
-                        "aud": self._aud_learner.state_dict() if self._aud_learner else None,
-                        "q": self.brain.arm.q_state_dict(),
-                        "affect": self._affect_int.state_dict() if self._affect_int else None,
-                        "lifelong": dict(self._ll.state_dict(), i=int(self._ll_i)),
-                    },
+            vis, aud, aff = self._vis_learner, self._aud_learner, self._affect_int
+            stores = {  # name: (its record, whether the live store has learned anything)
+                "arm": (self.brain.arm.learner.state_dict(), self.brain.arm.learner.n_units > 0),
+                "vis": (vis.state_dict() if vis else None, bool(vis and vis.n_units)),
+                "aud": (aud.state_dict() if aud else None, bool(aud and aud.n_units)),
+                "q": (self.brain.arm.q_state_dict(), bool(self.brain.arm.q)),
+                "affect": (aff.state_dict() if aff else None, bool(aff and aff.n_emotions)),
+                "lifelong": (dict(self._ll.state_dict(), i=int(self._ll_i)), self._ll.n_units > 0),
+            }
+            rec = {k: state for k, (state, _) in stores.items()}
+            superseded = sorted(k for k in self._prototypes_carried if k in stores and stores[k][1])
+            self._prototypes_carried = {
+                k: v for k, v in self._prototypes_carried.items() if k not in superseded
+            }
+            if superseded:
+                self._prototypes_restore_note = (
+                    f"{self._prototypes_restore_note}; superseded: {superseded}"
                 )
-            )
+            rec.update(self._prototypes_carried)  # P4b: a refused record is never dropped
+            saved = bool(save_state(PROTOTYPES_STATE, rec))
             if saved and getattr(self, "_r2_proto_flushed", None) is not None:
                 # R2 P3 D2: the count the lake now provably holds (a percept's `proto_flushed`)
                 self._r2_proto_flushed = durable_units

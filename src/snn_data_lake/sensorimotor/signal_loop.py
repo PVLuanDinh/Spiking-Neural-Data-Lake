@@ -752,7 +752,8 @@ def _selfcheck(library, matcher, matcher_name):
     )
     rc = subprocess.run([sys.executable, "-c", child]).returncode
     assert rc == 0, f"a learned signature did not survive into a SEPARATE process (rc={rc})"
-    # MIGRATION, not deletion: a pre-P4b sidecar in a fresh home is imported and left on disk.
+    # MIGRATION, not deletion: a pre-P4b sidecar in a fresh home is imported and kept on disk as
+    # `<name>.imported`, so a lake reset cannot import it a second time.
     legacy_home = tempfile.mkdtemp(prefix="signal_loop_legacy_")
     _outer_home = os.environ["NORD_HOME"]
     try:
@@ -760,15 +761,15 @@ def _selfcheck(library, matcher, matcher_name):
         with open(os.path.join(legacy_home, SIG_STATE), "w", encoding="ascii") as f:
             json.dump({"LEGACY_GESTURE": [0.0] * N}, f)
         assert "LEGACY_GESTURE" in load_library(), "a pre-P4b signatures.json was not imported"
-        assert os.path.exists(os.path.join(legacy_home, SIG_STATE)), (
-            "the legacy sidecar must be left on disk, inert -- migrating is not deleting"
+        assert os.path.exists(os.path.join(legacy_home, SIG_STATE + ".imported")), (
+            "the legacy sidecar must be kept on disk, renamed inert -- migrating is not deleting"
         )
     finally:
         os.environ["NORD_HOME"] = _outer_home
         shutil.rmtree(legacy_home, ignore_errors=True)
     sys.stderr.write(
         "P4b OK: the learned signature library is a _T_STATE record in brain_lake.bin, read back by "
-        "a SEPARATE process; a pre-P4b signatures.json is imported once and left in place\n"
+        "a SEPARATE process; a pre-P4b signatures.json is imported once and kept, renamed\n"
     )
 
     # ---- Arduino wire-contract self-check (no hardware needed) ---------------

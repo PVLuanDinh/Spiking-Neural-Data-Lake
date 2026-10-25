@@ -34,14 +34,14 @@ Persistence (real memory only, bounded, deduped -- never noise):
                                  it unheld, which is what keeps the "emptied before every
                                  construction" sentence above true for this name too -- close() alone
                                  would not, because the one live consumer never calls it.
-  <home>/<this module>.json      curiosity + selection bookkeeping, autotelic labels, summary. The name
+  lake <this module>.json        curiosity + selection bookkeeping, autotelic labels, summary. Name
                                  is DERIVED FROM __file__ (see _STATE_JSON) so moving this module
                                  between regions cannot silently orphan the state it already wrote.
 
 P4b. Nothing here is a second durable store: the json summary goes through home.save_state and
-the learned ARRAYS through home.save_named_state (np.savez blobs), both _T_STATE records IN
-brain_lake.bin. Until 2026-10-24 the arrays were np.savez files under <home>/skills/; per the
-owner's ruling they are learned state, so they live in the lake. A pre-port
+the learned ARRAYS through language_acquisition.save_npz_state (np.savez blobs), both _T_STATE
+records IN brain_lake.bin. Until 2026-10-24 the arrays were np.savez files under <home>/skills/;
+per the owner's ruling they are learned state, so they live in the lake. A pre-port
 <home>/skills/<domain>.npz is imported ONCE by home._migrate_sidecar under the same name (see
 _skill_state) and never re-read.
 
@@ -90,7 +90,7 @@ substrate.home. Deterministic: per-instance random.Random(seed) / np.random.Rand
 wall-clock; crc32 signatures only.
 """
 
-import io
+import contextlib
 import os
 import random
 import tempfile
@@ -108,6 +108,8 @@ from snn_data_lake.faculties.autotelic_goals import (
     collect_labels,
 )
 from snn_data_lake.faculties.kb_ranking import DistMult, load_dataset
+from snn_data_lake.faculties.language_acquisition import load_npz_state as _load_arrays
+from snn_data_lake.faculties.language_acquisition import save_npz_state as _save_arrays
 from snn_data_lake.faculties.language_self_build import _bigram_baseline, _positional_code
 
 # open_world_loop is imported LAZILY at its two use sites (_ensure_ow, the discovery feed):
@@ -133,10 +135,9 @@ from snn_data_lake.substrate.content_signature import SIG as _SIG_DIM
 from snn_data_lake.substrate.home import (
     home,
     lake_path,
-    load_named_state,
     load_state,
-    save_named_state,
     save_state,
+    state_path,
 )
 from snn_data_lake.substrate.proximity_replay import LakeMemory
 
@@ -156,18 +157,19 @@ def _skill_state(name):
     return f"skills/{name}.npz"
 
 
-def _save_arrays(name, **arrays):
-    buf = io.BytesIO()
-    np.savez(buf, **arrays)
-    return save_named_state(name, buf.getvalue())
-
-
-def _load_arrays(name):
-    blob = load_named_state(name)
-    if blob is None:
-        return None
-    with np.load(io.BytesIO(blob), allow_pickle=False) as z:
-        return {k: z[k] for k in z.files}
+def _legacy_skill_names():
+    """Domain names of the pre-port `<home>/skills/<name>.npz` files, imported or not. An imported one
+    is renamed `<name>.npz.imported` and its arrays live in the lake under the same name, so it is
+    still listed: a domain the summary never named (a crash between its arrays and the summary)
+    keeps being found. Scratch `*.tmp.npz` and the open-world record are not domains."""
+    names = set()
+    with contextlib.suppress(FileNotFoundError, NotADirectoryError):
+        for f in os.listdir(state_path("skills")):
+            stem = f.removesuffix(".imported")
+            stem, ext = os.path.splitext(stem)
+            if ext == ".npz" and not stem.endswith(".tmp") and stem != "open_world":
+                names.add(stem)
+    return names
 
 
 #: This module's real dotted path, for the self-check banner. Also derived, for the same reason: a
@@ -848,8 +850,16 @@ class NightlySkills:
         names = set(st.get("domains", {}))
         if self._pending_ow is not None:
             names |= {f"discovered-{int(did)}" for did in self._pending_ow["dids"].tolist()}
-        for name in sorted(names):
-            z = _load_arrays(_skill_state(name))
+        legacy = _legacy_skill_names() - names
+        for name in sorted(names | legacy):
+            try:
+                z = _load_arrays(_skill_state(name))
+            except Exception as exc:
+                if name not in legacy:
+                    raise
+                # a stray legacy file (unreadable, or a name the lake refuses) skips itself only
+                _say(f"legacy skills/{name}.npz not imported: {exc!r}")
+                continue
             if z is None:
                 continue
             self._pending[name] = z

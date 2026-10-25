@@ -24,7 +24,8 @@ _SNAPSHOT = r"""
 out = {"q": json.dumps({str(k): v for k, v in sorted(arm.q.items())}, sort_keys=True),
        "som": b._affect_int._som.state_dict()["prototypes"],
        "ll": b._ll.learner.state_dict()["prototypes"], "ll_labels": list(b._ll.labels),
-       "ll_i": b._ll_i}
+       "ll_i": b._ll_i, "ll_mem": json.dumps(b._ll.memory.buf),
+       "ll_rng": json.dumps(b._ll.memory.rng.getstate())}
 """
 
 # The parent LEARNS each store through the store's own learning path, then close() flushes.
@@ -200,6 +201,15 @@ def test_lifelong_learner_survives_a_new_process(restarted):
 
 
 @pytest.mark.slow
+def test_lifelong_replay_memory_is_rebuilt_in_a_new_process(restarted):
+    """A-B1: without the replay memory the next task learns with no rehearsal and task 0 is
+    pruned away. The memory is rebuilt from the tasks the restored index says were learned."""
+    parent, child, _ = restarted
+    assert parent["ll_mem"] != "[]", "the parent committed no exemplar -- a vacuous comparison"
+    assert (child["ll_mem"], child["ll_rng"]) == (parent["ll_mem"], parent["ll_rng"])
+
+
+@pytest.mark.slow
 def test_consumers_read_the_restored_state_at_tick_0(restarted):
     parent, child, _ = restarted
     assert child["n_emotions"] == len(parent["som"]) > 0
@@ -292,6 +302,105 @@ def test_one_refused_store_does_not_block_the_others():
         0,
         0,
     )
+
+
+# A restarted brain that learns in one store (`argv[2]`: "affect" or "lifelong") and flushes.
+_RELEARN = r"""
+import json, os, sys
+os.environ["NORD_HOME"] = sys.argv[1]
+from snn_data_lake.engine.brain import make_brain
+b = make_brain(seed=7, persist=True)
+if sys.argv[2] == "affect":
+    b._affect_int.observe(-0.9, -0.9)
+else:
+    b._ll.learn_task(0, b._ll_tasks[0]["train"]); b._ll_i = 1
+b.close()
+print("RELEARN " + json.dumps({"note": b._prototypes_restore_note}))
+"""
+
+# A new process runs the sleep's consolidation (superseded _T_STATE history is dropped), then reads.
+_CONSOLIDATED = r"""
+import json, os, sys
+os.environ["NORD_HOME"] = sys.argv[1]
+from snn_data_lake.engine.brain import PROTOTYPES_STATE
+from snn_data_lake.substrate.home import KnowledgeLog, knowledge_path, load_state
+kl = KnowledgeLog(knowledge_path())
+kl.consolidate(list(kl.replay()))
+print("READ " + json.dumps(load_state(PROTOTYPES_STATE)))
+"""
+
+
+def _refused_lifelong_home(tag):
+    rec = {
+        "arm": None,
+        "vis": None,
+        "aud": None,
+        "affect": _grown_affect().state_dict(),
+        "lifelong": dict(_grown_consolidator().state_dict(), i=-1),  # refused at restore
+    }
+    home = _home(tag)
+    assert _run(_SEED, home, "SEED", json.dumps(rec))
+    return home, rec
+
+
+@pytest.mark.slow
+def test_a_refused_record_survives_the_next_flush_and_consolidation():
+    """A-M1 / B MINOR-3: the refused lifelong record is carried forward unchanged while its store
+    has learned nothing afresh -- a refusal is never a permanent loss at the first sleep."""
+    pytest.importorskip("torch")
+    home, rec = _refused_lifelong_home("carry")
+    out = _run(_RELEARN, home, "RELEARN", "affect")
+    assert out["note"] == "refused: ['lifelong']", out  # a restored store is never carried
+    got = _run(_CONSOLIDATED, home, "READ")
+    assert got["affect"] != rec["affect"], "the flush wrote nothing -- a vacuous comparison"
+    assert got["lifelong"] == rec["lifelong"]
+    assert _record_count(home) == 1
+
+
+@pytest.mark.slow
+def test_a_refused_record_is_superseded_only_once_its_store_relearns_and_says_so():
+    pytest.importorskip("torch")
+    home, rec = _refused_lifelong_home("supersede")
+    out = _run(_RELEARN, home, "RELEARN", "lifelong")
+    assert "superseded: ['lifelong']" in out["note"], out
+    got = _run(_CONSOLIDATED, home, "READ")
+    assert got["lifelong"]["i"] == 1 and got["lifelong"] != rec["lifelong"]
+
+
+@pytest.mark.slow
+def test_a_refused_affect_record_is_superseded_once_the_som_relearns():
+    pytest.importorskip("torch")
+    rec = {"arm": None, "vis": None, "aud": None, "affect": _learner(3)}  # wrong width: refused
+    home = _home("supersede_affect")
+    assert _run(_SEED, home, "SEED", json.dumps(rec))
+    out = _run(_RELEARN, home, "RELEARN", "affect")
+    assert out["note"] == "refused: ['affect']; superseded: ['affect']", out
+    got = _run(_CONSOLIDATED, home, "READ")
+    assert got["affect"] != rec["affect"] and got["affect"]["prototypes"]
+
+
+@pytest.mark.slow
+def test_records_a_raising_restore_never_reached_are_carried():
+    """The arm's malformed width raises before any store is read: every sub-record is carried,
+    including a lifelong record the restore would have accepted."""
+    pytest.importorskip("torch")
+    ll = dict(_grown_consolidator().state_dict(), i=1)
+    rec = {"arm": {"dim": "x"}, "vis": None, "aud": None, "lifelong": ll}
+    home = _home("raised")
+    assert _run(_SEED, home, "SEED", json.dumps(rec))
+    out = _run(_RELEARN, home, "RELEARN", "affect")
+    assert out["note"].startswith("restore raised:"), out
+    got = _run(_CONSOLIDATED, home, "READ")
+    assert got["lifelong"] == ll and got["arm"] == {"dim": "x"}
+
+
+@pytest.mark.slow
+def test_a_non_dict_record_does_not_block_construction():
+    pytest.importorskip("torch")
+    home = _home("nondict")
+    assert _run(_SEED, home, "SEED", json.dumps([1]))
+    child = _run(_CHILD, home, "CHILD", "1")
+    assert (child["note"] or "").startswith("restore raised:"), child
 
 
 def test_affect_codec_round_trips_and_refuses_untouched():

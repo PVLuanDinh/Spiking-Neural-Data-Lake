@@ -41,6 +41,36 @@ import numpy as np
 from snn_data_lake.readout.predictive_coding import PredictiveCodingNetwork
 from snn_data_lake.substrate.home import load_named_state, save_named_state
 
+
+# consolidates: sleep/nightly_skills.py (merge) -- the np.savez-to-bytes codec it and this organ
+#   both wrote (arc-2 panel A-m8, P2); nightly_skills imports these two. Here, not in
+#   substrate/home.py: home stays numpy-free (gates/native_ratchet counts C-library importers).
+# distinct-from: instruments/replay_hydration.py -- reads raw lake bytes without a BinLog.
+# distinct-from: substrate/signal_calibrator.py -- a JSON state map, not npz.
+# distinct-from: substrate/lake_memory.py -- spike appends to a .spkl lake.
+# distinct-from: substrate/lake_working_memory.py -- spike appends to a .spkl lake. Sites read.
+#   Carried, not moved: gates/replay_gate.py, growth/neurogenesis_engine.py and
+#   reservoir/kernel_state.py decode npz blobs of their own record families.
+def save_npz_state(name, **arrays):
+    """Store `arrays` under `name` IN THE ONE LAKE as one uncompressed in-memory `np.savez` blob
+    (`save_named_state`'s skip applies: np.savez stamps a fixed zip timestamp, so an unchanged
+    state writes nothing)."""
+    buf = io.BytesIO()
+    np.savez(buf, **arrays)
+    return save_named_state(name, buf.getvalue())
+
+
+def load_npz_state(name, blob=None):
+    """{array name: ndarray} of the newest npz blob under `name` (or of `blob`, a record already
+    read), None if none was stored. Every array is read before this returns, so a caller assigns
+    from a complete record or not at all; an unreadable blob raises (callers treat it as cold)."""
+    blob = load_named_state(name) if blob is None else blob
+    if blob is None:
+        return None
+    with np.load(io.BytesIO(blob), allow_pickle=False) as z:
+        return {k: z[k] for k in z.files}
+
+
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "LanguageAcquisition._learn_step": (
@@ -231,22 +261,18 @@ class LanguageAcquisition:
     # a `np.savez` sidecar beside `brain_lake.bin`. A pre-port `<home>/language_acq.npz` is imported
     # once by `home._migrate_sidecar` on the first `load()` and never re-read.
     def save(self):
-        buf = io.BytesIO()
-        np.savez(buf, W=self.W, ctx=np.asarray(self._ctx_ids), n=self.n_seen)
-        return save_named_state(STATE_NAME, buf.getvalue())
+        return save_npz_state(STATE_NAME, W=self.W, ctx=np.asarray(self._ctx_ids), n=self.n_seen)
 
     def load(self, blob=None):
         """Restore from `blob` (a prefetched lake record), else from the lake now; cold if neither.
 
         The serve path passes the blob `Brain.__init__` read: reading the lake from inside respond()
         would open the BinLog and repair (truncate) a torn tail mid-conversation."""
-        blob = load_named_state(STATE_NAME) if blob is None else blob
-        if blob is None:
+        d = load_npz_state(STATE_NAME, blob)
+        if d is None:
             return self
-        with np.load(io.BytesIO(blob), allow_pickle=False) as d:
-            self.W = d["W"]
-            self._ctx_ids = list(d["ctx"])
-            self.n_seen = int(d["n"])
+        # all or none (A-m5): a missing key raises before any field is bound
+        self.W, self._ctx_ids, self.n_seen = d["W"], list(d["ctx"]), int(d["n"])
         return self
 
 

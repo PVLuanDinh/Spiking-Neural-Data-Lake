@@ -140,7 +140,7 @@ def test_written_in_one_process_read_in_a_separate_one(tmp_path, monkeypatch):
 
 
 # ------------------------------------------------------------------------ the legacy migration ----
-def test_a_pre_p4b_sidecar_migrates_and_is_left_on_disk(tmp_path, monkeypatch):
+def test_a_pre_p4b_sidecar_migrates_and_is_kept_renamed(tmp_path, monkeypatch):
     """An operator's already-recorded operating point must survive the policy fix, not be reset by
     it.
 
@@ -163,11 +163,11 @@ def test_a_pre_p4b_sidecar_migrates_and_is_left_on_disk(tmp_path, monkeypatch):
     assert H.load_named_state("signal_calib.json") is not None, (
         "the migration returned the blob but never put it IN the lake"
     )
-    assert os.path.exists(legacy), "the legacy sidecar must be left on disk, inert -- never deleted"
+    # kept, never deleted -- renamed so a lake reset cannot import it again (arc-2 panel A-m1)
+    assert os.path.exists(legacy + ".imported") and not os.path.exists(legacy)
 
     # ...and the imported state is durable in its own right: a SEPARATE process reads it back from
-    # the lake with the sidecar moved away, so nothing can be re-reading the file.
-    os.replace(legacy, legacy + ".moved")
+    # the lake with the sidecar renamed away, so nothing can be re-reading the file.
     env = dict(os.environ, NORD_HOME=str(tmp_path), PYTHONPATH=SRC_ROOT)
     child = (
         "from snn_data_lake.substrate.signal_calibrator import SignalCalibrator\n"

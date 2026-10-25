@@ -373,15 +373,16 @@ def main():
         klog.consolidate(list(klog.replay()))
         assert RecallTrace().get(rec) == 3, "sleep consolidation of the FACT side dropped the trace"
 
-        # MIGRATION, not deletion: a pre-P4b sidecar in a fresh home is imported and left on disk.
+        # MIGRATION, not deletion: a pre-P4b sidecar in a fresh home is imported and kept on disk
+        # as `<name>.imported`, so a lake reset cannot import it a second time.
         os.environ["NORD_HOME"] = legacy_home
         with open(os.path.join(legacy_home, "recall_trace.json"), "w", encoding="ascii") as f:
             f.write(json.dumps({record_key(rec): 9}))
         assert RecallTrace().get(rec) == 9, "a pre-P4b recall_trace.json sidecar was not imported"
-        assert os.path.exists(os.path.join(legacy_home, "recall_trace.json")), (
-            "the legacy sidecar must be left on disk, inert -- migrating is not deleting"
+        assert os.path.exists(os.path.join(legacy_home, "recall_trace.json.imported")), (
+            "the legacy sidecar must be kept on disk, renamed inert -- migrating is not deleting"
         )
-        print("  [OK] pre-P4b recall_trace.json imported into the lake; the file is left in place")
+        print("  [OK] pre-P4b recall_trace.json imported into the lake; the file is kept, renamed")
     finally:
         if prior_home is None:
             os.environ.pop("NORD_HOME", None)

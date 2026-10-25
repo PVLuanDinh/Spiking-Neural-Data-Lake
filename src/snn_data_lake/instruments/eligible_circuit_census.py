@@ -961,6 +961,10 @@ EXCLUDED: tuple[Excluded, ...] = (
     Excluded(
         "Brain._prototypes_restore_note", "A f-string over the restore-ok dict; a provenance note."
     ),
+    Excluded(
+        "Brain._prototypes_carried",
+        "A dict comprehension over the restore record: refused sub-records held for the flush.",
+    ),
     Excluded("Brain._time_cells_grow", "Reads get() from a settings dict; a flag."),
     Excluded("Brain._time_cells_restore", "Reads get() from a settings dict; a flag."),
     Excluded("Brain._persist", "Reads get() from environment; a configuration flag."),

@@ -28,7 +28,8 @@ Measured after this change, the remaining `state_path(...)` WRITERS under `src/`
 `engine/brain.py`'s `language_acq.npz` (a numpy binary, a lake record since 2026-10-24) and
 `sensorimotor/signal_loop.py`'s `unknowns.jsonl`; the latter is the only one left, is not
 JSON-facade state, and is NOT dispositioned here. Every other `state_path` hit in `src/`
-is a self-check asserting the sidecar is absent.) What it was: `save_all(path, calibrators)` wrote
+is a self-check asserting the sidecar is absent, or (since 2026-10-24) nightly_skills' read-only
+listing of legacy `skills/*.npz` names.) What it was: `save_all(path, calibrators)` wrote
 `json.dump` to
 `<home>/signal_calib.json`, a SIDECAR beside `brain_lake.bin`, holding LEARNED state that
 `engine/brain.py` restored at construction and CONSUMED on the live wake tick. P4b names that in its own
@@ -257,7 +258,7 @@ def main():
             "  [OK] honest empties: empty lake / unknown signal / 0 samples -> None (no fabrication)"
         )
 
-        # (5) MIGRATION of the pre-P4b sidecar, on the DEFAULT lake, and the file is LEFT ON DISK.
+        # (5) MIGRATION of the pre-P4b sidecar, on the DEFAULT lake; the file is KEPT, renamed.
         # This must run BEFORE (6): `home._migrate_sidecar` fires only while the lake holds no record
         # under this name, so a lake write first would make the migration structurally unreachable.
         legacy = os.path.join(work, _STATE_NAME)
@@ -273,12 +274,12 @@ def main():
         assert load_named_state(_STATE_NAME) is not None, (
             "the migration must leave the blob IN the lake, not merely return it"
         )
-        assert os.path.exists(legacy), (
-            "the legacy sidecar must be left on disk, inert -- never deleted"
+        assert os.path.exists(legacy + ".imported") and not os.path.exists(legacy), (
+            "the legacy sidecar must be kept on disk, renamed inert -- never deleted"
         )
         _emit(
-            f"  [OK] pre-P4b sidecar imported into the lake (n={mig['n']}) and LEFT on disk at "
-            f"{_STATE_NAME}"
+            f"  [OK] pre-P4b sidecar imported into the lake (n={mig['n']}) and kept on disk as "
+            f"{_STATE_NAME}.imported"
         )
 
         # (6) CROSS-PROCESS, the only proof P4b accepts: a SEPARATE python writes, EXITS, and this

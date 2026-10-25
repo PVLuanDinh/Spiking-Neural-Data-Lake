@@ -3,11 +3,15 @@
 Every test runs on conftest's hermetic NORD_HOME and asserts it is not the live home.
 """
 
+import hashlib
+import io
 import os
 import time
 
 import numpy as np
+import pytest
 
+from snn_data_lake.faculties import language_acquisition as la
 from snn_data_lake.faculties.language_acquisition import STATE_NAME, LanguageAcquisition
 from snn_data_lake.gates.lake_rebuild_gate import assert_rebuild
 from snn_data_lake.sleep import nightly_skills as ns
@@ -24,8 +28,17 @@ def _home():
 
 
 def _restart():
-    """A fresh process: drop every cached BinLog (and with it the named-state index)."""
+    """A fresh process: drop every cached BinLog (and with it the named-state index) and the
+    per-process record of retired sidecars."""
     h._LOG_CACHE.clear()
+    h._RETIRED.clear()
+
+
+def _probe_sidecar(root, text='{"v": 1}'):
+    path = os.path.join(root, "probe.json")
+    with open(path, "w", encoding="ascii") as f:
+        f.write(text)
+    return path
 
 
 def _sidecars(root):
@@ -116,9 +129,9 @@ def test_legacy_skills_sidecars_migrate_once(monkeypatch):
         return True
 
     os.makedirs(os.path.join(root, "skills"), exist_ok=True)
-    monkeypatch.setattr(ns, "save_named_state", sidecar_writer)
+    monkeypatch.setattr(la, "save_named_state", sidecar_writer)  # under save_npz_state
     s.save()
-    monkeypatch.setattr(ns, "save_named_state", real)
+    monkeypatch.setattr(la, "save_named_state", real)
     legacy = _sidecars(root)
     assert legacy and all(p.startswith("skills/") for p in legacy)
     _restart()
@@ -198,6 +211,184 @@ def test_brain_close_saves_the_language_state_into_the_lake():
     b.close()
     _restart()
     _same_lm(lm, LanguageAcquisition(seed=9).load())
+
+
+def test_an_imported_sidecar_is_not_imported_again_after_a_lake_reset():
+    """A-m1: the import renames the file to `<name>.imported` -- bytes kept, never re-read."""
+    root = _home()
+    old = _lm(seed=5)
+    path = os.path.join(root, STATE_NAME)
+    np.savez(path, W=old.W, ctx=np.asarray(old._ctx_ids), n=old.n_seen)
+    with open(path, "rb") as f:
+        raw = f.read()
+    _same_lm(old, LanguageAcquisition(seed=9).load())
+    with open(path + ".imported", "rb") as f:
+        assert f.read() == raw
+    _restart()
+    os.remove(h.knowledge_path())  # a lake reset
+    _restart()
+    assert h.load_named_state(STATE_NAME) is None
+
+
+def test_a_legacy_skills_npz_missing_from_the_summary_is_imported():
+    """A-m2: a domain whose first save crashed between its arrays and the summary."""
+    root = _home()
+    h.save_state(ns._STATE_JSON, {"domains": {}})
+    os.makedirs(os.path.join(root, "skills"), exist_ok=True)
+    np.savez(h.state_path(ns._skill_state("orphan")), W=np.arange(3.0))
+    np.savez(os.path.join(root, "skills", "scratch.tmp.npz"), W=np.arange(2.0))
+    np.savez(h.state_path(ns._skill_state("open_world")), dids=np.arange(0))
+    for _boot in range(2):  # the second boot finds the orphan by its renamed `.imported` file
+        _restart()
+        t = ns.NightlySkills(seed=0)
+        assert np.array_equal(t._pending["orphan"]["W"], np.arange(3.0))
+        assert "scratch.tmp" not in t._pending and "open_world" not in t._pending
+    assert os.path.exists(h.state_path(ns._skill_state("orphan")) + ".imported")
+
+
+def test_a_corrupt_legacy_skills_npz_skips_only_itself():
+    """A stray unreadable file under skills/ must not cost the domains the summary names."""
+    root = _home()
+    ns._save_arrays(ns._skill_state("kept"), W=np.arange(2.0))
+    h.save_state(ns._STATE_JSON, {"domains": {"kept": {}}})
+    os.makedirs(os.path.join(root, "skills"), exist_ok=True)
+    with open(h.state_path(ns._skill_state("broken")), "wb") as f:
+        f.write(b"not an npz")
+    _restart()
+    t = ns.NightlySkills(seed=0)
+    assert np.array_equal(t._pending["kept"]["W"], np.arange(2.0)) and "broken" not in t._pending
+
+
+def test_a_corrupt_record_the_summary_names_still_fails_the_whole_load():
+    """Only stray legacy files are skipped one by one; a domain the summary names keeps the old
+    contract (the load raises and the constructor starts fresh), so a learned domain is never
+    silently dropped while the rest restore around it."""
+    _home()
+    h.save_named_state(ns._skill_state("named"), b"not an npz")
+    ns._save_arrays(ns._skill_state("other"), W=np.arange(2.0))
+    h.save_state(ns._STATE_JSON, {"domains": {"named": {}, "other": {}}})
+    _restart()
+    with pytest.raises(ValueError):  # np.load refuses non-zip bytes (allow_pickle=False)
+        ns.NightlySkills(seed=0).load()
+
+
+def test_a_record_missing_a_field_leaves_the_language_organ_untouched():
+    """A-m5: never half-restored -- a blob with W but no n raises before anything is assigned."""
+    _home()
+    buf = io.BytesIO()
+    np.savez(buf, W=np.zeros((2, 2)), ctx=np.asarray([1]))
+    lm = _lm()
+    before = lm.W.copy()
+    with pytest.raises(KeyError):
+        lm.load(buf.getvalue())
+    assert np.array_equal(lm.W, before) and lm.n_seen == 41
+
+
+def test_one_npz_blob_codec_serves_both_organs():
+    """A-m8 (P2): the np.savez-to-bytes codec lives once (beside the language organ, so home.py
+    stays numpy-free) and the nightly skills use it."""
+    _home()
+    assert la.save_npz_state("codec", a=np.arange(4.0)) is True
+    assert np.array_equal(la.load_npz_state("codec")["a"], np.arange(4.0))
+    assert la.load_npz_state("absent") is None
+    assert (ns._save_arrays, ns._load_arrays) == (la.save_npz_state, la.load_npz_state)
+
+
+def test_a_sidecar_imported_before_the_rename_existed_is_retired_on_the_next_read():
+    """A home whose lake already holds the record but whose sidecar still sits under its own name
+    (the pre-2026-10-24 import): the next read renames it, so a lake reset cannot re-import it."""
+    root = _home()
+    h.save_state("probe.json", {"v": 1})  # the record an earlier import put in the lake
+    path = _probe_sidecar(root)
+    _restart()
+    assert h.load_state("probe.json") == {"v": 1}
+    assert os.path.exists(path + ".imported") and not os.path.exists(path)
+
+
+def test_retiring_never_overwrites_an_earlier_imported_file():
+    root = _home()
+    h.save_state("probe.json", {"v": 1})
+    path = _probe_sidecar(root, '{"v": 2}')
+    with open(path + ".imported", "w", encoding="ascii") as f:
+        f.write('{"v": 1}')
+    _restart()
+    h.load_state("probe.json")
+    with open(path + ".imported", encoding="ascii") as f:
+        assert f.read() == '{"v": 1}'
+    assert os.path.exists(path)
+
+
+def test_a_held_sidecar_keeps_its_name_and_is_retired_on_a_later_read(monkeypatch):
+    """Windows: a file another process holds open cannot be renamed; the import still lands, and
+    the rename is retried once the file is free."""
+    root = _home()
+    path = _probe_sidecar(root)
+
+    def held(*_a):
+        raise PermissionError("held")
+
+    with monkeypatch.context() as m:  # scoped: conftest's NORD_HOME lives on the same fixture
+        m.setattr(h.os, "replace", held)
+        assert h.load_state("probe.json") == {"v": 1} and os.path.exists(path)
+        assert h.load_named_state("probe.json", path=h.knowledge_path()) == b'{"v": 1}'
+    assert h.load_state("probe.json") == {"v": 1}
+    assert os.path.exists(path + ".imported") and not os.path.exists(path)
+
+
+def test_a_sidecar_whose_import_did_not_land_keeps_its_name(monkeypatch):
+    """The rename follows the save: a failed import leaves the file for the next read."""
+    root = _home()
+    path = _probe_sidecar(root)
+    real = h.save_named_state
+    monkeypatch.setattr(h, "save_named_state", lambda *a, **k: False)
+    h.load_state("probe.json")
+    assert os.path.exists(path) and not os.path.exists(path + ".imported")
+    monkeypatch.setattr(h, "save_named_state", real)
+    _restart()
+    assert h.load_state("probe.json") == {"v": 1} and os.path.exists(path + ".imported")
+
+
+# A writer or a reader in a process of its own (B MINOR-1: P4b's "it persists" is a claim about a
+# NEW process). argv: home, mode.
+_PROC = r"""
+import hashlib, json, os, sys
+os.environ["NORD_HOME"] = sys.argv[1]
+import numpy as np
+from snn_data_lake.faculties.language_acquisition import LanguageAcquisition
+from snn_data_lake.sleep import nightly_skills as ns
+from snn_data_lake.substrate.home import save_state
+if sys.argv[2] == "write":
+    lm = LanguageAcquisition(seed=0)
+    lm.W = np.random.RandomState(3).randn(*lm.W.shape); lm._ctx_ids = [1, 2, 3]; lm.n_seen = 41
+    lm.save()
+    ns._save_arrays(ns._skill_state("math"), W=np.arange(6.0).reshape(2, 3))
+    save_state(ns._STATE_JSON, {"domains": {"math": {}}})
+    print("PROC true")
+else:
+    lm = LanguageAcquisition(seed=9).load()
+    t = ns.NightlySkills(seed=0)
+    lm_digest = hashlib.sha256(lm.W.tobytes()).hexdigest()
+    print("PROC " + json.dumps([lm_digest, list(map(int, lm._ctx_ids)), lm.n_seen,
+                                t._pending["math"]["W"].tolist()]))
+"""
+
+
+@pytest.mark.slow
+def test_a_new_process_reads_the_language_and_skills_records_back():
+    """The writer process is gone before the reader starts; both see only the lake on disk."""
+    from tests.test_p4b_restart_restore import _run
+
+    root = _home()
+    assert _run(_PROC, root, "PROC", "write") is True
+    assert _sidecars(root) == []
+    lm = LanguageAcquisition(seed=0)
+    w = np.random.RandomState(3).randn(*lm.W.shape)
+    assert _run(_PROC, root, "PROC", "read") == [
+        hashlib.sha256(w.tobytes()).hexdigest(),
+        [1, 2, 3],
+        41,
+        [[0.0, 1.0, 2.0], [3.0, 4.0, 5.0]],
+    ]
 
 
 def test_unchanged_skills_are_not_rewritten(monkeypatch):

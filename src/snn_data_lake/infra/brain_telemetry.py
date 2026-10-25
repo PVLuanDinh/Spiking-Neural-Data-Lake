@@ -386,10 +386,12 @@ PROVENANCE = {
         "persistence floor is 0.9+ and an accuracy under it is the stream's inertia, not learning"
     ),
     "prototypes_restore": (
-        "rank 2b (2026-09-02): None = the three percept prototype learners restored clean from "
-        "the lake or there was nothing to restore; a string names a refused/failed/dropped "
-        "record. Covers the arm context, vision and audio learners ONLY -- the affect SOM, the "
-        "lifelong learner and arm.q still re-grow at a restart (open P4b debt)"
+        "rank 2b (2026-09-02): None = every store of the growing_learners.json record restored "
+        "clean from the lake or there was nothing to restore; a string names a refused/failed "
+        "record. Covers the arm context, vision and audio learners, arm.q, the affect SOM and the "
+        "lifelong learner (its replay memory rebuilt from the learned tasks' streams, 2026-10-24). "
+        "A refused record is carried forward unchanged until its store learns afresh; "
+        "'superseded: [...]' names the stores whose live state then replaced it"
     ),
 }
 

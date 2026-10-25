@@ -134,7 +134,8 @@ class LifelongConsolidator:
 
     def state_dict(self):
         """The learner with its per-unit labels and utilities (aligned to prototypes), JSON-able.
-        The replay memory is not part of it."""
+        The replay memory is not part of it: it is derived from the task streams
+        (`rebuild_memory`)."""
         return {
             "fmt": self.STATE_FORMAT,
             "learner": self.learner.state_dict(),
@@ -205,26 +206,54 @@ class LifelongConsolidator:
 
         This is the interleaved SWR-style consolidation -- it refreshes the utility of
         units for tasks not currently streaming, so they survive the pruning budget."""
-        for label, xt, _ in self.memory.sample(self.replay_batch):
+        for label, xt, _ in self._replay_draw():
             self._observe(list(xt), label)
 
-    def learn_task(self, task_id, train):
-        """Learn one task: grow/refine on its stream, interleave old-task replay,
-        commit its exemplars to lifelong memory, then prune to the budget."""
-        self.utility = [u * self.task_decay for u in self.utility]  # recency pressure
+    # REUSES sleep/experience_replay.py's ReplayBuffer.sample. distinct-from:
+    #   sleep/hippocampal_memory.py, substrate/proximity_replay.py -- other replay stores. Sites read.
+    def _replay_draw(self):
+        """The batch of old exemplars one rehearsal step samples (advances the memory's sampler)."""
+        return self.memory.sample(self.replay_batch)
+
+    # distinct-from: faculties/wholistic_loop.py -- its own A->B->C demo loop.
+    # distinct-from: sleep/hippocampal_memory.py -- a spiking replay pass, not this memory.
+    # distinct-from: instruments/pool_selection.py -- a stream accuracy mean.
+    # distinct-from: growth/neurogenesis_engine.py -- a crc over grown tensors.
+    # distinct-from: instruments/memory_diagnostic.py -- a stream recorder. Phrase overlap only;
+    #   none orders or rebuilds THIS consolidator's replay memory. Sites read.
+    def _walk_task(self, task_id, train, learn):
+        """One task's stream as `learn_task` walks it: `epochs` seeded shuffles, a replay draw
+        after each sample, then the task's exemplars committed to memory. With `learn` False it
+        makes the same draws and commits and learns nothing -- `rebuild_memory`'s replay."""
         order_rng = random.Random(self.seed + 100 + task_id)
         fresh = []
         for _ in range(self.epochs):
             stream = train[:]
             order_rng.shuffle(stream)
             for x, y in stream:
-                self._observe(x, y)  # learn the new sample (decays + credits)
-                if self.replay_on and len(self.memory):
-                    self._replay_once()  # rehearse old tasks (non-regression)
+                old = self._replay_draw() if self.replay_on and len(self.memory) else []
+                if learn:
+                    self._observe(x, y)  # learn the new sample (decays + credits)
+                    for label, xt, _ in old:  # rehearse old tasks (non-regression)
+                        self._observe(list(xt), label)
                 fresh.append((y, tuple(x)))
         for y, xt in fresh:  # exemplars visible to LATER tasks only
             self.memory.add(y, xt, 0.0)
+
+    def learn_task(self, task_id, train):
+        """Learn one task: grow/refine on its stream, interleave old-task replay,
+        commit its exemplars to lifelong memory, then prune to the budget."""
+        self.utility = [u * self.task_decay for u in self.utility]  # recency pressure
+        self._walk_task(task_id, train, learn=True)
         self._prune_to_budget()  # grow <-> prune under the budget
+
+    def rebuild_memory(self, trains):
+        """Rebuild the replay memory `learn_task` built over `trains` (tasks 0.., in order): the
+        same exemplars in the same order, and the memory's sampler advanced by the same draws, so
+        a restored consolidator continues exactly as the uninterrupted one. DERIVED, not learned
+        (P4b): rebuilt from the task streams, never stored in the lake. Learns nothing."""
+        for task_id, train in enumerate(trains):
+            self._walk_task(task_id, train, learn=False)
 
     # ---- readout ------------------------------------------------------------
     def classify(self, x):

@@ -482,8 +482,8 @@ class TimeCellClock:
         exact arrangement P4b forbids". A threshold vector IS the learned weight set and
         `home.save_state` WAS the `json.dump` P4b names. It is no longer: `save_state` now writes a
         `_T_STATE` record into `brain_lake.bin` under this same `name`, and imports the existing
-        `<home>/time_cells.json` (2,031 B on the operator's home, left on disk inert) the first time
-        it is read. Not one line here changed, which is what closing a SEVEN-caller family by fixing
+        `<home>/time_cells.json` (2,031 B on the operator's home; kept on disk, renamed `.imported`
+        since 2026-10-24) the first time it is read. Not one line here changed, which is what closing a SEVEN-caller family by fixing
         the mechanism looks like from the caller's side.
 
         THE THREE MEASUREMENTS THAT USED TO SIT HERE were arguments against reusing `_T_GROWTH`, and

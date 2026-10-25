@@ -19,7 +19,13 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   (`tests/test_p4b_sidecar_migration.py`). P5b: Python.
 - **P4b restart-amnesia fix** (policy audit pa-p4bd-3): `arm.q`, the affect integrator's emotion SOM and the lifelong
   consolidator's learner now ride the `growing_learners.json` record and restore at boot (a mismatched record -- wrong width,
-  unknown unit id, bad format -- is refused, store left empty); `tests/test_p4b_restart_restore.py`. The consolidator's replay memory is still not persisted.
+  unknown unit id, bad format -- is refused, store left empty); `tests/test_p4b_restart_restore.py`.
+- **P4b fold of the arc-2 panel (p4b-fold):** a restart no longer erases old lifelong tasks -- the consolidator's replay
+  memory is rebuilt at restore from the learned tasks' streams (derived, not stored), so task-0 retention after a restart
+  equals the uninterrupted run (was 0.000 vs 1.000 on 5/5 seeds, A-B1); a refused restore record is carried forward unchanged
+  until its store relearns, never lost at the next sleep (A-M1); an imported sidecar is kept as `<name>.imported`, so a lake
+  reset cannot import it again (A-m1); a legacy `skills/*.npz` the summary never named is still found (A-m2); the language
+  organ restores all-or-nothing through one npz codec (A-m5, A-m8); `tests/test_lifelong_consolidation.py`.
 - **P5b gate** (`gates/p5b_gate.py`, rust-lead-1024): every native Rust module cites a pre-registration recording P5b's six
   criteria with numbers; the retroactive record names the eleven native modules; P5b's PROVISIONAL marker retires (its gate is
   built and counted).

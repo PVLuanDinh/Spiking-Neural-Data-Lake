@@ -155,9 +155,10 @@ _T_CALIB = b"\x06"
 # distinct payload, so dedup can never eat one.
 #
 # MIGRATION, NOT DELETION: `load_named_state` imports an existing `<home>/<name>` sidecar into the
-# lake the first time it is asked for it, and LEAVES THE FILE ON DISK, inert. Those files hold real
-# history -- 2,505 B of recall counts and 2,031 B of learned thresholds on the operator's home
-# today -- and resetting them would be a policy fix that quietly costs the brain what it learned.
+# lake the first time it is asked for it, then KEEPS the file renamed `<name>.imported` (bytes kept,
+# never re-read; see `_retire_sidecar`). Those files hold real history -- 2,505 B of recall counts
+# and 2,031 B of learned thresholds on the operator's home today -- and resetting them would be a
+# policy fix that quietly costs the brain what it learned.
 #
 # COST, MEASURED rather than waved at: a save/load is a replay of the one lake, and one full pass
 # over that 516.8 MB lake costs 349 / 376 / 378 ms (three passes, .venv-lake, 2026-08-05) against
@@ -680,13 +681,17 @@ def throwaway_home(live_home=None, parent=None):
 
 
 def state_path(name):
-    """Path to `<home>/<name>` -- the LEGACY sidecar location, kept for two honest uses only.
+    """Path to `<home>/<name>` -- the LEGACY sidecar location, kept for these honest uses only.
 
-    (1) `_migrate_sidecar` reads it, once, to import a pre-P4b blob into the one lake (since
-        2026-10-24 that includes `language_acq.npz` and `skills/<domain>.npz`, which now go through
-        `save_named_state`, as in-memory `np.savez` blobs).
-    (2) The per-boot SCRATCH router index `skills*.spkl` of `sleep/nightly_skills.py`, which that
-        module empties before every construction and rebuilds from the lake -- not a durable store.
+    (1) `_migrate_sidecar` reads it, once, to import a pre-P4b blob into the one lake, and
+        `_retire_sidecar` then renames it `<name>.imported`. Since 2026-10-24 the imported names
+        include `language_acq.npz` and `skills/<domain>.npz`, which now go through
+        `save_named_state`, as in-memory `np.savez` blobs.
+    (1b) `sleep/nightly_skills.py` LISTS `<home>/skills/*.npz` (read-only) so a legacy domain
+        missing from the summary is still imported through (1).
+    (2) The novel-signal queue `unknowns.jsonl` of `sensorimotor/signal_loop.py`, a FILE of queued
+        windows that `learn_unknowns` reads once, clusters and truncates -- the raw input queue, not
+        learned state, and the one remaining writer through this path.
 
     It is NOT the place to put anything the brain LEARNS. That was what this returned a path for
     until 2026-08-05, and the record of what it cost is in the `_T_STATE` tag comment."""
@@ -1153,14 +1158,50 @@ def load_named_state(name, path=None):
     _state_key(name)
     hit = _state_index(_log(path)).get(str(name))
     if hit is not None:
+        if path is None:
+            _retire_sidecar(name)
         return hit[1]
     return _migrate_sidecar(name) if path is None else None
+
+
+#: (NORD_HOME, name) pairs `_retire_sidecar` has settled in this process.
+_RETIRED = set()
+
+
+def _retire_sidecar(name):
+    """Rename `<home>/<name>` to `<name>.imported` -- called only once the lake holds a record under
+    `name`, so a lake reset cannot import the file a second time. This also retires sidecars
+    imported before 2026-10-24 (when the file kept its own name) and the copy a concurrent first
+    reader imported too. A name is settled once per home per process, checked before any filesystem
+    call; a file another process holds open is not settled and is retried on the next read. Never
+    over an existing `.imported`: the first import's bytes stay, and the newer file keeps its name."""
+    key = (os.environ.get("NORD_HOME"), str(name))
+    if key in _RETIRED:
+        return
+    legacy = state_path(name)
+    if not os.path.exists(legacy + ".imported"):
+        try:
+            os.replace(legacy, legacy + ".imported")
+        except FileNotFoundError:
+            pass
+        except OSError:
+            return
+    _RETIRED.add(key)
 
 
 def _migrate_sidecar(name):
     """One-time import of a pre-P4b `<home>/<name>` sidecar INTO the lake. Returns its bytes or None.
 
-    The file is LEFT ON DISK, inert. These sidecars hold real learned history -- 2,505 B of recall
+    The file is KEPT, renamed to `<name>.imported` once its record is in the lake
+    (`_retire_sidecar`; since 2026-10-24, arc-2 panel A-m1): left under its own name it was not
+    inert -- a lake reset, rebuild or move imported it again into the new lake. The rename comes
+    AFTER the save, so a save that raises, a process killed mid-import, or a file another process
+    holds open leaves the sidecar under its own name for the next read rather than renamed and
+    never imported. Carried edge: two processes reading first at once can each append a seq-0
+    record (the same bytes; latest-wins reads one); the loser of the rename finds the file gone and
+    reads the winner's record back from the lake.
+
+    These sidecars hold real learned history -- 2,505 B of recall
     counts and 2,078 B of learned time-cell thresholds on the operator's home on 2026-08-05 (that
     second figure was recorded here as 2,031 B six hours earlier; the live daemon rewrites the file,
     so a byte count of a LIVE home is a timestamp, not a constant) -- and deleting them to
@@ -1186,7 +1227,8 @@ def _migrate_sidecar(name):
     IT FIRES ON READ ONLY, and the ordering that makes that sufficient is a fact about the callers
     rather than a guarantee of this function -- stated because it is the way this could quietly lose
     something. A caller that SAVED before it ever LOADED would write seq 0 for that name and the
-    sidecar would then never be imported (left on disk unread, not destroyed). Every live path
+    sidecar would then never be imported: the next read renames it `.imported` unread (kept on
+    disk, not destroyed, but not in the lake). Every live path
     loads first, checked by reading them: `Brain.__init__` reloads the reasoning curriculum and
     calls `TimeCellClock.restored()` at construction, `RecallTrace.__init__` loads before any
     `bump`, `OpenGf.__init__` and `Library.load` load in the constructor, `closed_loop --persist`
@@ -1195,11 +1237,14 @@ def _migrate_sidecar(name):
     try:
         with open(legacy, "rb") as f:
             raw = f.read()
-    except OSError:
-        return None
+    except OSError:  # gone: perhaps a racer imported and renamed it a moment ago
+        hit = _state_index(_log(None)).get(str(name))
+        return None if hit is None else hit[1]
     if not raw:
         return None
     save_named_state(name, raw)
+    if _state_index(_log(None)).get(str(name)) is not None:  # in the lake (ours or a racer's)
+        _retire_sidecar(name)
     return raw
 
 
@@ -1244,9 +1289,9 @@ def load_state(name, default=None):
     """Load the JSON state stored under `name`; return `default` if it was never stored.
 
     Reads the ONE lake, falling back ONCE to a pre-P4b `<home>/<name>` sidecar, which it imports and
-    leaves in place (`_migrate_sidecar`). A sidecar that is no longer valid JSON is treated as never
-    written -- the pre-2026-08-05 form raised on it, and a boot that dies on a stale file it is in
-    the middle of retiring is the worse of the two failures."""
+    keeps, renamed `<name>.imported` (`_migrate_sidecar`). A sidecar that is no longer valid JSON is
+    treated as never written -- the pre-2026-08-05 form raised on it, and a boot that dies on a
+    stale file it is in the middle of retiring is the worse of the two failures."""
     blob = load_named_state(name)
     if blob is None:
         return default
@@ -2186,7 +2231,7 @@ def main():
             f"-> 1 BinLog, 1 record each (dedup held under threads)"
         )
 
-        # ---- one-time MIGRATION of a pre-P4b sidecar, and the file is LEFT ON DISK ----------------
+        # ---- one-time MIGRATION of a pre-P4b sidecar; the file is KEPT, renamed `.imported` ------
         legacy = state_path("legacy_probe.json")
         with open(legacy, "w", encoding="ascii") as f:
             json.dump({"learned": 7}, f)
@@ -2196,12 +2241,11 @@ def main():
         assert load_named_state("legacy_probe.json") == b'{"learned": 7}', (
             "the migration must leave the blob IN the lake, not just return it"
         )
-        assert os.path.exists(legacy), (
-            "the legacy sidecar must be left on disk, inert -- never deleted"
+        assert os.path.exists(legacy + ".imported") and not os.path.exists(legacy), (
+            "the legacy sidecar must be kept on disk, renamed inert -- never deleted"
         )
         # and the imported state is durable in its own right: a SEPARATE process reads it back from
         # the lake with the sidecar renamed out of the way, so nothing can be re-reading the file.
-        os.replace(legacy, legacy + ".moved")
         child_read = (
             f"import sys; sys.path.insert(0, {src_root!r})\n"
             "from snn_data_lake.substrate.home import load_named_state\n"
@@ -2259,7 +2303,8 @@ def main():
             "torn-tail recovery; LEARNED STATE lives IN the lake under _T_STATE (cross-process proven, "
             "latest-wins per name, revert-safe; sleep consolidation KEEPS the newest record per name "
             "and prunes the superseded ones, leaving every other tenant untouched) and a pre-P4b "
-            "sidecar is imported once and left on disk. The ONE shared home every entrypoint boots into."
+            "sidecar is imported once and kept, renamed. The ONE shared home every entrypoint boots "
+            "into."
         )
     finally:
         # RESTORE the caller's NORD_HOME, do not just drop it. A bare pop deletes the value the
