@@ -913,3 +913,149 @@ answered.
 (`n_owed`, the stopped-look sensitivity bar, the every-seed degeneracy screen, `ZERO_SD` / `ARM_OF` naming), `cross`
 (no-encoder beside in every state), `seq_decision` / `status` (zero SD never powered), `ttest` (-inf). Reds and greens:
 `lanes/engine-1024/e1b-fold-row/REPORT.md`. All numbers are brain-free simulations or arithmetic; no perception tier applies.
+
+## Addendum 7 (2026-10-24, lane e1b-smooth, before any E1b brain run): H-P1's cap under a smoothed planted shape (owner ruling)
+
+Append-only; written before any E1b brain run and before any E1b datum. Addenda 2-6 and every frozen section above are
+untouched; where this addendum and an earlier text differ, this addendum rules. Owner, 2026-10-24 (verbatim, in chat to
+claude-engine-1024): **"Smoothed shape"**. This answers Q1 of `lanes/engine-1024/e1b-hp1-row/OPEN-QUESTIONS.md` with the
+option the owner was shown, (c): "re-state R-S1b's planted shape as a smoothed one (e.g. kernel bootstrap) and re-derive
+the cap, as a pre-data addendum before any brain run". It replaces addendum 5's cap of 184 and addendum 6's line "184
+binds until that question is answered" (section "The H-P1 cap's owner status"). Addendum 5's raw-shape derivation stays
+as a disclosed reference. The frozen statistic is unchanged: the paired t and the sign gate ceil(5 n / 8) at each look.
+A change to the sign gate would be a new pre-registration.
+
+### Supersession list: the current values beside the earlier text they replace (as addendum 6's table)
+
+| earlier text | stated there | current (rules) | source |
+|---|---|---|---|
+| add. 5 hard cap; add. 6 rows "hard cap", "add. 3 :531 H-P1" | H-P1 184 (23 looks), shape power 0.8038; the campaign runs H-P1's 23 | H-P1 **40** (5 looks), smoothed-shape power 0.8097 (raw-shape 0.6845, reference); the campaign runs H-V1's 19 | `P1_CAP`; `logs/scan-hp1-plain.log`, `logs/verify-hp1-smooth-40.log`, `logs/verify-p1-raw-normal-40.log` |
+| add. 6 "The H-P1 cap's owner status" | 184 binds until the owner answers | answered ("Smoothed shape"): 40 binds | owner, 2026-10-24 |
+| add. 5 futility | open at looks 9-22 (n = 72-176) | no futility look (`P1_FUTILITY_LOOKS` = ()) | `logs/futility-hp1-40.log` |
+| add. 5 boundaries, look 1, and its harness-binding fixture note; e1b-hp1 Q2 | t = 64.0, `t_quantile`'s ceiling; the planted harm crosses look 1 at t > 64.0 | t = 9.8615 (5 looks), no ceiling | `logs/calib-hp1-40.log`; `fixture_runs` |
+| add. 5 type I / P(futility) / P(INCONCLUSIVE) | 0.0069 / 0.9081 / 0.0000 (raw shape, cap 184) | the Sample size section below | `logs/verify-*-40.log` |
+| add. 6 row "powered-SD bound at the cap", H-P1 | 0.1758 | **0.0840** | `logs/derive6-cap40.log` |
+| add. 6 row "add. 3 :577-580 consequence", H-P1 | an H-P1 cap stop at E1's SD is powered (0.0695 <= 0.1758; mde 0.0138) | powered (0.0695 <= 0.0840; mde 0.0290) | `logs/derive6-cap40.log` |
+| add. 6 row "add. 2 :500 R-S2" | 23 looks: naive 0.1310, sequential 0.0075 | 5 looks: naive 0.1075, sequential 0.0380 | `logs/derive6-cap40.log` |
+| add. 6 row "add. 5 :794" (C-m12) | `replay` rows past seed 159 are written and binding-checked, not read | moot: the campaign ends at H-V1's cap, seed 159 | `CAMPAIGN_LOOKS` = `V1_LOOKS` |
+| add. 6 A-m3, H-P1 pooled leave-one-out | 0.0043 | 0.0187 | `logs/derive6-cap40.log` |
+| add. 6 B MINOR-4, per-tier FWER | about .058 | about .085 (raw shape), at most .090 (normal) | this addendum, Sample size |
+| add. 5 "Shared looks" | H-V1 carried from 152 at looks 20-23 | H-P1 carried from its stop (at most 40) at looks 6-19 | `_n_owed` |
+| add. 5 runs and hours | 806 runs, about 9 h 11 min | 454 runs, about 5 h 10 min | this addendum, Runs |
+
+### Sample size (P1)
+
+**H-P1 (`_plan_w`, harm, claimed effect DH = 0.035, one-sided alpha .05, power target .8).**
+
+- **Pre-registered SD**: 0.0695, unchanged (E1's NO-ENCODER paired SD, seed 1 kept; the production power is borrowed from
+  it, addendum 4 B-N3). The production tier decides (#4616). The OBSERVED SD at the stopped look decides `powered`
+  (addendum 6 erratum).
+- **The smoothed planted shape** (it replaces R-S1b's raw 8-point resample for H-P1): a variance-corrected Gaussian
+  kernel bootstrap (Silverman 1986, sec. 6.4.1, the "shrunk" smoothed bootstrap) of E1's eight centred H-P1 d_s:
+  y = (x_I + h e) / sqrt(1 + h^2 / s0^2) + mu, where I is uniform on the 8 values, e ~ N(0, 1), and s0^2 is the 8
+  values' ddof-0 variance. That variance is the raw bootstrap's, so the smoothing changes the shape and keeps the
+  spread.
+  - **Bandwidth rule**: Silverman's rule of thumb, h = 0.9 min(SD, IQR / 1.34) n^(-1/5). On the 8 values: SD 0.0694,
+    IQR 0.0860 (0.0183 to 0.1043, inclusive quartiles), so IQR / 1.34 = 0.0642. That gives **h = 0.9 x 0.0642 x 8^(-0.2)
+    = 0.0381**, with a shrink factor of 0.8626.
+  - **P(d > 0) at DH: 0.6603**, off the sign gate's 5/8 = 0.6250, where the raw shape is pinned
+    (`lanes/engine-1024/e1b-smooth-row/derive_smooth.py bw`, `logs/bw.log`).
+- **The cap rule** is addendum 5's, unchanged: the first 8-seed look at which the SEQUENTIAL design's power (shape plus
+  DH) is >= .8, in both the numpy (200 000 campaigns) and the harness (40 000) estimate. The inflation factor is built in,
+  because power is simulated on the sequential design itself. Smoothed-shape power with the normal-model LD-OBF
+  boundaries (`derive_smooth.py scan H-P1 184 200000 plain`, RNG seeds 71/72, `logs/scan-hp1-plain.log`):
+
+  | cap | 32 | **40** | 48 | 56 | 64 | 96 | 128 | 184 |
+  |---|---|---|---|---|---|---|---|---|
+  | power | 0.7720 | **0.8078** | 0.8322 | 0.8505 | 0.8661 | 0.9054 | 0.9292 | 0.9529 |
+
+  The harness (`rpe_charge.seq_decision`, 40 000, seed 9393) gives **0.7717 at 32** and **0.8097 at 40**
+  (`logs/verify-hp1-smooth-32.log`, `-40.log`). **Hard cap = 40 seeds per tier, 5 looks of 8 seeds** (8, 16, 24, 32,
+  40). Numpy power at the cap: 0.8080 (seed 82, `logs/power-hp1-40-smooth.log`).
+- **Boundaries**: the shape-calibrated boundary was derived as addendum 4 derived H-V1's, now under the smoothed shape
+  (`derive_smooth.py calib H-P1 40 200000`, seed 91, `logs/calib-hp1-40.log`). It is BELOW the normal-model LD-OBF one
+  at every look, so the normal-model boundaries stay (`SEQ["H-P1"]["bounds"] = None`):
+
+  | look | 1 | 2 | 3 | 4 | 5 (cap) |
+  |---|---|---|---|---|---|
+  | n | 8 | 16 | 24 | 32 | 40 |
+  | t used (normal-model) | 9.8615 | 3.4103 | 2.4658 | 2.0415 | 1.7858 |
+  | smoothed-shape t | 8.5490 | 3.1836 | 2.3084 | 1.5221 | -inf |
+
+- **Type I** (<= .05 + 3 SE, which is .0533 at 40 000 and .0603 at 4000; futility ignored, conservative):
+  - under the smoothed shape: **0.0233** (numpy, seed 81) and **0.0222** (harness, seed 9292);
+  - under the raw 8-point shape: **0.0345** (numpy, seed 81), **0.0344** (harness, seed 9090) and 0.0338 (harness, seed
+    9292);
+  - under the normal null: 0.0398 (harness, seed 9090).
+  All hold. In the suite, R-S1b runs on both shapes for H-P1 (`test_rs1b_type_one_holds_under_e1s_measured_per_seed_shape`
+  over `SHAPES`, and its 40 000-campaign slow twin `test_rs1_rs2_slow_twin_40000_campaigns`).
+- **Power at the cap** (harness, 40 000): smoothed shape **0.8097**, normal model 0.8680. Under the raw 8-point shape it is
+  **0.6845**, a disclosed reference. It is below .8 because the raw shape's P(d > 0) sits on the gate, which is what the
+  ruling answers. Harm crossing by look 2: smoothed 0.1111, raw 0.0876, normal 0.1280.
+- **Futility**: no look before the cap has mde_pre <= DH (mde_pre at n = 32 is 0.0356; `derive_smooth.py futility H-P1
+  40`). So `P1_FUTILITY_LOOKS` is empty, and every H-P1 non-harm stop is the cap stop at 40. A cap stop is not a null by
+  itself: it reports its mde, and P8 item 4 decides (INCONCLUSIVE unless powered).
+- **Powered at the cap** (the addendum 6 supersession row "powered-SD bound at the cap", for H-P1): an H-P1 cap stop is
+  powered iff its observed SD <= **0.0840** = DH / ((1.7858 + 0.8509) / sqrt 40). At E1's SD the mde is 0.0290 <= DH.
+  P(INCONCLUSIVE) at E1's SD under the null (a prediction, not a decision): smoothed 0.0006, raw 0.0000, normal 0.0324.
+  At DH it is 0.0003 (smoothed). Source: `lanes/engine-1024/e1b-fold-row/derive6.py` re-run, `logs/derive6-cap40.log`.
+- **R-S2 over H-P1's 5 looks** (4000 campaigns, seed 101): naive optional stopping **0.1075**, sequential 0.0380 (the
+  log's "23 looks" label is derive6's literal). **A-m3 leave-one-out at cap 40**: H-P1 per-shape type I 0.006-0.042,
+  pooled **0.0187**.
+- **Family-wise false-harm rate per tier** (addendum 6, B MINOR-4): about 0.0344 + 0.0510 = **.085** under E1's raw shape
+  and at most 0.0398 + .05 = **.090** under the normal null. Both are within the .0975 bound. No correction (owner
+  question still open).
+
+### Shared looks (H-P1 and H-V1)
+
+H-P1's 5 looks are now H-V1's first 5. The campaign runs `CAMPAIGN_LOOKS` = **H-V1's 19 looks** (cap 152). Looks 1-5
+decide both primaries; looks 6-19 decide only H-V1, and H-P1 is carried from its own stop of record (at most 40,
+addendum 6 A-M4). `pfrozen` runs past seed 47 are not owed. `--look K` reaches 19.
+
+### Runs per look and hours (production tier decides, #4616; the no-encoder tier runs beside on the same looks)
+
+- Look 1: the frozen campaign, 86 runs, plus the 16-run bridge (unchanged).
+- Looks 2-5: `real` + `pfrozen` x 8 seeds = 16 runs per tier, 32 per look.
+- Looks 6-19: `real` only = 8 runs per tier, 16 per look.
+- Worst case to H-V1's cap: 102 + 4 x 32 + 14 x 16 = **454 runs, about 5 h 10 min no-encoder-equivalent** (41 s per run,
+  E1).
+  - Against addendum 5's 806 (about 9 h 11 min): **352 runs fewer, about 4 h 0 min less**.
+  - Against addendum 4's 438: 16 runs more (about 11 min), the `pfrozen` runs at look 5.
+- To H-P1's cap alone: 102 + 4 x 32 = 230 runs, about 2 h 37 min.
+- The production per-run time is measured at look 1, and each later look is re-estimated from it before its
+  `resource:timing` claim (unchanged).
+
+### H-V1 under the smoothed shape (reported beside, NO change; for a later owner decision)
+
+The same kernel bootstrap on E1's H-V1 d_s gives h = 0.0265 (shrink 0.9905) and P(d > 0) at DM = 0.8684 (raw: 0.8750).
+- The normal-model boundaries do not hold under it: type I at 152 is 0.1234 (`logs/scan-hv1-plain.log`). The boundaries
+  must be shape-calibrated, as addendum 4's are.
+- With smoothed-shape-calibrated boundaries per cap (`derive_smooth.py scan H-V1 184 200000 calib`,
+  `logs/scan-hv1-calib.log`), power is 0.7980 at 144 and **0.8200 at 152**. So the smoothed shape gives the same cap,
+  152.
+- Today's design (`V1_SHAPE_T`, cap 152) under the smoothed shape: type I **0.0488**, power **0.8160** (numpy 200 000,
+  seeds 81/82, `logs/power-hv1-152-v1shapet-smooth.log`).
+- H-V1's cap, boundaries and planted shape stay as addendum 4 set them.
+
+### Harness binding
+
+`src/snn_data_lake/instruments/rpe_charge.py`, in the same single block (`SEQ`):
+- `P1_CAP` = 40, `P1_LOOKS` = (8, 16, 24, 32, 40), `P1_FUTILITY_LOOKS` = ();
+- `CAMPAIGN_LOOKS` = `V1_LOOKS`, through the existing `max(..., key=len)`.
+
+Tests (`tests/test_rpe_charge.py`):
+- `_smooth_campaigns` (the smoothed shape) and `_bandwidth` (pinned to h = 0.0381 / 0.0265);
+- R-S3 / R-S4 stated rates at cap 40 for the normal, raw and smoothed models, with the power >= .8 bar on the shape each
+  cap is powered on (`CAP_SHAPE`);
+- R-S1b on the raw and the smoothed shape (`SHAPES`) and its slow twin;
+- a decision past the new cap is refused, and a look at the new cap is accepted; a missing `pfrozen` run up to the cap
+  is pending;
+- re-bound to this addendum: `test_addendum_7_fixes_the_h_p1_cap_and_its_looks_in_one_place`, the
+  futility test's H-P1 loop (closed at every look before the cap) and the CLI test (`--look` reaches 19, H-V1's cap);
+- past-cap tests at look 7, since look 20 is no longer a campaign look: H-P1 carried from its cap (compare, cross, its
+  agreement bar 30 of 40), the agreement bar over a look-1 stop, and H-V1 stopped at look 1 with later replay rows
+  written but not read.
+
+Reds and greens: `lanes/engine-1024/e1b-smooth-row/REPORT.md`. The derivation is `derive_smooth.py` and `raw_at.py`
+(addendum 5's `derive_p1.py verify` at cap 40). All numbers are brain-free simulations or arithmetic; no perception tier
+applies.
