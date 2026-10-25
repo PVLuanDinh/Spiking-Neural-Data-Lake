@@ -1238,10 +1238,13 @@ def _retire_sidecar(name):
     A `.imported*` file is never imported again; it is read only to compare. UNDO, per file: copy
     `<name>.imported` (`cp -p`) to `<name>`; the next read on an empty lake imports it again (the
     lake's own record is untouched), and a lake that holds the record keeps it. ROLLBACK: a checkout
-    older than 2026-10-24 reads `language_acq.npz` and `skills/<domain>.npz` from the FILES, so
-    after a rollback copy the HIGHEST `.imported.<n>` (the newest bytes; `.imported` when there is
-    no numbered one) to its name first or the brain cold-boots both organs; returning to this build
-    then imports whatever the rollback wrote there and renames an untouched copy unread. The JSON
+    older than 2026-10-24 reads `language_acq.npz` and `skills/<domain>.npz` from the FILES. After
+    the first rename this build saves those organs only to the lake, so a `.imported*` copy is the
+    bytes at the last rename: EXPORT the lake's current records first (`load_named_state(name,
+    path=knowledge_path())` reads without retiring; the command is in docs/RUNNING.md), never copy a
+    retired copy back -- returning here would import it over the lake's newer record (rv-arc2-r3
+    R3D-M1, pinned by `test_the_documented_rollback_export_keeps_what_arc2_learned`). Returning
+    then imports whatever the rollback wrote there and renames an untouched file unread. The JSON
     sidecars were read through the lake before that date and need nothing."""
     key = (os.environ.get("NORD_HOME"), str(name))
     if key in _RETIRED:

@@ -554,3 +554,58 @@ def test_unchanged_skills_are_not_rewritten(monkeypatch):
     size = os.path.getsize(h.knowledge_path())
     s.save()
     assert os.path.getsize(h.knowledge_path()) == size
+
+
+def _rollback_export_command():
+    """The export command docs/RUNNING.md gives the operator before a rollback, read from the
+    doc so the two cannot drift."""
+    import re
+
+    doc = os.path.join(os.path.dirname(__file__), "..", "docs", "RUNNING.md")
+    with open(doc, encoding="utf-8") as f:
+        pat = r'`python -c "(import os; from snn_data_lake\.substrate import home as h;[^"]*)"`'
+        m = re.search(pat, f.read())
+    assert m, "docs/RUNNING.md lost its rollback export command"
+    return m.group(1)
+
+
+@pytest.mark.parametrize("route, expected", [("copy_back", 10), ("export", 11)])
+def test_the_documented_rollback_export_keeps_what_arc2_learned(route, expected):
+    """rv-arc2-r3 R3D-M1: after the first rename arc 2 saves the npz organs only to the lake.
+    A rollback that starts from the highest `.imported` copy (v=0) and learns in its window
+    (+10) is imported back OVER the lake's arc-2 record (v=1): 10, the arc-2 learning lost.
+    The doc's export starts the window from the lake's record instead: 11, nothing lost."""
+    from tests.test_p4b_restart_restore import _run
+
+    root = _home()
+    names = (STATE_NAME, "skills/demo.npz")
+
+    def blob(v):
+        b = io.BytesIO()
+        np.savez(b, v=np.array([v]))
+        return b.getvalue()
+
+    def v_of(raw):
+        return int(np.load(io.BytesIO(raw))["v"][0])
+
+    for n in names:  # a pre-arc-2 sidecar, imported and renamed by the first arc-2 read
+        os.makedirs(os.path.dirname(h.state_path(n)), exist_ok=True)
+        with open(h.state_path(n), "wb") as f:
+            f.write(blob(0))
+    _restart()
+    for n in names:
+        assert v_of(h.load_named_state(n)) == 0 and not os.path.exists(h.state_path(n))
+        assert h.save_named_state(n, blob(1))  # arc 2 learns, lake only
+    _restart()
+    if route == "export":
+        assert _run(_rollback_export_command() + "; print('EXPORT true')", root, "EXPORT") is True
+    else:
+        for n in names:
+            shutil.copy2(h.state_path(n) + ".imported", h.state_path(n))
+    for n in names:  # the older checkout reads the FILE and learns in the rollback window
+        with open(h.state_path(n), "rb") as f:
+            base = v_of(f.read())
+        with open(h.state_path(n), "wb") as f:
+            f.write(blob(base + 10))
+    _restart()  # back on arc 2
+    assert [v_of(h.load_named_state(n)) for n in names] == [expected, expected]

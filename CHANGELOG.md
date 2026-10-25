@@ -41,8 +41,10 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
 - **P4b fold of the round-3 review (p4b-r3):** a refused growing-learner store is restored from its kept
   `growing_learners.refused.<store>.*` records, newest first under the same acceptance rule, so a stray seed-k brain no
   longer shelves the daemon's lifelong store (R3-M2); a sidecar that a rollback window rewrote beside a retired copy is
-  imported into the lake before it is renamed (same kind only), and UNDO/ROLLBACK copy, never rename, the highest
-  `.imported.<n>` (R3-M3); a failed keep never writes refused bytes over the live store; `state()['prototypes_refused_kept']`
+  imported into the lake before it is renamed (same kind only) (R3-M3). A rollback EXPORTS the lake's current records to
+  the files first: a retired `.imported*` copy is the bytes at the last rename, and copying it back would be imported over
+  everything arc 2 learned since (R3D-M1, measured, pinned by a test that runs the doc's own command); UNDO on an empty
+  lake copies, never renames, the highest `.imported.<n>`. A failed keep never writes refused bytes over the live store; `state()['prototypes_refused_kept']`
   counts the kept records. The renames happen at the first arc-2 read of each sidecar, for the daemon at its next boot;
   operator steps in `docs/RUNNING.md`.
 - **P5b gate** (`gates/p5b_gate.py`, rust-lead-1024): every native Rust module cites a pre-registration recording P5b's six

@@ -20,13 +20,20 @@ Run everything on one machine.
   highest earlier copy, so a lake reset does not import it again. The lake keeps the record. This covers
   `<home>/language_acq.npz`, `<home>/skills/*.npz` and the JSON sidecars (`signal_calib.json`, `recall_trace.json`,
   `time_cells.json`, ...). The JSON ones need nothing on a rollback.
-  - **Undo:** COPY (`cp -p`, never `mv`) the highest `.imported.<n>`, or `.imported` if there is no numbered one, back to
-    `<name>`.
-  - **After a rollback** to a checkout older than engine arc 2: it reads the npz files and not the lake, so copy them back
-    the same way or both organs cold-boot. From `$NORD_HOME`: `for b in language_acq.npz $(ls skills/ 2>/dev/null | grep -E '\.npz\.imported' | sed 's/\.imported.*//' | sort -u | sed 's|^|skills/|'); do f=$(ls -v "$b".imported* 2>/dev/null | tail -1); [ -e "$f" ] || continue; cp -p "$f" "$b"; done`.
-  - **Back on engine arc 2:** a copy the rollback window rewrote is imported into the lake before it is renamed (same
-    record kind only). A copy it did not rewrite is renamed unread. One case is still renamed unread: a sidecar saved over
-    before its first arc-2 read with no retired copy yet (policy-enforcer #5372 m3, narrowed).
+  - **Undo** matters only on an EMPTY lake (after a reset): COPY (`cp -p`, never `mv`) the highest `.imported.<n>`, or
+    `.imported` if there is no numbered one, back to `<name>`, and the next read imports it. On a lake that holds the
+    record, a copy put back is renamed again unread, and the lake's record stays.
+  - **Before a rollback** to a checkout older than engine arc 2: that checkout reads the npz files, not the lake. After
+    the first rename, arc 2 saves those organs ONLY to the lake, so the `.imported` copies hold the bytes from the last
+    rename. Do not copy them back: returning to arc 2 would import them over everything arc 2 learned since. Instead, with
+    the daemon stopped, export the lake's current records from the arc-2 checkout (venv python, repo root):
+    `python -c "import os; from snn_data_lake.substrate import home as h; L = h.knowledge_path(); [(os.makedirs(os.path.dirname(h.state_path(n)), exist_ok=True), open(h.state_path(n), 'wb').write(b)) for n, b in [('language_acq.npz', h.load_named_state('language_acq.npz', path=L))] + h.named_states('skills/', path=L) if b]"`.
+    An explicit `path` reads without renaming anything. Then switch checkouts.
+  - **Back on engine arc 2:** a file the rollback window rewrote is imported into the lake before it is renamed (same
+    record kind only). A file it did not rewrite is renamed unread. The export round trip keeps both the arc-2 learning and
+    the window's learning: measured on a temp home, the copy-back route lost the arc-2 record (rv-arc2-r3 R3D-M1). One case
+    is still renamed unread: a sidecar saved over before its first arc-2 read with no retired copy yet (policy-enforcer
+    #5372 m3, narrowed).
   A record written by an unpushed arc-2 build before the round-2 fold lacks `q`'s arm id and `lifelong`'s seed. Those two
   stores are refused, kept and retried at every boot under the same rule, so they relearn once. `origin/main` before engine
   arc 2 writes neither, so it is unaffected.
