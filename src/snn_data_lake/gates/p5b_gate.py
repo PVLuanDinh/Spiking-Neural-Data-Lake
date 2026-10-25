@@ -104,9 +104,10 @@ INCLUDE_RE = re.compile(r"\binclude\s*!\s*")
 INCLUDE_LIT_RE = re.compile(r'[(\[{]\s*"((?:[^"\\]|\\.)*)"\s*,?\s*[)\]}]')
 GLOB_RE = re.compile(r"[*?\[]")
 
-# Shrink-only: the eleven native modules that landed before the gate (the 20e1e742 cutoff), recorded
-# retroactively. An entry leaves in the same commit its module gains a real `//! P5b-PREREG:` citation or is
-# deleted; a module added after the cutoff can never enter (R-GRANDFATHER-OPEN).
+# Shrink-only: the native modules that landed before the gate (eleven at the 20e1e742 cutoff; five after T119
+# disposed the R0.4 kit, 2026-10-24), recorded retroactively. An entry leaves in the same commit its module
+# gains a real `//! P5b-PREREG:` citation or is deleted; a module added after the cutoff can never enter
+# (R-GRANDFATHER-OPEN).
 _WHY = f"landed before P5b's gate; recorded retroactively in {RETRO}"
 _PFC = "sndl-core/src/prefrontal_executive.rs"
 _PFC_WHY = (

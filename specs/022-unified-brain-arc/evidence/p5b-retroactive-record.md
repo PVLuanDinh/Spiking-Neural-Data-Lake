@@ -4,7 +4,8 @@
 `rust-lead-1024`, thread RUST-PORT), five days after the code it describes landed. Nothing below was
 pre-registered under P5b's six criteria; it collects what WAS measured at the time, with its source, and states
 plainly where a criterion was never tested. `gates/p5b_gate.py` keys its closed `GRANDFATHERED` table to this
-file: one entry per `.rs` file present under `native/` at origin/main `20e1e742f6d1d9deb19dee0b443e6737592a1200`.
+file: one entry per `.rs` file present under `native/` at origin/main `20e1e742f6d1d9deb19dee0b443e6737592a1200`
+(eleven then; five since T119, 2026-10-24, below).
 A new native module cannot be grandfathered; it needs a real pre-registration cited from its own header
 (`//! P5b-PREREG: <repo path>`).
 
@@ -39,6 +40,9 @@ batch B2 and is disclosed here, not repaired by back-dating.
 | `sndl-core/src/rng/pyrandom.rs`, `sndl-core/src/rng/mt19937.rs` | the CPython MT19937 stream the kernel draws from | section 2 (support of the one port; no criterion of their own) |
 | `sndl-core/src/rng/mod.rs`, `sndl-core/src/lib.rs` | module and crate roots (shared helpers, the test-only mutant switch) | section 2 |
 | `sndl-python/src/lib.rs` | the binding crate (`pfc_decide`, plus the test-only `panic_probe`) | section 2 |
-| `sndl-core/src/rng/lcg.rs`, `sndl-core/src/rng/legacy.rs`, `sndl-core/src/rng/pcg64.rs`, `sndl-core/src/rng/seedseq.rs`, `sndl-core/src/rng/parity.rs` | R0.4 kit sections no live code uses | **no P5b record possible**: criteria 1-5 do not apply to code nothing runs. `native_dormancy.NATIVE_EXEMPT` keeps them under the reason "retire when that port lands"; the port landed in `5978bbcc` (2026-10-19). Their disposition is P3's (delete, or a new reason), not P5b's, and is put to review separately |
+| `sndl-core/src/rng/lcg.rs`, `sndl-core/src/rng/legacy.rs`, `sndl-core/src/rng/pcg64.rs`, `sndl-core/src/rng/seedseq.rs`, `sndl-core/src/rng/parity.rs` | R0.4 kit sections no live code uses | **no P5b record possible**: criteria 1-5 do not apply to code nothing runs. `native_dormancy.NATIVE_EXEMPT` keeps them under the reason "retire when that port lands"; the port landed in `5978bbcc` (2026-10-19). Their disposition was P3's (delete, or a new reason), not P5b's: done 2026-10-24 by T119 (note below) |
 
-2026-10-24: disposed (T119): lcg/legacy/pcg64/seedseq deleted; parity.rs trimmed to the PyRandom families, now cites p5b-pfc-rng-record.md.
+2026-10-24: disposed (T119): lcg/legacy/pcg64/seedseq deleted; parity.rs trimmed to the PyRandom families, now cites
+p5b-pfc-rng-record.md, as does rng/mod.rs. `GRANDFATHERED` 11 -> 5 (lib.rs, prefrontal_executive.rs, mt19937.rs,
+pyrandom.rs, sndl-python/src/lib.rs); `NATIVE_EXEMPT` 5 kit rows -> 1 (parity.rs, a live reason). The gate now reads
+`modules 7, cited 2, grandfathered 5, test files 1, reds 0`.

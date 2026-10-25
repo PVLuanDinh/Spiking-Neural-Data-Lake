@@ -732,8 +732,8 @@ file in Rust is an envelope change and needs explicit owner approval.
 **Honesty guard.** "Rust is faster" is not evidence; criterion 1's measurement is. A Rust port that misses its
 pre-registered speed criterion is reverted, not kept for being native (P8: deletion on a null).
 **Mechanization: BUILT AND ASSERTING — `gates/p5b_gate.py`** (`--assert`, `--self-check`; lint CI job): each native
-module cites a six-criterion record (`//! P5b-PREREG:`). Counted 2026-10-24 (native/ as at 20e1e742): modules 11,
-cited 0, grandfathered 11 (closed; `evidence/p5b-retroactive-record.md`), reds 0.
+module cites a six-criterion record (`//! P5b-PREREG:`). Counted 2026-10-24 post-T119: modules 7,
+cited 2, grandfathered 5 (closed, 11 at 20e1e742; `evidence/p5b-retroactive-record.md`), reds 0.
 
 ---
 
