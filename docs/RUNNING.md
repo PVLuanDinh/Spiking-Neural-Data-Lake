@@ -15,6 +15,13 @@ Run everything on one machine.
   `eol=lf` and the envelope hash baseline holds their LF blob hashes, but git does not rewrite an unchanged file, so an older
   Windows checkout keeps CRLF copies and `envelope_hash_gate` reds there. From the repo root (the bytes are unchanged; only
   line endings): `cd src/snn_data_lake/brainstem && rm reflex.py serial_arm.py so101_arm.py arm_config.py interpreter.py && git checkout -- .`
+- **From engine arc 2, the brain renames the legacy sidecars it has imported into the lake** (P4b). At its next boot,
+  `<home>/language_acq.npz` and `<home>/skills/*.npz` become `<name>.imported` (or `<name>.imported.<n>` beside an earlier
+  one), so a lake reset does not import them again. The lake keeps the record. To undo, rename the file back. **After a
+  rollback** to a checkout older than engine arc 2, which reads the files and not the lake, rename them back or both organs
+  cold-boot: `for f in "$NORD_HOME"/language_acq.npz.imported "$NORD_HOME"/skills/*.npz.imported; do mv "$f" "${f%.imported}"; done`.
+  A record written by an unpushed arc-2 build before this fold lacks `q`'s arm id and `lifelong`'s seed. Those two stores
+  are refused (kept, not restored) and relearn once. `origin/main` before engine arc 2 writes neither, so it is unaffected.
 
 ---
 
