@@ -1412,3 +1412,153 @@ perception tier applies.
 ### Results
 
 Results appended below after the runs.
+
+**Run timeline (2026-10-25, -0500).** Every run comes after the rule commit 6324e68a (16:07:15). Times are from the
+logs' own stamps (`lanes/engine-1024/e1b-a9-row/logs/`):
+- 16:08:14: `bw.log`;
+- 16:08:14 to 16:08:50: the numpy scan, 6 shapes x 25 caps x 2 effects (`numpy-*.log`);
+- 16:09:11 to 16:10:16: the harness at 176 for the cap set (`harness-{S,U,H05}-176.log`);
+- 16:10:33 to 16:11:39: the harness at 176 for SC, H2, raw and normal (`harness-{SC,H2,raw,normal}-176.log`);
+- 16:11:56 (file time; the script prints no stamp): `futility-176.log` (`e1b-smooth-row/derive_smooth.py futility H-P1
+  176`, arithmetic);
+- 16:15:04: the pins' red (`red-1.log`, 22 failed with `P1_CAP` = 40); 16:16:22: the same red again
+  (`red-2-src-edit-not-applied.log`: the harness edit script had aborted on a text mismatch and written nothing);
+  16:17:17: one test-fixture failure after the harness change (`green-1.log`, see below); 16:18:27: green
+  (`green-2.log`, 159 passed); 16:19:37: the slow twins (`slow-1.log`, 6 passed); 16:25 and 16:27: the scored verify
+  (`verify-1.log`, ruff format red; `verify-2.log`, green);
+- after the review fold (new and re-targeted tests): `smoke-*.log` (16:36 on: self-check, `--look 23` refused, fast 160
+  and slow 6 passed), `verify-3.log` and the later `verify-*.log` / `smoke*-*.log` named in the REPORT.
+
+No cell was re-run, and no grid value, count or seed was changed after the commit. Bandwidths match addendum 8's
+(`bw.log`: S h 0.0381 shrink 0.8626; U variance ratio 1.3439; H05 h 0.0190).
+
+**Cap rule (item 4).** Numpy's first cap with power >= .8 under S, U and H05 is **176** (H05 0.8026 binds; at 168 H05
+gives 0.7998 and U 0.8139). The harness at 176: S **0.9518**, U **0.8163**, H05 **0.8028**, all >= .8. So **C\* = 176
+seeds per tier, 22 looks of 8** (8, 16, ..., 176). Past H-V1's 152, so `CAMPAIGN_LOOKS` = `P1_LOOKS` (Rule item 4).
+
+**Boundary re-check (item 5).** Type I (futility ignored) at 176 holds under every shape on both estimators; the
+normal-model LD-OBF boundaries stay (`SEQ["H-P1"]["bounds"]` = None) and nothing was calibrated:
+
+| shape | type I numpy (bar .0515) | type I harness (bar .0533) | power numpy | power harness | P(futility), null (harness) |
+|---|---|---|---|---|---|
+| S | 0.0014 | 0.0014 | 0.9513 | 0.9518 | 0.9014 |
+| U | 0.0014 | 0.0014 | 0.8172 | 0.8163 | 0.9100 |
+| H05 | 0.0008 | 0.0008 | 0.8026 | 0.8028 | 0.9030 |
+| SC | 0.0024 | 0.0023 | 0.9755 | 0.9746 | 0.9010 |
+| H2 | 0.0050 | 0.0047 | 0.9928 | 0.9927 | 0.8997 |
+| raw | 0.0078 | 0.0073 | 0.8004 | 0.7995 | 0.9036 |
+| normal | not run | 0.0075 | not run | 0.9926 | 0.9018 |
+
+Every numpy/harness pair agrees within 3 combined SE. Harm by look 2 is 0.0000 in every harness cell, and
+P(INCONCLUSIVE) is 0.0000 in every cell at both effects: every futility or cap stop at E1's spread is powered. Under the
+claimed effect P(futility) is 0.0000 at 176 (it is at most 0.0104, at cap 48, anywhere on the grid).
+
+**Rung 3: power vs cap (item 6).** Numpy (Rule items 3 and 6); each row is the design whose cap is that look, with its
+own LD-OBF boundaries; `robust` is the design's ROBUST power:
+
+| cap | looks | S | U | H05 | **robust** (min S, U, H05) | SC | H2 | raw |
+|---|---|---|---|---|---|---|---|---|
+| 8 | 1 | 0.3515 | 0.2788 | 0.3271 | 0.2788 | 0.3622 | 0.3792 | 0.3154 |
+| 16 | 2 | 0.6034 | 0.4860 | 0.5498 | 0.4860 | 0.6173 | 0.6343 | 0.5482 |
+| 24 | 3 | 0.7149 | 0.5860 | 0.6232 | 0.5860 | 0.7400 | 0.7680 | 0.6204 |
+| 32 | 4 | 0.7739 | 0.6434 | 0.6606 | 0.6434 | 0.8062 | 0.8430 | 0.6571 |
+| 40 | 5 | 0.8093 | 0.6797 | 0.6871 | 0.6797 | 0.8448 | 0.8859 | 0.6842 |
+| 48 | 6 | 0.8333 | 0.7020 | 0.7049 | 0.7020 | 0.8704 | 0.9122 | 0.7021 |
+| 56 | 7 | 0.8519 | 0.7193 | 0.7183 | 0.7183 | 0.8887 | 0.9303 | 0.7163 |
+| 64 | 8 | 0.8667 | 0.7331 | 0.7295 | 0.7295 | 0.9033 | 0.9428 | 0.7285 |
+| 72 | 9 | 0.8791 | 0.7449 | 0.7395 | 0.7395 | 0.9144 | 0.9528 | 0.7389 |
+| 80 | 10 | 0.8893 | 0.7550 | 0.7485 | 0.7485 | 0.9240 | 0.9605 | 0.7473 |
+| 88 | 11 | 0.8982 | 0.7630 | 0.7559 | 0.7559 | 0.9325 | 0.9666 | 0.7546 |
+| 96 | 12 | 0.9062 | 0.7709 | 0.7621 | 0.7621 | 0.9394 | 0.9717 | 0.7612 |
+| 104 | 13 | 0.9133 | 0.7775 | 0.7675 | 0.7675 | 0.9452 | 0.9757 | 0.7665 |
+| 112 | 14 | 0.9193 | 0.7836 | 0.7732 | 0.7732 | 0.9506 | 0.9793 | 0.7721 |
+| 120 | 15 | 0.9247 | 0.7893 | 0.7782 | 0.7782 | 0.9549 | 0.9822 | 0.7768 |
+| 128 | 16 | 0.9295 | 0.7940 | 0.7827 | 0.7827 | 0.9589 | 0.9843 | 0.7811 |
+| 136 | 17 | 0.9338 | 0.7980 | 0.7868 | 0.7868 | 0.9625 | 0.9862 | 0.7849 |
+| 144 | 18 | 0.9381 | 0.8025 | 0.7905 | 0.7905 | 0.9658 | 0.9879 | 0.7883 |
+| 152 | 19 | 0.9418 | 0.8063 | 0.7939 | 0.7939 | 0.9685 | 0.9895 | 0.7916 |
+| 160 | 20 | 0.9453 | 0.8105 | 0.7969 | 0.7969 | 0.9712 | 0.9908 | 0.7946 |
+| 168 | 21 | 0.9486 | 0.8139 | 0.7998 | 0.7998 | 0.9736 | 0.9919 | 0.7975 |
+| **176** | 22 | 0.9513 | 0.8172 | 0.8026 | **0.8026** | 0.9755 | 0.9928 | 0.8004 |
+
+U and H05 track the raw resample (H05 is within 0.003 of raw at every cap
+from 40 on): a narrow bandwidth or no variance correction gives back the raw shape's P(d > 0) near the sign gate's 5/8,
+so the cap returns close to addendum 5's raw-shape 184. Type I (futility ignored) is at most 0.0449 (cap 8) and
+falls to at most 0.0078 at 176; it falls with the cap under every shape, except that the raw one rises over caps 8-24
+(0.0328, 0.0358, 0.0369) before falling (`numpy-*.log`).
+
+**Futility.** `futility_open` at cap 176 opens at looks 9-21 (n = 72-168; mde_pre at 64 is 0.0354 > DH, at 72 0.0316),
+so `P1_FUTILITY_LOOKS` = (72, ..., 168) (`futility-176.log`). Under the null about 0.90 of campaigns stop for futility;
+each such stop is powered at E1's spread, so it takes the NULL-RECORD path (one 10x re-test before any deletion), never
+a deletion by itself. The cap look (176) is the final look, not a futility look.
+
+**Powered at the cap.** An H-P1 cap stop is powered iff its observed SD <= **0.1720** = DH / ((1.8556 + 0.8437) /
+sqrt 176). At E1's SD the mde is 0.0141 <= DH (`powered-sd-176.log`). The look-1 boundary is t = 64.0,
+`t_quantile`'s ceiling, as under addendum 5's 23 looks; the brain-free fixture's planted harm still crosses it.
+
+**H-V1 (item 7, NO change).** As the Rule states. It now decides looks 1-19 and is carried from its own stop of record
+at looks 20-22 (addendum 6, A-M4).
+
+**Family-wise false-harm rate per tier** (addendum 6, B MINOR-4): at most 0.0078 + 0.0510 = **.059** under E1's raw
+shape (H-P1 numpy 0.0078, the larger estimator; H-V1 harness 0.0510, addendum 6) and at most 0.0075 + .05 = **.058**
+under the normal null (H-P1 harness 0.0075). Both are within the .0975 bound. No correction (addendum 6's FWER owner
+question is still open; it is not the cap question this addendum answers).
+
+### Runs per look and hours (production tier decides, #4616; the no-encoder tier runs beside on the same looks)
+
+- Look 1: the frozen campaign, 86 runs, plus the 16-run bridge (unchanged).
+- Looks 2-22: `real` + `pfrozen` x 8 seeds = 16 runs per tier, 32 per look.
+- Worst case to H-P1's cap: 102 + 21 x 32 = **774 runs, about 8 h 49 min no-encoder-equivalent** (41 s per run, E1).
+  Against addendum 7's 454 (about 5 h 10 min): **320 runs more, about 3 h 39 min**. Against addendum 5's 806: 32 fewer.
+- The production per-run time is measured at look 1, and each later look is re-estimated from it before its
+  `resource:timing` claim (unchanged).
+
+### Supersession list: the current values beside the earlier text they replace (as addenda 6-8)
+
+| earlier text | stated there | current (rules) | source |
+|---|---|---|---|
+| add. 7 hard cap; add. 8 "Sample size (P1)" | H-P1 40 (5 looks), powered on the shrunk smoothed shape only | H-P1 **176** (22 looks), powered on S, U and H05 (robust power 0.8026) | `P1_CAP`; this addendum |
+| add. 7 "Shared looks"; `CAMPAIGN_LOOKS` | the campaign runs H-V1's 19; H-P1 carried from its stop at looks 6-19 | the campaign runs H-P1's 22; H-V1 carried from its stop at looks 20-22 | `CAMPAIGN_LOOKS` = `P1_LOOKS` |
+| add. 7 futility | no futility look | open at looks 9-21 (n = 72-168) | `P1_FUTILITY_LOOKS`; `futility-176.log` |
+| add. 7 boundaries table (5 looks, look 1 t = 9.8615) | normal-model, 5 looks | normal-model, 22 looks; look 1 t = 64.0 (ceiling), cap t = 1.8556 | `seq_boundaries(P1_LOOKS)` |
+| add. 7 "powered-SD bound at the cap", H-P1 | 0.0840 (mde 0.0290 at E1's SD) | **0.1720** (mde 0.0141) | `powered-sd-176.log` |
+| add. 7 runs and hours | 454 runs, about 5 h 10 min | 774 runs, about 8 h 49 min | this addendum, Runs |
+| add. 7 per-tier FWER | about .085 (raw), at most .090 (normal) | at most .059 (raw), at most .058 (normal) | this addendum |
+| add. 8 disclosed risks 1-2 | H-P1 U 0.679, H05 0.687 at cap 40 | resolved: U 0.8163, H05 0.8028 at 176 (harness) | this addendum, item 5 |
+| add. 8 OPEN-QUESTIONS Q1 | (a) keep 40 / (b) raise / (c) other | answered (b) by the owner, 2026-10-25 | this addendum, preamble |
+| add. 7 row "add. 5 :794" (C-m12) | moot: the campaign ends at H-V1's cap, seed 159 | live again: `replay` rows past H-V1's stop (to seed 183) are written and binding-checked, not read | module header; `_n_owed` |
+| Erratum 2026-10-25 (R3-M1) | `pfrozen` up to H-P1's cap (seeds 16-47), `real` alone past it; red test `test_degeneracy_is_screened_on_seeds_past_the_h_p1_cap` | `pfrozen` up to H-P1's stop of record (its cap, seed 183, at most), `real` alone past it while H-V1 continues; the screen reads every arm a seed ran; tests `test_degeneracy_is_screened_on_seeds_past_the_h_v1_cap`, `test_a_degenerate_seed_past_the_h_v1_cap_leaves_h_v1_unchanged`, `test_a_seed_past_h_p1s_stop_runs_real_only_and_its_degeneracy_is_still_screened` | `tests/test_rpe_charge.py` |
+| add. 8 Harness binding, R-S3 bullet | the zero-pin floor applies only to ("H-V1", "smooth", "harm_by_look2") | also to every H-P1 `harm_by_look2` pin at 176 (all 0.0) | `STATED` |
+| add. 7 rows "add. 2 :500 R-S2" (5 looks: naive 0.1075, sequential 0.0380) and "A-m3 pooled leave-one-out" (0.0187) | cap-40 values | not re-derived at 176 (outside this addendum's Rule); the cap-40 values no longer describe the design | none |
+
+### Harness binding
+
+`src/snn_data_lake/instruments/rpe_charge.py`:
+- in the single `SEQ` block: `P1_CAP` = 176; `P1_LOOKS` follows; `P1_FUTILITY_LOOKS` = `tuple(range(72, P1_CAP,
+  N_SEEDS))`; `CAMPAIGN_LOOKS` = `P1_LOOKS` through the existing `max(..., key=len)`;
+- text only: the module docstring's ADDENDUM 9 paragraph and its usage lines (`--look` and the `replay` rows past H-V1's
+  stop), the addendum citations in `analyse`'s refusal and comments, `_n_owed`'s docstring and the `--look` comment.
+
+Tests (`tests/test_rpe_charge.py`):
+- reds first (`red-1.log`): a decision past the new cap is refused and a look at it (and at 104) is accepted
+  (`test_a_decision_past_the_h_p1_cap_is_refused_and_a_look_at_it_is_accepted`), and
+  `test_addendum_9_fixes_the_h_p1_cap_and_its_looks_in_one_place`;
+- `STATED` H-P1 rows re-pinned to the harness at 176 (normal, raw "shape", "smooth") plus new `smooth_u` and
+  `smooth_h05` rows; `SMOOTH` names the variants, `_smooth_campaigns` takes them;
+- `CAP_SHAPE["H-P1"]` = ("smooth", "smooth_u", "smooth_h05"): the power >= .8 - 3 SE bar on each, in the fast R-S3 and
+  the 40 000 slow twin; `SHAPES` gains both variants for R-S1b and its slow twin;
+- the futility test's H-P1 loop (closed before 72) and the CLI test (`--look` reaches 22, H-P1's cap);
+- past-cap tests: back to addendum 5's form, past H-V1's cap at look 20 (compare, cross, agreement over H-V1's own
+  stop); a missing `pfrozen` up to H-P1's cap is pending at look 20;
+- R3-M1's degeneracy tests: the degenerate seed is past H-V1's stop (seed 165, every arm it ran); the `real`-only case
+  past H-P1's stop is `test_a_seed_past_h_p1s_stop_runs_real_only_and_its_degeneracy_is_still_screened`;
+- C-m12: a stale replay row past H-V1's stop still voids the tier
+  (`test_a_replay_row_past_h_v1s_stop_is_still_binding_checked`);
+- dropped: addendum 7's "30 of 40" agreement test (H-P1 is no longer carried past its cap inside the campaign); added
+  for H-V1: `test_h_v1_run_to_its_cap_is_carried_from_it_with_a_bar_of_six_eighths_of_the_cap` (a null H-V1 runs to
+  152: cap stop, bar 114 of 152).
+
+`green-1.log`'s one failure was a fixture: R3-M1's second test degenerated only `real` on seed 165, which now runs
+`pfrozen` too, and the screen flags a seed only when every arm it ran is degenerate; fixed in the test, not in `src/`.
+Reds and greens: `lanes/engine-1024/e1b-a9-row/REPORT.md`. The derivation is `derive_a9.py`. All numbers are brain-free
+simulations or arithmetic; no perception tier applies.
