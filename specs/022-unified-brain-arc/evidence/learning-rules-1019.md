@@ -68,11 +68,13 @@ verdict below is tagged "no-encoder tier") and the `_plan_w` count (**6 of 8 see
    amendment.
    *Integrator note, 2026-10-23, under the P1 sample-size amendment (owner, verbatim: "switch E1b to a sequential design,
    P1 policy, make sure all sessions understand that"):* "Fresh seeds 8-15" above is superseded. Seeds 8-15 become look 1
-   of a sequential design; the looks, alpha spending, futility bound and caps live in pre-data addenda 2-7 of
+   of a sequential design; the looks, alpha spending, futility bound and caps live in pre-data addenda 2-8 of
    `specs/022-unified-brain-arc/evidence/e1b-rpe-harm.md`, which govern (a later addendum rules where it differs from an
    earlier one: 3 makes the production tier decide, 4 sets H-V1's cap 152 (19 looks) at the power target under E1's
    resampled per-seed shape; 5 set H-P1's cap 184, which 7 replaces (owner "Smoothed shape") with 40 (5 looks) at the
-   power target under a kernel-smoothed resample of that shape; 6 is the arc-2 panel's erratum and supersession list).
+   power target under a kernel-smoothed resample of that shape; 6 is the arc-2 panel's erratum and supersession list;
+   8 states H-V1's cap 152 as powered on that kernel-smoothed shape too, owner 2026-10-25 "I approve the H-V1 under
+   smoothed shape").
 2. **Grower merge** (research-1016 `design/DESIGN.md` T0-T13; owner #3403 / #3423 / O-D). It is what makes grown units
    fire.
 3. **E2:** `OnlineReadout` charge on a brain whose grown units fire (blocked until 2; a re-run today returns 0.0).

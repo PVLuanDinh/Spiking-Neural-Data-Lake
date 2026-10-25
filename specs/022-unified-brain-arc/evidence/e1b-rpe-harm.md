@@ -1177,3 +1177,139 @@ it reports its mde, and P8 null-scale item 4 decides.
 ### Results
 
 Results appended below after the runs.
+
+**Run timeline (2026-10-25, -0500).** Every run comes after the rule commit 8dfdf9a2 (11:39:03). Times are from the
+logs' own stamps (`lanes/engine-1024/e1b-a8-row/logs/`):
+- 11:39:36: `bw.log`;
+- 11:39:36 to 11:41:07: the 20 numpy and harness cells (`numpy-*.log`, `harness-*.log`, `run.log`);
+- 11:39:57: the pins' red (`red-1.log`);
+- 11:41:38: the pins' green (`green-1.log`), then the slow twins (`slow-twin.log`);
+- 11:43:07 to 12:00:38: the mutation check (`mutation-v1-normal-bounds.log`), the verify runs (`verify-*.log`) and
+  the test-suite re-runs after the review fold (`smoke*.log`).
+
+No grid cell was re-run (the `smoke*.log` runs are test-suite runs), and no grid value, count or seed was changed after
+the commit.
+
+**Bandwidths** (`bw.log`):
+
+| design | variant | h | shrink 1/c | variance ratio | P(d > 0) at the claimed effect |
+|---|---|---|---|---|---|
+| H-P1 | S | 0.0381 | 0.8626 | 1.0000 | 0.6603 |
+| H-P1 | U | 0.0381 | 1.0000 | 1.3439 | 0.6299 |
+| H-P1 | SC | 0.0486 | 0.8009 | 1.0000 | 0.6730 |
+| H-P1 | H05 | 0.0190 | 0.9596 | 1.0000 | 0.6253 |
+| H-P1 | H2 | 0.0762 | 0.6488 | 1.0000 | 0.6917 |
+| H-V1 | S | 0.0265 | 0.9905 | 1.0000 | 0.8684 |
+| H-V1 | U | 0.0265 | 1.0000 | 1.0193 | 0.8682 |
+| H-V1 | SC | 0.1427 | 0.8009 | 1.0000 | 0.7117 |
+| H-V1 | H05 | 0.0133 | 0.9976 | 1.0000 | 0.8749 |
+| H-V1 | H2 | 0.0530 | 0.9635 | 1.0000 | 0.8426 |
+
+H-V1's Scott h is about 5x Silverman's. Scott reads the SD alone, and the SD is inflated by E1's outlier seed (-0.5355);
+Silverman's min(SD, IQR / 1.34) takes the IQR.
+
+**Item 1: H-V1 on the smoothed shape (S row).** All bars hold on both estimators:
+
+| estimator | type I | power | P(INCONCLUSIVE), null |
+|---|---|---|---|
+| numpy (200 000) | 0.0490 (bar .0515) | 0.8167 | 0.3756 |
+| harness (40 000) | 0.0477 (bar .0533) | 0.8145 | 0.3715 |
+
+The numpy and harness figures agree within 3 combined SE, and match e1b-smooth's reference (0.0488 / 0.8160). The
+harness rates are pinned in `STATED[("H-V1", "smooth", *)]`. `CAP_SHAPE["H-V1"]` = ("shape", "smooth"), so the power >=
+.8 bar runs on both shapes. `SHAPES` carries ("H-V1", "smooth") into R-S1b and its slow twin. Red: 2 KeyErrors
+(`red-1.log`). Green: 153 fast, 5 slow, the slow power twin on all three powered shapes included (`smoke-slow.log`).
+
+Mutation check: H-V1 put on the normal-model boundaries (`bounds` None) reds 3 smooth-shape tests (R-S1b type I, R-S3,
+R-S4; `mutation-v1-normal-bounds.log`). The mutation was reverted.
+
+**Item 2: sensitivity (REPORT-ONLY).** H-P1 cap 40 and H-V1 cap 152, today's boundaries:
+
+| design | variant | type I numpy | type I harness | power numpy | power harness | flags |
+|---|---|---|---|---|---|---|
+| H-P1 | S | 0.0227 | 0.0226 | 0.8095 | 0.8100 | none |
+| H-P1 | U | 0.0227 | 0.0226 | **0.6794** | **0.6793** | **power risk** |
+| H-P1 | SC | 0.0268 | 0.0263 | 0.8450 | 0.8464 | none |
+| H-P1 | H05 | 0.0178 | 0.0181 | **0.6870** | **0.6872** | **power risk** |
+| H-P1 | H2 | 0.0336 | 0.0335 | 0.8869 | 0.8865 | none |
+| H-V1 | S | 0.0490 | 0.0477 | 0.8167 | 0.8145 | none |
+| H-V1 | U | 0.0490 | 0.0477 | 0.8103 | 0.8076 | none |
+| H-V1 | SC | 0.0323 | 0.0311 | 0.8275 | 0.8274 | none |
+| H-V1 | H05 | 0.0498 | 0.0489 | 0.8165 | 0.8140 | none |
+| H-V1 | H2 | 0.0461 | 0.0445 | 0.8183 | 0.8165 | none |
+
+Results:
+- No variant breaks type I on either design. The highest is H-V1 H05, at 0.0498 numpy (bar .0515).
+- Every cell's two estimators agree within 3 combined SE.
+- U's type I equals S's: under the null, U is S scaled by c, and the t statistic and the sign count are
+  scale-invariant (same seeds).
+
+**Disclosed risks (named; nothing moves):**
+1. **H-P1, Silverman UNSHRUNK: power 0.679** at cap 40 (both estimators). This is addendum 7's disclosed untested
+   variant, now tested. Its variance x1.344 lowers power as addendum 7 predicted.
+2. **H-P1, h x0.5: power 0.687** at cap 40 (both estimators). As h falls, the shape returns toward the raw resample
+   (raw-shape power 0.6845, addendum 7), where P(d > 0) is pinned to the sign gate's 5/8.
+
+So H-P1's power >= .8 at cap 40 holds for the pre-registered variant and for wider bandwidths (Scott, h x2). It does not
+hold for a narrower bandwidth or without the variance correction. H-V1's design holds across the whole grid.
+
+Both risks are asked as an owner question: `lanes/engine-1024/e1b-a8-row/REPORT.md` lists them, and the question text
+is `OPEN-QUESTIONS.md` Q1 there. Until the owner answers, H-P1 40 (addendum 7, owner 2026-10-24 "Smoothed shape") and
+H-V1 152 (addendum 4, owner 2026-10-24 "Raise its cap to its power target") stand.
+
+**Every cell, in full.** The Rule promises these per-cell figures; they come from `numpy-*.log` / `harness-*.log`. The
+numpy walk does not compute harm by look 2. The pins `STATED[("H-V1", "smooth", *)]` are the harness S row: harm by
+look 2 0.0, power 0.8145, P(futility) under the null 0.0, P(INCONCLUSIVE) under the null 0.3715.
+
+| design | variant | estimator | null: harm / futility / INCONCLUSIVE | effect: harm / futility / INCONCLUSIVE | harm by look 2 (effect) |
+|---|---|---|---|---|---|
+| H-P1 | S | numpy | 0.0227 / 0.0000 / 0.0007 | 0.8095 / 0.0000 / 0.0003 | not computed |
+| H-P1 | S | harness | 0.0226 / 0.0000 / 0.0010 | 0.8100 / 0.0000 / 0.0003 | 0.1143 |
+| H-P1 | U | numpy | 0.0227 / 0.0000 / 0.1007 | 0.6794 / 0.0000 / 0.0386 | not computed |
+| H-P1 | U | harness | 0.0226 / 0.0000 / 0.0997 | 0.6793 / 0.0000 / 0.0403 | 0.0692 |
+| H-P1 | SC | numpy | 0.0268 / 0.0000 / 0.0014 | 0.8450 / 0.0000 / 0.0004 | not computed |
+| H-P1 | SC | harness | 0.0263 / 0.0000 / 0.0017 | 0.8464 / 0.0000 / 0.0005 | 0.1228 |
+| H-P1 | H05 | numpy | 0.0178 / 0.0000 / 0.0000 | 0.6870 / 0.0000 / 0.0000 | not computed |
+| H-P1 | H05 | harness | 0.0181 / 0.0000 / 0.0000 | 0.6872 / 0.0000 / 0.0000 | 0.0959 |
+| H-P1 | H2 | numpy | 0.0336 / 0.0000 / 0.0033 | 0.8869 / 0.0000 / 0.0008 | not computed |
+| H-P1 | H2 | harness | 0.0335 / 0.0000 / 0.0032 | 0.8865 / 0.0000 / 0.0008 | 0.1371 |
+| H-V1 | S | numpy | 0.0490 / 0.0000 / 0.3756 | 0.8167 / 0.0000 / 0.1829 | not computed |
+| H-V1 | S | harness | 0.0477 / 0.0000 / 0.3715 | 0.8145 / 0.0000 / 0.1848 | 0.0000 |
+| H-V1 | U | numpy | 0.0490 / 0.0000 / 0.4190 | 0.8103 / 0.0000 / 0.1895 | not computed |
+| H-V1 | U | harness | 0.0477 / 0.0000 / 0.4158 | 0.8076 / 0.0000 / 0.1922 | 0.0000 |
+| H-V1 | SC | numpy | 0.0323 / 0.0000 / 0.3411 | 0.8275 / 0.0000 / 0.1341 | not computed |
+| H-V1 | SC | harness | 0.0311 / 0.0000 / 0.3372 | 0.8274 / 0.0000 / 0.1363 | 0.0000 |
+| H-V1 | H05 | numpy | 0.0498 / 0.0000 / 0.3746 | 0.8165 / 0.0000 / 0.1834 | not computed |
+| H-V1 | H05 | harness | 0.0489 / 0.0000 / 0.3712 | 0.8140 / 0.0000 / 0.1858 | 0.0000 |
+| H-V1 | H2 | numpy | 0.0461 / 0.0000 / 0.3705 | 0.8183 / 0.0000 / 0.1782 | not computed |
+| H-V1 | H2 | harness | 0.0445 / 0.0000 / 0.3653 | 0.8165 / 0.0000 / 0.1792 | 0.0000 |
+
+Under the null, U leaves INCONCLUSIVE at a higher rate than S (H-P1 0.1007 vs 0.0007; H-V1 0.4190 vs 0.3756). Its
+wider spread raises the observed SD, so more stops miss the powered bar. Those stops read INCONCLUSIVE and never as a
+null (P8 item 4).
+
+### Supersession list: the current values beside the earlier text they replace (as addenda 6 and 7)
+
+| earlier text | stated there | current (rules) | source |
+|---|---|---|---|
+| add. 7 "H-V1 under the smoothed shape (reported beside, NO change; for a later owner decision)", its last line | "H-V1's cap, boundaries and planted shape stay as addendum 4 set them" | cap and boundaries unchanged; H-V1 is powered on the raw AND the smoothed shape (owner, 2026-10-25) | this addendum, item 1 |
+| add. 7 Harness binding, tests bullet 2 | "the power >= .8 bar on the shape each cap is powered on (`CAP_SHAPE`)" | on every shape each cap is powered on (`CAP_SHAPE` maps a key to a tuple of shapes) | `tests/test_rpe_charge.py` |
+| add. 7 Derivation timeline, last paragraph | "One choice remains disclosed and untested: the unshrunk smoothed bootstrap ..." | tested: variant U, H-P1 power 0.679 at cap 40, a disclosed risk; cap 40 stands (owner ruling) | this addendum, item 2 |
+
+### Harness binding
+
+`src/snn_data_lake/instruments/rpe_charge.py` is unchanged. No bar failed, so `SEQ`, `V1_CAP`, `V1_SHAPE_T` and `P1_CAP`
+stand.
+
+Tests (`tests/test_rpe_charge.py`):
+- `CAP_SHAPE` = {"H-P1": ("smooth",), "H-V1": ("shape", "smooth")};
+- `SHAPES` gains ("H-V1", "smooth"), so R-S1b's type-I test and its 40 000 slow twin run on it;
+- `STATED[("H-V1", "smooth", *)]` hold the harness S row above;
+- R-S3 applies the power >= .8 bar on every shape in `CAP_SHAPE`. Its rate check stays "within 3 SE" (Rule item 1)
+  except for a pin of exactly 0, which takes R-S4's floor (3 x SE at .01) instead of a zero tolerance. That is the one
+  departure from the Rule's wording, and it applies only to `("H-V1", "smooth", "harm_by_look2")`;
+- the slow power twin `test_rs3_slow_twin_power_at_the_cap_is_at_least_point_8` is parametrized over every (key, shape)
+  in `CAP_SHAPE`, at 40 000 campaigns. It replaces the H-P1-only twin.
+
+Reds, greens and mutation checks: `lanes/engine-1024/e1b-a8-row/REPORT.md`. The derivation is `derive_a8.py`. All
+numbers are brain-free simulations; no perception tier applies.
