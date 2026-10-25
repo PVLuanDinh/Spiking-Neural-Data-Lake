@@ -13,8 +13,8 @@ stream, brain-free compare fixtures, the cross-tier rule (addendum 3: production
   python -m snn_data_lake.instruments.rpe_charge compare <results dir> <tier> [out.md]
   python -m snn_data_lake.instruments.rpe_charge cross <production dir> <no-encoder dir> [out.md]
   (replay / compare / cross take `--look K`, K = 1..len(CAMPAIGN_LOOKS): seeds 8 .. 8 + CAMPAIGN_LOOKS[K-1] - 1;
-   addenda 2, 4 and 5, default look 1; every look adds `real` + `pfrozen` up to H-P1's cap; `replay` writes a row
-   for every seed of the look, and rows past H-V1's cap are written and binding-checked, not read)
+   addenda 2, 4, 5 and 7, default look 1; every look adds `real`, and `pfrozen` up to H-P1's cap (seeds past it owe
+   none); `replay` writes a row for every seed of the look)
   python -m snn_data_lake.instruments.rpe_charge fixture <logs dir>    # appends the three fixture lines to fixture.log
 
 ARMS (E1's exact patch code; only the arm's own `_valence` instance and the bound AutonomousArm are acted on
@@ -76,6 +76,10 @@ ADDENDUM 6 (arc-2 panel fold, before any brain run): each primary is carried fro
 not from its cap: runs past a stop are not owed and a later look reprints the stop. The seed-sensitivity flag reads the
 stopped look's `bound_t` / `k_min` and screens degeneracy on the real/pfrozen pair of every seed. A zero observed SD is
 never powered (`ZERO_SD`). The no-encoder tier never holds the production decision (departure 3).
+ADDENDUM 7 (owner 2026-10-24, verbatim: "Smoothed shape"; before any brain run): H-P1's cap P1_CAP is re-derived under
+a smoothed planted shape (variance-corrected Gaussian kernel bootstrap of E1's centred d_s, Silverman bandwidth), which
+replaces addendum 5's 184. H-V1's 19 looks are now the longer, so the campaign runs CAMPAIGN_LOOKS = V1_LOOKS; looks up
+to P1_CAP add `real` + `pfrozen`, later looks `real` only, and H-P1 is carried from its own stop past its cap.
 ONE SEQUENTIAL MECHANISM (P2, re-panel B-N7): `seq_boundaries` / `seq_decision` / `seq_record` are the project's one
 alpha-spending implementation (graph-exists "alpha spending": no other site). G1(c)-2 and G2, and any later
 pre-registration under the P1 amendment, import them from here; moving them to a shared module is that consumer's change,
@@ -150,12 +154,12 @@ V1_SHAPE_T = (
     2.1730,
 )  # derive_v1.py calib 152 (200 000 campaigns)
 V1_FUTILITY_LOOKS = ()  # looks before the cap whose mde from SD_PRE["H-V1"] is <= DM: none (n=144 gives 0.0527)
-# Addendum 5: H-P1's power under E1's shape is .8036 at 184 (harness .8038); at 176 the harness gave .7987 < .8, so
-#   one block more. No fixed-sample shape target exists: the sign gate's 5/8 equals the shifted shape's P(d > 0), so
-#   one-look power peaks at .584 (n = 24). e1b-hp1-row/derive_p1.py `power` / `calib` / `futility` / `verify`
-P1_CAP = 184
+# Addendum 7 (owner 2026-10-24 "Smoothed shape"): H-P1's power under the SMOOTHED shape (Gaussian kernel bootstrap of
+#   E1's centred d_s, Silverman h = 0.0381) is .8078 at 40 (harness .8097); 32 gives .7720 (harness .7717). The raw
+#   shape (addendum 5, 184) pins P(d > 0) to the sign gate's 5/8. e1b-smooth-row/derive_smooth.py
+P1_CAP = 40
 P1_LOOKS = tuple(range(N_SEEDS, P1_CAP + 1, N_SEEDS))
-# mde from SD_PRE["H-P1"] <= DH from n=72 (0.0322)
+# mde from SD_PRE["H-P1"] <= DH from n=72 (0.0322): no look before the cap
 P1_FUTILITY_LOOKS = tuple(range(72, P1_CAP, N_SEEDS))
 # both are 8-seed blocks from seed 8: the longer holds the other
 CAMPAIGN_LOOKS = max(P1_LOOKS, V1_LOOKS, key=len)
@@ -1134,7 +1138,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         refuse(
             tier,
             "compare",
-            f"{ns} seeds is not a pre-registered look {CAMPAIGN_LOOKS} (addenda 2, 4, 5)",
+            f"{ns} seeds is not a pre-registered look {CAMPAIGN_LOOKS} (addenda 2, 4, 5, 7)",
         )
     # each endpoint reads the seed block its pre-registration names (re-panel A-B1): the secondaries and the
     # dispositions the look-1 block, H-P1 and H-V1 every look up to their own caps
@@ -1151,7 +1155,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         for s in seeds
         if str(s) in rows_all
     }
-    # each primary carried from its own stop of record, else its cap (A-M4; addenda 3, 4, 5)
+    # each primary carried from its own stop of record, else its cap (A-M4; addenda 3-7)
     n_exp = {"H-P1": _n_owed("H-P1", seeds, d_p1), "H-V1": _n_owed("H-V1", seeds, d_v1)}
     block, p1_seeds, v1_seeds = seeds[:N_SEEDS], seeds[: n_exp["H-P1"]], seeds[: n_exp["H-V1"]]
     a = {"tier": tier, "seeds": seeds, "n_owed": n_exp}
@@ -1200,7 +1204,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
                 bad.append(f"pc seed {s} flips == 0")
         else:
             pending.append(f"pc seed {s} missing")
-    for arm in ARMS:  # later looks add `real` + `pfrozen` up to H-P1's cap (addenda 2, 5)
+    for arm in ARMS:  # later looks add `real` + `pfrozen` up to H-P1's cap (addenda 2, 5, 7)
         for s in seeds if arm == "real" else p1_seeds if arm == "pfrozen" else block:
             if (arm, s) not in runs:
                 pending.append(f"{arm}_{s} missing")
@@ -1537,7 +1541,7 @@ def _series_differ(ra, rb, h0):
 #   gradient_claim_gate, ...) are term overlap only, none walks sequential looks (sites read)
 def _n_owed(key, seeds, d_by_seed):
     """Seeds a primary's verdict reads at this look (A-M4): its own stop of record when a complete look prefix has
-    stopped, else this look or its cap, whichever is smaller (addenda 4, 5). Runs past a stop are never owed."""
+    stopped, else this look or its cap, whichever is smaller (addenda 4-7). Runs past a stop are never owed."""
     looks, owed = SEQ[key]["looks"], min(len(seeds), SEQ[key]["looks"][-1])
     done = next((i for i, s in enumerate(seeds) if s not in d_by_seed), len(seeds))
     reach = [n for n in looks if n <= min(done, owed)]
@@ -1910,9 +1914,8 @@ def fixture_runs(kind, tier="production"):
     runs = {}
     for s in SEEDS:
         base = 0.2 + 0.01 * (s % 5)
-        noise = 0.001 * (
-            (s * 7) % 5 - 2
-        )  # addendum 5: spread must stay small; H-P1's look-1 boundary (of 23) is t > 64.0
+        # spread must stay small: the planted harm must cross H-P1's look-1 boundary
+        noise = 0.001 * ((s * 7) % 5 - 2)
         dh = 0.1 + noise if kind in ("harm", "void") else 0.0
         for arm in ARMS:
             r = base + (dh if arm in ("pfrozen", "pshuf") else 0.0)
@@ -1999,7 +2002,7 @@ def main(argv=()):
         return _selfcheck()
     cmd, rest = argv[0], argv[1:]
     seeds = SEEDS
-    if "--look" in rest:  # addenda 2, 4, 5
+    if "--look" in rest:  # addenda 2, 4, 5, 7
         i = rest.index("--look")
         look = int(rest[i + 1])
         if not 1 <= look <= len(CAMPAIGN_LOOKS):
