@@ -1188,7 +1188,7 @@ N_SIM = 4000  # fast twin; the slow twin runs 40000
 # The addendum's stated rates (addendum 4: e1b-fix-row/derive_v1.py `verify`, 40000 campaigns, RNG
 # seeds 7070 / 8080,
 # not the tests' 303 / 404). "normal": d_s ~ N(mu, SD); "shape": E1's measured d_s, centred,
-# resampled, plus mu (R-S1b); "smooth": the kernel bootstrap (addenda 7 / 8).
+# resampled, plus mu (R-S1b); "smooth*": the kernel bootstrap (addenda 7-9).
 STATED = {
     ("H-V1", "shape", "harm_by_look2"): 0.0004,
     ("H-V1", "shape", "power"): 0.8164,
@@ -1199,27 +1199,35 @@ STATED = {
     ("H-V1", "smooth", "power"): 0.8145,
     ("H-V1", "smooth", "futility_null"): 0.0,
     ("H-V1", "smooth", "inconclusive_null"): 0.3715,
-    # addendum 7 (H-P1 cap 40): e1b-smooth-row/raw_at.py = derive_p1.py `verify 40000` at cap 40
-    # (seeds 9090 / 9191); "smooth": derive_smooth.py `verify H-P1 40000 smooth 40`
-    # (seeds 9292 / 9393)
-    ("H-P1", "normal", "harm_by_look2"): 0.1280,
-    ("H-P1", "normal", "power"): 0.8680,
-    ("H-P1", "normal", "futility_null"): 0.0,
-    ("H-P1", "normal", "inconclusive_null"): 0.0324,
-    ("H-P1", "shape", "harm_by_look2"): 0.0876,
-    ("H-P1", "shape", "power"): 0.6845,
-    ("H-P1", "shape", "futility_null"): 0.0,
+    # addendum 9 (H-P1 cap 176): e1b-a9-row/derive_a9.py `harness <shape> 176` (seeds 9696 / 9797);
+    # "shape" = raw, "smooth" = S, "smooth_u" = U, "smooth_h05" = H05
+    ("H-P1", "normal", "harm_by_look2"): 0.0,
+    ("H-P1", "normal", "power"): 0.9926,
+    ("H-P1", "normal", "futility_null"): 0.9018,
+    ("H-P1", "normal", "inconclusive_null"): 0.0,
+    ("H-P1", "shape", "harm_by_look2"): 0.0,
+    ("H-P1", "shape", "power"): 0.7995,
+    ("H-P1", "shape", "futility_null"): 0.9036,
     ("H-P1", "shape", "inconclusive_null"): 0.0,
-    ("H-P1", "smooth", "harm_by_look2"): 0.1111,
-    ("H-P1", "smooth", "power"): 0.8097,
-    ("H-P1", "smooth", "futility_null"): 0.0,
-    ("H-P1", "smooth", "inconclusive_null"): 0.0006,
+    ("H-P1", "smooth", "harm_by_look2"): 0.0,
+    ("H-P1", "smooth", "power"): 0.9518,
+    ("H-P1", "smooth", "futility_null"): 0.9014,
+    ("H-P1", "smooth", "inconclusive_null"): 0.0,
+    ("H-P1", "smooth_u", "harm_by_look2"): 0.0,
+    ("H-P1", "smooth_u", "power"): 0.8163,
+    ("H-P1", "smooth_u", "futility_null"): 0.9100,
+    ("H-P1", "smooth_u", "inconclusive_null"): 0.0,
+    ("H-P1", "smooth_h05", "harm_by_look2"): 0.0,
+    ("H-P1", "smooth_h05", "power"): 0.8028,
+    ("H-P1", "smooth_h05", "futility_null"): 0.9030,
+    ("H-P1", "smooth_h05", "inconclusive_null"): 0.0,
 }
-# the planted shapes each primary's cap is powered on (P1 item 2): H-P1 the smoothed one
-# (addendum 7, owner "Smoothed shape"), H-V1 the raw resample (addendum 4) and the smoothed one
-# (addendum 8, owner "I approve the H-V1 under smoothed shape"); H-P1's raw shape is a disclosed
-# reference
-CAP_SHAPE = {"H-P1": ("smooth",), "H-V1": ("shape", "smooth")}
+# the planted shapes each primary's cap is powered on (P1 item 2): H-P1 the smoothed S, U and H05
+# (addendum 9), H-V1 the raw resample (addendum 4) and S (addendum 8); H-P1's raw shape is a
+# disclosed reference
+CAP_SHAPE = {"H-P1": ("smooth", "smooth_u", "smooth_h05"), "H-V1": ("shape", "smooth")}
+# addendum 8's variants S, U, H05 (addendum 9's cap set): (factor on h, variance-corrected)
+SMOOTH = {"smooth": (1.0, True), "smooth_u": (1.0, False), "smooth_h05": (0.5, True)}
 # E1's measured per-seed d_s (addendum 2's table, no-encoder tier, seed 1 kept): the planted SHAPE
 # of R-S1b
 E1_D = {
@@ -1260,12 +1268,13 @@ def _bandwidth(key):
     return 0.9 * min(statistics.stdev(E1_D[key]), (q3 - q1) / 1.34) * len(E1_D[key]) ** -0.2
 
 
-def _smooth_campaigns(key, mu, n_sim, seed):
-    """R-S1b smoothed (addendum 7): a variance-corrected Gaussian kernel bootstrap of E1's centred
-    d_s, shifted by mu."""
+def _smooth_campaigns(key, mu, n_sim, seed, dist):
+    """R-S1b smoothed (addendum 7): a Gaussian kernel bootstrap of E1's centred d_s, shifted by mu;
+    `dist` keys `SMOOTH`."""
     pool = _centred(key)
-    h = _bandwidth(key)
-    c = math.sqrt(1 + h * h / statistics.pvariance(pool))
+    f, shrunk = SMOOTH[dist]
+    h = f * _bandwidth(key)
+    c = math.sqrt(1 + h * h / statistics.pvariance(pool)) if shrunk else 1.0
     rng = random.Random(seed)
     for _ in range(n_sim):
         yield [
@@ -1276,7 +1285,9 @@ def _smooth_campaigns(key, mu, n_sim, seed):
 def _planted(key, dist, mu, n_sim, seed):
     if dist == "normal":
         return _campaigns(mu, SD_OF[key], n_sim, seed, key)
-    return (_smooth_campaigns if dist == "smooth" else _shape_campaigns)(key, mu, n_sim, seed)
+    if dist in SMOOTH:
+        return _smooth_campaigns(key, mu, n_sim, seed, dist)
+    return _shape_campaigns(key, mu, n_sim, seed)
 
 
 def _walk(ds, key="H-P1", *, futility=True):
@@ -1326,13 +1337,20 @@ def test_rs1_h_v1_type_one_holds_under_the_normal_null_too():
 
 
 # R-S1b planted shapes (legend above STATED)
-SHAPES = [("H-P1", "shape"), ("H-P1", "smooth"), ("H-V1", "shape"), ("H-V1", "smooth")]
+SHAPES = [
+    ("H-P1", "shape"),
+    ("H-P1", "smooth"),
+    ("H-P1", "smooth_u"),
+    ("H-P1", "smooth_h05"),
+    ("H-V1", "shape"),
+    ("H-V1", "smooth"),
+]
 
 
 @pytest.mark.parametrize("key,dist", SHAPES)
 def test_rs1b_type_one_holds_under_e1s_measured_per_seed_shape(key, dist):
     # R-S1b (re-panel A-B2): 4000 campaigns, each drawing E1's centred d_s to the endpoint's cap,
-    # raw ("shape") or kernel-smoothed ("smooth", addenda 7 / 8). Under the raw shape the plain t
+    # raw ("shape") or kernel-smoothed ("smooth*", addenda 7-9). Under the raw shape the plain t
     # boundaries of addendum 2 gave H-V1 a type I of 0.2185 (rv-arc1-a r2/typeI_shape.out).
     p = _type_one_shape(N_SIM, 505, key, dist)
     assert p <= 0.05 + 3 * _se(0.05), (key, dist, p)
@@ -1753,6 +1771,16 @@ def test_a_replay_row_bound_to_another_series_or_tree_voids_the_tier():
     assert not R.analyse("production", runs, e2, logs_pass=True)["valid"]
 
 
+def test_a_replay_row_past_h_v1s_stop_is_still_binding_checked():
+    # addendum 9 (C-m12): a row past H-V1's stop is not read, yet a stale one still voids the tier
+    runs, e2 = _extend(R.fixture_runs("noharm"), R.fixture_e2(), range(16, 168))
+    e2 = _bind(e2, runs)
+    e2["real"]["165"]["digest"] = "0" * 64
+    a = R.analyse("production", runs, e2, seeds=range(8, 168), logs_pass=True)
+    assert a["n_owed"]["H-V1"] < 165 - R.SEEDS[0], a["n_owed"]
+    assert not a["valid"] and any("replay row seed 165" in b for b in a["bad"]), a["bad"]
+
+
 def test_replay_writes_the_binding_of_the_run_it_replayed():
     run = R.fixture_runs("noharm")[("real", 8)]
     row = R.replay({8: run})["real"]["8"]
@@ -1796,8 +1824,8 @@ def test_futility_is_taken_only_at_a_look_powered_by_the_preregistered_sd():
         q = R.seq_decision(_series(-0.2, SD_P1, n), R.DH, sd_pre=SD_P1)
         assert q["decision"] == "continue" and q["cp"] < R.FUTILITY_CP, q
         assert not q["futility_open"], q
-    # addendum 7, H-P1 cap 40: closed at every look before the cap (mde_pre at 32: 0.0356)
-    for n in R.P1_LOOKS[:-1]:
+    # addendum 9, H-P1 cap 176: closed before n=72 (mde_pre at 64: 0.0354), open from 72
+    for n in range(8, 72, 8):
         q = R.seq_decision(_series(-0.2, SD_P1, n), **R.SEQ["H-P1"])
         assert q["decision"] == "continue" and not q["futility_open"], q
     q = R.seq_decision(_futility_at_look_1(0.005, 25), R.DH, sd_pre=0.005)
@@ -1842,22 +1870,22 @@ def test_a_decision_past_the_h_v1_cap_is_refused_and_a_look_past_32_is_accepted(
     assert R.seq_record([0.01] * 40, **R.SEQ["H-V1"])["n"] in R.SEQ["H-V1"]["looks"]
 
 
-def test_addendum_7_fixes_the_h_p1_cap_and_its_looks_in_one_place():
-    # addendum 7 (owner "Smoothed shape"): first 8-seed look with smoothed-shape power >= .8 in
-    # numpy (200000) and harness (40000); 40: .8078 / .8097, 32: .7720 / .7717
-    assert R.P1_CAP == 40
+def test_addendum_9_fixes_the_h_p1_cap_and_its_looks_in_one_place():
+    # addendum 9: first 8-seed look with power >= .8 under S, U and H05 in numpy and harness
+    # (numbers at rpe_charge.P1_CAP)
+    assert R.P1_CAP == 176
     assert R.SEQ["H-P1"]["looks"] == R.P1_LOOKS == tuple(range(8, R.P1_CAP + 1, 8))
-    # the smoothed-shape-calibrated boundary is below the normal-model one at every look
+    # type I holds under every variant and the raw shape (max .0078): the normal-model boundaries
     assert R.SEQ["H-P1"]["bounds"] is None
-    assert R.P1_FUTILITY_LOOKS == ()  # mde_pre at 32 is 0.0356 > DH
-    # one campaign: the longer primary's looks (H-V1's)
-    assert R.CAMPAIGN_LOOKS == R.V1_LOOKS and set(R.P1_LOOKS) < set(R.CAMPAIGN_LOOKS)
+    assert R.P1_FUTILITY_LOOKS == tuple(range(72, 169, 8))  # mde_pre at 72 is 0.0316 <= DH
+    # one campaign: the longer primary's looks (H-P1's)
+    assert R.CAMPAIGN_LOOKS == R.P1_LOOKS and set(R.V1_LOOKS) < set(R.CAMPAIGN_LOOKS)
 
 
 def test_a_decision_past_the_h_p1_cap_is_refused_and_a_look_at_it_is_accepted():
     with pytest.raises(R.Refused):
         R.seq_record([0.01] * (R.P1_CAP + 8), **R.SEQ["H-P1"])
-    for n in (16, 32, R.P1_CAP):
+    for n in (16, 104, R.P1_CAP):
         q = R.seq_decision([0.01 * (i % 3) for i in range(n)], **R.SEQ["H-P1"])
         assert q["n"] == n and q["n_looks"] == len(R.P1_LOOKS), q
     with pytest.raises(R.Refused):  # past H-V1's own cap
@@ -1883,69 +1911,81 @@ def test_cli_look_reaches_the_campaign_cap_and_no_further(monkeypatch):
     with pytest.raises(R.Refused):
         R.main(["compare", "x", "production", "--look", str(len(R.CAMPAIGN_LOOKS) + 1)])
     assert R.main(["compare", "x", "production", "--look", str(len(R.CAMPAIGN_LOOKS))]) == 0
-    assert seen[-1] == list(range(8, 8 + R.V1_CAP))  # look 19: H-V1's cap, past H-P1's
+    assert seen[-1] == list(range(8, 8 + R.P1_CAP))  # look 22: H-P1's cap, past H-V1's
 
 
-def _past_p1_cap(kind="noharm", tier="production"):
-    """Look 7 (56 seeds) on `tier`, past H-P1's cap 40 (addendum 7): `real` + a replay row on every
-    seed, `pfrozen` only up to the cap, so the seeds past it (48-63) owe no `pfrozen` run."""
+def _past_v1_cap(tier, null_v1=False):
+    """Look 20 (160 seeds) on `tier`, past H-V1's cap 152 (addendum 9, as addendum 5): real +
+    pfrozen on every seed, replay rows on every seed too, so the rows past H-V1's stop (its cap at
+    most: seeds 160-167 at least) must be ignored, not read. `null_v1`: the replay d_s alternate
+    +-0.02 from seed 16, so H-V1 never crosses and runs to its cap."""
     runs, e2 = _extend(
-        R.fixture_runs(kind, tier), R.fixture_e2(tier=tier), range(16, 64), kind, tier
+        R.fixture_runs("noharm", tier), R.fixture_e2(tier=tier), range(16, 168), tier=tier
     )
-    return R.analyse(tier, runs, _bind(e2, runs), seeds=range(8, 64), logs_pass=True), runs
+    if null_v1:
+        for s in range(16, 168):
+            row = e2["real"][str(s)]
+            row["frozen"] = row["learn"] - (0.02 if s % 2 else -0.02)
+    return R.analyse(tier, runs, _bind(e2, runs), seeds=range(8, 168), logs_pass=True), runs
 
 
-def test_compare_past_the_h_p1_cap_decides_h_v1_and_carries_h_p1_from_its_stop():
-    a, _ = _past_p1_cap()
+def test_compare_past_the_h_v1_cap_decides_h_p1_and_carries_h_v1_from_its_stop():
+    a, _ = _past_v1_cap("production")
     assert a["valid"] and a["pending"] == [], (a["bad"], a["pending"])
-    assert a["hs"]["H-V1"]["n"] == a["n_owed"]["H-V1"] and "seq" in a["hs"]["H-V1"]
-    n = a["n_owed"]["H-P1"]  # it continues to its cap: the cap is its stop of record (A-M4)
-    assert a["hs"]["H-P1"]["n"] == n == a["hs"]["H-P1"]["seq"]["n"] == R.P1_CAP
-    assert a["hs"]["H-P1"]["seq"]["decision"] == "cap", a["hs"]["H-P1"]["seq"]
+    assert a["hs"]["H-P1"]["n"] == 160 and "seq" in a["hs"]["H-P1"]
+    n = a["n_owed"]["H-V1"]  # A-M4: its stop of record, never past its cap
+    assert a["hs"]["H-V1"]["n"] == n == a["hs"]["H-V1"]["seq"]["n"] <= R.V1_CAP
 
 
-def test_cross_past_the_h_p1_cap_counts_h_p1_over_its_own_cap():
-    (pa, pr), (na, nr) = _past_p1_cap(), _past_p1_cap(tier="no-encoder")
+def test_cross_past_the_h_v1_cap_counts_h_v1_over_its_own_cap():
+    (pa, pr), (na, nr) = _past_v1_cap("production"), _past_v1_cap("no-encoder")
+    assert pa["hs"]["H-V1"]["met"], pa["hs"]["H-V1"]["status"]  # the "agrees on" branch runs
     out = R.cross(pa, pr, na, nr)
-    n = min(pa["n_owed"]["H-P1"], na["n_owed"]["H-P1"])  # A-M4: over the stops, never past the cap
-    assert n == R.P1_CAP and len(out["table"]) == n
-    assert len(out["table_v1"]) == min(pa["n_owed"]["H-V1"], na["n_owed"]["H-V1"]) > R.P1_CAP
+    n = min(pa["n_owed"]["H-V1"], na["n_owed"]["H-V1"])  # A-M4: over the stops, never past the cap
+    assert n <= R.V1_CAP and len(out["table_v1"]) == n and len(out["table"]) == 160
+    assert f"agrees on {out['agree_v1']}/{n}" in out["h_v1"], out["h_v1"]
+
+
+def test_both_tiers_past_the_h_v1_cap_count_h_v1_agreement_over_its_own_cap(both_tiers):
+    (pa, pr), (na, nr) = _past_v1_cap("production"), _past_v1_cap("no-encoder")
+    na["hs"]["H-V1"]["d"] = [-x if i % 2 else x for i, x in enumerate(na["hs"]["H-V1"]["d"])]
+    out = R.cross(pa, pr, na, nr)
+    assert pa["hs"]["H-V1"]["met"] and na["hs"]["H-V1"]["met"]
+    n = min(pa["n_owed"]["H-V1"], na["n_owed"]["H-V1"])
+    assert f"agrees on only {out['agree_v1']}/{n}" in out["h_v1"], out["h_v1"]
 
 
 @pytest.mark.parametrize("extra", [0, 1])
-def test_both_tiers_agreement_bar_at_a_look_past_the_h_p1_cap_is_six_eighths_of_its_own_stop(
+def test_both_tiers_agreement_bar_past_the_h_v1_cap_is_six_eighths_of_its_own_stop(
     both_tiers, extra
 ):
-    # ceil(6 * n / 8) agreeing seeds over H-P1's own stop n (A-M4: here look 1), never scaled by the
-    # 56-seed look
-    (pa, pr), (na, nr) = _past_p1_cap("harm"), _past_p1_cap("harm", "no-encoder")
-    n = min(pa["n_owed"]["H-P1"], na["n_owed"]["H-P1"])
+    # ceil(6 * n / 8) agreeing seeds over H-V1's own stop n (A-M4), never scaled by the 160-seed
+    # look
+    (pa, pr), (na, nr) = _past_v1_cap("production"), _past_v1_cap("no-encoder")
+    n = min(pa["n_owed"]["H-V1"], na["n_owed"]["H-V1"])
     need = math.ceil(R.AGREE_MIN * n / R.N_SEEDS)
     flipped = n - need + extra
-    d = na["hs"]["H-P1"]["d"]  # flip from the end of the seeds both tiers read
-    na["hs"]["H-P1"]["d"] = [-abs(x) if n - flipped <= i < n else abs(x) for i, x in enumerate(d)]
-    pa["hs"]["H-P1"]["d"] = [abs(x) for x in pa["hs"]["H-P1"]["d"]]
+    d = na["hs"]["H-V1"]["d"]  # flip from the end of the seeds both tiers read
+    na["hs"]["H-V1"]["d"] = [-abs(x) if n - flipped <= i < n else abs(x) for i, x in enumerate(d)]
+    pa["hs"]["H-V1"]["d"] = [abs(x) for x in pa["hs"]["H-V1"]["d"]]
     out = R.cross(pa, pr, na, nr)
-    assert pa["hs"]["H-P1"]["met"] and na["hs"]["H-P1"]["met"]
-    assert out["need_agree"] == need != math.ceil(R.AGREE_MIN * 56 / R.N_SEEDS)
-    assert out["agree"] == n - flipped
+    assert out["need_agree_v1"] == need != math.ceil(R.AGREE_MIN * 160 / R.N_SEEDS)
+    assert out["agree_v1"] == n - flipped
     word = "harm on both tiers" if not extra else f"agrees on only {need - 1}/{n}"
-    assert word in out["h_p1"], out["h_p1"]
+    assert word in out["h_v1"], out["h_v1"]
 
 
-def test_both_tiers_h_p1_agreement_past_its_cap_is_six_eighths_of_the_cap(both_tiers):
-    # A-M4 (addendum 7): H-P1 runs to its cap 40 and is carried from it at look 7, so the bar is
-    # ceil(6 * 40 / 8) = 30 over 40 seeds, not the 56-seed look's 42
-    (pa, pr), (na, nr) = _past_p1_cap(), _past_p1_cap(tier="no-encoder")
-    n = R.P1_CAP
-    assert pa["n_owed"]["H-P1"] == na["n_owed"]["H-P1"] == n, (pa["n_owed"], na["n_owed"])
-    need = math.ceil(R.AGREE_MIN * n / R.N_SEEDS)
-    pa["hs"]["H-P1"]["met"] = na["hs"]["H-P1"]["met"] = True
-    pa["hs"]["H-P1"]["d"] = [0.1] * n
-    na["hs"]["H-P1"]["d"] = [0.1] * (need - 1) + [-0.1] * (n - need + 1)
+def test_h_v1_run_to_its_cap_is_carried_from_it_with_a_bar_of_six_eighths_of_the_cap(both_tiers):
+    # addendum 9: H-P1's cap 176 lies past H-V1's 152, so H-V1 is the primary carried past its cap
+    # (A-M4): its stop of record is the cap stop, and the agreement bar is ceil(6 * 152 / 8) = 114
+    (pa, pr), (na, nr) = _past_v1_cap("production", True), _past_v1_cap("no-encoder", True)
+    h = pa["hs"]["H-V1"]
+    assert pa["valid"] and pa["pending"] == [], (pa["bad"], pa["pending"])
+    assert pa["n_owed"]["H-V1"] == h["n"] == h["seq"]["n"] == R.V1_CAP, (pa["n_owed"], h["n"])
+    assert h["seq"]["decision"] == "cap" and not h["met"], h["seq"]
     out = R.cross(pa, pr, na, nr)
-    assert out["need_agree"] == need == 30 and out["agree"] == need - 1, out["need_agree"]
-    assert f"agrees on only {need - 1}/{n}" in out["h_p1"], out["h_p1"]
+    assert out["agree_v1_of"] == len(out["table_v1"]) == R.V1_CAP, out["agree_v1_of"]
+    assert out["need_agree_v1"] == math.ceil(R.AGREE_MIN * R.V1_CAP / R.N_SEEDS) == 114
 
 
 def test_h_v1_stopped_at_look_1_ignores_later_rows_and_counts_agreement_over_its_stop():
@@ -1988,48 +2028,67 @@ def test_degeneracy_is_screened_on_every_seed_of_a_later_look():
     assert a["valid"] and 20 in a["degenerate"], (a["bad"], a["degenerate"])
 
 
-def test_degeneracy_is_screened_on_seeds_past_the_h_p1_cap():
-    # R3-M1: past H-P1's cap (seed 47) a seed runs `real` only, and H-V1 still reads it; the screen
-    # must not need a `pfrozen` run. Seed 20 (`real` + `pfrozen`) is the in-cap control; every other
-    # seed, 48-63 included, is healthy and not flagged
-    runs, e2 = _extend(R.fixture_runs("noharm"), R.fixture_e2(), range(16, 64))
-    for s, arms in ((20, ("real", "pfrozen")), (50, ("real",))):
-        for arm in arms:
-            runs[(arm, s)] = R.synth_run(
-                arm, s, "production", r=-0.95, mae_value=0.4, wiggle=0.01, shift=arm != "real"
-            )
-    a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 64), logs_pass=True)
-    assert a["valid"] and a["degenerate"] == [20, 50], (a["bad"], a["degenerate"])
-    # each endpoint drops only the degenerate seeds it reads: H-P1 stops at 47, H-V1 reads both
-    assert a["sens"]["H-P1"]["dropped"] == [20] and a["sens"]["H-V1"]["dropped"] == [20, 50]
-    assert a["sens"]["H-P1"]["n"] == a["hs"]["H-P1"]["n"] - 1, (a["sens"], a["hs"]["H-P1"]["n"])
-    assert a["sens"]["H-V1"]["n"] == a["hs"]["H-V1"]["n"] - 2, (a["sens"], a["hs"]["H-V1"]["n"])
+def _degenerate(runs, s):
+    """Seed `s` degenerate on `real` + `pfrozen` (a seed up to H-P1's stop runs both)."""
+    for arm in ("real", "pfrozen"):
+        runs[(arm, s)] = R.synth_run(
+            arm, s, "production", r=-0.95, mae_value=0.4, wiggle=0.01, shift=arm != "real"
+        )
+
+
+def test_degeneracy_is_screened_on_seeds_past_the_h_v1_cap():
+    # R3-M1 (addendum 9: H-P1's cap 176 lies past H-V1's 152): past H-V1's stop a seed's replay row
+    # is written but not read, and H-P1 still reads its `real` + `pfrozen` pair. Seed 20 is read by
+    # both; every other seed, 160-167 included, is healthy and not flagged
+    runs, e2 = _extend(R.fixture_runs("noharm"), R.fixture_e2(), range(16, 168))
+    for s in (20, 165):
+        _degenerate(runs, s)
+    a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 168), logs_pass=True)
+    assert a["valid"] and a["degenerate"] == [20, 165], (a["bad"], a["degenerate"])
+    # each endpoint drops only the degenerate seeds it reads: H-V1 stops by 159, H-P1 reads both
+    seed_165_index = 165 - R.SEEDS[0]
+    assert a["n_owed"]["H-V1"] <= R.V1_CAP < seed_165_index < a["n_owed"]["H-P1"], a["n_owed"]
+    assert a["sens"]["H-V1"]["dropped"] == [20] and a["sens"]["H-P1"]["dropped"] == [20, 165]
+    assert a["sens"]["H-V1"]["n"] == a["hs"]["H-V1"]["n"] - 1, (a["sens"], a["hs"]["H-V1"]["n"])
+    assert a["sens"]["H-P1"]["n"] == a["hs"]["H-P1"]["n"] - 2, (a["sens"], a["hs"]["H-P1"]["n"])
     txt = R.render(a)
-    assert "every arm it ran): [20, 50]" in txt
-    assert "H-P1 without degenerate seeds [20]:" in txt
-    assert "H-V1 without degenerate seeds [20, 50]:" in txt
+    assert "every arm it ran): [20, 165]" in txt
+    assert "H-V1 without degenerate seeds [20]:" in txt
+    assert "H-P1 without degenerate seeds [20, 165]:" in txt
 
 
-def test_a_degenerate_seed_past_the_h_p1_cap_leaves_h_p1_unchanged():
-    # R3-M1: H-P1 stops at seed 47, so seed 50 never enters it
-    runs, e2 = _extend(R.fixture_runs("noharm"), R.fixture_e2(), range(16, 64))
-    runs[("real", 50)] = R.synth_run("real", 50, "production", r=-0.95, mae_value=0.4, wiggle=0.01)
-    a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 64), logs_pass=True)
-    sv, h = a["sens"]["H-P1"], a["hs"]["H-P1"]
-    assert a["valid"] and a["degenerate"] == [50], (a["bad"], a["degenerate"])
+def test_a_degenerate_seed_past_the_h_v1_cap_leaves_h_v1_unchanged():
+    # R3-M1: H-V1 stops by seed 159, so seed 165 (degenerate on every arm it ran) never enters it
+    runs, e2 = _extend(R.fixture_runs("noharm"), R.fixture_e2(), range(16, 168))
+    _degenerate(runs, 165)
+    a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 168), logs_pass=True)
+    sv, h = a["sens"]["H-V1"], a["hs"]["H-V1"]
+    assert a["valid"] and a["degenerate"] == [165], (a["bad"], a["degenerate"])
     assert sv["dropped"] == [] and not sv["seed_sensitive"]
     assert (sv["t"], sv["k"], sv["n"]) == (h["t"], h["k"], h["n"])
-    assert "H-P1 without degenerate seeds []:" in R.render(a)
+    assert "H-V1 without degenerate seeds []:" in R.render(a)
 
 
-@pytest.mark.parametrize("look_end,missing", [(24, 20), (64, 47)])
+@pytest.mark.parametrize("look_end,missing", [(24, 20), (168, 167)])
 def test_a_missing_pfrozen_run_up_to_the_h_p1_cap_is_pending(look_end, missing):
-    # addendum 7: while H-P1 continues, every `pfrozen` run up to its cap (seed 47) is owed; a lost
-    # one is pending, never a silently shorter H-P1 look
+    # addenda 7, 9: while H-P1 continues, every `pfrozen` run up to its cap (seed 183) is owed; a
+    # lost one is pending, never a silently shorter H-P1 look
     runs, e2 = _extend(R.fixture_runs("noharm"), R.fixture_e2(), range(16, look_end))
     del runs[("pfrozen", missing)]
     a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, look_end), logs_pass=True)
     assert f"pfrozen_{missing} missing" in a["pending"], a["pending"]
+
+
+def test_a_seed_past_h_p1s_stop_runs_real_only_and_its_degeneracy_is_still_screened():
+    # R3-M1: past H-P1's stop of record (here look 1, harm) a seed owes no `pfrozen` run while
+    # H-V1 continues; a degenerate `real` on such a seed is flagged and dropped from H-V1 only
+    runs, e2 = _extend(R.fixture_runs("harm"), R.fixture_e2(), range(16, 24), "harm")
+    runs = _drop(runs, lambda k: k[0] == "pfrozen" and k[1] >= 16)
+    runs[("real", 20)] = R.synth_run("real", 20, "production", r=-0.95, mae_value=0.4, wiggle=0.01)
+    a = R.analyse("production", runs, _bind(e2, runs), seeds=range(8, 24), logs_pass=True)
+    assert a["valid"] and a["pending"] == [] and a["degenerate"] == [20], (a["bad"], a["pending"])
+    assert a["n_owed"]["H-P1"] == 8 and a["n_owed"]["H-V1"] == 16, a["n_owed"]
+    assert a["sens"]["H-P1"]["dropped"] == [] and a["sens"]["H-V1"]["dropped"] == [20], a["sens"]
 
 
 def test_a_primary_stopped_at_look_1_owes_no_later_runs_and_keeps_its_stop_verdict():

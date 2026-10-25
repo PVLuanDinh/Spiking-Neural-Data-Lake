@@ -13,8 +13,9 @@ stream, brain-free compare fixtures, the cross-tier rule (addendum 3: production
   python -m snn_data_lake.instruments.rpe_charge compare <results dir> <tier> [out.md]
   python -m snn_data_lake.instruments.rpe_charge cross <production dir> <no-encoder dir> [out.md]
   (replay / compare / cross take `--look K`, K = 1..len(CAMPAIGN_LOOKS): seeds 8 .. 8 + CAMPAIGN_LOOKS[K-1] - 1;
-   addenda 2, 4, 5 and 7, default look 1; every look adds `real`, and `pfrozen` up to H-P1's cap (seeds past it owe
-   none); `replay` writes a row for every seed of the look)
+   addenda 2, 4, 5, 7 and 9, default look 1; every look adds `real`, and `pfrozen` up to H-P1's stop of record (its
+   cap at most); `replay` writes a row for every seed of the look, and rows past H-V1's stop are written and
+   binding-checked, not read)
   python -m snn_data_lake.instruments.rpe_charge fixture <logs dir>    # appends the three fixture lines to fixture.log
 
 ARMS (E1's exact patch code; only the arm's own `_valence` instance and the bound AutonomousArm are acted on
@@ -81,6 +82,10 @@ ADDENDUM 7 (owner 2026-10-24, verbatim: "Smoothed shape"; before any brain run):
 a smoothed planted shape (variance-corrected Gaussian kernel bootstrap of E1's centred d_s, Silverman bandwidth), which
 replaces addendum 5's 184. H-V1's 19 looks are now the longer, so the campaign runs CAMPAIGN_LOOKS = V1_LOOKS; looks up
 to P1_CAP add `real` + `pfrozen`, later looks `real` only, and H-P1 is carried from its own stop past its cap.
+ADDENDUM 9 (owner 2026-10-25, verbatim: "raise it in a new pre-data addendum"; before any brain run): P1_CAP is the
+first 8-seed look at which H-P1's power is >= .8 under each of the shrunk, unshrunk and half-bandwidth smoothed shapes,
+in numpy and harness. It lies past H-V1's cap again, so the campaign runs CAMPAIGN_LOOKS = P1_LOOKS (as addendum 5),
+every look adds `real` and, up to H-P1's own stop (its cap at most), `pfrozen`; H-V1 is carried from its own stop.
 ONE SEQUENTIAL MECHANISM (P2, re-panel B-N7): `seq_boundaries` / `seq_decision` / `seq_record` are the project's one
 alpha-spending implementation (graph-exists "alpha spending": no other site). G1(c)-2 and G2, and any later
 pre-registration under the P1 amendment, import them from here; moving them to a shared module is that consumer's change,
@@ -155,12 +160,14 @@ V1_SHAPE_T = (
     2.1730,
 )  # derive_v1.py calib 152 (200 000 campaigns)
 V1_FUTILITY_LOOKS = ()  # looks before the cap whose mde from SD_PRE["H-V1"] is <= DM: none (n=144 gives 0.0527)
-# Addendum 7 (owner 2026-10-24 "Smoothed shape"): H-P1's power under the SMOOTHED shape (Gaussian kernel bootstrap of
-#   E1's centred d_s, Silverman h = 0.0381) is .8078 at 40 (harness .8097); 32 gives .7720 (harness .7717). The raw
-#   shape (addendum 5, 184) pins P(d > 0) to the sign gate's 5/8. e1b-smooth-row/derive_smooth.py
-P1_CAP = 40
+# Addendum 9 (owner 2026-10-25 "raise it in a new pre-data addendum"): H-P1's power at 176 is S .9513 / U .8172 /
+#   H05 .8026 (numpy; harness .9518 / .8163 / .8028); at 168 H05 gives .7998. Addendum 7's cap 40 held only for S
+#   (U .6797, H05 .6871). Type I <= .0078 under every variant and the raw shape. e1b-a9-row/derive_a9.py
+P1_CAP = 176
 P1_LOOKS = tuple(range(N_SEEDS, P1_CAP + 1, N_SEEDS))
-P1_FUTILITY_LOOKS = ()  # looks before the cap whose mde from SD_PRE["H-P1"] is <= DH: none (n=32 gives 0.0356)
+# looks before the cap whose mde from SD_PRE["H-P1"] is <= DH: from n=72 (0.0316; n=64 gives 0.0354),
+#   e1b-smooth-row/derive_smooth.py `futility H-P1 176`
+P1_FUTILITY_LOOKS = tuple(range(72, P1_CAP, N_SEEDS))
 # both are 8-seed blocks from seed 8: the longer holds the other
 CAMPAIGN_LOOKS = max(P1_LOOKS, V1_LOOKS, key=len)
 SEQ = {
@@ -1138,7 +1145,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         refuse(
             tier,
             "compare",
-            f"{ns} seeds is not a pre-registered look {CAMPAIGN_LOOKS} (addenda 2, 4, 5, 7)",
+            f"{ns} seeds is not a pre-registered look {CAMPAIGN_LOOKS} (addenda 2, 4, 5, 7, 9)",
         )
     # each endpoint reads the seed block its pre-registration names (re-panel A-B1): the secondaries and the
     # dispositions the look-1 block, H-P1 and H-V1 every look up to their own caps
@@ -1155,7 +1162,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         for s in seeds
         if str(s) in rows_all
     }
-    # each primary carried from its own stop of record, else its cap (A-M4; addenda 3-7)
+    # each primary carried from its own stop of record, else its cap (A-M4; addenda 3-9)
     n_exp = {"H-P1": _n_owed("H-P1", seeds, d_p1), "H-V1": _n_owed("H-V1", seeds, d_v1)}
     block, p1_seeds, v1_seeds = seeds[:N_SEEDS], seeds[: n_exp["H-P1"]], seeds[: n_exp["H-V1"]]
     a = {"tier": tier, "seeds": seeds, "n_owed": n_exp}
@@ -1204,7 +1211,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
                 bad.append(f"pc seed {s} flips == 0")
         else:
             pending.append(f"pc seed {s} missing")
-    for arm in ARMS:  # later looks add `real` + `pfrozen` up to H-P1's cap (addenda 2, 5, 7)
+    for arm in ARMS:  # later looks add `real`, and `pfrozen` up to H-P1's stop (addenda 2, 5-7, 9)
         for s in seeds if arm == "real" else p1_seeds if arm == "pfrozen" else block:
             if (arm, s) not in runs:
                 pending.append(f"{arm}_{s} missing")
@@ -1354,7 +1361,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
         if h["sd"] == 0:  # A-m4: name the arm whose d_s carry no variance
             h["status"] += f" [{ZERO_SD}: {k}, arm {ARM_OF[k]}]"
     a["hs"] = hs
-    # A-M3, R3-M1: every seed of the look; past H-P1's cap a seed has run `real` only
+    # A-M3, R3-M1: every seed of the look; past H-P1's stop a seed runs `real` only
     degenerate = [
         s for s in have("real") if all(mr_(x, s) < SENSITIVITY_R for x in ARMS if (x, s) in runs)
     ]
@@ -1544,7 +1551,7 @@ def _series_differ(ra, rb, h0):
 #   gradient_claim_gate, ...) are term overlap only, none walks sequential looks (sites read)
 def _n_owed(key, seeds, d_by_seed):
     """Seeds a primary's verdict reads at this look (A-M4): its own stop of record when a complete look prefix has
-    stopped, else this look or its cap, whichever is smaller (addenda 4-7). Runs past a stop are never owed."""
+    stopped, else this look or its cap, whichever is smaller (addenda 4-9). Runs past a stop are never owed."""
     looks, owed = SEQ[key]["looks"], min(len(seeds), SEQ[key]["looks"][-1])
     done = next((i for i, s in enumerate(seeds) if s not in d_by_seed), len(seeds))
     reach = [n for n in looks if n <= min(done, owed)]
@@ -2005,7 +2012,7 @@ def main(argv=()):
         return _selfcheck()
     cmd, rest = argv[0], argv[1:]
     seeds = SEEDS
-    if "--look" in rest:  # addenda 2, 4, 5, 7
+    if "--look" in rest:  # addenda 2, 4, 5, 7, 9
         i = rest.index("--look")
         look = int(rest[i + 1])
         if not 1 <= look <= len(CAMPAIGN_LOOKS):
