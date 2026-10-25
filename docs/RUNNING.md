@@ -11,6 +11,10 @@ Run everything on one machine.
   Python 3.11+" and called sections 1–2 "zero install". Both were residue of the zero-dependency
   rule abolished 2026-07-20, and both were false — a reader following them gets an ImportError,
   not a brain.)*
+- **A checkout made before 2026-10-24 (engine arc 2) re-checks out the five envelope files once.** They now carry
+  `eol=lf` and the envelope hash baseline holds their LF blob hashes, but git does not rewrite an unchanged file, so an older
+  Windows checkout keeps CRLF copies and `envelope_hash_gate` reds there. From the repo root (the bytes are unchanged; only
+  line endings): `cd src/snn_data_lake/brainstem && rm reflex.py serial_arm.py so101_arm.py arm_config.py interpreter.py && git checkout -- .`
 
 ---
 
