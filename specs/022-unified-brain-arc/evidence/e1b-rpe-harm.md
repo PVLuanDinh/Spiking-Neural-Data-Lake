@@ -1059,3 +1059,22 @@ Tests (`tests/test_rpe_charge.py`):
 Reds and greens: `lanes/engine-1024/e1b-smooth-row/REPORT.md`. The derivation is `derive_smooth.py` and `raw_at.py`
 (addendum 5's `derive_p1.py verify` at cap 40). All numbers are brain-free simulations or arithmetic; no perception tier
 applies.
+
+### Derivation timeline (integrator note, policy-enforcer #5321)
+
+The policy-enforcer asked (#5241 to e1b-fold, 17:50; #5321 to e1b-smooth, 21:41) that the smoothing rule be committed
+before any cap derivation, or, if derivations had already run, that their times be stated here. They had already run.
+Times are 2026-10-24, -0500:
+- 21:10: the integrator's brief named the rule: "Gaussian kernel; name the bandwidth rule, e.g. Silverman's"
+  (`lanes/engine-1024/E1B-SMOOTH.BRIEF.md`). The brief did not carry #5241's commit-first requirement. That gap is the
+  integrator's, not the lane's.
+- 21:14: the lane fixed the bandwidth (`logs/bw.log`): Silverman's rule of thumb, in the variance-corrected ("shrunk")
+  variant. The brief did not name the variant. The lane chose it before any cap was computed.
+- 21:19 to 21:29: cap scans, boundary calibration, type I, futility (`logs/scan-*`, `calib-*`, `verify-hp1-*`).
+- 21:41: #5321 reached the lane, after the derivation.
+- 22:10: this addendum was committed.
+
+One bandwidth and one variant were ever computed: `derive_smooth.py` has a single `bandwidth()`, and there is a single
+`bw.log`. One choice remains disclosed and untested: the unshrunk smoothed bootstrap inflates the planted shape's
+variance by 1.344 (= 0.8626^-2) for H-P1. That lowers power at every cap, and its cap was not derived. Cap 40 therefore
+rests on the variance-preserving variant, which was chosen before any cap was seen.
