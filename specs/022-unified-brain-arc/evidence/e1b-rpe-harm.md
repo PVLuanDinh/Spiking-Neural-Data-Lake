@@ -1313,3 +1313,102 @@ Tests (`tests/test_rpe_charge.py`):
 
 Reds, greens and mutation checks: `lanes/engine-1024/e1b-a8-row/REPORT.md`. The derivation is `derive_a8.py`. All
 numbers are brain-free simulations; no perception tier applies.
+
+## Addendum 9 (2026-10-25, lane e1b-a9, before any E1b brain run): H-P1's cap raised until power >= .8 holds under the shrunk, unshrunk and half-bandwidth smoothed shapes (owner ruling)
+
+Append-only; written before any E1b brain run and before any E1b datum. Addenda 2-8, the erratum of 2026-10-25 and
+every frozen section above are untouched; where this addendum and an earlier text differ, this addendum rules. Owner,
+2026-10-25 (verbatim, in chat to claude-engine-1024): **"raise it in a new pre-data addendum"**. This answers Q1 of
+`lanes/engine-1024/e1b-a8-row/OPEN-QUESTIONS.md` with option (b): "raise H-P1's cap until power >= .8 also holds under
+the U and H05 variants (not derived here; a new pre-data addendum)". It replaces addendum 7's H-P1 cap of 40 by the cap
+this Rule derives. The frozen statistic is unchanged: the paired t and the sign gate ceil(5 n / 8) at each look. H-V1's
+cap (152, addendum 4) and boundaries (`V1_SHAPE_T`) do not change.
+
+This section ("Rule") was committed BEFORE any derivation run of this addendum (policy-enforcer #5241 / #5321). Every
+run is logged with a timestamp after that commit (`lanes/engine-1024/e1b-a9-row/logs/`). A rule fixed after a number
+was seen would void the reading.
+
+### Rule
+
+**1. Variants (CLOSED set).** Each is addendum 8's y = (x_I + h e) / c + mu on E1's 8 centred H-P1 d_s, with addendum
+8's definitions of h and c (h = 0.0381 is Silverman's hS):
+
+| id | variant | role |
+|---|---|---|
+| S | Silverman shrunk (pre-registered, addendum 7) | **cap set** |
+| U | Silverman UNSHRUNK (c = 1) | **cap set** |
+| H05 | half bandwidth, shrunk (h = 0.5 hS) | **cap set** |
+| SC | Scott, shrunk | reported |
+| H2 | double bandwidth, shrunk | reported |
+| raw | the raw 8-point resample (addendum 4, plus 1e-9 jitter) | type-I check; power reported |
+
+The cap set is the owner's question: S, U and H05. No variant is added after a result is seen (P1 honesty guard).
+
+**2. Design under test.** For a candidate cap C on the 8-seed grid C = 8, 16, ..., 200: looks (8, 16, ..., C), the
+normal-model LD-OBF t boundaries `rpe_charge.seq_boundaries(looks)` (one-sided .05), the sign gate, and the non-binding
+futility rule exactly as the harness takes it (`futility_open` with `SD_PRE["H-P1"]` = 0.0695 and DH = 0.035, then
+conditional power < .10). That is `SEQ["H-P1"]` with its looks replaced; nothing else in the harness changes.
+
+**3. Estimators, counts, seeds.**
+- **numpy**: `derive_smooth.rates` (the vectorized walk; it reads the harness's `seq_boundaries` and `futility_open`) on
+  200 000 campaigns per cell, drawn as 4 chunks of 50 000 campaigns, each 200 seeds long. Chunk seeds: null 89010-89013,
+  claimed effect 89020-89023. One draw serves every cap (cap C reads the first C columns), and every variant uses the
+  same seeds (common random numbers). The raw shape uses `derive_v1.draws` with the same chunk seeds.
+- **harness**: `rpe_charge.seq_decision` walked look by look (looks overridden to the candidate cap), 40 000 campaigns
+  per cell, python RNG seeds 9696 (null) / 9797 (effect). The normal model N(mu, 0.0695) runs on the harness at the
+  chosen cap too (same seeds), for the test pins.
+- None of these seeds equals a test seed (101-909) or an earlier derivation's.
+
+**4. Cap rule.** C* is **the first look C on the grid where power >= .8 under EVERY cap-set variant (S, U, H05), on
+both estimators** (point estimates). Procedure: numpy scans every C from 8 to 200; the harness runs at numpy's first
+passing C and, if any of its three powers is < .8, at each next C until all three are >= .8. If no C <= 200 meets the
+rule, no cap moves and the result goes to the owner as a question. If C* > 152, H-P1's looks become the longer, so
+`CAMPAIGN_LOOKS` becomes `P1_LOOKS` through the existing `max(..., key=len)`; that consequence is stated, not avoided.
+
+**5. Boundary re-check at C*.** Type I <= .05 + 3 SE of that estimator's count (numpy .0515, harness .0533; futility
+ignored, the conservative side) under **every** variant: S, U, H05, SC, H2 AND the raw shape, on both estimators. If any
+cell fails, H-P1's boundaries become shape-calibrated as addenda 4 and 7 calibrated them (`derive_smooth.calib_bounds`'s
+method: per look, the t that keeps LD-OBF spending under the planted null, never below the normal-model t), under the
+failing shape with the highest numpy type I (200 000 campaigns, seed 8991); the cap rule (item 4) is then re-applied
+from C = 8 with those boundaries, and the addendum says so. Numpy and harness must agree within 3 combined SE in every
+cell at C*; a disagreement is named.
+
+**6. Rung 3: power-vs-n curve.** The numpy power of the design with cap C, for every C from 8 to C*, under all six
+shapes, is published as a table here, with a column `robust` = min over S, U, H05 (the design's ROBUST power at that
+cap). The harness's power, type I, P(futility) and P(INCONCLUSIVE) at C* are published for all six shapes plus the
+normal model.
+
+**7. H-V1 (NOT changed).** H-V1's cap 152 stands. Its powers under S, U and H05 are addendum 8's (numpy 0.8167 /
+0.8103 / 0.8165, harness 0.8145 / 0.8076 / 0.8140), on the same unchanged design; they are cited beside, not re-run.
+
+**8. Harness binding.** The new cap enters through its ONE place, `P1_CAP` in `rpe_charge.py` (`P1_LOOKS`,
+`P1_FUTILITY_LOOKS` and `CAMPAIGN_LOOKS` follow from it; `P1_FUTILITY_LOOKS` is re-stated from `futility_open` at C*).
+Tests (`tests/test_rpe_charge.py`):
+- reds first: a decision past the new cap is refused, and a look at the new cap is accepted;
+- `STATED` H-P1 rows re-pinned to the harness at C* (normal, raw "shape", "smooth"), plus new rows for U and H05
+  (`smooth_u`, `smooth_h05`);
+- `CAP_SHAPE["H-P1"]` = ("smooth", "smooth_u", "smooth_h05"), so the power >= .8 - 3 SE bar runs on each cap-set
+  variant, in the fast R-S3 and in its 40 000 slow twin; `SHAPES` gains the two variants for R-S1b and its slow twin.
+
+The script is `lanes/engine-1024/e1b-a9-row/derive_a9.py`; it reuses `derive_a8.py` (variants), `derive_smooth.py`
+(numpy walk, calibration) and `derive_v1.py` (E1 table, prefixes, raw draws). All numbers are brain-free simulations; no
+perception tier applies.
+
+### Sample size (P1)
+
+- **Measured SD**: SD_PRE["H-P1"] = 0.0695 (E1's no-encoder paired SD, unchanged); the OBSERVED SD at the stopped look
+  decides `powered` (addendum 6 erratum).
+- **Effect**: DH = 0.035 (frozen).
+- **Power target**: .8, one-sided .05, now required under every cap-set variant (S, U, H05), not only S.
+- **Sequential plan**: named looks every 8 seeds to the hard cap C*; LD-OBF alpha spending per look (or the calibrated
+  boundary, item 5); non-binding futility at conditional power < .10, only at looks where `futility_open` holds (mde
+  from SD_PRE <= DH); hard cap C* = the first look where the simulated sequential power is >= .8 under every cap-set
+  variant (the inflation factor is inside the simulation, because power is simulated on the sequential design itself).
+- **Checked by simulation before data**: items 4-6.
+- A futility stop or an uncrossed cap is not a null: it reports its mde, and P8 null-scale item 4 decides (INCONCLUSIVE
+  unless powered).
+- Worst-case runs and hours at C* are stated under Results.
+
+### Results
+
+Results appended below after the runs.
