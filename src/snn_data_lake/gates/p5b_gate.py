@@ -46,7 +46,10 @@ switched off after checkout reds R-GRANDFATHER-DRIFT falsely (CI is LF).
 Not checked, and said so in LIMIT: registry and git dependencies (P7's, `dependency_ledger`); a ctypes/cffi load
 of a system library at runtime; `include_str!` / `include_bytes!` (data, not code); the `#[path]`/`include!` scan
 is textual (a commented-out attribute reds, fail closed) and resolves against the file's own directory (Rust's
-base for a `#[path]` inside a nested inline module differs).
+base for a `#[path]` inside a nested inline module differs); the extension build is pinned in
+`infra/native_build.py` (`MANIFEST = native/sndl-python/Cargo.toml`), which this gate does not read; a
+`.cargo/config` above the repo or in CARGO_HOME is not seen. With native/ ABSENT the repo-wide checks (Cargo.toml
+outside native/, cargo config, foreign sources, exemptions) still run, so ABSENT is green only when they are.
 
   python -m snn_data_lake.gates.p5b_gate [--assert | --self-check | --census]
 
@@ -573,11 +576,13 @@ def check(
 ) -> Report:
     try:
         found = _universe(root)
-        tracked = _tracked(root) if found else []
+        tracked = _tracked(root)
     except rust_facts.RustFactsUnavailable as exc:
         return Report([Red("R-RUSTFACTS", NATIVE, str(exc))])
     if found is None:
-        return Report(absent=True)
+        # the repo-wide checks run first: a crate moved out of native/ with native/ deleted is not ABSENT-and-green
+        # (arc-2 re-panel R2-M2)
+        return Report(_outside_reds(root, tracked, cargo_exempt, foreign_exempt), absent=True)
     mods, tests, crates = found
     reds: list[Red] = _target_reds(root, set(tests))
     reds += _outside_reds(root, tracked, cargo_exempt, foreign_exempt)
@@ -674,7 +679,7 @@ def check(
 
 def count_line(report: Report) -> str:
     if report.absent:
-        return "native/ ABSENT"
+        return f"native/ ABSENT, reds {len(report.reds)}" if report.reds else "native/ ABSENT"
     c = report.counts
     return (
         f"modules {c.get('modules', 0)}, cited {c.get('cited', 0)}, grandfathered {c.get('grandfathered', 0)}, "
@@ -885,6 +890,7 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
             },
         ),
         "R-ZERO": ({f"{NATIVE}/c/README": ""}, {}),
+        "R-CRATE-OUTSIDE:native-absent": ({"tools/k/Cargo.toml": "", "README": ""}, {}),
     }
 
 

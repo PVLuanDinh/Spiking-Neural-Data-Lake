@@ -63,6 +63,32 @@ def test_native_absent_passes_and_says_so(tmp_path):
     assert pg.count_line(report) == "native/ ABSENT"
 
 
+@pytest.mark.parametrize(
+    "files, code",
+    [
+        (
+            {"tools/k/Cargo.toml": "", "tools/k/src/lib.rs": "#[pyfunction]\nfn f() {}\n"},
+            "R-CRATE-OUTSIDE",
+        ),
+        ({"tools/k/k.cu": "x\n"}, "R-FOREIGN-SOURCE"),
+        ({"python/k.pyd": "x\n"}, "R-FOREIGN-SOURCE"),
+        ({".cargo/config.toml": "[net]\n"}, "R-CRATE-OUTSIDE"),
+    ],
+)
+def test_native_absent_still_runs_the_outside_checks(tmp_path, files, code):
+    # arc-2 re-panel R2-M2: a crate moved out of native/, native/ deleted, is not ABSENT-and-green
+    report = run(tmp_path, {"README.md": "x\n", **files})
+    assert report.absent and [r.code for r in report.reds] == [code], report.reds
+    text = pg.render(report)
+    assert "native/ ABSENT" in text and f"RED {code}" in text
+
+
+def test_native_absent_with_an_exempt_crate_gaining_pyo3_reds(tmp_path):
+    native_dormancy._write(tmp_path, {"tools/k/Cargo.toml": '[dependencies]\npyo3 = "0.30"\n'})
+    report = pg.check(tmp_path, cargo_exempt={"tools/k": "tooling"})
+    assert report.absent and [r.code for r in report.reds] == ["R-CRATE-OUTSIDE"], report.reds
+
+
 def test_native_present_with_zero_modules_reds(tmp_path):
     assert "R-ZERO" in run(tmp_path, {"native/c/README": ""}).codes()
 
