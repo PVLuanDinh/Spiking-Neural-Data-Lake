@@ -609,3 +609,21 @@ def test_the_documented_rollback_export_keeps_what_arc2_learned(route, expected)
             f.write(blob(base + 10))
     _restart()  # back on arc 2
     assert [v_of(h.load_named_state(n)) for n in names] == [expected, expected]
+
+
+def test_the_rollback_export_never_overwrites_an_unread_window_file():
+    """rv-arc2-r3 d2-m1: a skills domain no arc-2 night read since the last rollback still holds
+    that window's learning in its file; a second rollback's export must not write the older lake
+    record over it."""
+    from tests.test_p4b_restart_restore import _run
+
+    root = _home()
+    n = "skills/demo.npz"
+    os.makedirs(os.path.dirname(h.state_path(n)), exist_ok=True)
+    assert h.save_named_state(n, b"PK-lake-record")  # the lake's record (bytes only compared here)
+    with open(h.state_path(n), "wb") as f:
+        f.write(b"PK-window-1")  # the first window's learning, never read back by arc 2
+    _restart()
+    assert _run(_rollback_export_command() + "; print('EXPORT true')", root, "EXPORT") is True
+    with open(h.state_path(n), "rb") as f:
+        assert f.read() == b"PK-window-1"

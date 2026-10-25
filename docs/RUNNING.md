@@ -27,8 +27,9 @@ Run everything on one machine.
     the first rename, arc 2 saves those organs ONLY to the lake, so the `.imported` copies hold the bytes from the last
     rename. Do not copy them back: returning to arc 2 would import them over everything arc 2 learned since. Instead, with
     the daemon stopped, export the lake's current records from the arc-2 checkout (venv python, repo root):
-    `python -c "import os; from snn_data_lake.substrate import home as h; L = h.knowledge_path(); [(os.makedirs(os.path.dirname(h.state_path(n)), exist_ok=True), open(h.state_path(n), 'wb').write(b)) for n, b in [('language_acq.npz', h.load_named_state('language_acq.npz', path=L))] + h.named_states('skills/', path=L) if b]"`.
-    An explicit `path` reads without renaming anything. Then switch checkouts.
+    `python -c "import os; from snn_data_lake.substrate import home as h; L = h.knowledge_path(); [(os.makedirs(os.path.dirname(h.state_path(n)), exist_ok=True), open(h.state_path(n), 'wb').write(b)) for n, b in [('language_acq.npz', h.load_named_state('language_acq.npz', path=L))] + h.named_states('skills/', path=L) if b and not os.path.exists(h.state_path(n))]"`.
+    An explicit `path` reads without renaming anything. A name whose file already exists is skipped: it holds a
+    previous window's learning that no arc-2 read has imported yet (rv-arc2-r3 d2-m1). Then switch checkouts.
   - **Back on engine arc 2:** a file the rollback window rewrote is imported into the lake before it is renamed (same
     record kind only). A file it did not rewrite is renamed unread. The export round trip keeps both the arc-2 learning and
     the window's learning: measured on a temp home, the copy-back route lost the arc-2 record (rv-arc2-r3 R3D-M1). One case
