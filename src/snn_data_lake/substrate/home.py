@@ -1154,7 +1154,11 @@ def load_named_state(name, path=None):
     treats it as a cold start, which is the pre-2026-08-05 behaviour for a sidecar that was not
     there. On the DEFAULT lake a pre-existing `<home>/<name>` sidecar is imported once instead (see
     `_migrate_sidecar`); an explicit `path` is a caller pointing at a specific lake, so it is not
-    silently paired with a sidecar from somewhere else."""
+    silently paired with a sidecar from somewhere else.
+
+    A READ IS ALSO A RENAME: on the default lake a hit retires `<home>/<name>` to `.imported` or
+    `.imported.<n>` (`_retire_sidecar`), so a read-only inspection pointed at a home renames that
+    home's sidecars."""
     _state_key(name)
     hit = _state_index(_log(path)).get(str(name))
     if hit is not None:
@@ -1169,23 +1173,35 @@ _RETIRED = set()
 
 
 def _retire_sidecar(name):
-    """Rename `<home>/<name>` to `<name>.imported` -- called only once the lake holds a record under
-    `name`, so a lake reset cannot import the file a second time. This also retires sidecars
-    imported before 2026-10-24 (when the file kept its own name) and the copy a concurrent first
-    reader imported too. A name is settled once per home per process, checked before any filesystem
-    call; a file another process holds open is not settled and is retried on the next read. Never
-    over an existing `.imported`: the first import's bytes stay, and the newer file keeps its name."""
+    """Rename `<home>/<name>` to `<name>.imported` (or `.imported.<n>`, below) -- called only once
+    the lake holds a record under `name`, so a lake reset cannot import the file a second time.
+    This also retires sidecars imported before 2026-10-24 (when the file kept its own name) and the
+    copy a concurrent first reader imported too. A name is settled once per home per process,
+    checked before any filesystem call; a file another process holds open is not settled and is
+    retried on the next read. Never over an existing file: a newer `<name>` beside an earlier
+    `.imported` becomes `<name>.imported.1` (the first free number), so both byte sets stay and a
+    reset imports neither. Whether the newer file's bytes ever reached the lake is NOT checked (a
+    sidecar saved over before its first read is renamed unread; see `_migrate_sidecar`).
+
+    Nothing reads a `.imported` file. UNDO, per file: rename `<name>.imported` back to `<name>`; the
+    next read on an empty lake imports it again (the lake's own record is untouched). ROLLBACK: a
+    checkout older than 2026-10-24 reads `language_acq.npz` and `skills/<domain>.npz` from the
+    FILES, so after a rollback rename those back first or the brain cold-boots both organs; the
+    JSON sidecars were read through the lake before that date and need nothing."""
     key = (os.environ.get("NORD_HOME"), str(name))
     if key in _RETIRED:
         return
     legacy = state_path(name)
-    if not os.path.exists(legacy + ".imported"):
-        try:
-            os.replace(legacy, legacy + ".imported")
-        except FileNotFoundError:
-            pass
-        except OSError:
-            return
+    dest, n = legacy + ".imported", 0
+    while os.path.exists(dest):
+        n += 1
+        dest = f"{legacy}.imported.{n}"
+    try:
+        os.replace(legacy, dest)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        return
     _RETIRED.add(key)
 
 

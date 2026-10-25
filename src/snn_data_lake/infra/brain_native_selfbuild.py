@@ -577,8 +577,16 @@ class BrainNativeSelfBuildProposer:
 
         A migration rather than a delete because that file holds real learned weights -- dropping it
         would reset the learner to its uniform init and call that a policy fix. The legacy file is
-        left on disk untouched: it is now inert (nothing reads it once a _T_SELFBUILD record exists),
-        and removing a user's data to tidy up a policy violation is not this function's call."""
+        left on disk untouched: nothing reads it once a _T_SELFBUILD record exists, and removing a
+        user's data to tidy up a policy violation is not this function's call.
+
+        IT DIVERGES FROM `home._migrate_sidecar` ON PURPOSE (arc-2 panel B MAJOR-6, 2026-10-24): a
+        home sidecar is renamed `.imported` once its lake holds it, so a lake reset cannot import it
+        again; this file is not. It sits under the REPO, not `<home>`, so every NORD_HOME shares it,
+        and the first brain to read it -- a test or scratch home on a temp NORD_HOME, `Brain` builds
+        this proposer on the default lake -- would rename it away from the operator's home, whose
+        lake then never imports it. The cost of keeping it live: a lake reset, rebuild or new home
+        imports these Aug-2026 weights again (139 B in the main checkout on 2026-10-24)."""
         legacy = os.path.join(self._repo, "data", "selfbuild_state.json")
         try:
             with open(legacy, encoding="utf-8") as f:

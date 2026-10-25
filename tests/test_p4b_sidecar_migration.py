@@ -306,6 +306,8 @@ def test_a_sidecar_imported_before_the_rename_existed_is_retired_on_the_next_rea
 
 
 def test_retiring_never_overwrites_an_earlier_imported_file():
+    """C2-M2: a newer `<name>` beside an existing `.imported` is kept as `<name>.imported.<n>` (the
+    first free number), so no file is overwritten and a lake reset imports none."""
     root = _home()
     h.save_state("probe.json", {"v": 1})
     path = _probe_sidecar(root, '{"v": 2}')
@@ -313,9 +315,40 @@ def test_retiring_never_overwrites_an_earlier_imported_file():
         f.write('{"v": 1}')
     _restart()
     h.load_state("probe.json")
-    with open(path + ".imported", encoding="ascii") as f:
-        assert f.read() == '{"v": 1}'
-    assert os.path.exists(path)
+    _probe_sidecar(root, '{"v": 3}')
+    _restart()
+    h.load_state("probe.json")
+    for suffix, text in (
+        (".imported", '{"v": 1}'),
+        (".imported.1", '{"v": 2}'),
+        (".imported.2", '{"v": 3}'),
+    ):
+        with open(path + suffix, encoding="ascii") as f:
+            assert f.read() == text, suffix
+    assert not os.path.exists(path)
+    _restart()
+    os.remove(h.knowledge_path())  # a lake reset
+    _restart()
+    assert h.load_state("probe.json") is None
+
+
+def test_the_repo_selfbuild_sidecar_is_never_renamed_by_a_home_that_reads_it(tmp_path):
+    """B MAJOR-6, recorded divergence: `<repo>/data/selfbuild_state.json` is shared by every
+    NORD_HOME, so the home that imports it first never renames it away from the others; every
+    fresh lake imports it (the cost `_migrate_legacy_sidecar` states)."""
+    from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
+
+    _home()
+    legacy = tmp_path / "data" / "selfbuild_state.json"
+    legacy.parent.mkdir()
+    legacy.write_text('{"futile": 3}', encoding="ascii")
+    assert P(repo=str(tmp_path), sources=[])._futile == 3
+    assert h.load_selfbuild() is not None and legacy.exists()
+    assert not list(legacy.parent.glob("*.imported*"))
+    _restart()
+    os.remove(h.knowledge_path())  # a lake reset, or a second home
+    _restart()
+    assert P(repo=str(tmp_path), sources=[])._futile == 3
 
 
 def test_a_held_sidecar_keeps_its_name_and_is_retired_on_a_later_read(monkeypatch):

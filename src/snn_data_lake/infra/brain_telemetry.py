@@ -390,8 +390,11 @@ PROVENANCE = {
         "clean from the lake or there was nothing to restore; a string names a refused/failed "
         "record. Covers the arm context, vision and audio learners, arm.q, the affect SOM and the "
         "lifelong learner (its replay memory rebuilt from the learned tasks' streams, 2026-10-24). "
-        "A refused record is carried forward unchanged until its store learns afresh; "
-        "'superseded: [...]' names the stores whose live state then replaced it"
+        "A refused record (wrong width/format, a q without the id of the arm restored beside it, "
+        "a lifelong record without this seed; any record written before 2026-10-24 has neither) "
+        "is carried forward unchanged until its store learns afresh; "
+        "'superseded: [...]' names the stores whose live state then took its place, the refused "
+        "bytes kept as growing_learners.refused.<store>.<id>.json (2026-10-24, R2-M1)"
     ),
 }
 

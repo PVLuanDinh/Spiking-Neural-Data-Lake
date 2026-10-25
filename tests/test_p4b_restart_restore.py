@@ -379,6 +379,147 @@ def test_a_refused_affect_record_is_superseded_once_the_som_relearns():
     assert got["affect"] != rec["affect"] and got["affect"]["prototypes"]
 
 
+# A restarted brain runs ONE real night (`_enter_sleep`: the lifelong learner takes task 0 there,
+# before the night's flush) and closes.
+_SLEEP = r"""
+import json, os, sys
+os.environ["NORD_HOME"] = sys.argv[1]
+from snn_data_lake.engine.brain import make_brain
+b = make_brain(seed=7, persist=True)
+b._enter_sleep()
+out = {"i": b._ll_i, "note": b._prototypes_restore_note}
+b.close()
+print("SLEEP " + json.dumps(out))
+"""
+
+# A new process runs the sleep's consolidation, then lists the blob of every _T_STATE record left.
+_BLOBS = r"""
+import json, os, sys
+os.environ["NORD_HOME"] = sys.argv[1]
+from snn_data_lake.substrate.home import (
+    _T_STATE, BinLog, KnowledgeLog, _unpack_state, knowledge_path)
+kl = KnowledgeLog(knowledge_path())
+kl.consolidate(list(kl.replay()))
+rows = [_unpack_state(p) for p in BinLog(knowledge_path()).replay() if p[:1] == _T_STATE]
+print("BLOBS " + json.dumps([r[2].decode("ascii", "replace") for r in rows if r]))
+"""
+
+
+def _bytes_of(sub):
+    """A sub-record's bytes exactly as `save_state` writes them."""
+    return json.dumps(sub, ensure_ascii=True, sort_keys=True)
+
+
+@pytest.mark.slow
+def test_a_refused_record_survives_a_real_sleep_that_relearns_its_store():
+    """R2-M1: the night that would lose a refused lifelong record learns task 0 BEFORE its flush,
+    so the live store supersedes the carry at the first sleep. Refuse, one sleep, consolidate:
+    the original record's bytes are still in the lake."""
+    pytest.importorskip("torch")
+    home, rec = _refused_lifelong_home("sleep")
+    out = _run(_SLEEP, home, "SLEEP")
+    assert out["i"] == 1, f"the night learned no task -- the carry was never tested: {out}"
+    assert "superseded: ['lifelong']" in out["note"], out
+    blobs = _run(_BLOBS, home, "BLOBS")
+    assert any(_bytes_of(rec["lifelong"]) in b for b in blobs), "the refused record was lost"
+    child = _run(_CHILD, home, "CHILD", "1")
+    assert child["ll_i"] == 1 and child["note"] is None, child  # the live store restores
+
+
+# A restarted brain whose arm learner (refused) grows units while its Q-table stays empty.
+_ARM_RELEARN = r"""
+import json, os, sys
+os.environ["NORD_HOME"] = sys.argv[1]
+from snn_data_lake.engine.brain import make_brain
+b = make_brain(seed=7, persist=True)
+arm = b.brain.arm
+n = 0
+while arm.learner.n_units < 1 and n < 400:
+    b.tick(); n += 1
+arm.q.clear()  # the panel's state: the arm superseded while q has learned nothing afresh
+units = arm.learner.n_units
+b.close()
+out = {"units": units, "note": b._prototypes_restore_note}
+print("ARMRL " + json.dumps(out))
+"""
+
+
+@pytest.mark.slow
+def test_a_stale_q_table_is_never_bound_to_a_fresh_arm():
+    """R2-M1 (b): q's unit ids name the arm record it was written beside. Arm refused (width), arm
+    relearns and is superseded: the carried q must not restore over the NEW arm's ids."""
+    pytest.importorskip("torch")
+    from snn_data_lake.engine.autonomous_loop import ACTIONS, Q_STATE_FMT
+
+    q = {"fmt": Q_STATE_FMT, "rows": {"0": dict.fromkeys(ACTIONS, 1.0)}}
+    rec = {"arm": _learner(2), "vis": None, "aud": None, "q": q}
+    home = _home("stale_q")
+    assert _run(_SEED, home, "SEED", json.dumps(rec))
+    out = _run(_ARM_RELEARN, home, "ARMRL")
+    assert out["units"] >= 1 and "superseded: ['arm', 'q']" in out["note"], out
+    child = _run(_CHILD, home, "CHILD", "1")
+    assert child["q"] == "{}", f"old Q rows bound to the new arm's units: {child}"
+    blobs = _run(_BLOBS, home, "BLOBS")
+    assert any(_bytes_of(q["rows"]) in b for b in blobs), "the refused q record was lost"
+
+
+@pytest.mark.slow
+def test_a_q_table_naming_another_arm_record_is_refused(restarted):
+    """The id check alone: a parent's own arm + q, with q's arm id changed -- q is refused even
+    though every row's unit id is in range of the restored arm."""
+    rec = _run(_CONSOLIDATED, restarted[2], "READ")
+    rec["q"]["arm"] = "0" * 16
+    home = _home("q_id")
+    assert _run(_SEED, home, "SEED", json.dumps(rec))
+    child = _run(_CHILD, home, "CHILD", "1")
+    assert child["q"] == "{}" and child["note"] == "refused: ['q']", child
+
+
+@pytest.mark.slow
+def test_an_arc2_record_without_the_q_arm_id_or_the_seed_is_refused(restarted):
+    """The upgrade path: a record written before the id and the seed existed restores neither
+    store (both refused, so carried and kept, never bound on trust)."""
+    rec = _run(_CONSOLIDATED, restarted[2], "READ")
+    rec["q"].pop("arm")
+    rec["lifelong"].pop("seed")
+    home = _home("legacy_shape")
+    assert _run(_SEED, home, "SEED", json.dumps(rec))
+    child = _run(_CHILD, home, "CHILD", "1")
+    assert child["note"] == "refused: ['q', 'lifelong']", child["note"]
+    assert child["q"] == "{}" and child["ll"] == [] and child["som"], child
+
+
+def test_a_refused_record_holding_a_nan_is_kept_under_its_id():
+    """`_keep_refused` confirms the write by its id-bearing name, never by `==` on parsed JSON (a
+    NaN never equals itself), and a second keep of the same bytes -- an unchanged save, False --
+    still confirms: either miss would leave the record carried, overwriting its live store."""
+    import math
+
+    from snn_data_lake.engine.brain import Brain, _record_id
+    from snn_data_lake.substrate.home import load_state
+
+    sub = dict(_learner(2), prototypes=[[float("nan"), 0.5]])
+    assert Brain._keep_refused("arm", sub)
+    assert Brain._keep_refused("arm", sub)  # the dedup path: the lake already holds these bytes
+    back = load_state(f"growing_learners.refused.arm.{_record_id(sub)}.json")
+    assert back is not None and math.isnan(back["prototypes"][0][0])
+
+
+@pytest.mark.slow
+def test_a_lifelong_record_of_another_seed_is_refused():
+    """B MINOR-5: the replay memory is re-derived from `_make_tasks(seed)`; a record learned at
+    another seed is refused (and carried), never paired with this seed's streams."""
+    pytest.importorskip("torch")
+    ll = dict(_grown_consolidator().state_dict(), i=1, seed=8)
+    home = _home("seed")
+    rec = {"arm": None, "vis": None, "aud": None, "lifelong": ll}
+    assert _run(_SEED, home, "SEED", json.dumps(rec))
+    child = _run(_CHILD, home, "CHILD", "1")
+    assert child["note"] == "refused: ['lifelong']" and child["ll"] == [], child
+    assert _run(_SEED, home, "SEED", json.dumps(dict(rec, lifelong=dict(ll, seed=7))))
+    assert _run(_CHILD, home, "CHILD", "1")["note"] is None  # the same record at its own seed
+
+
 @pytest.mark.slow
 def test_records_a_raising_restore_never_reached_are_carried():
     """The arm's malformed width raises before any store is read: every sub-record is carried,

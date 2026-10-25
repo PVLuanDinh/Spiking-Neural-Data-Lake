@@ -41,7 +41,8 @@ WHAT IT IS NOW: one `_T_STATE` record under the name `signal_calib.json`, via
 `home.save_named_state` / `home.load_named_state` -- the SAME generic record those seven former
 sidecars ride, not a bespoke tag and pair (`_T_CALIB` was retired unwritten under P2 for exactly that
 reason). `load_named_state` imports a pre-existing `<home>/signal_calib.json` into the lake on first
-read and LEAVES THE FILE ON DISK, so a brain that had already learned an operating point keeps it.
+read and KEEPS THE FILE, renamed `signal_calib.json.imported` (never re-read), so a brain that had
+already learned an operating point keeps it and a lake reset cannot import it again.
 
 WHY THE FIRST TWO ATTEMPTS STOPPED SHORT -- taken from what this docstring itself recorded on
 2026-08-04 and 2026-08-05, and kept because the hazard is the interesting part and it is still there

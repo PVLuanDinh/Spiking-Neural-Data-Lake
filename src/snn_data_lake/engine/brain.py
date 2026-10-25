@@ -88,6 +88,13 @@ from snn_data_lake.sleep.sleep_replay import N as ATTR_N
 #: the ONE named-state record for the brain's prototype learners (rank 2b, 2026-09-02)
 PROTOTYPES_STATE = "growing_learners.json"
 
+
+def _record_id(rec):
+    """A sub-record's identity: a sha256 prefix of its canonical JSON."""
+    raw = json.dumps(rec, ensure_ascii=True, sort_keys=True).encode("ascii")
+    return hashlib.sha256(raw).hexdigest()[:16]
+
+
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
     "Brain.learn_part_d_episode": (
@@ -1096,6 +1103,10 @@ class Brain:
         # labels, utilities and task index; `n_emotions` / `lifelong_units` read them at tick 0.
         # Same refusal rule for each. The consolidator's replay memory is DERIVED: rebuilt from the
         # restored task streams, not stored; without it task 0 is pruned away (arc-2 panel A-B1).
+        # So the lifelong record names the seed those streams come from and is refused at another or
+        # without one (B MINOR-5), and `arm.q` names the arm record it was written beside by
+        # `_record_id`: a q row binds only to the arm whose ids it was learned over, never to an id
+        # range (R2-M1).
         # A refused or never-reached sub-record is carried forward by `_flush_prototypes` (A-M1).
         self._prototypes_restore_note = None
         self._prototypes_carried = {}
@@ -1118,7 +1129,12 @@ class Brain:
                         if _ok[_key]:
                             setattr(self, _attr, _l)
                 if _rec.get("q"):
-                    _ok["q"] = self.brain.arm.load_q_state_dict(_rec["q"])
+                    _ok["q"] = (
+                        isinstance(_rec["q"], dict)
+                        and _ok.get("arm") is True
+                        and _rec["q"].get("arm") == _record_id(_rec["arm"])
+                        and self.brain.arm.load_q_state_dict(_rec["q"])
+                    )
                 if _rec.get("affect"):
                     _ok["affect"] = (
                         self._affect_int is not None
@@ -1130,6 +1146,7 @@ class Brain:
                     _ok["lifelong"] = (
                         isinstance(_i, int)
                         and 0 <= _i <= len(self._ll_tasks)
+                        and _rec["lifelong"].get("seed") == self._seed  # the streams it re-derives
                         and self._ll.load_state_dict(_rec["lifelong"])
                     )
                     if _ok["lifelong"]:
@@ -5123,7 +5140,11 @@ class Brain:
         consolidator's learner with its labels, utilities and task index (`lifelong_units`); its
         replay memory is derived and rebuilt at restore, not written. A sub-record the restore
         refused is written back UNCHANGED until its store learns afresh; then the live store
-        supersedes it and the restore note says so (`superseded: [...]`)."""
+        supersedes it in this record, the refused bytes are kept under their own name
+        (`_keep_refused`) and the restore note says so (`superseded: [...]`). A store can learn
+        before the first flush -- the night learns a lifelong task before its flush, the SOM learns
+        on every wake tick -- so supersession is never what loses a refused record (R2-M1). A
+        carried q goes with a superseded arm: its ids name the old arm."""
         if not self._persist:
             return False
         try:
@@ -5139,19 +5160,32 @@ class Brain:
                 return False
             durable_units = int(self.brain.arm.learner.n_units)  # before the save: what it holds
             vis, aud, aff = self._vis_learner, self._aud_learner, self._affect_int
+            arm = self.brain.arm.learner.state_dict()
             stores = {  # name: (its record, whether the live store has learned anything)
-                "arm": (self.brain.arm.learner.state_dict(), self.brain.arm.learner.n_units > 0),
+                "arm": (arm, self.brain.arm.learner.n_units > 0),
                 "vis": (vis.state_dict() if vis else None, bool(vis and vis.n_units)),
                 "aud": (aud.state_dict() if aud else None, bool(aud and aud.n_units)),
-                "q": (self.brain.arm.q_state_dict(), bool(self.brain.arm.q)),
+                "q": (
+                    dict(self.brain.arm.q_state_dict(), arm=_record_id(arm)),
+                    bool(self.brain.arm.q),
+                ),
                 "affect": (aff.state_dict() if aff else None, bool(aff and aff.n_emotions)),
-                "lifelong": (dict(self._ll.state_dict(), i=int(self._ll_i)), self._ll.n_units > 0),
+                "lifelong": (
+                    dict(self._ll.state_dict(), i=int(self._ll_i), seed=self._seed),
+                    self._ll.n_units > 0,
+                ),
             }
             rec = {k: state for k, (state, _) in stores.items()}
-            superseded = sorted(k for k in self._prototypes_carried if k in stores and stores[k][1])
-            self._prototypes_carried = {
-                k: v for k, v in self._prototypes_carried.items() if k not in superseded
-            }
+            carried = self._prototypes_carried
+            superseded = {k for k in carried if k in stores and stores[k][1]}
+            if "arm" in superseded and "q" in carried:
+                superseded.add("q")
+            kept = []
+            for k in sorted(superseded):
+                if self._keep_refused(k, carried[k]):  # writes the lake
+                    kept.append(k)
+            superseded = kept
+            self._prototypes_carried = {k: v for k, v in carried.items() if k not in superseded}
             if superseded:
                 self._prototypes_restore_note = (
                     f"{self._prototypes_restore_note}; superseded: {superseded}"
@@ -5164,6 +5198,18 @@ class Brain:
             return saved
         except Exception:
             return False
+
+    @staticmethod
+    def _keep_refused(store, sub):
+        """R2-M1: a refused sub-record its live store supersedes is KEPT, under its own named state
+        `growing_learners.refused.<store>.<id>.json` -- one per distinct record, never superseded,
+        so neither the next flush nor consolidation drops it; retiring one is an explicit act, not
+        the store's first learning. True once the lake holds it."""
+        from snn_data_lake.substrate.home import load_named_state, save_state
+
+        name = f"{PROTOTYPES_STATE.removesuffix('.json')}.refused.{store}.{_record_id(sub)}.json"
+        # the name embeds the record's id: an unchanged (False) save means the lake holds it
+        return save_state(name, sub) or load_named_state(name) is not None
 
     def _flush_coverage(self):
         """T038 (FR-027): write the arm's coverage ledger into the ONE lake. Same two callers as

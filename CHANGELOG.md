@@ -26,6 +26,18 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   until its store relearns, never lost at the next sleep (A-M1); an imported sidecar is kept as `<name>.imported`, so a lake
   reset cannot import it again (A-m1); a legacy `skills/*.npz` the summary never named is still found (A-m2); the language
   organ restores all-or-nothing through one npz codec (A-m5, A-m8); `tests/test_lifelong_consolidation.py`.
+- **P4b fold of the arc-2 re-panel (p4b-fold2):** a refused restore record its store supersedes is kept in the lake under
+  `growing_learners.refused.<store>.<id>.json`, so the first night (which learns before it flushes) no longer loses it
+  (R2-M1); `arm.q` binds to the id of the arm record it was written beside, not to an id range, and a carried q goes with
+  a superseded arm; the lifelong record names its seed (its replay memory is rebuilt from that seed's streams) and is
+  refused at another or without one (B MINOR-5). Upgrade cost: a record written before this fold has neither field, so its
+  q and lifelong are refused (kept, not restored) and relearn once. A newer sidecar beside an existing `.imported` is kept
+  as `<name>.imported.<n>`, so a lake reset imports none; sidecars imported before this arc (still under their own name)
+  become `<name>.imported` on their next read, at boot for the daemon; undo = rename it back (the lake keeps the record).
+  A checkout older than this arc reads `language_acq.npz` and `skills/*.npz` from the files: after a rollback, rename
+  those back or both organs cold-boot (R2-m1, C2-M2, MINOR-6). The self-build learner's repo-level
+  `data/selfbuild_state.json` keeps its name, because every home shares it (divergence recorded, B MAJOR-6);
+  `tests/test_p4b_restart_restore.py`, `tests/test_p4b_sidecar_migration.py`.
 - **P5b gate** (`gates/p5b_gate.py`, rust-lead-1024): every native Rust module cites a pre-registration recording P5b's six
   criteria with numbers; the retroactive record names the eleven native modules present at the 20e1e742 cutoff; P5b's
   PROVISIONAL marker retires (its gate is built and counted). The arc-2 panel folds (A-M2, R2-M2) close the ways native code
