@@ -1093,3 +1093,87 @@ seeds it reads, and the report prints those per primary beside the look's full l
 changes. Red: `tests/test_rpe_charge.py::test_degeneracy_is_screened_on_seeds_past_the_h_p1_cap` (seed 50, `real`
 only). The same fold writes `P1_FUTILITY_LOOKS = ()` outright: `range(72, P1_CAP, 8)` was already empty, and its
 comment reasoned from n=72 (rv-arc2-r3 m6).
+
+## Addendum 8 (2026-10-25, lane e1b-a8, before any E1b brain run): H-V1 also powered on the smoothed shape (owner ruling); smoothing sensitivity
+
+Append-only; written before any E1b brain run and before any E1b datum. Addenda 2-7, the erratum of 2026-10-25 and every
+frozen section above are untouched; where this addendum and an earlier text differ, this addendum rules. Owner,
+2026-10-25 (verbatim, in chat to claude-engine-1024): **"I approve the H-V1 under smoothed shape"**. This answers Q2 of
+`lanes/engine-1024/e1b-smooth-row/OPEN-QUESTIONS.md` with option (b): "state H-V1's design as powered on the smoothed
+shape as well, with the cap and boundaries unchanged". H-V1's cap stays **152** (19 looks) and its boundaries stay
+`V1_SHAPE_T`; H-P1's cap stays **40** (5 looks) with the normal-model boundaries. Only the owner moves a cap; nothing in
+this addendum can move one. The frozen statistic is unchanged.
+
+This section ("Rule") was committed BEFORE any derivation run of this addendum (policy-enforcer #5241 / #5321, the
+lesson of addendum 7's derivation timeline). Every run is logged with a timestamp after that commit
+(`lanes/engine-1024/e1b-a8-row/logs/`). A rule fixed after a number was seen would void the reading.
+
+### Rule
+
+**1. H-V1 is stated as powered on two planted shapes.** These are the raw 8-point resample (addendum 4) and the
+smoothed shape of addendum 7 (the shrunk Silverman kernel bootstrap, h = 0.0265 on E1's H-V1 d_s). The design is
+today's `SEQ["H-V1"]`. Its bars on EACH shape:
+- type I <= .05 + 3 SE;
+- power >= .8.
+
+Both bars are taken on both estimators:
+- numpy: `derive_smooth.rates`, 200 000 campaigns, seeds 8801 (null) / 8802 (claimed DM);
+- harness: `rpe_charge.seq_decision` walked look by look, 40 000 campaigns, seeds 9494 / 9595.
+
+The pins go in `tests/test_rpe_charge.py`:
+- `CAP_SHAPE` names every shape each cap is powered on;
+- `SHAPES` gains ("H-V1", "smooth"), so R-S1b's type-I test and its slow twin run on it;
+- `STATED` gains the harness rates at 40 000 for ("H-V1", "smooth");
+- the fast twin (4000) checks the rates within 3 SE, and power >= .8 - 3 SE on each powered shape.
+
+The e1b-smooth reference (numpy, seeds 81/82: type I 0.0488, power 0.8160) is reported beside and is not re-used as a
+pin. The harness changes only if a bar fails, and then through its ONE place (`SEQ`). A bar failure is reported to the
+owner; it does not move a cap.
+
+**2. Smoothing sensitivity (REPORT-ONLY).** The grid is 2 designs x 5 variants x 2 estimators, each at the null and at
+the claimed effect.
+
+Designs (today's harness, unaltered):
+- H-P1: cap 40, normal LD-OBF t boundaries;
+- H-V1: cap 152, `V1_SHAPE_T`.
+
+Variants. Each is y = (x_I + h e) / c + mu on E1's 8 centred d_s, where c = sqrt(1 + h^2 / s0^2), s0^2 is the ddof-0
+variance, and SD / IQR are ddof-1 / inclusive quartiles:
+
+| id | variant | h | c |
+|---|---|---|---|
+| S | Silverman shrunk (the pre-registered one) | hS = 0.9 min(SD, IQR / 1.34) n^(-1/5) | shrunk |
+| U | Silverman UNSHRUNK (addendum 7's disclosed untested variant; variance x1.344 for H-P1) | hS | 1 |
+| SC | Scott's normal-reference rule | 1.06 SD n^(-1/5) | shrunk |
+| H05 | half bandwidth | 0.5 hS | shrunk |
+| H2 | double bandwidth | 2 hS | shrunk |
+
+Estimators and counts: numpy 200 000 campaigns per cell (seeds 8801 null / 8802 effect), and harness 40 000 per cell
+(seeds 9494 / 9595). The same seeds serve every variant (common random numbers). The S row of H-V1 is item 1's
+re-derivation. Each cell reports P(harm), P(futility) and P(INCONCLUSIVE); the harness also reports P(harm by look 2).
+
+Flags (named, never acted on):
+- a **type-I risk** when type I > .05 + 3 SE of that estimator's count (numpy .0515, harness .0533);
+- a **power risk** when the point power is < .8;
+- an **estimator disagreement** when numpy and harness differ by more than 3 combined SE.
+
+Each flagged variant is named below as a disclosed risk and goes to the owner as a question
+(`lanes/engine-1024/e1b-a8-row/REPORT.md`). **No cap, boundary or shape moves from this table** (owner rulings fix H-P1
+40 and H-V1 152).
+
+The script is `lanes/engine-1024/e1b-a8-row/derive_a8.py`. It reuses `derive_smooth.py` (bandwidth, numpy walk) and
+`derive_v1.py` (E1 table, prefixes). All numbers are brain-free simulations; no perception tier applies.
+
+### Sample size (P1)
+
+No sample size changes.
+- H-P1: SD_PRE 0.0695, DH 0.035, cap 40, 5 looks, LD-OBF one-sided .05, no futility look (addendum 7).
+- H-V1: SD_PRE 0.2040, DM 0.048, cap 152, 19 looks, `V1_SHAPE_T`, no futility look (addendum 4).
+
+The caps' power >= .8 is now stated on these shapes: H-P1 on the smoothed shape, H-V1 on the raw and the smoothed
+shape. The check is item 1's simulation, done before any data. A futility stop or an uncrossed cap is still not a null:
+it reports its mde, and P8 null-scale item 4 decides.
+
+### Results
+
+Results appended below after the runs.
