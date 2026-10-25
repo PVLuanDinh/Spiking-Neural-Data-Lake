@@ -27,8 +27,16 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   reset cannot import it again (A-m1); a legacy `skills/*.npz` the summary never named is still found (A-m2); the language
   organ restores all-or-nothing through one npz codec (A-m5, A-m8); `tests/test_lifelong_consolidation.py`.
 - **P5b gate** (`gates/p5b_gate.py`, rust-lead-1024): every native Rust module cites a pre-registration recording P5b's six
-  criteria with numbers; the retroactive record names the eleven native modules; P5b's PROVISIONAL marker retires (its gate is
-  built and counted).
+  criteria with numbers; the five modules that predate it are grandfathered by name to the retroactive record
+  (`evidence/p5b-retroactive-record.md`); P5b's PROVISIONAL marker retires (its gate is built and counted).
+- **P5b fold of the arc-2 panel (rust-lead-1024, T119):** the R0.4 RNG kit is disposed -- four native files deleted (`lcg`,
+  `legacy`, `pcg64`, `seedseq`) and `parity.rs` trimmed to the PFC's PyRandom families; GRANDFATHERED 11 -> 5; new
+  `p5b_gate` reds R-CRATE-OUTSIDE, R-STALE-EXEMPT, R-FOREIGN-SOURCE, R-PATH-ESCAPE, and `build.rs` now counts as a module.
+- **Safety envelope line endings** (policy audit pa-p5env-1; owner, verbatim, in chat 2026-10-24: "Yes, approve the
+  envelope-hash line-ending fix"): the five `brainstem/` envelope files carry `eol=lf` (`.gitattributes`) and
+  `tools/envelope_hashes.json` holds their LF blob hashes (three of five moved: reflex, arm_config, interpreter), so a fresh
+  checkout no longer reds `envelope_hash_gate`. The five blobs are byte-identical to c9d0c097 (`tests/test_envelope_eol.py`).
+  An older Windows checkout re-checks out the five files once (`docs/RUNNING.md`).
 - **Engine arc 1 panel carry-overs (policy-enforcer #4979):** the sleep-pruner census reads the top-level imports plus those in a
   top-level `if TYPE_CHECKING:` block (no other `if` block), with one planted red per typing rule; the P1 amendment's closed grandfather list is named
   (`evidence/p1-sample-size-grandfather.md`); a tasks.md row (T111a) for G3 T6's retirement of `GrowthLoop` and
@@ -41,6 +49,8 @@ arc". Policy audit report: lanes/policy-audit-1024-rows/POLICY-AUDIT-REPORT.md.
   non-binding, taken only at a look whose mde from the pre-registered SD is at or below the claimed effect; a futility or
   cap stop is INCONCLUSIVE unless powered (P8 item 4). Addendum 4 (owner 2026-10-24, verbatim: "Raise its cap to its power
   target"): H-V1's cap 152 seeds, 19 looks, shape-calibrated boundaries (type I .0510 under E1's shape, was .2185).
+  Addendum 6 (the arc-2 panel's errata): each primary is carried from its own stop; the seed-sensitivity bar is the look's
+  sequential bound; the no-encoder tier never holds or vetoes production; a zero observed SD never reads as powered.
   Addendum 7 (owner 2026-10-24, verbatim: "Smoothed shape"): H-P1's cap 40 seeds, 5 looks, powered on a kernel-smoothed
   resample of E1's shape (power .8097; addendum 5's 184 replaced), cutting the worst-case campaign from 806 to 454 runs.
 
