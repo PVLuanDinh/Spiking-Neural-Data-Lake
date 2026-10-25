@@ -32,7 +32,9 @@ boot. Zero runtime deps (stdlib json + os); the data lake never touches torch. A
 """
 
 import contextlib
+import glob
 import hashlib
+import io
 import json
 import os
 import re
@@ -40,6 +42,7 @@ import struct
 import sys
 import tempfile
 import threading
+import zipfile
 
 from snn_data_lake.substrate.binlog import (
     BinLog,
@@ -156,9 +159,10 @@ _T_CALIB = b"\x06"
 #
 # MIGRATION, NOT DELETION: `load_named_state` imports an existing `<home>/<name>` sidecar into the
 # lake the first time it is asked for it, then KEEPS the file renamed `<name>.imported` (bytes kept,
-# never re-read; see `_retire_sidecar`). Those files hold real history -- 2,505 B of recall counts
-# and 2,031 B of learned thresholds on the operator's home today -- and resetting them would be a
-# policy fix that quietly costs the brain what it learned.
+# never imported again, read only to compare against a newer file; see `_retire_sidecar`, which also
+# imports a file a rollback window wrote beside them). Those files hold real history -- 2,505 B of
+# recall counts and 2,031 B of learned thresholds on the operator's home today -- and resetting them
+# would be a policy fix that quietly costs the brain what it learned.
 #
 # COST, MEASURED rather than waved at: a save/load is a replay of the one lake, and one full pass
 # over that 516.8 MB lake costs 349 / 376 / 378 ms (three passes, .venv-lake, 2026-08-05) against
@@ -684,8 +688,9 @@ def state_path(name):
     """Path to `<home>/<name>` -- the LEGACY sidecar location, kept for these honest uses only.
 
     (1) `_migrate_sidecar` reads it, once, to import a pre-P4b blob into the one lake, and
-        `_retire_sidecar` then renames it `<name>.imported`. Since 2026-10-24 the imported names
-        include `language_acq.npz` and `skills/<domain>.npz`, which now go through
+        `_retire_sidecar` then renames it `<name>.imported`; `_retire_sidecar` also reads it to
+        import bytes a rollback window wrote there beside a retired copy. Since 2026-10-24 the
+        imported names include `language_acq.npz` and `skills/<domain>.npz`, which now go through
         `save_named_state`, as in-memory `np.savez` blobs.
     (1b) `sleep/nightly_skills.py` LISTS `<home>/skills/*.npz` (read-only) so a legacy domain
         missing from the summary is still imported through (1).
@@ -1158,44 +1163,111 @@ def load_named_state(name, path=None):
 
     A READ IS ALSO A RENAME: on the default lake a hit retires `<home>/<name>` to `.imported` or
     `.imported.<n>` (`_retire_sidecar`), so a read-only inspection pointed at a home renames that
-    home's sidecars."""
+    home's sidecars -- and a file holding bytes no retired copy beside it holds (a rollback
+    window) is imported first, so the read returns ITS bytes."""
     _state_key(name)
     hit = _state_index(_log(path)).get(str(name))
     if hit is not None:
         if path is None:
             _retire_sidecar(name)
+            hit = _state_index(_log(None)).get(str(name))
         return hit[1]
     return _migrate_sidecar(name) if path is None else None
+
+
+def named_states(prefix, path=None):
+    """`[(name, blob)]` of every named state whose name starts with `prefix`, NEWEST FIRST.
+
+    Order is the lake index reversed: exact for write-once (id-bearing) names; a re-saved name
+    sorts by its first write, or by its last after a consolidation prune. No sidecar is consulted or retired."""
+    idx = _state_index(_log(path))
+    return [(n, v[1]) for n, v in reversed(idx.items()) if n.startswith(prefix)]
 
 
 #: (NORD_HOME, name) pairs `_retire_sidecar` has settled in this process.
 _RETIRED = set()
 
 
+def _same_bytes(path, raw):
+    """An unreadable file counts as different."""
+    try:
+        with open(path, "rb") as f:
+            return f.read() == raw
+    except OSError:
+        return False
+
+
+def _same_kind(old, new):
+    """True if `new` is the kind of blob `old` is: JSON for JSON, a whole zip (an npz) for a zip.
+    A newer file must not replace a readable record with bytes its reader would refuse."""
+
+    def kind(raw):
+        if zipfile.is_zipfile(io.BytesIO(raw)):
+            return "zip"
+        try:
+            json.loads(raw.decode("ascii"))
+        except (ValueError, UnicodeDecodeError):
+            return None
+        return "json"
+
+    k = kind(new)
+    return k is not None and k == kind(old)
+
+
 def _retire_sidecar(name):
     """Rename `<home>/<name>` to `<name>.imported` (or `.imported.<n>`, below) -- called only once
-    the lake holds a record under `name`, so a lake reset cannot import the file a second time.
-    This also retires sidecars imported before 2026-10-24 (when the file kept its own name) and the
-    copy a concurrent first reader imported too. A name is settled once per home per process,
-    checked before any filesystem call; a file another process holds open is not settled and is
-    retried on the next read. Never over an existing file: a newer `<name>` beside an earlier
-    `.imported` becomes `<name>.imported.1` (the first free number), so both byte sets stay and a
-    reset imports neither. Whether the newer file's bytes ever reached the lake is NOT checked (a
-    sidecar saved over before its first read is renamed unread; see `_migrate_sidecar`).
+    the lake holds a record under `name`, so a lake reset cannot import the file a second time. This
+    also retires sidecars imported before 2026-10-24 (when the file kept its own name) and the copy
+    a concurrent first reader imported too. A name is settled once per home per process, checked
+    before any filesystem call; a file another process holds open is not settled and is retried on
+    the next read. Never over an existing file: a newer `<name>` beside an earlier `.imported`
+    becomes `<name>.imported.1` (one past the highest number; `.imported` counts as 0), so both byte
+    sets stay and a reset imports neither.
 
-    Nothing reads a `.imported` file. UNDO, per file: rename `<name>.imported` back to `<name>`; the
-    next read on an empty lake imports it again (the lake's own record is untouched). ROLLBACK: a
-    checkout older than 2026-10-24 reads `language_acq.npz` and `skills/<domain>.npz` from the
-    FILES, so after a rollback rename those back first or the brain cold-boots both organs; the
-    JSON sidecars were read through the lake before that date and need nothing."""
+    A file whose bytes match neither the lake record nor any retired copy beside it (at least one
+    must exist) is learning the lake lacks -- a rollback window wrote it -- so it is saved into the
+    lake BEFORE the rename (R3-M3), but only if it is the record's kind (`_same_kind`): this import
+    replaces a readable record, and the rename waits until ITS bytes are the record. A file with no
+    retired copy is the pre-2026-10-24 import that kept its name, OLDER than the lake, so it is
+    renamed unread; so is a copy of a retired copy, which is why UNDO and ROLLBACK copy and never
+    rename (a copy renamed back matches nothing and would import stale bytes). Carried edges: a
+    rollback write while no retired copy exists (the first rename failed) is renamed unread; a file
+    held open past its rename while the lake learns on imports again (two daemons on one home,
+    which P4 forbids).
+
+    A `.imported*` file is never imported again; it is read only to compare. UNDO, per file: copy
+    `<name>.imported` (`cp -p`) to `<name>`; the next read on an empty lake imports it again (the
+    lake's own record is untouched), and a lake that holds the record keeps it. ROLLBACK: a checkout
+    older than 2026-10-24 reads `language_acq.npz` and `skills/<domain>.npz` from the FILES, so
+    after a rollback copy the HIGHEST `.imported.<n>` (the newest bytes; `.imported` when there is
+    no numbered one) to its name first or the brain cold-boots both organs; returning to this build
+    then imports whatever the rollback wrote there and renames an untouched copy unread. The JSON
+    sidecars were read through the lake before that date and need nothing."""
     key = (os.environ.get("NORD_HOME"), str(name))
     if key in _RETIRED:
         return
     legacy = state_path(name)
-    dest, n = legacy + ".imported", 0
-    while os.path.exists(dest):
-        n += 1
-        dest = f"{legacy}.imported.{n}"
+    retired, top, base = [], -1, os.path.basename(legacy)
+    for p in glob.glob(glob.escape(legacy) + ".imported*"):  # every copy, gaps included
+        m = re.fullmatch(r"\.imported(?:\.(\d+))?", os.path.basename(p)[len(base) :])
+        if m:
+            retired.append(p)
+            top = max(top, int(m.group(1) or 0))
+    # past the highest number, never into a gap: the highest `.imported.<n>` is the newest bytes
+    dest = legacy + ".imported" if top < 0 else f"{legacy}.imported.{top + 1}"
+    try:
+        if retired:
+            with open(legacy, "rb") as f:
+                raw = f.read()
+            lake = _state_index(_log(None)).get(str(name), (0, b""))[1]
+            if raw and _same_kind(lake, raw) and not any(_same_bytes(p, raw) for p in retired):
+                save_named_state(name, raw)  # unchanged bytes write nothing
+                if _state_index(_log(None)).get(str(name), (0, None))[1] != raw:
+                    return  # the import did not land: the file keeps its name for the next read
+    except FileNotFoundError:
+        pass
+    except OSError:
+        return
     try:
         os.replace(legacy, dest)
     except FileNotFoundError:
@@ -1206,7 +1278,7 @@ def _retire_sidecar(name):
 
 
 def _migrate_sidecar(name):
-    """One-time import of a pre-P4b `<home>/<name>` sidecar INTO the lake. Returns its bytes or None.
+    """First-read import of a pre-P4b `<home>/<name>` sidecar INTO the lake. Returns its bytes or None.
 
     The file is KEPT, renamed to `<name>.imported` once its record is in the lake
     (`_retire_sidecar`; since 2026-10-24, arc-2 panel A-m1): left under its own name it was not
@@ -1225,7 +1297,8 @@ def _migrate_sidecar(name):
     sidecar is treated as absent rather than raised: a cold start is recoverable, a boot that dies
     on a stale file is not.
 
-    IT VALIDATES NOTHING, and that is a real edge this carries rather than a claim it makes. It
+    IT VALIDATES NOTHING (the rollback-window import in `_retire_sidecar`, which REPLACES a
+    record, checks the kind), and that is a real edge this carries rather than a claim it makes. It
     imports whatever bytes are at `<home>/<name>`, permanently: the imported record is the newest
     under its name, so `consolidate()`'s _T_STATE prune keeps it until a real save supersedes it,
     and a name nothing ever saves keeps its junk forever. MEASURED 2026-08-05: a
@@ -1305,9 +1378,10 @@ def load_state(name, default=None):
     """Load the JSON state stored under `name`; return `default` if it was never stored.
 
     Reads the ONE lake, falling back ONCE to a pre-P4b `<home>/<name>` sidecar, which it imports and
-    keeps, renamed `<name>.imported` (`_migrate_sidecar`). A sidecar that is no longer valid JSON is
-    treated as never written -- the pre-2026-08-05 form raised on it, and a boot that dies on a
-    stale file it is in the middle of retiring is the worse of the two failures."""
+    keeps, renamed `<name>.imported` (`_migrate_sidecar`); a file a rollback window wrote beside a
+    retired copy is imported on the next read (`_retire_sidecar`). A sidecar that is no longer valid
+    JSON is treated as never written -- the pre-2026-08-05 form raised on it, and a boot that dies
+    on a stale file it is in the middle of retiring is the worse of the two failures."""
     blob = load_named_state(name)
     if blob is None:
         return default

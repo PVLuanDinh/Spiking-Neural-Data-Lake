@@ -56,14 +56,14 @@ _CHILD = (
 import json, os, sys
 os.environ["NORD_HOME"] = sys.argv[1]
 from snn_data_lake.engine.brain import make_brain
-b = make_brain(seed=7, persist=(sys.argv[2] == "1"))
+b = make_brain(seed=int(sys.argv[3]) if len(sys.argv) > 3 else 7, persist=(sys.argv[2] == "1"))
 arm = b.brain.arm
 """
     + _SNAPSHOT
     + r"""
 s = b.state()
 out.update(n_emotions=s["n_emotions"], lifelong_units=s["lifelong_units"],
-           note=b._prototypes_restore_note)
+           note=b._prototypes_restore_note, kept=s.get("prototypes_refused_kept"))
 b.close()
 print("CHILD " + json.dumps(out))
 """
@@ -518,6 +518,123 @@ def test_a_lifelong_record_of_another_seed_is_refused():
     assert child["note"] == "refused: ['lifelong']" and child["ll"] == [], child
     assert _run(_SEED, home, "SEED", json.dumps(dict(rec, lifelong=dict(ll, seed=7))))
     assert _run(_CHILD, home, "CHILD", "1")["note"] is None  # the same record at its own seed
+
+
+# A brain at seed argv[2] runs ONE real night and closes; reports what its lifelong store holds.
+_SLEEP_AT = r"""
+import json, os, sys
+os.environ["NORD_HOME"] = sys.argv[1]
+from snn_data_lake.engine.brain import _record_id, make_brain
+b = make_brain(seed=int(sys.argv[2]), persist=True)
+b._enter_sleep()
+out = {"i": b._ll_i, "units": b._ll.n_units, "note": b._prototypes_restore_note,
+       "ll": b._ll.learner.state_dict()["prototypes"],
+       "id": _record_id(dict(b._ll.state_dict(), i=int(b._ll_i), seed=b._seed))}
+b.close()
+out["kept"] = b._prototypes_kept
+print("SLEEPAT " + json.dumps(out))
+"""
+
+
+@pytest.mark.slow
+def test_a_foreign_seed_brain_never_shelves_the_daemons_lifelong_store():
+    """R3-M2: a seed-7 brain on the daemon's home refuses the seed-0 lifelong record, learns its
+    own and shelves the seed-0 one as `refused.lifelong.<id>`. The next seed-0 brain refuses the
+    seed-7 record and must restore its own from the kept candidates, not relearn from zero."""
+    pytest.importorskip("torch")
+    home = _home("foreign_seed")
+    first = _run(_SLEEP_AT, home, "SLEEPAT", "0")
+    assert first["i"] == 1 and first["units"] > 0, f"the first night learned nothing: {first}"
+    assert first["kept"] == 0, first
+    stray = _run(_SLEEP_AT, home, "SLEEPAT", "7")
+    assert "superseded: ['lifelong']" in (stray["note"] or "") and stray["kept"] == 1, stray
+    back = _run(_CHILD, home, "CHILD", "1", "0")
+    assert back["lifelong_units"] == first["units"] and back["ll"] == first["ll"], back
+    adopted = f"adopted: ['growing_learners.refused.lifelong.{first['id']}.json']"
+    assert back["ll_i"] == 1 and back["note"] == f"refused: ['lifelong']; {adopted}", back["note"]
+    again = _run(_CHILD, home, "CHILD", "1", "0")  # `back` closed: the seed-7 record is kept now
+    assert again["note"] is None and again["kept"] == 2 and again["ll"] == first["ll"], again
+
+
+# A restarted brain relearns lifelong while every keep of a refused record fails (the lake append).
+_FAILED_KEEP = r"""
+import json, os, sys
+os.environ["NORD_HOME"] = sys.argv[1]
+from snn_data_lake.engine.brain import Brain, make_brain
+real, calls = Brain._keep_refused, []
+def keep(store, sub):  # argv[2] "always": every keep fails; "once": only the first
+    calls.append(store)
+    return False if sys.argv[2] == "always" or len(calls) == 1 else real(store, sub)
+Brain._keep_refused = staticmethod(keep)
+b = make_brain(seed=7, persist=True)
+b._ll.learn_task(0, b._ll_tasks[0]["train"]); b._ll_i = 1
+b._flush_prototypes()
+b.close()
+print("FKEEP " + json.dumps({"note": b._prototypes_restore_note}))
+"""
+
+
+@pytest.mark.slow
+def test_a_failed_keep_never_writes_the_refused_bytes_over_the_live_store():
+    """m5: the refused record stays carried (the keep is retried next flush), but the flush writes
+    the LIVE store under its name, never the refused bytes over it."""
+    pytest.importorskip("torch")
+    home, rec = _refused_lifelong_home("failed_keep")
+    out = _run(_FAILED_KEEP, home, "FKEEP", "always")
+    assert out["note"] == "refused: ['lifelong']", out  # not superseded: nothing was kept
+    got = _run(_CONSOLIDATED, home, "READ")
+    assert got["lifelong"]["i"] == 1 and got["lifelong"] != rec["lifelong"], got["lifelong"]
+
+
+@pytest.mark.slow
+def test_a_failed_keep_is_retried_by_the_next_flush():
+    pytest.importorskip("torch")
+    home, rec = _refused_lifelong_home("retried_keep")
+    out = _run(_FAILED_KEEP, home, "FKEEP", "once")
+    assert out["note"] == "refused: ['lifelong']; superseded: ['lifelong']", out
+    blobs = _run(_BLOBS, home, "BLOBS")
+    assert any(_bytes_of(rec["lifelong"]) in b for b in blobs), "the retried keep did not land"
+
+
+# Writes named states in order (argv[2]: JSON list of [name, obj]) into the home's lake.
+_SEED_NAMED = r"""
+import json, os, sys
+os.environ["NORD_HOME"] = sys.argv[1]
+from snn_data_lake.substrate.home import save_state
+print("SEEDN " + json.dumps([bool(save_state(n, o)) for n, o in json.loads(sys.argv[2])]))
+"""
+
+
+@pytest.mark.slow
+def test_an_adopted_arm_brings_back_the_q_kept_with_it(restarted):
+    """R3-M2 for the arm: the main arm is refused (width), so its q is too; the kept arm is
+    adopted, then the kept q bound to THAT arm's id -- never a newer q naming another arm, and a
+    malformed newer arm candidate is skipped, not raised out of the restore."""
+    from snn_data_lake.engine.brain import PROTOTYPES_STATE, REFUSED_PREFIX, _record_id
+
+    parent = _run(_CONSOLIDATED, restarted[2], "READ")
+    arm, q = parent["arm"], parent["q"]
+    decoy = dict(q, arm="0" * 16)
+    bad_arm = _learner(2)
+    main = {"arm": bad_arm, "vis": None, "aud": None, "q": dict(q, arm=_record_id(bad_arm))}
+    names = {
+        "arm": f"{REFUSED_PREFIX}arm.{_record_id(arm)}.json",
+        "q": f"{REFUSED_PREFIX}q.{_record_id(q)}.json",
+    }
+    home = _home("adopt_arm_q")
+    seeds = [
+        [names["arm"], arm],
+        [names["q"], q],
+        [f"{REFUSED_PREFIX}q.{_record_id(decoy)}.json", decoy],
+        [f"{REFUSED_PREFIX}arm.junk.json", [1]],  # newest: raises inside the arm's rule
+        [PROTOTYPES_STATE, main],
+    ]
+    assert all(_run(_SEED_NAMED, home, "SEEDN", json.dumps(seeds)))
+    child = _run(_CHILD, home, "CHILD", "1")
+    assert child["q"] == restarted[0]["q"], "the kept q did not come back with its kept arm"
+    assert child["note"] == (
+        f"refused: ['arm', 'q']; adopted: ['{names['arm']}', '{names['q']}']"
+    ), child["note"]
 
 
 @pytest.mark.slow

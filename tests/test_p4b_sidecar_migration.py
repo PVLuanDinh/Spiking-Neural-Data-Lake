@@ -6,6 +6,7 @@ Every test runs on conftest's hermetic NORD_HOME and asserts it is not the live 
 import hashlib
 import io
 import os
+import shutil
 import time
 
 import numpy as np
@@ -39,6 +40,11 @@ def _probe_sidecar(root, text='{"v": 1}'):
     with open(path, "w", encoding="ascii") as f:
         f.write(text)
     return path
+
+
+def _retired(path, suffix, text):
+    with open(path + suffix, "w", encoding="ascii") as f:
+        f.write(text)
 
 
 def _sidecars(root):
@@ -111,9 +117,13 @@ def test_legacy_language_sidecar_migrates_once():
     np.savez(path, W=old.W, ctx=np.asarray(old._ctx_ids), n=old.n_seen)  # the c9d0c097 writer
     assert h.load_named_state(STATE_NAME, path=h.knowledge_path()) is None
     _same_lm(old, LanguageAcquisition(seed=9).load())
-    np.savez(path, W=old.W * 0, ctx=np.asarray([7]), n=0)
+    shutil.copy2(path + ".imported", path)  # the retired bytes again: not learning, not imported
     _restart()
     _same_lm(old, LanguageAcquisition(seed=9).load())
+    newer = _lm(seed=6)  # a rollback window rewrote the file: imported before the rename (R3-M3)
+    np.savez(path, W=newer.W, ctx=np.asarray(newer._ctx_ids), n=newer.n_seen)
+    _restart()
+    _same_lm(newer, LanguageAcquisition(seed=9).load())
 
 
 def test_legacy_skills_sidecars_migrate_once(monkeypatch):
@@ -306,13 +316,12 @@ def test_a_sidecar_imported_before_the_rename_existed_is_retired_on_the_next_rea
 
 
 def test_retiring_never_overwrites_an_earlier_imported_file():
-    """C2-M2: a newer `<name>` beside an existing `.imported` is kept as `<name>.imported.<n>` (the
-    first free number), so no file is overwritten and a lake reset imports none."""
+    """C2-M2: a newer `<name>` beside an existing `.imported` is kept as `<name>.imported.<n>` (one
+    past the highest number), so no file is overwritten and a lake reset imports none."""
     root = _home()
     h.save_state("probe.json", {"v": 1})
     path = _probe_sidecar(root, '{"v": 2}')
-    with open(path + ".imported", "w", encoding="ascii") as f:
-        f.write('{"v": 1}')
+    _retired(path, ".imported", '{"v": 1}')
     _restart()
     h.load_state("probe.json")
     _probe_sidecar(root, '{"v": 3}')
@@ -330,6 +339,120 @@ def test_retiring_never_overwrites_an_earlier_imported_file():
     os.remove(h.knowledge_path())  # a lake reset
     _restart()
     assert h.load_state("probe.json") is None
+
+
+def test_a_sidecar_newer_than_its_retired_copy_is_imported_before_the_rename():
+    """R3-M3, the rollback window: the lake holds A and the file was retired; an older checkout
+    then writes B as the file. One read imports B BEFORE renaming it, so the round trip back to
+    this build is lossless: the lake holds B and the file is `.imported.1`."""
+    root = _home()
+    path = _probe_sidecar(root, '{"v": 1}')
+    assert h.load_state("probe.json") == {"v": 1} and os.path.exists(path + ".imported")
+    _probe_sidecar(root, '{"v": 2}')
+    _restart()
+    assert h.load_state("probe.json") == {"v": 2}
+    assert os.path.exists(path + ".imported.1") and not os.path.exists(path)
+    _restart()
+    assert h.load_named_state("probe.json", path=h.knowledge_path()) == b'{"v": 2}'
+
+
+def test_a_copied_back_retired_copy_is_renamed_unread():
+    """UNDO's copy: bytes that match a retired copy are not learning the lake lacks."""
+    root = _home()
+    path = _probe_sidecar(root, '{"v": 1}')
+    h.load_state("probe.json")
+    h.save_state("probe.json", {"v": 2})  # the lake learns on
+    shutil.copy2(path + ".imported", path)
+    _restart()
+    assert h.load_state("probe.json") == {"v": 2} and os.path.exists(path + ".imported.1")
+
+
+def test_a_torn_newer_file_never_replaces_a_readable_record():
+    """`_same_kind`: a newer file the record's reader would refuse is renamed unread."""
+    root = _home()
+    good = io.BytesIO()
+    np.savez(good, a=np.arange(3.0))
+    path = os.path.join(root, "probe.npz")
+    with open(path, "wb") as f:
+        f.write(good.getvalue())
+    h.load_named_state("probe.npz")
+    with open(path, "wb") as f:
+        f.write(good.getvalue()[:-7])  # truncated: no end-of-central-directory
+    _restart()
+    assert h.load_named_state("probe.npz") == good.getvalue()
+    assert os.path.exists(path + ".imported.1") and not os.path.exists(path)
+
+
+def test_a_newer_file_whose_import_did_not_land_keeps_its_name(monkeypatch):
+    root = _home()
+    path = _probe_sidecar(root, '{"v": 1}')
+    h.load_state("probe.json")
+    _probe_sidecar(root, '{"v": 2}')
+    _restart()
+    with monkeypatch.context() as m:
+        m.setattr(h, "save_named_state", lambda *a, **k: False)
+        assert h.load_state("probe.json") == {"v": 1}
+    assert os.path.exists(path) and not os.path.exists(path + ".imported.1")
+    _restart()
+    assert h.load_state("probe.json") == {"v": 2} and os.path.exists(path + ".imported.1")
+
+
+def test_named_states_lists_a_prefix_newest_first_across_a_consolidation():
+    _home()
+    for n in ("a", "b", "c"):
+        h.save_state(f"pfx.{n}.json", {"n": n})
+    h.save_state("pfy.z.json", {"n": "z"})
+    want = ["pfx.c.json", "pfx.b.json", "pfx.a.json"]
+    assert [n for n, _ in h.named_states("pfx.")] == want
+    kl = h.KnowledgeLog(h.knowledge_path())
+    kl.consolidate(list(kl.replay()))
+    _restart()
+    assert [n for n, _ in h.named_states("pfx.")] == want
+
+
+def test_a_copy_of_a_retired_copy_past_a_gap_is_renamed_unread():
+    """The scan sees every retired copy, gaps included, and a new one lands past the highest."""
+    root = _home()
+    h.save_state("probe.json", {"v": 3})  # the lake learned on
+    path = os.path.join(root, "probe.json")
+    _retired(path, ".imported", '{"v": 1}')
+    _retired(path, ".imported.2", '{"v": 2}')  # `.imported.1` is gone
+    shutil.copy2(path + ".imported.2", path)  # ROLLBACK's copy, never rewritten
+    _restart()
+    assert h.load_state("probe.json") == {"v": 3}
+    assert os.path.exists(path + ".imported.3") and not os.path.exists(path + ".imported.1")
+
+
+def test_a_name_that_is_not_a_retired_copy_is_ignored():
+    """Only `.imported` and `.imported.<n>` are retired copies: a stray `.imported.bak` neither
+    blocks the unread rename of a pre-2026-10-24 file nor takes part in the numbering."""
+    root = _home()
+    h.save_state("probe.json", {"v": 2})
+    path = _probe_sidecar(root, '{"v": 1}')
+    _retired(path, ".imported.bak", '{"v": 0}')
+    _restart()
+    assert h.load_state("probe.json") == {"v": 2}
+    assert os.path.exists(path + ".imported") and os.path.exists(path + ".imported.bak")
+
+
+def test_a_newer_file_is_imported_when_only_a_numbered_retired_copy_exists():
+    root = _home()
+    h.save_state("probe.json", {"v": 1})
+    path = _probe_sidecar(root, '{"v": 2}')
+    _retired(path, ".imported.1", '{"v": 1}')  # `.imported` was renamed away
+    _restart()
+    assert h.load_state("probe.json") == {"v": 2} and os.path.exists(path + ".imported.2")
+
+
+def test_a_stale_sidecar_never_overwrites_the_lake_record_it_was_imported_into():
+    """The other side of R3-M3: a file left under its own name by a pre-2026-10-24 import (no
+    retired copy beside it) holds OLDER bytes than the lake; it is renamed unread."""
+    root = _home()
+    h.save_state("probe.json", {"v": 2})  # the lake learned on after importing the file
+    path = _probe_sidecar(root, '{"v": 1}')
+    _restart()
+    assert h.load_state("probe.json") == {"v": 2}
+    assert os.path.exists(path + ".imported") and not os.path.exists(path)
 
 
 def test_the_repo_selfbuild_sidecar_is_never_renamed_by_a_home_that_reads_it(tmp_path):

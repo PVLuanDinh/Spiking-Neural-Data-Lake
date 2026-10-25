@@ -394,7 +394,14 @@ PROVENANCE = {
         "a lifelong record without this seed; any record written before 2026-10-24 has neither) "
         "is carried forward unchanged until its store learns afresh; "
         "'superseded: [...]' names the stores whose live state then took its place, the refused "
-        "bytes kept as growing_learners.refused.<store>.<id>.json (2026-10-24, R2-M1)"
+        "bytes kept as growing_learners.refused.<store>.<id>.json (2026-10-24, R2-M1). A refused "
+        "store is retried from those kept records, newest first, under the same rule; "
+        "'adopted: [...]' names the one restored (2026-10-25, R3-M2)"
+    ),
+    "prototypes_refused_kept": (
+        "the growing_learners.refused.<store>.<id>.json records the lake holds (at restore and "
+        "after each flush that keeps one); none is retired by any code path, so this only grows, "
+        "by at most one per distinct superseded refusal (2026-10-25, R3 m4)"
     ),
 }
 
