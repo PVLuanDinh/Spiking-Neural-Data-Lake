@@ -39,6 +39,12 @@ Run everything on one machine.
   stores are refused, kept and retried at every boot under the same rule, so they relearn once. `origin/main` before engine
   arc 2 writes neither, so it is unaffected.
 
+- **From engine arc 3 (T120), the self-build learner's legacy state is read from the HOME, never the repo.** Before the
+  first boot of such a build, move `<repo>/data/selfbuild_state.json` into the home once (Windows:
+  `move data\selfbuild_state.json %USERPROFILE%\.snn_data_lake\`; elsewhere `mv data/selfbuild_state.json "$NORD_HOME"/`).
+  The first boot imports it into the lake and renames it `selfbuild_state.json.imported`. It restores the learner only
+  on a lake that holds no self-build record yet; on such a lake, skipping the move cold-starts the self-build learner.
+  A rollback to a pre-arc-3 checkout reads the REPO file again: copy `selfbuild_state.json.imported` back to `data/`.
 ---
 
 ## Local
