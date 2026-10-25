@@ -1188,12 +1188,17 @@ N_SIM = 4000  # fast twin; the slow twin runs 40000
 # The addendum's stated rates (addendum 4: e1b-fix-row/derive_v1.py `verify`, 40000 campaigns, RNG
 # seeds 7070 / 8080,
 # not the tests' 303 / 404). "normal": d_s ~ N(mu, SD); "shape": E1's measured d_s, centred,
-# resampled, plus mu (R-S1b).
+# resampled, plus mu (R-S1b); "smooth": the kernel bootstrap (addenda 7 / 8).
 STATED = {
     ("H-V1", "shape", "harm_by_look2"): 0.0004,
     ("H-V1", "shape", "power"): 0.8164,
     ("H-V1", "shape", "futility_null"): 0.0,
     ("H-V1", "shape", "inconclusive_null"): 0.3649,
+    # addendum 8 (H-V1 cap 152): e1b-a8-row/derive_a8.py `harness H-V1 S` (seeds 9494 / 9595)
+    ("H-V1", "smooth", "harm_by_look2"): 0.0,
+    ("H-V1", "smooth", "power"): 0.8145,
+    ("H-V1", "smooth", "futility_null"): 0.0,
+    ("H-V1", "smooth", "inconclusive_null"): 0.3715,
     # addendum 7 (H-P1 cap 40): e1b-smooth-row/raw_at.py = derive_p1.py `verify 40000` at cap 40
     # (seeds 9090 / 9191); "smooth": derive_smooth.py `verify H-P1 40000 smooth 40`
     # (seeds 9292 / 9393)
@@ -1210,10 +1215,11 @@ STATED = {
     ("H-P1", "smooth", "futility_null"): 0.0,
     ("H-P1", "smooth", "inconclusive_null"): 0.0006,
 }
-# the planted shape each primary's cap is powered on (P1 item 2): H-P1 the smoothed one (addendum 7,
-# owner "Smoothed shape"), H-V1 the raw resample (addendum 4); H-P1's raw shape is a disclosed
+# the planted shapes each primary's cap is powered on (P1 item 2): H-P1 the smoothed one
+# (addendum 7, owner "Smoothed shape"), H-V1 the raw resample (addendum 4) and the smoothed one
+# (addendum 8, owner "I approve the H-V1 under smoothed shape"); H-P1's raw shape is a disclosed
 # reference
-CAP_SHAPE = {"H-P1": "smooth", "H-V1": "shape"}
+CAP_SHAPE = {"H-P1": ("smooth",), "H-V1": ("shape", "smooth")}
 # E1's measured per-seed d_s (addendum 2's table, no-encoder tier, seed 1 kept): the planted SHAPE
 # of R-S1b
 E1_D = {
@@ -1319,14 +1325,14 @@ def test_rs1_h_v1_type_one_holds_under_the_normal_null_too():
     assert _type_one(N_SIM, 111, "H-V1")[0] <= 0.05 + 3 * _se(0.05)
 
 
-# R-S1b planted shapes: "shape" = the raw resample, "smooth" = the kernel bootstrap (addendum 7)
-SHAPES = [("H-P1", "shape"), ("H-P1", "smooth"), ("H-V1", "shape")]
+# R-S1b planted shapes (legend above STATED)
+SHAPES = [("H-P1", "shape"), ("H-P1", "smooth"), ("H-V1", "shape"), ("H-V1", "smooth")]
 
 
 @pytest.mark.parametrize("key,dist", SHAPES)
 def test_rs1b_type_one_holds_under_e1s_measured_per_seed_shape(key, dist):
     # R-S1b (re-panel A-B2): 4000 campaigns, each drawing E1's centred d_s to the endpoint's cap,
-    # raw ("shape") or kernel-smoothed ("smooth", addendum 7). Under the raw shape the plain t
+    # raw ("shape") or kernel-smoothed ("smooth", addenda 7 / 8). Under the raw shape the plain t
     # boundaries of addendum 2 gave H-V1 a type I of 0.2185 (rv-arc1-a r2/typeI_shape.out).
     p = _type_one_shape(N_SIM, 505, key, dist)
     assert p <= 0.05 + 3 * _se(0.05), (key, dist, p)
@@ -1357,8 +1363,9 @@ def test_rs3_a_planted_harm_of_the_claimed_size_crosses_at_the_stated_rate(key, 
     power = sum(d == "harm" for d, _, _ in walks) / N_SIM
     for got, what in ((by2, "harm_by_look2"), (power, "power")):
         want = STATED[(key, dist, what)]
-        assert abs(got - want) <= 3 * _se(want), (key, what, got, want)
-    if dist in ("normal", CAP_SHAPE[key]):  # P1 item 2: power at the cap >= .8
+        tol = 3 * (_se(want) if want else _se(0.01))  # _se(0) is 0: a zero pin borrows R-S4's floor
+        assert abs(got - want) <= tol, (key, what, got, want)
+    if dist == "normal" or dist in CAP_SHAPE[key]:  # P1 item 2: power at the cap >= .8
         assert power >= 0.8 - 3 * _se(0.8), (key, power)
 
 
@@ -1959,12 +1966,13 @@ def test_h_v1_stopped_at_look_1_ignores_later_rows_and_counts_agreement_over_its
 
 
 @pytest.mark.slow
-def test_rs3_slow_twin_h_p1_power_at_the_cap_is_at_least_point_8():
-    # P1 item 2 inside the suite: power at H-P1's cap >= .8 under the shape it is powered on
+@pytest.mark.parametrize("key,dist", [(k, d) for k, ds in CAP_SHAPE.items() for d in ds])
+def test_rs3_slow_twin_power_at_the_cap_is_at_least_point_8(key, dist):
+    # P1 item 2 inside the suite: power at each cap >= .8 under every shape it is powered on
     n = 40000
-    walks = [_walk(ds) for ds in _planted("H-P1", CAP_SHAPE["H-P1"], R.DH, n, 707)]
+    walks = [_walk(ds, key) for ds in _planted(key, dist, CLAIMED[key], n, 707)]
     power = sum(d == "harm" for d, _, _ in walks) / n
-    assert power >= 0.8 - 3 * _se(0.8, n), power
+    assert power >= 0.8 - 3 * _se(0.8, n), (key, dist, power)
 
 
 # ------------- e1b-fold (arc 2 panel): A-M3, A-M4, C-M3 + A-m6, A-m4, A-m3 -- addendum 6, before
