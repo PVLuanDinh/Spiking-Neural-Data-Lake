@@ -22,7 +22,11 @@ items 1-2 into G9's campaign, as design input."
   (move the file into the home once).
 - **E1b addendum 8** (pre-data, no brain run): H-V1's cap 152 is also powered on the smoothed shape (type I .0477, power
   .8145); the rule was committed before any run; a report-only smoothing-sensitivity table discloses that H-P1's cap-40
-  power falls to .68-.69 under an unshrunk or half-bandwidth kernel (owner question; no cap moves). Addenda 2-8.
+  power falls to .68-.69 under an unshrunk or half-bandwidth kernel (owner question, answered by addendum 9). Addenda 2-9.
+- **E1b addendum 9** (pre-data, no brain run; owner "raise it in a new pre-data addendum"): H-P1's cap 40 -> 176 (22 looks),
+  the first look powered >= .8 under the shrunk, unshrunk and half-bandwidth smoothed shapes (harness .9518 / .8163 / .8028;
+  type I <= .0078 on every variant and the raw shape); the campaign now runs H-P1's 22 looks, futility opens at looks 9-21,
+  worst case 774 runs (~8 h 49 min); rule committed before any run. Addenda 2-9.
 - **organoid_ingest** dormancy disposition 'wire' -> 'permanent' (awaiting-prerequisite; no wave pending after A9).
 - **Representational drift** (research `lanes/research-1025-drift/REPORT.md`) carried as design input on tasks.md T113 (G5)
   and T117 (G9).
