@@ -45,9 +45,13 @@ Run everything on one machine.
   `python -c "import shutil; from snn_data_lake.substrate import home as h; shutil.move('data/selfbuild_state.json', h.state_path('selfbuild_state.json'))"`.
   The import is lazy: the first time the self-build learner loads (a wake with `NORD_SELFMOD=1`), it imports the file
   into the lake and renames it `selfbuild_state.json.imported` (or `.imported.<n>`). It restores the learner only on a
-  lake that holds no self-build record yet; on such a lake, skipping the move cold-starts the self-build learner.
+  lake that holds no self-build record yet; on such a lake, skipping the move cold-starts the self-build learner. A lake
+  whose newest self-build record does not decode restores the newest one that does. A lake whose self-build records
+  cannot be read at all cold-starts for that process with self-build persistence OFF (logged `cold_start`): it neither
+  saves over the records nor imports the file, which keeps its name for a later boot.
   Rollback to a pre-arc-3 checkout: once the lake holds a self-build record, that checkout ignores the legacy file too,
-  so nothing is needed; before that first import, move the file back to `data/selfbuild_state.json`.
+  so nothing is needed; before that first import (no `.imported` copy exists yet), move the file still in the home back
+  to `data/selfbuild_state.json`.
 ---
 
 ## Local
