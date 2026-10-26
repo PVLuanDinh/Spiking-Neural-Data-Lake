@@ -20,6 +20,11 @@ items 1-2 into G9's campaign, as design input."
   `tests/test_brain_hermeticity.py` census: a temp-home Brain opens no learned state under the repo (403 files: 396 code,
   7 allowlisted read-only assets); the pre-fix tree reds on `data/selfbuild_state.json`. Operator step in `docs/RUNNING.md`
   (move the file into the home once).
+- **T120 panel fold (t120-fold):** a corrupt newest self-build record restores the newest record that decodes, and a
+  lake whose records cannot be read cold-starts without saving or importing over them (rv-arc3 A-M1/B-m7); the
+  hermeticity census records every write, rename and replace wherever it points, reds live-home opens and out-of-home
+  files left behind, lists the five encoder files by name, and skips (by name) the staleness and tier checks for assets
+  absent on a CI checkout (A-M2, B-M3, C-m6, A-m3..m5, enforcer #5476 m1).
 - **E1b addendum 8** (pre-data, no brain run): H-V1's cap 152 is also powered on the smoothed shape (type I .0477, power
   .8145); the rule was committed before any run; a report-only smoothing-sensitivity table discloses that H-P1's cap-40
   power falls to .68-.69 under an unshrunk or half-bandwidth kernel (owner question, answered by addendum 9). Addenda 2-9.
