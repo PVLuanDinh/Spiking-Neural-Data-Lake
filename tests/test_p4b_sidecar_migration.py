@@ -494,6 +494,19 @@ def test_a_selfbuild_sidecar_moved_beside_a_learned_lake_is_imported_but_not_app
     assert h.load_named_state(_SB, path=h.knowledge_path()) == b'{"futile": 3}'
 
 
+def test_a_learned_lake_with_no_sidecar_never_rereads_the_frozen_copy(monkeypatch):
+    """rv-arc3 A-m8 / B-m1: once the lake holds a _T_SELFBUILD record and no file sits in the home,
+    a boot does not read the frozen _T_STATE copy at all."""
+    from snn_data_lake.infra import brain_native_selfbuild as m
+
+    _home()
+    h.save_selfbuild(b'{"futile": 5}')
+    calls = []
+    monkeypatch.setattr(m, "load_state", lambda *a, **k: calls.append(a))
+    assert m.BrainNativeSelfBuildProposer(sources=[])._futile == 5
+    assert calls == []
+
+
 def test_an_isolated_selfbuild_lake_leaves_the_home_sidecar_alone(tmp_path):
     from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
 
@@ -504,29 +517,103 @@ def test_an_isolated_selfbuild_lake_leaves_the_home_sidecar_alone(tmp_path):
 
 
 @pytest.mark.parametrize("sidecar", [False, True])
-def test_a_corrupt_selfbuild_record_cold_starts(sidecar):
-    """A corrupt newest record never brings the frozen legacy weights back over the learned
-    history; a sidecar beside it is still imported and retired."""
+def test_a_corrupt_selfbuild_record_cold_starts_without_superseding_it(sidecar):
+    """rv-arc3 A-M1: a lake whose only _T_SELFBUILD record does not decode cold-starts, but the cold
+    learner never appends a record over it, and a sidecar beside it keeps its name for a later boot
+    (importing it now would retire it without applying it)."""
     from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
 
     _home()
     h.save_selfbuild(b"\xff")
     path = _probe_sidecar(h.home(), '{"futile": 3}', _SB) if sidecar else None
-    assert P(sources=[])._futile == 0
-    assert path is None or os.path.exists(path + ".imported")
+    p = P(sources=[])
+    assert p._futile == 0
+    assert ("*", "cold_start", "no self-build record could be read; persistence off") in p.log
+    p._save()
+    assert h.load_selfbuild() == b"\xff"
+    assert path is None or (os.path.exists(path) and not os.path.exists(path + ".imported"))
+
+
+def test_a_corrupt_newest_selfbuild_record_restores_the_newest_record_that_decodes():
+    """rv-arc3 A-M1 / B-m7: bad newest records (a non-object, then undecodable bytes) fall back to
+    the learned history before them."""
+    from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
+
+    _home()
+    h.save_selfbuild(b'{"futile": 4}')
+    h.save_selfbuild(b'{"futile": 5}')
+    h.save_selfbuild(b"[1]")
+    h.save_selfbuild(b"\xff")
+    p = P(sources=[])
+    assert p._futile == 5
+    p._save()
+    assert json.loads(h.load_selfbuild())["futile"] == 5
+
+
+@pytest.mark.parametrize(
+    "records, futile",
+    [([b"\xff"], 0), ([b'{"futile": 4}', b'{"futile": 5}', b"\xff"], 5)],
+)
+def test_an_isolated_selfbuild_lake_with_a_corrupt_newest_record(tmp_path, records, futile):
+    """On an isolated lake (`lake_path`): restore the newest record that decodes;
+    with none, cold-start and write nothing over the record."""
+    from snn_data_lake.infra.brain_native_selfbuild import BrainNativeSelfBuildProposer as P
+
+    _home()
+    iso = str(tmp_path / "iso.bin")
+    for rec in records:
+        h.save_selfbuild(rec, iso)
+    p = P(sources=[], lake_path=iso)
+    assert p._futile == futile
+    p._save()
+    blob = h.load_selfbuild(iso)
+    if futile:
+        assert json.loads(blob)["futile"] == futile
+    else:
+        assert blob == records[-1]
+
+
+def test_load_selfbuild_skips_only_the_records_its_decoder_rejects():
+    """`decode` returning None or raising ValueError skips a record; any other error propagates."""
+    _home()
+    for rec in (b"good", b"none", b"value"):
+        h.save_selfbuild(rec)
+
+    def decode(blob):
+        if blob == b"value":
+            raise ValueError(blob)
+        return None if blob == b"none" else blob.decode("ascii")
+
+    assert h.load_selfbuild(decode=decode) == "good"
+    assert h.load_selfbuild() == b"value"
+
+    def broken(blob):
+        raise TypeError(blob)
+
+    with pytest.raises(TypeError):
+        h.load_selfbuild(decode=broken)
 
 
 def test_an_unreadable_selfbuild_record_never_restores_the_legacy_state(monkeypatch):
+    """rv-arc3 A-M1: a replay that raises leaves both the lake and the sidecar as they were; the
+    next boot that can read the lake imports the sidecar."""
     from snn_data_lake.infra import brain_native_selfbuild as m
 
     path = _probe_sidecar(_home(), '{"futile": 3}', _SB)
 
-    def unreadable(*_a):
+    def unreadable(*_a, **_k):
         raise OSError("replay failed")
 
     monkeypatch.setattr(m, "load_selfbuild", unreadable)
-    assert m.BrainNativeSelfBuildProposer(sources=[])._futile == 0
-    assert os.path.exists(path + ".imported")  # retired all the same
+    p = m.BrainNativeSelfBuildProposer(sources=[])
+    assert p._futile == 0
+    p._save()
+    assert h.load_selfbuild() is None
+    assert os.path.exists(path) and not os.path.exists(path + ".imported")
+    monkeypatch.setattr(m, "load_selfbuild", h.load_selfbuild)
+    _restart()
+    assert m.BrainNativeSelfBuildProposer(sources=[])._futile == 3
+    assert os.path.exists(path + ".imported")
 
 
 @pytest.mark.parametrize("text", ["[1]", "null", "{bad"])

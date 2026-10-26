@@ -117,8 +117,8 @@ _T_EPISODE = b"\x04"
 # view filters on `payload[:1] == _T_FACT` and consolidate() PRESERVES this tag (its one prune is
 # _T_STATE-only, and this history is deliberately outside it), so existing readers skip this and a
 # rewrite keeps it. T120 (2026-10-25): the pre-P4b `<home>/selfbuild_state.json` is imported
-# through `_migrate_sidecar`, and applied only to a lake with no _T_SELFBUILD record (see the
-# proposer's `_load`).
+# through `_migrate_sidecar`, and applied only to a lake with no _T_SELFBUILD record; a lake whose
+# records cannot be read leaves the file under its name for a later boot (see the proposer's `_load`).
 _T_SELFBUILD = b"\x05"
 # _T_CALIB was added 2026-08-04 as a per-caller channel for ONE sidecar (`signal_calib.json`) and is
 # RETIRED 2026-08-05 WITHOUT EVER BEING WRITTEN, superseded by the generic `_T_STATE` record below.
@@ -697,6 +697,9 @@ def state_path(name):
         `selfbuild_state.json`.
     (1b) `sleep/nightly_skills.py` LISTS `<home>/skills/*.npz` (read-only) so a legacy domain
         missing from the summary is still imported through (1).
+    (1c) `infra/brain_native_selfbuild.py` checks `<home>/selfbuild_state.json` EXISTS
+        (read-only) so a lake that already holds a self-build record asks (1) only when the file
+        is there.
     (2) The novel-signal queue `unknowns.jsonl` of `sensorimotor/signal_loop.py`, a FILE of queued
         windows that `learn_unknowns` reads once, clusters and truncates -- the raw input queue, not
         learned state, and the one remaining writer through this path.
@@ -1616,15 +1619,29 @@ def save_selfbuild(blob, path=None):
     return _w
 
 
-def load_selfbuild(path=None):
-    """The most recent self-build learner blob, or None if the lake holds none.
+def load_selfbuild(path=None, decode=None):
+    """The most recent self-build learner blob (decoded, with `decode`), or None if there is none
+    (with `decode`: none it accepts).
 
     None is the honest answer for a lake written before this record type existed; the caller starts
-    from its uniform weight init, which is exactly the pre-2026-08-04 cold-start behaviour."""
+    from its uniform weight init, which is exactly the pre-2026-08-04 cold-start behaviour.
+
+    With `decode`, the newest record `decode` accepts, decoded: a record it rejects (raises
+    ValueError or returns None) is skipped, so one bad newest record falls back to the learned
+    history before it instead of cold-starting over it (rv-arc3 A-M1)."""
     latest = None
     for payload in _log(path).replay():
-        if payload[:1] == _T_SELFBUILD:
+        if payload[:1] != _T_SELFBUILD:
+            continue
+        if decode is None:
             latest = payload[1:]
+            continue
+        try:
+            value = decode(payload[1:])
+        except ValueError:
+            continue
+        if value is not None:
+            latest = value
     return latest
 
 

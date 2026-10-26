@@ -67,7 +67,7 @@ import zlib
 
 from snn_data_lake.infra.self_mod_harness import _PROTECTED
 from snn_data_lake.plasticity.r_stdp import RSTDPNeuron
-from snn_data_lake.substrate.home import load_selfbuild, load_state, save_selfbuild
+from snn_data_lake.substrate.home import load_selfbuild, load_state, save_selfbuild, state_path
 
 # This module's own dotted name -- correct both when imported and when run as `python -m ...` (runpy
 # sets __spec__ to the real name even though __name__ becomes "__main__"). The self-check's toy patches
@@ -523,6 +523,7 @@ class BrainNativeSelfBuildProposer:
         # None -> THE ONE LAKE at its default location. A path is an ISOLATED lake, which is what the
         # self-check below uses per case; it is not a second store, it is the same store elsewhere.
         self._lake_path = lake_path
+        self._persist = True  # False after a cold start over records it could not read (see _load)
         self._tally = {"proposed": 0, "kept": 0, "rolled_back": 0}
         # CIRCUIT BREAKER (harness robustness principle): a candidate set that always rolls back is
         # re-proposed forever (byte-exact rollback -> is_applied stays False) and re-runs the FULL
@@ -556,28 +557,41 @@ class BrainNativeSelfBuildProposer:
     # _T_SELFBUILD record otherwise cold-starts. It holds real learned weights, so it is migrated,
     # never deleted. An isolated lake (`lake_path`) pairs with no home sidecar, mirroring
     # `load_named_state(path=...)`.
+    #
+    # rv-arc3 A-M1, 2026-10-25 -- a bad record never buries the history. The newest _T_SELFBUILD
+    # record that DECODES is restored, so one corrupt newest record falls back to the learning
+    # before it. When records exist but none decodes, or the replay raises, the learner cold-starts
+    # in memory only: no import (the sidecar would be retired unapplied) and no save (a cold record
+    # would become the newest and supersede what could not be read). The next boot tries again.
     def _load(self):
-        st = blob = None
-        read_failed = False
+        found = unreadable = False
+
+        def decode(blob):
+            nonlocal found
+            found = True
+            st = json.loads(bytes(blob).decode("ascii"))
+            return st if isinstance(st, dict) else None
+
         try:
-            blob = load_selfbuild(self._lake_path)
-        except Exception:  # a broken or absent record must never block construction
-            read_failed = True
-        try:
-            st = json.loads(bytes(blob).decode("ascii")) if blob else None
-        except (ValueError, UnicodeDecodeError):
-            pass
-        if self._lake_path is None:
-            # Asked on every default-lake boot, not only on a miss: the read is what retires a
-            # sidecar moved into a home whose lake already holds a _T_SELFBUILD record.
+            st = load_selfbuild(self._lake_path, decode=decode)
+        except Exception:  # a broken record must never block construction
+            st, unreadable = None, True
+        if st is None and (found or unreadable):
+            self._persist = False
+            self.log.append(
+                ("*", "cold_start", "no self-build record could be read; persistence off")
+            )
+            return
+        if self._lake_path is None and (st is None or os.path.exists(state_path(_LEGACY_STATE))):
+            # The read is what retires a sidecar moved into a home whose lake already holds a
+            # _T_SELFBUILD record; with no file, the frozen _T_STATE copy is not re-read (A-m8).
             try:
                 legacy = load_state(_LEGACY_STATE)
             except Exception:
                 legacy = None
             # Only a lake with NO _T_SELFBUILD record takes it: the import leaves a frozen _T_STATE
-            # copy nothing supersedes, and a corrupt or unreadable newest record cold-starts rather
-            # than restoring those Aug-2026 weights over the learned history.
-            if not blob and not read_failed and isinstance(legacy, dict):
+            # copy nothing supersedes.
+            if st is None and isinstance(legacy, dict):
                 st = legacy
                 try:
                     save_selfbuild(json.dumps(st, sort_keys=True).encode("ascii"))
@@ -598,6 +612,8 @@ class BrainNativeSelfBuildProposer:
             self._last_cand_key = [str(x) for x in st["last_cand_key"]]
 
     def _save(self):
+        if not self._persist:
+            return
         weights = {tid: self._cell.w[self._idx[tid]] for tid in self._ids}
         payload = {
             "weights": weights,
