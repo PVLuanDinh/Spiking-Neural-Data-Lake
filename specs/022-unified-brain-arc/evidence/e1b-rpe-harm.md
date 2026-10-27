@@ -1562,3 +1562,215 @@ Tests (`tests/test_rpe_charge.py`):
 `pfrozen` too, and the screen flags a seed only when every arm it ran is degenerate; fixed in the test, not in `src/`.
 Reds and greens: `lanes/engine-1024/e1b-a9-row/REPORT.md`. The derivation is `derive_a9.py`. All numbers are brain-free
 simulations or arithmetic; no perception tier applies.
+
+## Addendum 10 (2026-10-27, lane e1b-run, before any E1b brain run): the run binding
+
+Append-only; written before any E1b brain run and before any E1b datum. Addenda 1-9, the erratum of 2026-10-25 and every
+frozen section above are untouched. Nothing here changes a bar, a cap, a boundary, a claimed effect, a seed or an arm.
+It binds the campaign to one tree, one interpreter, one set of model files, one driver and one set of brain-free
+preamble logs, each named by its sha256, so a run log can be checked against what was registered. Lane brief:
+`lanes/engine-1024/E1B-RUN.BRIEF.md`. Work folder: `D:\AI-project\lanes\e1b-rpe-harm-1023-work` (below: `<work>`).
+No brain was built for anything in this addendum.
+
+### Tree, interpreter, import path
+
+- Run tree `D:\AI-project\lanes\e1b-rpe-harm-1023`, DETACHED at **c1df3887999a071ae48003b0d8496af0e20501ca** (`<work>\TREE_SHA`,
+  written by the integrator). `git rev-parse HEAD` equals it and `git status --porcelain` is empty (checked 2026-10-27
+  17:02; `run_arm.ps1` re-checks both before every run and exits 3 otherwise).
+- Interpreter `D:\AI-project\spiking-neural-data-lake\.venv-lake\Scripts\python.exe`, CPython 3.14.6 free-threading build,
+  GIL disabled. `PYTHONPATH` = the run tree's `src`, cwd = the run tree, `PYTHONDONTWRITEBYTECODE=1` (no `__pycache__` is
+  written into the run tree; `git status --porcelain --ignored` showed only `.claude/` and the `.pyd` after the preamble).
+- Import path (`logs/import_path.log`): `snn_data_lake.__file__` = `D:\AI-project\lanes\e1b-rpe-harm-1023\src\snn_data_lake\__init__.py`,
+  `rpe_charge.__file__` = the run tree's `src\snn_data_lake\instruments\rpe_charge.py`. The venv's editable install does
+  not win over `PYTHONPATH`, so the run tree is what is measured.
+
+### Anchors re-confirmed on this tree (`logs/anchors.log`)
+
+The frozen header's line numbers were checked in the P8-arc tree 92d6ba04. On c1df3887, 7 of the 12 named lines moved;
+all 12 are found by their content. `git diff` from E1's tree d501c7aa (and from 92d6ba04) to c1df3887 on
+`engine/autonomous_loop.py` and `plasticity/valence_stdp.py` is a PURE INSERTION (33 lines added, 0 removed): +2 at L189
+(`Q_STATE_FMT`) and +31 at L798 (`q_state_dict` / `load_q_state_dict`, commit 01802dd4, the P4b restart restore of the
+Q-table). No line of the RPE path, `_plan_w`, `_pfc_bias` or `ValenceLearner` changed.
+
+| anchor | named | found |
+|---|---|---|
+| `_rpe` init | L410 | L412 |
+| `_rpe` update read (`da = float(self._rpe or 0.0)`) | L1504 | L1537 |
+| `_rpe` write | L2326 | L2359 |
+| `_plan_lr` init (0.02) | L613 | L615 |
+| `_plan_lr` single reader / `_plan_w` update (section 9 L1505-1506) | L1506 | L1539 (still the only reader) |
+| `_pfc_bias(self, unit, pattern=None, qa=None)` | L1363 | L1396 |
+| `self._valence = ValenceLearner()` | L2304 | L2337 |
+| `ValenceLearner.valence` / `.dopamine` / `.learn` (`valence_stdp.py`) | L60 / L74 / L80 | equal |
+| census row `AutonomousArm._pfc_bias` NOT_A_RULE (section 9 L70-73) | L70 | equal |
+
+### Model files and tier pins (`logs/pins.log`, `run_arm.ps1`)
+
+- production: `SNN_EPROP_CKPT` = `D:\AI-project\spiking-neural-data-lake\models\eprop_nmnist.pt`, sha256 prefix
+  **9b471619e39acfa0**; `SNN_EPROP_AUDIO_CKPT` = `...\models\eprop_shd.pt`, **6b32f9eb38beeca3** (both equal the pins of
+  section 1 and `rpe_charge.ENC`); `SNN_PERCEPTION_PACK` = `...\models\nmnist_pack.npz` and `SNN_SHD_PACK` =
+  `...\models\shd_pack.npz` exist.
+- `SNN_PC_CKPT` = `<work>\NO-ENCODER\pc_cortex_nmnist.json`, missing, in BOTH tiers.
+- no-encoder: all five variables = `<work>\NO-ENCODER\<name>`; none exists (`NO-ENCODER\` is empty and stays empty).
+- `rpe_charge.preflight` returns None for both tiers with these pins.
+- Reds R1/R2 (`logs/tier_red.log`, through `run_arm.ps1` itself, no brain constructed): production with the NO-ENCODER
+  pins: `REFUSED tier=production (preflight): SNN_EPROP_CKPT=...NO-ENCODER\eprop_nmnist.pt missing rc=3
+  result_file_exists=False`; no-encoder with the production pins: `REFUSED tier=no-encoder (preflight):
+  SNN_EPROP_CKPT=...models\eprop_nmnist.pt is reachable rc=3 result_file_exists=False`.
+
+### Harness preamble (brain-free)
+
+- Module self-check (`logs/selfcheck.log`): `rpe_charge self-check OK: planted-learning control t=13447.7/39.5, planted
+  null refused, planted-harm separated, MET/VOID status, 3 fixtures, exact mde factor 0.978 (rule 1.0), ...`.
+- Compare fixture (`logs/fixture.log`, written by `rpe_charge fixture <work>\logs`): `fixture harm H-P1 MET at look 1 (8
+  seeds)`, `fixture noharm H-P1 CONTINUE at look 1 of 22 ...`, `fixture void H-P1 VOID (control failed) | H-V1 VOID
+  (control failed)`. `rpe_charge.logs_gate(<work>\logs)` = **True** (`logs/logs_gate.log`), the gate compare reads.
+- Native kernel (`logs/native.log`): the run tree's `src\snn_data_lake\_native.cp314t-win_amd64.pyd`, sha256
+  **918dabe93a8c7137**bc8aca1fd57692978656497bca83303206a3ef27cecfcbef, equals the fleet-requirements pin 918dabe93a8c7137
+  (int3's arc-2 rebuild); not rebuilt by this lane; `import snn_data_lake._native` resolves to that file.
+
+### Run environment (`run_arm.ps1`: one arm, one process, one brain)
+
+`rpe_charge run --arm --seed --ticks 600 --tier --home --out [--series]`, with: `E1B_TREE_SHA` (from TREE_SHA) and
+`E1B_TREE_CLEAN=1` set only after the tree check; `NORD_HOME` = a FRESH directory `<work>\home\<dir>\<tag>` (`<dir>` =
+production, no-encoder or bridge; a non-empty existing home is refused, exit 3); `NORD_PERSIST`, `NORD_SELFMOD`,
+`NORD_ESTOP_SELF_CLEAR` and `PYTHONOPTIMIZE` removed; `PYTHONDONTWRITEBYTECODE=1`; `PYTHONUTF8=1`; **`NORD_GPU=1`**, as E1
+used it (E1's `run_arm.ps1`; the harness also `setdefault`s it to 1). Outputs: `<work>\results\<dir>\<tag>.json` with
+`<tag>` = `<arm>_<seed>`, `real_8_r2`, `pc_8`, `pc_9`, the names `load_run` / `load_runs` / `bridge_readout` read. A
+shuffle arm's `--series` is the same tier's, same seed's `real_<s>.json`. The live lake is never a home or an output
+(the harness's shared guard, plus homes under `<work>\home`).
+
+### Order and the owed-run rule (`plan.py`, `campaign.sh`)
+
+Look 1 is section 7's stage-major order, one brain at a time: A = `real` + `pfrozen` seeds 8-15 (production, then
+no-encoder), B = `vfrozen`, C = `vshuf` + `pshuf`, D = `real_8_r2`, `pc_8`, `pc_9` per tier (86 runs), then the
+brain-free replay, then E = the bridge (`real` + `pfrozen`, seeds 0-7, no-encoder pins, `results\bridge`, 16 runs).
+
+**Owed-run rule (looks K >= 2), derived from the text and the module.** Addendum 9 sets `CAMPAIGN_LOOKS` = `P1_LOOKS`
+(22 looks of 8 seeds, cap 176); addendum 6 (A-M4) carries each primary from its OWN stop of record, so "runs past a stop
+are not owed" while "`real` is still owed at every look while the campaign runs"; addendum 3 runs the no-encoder tier on
+the same looks beside the production tier. The driver does not restate this rule in its own code: at each look it asks
+`rpe_charge.analyse` (with the look's seeds) which runs are pending for each tier and runs exactly those (`plan.py owed`,
+which parses `analyse`'s own `"<arm>_<seed> missing"` entries; an unparsed entry stops the driver). In effect, at look
+K each tier owes `real` for the 8 new seeds, plus `pfrozen` for those seeds only while THAT tier's H-P1 has not stopped
+by look K-1 (`_n_owed` over the look prefixes through `seq_record`), and never past H-P1's cap 176. H-V1 needs only the
+`real` series (and the brain-free replay). So a later look owes 32 runs while H-P1 continues on both tiers, 24 when it
+has stopped on one tier, 16 when it has stopped on both. Because `_n_owed` is per tier, the no-encoder tier keeps its
+`pfrozen` runs while its own H-P1 continues after the production H-P1 has stopped; this is the module's rule (a
+missing run would otherwise leave the no-encoder tier pending), and the no-encoder tier never holds or vetoes the
+production decision (addendum 6, C-M3).
+
+After look K, per tier: `rpe_charge replay results\<tier> <tier> --look K`, then `compare results\<tier> <tier>
+reports\compare-<tier>-lookK.md --look K`; then `cross results\production results\no-encoder reports\cross-lookK.md
+--look K` (it reads the bridge beside). **Go/stop** (addendum 3: the production tier decides): `plan.py decide K` reads
+each primary's decision of record from `analyse` (`hs[key]["seq"]["decision"]`). Look K+1 runs only while the PRODUCTION
+tier's H-P1 or H-V1 is `continue` and K < 22. The campaign stops at the first look where both production primaries have
+stopped (harm, futility or cap), or after look 22. If a production primary has NO sequential decision at a look (VOID,
+PENDING, NO VERDICT), the driver HALTS and posts a status; it does not guess (a VOID production tier is REFUSED for the
+deletion route, addendum 3).
+
+### Timeout, RAM, resource:timing, resume
+
+- **Timeout**: 30 min per run until look 1's production median exists (all 16 stage-A production runs done, rc 0); then
+  10 x that median, at least 10 min, fixed for the rest of the campaign (`logs/timeout_s.txt`). On a timeout
+  `run_arm.ps1` kills the run's whole process tree (`taskkill /T /F`), writes `TIMEOUT` in its log and exits 124; the
+  driver STOPS the campaign and posts a status. No silent retry (obs 2711).
+- **Any other failed run** (rc != 0 or no `DONE` line, including a harness refusal such as a tier mismatch): the driver
+  STOPS and posts a status.
+- **Memory**: before every run (and at the claim) `ram.ps1` reads free physical RAM and free COMMIT
+  (`Win32_OperatingSystem.FreeVirtualMemory`; battery 2's hang, #5540, was commit exhaustion, System event 2004, not
+  physical RAM). The run starts only when free RAM >= 2 GB (E1's rule) AND free commit >= 4 GB; otherwise a logged
+  5-minute wait loop. `logs/runs.log` records both values per run (`ram_free_gb`, `commit_free_gb`). Read today: 2.97 GB
+  RAM at 17:12; 1.98 GB RAM and 44.5 GB commit at the fold (below the RAM floor: the driver would wait, not run).
+- **resource:timing** (section 7): the driver claims it (`--ttl 60m`) only when (i) no lease file exists on the board
+  (an expired lease is not a release: the board's own `claim` would take it over, so the driver refuses first), (ii) no
+  battery / test / brain / build process is live (`procs.ps1`; positive-controlled against a planted `pytest`
+  command line), (iii) free RAM >= 2 GB and free commit >= 4 GB (both logged at the claim). Condition (i) is
+  positive-controlled in `driver_check.sh` (#5551 m2): with a planted `claims/resource%3Atiming.claim` in a SCRATCH
+  board dir, `claim()` refuses with `CLAIM WAIT: lease file present` and never reaches (ii); without it, it gets past
+  (i) to `procs.ps1` (the board call is stubbed there, so the live board is never touched). It renews every 40 min at a run boundary (a failed renew stops the campaign),
+  releases on exit (a bash `EXIT` trap), and yields at a RUN boundary when `<work>\YIELD` exists (release, wait, re-claim
+  under the same three conditions).
+- **Resume** (section 7): a run whose log holds `DONE` is skipped; a run with a log but no `DONE` is re-run explicitly,
+  its old log and home kept beside as `*.attempt-<time>` and a `RERUN` line in `logs/driver.log`. Section 7's
+  repeat-arm equality check voids a non-deterministic resumed campaign (harness).
+- **logs/runs.log**: one line per run: look, dir, tier, arm, seed, tag, start, end, seconds, rc, timeout, free RAM, free
+  commit, the `DONE` line.
+
+**The operational constants are P1 exceptions (policy-enforcer #5551 m1).** The 30-minute initial per-run timeout, the
+10 x median timeout, its 600 s floor, the 2 GB free-RAM floor, the 4 GB free-commit floor, the 40-minute renew interval
+and the 60-minute lease ttl are operational numbers, not derived by power. They are exempt from P1's derivation
+because none of them can change WHICH data the campaign collects or how it is decided: each one can only STOP the
+campaign (a timeout, a failed renew) or make it WAIT (a memory floor, a lease held by another, a yield). None of them
+selects, drops, skips or replaces a seed, an arm or a run, and none touches a bar, a look, a cap or a boundary. A
+resume after a stop re-runs the SAME seed and arm (section 7's skip rule; the earlier attempt is kept beside). A
+stopped campaign is reported as stopped at the look it reached; it is never decided at a non-look seed count (the
+harness refuses one). Consequence stated in advance: the production per-run cost is unknown (section 2, Q2), so if the
+first stage-A production run exceeds 30 minutes the campaign STOPS at run 1; that is a stop, not data.
+- **GO**: `campaign.sh` refuses (exit 3, no claim, no brain) unless `<work>\GO` exists; the lane writes it only after
+  claude-engine-1024 posts "GO E1b look 1" on thread E1B-RUN (the file holds that post's seq).
+
+### Dry run on synthetic results, before any brain (`logs/dryrun.log`, `logs/driver_check.log`)
+
+`dryrun.py` walks the driver's planning code (`plan.owed`, `plan.decide`, both reading `rpe_charge`) over SYNTHETIC
+runs (`rpe_charge.synth_run`) in `<work>\dryrun\`, and checks every count against an INDEPENDENT count from
+`rpe_charge.seq_record` on the planted per-seed differences. The replay step is a planted `e2v2.json` bound to the
+synthetic `real` runs by `rpe_charge.replay_binding` (a replay of constant synthetic series cannot plant an H-V1
+effect); the real campaign calls `rpe_charge replay`. Results, all PASS:
+- look 1 owes **102** = 43 production + 43 no-encoder + 16 bridge, with the replay step before the bridge (every scenario);
+- null scenario: every later look owes **32** (16 per tier) while H-P1 continues; the campaign ran 19 looks and stopped
+  when both production primaries had stopped (H-P1 futility at look 19, n = 152; H-V1 its cap 152), the look the
+  independent `seq_record` walk predicts; 678 synthetic runs;
+- planted H-P1 harm at look 2 on both tiers: look 3 and 4 owe **16** (`real` only); `pfrozen` stops being owed, `real`
+  continues;
+- planted H-P1 harm at look 2 on the production tier only: looks 3-4 owe **24** (production 8 `real`; no-encoder 8 `real`
+  + 8 `pfrozen`);
+- planted stop of both production primaries (no-encoder null): the campaign ends after look 2 (102 + 32 = **134** runs);
+- a planted production validity failure (`pfrozen` `_plan_lr` != 0): VOID, the driver HALTS at look 1.
+`driver_check.sh`: `bash -n`; no GO file -> exit 3 with no run line; the timeout-rule median (15 runs -> 1800 s; other
+tiers/arms ignored; median 48.5 -> floor 600 s; median 148.5 -> 1485 s); the plan loop reads on fd 3 because
+`powershell.exe` inherits stdin (positive control: a plain-stdin loop lost 2 of 3 rows); fold of #5551: `ram.ps1`'s
+line parses, each memory floor alone makes the driver wait (RAM 1.9 < 2, commit 3.9 < 4, an unparsable line), and the
+planted-lease case and its no-lease twin above.
+
+### Sample size (P1)
+
+No sample size changes. H-P1: SD_PRE 0.0695, DH 0.035, LD-OBF one-sided .05, cap 176 (22 looks), futility at looks 9-21,
+robust power 0.8026 (addendum 9). H-V1: SD_PRE 0.2040, DM 0.048, `V1_SHAPE_T`, cap 152 (19 looks), no futility look
+(addenda 4, 8). The production tier decides (addendum 3). A futility stop or an uncrossed cap is not a null: it reports
+its mde and P8 null-scale item 4 decides (INCONCLUSIVE unless powered at the OBSERVED SD, addendum 6). Worst case
+774 runs, about 8 h 49 min no-encoder-equivalent (addendum 9); the production per-run time is first measured at stage A.
+
+### sha256 of every bound file (`<work>`-relative)
+
+```
+280996da2e2903014b5677d31095b0a148969b19f58652ab331722aff5a3665f  TREE_SHA
+abac1312c05c04b69e4c5e69b4d980fc4e907ea5863e324b5a8ec7dc35570d14  logs/import_path.log
+9bf69a5ff00e35154eb67f46ae2eedc1562efc1d85baab7b06cb3a6024c4a1c1  logs/selfcheck.log
+4b0fe739c1be390b3cf59bd789b8e5f4a6957f3a4053319153c0a149c5ff3435  logs/anchors.log
+0cf8c5c390f227d0938a328d0b57d0a385d2a5ed80b734dc84fd2286b0d76364  logs/pins.log
+f5f6c2e1e13bd2046c1705b0ea974e966b5f7601f2a19743cc526762a5443dbd  logs/tier_red.log
+39a8f59123da67ed2720af8a0a3724fa9cd1571b2c40f6926677596599714dec  logs/red/R1.log
+bf0b169e7408cbdebe840c19d66684366f8c93579b0e367c1d160bdaa8716c1f  logs/red/R2.log
+b8932f12eba753b7d5c6e20df4fbfedb6fc064c951c3023aecf1e50f6236817f  logs/fixture.log
+99aabd9f1a0e1be8aea1ca5a3f9e85d408f9301bade1b68c3e07e6107ebaf6e2  logs/fixture_run.log
+5d2f373207c2f555ab3ac730c59f3eab50d07feb0c950fd8bc34c6d5819a39df  logs/logs_gate.log
+79cc4ef489e72df1fdd92f0cfed15c1f1d82127cf8210ecadfcb77dd16109128  logs/native.log
+e1fa384902cb77213abedd303dbab95969fae79a50e124591e53ade2a4114351  logs/dryrun.log
+d3f355e7658569dd1c25a3ff66ce25d91638ff2dcb194857daa2f3ab75471e21  logs/driver_check.log
+7faef9dc927b487562ce762b1035e498906878ce806c0d468277e226248d6494  run_arm.ps1
+85f4e1eac38861e5c9d37659e8de4dcea0fa842736f4555351c2b8ae062ff47f  campaign.sh
+1769f58f7f6fa857f941c407fd408d6945fe10771200ab43362647f02d9a9521  plan.py
+d668bdd48d58159dc857e1e36ec1dd273bbeee5e12c4d7bfb64f8813d9f78b9a  tool.ps1
+a0949cc115e64e17036239f1be93fd5a4ae67718f53222854ae44befa0a71fe3  phase0.py
+e9636a116c9a4b98babbacdc5ad06c07e2779e87de45c7395401e249ece78f07  anchors.sh
+e7ba9bf1db0f74a187edb1f1278ff41289323312c47066537fb4d4501905c8d1  reds.sh
+a12e56cfa175907253c6faa6097f36a211c3e576cbcd7ddaa41737c3ef0b56ee  dryrun.py
+2286f5a0f677848aa5555bf992c3b1699c3f806afea856aedde1c09878dd7fbb  driver_check.sh
+affa75bda13bbba5f05a96fc371d81f0d3d607bd657d74ef8ef66f9dcbaa4499  ram.ps1
+e2325e9f5a98cd08daf46be339a64163e41edd4cc8c175acaeccf46d5291f017  procs.ps1
+```
+
+A driver or preamble file whose sha256 differs from this list at run time is a departure, disclosed in the report.
+`graph-exists`: no def or class is added under `src/` (every script lives in `<work>`); P5b: Python (lane scratch, off
+the tick). All numbers above are brain-free; no perception tier applies.
