@@ -1860,6 +1860,8 @@ when the population's geometry is kept. Question: does a RELATIONAL readout, whi
 geometry onto the pre-event geometry and then reads with unchanged weights, keep more held-out score across (a) a sleep
 bout and (b) a fresh-process restart than the same readout keyed to unit identity?
 
+- Restart (b) is read only under E.2's named exception. Otherwise a restart is a P4b check: drift there is a persistence
+  defect to fix, not a substrate change to absorb.
 - Part E tests readout robustness to substrate change. It is not connection 6 (no return projection), not Part B
   (deleted on its 11100-11107 null) and not Part C (anatomical labels).
 - A Part E win decides one thing: whether Part D's readout carries an alignment step across sleep and restart. It earns
@@ -1870,11 +1872,22 @@ bout and (b) a fresh-process restart than the same readout keyed to unit identit
 - Natural drift must exist on the engine. Measured with G9's criterion-1 instrument: population-vector correlation of
   reservoir responses to the fixed test-input set, before vs after the event, full engine vs a frozen engine (no growth,
   no sleep, same ticks and inputs; the report's criterion 5).
-- NOT MET for an event when the full engine's post-event correlation is not below the frozen floor by the margin the
-  freezing addendum fixes from the pilot. Reason: with no drift both readouts keep the score, the contrast is entailed
-  equal, and a red that cannot fire is not a red (P8; the same reasoning as Part C, section 5 item 1).
-- Restart: if the fresh-process rebuild restores the reservoir bit-identically (R2 hydration), restart drift is zero by
-  construction. The restart contrast is then reported as NOT READ and the sleep contrast stands alone.
+- The rule, registered now (fold of #5548 m3; no constant chosen after the pilot): per pilot seed, d0 = (frozen
+  engine's post-event population-vector correlation) - (full engine's). P-E0 is MET for an event when
+  `paired_contrast` on the eight pilot d0 values reads MET under 2.4's conventions (t > T_BAR = 1.895, at least 5
+  non-tied seeds, a degenerate contrast NOT MET). Otherwise NOT MET. Reason: with no drift both readouts keep the score,
+  the contrast is entailed equal, and a red that cannot fire is not a red (P8; the same reasoning as Part C, section 5
+  item 1).
+- Restart is a P4b check first, not a substrate change (fold of #5548 M3). Under P4b the brain restarts with what it
+  learned, so the drift the frozen floor does not absorb is a persistence defect, not something for a readout to hide.
+  - FIXED's held-out loss across the restart, or a restart P-E0 MET, files a P4b red against the rebuild (owed to G9 / R2).
+    The restart contrast stays NOT READ until that red is fixed. An alignment that recovered the score would mask an
+    amnesia defect: a guard that avoids the cause instead of removing it.
+  - The one exception: drift in state the freezing addendum NAMES as deliberately not persisted (for example RNG streams
+    or transient membrane potentials), shown by a control not to be learned state (the drift vanishes when only that
+    named state is restored from a pre-restart snapshot). Only then is the restart contrast read.
+  - A bit-identical rebuild gives zero restart drift by construction: the restart contrast is NOT READ, and the sleep
+    contrast stands alone.
 
 ### E.3 Mechanism (new code, built in its own arc; nothing here exists yet)
 
@@ -1942,6 +1955,13 @@ P1 exception (about a one-sided .025 normal tail, not derived from data), fixed 
   non-decreasing in f, else the instrument is REFUSED.
 - PE-R5, disjointness: an anchor input id inside the held-out set exits 3 with no result file (`os._exit(3)`, never
   `assert`).
+- PE-R6, the method's own ceiling under drift that is not orthogonal (fold of #5548 m4). PE-R1 is the case where the
+  method is exact; a real sleep bout prunes and adds units. Planted drift = PE-R1's permutation, plus a pruned fraction p
+  (units set to 0) and a born fraction q (new units with rate-matched random responses), p = q in {.1, .25, .5}.
+  - RELATIONAL's and FIXED's held-out accuracy are reported at every dose: the measured ceiling, before any brain read.
+  - At the pilot, the real sleep bout's measured pruned and born fractions are placed on that curve. If RELATIONAL's
+    planted accuracy at the nearest dose at or above them is inside the chance band, the sleep contrast is NOT READ:
+    the method cannot work there by construction, and a null there would test nothing.
 
 ### E.6 Seeds (inside G5's block 11000-11999; grep-checked 2026-10-27)
 
@@ -1949,23 +1969,40 @@ P1 exception (about a one-sided .025 normal tail, not derived from data), fixed 
 |---|---|---|
 | pilot (dev) | 11600-11607 | SD of d per event, k, the P-E0 margin and Delta*. EXPOSED after use, never confirmatory |
 | planted | 11608-11615 | PE-R1 to PE-R4 permutation and shuffle draws |
-| confirmatory pool | 11616-11647 | the sequential looks, in order; replacements are the next unused seed, on an instrument failure only (section 4's reserve rule) |
+| confirmatory pool | 11616-11699 except 11696 (83 seeds) | the sequential looks, in order; replacements are the next unused seed, on an instrument failure only (section 4's reserve rule) |
 
-- Positive control: `\b4242\b` over specs/, src/ and tests/ at c1df3887 fired (31 files).
-- `\b116[0-4][0-9]\b` over the same trees and the live board: zero hits.
-- If E.7's cap needs more than 32 confirmatory seeds, the freezing addendum allocates them inside 11648-11699 after its
-  own grep. 11696 is already a non-seed hit (section 4).
+- Positive control: `\b4242\b` over specs/, src/ and tests/ at c1df3887 fired: 31 files with `grep -rlE` over the
+  int3 working tree, 29 tracked files with `git grep -c` (policy-enforcer #5548). The control fires either way.
+- `\b116[0-4][0-9]\b` over the same trees and the live board: zero hits. `\b116[0-9][0-9]\b` (#5548): only 11696, a
+  non-seed value (section 4).
+- Both events run on the same seeds: each seed yields NO-EVENT, sleep and restart cells, so the pairing is within seed.
+- Capacity (fold of #5548 m2): if E.7's powered cap exceeds 83 seeds, the campaign is NOT RUN and the owner decides.
+  It never runs at a smaller cap.
 
 ### E.7 Sample size (P1; owner 2026-10-23: "switch E1b to a sequential design, P1 policy, make sure all sessions understand that")
 
-- No constant. The pilot (11600-11607) measures the SD of d per event.
+- No constant. The pilot (11600-11607) measures, per event, the SD of d and the SD of the non-inferiority difference
+  e = acc(RELATIONAL) - acc(ONLINE).
 - The smallest effect of interest is registered NOW, before any pilot: Delta* = half of FIXED's mean pilot loss,
   0.5 x mean(acc(NO-EVENT) - acc(FIXED)). The relational readout must recover at least half of what identity-keying
   loses.
-- Power .8 at Delta*, one-sided alpha .05 per event. The freezing addendum then sets the looks, Lan-DeMets
-  O'Brien-Fleming alpha spending, a binding futility bound and a hard cap, as E1b's addenda 2-9 did.
-- Two events, two primaries, no multiplicity correction (house practice, 2.4). Disclosed: each event's decision stands
-  alone.
+- Multiplicity (fold of #5548 M1; P1 item 1 sizes the target "after the pre-registration's own multiplicity
+  correction"): the two event primaries are one family, decided by Holm at family one-sided alpha .05. Each event's
+  design is sized at alpha .025 (the Bonferroni level, which Holm never exceeds for its first rejection) with power .8
+  at Delta*. An event that is NOT READ (E.2, PE-R6) does not release its alpha. The adoption decision of E.9 therefore
+  has a family false-positive rate of at most .05. 2.4's "no multiplicity correction" does not apply to Part E.
+- Sequential design: looks of 8 seeds; Lan-DeMets O'Brien-Fleming spending at alpha .025 per event, through the
+  project's one implementation (`instruments/rpe_charge` `seq_boundaries` / `seq_decision` / `seq_record`; its P2 note
+  says later pre-registrations import them, never copy).
+- Futility (fold of #5548 M2; P1 item 2): a NON-binding bound, open only at a look whose mde from the pilot SD is at or
+  below Delta* (as E1b's `futility_open`).
+- Non-inferiority (fold of #5548 M2): RELATIONAL vs ONLINE at margin Delta*, one-sided alpha .05, read once at the look
+  where that event's primary stops with a crossing. The cap is the larger of the primary's power-.8 cap and the cap at
+  which this read has power .8 when the true e is 0, at the pilot SD of e.
+- Before the campaign (fold of #5548 m1), the freezing addendum checks the boundaries and the cap by simulation, as
+  E1b's R-S1 and R-S3 did: a planted null keeps each event's type I at or below .025 + 3 Monte Carlo SE; a planted
+  Delta* crosses by the cap at the stated power within 3 SE; the non-inferiority read is checked the same way.
+- A powered cap above 83 seeds means NOT RUN and the owner decides (E.6).
 
 ### E.8 What Part E waits on (its freezing addendum comes after all four)
 
@@ -1976,13 +2013,20 @@ P1 exception (about a one-sided .025 normal tail, not derived from data), fixed 
 
 ### E.9 Null disposition and deletion (P8 clause 5; P4d)
 
-- P-E0 NOT MET: NOT READ, reported with the drift measurement. Not a null.
+- P-E0 NOT MET, or PE-R6 puts the real event outside the method's reach: NOT READ, reported with the drift measurement.
+  Not a null.
+- Restart drift above the floor: a P4b red against the rebuild (E.2), owed to G9 / R2. Not a Part E result.
 - PE-R1's FIXED does not fail: the criterion is deleted (E.5).
-- Endpoint null (a futility stop, or the cap without a crossing): if the P8 null-scale amendment has landed by then, its
+- A futility stop, or the cap reached without a crossing, is NOT a null by itself (fold of #5548 M2; P1 item 2, P8 item
+  4). It reports the mde at the stopped n from the OBSERVED SD, and it is INCONCLUSIVE unless that mde is at or below
+  Delta*. Only a powered stop is a null. A null takes the P8 null-scale path: if that amendment has landed by then, its
   NULL-RECORD and one >= 10x re-test come first. Otherwise the alignment module is deleted and the incumbent stays.
-- P2, one mechanism: the alignment is adopted only if a primary is MET with P-E0 MET AND RELATIONAL is non-inferior to
-  ONLINE at margin Delta*. If ONLINE's labeled re-fit does the job, the alignment is a second mechanism for one job and
-  is deleted, even when RELATIONAL beats FIXED.
+- P2, one mechanism: the alignment is adopted only if, under Holm (E.7), a primary is MET with P-E0 MET AND RELATIONAL
+  is shown non-inferior to ONLINE at margin Delta*.
+  - Not shown, with the read powered (its mde at the observed SD of e at or below Delta*): ONLINE's labeled re-fit does
+    the job, so the alignment is a second mechanism for one job and is deleted, even when RELATIONAL beats FIXED.
+  - Not shown, with the read underpowered: INCONCLUSIVE. The alignment is not adopted, its implementation is reverted
+    and the owner is told. It is never recorded as "ONLINE does the job".
 - The readout itself is owner-drawn (P4d connection 4) and stays on any null. Only the alignment's implementation is
   deleted.
 
