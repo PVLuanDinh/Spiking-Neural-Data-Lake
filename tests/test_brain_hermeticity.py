@@ -236,22 +236,34 @@ print("CENSUS " + json.dumps({"opened": seen, "scratch": scratch, "tier": s.get(
 """
 
 
+def _child_env(home):
+    """The census child's environment: the brain on `home`, with the battery's doc-audit hook OFF.
+
+    The arc battery sets SNDL_DOC_AUDIT; its .pth hook (gates/docs_only_battery) appends
+    `<audit>/<pid>.jsonl` from every process, and re-injects the variable into a child whose
+    environment lacks it. That is the battery's instrument, not the brain, and the census redded it
+    as a write outside the home (engine arc 3 battery 1). An EMPTY value is the hook's own opt-out
+    (docs_only_battery's tests use it): not re-injected, and the .pth line stays inert."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("SNDL_DOC_AUDIT")}
+    env.update(PYTHONUTF8="1", NORD_HOME=home, SNDL_DOC_AUDIT="")
+    env["PYTHONPATH"] = os.pathsep.join(
+        p for p in (os.path.join(_REPO, "src"), env.get("PYTHONPATH", "")) if p
+    )
+    return env
+
+
 def _child(root, live, plant):
     """Run `_CHILD` on a fresh temp home (asserted not live) against `root`."""
     home = tempfile.mkdtemp(prefix="snn_t120_census_")
     from snn_data_lake.substrate.home import assert_not_live_home
 
     assert_not_live_home(home)
-    env = dict(os.environ, PYTHONUTF8="1", NORD_HOME=home)
-    env["PYTHONPATH"] = os.pathsep.join(
-        p for p in (os.path.join(_REPO, "src"), env.get("PYTHONPATH", "")) if p
-    )
     return subprocess.run(
         [sys.executable, "-c", _CHILD, home, root, live, plant],
         capture_output=True,
         encoding="utf-8",
         errors="replace",
-        env=env,
+        env=_child_env(home),
         cwd=_REPO,
         timeout=900,
     )
@@ -426,3 +438,14 @@ def test_the_classifier_rules():
         "tools/lake_append_baseline.json": ("ASSET", ASSETS["tools/lake_append_baseline.json"]),
         "tools/lake_append_baseline.json.bak": ("STATE", "not on the asset allowlist"),
     }
+
+
+def test_the_census_child_runs_without_the_battery_doc_audit_hook(monkeypatch, tmp_path):
+    """Engine arc 3 battery 1 red: the doc-audit hook wrote <audit>/<pid>.jsonl from the census
+    child. The child gets the hook's opt-out (empty), never the battery's audit directory."""
+    monkeypatch.setenv("SNDL_DOC_AUDIT", str(tmp_path))
+    monkeypatch.setenv("SNDL_DOC_AUDIT_ROOT", str(tmp_path))
+    env = _child_env(str(tmp_path / "home"))
+    assert env["SNDL_DOC_AUDIT"] == ""
+    assert [k for k in env if k.startswith("SNDL_DOC_AUDIT")] == ["SNDL_DOC_AUDIT"]
+    assert env["NORD_HOME"] == str(tmp_path / "home")
