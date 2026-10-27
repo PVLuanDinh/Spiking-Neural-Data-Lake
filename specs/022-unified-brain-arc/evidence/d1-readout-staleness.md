@@ -369,7 +369,80 @@ The operator's battery and push follow the project's rhythm.
 
 ### 2.11 Amendments (dated, appended; nothing above is edited in place)
 
-*(none yet)*
+#### A0 -- 2026-10-27: territory measured after the freeze, before the build and before any pilot seed
+
+**What was run, and what was not.**
+- A cp314t environment was set up in the cloud clone:
+  - CPython 3.14.6 free-threaded; `Py_GIL_DISABLED` = 1, `_is_gil_enabled()` = False;
+  - torch 2.14.1+cu130 from PyPI (the CPU wheel index is refused by this environment's network policy);
+  - brian2 2.10.1, mujoco 3.11.0, numpy 2.5.4;
+  - `pip install -e ".[dev,nir]"`.
+- **P5 hazard.** G3 T0's capture ran torch 2.11.0+cu128 (`g3-t0-baseline.md:161`). Nothing measured here is campaign
+  data.
+- The bounded pre-checks at `6612ce7` (plus this file) all returned 0: ruff check, ruff format (src tests tools),
+  `red_reachability --assert`, `dependency_ledger --assert`, `citation_guard`, `doc_command_guard --assert`,
+  `doc_budget_gate --assert`, `dormancy_gate` and `method_dormancy_gate`. So did the self-checks of `growth.ng_snn`,
+  `growth.neurogenesis_engine`, `growth.grower`, `readout.online_readout`, `instruments.paired_contrast`,
+  `instruments.rpe_charge` and `instruments.pool_selection`.
+- A **feasibility probe** ran FROZEN only, on seeds 96-99, 800 ticks each.
+  - These seeds are outside the pilot (0-7) and outside the confirmatory block. They are excluded from all D1 data.
+  - No OJA or RAND arm was run, and no accuracy, contrast, gap or shadow was read.
+  - The probe read four things: the tier; per wake percept, whether any grown unit fires; per refit row, the gate
+    state, the units, the categories in the buffer, and `L - rank(beta)`.
+  - Its positive control ran in the same command: an all-zero `W` reads 0 firing units, and it did.
+- **Tier.** Every probe cell ran `perception_tier = "stdlib"`, the no-encoder tier. This clone has
+  `models/nmnist_pack.npz` and `shd_pack.npz` (tracked) but not the gitignored `eprop_*.pt` encoders.
+
+| seed | percepts with a model | any unit fires | units | categories | refit rows | closed-gate rows | max `L - rank` |
+|---|---|---|---|---|---|---|---|
+| 96 | 377 | 1.000 | 4-6 | 4-8 | 20 | 0 | 2 (open rows, ticks 40-80) |
+| 97 | 376 | 1.000 | 3-5 | 4-7 | 20 | 11 (sticky from tick 200) | 1 (tick 20); 0 on every closed row |
+| 98 | 379 | 0.934 | 3 | 4-7 | 20 | 0 | 0 |
+| 99 | 375 | 0.864 | 2-7 | 7-10 | 20 | 0 | 2 (tick 20) |
+
+**Consequences, ruled before the build** (the session's calls, disclosed).
+
+1. **P1's endpoint is re-defined.** As frozen in section 2.2, `gap` is read after each refit. On an open-gate row that is
+   a fresh solve, so the gap is about 0 by construction. The gate closed on 1 of 4 probe seeds, so the frozen endpoint
+   would mostly measure open rows and dilute any effect toward zero. **That would not be a test of the mechanism.**
+   - **The new endpoint is the PRE-REFIT gap.** At the start of every refit row, before `_refit` changes anything, the
+     instrument takes the split `marginal_holdout` is about to produce on the current buffer. It scores those held-out
+     rows twice on the current `W`:
+     - (a) with the gate's reader as it stands (`_batch_beta`, the last open-gate solve);
+     - (b) with the shadow re-solve on this split's training rows.
+   - `gap_pre(r) = acc_b - acc_a`. It exists on every row, open or closed, because it measures the staleness that
+     accrued over the interval since the last solve.
+     - On FROZEN, only the buffer moved, so it is data-drift staleness.
+     - On OJA and RAND, both the buffer and `W` moved.
+   - P1 keeps its contrast (`GAP_OJA - GAP_FROZEN`), its claimed effect (0.10) and its window (last third), read on
+     `gap_pre`.
+   - P2 uses `acc_b` from the same pre-refit reading: the re-solved reader on the moved rows.
+   - The original post-refit closed-row gap becomes **S6**, reported with each arm's closed-row count (S4). Gate
+     dynamics can differ by arm, and L1b's OJA admitted more units.
+   - R1 and R2 apply unchanged to the pre-refit reading. R2 asserts that the reading leaves the split, the buffer, the
+     model and every RNG exactly as `_refit` would have found them.
+2. **The null split will mostly read NOT READ.** `L - rank(beta)` was 0 on every closed row and on most open rows. That
+   is the structural reading section 2.4 anticipated. R5 stays, as the split's own positive control.
+3. **The rule will act.** Grown units fired on 86-100% of percepts, so OJA's `post_i = s_i` is not structurally zero at
+   this tier. R3's INERT check still runs on the operator's tier.
+4. **Tier rule.** The pre-registered stream remains the operator's tier (section 2.9). Every cell records
+   `perception_tier`. A cell on a different tier from its seed's other arms is EXCLUDED and counted, under the same rule
+   as same rows. The stdlib-tier runs this clone can make (the build's smoke) are never data.
+   - The E1 lesson applies (`learning-rules-1019.md:31-35`): a worktree without the encoders silently builds the
+     no-encoder brain.
+5. **Engine binding survives the one-grower merge.** T111a will retire `NeurogenesisSelfImprove` into `Grower`
+   (`tasks.md:251`).
+   - The instrument binds through `brain.grower.percept.engine`, whose forwarding is dynamic
+     (`growth/grower.py:16-17`), not through the class.
+   - It reads only `_refit`, `_model`, `_batch_beta`, `trajectory` and `_buf_x` / `_buf_y`.
+   - If T111a lands before Stage 0, the binding is re-stated by a dated amendment before any cell, with every
+     endpoint's meaning unchanged.
+6. **D1 is not E3.** `learning-rules-1019.md:79-80` orders E3 after the grower merge and E2. E3 is a three-factor
+   input-row rule against FREEZE, with an M-shuffle control and the gate verdict per row.
+   - D1 evaluates no candidate rule for landing. It measures the gate reader's staleness under L1b's deleted rule, and
+     its result is offered to E3's design.
+   - Running D1 before E3 rests on the owner's request of 2026-10-27, disclosed here. E2's block ("one silent unit")
+     is the deployed brain's (`l-exit.md:96-97`), not the scratch brains', where units fire (table above).
 
 ## 3. Record
 
