@@ -1,11 +1,14 @@
 {
- "built": "2026-10-25T11:28:27+00:00",
- "code_hash": "8210bf651e9131c61493f089cd871d420d9c4e2894e1b2e6c699ef7531b06442",
+ "built": "2026-10-27T19:49:49+00:00",
+ "code_hash": "5130a280d861f4b53fe60bf31be0e92821b3450165e1561b8ff77b044237f836",
  "coverage": {
-  "listings_dropped_as_infrastructure": 5739,
-  "process_starts": 476,
-  "python_spawns_seen_by_parents": 460,
+  "listings_dropped_as_infrastructure": 5654,
+  "process_starts": 475,
+  "python_spawns_seen_by_parents": 462,
   "python_spawns_without_child_start": [
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
+   "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
    "-m snn_data_lake.growth.brian2_backend --reference-trace  [tests/test_brian2_backend.py]",
@@ -19,7 +22,7 @@
   ]
  },
  "fingerprint": "ab3ee7e12b6212cdecd20e7afb62440ddd135535dc132d028952a062fdb97812",
- "head": "c79a77ba092caeebd314cccf5b77d7f6778b100a",
+ "head": "9b3ae030bdaaa2050ce676516a3ebc0d3376a8a5",
  "pytest_all": {
   "blind": false,
   "git_scan": false,
@@ -136,7 +139,14 @@
    "read": []
   },
   "tests/test_brain_growth_restart.py": {
-   "blind": false,
+   "blind": true,
+   "git_scan": false,
+   "list": [],
+   "listr": [],
+   "read": []
+  },
+  "tests/test_brain_hermeticity.py": {
+   "blind": true,
    "git_scan": false,
    "list": [],
    "listr": [],
@@ -285,56 +295,7 @@
   "tests/test_conclusion_plate.py": {
    "blind": false,
    "git_scan": false,
-   "list": [
-    ".",
-    "integrations",
-    "integrations/deploy",
-    "integrations/desktop",
-    "integrations/local_llm",
-    "integrations/packaging",
-    "integrations/robot arm",
-    "integrations/robot arm/sensor",
-    "src/snn_data_lake",
-    "src/snn_data_lake/__pycache__",
-    "src/snn_data_lake/brainstem",
-    "src/snn_data_lake/brainstem/__pycache__",
-    "src/snn_data_lake/brainstem/so101",
-    "src/snn_data_lake/brainstem/so101/assets",
-    "src/snn_data_lake/engine",
-    "src/snn_data_lake/engine/__pycache__",
-    "src/snn_data_lake/faculties",
-    "src/snn_data_lake/faculties/__pycache__",
-    "src/snn_data_lake/gates",
-    "src/snn_data_lake/gates/__pycache__",
-    "src/snn_data_lake/growth",
-    "src/snn_data_lake/growth/__pycache__",
-    "src/snn_data_lake/infra",
-    "src/snn_data_lake/infra/__pycache__",
-    "src/snn_data_lake/instruments",
-    "src/snn_data_lake/instruments/__pycache__",
-    "src/snn_data_lake/lakehouse",
-    "src/snn_data_lake/lakehouse/__pycache__",
-    "src/snn_data_lake/plasticity",
-    "src/snn_data_lake/plasticity/__pycache__",
-    "src/snn_data_lake/readout",
-    "src/snn_data_lake/readout/__pycache__",
-    "src/snn_data_lake/reasoning",
-    "src/snn_data_lake/reasoning/__pycache__",
-    "src/snn_data_lake/reasoning/arc_agi",
-    "src/snn_data_lake/reasoning/arc_agi/__pycache__",
-    "src/snn_data_lake/reasoning/ng_snn",
-    "src/snn_data_lake/reasoning/ng_snn/__pycache__",
-    "src/snn_data_lake/reservoir",
-    "src/snn_data_lake/reservoir/__pycache__",
-    "src/snn_data_lake/sensorimotor",
-    "src/snn_data_lake/sensorimotor/__pycache__",
-    "src/snn_data_lake/sleep",
-    "src/snn_data_lake/sleep/__pycache__",
-    "src/snn_data_lake/substrate",
-    "src/snn_data_lake/substrate/__pycache__",
-    "src/snn_data_lake/training",
-    "src/snn_data_lake/training/__pycache__"
-   ],
+   "list": [],
    "listr": [],
    "read": [
     "README.md",
@@ -764,7 +725,7 @@
    "read": []
   },
   "tests/test_g6_mask_committed.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": false,
    "list": [],
    "listr": [],
@@ -950,7 +911,7 @@
    "read": []
   },
   "tests/test_gradient_claim_gate.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": true,
    "list": [
     "native",
@@ -1397,7 +1358,7 @@
    "read": []
   },
   "tests/test_growing_learner_restart.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": false,
    "list": [],
    "listr": [],
@@ -2602,7 +2563,48 @@
   "tests/test_p4b_sidecar_migration.py": {
    "blind": true,
    "git_scan": false,
-   "list": [],
+   "list": [
+    "src/snn_data_lake",
+    "src/snn_data_lake/__pycache__",
+    "src/snn_data_lake/brainstem",
+    "src/snn_data_lake/brainstem/__pycache__",
+    "src/snn_data_lake/brainstem/so101",
+    "src/snn_data_lake/brainstem/so101/assets",
+    "src/snn_data_lake/engine",
+    "src/snn_data_lake/engine/__pycache__",
+    "src/snn_data_lake/faculties",
+    "src/snn_data_lake/faculties/__pycache__",
+    "src/snn_data_lake/gates",
+    "src/snn_data_lake/gates/__pycache__",
+    "src/snn_data_lake/growth",
+    "src/snn_data_lake/growth/__pycache__",
+    "src/snn_data_lake/infra",
+    "src/snn_data_lake/infra/__pycache__",
+    "src/snn_data_lake/instruments",
+    "src/snn_data_lake/instruments/__pycache__",
+    "src/snn_data_lake/lakehouse",
+    "src/snn_data_lake/lakehouse/__pycache__",
+    "src/snn_data_lake/plasticity",
+    "src/snn_data_lake/plasticity/__pycache__",
+    "src/snn_data_lake/readout",
+    "src/snn_data_lake/readout/__pycache__",
+    "src/snn_data_lake/reasoning",
+    "src/snn_data_lake/reasoning/__pycache__",
+    "src/snn_data_lake/reasoning/arc_agi",
+    "src/snn_data_lake/reasoning/arc_agi/__pycache__",
+    "src/snn_data_lake/reasoning/ng_snn",
+    "src/snn_data_lake/reasoning/ng_snn/__pycache__",
+    "src/snn_data_lake/reservoir",
+    "src/snn_data_lake/reservoir/__pycache__",
+    "src/snn_data_lake/sensorimotor",
+    "src/snn_data_lake/sensorimotor/__pycache__",
+    "src/snn_data_lake/sleep",
+    "src/snn_data_lake/sleep/__pycache__",
+    "src/snn_data_lake/substrate",
+    "src/snn_data_lake/substrate/__pycache__",
+    "src/snn_data_lake/training",
+    "src/snn_data_lake/training/__pycache__"
+   ],
    "listr": [],
    "read": [
     "docs/RUNNING.md"
@@ -3283,7 +3285,7 @@
    "read": []
   },
   "tests/test_policy_manifest.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": true,
    "list": [
     ".",
@@ -3978,7 +3980,7 @@
    ]
   },
   "tests/test_pool_selection.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": false,
    "list": [],
    "listr": [],
@@ -4742,7 +4744,7 @@
    "read": []
   },
   "tests/test_r02b_lake_rust.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": true,
    "list": [
     "native",
@@ -5165,7 +5167,7 @@
    "read": []
   },
   "tests/test_r2_p3_percept_transitions.py": {
-   "blind": true,
+   "blind": false,
    "git_scan": false,
    "list": [],
    "listr": [],
@@ -5186,7 +5188,7 @@
    "read": []
   },
   "tests/test_r2_sleep_redo.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": false,
    "list": [],
    "listr": [],
@@ -5200,7 +5202,7 @@
    "read": []
   },
   "tests/test_ratified_row_gates.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": true,
    "list": [
     "native",
@@ -5495,14 +5497,14 @@
    "read": []
   },
   "tests/test_replay_hydration_instrument.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": false,
    "list": [],
    "listr": [],
    "read": []
   },
   "tests/test_run_selfchecks_tools_stage.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": false,
    "list": [],
    "listr": [],
@@ -5966,7 +5968,7 @@
    "read": []
   },
   "tests/test_sleep_plasticity_ab.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": false,
    "list": [
     "src/snn_data_lake",
@@ -6028,7 +6030,7 @@
    "read": []
   },
   "tests/test_stage_deadline.py": {
-   "blind": false,
+   "blind": true,
    "git_scan": false,
    "list": [],
    "listr": [],
