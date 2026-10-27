@@ -1882,7 +1882,10 @@ bout and (b) a fresh-process restart than the same readout keyed to unit identit
   addendum names the readout's features: Part D's readout neurons if G1(c)'s disposition has landed, else
   `OnlineReadout` reading reservoir features in G9's harness.
 - Projection: each side is reduced to k principal dimensions fitted on that side's ANCHOR responses. k is the smallest
-  count holding 90% of the pre-event anchor variance, set on the pilot and frozen.
+  count holding 90% of the pre-event anchor variance, set on the pilot and frozen. The 90% is a declared P1 exception
+  (a conventional retention fraction, not derived here, as MU is in section 1). The pilot prints the held-out NO-EVENT
+  accuracy at k beside the full-dimension accuracy; the freezing addendum keeps 90% or replaces it with a derived k,
+  before any confirmatory seed.
 - Readout: `OnlineReadout("delta")` trained before the event on the k-dim pre-event projection. Its weights are not
   changed by FIXED, RELATIONAL or ROT.
 - Anchors: a fixed input set, disjoint from the scored held-out set. The same anchor inputs are presented before and
@@ -1917,12 +1920,15 @@ bout and (b) a fresh-process restart than the same readout keyed to unit identit
 ### E.5 Reds (each MET / NOT MET by its letter; constructed and run BEFORE any brain read)
 
 Run on constructed populations (fixture RNG 20261003 per the board ledger) and, at the pilot, on the recorded pre-event
-engine responses with planted changes. Chance band = chance + 2 binomial SD over the held-out set.
+engine responses with planted changes. Chance band = chance + 2 binomial SD over the held-out set; the 2 is a declared
+P1 exception (about a one-sided .025 normal tail, not derived from data), fixed before any planted run.
 
 - PE-R1, the report's criterion 4: planted drift = post-event responses set to the pre-event responses with unit
   identities permuted (one permutation per planted seed); geometry is exact and no event runs.
   - FIXED must fail: its held-out accuracy falls inside the chance band.
-  - RELATIONAL must pass: the same predicted class as NO-EVENT on >= 99% of held-out items.
+  - RELATIONAL must pass: the same predicted class as NO-EVENT on every held-out item, except items whose NO-EVENT
+    top-two margin is within the tie tolerance 1e-6 (2.4's TIE_TOL). Derived, not a fraction: a permutation is an
+    orthogonal map, so PCA plus Procrustes recovers it up to floating-point error, and only near-ties can flip.
   - If FIXED does not fail, the instrument cannot see identity drift and the criterion is deleted (P8, the fold's own
     words: "if neither fails, the criterion is deleted").
   - If RELATIONAL fails, the implementation is defective and is fixed in its build before any brain read; that is not a
