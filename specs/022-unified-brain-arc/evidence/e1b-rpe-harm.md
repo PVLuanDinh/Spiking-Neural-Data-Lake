@@ -1774,3 +1774,44 @@ e2325e9f5a98cd08daf46be339a64163e41edd4cc8c175acaeccf46d5291f017  procs.ps1
 A driver or preamble file whose sha256 differs from this list at run time is a departure, disclosed in the report.
 `graph-exists`: no def or class is added under `src/` (every script lives in `<work>`); P5b: Python (lane scratch, off
 the tick). All numbers above are brain-free; no perception tier applies.
+
+
+### Departure 1 from the addendum-10 binding (2026-10-27, integrator, before the resume): one line of the driver
+
+Disclosed under addendum 10's own rule ("a driver or preamble file whose sha256 differs from this list at run time is a
+departure") and policy-enforcer #5551 condition (3). No bar, cap, boundary, claimed effect, seed, arm, owed-run rule,
+decision rule or constant changes. Nothing here is an E1b datum.
+
+- **What stopped the campaign.** The campaign started 17:28:50 (GO #5556). Its 16 stage-A production runs completed
+  (rc 0, tier production / eprop-snn, errs 0, 23-32 s each). The 17th run (no-encoder `real_8`) exited rc 1 at 17:35:58
+  with no log, no home and no brain, and the driver stopped and released `resource:timing` (#5562, #5563).
+- **Cause, reproduced by the integrator with a dummy .ps1 (no brain).** `say()` teed its log line to STDOUT. `timeout_s()`
+  calls `say` once, when the timeout rule is first computed (after stage A: production median 25.5 s -> 600 s), so
+  `to=$(timeout_s)` captured "<the TIMEOUT RULE line>\n600". `run_arm.ps1`'s `[int]$TimeoutSec` refused that string
+  ("Cannot process argument transformation") before its START line. `ram_wait()` had the same flaw: a RAM WAIT line
+  would have been captured into the runs.log memory field. The dry run missed it because its check replaced `say` and
+  read only the last line.
+- **The change (lane e1b-run, #5565-#5567; diff `<work>\logs\campaign-departure.diff`).** One line of `campaign.sh`:
+  `say() { echo "$(now) $*" | tee -a $DLOG; }` becomes `say() { echo "$(now) $*" | tee -a $DLOG >&2; }`. The log line
+  still reaches `logs/driver.log`; the function values carry only their value. `driver_check.sh` gains checks that call
+  the REAL `say` and compare the exact captured values of `$(timeout_s)` (600 / 1485 when the rule is computed) and
+  `$(ram_wait)` (a planted RAM WAIT fires, is logged, and the capture is the ram.ps1 line alone). Positive control: with
+  the bound `say` (`OLD_SAY=1`) exactly those checks FAIL (`logs/driver_check-oldsay-control.log`); with the change
+  `DRIVER CHECKS PASS` (`logs/driver_check.log`; the no-GO red is skipped because GO exists, logged).
+- **Integrator verification before this commit:** `diff` of the kept bound copy (`logs/campaign.sh.bound-85f4e1ea`,
+  sha256 85f4e1eac38861e5... = the bound value) against `campaign.sh` is that one line; `sha256sum -c` of the
+  addendum-10 list fails on exactly `campaign.sh`, `driver_check.sh` and `logs/driver_check.log`, and all 22 other bound
+  files match.
+- **New sha256** (they replace the three bound values above; every other bound value stands):
+
+```
+21718093d8ad499eea6a170dc233cea37c010f22143cb849588fcb37fb1964ce  campaign.sh
+336be0765a427c3aa8eeba3e9225a35055e149906bcf0daa7994df3173b1b511  driver_check.sh
+4f0d7b8ca4bda18b740e6f3ccd5074ffe39bb25ef048c7680e22758896e66018  logs/driver_check.log
+a315d69f8928ec24dc0dd982695e1609defe2351319a73ab70f5fb50113577da  logs/driver_check-oldsay-control.log
+55960580b85ac65b68fc584237bcc029e19e4805eba05c58765ad4d0ab3eb29f  logs/campaign-departure.diff
+```
+
+- **Resume.** `START_LOOK=1`, section 7's rule: the 16 DONE production runs are skipped and kept unchanged; no-encoder
+  `real_8` runs fresh on the same seed (it never started, so no earlier attempt exists). The timeout already computed
+  (`logs/timeout_s.txt` = 600 s) is read from file. No seed is replaced, no run is dropped, nothing is re-decided.
