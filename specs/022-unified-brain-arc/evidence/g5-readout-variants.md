@@ -1819,3 +1819,178 @@ Under P8 a criterion is deleted only after proving NO input can construct its re
 This amendment supplies documentation and future build obligations only. Scientific readiness and acceptance
 remain unverified until their owning arcs satisfy these requirements on the reviewed stacked head.
 
+## DATED PRE-DATA DRAFT 2026-10-27: Part E -- the drift-surviving relational readout (owner fold of the drift report's criteria 3-4)
+
+Pre-data and pre-build: no Part E cell, pilot, fixture or brain has run, and no Part E code exists. All preceding bytes
+are unchanged. This is a DRAFT: nothing below is frozen until its own freezing addendum (E.8) binds the instrument sha,
+the pilot SD and the sequential design, after the panel and the policy-enforcer have read it.
+
+Owner words, verbatim, in chat to claude-engine-1024:
+- 2026-10-25: "Fold the representational-drift report's items 3-4 into G5's relational-readout pre-registration and
+  items 1-2 into G9's campaign, as design input."
+- 2026-10-27: "First draft G5's drift pre-registration part in g5-readout-variants.md, then start E1b."
+
+Source: `D:\AI-project\lanes\research-1025-drift\REPORT.md` section 3 (outside the repo), criteria 3 (the relational
+readout, scored by held-out score retained across sleep + restart) and 4 (the planted-drift reachable red). Criteria 1-2
+(the drift measurement and its per-part attribution) are G9's (T117 note). Criteria 5 (frozen-engine floor) and 6 (P1)
+are used here as E.2's floor and E.8's sample-size rule.
+
+### E.0 Raising-ambition record (self-apply, owner 2026-10-25)
+
+- Axis: Depth (do it the way the field's best practitioners handle a drifting population).
+- Ladder: (1) restate criteria 3-4 as design input (done: the T113 note of 2026-10-25); (2) a complete pre-data design:
+  label-free alignment, a leak red the relational readout must fail, a control that is not the method, the incumbent's
+  own labeled re-fit at equal budget, a drift precondition and a P1 sequential plan; (3) build the alignment module and
+  run the brain-free reds now, so the instrument's positive control is counted before the rule lands.
+- PICKED: rung 2. Rung 3 is ruled out by the owner's 2026-10-25 wording ("as design input") and the 2026-10-23 rule
+  ("Make sure the engine is built first to accurately address the throttle gaps"): a readout-side gap build waits for
+  the G9 engine and lands in its own arc through lanes, the panel and the policy-enforcer.
+- Range: brain-computer-interface decoder stabilization (Degenhart et al. 2020, Nat Biomed Eng 4:672, PMID 32313100)
+  aligns low-dimensional activity spaces using unlabeled data and keeps the decoder fixed; cross-day latent alignment
+  (Gallego et al. 2020, Nat Neurosci 23:260, PMID 31907438) keeps decoding stable while single units change; the
+  adversarial lens is a leakage auditor's: prove the alignment step carries no label (PE-R2).
+- Outside judge: PE-R1 to PE-R3 on constructed populations with known answers, brain-free and before any brain read;
+  then the frozen-engine floor (E.2); then the panel and the policy-enforcer before the freezing addendum.
+
+### E.1 Question and what Part E is not
+
+The engine changes its own substrate by design: G3 growth, G6's sleep prune and mask, G9's fresh-process rebuild. A
+readout keyed to fixed unit identities (`OnlineReadout`'s beta rows) can lose its held-out score after such an event even
+when the population's geometry is kept. Question: does a RELATIONAL readout, which first aligns the post-event population
+geometry onto the pre-event geometry and then reads with unchanged weights, keep more held-out score across (a) a sleep
+bout and (b) a fresh-process restart than the same readout keyed to unit identity?
+
+- Part E tests readout robustness to substrate change. It is not connection 6 (no return projection), not Part B
+  (deleted on its 11100-11107 null) and not Part C (anatomical labels).
+- A Part E win decides one thing: whether Part D's readout carries an alignment step across sleep and restart. It earns
+  no connection-6 credit and no G9 credit.
+
+### E.2 Precondition P-E0 (runs first; NOT MET makes the endpoint NOT READ, never a red or a null)
+
+- Natural drift must exist on the engine. Measured with G9's criterion-1 instrument: population-vector correlation of
+  reservoir responses to the fixed test-input set, before vs after the event, full engine vs a frozen engine (no growth,
+  no sleep, same ticks and inputs; the report's criterion 5).
+- NOT MET for an event when the full engine's post-event correlation is not below the frozen floor by the margin the
+  freezing addendum fixes from the pilot. Reason: with no drift both readouts keep the score, the contrast is entailed
+  equal, and a red that cannot fire is not a red (P8; the same reasoning as Part C, section 5 item 1).
+- Restart: if the fresh-process rebuild restores the reservoir bit-identically (R2 hydration), restart drift is zero by
+  construction. The restart contrast is then reported as NOT READ and the sleep contrast stands alone.
+
+### E.3 Mechanism (new code, built in its own arc; nothing here exists yet)
+
+- Population: reservoir spike counts per input per unit in a fixed window, from the G9 engine's reservoir. The freezing
+  addendum names the readout's features: Part D's readout neurons if G1(c)'s disposition has landed, else
+  `OnlineReadout` reading reservoir features in G9's harness.
+- Projection: each side is reduced to k principal dimensions fitted on that side's ANCHOR responses. k is the smallest
+  count holding 90% of the pre-event anchor variance, set on the pilot and frozen.
+- Readout: `OnlineReadout("delta")` trained before the event on the k-dim pre-event projection. Its weights are not
+  changed by FIXED, RELATIONAL or ROT.
+- Anchors: a fixed input set, disjoint from the scored held-out set. The same anchor inputs are presented before and
+  after the event, and correspondence is by input identity, never by category label. No held-out item is seen by any
+  alignment.
+- Alignment: orthogonal Procrustes (`scipy.linalg.orthogonal_procrustes`; scipy is a core dependency) maps the post-event
+  anchor scores onto the pre-event anchor scores; the held-out post-event scores are read through that map.
+- Reuse first: `faculties/grid_place_map.py::_pearson` (population-vector correlation) is the one hit from
+  `graph-exists.js` (2026-10-27). "Procrustes alignment of population geometry" and "representational similarity analysis
+  RSA matrix" gave no lexical match: UNKNOWN, not absence. The build re-queries in the tree's vocabulary before writing.
+
+### E.4 Arms (per event; same seeds, pairing asserted per difference as in 2.4)
+
+| arm | what | role |
+|---|---|---|
+| NO-EVENT | same ticks, no sleep and no restart | reference score |
+| FIXED | pre-event projection applied to post-event activity unit by unit; a pruned unit reads 0, a unit born after has no loading | the identity-keyed incumbent |
+| RELATIONAL | post-event projection, Procrustes onto the pre-event anchors, read with the unchanged weights | the method |
+| ROT | post-event projection, a seeded random orthogonal k x k map (`scipy.stats.ortho_group`), read with the unchanged weights | control that is not the method: re-projection without alignment |
+| ONLINE | the incumbent as deployed: delta updates on the same anchor inputs WITH labels after the event, then read | P2 contest at equal anchor budget |
+| FROZEN | the frozen engine (E.2) through FIXED | noise floor |
+
+- Primary, per event: d = acc(RELATIONAL) - acc(FIXED) on the held-out set, paired over seeds.
+- Secondary (P2): RELATIONAL non-inferior to ONLINE at margin Delta* (E.7), with zero labels against ONLINE's labeled
+  anchors.
+- Reported beside, gating nothing: ROT - FIXED, and G9's three drift metrics (population-vector, ensemble-rate and
+  tuning-curve correlation) for the same events.
+- Statistic: `instruments/paired_contrast` conventions from 2.4 (ties |d| <= 1e-6, at least 5 non-tied seeds, a
+  degenerate contrast reads NOT MET, the FPR printed and gating nothing). The bar is the sequential boundary of E.7, not
+  T_BAR.
+
+### E.5 Reds (each MET / NOT MET by its letter; constructed and run BEFORE any brain read)
+
+Run on constructed populations (fixture RNG 20261003 per the board ledger) and, at the pilot, on the recorded pre-event
+engine responses with planted changes. Chance band = chance + 2 binomial SD over the held-out set.
+
+- PE-R1, the report's criterion 4: planted drift = post-event responses set to the pre-event responses with unit
+  identities permuted (one permutation per planted seed); geometry is exact and no event runs.
+  - FIXED must fail: its held-out accuracy falls inside the chance band.
+  - RELATIONAL must pass: the same predicted class as NO-EVENT on >= 99% of held-out items.
+  - If FIXED does not fail, the instrument cannot see identity drift and the criterion is deleted (P8, the fold's own
+    words: "if neither fails, the criterion is deleted").
+  - If RELATIONAL fails, the implementation is defective and is fixed in its build before any brain read; that is not a
+    deletion.
+- PE-R2, the leak guard: planted geometry-destroying drift = each input given another input's response (anchors and
+  held-out shuffled jointly; the rate distribution is unchanged). FIXED and RELATIONAL must both fall in the chance band.
+  If RELATIONAL passes, the alignment leaks label information and the instrument is REFUSED.
+- PE-R3, control reachability: ROT on PE-R1's planted drift must fall in the chance band. If ROT passes, the control
+  equals the method in effect and the instrument is REFUSED.
+- PE-R4, dose: permute a fraction f in {.1, .25, .5, 1} of units. FIXED's mean loss over the planted seeds must be
+  non-decreasing in f, else the instrument is REFUSED.
+- PE-R5, disjointness: an anchor input id inside the held-out set exits 3 with no result file (`os._exit(3)`, never
+  `assert`).
+
+### E.6 Seeds (inside G5's block 11000-11999; grep-checked 2026-10-27)
+
+| set | seeds | use |
+|---|---|---|
+| pilot (dev) | 11600-11607 | SD of d per event, k, the P-E0 margin and Delta*. EXPOSED after use, never confirmatory |
+| planted | 11608-11615 | PE-R1 to PE-R4 permutation and shuffle draws |
+| confirmatory pool | 11616-11647 | the sequential looks, in order; replacements are the next unused seed, on an instrument failure only (section 4's reserve rule) |
+
+- Positive control: `\b4242\b` over specs/, src/ and tests/ at c1df3887 fired (31 files).
+- `\b116[0-4][0-9]\b` over the same trees and the live board: zero hits.
+- If E.7's cap needs more than 32 confirmatory seeds, the freezing addendum allocates them inside 11648-11699 after its
+  own grep. 11696 is already a non-seed hit (section 4).
+
+### E.7 Sample size (P1; owner 2026-10-23: "switch E1b to a sequential design, P1 policy, make sure all sessions understand that")
+
+- No constant. The pilot (11600-11607) measures the SD of d per event.
+- The smallest effect of interest is registered NOW, before any pilot: Delta* = half of FIXED's mean pilot loss,
+  0.5 x mean(acc(NO-EVENT) - acc(FIXED)). The relational readout must recover at least half of what identity-keying
+  loses.
+- Power .8 at Delta*, one-sided alpha .05 per event. The freezing addendum then sets the looks, Lan-DeMets
+  O'Brien-Fleming alpha spending, a binding futility bound and a hard cap, as E1b's addenda 2-9 did.
+- Two events, two primaries, no multiplicity correction (house practice, 2.4). Disclosed: each event's decision stands
+  alone.
+
+### E.8 What Part E waits on (its freezing addendum comes after all four)
+
+1. The G9 engine (owner 2026-10-23: gap experiments only on the G9 engine).
+2. G9's criterion-1 drift instrument, for P-E0.
+3. A readout on the reservoir: Part D (G1(c)'s disposition) or `OnlineReadout` on reservoir features in G9's harness.
+4. Its own build arc: the alignment module, PE-R1 to PE-R5 counted, then the panel and the policy-enforcer's AGREE.
+
+### E.9 Null disposition and deletion (P8 clause 5; P4d)
+
+- P-E0 NOT MET: NOT READ, reported with the drift measurement. Not a null.
+- PE-R1's FIXED does not fail: the criterion is deleted (E.5).
+- Endpoint null (a futility stop, or the cap without a crossing): if the P8 null-scale amendment has landed by then, its
+  NULL-RECORD and one >= 10x re-test come first. Otherwise the alignment module is deleted and the incumbent stays.
+- P2, one mechanism: the alignment is adopted only if a primary is MET with P-E0 MET AND RELATIONAL is non-inferior to
+  ONLINE at margin Delta*. If ONLINE's labeled re-fit does the job, the alignment is a second mechanism for one job and
+  is deleted, even when RELATIONAL beats FIXED.
+- The readout itself is owner-drawn (P4d connection 4) and stays on any null. Only the alignment's implementation is
+  deleted.
+
+### E.10 Cost
+
+UNMEASURED. Pilot and campaign cost are measured in the build arc on the complete configured cell, never projected from
+Part A/B timings.
+
+### E.11 Open for the owner (each needed before the pilot)
+
+1. Delta* = half of FIXED's mean pilot loss: confirm, or set another value.
+2. The registered contest gives ONLINE labeled anchors. Should a no-label setting (ONLINE gets nothing after the event)
+   be registered as a second contest?
+3. Criterion 3 names sleep and restart. Growth drift is read by G9 only. Should Part E also read a growth event?
+
+Disclosure: drafted by the integrator (claude-engine-1024) directly, not a lane. It has had no panel and no
+policy-enforcer read. The two citations were checked on PubMed (citation lookup, 2026-10-27).
