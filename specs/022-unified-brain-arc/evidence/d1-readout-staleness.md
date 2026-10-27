@@ -71,9 +71,10 @@ tests`. It returned nothing. The three in-tree uses of "drift" mean other things
 
 **None found by these searches.**
 
-**The scale and the null-scale triage.** `evidence/null-scale-triage.md:69-70` records OJA as follows:
-
-    NULL-RECORD: Oja local rule on the grown units' input rows (L1b) | units=38 | ticks=800 | seeds=8 | mde=unknown | retest=CANDIDATE
+**The scale and the null-scale triage.** `evidence/null-scale-triage.md:69-70` records OJA's null-scale record
+(paraphrased here, not quoted, so that `gates/null_scale_gate` does not parse this file as a second record; erratum E1):
+the method is the Oja local rule on the grown units' input rows (L1b), at units 38, ticks 800, seeds 8, with mde
+unknown and the re-test state CANDIDATE.
 
 - AXIS = units, so a 10x re-test means at least 380 units.
 - It is "NOT a measured harm" under the P8 amendment, item 4, because L1b pre-registered no harm bar.
@@ -443,6 +444,74 @@ The operator's battery and push follow the project's rhythm.
      its result is offered to E3's design.
    - Running D1 before E3 rests on the owner's request of 2026-10-27, disclosed here. E2's block ("one silent unit")
      is the deployed brain's (`l-exit.md:96-97`), not the scratch brains', where units fire (table above).
+
+#### E1 -- 2026-10-27, erratum: one line of section 1 reformatted (an in-place edit, disclosed)
+
+**What broke.** Section 1 quoted the triage's null-scale record verbatim, as an indented line starting
+`NULL-RECORD:`. `gates/null_scale_gate.py` parses every such line as a record, read `mde=unknown` as a non-number
+and turned `--assert` RED (R-FIELD) on this branch, a lint step of the battery.
+
+**The fix.** The line is now a prose paraphrase carrying the same fields. It has no `NULL-RECORD:` prefix, and no
+content changed. After the edit, `python -m snn_data_lake.gates.null_scale_gate --assert` is green.
+
+**Why an in-place edit.** This is the one in-place edit to the frozen text. It is made because the quotation was
+formatting in the territory section, not a criterion, and because the alternative was a permanently red gate.
+
+#### A0b -- 2026-10-27: the build path, measured before the build (scratch probes; no D1 data)
+
+A read-only audit of the build path ran engine-level probes on synthetic chains plus one scratch `make_brain` at the
+stdlib tier. Seeds 0, 1 and 96, all engine-level or scratch; the 0 and 1 here are synthetic-engine seeds, not the
+pilot's brain seeds. No arm, gap or contrast in this file came from them. It found three things the pre-registration
+had not accounted for, ruled here before the build.
+
+1. **A no-drift gap is not zero after a prune.**
+   - When the last open-gate solve ran `prune_unearned`, `_batch_beta` is the beta re-solved on prune's own internal
+     split (`growth/ng_snn.py:378`, `growth/candidate_lifecycle.py:218-219`). A shadow solved on the refit's training
+     rows differs from it even with `W` unchanged: max |d beta| 0.02-0.32 and a gap of -0.039 to +0.077 on the
+     synthetic chain. Without a prune, the shadow equals `_batch_beta` bit for bit.
+   - Prunes fired on most open solves. Prune frequency depends on units, and OJA admitted more units in L1b, so the
+     bias need not cancel across arms.
+   - **Ruled:**
+     - (a) At every open refit, the instrument records a CALIBRATION reading: the shadow against `_batch_beta` on that
+       refit's own split, with the same `W`. It also records whether that solve pruned.
+     - (b) `gap_pre` on each later row is reported raw and CALIBRATED, i.e. minus the calibration reading of the open
+       solve that produced the reader in use.
+     - (c) **P1 reads the calibrated `gap_pre`.**
+     - (d) R1's green fixture is a solve that did not prune. R1 gains a second green: a pruned solve reads a
+       calibrated gap of 0 to 1e-6 with `W` unchanged.
+2. **A vocabulary term.**
+   - `_batch_beta`'s width is fixed at its last open solve (max label + 1, `growth/ng_snn.py:395`). The live beta is
+     widened online (`readout/online_readout.py:83-88`). The shadow takes `int(y_tr.max()) + 1`.
+   - Held-out rows whose label the stale reader cannot output therefore add a staleness term unrelated to `W` (7-10
+     of 60 rows on a probe row).
+   - **Ruled:** each row logs `unseen_by_reader`. P1 is read on rows the stale reader can answer, with the all-rows
+     reading reported beside it. The shadow mirrors the closed branch's reader fallback exactly
+     (`growth/neurogenesis_engine.py:668-670`).
+3. **Faults vanish silently.** `Brain._sleep_tick` swallows any exception from the grower's tick (`engine/brain.py`
+   around `:3356-3360`); a planted raise in a wrapped `_refit` dropped one row silently. **Ruled:**
+   - the wrapper keeps its own fault counter;
+   - every row asserts that the trajectory advanced exactly as `_refit` alone would have made it advance;
+   - a cell with any instrument fault is EXCLUDED and counted, and an arm with faulted cells on more than 1 seed in a
+     look block makes that look NOT READ.
+
+**Governance, corrected before the build.**
+- `EXEMPT_METHOD` (section 2.10) is INERT for this module. `method_dormancy_gate` scans only modules reachable from a
+  live root (`gates/method_dormancy_gate.py:293-298`), and an EXEMPT-permanent instrument is not one. It is dropped
+  from the build.
+- The OJA and RAND operators are declared **LOCAL** in the module's `GRADIENT_CLAIM`. They are local rules, and
+  CONTROL would mislabel them. Each gets a `_CENSUS_ADJUDICATED` entry in `plasticity/rule_composer.py`, copying the
+  `instruments/g5_part_d_adaptors.py` precedent, and `tools/rule_census.json` is regenerated through
+  `rule_composer --regen-census` in the build commit.
+- The shadow and the drift readings are declared `NOT_A_RULE`; the re-solve is `DIRECT_SOLVE`.
+- Helper names avoid the census's learn-verb substrings (`fit`, `train`, `grad`, `update`, `learn`, `adapt`) unless
+  declared.
+
+**Determinism, made explicit.**
+- The shadow path draws no RNG. Probed: torch global, Python `random`, numpy and the model's own generator states
+  are identical before and after.
+- It does write `NGSNN.last_abstentions_` and `last_unanswerable_` through `decide`. Nothing reads those before
+  `_refit` overwrites them, but the instrument saves and restores them anyway, and R2's hash covers them.
+- RAND draws from its own CPU `torch.Generator`, seeded by `zlib.crc32` of (seed, arm), never the global generator.
 
 ## 3. Record
 
