@@ -1881,6 +1881,8 @@ bout and (b) a fresh-process restart than the same readout keyed to unit identit
 - Restart is a P4b check first, not a substrate change (fold of #5548 M3). Under P4b the brain restarts with what it
   learned, so the drift the frozen floor does not absorb is a persistence defect, not something for a readout to hide.
   - FIXED's held-out loss across the restart, or a restart P-E0 MET, files a P4b red against the rebuild (owed to G9 / R2).
+    "Loss" has a test (fold of #5555 n3a): `paired_contrast` MET of FIXED's per-seed restart loss against the FROZEN
+    arm's, under 2.4's conventions. Noise alone files no red.
     The restart contrast stays NOT READ until that red is fixed. An alignment that recovered the score would mask an
     amnesia defect: a guard that avoids the cause instead of removing it.
   - The one exception: drift in state the freezing addendum NAMES as deliberately not persisted (for example RNG streams
@@ -1962,6 +1964,8 @@ P1 exception (about a one-sided .025 normal tail, not derived from data), fixed 
   - At the pilot, the real sleep bout's measured pruned and born fractions are placed on that curve. If RELATIONAL's
     planted accuracy at the nearest dose at or above them is inside the chance band, the sleep contrast is NOT READ:
     the method cannot work there by construction, and a null there would test nothing.
+  - A real bout whose pruned or born fraction exceeds .5 has no dose at or above it: the sleep contrast is NOT READ
+    (fold of #5555 n3b). Extending the doses is the freezing addendum's choice, made before the pilot is read.
 
 ### E.6 Seeds (inside G5's block 11000-11999; grep-checked 2026-10-27)
 
@@ -1991,14 +1995,21 @@ P1 exception (about a one-sided .025 normal tail, not derived from data), fixed 
   design is sized at alpha .025 (the Bonferroni level, which Holm never exceeds for its first rejection) with power .8
   at Delta*. An event that is NOT READ (E.2, PE-R6) does not release its alpha. The adoption decision of E.9 therefore
   has a family false-positive rate of at most .05. 2.4's "no multiplicity correction" does not apply to Part E.
+- Holm with group-sequential tests (fold of #5555 n1): the graphical procedure (Maurer & Bretz 2013). When one event's
+  test rejects at its .025 boundaries, its alpha passes to the other event, whose test is re-evaluated on the .05
+  spending boundaries at the looks it actually ran. No p-value is compared against .05. m1's simulation below checks
+  the FAMILY false-positive rate (at most .05 + 3 Monte Carlo SE), not only each event's .025.
 - Sequential design: looks of 8 seeds; Lan-DeMets O'Brien-Fleming spending at alpha .025 per event, through the
   project's one implementation (`instruments/rpe_charge` `seq_boundaries` / `seq_decision` / `seq_record`; its P2 note
   says later pre-registrations import them, never copy).
 - Futility (fold of #5548 M2; P1 item 2): a NON-binding bound, open only at a look whose mde from the pilot SD is at or
   below Delta* (as E1b's `futility_open`).
-- Non-inferiority (fold of #5548 M2): RELATIONAL vs ONLINE at margin Delta*, one-sided alpha .05, read once at the look
-  where that event's primary stops with a crossing. The cap is the larger of the primary's power-.8 cap and the cap at
-  which this read has power .8 when the true e is 0, at the pilot SD of e.
+- Non-inferiority (fold of #5548 M2): RELATIONAL vs ONLINE at margin Delta*, one-sided alpha .05, read once. The cap is
+  the larger of the primary's power-.8 cap and the n at which this read has power .8 when the true e is 0, at the pilot
+  SD of e (n_NI).
+- Power delivered, not only stated (fold of #5555 n2): an O'Brien-Fleming crossing will usually come early (n = 16-24),
+  far below n_NI. After the primary's decision of record, which is never re-decided, seeds keep being added for the NI
+  read only, in order from the pool, until n_NI or the cap, whichever comes first; the NI read is taken there, once.
 - Before the campaign (fold of #5548 m1), the freezing addendum checks the boundaries and the cap by simulation, as
   E1b's R-S1 and R-S3 did: a planted null keeps each event's type I at or below .025 + 3 Monte Carlo SE; a planted
   Delta* crosses by the cap at the stated power within 3 SE; the non-inferiority read is checked the same way.
