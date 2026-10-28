@@ -2071,3 +2071,6 @@ They are carried to Part E's freeze, which owes each one; none is fixed here.
   names it, and says whether `futility_powered` (E1c addendum 3) applies.
 - **The drift-function claimants.** D1 A0c F3's list omits the module that research/representational-drift/MAP.md's
   D0 plans. Part E's relational readout reads drift, so its freeze resolves P2 among the claimants.
+- **E.6's fixed 83-seed ceiling.** E.6 makes a powered cap above 83 seeds NOT RUN, while delegate D-11 #3 retired
+  L1b-STALE's fixed 40 in favour of a cap from power. Both are P1-safe; the freeze states why they differ (lens B
+  #5721 m7, #5746 D-m1; added after policy-enforcer #5753 m3 found it missing from this list).
