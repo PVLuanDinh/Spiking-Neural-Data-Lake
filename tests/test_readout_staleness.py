@@ -345,3 +345,20 @@ def test_m1_r2_second_leak_that_cannot_change_any_accuracy_still_moves_the_hash(
     _, _, h_off = run_engine(shadow=False)
     assert rs.substrate_hash(e._model, e._batch_beta, e.trajectory) != h_off[-1]
     assert e.trajectory == run_engine(shadow=False)[0].trajectory  # accuracies unmoved: hash-only
+
+
+# ---- round 3 (#5728 M2): R5's null split, planted from a basis the projector did not make -------
+def test_m2_r5_projector_is_the_column_space_and_the_drift_is_planted_independently():
+    rng = np.random.default_rng(0)
+    beta = np.vstack([np.eye(3), np.zeros((3, 3))])  # col(beta) = the first three coordinates
+    P, null_dim = rs.readout_projector(beta)
+    assert null_dim == 3 and np.allclose(P, np.diag([1.0, 1, 1, 0, 0, 0]))
+    N = np.linalg.svd(beta.T, full_matrices=True)[2][3:].T  # an independent null-space basis
+    assert np.abs(beta.T @ N).max() < 1e-12
+    dS = rng.normal(size=(40, 6))
+    in_null, in_col = dS @ N @ N.T, dS @ (np.eye(6) - N @ N.T)
+    assert rs.visible_fraction(in_null, P) < 0.05 and rs.visible_fraction(in_col, P) > 0.95
+    mixed = rng.normal(size=(6, 3))  # a rotated column space: projector must still match its basis
+    Q, _ = np.linalg.qr(mixed)
+    P2, _ = rs.readout_projector(mixed)
+    assert np.allclose(P2, Q @ Q.T)
