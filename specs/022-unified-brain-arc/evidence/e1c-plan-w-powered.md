@@ -90,7 +90,11 @@ Background:
   and decides nothing.
   - At SD 0.31 a powered E-P2 needs about 3,500 seeds. It is therefore expected to stay INCONCLUSIVE, so no NULL-RECORD
     for `_plan_w` can follow from this row.
-- **Beside, no bar:**
+- **Beside, no bar** (each look's verdict line; delegate D-12b, launcher-1028):
+  - the per-seed sign count k/n;
+  - the 10%-trimmed-mean contrast (10% cut from each tail of d_s). With excess kurtosis 6.2, a crossing carried by a
+    few outlier seeds must be visible beside the t. The builder graph-exists-checks for an existing trimmed mean
+    before writing one;
   - the Hodges-Lehmann shift with its 95% interval;
   - the count of exact-zero seeds;
   - the descriptive tail census (|d| > 0.4 and the first divergence tick of those seeds).
@@ -148,6 +152,19 @@ Background:
   576 is 0.0354, just above 0.035 (`looks_e1c.log`). The campaign therefore stops only at a harm crossing or at the
   cap.
   - The per-look boundaries t are 7.139, 4.392, 3.453, 2.933, 2.594, 2.352, 2.167, 2.020, 1.899 and 1.798.
+  - **The bound is the policy's, and it is kept** (delegate D-12c asked for one that opens; measured).
+    - POLICIES P1 amendment item 2: "a futility stop is taken only at a pre-registered look whose mde, computed from
+      the pre-registered SD at the design's alpha, is at or below the claimed effect ... before such a look the
+      campaign continues". `futility_open` implements exactly that rule, and at these looks no look before the cap
+      qualifies.
+    - An opening rule, conditional power < .10 at any look >= 5, was measured (`derive_e1c-fut5-2000.log`, 2,000
+      campaigns each):
+      - power .886 / .808 (shift / shift_up), so it keeps the .80;
+      - but under the no-harm shape E[n] 451, and **81.6% of campaigns end at an underpowered futility stop**
+        (INCONCLUSIVE). Only 13.7% end "powered, no harm", against 89.4% with the policy bound.
+    - From look 8 (`derive_e1c-fut8-2000.log`), power at shift_up is .784 < .80.
+    - So the opening rule is barred by P1 item 2. It would also turn the likely no-harm answer into INCONCLUSIVE,
+      which is the result this run exists to replace.
 - **The cap's "powered" read uses the OBSERVED SD.** At 640 the mde is 0.0323 at SD 0.3097. It goes above 0.035 when
   the observed SD exceeds about 0.336, and the cap then reads INCONCLUSIVE. Its rate per shape is in 5.4.
 - **Powered.** Read as E1b addendum 3 reads it: the mde at the stopped n with the observed SD, at or below 0.035.
