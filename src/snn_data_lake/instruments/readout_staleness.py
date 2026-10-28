@@ -7,9 +7,9 @@ This module is torch-free at import: every reading takes a model that offers `_r
 `W`, `b`, `beta`, `prior_class_`, so the brain-free reds run on a numpy fixture and the same code reads a real
 NGSNN in a child process. The SHADOW is a scoring-only reading: nothing reads it back (R2).
 
-GRADIENT_CLAIM (declared here, registered by the integrator): `oja_step`, `rand_step` = LOCAL (instrument-only,
-scratch homes); `shadow_reading`, `calibration_reading`, drift and null-split readings = NOT_A_RULE;
-the re-solve itself is the model's own DIRECT_SOLVE (`_solve_beta`).
+GRADIENT_CLAIM (below): `oja_step`, `RandStep.__call__` = LOCAL (instrument-only, scratch homes);
+`shadow_reading`, `calibration_reading`, drift and null-split readings = NOT_A_RULE; the re-solve
+itself is the model's own DIRECT_SOLVE (`_solve_beta`).
 
 distinct-from: plasticity/oja_pca.py -- one neuron's principal component, not a per-row norm-preserving step on an
   engine's grown input rows. growth/neurogenesis_engine.py::growth_fingerprint -- takes an engine's grown model and
@@ -28,6 +28,29 @@ from snn_data_lake.instruments import paired_contrast as pc
 TIE = 1e-6  # |d| at or below this counts as a tie (L1b's)
 RANK_TOL = 1e-6  # numerical rank tolerance x sigma_max (section 2.4)
 MU = 0.05  # L1b's Oja constant (CHOSEN there, unchanged)
+
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "oja_step": (
+        "LOCAL",
+        "L1b's per-row norm-preserving Oja step on a scratch copy of the retained model's input "
+        "rows: pre-activation s_i times the percept, no error signal. Instrument-only, never live",
+    ),
+    "RandStep.__call__": (
+        "LOCAL",
+        "RAND control: the same local step with a random unit vector in place of the percept, on "
+        "a scratch copy. Instrument-only, never live",
+    ),
+    "shadow_reading": (
+        "NOT_A_RULE",
+        "scores held-out rows with the model's own `_solve_beta` re-solve (its DIRECT_SOLVE) and "
+        "the stale reader; reads W and b, writes nothing back",
+    ),
+    "calibration_reading": ("NOT_A_RULE", "a shadow reading at an open solve; scoring only"),
+    "rate_drift": ("NOT_A_RULE", "descriptive norm ratio of two rate matrices; no update"),
+    "readout_projector": ("NOT_A_RULE", "SVD projector onto col(beta); a reading, no update"),
+    "visible_fraction": ("NOT_A_RULE", "share of a rate change inside col(beta); a reading"),
+}
 
 
 def _np(x):

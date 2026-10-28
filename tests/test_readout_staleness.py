@@ -504,3 +504,21 @@ def test_m3_post_i_is_s_i_zero_rows_are_bit_unchanged_and_all_zero_is_inert():
     assert rs.operator_check(W, W1)[0]
     ok, moved, inert = rs.operator_check(W, rs.oja_step(W, np.zeros(5), xn))
     assert inert and moved == 0.0
+
+
+# ---- round 3 (#5728 m6, m7) ----------------------------------------------------------------
+def test_m6_gradient_claim_keys_name_real_symbols_with_known_dispositions():
+    ok = {"LOCAL", "NOT_A_RULE", "DIRECT_SOLVE", "CONTROL"}
+    ok |= {"APPROXIMATES_GRADIENT", "EXACT_GRADIENT"}
+    assert {"oja_step", "RandStep.__call__"} <= set(rs.GRADIENT_CLAIM)
+    for key, (disposition, reason) in rs.GRADIENT_CLAIM.items():
+        obj = rs
+        for part in key.split("."):
+            assert hasattr(obj, part), f"PHANTOM_DECLARATION: {key}"  # the gate refuses a ghost
+            obj = getattr(obj, part)
+        assert disposition in ok and reason
+
+
+def test_m7_survivor_pairs_a_fit_row_at_n_prev_is_new_not_inherited():
+    p, c = rs.survivor_pairs(3, [0, 3, 2], 3)  # fit rows 0..2 inherited; row 3 is new
+    assert list(p) == [0, 2] and list(c) == [0, 2]
