@@ -1841,7 +1841,8 @@ controls PASS on both tiers; one tree sha in every run. Bridge: "tree-equivalent
   mde 0.0223 <= 0.0480, powered.
 
 **Secondaries (look 1, 8 seeds), production / no-encoder:** E-V1 MET / NOT MET; E-V2 MET / NOT MET; E-P1 MET / MET (8 of 8
-seeds; the lane REPORT's "8/152" is a typo); E-P2 NOT MET (mde 0.0686) / NOT MET (mde 0.1935); H-P2, H-V3 INCONCLUSIVE on
+seeds; the "8/152" in the lane REPORT is the harness's own print, policy-enforcer #5599 m1: `rpe_charge.py` divides the
+look-1 count by the look's seed count; carried as a harness fix); E-P2 NOT MET (mde 0.0686) / NOT MET (mde 0.1935); H-P2, H-V3 INCONCLUSIVE on
 both tiers; H-V2 INCONCLUSIVE / powered not met. Harness disposition lines: production "ValenceLearner: **CHARGED**;
 `_plan_w`: **charges behaviour, objective unresolved (see power note)**"; no-encoder "ValenceLearner: **charges behaviour,
 not its objective**; `_plan_w`: **charges behaviour, objective unresolved (see power note)**". Degenerate production seeds
@@ -1853,15 +1854,19 @@ tree src, looks 10 and 19 identical):
 - `ValenceLearner`: (False, "production: the objective endpoint was met").
 So NO NULL-RECORD is owed for either method. The H-V1 status string's words "a null, NULL-RECORD path (one 10x re-test
 before any deletion)" describe the primary alone; the record is gated by this precondition, which the compare and cross
-reports do not print (carried: print `null_precondition` in `cross`).
+reports do not print (carried harness fixes: print `null_precondition` in `cross`; E-P1's denominator, #5599 m1).
 
 **Section 6, the integrator's reading (owner decides):**
 - `_plan_w`: H-P1 not met on both tiers with SD > 0.035 -> INCONCLUSIVE on harm for each tier; "E1's signal stands as
   unreplicated" (the bridge is tree-equivalent: E1's signal reproduces on E1's seeds, not on seeds 8-87 of either tier).
-  No deletion, no record.
+  No deletion, no record. The scale still owed (fold of #5599 m2; POLICIES null-scale item 4: an INCONCLUSIVE licenses
+  no deletion at any scale until a run powered .8 for the claimed effect is done): fixed-sample, one-sided .05, power .8,
+  effect 0.035, about 485 seeds at the production SD 0.3097 and about 245 at the no-encoder SD 0.2205. The `_plan_w` harm
+  question stays OPEN at that scale; it is not closed.
 - `ValenceLearner`: H-V1 not met, powered, on both tiers: no harm on its replay objective. E-V2 is tier-split (MET on
-  production, NOT MET on no-encoder): a tier finding, no record. On the production brain it is CHARGED (E-V1 and E-V2 MET).
-  No deletion.
+  production, NOT MET on no-encoder): a tier finding, no record. Fold of #5599 M1: tier finding: E-V1 and E-V2 MET on the
+  production tier (look 1, 8 seeds), E-V2 NOT MET on no-encoder; not CHARGED under section 6 / the cross-tier rule; the
+  harness's per-tier "CHARGED" line is reported beside it. No deletion.
 - P2 note of section 6 stands: the third-factor RPE job has two live mechanisms (`ValenceLearner`, `_plan_w`); a non-harm
   outcome is NOT read as "both stay". The adopt-or-merge question goes to the owner.
 
