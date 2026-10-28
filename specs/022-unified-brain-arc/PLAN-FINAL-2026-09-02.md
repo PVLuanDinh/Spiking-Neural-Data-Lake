@@ -1270,6 +1270,11 @@ untouched final test judges the resulting policy after a fresh-process restore. 
 variations remain marked internal and never become observed facts, labels or rewards. A duration
 gain caused only by extra updates, leakage or forgotten prior skills is not an accepted benefit.
 
+*DATED 2026-10-28 (owner #1039):* of the incumbents named in this note, the `replay` and `benna_fusi` switches and
+automatic `attractor.sleep` learning were retired on 2026-10-13 (see the dated note under "Sleep already prunes" in
+the engine territory list below); `Brain.neuter_sleep` refuses them, so ON/OFF arms for them cannot be constructed.
+The `structural` switch remains and is the only `_sleep_caps` entry. The sleep requirement itself is kept.
+
 ### A workstream - simulated annealing for lake access, not memory deletion (T105-T107)
 
 **A1 / T105; FR-040, SC-018.** Pre-register an offline/sleep-time discrete search over bounded
@@ -1648,6 +1653,20 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
   Benna-Fusi relax, `AttractorNet` downscale-and-prune (measured 2026-08-05: real removal, no
   demonstrated benefit) and the earn-your-place prune. No simulated annealing exists in the tree.
 
+*DATED 2026-10-28 (owner #1039; found stale by the 2026-10-27 cloud audit; nothing above is edited):* the two
+sentences above that put the Benna-Fusi relax and ring replay in the sleep tick are superseded at HEAD. Owner
+answer #1037/#1039 (2026-10-11), verbatim: "Adopt these three decisions". The question it adopted is the
+coordinator's wording, not the owner's (relayed by codex-sndl-coord-1010): "R2 stops all learning writes after a
+write failure until restart, with its old failed-write test updated in a dated amendment; G6 includes every plastic
+circuit in the eligible-brain arm; R3 retires the three capabilities that failed their frozen tests, while keeping
+the sleep requirement." Implemented in `ce57a905` (2026-10-13): automatic interaction replay/deposit, the
+Benna-Fusi rest/rebind ("relax") and automatic `AttractorNet.sleep` learning are retired; `Brain.neuter_sleep`
+raises `retired sleep capability ... owner1039; amendment2026-10-13` for `replay`, `benna_fusi` and `attractor`,
+and `Brain._sleep_caps` holds `structural` only. The sleep tick keeps `StructuralRewiring.rewire`,
+`AttractorNet.downscale_prune` and the grower's refit with its earn-your-place prune. Record:
+`evidence/g6-sleep-durable-memory.md` section A3 (also `g3-growth-loop.md`, `g5-readout-variants.md`,
+`r1-bounded-recall.md`, `r2-typed-replay-hydration.md`).
+
 **Rows.** Each row is its own arc under A.4, with its red in Part F.
 
 - **G0 / T108 — repair the chat channel (FIRST within G).**
@@ -1904,6 +1923,10 @@ cross-critique. Later reviews corrected several of its tree readings (`d18a3be`,
 - **G6 / T114 — sleep and durable memory (the owner's #4), after R2/R3.**
   - (a) Measure the incumbent sleep pruners first. Each owes a pre-registered neuter-A/B bar; a
     miss retires it or requires a justified P3 exemption.
+    *DATED 2026-10-28 (owner #1039):* the three capabilities retired on 2026-10-13 (automatic replay/deposit,
+    Benna-Fusi rest/rebind, automatic `attractor.sleep` learning) are not incumbents to measure here;
+    `AttractorNet.downscale_prune` and the structural rewire remain (`evidence/g6-sleep-durable-memory.md` A3 and
+    2.3).
   - (b) Neuron-mask annealing by JOINT-MASK VALIDATION:
     - fit and replay on training episodes;
     - score masks with the readout refit on training data only;
