@@ -47,7 +47,7 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 # distinct-from: gates/selfcheck_cache.py -- selects SELF-CHECKS by static import-closure + data-input
 #   keys and carries verdicts; this selects PYTEST FILES by runtime-observed Markdown reads and carries
@@ -314,18 +314,26 @@ def _tokens(argv: list[str]) -> list[str]:
     return s.split()
 
 
+def _exe_name(tok: str) -> str:
+    """The executable's file name, lower-cased, splitting on BOTH separators on every OS. The audit event
+    carries a Windows path on the operator's host, and `os.path.basename` splits only on `/` under POSIX,
+    so on a Linux host `C:\\a b\\python.exe` stayed whole and the self-check's own red fired (cloud audit
+    2026-10-27). `PureWindowsPath` treats `/` and `\\` alike, so POSIX paths still resolve."""
+    return PureWindowsPath(tok).name.lower()
+
+
 def _is_git_scan(argv: list[str]) -> bool:
     toks = _tokens(argv)
     return (
         bool(toks)
-        and os.path.basename(toks[0]).lower() in ("git", "git.exe")
+        and _exe_name(toks[0]) in ("git", "git.exe")
         and any(a in ("ls-files", "grep") for a in toks)
     )
 
 
 def _is_python(argv: list[str]) -> bool:
     toks = _tokens(argv)
-    return bool(toks) and os.path.basename(toks[0]).lower().startswith("python")
+    return bool(toks) and _exe_name(toks[0]).startswith("python")
 
 
 def _empty() -> dict:
