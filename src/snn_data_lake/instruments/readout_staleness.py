@@ -108,10 +108,13 @@ def reader_for(model, batch_beta):
 
 
 def substrate_hash(model, batch_beta, trajectory=()):
-    """crc32 over W, b, beta, `_batch_beta` bytes and the trajectory: the substrate the instrument must not move."""
+    """crc32 over W, b, beta, `_batch_beta` bytes, the two abstention counters (A0b) and the
+    trajectory: the substrate the instrument must not move."""
     acc = 0
     for t in (model.W, model.b, model.beta, batch_beta):
         acc = zlib.crc32(b"-" if t is None else np.ascontiguousarray(_np(t)).tobytes(), acc)
+    counters = [getattr(model, k, None) for k in ("last_abstentions_", "last_unanswerable_")]
+    acc = zlib.crc32(repr(counters).encode(), acc)
     return zlib.crc32(repr(list(trajectory)).encode(), acc)
 
 

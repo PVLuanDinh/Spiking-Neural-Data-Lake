@@ -27,6 +27,7 @@ class FakeModel:
         pred = (S @ (self.beta if beta is None else beta)).argmax(axis=1)
         silent = np.abs(S).sum(axis=1) == 0
         self.last_abstentions_ = int(silent.sum())
+        self.last_unanswerable_ = int(silent.sum()) + 1
         return np.where(silent, self.prior_class_, pred)
 
 
@@ -277,3 +278,70 @@ def test_shadow_on_real_ngsnn_gap_zero_gate_only():
     m = NGSNN(device="cpu", seed=0).fit(Xt[tr], yt[tr])
     r = rs.shadow_reading(m, m.beta, Xt[tr], y[tr], Xt[va], y[va])
     assert abs(r["gap_all"]) < 1e-6
+
+
+# ---- round 3 (#5728 M1): every component of the substrate hash is pinned on its own -----------
+def _hash_parts():
+    X, y, tr, va = fixture()
+    m = model_for(X, y, solve_rows=tr)
+    m.last_abstentions_, m.last_unanswerable_ = 3, 4
+    return m, m.beta.copy(), [(20, 8, 0.5), (40, 8, 0.75)]
+
+
+def _ulp(a):
+    a = np.array(a, dtype=float)
+    a.flat[0] = np.nextafter(a.flat[0], np.inf)
+    return a
+
+
+@pytest.mark.parametrize("part", ["W", "b", "beta", "batch_beta", "trajectory", "abstain", "unans"])
+def test_m1_substrate_hash_sees_each_component_alone(part):
+    m, bb, traj = _hash_parts()
+    base = rs.substrate_hash(m, bb, traj)
+    assert base == rs.substrate_hash(m, bb, list(traj))
+    if part == "batch_beta":
+        bb = _ulp(bb)
+    elif part == "trajectory":
+        traj = [traj[0], (40, 8, float(np.nextafter(0.75, 1.0)))]
+    elif part == "abstain":
+        m.last_abstentions_ += 1
+    elif part == "unans":
+        m.last_unanswerable_ += 1
+    else:
+        setattr(m, part, _ulp(getattr(m, part)))
+    assert rs.substrate_hash(m, bb, traj) != base
+
+
+def test_m1_shadow_restores_both_abstention_counters():
+    X, y, tr, va = fixture()
+    m = model_for(X, y, solve_rows=tr)
+    m.last_abstentions_, m.last_unanswerable_ = 7, 9  # decide() overwrites both
+    h0 = rs.substrate_hash(m, m.beta)
+    rs.shadow_reading(m, m.beta, X[tr], y[tr], X[va], y[va])
+    assert (m.last_abstentions_, m.last_unanswerable_) == (7, 9)
+    assert rs.substrate_hash(m, m.beta) == h0
+
+
+def test_m1_r2_second_leak_that_cannot_change_any_accuracy_still_moves_the_hash():
+    # the shadow written into `_batch_beta` as a one-ulp copy of the reader:
+    # same argmax, same accuracy
+    real = rs.shadow_reading
+
+    def leaky(*a, **k):
+        r = real(*a, **k)
+        e._batch_beta = np.nextafter(e._batch_beta, np.inf)
+        return r
+
+    X, y = stream(n=240)
+    e = FakeEngine()
+    rs.instrument_engine(e, as_input=lambda a: np.asarray(a, np.float32), split_fn=split)
+    rs.shadow_reading = leaky
+    try:
+        for i in range(0, 240, 20):
+            e.push(X[i : i + 20], y[i : i + 20])
+            e._refit()
+    finally:
+        rs.shadow_reading = real
+    _, _, h_off = run_engine(shadow=False)
+    assert rs.substrate_hash(e._model, e._batch_beta, e.trajectory) != h_off[-1]
+    assert e.trajectory == run_engine(shadow=False)[0].trajectory  # accuracies unmoved: hash-only
