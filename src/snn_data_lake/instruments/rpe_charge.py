@@ -1708,6 +1708,7 @@ def cross(pa, pruns, na, nruns):
         ),
     )
     out["h_v1"] = verdict("H-V1", v1_tail)
+    out["null_pre"] = {m: null_precondition(m, pa, na) for m in ("_plan_w", "ValenceLearner")}
     return out
 
 
@@ -1830,6 +1831,7 @@ def render_cross(c, br=None):
         f"H-V1 own d_s sign agreement {c['agree_v1']}/{c['agree_v1_of']} ({gates[2]}); Pearson r {c['pearson_v1']:.3f}"
     )
     L.append(f"- `_plan_w` H-P1: **{c['h_p1']}**\n- ValenceLearner H-V1: **{c['h_v1']}**")
+    L += [f"- null_precondition {m}: {ok} ({why})" for m, (ok, why) in c["null_pre"].items()]
     if br and not br["complete"]:
         L.append("\nBRIDGE incomplete: some runs are missing; no statement about E1's signal")
     elif br and not br["tree_ok"]:

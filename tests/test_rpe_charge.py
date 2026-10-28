@@ -394,6 +394,19 @@ def test_null_record_precondition_excludes_a_measured_harm_and_a_void_tier():
     ]  # a failed control feeds no NULL-RECORD
 
 
+def test_cross_prints_each_methods_null_precondition_beside_its_verdict(both_tiers):
+    (pa, pr), (na, nr) = _stopped("noharm", "production"), _stopped("noharm", "no-encoder")
+    pa["ep2"]["met"] = True  # powered not-met primary, but the objective endpoint was met: no null
+    c = R.cross(pa, pr, na, nr)
+    ok, why = R.null_precondition("_plan_w", pa, na)
+    assert not ok
+    txt = R.render_cross(c)
+    assert "NULL-RECORD path" in txt
+    assert f"null_precondition _plan_w: {ok} ({why})" in txt
+    ok_v = R.null_precondition("ValenceLearner", pa, na)[0]
+    assert f"null_precondition ValenceLearner: {ok_v}" in txt
+
+
 # ----------------------------------------------------------------------------------- self-check
 def test_selfcheck_main_runs_brain_free(capsys):
     assert R.main() == 0
