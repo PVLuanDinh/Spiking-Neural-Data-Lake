@@ -281,3 +281,34 @@ then re-raise); a board lease expiry is not a resource release (check the holder
 
 SNDL evidence cited: `g1b-pool-selection.md`, `l1b-synaptic-online.md`, `l1c-online-readout.md`, `l-exit.md`,
 `g5-readout-variants.md`, `g1c-carried-state.md`, `null-scale-triage.md` (all in this directory).
+
+## DATED CORRECTION 2026-10-28 (integrator, after the owner withdrew Q1): the RPE job is NOT a P2 pair
+
+**Owner, verbatim** (session B's chat, relayed at board #5610): "Yes, withdraw Q1". The button the owner chose carried
+this text: "Q1: withdrawn, not a P2 pair. ValenceLearner is the critic, _plan_w one actor synapse; _plan_w's fate goes
+to the powered follow-up I already chose."
+
+**What was wrong.** This evidence set treated `ValenceLearner` and `_plan_w` as two live mechanisms for one
+"third-factor RPE job" and sent an adopt-or-merge question to the owner. The source is `learning-rules-1019.md` (the
+"Third factor" table row and two later passages), and E1b section 6 and its results section copied it. The pairing is
+a map error.
+
+**Territory** (int3 27444d33; re-derived by the integrator and by policy-enforcer #5608, AGREE 0/0/2):
+- `ValenceLearner.learn` (`plasticity/valence_stdp.py`) is the CRITIC. It computes delta = reward - predicted value,
+  updates its own weights, and returns delta.
+- `AutonomousArm.step` is the only live writer of `_rpe`, from `rpe = self._valence.learn(pattern, r)`.
+- `_plan_w` (`AutonomousArm._pfc_bias`) is one ACTOR synapse. It reads `_rpe` as its modulator and never produces it.
+- The two run in series (critic -> actor), cannot substitute for each other, and so P2's adopt-or-merge does not bind.
+  No benchmark is owed.
+
+**Consequences.**
+- The owner question is WITHDRAWN, not answered as adopt or merge.
+- `_plan_w`'s fate stays with the powered production follow-up the owner chose ("_plan_w first", #5609; DRAFT
+  `e1c-plan-w-powered.md`).
+- The text above this note stays as recorded (append-only).
+- A separate, real duplicate is noted for a later row: `_plan_w` and `_stn_gain` run the same inline three-factor
+  eligibility-minus-EMA-baseline update.
+  - The P2-clean route is to author both under `plasticity/eligibility_algebra.py`'s contract and prove them with
+    `equivalence_check` at tol 0.0 (enforcer #5608 m2). A third local helper would not be P2-clean.
+  - It must keep `_plan_w`'s attributes and trajectory bit-identical, or land after the follow-up, because the E1c
+    instrument reads them.
