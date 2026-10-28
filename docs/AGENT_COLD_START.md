@@ -20,7 +20,7 @@ Two words used throughout: the **owner** is the human who directs the project an
 | written | 2026-09-22, by the operator's orchestrating session; repivoted 2026-09-23 (§1). Verified against the tree at the commit that last changed this file (`git log -1 --format="%h %cs" -- docs/AGENT_COLD_START.md`) |
 | rendered from | `docs/POLICIES.md`; `specs/022-unified-brain-arc/PLAN-FINAL-2026-09-02.md`; `SECURITY.md`; the operator's local reload protocol and dated lessons; the six reasoning procedures the operator re-arms at every session start |
 | adds | no project rule. Most of §4 applies existing rules to an environment that cannot run the battery; the rest are this file's conventions for this account, marked as such |
-| carries | no project state, except two open defects a fresh clone meets first (§3, each with its check) and §1's dated, re-derivable design baseline. §5 derives everything else |
+| carries | no project state, except the open defects a fresh clone meets first (§3, each with its check) and §1's dated, re-derivable design baseline. §5 derives everything else |
 | on disagreement | a tracked authority (§2) wins, and this file owes a fix (§12) |
 
 ## Contents
@@ -51,7 +51,7 @@ Two words used throughout: the **owner** is the human who directs the project an
 2. **Find where the project stands** with §5: its commands in Mode S, its reading list in Mode R. The one
    reading that matters most is the newest execution record, the last commit that touched
    `tools/policy_certification.json`.
-3. **Read `docs/POLICIES.md` in full** (about 1,130 lines). Read the file itself: §1 and §2 here are a map,
+3. **Read `docs/POLICIES.md` in full** (about 1,300 lines). Read the file itself: §1 and §2 here are a map,
    not a substitute. The sections that bind most work:
    - P2, and P3 with its per-method amendment.
    - P4b, P4c and P4d (the engine, PROVISIONAL).
@@ -133,7 +133,7 @@ INTO one liquid read out by a decoder) is superseded. Re-derivable facts it rest
 - the grower is stateless per percept (`NGSNN._rates` starts at V = 0 and has no recurrent weight);
 - `growth/placement.py` records depth, layer and Dale sign without a computational reader;
   `cortical_microcircuit.CONN_PROB` lacks a driver;
-- the four research reservoirs lack live-path importers;
+- the research reservoirs lack live-path importers (three of the four were retired 2026-10-18; `reasoning/spiking_ssm.py` remains);
 - `readout/predictive_coding.py` and `reasoning/spiking_som.py` are the incumbents for two readout rules;
 - the chat intent learner (`readout/interaction_learning.py`) is a live path by which chat reaches synaptic weights;
   until G0 (2026-09-24) `Brain.respond` supplied no correction, ignored its prediction and saved no learner weights.
@@ -186,39 +186,15 @@ second-model review, the battery cadence), §6 says so.
 | the second-model reviewer (Codex: closing reports; since 2026-09-22 also the executor) | local | no | when asked, fill the reviewer role yourself (§6.2) |
 | GitHub Actions CI | configured in `.github/workflows/ci.yml` | dark per plan Part B (2026-09-02) | re-check with `gh run list` if you can. A status badge is not a result: CI counts only when it demonstrably EXECUTED (duration and job count, POLICIES "Gated + reversible") |
 
-**Two open defects a fresh clone meets first.** Each looks exactly like a regression. Check whether each
+**Open defects a fresh clone meets first.** Each looks exactly like a regression. Check whether each
 is still open before you rely on this paragraph.
 
-1. **`gates/envelope_hash_gate.py` hashes raw working-tree bytes.**
-   - All five envelope files are stored LF. The approved baseline, `tools/envelope_hashes.json`, holds
-     `reflex.py`, `arm_config.py` and `interpreter.py` as CRLF bytes and `serial_arm.py` and
-     `so101_arm.py` as LF, which is how they sat on the operator's Windows checkout.
-   - So an LF checkout (Linux) reds the gate on the first three files, and a fresh Windows worktree reds
-     it on the other two, with no envelope change in either case.
-   - **Before reading such a red as this defect, prove it.** First,
-     `git diff --exit-code HEAD -- src/snn_data_lake/brainstem/` must be clean. Second, each red file must
-     match its approved hash in some line-ending form (the check below). If either fails, it is an
-     envelope event: stop and report it to the owner.
-   - **Never repair it, by any route:** not `tools/envelope_hashes.json` (updating it IS the owner's
-     approval act for an envelope change), not `.gitattributes` or `core.autocrlf`, and not the gate
-     itself. The repair is an arc the owner approves.
-
-   ```bash
-   git diff --exit-code HEAD -- src/snn_data_lake/brainstem/ && echo "brainstem: no content change"
-   python - <<'EOF'
-   import hashlib, json
-   base = json.load(open("tools/envelope_hashes.json"))["files"]
-   for key, entry in sorted(base.items()):
-       raw = open("src/snn_data_lake/" + key, "rb").read()
-       lf = raw.replace(b"\r\n", b"\n")
-       forms = {"as-is": raw, "LF": lf, "CRLF": lf.replace(b"\n", b"\r\n")}
-       hit = [n for n, b in forms.items() if hashlib.sha256(b).hexdigest() == entry["sha256"]]
-       print(key, "matches the approved hash as:", hit or "NONE -> envelope event, stop")
-   EOF
-   ```
-
-   "as-is" means the gate is green for that file. "LF" or "CRLF" alone means only the line endings
-   differ, which is this defect. "NONE" means the content changed.
+1. **CLOSED 2026-10-25: the envelope hash gate on an LF checkout.** `293b24f2` set `text eol=lf` for the five
+   `brainstem/` files in `.gitattributes` and re-based `tools/envelope_hashes.json` on their LF blobs (owner
+   approved); a Linux clone now matches all five as-is (measured 2026-10-27). Any envelope-gate red is again an
+   envelope event: check `git diff --exit-code HEAD -- src/snn_data_lake/brainstem/`, then stop and report it to
+   the owner. Never edit the baseline, `.gitattributes` or the gate yourself. *(The defect's full description is
+   in `git show c1df3887:docs/AGENT_COLD_START.md`.)*
 2. **Tests that need gitignored assets** (§4 rule 9).
 
 ## 4. Hard rules for this account
@@ -382,7 +358,7 @@ The project lands work in ARCS. The operator's rhythm (plan A.4, with the owner'
      that is not yet recorded in POLICIES.md (an opening the operator owns). Batteries are the operator's
      job, so neither text changes what you do.
    - It opens with `policy_manifest --assert` and halts on red.
-   - Then: certify, ruff, format, `run_selfchecks.py` (which prints `N/N` and `6/6 tools gates`), pytest,
+   - Then: certify, ruff, format, `run_selfchecks.py` (which prints `N/N` and `7/7 tools gates`), pytest,
      and the substrate gates.
    - pytest runs without the extra `-q` that A.4's literal block carries, so its summary line prints (the
      operator's correction of 2026-09-05; the plan owes that fix).
@@ -487,7 +463,7 @@ Notes on these checks:
 - **Every module has a `__main__` self-check.** Run the one you touched by its FULL dotted path, as
   `python -m snn_data_lake.<region>.<module>`.
 - **`run_selfchecks.py` runs every self-check** and takes about forty minutes on the operator's host. On a
-  fresh clone some checks depend on gitignored assets, and the envelope gate reds as §3 describes. Run it
+  fresh clone some checks depend on gitignored assets (§3). Run it
   only if your session can hold it: in the background, with a log, and reading each red first against §3.
 - **Never run `python -m snn_data_lake.gates.policy_manifest --certify`.** It rewrites the record.
   `--assert` is read-only and may be run.
@@ -833,7 +809,7 @@ its record names as missing. Paths under `evidence/` are in `specs/022-unified-b
 | proposal | what was measured | record |
 |---|---|---|
 | a pruning or inhibition strategy to raise accuracy (dead-unit pruning, soft k-WTA, criticality-guided pruning, diversified revisit) | accuracy tracked the learner's SCALE (v3.44); every strategy was neutral or negative, and criticality pruning tied activity pruning with both far below no-prune | `CHANGELOG.md`, entries v3.43 to v3.48 |
-| a linear hierarchical JEPA | the linear version did not beat flat or windowed baselines (its contractive predictors saturate under rollout). The nonlinear fix is BUILT and GPU-verified (`reasoning/hjepa_torch.py`, served by `faculties/hjepa_serve.py`): extend it, never rebuild it | `docs/JEPA.md`, the H-JEPA section |
+| a linear hierarchical JEPA | the linear version did not beat flat or windowed baselines (its contractive predictors saturate under rollout). The nonlinear fix was BUILT and GPU-verified; its trainer `reasoning/hjepa_torch.py` was retired in `8538b877` (2026-10-17) and `faculties/hjepa_serve.py` still serves its exported `snn_hjepa/1` model: restore the trainer from that commit's history, never rebuild it | `docs/JEPA.md`, the H-JEPA section |
 | a reservoir (liquid state machine) as fluid intelligence | a fixed liquid plus a trained readout fails test-time synthesis. This is not the owner-ratified N workstream (Navier-Stokes coupled to an LSM, T096 to T100), which is a separate experiment with its own reds. Nor is it the 2026-09-25 engine's liquid reservoir, which claims only what G-R1 and G-R9 measure | operator's record (not in the tree) |
 | crystallized knowledge buys fluid reasoning | it did not: 100 % in distribution, 25 % out of distribution, against the program inducer's 100 % on the same set | `src/snn_data_lake/reasoning/gf.py` (`main_sl()`) |
 | the growth-to-placement wire | measured null; reverted under P3 | `evidence/s1-placement-null.md` |
