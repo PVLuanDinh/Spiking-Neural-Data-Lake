@@ -5,6 +5,7 @@ Brain-backed cases build ONE short scratch brain per arm under throwaway_home (n
 """
 
 import os
+import sys
 
 import pytest
 
@@ -12,6 +13,21 @@ from snn_data_lake.instruments import sleep_pruner_census as spc
 from snn_data_lake.substrate.home import lake_snapshot, live_lake_untouched, require_isolated_home
 
 LIVE_HOME = os.path.join(os.path.expanduser("~"), ".snn_data_lake")
+
+
+def _dir_alias(link, target):
+    """A directory alias the live-home guards must resolve: a junction on Windows (the operator's
+    host), else -- or if mklink fails -- a directory symlink. `cmd` does not exist off Windows, and
+    calling it raised FileNotFoundError before the fallback could run (cloud audit 2026-10-27)."""
+    import subprocess
+
+    if sys.platform == "win32":
+        r = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(link), str(target)], capture_output=True
+        )
+        if r.returncode == 0:
+            return
+    os.symlink(target, link, target_is_directory=True)
 
 
 def test_self_check_runs_brain_free():
@@ -162,16 +178,13 @@ def test_c3_ll_sabotage_drops_the_highest_utility_units():
 def test_scratch_home_guard_refuses_the_live_home(monkeypatch, tmp_path):
     """The shared guard via a PLANTED decoy live dir: unset, equal, contained, containing and a
     junction alias are each refused; a fresh sibling dir is accepted (the red is sighted)."""
-    import subprocess
 
     from snn_data_lake.substrate.home import LiveHomeRefused
 
     decoy = tmp_path / "decoy_live"
     (decoy / "sub").mkdir(parents=True)
     alias = tmp_path / "selfcheck_home_alias"
-    r = subprocess.run(["cmd", "/c", "mklink", "/J", str(alias), str(decoy)], capture_output=True)
-    if r.returncode != 0:
-        os.symlink(decoy, alias, target_is_directory=True)
+    _dir_alias(alias, decoy)
     ok = tmp_path / "scratch"
     ok.mkdir()
     monkeypatch.delenv("NORD_HOME", raising=False)
@@ -426,7 +439,6 @@ def test_c6_the_digest_moves_when_the_run_moves():
 
 def test_out_target_inside_or_aliasing_the_live_home_is_refused(tmp_path):
     """BLOCKER (Codex panel): `--out` was opened for write unguarded, after throwaway_home."""
-    import subprocess
 
     from snn_data_lake.substrate.home import LiveHomeRefused
 
@@ -434,9 +446,7 @@ def test_out_target_inside_or_aliasing_the_live_home_is_refused(tmp_path):
     decoy.mkdir(parents=True)
     (decoy / "brain_lake.bin").write_bytes(b"x")
     link = tmp_path / "a" / "selfcheck_home_link"
-    r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(decoy)], capture_output=True)
-    if r.returncode != 0:
-        os.symlink(decoy, link, target_is_directory=True)
+    _dir_alias(link, decoy)
     for bad in (
         decoy / "brain_lake.bin",
         decoy / "new.json",
