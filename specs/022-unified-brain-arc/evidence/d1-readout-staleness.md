@@ -657,6 +657,62 @@ owner's condition, "an enforcer review of the full pre-reg before any run" (#561
   - Within this row, offsets of 1000 or more never land on another run of the same block's first 1000 seeds.
   - Each campaign's contrast compares arms of the SAME seed, so neither result is affected. Disclosed; no block moves.
 
+#### A0g -- 2026-10-28: arc-4 panel fold (pre-Stage 0, pre-pilot; no data)
+
+Written by the int3 integrator. It folds arc-4 panel lenses B (#5721) and C (#5720) on this file. No rule that a
+result has been read against changes, because no Stage 0, pilot or confirmatory data exist.
+
+**C M2. Stage 0's positive control is re-keyed to the endpoint P1 reads.**
+- Section 2.6's Stage 0 control injects the planted rotation "at the first closed-gate refit" and reads the post-refit
+  `gap`. A0 demoted that gap to S6, and A0b made P1 the CALIBRATED `gap_pre`. A0's own probe found zero closed-gate
+  rows on 3 of 4 seeds, so the control as written might never fire, and it guards S6, not P1.
+- Re-keyed: inject the planted rotation right after an OPEN solve. At the next refit row, whatever the gate state,
+  require: calibrated `gap_pre` (planted) - calibrated `gap_pre` (unplanted) > a MARGIN, same seed and same row. A1
+  fixes the margin from the pilot's calibration SD before any confirmatory seed (panel A #5748 m7: a bare ">" can pass
+  on noise).
+- Section 2.6's consequence is KEPT (panel C #5747 M1): if the control fails on its named seed, the instrument is BLIND,
+  and no P1 reading is taken. Whether the control fires on other seeds is recorded as a validity read, counted under
+  section 2.2's per-look exclusion cap (more than one excluded seed in a look block: that look is not read). It never
+  filters which seeds P1 reads.
+
+**B m6. Futility opens on the same SD the cap is sized on.**
+- A0e sizes n0 on the pilot's 80% upper SD (about 1.35 x SD_1), while section 2.5 opens futility at the first look
+  whose mde on the POINT SD reaches the claimed effect. Futility could therefore open before the fixed-sample target,
+  which is how E1b ended INCONCLUSIVE.
+- Fixed (P1 item 2): futility opens only at a look whose mde, computed from the UPPER SD that sizes the cap, is at or
+  below the claimed effect. A1 states that look before any confirmatory seed.
+- A1 also owes (panel B #5746):
+  - if no look before the cap qualifies, futility is inert, and A1 says so;
+  - the decision function is named as `rpe_charge.seq_decision` with this row's parameters (`k_frac=0.0`: no sign
+    guard), so the build writes no second sequential rule (P2);
+  - whether this row uses E1c's `futility_powered`, decided with its own red if adopted.
+- Why E1c differs (panel C Dm7): E1c's futility first opens at 640, past its upper-SD fixed-sample target (601). So its
+  point-SD rule never opens futility before the target. This row's point-SD rule could, so it moves to the upper SD.
+
+**C8. Where the brain-free reds run.** A0e supersedes A0d's "one host" for the RELATIVE reds (R2, the RNG probes, R8):
+they are asserted on EVERY host, the Linux CI lint job included. Only a stored cross-host digest is a Windows-host pin.
+
+**C9 / B m6. The host reboot is retired.** A0c's owed "host reboot" is withdrawn. The owner said on 2026-10-28, in the
+integrator's chat: "I cannot reboot PC since I'm working remotely". Runs use the D-13 REVISED and D-14 throttle instead.
+
+**C15. A drift-function claimant was missing.** A0c F3's list of drift-function claimants omits the module that
+research/representational-drift/MAP.md's D0 plans. It is added. When that module is built, P2 decides between it and
+this row's readings.
+
+**Build notes (wf-rv #5728, the integrator's review).**
+- `GRADIENT_CLAIM` lives inside `instruments/readout_staleness.py` (the per-module shape), not as an integrator row.
+- `instrument_engine` has NOT been run against the real engine or `marginal_holdout`; only its fixture engine is tested.
+  That run is owed to Stage 0, before the pilot.
+- The build is PARKED (delegate D-28). Branch `claude/l1b-stale-r3-1028` (edd29da4) carries over; the lane's original
+  is kept at `claude/l1b-stale-1028-lane-orig` (2eef0119). Still open (policy-enforcer #5745 nit 2):
+  - #5740's buffer digest (`_buf_x` / `_buf_y` in the substrate hash);
+  - the real-engine `_inputs` split equivalence test (#5718 m2, carried to Stage 0);
+  - the per-commit lint fold of round 3;
+  - the registration rows and the census regeneration.
+
+**Unchanged:** the verdict, the boundaries, A0c's seed block, A0d's cap rule, A0e's sizing on the upper SD and its
+balance read, and A0f.
+
 ## 3. Record
 
 *(empty until Stage 0)*
