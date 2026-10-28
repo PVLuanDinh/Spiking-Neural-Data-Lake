@@ -694,6 +694,8 @@ they are asserted on EVERY host, the Linux CI lint job included. Only a stored c
 
 **C9 / B m6. The host reboot is retired.** A0c's owed "host reboot" is withdrawn. The owner said on 2026-10-28, in the
 integrator's chat: "I cannot reboot PC since I'm working remotely". Runs use the D-13 REVISED and D-14 throttle instead.
+Source: memory project-snn-START-HERE-DETAIL.md, "OWNER 10-28 11:40" (policy-enforcer #5753 n4). The memory file
+project-snn-d13-ram-watch-1028.md holds the launcher-chat variant of the same words (D-13).
 
 **C15. A drift-function claimant was missing.** A0c F3's list of drift-function claimants omits the module that
 research/representational-drift/MAP.md's D0 plans. It is added. When that module is built, P2 decides between it and
