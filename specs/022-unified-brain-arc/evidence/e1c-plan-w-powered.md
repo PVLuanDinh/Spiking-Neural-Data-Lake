@@ -353,3 +353,61 @@ threshold, seed, look or disposition changes.
   the campaign's real controls (f4578fa9; each check, when disabled, fails its own leg), beside the planted-harm leg. "Run before look 1" means `test_e1c_r1*` passes inside the
   gate run of `tests/test_rpe_charge.py` at the GO commit itself. The GO note cites that gate log; a GO without it is
   refused.
+
+## Addendum 2 (2026-10-28, before look 1): R5's band is 2 SE of the difference
+
+wf-rv #5689 m5. Appended below the freeze; no rule, threshold, seed, look or disposition changes.
+
+- Section 5.3 says R5 "reproduces 5.1b's 704 row within 2 SE at 2,000 campaigns". The reference rates in 5.4 (.8800 at
+  scale 1, .8335 at scale 1.115) are themselves 2,000-campaign estimates from an independent RNG stream. R5's stream is
+  named `r5` and is never bit-exact with the derivation's stream (#5675 m2).
+- The compared quantity is therefore a DIFFERENCE of two independent estimates, with SD sqrt(2) x SE. With 2 SE of
+  ONE estimate, a correct harness fails a row with P = .157, and fails either row with P = .29.
+- Read "2 SE" as 2 SE of the difference: |p_R5 - p_5.4| <= 2 sqrt(2 p (1 - p) / 2000). That is about .0206 at .8800
+  and .0236 at .8335. The false-FAIL rate is .046 per row and .089 for either row.
+- On a FAIL, look 1 does not start, and R5 is NOT re-run under a new stream name. The integrator attributes the gap: a
+  code or pin difference between the freeze commit's derivation and the GO tree. The attribution goes on the board
+  before any GO. With no attributable difference, the halt goes to the delegate, never to a silent re-run.
+- `lanes/e1c-plan-w-work/r5.py` implements this band (snapshot of the prior file: `e1c-b3-row/r5.py.pre-5689`).
+
+### The bound driver set (launcher D-21; E1b addendum 10's pattern, plus a refusal)
+
+- Bound, after wf-rv #5689's driver fixes (M1 procs.ps1, m5 r5.py, m6 campaign.sh floors and the watcher's per-set
+  reset) passed their delta reads:
+  - `lanes/e1c-plan-w-work/`: campaign.sh, driver_check.sh, plan.py, procs.ps1, r5.py, ram.ps1, reds.sh, run_arm.ps1,
+    tool.ps1;
+  - `lanes/engine-1024/`: battery-stall-watch.ps1, and unwind.py, added to D-21's list because the watcher runs it to
+    capture each stack. sched_dump.py is not bound: it runs only under an xdist pytest controller, never in this
+    campaign.
+- `lanes/e1c-plan-w-work/DRIVER.sha256` holds the list below. The GO file names that manifest's own sha256
+  (`DRIVER_SHA256=`). `campaign.sh` refuses (exit 3) at start and at every look unless the manifest is the GO's AND
+  `sha256sum -c` passes. driver_check pins this: an intact set starts; an edited file, another manifest, and a GO
+  without the field each refuse (`DRIVER-D21-GREEN.log`). The first red (`DRIVER-D21-RED.log`, rc 127) proves only that
+  the function was absent. The discriminators are two one-line mutants of `check_driver`, each killed by exactly its
+  own case (`DRIVER-D21-MUTANTS.log`):
+  - skipping `sha256sum -c` lets an edited bound file start;
+  - skipping the GO-vs-manifest comparison lets another manifest start.
+- Disclosed limit: an edited campaign.sh could skip its own check. Its hash is in the manifest the GO pins, so the
+  integrator and the enforcer re-run `sha256sum -c` from outside at each look's post.
+
+- Bound 2026-10-28 16:21:06 -0500 (the manifest's write time). `sha256sum -c` re-passed at 16:34. Every value equals the bytes wf-rv #5698 hashed independently (its `driver-set.sha256`;
+  11/11 match). `DRIVER.sha256` uses absolute paths (#5698 nit 5), because campaign.sh never changes directory before
+  the check. Manifest sha256 (the GO's `DRIVER_SHA256=`):
+  `7758468edf006487e214e1e8348912ada92396d910ccac283b2ec5266fef45c5`.
+
+```
+9a1f306ab1213381333475a29391cdcf9e65ff8c5f2f6a82d3ac2b6497126c72  /mnt/d/AI-project/lanes/e1c-plan-w-work/campaign.sh
+8a905e26fcae9e427ec0f2341e05c4818461369df6a8ae4378902c40fc41d1c2  /mnt/d/AI-project/lanes/e1c-plan-w-work/driver_check.sh
+2df10b1053378dc5ebaeec22d1a22770e3de66f6d6facf1520cc0703bcf8b6a4  /mnt/d/AI-project/lanes/e1c-plan-w-work/plan.py
+430e1736cf73314929ea7de9916c13a6a0a57b8ef059581db59a0433af473bc2  /mnt/d/AI-project/lanes/e1c-plan-w-work/procs.ps1
+ccb4e6879f6b8067fb4f3e81e1a1a6c29e18145efedd966477eb3c54c93636e2  /mnt/d/AI-project/lanes/e1c-plan-w-work/r5.py
+123fa5e75ea6a1cac61b378590c4610b36b9e4c6bf8393cf6311aac16480d1c5  /mnt/d/AI-project/lanes/e1c-plan-w-work/ram.ps1
+796fe1e1a337b0b42cd9e44a9dd3a20c2e656f06fbb457e63fd4689f43459013  /mnt/d/AI-project/lanes/e1c-plan-w-work/reds.sh
+d72c08a8df794696b1faaf38b609a01bad530bbc46ca5d921c3b8608d4ade55d  /mnt/d/AI-project/lanes/e1c-plan-w-work/run_arm.ps1
+c6982c19ec0bf72390373645d790ff2eb077b7622094a26699dbb11c244fcd41  /mnt/d/AI-project/lanes/e1c-plan-w-work/tool.ps1
+81dc2bdda4f0214444b9d817fc198a74105169fe9dc00044913e9ace83cb2400  /mnt/d/AI-project/lanes/engine-1024/battery-stall-watch.ps1
+facf2057c5a8e084a266f7019dc08722b11a4c26bd264a76a6c60cb5e0f43608  /mnt/d/AI-project/lanes/engine-1024/unwind.py
+```
+
+- procs.ps1's wider 'rpe_charge' also matches the driver's own compare and tool steps (enforcer #5696 nit). That is
+  harmless: claim() runs it only at start and after a yield, when no step of this driver is running.
