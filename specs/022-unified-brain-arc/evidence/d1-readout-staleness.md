@@ -565,6 +565,52 @@ unchanged.
 4. The host reboot.
 5. Nothing holding `resource:timing`.
 
+#### A0d -- 2026-10-28: the cap is no longer bounded at 40, and the pins are scoped to one host (pre-build, pre-pilot; no data)
+
+Written by the int3 integrator. The two decisions below were taken by the launcher session under the owner's delegation,
+board-noted as `launcher-1028` (`lanes\DELEGATED-DECISIONS-1028.md`, Round 2, D-11). The owner's delegation, verbatim
+from the launcher's chat on 2026-10-28 (verified by A from that session's transcript): "You decide whatever happens in
+the two nested session, only report to me here". **These decisions are the delegate's, not the owner's words.** The
+owner can reverse either one. Both answer questions the cloud author's session record (2875259c, section 9) addressed to
+the owner. Nothing else in that record changes this file (D-10).
+
+**Cap (D-11 #3).** Section 2.5's feasibility branch ("If the cap exceeds **40** ... the confirmatory campaign **does not
+run**") is RETIRED.
+- The cap is what section 2.5 already derives: n0 from the pilot's `SD_1` by power (.8 for 0.10), times the
+  design's simulated inflation, rounded up to a look. It is a P1 sequential design with no fixed bound.
+- The confirmatory block 22000-22039 (A0c) becomes the block's FIRST 40 seeds. A cap above 40 draws on in order
+  through 22999 (claim #5629). A cap above 1000 is refused and goes back to the owner.
+- **The verdict is unchanged:** the paired one-sided t against `rpe_charge.seq_boundaries`, as frozen. Its validity
+  rests on the frozen simulation guard, not on the FPR printed beside it.
+- **The FPR printed beside it, past 40.** `paired_contrast.permutation_fpr_detail` refuses n > 40 (`MITM_MAX_N`) by
+  design. Past 40, the line prints a seeded Monte-Carlo sign-flip FPR:
+  - 200,000 sign-flip draws, each seeded by `zlib.crc32` of the row and look;
+  - the printed SE is at most .0005 at .05;
+  - it is labelled "MC" and is never presented as exact.
+- **ONE mechanism (P2).** The Monte-Carlo mode is ADDED to `instruments/paired_contrast` beside the exact path. It is
+  not a local copy in this row's instrument. It owes a graph-exists check and its own red: on fixtures with n <= 40 it
+  must agree with the exact FPR within 3 SE, and a planted shift must read a small FPR. It is built in this row's build
+  commit, before any confirmatory seed.
+- The INFEASIBLE AT EXACT FPR disposition branch of section 2.7 is retired with the feasibility branch.
+
+**Pins (D-11 #2; the delegate asked A to decide it here, under enforcer review).** Scope: this row only. The
+repo-wide decision 2 of the cloud record stays parked (D-10).
+- **Decision:** every run of this row, brain-free reds included, is on ONE host: the operator's Windows host, on the
+  production tier.
+- Any byte-identity check this row asserts (R2's substrate hash, the RNG-state probes, the A/A identity) is a
+  **Windows-host pin**. On any other host it is SKIPPED, with the reason "host-dependent float fingerprint, record
+  2875259c section 5.2", never asserted.
+- **Reason.** The cloud record measured float fingerprints that differ between Windows and Linux with unit counts
+  equal, cause unproven. A pin that holds on one host and not another is that host's pin, and asserting it elsewhere
+  would red on the host, not the method.
+
+**Not changed:**
+- section 2.5's pilot (seeds 0-7) and looks every 8 seeds;
+- the simulation guard;
+- futility;
+- P2's non-inferiority read, which A1 states;
+- A0c.
+
 ## 3. Record
 
 *(empty until Stage 0)*
