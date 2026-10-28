@@ -126,7 +126,7 @@ def instrument_engine(engine, as_input=None, split_fn=None, shadow=True):
     (R2's off arm). Exceptions in the instrument are counted, never raised into the brain; the original
     `_refit` runs exactly as it would have; every row asserts the trajectory advanced as `_refit` alone makes it.
     Binds only _refit, _model, _batch_beta, trajectory, _buf_x, _buf_y (T111a-safe). Returns the log dict."""
-    log = {"rows": [], "faults": 0, "fault_msgs": []}
+    log = {"rows": [], "faults": 0, "fault_msgs": [], "refit_raised": 0}
     orig = engine._refit
 
     def _inputs():
@@ -163,7 +163,12 @@ def instrument_engine(engine, as_input=None, split_fn=None, shadow=True):
             except Exception as e:  # noqa: BLE001 -- counted, then the brain runs on unharmed
                 log["faults"] += 1
                 log["fault_msgs"].append(repr(e))
-        orig()
+        try:
+            orig()
+        except Exception as e:  # the brain's own raise: counted apart, then re-raised
+            log["refit_raised"] += 1
+            log["fault_msgs"].append(f"_refit raised {e!r}")
+            raise
         advanced = len(engine.trajectory) - n0
         rec["gate"] = (
             "closed" if (advanced and engine._model is before and before is not None) else "open"

@@ -435,3 +435,50 @@ def test_m4_torch_global_and_model_generator_unmoved_gate_only():
     rs.shadow_reading(m, m.beta, Xt[tr], y[tr], Xt[va], y[va])
     assert torch.equal(torch.get_rng_state(), t0)
     assert torch.equal(g.get_state(), g0)
+
+
+# ---- round 3 (#5728 M5): the per-row advance check; a raise in `_refit` never vanishes ----
+def _engine_with(refit_variant):
+    X, y = stream(n=240)
+    e = FakeEngine()
+    real = e._refit
+    e._refit = lambda: refit_variant(e, real)
+    log = rs.instrument_engine(e, as_input=lambda a: np.asarray(a, np.float32), split_fn=split)
+    e.push(X[:60], y[:60])  # enough rows that the instrument's own split pre-check passes
+    return e, log
+
+
+def test_m5_a_refit_that_advances_the_trajectory_twice_is_counted():
+    def twice(e, real):
+        real()
+        e.trajectory.append(e.trajectory[-1])
+
+    e, log = _engine_with(twice)
+    e._refit()
+    assert len(e.trajectory) == 2 and log["faults"] == 1
+    assert "advanced 2" in log["fault_msgs"][-1]
+
+
+def test_m5_a_skipped_refit_after_a_passing_split_check_is_counted():
+    e, log = _engine_with(lambda e, real: None)
+    e._refit()
+    assert e.trajectory == [] and log["faults"] == 1
+    assert "advanced 0" in log["fault_msgs"][-1]
+
+
+def test_m5_a_legitimate_early_return_is_not_a_fault():
+    e, log = _engine_with(lambda e, real: real())
+    e._buf_x, e._buf_y = e._buf_x[:4], e._buf_y[:4]  # too few rows: both skip
+    e._refit()
+    assert log["faults"] == 0 and log["refit_raised"] == 0
+
+
+def test_m5_a_raise_inside_refit_is_counted_apart_and_still_raised():
+    def boom(e, real):
+        raise RuntimeError("planted brain-side raise")
+
+    e, log = _engine_with(boom)
+    with pytest.raises(RuntimeError, match="planted"):
+        e._refit()
+    assert log["refit_raised"] == 1 and log["faults"] == 0 and e.trajectory == []
+    assert "planted" in log["fault_msgs"][-1]
