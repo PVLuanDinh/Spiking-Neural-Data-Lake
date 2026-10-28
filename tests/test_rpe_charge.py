@@ -661,11 +661,14 @@ def test_e1c_tail_census_names_the_first_tick_real_and_pfrozen_differ():
         logs_pass=True,
         sim_campaigns=5,
     )
-    assert [(t["seed"], t["tick"]) for t in a["tail"]] == [(s_act, 123), (s_r, 250)]
+    # the tick is the recorded ACTION series' first differing index, flips(...)[1] (wf-rv #5689 m4):
+    # a reward-only difference reads None (on E1b's 80 production pairs the reward never came first)
+    assert [(t["seed"], t["tick"]) for t in a["tail"]] == [(s_act, 123), (s_r, None)]
     assert all(abs(t["d"]) > 0.4 for t in a["tail"])
     assert f"seed {s_act}" in R.render_e1c(a) and "first divergence tick 123" in R.render_e1c(a)
-    same = R.first_divergence(runs[("real", s_act)], runs[("real", s_act)])
-    assert same is None
+    ra, rb = runs[("real", s_act)], runs[("pfrozen", s_act)]
+    assert R.first_divergence(ra, rb) == R.flips(ra["series"]["action"], rb["series"]["action"])[1]
+    assert R.first_divergence(ra, ra) is None
 
 
 def test_e1c_compare_on_a_partial_campaign_lists_what_is_owed_and_does_not_crash():

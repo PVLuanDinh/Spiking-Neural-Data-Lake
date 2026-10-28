@@ -1834,21 +1834,12 @@ def _series_differ(ra, rb, h0):
     return ia != ib
 
 
-# distinct-from: _series_differ (above) -- a yes/no over the held-out ticks; the census needs WHERE the whole series
-#   first differs. graph-exists "first tick where two recorded series differ": recorded_span / replay_twice, term overlap
+# reuses: flips (above) -- the census needs WHERE the whole recorded action series first differs, which is flips'
+#   first index; `run` records one action per tick from tick 0, so that index is the tick. The reward half is gone
+#   (wf-rv #5689 m4): it zipped per-call SPARSE arrays by position, and on E1b's 80 production pairs it never came first.
 def first_divergence(ra, rb):
-    """The first tick at which two runs' action or reward series differ (whole series), None when they never do."""
-    act = next(
-        (
-            i
-            for i, (a, b) in enumerate(zip(ra["series"]["action"], rb["series"]["action"]))
-            if a != b
-        ),
-        None,
-    )
-    rew = next((t for t, a, b in zip(ra["v"]["tick"], ra["v"]["r"], rb["v"]["r"]) if a != b), None)
-    found = [x for x in (act, rew) if x is not None]
-    return min(found) if found else None
+    """The first tick at which two runs' recorded action series differ, None when they never do."""
+    return flips(ra["series"]["action"], rb["series"]["action"])[1]
 
 
 # reuses: seq_record (the first stop over the look prefixes); graph-exists hits (sleep_plasticity_ab, pool_selection,
