@@ -9,6 +9,7 @@ in a scratch home.
 
 import copy
 import os
+import sys
 from fractions import Fraction
 
 import pytest
@@ -158,11 +159,14 @@ def test_guard_out_refuses_a_junction_alias(tmp_path, monkeypatch):
 
     live = _decoy(tmp_path, monkeypatch)
     alias = tmp_path / "alias"
-    made = subprocess.run(
-        ["cmd", "/c", "mklink", "/J", str(alias), str(live)], capture_output=True, text=True
-    )
-    if made.returncode != 0:
-        pytest.skip(f"no junction on this host: {made.stderr.strip()}")
+    if sys.platform == "win32":  # a directory junction, the alias the operator's host makes
+        made = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(alias), str(live)], capture_output=True, text=True
+        )
+        if made.returncode != 0:
+            pytest.skip(f"no junction on this host: {made.stderr.strip()}")
+    else:  # no `cmd` off Windows (FileNotFoundError, cloud audit 2026-10-27): a directory symlink
+        os.symlink(live, alias, target_is_directory=True)
     with pytest.raises(LiveHomeRefused):
         m.guard_out(str(alias / "out"))
 
