@@ -546,7 +546,7 @@ def test_e1c_compare_reports_ep2_beside_with_its_mde_and_gates_nothing():
 
 def test_e1c_compare_prints_the_exact_zero_read_at_each_look():
     """Section 5.3: the cumulative exact-zero fraction at every look up to the stop of record."""
-    a = _e1c_compare("noharm", 128)
+    a = _e1c_compare("noharm", 128, sim_campaigns=20)
     assert [(z["n"], z["zeros"]) for z in a["zero_read"]] == [(64, 1.0), (128, 1.0)]
     assert "exact-zero" in R.render_e1c(a)
 
@@ -558,7 +558,9 @@ def e1c_704():
 
 
 def _r1(runs, e2=None):
-    return R.analyse("production", runs, e2, seeds=R.E1C_SEEDS, design=R.E1C, logs_pass=True)
+    return R.analyse(
+        "production", runs, e2, seeds=R.E1C_SEEDS, design=R.E1C, logs_pass=True, sim_campaigns=20
+    )
 
 
 def test_e1c_r1_compare_fixture_at_704_reads_met_not_met_and_void(e1c_704):
@@ -577,6 +579,28 @@ def test_e1c_r1_compare_fixture_at_704_reads_met_not_met_and_void(e1c_704):
     assert not void["hs"]["H-P1"]["met"] and "VOID" in R.render_e1c(void)
     ok = _r1(e1c_704["harm"], {"planted_harm": R.planted_rows("harm")})
     assert ok["valid"] and ok["hs"]["H-P1"]["met"]
+
+
+def test_e1c_zero_read_recomputes_power_only_above_the_validity_limit():
+    """Section 5.3: past 12.5% cumulative exact zeros, sim_guard power at the observed zero rate."""
+    small = dict(R.E1C, looks=(16, 32), sd_pre=0.3, claimed=0.2)
+    diverged = [0.3, -0.25, 0.1, -0.15, 0.4, -0.35, 0.05, -0.1]
+    low = ([0.0] * 2 + diverged * 2)[:16]  # 2 of 16 zeros = 12.5% exactly: not above the limit
+    high = [0.0] * 4 + diverged + diverged[:4]  # 4 of 16 zeros = 25%
+    assert [z["power"] for z in R.zero_read(low, (16,), small, campaigns=50)] == [None]
+    (z,) = R.zero_read(high, (16,), small, campaigns=50)
+    want = R.sim_guard(high, small, campaigns=50, name="zero-read/16", effect=R.DH, zero_frac=0.25)
+    assert z["zeros"] == 0.25 and z["power"] == want.get("harm", 0.0)
+
+
+def test_e1c_compare_prints_the_power_recompute_beside_the_verdict_past_12_5_percent_zeros():
+    a = _e1c_compare("noharm", 64, sim_campaigns=20)  # every seed exactly zero: 100% > 12.5%
+    (z,) = a["zero_read"]
+    assert z["zeros"] == 1.0 and z["power"] == 0.0  # no diverged seed carries an effect
+    assert "power at the observed zero rate" in R.render_e1c(a)
+    clean = _e1c_compare("harm", 64, sim_campaigns=20)
+    assert clean["zero_read"][0]["power"] is None
+    assert "power at the observed zero rate" not in R.render_e1c(clean)
 
 
 def test_e1c_compare_cli_reads_the_campaign_design(tmp_path):

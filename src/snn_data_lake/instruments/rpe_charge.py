@@ -1245,13 +1245,39 @@ def run_problems(arm, key, d, tier):
     return bad
 
 
-def zero_read(ds, looks):
+ZERO_MAX = 0.125  # section 5.3: above this exact-zero fraction the cap's per-diverged-seed effect no longer holds
+
+
+def zero_read(ds, looks, design=None, campaigns=2000):
     """Section 5.3's validity read: the cumulative exact-zero fraction (arms that never diverged) at each look `ds`
-    reaches. E1b had 5 of 80; past 12.5% the mean effect per diverged seed that the cap was sized for no longer holds."""
-    return [{"n": n, "zeros": sum(x == 0.0 for x in ds[:n]) / n} for n in looks if n <= len(ds)]
+    reaches (E1b had 5 of 80). Strictly above ZERO_MAX it also carries `power`: `sim_guard` on the observed shape at
+    the observed zero rate, the harm rate under the claimed effect. The verdict rule is unchanged, no seed is added."""
+    out = []
+    for n in looks:
+        if n > len(ds):
+            continue
+        zf = sum(x == 0.0 for x in ds[:n]) / n
+        power = None
+        if zf > ZERO_MAX:
+            rates = sim_guard(
+                ds[:n], design, campaigns=campaigns, name=f"zero-read/{n}", effect=DH, zero_frac=zf
+            )
+            power = rates.get("harm", 0.0)
+        out.append({"n": n, "zeros": zf, "power": power})
+    return out
 
 
-def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False, design=None):
+def analyse(
+    tier,
+    runs,
+    e2,
+    *,
+    seeds=SEEDS,
+    ep1_min=EP1_MIN,
+    logs_pass=False,
+    design=None,
+    sim_campaigns=2000,
+):
     """All statistics for ONE tier, from run JSON only. `logs_pass` is the tier_red/fixture gate (`logs_gate(dir)`).
     `design` (E1C) reads a campaign instead of E1b's: production tier only, H-P1 alone decided by `seq_record(d_s,
     **design)`, E-P2 and the exact-zero read printed beside, no replay record (the planted-harm control is optional)."""
@@ -1548,7 +1574,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False, de
             "mde": q["mde"],
             "powered": q["mde"] <= DR,
         }
-        a["zero_read"] = zero_read(hs["H-P1"]["d"], looks)
+        a["zero_read"] = zero_read(hs["H-P1"]["d"], looks, design, sim_campaigns)
     a["wall"] = sum(d["run_s"] for d in runs.values())
     a["n_runs"] = len(runs)
     return a
@@ -1717,7 +1743,16 @@ def render_e1c(a):
         )
     )
     L.append("\n## Exact-zero validity read (cumulative, per look; E1b had 6.25%)\n")
-    L += [f"- n={z['n']}: exact-zero {z['zeros']:.3f}" for z in a["zero_read"]]
+    L += [
+        f"- n={z['n']}: exact-zero {z['zeros']:.3f}"
+        + (
+            ""
+            if z["power"] is None
+            else f" > {ZERO_MAX}: power at the observed zero rate {z['power']:.4f} "
+            f"(sim_guard, claimed {DH}; the verdict rule is unchanged)"
+        )
+        for z in a["zero_read"]
+    ]
     L.append(f"\n- perception tier of every number above: {tier} (reported {WANT[tier][0]})")
     L.append(
         "- **If VALIDITY is not ALL HOLD every verdict above is VOID.**"
