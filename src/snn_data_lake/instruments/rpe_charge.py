@@ -1736,8 +1736,10 @@ def e1c_disposition(a):
     wording ("powered: a null, NULL-RECORD path") never reaches it: this row cannot write a NULL-RECORD (spec sections
     1, 4; wf-rv #5689 m2)."""
     q, dh = a["hs"]["H-P1"].get("seq"), E1C["claimed"]
-    if not a["valid"]:
-        return "VOID: no verdict (section 8)"
+    if a["bad"]:  # names what failed (wf-rv #5698 nit 3)
+        return "VOID: no verdict (section 8): " + "; ".join(a["bad"])
+    if a["pending"]:  # runs or controls owed: not a CONTINUE (nit 1)
+        return "PENDING: no verdict until these exist: " + "; ".join(a["pending"])
     if not q or q["decision"] == "continue":
         return (
             f"CONTINUE: no verdict ({q['status']})"
@@ -1751,11 +1753,17 @@ def e1c_disposition(a):
         )
     else:
         stop = f"NOT MET at the {'futility stop' if q['decision'] == 'futility' else 'cap'} (look {q['look']}, n={q['n']})"
+        why = (  # a zero observed SD gives mde 0, which is no power, not "0 > claimed" (nit 8)
+            "zero observed SD: no power"
+            if a["hs"]["H-P1"]["sd"] == 0
+            else f"mde {q['mde']:.4f} > {dh}"
+        )
         disp = (
             f"{stop}, POWERED (mde {q['mde']:.4f} <= {dh}): no harm of {dh} or more on production at 600 ticks; "
-            "`_plan_w` stays; no NULL-RECORD (E-P2 is unpowered, section 4)"
+            "`_plan_w` stays; E1's no-encoder +2.82 is recorded as not replicated on production at power; "
+            "this row licenses no NULL-RECORD (section 1)"  # nits 7, 2
             if q["powered"]
-            else f"{stop}, UNDERPOWERED (mde {q['mde']:.4f} > {dh}): INCONCLUSIVE; nothing changes"
+            else f"{stop}, UNDERPOWERED ({why}): INCONCLUSIVE; nothing changes"
         )
     return disp + beside_text(q["beside"])
 

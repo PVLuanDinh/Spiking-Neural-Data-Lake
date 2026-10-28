@@ -637,6 +637,36 @@ def test_e1c_record_reads_section_8_never_e1b_null_record(e1c_704):
     assert "CONTINUE" in _quoted(cont) and "no stop of record yet" in R.render_e1c(cont)
 
 
+def test_e1c_disposition_gives_only_true_reasons(e1c_704):
+    """wf-rv #5698 nits 1, 2, 3, 7, 8: each disposition line states the reason that holds."""
+    seeds = R.E1C_SEEDS[:64]
+    no_ctl = {
+        k: v
+        for k, v in R.fixture_runs("harm", seeds=seeds, arms=R.E1C_ARMS).items()
+        if k[0] in R.E1C_ARMS
+    }
+    owed = R.analyse(
+        "production", no_ctl, None, seeds=seeds, design=R.E1C, logs_pass=True, sim_campaigns=5
+    )
+    assert R.e1c_disposition(owed).startswith("PENDING") and "repeat arm missing" in _quoted(owed)
+    zero = R.e1c_disposition(_r1(e1c_704["noharm"]))  # every d exactly 0
+    assert "zero observed SD" in zero and "0.0000 >" not in zero
+    void = _r1(e1c_704["harm"], {"planted_harm": R.planted_rows("null")})
+    assert void["bad"] and all(b in R.e1c_disposition(void) for b in void["bad"])
+    capped = R.analyse(
+        "production",
+        e1c_704["harm"],
+        None,
+        seeds=R.E1C_SEEDS,
+        design={**R.E1C, "k_frac": 1.5},
+        logs_pass=True,
+        sim_campaigns=20,
+    )
+    line = R.e1c_disposition(capped)
+    assert "+2.82" in line and "not replicated" in line  # section 8, powered NOT MET
+    assert "E-P2 is unpowered" not in line and "licenses no NULL-RECORD" in line
+
+
 def test_e1c_zero_read_recomputes_power_only_above_the_validity_limit():
     """Section 5.3: past 12.5% cumulative exact zeros, sim_guard power at the observed zero rate."""
     small = dict(R.E1C, looks=(16, 32), sd_pre=0.3, claimed=0.2)
