@@ -551,6 +551,34 @@ def test_e1c_compare_prints_the_exact_zero_read_at_each_look():
     assert "exact-zero" in R.render_e1c(a)
 
 
+@pytest.fixture(scope="module")
+def e1c_704():
+    """R1 fixture at the cap: every seed of the block, arms real and pfrozen."""
+    return {k: R.fixture_runs(k, seeds=R.E1C_SEEDS, arms=R.E1C_ARMS) for k in ("harm", "noharm")}
+
+
+def _r1(runs, e2=None):
+    return R.analyse("production", runs, e2, seeds=R.E1C_SEEDS, design=R.E1C, logs_pass=True)
+
+
+def test_e1c_r1_compare_fixture_at_704_reads_met_not_met_and_void(e1c_704):
+    """R1 (spec section 7) through the compare path at n = 704 under E1C, not the bare rule."""
+    assert len(R.E1C_SEEDS) == 704
+    met = _r1(e1c_704["harm"])  # pfrozen = real + 0.1 on every seed
+    assert (
+        met["hs"]["H-P1"]["status"].startswith("MET") and met["hs"]["H-P1"]["met"] and met["valid"]
+    )
+    no = _r1(e1c_704["noharm"])  # pfrozen = real
+    h = no["hs"]["H-P1"]
+    assert no["valid"] and h["status"].startswith("NOT MET") and not h["met"], h["status"]
+    bad = R.planted_rows("null")  # a planted harm that is not there: the positive control fails
+    void = _r1(e1c_704["harm"], {"planted_harm": bad})
+    assert not void["valid"] and void["hs"]["H-P1"]["status"].startswith("VOID")
+    assert not void["hs"]["H-P1"]["met"] and "VOID" in R.render_e1c(void)
+    ok = _r1(e1c_704["harm"], {"planted_harm": R.planted_rows("harm")})
+    assert ok["valid"] and ok["hs"]["H-P1"]["met"]
+
+
 def test_e1c_compare_cli_reads_the_campaign_design(tmp_path):
     work = tmp_path / "work"
     _write_runs(

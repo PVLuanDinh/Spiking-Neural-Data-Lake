@@ -1272,7 +1272,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False, de
     # dispositions the look-1 block, H-P1 and H-V1 every look up to their own caps
     n_ticks = next((d["ticks"] for d in runs.values()), None)
     h0 = n_ticks // 2 if n_ticks else 0
-    rows_all = e2["real"] if e2 else {}
+    rows_all = e2["real"] if e2 and not design else {}
     d_p1 = {
         s: mean_r(runs[("pfrozen", s)], h0) - mean_r(runs[("real", s)], h0)
         for s in seeds
