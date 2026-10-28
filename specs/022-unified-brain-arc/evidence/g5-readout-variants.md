@@ -2055,3 +2055,19 @@ Part A/B timings.
 
 Disclosure: drafted by the integrator (claude-engine-1024) directly, not a lane. It has had no panel and no
 policy-enforcer read. The two citations were checked on PubMed (citation lookup, 2026-10-27).
+
+### Owed at Part E's freeze (dated 2026-10-28, arc-4 panel; no data, the draft is unfrozen)
+
+The arc-4 panel (#5706: lens B #5721 m7 and #5746, lens C #5720 C14/C15) found the items below in this unfrozen draft.
+They are carried to Part E's freeze, which owes each one; none is fixed here.
+- **E.9 "otherwise delete" branch.** It contradicts the landed P8 null-scale amendment: a null records a NULL-RECORD
+  and one >= 10x re-test before any deletion. The branch also names no scale axis. The freeze replaces it with the
+  amendment's path and names the axis.
+- **The 90% "P1 exception".** It names none of P1's three cases. The freeze either names the case it falls under or
+  derives the value by power.
+- **The closing disclosure** ("no policy-enforcer read") contradicts the folds of #5548 and #5555 above it. It is
+  corrected at the freeze. Two of the draft's lists omit PE-R6; both are completed.
+- **The decision function.** Part E uses `rpe_charge.seq_decision` without naming its sign rule (`k_frac`). The freeze
+  names it, and says whether `futility_powered` (E1c addendum 3) applies.
+- **The drift-function claimants.** D1 A0c F3's list omits the module that research/representational-drift/MAP.md's
+  D0 plans. Part E's relational readout reads drift, so its freeze resolves P2 among the claimants.
