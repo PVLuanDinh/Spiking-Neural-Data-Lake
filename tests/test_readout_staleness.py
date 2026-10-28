@@ -398,3 +398,40 @@ def test_m3_pre_refit_reading_scores_batch_beta_not_the_moved_live_beta():
     live = float(np.mean(m.decide(m._rates(Xb[va], m.W, m.b), m.beta) == yb[va]))
     assert want != live  # the planted move is visible to accuracy
     assert log["rows"][-1]["acc_reader"] == want
+
+
+# ---- round 3 (#5728 M4): A0e's RNG before/after probes (same process) ---------------------
+def _rng_state():
+    import random
+
+    return np.random.get_state()[1].tobytes(), random.getstate()
+
+
+def test_m4_shadow_and_wrapped_refit_draw_no_global_rng():
+    X, y, tr, va = fixture()
+    m = model_for(X, y, solve_rows=tr)
+    before = _rng_state()
+    rs.shadow_reading(m, m.beta, X[tr], y[tr], X[va], y[va])
+    rs.calibration_reading(m, X[tr], y[tr], X[va], y[va], pruned=False)
+    assert _rng_state() == before
+    np.random.seed(0)  # the off arm may draw (it is the brain); the on arm must draw the same
+    run_engine(shadow=False)
+    after_off = _rng_state()
+    np.random.seed(0)
+    run_engine(shadow=True)
+    assert _rng_state() == after_off
+
+
+def test_m4_torch_global_and_model_generator_unmoved_gate_only():
+    torch = pytest.importorskip("torch")
+    from snn_data_lake.growth.ng_snn import NGSNN
+
+    X, y, tr, va = fixture()
+    Xt = torch.tensor(X)
+    m = NGSNN(device="cpu", seed=0).fit(Xt[tr], torch.tensor(y[tr]))
+    g = m.g
+    g0 = g.get_state().clone()
+    t0 = torch.get_rng_state().clone()
+    rs.shadow_reading(m, m.beta, Xt[tr], y[tr], Xt[va], y[va])
+    assert torch.equal(torch.get_rng_state(), t0)
+    assert torch.equal(g.get_state(), g0)
