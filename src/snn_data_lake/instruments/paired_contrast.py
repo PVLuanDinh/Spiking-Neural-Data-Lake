@@ -235,12 +235,13 @@ def permutation_fpr_mc(diffs, bar=T_BAR, *, row, look, draws=MC_DRAWS):
     thr, eps = _threshold(n, bar, q), _band_eps(n, q)
     rng = random.Random(zlib.crc32(f"{row}|{look}".encode()))
     signs = (1.0, -1.0)
+    equal = len({abs(x) for x in xs}) == 1  # zero-variance flips: paired_t reads 0.0, as in exact
     hits = 0
     for _ in range(draws):
         flips = rng.choices(signs, k=n)
         total = sum(map(float.__mul__, flips, xs))
         if total > thr + eps:
-            hits += 1
+            hits += _decide([f * x for f, x in zip(flips, xs)], bar) if equal else 1
         elif total >= thr - eps:
             hits += _decide([f * x for f, x in zip(flips, xs)], bar)
     p = hits / draws

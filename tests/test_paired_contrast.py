@@ -639,3 +639,19 @@ def test_h_mc_keeps_the_exact_path_refusal_and_the_bar_refusal():
     with pytest.raises(ValueError):
         pc.permutation_fpr_mc(d, -1.0, row="LS-R1", look=1)
     assert pc.permutation_fpr_mc([0.0] * 50, T_BAR, row="LS-R1", look=1)[0] == 0.0
+
+
+# ---- (h2) round 3 (#5728 m1, m7): equal-magnitude samples and the p = 0 SE floor
+@pytest.mark.parametrize("d", ([0.01, -0.01, 0.01, 0.01], [0.01] * 6, [0.02, -0.02] * 4))
+def test_h_mc_agrees_with_exact_on_equal_magnitude_samples(d):
+    # every flip of an equal-|d| sample is decided by paired_t (zero variance reads 0.0),
+    # as the exact path does
+    for bar in BARS:
+        exact = permutation_fpr(d, bar)
+        fpr, se = pc.permutation_fpr_mc(d, bar, row="LS-R1", look=1)
+        assert abs(fpr - exact) <= 3 * se, (d, bar, fpr, exact, se)
+
+
+def test_h_mc_zero_count_se_is_floored_at_one_draw():
+    fpr, se = pc.permutation_fpr_mc([0.01] * 4, T_BAR, row="LS-R1", look=1)
+    assert fpr == 0.0 and se == pytest.approx(1.0 / pc.MC_DRAWS)
