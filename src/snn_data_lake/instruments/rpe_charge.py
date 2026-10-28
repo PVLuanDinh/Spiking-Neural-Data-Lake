@@ -1312,6 +1312,7 @@ def analyse(tier, runs, e2, *, seeds=SEEDS, ep1_min=EP1_MIN, logs_pass=False):
     full1 = len(have("real", "pfrozen", among=block)) == N_SEEDS
     a["ep1"] = {
         "n": nabove,
+        "of": len(block),
         "full": full1,
         "met": full1 and nabove >= ep1_min,
         "unchanged": bool(devs) and max(devs) <= 0.01,
@@ -1443,7 +1444,7 @@ def render(a):
         f"## E-V3\nany action flips above the repeat floor ({a['floor']}): {a['ev3']} (reported, no disposition)\n"
     )
     L.append(
-        f"## E-P1\nseeds with flips > floor: {a['ep1']['n']}/{len(a['seeds'])} -> **{word(a['ep1'])}**"
+        f"## E-P1\nseeds with flips > floor: {a['ep1']['n']}/{a['ep1']['of']} -> **{word(a['ep1'])}**"
         + (
             "; _plan_w never leaves init+/-0.01: uncharged by construction"
             if a["ep1"]["unchanged"]

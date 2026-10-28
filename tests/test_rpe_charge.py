@@ -691,6 +691,14 @@ def test_a_partial_campaign_evaluates_the_complete_endpoints_and_marks_the_rest_
     assert not R.null_precondition("_plan_w", a, a)[0]
 
 
+def test_ep1_denominator_is_its_own_look_1_block(monkeypatch):
+    monkeypatch.setattr(R, "SEEDS", range(8, 24))
+    runs = R.fixture_runs("harm")
+    a = R.analyse("production", runs, R.fixture_e2(), seeds=range(8, 24), logs_pass=True)
+    assert len(a["seeds"]) == 16
+    assert f"seeds with flips > floor: {a['ep1']['n']}/8 ->" in R.render(a)
+
+
 def test_sensitivity_flags_a_seed_sensitive_primary():
     runs = R.fixture_runs("harm")
     for arm in R.ARMS:  # seed 9 is degenerate in every arm and carries the whole signal
