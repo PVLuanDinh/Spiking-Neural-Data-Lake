@@ -211,4 +211,6 @@ evidence: Split from block 11 by the integrator's fold of review #4486 (m2). Row
 | 7 | untracked:l1b-ach-gate | acetylcholine plasticity gate wire | ticks | 800 ticks, 8 seeds | Only matters if a rule needing a third factor is re-tested. |
 | 8 | specs/022-unified-brain-arc/evidence/trainer-retirement.md@2d523a869ab2 | mnist_genn one-epoch smoke (retired module) | ticks (training budget) | 1 epoch on the full set; units, ticks and seeds not recorded | The deletion rests on owner decision 17c and the module's UNVERIFIED status; a 10-epoch re-test is runnable. Lowest value. |
 
+*DATED 2026-10-28 (cloud audit; nothing above is edited):* rank 2's "the stated cause of the L1b fall (stale readout under a closed gate) is gone since L1c landed" holds for the LIVE prediction only. `growth/neurogenesis_engine.py` keeps `_batch_beta`, the readout of the last OPEN-gate solve (L1c Amendment 3), and scores every closed-gate refit row of the growth gate's evidence with it, so the stale reader is still there for the gate. The owed co-adaptation control is pre-registered as L1b-STALE (T121; record `evidence/d1-readout-staleness.md`, on the integrator's branch at the time of writing).
+
 Nothing in this list is restored by it. The axis choice is the author's (owner answer 5) and is for the panel to review.
