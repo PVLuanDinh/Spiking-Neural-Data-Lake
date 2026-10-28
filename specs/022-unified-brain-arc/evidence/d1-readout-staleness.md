@@ -674,6 +674,8 @@ result has been read against changes, because no Stage 0, pilot or confirmatory 
   and no P1 reading is taken. Whether the control fires on other seeds is recorded as a validity read, counted under
   section 2.2's per-look exclusion cap (more than one excluded seed in a look block: that look is not read). It never
   filters which seeds P1 reads.
+- Order (lens B #5762 nit 3): Stage 0 runs before the pilot, so Stage 0 records only the raw calibrated difference.
+  The control is READ at A1, against the margin A1 fixes from the pilot, before any confirmatory seed.
 
 **B m6. Futility opens on the same SD the cap is sized on.**
 - A0e sizes n0 on the pilot's 80% upper SD (about 1.35 x SD_1), while section 2.5 opens futility at the first look
