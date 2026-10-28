@@ -585,6 +585,23 @@ def test_e1c_r1_compare_fixture_at_704_reads_met_not_met_and_void(e1c_704):
     assert ok["valid"] and ok["hs"]["H-P1"]["met"]
 
 
+def test_e1c_r1_voids_on_the_campaigns_own_failed_controls(e1c_704):
+    """wf-rv #5689 m3 (spec sections 3, 7): R1's VOID legs on the campaign's REAL look-1 controls
+    at n = 704 -- a repeat that differs, a pc with no flips -- beside the planted-harm leg (the
+    campaign supplies no planted control)."""
+    s0 = R.E1C_SEEDS[0]
+    differ = dict(e1c_704["harm"])
+    differ[("real_r2", s0)] = R.synth_run("real", s0, "production", shift=1)
+    flat = dict(e1c_704["harm"])
+    flat[("pc", s0)] = dict(flat[("pc", s0)], series=flat[("real", s0)]["series"])
+    legs = ((differ, f"repeat arm differs from real seed {s0}"), (flat, f"pc seed {s0} flips == 0"))
+    for runs, why in legs:
+        a = _r1(runs)
+        assert not a["valid"] and why in a["bad"], a["bad"]
+        assert a["hs"]["H-P1"]["status"].startswith("VOID") and not a["hs"]["H-P1"]["met"]
+        assert "VOID" in _quoted(a)
+
+
 def _quoted(a):
     """The '- t=' line of the E1c record: campaign.sh quotes it into every look's board post."""
     return next(x for x in R.render_e1c(a).splitlines() if x.startswith("- t="))
