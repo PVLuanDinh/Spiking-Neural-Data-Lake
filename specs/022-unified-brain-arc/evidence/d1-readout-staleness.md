@@ -611,6 +611,36 @@ repo-wide decision 2 of the cloud record stays parked (D-10).
 - P2's non-inferiority read, which A1 states;
 - A0c.
 
+#### A0e -- 2026-10-28: fold of policy-enforcer #5637 (pre-build, pre-pilot; no data)
+
+Written by the int3 integrator. It folds the enforcer's CHALLENGE on the whole file (#5637: 0 BLOCK / 1 MAJOR / 2 MINOR).
+
+**M1, pin scope (P8: no red may be unreachable where the battery runs).** A0d's "Windows-host pin" is NARROWED to
+comparisons against a stored digest recorded on that host.
+- R2 (shadow on against off, same run), the RNG before/after probes (same process) and R8's FROZEN/FROZEN_B identity
+  (same host) are RELATIVE comparisons. A cross-host float difference cancels inside each of them.
+- They are therefore ASSERTED ON EVERY HOST, the Linux CI lint job included.
+- Only a stored cross-host digest, if one is ever kept, is skipped off its host, and the reason is printed.
+
+**m1, arm-dependent row filters (a validity read, pre-data).** A0b's P1 reads rows the stale reader can answer and
+subtracts an open-solve calibration. Both depend on the gate's dynamics, which differ by arm. For every arm and seed the
+record therefore prints:
+- the fraction of last-third rows excluded as unanswerable;
+- the count of calibrations taken at a solve that pruned.
+
+Balance read on the pilot: if OJA's mean excluded fraction differs from FROZEN's by more than 0.10 (absolute), the
+pre-registered ALL-ROWS gap becomes P1's reading and the A0b reading moves beside it. A1 records which one leads before
+any confirmatory seed.
+
+**m2, sizing from an 8-seed pilot (P1 item 1, read conservatively).** A1 sizes n0 on the pilot's 80% upper confidence
+bound of `SD_1`: SD_1 x sqrt(7 / chi^2_{.20,7}), about 1.35 x SD_1. The point SD is not used.
+- The simulation guard runs at that upper SD with normal draws.
+- It also runs one heavy-tail stress row: t with 3 df, scaled to the same SD.
+- Power at the cap is stated for both rows. A cap below .8 on the stress row is recorded beside, and the cap is not
+  silently raised past A0d's 1000 refusal.
+
+**Unchanged:** the verdict, the boundaries, the futility rule, A0c and the remainder of A0d.
+
 ## 3. Record
 
 *(empty until Stage 0)*
