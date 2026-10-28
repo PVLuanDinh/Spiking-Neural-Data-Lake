@@ -482,3 +482,25 @@ def test_m5_a_raise_inside_refit_is_counted_apart_and_still_raised():
         e._refit()
     assert log["refit_raised"] == 1 and log["faults"] == 0 and e.trajectory == []
     assert "planted" in log["fault_msgs"][-1]
+
+
+# ---- round 3 (#5728 m2, m3): the INERT bar is exact zero at any scale; post_i = s_i is read ------
+@pytest.mark.parametrize("scale", [1e-9, 1.0, 1e3])
+def test_m2_mu_zero_is_exactly_inert_and_a_real_step_never_reads_inert_at_any_scale(scale):
+    rng = np.random.default_rng(0)
+    W, s, xn = scale * rng.normal(size=(5, 6)), np.full(5, 0.5), np.eye(6)[1]
+    ok, moved, inert = rs.operator_check(W, rs.oja_step(W, s, xn, mu=0.0))
+    assert inert and moved == 0.0 and ok
+    ok, moved, inert = rs.operator_check(W, rs.oja_step(W, s, xn))
+    assert ok and moved > 0 and not inert
+
+
+def test_m3_post_i_is_s_i_zero_rows_are_bit_unchanged_and_all_zero_is_inert():
+    rng = np.random.default_rng(0)
+    W, xn = rng.normal(size=(5, 6)), np.eye(6)[1]
+    s = np.array([0.5, 0.0, 0.5, 0.0, 0.5])
+    W1 = rs.oja_step(W, s, xn)
+    assert np.array_equal(W1[[1, 3]], W[[1, 3]]) and not np.array_equal(W1[[0, 2, 4]], W[[0, 2, 4]])
+    assert rs.operator_check(W, W1)[0]
+    ok, moved, inert = rs.operator_check(W, rs.oja_step(W, np.zeros(5), xn))
+    assert inert and moved == 0.0

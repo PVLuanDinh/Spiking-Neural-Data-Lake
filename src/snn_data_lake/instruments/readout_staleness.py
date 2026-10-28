@@ -199,11 +199,14 @@ def _unit_rows(W):
 
 def oja_step(W, s, xn, mu=MU):
     """L1b's step on the retained model's input rows, ungated (g=1), post_i = s_i:
-    u_i <- normalize(u_i + mu*post_i*xn), W_i <- ||W_i|| * u_i. Returns the new W (W is untouched)."""
-    n, u = _unit_rows(np.asarray(W, dtype=float))
-    v = u + mu * np.asarray(s, dtype=float)[:, None] * np.asarray(xn, dtype=float)[None, :]
+    u_i <- normalize(u_i + mu*post_i*xn), W_i <- ||W_i|| * u_i. Returns the new W (W is untouched).
+    A row whose mu*post_i is exactly zero is returned bit-unchanged, so mu = 0 reads Sum|dW| = 0."""
+    W = np.asarray(W, dtype=float)
+    n, u = _unit_rows(W)
+    step = mu * np.asarray(s, dtype=float)[:, None]
+    v = u + step * np.asarray(xn, dtype=float)[None, :]
     vn = np.linalg.norm(v, axis=1, keepdims=True)
-    return n * np.divide(v, vn, out=np.zeros_like(v), where=vn > 0)
+    return np.where(step == 0.0, W, n * np.divide(v, vn, out=np.zeros_like(v), where=vn > 0))
 
 
 class RandStep:
@@ -220,11 +223,12 @@ class RandStep:
 
 
 def operator_check(W0, W1, tol=1e-6):
-    """R3: (norms preserved per row to tol, Sum|dW|, inert). INERT when Sum|dW| <= 1e-9 (e.g. mu = 0)."""
+    """R3: (norms preserved per row to tol, Sum|dW|, inert). INERT when Sum|dW| is exactly 0 (mu = 0
+    returns W unchanged, section 2.6), whatever the scale of W."""
     W0, W1 = np.asarray(W0, dtype=float), np.asarray(W1, dtype=float)
     ok = bool(np.all(np.abs(np.linalg.norm(W0, axis=1) - np.linalg.norm(W1, axis=1)) <= tol))
     moved = float(np.abs(W1 - W0).sum())
-    return ok, moved, moved <= 1e-9  # mu=0 still re-normalizes: ~1e-16 rounding, not movement
+    return ok, moved, moved == 0.0
 
 
 def rotate_pairs(W, degrees):
@@ -304,7 +308,7 @@ def main():
     ok, moved, inert = operator_check(W, oja_step(W, np.ones(5), np.eye(6)[0]))
     assert ok and moved > 0 and not inert
     ok2, moved2, inert2 = operator_check(W, oja_step(W, np.ones(5), np.eye(6)[0], mu=0.0))
-    assert ok2 and inert2 and moved2 < 1e-9
+    assert ok2 and inert2 and moved2 == 0.0
     assert np.allclose(np.linalg.norm(rotate_pairs(W, 30), axis=1), np.linalg.norm(W, axis=1))
     print("readout_staleness selfcheck OK")
 
