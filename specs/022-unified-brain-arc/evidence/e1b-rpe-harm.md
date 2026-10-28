@@ -1815,3 +1815,57 @@ a315d69f8928ec24dc0dd982695e1609defe2351319a73ab70f5fb50113577da  logs/driver_ch
 - **Resume.** `START_LOOK=1`, section 7's rule: the 16 DONE production runs are skipped and kept unchanged; no-encoder
   `real_8` runs fresh on the same seed (it never started, so no earlier attempt exists). The timeout already computed
   (`logs/timeout_s.txt` = 600 s) is read from file. No seed is replaced, no run is dropped, nothing is re-decided.
+
+
+## Results 2026-10-27: the E1b campaign (appended below the frozen text and addenda 1-10, which are unchanged)
+
+Read by the integrator from the lane's REPORT and the harness's own reports; every quoted line is verbatim. The section 6
+dispositions below are the integrator's reading for the owner; nothing is deleted or recorded by this section.
+
+**What ran.** Run tree detached at c1df3887999a071ae48003b0d8496af0e20501ca (clean before and after); binding = addendum
+10 (int3 ff77c529) plus departure 1 (int3 8351a294); GO #5556; driver started 17:28:50 CDT, stopped at run 17 (departure
+1), resumed 17:41:46, ended 20:43:52. 534 runs DONE (production 259, no-encoder 259, bridge 16); 0 timeouts; 0 memory
+waits; 1 failed launch (run 17, no brain, departure 1). Stop of record: look 19, "NEXT stop both production primaries
+stopped H-P1=futility, H-V1=cap". `VALIDITY: ALL HOLD` in all 38 compare reports (looks 1-19, both tiers); repeat arm 0
+flips and identical series; pc arms flip (production 293 / 416, no-encoder 272 / 270); planted-learning and planted-HARM
+controls PASS on both tiers; one tree sha in every run. Bridge: "tree-equivalent; H-P1 t=2.818 (6/8) beside E1's t
++2.82". Tier effect present on 152 seeds.
+
+**Primaries, production tier (decides, addendum 3), with no-encoder beside:**
+- H-P1 (`_plan_w`): "NOT MET, stopped for futility at look 10 of 22, n=80 (conditional power 0.069 < 0.1), mde at n=80
+  0.1275 > claimed 0.0350: INCONCLUSIVE when underpowered (P8 null-scale item 4): no NULL-RECORD, no deletion". Sequential
+  line: t=-0.100, 35/80 > 0. No-encoder: futility at look 10, t=-0.389, mde 0.0907 > 0.0350, INCONCLUSIVE. Observed
+  production SD 0.3097 against the design's borrowed 0.0695 (E1 no-encoder).
+- H-V1 (ValenceLearner, replay): "NOT MET at the cap (look 19 of 19, n=152), mde at n=152 0.0333 <= claimed 0.0480:
+  powered". Sequential line: t=-8.399, 30/152 > 0 (the frozen arm is worse). No-encoder: NOT MET at the cap, t=-1.049,
+  mde 0.0223 <= 0.0480, powered.
+
+**Secondaries (look 1, 8 seeds), production / no-encoder:** E-V1 MET / NOT MET; E-V2 MET / NOT MET; E-P1 MET / MET (8 of 8
+seeds; the lane REPORT's "8/152" is a typo); E-P2 NOT MET (mde 0.0686) / NOT MET (mde 0.1935); H-P2, H-V3 INCONCLUSIVE on
+both tiers; H-V2 INCONCLUSIVE / powered not met. Harness disposition lines: production "ValenceLearner: **CHARGED**;
+`_plan_w`: **charges behaviour, objective unresolved (see power note)**"; no-encoder "ValenceLearner: **charges behaviour,
+not its objective**; `_plan_w`: **charges behaviour, objective unresolved (see power note)**". Degenerate production seeds
+25, 85, 131: sensitivity leaves both primaries unchanged (H-P1 t=-0.100 on 78; H-V1 t=-9.097 on 149).
+
+**NULL-RECORD precondition, run by the integrator on the final results** (`rpe_charge.null_precondition`, brain-free, run
+tree src, looks 10 and 19 identical):
+- `_plan_w`: (False, "production: observed mde 0.0686 > frozen literal 0.0131 (INCONCLUSIVE)").
+- `ValenceLearner`: (False, "production: the objective endpoint was met").
+So NO NULL-RECORD is owed for either method. The H-V1 status string's words "a null, NULL-RECORD path (one 10x re-test
+before any deletion)" describe the primary alone; the record is gated by this precondition, which the compare and cross
+reports do not print (carried: print `null_precondition` in `cross`).
+
+**Section 6, the integrator's reading (owner decides):**
+- `_plan_w`: H-P1 not met on both tiers with SD > 0.035 -> INCONCLUSIVE on harm for each tier; "E1's signal stands as
+  unreplicated" (the bridge is tree-equivalent: E1's signal reproduces on E1's seeds, not on seeds 8-87 of either tier).
+  No deletion, no record.
+- `ValenceLearner`: H-V1 not met, powered, on both tiers: no harm on its replay objective. E-V2 is tier-split (MET on
+  production, NOT MET on no-encoder): a tier finding, no record. On the production brain it is CHARGED (E-V1 and E-V2 MET).
+  No deletion.
+- P2 note of section 6 stands: the third-factor RPE job has two live mechanisms (`ValenceLearner`, `_plan_w`); a non-harm
+  outcome is NOT read as "both stay". The adopt-or-merge question goes to the owner.
+
+**Artifacts.** `D:\AI-project\lanes\e1b-rpe-harm-1023-work\`: REPORT.md, reports/ (38 compare + 19 cross), results/,
+logs/runs.log (536 lines: 534 records plus the 2-line run-17 record, policy-enforcer nit #5569), logs/driver.log.
+`SHA256SUMS.results` (60 files) sha256 d3d08090483be52083c0bf54f3bf3095ff62ca2687241cb71c3a7c066711454d; e.g.
+compare-production-look19.md ba020a2ac2b35177..., cross-look19.md 2204bef072265d19..., REPORT.md 0cceefaf00ea377c...
