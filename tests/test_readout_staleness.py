@@ -64,6 +64,7 @@ def test_r1_green_unmoved_w_reads_zero_gap():
     m = model_for(X, y, solve_rows=tr)
     r = rs.shadow_reading(m, m.beta, X[tr], y[tr], X[va], y[va])
     assert abs(r["gap_all"]) < 1e-6 and abs(r["gap_ans"]) < 1e-6
+    assert np.abs(r["beta_shadow"] - m.beta).max() == 0.0  # the same solve, on THIS split's rows
 
 
 def test_r1_red_planted_rotation_reads_positive_gap():
@@ -123,7 +124,9 @@ class FakeEngine:
         tr, va = split(y, h)
         m = self._model
         if m is not None:  # closed gate
-            reader = rs.reader_for(m, self._batch_beta)
+            # _refit's own two lines, not rs.reader_for
+            beta = self._batch_beta if self._batch_beta is not None else m.beta
+            reader = m.beta if int(beta.shape[0]) != int(m.W.shape[0]) else beta
             acc = float(np.mean(m.decide(m._rates(X[va], m.W, m.b), reader) == y[va]))
             self.trajectory.append((self.ticks, 8, acc))
             return
@@ -362,3 +365,36 @@ def test_m2_r5_projector_is_the_column_space_and_the_drift_is_planted_independen
     Q, _ = np.linalg.qr(mixed)
     P2, _ = rs.readout_projector(mixed)
     assert np.allclose(P2, Q @ Q.T)
+
+
+# ---- round 3 (#5728 M3): the reader the endpoint measures is the last OPEN solve's --------
+def test_m3_reader_for_mirrors_the_refit_fallback():
+    X, y, tr, va = fixture()
+    m = model_for(X, y, solve_rows=tr)
+    live = -m.beta  # the L1c online readout has moved model.beta in place since the last open solve
+    batch = m.beta.copy()
+    m.beta = live
+    assert rs.reader_for(m, batch) is batch  # widths match: the stale open-solve reader
+    assert rs.reader_for(m, None) is live  # no open solve yet: model.beta
+    assert rs.reader_for(m, batch[:3]) is live  # width mismatch: model.beta
+
+
+def test_m3_pre_refit_reading_scores_batch_beta_not_the_moved_live_beta():
+    X, y = stream(n=240)
+    e = FakeEngine()
+    log = rs.instrument_engine(e, as_input=lambda a: np.asarray(a, np.float32), split_fn=split)
+    for i in range(0, 120, 20):
+        e.push(X[i : i + 20], y[i : i + 20])
+        e._refit()
+    stale = e._batch_beta.copy()
+    e._model.beta = -e._model.beta  # online readout moved model.beta; _batch_beta stays
+    e.push(X[120:140], y[120:140])
+    e._refit()
+    Xb, yb = np.asarray(e._buf_x, np.float32), np.asarray(e._buf_y)
+    h = min(60, len(yb) // 3)
+    tr, va = split(yb, h)
+    m = e._model
+    want = float(np.mean(m.decide(m._rates(Xb[va], m.W, m.b), stale) == yb[va]))
+    live = float(np.mean(m.decide(m._rates(Xb[va], m.W, m.b), m.beta) == yb[va]))
+    assert want != live  # the planted move is visible to accuracy
+    assert log["rows"][-1]["acc_reader"] == want
