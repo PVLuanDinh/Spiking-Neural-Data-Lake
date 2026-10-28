@@ -513,6 +513,58 @@ had not accounted for, ruled here before the build.
   `_refit` overwrites them, but the instrument saves and restores them anyway, and R2's hash covers them.
 - RAND draws from its own CPU `torch.Generator`, seeded by `zlib.crc32` of (seed, arm), never the global generator.
 
+#### A0c -- 2026-10-28: relayed to the integrator; seed block and name changed before registration (pre-build, pre-pilot; no data)
+
+Written by the int3 integrator (board claude-engine-1024), not by this file's cloud author. That author cannot be
+messaged; its work reaches the integrator only as pushed branches.
+
+**Owner, verbatim** (session B's chat, relayed at board #5611): "Yes, relay D1". The button the owner chose carried this
+text: "Q3: yes, relay D1 (origin d1/readout-staleness-prereg @ 2e946d8d) to A. Register it as its own row after a dated
+amendment fixes F1 (seed collision with OG1) and F2 (the name), with an enforcer review of the full pre-reg before any
+run."
+
+**How it arrived on int3.**
+- The four commits from 6612ce72 to 2e946d8d were cherry-picked onto claude/int3 after bd46b17d (base origin/main
+  c1df3887).
+- The file above this amendment is byte-identical to 2e946d8d (`git diff 2e946d8d HEAD` on it is empty).
+- The branch later gained 2875259c (a session record only). It is not brought.
+
+**F1. The confirmatory seed block moves** (integrator P2 check #5602; policy-enforcer #5605 re-derived it).
+- Section 2.5's block 17000-17039 overlaps OG1's registered blocks on origin/main (`og1-organoid-stream.md:191`: "Dev
+  17000-17007, confirmatory 17010-17017").
+- From this amendment on, confirmatory seeds are drawn in order from **22000-22039**. The cap stays at most 40.
+- Grep check, 2026-10-28, on int3: 0 seed/block/range hits for 22000-22999 in evidence, src, tools/*.py and tests.
+  Board claim #5629 holds 22000-22999.
+- Blocks avoided: OG1 17000-17017, R3 16000-16999, sleep_plasticity_ab 16900-16999, G3 9000-9999, G5 11000-11999, E1b
+  8-183, and the E1c draft's 21000-21999 (claim #5613).
+- The pilot seeds 0-7 and the A0 probe seeds 96-99 are unchanged.
+- Section 2.5's own clause "the operator confirms the block is free before Stage C" now reads against 22000-22039.
+
+**F2. The name changes, to avoid two existing uses.** "D1" already names G5 Part D's dev cohort and its freeze (57 uses
+in `g5-readout-variants.md`) and specs/011's design item D1. "D-R1" reads like a Part D red (PD-R*).
+- From this amendment on, the row is **L1b-STALE**.
+- Task **T121** is unchanged: it is free on int3 and is this file's own proposal.
+- Red family **LS**, row **LS-R1**. On 2026-10-28, `LS-R` has 0 uses in PLAN-FINAL and 0 in evidence.
+- In the frozen text above, "D1" means this row and nothing else. The file name stays, so citations hold.
+
+**F3. One drift-reading function** (#5602 F3, widened by policy-enforcer #5605 m1).
+- Three claimants would read activity drift on a fixed probe set: this row's section 2.4, G5 Part E's P-E0, and G9's
+  criterion-1 instrument (Part E E.8 item 2).
+- Whichever builds first owns ONE drift-reading function, and the others import it.
+- Its correlation primitives come from `infra/_mathutils` (`pearson`; a Spearman is lifted there if needed), never from
+  a new local copy.
+
+**F4. Territory at c1df3887.** Arc 3 changed `instruments/rpe_charge.py` in five places: its docstring, E1b's
+constants, `analyse`, `_series_differ` and `main`. `seq_boundaries` and `seq_decision`, which section 2.5 imports, are
+unchanged.
+
+**Owed before any run:**
+1. A policy-enforcer review of this WHOLE file (A0, E1, A0b and A0c; enforcer #5605 m2).
+2. The registration rows (tasks.md T121; Part F LS-R1).
+3. A1 after the pilot, as section 2.5 states.
+4. The host reboot.
+5. Nothing holding `resource:timing`.
+
 ## 3. Record
 
 *(empty until Stage 0)*
