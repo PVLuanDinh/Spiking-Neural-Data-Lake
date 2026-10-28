@@ -127,32 +127,61 @@ Background:
 | 768 | t and k >= ceil(4n/8) | 0.0410 | 0.919 | 0.877 | 488 |
 | 768 | t and k >= ceil(5n/8) | 0.0000 | 0.133 | 0.050 | 710 |
 
+**The table above is SUPERSEDED for the design by 5.1b** (policy-enforcer #5635 M1). Its shifted shapes also moved the 5
+exact-zero seeds, where `real` and `pfrozen` never diverged. A harm carried by `_plan_w` cannot move a seed whose two
+arms are bit-identical. The table is kept as the record of what was first measured.
+
+### 5.1b The design measurement on a zero-preserving shape (`derive_e1c-zp-2000.log`, 2,000 campaigns each)
+
+- **The shapes.**
+  - null0: the zeros stay at 0, and the 75 diverged seeds are centred so the overall mean is 0.
+  - zp_shift: the diverged seeds are shifted by 0.03733, so the OVERALL mean harm is exactly DH = 0.035. This matches
+    H-P1's estimand, the mean of d_s over all seeds.
+  - zp_up: the same, with the diverged spread x1.115 (pooled SD 0.345).
+- **Rule:** k >= ceil(4n/8).
+
+| cap (looks of 64) | null0: harm / cap or futility powered / INCONCLUSIVE | zp_shift power (SD .310) | zp_up power (SD .345) |
+|---|---|---|---|
+| 640 (10) | .0020 / .9360 / .0620 | .8345 | **.7875** (below .8) |
+| **704 (11)** | **.0050 / .8285 / .1665** | **.8800** | **.8335** |
+| 768 (12) | .0030 / .6945 / .3025 | .8985 | .8540 |
+
+- Policy-enforcer #5635 independently found .839 / .8055 at 640 (its own walk). That agrees within 2 SE.
+
 ### 5.2 Finding: E1b's scaled sign conjunct cannot fire on this shape
 
 - **The rule.** `seq_decision` declares harm only when t crosses AND k >= ceil(K_MIN x n / 8) seeds are positive, with
-  K_MIN = 5. At n = 640 that asks for 62.5% positive seeds.
-- **What this shape gives.** On the measured shape, a true shift of exactly DH makes only 58.75% of seeds positive
-  (58.75% on shift, 57.5% on shift_up). The conjunct therefore fails more often as n grows. Power is 0.169 at 512,
-  0.137 at 640 and 0.133 at 768, and it is never .8 at any cap.
+  K_MIN = 5. At n = 704 that asks for 62.5% positive seeds.
+- **What this shape gives.** A true mean harm of exactly DH makes only about 52.5% of seeds positive on the
+  zero-preserving shape (58.75% on the superseded all-shift shape). The conjunct therefore fails more often as n grows.
+  On the all-shift shape power was 0.169 at 512, 0.137 at 640 and 0.133 at 768, never .8 at any cap. On the
+  zero-preserving shape it can only be lower.
 - **Consequence.** A follow-up that keeps the conjunct can never be "a run with enough seeds (power .8)" under P8 item 4.
 - **Scope of the finding.** It is about this design at large n. It does not impugn E1b's verdicts: E1b's H-P1 stopped
   for futility at n = 80 on conditional power, never at a crossing the conjunct could have blocked.
 
 ### 5.3 The design (frozen at the freeze commit)
 
-- **Looks:** every 64 seeds, n = 64, 128, ..., 640 (10 looks).
-- **Cap:** 640, the smallest 64-multiple cap whose power under this rule is at least .8 at the 80% upper SD (512 gives
-  .738). Power is .886 at the measured SD and .812 at the 80% upper SD. Type I is .0465 on the measured null shape.
-- **Boundary:** `rpe_charge.seq_boundaries` (Lan-DeMets O'Brien-Fleming, one-sided alpha .05) on those looks.
+- **Looks:** every 64 seeds, n = 64, 128, ..., 704 (11 looks).
+- **Cap: 704** (re-picked on 5.1b; enforcer #5635 M1). It is the smallest 64-multiple cap whose zero-preserving power at
+  the 80% upper SD clears .8 by at least 2 SE: .8335, with SE about .0083. 640 gives .7875.
+  - Power at the measured SD is .880.
+  - Harm rate on the zero-kept null is .005. The direction guard makes the test conservative there, and that is
+    disclosed.
+- **Boundary:** `rpe_charge.seq_boundaries` (Lan-DeMets O'Brien-Fleming, one-sided alpha .05) on those looks. The
+  per-look t is 7.627, 4.639, 3.644, 3.094, 2.736, 2.480, 2.285, 2.130, 2.002, 1.896 and 1.804 (`looks_e1c-704.log`).
 - **Harm at a look** = t above the look's boundary AND k >= ceil(4n/8), meaning at least half of the seeds are
-  positive. This is the large-n form of E1b's direction guard. It costs nothing measurable (.886 against .872 for t
-  alone) and still refuses a mean carried by a few regime-flip seeds against the majority. **(Open, section 11:
-  D-1.)**
-- **Futility: none in practice.** `futility_open` (sd_pre 0.3097) is False at every look before the cap. The mde at
-  576 is 0.0354, just above 0.035 (`looks_e1c.log`). The campaign therefore stops only at a harm crossing or at the
-  cap.
-  - The per-look boundaries t are 7.139, 4.392, 3.453, 2.933, 2.594, 2.352, 2.167, 2.020, 1.899 and 1.798.
-  - **The bound is the policy's, and it is kept** (delegate D-12c asked for one that opens; measured).
+  positive. This is the large-n form of E1b's direction guard.
+  - On the zero-preserving shape it costs 2.5-3.3 points of power against t alone (enforcer #5635: .839 against .872 at
+    the measured SD).
+  - In exchange it refuses a mean carried by a few regime-flip seeds against the majority (R4b).
+  - **(Open, section 11: D-1.)**
+- **Futility: P1 item 2's rule, which OPENS at n = 640.** `futility_open` (sd_pre 0.3097) is True only at 640, where
+  the mde is 0.0335 <= 0.035. It is non-binding, with conditional power < .10.
+  - Under the zero-kept null, 71.7% of campaigns stop there POWERED, 16.7% stop there underpowered (INCONCLUSIVE),
+    and 11.2% reach the cap powered.
+  - The 10-look design of the first draft never opened. The record below is kept.
+  - **The bound is the policy's** (delegate D-12c asked for one that opens; measured, then reversed by the delegate).
     - POLICIES P1 amendment item 2: "a futility stop is taken only at a pre-registered look whose mde, computed from
       the pre-registered SD at the design's alpha, is at or below the claimed effect ... before such a look the
       campaign continues". `futility_open` implements exactly that rule, and at these looks no look before the cap
@@ -165,26 +194,31 @@ Background:
     - From look 8 (`derive_e1c-fut8-2000.log`), power at shift_up is .784 < .80.
     - So the opening rule is barred by P1 item 2. It would also turn the likely no-harm answer into INCONCLUSIVE,
       which is the result this run exists to replace.
-- **The cap's "powered" read uses the OBSERVED SD.** At 640 the mde is 0.0323 at SD 0.3097. It goes above 0.035 when
-  the observed SD exceeds about 0.336, and the cap then reads INCONCLUSIVE. Its rate per shape is in 5.4.
+- **The stop's "powered" read uses the OBSERVED SD.** At 704 the mde is 0.0309 at SD 0.3097, so an observed SD above
+  about 0.35 makes the cap read INCONCLUSIVE. The rates are in 5.4.
 - **Powered.** Read as E1b addendum 3 reads it: the mde at the stopped n with the observed SD, at or below 0.035.
-- **Simulation guard.** Before look 1, the frozen harness reproduces this file's 640 / k >= n/2 row within 2 SE at
-  2,000 campaigns.
+- **Simulation guard (R5).** Before look 1, the frozen harness reproduces 5.1b's 704 row within 2 SE at 2,000
+  campaigns, on the zero-preserving shapes.
+- **Validity read: the exact-zero rate per look.** E1b had 5 of 80 (6.25%). If a look's cumulative exact-zero fraction
+  exceeds 12.5%, the mean effect per diverged seed that the cap was sized for no longer holds.
+  - The record then prints the zero-preserving power recomputed at the observed zero rate, beside the verdict.
+  - The verdict rule is not changed, and no seed is added.
 
-### 5.4 What each shape ends in under 5.3 (2,000 campaigns each, `derive_e1c-detail-2000.log`)
+### 5.4 What each shape ends in under 5.3 (cap 704, 2,000 campaigns each, `derive_e1c-zp-2000.log`)
 
-| resampled shape | harm MET | cap, powered (no harm) | cap, underpowered (INCONCLUSIVE) |
-|---|---|---|---|
-| null (mean harm 0) | .0495 | .8940 | .0565 |
-| shift (+0.035) | .8795 | .1145 | .0060 |
-| shift_up (+0.035 at SD 0.345) | .8110 | .0635 | .1255 |
+| zero-preserving shape | harm MET | futility, powered | futility, INCONCLUSIVE | cap, powered | cap, INCONCLUSIVE |
+|---|---|---|---|---|---|
+| null0 (mean harm 0) | .0050 | .7170 | .1665 | .1115 | .0000 |
+| zp_shift (mean +0.035) | .8800 | .0395 | .0085 | .0715 | .0005 |
+| zp_up (mean +0.035, SD .345) | .8335 | .0120 | .0680 | .0590 | .0275 |
 
-- These rates come from different random streams than 5.1's table, and the two agree within 1 SE.
-- At the pessimistic SD, one campaign in eight ends INCONCLUSIVE. That is the design's disclosed residual, not a red.
+- About one no-harm campaign in six ends INCONCLUSIVE at the futility look. That is the disclosed residual of
+  reading "powered" on the observed SD (P8 item 4), not a red.
+- The first draft's all-shift rates (cap 640, `derive_e1c-detail-2000.log`) are superseded by this table.
 
 ## 6. Seeds
 
-- **Confirmatory block:** 21000-21639, in order. 21640-21999 stay unexposed for a repair.
+- **Confirmatory block:** 21000-21703, in order. 21704-21999 stay unexposed for a repair.
 - **Grep check, 2026-10-28, int3.** 0 seed/block/range hits for 21000-21999 in evidence, src, tools/*.py and tests.
   Board claim #5613 holds 21000-21999.
 - **Not reused:** E1b's seeds 8-183, E1's 0-7, and the derive RNG seeds 8801-9595 (simulation streams only).
@@ -192,24 +226,33 @@ Background:
 
 ## 7. Reds (each constructed and RUN before look 1; a red that does not fire halts the campaign)
 
-- **R1, compare fixture** (E1b section 4, brain-free), at n = 640 under section 5.3's rule:
+- **R1, compare fixture** (E1b section 4, brain-free), at n = 704 under section 5.3's rule:
   - `pfrozen = real + 0.1` on every seed must read MET;
   - `pfrozen = real` must read NOT MET;
   - a failed planted control must read VOID.
   If any of the three prints differently, the harness is blind.
 - **R2, in-brain sensitivity** (look 1): `pc` flips > 0 on seeds 21000 and 21001.
 - **R3, repeat** (look 1): the A/A pair on seed 21000 has 0 action flips and identical recorded series.
-- **R4, rule-change red.** Fed the 80 E1b differences shifted by +0.035 and tiled to 640, the k >= ceil(5n/8) rule
+- **R4, rule-change red.** Fed the 80 E1b differences shifted by +0.035 and tiled to 704, the k >= ceil(5n/8) rule
   must read NOT MET while k >= ceil(4n/8) reads MET. This proves the rule actually changed in the harness.
-- **R5, simulation guard.** As in 5.3.
+- **R4b, the guard refuses what it exists to refuse** (enforcer #5635 m1). At n = 704, take 30% of seeds at +0.30 and
+  70% at -0.04 (mean +0.062, so t crosses). It must read NOT MET under k >= ceil(n/2) and MET under t alone.
+- **R5, simulation guard.** As in 5.3, on the zero-preserving shapes.
 
 ## 8. Disposition (fixed in advance; the production tier decides, #4616)
 
 - **HARM MET** at a look:
   - The learned `_plan_w` trajectory is a measured harm on production at 600 ticks. P8 null-scale item 4: "a measured
     harm ... is deleted without a re-test".
-  - The integrator writes the deletion row: `_plan_lr = 0`, with `_plan_w` held at init, and the update removed as
-    one change.
+  - The integrator writes the deletion row **(route (iii), enforcer #5635 M2; P1 no-hardcode).** The `_plan_w` update
+    is deleted, AND the plan nudge `bias[...] += _plan_w * gain` leaves the live path with it.
+    - Holding `_plan_w` at its init 0.1 would leave a hand-set constant arbitrating behaviour on a live path, and none
+      of P1's exceptions applies.
+    - Any replacement (for example a running-baseline form) comes back only through its own pre-registered row.
+    - Until then `_planned_seq`'s nudge is off the live path. If that leaves the planner's sequence output with no
+      consumer, it takes a `dormancy_gate.EXEMPT` entry naming that row (P3, "awaiting a prerequisite").
+    - **Disclosed:** the deleted state (no nudge) is NOT the `pfrozen` arm (a nudge at 0.1), and E1c does not
+      measure it. The replacement row's pre-registration measures it against the planner-off and planner-on states.
   - The owner is told before it lands. `_plan_w` is not an owner-drawn P4d part.
 - **NOT MET at a futility or cap stop, POWERED** (mde <= 0.035):
   - "Powered: no harm of 0.035 or more on production at 600 ticks." `_plan_w` stays as it is.
@@ -219,7 +262,7 @@ Background:
 - **NOT MET, UNDERPOWERED** (mde > 0.035; the design makes this rare): INCONCLUSIVE, with its mde recorded. Nothing
   changes.
 - **VOID** (validity, a moved tree, or a red that did not fire): no verdict. Repair, or open a new pre-registration on
-  21640 and up.
+  21704 and up.
 - **Refused in every branch:** "`_plan_w` charges reward" (E-P2 is unpowered); any no-encoder or cross-tier wording;
   any scale other than 600 ticks.
 
@@ -237,11 +280,17 @@ Background:
 
 ## 10. Cost and resources
 
-- **Worst case:** 640 seeds x 2 arms = 1,280 runs, plus 3 control runs.
+- **Worst case:** 704 seeds x 2 arms = 1,408 runs, plus 3 control runs.
 - **E1b's measured throughput:** 534 production and no-encoder runs in about 3.1 h of wall time, about 21 s per run.
-  That puts the worst case at about 7.5 h. E[n] is about 436 seeds (about 5 h) under the claimed shift.
+  That puts the worst case at about 8.2 h on an unloaded host.
 - **Resources.** `resource:timing` is held for the whole campaign. No battery or other brain campaign runs beside it.
-- **Prerequisite:** the host reboot (2026-10-28: nonpaged pool 16 GB, Available 2.4-2.75 GB).
+- **Host (no reboot is possible; owner 2026-10-28):** the throttled regime of delegate D-13 applies.
+  - A pilot arm measures peak private bytes P and wall time T.
+  - Workers = floor((Available - 2 GB) / P), between 1 and 4, re-derived at every look.
+  - Pause launches while Available < 1.5 GB or commit > 85%.
+  - Timeouts are set as multiples of T.
+  - The nonpaged pool is logged at every look.
+  - A pause is logged, never a verdict.
 
 ## 11. Open for the owner and the enforcer (before the freeze)
 
@@ -250,8 +299,10 @@ Background:
   - Alternatives:
     - (a) keep E1b's k >= ceil(5n/8). The power ceiling stays near 0.14, so the run can never be the powered run
       item 4 asks for;
-    - (b) drop the guard, t alone: .872 / .818, type I .0525.
-  - The proposal keeps a direction guard at no measurable cost.
+    - (b) drop the guard, t alone: .872 / .818, type I .0525 (all-shift shape; enforcer #5635 zero-preserving:
+      .872 / .8215 at 640).
+  - The proposal keeps a direction guard that costs 2.5-3.3 points of power on the zero-preserving shape, bought back
+    by the 704 cap. Delegate D-12b accepted it, conditional on the enforcer's AGREE.
 - **D-2. Axis.** None is needed: a harm deletes without a re-test, and a powered non-harm deletes nothing.
 
 ## 12. Record
