@@ -602,6 +602,22 @@ def test_e1c_r1_voids_on_the_campaigns_own_failed_controls(e1c_704):
         assert "VOID" in _quoted(a)
 
 
+def test_e1c_futility_at_640_stops_only_when_it_would_read_powered():
+    """Addendum 3 (delegate D-25, panel #5719 M3): at 640 the frozen rule stops for futility
+    INCONCLUSIVE; under E1C (futility_powered) an unpowered futility look continues to the cap,
+    and a powered one still stops."""
+    frozen = {**R.E1C, "futility_powered": False}
+    wide = [0.5, -0.5] * 320  # mean 0, SD ~0.50: conditional power ~0, mde at 640 > 0.035
+    q0, q1 = R.seq_record(wide, **frozen), R.seq_record(wide, **R.E1C)
+    assert q0["n"] == 640 and q0["decision"] == "futility" and not q0["powered"]
+    assert q1["n"] == 640 and q1["decision"] == "continue"
+    tight = [0.2, -0.2] * 320  # SD ~0.20: mde at 640 ~0.021 <= 0.035, powered
+    for design in (frozen, R.E1C):
+        q = R.seq_record(tight, **design)
+        assert q["n"] == 640 and q["decision"] == "futility" and q["powered"]
+    assert "futility_powered" not in R.SEQ["H-P1"]  # E1b's designs keep the frozen behaviour
+
+
 def _quoted(a):
     """The '- t=' line of the E1c record: campaign.sh quotes it into every look's board post."""
     return next(x for x in R.render_e1c(a).splitlines() if x.startswith("- t="))

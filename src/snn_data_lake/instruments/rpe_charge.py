@@ -185,6 +185,7 @@ E1C = {
     "bounds": None,
     "k_frac": 0.5,
     "show_beside": True,
+    "futility_powered": True,  # addendum 3 (delegate D-25): futility stops only where it would read powered
 }
 E1C_ARMS = (
     "real",
@@ -537,6 +538,7 @@ def seq_decision(
     bounds=None,
     k_frac=None,
     show_beside=False,
+    futility_powered=False,
 ):
     """Addendum 2: the decision at ONE look on the per-seed differences `ds` (all seeds so far). Refused unless len(ds)
     is a look. harm = t above the look's t boundary AND >= ceil(K_MIN * n / 8) seeds > 0, or >= ceil(k_frac * n) when
@@ -567,14 +569,15 @@ def seq_decision(
             (bs[-1]["z"] - h["t"] * math.sqrt(tau) - drift * (1 - tau)) / math.sqrt(1 - tau)
         )
     is_open = futility_open(n, claimed, looks, alpha, sd_pre=sd_pre, bounds=bounds)
+    powered = h["sd"] > 0 and mde <= claimed  # A-m4: a zero observed SD gives mde 0, not power
     if crossed:
         decision = "harm"
     elif n == cap:
         decision = "cap"
-    else:
-        decision = "futility" if is_open and cp < FUTILITY_CP else "continue"
+    else:  # futility_powered (E1c addendum 3): an unpowered futility look continues to the cap (non-binding: no alpha)
+        stop = is_open and cp < FUTILITY_CP and (powered or not futility_powered)
+        decision = "futility" if stop else "continue"
     where = f"look {j + 1} of {len(looks)}, n={n}"
-    powered = h["sd"] > 0 and mde <= claimed  # A-m4: a zero observed SD gives mde 0, not power
     power = f"mde at n={n} {mde:.4f} {'<=' if mde <= claimed else '>'} claimed {claimed:.4f}: " + (
         "powered: a null, NULL-RECORD path (one 10x re-test before any deletion)"
         if powered
