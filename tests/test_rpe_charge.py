@@ -501,6 +501,77 @@ def test_e1c_beside_hodges_lehmann_recovers_a_known_shift():
     assert b["hl"] == pytest.approx(0.2) and b["hl_ci"][0] < 0.2 < b["hl_ci"][1]
 
 
+def _e1c_compare(kind, n, **kw):
+    runs = R.fixture_runs(kind, seeds=R.E1C_SEEDS[:n], arms=R.E1C_ARMS)
+    return R.analyse(
+        "production", runs, None, seeds=R.E1C_SEEDS[:n], design=R.E1C, logs_pass=True, **kw
+    )
+
+
+def test_e1c_compare_decides_h_p1_from_seq_record_with_the_beside_prints():
+    """Brief item 1: the compare path takes the campaign design; H-P1 is seq_record(d_s, **E1C)."""
+    a = _e1c_compare("harm", 64)
+    h = a["hs"]["H-P1"]
+    assert list(a["hs"]) == ["H-P1"] and a["valid"] and not a["pending"]
+    assert (
+        h["status"].startswith("MET at look 1 (64 seeds)")
+        and "beside (no bar): k 64/64" in h["status"]
+    )
+    assert h["seq"] == R.seq_record(h["d"], **R.E1C) and h["met"]
+    assert "H-P1" in R.render_e1c(a) and h["status"] in R.render_e1c(a)
+
+
+def test_e1c_compare_refuses_what_the_design_does_not_name():
+    runs = R.fixture_runs("harm", seeds=R.E1C_SEEDS[:64], arms=R.E1C_ARMS)
+    big = R.fixture_runs("harm", seeds=R.E1C_SEEDS[:200], arms=R.E1C_ARMS)
+    with pytest.raises(
+        R.Refused
+    ):  # E1b's looks stop at 176: without the design 200 seeds is refused
+        R.analyse("production", big, None, seeds=R.E1C_SEEDS[:200], logs_pass=True)
+    with pytest.raises(R.Refused):  # 65 seeds is no look of the E1c design
+        R.analyse("production", runs, None, seeds=R.E1C_SEEDS[:65], design=R.E1C, logs_pass=True)
+    with pytest.raises(R.Refused):  # production tier only (section 3)
+        R.analyse("no-encoder", runs, None, seeds=R.E1C_SEEDS[:64], design=R.E1C, logs_pass=True)
+
+
+def test_e1c_compare_reports_ep2_beside_with_its_mde_and_gates_nothing():
+    a = _e1c_compare("harm", 64)
+    q = a["hs"]["H-P1"]["seq"]
+    e = a["ep2c"]
+    assert (
+        e["claimed"] == R.DR and e["mde"] == q["mde"] and e["mean"] == pytest.approx(-0.1, abs=1e-2)
+    )
+    assert e["powered"] == (e["mde"] <= R.DR) and "E-P2" in R.render_e1c(a)
+
+
+def test_e1c_compare_prints_the_exact_zero_read_at_each_look():
+    """Section 5.3: the cumulative exact-zero fraction at every look up to the stop of record."""
+    a = _e1c_compare("noharm", 128)
+    assert [(z["n"], z["zeros"]) for z in a["zero_read"]] == [(64, 1.0), (128, 1.0)]
+    assert "exact-zero" in R.render_e1c(a)
+
+
+def test_e1c_compare_cli_reads_the_campaign_design(tmp_path):
+    work = tmp_path / "work"
+    _write_runs(
+        work / "results" / "production",
+        R.fixture_runs("harm", seeds=R.E1C_SEEDS[:64], arms=R.E1C_ARMS),
+    )
+    logs = work / "logs"
+    assert R.main(["fixture", str(logs)]) == 0
+    (logs / "tier_red.log").write_text(
+        "".join(
+            f"RED tier={t} rc=3 result_file_exists=False\n" for t in ("production", "no-encoder")
+        ),
+        encoding="utf-8",
+    )
+    out = work / "e1c.md"
+    d = str(work / "results" / "production")
+    assert R.main(["compare", d, "production", "--e1c", "--look", "1", str(out)]) == 0
+    md = out.read_text(encoding="utf-8")
+    assert "MET at look 1 (64 seeds)" in md and "ALL HOLD" in md and "PENDING" not in md
+
+
 # ----------------------------------------------------------------------------------- self-check
 def test_selfcheck_main_runs_brain_free(capsys):
     assert R.main() == 0
