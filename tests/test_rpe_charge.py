@@ -629,6 +629,32 @@ def test_e1c_tail_census_names_the_first_tick_real_and_pfrozen_differ():
     assert same is None
 
 
+def test_e1c_compare_on_a_partial_campaign_lists_what_is_owed_and_does_not_crash():
+    """The planner reads `pending` before any run exists: no data is a pending list, not a crash."""
+    a = R.analyse(
+        "production",
+        {},
+        None,
+        seeds=R.E1C_SEEDS[:64],
+        design=R.E1C,
+        logs_pass=True,
+        sim_campaigns=0,
+    )
+    assert "real_21000 missing" in a["pending"] and "pfrozen_21063 missing" in a["pending"]
+    assert a["tail"] == [] and a["zero_read"] == []
+    half = R.fixture_runs("harm", seeds=R.E1C_SEEDS[:64], arms=("real",))
+    b = R.analyse(
+        "production",
+        half,
+        None,
+        seeds=R.E1C_SEEDS[:64],
+        design=R.E1C,
+        logs_pass=True,
+        sim_campaigns=0,
+    )
+    assert "pfrozen_21000 missing" in b["pending"] and b["tail"] == []
+
+
 def test_e1c_compare_cli_reads_the_campaign_design(tmp_path):
     work = tmp_path / "work"
     _write_runs(

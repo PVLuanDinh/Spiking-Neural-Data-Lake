@@ -1582,7 +1582,7 @@ def analyse(
                 "tick": first_divergence(runs[("real", s)], runs[("pfrozen", s)]),
             }
             for s in p1_seeds
-            if abs(d_p1[s]) > 0.4
+            if s in d_p1 and abs(d_p1[s]) > 0.4
         ]
     a["wall"] = sum(d["run_s"] for d in runs.values())
     a["n_runs"] = len(runs)
