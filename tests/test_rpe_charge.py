@@ -407,6 +407,43 @@ def test_cross_prints_each_methods_null_precondition_beside_its_verdict(both_tie
     assert f"null_precondition ValenceLearner: {ok_v}" in txt
 
 
+# ------------------------------------------------------------------------- E1c (T122) design reds
+def _tile(vals, n):
+    return [vals[i % len(vals)] for i in range(n)]
+
+
+def test_e1c_design_is_one_parameter_set_on_the_existing_sequential_path():
+    assert R.E1C["looks"] == tuple(range(64, 705, 64)) and R.E1C["k_frac"] == 0.5
+    assert R.E1C["claimed"] == R.DH and R.E1C["sd_pre"] == 0.3097
+    assert len(R.E1C_SEEDS) == 704 and R.E1C_SEEDS[0] == 21000
+    q = R.seq_record([0.0] * 704, **R.E1C)  # the same walk E1b uses, parameters only (P2)
+    assert q["decision"] != "harm" and q["k_min"] == math.ceil(0.5 * q["n"])
+
+
+def test_e1c_r1_compare_fixture_at_704():
+    """R1 at the cap: pfrozen = real + 0.1 on every seed reads MET; pfrozen = real reads NOT MET."""
+    looks = R.E1C["looks"]
+    assert R.seq_decision([0.1] * 704, R.DH, looks, sd_pre=0.3097, k_frac=0.5)["decision"] == "harm"
+    assert R.seq_decision([0.0] * 704, R.DH, looks, sd_pre=0.3097, k_frac=0.5)["decision"] != "harm"
+
+
+def test_e1c_r4_the_half_rule_crosses_where_five_eighths_cannot():
+    """R4: 58% of seeds positive, t past the boundary: MET under ceil(n/2), not under ceil(5n/8)."""
+    ds = _tile([0.3] * 58 + [-0.3] * 42, 704)
+    looks = R.E1C["looks"]
+    assert 704 / 2 <= sum(x > 0 for x in ds) < math.ceil(5 * 704 / 8)
+    assert R.seq_decision(ds, R.DH, looks, sd_pre=0.3097, k_frac=0.5)["decision"] == "harm"
+    assert R.seq_decision(ds, R.DH, looks, sd_pre=0.3097)["decision"] != "harm"
+
+
+def test_e1c_r4b_the_half_rule_refuses_a_minority_carried_mean():
+    """R4b: 30% of seeds at +0.30, 70% at -0.04 (mean +0.062): t crosses, the guard refuses it."""
+    ds = _tile([0.30] * 30 + [-0.04] * 70, 704)
+    looks = R.E1C["looks"]
+    assert R.seq_decision(ds, R.DH, looks, sd_pre=0.3097, k_frac=0.5)["decision"] != "harm"
+    assert R.seq_decision(ds, R.DH, looks, sd_pre=0.3097, k_frac=0.0)["decision"] == "harm"
+
+
 # ----------------------------------------------------------------------------------- self-check
 def test_selfcheck_main_runs_brain_free(capsys):
     assert R.main() == 0

@@ -174,6 +174,17 @@ SEQ = {
     "H-P1": {"claimed": DH, "looks": P1_LOOKS, "sd_pre": SD_PRE["H-P1"], "bounds": None},
     "H-V1": {"claimed": DM, "looks": V1_LOOKS, "sd_pre": SD_PRE["H-V1"], "bounds": V1_SHAPE_T},
 }
+# E1c (T122, evidence/e1c-plan-w-powered.md, frozen 082b66f8): the powered production H-P1 follow-up, ONE parameter set
+#   on the same sequential path (P2: no copy). Cap 704 at 11 looks from the zero-preserving resample of E1b's 80
+#   production d_s (section 5.1b); k_frac 1/2 replaces E1b's ceil(5n/8), which cannot fire at large n (section 5.2).
+E1C_SEEDS = range(21000, 21704)
+E1C = {
+    "claimed": DH,
+    "looks": tuple(range(64, 705, 64)),
+    "sd_pre": 0.3097,
+    "bounds": None,
+    "k_frac": 0.5,
+}
 E1_HP1_T = 2.82  # E1's recorded H-P1 t (the "mirrored bar" signal), beside the BRIDGE read-out
 # Addendum 3 (owner ruling #4616): the production tier alone decides deletion; no-encoder is reported beside, never deletes.
 SINGLE_TIER_HARM_DELETES = True
@@ -472,9 +483,12 @@ def futility_open(n, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, boun
     )
 
 
-def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, bounds=None):
+def seq_decision(
+    ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, bounds=None, k_frac=None
+):
     """Addendum 2: the decision at ONE look on the per-seed differences `ds` (all seeds so far). Refused unless len(ds)
-    is a look. harm = t above the look's t boundary AND >= ceil(K_MIN * n / 8) seeds > 0; futility (non-binding, looks
+    is a look. harm = t above the look's t boundary AND >= ceil(K_MIN * n / 8) seeds > 0, or >= ceil(k_frac * n) when
+    a design passes `k_frac` (E1c: 1/2; E1b's ceil(5n/8) cannot fire at large n on its own shape); futility (non-binding, looks
     before the cap) = conditional power under the frozen claimed effect, observed SD, observed t in place of z, below
     FUTILITY_CP, taken only where `futility_open` (addendum 4); cap = the last look without a crossing. Addendum 3:
     powered = the mde at the STOPPED seed count n with the observed SD, (t_k + t_{.80, n-1}) * SD / sqrt(n), <= claimed.
@@ -490,7 +504,7 @@ def seq_decision(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, boun
         statistics.NormalDist(),
     )
     h, b, bound_t = harm(ds), bs[looks.index(n)], _bound_t(n, looks, alpha, bounds)
-    k_min = math.ceil(K_MIN * n / N_SEEDS)
+    k_min = math.ceil(K_MIN * n / N_SEEDS) if k_frac is None else math.ceil(k_frac * n)
     crossed = h["t"] > bound_t and h["k"] >= k_min
     mde = _mde(n, bound_t, h["sd"])
     cp = None
