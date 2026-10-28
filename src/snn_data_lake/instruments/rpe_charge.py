@@ -1575,6 +1575,15 @@ def analyse(
             "powered": q["mde"] <= DR,
         }
         a["zero_read"] = zero_read(hs["H-P1"]["d"], looks, design, sim_campaigns)
+        a["tail"] = [  # section 4's census: |d| > 0.4 and where `real` and `pfrozen` first differ
+            {
+                "seed": s,
+                "d": d_p1[s],
+                "tick": first_divergence(runs[("real", s)], runs[("pfrozen", s)]),
+            }
+            for s in p1_seeds
+            if abs(d_p1[s]) > 0.4
+        ]
     a["wall"] = sum(d["run_s"] for d in runs.values())
     a["n_runs"] = len(runs)
     return a
@@ -1753,6 +1762,10 @@ def render_e1c(a):
         )
         for z in a["zero_read"]
     ]
+    L.append("\n## Tail census (|d| > 0.4; beside, no bar)\n")
+    L += [
+        f"- seed {t['seed']}: d {t['d']:+.4f}, first divergence tick {t['tick']}" for t in a["tail"]
+    ] or ["- none"]
     L.append(f"\n- perception tier of every number above: {tier} (reported {WANT[tier][0]})")
     L.append(
         "- **If VALIDITY is not ALL HOLD every verdict above is VOID.**"
@@ -1770,6 +1783,23 @@ def _series_differ(ra, rb, h0):
     ia = [ra["v"]["r"][i] for i in _hmask(ra, h0)]
     ib = [rb["v"]["r"][i] for i in _hmask(rb, h0)]
     return ia != ib
+
+
+# distinct-from: _series_differ (above) -- a yes/no over the held-out ticks; the census needs WHERE the whole series
+#   first differs. graph-exists "first tick where two recorded series differ": recorded_span / replay_twice, term overlap
+def first_divergence(ra, rb):
+    """The first tick at which two runs' action or reward series differ (whole series), None when they never do."""
+    act = next(
+        (
+            i
+            for i, (a, b) in enumerate(zip(ra["series"]["action"], rb["series"]["action"]))
+            if a != b
+        ),
+        None,
+    )
+    rew = next((t for t, a, b in zip(ra["v"]["tick"], ra["v"]["r"], rb["v"]["r"]) if a != b), None)
+    found = [x for x in (act, rew) if x is not None]
+    return min(found) if found else None
 
 
 # reuses: seq_record (the first stop over the look prefixes); graph-exists hits (sleep_plasticity_ab, pool_selection,

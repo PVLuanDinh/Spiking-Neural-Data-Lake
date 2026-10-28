@@ -603,6 +603,32 @@ def test_e1c_compare_prints_the_power_recompute_beside_the_verdict_past_12_5_per
     assert "power at the observed zero rate" not in R.render_e1c(clean)
 
 
+def test_e1c_tail_census_names_the_first_tick_real_and_pfrozen_differ():
+    """Section 4: seeds with |d| > 0.4 and the first tick at which their recorded series differ."""
+    runs = R.fixture_runs("harm", seeds=R.E1C_SEEDS[:64], arms=R.E1C_ARMS)
+    s_act, s_r = R.E1C_SEEDS[3], R.E1C_SEEDS[9]
+    for s, act_from, r_from in ((s_act, 123, 200), (s_r, None, 250)):
+        real, pf = runs[("real", s)], runs[("pfrozen", s)]
+        pf["series"]["action"] = list(real["series"]["action"])
+        if act_from is not None:
+            pf["series"]["action"][act_from:] = [9] * (len(pf["series"]["action"]) - act_from)
+        pf["v"]["r"] = [x + (0.5 if i >= r_from else 0.0) for i, x in enumerate(real["v"]["r"])]
+    a = R.analyse(
+        "production",
+        runs,
+        None,
+        seeds=R.E1C_SEEDS[:64],
+        design=R.E1C,
+        logs_pass=True,
+        sim_campaigns=5,
+    )
+    assert [(t["seed"], t["tick"]) for t in a["tail"]] == [(s_act, 123), (s_r, 250)]
+    assert all(abs(t["d"]) > 0.4 for t in a["tail"])
+    assert f"seed {s_act}" in R.render_e1c(a) and "first divergence tick 123" in R.render_e1c(a)
+    same = R.first_divergence(runs[("real", s_act)], runs[("real", s_act)])
+    assert same is None
+
+
 def test_e1c_compare_cli_reads_the_campaign_design(tmp_path):
     work = tmp_path / "work"
     _write_runs(
