@@ -602,6 +602,16 @@ def test_e1c_r1_voids_on_the_campaigns_own_failed_controls(e1c_704):
         assert "VOID" in _quoted(a)
 
 
+def test_e1c_record_labels_e_p2_mde_verdict_and_sensitivity(e1c_704):
+    """Panel #5719 minors: E-P2 names its mde as the H-P1 stop's; "the verdict stands" only at a
+    stop of record; the computed seed-sensitivity line is printed."""
+    stop = R.render_e1c(_r1(e1c_704["harm"]))
+    assert "the H-P1 stop's boundary mde" in stop and "the verdict stands" in stop
+    assert "- sensitivity H-P1 without degenerate seeds" in stop
+    cont = R.render_e1c(_e1c_compare("noharm", 64, sim_campaigns=20))
+    assert "the verdict stands" not in cont and "no stop of record yet (no verdict)" in cont
+
+
 def test_e1c_futility_at_640_stops_only_when_it_would_read_powered():
     """Addendum 3 (delegate D-25, panel #5719 M3): at 640 the frozen rule stops for futility
     INCONCLUSIVE; under E1C (futility_powered) an unpowered futility look continues to the cap,

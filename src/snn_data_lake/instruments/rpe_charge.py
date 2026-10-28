@@ -1796,6 +1796,14 @@ def render_e1c(a):
             f"{'n/a' if q['cp'] is None else format(q['cp'], '.3f')} (futility < {FUTILITY_CP}, "
             f"{'open' if q['futility_open'] else 'closed'} at this look) -> {q['decision']}"
         )
+    sv = a["sens"].get(
+        "H-P1"
+    )  # computed by analyse; E1b's render prints it, the E1c record now does too
+    if sv:
+        L.append(
+            f"- sensitivity H-P1 without degenerate seeds {sv['dropped']}: t={sv['t']:.3f} ({sv['k']}/{sv['n']})"
+            + ("; **seed-sensitive**" if sv["seed_sensitive"] else "")
+        )
     stopped = (
         a["valid"] and "seq" in h and h["seq"]["decision"] != "continue"
     )  # E-P2 is read at a stop only
@@ -1804,6 +1812,7 @@ def render_e1c(a):
         "\n## E-P2 (beside, benefit; decides nothing)\n- "
         + (
             f"mean benefit {e['mean']:+.4f} against DR {e['claimed']}; mde {e['mde']:.4f} "
+            f"(the H-P1 stop's boundary mde, read against DR) "
             f"{'<=' if e['powered'] else '>'} DR: {'powered' if e['powered'] else 'INCONCLUSIVE (unpowered)'}"
             if e
             else "VOID: not read"
@@ -1831,6 +1840,8 @@ def render_e1c(a):
         "- **If VALIDITY is not ALL HOLD every verdict above is VOID.**"
         if not a["valid"]
         else "- validity ALL HOLD: the verdict stands."
+        if stopped
+        else "- validity ALL HOLD: no stop of record yet (no verdict)."
     )
     L.append(f"\nwall: total run_s over runs = {a['wall']:.0f}s ({a['n_runs']} runs)")
     return "\n".join(L)
