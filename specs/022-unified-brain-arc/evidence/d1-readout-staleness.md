@@ -641,6 +641,22 @@ bound of `SD_1`: SD_1 x sqrt(7 / chi^2_{.20,7}), about 1.35 x SD_1. The point SD
 
 **Unchanged:** the verdict, the boundaries, the futility rule, A0c and the remainder of A0d.
 
+#### A0f -- 2026-10-28: registration, one wording fix and a cross-campaign seed note (pre-build, pre-pilot; no data)
+
+Written by the int3 integrator. Policy-enforcer AGREE #5642 (on A0e: 0/0/0, 1 nit) cleared the registration rows. The
+owner's condition, "an enforcer review of the full pre-reg before any run" (#5611), is met by #5637, #5638 and #5642.
+
+- **Registered.** tasks.md now carries T121 (row L1b-STALE, red family LS, row LS-R1). Its runs queue behind E1c
+  (T122). Like every SNDL brain campaign, they run one at a time under delegate D-13 REVISED.
+- **Wording (#5642 nit).** In A0e m1, "the pre-registered ALL-ROWS gap becomes P1's reading" means the CALIBRATED
+  all-rows gap. A0b's calibration is kept in the switch, and the raw all-rows gap is reported beside it.
+- **Cross-campaign seed note.** `engine/brain.py` builds `GridPlaceMap(seed=self._seed)`, and grid module mi seeds its
+  cells with run seed + 1000 x mi.
+  - This row's run seeds 22000-22039 (and through 22999 under A0d) are also the mi = 1 sub-seeds of E1c's runs
+    21000-21703 (T122).
+  - Within this row, offsets of 1000 or more never land on another run of the same block's first 1000 seeds.
+  - Each campaign's contrast compares arms of the SAME seed, so neither result is affected. Disclosed; no block moves.
+
 ## 3. Record
 
 *(empty until Stage 0)*
