@@ -411,3 +411,127 @@ facf2057c5a8e084a266f7019dc08722b11a4c26bd264a76a6c60cb5e0f43608  /mnt/d/AI-proj
 
 - procs.ps1's wider 'rpe_charge' also matches the driver's own compare and tool steps (enforcer #5696 nit). That is
   harmless: claim() runs it only at start and after a yield, when no step of this driver is running.
+
+## Addendum 3 (2026-10-28, before look 1 and before R5 of record): futility only where powered; R5's full row; errata
+
+Arc-4 panel #5706 (lenses A #5719, B #5721, C #5720). The futility change was ruled by delegate D-25 (launcher-1028,
+under the owner's delegation; it is the delegate's decision, not the owner's words). P1 item 2 permits it as a dated
+pre-data addendum: no E1c run, no GO and no R5 of record exist yet (`lanes/e1c-plan-w-work/logs/` is empty).
+
+**A3-1. Futility stops at 640 only where it would read powered (D-25; #5719 M3, #5721 m2).**
+- Under section 5.3 as frozen, about 1 in 6 no-harm campaigns stop for futility at 640 UNPOWERED, which is
+  INCONCLUSIVE (section 5.4's own .1665). Section 8's "the design makes this rare" is therefore false. Corrected here.
+- The rule, from int3 e2ad9e91: `seq_decision` takes one parameter, `futility_powered` (default False, the frozen
+  behaviour; every E1b design is unchanged, and E1b's record renders byte-identically). `E1C` sets it True. A futility
+  look that would NOT read powered continues to the cap. Futility is non-binding, so continuing spends no alpha.
+- Its red: the frozen rule stops INCONCLUSIVE at 640 while the variant continues; a powered futility look stops
+  under both (`test_e1c_futility_at_640_stops_only_when_it_would_read_powered`).
+- The reference table under the variant: `sim_guard` on E1b's 80 production d_s, 2,000 campaigns per shape, stream
+  "e1c-a3" (`arc4-fold-row/DERIVE-A3.log`). It replaces section 5.4's rows for E1c.
+
+  | shape | harm MET | futility-powered | cap-powered | cap-under | INCONCLUSIVE |
+  |---|---|---|---|---|---|
+  | null (no harm) | .0020 (type I) | .7450 | .2460 | .0070 | .0070 |
+  | shift (+0.035, SD 0.3097) | .8855 | .0400 | .0740 | .0005 | .0005 |
+  | up (+0.035, scale 1.115) | .8145 | .0125 | .1100 | .0630 | .0630 |
+
+  INCONCLUSIVE under no harm falls from .1665 to .0070. Lens A measured the same variant independently: .0065 / .0010
+  / .0610.
+- Read the harm column correctly (panel C #5747 Dm1, panel A #5748 m4). The variant only CONTINUES where the frozen
+  rule stopped, so on every path its harm events include the frozen rule's; power and type I can only rise. Lens A
+  paired 4,000 campaigns on the same draws: the variant never lost a frozen crossing (0 of 4,000), with paired power
+  .8155 against .8165. ".8145 against the frozen .8335" compares two DIFFERENT streams. Section 5.3's .8335 is not
+  reproduced on any other stream (.8105 to .8245), so the cap's real margin over .80 is about .015 to .025, not .033.
+  Type I stays below the boundaries' .05, because futility is non-binding.
+- Power at the upper SD against P1's .80 floor (panel B #5746 M1). The table's .8145 is 1.67 SE above .80 on 2,000
+  campaigns, which is too thin to show section 5.3's "clears .8 by 2 SE".
+  - The three independent 2,000-campaign runs of the variant (.8145 on e1c-a3, .8245 on r5, .8045 on lens B's
+    stream) pool to .8145 over 6,000 campaigns, 2.9 SE above .80.
+  - R5 now also checks the floor directly, at 20,000 campaigns (A3-2): .8233, with -2 SE = .8179 >= .80
+    (R5-MUTANTS-3.log).
+  - The cap of 704 stands.
+- Why E1c's futility uses the point SD while D1's moves to the upper SD (panel C Dm7): E1c's futility first opens at
+  640, past its upper-SD fixed-sample target of 601. So the point-SD rule never opens futility before the target.
+
+**A3-2. R5 reproduces the whole 704 row, not two cells (#5719 M1, #5720 M1, #5721 M1).**
+- Section 5.3 says R5 reproduces "5.1b's 704 row". The bound r5.py checked only the two harm-power cells. So a harness
+  with the futility bound deleted passed R5.
+- R5 now runs all three shapes at 2,000 campaigns (stream "r5") and makes FOUR reproduction checks, family-wise .05
+  (Bonferroni over 4; z 2.576 two-sided, 2.326 one-sided). Each band is in SE of the DIFFERENCE (addendum 2):
+  - shift harm, up harm and null futility-powered: two-sided;
+  - null INCONCLUSIVE <= reference + z SE: one-sided.
+- It adds TWO P1 floors, each at 20,000 campaigns on its own stream, so a thin margin is resolved instead of guessed
+  (panel B #5746 M1, panel C Dm2):
+  - up harm power - 2 SE >= .80;
+  - null type I + 2 SE <= .005 (D-25). A fixed .005 bar on a 2,000-campaign rate would false-fail a correct harness 7
+    to 24% of the time near .003 to .004.
+- The band is FROZEN here at z 2.576 per check (delegate D-25a, which amends D-25 condition 4's "2 SE"). At 2 SE each of
+  the 4 reproduction checks false-fails a correct harness with P = .046, and the family with P = 1 - .954^4 ~ .17. At
+  z 2.576 (Bonferroni over 4) the family rate is about .04.
+- The R5 of record uses a FRESH stream (D-25a), in two parts, both required:
+  - the statistical checks (4 reproduction + 2 floors) run on `r5go-<first 12 hex of the GO's TREE_SHA>`, a name that
+    cannot exist, or have been looked at, before the GO names the tree;
+  - the code-identity replay runs on the pinned streams `r5` / `r5-floor-up` / `r5-floor-null`, compared with EXACT.
+- An exploratory R5 ran BEFORE this freeze (D-25a condition 3), on the pinned streams, real E1C
+  (`R5-MUTANTS-3.log`). It PASSED at BOTH bands:
+  - shift harm: gap .0065, 2 SE band .0201, z 2.576 band .0259;
+  - up harm: gap .0100, bands .0246 / .0317;
+  - null futility-powered: gap .0085, bands .0276 / .0355;
+  - null INCONCLUSIVE .0070 against .0123 / .0131.
+  No row passes at z 2.576 that fails at 2 SE.
+- A second exploratory look, the integrator's dry run of the two-part R5 on the non-record stream `dry-integrator-1820`,
+  also PASSED at both bands (`R5-DRY-FRESH.log`): gaps .0085 / .0035 / .0135, INCONCLUSIVE .0030. It also showed that R5
+  refuses without TREE_SHA. No `r5go-` stream has been run.
+- A FAIL halts look 1 and is attributed, never re-run under a new stream.
+- Every stream is named, so R5 is DETERMINISTIC (panel C Dm2). R5 therefore also pins the fold tree's own rates BIT FOR
+  BIT, as a code-identity check (panel A #5748 m2: the statistical checks cannot see a changed futility threshold or an
+  extra futility look). `r5.EXACT` comes from `R5-EXACT.log`. The R5 of record at GO is a replay on the GO tree; a
+  changed number means the harness changed, and that is a halt.
+- Its reds (`R5-MUTANTS-3.log`). Real E1C passes all 7 rows. Each mutant fails:
+  - futility off: futility-powered and identity;
+  - the frozen rule: INCONCLUSIVE and identity;
+  - the 5/8 conjunct: harm, the floor and identity;
+  - futility also at 576, FUTILITY_CP .05, FUTILITY_CP .30: identity only, the blind spot lens A named.
+- Its reds, recorded (`arc4-fold-row/R5-MUTANTS.log`): the check set was written BEFORE this run. On stream "r5",
+  real E1C PASSES. Each mutant design FAILS on its own check:
+  - futility off (`sd_pre=None`): null futility-powered .0000;
+  - the frozen futility rule: null INCONCLUSIVE .1525;
+  - E1b's 5/8 sign conjunct: harm power .0035 / .0025.
+  These runs are design evidence. The R5 of record runs at GO on the GO tree.
+
+**A3-3. Errata (no rule changes).**
+- Section 2: E1b has 10 seeds with |d| > 0.4, not 8 (8 holds at 0.45). The median is -0.00204, not 0.0. Exact zeros:
+  5. (Computed from the 80 d_s, 2026-10-28.)
+- Section 2: "the P2 reading is under review" is stale. bd46b17d settled it before the freeze: not a P2 pair.
+- Section 6's seed-overlap note predates D1 A0d. L1b-STALE's block now runs through 22999, so all of E1c's mi = 1
+  sub-seeds (22000-22703) may coincide with L1b-STALE run seeds. Each campaign compares arms of the SAME seed, so
+  neither result is affected.
+- Size (#5721 m1, m5):
+  - the fixed-sample target is 485 seeds at SD 0.3097 and 601 at the upper SD 0.345;
+  - the cap of 704 is 601 x 1.17. Only about 1.06 of that is the sequential (look) inflation: a normal-model run
+    reaches .8083 at 640 (panel A #5748 m5). The rest comes from the k >= n/2 direction guard and the
+    zero-preserving data shape;
+  - the owner's "~485 seeds" was the fixed-sample target. Under no harm the frozen design expected about 646 seeds;
+    the variant adds about 12; the worst case is 704 seeds (1,408 production runs plus 3 controls).
+  The GO post states these to the owner.
+- Harm branch (#5721 m3): if harm is MET and the plan nudge leaves the live path, `_planned_seq`'s
+  `dormancy_gate.EXEMPT` entry names its expiry: the replacement row's pre-registration. A tasks.md row for that
+  replacement is opened in the same commit as the deletion. If no pre-registration is opened within the next arc,
+  the integrator raises it to the owner. No hand-set duration is introduced.
+- R4 (#5719, #5720 m2, #5721 m8): R4's test keeps its synthetic 58/42 shape. The registered input (E1b's 80 d_s +
+  0.035, resampled to 704) also discriminates: 405/704 positive, the half rule MET, five-eighths NOT MET (lens probes).
+  Disclosed, not re-tested here.
+
+**A3-4. The GO file (driver changes from the panel; their bound hashes go in addendum 4).** The GO now names, each as
+its own key:
+- `TREE=<40 hex>` (exactly one);
+- `DRIVER_SHA256=<manifest sha>`;
+- `GATE_LOG=<path>`: the GO commit's gate run of tests/test_rpe_charge.py, written by gate_each.ps1. Its `tree` line must
+  be the run tree's. Its `tests:` line must be exactly `tests/test_rpe_charge.py`. Its pytest line must read `N passed in`
+  with nothing failed, errored, deselected or skipped. A subset run is refused (panel A #5748 m1), and a CRLF GO
+  resolves.
+
+campaign.sh refuses without any of them, renews `resource:timing` before every launch and inside every wait (TTL >=
+run timeout + 600 s), and refuses environment overrides of its work paths. Its pre-steps are TREE-STAMPED (panel A
+#5748 M1). The fixture log, the tier reds (TR1/TR2) and R5 are skipped only when their own `logs/<step>.tree` equals
+this run tree. A PASS left by an older tree, or by a hand run, re-runs.
