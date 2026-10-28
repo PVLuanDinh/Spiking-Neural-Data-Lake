@@ -518,7 +518,11 @@ def test_e1c_compare_decides_h_p1_from_seq_record_with_the_beside_prints():
         and "beside (no bar): k 64/64" in h["status"]
     )
     assert h["seq"] == R.seq_record(h["d"], **R.E1C) and h["met"]
-    assert "H-P1" in R.render_e1c(a) and h["status"] in R.render_e1c(a)
+    md = R.render_e1c(
+        a
+    )  # the record reads section 8's disposition (wf-rv #5689 m2), with the beside prints
+    assert "H-P1" in md and R.e1c_disposition(a) in md and "beside (no bar): k 64/64" in md
+    assert R.e1c_disposition(a).startswith("HARM MET at look 1 (n=64)")
 
 
 def test_e1c_compare_refuses_what_the_design_does_not_name():
@@ -579,6 +583,41 @@ def test_e1c_r1_compare_fixture_at_704_reads_met_not_met_and_void(e1c_704):
     assert not void["hs"]["H-P1"]["met"] and "VOID" in R.render_e1c(void)
     ok = _r1(e1c_704["harm"], {"planted_harm": R.planted_rows("harm")})
     assert ok["valid"] and ok["hs"]["H-P1"]["met"]
+
+
+def _quoted(a):
+    """The '- t=' line of the E1c record: campaign.sh quotes it into every look's board post."""
+    return next(x for x in R.render_e1c(a).splitlines() if x.startswith("- t="))
+
+
+def test_e1c_record_reads_section_8_never_e1b_null_record(e1c_704):
+    """wf-rv #5689 m2 (spec sections 1, 4, 8): each stop reads section 8's disposition.
+    E1b's "powered: a null, NULL-RECORD path" never reaches the E1c record.
+    E-P2 is read at a stop of record only."""
+    capped = R.analyse(
+        "production",
+        e1c_704["harm"],
+        None,
+        seeds=R.E1C_SEEDS,
+        design={
+            **R.E1C,
+            "k_frac": 1.5,
+        },  # the direction guard can never pass: a POWERED NOT MET at the cap
+        logs_pass=True,
+        sim_campaigns=20,
+    )
+    q = capped["hs"]["H-P1"]["seq"]
+    assert q["decision"] == "cap" and q["powered"]
+    line = _quoted(capped)
+    assert (
+        "no harm of 0.035 or more on production at 600 ticks" in line and "`_plan_w` stays" in line
+    )
+    assert "NULL-RECORD path" not in R.render_e1c(capped)
+    assert "HARM MET" in _quoted(_r1(e1c_704["harm"]))
+    assert "UNDERPOWERED" in _quoted(_r1(e1c_704["noharm"]))  # zero SD: not powered
+    assert "VOID" in _quoted(_r1(e1c_704["harm"], {"planted_harm": R.planted_rows("null")}))
+    cont = _e1c_compare("noharm", 64, sim_campaigns=20)  # look 1 of 11, futility closed: no stop
+    assert "CONTINUE" in _quoted(cont) and "no stop of record yet" in R.render_e1c(cont)
 
 
 def test_e1c_zero_read_recomputes_power_only_above_the_validity_limit():
@@ -673,7 +712,7 @@ def test_e1c_compare_cli_reads_the_campaign_design(tmp_path):
     d = str(work / "results" / "production")
     assert R.main(["compare", d, "production", "--e1c", "--look", "1", str(out)]) == 0
     md = out.read_text(encoding="utf-8")
-    assert "MET at look 1 (64 seeds)" in md and "ALL HOLD" in md and "PENDING" not in md
+    assert "HARM MET at look 1 (n=64)" in md and "ALL HOLD" in md and "PENDING" not in md
 
 
 # ----------------------------------------------------------------------------------- self-check

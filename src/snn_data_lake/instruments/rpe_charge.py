@@ -491,6 +491,20 @@ def futility_open(n, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, boun
 # distinct-from: instruments/paired_contrast.py -- paired t and the exact sign-flip FPR only, no robust location.
 #   graph-exists "trimmed mean" / "Hodges-Lehmann median of Walsh averages" / "Wilcoxon signed-rank confidence
 #   interval": NO LEXICAL MATCH (2026-10-28); stdlib suffices for a print that gates nothing
+# distinct-from: memory_diagnostic.py -- its ReferenceReadout is a ridge readout run "beside" the grower (term overlap);
+#   this is seq_decision's own beside-print suffix, moved out unchanged so e1c_disposition can reuse it
+def beside_text(bes):
+    """The beside prints (E1c section 4, delegate D-12b) as the verdict line's suffix; empty without them."""
+    if not bes:
+        return ""
+    lo, hi = bes["hl_ci"]
+    return (
+        f" | beside (no bar): k {bes['k']}/{bes['n']}, trim10 {bes['trim10']:+.4f},"
+        f" HL {bes['hl']:+.4f} [{lo:+.4f}, {hi:+.4f}], zeros {bes['zeros']:.3f},"
+        f" |d|>0.4 {bes['tail']}"
+    )
+
+
 def beside(ds, trim=0.10, z=1.959964):
     """E1c section 4, printed beside a look's verdict and gating NOTHING: the sign count k/n, the trimmed mean (`trim`
     cut from each tail), the Hodges-Lehmann shift (median of the Walsh averages) with its ~95% signed-rank interval
@@ -575,13 +589,9 @@ def seq_decision(
         "cap": f"NOT MET at the cap ({where}), {power}",
     }[decision]
     bes = beside(ds) if show_beside else None
-    if bes:  # E1c section 4: printed beside the verdict; it changes no field the decision reads
-        lo, hi = bes["hl_ci"]
-        status_ += (
-            f" | beside (no bar): k {bes['k']}/{bes['n']}, trim10 {bes['trim10']:+.4f},"
-            f" HL {bes['hl']:+.4f} [{lo:+.4f}, {hi:+.4f}], zeros {bes['zeros']:.3f},"
-            f" |d|>0.4 {bes['tail']}"
-        )
+    status_ += beside_text(
+        bes
+    )  # E1c section 4: printed beside the verdict; it changes no field the decision reads
     return {
         "beside": bes,
         "look": j + 1,
@@ -1716,6 +1726,40 @@ def render(a):
 # distinct-from: render (above) -- E1b's report is eight endpoints over an 8-seed block; E1c decides one, so the
 #   campaign gets its own short formatter over the same `analyse` dict (graph-exists "render sequential campaign
 #   report": NO LEXICAL MATCH, 2026-10-28)
+# distinct-from: carried_state_report.py -- G1c's migration-gate report lines, not a sequential stop's disposition
+# distinct-from: pool_selection.py -- a subprocess job runner (spec beside output), term overlap
+# distinct-from: prior_drift_harness.py -- a settling reading with its subject, term overlap
+# distinct-from: arc_residual.py -- descriptor families of a compiled record, term overlap
+# distinct-from: home.py -- a lake state-record key, term overlap
+def e1c_disposition(a):
+    """Section 8's disposition for the E1c record, by its stop of record, plus the beside prints. seq_decision's E1b
+    wording ("powered: a null, NULL-RECORD path") never reaches it: this row cannot write a NULL-RECORD (spec sections
+    1, 4; wf-rv #5689 m2)."""
+    q, dh = a["hs"]["H-P1"].get("seq"), E1C["claimed"]
+    if not a["valid"]:
+        return "VOID: no verdict (section 8)"
+    if not q or q["decision"] == "continue":
+        return (
+            f"CONTINUE: no verdict ({q['status']})"
+            if q
+            else "CONTINUE: no verdict (no complete look yet)"
+        )
+    if q["decision"] == "harm":
+        disp = (
+            f"HARM MET at look {q['look']} (n={q['n']}): a measured harm of the learned `_plan_w` trajectory on "
+            "production at 600 ticks; route (iii) deletes the update and the plan nudge (section 8)"
+        )
+    else:
+        stop = f"NOT MET at the {'futility stop' if q['decision'] == 'futility' else 'cap'} (look {q['look']}, n={q['n']})"
+        disp = (
+            f"{stop}, POWERED (mde {q['mde']:.4f} <= {dh}): no harm of {dh} or more on production at 600 ticks; "
+            "`_plan_w` stays; no NULL-RECORD (E-P2 is unpowered, section 4)"
+            if q["powered"]
+            else f"{stop}, UNDERPOWERED (mde {q['mde']:.4f} > {dh}): INCONCLUSIVE; nothing changes"
+        )
+    return disp + beside_text(q["beside"])
+
+
 def render_e1c(a):
     """Markdown for the E1c campaign look: validity, H-P1 with its sequential record, E-P2 and the exact-zero read
     beside. Pure formatting of `analyse(..., design=E1C)`."""
@@ -1731,7 +1775,7 @@ def render_e1c(a):
         L.append(f"- PENDING (no verdict until these exist): {'; '.join(a['pending'])}")
     L.append(
         f"\n## H-P1 (primary, harm; positive d = pfrozen is better)\n- t={h['t']:.3f} ({h['k']}/{h['n']} seeds > 0), "
-        f"SD={h['sd']:.4f} -> **{h['status']}**"
+        f"SD={h['sd']:.4f} -> **{e1c_disposition(a)}**"
     )
     if "seq" in h:
         q = h["seq"]
@@ -1741,13 +1785,18 @@ def render_e1c(a):
             f"{'n/a' if q['cp'] is None else format(q['cp'], '.3f')} (futility < {FUTILITY_CP}, "
             f"{'open' if q['futility_open'] else 'closed'} at this look) -> {q['decision']}"
         )
-    e = a["ep2c"]
+    stopped = (
+        a["valid"] and "seq" in h and h["seq"]["decision"] != "continue"
+    )  # E-P2 is read at a stop only
+    e = a["ep2c"] if stopped else None
     L.append(
         "\n## E-P2 (beside, benefit; decides nothing)\n- "
         + (
             f"mean benefit {e['mean']:+.4f} against DR {e['claimed']}; mde {e['mde']:.4f} "
             f"{'<=' if e['powered'] else '>'} DR: {'powered' if e['powered'] else 'INCONCLUSIVE (unpowered)'}"
             if e
+            else "VOID: not read"
+            if not a["valid"]
             else "no stop of record yet"
         )
     )
