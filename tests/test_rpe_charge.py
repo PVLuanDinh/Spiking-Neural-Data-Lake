@@ -420,8 +420,10 @@ def test_e1c_design_is_one_parameter_set_on_the_existing_sequential_path():
     assert q["decision"] != "harm" and q["k_min"] == math.ceil(0.5 * q["n"])
 
 
-def test_e1c_r1_compare_fixture_at_704():
-    """R1 at the cap: pfrozen = real + 0.1 on every seed reads MET; pfrozen = real reads NOT MET."""
+def test_e1c_decision_rule_on_constant_differences_at_704():
+    """The decision rule alone at the cap: a constant +0.1 (zero variance, t = +inf) reads harm and
+    a constant 0 does not. NOT R1: the compare-fixture R1 (incl. a failed planted control -> VOID)
+    runs through the driver's compare path, B3's (wf-rv #5676 M1)."""
     looks = R.E1C["looks"]
     assert R.seq_decision([0.1] * 704, R.DH, looks, sd_pre=0.3097, k_frac=0.5)["decision"] == "harm"
     assert R.seq_decision([0.0] * 704, R.DH, looks, sd_pre=0.3097, k_frac=0.5)["decision"] != "harm"
@@ -448,7 +450,8 @@ def test_e1c_beside_prints_sign_count_trimmed_mean_hl_and_zeros():
     """Section 4: reported beside each look's verdict, gating nothing."""
     ds = [0.0] * 8 + [0.1] * 40 + [-0.05] * 16  # n = 64, the first look
     b = R.beside(ds)
-    assert (b["k"], b["n"], b["zeros"]) == (40, 64, 8 / 64)
+    assert (b["k"], b["n"], b["zeros"], b["tail"]) == (40, 64, 8 / 64, 0)
+    assert R.beside([0.5, -0.45, 0.4, 0.0])["tail"] == 2  # |d| > 0.4, strict
     core = sorted(ds)[6:58]  # 10% cut from each tail: int(6.4) = 6
     assert b["trim10"] == pytest.approx(sum(core) / len(core))
     assert b["hl_ci"][0] <= b["hl"] <= b["hl_ci"][1]
@@ -479,6 +482,18 @@ def test_e1c_sim_guard_resamples_a_zero_preserving_shape_through_the_same_decisi
     assert hit.get("harm", 0) > null.get("harm", 0)
     assert null == R.sim_guard(shape, small, campaigns=200, name="t")
     assert R.sim_guard(shape, small, campaigns=50, name="t", zero_frac=1.0) == {"cap-under": 1.0}
+
+
+def test_e1c_zp_shape_centres_the_diverged_seeds_and_carries_the_effect_on_them_alone():
+    """5.1b with a shape whose diverged mean is far from 0, so a broken centring or a missing
+    1/(1 - zf) scaling fails here (wf-rv #5676 m3); an all-zero shape is zf 1.0 (m2)."""
+    shape = [0.0] * 20 + [1.0, 1.5, 2.0, 2.5] * 15  # 20 of 80 zeros, diverged mean +1.75
+    zf, base, shift = R.zp_shape(shape, effect=0.035)
+    assert zf == 0.25 and len(base) == 60
+    assert abs(sum(base) / len(base)) < 1e-12
+    assert (1 - zf) * shift == pytest.approx(0.035)
+    assert R.zp_shape([0.0] * 80, effect=0.035) == (1.0, [0.0], 0.0)
+    assert R.zp_shape(shape, effect=0.035, zero_frac=0.5)[2] == pytest.approx(0.07)
 
 
 def test_e1c_beside_hodges_lehmann_recovers_a_known_shift():

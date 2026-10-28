@@ -405,7 +405,6 @@ def mde_exact_factor(s, bar=BAR):
 #   the matcher fired on "refuses"/"seeds"/"per segment"; none decides at interim looks (sites read)
 # reuses: instruments/pool_selection.t_quantile (lazy import: that module pulls torch, compare is brain-free otherwise)
 @functools.cache
-@functools.cache  # a pure function of (looks tuple, alpha); sim_guard calls it once per simulated look
 def seq_boundaries(looks=LOOKS, alpha=SEQ_ALPHA):
     """Addendum 2: one-sided upper boundaries per look. Lan-DeMets O'Brien-Fleming-type spending
     a(tau) = 2 - 2 Phi(z_{1-alpha/2} / sqrt(tau)), tau = n / cap, solved on the z scale by recursive numerical integration
@@ -491,7 +490,8 @@ def futility_open(n, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, boun
 def beside(ds, trim=0.10, z=1.959964):
     """E1c section 4, printed beside a look's verdict and gating NOTHING: the sign count k/n, the trimmed mean (`trim`
     cut from each tail), the Hodges-Lehmann shift (median of the Walsh averages) with its ~95% signed-rank interval
-    (normal approximation to the signed-rank distribution), and the exact-zero fraction (arms that never diverged)."""
+    (normal approximation to the signed-rank distribution), the exact-zero fraction (arms that never diverged) and the
+    tail count |d| > 0.4 (section 4's census; the first-divergence tick of those seeds needs run data: the driver's)."""
     n = len(ds)
     s = sorted(ds)
     cut = int(trim * n)
@@ -505,6 +505,7 @@ def beside(ds, trim=0.10, z=1.959964):
         "hl": statistics.median(w),
         "hl_ci": (w[c], w[len(w) - 1 - c]),
         "zeros": sum(x == 0.0 for x in ds) / n,
+        "tail": sum(abs(x) > 0.4 for x in ds),
     }
 
 
@@ -574,7 +575,8 @@ def seq_decision(
         lo, hi = bes["hl_ci"]
         status_ += (
             f" | beside (no bar): k {bes['k']}/{bes['n']}, trim10 {bes['trim10']:+.4f},"
-            f" HL {bes['hl']:+.4f} [{lo:+.4f}, {hi:+.4f}], zeros {bes['zeros']:.3f}"
+            f" HL {bes['hl']:+.4f} [{lo:+.4f}, {hi:+.4f}], zeros {bes['zeros']:.3f},"
+            f" |d|>0.4 {bes['tail']}"
         )
     return {
         "beside": bes,
@@ -620,6 +622,18 @@ def seq_record(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA, **design):
 # distinct-from: instruments/replay_hydration.py -- seed_comparisons compares recorded arms seed by seed
 # distinct-from: instruments/carried_state_campaign.py -- oracle_check is a per-seed accuracy contrast row
 #   (none resamples a measured per-seed shape through a sequential stopping rule to estimate its stop rates)
+def zp_shape(ds, effect=0.0, zero_frac=None):
+    """Section 5.1b's zero-preserving shape, as (zero fraction, centred diverged values, per-diverged-seed shift).
+    Exact zeros (arms that never diverged) stay 0; the diverged values are centred so the zero-kept null has overall
+    mean 0; `effect` is carried by the diverged seeds alone, so (1 - zf) * shift == effect. An all-zero shape has
+    zf 1.0 and no diverged seed to carry an effect."""
+    nz = [x for x in ds if x != 0.0]
+    zf = (len(ds) - len(nz)) / len(ds) if zero_frac is None else zero_frac
+    mu = sum(nz) / len(nz) if nz else 0.0
+    base = [x - mu for x in nz] or [0.0]
+    return zf, base, (effect / (1 - zf) if zf < 1 else 0.0)
+
+
 def sim_guard(
     ds, design=None, *, campaigns=2000, name="e1c", scale=1.0, effect=0.0, zero_frac=None
 ):
@@ -631,11 +645,7 @@ def sim_guard(
     12.5%); `scale` stretches the diverged spread (the 80% upper SD). Seeded by `name`, so a run reproduces."""
     design = dict(design or E1C, show_beside=False)
     claimed, looks = design.pop("claimed"), design.pop("looks")
-    nz = [x for x in ds if x != 0.0] or [0.0]
-    zf = (len(ds) - len(nz)) / len(ds) if zero_frac is None else zero_frac
-    mu = sum(nz) / len(nz)
-    base = [x - mu for x in nz]
-    shift = effect / (1 - zf) if zf < 1 else 0.0
+    zf, base, shift = zp_shape(ds, effect, zero_frac)
     rng, tally = random.Random(f"{name}/{scale}/{effect}/{zf}"), {}
     for _ in range(campaigns):
         d = []
