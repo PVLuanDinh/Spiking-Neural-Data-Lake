@@ -587,3 +587,55 @@ def test_g9_constructed_real_requests_refused_before_records_or_fake_approvals(p
     assert report["constructed_status"] == "REFUSED" and report["campaign_eligible"] is False
     assert report["deciding_status"] == "REFUSED"
     assert {"resource", "reset", "control", "retention"} <= set(report["unresolved_runtime"])
+
+
+# ---- (h) the seeded Monte-Carlo FPR past MITM_MAX_N (A0d): beside the exact path, never in place
+# of it
+@pytest.mark.parametrize("seed", [1, 2, 3])
+def test_h_mc_agrees_with_the_exact_fpr_within_3_se_at_n_le_40(seed):
+    rng = random.Random(20261028 + seed)
+    d = [rng.gauss(0.01, 0.02) for _ in range(16 + 4 * seed)]
+    for bar in BARS:
+        exact = permutation_fpr(d, bar)
+        fpr, se = pc.permutation_fpr_mc(d, bar, row="LS-R1", look=seed)
+        assert abs(fpr - exact) <= 3 * se, (bar, fpr, exact, se)
+
+
+def test_h_mc_se_is_the_binomial_se_and_at_most_half_a_thousandth_at_five_percent():
+    assert pc.MC_DRAWS == 200_000
+    d = [0.02 * ((-1) ** i) * (1 + i % 5) for i in range(30)]
+    fpr, se = pc.permutation_fpr_mc(d, T_BAR, row="LS-R1", look=1)
+    assert se == pytest.approx(math.sqrt(max(fpr, 1.0 / pc.MC_DRAWS) * (1.0 - fpr) / pc.MC_DRAWS))
+    assert math.sqrt(0.05 * 0.95 / pc.MC_DRAWS) <= 0.0005
+
+
+def test_h_mc_planted_shift_is_rejected_at_a_small_fpr_and_a_leaking_draw_reads_one(monkeypatch):
+    # the FPR of a sign-flip test is its level on THIS sample: a planted shift clears the bar
+    # AND the rate reads
+    # at or under alpha; a red mutant whose draws never flip (all +1) must read 1.0, so the
+    # count can say "hit"
+    rng = random.Random(7)
+    shifted = [0.3 + rng.gauss(0, 0.05) for _ in range(60)]
+    assert paired_t(shifted) > T_BAR
+    fpr, _ = pc.permutation_fpr_mc(shifted, T_BAR, row="LS-R1", look=1)
+    assert 0.0 < fpr <= 0.05
+    monkeypatch.setattr(random.Random, "choices", lambda self, pop, k: [pop[0]] * k)
+    assert pc.permutation_fpr_mc(shifted, T_BAR, row="LS-R1", look=1)[0] == 1.0
+
+
+def test_h_mc_is_seeded_by_row_and_look_and_labelled_mc():
+    rng = random.Random(9)
+    d = [rng.gauss(0.01, 0.02) for _ in range(50)]
+    a = pc.permutation_fpr_mc(d, T_BAR, row="LS-R1", look=3)
+    assert a == pc.permutation_fpr_mc(d, T_BAR, row="LS-R1", look=3)
+    assert a != pc.permutation_fpr_mc(d, T_BAR, row="LS-R1", look=4)
+    assert pc.mc_label(*a).startswith("MC ") and "not exact" in pc.mc_label(*a)
+
+
+def test_h_mc_keeps_the_exact_path_refusal_and_the_bar_refusal():
+    d = [0.01 * (1 + i % 3) for i in range(pc.MITM_MAX_N + 1)]
+    with pytest.raises(ValueError):
+        permutation_fpr(d)
+    with pytest.raises(ValueError):
+        pc.permutation_fpr_mc(d, -1.0, row="LS-R1", look=1)
+    assert pc.permutation_fpr_mc([0.0] * 50, T_BAR, row="LS-R1", look=1)[0] == 0.0

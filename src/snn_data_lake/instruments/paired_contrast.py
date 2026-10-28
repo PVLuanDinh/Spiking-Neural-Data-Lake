@@ -44,6 +44,8 @@ Pure standard library; deterministic; ASCII-only prints.
 import hashlib
 import json
 import math
+import random
+import zlib
 from bisect import bisect_left, bisect_right
 from typing import NamedTuple
 
@@ -65,6 +67,8 @@ MITM_MAX_BAND = 1 << 20
 _U = 2.0**-53
 _Q_MIN = 1e-250
 _Q_MAX = 1e250
+# the Monte-Carlo FPR beyond MITM_MAX_N (A0d): 200,000 draws bound the printed SE at .0005 at p = .05
+MC_DRAWS = 200_000
 
 
 class Contrast(NamedTuple):
@@ -203,6 +207,49 @@ def permutation_fpr_detail(diffs, bar=T_BAR):
         if not lo - s <= r <= hi - s:
             hits += _decide(_flipped(xs, mask), bar) - (r > hi - s)
     return hits / float(1 << n), band
+
+
+# graph-exists 2026-10-28 ("seeded Monte-Carlo sign-flip permutation false positive rate"): one hit,
+# permutation_fpr_detail above -- REUSE of its threshold rule (_threshold, _band_eps, _decide, the Q range); the
+# exact path is untouched and still refuses n > MITM_MAX_N. This is the approximate mode BESIDE it (A0d, P2: one
+# mechanism), a sampled count of the same event, labelled MC and never presented as exact.
+def permutation_fpr_mc(diffs, bar=T_BAR, *, row, look, draws=MC_DRAWS):
+    """(fpr, se): a seeded Monte-Carlo estimate of the fraction of sign flips whose paired t exceeds the bar,
+    for any n >= 2. `draws` flips, seeded by `zlib.crc32` of the row and the look; se is the binomial standard
+    error of the estimate (p floored at 1/draws so a zero count does not read as certain). Flips inside the
+    exact path's band around the threshold are decided by `paired_t`, as there. Same trivial answers and
+    refusals as `permutation_fpr_detail` except n above MITM_MAX_N."""
+    xs = [float(d) for d in diffs]
+    n = len(xs)
+    if not 0.0 < bar < math.inf:
+        raise ValueError(f"bar must be in (0, inf) (the threshold needs bar > 0), got {bar!r}")
+    if n < 2 or not all(map(math.isfinite, xs)):
+        return 0.0, 0.0
+    q = sum(x * x for x in xs)
+    if q == 0.0:
+        return 0.0, 0.0
+    if not _Q_MIN < q < _Q_MAX:
+        raise ValueError(
+            f"sum of squares {q!r} is outside ({_Q_MIN}, {_Q_MAX}): the bound needs it in range"
+        )
+    thr, eps = _threshold(n, bar, q), _band_eps(n, q)
+    rng = random.Random(zlib.crc32(f"{row}|{look}".encode()))
+    signs = (1.0, -1.0)
+    hits = 0
+    for _ in range(draws):
+        flips = rng.choices(signs, k=n)
+        total = sum(map(float.__mul__, flips, xs))
+        if total > thr + eps:
+            hits += 1
+        elif total >= thr - eps:
+            hits += _decide([f * x for f, x in zip(flips, xs)], bar)
+    p = hits / draws
+    return p, math.sqrt(max(p, 1.0 / draws) * (1.0 - p) / draws)
+
+
+def mc_label(fpr, se, draws=MC_DRAWS):
+    """The printed form of a Monte-Carlo FPR: always says MC, the draws and the SE."""
+    return f"MC {fpr:.4f} (SE {se:.4f}, {draws} sign-flip draws; not exact)"
 
 
 def permutation_fpr(diffs, bar=T_BAR):
