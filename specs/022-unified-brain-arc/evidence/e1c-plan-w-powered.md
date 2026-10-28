@@ -335,3 +335,21 @@ accepted D-1. The items below stay as the record of what was open.
 ## 12. Record
 
 (empty until the campaign's results; appended below the freeze, never edited above it)
+
+## Addendum 1 (2026-10-28, before look 1): the campaign's controls, and where R1 runs
+
+Policy-enforcer #5688 m3 and wf-rv #5689 m3. Appended below the freeze; nothing above is edited, and no rule,
+threshold, seed, look or disposition changes.
+
+- Section 6 ends "Planted controls: E1b's PSEEDS (brain-free replay seeds), unchanged". Those seeds belong to E1b's
+  E-V2 replay record (`e2v2.json`: the ValenceLearner endpoint, with its planted learn and planted harm rows).
+- E1c decides H-P1 only (`_plan_w`, section 3). With the E1C design the compare path treats a missing `e2v2.json` as
+  not pending (16c43820), and the driver never writes one. So no planted-harm control is part of this campaign BY
+  CONSTRUCTION, and none is skipped. Section 6's line names E1b's replay seeds, kept unchanged for E1b.
+- The campaign's own controls are section 3's look-1 `repeat` (seed 21000: 0 action flips, series identical) and `pc`
+  (seeds 21000 and 21001: flips > 0). A failed one VOIDs the look.
+- R1 (section 7) is the brain-free compare fixture at n = 704 through the E1C compare path: MET on a planted harm,
+  NOT MET on none, and VOID on a failed control (9197ae17). Its VOID legs cover a failed `pc` and a failed `repeat`,
+  the campaign's real controls (f4578fa9; each check, when disabled, fails its own leg), beside the planted-harm leg. "Run before look 1" means `test_e1c_r1*` passes inside the
+  gate run of `tests/test_rpe_charge.py` at the GO commit itself. The GO note cites that gate log; a GO without it is
+  refused.
