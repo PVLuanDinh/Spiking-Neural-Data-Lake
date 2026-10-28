@@ -405,6 +405,7 @@ def mde_exact_factor(s, bar=BAR):
 #   the matcher fired on "refuses"/"seeds"/"per segment"; none decides at interim looks (sites read)
 # reuses: instruments/pool_selection.t_quantile (lazy import: that module pulls torch, compare is brain-free otherwise)
 @functools.cache
+@functools.cache  # a pure function of (looks tuple, alpha); sim_guard calls it once per simulated look
 def seq_boundaries(looks=LOOKS, alpha=SEQ_ALPHA):
     """Addendum 2: one-sided upper boundaries per look. Lan-DeMets O'Brien-Fleming-type spending
     a(tau) = 2 - 2 Phi(z_{1-alpha/2} / sqrt(tau)), tau = n / cap, solved on the z scale by recursive numerical integration
@@ -609,6 +610,45 @@ def seq_record(ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA, **design):
         if q["decision"] != "continue":
             break
     return q
+
+
+# reuses: seq_decision (the same rule the campaign reads); graph-exists "zero-preserving resample of a measured
+#   per-seed shape": NO LEXICAL MATCH -- the design measurement it replaces lives outside the tree (derive_e1c.py)
+# distinct-from: instruments/pool_selection.py -- step_tune reads per-candidate D through a readout; no resampling
+# distinct-from: faculties/recursive_tom.py -- t082_contrasts decides one campaign's conjuncts on measured readings
+# distinct-from: instruments/attention_schema.py -- g4_rule is one campaign's decode rule on measured readings
+# distinct-from: instruments/replay_hydration.py -- seed_comparisons compares recorded arms seed by seed
+# distinct-from: instruments/carried_state_campaign.py -- oracle_check is a per-seed accuracy contrast row
+#   (none resamples a measured per-seed shape through a sequential stopping rule to estimate its stop rates)
+def sim_guard(
+    ds, design=None, *, campaigns=2000, name="e1c", scale=1.0, effect=0.0, zero_frac=None
+):
+    """E1c R5 (section 5.3) and the validity read's power recompute: resample a MEASURED per-seed shape `ds` through
+    `seq_decision` under `design` (default E1C) and return the rate of each stop: harm, futility-/cap- x powered/under.
+    Zero-preserving (section 5.1b): exact zeros are seeds whose arms never diverged and stay 0; the diverged seeds are
+    centred so the zero-kept null has overall mean 0, and `effect` is carried by the diverged seeds alone, so the
+    overall mean shift equals `effect`. `zero_frac` overrides the measured zero fraction (the validity read past
+    12.5%); `scale` stretches the diverged spread (the 80% upper SD). Seeded by `name`, so a run reproduces."""
+    design = dict(design or E1C, show_beside=False)
+    claimed, looks = design.pop("claimed"), design.pop("looks")
+    nz = [x for x in ds if x != 0.0] or [0.0]
+    zf = (len(ds) - len(nz)) / len(ds) if zero_frac is None else zero_frac
+    mu = sum(nz) / len(nz)
+    base = [x - mu for x in nz]
+    shift = effect / (1 - zf) if zf < 1 else 0.0
+    rng, tally = random.Random(f"{name}/{scale}/{effect}/{zf}"), {}
+    for _ in range(campaigns):
+        d = []
+        for n in looks:
+            while len(d) < n:
+                d.append(0.0 if rng.random() < zf else rng.choice(base) * scale + shift)
+            q = seq_decision(d, claimed, looks, **design)
+            if q["decision"] != "continue":
+                break
+        kind = q["decision"]
+        key = kind if kind == "harm" else f"{kind}-{'powered' if q['powered'] else 'under'}"
+        tally[key] = tally.get(key, 0) + 1
+    return {k: v / campaigns for k, v in sorted(tally.items())}
 
 
 # ---------------------------------------------------------------------------- arms (brain-bound)

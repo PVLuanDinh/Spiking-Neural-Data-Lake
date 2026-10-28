@@ -459,6 +459,28 @@ def test_e1c_beside_prints_sign_count_trimmed_mean_hl_and_zeros():
     assert "beside" not in R.seq_decision(ds, R.DH, looks, sd_pre=0.3097)["status"]
 
 
+def test_e1c_sim_guard_resamples_a_zero_preserving_shape_through_the_same_decision():
+    """R5's callable on a small design: rates sum to 1, a shifted shape crosses more than the
+    zero-kept null, a fixed name reproduces bit for bit, and the zeros stay zeros."""
+    shape = [0.0] * 6 + [
+        0.3,
+        -0.25,
+        0.1,
+        -0.15,
+        0.4,
+        -0.35,
+        0.05,
+        -0.1,
+    ] * 9  # 6 never-diverged seeds
+    small = dict(R.E1C, looks=(16, 32), sd_pre=0.3, claimed=0.2)
+    null = R.sim_guard(shape, small, campaigns=200, name="t")
+    hit = R.sim_guard(shape, small, campaigns=200, name="t", effect=0.2)
+    assert abs(sum(null.values()) - 1) < 1e-12 and abs(sum(hit.values()) - 1) < 1e-12
+    assert hit.get("harm", 0) > null.get("harm", 0)
+    assert null == R.sim_guard(shape, small, campaigns=200, name="t")
+    assert R.sim_guard(shape, small, campaigns=50, name="t", zero_frac=1.0) == {"cap-under": 1.0}
+
+
 def test_e1c_beside_hodges_lehmann_recovers_a_known_shift():
     b = R.beside([x + 0.2 for x in [-1.0, -0.5, 0.0, 0.5, 1.0] * 13])
     assert b["hl"] == pytest.approx(0.2) and b["hl_ci"][0] < 0.2 < b["hl_ci"][1]
