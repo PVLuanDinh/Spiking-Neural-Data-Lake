@@ -1,10 +1,10 @@
-# E1c -- the powered production test of `_plan_w` harm (H-P1), owed by E1b's INCONCLUSIVE (DRAFT pre-registration)
+# E1c -- the powered production test of `_plan_w` harm (H-P1), owed by E1b's INCONCLUSIVE
 
-> **Status: DRAFT, pre-data.** Nothing has been built or run in a brain. The design numbers in section 5 come from a
-> brain-free resampling of E1b's recorded production data. The file freezes at the commit that drops "(DRAFT
-> pre-registration)" from the title, after the policy-enforcer has reviewed it. Later changes are dated pre-data
-> amendments. Any other change is a new pre-registration on a fresh block.
-> - **Task:** T122 [E1] (proposed). T119 and T120 are taken on int3; D1's cloud pre-registration proposes T121.
+> **Status: FROZEN, pre-data.** Frozen at the commit that dropped "(DRAFT pre-registration)" from the title, after
+> policy-enforcer AGREE #5641. Nothing has been built or run in a brain. The design numbers in section 5 come from a
+> brain-free resampling of E1b's recorded production data. Later changes are dated pre-data amendments, appended below
+> section 12's heading. Any other change is a new pre-registration on a fresh block.
+> - **Task:** T122 [E1], registered in tasks.md by the freezing commit.
 >   Board claims #5612 (this file), #5613 (seeds 21000-21999), #5614 (T122).
 > - **Go:** the owner's words in session A's chat on 2026-10-28, "_plan_w first", recorded at #5609. The button the
 >   owner chose read: "Run the powered _plan_w follow-up (~485 seeds) first, then G1(c)-2."
@@ -181,7 +181,9 @@ arms are bit-identical. The table is kept as the record of what was first measur
   - Under the zero-kept null, 71.7% of campaigns stop there POWERED, 16.7% stop there underpowered (INCONCLUSIVE),
     and 11.2% reach the cap powered.
   - The 10-look design of the first draft never opened. The record below is kept.
-  - **The bound is the policy's** (delegate D-12c asked for one that opens; measured, then reversed by the delegate).
+  - **(First draft, 10 looks / cap 640; superseded by the 704 design above.)** The bound is the policy's. Delegate D-12c
+    asked for a rule that opens at any look >= 5. That rule was measured, and the delegate then reversed D-12c, keeping
+    P1 item 2's rule.
     - POLICIES P1 amendment item 2: "a futility stop is taken only at a pre-registered look whose mde, computed from
       the pre-registered SD at the design's alpha, is at or below the claimed effect ... before such a look the
       campaign continues". `futility_open` implements exactly that rule, and at these looks no look before the cap
@@ -222,6 +224,13 @@ arms are bit-identical. The table is kept as the record of what was first measur
 - **Grep check, 2026-10-28, int3.** 0 seed/block/range hits for 21000-21999 in evidence, src, tools/*.py and tests.
   Board claim #5613 holds 21000-21999.
 - **Not reused:** E1b's seeds 8-183, E1's 0-7, and the derive RNG seeds 8801-9595 (simulation streams only).
+- **Internal sub-seeds (cross-campaign note, launcher check).** `engine/brain.py` builds `GridPlaceMap(seed=self._seed)`,
+  and each grid module mi seeds its cells with run seed + 1000 x mi.
+  - Within E1c, offsets of 1000 or more exceed the block's width (704), so no two E1c runs share a stream.
+  - Across campaigns, E1c's mi = 1 streams (22000-22703) cover L1b-STALE's run seeds 22000-22039. Each campaign's
+    paired test compares arms of the SAME seed, so neither result is affected. This is disclosed, and no block moves.
+  - `sleep_replay`'s accuracy stream uses the constant seed_base 100 (`attractor.accuracy(self._patterns, 100)`), not
+    the run seed, so no run-to-run collision arises there.
 - **Repeat control:** seed 21000. **Planted controls:** E1b's PSEEDS (brain-free replay seeds), unchanged.
 
 ## 7. Reds (each constructed and RUN before look 1; a red that does not fire halts the campaign)
@@ -266,7 +275,7 @@ arms are bit-identical. The table is kept as the record of what was first measur
 - **Refused in every branch:** "`_plan_w` charges reward" (E-P2 is unpowered); any no-encoder or cross-tier wording;
   any scale other than 600 ticks.
 
-## 9. Build rows (lanes, after the reboot; graph-exists before each; no new mechanism)
+## 9. Build rows (lanes, one builder at a time under D-13 REVISED; graph-exists before each; no new mechanism)
 
 - **B1.** The two carried harness fixes from E1b:
   - print `null_precondition` in `cross`;
@@ -276,6 +285,11 @@ arms are bit-identical. The table is kept as the record of what was first measur
   - a parameter of the existing sequential path, not a copy (P2);
   - R4 as a test.
 - **B3.** The campaign driver: reuse E1b's run tree pattern (detached tree, one arm per subprocess) and `resource:timing`.
+  - Run graph-exists first.
+  - EXTEND the incumbents for the throttle: `lanes\engine-1024\battery-stall-watch.ps1` and E1b's `ram.ps1` /
+    `procs.ps1`. No second watcher mechanism (P2).
+  - Per-run results are written to disk as `results/production/<arm>_<seed>.json` as each run finishes, and a resumed
+    driver skips the runs already done, as E1b's did on 2026-10-27. A restart loses only the run in flight.
 - **Commits.** One change each. The enforcer reviews each build, and nothing runs before the freeze commit.
 
 ## 10. Cost and resources
@@ -284,15 +298,28 @@ arms are bit-identical. The table is kept as the record of what was first measur
 - **E1b's measured throughput:** 534 production and no-encoder runs in about 3.1 h of wall time, about 21 s per run.
   That puts the worst case at about 8.2 h on an unloaded host.
 - **Resources.** `resource:timing` is held for the whole campaign. No battery or other brain campaign runs beside it.
-- **Host (no reboot is possible; owner 2026-10-28):** the throttled regime of delegate D-13 applies.
-  - A pilot arm measures peak private bytes P and wall time T.
-  - Workers = floor((Available - 2 GB) / P), between 1 and 4, re-derived at every look.
-  - Pause launches while Available < 1.5 GB or commit > 85%.
-  - Timeouts are set as multiples of T.
-  - The nonpaged pool is logged at every look.
-  - A pause is logged, never a verdict.
+- **Host (no reboot is possible; owner 2026-10-28):** delegate D-13 REVISED applies (launcher-1028,
+  `lanes\DELEGATED-DECISIONS-1028.md` Round 4).
+  - **ONE run at a time.** Each seed's `real` and `pfrozen` run back to back.
+  - **Pilot.** The first run of the campaign is the pilot. Its wall time T sets this campaign's `faulthandler_timeout`
+    and stall-watch thresholds as multiples of T. A run that times out is re-run once before it counts. A timeout under
+    paging is an instrument reading, not a verdict.
+  - **Hysteresis.** The driver does not launch a run while Available < 1.5 GB or commit > 85%. It resumes only once
+    Available >= 2.5 GB and commit <= 80%. A pause is logged, never a verdict.
+  - **The nonpaged pool is logged at every look.** A rise of 1 GB or more since the previous look pauses the campaign,
+    and the integrator tells the launcher.
+  - **Load and determinism (#5641 m1).** R3's A/A repeat runs under the campaign's own load, one run at a time, so the
+    repeat floor is measured where the arms run. If a later ruling allows concurrent runs, R3 is first re-run at the
+    maximum worker count beside other live workers, with each seed's two arms in the same launch batch. If it flips,
+    the campaign stays at 1 worker and says so.
+  - **P1 declared exceptions (#5641 nit 2).** The throttle constants are operational: 1.5 / 2.5 GB, commit 85% / 80%,
+    the timeout multiples of T and the 1 GB pool rise. They arbitrate scheduling, never brain behaviour, and no
+    endpoint reads them.
 
-## 11. Open for the owner and the enforcer (before the freeze)
+## 11. Settled before the freeze
+
+Policy-enforcer #5635 (CHALLENGE) was folded. Its delta AGREE is #5641 (0/0/1, 2 nits, folded here). Delegate D-12b
+accepted D-1. The items below stay as the record of what was open.
 
 - **D-1. The harm rule's direction guard.**
   - Proposed: k >= ceil(4n/8), "at least half positive".
