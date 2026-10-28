@@ -184,6 +184,7 @@ E1C = {
     "sd_pre": 0.3097,
     "bounds": None,
     "k_frac": 0.5,
+    "show_beside": True,
 }
 E1_HP1_T = 2.82  # E1's recorded H-P1 t (the "mirrored bar" signal), beside the BRIDGE read-out
 # Addendum 3 (owner ruling #4616): the production tier alone decides deletion; no-encoder is reported beside, never deletes.
@@ -483,8 +484,39 @@ def futility_open(n, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, boun
     )
 
 
+# distinct-from: instruments/paired_contrast.py -- paired t and the exact sign-flip FPR only, no robust location.
+#   graph-exists "trimmed mean" / "Hodges-Lehmann median of Walsh averages" / "Wilcoxon signed-rank confidence
+#   interval": NO LEXICAL MATCH (2026-10-28); stdlib suffices for a print that gates nothing
+def beside(ds, trim=0.10, z=1.959964):
+    """E1c section 4, printed beside a look's verdict and gating NOTHING: the sign count k/n, the trimmed mean (`trim`
+    cut from each tail), the Hodges-Lehmann shift (median of the Walsh averages) with its ~95% signed-rank interval
+    (normal approximation to the signed-rank distribution), and the exact-zero fraction (arms that never diverged)."""
+    n = len(ds)
+    s = sorted(ds)
+    cut = int(trim * n)
+    core = s[cut : n - cut] or s
+    w = sorted((s[i] + s[j]) / 2 for i in range(n) for j in range(i, n))
+    c = max(0, int(n * (n + 1) / 4 - z * math.sqrt(n * (n + 1) * (2 * n + 1) / 24)))
+    return {
+        "k": sum(x > 0 for x in ds),
+        "n": n,
+        "trim10": sum(core) / len(core),
+        "hl": statistics.median(w),
+        "hl_ci": (w[c], w[len(w) - 1 - c]),
+        "zeros": sum(x == 0.0 for x in ds) / n,
+    }
+
+
 def seq_decision(
-    ds, claimed, looks=LOOKS, alpha=SEQ_ALPHA, *, sd_pre=None, bounds=None, k_frac=None
+    ds,
+    claimed,
+    looks=LOOKS,
+    alpha=SEQ_ALPHA,
+    *,
+    sd_pre=None,
+    bounds=None,
+    k_frac=None,
+    show_beside=False,
 ):
     """Addendum 2: the decision at ONE look on the per-seed differences `ds` (all seeds so far). Refused unless len(ds)
     is a look. harm = t above the look's t boundary AND >= ceil(K_MIN * n / 8) seeds > 0, or >= ceil(k_frac * n) when
@@ -536,7 +568,15 @@ def seq_decision(
         "futility": f"NOT MET, stopped for futility at {where} (conditional power {cp or 0:.3f} < {FUTILITY_CP}), {power}",
         "cap": f"NOT MET at the cap ({where}), {power}",
     }[decision]
+    bes = beside(ds) if show_beside else None
+    if bes:  # E1c section 4: printed beside the verdict; it changes no field the decision reads
+        lo, hi = bes["hl_ci"]
+        status_ += (
+            f" | beside (no bar): k {bes['k']}/{bes['n']}, trim10 {bes['trim10']:+.4f},"
+            f" HL {bes['hl']:+.4f} [{lo:+.4f}, {hi:+.4f}], zeros {bes['zeros']:.3f}"
+        )
     return {
+        "beside": bes,
         "look": j + 1,
         "n_looks": len(looks),
         "n": n,

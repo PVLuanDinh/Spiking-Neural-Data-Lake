@@ -444,6 +444,26 @@ def test_e1c_r4b_the_half_rule_refuses_a_minority_carried_mean():
     assert R.seq_decision(ds, R.DH, looks, sd_pre=0.3097, k_frac=0.0)["decision"] == "harm"
 
 
+def test_e1c_beside_prints_sign_count_trimmed_mean_hl_and_zeros():
+    """Section 4: reported beside each look's verdict, gating nothing."""
+    ds = [0.0] * 8 + [0.1] * 40 + [-0.05] * 16  # n = 64, the first look
+    b = R.beside(ds)
+    assert (b["k"], b["n"], b["zeros"]) == (40, 64, 8 / 64)
+    core = sorted(ds)[6:58]  # 10% cut from each tail: int(6.4) = 6
+    assert b["trim10"] == pytest.approx(sum(core) / len(core))
+    assert b["hl_ci"][0] <= b["hl"] <= b["hl_ci"][1]
+    looks = R.E1C["looks"]
+    q = R.seq_decision(ds, R.DH, looks, sd_pre=0.3097, k_frac=0.5, show_beside=True)
+    assert "beside (no bar): k 40/64" in q["status"] and "zeros 0.125" in q["status"]
+    assert q["decision"] == R.seq_decision(ds, R.DH, looks, sd_pre=0.3097, k_frac=0.5)["decision"]
+    assert "beside" not in R.seq_decision(ds, R.DH, looks, sd_pre=0.3097)["status"]
+
+
+def test_e1c_beside_hodges_lehmann_recovers_a_known_shift():
+    b = R.beside([x + 0.2 for x in [-1.0, -0.5, 0.0, 0.5, 1.0] * 13])
+    assert b["hl"] == pytest.approx(0.2) and b["hl_ci"][0] < 0.2 < b["hl_ci"][1]
+
+
 # ----------------------------------------------------------------------------------- self-check
 def test_selfcheck_main_runs_brain_free(capsys):
     assert R.main() == 0
