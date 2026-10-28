@@ -5,7 +5,7 @@ There are two distributions, for two different needs.
 | | **Standalone app** | **Full-source install** (this doc) |
 |---|---|---|
 | File | `spiking-neural-data-lake-<ver>-windows-x64.zip` | `spiking-neural-data-lake-<ver>-full-src.zip` |
-| Needs Python? | **No** | **Yes — Python 3.11+** |
+| Needs Python? | **No** | **Yes — CPython 3.14 free-threaded (`3.14t`)** |
 | What runs | The always-on brain daemon + its cockpit (the ONE frontend) in your browser | **Everything in the repo** — the core, all optional-dependency features, the demos, the tests, and the `research/` tree |
 | Optional deps (pyserial, polars, torch, …) | Not included | **Installed** (best-effort per machine) |
 | Size | ~11 MB | small download; the installer then pulls the deps |
@@ -17,7 +17,10 @@ If you just want to click and use the app, grab the **Standalone app** zip — u
 ## Full-source install
 
 ### Requirements
-- **Python 3.11, 3.12, or 3.13** on your PATH. Get it from <https://www.python.org/downloads/> (on Windows, tick *"Add python.exe to PATH"*).
+- **CPython 3.14, free-threaded build (`3.14t`)** on your PATH: `pyproject.toml` requires `>=3.14`, and the package
+  refuses a GIL build at import. The python.org installer offers the free-threaded binaries as an option; `uv python
+  install 3.14t` also works. *(Corrected 2026-10-28, cloud audit: this line said "Python 3.11, 3.12, or 3.13", and
+  the table above said "3.11+".)*
 - **A Rust toolchain** (`rustup` from <https://rustup.rs>; `rust-toolchain.toml` at the repo root pins the
   compiler version, which rustup installs on first use). `pip install .` (and `-e .`, and a wheel build)
   compiles the `snn_data_lake._native` extension from `native/sndl-python` through maturin **at install
