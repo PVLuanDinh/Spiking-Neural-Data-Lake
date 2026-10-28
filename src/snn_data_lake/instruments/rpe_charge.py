@@ -547,7 +547,9 @@ def seq_decision(
     FUTILITY_CP, taken only where `futility_open` (addendum 4); cap = the last look without a crossing. Addendum 3:
     powered = the mde at the STOPPED seed count n with the observed SD, (t_k + t_{.80, n-1}) * SD / sqrt(n), <= claimed.
     A futility or cap stop is never a null by itself (P8 null-scale item 4): powered -> the NULL-RECORD path (one 10x
-    re-test before any deletion); else INCONCLUSIVE. `bounds` (addendum 4) replaces the normal-model t boundaries."""
+    re-test before any deletion); else INCONCLUSIVE. `bounds` (addendum 4) replaces the normal-model t boundaries.
+    `futility_powered` (E1c addendum 3; default False = the frozen rule, every E1b design): a futility look that would
+    not read powered does not stop; it continues to the cap, and its status says so."""
     n = len(ds)
     if n not in looks:
         refuse("any", "sequential", f"a decision at {n} seeds is not a pre-registered look {looks}")
@@ -577,6 +579,9 @@ def seq_decision(
     else:  # futility_powered (E1c addendum 3): an unpowered futility look continues to the cap (non-binding: no alpha)
         stop = is_open and cp < FUTILITY_CP and (powered or not futility_powered)
         decision = "futility" if stop else "continue"
+    held = (
+        decision == "continue" and is_open and cp is not None and cp < FUTILITY_CP
+    )  # futility_powered held it
     where = f"look {j + 1} of {len(looks)}, n={n}"
     power = f"mde at n={n} {mde:.4f} {'<=' if mde <= claimed else '>'} claimed {claimed:.4f}: " + (
         "powered: a null, NULL-RECORD path (one 10x re-test before any deletion)"
@@ -587,7 +592,8 @@ def seq_decision(
     )
     status_ = {
         "harm": f"MET at look {j + 1} ({n} seeds)",
-        "continue": f"CONTINUE at {where} (no verdict): next look n={looks[min(j + 1, len(looks) - 1)]}",
+        "continue": f"CONTINUE at {where} (no verdict): next look n={looks[min(j + 1, len(looks) - 1)]}"
+        + (" (futility not taken: not powered, E1c addendum 3)" if held else ""),
         "futility": f"NOT MET, stopped for futility at {where} (conditional power {cp or 0:.3f} < {FUTILITY_CP}), {power}",
         "cap": f"NOT MET at the cap ({where}), {power}",
     }[decision]

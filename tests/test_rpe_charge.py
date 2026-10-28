@@ -626,6 +626,9 @@ def test_e1c_futility_at_640_stops_only_when_it_would_read_powered():
         q = R.seq_record(tight, **design)
         assert q["n"] == 640 and q["decision"] == "futility" and q["powered"]
     assert "futility_powered" not in R.SEQ["H-P1"]  # E1b's designs keep the frozen behaviour
+    # panel #5748 m6: the continue says WHY, so "cp < 0.1, open" beside CONTINUE is not a misfire
+    assert "futility not taken: not powered" in q1["status"]
+    assert "futility not taken" not in R.seq_record(tight[:576], **R.E1C)["status"]
 
 
 def _quoted(a):
