@@ -1,9 +1,13 @@
-# E1d -- E1c's powered `_plan_w` harm test (H-P1), re-run with a positive control that cannot collide with the held goal (DRAFT pre-registration)
+# E1d -- E1c's powered `_plan_w` harm test (H-P1), re-run with a positive control that cannot collide with the held goal
 
-> **Status: DRAFT, pre-data.** Nothing below has been run in a brain on seeds 23000 and up. It freezes at the commit
-> that drops "(DRAFT pre-registration)" from the title, after this DRAFT's review: three panel lenses and the
-> policy-enforcer AGREE (as E1c froze on #5641). The panel on the built stack before its battery (section 9) is a
-> separate, later review.
+> **Status: FROZEN, pre-data.** Frozen at the commit that dropped "(DRAFT pre-registration)" from the title, after all
+> four reviewers AGREEd on `3e11db18` (fold 4): panel A #5890, B #5895, C #5893 and policy-enforcer #5894. Every
+> challenge on #5855 is resolved.
+> - Nothing below has been run in a brain on seeds 23000 and up.
+> - Later changes are dated pre-data amendments, appended below section 12's heading. Any other change is a new
+>   pre-registration on a fresh block.
+> - The panel on the built stack before its battery, and the step-6b bind review (section 9), are separate, later
+>   reviews.
 > - **Task:** T124 [E1], registered in tasks.md by the freezing commit. Board claims: #5853 (this file), #5854 (seeds
 >   23000-23999).
 > - **Why it exists:** E1c (T122) is VOID at look 1 (#5840). Its positive control `pc` read 0 flips on seed 21001.
@@ -140,7 +144,8 @@ which is the legitimate kind of input.
         - Panel C found no route from there to action selection. So in the `pc` arm the self-model sees the brain's own
           goal while behaviour sees the rotated one. That is a disclosed asymmetry of the read-side form, off the
           action path.
-      - `brain.py:255` checks only WHETHER a goal is held (region tagging), which is the same in every arm.
+      - `brain.py:255` checks only whether the tick record has a `"goal"` key (region tagging), which is the same in
+        every arm.
   - **Validity for every `pc` run:** `pc_stub_calls == pfc_bias_calls > 0`, with 600 ticks. Anything else is a harness
     red. The equality catches a partly bypassed stub; foreign-instance calls are already excluded by the scope.
 - **Controls at look 1** (E1c section 3, with new seeds):
@@ -546,7 +551,13 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
   - **C NIT** (R2-dry's fixture kind and exact disposition): section 6 names `fixture_runs("noharm")`, CONTINUE, and
     B2's pinned string.
   - **B nit** (R2's reads and the tag check): section 6 wording.
-- **Still open:** delta reads of fold 4 by C and the enforcer.
+- **Freeze.** Fold 4 (`3e11db18`) was AGREEd by A #5890, B #5895, C #5893 and the enforcer #5894. The freeze commit
+  adds only:
+  - the title and status change;
+  - panel B #5895's wording nit on `brain.py:255`;
+  - this line;
+  - the tasks.md T124 row.
+- **Carried to the step-6b bind review:** panel C #5893's note on R2-dry's all-zero fixture data.
 
 ## 12. Record
 
