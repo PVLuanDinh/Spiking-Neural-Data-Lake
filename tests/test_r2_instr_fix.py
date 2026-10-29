@@ -850,3 +850,19 @@ def test_minor3_a_p3_read_runs_only_the_k1g_arms(tmp_path, monkeypatch):
 def test_minor3_the_dev_block_still_runs_both_tables(tmp_path, monkeypatch):
     launched = _launched_roles(tmp_path, monkeypatch, 15000, None)
     assert launched == [r for r, _ in rh.R2_ROLES + rh.P3_ROLES]
+
+
+# ---- ROUND 3 (#6898) MINOR-1: the instrument names R2-c7's binding reading -----------------------
+
+
+def test_minor1_the_instrument_names_itself_the_binding_r2_c7_reading_with_its_definitions():
+    doc = rh.__doc__
+    assert "binding reading of R2-c7" in doc
+    assert "ticks % refit_every" in doc  # its next-refit definition
+    assert "kill_growth" in doc  # its kill point; the pytest's kill_prototypes is not in it
+
+
+def test_minor1_the_k1g_kill_point_is_inside_the_flush_growth_call_not_the_tick_after():
+    doc = rh.run_percept.__doc__
+    assert "tick after" not in doc
+    assert "_flush_growth" in doc and "before `_flush_prototypes`" in doc
