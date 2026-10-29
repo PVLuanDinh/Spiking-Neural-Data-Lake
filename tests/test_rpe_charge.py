@@ -951,6 +951,26 @@ def test_native_identity_reads_the_loaded_extension_and_analyse_requires_one(mon
     assert R.e1c_disposition(b).startswith("VOID")
 
 
+def test_load_run_flags_a_record_whose_seed_or_arm_does_not_match_its_file_tag(tmp_path):
+    seeds = R.E1C_SEEDS[:64]
+    s0, s1 = seeds[0], seeds[1]
+    runs = R.fixture_runs("noharm", seeds=seeds, arms=R.E1C_ARMS)
+    tag = {("real_r2", s0): f"real_{s0}_r2"}
+    for (arm, s), d in runs.items():
+        (tmp_path / f"{tag.get((arm, s), f'{arm}_{s}')}.json").write_text(json.dumps(d))
+    kw = dict(seeds=seeds, design=R.E1C, logs_pass=True, sim_campaigns=20)
+    ok = R.analyse("production", R.load_runs(str(tmp_path), "production", seeds), None, **kw)
+    assert ok["valid"], ok["bad"]  # pc_<s> and real_<s>_r2 map to their records
+    (tmp_path / f"real_{s1}.json").write_text(json.dumps(runs[("pfrozen", s1)]))
+    (tmp_path / f"pfrozen_{seeds[2]}.json").write_text(json.dumps(runs[("pfrozen", seeds[3])]))
+    a = R.analyse("production", R.load_runs(str(tmp_path), "production", seeds), None, **kw)
+    assert any(f"real_{s1}" in b and "tag" in b for b in a["bad"]), a["bad"]
+    assert any(f"pfrozen_{seeds[2]}" in b and "tag" in b for b in a["bad"]), a["bad"]
+    assert not a["valid"] and R.e1c_disposition(a).startswith("VOID")
+    raw = R.load_run(str(tmp_path), "production", f"real_{s1}", tag_check=False)
+    assert raw["arm"] == "pfrozen" and "tag_problem" not in raw
+
+
 def test_pfrozen_zeroes_the_plan_rate():
     arm = types.SimpleNamespace(_plan_lr=0.02)
     with R.ArmPatch("pfrozen") as ap:

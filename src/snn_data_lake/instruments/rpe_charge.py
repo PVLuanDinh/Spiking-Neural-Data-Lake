@@ -1174,7 +1174,10 @@ def replay(rows_by_seed_runs, n=None):
 
 
 # ------------------------------------------------------------------------------- loading / logs
-def load_run(results_dir, tier, tag):
+def load_run(results_dir, tier, tag, tag_check=True):
+    """One result JSON, or None when absent. A run of the other tier is refused. With `tag_check` (the campaign's
+    loader; E1d section 3) a record whose `arm`/`seed` do not match its file tag (`<arm>_<seed>`, `real_<seed>_r2`)
+    carries `tag_problem`, which `run_problems` puts on the VALIDITY bad list; R2's own reads pass False."""
     p = os.path.join(results_dir, tag + ".json")
     if not os.path.exists(p):
         return None
@@ -1186,6 +1189,12 @@ def load_run(results_dir, tier, tag):
         WANT[tier][0],
     ):  # a result of the other tier never enters
         raise SystemExit(f"TIER MISMATCH in {p}: {t}")
+    if tag_check:
+        arm, _, seed = tag.removesuffix("_r2").rpartition("_")
+        if (d.get("arm"), str(d.get("seed"))) != (arm, seed):
+            d["tag_problem"] = (
+                f"record arm={d.get('arm')} seed={d.get('seed')} does not match its file tag {tag}"
+            )
     return d
 
 
@@ -1244,7 +1253,7 @@ def logs_gate(logs_dir):
 def run_problems(arm, key, d, tier):
     """Per-run harness validity (E1's set + Revision 2's tier block)."""
     tag = f"{arm}_{key}"
-    bad = []
+    bad = [f"{tag}: {d['tag_problem']}"] if d.get("tag_problem") else []
     if d["swallowed_exceptions"] != 0:
         bad.append(f"{tag}: swallowed={d['swallowed_exceptions']}")
     if not d["pattern_len_ok"]:
