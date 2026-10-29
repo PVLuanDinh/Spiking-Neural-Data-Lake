@@ -146,7 +146,8 @@ class LakeIndex:
         h.update(str(self.applied_watermark()).encode())
         for k, v in self._db.execute(
             "SELECT k, v FROM meta WHERE k != 'applied_watermark' ORDER BY k"
-        ):  # derived markers (a compaction anchor) are logical state too
+        ):  # derived markers (a compaction anchor) are logical state too; ep_lake_id (st_dev:st_ino)
+            # makes the digest of an index over a COPIED or restored lake differ from the original's
             h.update(repr((k, v)).encode())
         return h.hexdigest()
 

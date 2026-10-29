@@ -412,6 +412,8 @@ class BinLog:
         at the first short or zero length. Same torn-frame rule as replay(): a short head, a zero
         length (a torn frame, not an empty record: pack_fact never emits 0 bytes) or a short payload
         stops cleanly, and nothing is repaired or written."""
+        if start is not None and start < len(_MAGIC):  # read_at refuses the same offset
+            raise ValueError(f"start {start} is inside the {_MAGIC!r} header")
         if not os.path.exists(self.path):
             return
         with open(self.path, "rb") as f:

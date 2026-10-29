@@ -21,7 +21,7 @@ import contextlib
 import hashlib
 import os
 
-from snn_data_lake.substrate.binlog import unpack_episode
+from snn_data_lake.substrate.binlog import _LEN, unpack_episode
 from snn_data_lake.substrate.lake_index import LakeIndex
 from snn_data_lake.substrate.lake_recall import is_subcue
 
@@ -102,9 +102,8 @@ class EpisodeIndex:
     def __init__(self, log, index_path):
         self.log = log
         self._path = index_path
-        self._idx = (
-            None  # opened on first use, inside recall's refusal net (a damaged file refuses)
-        )
+        # opened on first use, inside recall's refusal net (a damaged file refuses)
+        self._idx = None
         self._checked = False  # the rows are verified once, then trusted for folds ...
         self._seen_version = None  # ... until another connection changes the index file (M7)
 
@@ -117,6 +116,7 @@ class EpisodeIndex:
     def close(self):
         if self._idx is not None:
             self._idx.close()
+            self._idx = None  # the next use reopens instead of refusing on a closed connection
 
     # -- compaction detection (S5): offsets live in the rows, and a rewrite of the lake moves every one.
     def _lake_id(self):
@@ -136,7 +136,10 @@ class EpisodeIndex:
         if wm == 0:
             return True
         was, now = self.idx.meta("ep_lake_id"), self._lake_id()
-        if was is None or (was != now and "0" not in (was.split(":")[1], now.split(":")[1])):
+        # a malformed marker (no ":") never compares equal to a real id, so it rebuilds, not refuses
+        if was is None or (
+            was != now and "0" not in (was.partition(":")[2], now.partition(":")[2])
+        ):
             return False  # the lake file was replaced (a compaction): every offset may have moved
         if wm > os.path.getsize(
             self.log.path
@@ -151,7 +154,7 @@ class EpisodeIndex:
         return (
             payload is not None
             and hashlib.sha256(payload).hexdigest() == sha
-            and wm == int(off) + 4 + len(payload)
+            and wm == int(off) + _LEN.size + len(payload)
         )
 
     def _wm(self):
@@ -171,8 +174,6 @@ class EpisodeIndex:
         self._reset()
         return self.sync()
 
-    # -- the tail fold (S3): fold the records after the watermark, advancing it in the same transaction
-    # -- the tail fold (S3): fold the records after the watermark, advancing it in the same transaction
     def _rows_ok(self):
         """The posting rows are exactly the rows the fold wrote: their count AND their digest (the sum
         mod 2**64 of each row's hash) match the meta the fold kept in the same transaction. A count alone
@@ -198,9 +199,13 @@ class EpisodeIndex:
             self._checked = False
         self._seen_version = version
 
+    # -- the tail fold (S3): fold the records after the watermark, advancing it in the same transaction
     def sync(self):
         """Fold every complete frame after the applied watermark; returns the records folded. A
-        detected compaction or a damaged row set rebuilds from the start instead."""
+        detected compaction or a damaged row set rebuilds from the start instead. A home with no
+        lake yet folds nothing (the same miss every other reader of it answers)."""
+        if not os.path.exists(self.log.path):
+            return 0
         self._guard_cache()
         if (
             self._wm() > 0
@@ -217,7 +222,7 @@ class EpisodeIndex:
         lake_id = self._lake_id()
         rows, folded, end, last = [], 0, wm, None
         for offset, payload in self.log.replay_located(start=start):
-            end = offset + 4 + len(payload)
+            end = offset + _LEN.size + len(payload)
             last = (offset, hashlib.sha256(payload).hexdigest())
             ep = decode(payload)
             if ep is not None:
