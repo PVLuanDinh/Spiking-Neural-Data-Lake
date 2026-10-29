@@ -12,6 +12,8 @@ Outcomes (2.14): VERIFIED / FALSE / MISS / REFUSED / ERROR.
 
 import hashlib
 import random
+import time
+import tracemalloc
 from dataclasses import dataclass, field
 
 # ---- the frozen workload shape (2.2) ------------------------------------------------------------
@@ -39,6 +41,7 @@ DEFAULT_COUNTS = {
     "C8": 40,
 }
 TINY_COUNTS = {k: max(2, v // 25) for k, v in DEFAULT_COUNTS.items()}
+LOAD_TOLERANCE = 0.5  # B7: a witness drift beyond 50 % VOIDS the seed's cost reading
 N_NONE_TRAP_EPISODES = 20
 N_CROSS_BOOT_DUPS = 50
 ABSENT_CLASSES = frozenset({"C6", "C8"})
@@ -356,3 +359,41 @@ def workload_digest(wl):
     for c in wl.cues:
         h.update(repr((c.cls, sorted(c.cue.items()))).encode())
     return h.hexdigest()
+
+
+# ---- instrument probes I3 / I4 / I5 (2.7) ---------------------------------------------------------
+def time_call(fn):
+    t0 = time.perf_counter()
+    out = fn()
+    return out, time.perf_counter() - t0
+
+
+def latency_probe_ok(planted, measured):
+    """I3's floor: a planted delay must be visible in the measurement (a span timed outside the
+    call reads ~0 and fails here)."""
+    return measured >= planted
+
+
+def traced_peak(fn):
+    """I4: the peak traced allocation of `fn()`, in bytes."""
+    tracemalloc.start()
+    try:
+        tracemalloc.reset_peak()
+        out = fn()
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    return out, peak
+
+
+def spin_witness(n=2_000_000):
+    """A fixed CPU spin, timed: the load witness read before and after each cost arm."""
+    t0 = time.perf_counter()
+    x = 0
+    for i in range(n):
+        x += i & 7
+    return time.perf_counter() - t0
+
+
+def load_verdict(before, after, tol=LOAD_TOLERANCE):
+    return "VOID" if abs(after - before) > tol * before else "OK"
