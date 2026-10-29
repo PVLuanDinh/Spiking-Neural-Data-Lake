@@ -837,3 +837,8 @@ Appended below the freeze and its addenda (section 12). Nothing above is edited.
   - The driver's own VOID halt branch (exit 6) never ran live.
 - **The P3 opening above is carried in the integrator's openings ledger** (2026-10-28, D-37 item 4), as E1d section 9
   B0 requires.
+- **The race-call count** (policy-enforcer #5902 m1, carried). "The executive's race runs about 7,300 times per run"
+  above was MEASURED on seed 21001 only (7,325 calls, #5845). It is not a count over the 9 goal-frozen calibration seeds.
+- **The openings ledger** named above is the integrator's memory file `project-snn-carried-openings.md` (in the
+  owner's Claude memory folder for `D:\AI-project`), entry dated 2026-10-28, "THE PLANNER GATE NEVER CLEARS ON SOME
+  SEEDS".
