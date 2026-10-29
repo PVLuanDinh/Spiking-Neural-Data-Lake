@@ -32,6 +32,13 @@ The incumbent arms I_K1 / I_K2 (2.11 D1) run THIS FILE at the base head e1b3ae3c
 PYTHONPATH=<base checkout>/src (`--head base`); each compares only to its own twin at that head.
 The FAILWRITE arm (the #1037 latch schedule A3, `fw_*` roles) and R2-c8 (the three bout crash
 points, planted bout slots, one-frame check, FAILWRITE with B = sleep_bout) run in every seed.
+This instrument is the binding reading of R2-c7. tests/test_r2_p3_percept_transitions.py snapshots the
+same fields by a second procedure that differs on three definitions: its "next refit" is "the
+trajectory grew" (here: the grower's `ticks % refit_every == 0` sleep step), its boundary fires on any
+refit (here: a refit of THIS session, after a clean session 1 = `pre_K1g0`), and it also kills inside
+`_flush_prototypes` (here only `kill_growth`). A pytest reading of the same bar can therefore
+disagree on a seed; only this instrument's reading scores R2-c7 (the registration's amendment must say
+so before 15050; OWED to the integrator).
 The percept arms (P3, K1g / R2-c7, 2.10, `P3_ROLES`) run on CPU in every seed: a session closed
 cleanly, then a session killed at the tick after the night's `_flush_growth`; the restoring process
 and the uninterrupted twin run ONLY the grower's sleep step to its next refit.
@@ -1301,7 +1308,8 @@ def _next_refit(neuro):
 def run_percept(role, seed, out):
     """One K1g process (2.10), CPU (CUDA refits are not claimed deterministic). `pre_K1g0` runs
     session 1 to a completed night and closes. `pre_K1g` runs session 2 past a refit of its own and
-    dies at the tick after the night's `_flush_growth` (`os._exit(0)`); `twin_K1g` runs the same
+    dies inside the night's `_flush_growth` call (`kill_growth`: the wrapper exits when the call
+    returns, before `_flush_prototypes` and the coverage flush, brain.py:3797-3799); `twin_K1g` runs the same
     schedule, snapshots its buffer there and runs only the grower's sleep step to the next refit;
     `K1g_POS` is that twin with its buffer shuffled across sessions. Every other arm restores a copy
     of the killed home (with its patch or planted percept) and runs the same grower step."""
