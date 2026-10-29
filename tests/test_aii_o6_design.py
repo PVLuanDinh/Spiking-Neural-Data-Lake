@@ -11,7 +11,10 @@ stdlib only. Loaded by ABSOLUTE path, as tests/test_red_reachability.py:18-22 do
 Run: pytest tests/test_aii_o6_design.py   (campaign rule 1: NOT run while the E1d campaign holds the host)
 """
 
+import contextlib
 import importlib.util
+import io
+import math
 import pathlib
 
 _PATH = pathlib.Path(__file__).resolve().parents[1] / "tools" / "aii_o6_design.py"
@@ -19,11 +22,25 @@ _spec = importlib.util.spec_from_file_location("aii_o6_design", _PATH)
 M = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(M)
 
-D = M.derive()  # alpha 0.05, looks 8/15/23: the DRAFT's registered design
+D = M.derive(
+    alpha=0.05
+)  # Fold 2 reproduction (alpha 0.05, looks 8/15/23): the SUPERSEDED design, a regression test of Fold 2
+A1 = (
+    0.05 * 6 / math.pi**2
+)  # D-82 series, candidate 1: 0.0303964, computed here independently of the script
+D1 = M.derive(alpha=A1)  # the REGISTERED design (Fold 3): n 27, cap 30, looks 10/20/30
 
 
 def _close(got, want, tol):
     assert abs(got - want) <= tol, f"{got} != {want} (tol {tol})"
+
+
+def _raises(exc, f, *a, **k):
+    try:
+        f(*a, **k)
+    except exc:
+        return True
+    return False
 
 
 # ---- the four reds named by the brief -------------------------------------------------------------------------------
@@ -158,3 +175,163 @@ def test_monte_carlo_seeded_and_matches_exact():
     _close(r[D["p0"]], M.joint(D, D["p0"], 0.0, 1.0)["met"], 0.008)
     _close(r[D["p1"]], M.joint(D, D["p1"], 0.0, 1.0)["met"], 0.012)
     assert r == M.mc(D, [D["p0"], D["p1"]], reps=20000, seed=20261029)
+
+
+# ---- Round 5 (enforcer 7019): one red per REGISTERED number at alpha_1 = 0.0303964 ------------------------------------
+# Sections above pin the SUPERSEDED alpha-0.05 design (Fold 2 regression). The tests below pin what the record registers.
+
+
+def test_alpha1_is_the_default_design():
+    _close(M.ALPHA_1, A1, 1e-12)
+    assert M.derive()["alpha"] == M.ALPHA_1 and M.derive()["looks"] == [10, 20, 30]
+
+
+def test_registered_alpha1_design():
+    assert (D1["n_fixed"], D1["c_fixed"]) == (27, 11)
+    _close(D1["alpha_fixed"], 0.0227, 5e-5)
+    _close(D1["power_fixed"], 0.8085, 5e-5)
+    assert D1["looks"] == [10, 20, 30] and D1["cap"] == 30 and D1["inflation"] == 1.11
+    assert D1["eff"] == [8, 10, 12]
+    for got, want in zip(D1["spend"], (0.00018, 0.00802, 0.03040), strict=True):
+        _close(got, want, 5e-6)
+    for got, want in zip(D1["alpha_real"], (0.00017, 0.00563, 0.02214), strict=True):
+        _close(got, want, 5e-6)
+    assert D1["fut"] == [1, 5] and D1["fut_cap"] == 9
+    assert D1["rd4"] == [7, 10, 14] and D1["rd5"] == [1, 4, 8]
+    _close(D1["void4_err"], 0.0077, 5e-5)
+    _close(D1["void5_err"], 0.0088, 5e-5)
+    _close(D1["power_cap_ignored"], 0.8400, 5e-5)
+    _close(D1["power_cap_obeyed"], 0.8320, 5e-5)
+    _close(D1["power_joint_worst"], 0.8198, 5e-5)
+
+
+def test_registered_alpha1_joint_rows():
+    want = {
+        "p0": (0.0210, 0.0097),
+        0.35: (0.3377, 0.0135),
+        "p1": (0.8198, 0.0128),
+        0.6: (0.9801, 0.0100),
+        0.9: (0.9962, 0.0038),
+    }
+    for key, (wm, wv) in want.items():
+        pc = D1[key] if isinstance(key, str) else key
+        j = M.joint(D1, pc, D1["p0"], D1["p1"])
+        _close(j["met"], wm, 5e-5)
+        _close(j["void"], wv, 5e-5)
+    _close(M.joint(D1, D1["p1"], 0.0, 1.0)["met"], 0.8320, 5e-5)
+    assert M.joint(D1, D1["p1"], 0.0, 1.0)["void"] == 0.0
+
+
+def test_registered_alpha1_drift_row():
+    want = {
+        "p0": (0.0212, 0.0053),
+        0.25: (0.0500, 0.0139),
+        0.30: (0.1431, 0.0542),
+        0.35: (0.2668, 0.1483),
+    }
+    for key, (wm, wv) in want.items():
+        q = D1["p0"] if key == "p0" else key
+        j = M.joint(D1, q, q, 1.0)
+        _close(j["met"], wm, 5e-5)
+        _close(j["void"], wv, 5e-5)
+
+
+def test_registered_alpha1_planted_mutations_are_caught():
+    """The pins above must fire on a planted cap 31 / efficacy [8,10,13] / lax boundary (the reviewer's plants)."""
+    assert M.derive(alpha=A1, looks=[11, 21, 31])["cap"] != D1["cap"]
+    off = dict(D1, eff=[8, 10, 13])
+    assert abs(M.joint(off, D1["p1"], D1["p0"], D1["p1"])["met"] - 0.8198) > 5e-5
+    lax = dict(D1, eff=[1, 1, 1])
+    assert (
+        M.cum_alpha(lax["looks"], lax["eff"], D1["p0"])[-1] > A1
+    )  # a lax boundary spends more than alpha_1
+    assert (
+        M.joint(lax, D1["p0"], D1["p0"], D1["p1"])["met"] > A1
+    )  # and the joint lattice sees it (joint(0)==0 would not)
+
+
+# ---- MAJOR-2: the cap clause (cap = target x inflation, power at the cap >= .8, smallest such cap) --------------------
+
+
+def _joint_power_at_cap(cap):
+    lk = [math.ceil(cap / 3), round(2 * cap / 3), cap]
+    d = M._design(lk, A1, D1["p0"], D1["p1"], D1["conf"], D1["void_err"])
+    return M.joint(d, D1["p1"], D1["p0"], D1["p1"])["met"]
+
+
+def test_cap_is_the_smallest_reaching_joint_power():
+    assert _joint_power_at_cap(D1["cap"]) >= 0.80
+    assert _joint_power_at_cap(D1["cap"] - 1) < 0.80
+    assert (
+        D1["cap"] > D1["n_fixed"]
+    )  # deleting the power condition would stop at the fixed-sample target 27 (.7869)
+    for cap, want in ((27, 0.7869), (28, 0.7365), (29, 0.7822), (31, 0.8384), (32, 0.7980)):
+        _close(_joint_power_at_cap(cap), want, 5e-5)
+
+
+def test_no_cap_reaching_power_raises():
+    assert _raises(ValueError, M.derive, alpha=A1, cap_max=28)
+
+
+# ---- NIT: failing bare arm, VOID-first ordering, MC over the joint lattice, input validation ----------------------------
+
+
+def test_red_failing_bare_arm_voids_at_l1():
+    j = M.joint(D1, D1["p1"], D1["p0"], 0.0)  # RD-5: a bare learner that never solves
+    assert j["void"] == 1.0 and j["void_l1"] == 1.0 and j["met"] == 0.0
+
+
+def test_void_is_checked_before_met():
+    """Candidate crosses and the original is invalid in the same cell: VOID wins even with the guard off."""
+    j = M.joint(D1, 1.0, 1.0, 1.0, guard=False)
+    assert j["void"] == 1.0 and j["met"] == 0.0
+
+
+def test_monte_carlo_covers_the_joint_lattice():
+    r = M.mc_joint(D1, (D1["p1"], D1["p0"], D1["p1"]), reps=20000, seed=20261029)
+    ex = M.joint(D1, D1["p1"], D1["p0"], D1["p1"])
+    _close(r["met"], ex["met"], 0.012)
+    _close(r["void"], ex["void"], 0.006)
+    assert r == M.mc_joint(D1, (D1["p1"], D1["p0"], D1["p1"]), reps=20000, seed=20261029)
+
+
+def test_inputs_are_validated():
+    assert _raises(
+        ValueError, M.derive, conf=0.99
+    )  # no n < 400 meets the target: raise, not a TypeError on None
+    for bad in ([], [20, 10, 30], [0, 5, 9], [10, 10, 30]):
+        assert _raises(ValueError, M.derive, alpha=A1, looks=bad), bad
+    assert _raises(SystemExit, M.main, ["--looks", "20,10"])
+
+
+# ---- MINOR-1 / MINOR-4: report() derives its bound lines from the design; MET bounds are at 1 - alpha_1 ----------------
+
+
+def _report(d):
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        M.report(d, reps=500, seed=1)
+    return buf.getvalue()
+
+
+def test_report_bound_lines_follow_the_design():
+    out = _report(D1)
+    for frag in (
+        "x=8/10",
+        "x=10/20",
+        "x=12/30",
+        "0.457",
+        "0.280",
+        "0.233",
+        "x=10/30",
+        "x=11/30",
+        "0.499",
+        "0.533",
+        "1-alpha_1",
+    ):
+        assert frag in out, frag
+    assert "9/23" not in out
+    old = _report(D)
+    assert (
+        "x=7/8" in old and "x=9/23" in old
+    )  # and the alpha-0.05 run prints ITS looks, not alpha_1's
