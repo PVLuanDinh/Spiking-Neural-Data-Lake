@@ -72,22 +72,26 @@ class LakeIndex:
             self._db.commit()
 
     # -- write path (the ONE writer thread/process) ------------------------------------
-    def put_batch(self, entries, *, watermark: int | None = None) -> None:
+    # distinct-from: growth/h01_ingest.py -- a JSON pin of H01 stage records; no lake index. Site read.
+    # distinct-from: instruments/carried_state_report.py -- report rows; no lake index. Site read.
+    def put_batch(self, entries, *, watermark: int | None = None, meta: dict | None = None) -> None:
         """Fold a batch of (tag, key, container, seq) pointer rows, optionally advancing the
         applied watermark IN THE SAME TRANSACTION -- rows and the how-far marker move
-        together or not at all, so a crash can never record progress it did not make."""
+        together or not at all, so a crash can never record progress it did not make.
+        `meta` pairs (e.g. a compaction anchor) ride in the same transaction."""
+        pairs = dict(meta or {})
+        if watermark is not None:
+            pairs["applied_watermark"] = str(int(watermark))
         with self._db:
             self._db.executemany(
                 "INSERT INTO records (tag, key, container, seq) VALUES (?, ?, ?, ?) "
                 "ON CONFLICT(tag, key) DO UPDATE SET container=excluded.container, seq=excluded.seq",
                 entries,
             )
-            if watermark is not None:
-                self._db.execute(
-                    "INSERT INTO meta (k, v) VALUES ('applied_watermark', ?) "
-                    "ON CONFLICT(k) DO UPDATE SET v=excluded.v",
-                    (str(int(watermark)),),
-                )
+            self._db.executemany(
+                "INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",
+                [(k, str(v)) for k, v in pairs.items()],
+            )
 
     # -- read path ----------------------------------------------------------------------
     def get(self, tag: int, key: str):
@@ -95,6 +99,36 @@ class LakeIndex:
             "SELECT container, seq FROM records WHERE tag=? AND key=?", (tag, key)
         ).fetchone()
         return None if row is None else (row[0], int(row[1]))
+
+    def clear(self, tag: int, meta_keys) -> None:
+        """Delete every row of `tag` AND the named meta keys in ONE transaction: both or neither."""
+        with self._db:
+            self._db.execute("DELETE FROM records WHERE tag=?", (tag,))
+            self._db.executemany("DELETE FROM meta WHERE k=?", [(k,) for k in meta_keys])
+
+    def data_version(self) -> int:
+        """SQLite's PRAGMA data_version: it changes when ANOTHER connection commits to this file (never
+        for this connection's own commits), so a caller that cached a verdict can tell the rows moved."""
+        return int(self._db.execute("PRAGMA data_version").fetchone()[0])
+
+    def iter_range(self, tag: int, lo: str, hi: str, *, reverse: bool = False):
+        """(key, seq) pairs of [lo, hi) in key order (descending when `reverse`), streamed from the
+        cursor (no list). A caller that stops early should close the generator."""
+        order = "DESC" if reverse else "ASC"
+        cur = self._db.execute(
+            f"SELECT key, seq FROM records WHERE tag=? AND key>=? AND key<? ORDER BY key {order}",
+            (tag, lo, hi),
+        )
+        for key, seq in cur:
+            yield key, int(seq)
+
+    def count_range(self, tag: int, lo: str, hi: str) -> int:
+        sql = "SELECT COUNT(*) FROM records WHERE tag=? AND key>=? AND key<?"
+        return int(self._db.execute(sql, (tag, lo, hi)).fetchone()[0])
+
+    def meta(self, k: str):
+        row = self._db.execute("SELECT v FROM meta WHERE k=?", (k,)).fetchone()
+        return None if row is None else row[0]
 
     def applied_watermark(self) -> int:
         row = self._db.execute("SELECT v FROM meta WHERE k='applied_watermark'").fetchone()
@@ -110,6 +144,10 @@ class LakeIndex:
         ):
             h.update(repr(row).encode())
         h.update(str(self.applied_watermark()).encode())
+        for k, v in self._db.execute(
+            "SELECT k, v FROM meta WHERE k != 'applied_watermark' ORDER BY k"
+        ):  # derived markers (a compaction anchor) are logical state too
+            h.update(repr((k, v)).encode())
         return h.hexdigest()
 
     def row_count(self) -> int:
