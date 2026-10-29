@@ -5,6 +5,8 @@ Brain-free and lake-free: nothing here builds a Brain or opens a lake. The fixtu
 REAL admission check (`learner_events._refusal`), never by a copy of its rules.
 """
 
+import random
+
 import pytest
 from r1_c8_fixture import (
     N_LEGACY_TEACH,
@@ -148,3 +150,75 @@ def test_scope_assertion_refuses_a_disagreeing_predicate():
     o.assert_scope(H.is_autobiographical_episode)
     with pytest.raises(ra.ScopeMismatch):
         o.assert_scope(lambda ep: True)  # calls the teach record recallable
+
+
+# ---- A4 core, part 2: the frozen generator, I6 determinism, the A2 fixture wired in ----
+
+TINY = dict(n_auto=240, boots=3, n_filler=40, filler_bytes=64, capacity=16, counts=ra.TINY_COUNTS)
+
+
+def _wl(seed=14200):
+    return ra.make_workload(seed, teach=legacy_teach_records(), learner=distractor_events(), **TINY)
+
+
+def test_i6_generator_is_deterministic_and_seed_sensitive():
+    a, b, c = _wl(14200), _wl(14200), _wl(14201)
+    assert ra.workload_digest(a) == ra.workload_digest(b)
+    assert ra.workload_digest(a) != ra.workload_digest(c)
+
+
+def test_i6_red_a_seed_blind_generator_is_caught():
+    # the red: a generator that ignores its seed gives equal digests for different seeds
+    blind = lambda seed: _wl(14200)  # noqa: E731
+    assert ra.workload_digest(blind(14200)) == ra.workload_digest(blind(14201))
+    assert ra.workload_digest(_wl(14200)) != ra.workload_digest(_wl(14201))
+
+
+def test_actor_distribution_is_the_registered_p_self_point_nine():
+    rng = random.Random(14200)
+    who = [ra._episode(rng, i)["who"] for i in range(20000)]
+    assert abs(who.count("self") / len(who) - 0.9) < 0.01
+    assert {"owner", "arm"} <= set(who)
+
+
+def test_absent_classes_are_absent_and_present_classes_present():
+    wl = _wl()
+    o = ra.Oracle(wl.records)
+    for c in wl.cues:
+        n = len(o.match(c.cue))
+        if c.cls in ra.ABSENT_CLASSES:
+            assert n == 0, (c.cls, c.cue)
+        else:
+            assert n >= 1, (c.cls, c.cue)
+        if c.cls == "C5":
+            assert n >= 2 and "when" not in c.cue
+    assert {c.cls for c in wl.cues} >= {"C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"}
+
+
+def test_resident_classes_sit_in_the_expected_window_and_nonresident_ones_do_not():
+    wl = _wl()
+    o = ra.Oracle(wl.records)
+    window = {ra.episode_key(e) for e in o.expected_window(wl.capacity)}
+    for c in wl.cues:
+        if c.cls == "C1":
+            assert ra.episode_key(c.cue) in window
+        if c.cls == "C3":
+            assert ra.episode_key(c.cue) not in window
+
+
+def test_the_a2_fixture_is_in_the_stream_and_the_label_equals_the_one_predicate():
+    wl = _wl()
+    o = ra.Oracle(wl.records)
+    o.assert_scope(H.is_autobiographical_episode)
+    kinds = {r.episode["kind"] for r in wl.records if r.episode and "kind" in r.episode}
+    assert kinds == set(LE.KIND_SPECS)  # all supported kinds, none silently omitted
+    assert sum(1 for r in wl.records if r.label == "teach") == N_LEGACY_TEACH
+    assert wl.learner_kinds == tuple(sorted(LE.KIND_SPECS))
+
+
+def test_c8_cues_are_exact_cues_of_the_non_autobiographical_records_and_expect_miss():
+    wl = _wl()
+    o = ra.Oracle(wl.records)
+    c8 = [c for c in wl.cues if c.cls == "C8"]
+    assert len(c8) == ra.TINY_COUNTS["C8"]
+    assert all("kind" in c.cue and o.match(c.cue) == [] for c in c8)
