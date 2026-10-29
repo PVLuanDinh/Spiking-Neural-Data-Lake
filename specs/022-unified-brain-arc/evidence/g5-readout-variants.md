@@ -2400,3 +2400,16 @@ Each ruling picks one of the options S.1/S.4 stated; nothing else above changes.
 - **S.4 (D1):** D1 still runs (row plan Phase 2 item 5). Its dev reading uses a FRESH block allocated by a registry grep with a
   positive control in D1's pre-run amendment; 11400-11407 stays EXPOSED (fixture sanity only, never fresh again, A1).
   Confirmatory 11410-11417 and reserve 11418-11425 stay HELD for D1.
+
+#### S.5a Correction of S.5 row 5 (2026-10-29, integrator `claude-engine-1024`; enforcer #6757 MAJOR-1; pre-data)
+
+Appended; S.5 above is not edited. S.5 row 5 named D0's (unbuilt) module as the one drift home. That ignored BUILT code: the
+L1b-STALE section-2.4 drift readings in `instruments/readout_staleness.py` (on claude/l1b-stale-r4-1029@c0f90736, :269-300:
+`survivor_pairs`, `rate_drift`, `readout_projector`, `visible_fraction`), which own the job under F3's own rule ("whichever builds
+first owns"). Corrected: the ONE drift home is that built drift section. D0's `readout_null_split` IS `readout_projector` +
+`visible_fraction` (import, never rewrite); Part E's alignment module and G9's criterion 1 import from it; functions not yet built
+(`procrustes_realign`, `pv_correlation`, `tuning_correlation`, `DriftReading`, `decoder_across_days`) go into that same section when
+built, or the whole section moves into one module in ONE P2 merge commit with its tests; `rsa_drift` (built on claude/g9-gaps-1029,
+f0f50385) is placed in or imported by it at the ARC6 landing. `rate_drift` (a norm ratio) is distinct-from the correlations. The
+matching dated corrections in d1-readout-staleness.md and MAP.md are on claude/g5-drifthome-1029. The launcher is told (D-70 accepted
+the original row).
