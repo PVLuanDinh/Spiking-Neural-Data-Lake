@@ -178,7 +178,9 @@ SEQ = {
 # E1c (T122, evidence/e1c-plan-w-powered.md, frozen 082b66f8): the powered production H-P1 follow-up, ONE parameter set
 #   on the same sequential path (P2: no copy). Cap 704 at 11 looks from the zero-preserving resample of E1b's 80
 #   production d_s (section 5.1b); k_frac 1/2 replaces E1b's ceil(5n/8), which cannot fire at large n (section 5.2).
-E1C_SEEDS = range(21000, 21704)
+# E1d (T124, evidence/e1d-plan-w-pc2.md, frozen df6bcfde) re-runs this design unchanged on fresh seeds (its section 5),
+#   so the names stay and only the seeds move; E1c's reproduction tree is 1b6e53ab (seeds 21000-21703).
+E1C_SEEDS = range(23000, 23704)
 E1C = {
     "claimed": DH,
     "looks": tuple(range(64, 705, 64)),

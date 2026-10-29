@@ -415,7 +415,7 @@ def _tile(vals, n):
 def test_e1c_design_is_one_parameter_set_on_the_existing_sequential_path():
     assert R.E1C["looks"] == tuple(range(64, 705, 64)) and R.E1C["k_frac"] == 0.5
     assert R.E1C["claimed"] == R.DH and R.E1C["sd_pre"] == 0.3097
-    assert len(R.E1C_SEEDS) == 704 and R.E1C_SEEDS[0] == 21000
+    assert R.E1C_SEEDS == range(23000, 23704)  # E1d section 5: fresh seeds, same design
     q = R.seq_record([0.0] * 704, **R.E1C)  # the same walk E1b uses, parameters only (P2)
     assert q["decision"] != "harm" and q["k_min"] == math.ceil(0.5 * q["n"])
 
@@ -431,9 +431,10 @@ def test_e1c_decision_rule_on_constant_differences_at_704():
 
 def test_e1c_r4_the_half_rule_crosses_where_five_eighths_cannot():
     """R4: 58% of seeds positive, t past the boundary: MET under ceil(n/2), not under ceil(5n/8)."""
-    ds = _tile([0.3] * 58 + [-0.3] * 42, 704)
+    n = len(R.E1C_SEEDS)
+    ds = _tile([0.3] * 58 + [-0.3] * 42, n)
     looks = R.E1C["looks"]
-    assert 704 / 2 <= sum(x > 0 for x in ds) < math.ceil(5 * 704 / 8)
+    assert n / 2 <= sum(x > 0 for x in ds) < math.ceil(5 * n / 8)
     assert R.seq_decision(ds, R.DH, looks, sd_pre=0.3097, k_frac=0.5)["decision"] == "harm"
     assert R.seq_decision(ds, R.DH, looks, sd_pre=0.3097)["decision"] != "harm"
 
@@ -854,7 +855,7 @@ def test_e1c_compare_on_a_partial_campaign_lists_what_is_owed_and_does_not_crash
         logs_pass=True,
         sim_campaigns=0,
     )
-    assert "real_21000 missing" in a["pending"] and "pfrozen_21063 missing" in a["pending"]
+    assert "real_23000 missing" in a["pending"] and "pfrozen_23063 missing" in a["pending"]
     assert a["tail"] == [] and a["zero_read"] == []
     half = R.fixture_runs("harm", seeds=R.E1C_SEEDS[:64], arms=("real",))
     b = R.analyse(
@@ -866,7 +867,7 @@ def test_e1c_compare_on_a_partial_campaign_lists_what_is_owed_and_does_not_crash
         logs_pass=True,
         sim_campaigns=0,
     )
-    assert "pfrozen_21000 missing" in b["pending"] and b["tail"] == []
+    assert "pfrozen_23000 missing" in b["pending"] and b["tail"] == []
 
 
 def test_e1c_compare_cli_reads_the_campaign_design(tmp_path):
