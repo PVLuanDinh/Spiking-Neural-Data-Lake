@@ -348,3 +348,8 @@ def test_one_shot_reason_may_use_the_word_no(tmp_path):
 def test_negated_one_shot_with_every_sequential_field_still_passes(tmp_path):
     text = prereg() + "\nThis is not a one-shot design.\n"
     assert run(tmp_path, {A: text}).reds == []
+
+
+def test_r1_heading_rule_is_the_lists_exact_one_pre_registered_headings_are_not_matched(tmp_path):
+    text = "# Notes\n\n## 3. Pre-registered criteria, baseline vs after\n\nseeds 8.\n"
+    assert run(tmp_path, {OUT: text}).reds == []
