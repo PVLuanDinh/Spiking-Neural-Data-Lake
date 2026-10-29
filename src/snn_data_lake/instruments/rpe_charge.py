@@ -218,6 +218,9 @@ E1_RESULTS = os.environ.get(
 )
 SYNTH_SHA = "0" * 40
 SYNTH_NATIVE = {"file": "synth/_native.pyd", "sha256": "0" * 64}
+FIXTURE_FROZEN = (
+    9  # fixture_runs plants a goal-frozen held_goal on its first 9 seeds (E1d section 6, R2-dry)
+)
 
 
 class Refused(SystemExit):
@@ -1859,7 +1862,7 @@ def render_e1c(a):
     beside. Pure formatting of `analyse(..., design=E1C)`."""
     h, tier = a["hs"]["H-P1"], a["tier"]
     L = [
-        f"E1c look: {len(a['seeds'])} seeds (H-P1 reads {a['n_owed']['H-P1']}), N={a['N']}  H = ticks "
+        f"E1d (T124) look: {len(a['seeds'])} seeds (H-P1 reads {a['n_owed']['H-P1']}), N={a['N']}  H = ticks "
         f"{a['H0'] + 1}..{a['N']}  tier={tier}\n",
         "## Harness validity\n",
     ]
@@ -2263,9 +2266,11 @@ def synth_run(
     wiggle=0.0,
     shift=0,
     sha=SYNTH_SHA,
+    frozen=False,
 ):
     """A constructed run with only the fields compare reads. Constant reward r (plus a zero-mean +-wiggle) and a
-    constant |pred - r| = mae_value over every tick; `shift` moves the action series so arms can flip against `real`."""
+    constant |pred - r| = mae_value over every tick; `shift` moves the action series so arms can flip against `real`.
+    p["held_goal"] is None on the first call, then one goal (`frozen`) or a goal that moves every call."""
     n = ticks
     rs = [r + (wiggle if i % 2 else -wiggle) for i in range(n)]
     pred = [x - mae_value for x in rs]
@@ -2316,7 +2321,11 @@ def synth_run(
             "rpe": [mae_value] * n,
             "pattern": [[0.0]] * n,
         },
-        "p": {"rpe_entry": [0.0] * n, "rpe_used": [0.0] * n},
+        "p": {
+            "rpe_entry": [0.0] * n,
+            "rpe_used": [0.0] * n,
+            "held_goal": [None] + [(seed + (0 if frozen else i)) % 13 for i in range(1, n)],
+        },
         "series": {
             "action": [(i + seed + shift) % 3 for i in range(n)],
             "plan_w": [0.1 + 0.001 * (i % 7) for i in range(n)],
@@ -2329,6 +2338,7 @@ def fixture_runs(kind, tier="production", seeds=None, arms=None):
     `seeds`/`arms` default to E1b's (read at call time); the E1c compare fixture passes its own."""
     seeds, arms = SEEDS if seeds is None else seeds, ARMS if arms is None else arms
     wig = 0.01 if tier == "production" else 0.0
+    frozen = set(list(seeds)[:FIXTURE_FROZEN])
     runs = {}
     for s in seeds:
         base = 0.2 + 0.01 * (s % 5)
@@ -2345,11 +2355,14 @@ def fixture_runs(kind, tier="production", seeds=None, arms=None):
                 mae_value=0.4 + 0.02 * (s % 3),
                 wiggle=wig,
                 shift=1 if arm != "real" else 0,
+                frozen=s in frozen,
             )
     s0 = seeds[0]
     runs[("real_r2", s0)] = copy.deepcopy(runs[("real", s0)])
     for s in (s0, s0 + 1):
-        runs[("pc", s)] = synth_run("pc", s, tier, r=0.2, mae_value=0.4, wiggle=wig, shift=2)
+        runs[("pc", s)] = synth_run(
+            "pc", s, tier, r=0.2, mae_value=0.4, wiggle=wig, shift=2, frozen=s in frozen
+        )
     return runs
 
 

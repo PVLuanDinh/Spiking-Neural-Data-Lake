@@ -709,6 +709,29 @@ def test_firewall_the_disposition_is_byte_identical_with_held_goal_present_strip
         assert len(set(lines)) == 3  # the held_goal did reach the stratum line in all three
 
 
+R2_DRY_LINE = (  # E1d section 6: R2-dry's bar, pinned before the bind
+    "- t=0.000 (0/64 seeds > 0), SD=0.0000 -> **CONTINUE: no verdict (CONTINUE at look 1 of 11, "
+    "n=64 (no verdict): next look n=128 | beside (no bar): k 0/64, trim10 +0.0000, "
+    "HL +0.0000 [+0.0000, +0.0000], zeros 1.000, |d|>0.4 0)**"
+)
+
+
+def test_r2_dry_fixture_plants_nine_frozen_seeds_and_pins_the_look_1_disposition_line():
+    seeds = range(23000, 23064)
+    runs = R.fixture_runs("noharm", seeds=seeds, arms=R.E1C_ARMS)
+    assert R.FIXTURE_FROZEN == 9
+    for (_, s), d in runs.items():
+        hg = d["p"]["held_goal"]
+        assert len(hg) == d["pfc_bias_calls"] and hg[0] is None
+        assert (len(set(hg[1:])) == 1) == (s < seeds[R.FIXTURE_FROZEN])
+    a = R.analyse("production", runs, None, seeds=seeds, design=R.E1C, logs_pass=True)
+    md = R.render_e1c(a).splitlines()
+    assert md[0].startswith("E1d (T124) look: 64 seeds")
+    assert _quoted(a) == R2_DRY_LINE and a["valid"] and not a["pending"]
+    stratum = "- stratum (DESCRIPTIVE ONLY, decides nothing): 9/64 seeds goal-frozen;"
+    assert any(x.startswith(stratum) for x in md)
+
+
 def test_e1c_record_reads_section_8_never_e1b_null_record(e1c_704):
     """wf-rv #5689 m2 (spec sections 1, 4, 8): each stop reads section 8's disposition.
     E1b's "powered: a null, NULL-RECORD path" never reaches the E1c record.
