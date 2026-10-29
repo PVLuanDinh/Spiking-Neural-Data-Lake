@@ -5,7 +5,10 @@ Brain-free and lake-free: nothing here builds a Brain or opens a lake. The fixtu
 REAL admission check (`learner_events._refusal`), never by a copy of its rules.
 """
 
+import hashlib
+import inspect
 import random
+import struct
 import time
 
 import pytest
@@ -19,6 +22,7 @@ from r1_c8_fixture import (
 from snn_data_lake.instruments import recall_audit as ra
 from snn_data_lake.substrate import home as H
 from snn_data_lake.substrate import learner_events as LE
+from snn_data_lake.substrate.binlog import BinLog
 
 
 def test_distractors_cover_every_supported_kind_exactly_once():
@@ -350,3 +354,131 @@ def test_i2_attributes_through_the_real_wrappers_and_the_wrong_attribute_reds(
     monkeypatch.setenv("NORD_HOME", str(iso))
     assert ra.i2_check(str(iso / "home_ok")) is True
     assert ra.i2_check(str(iso / "home_red"), deep_attr="save_episode") is False
+
+
+# ---- S1 / S2: the located reader (r1-bounded-recall.md 2.11 P3; ported from claude/r1) --------
+MAGIC = b"SNDLBIN1"
+
+PAYLOADS = [b"alpha", b"bb", b"c" * 300, b"dd", b"\x00\x01\x02"]
+
+
+def _blog(tmp_path, payloads=PAYLOADS):
+    path = str(tmp_path / "lake.bin")
+    log = BinLog(path, dedup=False)
+    for p in payloads:
+        log.append(p)
+    return log, path
+
+
+def _frame_offsets(payloads):
+    """INDEPENDENT of the reader under test: summed frame lengths (8 magic + 4 + len each)."""
+    out, pos = [], len(MAGIC)
+    for p in payloads:
+        out.append(pos)
+        pos += 4 + len(p)
+    return out
+
+
+def _offsets_agree(located, payloads):
+    return [off for off, _p in located] == _frame_offsets(payloads) and [
+        p for _o, p in located
+    ] == list(payloads)
+
+
+def test_s1_replay_located_offsets_are_frame_starts_and_read_at_returns_the_payload(tmp_path):
+    log, path = _blog(tmp_path)
+    located = list(log.replay_located())
+    assert _offsets_agree(located, PAYLOADS)
+    for off, payload in located:
+        assert log.read_at(off) == payload
+    # the red: an offset taken at the PAYLOAD (frame + 4) instead of the frame fails the same check
+    wrong = [(off + 4, p) for off, p in located]
+    assert not _offsets_agree(wrong, PAYLOADS)
+    # `start` resumes at a frame boundary: the records after the watermark, offsets unchanged
+    tail = list(log.replay_located(start=_frame_offsets(PAYLOADS)[3]))
+    assert _offsets_agree(tail, PAYLOADS[3:]) is False  # offsets continue from the middle...
+    assert [p for _o, p in tail] == PAYLOADS[3:]
+    assert [o for o, _p in tail] == _frame_offsets(PAYLOADS)[3:]  # ...and are the SAME offsets
+
+
+def test_s1_read_at_refuses_a_non_frame_offset_and_a_torn_frame(tmp_path):
+    log, path = _blog(tmp_path)
+    with pytest.raises(ValueError):
+        log.read_at(0)  # inside the magic
+    with open(path, "r+b") as f:  # tear the last frame: keep its head, cut its payload
+        f.truncate(_frame_offsets(PAYLOADS)[-1] + 4 + 1)
+    assert log.read_at(_frame_offsets(PAYLOADS)[-1]) is None
+    assert [p for _o, p in log.replay_located()] == PAYLOADS[:-1]
+
+
+def _parse(path):
+    """INDEPENDENT reference parse of the file bytes (no BinLog): what replay() must yield."""
+    data = open(path, "rb").read()
+    out, pos = [], len(MAGIC)
+    while pos + 4 <= len(data):
+        (n,) = struct.unpack_from("<I", data, pos)
+        if n == 0 or pos + 4 + n > len(data):
+            break
+        out.append(data[pos + 4 : pos + 4 + n])
+        pos += 4 + n
+    return out
+
+
+def _sha(path):
+    return hashlib.sha256(open(path, "rb").read()).hexdigest()
+
+
+def _contract_ok(replay, path):
+    """S2's contract: the reference records, in order, with NO write (bytes identical after)."""
+    before = _sha(path)
+    got = list(replay())
+    return got == _parse(path) and _sha(path) == before
+
+
+def _fixtures(tmp_path):
+    """clean; torn tail (partial payload); zero length prefix mid-file; torn head (2 bytes)."""
+    paths = {}
+    for name in ("clean", "torn", "zero", "head"):
+        d = tmp_path / name
+        d.mkdir()
+        log, path = _blog(d)
+        paths[name] = path
+        with open(path, "r+b") as f:
+            if name == "torn":
+                f.truncate(_frame_offsets(PAYLOADS)[-1] + 4 + 1)
+            elif name == "zero":
+                f.seek(_frame_offsets(PAYLOADS)[2])
+                f.write(b"\x00\x00\x00\x00")
+            elif name == "head":
+                f.truncate(_frame_offsets(PAYLOADS)[-1] + 2)
+    return paths
+
+
+def test_s2_replay_keeps_its_contract_after_delegating_to_the_located_reader(tmp_path):
+    paths = _fixtures(tmp_path)
+    for name, path in paths.items():
+        log = BinLog.__new__(BinLog)  # replay() reads only the file: no constructor, so no repair
+        log.path = path
+        assert inspect.isgeneratorfunction(BinLog.replay)
+        assert _contract_ok(log.replay, path), name
+    assert len(_parse(paths["torn"])) == 4 and len(_parse(paths["zero"])) == 2
+
+
+def test_s2_the_contract_check_rejects_a_dropping_a_continuing_and_a_truncating_reader(tmp_path):
+    paths = _fixtures(tmp_path)
+    clean, torn = paths["clean"], paths["torn"]
+
+    def dropping():  # drops one record: the digest-moving red
+        yield from _parse(clean)[:-1]
+
+    def continuing():  # reads past the torn frame: returns a record the reference refuses
+        yield from _parse(torn) + [b"ghost"]
+
+    def truncating():  # repairs the torn tail by truncating the file (a write)
+        with open(torn, "r+b") as f:
+            f.truncate(_frame_offsets(PAYLOADS)[-1])
+        yield from _parse(torn)
+
+    assert not _contract_ok(dropping, clean)
+    assert not _contract_ok(continuing, torn)
+    assert not _contract_ok(truncating, torn)
