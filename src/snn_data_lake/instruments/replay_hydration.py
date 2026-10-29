@@ -28,7 +28,8 @@ The percept arm (P3, K1g / R2-c7) is another lane's.
   PYTHONUTF8=1 PYTHONPATH=src python src/snn_data_lake/instruments/replay_hydration.py --selfcheck
   ... --seed SEED OUT_DIR [--head base --base-src PATH] [--roles a,b]   one seed's processes
   ... --campaign OUT_DIR [--seeds a,b,...] [--base-src PATH] [--workers N]  the seeds (dev block,
-      sequential by default: each seed's processes are heavy)
+      sequential by default: each seed's processes are heavy; a confirmatory block needs
+      R2_CONFIRMATORY_GO=P1 or =P2, which licenses that part's block and reserve only)
 """
 
 import ast
@@ -52,6 +53,19 @@ import traceback
 from pathlib import Path
 
 DEV_SEEDS = tuple(range(15000, 15008))
+#: each part's confirmatory block plus its reserve (2.6). P3 has no entry: R2-c7 has no campaign arm
+#: here, so its seeds 15050-15067 stay unlicensed (review #6735 BLOCK-1).
+PART_SEEDS = {
+    "P1": tuple(range(15010, 15018)) + tuple(range(15020, 15028)),
+    "P2": tuple(range(15030, 15038)) + tuple(range(15040, 15048)),
+}
+#: the verdict lines each part's own verdict joins (2.3 Disposition: R2-c6 is P2's own; A3 runs
+#: FAILWRITE on "the P1 seeds"). R2-c3 and R2-c8 join BOTH parts until the integrator rules which
+#: reds and which bout check belong to which part (OWED, r2-instr-fix REPORT): stricter, never weaker.
+PART_BARS = {
+    "P1": ("R2-c1", "R2-c2", "R2-c3", "R2-c4", "R2-c8", "FAILWRITE"),
+    "P2": ("R2-c3", "R2-c6", "R2-c8"),
+}
 S_SLEEP = 6  # sleep ticks recorded after the kill point
 M_POST = 6  # K2/K3's post-boundary turns
 J_NIGHT = 3  # K3: sleep ticks of the next night before the kill
@@ -223,12 +237,20 @@ _BASE_SKIP = (
 
 def check_seeds(seeds):
     """The licence: only the dev block runs here. A confirmatory or reserve seed is read ONCE, by the
-    integrator's go, and reading one destroys the pre-data licence -- so it needs R2_CONFIRMATORY_GO=1."""
-    stray = [s for s in seeds if s not in DEV_SEEDS]
-    if stray and os.environ.get("R2_CONFIRMATORY_GO") != "1":
+    integrator's go, and reading one destroys the pre-data licence -- so it needs R2_CONFIRMATORY_GO
+    set to ONE part (P1 or P2) with every seed in that part's block or reserve (2.6). Returns the
+    part the seeds are read for: "dev", "P1" or "P2"."""
+    seeds = list(seeds)
+    if all(s in DEV_SEEDS for s in seeds):
+        return "dev"
+    part = os.environ.get("R2_CONFIRMATORY_GO")
+    if part not in PART_SEEDS or any(s not in PART_SEEDS[part] for s in seeds):
+        stray = [s for s in seeds if s not in DEV_SEEDS]
         raise ValueError(
-            f"seeds {stray} are outside the dev block 15000-15007: no confirmatory licence"
+            f"seeds {stray} are outside the dev block 15000-15007 and not all in the block that "
+            f"R2_CONFIRMATORY_GO={part!r} names (P1 or P2): no confirmatory licence"
         )
+    return part
 
 
 # ---- the schedule (identical in every process of a seed; uses only calls both heads have) -------
@@ -1928,8 +1950,10 @@ def verdict(per_seed, seeds):
     seed (a red that fires on no seed halts the arc), and a seed with an INCOMPLETE arm record is
     INVALID for c2; an INVALID seed (any reason) is never excluded from R2-c3's count: it reads NOT MET. Controls and c6 on
     every seed. Equality has no variance: no statistic, no majority. A must-differ bar whose two
-    sides are identical reads NOT MET (ruling 9). Scoring a seed reads it, so the licence holds here."""
-    check_seeds(seeds)
+    sides are identical reads NOT MET (ruling 9). Scoring a seed reads it, so the licence holds here,
+    and it names the part: a P1 or P2 verdict joins only that part's lines (PART_BARS); the dev block
+    joins them all."""
+    part = check_seeds(seeds)
     incomplete = [s for s in seeds if not per_seed[s].get("arms_complete", True)]
     invalid = [
         s for s in seeds if s in incomplete or not per_seed[s].get("c2", {}).get("I_K2_differs")
@@ -1968,23 +1992,31 @@ def verdict(per_seed, seeds):
     c8 = every(lambda c: all(c["c8"].values()))
     never = [r for r, hit in fired_somewhere.items() if not hit]
     halted = len(invalid) > 2 or bool(never) or not counted
-    ok = c1 and c2 and c3 and c4 and c6 and failwrite and c8 and not halted and not invalid
+    bars = {
+        "R2-c1": c1,
+        "R2-c2": c2,
+        "R2-c3": c3,
+        "R2-c4": c4,
+        "R2-c6": c6,
+        "R2-c8": c8,
+        "FAILWRITE": failwrite,
+    }
+    own = PART_BARS.get(part, tuple(bars))
+    ok = all(bars[b] for b in own) and not halted and not invalid
     verdict_of = lambda b: "PASS" if b and not halted else "RED"  # noqa: E731
+    lines = {b: verdict_of(v) if b in own else f"not {part}'s verdict" for b, v in bars.items()}
+    if invalid and "R2-c3" in own:
+        lines["R2-c3"] = "NOT MET"
     return {
         "seeds": list(seeds),
+        "part": part,
         "invalid_seeds": invalid,
         "incomplete_seeds": incomplete,
         "halted": halted,
         "red_fires_on_no_seed": never,
-        "R2-c1": verdict_of(c1),
-        "R2-c2": verdict_of(c2),
-        "R2-c3": "NOT MET" if invalid else verdict_of(c3),
+        **lines,
         "reds": reds,
         "planted": planted,
-        "R2-c4": verdict_of(c4),
-        "R2-c6": verdict_of(c6),
-        "R2-c8": verdict_of(c8),
-        "FAILWRITE": verdict_of(failwrite),
         "verdict": "PASS" if ok else ("NOT MET" if invalid else "RED"),
         "codex14": codex14_status(),
         "not_built": {"P3": "another lane (claude-sonnet-r2p3-1015): K1g / R2-c7, kind percept"},
