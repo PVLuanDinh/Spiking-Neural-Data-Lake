@@ -5,6 +5,7 @@ so each red is shown to fire and a pass is not vacuous. The inputs are written o
 taken from the gate's own self-check plants: a test must not share its oracle with its code.
 """
 
+import re
 import shutil
 import subprocess
 import sys
@@ -440,9 +441,12 @@ def test_one_shot_is_not_a_design_still_reads_as_negated(tmp_path):
     assert len(reds(run(tmp_path, {A: text}), "R-FIELD")) == 1
 
 
-def test_the_expiry_is_described_as_lane_set_not_integrator_set():
+def test_the_expiry_is_lane_set_and_names_its_ratification_in_the_pinned_form():
     src = Path(sg.__file__).read_text(encoding="utf-8")
-    assert "integrator-set bound" not in src and "integrator to ratify" in src
+    assert "integrator-set bound" not in src
+    assert re.search(
+        r"integrator to ratify|ratified by the integrator \d{4}-\d{2}-\d{2}, D-73", src
+    )
 
 
 def test_the_freeze_dates_in_the_comments_are_author_dates():
@@ -451,21 +455,6 @@ def test_the_freeze_dates_in_the_comments_are_author_dates():
 
 
 # --- round 3b (D-73): "frozen" is keyed on the file text, never on a commit subject ---
-
-
-@needs_git
-def test_a_commit_subject_saying_freeze_with_no_marker_in_the_text_does_not_grandfather(tmp_path):
-    bare = "# G -- DRAFT pre-registration\n\nPRE-DATA, no data read. seeds 8.\n"
-    tree(tmp_path, {A: bare})
-    _git(tmp_path, "init", "-q")
-    _git(tmp_path, "add", "--", A)
-    _git(tmp_path, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "freeze g3")
-    report = sg.check(tmp_path, frozenset(), {}, frozenset(), today=date(2026, 10, 29))
-    assert [r.where for r in reds(report, "R-NO-SECTION")] == [A]
-    deferred = sg.check(
-        tmp_path, frozenset(), {A: "2999-01-01"}, frozenset(), today=date(2026, 10, 29)
-    )
-    assert deferred.reds == [] and deferred.deferred == [A]
 
 
 def test_the_gate_never_reads_a_commit_subject():
@@ -489,3 +478,91 @@ def test_a_dated_freeze_marker_in_the_text_ends_the_deferral(tmp_path, line):
     text = "# G -- DRAFT pre-registration\n\n" + line + "\n"
     report = run(tmp_path, {A: text}, owes_at_freeze={A: "2999-01-01"})
     assert [r.code for r in report.reds] == ["R-FROZEN-DEFERRED"]
+
+
+# --- round 4 (enforcer #6613) ---
+LIVE_LIST = (sg.REPO / sg.LIST_FILE).read_text(encoding="utf-8")
+RENEWAL = "renewable only by a dated integrator commit"
+
+
+def test_grandfathering_rests_on_execution_not_on_a_commit_reference():
+    src = Path(sg.__file__).read_text(encoding="utf-8")
+    doc = sg.__doc__ or ""
+    assert "froze in 6bc97430" not in src and "frozen in 6bc97430" not in LIVE_LIST
+    assert "executed before the landing" in doc and "history, not a freeze" in doc
+
+
+def test_the_renewal_rule_is_written_in_the_comment_the_docstring_and_the_list_file():
+    src = Path(sg.__file__).read_text(encoding="utf-8")
+    assert RENEWAL in (sg.__doc__ or "") and src.count(RENEWAL) >= 2 and RENEWAL in LIVE_LIST
+    assert "cannot see who moved a date" in (sg.__doc__ or "")
+
+
+def test_list_file_section_4_counts_its_two_rows_and_says_g5_parts_a_to_d_ran():
+    assert "These three rows" not in LIVE_LIST and "(G2, G3, G5)" not in LIVE_LIST
+    assert "Parts A-D" in LIVE_LIST
+
+
+def test_scan_line_names_a_directory_walk(tmp_path):
+    report = run(tmp_path, {A: prereg()})
+    assert report.scan == "walk" and "scan: walk" in sg.render(report)
+
+
+@needs_git
+def test_scan_line_names_git_ls_files_in_a_git_checkout(tmp_path):
+    tree(tmp_path, {A: prereg()})
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "add", "--", A)
+    report = sg.check(tmp_path, frozenset(), {}, frozenset(), today=date(2026, 10, 29))
+    assert report.scan == "git ls-files" and "scan: git ls-files" in sg.render(report)
+
+
+@needs_git
+def test_a_failing_git_in_a_git_checkout_is_printed_not_swallowed(tmp_path):
+    tree(tmp_path, {A: prereg()})
+    (tmp_path / ".git").write_text("gitdir: /nonexistent/gitdir\n", encoding="utf-8")
+    report = sg.check(tmp_path, frozenset(), {}, frozenset(), today=date(2026, 10, 29))
+    assert report.scan.startswith("walk, git failed: ")
+    assert "scan: walk, git failed: " in sg.render(report)
+
+
+def test_a_grandfathered_name_the_list_file_does_not_list_is_a_conflict(tmp_path):
+    files = {
+        LIST: LIST_TEXT.format(owed=EV + "g.md", other=EV + "o.md"),
+        A: "# X -- pre-registration\n\nseeds 8.\n",
+    }
+    found = reds(run(tmp_path, files, grandfathered=frozenset({A})), "R-LIST-CONFLICT")
+    assert [r.where for r in found] == [A] and "does not list" in found[0].message
+
+
+def test_a_name_in_section_4b_of_the_list_file_may_be_grandfathered(tmp_path):
+    text = LIST_TEXT.format(owed=EV + "g.md", other=EV + "o.md") + (
+        "\n### 4b. Executed rows (1; grandfathered)\n\n| 10 | `" + A + "` | R1 | ran |\n"
+    )
+    files = {LIST: text, A: "# X -- pre-registration\n\nseeds 8.\n"}
+    assert run(tmp_path, files, grandfathered=frozenset({A})).reds == []
+
+
+def test_prose_naming_a_file_in_section_3_does_not_list_it(tmp_path):
+    text = LIST_TEXT.format(owed=EV + "g.md", other=EV + "o.md").replace(
+        "## 3. Grandfathered\n", "## 3. Grandfathered\n\nNot `" + A + "` here.\n"
+    )
+    files = {LIST: text, A: "# X -- pre-registration\n\nseeds 8.\n"}
+    found = reds(run(tmp_path, files, grandfathered=frozenset({A})), "R-LIST-CONFLICT")
+    assert [r.where for r in found] == [A]
+
+
+def test_the_live_grandfathered_names_are_a_subset_of_list_file_sections_3_and_4b():
+    assert sg.GRANDFATHERED <= sg._listed_by_list(LIVE_LIST)
+
+
+def test_expired_deferral_of_a_file_that_carries_the_section_says_delete_the_entry(tmp_path):
+    report = run(tmp_path, {A: prereg()}, owes_at_freeze=LATER, today=date(2026, 11, 6))
+    found = reds(report, "R-DEFERRAL-EXPIRED")
+    assert len(found) == 1 and "delete the OWES_AT_FREEZE entry" in found[0].message
+    assert "write the section" not in found[0].message
+
+
+def test_expired_deferral_of_a_file_without_the_section_says_write_it(tmp_path):
+    report = run(tmp_path, {A: DRAFT}, owes_at_freeze=LATER, today=date(2026, 11, 6))
+    assert "write the section" in reds(report, "R-DEFERRAL-EXPIRED")[0].message
