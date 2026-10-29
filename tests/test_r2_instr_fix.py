@@ -1,9 +1,13 @@
 """The R2 instrument review's fixes (#6735, lanes/engine-1024/r2-instr-review-row/REPORT.md), each
-red first: the confirmatory-seed licence on every entry point (MAJOR-1). Synthetic records and
-patched children only; no brain is built and no confirmatory or reserve seed is ever run."""
+red first: the licence on every entry point (MAJOR-1), one part per block and per-part verdicts
+(MAJOR-2), the reader-kind off arms (MAJOR-4), the bout restarts' chronology (MAJOR-6) and the code
+MINORs. Synthetic records and patched children only; no brain is built and no confirmatory or
+reserve seed is ever run."""
+
+import json
 
 import pytest
-from test_replay_hydration_instrument import _arms, _differ, _per_seed
+from test_replay_hydration_instrument import REDS, _arms, _differ, _fw_rec, _per_seed
 
 from snn_data_lake.instruments import replay_hydration as rh
 
@@ -173,3 +177,127 @@ def test_chrono_covers_the_bout_crash_point_restarts(role, leak):
     else:  # or reached So101Arm.apply()
         arms[role]["construct_motor"] = 1
     assert rh.seed_comparisons(arms)["chrono"][role] is False
+
+
+# ---- the code MINORs of #6735 --------------------------------------------------------------------
+
+
+def test_minor2_each_red_reports_which_records_it_moves():
+    arms = _arms()
+    _differ(arms["O_w"])
+    attribution = rh.seed_comparisons(arms)["attribution"]
+    assert attribution["O_w"] == ["rows.weights"] and attribution["O_wm"] == []
+
+
+def test_minor3_c1_needs_an_unlatched_restore_even_when_the_faults_match():
+    arms = _arms()
+    for role in ("res_K1", "twin_K1"):
+        arms[role]["fault"] = {"phase": "reconcile", "cause": "same"}
+    assert rh.seed_comparisons(arms)["c1"]["K1"] is False
+
+
+def test_minor7_the_scope_discloses_the_ctxread_off_arm_construction():
+    v = rh.verdict({15000: _per_seed()}, [15000])
+    assert "CTXREAD" in v["scope"]
+
+
+_SURVIVORS = [f"fw_{k}_{a}" for k in ("t", "b") for a in ("absent", "landed", "torn")]
+
+
+def test_minor8_posed_is_verified_only_when_every_survivor_vii_call_refused():
+    arms = {r: _fw_rec(role=r) for r in _SURVIVORS}
+    arms["fw_red_posed"] = _fw_rec(role="fw_red_posed")
+    arms["fw_red_posed"]["calls"][-1]["exc"] = None  # a red's reopened latch is not a survivor
+    assert rh.fw_seed(arms)["posed"] == "VERIFIED"
+    broken = json.loads(json.dumps(arms))
+    broken["fw_t_landed"]["calls"][-1]["exc"] = None  # pass 2, C(vii), the second survivor
+    assert rh.fw_seed(broken)["posed"] == "UNVERIFIED"
+    del arms["fw_b_torn"]
+    assert rh.fw_seed(arms)["posed"] == "UNVERIFIED"
+
+
+def test_minor9_a_hung_arm_is_recorded_invalid_not_a_campaign_abort(tmp_path, monkeypatch):
+    def hang(args, **kwargs):
+        raise rh.subprocess.TimeoutExpired(args, kwargs.get("timeout"))
+
+    monkeypatch.setattr(rh.subprocess, "run", hang)
+    arms = rh.run_seed(15000, tmp_path, roles=("twin_K1",))
+    assert arms["twin_K1"] == {"role": "twin_K1", "error": "timeout"}
+
+
+def test_minor10_c4_and_c6_hold_on_every_seed_an_invalid_one_included():
+    s1, s2 = rh.DEV_SEEDS[:2]
+    for over, line in ((dict(c6={"K3": False}), "R2-c6"), (dict(c4_comparator=False), "R2-c4")):
+        per = {s1: _per_seed(), s2: _per_seed(**over)}
+        per[s2]["c2"]["I_K2_differs"] = False
+        v = rh.verdict(per, [s1, s2])
+        assert v["invalid_seeds"] == [s2] and v[line] == "RED", (line, v[line])
+
+
+def test_minor11_a_red_missing_from_the_first_seed_is_still_counted():
+    s1, s2 = rh.DEV_SEEDS[:2]
+    per = {s1: _per_seed(), s2: _per_seed(reds={**dict.fromkeys(REDS, True), "FW:RED-X": False})}
+    v = rh.verdict(per, [s1, s2])
+    assert "FW:RED-X" in v["red_fires_on_no_seed"] and v["reds"]["FW:RED-X"] is False
+
+
+def _quiet_child(launched):
+    def child(args, **kwargs):
+        launched.append(args[3])
+        return rh.subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    return child
+
+
+def test_minor12_roles_bring_their_parents(tmp_path, monkeypatch):
+    launched = []
+    monkeypatch.setattr(rh.subprocess, "run", _quiet_child(launched))
+    arms = rh.run_seed(15000, tmp_path, roles=("res_K1", "fw_rs2_k_post"))
+    assert launched == ["pre_K1", "res_K1", "fw_k_post", "fw_rs_k_post", "fw_rs2_k_post"]
+    assert set(arms) == set(launched)
+
+
+def test_minor12_the_base_head_needs_its_own_tree(tmp_path, monkeypatch):
+    monkeypatch.setattr(rh.subprocess, "run", _never)
+    with pytest.raises(ValueError, match="base-src"):
+        rh.run_seed(15000, tmp_path, head="base")
+
+
+def test_minor12_m_post_sets_the_post_boundary_turns(monkeypatch):
+    turns = []
+
+    class Fake:
+        def respond(self, u, human=False):
+            turns.append(("respond", u))
+
+        def correct(self, u, label):
+            turns.append(("correct", u))
+
+    monkeypatch.setattr(rh, "M_POST", 8)
+    rh._post_boundary(Fake(), [f"u{i}" for i in range(20)])
+    assert len(turns) == 8 and [t for t, _ in turns].count("correct") == 2
+
+
+def test_minor5_a_base_tree_not_at_e1b3ae3c_is_refused(tmp_path, monkeypatch):
+    monkeypatch.setattr(rh, "_head_of", lambda path: "deadbeef" * 5)
+    monkeypatch.setattr(rh.subprocess, "run", _never)
+    monkeypatch.setattr(rh, "run_seed", _never)
+    with pytest.raises(ValueError, match="e1b3ae3c"):
+        rh.run_campaign(tmp_path, rh.DEV_SEEDS[:1], base_src=str(tmp_path))
+
+
+def test_minor5_the_base_seed_run_is_refused_off_the_registered_head(tmp_path, monkeypatch):
+    monkeypatch.setattr(rh, "_head_of", lambda path: "deadbeef" * 5)
+    monkeypatch.setattr(rh.subprocess, "run", _never)
+    with pytest.raises(ValueError, match="e1b3ae3c"):
+        rh.run_seed(15000, tmp_path, head="base", src=str(tmp_path))
+
+
+def test_minor5_the_verdict_records_which_heads_ran(tmp_path, monkeypatch):
+    monkeypatch.setattr(rh, "_head_of", lambda path: "e1b3ae3c" + "0" * 32)
+    monkeypatch.setattr(rh, "run_seed", lambda *a, **kw: {})
+    monkeypatch.setattr(rh, "seed_comparisons", lambda arms, base=None: _per_seed())
+    rh.run_campaign(tmp_path, rh.DEV_SEEDS[:1], base_src=str(tmp_path))
+    prov = json.loads((tmp_path / "verdict.json").read_text(encoding="utf-8"))["provenance"]
+    assert prov["base_src"].startswith("e1b3ae3c") and prov["src"]
+    assert len(prov["instrument_sha256"]) == 64
