@@ -1325,3 +1325,146 @@ No confirmatory or reserve seed of R2's block (15010-15067) was read, and none o
 - Lane folders and rows/ (text files .json/.jsonl/.csv/.txt/.log/.md outside src, tests, native, tools, specs, docs, models), seed-context regex `[Ss]eeds?[^0-9A-Za-z]{0,30}150(1[0-7]|...|6[0-7])\b` and `"seed": 150xx`: 47 files, all briefs, review and lane logs (codex-*.log, panel-*.log, REPORT.md, BRIEF.md) quoting R2's allocations, the `rh.run_seed(15010, tmp_path)` refusal test, or "no seed >= 15010 read". No result file (results/, *.json records) holds a seed of the block. The grep exited 2 (unreadable entries skipped); a wider number-only scan of the same tree was cut at its time limit and is not claimed.
 This is a text search. Binary artifacts and any process that never wrote a file were not examined, so the qualification
 of A1 stands: this is non-exposure by search, not proof.
+
+## DATED PRE-DATA AMENDMENT 2026-10-29 -- DRAFT (not frozen; no confirmatory or reserve data read)
+
+Row plan 1.0: "a changed mechanism owes a dated pre-data amendment first." The addendum above ("Mechanism re-diff
+fbb1f38e..c4c10b28") named what changed. This section states, for each CHANGED item, which registered prediction reads
+through it and whether it still tests the same thing. It is a DRAFT for the integrator and the policy-enforcer: it is not
+frozen until the integrator lands it, and it changes no bar, no seed block, no decision rule and no design. Lane r2-amend,
+documentation only; nothing was run (campaign mode: no pytest, no Windows python, no GPU). Every cite below is to this
+file's own sections (2.x, A1-A11, R1-R4) or to `lanes/engine-1024/r2-mechdiff-row/MECHS.md` (out of git, "MECHS"). Not
+Codex-reviewed. Three outcomes only: UNAFFECTED, RE-STATED (exact new wording), OWED (a run or a statement).
+
+### D1. Disposition per CHANGED item
+
+**1. `percept` is live (9f5a9d58, d5a32337, b24ea8e7, 60490871).**
+- R2-c1 to R2-c6 (2.3) -- UNAFFECTED. R2-c1 and R2-c6 compare the restoring process with its twin "on every record of
+  section 2.2" (2.3); the 2.2 record set holds the learner tree, ring ids and labels, RNG, watermark, replay and redo
+  counts, rewirer state, weights, `_step`, `_nights`, the grower's `observed`/`live_n`, and the `apply()` call count. It holds
+  no `_r2_pseq`, `_r2_proto_boot`, `_r2_proto_flushed` or grower buffer, and `Brain._r2_snapshot` (unchanged, MECHS A3)
+  holds none of them. Twin and restoring process run one schedule, so the percept events of wake ticks enter `(session, seq)`,
+  `_r2_seq`, the cursor and the event ids of both (2.1 shares one `seq` over `teach`, `turn`, `sleep`, `percept`). The
+  comparison is the same comparison.
+- R2-c7 (2.10) -- UNAFFECTED in bar, RE-STATED in two sentences. The bar (hydrated `_buf_x`/`_buf_y`/`_categories` equal the
+  twin's, and the model after the next refit equals the twin's, on every seed, no tolerance) is unchanged, and the code now
+  matches 2.10's schema, writer and reader text (MECHS A5). New wording for the two statements the code falsifies or sharpens:
+  (i) A2's sentence "`percept` is a registry row only: no `KIND_SPECS` schema and no writer" and A6's "P3 was never built"
+  are true of fbb1f38e only; at c4c10b28 `KIND_SPECS["percept"]` exists, `Brain._record_percept` writes it, and
+  `NeurogenesisSelfImprove.observe` calls `transition_sink` before buffering. (ii) A post-checkpoint `percept` event is redone
+  by `SpikingInteractionLearner.hydrate` moving the cursor only (`elif kind == "percept":`); its grower effect is restored
+  by `restore_transitions`/`hydrate_transitions`, not by redo. R2-c7 is the only registered check that reaches it, and
+  P1/P2 equality says nothing about the grower buffer, `_r2_pseq` or the prototype counts.
+- Event byte sizes (940 B per percept event, 2.10 and 2.7; 266 B, 2.7; 255 B and 1,663 B torn tails, A3) -- RE-STATED: they
+  are descriptive figures measured on earlier trees, and no bar rests on them (the bars are length-and-sha equality). A
+  teach/turn event now gains two decimal-string slots when a prototype count is nonzero (MECHS A3, A9). They are not to be
+  quoted for c4c10b28 until re-measured.
+- OWED: the R2-c7 reds listed in 2.10 (CROSS, O_buf, DUP, REORDER, HELDOUT, MISSING, WIDTH, VOCAB, INSTRUMENT) and its
+  positive control run on dev seeds against the c4c10b28 instrument. See D3.
+
+**2. BinLog resident replay and `stale()` (f2534a94, 47955b4e, 1ea6b303, ec18e9c5, 080f967a).**
+- A3's raw-bytes bars (length and sha256 equal after every C call) and the fresh-OS-process independent-reference restart
+  bar -- UNAFFECTED: they read the file bytes or run in a fresh process, and `append`, `extend`, `rewrite` and the frame
+  format write the same bytes (MECHS A4).
+- The observer rule (A3) -- RE-STATED. New wording: "No C call may reach the lake through `home._log`, `home.load_state`,
+  `home.load_named_state` or `Brain.__init__` between a torn or landed injection and the kill, and the same holds for the
+  surviving process's own reads. A dedup `BinLog` serves `replay()` from resident payloads while `stale()` (size, mtime_ns,
+  inode and the last frame read from disk) says the file is unchanged; a raw edit behind a cached instance (the injected
+  `landed` and `torn` writes, `_plant_bout`'s truncate) makes it stale, and the rebuild runs `_repair_torn_tail`." The rule's
+  force and the bars are unchanged; only the mechanism it guards is stricter than the size-only test A3 was written against.
+- The dev-seed observations in A3-A11 (#2873, #2885, the K4 cut, the 255 B and 1,663 B figures) -- RE-STATED as dev-seed
+  evidence for the instrument's construction on trees that predate 2026-10-17, not as observations of c4c10b28. No bar was
+  derived from them except those two byte figures (see item 1 above).
+- OWED: a dev-seed run showing the torn and landed injection arms (R2-c3's reds) still fire and still leave the file the
+  instrument expects under the survivor's resident cache. See D3.
+
+**3. P4b persistence (bebdd0e2, 01802dd4, da936776, ddac65d2, 63ced7d5, e1baa9d2, 8c81961d, 697f802b).**
+- R2-c1 to R2-c7 -- UNAFFECTED. The registered claims name the interaction learner and the sleep carriers that touch it
+  (2.3 Scope); none names `arm.q`, the affect SOM, the lifelong learner, the language organ or the nightly skills. A restart
+  now restores more than before, which cannot make a 2.2 record differ and is outside the scope sentence; it is not to be read
+  into an R2 verdict.
+- R2-c8(c), "no other lake write during the bout" (A4) -- UNAFFECTED: it is a statement about `_r2_run_bout`, which is
+  byte-unchanged, and the A3 C-calls and the A4 bout path call none of `_enter_sleep`, `close`, `_flush_prototypes`.
+- Lake-byte comparisons taken across a sleep entry or `close` (K0; K1 around `_enter_wake`) -- RE-STATED. New wording: "A
+  lake-byte comparison across `Brain._enter_sleep` or `Brain.close` includes the language organ (`lm.save()` writes
+  `STATE_NAME` into the lake when `_acq_lm` was built, which a `respond` does), the nightly skills, the larger prototype
+  record (`growing_learners.json` now carries `q`, `affect`, `lifelong`) and any `growing_learners.refused.<store>.<id>.json`
+  (`_keep_refused`); `home.load_named_state` now renames a legacy sidecar on a hit." The fail-closed count is consistent with
+  A11.3 item 3: `_r2_proto_flushed` advances only when `save_state` returns True, and it returns False for a byte-identical
+  re-save.
+- OWED: none beyond D3's dev-seed run (the K0 and K1 lake-byte records must be re-taken at c4c10b28 before any is quoted).
+
+**4. `Brain._sleep_tick` single replay (f2534a94, performance).**
+- R2-c1 and R2-c6 -- UNAFFECTED as comparisons: twin and restoring process both run the head's `_sleep_tick`, so equality is
+  read between two runs of one code. The sleep event digests (`rng_digest`, `weights_digest`, `rewirer_digest`) cover the
+  learner and rewirer, which this edit does not touch (MECHS A3).
+- R2-c2 (I_K2 differs from its twin; I_K1 equals it) and R2-c4 (replay-OFF differs from replay-ON in post-night weights) --
+  they read `_sleep_tick`'s output as an observable, so they test the same thing only if the edit is output-equivalent.
+  The commit says it intends to give the records the second replay gave; r2-mechdiff did not verify it. OWED: an
+  output-equivalence check on a dev seed (the parent of f2534a94 against the head, same schedule, the 2.2 post-sleep-tick
+  records equal), or an integrator statement that the perf lane already holds one. See D3.
+
+**5. `Brain.neuro` property and `Grower` (60490871, G3-T1).**
+- R2-c1 to R2-c6 -- UNAFFECTED: no prediction depends on the attribute path (MECHS A3 and A5); grower.py documents
+  byte-identical forwarding and the diff shows pure forwarding.
+- R2-c7 and 2.2 -- RE-STATED, wording only: wherever 2.10 writes `neuro.tick()` and 2.2 reads "the grower's `observed`/
+  `live_n`", read "`Brain.grower.tick()` and `Brain.grower`'s `observed`/`live_n`, reached through the `Brain.neuro`
+  read-through property (`grower.percept.engine`)"; the P3 sink is set on the engine through that property. The bar is
+  unchanged. 2.10's cite "brain.py:1494-1496" is stale; the attach is `Brain._attach_percept_transitions()` after the
+  prototype restore (MECHS A3).
+- OWED: none beyond item 1's R2-c7 dev run, which exercises the forwarding.
+
+**6. The rebuilt instrument (`instruments/replay_hydration.py`, 28f0d5d0, d5a32337, b24ea8e7).**
+- A5's precondition ("no confirmatory seed is read before the rebuilt instrument and this amendment are both reviewed and on
+  the stacked head") -- UNAFFECTED as text; the instrument is on the main lineage at c4c10b28, and its dev-seed guard
+  (`DEV_SEEDS = range(15000, 15008)` at :54; a stray seed refused at :230, "no confirmatory licence") is consistent with A1.
+- OWED: an integrator statement of the instrument's review status (which panel read which commit, and whether this amendment
+  was reviewed alongside it), and of whether the confirmatory-seed licence is still withheld. This lane does not state it.
+
+### D2. The P1 question: is R2 grandfathered or does it owe a "Sample size (P1)" section?
+
+`docs/POLICIES.md` at c4c10b28, lines 172-207, the P1 amendment (owner directive 2026-10-23, relayed on the board as #4876;
+review-enforced, PROVISIONAL until its gate is built and counted). Its item 1: "Every pre-registration carries a 'Sample
+size (P1)' section: the measured SD the target comes from (a prior run's paired SD or a pre-registered pilot), the effect the
+claim needs, and the fixed-sample target at power .8 ... after the pre-registration's own multiplicity correction across
+endpoints." Its item 3: "A fixed count only for a one-shot run, its power stated before data; a result at an underpowered
+count is INCONCLUSIVE (P8 item 4)." The CLOSED-list sentence, at :206 (the line continues from :205):
+
+> "the pre-registrations frozen before this amendment landed are a CLOSED list, grandfathered by name when the gate is built
+> (ancestry is not the trigger: a branch merged after the landing would slip past it)."
+
+Facts, stated without a ruling:
+- R2's registration is "frozen at the commit that lands this file" (section 2, line 76), and the amendments dated 2026-10-04,
+  2026-10-06, 2026-10-15 and 2026-10-16 (A1-A11) all predate the 2026-10-23 directive. The seed blocks (2.6: P1 15010-15017,
+  P2 15030-15037, P3 15050-15057, S = 8 each, plus reserves) and the verdict rules (2.3) are in the frozen text.
+- The gate is not built (the amendment is PROVISIONAL), so the closed list has no names in it yet. Whether "frozen before this
+  amendment landed" covers R2 turns on whether a dated amendment (this one, and A1-A11 before it) re-freezes a registration.
+  This draft changes no bar, no seed block and no decision rule, so on that reading R2 stays in the pre-landing class and is
+  to be named in the list when the gate is built; on the other reading it owes the section before any 15010-15057 seed.
+  Which reading holds is the integrator's and the policy-enforcer's to decide, and it is not decided here.
+- If a section is owed, the variance source the P1 text asks for does not exist in R2's design: section 2.3 states that
+  "equality has no variance, so no statistic and no majority-of-seeds". Every R2 verdict (R2-c1 to R2-c7) is exact equality
+  on every seed, and R2-c2 and R2-c4 are "differs on EVERY seed". There is no paired SD to measure, and the dev seeds
+  15000-15007 are exposed (2.6), so a pilot SD would have to come from a new pre-registered pilot, not from them.
+  What a section could state instead is the one-shot reason (P1 item 3) and the seed-count arithmetic: with S = 8 seeds per
+  block and zero failures observed, the one-sided 95% upper bound on the per-seed failure probability is 1 - 0.05^(1/8) =
+  0.31 (arithmetic only, not run). Whether a bar that cannot reject a per-seed failure rate below that is acceptable for an
+  exact-equality mechanism claim is the P1 question the owner's directive leaves to the reviewers.
+
+### D3. Owed before any 15010-15057 seed (ordered)
+
+1. Integrator statement: the P1 reading in D2 (grandfathered by name, or a "Sample size (P1)" section owed, with the variance
+   source), and the instrument's review status (D1 item 6). Statements, no run.
+2. Review of this amendment (policy-enforcer, static) and its landing as a frozen amendment dated before any confirmatory read.
+   Until then it is a draft and the confirmatory licence stays withheld.
+3. A dev-seed run (15000-15007 only) of the c4c10b28 instrument, under the heavy-run lock after the campaign: the R2-c4
+   positive controls first (planted 1-ulp weight change, one swapped ring entry, the omission arms each move their records),
+   per 2.5, because a failed positive control holds the disposition. The same run carries the D1 item 4 `_sleep_tick`
+   output-equivalence check and the R2-c2/R2-c4 observables at head.
+4. A dev-seed run of the constructed reds of 2.4 and of R2-c7's reds (2.10), including the torn and landed arms under the
+   survivor's resident BinLog cache (D1 item 2): each must fire on a dev seed; a red that fires on none halts the arc (R2-c3, P8).
+5. Re-measure the lake-byte records of K0 and K1 and the event sizes (D1 items 1 and 3) at c4c10b28 before any is quoted.
+6. Only then the confirmatory reads, in the registered order and block (P1 15010-15017, P2 15030-15037, P3 15050-15057), once
+   each; reserves 15020-15027, 15040-15047, 15060-15067 only per the registered reserve rule.
+
+Data-exposure: no confirmatory or reserve seed of R2's block was read or run in writing this section (search record: R4).
