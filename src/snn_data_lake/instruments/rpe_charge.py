@@ -1294,7 +1294,9 @@ def run_problems(arm, key, d, tier):
         bad.append(f"{tag}: plan_lr_final={d['plan_lr_final']}")
     if arm == "pc" and not d["pc_stub_calls"] == d["pfc_bias_calls"] > 0:
         bad.append(
-            f"{tag}: stub calls={d['pc_stub_calls']} != pfc_bias_calls={d['pfc_bias_calls']} > 0"
+            f"{tag}: zero calls (stub calls=0, pfc_bias_calls=0): the pc arm needs both > 0"
+            if d["pc_stub_calls"] == d["pfc_bias_calls"] == 0
+            else f"{tag}: stub calls={d['pc_stub_calls']} != pfc_bias_calls={d['pfc_bias_calls']}"
         )
     if any(x is None for x in d["v"]["pred"]):
         bad.append(f"{tag}: pred is None on a recorded call")
@@ -1823,7 +1825,10 @@ def goal_stratum(runs, d_p1):
 
     def read(ss):
         d = [d_p1[s] for s in ss]
-        return f"t={ttest(d):.3f} ({sum(x > 0 for x in d)}/{len(d)})" if d else "t=n/a (0/0)"
+        if not d:
+            return "t=n/a (0/0)"
+        t = "t=n/a n<2" if len(d) < 2 else f"t={ttest(d):.3f}"
+        return f"{t} ({sum(x > 0 for x in d)}/{len(d)})"
 
     try:
         fr = {s: frozen(runs.get(("real", s))) for s in d_p1}

@@ -678,7 +678,7 @@ def test_goal_frozen_stratum_lines_are_descriptive_and_fail_soft():
     _, zero = _stratum(_stratum_runs("harm", 0))
     assert "0/64 seeds goal-frozen" in zero and "within frozen t=n/a (0/0)" in zero
     _, one = _stratum(_stratum_runs("harm", 1))
-    assert "1/64 seeds goal-frozen" in one and "within frozen t=nan (1/1)" in one
+    assert "1/64 seeds goal-frozen" in one and "within frozen t=n/a n<2 (1/1)" in one
     _, equal = _stratum(_stratum_runs("noharm", 9))  # every d_s exactly 0
     assert "within frozen t=0.000 (0/9)" in equal and "within moving t=0.000 (0/55)" in equal
     runs = _stratum_runs("harm", 9)
@@ -1294,7 +1294,7 @@ def test_run_problems_arm_specific_gates():
         bad = R.run_problems("pc", 8, pc | planted, "production")
         assert any("stub calls=" in b for b in bad)
     bad = R.run_problems("pc", 8, pc | {"pc_stub_calls": 0, "pfc_bias_calls": 0}, "production")
-    assert any("stub calls=" in b for b in bad)
+    assert any("zero calls" in b for b in bad) and not any("0 != 0" in b for b in bad), bad
     ne = R.synth_run("real", 8, "no-encoder")
     ne["tier"]["encoder_calls"]["vision"] = 4
     assert any("encoder use" in b for b in R.run_problems("real", 8, ne, "no-encoder"))
