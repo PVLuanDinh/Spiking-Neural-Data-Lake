@@ -173,11 +173,15 @@ def test_i6_generator_is_deterministic_and_seed_sensitive():
     assert ra.workload_digest(a) != ra.workload_digest(c)
 
 
-def test_i6_red_a_seed_blind_generator_is_caught():
-    # the red: a generator that ignores its seed gives equal digests for different seeds
-    blind = lambda seed: _wl(14200)  # noqa: E731
-    assert ra.workload_digest(blind(14200)) == ra.workload_digest(blind(14201))
-    assert ra.workload_digest(_wl(14200)) != ra.workload_digest(_wl(14201))
+def test_i6_red_a_seed_blind_generator_is_caught(monkeypatch):
+    # the red, planted IN the code under test: make_workload's rng ignores its seed, so two seeds
+    # give equal digests and the seed-sensitivity check of the test above would FAIL
+    import types
+
+    real = random.Random
+    monkeypatch.setattr(ra, "random", types.SimpleNamespace(Random=lambda _seed: real(0)))
+    blind_a, blind_b = _wl(14200), _wl(14201)
+    assert ra.workload_digest(blind_a) == ra.workload_digest(blind_b)
 
 
 def test_actor_distribution_is_the_registered_p_self_point_nine():
@@ -237,7 +241,7 @@ def test_i3_latency_probe_reads_a_planted_sleep_and_catches_a_span_timed_outside
     # a 50 ms stub reads >= 50 ms; the red -- a span closed before the call -- reads ~0 and is
     # refused by the probe's own floor check
     _, dt = ra.time_call(lambda: time.sleep(0.05))
-    assert dt >= 0.05
+    assert dt >= 0.05 - 0.001  # 1 ms slack: sleep and perf_counter are different clocks
     assert not ra.latency_probe_ok(planted=0.05, measured=0.0001)
     assert ra.latency_probe_ok(planted=0.05, measured=dt)
 
@@ -255,8 +259,10 @@ def test_i5_load_witness_voids_on_drift_and_passes_when_steady():
     assert ra.load_verdict(1.0, 0.4) == "VOID"
 
 
-def test_i5_artificial_spinners_void_the_witness():
-    # the registered red: a witness read while the host is loaded drifts and must VOID
+def test_i5_planted_drift_voids_a_real_witness_reading():
+    # r1-bounded-recall.md:504-512 (A-amendment) replaced artificial spinners with PLANTED timings:
+    # the base here is a real spin_witness reading, the "after" is a planted 3x drift. Whether
+    # spin_witness is sensitive to REAL contention is unproven by this test (owed to the campaign).
     base = ra.spin_witness(20000)
     assert base > 0
     assert ra.load_verdict(base, base * 3) == "VOID"
