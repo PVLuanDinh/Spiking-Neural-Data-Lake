@@ -688,6 +688,18 @@ def throwaway_home(live_home=None, parent=None):
         else:
             os.environ["NORD_HOME"] = prev
         tmp.cleanup()
+        if os.path.exists(resolved):  # ignore_cleanup_errors swallowed a failed rmtree: say so
+            _LEFTOVER_HOMES.append(resolved)
+            print(f"throwaway_home: {resolved} left behind after cleanup", file=sys.stderr)
+
+
+#: Throwaway homes `throwaway_home` could not remove (a handle still open), kept for `leftover_homes`.
+_LEFTOVER_HOMES = []
+
+
+def leftover_homes():
+    """The census: throwaway homes that failed cleanup and still exist. Empty when every one is gone."""
+    return [p for p in _LEFTOVER_HOMES if os.path.exists(p)]
 
 
 def state_path(name):
