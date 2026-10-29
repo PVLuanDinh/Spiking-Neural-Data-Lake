@@ -93,7 +93,8 @@ def run_brain(home, **spec):
     for line in reversed((proc.stdout or "").splitlines()):
         if line.startswith("RESULT "):
             return json.loads(line[len("RESULT ") :])
-    raise AssertionError(f"child produced no RESULT.\nstdout:{proc.stdout}\nstderr:{proc.stderr}")
+    # not AssertionError: the r2-instr-fix copy's strict xfail must never pass on a crash
+    raise RuntimeError(f"child produced no RESULT.\nstdout:{proc.stdout}\nstderr:{proc.stderr}")
 
 
 def private_home(tmp_path, tag):
