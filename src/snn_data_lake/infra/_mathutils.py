@@ -184,3 +184,29 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def rsa_drift(pre, post):
+    """Representational-similarity drift between two response matrices over the SAME probes.
+
+    `pre` and `post` are equal-shape lists of per-probe response vectors (row i = probe i; correspondence
+    is by probe index, never by cell label). Each side's geometry is its pairwise dissimilarity
+    (1 - pearson) over probes; the return is the pearson of the two geometries' upper triangles:
+    1.0 = same geometry (cells may be permuted or rotated), lower = the geometry drifted. Compares
+    structure, not raw responses. Refuses (ValueError) rather than return a silent 0.0 on a shape
+    mismatch, fewer than 3 probes, or a flat probe row / flat geometry (correlation undefined).
+    """
+    if len(pre) != len(post) or len(pre) < 3:
+        raise ValueError("rsa_drift needs the same >= 3 probes on both sides")
+    if any(len(r) != len(pre[0]) for r in pre) or any(len(r) != len(pre[0]) for r in post):
+        raise ValueError("rsa_drift needs equal-length response vectors")
+
+    def geometry(m):
+        if any(len(set(r)) == 1 for r in m):
+            raise ValueError("rsa_drift: a flat probe response has no geometry")
+        g = [1.0 - pearson(m[i], m[j]) for i in range(len(m)) for j in range(i + 1, len(m))]
+        if max(g) - min(g) == 0.0:
+            raise ValueError("rsa_drift: a flat dissimilarity matrix has no geometry")
+        return g
+
+    return pearson(geometry(pre), geometry(post))
