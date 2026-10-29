@@ -1715,7 +1715,10 @@ def test_seed_sensitive_is_flagged_when_dropping_the_degenerate_seed_flips_the_p
                 arm, s, "production", r=r, mae_value=0.4, shift=1 if arm != "real" else 0
             )
     s0 = R.SEEDS[0]
-    runs[("real_r2", s0)] = copy.deepcopy(runs[("real", s0)])
+    # a repeat is its own run: same series, own identity (E1d A1-1), as fixture_runs builds it
+    runs[("real_r2", s0)] = dict(
+        copy.deepcopy(runs[("real", s0)]), identity=R.run_identity(f"real_{s0}_r2")
+    )
     for s in (s0, s0 + 1):
         runs[("pc", s)] = R.synth_run("pc", s, "production", r=0.2, shift=2)
     # the replay rows bound to these runs: a VOID tier takes no sequential decision to guard
@@ -2419,7 +2422,10 @@ def _probe_campaign(tier, n_seeds):
             runs[(arm, s)] = R.synth_run(
                 arm, s, tier, r=r, mae_value=0.4 + 0.02 * (s % 3), wiggle=wig, shift=arm != "real"
             )
-    runs[("real_r2", 8)] = copy.deepcopy(runs[("real", 8)])
+    # a repeat is its own run: same series, own identity (E1d A1-1), as fixture_runs builds it
+    runs[("real_r2", 8)] = dict(
+        copy.deepcopy(runs[("real", 8)]), identity=R.run_identity("real_8_r2")
+    )
     for s in (8, 9):
         runs[("pc", s)] = R.synth_run("pc", s, tier, r=0.2, mae_value=0.4, wiggle=wig, shift=2)
     e2 = R.fixture_e2(tier=tier)
