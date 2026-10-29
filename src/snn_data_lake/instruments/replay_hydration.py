@@ -23,13 +23,15 @@ The incumbent arms I_K1 / I_K2 (2.11 D1) run THIS FILE at the base head e1b3ae3c
 PYTHONPATH=<base checkout>/src (`--head base`); each compares only to its own twin at that head.
 The FAILWRITE arm (the #1037 latch schedule A3, `fw_*` roles) and R2-c8 (the three bout crash
 points, planted bout slots, one-frame check, FAILWRITE with B = sleep_bout) run in every seed.
-The percept arm (P3, K1g / R2-c7) is another lane's.
+The percept arms (P3, K1g / R2-c7, 2.10, `P3_ROLES`) run on CPU in every seed: a session closed
+cleanly, then a session killed at the tick after the night's `_flush_growth`; the restoring process
+and the uninterrupted twin run ONLY the grower's sleep step to its next refit.
 
   PYTHONUTF8=1 PYTHONPATH=src python src/snn_data_lake/instruments/replay_hydration.py --selfcheck
   ... --seed SEED OUT_DIR [--head base --base-src PATH] [--roles a,b]   one seed's processes
   ... --campaign OUT_DIR [--seeds a,b,...] [--base-src PATH] [--workers N]  the seeds (dev block,
       sequential by default: each seed's processes are heavy; a confirmatory block needs
-      R2_CONFIRMATORY_GO=P1 or =P2, which licenses that part's block and reserve only)
+      R2_CONFIRMATORY_GO=P1, =P2 or =P3, which licenses that part's block and reserve only)
 """
 
 import ast
@@ -53,11 +55,11 @@ import traceback
 from pathlib import Path
 
 DEV_SEEDS = tuple(range(15000, 15008))
-#: each part's confirmatory block plus its reserve (2.6). P3 has no entry: R2-c7 has no campaign arm
-#: here, so its seeds 15050-15067 stay unlicensed (review #6735 BLOCK-1).
+#: each part's confirmatory block plus its reserve (2.6, 2.10 Seeds)
 PART_SEEDS = {
     "P1": tuple(range(15010, 15018)) + tuple(range(15020, 15028)),
     "P2": tuple(range(15030, 15038)) + tuple(range(15040, 15048)),
+    "P3": tuple(range(15050, 15058)) + tuple(range(15060, 15068)),
 }
 #: the verdict lines each part's own verdict joins (2.3 Disposition: R2-c6 is P2's own; A3 runs
 #: FAILWRITE on "the P1 seeds"). R2-c3 and R2-c8 join BOTH parts until the integrator rules which
@@ -65,6 +67,7 @@ PART_SEEDS = {
 PART_BARS = {
     "P1": ("R2-c1", "R2-c2", "R2-c3", "R2-c4", "R2-c8", "FAILWRITE"),
     "P2": ("R2-c3", "R2-c6", "R2-c8"),
+    "P3": ("R2-c7",),  # 2.3 Disposition: "R2-c7 (2.10) is P3's"
 }
 S_SLEEP = 6  # sleep ticks recorded after the kill point
 M_POST = 6  # K2/K3's post-boundary turns
@@ -189,6 +192,32 @@ BASE_ROLES = (
     ("res_K1", "pre_K1"),
     ("res_K2", "pre_K2"),
 )
+#: R2-c7's planted percept reds (2.10: "DUP, REORDER, HELDOUT, MISSING (as 2.4, on `percept` events);
+#: WIDTH ...; VOCAB ...; INSTRUMENT ...") -> the reason the shared reader or the grower's hydration counts
+PERCEPT_PLANTED = {
+    "DUP": "duplicate_id",
+    "REORDER": "seq_regression",
+    "HELDOUT": "heldout",
+    "MISSING": "missing_slot",
+    "WIDTH": "width",
+    "VOCAB": "vocab",
+    "INSTRUMENT": "instrument",
+}
+#: K1g (2.10), (role, parent): session 1 closes cleanly so the lake holds the session boundary CROSS
+#: needs; session 2 is killed at the tick after the night's `_flush_growth` (pre_K1g) or runs on
+#: uninterrupted (twin_K1g, and K1g_POS: the twin with its buffer shuffled across sessions); every
+#: other arm restores a copy of the killed home
+P3_ROLES = (
+    ("pre_K1g0", None),
+    ("pre_K1g", "pre_K1g0"),
+    ("twin_K1g", "pre_K1g0"),
+    ("K1g_POS", "pre_K1g0"),
+    ("res_K1g", "pre_K1g"),
+    ("K1g_CROSS", "pre_K1g"),
+    ("O_buf", "pre_K1g"),
+) + tuple((f"K1g_{k}_{side}", "pre_K1g") for k in PERCEPT_PLANTED for side in ("on", "off"))
+_PERCEPT_BUFFER = ("buf_x", "buf_y", "cats")
+_PERCEPT_MODEL = ("W", "b", "beta", "units", "traj", "ticks")
 #: planted-fault arms: kind -> the reason the guard must report. The first four are READER faults (the
 #: strict scan counts them); the last two reach the brain, which must refuse them visibly in `_r2_fault`.
 PLANTED = {
@@ -239,8 +268,8 @@ _BASE_SKIP = (
 def check_seeds(seeds):
     """The licence: only the dev block runs here. A confirmatory or reserve seed is read ONCE, by the
     integrator's go, and reading one destroys the pre-data licence -- so it needs R2_CONFIRMATORY_GO
-    set to ONE part (P1 or P2) with every seed in that part's block or reserve (2.6). Returns the
-    part the seeds are read for: "dev", "P1" or "P2"."""
+    set to ONE part (P1, P2 or P3) with every seed in that part's block or reserve (2.6, 2.10).
+    Returns the part the seeds are read for: "dev", "P1", "P2" or "P3"."""
     seeds = list(seeds)
     if all(s in DEV_SEEDS for s in seeds):
         return "dev"
@@ -249,7 +278,7 @@ def check_seeds(seeds):
         stray = [s for s in seeds if s not in DEV_SEEDS]
         raise ValueError(
             f"seeds {stray} are outside the dev block 15000-15007 and not all in the block that "
-            f"R2_CONFIRMATORY_GO={part!r} names (P1 or P2): no confirmatory licence"
+            f"R2_CONFIRMATORY_GO={part!r} names (P1, P2 or P3): no confirmatory licence"
         )
     return part
 
@@ -558,8 +587,9 @@ def _sleep_rows(brain, draws):
 # ---- planted faults (written into a restoring process's COPIED home before its brain is built) --
 
 
-def _plant(kind):
-    """Append one constructed record to the process's lake; returns its event_id."""
+def _plant(kind, percept=False):
+    """Append one constructed record to the process's lake; returns its event_id. With `percept` it
+    is R2-c7's planted `percept` event (`_percept_red`)."""
     from snn_data_lake.substrate.home import save_episode
     from snn_data_lake.substrate.learner_events import KIND_SPECS, read_learner_events
 
@@ -567,6 +597,11 @@ def _plant(kind):
         return _plant_bout(kind)
     # P3 percepts share this identity sequence and may follow the last sleep event.
     events, _ = read_learner_events(tuple(KIND_SPECS))
+    if percept:
+        e = _percept_red(kind, events)
+        if not save_episode(e):
+            raise OSError("instrument: planted percept was not appended")
+        return e["event_id"]
     wake = [e for e in events if e["kind"] in ("teach", "turn")]
     last, base = events[-1], wake[-1]
     session, seq = int(last["session"]), int(last["seq"])
@@ -603,6 +638,39 @@ def _plant(kind):
     if not save_episode(e):
         raise OSError("instrument: planted record was not appended")
     return e["event_id"]
+
+
+def _percept_red(kind, events):
+    """R2-c7's planted `percept` event (2.10), built from the lake's last percept as one more link of
+    its session's chain (`pseq` + 1): a guard-OFF arm that admits it forms ONE pair the twin never
+    had. DUP repeats an earlier id of that session, REORDER regresses `(session, seq)` to an unused
+    id, and each other kind breaks the one slot its guard checks."""
+    from snn_data_lake.growth.neurogenesis_engine import pack_percept, unpack_percept
+
+    percepts = [e for e in events if e["kind"] == "percept"]
+    last = percepts[-1]
+    session = last["session"]
+    seq = 1 + max(int(e["seq"]) for e in events if e["session"] == session)
+    e = dict(last, event_id=f"{session}-{seq}", seq=str(seq), pseq=str(int(last["pseq"]) + 1))
+    if kind == "DUP":
+        earlier = [p for p in percepts if p["session"] == session][-2]
+        e.update(event_id=earlier["event_id"], seq=earlier["seq"])
+    elif kind == "REORDER":
+        e.update(event_id=f"{session}-0", seq="0")
+    elif kind == "HELDOUT":
+        e["split"] = "heldout"
+    elif kind == "MISSING":
+        del e["category"]
+    elif kind == "WIDTH":  # 63 dims under the registered `width=64` spelling
+        e["x"] = pack_percept(unpack_percept(last["x"])[:-1])
+    elif kind == "VOCAB":  # its own flushed count covers it, so only the vocab check refuses it
+        category = max(int(p["n_protos"]) for p in percepts) + 8
+        e.update(category=str(category), proto_flushed=str(category + 1))
+    elif kind == "INSTRUMENT":
+        e["provenance"] = "instrument"
+    else:
+        raise ValueError(f"unknown planted percept kind {kind}")
+    return e
 
 
 _HOME_MARK = ".replay-hydration-owner"
@@ -695,13 +763,23 @@ def _plant_bout(kind):
     return ep["event_id"]
 
 
-def _neuter(kind):
-    """The guard-OFF arm of a planted fault: the reader or the brain admits what its guard refuses."""
+def _neuter(kind, percept=False):
+    """The guard-OFF arm of a planted fault: the reader or the brain admits what its guard refuses.
+    With `percept` (R2-c7, 2.10) the same guard is off on the `percept` path: the shared reader AND
+    the grower's hydration (`_percept_refusal`) admit the planted percept."""
     import snn_data_lake.substrate.learner_events as le
+
+    def admit(event):  # in place, as the reader's pads below: the one slot the guard checks
+        if kind == "HELDOUT" and event.get("split") == "heldout":
+            event["split"] = "train"
+        elif kind == "MISSING" and "category" not in event:
+            event["category"] = "0"
+        elif kind == "INSTRUMENT" and event.get("provenance") == "instrument":
+            event["provenance"] = "self"
 
     if kind in ("DUP", "REORDER"):
         le._identity_refusal = lambda event, seen, last: None
-    elif kind in ("HELDOUT", "MISSING"):
+    elif kind in ("HELDOUT", "MISSING", "INSTRUMENT"):
         real = le._refusal
 
         def faulted(event, spec, allow_instrument):
@@ -709,6 +787,8 @@ def _neuter(kind):
                 event["target"] = "GREET"  # the reader pads the missing label (the fault)
             if kind == "HELDOUT" and event.get("split") == "heldout":
                 event["split"] = "train"  # the split guard neutered
+            if percept and event.get("kind") == "percept":
+                admit(event)
             return real(event, spec, allow_instrument)
 
         le._refusal = faulted
@@ -721,6 +801,24 @@ def _neuter(kind):
         le.SLEEP_PROGRESS = ()
     elif kind == "CTXREAD":
         _filtered_hydrate(lambda learner, e: e["kind"] == "ctxread")
+    if percept:
+        import snn_data_lake.growth.neurogenesis_engine as ne
+
+        real_percept = ne._percept_refusal
+
+        def admitted(event, width, n_units, seen, last):
+            if kind in ("DUP", "REORDER"):  # the identity guard, as the reader's above
+                seen, last = set(), None
+            elif kind == "WIDTH":  # the width guard: the event's own length taken as declared
+                n = len(ne.unpack_percept(str(event.get("x", ""))) or [])
+                event, width = dict(event, encoder=f"arm.percept gained width={n}"), None
+            elif kind == "VOCAB":
+                n_units = None
+            else:
+                admit(event)
+            return real_percept(event, width, n_units, seen, last)
+
+        ne._percept_refusal = admitted
 
 
 def _filtered_hydrate(drop):
@@ -789,8 +887,34 @@ def _attributed_hydrate(real, probe):
     return namespace[real.__name__]
 
 
+# distinct-from: _attributed_hydrate above -- the same AST technique on another function: that one
+#   re-types the learner's redo comparison raises for attribution; this removes one percept guard.
+def _cross_pairing():
+    """CROSS (2.10): the grower's pairing without its session/adjacency guard, so it joins the last
+    percept of one session to the first of the next. Matched by syntax, never by text; a changed
+    guard is refused rather than silently left in place."""
+    import snn_data_lake.growth.neurogenesis_engine as ne
+
+    real = ne.hydrate_transitions
+    tree = ast.parse(textwrap.dedent(inspect.getsource(real)))
+    guard = "prev is not None and prev[0] == session and prev[1] + 1 == pseq"
+    guard = ast.dump(ast.parse(guard).body[0].value)
+    hits = 0
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If) and ast.dump(node.test) == guard:
+            node.test = ast.parse("prev is not None").body[0].value
+            hits += 1
+    if hits != 1:
+        raise RuntimeError("instrument: the percept pairing guard changed")
+    namespace = dict(real.__globals__)
+    ast.fix_missing_locations(tree)
+    exec(compile(tree, real.__code__.co_filename, "exec"), namespace)
+    ne.hydrate_transitions = namespace[real.__name__]
+
+
 def _patch_restore(role):
-    """Omission arms on the restoring side (2.4): each removes ONE carrier from the restore."""
+    """Omission arms on the restoring side (2.4, and 2.10's O_buf and CROSS): each removes ONE
+    carrier or guard from the restore."""
     from snn_data_lake.readout import interaction_learning as ixn
 
     Learner = ixn.SpikingInteractionLearner
@@ -899,6 +1023,17 @@ def _patch_restore(role):
         from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
 
         StructuralRewiring.load_state_dict = lambda self, d: None  # rewirer left fresh
+    elif role == "O_buf":  # a real restart whose grower gets NO transition hydration
+        from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
+
+        def no_transitions(engine, events, **kw):
+            engine._transitions_hydrated = True  # still construction-only; the buffer stays empty
+            engine.transition_refusals = {}
+            return 0
+
+        NeurogenesisSelfImprove.restore_transitions = no_transitions
+    elif role == "K1g_CROSS":
+        _cross_pairing()
 
     if omission:
         patched = Learner.hydrate
@@ -994,6 +1129,8 @@ def run_process(role, seed, home, out, head="r2", *, nonce=None):
     os.environ["NORD_HOME"] = str(private)
     if role.startswith("fw_"):
         return run_failwrite(role, seed, out)
+    if role in dict(P3_ROLES):
+        return run_percept(role, seed, out)
     result = {"role": role, "seed": seed, "head": head}
     motor = _MotorCount()
     restoring = not (role.startswith("pre_") or role.startswith("twin_"))
@@ -1068,6 +1205,98 @@ def run_process(role, seed, home, out, head="r2", *, nonce=None):
 
 def _write(out, result):
     Path(out).write_text(json.dumps(result, ensure_ascii=True), encoding="utf-8")
+
+
+# ---- K1g (2.10, P3 / R2-c7): the grower's percept-transition restart ------------------------
+
+
+def _percept_snap(brain):
+    """The hydrated (or, at the boundary, live) transition buffer and the chronology hydration must
+    not touch."""
+    neuro = brain.neuro
+    return {
+        "buf_x": _plain(neuro._buf_x),
+        "buf_y": _plain(neuro._buf_y),
+        "cats": sorted(neuro._categories),
+        "refusals": dict(neuro.transition_refusals),
+        "prev_none": neuro._prev is None,
+        "observed": neuro.observed,
+        "n_units": brain.brain.arm.learner.n_units,
+    }
+
+
+def _next_refit(neuro):
+    """ONLY the grower's sleep step, through the next refit (`neuro.tick()` until a tick with
+    `ticks % refit_every == 0`; no new percepts), then the model the bar reads: W, b, beta, units,
+    trajectory, ticks. A refit that raises is recorded, and such a record is never equal."""
+    rows = len(neuro.trajectory)
+    try:
+        neuro.tick()
+        while neuro.ticks % neuro.refit_every:
+            neuro.tick()
+    except Exception as exc:  # noqa: BLE001 - evidence, never a crash of the arm
+        return {"error": f"{type(exc).__name__}: {exc}"}
+    m = neuro._model
+    return {
+        **{k: None if m is None else getattr(m, k).tolist() for k in ("W", "b", "beta")},
+        "units": neuro._n_units,
+        "traj": _plain(neuro.trajectory),
+        "ticks": neuro.ticks,
+        "refit_row": len(neuro.trajectory) > rows,
+    }
+
+
+def run_percept(role, seed, out):
+    """One K1g process (2.10), CPU (CUDA refits are not claimed deterministic). `pre_K1g0` runs
+    session 1 to a completed night and closes. `pre_K1g` runs session 2 past a refit of its own and
+    dies at the tick after the night's `_flush_growth` (`os._exit(0)`); `twin_K1g` runs the same
+    schedule, snapshots its buffer there and runs only the grower's sleep step to the next refit;
+    `K1g_POS` is that twin with its buffer shuffled across sessions. Every other arm restores a copy
+    of the killed home (with its patch or planted percept) and runs the same grower step."""
+    from snn_data_lake.engine.brain import make_brain
+
+    result = {"role": role, "seed": seed}
+    _patch_restore(role)
+    kind = next((k for k in PERCEPT_PLANTED if role.startswith(f"K1g_{k}_")), None)
+    if kind is not None:
+        result["planted"] = _plant(kind, percept=True)
+        if role.endswith("_off"):
+            _neuter(kind, percept=True)
+    restoring = dict(P3_ROLES)[role] == "pre_K1g"
+    if restoring:
+        result["reader"] = _reader_view()
+    brain = make_brain(seed=seed, persist=True, device="cpu")
+    neuro = brain.neuro
+    result["fault"] = getattr(brain, "_r2_fault", None)
+    if role == "pre_K1g0":
+        _tick_to_boundary(brain)
+        brain.close()
+        _write(out, result)
+        os._exit(0)
+    if not restoring:
+        rows, real_flush = len(neuro.trajectory), brain._flush_growth
+
+        def boundary(*a, **kw):
+            flushed = real_flush(*a, **kw)
+            if len(neuro.trajectory) > rows:  # past at least one refit of this session
+                result["before"] = _percept_snap(brain)
+                if role == "K1g_POS":
+                    half = len(neuro._buf_y) // 2
+                    neuro._buf_y = neuro._buf_y[half:] + neuro._buf_y[:half]
+                if role != "pre_K1g":
+                    result["model"] = _next_refit(neuro)
+                _write(out, result)
+                os._exit(0)
+            return flushed
+
+        brain._flush_growth = boundary
+        for _ in range(600):
+            brain.tick()
+        raise RuntimeError("K1g: no refit within 600 ticks")
+    result["before"] = _percept_snap(brain)
+    result["model"] = _next_refit(neuro)
+    _write(out, result)
+    os._exit(0)
 
 
 # ---- FAILWRITE (A3, owner #1037): the latch after an uncertain failed write ----------------------
@@ -1865,6 +2094,109 @@ def _c4_moves(off, rw):
     return bool(pairs) and any(a.get("weights") != b.get("weights") for a, b in pairs)
 
 
+def percept_equal(a, b):
+    """R2-c7's equality (2.10, no tolerance): the hydrated `_buf_x`/`_buf_y`/`_categories` and the
+    model after the next refit. An incomplete, differently latched or refit-failed record is never
+    equal."""
+    if not (_complete(a) and _complete(b)) or a.get("fault") != b.get("fault"):
+        return False
+    ma, mb = a.get("model") or {}, b.get("model") or {}
+    if not ma or not mb or "error" in ma or "error" in mb:
+        return False
+    return all(a["before"].get(k) == b["before"].get(k) for k in _PERCEPT_BUFFER) and all(
+        ma.get(k) == mb.get(k) for k in _PERCEPT_MODEL
+    )
+
+
+def _percept_planted_entry(kind, arms):
+    """A planted percept red's three readings, as `_planted_entry`'s: the guard-ON arm counts the
+    refusal (the shared reader's tally or the grower hydration's) and is either latched visibly or
+    restores exactly the twin; the guard-OFF arm is unlatched, counts no refusal, and moves the
+    buffer (2.10 "each must fire")."""
+    on, off = arms.get(f"K1g_{kind}_on"), arms.get(f"K1g_{kind}_off")
+    twin, reason = arms.get("twin_K1g"), PERCEPT_PLANTED[kind]
+    if not (_complete(on) and _complete(off) and _complete(twin)):
+        return {"guard_on_ok": False, "guard_on_refused": False, "guard_off_flagged": False}
+
+    def counted(rec):
+        reader = ((rec.get("reader") or {}).get("refusals") or {}).get(reason, 0)
+        return reader + (rec["before"].get("refusals") or {}).get(reason, 0)
+
+    moved = any(off["before"].get(k) != twin["before"].get(k) for k in _PERCEPT_BUFFER)
+    return {
+        "guard_on_ok": on.get("fault") is not None or percept_equal(on, twin),
+        "guard_on_refused": counted(on) >= 1,
+        "guard_off_flagged": off.get("fault") is None and counted(off) == 0 and moved,
+    }
+
+
+def c7_seed(arms):
+    """R2-c7 (2.10, part P3) on one seed: K1g's restore equals the uninterrupted twin (the buffer and
+    the next refit) and leaves the chronology untouched; CROSS and O_buf each move it; each planted
+    percept red reads as `_percept_planted_entry`; the shuffled-buffer positive control's refit
+    differs. Its own incomplete list: a P1/P2 arm never makes a P3 seed INVALID (2.3, A6)."""
+    get, twin = arms.get, arms.get("twin_K1g")
+    incomplete = [r for r, _ in P3_ROLES if not r.startswith("pre_") and not _complete(get(r))]
+    incomplete += [
+        r for r, _ in P3_ROLES if r.startswith("pre_") and (not get(r) or "error" in get(r))
+    ]
+    twin_model = (twin or {}).get("model") or {}
+    if _complete(twin) and not twin_model.get("refit_row"):
+        incomplete.append("twin_K1g")  # no refit after the boundary: the bar would compare nothing
+    res = get("res_K1g") or {}
+    hydrated = res.get("before") or {}
+    k1g = (
+        percept_equal(res, twin)
+        and res.get("fault") is None
+        and hydrated.get("prev_none") is True
+        and hydrated.get("observed") == 0
+        and not hydrated.get("refusals")
+    )
+
+    def fired(role):
+        arm = get(role)
+        return (
+            _complete(arm)
+            and _complete(twin)
+            and "error" not in twin_model
+            and arm.get("fault") is None
+            and not percept_equal(arm, twin)
+        )
+
+    planted = {kind: _percept_planted_entry(kind, arms) for kind in PERCEPT_PLANTED}
+    reds = {"CROSS": fired("K1g_CROSS"), "O_buf": fired("O_buf")}
+    reds.update({kind: entry["guard_off_flagged"] for kind, entry in planted.items()})
+    for kind in PERCEPT_PLANTED:  # A11.2: a neutered guard cannot latch; another guard did
+        role = f"K1g_{kind}_off"
+        if (get(role) or {}).get("fault") is not None and role not in incomplete:
+            incomplete.append(role)
+    pos = get("K1g_POS") or {}
+    pos_model = pos.get("model") or {}
+    control = (
+        _complete(pos)
+        and _complete(twin)
+        and bool(pos_model)
+        and "error" not in pos_model
+        and any(pos_model.get(k) != twin_model.get(k) for k in ("W", "beta"))
+    )
+    ok = (
+        k1g
+        and all(reds.values())
+        and all(all(entry.values()) for entry in planted.values())
+        and control
+        and not incomplete
+    )
+    return {
+        "K1g": k1g,
+        "reds": reds,
+        "planted": planted,
+        "positive_control": control,
+        "incomplete": incomplete,
+        "arms_complete": not incomplete,
+        "ok": ok,
+    }
+
+
 def seed_comparisons(arms, base=None):
     """Every per-seed reading of 2.3, from the R2-head arms (and the base-head arms when given). A red
     FIRES only if its arm and its twin are COMPLETE records; an incomplete arm makes the seed
@@ -1923,6 +2255,7 @@ def seed_comparisons(arms, base=None):
         ),
         "c4_comparator": comparator_controls(get("twin_K2")),
         "c8": c8_seed(arms),
+        "c7": c7_seed(arms),
     }
     for role in (*_RED_TWIN, "O_rngv"):
         arm = get(role) or {}
@@ -1984,13 +2317,19 @@ def verdict(per_seed, seeds):
     INVALID for c2; an INVALID seed (any reason) is never excluded from R2-c3's count: it reads NOT MET. Controls and c6 on
     every seed. Equality has no variance: no statistic, no majority. A must-differ bar whose two
     sides are identical reads NOT MET (ruling 9). Scoring a seed reads it, so the licence holds here,
-    and it names the part: a P1 or P2 verdict joins only that part's lines (PART_BARS); the dev block
-    joins them all."""
+    and it names the part: a P1, P2 or P3 verdict joins only that part's lines (PART_BARS); the dev
+    block joins them all. A P3 seed is INVALID only by its own K1g arms (2.3: "a P3 red reverts P3,
+    never P1"; A11.4); which P3 arm is D4's load-bearing one is OWED, so none replaces a seed yet."""
     part = check_seeds(seeds)
-    incomplete = [s for s in seeds if not per_seed[s].get("arms_complete", True)]
-    invalid = [
-        s for s in seeds if s in incomplete or not per_seed[s].get("c2", {}).get("I_K2_differs")
-    ]
+    c7_of = lambda s: per_seed[s].get("c7") or {}  # noqa: E731
+    if part == "P3":
+        incomplete = [s for s in seeds if not c7_of(s).get("arms_complete")]
+        invalid = list(incomplete)
+    else:
+        incomplete = [s for s in seeds if not per_seed[s].get("arms_complete", True)]
+        invalid = [
+            s for s in seeds if s in incomplete or not per_seed[s].get("c2", {}).get("I_K2_differs")
+        ]
     valid = [s for s in seeds if s not in invalid]
     counted = list(seeds)  # R2-c3 counts EVERY seed: an INVALID one is never dropped or replaced
     every = lambda f, over=None: (
@@ -2000,7 +2339,7 @@ def verdict(per_seed, seeds):
         )
     )
     c1 = every(lambda c: all(c["c1"].values()) and all(c["chrono"].values()))
-    c2 = every(lambda c: c["c2"]["I_K1_equal"])
+    c2 = every(lambda c: c.get("c2", {}).get("I_K1_equal") is True)
     # every key any counted seed reports: a red missing from one seed's record never fires there
     red_keys = dict.fromkeys(r for s in counted for r in per_seed[s]["reds"])
     plant_keys = dict.fromkeys(k for s in counted for k in per_seed[s]["planted"])
@@ -2025,7 +2364,16 @@ def verdict(per_seed, seeds):
     c6 = every(lambda c: all(c["c6"].values()), counted)
     failwrite = every(lambda c: bool(c.get("failwrite")) and c["failwrite"]["ok"], counted)
     c8 = every(lambda c: all(c["c8"].values()))
-    never = [r for r, hit in fired_somewhere.items() if not hit]
+    # 2.10, on EVERY seed, no tolerance: an INVALID seed is counted and never dropped
+    c7 = every(lambda c: (c.get("c7") or {}).get("ok") is True, counted)
+    never = [r for r, hit in fired_somewhere.items() if not hit] if part != "P3" else []
+    if part in ("dev", "P3"):  # a K1g red that fires on no seed halts P3 (2.3 R2-c3's rule, P8)
+        k1g_reds = dict.fromkeys(r for s in counted for r in c7_of(s).get("reds", {}))
+        never += [
+            f"K1g:{r}"
+            for r in k1g_reds
+            if not any(c7_of(s).get("reds", {}).get(r) is True for s in counted)
+        ]
     halted = len(invalid) > 2 or bool(never) or not counted
     bars = {
         "R2-c1": c1,
@@ -2033,6 +2381,7 @@ def verdict(per_seed, seeds):
         "R2-c3": c3,
         "R2-c4": c4,
         "R2-c6": c6,
+        "R2-c7": c7,
         "R2-c8": c8,
         "FAILWRITE": failwrite,
     }
@@ -2042,6 +2391,8 @@ def verdict(per_seed, seeds):
     lines = {b: verdict_of(v) if b in own else f"not {part}'s verdict" for b, v in bars.items()}
     if invalid and "R2-c3" in own:
         lines["R2-c3"] = "NOT MET"
+    if invalid and part == "P3":
+        lines["R2-c7"] = "NOT MET"
     return {
         "seeds": list(seeds),
         "part": part,
@@ -2054,9 +2405,9 @@ def verdict(per_seed, seeds):
         "planted": planted,
         "verdict": "PASS" if ok else ("NOT MET" if invalid else "RED"),
         "codex14": codex14_status(),
-        "not_built": {"P3": "another lane (claude-sonnet-r2p3-1015): K1g / R2-c7, kind percept"},
         "scope": "same-code restarts at K0-K4 and the staged bout; the interaction learner and the "
-        "sleep carriers that touch it; the #1037 latch (FAILWRITE); R2-c5 is pytest; I arms at base "
+        "sleep carriers that touch it; the #1037 latch (FAILWRITE); K1g (R2-c7), the grower's percept "
+        "transitions on CPU after a clean session 1; R2-c5 is pytest; I arms at base "
         "e1b3ae3c compare only to their own twins; sleep replay is retired on main (owner1039); "
         "the CTXREAD off arm filters its event out of `hydrate`, so it shows the guard is the only "
         "refuser, not a reachable fault effect (A10)",
@@ -2105,7 +2456,7 @@ def run_seed(seed, out_dir, head="r2", src=None, roles=None):
     src = Path(src) if src else here.parents[2]
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    table = R2_ROLES if head == "r2" else BASE_ROLES
+    table = R2_ROLES + P3_ROLES if head == "r2" else BASE_ROLES
     if roles is not None:
         parent_of, roles = dict(table), set(roles)
         for role in list(roles):
