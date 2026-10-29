@@ -211,3 +211,35 @@ def test_m1_a_healthy_boot_skips_nothing(H):
         assert b.state()["episode_writes_skipped"] == 0
     finally:
         b.close()
+
+
+def _session_lake():
+    return [dict(e, session=str(i % 2)) for i, e in enumerate(EPS)]
+
+
+def test_m2a_provenance_never_enters_the_calibration_null():
+    # PROVENANCE_SLOTS were sampled as a slot, and is_subcue({session: X}) is False, so a scramble
+    # that exactly addresses every same-boot episode entered the arity-1 null as a "non-stored" cue
+    lr = LR.LakeRecall(episodes=_session_lake(), seed=0)
+    lr.refresh()
+    assert lr._nulls and set(lr._nulls) <= {1, 2, 3, 4, 5}, sorted(lr._nulls)
+
+
+def test_m2b_the_cue_code_ignores_provenance():
+    # recall() encoded the FULL cue for distance and fetch: a session-bearing cue ranked by boot
+    # identity. Provenance must leave the distance of a content cue unchanged.
+    lr = LR.LakeRecall(episodes=_session_lake(), seed=0)
+    plain = lr.recall({"when": "t3"}, k=3)
+    with_session = lr.recall({"when": "t3", "session": "0"}, k=3)
+    assert [h["distance"] for h in with_session] == [h["distance"] for h in plain]
+    assert [h["episode"] for h in with_session] == [h["episode"] for h in plain]
+
+
+def test_m2c_the_null_arity_counts_content_slots_only():
+    # a one-content-slot cue plus provenance was scored against the arity-2 null
+    lr = LR.LakeRecall(episodes=_session_lake(), seed=0)
+    plain = lr.recall({"when": "t3"}, k=1)[0]
+    with_session = lr.recall({"when": "t3", "session": "0"}, k=1)[0]
+    assert plain["calibrated"] and with_session["calibrated"]
+    assert with_session["margin"] == plain["margin"]
+    assert with_session["retrieval"] == plain["retrieval"]
