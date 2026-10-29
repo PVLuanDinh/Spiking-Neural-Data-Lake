@@ -35,7 +35,9 @@ os.environ["NORD_HOME"] = sys.argv[1]
 spec = json.loads(sys.argv[2])
 from snn_data_lake.substrate import home
 home.require_isolated_home()
-from snn_data_lake.engine.brain import CIRCADIAN_STATE, make_brain
+from snn_data_lake.engine.brain import make_brain
+# brain.CIRCADIAN_STATE, as a literal so the child imports on the unfixed base too
+CIRCADIAN_STATE = "circadian_clock.json"
 if "rewrite" in spec:
     home.save_state(CIRCADIAN_STATE, dict(home.load_state(CIRCADIAN_STATE), **spec["rewrite"]))
 
@@ -45,7 +47,9 @@ def clock(b):
 
 b = make_brain(seed=spec["seed"], persist=True, device="cpu")
 s = b.state()
-out = dict(clock(b), note=s["circadian_restore"], restored=s["circadian_restored"])
+# .get: the same child runs on the unfixed base (no such keys), where the red must fail
+# on its assert, never on a crash
+out = dict(clock(b), note=s.get("circadian_restore"), restored=s.get("circadian_restored"))
 if spec.get("kill_at_growth_flush"):  # R2's K1g boundary: os._exit right after the growth flush
     grow = b._flush_growth
     def _killed():
