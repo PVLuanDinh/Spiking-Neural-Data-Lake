@@ -694,3 +694,65 @@ facf2057c5a8e084a266f7019dc08722b11a4c26bd264a76a6c60cb5e0f43608  /mnt/d/AI-proj
   (lanes/SAVEPOINT-REBOOT-1028/INDEX.md). D-13 REVISED's one-run-at-a-time stands until the launcher re-rules the host
   regime. A move off one-run-at-a-time changes the conditions the A/A repeat was read under, so R3 is re-run under the
   new regime before any later look is read (lens B #5776 nit 1).
+
+## Addendum 5 (2026-10-28, before the GO file and before any E1c run): the host regime after the reboot (delegate D-34)
+
+Section 10 names delegate D-13 REVISED, which was written when the host could not reboot. The owner rebooted at about
+17:55 CDT (addendum 4 A4-4). Delegate D-34 (launcher-1028, `lanes\DELEGATED-DECISIONS-1028.md`) rules on the regime.
+Because the frozen section 10 names the regime, this addendum lands BEFORE the GO file. No E1c run, GO or R5 of record
+exists.
+
+**A5-1. D-13 REVISED STAYS for the GO, the pilot and look 1.**
+- One run at a time.
+- Section 10's hysteresis, the nonpaged-pool check and the 85% commit line are unchanged.
+- Why, from D-34: the reboot removed D-13's premise (idle Available is about 20 GB, and the nonpaged leak is gone). But
+  campaign.sh is serial by construction: its run_one loop runs one brain at a time, and its claim refuses to start
+  beside any live brain process. Section 10 also requires R3 to be re-run at the worker count before any concurrency.
+  So concurrency is a build, not a setting.
+
+**A5-2. What the pilot measures (policy-enforcer #5822 m2, m3).**
+- The pilot unit is seed 1's two runs, `real` then `pfrozen`. Section 10's timeout rule keeps the FIRST run's T, and
+  this addendum does not move it.
+- T for the projection is the LARGER of the two runs' wall times.
+- P is the peak private bytes of the WHOLE run subprocess tree, children included. The arc-4 battery found subprocess
+  children (brian2 reference traces, about 1.7 GB each) that a per-process reading misses.
+  - The tree is defined by ParentProcessId descent from the run's root pid, with no image-name filter, so a non-python
+    child (a compiled binary, nvcc, a shell shim) counts.
+  - P is the maximum, over samples, of the SUMMED private bytes of the tree, at a sample period of 1 s or less (and at
+    most T/20).
+- The GPU peak per arm is read per pid (nvidia-smi --query-compute-apps). A device-total reading may be cited only as
+  an upper bound.
+- P and the GPU peak are taken per arm. A5-4 uses the larger arm.
+- The observer is out of band. It is not in the bound driver set, and it decides no verdict: P sets only A5-4's
+  worker count.
+  - The observer's path and sha256 are named in the pilot post, before the pilot runs.
+  - One control comes before P is cited: a planted child process, preferably non-python, holding a known allocation,
+    which the observer must report within its stated tolerance.
+
+**A5-3. The projection, posted after the pilot.** T x 2 arms x seeds, both to the expected stop (about 658 seeds under
+no harm: about 646, plus about 12 for the futility variant, addendum 3 A3-3) and to the 704 cap. Section 10's E1b
+throughput (about 21 s per run) puts the cap at about 8.2 h, and the expected stop at about 7.7 h. The 48 h line of
+A5-4 is crossed only if T exceeds about 131 s per run. The pilot's T replaces the estimate.
+
+**A5-4. Serial or concurrent, decided on the projection.**
+- An expected-stop projection of 48 h or less: the whole campaign stays serial.
+- More than 48 h: the integrator may propose a concurrent driver, as its own fold that EXTENDS campaign.sh
+  (graph-exists first), with all of:
+  - looks composed by seed index, never by completion order;
+  - R3 re-run at the maximum worker count, with each seed's two arms in the same launch batch (section 10, carried
+    forward); a flip keeps 1 worker;
+  - an identity control: one seed run alone and the same seed run beside N-1 others give a byte-identical result row;
+  - workers = min(4, floor((Available - 4 GB) / P)), plus the GPU bound;
+  - hysteresis, the 85% line and the pool check unchanged;
+  - stall thresholds re-derived at N;
+  - a panel before use, and a switch only at a look boundary;
+  - a new DRIVER_SHA256 bound in a dated addendum before the switch. That addendum names the looks already read,
+    and changes no rule (policy-enforcer #5822 n2).
+- P1 declared exceptions (policy-enforcer #5822 m1; D-34 calls them the delegate's operational choices): the 48 h line,
+  the 4 GB reserve and the ceiling of 4 workers. They are scheduling only, and no endpoint reads them.
+
+**Raising ambition (self-applied, SNDL rule 2026-10-25).**
+- Rung picked: adopt D-34 as ruled. Measure T and P first, then decide concurrency on the measurement.
+- Rung above, ruled out: building the concurrent driver now. D-34 gates it on the 48 h projection, with its own panel.
+  P8 item 2 also owes it a control that is not the method, the identity control, which needs the measured P.
+- Outside judge: the pilot's measured T and P, and R3 at the worker count.
