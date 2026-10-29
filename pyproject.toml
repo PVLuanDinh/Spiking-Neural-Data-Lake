@@ -336,6 +336,7 @@ filterwarnings = ["ignore:.*found in sys.modules.*:RuntimeWarning"]
 markers = [
     "slow: spawns subprocesses and drives many ticks (minutes, not seconds)",
     "timing: asserts wall-clock REPEATABILITY -- the battery runs these serially, after the parallel pass",
+    "pool: spawns a multiprocessing pool (about 3 GB of commit per child) -- the battery and CI run these serially, after the parallel pass, never beside xdist workers (delegate D-33)",
 ]
 
 [tool.coverage.run]

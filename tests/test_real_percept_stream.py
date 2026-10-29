@@ -131,6 +131,7 @@ def test_the_brain_feeds_the_engine_and_the_floors_reach_state():
 import concurrent.futures as _cf  # noqa: E402
 import itertools as _it  # noqa: E402
 import math as _math  # noqa: E402
+import os as _os  # noqa: E402
 import statistics as _st  # noqa: E402
 
 L_SEEDS = tuple(range(8))
@@ -257,6 +258,16 @@ def _paired(diffs):
 
 
 def _run_arms(arms, perms=None):
+    # A 4-process spawn pool costs about 3 GB of commit per child. Two of them beside xdist workers
+    # took the arc-4 battery's commit from 61% to 85.7% in 4 min (delegate D-33), so these tests
+    # carry the `pool` marker and run in the serial stage; this guard turns a wrong `-m` selection
+    # into a red, not a spike.
+    if _os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.fail(
+            "a `pool` test ran beside xdist workers: "
+            "select it in the serial stage (-m 'timing or pool')",
+            pytrace=False,
+        )
     jobs = [(s, a, (perms or {}).get(s)) for a in arms for s in L_SEEDS]
     with _cf.ProcessPoolExecutor(max_workers=4) as ex:
         rows = list(ex.map(_l_cell, jobs))
@@ -273,6 +284,7 @@ def _require_the_live_packs(res):
         )
 
 
+@pytest.mark.pool
 @pytest.mark.slow
 @pytest.mark.xfail(
     strict=True,
@@ -307,6 +319,7 @@ def test_the_persistence_oracle_clears_its_own_floor_under_the_admission_window(
     )
 
 
+@pytest.mark.pool
 @pytest.mark.slow
 def test_a_constant_percept_admits_one_unit_and_a_structured_stream_admits_more():
     """L-R4 (plan Part F): a constant input carries nothing to discriminate rows, so the grower
@@ -356,6 +369,7 @@ def test_a_constant_percept_admits_one_unit_and_a_structured_stream_admits_more(
     )
 
 
+@pytest.mark.pool
 @pytest.mark.slow
 def test_the_online_readout_beats_the_stale_one_on_the_wake_stream():
     """L1c-R1 (evidence/l1c-online-readout.md section 2.0c): paired (live_acc_L1C - live_acc_LIVE)
@@ -388,6 +402,7 @@ def test_the_online_readout_beats_the_stale_one_on_the_wake_stream():
     )
 
 
+@pytest.mark.pool
 @pytest.mark.slow
 def test_width_buys_next_category_accuracy_and_the_shuffled_grid_does_not():
     """SC-012a (spec.md:183; plan Phase 2, ratified under OD-5): with admission capped exogenously

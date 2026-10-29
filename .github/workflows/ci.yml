@@ -497,9 +497,9 @@ jobs:
         run: python -m coverage run run_selfchecks.py --in-process
       # the 70% bar is checked ONCE, on the last run (it appends to everything before it), so a
       # low partial total can never skip the serial timing step below (B3 item f, 2026-10-19)
-      - run: pytest -n auto --dist loadgroup --cov-append --cov-fail-under=0 -m "not timing"
-      - name: Wall-clock repeatability tests, serially (marker `timing`)
-        run: pytest --cov-append -m timing   # addopts: --cov-fail-under=70 on the combined data
+      - run: pytest -n auto --dist loadgroup --cov-append --cov-fail-under=0 -m "not timing and not pool"
+      - name: Wall-clock repeatability and process-pool tests, serially (markers `timing`, `pool`)
+        run: pytest --cov-append -m "timing or pool"   # addopts: --cov-fail-under=70 on the combined data
 
   # Release audit (specs/021, FR-014): every push to main gets audited -- --certify runs every
   # manifest row's real gate command and refuses while any policy is FAIL / CANNOT_RUN / NO_GATE
