@@ -48,8 +48,8 @@ board items themselves are not visible to this session:
   `SpikingInteractionLearner(_IXN_INTENTS, n_in=N_IN, seed, t_post=T_POST)` and sets
   `unit.stack = PlasticityRuleStack(n_neurons=9, seed=seed)`.
 - **It is the live brain's learner.** `taught_campaign.py:62-64` names it "the ONE factory (P2); B8 below proves it equal
-  to the Brain's learner". The live wire is `engine/brain.py:353-379`: `self.brain._ixn.stack = PlasticityRuleStack(...)`.
-- **The stack's measured justification,** `brain.py:360-363`, quoted: "unstabilized R-STDP saturates -- peak drive 18.97,
+  to the Brain's learner". The live wire is `src/snn_data_lake/engine/brain.py:353-379`: `self.brain._ixn.stack = PlasticityRuleStack(...)`.
+- **The stack's measured justification,** `src/snn_data_lake/engine/brain.py:360-363`, quoted: "unstabilized R-STDP saturates -- peak drive 18.97,
   max|w| 6.64 -- and becomes RIGID (it then fails to learn conflicting material at all). With the stack: drive 3.01,
   max|w| 0.98 ... it did NOT improve held-out intent accuracy (5/14 either way), so it is wired for stability, not for
   recognition quality."
@@ -125,7 +125,7 @@ second.**
    is byte-identical to the base; the same seed gives a byte-identical trajectory.
 5. **Live charge:** `_tick_charge_selfcheck` (`:671-788`): each stack rule CHARGED on the real host path, iSTDP's
    INERT control kept.
-6. **The brain-level stability claim** at `brain.py:360-363` (bounded drive and |w| on the live path, still able to learn
+6. **The brain-level stability claim** at `src/snn_data_lake/engine/brain.py:360-363` (bounded drive and |w| on the live path, still able to learn
    conflicting material). **This is not currently an asserted test.** The integrator should decide whether the repair
    arc first turns it into one (owner question 4).
 7. **G2's other cells:** the (i) cells, A_c1d and C1-d dispositions in G2 5.1 must be unchanged ("The (i) cells, C1-d and
@@ -279,7 +279,7 @@ reference, q = 0.6 needs n = 10 and q = 0.9 needs n = 6.
 
 **What a null would be about.** A null here is a null on the REPAIR CANDIDATE, not on any mechanism.
 - Nothing in the stack is removed or disabled on any outcome. The three mechanisms are wired for stability
-  (`brain.py:360-363`), and the owner ruled out safety relaxation.
+  (`src/snn_data_lake/engine/brain.py:360-363`), and the owner ruled out safety relaxation.
 - The candidate's code is reverted. It was never live: it lands only on a crossing.
 
 **The scale.** Every null names it. The axis is **epochs**: a learning rule scales with ticks (P8 amendment item 2), and
@@ -297,7 +297,7 @@ A_ii is a slow-learning task.
 
 **What this does NOT claim on any outcome:**
 - anything about (ii), growth, the reservoir or the engine (G2 5.1's own sentence);
-- that the stack helps recognition (`brain.py:363`: it does not);
+- that the stack helps recognition (`src/snn_data_lake/engine/brain.py:363`: it does not);
 - that a repair at the learner level holds in the brain without the brain-level checks of section 7.
 
 ## 7. The production-tier question
@@ -315,7 +315,7 @@ A_ii is a slow-learning task.
 **Only on the owner host, at the production tier:**
 - **(a)** The brain-level consequences:
   - the live intent learner under the REPAIRED stack in a persisting scratch brain;
-  - the bounded-drive and still-plastic claim of `brain.py:360-363` (section 1.5 item 6);
+  - the bounded-drive and still-plastic claim of `src/snn_data_lake/engine/brain.py:360-363` (section 1.5 item 6);
   - G0(c)'s checkpoint round trip;
   - R2's replay hydration and sleep's `relax` on the repaired stack.
 - **(b)** The battery.
@@ -349,5 +349,5 @@ until (a) passes there.
 3. **Is the claimed effect right?** "at least 75% of seeds" is this draft's choice. G2's registered incumbent
    requirement is "solves on every seed", which is stricter. Choosing it would make the per-seed predicate 100% and the
    sign-test design above conservative.
-4. **Turn `brain.py:360-363` into an asserted test first?** It is a measured comment today. As an asserted test it would
+4. **Turn `src/snn_data_lake/engine/brain.py:360-363` into an asserted test first?** It is a measured comment today. As an asserted test it would
    make section 1.5 item 6 a reachable red in the repair's own arc.
