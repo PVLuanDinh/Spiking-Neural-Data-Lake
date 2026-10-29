@@ -652,3 +652,13 @@ Appended below addendum 2. Nothing above is edited.
 **A3-2. Owed by the bind** (stack-c, on #5962): `run_problems`' default design does not apply the equality, so
 `r2.ps1`'s R2a and R2c reads must pass this design (`design=E1C`) explicitly. Otherwise a stub that fires but misses
 some calls would pass. It gets a `driver_check` mutant: the default design must fail to catch a partial bypass.
+
+**A3-3. Erratum to A2-2** (stack-a #5969 m1).
+- A2-2 says the pairing mutant proves the second dry look's pin "can see a seed-to-record mix-up". It proves less: the
+  pin detects a ONE-SEED shift of the d values against their seeds (E1D-SFOLD S4).
+- It does NOT detect these, because the harm fixture's d values repeat with period 5 and the 9 frozen seeds are
+  planted first (`S4-red.log`: a reversal reproduces the pinned line exactly):
+  - a reversal;
+  - a shift by a multiple of 5;
+  - a positional mix-up confined to the first 9 seeds.
+- These are the dry pin's disclosed limits. The live campaign pairs by seed key, not by position.
