@@ -1,12 +1,16 @@
 """The R2 instrument review's fixes (#6735, lanes/engine-1024/r2-instr-review-row/REPORT.md), each
 red first: the licence on every entry point (MAJOR-1), one part per block and per-part verdicts
 (MAJOR-2), the reader-kind off arms (MAJOR-4), the bout restarts' chronology (MAJOR-6) and the code
-MINORs. Synthetic records and patched children only; no brain is built and no confirmatory or
-reserve seed is ever run."""
+MINORs. Round 2 (integrator rulings): R2-c7's per-seed K1g arms (BLOCK-1 route A). Synthetic
+records, synthetic percept events and patched children only; no brain is built and no confirmatory
+or reserve seed is ever run."""
 
+import copy
 import json
+from pathlib import Path
 
 import pytest
+from test_r2_p3_percept_transitions import _chain, _hydrate, _pairs
 from test_replay_hydration_instrument import REDS, _arms, _differ, _fw_rec, _per_seed
 
 from snn_data_lake.instruments import replay_hydration as rh
@@ -79,8 +83,9 @@ P2_BLOCK, P2_RESERVE = tuple(range(15030, 15038)), tuple(range(15040, 15048))
         ("P2", [15017]),  # P1's block under P2's go
         ("P1", [15000, 15010]),  # one block per run: dev seeds never mix into a confirmatory read
         ("P1", [15010, 15030]),
-        ("P3", [15050]),  # P3 has no campaign instrument (BLOCK-1): its seeds stay unlicensed
-        ("P3", [15060]),
+        ("P3", [15010]),  # P1's block under P3's go
+        ("P2", [15050]),  # P3's block under P2's go
+        ("P1", [15060]),  # P3's reserve under P1's go
         ("P1", [15068]),  # unassigned
         ("P1", [15999]),
     ],
@@ -301,3 +306,326 @@ def test_minor5_the_verdict_records_which_heads_ran(tmp_path, monkeypatch):
     prov = json.loads((tmp_path / "verdict.json").read_text(encoding="utf-8"))["provenance"]
     assert prov["base_src"].startswith("e1b3ae3c") and prov["src"]
     assert len(prov["instrument_sha256"]) == 64
+
+
+# ---- ROUND 2, BLOCK-1 route A: R2-c7's per-seed K1g arms (2.10; integrator ruling) ---------------
+
+P3_BLOCK, P3_RESERVE = tuple(range(15050, 15058)), tuple(range(15060, 15068))
+PERCEPT_REASONS = {
+    "DUP": "duplicate_id",
+    "REORDER": "seq_regression",
+    "HELDOUT": "heldout",
+    "MISSING": "missing_slot",
+    "WIDTH": "width",
+    "VOCAB": "vocab",
+    "INSTRUMENT": "instrument",
+}
+#: (role, parent): session 1 closed cleanly (so the lake holds a session boundary for CROSS), the
+#: killed session 2 and its uninterrupted twin, then the restoring arms on the killed home's copy
+P3_TABLE = (
+    ("pre_K1g0", None),
+    ("pre_K1g", "pre_K1g0"),
+    ("twin_K1g", "pre_K1g0"),
+    ("K1g_POS", "pre_K1g0"),
+    ("res_K1g", "pre_K1g"),
+    ("K1g_CROSS", "pre_K1g"),
+    ("O_buf", "pre_K1g"),
+) + tuple((f"K1g_{k}_{side}", "pre_K1g") for k in PERCEPT_REASONS for side in ("on", "off"))
+
+
+def test_p3_licence_admits_its_block_and_reserve_and_names_the_part(monkeypatch):
+    monkeypatch.setenv("R2_CONFIRMATORY_GO", "P3")
+    assert rh.check_seeds(P3_BLOCK) == "P3" and rh.check_seeds(P3_RESERVE) == "P3"
+
+
+@pytest.mark.parametrize("arm", P3_TABLE, ids=[r for r, _ in P3_TABLE])
+def test_every_registered_k1g_arm_is_in_the_role_table_with_its_parent(arm):
+    assert arm in rh.P3_ROLES
+    assert rh.PERCEPT_PLANTED == PERCEPT_REASONS
+
+
+@pytest.mark.parametrize("role", [r for r, _ in P3_TABLE])
+def test_run_process_hands_every_k1g_arm_to_the_percept_process(tmp_path, monkeypatch, role):
+    calls = []
+    monkeypatch.delenv("R2_CONFIRMATORY_GO", raising=False)
+    monkeypatch.setenv("NORD_HOME", str(tmp_path))
+    monkeypatch.setattr(rh, "_owned_private_home", lambda path, token: Path(path))
+    monkeypatch.setattr(rh, "run_percept", lambda r, seed, out: calls.append((r, seed)))
+    monkeypatch.setattr(rh, "_patch_restore", _never)  # never the interaction learner's arms
+    rh.run_process(role, 15000, str(tmp_path), str(tmp_path / "o.json"), nonce="n")
+    assert calls == [(role, 15000)]
+
+
+def test_run_seed_runs_each_k1g_arm_on_a_copy_of_its_parents_home(tmp_path, monkeypatch):
+    launched = []
+
+    def child(args, **kwargs):
+        launched.append(args[3])
+        (Path(args[5]) / f"{args[3]}.mark").write_text("x", encoding="ascii")
+        return rh.subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(rh.subprocess, "run", child)
+    homes = {}
+    real_copy = rh.shutil.copytree
+
+    def copied(src, dst, **kw):
+        out = real_copy(src, dst, **kw)
+        homes[Path(dst).name.split("-")[0]] = sorted(p.name for p in Path(dst).glob("*.mark"))
+        return out
+
+    monkeypatch.setattr(rh.shutil, "copytree", copied)
+    rh.run_seed(15000, tmp_path, roles=[r for r, _ in P3_TABLE])
+    assert launched == [r for r, _ in P3_TABLE]
+    assert homes["res_K1g"] == ["pre_K1g.mark", "pre_K1g0.mark"]
+    assert homes["twin_K1g"] == homes["K1g_POS"] == ["pre_K1g0.mark"]
+
+
+def _lake():
+    """Two sessions of synthetic percept chains: the twin's hydration makes 2 + 3 pairs."""
+    return _chain(1, 1, [0, 1, 2]) + _chain(2, 4, [3, 0, 1, 2])
+
+
+def _keep(monkeypatch):
+    """Every guard an arm patches is restored after the test."""
+    import snn_data_lake.growth.neurogenesis_engine as ne
+    import snn_data_lake.substrate.learner_events as le
+
+    for mod, name in (
+        (ne, "_percept_refusal"),
+        (ne, "hydrate_transitions"),
+        (le, "_refusal"),
+        (le, "_identity_refusal"),
+    ):
+        monkeypatch.setattr(mod, name, getattr(mod, name))
+    cls = ne.NeurogenesisSelfImprove
+    monkeypatch.setattr(cls, "restore_transitions", cls.restore_transitions)
+
+
+def test_k1g_cross_arm_pairs_across_the_session_boundary(monkeypatch):
+    _keep(monkeypatch)
+    twin = _pairs(_hydrate(_lake()))
+    assert len(twin) == 5
+    rh._patch_restore("K1g_CROSS")
+    assert len(_pairs(_hydrate(_lake()))) == 6, "CROSS: one pair more than the twin's"
+
+
+def test_o_buf_arm_restores_the_grower_with_no_transition_hydration(monkeypatch):
+    from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
+
+    _keep(monkeypatch)
+    rh._patch_restore("O_buf")
+    eng = NeurogenesisSelfImprove(refit_every=4, device="cpu", seed=15000, online_readout=None)
+    assert eng.restore_transitions(_lake(), n_units=9, current_session=3) == 0
+    assert eng._buf_x == [] and eng._buf_y == [] and eng._transitions_hydrated
+
+
+@pytest.mark.parametrize("kind", sorted(PERCEPT_REASONS))
+def test_k1g_planted_percept_is_refused_on_and_forms_one_pair_off(monkeypatch, kind):
+    from snn_data_lake.substrate import learner_events as le
+
+    _keep(monkeypatch)
+    events, reason = _lake(), PERCEPT_REASONS[kind]
+    planted = rh._percept_red(kind, events)
+    twin = _pairs(_hydrate(events))
+    on = _hydrate(events + [copy.deepcopy(planted)])
+    assert on["refusals"].get(reason, 0) >= 1 and _pairs(on) == twin, on["refusals"]
+    reader = le._refusal(copy.deepcopy(planted), le.KIND_SPECS["percept"], False)
+    if kind in ("HELDOUT", "MISSING", "INSTRUMENT"):  # the shared reader refuses these first
+        assert reader == reason
+    rh._neuter(kind, percept=True)
+    off = _hydrate(events + [copy.deepcopy(planted)])
+    assert not off["refusals"] and len(_pairs(off)) == len(twin) + 1, off["refusals"]
+    assert le._refusal(copy.deepcopy(planted), le.KIND_SPECS["percept"], False) is None
+    if kind in ("DUP", "REORDER"):
+        assert le._identity_refusal(planted, {planted["event_id"]}, (9, 9)) is None
+
+
+class _FakeNeuro:
+    refit_every, ticks, _model, _n_units = 4, 5, None, 2
+
+    def __init__(self):
+        self.trajectory = [(4, 2, 0.5)]
+
+    def tick(self):
+        self.ticks += 1
+        if self.ticks % self.refit_every == 0:
+            self.trajectory.append((self.ticks, 2, 0.75))
+
+
+def test_k1g_runs_only_the_grower_sleep_step_to_the_next_refit():
+    neuro = _FakeNeuro()
+    model = rh._next_refit(neuro)
+    assert neuro.ticks == 8 and model["ticks"] == 8 and model["refit_row"] is True
+    assert model["traj"] == [[4, 2, 0.5], [8, 2, 0.75]] and model["W"] is None
+
+
+def _k1g_rec(role):
+    return {
+        "role": role,
+        "seed": 15000,
+        "fault": None,
+        "reader": {"refusals": {}},
+        "before": {
+            "buf_x": [[0.5, 0.25]],
+            "buf_y": [1],
+            "cats": [0, 1],
+            "refusals": {},
+            "prev_none": True,
+            "observed": 0,
+            "n_units": 2,
+        },
+        "model": {
+            "W": [[0.1]],
+            "b": [0.0],
+            "beta": [[0.2]],
+            "units": 2,
+            "traj": [[4, 2, 0.5]],
+            "ticks": 4,
+            "refit_row": True,
+        },
+    }
+
+
+def _k1g_arms():
+    arms = {r: _k1g_rec(r) for r, _ in P3_TABLE if not r.startswith("pre_")}
+    arms.update({r: {"role": r} for r, _ in P3_TABLE if r.startswith("pre_")})
+    for role in ("K1g_CROSS", "O_buf"):  # each red moves the hydrated buffer
+        arms[role]["before"]["buf_y"] = [0]
+    arms["K1g_POS"]["model"]["W"] = [[0.3]]  # the shuffled buffer's refit differs
+    for kind, reason in PERCEPT_REASONS.items():
+        arms[f"K1g_{kind}_on"]["before"]["refusals"] = {reason: 1}
+        arms[f"K1g_{kind}_off"]["before"]["buf_y"] = [1, 0]
+    return arms
+
+
+def test_c7_is_met_on_the_registered_arms():
+    c = rh.c7_seed(_k1g_arms())
+    assert c["ok"] and c["K1g"] and c["positive_control"] and c["arms_complete"], c
+    assert set(c["reds"]) == {"CROSS", "O_buf", *PERCEPT_REASONS} and all(c["reds"].values())
+    assert rh.seed_comparisons({**_arms(), **_k1g_arms()})["c7"]["ok"]
+
+
+@pytest.mark.parametrize(
+    "where, key, value",
+    [("before", k, v) for k, v in (("buf_x", [[0.5, 0.5]]), ("buf_y", [0]), ("cats", [1]))]
+    + [("model", k, v) for k, v in (("W", [[0.2]]), ("b", [1.0]), ("beta", [[0.0]]))]
+    + [("model", k, v) for k, v in (("units", 3), ("traj", []), ("ticks", 8))]
+    + [("before", "prev_none", False), ("before", "observed", 1), ("before", "refusals", {"x": 1})],
+)
+def test_k1g_restart_bar_is_the_buffer_the_next_refit_and_an_untouched_chronology(
+    where, key, value
+):
+    arms = _k1g_arms()
+    arms["res_K1g"][where][key] = value
+    c = rh.c7_seed(arms)
+    assert c["K1g"] is False and c["ok"] is False
+
+
+def test_k1g_a_latched_restore_never_meets_the_bar():
+    arms = _k1g_arms()
+    for role in ("res_K1g", "twin_K1g"):
+        arms[role]["fault"] = {"phase": "reconcile", "cause": "same"}
+    assert rh.c7_seed(arms)["K1g"] is False
+
+
+@pytest.mark.parametrize("role, red", [("K1g_CROSS", "CROSS"), ("O_buf", "O_buf")])
+def test_each_k1g_red_fires_only_when_it_moves_the_record(role, red):
+    arms = _k1g_arms()
+    arms[role] = _k1g_rec(role)  # equal to the twin
+    assert rh.c7_seed(arms)["reds"][red] is False
+    arms = _k1g_arms()
+    arms[role]["fault"] = {"phase": "hydrate", "cause": "ValueError: x"}
+    assert rh.c7_seed(arms)["reds"][red] is False
+    arms[role] = {"role": role, "error": "exit 1"}
+    c = rh.c7_seed(arms)
+    assert c["reds"][red] is False and role in c["incomplete"] and not c["ok"]
+
+
+@pytest.mark.parametrize("kind", sorted(PERCEPT_REASONS))
+def test_each_k1g_planted_kind_reads_its_own_guard(kind):
+    reason, on, off = PERCEPT_REASONS[kind], f"K1g_{kind}_on", f"K1g_{kind}_off"
+    arms = _k1g_arms()
+    arms[on]["before"]["refusals"], arms[on]["reader"]["refusals"] = {}, {reason: 1}
+    assert all(rh.c7_seed(arms)["planted"][kind].values()), "the reader's count is a refusal too"
+    arms[on]["reader"]["refusals"] = {}
+    assert rh.c7_seed(arms)["planted"][kind]["guard_on_refused"] is False
+    arms = _k1g_arms()
+    arms[on]["before"]["buf_y"] = [0]  # refused, but the restore moved: not ok unless latched
+    assert rh.c7_seed(arms)["planted"][kind]["guard_on_ok"] is False
+    arms[on]["fault"] = {"phase": "reconcile", "cause": "R2 closed: incomplete reconciliation"}
+    assert rh.c7_seed(arms)["planted"][kind]["guard_on_ok"] is True
+    arms = _k1g_arms()
+    arms[off]["before"]["refusals"] = {reason: 1}  # the neutered guard still refused it
+    assert rh.c7_seed(arms)["planted"][kind]["guard_off_flagged"] is False
+    arms = _k1g_arms()
+    arms[off]["before"]["buf_y"] = [1]  # admitted, but nothing moved
+    assert rh.c7_seed(arms)["planted"][kind]["guard_off_flagged"] is False
+    arms = _k1g_arms()
+    arms[off]["fault"] = {"phase": "hydrate", "cause": "another guard latched"}
+    c = rh.c7_seed(arms)
+    assert c["planted"][kind]["guard_off_flagged"] is False and off in c["incomplete"]
+
+
+def test_k1g_positive_control_the_shuffled_buffer_must_reach_the_refit():
+    arms = _k1g_arms()
+    arms["K1g_POS"] = _k1g_rec("K1g_POS")
+    c = rh.c7_seed(arms)
+    assert c["positive_control"] is False and c["ok"] is False
+
+
+def test_k1g_a_twin_with_no_refit_after_the_boundary_is_incomplete():
+    arms = _k1g_arms()
+    arms["twin_K1g"]["model"]["refit_row"] = False
+    c = rh.c7_seed(arms)
+    assert "twin_K1g" in c["incomplete"] and not c["ok"]
+
+
+def _p3_verdict(monkeypatch, seeds=P3_BLOCK, **over):
+    monkeypatch.setenv("R2_CONFIRMATORY_GO", "P3")
+    return rh.verdict(
+        {s: _per_seed(c7=rh.c7_seed(_k1g_arms()), **over) for s in seeds}, list(seeds)
+    )
+
+
+def test_p3_verdict_is_r2_c7_only_a_p1_red_never_reverts_p3(monkeypatch):
+    v = _p3_verdict(monkeypatch, c1={"K1": False}, c2={"I_K1_equal": False, "I_K2_differs": False})
+    assert v["part"] == "P3" and v["verdict"] == "PASS" and v["R2-c7"] == "PASS", v
+    assert v["R2-c1"] == "not P3's verdict" and not v["invalid_seeds"]
+
+
+def test_p3_verdict_reads_red_when_c7_fails_on_one_seed(monkeypatch):
+    monkeypatch.setenv("R2_CONFIRMATORY_GO", "P3")
+    bad = _k1g_arms()
+    bad["res_K1g"]["model"]["W"] = [[9.0]]
+    per = {s: _per_seed(c7=rh.c7_seed(_k1g_arms())) for s in P3_BLOCK}
+    per[P3_BLOCK[3]]["c7"] = rh.c7_seed(bad)
+    v = rh.verdict(per, list(P3_BLOCK))
+    assert v["R2-c7"] == "RED" and v["verdict"] == "RED"
+
+
+def test_p3_an_incomplete_k1g_arm_makes_the_seed_invalid_never_a_pass(monkeypatch):
+    monkeypatch.setenv("R2_CONFIRMATORY_GO", "P3")
+    crashed = _k1g_arms()
+    crashed["K1g_VOCAB_off"] = {"role": "K1g_VOCAB_off", "error": "exit 1"}
+    per = {s: _per_seed(c7=rh.c7_seed(_k1g_arms())) for s in P3_BLOCK}
+    per[P3_BLOCK[0]]["c7"] = rh.c7_seed(crashed)
+    v = rh.verdict(per, list(P3_BLOCK))
+    assert v["invalid_seeds"] == [P3_BLOCK[0]] and v["R2-c7"] == "NOT MET"
+    assert v["verdict"] == "NOT MET"
+
+
+def test_p3_a_k1g_red_that_fires_on_no_seed_halts_p3(monkeypatch):
+    monkeypatch.setenv("R2_CONFIRMATORY_GO", "P3")
+    quiet = _k1g_arms()
+    quiet["K1g_CROSS"] = _k1g_rec("K1g_CROSS")
+    v = rh.verdict({s: _per_seed(c7=rh.c7_seed(quiet)) for s in P3_BLOCK}, list(P3_BLOCK))
+    assert v["halted"] and "K1g:CROSS" in v["red_fires_on_no_seed"] and v["R2-c7"] == "RED"
+
+
+def test_p1_and_p2_verdicts_never_join_r2_c7(monkeypatch):
+    for part, block in (("P1", P1_BLOCK), ("P2", P2_BLOCK)):
+        v = _part_verdict(monkeypatch, part, block, c7={"ok": False})
+        assert v["verdict"] == "PASS" and v["R2-c7"] == f"not {part}'s verdict", (part, v)
+    monkeypatch.delenv("R2_CONFIRMATORY_GO", raising=False)
+    v = rh.verdict({s: _per_seed(c7={"ok": False}) for s in rh.DEV_SEEDS}, list(rh.DEV_SEEDS))
+    assert v["R2-c7"] == "RED" and "not_built" not in v
