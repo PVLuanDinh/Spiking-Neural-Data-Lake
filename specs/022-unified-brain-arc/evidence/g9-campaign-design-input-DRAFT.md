@@ -202,3 +202,106 @@ correction #6303 (concurs with A-C1, A-C2, B-M1, B-M2, C-3a; withdraws its AGREE
    pilot (fold item 1). Not chosen in this draft; the numeric values belong to the pre-registration author.
 8. ORDER: event (c) restart reading only after #6231's build is GREEN, or under E.2's named-not-persisted exception
    (fold item 2); restart drift above the floor files a P4b red.
+
+
+## ADDENDUM 2026-10-29 (lane g9-gaps, D-65 item 3): the two owed arms, designed; RSA built
+
+Append-only. Nothing above is edited. Still a DRAFT, still not a pre-registration: no threshold, seed, bar or sample
+size below is frozen. Written statically at base `7c1eebe2` (the DRAFT's own commit; code identical to `c4c10b28`).
+No test or brain was run (campaign rules). It closes "Owed" items 1-3 as DESIGN (the panel still chooses) and item 3 as
+code (see the last section). Items 4-5 stay open.
+
+### A. The sleep-off arm (owed item 1)
+
+- **What it holds fixed:** the seed, the problems and their taught inputs, the number of Brain ticks, the wake ticks'
+  inputs, growth ON (G3's loop), transport, feed, return path, and the probe set of the drift reading. It changes ONE
+  thing: no sleep bout ever starts.
+- **What it isolates:** sleep's own share of (i) the solve endpoints and (ii) the drift reading, against the full
+  engine. Without it the DRAFT's item 2 can only DISCLOSE that sleep is not attributed.
+- **How sleep is turned off at the current tree (file:line, 7c1eebe2):**
+  - `Brain.tick` reads `self.clock.consolidation_gate()` once per tick and enters `_enter_sleep` / `_sleep_tick` on it
+    (`engine/brain.py:3910-3917`). That is the gate's only tick caller.
+  - `instruments/sleep_pressure.py:305-320`, `gate_from(brain, decide)`, answers that call from `decide()` for a block
+    and restores it exactly. `gate_from(brain, lambda: False)` is sleep OFF with no new mechanism. REUSE it; do not write
+    a second override (P2).
+  - **Not the same thing, and easy to mistake:** `Brain.neuter_sleep` (`engine/brain.py:3623-3638`) turns off only
+    the STRUCTURAL rewiring (`_sleep_caps["structural"]`, set `:370`, read `:6013`). The other three names raise
+    (retired, owner1039). `_sleep_tick` still runs growth (`:3358`), the episode replay (`:3369-3372`) and
+    `_r2_sleep_learning` (`:3376-3377`). So `neuter_sleep` is one NAMED part of sleep, not "sleep OFF"; the arm uses the
+    gate.
+- **Confound to carry (found at the hook, not in the DRAFT):** `_sleep_tick`'s own docstring says "Growth is thus
+  sleep-gated" (`engine/brain.py:3352-3354`): the NG-SNN `grower.tick()` runs only inside it. A gate-off arm therefore
+  also stops that growth, so "sleep OFF" and "growth OFF" are NOT separable on the incumbent unless the contrast is read
+  against the growth-OFF arm (PLAN:2050) too. Whether G3's column-sized growth is also sleep-gated is unknown here (G3
+  does not exist at this base). The pre-registration must read that before it claims a sleep-only effect.
+- **Open, unverified:** does the lake record anything outside a sleep bout? The fresh-process leg ("sleep prunes and
+  saves", PLAN:2041; G-R9 iv and vi) may have nothing to rebuild from in a sleep-off twin. Not established statically.
+  If so, that leg is read as "not readable" for this arm, never as drift 0 (same rule as the reservoir-removed arm).
+- **Its control (one that is not the method):** the TRANSPARENCY control. The same `gate_from` override is installed, but
+  `decide()` replays the clock's own scheduled gate sequence read off a copy of the clock (the construction
+  `sleep_pressure.py:303` already uses). Sleep stays ON and the override is the only change. If this arm differs from
+  the unmodified engine, the harness, not sleep, moved the reading. A sleep-off result is read only against this twin.
+- **Its red:** an arm that claims "sleep off" while a sleep bout runs must be refused. The observable is the brain's own
+  `_asleep` / `_was_asleep` flags (`engine/brain.py:3915,3920`): count `_enter_sleep` calls over the run. Red = the
+  override is not installed (or `decide()` returns True once) and the count is above 0 on the OFF arm: the run exits 3.
+  The same count must be above 0 on the ON and transparency arms (positive control: a counter that always reads 0 would
+  pass the OFF arm for free).
+- **Sample-size input (P1):** the SD of the PAIRED per-seed difference (engine minus sleep-off) of each drift metric and
+  of the solve endpoint, from the frozen-engine pilot (section B). No SD exists, so no S is derived here and the DRAFT's
+  "S = 8" is not carried to this contrast. Then the P1 sequential design: named looks, a named alpha-spending boundary
+  per look, a non-binding futility bound, a hard cap = fixed-sample target x the design's inflation factor, power at the
+  cap >= .8 checked by simulation before data. A futility stop or an uncrossed cap is not a null (P8 null-scale item 4).
+- **Cost:** one arm (plus its transparency twin) at the same S as the other arms.
+
+### B. The frozen-engine floor arm (owed item 2; the report's item 5; g5e-prep calls it G9 criterion 5)
+
+- **What it holds fixed:** everything the engine arm holds (seed, problems, inputs, ticks, probe set, the SAME events:
+  a growth-step slot, a sleep-bout slot, a fresh-process restart). It changes the engine to one that WRITES nothing: no
+  growth, no sleep, no weight update, no pruning.
+- **What it isolates:** the noise floor of every drift reading: how far the probe responses move across the same events
+  when no part of the engine changed anything (rng and tick-state carry-over, restore nondeterminism, input-order
+  effects). Every nonzero drift in the other arms is read against it. It is also the only arm that yields the PILOT SD
+  the sleep-off arm and the contrasts need.
+- **How the engine is frozen at the current tree:** THERE IS NO WHOLE-ENGINE FREEZE. A search of `engine/` for a
+  `def freeze` finds none. The only `freeze` hit near the topic, `growth/similarity_sized_growth.py:124-128`, makes ONE
+  perceptron unit's weight array read-only; it is not the engine. The arm must be COMPOSED from switches that exist:
+  - sleep OFF: `gate_from(brain, lambda: False)` (`sleep_pressure.py:305-320`);
+  - structural rewiring off: `brain.neuter_sleep("structural")` (`engine/brain.py:3623`);
+  - the plasticity rule stack off: `Brain._plasticity` (`:365`, built `:375-381`, installed as `brain._ixn.stack`
+    `:381`); whether setting it to None stops EVERY weight write is not established here;
+  - growth off: no `grower.tick()` (`:3358`, sleep-gated) and no `grower.observe` (`:2577`, wake);
+  - the learning-off precedent: the `evaluate` child of `instruments/sleep_plasticity_ab.py` runs with "learning off
+    (weights + rng digested before and after, K4)" (`:16-17`, `:563`), and `route_text` is pure inference (`:242`).
+  The composition is the build's job. It is NOT assumed complete: the proof is the digest below.
+- **Its control (one that is not the method):** a PLANTED-CHANGE twin. Take the frozen engine and plant one known,
+  small, exact change (for example scale one stored weight row by a fixed factor between the two readings). Each drift
+  metric must move off its floor by the planted amount, in the right direction. It shows the reading can see a change at
+  all, so a flat floor is not an instrument that reads zero for everything. (This is not the engine and not the
+  frozen engine, so it controls the reader, not the method.)
+- **Its red:** the freeze is verified, not declared. `state_digest(b)` (`sleep_plasticity_ab.py:221`, used `:392`) of
+  weights plus rng before and after the whole event sequence must be EQUAL. Red = a freeze built with one write path
+  left open (for example the plasticity stack still on) moves the digest, and the arm exits 3 instead of reporting a
+  floor. A floor measured on an engine that was not frozen would be read as "drift is small".
+- **Sample-size input (P1):** the floor arm IS the pilot. It supplies the across-seed SD of each drift metric (pv, rate,
+  tuning, rsa), so no S for the drift endpoint can be derived until it has been run on the built G9 engine (G9 runs
+  last, PLAN:2057). Report the minimum detectable difference at the cap beside every contrast. Until then the design is
+  "derive S from the pilot SD", not a number.
+- **Unit-set rule (DRAFT item 5):** a frozen engine has no born or pruned units, so its readings use the full unit set;
+  the engine arms use the common unit list and report the dropped-unit count beside it.
+
+### C. RSA, code (owed item 3, as code)
+
+- Disposition of `graph-exists.js` (run 2026-10-29, `--root` this worktree): "representational similarity RSA drift
+  between two response matrices": NO LEXICAL MATCH, UNKNOWN not absence; "RSA": NO LEXICAL MATCH; "pairwise
+  dissimilarity matrix correlation": NO LEXICAL MATCH; "drift reading population vector correlation": 4 hits,
+  `grid_place_map._pearson` (distinct-from: a guarded grid-code correlation), `drift_monitor.psi` (distinct-from: input
+  distribution drift), `prior_drift_harness.choose_d` and `h01_ingest.load_ei_counts` (distinct-from: unrelated). A
+  source read found no RSA function.
+- Built: `rsa_drift(pre, post)` in `infra/_mathutils.py`, beside `pearson`, commits `fd987f3f` (test, first) then
+  `f0f50385` (code). It lives in `_mathutils` and NOT in F3's `instruments/representational_drift.py` because that file
+  does not exist, and a new instrument module needs a census / dormancy row that only the integrator may add. When
+  F3's module is built, `rsa_drift` moves there as a one-line import swap. Correspondence is by probe index.
+- Honest limits: it returns 1.0 for "same geometry" and does not decide a bar. A flat probe row or a flat geometry
+  REFUSES (ValueError), not 0.0, per X.4's flag rule; the caller turns that into exit 3. It is wired into no campaign.
+- P2, named and not fixed here: `instruments/rpe_charge.py:343` defines its OWN `pearson`; `faculties/agency_monitor.py:1118`
+  `_t079_pearson` and `faculties/grid_place_map.py:49` `_pearson` are guarded copies of the same primitive.
