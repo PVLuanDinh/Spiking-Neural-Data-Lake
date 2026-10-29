@@ -1815,17 +1815,23 @@ def render(a):
     return "\n".join(L)
 
 
+# distinct-from: prefrontal_executive.py::maintain, autotelic_goals.py::GoalConditionedReadout,
+#   self_improvement_suite.py::_rung_goal -- they hold or train a goal; this classifies one run's RECORDED goal series
+#   (lifted out of goal_stratum so R2c's CLASSIFIER control runs the stratum's own instrument; stack-a #5934 MINOR-1)
+def goal_frozen(run):
+    """One run's goal-frozen status: True when p["held_goal"] takes one value after its first non-None entry, False
+    when it moves, None when there is no usable record (missing, empty or all None)."""
+    hg = (run or {}).get("p", {}).get("held_goal") or []
+    i = next((j for j, g in enumerate(hg) if g is not None), None)
+    return None if i is None else len(set(hg[i:])) == 1
+
+
 # distinct-from: carried_state_campaign.py -- its sign census counts one campaign's values; this splits H-P1's d_s by
 #   a post-treatment record (the real run's held goal) and reuses this module's ttest
 def goal_stratum(runs, d_p1):
     """E1d section 4's goal-frozen stratum, beside the decision and DESCRIPTIVE ONLY: a seed is goal-frozen when its
-    `real` run's p["held_goal"] takes one value after its first non-None entry. Fail-soft: a missing or all-None
-    record, or any error, returns an "n/a" line and never touches validity or the disposition."""
-
-    def frozen(run):
-        hg = (run or {}).get("p", {}).get("held_goal") or []
-        i = next((j for j, g in enumerate(hg) if g is not None), None)
-        return None if i is None else len(set(hg[i:])) == 1
+    `real` run is (`goal_frozen`). Fail-soft: a missing or all-None record, or any error, returns an "n/a" line and
+    never touches validity or the disposition."""
 
     def read(ss):
         d = [d_p1[s] for s in ss]
@@ -1835,11 +1841,11 @@ def goal_stratum(runs, d_p1):
         return f"{t} ({sum(x > 0 for x in d)}/{len(d)})"
 
     try:
-        fr = {s: frozen(runs.get(("real", s))) for s in d_p1}
+        fr = {s: goal_frozen(runs.get(("real", s))) for s in d_p1}
         if miss := sum(v is None for v in fr.values()):
             return f"stratum n/a (held_goal missing on {miss} seeds)"
         fz, mv = [s for s in fr if fr[s]], [s for s in fr if not fr[s]]
-        pf = {s: frozen(runs.get(("pfrozen", s))) for s in fr}
+        pf = {s: goal_frozen(runs.get(("pfrozen", s))) for s in fr}
         dis = [s for s in fr if pf[s] not in (None, fr[s])]
         return (
             f"stratum (DESCRIPTIVE ONLY, decides nothing): {len(fz)}/{len(fr)} seeds goal-frozen; H-P1 within frozen "

@@ -640,6 +640,16 @@ def _quoted(a):
 FROZEN_HG, MOVING_HG = [None, 3, 3, 3], [None, 3, 5, 3]
 
 
+def test_goal_frozen_classifies_one_run_and_returns_none_without_a_usable_held_goal():
+    """stack-a #5934 MINOR-1, stack-c #5933 MINOR-2: R2c's CLASSIFIER control calls the stratum's
+    own instrument, so the classifier is module-level, not a closure inside goal_stratum."""
+    assert R.goal_frozen({"p": {"held_goal": FROZEN_HG}}) is True
+    assert R.goal_frozen({"p": {"held_goal": MOVING_HG}}) is False
+    assert R.goal_frozen({"p": {"held_goal": [None, None, 7, 7]}}) is True  # first goal after None
+    for none in ({"p": {}}, {"p": {"held_goal": [None] * 4}}, {"p": {"held_goal": []}}, {}, None):
+        assert R.goal_frozen(none) is None, none
+
+
 def _stratum_runs(kind, frozen, arm_hg=None):
     """A 64-seed E1c look, held_goal planted frozen on the first `frozen` seeds, else moving."""
     seeds = R.E1C_SEEDS[:64]
