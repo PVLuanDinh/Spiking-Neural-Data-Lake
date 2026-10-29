@@ -450,7 +450,9 @@ def test_the_freeze_dates_in_the_comments_are_author_dates():
     assert "froze 2026-10-06" not in src and "2026-10-03" in src
 
 
-# --- round 3b (launcher D-73): "frozen" is keyed on the file's own text, never on a commit subject ---
+# --- round 3b (D-73): "frozen" is keyed on the file text, never on a commit subject ---
+
+
 @needs_git
 def test_a_commit_subject_saying_freeze_with_no_marker_in_the_text_does_not_grandfather(tmp_path):
     bare = "# G -- DRAFT pre-registration\n\nPRE-DATA, no data read. seeds 8.\n"
