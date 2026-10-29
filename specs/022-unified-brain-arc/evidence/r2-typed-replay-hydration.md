@@ -1474,7 +1474,9 @@ Facts, stated without a ruling:
 5. Re-measure the lake-byte records of K0 and K1 and the event sizes (D1 items 1 and 3) at c4c10b28 before any is quoted.
 5a. The finding (iii) red-first test, named by test id, is SHOWN failing on the parent of the D-79 fix for its stated reason (the
    restored brain's clock state or sleep/wake differs from the uninterrupted twin's), by the RECORDED pytest log of that test id on
-   the fix's parent (first line = the command; the failure is the stated assertion, not a crash). A stdlib simulation stands only
+   claude/r2-instr-fix-1029 at the commit that lands it (6fd1344e, or its landed sha), run BEFORE claude/circadian-p4b-1029 stacks on
+   it (first line = the command; the failure is the strict xfail's AssertionError, not a crash). The circadian branch has no commit
+   where the red can fail: it first appears there after the first fix (enforcer #7054 MINOR-2). A stdlib simulation stands only
    as the pre-run prediction (enforcer #7018 MINOR-1); the b311e78d test does not meet this at seed 15000 (D1.4). Then the launcher's D-79 fix (claude/circadian-p4b-1029) has
    landed with its review, together with 5c, before any seed outside the dev block (15010-15067); then R2's K3 arms assert the
    resumed phase (D1.2). (Enforcer #6948 MINOR-1.)
@@ -1645,10 +1647,13 @@ Data-exposure: no confirmatory or reserve seed of R2's block was read or run in 
    panel #6910 BLOCK-1). "It is NOT fixed" in (d) holds as of b311e78d only.
 3. The replacement red has posted (circadian-p4b round 2, #6998 @1d87efd4): `tests/test_restart_circadian.py::test_a_restored_brain_resumes_its_twins_clock`,
    held out of git at lanes/engine-1024/circadian-p4b-row/r2-instr-fix-red/test_restart_circadian.py with xfail(strict=True,
-   raises=AssertionError). It REPLACES b311e78d's file on claude/r2-instr-fix-1029 (its round 4, item F; the commit is named here
-   when it lands). Its assertion: a brain restored at a MID-DAY cut after the first night has (_step, clock phase, sha256 of the
-   rng state) equal to the uninterrupted twin's at the cut and again 200 ticks later (not the seed-7 sleep/wake reading quoted
-   earlier, which was the enforcer's simulation). D3 5a requires its recorded pytest failure on the fix's parent.
+   raises=AssertionError). It REPLACED b311e78d's file on claude/r2-instr-fix-1029 at 6fd1344e (round 4, item F); git blob
+   1370e287c5376ad091853f74540da2944cbb3167, byte-identical to the held copy (git hash-object, the integrator, 2026-10-29). Its
+   assertion (tests/test_restart_circadian.py:122-124): a brain restored at a MID-DAY cut after the first night has (_step,
+   clock phase, sha256 of the rng state) equal to the uninterrupted twin's at construction, and its next 200 tick() sleep/wake
+   readings equal the twin's. The clock triple is NOT re-compared after the 200 ticks, so a clock whose phase drifts while the
+   200 readings stay equal passes; R2's K3 reads sleep/wake readings and their transition sequence, which the second assert
+   covers (enforcer #7054 MINOR-1). D3 5a requires its recorded pytest failure on 5a's named base.
 4. D1.3's review status for b311e78d omitted #6898 (enforcer CHALLENGE, 3 MINOR, open at b311e78d): the K1g procedure duplicated in the
    tests (p3t:965-1023 vs rh:1260-1351); K3's count aligned but not its wake/sleep transition sequence; the run_seed table ignored the
    part. So (d)'s "K3 alignment as built" is not settled at b311e78d: #6898 MINOR-2 is open on that point. r2-instr-fix round 3
