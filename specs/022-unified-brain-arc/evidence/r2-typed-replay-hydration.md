@@ -1473,8 +1473,9 @@ Facts, stated without a ruling:
    survivor's resident BinLog cache (D1 item 2): each must fire on a dev seed; a red that fires on none halts the arc (R2-c3, P8).
 5. Re-measure the lake-byte records of K0 and K1 and the event sizes (D1 items 1 and 3) at c4c10b28 before any is quoted.
 5a. The finding (iii) red-first test, named by test id, is SHOWN failing on the parent of the D-79 fix for its stated reason (the
-   restored brain's clock state or sleep/wake differs from the uninterrupted twin's), by a recorded run or a stdlib simulation named
-   by commit; the b311e78d test does not meet this at seed 15000 (D1.4). Then the launcher's D-79 fix (claude/circadian-p4b-1029) has
+   restored brain's clock state or sleep/wake differs from the uninterrupted twin's), by the RECORDED pytest log of that test id on
+   the fix's parent (first line = the command; the failure is the stated assertion, not a crash). A stdlib simulation stands only
+   as the pre-run prediction (enforcer #7018 MINOR-1); the b311e78d test does not meet this at seed 15000 (D1.4). Then the launcher's D-79 fix (claude/circadian-p4b-1029) has
    landed with its review, together with 5c, before any seed outside the dev block (15010-15067); then R2's K3 arms assert the
    resumed phase (D1.2). (Enforcer #6948 MINOR-1.)
 5b. The K1g (R2-c7, P3) arms run on dev seeds 15000-15007 under the heavy-run lock and each 2.10 red fires, before any P3 seed (15050-15067).
@@ -1642,15 +1643,20 @@ Data-exposure: no confirmatory or reserve seed of R2's block was read or run in 
    `CircadianClock` gives first ticks S S S w, so the twin's expected reading is asleep and the UNFIXED restored brain is also asleep: the
    strict xfail XPASSes, and the run reads FAILED, not XFAIL. The b311e78d red does not discriminate at seed 15000 (enforcer #6935 P-2;
    panel #6910 BLOCK-1). "It is NOT fixed" in (d) holds as of b311e78d only.
-3. The replacement red is circadian-p4b round 2's rewritten `tests/test_restart_circadian.py` (#6910 BLOCK-1: the restored clock state
-   equals the twin's over >= day_period ticks, at a cut where the base differs; in the enforcer's simulation seed 7 discriminates:
-   ticks=6, twin asleep, fresh brain awake). It is named here by test id and commit when it posts; D3 5a requires it shown failing on
-   the fix's parent.
+3. The replacement red has posted (circadian-p4b round 2, #6998 @1d87efd4): `tests/test_restart_circadian.py::test_a_restored_brain_resumes_its_twins_clock`,
+   held out of git at lanes/engine-1024/circadian-p4b-row/r2-instr-fix-red/test_restart_circadian.py with xfail(strict=True,
+   raises=AssertionError). It REPLACES b311e78d's file on claude/r2-instr-fix-1029 (its round 4, item F; the commit is named here
+   when it lands). Its assertion: a brain restored at a MID-DAY cut after the first night has (_step, clock phase, sha256 of the
+   rng state) equal to the uninterrupted twin's at the cut and again 200 ticks later (not the seed-7 sleep/wake reading quoted
+   earlier, which was the enforcer's simulation). D3 5a requires its recorded pytest failure on the fix's parent.
 4. D1.3's review status for b311e78d omitted #6898 (enforcer CHALLENGE, 3 MINOR, open at b311e78d): the K1g procedure duplicated in the
    tests (p3t:965-1023 vs rh:1260-1351); K3's count aligned but not its wake/sleep transition sequence; the run_seed table ignored the
    part. So (d)'s "K3 alignment as built" is not settled at b311e78d: #6898 MINOR-2 is open on that point. r2-instr-fix round 3
-   (@1e929e2c, #6926) reports MINOR-2 and MINOR-3 fixed and MINOR-1 partly. Its re-read is enforcer batch 13. The ruling it leaves OWED
-   (R2-c7 read by the instrument only, so devprep item 4 stops running the pytest as R2-c7) waits for that re-read.
+   (@1e929e2c, #6926) reports MINOR-2 and MINOR-3 fixed and MINOR-1 partly. Its re-read posted (#6987, addendum #6991): MINOR-2 and
+   MINOR-3 RESOLVED; MINOR-1 PARTLY; one residual MINOR (run_campaign :2681 runs the base head on P3 seeds) and one more MINOR (the
+   kill point still reads 'tick after' at :43 and :243). RULED (integrator, 2026-10-29): the instrument is R2-c7's ONLY reading;
+   the duplicated K1g procedure is merged into the instrument's, tree-checked (r2-instr-fix round 4, items B-E), and the dev-seed
+   RUNBOOK item 4 stops reading the pytest as R2-c7 (r2-devprep round 4).
 5. Disclosed (enforcer #6952 A-1): at 4b699b33 the clock is flushed only after `_flush_growth` in the night's persist block, so R2's
    K1g kill at pre_K1g leaves the previous session's close-time phase on disk. res_K1g then restores a phase up to one day staler than
    its growth. circadian-p4b round 2 moves the clock flush first (its brief, item 7). Until that lands, K1g chronology reads are OWED
