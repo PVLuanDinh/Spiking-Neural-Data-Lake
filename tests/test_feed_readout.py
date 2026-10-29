@@ -159,6 +159,42 @@ def test_unratified_reservoir_growth_is_refused_before_any_pool_step():
     assert p.count == before
 
 
+def test_n_gate_precedes_the_feed_and_post_time_reads():
+    p = pool()
+    p.n = 257  # planted declared-size mismatch only; no larger pool is built
+    before = p.count
+    with pytest.raises(ValueError, match="N>256 growth target unratified"):
+        arm_latencies(
+            "fed",
+            units(),
+            ranks(),
+            8.0,
+            float("nan"),
+            seed=9900,
+            pool=p,
+            observation=np.zeros(64),
+            w_feed=None,
+        )
+    assert p.count == before
+
+
+def test_the_n_gate_is_strictly_above_256():
+    p = pool()
+    p.n = 256  # at the bound: the size gate passes, the feed-shape check refuses next
+    with pytest.raises(ValueError, match="do not name exactly the pool units"):
+        arm_latencies(
+            "fed",
+            units(),
+            ranks(),
+            8.0,
+            14,
+            seed=9900,
+            pool=p,
+            observation=np.zeros(64),
+            w_feed=np.array([[2.0, 1.0, 1.5], [0.0, 3.0, 2.0], [1.0, 0.5, 3.0]]),
+        )
+
+
 def _assert_random_arm_delivers_its_own_drive():
     """C2: the random arm must reach the pool with the SEEDED random projection, not the fed one."""
     import snn_data_lake.growth.feed_readout as consumer
