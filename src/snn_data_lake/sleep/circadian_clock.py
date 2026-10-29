@@ -116,6 +116,41 @@ class CircadianClock:
                 ticks.append(t)
         return ticks
 
+    # ---- persistence: the phase an uninterrupted twin would still hold -----------
+    # distinct-from: growth/growing_learner.py, growth/neurogenesis_engine.py -- those restore their
+    #   own learners' prototypes; this is the SCN clock's phase + jitter state, same state_dict idiom.
+    # The rng rides readout/interaction_learning.py's G0(c) checkpoint codec (panel #6910 MAJOR-2, P2:
+    #   one Random codec); its decode probes the state and raises ValueError on any bad one.
+    # Why the STATE, not a replay from the seed (launcher D-82 on #6978): the rng draws once at
+    #   construction (:89, `random()`) and once per step (:104, `gauss()`, about one `random()` a
+    #   call), so a simulated day of `day_period` steps (200 in the brain) is ~200 draws, and a replay
+    #   costs O(step): at the learn daemon's ceiling of 40 ticks/s (20 ticks a cycle, learn_daemon.py
+    #   :73, then a 0.5 s POLL sleep, :81/:515; real ticks are slower) one year is ~1.26e9 steps,
+    #   ~400 s of replay at ~0.32 us a step, unbounded with runtime. The state is a constant ~7.6 KB.
+    def state_dict(self):
+        """The oscillator's whole dynamic state: the phase and the jitter generator's state, so a
+        restored clock steps exactly as the uninterrupted one would (JSON-serialisable)."""
+        from snn_data_lake.readout.interaction_learning import _encode_state
+
+        return {"phase": self.phase, "rng": _encode_state(self.rng)}
+
+    def load_state_dict(self, sd):
+        """Restore `state_dict()`. True if restored; a malformed record leaves the clock untouched."""
+        from snn_data_lake.readout.interaction_learning import _merge_state
+
+        try:
+            phase = sd["phase"]
+            if not (type(phase) is float and 0.0 <= phase < 1.0):
+                return False
+            rng = _merge_state(None, sd["rng"])
+        except (KeyError, TypeError, ValueError):
+            return False
+        # setstate checks the version and the 625 words but takes the cached gauss_next unchecked
+        if type(rng) is not random.Random or type(rng.getstate()[2]) not in (float, type(None)):
+            return False
+        self.phase, self.rng = phase, rng
+        return True
+
     # ---- diurnal outputs (pure functions of the phase) ----------------------
     def is_rest(self, phase=None):
         """Rest/active gate: True during subjective night [0.5, 1.0). Subjective night is the rest

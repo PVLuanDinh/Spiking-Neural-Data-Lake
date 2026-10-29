@@ -404,14 +404,13 @@ PROVENANCE = {
         "by at most one per distinct superseded refusal (2026-10-25, R3 m4)"
     ),
     "circadian_restore": (
-        "P4b finding (iii) (2026-10-29): None = the light step and SCN clock were restored from "
-        "circadian_clock.json (the clock REPLAYED from the seed, so its phase and jitter rng are "
-        "exact); a string says why this is a fresh day (absent, malformed, not persisted, or a "
-        "record bound to another ['seed' / 'day_period' / clock constant], kept as "
-        "circadian_clock.refused.clock.<id>.json and retried; 'adopted: [<name>]' names the kept "
-        "record restored). The record is written at each sleep onset and at close, so a crash "
-        "restores up to one day period back. Unlike prototypes_restore, a non-persist brain is "
-        "not None here"
+        "P4b finding (iii) (2026-10-29): None = the light step, the SCN clock phase and its jitter "
+        "rng state were restored from circadian_clock.json; a string says why this is a fresh day "
+        "(absent, malformed, not persisted, or a record bound to another ['seed' / 'day_period' / "
+        "clock constant], kept as circadian_clock.refused.clock.<id>.json and retried; "
+        "'adopted: [<name>]' names the kept record restored). The record is written at each sleep "
+        "onset and at close, so a crash restores up to one day period back. Unlike "
+        "prototypes_restore, a non-persist brain is not None here"
     ),
     "circadian_restored": (
         "the restored record's step and phase, or None on a fresh day; the night/wake counters "
