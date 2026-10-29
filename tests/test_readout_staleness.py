@@ -522,3 +522,38 @@ def test_m6_gradient_claim_keys_name_real_symbols_with_known_dispositions():
 def test_m7_survivor_pairs_a_fit_row_at_n_prev_is_new_not_inherited():
     p, c = rs.survivor_pairs(3, [0, 3, 2], 3)  # fit rows 0..2 inherited; row 3 is new
     assert list(p) == [0, 2] and list(c) == [0, 2]
+
+
+# ---- round 4 (#5740 m2): on the real engine, `_inputs` takes the split `_refit` takes ---------
+def _first_two_split_calls(monkeypatch, plant=None):
+    pytest.importorskip("torch")
+    from snn_data_lake.growth import ng_snn
+    from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
+
+    calls, real = [], ng_snn.marginal_holdout
+
+    def spy(y, h):
+        calls.append((tuple(int(v) for v in y), int(h)))
+        return real(y, h)
+
+    monkeypatch.setattr(ng_snn, "marginal_holdout", spy)
+    X, y = stream(n=120)
+    e = NeurogenesisSelfImprove(device="cpu", seed=0)
+    e._buf_x, e._buf_y = [[float(v) for v in row] for row in X], [int(v) for v in y]
+    log = rs.instrument_engine(e, split_fn=None if plant is None else plant(spy))
+    e._refit()
+    assert log["faults"] == 0 and len(log["rows"]) == 1
+    assert len(calls) >= 2
+    return calls[0], calls[1]
+
+
+def test_r4_m2_inputs_takes_the_split_the_real_refit_takes(monkeypatch):
+    instrument_call, refit_call = _first_two_split_calls(monkeypatch)
+    assert instrument_call == refit_call
+
+
+def test_r4_m2_a_planted_divergent_split_is_seen_by_the_comparison(monkeypatch):
+    instrument_call, refit_call = _first_two_split_calls(
+        monkeypatch, plant=lambda spy: lambda y, h: spy(y, h - 1)
+    )
+    assert instrument_call != refit_call
