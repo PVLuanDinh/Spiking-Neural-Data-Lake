@@ -3542,10 +3542,12 @@ class Brain:
         """
         try:
             from snn_data_lake.substrate.home import load_episodes
+            from snn_data_lake.substrate.lake_recall import PROVENANCE_SLOTS
 
             eps = load_episodes(limit=self._episode_consolidator.capacity)
             for ep in eps:
-                self._episode_consolidator.store(self._episode_consolidator.encode(ep), ep)
+                content = {k: v for k, v in ep.items() if k not in PROVENANCE_SLOTS}  # R1 M2
+                self._episode_consolidator.store(self._episode_consolidator.encode(content), ep)
             self._episodes_restored = len(eps)
             self._episode_window = list(eps)  # T057: the lake-derived recall window
         except Exception:
