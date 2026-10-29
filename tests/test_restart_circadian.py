@@ -40,6 +40,13 @@ from snn_data_lake.engine.brain import make_brain
 CIRCADIAN_STATE = "circadian_clock.json"
 if "rewrite" in spec:
     home.save_state(CIRCADIAN_STATE, dict(home.load_state(CIRCADIAN_STATE), **spec["rewrite"]))
+if "replace" in spec:  # a record that is not this build's layout at all
+    home.save_state(CIRCADIAN_STATE, spec["replace"])
+written = home.load_state(CIRCADIAN_STATE, default=None)
+
+def count_records():
+    names = (home._unpack_state(p) for p in home._log().replay() if p[:1] == home._T_STATE)
+    return sum(1 for got in names if got and got[0] == CIRCADIAN_STATE.encode())
 if "rewrite_gauss_next" in spec:  # the cached normal inside the codec's encoded rng state
     rec = home.load_state(CIRCADIAN_STATE)
     rec["rng"]["state"]["items"][2] = spec["rewrite_gauss_next"]
@@ -61,6 +68,8 @@ if spec.get("kill_at_growth_flush"):  # R2's K1g boundary: os._exit right after 
         print("RESULT " + json.dumps(dict(out, killed_at=b._step)), flush=True)
         os._exit(0)
     b._flush_growth = _killed
+if spec.get("no_keep"):
+    b._keep_refused = lambda *a, **k: False
 ticks, slept, woke = 0, False, 0
 into_day = spec.get("wake_ticks_into_day")
 while woke < into_day if into_day is not None else ticks < spec.get("ticks", 0):
@@ -72,11 +81,22 @@ while woke < into_day if into_day is not None else ticks < spec.get("ticks", 0):
     elif slept:
         woke += 1
 out.update(cut=ticks, at=clock(b), after=[b.tick() for _ in range(spec.get("after", 0))])
-if spec.get("no_keep"):
-    b._keep_refused = lambda *a, **k: False
+out.update(nights=b._nights, flush_failed=b.state().get("circadian_flush_failed"))
 b.close()
 rec = home.load_state(CIRCADIAN_STATE, default=None)
-out.update(record=rec, record_bytes=len(json.dumps(rec)))
+kept = home.named_states("circadian_clock.refused.")
+out.update(
+    written=written,
+    record=rec,
+    record_bytes=len(json.dumps(rec)),
+    record_count=count_records(),
+    kept={name: json.loads(blob) for name, blob in kept},
+    note_at_close=getattr(b, "_circadian_restore_note", None),
+)
+if spec.get("consolidate"):  # the night block's prune, run once more on the closed lake
+    klog = home.KnowledgeLog()
+    klog.consolidate(list(klog.replay()))
+    out.update(consolidated_count=count_records(), consolidated=home.load_state(CIRCADIAN_STATE))
 print("RESULT " + json.dumps(out))
 """
 

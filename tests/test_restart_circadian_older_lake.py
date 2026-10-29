@@ -109,3 +109,63 @@ def test_a_kill_right_after_the_growth_flush_restores_that_nights_onset(tmp_path
     killed = run_brain(home, seed=SEED, ticks=800, kill_at_growth_flush=True)
     restored = run_brain(home, seed=SEED)
     assert restored["note"] is None and restored["step"] == killed["killed_at"], restored
+
+
+# ---- round 3 (#7021 / #7028 / #7053) ----
+
+
+@pytest.mark.parametrize(
+    "rewrite, replace",
+    [
+        ({"rng": [3, [1, 2], None]}, None),  # bound, but this build's codec cannot load it
+        ({"step": True}, None),
+        (None, [1, 2]),  # not a dict: the restore raises on it
+    ],
+)
+def test_a_record_this_build_cannot_load_is_kept_before_it_is_overwritten(
+    tmp_path, rewrite, replace
+):
+    """Lens C MAJOR-A (#7021), lens A MINOR-5 (#7028), enforcer MINOR-1 (#7053), P4b 'foreign
+    records preserved' and home.py's 'a build writing a different layout' is KEPT: a record this
+    build refuses as malformed, or whose restore raises (a newer build's layout after a rollback),
+    is kept under circadian_clock.refused.clock.<id>.json before the flush overwrites it, and the
+    note says so (lens C MINOR-C)."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    spec = {"rewrite": rewrite} if replace is None else {"replace": replace}
+    out = run_brain(home, seed=SEED, **spec)
+    assert out["step"] == 0 and out["restored"] is None, out
+    names = [name for name, rec in out["kept"].items() if rec == out["written"]]
+    assert names, (out["kept"], out["written"])
+    assert out["note_at_close"].endswith(f"; kept: {names}"), out["note_at_close"]
+
+
+def test_a_kept_foreign_record_is_named_in_the_note(tmp_path):
+    """Lens C MINOR-C (#7021): the prototype path notes `superseded: [...]`; the circadian keep
+    appends `; kept: [<name>]` to `state()["circadian_restore"]`."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    stray = run_brain(home, seed=SEED + 1)
+    names = [name for name, rec in stray["kept"].items() if rec == stray["written"]]
+    assert names and stray["note_at_close"].endswith(f"; kept: {names}"), stray["note_at_close"]
+
+
+def test_a_failed_circadian_flush_is_counted(tmp_path):
+    """Lens A MINOR-1 (#7028): a flush that writes nothing because its keep failed is counted at
+    `state()["circadian_flush_failed"]`, never silent (the keep is retried every onset)."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    stray = run_brain(home, seed=SEED + 1, ticks=60, no_keep=True)
+    assert stray["flush_failed"] and stray["flush_failed"] >= 1, stray["flush_failed"]
+    assert run_brain(home, seed=SEED)["flush_failed"] == 0
+
+
+def test_superseded_circadian_records_are_retired_by_the_nights_consolidation(tmp_path):
+    """Lens A MAJOR-A (#7028), lens C MAJOR-B (#7021), enforcer MAJOR-1 (#7053): the night block's
+    `klog.consolidate` (nights % 8 == 0, `records` not None) runs `_prune_state_history` before the
+    night's flush, so the live circadian history is bounded (at most 8 onsets after a prune, plus
+    the survivor and close()'s record), and after a consolidation only the newest record remains."""
+    out = run_brain(private_home(tmp_path, "h"), seed=SEED, ticks=400, consolidate=True)
+    assert out["nights"] >= 9, out["nights"]  # crossed at least one nights % 8 == 0 after night 0
+    assert 1 <= out["record_count"] <= 10, out["record_count"]
+    assert (out["consolidated_count"], out["consolidated"]) == (1, out["record"])
