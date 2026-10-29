@@ -195,15 +195,34 @@ Farkas witness over the (synapse, rank) lift that an LP finds and an exact Fract
 through the real `route_text`; else UNRESOLVED. RED: a doubled multiplier; twin labels through the XOR witness; a
 capable grown unit. CONTROL: the LP status; the separable twin. NULL: the gated loop does not beat the literal loop
 -> the gate leaves the loop. `evidence/g3-growth-loop.md` 2.4, 2.9 C2.
+SYMBOLS: invention `capacity_certificate.diagnose` / `farkas_witness` / `check_farkas` / `separating_witness`. REDS:
+`test_doubled_multiplier_fails_the_exact_check`, `test_twin_labels_pushed_through_the_xor_witness_fail`,
+`test_a_capable_grown_unit_stops_the_certificate_on_the_augmented_code`. CONTROLS:
+`test_diagnose_twin_is_separable`, `test_an_incapable_grown_unit_keeps_the_certificate_firing`. ATTRIBUTION: per-item
+Farkas multipliers (`farkas_witness`). DISCLOSURE: no lift witness is conservative, not proof of separability
+(UNRESOLVED branch). NOT YET RUN: the gated-vs-literal NULL contrast (needs the grown-segment port, owner #2).
 
 ## 15. The trace-trained candidate source (G3 P2, T111)
 INVENTED: a candidate row trained on the multiclass residual by its own eligibility trace and a FIXED random
 feedback vector (never a transposed weight). RED: a W_out.T variant is flagged (C7); shuffled training labels must
 lower the held-out score (C10). CONTROL: presized-selected, random growth. NULL: targeted beats neither -> DELETED;
 the random source stays. `evidence/g3-growth-loop.md` 2.5, 2.8.
+SYMBOLS: invention `growth_loop.trace_train` (declared LOCAL, never a gradient claim). REDS:
+`test_a_transposed_readout_in_the_trace_rule_is_flagged` (C7, eprop_transport_gate). CONTROLS:
+`test_the_trace_rule_carries_no_weight_transport`; `test_trace_training_moves_the_row` (eta 0 does not).
+NOT YET BUILT/RUN: C10's shuffled-label red and the presized-selected / random contrasts
+(`growth_campaign.primary` reads them once a runner exists; no runner does, owner #2). DISCLOSURE: p_c is
+softmax(v/T) at T = 1, fixed, a session call (2.5 D4).
 
 ## 16. The problem-keyed budget pause (G3 P3, T111)
 INVENTED: grow a whole batch, attempt, repeat; GrowthStop's problem key pauses when the next batch exceeds beta x
 median(positive-spend solves) (first: 52); a 3-attempt no-growth cap; an IMMORTAL seq-checked ledger. RED: an
 unsolvable cell pauses UNSOLVED, never solved (C8); a frozen learner ends LEARNING_RULE_DEFICIT (C18); a dropped row
 refuses the rebuild (C13). CONTROL: a solvable twin. `evidence/g3-growth-loop.md` 2.6.
+SYMBOLS: invention `GrowthLoop` + `Ledger` + `GrowthStop.observe_problem/should_grow_problem`. REDS:
+`test_unsolvable_problem_pauses_at_the_budget_and_stays_open`, `test_literal_loop_with_the_diagnosis_disabled_still_pauses`
+(C8), `test_separable_problem_that_never_solves_hits_the_attempt_cap` and
+`test_unresolved_problem_hits_the_attempt_cap` (C18), the seq-gap fold refusal (`test_growth_loop.py` ledger tests,
+C13). CONTROLS: `test_capacity_problem_grows_until_solved_and_emits_one_solve`, `test_a_fresh_ledger_rebuilds_byte_equal`.
+ATTRIBUTION: `test_budget_baseline_counts_only_positive_spend_solves`. DISCLOSURE: beta is a [PROJECTION]
+(`taught_problems.BETA` is None); 0x0B cumulative growth is claim-with-a-check (decision 13).
