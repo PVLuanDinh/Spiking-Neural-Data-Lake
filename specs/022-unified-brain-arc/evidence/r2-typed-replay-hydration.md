@@ -1468,3 +1468,55 @@ Facts, stated without a ruling:
    each; reserves 15020-15027, 15040-15047, 15060-15067 only per the registered reserve rule.
 
 Data-exposure: no confirmatory or reserve seed of R2's block was read or run in writing this section (search record: R4).
+
+### D2.1 Detection power at S = 8 (D-68)
+
+D-68 accepted the integrator's P1 ruling: R2 stays on the P1 closed list by name, and this bar-neutral amendment does not
+re-freeze it. Before any data, this subsection states each verdict's shape and its detection power at S = 8. It changes no
+bar, no seed block and no decision rule. Arithmetic only; nothing was run. Cites are to section 2.3 (R2-c1 to R2-c6), 2.4
+(reds), 2.10 (R2-c7) and the R2-c3 tightening in A2 (#2796, "every 2.4 red must fire on EVERY seed").
+
+**No measured SD exists.** Every R2 verdict is exact equality or exact difference on a record (2.3: "equality has no
+variance"), so there is no paired SD in R2's own dev rows to cite (D2 above). Wherever a count or a test would need an SD,
+the reading is: no measured SD: underpowered reading = INCONCLUSIVE (P8 item 4). R2 has no count bar and no statistical test,
+so that sentence is stated once and applies to none of the rows below except as noted.
+
+**Shape A, per-seed pass/fail, any failure = FAIL** (the restart equals the twin, on every seed). Power to catch a fault that
+shows on a seed with probability p is 1-(1-p)^8:
+
+| p (per-seed manifestation of a real fault) | 0.10 | 0.25 | 0.50 |
+|---|---|---|---|
+| power at S = 8 | 0.570 | 0.900 | 0.996 |
+
+Power reaches .8 at p >= 0.182 (1-(1-p)^8 >= .8 <=> p >= 1-0.2^(1/8) = 0.182). A fault that shows on fewer than about 18% of
+seeds is missed more often than not. A pass at S = 8 with no failure bounds the per-seed failure rate only below 0.31
+(one-sided 95%, 1-0.05^(1/8); D2).
+
+| verdict | shape | read |
+|---|---|---|
+| P1 R2-c1 (K0, K1, K2 restoring = twin, every record) | A | power per the table |
+| P2 R2-c6 (K3 interrupted bout, restoring = twin from first tick) | A | power per the table |
+| P3 R2-c7 bar (hydrated `_buf_x`/`_buf_y`/`_categories` and post-refit model = twin) | A | power per the table |
+| I_K1 control (equals its twin on every seed) | A | power per the table, for a harness that wrongly says "different" |
+
+**Shape B, differs on EVERY seed** (a control or red whose firing is itself the pass condition). A pass needs all 8 seeds to
+fire, so the pass probability for an arm that fires with per-seed probability q is q^8: 0.430 at q = 0.90, 0.100 at q = 0.75,
+0.004 at q = 0.50. The cost of this shape is false NOT MET, not a missed fault. A seed where the arm does not fire is INVALID
+(R2-c2: "the construction is wrong, not the mechanism right"; R2-c3 tightening: any INVALID seed makes R2-c3 NOT MET for the run).
+
+| verdict | shape | read |
+|---|---|---|
+| P1 R2-c2 (I_K2 differs from its twin on every seed) | B | pass probability q^8 as above; a miss is INVALID, not a mechanism null |
+| P1 R2-c3 (each 2.4 red fires on every seed, tightened) | B | q^8 per red, for every red in the 2.4 table (O_rng, O_w, O_stack included) |
+| P1 R2-c4 replay-OFF twin differs in post-night weights on every seed | B | q^8 as above |
+| P3 R2-c7 reds (CROSS, O_buf, DUP, REORDER, HELDOUT, MISSING, WIDTH, VOCAB, INSTRUMENT) | B, if "each must fire" means every seed | 2.10 says "each must fire" without naming a seed count; the tightening names the 2.4 reds. Under an any-seed reading the shape is A-like: power 1-(1-q)^8 to see the red fire at least once. Which reading holds is the integrator's statement, not made here |
+
+**Shape C, deterministic planted check, no seed power.** R2-c4's planted 1-ulp weight change and swapped ring entry run first
+on one dev seed and are deterministic: each either moves the comparator or does not. S = 8 power does not apply. R2-c5
+(pytest, `tests/test_r2_replay_hydration.py`) is a set of separate boolean checks with no seeds: no power statement applies.
+
+**Where the detection is weak.** For each shape-A verdict, a restart defect that appears on fewer than about 18% of seeds
+(for example a defect that needs a rare schedule branch) is likely to pass at S = 8. R2's seeds are 8 seeded shuffles of
+`_CONV_TRAIN` plus the fixed kill points, so the exercised schedules are 8 per block. A pass is therefore a statement about
+those 8 schedules and the 2.3 scope clause, and not about a per-seed failure rate below 0.31. No result at S = 8 is reported as
+a population rate.
