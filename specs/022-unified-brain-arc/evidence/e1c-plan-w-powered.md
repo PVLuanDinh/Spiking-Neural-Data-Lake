@@ -535,3 +535,162 @@ campaign.sh refuses without any of them, renews `resource:timing` before every l
 run timeout + 600 s), and refuses environment overrides of its work paths. Its pre-steps are TREE-STAMPED (panel A
 #5748 M1). The fixture log, the tier reds (TR1/TR2) and R5 are skipped only when their own `logs/<step>.tree` equals
 this run tree. A PASS left by an older tree, or by a hand run, re-runs.
+
+## Addendum 4 (2026-10-28, before look 1 and before R5 of record): the re-bound driver set; errata to addendum 3
+
+The arc-4 panel's delta reads changed 7 of the 11 bound driver files after addendum 2 bound them:
+- lenses A, B and C, #5746 to #5776;
+- the policy-enforcer, #5749 to #5765 and its read 3.
+The integrator's folds are #5756 and #5773, then delegate D-31 (launcher-1028), lens A #5780's MAJOR (fold 4, #5782) and lens A #5786's MAJOR (fold 5).
+
+So addendum 2's manifest (`7758468e...`) fails `sha256sum -c` on exactly those 7, and a GO that names it refuses. This
+addendum binds the reviewed bytes. No E1c run, no GO and no R5 of record exists.
+
+**A4-1. What changed since addendum 2.** Each change is listed with its red. Logs are in `lanes/engine-1024/arc4-fold-row/`.
+- campaign.sh:
+  - The GO now needs three keys (addendum 3 A3-4): `TREE=`, `DRIVER_SHA256=` and `GATE_LOG=`.
+  - The `resource:timing` lease is renewed before every launch and inside every wait. Lens C #5747 Dn3 found that the
+    POOL_OK wait had no case. Its red: `arc4-fold-row/DRIVER-5747DN3-MUTANT.log`, where removing `renew_now` from that
+    wait fails exactly the new case.
+  - Pre-steps are stamped with the run tree AND the GO's `DRIVER_SHA256` (policy-enforcer #5753 m1). So a driver-only
+    re-bind on the same tree, such as an EXACT re-pin, re-runs R5. Its red: `arc4-fold-row/DRIVER-5753-MUTANT.log`,
+    where the tree-only stamp fails exactly the new case.
+  - Every earlier step log is kept, never overwritten (lens B #5762).
+  - R5 under delegate D-31 (A4-2): `r5_step` runs R5 once; after a single-row FAIL (r5.py rc 6) it runs ONCE more on
+    the pre-named `r5go2-` stream, and anything else stops with no GO. The `R5_FAIL_RULING` path is removed.
+    - The first FAIL's marker (`logs/R5_NOGO.*`, recording its tree) goes up BEFORE the re-run, and comes down only
+      when that re-run passes. So a death or refusal during the re-run still leaves a no-GO (lens A #5786 D4-M1).
+    - After a no-GO, a later R5 needs a GO naming an `R5_ADDENDUM=<commit>` for each kept no-GO tree. That commit must
+      be in the run tree, NOT in the no-GO's tree (lens A #5780: an ancestor check alone passed any old commit, such
+      as the freeze), and must add an `## Addendum` heading to this file (lens B #5785 m1).
+    - Only git's exit 1 means "not an ancestor". A git error never does, so an unknown tree fails closed
+      (policy-enforcer #5784 m1, lens A #5786 m3).
+    - A log that drew rates but has no rc line (the driver died) is a no-GO on the tree its header names, and one
+      whose header names no tree fails closed. A refusal before any draw is not a no-GO.
+    - A re-GO after a no-GO is refused even on the same tree until a newer addendum exists.
+  - campaign.sh never passes r5.py's `--stream`, and r5.py refuses `--stream r5go*` (lens A #5771 m2), so neither record
+    stream is named by hand.
+  - ONE driver per work folder (lens A #5780 D3-M1, a MAJOR in addendum 2's bytes). A second start's exit trap
+    released the live driver's lease and ended its stall watcher. Now:
+    - an atomic `mkdir` lock holds the owner's pid, and a lock whose pid is gone is taken over;
+    - TOKEN_HELD holds the lease owner's pid;
+    - the trap's release, its watcher end and refuse_driver's STOPPED post act only for the owner.
+  - Every earlier step log is kept, never overwritten (lens B #5762).
+  - Reds for the logs, R5 and the lock (each fails exactly its own case):
+    - `DRIVER-5762-MUTANT-nokeep.log`: with the overwrite restored, the keep case fails.
+    - `DRIVER-D31-MUTANT-rerun-any.log`: a re-run after any FAIL.
+    - `DRIVER-D31-MUTANT-second-single-ok.log`: a single-row r5go2 accepted.
+    - `DRIVER-D31-MUTANT-nogate.log`: the no-GO gate disabled.
+    - `DRIVER-D31-MUTANT-no-newer.log`: an old ancestor accepted.
+    - `DRIVER-D31-MUTANT-si-takeover.log`: a live lock taken over.
+    - `DRIVER-D31-MUTANT-release-unguarded.log` and `DRIVER-D31-MUTANT-endwatch-unguarded.log`: a non-owner's trap acting.
+    - `DRIVER-5786-MUTANT-marker-after.log`: the marker written only after the re-run (the D4-M1 shape).
+    - `DRIVER-5786-MUTANT-git-error-open.log`: a git error read as "not an ancestor".
+    - `DRIVER-5786-MUTANT-no-addendum-check.log`: any newer commit accepted.
+  - Both tier reds must refuse, with no brain built, or pre_steps stops (exit 5) before R5 and stamps nothing (lens A
+    #5771 m3). Before this, only TR1 was read and a failure went on. This was in addendum 2's bytes.
+    `DRIVER-5771-MUTANT-m3-nostop.log`: the old TR1-only rule fails the stop-message case and the no-stamp case.
+  - `check_gate_log` strips the UTF-8 BOM and the CR of each line once, before its greps (lens C #5768).
+    gate_each.ps1 (PowerShell 5.1) writes both, and the old `tests:` check refused every real gate log. Its red:
+    `arc4-fold-row/DRIVER-5768-MUTANT-oldgate.log`. Run against a byte-for-byte copy of `VERIFY-a09fb08a.log`, the old
+    check fails exactly the new case (got 3, want 0).
+- r5.py implements A3-2's two-part R5:
+  - a fresh `r5go-<tree>` stream for the statistical rows (`--second`: the pre-named `r5go2-<tree>`, D-31);
+  - the pinned streams for the identity row.
+  Its exit code is D-31's outcome, from `kind()`: 0 every row in; 6 identity and both floors in and exactly one
+  reproduction row OUT; 4 any other FAIL. `R5-ROWS-D31.log` gives each outcome a case, and checks both stream names.
+  In `R5-ROWS-MUTANT-kind-floor.log`, a `kind()` that counts a floor or identity row as "single" misses exactly those
+  3 cases.
+  It refuses without TREE_SHA (`arc4-fold-row/R5-REFUSE.log`, rc 1). Per-row reds (#5753 m2): each of `check`'s 7 rows
+  fires alone on a synthetic input, and the identity row reads only the pinned replay. The three two-sided rows fire
+  both below and above their bands (lens A #5771 m6). Logs: `arc4-fold-row/R5-ROWS-3.log` for the real run;
+  `R5-ROWS-MUTANT-m6-onesided.log`, where a one-sided band misses exactly the 3 above-band mutants;
+  `R5-ROWS-MUTANT-m2-norefuse.log`, where removing the `r5go-` refusal is caught.
+- tool.ps1 refuses unless the run tree's HEAD equals TREE_SHA and the tree is clean.
+- plan.py prints `e1c_disposition`, never `seq_decision`'s E1b status text.
+- reds.sh names the tier reds TR1 and TR2, because E1c has its own R1 and R2.
+- battery-stall-watch.ps1 skips the xdist scheduler dump in campaign mode (`-BatteryPid 0`). So a stall capture never
+  injects `sys.remote_exec` into some other session's pytest controller.
+- driver_check.sh: 118 cases, PASS (`arc4-fold-row/DRIVER-5786.log`).
+  - It now honours `E1C_WORK_WSL`, so a scratch mutant run tests the scratch files. Before this change, one mutant run
+    tested the real files and read PASS. `NOTE-5753.txt` discloses it, with a second void run (a broken sed left one
+    mutant copy unmutated).
+  - Its first output line names the W it tests (policy-enforcer #5765 n1).
+  - Under a scratch W, its no-GO and override checks print SKIPPED instead of passing on the override (lens A #5771
+    m5).
+- Unchanged since addendum 2: procs.ps1, ram.ps1, run_arm.ps1 and unwind.py.
+- unwind.py, reviewed for the first time this arc (lens A #5771 m7, lens C #5768, policy-enforcer #5765): read-only, it injects nothing and
+  writes nothing. Three nits go to the closing record:
+  - the watcher writes the stack files as UTF-16;
+  - in campaign mode it also matches the venv launcher stub;
+  - it relies on a private 3.14-only module.
+
+**A4-2. An R5 FAIL: one standing, mechanical rule (delegate D-31, launcher-1028).** No delegate ruling decides a
+FAIL's verdict, because a ruling made after seeing a FAIL is a forking path. This replaces the ruling route lens A #5771 m1
+asked to have stated, and it answers policy-enforcer #5777 m1 and lens B #5776.
+1. Identity PASS, both floors PASS, and exactly ONE reproduction row OUT: R5 runs ONCE more, on the stream named here
+   in advance, `r5go2-<first 12 hex of TREE_SHA>`. The GO stands only if that run passes EVERY row. Otherwise there
+   is no GO, and the integrator attributes the failure.
+2. Identity FAIL, any floor FAIL (P1's power floor or D-25's type-I bar), or two or more rows OUT: no GO. The
+   integrator attributes and fixes it, and a new R5 needs a new dated addendum. For each no-GO tree, campaign.sh
+   checks that the named commit is in the run tree, newer than that tree, and adds an `## Addendum` heading to this
+   file (A4-1). The integrator and the enforcer read the addendum itself at the GO. A no-GO from two single-row
+   FAILs, where identity passed and `REF` matches `DERIVE-A3.log` so that chance is the only explanation left (about
+   .0016), goes to the delegate before any addendum is written. The delegate decides whether a re-draw is
+   pre-registered, never the verdict (lens B #5785 nit; lens C #5795 nits 1-2).
+3. This supersedes two sentences in exactly one way: it names this one second stream in advance. The sentences
+   are addendum 2's "On a FAIL, look 1 does not start, and R5 is NOT re-run under a new stream name" and addendum 3
+   A3-2's "A FAIL halts look 1 and is attributed, never re-run under a new stream" (lens C #5788 nit 2).
+Why: the family-wise chance FAIL is about .04. The single-row path then falls to about .04 x .04 = .0016, and with
+two-row and floor FAILs on the first run the total chance no-GO is about .003 to .004 (lens C #5788 nit 3). A real
+harness defect will most likely fail twice. A broken harness fails identity on every stream, so no re-run can pass
+it. The attribution of any FAIL also checks `REF` against `DERIVE-A3.log`: once identity passes, a typo in the
+reference table is the only cause other than chance (lens B #5776).
+
+**A4-3. The bind.** `lanes/e1c-plan-w-work/DRIVER.sha256` holds the list below. Every value equals the bytes the delta
+reads hashed. Manifest sha256 (the GO's `DRIVER_SHA256=`): `db48f4d36752615049586f5e71078917e95ae406e3a099ba77a9fb2758977eee`.
+Read 5 AGREEs on exactly these bytes: policy-enforcer #5792, lens A #5793, lens B #5791, lens C #5795.
+Bound 2026-10-28 19:17:26 -0500 (the manifest's write time); `sha256sum -c` passed 11/11 in WSL at the bind.
+
+```
+7880f08fe5c85e2ea0fc3a7936327a6bf33dc1ed2d950b96217d673f5d800465  /mnt/d/AI-project/lanes/e1c-plan-w-work/campaign.sh
+d38dac36d3c8ae2f064b9fce2991c5f85008871f0a1a7a7956a825c6005fb6b1  /mnt/d/AI-project/lanes/e1c-plan-w-work/driver_check.sh
+45bbc8d9a90be744adbe215f9b0e2d68eeeea475a4be549890995078ea4256ae  /mnt/d/AI-project/lanes/e1c-plan-w-work/plan.py
+430e1736cf73314929ea7de9916c13a6a0a57b8ef059581db59a0433af473bc2  /mnt/d/AI-project/lanes/e1c-plan-w-work/procs.ps1
+a867eabcfa2ee80fbdefd491a5d65a0d217141f7c63a8615bedfd8e600d776f2  /mnt/d/AI-project/lanes/e1c-plan-w-work/r5.py
+123fa5e75ea6a1cac61b378590c4610b36b9e4c6bf8393cf6311aac16480d1c5  /mnt/d/AI-project/lanes/e1c-plan-w-work/ram.ps1
+0b810d76ac1be4a1ce3f292761180e999a803a308f44d5a6da05a13965fcd3b9  /mnt/d/AI-project/lanes/e1c-plan-w-work/reds.sh
+d72c08a8df794696b1faaf38b609a01bad530bbc46ca5d921c3b8608d4ade55d  /mnt/d/AI-project/lanes/e1c-plan-w-work/run_arm.ps1
+bfbab3a5432a2be559cd1462c6c8f85f9b497e1ec210c28fd33d5803a2168703  /mnt/d/AI-project/lanes/e1c-plan-w-work/tool.ps1
+b3fb7501831736637605e387ace1c54f01adfb8340fd36ebeb57f775c4e6dd4c  /mnt/d/AI-project/lanes/engine-1024/battery-stall-watch.ps1
+facf2057c5a8e084a266f7019dc08722b11a4c26bd264a76a6c60cb5e0f43608  /mnt/d/AI-project/lanes/engine-1024/unwind.py
+```
+
+**A4-4. Errata to addendum 3 (no rule changes).** Addendum 3 is append-only after f58e1642, so it is corrected here.
+- A3-1, "paired power .8155 against .8165": the frozen rule's power is .8155 and the variant's is .8165, on the same
+  4,000 draws (lens A #5748 D-m4; policy-enforcer #5753 n1).
+- A3-2, "R5 now runs all three shapes at 2,000 campaigns (stream "r5")": stream "r5" is only the code-identity replay.
+  The statistical rows run on the fresh `r5go-` stream, as A3-2's later bullet states (lens B #5762 nit 1).
+- A3-2, the band arithmetic (lens C #5768). At 2 SE the family false-fail rate is about .15, not .17, because the
+  one-sided INCONCLUSIVE row fails at .023. z 2.576 (two-sided) and z 2.326 (one-sided) are each a per-check .01 level.
+  That is not exactly "Bonferroni over 4", which would be .0125 per check. The stated family rate of about .04 stands.
+- A3-2, a `r5go-` name "cannot exist, or have been looked at, before the GO names the tree": that holds by discipline,
+  not by construction. The name can be computed once the stacked head exists. The integrator runs no `r5go-` stream
+  before the GO, and the no-GO gate (A4-1) stops any further draw after a no-GO until a newer dated addendum.
+- The bound r5.py's own docstring and comments repeat "Bonferroni over 4" and "cannot exist before the GO". They read
+  as the two errata above correct them. The bytes are frozen under the convergence rule (#5773), and its text does
+  not change what the code runs (lens C #5778 nit 1).
+- A3-2 cites `R5-DRY-FRESH.log` for R5's refusal without TREE_SHA. That log holds only the dry PASS; the refusal is
+  `R5-REFUSE.log`. `R5-MUTANTS-3.log` came from the r5.py before the two-part change. `R5-ROWS-3.log` covers the
+  bound file's 7 rows.
+- A3-2, "TWO P1 floors": only one is a P1 floor, the up row's harm power (- 2 SE >= .80). The other is delegate D-25's
+  type-I bar (null type I + 2 SE <= .005) (#5753 n2).
+- A3-2, the bullet "Its reds, recorded (`R5-MUTANTS.log`)" describes the superseded 5-check set. The bullet above it
+  (`R5-MUTANTS-3.log`, 7 rows) is the current record (#5753 n3).
+- A3-3, R4: the input is E1b's 80 d_s + 0.035 TILED to 704 (seed i takes d_(i mod 80)), as section 5's R4 states. It is
+  not "resampled". The 405/704 count is for the tiled input (lens C #5747 Dn1).
+- A3-4: each pre-step's stamp is now the tree plus the driver set (A4-1), not the tree alone.
+- Section 10, "no reboot is possible": the owner rebooted at about 17:55 CDT on 2026-10-28
+  (lanes/SAVEPOINT-REBOOT-1028/INDEX.md). D-13 REVISED's one-run-at-a-time stands until the launcher re-rules the host
+  regime. A move off one-run-at-a-time changes the conditions the A/A repeat was read under, so R3 is re-run under the
+  new regime before any later look is read (lens B #5776 nit 1).
