@@ -16,18 +16,39 @@ LIVE_HOME = os.path.join(os.path.expanduser("~"), ".snn_data_lake")
 
 
 def _dir_alias(link, target):
-    """A directory alias the live-home guards must resolve: a junction on Windows (the operator's
-    host), else -- or if mklink fails -- a directory symlink. `cmd` does not exist off Windows, and
-    calling it raised FileNotFoundError before the fallback could run (cloud audit 2026-10-27)."""
+    """A directory alias the live-home guards must resolve. On Windows (the operator's host) a
+    JUNCTION, and a failed mklink SKIPS with its stderr -- never a silent symlink, which would let
+    the test pass on an alias the guard was not written for (launcher review R1, 2026-10-29). Off
+    Windows, where `cmd` does not exist, a directory symlink (cloud audit 2026-10-27)."""
     import subprocess
 
     if sys.platform == "win32":
         r = subprocess.run(
             ["cmd", "/c", "mklink", "/J", str(link), str(target)], capture_output=True
         )
-        if r.returncode == 0:
-            return
+        if r.returncode != 0:
+            err = r.stderr.decode(errors="replace") if isinstance(r.stderr, bytes) else r.stderr
+            pytest.skip(f"no junction on this host: {str(err).strip()}")
+        return
     os.symlink(target, link, target_is_directory=True)
+
+
+def test_dir_alias_on_windows_never_falls_back_to_a_symlink(tmp_path, monkeypatch):
+    """Launcher review R1: on win32 the alias must be the JUNCTION the guards resolve. A failed
+    mklink skips (as test_sleep_plasticity_ab does); it must never pass on a symlink instead."""
+    import subprocess
+
+    class _Failed:
+        returncode, stderr = 1, b"mklink refused"
+
+    def _no_symlink(*_a, **_k):
+        raise AssertionError("os.symlink reached on win32")
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Failed())
+    monkeypatch.setattr(os, "symlink", _no_symlink)
+    with pytest.raises(pytest.skip.Exception, match="mklink refused"):
+        _dir_alias(tmp_path / "link", tmp_path)
 
 
 def test_self_check_runs_brain_free():
