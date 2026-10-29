@@ -115,6 +115,11 @@ def encode_episode(episode):
     return sorted({_token_cell(k, episode[k]) for k in episode})
 
 
+#: slots that say WHICH BOOT wrote an episode, not what happened (R1 F3): they identify a record but are
+#: never recall evidence -- a shared session would otherwise hand every same-boot neighbour free confidence.
+PROVENANCE_SLOTS = frozenset({"session"})
+
+
 def verify_slots(cue, episode):
     """(matched, contradicted): the cue's slots checked against the episode BY CONTENT.
     matched = str-equal; contradicted = present with a different value; a slot the episode
@@ -132,7 +137,11 @@ def verify_slots(cue, episode):
 def is_subcue(cue, episode):
     """Presence-checked slot match (R1 F1): every cue slot is IN the episode and equal as a string.
     `str(ep.get(k))` let a missing slot match the cue value "None". An empty cue addresses nothing."""
-    return bool(cue) and all(k in episode and str(episode[k]) == str(v) for k, v in cue.items())
+    if not any(
+        k not in PROVENANCE_SLOTS for k in cue
+    ):  # empty or provenance-only: nothing to address
+        return False
+    return all(k in episode and str(episode[k]) == str(v) for k, v in cue.items())
 
 
 class LakeRecall:
@@ -264,13 +273,16 @@ class LakeRecall:
         self.refresh()
         if self._index is None:
             return []
+        content = {k: v for k, v in cue.items() if k not in PROVENANCE_SLOTS}
+        if not content:
+            return []
         cue_ev = encode_episode(cue)
         got = self._nearest_d(cue_ev, min(len(self._episodes), max(1, int(k)) + _FETCH_PAD))
         null = self._nulls.get(len(cue))
         out = []
         for d, i in got:
             ep = self._episodes[i]
-            matched, contradicted = verify_slots(cue, ep)
+            matched, contradicted = verify_slots(content, ep)
             if null is not None:
                 mu, sd = statistics.mean(null), statistics.pstdev(null)
                 margin = (mu - d) / sd
@@ -281,7 +293,7 @@ class LakeRecall:
                 {
                     "episode": ep,
                     "distance": d,
-                    "confidence": matched / len(cue),
+                    "confidence": matched / len(content),
                     "contradicted": contradicted,
                     "margin": margin,
                     "retrieval": retrieval,
