@@ -243,3 +243,22 @@ def test_m2c_the_null_arity_counts_content_slots_only():
     assert plain["calibrated"] and with_session["calibrated"]
     assert with_session["margin"] == plain["margin"]
     assert with_session["retrieval"] == plain["retrieval"]
+
+
+def test_m2d_the_working_tier_restore_encodes_content_only(H):
+    # the boot restore encoded lake episodes WITH their session slot: the consolidator grew a
+    # `session` role and every restored trace superposed it, so provenance shaped working-tier
+    # recall confidence (its S threshold) one tier above the lake
+    from snn_data_lake.engine.brain import make_brain
+
+    b1 = make_brain(seed=0, persist=True)
+    for _ in range(100):
+        b1.tick()
+    b1.close()
+    assert H.load_episodes() and all("session" in e for e in H.load_episodes())
+    b2 = make_brain(seed=0, persist=True)
+    try:
+        assert b2._episodes_restored > 0
+        assert "session" not in b2._episode_consolidator._role
+    finally:
+        b2.close()
