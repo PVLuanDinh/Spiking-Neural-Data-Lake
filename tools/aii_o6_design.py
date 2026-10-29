@@ -13,8 +13,11 @@ Section 4 + Fold 2 of `specs/022-unified-brain-arc/evidence/aii-stack-repair-pre
   * the exact JOINT lattice over the candidate, original and bare arms (paired guard x > x_orig, P(VOID), E[n]);
   * a Monte Carlo of the candidate arm alone, RNG seed 20261029.
 
-ALPHA and the look schedule are PARAMETERS (O-13 is re-opened with the launcher): `derive(alpha=..., looks=...)` and
-`--alpha/--looks` re-derive section 4 under either answer. Nothing is hard-coded to 0.05 / 8-15-23 except the defaults.
+ALPHA and the look schedule are PARAMETERS: `derive(alpha=..., looks=...)` and `--alpha/--looks` re-derive section 4. The
+DEFAULT alpha is ALPHA_1 = .05 x 6/pi^2 = 0.0303964, candidate 1 of the D-82 alpha-spending series, i.e. the REGISTERED
+design (n 27, cap 30, looks 10/20/30). The former alpha .05 run (looks 8/15/23) is Fold 2's reproduction. The printed
+bound lines are derived from the design (looks, efficacy counts, confidence 1 - alpha); only claim (b)'s constants
+(G2's S = 8, rate .917) are fixed by that claim itself.
 
 Convention mirrored: `src/snn_data_lake/instruments/rpe_charge.py:440-486` (`seq_boundaries`, Lan-DeMets O'Brien-Fleming
 spending, boundaries per look, non-binding futility) and `:434-438` (the `distinct-from` note). It is NOT imported: that
@@ -26,8 +29,8 @@ follows `tools/red_reachability.py:1-24`.
 #   lattice sequential design power": NO LEXICAL MATCH; "sequential stopping boundary alpha spending": rpe_charge only).
 
 Reproduce (WSL system python3, stdlib, well under 200 MB):
-    python3 tools/aii_o6_design.py                    # the DRAFT's registered design, alpha 0.05, looks 8/15/23
-    python3 tools/aii_o6_design.py --alpha 0.025      # O-13 option (b) style re-derivation
+    python3 tools/aii_o6_design.py                    # the REGISTERED design: alpha_1 = 0.0303964, looks 10/20/30
+    python3 tools/aii_o6_design.py --alpha 0.05       # Fold 2 reproduction (superseded): looks 8/15/23
     python3 tools/aii_o6_design.py --looks 10,20,23   # another look schedule
 Reds: tests/test_aii_o6_design.py.
 """
@@ -39,6 +42,7 @@ import statistics
 import sys
 
 SEED = 20261029
+ALPHA_1 = 0.05 * 6 / math.pi**2  # D-82 series, candidate 1: alpha_i = .05 x 6 / (pi^2 i^2)
 REPS = 200_000
 _ND = statistics.NormalDist()
 
@@ -175,11 +179,14 @@ def _flag_prob(looks, p, flagged):
     return ever
 
 
-def _fixed_sample(p0, p1, alpha, power):
-    for n in range(1, 400):
+def _fixed_sample(p0, p1, alpha, power, n_max=400):
+    for n in range(1, n_max):
         c = next((c for c in range(n + 2) if tail_ge(n, p0, c) <= alpha), n + 1)
         if c <= n and tail_ge(n, p1, c) >= power:
             return n, c
+    raise ValueError(
+        f"no n < {n_max} meets alpha {alpha} and power {power} for p0 {p0:.4f}, p1 {p1:.4f}"
+    )
 
 
 def _design(looks, alpha, p0, p1, conf, void_err):
@@ -211,22 +218,40 @@ def _design(looks, alpha, p0, p1, conf, void_err):
     return d
 
 
-def derive(alpha=0.05, looks=None, conf=0.95, k0=(0, 12), k1=(4, 4), power=0.8, void_err=0.02):
+def derive(
+    alpha=ALPHA_1,
+    looks=None,
+    conf=0.95,
+    k0=(0, 12),
+    k1=(4, 4),
+    power=0.8,
+    void_err=0.02,
+    cap_max=None,
+):
     """Section 4 under (alpha, looks). `looks` None: target n, looks (ceil(n/3), round(2n/3), n), cap raised from n until
-    the worst-case P(MET and no VOID) at p1 (original p0, bare p1, paired guard) is >= `power` (the inflation factor). `conf` (the confidence of the p0 / p1 input bounds,
-    a property of the data, not of the test level) defaults to 0.95 whatever alpha is."""
+    the worst-case P(MET and no VOID) at p1 (original p0, bare p1, paired guard) is >= `power` (the inflation factor);
+    no cap below `cap_max` (default 3n) reaching it RAISES ValueError. `conf` (the confidence of the p0 / p1 input
+    bounds, a property of the data, not of the test level) defaults to 0.95 whatever alpha is."""
     p0 = cp_upper(k0[0], k0[1], conf)
     p1 = cp_lower(k1[0], k1[1], conf)
     n, c = _fixed_sample(p0, p1, alpha, power)
     if looks is None:
-        for cap in range(n, 3 * n):
+        for cap in range(n, cap_max or 3 * n):
             lk = [math.ceil(cap / 3), round(2 * cap / 3), cap]
             d = _design(lk, alpha, p0, p1, conf, void_err)
             if (
                 joint(d, p1, p0, p1)["met"] >= power
             ):  # VOID counted, worst case the measured counts allow
                 break
+        else:
+            raise ValueError(
+                f"no cap in [{n}, {cap_max or 3 * n}) reaches joint power {power} at alpha {alpha}"
+            )
     else:
+        if not looks or looks[0] < 1 or any(b <= a for a, b in zip(looks, looks[1:], strict=False)):
+            raise ValueError(
+                f"looks must be strictly increasing positive counts, got {list(looks)}"
+            )
         d = _design(list(looks), alpha, p0, p1, conf, void_err)
     d.update(
         power=power,
@@ -292,6 +317,27 @@ def mc(d, ps, reps=REPS, seed=SEED):
     return res
 
 
+def mc_joint(d, ps, reps=REPS, seed=SEED):
+    """Monte Carlo of the JOINT rule (same order as `joint`: VOID, then MET with the guard, then futility) for arm rates
+    `ps` = (candidate, original, bare): {"met", "void"} fractions, one RNG seeded once."""
+    rnd, last, out = random.Random(seed), len(d["looks"]) - 1, {"met": 0, "void": 0}
+    for _ in range(reps):
+        xs, prev = [0, 0, 0], 0
+        for k, n in enumerate(d["looks"]):
+            for a, p in enumerate(ps):
+                xs[a] += sum(rnd.random() < p for _ in range(n - prev))
+            prev = n
+            if xs[1] >= d["rd4"][k] or xs[2] < d["rd5"][k]:
+                out["void"] += 1
+                break
+            if xs[0] >= d["eff"][k] and xs[0] > xs[1]:
+                out["met"] += 1
+                break
+            if k < last and xs[0] <= d["fut"][k]:
+                break
+    return {key: v / reps for key, v in out.items()}
+
+
 def report(d, reps=REPS, seed=SEED):
     f = lambda xs, nd=5: "/".join(f"{x:.{nd}f}" for x in xs)  # noqa: E731
     print(
@@ -347,14 +393,24 @@ def report(d, reps=REPS, seed=SEED):
     )
     cap, k = d["cap"], d["conf"]
     print(
-        "cap bounds: "
+        f"MET lower bounds at confidence 1-alpha_1 = {1 - d['alpha']:.4f} (ignore the sequential stop): "
         + ", ".join(
-            f"x={x}/{cap} upper {cp_upper(x, cap, k):.3f} lower {cp_lower(x, cap, k):.3f}"
-            for x in (d["eff"][-1], 7, 8)
-            if x <= cap
+            f"x={x}/{n} {cp_lower(x, n, 1 - d['alpha']):.3f}"
+            for x, n in zip(d["eff"], d["looks"], strict=True)
         )
     )
-    print(f"lower bounds: 7/8 {cp_lower(7, 8, k):.3f}  9/23 {cp_lower(9, 23, k):.3f}")
+    print(
+        f"MET lower bounds at confidence {k} (same counts): "
+        + ", ".join(
+            f"x={x}/{n} {cp_lower(x, n, k):.3f}" for x, n in zip(d["eff"], d["looks"], strict=True)
+        )
+    )
+    print(
+        f"INCONCLUSIVE at the cap (futility count {d['fut_cap']} < x < efficacy count {d['eff'][-1]}), upper bounds at {k}: "
+        + ", ".join(
+            f"x={x}/{cap} {cp_upper(x, cap, k):.3f}" for x in range(d["fut_cap"] + 1, d["eff"][-1])
+        )
+    )
     lo, hi = p0, 1.0
     for _ in range(60):
         mid = (lo + hi) / 2
@@ -372,13 +428,21 @@ def report(d, reps=REPS, seed=SEED):
     )
     r = mc(d, [p0, p1], reps, seed)
     print(
-        f"Monte Carlo ({reps} reps per p, RNG seed {seed}): P(MET) at p0 {r[p0]:.4f}, at p1 {r[p1]:.4f}"
+        f"Monte Carlo, candidate arm alone ({reps} reps per p, RNG seed {seed}): P(MET) at p0 {r[p0]:.4f}, at p1 {r[p1]:.4f}"
+    )
+    rj = mc_joint(d, (p1, p0, p1), reps, seed)
+    ej = joint(d, p1, p0, p1)
+    print(
+        f"Monte Carlo, joint lattice (candidate p1, original p0, bare p1; guard on; {reps} reps, seed {seed}): "
+        f"P(MET) {rj['met']:.4f} vs exact {ej['met']:.4f}, P(VOID) {rj['void']:.4f} vs exact {ej['void']:.4f}"
     )
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--alpha", type=float, default=0.05)
+    ap.add_argument(
+        "--alpha", type=float, default=ALPHA_1, help="default: alpha_1 = .05 x 6/pi^2 (D-82 series)"
+    )
     ap.add_argument(
         "--looks", default=None, help="cumulative seeds per look, e.g. 8,15,23 (default: derived)"
     )
@@ -388,7 +452,11 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=SEED)
     a = ap.parse_args(argv)
     looks = [int(v) for v in a.looks.split(",")] if a.looks else None
-    report(derive(a.alpha, looks, a.conf, void_err=a.void_err), a.reps, a.seed)
+    try:
+        d = derive(a.alpha, looks, a.conf, void_err=a.void_err)
+    except ValueError as e:
+        ap.error(str(e))
+    report(d, a.reps, a.seed)
     return 0
 
 

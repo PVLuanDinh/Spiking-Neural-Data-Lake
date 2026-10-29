@@ -111,7 +111,7 @@ def test_cap_power_and_inflation():
     assert D["cap"] == 23 and D["inflation"] == 1.00
     _close(D["power_cap_ignored"], 0.8405, 5e-5)
     _close(D["power_cap_obeyed"], 0.8199, 5e-5)
-    d24 = M.derive(looks=[8, 16, 24])
+    d24 = M.derive(alpha=0.05, looks=[8, 16, 24])
     assert d24["eff"][-1] == 10 or d24["eff"] == [7, 8, 10]
     _close(d24["power_cap_ignored"], 0.785, 5e-4)
 
