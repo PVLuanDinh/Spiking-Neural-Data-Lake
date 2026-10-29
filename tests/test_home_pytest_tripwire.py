@@ -8,6 +8,8 @@ run against unguarded code writes into the decoy, never into the operator's lake
 listing is an observation with demonstrated sensitivity (test_control_the_decoy_sees_a_write)."""
 
 import os
+import shutil
+import tempfile
 
 import pytest
 
@@ -147,3 +149,26 @@ def test_control_an_explicit_isolated_path_is_written(monkeypatch, tmp_path, dec
     target = tmp_path / "iso_lake.bin"
     assert H.save_episode(_EPISODE, path=str(target))
     assert target.is_file()
+
+
+def test_a_throwaway_home_that_survives_cleanup_is_reported(monkeypatch, tmp_path, capsys):
+    """#1097/#1110: `ignore_cleanup_errors=True` swallowed a failed cleanup (a still-open file on
+    Windows) with no trace. The leftover must be reported and listed in the census."""
+
+    class Stuck:  # a TemporaryDirectory whose cleanup does nothing, as a held handle makes it
+        def __init__(self, prefix=None, dir=None, ignore_cleanup_errors=False):
+            self.name = tempfile.mkdtemp(prefix=prefix, dir=dir)
+
+        def cleanup(self):
+            pass
+
+    monkeypatch.setattr(H.tempfile, "TemporaryDirectory", Stuck)
+    monkeypatch.setattr(H, "_LEFTOVER_HOMES", [])
+    with H.throwaway_home(parent=str(tmp_path)) as h:
+        pass
+    try:
+        assert os.path.isdir(h)  # the stuck cleanup really left it
+        assert "left behind" in capsys.readouterr().err
+        assert [os.path.normcase(p) for p in H.leftover_homes()] == [os.path.normcase(h)]
+    finally:
+        shutil.rmtree(h, ignore_errors=True)
