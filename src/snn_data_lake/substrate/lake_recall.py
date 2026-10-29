@@ -129,6 +129,12 @@ def verify_slots(cue, episode):
     return matched, contradicted
 
 
+def is_subcue(cue, episode):
+    """Presence-checked slot match (R1 F1): every cue slot is IN the episode and equal as a string.
+    `str(ep.get(k))` let a missing slot match the cue value "None". An empty cue addresses nothing."""
+    return bool(cue) and all(k in episode and str(episode[k]) == str(v) for k, v in cue.items())
+
+
 class LakeRecall:
     """recall(cue) -> k episodes with margins, retrieval-filtered and content-verified.
 
@@ -197,7 +203,7 @@ class LakeRecall:
         return len(self._episodes)
 
     def _is_subcue(self, cue):
-        return any(all(str(ep.get(k)) == str(v) for k, v in cue.items()) for ep in self._episodes)
+        return any(is_subcue(cue, ep) for ep in self._episodes)
 
     def _nearest_d(self, cue_ev, k=1):
         idxs, _n = self._index.nearest_exact(cue_ev, k)

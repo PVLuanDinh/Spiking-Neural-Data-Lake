@@ -3598,11 +3598,12 @@ class Brain:
             pass
         try:
             from snn_data_lake.substrate.home import load_episodes
+            from snn_data_lake.substrate.lake_recall import is_subcue
 
             want = dict(cue) if isinstance(cue, dict) else None
             if want:
                 for ep in reversed(load_episodes()):  # newest first: the likelier match
-                    if all(str(ep.get(k)) == str(v) for k, v in want.items()):
+                    if is_subcue(want, ep):
                         return {
                             "episode": ep,
                             "confidence": 1.0,
