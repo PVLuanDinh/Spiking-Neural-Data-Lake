@@ -99,7 +99,6 @@ No open-weight model enters the brain: the two encoders are the project's own e-
 # distinct-from: instruments/port_charge_probe.py -- typed-port replay-twice, not a learner/three-factor neuter
 # distinct-from: instruments/paired_contrast.py -- its paired_t returns 0.0 on zero variance; E1's frozen rule (and the
 #   reproduction of E1's REPORT numbers) needs +inf for a positive mean, so the statistic is kept here, not shared
-# distinct-from: infra/_mathutils.py::pearson -- no NaN guard for a constant series
 
 import contextlib
 import copy
@@ -113,6 +112,8 @@ import statistics
 import sys
 import time
 import uuid
+
+from snn_data_lake.infra import _mathutils
 
 BAR = 1.895  # one-sided .05, df 7 (S = 8); owner slot: 1.753 at S = 16
 SEEDS = range(8, 16)  # E1b fresh seeds (owner); owner slot: range(8, 24)
@@ -340,15 +341,8 @@ def ttest(x):
     return m / (s_ / math.sqrt(len(x)))
 
 
-def pearson(x, y):
-    mx, my = sum(x) / len(x), sum(y) / len(y)
-    sxx = sum((a - mx) ** 2 for a in x)
-    syy = sum((b - my) ** 2 for b in y)
-    return (
-        sum((a - mx) * (b - my) for a, b in zip(x, y)) / math.sqrt(sxx * syy)
-        if sxx and syy
-        else float("nan")
-    )
+# the one shared Pearson; a constant series reads NaN here (a reported value in the decision lines)
+pearson = functools.partial(_mathutils.pearson, on_constant="nan")
 
 
 def flips(a, b):

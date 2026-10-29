@@ -41,13 +41,16 @@ def softmax(xs):
     return [e / s for e in es]
 
 
-def pearson(a, b):
+def pearson(a, b, *, on_constant="raise"):
+    """Pearson r. A constant input: "raise" -> ZeroDivisionError (the original, unguarded behaviour), "nan" -> NaN."""
     n = len(a)
     ma = sum(a) / n
     mb = sum(b) / n
     cov = sum((a[i] - ma) * (b[i] - mb) for i in range(n))
     va = sum((v - ma) ** 2 for v in a)
     vb = sum((v - mb) ** 2 for v in b)
+    if on_constant == "nan" and not (va and vb):
+        return float("nan")
     return cov / math.sqrt(va * vb)
 
 
