@@ -119,8 +119,8 @@ which is the legitimate kind of input.
       do. It keeps the `held_goal` record meaningful in the `pc` arm.
   - **The planned-sequence nudge is added after the stub** (`:1545-1551`) and is not rotated. So the pc moves only the
     held-goal channel, and `_plan_w`'s channel stays intact.
-  - **Delegate D-42 (launcher-1028)** rules that this read-side form satisfies D-37 rule 2. It is behaviourally the
-    write-side form, and it keeps the `pc` arm's `held_goal` record true. Two conditions:
+  - **Delegate D-42 (launcher-1028)** rules that this read-side form satisfies D-37 rule 2. On the ACTION path it is
+    behaviourally the write-side form, and it keeps the `pc` arm's `held_goal` record true. Two conditions:
     - R2a and R2c stay binding; failing either is VOID before the GO.
     - Every reader of the held goal or the plan channel that the stub does NOT rotate is disclosed here by name. Read
       at `1b6e53ab`, none of them reaches action selection by goal index:
@@ -134,6 +134,13 @@ which is the legitimate kind of input.
       - `LiveBrain.goal` (`live_brain.py:315-317`). It feeds `goal_on` (`:267-268`), which reads whether a goal is held
         (the same in every arm, since the stub never empties the stack), and the chat reply text (`:440`).
       - The plan nudge reads `_planned_seq[0]`, the PLANNER's first action, not the held goal (`:1545-1551`).
+      - `Brain._observe_self_wake` (`brain.py:3004-3005`) reads the UNROTATED held goal on every wake tick.
+        - It passes it to the self-model (`self_model.observe(goal=...)`, `:3018`) and into the self-surprise vector
+          (`goal / 10`, `:3068`), which the metacognition checks read.
+        - Panel C found no route from there to action selection. So in the `pc` arm the self-model sees the brain's own
+          goal while behaviour sees the rotated one. That is a disclosed asymmetry of the read-side form, off the
+          action path.
+      - `brain.py:255` checks only WHETHER a goal is held (region tagging), which is the same in every arm.
   - **Validity for every `pc` run:** `pc_stub_calls == pfc_bias_calls > 0`, with 600 ticks. Anything else is a harness
     red. The equality catches a partly bypassed stub; foreign-instance calls are already excluded by the scope.
 - **Controls at look 1** (E1c section 3, with new seeds):
@@ -296,9 +303,14 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
   costs no R2 re-run).
   - **Where.** A scratch work folder `lanes\e1d-plan-w-work\dry\`, with its own `results\`, `reports\` and `logs\`. It
     refuses to run if its results path resolves under the real `results\` or the run tree.
-  - **Input.** A complete 64-seed look-1 folder (`real`, `pfrozen`, `pc` on s0 and s0+1, the `real` repeat on s0),
-    written by `rpe_charge`'s own `synth_run` in E1d format. B2 gives it `p["held_goal"]` with a planted frozen count
-    of 9.
+  - **Input.** A complete 64-seed look-1 folder (`real`, `pfrozen`, `pc` on s0 and s0+1, the `real` repeat on s0) on
+    seeds 23000-23063.
+    - It is written by `rpe_charge`'s own `fixture_runs("noharm", ...)` (`synth_run` per arm, `rpe_charge.py:2247`) in
+      E1d format. B2 gives it `p["held_goal"]` with a planted frozen count of 9.
+    - The "noharm" fixture at n = 64 has no harm crossing, and futility does not open until 640. So its look-1
+      disposition is CONTINUE, and plan decide prints `NEXT continue`.
+    - The exact rendered disposition line is pinned as a string by B2's test, before the bind and its step-6b review.
+      That string is R2-dry's bar.
     - `dry\logs` also holds a PLANTED `fixture.log` and `tier_red.log` in the pass form. They are disclosed as planted,
       because a real tier red builds a brain.
   - **The sequence.** The driver's own functions run in order: the controls-first partial compare and its
@@ -309,7 +321,7 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
     - the partial look reads PENDING, with exactly the owed items;
     - the full look's VALIDITY is valid;
     - the stratum line prints 9 frozen;
-    - the disposition is the synthetic design's known value;
+    - the disposition line equals B2's pinned CONTINUE string;
     - plan decide prints NEXT continue.
   - **Its red.** Overwrite ONLY the s0 `pc` record's `series.action` with the s0 `real`'s. The record keeps `arm` "pc"
     and its stub counts, so only "pc seed s0 flips == 0" fires. The partial look must read VOID on exactly that item,
@@ -321,7 +333,8 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
     - a compare that exits non-zero.
   - **No live board.** R2-dry posts only to a scratch board folder (`dry\board`), never to the live board or thread E1D.
   - A seed/arm-against-tag mismatch (section 3) is a harness red. It joins the VALIDITY bad list, so the look is VOID.
-  - R2's own reads load every fresh E1d-format JSON through `load_run`, so real-brain JSON parsing is exercised there.
+  - R2's own reads parse every fresh E1d-format JSON with the same record loader (without the campaign's tag check, as
+    stated above), so real-brain JSON parsing is exercised there.
     `synth_run`'s planted `held_goal` also puts the stratum path in the GO-commit gate log.
 - **R3, repeat:** as E1c, on 23000 (at look 1, run first).
 - **R6, the stub's vector** (unit test in `tests/test_rpe_charge.py`, brain-free). It REPLACES the old pc test at
@@ -527,7 +540,13 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
   - **C e1** (R2-dry's red keeps `arm` "pc"; reds for the other halt branches): section 6.
   - **C e2** (the results guard at every start and look; a dead run's JSON moved aside): section 6.
   - **C nits** (R2's reads outside the tag check; a scratch board for R2-dry): section 6.
-- **Still open:** delta reads of fold 3; docs-sweep-r2 under the enforcer (#5856).
+- **Fold 4** (fold-3 delta reads: A AGREE #5884, B AGREE #5886 with one wording nit, C CHALLENGE #5888):
+  - **C MINOR** (a missed un-rotated reader): `Brain._observe_self_wake` and `brain.py:255` added to section 3's D-42
+    list; "on the ACTION path" added.
+  - **C NIT** (R2-dry's fixture kind and exact disposition): section 6 names `fixture_runs("noharm")`, CONTINUE, and
+    B2's pinned string.
+  - **B nit** (R2's reads and the tag check): section 6 wording.
+- **Still open:** delta reads of fold 4 by C and the enforcer.
 
 ## 12. Record
 
