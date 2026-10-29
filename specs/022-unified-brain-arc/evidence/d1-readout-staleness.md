@@ -723,3 +723,26 @@ balance read, and A0f.
 ## 3. Record
 
 *(empty until Stage 0)*
+
+---
+
+### Erratum R4-E1 -- 2026-10-29, written before any Stage 0 data: what R3's INERT bar now asserts (policy-enforcer #5740 m1)
+
+Appended only; nothing above this line is edited. This corrects the build record, not the pre-registered verdict.
+
+- Section 2's R3 row reads: "mu = 0 must read Sum|dW| = 0 and be flagged INERT". The build moved the bar twice:
+  - round 1 (commit 84c3c306): INERT was `Sum|dW| <= 1e-9`. The first green run had read mu = 0 as about 1e-16 (not 0)
+    because `oja_step` re-normalised every row, so a tolerance was added;
+  - round 3 (commit 67a15f1d, wf-rv #5728 m2): `oja_step` with mu = 0 returns W bit-unchanged, and a row whose
+    `mu * post_i` is exactly 0 is returned bit-unchanged. INERT is now `Sum|dW| == 0.0` exactly, at any scale of W.
+- What R3 asserts now (`operator_check` in `instruments/readout_staleness.py`; tests `test_m2_*`, `test_m3_post_i_*`):
+  - a real step reads `moved > 0` and not INERT at every tested scale of W;
+  - mu = 0 and an all-zero `post` read `moved == 0.0` and INERT;
+  - the per-row norm check (1e-6) is unchanged.
+- Why: the 1e-9 bar was a tolerance chosen to hide a re-normalisation artefact. At a small enough scale of W a real step
+  also falls under 1e-9, so a tolerance can flag a working operator INERT. Making the no-op exact removes the artefact
+  and the tolerance together. This matches the pre-registered text, which says "= 0", not "<= 1e-9".
+- Remaining stale text: `test_r3_red_mu_zero_inert_and_norm_break_fails` still asserts `moved < 1e-9` (true when
+  `moved == 0.0`, so not wrong, but weaker than the bar). It is not edited in this round; it is named so no reader takes
+  1e-9 as the bar.
+- This is a criterion change made before any data exists. It changes no verdict, boundary, seed block or sizing.
