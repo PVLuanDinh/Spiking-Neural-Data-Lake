@@ -235,7 +235,8 @@ Windows and Ubuntu with Python 3.14t, wheel-content checks, lint and policy gate
 a 70% coverage floor. Coverage excludes the reasoning and training tiers; that floor is not
 whole-repository coverage. Additional checks cover replay, determinism, manifests, growth, and
 policy reporting. The certification job is advisory (`continue-on-error`); performance reporting
-in shared CI is also non-asserting. The documentation-command guard is currently a manual check.
+in shared CI is also non-asserting. The documentation-command guard runs in `run_selfchecks.py`'s tools stage
+(not in the workflow) *(corrected 2026-10-29; it was described as a manual check)*.
 
 Passing software checks does not establish a scientific result. Every result needs its task,
 baseline, hardware, seed protocol, raw observations, and limitations. Follow
