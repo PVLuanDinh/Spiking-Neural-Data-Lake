@@ -1784,9 +1784,6 @@ def render(a):
     return "\n".join(L)
 
 
-# distinct-from: render (above) -- E1b's report is eight endpoints over an 8-seed block; E1c decides one, so the
-#   campaign gets its own short formatter over the same `analyse` dict (graph-exists "render sequential campaign
-#   report": NO LEXICAL MATCH, 2026-10-28)
 # distinct-from: carried_state_campaign.py -- its sign census counts one campaign's values; this splits H-P1's d_s by
 #   a post-treatment record (the real run's held goal) and reuses this module's ttest
 def goal_stratum(runs, d_p1):
@@ -1817,6 +1814,9 @@ def goal_stratum(runs, d_p1):
         return f"stratum n/a ({type(e).__name__}: {e})"
 
 
+# distinct-from: render (above) -- E1b's report is eight endpoints over an 8-seed block; E1c decides one, so the
+#   campaign gets its own short formatter over the same `analyse` dict (graph-exists "render sequential campaign
+#   report": NO LEXICAL MATCH, 2026-10-28)
 # distinct-from: carried_state_report.py -- G1c's migration-gate report lines, not a sequential stop's disposition
 # distinct-from: pool_selection.py -- a subprocess job runner (spec beside output), term overlap
 # distinct-from: prior_drift_harness.py -- a settling reading with its subject, term overlap
