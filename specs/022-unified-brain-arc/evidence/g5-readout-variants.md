@@ -2074,3 +2074,113 @@ They are carried to Part E's freeze, which owes each one; none is fixed here.
 - **E.6's fixed 83-seed ceiling.** E.6 makes a powered cap above 83 seeds NOT RUN, while delegate D-11 #3 retired
   L1b-STALE's fixed 40 in favour of a cap from power. Both are P1-safe; the freeze states why they differ (lens B
   #5721 m7, #5746 D-m1; added after policy-enforcer #5753 m3 found it missing from this list).
+
+### Addendum 2026-10-29 (g5e-prep, docs only): the drift report's items 3-4 named, the freeze-owed list read at c4c10b28, one drift function, ambition record
+
+Pre-data and pre-build. Part E is still an unfrozen DRAFT; no run, pilot, brain or code was made for this addendum, and it
+changes no frozen text, threshold, seed or arm above (append-only). Everything below was read statically at base `c4c10b28`.
+Owner words, verbatim (2026-10-25): "Fold the representational-drift report's items 3-4 into G5's relational-readout
+pre-registration and items 1-2 into G9's campaign, as design input." Numbering: the report's section 3 list
+(`lanes/research-1025-drift/REPORT.md` section 3, items 1-6). The HW4 documents
+(`D:\AI-project\hw4\HW4_..._v3_VERIFIED.docx`, `..._SNDL_ENGINE_v2.docx`) carry the same content as RQ3 and the RQ6 "built
+so it can fail" box; they have no numbered items.
+
+#### X.1 Item 3 -- the relational readout and its criterion (the source paper's claim, and what it changes)
+
+- Claim, quoted: "G5 readout candidate: a RELATIONAL readout (align population structure, e.g. Procrustes on the RSA
+  geometry, then read) vs the incumbent `OnlineReadout` ... held-out score retained across sleep + restart." HW4 RQ3 / H3
+  states it as: a fixed neuron-keyed decoder "loses accuracy over time; decoder (b) loses significantly less", with a
+  within-block cross-validated ceiling and a shuffled-label floor.
+- Source, as the report cites it: Deitch, Rubin & Ziv 2021, Curr Biol 31(19):4327-4339.e6, doi 10.1016/j.cub.2021.07.062
+  (single units drift while the relations between population patterns stay stable); Marks & Goard 2021, Nat Commun
+  12(1):5169, doi 10.1038/s41467-021-25436-3 (drift is stimulus-dependent). Both checked on PubMed by the report (2026-10-25).
+- What it changes in Part E: the PRIMARY ENDPOINT and its two arms. E.4's primary d = acc(RELATIONAL) - acc(FIXED) per event
+  is the report's criterion verbatim; FIXED is H3's decoder (a), RELATIONAL its decoder (b). H3's ceiling is E.4's NO-EVENT
+  arm; H3's floor is E.5's chance band. Not carried: the HW4 Wilcoxon-across-mice test (superseded by E.7's sequential
+  design, which HW4's own "Sample size" paragraph already prefers) and the mouse blocks/days (Part A of HW4 is homework in
+  Colab, not an SNDL row). This addendum adds no new endpoint.
+- One gap found: HW4 H3 reads drift over elapsed time; Part E reads two discrete events (sleep, restart). Part E keeps the
+  events, because a time axis on the engine has no meaning until G9 defines it. Design input only.
+
+#### X.2 Item 4 -- the planted-drift red (the claim, and what it changes)
+
+- Claim, quoted: "Reachable red: planted drift = permute reservoir unit identities while preserving geometry. The fixed
+  readout must fail, the relational must pass; if neither fails, the criterion is deleted (P8)." HW4 RQ6 box: "If neither
+  one fails, the test cannot tell them apart, and I delete it rather than weaken it."
+- Source: the same two papers; the red itself is the report's P8 construction, not a paper result.
+- What it changes in Part E: the RED PE-R1 (E.5) takes it whole. Two deliberate differences from the report's literal
+  words, both already in the draft and disclosed here: (i) the report deletes when "neither fails"; PE-R1 splits it:
+  FIXED not failing deletes the criterion, RELATIONAL failing is a build defect fixed before any brain read, because a
+  permutation is orthogonal and Procrustes must recover it (a derived bar, E.5). (ii) PE-R2 to PE-R6 (leak guard, control
+  reachability, dose, disjointness, non-orthogonal ceiling) are Part E's additions, not the report's.
+- Items 1-2 (the drift measurement, per-part attribution by G9's arms) are G9's, not Part E's. Owed to G9 as design
+  input; they are listed in g5e-prep's REPORT.md. Part E uses item 1's population-vector correlation only through P-E0
+  (E.2), so the shared function of X.4 below serves both.
+
+#### X.3 The freeze-owed list (9d31adf2, 8b2e49d2): status read statically at c4c10b28
+
+Convention: CLOSED = a static read settles it; OPEN = names what closes it; NEEDS A RUN = only data can. Nothing here is
+edited into the frozen text; the freezing addendum carries each edit.
+
+| # | Owed item | Status | Evidence at c4c10b28 and what closes it |
+|---|---|---|---|
+| 1 | E.9 "otherwise delete" branch vs the P8 null-scale amendment, and the missing scale axis | OPEN | The branch is at g5-readout-variants.md:2034 ("Otherwise the alignment module is deleted"). The amendment is POLICIES.md:952-963 (items 1-3): a null writes one `NULL-RECORD:` line and waits for ONE re-test at least 10x larger on the mechanism's axis; "no deletion without the 10x re-test"; the code leaves the live path under a `dormancy_gate.EXEMPT` entry `scale-retest`. The freeze rewrites that sentence to that path and names the axis: units the alignment acts on (population size, a capacity mechanism), with anchor count scaled in proportion. Only the author and a panel can fix the axis; this addendum proposes it. |
+| 2 | The 90% "P1 exception" names none of P1's three cases | OPEN | P1's three exempt cases are POLICIES.md:150-153: (a) a fixed point on a normalized output, (b) a running-baseline replacement not reproducible from a pre-registered input, (c) an inert constant. A retained-variance fraction is dimensionless but is not a fixed point of an output, and the alignment is not inert, so none fits cleanly (g5-readout-variants.md:1900). The freeze takes the other exit, which the draft already prints: DERIVE k on the pilot as the smallest k whose held-out NO-EVENT accuracy is within one pilot standard error of the full-dimension accuracy. That needs the pilot, so the value is NEEDS A RUN; the rule is registered now. |
+| 3 | Closing disclosure ("no policy-enforcer read") contradicts folds of #5548 and #5555; two lists omit PE-R6 | OPEN | The disclosure is at :2056; E.7 above it records folds of #5548 (M1, M2, m1-m4) and #5555 (n1-n3), so a policy-enforcer read exists. The two PE-R6 omissions are exactly :1975 (E.6 planted row says "PE-R1 to PE-R4"; PE-R6 also draws planted seeds) and :2023 (E.8 item 4 says "PE-R1 to PE-R5 counted"). The freeze corrects all three lines. A static read finds the lines; it cannot edit frozen text. |
+| 4 | The decision function: `seq_decision`'s sign rule (`k_frac`) and `futility_powered` | OPEN (choice), facts CLOSED | `seq_decision` (instruments/rpe_charge.py:558-568) defaults `k_frac=None`, so harm needs t above the look boundary AND `ceil(K_MIN*n/N_SEEDS)` seeds above 0 (:590), the E1b shape that "cannot fire at large n" (:181). E1c passes `k_frac` 0.5 and `futility_powered` True (:190-192). `futility_powered` default False = the frozen E1b rule (:578). Recommendation for the freeze: Part E may cap at up to 83 seeds, so name `k_frac` = 1/2 as E1c did, and `futility_powered` = True, because E.9 already says a futility stop is INCONCLUSIVE unless its mde is at or below Delta*, which is what that flag implements. Part E must also state that its endpoint (a paired contrast of accuracies) is read with the same sign-count conjunct. Simulating the choice is NEEDS A RUN (E.7's R-S1/R-S3 check). |
+| 5 | Drift-function claimants; P2 among them | OPEN | d1-readout-staleness.md:550-553 (A0c F3) still lists three claimants (that file's 2.4, Part E's P-E0, G9's criterion 1); C15 at :705 says the missing claimant "is added", but the F3 list text is unchanged, and MAP.md's D0 module (research/representational-drift/MAP.md:130-148, `instruments/representational_drift.py`, `pv_correlation`, `procrustes_realign`) is a fourth. At c4c10b28 none of the four exists in the tree (git ls-files finds only the three docs: MAP.md, SESSION-RECORD, d1-readout-staleness.md; `readout_staleness.py` is also absent). Nothing is built, so P2 is decided on paper: X.4 proposes the one owner. Closed when the panel accepts X.4 and F3's list is amended. |
+| 6 | E.6's fixed 83-seed ceiling vs D-11 #3's retired fixed 40 | OPEN | The difference is a seed-supply fact, not a principle. D-11 #3 (d1-readout-staleness.md:577-590) draws L1b-STALE's cap from block 22000-22999 and refuses only above 1000. Part E's pool is 11616-11699 (:1976) because G5's block 11000-11999 is crowded (section 4 lists sets through 11951 and ranges 11400-11479 held). Both are P1-safe: each cap comes from power, and each is bounded by the seeds that exist. The freeze either states this, or widens the pool through a grep-checked range (11480-11599 and 11700-11899 are unlisted in section 4, with the 4242 positive control re-run) and drops the fixed 83. |
+
+NEEDS A RUN, collected: the pilot (k, SD of d, Delta*, the P-E0 margin), E.7's boundary and cap simulations, and PE-R1 to
+PE-R6 counted on constructed populations. All three wait for the campaign and the G9 engine (E.8).
+
+#### X.4 F3 design note -- ONE drift-reading function (prose only; no code written)
+
+- Capability: population-vector correlation between a reference and a post-event response set over a fixed probe set,
+  plus the ensemble-rate and tuning-curve readings G9's criterion 1 names, returning a small immutable result.
+- Proposed signature: `read_drift(pre, post, *, probe_ids, units=None, metric)`, where `pre` and `post` are mappings from
+  probe-input id to the unit-response vector (so correspondence is by input identity, never by label, as E.3 requires);
+  `units` is the common unit list, with pruned units read 0 and born units absent from the pre side (E.4 FIXED rule);
+  `metric` is one of `"pv"`, `"rate"`, `"tuning"`. It returns the per-probe correlations and their mean, and refuses
+  (raises, so the caller exits 3 per the draft's `os._exit(3)` convention) when `probe_ids` is empty or a probe is missing
+  from one side. A flat vector (zero variance) is reported as an explicit flag, not as 0.0 silently, because P-E0's
+  "frozen minus full" contrast would otherwise read a flat response as no drift.
+- Where it lives: `instruments/representational_drift.py`, the file MAP.md D0 already plans, as a pure-measurement
+  `permanent` dormancy-exempt module in the `prior_drift_harness` shape. Not in Part E's alignment module, because Part E
+  is the claimant with the most to lose from a bias in it (it would grade itself).
+- Primitives: `infra/_mathutils.pearson` (enforcer #5605 m1). Static finding that bears on this: `_mathutils.pearson`
+  (infra/_mathutils.py:44-51) divides by `sqrt(va*vb)` with no zero-variance guard, while `grid_place_map._pearson`
+  (:49-60) and `agency_monitor._t079_pearson` (:1118) guard it (return 0.0 or None). So the build must either add the
+  guard to `_mathutils.pearson` (a behaviour change to a shared helper that every caller must be checked against) or guard
+  at the call site in `read_drift`. Recommendation: the call-site guard, so the shared helper does not change in this arc.
+  The Procrustes step (`scipy.linalg.orthogonal_procrustes`) is Part E's alone and stays in its alignment module; only
+  the correlation reading is shared.
+- Callers: L1b-STALE's section 2.4 readings, Part E's P-E0 (`d0 = frozen - full` per pilot seed), and G9's criterion-1
+  instrument (T117) all import it; none keeps a local copy. Whichever BUILDS first creates the file; the others import it.
+- `graph-exists.js` dispositions (run 2026-10-29, `--root` this worktree, base c4c10b28):
+  - "population-vector correlation of reservoir responses before vs after an event drift reading": NO LEXICAL MATCH.
+    UNKNOWN, not absence. Distinct-from: no module reads response drift on a fixed probe set. `prior_drift_harness` reads
+    weight drift off the H01 prior (learner deleted), and `drift_monitor` reads input drift.
+  - "Procrustes alignment of population geometry onto reference anchors": NO LEXICAL MATCH. UNKNOWN. Part E's own,
+    new, built in its arc; the build re-queries in the tree's vocabulary first.
+  - "Pearson correlation primitive": 4 hits. `infra/_mathutils.pearson`: REUSE (the primitive). `faculties/grid_place_map.py
+    ::_pearson`: distinct-from for now (guarded, grid-code specific) and a CONSOLIDATE candidate with `_t079_pearson`
+    and `h01_ingest.ei_correlation`, which is a pre-existing P2 duplication this arc must not widen to a fourth copy.
+  - "frozen-engine noise floor paired contrast": 6 hits, none a frozen-engine floor. `instruments/paired_contrast`:
+    REUSE for the contrast (E.4 already does). The frozen-engine arm itself is G9's (criterion 5); distinct-from.
+- P2 decision proposed: one function, one owner (MAP.md D0's module). The panel and the policy-enforcer decide.
+
+#### X.5 Raising-ambition record for this addendum (self-apply, owner 2026-10-25)
+
+- Axis: Depth (settle what a careful reader of the draft can settle without a run).
+- Ladder: (1) list the items and the freeze-owed titles; (2) read each against c4c10b28 with file:line, mark CLOSED / OPEN /
+  NEEDS A RUN, propose the one drift function with graph-exists dispositions; (3) build the drift function and its reds.
+- PICKED: rung 2.
+- The rung above, ruled out: rung 3. POLICIES P2 rules it out (two mechanisms for one job): four claimants, none built,
+  and the panel has not chosen the owner (item 5), so building one now would pre-empt that choice. P8 independently bars
+  claiming the function works before its reds are counted, and the campaign rules (LANE-RULES-CAMPAIGN-1029) forbid every
+  run that would count them. Docs only, by the brief.
+- Outside judge: the policy-enforcer's static review against POLICIES.md, then the integrator's panel; every status in X.3
+  is a file:line at c4c10b28 that either reader can re-open. No result in this addendum is a measurement.
+
+Disclosure: drafted by lane g5e-prep (Sonnet), docs only; it had no panel and no policy-enforcer read when written.
