@@ -403,6 +403,17 @@ PROVENANCE = {
         "after each flush that keeps one); none is retired by any code path, so this only grows, "
         "by at most one per distinct superseded refusal (2026-10-25, R3 m4)"
     ),
+    "circadian_restore": (
+        "P4b finding (iii) (2026-10-29): None = the SCN clock phase, its jitter rng and the light "
+        "step were restored from circadian_clock.json; a string says why this is a fresh day "
+        "(absent, malformed, not persisted, or a record of another seed / day period / clock, "
+        "kept as circadian_clock.refused.clock.<id>.json and retried; 'adopted: <name>' names the "
+        "kept record restored). Unlike prototypes_restore, a non-persist brain is not None here"
+    ),
+    "circadian_restored": (
+        "the restored record's step and phase, or None on a fresh day; the night/wake counters "
+        "beside it are process-lifetime, so a resumed step sits beside a fresh night count"
+    ),
 }
 
 

@@ -119,24 +119,29 @@ class CircadianClock:
     # ---- persistence: the phase an uninterrupted twin would still hold -----------
     # distinct-from: growth/growing_learner.py, growth/neurogenesis_engine.py -- those restore their
     #   own learners' prototypes; this is the SCN clock's phase + jitter state, same state_dict idiom.
+    # The rng rides readout/interaction_learning.py's G0(c) checkpoint codec (panel #6910 MAJOR-2, P2:
+    #   one Random codec); its decode probes the state and raises ValueError on any bad one.
     def state_dict(self):
         """The oscillator's whole dynamic state: the phase and the jitter generator's state, so a
         restored clock steps exactly as the uninterrupted one would (JSON-serialisable)."""
-        version, internal, gauss_next = self.rng.getstate()
-        return {"phase": self.phase, "rng": [version, list(internal), gauss_next]}
+        from snn_data_lake.readout.interaction_learning import _encode_state
+
+        return {"phase": self.phase, "rng": _encode_state(self.rng)}
 
     def load_state_dict(self, sd):
         """Restore `state_dict()`. True if restored; a malformed record leaves the clock untouched."""
+        from snn_data_lake.readout.interaction_learning import _merge_state
+
         try:
             phase = float(sd["phase"])
-            version, internal, gauss_next = sd["rng"]
             if not 0.0 <= phase < 1.0:
                 return False
-            probe = random.Random()
-            probe.setstate((version, tuple(internal), gauss_next))
+            rng = _merge_state(None, sd["rng"])
         except (KeyError, TypeError, ValueError):
             return False
-        self.phase, self.rng = phase, probe
+        if type(rng) is not random.Random:
+            return False
+        self.phase, self.rng = phase, rng
         return True
 
     # ---- diurnal outputs (pure functions of the phase) ----------------------
