@@ -457,3 +457,18 @@ Docs only: nothing run. Per-finding dispositions: `lanes/engine-1024/fold-g9-row
   (transport forms at .0151982 each), and the cap of section 4.1b is re-derived at alpha_1 before freeze. The owner approved more
   runs. A later campaign after an engine change is NOT a new family: the decision it serves is the same. Section 5's NOT MET
   row no longer closes T117. The draft stays pre-freeze.
+- **ACCEPTED by the launcher (D-83).** The cost, stated plainly (launcher D-83's addition). Section 4.1b's analytic starting point
+  cap = ceil(1.03 x m x (SD_upper/delta)^2), with m = (z_{1 - alpha_i/2} + z_{p*})^2 for the transport leg (alpha_i/2 per form),
+  z_{p*} = 1.9188 (p* = .8^(1/8)), and 23-25 arm runs per seed (section 4.2, design (beta)). Stdlib `statistics.NormalDist`,
+  this commit's integrator; the alpha = .05 row reproduces section 4.1b's 16 / 35 / 62 exactly (the positive control):
+
+  | Campaign | family alpha | transport form | m | cap at SD_upper/delta = 1 / 1.5 / 2 | arm runs (23-25 per seed) |
+  |---|---|---|---|---|---|
+  | (old, .05) | .0500000 | .0250000 | 15.04 | 16 / 35 / 62 | 368-400 / 805-875 / 1,426-1,550 |
+  | 1 (this) | .0303964 | .0151982 | 16.68 | 18 / 39 / 69 | 414-450 / 897-975 / 1,587-1,725 |
+  | 2 | .0075991 | .0037995 | 21.05 | 22 / 49 / 87 | 506-550 / 1,127-1,225 / 2,001-2,175 |
+  | 3 | .0033774 | .0016887 | 23.52 | 25 / 55 / 97 | 575-625 / 1,265-1,375 / 2,231-2,425 |
+
+  These are planning numbers before the pilot measures SD (section 6 item 5); the simulation of section 4.4 sets the frozen cap.
+  Each later campaign costs more seeds for the same effect, and that cost is the price of controlling one decision's false-MET
+  rate at .05 overall.
