@@ -232,7 +232,7 @@ class LakeRecall:
         if len(self._episodes) < 3:
             return
         rng = random.Random((self.seed * 2654435761 + len(self._episodes)) & 0xFFFFFFFF)
-        slots = sorted({k for e in self._episodes for k in e})
+        slots = sorted({k for e in self._episodes for k in e if k not in PROVENANCE_SLOTS})
         for arity in range(1, len(slots) + 1):
             dists = []
             for _ in range(self.null_samples):
@@ -276,9 +276,9 @@ class LakeRecall:
         content = {k: v for k, v in cue.items() if k not in PROVENANCE_SLOTS}
         if not content:
             return []
-        cue_ev = encode_episode(cue)
+        cue_ev = encode_episode(content)
         got = self._nearest_d(cue_ev, min(len(self._episodes), max(1, int(k)) + _FETCH_PAD))
-        null = self._nulls.get(len(cue))
+        null = self._nulls.get(len(content))
         out = []
         for d, i in got:
             ep = self._episodes[i]
