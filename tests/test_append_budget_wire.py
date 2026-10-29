@@ -309,3 +309,66 @@ def test_the_record_command_reproduces_the_committed_seeds_on_their_tier():
         assert abs(have - want) <= RECORD_REL_TOL * want, (
             f"tag {tag}: re-record {have} B vs committed {want} B on tier {got['tier']}"
         )
+
+
+def _record_in_process(monkeypatch, **kwargs):
+    """record_append_rates called in-process with tempfile.mkdtemp spied, so the test knows which
+    temp home it made. Returns (result, the homes it created)."""
+    import tempfile
+
+    from snn_data_lake.substrate.lake_engine import record_append_rates
+
+    made = []
+    real = tempfile.mkdtemp
+
+    def spy(*a, **k):
+        p = real(*a, **k)
+        made.append(p)
+        return p
+
+    monkeypatch.setattr(tempfile, "mkdtemp", spy)
+    return record_append_rates(0, 3, **kwargs), made
+
+
+@pytest.mark.parametrize("prior", ["set", "unset"])
+def test_record_in_process_restores_the_callers_home_and_removes_its_own(monkeypatch, prior):
+    """Called in-process, the recorder must leave the caller as it found it: NORD_HOME back to its
+    prior value (unset included), the append observer back to the caller's, and its own temp home
+    REMOVED -- a re-record otherwise redirects the caller's home for the rest of the process and
+    leaks a temp lake per run (0x07 alone ~37 MB at the recorded mean). Launcher MINOR, fb0ecfe5."""
+    import os
+
+    with tempfile.TemporaryDirectory() as callers_home:
+        if prior == "set":
+            monkeypatch.setenv("NORD_HOME", callers_home)
+        else:
+            monkeypatch.delenv("NORD_HOME", raising=False)
+        before = os.environ.get("NORD_HOME")
+        sentinel = []
+        home_mod.set_append_observer(lambda tag, n: sentinel.append(tag))
+        try:
+            got, made = _record_in_process(monkeypatch)
+            assert got["per_tag"], got
+            assert os.environ.get("NORD_HOME") == before, (before, os.environ.get("NORD_HOME"))
+            assert made and not any(os.path.exists(p) for p in made), made
+            obs = home_mod.set_append_observer(None)
+            obs(0x07, 1)
+            assert sentinel == [0x07], "the caller's append observer was not restored"
+        finally:
+            home_mod.set_append_observer(None)
+
+
+def test_record_keep_home_keeps_the_temp_home_and_still_restores_the_callers(monkeypatch):
+    """--keep-home (off by default) keeps the temp lake for inspection; the caller's NORD_HOME is
+    restored either way, and the kept path is reported."""
+    import os
+    import shutil
+
+    monkeypatch.delenv("NORD_HOME", raising=False)
+    got, made = _record_in_process(monkeypatch, keep_home=True)
+    try:
+        assert os.environ.get("NORD_HOME") is None
+        assert got.get("home") in made and os.path.isdir(got["home"]), (got.get("home"), made)
+    finally:
+        for p in made:
+            shutil.rmtree(p, ignore_errors=True)
