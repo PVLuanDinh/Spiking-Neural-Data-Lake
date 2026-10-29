@@ -150,8 +150,8 @@ No other name, logo, palette, typeface or voice commitment has been established.
   with a real PROVENANCE vocabulary distinguishing live from frozen/sleep-only/literal/duplicate.
 - The real typed connectome (`snn_data_lake.connectome`) for inter-region tracts.
 - A real SO-101 arm behind the allow-listed command path, with a rendered `/api/arm.png` view.
-- `docs/POLICIES.md` (2027 lines) as the authoritative governance record, including the measured
-  incidents cited above.
+- `docs/POLICIES.md` (about 1,300 lines) as the authoritative governance record; the measured incidents
+  it cites are kept in `docs/POLICIES_EVIDENCE.md` *(corrected 2026-10-29: this said 2027 lines, before the split)*.
 
 **Absences future work must not fabricate:** there are no users beyond the owner, no testimonials,
 no benchmarks about this UI, no adoption numbers, no uptime claims, and no third-party validation.
