@@ -27,6 +27,7 @@ import tempfile
 from pathlib import Path
 
 from snn_data_lake.substrate.binlog import BinLog
+from snn_data_lake.substrate.episode_index import EpisodeIndex
 from snn_data_lake.substrate.lake_bridge import located_records
 from snn_data_lake.substrate.lake_index import LakeIndex
 
@@ -69,6 +70,25 @@ def build_index(root: str | os.PathLike, index_path: str | os.PathLike) -> int:
         idx.close()
 
 
+def build_episode_rows(root: str | os.PathLike, index_path: str | os.PathLike) -> int:
+    """The episode index's rows (R1 P3 S7), built by the SAME builder the live path uses, over a BinLog
+    INSTANCE this gate owns (a temp or quiesced root only -- the `--root` restriction stands)."""
+    lake = Path(root) / "brain_lake.bin"
+    if not lake.exists():
+        return 0
+    ix = EpisodeIndex(BinLog(str(lake), dedup=False), index_path)
+    try:
+        return ix.rebuild()
+    finally:
+        ix.close()
+
+
+def _build_all(root: str | os.PathLike, index_path: str | os.PathLike) -> int:
+    n = build_index(root, index_path)
+    build_episode_rows(root, index_path)
+    return n
+
+
 def _delete_index(index_path: Path) -> None:
     for suffix in ("", "-wal", "-shm"):
         p = Path(str(index_path) + suffix)
@@ -79,12 +99,12 @@ def _delete_index(index_path: Path) -> None:
 def assert_rebuild(root: str | os.PathLike, index_path: str | os.PathLike) -> tuple[bool, str]:
     """The gate: build -> snapshot digest -> DELETE -> rebuild -> digests equal."""
     index_path = Path(index_path)
-    build_index(root, index_path)
+    _build_all(root, index_path)
     idx = LakeIndex(index_path)
     before, rows = idx.logical_dump_digest(), idx.row_count()
     idx.close()
     _delete_index(index_path)
-    build_index(root, index_path)
+    _build_all(root, index_path)
     idx = LakeIndex(index_path)
     after = idx.logical_dump_digest()
     idx.close()
@@ -113,7 +133,7 @@ def self_check() -> int:
         planted = idx.logical_dump_digest()
         idx.close()
         _delete_index(root / INDEX_NAME)
-        build_index(root, root / INDEX_NAME)
+        _build_all(root, root / INDEX_NAME)
         idx = LakeIndex(root / INDEX_NAME)
         rebuilt = idx.logical_dump_digest()
         idx.close()
@@ -124,7 +144,7 @@ def self_check() -> int:
         # RED 2 / lake-tracking control: one appended record must move the rebuilt digest.
         BinLog(str(root / "brain_lake.bin"), dedup=False).append(b"\x05new-record")
         _delete_index(root / INDEX_NAME)
-        build_index(root, root / INDEX_NAME)
+        _build_all(root, root / INDEX_NAME)
         idx = LakeIndex(root / INDEX_NAME)
         grown = idx.logical_dump_digest()
         idx.close()
