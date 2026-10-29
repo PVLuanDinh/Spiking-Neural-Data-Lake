@@ -338,7 +338,9 @@ Per primary contrast, and then for the campaign:
 
 The owner's standing order counts the engine done as "all rows + G9 on origin/main". This draft reads "G9" there as
 **a G9 disposition of record on origin/main**; whether an INCONCLUSIVE or NOT MET disposition counts as "done", or only
-MET does, is the owner's to say (section 6 item 8). Under no outcome does this campaign promote anything past T117.
+MET does, is the owner's to say (section 6 item 8). **ANSWERED by the owner 2026-10-29 (#6513; see the last section): only
+a MET disposition counts.** A NOT MET or INCONCLUSIVE G9 means more engine work, not a close. Under no outcome does this campaign
+promote anything past T117.
 
 Conflict disclosed (Fold 1, lens C C-m3: three sites, not one). DI's g9-gaps addenda at `d8b3ef73` make the frozen
 floor the variance source at THREE places: `DI:172` (addendum A: sleep-off SD "from the frozen-engine pilot (section
@@ -359,8 +361,8 @@ FOLD1 is not on this base (Fold 2, #6589 MINOR-4).
 | 4 | Registered before the pilot (author choice): per-contrast delta and delta_vii (FOLD1 owed 7); G-a's floor rate pi0 and its planned rate pi1; the pilot's SD-bound ratio r (section 4.1's pilot count rule); the budget B (section 2); the train/validation/test split rule and sizes; O3's equivalence margin | no (author choice) |
 | 5 | Pilot P0 on a disjoint seed block: paired-difference SD per contrast, bootstrap CI | YES |
 | 6 | n0, the cap, the look sizes, then the section 4.4 simulation (joint P(MET \| delta) >= .8) | YES (simulation; no brain) |
-| 7 | Owner (#6514): if the cap (section 4.1b: 16 / 35 / 62 seeds at SD_upper/delta = 1 / 1.5 / 2, about 23-25 arm runs per seed) exceeds host capacity, accept an expected INCONCLUSIVE, fund the runs, or narrow the primary family | no (owner answer) |
-| 8 | Owner: does a NOT MET or INCONCLUSIVE G9 disposition count as "G9 on origin/main" for "engine done"? | no (owner answer) |
+| 7 | Owner (#6514): if the cap (section 4.1b: 16 / 35 / 62 seeds at SD_upper/delta = 1 / 1.5 / 2, about 23-25 arm runs per seed) exceeds host capacity, accept an expected INCONCLUSIVE, fund the runs, or narrow the primary family. **ANSWERED 2026-10-29: fund the runs** (last section) | no (owner answer) |
+| 8 | Owner: does a NOT MET or INCONCLUSIVE G9 disposition count as "G9 on origin/main" for "engine done"? **ANSWERED 2026-10-29: no, only MET** (last section) | no (owner answer) |
 | 9 | Panel: adopt A10 (sleep-off) and A11 (floor) into PLAN:2043-2053 and TASKS:257, and correct TASKS:257's self-contradicting "sleep OFF" note (FOLD1 finding 10); adopt A9 (O1's untrained twin and the inert baseline), A0-shuf, A0c/A0a and the O3 shams likewise; remove "S = 8 under Part F's rule" from PLAN:2055 and TASKS:257 (Fold 1, lens C C-m8; POL:180-182) | no (panel + integrator edit) |
 | 10 | O3's workspace rows: are both workspaces on the engine's path at the built G9? (read the built tree) | no (static read after the build) |
 | 11 | #6231's persistence build GREEN before event (c) and O4 are read, or E.2's named-not-persisted list written | build (YES for its tests) |
@@ -428,3 +430,17 @@ Docs only: nothing run. Per-finding dispositions: `lanes/engine-1024/fold-g9-row
     disclosure's item 14 (c) marked RULED (MINOR-4).
 11. Section 6: item 4 adds the pilot ratio r; item 14 (b), (c) RULED, (a) OWED from pilot cost only (MINOR-4).
 12. This file: the D-72 entry above (NIT).
+
+## Owner answers, 2026-10-29 (relayed by the launcher from the owner's chat, transcript e49a47ce; integrator fold, pre-data)
+
+- **#6513 (section 6 item 8), verbatim:** "a NOT MET or INCONCLUSIVE G9 does not count towards Engine done, you should start a
+  research and debate loop right using /webgrab right away if you run into any novel problems." So "engine done" needs a G9
+  **MET** disposition of record on origin/main. NOT MET (ENGINE FLOOR included) and INCONCLUSIVE route to more engine work.
+  The second clause is a standing order for every novel problem this campaign meets: a research lane using webgrab plus a
+  multi-lens debate, BEFORE a fix is built.
+- **#6514 (section 6 item 7), verbatim:** "Fund more runs". If the powered cap of section 4.1b exceeds what this host runs in a
+  working session, the campaign runs to that cap on this host with a longer wall-clock (approved). It does NOT narrow the
+  primary family or accept an expected INCONCLUSIVE in place of the cap. Any PAID cloud compute still needs the owner's
+  confirmation of the exact spend first (launcher relay). Section 4.2's "the owner decides" is thereby decided.
+- These answers change no bar, no seed block and no decision rule of this draft: they settle what a disposition MEANS for the
+  engine and how its cap is paid for. The draft stays pre-freeze (section 6 items 1-6 and 9-14 are unchanged).
