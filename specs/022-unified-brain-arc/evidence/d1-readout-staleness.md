@@ -763,3 +763,48 @@ This addendum only appends; nothing above is edited. It replaces F3's "whichever
 - **No second drift-reading function may be added** (P2). A new reader needs an amendment to D0, not a new function elsewhere.
 - Correlation primitives stay in `infra/_mathutils` (`pearson`), as F3 already says.
 - Nothing is built by this addendum; see the MAP.md D0 amendment of the same date for the module's names.
+
+---
+
+## Correction 2026-10-29 to the addendum above: the drift home is the BUILT section 2.4 code (integrator, after policy-enforcer #6757)
+
+Source: policy-enforcer #6757 (MAJOR-1), integrator correction of G5 S.5 row 5 (round 2, 2026-10-29). This correction only appends;
+nothing above is edited, but it **replaces the first bullet of the addendum above** ("One drift home: D0's module") and the sentence
+"none builds its own: this row's section 2.4". The earlier text gave ownership to an unbuilt module and ignored code that exists.
+
+**Ownership.** At this file's base (c0f90736) section 2.4 is built: `src/snn_data_lake/instruments/readout_staleness.py:269-300`, under
+the header "drift readings (section 2.4)". Under F3's own rule (":552 whichever builds first owns") that code is the owner. The ONE drift
+home is therefore the drift section of `readout_staleness.py`. D0's module (research/representational-drift/MAP.md D0) does not own a
+second copy of anything built here; it imports it.
+
+**Disposition per base function** (checked at c0f90736 and at c4c10b28 by pathspec grep; each is defined once):
+- `survivor_pairs(n_prev, keep, n_cur)`: stays. Pairs surviving units across rows; a D0 reader that compares sessions takes its unit
+  set from here or from F.1's intersection rule, never a second pairing function.
+- `rate_drift(S_prev, S_cur, prev_idx, cur_idx)`: stays, and is **distinct-from** `pv_correlation`, `tuning_correlation`,
+  `rate_correlation` and `rsa_correlation`. It is a norm ratio ||S_r - S_{r-1}||_F / ||S_{r-1}||_F (a magnitude, defined on surviving
+  units, nan on a zero reference). The correlations are scale-free and read pattern similarity; the two answer different questions and
+  neither can stand in for the other.
+- `readout_projector(beta, tol)` and `visible_fraction(dS, P)`: stay. **D0's `readout_null_split(delta, W)` (MAP.md D0) IS this pair**
+  (the null-space split ||dS P||^2 / ||dS||^2 of spec 2.4). D0 imports `readout_projector` and `visible_fraction`; it does not rewrite
+  them. If a D0 caller wants the `(delta, W)` signature, that is a one-line wrapper over the pair, not a second SVD or projector.
+- Not yet built anywhere: `procrustes_realign`, `pv_correlation`, `tuning_correlation`, `rate_correlation`, `rsa_correlation`,
+  `DriftReading`, `read_drift`, `decoder_across_days`. When built they go INTO this same drift section, or the whole section moves into
+  one drift module in ONE P2 merge commit together with its tests (tests/test_readout_staleness.py lines 226-254, 357-366 and 523 call
+  the 2.4 names today and move with them). Never a second module beside it.
+- `rsa_drift` is built, on the unlanded branch claude/g9-gaps-1029 (f0f50385), in `infra/_mathutils.py:186`. At the ARC6 landing it is
+  placed in, or imported by, the same drift section, so exactly one copy exists.
+
+**Restated sentence.** "L1b-STALE's section 2.4 is the drift home, built at c0f90736. G5 Part E's P-E0 (`pv_correlation` alone) and G9's
+criterion 1 import from it; D0 imports `readout_projector` and `visible_fraction` and adds only the readers that do not exist." No second
+drift-reading function may be added elsewhere (P2); a new reader is added to this section.
+
+**Dormancy table.** `readout_staleness.py:50-52` lists `rate_drift`, `readout_projector` and `visible_fraction` as NOT_A_RULE. Whoever
+moves them keeps those entries with the functions.
+
+**Census correction (MINOR-2).** The earlier round reported one pre-existing second `pearson` (`rpe_charge.py:343`). The pattern
+`def pearson` missed underscore names. At c0f90736 and at c4c10b28 there are five (pattern `def _*[a-z0-9_]*pearson`):
+`infra/_mathutils.py:44`, `instruments/rpe_charge.py:343`, `faculties/agency_monitor.py:1118` (`_t079_pearson`),
+`faculties/grid_place_map.py:49` (`_pearson`, a population-vector correlation: the future `pv_correlation` must dispose of it) and
+`growth/h01_ingest.py:894` (`_pearson`). These are P2 findings for the integrator; nothing is changed here.
+
+Nothing is built by this correction.
