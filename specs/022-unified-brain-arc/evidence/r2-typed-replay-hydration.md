@@ -1459,7 +1459,7 @@ Facts, stated without a ruling:
    line in D1) stays OWED.
 2. Review of this amendment (policy-enforcer, static) and its landing as a frozen amendment dated before any confirmatory read.
    Until then it is a draft and the confirmatory licence stays withheld.
-3. A dev-seed run (15000-15007 only) of the c4c10b28 instrument, under the heavy-run lock after the campaign: the R2-c4
+3. A dev-seed run (15000-15007 only) of the FIXED instrument (claude/r2-instr-fix-1029@b311e78d until it lands, then its landed sha), under the heavy-run lock after the campaign: the R2-c4
    positive controls first (planted 1-ulp weight change, one swapped ring entry, the omission arms each move their records),
    per 2.5, because a failed positive control holds the disposition. The same run carries the R2-c2/R2-c4 observables at head. The instrument itself runs no schedule at two heads (`--head base` is the e1b3ae3c I arms, `BASE_ROLES` only, never the parent of
    f2534a94), but the dev-seed RUNBOOK of this run carries D1 item 4's `_sleep_tick` output-equivalence check (lanes/engine-1024/r2-devprep-row
@@ -1472,6 +1472,9 @@ Facts, stated without a ruling:
 4. A dev-seed run of the constructed reds of 2.4 and of R2-c7's reds (2.10), including the torn and landed arms under the
    survivor's resident BinLog cache (D1 item 2): each must fire on a dev seed; a red that fires on none halts the arc (R2-c3, P8).
 5. Re-measure the lake-byte records of K0 and K1 and the event sizes (D1 items 1 and 3) at c4c10b28 before any is quoted.
+5a. The finding (iii) red-first test exists (tests/test_restart_circadian.py), and the launcher's D-79 fix (claude/circadian-p4b-1029) has
+   landed with its review, before any seed outside the dev block (15010-15067); then R2's K3 arms assert the resumed phase (D1.2).
+5b. The K1g (R2-c7, P3) arms run on dev seeds 15000-15007 under the heavy-run lock and each 2.10 red fires, before any P3 seed (15050-15067).
 6. Only then the confirmatory reads, in the registered order and block (P1 15010-15017, P2 15030-15037, P3 15050-15057), once
    each; reserves 15020-15027, 15040-15047, 15060-15067 only per the registered reserve rule.
 
