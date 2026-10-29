@@ -482,3 +482,40 @@ def test_s2_the_contract_check_rejects_a_dropping_a_continuing_and_a_truncating_
     assert not _contract_ok(dropping, clean)
     assert not _contract_ok(continuing, torn)
     assert not _contract_ok(truncating, torn)
+
+
+# ---- the LakeIndex range / meta / clear API the posting rows need (2.11 P3 (b), 2.21-2.23) ------
+def test_lake_index_range_reads_meta_and_clear(tmp_path):
+    # P3 (b): the additive range read the posting rows need (key = token hash + frame offset)
+    from snn_data_lake.substrate.lake_index import LakeIndex
+
+    idx = LakeIndex(tmp_path / "i.db")
+    rows = [(256, f"aa:{o:016x}", "lake", o) for o in (40, 8, 120)] + [
+        (256, "ab:" + "0" * 16, "lake", 7)
+    ]
+    rows += [(1, "aa:" + "0" * 16, "seg", 99)]  # another tag with a colliding key prefix
+    idx.put_batch(rows, watermark=200, meta={"anchor": "x"})
+    assert [s for _k, s in idx.iter_range(256, "aa:", "aa;")] == [8, 40, 120]  # key order = offset
+    assert list(idx.iter_range(256, "aa:", "aa;")) == [(f"aa:{o:016x}", o) for o in (8, 40, 120)]
+    assert [s for _k, s in idx.iter_range(256, "aa:", "aa;", reverse=True)] == [120, 40, 8]
+    assert idx.count_range(256, "aa:", "aa;") == 3 and idx.count_range(256, "zz:", "zz;") == 0
+    assert idx.meta("anchor") == "x" and idx.meta("nope") is None and idx.applied_watermark() == 200
+    d = idx.logical_dump_digest()
+    idx.put_batch([], meta={"anchor": "y"})  # the anchor is part of the logical state
+    assert idx.logical_dump_digest() != d
+    idx.clear(256, [])
+    assert idx.meta("anchor") == "y"  # rows only: meta belongs to whoever wrote it
+    idx.clear(999, ["anchor"])  # a tag with no rows: only the named meta key goes
+    assert idx.meta("anchor") is None and idx.applied_watermark() == 200
+    assert idx.count_range(256, "", "￿") == 0 and idx.get(1, "aa:" + "0" * 16) == ("seg", 99)
+
+
+def test_lake_index_keeps_one_range_api_and_one_delete_api():
+    # Codex P3 lens 2 MINOR (P2): delete_tag, delete_meta, range_seqs and range_rows duplicated what
+    # clear and iter_range do, and only tests called them. One mechanism each.
+    from snn_data_lake.substrate.lake_index import LakeIndex
+
+    for gone in ("delete_tag", "delete_meta", "range_seqs", "range_rows"):
+        assert not hasattr(LakeIndex, gone), gone
+    for kept in ("clear", "iter_range", "count_range", "data_version"):
+        assert callable(getattr(LakeIndex, kept)), kept
