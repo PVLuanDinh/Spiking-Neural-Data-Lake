@@ -562,3 +562,37 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
 ## 12. Record
 
 (empty until the campaign's results; appended below the freeze, never edited above it)
+
+## Addendum 1 (2026-10-29, pre-data: no brain run on 23000 and up; before the bind and the GO): record identity, R3's nonce, a second R2-dry look
+
+Appended below the freeze. Nothing above is edited. This addendum comes from the build reviews of B1-B3:
+- build-ra #5911 and build-rb #5912, which AGREE;
+- the policy-enforcer #5909, which AGREEs;
+- the delegate's ruling that build-rb MINOR-1 must be fixed before any GO.
+It changes no endpoint, threshold, seed, look or disposition.
+
+**A1-1. Every result record carries its own identity, and R3 requires a fresh run.**
+- At build head `38469120`, a byte-copy of `real_23000.json` saved as `real_23000_r2.json` passes `load_run`'s tag
+  check AND R3 (0 flips, identical series): the record held no tag of its own. A control that a file copy satisfies
+  measures nothing (P8: a control that is not the method itself).
+- **The record.** Each record written by `rpe_charge run` now carries `arm`, `seed`, its out-file tag (the `--out`
+  file's stem) and a per-run nonce (uuid4, pid, start time).
+- **The loader.** `load_run` refuses a record whose embedded tag differs from its file name. For this design, a record
+  with no embedded identity is refused too.
+- **R3.** The repeat's nonce must DIFFER from `real_23000`'s, and its recorded series must stay identical.
+- **Its red:** a byte-copy repeat FAILS R3.
+
+**A1-2. The native check's scope (section 3).** "ONE value across a tier's runs" binds THIS design.
+- Here, a record without `tier.native`, or two values in a tier, is VOID, as built.
+- Legacy designs (E1, E1b) whose records carry no native value print "native n/a" and are not VOIDed. A mix of present
+  and absent, or two values, stays VOID.
+- This keeps E1b's compare reproducible at HEAD. E1c reproduces from `1b6e53ab` (section 9, B0).
+
+**A1-3. R2-dry runs TWO looks (section 6).**
+- The first is `fixture_runs("noharm")`. Its d_s are all zero, so its statistics are degenerate (t 0, SD 0), with
+  CONTINUE and the pinned line.
+- The second is a non-degenerate kind (named in the fold report), whose d_s are non-zero and not all equal, on
+  23000-23063 with the planted frozen count 9. Its rendered look-1 disposition line is pinned as a string by the
+  fold's test, and that string is the second bar.
+- The second look exercises the stratum's t and k/n on real numbers, so a seed-pairing bug in the stratum code cannot
+  hide behind zeros (build-rb MINOR-4; panel C's note for the step-6b bind review).
