@@ -938,16 +938,16 @@ def test_planted_events_in_a_persisting_lake_are_refused_by_hydration():
             brain.close()
 
 
-# ---- the restart: a real child killed after the night's flush, a real restoring process ----------
+# ---- the restart: real children over one private home (the kill itself is replay_hydration's) ----
 _CHILD = r"""
-import json, os, sys
+import json, sys
 from snn_data_lake.engine.brain import make_brain
 
 mode = sys.argv[1]
 b = make_brain(seed=15000, persist=True, device="cpu")
 neuro = b.neuro
 assert b._r2_fault is None, b._r2_fault
-log, state = [], {"done": False}
+log = []
 _observe = neuro.observe
 
 
@@ -972,21 +972,6 @@ def snap():
     }
 
 
-def model():
-    m = neuro._model
-    return {"W": m.W.tolist(), "b": m.b.tolist(), "beta": m.beta.tolist(),
-            "units": neuro._n_units, "traj": neuro.trajectory, "ticks": neuro.ticks}
-
-
-def to_next_refit():
-    rows = len(neuro.trajectory)
-    for _ in range(400):
-        neuro.tick()
-        if len(neuro.trajectory) > rows:
-            return
-    raise SystemExit(4)
-
-
 if mode == "close":
     for i in range(30):  # percepts, a teach between them (a learner effect), then a clean close
         b.tick()
@@ -1004,30 +989,10 @@ if mode == "teach_only":
 
 if mode == "restore":
     emit("RESTORED", {**snap(), "cursor": b.brain._ixn._cursor, "fault": b._r2_fault})
-    to_next_refit()
-    emit("MODEL", model())
     b.close()
     sys.exit(0)
 
-target = "_flush_growth" if mode == "kill_growth" else "_flush_prototypes"
-original = getattr(b, target)
-
-
-def boundary(*a, **k):
-    r = original(*a, **k)
-    if len(neuro.trajectory) >= 1 and not state["done"]:
-        state["done"] = True
-        emit("BOUNDARY", {**snap(), "log": log})
-        to_next_refit()
-        emit("TWIN", model())
-        os._exit(0)
-    return r
-
-
-setattr(b, target, boundary)
-for _ in range(600):
-    b.tick()
-sys.exit(3)
+sys.exit(2)
 """
 
 
@@ -1061,42 +1026,24 @@ def _run_child(mode, home_dir):
     return out
 
 
-def _restart_bar(twin_buf, twin_model, restored, restored_model):
-    """The registered K1g bar (2.10), no tolerance, no filtering: the hydrated `_buf_x`/`_buf_y`/
-    `_categories` equal the uninterrupted twin's AND the model after the next refit (W, b, beta,
-    units, trajectory row) equals the twin's. Raises AssertionError on any difference."""
-    assert restored["prev_none"] and restored["observed"] == 0, "chronology is not hydrated"
-    assert not restored["refusals"], restored["refusals"]
-    assert restored["buf_x"] == twin_buf["buf_x"]
-    assert restored["buf_y"] == twin_buf["buf_y"]
-    assert restored["cats"] == twin_buf["cats"]
-    for part in ("W", "b", "beta", "units", "traj", "ticks"):
-        assert restored_model[part] == twin_model[part], f"the refit's {part} differs from the twin"
+def test_restart_hydrated_buffer_and_next_refit_equal_the_uninterrupted_twin(tmp_path):
+    """K1g on dev seed 15000, CPU, through the instrument's own roles (R2-c7's one reading): the
+    restore after a kill inside the night's `_flush_growth` call holds the twin's buffer and its
+    model after the next refit, with no filter and no tolerance. A planted wrong restored model or
+    buffer must make the bar fail (a test of the test)."""
+    from snn_data_lake.instruments import replay_hydration as rh
 
-
-@pytest.mark.parametrize("mode", ["kill_prototypes", "kill_growth"])
-def test_restart_hydrated_buffer_and_next_refit_equal_the_uninterrupted_twin(mode):
-    """K1g on dev seed 15000, CPU. `kill_growth` dies at the REGISTERED boundary (the tick after
-    `_flush_growth`); `kill_prototypes` also after `_flush_prototypes`. Both: the restored buffer
-    and the model after the next refit equal the twin's with no filter and no tolerance (Codex
-    #2844). A planted wrong restored model must make the bar fail (a test of the test)."""
-    from snn_data_lake.substrate import home
-
-    with home.throwaway_home() as private:
-        home.require_isolated_home()
-        first = _run_child(mode, private)
-        assert {"BOUNDARY", "TWIN"} <= set(first), first.keys()
-        twin_buf, twin_model = first["BOUNDARY"], first["TWIN"]
-        assert twin_buf["buf_x"], "the twin must hold transitions past its first refit"
-        second = _run_child("restore", private)
-        assert {"RESTORED", "MODEL"} <= set(second), second.keys()
-        _restart_bar(twin_buf, twin_model, second["RESTORED"], second["MODEL"])
-        for part, wrong in (("W", [[1.0]]), ("beta", [[0.0]]), ("units", -1), ("traj", [])):
-            planted = {**second["MODEL"], part: wrong}
-            with pytest.raises(AssertionError):
-                _restart_bar(twin_buf, twin_model, second["RESTORED"], planted)
-        with pytest.raises(AssertionError):
-            _restart_bar(twin_buf, twin_model, {**second["RESTORED"], "buf_y": []}, second["MODEL"])
+    arms = rh.run_seed(DEV_SEED, tmp_path, roles=["res_K1g", "twin_K1g"])
+    twin, res = arms["twin_K1g"], arms["res_K1g"]
+    assert twin["before"]["buf_x"], "the twin must hold transitions past its first refit"
+    assert twin["model"]["refit_row"], "the bar must compare a refit"
+    assert res["fault"] is None and not res["before"]["refusals"]
+    assert res["before"]["prev_none"] and res["before"]["observed"] == 0, "chronology is hydrated"
+    assert rh.percept_equal(res, twin)
+    for part, wrong in (("W", [[1.0]]), ("beta", [[0.0]]), ("units", -1), ("traj", [])):
+        planted = {**res, "model": {**res["model"], part: wrong}}
+        assert not rh.percept_equal(planted, twin), part
+    assert not rh.percept_equal({**res, "before": {**res["before"], "buf_y": []}}, twin)
 
 
 def test_clean_close_checkpoint_and_restart_keeps_percepts_teach_and_the_chain_reconciled():
