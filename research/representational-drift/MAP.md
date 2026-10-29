@@ -417,3 +417,40 @@ Source: `g5-readout-variants.md` fold 1 F.6 (claude/g5-settle-1029@2157ee27) and
   P-E0 uses `pv_correlation` alone.
 - G9's criterion 1 imports the readers (`rate`, `tuning`, `rsa`, `pv`) from here.
 - Neither defines a drift-reading or Procrustes function of its own (P2). Correlations come from `infra/_mathutils.pearson`.
+
+---
+
+## Correction 2026-10-29 to the D0 amendment above: D0 imports the built section 2.4 (integrator, after policy-enforcer #6757)
+
+Source: policy-enforcer #6757 (MAJOR-1, MINOR-3) and the integrator's correction of G5 S.5 row 5. Appends only; nothing above is edited,
+and nothing is built. It **replaces the first sentence of the amendment above** ("`instruments/representational_drift.py` owns...").
+
+**Why.** The drift home is the BUILT section 2.4 code, `src/snn_data_lake/instruments/readout_staleness.py:269-300` (c0f90736):
+`survivor_pairs`, `rate_drift`, `readout_projector`, `visible_fraction`. F3's rule is "whichever builds first owns".
+
+**D0's owned names now:**
+- `readout_null_split(delta, W)` is **not a new function**. It IS `readout_projector` + `visible_fraction` in `readout_staleness.py`. D0
+  imports them; a `(delta, W)` convenience is at most a one-line wrapper over that pair, never a second SVD or projector.
+- `survivor_pairs` and `rate_drift` stay in `readout_staleness.py` and are imported. `rate_drift` (a norm ratio) is distinct from
+  `pv_correlation`, `tuning_correlation`, `rate_correlation` and `rsa_correlation` (scale-free correlations): different quantity, so no
+  merge.
+- `decoder_across_days` is D0's, but is **a placement, not a new home**: it goes in the drift section of `readout_staleness.py`, or in
+  the merged drift module described next. It is not built anywhere yet.
+- `procrustes_realign`, `pv_correlation`, `tuning_correlation`, `rate_correlation`, `rsa_correlation`, `DriftReading`, `read_drift`:
+  unbuilt. When built they go into the same drift section, or the whole section moves into one drift module in ONE P2 merge commit with
+  its tests. Never a second module beside it. The module name `instruments/representational_drift.py` is the target name of that merged
+  module; until then `readout_staleness.py` is the home.
+- `rsa_drift`: built on the unlanded branch claude/g9-gaps-1029 (f0f50385), at `infra/_mathutils.py:186`. At the ARC6 landing it is
+  placed in (or imported by) the same drift section; the `_mathutils` copy is not kept alongside. Exactly one RSA function.
+
+**Import rule (restated).** Part E's alignment module imports `procrustes_realign` from the drift home and keeps only its anchors and
+readout. P-E0 uses `pv_correlation` alone. G9's criterion 1 imports the readers from the drift home. Neither defines a drift-reading or
+Procrustes function of its own (P2). The F.1 unit rule and the F.5 guard apply to every reader.
+
+**Named P2 debt (MINOR-3, restored from g5-readout-variants.md F.5/F.6).** Three flat-vector semantics are live in the tree today
+(`infra/_mathutils.py:44` `pearson` raises ZeroDivisionError; `faculties/grid_place_map.py:49` `_pearson` returns 0.0;
+`faculties/agency_monitor.py:1118` `_t079_pearson` returns None), and `read_drift`'s explicit flag would be a fourth. Owner: the lane that
+builds the drift readers (the integrator assigns it). X.3 row 8: a caller census of `_mathutils.pearson`, then either one guard in the
+shared primitive or the consolidation of the guarded copies. The shared helper does not change in this arc. A full census at c0f90736
+finds five `pearson` definitions (also `instruments/rpe_charge.py:343`, `growth/h01_ingest.py:894`); `grid_place_map._pearson` is a
+population-vector correlation that `pv_correlation` must dispose of.
