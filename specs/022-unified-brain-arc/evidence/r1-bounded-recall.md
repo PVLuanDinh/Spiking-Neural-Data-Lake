@@ -988,3 +988,81 @@ public input constructions survive, or need the absent registered candidate rest
   against the A2 amendment (A4 already says so). `claude/r1` is a source to port from, never merged. F1-F4 are done on
   `claude/r1-port-1029@5f679c0d` (enforcer AGREE #6519). B4 step 3's static part (the A2 current-schema C8 fixture and the A4
   generator/oracle core I1-I7) is lane r1-static's, on `claude/r1-static-1029`; its report lists what stays owed.
+
+## DATED STATIC ADDENDUM 2026-10-29 -- State at c4c10b28 (lane r1-audit; static + docs only; no data read, no test run, no bar changed)
+
+Method: file reads and `git.exe` only at c4c10b28 (worktree claude/r1-audit-1029); "then" lines are `git show e1b3ae3c:<file>` (the
+base this file's section 1 was re-taken at). Branch facts: `claude/r1` forks at e1b3ae3c, is 89 commits ahead of c4c10b28 and is the ONLY
+branch holding 4488fd9e (`git branch -a --contains 4488fd9e` = claude/r1 alone). `claude/r1amend-1015` and `claude/r1build-1015` are
+ancestors of c4c10b28 (0 commits ahead): they hold nothing main lacks. No claim below is a run result; nothing was executed.
+
+### B1. T102 clause checklist (T102 text: tasks.md:231)
+
+| T102 clause | State | Where |
+|---|---|---|
+| preserve attractor (working) tier | BUILT on main | engine/brain.py:3576 `EpisodeConsolidator.recall_episode` (sleep/episode_consolidation.py:390; capacity_for :144) |
+| preserve window tier | BUILT on main | brain.py:3581-3598 + substrate/lake_recall.py `LakeRecall` (moved there by 4b2752b5 "move lake recall into substrate") |
+| preserve deep tier | BUILT on main (the incumbent scan) | brain.py:3599-3616 over `home.load_episodes` (home.py:1504) |
+| verify candidates in source slot space | PARTIAL. Window: BUILT on main (lake_recall.py:118 `verify_slots`). Deep: NOT slot-verified on main (brain.py:3605 `str(ep.get(k)) == str(v)`; `_is_subcue` lake_recall.py:199 same shape). Working: not verified (Q5) | F1 fix is BRANCH ONLY: claude/r1 brain.py:3580-3585 `is_subcue`, lake_recall.py:120 `PROVENANCE_SLOTS`, tests/test_r1_recall_fixes.py |
+| cover old / ambiguous / absent cues | NOT BUILT on main. Pre-registered (2.2 classes C1-C10) and built on claude/r1 only | claude/r1 instruments/recall_audit.py (generator + oracle), tests/test_recall_audit.py; absent at c4c10b28 |
+| cover restart | NOT BUILT on main. Defect still live: save_episode return unchecked and window appended anyway (brain.py:2488-2492, F2); the durable copy is not stamped with `Brain._session` (F3; `_session` brain.py:5542 is R2's, landed 18ca5695) | F2/F3 fixes branch only (claude/r1) |
+| preregister workload splits and costs | BUILT (docs) on main: sections 2.2, 2.4, 2.10 and amendments 2.14-2.25, A1-A6 of this file | this file |
+| rebuildable historical index or bounded scan, only if it earns replacement | Candidate BUILT on a branch only: claude/r1 substrate/episode_index.py (329 lines in the diff), binlog `replay_located`/`read_at` (binlog.py:288,316 on branch), lake_index range reads, tests/test_episode_index.py. On main: `BinLog.replay` (binlog.py:357) only, no `replay_located`/`read_at`, no EpisodeIndex, no `iter_range`/`clear`/`data_version`. "Earns replacement" is UNDECIDED: no deciding run exists | 2.25 is a design reading only (A1, A6) |
+| the bound (B6 latency/RAM) | NOT MEASURED on the current stack. Incumbent deep scan still replays the whole lake per call (brain.py:3604-3605, ~0.3 s at 513 MB warm per 1.4(e), projected ~1.9 s warm / ~5.6 s cold at the live 3.3 GB) | 2.10, 1.4(e) |
+| R-R1 old-record / false-match / index-corruption / rebuild-equality controls | Reds I1-I7, S1-S9, 2.21-2.23 built on claude/r1 only (recall_audit.py, test_recall_audit.py, test_episode_index.py); none run on main's stack. The live-home guard they share IS on main (9092e119: home.py:423 `LiveHomeRefused`, :460 `assert_not_live_home`, :542 `require_isolated_home`, :647 `throwaway_home`; tests/test_home_guard.py). Rebuild-equality base: `LakeIndex.logical_dump_digest` (lake_index.py:103) and `gates/lake_rebuild_gate.py` are on main | |
+
+Also on main and relevant: `home.LEARNER_EVENT_KINDS` (home.py:1479), `is_autobiographical_episode` (:1484), `next_session` (:1498), all from 18ca5695
+(R2). They make the registered C8 fixture recipe in A2 owed, not satisfied.
+
+### B2. Q1-Q7 (section 2.13)
+
+| Q | State | Where |
+|---|---|---|
+| Q1 teach episodes in recall surface | ANSWERED yes, recommended by the lead and decided by the Desktop session under the owner's delegation 2026-10-04 ("Use my computer and decide for me"). NOT an owner word on Q1 itself, and NOT applied: main's `is_autobiographical_episode` still excludes teach (home.py:1479-1485), so C8 stays an expected MISS (A2) | board OWNER_BATCH_2026-10-04.md:41; OWNER_DECISIONS_2026-10-04.md:31 (item 14). Board # not recoverable from those files |
+| Q2 fact/chat report-only census | ANSWERED yes, same delegation. Not built (nothing in 2.11 builds it; no census file at c4c10b28) | same lines |
+| Q3 live lake episode count | OPEN (needs a quiesced-backup count; W_real stays a 50,000-episode projection) | A6 |
+| Q4 `session` slot on new episodes | ANSWERED yes, same delegation. R2's session machinery landed (brain.py:5542, 5632, 5777-5779) but the R1 F3 stamping of durable episodes is branch only | same lines; A2 |
+| Q5 working tier not slot-verified | OPEN (conditional on the audit measuring a trusted false match at min_conf 1.0; no audit run) | 2.13 |
+| Q6 derived index file vs in-RAM | ANSWERED conditionally: "decide after the costing" (OWNER_BATCH :42; DECISIONS :31). 2.25 records the derived file as the selected first implementation from the 14901-14903 design reading; A4 keeps that and requires current-stack costs before ADOPT. No owner word beyond that delegation | 2.25, A4 |
+| Q7 BinLog resident dedup RAM | OPEN (still resident; `BinLog` construction fills `_seen`, binlog.py near :166/:357 region unchanged in role) | A6 |
+
+### B3. Cited code, then (e1b3ae3c) vs now (c4c10b28)
+
+Section 1 and this file cite symbols, not line numbers; the lines below are the symbols resolved at both pins. "-" = absent at that pin.
+
+| symbol (file) | then | now |
+|---|---|---|
+| Brain.recall_episode_durable (engine/brain.py) | 3524 | 3545 |
+| Brain._restore_episodes | 3503 | 3524 |
+| deep-scan `all(str(ep.get(k))...)` | 3584 | 3605 |
+| live caller `recall_episode_durable(cue, min_conf=1.0)` | 4604 | 4624 |
+| wake-tick `save_episode(_ep)` | 2390 | 2488 |
+| `self._episode_window = []` | 1134 | 1225 |
+| `self._session = None` | - | 5542 |
+| verify_slots / _is_subcue / LakeRecall.recall (substrate/lake_recall.py) | 118 / 199 / 239 | unchanged |
+| home.save_episode / load_episodes | 1042 / 1058 | 1463 / 1504 |
+| home._log / KnowledgeLog.consolidate | 468 / 579 | 758 / 869 |
+| home.throwaway_home | 385 | 647 |
+| home.LiveHomeRefused / assert_not_live_home / require_isolated_home / is_autobiographical_episode / next_session | - | 423 / 460 / 542 / 1484 / 1498 |
+| BinLog.stale / _repair_torn_tail / replay / rewrite (substrate/binlog.py) | 52 / 76 / 258 / 300 | 70 / 166 / 357 / 420 |
+| LakeIndex.put_batch / get / logical_dump_digest | 75 / 93 / 103 | unchanged |
+| lake_bridge.located_records; DurableChatMemory (chat_memory.py:137); gates/lake_rebuild_gate.py first def (:36) | 64; 137; 36 | unchanged |
+| `LakeMemory` in reasoning/spike_chat_lake.py (cited in 1.3) | not found by exact string at either pin | not found at c4c10b28; the citation is stale or the class lives elsewhere |
+
+Behavior drift beyond line shifts (all from R2, 18ca5695): the deep scan and `load_episodes` are unchanged in logic for the default call, but
+`load_episodes` gained `kinds`/`all_kinds`/`strict`/`return_receipt` (home.py:1504) and the exclusion predicate is now `LEARNER_EVENT_KINDS`
+(seven kinds, home.py:1480), wider than section 1.1's teach-only description. The cost numbers in 1.4(e) were taken at e1b3ae3c and are not re-measured.
+
+### B4. What R1 owes to tick T102 (ordered; no new design)
+
+1. Owner/integrator: decide the vehicle for claude/r1's R1 content (89 commits off e1b3ae3c, 6.4k added lines incl. recall_audit.py, episode_index.py, binlog/lake_index additions): the A4 text says rebuild on main in its own arc against the A2 amendment. Needs no run.
+2. Build (offline): F1 (deep sub-cue presence+str-equal, `is_subcue`, PROVENANCE_SLOTS), F2 (check `save_episode` return), F3 (stamp durable copy with the installed `Brain._session`, refuse writes when none), F3b, F4 (visible REFUSED), each red-first in its own commit. Needs no run to write; the reds/greens need a run after the campaign.
+3. Build: the A2 current-schema C8 fixture, the A4 apparatus (generator/oracle, I1-I7, S1-S9, 2.21-2.23 folds, B3/B4 fixtures, W_live scaling in the cost driver, full B1-B6 aggregation), plus registration (REGIONS, run_selfchecks, dormancy exemption). Writing needs no run; its tests need a run.
+4. Run (after the campaign, under the lock): the reds, then the controls on exposed dev/design seeds (14000-14009, 14200-14239, 14900-14909) without recasting 2.25 as current-stack evidence.
+5. Run: new current-stack disclosed measurements for W_real and two W_live seeds (needs >= 15 GiB free on D:, one process at a time).
+6. Owner/integrator: provenance statement for non-exposure of 14100-14107 (and reserves 14108-14115, 14300-14315) beyond A1's textual audit; a fresh host release.
+7. Run: the deciding campaign on 14100-14107 (sequential-design Sample size (P1) section required if the pre-registration is re-reviewed under the P1 policy). One panel review before it.
+8. Owner answers still open: Q3 (live episode count), Q5, Q7. Q1/Q2/Q4 stand on the 2026-10-04 delegation: confirm and apply Q1 (teach in the recall surface) or keep C8 as expected MISS.
+9. On ADOPT only: swap the deep tier to the index, delete the live scan (keep it instrument-side), take `_restore_episodes` from the index's boot pass; tick T102. A measured failure is KEEP; a missing implementation is BLOCKED, not a null.
+
+Not verified by this lane: any claude/r1 test status (nothing was run); the claude/r1 line numbers beyond those cited from `git grep`; the board numbers of the 2026-10-04 decisions.
