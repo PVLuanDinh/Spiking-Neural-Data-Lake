@@ -473,6 +473,21 @@ def test_i2_attributes_through_the_real_wrappers_and_the_wrong_attribute_reds(
     assert ra.i2_check(str(iso / "home_red"), deep_attr="save_episode") is False
 
 
+def test_i2_check_confines_its_home_before_creating_or_exporting_anything(tmp_path, monkeypatch):
+    # enforcer #6734 MINOR-2: i2_check ran makedirs and set NORD_HOME BEFORE the guard, and
+    # checked the PREVIOUS NORD_HOME, not home_dir. RED on the parent: a home_dir outside the
+    # active throwaway home is created, then used; one inside the live home is created there,
+    # then refused.
+    live, iso = _decoy_home(tmp_path, monkeypatch)
+    outside = tmp_path / "outside" / "home"
+    in_live = live / "i2"
+    for bad in (outside, in_live):
+        with pytest.raises(H.LiveHomeRefused):
+            ra.i2_check(str(bad))
+        assert not bad.exists()  # refused before anything was created
+        assert os.environ["NORD_HOME"] == str(iso)  # and NORD_HOME was never moved
+
+
 # ---- S1 / S2: the located reader (r1-bounded-recall.md 2.11 P3; ported from claude/r1) --------
 MAGIC = b"SNDLBIN1"
 
