@@ -338,6 +338,10 @@ def report(d, reps=REPS, seed=SEED):
         print(
             f"  cand {lab:>4}: P(MET) {j['met']:.4f}  P(VOID) {j['void']:.4f}  INCONCLUSIVE {j['inconclusive']:.4f}"
         )
+    print("drift row (original's true rate drifted to q, candidate = original, bare 1; guard on):")
+    for lab, q in (("p0", p0), ("0.25", 0.25), ("0.30", 0.30), ("0.35", 0.35)):
+        j = joint(d, q, q, 1.0)
+        print(f"  q {lab:>4}: P(MET) {j['met']:.4f}  P(VOID) {j['void']:.4f}")
     print(
         f"always-solving original, cand p1: P(VOID) {joint(d, p1, 1.0, 1.0)['void']:.4f} at L1 {joint(d, p1, 1.0, 1.0)['void_l1']:.4f}"
     )
