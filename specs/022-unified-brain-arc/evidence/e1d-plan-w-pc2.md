@@ -636,3 +636,19 @@ from `goal_stratum` by E1D-SFOLD S2). That is the stratum's own instrument, not 
 - `reds.sh` uses seed 23000 (stack-b);
 - no manifest hashes fixture JSON bytes, which now carry a random nonce (build-ra);
 - disclosed: no dry look exercises the tail census (|d| > 0.4) (build-rb).
+
+## Addendum 3 (2026-10-29, pre-data): the pc validity equality binds this design only (E1D-SFOLD S5), and r2.ps1 passes it
+
+Appended below addendum 2. Nothing above is edited.
+
+**A3-1. Scope.**
+- B1's validity rule `pc_stub_calls == pfc_bias_calls > 0` (section 3) binds THIS design.
+- Legacy designs (E1, E1b) keep their original rule (`stub calls==0` is the harness red), because their pc records come
+  from the old `_decide_spiking` stub, which counted about 25 race calls per `_pfc_bias` call.
+- Found by re-running E1b's last production compare (look 19) at the arc head on E1b's own result files:
+  - before S5 it read VOID ("pc_8: stub calls=7475 != pfc_bias_calls=299");
+  - after S5 it reads ALL HOLD, with decision lines identical to E1b's recorded report.
+
+**A3-2. Owed by the bind** (stack-c, on #5962): `run_problems`' default design does not apply the equality, so
+`r2.ps1`'s R2a and R2c reads must pass this design (`design=E1C`) explicitly. Otherwise a stub that fires but misses
+some calls would pass. It gets a `driver_check` mutant: the default design must fail to catch a partial bypass.
