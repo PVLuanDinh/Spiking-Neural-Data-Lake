@@ -369,6 +369,12 @@ def _growth_zip(state):
     return buf.getvalue()
 
 
+def _guard_armed():
+    """True while the live-home tripwire is armed: under pytest or `SNDL_LIVE_HOME_GUARD`. By design the
+    live daemon runs unarmed on the live home (#1097/#1110: arming it everywhere would stop the brain)."""
+    return bool(os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("SNDL_LIVE_HOME_GUARD"))
+
+
 def home():
     """The durable persistence dir. `NORD_HOME` overrides; default is ~/.snn_data_lake. Created on demand.
 
@@ -379,9 +385,7 @@ def home():
     `SNDL_LIVE_HOME_GUARD` arms the same tripwire outside pytest: run_selfchecks' in-process battery
     sets it (owner 2026-10-19 option A moved the in-process self-checks out of pytest; Codex re-review
     MAJOR 2 proved a check that pops NORD_HOME would otherwise reach the live lake)."""
-    under_test = bool(
-        os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("SNDL_LIVE_HOME_GUARD")
-    )
+    under_test = _guard_armed()
     d = os.environ.get("NORD_HOME")
     if under_test and not d:
         raise LiveHomeRefused(
@@ -770,8 +774,13 @@ def _log(path=None, dedup=True):
     the measured duplicate-record red this closes. Splitting them is what made a shared cache hand
     out unshared instances.
     """
+    explicit = path is not None
     path = path or knowledge_path()
-    key = (os.path.normcase(_resolve(path)), bool(dedup))
+    resolved = _resolve(path)
+    # the default path went through home(); an explicit one must be refused the same way
+    if explicit and _guard_armed():
+        _refuse_if_live(resolved, _resolve(_default_live_home()), what="lake path")
+    key = (os.path.normcase(resolved), bool(dedup))
     with _LOG_LOCK:
         log = _LOG_CACHE.get(key)
         if log is None or log.stale():
