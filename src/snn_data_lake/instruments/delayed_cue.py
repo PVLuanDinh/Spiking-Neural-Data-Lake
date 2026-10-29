@@ -301,7 +301,9 @@ def witness_units(problem):
     """The problem's two hand threshold units over the frozen code (OR, AND; label = OR minus AND), for the
     capacity problems: 'S0C1' (probe code), 'S1C1' (history code), 'c1d', and 'ii'. For (ii) the units are
     `inseparable_mapping.check_a5`'s rule (w = +1 at dog and sky, -1 at cat and sun; thresholds -/+
-    WITNESS_THRESHOLD), re-expressed as units and pinned against check_a5's answers by the tests."""
+    WITNESS_THRESHOLD), re-expressed as units and pinned against check_a5's answers by the tests.
+    The source of truth for (ii) is `inseparable_mapping.check_a5`. D-67 (launcher 2026-10-29):
+    test-pinned alias; collapse when G1(c)'s instrument is next re-recorded."""
     if problem == "ii":
         # cp1 #21 REFUTED, with this reason: "delegate, never a copy" would need a shared helper INSIDE
         # inseparable_mapping, which is G1(c)'s campaign-recorded instrument (results record 2d714954) -- editing it
