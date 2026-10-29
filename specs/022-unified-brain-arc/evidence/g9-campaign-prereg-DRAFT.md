@@ -99,7 +99,8 @@ the registered reference (PLAN lists it first), A0a/A3a as the second form's pai
 - Both cross: P2 keeps the form with the larger paired mean difference at the stop; if the two forms' paired E1 scores are
   equivalent (TOST at delta), the owner picks (no data-driven tie-break is invented here).
 - Neither crosses: transport "changes nothing" ONLY if, for BOTH forms, A0x minus A3x is shown equivalent to 0 by TOST at
-  delta (one-sided alpha .05 each side); then transport lapses (POL:599-600). A non-crossing that is not equivalent is
+  delta (one-sided alpha .05 each side; stays .05: it decides the transport lapse, never a MET); then transport lapses
+  (POL:599-600). A non-crossing that is not equivalent is
   INCONCLUSIVE for transport, never a lapse.
 
 ### 2.2 The owner's four causal-organization arms (mechanism evidence only)
@@ -153,7 +154,8 @@ read, and not compared with a no-sleep twin" (FOLD1 finding 6).
   - **G-a (absolute solve).** A0 meets the solved predicate on the registered problem(s), counted per seed: a one-sided
     exact binomial test that A0's per-seed solve rate exceeds a registered floor rate pi0 (OWED, section 6 item 4), its
     power at a registered pi1 included in section 4.4's joint simulation. G-a is tested at the same named looks K1-K4 as
-    the legs (section 4.1), with its own Lan-DeMets O'Brien-Fleming spending of alpha .05 on the exact binomial; its
+    the legs (section 4.1), with its own Lan-DeMets O'Brien-Fleming spending of alpha_1 = .0303964 (campaign 1 of the 'engine done' series; was .05) on
+    the exact binomial; its
     power at pi1 at each stop is computed before data and stated beside its reading (Fold 2, #6589 MINOR-1).
   - **G-b (beats the inert baseline).** A0 > A9 on E1 (paired, one-sided). The inert baseline is A9 (the untrained engine
     at the same size, already an arm): **RULED (integrator D-72, 2026-10-29; section 6 item 14 (b))**; the no-feed
@@ -162,7 +164,8 @@ read, and not compared with a no-sleep twin" (FOLD1 finding 6).
     a one-sided non-inferiority test (arm minus A9 > -delta). It is read ONLY at a stop, never at an interim look, and
     "damage" is recorded only on (a) a POWERED failure at a stop (non-inferiority not shown at a stop whose mde for the
     check, at its alpha and power .8, is at or below delta), or (b) a SHOWN inferiority (arm minus A9 < -delta, one-sided
-    alpha .05). A non-inferiority not shown at an underpowered stop is not damage: the check reads INCONCLUSIVE and the
+    alpha .05; stays .05: its error can only VOID a contrast, never produce a MET; the non-inferiority test of (a), whose
+    error can let a damaged neuter read as an attribution, is a MET component at alpha_1 = .0303964). A non-inferiority not shown at an underpowered stop is not damage: the check reads INCONCLUSIVE and the
     contrast is read as registered, its damage check reported beside it (Fold 2, #6589 MINOR-3; launcher D-72a). A neuter
     recorded as damage reads "damage, not attribution" and its G-R9 (ii) contrast is **VOID (contrast)** (section 5):
     a validity failure of THAT contrast only, never of the campaign (enforcer ruling #6589, ratified D-72a). Each neuter
@@ -223,7 +226,7 @@ gates T117 beyond what G-R9 already gates.
 | A10 sleep-off | `_enter_sleep` count, section 2.3 | OWED with the arm's build |
 | A11 freeze | `state_digest` equality, section 2.3 | OWED with the arm's build |
 | A11 planted change | the floor reader moves by the planted amount | OWED with the arm's build |
-| sham neuters (O3) | per path, at the stop: the sham's E1 must be shown equivalent to A0's by TOST at margin delta (one-sided alpha .05 each side); a sham shown different moves VOID for that path (the hook, not the path, moved it); a sham neither equivalent nor different leaves that path's O3 cells INCONCLUSIVE (Fold 1, lens A m2). Before data, a planted non-transparent hook (one known scaling) must read different: that is the red that must fire | OWED with the hooks |
+| sham neuters (O3) | per path, at the stop: the sham's E1 must be shown equivalent to A0's by TOST at margin delta (one-sided alpha .05 each side; stays .05: secondary O3 family, never in MET); a sham shown different moves VOID for that path (the hook, not the path, moved it); a sham neither equivalent nor different leaves that path's O3 cells INCONCLUSIVE (Fold 1, lens A m2). Before data, a planted non-transparent hook (one known scaling) must read different: that is the red that must fire | OWED with the hooks |
 | G-R9 (iii)-(vi) | constructed per PLAN:2331 | OWED; no counted G-R9 red was found by this lane (static read, not a census) |
 | A9 untrained | the twin's weight digest equals the seeded init digest | OWED with the arm's build |
 | damage check (B1) | a planted damaging neuter (drive injected at a known norm that lowers E1 below A9) must read "damage" at a stop, and its contrast VOID (contrast) | OWED with the hooks |
@@ -240,8 +243,8 @@ Part F's rule" is NOT carried as a sample size (FOLD1 finding 5; POL:180-182, th
 | Measured SD | **OWED: pilot P0.** Per contrast, the SD of the per-seed PAIRED difference (arm minus A0) on shared seeds. A11's floor is NOT the variance source (FOLD1 finding 1; a frozen arm can read SD near 0 and size a tiny n) |
 | Pilot P0 | A0c, A0a and EVERY contrast arm (A1-A11, A8-imp, A8-rand, A0-shuf, the O3 shams) on the same pilot seeds, a block disjoint from the campaign's; its seed count is a one-shot whose only job is an SD estimate, so it reports the SD with a bootstrap 95% CI and sizes the campaign at the SD's 80% upper confidence bound (the E1d precedent, `e1d-plan-w-pc2.md:213-218`: SD 0.3097, 95% CI 0.206-0.400, sized at the 80% upper SD 0.345). **Pilot count rule** (Fold 2, #6589 MINOR-4): the pilot's seed count n_p is the smallest n with sqrt((n - 1) / chi2_{.20; n-1}) <= r, the ratio of the SD's 80% upper bound to the point SD, r registered before the pilot (section 6 item 4) |
 | Claimed effect (delta) | **OWED before the pilot** (FOLD1 owed 7): one smallest effect of interest per contrast (delta_vii for G-R9 (vii)'s non-inferiority margin included), on the normalized test-split score for E1 and per metric for D2. Chosen by the pre-registration author from the engine's purpose, never from pilot data |
-| Power and test | joint P(MET \| delta on every leg) >= .8 (section 4.1b); one-sided alpha .05 per leg; two-sided (.025 per side) for D2's neutered-path contrasts |
-| Multiplicity | the MET legs are a FIXED-SEQUENCE (gatekeeping) family, section 4.1b; each leg at full alpha .05, the transport leg's two forms at .025 each. Secondary families (O, D) are sized and reported separately, each with its own Holm correction, and never enter the primary family |
+| Power and test | joint P(MET \| delta on every leg) >= .8 (section 4.1b); one-sided alpha_1 = .0303964 per leg (was .05); two-sided (.025 per side, secondary family, unchanged) for D2's neutered-path contrasts |
+| Multiplicity | the MET legs are a FIXED-SEQUENCE (gatekeeping) family, section 4.1b; each leg at full alpha_1 = .0303964, the transport leg's two forms at alpha_1/2 = .0151982 each (were .05 / .025). Secondary families (O, D) are sized and reported separately, each with its own Holm correction, and never enter the primary family |
 | Fixed-sample target | per leg n0 = ((z_{1-a_leg} + z_{p*}) x SD_upper / delta)^2, rounded up, p* = .8^(1/K) the per-leg power (section 4.1b); the campaign's n0 is the MAX over the legs (every arm runs on every seed) |
 | Design | sequential, named looks K1-K4 (renamed from L1-L4 so "L1" names only the leg; Fold 2, #6589 MINOR-2) at 25/50/75/100% of the cap; Lan-DeMets O'Brien-Fleming spending per leg at that leg's alpha; a leg is tested at a look only once every earlier leg has crossed at that look or before |
 | Futility | non-binding; it opens only at a look whose mde, computed from the pre-registered SD at the leg's alpha, is at or below delta (POL:191-194); before such a look the campaign continues. The mde is ALSO reported at the campaign's observed SD; if that mde exceeds delta the read is INCONCLUSIVE, not powered (Fold 1, lens A m1) |
@@ -257,7 +260,7 @@ be filed a powered failure more often than a success. Two designs fix this; this
 - **The legs, in testing order** (K = 8 E1 legs; G-a and the damage checks are conditions, inside the simulation):
   G-a (absolute solve, binomial) -> L1 A0 > A9 (G-b) -> **L2 A0 > A5, the named PRIMARY contrast** (G-R9 (i), the
   owner's condition) -> L3 A0 > A6 -> L4 A0 > A1 -> L5 A0 > A2 -> L6 A0 > A4 -> L7 (vii) A0 vs A8-imp non-inferiority ->
-  L8 transport, {A0c > A3c, A0a > A3a} at alpha .025 each, passing if either crosses (last, so its split passes no
+  L8 transport, {A0c > A3c, A0a > A3a} at alpha_1/2 = .0151982 each (was .025), passing if either crosses (last, so its split passes no
   alpha onward). The order runs from the absolute gate, through the claim the engine exists for, to the attributions.
 - **Why (ii) over (i) (joint power with Holm).** MET is an intersection-union rule: it is claimed only if every leg
   rejects, and an intersection-union test at level alpha needs no split of alpha across its legs (each leg at alpha
@@ -318,7 +321,7 @@ after the one 10x re-test (POL:598, 955). An underpowered result is INCONCLUSIVE
 
 On the pilot's paired-difference distributions (resampled, centered for the null), with the legs' observed
 correlation kept: a planted null on any subset of legs keeps each leg's false-positive rate at or below its alpha and
-the family-wise rate at or below .05 under the fixed-sequence group-sequential order (section 4.1b); a planted effect of
+the family-wise rate at or below alpha_1 = .0303964 (was .05) under the fixed-sequence group-sequential order (section 4.1b); a planted effect of
 size delta on EVERY leg (G-a at pi1, every damage check at its null) gives **joint P(MET | delta) >= .8** by the cap,
 reported as the design's power (Fold 1, lens A B2); the probability of every outcome (MET at each look, futility,
 uncrossed cap, NOT TESTED legs, INCONCLUSIVE, NOT MET (ENGINE FLOOR), VOID (contrast) by damage) is reported, and
@@ -331,12 +334,14 @@ Per primary contrast, and then for the campaign:
 | Outcome | Rule | What it means for T117 |
 |---|---|---|
 | **MET** | the absolute gate holds (G-a and L1, section 3.1), no damage check records damage (section 3.1), every MET leg L2-L8 crosses its boundary in the registered direction (L7 = G-R9 (vii) non-inferiority; L8 = at least one transport form), no G-R9 (iii)-(vi) count red fires, every section 3.4 red fired before data | T117's condition holds: "the engine can work" (P4d, POL:595) is met at the measured scale, and transport stands. The box may be ticked with the closing record. **Nothing beyond T117's wording is claimed**: no mechanism is credited outside its own contrast, the O-readings are mechanism evidence only, and no claim about experience is made (POL:1014) |
-| **NOT MET (ENGINE FLOOR)** (own row: Fold 2, #6589 MINOR-2) | read FIRST (precedence, D-72a): G-a or L1 (A0 > A9) not rejected at a POWERED STOP (G-a's power at pi1 >= .8, L1's mde <= delta, section 3.1); a non-rejection at an underpowered cap or an interim look is INCONCLUSIVE, not this row (D-72 amended by D-72a). It stands whatever any later neuter's outcome | T117 closes as a measured failure of the engine as a whole. L2-L8 are NOT TESTED: section 4.1b's protections cover them (no NULL-RECORD, nothing deleted, transport not lapsed). One NULL-RECORD is written on the engine-floor axis (section 4.3) |
+| **NOT MET (ENGINE FLOOR)** (own row: Fold 2, #6589 MINOR-2) | read FIRST (precedence, D-72a): G-a or L1 (A0 > A9) not rejected at a POWERED STOP (G-a's power at pi1 >= .8, L1's mde <= delta, section 3.1); a non-rejection at an underpowered cap or an interim look is INCONCLUSIVE, not this row (D-72 amended by D-72a). It stands whatever any later neuter's outcome | T117 stays OPEN (owner #6513): the measured failure of the engine as a whole is recorded, the engine routes to more work,
+and the next campaign spends alpha_2. L2-L8 are NOT TESTED: section 4.1b's protections cover them (no NULL-RECORD, nothing deleted, transport not lapsed). One NULL-RECORD is written on the engine-floor axis (section 4.3) |
 | **NOT MET, powered** | decided only at a stop: a tested leg's boundary is not crossed (or futility taken) at a look whose mde <= delta at BOTH the pre-registered and the observed SD, or a G-R9 (iii)-(vi) count red fires, or (vii)'s powered superiority test of A8-imp over A0 fires. Legs after the failing one are NOT TESTED (section 4.1b) and carry no verdict | T117 stays OPEN (owner #6513, last section: only MET counts toward engine done): the measured failure is recorded, its
 NULL-RECORD written, and the engine routes to more work; a later G9 campaign spends the next alpha of the series (last section).
 Per part: an owner-drawn part is reverted, not claimed, owner decides; a decision-C part whose deciding test reds is deleted after its 10x re-test and the owner told; transport lapses only if G-R9 (i) fails or both forms' neuters are shown to change nothing by TOST at delta (section 2.1's keep rule; POL:595-600); a decision-C part is deleted only on its own TESTED, powered red, never on a NOT TESTED leg. Every null writes its NULL-RECORD |
 | **INCONCLUSIVE (underpowered)** | the cap is reached, or futility read, with mde > delta | NOT a null (POL:971-974). The engine is NOT finished: T117 stays open, nothing is deleted, the mde is reported, and the owner decides whether to fund the powered count (ANSWERED 2026-10-29: funded; the campaign runs to
-its cap, last section). With the cap funded, an INCONCLUSIVE at the cap can arise only two ways: the measured SD exceeds the
+its cap, last section). With the cap funded, an INCONCLUSIVE can arise only three ways: a VOID (contrast) leg with no preceding powered failure (row below); or, at
+the cap, the measured SD exceeds the
 SD_upper the cap was powered for, or the futility rule stops with mde > delta |
 | **VOID (contrast)** (Fold 2, #6589 MAJOR-1; ruled by the enforcer, ratified D-72a) | a neuter recorded as damage at a stop (section 3.1: a powered failure of its non-inferiority check, or a shown inferiority): "damage, not attribution", a validity failure of THAT contrast only | that leg carries no verdict and writes no NULL-RECORD; in the fixed sequence it counts as not crossed, later legs are NOT TESTED, earlier legs keep their verdicts, NOT MET (ENGINE FLOOR) included (section 4.1b). T117 reads INCONCLUSIVE when no powered failure precedes the VOID leg. Repair: a rebuilt neuter on a fresh seed block the integrator claims, paired with A0 re-run on that block |
 | **VOID** (campaign) | validity failures only (D-72): a section 3.4 red did not fire, a sham was shown to move E1, the A11 digest moved, A10's sleep count > 0, a look was taken off-plan, or #6231's persistence gap unresolved for event (c) | no verdict. A defect found before any campaign seed is exposed is repaired by a dated addendum on the same seeds; after any exposed seed, only a new pre-registration on a fresh block the integrator claims |
@@ -450,13 +455,21 @@ Docs only: nothing run. Per-finding dispositions: `lanes/engine-1024/fold-g9-row
   4.2's "the owner decides" is thereby decided. Owner-answer board records: #6959 (#6513), #6960 (#6514), provenance #6961.
 - CORRECTED (enforcer #7023 MAJOR-1): #6513 DOES change a decision rule. With MET the only exit to engine done, a NOT MET or
   INCONCLUSIVE leads to more engine work and then a further G9 campaign, and k campaigns at .05 each would give up to 1 - .95^k
-  false MET for ONE decision. **Integrator ruling (2026-10-29, the same rule as launcher D-82 for A_ii; submitted for the
-  launcher's overrule):** G9 campaigns form ONE open-ended alpha-spending series for the decision 'engine done'. Campaign i
+  false MET for ONE decision. **Integrator ruling (2026-10-29, the same rule as launcher D-82 for A_ii; ACCEPTED by the
+  launcher, D-83, @8a4218c7):** G9 campaigns form ONE open-ended alpha-spending series for the decision 'engine done'. Campaign i
   claims at family-wise alpha_i = .05 x 6/(pi^2 i^2) (.0304, .0076, .0034, ...; the series sums to .05). This campaign is i = 1:
   every '.05' of section 4 (the fixed-sequence legs at full alpha, the transport forms at alpha/2) is read at alpha_1 = .0303964
   (transport forms at .0151982 each), and the cap of section 4.1b is re-derived at alpha_1 before freeze. The owner approved more
   runs. A later campaign after an engine change is NOT a new family: the decision it serves is the same. Section 5's NOT MET
   row no longer closes T117. The draft stays pre-freeze.
+- **Scope of alpha_i (enforcer #7055 MAJOR-1).** MET is an intersection-union conjunction, so its false-MET rate is bounded by
+  the alpha of whichever component's null is true. EVERY test whose type I error can produce a false MET runs at alpha_i: the
+  fixed-sequence legs L1-L8 (transport forms at alpha_i/2), G-a (its own OBF spends alpha_i), and each damage check's
+  non-inferiority test. Tests whose error can only VOID a contrast, lapse transport, or move a secondary family keep .05,
+  each with that reason in place: the shown-inferiority test (section 3.1), the transport-lapse TOST (section 2.1), the sham
+  TOSTs (O3) and the O and D families. Section 4.4's joint simulation runs G-a and the damage checks at alpha_1.
+- **Which campaigns spend a slot.** Any campaign that exposes a confirmatory seed spends its alpha_i slot, whatever it reads
+  (MET, NOT MET, INCONCLUSIVE, or a VOID after exposure). A VOID before any seed is exposed does not.
 - **ACCEPTED by the launcher (D-83).** The cost, stated plainly (launcher D-83's addition). Section 4.1b's analytic starting point
   cap = ceil(1.03 x m x (SD_upper/delta)^2), with m = (z_{1 - alpha_i/2} + z_{p*})^2 for the transport leg (alpha_i/2 per form),
   z_{p*} = 1.9188 (p* = .8^(1/8)), and 23-25 arm runs per seed (section 4.2, design (beta)). Stdlib `statistics.NormalDist`,
