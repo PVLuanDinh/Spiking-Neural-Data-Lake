@@ -256,3 +256,75 @@ def test_i5_artificial_spinners_void_the_witness():
     assert base > 0
     assert ra.load_verdict(base, base * 3) == "VOID"
     assert ra.load_verdict(base, base) == "OK"
+
+
+# ---- I7: the throwaway-home guard (r1-bounded-recall.md 2.7 I7, 2.14 D-e) -----------------------
+def _decoy_home(tmp_path, monkeypatch):
+    """A decoy LIVE home and an isolated NORD_HOME elsewhere; the real live path is not touched."""
+    live, iso = tmp_path / "live", tmp_path / "iso"
+    live.mkdir()
+    iso.mkdir()
+    monkeypatch.setattr(H, "_default_live_home", lambda: str(live))
+    monkeypatch.setenv("NORD_HOME", str(iso))
+    return live, iso
+
+
+def test_i7_the_audit_fails_closed_without_the_shared_guard_and_lets_a_refusal_through(monkeypatch):
+    monkeypatch.delattr(H, "require_isolated_home", raising=False)
+    with pytest.raises(ra.GuardMissing):
+        ra.require_isolation()
+
+    class Refused(ValueError):
+        pass
+
+    def refuse(live_home=None):
+        raise Refused("unset")
+
+    monkeypatch.setattr(H, "require_isolated_home", refuse, raising=False)
+    with pytest.raises(Refused):
+        ra.require_isolation()
+
+
+def test_i7_an_unset_nord_home_is_refused_and_an_isolated_one_is_accepted(tmp_path, monkeypatch):
+    _live, iso = _decoy_home(tmp_path, monkeypatch)
+    assert ra.require_isolation() == H._resolve(str(iso))  # the positive
+    monkeypatch.delenv("NORD_HOME")
+    with pytest.raises(H.LiveHomeRefused):  # the default home IS the live lake
+        ra.require_isolation()
+
+
+def test_i7_an_output_root_naming_the_live_home_or_outside_the_active_home_is_refused(
+    tmp_path, monkeypatch
+):
+    live, iso = _decoy_home(tmp_path, monkeypatch)
+    other = tmp_path / "other"
+    other.mkdir()
+    with pytest.raises(H.LiveHomeRefused):
+        ra.confine(str(live))
+    with pytest.raises(H.LiveHomeRefused, match="outside"):
+        ra.confine(str(other))
+    assert list(live.iterdir()) == [] and list(other.iterdir()) == []
+    inside = iso / "run"
+    inside.mkdir()
+    assert ra.confine(str(inside)) == H._resolve(str(inside))  # the positive
+
+
+def test_i7_a_write_to_the_live_home_is_reported_even_when_the_run_raises(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))  # the registered stamp reads <~>/.snn_data_lake
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    stamped = tmp_path / ".snn_data_lake"
+    stamped.mkdir()
+
+    def writer():
+        (stamped / "brain_lake.bin").write_bytes(b"x")
+        return {}
+
+    def raiser():
+        (stamped / "other.bin").write_bytes(b"y")
+        raise RuntimeError("boom")
+
+    with pytest.raises(ra.LiveHomeWritten):
+        ra.stamped(writer)
+    with pytest.raises(ra.LiveHomeWritten):
+        ra.stamped(raiser)
+    assert ra.stamped(lambda: {"ok": 1}) == {"ok": 1}  # the positive: no write, no refusal
