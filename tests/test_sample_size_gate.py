@@ -581,8 +581,7 @@ def test_grandfather_basis_has_one_wording_in_docstring_comments_and_list_file()
 
 
 def test_self_check_goes_red_when_the_list_file_reader_goes_blind(monkeypatch):
-    everything = lambda text: frozenset(re.findall(r"`([^`]+\.md)`", text))  # noqa: E731
-    monkeypatch.setattr(sg, "_listed_by_list", everything)
+    monkeypatch.setattr(sg, "_listed_by_list", lambda text: frozenset({A}))
     assert sg.self_check() == 1
 
 
