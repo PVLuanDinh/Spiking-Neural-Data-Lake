@@ -62,3 +62,32 @@ def test_f1_the_subcue_test_is_presence_checked():
     assert lr._is_subcue({"when": "u1"})
     assert LR.is_subcue({"when": "u1"}, ODD[1]) and not LR.is_subcue({"affect": "None"}, ODD[1])
     assert not LR.is_subcue({}, ODD[1])  # an empty cue addresses nothing
+
+
+def test_f2_the_window_never_appends_an_episode_the_lake_refused(H, monkeypatch):
+    # F2 isolated from F3: every save reports a duplicate, so the window must not grow. The patch
+    # works because brain.py imports save_episode INSIDE the tick, at call time -- hoisting that
+    # import to module level would leave the patch unused, so `calls` must be > 0 or the red is
+    # vacuous.
+    # R2's learner events also go through home.save_episode on main: only autobiographical episodes
+    # (no `kind`) are reported as duplicates, the rest pass to the real writer.
+    from snn_data_lake.engine.brain import make_brain
+
+    real, calls = H.save_episode, []
+
+    def refuse_autobiographical(episode, path=None):
+        if "kind" in episode:
+            return real(episode, path)
+        calls.append(1)
+        return False
+
+    b = make_brain(seed=0, persist=True)
+    try:
+        monkeypatch.setattr(H, "save_episode", refuse_autobiographical)
+        before = list(b._episode_window)
+        for _ in range(30):
+            b.tick()
+        assert calls, "the patched save_episode was never reached: a vacuous red"
+        assert b._episode_window == before
+    finally:
+        b.close()
