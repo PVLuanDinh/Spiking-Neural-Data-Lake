@@ -629,3 +629,65 @@ def test_p1_and_p2_verdicts_never_join_r2_c7(monkeypatch):
     monkeypatch.delenv("R2_CONFIRMATORY_GO", raising=False)
     v = rh.verdict({s: _per_seed(c7={"ok": False}) for s in rh.DEV_SEEDS}, list(rh.DEV_SEEDS))
     assert v["R2-c7"] == "RED" and "not_built" not in v
+
+
+# ---- ROUND 2, MAJOR-2 (a): R2-c3's reds by part, from the registration's own lines ---------------
+#: 2.4's table and FAILWRITE's reds (A3: "then the P1 seeds of 2.6") are P1's; the 2026-10-06 P2
+#: amendment's "Reds" names O_sleepskip and O_cursor (K4). Every other red joins both parts.
+P1_ONLY_REDS = ("O_wm", "O_hyd", "O_rng", "O_w", "O_stack", "O_rw", "CHRONO", "MOTOR", "FW:KIND")
+P2_ONLY_REDS = ("O_sleepskip", "O_cursor")
+P1_ONLY_PLANTED = ("DUP", "REORDER", "HELDOUT", "MISSING")
+
+
+def _quiet_red(name):
+    reds = {**dict.fromkeys(REDS, True), "FW:KIND": True}
+    reds[name] = False
+    return reds
+
+
+@pytest.mark.parametrize("red", P1_ONLY_REDS)
+def test_a_p1_red_never_reverts_or_halts_p2(monkeypatch, red):
+    v = _part_verdict(monkeypatch, "P2", P2_BLOCK, reds=_quiet_red(red))
+    assert v["R2-c3"] == "PASS" and not v["halted"] and v["verdict"] == "PASS", v
+    v = _part_verdict(monkeypatch, "P1", P1_BLOCK, reds=_quiet_red(red))
+    assert v["R2-c3"] == "RED"
+
+
+@pytest.mark.parametrize("red", P2_ONLY_REDS)
+def test_a_p2_red_never_reverts_or_halts_p1(monkeypatch, red):
+    v = _part_verdict(monkeypatch, "P1", P1_BLOCK, reds=_quiet_red(red))
+    assert v["R2-c3"] == "PASS" and not v["halted"] and v["verdict"] == "PASS", v
+    v = _part_verdict(monkeypatch, "P2", P2_BLOCK, reds=_quiet_red(red))
+    assert v["R2-c3"] == "RED"
+
+
+@pytest.mark.parametrize("kind", P1_ONLY_PLANTED)
+def test_a_2_4_planted_red_is_p1s_only(monkeypatch, kind):
+    entry = {"guard_on_ok": True, "guard_on_refused": False, "guard_off_flagged": True}
+    planted = {
+        k: {"guard_on_ok": True, "guard_on_refused": True, "guard_off_flagged": True}
+        for k in rh.PLANTED
+    }
+    planted[kind] = entry
+    assert _part_verdict(monkeypatch, "P2", P2_BLOCK, planted=planted)["R2-c3"] == "PASS"
+    assert _part_verdict(monkeypatch, "P1", P1_BLOCK, planted=planted)["R2-c3"] == "RED"
+
+
+def test_the_o_rng_lone_replay_control_is_p1s_only(monkeypatch):
+    controls = {"O_rng_lone_replay_equal": False}
+    assert _part_verdict(monkeypatch, "P2", P2_BLOCK, c3_controls=controls)["R2-c3"] == "PASS"
+    assert _part_verdict(monkeypatch, "P1", P1_BLOCK, c3_controls=controls)["R2-c3"] == "RED"
+
+
+@pytest.mark.parametrize("red", ["O_bout", "SLEEPDIGEST", "CTXREAD", "BOUTDIGEST"])
+def test_a_red_no_line_assigns_still_joins_both_parts(monkeypatch, red):
+    for part, block in (("P1", P1_BLOCK), ("P2", P2_BLOCK)):
+        if red in rh.PLANTED:
+            planted = {
+                k: {"guard_on_ok": True, "guard_on_refused": True, "guard_off_flagged": k != red}
+                for k in rh.PLANTED
+            }
+            v = _part_verdict(monkeypatch, part, block, planted=planted)
+        else:
+            v = _part_verdict(monkeypatch, part, block, reds=_quiet_red(red))
+        assert v["R2-c3"] == "RED", (part, red)
