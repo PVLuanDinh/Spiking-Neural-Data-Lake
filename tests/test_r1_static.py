@@ -1259,3 +1259,44 @@ def test_s7_rebuild_equality_with_a_planted_row_red_and_a_lake_tracking_control(
     G._delete_index(tmp_path / "idx.db")
     G._build_all(tmp_path, tmp_path / "idx.db")
     assert _digest(tmp_path / "idx.db")[0] != clean
+
+
+# ---- enforcer #6734 MINOR-3/4, NIT-5/6 ----------------------------------------------------------
+def test_s6_a_home_with_no_lake_yet_is_a_miss_not_a_refusal(tmp_path):
+    # MINOR-3: sync() stat'ed the lake unconditionally, so a home with no brain_lake.bin yet
+    # answered "refused" while every other reader of it (replay_located, load_episodes) misses.
+    log, _path = _lake(tmp_path, _eps(2))
+    os.remove(log.path)
+    got = _ei(tmp_path, log).recall({"who": "self"})
+    assert got["source"] == "miss", got
+
+
+def test_s6_a_malformed_lake_id_marker_rebuilds_instead_of_refusing_for_ever(tmp_path):
+    # MINOR-4: `was.split(":")[1]` raised IndexError on an ep_lake_id with no ":", which is not
+    # IndexCorrupt, so the one index-only heal never ran and recall refused on every call.
+    log, _path = _lake(tmp_path, _eps(6))
+    ix = _ei(tmp_path, log)
+    want = ix.recall({"when": "5"})
+    assert want["source"] == "lake"
+    ix.idx.put_batch([], meta={"ep_lake_id": "damaged"})
+    got = ix.recall({"when": "5"})
+    assert got["source"] == "lake" and got["episode"] == want["episode"], got
+
+
+def test_a_closed_index_reopens_on_the_next_recall(tmp_path):
+    # NIT-5: close() left the dead connection in place, so a later recall refused with
+    # "Cannot operate on a closed database".
+    log, _path = _lake(tmp_path, _eps(4))
+    ix = _ei(tmp_path, log)
+    want = ix.recall({"when": "3"})
+    ix.close()
+    assert ix.recall({"when": "3"}) == want
+
+
+def test_s2_replay_located_refuses_a_start_inside_the_magic_like_read_at(tmp_path):
+    # NIT-6: replay_located framed the magic as a length where read_at raised ValueError.
+    log, _path = _lake(tmp_path, _eps(2))
+    with pytest.raises(ValueError):
+        list(log.replay_located(start=3))
+    with pytest.raises(ValueError):
+        log.read_at(3)
