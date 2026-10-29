@@ -2485,17 +2485,18 @@ class Brain:
                     try:
                         from snn_data_lake.substrate.home import save_episode
 
-                        save_episode(_ep)
                         # T057: the recall window tracks what this brain WRITES TO THE LAKE
-                        # (lake provenance only -- an unpersisted episode never enters it),
+                        # (lake provenance only -- an unpersisted episode never enters it, and
+                        # neither does one the lake REFUSED as a duplicate: R1 F2),
                         # bounded by the same derived capacity the attractor uses.
-                        self._episode_window.append(dict(_ep))
-                        cap = (
-                            self._episode_consolidator.capacity
-                            if self._episode_consolidator
-                            else 64
-                        )
-                        del self._episode_window[:-cap]
+                        if save_episode(_ep):
+                            self._episode_window.append(dict(_ep))
+                            cap = (
+                                self._episode_consolidator.capacity
+                                if self._episode_consolidator
+                                else 64
+                            )
+                            del self._episode_window[:-cap]
                     except Exception:
                         pass
 
