@@ -121,10 +121,11 @@ to pre-registrations, not pre-registrations, and are not on the list.
 ## 4. Owes a "Sample size (P1)" section at freeze (2; NOT grandfathered)
 
 Arc-2 panel, lens B MAJOR-5 (board #5196), fixed by the integrator 2026-10-24 (G2 has since moved to 4b, see its row): P1 grandfathers only pre-registrations
-"frozen before this amendment landed". These three rows declare themselves DRAFT / not frozen in their own text at
-`c9d0c097` and have not run, so freezing them later with their
-c9d0c097 text would have let the next engine rows (G2, G3, G5) run with a habitual seed count. Each must carry the
-section's fields when it freezes. The gate's reds (when built) add this case: a pre-registration on this list frozen
+"frozen before this amendment landed". These two rows declare themselves DRAFT / not frozen in their own text at
+`c9d0c097`: G3 has not run, and G5's Parts A-D ran (2026-10-07) but its Part E was added as a DRAFT on 2026-10-27, so
+freezing them later with their c9d0c097 text would have let the next engine rows run with a habitual seed count. Each must carry the
+section's fields when it freezes. The gate's deferral date for each is a forcing date,
+renewable only by a dated integrator commit giving the reason (each renewal an enforcer-reviewed build, D-74). The gate's reds (when built) add this case: a pre-registration on this list frozen
 without the section reds. Row numbers are those of the original 76-file list.
 
 | # | file | rule | text at `c9d0c097` |
@@ -142,5 +143,5 @@ stale history.
 | # | file | rule | text at `c9d0c097` |
 |---|---|---|---|
 | 29 | `specs/022-unified-brain-arc/evidence/r1-bounded-recall.md` | R1 | L1 `# R1 / T102 -- bound historical recall (pre-registration DRAFT and record)`; L97 `## 2. Pre-registration (DRAFT; becomes frozen at the commit that lands it; later changes are dated strength...` |
-| 10 | `specs/022-unified-brain-arc/evidence/g2-taught-problems.md` | R1 | moved here 2026-10-29 (policy-enforcer #6592, integrator ruling D-73): frozen in 6bc97430 (author date 2026-10-03) AND executed (section 5.1 is a confirmatory read, 2026-10-07), so frozen before the landing. G3 stays in section 4: never run, every amendment PRE-DATA. |
+| 10 | `specs/022-unified-brain-arc/evidence/g2-taught-problems.md` | R1 | moved here 2026-10-29 (policy-enforcer #6592, integrator ruling D-73): grandfathered because it was executed before the landing (section 5.1 is a confirmatory read, 2026-10-07); the commit 6bc97430 (2026-10-03) is history, not a freeze. G3 stays in section 4: never run, every amendment PRE-DATA. |
 | 31 | `specs/022-unified-brain-arc/evidence/r3-replay-growth-composition.md` | R1 | L1 `# R3 / T104 -- eligible replay composed with the incumbent learner and grower; earned growth on held-out da...`; L84 `## 2. Pre-registration (DRAFT)` |
