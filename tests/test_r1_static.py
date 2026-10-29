@@ -577,9 +577,8 @@ def test_the_successor_returns_exactly_the_deep_scan_answer(tmp_path):
 
 
 def test_s3_tail_fold_finds_a_record_appended_after_the_first_sync(tmp_path):
-    from snn_data_lake.substrate.episode_index import EpisodeIndex
-
     from snn_data_lake.substrate import home as H
+    from snn_data_lake.substrate.episode_index import EpisodeIndex
 
     log, path = _lake(tmp_path, _eps(20))
     ix = _ei(tmp_path, log)
@@ -1088,3 +1087,44 @@ def test_s6_a_read_failure_refuses_visibly_never_a_miss(tmp_path, monkeypatch):
     quiet = Quiet(log, tmp_path / "q.db")
     monkeypatch.setattr(quiet.idx, "iter_range", boom)
     assert quiet.recall({"when": "3"})["source"] == "miss"  # exactly the hidden record B4 forbids
+
+
+# ---- S7: rebuild equality through the lake_rebuild_gate (planted-row red, lake-tracking control) -
+def _digest(index_path):
+    from snn_data_lake.substrate.lake_index import LakeIndex
+
+    idx = LakeIndex(index_path)
+    try:
+        return idx.logical_dump_digest(), idx.row_count()
+    finally:
+        idx.close()
+
+
+def test_s7_rebuild_equality_with_a_planted_row_red_and_a_lake_tracking_control(tmp_path):
+    from snn_data_lake.gates import lake_rebuild_gate as G
+    from snn_data_lake.substrate import episode_index as E
+    from snn_data_lake.substrate import home as H
+
+    _lake(tmp_path, _eps(40))
+    ok, msg = G.assert_rebuild(
+        tmp_path, tmp_path / "idx.db"
+    )  # delete -> rebuild -> equal, both tiers
+    assert ok, msg
+    clean, rows = _digest(tmp_path / "idx.db")
+    assert rows > 40  # pointer rows AND episode posting rows live in the one file
+    # the planted-row red: a row added behind the gate's back moves the digest; a rebuild drops it
+    from snn_data_lake.substrate.lake_index import LakeIndex
+
+    idx = LakeIndex(tmp_path / "idx.db")
+    idx.put_batch([(E.TAG, E._key(E._tok("who", "ghost"), 99, "00000000"), "lake", 99)])
+    idx.close()
+    assert _digest(tmp_path / "idx.db")[0] != clean
+    G._delete_index(tmp_path / "idx.db")
+    G._build_all(tmp_path, tmp_path / "idx.db")
+    assert _digest(tmp_path / "idx.db")[0] == clean
+    # the lake-tracking control: one appended EPISODE must move the rebuilt digest
+    late = {"who": "owner", "what": "wave", "where": "px", "when": "u9", "affect": "joy"}
+    assert H.save_episode(late, path=str(tmp_path / "brain_lake.bin"))
+    G._delete_index(tmp_path / "idx.db")
+    G._build_all(tmp_path, tmp_path / "idx.db")
+    assert _digest(tmp_path / "idx.db")[0] != clean
