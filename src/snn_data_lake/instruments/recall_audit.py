@@ -11,6 +11,7 @@ Outcomes (2.14): VERIFIED / FALSE / MISS / REFUSED / ERROR.
 """
 
 import hashlib
+import os
 import random
 import time
 import tracemalloc
@@ -397,3 +398,62 @@ def spin_witness(n=2_000_000):
 
 def load_verdict(before, after, tol=LOAD_TOLERANCE):
     return "VOID" if abs(after - before) > tol * before else "OK"
+
+
+# ---- I7: the throwaway-home guard (2.7 I7, 2.14 D-e) ----------------------------------------------
+# `home` is imported lazily below: the oracle half of this module must not share a reader with the
+# thing it scores, and the guard is the only home function the instrument itself needs.
+class GuardMissing(RuntimeError):
+    """The shared live-home guard (lead ruling 16) is not in `home`: refuse to run brains."""
+
+
+class LiveHomeWritten(RuntimeError):
+    """The live home's stamp (size, mtime per file) changed during a run (I7, cp4 #8)."""
+
+
+def require_isolation():
+    """Call the ONE shared guard (`home.require_isolated_home`); never a second guard here (P2).
+    Fails CLOSED when it is absent, and lets its refusal through unchanged."""
+    from snn_data_lake.substrate import home as H
+
+    guard = getattr(H, "require_isolated_home", None)
+    if guard is None:
+        raise GuardMissing("home.require_isolated_home is absent: the shared guard must land first")
+    return guard()
+
+
+def confine(root):
+    """The output root passes the shared guard AND sits inside the active throwaway home, so nothing
+    is created outside it (NORD_HOME alone says nothing about where `root` writes)."""
+    from snn_data_lake.substrate import home as H
+
+    home = require_isolation()
+    resolved = H.assert_not_live_home(root)
+    a, b = os.path.normcase(resolved), os.path.normcase(home)
+    try:
+        inside = os.path.commonpath([a, b]) == b
+    except ValueError:  # different drives
+        inside = False
+    if not inside:
+        raise H.LiveHomeRefused(
+            f"output root refused (outside the active home): {resolved} not in {home}"
+        )
+    return resolved
+
+
+# distinct-from: gates/move_gate.py::_live_home_stamp is REUSED below (the gate's own stamp), and
+#   substrate/home.py::lake_snapshot hashes file bytes (blake2b); this wrapper only compares stamps.
+def stamped(fn):
+    """Run `fn()` under I7's live-home stamp, compared before and after, on the exception path too."""
+    from snn_data_lake.gates.move_gate import _live_home_stamp
+
+    before = _live_home_stamp()
+    try:
+        out = fn()
+    except BaseException as exc:
+        if _live_home_stamp() != before:
+            raise LiveHomeWritten("the live home changed during a run that then raised") from exc
+        raise
+    if _live_home_stamp() != before:
+        raise LiveHomeWritten("the live home changed during the run")
+    return out
