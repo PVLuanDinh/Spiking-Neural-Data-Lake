@@ -291,3 +291,85 @@ Commit order:
     the wrappers.
   - The N2 probe's code is the session's scratch, not tracked. Its numbers are reproducible with instance wraps of
     `Brain._flush_prototypes` and `AppendBudget.end_tick` on a scratch brain.
+
+## 4. Addendum 1 (2026-10-29, lane persist-prep): freeze-readiness against `c4c10b28`
+
+Appended only; nothing above is edited. Re-derivation table: `lanes/engine-1024/persist-prep-row/CLAIMS.md`. Static
+reads only (no run, no import). Base for this addendum: `c4c10b28`. No `src/` file the draft cites changed between
+`ee224e50` and `c4c10b28`, and brain code equals `1b6e53ab` (the section 2.8 premise holds).
+
+### 4.1 Claims: 28 HOLD, 1 MOVED, 0 WRONG, 2 not re-derivable without a run
+- **MOVED:** `ValenceLearner` is `plasticity/valence_stdp.py:46`; the draft's `:47` is its `__init__`. (Off by one at
+  the draft's own base too.)
+- **Not re-derivable (need a brain run, so left for the integrator's re-run at freeze):** the probe table in 1.2 and the
+  section 2.9 item 1 flood measurement. The latter's probe code is untracked scratch, so the freeze must commit it or
+  re-measure.
+
+### 4.2 Three corrections the freeze must make (found while re-deriving)
+1. **C1's read channel is not free.** `state()["prototypes_restore"]` (`brain.py:4238`) is `_prototypes_restore_note`,
+   which is `None` when every sub-record was accepted (`brain.py` ~1180). C1 reads an `adopted` id on SUCCESS. Decide
+   and write down: a new `adopted` field (a second channel) or a change to the note's None-on-success contract; and
+   update the readers (`infra/brain_telemetry.py:388`, `instruments/eligible_circuit_census.py:311,962`, the P4b
+   tests that read the note).
+2. **Lazy-build gates.** JEPA exists only under `_jepa_on` (`autonomous_loop.py:471`, from `jepa`/`mlp_q`/
+   `reward_shaped_encoder`); Valence only under `_dopa_on` (`:409`, `:2328`), and the same block builds
+   `DopamineNuclei` and `LateralHabenula` (`:2335-2336`). The freeze states the default flags of `make_brain`, the
+   flags of the test brain, and whether `_dopa`/`_lhb` state is derived (and why) or owed a sub-record.
+3. **`_learned_attn` can be None** (`brain.py:1219`, import failure). The attention legs of C2/C4 need the rule
+   "absent faculty: nothing written, nothing restored".
+
+### 4.3 Policy fit
+- **P4b.** Sub-records of `growing_learners.json` follow `01802dd4` (q, affect, lifelong), but P4b's text says "each
+  under its own record tag" and the JEPA docstring (`jepa_world_model.py:634`) says a new `_T_*` tag. The freeze
+  must cite the policy-enforcer's acceptance of the sub-record precedent, or the precedent's own reasoning.
+  The honesty guard (a new process reads the lake back) is met by C1/C2/C3 as designed; the killed-parent leg (C3) is
+  present.
+- **P1 (sample size).** Section 2.4 says "no SD, no power; fixed count, one-shot" (P1 item 3 allows a one-shot with
+  power stated before data). It states no power. The freeze needs one line: the claims are exact identities, so
+  power is 1 by construction and a planted red (C4 refusals, the empty-home control) is the sensitivity proof.
+  The sequential design (P1 item 2) does not apply: there is no stochastic effect and no seed block.
+- **P2.** Met on the mechanism (one record, one format, retire the two JEPA file wrappers). Owed: section 2.9 item 3
+  retires `save_weights`/`load_weights`, and the test's `git grep` red (C6) must show zero callers after, plus a
+  statement that `to_record` has a live caller (the flush) so it is not the P3 self-check-only shape.
+- **P3.** A restored record is "wired" only if the restored learner changes an outcome; the draft deliberately
+  claims no behavioural benefit (2.7), and the incumbent consumers (`train_step`, `learn`, `_pfc_bias`, `attend`)
+  read the restored state, so the disposition is "wired + charged by existing consumers". The freeze says that
+  explicitly and names the dormancy-gate/census rows the new methods add.
+- **P4b + C7.** The `persist=False` byte-identity claim (C7) needs a named check (digest pins or the T120 census) and
+  an instrument-sensitivity red; today it only names a concern.
+- **P8.** Reachable reds: C1/C2 red on the base (section 2.3) is reachable. Control that is not the method: the
+  empty-home child and the arm-prototype positive control are. Owed: the C4 refusals must be shown to red against a
+  restore that accepts blindly (the planted-bad-record test is the red, but name it).
+
+### 4.4 What a freeze still owes (checklist)
+1. Resolve 4.2 items 1-3 in the text.
+2. Re-run the probe table (1.2) and the 2.9 measurement at the freeze head; commit the probe code.
+3. State the P1 one-shot power line (4.3) and the C7 check name.
+4. Cite the sub-record-vs-own-tag acceptance (4.3 P4b).
+5. Production-tier (`eprop-snn`) confirmation, as 2.5, run by the integrator after the campaign.
+6. Fix the `valence_stdp.py` line to `:46`.
+7. Say which learners the 300-tick seeds actually build (needs 4.2 item 2).
+
+### 4.5 Raising-ambition record (as E1d's section 0)
+- **Axis:** Scope of what "a restart is not amnesia" covers: how many of the brain's live learners a new process
+  recovers.
+- **Ladder.**
+  - **R1:** persist the four probed learners (JEPA, Valence, `_plan_w`, LearnedAttention) in the existing record, tested
+    cross-process. This is the draft's design.
+  - **R2:** R1 plus a census that proves NO other live learner is left behind: enumerate every learned-state
+    attribute reachable from `Brain` and the arm (anything a `train_step`/`learn`/three-factor update writes) and show
+    each is either in the record or on a disclosed derived-state list; `_dopa`/`_lhb` and any other lazy faculty are
+    decided there.
+  - **R3:** a persisted-brain continuation test: a restarted brain's next N ticks equal the uninterrupted brain's
+    (bit-exact trajectory), so persistence is shown to be full continuation and not just state equality.
+- **Pick: R1 for the build, with R2's census as a freeze precondition.** The draft is R1. The census is cheap and static
+  (a stdlib scan of assigned learner attributes), and it is what stops "the four" from being a cherry-picked set.
+- **The rung above, and the rule that rules it out.** R3 is ruled out by the arc's own constraints, not by cost:
+  full continuation needs the RNG streams, the VICReg buffer and the transient gate/eligibility state, which the draft
+  discloses as derived (2.1), and P2 forbids a second state format to carry them. The existing eligible-circuit census
+  (`instruments/eligible_circuit_census.py:421`) already records "save_weights/load_weights ... NOT demonstrated full
+  continuation", so R3 is a different, separately pre-registered claim.
+- **Range.** Clinical-grade backup verification (restore into a clean system and diff); database recovery drills
+  (a kill-9 restart, not only a clean shutdown: C3).
+- **Outside judge** (none is the method): the child-over-empty-home negative control; the arm-prototype positive control
+  in the same command; the integrator's re-run of the probe on the production tier; the policy-enforcer's review.
