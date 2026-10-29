@@ -117,17 +117,30 @@ forward unchanged, the same rule `_flush_prototypes` already applies to a refuse
 Each conjunct is a cross-process test in the `tests/test_p4b_restart_restore.py` pattern, every home a fresh temp
 dir passing `assert_not_live_home`:
 
-- **C1, restored (the probe's red, inverted).** For each of the four learners, a child process over the parent's home
-  reads back exactly the parent's flushed state:
-  - JEPA: every array in `to_record()` equal;
-  - Valence `w`, `_plan_w`, and attention `w` and `exp` equal.
-  - JEPA and Valence are read after their lazy build in the child, before any learning step in it.
-  - Equality is exact (`==` on the JSON-canonical record), never a tolerance.
+- **C1, restored (the probe's red, inverted).** *(Folded 2026-10-29, launcher N1: the read point.)* For each of the
+  four learners, a child process over the parent's home reads back exactly the parent's flushed state. Equality is
+  exact (`==` on the JSON-canonical record, compared through `_record_id`), never a tolerance.
+  - **The read point for JEPA and Valence.** They are built lazily, and the build tick also learns: the JEPA build at
+    `autonomous_loop.py:2067` runs at the top of the step and its `train_step` at `:2509` runs later in the SAME step;
+    Valence is built and then `learn`s in one block (`:2337-2341`). So the child's state after that tick is already
+    one step past the restored record, and reading it there would compare the wrong thing.
+  - **The rule.** The comparison is made AT THE ADOPTION POINT: immediately after `from_record` /
+    `load_state_dict` at the build site, before that tick's first `train_step` / `learn`.
+  - **How, with no test-only seam (P3).** The adoption step already decides accept or refuse. Accepting computes
+    `_record_id(learner.to_record())` (Valence and attention: `state_dict()`) of the learner as built, and reports
+    it through the existing production restore channel, `state()["prototypes_restore"]` (`engine/brain.py:4238`),
+    for example `adopted: {"jepa": <id>}`. That is the same channel that already reports refusals and adoptions.
+  - C1 reads that id in the child after the build tick, and the parent's flushed sub-record id from the lake
+    (`home.load_state("growing_learners.json")` in the child process). It is MET iff the two ids are equal.
+  - **Equal ids mean equal state.** A brain-free round trip pins that: `to_record(from_record(r)) == r` exactly, per
+    learner (C1a, a unit test).
+  - `_plan_w` and LearnedAttention exist at construction, so they are read at 0 ticks, before any step.
 - **C2, planted.** The parent writes known values before `close()`:
   - attention `w = [0.25, 5.5, 0.5, 4.0]`, `_plan_w = 0.4321`, Valence `w[i] = 0.123`;
   - a JEPA predictor entry set to a sentinel.
 
-  The child reads exactly those values. This covers learners that do not move on a tier (LearnedAttention on stdlib).
+  The child reads exactly those values, at C1's read points: the adoption-point id for JEPA and Valence, 0 ticks for
+  `_plan_w` and attention. This covers learners that do not move on a tier (LearnedAttention on stdlib).
 - **C3, killed, not closed.** A parent killed with `os._exit` after the night's flush, and no `close()`, still comes
   back with what that flush wrote, as `tests/test_growing_learner_restart.py`'s killed red does for the prototypes.
 - **C4, refusal whole.** For each learner, a record of the wrong width or shape is REFUSED:
@@ -205,23 +218,76 @@ Run this one heavy run at a time: the owner host is memory-constrained.
 - It has no effect on E1c, whose runs use fresh per-seed brains.
 - It does not persist derived state (JEPA's `_buf`, attention's transient gate and eligibility).
 
-### 2.8 Commit order (the integrator's)
+### 2.8 Order and commit order (the integrator's)
 
+**Landing order (launcher ruling, 2026-10-29).** This row lands AFTER the E1d campaign. E1d may cite its calibration
+only while the brain code outside the pc harness equals `1b6e53ab`. This row changes brain code
+(`engine/brain.py`, `engine/autonomous_loop.py`, `faculties/jepa_world_model.py`, `faculties/learned_attention.py`,
+`plasticity/valence_stdp.py`), so landing it earlier would void that citation.
+
+Commit order:
 1. The final pre-registration, alone.
 2. The red: the cross-process test, committed and shown RED on the base.
-3. The build: serializers, record keys, lazy adoption, and the JEPA wrapper split.
+3. The build: serializers, record keys, lazy adoption, and the JEPA wrapper retirement (section 2.9, item 3).
 4. The test GREEN, stdlib.
 5. The production-tier confirmation record.
 6. Panel, fold and battery.
 
-### 2.9 Open questions for the integrator and owner
+### 2.9 Questions, two of them resolved by measurement (fold of 2026-10-29)
 
-1. **Same record or a sibling.** Extending `growing_learners.json` (recommended: P2, one persistence path, the
-   pa-p4bd-3 precedent) grows it by about 60 KB of JEPA JSON per changed flush. The alternative is a sibling named
-   state, `world_model.json`, under the same `_T_STATE` and the same flush.
-2. **Write frequency.** Unchanged state writes nothing today. JEPA learns every tick, so every night's flush will write
-   it. Is that within the append budget's ceiling (`AppendBudget`, live at `engine/brain.py:1408`)?
-3. **The JEPA docstring's stale caller.** Its P4b note (`faculties/jepa_world_model.py:623-636`) still cites
-   `reasoning/jepa_scaffold_torch.py::verify_transfer`, which was retired in `48e9912d`. The build should correct
-   that note when it closes the P4b item. Should the file wrappers also be retired, since only the self-check uses
-   them, or kept for the deep-encoder import path?
+1. **Same record or a sibling: RESOLVED, same record** (launcher N2: measured, not guessed).
+
+   **Probe.** Stdlib tier, `ee224e50`, `make_brain(persist=True)` on scratch homes, seeds 7 and 11, 300 ticks each,
+   instance-level wraps on that probe brain only. At every night flush it read:
+   - the JEPA record's canonical-JSON bytes (the `save_weights` payload, `sort_keys`, ASCII);
+   - `growing_learners.json`'s bytes, and whether it changed;
+   - tag 0x07's (`_T_STATE`) bytes that tick and its `AppendBudget.bar(7)`.
+
+   | quantity | seed 7 (12 flushes) | seed 11 (13 flushes) |
+   |---|---|---|
+   | JEPA record, canonical bytes | 56,587-56,648 | 55,702-56,540 |
+   | `growing_learners.json` bytes today | 9,820-19,680 | 5,694-13,814 |
+   | `growing_learners.json` changed at the flush | 12 of 12 | 13 of 13 |
+   | tag 0x07 bytes on the flush tick | 3.29-16.11 MB | 3.28-16.10 MB |
+   | tag 0x07 bar (`FLOOD_FACTOR` 8) | 99,048 B for the first 2 flushes (8 x the recorded 12,381 B seed), 0.42 MB at the 3rd, then 26.2-48.1 MB | the same shape: 99,048 B, then 0.43 MB, then 26.2-48.1 MB |
+   | FLOOD verdicts | flushes 1-3 FLOOD, then none | flushes 1-3 FLOOD, then none |
+   | headroom after flush 3 | at least 21.78 MB | at least 21.77 MB |
+
+   **Reading.**
+   - JEPA adds about 56.6 KB per flush: 0.35-1.7% of the tag's bytes on a flush tick.
+   - It flips no flood verdict. The first three floods happen with or without it, and every later flush keeps at
+     least 21.7 MB of headroom with it added.
+   - A sibling record saves nothing measurable. `growing_learners.json` changed at every flush in both seeds, so it is
+     rewritten nightly anyway. A sibling under the same `_T_STATE` and the same flush writes the same bytes in the same
+     tick.
+   - **Recommendation: the same record** (P2, one persistence path; the pa-p4bd-3 precedent).
+   - **Re-measure at freeze on the production tier.** There, the prototypes may stabilise so that
+     `growing_learners.json` is sometimes unchanged. A sibling would then avoid rewriting at most the record's own
+     ~20 KB on such nights, still under 1% of the tag's flush bytes.
+   - **Side finding, not this row's.** Every fresh brain FLOODs tag 0x07 on its first three night flushes, because
+     the window is still seeded from `tools/lake_append_baseline.json`'s August value (12,381 B, bar 99,048 B)
+     against 3-16 MB written. This is the stuck-alarm shape `AppendBudget`'s docstring describes, still present for
+     a new brain's first nights. Reported to the integrator.
+2. **Write frequency: RESOLVED by item 1.** JEPA is written at every night flush, about 56.6 KB, inside the measured
+   headroom after the seeded window.
+3. **The JEPA file wrappers: RESOLVED, retire them** (launcher N3; P3: a self-check caller is reachability, not
+   charge).
+   - At `ee224e50`, `JepaWorldModel.save_weights` / `load_weights` have no caller outside the module's own self-check
+     (`faculties/jepa_world_model.py:1005-1036`).
+   - Their one train-tier caller, `reasoning/jepa_scaffold_torch.py::verify_transfer`, was retired in `48e9912d`.
+   - `faculties/spiking_jepa.py`'s same-named methods belong to a different class and are out of scope.
+   - So the build keeps `to_record` / `from_record` (both `snn_jepa/1` and `/2`, with the same validation). It
+     retires the two file methods, moves the self-check to a record round trip, and corrects the docstring's P4b note
+     in the same commit.
+   - A future deep-encoder import re-adds a reader of the record, never a file path.
+
+## 3. Fold log
+
+- **2026-10-29, launcher review of `b2d0b800`** (verdict AGREE as a draft; N1-N3 plus the order ruling).
+  - C1 gains its read point: the adoption-point id through `state()["prototypes_restore"]`, no test-only seam, plus
+    the C1a round trip. C2 follows it.
+  - Section 2.8 records that this row lands after E1d (the `1b6e53ab` ruling).
+  - Section 2.9 item 1 is resolved by the measurement above (same record), item 2 by item 1, and item 3 by retiring
+    the wrappers.
+  - The N2 probe's code is the session's scratch, not tracked. Its numbers are reproducible with instance wraps of
+    `Brain._flush_prototypes` and `AppendBudget.end_tick` on a scratch brain.
