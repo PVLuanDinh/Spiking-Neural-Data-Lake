@@ -3617,8 +3617,13 @@ class Brain:
                             "contradicted": 0,
                             "source": "lake",
                         }
-        except Exception:
-            pass
+        except Exception as exc:  # R1 F4: a failed lake read is a visible refusal, never a "miss"
+            return {
+                "episode": {},
+                "confidence": 0.0,
+                "source": "refused",
+                "reason": f"{type(exc).__name__}: {exc}",
+            }
         return {"episode": {}, "confidence": 0.0, "source": "miss"}
 
     # distinct-from: faculties/prefrontal_executive.py -- its neuter() gates the WM rehearsal
