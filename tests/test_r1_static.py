@@ -7,6 +7,7 @@ REAL admission check (`learner_events._refusal`), never by a copy of its rules.
 
 import hashlib
 import inspect
+import os
 import random
 import struct
 import time
@@ -407,6 +408,46 @@ def test_i7_a_write_to_the_live_home_is_reported_even_when_the_run_raises(tmp_pa
         ra.stamped(writer)
     with pytest.raises(ra.LiveHomeWritten):
         ra.stamped(raiser)
+    assert ra.stamped(lambda: {"ok": 1}) == {"ok": 1}  # the positive: no write, no refusal
+
+
+def test_i7_the_stamp_is_home_pys_one_copy_and_sees_nested_and_same_size_rewrites(
+    tmp_path, monkeypatch
+):
+    # enforcer #6734 MAJOR-1: move_gate's private stamp is (size, mtime) of the DEFAULT home's
+    # top-level files; home.lake_snapshot / live_lake_untouched is the repo's one stamp (nested
+    # files, content digest, any home). RED on the parent: the live home here is a decoy reached
+    # through H._default_live_home, the private stamp reads ~/.snn_data_lake instead, so no
+    # write below is seen.
+    live, _iso = _decoy_home(tmp_path, monkeypatch)
+    monkeypatch.setenv("HOME", str(tmp_path / "elsewhere"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "elsewhere"))
+    (live / "segments").mkdir()
+    nested = live / "segments" / "seg0.bin"
+    nested.write_bytes(b"aaaa")
+    top = live / "brain_lake.bin"
+    top.write_bytes(b"bbbb")
+
+    def nested_write():
+        nested.write_bytes(b"cccccc")
+        return {}
+
+    def same_size_rewrite():
+        st = top.stat()
+        top.write_bytes(b"zzzz")  # same size,
+        os.utime(top, ns=(st.st_atime_ns, st.st_mtime_ns))  # mtime put back
+        return {}
+
+    def raising_nested_write():
+        nested.write_bytes(b"dddddddd")
+        raise RuntimeError("boom")
+
+    with pytest.raises(ra.LiveHomeWritten):
+        ra.stamped(nested_write)
+    with pytest.raises(ra.LiveHomeWritten):
+        ra.stamped(same_size_rewrite)
+    with pytest.raises(ra.LiveHomeWritten):
+        ra.stamped(raising_nested_write)
     assert ra.stamped(lambda: {"ok": 1}) == {"ok": 1}  # the positive: no write, no refusal
 
 
