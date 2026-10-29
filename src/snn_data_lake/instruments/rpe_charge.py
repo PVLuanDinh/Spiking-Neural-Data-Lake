@@ -1640,6 +1640,7 @@ def analyse(
             "powered": q["mde"] <= DR,
         }
         a["zero_read"] = zero_read(hs["H-P1"]["d"], looks, design, sim_campaigns)
+        a["stratum"] = goal_stratum(runs, {s: d_p1[s] for s in p1_seeds if s in d_p1})
         a["tail"] = [  # section 4's census: |d| > 0.4 and where `real` and `pfrozen` first differ
             {
                 "seed": s,
@@ -1781,6 +1782,36 @@ def render(a):
 # distinct-from: render (above) -- E1b's report is eight endpoints over an 8-seed block; E1c decides one, so the
 #   campaign gets its own short formatter over the same `analyse` dict (graph-exists "render sequential campaign
 #   report": NO LEXICAL MATCH, 2026-10-28)
+# distinct-from: carried_state_campaign.py -- its sign census counts one campaign's values; this splits H-P1's d_s by
+#   a post-treatment record (the real run's held goal) and reuses this module's ttest
+def goal_stratum(runs, d_p1):
+    """E1d section 4's goal-frozen stratum, beside the decision and DESCRIPTIVE ONLY: a seed is goal-frozen when its
+    `real` run's p["held_goal"] takes one value after its first non-None entry. Fail-soft: a missing or all-None
+    record, or any error, returns an "n/a" line and never touches validity or the disposition."""
+
+    def frozen(run):
+        hg = (run or {}).get("p", {}).get("held_goal") or []
+        i = next((j for j, g in enumerate(hg) if g is not None), None)
+        return None if i is None else len(set(hg[i:])) == 1
+
+    def read(ss):
+        d = [d_p1[s] for s in ss]
+        return f"t={ttest(d):.3f} ({sum(x > 0 for x in d)}/{len(d)})" if d else "t=n/a (0/0)"
+
+    try:
+        fr = {s: frozen(runs.get(("real", s))) for s in d_p1}
+        if miss := sum(v is None for v in fr.values()):
+            return f"stratum n/a (held_goal missing on {miss} seeds)"
+        fz, mv = [s for s in fr if fr[s]], [s for s in fr if not fr[s]]
+        dis = [s for s in fr if frozen(runs.get(("pfrozen", s))) not in (None, fr[s])]
+        return (
+            f"stratum (DESCRIPTIVE ONLY, decides nothing): {len(fz)}/{len(fr)} seeds goal-frozen; H-P1 within frozen "
+            f"{read(fz)}, within moving {read(mv)}; real/pfrozen frozen status disagrees on {len(dis)} seeds"
+        )
+    except Exception as e:  # beside only: a broken record is disclosed, never a gate
+        return f"stratum n/a ({type(e).__name__}: {e})"
+
+
 # distinct-from: carried_state_report.py -- G1c's migration-gate report lines, not a sequential stop's disposition
 # distinct-from: pool_selection.py -- a subprocess job runner (spec beside output), term overlap
 # distinct-from: prior_drift_harness.py -- a settling reading with its subject, term overlap
@@ -1840,6 +1871,8 @@ def render_e1c(a):
         f"\n## H-P1 (primary, harm; positive d = pfrozen is better)\n- t={h['t']:.3f} ({h['k']}/{h['n']} seeds > 0), "
         f"SD={h['sd']:.4f} -> **{e1c_disposition(a)}**"
     )
+    if "stratum" in a:
+        L.append(f"- {a['stratum']}")
     if "seq" in h:
         q = h["seq"]
         L.append(

@@ -636,6 +636,79 @@ def _quoted(a):
     return next(x for x in R.render_e1c(a).splitlines() if x.startswith("- t="))
 
 
+FROZEN_HG, MOVING_HG = [None, 3, 3, 3], [None, 3, 5, 3]
+
+
+def _stratum_runs(kind, frozen, arm_hg=None):
+    """A 64-seed E1c look, held_goal planted frozen on the first `frozen` seeds, else moving."""
+    seeds = R.E1C_SEEDS[:64]
+    runs = R.fixture_runs(kind, seeds=seeds, arms=R.E1C_ARMS)
+    for i, s in enumerate(seeds):
+        for arm in ("real", "pfrozen"):
+            hg = FROZEN_HG if i < frozen else MOVING_HG
+            runs[(arm, s)]["p"]["held_goal"] = list((arm_hg or {}).get((arm, i), hg))
+    return runs
+
+
+def _stratum(runs):
+    a = R.analyse(
+        "production",
+        runs,
+        None,
+        seeds=R.E1C_SEEDS[:64],
+        design=R.E1C,
+        logs_pass=True,
+        sim_campaigns=20,
+    )
+    line = next(x for x in R.render_e1c(a).splitlines() if "stratum" in x)
+    return a, line
+
+
+def test_goal_frozen_stratum_lines_are_descriptive_and_fail_soft():
+    """E1d section 4: the frozen count, H-P1's t and k/n within each stratum, and the real/pfrozen
+    status disagreement, beside the decision; 0 frozen, 1 frozen, all-equal d_s, missing record."""
+    a, line = _stratum(_stratum_runs("harm", 9, {("pfrozen", 0): MOVING_HG}))
+    assert line.startswith("- stratum (DESCRIPTIVE ONLY, decides nothing): 9/64 seeds goal-frozen")
+    d = a["hs"]["H-P1"]["d"]
+    t_f, t_m = R.ttest(d[:9]), R.ttest(d[9:])
+    assert f"within frozen t={t_f:.3f} (9/9)" in line
+    assert f"within moving t={t_m:.3f} (55/55)" in line
+    assert "disagrees on 1 seeds" in line
+    _, zero = _stratum(_stratum_runs("harm", 0))
+    assert "0/64 seeds goal-frozen" in zero and "within frozen t=n/a (0/0)" in zero
+    _, one = _stratum(_stratum_runs("harm", 1))
+    assert "1/64 seeds goal-frozen" in one and "within frozen t=nan (1/1)" in one
+    _, equal = _stratum(_stratum_runs("noharm", 9))  # every d_s exactly 0
+    assert "within frozen t=0.000 (0/9)" in equal and "within moving t=0.000 (0/55)" in equal
+    runs = _stratum_runs("harm", 9)
+    for s in R.E1C_SEEDS[:3]:
+        del runs[("real", s)]["p"]["held_goal"]
+    runs[("real", R.E1C_SEEDS[3])]["p"]["held_goal"] = [None] * 4
+    a, miss = _stratum(runs)
+    assert miss == "- stratum n/a (held_goal missing on 4 seeds)" and a["valid"]
+
+
+def test_firewall_the_disposition_is_byte_identical_with_held_goal_present_stripped_shuffled():
+    """E1d section 4's firewall red: the stratum never reaches the look's disposition output."""
+    for kind in ("harm", "noharm"):
+        present = _stratum_runs(kind, 9)
+        stripped = copy.deepcopy(present)
+        for d in stripped.values():
+            d["p"].pop("held_goal", None)
+        shuffled = copy.deepcopy(present)
+        rng = random.Random(7)
+        for d in shuffled.values():
+            rng.shuffle(d["p"].get("held_goal", []))
+        outs, lines = [], []
+        for runs in (present, stripped, shuffled):
+            a, line = _stratum(runs)
+            md = [x for x in R.render_e1c(a).splitlines() if "stratum" not in x]
+            outs.append((R.e1c_disposition(a), _quoted(a), md))
+            lines.append(line)
+        assert outs[0] == outs[1] == outs[2]
+        assert len(set(lines)) == 3  # the held_goal did reach the stratum line in all three
+
+
 def test_e1c_record_reads_section_8_never_e1b_null_record(e1c_704):
     """wf-rv #5689 m2 (spec sections 1, 4, 8): each stop reads section 8's disposition.
     E1b's "powered: a null, NULL-RECORD path" never reaches the E1c record.
