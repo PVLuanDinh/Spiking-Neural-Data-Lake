@@ -3005,3 +3005,54 @@ def test_rs1b_out_of_sample_shape_leave_one_out_keeps_type_one():
         pooled = sum(rates) / len(rates)
         assert pooled <= 0.05 + 3 * _se(0.05, n_sim * len(rates)), (key, rates)
         assert max(rates) <= 0.05 + 3 * _se(0.05, n_sim), (key, rates)
+
+
+def _old_rpe_pearson(x, y):
+    """Verbatim copy of rpe_charge.pearson as of c4c10b28: the reference for numeric identity."""
+    mx, my = sum(x) / len(x), sum(y) / len(y)
+    sxx = sum((a - mx) ** 2 for a in x)
+    syy = sum((b - my) ** 2 for b in y)
+    return (
+        sum((a - mx) * (b - my) for a, b in zip(x, y)) / math.sqrt(sxx * syy)  # noqa: B905 (verbatim old body)
+        if sxx and syy
+        else float("nan")
+    )
+
+
+_PEARSON_CASES = [
+    ([1.0, 2.0], [3.0, 5.0]),
+    ([0.1, 0.7, 0.3, 0.9], [0.2, 0.1, 0.8, 0.5]),
+    ([0.0131, -0.035, 0.048, 0.2], [1e-9, 3e-9, -2e-9, 7e-9]),
+    ([float(i) for i in range(19)], [float((i * 7) % 11) for i in range(19)]),
+]
+
+
+def test_pearson_nan_mode_is_numerically_identical_to_the_old_rpe_charge_body():
+    from snn_data_lake.infra import _mathutils as M
+
+    for x, y in _PEARSON_CASES:
+        assert M.pearson(x, y, on_constant="nan") == _old_rpe_pearson(x, y)
+        assert M.pearson(x, y) == _old_rpe_pearson(x, y)  # default mode, same floats
+    assert M.pearson([0.1, 0.7, 0.3, 0.9], [0.2, 0.1, 0.8, 0.5]) == -0.05773502691896258
+
+
+def test_pearson_constant_vector_raises_by_default_and_is_nan_on_request():
+    from snn_data_lake.infra import _mathutils as M
+
+    const, var = [2.0, 2.0, 2.0], [1.0, 2.0, 4.0]
+    for x, y in ((const, var), (var, const), (const, const)):
+        with pytest.raises(ZeroDivisionError):
+            M.pearson(x, y)
+        with pytest.raises(ZeroDivisionError):
+            M.pearson(x, y, on_constant="raise")
+        assert math.isnan(M.pearson(x, y, on_constant="nan"))
+        assert math.isnan(_old_rpe_pearson(x, y))
+
+
+def test_pearson_rpe_charge_name_is_the_shared_function_in_nan_mode():
+    from snn_data_lake.infra import _mathutils as M
+
+    assert R.pearson.func is M.pearson and R.pearson.keywords == {"on_constant": "nan"}
+    assert math.isnan(R.pearson([1.0, 2.0], [4.0, 4.0]))
+    for x, y in _PEARSON_CASES:
+        assert R.pearson(x, y) == _old_rpe_pearson(x, y)
