@@ -746,3 +746,20 @@ Appended only; nothing above this line is edited. This corrects the build record
   `moved == 0.0`, so not wrong, but weaker than the bar). It is not edited in this round; it is named so no reader takes
   1e-9 as the bar.
 - This is a criterion change made before any data exists. It changes no verdict, boundary, seed block or sizing.
+
+---
+
+## Addendum 2026-10-29: F3 claimants resolved (integrator G5 S.5 row 5, launcher D-70)
+
+Source: `g5-readout-variants.md` S.5 row 5 and fold 1 F.6 (claude/g5-settle-1029@2157ee27), accepted by launcher D-70.
+This addendum only appends; nothing above is edited. It replaces F3's "whichever builds first owns" rule.
+
+- **One drift home: D0's module**, `instruments/representational_drift.py` (research/representational-drift/MAP.md D0). It owns the
+  drift reader (`pv_correlation`, `tuning_correlation`, `procrustes_realign`, `DriftReading`, and the `read_drift` dispatcher).
+- **All three F3 claimants read through it, none builds its own:**
+  - this row's section 2.4 (L1b-STALE);
+  - G5 Part E's P-E0 (uses `pv_correlation` alone);
+  - G9's criterion 1 (Part E E.8 item 2).
+- **No second drift-reading function may be added** (P2). A new reader needs an amendment to D0, not a new function elsewhere.
+- Correlation primitives stay in `infra/_mathutils` (`pearson`), as F3 already says.
+- Nothing is built by this addendum; see the MAP.md D0 amendment of the same date for the module's names.
