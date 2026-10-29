@@ -179,3 +179,35 @@ def test_f4_a_deep_tier_read_failure_refuses_visibly(lake_brain, H, monkeypatch)
     got = lake_brain.recall_episode_durable(dict(EPS[0]), min_conf=1.0)  # nonresident: deep tier
     assert got["source"] == "refused", got
     assert "planted read failure" in got["reason"]
+
+
+def test_m1_a_refused_boot_counts_the_durable_writes_it_skips(H, monkeypatch):
+    # F3 refuses a durable write without a boot session (unchanged); the skip must be VISIBLE in
+    # state(), beside the other fault counters, not a silent loss of every autobiographical episode
+    from snn_data_lake.engine.brain import make_brain
+
+    def broken(*a, **k):
+        raise OSError("planted session read failure")
+
+    monkeypatch.setattr(H, "next_session", broken)  # the R2 boot refuses: _session stays None
+    b = make_brain(seed=0, persist=True)
+    try:
+        assert b.state()["episode_writes_skipped"] == 0
+        for _ in range(30):
+            b.tick()
+        assert b._session is None and H.load_episodes() == []
+        assert b.state()["episode_writes_skipped"] > 0
+    finally:
+        b.close()
+
+
+def test_m1_a_healthy_boot_skips_nothing(H):
+    from snn_data_lake.engine.brain import make_brain
+
+    b = make_brain(seed=0, persist=True)
+    try:
+        for _ in range(30):
+            b.tick()
+        assert b.state()["episode_writes_skipped"] == 0
+    finally:
+        b.close()
