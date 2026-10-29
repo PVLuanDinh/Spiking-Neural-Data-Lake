@@ -972,3 +972,19 @@ public input constructions survive, or need the absent registered candidate rest
   Their summaries in this file were read; their primary records were not independently verified by this lane.
 - UNVERIFIED: main delivery, independent amendment review, full stacked validation, final record and any adoption.
   This append closes the bounded documentation task only; the integrator owns reviews, integration and the build arc.
+
+## DATED NOTE 2026-10-29 -- lane r1-static (static + docs only; nothing run): LakeMemory citation and the B4 step-1 ruling
+
+- **LakeMemory (section 1.3, B3 last row).** The B3 row "not found ... the citation is stale or the class lives elsewhere" is itself
+  stale. `git grep` with a pathspec finds the class at BOTH pins: `class LakeMemory` is defined at
+  `src/snn_data_lake/substrate/proximity_replay.py:140` at e1b3ae3c and at c4c10b28 (unchanged line). The chat file only IMPORTS it
+  (`reasoning/spike_chat_lake.py:50`) and constructs it at `spike_chat_lake.py:286` (`LakeMemory(path=None, seed=seed)`), so an
+  exact-string search for a definition inside `spike_chat_lake.py` finds nothing. Lineage (`git log -S "class LakeMemory"`, pathspec):
+  `lake_memory` was promoted and renamed to `proximity_replay` in 5a4b82bc ("family C3"), then moved into `substrate/` in 4b2752b5
+  ("refactor(G8/M9): move lake recall into substrate"); the class name never changed. Current name: `LakeMemory`; current file:line:
+  `substrate/proximity_replay.py:140`. Section 1.3's claim (a per-boot rebuilt FACT-recall index, the in-tree precedent for a derived
+  index) was not re-read here; only the symbol's location was.
+- **B4 step 1 (the vehicle), INTEGRATOR RULING (claude-engine-1024, 2026-10-29).** R1's content is REBUILT ON MAIN in its own branches
+  against the A2 amendment (A4 already says so). `claude/r1` is a source to port from, never merged. F1-F4 are done on
+  `claude/r1-port-1029@5f679c0d` (enforcer AGREE #6519). B4 step 3's static part (the A2 current-schema C8 fixture and the A4
+  generator/oracle core I1-I7) is lane r1-static's, on `claude/r1-static-1029`; its report lists what stays owed.
