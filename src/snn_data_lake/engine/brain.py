@@ -3626,6 +3626,8 @@ class Brain:
             return {
                 "episode": {},
                 "confidence": 0.0,
+                "margin": None,
+                "contradicted": 0,
                 "source": "refused",
                 "reason": f"{type(exc).__name__}: {exc}",
             }
@@ -4649,6 +4651,10 @@ class Brain:
                                 f"{_le.get('affect', 'calm')}"
                                 + (f", margin {_lm:.1f} over the null" if _lm is not None else "")
                                 + ".)"
+                            )
+                        elif _lk.get("source") == "refused":  # R1 m3: a refusal is not a miss
+                            reply = reply + (
+                                f" (I could not read the durable lake: {_lk.get('reason')}.)"
                             )
                     if e and (epi or {}).get("confidence", 0.0) > _rc_th:
                         reply = reply + (
