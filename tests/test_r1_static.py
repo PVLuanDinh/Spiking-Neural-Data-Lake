@@ -328,3 +328,25 @@ def test_i7_a_write_to_the_live_home_is_reported_even_when_the_run_raises(tmp_pa
     with pytest.raises(ra.LiveHomeWritten):
         ra.stamped(raiser)
     assert ra.stamped(lambda: {"ok": 1}) == {"ok": 1}  # the positive: no write, no refusal
+
+
+# ---- I2: tier attribution (r1-bounded-recall.md 2.7 I2) -----------------------------------------
+def test_i2_tier_attribution_reads_the_deep_counter():
+    # a lake answer with a deep-tier read is the deep tier; without one it is the window
+    assert ra.tier_of({"source": "working", "episode": {"a": "1"}}, deep_calls=0) == "working"
+    assert ra.tier_of({"source": "lake", "episode": {"a": "1"}}, deep_calls=1) == "deep"
+    assert ra.tier_of({"source": "lake", "episode": {"a": "1"}}, deep_calls=0) == "window"
+    assert ra.tier_of({"source": "miss", "episode": {}}, deep_calls=1) is None
+
+
+def test_i2_attributes_through_the_real_wrappers_and_the_wrong_attribute_reds(
+    tmp_path, monkeypatch
+):
+    # the real `_instrumented` wrappers over the real chain (Brain.recall_episode_durable on a stub
+    # that carries only what it reads). The red wraps `save_episode` instead of the deep tier's
+    # reader, so the known-deep cue counts 0 deep reads and is mis-attributed `window`.
+    iso = tmp_path / "iso"
+    iso.mkdir()
+    monkeypatch.setenv("NORD_HOME", str(iso))
+    assert ra.i2_check(str(iso / "home_ok")) is True
+    assert ra.i2_check(str(iso / "home_red"), deep_attr="save_episode") is False
