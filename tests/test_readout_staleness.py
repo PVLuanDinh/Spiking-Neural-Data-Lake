@@ -203,7 +203,7 @@ def test_r3_red_mu_zero_inert_and_norm_break_fails():
     rng = np.random.default_rng(0)
     W, s, xn = rng.normal(size=(5, 6)), np.full(5, 0.5), np.eye(6)[1]
     ok, moved, inert = rs.operator_check(W, rs.oja_step(W, s, xn, mu=0.0))
-    assert inert and moved < 1e-9
+    assert inert and moved == 0.0
     assert not rs.operator_check(W, rs.oja_step(W, s, xn) * 1.01)[0]
 
 
