@@ -455,7 +455,7 @@ class GuardMissing(RuntimeError):
 
 
 class LiveHomeWritten(RuntimeError):
-    """The live home's stamp (size, mtime per file) changed during a run (I7, cp4 #8)."""
+    """The live home's stamp (mtime, size, content digest per file) changed during a run (I7, cp4 #8)."""
 
 
 def require_isolation():
@@ -488,21 +488,28 @@ def confine(root):
     return resolved
 
 
-# distinct-from: gates/move_gate.py::_live_home_stamp is REUSED below (the gate's own stamp), and
-#   substrate/home.py::lake_snapshot hashes file bytes (blake2b); this wrapper only compares stamps.
+# distinct-from: gates/move_gate.py::_live_home_stamp -- the gate's PRIVATE census helper (top-level files
+#   of the default home, size and mtime); the repo's ONE live-lake stamp is substrate/home.py::lake_snapshot
+#   / live_lake_untouched (nested files, content digest), which this wrapper calls and does not copy (P2).
 def stamped(fn):
-    """Run `fn()` under I7's live-home stamp, compared before and after, on the exception path too."""
-    from snn_data_lake.gates.move_gate import _live_home_stamp
+    """Run `fn()` under I7's live-home stamp (home.lake_snapshot), compared before and after with
+    home.live_lake_untouched, on the exception path too."""
+    from snn_data_lake.substrate import home as H
 
-    before = _live_home_stamp()
+    live = H._default_live_home()
+    before = H.lake_snapshot(live)
     try:
         out = fn()
     except BaseException as exc:
-        if _live_home_stamp() != before:
-            raise LiveHomeWritten("the live home changed during a run that then raised") from exc
+        ok, changed = H.live_lake_untouched(live, before)
+        if not ok:
+            raise LiveHomeWritten(
+                f"the live home changed during a run that then raised: {changed[:3]}"
+            ) from exc
         raise
-    if _live_home_stamp() != before:
-        raise LiveHomeWritten("the live home changed during the run")
+    ok, changed = H.live_lake_untouched(live, before)
+    if not ok:
+        raise LiveHomeWritten(f"the live home changed during the run: {changed[:3]}")
     return out
 
 
