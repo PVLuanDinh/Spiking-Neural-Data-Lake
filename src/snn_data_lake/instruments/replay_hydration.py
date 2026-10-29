@@ -62,13 +62,33 @@ PART_SEEDS = {
     "P3": tuple(range(15050, 15058)) + tuple(range(15060, 15068)),
 }
 #: the verdict lines each part's own verdict joins (2.3 Disposition: R2-c6 is P2's own; A3 runs
-#: FAILWRITE on "the P1 seeds"). R2-c3 and R2-c8 join BOTH parts until the integrator rules which
-#: reds and which bout check belong to which part (OWED, r2-instr-fix REPORT): stricter, never weaker.
+#: FAILWRITE on "the P1 seeds"). R2-c3 is read per part (`_RED_PART`); R2-c8 joins BOTH parts until
+#: the integrator rules which part the bout check belongs to (OWED, r2-instr-fix REPORT): stricter.
 PART_BARS = {
     "P1": ("R2-c1", "R2-c2", "R2-c3", "R2-c4", "R2-c8", "FAILWRITE"),
     "P2": ("R2-c3", "R2-c6", "R2-c8"),
     "P3": ("R2-c7",),  # 2.3 Disposition: "R2-c7 (2.10) is P3's"
 }
+#: R2-c3's reds that the registration assigns to ONE part: 2.4's table (2.3: R2-c1..c5 are P1's) and
+#: FAILWRITE's `FW:*` reds (A3: "then the P1 seeds of 2.6") are P1's; the 2026-10-06 P2 amendment's
+#: "Reds" names O_sleepskip and O_cursor (K4). A red no line assigns joins both parts (OWED).
+_RED_PART = {
+    **dict.fromkeys(("O_wm", "O_hyd", "O_rng", "O_w", "O_stack", "O_rw", "CHRONO", "MOTOR"), "P1"),
+    **dict.fromkeys(("DUP", "REORDER", "HELDOUT", "MISSING"), "P1"),  # 2.4's planted rows
+    "O_rng_lone_replay_equal": "P1",  # O_rng's vacuous control
+    "O_sleepskip": "P2",
+    "O_cursor": "P2",
+}
+
+
+# distinct-from: instruments/g5_part_d_reading.py::self_check, gates/manifest_gate.py -- both fire
+#   their own constructed reds; neither assigns a red to a part's verdict (their docstrings).
+def _joins(red, part):
+    """True when `red` is read in `part`'s R2-c3 (the dev block reads every red)."""
+    owner = "P1" if red.startswith("FW:") else _RED_PART.get(red)
+    return part == "dev" or owner in (None, part)
+
+
 S_SLEEP = 6  # sleep ticks recorded after the kill point
 M_POST = 6  # K2/K3's post-boundary turns
 J_NIGHT = 3  # K3: sleep ticks of the next night before the kill
@@ -2341,8 +2361,10 @@ def verdict(per_seed, seeds):
     c1 = every(lambda c: all(c["c1"].values()) and all(c["chrono"].values()))
     c2 = every(lambda c: c.get("c2", {}).get("I_K1_equal") is True)
     # every key any counted seed reports: a red missing from one seed's record never fires there
-    red_keys = dict.fromkeys(r for s in counted for r in per_seed[s]["reds"])
-    plant_keys = dict.fromkeys(k for s in counted for k in per_seed[s]["planted"])
+    red_keys = dict.fromkeys(r for s in counted for r in per_seed[s]["reds"] if _joins(r, part))
+    plant_keys = dict.fromkeys(
+        k for s in counted for k in per_seed[s]["planted"] if _joins(k, part)
+    )
     reds = {r: every(lambda c, r=r: c["reds"].get(r) is True, counted) for r in red_keys}
     fired_somewhere = {
         r: any(per_seed[s]["reds"].get(r) is True for s in counted) for r in red_keys
@@ -2357,7 +2379,10 @@ def verdict(per_seed, seeds):
         )
         for k in plant_keys
     }
-    controls = every(lambda c: all(c.get("c3_controls", {"x": True}).values()), counted)
+    controls = every(
+        lambda c: all(v for k, v in c.get("c3_controls", {}).items() if _joins(k, part)),
+        counted,
+    )
     c3 = all(reds.values()) and all(planted.values()) and controls and not invalid
     # 2.3: the controls and R2-c6 hold "on EVERY seed", an INVALID one included
     c4 = every(lambda c: c["c4_structural_moves"] and c["c4_comparator"], counted)
