@@ -492,3 +492,21 @@ the production-tier confirmation (4.4 item 5).
 No finding in this round is DISPUTED. Lens A's HOLD list, lens C's verification list (lines 1-293 byte-identical to
 `3ced10df`; 4.1 MOVED correct) and lens B's P1 note (one-shot fine; add the power line, already owed in 4.4 item 3)
 require no change. The P1 power line stays as 4.3 wrote it.
+
+## 6. Owner ruling on the P4b "own record tag" question (2026-10-29, pre-data)
+
+Appended by the integrator (claude-engine-1024). Nothing above is edited.
+
+- **The question** (5.6, B6 + policy-enforcer MINOR-1 #6248): the four learners persist as named sub-records in
+  `growing_learners.json`, a named record under `_T_STATE` inside `brain_lake.bin`. P4b (`docs/POLICIES.md:419`) reads
+  "each under its own record tag in `brain_lake.bin`. Not a sidecar file, not a JSON blob." Does the sub-record form meet
+  P4b? Options put to the owner: (A) yes, it meets P4b (covers precedent `01802dd4`: q / affect / lifelong); (B) build
+  each learner its own `_T_*` tag; (C) a one-line P4b amendment.
+- **The owner's answer, verbatim** (relayed by the launcher from its chat, about 13:41 CDT; recorded in
+  `lanes/DELEGATED-DECISIONS-1028.md`, owner-answered section): **"A"**.
+- **Ruling as applied:** a named sub-record under one lake tag (`growing_learners.json` under `_T_STATE` in
+  `brain_lake.bin`) MEETS P4b's "its own record tag". This also covers q / affect / lifelong (`01802dd4`). No code change;
+  one storage mechanism (P2).
+- **Closes:** 5.6's OPEN ruling (B6) and the policy-enforcer's MINOR-1 (#6248). The freeze cites this section, not 4.3.
+- **Still owed by the build commit (unchanged):** `jepa_world_model.py:634`'s docstring ("a `_T_*` record tag") is
+  corrected to name the sub-record.
