@@ -5,6 +5,7 @@ so each red is shown to fire and a pass is not vacuous. The inputs are written o
 taken from the gate's own self-check plants: a test must not share its oracle with its code.
 """
 
+import shutil
 import subprocess
 import sys
 from datetime import date
@@ -313,11 +314,11 @@ def test_docstring_does_not_claim_r1_is_a_subset_of_r2():
     assert "subset" not in (sg.__doc__ or "")
 
 
-def test_pre_landing_frozen_drafts_g2_g3_are_grandfathered_and_g5_part_e_is_deferred():
+def test_g2_is_grandfathered_g3_and_g5_are_deferred_by_name():
     ev = "specs/022-unified-brain-arc/evidence/"
-    assert {ev + "g2-taught-problems.md", ev + "g3-growth-loop.md"} <= sg.GRANDFATHERED
-    assert set(sg.OWES_AT_FREEZE) == {ev + "g5-readout-variants.md"}
-    assert ev + "g5-readout-variants.md" not in sg.GRANDFATHERED
+    assert ev + "g2-taught-problems.md" in sg.GRANDFATHERED
+    assert set(sg.OWES_AT_FREEZE) == {ev + "g3-growth-loop.md", ev + "g5-readout-variants.md"}
+    assert not {ev + "g3-growth-loop.md", ev + "g5-readout-variants.md"} & sg.GRANDFATHERED
 
 
 # --- MINOR-1: the one-shot waiver needs a stated, un-negated reason ---
@@ -353,3 +354,136 @@ def test_negated_one_shot_with_every_sequential_field_still_passes(tmp_path):
 def test_r1_heading_rule_is_the_lists_exact_one_pre_registered_headings_are_not_matched(tmp_path):
     text = "# Notes\n\n## 3. Pre-registered criteria, baseline vs after\n\nseeds 8.\n"
     assert run(tmp_path, {OUT: text}).reds == []
+
+
+# --- round 3 (enforcer #6592) ---
+LIST = EV + "p1-sample-size-grandfather.md"
+LIST_TEXT = (
+    "# list\n\n## 3. Grandfathered\n\n| 1 | `{other}` | R2 |\n\n"
+    "## 4. Owes a section at freeze (1; NOT grandfathered)\n\n"
+    "| 11 | `{owed}` | R1 |\n\n## 5. Notes\n"
+)
+
+
+def test_a_file_the_list_file_keeps_owing_cannot_be_grandfathered_by_the_gate(tmp_path):
+    owed = EV + "g.md"
+    files = {
+        LIST: LIST_TEXT.format(owed=owed, other=A),
+        owed: "# G -- pre-registration\n\nseeds 8.\n",
+    }
+    report = run(tmp_path, files, grandfathered=frozenset({owed}))
+    found = reds(report, "R-LIST-CONFLICT")
+    assert len(found) == 1 and found[0].where == owed
+
+
+def test_list_file_section_4_name_deferred_or_carrying_the_section_is_no_conflict(tmp_path):
+    owed = EV + "g.md"
+    files = {LIST: LIST_TEXT.format(owed=owed, other=A), owed: prereg()}
+    assert run(tmp_path, files).reds == []
+    files[owed] = "# G -- pre-registration\n\nseeds 8.\n"
+    report = run(tmp_path, files, owes_at_freeze={owed: "2999-01-01"})
+    assert report.reds == [] and report.deferred == [owed]
+
+
+def test_a_grandfathered_name_in_section_3_of_the_list_file_is_no_conflict(tmp_path):
+    files = {
+        LIST: LIST_TEXT.format(owed=EV + "g.md", other=A),
+        A: "# X -- pre-registration\n\nseeds 8.\n",
+    }
+    assert run(tmp_path, files, grandfathered=frozenset({A})).reds == []
+
+
+def test_the_live_gate_and_the_live_list_file_agree_on_what_is_still_owing():
+    text = (sg.REPO / sg.LIST_FILE).read_text(encoding="utf-8")
+    owed = sg._owed_by_list(text)
+    ev = "specs/022-unified-brain-arc/evidence/"
+    assert ev + "g3-growth-loop.md" in owed and ev + "g5-readout-variants.md" in owed
+    assert not owed & sg.GRANDFATHERED
+
+
+needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH")
+
+
+def _git(root, *args):
+    subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+
+@needs_git
+def test_a_git_checkout_reads_tracked_markdown_only_not_untracked_litter(tmp_path):
+    bare = "# T -- pre-registration\n\nseeds 8.\n"
+    tree(tmp_path, {A: prereg(), EV + "litter.md": bare, "nested/copy/docs/litter.md": bare})
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "add", "--", A)
+    report = sg.check(tmp_path, frozenset(), {}, frozenset(), today=date(2026, 10, 29))
+    assert report.reds == [] and report.counts["pre-registrations found"] == 1
+
+
+@needs_git
+def test_a_git_checkout_still_reds_a_tracked_file_without_the_section(tmp_path):
+    bare = "# T -- pre-registration\n\nseeds 8.\n"
+    tree(tmp_path, {A: bare})
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "add", "--", A)
+    report = sg.check(tmp_path, frozenset(), {}, frozenset(), today=date(2026, 10, 29))
+    assert [r.where for r in reds(report, "R-NO-SECTION")] == [A]
+
+
+def test_a_positive_one_shot_claim_with_a_colon_tail_is_not_read_as_negated(tmp_path):
+    line = "A one-shot design, not sequential: the pilot only estimates SD."
+    text = "# X -- pre-registration\n\n## Sample size (P1)\n" + THREE + "\n" + line + "\n"
+    assert run(tmp_path, {A: text}).reds == []
+
+
+def test_one_shot_is_not_a_design_still_reads_as_negated(tmp_path):
+    line = "A one-shot is not a design we use for this row."
+    text = "# X -- pre-registration\n\n## Sample size (P1)\n" + THREE + "\n" + line + "\n"
+    assert len(reds(run(tmp_path, {A: text}), "R-FIELD")) == 1
+
+
+def test_the_expiry_is_described_as_lane_set_not_integrator_set():
+    src = Path(sg.__file__).read_text(encoding="utf-8")
+    assert "integrator-set bound" not in src and "integrator to ratify" in src
+
+
+def test_the_freeze_dates_in_the_comments_are_author_dates():
+    src = Path(sg.__file__).read_text(encoding="utf-8")
+    assert "froze 2026-10-06" not in src and "2026-10-03" in src
+
+
+# --- round 3b (launcher D-73): "frozen" is keyed on the file's own text, never on a commit subject ---
+@needs_git
+def test_a_commit_subject_saying_freeze_with_no_marker_in_the_text_does_not_grandfather(tmp_path):
+    bare = "# G -- DRAFT pre-registration\n\nPRE-DATA, no data read. seeds 8.\n"
+    tree(tmp_path, {A: bare})
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "add", "--", A)
+    _git(tmp_path, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "freeze g3")
+    report = sg.check(tmp_path, frozenset(), {}, frozenset(), today=date(2026, 10, 29))
+    assert [r.where for r in reds(report, "R-NO-SECTION")] == [A]
+    deferred = sg.check(
+        tmp_path, frozenset(), {A: "2999-01-01"}, frozenset(), today=date(2026, 10, 29)
+    )
+    assert deferred.reds == [] and deferred.deferred == [A]
+
+
+def test_the_gate_never_reads_a_commit_subject():
+    src = Path(sg.__file__).read_text(encoding="utf-8")
+    assert "git log" not in src and '"log"' not in src and "'log'" not in src
+
+
+def test_the_marker_rule_is_named_in_the_docstring():
+    assert "freeze marker" in (sg.__doc__ or "") and "commit subject" in (sg.__doc__ or "")
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "Freeze commit 6bc97430 (2026-10-06): section 2 frozen as written.",
+        "Status: FROZEN 2026-10-06, 2.1-2.13 as written.",
+        "Frozen at 6bc97430.",
+    ],
+)
+def test_a_dated_freeze_marker_in_the_text_ends_the_deferral(tmp_path, line):
+    text = "# G -- DRAFT pre-registration\n\n" + line + "\n"
+    report = run(tmp_path, {A: text}, owes_at_freeze={A: "2999-01-01"})
+    assert [r.code for r in report.reds] == ["R-FROZEN-DEFERRED"]
