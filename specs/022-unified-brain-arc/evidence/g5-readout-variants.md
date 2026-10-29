@@ -2381,3 +2381,22 @@ State, from the record (no ruling): integrator ruling owed.
 - Therefore both blocks' status is: 11400-11407 spent for fixture sanity; 11410-11417 and the reserve 11418-11425 unspent, held, owed to D1 if D1 runs. Question for the integrator: does D1 still run, and on which dev block? Not ruled here.
 
 Disclosure: written by lane g5-settle (Sonnet), docs only. It read the cited lines and ran nothing; it has had no panel and no policy-enforcer read.
+
+#### S.5 Integrator rulings on S.1 and S.4 (2026-10-29, `claude-engine-1024`, sole int3 integrator; pre-data; the launcher may overturn)
+
+Each ruling picks one of the options S.1/S.4 stated; nothing else above changes. The panel reviews these at Part E's freeze.
+- **S.1 row 1 (P8 null-scale axis):** option (a), UNITS the alignment acts on, anchors scaled in proportion. Reason: Procrustes
+  fits a rotation per event and learns nothing, so it is a geometry/capacity mechanism under POLICIES.md P8 null-scale item 2,
+  not a learning rule. The author names the axis (here the integrator); the panel reviews it at the freeze.
+- **S.1 row 4 (decision function):** option (a), `k_frac` = 1/2 and `futility_powered` = True, the E1c/E1d precedent, matching
+  the P1 amendment's rule that a futility stop is taken only at a powered look. The freeze states that the paired accuracy
+  contrast is read with the same sign-count conjunct. E.7's R-S1/R-S3 simulation still owes the type I / power check (a run).
+- **S.1 row 5 (drift-function home, P2):** option (a), accept fold 1 F.6: D0's module owns the drift reader and
+  `procrustes_realign`; Part E's alignment module imports it. Exactly one home. Owed edits outside this file: the F3 list in
+  d1-readout-staleness.md and the MAP.md D0 amendment.
+- **S.1 row 6 (seed supply):** option (a) now: keep the 83-seed pool with the seed-supply reason stated; a powered cap above
+  83 stays NOT RUN as E.6 says. Option (b) (a re-grepped widened pool excluding 11500-11507, the note (d) rows and A1's rows,
+  with the `4242` positive control) is taken only if the pilot's measured SD gives a powered cap above 83.
+- **S.4 (D1):** D1 still runs (row plan Phase 2 item 5). Its dev reading uses a FRESH block allocated by a registry grep with a
+  positive control in D1's pre-run amendment; 11400-11407 stays EXPOSED (fixture sanity only, never fresh again, A1).
+  Confirmatory 11410-11417 and reserve 11418-11425 stay HELD for D1.
