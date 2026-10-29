@@ -373,3 +373,122 @@ reads only (no run, no import). Base for this addendum: `c4c10b28`. No `src/` fi
   (a kill-9 restart, not only a clean shutdown: C3).
 - **Outside judge** (none is the method): the child-over-empty-home negative control; the arm-prototype positive control
   in the same command; the integrator's re-run of the probe on the production tier; the policy-enforcer's review.
+
+## 5. Panel fold 1, 2026-10-29, pre-data (lane fold-6231, board #6231)
+
+Appended only; nothing above is edited. Base `c4c10b28`. Static reads only (no run, no import, no pytest). Sources:
+lens A #6288 (A1-A5), lens B #6283 (B1 = the MAJOR, B2-B7 = its minors in report order: serializer idiom, retirement
+refs, C1 channel, `_dopa`/`_lhb`, P4b wording, P2 misuse), lens C #6293 (C-1a..c), policy-enforcer #6248 (MINOR-1) and
+its #6301 concurrence. Each finding is FIXED (the design now says X), DISPUTED (evidence) or OPEN (needs a run or an
+owner). Where this section and an earlier one disagree, THIS section binds at the freeze, and 5.9 lists the earlier
+text it supersedes.
+
+### 5.1 A1 (MAJOR, the instrument is the method): FIXED
+C1/C2/C1a graded the serializer with itself. Added to C1 and C2, for JEPA, Valence and attention:
+- **Live-array leg.** In the child, at the adoption point, read the arrays the learner computes with, not its record:
+  `jepa.Wz[i][j]` and `jepa.Wa[i][j]`, `valence.w[i]`, attention `w[b]`, each `==` the parent's flushed value (read from
+  the parent's own live learner before `close()`, written to a side file under the test's temp dir by the parent).
+  A `from_record` that caches the dict and leaves the live arrays fresh now fails this leg.
+- **Functional leg.** The parent, before `close()`, evaluates one fixed prediction (`jepa` on a fixed (pattern, action)),
+  one `valence(pattern)` and one `attend` on a fixed input, and records the outputs. The child evaluates the same at the
+  adoption point (before that tick's `train_step`/`learn`). MET iff equal.
+- C1a (`to_record(from_record(r)) == r`) stays as a unit test but is no longer cited as evidence that ids imply state.
+
+### 5.2 A2 (MAJOR, undisclosed learned state `_plan_base`): FIXED (census run is OPEN, see 5.8)
+c4c10b28 `engine/autonomous_loop.py:1538-1545`: `_plan_w` updates from `_plan_lr * da * (_plan_elig - _plan_base)`, then
+`_plan_base` is an EMA of `_plan_elig` (`:1541-1543`) and `_plan_elig` is reset to 0.0 (`:1545`). The `plan_w` sub-record is
+now `{"plan_w": float, "plan_base": float, "plan_elig": float}`, each refused unless finite (`plan_w` also within
+[0.0, 1.0] as clamped at `:1539`; `plan_base`, `plan_elig` within [0.0, 1.0] as an EMA/indicator of a 0/1 trace). Persisting
+`plan_elig` costs one float and removes the question whether a flush can land between its set and its reset. C1/C2 read
+`plan_base` and `plan_elig` at 0 ticks, and C2 plants `plan_base = 0.3` (not the init 0.0). A **next-update leg** is
+added to C1: after restore, the first `_plan_w` update from an identical `_rpe` and `_plan_elig` equals the parent's would-be
+update (computed in the parent from its live state before `close()`), so a missing running baseline fails.
+`_dopa`/`_lhb`: see 5.5 (B4). The R2 census (4.5) is now a **freeze precondition with its output committed**, with a
+planted red: a learner attribute added in a scratch subclass must be reported missing. The census is a stdlib static scan
+and is queued for the integrator (not run here).
+
+### 5.3 A3 (MINOR, base red is a crash): FIXED
+The base red for C1/C2 is the live-array leg of 5.1, which EXISTS on the base (`jepa.Wz` etc. are plain attributes) and
+reads child == fresh != parent, an assertion failure on state. The `adopted` channel is read only AFTER the build commit
+(it does not exist on the base), and the test is written so the base run fails at the live-array assertion, not at a
+KeyError: the adopted-id read is guarded by `if "adopted" in note_channel` for the base red only, and the build commit
+removes the guard (a test commit that guards then an unguard commit would be two tests; instead the red commit carries
+the live-array leg alone and the green commit adds the id leg). Red/green queued for the integrator (no run here).
+
+### 5.4 A4 + C-1b (MINOR, C6 git-grep red): FIXED
+Dropped the "`save_weights` has zero callers" grep (A4: vacuously green once the def is gone; C-1b: as written it also
+hits `spiking_jepa.py:868/:1315`, `readout/snn_classifier.py:170` and the census string at
+`instruments/eligible_circuit_census.py:421`, which are out of scope). C6 now has two legs: (i) the directory listing
+against the base `brain_lake.bin` + `skills.spkl` with a planted extra file (already in 2.3); (ii) no `open(` or
+`Path.write_*` is reachable from `JepaWorldModel.to_record` / `from_record` (an `ast` walk of those two function bodies
+that returns no such call), shown to red with a planted `open(` in a scratch copy. The retirement of
+`JepaWorldModel.save_weights`/`load_weights` is checked by an `ast` test that the two defs are absent from
+`faculties/jepa_world_model.py`, with a planted re-added def as its red. The build commit lists every remaining
+reference to the retired names: `instruments/eligible_circuit_census.py:421` (a boundary string, rewritten),
+`sensorimotor/rsnn_encoder.py:54` and `instruments/carried_state_campaign.py:162` (comments, rewritten), and the module's
+own self-check at `faculties/jepa_world_model.py:1005-1036` (rewritten to the record methods) (B3).
+
+### 5.5 B4 (MINOR, `_dopa`/`_lhb`): FIXED statically, census still runs
+Lens B's anchors hold at c4c10b28: the arm calls only `DopamineNuclei.da_level` (`autonomous_loop.py:2344`, a pure function
+of its argument, `faculties/dopamine_nuclei.py:126-129`) and `LateralHabenula.dopamine` (`:2358`); the critic cache `v` is
+written only by `present(learn=True)` (`faculties/habenula.py` `:152-165`), which has no live call. Disposition, as
+4.2 item 2 asked: `_dopa` and `_lhb` are **derived (seeded thresholds), nothing to persist**, with that citation. This is a
+static claim, not a run; R2's census (5.2) re-checks it and reds if either object gains a learned attribute.
+
+### 5.6 C7 (B1 MAJOR, no named instrument, no reachable red): FIXED by naming; one sub-claim OPEN
+The draft's C7 claimed byte-identity of `persist=False` brains with no instrument. Replaced by two named checks:
+- **Instrument.** `tests/test_brain_hermeticity.py` (T120 rung 3, the existing hermeticity census) is extended to the four
+  new sub-records: a `persist=False` brain must neither read nor write them, and a brain over a temp home must keep them in
+  that home only.
+- **Reachable red.** A planted monkeypatch that forces the restore ON for a `persist=False` brain, over a home that holds
+  a planted `jepa`/`valence`/`plan_w`/`attention` record, must flip the test (the four learners would read the planted values
+  instead of the fresh ones). Without that flip the check is vacuous.
+- **OPEN:** "every pinned digest of the determinism/replay/envelope gates is unchanged" needs a gate run to read
+  and cannot be shown statically. It is kept as an integrator post-campaign read, not as a conjunct of this draft; if the
+  freeze cannot name the gate whose pinned digest a `persist=False` brain feeds, that sub-claim is deleted (not weakened).
+
+### 5.7 B2, B5, B6, B7 and the enforcer's MINOR-1
+- **B2 (JEPA idiom): FIXED.** The tree's idiom is `state_dict`/`load_state_dict` (`growth/growing_learner.py:117,127`,
+  the same record's other sub-records). JEPA gets `state_dict()` / `load_state_dict()`, not `to_record`/`from_record`.
+  Everywhere above, read `to_record` as `state_dict` and `from_record` as `load_state_dict`; the freeze rewrites the
+  names in sections 2.1-2.3.
+- **B5 (C1 channel): FIXED.** Not a second field. The one note `_prototypes_restore_note` is extended: it carries an
+  `adopted` map `{learner: id}` on success too, its None-on-success contract is changed to "None only if nothing was
+  adopted or refused", and its readers are updated in the build commit (`brain.py:1180-1184` writer; readers
+  `infra/brain_telemetry.py:388`, `instruments/eligible_circuit_census.py:311,962`, and the P4b restart tests). This
+  resolves 4.2 item 1 by the first of its two options' cousin: ONE channel, changed.
+- **B6 + enforcer MINOR-1 (P4b "own record tag"): PARTLY FIXED, the ruling is OPEN and the owner's.** The sub-records live
+  in `growing_learners.json`, a named record under `_T_STATE` inside `brain_lake.bin`, i.e. in the lake, not a sidecar, per
+  precedent `01802dd4` (q, affect, lifelong). P4b (`POLICIES.md:380-381`) reads "each under its own record tag ... not a JSON
+  blob". The policy-enforcer's #6248 states that #5191 agreed on P2 grounds and did NOT rule on that clause, so 4.3's
+  "cite the policy-enforcer's acceptance" is **withdrawn** (#5191 does not settle it). The freeze carries EITHER an owner
+  ruling that the sub-record form meets P4b, OR a one-line P4b amendment through the adding-a-policy bar; until then the
+  freeze states the tension and the chosen form. `jepa_world_model.py:634` ("a `_T_*` record tag") is corrected in the
+  build commit to name the sub-record.
+- **B7 (R3 ruled out on P2): FIXED.** 4.5 said P2 forbids a second state format to carry RNG streams. Carrying them in the
+  same record is not a second format. R3 stays ruled out on its stated scope alone: a separately pre-registered
+  continuation claim that needs the RNG streams, the VICReg buffer and the transient gate state, which this draft
+  discloses as derived.
+
+### 5.8 A5 (MINOR, numbers from untracked scratch): OPEN, carried
+2.9's table and the FLOOD figures come from untracked scratch. Nothing in this fold re-derives them (no run). The same-record
+decision is NOT frozen on those numbers until the probe code is committed or the figures re-measured at the freeze head
+(4.4 item 2, unchanged). Also OPEN (run needed): the R2 census output (5.2), the base red and green runs (5.3), and
+the production-tier confirmation (4.4 item 5).
+
+### 5.9 C-1a and C-1c (lens C minors): FIXED
+- **C-1a.** 2.1's serializer row says the JEPA file methods "become thin wrappers". That is superseded: 2.9 item 3 and
+  4.3 retire them (5.4). 4.4 gains **item 8: rewrite 2.1's JEPA row to retire, not wrap, `save_weights`/`load_weights`,
+  and rename `to_record`/`from_record` to `state_dict`/`load_state_dict` (5.7 B2)**. 4.4 also gains **item 9: commit the
+  R2 census output (5.2); item 10: the owner ruling or P4b amendment (5.7 B6)**.
+- **C-1c.** On stdlib `LearnedAttention` does not learn (1.2), so its child's fresh `w` equals the parent's unlearned `w`
+  and C1's id and live-array legs hold even with a broken restore. 2.3 called C1 "the red that must flip" for all four.
+  Corrected: **C2 (planted values) is the only red for any learner that does not move on the tier.** 4.4 item 7 lists
+  them: on the stdlib tier, `LearnedAttention` (confirmed in 1.2) and possibly `ValenceLearner` and `_plan_w`, which
+  depends on 4.2 item 2's flags and on whether the 300-tick seeds reach a rewarded tick; the freeze states, per
+  learner, whether C1 or only C2 can fire.
+
+### 5.10 Not disputed, not silently dropped
+No finding in this round is DISPUTED. Lens A's HOLD list, lens C's verification list (lines 1-293 byte-identical to
+`3ced10df`; 4.1 MOVED correct) and lens B's P1 note (one-shot fine; add the power line, already owed in 4.4 item 3)
+require no change. The P1 power line stays as 4.3 wrote it.
