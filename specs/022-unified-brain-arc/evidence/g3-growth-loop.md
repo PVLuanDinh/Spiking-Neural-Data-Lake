@@ -1203,3 +1203,31 @@ Configuration versioning, Dale and the rebuilt isolation guards retain their con
   OWNER_QUESTIONS O1-O11/Q-COL and board#2; p0_reports/G3.md and DEPENDENCIES.md lead rulings9/9a/10/12/14/18/29;
   Codex P0 reply/critique; g3_encoding_red.py/g3_cost_probe.py; G7#204; #2133/#2134; #2556/#2562;
   unsupplied original #1/#124/#430/#2112/#2689. Relayed excerpts do not make those originals independently read.
+
+*Port note (arc 6, ported onto c4c10b28, tests not run): this addendum is dated 2026-10-08 and was written on `claude/g3-b3` from 117aada0; the commit ids below are that branch's. It is appended after A1-A6 unchanged, and A4's "campaign instrument ABSENT" is the state before this port.*
+
+## DATED ADDENDUM 2026-10-08 (P4a / P4b built learner-independent; owner-answer readings; no G3 data read)
+
+- **Branch and commits.** `claude/g3-b3` from origin/main 117aada0. 4e744848: `growth/column_batch.py` + `tests/test_column_batch.py` (P4a).
+  c4d0e921: `instruments/growth_campaign.py` + `tests/test_growth_campaign.py` (P4b, learner-independent part). Additive; nothing above changes.
+- **P4a as built.** Arms COL / SINGLE / BATCH9 (batch sizes 9 / 1 / 9 at k = 8; U counts every unit), `coupling(arm, gamma)` with gamma a
+  REQUIRED parameter (pending Q-COL; nothing decided), `as_column` / `column_source` (k E then one I, output synapses clipped to the
+  sign), role-free `ColumnBatch` from label rows (2.7 D8), `worst_residual` (the one shared targeting rule). Reds that fire: BATCH9 equals
+  COL at gamma 0 byte-identically; a planted early-I fixture makes COL's E latency None where BATCH9's is 4.
+- **P4b as built.** Seed families and `preflight` (a confirmatory family is refused unless it is the exact registered block AND the lead's
+  written go is entered; `GO` is None), `failure_penalty` (54 for batch 9, 53 for batch 1), `restricted_score` (2.8), `primary` (D_sel, D_rand
+  under ruling 9, floor = one batch (L4), "fewer neurons" only when both arms solve on >= 6 seeds and the both-solve size difference is >=
+  the floor), `non_inferiority` (ruling 9a), and 2.12a's isolation (fresh home per (seed, arm), live-lake refusal through home.py's guard,
+  `pair_snapshots`, `child_home`/`launch`). The statistic is `paired_contrast`'s, the guard `substrate/home.py`'s.
+- **NOT built, stated plainly.** The arm RUNNERS, C16, C9-C11 runners, the T1 / Astra / feed runners and the real-learner adapter: all need the
+  grown-segment port on `readout/interaction_learning.py`, which waits on R2's r2.v1 checkpoint step (owner question #2). No arm of 2.8 has run;
+  no number in this file is a growth result. `growth_loop`'s only `admit` implementers remain the scripted learner and test doubles.
+- **Readings each owner answer leaves (no answer assumed).**
+  - **#2 (R2 r2.v1) no:** the port cannot take R2's chain; G3 either re-proposes the port as a standalone schema step (a new owner item) or the
+    growth campaign stays unrunnable; the confirmatory families read NOT RUN.
+  - **#2 yes:** the port lands as the next schema step, C16 runs first on 9900-9907, then the dev smoke on the lead's machine-free go.
+  - **O11 (C1-d not shown learnable):** option (a) leaves the primary cell UNTESTED and the campaign runs on the secondary cells (ii), (i) S0C1
+    with the 2.8 same-items disclosure; C19 and C10's C1-d form read NOT RUN. Option (b) needs a new pre-data C1-d design from G2 first.
+  - **Q-AII:** A (A_ii leaves) means C11 for B = S0C1 stays UNREAD and C11 reads only on C1-d with A_c1d (itself gated by O11); B (bare-learner
+    incumbent) changes 2.5's incumbent definition and re-registers 2.9 C11's baseline before any C11 reading.
+  - **Q-COL (gamma) and O10 (T1 split):** T1-struct and T1-size read NOT RUN regardless; nothing in P4a decides gamma.
