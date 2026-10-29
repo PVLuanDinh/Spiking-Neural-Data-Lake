@@ -481,3 +481,30 @@ different names. The list in the "D0's owned names now" correction above is the 
 - built on an unlanded branch, placed or imported at the ARC6 landing: `rsa_drift`.
 The G5 file is the integrator's and is not touched here; its S.5a omits `rate_correlation`, `rsa_correlation` and `read_drift` from its
 unbuilt list, and the integrator can add them from this list.
+
+---
+
+## Correction 2026-10-29 (round 4) to the round-3 ruling: the call-site guard must also cover `rsa_drift`'s other two raises (policy-enforcer #6890 MINOR-1, P8)
+
+Source: policy-enforcer #6890. Appends only; nothing above is edited, and nothing is built.
+
+**The error.** The round-3 ruling says "The raises never fire through `read_drift`, because the guard has already handled those inputs." That is
+false as specified. The guard is the F.1 intersection plus the F.5 flat-RESPONSE check. `rsa_drift` (`infra/_mathutils.py:186-207` at
+`f0f50385`) has two more raises that guard does not cover: (a) fewer than 3 probes (`len(pre) < 3`), and (b) a flat DISSIMILARITY matrix
+(`max(g) - min(g) == 0.0`) when no single probe row is flat. Failing input for (b): three probes over three cells
+`[[1,0,0],[0,1,0],[0,0,1]]`. No row is flat, so F.5 passes it, but every pair has pearson -0.5, so the geometry is constant and `rsa_drift`
+raises `ValueError` through `read_drift`. Orthogonal or one-hot probe sets are a realistic input.
+
+**Fix (the guard is widened; `rsa_drift` is still not rewritten, `fd987f3f` still not amended).** For the RSA metric, `read_drift`'s call-site
+guard also refuses, as a flagged reading and never 0.0:
+- `n_probes < 3` (after the F.1 intersection), flagged as too few probes;
+- a flat geometry on either side: every pairwise `1 - pearson` over probes is equal, flagged as flat geometry.
+
+The guard runs before `rsa_drift` is called, so the "never fire through `read_drift`" sentence now holds. As a backstop, `read_drift` also
+catches a `ValueError` from `rsa_drift` and records it as a flagged reading; it never turns it into 0.0 and never lets it escape. P8 is met:
+flat or undefined inputs are flagged on every path. The builder needs a test for each guard case; the `[[1,0,0],[0,1,0],[0,0,1]]` input is
+the red case for the flat-geometry flag.
+
+**Precedence (NIT in #6890).** The sentence in the round-3 correction that this record "wins over another record" also binds the integrator's
+G5 S.5a. That is a pointer only. S.5a stays divergent until the integrator edits it, so it goes on the integrator's owed list with two items:
+add `rate_correlation`, `rsa_correlation` and `read_drift` to its unbuilt list (round 3), and carry the widened RSA guard above.
