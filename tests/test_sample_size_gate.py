@@ -566,3 +566,51 @@ def test_expired_deferral_of_a_file_that_carries_the_section_says_delete_the_ent
 def test_expired_deferral_of_a_file_without_the_section_says_write_it(tmp_path):
     report = run(tmp_path, {A: DRAFT}, owes_at_freeze=LATER, today=date(2026, 11, 6))
     assert "write the section" in reds(report, "R-DEFERRAL-EXPIRED")[0].message
+
+
+# ROUND 5 (enforcer #6646)
+EXECUTION = "shown by execution (a dated read in its own text)"
+NOT_EVIDENCE = "a commit reference alone is not evidence of a freeze"
+
+
+def test_grandfather_basis_has_one_wording_in_docstring_comments_and_list_file():
+    src = Path(sg.__file__).read_text(encoding="utf-8")
+    assert (sg.__doc__ or "").count(EXECUTION) >= 2 and src.count(EXECUTION) >= 4
+    assert NOT_EVIDENCE in (sg.__doc__ or "") and NOT_EVIDENCE in LIVE_LIST
+    assert EXECUTION in LIVE_LIST
+
+
+def test_self_check_goes_red_when_the_list_file_reader_goes_blind(monkeypatch):
+    everything = lambda text: frozenset(re.findall(r"`([^`]+\.md)`", text))  # noqa: E731
+    monkeypatch.setattr(sg, "_listed_by_list", everything)
+    assert sg.self_check() == 1
+
+
+def test_self_check_goes_red_when_the_section_4_reader_goes_blind(monkeypatch):
+    monkeypatch.setattr(sg, "_owed_by_list", lambda text: frozenset())
+    assert sg.self_check() == 1
+
+
+def test_limit_line_names_the_unseen_date_move(tmp_path):
+    out = sg.render(run(tmp_path, {A: prereg()}))
+    assert "who moved" in out.split("LIMIT:")[1].split("\n")[0]
+
+
+def test_grandfathered_comment_count_is_the_live_count():
+    src = Path(sg.__file__).read_text(encoding="utf-8")
+    assert f"({len(sg.GRANDFATHERED)} evidence files)" in src
+
+
+def test_docstring_does_not_overclaim_that_the_two_sources_cannot_disagree():
+    doc = sg.__doc__ or ""
+    assert "cannot disagree" not in doc
+    assert "unless the same commit edits the integrator-ruled list file" in doc
+
+
+def test_a_sub_heading_inside_section_3_keeps_its_rows_listed():
+    text = (
+        "## 3. List\n\n| 1 | `a.md` |\n\n### 3a. More\n\n| 2 | `b.md` |\n\n"
+        "## 4. Owes\n\n| 3 | `c.md` |\n"
+    )
+    assert sg._listed_by_list(text) == {"a.md", "b.md"}
+    assert sg._owed_by_list(text) == {"c.md"}
