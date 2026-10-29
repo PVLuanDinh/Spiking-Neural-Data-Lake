@@ -87,8 +87,8 @@ from snn_data_lake.sleep.sleep_replay import N as ATTR_N
 
 #: the ONE named-state record for the brain's prototype learners (rank 2b, 2026-09-02)
 PROTOTYPES_STATE = "growing_learners.json"
-#: the named sub-record (under _T_STATE) for the circadian phase: clock phase + jitter state + the
-#: light-schedule step, bound to the seed and day period they were written under (P4b, finding iii)
+#: the named sub-record (under _T_STATE) for the circadian clock: the light-schedule step + phase,
+#: bound to the seed, day period and clock constants (P4b, finding iii)
 CIRCADIAN_STATE = "circadian_clock.json"
 #: names of the circadian records `_flush_circadian` keeps before overwriting a refused one
 CIRCADIAN_REFUSED_PREFIX = f"{CIRCADIAN_STATE.removesuffix('.json')}.refused."
@@ -5281,7 +5281,7 @@ class Brain:
         return save_state(name, sub) or load_named_state(name) is not None
 
     # P4b finding (iii): the clock phase is ONE named sub-record under _T_STATE (owner ruling A),
-    #   through the same save_state/load_state pair as _flush_prototypes; REUSES CircadianClock.
+    #   through the same save_state/load_state pair as _flush_prototypes.
     # distinct-from: sleep/circadian_clock.py -- reused here (CircadianClock.run replays), not rebuilt
     # distinct-from: infra/brain_native_selfbuild.py -- persists selfbuild state, not the clock
     # distinct-from: faculties/set_points.py -- reads the SCN phase, restores nothing
@@ -5289,8 +5289,7 @@ class Brain:
     #   thresholds, its own record; not the SCN phase. The keep/retry REUSES _keep_refused.
     def _restore_circadian(self):
         """Restore the SCN clock and the light-schedule `_step` (what `tick` derives sleep/wake from)
-        from the named record `circadian_clock.json`, so a restored brain resumes its clock where it
-        stopped. The record holds the step and phase only: the clock is REPLAYED, a fresh
+        from the named record `circadian_clock.json`. The record holds the step and phase only: the clock is REPLAYED, a fresh
         `CircadianClock(seed)` run `step` steps under the brain's own schedule, which rebuilds the
         jitter rng exactly (no rng state is persisted; #6952 A-2, #6910 MAJOR-2 by deletion). That
         is exact because `tick` is the only caller of `clock.step` (one call per `_step`, each one
@@ -5368,8 +5367,8 @@ class Brain:
         return True
 
     def _flush_circadian(self):
-        """Write the clock's step and phase (see `_restore_circadian`) beside the other flushes,
-        FIRST in the night's persist block; unchanged state writes nothing. A carried foreign record
+        """Write the clock's step, phase and binding (see `_restore_circadian`), FIRST in the
+        night's persist block; unchanged state writes nothing. A carried foreign record
         is kept first; a failed keep writes nothing, so the foreign record is never overwritten.
         True if a record was written."""
         if not self._persist:
@@ -6299,7 +6298,7 @@ class Brain:
         # this method must not be what decides whether the brain keeps what it grew.
         self._flush_growth()
         self._flush_prototypes()  # rank 2b
-        self._flush_circadian()  # P4b (iii): the clock phase
+        self._flush_circadian()  # P4b (iii)
         self._flush_coverage()  # T038
         self._flush_interaction_learner()
         try:
