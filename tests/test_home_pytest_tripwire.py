@@ -107,3 +107,14 @@ def test_control_the_decoy_sees_a_write(decoy):
     before = _listing(decoy)
     (decoy / "probe").write_bytes(b"x")
     assert _listing(decoy) != before
+
+
+def test_two_spellings_of_one_lake_file_share_one_log(monkeypatch, tmp_path):
+    """#1097/#1110: _log keyed on the path string as given, so a detour spelling of one file got its
+    own BinLog and its own dedup set (the split-dedup problem the cache exists to prevent)."""
+    monkeypatch.setattr(H, "_LOG_CACHE", {})
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    plain = str(tmp_path / "a" / "lake.bin")
+    detour = os.path.join(str(tmp_path), "b", "..", "a", "lake.bin")
+    assert H._log(plain) is H._log(detour)
