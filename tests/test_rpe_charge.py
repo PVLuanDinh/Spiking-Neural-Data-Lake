@@ -760,6 +760,31 @@ def test_r2_dry_fixture_plants_nine_frozen_seeds_and_pins_the_look_1_disposition
     assert any(x.startswith(stratum) for x in md)
 
 
+R2_DRY_HARM_LINES = (  # build-rb #5912 MINOR-4: a second pin, on non-degenerate d_s
+    "- t=559.015 (64/64 seeds > 0), SD=0.0014 -> **HARM MET at look 1 (n=64): a measured harm of "
+    "the learned `_plan_w` trajectory on production at 600 ticks; route (iii) deletes the update "
+    "and the plan nudge (section 8) | beside (no bar): k 64/64, trim10 +0.1000, "
+    "HL +0.1000 [+0.0995, +0.1005], zeros 0.000, |d|>0.4 0**",
+    "- stratum (DESCRIPTIVE ONLY, decides nothing): 9/64 seeds goal-frozen; H-P1 within frozen "
+    "t=195.020 (9/9), within moving t=519.615 (55/55); real/pfrozen frozen status disagrees on "
+    "0 seeds (pfrozen held_goal missing on 0)",
+)
+
+
+def test_r2_dry_on_the_harm_fixture_pins_a_non_degenerate_look_1_and_its_stratum():
+    """R2-dry's noharm bar runs on d_s == 0 (SD 0, a 0.000 stratum split); the harm fixture's d_s
+    are non-zero and not all equal, so the pinned stratum lines carry non-zero t and k."""
+    seeds = range(23000, 23064)
+    runs = R.fixture_runs("harm", seeds=seeds, arms=R.E1C_ARMS)
+    h0 = R.N_TICKS // 2
+    d = [R.mean_r(runs[("pfrozen", s)], h0) - R.mean_r(runs[("real", s)], h0) for s in seeds]
+    assert all(x != 0 for x in d) and len(set(d)) > 1
+    a = R.analyse("production", runs, None, seeds=seeds, design=R.E1C, logs_pass=True)
+    md = R.render_e1c(a).splitlines()
+    assert a["valid"] and not a["pending"]
+    assert (_quoted(a), next(x for x in md if x.startswith("- stratum"))) == R2_DRY_HARM_LINES
+
+
 def test_e1c_record_reads_section_8_never_e1b_null_record(e1c_704):
     """wf-rv #5689 m2 (spec sections 1, 4, 8): each stop reads section 8's disposition.
     E1b's "powered: a null, NULL-RECORD path" never reaches the E1c record.
