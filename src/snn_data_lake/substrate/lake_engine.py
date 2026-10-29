@@ -427,7 +427,7 @@ class AppendBudget:
         return violations
 
 
-def record_append_rates(seed: int = 0, ticks: int = 120) -> dict:
+def record_append_rates(seed: int = 0, ticks: int = 120, keep_home: bool = False) -> dict:
     """THE RECORDED METHOD of tools/lake_append_baseline.json, as code: make_brain(seed) on a FRESH
     scratch home for `ticks` ticks; per tag, AppendBudget._p95_of over the nonzero per-tick sums of
     tag-prefixed payload bytes. Until 2026-10-29 the method was prose with no command, which is how
@@ -437,38 +437,62 @@ def record_append_rates(seed: int = 0, ticks: int = 120) -> dict:
     counts exactly what AppendBudget judges (P2: no second observer). At ee224e50 it reads the same
     four tags and p95s as the prose method's BinLog wrap (0x04 1,095; 0x07 7,421,514; 0x08 4,738;
     0x0A 436 B, stdlib, seed 0, 120 ticks); a tag no write site reports would read as absent.
-    The home is ALWAYS a new temp dir: this never opens an existing lake."""
+    The home is ALWAYS a new temp dir: this never opens an existing lake. An in-process caller gets
+    back exactly what it had: NORD_HOME (unset included) and its append observer are restored, and
+    the temp home is removed unless `keep_home` (then its path is reported as "home")."""
     import os
     import platform
+    import shutil
     import tempfile
     import time
 
-    os.environ["NORD_HOME"] = tempfile.mkdtemp(prefix="append_record_")
-    from snn_data_lake.engine.brain import make_brain
+    prior_home = os.environ.get("NORD_HOME")
+    tmp_home = tempfile.mkdtemp(prefix="append_record_")
     from snn_data_lake.substrate import home
 
-    b = make_brain(seed=seed, persist=True)
-    tick_bytes: dict[int, int] = {}
-    inner = home.set_append_observer(None)
-
-    def counting(tag, n):
-        tick_bytes[tag] = tick_bytes.get(tag, 0) + int(n)
-        if inner is not None:
-            inner(tag, n)
-
-    home.set_append_observer(counting)
-    per: dict[int, list[int]] = {}
+    # The caller's observer is unhooked for the whole run and put back last, so it counts none of
+    # the recorder's writes into a lake that is not its own (close() flushes after its own restore).
+    caller_observer = home.set_append_observer(None)
+    b = None
     try:
-        for _ in range(ticks):
-            b.tick()
-            for tag, n in tick_bytes.items():
-                if n > 0:
-                    per.setdefault(tag, []).append(n)
-            tick_bytes.clear()
-        tier = b.state().get("perception_tier")
+        os.environ["NORD_HOME"] = tmp_home
+        from snn_data_lake.engine.brain import make_brain
+
+        b = make_brain(seed=seed, persist=True)
+        tick_bytes: dict[int, int] = {}
+        inner = home.set_append_observer(None)
+
+        def counting(tag, n):
+            tick_bytes[tag] = tick_bytes.get(tag, 0) + int(n)
+            if inner is not None:
+                inner(tag, n)
+
+        home.set_append_observer(counting)
+        per: dict[int, list[int]] = {}
+        try:
+            for _ in range(ticks):
+                b.tick()
+                for tag, n in tick_bytes.items():
+                    if n > 0:
+                        per.setdefault(tag, []).append(n)
+                tick_bytes.clear()
+            tier = b.state().get("perception_tier")
+        finally:
+            home.set_append_observer(inner)
     finally:
-        home.set_append_observer(inner)
-    return {
+        if b is not None:
+            try:
+                b.close()
+            except Exception:  # noqa: BLE001 - cleanup must still restore the caller's home
+                pass
+        home.set_append_observer(caller_observer)
+        if prior_home is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = prior_home
+        if not keep_home:
+            shutil.rmtree(tmp_home, ignore_errors=True)
+    out = {
         "method": "lake_engine.record_append_rates",
         "seed": seed,
         "ticks": ticks,
@@ -485,6 +509,9 @@ def record_append_rates(seed: int = 0, ticks: int = 120) -> dict:
             for t, v in sorted(per.items())
         },
     }
+    if keep_home:
+        out["home"] = tmp_home
+    return out
 
 
 def write_seeds(measured: dict, tags, path: Path = APPEND_BASELINE) -> None:
@@ -510,8 +537,11 @@ def _record_cli(argv: list[str]) -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--ticks", type=int, default=120)
     ap.add_argument("--write", default="", help="comma-separated tags to re-seed, e.g. 4,7")
+    ap.add_argument(
+        "--keep-home", action="store_true", help="keep the temp lake (default: removed)"
+    )
     a = ap.parse_args(argv)
-    measured = record_append_rates(a.seed, a.ticks)
+    measured = record_append_rates(a.seed, a.ticks, keep_home=a.keep_home)
     if a.write:
         write_seeds(measured, [int(t) for t in a.write.split(",")])
     print(json.dumps(measured, indent=1))
