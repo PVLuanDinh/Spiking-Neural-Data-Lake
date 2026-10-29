@@ -293,7 +293,8 @@ One seed of G9 is a whole engine run per arm. Under design (beta) (section 2.1),
 A0a, A1, A2, A3c, A3a, A4, A5, A6, A7, A8-imp, A8-rand, A9, A0-shuf, A10, A10's transparency twin, A11, A11's
 planted-change twin (18), plus 5-7 O3 shams: **about 23-25 arm runs per seed** before the O4 rebuild leg. Design
 (alpha) adds about 15 more. If the cap is beyond what the host can run, the answer is NOT a smaller habitual S: the campaign is
-expected to read INCONCLUSIVE at that S, and the owner decides (section 6 item 7). A fixed one-shot count is allowed
+expected to read INCONCLUSIVE at that S, and the owner decides (section 6 item 7; ANSWERED 2026-10-29: fund the runs to the cap,
+last section). A fixed one-shot count is allowed
 only with its power stated before data (POL:195-196).
 
 ### 4.3 P8 null-scale axis (POL:944-994)
@@ -331,8 +332,12 @@ Per primary contrast, and then for the campaign:
 |---|---|---|
 | **MET** | the absolute gate holds (G-a and L1, section 3.1), no damage check records damage (section 3.1), every MET leg L2-L8 crosses its boundary in the registered direction (L7 = G-R9 (vii) non-inferiority; L8 = at least one transport form), no G-R9 (iii)-(vi) count red fires, every section 3.4 red fired before data | T117's condition holds: "the engine can work" (P4d, POL:595) is met at the measured scale, and transport stands. The box may be ticked with the closing record. **Nothing beyond T117's wording is claimed**: no mechanism is credited outside its own contrast, the O-readings are mechanism evidence only, and no claim about experience is made (POL:1014) |
 | **NOT MET (ENGINE FLOOR)** (own row: Fold 2, #6589 MINOR-2) | read FIRST (precedence, D-72a): G-a or L1 (A0 > A9) not rejected at a POWERED STOP (G-a's power at pi1 >= .8, L1's mde <= delta, section 3.1); a non-rejection at an underpowered cap or an interim look is INCONCLUSIVE, not this row (D-72 amended by D-72a). It stands whatever any later neuter's outcome | T117 closes as a measured failure of the engine as a whole. L2-L8 are NOT TESTED: section 4.1b's protections cover them (no NULL-RECORD, nothing deleted, transport not lapsed). One NULL-RECORD is written on the engine-floor axis (section 4.3) |
-| **NOT MET, powered** | decided only at a stop: a tested leg's boundary is not crossed (or futility taken) at a look whose mde <= delta at BOTH the pre-registered and the observed SD, or a G-R9 (iii)-(vi) count red fires, or (vii)'s powered superiority test of A8-imp over A0 fires. Legs after the failing one are NOT TESTED (section 4.1b) and carry no verdict | T117 closes as a measured failure. Per part: an owner-drawn part is reverted, not claimed, owner decides; a decision-C part whose deciding test reds is deleted after its 10x re-test and the owner told; transport lapses only if G-R9 (i) fails or both forms' neuters are shown to change nothing by TOST at delta (section 2.1's keep rule; POL:595-600); a decision-C part is deleted only on its own TESTED, powered red, never on a NOT TESTED leg. Every null writes its NULL-RECORD |
-| **INCONCLUSIVE (underpowered)** | the cap is reached, or futility read, with mde > delta | NOT a null (POL:971-974). The engine is NOT finished: T117 stays open, nothing is deleted, the mde is reported, and the owner decides whether to fund the powered count |
+| **NOT MET, powered** | decided only at a stop: a tested leg's boundary is not crossed (or futility taken) at a look whose mde <= delta at BOTH the pre-registered and the observed SD, or a G-R9 (iii)-(vi) count red fires, or (vii)'s powered superiority test of A8-imp over A0 fires. Legs after the failing one are NOT TESTED (section 4.1b) and carry no verdict | T117 stays OPEN (owner #6513, last section: only MET counts toward engine done): the measured failure is recorded, its
+NULL-RECORD written, and the engine routes to more work; a later G9 campaign spends the next alpha of the series (last section).
+Per part: an owner-drawn part is reverted, not claimed, owner decides; a decision-C part whose deciding test reds is deleted after its 10x re-test and the owner told; transport lapses only if G-R9 (i) fails or both forms' neuters are shown to change nothing by TOST at delta (section 2.1's keep rule; POL:595-600); a decision-C part is deleted only on its own TESTED, powered red, never on a NOT TESTED leg. Every null writes its NULL-RECORD |
+| **INCONCLUSIVE (underpowered)** | the cap is reached, or futility read, with mde > delta | NOT a null (POL:971-974). The engine is NOT finished: T117 stays open, nothing is deleted, the mde is reported, and the owner decides whether to fund the powered count (ANSWERED 2026-10-29: funded; the campaign runs to
+its cap, last section). With the cap funded, an INCONCLUSIVE at the cap can arise only two ways: the measured SD exceeds the
+SD_upper the cap was powered for, or the futility rule stops with mde > delta |
 | **VOID (contrast)** (Fold 2, #6589 MAJOR-1; ruled by the enforcer, ratified D-72a) | a neuter recorded as damage at a stop (section 3.1: a powered failure of its non-inferiority check, or a shown inferiority): "damage, not attribution", a validity failure of THAT contrast only | that leg carries no verdict and writes no NULL-RECORD; in the fixed sequence it counts as not crossed, later legs are NOT TESTED, earlier legs keep their verdicts, NOT MET (ENGINE FLOOR) included (section 4.1b). T117 reads INCONCLUSIVE when no powered failure precedes the VOID leg. Repair: a rebuilt neuter on a fresh seed block the integrator claims, paired with A0 re-run on that block |
 | **VOID** (campaign) | validity failures only (D-72): a section 3.4 red did not fire, a sham was shown to move E1, the A11 digest moved, A10's sleep count > 0, a look was taken off-plan, or #6231's persistence gap unresolved for event (c) | no verdict. A defect found before any campaign seed is exposed is repaired by a dated addendum on the same seeds; after any exposed seed, only a new pre-registration on a fresh block the integrator claims |
 
@@ -436,11 +441,19 @@ Docs only: nothing run. Per-finding dispositions: `lanes/engine-1024/fold-g9-row
 - **#6513 (section 6 item 8), verbatim:** "a NOT MET or INCONCLUSIVE G9 does not count towards Engine done, you should start a
   research and debate loop right using /webgrab right away if you run into any novel problems." So "engine done" needs a G9
   **MET** disposition of record on origin/main. NOT MET (ENGINE FLOOR included) and INCONCLUSIVE route to more engine work.
-  The second clause is a standing order for every novel problem this campaign meets: a research lane using webgrab plus a
-  multi-lens debate, BEFORE a fix is built.
+  The second clause is a standing order for every novel problem this campaign meets. (Integrator's reading, not owner words:
+  a research lane using webgrab plus a multi-lens debate, started before a fix is built.)
 - **#6514 (section 6 item 7), verbatim:** "Fund more runs". If the powered cap of section 4.1b exceeds what this host runs in a
   working session, the campaign runs to that cap on this host with a longer wall-clock (approved). It does NOT narrow the
-  primary family or accept an expected INCONCLUSIVE in place of the cap. Any PAID cloud compute still needs the owner's
-  confirmation of the exact spend first (launcher relay). Section 4.2's "the owner decides" is thereby decided.
-- These answers change no bar, no seed block and no decision rule of this draft: they settle what a disposition MEANS for the
-  engine and how its cap is paid for. The draft stays pre-freeze (section 6 items 1-6 and 9-14 are unchanged).
+  primary family or accept an expected INCONCLUSIVE in place of the cap. (Launcher's binding reading, relayed to duo A
+  2026-10-29, not owner words: any PAID cloud compute still needs the owner's confirmation of the exact spend first.) Section
+  4.2's "the owner decides" is thereby decided. Owner-answer board records: #6959 (#6513), #6960 (#6514), provenance #6961.
+- CORRECTED (enforcer #7023 MAJOR-1): #6513 DOES change a decision rule. With MET the only exit to engine done, a NOT MET or
+  INCONCLUSIVE leads to more engine work and then a further G9 campaign, and k campaigns at .05 each would give up to 1 - .95^k
+  false MET for ONE decision. **Integrator ruling (2026-10-29, the same rule as launcher D-82 for A_ii; submitted for the
+  launcher's overrule):** G9 campaigns form ONE open-ended alpha-spending series for the decision 'engine done'. Campaign i
+  claims at family-wise alpha_i = .05 x 6/(pi^2 i^2) (.0304, .0076, .0034, ...; the series sums to .05). This campaign is i = 1:
+  every '.05' of section 4 (the fixed-sequence legs at full alpha, the transport forms at alpha/2) is read at alpha_1 = .0303964
+  (transport forms at .0151982 each), and the cap of section 4.1b is re-derived at alpha_1 before freeze. The owner approved more
+  runs. A later campaign after an engine change is NOT a new family: the decision it serves is the same. Section 5's NOT MET
+  row no longer closes T117. The draft stays pre-freeze.
