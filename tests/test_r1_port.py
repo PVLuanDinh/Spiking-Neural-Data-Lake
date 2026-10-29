@@ -91,3 +91,43 @@ def test_f2_the_window_never_appends_an_episode_the_lake_refused(H, monkeypatch)
         assert b._episode_window == before
     finally:
         b.close()
+
+
+def test_f3_two_boots_form_distinct_episodes_and_the_window_mirrors_the_lake(H):
+    # B5w: boot 2 re-formed byte-identical episodes and BinLog dedup kept none of them
+    from snn_data_lake.engine.brain import make_brain
+
+    sizes, sessions = [], []
+    for _boot in range(2):
+        b = make_brain(seed=0, persist=True)
+        for _ in range(100):
+            b.tick()
+        window, cap = list(b._episode_window), b._episode_consolidator.capacity
+        sessions.append(b._session)
+        b.close()
+        lake = H.load_episodes()
+        assert window == lake[-cap:]  # the window mirrors what the lake holds
+        sizes.append(len(lake))
+    assert sizes[0] > 0 and sizes[1] == 2 * sizes[0], sizes
+    assert int(sessions[1]) > int(sessions[0])
+    assert {e["session"] for e in H.load_episodes()} == {str(s) for s in sessions}
+
+
+def test_f3_no_boot_session_means_no_autobiographical_write(H, monkeypatch):
+    # R2's condition on F3: next_session failing leaves Brain._session None; the tick must SKIP the
+    # durable write -- a session-less record is invisible to home.next_session, so the next boot
+    # could reuse a session number
+    from snn_data_lake.engine.brain import make_brain
+
+    def broken(*a, **k):
+        raise OSError("planted session read failure")
+
+    monkeypatch.setattr(H, "next_session", broken)
+    b = make_brain(seed=0, persist=True)
+    try:
+        for _ in range(30):
+            b.tick()
+        assert b._session is None
+        assert H.load_episodes() == [] and b._episode_window == []
+    finally:
+        b.close()
