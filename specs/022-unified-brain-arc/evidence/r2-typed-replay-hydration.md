@@ -1461,9 +1461,10 @@ Facts, stated without a ruling:
    Until then it is a draft and the confirmatory licence stays withheld.
 3. A dev-seed run (15000-15007 only) of the c4c10b28 instrument, under the heavy-run lock after the campaign: the R2-c4
    positive controls first (planted 1-ulp weight change, one swapped ring entry, the omission arms each move their records),
-   per 2.5, because a failed positive control holds the disposition. The same run carries the R2-c2/R2-c4 observables at head. It does NOT carry D1 item 4's `_sleep_tick`
-   output-equivalence check: no role or head of `instruments/replay_hydration.py` runs one schedule at two heads
-   (`--head base` is the e1b3ae3c I arms, `BASE_ROLES` only, never the parent of f2534a94). D1 item 4 is
+   per 2.5, because a failed positive control holds the disposition. The same run carries the R2-c2/R2-c4 observables at head. The instrument itself runs no schedule at two heads (`--head base` is the e1b3ae3c I arms, `BASE_ROLES` only, never the parent of
+   f2534a94), but the dev-seed RUNBOOK of this run carries D1 item 4's `_sleep_tick` output-equivalence check (lanes/engine-1024/r2-devprep-row
+   RUNBOOK.md item 3 step 4, r2dev-item3.ps1: the head's instrument with `--base-src` = the tree of f2534a94's parent on the equivalence
+   roles, compared by `r2dev_read.py equiv` with records_equal), which is route (b) below once it runs (enforcer #6892 MINOR-2). D1 item 4 is
    discharged by either (a) an integrator statement that cites, by commit, a check the perf lane already holds
    (the parent of f2534a94 against the head, one dev seed, one schedule, the 2.2 post-sleep-tick records equal),
    or (b) a two-head comparison tool named by commit and run on a dev seed under the heavy-run lock. Until one
@@ -1532,11 +1533,11 @@ a population rate.
 ### D1.2 K3 alignment and finding (iii) (2026-10-29, integrator; launcher D-77; pre-data)
 
 R2-c6 registers K3 as "the rest of the night, then 6". A restoring process starts on a fresh clock (`chrono_clean` asserts
-`step == 0` and `nights == 0`; `Brain.tick` derives sleep/wake from `_step`, brain.py:3903-3920), so the restart and its twin
+`step == 0` and `nights == 0`; `Brain.tick` derives sleep/wake from `_step`, engine/brain.py:3903-3920), so the restart and its twin
 would count different ticks to the boundary. Ruled (option (i), the registered observable kept exactly): the twin_K3 arm
 measures its remaining sleep-tick count and every K3 restoring arm reads that count (claude/r2-instr-fix-1029, round 2). **The
 harness carries circadian phase across the restart; the brain does not (finding iii).** This sentence is owed unprompted in R2's
-method AND in its results record. Finding (iii) is a P4b-shaped restart defect of its own: before any 15010-15057 seed a red-first
+method AND in its results record. Finding (iii) is a P4b-shaped restart defect of its own: before any seed outside the dev block 15000-15007 (15010-15067, confirmatory and reserve) a red-first
 test (xfail strict, raises=AssertionError) that a restart mid-night resumes the night exists; fixing or deferring (iii) is the
 launcher's call (D-77). Route A (per-seed K1g arms for R2-c7, launcher D-77) keeps 2.10's "on EVERY seed" with no amendment.
 
