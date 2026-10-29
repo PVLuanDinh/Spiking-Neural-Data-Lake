@@ -1517,7 +1517,14 @@ def _planted_entry(kind, arms):
         refusals = (on.get("reader") or {}).get("refusals") or {}
         off_refusals = (off.get("reader") or {}).get("refusals") or {}
         refused = refusals.get(reason, 0) >= 1
-        flagged = off_refusals.get(reason, 0) == 0 and not records_equal(off, twin)
+        moved = any(
+            off["before"].get(k) != twin["before"].get(k) for k in ("ring", "ring_ids")
+        ) or any(
+            ra.get(k) != rb.get(k)
+            for ra, rb in zip(off.get("rows", []), twin.get("rows", []))
+            for k in ("drawn", "drawn_ids")
+        )  # 2.4: these reds must fire on the ring and the draws; a latched off arm is INVALID
+        flagged = off_refusals.get(reason, 0) == 0 and off.get("fault") is None and moved
         if kind == "HELDOUT":  # a held-out id must be in the ring of the neutered arm (explicit)
             flagged = flagged and off.get("planted") in (off.get("before") or {}).get(
                 "ring_ids", []
@@ -1908,6 +1915,10 @@ def seed_comparisons(arms, base=None):
             c["reds"][role] &= not foreign
         if role == "O_cursor":
             c["reds"][role] &= probe.get("binding_valid") is True and probe.get("redo_steps", 0) > 0
+    for kind in _READER_KINDS:  # A11.2: a neutered reader guard cannot latch; another guard did
+        role = f"{kind}_off"
+        if (get(role) or {}).get("fault") is not None and role not in incomplete:
+            incomplete.append(role)
     c["reds"]["CHRONO"] = _complete(get("CHRONO")) and not chrono_clean(get("CHRONO"))
     c["reds"]["MOTOR"] = _complete(get("MOTOR")) and not chrono_clean(get("MOTOR"))
     fw = fw_seed(arms)
