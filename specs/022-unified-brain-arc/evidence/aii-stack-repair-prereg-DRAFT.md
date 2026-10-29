@@ -431,8 +431,9 @@ Folds lens A #6792, lens C #6831 and the policy-enforcer #6817 on `a7ae6781`. On
 
 - **Method disclosure (D-78):** claim (a) is a ONE-SAMPLE test of the repaired stack's per-seed pass rate against a HISTORICAL
   control's bound (the original stack's 0/12, Clopper-Pearson upper p0 = 1 - 0.05^(1/12) = .2209), not a concurrent two-arm
-  comparison. The original is not re-run on the block; a drift of the original's true rate since its 0/12 is not controlled by this
-  design, and the MET inference is read with that limit.
+  comparison. The original IS re-run, paired, on every confirmatory seed, as RD-4's validity control and the paired guard
+  (x > x_orig); the test's H0 is still the historical bound p0, not a concurrent two-arm comparison. (Corrected 2026-10-29 by the
+  integrator, O-15, enforcer #6893 MINOR-1: this sentence said the original is not re-run, which Fold 2 made false.)
 - **O-12 RULED (integrator, accepted by launcher D-78):** claim (a)'s MET licenses landing the repair on the live brain only through
   the normal arc (panel, then the full battery including no regression on the existing learner checks). G2 (ii) stays PARKED until
   G2's own registered reading runs on the landed brain (the owner's Q-AII unpark condition, unchanged); (a) does not certify it.
