@@ -2184,3 +2184,146 @@ PE-R6 counted on constructed populations. All three wait for the campaign and th
   is a file:line at c4c10b28 that either reader can re-open. No result in this addendum is a measurement.
 
 Disclosure: drafted by lane g5e-prep (Sonnet), docs only; it had no panel and no policy-enforcer read when written.
+
+### Panel fold 1, 2026-10-29, pre-data (fold-6244, docs only; folds challenges #6289 lens A, #6284 lens B, #6296 lens C, #6302 policy-enforcer, all on `claude/g5e-prep-1029@a2184bef`, base `c4c10b28`)
+
+Append-only: nothing above this heading is edited. Pre-data and pre-build: no run, pilot, brain, pytest or code. Where this fold
+and X.3/X.4/X.5 above disagree, THIS fold governs, and the freezing addendum carries the edit. Finding ids: lens A `A-B1..B3`,
+lens B `B-MAJOR` and `B-m1..m5` (its minors in the order of #6284/its REPORT.md), lens C `C-2a..2e`. #6302 adds no new finding: it
+concurs with A-B1, B-MAJOR, A-B2, A-B3/B-m2 and B-m1 (its own miss), and asks for the read_drift reds (B-m4). Every finding is taken once below.
+
+| Id | Verdict | One line |
+|---|---|---|
+| A-B1, C-2a | FIXED | `read_drift` reads the units present and unpruned on BOTH sides and returns the counts; zero-fill leaves the drift reader |
+| A-B2 | FIXED | return shape stated per metric |
+| A-B3, B-m2 | FIXED | "within one pilot SE" withdrawn; k is DERIVED from the already-registered Delta* |
+| B-MAJOR | FIXED in this text, OPEN as a physical edit | E.9's "deleted" sentence is withdrawn and replaced here; the freeze must replace it in the text before Part E is cited |
+| B-m1 | FIXED | P1 case (b) quoted exactly, cite corrected |
+| B-m3 | FIXED (named P2 debt) | guard stays at the call site; the three flat-vector semantics are recorded as debt with an owner and a consolidation row |
+| B-m4 | FIXED | the reader's own reds are listed (R-D1..R-D6), owed before any P-E0 read |
+| B-m5 | FIXED | X.5's P2 rationale replaced by the campaign rules and the brief |
+| C-2b | FIXED, amendment owed | adopt MAP D0's names; one Procrustes owner |
+| C-2c | FIXED | flat-vector rationale corrected (sign and mechanism); the flag stays |
+| C-2d | FIXED | E.3's reuse sentence added to the freeze-owed list as row 7 |
+| C-2e | FIXED | RQ6/H6 as source; "derived from"; "report item 5" |
+
+Disputed: none. Open as design (needs a run): the value of k, Delta*'s pilot loss, and the counted reds (R-D1..R-D6, PE-R1..PE-R6); X.3 already lists them under NEEDS A RUN.
+
+#### F.1 Unit set of the drift reader (A-B1, C-2a)
+
+Finding (A-B1): X.4 set `units` to "the common unit list, with pruned units read 0 and born units absent from the pre side (E.4
+FIXED rule)". P-E0 is d0 = pv(frozen) - pv(full) (:1875-1880) and the frozen engine prunes nothing, so a pruning bout puts zeros in
+the full engine's post vector, lowers its correlation with zero drift in the surviving units, and makes d0 > 0 on every seed:
+P-E0 would read MET by construction. CONFIRMED by a static read of :1875-1880 and X.4 (also by #6302). C-2a is the same defect seen as
+two unit-set rules for one function (G9's draft #6257 reads common-to-both units and reports the dropped count).
+
+The design now says, replacing X.4's bullet on `units`:
+- `units` defaults to the INTERSECTION: units present AND not pruned in both the pre and the post response. The result carries
+  `n_common`, `n_pruned` and `n_born`, so the dropped units are reported beside every reading, never absorbed.
+- "Pruned units read 0" stays what E.4's FIXED arm does to its READOUT inputs (a readout rule). It is NOT a drift-reading rule and the
+  drift reader never zero-fills.
+- A reading with `n_common` = 0 refuses (raises, exit 3 by the draft's `os._exit(3)` convention). P-E0 prints `n_common`/`n_pruned`
+  per seed; no floor on `n_common` is added here (that would be a new constant), the pilot prints it and the freeze may register one with a P1 case.
+- A seed whose full-engine response is flagged flat (F.5) is NOT READ for P-E0: it is dropped from the eight d0 values and counts
+  against 2.4's "at least 5 non-tied seeds".
+- Why this closes the finding: with the intersection, a bout that only prunes leaves every compared unit unchanged, so both engines
+  read correlation 1 and d0 = 0 (NOT MET); P-E0 now tests drift, not pruning. The red is R-D4 (F.4). G9's draft (#6257) can cite
+  this rule; X.4's old wording no longer stands.
+
+#### F.2 Return shape per metric (A-B2)
+
+Finding: X.4's "per-probe correlations and their mean" fits `pv` only. The signature stays input-identity keyed; the result is
+a small immutable `DriftReading` (D0's name, F.6) with the field `values` and the field `mean`, shaped per metric:
+- `pv` (population-vector): one correlation per PROBE, across the common units; `values` has `len(probe_ids)` entries.
+- `tuning`: one correlation per UNIT, across the probes; `values` has `n_common` entries.
+- `rate` (ensemble rate): a SCALAR, the correlation across the common units of each unit's mean response over the probes; `values` is that one number.
+- `rsa`: a SCALAR, the correlation between the pre and post probe-by-probe dissimilarity matrices (upper triangles); added because
+  #6257 (G9) asks for it. G9 owns whether it is rank-based; this draft claims only the shape.
+`mean` is the mean of `values` (equal to `values` for the scalar metrics). All four are computed with the one correlation primitive (F.5).
+This closes the finding: G9 can import `rate`, `tuning` and `rsa` as written, so the "one function" claim (F3) holds for all four.
+
+#### F.3 The 90% rule: the "one SE" replacement is withdrawn (A-B3, B-m2, B-m1)
+
+Findings: X.3 row 2 replaced the 90% exception with "within one pilot standard error", an unexempted constant with no P1 case
+(A-B3, B-m2); and its quote of P1 case (b) was wrong (B-m1).
+- Quote, exact (POLICIES.md at c4c10b28, :150-151, inside the three-case list :149-152): case (b) is "a running-baseline replacement is
+  **not reproducible from the persisted policy**". X.3 row 2's "not reproducible from a pre-registered input" and its cite
+  ":150-153" are withdrawn; the cite is :149-152 for the three cases, :150-151 for (b). My reading of fit is unchanged: (a) no
+  (a retained-variance fraction is not a fixed point of a normalized output), (b) no, (c) no, so the 90% names no case.
+- The rule now registered: k is the smallest count whose pilot PAIRED loss in held-out NO-EVENT accuracy against the full-dimension
+  accuracy has a one-sided 95% upper bound (alpha .05, the policy's own level for a one-sided read) below Delta*. Delta* is the
+  smallest effect of interest E.7 registers BEFORE the pilot ("half of FIXED's mean pilot loss", :1990), so the tolerance is a registered
+  quantity, not a new constant; no value is chosen after the pilot. If no k below the full dimension meets it, k is the full dimension.
+- Why this closes the finding: the constant is gone (derived from a registered quantity and the policy's level); the value of k itself
+  is NEEDS A RUN, as X.3 already says, and nothing is claimed about it.
+
+#### F.4 The reader's own reds (B-m4) and E.9 (B-MAJOR)
+
+Owed before ANY P-E0 or PE-R read, counted on constructed responses, each a red with a reachable failing side. None has been run
+and none is claimed to pass:
+- R-D1: pre identical to post reads 1.0 on every probe (`pv`), every unit (`tuning`), the scalar (`rate`, `rsa`).
+- R-D2: a planted permutation of unit identities reads below 1 on `pv`/`tuning`; a planted rate change on a unit subset reads below 1 on `rate`.
+- R-D3: a flat (zero-variance) vector returns the explicit flag, never a number and never an exception that escapes the caller.
+- R-D4: planted pruning alone (units removed from the full engine's post response, survivors unchanged) gives d0 = 0, P-E0 NOT MET, with `n_pruned` > 0 reported. This is the red for A-B1.
+- R-D5: an empty `probe_ids`, or a probe missing from one side, raises.
+- R-D6: the per-metric shapes of F.2 (counts of `values`) hold on constructed inputs.
+Until R-D1..R-D6 are counted, a P-E0 MET does not stand (P8 item 2).
+
+B-MAJOR: E.9 says, at :2034, "Otherwise the alignment module is deleted and the incumbent stays." That sentence contradicts
+POLICIES.md:950-963 (a null writes one `NULL-RECORD:` line and waits for ONE re-test at least 10x larger on the mechanism's axis; no
+deletion without it). This addendum cannot edit :2034 (append-only). Therefore, as binding text for any reader of this file: the sentence at
+:2034 is WITHDRAWN. Its replacement is: "Otherwise a powered null writes one `NULL-RECORD:` line, the module leaves the live path under a
+`dormancy_gate.EXEMPT` entry `scale-retest`, and ONE re-test at least 10x larger on the axis of X.3 row 1 (units the alignment acts on,
+anchors scaled in proportion) decides; nothing is deleted before that re-test." What stays OPEN: the physical replacement of the sentence in
+the text. Part E is NOT frozen and must not be cited as a design of record until the freezing addendum replaces :2034 in the text;
+the policy-enforcer's reading (#6302) is accepted.
+
+#### F.5 The flat-vector guard (B-m3, C-2c)
+
+C-2c is right on two counts, both checked at c4c10b28: `_mathutils.pearson` (infra/_mathutils.py:44-51) ends `return cov / math.sqrt(va * vb)`
+and so RAISES ZeroDivisionError on a flat vector; it does not return 0.0. The silent 0.0 is `grid_place_map._pearson`'s guard
+(faculties/grid_place_map.py:56-57, `if va <= 0.0 or vb <= 0.0: return 0.0`). And a silent 0.0 on the FULL engine would RAISE d0
+(frozen minus full), reading as more drift and a false MET, not "no drift" as X.4 said. X.4's rationale is replaced by this; its
+recommendation stands: `read_drift` checks the variance of each vector at the call site and returns the explicit flag (F.1: a flagged seed is NOT READ).
+B-m3: this keeps three flat-vector semantics live in the tree (`_mathutils.pearson` raises, `grid_place_map._pearson` returns 0.0,
+`agency_monitor._t079_pearson` returns None), and `read_drift`'s flag is a fourth way to say it. Recorded as NAMED P2 DEBT: owner = the lane that builds
+`instruments/representational_drift.py` (the integrator assigns it), and X.3 gains row 8: a caller census of `_mathutils.pearson`, then either one
+guard in the shared primitive or the consolidation of the guarded copies. The shared helper does not change in this arc; the debt is not left implicit.
+
+#### F.6 One owner, D0's names (C-2b, C-2d)
+
+C-2b: MAP.md:130-148 already plans `instruments/representational_drift.py` with `pv_correlation`, `tuning_correlation`,
+`procrustes_realign` and a `DriftReading` result. X.4's `read_drift(..., metric)` was a second API for that one file, and its "Procrustes stays in
+Part E's alignment module" gave two Procrustes homes. Now: the module exports D0's names; `pv_correlation` and `tuning_correlation` are D0's as
+written; `rate_correlation` and `rsa_correlation` (F.2) are additions; `read_drift(pre, post, *, probe_ids, units=None, metric)` is a thin dispatcher over these
+four returning a `DriftReading`, so callers may import either; all share the F.1 unit rule and the F.5 guard. The ONE Procrustes owner is D0's
+`procrustes_realign`; Part E's alignment module imports it and keeps only the anchors and the readout. P-E0 uses `pv_correlation` alone, which does not call
+the alignment, so the self-grading concern X.4 raised does not arise: the reader P-E0 uses contains no part of the method under test. Owed: the MAP.md D0
+amendment (the two additions, the dispatcher, the F.1 unit rule), as X.3 row 9. If the panel prefers to keep Procrustes in Part E's module, it must
+then amend D0 to drop `procrustes_realign`; either way exactly one home.
+C-2d: E.3 (:1911) names `grid_place_map._pearson` as the reuse hit and X.4 switched to `_mathutils.pearson` (enforcer #5605 m1). X.3 gains row 7: the freeze
+edits E.3's reuse sentence to `_mathutils.pearson` with the call-site guard of F.5.
+
+X.3 rows added by this fold (status OPEN, edits for the freezing addendum): 7 E.3 reuse sentence (C-2d); 8 `_mathutils.pearson` caller census / consolidation (B-m3,
+named P2 debt); 9 MAP.md D0 amendment (C-2b); 10 replace :2034 in the text (B-MAJOR); 11 the label edits of F.7.
+
+#### F.7 Source mapping and labels (C-2e)
+
+- X.1 mapped item 3 to "HW4 RQ3 / H3". RQ3 is Part A (the mouse homework), which X.1 itself says is not carried. The engine counterpart is RQ6 / H6
+  (HW4-v3.txt:48-49: "Hypothesis H6: the relational readout keeps its held-out score across sleep and restart; the incumbent does not."). H3 stays the
+  mouse reference shape for the fixed-decoder-versus-relational contrast; the source of the engine criterion is RQ6/H6.
+- X.1 calls d = acc(RELATIONAL) - acc(FIXED) "the report's criterion verbatim". It is DERIVED FROM item 3's "held-out score retained across sleep + restart",
+  not verbatim. The word "verbatim" in X.1 is withdrawn.
+- The frozen engine is "report item 5" (REPORT.md section 3 item 5; HW4-v3.txt:52) everywhere: E.2's "criterion 5", X.4's "G9's (criterion 5)" and the
+  X.4 dispositions line are all read as "report item 5". G9's draft carries the same wording (its C-3d).
+
+#### F.8 X.5 (B-m5)
+
+X.5 said POLICIES P2 rules out building the drift function now. Withdrawn: P2 governs two live mechanisms for one job, and none exists, so P2 does not by itself bar a build. The
+real bars are the campaign rules (LANE-RULES-CAMPAIGN-1029.md rule 1: no process above 200 MB, no pytest, no venv python, no gate run; rule 4: nothing lands),
+the brief (DRAFT-FOLD.BRIEF.md: docs only, no code, no runs) and P8 (no claim that the function works before R-D1..R-D6 are counted). The owner choice of X.3 row 5 is a
+separate open question: a build before it could create the second mechanism P2 forbids. Rung 3 stays out of this addendum on these grounds.
+
+Disclosure: folded by lane fold-6244 (Sonnet), docs only. It read the four challenges and the three lens REPORT.md files and re-read each cited line at c4c10b28
+(POLICIES.md:149-152, infra/_mathutils.py:44-51, faculties/grid_place_map.py:56-57, HW4-v3.txt:48-49, g5-readout-variants.md:1875-1880, :1990, :2034);
+it ran nothing. The fold itself has had no panel read.
