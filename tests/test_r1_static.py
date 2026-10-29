@@ -6,6 +6,7 @@ REAL admission check (`learner_events._refusal`), never by a copy of its rules.
 """
 
 import random
+import time
 
 import pytest
 from r1_c8_fixture import (
@@ -222,3 +223,36 @@ def test_c8_cues_are_exact_cues_of_the_non_autobiographical_records_and_expect_m
     c8 = [c for c in wl.cues if c.cls == "C8"]
     assert len(c8) == ra.TINY_COUNTS["C8"]
     assert all("kind" in c.cue and o.match(c.cue) == [] for c in c8)
+
+
+# ---- A4 core, part 3: the instrument probes I3 (latency), I4 (memory), I5 (load witness) ----
+
+
+def test_i3_latency_probe_reads_a_planted_sleep_and_catches_a_span_timed_outside():
+    # a 50 ms stub reads >= 50 ms; the red -- a span closed before the call -- reads ~0 and is
+    # refused by the probe's own floor check
+    _, dt = ra.time_call(lambda: time.sleep(0.05))
+    assert dt >= 0.05
+    assert not ra.latency_probe_ok(planted=0.05, measured=0.0001)
+    assert ra.latency_probe_ok(planted=0.05, measured=dt)
+
+
+def test_i4_memory_probe_reads_a_known_allocation_within_ten_percent():
+    _, peak = ra.traced_peak(lambda: bytearray(10 * 1024 * 1024))
+    assert abs(peak - 10 * 1024 * 1024) <= 0.10 * 10 * 1024 * 1024
+
+
+def test_i5_load_witness_voids_on_drift_and_passes_when_steady():
+    # a drift beyond 50 % VOIDS the seed's cost reading (never a pass or a fail)
+    assert ra.LOAD_TOLERANCE == 0.5
+    assert ra.load_verdict(1.0, 1.2) == "OK"
+    assert ra.load_verdict(1.0, 1.6) == "VOID"
+    assert ra.load_verdict(1.0, 0.4) == "VOID"
+
+
+def test_i5_artificial_spinners_void_the_witness():
+    # the registered red: a witness read while the host is loaded drifts and must VOID
+    base = ra.spin_witness(20000)
+    assert base > 0
+    assert ra.load_verdict(base, base * 3) == "VOID"
+    assert ra.load_verdict(base, base) == "OK"
