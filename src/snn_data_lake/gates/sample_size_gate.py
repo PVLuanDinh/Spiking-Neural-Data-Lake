@@ -37,12 +37,13 @@ negated one-shot claim waives nothing and the sequential fields are owed.
 What "frozen" means (the freeze marker rule): a file is frozen only when its OWN TEXT says so, with a line that
 carries a freeze marker (`Freeze commit <sha>`, `Status: FROZEN`, `frozen at/in <sha>`). Never a commit subject: an
 author controls a subject exactly as they control the word DRAFT, so this gate never reads one and a commit
-subject saying "freeze" with no marker in the text grandfathers nothing and ends no deferral. Only a file that was
-executed before the landing (a dated read of its results in its own text) is grandfathered, and only by name; a
-commit that froze it is history, not a freeze.
+subject saying "freeze" with no marker in the text grandfathers nothing and ends no deferral. Only a file frozen
+before the landing, shown by execution (a dated read in its own text), is grandfathered, and only by name: a file
+executed before the landing qualifies; a commit reference alone is not evidence of a freeze, and a commit that
+froze it is history, not a freeze.
 
 Three closed lists, all by file name (never by ancestry):
-  GRANDFATHERED          frozen before the landing; exempt whole, so a later edit to a grandfathered file is
+  GRANDFATHERED          frozen before the landing, shown by execution (a dated read in its own text); exempt whole, so a later edit to a grandfathered file is
                          not read by this gate (the list file says a section added later is not grandfathered;
                          that stays review-enforced). Evidence files only: every entry is a file the scan reads.
   OWES_AT_FREEZE         drafts that have not frozen (or not run) by the landing: name -> ISO expiry date. Deferred and printed on
@@ -57,7 +58,8 @@ so the lists only shrink.
 
 The list file's section 4 names the files it keeps owing the section (integrator ruling 2026-10-24, #5196); the gate
 reads it and reds R-LIST-CONFLICT when GRANDFATHERED names one, or names a file that sections 3 and 4b do not list,
-so the two sources cannot disagree and a lane adding a name to GRANDFATHERED fails.
+so a lane adding a name to GRANDFATHERED fails unless the same commit edits the integrator-ruled list file, which
+review sees (a missing list file is not red: a temporary test tree has none).
 Files are the ones git tracks (`git ls-files`), so the verdict does not depend on untracked working-tree litter; a
 tree that is not a git checkout (a temporary test tree) is walked instead. Every run prints the scan mode
 ("scan: git ls-files", "scan: walk", or "scan: walk, git failed: <err>"), so a fallback is never silent.
@@ -65,7 +67,8 @@ tree that is not a git checkout (a temporary test tree) is walked instead. Every
 What it reds: R-NO-SECTION, R-FIELD, R-STALE-GRANDFATHER, R-DEFERRAL-EXPIRED, R-FROZEN-DEFERRED, R-LIST-CONFLICT.
 What it cannot do, and says so on every run: judge whether a number is right, a simulation was run, or a
 boundary is sound (the policy-enforcer and the panel do), or see who moved an OWES_AT_FREEZE date (it cannot see
-who moved a date; review enforces that); it checks that each field is WRITTEN.
+who moved a date; review enforces that); it checks that each field is WRITTEN. render()'s LIMIT line states all of
+these.
 
   python -m snn_data_lake.gates.sample_size_gate [--assert | --self-check | --census]
 
@@ -121,7 +124,8 @@ ONE_SHOT_FIELDS = ("measured SD", "effect", "target")
 
 _EV = "specs/022-unified-brain-arc/evidence/"
 
-# The pre-registrations frozen before the landing, by name (72 evidence files): the 76 of
+# The pre-registrations frozen before the landing, shown by execution (a dated read in its own text), by name
+# (71 evidence files): a commit reference alone is not evidence of a freeze. The 76 of
 # p1-sample-size-grandfather.md at c9d0c097 less its three R1 reference files outside the evidence directories
 # (NOT_PREREGISTRATIONS) and less g3 and g5 (OWES_AT_FREEZE: never run, or a post-landing Part E). g2 is here: the
 # list calls it DRAFT, but it was executed before the landing (its section 5.1 is a confirmatory read dated
@@ -213,9 +217,9 @@ GRANDFATHERED: frozenset[str] = frozenset(
 # renewable only by a dated integrator commit giving the reason (each renewal an enforcer-reviewed build, D-74);
 # the gate cannot see who moved a date, review does. g3-growth-loop never ran (every
 # amendment is "PRE-DATA", its A4 says the campaign instrument is ABSENT) and the list file's section 4 keeps it
-# owing (integrator ruling, D-73): a commit subject saying "freeze" is not a freeze. g5-readout-variants froze
-# 2026-10-07 (66abb0a1) and ran before the landing, but its Part E (drift-surviving relational readout) was added as
-# a DRAFT on 2026-10-27, so the file as a whole is not grandfathered and Part E owes the section when it freezes.
+# owing (integrator ruling, D-73): a commit subject saying "freeze" is not a freeze. g5-readout-variants was
+# frozen before the landing, shown by execution (a dated read in its own text); Parts A-D ran
+# 2026-10-07, but its Part E (drift-surviving relational readout) was added as a DRAFT on 2026-10-27, so the file as a whole is not grandfathered and Part E owes the section when it freezes.
 OWES_AT_FREEZE: Mapping[str, str] = {
     _EV + "g3-growth-loop.md": "2026-11-05",
     _EV + "g5-readout-variants.md": "2026-11-05",
@@ -295,7 +299,7 @@ def _owed_by_list(text: str) -> frozenset[str]:
 
 def _listed_by_list(text: str) -> frozenset[str]:
     """The files the list file grandfathers: the table rows of its section 3 and of section 4b."""
-    return _rows_under(text, ("## 3.", "### 4b."), rows_only=True)
+    return _rows_under(text, ("## 3.", "### 3", "### 4b."), rows_only=True)
 
 
 def _preregistrations(root: Path, paths: list[str]) -> dict[str, list]:
@@ -432,7 +436,8 @@ def render(report: Report) -> str:
     out.append(
         "  LIMIT: the gate checks that each field is WRITTEN (by its word, over all of a file's Sample size (P1) "
         "sections together); it cannot judge that a number is right, that a simulation ran, or that a boundary "
-        "is sound, and a grandfathered file is exempt whole. Those stay review-enforced."
+        "is sound, it cannot see who moved an OWES_AT_FREEZE date, and a grandfathered file is exempt whole. "
+        "Those stay review-enforced."
     )
     out += [f"  RED {r.code} {r.where}: {r.message}" for r in report.reds]
     return "\n".join(out)
@@ -462,9 +467,16 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
             {f"{_EVT}a.md": head + "DRAFT; the freeze commit 6bc97430.\n"},
             {"owes_at_freeze": {f"{_EVT}a.md": "2999-01-01"}},
         ),
-        "R-LIST-CONFLICT": (
+        "R-LIST-CONFLICT section-4": (
             {
-                LIST_FILE: f"## 4. Owes\n| 1 | `{_EVT}a.md` |\n",
+                LIST_FILE: f"## 3. Listed\n| 1 | `{_EVT}a.md` |\n## 4. Owes\n| 2 | `{_EVT}a.md` |\n",
+                f"{_EVT}a.md": head + "seeds 8.\n",
+            },
+            {"grandfathered": frozenset({f"{_EVT}a.md"})},
+        ),
+        "R-LIST-CONFLICT unlisted": (
+            {
+                LIST_FILE: f"## 3. Listed\n| 1 | `{_EVT}other.md` |\n",
                 f"{_EVT}a.md": head + "seeds 8.\n",
             },
             {"grandfathered": frozenset({f"{_EVT}a.md"})},
@@ -497,7 +509,7 @@ def self_check() -> int:
             codes = check(root, **{**kw, **kwargs}).codes()
             if name in ("clean", "grandfathered") and codes:
                 failures.append(f"{name} tree reds: {sorted(codes)}")
-            elif name not in ("clean", "grandfathered") and name not in codes:
+            elif name not in ("clean", "grandfathered") and name.split()[0] not in codes:
                 failures.append(f"planted {name} did not red (got {sorted(codes)})")
     for failure in failures:
         print(f"sample_size_gate self-check FAILED: {failure}")
