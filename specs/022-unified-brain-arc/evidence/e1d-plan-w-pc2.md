@@ -790,16 +790,66 @@ Source: `lanes/e1d-plan-w-work/reports/compare-production-look2.md`. Board recor
 - Perception tier (line 310): "production (reported eprop-snn)". Wall (line 313): "total run_s over runs = 7232s (259
   runs)". Board #6263 states: "Look 3 started (n=192)."
 
-### R5. Looks 3 to 11: OWED
+### R5. Look 3 of 11 (n = 192)
 
-Each is filled from its report with the same lines as R3 (VALIDITY, H-P1, decision of record, beside numbers, stratum
-line, tail census count). Nothing is entered until the report exists.
+Source: `lanes/e1d-plan-w-work/reports/compare-production-look3.md` (450 lines), sha256 `53d6b324cd5edcb3fdd4c0cc79a2077f14b9a3d155e26b612f38ad34adcd6a48`. Board record: #6394 (2026-10-29 14:24:40, e1d-b3, status): "E1d look 3 done: 387 runs done in total; per-run median 28s (tier production = eprop-snn); pauses so far 0". Report lines copied verbatim below, each prefixed by its line number in the report; no interpretation.
+
+```text
+L392: - tree sha(s) in this tier: ['c4c10b285f1741aa798d5ee9c5296ae371fabecf']
+L393: - native sha256(s) in this tier: ['fb25d9a9bbc7e9e889721e46d952054b59150ab9d2a5644757caf7e97368110b']
+L394: - repeat arm (real seed 23000 again): action flips 0 first=None; recorded series identical: True
+L395: - pc seed 23000: action flips 383 (first 8)
+L396: - pc seed 23001: action flips 430 (first 4)
+L397: - **VALIDITY: ALL HOLD**
+L400: - t=1.219 (101/192 seeds > 0), SD=0.3115 -> **CONTINUE: no verdict (CONTINUE at look 3 of 11, n=192 (no verdict): next look n=256 | beside (no bar): k 101/192, trim10 +0.0303, HL +0.0279 [-0.0023, +0.0638], zeros 0.016, |d|>0.4 30)**
+L401: - stratum (DESCRIPTIVE ONLY, decides nothing): 26/192 seeds goal-frozen; H-P1 within frozen t=1.176 (14/26), within moving t=0.906 (87/166); real/pfrozen frozen status disagrees on 15 seeds (pfrozen held_goal missing on 0)
+L402: - sequential decision of record: look 3 of 11, n=192: t=1.219 vs boundary 3.644, 101/192 > 0 (need 96), conditional power 0.880 (futility < 0.1, closed at this look) -> continue
+L403: - sensitivity H-P1 without degenerate seeds [23008]: t=1.219 (101/191)
+L412: - n=192: exact-zero 0.016
+```
+
+### R6. Look 4 of 11 (n = 256)
+
+Source: `lanes/e1d-plan-w-work/reports/compare-production-look4.md` (587 lines), sha256 `acf3eacc9fb2696f12d82c0fde768636846c5183a4d4f9579449d00782310e7c`. Board record: #6543 (2026-10-29 15:31:22, e1d-b3, status): "E1d look 4 done: 515 runs done in total; per-run median 29s (tier production = eprop-snn); pauses so far 0". Report lines copied verbatim below, each prefixed by its line number in the report; no interpretation.
+
+```text
+L520: - tree sha(s) in this tier: ['c4c10b285f1741aa798d5ee9c5296ae371fabecf']
+L521: - native sha256(s) in this tier: ['fb25d9a9bbc7e9e889721e46d952054b59150ab9d2a5644757caf7e97368110b']
+L522: - repeat arm (real seed 23000 again): action flips 0 first=None; recorded series identical: True
+L523: - pc seed 23000: action flips 383 (first 8)
+L524: - pc seed 23001: action flips 430 (first 4)
+L525: - **VALIDITY: ALL HOLD**
+L528: - t=1.283 (136/256 seeds > 0), SD=0.2986 -> **CONTINUE: no verdict (CONTINUE at look 4 of 11, n=256 (no verdict): next look n=320 | beside (no bar): k 136/256, trim10 +0.0292, HL +0.0270 [+0.0012, +0.0561], zeros 0.016, |d|>0.4 38)**
+L529: - stratum (DESCRIPTIVE ONLY, decides nothing): 33/256 seeds goal-frozen; H-P1 within frozen t=0.273 (16/33), within moving t=1.260 (120/223); real/pfrozen frozen status disagrees on 20 seeds (pfrozen held_goal missing on 0)
+L530: - sequential decision of record: look 4 of 11, n=256: t=1.283 vs boundary 3.094, 136/256 > 0 (need 128), conditional power 0.883 (futility < 0.1, closed at this look) -> continue
+L531: - sensitivity H-P1 without degenerate seeds [23008, 23208]: t=1.283 (136/254)
+L541: - n=256: exact-zero 0.016
+```
+
+### R7. Look 5 of 11 (n = 320)
+
+Source: `lanes/e1d-plan-w-work/reports/compare-production-look5.md` (724 lines), sha256 `26a33f5d6c52c1c9dec98df211bd6f5c4ed05177717cdbd0ac03ba0b77acc35a`. Board record: #6662 (2026-10-29 16:34:47, e1d-b3, status): "E1d look 5 done: 643 runs done in total; per-run median 29s (tier production = eprop-snn); pauses so far 0". Report lines copied verbatim below, each prefixed by its line number in the report; no interpretation.
+
+```text
+L648: - tree sha(s) in this tier: ['c4c10b285f1741aa798d5ee9c5296ae371fabecf']
+L649: - native sha256(s) in this tier: ['fb25d9a9bbc7e9e889721e46d952054b59150ab9d2a5644757caf7e97368110b']
+L650: - repeat arm (real seed 23000 again): action flips 0 first=None; recorded series identical: True
+L651: - pc seed 23000: action flips 383 (first 8)
+L652: - pc seed 23001: action flips 430 (first 4)
+L653: - **VALIDITY: ALL HOLD**
+L656: - t=0.676 (164/320 seeds > 0), SD=0.3038 -> **CONTINUE: no verdict (CONTINUE at look 5 of 11, n=320 (no verdict): next look n=384 | beside (no bar): k 164/320, trim10 +0.0219, HL +0.0198 [-0.0038, +0.0449], zeros 0.019, |d|>0.4 46)**
+L657: - stratum (DESCRIPTIVE ONLY, decides nothing): 38/320 seeds goal-frozen; H-P1 within frozen t=0.433 (19/38), within moving t=0.571 (145/282); real/pfrozen frozen status disagrees on 27 seeds (pfrozen held_goal missing on 0)
+L658: - sequential decision of record: look 5 of 11, n=320: t=0.676 vs boundary 2.736, 164/320 > 0 (need 160), conditional power 0.668 (futility < 0.1, closed at this look) -> continue
+L659: - sensitivity H-P1 without degenerate seeds [23008, 23208, 23292, 23308, 23312]: t=0.676 (163/315)
+L670: - n=320: exact-zero 0.019
+```
+
+### R8. Looks 6 to 11: OWED
+
+Each is filled from its report with the same lines as R5 to R7. Nothing is entered until the report exists.
 
 | Look | n | Boundary t (E1c section 5) | Source report | State |
 |---|---|---|---|---|
-| 3 | 192 | 3.644 | `reports/compare-production-look3.md` | OWED (plan: `logs/plan-look3.txt`; look 3 started per #6263) |
-| 4 | 256 | 3.094 | `reports/compare-production-look4.md` | OWED |
-| 5 | 320 | 2.736 | `reports/compare-production-look5.md` | OWED |
 | 6 | 384 | 2.480 | `reports/compare-production-look6.md` | OWED |
 | 7 | 448 | 2.285 | `reports/compare-production-look7.md` | OWED |
 | 8 | 512 | 2.130 | `reports/compare-production-look8.md` | OWED |
@@ -807,10 +857,9 @@ line, tail census count). Nothing is entered until the report exists.
 | 10 | 640 | 1.896 | `reports/compare-production-look10.md` | OWED (futility opens here, section 4b) |
 | 11 | 704 | 1.804 | `reports/compare-production-look11.md` | OWED (the hard cap) |
 
-Look 1 and 2 boundaries (7.627, 4.639) are in R3 and R4. The per-look t list is E1c section 5's, quoted above; the
-mapping of the eleven values to looks 1-11 is by order.
+Look 1 and 2 boundaries (7.627, 4.639) are in R3 and R4; looks 3 to 5 are quoted from their reports in R5 to R7. The per-look t list is E1c section 5's, quoted above; the mapping of the eleven values to looks 1-11 is by order.
 
-### R6. Disposition: OWED
+### R9. Disposition: OWED
 
 OWED. It is the integrator's, under section 8, from the stop of record (harm boundary crossed with k >= ceil(n/2),
 futility at n = 640 where powered, or the uncrossed cap at n = 704), and it names its mde where P8 null-scale item 4
