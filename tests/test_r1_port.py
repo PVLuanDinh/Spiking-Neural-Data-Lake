@@ -18,6 +18,7 @@ EPS = [
     {"who": "arm", "what": f"w{i % 7}", "where": f"p{i % 5}", "when": f"t{i}", "affect": "calm"}
     for i in range(200)
 ]
+SELF_REST = {"who": "self", "what": "rest", "where": "p1", "when": "5", "affect": "calm"}
 # no `affect` slot
 ODD = [{"who": "arm", "what": "lone", "where": "px", "when": f"u{j}"} for j in range(3)]
 
@@ -131,3 +132,39 @@ def test_f3_no_boot_session_means_no_autobiographical_write(H, monkeypatch):
         assert H.load_episodes() == [] and b._episode_window == []
     finally:
         b.close()
+
+
+def test_f3b_the_session_slot_is_provenance_not_recall_evidence():
+    # F3's side effect, measured on claude/r1 by test_episode_durability::
+    # test_recall_reaches_past_working_memory: with a `session` slot every same-boot neighbour
+    # matched one cue slot for free, lifting a wrong window answer to confidence .5 (the default
+    # bar). Provenance never counts toward confidence.
+    a = dict(SELF_REST, session="1")
+    b = {
+        "who": "owner",
+        "what": "wave",
+        "where": "p2",
+        "when": "9",
+        "affect": "joy",
+        "session": "1",
+    }
+    lr = LR.LakeRecall(episodes=[b], seed=0)
+    lr.attach([b])
+    hit = lr.recall(a, k=1)[0]
+    assert hit["confidence"] == 0.0 and hit["contradicted"] == 5, (
+        hit
+    )  # 5 content slots, none shared
+    lr.attach([a, b])
+    assert lr.recall(a, k=1)[0]["episode"] == a and lr.recall(a, k=1)[0]["confidence"] == 1.0
+    assert lr.recall({"session": "1"}, k=1) == []  # a cue of provenance alone addresses nothing
+
+
+def test_f3b_a_provenance_only_cue_is_a_miss_in_the_deep_tier_too():
+    # recall() refuses a session-only cue; the deep tier's is_subcue must not answer it at
+    # confidence 1.0 with the newest episode of that boot -- two verdicts for one cue
+    ep = dict(SELF_REST, session="1")
+    assert not LR.is_subcue({"session": "1"}, ep)
+    assert LR.is_subcue(
+        {"when": "5", "session": "1"}, ep
+    )  # session must still agree beside content
+    assert not LR.is_subcue({"when": "5", "session": "2"}, ep)
