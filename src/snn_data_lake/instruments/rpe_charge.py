@@ -710,7 +710,14 @@ class ArmPatch:
             "tick": [],
             "r_sent": [],
         }
-        self.p = {"calls": 0, "rpe_entry": [], "rpe_used": [], "tick": [], "plan_w_before": []}
+        self.p = {
+            "calls": 0,
+            "rpe_entry": [],
+            "rpe_used": [],
+            "tick": [],
+            "held_goal": [],
+            "plan_w_before": [],
+        }
         self.exc = []
         self.tick = -1
         self.pc_calls = 0
@@ -801,6 +808,8 @@ class ArmPatch:
                     if me.arm == "pshuf":
                         slf._rpe = saved
                 P["tick"].append(me.tick)
+                pfc = getattr(slf, "pfc", None)
+                P["held_goal"].append(None if pfc is None else pfc.goal)
                 P["rpe_entry"].append(entry)
                 P["rpe_used"].append(used)
                 P["plan_w_before"].append(pw)

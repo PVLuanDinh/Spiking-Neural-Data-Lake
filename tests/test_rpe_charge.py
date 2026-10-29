@@ -910,6 +910,25 @@ def test_pshuf_swaps_the_rpe_and_restores_it_even_when_the_call_raises(monkeypat
     assert AutonomousArm._pfc_bias is fake
 
 
+def test_pfc_bias_wrapper_records_the_held_goal_beside_the_tick(monkeypatch):
+    from snn_data_lake.engine.autonomous_loop import ACTIONS, AutonomousArm
+    from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
+
+    monkeypatch.setattr(AutonomousArm, "_pfc_bias", lambda self, unit, pattern=None, qa=None: "ok")
+    pfc = PrefrontalExecutive(len(ACTIONS), seed=0)
+    arm = types.SimpleNamespace(_rpe=0.0, _plan_w=0.1, pfc=pfc)
+    with R.ArmPatch("real") as ap:
+        ap.bind(arm)
+        AutonomousArm._pfc_bias(arm, "u")
+        pfc._gate_primary(4, float("inf"))
+        ap.tick = 1
+        AutonomousArm._pfc_bias(arm, "u")
+        arm.pfc = None
+        AutonomousArm._pfc_bias(arm, "u")
+    assert ap.p["held_goal"] == [None, 4, None] and len(ap.p["tick"]) == 3
+    assert "held_goal" not in ap.v
+
+
 def test_pfrozen_zeroes_the_plan_rate():
     arm = types.SimpleNamespace(_plan_lr=0.02)
     with R.ArmPatch("pfrozen") as ap:
