@@ -87,6 +87,9 @@ from snn_data_lake.sleep.sleep_replay import N as ATTR_N
 
 #: the ONE named-state record for the brain's prototype learners (rank 2b, 2026-09-02)
 PROTOTYPES_STATE = "growing_learners.json"
+#: the named sub-record (under _T_STATE) for the circadian phase: clock phase + jitter state + the
+#: light-schedule step, bound to the seed and day period they were written under (P4b, finding iii)
+CIRCADIAN_STATE = "circadian_clock.json"
 #: names of the records `Brain._keep_refused` writes: `<prefix><store>.<id>.json`
 REFUSED_PREFIX = f"{PROTOTYPES_STATE.removesuffix('.json')}.refused."
 
@@ -654,6 +657,7 @@ class Brain:
         self.clock = CircadianClock(seed=self._seed)
         self._schedule = light_cycle(self.day_period)
         self._step = 0
+        self._circadian_restore_note = self._restore_circadian()
         self._baseline = self.clock.baseline()
         self._was_asleep = self.clock.consolidation_gate()
         self._asleep = self._was_asleep
@@ -3816,6 +3820,7 @@ class Brain:
         if self._persist:  # DURABLE: fold the night's growth to disk (never-forget)
             self._flush_growth()
             self._flush_prototypes()  # rank 2b: the prototypes the growth is keyed to
+            self._flush_circadian()  # P4b (iii): the clock phase rides the same cadence
             self._flush_coverage()  # T038: the coverage ledger rides the same cadence
             try:
                 from snn_data_lake.substrate.home import save_state
@@ -4256,6 +4261,7 @@ class Brain:
             # take (a width mismatch, an exception) since construction, never swallowed silently
             "prototypes_restore": self._prototypes_restore_note,
             "prototypes_refused_kept": self._prototypes_kept,
+            "circadian_restore": self._circadian_restore_note,  # None = restored; else why a fresh day
             "prototype_faults": self._prototype_faults,
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
@@ -5267,6 +5273,53 @@ class Brain:
         # the name embeds the record's id: an unchanged (False) save means the lake holds it
         return save_state(name, sub) or load_named_state(name) is not None
 
+    # P4b finding (iii): the clock phase is ONE named sub-record under _T_STATE (owner ruling A),
+    #   through the same save_state/load_state pair as _flush_prototypes; REUSES CircadianClock.
+    # distinct-from: sleep/circadian_clock.py -- reused here (state_dict / load_state_dict), not rebuilt
+    # distinct-from: infra/brain_native_selfbuild.py -- persists selfbuild state, not the clock
+    # distinct-from: faculties/set_points.py -- reads the SCN phase, restores nothing
+    def _restore_circadian(self):
+        """Restore the SCN clock's phase + jitter state and the light-schedule `_step` (what `tick`
+        derives sleep/wake from) from the named record `circadian_clock.json`, so a brain restored
+        mid-night resumes the night. A lake without it (written before it existed) or a record of
+        another seed / day period is a FRESH DAY, as before, and the returned note says so; it is
+        surfaced at `state()["circadian_restore"]`. Never raises."""
+        if not self._persist:
+            return "not persisted: fresh day"
+        try:
+            from snn_data_lake.substrate.home import load_state
+
+            rec = load_state(CIRCADIAN_STATE, default=None)
+            if not rec:
+                return "absent: fresh day (the lake holds no circadian record)"
+            step = rec.get("step")
+            if rec.get("seed") != self._seed or rec.get("day_period") != self.day_period:
+                return "refused: fresh day (record is of another seed or day period)"
+            if not (isinstance(step, int) and step >= 0 and self.clock.load_state_dict(rec)):
+                return "refused: fresh day (malformed record)"
+            self._step = step
+            return None
+        except Exception as e:  # a broken record must never block brain construction
+            return f"restore raised: fresh day ({e})"
+
+    def _flush_circadian(self):
+        """Write the clock's phase (see `_restore_circadian`) beside the other flushes; unchanged
+        state writes nothing. True if a record was written."""
+        if not self._persist:
+            return False
+        try:
+            from snn_data_lake.substrate.home import save_state
+
+            rec = dict(
+                self.clock.state_dict(),
+                step=self._step,
+                seed=self._seed,
+                day_period=self.day_period,
+            )
+            return bool(save_state(CIRCADIAN_STATE, rec))
+        except Exception:
+            return False
+
     def _flush_coverage(self):
         """T038 (FR-027): write the arm's coverage ledger into the ONE lake. Same two callers as
         `_flush_growth` -- the sleep tick and close() -- for the same reason: a single persistence
@@ -6178,6 +6231,7 @@ class Brain:
         # this method must not be what decides whether the brain keeps what it grew.
         self._flush_growth()
         self._flush_prototypes()  # rank 2b
+        self._flush_circadian()  # P4b (iii): the clock phase
         self._flush_coverage()  # T038
         self._flush_interaction_learner()
         try:

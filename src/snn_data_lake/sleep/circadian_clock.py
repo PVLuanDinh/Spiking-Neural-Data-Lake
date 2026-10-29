@@ -116,6 +116,29 @@ class CircadianClock:
                 ticks.append(t)
         return ticks
 
+    # ---- persistence: the phase an uninterrupted twin would still hold -----------
+    # distinct-from: growth/growing_learner.py, growth/neurogenesis_engine.py -- those restore their
+    #   own learners' prototypes; this is the SCN clock's phase + jitter state, same state_dict idiom.
+    def state_dict(self):
+        """The oscillator's whole dynamic state: the phase and the jitter generator's state, so a
+        restored clock steps exactly as the uninterrupted one would (JSON-serialisable)."""
+        version, internal, gauss_next = self.rng.getstate()
+        return {"phase": self.phase, "rng": [version, list(internal), gauss_next]}
+
+    def load_state_dict(self, sd):
+        """Restore `state_dict()`. True if restored; a malformed record leaves the clock untouched."""
+        try:
+            phase = float(sd["phase"])
+            version, internal, gauss_next = sd["rng"]
+            if not 0.0 <= phase < 1.0:
+                return False
+            probe = random.Random()
+            probe.setstate((version, tuple(internal), gauss_next))
+        except (KeyError, TypeError, ValueError):
+            return False
+        self.phase, self.rng = phase, probe
+        return True
+
     # ---- diurnal outputs (pure functions of the phase) ----------------------
     def is_rest(self, phase=None):
         """Rest/active gate: True during subjective night [0.5, 1.0). Subjective night is the rest

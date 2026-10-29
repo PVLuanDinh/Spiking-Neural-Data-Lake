@@ -1,7 +1,7 @@
 """Finding (iii) (launcher D-77, board #6807): a brain restored mid-night must resume the night, as
 an uninterrupted twin does. Today a restoring process starts a fresh clock (`Brain.tick` derives
-sleep/wake from `_step`, which a restart resets), so this is a red-first strict xfail on
-AssertionError and is NOT fixed here: fix-or-defer is the launcher's call. Private homes under
+sleep/wake from `_step`, which a restart reset); the clock phase now rides the named record
+`circadian_clock.json` (_T_STATE), so this is green. Private homes under
 tmp_path only; never the live lake. Dev seed 15000 (r2-typed-replay-hydration.md 2.6)."""
 
 import pytest
@@ -21,11 +21,6 @@ def _into_the_night(brain, sleeps=1):
     return ticks
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="finding (iii): restart forgets circadian phase (D-77)",
-)
 def test_a_brain_restored_mid_night_resumes_the_night(tmp_path):
     from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate import home
