@@ -19,7 +19,12 @@ twin tick until S=6 sleep ticks have run, recording the LIVE objects (`_g0c_walk
 K3 records "the rest of the night, then 6" (2.2): twin_K3 measures the sleep ticks its cut night had
 left, and every K3 restoring arm records that count plus 6 (integrator ruling, option (i)). The
 harness carries circadian phase across the restart; the brain does not (finding iii): a restoring
-process starts a fresh clock, so the K3 arms are coupled to twin_K3's record.
+process starts a fresh clock, so the K3 arms are coupled to twin_K3's record. The two sides differ at
+row R: twin_K3 runs R rest-of-night rows, then a wake day and a sleep entry (`_enter_wake`,
+`_enter_sleep` move learner state), then 6 rows; a K3 restore runs its wake period first, then R+6
+sleep rows with no wake/sleep transition between row R and R+1. So res_K3 vs twin_K3 can differ from the
+harness alone: `_k3_split` reads rows 1..R and R+1..R+6 apart (`c6_k3_split`), and a dev-seed K3 difference
+is attributed to its half before any P2 seed.
 Sleep replay is retired on main (owner1039): the sleep tick is the structural pass, so the
 must-differ control (R2-c4) is the structural-off twin and the rewirer weight flip of the O_rw red.
 
@@ -1756,6 +1761,20 @@ def records_equal(a, b, skip=()):
     return all(ra.get(k) == rb.get(k) for ra, rb in zip(a["rows"], b["rows"]) for k in row)
 
 
+def _k3_split(res, twin, rest):
+    """R2-c6's K3 comparison read in its two halves: rows 1..R (the rest of the night, where the
+    restore has no wake/sleep transition the twin had) and rows R+1..R+6."""
+    half = (
+        lambda rec, lo, hi: (  # noqa: E731
+            rec and "rows" in rec and dict(rec, rows=rec["rows"][lo:hi])
+        )
+    )
+    return {
+        "rest": records_equal(half(res, None, rest), half(twin, None, rest)),
+        "night": records_equal(half(res, rest, None), half(twin, rest, None)),
+    }
+
+
 def chrono_clean(r):
     """Hydration and redo tick nothing (construction leaves a fresh clock) and a sleep step advances
     no chronology and reaches no actuator (R2-c5's instrument-level half)."""
@@ -2270,6 +2289,9 @@ def seed_comparisons(arms, base=None):
             "K4": eq(get("res_K4"), get("twin_K4")),
             "B": eq(get("res_B"), get("twin_B")),
         },
+        "c6_k3_split": _k3_split(
+            get("res_K3"), get("twin_K3"), (get("twin_K3") or {}).get("k3_rest", 0)
+        ),
         "chrono": {
             r: chrono_clean(get(r, {}))
             for r in (
@@ -2499,7 +2521,7 @@ def _check_base(src):
 def run_seed(seed, out_dir, head="r2", src=None, roles=None):
     """All of one seed's processes for one head, each on its own home; restoring arms get a copy of
     their parent's home. Returns {role: record}. `roles` selects a subset (parents included)."""
-    check_seeds([seed])
+    part = check_seeds([seed])
     if head == "base":  # the I arms run the base tree, never this one relabelled
         if not src:
             raise ValueError("--head base needs --base-src: the I arms run at e1b3ae3c")
@@ -2508,7 +2530,11 @@ def run_seed(seed, out_dir, head="r2", src=None, roles=None):
     src = Path(src) if src else here.parents[2]
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    table = R2_ROLES + P3_ROLES if head == "r2" else BASE_ROLES
+    # a part reads only its own observables (once-read block, heavy CPU): P3 the K1g arms, P1/P2
+    # the R2 arms, the dev block both
+    table = BASE_ROLES
+    if head == "r2":
+        table = {"P3": P3_ROLES, "P1": R2_ROLES, "P2": R2_ROLES}.get(part, R2_ROLES + P3_ROLES)
     if roles is not None:
         parent_of, roles = dict(table), set(roles)
         for role in list(roles):
