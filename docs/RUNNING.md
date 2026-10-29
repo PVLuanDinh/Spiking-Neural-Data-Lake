@@ -93,8 +93,9 @@ python -m snn_data_lake.substrate.paradigm_b_engine               # Paradigm B: 
 > flat form and exited 1 for a reader who typed them, and `spiking_storage_prototype` had been
 > promoted out of `reasoning/` into `hippocampus/` without this page following. `citation_guard.py`
 > stayed green throughout, because every file it could see was tracked — the *command* was checked
-> by nothing. `tools/doc_command_guard.py` checks it — **built and clean, but not yet a CI step, so
-> run it by hand** (`python tools/doc_command_guard.py --assert`). Registering it is open P4c work.
+> by nothing. `tools/doc_command_guard.py` checks it: `--assert` runs in run_selfchecks's tools stage, which the self-checks CI job runs (`ci.yml:87`; no lint step).
+> *(Corrected 2026-10-29: this said "built and clean, but not yet a CI step, so run it by hand", true when
+> written; `run_selfchecks.py` has run it since `75848991`, 2026-09-03.)*
 
 > The top-level `research/` tree became `src/snn_data_lake/reasoning/` in v3.78 (commit `627b2e2b`,
 > 2026-07-19), so every `python research/<x>.py` command on this page is now

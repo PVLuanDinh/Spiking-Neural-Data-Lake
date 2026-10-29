@@ -38,7 +38,7 @@ argument, and none is needed here.
 **Testing**: `run_selfchecks.py` (280 checks, module `__main__` self-checks), `pytest` (>=70%
 coverage; currently 93.02%), `ruff check .`; CI lint job additionally runs citation_guard,
 dependency_ledger (`--assert` + `--self-check`), red_reachability `--assert`, doc_command_guard
-`--assert`, p6_gate (`--assert` + `--self-check`), p4c_ratchet (`--assert` + `--self-check`).
+`--assert` *(corrected 2026-10-29: never a lint step; it runs in run_selfchecks's tools stage, which the self-checks CI job runs (`ci.yml:87`; no lint step))*, p6_gate (`--assert` + `--self-check`), p4c_ratchet (`--assert` + `--self-check`).
 
 **Target Platform**: `.venv-lake` (python 3.14.6 free-threading, torch 2.11.0+cu128, cuda True,
 RTX 5070). **CI has no GPU** and installs CPU torch on the same free-threaded interpreter, so every
