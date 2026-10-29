@@ -119,6 +119,21 @@ which is the legitimate kind of input.
       do. It keeps the `held_goal` record meaningful in the `pc` arm.
   - **The planned-sequence nudge is added after the stub** (`:1545-1551`) and is not rotated. So the pc moves only the
     held-goal channel, and `_plan_w`'s channel stays intact.
+  - **Delegate D-42 (launcher-1028)** rules that this read-side form satisfies D-37 rule 2. It is behaviourally the
+    write-side form, and it keeps the `pc` arm's `held_goal` record true. Two conditions:
+    - R2a and R2c stay binding; failing either is VOID before the GO.
+    - Every reader of the held goal or the plan channel that the stub does NOT rotate is disclosed here by name. Read
+      at `1b6e53ab`, none of them reaches action selection by goal index:
+      - `_lake_write(pattern, self.pfc.goal, action)` (`autonomous_loop.py:2163-2168`) gets the UNROTATED held goal.
+        It is active on production, because `LiveBrain` passes `lake_wm=True` (`live_brain.py:87`). It is storage
+        only: it writes a goal one-hot into the lake working memory after the action is chosen. Its read-back,
+        `LiveBrain.recall`, feeds only the chat and intent replies (`live_brain.py:473`, `:850`) and a self-check
+        (`:999`). The `wm_events` count it adds feeds `wm_load` (`live_brain.py:261`) at one write per tick in every
+        arm, whatever the goal index.
+      - The tick record's `"goal"` field (`autonomous_loop.py:2549`): telemetry.
+      - `LiveBrain.goal` (`live_brain.py:315-317`). It feeds `goal_on` (`:267-268`), which reads whether a goal is held
+        (the same in every arm, since the stub never empties the stack), and the chat reply text (`:440`).
+      - The plan nudge reads `_planned_seq[0]`, the PLANNER's first action, not the held goal (`:1545-1551`).
   - **Validity for every `pc` run:** `pc_stub_calls == pfc_bias_calls > 0`, with 600 ticks. Anything else is a harness
     red. The equality catches a partly bypassed stub; foreign-instance calls are already excluded by the scope.
 - **Controls at look 1** (E1c section 3, with new seeds):
@@ -241,6 +256,9 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
   (`rpe_charge.py:327-330`).
   - "Identical" means the parsed `series`, `v` and `p` are equal, minus `p["held_goal"]` where only one side has it.
   - It never compares raw bytes.
+- **The tag check does not apply to R2's own reads.** The calibration and comparator files (`cal_<seed>`, `c0_`,
+  `c1_`) carry no campaign arm in their names. `r2.ps1` loads them, and its own `r2\` outputs, with the record loader
+  WITHOUT the campaign's tag check. That check guards only `results\production`.
 - **R2-0, the comparator reds** (brain-free, run by `r2.ps1` before any brain run). Inputs: `c0_21001.json` and
   `c1_21001.json`, whose sha256 `r2.ps1` pins, refusing on a mismatch, plus `cal_21001.json` under `CAL-BASELINE.sha256`.
   - c0 against cal: 0 flips, "identical".
@@ -281,6 +299,8 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
   - **Input.** A complete 64-seed look-1 folder (`real`, `pfrozen`, `pc` on s0 and s0+1, the `real` repeat on s0),
     written by `rpe_charge`'s own `synth_run` in E1d format. B2 gives it `p["held_goal"]` with a planted frozen count
     of 9.
+    - `dry\logs` also holds a PLANTED `fixture.log` and `tier_red.log` in the pass form. They are disclosed as planted,
+      because a real tier red builds a brain.
   - **The sequence.** The driver's own functions run in order: the controls-first partial compare and its
     PENDING-only continue, then plan owed, `compare_look 1`, plan decide, and the status quote. Brain launches are
     stubbed, as `driver_check` stubs them.
@@ -291,8 +311,16 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
     - the stratum line prints 9 frozen;
     - the disposition is the synthetic design's known value;
     - plan decide prints NEXT continue.
-  - **Its red.** Replace the s0 `pc` with a copy of the s0 `real` (0 flips). The partial look must read VOID, and the
-    driver must halt before run 6.
+  - **Its red.** Overwrite ONLY the s0 `pc` record's `series.action` with the s0 `real`'s. The record keeps `arm` "pc"
+    and its stub counts, so only "pc seed s0 flips == 0" fires. The partial look must read VOID on exactly that item,
+    and the driver must halt before run 6.
+  - **Reds for the other halt branches** of the PENDING-only continue. Each must halt before run 6:
+    - the partial report with no disposition line;
+    - one extra pending item;
+    - one missing expected pending item;
+    - a compare that exits non-zero.
+  - **No live board.** R2-dry posts only to a scratch board folder (`dry\board`), never to the live board or thread E1D.
+  - A seed/arm-against-tag mismatch (section 3) is a harness red. It joins the VALIDITY bad list, so the look is VOID.
   - R2's own reads load every fresh E1d-format JSON through `load_run`, so real-brain JSON parsing is exercised there.
     `synth_run`'s planted `held_goal` also puts the stratum path in the GO-commit gate log.
 - **R3, repeat:** as E1c, on 23000 (at look 1, run first).
@@ -312,8 +340,11 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
     - Its header must carry the GO's TREE, DRIVER_SHA256 and NATIVE_SHA256, which must also equal `NATIVE.pin`'s.
     - It must hold all five pass lines: `R2-0 PASS`, `R2A PASS`, `IDENTITY 65/65 PASS`, `CLASSIFIER PASS`,
       `R2C 64/64 PASS`.
-  - **First-launch guard.** `campaign.sh` refuses its first launch unless `results\production` is empty, or every JSON
-    in it has a DONE row in `logs\runs.log`.
+  - **The results guard, at EVERY start and every look.** `campaign.sh` refuses to launch unless every JSON in
+    `results\production` has a DONE row in `logs\runs.log`.
+    - `run_one`'s resume rule, which already moves an undone run's log and home aside as `*.attempt-<stamp>`, also
+      moves that run's JSON aside, so a run that died before DONE never blocks a resume.
+    - It gets a `driver_check` case, plus a mutant that checks only once.
   - The R2 runs and the GO are on ONE tree, so `git diff --name-only <R2 tree> <GO tree>` is empty by construction.
   - A rebuilt `_native` re-runs R2a and R2c.
   - Each check gets a `driver_check` case and a mutant.
@@ -423,6 +454,10 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
   4. ONE battery, the closing record, push.
   5. Create the run tree at TREE, build `_native` there, and write `NATIVE.pin` and `TREE_SHA`.
   6. Bind `DRIVER.sha256` (with `r2.ps1`).
+  6b. **The bind's review.** The three panel lenses and the policy-enforcer read the bound driver set and AGREE on its
+      exact hashes (the `DRIVER.sha256` manifest sha), as every E1c bind was read (E1c addendum 2; A4-3's five AGREEs).
+      - Nothing in step 7 or later runs before those AGREEs.
+      - Any fold re-binds and is read again.
   7. R2-dry (brain-free).
   8. `r2.ps1`: R2-0, R2a, the identity cross-check and classifier, then R2c's read.
   9. The GO-commit gate log.
@@ -482,7 +517,17 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
     (section 7).
   - **A nits:** the pilot under controls-first (section 3), 130 runs (section 10).
   - The D-37 acknowledgement of the read-side pc is requested from the delegate. Its ruling is cited at the freeze.
-- **Still open:** delta reads of fold 2; the delegate's D-37 ruling; docs-sweep-r2 under the enforcer (#5856).
+- **Fold 3** (fold-2 delta reads: A AGREE #5876, B AGREE #5879 with n4 and n5, C CHALLENGE #5881, and the
+  delegate's ruling D-42):
+  - **D-42** (the read-side pc satisfies D-37 rule 2, with its conditions): section 3, cited, with every un-rotated
+    reader of the held goal disclosed by name.
+  - **B n4** (planted fixture and tier logs in `dry\`) and **B n5** (overwrite only `series.action`; a tag mismatch is
+    a VOID item): section 6, R2-dry.
+  - **C M** (the new driver bytes run unreviewed): section 9, step 6b.
+  - **C e1** (R2-dry's red keeps `arm` "pc"; reds for the other halt branches): section 6.
+  - **C e2** (the results guard at every start and look; a dead run's JSON moved aside): section 6.
+  - **C nits** (R2's reads outside the tag check; a scratch board for R2-dry): section 6.
+- **Still open:** delta reads of fold 3; docs-sweep-r2 under the enforcer (#5856).
 
 ## 12. Record
 
