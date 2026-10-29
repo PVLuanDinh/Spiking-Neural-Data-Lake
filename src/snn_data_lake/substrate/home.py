@@ -717,10 +717,9 @@ def state_path(name):
 #: Sharing is also more correct than not: two instances over one file hold two divergent dedup sets,
 #: so a payload could be written twice, each instance believing it was new.
 #:
-#: ponytail: the cache is keyed on the path string as given. Two spellings of the same file (relative
-#: vs absolute, differing case on Windows) would key separately and reintroduce the split-dedup
-#: problem. Every caller here goes through knowledge_path(), so today they cannot diverge; normalise
-#: with os.path.realpath if a caller ever passes a path from outside.
+#: The cache is keyed on the RESOLVED, case-folded path (`_log`), so two spellings of one file (relative
+#: vs absolute, a `..` detour, differing case on Windows, a link) share one instance. Cost: one
+#: `realpath` per `_log()` call, not measured here (written under the campaign's no-run rule).
 _LOG_CACHE = {}
 
 #: Guards the check-then-construct in `_log()`. The cache above is READ and WRITTEN by every lake
@@ -771,11 +770,12 @@ def _log(path=None, dedup=True):
     the measured duplicate-record red this closes. Splitting them is what made a shared cache hand
     out unshared instances.
     """
-    key = (path or knowledge_path(), bool(dedup))
+    path = path or knowledge_path()
+    key = (os.path.normcase(_resolve(path)), bool(dedup))
     with _LOG_LOCK:
         log = _LOG_CACHE.get(key)
         if log is None or log.stale():
-            log = _LOG_CACHE[key] = BinLog(key[0], dedup=key[1])
+            log = _LOG_CACHE[key] = BinLog(path, dedup=key[1])
         return log
 
 
