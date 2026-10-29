@@ -180,6 +180,7 @@ R2_ROLES = (
     ("fw_rs2_k_post", "fw_rs_k_post"),
 )
 BOUT_CRASH_POINTS = ("Bpre", "B", "Bpost")
+BASE_HEAD = "e1b3ae3c"  # the incumbent I arms' head (2.11 D1)
 BASE_ROLES = (
     ("pre_K1", None),
     ("pre_K2", None),
@@ -305,7 +306,7 @@ def _schedule(brain, seed, replay_first=False):
 
 def _post_boundary(brain, order):
     """K2's M=6 post-boundary turns: 4 respond, 1 correct, 1 re-correction of a ring utterance."""
-    for u in order[4:8]:
+    for u in order[4 : 2 + M_POST]:
         brain.respond(u, human=False)
     brain.correct(order[5], "GOAL")
     brain.correct(order[0], "GOAL")
@@ -1355,7 +1356,6 @@ def _fw_survivor(role, seed, result, out):
         one(2, name)
     result["calls"] = records
     result["refused_after_b"] = refused_b
-    result["posed"] = "VERIFIED"
     _write(out, result)
     os._exit(0)
 
@@ -1508,6 +1508,20 @@ def comparator_controls(record):
     return same and not records_equal(record, ulp) and not records_equal(record, ring)
 
 
+# distinct-from: plasticity/rule_composer.py -- rule_charge drives leave-one-out RULE arms on a live
+#   trajectory; this only lists which recorded 2.2 records two finished arms differ on. Site read.
+# distinct-from: plasticity/r_stdp.py -- _FanOut is a barrier thread pool; a keyword overlap only.
+def moved_records(a, b):
+    """Per-carrier attribution (2.4 last paragraph): the compared records on which two complete arms
+    differ, as `before.<key>` / `rows.<key>`. Reported, never a bar; None when either is incomplete."""
+    if not (_complete(a) and _complete(b)):
+        return None
+    keys = [f"before.{k}" for k in _COMPARED_BEFORE if a["before"].get(k) != b["before"].get(k)]
+    rows = list(zip(a.get("rows", []), b.get("rows", [])))
+    keys += [f"rows.{k}" for k in _COMPARED_ROW if any(x.get(k) != y.get(k) for x, y in rows)]
+    return keys
+
+
 def _planted_entry(kind, arms):
     on, off = arms.get(f"{kind}_on", {}), arms.get(f"{kind}_off", {})
     twin, reason = arms.get(_PLANT_TWIN[kind]), PLANTED[kind]
@@ -1517,14 +1531,14 @@ def _planted_entry(kind, arms):
         refusals = (on.get("reader") or {}).get("refusals") or {}
         off_refusals = (off.get("reader") or {}).get("refusals") or {}
         refused = refusals.get(reason, 0) >= 1
-        moved = any(
-            off["before"].get(k) != twin["before"].get(k) for k in ("ring", "ring_ids")
-        ) or any(
-            ra.get(k) != rb.get(k)
-            for ra, rb in zip(off.get("rows", []), twin.get("rows", []))
-            for k in ("drawn", "drawn_ids")
-        )  # 2.4: these reds must fire on the ring and the draws; a latched off arm is INVALID
-        flagged = off_refusals.get(reason, 0) == 0 and off.get("fault") is None and moved
+        # 2.4: these reds must fire on the ring and the draws; a latched off arm is INVALID
+        moved = set(moved_records(off, twin)) & {
+            "before.ring",
+            "before.ring_ids",
+            "rows.drawn",
+            "rows.drawn_ids",
+        }
+        flagged = off_refusals.get(reason, 0) == 0 and off.get("fault") is None and bool(moved)
         if kind == "HELDOUT":  # a held-out id must be in the ring of the neutered arm (explicit)
             flagged = flagged and off.get("planted") in (off.get("before") or {}).get(
                 "ring_ids", []
@@ -1787,16 +1801,12 @@ def fw_seed(arms):
         if k in ("_cursor", "cache.ring", "cache.ids", "cache.authority")
     }
     out["reds"]["RED-ORACLE"] = bool(have and named(ref["A"]["sem"]) and named(pre))
-    posed = [
-        c
-        for r in names
-        if _fw_ok(arms.get(r))
-        for c in arms[r].get("calls", [])
-        if c["call"] == "vii"
-    ]
-    out["posed"] = (
+    survivors = [arms.get(f"fw_{k}_{a}") for k in ("t", "b") for a in ("absent", "landed", "torn")]
+    whole = all(_fw_ok(r) and "calls" in r for r in survivors)
+    posed = [c for r in survivors if whole for c in r["calls"] if c["call"] == "vii"]
+    out["posed"] = (  # A3: C(vii) reads UNVERIFIED unless EVERY survivor's vii call was refused
         "VERIFIED"
-        if posed and all("PosedRefused" in (c["exc"] or "") for c in posed[:1])
+        if posed and all("PosedRefused" in (c["exc"] or "") for c in posed)
         else "UNVERIFIED"
     )
     bars_ok = all(not v for a in out["arms"].values() for v in a.values())
@@ -1868,12 +1878,13 @@ def seed_comparisons(arms, base=None):
     fired = lambda r, twin: (  # noqa: E731
         _complete(get(r)) and _complete(get(twin)) and not eq(get(r), get(twin))
     )
+    clean = lambda r, twin: eq(get(r), get(twin)) and get(r).get("fault") is None  # noqa: E731
     c = {
-        "c1": {
-            "K0": eq(get("res_K0"), get("twin_K1")),
-            "K1": eq(get("res_K1"), get("twin_K1")),
-            "K2": eq(get("res_K2"), get("twin_K2")),
-            "rw": eq(get("res_rw"), get("twin_rw")),
+        "c1": {  # two records latched by the same fault are equal, but neither restored
+            "K0": clean("res_K0", "twin_K1"),
+            "K1": clean("res_K1", "twin_K1"),
+            "K2": clean("res_K2", "twin_K2"),
+            "rw": clean("res_rw", "twin_rw"),
         },
         "c6": {
             "K3": eq(get("res_K3"), get("twin_K3")),
@@ -1895,6 +1906,7 @@ def seed_comparisons(arms, base=None):
             )
         },
         "reds": {r: fired(r, twin) for r, twin in _RED_TWIN.items()},
+        "attribution": {r: moved_records(get(r), get(twin)) for r, twin in _RED_TWIN.items()},
         "planted": {kind: _planted_entry(kind, arms) for kind in PLANTED},
         "c3_controls": {
             "O_rng_lone_replay_equal": _complete(get("O_rngv"))
@@ -1989,26 +2001,28 @@ def verdict(per_seed, seeds):
     )
     c1 = every(lambda c: all(c["c1"].values()) and all(c["chrono"].values()))
     c2 = every(lambda c: c["c2"]["I_K1_equal"])
-    first = per_seed[next(iter(per_seed))]
-    reds = {r: every(lambda c, r=r: c["reds"].get(r) is True, counted) for r in first["reds"]}
+    # every key any counted seed reports: a red missing from one seed's record never fires there
+    red_keys = dict.fromkeys(r for s in counted for r in per_seed[s]["reds"])
+    plant_keys = dict.fromkeys(k for s in counted for k in per_seed[s]["planted"])
+    reds = {r: every(lambda c, r=r: c["reds"].get(r) is True, counted) for r in red_keys}
     fired_somewhere = {
-        r: any(per_seed[s]["reds"].get(r) is True for s in counted) for r in first["reds"]
+        r: any(per_seed[s]["reds"].get(r) is True for s in counted) for r in red_keys
     }
     planted = {
         k: every(
-            lambda c, k=k: (
-                c["planted"][k]["guard_off_flagged"]
-                and c["planted"][k]["guard_on_ok"]
-                and c["planted"][k]["guard_on_refused"]
+            lambda c, k=k: all(
+                (c["planted"].get(k) or {}).get(x)
+                for x in ("guard_off_flagged", "guard_on_ok", "guard_on_refused")
             ),
             counted,
         )
-        for k in first["planted"]
+        for k in plant_keys
     }
     controls = every(lambda c: all(c.get("c3_controls", {"x": True}).values()), counted)
     c3 = all(reds.values()) and all(planted.values()) and controls and not invalid
-    c4 = every(lambda c: c["c4_structural_moves"] and c["c4_comparator"])
-    c6 = every(lambda c: all(c["c6"].values()))
+    # 2.3: the controls and R2-c6 hold "on EVERY seed", an INVALID one included
+    c4 = every(lambda c: c["c4_structural_moves"] and c["c4_comparator"], counted)
+    c6 = every(lambda c: all(c["c6"].values()), counted)
     failwrite = every(lambda c: bool(c.get("failwrite")) and c["failwrite"]["ok"], counted)
     c8 = every(lambda c: all(c["c8"].values()))
     never = [r for r, hit in fired_somewhere.items() if not hit]
@@ -2043,22 +2057,61 @@ def verdict(per_seed, seeds):
         "not_built": {"P3": "another lane (claude-sonnet-r2p3-1015): K1g / R2-c7, kind percept"},
         "scope": "same-code restarts at K0-K4 and the staged bout; the interaction learner and the "
         "sleep carriers that touch it; the #1037 latch (FAILWRITE); R2-c5 is pytest; I arms at base "
-        "e1b3ae3c compare only to their own twins; sleep replay is retired on main (owner1039)",
+        "e1b3ae3c compare only to their own twins; sleep replay is retired on main (owner1039); "
+        "the CTXREAD off arm filters its event out of `hydrate`, so it shows the guard is the only "
+        "refuser, not a reachable fault effect (A10)",
     }
 
 
 # ---- orchestration ----------------------------------------------------------------------------
 
 
+# distinct-from: engine/learn_daemon.py, faculties/agency_monitor.py -- those (like the pin helpers
+#   of report_order_probe.py, binding_instrument.py and recursive_tom.py) read the CWD repo's HEAD
+#   and take no path; this reads a named tree's (the base checkout), so the I arms' head is on record.
+def _head_of(path):
+    """`git rev-parse HEAD` of the tree at `path`, or "" when it is not a git checkout."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return proc.stdout.strip() if proc.returncode == 0 else ""
+
+
+def _check_base(src):
+    """The I arms run at the registered base head (2.11 D1) or not at all; returns that head."""
+    head = _head_of(src)
+    if not head.startswith(BASE_HEAD):
+        raise ValueError(
+            f"--base-src {src} is at {head or 'no git head'}, not the registered base {BASE_HEAD}"
+        )
+    return head
+
+
 def run_seed(seed, out_dir, head="r2", src=None, roles=None):
     """All of one seed's processes for one head, each on its own home; restoring arms get a copy of
     their parent's home. Returns {role: record}. `roles` selects a subset (parents included)."""
     check_seeds([seed])
+    if head == "base":  # the I arms run the base tree, never this one relabelled
+        if not src:
+            raise ValueError("--head base needs --base-src: the I arms run at e1b3ae3c")
+        _check_base(src)
     here = Path(__file__).resolve()
     src = Path(src) if src else here.parents[2]
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     table = R2_ROLES if head == "r2" else BASE_ROLES
+    if roles is not None:
+        parent_of, roles = dict(table), set(roles)
+        for role in list(roles):
+            while parent_of.get(role):
+                role = parent_of[role]
+                roles.add(role)
     arms, homes = {}, {}
     with tempfile.TemporaryDirectory(prefix=f"r2h-{head}-{seed}-", dir=out_dir) as scratch:
         scratch = Path(scratch)
@@ -2074,29 +2127,34 @@ def run_seed(seed, out_dir, head="r2", src=None, roles=None):
                 )
             out = out_dir / f"{head}-{seed}-{role}.json"
             out.unlink(missing_ok=True)
-            proc = subprocess.run(
-                [
-                    sys.executable,
-                    str(here),
-                    "--proc",
-                    role,
-                    str(seed),
-                    str(home),
-                    str(out),
-                    head,
-                    nonce,
-                ],
-                env=dict(
-                    os.environ,
-                    NORD_HOME=str(home),
-                    PYTHONPATH=str(src),
-                    PYTHONUTF8="1",
-                ),
-                capture_output=True,
-                text=True,
-                timeout=900,
-            )
-            if proc.returncode != 0:
+            try:
+                proc = subprocess.run(
+                    [
+                        sys.executable,
+                        str(here),
+                        "--proc",
+                        role,
+                        str(seed),
+                        str(home),
+                        str(out),
+                        head,
+                        nonce,
+                    ],
+                    env=dict(
+                        os.environ,
+                        NORD_HOME=str(home),
+                        PYTHONPATH=str(src),
+                        PYTHONUTF8="1",
+                    ),
+                    capture_output=True,
+                    text=True,
+                    timeout=900,
+                )
+            except subprocess.TimeoutExpired:  # A11.4: a hung arm is INVALID, never an abort
+                proc = None
+            if proc is None:
+                arms[role] = {"role": role, "error": "timeout"}
+            elif proc.returncode != 0:
                 arms[role] = {"role": role, "error": f"exit {proc.returncode}"}
             elif not out.exists():
                 arms[role] = {"role": role, "error": "no output"}
@@ -2105,7 +2163,7 @@ def run_seed(seed, out_dir, head="r2", src=None, roles=None):
                     arms[role] = json.loads(out.read_text(encoding="utf-8"))
                 except (OSError, ValueError):
                     arms[role] = {"role": role, "error": "unparsable output"}
-            if proc.stderr:  # kept even on success: refusal reports are evidence
+            if proc is not None and proc.stderr:  # kept even on success: refusals are evidence
                 (out_dir / f"{head}-{seed}-{role}.stderr.txt").write_text(
                     proc.stderr, encoding="utf-8"
                 )
@@ -2174,6 +2232,12 @@ def run_campaign(out_dir, seeds, base_src=None, workers=1):
     from concurrent.futures import ThreadPoolExecutor
 
     check_seeds(seeds)
+    here = Path(__file__).resolve()
+    provenance = {  # which heads ran (2.11 D1); a base tree off e1b3ae3c is refused before any seed
+        "src": _head_of(here.parents[2]),
+        "base_src": _check_base(base_src) if base_src else None,
+        "instrument_sha256": hashlib.sha256(here.read_bytes()).hexdigest(),
+    }
     out_dir = Path(out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -2187,7 +2251,7 @@ def run_campaign(out_dir, seeds, base_src=None, workers=1):
     (out_dir / "per_seed.json").write_text(
         json.dumps(per_seed, indent=1, sort_keys=True), encoding="utf-8"
     )
-    v = verdict(per_seed, list(seeds))
+    v = dict(verdict(per_seed, list(seeds)), provenance=provenance)
     (out_dir / "verdict.json").write_text(json.dumps(v, indent=2), encoding="utf-8")
     print(f"R2 campaign: {v['verdict']}")
     return v
