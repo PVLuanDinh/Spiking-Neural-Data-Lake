@@ -112,6 +112,7 @@ import random
 import statistics
 import sys
 import time
+import uuid
 
 BAR = 1.895  # one-sided .05, df 7 (S = 8); owner slot: 1.753 at S = 16
 SEEDS = range(8, 16)  # E1b fresh seeds (owner); owner slot: range(8, 24)
@@ -279,6 +280,13 @@ def native_identity():
         return {"file": None, "sha256": None}
     with open(f, "rb") as fh:
         return {"file": f, "sha256": hashlib.file_digest(fh, "sha256").hexdigest()}
+
+
+# distinct-from: nef_compute.py's self-check command -- derived from the module's identity; this stamps ONE run's
+#   record so a byte-copied file cannot pass as another run (build-rb #5912 MINOR-1)
+def run_identity(tag):
+    """A result record's own identity: its file tag and a per-run nonce (uuid4, pid, start time)."""
+    return {"tag": tag, "nonce": uuid.uuid4().hex, "pid": os.getpid(), "start": time.time()}
 
 
 def preflight(requested, env):
@@ -910,6 +918,7 @@ def run_arm(arm, seed, ticks, tier, home, out, series=None, env=None):
     pf = preflight(tier, env)
     if pf:
         refuse(tier, "preflight", pf)
+    idt = run_identity(os.path.splitext(os.path.basename(out))[0])
     tree = tree_pin(env)
     from snn_data_lake.instruments.sleep_plasticity_ab import (
         guard_out,
@@ -1023,6 +1032,7 @@ def run_arm(arm, seed, ticks, tier, home, out, series=None, env=None):
         rec = {
             "arm": arm,
             "seed": seed,
+            "identity": idt,
             "ticks": ticks,
             "errs": errs,
             "construct_s": round(construct_s, 1),
@@ -1179,10 +1189,12 @@ def replay(rows_by_seed_runs, n=None):
 
 
 # ------------------------------------------------------------------------------- loading / logs
-def load_run(results_dir, tier, tag, tag_check=True):
+def load_run(results_dir, tier, tag, tag_check=True, require_identity=False):
     """One result JSON, or None when absent. A run of the other tier is refused. With `tag_check` (the campaign's
-    loader; E1d section 3) a record whose `arm`/`seed` do not match its file tag (`<arm>_<seed>`, `real_<seed>_r2`)
-    carries `tag_problem`, which `run_problems` puts on the VALIDITY bad list; R2's own reads pass False."""
+    loader; E1d section 3) a record whose `arm`/`seed` or embedded `identity` tag do not match its file tag
+    (`<arm>_<seed>`, `real_<seed>_r2`) carries `tag_problem`, which `run_problems` puts on the VALIDITY bad list;
+    R2's own reads pass False. `require_identity` (the E1d design) also flags a record with no embedded identity;
+    E1/E1b records predate it."""
     p = os.path.join(results_dir, tag + ".json")
     if not os.path.exists(p):
         return None
@@ -1196,18 +1208,25 @@ def load_run(results_dir, tier, tag, tag_check=True):
         raise SystemExit(f"TIER MISMATCH in {p}: {t}")
     if tag_check:
         arm, _, seed = tag.removesuffix("_r2").rpartition("_")
+        idt, why = d.get("identity"), []
         if (d.get("arm"), str(d.get("seed"))) != (arm, seed):
-            d["tag_problem"] = (
+            why.append(
                 f"record arm={d.get('arm')} seed={d.get('seed')} does not match its file tag {tag}"
             )
+        if idt is None and require_identity:
+            why.append("record carries no embedded identity (E1d design)")
+        elif idt is not None and idt.get("tag") != tag:
+            why.append(f"record's embedded tag {idt.get('tag')} does not match its file tag {tag}")
+        if why:
+            d["tag_problem"] = "; ".join(why)
     return d
 
 
-def load_runs(results_dir, tier, seeds=SEEDS):
+def load_runs(results_dir, tier, seeds=SEEDS, require_identity=False):
     runs = {}
     for arm in ARMS:
         for s in seeds:
-            d = load_run(results_dir, tier, f"{arm}_{s}")
+            d = load_run(results_dir, tier, f"{arm}_{s}", require_identity=require_identity)
             if d:
                 runs[(arm, s)] = d
     s0 = list(seeds)[0]
@@ -1216,7 +1235,7 @@ def load_runs(results_dir, tier, seeds=SEEDS):
         (("pc", s0), f"pc_{s0}"),
         (("pc", s0 + 1), f"pc_{s0 + 1}"),
     ):
-        d = load_run(results_dir, tier, tag)
+        d = load_run(results_dir, tier, tag, require_identity=require_identity)
         if d:
             runs[key] = d
     return runs
@@ -1418,6 +1437,10 @@ def analyse(
         )
         if rf[0] != 0 or not same:
             bad.append(f"repeat arm differs from real seed {s0}")
+        # a copy is not a repeat (build-rb #5912 MINOR-1): the repeat's own nonce must differ
+        n0, n1 = ((d.get("identity") or {}).get("nonce") for d in (b0, rep))
+        if n1 == n0 and (design or n0 is not None):
+            bad.append(f"repeat arm is not its own run: its nonce {n1} is real seed {s0}'s")
         floor = rf[0]
     else:
         val.append("repeat arm MISSING")
@@ -2299,6 +2322,7 @@ def synth_run(
     return {
         "arm": arm,
         "seed": seed,
+        "identity": run_identity(f"{arm}_{seed}"),
         "ticks": n,
         "errs": 0,
         "run_s": 1.0,
@@ -2360,7 +2384,9 @@ def fixture_runs(kind, tier="production", seeds=None, arms=None):
                 frozen=s in frozen,
             )
     s0 = seeds[0]
-    runs[("real_r2", s0)] = copy.deepcopy(runs[("real", s0)])
+    runs[("real_r2", s0)] = dict(
+        copy.deepcopy(runs[("real", s0)]), identity=run_identity(f"real_{s0}_r2")
+    )
     for s in (s0, s0 + 1):
         runs[("pc", s)] = synth_run(
             "pc", s, tier, r=0.2, mae_value=0.4, wiggle=wig, shift=2, frozen=s in frozen
@@ -2417,7 +2443,7 @@ def _analyse_dir(d, tier, seeds=SEEDS, design=None):
             e2 = json.load(f)
         if (e2.get("tier") or {}).get("requested") not in (None, tier):
             raise SystemExit(f"TIER MISMATCH in {e2p}: {e2['tier']}")
-    runs = load_runs(d, tier, seeds)
+    runs = load_runs(d, tier, seeds, require_identity=bool(design))
     lg = logs_gate(os.path.join(d, "..", "..", "logs"))
     return analyse(tier, runs, e2, seeds=seeds, logs_pass=lg, design=design), runs
 

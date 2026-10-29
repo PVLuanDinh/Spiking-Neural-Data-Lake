@@ -1068,6 +1068,43 @@ def test_load_run_flags_a_record_whose_seed_or_arm_does_not_match_its_file_tag(t
     assert raw["arm"] == "pfrozen" and "tag_problem" not in raw
 
 
+def test_a_byte_copied_repeat_and_a_retagged_record_fail_their_own_identity(tmp_path):
+    """build-rb #5912 MINOR-1 (launcher ruling): R3 is a control, so a file copy must not
+    satisfy it (P8). Each record carries its own tag and nonce; load_run checks the tag, R3
+    wants a nonce of its own."""
+    seeds = R.E1C_SEEDS[:64]
+    s0, s1, s2 = seeds[0], seeds[1], seeds[2]
+    runs = R.fixture_runs("noharm", seeds=seeds, arms=R.E1C_ARMS)
+    _write_runs(tmp_path, runs)
+    kw = dict(seeds=seeds, design=R.E1C, logs_pass=True, sim_campaigns=20)
+
+    def look(**load):
+        return R.analyse(
+            "production", R.load_runs(str(tmp_path), "production", seeds, **load), None, **kw
+        )
+
+    assert look()["valid"]
+    r2 = tmp_path / f"real_{s0}_r2.json"
+    r2.write_bytes((tmp_path / f"real_{s0}.json").read_bytes())
+    a = look()
+    assert not a["valid"] and R.e1c_disposition(a).startswith("VOID"), a["bad"]
+    assert any(f"real_{s0}_r2" in b and "tag" in b for b in a["bad"]), a["bad"]
+    same = {**runs, ("real_r2", s0): copy.deepcopy(runs[("real", s0)])}
+    b = R.analyse("production", same, None, **kw)
+    assert any("repeat arm" in x and "nonce" in x for x in b["bad"]) and not b["valid"], b["bad"]
+    r2.write_text(json.dumps(runs[("real_r2", s0)]), encoding="utf-8")
+    d = dict(runs[("real", s1)], identity=dict(runs[("real", s1)]["identity"], tag=f"real_{s2}"))
+    (tmp_path / f"real_{s1}.json").write_text(json.dumps(d), encoding="utf-8")
+    assert any(f"real_{s1}" in x and "embedded tag" in x for x in look()["bad"])
+    (tmp_path / f"real_{s1}.json").write_text(json.dumps(runs[("real", s1)]), encoding="utf-8")
+    legacy = {k: v for k, v in runs[("pfrozen", s2)].items() if k != "identity"}
+    (tmp_path / f"pfrozen_{s2}.json").write_text(json.dumps(legacy), encoding="utf-8")
+    assert look()["valid"]  # a legacy record without identity: E1/E1b re-reads still load it
+    strict = look(require_identity=True)  # the E1d design refuses it
+    assert any(f"pfrozen_{s2}" in x and "no embedded identity" in x for x in strict["bad"])
+    assert not strict["valid"]
+
+
 def test_pfrozen_zeroes_the_plan_rate():
     arm = types.SimpleNamespace(_plan_lr=0.02)
     with R.ArmPatch("pfrozen") as ap:
