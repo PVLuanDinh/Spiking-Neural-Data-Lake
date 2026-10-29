@@ -596,3 +596,43 @@ It changes no endpoint, threshold, seed, look or disposition.
   fold's test, and that string is the second bar.
 - The second look exercises the stratum's t and k/n on real numbers, so a seed-pairing bug in the stratum code cannot
   hide behind zeros (build-rb MINOR-4; panel C's note for the step-6b bind review).
+
+## Addendum 2 (2026-10-29, pre-data: no brain run on 23000 and up; before the battery, the push and the bind): the stack panel's in-tree items, and what the bind owes
+
+Appended below the freeze and addendum 1. Nothing above is edited.
+- The stack panel on `ba872834`: stack-a #5934 AGREE, stack-b #5956 AGREE, stack-c #5933 CHALLENGE (a test-only MAJOR).
+- TREE is the pushed head, so in-tree items cannot wait for the bind: they land here and in the stack fold E1D-SFOLD.
+- No endpoint, threshold, seed, look or disposition changes.
+
+**A2-1. Erratum to A1-1.** Where A1-1 says `load_run` "refuses" a record whose embedded tag differs from its file
+name, or (for this design) a record with no embedded identity, the build marks that record a harness red that joins
+VALIDITY's bad list. The LOOK is then VOID. `load_run` itself never raises on it.
+
+**A2-2. R2-dry's second look reads HARM MET (A1-3).** The non-degenerate fixture (kind "harm") crosses the harm boundary
+at look 1, as planted.
+- Its pinned line is HARM MET, and `plan decide` prints `NEXT stop`.
+- That stop IS that look's pass. The driver's dry sequence expects `NEXT stop` on the second look and `NEXT continue`
+  on the first.
+- A pairing mutant in its test proves the pin can see a seed-to-record mix-up (E1D-SFOLD S4).
+
+**A2-3. The classifier R2c's CLASSIFIER check calls** is the module-level `goal_frozen(run)` in `rpe_charge.py` (lifted
+from `goal_stratum` by E1D-SFOLD S2). That is the stratum's own instrument, not a copy.
+
+**A2-4. Proof before R2a, inside the GO-commit gate** (E1D-SFOLD).
+- S1: a slow real-brain test runs the `pc` arm on the no-encoder brain and asserts:
+  - the stub's scope matches the arm's own PFC (`pc_stub_calls == pfc_bias_calls > 0`);
+  - the record's identity tag;
+  - the loaded native file and sha256;
+  - `held_goal`'s length.
+  Its red forces the scope check false.
+- S3: a test pins the five-control partial look as PENDING, with exactly the expected pending set and no bad item.
+
+**A2-5. Owed by the driver bind** (out of tree; read at step 6b):
+- `r2.ps1` checks, before the GO, that every fresh R2 record carries `identity.tag` equal to its file name and that
+  the nonces are pairwise distinct (build-ra #5924);
+- the bind asserts that the analysis's one native sha256 equals `NATIVE.pin`'s (stack-c);
+- `run_one`'s resume rule moves an undone run's JSON aside as `<tag>.json.attempt-<stamp>` (not `*.json`), so the
+  results guard never refuses a resume (stack-c);
+- `reds.sh` uses seed 23000 (stack-b);
+- no manifest hashes fixture JSON bytes, which now carry a random nonce (build-ra);
+- disclosed: no dry look exercises the tail census (|d| > 0.4) (build-rb).
