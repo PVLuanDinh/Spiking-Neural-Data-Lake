@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Reds for `tools/aii_o6_design.py` (O-6 of the A_ii stack-repair pre-registration DRAFT, section 4 + Fold 2).
 
 The script is the committed sample-size arithmetic of `specs/022-unified-brain-arc/evidence/aii-stack-repair-prereg-DRAFT.md`:
@@ -106,7 +107,16 @@ def test_validity_tolerances():
 
 
 def test_operating_characteristics_guard_idle():
-    want = {0.0: 0.000, 0.2209: 0.047, 0.35: 0.398, 0.4729: 0.820, 0.6: 0.980, 0.8: 0.9999, 0.9: 1.000, 1.0: 1.000}
+    want = {
+        0.0: 0.000,
+        0.2209: 0.047,
+        0.35: 0.398,
+        0.4729: 0.820,
+        0.6: 0.980,
+        0.8: 0.9999,
+        0.9: 1.000,
+        1.0: 1.000,
+    }
     for p, w in want.items():
         pc = D["p0"] if p == 0.2209 else D["p1"] if p == 0.4729 else p
         _close(M.joint(D, pc, 0.0, 1.0)["met"], w, 5e-4)
@@ -118,7 +128,13 @@ def test_operating_characteristics_guard_idle():
 
 def test_joint_worst_case_met_and_void():
     """Worst case the measured counts allow: original at p0 AND bare at p1 (guard included)."""
-    want = {"p0": (0.0450, 0.0114), 0.35: (0.3853, 0.0138), "p1": (0.8032, 0.0133), 0.6: (0.9683, 0.0112), 0.9: (0.9916, 0.0084)}
+    want = {
+        "p0": (0.0450, 0.0114),
+        0.35: (0.3853, 0.0138),
+        "p1": (0.8032, 0.0133),
+        0.6: (0.9683, 0.0112),
+        0.9: (0.9916, 0.0084),
+    }
     for key, (wm, wv) in want.items():
         pc = D[key] if isinstance(key, str) else key
         j = M.joint(D, pc, D["p0"], D["p1"])
