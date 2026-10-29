@@ -948,9 +948,10 @@ EXEMPT = {
     "replay_hydration": (
         "permanent",
         "specs/022 R2 (T103), evidence r2-typed-replay-hydration.md 2.2 + the dated pre-data amendment 2026-10-15: the "
-        "R2 campaign INSTRUMENT (K0-K4 kill points, twins, base-head I_K1/I_K2, the 2.4 reds, FAILWRITE). A "
-        "benchmark harness run as an entrypoint (--campaign/--seed, confirmatory seeds refused without "
-        "R2_CONFIRMATORY_GO=1); it measures the brain's R2 mechanism and is never on the live tick by design",
+        "R2 campaign INSTRUMENT (K0-K4 kill points, twins, base-head I_K1/I_K2, the 2.4 reds, FAILWRITE, "
+        "P3's K1g arms). A benchmark harness run as an entrypoint (--campaign/--seed, confirmatory seeds "
+        "refused unless R2_CONFIRMATORY_GO names ONE part, P1, P2 or P3, and every seed is in that part's "
+        "block or reserve); it measures the brain's R2 mechanism and is never on the live tick by design",
     ),
     "sleep_pressure": (
         "wire",
