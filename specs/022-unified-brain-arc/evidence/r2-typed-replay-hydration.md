@@ -1441,7 +1441,7 @@ Facts, stated without a ruling:
   R2 goes on the closed list by name; claude/p1-gate-1029's GRANDFATHERED names this file.] Whether "frozen before this
   amendment landed" covers R2 turns on whether a dated amendment (this one, and A1-A11 before it) re-freezes a registration.
   This draft changes no bar, no seed block and no decision rule, so on that reading R2 stays in the pre-landing class and is
-  to be named in the list when the gate is built; on the other reading it owes the section before any 15010-15057 seed.
+  to be named in the list when the gate is built; on the other reading it owes the section before any 15010-15067 seed.
   Which reading holds is the integrator's and the policy-enforcer's to decide, and it is not decided here. RULED 2026-10-29 (integrator, accepted by launcher D-68): see D2.1.
 - If a section is owed, the variance source the P1 text asks for does not exist in R2's design: section 2.3 states that
   "equality has no variance, so no statistic and no majority-of-seeds". Every R2 verdict (R2-c1 to R2-c7) is exact equality
@@ -1452,7 +1452,7 @@ Facts, stated without a ruling:
   0.31 (arithmetic only, not run). Whether a bar that cannot reject a per-seed failure rate below that is acceptable for an
   exact-equality mechanism claim is the P1 question the owner's directive leaves to the reviewers.
 
-### D3. Owed before any 15010-15057 seed (ordered)
+### D3. Owed before any 15010-15067 seed (ordered)
 
 1. Integrator statement: the P1 reading in D2 (grandfathered by name, or a "Sample size (P1)" section owed, with the variance
    source), and the instrument's review status (D1 item 6). Statements, no run. The P1 reading is RULED (D-68, see D2.1); the instrument's review status (D1 item 6, the OWED
@@ -1472,9 +1472,18 @@ Facts, stated without a ruling:
 4. A dev-seed run of the constructed reds of 2.4 and of R2-c7's reds (2.10), including the torn and landed arms under the
    survivor's resident BinLog cache (D1 item 2): each must fire on a dev seed; a red that fires on none halts the arc (R2-c3, P8).
 5. Re-measure the lake-byte records of K0 and K1 and the event sizes (D1 items 1 and 3) at c4c10b28 before any is quoted.
-5a. The finding (iii) red-first test exists (tests/test_restart_circadian.py), and the launcher's D-79 fix (claude/circadian-p4b-1029) has
-   landed with its review, before any seed outside the dev block (15010-15067); then R2's K3 arms assert the resumed phase (D1.2).
+5a. The finding (iii) red-first test, named by test id, is SHOWN failing on the parent of the D-79 fix for its stated reason (the
+   restored brain's clock state or sleep/wake differs from the uninterrupted twin's), by a recorded run or a stdlib simulation named
+   by commit; the b311e78d test does not meet this at seed 15000 (D1.4). Then the launcher's D-79 fix (claude/circadian-p4b-1029) has
+   landed with its review, together with 5c, before any seed outside the dev block (15010-15067); then R2's K3 arms assert the
+   resumed phase (D1.2). (Enforcer #6948 MINOR-1.)
 5b. The K1g (R2-c7, P3) arms run on dev seeds 15000-15007 under the heavy-run lock and each 2.10 red fires, before any P3 seed (15050-15067).
+5c. Lands with 5a's fix, never after it: `replay_hydration.chrono_clean` (b311e78d:1759-1769, which requires construction `step == 0`),
+   C1, and option (i)'s `twin_K3` sleep-tick count are amended for a brain that RESTORES its clock: each compares the restoring arm's
+   clock against the restored sub-record or the twin, never against 0. The exact condition comes from circadian-p4b round 2's REPORT
+   item 4; the build is r2-instr-fix round 4. Then a dev-seed run (15000-15007, heavy-run lock) shows CHRONO and MOTOR fire only when
+   their defect is planted. A red that fires on clean code is not a red (enforcer #6948 MAJOR-1; panel #6910 MAJOR-1). Until then
+   the restoring arms' chronology reads are OWED.
 6. Only then the confirmatory reads, in the registered order and block (P1 15010-15017, P2 15030-15037, P3 15050-15057), once
    each; reserves 15020-15027, 15040-15047, 15060-15067 only per the registered reserve rule.
 
@@ -1621,3 +1630,30 @@ It sits in D3 item 4's run (R2-c7's reds, 2.10); this item adds nothing to the b
 uses. Also still owed, unchanged: the re-review of the instrument at b311e78d, and the integrator's statement on (c) above.
 
 Data-exposure: no confirmatory or reserve seed of R2's block was read or run in writing this section.
+
+### D1.4 Correction of D1.2's premise and of D1.3(d) (2026-10-29, integrator; enforcer #6947, #6948, #6952; pre-data; append-only)
+
+1. D1.2's cited mechanism is wrong: "`Brain.tick` derives sleep/wake from `_step`". `Brain.tick` takes sleep/wake from the clock's
+   `consolidation_gate()`, which is phase >= 0.5 (engine/brain.py:3927-3934 @4b699b33; sleep/circadian_clock.py:149-152); light only
+   nudges the phase through the PRC. Option (i)'s ruling still stands on the corrected mechanism: a restoring process builds a fresh
+   clock (phase drawn from `Random(seed)`), so it and its twin can count different ticks to the boundary. Only the cited reason changes.
+2. D1.3(d)'s expected reading is wrong. It says the restore's `_step` is 0 and `light_cycle(period)(0)` is lights-on, so the first tick
+   reads awake and the reading is XFAIL. In fact `Random(15000).random()` = 0.8209, which is night. The enforcer's stdlib simulation of
+   `CircadianClock` gives first ticks S S S w, so the twin's expected reading is asleep and the UNFIXED restored brain is also asleep: the
+   strict xfail XPASSes, and the run reads FAILED, not XFAIL. The b311e78d red does not discriminate at seed 15000 (enforcer #6935 P-2;
+   panel #6910 BLOCK-1). "It is NOT fixed" in (d) holds as of b311e78d only.
+3. The replacement red is circadian-p4b round 2's rewritten `tests/test_restart_circadian.py` (#6910 BLOCK-1: the restored clock state
+   equals the twin's over >= day_period ticks, at a cut where the base differs; in the enforcer's simulation seed 7 discriminates:
+   ticks=6, twin asleep, fresh brain awake). It is named here by test id and commit when it posts; D3 5a requires it shown failing on
+   the fix's parent.
+4. D1.3's review status for b311e78d omitted #6898 (enforcer CHALLENGE, 3 MINOR, open at b311e78d): the K1g procedure duplicated in the
+   tests (p3t:965-1023 vs rh:1260-1351); K3's count aligned but not its wake/sleep transition sequence; the run_seed table ignored the
+   part. So (d)'s "K3 alignment as built" is not settled at b311e78d: #6898 MINOR-2 is open on that point. r2-instr-fix round 3
+   (@1e929e2c, #6926) reports MINOR-2 and MINOR-3 fixed and MINOR-1 partly. Its re-read is enforcer batch 13. The ruling it leaves OWED
+   (R2-c7 read by the instrument only, so devprep item 4 stops running the pytest as R2-c7) waits for that re-read.
+5. Disclosed (enforcer #6952 A-1): at 4b699b33 the clock is flushed only after `_flush_growth` in the night's persist block, so R2's
+   K1g kill at pre_K1g leaves the previous session's close-time phase on disk. res_K1g then restores a phase up to one day staler than
+   its growth. circadian-p4b round 2 moves the clock flush first (its brief, item 7). Until that lands, K1g chronology reads are OWED
+   with 5c.
+6. Ranges: D2's sentence and D3's heading now read 15010-15067 (enforcer #6948 MINOR-2; the old 15010-15057 left the reserves
+   15020-15027, 15040-15047 and 15060-15067 outside the owed list).
