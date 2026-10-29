@@ -116,3 +116,58 @@ and `plasticity/valence_stdp.py`.
    volumes.
 2. The N1 design is unbuilt. The adoption-point id is a design commitment, not tested code.
 3. Whether int3 has moved `growing_learners.json`, `AppendBudget` or the lazy build sites since `ee224e50`.
+
+## Addendum (2026-10-29): the doc_command_guard correction (policy-enforcer #5852 M1)
+
+**I accept the challenge.** My `ee73f2bf` cell said "tools stage only (not in CI)", and that is false. Below,
+`ci.yml:N` and `run_selfchecks.py:N` are line numbers at `cloud/docs-sweep-1028-r1` (`1d5815c6`). They are the
+same at `ee224e50`: `run_selfchecks.py` is identical, and `ci.yml` differs only in the `test` job's two pytest
+marker lines (`:500-502`, the `pool` marker, the same line count), which no claim below cites.
+
+**The trace.**
+- `ci.yml:22` is the `self-checks` job, and `ci.yml:87` runs `python run_selfchecks.py` in it.
+- `run_selfchecks.py:984` calls `run_tools_gates()` (defined at `:838`), which runs every `TOOLS_GATES` argv as a
+  subprocess.
+- `run_selfchecks.py:834` is `["tools/doc_command_guard.py", "--assert"]`.
+- A red comes back in the `failed` list, and `run_all` returns false.
+- The `lint` job (`ci.yml:177`) has no `doc_command_guard` step.
+
+**Branch `cloud/docs-sweep-1028-r2`** = `cloud/docs-sweep-1028-r1` (`1d5815c6`) + one commit, **`d982f619`**. New
+branch, no rewrite. That commit changes three cells:
+- `docs/POLICIES.md:51`: the enforcer's wording, verbatim.
+- `README.md:235`: "(not in the workflow)" becomes "which the workflow's self-checks job runs (no lint step)", with
+  the dated note saying it was corrected twice.
+- **`docs/POLICIES.md:64`, a third place you did not name.** The gate table's "in CI?" cell for the same command
+  said only "`run_selfchecks`'s tools stage". It now says "yes, `self-checks` (tools-stage)". I shortened it so
+  POLICIES stays at its 16,407-word ceiling without a raise (16,407 / 16,407). Strike it if you want only the two
+  places you named; the ceiling then has 9 words of room.
+
+**Item 2: every "lint CI job" claim in POLICIES.md, against ci.yml.** All are correct, so there is no second commit.
+Where a gate is ALSO reachable through the `self-checks` job, the row names one correct job, not a wrong one.
+
+| POLICIES line | claim | the step that runs it | also via `self-checks` (`ci.yml:87`) |
+|---|---|---|---|
+| 42 | `p6_gate --assert` / `--self-check`, lint | `ci.yml:354` / `:367` (lint) | `--assert`: `run_selfchecks.py:829` |
+| 43, 62, 63, 890 | `dependency_ledger --assert` / `--self-check`, lint | `ci.yml:292` / `:303` | `--assert`: `:830` |
+| 44, 61, 1048 | `red_reachability --assert`, lint | `ci.yml:270` | `:831`, plus `--self-check` `:832` |
+| 44 | `null_scale_gate --assert` + `--self-check`, lint | `ci.yml:452` / `:455` | bare == `--assert`, MODULES `:471` |
+| 45 | `gradient_claim_gate --assert` + `--self-check`, lint | `ci.yml:414` / `:433` | MODULES `:476` |
+| 49, 1250 | `citation_guard`, lint | `ci.yml:262` | `:833` |
+| 50 | `growth_coverage_gate --assert` + `--self-check`, lint | `ci.yml:387` / `:390` | MODULES `:458` |
+| 66 | `p4c_ratchet`, "yes" | `ci.yml:226` (lint) | `:828` |
+| 67, 734 | `p5b_gate`, lint | `ci.yml:460` / `:463` | MODULES `:472` |
+| 756, 1072 | `manifest_gate` / `replay_gate`, "in CI" | `ci.yml:114` / `:108` (self-checks) | -- |
+| 46-48 | `safety_envelope`, `doc_budget_gate`, `ingest_guard`, "in run_selfchecks" | -- | MODULES `:519`, `:474`, `:520` |
+
+**Gates on `d982f619`.**
+- `doc_budget_gate --assert`, `doc_command_guard --assert` and `citation_guard`: OK.
+- `policy_manifest --assert`: **rc 1, on the certification-freshness check only** ("certification at 9b3ae030 names
+  neither the stacked head nor the pushed head"). Every check before it passes: the committed copy in sync with a
+  fresh derivation, no new unclaimed gate, and no claimed command that is not CI-reachable. The same rc 1 and the
+  same line appear on the untouched base `1d5815c6`. Only `--certify` clears it, and that is forbidden here, so it is
+  the integrator's battery's job.
+- `pytest tests/test_policy_manifest.py`: 26 passed (`-p no:cacheprovider --no-cov`, rc 0).
+
+**Two other stale claims, not fixed (outside the scope you named). The enforcer may want them:**
+- `docs/RUNNING.md:96-97` says doc_command_guard is "built and clean, but not yet a CI step, so run it by hand".
+- `docs/CODEBASE_DIGEST.md:1406`, `:1435` and `:1447` say it is "wired nowhere" and "invoked by nothing".
