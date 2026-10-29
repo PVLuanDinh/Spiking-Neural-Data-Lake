@@ -16,6 +16,10 @@ post-boundary turns; K3 as K2 plus J=3 sleep ticks of the next night (P2, redo r
 `sleep_bout`, owner #2106) a staged bout after the boundary, killed before any checkpoint covers it.
 Twins run the same schedule and are never killed. After the kill point every restoring process and its
 twin tick until S=6 sleep ticks have run, recording the LIVE objects (`_g0c_walk`, never the codec).
+K3 records "the rest of the night, then 6" (2.2): twin_K3 measures the sleep ticks its cut night had
+left, and every K3 restoring arm records that count plus 6 (integrator ruling, option (i)). The
+harness carries circadian phase across the restart; the brain does not (finding iii): a restoring
+process starts a fresh clock, so the K3 arms are coupled to twin_K3's record.
 Sleep replay is retired on main (owner1039): the sleep tick is the structural pass, so the
 must-differ control (R2-c4) is the structural-off twin and the rewirer weight flip of the O_rw red.
 
@@ -584,7 +588,10 @@ def _watch(brain, motor, windows):
     return draws
 
 
-def _sleep_rows(brain, draws):
+def _sleep_rows(brain, draws, n=S_SLEEP, until_wake=False):
+    """The 2.2 row of each of `n` sleep ticks. With `until_wake` (twin_K3) the rest of the night the
+    kill cut is recorded first, so the row count tells the K3 restores how much night was left. The
+    harness carries circadian phase across the restart; the brain does not (finding iii)."""
     rows, lrn = [], brain.brain._ixn
 
     def observe():
@@ -600,7 +607,15 @@ def _sleep_rows(brain, draws):
         )
         del draws[:]
 
-    _tick_sleeps(brain, S_SLEEP, observe)
+    if until_wake:
+        nights, ticks = brain._nights, 0
+        while brain._nights == nights:
+            if brain.tick() == "asleep":
+                observe()
+            ticks += 1
+            if ticks > 4 * brain.day_period:
+                raise RuntimeError("the cut night did not end within four periods")
+    _tick_sleeps(brain, n, observe)
     return rows
 
 
@@ -1139,10 +1154,16 @@ def _drive(brain, role, seed, result=None, out=None):
         _explicit_replay(brain)
 
 
-def run_process(role, seed, home, out, head="r2", *, nonce=None):
+def run_process(role, seed, home, out, head="r2", *, nonce=None, k3_rest=None):
     global _throwaway_home, _throwaway_token
 
     check_seeds([seed])  # `--proc` is an entry point of its own, not only run_seed's child
+    k3 = dict(R2_ROLES).get(role) == "pre_K3"
+    if k3 and k3_rest is None:  # the harness carries circadian phase; the brain does not (iii)
+        raise ValueError(
+            f"{role}: a K3 restore records twin_K3's measured rest of the night plus "
+            f"{S_SLEEP}, and none was given"
+        )
     _throwaway_home, _throwaway_token = None, None
     private = _owned_private_home(home, nonce)
     _throwaway_home, _throwaway_token = private, nonce
@@ -1216,7 +1237,13 @@ def run_process(role, seed, home, out, head="r2", *, nonce=None):
         result["k4_checkpoint_ok"] = k4_sample["checkpoint_ok"]
     windows = []
     draws = _watch(brain, motor, windows)
-    result["rows"] = _sleep_rows(brain, draws)
+    if role == "twin_K3":  # the rest of the night, then 6: its length is the K3 restores' count
+        result["rows"] = _sleep_rows(brain, draws, until_wake=True)
+        result["k3_rest"] = len(result["rows"]) - S_SLEEP
+    else:
+        result["rows"] = _sleep_rows(brain, draws, S_SLEEP + (k3_rest if k3 else 0))
+        if k3:
+            result["k3_rest"] = k3_rest
     result["replay_windows"] = windows
     result["motor_total"] = motor.n
     _write(out, result)
@@ -2485,6 +2512,8 @@ def run_seed(seed, out_dir, head="r2", src=None, roles=None):
     if roles is not None:
         parent_of, roles = dict(table), set(roles)
         for role in list(roles):
+            if parent_of.get(role) == "pre_K3":  # a K3 restore reads twin_K3's count
+                roles.add("twin_K3")
             while parent_of.get(role):
                 role = parent_of[role]
                 roles.add(role)
@@ -2503,19 +2532,15 @@ def run_seed(seed, out_dir, head="r2", src=None, roles=None):
                 )
             out = out_dir / f"{head}-{seed}-{role}.json"
             out.unlink(missing_ok=True)
+            args = [sys.executable, str(here), "--proc", role, str(seed), str(home), str(out)]
+            args += [head, nonce]
+            # option (i): the harness carries circadian phase across the restart; the brain does
+            # not (finding iii). A K3 restore gets twin_K3's measured count, or refuses without it.
+            if parent == "pre_K3" and "k3_rest" in arms.get("twin_K3", {}):
+                args.append(str(arms["twin_K3"]["k3_rest"]))
             try:
                 proc = subprocess.run(
-                    [
-                        sys.executable,
-                        str(here),
-                        "--proc",
-                        role,
-                        str(seed),
-                        str(home),
-                        str(out),
-                        head,
-                        nonce,
-                    ],
+                    args,
                     env=dict(
                         os.environ,
                         NORD_HOME=str(home),
@@ -2638,7 +2663,9 @@ def main(argv):
     sys.path[:] = [p for p in sys.path if Path(p or ".").resolve() != here]
     if argv[:1] == ["--proc"]:
         role, seed, home, out, head = argv[1], int(argv[2]), argv[3], argv[4], argv[5]
-        run_process(role, seed, home, out, head, nonce=argv[6] if len(argv) > 6 else None)
+        nonce = argv[6] if len(argv) > 6 else None
+        k3_rest = int(argv[7]) if len(argv) > 7 else None  # twin_K3's count (finding iii)
+        run_process(role, seed, home, out, head, nonce=nonce, k3_rest=k3_rest)
         return
     opt = lambda name: argv[argv.index(name) + 1] if name in argv else None  # noqa: E731
     if argv[:1] == ["--seed"]:
