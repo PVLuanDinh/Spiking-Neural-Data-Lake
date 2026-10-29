@@ -1523,3 +1523,14 @@ it is more likely to pass than to fail. R2's seeds are 8 seeded shuffles of
 `_CONV_TRAIN` plus the fixed kill points, so the exercised schedules are 8 per block. A pass is therefore a statement about
 those 8 schedules and the 2.3 scope clause, and not about a per-seed failure rate below 0.31. No result at S = 8 is reported as
 a population rate.
+
+### D1.2 K3 alignment and finding (iii) (2026-10-29, integrator; launcher D-77; pre-data)
+
+R2-c6 registers K3 as "the rest of the night, then 6". A restoring process starts on a fresh clock (`chrono_clean` asserts
+`step == 0` and `nights == 0`; `Brain.tick` derives sleep/wake from `_step`, brain.py:3903-3920), so the restart and its twin
+would count different ticks to the boundary. Ruled (option (i), the registered observable kept exactly): the twin_K3 arm
+measures its remaining sleep-tick count and every K3 restoring arm reads that count (claude/r2-instr-fix-1029, round 2). **The
+harness carries circadian phase across the restart; the brain does not (finding iii).** This sentence is owed unprompted in R2's
+method AND in its results record. Finding (iii) is a P4b-shaped restart defect of its own: before any 15010-15057 seed a red-first
+test (xfail strict, raises=AssertionError) that a restart mid-night resumes the night exists; fixing or deferring (iii) is the
+launcher's call (D-77). Route A (per-seed K1g arms for R2-c7, launcher D-77) keeps 2.10's "on EVERY seed" with no amendment.
