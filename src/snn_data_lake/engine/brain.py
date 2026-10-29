@@ -2481,16 +2481,21 @@ class Brain:
                 # into a store nothing read and nothing kept. An episode that dies with the process
                 # is not a memory, so the durable copy goes where everything else the brain knows
                 # already lives.
-                if self._persist:
+                # R1 F3: no boot session, no durable write
+                if self._persist and getattr(self, "_session", None) is not None:
                     try:
                         from snn_data_lake.substrate.home import save_episode
 
+                        # F3: the BOOT SESSION is a slot of the durable episode, so boot 2's
+                        # `when = _wake_ticks` episodes are not byte-identical to boot 1's and
+                        # BinLog dedup keeps them (the working copy `_ep` above is unchanged).
+                        _durable = dict(_ep, session=str(self._session))
                         # T057: the recall window tracks what this brain WRITES TO THE LAKE
                         # (lake provenance only -- an unpersisted episode never enters it, and
                         # neither does one the lake REFUSED as a duplicate: R1 F2),
                         # bounded by the same derived capacity the attractor uses.
-                        if save_episode(_ep):
-                            self._episode_window.append(dict(_ep))
+                        if save_episode(_durable):
+                            self._episode_window.append(dict(_durable))
                             cap = (
                                 self._episode_consolidator.capacity
                                 if self._episode_consolidator
