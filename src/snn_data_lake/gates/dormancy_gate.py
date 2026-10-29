@@ -865,6 +865,18 @@ EXEMPT = {
         "campaign guard and every nuisance refusal. Conjunct (a) reads NOT READ from here on: "
         "drift is not measurable without a learner, and specs/011's FR-008/FR-009 stay OPEN",
     ),
+    "readout_staleness": (
+        "permanent",
+        "specs/022 L1b-STALE (T121, LS-R1), DATED 2026-10-29: the readout-staleness instrument -- "
+        "shadow re-solve and calibration readings, the OJA/RAND comparison operators, the "
+        "rotation/null-split drift readings and the instance-level `instrument_engine` wrapper. A "
+        "CI/run_selfchecks MEASUREMENT INSTRUMENT on SCRATCH brains: its bare invocation builds no "
+        "brain, touches no lake and no network, and the wrapper is attached to a scratch engine's "
+        "instance by a campaign driver, never constructed BY a brain and never on a tick; the shadow "
+        "re-solve writes nothing back (R2's hash holds it). That is the prior_drift_harness / "
+        "report_order_probe shape exactly, so it is `permanent`, not a wire. Pre-registration: "
+        "evidence/d1-readout-staleness.md",
+    ),
     "attention_schema": (
         "permanent",
         "specs/022 T078 Part I instrument, DATED 2026-09-15: the G3 task-binding gate (MI between "

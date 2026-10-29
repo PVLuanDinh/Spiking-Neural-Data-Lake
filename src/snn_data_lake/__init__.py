@@ -343,6 +343,8 @@ REGIONS = {
         "port_charge_probe",
         # specs/022 T063: the three-arm seeded/random/wrong drift harness with SC-006's two reds, PLANTED and FROZEN; bare == the offline self-check
         "prior_drift_harness",
+        # specs/022 L1b-STALE (T121, LS-R1): the readout-staleness instrument (shadow re-solve, calibration, OJA/RAND operators, drift and null-split readings); bound to evidence/d1-readout-staleness.md; bare == brain-free self-check
+        "readout_staleness",
         # specs/022 T081 [US4]: the C5 report_order instrument -- the live arm's report channel read against LESIONED CLONES of the workspace state that produced it (named pool vs a scrambled one); the lesion never touches the live brain
         "report_order_probe",
         # specs/022 E1b: the RPE-harm harness (neuter arms, tier pin, replay, compare); bound to evidence/e1b-rpe-harm.md; bare == brain-free self-check

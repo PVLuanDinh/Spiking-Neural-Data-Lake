@@ -198,6 +198,7 @@ CORE = [
     "instruments.g5_readout_cells",  # T113 (G5): deterministic runner, frozen generator, the reading's NOT MET cases (Part A deleted at 2.7a)
     "instruments.g5_part_d_adaptors",  # T113 (G5) Part D D.2/PD-R3: the read-out-only DELTA/PC/SOM adaptors' reds (adopted rules, no widen, refusals, PC's twin, SOM0's BMU-only)
     "instruments.g5_part_d_cells",  # T113 (G5) Part D D.1-D.5: the cell runner's halts, determinism, PRODNEUTER == NOTUNE and the seed-block refusal (fixture RNG seeds only)
+    "instruments.readout_staleness",  # 022 L1b-STALE (T121): the R3 operator norm/INERT checks and a rotation, numpy only, no brain, < 1 s
     "instruments.g5_part_d_reading",  # T113 (G5) Part D D.4: the reader of the registered reds PD-R0..R3 over per-seed accuracy records; bare == its constructed-red self-check (pure, no Brain/pool)
     "sensorimotor.lca_sparse_coding",
     "readout.predictive_coding",

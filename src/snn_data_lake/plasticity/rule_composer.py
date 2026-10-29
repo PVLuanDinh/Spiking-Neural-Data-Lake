@@ -773,6 +773,21 @@ _CENSUS_ADJUDICATED = (
         "lr = mu / (||s||^2 + 1); no hidden error, no transpose (the module self-check holds the reds)",
     ),
     (
+        "instruments/readout_staleness.py",
+        "oja_step",
+        "remainder -- L1b-STALE (2026-10-29): an instrument-only, per-row norm-preserving Oja step "
+        "on a scratch engine's grown input rows (post_i * (x - post_i * w_i), renormalised); a "
+        "comparison operator for the staleness reading, never wired to a brain or a tick, not "
+        "composed through the kernel",
+    ),
+    (
+        "instruments/readout_staleness.py",
+        "RandStep.__call__",
+        "remainder -- L1b-STALE (2026-10-29): the instrument-only random-direction control for "
+        "oja_step (same per-row norm, crc32-seeded own Generator); no learning signal, never wired "
+        "to a brain or a tick, not composed through the kernel",
+    ),
+    (
         "plasticity/r_stdp.py",
         "reward",
         "expressible -- PROVEN: T050 equivalence via the exported check; T051b-iv deposit through the kernel",

@@ -213,8 +213,13 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # exactly instruments.rpe_charge (its REGIONS row only, never LEGACY_REGIONS); nothing removed.
     # 2026-10-24/engine arc 2 union (integrator): the P5b stack's p5b_gate and E1b's rpe_charge
     # are disjoint additions on c9d0c097 (327): 327 + 1 + 1 = 329, measured on the stacked tree.
-    assert len(S._MOVED) == 329 and "claustrum" not in S._MOVED
-    assert {"grower", "organoid_ingest", "p5b_gate", "rpe_charge"} <= set(S._MOVED)  # A-m2
+    # 2026-10-29/L1b-STALE landing: readout_staleness is registered in REGIONS (its row only, never
+    # LEGACY_REGIONS), so _MOVED gains exactly that name: 329 + 1 = 330 (derived statically from the
+    # REGIONS diff in the same commit; the integrator measures it after the campaign).
+    assert len(S._MOVED) == 330 and "claustrum" not in S._MOVED
+    assert {"grower", "organoid_ingest", "p5b_gate", "rpe_charge", "readout_staleness"} <= set(
+        S._MOVED
+    )  # A-m2
 
 
 @pytest.fixture

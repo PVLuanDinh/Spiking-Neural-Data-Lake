@@ -6,7 +6,7 @@
   ],
   "note": "dispositions per T050's expressibility categories; UNDISPOSITIONED is the honest day-one state for unadjudicated LOCAL rules -- the WAVE (T051c-wave) fills rows; regen_rule_census enforces per-row monotonicity through the sanctioned edit path, rule_composer 1e polices membership vs the live census, and the ADVANCE direction (whether a disposition's text is honest) is review-grade, said plainly",
   "ratchet_baseline": {
-   "rows": 108,
+   "rows": 110,
    "undispositioned": 57
   },
   "source": "gradient_claim_gate.census() via rule_composer.regen_rule_census -- regeneration is the only edit path for rows; new adjudications join _CENSUS_ADJUDICATED there; the regen refuses disposition retractions and dead entries",
@@ -272,6 +272,16 @@
    "disposition": "direct-solve -- no dw stream to compose (T050 census category)",
    "governed": true,
    "kind": "DIRECT_SOLVE"
+  },
+  "instruments/readout_staleness.py::RandStep.__call__": {
+   "disposition": "remainder -- L1b-STALE (2026-10-29): the instrument-only random-direction control for oja_step (same per-row norm, crc32-seeded own Generator); no learning signal, never wired to a brain or a tick, not composed through the kernel",
+   "governed": true,
+   "kind": "LOCAL"
+  },
+  "instruments/readout_staleness.py::oja_step": {
+   "disposition": "remainder -- L1b-STALE (2026-10-29): an instrument-only, per-row norm-preserving Oja step on a scratch engine's grown input rows (post_i * (x - post_i * w_i), renormalised); a comparison operator for the staleness reading, never wired to a brain or a tick, not composed through the kernel",
+   "governed": true,
+   "kind": "LOCAL"
   },
   "instruments/snn_mnist_stdp.py::StdpNetwork._normalise": {
    "disposition": "UNDISPOSITIONED",
