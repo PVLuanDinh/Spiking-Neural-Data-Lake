@@ -374,6 +374,9 @@ The live brain stays byte-identical under every reading except MET, and under ME
   with a planted-null and a planted-effect red, before data. It includes Fold 2's exact joint lattice over the
   candidate, original and bare arms (RD-4/RD-5 tolerances, paired guard, P(VOID)), with two more reds: an original
   that always solves VOIDs at L1 with certainty, and at the measured point rates P(VOID) = 0 and P(MET) at p1 = 0.8199.
+  **BUILT (2026-10-29, Round 4):** `tools/aii_o6_design.py` @ `92b7e3db`, reds `tests/test_aii_o6_design.py` @ `3b6a9197`
+  on `claude/aii-prereg-1029`; alpha and looks are parameters. Run line and printed numbers: row REPORT.md. Reds queued
+  to run after the campaign.
 - **O-7 Perception tier.** The confirmatory record states `state()['perception_tier']` and `perceiving_audio` for the B8
   twin brain. A 'stdlib' tier halts.
 - **O-8 G2 F7(a).** A_ii's A1 (generator check) reading on dev seeds 8000-8003 (`g2:681` on `4b6bc9ea`). It is G2's to
