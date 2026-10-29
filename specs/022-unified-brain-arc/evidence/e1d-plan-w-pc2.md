@@ -1,7 +1,9 @@
 # E1d -- E1c's powered `_plan_w` harm test (H-P1), re-run with a positive control that cannot collide with the held goal (DRAFT pre-registration)
 
 > **Status: DRAFT, pre-data.** Nothing below has been run in a brain on seeds 23000 and up. It freezes at the commit
-> that drops "(DRAFT pre-registration)" from the title, after the panel and the policy-enforcer AGREE.
+> that drops "(DRAFT pre-registration)" from the title, after this DRAFT's review: three panel lenses and the
+> policy-enforcer AGREE (as E1c froze on #5641). The panel on the built stack before its battery (section 9) is a
+> separate, later review.
 > - **Task:** T124 [E1], registered in tasks.md by the freezing commit. Board claims: #5853 (this file), #5854 (seeds
 >   23000-23999).
 > - **Why it exists:** E1c (T122) is VOID at look 1 (#5840). Its positive control `pc` read 0 flips on seed 21001.
@@ -64,8 +66,13 @@ E1d is **E1c's frozen design**: `e1c-plan-w-powered.md` at `082b66f8`, plus its 
   - Moves per seed: median 2, max 6.
   - Source: tree `1b6e53ab`, pyd `5c5b39c1`, instrument `diag_pc.py` `d0205e91` (record mode, transparent on 21000 and
     21001), summary `lanes\engine-1024\e1c-void-diag\CALIB-SUMMARY.txt`.
-  - This file may cite the base rate because its brain code, everything outside `instruments/rpe_charge.py`, equals
-    `1b6e53ab`'s (D-38 item 2). The GO proves that with the `git diff --stat` of `1b6e53ab..<GO tree>`.
+  - This file may cite the base rate only while its BRAIN CODE equals `1b6e53ab`'s (D-38 item 2). Brain code means
+    everything under `src/snn_data_lake/` outside `instruments/` and `gates/`, plus `native/`.
+  - **The GO proves it.** `git diff --name-only 1b6e53ab <GO tree> -- src native` must list ONLY these three paths:
+    - `src/snn_data_lake/instruments/rpe_charge.py` (B1-B3);
+    - `src/snn_data_lake/gates/dormancy_gate.py` (B1's EXEMPT text);
+    - `src/snn_data_lake/gates/docs_only_battery.py` (winpaths-r1, B4).
+  - Any other path there voids the citation, and the base rate is then re-measured on the GO tree before the GO.
 - **Build identity** (D-38 item 1). Two different `_native` builds of one commit (`5c5b39c1`, `a6176948`) give
   byte-identical `series` and `v` on seeds 21000 and 21001. The bytes differ in metadata only. The pin stays anyway.
 
@@ -85,13 +92,14 @@ E1d is **E1c's frozen design**: `e1c-plan-w-powered.md` at `082b66f8`, plus its 
   - `pc` on 23000 and 23001 (flips > 0).
   - A failed one VOIDs the campaign.
 - **A new recorded series, `held_goal`** (every arm; harness only, no brain change).
-  - After each `_pfc_bias` call the harness records `pfc.goal`, or None while nothing is held.
+  - After each `_pfc_bias` call the harness records `pfc.goal`, or None while nothing is held. That is about 300
+    entries per 600-tick run: the probes counted 293-299 calls.
   - The harness already wraps `_pfc_bias` to record `plan_w`. This adds one read, and it writes nothing.
 
 ## 4. The goal-frozen stratum (beside, decides nothing)
 
-- A campaign seed is **goal-frozen** when its `real` run's `held_goal` series takes one value after its first non-None
-  entry.
+- A campaign seed is **goal-frozen** when its `real` run's `held_goal` series (one entry per `_pfc_bias` call) takes
+  one value after its first non-None entry.
 - At each look, the verdict line adds, beside the decision and with no bar or disposition:
   - the count of frozen seeds;
   - H-P1's t and k/n within the frozen stratum and within the moving stratum.
@@ -113,10 +121,11 @@ E1d is **E1c's frozen design**: `e1c-plan-w-powered.md` at `082b66f8`, plus its 
   - the calibration block 28000-28063;
   - E1b's 8-183 and E1's 0-7.
 - **Internal sub-seeds** (E1c section 6's note, re-derived for this block):
-  - Grid module mi seeds its cells with run seed + 1000 x mi. E1d's mi >= 1 streams are 24000-24703, 25000-25703, and
-    so on.
-  - mi = 5 covers 28000-28703. That includes the calibration run seeds 28000-28063, which are a different campaign;
-    each campaign's comparisons are within one seed, so nothing is affected. Disclosed; no block moves.
+  - `GridPlaceMap` builds six modules, mi = 0..5 (default `spacings` has six entries, `grid_place_map.py:75`). Module
+    mi seeds its cells with run seed + 1000 x mi (`:116`).
+  - So E1d's mi >= 1 streams are 24000-24703, 25000-25703, and so on up to 28000-28703.
+  - mi = 5 covers the calibration run seeds 28000-28063, which are a different campaign. Each campaign's comparisons
+    are within one seed, so nothing is affected. Disclosed; no block moves.
 - **Repeat control:** 23000.
 
 ## 6. Reds (changes to E1c section 7; each RUN before look 1, and a red that does not fire halts the campaign)
@@ -129,12 +138,21 @@ E1d is **E1c's frozen design**: `e1c-plan-w-powered.md` at `082b66f8`, plus its 
     `pc` must flip (> 0 action flips). 21001 is where the old pc read 0.
   - **R2b, in-campaign** (look 1): the new `pc` on 23000 and 23001 flips > 0, as section 3 states.
   - **R2c, sensitivity across a population** (before the GO, design gate).
-    - Run the new `pc` on the 64 calibration seeds 28000-28063 and compare each with that seed's recorded `real` run
-      (`cal_<seed>.json`, the same brain code, D-38 item 2).
+    - **Baseline.** The 64 recorded `real` runs of calibration seeds 28000-28063, plus controls 21000 and 21001.
+      - They are `lanes\engine-1024\e1c-void-diag\cal_<seed>.json`, bound by `CAL-BASELINE.sha256` (66 lines), whose
+        own sha256 is `568d2fea8da4adfbaef27b4f99911b68b248e6b9a12a25a5cd5c5dd038695504`.
+      - A baseline file that differs from the manifest refuses R2c.
+    - **Identity check first** (2 runs).
+      - On the E1d tree, through the bound `run_arm.ps1 -Arm real`, run 28001 (goal-frozen) and 28000 (a mover).
+      - Each run's recorded `series`, minus the new `held_goal` key, and its `v` must be byte-identical to its
+        `cal_<seed>.json`.
+      - This shows that the E1d harness, with its added `held_goal` read, is behaviourally the same instrument as the
+        one that recorded the baseline (the diag wrapper's transparency was shown on 21000 and 21001, #5845). A
+        difference stops R2c, and the integrator diagnoses.
+    - **The read.** Through the bound `run_arm.ps1 -Arm pc`, run the new `pc` on each of the 64 seeds. Compare each
+      run's action series with its baseline's.
     - **The GO requires 64/64 seeds with flips > 0.** One blind seed falsifies the claim that this control cannot be
       blind. The integrator then diagnoses before any GO, and a new pc needs a dated addendum.
-    - Disclosed: the comparison uses recorded runs, not fresh `real` runs. The recording instrument's transparency is
-      shown byte for byte on 21000 and 21001 (#5845). It is not re-shown on each of the 64.
 - **R3, repeat:** as E1c, on 23000.
 - **New: R6, the stub reaches behaviour on a pinned goal** (unit test, brain-free). A `PrefrontalExecutive` holding
   goal 0 reads bias 0 at index 0 and `strength` at index 1 under the stub, and the original method again after the
@@ -189,21 +207,24 @@ E1d is **E1c's frozen design**: `e1c-plan-w-powered.md` at `082b66f8`, plus its 
 - **B2, the `held_goal` series and the frozen-stratum lines** in the compare report (beside, no disposition). A test
   covers each.
 - **B3, the campaign constants:** `E1C_SEEDS` becomes 23000-23703, a single constant and not a second design copy (P2),
-  with R4's test re-pointed at it. The driver files are re-pathed (#5848) and gain seed 23000 in `plan.py` and the
+  with R4's test re-pointed at it.
+  - `E1C`, `E1C_SEEDS`, `E1C_ARMS` and the `--e1c` flag keep their names. They name the design, which E1d shares
+    unchanged, so there is no rename churn (P2). The driver files are re-pathed (#5848) and gain seed 23000 in `plan.py` and the
   controls.
 - **B4, the cloud intake** (`lanes\REPORT-CLOUD-INTAKE-2026-10-28.md`):
   - the pinned heads cherry-picked in the stack: winpaths-r1, plan-amend with the ceiling hunk dropped, restart-probe,
     session-record @ `1dcf2639`;
   - docs-sweep-r2 once the enforcer reads its re-cut.
-  - They are docs and tests only. None touches brain code, so D-38 item 2 still holds.
+  - They are docs, tests and ONE gate file (`gates/docs_only_battery.py`, winpaths-r1). None touches brain code as
+    section 2 defines it, so D-38 item 2 still holds.
 - **Then:**
   1. the panel (3 lenses) on the stack;
   2. the fold;
   3. ONE battery;
   4. the closing record;
   5. push;
-  6. then the runs before the GO: R2a (2 runs), R2c (64 runs), the GO-commit gate log, the native build and pin, the
-     GO, R5 of record, the pilot and the looks.
+  6. then the runs before the GO: R2a (2 runs), R2c's identity check (2 runs) and read (64 runs), the GO-commit gate
+     log, the native build and pin, the GO, R5 of record, the pilot and the looks.
 
 ## 10. Cost and resources (changes to E1c section 10)
 
@@ -212,7 +233,7 @@ E1d is **E1c's frozen design**: `e1c-plan-w-powered.md` at `082b66f8`, plus its 
   - Under 48 h, so serial (D-34).
 - **Before the GO:**
   - R2a: 2 runs, about 1 min;
-  - R2c: 64 runs, about 28 min;
+  - R2c: 2 identity runs and 64 pc runs, about 29 min;
   - one native build, about 10 s.
 - **Resources:** `resource:timing` is held for all brain runs. No battery and no other brain campaign runs beside them.
 
