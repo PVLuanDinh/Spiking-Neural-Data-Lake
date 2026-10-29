@@ -1539,3 +1539,81 @@ harness carries circadian phase across the restart; the brain does not (finding 
 method AND in its results record. Finding (iii) is a P4b-shaped restart defect of its own: before any 15010-15057 seed a red-first
 test (xfail strict, raises=AssertionError) that a restart mid-night resumes the night exists; fixing or deferring (iii) is the
 launcher's call (D-77). Route A (per-seed K1g arms for R2-c7, launcher D-77) keeps 2.10's "on EVERY seed" with no amendment.
+
+### D1.3 Instrument at claude/r2-instr-fix-1029@b311e78d (2026-10-29, pre-data)
+
+RECORD only. Nothing here sets or changes a bar, seed block or decision rule. Source: that branch's REPORT.md (rounds 1 and 2) and
+board #6793, #6854. It is STATIC work: the instrument at b311e78d was built, not run, and none of its tests has been run. Its review
+status (D1 item 6) reads: BLOCK-1 built (route A), MAJOR-1..4 and -6 fixed, MAJOR-2 (b)-(d) OWED, MINOR-1 and MINOR-4 OWED, at
+claude/r2-instr-fix-1029@b311e78d (re-review owed).
+
+(a) The confirmatory-seed guard. The one `check_seeds` now runs first in every entry point: `run_process` (the `--proc` entry),
+`run_failwrite` (before its catch-all, so a refusal is raised and never written as an INVALID arm), `verdict()`, and (already)
+`run_seed` and `run_campaign`. A seed outside the dev block 15000-15007 is admitted only when `R2_CONFIRMATORY_GO` names exactly ONE
+part and every seed is in that part's block or reserve: `P1` = 15010-15017 or reserve 15020-15027; `P2` = 15030-15037 or reserve
+15040-15047; `P3` = 15050-15057 or reserve 15060-15067 (2.6, 2.10). So the go must name part AND block: a bare `=1` licenses
+nothing, seeds 15068-15999 are refused, and any mix of blocks (dev plus confirmatory included) is refused. `verdict()` takes the part
+from `check_seeds` and reads only that part's lines. The D4 halt (more than 2 INVALID) counts per part.
+
+(b) Route A: P3's roles and arms for R2-c7 (all CPU, 2.10 "CPU device"; 21 processes per seed), each against its 2.10 line.
+
+| role | parent | what it does | 2.10 line it reads through |
+|---|---|---|---|
+| pre_K1g0 | none | session 1: ticks to a completed night, clean `close()` | Reds, CROSS: a session boundary must exist or CROSS is vacuous; "never joined across a restart" |
+| pre_K1g | pre_K1g0 | session 2: ticks until a refit of its own, then `os._exit(0)` right after the night's `_flush_growth` returns | The restart test: "kill K1g at the declared boundary (the tick after `_flush_growth` in the night's persist block, `os._exit(0)`)" |
+| twin_K1g | pre_K1g0 | same schedule, never killed; snapshots its buffer at that point, then ONLY `neuro.tick()` to the next refit | The restart test: the uninterrupted twin "run ONLY the grower's sleep step (`neuro.tick()` until the next refit, no new percepts)" |
+| res_K1g | pre_K1g | the restore: hydrated buffer, then the same grower step | The restart test bar, on EVERY seed: hydrated `_buf_x`/`_buf_y`/`_categories` and the model after the next refit (W, b, beta, units, trajectory row) equal the twin's |
+| K1g_POS | pre_K1g0 | the twin with `_buf_y` rotated by half (shuffled across sessions), then the refit | Positive control: the refit on the shuffled buffer differs from the twin's |
+| K1g_CROSS | pre_K1g | restore with the pairing guard (`prev[0] == session and prev[1] + 1 == pseq`) removed by an AST rewrite of `hydrate_transitions`, refused if the guard's syntax changed | Red CROSS: one pair more than the twin's |
+| O_buf | pre_K1g | a real restart whose `restore_transitions` is a no-op (hydration neutered) | Red O_buf: "no hydration: the refit differs" |
+| K1g_{DUP,REORDER,HELDOUT,MISSING,WIDTH,VOCAB,INSTRUMENT}_{on,off} | pre_K1g | one planted percept event in the copied lake; `_off` neuters that kind's guard in the shared reader AND in `_percept_refusal` | Reds DUP, REORDER, HELDOUT, MISSING (as 2.4), WIDTH (63-dim), VOCAB (`category >= n_units`), INSTRUMENT (provenance `instrument`) |
+
+`c7_seed` reads, per seed: K1g = `res_K1g` equals `twin_K1g`, no fault, `_prev` None, `observed` 0, no transition refusals (2.10 "does NOT
+touch `_prev` ... `observed`"); CROSS and O_buf fire when unlatched and unequal; each planted kind reads guard_on_refused, guard_on_ok,
+guard_off_flagged; the control's W or beta differs. `PART_SEEDS["P3"]` = 15050-15057 + 15060-15067; `PART_BARS["P3"]` = R2-c7, read on
+EVERY counted seed (2.3 Disposition). A P3 seed is INVALID only by its own K1g arms (2.3 "a P3 red reverts P3, never P1"; A6; A11.4); an
+INVALID P3 seed reads R2-c7 NOT MET; a K1g red that fires on no seed halts P3. This keeps 2.10's "on EVERY seed" (D1.2). The branch
+discloses these readings, each one the instrument's choice on a point 2.10 leaves open, stated here so no later reader mistakes them
+for the registration; none moves a bar:
+- pre_K1g0 (a cleanly closed session 1) is an addition: without it CROSS has no boundary to cross.
+- "Until the next refit" is read literally: the grower ticks until a tick with `ticks % refit_every == 0`. The P3 pytest instead ticks
+  until the trajectory grows. Under the literal reading O_buf (empty buffer: `_refit` returns early) reads as a moved trajectory.
+- The twin is its own process, not the killed process continuing as in the pytest.
+- guard_on_ok for a percept red accepts a visible latch OR an exact restore; which guard (reader or hydration) refuses each kind is a
+  dev-run fact, not registered. VOCAB's planted event carries `proto_flushed` = category + 1 so the stale-prototype proof does not
+  also refuse it with only the vocab check off.
+- Whether O_buf is P3's D4 load-bearing arm (the I_K2 analogue) is OWED (see (c)); today an equal O_buf reads as a red that did not fire.
+
+(c) R2-c3's reds by part (MAJOR-2 (a), RESOLVED from the registration at 155d1319, `_RED_PART`):
+- P1: 2.4's table (O_wm, O_hyd, O_rng, O_w, O_stack, O_rw, CHRONO, MOTOR and the planted DUP, REORDER, HELDOUT, MISSING), because 2.3
+  Disposition makes R2-c1..c5 P1's and R2-c3 is "every constructed red fires (section 2.4)"; O_rng's lone-replay control goes with O_rng;
+  `FW:*` is P1's (A3: FAILWRITE runs "then the P1 seeds of 2.6").
+- P2: O_sleepskip and O_cursor (K4), by the 2026-10-06 P2 amendment ("Reds, constructed and red first: `O_sleepskip`, `O_cursor` (K4)
+  ..."; "A red reverts P2 only"; 2.3 Disposition: R2-c6 is "P2's own verdict").
+- P3: the R2-c7 reds of (b), by 2.3 Disposition and 2.10.
+- The halt (a red that fires on no seed) follows the same partition.
+Still OWED, no line assigns them: (b) R2-c8 (A4, `sleep_bout`) names no part, and O_bout, SLEEPDIGEST, CTXREAD, BOUTDIGEST and
+BOUTPROGRESS have no assigning line, so all of these join BOTH P1 and P2 for now (stricter, never weaker); (c) per-part role subsets
+(every seed runs every role, so a P2 read also runs P1's arms and P3's); (d) INVALID for P2 (D4 says "the same rule applies to P2's and
+P3's load-bearing arms" but names neither's arm; P2 keeps the I_K2-based rule). Each is an integrator ruling, not made here.
+
+(d) K3 alignment as built (option (i), D1.2). `twin_K3` records the sleep ticks left in its cut night (until `_nights` advances), then S = 6,
+and reports `k3_rest`. `run_seed` passes that count to every K3 restoring arm (res_K3, O_sleepskip, SLEEPDIGEST_on, SLEEPDIGEST_off) as
+`--proc`'s 8th argument and brings `twin_K3` into any K3 selection; each records `S + k3_rest` sleep ticks and refuses to run without
+the count. Disclosed coupling: those four arms are no longer independent processes; a failed `twin_K3` makes all four incomplete
+(INVALID, never a fire). The harness carries circadian phase across the restart; the brain does not (finding iii).
+Finding (iii)'s red is `tests/test_restart_circadian.py` (b311e78d), `xfail(strict=True, raises=AssertionError, reason="finding (iii):
+restart forgets circadian phase (D-77)")`: a dev-seed brain cut after its first sleep tick and restored (throwaway homes) must tick the
+same as an uninterrupted twin ("asleep"). The static first failure at f68b2e37: the restore's `_step` is 0 (brain.py:656) and
+`light_cycle(period)(0)` is lights-on (circadian_clock.py:65-70), so the first tick reads "awake" and the assert raises AssertionError. A
+twin whose night ended after one tick fails through `pytest.fail`, so it can never read as the xfail. It is NOT fixed, and it has not been
+run; the expected reading is XFAIL.
+
+(e) Owed before any 15050 seed (read with D3, which is not edited here): the K1g dev-seed run. On dev seeds 15000-15007 only, CPU, under the heavy-run lock after
+the campaign: `--seed <dev seed> OUT --roles <P3 roles>`. Every K1g red (CROSS, O_buf, DUP, REORDER, HELDOUT, MISSING, WIDTH, VOCAB,
+INSTRUMENT) and the K1g_POS control must fire on the dev seeds; one that fires on none halts P3 (A5's order; P8 item 1). The run also
+shows the brain's actual guard causes (MINOR-1 OWED) and whether `observed`/`live_n` at construction are twin-relative (MINOR-4 OWED).
+It sits in D3 item 4's run (R2-c7's reds, 2.10); this item adds nothing to the bar, only names the P3 roles and the seed block that run
+uses. Also still owed, unchanged: the re-review of the instrument at b311e78d, and the integrator's statement on (c) above.
+
+Data-exposure: no confirmatory or reserve seed of R2's block was read or run in writing this section.
