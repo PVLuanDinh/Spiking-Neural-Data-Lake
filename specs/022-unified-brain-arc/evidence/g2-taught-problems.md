@@ -682,6 +682,8 @@ Not freeze items, listed so nobody re-counts them: 2.13's cost projection (290-2
 | F8 | G3's dated amendment setting beta from G3's dev seeds, then entered here; the SEQUENCE reading ((ii) then (i) S0C1, g3 D-G2-10) cannot run before (ii) is unparked | sample-size-style input from G3 (a measured constant) | yes (G3's dev run) |
 | X1 | a dated line listing the 12 C1-d words and their buckets (the 12 A_c1d words alike) read off the learner's `encode`, as a RECORD of what the code holds, not a freeze: for item (i) the ordering condition was breached (below). B1 already asserts them in code | text | no (read the two dicts; a B1 re-read is optional) |
 | P1 | whether G2 is on the P1 amendment's grandfathered list, or (ii), A_ii and beta owe a "Sample size (P1)" section. POLICIES.md P1 amendment (172-207): "the pre-registrations frozen before this amendment landed are a CLOSED list, grandfathered by name when the gate is built (ancestry is not the trigger ...)". The base text froze at `6bc97430` (2026-10-06), before the amendment (2026-10-23), and 2.18 finds the freeze incomplete. No list naming G2 was found in this read | OWED: integrator ruling, grandfathered by name, or a Sample size (P1) section for the unfrozen parts ((ii) after the stack repair, A_ii, beta). 8200-8207 is a habit count; 5.1's per-seed records and the dev rows are an available variance source | no |
+| X2 | owner answer on O11 (accept "representable, not shown learnable" as the C1-d disposition, or order a redesigned learned control) | owner answer | a redesign would need a dev run; acceptance needs none |
+| F4 | one clause naming the intents (GREET / GOAL) of the H dev run | text | no |
 
 ##### 2.18.2a X1 is a breached ordering condition (2.18 fold 1)
 
@@ -691,13 +693,13 @@ Not freeze items, listed so nobody re-counts them: 2.13's cost projection (290-2
 |---|---|
 | first commit holding `BUCKETS_C1D` / `BUCKETS_AC1D` | `5963aca1` 2026-10-04 18:04 (`git log --all -S`; `02d8999a`, `5250f750` are rebased duplicates, 2026-10-06) |
 | 5.1 head, the read | `a1f4cebf` 2026-10-07 04:25; results record `203e97b6` 2026-10-07 09:45 |
-| code constants vs the read | in the tree about 34 h before the amendment commit; chosen by rule in code, asserted by B1 against the learner's own `encode`; never in this file's text |
+| code constants vs the read | in the tree 58.4 h before `a1f4cebf` (the amendment commit and 5.1 head; 2026-10-04 18:04 to 2026-10-07 04:25) and 45.5 h before `b137606a` (the 2.17 text, 2026-10-06 15:35; `git log -1 --format=%ci` per sha); chosen by rule in code, asserted by B1 against the learner's own `encode`; never in this file's text |
 | dict VALUES at `5963aca1`-era `5250f750`, `a1f4cebf`, `c4c10b28` | identical (stdlib `ast.literal_eval`, sorted items, sha256 `1c45796e35359820` at all three); `cd351b72` only ruff-reflowed the literal |
 | source text of the dict block, `a1f4cebf` vs `c4c10b28` | byte-identical (sha256 `1355ea67cc042301`) |
 
 The identity mitigates (the constants 5.1 ran on are the constants now in the tree) and does not cure (the ordering condition is breached). Integrator ruling OWED: does 5.1's C1-d reading stand as a disclosed deviation (P8 item 4 disclosure on 5.1, its reading annotated "read under an incomplete text freeze")?
-| X2 | owner answer on O11 (accept "representable, not shown learnable" as the C1-d disposition, or order a redesigned learned control) | owner answer | a redesign would need a dev run; acceptance needs none |
-| F4 | one clause naming the intents (GREET / GOAL) of the H dev run | text | no |
+
+RULED 2026-10-29 (integrator, accepted by launcher D-67): 5.1's C1-d reading STANDS as a disclosed deviation; P1: (i) to the closed list by name when the gate is built, (ii)/A_ii/beta each owe a Sample size (P1) section; M3: TEST-PINNED ALIAS with the collapse trigger (claude/g2-m3-1029@a5ea3f84 widens the pin).
 
 Net: the freeze is NOT complete. Confirmatory item (i) (5.1) read under F1-F6 while the C1-d words were owed in text and not entered (X1, a breach of 2.15.1:339-341; integrator ruling owed); (ii), A_ii and the budget (beta) remain unfrozen, and their P1 status is owed.
 
@@ -730,3 +732,7 @@ The 2026-10-13 row plan marks all G2 O1-O5 "Not yet triaged"; no later triage wa
 ##### 2.18 fold 1 (2026-10-29; 3-lens panel + policy-enforcer review; static, no run, no bar changed)
 
 Changes to 2.18 only (nothing above 2.18 edited): (1) heading and scope paragraph: "pre-data" holds for (ii), A_ii and beta only; 2.18 freezes nothing for (i). (2) X1 recorded as a BREACHED ordering condition (2.15.1:339-341), new 2.18.2a with the commit and byte-identity evidence; ruling OWED to the integrator, not made here. (3) New 2.18.2 row P1: grandfather status or a Sample size (P1) section, OWED. (4) F2: cite `a1f4cebf` as the amendment commit. (5) F4: COVERED to PARTLY, carve-out 2.15.1:398-404. (6) F7: dated note is 647-653; four-seed read required. (7) M1: exact quote and per-item offsets. (8) M3: P2 disposition stated, confirmation OWED. (9) M7: EXEMPT add/remove commits cited; P3 disposition OWED. (10) O1: G3's O9 is `g3-growth-loop.md:654`. (11) Net line updated. Per-finding rows: the fold row's FOLD.md.
+
+##### 2.18 fold 2 (2026-10-29; policy-enforcer #6461, static, no run, no bar changed)
+
+Changes to 2.18 only: (1) M1: 2.18.2a interval corrected from "about 34 h" to 58.4 h to `a1f4cebf` and 45.5 h to `b137606a`, each named. (2) D-67 ruling recorded under the OWED line in 2.18.2a. (3) m2: 2.18.2a moved after the X2/F4 rows so the six owed gaps render as one table.
