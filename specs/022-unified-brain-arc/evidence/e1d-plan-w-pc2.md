@@ -120,18 +120,24 @@ which is the legitimate kind of input.
   - **The planned-sequence nudge is added after the stub** (`:1545-1551`) and is not rotated. So the pc moves only the
     held-goal channel, and `_plan_w`'s channel stays intact.
   - **Validity for every `pc` run:** `pc_stub_calls == pfc_bias_calls > 0`, with 600 ticks. Anything else is a harness
-    red: a partly bypassed stub, or calls from a foreign instance.
+    red. The equality catches a partly bypassed stub; foreign-instance calls are already excluded by the scope.
 - **Controls at look 1** (E1c section 3, with new seeds):
   - `repeat` on 23000 (0 action flips, recorded series identical);
   - `pc` on 23000 and 23001 (flips > 0).
   - A failed one VOIDs the campaign.
   - **The controls run FIRST in look 1's order:** `real_23000`, `real_23000` repeat, `pc_23000`, `real_23001`,
-    `pc_23001`. The driver then runs the existing compare on that partial look. A missing run there is "pending",
-    never VOID (`rpe_charge.py:1344`).
-    - If the partial look's VALIDITY line reads VOID, the driver stops before any other run. A VOID costs 5 runs, not
-      about 133.
-  - **Residual risk, stated.** R2c's 64/64 bounds the per-seed blind rate at about 4.6% (one-sided 95%). So the
-    two-seed look-1 pc VOIDs at most about 9% of the time, down from about 26% under the old pc.
+    `pc_23001`. The driver then runs the existing compare on that partial look, into its OWN report
+    (`reports\controls-look1.md`), so the full look-1 report cannot overwrite it.
+    - **The driver continues ONLY when the partial look's disposition is PENDING** (`e1c_disposition`,
+      `rpe_charge.py:1750-1751`) and its pending items are exactly the expected set: every look-1 run except the five
+      controls. VOID, a missing line, other pending items, a crash or unexpected text all halt it. A VOID costs 5 runs,
+      not about 133.
+    - The partial read is not a look: it has no boundary, spends no alpha and makes no decision.
+  - **The pilot under controls-first.** The pilot T is the first campaign run's (`real_23000`), as E1c section 10 keeps
+    the first run's T. P per arm comes from `pilot_watch -Seed 23000` on 23000's `real` and `pfrozen` runs, whenever
+    each runs.
+  - **Residual risk, stated.** R2c's 64/64 bounds the per-seed blind rate at about 4.6% (one-sided 95%). So at that
+    bound the two-seed look-1 pc VOIDs about 9% of the time, down from about 26% under the old pc.
 - **A new per-call record, `p["held_goal"]`** (every arm; harness only, no brain change).
   - After each `_pfc_bias` call the wrapper appends `pfc.goal` next to `p["tick"]` (`rpe_charge.py:802-806`), or None
     while nothing is held. It is guarded: `pfc = getattr(slf, "pfc", None)`.
@@ -141,6 +147,9 @@ which is the legitimate kind of input.
 - **Each result records its compiled extension:** the loaded `_native` module's file path and sha256 go in the tier
   block. The analysis requires ONE value across a tier's runs, as it already requires one tree sha
   (`rpe_charge.py:1351-1354`).
+- **Each result must match its file name.** `load_run` checks that the record's `seed` and `arm` match the file's tag
+  (with `pc_<s>` and `real_<s>_r2` mapped). A mismatch is a harness red. Today `load_run` (`rpe_charge.py:1147-1158`)
+  checks only the tier, so a relabelled or stray file would enter a look silently.
 
 ## 4. The goal-frozen stratum (beside, decides nothing)
 
@@ -217,18 +226,29 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
 - **R1, R4, R4b, R5:** as E1c, on the GO tree.
   - R1 runs inside the GO commit's full `tests/test_rpe_charge.py` gate log.
   - R5 of record runs on the fresh stream `r5go-<tree>` under D-31.
+- **The pre-GO pin file.** Step 5 (section 9) writes `lanes\e1d-plan-w-work\NATIVE.pin`, holding `TREE=<40 hex>`,
+  `NATIVE_SHA256=<64 hex>` and the toolchain line. It also writes `TREE_SHA`, which `run_arm.ps1` reads.
+  - `r2.ps1` checks every launch against `NATIVE.pin`.
+  - The GO's TREE and NATIVE_SHA256 must equal `NATIVE.pin`'s.
 - **The R2 tool.** `lanes\e1d-plan-w-work\r2.ps1` is in `DRIVER.sha256`.
-  - It runs every R2 brain run through the bound `run_arm.ps1`, on the run tree at the GO's TREE.
-  - Before every launch it checks the native pin, exactly as `campaign.sh`'s `native_check` does.
-  - It writes `logs\r2.log`, whose header names TREE, DRIVER_SHA256 and NATIVE_SHA256, and whose last lines are
-    `R2A PASS|FAIL` and `R2C <k>/64 PASS|FAIL`.
+  - It runs every R2 brain run through the bound `run_arm.ps1`, on the run tree at `NATIVE.pin`'s TREE.
+  - Before every launch it checks the native pin.
+  - It writes results ONLY to `lanes\e1d-plan-w-work\r2\`, and it refuses any target under `results\` or the run tree.
+  - It writes `logs\r2.log`. Its header names TREE, DRIVER_SHA256 and NATIVE_SHA256, and it carries one line per
+    step: `R2-0 PASS|FAIL`, `R2A PASS|FAIL`, `IDENTITY <k>/65 PASS|FAIL` (64 seeds plus 21001),
+    `CLASSIFIER PASS|FAIL` (28001 frozen, 28000 mover) and `R2C <k>/64 PASS|FAIL`.
 - **The comparator** for every R2 read is look 1's `flips()` on `series.action` over all 600 ticks
-  (`rpe_charge.py:327-330`). "Identical" means the parsed `series`, `v` and `p` are equal, minus `p["held_goal"]` where
-  only one side has it. It never compares raw bytes.
-- **R2-0, the comparator reds** (brain-free, run by `r2.ps1` before any brain run):
-  - `c0_21001.json` against `cal_21001.json` must read 0 flips and "identical";
-  - `c1_21001.json` against `cal_21001.json` must read 378 flips and "not identical".
-  - Either reading any other way halts R2.
+  (`rpe_charge.py:327-330`).
+  - "Identical" means the parsed `series`, `v` and `p` are equal, minus `p["held_goal"]` where only one side has it.
+  - It never compares raw bytes.
+- **R2-0, the comparator reds** (brain-free, run by `r2.ps1` before any brain run). Inputs: `c0_21001.json` and
+  `c1_21001.json`, whose sha256 `r2.ps1` pins, refusing on a mismatch, plus `cal_21001.json` under `CAL-BASELINE.sha256`.
+  - c0 against cal: 0 flips, "identical".
+  - c1 against cal: 378 flips, "not identical".
+  - c0 with `p["held_goal"]` planted on ONE side only: "identical", which exercises the drop branch.
+  - c0 with one value perturbed in `v`, then in `p`, then in one non-action `series` key: each 0 flips and "not
+    identical". This separates the full comparator from an actions-only one.
+  - Any reading any other way halts R2.
 - **R2a, the blind seed** (red): `real` and the new `pc` on seed 21001. The `pc` must flip (> 0 action flips) and pass
   the pc validity items (section 3). 21001 is where the old pc read 0.
   - The `real_21001` run also joins the identity set below.
@@ -242,7 +262,9 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
     - Fresh `real_21001` (R2a) must equal `cal_21001.json` too.
     - ANY difference halts R2c, and the integrator diagnoses: a harness or build effect on behaviour. Before the GO it
       also voids the base-rate citation (section 2).
-    - The classifier's positive control is free here: 28001 must classify frozen, and 28000 must classify mover.
+    - **The classifier's positive control** is free here: fresh 28001 must classify frozen, and fresh 28000 must
+      classify mover. A misclassification is `CLASSIFIER FAIL`, which halts R2c like an identity difference: the
+      stratum's instrument is then wrong, and the integrator diagnoses.
   - **The read.** Run the new `pc` on each of the 64 seeds through `r2.ps1`, and compare each with its FRESH `real`.
     - Each run must pass the pc validity items.
     - Each seed's flip count and first-flip tick are recorded beside, with the 9 known frozen seeds called out, so a
@@ -252,16 +274,33 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
     - The integrator then diagnoses before any GO.
     - A replacement pc needs a dated addendum AND a fresh calibration block with its own manifest-bound baseline: a pc
       re-read on these 64 seeds would be in-sample.
-- **R2-dry, the look step end to end** (brain-free, before the GO).
-  - The driver's whole look sequence: plan owed, `compare --e1c --look 1`, plan decide, and the status quote.
-  - It runs on a 64-seed results folder built from real E1d-format JSONs (R2c's runs, relabelled, with `held_goal`
-    present), so the stratum code runs on real-shaped data before any campaign run.
-  - `synth_run` also gains a planted `held_goal` with a known frozen count, so the GO-commit gate log covers the stratum
-    path.
+- **R2-dry, the driver's look step end to end** (brain-free, run BEFORE any R2 brain run, so a driver fix it forces
+  costs no R2 re-run).
+  - **Where.** A scratch work folder `lanes\e1d-plan-w-work\dry\`, with its own `results\`, `reports\` and `logs\`. It
+    refuses to run if its results path resolves under the real `results\` or the run tree.
+  - **Input.** A complete 64-seed look-1 folder (`real`, `pfrozen`, `pc` on s0 and s0+1, the `real` repeat on s0),
+    written by `rpe_charge`'s own `synth_run` in E1d format. B2 gives it `p["held_goal"]` with a planted frozen count
+    of 9.
+  - **The sequence.** The driver's own functions run in order: the controls-first partial compare and its
+    PENDING-only continue, then plan owed, `compare_look 1`, plan decide, and the status quote. Brain launches are
+    stubbed, as `driver_check` stubs them.
+  - **Expected, line by line:**
+    - every step rc=0;
+    - the partial look reads PENDING, with exactly the owed items;
+    - the full look's VALIDITY is valid;
+    - the stratum line prints 9 frozen;
+    - the disposition is the synthetic design's known value;
+    - plan decide prints NEXT continue.
+  - **Its red.** Replace the s0 `pc` with a copy of the s0 `real` (0 flips). The partial look must read VOID, and the
+    driver must halt before run 6.
+  - R2's own reads load every fresh E1d-format JSON through `load_run`, so real-brain JSON parsing is exercised there.
+    `synth_run`'s planted `held_goal` also puts the stratum path in the GO-commit gate log.
 - **R3, repeat:** as E1c, on 23000 (at look 1, run first).
 - **R6, the stub's vector** (unit test in `tests/test_rpe_charge.py`, brain-free). It REPLACES the old pc test at
   `:913-923`.
   - Pin the goal with `_gate_primary(0, float("inf"))` (no race, no `_native`), and assert goal == 0.
+  - The arm is bound to that PFC (`ap.bind(SimpleNamespace(pfc=p))`), because the stub rotates only for the bound arm's
+    PFC.
   - Under the stub, with strength 0.37: the stub returns a list, index 1 reads 0.37 and index 0 reads 0.
   - The wrap case at n = len(ACTIONS): goal 12 maps to index 0.
   - A goal-None instance stays all zeros.
@@ -269,8 +308,12 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
   - After the arm's `__exit__`, the original method is back.
   - R6 tests the VECTOR. R2a and R2c test behaviour.
 - **GO binding** (`campaign.sh`).
-  - The GO names `R2_LOG=<path>`, checked like `check_gate_log`: its header must carry the GO's TREE, DRIVER_SHA256 and
-    NATIVE_SHA256, and it must end in `R2A PASS` and `R2C 64/64 PASS`.
+  - The GO names `R2_LOG=<path>`, checked like `check_gate_log`.
+    - Its header must carry the GO's TREE, DRIVER_SHA256 and NATIVE_SHA256, which must also equal `NATIVE.pin`'s.
+    - It must hold all five pass lines: `R2-0 PASS`, `R2A PASS`, `IDENTITY 65/65 PASS`, `CLASSIFIER PASS`,
+      `R2C 64/64 PASS`.
+  - **First-launch guard.** `campaign.sh` refuses its first launch unless `results\production` is empty, or every JSON
+    in it has a DONE row in `logs\runs.log`.
   - The R2 runs and the GO are on ONE tree, so `git diff --name-only <R2 tree> <GO tree>` is empty by construction.
   - A rebuilt `_native` re-runs R2a and R2c.
   - Each check gets a `driver_check` case and a mutant.
@@ -296,7 +339,14 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
 - **The look report:** `compare_look()` creates `reports\` before the compare tool writes into it. That is E1c look
   1's FileNotFoundError, fixed with its red.
 - **Controls first** (section 3): `plan.py` orders look 1's controls first, and `campaign.sh` runs the partial-look
-  compare after them, stopping on a VOID. Both get a `driver_check` case.
+  compare after them into `reports\controls-look1.md`. It continues only on the expected PENDING set. Both get a
+  `driver_check` case.
+- **The perception packs are pinned at TREE:** `run_arm.ps1` points the two pack pins (`SNN_PERCEPTION_PACK`,
+  `SNN_SHD_PACK`) at the run tree's git-tracked `models\`, not at the main checkout's.
+  - That closes the campaign-window gap: the main checkout can change during about 10 h; TREE cannot.
+  - The encoder checkpoints stay gitignored and hashed (ENC).
+  - R2c's identity cross-check, fresh runs against calibration runs that used the main checkout's packs, shows the
+    two give the same behaviour.
 - **Pilot observer.**
   - The integrator starts `pilot_watch.ps1 -Seed 23000` before the campaign.
   - It selects each pilot run by its `-Out` result path, `results\production\<arm>_<seed>.json`; the tier-red probes
@@ -357,20 +407,24 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
     plan-amend `fcda0984` + `a85e0566` with the ceiling hunk dropped, restart-probe `a8893811`, and session-record
     `8dad59f4`.
   - Only `gates/docs_only_battery.py` is under `src/`, and it is on the section 2 allow-list.
+- **B2 also adds** the `load_run` seed/arm-against-tag check, with its red.
 - **The driver bind** (out of git, `lanes\e1d-plan-w-work`):
-  - `r2.ps1`;
-  - controls first, with the partial-look check;
+  - `r2.ps1` (with `NATIVE.pin`, the pinned c0/c1 hashes and its five pass lines);
+  - R2-dry;
+  - controls first, with the PENDING-only partial-look check;
+  - the first-launch guard;
+  - the run-tree pack pins;
   - names, the spec path and the stale text;
-  - each with `driver_check` cases and mutants.
+  - each with `driver_check` cases and mutants, including one per `R2_LOG` pass line.
 - **Order.**
   1. The draft review (panel and enforcer), then the freeze commit.
   2. B0-B4.
   3. The panel (3 lenses) on the stack, then the fold.
   4. ONE battery, the closing record, push.
-  5. Create the run tree at TREE, build `_native` there, and pin its sha.
+  5. Create the run tree at TREE, build `_native` there, and write `NATIVE.pin` and `TREE_SHA`.
   6. Bind `DRIVER.sha256` (with `r2.ps1`).
-  7. `r2.ps1`: R2-0, R2a, the identity cross-check and R2c's read.
-  8. R2-dry.
+  7. R2-dry (brain-free).
+  8. `r2.ps1`: R2-0, R2a, the identity cross-check and classifier, then R2c's read.
   9. The GO-commit gate log.
   10. The GO (TREE, DRIVER_SHA256, NATIVE_SHA256, GATE_LOG, R2_LOG).
   11. R5 of record, the pilot (with `pilot_watch -Seed 23000` running), and the looks.
@@ -380,7 +434,7 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
 - **Campaign:** E1c's pilot measured T = 26 s per run, serial.
   - The expected stop is about 9.5 h and the cap 10.2 h (E1c A5-3 arithmetic, at T = 26 s).
   - Under 48 h, so serial (D-34).
-- **Before the GO (R2):** about 132 runs, about 58 min.
+- **Before the GO (R2):** 130 runs, about 57 min.
   - R2a: 2 runs.
   - R2c: 64 fresh `real` and 64 `pc`.
   - One native build, about 10 s.
@@ -414,8 +468,21 @@ A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides 
   - **A n1, A n2, B n1, C n2:** sections 1, 3 and 4.
   - **B n3** (the stale `autonomous_loop.py:1427-1429` comment, which says the margin always clears): carried as an
     opening, not edited here. Any `src` change outside the allow-list would void the D-38 citation.
-- **Still open:** delta reads of this fold by the three lenses and the enforcer; docs-sweep-r2 under the enforcer
-  (#5856).
+- **Fold 2** (fold-1 delta reads: enforcer AGREE #5865, A AGREE #5868 with nits, B CHALLENGE #5870, C CHALLENGE
+  #5871):
+  - **R2-dry buildability, pass bar and order (C D1, B N1, C d4):** section 6, R2-dry (synth input, named scratch
+    folder, expected lines, red); section 9 (it runs before R2).
+  - **Stray or relabelled results (C D2):** section 3 (`load_run` tag check); section 6 (R2 output folder, first-launch
+    guard).
+  - **The pre-GO pin (C d1, B nit):** section 6 (`NATIVE.pin`).
+  - **R2_LOG lines (C d2, B nit, A nit):** section 6 (five pass lines; CLASSIFIER FAIL halts).
+  - **Comparator reds and binding (C d3, B N2, A nit):** section 6 (R2-0).
+  - **The partial-look stop fails open (C d5):** section 3 and section 7 (PENDING-only, its own report, not a look).
+  - **B nits:** the foreign-call wording and the 9% bound wording (section 3), R6's bind (section 6), the pack pins
+    (section 7).
+  - **A nits:** the pilot under controls-first (section 3), 130 runs (section 10).
+  - The D-37 acknowledgement of the read-side pc is requested from the delegate. Its ruling is cited at the freeze.
+- **Still open:** delta reads of fold 2; the delegate's D-37 ruling; docs-sweep-r2 under the enforcer (#5856).
 
 ## 12. Record
 
