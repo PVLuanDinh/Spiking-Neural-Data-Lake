@@ -517,7 +517,7 @@ the per-item and per-batch silencing effects only, labelled "no matched control"
   readout for the posed-problem job; G5's tuning-rule arms run on it, and a rule replaces R-STDP only by winning G-R5).
   Red: fed does not beat direct and random feed (U, paired). A further arm lets a fed unit
   become a reservoir unit (N > 256); it re-runs the pool's determinism red at the new N and waits for the owner to
-  ratify a growth target inside the reservoir (POLICIES P4d).
+  ratify a growth target inside the reservoir (POLICIES P4d). [ANSWERED 2026-10-29: see DATED ADDENDUM 2026-10-29 (owner growth target) at the end of this file.]
 
 ### 2.11 Null dispositions (each a causal claim; its instrument owes its positive control first)
 
@@ -632,7 +632,7 @@ measured crossover).
 ### 2.16 Scope
 
 Built: the items of 2.15. Not built: live wiring into `make_brain()` or the daemon (G9's engine); sleep's save and
-prune (G6); readout neurons (G5); a growth target inside the reservoir (owner); a distance kernel (G4); the label gate
+prune (G6); readout neurons (G5); a growth target inside the reservoir (owner); [ANSWERED 2026-10-29, see DATED ADDENDUM 2026-10-29 (owner growth target)]; a distance kernel (G4); the label gate
 (G7); any problem construction (G2).
 
 ## 3. Open questions for the owner
@@ -1231,3 +1231,24 @@ Configuration versioning, Dale and the rebuilt isolation guards retain their con
   - **Q-AII:** A (A_ii leaves) means C11 for B = S0C1 stays UNREAD and C11 reads only on C1-d with A_c1d (itself gated by O11); B (bare-learner
     incumbent) changes 2.5's incumbent definition and re-registers 2.9 C11's baseline before any C11 reading.
   - **Q-COL (gamma) and O10 (T1 split):** T1-struct and T1-size read NOT RUN regardless; nothing in P4a decides gamma.
+
+## DATED ADDENDUM 2026-10-29 (owner growth target for the N > 256 arm; pre-data; no G3 data read)
+
+- **Owner answer, verbatim** (relayed by the launcher from the owner's chat, transcript e49a47ce, 2026-10-29): "Grow steadily to build new
+  neurons to eventually gain cognition and consciousness". It answers the open owner question of 2.16 (annotated there) and rules the N > 256
+  arm of 2.8 (:518-520, "waits for the owner to ratify a growth target inside the reservoir").
+- **Ruling (the launcher's binding reading).** The target is STEADY growth with NO CEILING. Reservoir growth is not capped at any N.
+- **Tested N values are measurement points, not caps.** Today no test fixes an N above 256. The tests that fix N around the gate are
+  `tests/test_feed_readout.py:143-158` and `:162-177` (a planted declared size of 257 only; no larger pool is built or admitted) and
+  `:181-194` (N = 256, the bound at which the size gate passes). They pin the CURRENT refusal gate `growth/feed_readout.py:89-90`
+  (`pool.n > 256`), not a measurement point. Why those N: 256 is the engine's existing pool size (`reservoir/recurrent_pool.py:73`), the last
+  N whose determinism red has been run; 257 is the smallest N above it, the minimal probe that the gate fires. The N values the arm will MEASURE
+  at are named by the building session in a further dated line in this file BEFORE any seed runs, with the reason for each; none is named here.
+  `tests/test_g3_arms.py` fixes no N.
+- **Determinism red.** The pool's own determinism red (C15, :421) re-runs at EVERY tested N, not only the first.
+- **Pacing (POLICIES P4d, docs/POLICIES.md:575-577 at this branch's base 8fe7bf57).** "Pause at a budget (owner decision): each problem's
+  growth spends a budget relative to a persisted running baseline (P1); at the limit the brain reports UNSOLVED, stops growing, and keeps the
+  problem OPEN to retry after sleep or new teaching." The budget paces growth per problem and pauses it; it is not a ceiling on the reservoir.
+- **No code may treat a tested N as a maximum.** A measurement point is a place the arm looks, never a bound the pool may not pass.
+- **Owed to the integrator (P3 / P4d conflict).** The refusal `growth/feed_readout.py:89-90` is a hard maximum on N and its two tests above
+  pin it. They are NOT changed here (docs only); they are listed in the g3-arms REPORT.md, Round 3, as OWED for the build that admits N > 256.
