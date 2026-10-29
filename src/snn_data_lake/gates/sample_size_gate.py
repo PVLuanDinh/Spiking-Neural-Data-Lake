@@ -14,30 +14,39 @@ sequentially" (landed in fb7b6581, 2026-10-24). Its Gate specification, verbatim
 # "pre-registration", different corpus and job. null_scale_gate.py is the shape precedent AND the reuse
 # source: its fence-aware heading/section reader and `Red` are imported, not copied (P2).
 
-A pre-registration is any `specs/**/evidence/*.md` file that contains `pre-?regist` or `prereg` (the
-reproducible rules R1 and R2 of specs/022-unified-brain-arc/evidence/p1-sample-size-grandfather.md, which
-this gate's lists are built from; R1 is a subset of R2). Each one owes a heading named "Sample size (P1)"
-(any level, outside a code fence); the text of all such sections of the file is read together and must carry
-each field by its word:
+A pre-registration is a markdown file the repo marks as one by either of two reproducible rules (those of
+specs/022-unified-brain-arc/evidence/p1-sample-size-grandfather.md, whose lists this gate's are built from):
+
+    R1  a heading, anywhere in the repo (`*.md`, outside code fences), that names a pre-registration
+    R2  an evidence file (`specs/**/evidence/*.md`) that says `pre-?regist` or `prereg` anywhere in its text
+
+The gate checks R1 UNION R2. R2 reaches evidence files whose body, not heading, declares the pre-registration; R1
+reaches files outside the evidence directories (a session record whose heading restates a design). Neither is a
+subset of the other. Vendored and generated trees (dot-directories, node_modules, target, graphify-out) are not scanned.
+Each pre-registration owes a heading named "Sample size (P1)" (any level, outside a code fence); the text of all such
+sections of the file is read together and must carry each field by its word:
 
     measured SD  `SD` | `standard deviation`      effect    `effect` | `mde`        target  `target`
     looks        `look(s)`                          spending  `spending` | O'Brien | Pocock
     futility     `futility`                         cap       `cap`
 
-A section that says `one-shot` is a fixed count (the amendment's item 3): it owes the measured SD, the effect
-and the target, plus the one-shot reason itself; looks, spending, futility and cap are not owed.
+A section with a one-shot line is a fixed count (the amendment's item 3): it owes the measured SD, the effect and the
+target. The line must state a reason (six words or more) and must not be negated ("not a one-shot design"); a bare or
+negated one-shot claim waives nothing and the sequential fields are owed.
 
 Three closed lists, all by file name (never by ancestry):
   GRANDFATHERED          frozen before the landing; exempt whole, so a later edit to a grandfathered file is
                          not read by this gate (the list file says a section added later is not grandfathered;
-                         that stays review-enforced).
-  OWES_AT_FREEZE         DRAFT pre-registrations that have not frozen; deferred and printed on every run
-                         while every pre-registration heading of the file says DRAFT, red once it does not.
-  NOT_PREREGISTRATIONS   files the word matches that say of themselves they are not a pre-registration.
-A name in any list whose file is gone (or, for GRANDFATHERED, no longer mentions pre-registration) is
-R-STALE-GRANDFATHER, so the lists only shrink.
+                         that stays review-enforced). Evidence files only: every entry is a file the scan reads.
+  OWES_AT_FREEZE         post-landing drafts that have not frozen: name -> ISO expiry date. Deferred and printed on
+                         every run until the expiry (R-DEFERRAL-EXPIRED) or until a line of the file says it froze
+                         (R-FROZEN-DEFERRED); the author-maintained word DRAFT neither buys nor ends a deferral.
+  NOT_PREREGISTRATIONS   files R1 or R2 matches that say of themselves they are not a pre-registration (references,
+                         policy text, retroactive records); each carries its reason in a comment.
+A name in any list whose file is gone (or, for GRANDFATHERED, is no longer an R1/R2 match) is R-STALE-GRANDFATHER,
+so the lists only shrink.
 
-What it reds: R-NO-SECTION, R-FIELD, R-STALE-GRANDFATHER.
+What it reds: R-NO-SECTION, R-FIELD, R-STALE-GRANDFATHER, R-DEFERRAL-EXPIRED, R-FROZEN-DEFERRED.
 What it cannot do, and says so on every run: judge whether a number is right, a simulation was run, or a
 boundary is sound (the policy-enforcer and the panel do); it checks that each field is WRITTEN.
 
@@ -49,20 +58,35 @@ Bare invocation is --assert (the run_selfchecks.py convention).
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import tempfile
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
-from snn_data_lake.gates.null_scale_gate import Red, _lines, _rels, _section, _structure
+from snn_data_lake.gates.null_scale_gate import Red, _lines, _section, _structure
 
 REPO = Path(__file__).resolve().parents[3]
 
-EVIDENCE_GLOB = "specs/**/evidence/*.md"
-LANDING = "fb7b6581"  # the commit that added "### P1 amendment" to docs/POLICIES.md
+# the landing commit is fb7b6581 (it added "### P1 amendment" to docs/POLICIES.md); GRANDFATHERED is by name, not ancestry
+SKIP_DIRS = frozenset({"node_modules", "target", "graphify-out", "__pycache__"})
 PREREG_RE = re.compile(r"pre-?regist|prereg", re.I)
+HEADING_RE = re.compile(
+    r"pre-?registration|prereg", re.I
+)  # R1's exact heading rule (the list file)
 SECTION_RE = re.compile(r"sample size \(p1\)", re.I)
 ONE_SHOT_RE = re.compile(r"one-shot", re.I)
+NEGATED_RE = re.compile(
+    r"\b(?:not|never|isn't|non|no)\b[\s\w,'-]{0,25}?one-shot|one-shot\b[\s\w,'-]{0,15}?\b(?:not|never)\b",
+    re.I,
+)
+ONE_SHOT_MIN_WORDS = 6
+# a line that says a deferred file froze: its freeze commit, a FROZEN status, "frozen at/in <sha>"
+FREEZE_RE = re.compile(
+    r"freeze commit|status:?\W*frozen|\bfrozen\s+(?:at|in|by commit)\W{0,3}[0-9a-f]{7,}", re.I
+)
 FIELDS = {
     "measured SD": r"\bSD\b|standard deviation",
     "effect": r"\beffect\b|\bmde\b",
@@ -76,15 +100,14 @@ ONE_SHOT_FIELDS = ("measured SD", "effect", "target")
 
 _EV = "specs/022-unified-brain-arc/evidence/"
 
-# The pre-registrations frozen before the landing, by name (73): the 76 of p1-sample-size-grandfather.md at
-# c9d0c097 less its section 4 (g2, g3, g5: DRAFT, see OWES_AT_FREEZE). Census at c4c10b28: none of them was first
-# added after the landing (author time). May shrink only by deleting an entry in the same commit as its file
-# (R-STALE-GRANDFATHER). Regenerate the candidates with `--census`.
+# The pre-registrations frozen before the landing, by name (72 evidence files): the 76 of
+# p1-sample-size-grandfather.md at c9d0c097 less its three R1 reference files outside the evidence directories
+# (NOT_PREREGISTRATIONS) and less g5 (its Part E is a post-landing draft, OWES_AT_FREEZE); g2 and g3, which that
+# list calls DRAFT, froze in 6bc97430 and 1d99ff46 (2026-10-06, git log), before the landing, so they are here.
+# May shrink only by deleting an entry in the same commit as its file (R-STALE-GRANDFATHER). Regenerate the
+# candidates with `--census`.
 GRANDFATHERED: frozenset[str] = frozenset(
     {
-        "docs/AGENT_COLD_START.md",
-        "specs/011-h01-neurogenesis-prior/decisions.md",
-        "specs/022-unified-brain-arc/quickstart.md",
         *(
             _EV + name + ".md"
             for name in (
@@ -98,6 +121,8 @@ GRANDFATHERED: frozenset[str] = frozenset(
                 "g1a-causal-contract",
                 "g1b-pool-selection",
                 "g1c-carried-state",
+                "g2-taught-problems",
+                "g3-growth-loop",
                 "g3-t0-baseline",
                 "g4-wiring-prior",
                 "g5-handoff-repair-2026-10-11",
@@ -162,15 +187,26 @@ GRANDFATHERED: frozenset[str] = frozenset(
         ),
     }
 )
-# DRAFT pre-registrations that have not frozen (p1-sample-size-grandfather.md section 4): each owes the section
-# the day its DRAFT marker goes.
-OWES_AT_FREEZE: frozenset[str] = frozenset(
-    _EV + name + ".md" for name in ("g2-taught-problems", "g3-growth-loop", "g5-readout-variants")
-)
-# Matched by the word, but say of themselves they are not a pre-registration (or are the list of them).
+# Post-landing drafts that have not frozen, name -> ISO date the deferral lapses (an integrator-set bound: past it the
+# file reds R-DEFERRAL-EXPIRED until it carries the section). g5-readout-variants froze 2026-10-07 (66abb0a1) and ran
+# before the landing, but its Part E (drift-surviving relational readout) was added as a DRAFT on 2026-10-27, so the
+# file as a whole is not grandfathered and Part E owes the section when it freezes.
+OWES_AT_FREEZE: Mapping[str, str] = {_EV + "g5-readout-variants.md": "2026-11-05"}
+# Matched by R1 or R2, but say of themselves they are not a pre-registration. Reasons:
 NOT_PREREGISTRATIONS: frozenset[str] = frozenset(
-    _EV + name + ".md"
-    for name in ("p1-sample-size-grandfather", "p5b-pfc-rng-record", "p5b-retroactive-record")
+    {
+        # the P1 list and two retroactive records
+        _EV + "p1-sample-size-grandfather.md",
+        _EV + "p5b-pfc-rng-record.md",
+        _EV + "p5b-retroactive-record.md",
+        # R1 headings that cite or define pre-registration, not register one (the old list's R1 reference files)
+        "docs/AGENT_COLD_START.md",  # 8.8: what an invented method owes (policy text)
+        "specs/011-h01-neurogenesis-prior/decisions.md",  # RE-DECISION citing T063's pre-registration 2.12
+        "specs/022-unified-brain-arc/quickstart.md",  # S2 note citing a panel's pre-registration-honesty lens
+        "research/cloud-replies/REPLY-2-FROM-CLOUD-SESSION-2026-10-28.md",  # item 4 names a branch "...-prereg-..."
+        # a session record restating d1's design; the registration is d1-readout-staleness.md, which carries the section
+        "research/representational-drift/SESSION-RECORD-2026-10-27.md",
+    }
 )
 
 
@@ -184,13 +220,37 @@ class Report:
         return {r.code for r in self.reds}
 
 
-def _text(root: Path, rel: str) -> str:
-    return (root / rel).read_text(encoding="utf-8")
+def _markdown(root: Path):
+    """Repo-relative paths of every `*.md` under root, skipping dot-directories and SKIP_DIRS."""
+    for dirpath, dirs, files in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS)
+        for name in sorted(files):
+            if name.endswith(".md"):
+                yield (Path(dirpath) / name).relative_to(root).as_posix()
 
 
-def _draft(lines) -> bool:
-    heads = [lines[j].text for j, _ in _structure(lines)[0] if PREREG_RE.search(lines[j].text)]
-    return bool(heads) and all("DRAFT" in h for h in heads)
+def _preregistrations(root: Path) -> dict[str, list]:
+    """rel -> its lines, for every file R1 or R2 marks as a pre-registration (before any list is applied)."""
+    found = {}
+    for rel in _markdown(root):
+        lines = _lines(root, rel)
+        if rel.startswith("specs/") and rel.split("/")[-2] == "evidence":  # R2: the word anywhere
+            hit = any(PREREG_RE.search(ln.text) for ln in lines)
+        else:  # R1: a heading that names one
+            hit = any(HEADING_RE.search(lines[j].text) for j, _ in _structure(lines)[0])
+        if hit:
+            found[rel] = lines
+    return found
+
+
+def _one_shot(body: str) -> str:
+    """'ok' when a line claims one-shot with a stated, un-negated reason; 'bad' when one-shot is named but no
+    line does; 'none' when it is not named."""
+    named = [ln for ln in body.splitlines() if ONE_SHOT_RE.search(ln)]
+    if not named:
+        return "none"
+    ok = any(not NEGATED_RE.search(ln) and len(ln.split()) >= ONE_SHOT_MIN_WORDS for ln in named)
+    return "ok" if ok else "bad"
 
 
 def _problem(lines) -> Red | None:
@@ -201,11 +261,19 @@ def _problem(lines) -> Red | None:
     )
     if not body:
         return Red("R-NO-SECTION", "", 'no heading "Sample size (P1)" outside a code fence')
-    owed = ONE_SHOT_FIELDS if ONE_SHOT_RE.search(body) else tuple(FIELDS)
+    shot = _one_shot(body)
+    owed = ONE_SHOT_FIELDS if shot == "ok" else tuple(FIELDS)
     missing = [f for f in owed if not re.search(FIELDS[f], body, re.I)]
     if missing:
+        note = (
+            " (the one-shot claim has no un-negated one-shot reason, so it waives nothing)"
+            if shot == "bad"
+            else ""
+        )
         return Red(
-            "R-FIELD", "", f"the Sample size (P1) section does not write: {', '.join(missing)}"
+            "R-FIELD",
+            "",
+            f"the Sample size (P1) section does not write: {', '.join(missing)}{note}",
         )
     return None
 
@@ -213,37 +281,46 @@ def _problem(lines) -> Red | None:
 def check(
     root: Path = REPO,
     grandfathered: frozenset[str] | None = None,
-    owes_at_freeze: frozenset[str] | None = None,
+    owes_at_freeze: Mapping[str, str] | None = None,
     not_prereg: frozenset[str] | None = None,
+    today: date | None = None,
 ) -> Report:
     grandfathered = GRANDFATHERED if grandfathered is None else grandfathered
     owes_at_freeze = OWES_AT_FREEZE if owes_at_freeze is None else owes_at_freeze
     not_prereg = NOT_PREREGISTRATIONS if not_prereg is None else not_prereg
+    today = date.today() if today is None else today
     report = Report()
-    found = []
-    for rel in _rels(root, EVIDENCE_GLOB):
-        if rel not in not_prereg and PREREG_RE.search(_text(root, rel)):
-            found.append(rel)
-    owing = set()
+    marked = _preregistrations(root)
+    found = [rel for rel in marked if rel not in not_prereg]
+    owing, carry = set(), 0
     for rel in found:
         if rel in grandfathered:
             continue
-        lines = _lines(root, rel)
-        if rel in owes_at_freeze and _draft(lines):
-            report.deferred.append(rel)
-        elif red := _problem(lines):
+        lines = marked[rel]
+        problem = _problem(lines)
+        carry += problem is None
+        if rel in owes_at_freeze:
+            expiry = date.fromisoformat(owes_at_freeze[rel])
+            if any(FREEZE_RE.search(ln.text) for ln in lines):
+                msg = "a line says this file froze: delete its OWES_AT_FREEZE entry and write the section"
+                code = "R-FROZEN-DEFERRED"
+            elif expiry < today:
+                msg = f"the deferral lapsed on {expiry}: write the section, or the integrator re-dates it"
+                code = "R-DEFERRAL-EXPIRED"
+            else:
+                if problem:
+                    report.deferred.append(rel)
+                continue
             owing.add(rel)
-            report.reds.append(Red(red.code, rel, red.message))
+            report.reds.append(Red(code, rel, msg))
+        elif problem:
+            owing.add(rel)
+            report.reds.append(Red(problem.code, rel, problem.message))
     gone = 0
-    for names, must_mention in (
-        (grandfathered, True),
-        (owes_at_freeze, False),
-        (not_prereg, False),
-    ):
+    for names, in_scan in ((grandfathered, True), (owes_at_freeze, False), (not_prereg, False)):
         for rel in sorted(names):
-            path = root / rel
-            if not path.is_file() or (must_mention and not PREREG_RE.search(_text(root, rel))):
-                gone += must_mention
+            if (rel not in marked) if in_scan else not (root / rel).is_file():
+                gone += in_scan
                 msg = f"list entry {rel!r} matches no current pre-registration file"
                 report.reds.append(Red("R-STALE-GRANDFATHER", rel, msg))
     report.counts = {
@@ -252,6 +329,7 @@ def check(
         "deferred (owes at freeze)": len(report.deferred),
         "declared not a pre-registration": len(not_prereg),
         "owing the section now": len(owing),
+        "carry the section": carry,
     }
     return report
 
@@ -259,7 +337,7 @@ def check(
 def census(root: Path = REPO) -> list[tuple[str, str]]:
     """(path, code) of every pre-registration that would red with no list at all: the candidates for
     GRANDFATHERED, OWES_AT_FREEZE and NOT_PREREGISTRATIONS. A human sorts them by their frozen date."""
-    report = check(root, frozenset(), frozenset(), frozenset())
+    report = check(root, frozenset(), {}, frozenset())
     return [(r.where, r.code) for r in report.reds]
 
 
@@ -294,6 +372,14 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
         "R-NO-SECTION": ({f"{_EVT}a.md": head + "seeds 8.\n"}, {}),
         "R-FIELD": ({f"{_EVT}a.md": head + _SECTION.replace("Futility", "Fut")}, {}),
         "R-STALE-GRANDFATHER": ({}, {"grandfathered": frozenset({f"{_EVT}a.md"})}),
+        "R-DEFERRAL-EXPIRED": (
+            {f"{_EVT}a.md": head + "seeds 8.\n"},
+            {"owes_at_freeze": {f"{_EVT}a.md": "2000-01-01"}},
+        ),
+        "R-FROZEN-DEFERRED": (
+            {f"{_EVT}a.md": head + "DRAFT; the freeze commit 6bc97430.\n"},
+            {"owes_at_freeze": {f"{_EVT}a.md": "2999-01-01"}},
+        ),
     }
 
 
@@ -316,7 +402,7 @@ def self_check() -> int:
                 (root / rel).write_text(text, encoding="utf-8")
             kw = {
                 "grandfathered": frozenset(),
-                "owes_at_freeze": frozenset(),
+                "owes_at_freeze": {},
                 "not_prereg": frozenset(),
             }
             codes = check(root, **{**kw, **kwargs}).codes()
