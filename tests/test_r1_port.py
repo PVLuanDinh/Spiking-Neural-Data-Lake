@@ -262,3 +262,23 @@ def test_m2d_the_working_tier_restore_encodes_content_only(H):
         assert "session" not in b2._episode_consolidator._role
     finally:
         b2.close()
+
+
+def test_m3_a_refused_lake_read_is_spoken_at_the_chat_caller(lake_brain, H, monkeypatch):
+    # chat branched only on source == "lake": a refused read answered like a plain miss
+    def broken(*a, **k):
+        raise OSError("planted read failure")
+
+    monkeypatch.setattr(H, "load_episodes", broken)
+    got = lake_brain.respond("do you remember what you did last time?")
+    assert "planted read failure" in got["reply"], got["reply"]
+
+
+def test_m3_the_refused_dict_carries_the_keys_of_a_lake_answer(lake_brain, H, monkeypatch):
+    def broken(*a, **k):
+        raise OSError("planted read failure")
+
+    monkeypatch.setattr(H, "load_episodes", broken)
+    got = lake_brain.recall_episode_durable(dict(EPS[0]), min_conf=1.0)
+    assert got["source"] == "refused"
+    assert got["margin"] is None and got["contradicted"] == 0
