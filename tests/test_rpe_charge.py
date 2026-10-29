@@ -1314,15 +1314,37 @@ def test_run_problems_arm_specific_gates():
     )
     assert any("plan_lr_final" in b for b in bad) and any("pfc_bias_calls==0" in b for b in bad)
     pc = R.synth_run("pc", 8, "production")
-    assert R.run_problems("pc", 8, pc, "production") == []
+    assert R.run_problems("pc", 8, pc, "production", design=R.E1C) == []
     for planted in ({"pc_stub_calls": 0}, {"pc_stub_calls": pc["pfc_bias_calls"] - 1}):
-        bad = R.run_problems("pc", 8, pc | planted, "production")
+        bad = R.run_problems("pc", 8, pc | planted, "production", design=R.E1C)
         assert any("stub calls=" in b for b in bad)
-    bad = R.run_problems("pc", 8, pc | {"pc_stub_calls": 0, "pfc_bias_calls": 0}, "production")
+    zero = pc | {"pc_stub_calls": 0, "pfc_bias_calls": 0}
+    bad = R.run_problems("pc", 8, zero, "production", design=R.E1C)
     assert any("zero calls" in b for b in bad) and not any("0 != 0" in b for b in bad), bad
     ne = R.synth_run("real", 8, "no-encoder")
     ne["tier"]["encoder_calls"]["vision"] = 4
     assert any("encoder use" in b for b in R.run_problems("real", 8, ne, "no-encoder"))
+
+
+def test_pc_stub_equality_binds_the_e1d_design_only():
+    """S5 (E1B-REPRO.log): E1b's pc records came from the old `_decide_spiking` stub, about
+    25 race calls per `_pfc_bias` call (pc_8: 7475 vs 299). A legacy design keeps E1b's rule,
+    stub calls > 0; only the E1d design requires stub calls == pfc_bias_calls."""
+    old = R.synth_run("pc", 8, "production") | {"pc_stub_calls": 7475, "pfc_bias_calls": 299}
+    assert R.run_problems("pc", 8, old, "production") == []
+    bad = R.run_problems("pc", 8, old | {"pc_stub_calls": 0}, "production")
+    assert bad == ["pc_8: stub calls==0"], bad
+    bad = R.run_problems("pc", 8, old, "production", design=R.E1C)
+    assert bad == ["pc_8: stub calls=7475 != pfc_bias_calls=299"], bad
+    runs = R.fixture_runs("harm")  # E1b's design end to end: compare reads the old counts valid
+    for s in (8, 9):
+        runs[("pc", s)] |= {"pc_stub_calls": 7475, "pfc_bias_calls": 299}
+    a = R.analyse("production", runs, R.fixture_e2(), logs_pass=True)
+    assert a["valid"] and a["bad"] == [], a["bad"]
+    e1d = R.fixture_runs("harm", seeds=R.E1C_SEEDS[:64], arms=R.E1C_ARMS)
+    e1d[("pc", 23000)] |= {"pc_stub_calls": 7475, "pfc_bias_calls": 299}
+    a = R.analyse("production", e1d, None, seeds=R.E1C_SEEDS[:64], design=R.E1C, logs_pass=True)
+    assert a["bad"] == ["pc_23000: stub calls=7475 != pfc_bias_calls=299"], a["bad"]
 
 
 def _analysis(kind="harm", tier="production", e2="ok", **kw):

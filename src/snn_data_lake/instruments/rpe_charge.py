@@ -1274,8 +1274,10 @@ def logs_gate(logs_dir):
 
 
 # --------------------------------------------------------------------------- run-level validity
-def run_problems(arm, key, d, tier):
-    """Per-run harness validity (E1's set + Revision 2's tier block)."""
+def run_problems(arm, key, d, tier, design=None):
+    """Per-run harness validity (E1's set + Revision 2's tier block). The pc arm's stub-call equality binds the E1d
+    design only (its `top_down_bias` stub counts once per `_pfc_bias` call); E1b's records came from the old
+    `_decide_spiking` stub (about 25 calls per `_pfc_bias` call), so every other design keeps stub calls > 0."""
     tag = f"{arm}_{key}"
     bad = [f"{tag}: {d['tag_problem']}"] if d.get("tag_problem") else []
     if d["swallowed_exceptions"] != 0:
@@ -1292,7 +1294,9 @@ def run_problems(arm, key, d, tier):
         bad.append(f"{tag}: pfc_bias_calls==0")
     if arm == "pfrozen" and d["plan_lr_final"] != 0.0:
         bad.append(f"{tag}: plan_lr_final={d['plan_lr_final']}")
-    if arm == "pc" and not d["pc_stub_calls"] == d["pfc_bias_calls"] > 0:
+    if arm == "pc" and not design and d["pc_stub_calls"] == 0:
+        bad.append(f"{tag}: stub calls==0")
+    if arm == "pc" and design and not d["pc_stub_calls"] == d["pfc_bias_calls"] > 0:
         bad.append(
             f"{tag}: zero calls (stub calls=0, pfc_bias_calls=0): the pc arm needs both > 0"
             if d["pc_stub_calls"] == d["pfc_bias_calls"] == 0
@@ -1410,7 +1414,7 @@ def analyse(
         [],
     )  # pending = runs/controls not yet there (a partial campaign), never VOID
     for (arm, s), d in sorted(runs.items()):
-        bad += run_problems("real" if arm == "real_r2" else arm, s, d, tier)
+        bad += run_problems("real" if arm == "real_r2" else arm, s, d, tier, design)
         val.append(
             f"{arm}_{s}: foreign valence calls={d['foreign_valence']} foreign learn calls={d['foreign_learn']}"
         )
