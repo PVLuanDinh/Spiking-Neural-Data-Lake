@@ -1201,3 +1201,127 @@ and wrote that file afresh; a non-zero exit, a missing file, or an unparsable fi
 error (INVALID), recording the exit code. Red: lens A's reused output directory with a child that
 exits 37 without writing must yield an error, not the earlier result. Control: a successful child
 still yields its result.
+
+## Mechanism re-diff fbb1f38e..c4c10b28, 2026-10-29, pre-data; no confirmatory or reserve data read
+
+Row plan 1.0: "before any Phase-2 seed, diff each campaign pre-registration's named mechanisms against the bytes; a changed
+mechanism owes a dated pre-data amendment first." The 2026-10-15 amendment above diffed R2 against fbb1f38e. origin/main
+is now c4c10b28 (621 commits later). This addendum repeats the diff for that range. It edits nothing above this heading,
+is documentation only, and amends no clause: it names what changed and what the next dated pre-data amendment must state.
+Lane r2-mechdiff (static analyst). No code, test, instrument or brain was run (campaign mode: no pytest, no Windows python,
+no GPU); every verdict below is a reading of `git.exe show`/`diff` bytes, by `ast` comparison of each named symbol. The full
+mechanism list with spec line, file and line pair (fbb1f38e -> c4c10b28) is
+`lanes/engine-1024/r2-mechdiff-row/MECHS.md` (out of git). Not Codex-reviewed.
+
+### R1. Mechanism list (item 1, summary)
+Every mechanism, function, file and constant named in 2.1-2.12 and A1-A11 was resolved: the learner
+(`readout/interaction_learning.py`), the lake events (`substrate/learner_events.py`), the Brain writer, latch, bout and
+checkpoint methods (`engine/brain.py`), the lake and codec (`substrate/home.py`, `substrate/binlog.py`), the grower
+(`growth/neurogenesis_engine.py`, `growth/growing_learner.py`), the bout runner (`instruments/staged_sleep_bout.py`), the
+campaign instrument (`instruments/replay_hydration.py`), `tools/lake_append_baseline.json`, the five `brainstem/` files, and
+the seed block 15000-15067.
+
+### R2. The diff (item 2, summary)
+- UNCHANGED or MOVED (same bytes, new line): the whole latch, rollback, bout and checkpoint machinery A3 and A4 describe
+  (`_record_learner_event`, `_r2_close`, `_r2_restore`, `_r2_snapshot`, `_r2_may_rearm`, `_r2_fresh_learner`, `_r2_sleep_step`,
+  `_r2_sleep_learning`, `_r2_run_bout`, `_flush_interaction_learner`, `_report_ixn_refusal`, `_g9_apply_source`,
+  `neuter_sleep`, `_enter_wake`, `tick`, `respond`, `correct`); the learner except `hydrate`; `scan_learner_events`,
+  `read_learner_events`, `prefix_digest`, `SLEEP_DIGESTS`, `SLEEP_PROGRESS`; `save_episode`, `load_episodes`,
+  `next_session`, `LEARNER_EVENT_KINDS`, `_log`, `save_named_state`, the frame codec (`pack_episode`, `_MAGIC`, `_LEN`),
+  `BinLog._repair_torn_tail`; every def of `instruments/staged_sleep_bout.py`; the `brainstem/` files, `engine/live_brain.py`,
+  `sleep/experience_replay.py`, `sleep/sleep_replay.py` and `tools/lake_append_baseline.json` (no diff at all).
+- CHANGED-COSMETIC: `home.save_state`, `home.load_state`, `home.state_path` (docstrings only, AST equal);
+  `growth.growing_learner.GrowingLearner` (one comment); the `learner_events.py` module docstring; `tests/test_g0c_learner_persists.py`
+  (+12: the injected fault is scoped by `monkeypatch.context()` where it used `monkeypatch.undo()`; same assertions).
+- CHANGED (behaviour), with commit:
+  1. `percept` is live (9f5a9d58, d5a32337, b24ea8e7, 60490871). `KIND_SPECS["percept"]` exists;
+     `SpikingInteractionLearner.hydrate` has an `elif kind == "percept":` branch that only moves `_cursor` (before: `raise
+     ValueError("R2 unbound effect: percept")`; `ctxread` still raises); `Brain._record_percept` and
+     `_attach_percept_transitions` are new; `NeurogenesisSelfImprove.observe` calls `transition_sink` before buffering and
+     raises `RuntimeError("percept transition write refused; observation not buffered")` when it does not land;
+     `hydrate_transitions`, `restore_transitions`, `pack_percept` are new; `Brain._r2_boot` hands the one pass's events on
+     (`_r2_percept_events`); `Brain._append_learner_event` maps `percept` to stream `wake` and encoder
+     `arm.percept gained width=<dim>` and adds `proto_boot`/`proto_flushed` to `teach`/`turn` events when either count is
+     nonzero (A9). `Brain.neuro` is a property over `Brain.grower` (`growth/grower.py`, G3-T1); `_wake_tick` calls
+     `grower.observe`, `_sleep_tick` calls `grower.tick()`.
+  2. `substrate/binlog.py` (f2534a94, 47955b4e, 1ea6b303, ec18e9c5, 080f967a, Phase 1a): a dedup `BinLog` keeps its payloads
+     resident and serves `replay()` from memory while `stale()` (size, mtime_ns, inode, and the last frame read from disk)
+     says the file is unchanged; the lock is re-entrant; `rewrite()` writes a private `mkstemp` file and refuses an empty
+     payload; `append`/`extend` stat before and after. The bytes `append`, `extend` and `rewrite` write, and the frame
+     format, are unchanged.
+  3. P4b persistence (bebdd0e2, 01802dd4, da936776, ddac65d2, 63ced7d5, e1baa9d2, 8c81961d, 697f802b):
+     `Brain._flush_prototypes` writes `arm.q`, the affect SOM and the lifelong learner into `growing_learners.json`, keeps
+     refused sub-records in `growing_learners.refused.<store>.<id>.json` (`_keep_refused`), and `Brain.__init__` restores
+     them; the language organ and nightly skills are saved into the lake (`Brain._enter_sleep` and `Brain.close` call
+     `lm.save()` with no path; `Brain.__init__` reads `load_named_state(STATE_NAME)`); `home.load_named_state` now RENAMES a
+     legacy sidecar on a hit (`_retire_sidecar`).
+  4. `Brain._sleep_tick` (f2534a94): one `KnowledgeLog` and one `replay` serve the schema-induction and consolidation
+     blocks (perf; written to give the same records the second replay gave).
+  5. `instruments/replay_hydration.py` now exists (2166 lines; 28f0d5d0, d5a32337, b24ea8e7). `DEV_SEEDS =
+     tuple(range(15000, 15008))` at :54; a seed outside it is refused at :230 ("no confirmatory licence").
+  A2 (2026-10-15) said "`percept` is a registry row only: it has no `KIND_SPECS` schema and no writer" and A6 said P3 was
+  never built. Both are true of fbb1f38e and false of c4c10b28; A9-A11 (written against later trees) already govern the P3
+  evidence rules and are consistent with the code read here (`stale_proto`, `session_boot_conflict`, `session_flushed_conflict`,
+  `session_witness_malformed` are all in `hydrate_transitions`).
+
+### R3. Disposition per CHANGED item (item 3) - does the registered prediction still test the same thing?
+1. `percept` live. R2-c1 to c6 are unchanged in meaning: the restart and its twin run one schedule, so the percept events of
+   wake ticks enter `(session, seq)`, `_r2_seq`, the cursor and the event ids of both (2.1 already shares one `seq` over
+   `teach`, `turn`, `sleep`, `percept`; A10 handled the K4 cut). R2-c7 (P3) is the claim that now has code. Gaps the amendment
+   must state, with no new design: (a) the 2.2 record set contains no `_r2_pseq`, `_r2_proto_boot`, `_r2_proto_flushed` or
+   grower buffer, and `Brain._r2_snapshot` (unchanged) holds none of them, so P1/P2 equality says nothing about them and
+   only R2-c7 covers them; (b) `hydrate` redoes a post-checkpoint `percept` by moving the cursor only, so its grower effect is
+   restored by `restore_transitions`, not by redo, and R2-c7 must be the check that names that; (c) a teach/turn event carries
+   two extra string slots once a prototype count is nonzero, so the byte sizes in 2.7 (266 B, 940 B) and A3 (255 B and 1,663 B
+   torn tails, measured on dev seeds on earlier trees) are descriptive figures that no bar rests on: the bars are
+   length-and-sha equality, and the sizes must be re-measured before they are quoted.
+2. `BinLog`. The raw-bytes bars (A3: length and sha256 equal after every C call) and the independent-reference restart bar
+   still test the same thing: they read the file or run in a fresh OS process, and the bytes written are unchanged. What
+   changes is the survivor: its `replay()` can now come from memory, and `stale()` is stricter than the size-only test the
+   observer rule (A3) was written against, so any raw edit behind a cached instance (the injected `landed` and `torn`
+   writes, `_plant_bout`'s truncate) rebuilds it, and the rebuild runs `_repair_torn_tail`. The amendment must restate the
+   observer rule as binding for the survivor's own reads as well as the instrument's (no C call may reach the lake through
+   `home._log`, `load_state`, `load_named_state` or `Brain.__init__` between the torn injection and the kill), and
+   must record that every dev-seed observation in A3-A11 (#2873, #2885, the K4 cut, the 255 B and 1,663 B figures) was taken
+   on a tree that predates 2026-10-17, so those observations are dev-seed evidence for the instrument's construction, not
+   observations of c4c10b28. No bar was derived from them except those figures.
+3. P4b persistence. The interaction-learner claim (R2-c1 to c6) does not name `arm.q`, the affect SOM, the lifelong
+   learner, the language organ or the nightly skills; a restart now restores more of them than before, which cannot make a
+   2.2 record differ but is outside the scope sentence of 2.3 ("the interaction learner and the sleep carriers that touch
+   it") and must not be read into an R2 verdict. `Brain._enter_sleep` and `Brain.close` now write the language organ into
+   the lake when `_acq_lm` was built (a `respond` builds it): a lake write that is not a learner event. The A3 C-calls and
+   the A4 bout path call none of `_enter_sleep`, `close`, `_flush_prototypes`, so the bars are unaffected; R2-c8(c) "no other
+   lake write during the bout" is a statement about the bout and still holds on the unchanged `_r2_run_bout`, but any
+   lake-byte comparison taken across a sleep entry or `close` (K0, K1 around `_enter_wake`) now includes these records and
+   the larger prototype record. The amendment must say so. `_flush_prototypes` advances `_r2_proto_flushed` only when
+   `save_state` returns True; `save_state` returns False for a byte-identical re-save, so the count then fails closed
+   (A11.3 item 3 states "only after save_state returns True": consistent, not a defect).
+4. `_sleep_tick` single replay. Intended output-equivalent; not verified by this lane. The sleep event digests
+   (`rng_digest`, `weights_digest`, `rewirer_digest`) cover the learner and rewirer, which this edit does not touch. No
+   amendment text is owed beyond listing it.
+5. `Brain.neuro` property and `Grower`. grower.py documents byte-identical forwarding and the diff shows pure forwarding;
+   the P3 sink is set on the engine through the property. No R2 prediction depends on the attribute path. Not verified by
+   running.
+6. The instrument. A5 said no confirmatory seed is read before the rebuilt instrument and this amendment are both
+   reviewed and on the stacked head. The instrument is on the main lineage at c4c10b28; its review status is the
+   integrator's to state, not this lane's. Its dev-seed guard (:54, :230) is consistent with A1.
+
+### R4. Data-exposure check (item 3)
+No confirmatory or reserve seed of R2's block (15010-15067) was read, and none of this lane's checks read a result. Searched
+2026-10-29, regex `(^|[^0-9.])150(1[0-7]|2[0-7]|3[0-7]|4[0-7]|5[0-7]|6[0-7])([^0-9]|$)` unless noted:
+- `git.exe log --all --oneline -S15010`: 13 commits (substring search); `-G` with the full block regex: 9 commits. Every
+  hit is one of: R2's own registered allocations and refusals (b6812e3f, 42f35b4c, b38c023a, ccf6d297, 28f0d5d0,
+  9f5a9d58 - `rh.run_seed(15010, ...)` in `tests/test_replay_hydration_instrument.py` is a refusal test), or an unrelated
+  number (a `15057.2257` float in `tools/g4_t3_campaign.json` 9588545f/cbd8ce14, `0.15044`/`0.15062` floats 9acc7308, and
+  afa611a0, 27c90b7b, 9c872e8e, cb33b8dc, 963799e8, where `15010` occurs only inside a longer token: no standalone match in
+  their diffs).
+- `git.exe grep` of c4c10b28 (all tracked files): the R2 spec, `tests/test_replay_hydration_instrument.py`,
+  `tests/test_r2_p3_percept_transitions.py`, `tools/g4_t3_campaign.json` (a float), `native/sndl-core/tests/fixtures_rng.json`
+  (a hex float), `specs/.../r3-conf-F1-records.sha256` (a hash), three PDFs under `research/`.
+- The board `sndl-board-live` (msgs and codex_p0, 32 files): pids (`"pid": 15056`), hash substrings, R2's allocations, and
+  review posts that state no seed >= 15010 was read (#2689, #2690, #2691, #2710, #2711, #2719, #2731, #2736, #2764, #2843,
+  #2844, #2879, #2881, #2882, #2895, #2902, #2903). Memory notes `project-snn-engine-row-plan-1013.md` and
+  `project-snn-session-handoff-1014.md`: allocation lines only.
+- Lane folders and rows/ (text files .json/.jsonl/.csv/.txt/.log/.md outside src, tests, native, tools, specs, docs, models), seed-context regex `[Ss]eeds?[^0-9A-Za-z]{0,30}150(1[0-7]|...|6[0-7])\b` and `"seed": 150xx`: 47 files, all briefs, review and lane logs (codex-*.log, panel-*.log, REPORT.md, BRIEF.md) quoting R2's allocations, the `rh.run_seed(15010, tmp_path)` refusal test, or "no seed >= 15010 read". No result file (results/, *.json records) holds a seed of the block. The grep exited 2 (unreadable entries skipped); a wider number-only scan of the same tree was cut at its time limit and is not claimed.
+This is a text search. Binary artifacts and any process that never wrote a file were not examined, so the qualification
+of A1 stands: this is non-exposure by search, not proof.
