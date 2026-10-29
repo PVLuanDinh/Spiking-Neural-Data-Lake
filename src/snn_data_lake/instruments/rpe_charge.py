@@ -217,6 +217,7 @@ E1_RESULTS = os.environ.get(
     "E1B_E1_RESULTS", r"D:\AI-project\lanes\e1-rpe-charge-1019-work\results"
 )
 SYNTH_SHA = "0" * 40
+SYNTH_NATIVE = {"file": "synth/_native.pyd", "sha256": "0" * 64}
 
 
 class Refused(SystemExit):
@@ -261,6 +262,18 @@ if (
 def _sha_prefix(path):
     with open(path, "rb") as f:
         return hashlib.file_digest(f, "sha256").hexdigest()[:16]
+
+
+# distinct-from: gates/selfcheck_cache.py::_native_ext -- finds the extension's spec origin for a carry key; this reads
+#   the module the run actually LOADED and hashes its bytes for the tier block (E1d section 3)
+# distinct-from: gates/move_gate.py::native_record -- a census of native/ by path, no artifact bytes
+def native_identity():
+    """The loaded `snn_data_lake._native` module's file and full sha256, or None for both when it is not loaded."""
+    f = getattr(sys.modules.get("snn_data_lake._native"), "__file__", None)
+    if not f:
+        return {"file": None, "sha256": None}
+    with open(f, "rb") as fh:
+        return {"file": f, "sha256": hashlib.file_digest(fh, "sha256").hexdigest()}
 
 
 def preflight(requested, env):
@@ -1035,6 +1048,7 @@ def run_arm(arm, seed, ticks, tier, home, out, series=None, env=None):
                 "optimize": sys.flags.optimize,
                 "tree_sha": tree["sha"],
                 "tree_clean": tree["clean"],
+                "native": native_identity(),
                 "encoder_calls": dict(ec),
                 "percept_ticks": dict(pt),
             },
@@ -1370,6 +1384,11 @@ def analyse(
     val.append(f"tree sha(s) in this tier: {a['shas']}")
     if len(shas) != 1 or None in shas:
         bad.append("runs of this tier do not share one recorded tree sha")
+    nats = {(d["tier"].get("native") or {}).get("sha256") for d in runs.values()}
+    a["natives"] = sorted(map(str, nats))
+    val.append(f"native sha256(s) in this tier: {a['natives']}")
+    if len(nats) != 1 or None in nats:
+        bad.append("runs of this tier do not share one recorded native sha256")
     if any(not d["tier"]["tree_clean"] for d in runs.values()):
         bad.append("a run recorded tree_clean = false")
     rep = runs.get(("real_r2", s0))
@@ -2220,6 +2239,7 @@ def synth_run(
         "optimize": 0,
         "tree_sha": sha,
         "tree_clean": True,
+        "native": dict(SYNTH_NATIVE),
         "encoder_calls": {"vision": n, "audio": n, "pc": 0}
         if tier == "production"
         else {"vision": 0, "audio": 0, "pc": 0},

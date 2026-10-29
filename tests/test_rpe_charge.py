@@ -929,6 +929,28 @@ def test_pfc_bias_wrapper_records_the_held_goal_beside_the_tick(monkeypatch):
     assert "held_goal" not in ap.v
 
 
+def test_native_identity_reads_the_loaded_extension_and_analyse_requires_one(monkeypatch, tmp_path):
+    ext = tmp_path / "_native.pyd"
+    ext.write_bytes(b"planted extension")
+    monkeypatch.setitem(
+        __import__("sys").modules, "snn_data_lake._native", types.SimpleNamespace(__file__=str(ext))
+    )
+    want = __import__("hashlib").sha256(b"planted extension").hexdigest()
+    assert R.native_identity() == {"file": str(ext), "sha256": want}
+    monkeypatch.delitem(__import__("sys").modules, "snn_data_lake._native")
+    assert R.native_identity() == {"file": None, "sha256": None}
+    seeds = R.E1C_SEEDS[:64]
+    runs = R.fixture_runs("noharm", seeds=seeds, arms=R.E1C_ARMS)
+    kw = dict(seeds=seeds, design=R.E1C, logs_pass=True, sim_campaigns=20)
+    a = R.analyse("production", runs, None, **kw)
+    assert a["natives"] == [R.SYNTH_NATIVE["sha256"]] and not any("native" in b for b in a["bad"])
+    s1 = seeds[1]
+    runs[("real", s1)]["tier"]["native"] = {"file": "x", "sha256": "e" * 64}
+    b = R.analyse("production", runs, None, **kw)
+    assert any("native" in x for x in b["bad"]) and not b["valid"]
+    assert R.e1c_disposition(b).startswith("VOID")
+
+
 def test_pfrozen_zeroes_the_plan_rate():
     arm = types.SimpleNamespace(_plan_lr=0.02)
     with R.ArmPatch("pfrozen") as ap:
