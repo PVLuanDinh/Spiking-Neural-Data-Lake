@@ -1441,7 +1441,7 @@ Facts, stated without a ruling:
   amendment landed" covers R2 turns on whether a dated amendment (this one, and A1-A11 before it) re-freezes a registration.
   This draft changes no bar, no seed block and no decision rule, so on that reading R2 stays in the pre-landing class and is
   to be named in the list when the gate is built; on the other reading it owes the section before any 15010-15057 seed.
-  Which reading holds is the integrator's and the policy-enforcer's to decide, and it is not decided here.
+  Which reading holds is the integrator's and the policy-enforcer's to decide, and it is not decided here. RULED 2026-10-29 (integrator, accepted by launcher D-68): see D2.1.
 - If a section is owed, the variance source the P1 text asks for does not exist in R2's design: section 2.3 states that
   "equality has no variance, so no statistic and no majority-of-seeds". Every R2 verdict (R2-c1 to R2-c7) is exact equality
   on every seed, and R2-c2 and R2-c4 are "differs on EVERY seed". There is no paired SD to measure, and the dev seeds
@@ -1454,7 +1454,7 @@ Facts, stated without a ruling:
 ### D3. Owed before any 15010-15057 seed (ordered)
 
 1. Integrator statement: the P1 reading in D2 (grandfathered by name, or a "Sample size (P1)" section owed, with the variance
-   source), and the instrument's review status (D1 item 6). Statements, no run.
+   source), and the instrument's review status (D1 item 6). Statements, no run. The P1 reading is RULED (D-68, see D2.1); the
 2. Review of this amendment (policy-enforcer, static) and its landing as a frozen amendment dated before any confirmatory read.
    Until then it is a draft and the confirmatory licence stays withheld.
 3. A dev-seed run (15000-15007 only) of the c4c10b28 instrument, under the heavy-run lock after the campaign: the R2-c4
@@ -1488,8 +1488,8 @@ shows on a seed with probability p is 1-(1-p)^8:
 |---|---|---|---|
 | power at S = 8 | 0.570 | 0.900 | 0.996 |
 
-Power reaches .8 at p >= 0.182 (1-(1-p)^8 >= .8 <=> p >= 1-0.2^(1/8) = 0.182). A fault that shows on fewer than about 18% of
-seeds is missed more often than not. A pass at S = 8 with no failure bounds the per-seed failure rate only below 0.31
+Power reaches .8 at p >= 0.182 (1-(1-p)^8 >= .8 <=> p >= 1-0.2^(1/8) = 0.182). Below about 18% of seeds the detection power is under .8;
+below about 8.3% (1-0.5^(1/8)) a fault is missed more often than not. A pass at S = 8 with no failure bounds the per-seed failure rate only below 0.31
 (one-sided 95%, 1-0.05^(1/8); D2).
 
 | verdict | shape | read |
@@ -1516,7 +1516,8 @@ on one dev seed and are deterministic: each either moves the comparator or does 
 (pytest, `tests/test_r2_replay_hydration.py`) is a set of separate boolean checks with no seeds: no power statement applies.
 
 **Where the detection is weak.** For each shape-A verdict, a restart defect that appears on fewer than about 18% of seeds
-(for example a defect that needs a rare schedule branch) is likely to pass at S = 8. R2's seeds are 8 seeded shuffles of
+(for example a defect that needs a rare schedule branch) is detected with power under .8 at S = 8, and below about 8.3%
+it is more likely to pass than to fail. R2's seeds are 8 seeded shuffles of
 `_CONV_TRAIN` plus the fixed kill points, so the exercised schedules are 8 per block. A pass is therefore a statement about
 those 8 schedules and the 2.3 scope clause, and not about a per-seed failure rate below 0.31. No result at S = 8 is reported as
 a population rate.
