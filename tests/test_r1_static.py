@@ -247,6 +247,44 @@ def test_w_c_mixes_legacy_and_session_bearing_autobiographical_episodes():
     ra.Oracle(wl.records).assert_scope(H.is_autobiographical_episode)
 
 
+@pytest.mark.parametrize(
+    ("shape", "named"),
+    [
+        (dict(boots=1), "boots"),
+        (dict(n_auto=241), "n_auto"),  # 241 % 3: records would be dropped silently
+        (dict(n_auto=90), "per_boot"),  # 30 per boot < the 50 cross-boot duplicates
+        (dict(capacity=0), "capacity"),
+        (dict(capacity=10_000), "capacity"),  # leaves no non-resident episode
+    ],
+)
+def test_impossible_workload_shapes_are_refused_by_name(shape, named):
+    # enforcer #6673 NIT 5: a ValueError naming the argument, not an IndexError / sample error
+    with pytest.raises(ValueError, match=named):
+        ra.make_workload(
+            14200, teach=legacy_teach_records(), learner=distractor_events(), **dict(TINY, **shape)
+        )
+
+
+def test_an_empty_window_holds_nothing():
+    o = ra.Oracle([ra.Record.auto({"who": "self", "when": "1"})])
+    assert o.expected_window(0) == []
+    assert len(o.expected_window(1)) == 1
+
+
+def test_traced_peak_leaves_an_outer_trace_running():
+    # enforcer #6673 NIT 6: the I4 probe must not end a trace a caller (the cost driver) started
+    import tracemalloc
+
+    tracemalloc.start()
+    try:
+        ra.traced_peak(lambda: bytearray(1024))
+        assert tracemalloc.is_tracing()
+    finally:
+        tracemalloc.stop()
+    ra.traced_peak(lambda: bytearray(1024))
+    assert not tracemalloc.is_tracing()  # and it still cleans up its own trace
+
+
 def test_the_a2_fixture_is_in_the_stream_and_the_label_equals_the_one_predicate():
     wl = _wl()
     o = ra.Oracle(wl.records)
