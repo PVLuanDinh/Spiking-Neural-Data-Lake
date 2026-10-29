@@ -1223,6 +1223,7 @@ class Brain:
         self._learned_evc = self._episode_consolidator = self._structure_mapper = None
         self._lake_recall = None  # T057: the durable recall's lake half, built on first miss
         self._episode_window = []  # T057: recent lake-derived episodes (restore + own appends)
+        self._episode_writes_skipped = 0  # R1 M1: F3 writes refused, no session
         self._evc_cost = 0.0
         self._evc_value = 0.0
         self._episode_retained = 0.0
@@ -2481,7 +2482,9 @@ class Brain:
                 # into a store nothing read and nothing kept. An episode that dies with the process
                 # is not a memory, so the durable copy goes where everything else the brain knows
                 # already lives.
-                # R1 F3: no boot session, no durable write
+                # R1 F3: no boot session, no durable write -- counted, never silent (R1 M1)
+                if self._persist and getattr(self, "_session", None) is None:
+                    self._episode_writes_skipped += 1
                 if self._persist and getattr(self, "_session", None) is not None:
                     try:
                         from snn_data_lake.substrate.home import save_episode
@@ -4252,6 +4255,7 @@ class Brain:
             "prototype_faults": self._prototype_faults,
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
+            "episode_writes_skipped": self._episode_writes_skipped,  # R1 M1: persist-brain episodes not saved because the R2 boot gave no session
             "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)
             "dominant_drive": self._dominant_drive,  # W8: the currently most-unmet homeostatic drive (interoceptive)
             "drive_activity": self._drive_activity,  # C2 #11: the drive-vocabulary activity performed (rest/explore/socialize/fidget)
