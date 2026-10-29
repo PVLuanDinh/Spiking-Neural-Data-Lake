@@ -311,8 +311,9 @@ you.
 - **The execution record.**
   - The newest commit that touched `tools/policy_certification.json` is the last execution record. On a
     healthy `main` it is the pushed head.
-  - Its subject should begin `execution record:` and name the head the battery ran on. A record whose
-    message names no battery means that push carried none; commit `47e2e60` records one such remedy.
+  - Its subject reads `chore(record): closing execution record -- battery GREEN on <head>` and names the
+    head the battery ran on. A record whose message names no battery means that push carried none; commit
+    `47e2e60` records one such remedy.
   - The record file itself shows `certified`, `tree.commit` and `tree.dirty`.
 - **Status and order.**
   - `tasks.md` owns ids and status: `- [ ]` is open, `- [X]` is done, and rows may be indented. A row is
