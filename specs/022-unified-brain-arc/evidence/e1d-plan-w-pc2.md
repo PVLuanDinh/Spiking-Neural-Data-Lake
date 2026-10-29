@@ -662,3 +662,157 @@ some calls would pass. It gets a `driver_check` mutant: the default design must 
   - a shift by a multiple of 5;
   - a positional mix-up confined to the first 9 seeds.
 - These are the dry pin's disclosed limits. The live campaign pairs by seed key, not by position.
+
+## Results (campaign of record; DRAFT while the campaign runs)
+
+Append-only record of the E1d campaign (T124). Written 2026-10-29 by lane e1d-record while the campaign runs. Every
+number below is quoted from the file named beside it, never recomputed. Nothing here is a verdict: the decision of
+record at each look is the line the campaign's compare tool printed, and a section marked OWED is empty on purpose.
+
+### R0. Campaign identity
+
+The GO line, board #6181 (2026-10-29 11:07:59), written verbatim to `lanes/e1d-plan-w-work/GO`:
+
+```
+GO TREE=c4c10b285f1741aa798d5ee9c5296ae371fabecf DRIVER_SHA256=6696ddbcb54e404d571ec7767908ba6bc21548ccaecf8b4ef6564e6e8c2d2f7e GATE_LOG=D:\AI-project\lanes\engine-1024\e1d-go-row\VERIFY-c4c10b285f1741aa798d5ee9c5296ae371fabecf.log NATIVE_SHA256=fb25d9a9bbc7e9e889721e46d952054b59150ab9d2a5644757caf7e97368110b R2_LOG=D:\AI-project\lanes\e1d-plan-w-work\logs\r2.log BATTERY_TREE=ec4df693684983b7c6dd4f8e030fe3947ce9183d NATIVE_RUSTC=1.96.0+ac68faa20 NATIVE_CARGO=1.96.0+30a34c682 NATIVE_MATURIN=1.15.0
+```
+
+| Field | Value (from #6181) |
+|---|---|
+| TREE | c4c10b285f1741aa798d5ee9c5296ae371fabecf |
+| DRIVER_SHA256 | 6696ddbcb54e404d571ec7767908ba6bc21548ccaecf8b4ef6564e6e8c2d2f7e |
+| NATIVE_SHA256 | fb25d9a9bbc7e9e889721e46d952054b59150ab9d2a5644757caf7e97368110b |
+| GATE_LOG | `D:\AI-project\lanes\engine-1024\e1d-go-row\VERIFY-c4c10b285f1741aa798d5ee9c5296ae371fabecf.log` |
+| R2_LOG | `D:\AI-project\lanes\e1d-plan-w-work\logs\r2.log` (sha256 c4a331a0, per #6175) |
+| BATTERY_TREE | ec4df693684983b7c6dd4f8e030fe3947ce9183d |
+
+From #6181's RECORD: the GO-commit gate was "209 passed in 292 s, ruff + format clean". Disclosed there: gate run 1 was
+RED (18 failed / 191 passed, `ImportError: cannot import name '_native'`, no compiled `_native` in the fresh gate
+worktree); it was fixed by copying the pinned pyd (fb25d9a9), so the gate tested the campaign's exact binary. D-52: the
+run tree c4c10b28 and the battery-verified tree ec4df693 differ only in `tools/doc_reader_map.json` and
+`tools/policy_certification.json`. The campaign started 2026-10-29T11:08:12-05:00 (`logs/campaign.console` line 1).
+
+### R1. Pre-steps of record
+
+- **Tier reds** (`logs/tier_red.log`, run 11:08:19-05:00, `logs/campaign.console` line 3):
+  - TR1 "tier=production pins=no-encoder ... REFUSED tier=production (preflight): SNN_EPROP_CKPT=D:\AI-project\lanes\e1d-plan-w-work\NO-ENCODER\eprop_nmnist.pt missing rc=3 result_file_exists=False"
+  - TR2 "tier=no-encoder pins=production ... REFUSED tier=no-encoder (preflight): SNN_EPROP_CKPT=D:\AI-project\spiking-neural-data-lake\models\eprop_nmnist.pt is reachable rc=3 result_file_exists=False"
+- **Fixture** (`logs/fixture.log`, three lines, as quoted):
+  - "fixture harm H-P1 MET at look 1 (8 seeds) | H-V1 CONTINUE at look 1 of 19, n=8 (no verdict): next look n=16"
+  - "fixture noharm H-P1 CONTINUE at look 1 of 22, n=8 (no verdict): next look n=16 [degenerate: zero variance: H-P1, arm pfrozen] | H-V1 CONTINUE at look 1 of 19, n=8 (no verdict): next look n=16"
+  - "fixture void H-P1 VOID (control failed) | H-V1 VOID (control failed)"
+  - Note: the fixture lines name an "H-V1" endpoint and "look 1 of 22" or "of 19", which are not E1d section 4b's 11-look
+    H-P1 design. They are quoted as logged; the integrator reads the fixture's own design.
+- **R5 of record** (`logs/r5.log`, start 2026-10-29T11:08:19-05:00, tree c4c10b28, fresh stream `r5go-c4c10b285f17`):
+  - "R5 instrument check: n=80 mean=-0.00347 SD=0.3097 (want n=80, mean -0.00347, SD 0.3097)"
+  - "R5 OK  shift harm 0.8865 vs 0.8855 +- 0.0259"; "R5 OK  up harm 0.8090 vs 0.8145 +- 0.0317"
+  - "R5 OK  null futility-powered 0.7375 vs 0.7450 +- 0.0355"
+  - "R5 OK  null harm (type I) 0.0029 + 2 SE = 0.0037 <= 0.005"; "R5 OK  null INCONCLUSIVE 0.0050 <= 0.0131"
+  - "R5 OK  up harm power 0.8196 - 2 SE = 0.8142 >= 0.8 (P1 floor)"
+  - "R5 OK  code identity: the pinned-stream replay equals EXACT, bit for bit"
+  - "R5 PASS", "rc=0"
+- **Pilot T** (`logs/campaign.console` line 6, 11:10:01-05:00): "PILOT: T=27s -> T=27 TIMEOUT_S=600 FAULT_S=108 FLAT_MIN=3"
+  (`logs/thresholds.env` carries the same four values). The pilot run is production/real_23000, rc=0, 27 s.
+- **R2** (#6175, 2026-10-29T09:53:41-0500, claim=pass, `logs/r2.log` sha256 c4a331a0468c063afbc82335e6d51593b48c79d61ee48717d92ae5e062549f3c):
+  "R2 DONE: ALL PASS (r2.ps1 pid 37584, 08:57:00 -> 09:53:10, about 56 min, 130 serial brain runs under HEAVY-RUN.lock
+  + resource:timing". Its items: R2-0 PASS (7 comparator reds), R2A PASS (pc_21001 flips=378 first=4), IDENTITY 65/65
+  PASS, CLASSIFIER PASS, RECORDS PASS, R2C 64/64 PASS (min 229 on 28032; max first-flip tick 24).
+
+### R2. The reading rules (quoted, not paraphrased)
+
+These are the frozen rules a look is read under. Nothing below is new text.
+
+- **Section 8, dispositions** (E1d section 8: "HARM MET, NOT MET powered, and NOT MET underpowered: as E1c section 8,
+  verbatim"). E1c section 8, verbatim:
+  - "**HARM MET** at a look: The learned `_plan_w` trajectory is a measured harm on production at 600 ticks. P8
+    null-scale item 4: 'a measured harm ... is deleted without a re-test'."
+  - "**NOT MET at a futility or cap stop, POWERED** (mde <= 0.035): 'Powered: no harm of 0.035 or more on production at
+    600 ticks.' `_plan_w` stays as it is."
+  - "**NOT MET, UNDERPOWERED** (mde > 0.035; the design makes this rare): INCONCLUSIVE, with its mde recorded. Nothing
+    changes."
+  - E1d section 8's own **VOID**: "no verdict. **Repair** means a defect found while ZERO brain runs on 23000-23703 are
+    exposed, that is before the first campaign run. It is fixed by a dated addendum on the same seeds. After any exposed
+    campaign run, a VOID routes ONLY to a new pre-registration on a fresh block the integrator claims on the board."
+- **The sequential design's per-look decision line** (E1c section 5, "Harm at a look", carried by E1d section 4b):
+  "**Harm at a look** = t above the look's boundary AND k >= ceil(4n/8), meaning at least half of the seeds are
+  positive." The boundary is "`rpe_charge.seq_boundaries` (Lan-DeMets O'Brien-Fleming, one-sided alpha .05)", per-look t
+  "7.627, 4.639, 3.644, 3.094, 2.736, 2.480, 2.285, 2.130, 2.002, 1.896 and 1.804". Futility is "non-binding"; it "OPENS
+  at n = 640" (E1d section 4b: "it opens only at n = 640, and only where it would read powered"). Hard cap 704.
+  "A futility stop or an uncrossed cap is NOT a null; P8 null-scale item 4 decides it" (E1d section 4b).
+- **The stratum** (E1d section 4, "beside, decides nothing"): "H-P1's t and k/n within the frozen stratum and within the
+  moving stratum, labelled DESCRIPTIVE ONLY. The record makes no stratum-conditioned claim, so a subgroup read can never
+  become a finding later (P8)". And: "The look's disposition output must be byte-identical with `held_goal` present,
+  stripped and shuffled."
+- **The tail census** (E1c section 4, "Beside, no bar"): "the descriptive tail census (|d| > 0.4 and the first
+  divergence tick of those seeds)". The look report heads it "Tail census (|d| > 0.4; beside, no bar)".
+
+### R3. Look 1 of 11 (n = 64)
+
+Source: `lanes/e1d-plan-w-work/reports/compare-production-look1.md` (report line numbers below). Board record: #6200
+(2026-10-29 12:12:11, "E1d look 1 done"; the report is quoted in it). The brief names #6196 for look 1; #6196 is a
+`resource:timing` renew by e1d-b3, so the look-1 record is #6200.
+
+- VALIDITY (line 141): "**VALIDITY: ALL HOLD**". Repeat arm (line 138): "action flips 0 first=None; recorded series identical:
+  True". pc seed 23000: "action flips 383 (first 8)"; pc seed 23001: "action flips 430 (first 4)" (lines 139-140). Tree sha
+  c4c10b285f1741aa798d5ee9c5296ae371fabecf, native sha256 fb25d9a9...68110b (lines 136-137).
+- H-P1 (line 144): "t=1.042 (31/64 seeds > 0), SD=0.2315 -> **CONTINUE: no verdict (CONTINUE at look 1 of 11, n=64 (no
+  verdict): next look n=128 | beside (no bar): k 31/64, trim10 +0.0266, HL +0.0231 [-0.0256, +0.0784], zeros 0.016,
+  |d|>0.4 7)**"
+- Decision of record (line 146): "look 1 of 11, n=64: t=1.042 vs boundary 7.627, 31/64 > 0 (need 32), conditional power
+  0.988 (futility < 0.1, closed at this look) -> continue"
+- Stratum, DESCRIPTIVE ONLY (line 145): "8/64 seeds goal-frozen; H-P1 within frozen t=-0.248 (3/8), within moving t=1.211
+  (28/56); real/pfrozen frozen status disagrees on 7 seeds (pfrozen held_goal missing on 0)"
+- Sensitivity (line 147): "H-P1 without degenerate seeds [23008]: t=1.042 (31/63)". Exact-zero (line 154): "n=64:
+  exact-zero 0.016". E-P2 (line 150): "no stop of record yet".
+- Tail census (lines 156-164): 7 seeds with |d| > 0.4: 23019 (+0.4390, tick 8), 23022 (+0.4384, 211), 23025 (+0.4629,
+  150), 23041 (+0.7285, 38), 23049 (+0.5888, 49), 23058 (-0.6588, 46), 23061 (-0.4162, 197).
+- Perception tier (line 166): "production (reported eprop-snn)". Wall (line 169): "total run_s over runs = 3450s (131
+  runs)".
+
+### R4. Look 2 of 11 (n = 128)
+
+Source: `lanes/e1d-plan-w-work/reports/compare-production-look2.md`. Board record: #6263 (2026-10-29 13:21:23).
+
+- VALIDITY (line 269): "**VALIDITY: ALL HOLD**". Repeat arm (line 266): "action flips 0 first=None; recorded series identical:
+  True". pc seed 23000: "action flips 383 (first 8)"; pc seed 23001: "action flips 430 (first 4)" (lines 267-268).
+- H-P1 (line 272): "t=0.542 (70/128 seeds > 0), SD=0.3379 -> **CONTINUE: no verdict (CONTINUE at look 2 of 11, n=128 (no
+  verdict): next look n=192 | beside (no bar): k 70/128, trim10 +0.0198, HL +0.0229 [-0.0150, +0.0637], zeros 0.008,
+  |d|>0.4 22)**"
+- Decision of record (line 274): "look 2 of 11, n=128: t=0.542 vs boundary 4.639, 70/128 > 0 (need 64), conditional power
+  0.773 (futility < 0.1, closed at this look) -> continue"
+- Stratum, DESCRIPTIVE ONLY (line 273): "16/128 seeds goal-frozen; H-P1 within frozen t=0.442 (9/16), within moving t=0.453
+  (61/112); real/pfrozen frozen status disagrees on 7 seeds (pfrozen held_goal missing on 0)"
+- Sensitivity (line 275): "H-P1 without degenerate seeds [23008]: t=0.541 (70/127)". Exact-zero (lines 282-283): "n=64:
+  exact-zero 0.016", "n=128: exact-zero 0.008". E-P2 (line 278): "no stop of record yet".
+- Tail census (lines 287-308): 22 seeds with |d| > 0.4 (the 7 of look 1, plus 23065 +0.5326, 23068 +1.4218, 23069
+  -0.5162, 23072 -0.4300, 23082 -0.5967, 23086 +0.6256, 23098 -1.2385, 23100 -0.7583, 23101 -0.5626, 23105 -0.4406,
+  23109 +0.7346, 23118 +0.9959, 23120 -0.4359, 23121 +0.4562, 23126 -1.3311).
+- Perception tier (line 310): "production (reported eprop-snn)". Wall (line 313): "total run_s over runs = 7232s (259
+  runs)". Board #6263 states: "Look 3 started (n=192)."
+
+### R5. Looks 3 to 11: OWED
+
+Each is filled from its report with the same lines as R3 (VALIDITY, H-P1, decision of record, beside numbers, stratum
+line, tail census count). Nothing is entered until the report exists.
+
+| Look | n | Boundary t (E1c section 5) | Source report | State |
+|---|---|---|---|---|
+| 3 | 192 | 3.644 | `reports/compare-production-look3.md` | OWED (plan: `logs/plan-look3.txt`; look 3 started per #6263) |
+| 4 | 256 | 3.094 | `reports/compare-production-look4.md` | OWED |
+| 5 | 320 | 2.736 | `reports/compare-production-look5.md` | OWED |
+| 6 | 384 | 2.480 | `reports/compare-production-look6.md` | OWED |
+| 7 | 448 | 2.285 | `reports/compare-production-look7.md` | OWED |
+| 8 | 512 | 2.130 | `reports/compare-production-look8.md` | OWED |
+| 9 | 576 | 2.002 | `reports/compare-production-look9.md` | OWED |
+| 10 | 640 | 1.896 | `reports/compare-production-look10.md` | OWED (futility opens here, section 4b) |
+| 11 | 704 | 1.804 | `reports/compare-production-look11.md` | OWED (the hard cap) |
+
+Look 1 and 2 boundaries (7.627, 4.639) are in R3 and R4. The per-look t list is E1c section 5's, quoted above; the
+mapping of the eleven values to looks 1-11 is by order.
+
+### R6. Disposition: OWED
+
+OWED. It is the integrator's, under section 8, from the stop of record (harm boundary crossed with k >= ceil(n/2),
+futility at n = 640 where powered, or the uncrossed cap at n = 704), and it names its mde where P8 null-scale item 4
+needs it. The campaign's own final report (`reports/` and `logs/campaign.console`) is the source. A futility stop or an
+uncrossed cap is NOT a null.
