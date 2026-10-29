@@ -34,11 +34,17 @@ A section with a one-shot line is a fixed count (the amendment's item 3): it owe
 target. The line must state a reason (six words or more) and must not be negated ("not a one-shot design"); a bare or
 negated one-shot claim waives nothing and the sequential fields are owed.
 
+What "frozen" means (the freeze marker rule): a file is frozen only when its OWN TEXT says so, with a line that
+carries a freeze marker (`Freeze commit <sha>`, `Status: FROZEN`, `frozen at/in <sha>`). Never a commit subject: an
+author controls a subject exactly as they control the word DRAFT, so this gate never reads one and a commit
+subject saying "freeze" with no marker in the text grandfathers nothing and ends no deferral. Only a file that was
+frozen AND executed before the landing is grandfathered, and only by name.
+
 Three closed lists, all by file name (never by ancestry):
   GRANDFATHERED          frozen before the landing; exempt whole, so a later edit to a grandfathered file is
                          not read by this gate (the list file says a section added later is not grandfathered;
                          that stays review-enforced). Evidence files only: every entry is a file the scan reads.
-  OWES_AT_FREEZE         post-landing drafts that have not frozen: name -> ISO expiry date. Deferred and printed on
+  OWES_AT_FREEZE         drafts that have not frozen (or not run) by the landing: name -> ISO expiry date. Deferred and printed on
                          every run until the expiry (R-DEFERRAL-EXPIRED) or until a line of the file says it froze
                          (R-FROZEN-DEFERRED); the author-maintained word DRAFT neither buys nor ends a deferral.
   NOT_PREREGISTRATIONS   files R1 or R2 matches that say of themselves they are not a pre-registration (references,
@@ -46,7 +52,12 @@ Three closed lists, all by file name (never by ancestry):
 A name in any list whose file is gone (or, for GRANDFATHERED, is no longer an R1/R2 match) is R-STALE-GRANDFATHER,
 so the lists only shrink.
 
-What it reds: R-NO-SECTION, R-FIELD, R-STALE-GRANDFATHER, R-DEFERRAL-EXPIRED, R-FROZEN-DEFERRED.
+The list file's section 4 names the files it keeps owing the section (integrator ruling 2026-10-24, #5196); the gate
+reads it and reds R-LIST-CONFLICT when GRANDFATHERED names one, so the two sources cannot disagree.
+Files are the ones git tracks (`git ls-files`), so the verdict does not depend on untracked working-tree litter; a
+tree that is not a git checkout (a temporary test tree) is walked instead.
+
+What it reds: R-NO-SECTION, R-FIELD, R-STALE-GRANDFATHER, R-DEFERRAL-EXPIRED, R-FROZEN-DEFERRED, R-LIST-CONFLICT.
 What it cannot do, and says so on every run: judge whether a number is right, a simulation was run, or a
 boundary is sound (the policy-enforcer and the panel do); it checks that each field is WRITTEN.
 
@@ -60,17 +71,20 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import subprocess
 import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
+from snn_data_lake.gates.docs_only_battery import _git
 from snn_data_lake.gates.null_scale_gate import Red, _lines, _section, _structure
 
 REPO = Path(__file__).resolve().parents[3]
 
 # the landing commit is fb7b6581 (it added "### P1 amendment" to docs/POLICIES.md); GRANDFATHERED is by name, not ancestry
+LIST_FILE = "specs/022-unified-brain-arc/evidence/p1-sample-size-grandfather.md"
 SKIP_DIRS = frozenset({"node_modules", "target", "graphify-out", "__pycache__"})
 PREREG_RE = re.compile(r"pre-?regist|prereg", re.I)
 HEADING_RE = re.compile(
@@ -79,7 +93,8 @@ HEADING_RE = re.compile(
 SECTION_RE = re.compile(r"sample size \(p1\)", re.I)
 ONE_SHOT_RE = re.compile(r"one-shot", re.I)
 NEGATED_RE = re.compile(
-    r"\b(?:not|never|isn't|non|no)\b[\s\w,'-]{0,25}?one-shot|one-shot\b[\s\w,'-]{0,15}?\b(?:not|never)\b",
+    r"\b(?:not|never|isn't|non|no)\b[\s\w,'-]{0,25}?one-shot"
+    r"|one-shot\b[\s\w,'-]{0,15}?\b(?:not|never)\s+(?:a|one)\b",
     re.I,
 )
 ONE_SHOT_MIN_WORDS = 6
@@ -102,8 +117,9 @@ _EV = "specs/022-unified-brain-arc/evidence/"
 
 # The pre-registrations frozen before the landing, by name (72 evidence files): the 76 of
 # p1-sample-size-grandfather.md at c9d0c097 less its three R1 reference files outside the evidence directories
-# (NOT_PREREGISTRATIONS) and less g5 (its Part E is a post-landing draft, OWES_AT_FREEZE); g2 and g3, which that
-# list calls DRAFT, froze in 6bc97430 and 1d99ff46 (2026-10-06, git log), before the landing, so they are here.
+# (NOT_PREREGISTRATIONS) and less g3 and g5 (OWES_AT_FREEZE: never run, or a post-landing Part E). g2 is here: the
+# list calls it DRAFT, but it froze in 6bc97430 (author date 2026-10-03) and ran (5.1 read 2026-10-07), before the
+# landing; list section 4 no longer keeps it owing.
 # May shrink only by deleting an entry in the same commit as its file (R-STALE-GRANDFATHER). Regenerate the
 # candidates with `--census`.
 GRANDFATHERED: frozenset[str] = frozenset(
@@ -122,7 +138,6 @@ GRANDFATHERED: frozenset[str] = frozenset(
                 "g1b-pool-selection",
                 "g1c-carried-state",
                 "g2-taught-problems",
-                "g3-growth-loop",
                 "g3-t0-baseline",
                 "g4-wiring-prior",
                 "g5-handoff-repair-2026-10-11",
@@ -187,11 +202,16 @@ GRANDFATHERED: frozenset[str] = frozenset(
         ),
     }
 )
-# Post-landing drafts that have not frozen, name -> ISO date the deferral lapses (an integrator-set bound: past it the
-# file reds R-DEFERRAL-EXPIRED until it carries the section). g5-readout-variants froze 2026-10-07 (66abb0a1) and ran
-# before the landing, but its Part E (drift-surviving relational readout) was added as a DRAFT on 2026-10-27, so the
-# file as a whole is not grandfathered and Part E owes the section when it freezes.
-OWES_AT_FREEZE: Mapping[str, str] = {_EV + "g5-readout-variants.md": "2026-11-05"}
+# Drafts that have not frozen, name -> ISO date the deferral lapses (lane-set, integrator to ratify in the promotion
+# commit: past it the file reds R-DEFERRAL-EXPIRED until it carries the section). g3-growth-loop never ran (every
+# amendment is "PRE-DATA", its A4 says the campaign instrument is ABSENT) and the list file's section 4 keeps it
+# owing (integrator ruling, D-73): a commit subject saying "freeze" is not a freeze. g5-readout-variants froze
+# 2026-10-07 (66abb0a1) and ran before the landing, but its Part E (drift-surviving relational readout) was added as
+# a DRAFT on 2026-10-27, so the file as a whole is not grandfathered and Part E owes the section when it freezes.
+OWES_AT_FREEZE: Mapping[str, str] = {
+    _EV + "g3-growth-loop.md": "2026-11-05",
+    _EV + "g5-readout-variants.md": "2026-11-05",
+}
 # Matched by R1 or R2, but say of themselves they are not a pre-registration. Reasons:
 NOT_PREREGISTRATIONS: frozenset[str] = frozenset(
     {
@@ -221,12 +241,37 @@ class Report:
 
 
 def _markdown(root: Path):
-    """Repo-relative paths of every `*.md` under root, skipping dot-directories and SKIP_DIRS."""
+    """Repo-relative paths of the `*.md` files under root, outside dot-directories and SKIP_DIRS: the files git
+    tracks when root is a git checkout (untracked litter must not change the verdict), else a directory walk."""
+    if (root / ".git").exists():
+        try:
+            out = _git("ls-files", "-z", "--", "*.md", root=root)
+        except (subprocess.CalledProcessError, OSError):
+            out = None
+        if out is not None:
+            for rel in sorted(out.split("\0")):
+                parts = rel.split("/")
+                skip = any(p.startswith(".") or p in SKIP_DIRS for p in parts[:-1])
+                if rel and not skip and (root / rel).is_file():
+                    yield rel
+            return
     for dirpath, dirs, files in os.walk(root):
         dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS)
         for name in sorted(files):
             if name.endswith(".md"):
                 yield (Path(dirpath) / name).relative_to(root).as_posix()
+
+
+def _owed_by_list(text: str) -> frozenset[str]:
+    """The files section 4 of the list file keeps owing the section (its `*.md` paths between the `## 4.` heading
+    and the next `## ` heading)."""
+    owed, inside = set(), False
+    for line in text.splitlines():
+        if line.startswith(("# ", "## ", "### ")):  # 4b and later are not section 4's owing rows
+            inside = line.startswith("## 4.")
+        elif inside:
+            owed.update(re.findall(r"`([^`]+\.md)`", line))
+    return frozenset(owed)
 
 
 def _preregistrations(root: Path) -> dict[str, list]:
@@ -293,6 +338,11 @@ def check(
     marked = _preregistrations(root)
     found = [rel for rel in marked if rel not in not_prereg]
     owing, carry = set(), 0
+    list_file = root / LIST_FILE
+    if list_file.is_file():
+        for rel in sorted(_owed_by_list(list_file.read_text(encoding="utf-8")) & grandfathered):
+            msg = f"{LIST_FILE} section 4 keeps this file owing the section; it cannot also be grandfathered"
+            report.reds.append(Red("R-LIST-CONFLICT", rel, msg))
     for rel in found:
         if rel in grandfathered:
             continue
@@ -379,6 +429,13 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
         "R-FROZEN-DEFERRED": (
             {f"{_EVT}a.md": head + "DRAFT; the freeze commit 6bc97430.\n"},
             {"owes_at_freeze": {f"{_EVT}a.md": "2999-01-01"}},
+        ),
+        "R-LIST-CONFLICT": (
+            {
+                LIST_FILE: f"## 4. Owes\n| 1 | `{_EVT}a.md` |\n",
+                f"{_EVT}a.md": head + "seeds 8.\n",
+            },
+            {"grandfathered": frozenset({f"{_EVT}a.md"})},
         ),
     }
 

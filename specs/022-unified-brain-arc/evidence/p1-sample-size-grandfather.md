@@ -42,7 +42,7 @@ to pre-registrations, not pre-registrations, and are not on the list.
   frozen after the amendment, and a merge of its branch does not add it here (the closed list is by name, not by
   ancestry).
 
-## 3. The list (73 grandfathered = 71 rows below + the 2 executed rows of 4b; three DRAFT rows moved to section 4)
+## 3. The list (74 grandfathered = 71 rows below + the 3 executed rows of 4b; two DRAFT rows moved to section 4)
 
 | # | file | rule | grandfathered text (R1: the heading lines at `c9d0c097`) |
 |---|---|---|---|
@@ -118,9 +118,9 @@ to pre-registrations, not pre-registrations, and are not on the list.
 | 75 | `specs/022-unified-brain-arc/evidence/w2-context-latents.md` | R2 | whole file |
 | 76 | `specs/022-unified-brain-arc/evidence/w3-world-baselines.md` | R2 | whole file |
 
-## 4. Owes a "Sample size (P1)" section at freeze (3; NOT grandfathered)
+## 4. Owes a "Sample size (P1)" section at freeze (2; NOT grandfathered)
 
-Arc-2 panel, lens B MAJOR-5 (board #5196), fixed by the integrator 2026-10-24: P1 grandfathers only pre-registrations
+Arc-2 panel, lens B MAJOR-5 (board #5196), fixed by the integrator 2026-10-24 (G2 has since moved to 4b, see its row): P1 grandfathers only pre-registrations
 "frozen before this amendment landed". These three rows declare themselves DRAFT / not frozen in their own text at
 `c9d0c097` and have not run, so freezing them later with their
 c9d0c097 text would have let the next engine rows (G2, G3, G5) run with a habitual seed count. Each must carry the
@@ -129,11 +129,10 @@ without the section reds. Row numbers are those of the original 76-file list.
 
 | # | file | rule | text at `c9d0c097` |
 |---|---|---|---|
-| 10 | `specs/022-unified-brain-arc/evidence/g2-taught-problems.md` | R1 | L1 `# G2 / T110 -- problems the current weights provably cannot solve, taught through G0's channel (DRAFT pre-r...`; L63 `## 2. Pre-registration (DRAFT)` |
 | 11 | `specs/022-unified-brain-arc/evidence/g3-growth-loop.md` | R1 | L1 `# G3 / T111 -- growth where G2's capacity cell licenses it (DRAFT pre-registration, wave 1; not frozen)`; L60 `## 2. Pre-registration (DRAFT; frozen by the orchestrator; later changes are dated strengthenings before an...` |
 | 15 | `specs/022-unified-brain-arc/evidence/g5-readout-variants.md` | R1 | L1 `# G5 / T113 -- readout variants against the incumbent OnlineReadout (pre-registration DRAFT)` |
 
-### 4b. Executed rows whose heading still says DRAFT (2; grandfathered)
+### 4b. Executed rows whose heading still says DRAFT (3; grandfathered)
 
 policy-enforcer #5319 m1: r1 and r3 were first moved to section 4 by the same DRAFT grep, but both say "DRAFT; becomes
 frozen at the commit that lands it" and both landed and ran (each file has its Results section; R3 / T104 is ticked, R1 carries
@@ -143,4 +142,5 @@ stale history.
 | # | file | rule | text at `c9d0c097` |
 |---|---|---|---|
 | 29 | `specs/022-unified-brain-arc/evidence/r1-bounded-recall.md` | R1 | L1 `# R1 / T102 -- bound historical recall (pre-registration DRAFT and record)`; L97 `## 2. Pre-registration (DRAFT; becomes frozen at the commit that lands it; later changes are dated strength...` |
+| 10 | `specs/022-unified-brain-arc/evidence/g2-taught-problems.md` | R1 | moved here 2026-10-29 (policy-enforcer #6592, integrator ruling D-73): frozen in 6bc97430 (author date 2026-10-03) AND executed (section 5.1 is a confirmatory read, 2026-10-07), so frozen before the landing. G3 stays in section 4: never run, every amendment PRE-DATA. |
 | 31 | `specs/022-unified-brain-arc/evidence/r3-replay-growth-composition.md` | R1 | L1 `# R3 / T104 -- eligible replay composed with the incumbent learner and grower; earned growth on held-out da...`; L84 `## 2. Pre-registration (DRAFT)` |
