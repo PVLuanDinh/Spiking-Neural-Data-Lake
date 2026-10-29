@@ -395,3 +395,25 @@ Open datasets beyond the Allen and Marks & Goard sets:
 - Driscoll 2017 PPC: Dryad doi:10.5061/dryad.gqnk98sjq [V]
 - Keinath 2022 CA1: Dryad doi:10.5061/dryad.2z34tmpp9 [V]
 - Allen Visual Behavior 2P (multi-session familiar/novel; Garrett et al. bioRxiv 10.1101/2023.02.14.528085) [V]
+
+---
+
+## Amendment 2026-10-29 to D0: one drift home (integrator G5 S.5 row 5, launcher D-70)
+
+Source: `g5-readout-variants.md` fold 1 F.6 (claude/g5-settle-1029@2157ee27) and the G9 draft's owed item 3
+(claude/g9-prereg-1029@a404bada). Appends only; nothing above is edited, and nothing is built.
+
+**Names `instruments/representational_drift.py` owns:**
+- from D0 as written: `pv_correlation`, `tuning_correlation`, `procrustes_realign`, `DriftReading`;
+- added by F.6: `rate_correlation` and `rsa_correlation` (F.2), and `read_drift(pre, post, *, probe_ids, units=None, metric)`, a thin
+  dispatcher over the four readers that returns a `DriftReading` (fields `values`, `mean`);
+- the F.1 unit rule (compare the INTERSECTION unit set) and the F.5 guard (flat response is flagged, not 0.0) apply to all four;
+- **`rsa_drift` moves in** (G9 owed item 3). It now lives in `infra/_mathutils.py` (added by `f0f50385`, test first in `fd987f3f`,
+  both on the G9 branch only). When the module is built it is folded into the module as the body of `rsa_correlation`, and the
+  `_mathutils` copy is removed in the same change, so exactly one RSA function exists.
+
+**Import rule for Part E and G9:**
+- Part E's alignment module imports `procrustes_realign` from this module and keeps only the anchors and the readout.
+  P-E0 uses `pv_correlation` alone.
+- G9's criterion 1 imports the readers (`rate`, `tuning`, `rsa`, `pv`) from here.
+- Neither defines a drift-reading or Procrustes function of its own (P2). Correlations come from `infra/_mathutils.pearson`.
