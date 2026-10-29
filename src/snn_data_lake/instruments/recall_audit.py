@@ -224,14 +224,19 @@ class Workload:
     meta: dict = field(default_factory=dict)
 
 
-def _episode(rng, when):
-    return {
+def _episode(rng, when, session=None):
+    """One autobiographical episode. `session` set = the F3 session-bearing schema (engine/brain.py
+    stamps it on durable episodes); None = the legacy shape with no session slot."""
+    ep = {
         "who": "self" if rng.random() < P_SELF else rng.choice(OTHER_WHO),
         "what": rng.choice(ACTIONS),
         "where": rng.choice(PLACES),
         "when": str(when),
         "affect": rng.choice(AFFECT),
     }
+    if session is not None:
+        ep["session"] = str(session)
+    return ep
 
 
 def _collision_pairs(n):
@@ -262,7 +267,9 @@ def make_workload(seed, *, n_auto, boots, n_filler, filler_bytes, capacity, coun
     boot0 = []
     for b in range(boots):
         for i in range(per_boot):
-            ep = _episode(rng, 5 * (i + 1))  # `when` restarts at each simulated boot (1.4 (d))
+            # `when` restarts at each simulated boot (1.4 (d)); boot 0 is the legacy schema (no session
+            # slot), later boots carry one, so W_c mixes both schemas (2.2, A2)
+            ep = _episode(rng, 5 * (i + 1), session=b if b else None)
             if b == 0:
                 boot0.append(ep)
             stream.append(Record.auto(ep))
@@ -314,35 +321,53 @@ def _subcue(rng, ep, with_when, k):
     return cue
 
 
+def _draw(make, accept, what, tries=1000):
+    """Resample `make()` until `accept` holds; refuse visibly (never spin) when the shape cannot."""
+    for _ in range(tries):
+        c = make()
+        if accept(c):
+            return c
+    raise ValueError(
+        f"no {what} cue satisfies its class in {tries} draws: the workload shape is too small"
+    )
+
+
 def _make_cues(rng, oracle, capacity, counts, lacking, pairs, collided, dups, non_auto):
     rec = [r.episode for r in oracle.recallable()]
     resident, older = rec[-capacity:], rec[:-capacity]
+    win = {episode_key(e) for e in resident}
     cues = []
     add = lambda cls, cue: cues.append(Cue(cls, dict(cue)))  # noqa: E731
+
+    def hits(c):
+        return {episode_key(oracle.distinct[i].episode) for i in oracle.match(c)}
+
+    # `when` restarts every boot, so a partial cue can also match a same-index episode of another
+    # tier: C1/C2 need a match INSIDE the boot-restore window, C3/C4 matches ALL OUTSIDE it (#6673)
+    inside = lambda c: bool(hits(c) & win)  # noqa: E731
+    outside = lambda c: bool(hits(c)) and not hits(c) & win  # noqa: E731
+    sub2 = lambda pool: _subcue(rng, rng.choice(pool), True, rng.randint(1, 2))  # noqa: E731
 
     for _ in range(counts["C1"]):
         add("C1", rng.choice(resident))
     for _ in range(counts["C2"]):
-        add("C2", _subcue(rng, rng.choice(resident), True, rng.randint(1, 2)))
+        add("C2", _draw(lambda: sub2(resident), inside, "C2"))
     for _ in range(counts["C3"]):
-        add("C3", rng.choice(older))
+        add("C3", _draw(lambda: rng.choice(older), outside, "C3"))
     for _ in range(counts["C4"]):
-        add("C4", _subcue(rng, rng.choice(older), True, rng.randint(1, 2)))
-    n = 0
-    while n < counts["C5"]:
-        c = _subcue(rng, rng.choice(rec), False, rng.randint(2, 3))
-        if len(oracle.match(c)) >= 2:
-            add("C5", c)
-            n += 1
+        add("C4", _draw(lambda: sub2(older), outside, "C4"))
+    for _ in range(counts["C5"]):
+        draw = lambda: _subcue(rng, rng.choice(rec), False, rng.randint(2, 3))  # noqa: E731
+        add("C5", _draw(draw, lambda c: len(oracle.match(c)) >= 2, "C5"))
     for i in range(counts["C6_novel"]):
-        add("C6", {"when": rng.choice(rec)["when"], "what": f"novel{i}"})
+        add("C6_novel", {"when": rng.choice(rec)["when"], "what": f"novel{i}"})
     for i in range(counts["C6_none"]):
-        add("C6", {"when": lacking[i % len(lacking)]["when"], "affect": "None"})
+        add("C6_none", {"when": lacking[i % len(lacking)]["when"], "affect": "None"})
     for i in range(counts["C6_ghost"]):
         (_a, ghost), ep = pairs[i % len(pairs)], collided[i % len(collided)]
-        add("C6", dict(ep, when=ghost))
+        add("C6_ghost", dict(ep, when=ghost))
     for _ in range(counts["C6_extra"]):
-        add("C6", dict(rng.choice(rec), mood="x"))
+        add("C6_extra", dict(rng.choice(rec), mood="x"))
     for i in range(counts["C7"]):
         add("C7", dups[i % len(dups)])
     for i in range(counts["C8"]):
