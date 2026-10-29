@@ -691,3 +691,88 @@ def test_a_red_no_line_assigns_still_joins_both_parts(monkeypatch, red):
         else:
             v = _part_verdict(monkeypatch, part, block, reds=_quiet_red(red))
         assert v["R2-c3"] == "RED", (part, red)
+
+
+# ---- ROUND 2, MAJOR-3 option (i): K3's "rest of the night, then 6" (2.2; R2-c6) ------------------
+# The harness carries circadian phase across the restart; the brain does not (finding iii): a
+# restoring process starts a fresh clock, so twin_K3 measures how many sleep ticks its cut night had
+# left and every K3 restoring arm records exactly that many plus S=6.
+
+K3_RESTORES = ("res_K3", "O_sleepskip", "SLEEPDIGEST_on", "SLEEPDIGEST_off")
+
+
+class _Learner:
+    def __init__(self):
+        import random
+
+        self.rng = random.Random(0)
+
+    def weights(self):
+        return [[0.0]]
+
+
+class _NightBrain:
+    """Mid-night: two sleep ticks left, a day of three wake ticks, then the next night."""
+
+    day_period = 10
+
+    def __init__(self):
+        from types import SimpleNamespace
+
+        self.script = ["asleep"] * 2 + ["awake"] * 3 + ["asleep"] * 9
+        self._nights, self._was = 1, "asleep"
+        self.brain = SimpleNamespace(_ixn=_Learner())
+
+    def tick(self):
+        state = self.script.pop(0)
+        if state == "awake" and self._was == "asleep":
+            self._nights += 1  # `_enter_wake` runs in the tick that wakes
+        self._was = state
+        return state
+
+
+def test_twin_k3_records_the_rest_of_its_night_then_s_sleep_ticks():
+    brain = _NightBrain()
+    rows = rh._sleep_rows(brain, [], until_wake=True)
+    assert len(rows) == 2 + rh.S_SLEEP and brain._nights == 2
+
+
+def test_a_k3_restore_records_the_twins_measured_count_plus_s():
+    brain = _NightBrain()
+    brain._was = "awake"  # a fresh clock: the restore does not know it was cut mid-night
+    assert len(rh._sleep_rows(brain, [], rh.S_SLEEP + 2)) == 2 + rh.S_SLEEP
+
+
+@pytest.mark.parametrize("role", K3_RESTORES)
+def test_a_k3_restoring_arm_refuses_to_run_without_the_twins_count(no_go, tmp_path, role):
+    with pytest.raises(ValueError, match="rest of the night"):
+        rh.run_process(role, 15000, str(tmp_path), str(tmp_path / "o.json"), nonce="n")
+
+
+def test_the_proc_command_line_carries_the_k3_count(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(rh, "run_process", lambda *a, **kw: seen.update(kw))
+    rh.main(["--proc", "res_K3", "15000", "h", "o.json", "r2", "n", "4"])
+    assert seen == {"nonce": "n", "k3_rest": 4}
+
+
+@pytest.mark.parametrize("measured", [4, None])
+def test_run_seed_hands_twin_k3s_measured_count_to_every_k3_restore(
+    tmp_path, monkeypatch, measured
+):
+    argv = {}
+
+    def child(args, **kwargs):
+        argv[args[3]] = args
+        if args[3] == "twin_K3" and measured is not None:
+            rec = {"role": "twin_K3", "before": {}, "rows": [], "k3_rest": measured}
+            Path(args[6]).write_text(json.dumps(rec), encoding="utf-8")
+        return rh.subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(rh.subprocess, "run", child)
+    rh.run_seed(15000, tmp_path, roles=K3_RESTORES)
+    assert "twin_K3" in argv, "a K3 restore's selection brings the twin it reads"
+    for role in K3_RESTORES:
+        want = [] if measured is None else [str(measured)]
+        assert argv[role][9:] == want, (role, argv[role])
+    assert argv["pre_K3"][9:] == [] and argv["twin_K3"][9:] == []
