@@ -144,3 +144,16 @@ def test_an_exemption_never_hides_an_orphan_file(tmp_path):
         "D2a c/src/orphan.rs: not in the mod tree of crate c (orphan file)"
     ], res
     assert not [d for d in res["d"] if d.startswith("D2b")], res
+
+
+def test_a_facade_reexport_of_an_unused_learn_fn_is_not_a_use(tmp_path):
+    """#3595: `from ._native import learn` plus `__all__` in a live facade nothing calls through is
+    an import, not a use -- M1 must fire, and D1 (import counts there) stays quiet."""
+    facade = 'from snn_data_lake._native import learn\n\n__all__ = ["learn"]\n'
+    nd._write(
+        tmp_path,
+        {"native/sndl-python/src/lib.rs": nd._LEARN_LIB, "src/snn_data_lake/facade.py": facade},
+    )
+    res = nd.audit(tmp_path, live={"snn_data_lake.facade"}, src=tmp_path / "src")
+    assert res["d"] == [], res
+    assert len(res["m"]) == 1 and "learn" in res["m"][0], res
