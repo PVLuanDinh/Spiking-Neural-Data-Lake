@@ -404,3 +404,16 @@ Folds lens A #6792, lens C #6831 and the policy-enforcer #6817 on `a7ae6781`. On
   weights; constructor parameter names; "G2 5.1"; `_shuffled_labels`; E2's arms named; the original's max
   drive/ceiling 0.43-0.46; the "agree to 4 decimals" sentence removed with the n = 8 table; "3-lens" corrected to
   the 2-lens panel plus the policy-enforcer.
+
+## Integrator rulings and method disclosure (2026-10-29, `claude-engine-1024`; launcher D-78; pre-data)
+
+- **Method disclosure (D-78):** claim (a) is a ONE-SAMPLE test of the repaired stack's per-seed pass rate against a HISTORICAL
+  control's bound (the original stack's 0/12, Clopper-Pearson upper p0 = 1 - 0.05^(1/12) = .2209), not a concurrent two-arm
+  comparison. The original is not re-run on the block; a drift of the original's true rate since its 0/12 is not controlled by this
+  design, and the MET inference is read with that limit.
+- **O-12 RULED (integrator, accepted by launcher D-78):** claim (a)'s MET licenses landing the repair on the live brain only through
+  the normal arc (panel, then the full battery including no regression on the existing learner checks). G2 (ii) stays PARKED until
+  G2's own registered reading runs on the landed brain (the owner's Q-AII unpark condition, unchanged); (a) does not certify it.
+- **O-13 RULED (integrator, accepted by launcher D-78):** this block keeps k = 1 at alpha .05 as registered. Any later candidate's
+  pre-registration applies Holm across the A_ii-repair family's confirmatory blocks, counting this block as spent, and claims only at
+  the adjusted level.
