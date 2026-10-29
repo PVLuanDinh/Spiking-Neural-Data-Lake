@@ -30,10 +30,11 @@ python -m ruff check .                          # lint (rules E, F, I, UP, B)
 python -m ruff format --check src tests tools   # formatting -- this exact scope is what CI runs
 ```
 
-*(Corrected 2026-10-28, cloud audit: this section was titled "The four gates", said CI enforces them on
-{ubuntu, windows} x {3.11, 3.12, 3.13}, counted 277 self-checks (375 modules today) and gave the format scope as
-`src tests`; CI runs `src tests tools` on 3.14t. The GitHub Actions workflow has been disabled since 2026-08-20, so
-the operator's local battery is the verification of record.)*
+*(Corrected 2026-10-28, cloud audit: this section was titled "The four gates", said CI enforces them on {ubuntu,
+windows} x {3.11, 3.12, 3.13}, counted 277 self-checks (`run_selfchecks.py` prints its own `N/N` count; the number
+depends on which gated tiers resolve) and gave the format scope as `src tests`; CI runs `src tests tools` on 3.14t.
+The GitHub Actions workflow has been disabled since 2026-08-20, so the operator's local battery is the verification
+of record.)*
 
 ## Invariants
 
