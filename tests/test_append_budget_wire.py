@@ -269,3 +269,43 @@ def test_a_flood_that_ARRIVES_AS_A_RAMP_is_invisible_at_any_magnitude():
     step = AppendBudget(baseline={"per_tag_p95_bytes": {"7": 12381.0}})
     step.on_append(0x07, int(12381.0 * 8 * 2))
     assert step.end_tick()
+
+
+#: Declared, not measured: the spread of a re-record across HOSTS on one tier is unknown (two runs
+#: on one host are byte-identical). A tier change is never compared -- it skips, because the
+#: production tier writes different volumes and its seed is recorded on the pinned host.
+RECORD_REL_TOL = 0.05
+
+
+def test_the_record_command_reproduces_the_committed_seeds_on_their_tier():
+    """The seed went stale because the recorded method was prose with no command (the file itself
+    records a figure set that "had no recorded command and do not reproduce"). The method, run as
+    a command, must regenerate every seed it has re-recorded, within RECORD_REL_TOL on the tier
+    the seed was recorded on. Nothing comparable on this tier is a SKIP with the reason, never a
+    pass."""
+    import json
+    import subprocess
+    import sys
+
+    base = json.loads(APPEND_BASELINE.read_text(encoding="utf-8"))
+    r = subprocess.run(
+        [sys.executable, "-m", "snn_data_lake.substrate.lake_engine", "--record"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=900,
+    )
+    assert r.returncode == 0, (r.stdout[-2000:], r.stderr[-2000:])
+    got = json.loads(r.stdout)
+    assert got["seed"] == 0 and got["ticks"] == 120, got
+    recorded = base.get("recorded", {})
+    same_tier = {t: rec for t, rec in recorded.items() if rec.get("tier") == got["tier"]}
+    if not same_tier:
+        pytest.skip(f"no seed recorded on tier {got['tier']!r} (recorded: {recorded})")
+    for tag, rec in same_tier.items():
+        want = base["per_tag_p95_bytes"][tag]
+        assert rec["p95"] == want, f"tag {tag}: provenance {rec['p95']} != seed {want}"
+        have = got["per_tag"][tag]["p95"]
+        assert abs(have - want) <= RECORD_REL_TOL * want, (
+            f"tag {tag}: re-record {have} B vs committed {want} B on tier {got['tier']}"
+        )
