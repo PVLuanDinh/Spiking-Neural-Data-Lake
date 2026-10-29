@@ -251,28 +251,29 @@ def _per_seed(**over):
 
 
 def test_verdict_invalid_seed_replacement_halt_and_must_differ_bars():
-    per = {1: _per_seed(), 2: _per_seed()}
-    per[2]["c2"]["I_K2_differs"] = False
-    v = rh.verdict(per, [1, 2])
-    assert v["invalid_seeds"] == [2] and not v["halted"]
+    s1, s2, s3, s4 = rh.DEV_SEEDS[:4]
+    per = {s1: _per_seed(), s2: _per_seed()}
+    per[s2]["c2"]["I_K2_differs"] = False
+    v = rh.verdict(per, [s1, s2])
+    assert v["invalid_seeds"] == [s2] and not v["halted"]
     assert v["R2-c3"] == "NOT MET" and v["verdict"] != "PASS", "an INVALID seed is never dropped"
-    per = {s: _per_seed() for s in (1, 2, 3, 4)}
-    for s in (2, 3, 4):
+    per = {s: _per_seed() for s in (s1, s2, s3, s4)}
+    for s in (s2, s3, s4):
         per[s]["c2"]["I_K2_differs"] = False
-    assert rh.verdict(per, [1, 2, 3, 4])["halted"], "more than 2 INVALID seeds halts the arc"
-    one = {1: _per_seed()}
-    one[1]["reds"]["O_w"] = False
-    assert rh.verdict(one, [1])["R2-c3"] == "RED", "a red that fires on no seed is RED"
-    one = {1: _per_seed(c4_structural_moves=False)}
-    assert rh.verdict(one, [1])["R2-c4"] == "RED", "a vacuous must-differ control is NOT MET"
-    one = {1: _per_seed(c6={"K3": False})}
-    assert rh.verdict(one, [1])["R2-c6"] == "RED"
+    assert rh.verdict(per, [s1, s2, s3, s4])["halted"], "more than 2 INVALID seeds halts the arc"
+    one = {s1: _per_seed()}
+    one[s1]["reds"]["O_w"] = False
+    assert rh.verdict(one, [s1])["R2-c3"] == "RED", "a red that fires on no seed is RED"
+    one = {s1: _per_seed(c4_structural_moves=False)}
+    assert rh.verdict(one, [s1])["R2-c4"] == "RED", "a vacuous must-differ control is NOT MET"
+    one = {s1: _per_seed(c6={"K3": False})}
+    assert rh.verdict(one, [s1])["R2-c6"] == "RED"
 
 
 def test_codex14_memory_unit_gate_is_reported_unverified_never_pass():
     status = rh.codex14_status()
     assert status["memory_unit_unreconstructible"] == "UNVERIFIED"
-    assert "UNVERIFIED" in json.dumps(rh.verdict({1: _per_seed()}, [1]))
+    assert "UNVERIFIED" in json.dumps(rh.verdict({15000: _per_seed()}, [15000]))
 
 
 def test_no_seed_outside_the_dev_block_runs_without_the_licence(monkeypatch, tmp_path):
@@ -737,15 +738,15 @@ def test_crashed_or_missing_arm_is_never_a_fire_and_the_seed_is_not_met():
     del gone["res_K2"]
     c = rh.seed_comparisons(arms, gone)
     assert not c["c2"]["I_K2_differs"] and not c["arms_complete"]
-    per = {s: _per_seed() for s in range(1, 9)}
-    per[3] = rh.seed_comparisons(crashed, base)
-    v = rh.verdict(per, list(range(1, 9)))
-    assert 3 in v["invalid_seeds"] and 3 in v["incomplete_seeds"]
+    per = {s: _per_seed() for s in rh.DEV_SEEDS}
+    per[15003] = rh.seed_comparisons(crashed, base)
+    v = rh.verdict(per, list(rh.DEV_SEEDS))
+    assert 15003 in v["invalid_seeds"] and 15003 in v["incomplete_seeds"]
     assert v["R2-c3"] == "NOT MET" and v["verdict"] != "PASS"
 
 
 def test_a_red_that_fires_on_one_of_eight_seeds_does_not_pass_r2_c3():
-    seeds = list(range(8))
+    seeds = list(rh.DEV_SEEDS)
     per = {s: _per_seed() for s in seeds}
     for s in seeds[1:]:
         per[s]["reds"]["O_rng"] = False

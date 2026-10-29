@@ -964,6 +964,7 @@ def _drive(brain, role, seed, result=None, out=None):
 def run_process(role, seed, home, out, head="r2", *, nonce=None):
     global _throwaway_home, _throwaway_token
 
+    check_seeds([seed])  # `--proc` is an entry point of its own, not only run_seed's child
     _throwaway_home, _throwaway_token = None, None
     private = _owned_private_home(home, nonce)
     _throwaway_home, _throwaway_token = private, nonce
@@ -1416,6 +1417,7 @@ def _fw_restart(role, seed, result):
 
 
 def run_failwrite(role, seed, out):
+    check_seeds([seed])  # outside the try: a refusal is raised, never recorded as an INVALID arm
     result = {"role": role, "seed": seed, "head": "r2"}
     try:
         if role.startswith("fw_ref_"):
@@ -1926,7 +1928,8 @@ def verdict(per_seed, seeds):
     seed (a red that fires on no seed halts the arc), and a seed with an INCOMPLETE arm record is
     INVALID for c2; an INVALID seed (any reason) is never excluded from R2-c3's count: it reads NOT MET. Controls and c6 on
     every seed. Equality has no variance: no statistic, no majority. A must-differ bar whose two
-    sides are identical reads NOT MET (ruling 9)."""
+    sides are identical reads NOT MET (ruling 9). Scoring a seed reads it, so the licence holds here."""
+    check_seeds(seeds)
     incomplete = [s for s in seeds if not per_seed[s].get("arms_complete", True)]
     invalid = [
         s for s in seeds if s in incomplete or not per_seed[s].get("c2", {}).get("I_K2_differs")
@@ -2097,14 +2100,15 @@ def _selfcheck():
         "failwrite": {"ok": True},
         "c8": {"a": True, "b": True, "c": True, "d": True},
     }
-    per = {1: one, 2: copy.deepcopy(one)}
-    per[2]["c2"]["I_K2_differs"] = False
-    v = verdict(per, [1, 2])
-    assert v["verdict"] != "PASS" and v["invalid_seeds"] == [2], v
+    s1, s2 = DEV_SEEDS[:2]
+    per = {s1: one, s2: copy.deepcopy(one)}
+    per[s2]["c2"]["I_K2_differs"] = False
+    v = verdict(per, [s1, s2])
+    assert v["verdict"] != "PASS" and v["invalid_seeds"] == [s2], v
     assert v["R2-c3"] == "NOT MET", "an INVALID seed makes R2-c3 NOT MET, never dropped"
-    per[2]["c2"]["I_K2_differs"] = True
-    per[1]["reds"]["O_w"] = False
-    assert verdict(per, [1, 2])["R2-c3"] == "RED"
+    per[s2]["c2"]["I_K2_differs"] = True
+    per[s1]["reds"]["O_w"] = False
+    assert verdict(per, [s1, s2])["R2-c3"] == "RED"
     assert codex14_status()["memory_unit_unreconstructible"] == "UNVERIFIED"
     print(
         "replay_hydration selfcheck: OK -- equal/ulp/swap/latched/chronology/INVALID-seed reds fire"
