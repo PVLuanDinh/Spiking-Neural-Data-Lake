@@ -1882,7 +1882,17 @@ def seed_comparisons(arms, base=None):
         },
         "chrono": {
             r: chrono_clean(get(r, {}))
-            for r in ("res_K0", "res_K1", "res_K2", "res_K3", "res_K4", "res_B", "res_rw")
+            for r in (
+                "res_K0",
+                "res_K1",
+                "res_K2",
+                "res_K3",
+                "res_K4",
+                "res_B",
+                "res_Bpre",
+                "res_Bpost",
+                "res_rw",
+            )
         },
         "reds": {r: fired(r, twin) for r, twin in _RED_TWIN.items()},
         "planted": {kind: _planted_entry(kind, arms) for kind in PLANTED},
