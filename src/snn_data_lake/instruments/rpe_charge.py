@@ -25,7 +25,7 @@ ARMS (E1's exact patch code; only the arm's own `_valence` instance and the boun
   vshuf    ValenceLearner.learn with reward on call k := perm(r_real)[k]
   pfrozen  AutonomousArm._plan_lr := 0.0 after construction
   pshuf    AutonomousArm._pfc_bias: self._rpe swapped to perm(rpe_at_plan_real)[k] around the call
-  pc       POSITIVE CONTROL: PrefrontalExecutive._decide_spiking -> constant (0, 1)
+  pc       POSITIVE CONTROL: PrefrontalExecutive.top_down_bias on the bound arm's own PFC -> the vector rotated by one
 
 WHAT THIS ADDS (P2 graph-exists dispositions, every hit disposed):
   "neuter A/B charge probe"            tools/charge_probe.py is the drive-source neuter template (one brain, one named
@@ -41,8 +41,9 @@ WHAT THIS ADDS (P2 graph-exists dispositions, every hit disposed):
       series and scores prediction before learning -- a different job, one short loop.
 Six deliberate departures from the frozen text, disclosed here as its header asks: (1) a refusal raises `Refused`
 (a SystemExit, code 3) instead of calling os._exit(3), so a test can see it; the process still exits 3 with no result file.
-(2) the `pc` arm stubs PrefrontalExecutive._decide_spiking on the CLASS (E1's exact code: every executive in the brain
-returns winner 0), unlike the other arms, which act on the arm's own instances only.
+(2) the `pc` arm stubs PrefrontalExecutive.top_down_bias on the CLASS (E1d section 3, replacing E1's constant-winner
+`_decide_spiking` stub): calls on the bound arm's own PFC return the real vector rotated by one (out[(i + 1) % n] =
+bias[i]) and are counted; any other instance passes through unrotated and uncounted.
 (3) with SINGLE_TIER_HARM_DELETES = True (addendum 3) a VOID production tier is REFUSED; the no-encoder tier is
 reported beside in every state (VOID, short, pending, another tree) and never holds or vetoes the production decision
 (addendum 6, owner #4616 "production tier decides"; addendum 4, re-panel B-N4; the NULL-RECORD precondition of
@@ -815,15 +816,21 @@ class ArmPatch:
             w_pfc_bias,
         )
         if self.arm == "pc":
-            self._saved.append(
-                (PrefrontalExecutive, "_decide_spiking", PrefrontalExecutive._decide_spiking)
-            )
+            otb = PrefrontalExecutive.top_down_bias
+            self._saved.append((PrefrontalExecutive, "top_down_bias", otb))
 
-            def stub(slf, evidence):
+            def stub(slf, strength=1.0):
+                bias = otb(slf, strength)
+                if not me._mine(slf, "pfc"):
+                    return bias
+                n = len(bias)
+                out = [0.0] * n
+                for i in range(n):
+                    out[(i + 1) % n] = bias[i]
                 me.pc_calls += 1
-                return 0, 1
+                return out
 
-            PrefrontalExecutive._decide_spiking = stub
+            PrefrontalExecutive.top_down_bias = stub
         return self
 
     def __exit__(self, *exc):
@@ -1229,8 +1236,10 @@ def run_problems(arm, key, d, tier):
         bad.append(f"{tag}: pfc_bias_calls==0")
     if arm == "pfrozen" and d["plan_lr_final"] != 0.0:
         bad.append(f"{tag}: plan_lr_final={d['plan_lr_final']}")
-    if arm == "pc" and d["pc_stub_calls"] == 0:
-        bad.append(f"{tag}: stub calls==0")
+    if arm == "pc" and not d["pc_stub_calls"] == d["pfc_bias_calls"] > 0:
+        bad.append(
+            f"{tag}: stub calls={d['pc_stub_calls']} != pfc_bias_calls={d['pfc_bias_calls']} > 0"
+        )
     if any(x is None for x in d["v"]["pred"]):
         bad.append(f"{tag}: pred is None on a recorded call")
     elif arm == "real" and any(

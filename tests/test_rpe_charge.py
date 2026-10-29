@@ -910,17 +910,40 @@ def test_pshuf_swaps_the_rpe_and_restores_it_even_when_the_call_raises(monkeypat
     assert AutonomousArm._pfc_bias is fake
 
 
-def test_pfrozen_zeroes_the_plan_rate_and_the_pc_stub_is_counted_and_restored():
-    from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
-
+def test_pfrozen_zeroes_the_plan_rate():
     arm = types.SimpleNamespace(_plan_lr=0.02)
     with R.ArmPatch("pfrozen") as ap:
         ap.bind(arm)
     assert arm._plan_lr == 0.0
-    orig = PrefrontalExecutive._decide_spiking
+
+
+def test_r6_pc_rotates_only_the_bound_arms_pfc_bias_by_one_and_is_restored():
+    from snn_data_lake.engine.autonomous_loop import ACTIONS
+    from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
+
+    n = len(ACTIONS)
+    p, q = PrefrontalExecutive(n, seed=0), PrefrontalExecutive(n, seed=1)
+    p._gate_primary(0, float("inf"))
+    q._gate_primary(0, float("inf"))
+    assert p.goal == 0
+    orig = PrefrontalExecutive.top_down_bias
     with R.ArmPatch("pc") as ap:
-        assert PrefrontalExecutive._decide_spiking(None, None) == (0, 1) and ap.pc_calls == 1
-    assert PrefrontalExecutive._decide_spiking is orig
+        ap.bind(types.SimpleNamespace(pfc=p))
+        out = PrefrontalExecutive.top_down_bias(p, strength=0.37)
+        assert isinstance(out, list) and len(out) == n
+        assert out[1] == 0.37 and out[0] == 0 and ap.pc_calls == 1
+        p._gate_primary(n - 1, float("inf"))
+        assert p.goal == n - 1
+        wrap = p.top_down_bias(strength=0.37)
+        assert wrap[0] == 0.37 and wrap[n - 1] == 0 and ap.pc_calls == 2
+        q._stack.clear()
+        assert q.goal is None and q.top_down_bias(0.37) == [0.0] * n
+        q._gate_primary(3, float("inf"))
+        other = q.top_down_bias(0.37)
+        assert other[3] == 0.37 and other[4] == 0 and ap.pc_calls == 2
+        p._stack.clear()
+        assert p.goal is None and p.top_down_bias(0.37) == [0.0] * n and ap.pc_calls == 3
+    assert PrefrontalExecutive.top_down_bias is orig
 
 
 def test_real_arm_records_the_prediction_before_learning():
@@ -1018,18 +1041,13 @@ def test_run_problems_arm_specific_gates():
         "production",
     )
     assert any("plan_lr_final" in b for b in bad) and any("pfc_bias_calls==0" in b for b in bad)
-    bad = R.run_problems(
-        "pc",
-        8,
-        R.synth_run(
-            "pc",
-            8,
-            "production",
-        )
-        | {"pc_stub_calls": 0},
-        "production",
-    )
-    assert any("stub calls==0" in b for b in bad)
+    pc = R.synth_run("pc", 8, "production")
+    assert R.run_problems("pc", 8, pc, "production") == []
+    for planted in ({"pc_stub_calls": 0}, {"pc_stub_calls": pc["pfc_bias_calls"] - 1}):
+        bad = R.run_problems("pc", 8, pc | planted, "production")
+        assert any("stub calls=" in b for b in bad)
+    bad = R.run_problems("pc", 8, pc | {"pc_stub_calls": 0, "pfc_bias_calls": 0}, "production")
+    assert any("stub calls=" in b for b in bad)
     ne = R.synth_run("real", 8, "no-encoder")
     ne["tier"]["encoder_calls"]["vision"] = 4
     assert any("encoder use" in b for b in R.run_problems("real", 8, ne, "no-encoder"))
