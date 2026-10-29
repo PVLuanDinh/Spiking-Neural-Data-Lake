@@ -565,16 +565,18 @@ def i2_check(home_dir, deep_attr="load_episodes"):
     from snn_data_lake.engine.brain import Brain
     from snn_data_lake.substrate import home as H
 
-    require_isolation()
     eps = [
         {"who": "self", "what": a, "where": f"cell{i}", "when": str(5 * (i + 1)), "affect": "calm"}
         for i, a in enumerate(ACTIONS[:4])
     ]
-    prev = os.environ.get("NORD_HOME")
+    # the guard resolves STRICTLY (a path must exist), so the PARENT is confined first (inside the active
+    # throwaway home, not the live one); only then is the home created, and confined itself.
+    confine(os.path.dirname(os.path.abspath(home_dir)))
     os.makedirs(home_dir, exist_ok=True)
-    os.environ["NORD_HOME"] = home_dir
+    resolved = confine(home_dir)
+    prev = os.environ.get("NORD_HOME")
+    os.environ["NORD_HOME"] = resolved
     try:
-        H.assert_not_live_home(home_dir)
         H.save_episode(eps[3])  # on the lake only
         got = {}
         for want, window, held in (
