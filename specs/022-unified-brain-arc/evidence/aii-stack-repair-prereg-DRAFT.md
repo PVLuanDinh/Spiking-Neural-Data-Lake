@@ -442,6 +442,13 @@ Folds lens A #6792, lens C #6831 and the policy-enforcer #6817 on `a7ae6781`. On
 - **O-13 RULED (integrator, accepted by launcher D-78):** this block keeps k = 1 at alpha .05 as registered. Any later candidate's
   pre-registration applies Holm across the A_ii-repair family's confirmatory blocks, counting this block as spent, and claims only at
   the adjusted level.
+- **O-13 RE-RULED (launcher D-82, 2026-10-29, before any data; supersedes the Holm clause above, which #6893 MINOR-2 showed cannot
+  follow a block that claims at the full .05):** an open-ended alpha-spending series over the A_ii-repair family. Candidate i is
+  confirmatory at alpha_i = .05 x 6/(pi^2 i^2) (.0304, .0076, .0034, ...), which sums to .05 for any number of candidates. This
+  block is candidate 1, at alpha_1 = .0303964; section 4 is re-derived at that alpha with its n cap raised to keep power >= .80
+  (Fold 3, @08c27533; the owner approved more runs, "Fund more runs"). Launcher's reason: every candidate serves one decision
+  (G2 (ii) unpark), so a new family per candidate would leave that decision's false-MET rate uncontrolled (1 - .95^k), and
+  pre-allocation needs a k_max guess.
 
 ## Fold 2 (2026-10-29) -- changelog
 
