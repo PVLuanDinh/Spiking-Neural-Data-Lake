@@ -776,3 +776,77 @@ def test_run_seed_hands_twin_k3s_measured_count_to_every_k3_restore(
         want = [] if measured is None else [str(measured)]
         assert argv[role][9:] == want, (role, argv[role])
     assert argv["pre_K3"][9:] == [] and argv["twin_K3"][9:] == []
+
+
+# ---- ROUND 3 (#6898): MINOR-2 K3 attribution, MINOR-3 roles by part ----------------------------
+
+
+def _k3_rec(rows):
+    return {"before": {}, "fault": None, "rows": [{"weights": [[w]]} for w in rows]}
+
+
+def test_minor2_a_k3_difference_in_the_rest_of_the_night_is_attributed_to_the_rest():
+    # twin_K3 records R=2 rest-of-night rows, then 6; the restore differs only in row 1 (the
+    # rest-of-night half, where the restore has no wake/sleep transition the twin had)
+    twin = _k3_rec([0, 0, 1, 1, 1, 1, 1, 1])
+    res = _k3_rec([5, 0, 1, 1, 1, 1, 1, 1])
+    assert rh._k3_split(res, twin, 2) == {"rest": False, "night": True}
+
+
+def test_minor2_a_k3_difference_after_the_rest_is_attributed_to_the_six():
+    twin = _k3_rec([0, 0, 1, 1, 1, 1, 1, 1])
+    res = _k3_rec([0, 0, 1, 1, 1, 1, 1, 7])
+    assert rh._k3_split(res, twin, 2) == {"rest": True, "night": False}
+
+
+def test_minor2_a_k3_pair_that_agrees_everywhere_reads_true_on_both_halves():
+    twin = _k3_rec([0, 0, 1, 1, 1, 1, 1, 1])
+    assert rh._k3_split(copy.deepcopy(twin), twin, 2) == {"rest": True, "night": True}
+
+
+def test_minor2_a_missing_k3_record_reads_false_on_both_halves():
+    twin = _k3_rec([0, 0, 1, 1, 1, 1, 1, 1])
+    assert rh._k3_split(None, twin, 2) == {"rest": False, "night": False}
+
+
+def test_minor2_seed_comparisons_reports_the_k3_split_beside_c6():
+    arms = _arms()
+    arms["twin_K3"]["k3_rest"] = 1
+    c = rh.seed_comparisons(arms)
+    assert set(c["c6_k3_split"]) == {"rest", "night"}
+
+
+def test_minor2_the_disclosure_names_the_transition_asymmetry():
+    assert "no wake/sleep transition" in rh.__doc__
+
+
+def _launched_roles(tmp_path, monkeypatch, seed, go):
+    if go is None:
+        monkeypatch.delenv("R2_CONFIRMATORY_GO", raising=False)
+    else:
+        monkeypatch.setenv("R2_CONFIRMATORY_GO", go)
+    launched = []
+
+    def child(args, **kwargs):
+        launched.append(args[3])
+        return rh.subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(rh.subprocess, "run", child)
+    rh.run_seed(seed, tmp_path)
+    return launched
+
+
+@pytest.mark.parametrize(("seed", "go"), [(15010, "P1"), (15030, "P2")])
+def test_minor3_a_p1_or_p2_read_runs_no_k1g_arm(tmp_path, monkeypatch, seed, go):
+    launched = _launched_roles(tmp_path, monkeypatch, seed, go)
+    assert launched == [r for r, _ in rh.R2_ROLES]
+
+
+def test_minor3_a_p3_read_runs_only_the_k1g_arms(tmp_path, monkeypatch):
+    launched = _launched_roles(tmp_path, monkeypatch, 15050, "P3")
+    assert launched == [r for r, _ in rh.P3_ROLES]
+
+
+def test_minor3_the_dev_block_still_runs_both_tables(tmp_path, monkeypatch):
+    launched = _launched_roles(tmp_path, monkeypatch, 15000, None)
+    assert launched == [r for r, _ in rh.R2_ROLES + rh.P3_ROLES]
