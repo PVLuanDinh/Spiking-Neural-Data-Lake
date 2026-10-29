@@ -5,11 +5,13 @@ The E1 numbers in `E1_*` are E1's recorded per-seed values (REPORT-TABLES, N=600
 """
 
 import copy
+import hashlib
 import json
 import math
 import os
 import random
 import statistics
+import sys
 import types
 
 import pytest
@@ -1001,16 +1003,63 @@ def test_selfcheck_main_runs_brain_free(capsys):
     assert "rpe_charge self-check OK" in capsys.readouterr().out
 
 
-@pytest.mark.slow
-def test_real_brain_smoke_no_encoder(tmp_path, monkeypatch):
+def _no_encoder_run(tmp_path, monkeypatch, arm, ticks):
+    """ONE run_arm on the real no-encoder brain, seed 8, into tmp_path/<arm>_8.json."""
     names = (*R.ENC, *R.PACKS)
     for k in (*names, R.PCPIN, "NORD_HOME", "NORD_GPU", "SNDL_LIVE_HOME_GUARD"):
         monkeypatch.setenv(k, "")  # registered for restoration; run_arm sets the real values
     env = {k: str(tmp_path / "NO-ENCODER" / k) for k in (*names, R.PCPIN)}
     env.update(E1B_TREE_SHA="c" * 40, E1B_TREE_CLEAN="1")
-    out = tmp_path / "real_8.json"
-    rec = R.run_arm("real", 8, 3, "no-encoder", str(tmp_path / "home"), str(out), env=env)
+    out = tmp_path / f"{arm}_8.json"
+    return R.run_arm(arm, 8, ticks, "no-encoder", str(tmp_path / "home"), str(out), env=env), out
+
+
+def _assert_e1d_record_fields(tmp_path, rec, tag):
+    """stack-c #5933 MAJOR-1, stack-b #5956 MINOR-2: identity, tier.native and held_goal on a
+    record the real run_arm path wrote."""
+    assert rec["identity"]["tag"] == tag
+    d = R.load_run(str(tmp_path), "no-encoder", tag, require_identity=True)
+    assert "tag_problem" not in d, d.get("tag_problem")
+    nat = sys.modules["snn_data_lake._native"].__file__  # the module the run LOADED
+    with open(nat, "rb") as f:
+        sha = hashlib.file_digest(f, "sha256").hexdigest()
+    assert rec["tier"]["native"] == {"file": nat, "sha256": sha}
+    assert len(rec["p"]["held_goal"]) == rec["pfc_bias_calls"]
+
+
+def _assert_pc_scoped(rec):
+    assert rec["pfc_bias_calls"] > 0  # the detector's own positive control
+    assert rec["pc_stub_calls"] == rec["pfc_bias_calls"], rec["pc_stub_calls"]
+
+
+PC_TICKS = 12
+
+
+@pytest.mark.slow
+def test_real_brain_pc_smoke_no_encoder_scopes_the_stub_to_the_arms_own_pfc(tmp_path, monkeypatch):
+    """stack-c #5933 MAJOR-1: the pc stub's scope, the identity tag, tier.native and held_goal,
+    read at runtime on the real run_arm path before R2a. Red: the stub's scope check reads False
+    for the PFC, so the stub counts nothing while _pfc_bias still does."""
+    rec, out = _no_encoder_run(tmp_path, monkeypatch, "pc", PC_TICKS)
+    assert out.exists() and rec["errs"] == 0 and rec["tier"]["reported"] == "stdlib"
+    _assert_pc_scoped(rec)
+    _assert_e1d_record_fields(tmp_path, rec, "pc_8")
+    assert not any("stub calls" in b for b in R.run_problems("pc", 8, rec, "no-encoder", R.E1C))
+    mine = R.ArmPatch._mine
+    monkeypatch.setattr(R.ArmPatch, "_mine", lambda s, o, a: a != "pfc" and mine(s, o, a))
+    bad, _ = _no_encoder_run(tmp_path / "mutant", monkeypatch, "pc", PC_TICKS)
+    assert bad["pc_stub_calls"] == 0 and bad["pfc_bias_calls"] > 0
+    with pytest.raises(AssertionError):
+        _assert_pc_scoped(bad)
+    want = f"pc_8: stub calls=0 != pfc_bias_calls={bad['pfc_bias_calls']}"
+    assert want in R.run_problems("pc", 8, bad, "no-encoder", R.E1C)
+
+
+@pytest.mark.slow
+def test_real_brain_smoke_no_encoder(tmp_path, monkeypatch):
+    rec, out = _no_encoder_run(tmp_path, monkeypatch, "real", 3)
     assert out.exists() and rec["tier"]["reported"] == "stdlib" and rec["errs"] == 0
+    _assert_e1d_record_fields(tmp_path, rec, "real_8")
     assert rec["tier"]["state_api"] == "stdlib" and rec["tier"]["encoder_calls"] == {
         "vision": 0,
         "audio": 0,
