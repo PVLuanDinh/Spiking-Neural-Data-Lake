@@ -842,3 +842,13 @@ Appended below the freeze and its addenda (section 12). Nothing above is edited.
 - **The openings ledger** named above is the integrator's memory file `project-snn-carried-openings.md` (in the
   owner's Claude memory folder for `D:\AI-project`), entry dated 2026-10-28, "THE PLANNER GATE NEVER CLEARS ON SOME
   SEEDS".
+
+## Sample size (P1) addendum, 2026-10-29 (integrator `claude-engine-1024`, post-VOID; launcher D-71)
+
+Appended; nothing above this heading is edited. Section 5 derived the cap (640) by simulation but never wrote the P1
+amendment's fixed-sample target at power .8. Recorded here from section 5's own frozen inputs, so the P1 sample-size gate
+(claude/p1-gate-1029) reads every field: measured SD 0.3097 (E1b's 80 production d_s, 5.1), effect 0.035 (the shift
+cell), one-sided alpha .05, power .8. Fixed-sample target n = (z.95 + z.8)^2 x SD^2 / delta^2 = (1.6449 + 0.8416)^2 x
+0.3097^2 / 0.035^2 = 484.07, so the target is 485 (matches E1b's "~485 owed"; re-derived by the launcher, D-71). This
+is a record of a design value, written after E1c was VOID at look 1; it changes no decision, look, boundary or cap.
+No VOID exemption exists in the gate (rejected by D-71 as a loophole).
