@@ -454,3 +454,30 @@ builds the drift readers (the integrator assigns it). X.3 row 8: a caller census
 shared primitive or the consolidation of the guarded copies. The shared helper does not change in this arc. A full census at c0f90736
 finds five `pearson` definitions (also `instruments/rpe_charge.py:343`, `growth/h01_ingest.py:894`); `grid_place_map._pearson` is a
 population-vector correlation that `pv_correlation` must dispose of.
+
+---
+
+## Correction 2026-10-29 (round 3) to the two D0 notes above: which side wins for `rsa_drift` (policy-enforcer #6786 MINOR-4, carried in #6820)
+
+Source: policy-enforcer #6786 MINOR-4 and #6820. Appends only; nothing above is edited, and nothing is built.
+
+**The conflict.** The amendment says the F.1 intersection-unit rule and the F.5 guard (a flat response is flagged, not 0.0) apply to all four
+readers, and also folds `rsa_drift` in as the body of `rsa_correlation`. At `f0f50385` (`infra/_mathutils.py:186-207`) `rsa_drift` raises
+`ValueError` on a flat probe response and on a flat dissimilarity matrix, and refuses unequal-length vectors, so it has no intersection rule.
+Its test, written red-first in `fd987f3f`, pins those raises.
+
+**Ruling: the call-site guard wins; `rsa_drift` is not rewritten.** `read_drift` applies the F.1 intersection rule and the F.5 flat check
+BEFORE it calls the reader, for all four metrics, and flags a flat input instead of passing it down. `rsa_drift` stays as built, as a
+strict primitive that raises on bad input, and `fd987f3f`'s test is not amended. The raises never fire through `read_drift`, because the
+guard has already handled those inputs. One RSA function still exists: the "folded in as the body of `rsa_correlation`" sentence above
+means `rsa_correlation` is a thin wrapper over `rsa_drift`, with no second RSA implementation.
+
+**Owned-name list, one record (NIT in #6820).** The d1 addendum, this file, and the G5 file's S.5 and S.5a list the same ruling with
+different names. The list in the "D0's owned names now" correction above is the single list, and where another record differs, this one wins:
+- built, stays in `readout_staleness.py`: `survivor_pairs`, `rate_drift`, `readout_projector`, `visible_fraction` (D0's `readout_null_split`
+  is the last two, as an import);
+- unbuilt, go into the same drift section: `procrustes_realign`, `pv_correlation`, `tuning_correlation`, `rate_correlation`,
+  `rsa_correlation`, `DriftReading`, `read_drift`, `decoder_across_days`;
+- built on an unlanded branch, placed or imported at the ARC6 landing: `rsa_drift`.
+The G5 file is the integrator's and is not touched here; its S.5a omits `rate_correlation`, `rsa_correlation` and `read_drift` from its
+unbuilt list, and the integrator can add them from this list.
