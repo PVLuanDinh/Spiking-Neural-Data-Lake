@@ -19,7 +19,8 @@ twin tick until S=6 sleep ticks have run, recording the LIVE objects (`_g0c_walk
 K3 records "the rest of the night, then 6" (2.2): twin_K3 measures the sleep ticks its cut night had
 left, and every K3 restoring arm records that count plus 6 (integrator ruling, option (i)). The
 harness carries circadian phase across the restart; the brain does not (finding iii): a restoring
-process starts a fresh clock, so the K3 arms are coupled to twin_K3's record. The two sides differ at
+process starts a fresh clock, so the K3 arms are coupled to twin_K3's record; c6's `K3_phase` checks
+that the restore resumed the cut night's phase (twin_K3's `cut_step`, D-79). The two sides differ at
 row R: twin_K3 runs R rest-of-night rows, then a wake day and a sleep entry (`_enter_wake`,
 `_enter_sleep` move learner state), then 6 rows; a K3 restore runs its wake period first, then R+6
 sleep rows with no wake/sleep transition between row R and R+1. So res_K3 vs twin_K3 can differ from the
@@ -32,15 +33,14 @@ The incumbent arms I_K1 / I_K2 (2.11 D1) run THIS FILE at the base head e1b3ae3c
 PYTHONPATH=<base checkout>/src (`--head base`); each compares only to its own twin at that head.
 The FAILWRITE arm (the #1037 latch schedule A3, `fw_*` roles) and R2-c8 (the three bout crash
 points, planted bout slots, one-frame check, FAILWRITE with B = sleep_bout) run in every seed.
-This instrument is the binding reading of R2-c7. tests/test_r2_p3_percept_transitions.py snapshots the
-same fields by a second procedure that differs on three definitions: its "next refit" is "the
-trajectory grew" (here: the grower's `ticks % refit_every == 0` sleep step), its boundary fires on any
-refit (here: a refit of THIS session, after a clean session 1 = `pre_K1g0`), and it also kills inside
-`_flush_prototypes` (here only `kill_growth`). A pytest reading of the same bar can therefore
-disagree on a seed; only this instrument's reading scores R2-c7 (the registration's amendment must say
-so before 15050; OWED to the integrator).
+This instrument is the binding reading of R2-c7 and its only one: tests/test_r2_p3_percept_transitions.py
+runs these roles (run_seed) for its restart bar and holds no second copy of the procedure. Its "next
+refit" is the grower's `ticks % refit_every == 0` sleep step, its boundary is a refit of THIS session
+after a clean session 1 (`pre_K1g0`), and it kills only inside `_flush_growth` (`kill_growth`); the
+retired pytest copy differed on all three and also killed inside `_flush_prototypes`. The
+registration's amendment sentence naming this reading is the integrator's.
 The percept arms (P3, K1g / R2-c7, 2.10, `P3_ROLES`) run on CPU in every seed: a session closed
-cleanly, then a session killed at the tick after the night's `_flush_growth`; the restoring process
+cleanly, then a session killed inside the night's `_flush_growth` call; the restoring process
 and the uninterrupted twin run ONLY the grower's sleep step to its next refit.
 
   PYTHONUTF8=1 PYTHONPATH=src python src/snn_data_lake/instruments/replay_hydration.py --selfcheck
@@ -240,7 +240,7 @@ PERCEPT_PLANTED = {
     "INSTRUMENT": "instrument",
 }
 #: K1g (2.10), (role, parent): session 1 closes cleanly so the lake holds the session boundary CROSS
-#: needs; session 2 is killed at the tick after the night's `_flush_growth` (pre_K1g) or runs on
+#: needs; session 2 is killed inside the night's `_flush_growth` call (pre_K1g) or runs on
 #: uninterrupted (twin_K1g, and K1g_POS: the twin with its buffer shuffled across sessions); every
 #: other arm restores a copy of the killed home
 P3_ROLES = (
@@ -1228,6 +1228,9 @@ def run_process(role, seed, home, out, head="r2", *, nonce=None, k3_rest=None):
     brain = make_brain(seed=seed, persist=True)
     result["construct_motor"] = motor.n
     result["construct_chrono"] = _chrono(brain)
+    # the record the construction adopted (circadian_restored, brain.py:4270 of the circadian fix); read
+    # BEFORE the CHRONO red ticks, because chrono_clean compares the clock with it, never with 0
+    result["construct_circadian_restored"] = getattr(brain, "_circadian_restored", None)
     result["stack_present"] = getattr(brain.brain._ixn, "stack", None) is not None
     result["fault"] = getattr(brain, "_r2_fault", None)
     result["redo"] = getattr(brain.brain._ixn, "_redo_count", None)
@@ -1250,6 +1253,7 @@ def run_process(role, seed, home, out, head="r2", *, nonce=None, k3_rest=None):
     windows = []
     draws = _watch(brain, motor, windows)
     if role == "twin_K3":  # the rest of the night, then 6: its length is the K3 restores' count
+        result["cut_step"] = brain._step  # where the cut left the clock: c6's K3_phase reads it
         result["rows"] = _sleep_rows(brain, draws, until_wake=True)
         result["k3_rest"] = len(result["rows"]) - S_SLEEP
     else:
@@ -1309,7 +1313,7 @@ def run_percept(role, seed, out):
     """One K1g process (2.10), CPU (CUDA refits are not claimed deterministic). `pre_K1g0` runs
     session 1 to a completed night and closes. `pre_K1g` runs session 2 past a refit of its own and
     dies inside the night's `_flush_growth` call (`kill_growth`: the wrapper exits when the call
-    returns, before `_flush_prototypes` and the coverage flush, brain.py:3797-3799); `twin_K1g` runs the same
+    returns, before `_flush_prototypes` and the coverage flush, brain.py:3798-3800); `twin_K1g` runs the same
     schedule, snapshots its buffer there and runs only the grower's sleep step to the next refit;
     `K1g_POS` is that twin with its buffer shuffled across sessions. Every other arm restores a copy
     of the killed home (with its patch or planted percept) and runs the same grower step."""
@@ -1771,7 +1775,9 @@ def records_equal(a, b, skip=()):
 
 def _k3_split(res, twin, rest):
     """R2-c6's K3 comparison read in its two halves: rows 1..R (the rest of the night, where the
-    restore has no wake/sleep transition the twin had) and rows R+1..R+6."""
+    restore has no wake/sleep transition the twin had) and rows R+1..R+6. The halves are not
+    independent: both compare the same 'before' fields, and rows R+1..R+6 inherit any rest-half
+    divergence, so 'night' False attributes to the six rows only when 'rest' is True."""
     half = (
         lambda rec, lo, hi: (  # noqa: E731
             rec and "rows" in rec and dict(rec, rows=rec["rows"][lo:hi])
@@ -1783,14 +1789,27 @@ def _k3_split(res, twin, rest):
     }
 
 
+def _k3_phase(res, twin):
+    """D-79's cross-check on the K3 count (MAJOR-3 (i)): the harness carries the cut night's remaining
+    ticks, so the brain must have resumed that night's phase too. A restore adopts the night's onset
+    record; twin_K3's cut lies 0..J_NIGHT sleep ticks after it. A brain that carries no phase (the
+    record is absent) reads False: that is finding (iii), not a harness fault."""
+    step = ((res or {}).get("construct_circadian_restored") or {}).get("step")
+    cut = (twin or {}).get("cut_step")
+    return type(step) is int and type(cut) is int and 0 <= cut - step <= J_NIGHT
+
+
 def chrono_clean(r):
-    """Hydration and redo tick nothing (construction leaves a fresh clock) and a sleep step advances
-    no chronology and reaches no actuator (R2-c5's instrument-level half)."""
+    """Hydration and redo tick nothing (construction leaves the clock where the restored record put
+    it: step 0 with no record, the record's step with one -- a restore that crossed a night adopts
+    the last sleep onset's step) and a sleep step advances no chronology and reaches no actuator
+    (R2-c5's instrument-level half). `nights` is not restored, so it stays 0."""
     c = r.get("construct_chrono") or {}
+    restored = r.get("construct_circadian_restored") or {"step": 0}
     windows = r.get("replay_windows") or []
     return (
         r.get("construct_motor") == 0
-        and c.get("step") == 0
+        and c.get("step") == restored.get("step")
         and c.get("nights") == 0
         and all(w["before"] == w["after"] and w["motor"] == 0 for w in windows)
     )
@@ -2204,6 +2223,15 @@ def _percept_planted_entry(kind, arms):
     }
 
 
+#: #6952 A-1: until the circadian clock flushes before `_flush_growth`, a K1g kill leaves the previous
+#: session's close-time phase on disk, so res_K1g and twin_K1g differ in chronology for a reason the
+#: K1g bar does not register.
+K1G_CHRONO_REFUSED = (
+    "K1g chronology not read: the kill falls before the circadian flush, so the restore resumes a "
+    "stale phase (circadian-p4b #6952 A-1, flush-first pending)"
+)
+
+
 def c7_seed(arms):
     """R2-c7 (2.10, part P3) on one seed: K1g's restore equals the uninterrupted twin (the buffer and
     the next refit) and leaves the chronology untouched; CROSS and O_buf each move it; each planted
@@ -2265,6 +2293,7 @@ def c7_seed(arms):
         "reds": reds,
         "planted": planted,
         "positive_control": control,
+        "chrono": {"scored": False, "refused": K1G_CHRONO_REFUSED},
         "incomplete": incomplete,
         "arms_complete": not incomplete,
         "ok": ok,
@@ -2296,6 +2325,7 @@ def seed_comparisons(arms, base=None):
             "K3": eq(get("res_K3"), get("twin_K3")),
             "K4": eq(get("res_K4"), get("twin_K4")),
             "B": eq(get("res_B"), get("twin_B")),
+            "K3_phase": _k3_phase(get("res_K3"), get("twin_K3")),
         },
         "c6_k3_split": _k3_split(
             get("res_K3"), get("twin_K3"), (get("twin_K3") or {}).get("k3_rest", 0)
@@ -2666,7 +2696,8 @@ def run_campaign(out_dir, seeds, base_src=None, workers=1):
     `workers` threads, each seed's processes serial. Writes per-seed comparisons and the verdict."""
     from concurrent.futures import ThreadPoolExecutor
 
-    check_seeds(seeds)
+    part = check_seeds(seeds)
+    base_src = None if part == "P3" else base_src  # P3 reads only the K1g arms (once-read block)
     here = Path(__file__).resolve()
     provenance = {  # which heads ran (2.11 D1); a base tree off e1b3ae3c is refused before any seed
         "src": _head_of(here.parents[2]),
