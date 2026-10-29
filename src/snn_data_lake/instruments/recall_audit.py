@@ -10,6 +10,7 @@ processes, I2 and I7 are OWED to the campaign build arc (REPORT.md of lane r1-st
 Outcomes (2.14): VERIFIED / FALSE / MISS / REFUSED / ERROR.
 """
 
+import contextlib
 import hashlib
 import os
 import random
@@ -457,3 +458,92 @@ def stamped(fn):
     if _live_home_stamp() != before:
         raise LiveHomeWritten("the live home changed during the run")
     return out
+
+
+# ---- I2: tier attribution (2.7 I2; wraps only, no brain.py edit) -----------------------------------
+def tier_of(result, deep_calls):
+    """I2: which tier answered. A 'lake' answer that read the whole lake is the deep tier."""
+    if not isinstance(result, dict) or not result.get("episode"):
+        return None
+    if result.get("source") == "working":
+        return "working"
+    if result.get("source") == "lake":
+        return "deep" if deep_calls else "window"
+    return None
+
+
+# distinct-from: substrate/lake_recall.py::LakeRecall and home.load_episodes -- the WRAPPED subjects, not
+#   rivals; instruments/memory_diagnostic.py::_blas, substrate/episodic_recall.py -- prose keyword hits.
+@contextlib.contextmanager
+def _instrumented(brain, deep_attr="load_episodes"):
+    """Install counting wrappers AFTER construction (the boot restore reads `load_episodes` too and
+    must not be counted): `home.<deep_attr>` counts deep-tier reads, `LakeRecall.recall` counts window
+    reads. Both are restored on exit. `brain` is kept for the arms that neuter its tiers (owed)."""
+    from snn_data_lake.substrate import home as H
+    from snn_data_lake.substrate import lake_recall as LR
+
+    calls = {"deep": 0, "window": 0}
+    orig_load, orig_recall = getattr(H, deep_attr), LR.LakeRecall.recall
+
+    def load(*a, **k):
+        calls["deep"] += 1
+        return orig_load(*a, **k)
+
+    def recall(self, cue, k=3):
+        calls["window"] += 1
+        return orig_recall(self, cue, k=k)
+
+    setattr(H, deep_attr, load)
+    LR.LakeRecall.recall = recall
+    try:
+        yield calls
+    finally:
+        setattr(H, deep_attr, orig_load)
+        LR.LakeRecall.recall = orig_recall
+
+
+def i2_check(home_dir, deep_attr="load_episodes"):
+    """I2 through the REAL wrappers and the real chain (`Brain.recall_episode_durable` on a stub that
+    carries only the attributes it reads): a resident exact cue attributes `working`, a window-partial
+    one `window`, a nonresident exact cue `deep`. Pointing the wrapper at the wrong attribute
+    (`deep_attr`) makes the deep cue read `window` -- the red."""
+    from types import SimpleNamespace
+
+    from snn_data_lake.engine.brain import Brain
+    from snn_data_lake.substrate import home as H
+
+    require_isolation()
+    eps = [
+        {"who": "self", "what": a, "where": f"cell{i}", "when": str(5 * (i + 1)), "affect": "calm"}
+        for i, a in enumerate(ACTIONS[:4])
+    ]
+    prev = os.environ.get("NORD_HOME")
+    os.makedirs(home_dir, exist_ok=True)
+    os.environ["NORD_HOME"] = home_dir
+    try:
+        H.assert_not_live_home(home_dir)
+        H.save_episode(eps[3])  # on the lake only
+        got = {}
+        for want, window, held in (
+            ("working", [], eps[0]),
+            ("window", eps[:3], None),
+            ("deep", [], None),
+        ):
+            cons = SimpleNamespace(
+                recall_episode=lambda cue, min_conf=0.5, h=held: (
+                    {"episode": h, "confidence": 1.0} if h else {}
+                )
+            )
+            stub = SimpleNamespace(
+                _episode_consolidator=cons, _episode_window=list(window), _lake_recall=None, _seed=0
+            )
+            cue = dict(eps[0] if want != "deep" else eps[3])
+            with _instrumented(stub, deep_attr) as calls:
+                res = Brain.recall_episode_durable(stub, cue, min_conf=0.5)
+            got[want] = tier_of(res, calls["deep"])
+    finally:
+        if prev is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = prev
+    return got == {"working": "working", "window": "window", "deep": "deep"}
