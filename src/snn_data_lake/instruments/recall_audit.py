@@ -47,6 +47,7 @@ TINY_COUNTS = {k: max(2, v // 25) for k, v in DEFAULT_COUNTS.items()}
 LOAD_TOLERANCE = 0.5  # B7: a witness drift beyond 50 % VOIDS the seed's cost reading
 N_NONE_TRAP_EPISODES = 20
 N_CROSS_BOOT_DUPS = 50
+COLLISION_SCAN_LIMIT = 200000  # lake_recall._find_cell_collision's default `limit`
 ABSENT_CLASSES = frozenset({"C6", "C8"})
 SOURCES = frozenset({"working", "lake", "miss", "none", "refused", "error"})
 TRAP_FREE = ("C1", "C2", "C3", "C4", "C7")  # classes whose every present cue the oracle can answer
@@ -116,6 +117,8 @@ class Oracle:
 
     def expected_window(self, capacity):
         """What the boot restore should hold: the newest `capacity` recallable lake episodes."""
+        if capacity <= 0:
+            return []  # [-0:] would be the whole list
         return [r.episode for r in self.recallable()][-capacity:]
 
     def assert_scope(self, predicate):
@@ -247,6 +250,8 @@ def _collision_pairs(n):
 
     seen, pairs, i = {}, [], 0
     while len(pairs) < n:
+        if i >= COLLISION_SCAN_LIMIT:  # the scan budget lake_recall._find_cell_collision has
+            raise AssertionError("no collision within the scan budget -- the code space grew?")
         v = f"t{i}"
         cell = _token_cell("when", v)
         if cell in seen:
@@ -258,9 +263,20 @@ def _collision_pairs(n):
 
 
 def make_workload(seed, *, n_auto, boots, n_filler, filler_bytes, capacity, counts, teach, learner):
-    """The frozen generator (2.2). Pure: returns the record stream and the cue list. Deterministic in
-    `seed` (I6). `teach` / `learner` are the A2 fixture's episode dicts (tests/r1_c8_fixture.py): the
-    legacy teach rows and the current-schema learner-kind distractors, written but not recallable."""
+    """The frozen generator (2.2: `make_workload(seed, watermark)` is this with the W_c shape args --
+    n_auto / boots / n_filler / filler_bytes -- spelled keyword-only, and `capacity` the watermark).
+    Pure: returns the record stream and the cue list. Deterministic in `seed` (I6). `teach` /
+    `learner` are the A2 fixture's episode dicts (tests/r1_c8_fixture.py): the legacy teach rows and
+    the current-schema learner-kind distractors, written but not recallable. A shape that cannot
+    hold the registered classes raises ValueError naming the argument."""
+    if boots < 2:
+        raise ValueError(f"boots={boots}: cross-boot duplicates need at least 2 boots")
+    if n_auto % boots:
+        raise ValueError(f"n_auto={n_auto} is not a multiple of boots={boots}: records would drop")
+    if n_auto // boots < N_CROSS_BOOT_DUPS:
+        raise ValueError(f"per_boot={n_auto // boots} is below the {N_CROSS_BOOT_DUPS} duplicates")
+    if not 1 <= capacity < n_auto - N_CROSS_BOOT_DUPS:
+        raise ValueError(f"capacity={capacity} leaves no resident or no non-resident episode")
     rng = random.Random(seed)
     per_boot = n_auto // boots
     stream = []
@@ -404,13 +420,17 @@ def latency_probe_ok(planted, measured):
 
 def traced_peak(fn):
     """I4: the peak traced allocation of `fn()`, in bytes."""
+    outer = (
+        tracemalloc.is_tracing()
+    )  # a caller's trace (the cost driver nests this) is not ours to end
     tracemalloc.start()
     try:
         tracemalloc.reset_peak()
         out = fn()
         _, peak = tracemalloc.get_traced_memory()
     finally:
-        tracemalloc.stop()
+        if not outer:
+            tracemalloc.stop()
     return out, peak
 
 
