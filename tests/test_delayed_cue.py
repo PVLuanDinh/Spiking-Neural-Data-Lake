@@ -72,6 +72,23 @@ def test_ii_witness_units_agree_with_check_a5():
     )
 
 
+@pytest.mark.parametrize("uv", im.UV, ids=lambda uv: f"uv{uv[0]}{uv[1]}")
+def test_ii_witness_units_agree_with_check_a5_on_every_input(uv):
+    # check_a5 exposes only `right` and the minimum margin, so each input is fed alone: a texts map
+    # whose four keys all hold this input's text reports that input's own margin as the minimum
+    units = dc.witness_units("ii")
+    phi = im.code(im.TEXTS[uv])
+    alone = {key: im.TEXTS[uv] for key in im.UV}
+    assert abs(min(u.margin(phi) for u in units) - im.check_a5(alone)["min_margin"]) < 1e-12
+    # the same input placed at the one key labelled GOAL, the other three keys kept: check_a5 reads
+    # 4 of 4 iff it answers GOAL for this input
+    goal_key = (0, 1)
+    assert im.label_xor(*goal_key) == im.GOAL
+    at_goal_key = {**im.TEXTS, goal_key: im.TEXTS[uv]}
+    a5_says_goal = im.check_a5(at_goal_key)["right"] == 4
+    assert (dc.LABELS[dc.xor_bit(units, phi)] == im.GOAL) == a5_says_goal
+
+
 def test_float_lp_separates_separable_not_xor():
     # D2: the float side is a measurement; separable labellings are feasible, the XOR unions
     # infeasible
