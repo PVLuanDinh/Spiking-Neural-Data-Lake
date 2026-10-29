@@ -1461,8 +1461,13 @@ Facts, stated without a ruling:
    Until then it is a draft and the confirmatory licence stays withheld.
 3. A dev-seed run (15000-15007 only) of the c4c10b28 instrument, under the heavy-run lock after the campaign: the R2-c4
    positive controls first (planted 1-ulp weight change, one swapped ring entry, the omission arms each move their records),
-   per 2.5, because a failed positive control holds the disposition. The same run carries the D1 item 4 `_sleep_tick`
-   output-equivalence check and the R2-c2/R2-c4 observables at head.
+   per 2.5, because a failed positive control holds the disposition. The same run carries the R2-c2/R2-c4 observables at head. It does NOT carry D1 item 4's `_sleep_tick`
+   output-equivalence check: no role or head of `instruments/replay_hydration.py` runs one schedule at two heads
+   (`--head base` is the e1b3ae3c I arms, `BASE_ROLES` only, never the parent of f2534a94). D1 item 4 is
+   discharged by either (a) an integrator statement that cites, by commit, a check the perf lane already holds
+   (the parent of f2534a94 against the head, one dev seed, one schedule, the 2.2 post-sleep-tick records equal),
+   or (b) a two-head comparison tool named by commit and run on a dev seed under the heavy-run lock. Until one
+   lands, D1 item 4 stays OWED, and R2-c2/R2-c4 are read as testing the head's `_sleep_tick` (MAJOR-5 of #6735).
 4. A dev-seed run of the constructed reds of 2.4 and of R2-c7's reds (2.10), including the torn and landed arms under the
    survivor's resident BinLog cache (D1 item 2): each must fire on a dev seed; a red that fires on none halts the arc (R2-c3, P8).
 5. Re-measure the lake-byte records of K0 and K1 and the event sizes (D1 items 1 and 3) at c4c10b28 before any is quoted.
