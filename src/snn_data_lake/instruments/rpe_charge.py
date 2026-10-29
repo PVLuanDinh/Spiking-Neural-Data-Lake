@@ -1420,7 +1420,9 @@ def analyse(
     nats = {(d["tier"].get("native") or {}).get("sha256") for d in runs.values()}
     a["natives"] = sorted(map(str, nats))
     val.append(f"native sha256(s) in this tier: {a['natives']}")
-    if len(nats) != 1 or None in nats:
+    if not design and nats == {None}:  # E1/E1b records predate tier.native (build-ra #5911 MINOR-1)
+        val.append("native n/a (no record carries tier.native)")
+    elif len(nats) != 1 or None in nats:
         bad.append("runs of this tier do not share one recorded native sha256")
     if any(not d["tier"]["tree_clean"] for d in runs.values()):
         bad.append("a run recorded tree_clean = false")

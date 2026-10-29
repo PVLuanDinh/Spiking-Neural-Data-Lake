@@ -1048,6 +1048,31 @@ def test_native_identity_reads_the_loaded_extension_and_analyse_requires_one(mon
     assert R.e1c_disposition(b).startswith("VOID")
 
 
+def test_native_check_is_strict_for_e1d_and_disclosed_n_a_for_records_that_predate_it():
+    """build-ra #5911 MINOR-1, build-rb #5912 MINOR-3, policy-enforcer #5909 m1: the E1d design
+    VOIDs a missing native sha; E1/E1b records that all predate tier.native print a disclosed n/a
+    and stay valid; a mix of present and absent, or two values, VOIDs every design."""
+    seeds = R.E1C_SEEDS[:64]
+    e1d = R.fixture_runs("noharm", seeds=seeds, arms=R.E1C_ARMS)
+    e1d[("real", seeds[1])]["tier"]["native"] = {"file": None, "sha256": None}
+    kw = dict(seeds=seeds, design=R.E1C, logs_pass=True, sim_campaigns=20)
+    a = R.analyse("production", e1d, None, **kw)
+    assert any("native" in x for x in a["bad"]) and R.e1c_disposition(a).startswith("VOID")
+    legacy = R.fixture_runs("harm")
+    for d in legacy.values():
+        del d["tier"]["native"]
+    ok = R.analyse("production", legacy, R.fixture_e2("ok"), logs_pass=True)
+    assert "native n/a (no record carries tier.native)" in ok["val"]
+    assert ok["valid"] and not any("native" in x for x in ok["bad"]), ok["bad"]
+    mixed = copy.deepcopy(legacy)  # one present, the rest absent
+    mixed[("real", 8)]["tier"]["native"] = dict(R.SYNTH_NATIVE)
+    two = R.fixture_runs("harm")  # every record present, two values
+    two[("real", 8)]["tier"]["native"] = {"file": "x", "sha256": "e" * 64}
+    for runs in (mixed, two):
+        m = R.analyse("production", runs, R.fixture_e2("ok"), logs_pass=True)
+        assert any("native" in x for x in m["bad"]) and not m["valid"], m["bad"]
+
+
 def test_load_run_flags_a_record_whose_seed_or_arm_does_not_match_its_file_tag(tmp_path):
     seeds = R.E1C_SEEDS[:64]
     s0, s1 = seeds[0], seeds[1]
