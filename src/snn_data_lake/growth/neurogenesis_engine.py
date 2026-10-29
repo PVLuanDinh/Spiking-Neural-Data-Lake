@@ -61,7 +61,7 @@ from collections import Counter
 import torch
 
 from snn_data_lake.brainstem.arm_config import CONTACT
-from snn_data_lake.growth.ng_snn import NGSNN
+from snn_data_lake.growth.ng_snn import NGSNN, refit_holdout
 from snn_data_lake.infra.device import crossover, decisions, select
 from snn_data_lake.sensorimotor.multimodal_encoder import encode_multimodal
 
@@ -634,7 +634,7 @@ class NeurogenesisSelfImprove:
         prediction accuracy on a HELD-OUT recent slice (never used in the fit), beside the
         slice's own majority and persistence floors."""
         n = len(self._buf_x)
-        holdout = min(60, n // 3)
+        holdout = refit_holdout(n)
         # a prediction needs at least two categories to tell apart, and at least as many
         # training rows as there are categories to tell them apart WITH
         n_cat = len(set(self._buf_y))

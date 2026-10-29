@@ -141,6 +141,12 @@ def current_encode(feats, T):
     return feats.clamp(0, 1).unsqueeze(1).expand(N, T, d).contiguous()
 
 
+def refit_holdout(n):
+    """The held-out row COUNT of one engine refit over `n` buffered rows: the most recent third, at most 60.
+    ONE place for the size, so the engine's `_refit` and the readout-staleness instrument take the same one."""
+    return min(60, n // 3)
+
+
 def marginal_holdout(y, n_val):
     """THE admission window (specs/022 L1a, evidence/l-parallel-arms.md, 2026-09-05): the held-out rows of a
     category stream, chosen PER CATEGORY in proportion to the category marginal, taking the MOST RECENT rows

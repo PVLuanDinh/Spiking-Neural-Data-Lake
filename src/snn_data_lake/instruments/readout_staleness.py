@@ -153,6 +153,8 @@ def instrument_engine(engine, as_input=None, split_fn=None, shadow=True):
     orig = engine._refit
 
     def _inputs():
+        from snn_data_lake.growth.ng_snn import refit_holdout
+
         global_split = split_fn
         if global_split is None:
             from snn_data_lake.growth.ng_snn import marginal_holdout as global_split
@@ -164,7 +166,7 @@ def instrument_engine(engine, as_input=None, split_fn=None, shadow=True):
                 return torch.tensor(a, dtype=torch.float32)
 
         n = len(engine._buf_x)
-        holdout = min(60, n // 3)
+        holdout = refit_holdout(n)
         n_cat = len(set(engine._buf_y))
         if holdout < 3 or n_cat < 2 or (n - holdout) < n_cat:
             return None
