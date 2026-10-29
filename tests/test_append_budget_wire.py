@@ -93,6 +93,54 @@ def test_a_constructed_overload_trips_the_budget_and_a_calm_tick_does_not(scratc
     assert "FLOOD" in st["append_flood_last"] and "0x07" in st["append_flood_last"], st
 
 
+def test_a_fresh_brains_first_night_flushes_do_not_flood_and_a_burst_still_does(scratch_home):
+    """The recorded seed must describe what a fresh brain writes today. Measured at ee224e50
+    (stdlib): every new home FLOODed on its first three 0x04 ticks and its first three night
+    flushes, because the seeds were 113 B and 12,381 B (August) while the brain writes about 1 KB
+    of 0x04 a tick and 3-16 MB of 0x07 a night flush (pa-p4bd-1/2 moved the nightly skills' npz
+    into the lake). A false alarm on every new brain teaches its reader to ignore the real one.
+
+    Seed 7 is held out: the baseline's recorded method measures seed 0, so the bar is never fitted
+    to the seed it is judged on. POSITIVE CONTROL in the same brain: a planted burst above the live
+    bar must still trip it, or this test would pass on a budget that can no longer fire."""
+    from snn_data_lake.engine.brain import make_brain
+
+    b = make_brain(seed=7, persist=True)
+    assert b._append_budget is not None, "a persisting brain must own the budget"
+    flushes = []
+    real_flush = b._flush_prototypes
+
+    def counting_flush():
+        flushes.append(1)
+        return real_flush()
+
+    b._flush_prototypes = counting_flush
+    ticks = 0
+    while len(flushes) < 3 and ticks < 200:
+        b.tick()
+        ticks += 1
+    assert len(flushes) >= 3, f"only {len(flushes)} night flushes in {ticks} ticks: none judged"
+    st = b.state()
+    assert st["append_floods"] == 0, (
+        f"{st['append_floods']} flood(s) on ordinary writes in a fresh brain's first {ticks} ticks "
+        f"(3 night flushes); last: {st['append_flood_last']}"
+    )
+
+    bar, source = b._append_budget.bar(home_mod._T_STATE[0])
+    assert bar is not None, source
+    blob = 4 << 20
+    written = 0
+    i = 0
+    while written <= bar:
+        if home_mod.save_named_state(f"burst{i}", bytes([i % 251]) * blob):
+            written += blob
+        i += 1
+    b.tick()
+    st = b.state()
+    assert st["append_floods"] > 0, f"a {written} B burst against a {bar:.0f} B bar did not trip"
+    assert "FLOOD" in st["append_flood_last"] and "0x07" in st["append_flood_last"], st
+
+
 def test_the_budget_itself_still_refuses_an_unbaselined_tag():
     """The contract the live caller relies on: a tag with no recorded p95 never trips, so wiring the
     budget
