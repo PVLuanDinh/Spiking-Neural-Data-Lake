@@ -651,3 +651,61 @@ taught campaign may therefore run"; (2) Q-AII is ANSWERED by the owner (board #2
 A_ii and (ii) stay parked until a separately pre-registered repair of the E/I balance x Benna-Fusi consolidation x homeostatic
 scaling interaction makes the CANONICAL brain learn A_ii (measured, reachable red, no safety relaxation); (ii) then runs on the
 repaired brain under this file's frozen 2.9 reading. Plan: memory project-snn-engine-row-plan-1013 / board #2133.
+#### 2.18 Freeze-coverage check, 2026-10-29, pre-data
+
+Static read at `c4c10b28` (branch `claude/g2-coverage-1029`). No run, no pytest, no data read; no bar changed, no design added. Task: row plan 2026-10-13 owes "G2: verify 2.17 covers every 2.13 freeze item". Line numbers below are this file at `c4c10b28` (this addendum is appended, so nothing above moved). "2.13 freeze list" = the first bullet, lines 285-289.
+
+##### 2.18.1 Coverage table (2.13's freeze list, then items 2.15 deferred to the same amendment)
+
+| # | freeze item (quoted) | where covered | status |
+|---|---|---|---|
+| F1 | "This text" (2.13:285) | 2.1-2.12, the registration itself; 2.16 review record (497) | COVERED |
+| F2 | "a dated PRE-DATA amendment from dev seeds 8000-8003 only, before any of 8200-8307 is read" (285-286) | 2.17 header and first paragraph (518-526) states dev seeds only, no 8200-8307, no live seed | COVERED (as an assertion; the order is confirmable from the commits: amendment `e98b289e` and the 5.1 campaign are both 2026-10-07) |
+| F3 | "E" (286) | 2.17 table R2 (529); caveat at 2.17.1 (555) | COVERED. E = 400 rests only on positives that solved (largest epochs-to-stable 5); A_ii and ii.twin contribute 0, not a failure (555) |
+| F4 | "H = 2 x the smallest power of two in {16, 32, 64} at which the presized control solves every capacity cell on all four dev seeds within E / 2 epochs (128 tried if none; a failure at 128 redesigns the control before the freeze)" (286-288) | 2.17 table R1 (528): 16 fails, 32 solves, so H = 64 | COVERED. 2.15 D4 (428) asks the re-derivation "on GREET / GOAL"; 2.17 never names the intents (it says "the registered run"). Wording gap only |
+| F5 | "the P2 adopt-or-control reading of NGSNN's feature mode (2.4)" (288) | 2.17 table R4 (531): NOT ADOPTED, B7 met on 2 of 4 seeds, `presized_expansion` stays a declared CONTROL | COVERED |
+| F6 | "the explicit-history proof (S1C0 solved, S1C1 not, all four dev seeds)" (288-289) | 2.17 table R3 (530): PROVEN on 8000-8003 | COVERED |
+| F7 | "A_ii's A1/A4 readings" (289) | A4's learned clause: 2.17 table R5 A_ii (534: FAILS the registered requirement), 2.17.1 (558-571: attribution, correction). A1 (the generator check, 101-102): no reading; only the module self-check line "delayed_cue OK (18 of 18 reds)" (541-542) | PARTLY |
+| F8 | "beta from G3" (289) | 2.17 (522-524) says it carries NO beta and defers it to "G3's own dated amendment". `taught_problems.py:52` is still `BETA = None`; `growth/growth_loop.py:220` and `taught_problems.py:265-266` refuse an unset beta once a positive-spend baseline exists | NOT COVERED |
+| X1 | "the 12 C1-d words and buckets" (2.15.1:339; the "still owed" list 513-516) | 2.17 does not list them. They exist only in code (`delayed_cue.py:154` `BUCKETS_C1D`, `:168` `BUCKETS_AC1D`) | NOT COVERED |
+| X2 | "the presized-on-C1-d dev reading (or a redesigned learned control)" (515-516; 400-402) | 2.17 table R6 (532): REPRESENTABLE, NOT SHOWN LEARNABLE; "No redesign here (O11 is the owner's)" | PARTLY (the reading is there; the redesign branch is open, owner O11) |
+
+Not freeze items, listed so nobody re-counts them: 2.13's cost projection (290-293, a PROJECTION, no freeze role) and arc split (294-311; the registrations are in 2.18.3).
+
+##### 2.18.2 What each gap still needs
+
+| # | needs | kind | needs a run? |
+|---|---|---|---|
+| F7 | (a) a text line giving A_ii's A1 reading on dev seeds 8000-8003 (B1 / A1 output of the generator check); (b) a freeze of A_ii's A4 reading. The A4 reading FAILS the registered requirement (534), so it cannot freeze as PASS. Owner answered Q-AII 2026-10-13 ("Fix the stack first", board #2134/#2135, dated note at 650-656): A_ii and (ii) stay parked until a separately pre-registered stack repair makes the CANONICAL brain learn A_ii. The A4 row freezes only after that repair | text + owner answer (given) + a later pre-registration | (a) one cheap dev-seed generator read, or cite the existing self-check; (b) yes, after the repair arc |
+| F8 | G3's dated amendment setting beta from G3's dev seeds, then entered here; the SEQUENCE reading ((ii) then (i) S0C1, g3 D-G2-10) cannot run before (ii) is unparked | sample-size-style input from G3 (a measured constant) | yes (G3's dev run) |
+| X1 | a dated line listing the 12 C1-d words and their buckets (the 12 A_c1d words alike) read off the learner's `encode`, so the freeze names what the code holds. B1 already asserts them in code | text | no (read the two dicts; a B1 re-read is optional) |
+| X2 | owner answer on O11 (accept "representable, not shown learnable" as the C1-d disposition, or order a redesigned learned control) | owner answer | a redesign would need a dev run; acceptance needs none |
+| F4 | one clause naming the intents (GREET / GOAL) of the H dev run | text | no |
+
+Net: the freeze is NOT complete. Confirmatory item (i) (5.1) read under F1-F6 plus the unlisted C1-d words; (ii), A_ii and the budget (beta) remain unfrozen.
+
+##### 2.18.3 Cited code and registrations, then vs now (`9fc94e24` / `99d6193d` vs `c4c10b28`)
+
+| # | cited | then | now | finding |
+|---|---|---|---|---|
+| M1 | `taught_campaign.py:491` `to_stable = epochs_run - tp.STABLE` (2.17.1, 547) | `:491` at both `9fc94e24` and `99d6193d` | `:619`, same expression | MOVED +128 lines, behaviour same (`git diff -w` shows ruff-format rewraps, the `AMENDMENT` string, a `GRADIENT_CLAIM` table and a `lake_snapshot` refactor). Same shift: `dev_measurement` 500 to 630, `_dev_row` 484 to 598, `largest = max(...)` 525 to 660, `attempt` 192 to 211, `H = 64` / `EPOCHS = 400` still `:47-48` |
+| M2 | `decoy_units(problem, n, seed)` (2.13:301; debate row 12, 612) | signature already `decoy_units(texts, n, seed)` at `99d6193d` (`delayed_cue.py:297`) | `delayed_cue.py:328`, `(texts, n, seed)` | Signature differs from the registration text; no dated amendment records it. G4's T2 caller must pass texts |
+| M3 | `witness_units`, for (ii) "delegates to `inseparable_mapping`'s A5 witness, never a copy" (2.13:297-300) | re-expression, not delegation (`delayed_cue.py:269` then) | `delayed_cue.py:300-312`: comment says cp1 #21 REFUTED the delegate-never-copy rule (it would edit G1(c)'s recorded instrument); the re-expression is pinned to `check_a5` by `tests/test_delayed_cue.py:65-71` | Registration text unamended; the refutation lives only in code and commit `6b70f4af`, not in this file |
+| M4 | `tests/test_g8_move_gate.py` `_MOVED` pin "(292 + 3)" (2.13:309) | 295 | `:216` `len(S._MOVED) == 329` | Number moved by later arcs; not a G2 defect. The text pin is stale |
+| M5 | `REGIONS` registration of the three modules (2.13:307) | present | `__init__.py:302, 360, 362` | OK |
+| M6 | `run_selfchecks.py` registration (2.13:308) | present | `run_selfchecks.py:195-197` | OK |
+| M7 | `gates/dormancy_gate.py` "EXEMPT row, governed benchmark" (2.13:308) | row cited | NOT FOUND for `taught_campaign`, `taught_problems` or `delayed_cue` in `src/snn_data_lake/gates` (only a comment naming `taught_campaign.py` at `dormancy_gate.py:1181`) | Cited place gone or moot. The modules now have non-test importers (`engine/brain.py:5369`, `growth/growth_loop.py:223`, `readout/posed_problem.py:64`), which probably retires the need. Not verified: the dormancy gate was not run |
+| M8 | `ExplicitHistory`, `ngsnn_expansion`, `presized_expansion`, `growth/ng_snn.py` | present | `delayed_cue.py:116`, `taught_campaign.py:121`, `:105`, `growth/ng_snn.py` | OK |
+| M9 | Row plan RQ3 cites `PLAN-FINAL:1826` for "equal-capacity" | (10-13) | now `PLAN-FINAL-2026-09-02.md:1857` (1826 is L2 prose) | Row-plan line cite moved |
+
+##### 2.18.4 G2 Q-list O1-O5 (this file, 578-595)
+
+| Q | status | where |
+|---|---|---|
+| O1 held-out = novel combinations, not novel words | NARROWED by the lead read (2.15.1, 326) and carried by G3 as its O9 (`g3-growth-loop.md:661`); NO owner answer found in this tree | open for the owner |
+| O2 problems posed via `correct` and `route`, never `chat()` | design stated in 2.5 (142-152) and agreed by G5 in debate row 7-9; NO owner answer found | open for the owner |
+| O3 intents GREET / GOAL for (i) | built so (2.2, debate row 5, G3 chose shared intents); NO owner answer found | open for the owner |
+| O4 first problem 52 units, beta (dev), K = 3 budgets | G3 restates the same values as its own O2/O3 (`g3-growth-loop.md:641-643`) and accepts them; beta unset (F8). NO owner answer found | open for the owner; beta is F8 |
+| O5 presized control proves solvability at size H; G9's growth-OFF twin must be sized to match | carried as a G9 requirement: `PLAN-FINAL-2026-09-02.md:1857` and G-R9 (i) at `:2331`; NOT an owner answer | answered as a plan requirement, nothing owed to the owner except confirmation |
+
+The 2026-10-13 row plan marks all G2 O1-O5 "Not yet triaged"; no later triage was found in `tasks.md`, `PLAN-FINAL` or this file. Related: O11 (C1-d) is separate, row plan line 85, and is X2 above.
