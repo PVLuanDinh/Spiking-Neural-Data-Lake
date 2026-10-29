@@ -932,6 +932,34 @@ def test_e1c_compare_on_a_partial_campaign_lists_what_is_owed_and_does_not_crash
     assert "pfrozen_23000 missing" in b["pending"] and b["tail"] == []
 
 
+FIVE_CONTROLS = (("real", 23000), ("real_r2", 23000), ("pc", 23000), ("real", 23001), ("pc", 23001))
+
+
+def _five_control_look(drop=()):
+    seeds = R.E1C_SEEDS[:64]
+    full = R.fixture_runs("harm", seeds=seeds, arms=R.E1C_ARMS)
+    runs = {k: full[k] for k in FIVE_CONTROLS if k not in drop}
+    a = R.analyse(
+        "production", runs, None, seeds=seeds, design=R.E1C, logs_pass=True, sim_campaigns=0
+    )
+    return runs, a
+
+
+def test_the_controls_first_partial_look_is_pending_on_exactly_the_other_126_runs():
+    """stack-c #5933 MINOR-3 (sections 3, 7): the campaign continues past its five controls only
+    when the look reads PENDING on exactly the expected set and no bad item."""
+    runs, a = _five_control_look()
+    assert len({d["identity"]["nonce"] for d in runs.values()}) == 5  # five distinct runs
+    want = [f"real_{s} missing" for s in range(23002, 23064)]
+    want += [f"pfrozen_{s} missing" for s in range(23000, 23064)]
+    assert a["bad"] == [] and len(want) == 126
+    assert sorted(a["pending"]) == sorted(want), sorted(set(a["pending"]) ^ set(want))
+    assert R.e1c_disposition(a).startswith("PENDING: no verdict until these exist: ")
+    _, short = _five_control_look(drop=[("pc", 23001)])  # one control short: the set check fires
+    assert short["bad"] == []
+    assert sorted(short["pending"]) == sorted([*want, "pc seed 23001 missing"])
+
+
 def test_e1c_compare_cli_reads_the_campaign_design(tmp_path):
     work = tmp_path / "work"
     _write_runs(
