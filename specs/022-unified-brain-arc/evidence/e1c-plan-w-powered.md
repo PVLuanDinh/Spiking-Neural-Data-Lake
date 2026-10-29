@@ -756,3 +756,68 @@ A5-4 is crossed only if T exceeds about 131 s per run. The pilot's T replaces th
 - Rung above, ruled out: building the concurrent driver now. D-34 gates it on the 48 h projection, with its own panel.
   P8 item 2 also owes it a control that is not the method, the identity control, which needs the measured P.
 - Outside judge: the pilot's measured T and P, and R3 at the worker count.
+
+## Record of the campaign (2026-10-28): VOID at look 1
+
+Appended below the freeze and its addenda (section 12). Nothing above is edited.
+
+**Disposition: VOID, so there is no verdict.**
+- The campaign stopped after look 1 (22:25 CDT, board #5840). Its pre-registered control R2 did not fire:
+  `pc` on seed 21001 read 0 action flips, and every recorded series was byte-identical to `real_21001`.
+- Section 3 and section 7 R2 make that a VOID.
+- Delegate D-36: no resume, no START_LOOK = 2, no pc re-run and no pc-seed swap.
+
+**What ran.**
+- **GO:** #5825. TREE `1b6e53ab`, DRIVER_SHA256 `db48f4d3`, GATE_LOG `VERIFY-1b6e53ab.log` (194 passed).
+- **The compiled `_native`, pinned after the GO:**
+  - NATIVE_SHA256 `5c5b39c1fac3184e4d534a8522f617db785ed76fabb5fbc8bb3d41a8da80d297` (221,184 bytes, built 21:22:35).
+  - The toolchain was read from the host: rustc 1.96.0 (ac68faa20), cargo 1.96.0 (30a34c682), maturin 1.15.0.
+  - An out-of-band guard hashed it every 30 s. It was unchanged throughout.
+- **Smoke 1 was a FAILED LAUNCH, not a run.** It failed at import with an ImportError on `snn_data_lake._native`. The
+  cause was the environment: the fresh run tree had no compiled extension. It produced no result row. Smoke 2, after
+  the build, passed (about 24 s).
+- **R5 of record (D-31): PASS**, rc = 0, at 21:28:02, on stream `r5go-1b6e53ab933b`. All 7 rows were OK:
+
+  | Row | Value |
+  |---|---|
+  | shift harm | .8765 vs .8855 +- .0259 |
+  | up harm | .8165 vs .8145 +- .0317 |
+  | null futility-powered | .7375 vs .7450 +- .0355 |
+  | null type I | .0032 + 2 SE = .0041 <= .005 |
+  | null INCONCLUSIVE | .0045 <= .0131 |
+  | up power floor | .8207 - 2 SE = .8153 >= .8 |
+  | code identity | EXACT |
+
+- **The pilot (addendum 5).**
+  - T = 26 s (real_21000 26 s, pfrozen_21000 25 s), which projects about 10 h serial.
+  - P: pfrozen_21000 3,092 MB. GPU per pid is NA under WDDM, with a device upper bound of 897 MB.
+  - **The real_21000 observer missed.** pilot_watch matched on arguments alone and latched onto the TR1 tier-red probe,
+    reading P = 0 from 1 sample.
+  - A supplement on seed 21003, with the same observer shas, read real 3,058 MB and pfrozen 3,063 MB.
+- **Runs:** 131 runs at look 1, all rc = 0.
+
+**Look 1, as seen. These numbers decide nothing** (D-36; E1d section 1).
+- H-P1: t = 1.531 (34/64 > 0), SD 0.3542.
+- Exact-zero 0.016.
+- The tail census (|d| > 0.4) has 8 seeds.
+
+**Why VOID: a brain property, not a harness defect** (#5845, accepted by D-37).
+- The old pc stubbed `PrefrontalExecutive._decide_spiking` to winner 0. On production the race reaches behaviour only
+  through `_gate_primary`'s gated write of the held goal.
+- On seed 21001 no commitment ever clears `gate_threshold` (293/293 gate calls hold 0). So "force 0" equals the
+  brain's own held goal and changes nothing.
+- Stubbing winner 1 on 21001 flips 378 actions, so the channel is live.
+- E1b's pc seeds (8 and 9, both tiers) and E1's (0 and 1) all flipped, so no E1b re-read is owed.
+
+**Driver defect found at look 1.** The compare step wrote into a `reports\` folder that nothing created
+(FileNotFoundError). Validity was computed before the write failed. The fix, with its red, is in E1d's driver bind.
+
+**Reproduction tree.** E1c reproduces from `1b6e53ab`, not from HEAD: E1d's B3 moves `E1C_SEEDS` to its own block.
+
+**P3 opening (D-37 item 4), recorded and fixed by no row here: the planner gate never clears on some seeds.**
+- On calibration seeds 28000-28063 (tree `1b6e53ab`, pyd `5c5b39c1`), 9/64 (14.1%, Wilson 95% [7.6%, 24.6%]) are
+  goal-frozen at their first held goal, which is 0 on 64/64 seeds.
+- On those seeds the executive's race runs about 7,300 times per run and charges nothing (#5850).
+
+**Successor:** E1d (T124), `evidence/e1d-plan-w-pc2.md`, FROZEN at `df6bcfde`. It has a held-goal positive control
+(delegates D-37 and D-42) and uses seeds 23000-23703.
