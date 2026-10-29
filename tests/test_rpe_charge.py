@@ -781,9 +781,10 @@ R2_DRY_HARM_LINES = (  # build-rb #5912 MINOR-4: a second pin, on non-degenerate
 )
 
 
-def test_r2_dry_on_the_harm_fixture_pins_a_non_degenerate_look_1_and_its_stratum():
+def test_r2_dry_on_the_harm_fixture_pins_a_non_degenerate_look_1_and_its_stratum(monkeypatch):
     """R2-dry's noharm bar runs on d_s == 0 (SD 0, a 0.000 stratum split); the harm fixture's d_s
-    are non-zero and not all equal, so the pinned stratum lines carry non-zero t and k."""
+    are non-zero and not all equal, so the pinned stratum lines carry non-zero t and k.
+    stack-a #5934 MINOR-2: a seed-to-d mis-pairing in goal_stratum must change the pinned line."""
     seeds = range(23000, 23064)
     runs = R.fixture_runs("harm", seeds=seeds, arms=R.E1C_ARMS)
     h0 = R.N_TICKS // 2
@@ -793,6 +794,19 @@ def test_r2_dry_on_the_harm_fixture_pins_a_non_degenerate_look_1_and_its_stratum
     md = R.render_e1c(a).splitlines()
     assert a["valid"] and not a["pending"]
     assert (_quoted(a), next(x for x in md if x.startswith("- stratum"))) == R2_DRY_HARM_LINES
+    orig = R.goal_stratum
+
+    # The pairing mutant: d values shifted one seed against their seeds. A reversal or a shift by a
+    # multiple of 5 is invisible here (fixture d_s are 5-periodic; 23000-23008 and 23055-23063
+    # share a residue multiset): S4-red.log is the reversal, which reproduces the pinned line.
+    def mispaired(runs, d_p1):
+        v = list(d_p1.values())
+        return orig(runs, dict(zip(d_p1, v[1:] + v[:1], strict=True)))
+
+    monkeypatch.setattr(R, "goal_stratum", mispaired)
+    a = R.analyse("production", runs, None, seeds=seeds, design=R.E1C, logs_pass=True)
+    assert "- " + a["stratum"] != R2_DRY_HARM_LINES[1], a["stratum"]
+    assert _quoted(a) == R2_DRY_HARM_LINES[0]  # the firewall: the disposition never moves
 
 
 def test_e1c_record_reads_section_8_never_e1b_null_record(e1c_704):
