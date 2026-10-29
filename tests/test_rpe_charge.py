@@ -701,25 +701,40 @@ def test_stratum_disagreement_line_counts_the_pfrozen_seeds_it_cannot_classify()
     assert line.endswith("disagrees on 0 seeds (pfrozen held_goal missing on 3)") and a["valid"]
 
 
-def test_firewall_the_disposition_is_byte_identical_with_held_goal_present_stripped_shuffled():
-    """E1d section 4's firewall red: the stratum never reaches the look's disposition output."""
+def _firewall_outs(kind):
+    """The look's disposition output with held_goal present, stripped and shuffled."""
+    present = _stratum_runs(kind, 9)
+    stripped = copy.deepcopy(present)
+    for d in stripped.values():
+        d["p"].pop("held_goal", None)
+    shuffled = copy.deepcopy(present)
+    rng = random.Random(7)
+    for d in shuffled.values():
+        rng.shuffle(d["p"].get("held_goal", []))
+    outs, lines = [], []
+    for runs in (present, stripped, shuffled):
+        a, line = _stratum(runs)
+        md = [x for x in R.render_e1c(a).splitlines() if not x.startswith("- stratum")]
+        outs.append((R.e1c_disposition(a), _quoted(a), md))
+        lines.append(line)
+    assert len(set(lines)) == 3  # the held_goal did reach the stratum line in all three
+    return outs
+
+
+def test_firewall_the_disposition_is_byte_identical_with_held_goal_present_stripped_shuffled(
+    monkeypatch,
+):
+    """E1d section 4's firewall red: the stratum never reaches the look's disposition output.
+    build-rb #5912 MINOR-2: the same check must fire on a planted leak of held_goal."""
     for kind in ("harm", "noharm"):
-        present = _stratum_runs(kind, 9)
-        stripped = copy.deepcopy(present)
-        for d in stripped.values():
-            d["p"].pop("held_goal", None)
-        shuffled = copy.deepcopy(present)
-        rng = random.Random(7)
-        for d in shuffled.values():
-            rng.shuffle(d["p"].get("held_goal", []))
-        outs, lines = [], []
-        for runs in (present, stripped, shuffled):
-            a, line = _stratum(runs)
-            md = [x for x in R.render_e1c(a).splitlines() if "stratum" not in x]
-            outs.append((R.e1c_disposition(a), _quoted(a), md))
-            lines.append(line)
+        outs = _firewall_outs(kind)
         assert outs[0] == outs[1] == outs[2]
-        assert len(set(lines)) == 3  # the held_goal did reach the stratum line in all three
+    orig = R.e1c_disposition
+    monkeypatch.setattr(R, "e1c_disposition", lambda a: orig(a) + a.get("stratum", ""))
+    for kind in ("harm", "noharm"):  # the leak mutant: the same comparison now fails
+        outs = _firewall_outs(kind)
+        with pytest.raises(AssertionError):
+            assert outs[0] == outs[1] == outs[2]
 
 
 R2_DRY_LINE = (  # E1d section 6: R2-dry's bar, pinned before the bind
