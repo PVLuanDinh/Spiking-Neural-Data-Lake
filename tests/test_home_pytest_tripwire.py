@@ -118,3 +118,32 @@ def test_two_spellings_of_one_lake_file_share_one_log(monkeypatch, tmp_path):
     plain = str(tmp_path / "a" / "lake.bin")
     detour = os.path.join(str(tmp_path), "b", "..", "a", "lake.bin")
     assert H._log(plain) is H._log(detour)
+
+
+_EPISODE = {"who": "arm", "what": "JOINT_SHOULDER_LIFT", "where": "0@2", "when": "290"}
+
+
+@pytest.mark.parametrize(
+    "write",
+    [
+        lambda p: H.save_episode(_EPISODE, path=p),
+        lambda p: H.save_named_state("probe", b"x", path=p),
+    ],
+    ids=["save_episode", "save_named_state"],
+)
+def test_an_explicit_path_into_the_live_home_is_refused(monkeypatch, decoy, write):
+    """#1097/#1110: an explicit `path=` never reached the live-home guard, so a live
+    path wrote the live lake. Armed (pytest) it must raise before anything is created."""
+    monkeypatch.setattr(H, "_LOG_CACHE", {})
+    before = _listing(decoy)
+    with pytest.raises(H.LiveHomeRefused):
+        write(str(decoy / "explicit_lake.bin"))
+    assert _listing(decoy) == before
+
+
+def test_control_an_explicit_isolated_path_is_written(monkeypatch, tmp_path, decoy):
+    """The control that is not the method: the same write to an isolated path goes through."""
+    monkeypatch.setattr(H, "_LOG_CACHE", {})
+    target = tmp_path / "iso_lake.bin"
+    assert H.save_episode(_EPISODE, path=str(target))
+    assert target.is_file()
