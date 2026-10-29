@@ -4,8 +4,9 @@ Pre-registration: specs/022-unified-brain-arc/evidence/r1-bounded-recall.md (2.3
 Ported from claude/r1's instruments/recall_audit.py as a SOURCE (integrator ruling, B4 step 1); this
 file is the minimal core the A4 text names, rebuilt on main. Brain-free and lake-free: it imports no
 retrieval or storage reader (`binlog`, `lake_recall` at module level, `brain`, home's readers), so
-the oracle cannot share a bug with the thing it scores. The brain-touching arms, cost driver, child
-processes, I2 and I7 are OWED to the campaign build arc (REPORT.md of lane r1-static).
+the oracle cannot share a bug with the thing it scores. I2 (tier attribution) and I7 (the home guard
+and live-home stamp) are here, their imports lazy. The brain-touching arms, cost driver and child
+processes are OWED to the campaign build arc (REPORT.md of lane r1-static).
 
 Outcomes (2.14): VERIFIED / FALSE / MISS / REFUSED / ERROR.
 """
