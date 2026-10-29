@@ -5,6 +5,7 @@
 > Every number below is quoted from a cited record; none was measured here. The only arithmetic computed here is the
 > sample-size design in section 4 (stdlib python, exact binomial lattice plus a Monte Carlo check, no brain).
 > Fold 1 (2026-10-29, the end of this file) folds the 2-lens panel (#6792, #6831) and the policy-enforcer (#6817).
+> Fold 2 (2026-10-29, the end of this file) folds the policy-enforcer's #6893 and its addendum #6904.
 > - **Why it exists:** owner #2135 (2026-10-13, answering Q-AII #2134), verbatim selection: *"Fix the stack first"*.
 >   Ruling as relayed: G2(ii) and A_ii stay parked; *"first build and measure a repair of how E/I balance, Benna-Fusi
 >   consolidation and homeostatic scaling interact so the CANONICAL brain learns A_ii (neuter A/B, reachable red, no
@@ -267,8 +268,8 @@ section 6, item O-9). Each candidate must state why it differs:
 
 | Control | Expected | Read on |
 |---|---|---|
-| original stack, same seeds (paired) | fails E1 on every seed | dev and confirmatory |
-| bare learner (`im._incumbent`) | solves E1 (bare 4/4, first windows 108-131, REPORT:1384-1385) | dev and confirmatory |
+| original stack, same seeds (paired) | E1 count below RD-4's tolerance; its per-seed E1 is also MET's paired comparator (section 4) | dev and confirmatory |
+| bare learner (`im._incumbent`) | E1 count at or above RD-5's tolerance (bare 4/4 measured, first windows 108-131, REPORT:1384-1385) | dev and confirmatory |
 | three-off arm (E/I, BF, scaling off) | solves E1 (4/4, REPORT:1384-1385) | dev and confirmatory |
 | identity sham: the repaired code path present, its edit neutered | final weights and reads bit-identical to the original on every seed | dev and confirmatory |
 | B8 twin with the repaired stack (`taught_campaign.py:343+`) | Brain learner == factory learner at every epoch end | confirmatory, before the arms |
@@ -284,10 +285,17 @@ section 6, item O-9). Each candidate must state why it differs:
 - **RD-3b (a repair that turns safety down):** an attenuated-off fixture, each of E/I's, BF's and scaling's correction
   scaled by 1e-3 (a test fixture; no stack constant moved), PRESENTED AS a candidate, must be REJECTED by E3 on the
   designed input. This is P3's "live but inert" shape. If E3 accepts it: VOID.
-- **RD-4 (reachable E1 red):** the original stack fails E1 on the confirmatory seeds read so far. If it solves on any
-  seed, the bar cannot separate the repair from no repair on that block: VOID.
-- **RD-5 (harness sensitivity):** the bare learner solves E1 on the confirmatory seeds. If it fails, the harness or the
-  block cannot show learning: VOID.
+- **RD-4 (reachable E1 red; the historical null still holds):** the original stack runs paired on every confirmatory
+  seed. At each look, VOID iff its E1 count on the seeds read so far is **>= 6 of 8, >= 9 of 15, or >= 11 of 23**. Each
+  threshold is the smallest count with P(count >= t | rate p0 = 0.2209) <= 0.02/3. So RD-4 VOIDs only when the block
+  itself rejects "the original's rate <= p0", the assumption claim (a)'s H0 rests on. Own error rate: P(RD-4 VOID over
+  the 3 looks | original at p0) = 0.0078 (exact). Round 2's "any original success VOIDs" is withdrawn: at a true rate
+  of p0 it VOIDed with probability 0.997 over 23 seeds (#6904).
+- **RD-5 (harness sensitivity):** the bare learner runs on every confirmatory seed. At each look, VOID iff its E1 count
+  is **< 1 of 8, < 2 of 15, or < 5 of 23**. Each threshold is the largest count with P(count < l | rate p1 = 0.4729)
+  <= 0.02/3. So RD-5 VOIDs only when the block rejects "the bare learner reaches p1", the rate section 4's effect
+  assumes. Own error rate: P(RD-5 VOID over the 3 looks | bare at p1) = 0.0086 (exact). Round 2's "any bare failure
+  VOIDs" is withdrawn (P(bare solves all 23) = 0.307 at a rate of 0.95, #6904).
 - **RD-6 (identity sham):** bit-identity to the original. A mismatch means the edit leaks outside its neuter: VOID.
 
 ## 4. Sample size (P1) -- the REPAIR ARC's section (not A_ii's or G2(ii)'s; O-11)
@@ -309,12 +317,15 @@ section 6, item O-9). Each candidate must state why it differs:
 | Effect the claim needs | the repair restores learning to at least the smallest rate the unstacked learners are consistent with: p1 = 0.4729 against p0 = 0.2209. Disclosed assumption: p1 is an E1-only rate of arms that fail E3 by construction; the repaired conjunction's rate is assumed to reach it. A larger true rate only raises power (table below) |
 | Fixed-sample target | exact one-sided binomial test, alpha 0.05, power 0.80: smallest n with a critical count c such that P(X >= c \| p0) <= 0.05 and P(X >= c \| p1) >= 0.80 is **n = 23, c = 9** (alpha 0.0491, power 0.8394). (Normal-approximation formula n = [(z.95 sqrt(p0 q0) + z.80 sqrt(p1 q1)) / (p1 - p0)]^2 = 19.2, rounded up by the exact lattice to 23) |
 | Multiplicity | none inside a seed: E1-E5 are an intersection-union conjunction (every part must hold), so the per-seed pass is level-alpha without correction. Across candidates: see "Arc budget" |
-| Sequential design | three named looks on the confirmatory block, seeds read in ascending order: **L1** after 8 seeds, **L2** after 15, **L3** (cap) after 23. Efficacy boundaries from the Lan-DeMets O'Brien-Fleming spending function alpha(t) = 2 - 2 Phi(z_0.975 / sqrt t), computed exactly on the binomial lattice under p0: **MET iff x >= 7 at L1, x >= 8 at L2, x >= 9 at L3**. Spend allowed 0.00089 / 0.01523 / 0.05; realised cumulative alpha 0.00017 / 0.00806 / **0.04997** |
+| Sequential design | three named looks on the confirmatory block, seeds read in ascending order: **L1** after 8 seeds, **L2** after 15, **L3** (cap) after 23. Efficacy boundaries from the Lan-DeMets O'Brien-Fleming spending function alpha(t) = 2 - 2 Phi(z_0.975 / sqrt t), computed exactly on the binomial lattice under p0: **MET iff x >= 7 at L1, x >= 8 at L2, x >= 9 at L3**. Spend allowed 0.00089 / 0.01523 / 0.05; realised cumulative alpha 0.00017 / 0.00806 / **0.04997**. **Paired guard (Fold 2):** MET also needs x > x_orig, the original's E1 count on the same seeds. This is an intersection-union conjunct, so it can only lower alpha. If the boundary is crossed but the guard fails, the block continues to the next look; at the cap it reads INCONCLUSIVE (section 5) |
+| Method (disclosed) | claim (a)'s H0 is the HISTORICAL bound p0 (the original's 0/12), not a concurrent two-arm comparison. The original IS re-run, paired, on every confirmatory seed: as RD-4's validity control (VOID when the block rejects "rate <= p0") and as the paired guard. A drift of the original's true rate up to RD-4's tolerance is not excluded by the H0; the guard keeps MET from being read when the concurrent original does as well. The D-78 sentence "the original is not re-run on the block" (below) misstates this; its correction is the integrator's (O-15) |
+| Validity tolerances (Fold 2) | RD-4 and RD-5 (section 3.3) VOID only when the block itself rejects the rate the design assumes for that arm, each at an own error rate <= 0.02 over the 3 looks (Bonferroni 0.02/3 per look): RD-4 thresholds 6/9/11, error 0.0078 at p0; RD-5 thresholds 1/2/5, error 0.0086 at p1. Assumption (disclosed): the three arms' per-seed outcomes are independent across arms |
 | Futility (non-binding) | stop for futility iff the exact one-sided 95% upper bound on p is below p1 at the look: **x <= 1 at L1** (bound 0.471), **x <= 3 at L2** (bound 0.440). Non-binding: the efficacy boundaries were computed ignoring it, so alpha holds whether or not it is obeyed |
-| Cap and inflation | hard cap 23 = the fixed-sample target 23 x inflation factor 1.00. On this lattice the cap keeps power >= 0.80: **0.8405** with futility ignored, **0.8199** with futility obeyed. Disclosed: the continuous LD-OBF 3-look factor 1.017 would give 23.4 -> 24, but at 24 the lattice boundaries (7, 8, 10) drop power to 0.785, so 24 is rejected and 23 is kept |
-| Operating characteristics (exact) | P(MET): p 0 -> 0.000; p0 0.2209 -> 0.047; p 0.35 -> 0.398; p1 0.4729 -> 0.820; p 0.6 -> 0.980; p 0.8 -> 0.9999; p 0.9 -> 1.000; p 1.0 -> 1.000. Expected seeds read: 14.8 at p0, 18.7 at p1, 9.3 at p 0.9, 8.0 at p 1.0 |
+| Cap and inflation | hard cap 23 = the fixed-sample target 23 x inflation factor 1.00. On this lattice the cap keeps power >= 0.80: **0.8405** with futility ignored, **0.8199** with futility obeyed (both with no VOID). Counting VOID and the paired guard, P(MET and no VOID) at p1 is **0.8032** in the worst case the measured counts allow (original at p0 AND bare at p1), and 0.8199 at the measured point rates (original 0, bare 1). Disclosed: the continuous LD-OBF 3-look factor 1.017 would give 23.4 -> 24, but at 24 the lattice boundaries (7, 8, 10) drop power to 0.785, so 24 is rejected and 23 is kept |
+| Operating characteristics (exact) | P(MET), no VOID, guard idle: p 0 -> 0.000; p0 0.2209 -> 0.047; p 0.35 -> 0.398; p1 0.4729 -> 0.820; p 0.6 -> 0.980; p 0.8 -> 0.9999; p 0.9 -> 1.000; p 1.0 -> 1.000. Expected seeds read: 14.8 at p0, 18.7 at p1, 9.3 at p 0.9, 8.0 at p 1.0 |
+| P(MET and no VOID) beside P(VOID) (Fold 2; exact joint lattice over the three arms, guard included) | measured point rates (original 0, bare 1): P(VOID) = 0 and P(MET) as in the row above. Worst case (original p0, bare p1): candidate at p0 -> MET 0.0450, VOID 0.0114; at 0.35 -> 0.3853, 0.0138; at p1 -> **0.8032, 0.0133**; at 0.6 -> 0.9683, 0.0112; at 0.9 -> 0.9916, 0.0084. Round 2's VOID rules gave P(VOID) 0.997 at the original's p0 (#6904); these give <= 0.014 |
 | Simulated before data (stdlib, 200,000 reps per p, RNG seed 20261029, this lane) | P(MET) at p0 = 0.0466, at p1 = 0.8200 (futility obeyed); both match the exact values to 3 decimals. The freeze commits this script with a planted-null and a planted-effect red (O-6) |
-| Arc budget (k = 1) | this registration confirms exactly ONE candidate on ONE block, at family alpha 0.05. A NOT MET or INCONCLUSIVE closes it; no second candidate runs under it, and the same candidate is never re-run on a fresh block under it. A further candidate is a new pre-registration that must count this block as a spent look of the arc's family (the integrator rules the family correction, O-13) |
+| Arc budget (k = 1) | this registration confirms exactly ONE candidate on ONE block, at the full family alpha 0.05. A NOT MET or INCONCLUSIVE closes it; no second candidate runs under it, and the same candidate is never re-run on a fresh block under it. **Fold 2 (#6893 MINOR-2):** because this block tests at the full 0.05, a MET, NOT MET or INCONCLUSIVE here (or a VOID after a candidate outcome is read) SPENDS THE WHOLE A_ii-repair family alpha. Holm cannot be applied afterwards to a block that already claimed at 0.05. A further candidate therefore needs a NEW family, declared and justified in its own registration; it never claims inside this one. This text follows #6893's option (a). It conflicts with the Holm clause of the D-78 O-13 ruling below, so O-13 is reopened to the integrator; the ruling's text is left as written |
 | Not counted | stage A, the dev reads (8000-8007) and Addendum 0's sham checks: exposed, development only |
 | Cost (disclosed) | each confirmatory seed runs the candidate, the original, the bare learner, the three-off arm, the sham and the RD-3b fixture at E 400, plus E2's arms and E5's retention read; at most 23 seeds |
 
@@ -324,15 +335,17 @@ bound on p.
   reaches 0.80 at p = 0.465 with futility obeyed).
 - At the cap with x <= 8 (the boundary not crossed): powered only when the bound is below p1, i.e. x <= 6 of 23. For
   x = 7 or 8 the bound is 0.496 or 0.540: **INCONCLUSIVE** with that mde stated.
+- At the cap with x >= 9 but x <= x_orig (the paired guard fails): **INCONCLUSIVE**. The candidate clears the historical
+  bound but does not beat the concurrent original; the record states x, x_orig and both bounds.
 
 ## 5. Disposition (fixed in advance; first row that applies decides)
 
 | Reading | When | Consequence |
 |---|---|---|
-| **VOID** (validity only) | RA-1, RA-2 or RA-3 fails (stage A); or any of RD-1 to RD-6, RD-3b or the B8 twin fails (confirmatory); or the block is exposed before the run | no verdict. Before any candidate outcome on the block is read: repair by a dated addendum on the same seeds. After a candidate outcome is read: the block is spent (it counts as a used look of the family, O-13), and any further read is a new pre-registration on a fresh block the integrator claims |
-| **MET** | the efficacy boundary is crossed at L1, L2 or L3 | the inference licensed, and only this: the repaired stack's per-seed rate of passing E1-E5 exceeds 0.2209 (the original's bound) at one-sided alpha 0.05; the record states x, the look and the exact lower bound (e.g. 7/8 -> 0.529; 9/23 -> 0.222). It is the measured win. It does NOT certify G2(ii) readiness (section 4, claim (b)). It may land through the normal arc (2-lens panel on the build, the battery, the push) after ruling O-12; then G2(ii), G3 C11 on S0C1 and G9 unpark under their own registrations, and a G2(ii) failure re-parks them |
+| **VOID** (validity only) | RA-1, RA-2 or RA-3 fails (stage A); or any of RD-1 to RD-6, RD-3b or the B8 twin fails (confirmatory); or the block is exposed before the run | no verdict. Before any candidate outcome on the block is read: repair by a dated addendum on the same seeds. After a candidate outcome is read: the block is spent (it spends the family alpha, section 4 "Arc budget"; O-13), and any further read is a new pre-registration, in a new family, on a fresh block the integrator claims. RD-4 and RD-5 fire only past their tolerances (section 3.3); P(VOID) is stated beside P(MET) in section 4 |
+| **MET** | the efficacy boundary is crossed at L1, L2 or L3 AND x > x_orig on the same seeds (the paired guard) | the inference licensed, and only this: the repaired stack's per-seed rate of passing E1-E5 exceeds 0.2209 (the original's bound) at one-sided alpha 0.05; the record states x, the look and the exact lower bound (e.g. 7/8 -> 0.529; 9/23 -> 0.222). It is the measured win. It does NOT certify G2(ii) readiness (section 4, claim (b)). It may land through the normal arc (2-lens panel on the build, the battery, the push) after ruling O-12; then G2(ii), G3 C11 on S0C1 and G9 unpark under their own registrations, and a G2(ii) failure re-parks them |
 | **NOT MET, powered** | a futility stop (x <= 1 at L1, x <= 3 at L2), or x <= 6 at the cap | the candidate is rejected evidence and never lands. A NULL-RECORD with scale: units = the 9 response neurons x H inputs, ticks = E 400 epochs, seeds = those read, the mde (P8 null-scale item 1). It was never on the live path, so nothing is deleted or exempted |
-| **INCONCLUSIVE** | x = 7 or 8 at the cap | it does not land, since there is no measured win. The NULL-RECORD says INCONCLUSIVE with its bound and mde (P8 item 4); a further run needs its own pre-registration (Arc budget) |
+| **INCONCLUSIVE** | x = 7 or 8 at the cap; or x >= 9 at the cap with x <= x_orig | it does not land, since there is no measured win. The NULL-RECORD says INCONCLUSIVE with its bound and mde (P8 item 4); a further run needs its own pre-registration (Arc budget) |
 
 The live brain stays byte-identical under every reading except MET, and under MET until the arc lands.
 
@@ -358,7 +371,9 @@ The live brain stays byte-identical under every reading except MET, and under ME
   with non-binding futility and cap 23, and claim (b) recorded as unpowerable. The sequential shape is used, so P1
   item 3's one-shot clause is NOT invoked.
 - **O-6 Simulation script.** Commit section 4's stdlib exact-lattice computation and Monte Carlo (RNG seed 20261029)
-  with a planted-null and a planted-effect red, before data.
+  with a planted-null and a planted-effect red, before data. It includes Fold 2's exact joint lattice over the
+  candidate, original and bare arms (RD-4/RD-5 tolerances, paired guard, P(VOID)), with two more reds: an original
+  that always solves VOIDs at L1 with certainty, and at the measured point rates P(VOID) = 0 and P(MET) at p1 = 0.8199.
 - **O-7 Perception tier.** The confirmatory record states `state()['perception_tier']` and `perceiving_audio` for the B8
   twin brain. A 'stdlib' tier halts.
 - **O-8 G2 F7(a).** A_ii's A1 (generator check) reading on dev seeds 8000-8003 (`g2:681` on `4b6bc9ea`). It is G2's to
@@ -373,8 +388,15 @@ The live brain stays byte-identical under every reading except MET, and under ME
 - **O-12 Landing licence.** The owner or integrator rules whether claim (a)'s MET (rate above the original's bound)
   suffices to land the repair on the live brain, given that G2(ii) needs a rate near 1 that this arc cannot certify.
   If not, MET is recorded and the landing waits on G2(ii) run against the candidate branch.
-- **O-13 Family budget.** The integrator rules how a second candidate (a new pre-registration) corrects for this
-  block as a spent look of the A_ii-repair family (e.g. alpha split across the family's confirmatory blocks).
+- **O-13 Family budget (REOPENED by Fold 2).** D-78 ruled Holm across later blocks. #6893 MINOR-2 shows Holm cannot
+  apply after this block claims at the full 0.05. This draft now says a spent block exhausts the family, so a later
+  candidate opens a new family (#6893 option (a); section 4 "Arc budget"). The integrator re-rules: confirm (a), or
+  pre-allocate now, i.e. this block at 0.05/k_max with k_max named. Option (b) re-derives section 4 at that alpha before
+  freeze.
+- **O-15 D-78 disclosure text.** The integrator's D-78 method disclosure says "the original is not re-run on the block".
+  The design re-runs it, paired, on every seed (RD-4 and the paired guard; section 4 "Method"). #6893 MINOR-1's
+  proposed wording: "the original is re-run paired on every seed as RD-4's control; the test's H0 is the historical
+  bound p0, not a concurrent two-arm comparison". That section is the integrator's to edit; this lane did not touch it.
 - **O-14 Addendum 0.** The four candidate diffs (2.3) are committed as a dated pre-data addendum before the first
   stage-A run, each with its predicted R sign and its identity sham.
 
@@ -417,3 +439,21 @@ Folds lens A #6792, lens C #6831 and the policy-enforcer #6817 on `a7ae6781`. On
 - **O-13 RULED (integrator, accepted by launcher D-78):** this block keeps k = 1 at alpha .05 as registered. Any later candidate's
   pre-registration applies Holm across the A_ii-repair family's confirmatory blocks, counting this block as spent, and claims only at
   the adjusted level.
+
+## Fold 2 (2026-10-29) -- changelog
+
+Folds the policy-enforcer's #6893 (2 MINOR) and its addendum #6904 (1 MAJOR) on `bc7c85ea` + `2d7054d1`. The D-78 section
+above is the integrator's and is unchanged; where a finding lands in it, the fix is written in this lane's text and the
+D-78 edit is listed as owed (O-13, O-15). Numbers come from an exact stdlib joint binomial lattice (no brain, no run).
+- **MAJOR-1 (#6904, validity reds vs the design's own rates): FOLDED.** RD-4 and RD-5 now VOID only when the block rejects
+  the rate the design assumes for that arm. RD-4: original >= 6/8, 9/15, 11/23 (error 0.0078 at p0). RD-5: bare < 1/8,
+  2/15, 5/23 (error 0.0086 at p1). Each uses Bonferroni 0.02/3 per look. Section 4 now states P(MET and no VOID) beside
+  P(VOID): worst case 0.8032 / 0.0133 at p1, so power stays >= 0.80 with VOID counted. The round-2 rules gave
+  P(VOID) 0.997. Controls table and section 5's VOID row updated.
+- **Paired guard added (from #6904's alternative and MINOR-1's paired original):** MET also needs x > x_orig. It is an
+  IUT conjunct, so alpha can only fall; it costs 0.006 of worst-case power. A guard failure at the cap reads INCONCLUSIVE.
+- **MINOR-1 (#6893, the D-78 disclosure says the original is not re-run): FOLDED in section 4's new "Method" row, OWED in
+  D-78 (O-15).** The H0 is the historical p0; the original IS run paired, as RD-4's control and the guard.
+- **MINOR-2 (#6893, Holm cannot follow a block that claimed at 0.05): FOLDED as option (a) in section 4's "Arc budget"
+  and section 5; O-13 REOPENED to the integrator** (confirm (a), or pre-allocate 0.05/k_max and re-derive section 4).
+- **O-6 extended** to commit the joint-lattice script with two more reds.
