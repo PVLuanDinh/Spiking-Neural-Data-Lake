@@ -3,7 +3,7 @@ red first: the confirmatory-seed licence on every entry point (MAJOR-1). Synthet
 patched children only; no brain is built and no confirmatory or reserve seed is ever run."""
 
 import pytest
-from test_replay_hydration_instrument import _per_seed
+from test_replay_hydration_instrument import _arms, _differ, _per_seed
 
 from snn_data_lake.instruments import replay_hydration as rh
 
@@ -120,3 +120,41 @@ def test_the_dev_block_keeps_the_joined_reading(monkeypatch):
     monkeypatch.delenv("R2_CONFIRMATORY_GO", raising=False)
     v = rh.verdict({s: _per_seed(c6={"K3": False}) for s in rh.DEV_SEEDS}, list(rh.DEV_SEEDS))
     assert v["part"] == "dev" and v["verdict"] == "RED"
+
+
+# ---- MAJOR-4: a reader-kind guard-off arm fires only on its own effect (2.4, A11.2) -------------
+
+
+def _off_arm(arms, kind):
+    off = arms[f"{kind}_off"]
+    if kind == "HELDOUT":  # the explicit 2.4 check: the planted id sits in the neutered arm's ring
+        off["planted"] = off["before"]["ring_ids"][0]
+    return off
+
+
+@pytest.mark.parametrize("kind", rh._READER_KINDS)
+def test_a_latched_reader_off_arm_is_invalid_never_fired(kind):
+    arms = _arms()
+    off = _off_arm(arms, kind)
+    off["before"]["ring"][0] = ["MEMORY", "admitted"]
+    off["fault"] = {"phase": "hydrate", "cause": "ValueError: another guard latched"}
+    c = rh.seed_comparisons(arms)
+    assert not c["planted"][kind]["guard_off_flagged"], "a latched off arm read FIRED"
+    assert f"{kind}_off" in c["incomplete"] and not c["arms_complete"]
+
+
+@pytest.mark.parametrize("kind", rh._READER_KINDS)
+def test_a_reader_off_arm_fires_on_ring_or_draws_not_on_weights_alone(kind):
+    arms = _arms()
+    _differ(_off_arm(arms, kind))  # weights only: not where 2.4 says this red must fire
+    assert not rh.seed_comparisons(arms)["planted"][kind]["guard_off_flagged"]
+    for where in ("ring", "ring_ids", "drawn", "drawn_ids"):
+        arms = _arms()
+        off = _off_arm(arms, kind)
+        if where.startswith("ring"):
+            off["before"][where][-1] = ["MEMORY", "admitted"] if where == "ring" else "9-9"
+        else:
+            off["rows"][0][where] = ["9-9"]
+        c = rh.seed_comparisons(arms)
+        assert c["planted"][kind]["guard_off_flagged"], (kind, where)
+        assert f"{kind}_off" not in c["incomplete"]
