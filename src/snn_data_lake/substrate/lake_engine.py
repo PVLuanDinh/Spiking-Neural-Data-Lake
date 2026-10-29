@@ -427,7 +427,101 @@ class AppendBudget:
         return violations
 
 
-def main() -> int:
+def record_append_rates(seed: int = 0, ticks: int = 120) -> dict:
+    """THE RECORDED METHOD of tools/lake_append_baseline.json, as code: make_brain(seed) on a FRESH
+    scratch home for `ticks` ticks; per tag, AppendBudget._p95_of over the nonzero per-tick sums of
+    tag-prefixed payload bytes. Until 2026-10-29 the method was prose with no command, which is how
+    the 0x04/0x07 seeds sat two months stale (pa-p4bd-1/2 moved the nightly skills into 0x07).
+
+    Measured through home's ONE append-observation hook, chained to the brain's own budget, so it
+    counts exactly what AppendBudget judges (P2: no second observer). At ee224e50 it reads the same
+    four tags and p95s as the prose method's BinLog wrap (0x04 1,095; 0x07 7,421,514; 0x08 4,738;
+    0x0A 436 B, stdlib, seed 0, 120 ticks); a tag no write site reports would read as absent.
+    The home is ALWAYS a new temp dir: this never opens an existing lake."""
+    import os
+    import platform
+    import tempfile
+    import time
+
+    os.environ["NORD_HOME"] = tempfile.mkdtemp(prefix="append_record_")
+    from snn_data_lake.engine.brain import make_brain
+    from snn_data_lake.substrate import home
+
+    b = make_brain(seed=seed, persist=True)
+    tick_bytes: dict[int, int] = {}
+    inner = home.set_append_observer(None)
+
+    def counting(tag, n):
+        tick_bytes[tag] = tick_bytes.get(tag, 0) + int(n)
+        if inner is not None:
+            inner(tag, n)
+
+    home.set_append_observer(counting)
+    per: dict[int, list[int]] = {}
+    try:
+        for _ in range(ticks):
+            b.tick()
+            for tag, n in tick_bytes.items():
+                if n > 0:
+                    per.setdefault(tag, []).append(n)
+            tick_bytes.clear()
+        tier = b.state().get("perception_tier")
+    finally:
+        home.set_append_observer(inner)
+    return {
+        "method": "lake_engine.record_append_rates",
+        "seed": seed,
+        "ticks": ticks,
+        "tier": tier,
+        "host": platform.node(),
+        "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "per_tag": {
+            str(t): {
+                "nonzero_ticks": len(v),
+                "p95": AppendBudget._p95_of(v),
+                "max": max(v),
+                "mean": round(sum(v) / len(v), 1),
+            }
+            for t, v in sorted(per.items())
+        },
+    }
+
+
+def write_seeds(measured: dict, tags, path: Path = APPEND_BASELINE) -> None:
+    """Re-seed exactly `tags` from a `record_append_rates` result, each with its provenance under
+    "recorded" (the tier above all: a seed is only comparable on the tier it was measured on).
+    A tag the run did not see is REFUSED rather than written as zero."""
+    base = json.loads(path.read_text(encoding="utf-8"))
+    rec = base.setdefault("recorded", {})
+    for tag in (str(int(t)) for t in tags):
+        row = measured["per_tag"].get(tag)
+        if not row:
+            raise ValueError(f"tag {tag} was not observed in the run; refusing to seed it")
+        base["per_tag_p95_bytes"][tag] = row["p95"]
+        rec[tag] = {k: measured[k] for k in ("seed", "ticks", "tier", "host", "utc")} | row
+    path.write_text(json.dumps(base, indent=2) + "\n", encoding="utf-8")
+
+
+def _record_cli(argv: list[str]) -> int:
+    import argparse
+
+    ap = argparse.ArgumentParser(prog="python -m snn_data_lake.substrate.lake_engine --record")
+    ap.add_argument("--record", action="store_true", required=True)
+    ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--ticks", type=int, default=120)
+    ap.add_argument("--write", default="", help="comma-separated tags to re-seed, e.g. 4,7")
+    a = ap.parse_args(argv)
+    measured = record_append_rates(a.seed, a.ticks)
+    if a.write:
+        write_seeds(measured, [int(t) for t in a.write.split(",")])
+    print(json.dumps(measured, indent=1))
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if "--record" in argv:
+        return _record_cli(argv)
     ok, msg = registry_consistent()
     if not ok:
         print(f"lake_engine self-check FAILED: {msg}")
