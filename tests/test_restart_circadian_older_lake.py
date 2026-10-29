@@ -50,13 +50,24 @@ def test_a_record_of_another_seed_is_refused_naming_the_seed(tmp_path):
     [
         {"step": True},  # panel lens A m1 (#6910): a bool is not step 1
         {"step": -1},
-        {"phase": 0.123},  # disagrees with the replay of `step` ticks: not this clock's history
+        {"phase": 1.5},
+        {"rng": 5},  # decodes, but not to a random.Random
+        {"rng": [3, [1, 2], None]},  # the hand-rolled list form the shared codec replaced
     ],
 )
 def test_a_malformed_record_is_refused_as_malformed(tmp_path, changes):
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED, ticks=5)
     note = _fresh(run_brain(home, seed=SEED, rewrite=changes))
+    assert note.startswith("refused") and "malformed" in note, note
+
+
+def test_a_bad_cached_gauss_is_refused_as_malformed(tmp_path):
+    """api-usage review P3: CPython's Random.setstate checks the version and the 625 words but
+    assigns gauss_next unchecked: a string there would restore, then raise on the next tick."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    note = _fresh(run_brain(home, seed=SEED, rewrite_gauss_next="x"))
     assert note.startswith("refused") and "malformed" in note, note
 
 
@@ -83,11 +94,12 @@ def test_a_failed_keep_never_overwrites_the_foreign_record(tmp_path):
     assert stray["record"]["seed"] == SEED and stray["record"]["step"] == 5, stray["record"]
 
 
-def test_the_record_is_tens_of_bytes_and_holds_no_rng_state(tmp_path):
-    """Policy lens A-2 (#6952): the jitter rng is REPLAYED from the seed, never persisted, so a
-    flush appends tens of bytes to _T_STATE, not ~7 KB of MT19937 state."""
+def test_the_record_carries_the_rng_state_through_the_one_codec(tmp_path):
+    """Launcher D-82 on ruling #6978 (brief item 9): a replay from the seed costs O(_step),
+    unbounded over a long life, so the jitter rng's STATE rides the record, encoded by
+    readout/interaction_learning.py's G0(c) codec (the one Random codec, P2)."""
     out = run_brain(private_home(tmp_path, "h"), seed=SEED, ticks=5)
-    assert "rng" not in out["record"] and out["record_bytes"] < 300, out["record"]
+    assert out["record"]["rng"]["__kind__"] == "random", out["record"]
 
 
 def test_a_kill_right_after_the_growth_flush_restores_that_nights_onset(tmp_path):

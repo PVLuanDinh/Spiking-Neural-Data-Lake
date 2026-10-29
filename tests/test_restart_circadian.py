@@ -40,6 +40,10 @@ from snn_data_lake.engine.brain import make_brain
 CIRCADIAN_STATE = "circadian_clock.json"
 if "rewrite" in spec:
     home.save_state(CIRCADIAN_STATE, dict(home.load_state(CIRCADIAN_STATE), **spec["rewrite"]))
+if "rewrite_gauss_next" in spec:  # the cached normal inside the codec's encoded rng state
+    rec = home.load_state(CIRCADIAN_STATE)
+    rec["rng"]["state"]["items"][2] = spec["rewrite_gauss_next"]
+    home.save_state(CIRCADIAN_STATE, rec)
 
 def clock(b):
     rng = hashlib.sha256(repr(b.clock.rng.getstate()).encode()).hexdigest()
