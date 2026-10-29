@@ -55,6 +55,7 @@ ARMS = (
     "RANDOM",  # same schedule and batch, untrained, unselected units
     "SHAM",  # identical bookkeeping, output synapses held at zero
 )
+_SEPARATORS = ("/", "\\", ":")  # a family is one path component: no separator, no drive
 MIN_SOLVING_SEEDS = (
     6  # "fewer neurons" is licensed only when both arms of a contrast solve on >= 6 of 8
 )
@@ -158,21 +159,20 @@ def primary(outcomes, budget, batch):
 
 # ---- campaign isolation (2.12a) ------------------------------------------------------------------------------
 def arm_home(root, family, seed, arm):
-    """A fresh home for one (seed, arm) under the campaign's scratch root: refused if it exists already, if it
-    resolves to the live lake or inside it, or if the seed is outside G3's block."""
+    """A fresh home for one (seed, arm) under the campaign's scratch root. NOTHING is created before every
+    check has passed: the root must already exist and pass the live-home guard (equal / inside / containing
+    the live lake is refused, a missing root is refused, parents are never made), the family must be a plain
+    name, the seed inside G3's block and the arm registered. Only then is the single leaf made, which cannot
+    be the live lake because its parent is not it, inside it or a link to it."""
     if arm not in ARMS:
         raise ValueError(f"unknown arm {arm!r}")
     if not BLOCK[0] <= seed < BLOCK[1]:
         raise PermissionError(f"seed {seed!r} is outside G3's block 9000-9999")
-    path = Path(root).resolve() / f"{family}-{seed}-{arm}"
-    path.mkdir(
-        parents=True, exist_ok=False
-    )  # the guard resolves strictly, so the directory exists first
-    try:
-        home_mod.assert_not_live_home(str(path))
-    except BaseException:
-        path.rmdir()
-        raise
+    if not family or family in (".", "..") or any(c in family for c in _SEPARATORS):
+        raise ValueError(f"family must be a plain name, got {family!r}")
+    parent = Path(home_mod.assert_not_live_home(str(root)))  # strict: a missing root is refused
+    path = parent / f"{family}-{seed}-{arm}"
+    path.mkdir(parents=False, exist_ok=False)
     return path
 
 

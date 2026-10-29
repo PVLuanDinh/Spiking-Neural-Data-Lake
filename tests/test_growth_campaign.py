@@ -173,3 +173,29 @@ def test_launch_hands_the_home_as_argument_and_environment(tmp_path):
     assert (
         bare.returncode != 0 and "PermissionError" in bare.stderr
     )  # a child launched bare refuses
+
+
+def _listing(path):
+    return sorted(str(p) for p in path.rglob("*"))
+
+
+@pytest.mark.parametrize("sub", [(), ("newsub", "deeper")])
+def test_a_refused_arm_home_creates_nothing_under_the_live_lake(tmp_path, monkeypatch, sub):
+    # G7's probe: the guard ran AFTER mkdir(parents=True), so a refusal left directories behind
+    from snn_data_lake.substrate import home
+
+    live = tmp_path / "live"
+    live.mkdir()
+    monkeypatch.setattr(home, "_default_live_home", lambda: str(live))
+    before = _listing(live)
+    with pytest.raises(home.LiveHomeRefused):
+        gc.arm_home(live.joinpath(*sub), "primary", 9000, "TARGETED")
+    assert _listing(live) == before
+
+
+def test_arm_home_refuses_a_name_that_could_leave_the_root(tmp_path):
+    before = _listing(tmp_path)  # the conftest may already hold a home here
+    for bad in ("../x", "a/b", "a\\b", "C:x", ""):
+        with pytest.raises(ValueError):
+            gc.arm_home(tmp_path, bad, 9000, "TARGETED")
+    assert _listing(tmp_path) == before
