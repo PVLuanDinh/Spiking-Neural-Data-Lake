@@ -168,3 +168,14 @@ def test_f3b_a_provenance_only_cue_is_a_miss_in_the_deep_tier_too():
         {"when": "5", "session": "1"}, ep
     )  # session must still agree beside content
     assert not LR.is_subcue({"when": "5", "session": "2"}, ep)
+
+
+def test_f4_a_deep_tier_read_failure_refuses_visibly(lake_brain, H, monkeypatch):
+    # a lake read failure was reported as source="miss" -- a hidden record, not an abstention
+    def broken(*a, **k):
+        raise OSError("planted read failure")
+
+    monkeypatch.setattr(H, "load_episodes", broken)  # after construction: the boot restore is real
+    got = lake_brain.recall_episode_durable(dict(EPS[0]), min_conf=1.0)  # nonresident: deep tier
+    assert got["source"] == "refused", got
+    assert "planted read failure" in got["reason"]
