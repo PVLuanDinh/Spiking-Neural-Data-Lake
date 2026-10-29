@@ -196,24 +196,55 @@ def test_absent_classes_are_absent_and_present_classes_present():
     o = ra.Oracle(wl.records)
     for c in wl.cues:
         n = len(o.match(c.cue))
-        if c.cls in ra.ABSENT_CLASSES:
+        if ra._base_class(c.cls) in ra.ABSENT_CLASSES:
             assert n == 0, (c.cls, c.cue)
         else:
             assert n >= 1, (c.cls, c.cue)
         if c.cls == "C5":
             assert n >= 2 and "when" not in c.cue
-    assert {c.cls for c in wl.cues} >= {"C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"}
+    assert {ra._base_class(c.cls) for c in wl.cues} >= {f"C{i}" for i in range(1, 9)}
+
+
+def test_c6_subclasses_are_emitted_under_their_own_names():
+    # 2.2 / enforcer #6673 MINOR 6: the None-trap red and the collision-ghost reading must be
+    # separable in the tally, so the generator emits C6_novel / C6_none / C6_ghost / C6_extra
+    wl = _wl()
+    got = {}
+    for c in wl.cues:
+        got[c.cls] = got.get(c.cls, 0) + 1
+    for sub in ("C6_novel", "C6_none", "C6_ghost", "C6_extra"):
+        assert got[sub] == ra.TINY_COUNTS[sub], sub
+    assert "C6" not in got
+    o = ra.Oracle(wl.records)
+    rows = [ra.Row(c, "FALSE" if c.cls == "C6_none" else "MISS", "deep") for c in wl.cues]
+    assert ra.tally(o, rows)["C6"]["F"] == ra.TINY_COUNTS["C6_none"]  # base class still folds
+    assert all(r.cue.cls == "C6_none" for r in rows if r.outcome == "FALSE")
 
 
 def test_resident_classes_sit_in_the_expected_window_and_nonresident_ones_do_not():
+    # enforcer #6673 MINOR 5: `when` restarts at each boot, so a partial nonresident cue could
+    # match a same-index RESIDENT episode; C3/C4 matches must ALL sit outside the window (C1/C2:
+    # at least one inside it)
+    for seed in (14200, 14201, 14202):
+        wl = _wl(seed)
+        o = ra.Oracle(wl.records)
+        window = {ra.episode_key(e) for e in o.expected_window(wl.capacity)}
+        for c in wl.cues:
+            hits = {ra.episode_key(o.distinct[i].episode) for i in o.match(c.cue)}
+            if c.cls in ("C1", "C2"):
+                assert hits & window, (c.cls, c.cue)
+            if c.cls in ("C3", "C4"):
+                assert hits and not hits & window, (c.cls, c.cue)
+
+
+def test_w_c_mixes_legacy_and_session_bearing_autobiographical_episodes():
+    # 2.2 :123-124 / A2 :806: F3 stamps `session` on durable episodes (engine/brain.py:2495), so
+    # W_c carries BOTH schemas, and both stay recallable under the one predicate
     wl = _wl()
-    o = ra.Oracle(wl.records)
-    window = {ra.episode_key(e) for e in o.expected_window(wl.capacity)}
-    for c in wl.cues:
-        if c.cls == "C1":
-            assert ra.episode_key(c.cue) in window
-        if c.cls == "C3":
-            assert ra.episode_key(c.cue) not in window
+    auto = [r.episode for r in wl.records if r.label == "auto"]
+    assert any("session" in e for e in auto) and any("session" not in e for e in auto)
+    assert all(H.is_autobiographical_episode(e) for e in auto)
+    ra.Oracle(wl.records).assert_scope(H.is_autobiographical_episode)
 
 
 def test_the_a2_fixture_is_in_the_stream_and_the_label_equals_the_one_predicate():
