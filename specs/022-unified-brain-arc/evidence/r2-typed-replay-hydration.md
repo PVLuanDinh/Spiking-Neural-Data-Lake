@@ -1437,7 +1437,8 @@ Facts, stated without a ruling:
 - R2's registration is "frozen at the commit that lands this file" (section 2, line 76), and the amendments dated 2026-10-04,
   2026-10-06, 2026-10-15 and 2026-10-16 (A1-A11) all predate the 2026-10-23 directive. The seed blocks (2.6: P1 15010-15017,
   P2 15030-15037, P3 15050-15057, S = 8 each, plus reserves) and the verdict rules (2.3) are in the frozen text.
-- The gate is not built (the amendment is PROVISIONAL), so the closed list has no names in it yet. Whether "frozen before this
+- The gate is not built (the amendment is PROVISIONAL), so the closed list has no names in it yet. [Superseded by D-68 / D2.1:
+  R2 goes on the closed list by name; claude/p1-gate-1029's GRANDFATHERED names this file.] Whether "frozen before this
   amendment landed" covers R2 turns on whether a dated amendment (this one, and A1-A11 before it) re-freezes a registration.
   This draft changes no bar, no seed block and no decision rule, so on that reading R2 stays in the pre-landing class and is
   to be named in the list when the gate is built; on the other reading it owes the section before any 15010-15057 seed.
@@ -1454,7 +1455,8 @@ Facts, stated without a ruling:
 ### D3. Owed before any 15010-15057 seed (ordered)
 
 1. Integrator statement: the P1 reading in D2 (grandfathered by name, or a "Sample size (P1)" section owed, with the variance
-   source), and the instrument's review status (D1 item 6). Statements, no run. The P1 reading is RULED (D-68, see D2.1); the
+   source), and the instrument's review status (D1 item 6). Statements, no run. The P1 reading is RULED (D-68, see D2.1); the instrument's review status (D1 item 6, the OWED
+   line in D1) stays OWED.
 2. Review of this amendment (policy-enforcer, static) and its landing as a frozen amendment dated before any confirmatory read.
    Until then it is a draft and the confirmatory licence stays withheld.
 3. A dev-seed run (15000-15007 only) of the c4c10b28 instrument, under the heavy-run lock after the campaign: the R2-c4
