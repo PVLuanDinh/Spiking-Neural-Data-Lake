@@ -124,3 +124,81 @@ Anchors, all at `c4c10b28`: PLAN = `specs/022-unified-brain-arc/PLAN-FINAL-2026-
 4. NEEDS A RUN (after the campaign, after G9's arms exist): the pilot SD of the drift readings; then the P1 sequential
    design (looks, boundary per look, futility bound, cap, simulation) is derived from it.
 5. OPEN, edit: say which unit set each reading is taken over, and report the dropped-unit count beside it.
+
+## Panel fold 1, 2026-10-29, pre-data
+
+Append-only. Nothing above this heading is edited; where this addendum changes a sentence above, it says which line and
+the addendum governs. Still a DRAFT, still no pre-registration, still no run. Base `c4c10b28`. Findings: lens A #6290
+(A-C1..C3), lens B #6287 (B-M1, B-M2, B-m1, B-m2), lens C #6298 (C-3a..C-3e), policy-enforcer #6292 (NIT) and its
+correction #6303 (concurs with A-C1, A-C2, B-M1, B-M2, C-3a; withdraws its AGREE). Each finding by id:
+
+1. **A-C1 (pilot SD from the wrong arm; no direction, no smallest effect): FIXED.** Lines 47-48 and 72-75 are superseded
+   by: "the SD that sizes each contrast is the SD of the per-seed PAIRED DIFFERENCE (arm minus full engine) on shared
+   seeds; the pilot runs the full engine and every contrast arm on the same seeds. The frozen-engine arm is the noise
+   floor only, never the variance source." Why it closes the finding: a frozen arm with fixed inputs can read correlation
+   near 1 on every seed (SD near 0), which would size a tiny, unpowered n; the paired-difference SD is the quantity the
+   contrast's test statistic divides by. Also registered as a rule: before the pilot, each contrast registers a DIRECTION
+   (the arm's drift reading versus the full engine's, at the event that arm's part acts on) and a SMALLEST EFFECT OF
+   INTEREST, as Part E registers its Delta*. The numeric smallest effects are NOT chosen here: that is OPEN item 7 below.
+   Line 37 ("no bar ... set here") stands for this DRAFT; the pre-registration may not carry it.
+2. **A-C2 and B-M1 (event (c) reads the P4b gap): FIXED.** Added to item 1 as a rule, carried from G5 Part E E.2
+   (`g5-readout-variants.md:1881-1892` at `c4c10b28`): "the drift the frozen floor does not absorb is a persistence
+   defect, not something for a readout to hide ... a restart P-E0 MET, files a P4b red against the rebuild." So event (c)
+   is not a neutral reading. Restart drift above the frozen floor files a P4b red first. It is read as drift only for
+   state the pre-registration NAMES as deliberately not persisted (E.2's example: RNG streams, transient membrane
+   potentials), shown by a control not to be learned state (the drift vanishes when only that state is restored). Order:
+   event (c) is read after #6231's persistence build is GREEN (four live learners are unrestored at `c4c10b28`, #6231
+   DRAFT :36-44), or under that named exception. A bit-identical rebuild gives zero restart drift by construction and
+   the restart reading is then NOT READ. Why it closes the finding: without it G9 would attribute amnesia to engine parts.
+3. **A-C3 and C-3a (X.4 cross-reference false; two unit-set rules): FIXED here, cross-lane part OPEN.** Lines 41-43 are
+   corrected: X.4 at `a2184bef` keeps pruned units read 0, so it does NOT fix the bias; the sentence "X.4 fixes this by
+   input identity and a common unit list" is withdrawn. Rule for this draft, stated here: the drift function takes
+   `units` explicitly, defaults to the INTERSECTION (present and not pruned on both sides) and returns `n_common`,
+   `n_pruned`, `n_born` beside the reading; a zero-fill of pruned units is a Part E READOUT rule (E.4), never a
+   drift-reading rule. This is the rule lens C proposed for #6244 (C-2a) and lens A for #6244 B1. OPEN (not mine to edit):
+   #6244's own fold must adopt the same rule, or the integrator chooses at merge. One function, one unit-set rule.
+4. **B-M2 (the reader has no sensitivity control): FIXED.** New owed item 6 (below): planted-drift reds for the drift
+   reader, counted before ANY engine read: identical pre and post reads 1.0; a planted permutation or a planted rate
+   change reads lower; a flat response raises the flat flag. Lens B's point is accepted: the frozen floor is a noise floor,
+   not a proof the reader can see drift. (Policy-enforcer #6303 concurs and withdraws its own acceptance of the floor as
+   "the control".) The same three reds are also owed in #6244 X.4 (lens B, #6284); they are one set, owed once.
+5. **B-m1 (P1, "one more arm at S = 8"): FIXED.** The words "cost: one more arm at S = 8" (line 65) and the S = 8 remark
+   (lines 49-50) are superseded by: every G9 endpoint, solve endpoints included, owes its own "Sample size (P1)" section
+   in the pre-registration; no seed count here is a decision, `TASKS:257`'s "S = 8 under Part F's rule" is not carried
+   into this draft as a sample size.
+6. **B-m2 (P8 item 3, no sleep-off arm): FIXED.** One line, binding if the panel does not add the arm: "no claim about
+   sleep's share of drift is made; drift after a sleep bout is read, and not compared with a no-sleep twin."
+7. **C-3b (the flat-vector sentence is wrong): FIXED.** Lines 99-100 are corrected after reading
+   `infra/_mathutils.py:44-51` at `c4c10b28` (`return cov / math.sqrt(va * vb)`): on a flat vector `va * vb` is 0 and
+   this RAISES `ZeroDivisionError`; it does not return 0.0. The silent 0.0 belongs to `grid_place_map._pearson`'s guard
+   (lens C, `grid_place_map.py:56-57`, not re-read by this lane). And a correlation of 0 is maximal decorrelation, i.e.
+   maximal drift, not "no drift". The call-site guard in the drift reader stands: it must flag a flat response, not
+   crash and not return a number.
+8. **C-3c (RQ5 attribution): FIXED.** Line 76's "from the HW4 RQ5 text" is withdrawn. The selection-bias limit is this
+   draft's own (and consistent with E.4's FIXED rule); HW4 RQ5 (`HW4-v3.txt:42-47`) has no such statement.
+9. **C-3d and policy-enforcer NIT (#6292) ("criterion 5" label): FIXED.** Line 73's wording is replaced by "report item 5
+   (`REPORT.md:44`) and the HW4 noise-floor bullet (`HW4-v3.txt:52`), proposed as a G9 floor arm; there is no numbered
+   G9 criterion 5 in the tree". Read "proposed G9 criterion 5" in any place the label appears.
+10. **C-3e (TASKS:257 contradicts itself on sleep OFF): FIXED.** Owed item 1 (line 121) is extended: `tasks.md:257`'s dated
+    2026-10-25 note lists "sleep OFF" among "G9's own arms", while its own arm list and `PLAN:2043-2053` have none; the
+    panel's choice on item 1 also corrects that note.
+11. **Disputed: none.** Every finding above reproduced against `c4c10b28` or a draft head, no finding is disputed.
+
+### Owed list, replacing the summary at lines 119-126 (that list stays above, unedited; this one governs)
+
+1. OPEN, panel choice: add a sleep-off arm to `PLAN:2036-2053` and `TASKS:257`, or take fold item 6's disclosure; and
+   correct `TASKS:257`'s self-contradicting note either way (fold item 10).
+2. OPEN, edit: the frozen-engine floor arm stated as a G9 arm (not one at `c4c10b28`); a floor, not a variance source.
+3. OPEN, edit: RSA-matrix stability added to the shared drift reader's metric set (P2-safe default), or built in G9.
+4. NEEDS A RUN, after the campaign and after G9's arms exist: the PILOT of the full engine and every contrast arm on
+   shared seeds; SD of each per-seed paired difference; then the P1 sequential design (named looks, alpha-spending
+   boundary per look, non-binding futility bound, hard cap = fixed-sample target times the inflation factor, power at the
+   cap at least .8, checked by simulation before data). A futility stop or an uncrossed cap is not a null (P8 item 4).
+5. OPEN, edit: one unit-set rule (intersection default; `n_common`, `n_pruned`, `n_born` returned), agreed with #6244
+   (fold item 3).
+6. OWED before any engine read (P8 item 2): the drift reader's planted reds (identity 1.0; planted permutation or rate
+   change lower; flat response flagged), counted and logged. Static, no engine needed.
+7. OPEN, choice with no run needed: per contrast, the registered direction and the smallest effect of interest, before the
+   pilot (fold item 1). Not chosen in this draft; the numeric values belong to the pre-registration author.
+8. ORDER: event (c) restart reading only after #6231's build is GREEN, or under E.2's named-not-persisted exception
+   (fold item 2); restart drift above the floor files a P4b red.
