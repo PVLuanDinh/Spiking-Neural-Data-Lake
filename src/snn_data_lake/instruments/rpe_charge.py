@@ -1830,10 +1830,12 @@ def goal_stratum(runs, d_p1):
         if miss := sum(v is None for v in fr.values()):
             return f"stratum n/a (held_goal missing on {miss} seeds)"
         fz, mv = [s for s in fr if fr[s]], [s for s in fr if not fr[s]]
-        dis = [s for s in fr if frozen(runs.get(("pfrozen", s))) not in (None, fr[s])]
+        pf = {s: frozen(runs.get(("pfrozen", s))) for s in fr}
+        dis = [s for s in fr if pf[s] not in (None, fr[s])]
         return (
             f"stratum (DESCRIPTIVE ONLY, decides nothing): {len(fz)}/{len(fr)} seeds goal-frozen; H-P1 within frozen "
-            f"{read(fz)}, within moving {read(mv)}; real/pfrozen frozen status disagrees on {len(dis)} seeds"
+            f"{read(fz)}, within moving {read(mv)}; real/pfrozen frozen status disagrees on {len(dis)} seeds "
+            f"(pfrozen held_goal missing on {sum(v is None for v in pf.values())})"
         )
     except Exception as e:  # beside only: a broken record is disclosed, never a gate
         return f"stratum n/a ({type(e).__name__}: {e})"

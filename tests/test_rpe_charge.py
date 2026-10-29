@@ -689,6 +689,18 @@ def test_goal_frozen_stratum_lines_are_descriptive_and_fail_soft():
     assert miss == "- stratum n/a (held_goal missing on 4 seeds)" and a["valid"]
 
 
+def test_stratum_disagreement_line_counts_the_pfrozen_seeds_it_cannot_classify():
+    """build-ra #5911 MINOR-2: a pfrozen run with a missing or all-None held_goal is counted on
+    the disagreement line, never silently dropped from it."""
+    _, line = _stratum(_stratum_runs("harm", 9))
+    assert line.endswith("disagrees on 0 seeds (pfrozen held_goal missing on 0)")
+    runs = _stratum_runs("harm", 9, {("pfrozen", 2): [None] * 4})
+    for s in R.E1C_SEEDS[:2]:
+        del runs[("pfrozen", s)]["p"]["held_goal"]
+    a, line = _stratum(runs)
+    assert line.endswith("disagrees on 0 seeds (pfrozen held_goal missing on 3)") and a["valid"]
+
+
 def test_firewall_the_disposition_is_byte_identical_with_held_goal_present_stripped_shuffled():
     """E1d section 4's firewall red: the stratum never reaches the look's disposition output."""
     for kind in ("harm", "noharm"):
