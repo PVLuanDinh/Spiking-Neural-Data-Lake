@@ -6,12 +6,13 @@ records, synthetic percept events and patched children only; no brain is built a
 or reserve seed is ever run."""
 
 import copy
+import inspect
 import json
 from pathlib import Path
 
 import pytest
 from test_r2_p3_percept_transitions import _chain, _hydrate, _pairs
-from test_replay_hydration_instrument import REDS, _arms, _differ, _fw_rec, _per_seed
+from test_replay_hydration_instrument import REDS, _arms, _differ, _fw_rec, _per_seed, _record
 
 from snn_data_lake.instruments import replay_hydration as rh
 
@@ -864,5 +865,198 @@ def test_minor1_the_instrument_names_itself_the_binding_r2_c7_reading_with_its_d
 
 def test_minor1_the_k1g_kill_point_is_inside_the_flush_growth_call_not_the_tick_after():
     doc = rh.run_percept.__doc__
-    assert "tick after" not in doc
+    assert "tick after" not in doc and "tick after" not in rh.__doc__
     assert "_flush_growth" in doc and "before `_flush_prototypes`" in doc
+
+
+# ---- ROUND 4 (A, F): chrono_clean against the restored record, never against 0 -----------------
+#: circadian-p4b round 2 restores `_step` across a restart: state()["circadian_restored"] is the
+#: adopted record ({"step": ...}) or None, and a K3/K1g restore adopts the last sleep onset's step.
+
+
+def _constructed(step, restored, **over):
+    rec = _record(**over)
+    rec["construct_chrono"]["step"] = step
+    rec["construct_circadian_restored"] = restored
+    return rec
+
+
+def test_round4_a_clock_constructed_at_the_restored_step_is_clean():
+    assert rh.chrono_clean(_constructed(6, {"step": 6}))
+
+
+@pytest.mark.parametrize("step", [0, 5, 7])
+def test_round4_a_clock_constructed_off_the_restored_step_is_unclean(step):
+    assert not rh.chrono_clean(_constructed(step, {"step": 6}))
+
+
+@pytest.mark.parametrize(("step", "clean"), [(0, True), (6, False)])
+def test_round4_with_no_restored_record_the_clock_must_still_start_at_zero(step, clean):
+    assert rh.chrono_clean(_constructed(step, None)) is clean
+
+
+def test_round4_nights_must_still_be_zero_at_construction():
+    rec = _constructed(6, {"step": 6})
+    rec["construct_chrono"]["nights"] = 1
+    assert not rh.chrono_clean(rec)
+
+
+def test_round4_a_motor_call_or_a_replay_tick_is_unclean_on_a_restored_clock():
+    assert not rh.chrono_clean(_constructed(6, {"step": 6}, construct_motor=1))
+    ticked = _constructed(6, {"step": 6})
+    ticked["replay_windows"][0]["after"]["step"] = 7
+    assert not rh.chrono_clean(ticked)
+
+
+def _night_crossed(arms):
+    """Every arm that records a construction clock restored a night-crossed record (step 6)."""
+    for rec in arms.values():
+        if "construct_chrono" in rec:
+            rec["construct_chrono"]["step"] = 6
+            rec["construct_circadian_restored"] = {"step": 6}
+    return arms
+
+
+def test_round4_clean_night_crossed_restores_read_clean_and_the_chrono_reds_stay_quiet():
+    c = rh.seed_comparisons(_night_crossed(_arms()))
+    assert all(c["chrono"].values()), c["chrono"]
+    assert c["reds"]["CHRONO"] is False and c["reds"]["MOTOR"] is False
+
+
+@pytest.mark.parametrize("red", ["CHRONO", "MOTOR"])
+def test_round4_each_chrono_red_fires_only_when_its_defect_is_planted(red):
+    arms = _night_crossed(_arms())
+    assert rh.seed_comparisons(arms)["reds"][red] is False
+    if red == "CHRONO":
+        arms["CHRONO"]["construct_chrono"]["step"] = 7  # the hydration tick the red plants
+    else:
+        arms["MOTOR"]["construct_motor"] = 1
+    c = rh.seed_comparisons(arms)
+    assert c["reds"][red] is True
+    assert all(v for r, v in c["chrono"].items()), "a planted red never dirties a clean arm"
+
+
+def test_round4_the_restored_record_is_read_at_construction_before_the_chrono_red_ticks():
+    src = inspect.getsource(rh.run_process)
+    assert "construct_circadian_restored" in src
+    assert src.index("construct_circadian_restored") < src.index('if role == "CHRONO"')
+
+
+# ---- ROUND 4 (A, #6952 A-1): a K1g restore resumes a stale phase until the clock flushes first --
+
+
+def test_round4_the_k1g_chronology_read_is_refused_with_a_named_reason_not_scored():
+    c = rh.c7_seed(_k1g_arms())
+    assert c["chrono"] == {"scored": False, "refused": rh.K1G_CHRONO_REFUSED}
+    assert "flush" in rh.K1G_CHRONO_REFUSED and "stale" in rh.K1G_CHRONO_REFUSED
+
+
+def test_round4_a_k1g_chronology_difference_neither_passes_nor_fails_c7():
+    arms = _k1g_arms()
+    arms["res_K1g"]["construct_chrono"] = {"step": 6, "nights": 0}
+    arms["twin_K1g"]["construct_chrono"] = {"step": 0, "nights": 0}
+    c = rh.c7_seed(arms)
+    assert c["ok"] and c["K1g"], c
+
+
+# ---- ROUND 4 (D-79): MAJOR-3 (i) as a cross-check against the brain's resumed phase -------------
+#: twin_K3 records the step of its cut; a K3 restore that resumed the brain's phase starts at the
+#: night's onset, 0..J_NIGHT sleep ticks before the cut.
+
+
+def test_round4_the_k3_restore_resumes_the_phase_of_the_cut_night():
+    c = rh.seed_comparisons(_arms())["c6"]
+    assert c["K3_phase"] is True
+
+
+@pytest.mark.parametrize("restored", [None, {"step": 0}, {"step": 5}, {"step": 11}])
+def test_round4_a_k3_restore_off_the_cut_nights_onset_is_a_red(restored):
+    arms = _arms()  # the twin cut at step 10; J_NIGHT sleep ticks put the onset in 7..10
+    arms["res_K3"]["construct_circadian_restored"] = restored
+    assert rh.seed_comparisons(arms)["c6"]["K3_phase"] is False
+
+
+def test_round4_twin_k3_records_the_step_of_its_cut():
+    src = inspect.getsource(rh.run_process)
+    assert "cut_step" in src and src.index("cut_step") < src.index("_sleep_rows(")
+
+
+# ---- ROUND 4 (B, #6987 MINOR-3 residual): a P3 campaign launches no base role -------------------
+
+
+def _campaign_calls(tmp_path, monkeypatch, seeds, go):
+    if go is None:
+        monkeypatch.delenv("R2_CONFIRMATORY_GO", raising=False)
+    else:
+        monkeypatch.setenv("R2_CONFIRMATORY_GO", go)
+    heads = []
+    monkeypatch.setattr(rh, "_head_of", lambda path: "head")
+    monkeypatch.setattr(rh, "_check_base", lambda src: "base-head")
+    monkeypatch.setattr(rh, "run_seed", lambda seed, out, head="r2", **kw: heads.append(head) or {})
+    monkeypatch.setattr(rh, "seed_comparisons", lambda arms, base=None: {})
+    monkeypatch.setattr(rh, "verdict", lambda per_seed, seeds: {"verdict": "x"})
+    rh.run_campaign(tmp_path, seeds, base_src="base")
+    return heads, json.loads((tmp_path / "verdict.json").read_text(encoding="utf-8"))
+
+
+def test_round4_a_p3_campaign_launches_no_base_role(tmp_path, monkeypatch):
+    heads, v = _campaign_calls(tmp_path, monkeypatch, (15050, 15051), "P3")
+    assert heads == ["r2", "r2"]
+    assert v["provenance"]["base_src"] is None, "no base head ran, and the provenance says so"
+
+
+@pytest.mark.parametrize(("seeds", "go"), [((15000, 15001), None), ((15010,), "P1")])
+def test_round4_other_campaigns_still_run_the_base_head_per_seed(tmp_path, monkeypatch, seeds, go):
+    heads, v = _campaign_calls(tmp_path, monkeypatch, seeds, go)
+    assert heads == ["r2", "base"] * len(seeds)
+    assert v["provenance"]["base_src"] == "base-head"
+
+
+# ---- ROUND 4 (C, #6987 NIT): the K3 halves are not independent -------------------------------
+
+
+def test_round4_the_k3_split_says_the_halves_are_not_independent():
+    doc = " ".join(rh._k3_split.__doc__.split())
+    assert "not independent" in doc
+    assert "'night' False attributes to the six rows only when 'rest' is True" in doc
+
+
+# ---- ROUND 4 (E, #6991): one kill point, inside the _flush_growth call, at brain.py:3798-3800 ---
+
+
+def test_round4_no_text_in_the_instrument_still_names_the_tick_after_as_the_kill_point():
+    text = Path(rh.__file__).read_text(encoding="utf-8")
+    assert "tick after" not in text
+    assert "3798-3800" in text and "3797-3799" not in text
+
+
+# ---- ROUND 4 (D, #6926/#6987 MINOR-1): one K1g procedure, the instrument's ---------------------
+
+
+def test_round4_the_pytest_holds_no_second_k1g_procedure():
+    import test_r2_p3_percept_transitions as p3t
+
+    assert not hasattr(p3t, "_restart_bar")
+    for retired in ("kill_prototypes", "kill_growth", "to_next_refit", "TWIN", "BOUNDARY"):
+        assert retired not in p3t._CHILD, retired
+
+
+def test_round4_the_pytest_restart_bar_runs_the_instruments_roles():
+    import test_r2_p3_percept_transitions as p3t
+
+    src = inspect.getsource(
+        p3t.test_restart_hydrated_buffer_and_next_refit_equal_the_uninterrupted_twin
+    )
+    assert "run_seed" in src and "percept_equal" in src
+    assert (
+        "mode"
+        not in inspect.signature(
+            p3t.test_restart_hydrated_buffer_and_next_refit_equal_the_uninterrupted_twin
+        ).parameters
+    )
+
+
+def test_round4_the_instrument_says_it_is_the_only_r2_c7_reading():
+    doc = " ".join(rh.__doc__.split())
+    assert "by a second procedure" not in doc
+    assert "holds no second copy" in doc

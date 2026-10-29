@@ -173,6 +173,8 @@ def _arms():
         for side in ("on", "off"):
             arms[f"{kind}_{side}"] = copy.deepcopy(base)
     arms["O_cursor"]["cursor_probe"] = {"binding_valid": True, "redo_steps": 1}
+    arms["twin_K3"]["cut_step"] = 10  # the cut sits J_NIGHT sleep ticks into the night whose onset
+    arms["res_K3"]["construct_circadian_restored"] = {"step": 8}  # the restore resumed
     return arms
 
 
