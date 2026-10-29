@@ -821,3 +821,19 @@ Appended below the freeze and its addenda (section 12). Nothing above is edited.
 
 **Successor:** E1d (T124), `evidence/e1d-plan-w-pc2.md`, FROZEN at `df6bcfde`. It has a held-goal positive control
 (delegates D-37 and D-42) and uses seeds 23000-23703.
+
+**Corrections and additions to this record** (stack-a #5934 MINOR-3, 2026-10-29; nothing above is edited):
+- **R5's time.** R5 of record FINISHED before the first campaign run: `logs/r5.log` was written at 21:27:59, and
+  `real_21000` started at about 21:28:01. The "21:28:02" above is when the integrator's waiter detected it, not when
+  R5 ran.
+- **The look-1 controls, all read** (the look-1 compare log, VALIDITY section):
+  - R3, the repeat on 21000: 0 action flips, recorded series identical. It HELD.
+  - `pc_21000`: 420 flips (first at tick 25). It HELD.
+  - `pc_21001`: 0 flips. It FAILED, and that is the VOID.
+- **The stop at #5840.**
+  - The driver stopped on "STEP FAILED compare-production-look1" (exit 5), because the compare tool crashed writing
+    its report into a `reports\` folder that nothing had created.
+  - The compare had already printed "VALIDITY: VOID -- pc seed 21001 flips == 0" before the write failed.
+  - The driver's own VOID halt branch (exit 6) never ran live.
+- **The P3 opening above is carried in the integrator's openings ledger** (2026-10-28, D-37 item 4), as E1d section 9
+  B0 requires.
