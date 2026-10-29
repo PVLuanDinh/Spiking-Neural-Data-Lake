@@ -158,3 +158,18 @@ def test_a_reader_off_arm_fires_on_ring_or_draws_not_on_weights_alone(kind):
         c = rh.seed_comparisons(arms)
         assert c["planted"][kind]["guard_off_flagged"], (kind, where)
         assert f"{kind}_off" not in c["incomplete"]
+
+
+# ---- MAJOR-6: the chronology/motor check covers the bout restarts too (2.2, R2-c5's half) --------
+
+
+@pytest.mark.parametrize("role", ["res_Bpre", "res_Bpost"])
+@pytest.mark.parametrize("leak", ["tick", "motor"])
+def test_chrono_covers_the_bout_crash_point_restarts(role, leak):
+    arms = _arms()
+    assert rh.seed_comparisons(arms)["chrono"][role] is True
+    if leak == "tick":  # the redo of the bout effect ticked the brain
+        arms[role]["construct_chrono"]["step"] = 1
+    else:  # or reached So101Arm.apply()
+        arms[role]["construct_motor"] = 1
+    assert rh.seed_comparisons(arms)["chrono"][role] is False
