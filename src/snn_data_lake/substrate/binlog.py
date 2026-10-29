@@ -396,22 +396,58 @@ class BinLog:
             if not self._stale(resident, stamp):  # outside the lock: a reader never blocks a writer
                 yield from resident
                 return
+        # ONE framing walk (R1 P3 S2): the located reader, location dropped. Same bytes, same order,
+        # same torn-frame stop, no repair side effect.
+        for _offset, payload in self.replay_located():
+            yield payload
+
+    # distinct-from: substrate/lake_bridge.py::located_records -- it constructs a SECOND BinLog and yields
+    #   seq=None for a BinLog record (no offsets), so it can neither supply offsets nor run live;
+    #   substrate/streaming_hub.py -- reads a byte RANGE of per-channel telemetry. Sites read.
+    def replay_located(self, start=None):
+        """Yield `(offset, payload)` for every stored record, in append order, where `offset` is the
+        byte position of the record's FRAME (its u32 length prefix), the address `read_at` takes.
+        `start` resumes at a frame boundary previously yielded (None = the first record); an offset
+        that is not a boundary is the caller's error and reads garbage frames, which stop the walk
+        at the first short or zero length. Same torn-frame rule as replay(): a short head, a zero
+        length (a torn frame, not an empty record: pack_fact never emits 0 bytes) or a short payload
+        stops cleanly, and nothing is repaired or written."""
         if not os.path.exists(self.path):
             return
         with open(self.path, "rb") as f:
             if f.read(len(_MAGIC)) != _MAGIC:
                 return
+            if start is not None:
+                f.seek(start)
+            pos = f.tell()
             while True:
                 head = f.read(_LEN.size)
                 if len(head) < _LEN.size:
                     break
                 (n,) = _LEN.unpack(head)
-                if n == 0:  # a zeroed length prefix is a torn frame, not an
-                    break  # empty record (pack_fact never emits 0 bytes)
-                payload = f.read(n)
-                if len(payload) < n:  # torn write -> stop cleanly (never-forget the rest)
+                if n == 0:
                     break
-                yield payload
+                payload = f.read(n)
+                if len(payload) < n:
+                    break
+                yield pos, payload
+                pos += _LEN.size + n
+
+    def read_at(self, offset):
+        """The payload of the frame starting at byte `offset` (a `replay_located` offset), or None
+        when the frame is torn or empty. An offset inside the magic header is refused."""
+        if offset < len(_MAGIC):
+            raise ValueError(f"offset {offset} is inside the {_MAGIC!r} header")
+        with open(self.path, "rb") as f:
+            f.seek(offset)
+            head = f.read(_LEN.size)
+            if len(head) < _LEN.size:
+                return None
+            (n,) = _LEN.unpack(head)
+            if n == 0:
+                return None
+            payload = f.read(n)
+            return payload if len(payload) == n else None
 
     def count(self):
         """Number of records stored (O(1) maintained counter -- polled per round/request by daemons)."""
