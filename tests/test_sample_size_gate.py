@@ -191,7 +191,9 @@ def test_counts_name_every_class(tmp_path):
     assert report.counts["owing the section now"] == 1
 
 
-def test_main_exit_codes_and_census(tmp_path, capsys):
+def test_main_exit_codes_and_census(tmp_path, capsys, monkeypatch):
+    for name in ("GRANDFATHERED", "OWES_AT_FREEZE", "NOT_PREREGISTRATIONS"):
+        monkeypatch.setattr(sg, name, frozenset())
     root = tree(tmp_path, {A: "# X -- pre-registration\n\nseeds 8.\n"})
     assert sg.main(["--assert"], root=root) == 1
     assert sg.main(["--census"], root=root) == 0
