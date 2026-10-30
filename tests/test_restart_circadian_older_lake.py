@@ -250,7 +250,8 @@ def test_a_failed_keep_after_a_reread_never_overwrites_the_record(tmp_path):
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED, ticks=5)
     out = run_brain(home, seed=SEED, ticks=60, restore_raises=True, no_keep=True)
-    assert out["record"] == out["written"] and out["flush_failed"] >= 1, out
+    assert out["record"] == out["written"], (out["record"], out["written"])
+    assert out["flush_failed"] >= 1, out["flush_failed"]
 
 
 def test_a_codec_defect_is_reported_as_raised_not_malformed(tmp_path):
