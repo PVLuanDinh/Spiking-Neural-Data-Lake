@@ -103,6 +103,51 @@ def test_primary_refuses_any_seed_count_but_the_registered_eight_by_name(n):
         )
 
 
+def _outcomes(n, solved_by_control):
+    """n paired seeds: TARGETED solves everywhere at 18; the controls solve at 36 on the first
+    `solved_by_control` seeds and fail on the rest."""
+    ctl = [{**OK, "size": 36} if i < solved_by_control else FAIL for i in range(n)]
+    return {"TARGETED": [{**OK, "size": 18}] * n, "PRESIZED_SELECTED": ctl, "RANDOM": ctl}
+
+
+def test_t_bar_follows_the_registered_seed_count():
+    # the bar is the (S - 1)-d.f. one: registered bars only, never 1.895 by fallback
+    assert gc.t_bar(8) == gc.pc.T_BAR
+    assert gc.t_bar(31) == gc.pc.T_BAR_S31
+    with pytest.raises(ValueError, match="no registered t bar"):
+        gc.t_bar(10)
+
+
+def test_primary_refuses_a_seed_count_with_no_registered_bar_by_name(monkeypatch):
+    monkeypatch.setattr(gc, "CONFIRMATORY_SEEDS", tuple(range(9100, 9110)))
+    with pytest.raises(ValueError, match="no registered t bar for 9 d.f."):
+        gc.primary(_outcomes(10, 10), 52, 9)
+
+
+def test_primary_reads_the_bar_of_the_registered_seed_count(monkeypatch):
+    monkeypatch.setattr(gc, "CONFIRMATORY_SEEDS", tuple(range(9100, 9131)))  # S = 31
+    seen = []
+    real = gc.pc.contrast
+
+    def spy(name, diffs, bar=gc.pc.T_BAR):
+        seen.append(bar)
+        return real(name, diffs, bar)
+
+    monkeypatch.setattr(gc.pc, "contrast", spy)
+    gc.primary(_outcomes(31, 31), 52, 9)
+    assert seen == [gc.pc.T_BAR_S31, gc.pc.T_BAR_S31]
+
+
+@pytest.mark.parametrize("solved,licensed", [(23, False), (24, True)])
+def test_fewer_neurons_licence_is_the_registered_fraction_of_the_seed_count(
+    monkeypatch, solved, licensed
+):
+    # 6 of 8 registered = 3/4; at S = 31 that is 24 solving seeds (23 is not enough)
+    monkeypatch.setattr(gc, "CONFIRMATORY_SEEDS", tuple(range(9100, 9131)))
+    got = gc.primary(_outcomes(31, solved), 52, 9)
+    assert got["D_sel"]["fewer_neurons"] is licensed
+
+
 # ---- preflight
 def test_preflight_refuses_foreign_partial_and_ungated_confirmatory_seeds():
     for bad in ([], [9000, 9000], [123], [8000], [9100], [9100, 9101], [9300, 9301]):
@@ -115,7 +160,7 @@ def test_preflight_refuses_foreign_partial_and_ungated_confirmatory_seeds():
     gc.preflight(list(gc.RED_SEEDS[:3]))
 
 
-@pytest.mark.parametrize("go", [False, "", 0, 1, ["written"]])
+@pytest.mark.parametrize("go", [False, "", " ", "\n", 0, 1, ["written"]])
 def test_preflight_requires_the_go_to_be_a_non_empty_string(go):
     with pytest.raises(PermissionError):
         gc.preflight(list(gc.CONFIRMATORY_SEEDS), go=go)
