@@ -289,13 +289,15 @@ def test_a_record_whose_restore_raises_never_adopts_a_kept_copy_older_than_its_s
 
 
 def test_a_kept_copy_that_also_raises_is_skipped_and_the_note_keeps_the_first_error(tmp_path):
-    """Coverage review (round 5): with a codec defect every kept copy raises too; the retry skips
-    each one and the note names the record's own error. A pin: the base gives the same note."""
+    """Coverage review (round 5): the record raises 'newer layout', its kept copy raises 'codec
+    defect'; the retry skips the copy and the note names the record's own error, so a copy's
+    exception escaping the retry (note '(codec defect)') fails. A pin: the base never retries."""
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED, ticks=5)
     run_brain(home, seed=SEED + 1)
-    note = _fresh(run_brain(home, seed=SEED, rewrite={"seed": SEED}, codec_raises=True))
-    assert note == "restore raised: fresh day (codec defect)", note
+    both = {"codec_raises_on_written": True, "codec_raises": True}
+    note = _fresh(run_brain(home, seed=SEED, rewrite={"seed": SEED}, **both))
+    assert note == "restore raised: fresh day (newer layout)", note
 
 
 def test_superseded_circadian_records_are_retired_by_the_nights_consolidation(tmp_path):

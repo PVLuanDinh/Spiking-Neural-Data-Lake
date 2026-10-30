@@ -64,17 +64,17 @@ if spec.get("restore_raises"):  # the restore's read raises (a lake that will no
     home.load_state = _raising
 from snn_data_lake.readout import interaction_learning
 merge = interaction_learning._merge_state
-# codec_raises: a defect in the shared codec, not a malformed record (every rng raises);
-# codec_raises_on_written: only the written record's rng raises (a newer layout), kept copies load
+# codec_raises_on_written: the written record's rng raises (a newer layout);
+# codec_raises: every rng raises (a defect in the shared codec, not a malformed record)
 if spec.get("codec_raises") or spec.get("codec_raises_on_written"):
-    on_written = spec.get("codec_raises_on_written")
 
     def _broken(target, saved):
-        if on_written:
-            if isinstance(written, dict) and saved == written.get("rng"):
+        if spec.get("codec_raises_on_written") and isinstance(written, dict):
+            if saved == written.get("rng"):
                 raise RuntimeError("newer layout")
-        elif isinstance(saved, dict) and saved.get("__kind__") == "random":
-            raise RuntimeError("codec defect")
+        if spec.get("codec_raises") and isinstance(saved, dict):
+            if saved.get("__kind__") == "random":
+                raise RuntimeError("codec defect")
         return merge(target, saved)
 
     interaction_learning._merge_state = _broken
