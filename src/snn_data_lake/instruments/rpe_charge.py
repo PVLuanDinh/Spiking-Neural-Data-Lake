@@ -2591,7 +2591,7 @@ def _selfcheck():
         print(f"rpe_charge self-check FAILED: bind without `_plan_w` refused with {gone!r}")
         return 1
     with ArmPatch("vfrozen") as ap:
-        ap.bind(types.SimpleNamespace(_valence=mine))
+        ap.bind(types.SimpleNamespace(_plan_w=0.1, _valence=mine))
         mine.learn(win, 1.0)
         other.learn(win, 1.0)
         scoped = (
