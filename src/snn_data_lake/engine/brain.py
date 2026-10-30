@@ -5331,15 +5331,16 @@ class Brain:
         a non-dict too), or one whose restore raises (a newer build's layout after a rollback, a
         codec defect) -- is carried, kept by `_flush_circadian` before the first overwrite, and the
         kept copies are retried newest first (`_adopt_kept`; P4b "foreign records preserved"; the
-        prototype path's R3-M2; a restore that raises is noted `restore raised: <exc>`, with
-        `; adopted: [...]` or `fresh day`); one whose read raised is re-read and kept at the first
-        flush. A malformed record (or one whose restore raises) of this binding adopts only a kept
-        copy at its step or later, so a rollback never moves the clock back to an older copy; a
-        corrupt step larger than every kept copy's is a fresh day, step 0, further back still
-        (#7257 NIT-1: disclosed, fail-closed, a corrupt step names no state to resume). A JSON
-        null or non-JSON record is NOT kept (a bytes-level keep is owed) and the note says so. Staleness: the record is written at each sleep onset and at
-        `close()`, so a crash restores the last onset or close -- up to one day period old. The night's persist
-        block is not atomic: a kill after the clock's flush but before the growth, prototype or
+        prototype path's R3-M2; a restore that raises is noted `restore raised: <exc>; adopted:
+        [...]` or `restore raised: fresh day (<exc>)`); one whose read raised is re-read and kept at
+        the first flush. A malformed record (or one whose restore raises) of this binding adopts
+        only a kept copy at its step or later, so a rollback never moves the clock back to an older
+        copy; a corrupt step larger than every kept copy's is a fresh day, step 0, further back
+        still (#7257 NIT-1: disclosed, fail-closed, a corrupt step names no state to resume). A
+        JSON null or non-JSON record is NOT kept (a bytes-level keep is owed) and the note says so.
+        Staleness: the record is written at each sleep onset and at `close()`, so a crash restores
+        the last onset or close -- up to one day period old. The night's persist block is not
+        atomic: a kill after the clock's flush but before the growth, prototype or
         coverage flushes finish restores night N's onset (asleep, so `_enter_sleep` does not re-run)
         beside learned stores at night N-1, the clock one night ahead.
         `_nights`, `_wake_ticks` and `_interval_timer` are NOT restored (panel #6910 m3): the
