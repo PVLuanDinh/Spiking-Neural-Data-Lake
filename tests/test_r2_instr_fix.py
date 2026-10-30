@@ -1459,6 +1459,8 @@ def test_round8_chrono_flush_failed_names_only_a_raised_write_or_a_failed_keep()
     text = " ".join(rh.CHRONO_FLUSH_FAILED.split())
     assert "raised" in text and "keep" in text and "persist" not in text
     assert "dropped" not in text and "returned False" in text
+    assert "none wrote" in text and "every time" not in text
+    assert "none wrote" in " ".join(rh._parent_flush_failed.__doc__.split())
 
 
 def test_round8_the_clock_clean_docstring_names_the_failed_flush():

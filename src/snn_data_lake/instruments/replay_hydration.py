@@ -1855,7 +1855,7 @@ def _k3_phase(res, twin):
 
 
 def _parent_flush_failed(parent):
-    """The parent pre_ process called `_flush_circadian` and every call that returned False failed
+    """The parent pre_ process called `_flush_circadian`, none wrote and at least one failed
     (a raised write or a failed keep), so it wrote no record (harness-side, `_track_clock`)."""
     parent = parent or {}
     return parent.get("flushed_step") is None and bool(parent.get("flush_failed_steps"))
@@ -2324,8 +2324,9 @@ K3_PHASE_UNWRITTEN = (
     "off, or the record unchanged), so no record was written to resume"
 )
 CHRONO_FLUSH_FAILED = (
-    "chrono FAIL: the parent pre_ process's _flush_circadian returned False every time after a "
-    "raised write or a failed keep, so it wrote no record for the restore to carry"
+    "chrono FAIL: the parent pre_ process's _flush_circadian wrote nothing (none wrote, and at least "
+    "one returned False after a raised write or a failed keep), so it wrote no record for the "
+    "restore to carry"
 )
 #: A pre_ flush that returned False wrote nothing (engine/brain.py:5394-5403): its own cause, never
 #: 'the restore dropped the record' (#7204 MINOR-1).
