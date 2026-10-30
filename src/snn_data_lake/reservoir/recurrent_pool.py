@@ -602,16 +602,20 @@ class KernelLsmPool(LsmPool):
 
     # -- the host's tables -------------------------------------------------------------------------
 
-    def _edges(self):
+    def _edges(self, pre=None, w=None):
         """(pre, post, weight, delay) of the synapse table: row i of the stored lists is unit i's
-        incoming entries, so post is i repeated k times; a duplicate (pre, post) pair is kept."""
-        units, fan_in = self.pre.shape
+        incoming entries, so post is i repeated k times; a duplicate (pre, post) pair is kept.
+        `pre` and `w` stage lists that are not yet the pool's (a join's, checked before its write)."""
+        pre = self.pre if pre is None else pre
+        w = self.w if w is None else w
+        units, fan_in = pre.shape
         post = np.repeat(np.arange(units, dtype=np.int64), fan_in)
-        return self.pre.ravel(), post, self.w.ravel(), np.full(units * fan_in, self.DELAY, np.int64)
+        return pre.ravel(), post, w.ravel(), np.full(units * fan_in, self.DELAY, np.int64)
 
-    def _compile(self):
-        pre, post, weight, delay = self._edges()
-        return Synapses(pre, post, weight, delay, self.n, self.p_parts, self.frac_bits)
+    def _compile(self, pre=None, w=None):
+        units = self.n if pre is None else len(pre)
+        pre, post, weight, delay = self._edges(pre, w)
+        return Synapses(pre, post, weight, delay, units, self.p_parts, self.frac_bits)
 
     def _quantize_drive(self, drive_vector):
         """The external drive in the host's fixed point: the same rint convention as the weights."""
@@ -632,18 +636,17 @@ class KernelLsmPool(LsmPool):
         )
         self._s = np.zeros(self.n, dtype=bool)
 
-    def _live_edges(self):
+    def _live_edges(self, syn=None):
         """The live bundles' (post, pre, q) triples as three int64 arrays sorted by (post, pre, q):
-        independent of P and of bundle order, a duplicate edge kept."""
-        keys = sorted(self._syn.bundles)
+        independent of P and of bundle order, a duplicate edge kept. `syn` stages another table."""
+        syn = self._syn if syn is None else syn
+        keys = sorted(syn.bundles)
         if not keys:
             empty = np.zeros(0, dtype=np.int64)
             return {"edge_post": empty, "edge_pre": empty, "edge_q": empty}
-        posts = np.concatenate([self._syn.bundles[key][0] for key in keys])
-        pres = np.concatenate(
-            [np.full(len(self._syn.bundles[key][0]), key[0], np.int64) for key in keys]
-        )
-        qs = np.concatenate([self._syn.bundles[key][1] for key in keys])
+        posts = np.concatenate([syn.bundles[key][0] for key in keys])
+        pres = np.concatenate([np.full(len(syn.bundles[key][0]), key[0], np.int64) for key in keys])
+        qs = np.concatenate([syn.bundles[key][1] for key in keys])
         order = np.lexsort((qs, pres, posts))
         return {"edge_post": posts[order], "edge_pre": pres[order], "edge_q": qs[order]}
 
@@ -704,8 +707,11 @@ class KernelLsmPool(LsmPool):
         self._kt.syn = self._syn
         self._zero_in_flight()
 
-    def params_fingerprint(self):
-        return _crc_arrays(self._live_edges(), _crc_arrays(self.params()))
+    def params_fingerprint(self, syn=None, params=None):
+        """crc32 of the parameters and the compiled table; `syn` and `params` stage a join's before
+        its write (apply_join's dry run, the value a join row journals)."""
+        params = self.params() if params is None else params
+        return _crc_arrays(self._live_edges(syn), _crc_arrays(params))
 
     # -- a fed unit joins as unit N (RULING.md items 1-6, AMENDMENT 1) -----------------------------
 
@@ -767,10 +773,13 @@ class KernelLsmPool(LsmPool):
         entry points at N with its weight kept; the carriers, the accumulators and the tick index
         are carried bytewise (unit N starts at rest); the table is recompiled and the boundary
         fingerprint re-anchored (a journaled re-boundary per join). Returns the record with the
-        new boundary. REFUSED, before any write: a record for another N, a lesioned pool, a bundle
-        in flight, a malformed row, a signed pre whose weight breaks its sign, a retargeted entry
-        whose weight is not the unit's sign (C17), an encoder row that is not 64 finite values.
-        `dry` runs every refusal and writes nothing (a write-ahead journal checks before it writes)."""
+        new boundary and `params`, the params fingerprint the join makes, staged before the write.
+        REFUSED, before any write: a record for another N, a lesioned pool, a bundle in flight, a
+        malformed row, a signed pre whose weight breaks its sign, a retargeted entry whose weight is
+        not the unit's sign (C17), an encoder row that is not 64 finite values, or a record whose
+        journaled `params` is not the staged one (a rebuild that diverges from the live pool,
+        enforcer #7299 MINOR-1). `dry` runs every refusal, writes nothing and returns the staged
+        params (a write-ahead journal checks, and records the value, before it writes)."""
         n, k = self.n, self.pre.shape[1]
         sign = _dale(record["sign"])
         if int(record["n"]) != n:
@@ -800,18 +809,23 @@ class KernelLsmPool(LsmPool):
             row = np.asarray(row, dtype=np.float64)
             if row.shape != (N_IN,) or not np.all(np.isfinite(row)):
                 raise ValueError(f"REFUSED: the encoder row is not {N_IN} finite values")
-        if dry:
-            return None
         pre = np.array(grow_rows(self.pre.tolist(), n + 1), dtype=np.int64)
         weights = np.array(grow_rows(self.w.tolist(), n + 1), dtype=np.float64)
         pre[n], weights[n] = pre_row, w_row
         pre[cells[:, 0], cells[:, 1]] = n
+        syn = self._compile(pre, weights)
+        staged = self.params_fingerprint(syn, {"pre": pre, "w": weights})  # LsmPool.params' keys
+        expected = record.get("params")
+        if expected is not None and int(expected) != staged:
+            raise ValueError("REFUSED: the join makes other params than its journaled fingerprint")
+        if dry:
+            return staged
         old_kt, old_s = self._kt, self._s
         self.pre, self.w, self.n, self._signs = pre, weights, n + 1, signs
         if row is not None:
             self.w_in = np.array(grow_rows(self.w_in.tolist(), n + 1), dtype=np.float64)
             self.w_in[n] = row
-        self._syn = self._compile()
+        self._syn = syn
         self._start()
         for key, old in old_kt.state.arrays.items():
             fresh = self._kt.state.arrays[key]
@@ -822,7 +836,7 @@ class KernelLsmPool(LsmPool):
         self._s = np.array(grow_vector(old_s.tolist(), n + 1, fill=False), dtype=bool)
         if self.boundary is not None:
             self.boundary = self.params_fingerprint()
-        return dict(record, n=n, sign=sign, boundary=self.boundary)
+        return dict(record, n=n, sign=sign, boundary=self.boundary, params=staged)
 
     def fingerprint(self):
         """crc32 of the complete continuation state, independent of P: the percept count and the

@@ -135,7 +135,8 @@ def join_fed_unit(pool, w_feed, units, unit_id, encoder_row, ledger):
     is a unit that is not among the fed `units` or a feed that does not name the pool's units. The
     join row is drawn from the declared join stream with join_seed = unit_id (minted once, never
     reused, so no two joins share a stream), checked by a dry apply, journaled write-ahead as ONE
-    "join" row through Ledger.record_event (with the retired feed column), then applied. The unit's
+    "join" row through Ledger.record_event (with the retired feed column and the params fingerprint
+    the dry apply staged, the re-boundary a restart checks against), then applied. The unit's
     feed column leaves the live network; every other column keeps its entries bit for bit and gains
     a zero row for N (growable.grow_rows). Returns (w_feed, the fed units left, the applied row)."""
     if type(pool) is not KernelLsmPool:
@@ -144,8 +145,8 @@ def join_fed_unit(pool, w_feed, units, unit_id, encoder_row, ledger):
         raise ValueError(f"REFUSED: unit {unit_id!r} has no birth row; a join follows admission")
     w, fed, j = _feed_column(pool, w_feed, units, unit_id)
     record = pool.draw_join(fed[j].sign, unit_id, encoder_row)
-    pool.apply_join(record, dry=True)
-    record = dict(record, unit_id=unit_id, retired_feed=w[:, j].tolist())
+    params = pool.apply_join(record, dry=True)
+    record = dict(record, unit_id=unit_id, retired_feed=w[:, j].tolist(), params=params)
     ledger.record_event({"kind": "join", **record})
     applied = pool.apply_join(record)
     grown, rest = _retire_column(pool, w, fed, j)
@@ -156,12 +157,15 @@ def rebuild_joined_pool(pool, w_feed, units, ledger):
     """P4b: `pool` and its born feed (`w_feed` over the born fed `units`) rebuilt from every
     journaled "join" row in lake order, the pool through KernelLsmPool.apply_join (the one apply
     path; a row for another N is REFUSED there) and the feed by the same handover the live join
-    made (RULING items 5-6, enforcer #7299 MAJOR-1). REFUSED, before that row's apply: a joined unit
-    that is not a fed unit, a column that is not the one the row retired, or a sign that is not the
-    unit's. Returns (pool, w_feed, the fed units left)."""
+    made (RULING items 5-6, enforcer #7299 MAJOR-1). REFUSED, before that row's apply: a row with no
+    journaled params (unverifiable), a joined unit that is not a fed unit, a column that is not the
+    one the row retired, or a sign that is not the unit's; apply_join refuses a rebuild whose staged
+    params differ from the journaled ones (#7299 MINOR-1). Returns (pool, w_feed, the units left)."""
     for row in ledger.events():
         if row.get("kind") != "join":
             continue
+        if row.get("params") is None:
+            raise ValueError(f"REFUSED: join row for unit {row.get('unit_id')} has no params")
         w_feed, fed, j = _feed_column(pool, w_feed, units, row["unit_id"])
         if w_feed[:, j].tolist() != row["retired_feed"] or fed[j].sign != row["sign"]:
             raise ValueError(f"REFUSED: unit {row['unit_id']}'s born feed is not the one it left")
