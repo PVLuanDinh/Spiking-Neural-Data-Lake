@@ -212,9 +212,8 @@ def test_a_record_missing_a_binding_key_is_malformed_not_loaded(tmp_path):
 
 @pytest.mark.parametrize("replace", [[1, 2], {}])
 def test_a_record_not_in_this_builds_layout_is_malformed_and_adopts_a_kept_copy(tmp_path, replace):
-    """Lens C MINOR-3/MINOR-4 (#7184): a non-dict record raised at `rec.get` and skipped the
-    kept-copy retry, and {} was reported foreign on all six binding keys. Both are malformed: a
-    stray seed keeps seed S's step-5 record, then a record of either layout adopts it."""
+    """Lens C MINOR-3/MINOR-4 (#7184): a non-dict record and {} are malformed, not foreign, and
+    retry the kept copies: a stray seed keeps seed S's step-5 record, then either adopts it."""
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED, ticks=5)
     run_brain(home, seed=SEED + 1)
@@ -226,16 +225,15 @@ def test_a_record_not_in_this_builds_layout_is_malformed_and_adopts_a_kept_copy(
 @pytest.mark.parametrize("blob", ["null", "{not json"])
 def test_a_record_that_is_not_json_is_not_reported_absent(tmp_path, blob):
     """Lens C MINOR-1 (#7184), lens A R3-MINOR-1(a) (#7181): load_state reads a JSON null or a
-    non-JSON blob as its default, so the restore said the lake holds no record, which is false.
-    The note says the record is not JSON and was NOT kept (a bytes-level keep is OWED)."""
+    non-JSON blob as its default; the note says the record is not JSON and was NOT kept (a
+    bytes-level keep is OWED), never 'absent'."""
     note = _fresh(run_brain(private_home(tmp_path, "h"), seed=SEED, replace_bytes=blob))
     assert note == "refused: fresh day (not a JSON record: NOT kept)", note
 
 
 def test_a_record_the_restore_could_not_read_is_kept_before_it_is_overwritten(tmp_path):
-    """Lens A R3-MINOR-1(b) (#7181), enforcer concurring (#7205): the restore's read raised, so
-    nothing was carried and the first flush superseded the record unkept. The flush re-reads the
-    record and keeps it before the first overwrite."""
+    """Lens A R3-MINOR-1(b) (#7181), enforcer concurring (#7205): when the restore's read
+    raises, the first flush re-reads the record and keeps it before the first overwrite."""
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED, ticks=5)
     out = run_brain(home, seed=SEED, restore_raises=True)

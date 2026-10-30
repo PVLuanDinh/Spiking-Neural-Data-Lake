@@ -5289,8 +5289,7 @@ class Brain:
     @staticmethod
     def _adopt_kept(prefix, accept):
         """R3-M2: retry the records `_keep_refused` kept under `prefix`, newest first; the name of
-        the first one `accept` adopts, else None. The one retry loop of both callers, the prototype
-        restore and `_restore_circadian` (lens C #7184 MINOR-5, P2)."""
+        the first one `accept` adopts, else None (lens C #7184 MINOR-5, P2)."""
         from snn_data_lake.substrate.home import named_states
 
         for name, blob in named_states(prefix):
@@ -5332,13 +5331,11 @@ class Brain:
         a non-dict too), or one whose restore raises (a newer build's layout after a rollback, a
         codec defect) -- is carried, kept by `_flush_circadian` before the first overwrite, and the
         kept copies are retried newest first (`_adopt_kept`; P4b "foreign records preserved"; the
-        prototype path's R3-M2). A malformed record of this binding with a step adopts only a kept
-        copy at that step or later, so a rollback never jumps the clock back under 'adopted'. A
-        record whose read raised is re-read and kept at the first flush. A JSON null or non-JSON
-        record is NOT kept (its bytes are overwritten at the first flush; a bytes-level keep is
-        owed) and the note says so, never 'absent'. Staleness: the record is written at each sleep
-        onset and at `close()`, so a
-        crash restores the last onset or close -- up to one day period old. The night's persist
+        prototype path's R3-M2); one whose read raised is re-read and kept at the first flush. A
+        malformed record of this binding adopts only a kept copy at its step or later, so a rollback
+        never moves the clock back. A JSON null or non-JSON record is NOT kept (a bytes-level keep
+        is owed) and the note says so. Staleness: the record is written at each sleep onset and at
+        `close()`, so a crash restores the last onset or close -- up to one day period old. The night's persist
         block is not atomic: a kill after the clock's flush but before the growth, prototype or
         coverage flushes finish restores night N's onset (asleep, so `_enter_sleep` does not re-run)
         beside learned stores at night N-1, the clock one night ahead.
@@ -5374,7 +5371,7 @@ class Brain:
             return f"refused: {why}; adopted: {[name]}" if name else f"refused: fresh day ({why})"
         except Exception as e:  # a broken record must never block brain construction
             self._circadian_carried = rec
-            self._circadian_reread = rec is None  # never read: the flush re-reads it to keep it
+            self._circadian_reread = rec is None
             return f"restore raised: fresh day ({e})"
 
     def _circadian_binding(self):
