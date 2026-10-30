@@ -4,9 +4,16 @@ import numpy as np
 import pytest
 
 import snn_data_lake.reservoir.recurrent_pool as rp
-from snn_data_lake.growth.feed_readout import arm_latencies, feed_u_contrasts, pool_first_spikes
+from snn_data_lake.growth.feed_readout import (
+    arm_latencies,
+    feed_u_contrasts,
+    join_fed_unit,
+    pool_first_spikes,
+    rebuild_joined_pool,
+)
 from snn_data_lake.growth.grown_code import GrownUnit, latencies
 from snn_data_lake.growth.grown_feed import feed_drive
+from snn_data_lake.growth.growth_loop import BudgetValues, Ledger, make_admission
 from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner, text_features
 from snn_data_lake.reservoir.recurrent_pool import KernelLsmPool
 
@@ -290,3 +297,108 @@ def test_identity_random_feed_mutant_is_caught(monkeypatch):
     monkeypatch.setattr(consumer, "random_feed", lambda weights, units, seed: weights)
     with pytest.raises(AssertionError, match="random arm"):
         _assert_random_arm_delivers_its_own_drive()
+
+
+# ---- G3 grow round 2: the feed hands over at join (RULING items 5-7) ----------------------------
+
+TUNED = {"k": 8, "w": 0.25, "lambda": 0.9, "g": 4, "T_in": 1}
+JOIN_VALUES = BudgetValues(first=52, beta=1.5, k_max=3)
+# FIXTURE site/centre/density: tests/test_growth_loop.py's admission values (G7's test values)
+JOIN_ADMISSION = make_admission(
+    site=(0.5 / 14, 1.5 / 4), centre_um=(0.0, 0.0), density_per_mm2=2.7e4, seed=9000
+)
+
+
+def _col(ids):
+    """One COL batch in unit_id order: E units, then exactly one I unit."""
+    return tuple(
+        GrownUnit(uid, (0.0,) * 52, 1.0, 12, -1 if i == len(ids) - 1 else 1, (0.0,))
+        for i, uid in enumerate(ids)
+    )
+
+
+def _admitted(tmp_path, ids=(40, 41, 42)):
+    """A ledger with the batch's birth rows, through GrowthLoop's admission (labels, G7 gate)."""
+    ledger = Ledger(tmp_path / "lake.bin", JOIN_VALUES)
+    batch = _col(ids)
+    labels, _ticket = JOIN_ADMISSION(
+        batch, "p", 0, resolve_problem=lambda p: True, known_unit=lambda u: False
+    )
+    ledger.record_units(batch, labels, "p", 0)
+    return ledger, batch
+
+
+def _born_pool():
+    _, pre, w = rp._lsm_draw(rp.realization_seed("lsm", rp.DEV_SEED), rp.N, TUNED["k"], TUNED["w"])
+    return KernelLsmPool(pre, w, TUNED, w_in=rp.w_in(rp.DEV_SEED), window=0)
+
+
+def _feed(rows, batch):
+    """A Dale-respecting feed: |N(0,1)| scaled by each column's unit sign, unit_id order."""
+    magnitude = np.abs(np.random.default_rng(5).standard_normal((rows, len(batch))))
+    return magnitude * np.array([u.sign for u in sorted(batch, key=lambda u: u.unit_id)])
+
+
+def _row(pool):
+    return rp.w_in(rp.DEV_SEED, pool.n + 1)[pool.n]
+
+
+def _joins(ledger):
+    return [r for r in ledger.events() if r["kind"] == "join"]
+
+
+def test_joined_unit_leaves_external_feed(tmp_path):
+    ledger, batch = _admitted(tmp_path)
+    pool, w = _born_pool(), _feed(rp.N, batch)
+    grown, rest, record = join_fed_unit(pool, w, batch, 41, _row(pool), ledger)
+    assert [u.unit_id for u in rest] == [40, 42] and grown.shape == (rp.N + 1, 2)
+    assert record["unit_id"] == 41 and record["retired_feed"] == w[:, 1].tolist()
+    assert record["sign"] == 1 and pool.signs[rp.N] == 1 and pool.n == rp.N + 1
+    rows = _joins(ledger)
+    assert len(rows) == 1 and rows[0]["unit_id"] == 41 and rows[0]["n"] == rp.N
+    assert rows[0]["retired_feed"] == w[:, 1].tolist()  # retired from the network, kept in the lake
+    assert any(r["unit_id"] == 41 for r in ledger.units())  # its birth row stays
+
+
+def test_old_feed_columns_never_resampled_at_join(tmp_path):
+    ledger, batch = _admitted(tmp_path)
+    pool, w = _born_pool(), _feed(rp.N, batch)
+    grown, rest, _ = join_fed_unit(pool, w, batch, 41, _row(pool), ledger)
+    grown, rest, _ = join_fed_unit(pool, grown, rest, 42, _row(pool), ledger)
+    assert [u.unit_id for u in rest] == [40] and grown.shape == (rp.N + 2, 1)
+    assert np.array_equal(grown[: rp.N, 0], w[:, 0])  # the kept column, bit for bit
+    assert not np.any(grown[rp.N :])  # the joined units' rows are zero, never drawn
+    assert [r["unit_id"] for r in _joins(ledger)] == [41, 42]
+    assert list(pool.signs[rp.N :]) == [1, -1]
+
+
+def test_a_join_follows_only_from_the_admission(tmp_path):
+    ledger, batch = _admitted(tmp_path)
+    stranger = GrownUnit(99, (0.0,) * 52, 1.0, 12, 1, (0.0,))
+    pool, w = _born_pool(), _feed(rp.N, batch + (stranger,))
+    before = pool.params_fingerprint()
+    with pytest.raises(ValueError, match="REFUSED"):  # no birth row: never admitted
+        join_fed_unit(pool, w, batch + (stranger,), 99, _row(pool), ledger)
+    with pytest.raises(ValueError, match="REFUSED"):  # admitted, but not a fed unit here
+        join_fed_unit(pool, _feed(rp.N, batch[:2]), batch[:2], 42, _row(pool), ledger)
+    with pytest.raises(ValueError, match="REFUSED"):  # a feed that does not name the pool's units
+        join_fed_unit(pool, _feed(rp.N - 1, batch), batch, 41, _row(pool), ledger)
+    assert not _joins(ledger) and pool.n == rp.N and pool.params_fingerprint() == before
+
+
+def test_restart_rebuilds_grown_pool_from_join_rows(tmp_path):
+    ledger, batch = _admitted(tmp_path)
+    live, w = _born_pool(), _feed(rp.N, batch)
+    w, rest, _ = join_fed_unit(live, w, batch, 40, _row(live), ledger)
+    w, rest, _ = join_fed_unit(live, w, rest, 42, _row(live), ledger)
+    restarted = rebuild_joined_pool(_born_pool(), ledger)
+    assert restarted.n == live.n == rp.N + 2
+    assert restarted.params_fingerprint() == live.params_fingerprint()
+    assert restarted.frozen() and restarted.boundary == live.boundary
+    assert np.array_equal(restarted.signs, live.signs)
+    assert np.array_equal(restarted.w_in, live.w_in)
+    # the red: a journal holding only unit N's row (no retargeted list) rebuilds another pool
+    stripped = _born_pool()
+    for row in _joins(ledger):
+        stripped.apply_join(dict(row, retargeted=[]))
+    assert stripped.params_fingerprint() != live.params_fingerprint()
