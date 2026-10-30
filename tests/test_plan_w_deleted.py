@@ -8,8 +8,16 @@ values that made the old rule grow `_plan_w` and nudge. The break this catches: 
 (an update or a nudge) back on the live path."""
 
 import types
+from pathlib import Path
 
+import snn_data_lake
 from snn_data_lake.engine.autonomous_loop import ACTIONS, AutonomousArm
+from snn_data_lake.gates.native_dormancy import _py_idents
+
+T126 = (
+    "tasks.md row T126 (replacement for the deleted `_plan_w` nudge) holds `_planned_seq` unread "
+    "until its pre-registration opens; a reader here must land through T126, not around it"
+)
 
 
 class _ZeroPFC:
@@ -53,3 +61,29 @@ def test_live_path_does_not_update_plan_w():
         AutonomousArm._pfc_bias(arm, 0)
     assert arm._plan_w == 0.1
     assert arm._plan_elig == 1.0 and arm._plan_base == 0.0
+
+
+def _planned_seq_readers(pkg):
+    """Modules of package dir `pkg` that LOAD the attribute `_planned_seq` (stores are the beam
+    writers and the H-JEPA reset, not readers)."""
+    out = []
+    for p in sorted(Path(pkg).rglob("*.py")):
+        parts = p.relative_to(pkg.parent).with_suffix("").parts
+        dotted = ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
+        if "_planned_seq" in _py_idents(pkg.parent, dotted)[1]:
+            out.append(dotted)
+    return out
+
+
+def test_planned_seq_has_no_reader_in_src():
+    readers = _planned_seq_readers(Path(snn_data_lake.__file__).parent)
+    assert readers == [], f"`_planned_seq` gained a reader in {readers}: {T126}"
+
+
+def test_planted_planned_seq_load_reads_as_a_reader(tmp_path):
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    (pkg / "writer.py").write_text("class A:\n    def f(self):\n        self._planned_seq = []\n")
+    (pkg / "reader.py").write_text("class A:\n    def f(self):\n        x = self._planned_seq\n")
+    assert _planned_seq_readers(pkg) == ["pkg.reader"]
