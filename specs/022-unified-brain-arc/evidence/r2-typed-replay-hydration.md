@@ -1669,3 +1669,10 @@ Data-exposure: no confirmatory or reserve seed of R2's block was read or run in 
    with 5c.
 6. Ranges: D2's sentence and D3's heading now read 15010-15067 (enforcer #6948 MINOR-2; the old 15010-15057 left the reserves
    15020-15027, 15040-15047 and 15060-15067 outside the owed list).
+7. K3 phase check (integrator ruling #7111, accepted by launcher D-84; enforcer #7103). twin_K3 records its own sleep-onset step;
+   each K3 restoring arm's resumed step must EQUAL it (the bound rests on tick order at circadian@1d87efd4: _step += 1, then
+   _enter_sleep, whose persist block flushes the clock first). The K1g chronology read scores whenever a circadian record was
+   restored and is refused by name only when none was. chrono_clean's step term compares with the step the parent pre_ process
+   last flushed (harness-side). Until claude/circadian-p4b-1029 lands, K3's alignment holds BY CONSTRUCTION because the harness
+   carries the phase (option (i), D-77 (i)), and K3_phase reads False (no record is restored). It becomes a real cross-check of
+   the brain only after the D-79 fix lands (launcher D-84).
