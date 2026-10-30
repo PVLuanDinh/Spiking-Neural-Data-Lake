@@ -538,8 +538,10 @@ def _chrono(brain):
 
 def _track_clock(role, result):
     """Harness-side clock facts, read from the process under test and never from its restore. A pre_
-    role notes the step of its last `_flush_circadian` call in `result["flushed_step"]` (None when
-    this head has no circadian flush); twin_K3 notes the step of each sleep onset, returned as
+    role notes the step of its last `_flush_circadian` call that WROTE (a truthy return) in
+    `result["flushed_step"]` (None when this head has no circadian flush, or none wrote); a call that
+    returned False wrote nothing and goes to `result["flush_failed_steps"]`, so a failed write never
+    reads as a restore that dropped the record (#7204). twin_K3 notes the step of each sleep onset, returned as
     `seen["onset"]` (tick order: `_step += 1`, then `_enter_sleep`, whose persist block flushes the
     clock first)."""
     from snn_data_lake.engine.brain import Brain
@@ -547,12 +549,16 @@ def _track_clock(role, result):
     seen = {"onset": None}
     if role.startswith("pre_"):
         result["flushed_step"] = None
+        result["flush_failed_steps"] = []
         flush = getattr(Brain, "_flush_circadian", None)
         if flush is not None:
 
             def flushed(self, *a, **kw):
                 done = flush(self, *a, **kw)
-                result["flushed_step"] = self._step
+                if done:
+                    result["flushed_step"] = self._step
+                else:
+                    result["flush_failed_steps"].append(self._step)
                 return done
 
             Brain._flush_circadian = flushed
@@ -1832,7 +1838,10 @@ def _k3_phase(res, twin):
     boundary, so pre_K3's sleep ticks are the NEXT night's first ones and the last flush is that
     night's onset. The restore adopts that record, so its step EQUALS the onset step twin_K3
     recorded; a step off by any gap reads False. A brain that carries no phase (the record is
-    absent) reads False: that is finding (iii), not a harness fault."""
+    absent) reads False: that is finding (iii), not a harness fault. The caller refuses this read
+    when pre_K3 wrote no record; that refusal does not hide an isolation defect: `chrono_clean`
+    for res_K3 still reads False when a record is restored and the parent's flushed_step is not an
+    int (`_clock_clean`)."""
     step = ((res or {}).get("construct_circadian_restored") or {}).get("step")
     onset = (twin or {}).get("onset_step")
     return type(step) is int and type(onset) is int and step == onset
@@ -2288,6 +2297,16 @@ K1G_CHRONO_NO_LINEAGE = (
     "K1g chronology FAIL: a restored record with no flushed lineage (pre_K1g flushed no circadian "
     "record; a stale or shared home, or the live lake)"
 )
+#: A pre_ flush that returned False wrote nothing (engine/brain.py:5394-5403): its own cause, never
+#: 'the restore dropped the record' (#7204 MINOR-1).
+K1G_CHRONO_FLUSH_FAILED = (
+    "K1g chronology FAIL: pre_K1g's _flush_circadian returned False and wrote no record (the write "
+    "raised or the keep failed), so there is no record to compare the restore with"
+)
+K3_PHASE_FLUSH_FAILED = (
+    "K3_phase FAIL: pre_K3's _flush_circadian returned False and wrote no record (the write raised "
+    "or the keep failed), so there is no phase to resume"
+)
 #: c6's `K3_phase` is keyed on the same harness-side bit as the K1g chronology (#7183 (C) NIT).
 K3_PHASE_REFUSED = (
     "K3_phase not applicable: pre_K3 flushed no circadian record, so this head has no clock to "
@@ -2298,7 +2317,9 @@ K3_PHASE_REFUSED = (
 def c7_seed(arms):
     """R2-c7 (2.10, part P3) on one seed: K1g's restore equals the uninterrupted twin (the buffer and
     the next refit) and leaves the chronology untouched, read as a four-cell table on (pre_K1g
-    flushed a circadian record, the restore carries one): (yes, yes) scored; (yes, no) FAIL;
+    WROTE a circadian record (a truthy `_flush_circadian` return, never a mere call), the restore
+    carries one): a pre_K1g whose every flush returned False is its own FAIL
+    (`K1G_CHRONO_FLUSH_FAILED`), whatever the restore carries; (yes, yes) scored; (yes, no) FAIL;
     (no, yes) FAIL by name (`K1G_CHRONO_NO_LINEAGE`); (no, no) refused by name; CROSS and O_buf each move it; each planted
     percept red reads as `_percept_planted_entry`; the shuffled-buffer positive control's refit
     differs. Its own incomplete list: a P1/P2 arm never makes a P3 seed INVALID (2.3, A6)."""
@@ -2338,7 +2359,9 @@ def c7_seed(arms):
         if (get(role) or {}).get("fault") is not None and role not in incomplete:
             incomplete.append(role)
     pre = get("pre_K1g") or {}
-    if pre.get("flushed_step") is None:  # the code under test flushed no clock: nothing to resume
+    if pre.get("flushed_step") is None and pre.get("flush_failed_steps"):
+        chrono, chrono_ok = {"scored": True, "clean": False, "fail": K1G_CHRONO_FLUSH_FAILED}, False
+    elif pre.get("flushed_step") is None:  # the code under test wrote no clock: nothing to resume
         if res.get("construct_circadian_restored") is None:
             chrono, chrono_ok = {"scored": False, "refused": K1G_CHRONO_REFUSED}, True
         else:  # but the restore carries a record: it came from outside this lineage
@@ -2382,7 +2405,8 @@ def seed_comparisons(arms, base=None):
     """Every per-seed reading of 2.3, from the R2-head arms (and the base-head arms when given). A red
     FIRES only if its arm and its twin are COMPLETE records; an incomplete arm makes the seed
     incomplete (never a fire). c6's `K3_phase` (D-79's cross-check) is a conjunct of its all() only
-    where pre_K3 flushed a circadian record: a red there (the restore dropped or mis-adopted the
+    where pre_K3 WROTE a circadian record (a flush that returned False is `K3_PHASE_FLUSH_FAILED`,
+    a False conjunct under its own name, never a dropped-record reading): a red there (the restore dropped or mis-adopted the
     phase) reads NOT MET. On a head without circadian (pre_K3 flushed none, harness-side) it is
     not-applicable: `K3_phase` is left out of c6 and `k3_phase_refused` names `K3_PHASE_REFUSED`
     (never a NOT MET; closes #7103 NIT-2)."""
@@ -2462,7 +2486,11 @@ def seed_comparisons(arms, base=None):
         role = f"{kind}_off"
         if (get(role) or {}).get("fault") is not None and role not in incomplete:
             incomplete.append(role)
-    if (get("pre_K3") or {}).get("flushed_step") is None:  # no clock flushed: nothing to resume
+    pre_k3 = get("pre_K3") or {}
+    if pre_k3.get("flushed_step") is None and pre_k3.get("flush_failed_steps"):
+        c["c6"]["K3_phase"] = False  # a flush that returned False wrote nothing: a named FAIL
+        c["k3_phase_flush_failed"] = K3_PHASE_FLUSH_FAILED
+    elif pre_k3.get("flushed_step") is None:  # no clock written: nothing to resume
         c["k3_phase_refused"] = K3_PHASE_REFUSED
     else:
         c["c6"]["K3_phase"] = _k3_phase(get("res_K3"), get("twin_K3"))
