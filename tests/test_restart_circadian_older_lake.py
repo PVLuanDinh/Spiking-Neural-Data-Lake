@@ -263,6 +263,20 @@ def test_a_codec_defect_is_reported_as_raised_not_malformed(tmp_path):
     assert any(rec == out["written"] for rec in out["kept"].values()), out["kept"]
 
 
+def test_a_record_whose_restore_raises_retries_the_kept_copies(tmp_path):
+    """Enforcer MINOR-1 (#7257): a record whose load raises outside load_state_dict's decode catch
+    (a newer build's layout after a rollback) retries the kept copies, as the docstring says. A
+    stray seed keeps seed S's step-5 record; the stray's record, rebound to S, raises on its own rng
+    only, so the step-5 copy is adopted under a 'restore raised' note. Red at 03369175: a fresh
+    day."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    run_brain(home, seed=SEED + 1)
+    out = run_brain(home, seed=SEED, rewrite={"seed": SEED}, codec_raises_on_written=True)
+    assert out["note"].startswith("restore raised: newer layout; adopted:"), out["note"]
+    assert out["restored"]["step"] == 5, out["restored"]
+
+
 def test_superseded_circadian_records_are_retired_by_the_nights_consolidation(tmp_path):
     """Lens A MAJOR-A (#7028), lens C MAJOR-B (#7021), enforcer MAJOR-1 (#7053): the night block's
     `klog.consolidate` (nights % 8 == 0, `records` not None) runs `_prune_state_history` before the

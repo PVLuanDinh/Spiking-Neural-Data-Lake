@@ -72,6 +72,14 @@ if spec.get("codec_raises"):  # a defect in the shared codec, not a malformed re
         return merge(target, saved)
 
     interaction_learning._merge_state = _broken
+if spec.get("codec_raises_on_written"):  # only the written record's rng raises: kept copies load
+
+    def _broken(target, saved):
+        if isinstance(written, dict) and saved == written.get("rng"):
+            raise RuntimeError("newer layout")
+        return merge(target, saved)
+
+    interaction_learning._merge_state = _broken
 
 def count_records():
     names = (home._unpack_state(p) for p in home._log().replay() if p[:1] == home._T_STATE)
