@@ -92,6 +92,11 @@ def test_primary_refuses_unpaired_arms():
         )
 
 
+def test_primary_refuses_an_empty_seed_set_by_name():
+    with pytest.raises(ValueError, match="paired seed"):
+        gc.primary({"TARGETED": [], "PRESIZED_SELECTED": [], "RANDOM": []}, 52, 9)
+
+
 # ---- preflight
 def test_preflight_refuses_foreign_partial_and_ungated_confirmatory_seeds():
     for bad in ([], [9000, 9000], [123], [8000], [9100], [9100, 9101], [9300, 9301]):
@@ -102,6 +107,12 @@ def test_preflight_refuses_foreign_partial_and_ungated_confirmatory_seeds():
     gc.preflight(list(gc.CONFIRMATORY_SEEDS), go="lead, written")
     gc.preflight(list(gc.DEV_SEEDS[:3]))
     gc.preflight(list(gc.RED_SEEDS[:3]))
+
+
+@pytest.mark.parametrize("gap", [9116, 9199, 9216, 9299, 9316, 9500, 9899])
+def test_preflight_refuses_seeds_in_the_unregistered_gaps_of_g3s_block(gap):
+    with pytest.raises(PermissionError):
+        gc.preflight([gap])
 
 
 def test_protected_seed_blocks_sit_outside_g3s_block():
