@@ -92,9 +92,15 @@ def test_primary_refuses_unpaired_arms():
         )
 
 
-def test_primary_refuses_an_empty_seed_set_by_name():
-    with pytest.raises(ValueError, match="paired seed"):
-        gc.primary({"TARGETED": [], "PRESIZED_SELECTED": [], "RANDOM": []}, 52, 9)
+@pytest.mark.parametrize("n", [0, 7])
+def test_primary_refuses_any_seed_count_but_the_registered_eight_by_name(n):
+    # the read uses the 7-d.f. bar (paired_contrast.T_BAR), so any other n reads at the wrong d.f.
+    with pytest.raises(ValueError, match="exactly 8 paired seeds"):
+        gc.primary(
+            {"TARGETED": _arm(0)[:n], "PRESIZED_SELECTED": _arm(9)[:n], "RANDOM": _arm(9)[:n]},
+            52,
+            9,
+        )
 
 
 # ---- preflight
@@ -107,6 +113,12 @@ def test_preflight_refuses_foreign_partial_and_ungated_confirmatory_seeds():
     gc.preflight(list(gc.CONFIRMATORY_SEEDS), go="lead, written")
     gc.preflight(list(gc.DEV_SEEDS[:3]))
     gc.preflight(list(gc.RED_SEEDS[:3]))
+
+
+@pytest.mark.parametrize("go", [False, "", 0, 1, ["written"]])
+def test_preflight_requires_the_go_to_be_a_non_empty_string(go):
+    with pytest.raises(PermissionError):
+        gc.preflight(list(gc.CONFIRMATORY_SEEDS), go=go)
 
 
 @pytest.mark.parametrize("gap", [9116, 9199, 9216, 9299, 9316, 9500, 9899])
@@ -169,6 +181,26 @@ def test_child_without_its_home_refuses_and_a_matching_home_starts(tmp_path):
     with pytest.raises(PermissionError):
         gc.child_home(["x", "--home", str(tmp_path)], {"NORD_HOME": str(tmp_path / "other")})
     assert gc.child_home(["x", "--home", str(tmp_path)], {"NORD_HOME": str(tmp_path)}) == tmp_path
+
+
+def test_child_home_refuses_a_home_holding_an_alias_to_the_live_lake(tmp_path, monkeypatch):
+    # home.require_isolated_home scans every entry; assert_not_live_home alone does not
+    import os
+
+    from snn_data_lake.substrate import home
+
+    live = tmp_path / "live"
+    live.mkdir()
+    (live / "brain_lake.bin").write_bytes(b"lake")
+    monkeypatch.setattr(home, "_default_live_home", lambda: str(live))
+    iso = tmp_path / "arm"
+    iso.mkdir()
+    try:
+        os.symlink(live / "brain_lake.bin", iso / "brain_lake.bin")
+    except OSError as exc:
+        pytest.skip(f"cannot create a symlink here: {exc}")
+    with pytest.raises(home.LiveHomeRefused):
+        gc.child_home(["x", "--home", str(iso)], {"NORD_HOME": str(iso)})
 
 
 def test_launch_hands_the_home_as_argument_and_environment(tmp_path):

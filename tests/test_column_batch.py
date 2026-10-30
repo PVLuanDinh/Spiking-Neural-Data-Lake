@@ -85,6 +85,8 @@ def test_worst_residual_picks_the_largest_magnitude_ties_to_the_lowest_index():
     assert cb.worst_residual([0.5, 0.5, 0.5], 2) == (0, 1)
     with pytest.raises(ValueError):
         cb.worst_residual([0.1], 2)
+    with pytest.raises(ValueError):  # a negative n would slice all but |n| entries
+        cb.worst_residual([0.1, 0.2, 0.3], -1)
 
 
 # ---- the isolating reds: a planted fixture where the shared I spikes before an E unit would
