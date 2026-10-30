@@ -137,9 +137,11 @@ W0_FAULTS = {
 # ---- the shared encoder and the seeds ------------------------------------------------------------
 
 
-def w_in(recording_seed):
-    """W_in (256 x 64), entries N(0, 1) / 8 from default_rng(recording_seed * 31 + 7)."""
-    return np.random.default_rng(recording_seed * 31 + 7).standard_normal((N, N_IN)) / 8
+def w_in(recording_seed, n=N):
+    """W_in (n x 64, n = 256 at birth), entries N(0, 1) / 8 from default_rng(recording_seed * 31 + 7).
+    The stream fills rows in order, so a grown pool's encoder is prefix-stable: rows 0..255 of the
+    n-row draw are the born draw, bit for bit, and row j is a joined unit's row by the same law."""
+    return np.random.default_rng(recording_seed * 31 + 7).standard_normal((n, N_IN)) / 8
 
 
 def drive(weights, x):
@@ -182,10 +184,14 @@ def mean_row_norm(w):
     return float(np.cumsum(norms)[-1] / norms.shape[0])
 
 
-def _encoder_shaped(w, what):
+def _encoder_shaped(w, what, rows=None):
+    """`w` as float64 if it is an encoder: `rows` x 64 (the pool's own n), or any positive row count
+    x 64 when `rows` is None (a random draw sets the row count of what is built from it)."""
     w = np.asarray(w, dtype=np.float64)
-    if w.shape != (N, N_IN):
-        raise ValueError(f"REFUSED: {what} is not an encoder shape ({N} x {N_IN}): {w.shape}")
+    if w.ndim != 2 or w.shape[1] != N_IN or w.shape[0] < 1 or rows not in (None, w.shape[0]):
+        raise ValueError(
+            f"REFUSED: {what} is not an encoder shape ({rows or 'n'} x {N_IN}): {w.shape}"
+        )
     return w
 
 
@@ -202,7 +208,7 @@ def transported_encoder(w_random, w_b):
     """G1(c) 2.7's copy form: the random encoder with rows 0..L-1 replaced by the L x 64 block `w_b`
     (cast to float64), each row rescaled to the mean row norm of the random draw; rows L..255 are
     the draw's, bit for bit. Refused: no unit (L == 0, never padded from nothing), a width other
-    than 64, L above 256, a zero or non-finite row. Neither input is written."""
+    than 64, L above the draw's row count, a zero or non-finite row. Neither input is written."""
     random = _encoder_shaped(w_random, "the random draw")
     block = np.asarray(w_b, dtype=np.float64)
     if block.ndim != 2:
@@ -212,9 +218,10 @@ def transported_encoder(w_random, w_b):
         raise ValueError("REFUSED: the transported block holds no unit (L == 0)")
     if block.shape[1] != N_IN:
         raise ValueError(f"REFUSED: the transported block's width {block.shape[1]} is not {N_IN}")
-    if units > N:
+    if units > random.shape[0]:
         raise ValueError(
-            f"REFUSED: the transported block holds {units} units, more than the encoder's {N}"
+            f"REFUSED: the transported block holds {units} units, more than the encoder's "
+            f"{random.shape[0]}"
         )
     out = random.copy()
     out[:units] = rescale_rows(block, mean_row_norm(random))
@@ -227,7 +234,7 @@ def fresh_encoder(recording_seed, w_random):
     target), so nothing is transported and only the encoder's discontinuity at b remains."""
     random = _encoder_shaped(w_random, "the random draw")
     stream = np.random.default_rng(np.random.SeedSequence([recording_seed, SWAP_TAG]))
-    return rescale_rows(stream.standard_normal((N, N_IN)) / 8, mean_row_norm(random))
+    return rescale_rows(stream.standard_normal((random.shape[0], N_IN)) / 8, mean_row_norm(random))
 
 
 # ---- the grids and the manifest (section 2.4) ----------------------------------------------------
@@ -392,10 +399,10 @@ class _Pool:
     # distinct-from: gates/selfcheck_cache.py::closure_key -- a sha256 carry key for a module closure
     # distinct-from: plasticity/eprop_kernel.py::EpropLIFBase -- the recurrent-LIF forward of the two trained perception encoders
     def replace_encoder(self, w):
-        """Swap the input matrix W_in for `w` (256 x 64, finite). W_in is no part of the pool's
+        """Swap the input matrix W_in for `w` (n x 64, finite). W_in is no part of the pool's
         state: its count, carriers, parameters and fingerprints are as they were, which is why a
         replay's binding records the swapped matrix's own crc."""
-        w = _encoder_shaped(w, "the encoder")
+        w = _encoder_shaped(w, "the encoder", self.n)
         if not np.all(np.isfinite(w)):
             raise ValueError("REFUSED: the encoder holds a non-finite entry")
         self.w_in = np.array(w, dtype=np.float64)

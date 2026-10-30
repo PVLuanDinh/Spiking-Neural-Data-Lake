@@ -585,7 +585,9 @@ def test_the_fresh_draw_has_its_own_tag_and_every_row_at_the_random_mean_norm():
     assert np.array_equal(fresh, rp.fresh_encoder(9, w_random))  # deterministic
     assert not np.array_equal(fresh, rp.fresh_encoder(10, rp.w_in(10)))  # one draw per seed
     with pytest.raises(ValueError, match="encoder shape"):
-        rp.fresh_encoder(9, np.ones((255, 64)))
+        rp.fresh_encoder(9, np.ones((256, 63)))
+    # the draw's row count, never a fixed 256, sets the fresh encoder's (RULING item 3)
+    assert rp.fresh_encoder(9, np.ones((255, 64))).shape == (255, 64)
 
 
 def test_replace_encoder_swaps_the_matrix_and_no_state():
