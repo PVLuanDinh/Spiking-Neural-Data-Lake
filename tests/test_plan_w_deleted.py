@@ -86,4 +86,7 @@ def test_planted_planned_seq_load_reads_as_a_reader(tmp_path):
     (pkg / "__init__.py").write_text("")
     (pkg / "writer.py").write_text("class A:\n    def f(self):\n        self._planned_seq = []\n")
     (pkg / "reader.py").write_text("class A:\n    def f(self):\n        x = self._planned_seq\n")
-    assert _planned_seq_readers(pkg) == ["pkg.reader"]
+    (pkg / "extender.py").write_text(
+        "class A:\n    def f(self):\n        self._planned_seq += [0]\n"
+    )
+    assert _planned_seq_readers(pkg) == ["pkg.extender", "pkg.reader"]
