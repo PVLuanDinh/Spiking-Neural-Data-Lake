@@ -1284,10 +1284,22 @@ def test_a_byte_copied_repeat_and_a_retagged_record_fail_their_own_identity(tmp_
 
 
 def test_pfrozen_zeroes_the_plan_rate():
-    arm = types.SimpleNamespace(_plan_lr=0.02)
+    arm = types.SimpleNamespace(_plan_w=0.1, _plan_lr=0.02)
     with R.ArmPatch("pfrozen") as ap:
         ap.bind(arm)
     assert arm._plan_lr == 0.0
+
+
+@pytest.mark.parametrize("arm_name", R.ARMS + ("pc",))
+def test_t125_bind_refuses_by_name_on_a_head_without_plan_w(arm_name):
+    # T125 deleted `_plan_w`: every arm reads it, so on such a head each arm refuses by name
+    # (never an AttributeError, and pfrozen never plants a `_plan_lr` the arm does not have).
+    arm = types.SimpleNamespace(_rpe=0.0)
+    with R.ArmPatch(arm_name, perm=[0.5]) as ap:
+        with pytest.raises(R.Refused) as e:
+            ap.bind(arm)
+    assert e.value.msg == "`_plan_w` deleted by T125; read E1d at c4c10b28"
+    assert not hasattr(arm, "_plan_lr")
 
 
 def test_r6_pc_rotates_only_the_bound_arms_pfc_bias_by_one_and_is_restored():
