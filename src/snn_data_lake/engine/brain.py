@@ -5331,10 +5331,13 @@ class Brain:
         a non-dict too), or one whose restore raises (a newer build's layout after a rollback, a
         codec defect) -- is carried, kept by `_flush_circadian` before the first overwrite, and the
         kept copies are retried newest first (`_adopt_kept`; P4b "foreign records preserved"; the
-        prototype path's R3-M2); one whose read raised is re-read and kept at the first flush. A
-        malformed record of this binding adopts only a kept copy at its step or later, so a rollback
-        never moves the clock back. A JSON null or non-JSON record is NOT kept (a bytes-level keep
-        is owed) and the note says so. Staleness: the record is written at each sleep onset and at
+        prototype path's R3-M2; a restore that raises is noted `restore raised: <exc>`, with
+        `; adopted: [...]` or `fresh day`); one whose read raised is re-read and kept at the first
+        flush. A malformed record (or one whose restore raises) of this binding adopts only a kept
+        copy at its step or later, so a rollback never moves the clock back to an older copy; a
+        corrupt step larger than every kept copy's is a fresh day, step 0, further back still
+        (#7257 NIT-1: disclosed, fail-closed, a corrupt step names no state to resume). A JSON
+        null or non-JSON record is NOT kept (a bytes-level keep is owed) and the note says so. Staleness: the record is written at each sleep onset and at
         `close()`, so a crash restores the last onset or close -- up to one day period old. The night's persist
         block is not atomic: a kill after the clock's flush but before the growth, prototype or
         coverage flushes finish restores night N's onset (asleep, so `_enter_sleep` does not re-run)
@@ -5356,10 +5359,14 @@ class Brain:
                     return "absent: fresh day (the lake holds no circadian record)"
                 return "refused: fresh day (not a JSON record: NOT kept)"
             foreign = self._circadian_foreign(rec)
-            if not foreign and self._load_circadian(rec):
-                return None
-            self._circadian_carried = rec
+            head = "refused"
             why = f"record bound to another {foreign}" if foreign else "malformed record"
+            try:
+                if not foreign and self._load_circadian(rec):
+                    return None
+            except Exception as e:  # outside the decode catch: still retry the kept copies (#7257)
+                head, why = "restore raised", str(e)
+            self._circadian_carried = rec
             step = rec.get("step") if isinstance(rec, dict) else None
             floor = step if not foreign and type(step) is int and step > 0 else 0
             name = self._adopt_kept(
@@ -5368,7 +5375,7 @@ class Brain:
                     not self._circadian_foreign(kept) and self._load_circadian(kept, floor)
                 ),
             )
-            return f"refused: {why}; adopted: {[name]}" if name else f"refused: fresh day ({why})"
+            return f"{head}: {why}; adopted: {[name]}" if name else f"{head}: fresh day ({why})"
         except Exception as e:  # a broken record must never block brain construction
             self._circadian_carried = rec
             self._circadian_reread = rec is None
@@ -5415,7 +5422,10 @@ class Brain:
         restore's read raised on, re-read here) is kept first and the restore note names it
         (`; kept: [<name>]`); a failed keep writes nothing, so
         the refused record is never overwritten. A flush that raises or whose keep fails is counted
-        at `state()["circadian_flush_failed"]`. True if a record was written."""
+        at `state()["circadian_flush_failed"]`. After a TRANSIENT read error the re-read finds a
+        record that may be this brain's own valid one and keeps it as a refused copy, noted
+        `kept` (#7257 NIT-2, disclosed); a PERSISTENT read error leaves the re-read pending, so
+        every flush fails and is counted (fail-closed). True if a record was written."""
         if not self._persist:
             return False
         try:
