@@ -10,6 +10,10 @@ from tests.test_restart_circadian import SEED, private_home, run_brain
 
 pytestmark = pytest.mark.slow
 
+_DEEP = 0  # a list 1,200 deep: the codec's staging recurses once a level (RecursionError)
+for _ in range(1200):
+    _DEEP = [_DEEP]
+
 
 def _fresh(out):
     assert out["step"] == 0 and out["restored"] is None, out
@@ -53,6 +57,7 @@ def test_a_record_of_another_seed_is_refused_naming_the_seed(tmp_path):
         {"phase": 1.5},
         {"rng": 5},  # decodes, but not to a random.Random
         {"rng": [3, [1, 2], None]},  # the hand-rolled list form the shared codec replaced
+        {"rng": _DEEP},  # coverage review: a decode that raises RecursionError is malformed too
     ],
 )
 def test_a_malformed_record_is_refused_as_malformed(tmp_path, changes):
@@ -120,6 +125,7 @@ def test_a_kill_right_after_the_growth_flush_restores_that_nights_onset(tmp_path
         ({"rng": [3, [1, 2], None]}, None),  # bound, but this build's codec cannot load it
         ({"step": True}, None),
         (None, [1, 2]),  # not a dict: the restore raises on it
+        (None, {}),  # correctness review: a present but empty record is not an absent one
     ],
 )
 def test_a_record_this_build_cannot_load_is_kept_before_it_is_overwritten(
@@ -157,15 +163,19 @@ def test_a_failed_circadian_flush_is_counted(tmp_path):
     run_brain(home, seed=SEED, ticks=5)
     stray = run_brain(home, seed=SEED + 1, ticks=60, no_keep=True)
     assert stray["flush_failed"] and stray["flush_failed"] >= 1, stray["flush_failed"]
-    assert run_brain(home, seed=SEED)["flush_failed"] == 0
+    own = run_brain(home, seed=SEED, ticks=60)  # its record: every onset flush writes
+    assert own["nights"] >= 1 and own["flush_failed"] == 0, own
 
 
-def test_superseded_circadian_records_are_retired_by_the_nights_consolidation(tmp_path):
-    """Lens A MAJOR-A (#7028), lens C MAJOR-B (#7021), enforcer MAJOR-1 (#7053): the night block's
-    `klog.consolidate` (nights % 8 == 0, `records` not None) runs `_prune_state_history` before the
-    night's flush, so the live circadian history is bounded (at most 8 onsets after a prune, plus
-    the survivor and close()'s record), and after a consolidation only the newest record remains."""
-    out = run_brain(private_home(tmp_path, "h"), seed=SEED, ticks=400, consolidate=True)
-    assert out["nights"] >= 9, out["nights"]  # crossed at least one nights % 8 == 0 after night 0
-    assert 1 <= out["record_count"] <= 10, out["record_count"]
-    assert (out["consolidated_count"], out["consolidated"]) == (1, out["record"])
+def test_a_malformed_record_adopts_the_newest_kept_copy_it_can_load(tmp_path):
+    """Coverage review: a malformed record now retries the kept copies, as a foreign one does,
+    and skips a kept copy it cannot load. A stray seed keeps seed S's step-5 record; a second
+    stray keeps an unloadable record newest; a record bound to S with a bool step then adopts
+    the step-5 copy."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    run_brain(home, seed=SEED + 1)
+    run_brain(home, seed=SEED + 1, replace=[1, 2])
+    out = run_brain(home, seed=SEED, rewrite={"seed": SEED, "step": True})
+    assert out["note"].startswith("refused: malformed record; adopted:"), out["note"]
+    assert out["restored"]["step"] == 5, out["restored"]

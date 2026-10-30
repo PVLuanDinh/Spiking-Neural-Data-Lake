@@ -42,15 +42,15 @@ if "rewrite" in spec:
     home.save_state(CIRCADIAN_STATE, dict(home.load_state(CIRCADIAN_STATE), **spec["rewrite"]))
 if "replace" in spec:  # a record that is not this build's layout at all
     home.save_state(CIRCADIAN_STATE, spec["replace"])
+if "rewrite_gauss_next" in spec:  # the cached normal inside the codec's encoded rng state
+    rec = home.load_state(CIRCADIAN_STATE)
+    rec["rng"]["state"]["items"][2] = spec["rewrite_gauss_next"]
+    home.save_state(CIRCADIAN_STATE, rec)
 written = home.load_state(CIRCADIAN_STATE, default=None)
 
 def count_records():
     names = (home._unpack_state(p) for p in home._log().replay() if p[:1] == home._T_STATE)
     return sum(1 for got in names if got and got[0] == CIRCADIAN_STATE.encode())
-if "rewrite_gauss_next" in spec:  # the cached normal inside the codec's encoded rng state
-    rec = home.load_state(CIRCADIAN_STATE)
-    rec["rng"]["state"]["items"][2] = spec["rewrite_gauss_next"]
-    home.save_state(CIRCADIAN_STATE, rec)
 
 def clock(b):
     rng = hashlib.sha256(repr(b.clock.rng.getstate()).encode()).hexdigest()
