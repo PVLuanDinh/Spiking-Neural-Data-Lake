@@ -1398,3 +1398,166 @@ def test_round7_a_restored_record_with_a_non_int_parent_flush_is_still_unclean_f
 def test_round7_the_k3_phase_docstring_says_chrono_clean_still_catches_the_isolation_defect():
     doc = " ".join(rh._k3_phase.__doc__.split())
     assert "chrono_clean" in doc and "res_K3" in doc and "isolation" in doc
+
+
+# ---- ROUND 8 (#7255 MINOR-1, NIT-1): the failed flush for EVERY restoring arm; 'unwritten' ------
+#: MINOR-1: a parent whose every `_flush_circadian` call returned False after a failed write wrote
+#: no record, so a restoring arm that constructs a fresh clock must not read clean as 'a head
+#: without circadian'. NIT-1: the same False return also means persist off or an unchanged record
+#: (circadian brain.py:5419-5420, :5436), told apart by `_circadian_flush_failed`, which only a
+#: failure bumps.
+_RESTORING_ROLES = (
+    "res_K0",
+    "res_K1",
+    "res_K2",
+    "res_K3",
+    "res_K4",
+    "res_B",
+    "res_Bpre",
+    "res_Bpost",
+    "res_rw",
+)
+
+
+def _fresh_restore(arms, role, *, parent_failed):
+    """`role` restored no record and constructed a fresh clock; its parent either wrote nothing
+    after a failed flush (`parent_failed`) or never flushed (a head without circadian)."""
+    parent = arms[dict(rh.R2_ROLES)[role]]
+    parent["flushed_step"] = None
+    parent["flush_failed_steps"] = [3] if parent_failed else []
+    arms[role]["construct_chrono"] = {"step": 0, "nights": 0}
+    arms[role]["construct_circadian_restored"] = None
+    return arms
+
+
+@pytest.mark.parametrize("role", _RESTORING_ROLES)
+def test_round8_a_parent_whose_every_flush_failed_is_its_own_named_chrono_fail(role):
+    arms = _fresh_restore(_arms(), role, parent_failed=True)
+    c = rh.seed_comparisons(arms)
+    assert c["chrono"][role] is False, "a failed parent flush passed as 'a head without circadian'"
+    assert c["chrono_flush_failed"] == {role: rh.CHRONO_FLUSH_FAILED}
+
+
+@pytest.mark.parametrize("role", _RESTORING_ROLES)
+def test_round8_a_parent_that_never_flushed_still_reads_clean_and_is_not_named(role):
+    arms = _fresh_restore(_arms(), role, parent_failed=False)
+    c = rh.seed_comparisons(arms)
+    assert c["chrono"][role] is True and "chrono_flush_failed" not in c
+
+
+def test_round8_a_failed_flush_after_a_written_one_does_not_name_the_arm():
+    arms = _fresh_restore(_arms(), "res_K0", parent_failed=True)
+    arms["pre_K0"]["flushed_step"] = 4  # it also WROTE step 4: the restore must carry it
+    c = rh.seed_comparisons(arms)
+    assert c["chrono"]["res_K0"] is False and "chrono_flush_failed" not in c
+
+
+def test_round8_chrono_flush_failed_names_only_a_raised_write_or_a_failed_keep():
+    text = " ".join(rh.CHRONO_FLUSH_FAILED.split())
+    assert "raised" in text and "keep" in text and "persist" not in text
+    assert "dropped" not in text and "returned False" in text
+
+
+def test_round8_the_clock_clean_docstring_names_the_failed_flush():
+    assert "flush_failed_steps" in " ".join(rh._clock_clean.__doc__.split())
+
+
+class _CountingBrain:
+    """Fake Brain whose flush mimics circadian brain.py:5412-5439: False with the failure counter
+    bumped (a raised write or a failed keep), False without it (persist off, unchanged record)."""
+
+    _step = 0
+    _circadian_flush_failed = 0
+    mode = "wrote"
+
+    def _flush_circadian(self, *a, **kw):
+        if self.mode == "failed":
+            self._circadian_flush_failed += 1
+        return self.mode == "wrote"
+
+    def _enter_sleep(self, *a, **kw):
+        return "slept"
+
+
+def _counting_brain(monkeypatch, mode):
+    monkeypatch.setitem(
+        sys.modules, "snn_data_lake.engine.brain", SimpleNamespace(Brain=_CountingBrain)
+    )
+    brain = _CountingBrain()
+    brain.mode = mode
+    return brain
+
+
+@pytest.mark.parametrize("mode", ["unchanged", "persist_off"])
+def test_round8_a_false_return_without_the_failure_counter_is_unwritten_not_failed(
+    monkeypatch, mode
+):
+    brain, result = _counting_brain(monkeypatch, mode), {}
+    rh._track_clock("pre_K0", result)
+    brain._step = 5
+    assert brain._flush_circadian() is False
+    assert result["flushed_step"] is None
+    assert result["flush_unwritten_steps"] == [5] and not result["flush_failed_steps"]
+
+
+def test_round8_a_false_return_that_bumped_the_failure_counter_is_failed(monkeypatch):
+    brain, result = _counting_brain(monkeypatch, "failed"), {}
+    rh._track_clock("pre_K0", result)
+    brain._step = 5
+    assert brain._flush_circadian() is False
+    assert result["flush_failed_steps"] == [5] and not result["flush_unwritten_steps"]
+
+
+def test_round8_a_head_without_the_failure_counter_still_reads_a_false_return_as_failed(
+    monkeypatch,
+):
+    brain, result = _fake_brain(monkeypatch), {}  # round 7's stand-in: no counter at all
+    brain.ok = False
+    rh._track_clock("pre_K0", result)
+    brain._step = 5
+    assert brain._flush_circadian() is False
+    assert result["flush_failed_steps"] == [5] and not result["flush_unwritten_steps"]
+
+
+@pytest.mark.parametrize("restored", [None, {"step": 6}])
+def test_round8_unwritten_pre_k1g_is_not_the_failed_write_cell(restored):
+    arms = _k1g_arms()
+    arms["pre_K1g"]["flushed_step"] = None
+    arms["pre_K1g"]["flush_failed_steps"] = []
+    arms["pre_K1g"]["flush_unwritten_steps"] = [6]
+    arms["res_K1g"]["construct_circadian_restored"] = restored
+    chrono = rh.c7_seed(arms)["chrono"]
+    assert chrono.get("fail") != rh.K1G_CHRONO_FLUSH_FAILED
+    if restored is None:
+        assert chrono == {"scored": False, "refused": rh.K1G_CHRONO_UNWRITTEN}
+    else:
+        assert chrono == {"scored": True, "clean": False, "fail": rh.K1G_CHRONO_NO_LINEAGE}
+
+
+def test_round8_the_texts_say_which_cause_they_name():
+    failed = " ".join(rh.K1G_CHRONO_FLUSH_FAILED.split())
+    assert "raised" in failed and "keep" in failed and "persist" not in failed
+    assert "persist" in rh.K1G_CHRONO_UNWRITTEN and "unchanged" in rh.K1G_CHRONO_UNWRITTEN
+    assert "raised" not in rh.K1G_CHRONO_UNWRITTEN
+    assert "persist" in rh.K3_PHASE_UNWRITTEN and "unchanged" in rh.K3_PHASE_UNWRITTEN
+    assert "persist" not in rh.K3_PHASE_FLUSH_FAILED
+
+
+def test_round8_unwritten_pre_k3_is_refused_by_name_not_the_failed_write_fail():
+    arms = _arms()
+    arms["pre_K3"]["flushed_step"] = None
+    arms["pre_K3"]["flush_failed_steps"] = []
+    arms["pre_K3"]["flush_unwritten_steps"] = [8]
+    arms["res_K3"]["construct_circadian_restored"] = None
+    c = rh.seed_comparisons(arms)
+    assert "K3_phase" not in c["c6"] and "k3_phase_flush_failed" not in c
+    assert c["k3_phase_refused"] == rh.K3_PHASE_UNWRITTEN
+
+
+# ---- ROUND 8 (#7255 NIT-2): the flipped round-5 red says what it now asserts ---------------------
+
+
+def test_round8_the_flipped_round5_red_documents_the_keyed_fail():
+    fn = test_round5_the_branch_is_not_keyed_on_the_restored_record
+    doc = " ".join((fn.__doc__ or "").split())
+    assert "keyed FAIL" in doc and "not keyed" in doc
