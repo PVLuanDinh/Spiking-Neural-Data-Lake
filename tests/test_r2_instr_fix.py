@@ -1023,10 +1023,12 @@ def test_round5_a_refused_k1g_chronology_neither_passes_nor_fails_c7():
     assert c["ok"] and c["K1g"], c
 
 
-def test_round5_the_branch_is_not_keyed_on_the_restored_record():
-    arms = _k1g_arms()  # the parent flushed none, yet the restore reports a record: still refused
-    arms["res_K1g"]["construct_circadian_restored"] = {"step": 6}
-    assert rh.c7_seed(arms)["chrono"] == {"scored": False, "refused": rh.K1G_CHRONO_REFUSED}
+def test_round5_the_refusal_is_not_keyed_on_a_restored_record_that_is_absent_or_null():
+    for restored in (None, "absent"):  # the parent flushed none and the restore carries none
+        arms = _k1g_arms()
+        if restored is None:
+            arms["res_K1g"]["construct_circadian_restored"] = None
+        assert rh.c7_seed(arms)["chrono"] == {"scored": False, "refused": rh.K1G_CHRONO_REFUSED}
 
 
 def test_round5_a_k1g_restore_that_carries_the_flushed_record_is_scored_and_clean():
@@ -1115,6 +1117,84 @@ def test_round5_the_c6_docstring_says_a_red_k3_phase_is_not_an_instrument_fault(
     doc = " ".join(rh.seed_comparisons.__doc__.split())
     assert "K3_phase" in doc and "D-79" in doc and "circadian" in doc
     assert "NOT MET" in doc
+
+
+# ---- ROUND 6 (#7183 (C), integrator second amendment to #7111 (2)): the FOUR-cell K1g table ----
+#: (pre_ flushed a circadian record?, restore carries one?): (yes, yes) scored; (yes, no) FAIL;
+#: (no, yes) FAIL by name 'a restored record with no flushed lineage' (an isolation defect: a stale
+#: or shared home, or the live lake); (no, no) refused by name. One red per FAIL cell.
+
+
+def test_round6_a_restored_record_with_no_flushed_lineage_is_a_named_chrono_fail():
+    arms = _k1g_arms()  # pre_K1g flushed none, yet the restore carries a record (the new cell)
+    arms["pre_K1g"]["flushed_step"] = None
+    arms["res_K1g"]["construct_circadian_restored"] = {"step": 6}
+    c = rh.c7_seed(arms)
+    assert c["chrono"] == {"scored": True, "clean": False, "fail": rh.K1G_CHRONO_NO_LINEAGE}
+    assert "restored record with no flushed lineage" in rh.K1G_CHRONO_NO_LINEAGE
+    assert c["K1g"] is True and c["ok"] is False, "the bar's other half reads; ok needs the chrono"
+
+
+def test_round6_the_no_lineage_fail_is_not_a_refusal_and_needs_no_clock_match():
+    arms = _k1g_arms()
+    arms["pre_K1g"]["flushed_step"] = None
+    arms["res_K1g"]["construct_circadian_restored"] = {"step": 0}
+    arms["res_K1g"]["construct_chrono"] = {"step": 0, "nights": 0}  # a self-consistent stale record
+    c = rh.c7_seed(arms)["chrono"]
+    assert c["scored"] is True and c["clean"] is False and "refused" not in c
+
+
+def test_round6_the_four_cells_are_four_distinct_readings():
+    reads = {}
+    for flushed in (None, 6):
+        for restored in (None, {"step": 6}):
+            arms = _k1g_restored(_k1g_arms()) if flushed else _k1g_arms()
+            arms["pre_K1g"]["flushed_step"] = flushed
+            arms["res_K1g"]["construct_circadian_restored"] = restored
+            if flushed is None and restored is None:
+                arms["res_K1g"]["construct_chrono"] = {"step": 0, "nights": 0}
+            reads[(flushed, restored is not None)] = rh.c7_seed(arms)["chrono"]
+    assert reads[(6, True)] == {"scored": True, "clean": True}
+    assert reads[(6, False)] == {"scored": True, "clean": False}
+    assert reads[(None, True)]["fail"] == rh.K1G_CHRONO_NO_LINEAGE
+    assert reads[(None, False)] == {"scored": False, "refused": rh.K1G_CHRONO_REFUSED}
+
+
+# ---- ROUND 6 (#7183 (C) NIT, closes #7103 NIT-2): K3_phase keyed on the same bit ---------------
+
+
+def test_round6_k3_phase_on_a_head_without_circadian_is_refused_by_name_never_not_met():
+    arms = _arms()
+    arms["pre_K3"]["flushed_step"] = None  # the code under test has no clock to resume
+    arms["res_K3"]["construct_circadian_restored"] = None
+    c = rh.seed_comparisons(arms)
+    assert "K3_phase" not in c["c6"], "not-applicable is not a False conjunct of c6's all()"
+    assert c["k3_phase_refused"] == rh.K3_PHASE_REFUSED
+    assert "pre_K3 flushed no circadian record" in rh.K3_PHASE_REFUSED
+    assert all(c["c6"].values()), "a refused K3_phase leaves c6 to its own comparisons"
+
+
+def test_round6_a_refused_k3_phase_does_not_hide_a_real_c6_red():
+    arms = _arms()
+    arms["pre_K3"]["flushed_step"] = None
+    arms["res_K3"]["rows"][0]["weights"][0][0] += 1.0
+    c = rh.seed_comparisons(arms)["c6"]
+    assert c["K3"] is False and not all(c.values())
+
+
+def test_round6_k3_phase_is_scored_and_not_refused_when_pre_k3_flushed():
+    c = rh.seed_comparisons(_arms())  # pre_K3 flushed step 8
+    assert c["c6"]["K3_phase"] is True and "k3_phase_refused" not in c
+    arms = _arms()
+    arms["res_K3"]["construct_circadian_restored"] = None  # pre_ flushed, the restore dropped it
+    c = rh.seed_comparisons(arms)
+    assert c["c6"]["K3_phase"] is False and "k3_phase_refused" not in c
+
+
+def test_round6_the_c6_docstring_names_the_refusal_and_not_applicable():
+    doc = " ".join(rh.seed_comparisons.__doc__.split())
+    assert "not-applicable" in doc and "K3_PHASE_REFUSED" in doc
+    assert "reads NOT MET on every seed" not in doc, "retired: only a head WITH circadian is scored"
 
 
 # ---- ROUND 4 (B, #6987 MINOR-3 residual): a P3 campaign launches no base role -------------------
