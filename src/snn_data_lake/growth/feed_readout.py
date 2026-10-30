@@ -8,7 +8,8 @@ label-neuron port; that consumer is absent at base d4c18ce0.
 
 The join seam (G3 grow round 2, lanes/engine-1024/g3-grow-research/RULING.md items 5-7): an admitted
 fed unit becomes pool unit N through `join_fed_unit` (its feed column retired, one join row per join
-on the ONE grower's Ledger), and `rebuild_joined_pool` replays those rows on a restart (P4b).
+on the ONE grower's Ledger), and `rebuild_joined_pool` replays those rows on a restart, the pool and
+its feed handover both (P4b).
 """
 
 import numpy as np
@@ -106,6 +107,28 @@ def arm_latencies(
 
 # distinct-from: growth/grown_feed.py::random_feed -- redraws every column's direction for the random
 #   arm; this retires one column from the live feed when its unit joins the pool
+def _feed_column(pool, w_feed, units, unit_id):
+    """(w_feed as float64, the fed units in unit_id order, the column of `unit_id`). REFUSED: a unit
+    that is not among the fed `units`, or a feed that does not name the pool's units."""
+    fed = sorted(units, key=lambda u: u.unit_id)
+    column = [i for i, u in enumerate(fed) if u.unit_id == unit_id]
+    if not column:
+        raise ValueError(f"REFUSED: unit {unit_id} is not one of the fed units")
+    check_feed(w_feed, fed)
+    w = np.asarray(w_feed, dtype=np.float64)
+    if w.shape[0] != pool.n:
+        raise ValueError("REFUSED: feed synapses do not name exactly the pool units")
+    return w, fed, column[0]
+
+
+def _retire_column(pool, w, fed, j):
+    """The handover after unit fed[j] became pool unit N: its column leaves the live feed, every
+    other column keeps its entries bit for bit and gains a zero row for N (growable.grow_rows)."""
+    kept = np.delete(w, j, axis=1)
+    grown = np.array(grow_rows(kept.tolist(), pool.n, ncols=kept.shape[1]), dtype=np.float64)
+    return grown, tuple(fed[:j] + fed[j + 1 :])
+
+
 def join_fed_unit(pool, w_feed, units, unit_id, encoder_row, ledger):
     """An admitted fed unit becomes pool unit N (RULING items 5-7). The join follows only from
     GrowthLoop's admission: a unit with no birth row on `ledger` (Ledger.known_unit) is REFUSED, as
@@ -119,32 +142,32 @@ def join_fed_unit(pool, w_feed, units, unit_id, encoder_row, ledger):
         raise ValueError("REFUSED: G1(c)'s hosted KernelLsmPool required")
     if not ledger.known_unit(unit_id):
         raise ValueError(f"REFUSED: unit {unit_id!r} has no birth row; a join follows admission")
-    fed = sorted(units, key=lambda u: u.unit_id)
-    column = [i for i, u in enumerate(fed) if u.unit_id == unit_id]
-    if not column:
-        raise ValueError(f"REFUSED: unit {unit_id} is not one of the fed units")
-    check_feed(w_feed, fed)
-    w = np.asarray(w_feed, dtype=np.float64)
-    if w.shape[0] != pool.n:
-        raise ValueError("REFUSED: feed synapses do not name exactly the pool units")
-    j = column[0]
+    w, fed, j = _feed_column(pool, w_feed, units, unit_id)
     record = pool.draw_join(fed[j].sign, unit_id, encoder_row)
     pool.apply_join(record, dry=True)
     record = dict(record, unit_id=unit_id, retired_feed=w[:, j].tolist())
     ledger.record_event({"kind": "join", **record})
     applied = pool.apply_join(record)
-    kept = np.delete(w, j, axis=1)
-    grown = np.array(grow_rows(kept.tolist(), pool.n, ncols=kept.shape[1]), dtype=np.float64)
-    return grown, tuple(fed[:j] + fed[j + 1 :]), applied
+    grown, rest = _retire_column(pool, w, fed, j)
+    return grown, rest, applied
 
 
-def rebuild_joined_pool(pool, ledger):
-    """P4b: `pool` (rebuilt as born) with every journaled "join" row applied in lake order through
-    KernelLsmPool.apply_join, the one apply path; a row for another N is REFUSED there."""
+def rebuild_joined_pool(pool, w_feed, units, ledger):
+    """P4b: `pool` and its born feed (`w_feed` over the born fed `units`) rebuilt from every
+    journaled "join" row in lake order, the pool through KernelLsmPool.apply_join (the one apply
+    path; a row for another N is REFUSED there) and the feed by the same handover the live join
+    made (RULING items 5-6, enforcer #7299 MAJOR-1). REFUSED, before that row's apply: a joined unit
+    that is not a fed unit, a column that is not the one the row retired, or a sign that is not the
+    unit's. Returns (pool, w_feed, the fed units left)."""
     for row in ledger.events():
-        if row.get("kind") == "join":
-            pool.apply_join(row)
-    return pool
+        if row.get("kind") != "join":
+            continue
+        w_feed, fed, j = _feed_column(pool, w_feed, units, row["unit_id"])
+        if w_feed[:, j].tolist() != row["retired_feed"] or fed[j].sign != row["sign"]:
+            raise ValueError(f"REFUSED: unit {row['unit_id']}'s born feed is not the one it left")
+        pool.apply_join(row)
+        w_feed, units = _retire_column(pool, w_feed, fed, j)
+    return pool, np.asarray(w_feed, dtype=np.float64), tuple(units)
 
 
 def feed_u_contrasts(fed, direct, random):
