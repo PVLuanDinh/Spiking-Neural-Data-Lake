@@ -141,11 +141,11 @@ def test_invalid_frozen_rank_segment_is_refused():
         arm_latencies("direct", units(), code, 8.0, 14, seed=9900)
 
 
-def test_unratified_reservoir_growth_is_refused_before_any_pool_step():
+def test_a_planted_size_above_256_meets_the_feed_check_not_a_size_gate():
     p = pool()
-    p.n = 257  # planted declared-size mismatch only; no larger pool is built or admitted
+    p.n = 257  # planted declared-size mismatch: no size gate, the feed-shape check refuses
     before = p.count
-    with pytest.raises(ValueError, match="N>256 growth target unratified"):
+    with pytest.raises(ValueError, match="do not name exactly the pool units"):
         arm_latencies(
             "fed",
             units(),
@@ -160,11 +160,11 @@ def test_unratified_reservoir_growth_is_refused_before_any_pool_step():
     assert p.count == before
 
 
-def test_n_gate_precedes_the_feed_and_post_time_reads():
+def test_post_time_check_runs_above_256_before_any_pool_step():
     p = pool()
-    p.n = 257  # planted declared-size mismatch only; no larger pool is built
+    p.n = 257  # planted declared size; no size gate precedes the post-time read
     before = p.count
-    with pytest.raises(ValueError, match="N>256 growth target unratified"):
+    with pytest.raises(ValueError, match="finite positive grown post time"):
         arm_latencies(
             "fed",
             units(),
@@ -179,9 +179,10 @@ def test_n_gate_precedes_the_feed_and_post_time_reads():
     assert p.count == before
 
 
-def test_the_n_gate_is_strictly_above_256():
+@pytest.mark.parametrize("n", [256, 257])
+def test_no_size_gate_on_either_side_of_256(n):
     p = pool()
-    p.n = 256  # at the bound: the size gate passes, the feed-shape check refuses next
+    p.n = n  # planted declared size: both sides of 256 reach the same feed-shape check
     with pytest.raises(ValueError, match="do not name exactly the pool units"):
         arm_latencies(
             "fed",

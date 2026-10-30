@@ -65,8 +65,9 @@ def arm_latencies(
     """Direct grown latencies or fed/random-feed reservoir first-spike latencies.
 
     Units remain in their immortal unit_id order; a fed unit keeps its identity
-    and is not relabeled as a reservoir unit. N>256 admission remains gated by
-    the owner-ratified reservoir growth target in the frozen contract.
+    and is not relabeled as a reservoir unit. The pool's N has no ceiling (owner
+    growth target, g3-growth-loop.md DATED ADDENDUM 2026-10-29); P4d's budget
+    paces growth.
     """
     _build_seed(seed)
     if arm not in ("direct", "fed", "random-feed"):
@@ -86,8 +87,8 @@ def arm_latencies(
         segment = apply_unit_row(segment, {"op": "admit", "unit": unit})
     if arm == "direct":
         return tuple(latencies(segment, ranks, tau))
-    if type(pool) is not KernelLsmPool or pool.n > 256:
-        raise ValueError("REFUSED: hosted pool N<=256 required; N>256 growth target unratified")
+    if type(pool) is not KernelLsmPool:
+        raise ValueError("REFUSED: G1(c)'s hosted KernelLsmPool required")
     if not np.isfinite(t_post_g) or t_post_g <= 0:
         raise ValueError("REFUSED: finite positive grown post time required")
     check_feed(w_feed, segment)
