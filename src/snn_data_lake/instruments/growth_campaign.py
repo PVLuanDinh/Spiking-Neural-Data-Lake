@@ -43,6 +43,7 @@ FAMILIES = (
     T1_RESERVE_SEEDS,
 )
 BLOCK = (9000, 10000)
+REGISTERED = frozenset(DEV_SEEDS).union(*FAMILIES, RED_SEEDS)
 
 #: the lead's written go for a confirmatory read; None until entered by a dated amendment, never by hand here
 GO = None
@@ -66,7 +67,7 @@ MIN_SOLVING_SEEDS = (
 # distinct-from: instruments/carried_state_campaign.py::validate_seed_set -- G1(c)'s live/reserve bundles.
 #   Each row owns its pre-registered seed families; the shared pieces (statistic, live-home guard) are imported.
 def preflight(seeds, *, go=None):
-    """Refuses a seed outside G3's block, a duplicate, a confirmatory family that is not the exact registered
+    """Refuses a seed outside G3's block or in none of its registered blocks, a duplicate, a confirmatory family that is not the exact registered
     block, and a confirmatory read without the written go."""
     seeds = tuple(seeds)
     if not seeds or len(set(seeds)) != len(seeds):
@@ -74,6 +75,9 @@ def preflight(seeds, *, go=None):
     outside = [s for s in seeds if not BLOCK[0] <= s < BLOCK[1]]
     if outside:
         raise PermissionError(f"seeds outside G3's block 9000-9999: {outside}")
+    unregistered = [s for s in seeds if s not in REGISTERED]
+    if unregistered:
+        raise PermissionError(f"seeds in no registered block of G3's 9000-9999: {unregistered}")
     for family in FAMILIES:
         if set(seeds) & set(family):
             if sorted(seeds) != list(family):
@@ -130,6 +134,8 @@ def primary(outcomes, budget, batch):
     arms = ("TARGETED", "PRESIZED_SELECTED", "RANDOM")
     scores = {a: [restricted_score(o, budget, batch) for o in outcomes[a]] for a in arms}
     n = len(scores["TARGETED"])
+    if n == 0:
+        raise ValueError("primary needs at least one paired seed, got an empty set")
     if any(len(outcomes[a]) != n for a in arms):
         raise ValueError("every arm needs the same paired seeds")
     out = {"penalty": failure_penalty(budget, batch), "floor": batch}
