@@ -94,7 +94,7 @@ def batches(label_rows):
 
 def worst_residual(residuals, n):
     """Indices of the n label neurons with the largest |residual|, ties to the lowest index."""
-    if n > len(residuals):
+    if n < 0 or n > len(residuals):
         raise ValueError(f"asked for {n} label neurons of {len(residuals)}")
     order = sorted(range(len(residuals)), key=lambda i: (-abs(residuals[i]), i))
     return tuple(order[:n])

@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from unittest import mock
 
 from snn_data_lake.instruments import paired_contrast as pc
 from snn_data_lake.substrate import home as home_mod
@@ -84,9 +85,11 @@ def preflight(seeds, *, go=None):
                 raise PermissionError(
                     f"seeds touch {family[0]}-{family[-1]} but are not that exact block"
                 )
-            if (go if go is not None else GO) is None:
+            written = go if go is not None else GO
+            if not isinstance(written, str) or not written:
                 raise PermissionError(
-                    "confirmatory read refused: the lead's written go is not entered"
+                    "confirmatory read refused: the lead's written go is not entered "
+                    f"as a non-empty string, got {written!r}"
                 )
 
 
@@ -134,8 +137,11 @@ def primary(outcomes, budget, batch):
     arms = ("TARGETED", "PRESIZED_SELECTED", "RANDOM")
     scores = {a: [restricted_score(o, budget, batch) for o in outcomes[a]] for a in arms}
     n = len(scores["TARGETED"])
-    if n == 0:
-        raise ValueError("primary needs at least one paired seed, got an empty set")
+    if n != len(CONFIRMATORY_SEEDS):
+        raise ValueError(
+            f"primary needs exactly {len(CONFIRMATORY_SEEDS)} paired seeds (the registered family; "
+            f"the contrast reads the {len(CONFIRMATORY_SEEDS) - 1}-d.f. bar), got {n}"
+        )
     if any(len(outcomes[a]) != n for a in arms):
         raise ValueError("every arm needs the same paired seeds")
     out = {"penalty": failure_penalty(budget, batch), "floor": batch}
@@ -203,7 +209,8 @@ def pair_snapshots(digests):
 
 def child_home(argv, env=None):
     """The home a child process was launched with: `--home` AND NORD_HOME must both name it. A child that was
-    not handed its home refuses to start rather than falling back to a default (2.12a); the live lake raises."""
+    not handed its home refuses to start rather than falling back to a default (2.12a). The shared harness guard
+    then refuses the live lake, a home inside or containing it, and a home holding an alias to it."""
     env = os.environ if env is None else env
     if "--home" not in argv or argv.index("--home") + 1 >= len(argv):
         raise PermissionError("child refused: no --home argument (no fallback to a default home)")
@@ -214,7 +221,10 @@ def child_home(argv, env=None):
         raise PermissionError(
             f"child refused: --home {arg!r} and NORD_HOME {env['NORD_HOME']!r} differ"
         )
-    return Path(home_mod.assert_not_live_home(arg))
+    with mock.patch.dict(
+        os.environ, {"NORD_HOME": env["NORD_HOME"]}
+    ):  # the shared guard reads os.environ
+        return Path(home_mod.require_isolated_home())
 
 
 def launch(argv_prefix, home, **extra):
