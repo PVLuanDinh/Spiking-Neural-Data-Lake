@@ -160,7 +160,10 @@ def rebuild_joined_pool(pool, w_feed, units, ledger):
     made (RULING items 5-6, enforcer #7299 MAJOR-1). REFUSED, before that row's apply: a row with no
     journaled params (unverifiable), a joined unit that is not a fed unit, a column that is not the
     one the row retired, or a sign that is not the unit's; apply_join refuses a rebuild whose staged
-    params differ from the journaled ones (#7299 MINOR-1). Returns (pool, w_feed, the units left)."""
+    params differ from the journaled ones (#7299 MINOR-1). That check covers LsmPool.params()
+    ({pre, w}) and the compiled table only, NOT w_in or the unit signs: a restart over a born encoder
+    drawn from another seed passes it (the existing boundary definition; enforcer #7333 NIT).
+    Returns (pool, w_feed, the units left)."""
     for row in ledger.events():
         if row.get("kind") != "join":
             continue
