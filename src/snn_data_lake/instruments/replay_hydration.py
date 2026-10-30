@@ -540,8 +540,11 @@ def _track_clock(role, result):
     """Harness-side clock facts, read from the process under test and never from its restore. A pre_
     role notes the step of its last `_flush_circadian` call that WROTE (a truthy return) in
     `result["flushed_step"]` (None when this head has no circadian flush, or none wrote); a call that
-    returned False wrote nothing and goes to `result["flush_failed_steps"]`, so a failed write never
-    reads as a restore that dropped the record (#7204). twin_K3 notes the step of each sleep onset, returned as
+    returned False wrote nothing, so a failed write never reads as a restore that dropped the record
+    (#7204). Two causes return False (circadian brain.py:5412-5439): a raised write or a failed keep
+    bumps `_circadian_flush_failed` and goes to `result["flush_failed_steps"]`; persist off or an
+    unchanged record bumps nothing and goes to `result["flush_unwritten_steps"]` (#7255 NIT-1). A head
+    with no such counter reads every False as failed. twin_K3 notes the step of each sleep onset, returned as
     `seen["onset"]` (tick order: `_step += 1`, then `_enter_sleep`, whose persist block flushes the
     clock first)."""
     from snn_data_lake.engine.brain import Brain
@@ -550,13 +553,17 @@ def _track_clock(role, result):
     if role.startswith("pre_"):
         result["flushed_step"] = None
         result["flush_failed_steps"] = []
+        result["flush_unwritten_steps"] = []
         flush = getattr(Brain, "_flush_circadian", None)
         if flush is not None:
 
             def flushed(self, *a, **kw):
+                failures = getattr(self, "_circadian_flush_failed", None)
                 done = flush(self, *a, **kw)
                 if done:
                     result["flushed_step"] = self._step
+                elif failures is not None and failures == self._circadian_flush_failed:
+                    result["flush_unwritten_steps"].append(self._step)
                 else:
                     result["flush_failed_steps"].append(self._step)
                 return done
@@ -1847,18 +1854,27 @@ def _k3_phase(res, twin):
     return type(step) is int and type(onset) is int and step == onset
 
 
+def _parent_flush_failed(parent):
+    """The parent pre_ process called `_flush_circadian` and every call that returned False failed
+    (a raised write or a failed keep), so it wrote no record (harness-side, `_track_clock`)."""
+    parent = parent or {}
+    return parent.get("flushed_step") is None and bool(parent.get("flush_failed_steps"))
+
+
 def _clock_clean(r, parent):
     """The restored clock at construction. `parent` is the pre_ arm's result: the step its last
     `_flush_circadian` call flushed, recorded by the harness. With a restored record the clock, the
     record and the parent's flush must agree (a restore that adopted the wrong record agrees with
     itself, not with the parent); with none, the parent must have flushed none (a restore that
-    DROPPED a flushed record is not a head without circadian) and the clock starts at 0. `nights` is
-    not restored, so it stays 0."""
+    DROPPED a flushed record is not a head without circadian) and the clock starts at 0. A parent
+    whose every flush failed (`flush_failed_steps` set, `flushed_step` None) wrote no record to carry,
+    so it is a named FAIL for EVERY restoring arm (`_parent_flush_failed`), never a head without
+    circadian (#7255 MINOR-1). `nights` is not restored, so it stays 0."""
     c = r.get("construct_chrono") or {}
     restored = r.get("construct_circadian_restored")
     flushed = (parent or {}).get("flushed_step")
     if restored is None:
-        step_ok = flushed is None and c.get("step") == 0
+        step_ok = flushed is None and c.get("step") == 0 and not _parent_flush_failed(parent)
     else:
         step_ok = type(flushed) is int and c.get("step") == restored.get("step") == flushed
     return step_ok and c.get("nights") == 0
@@ -2297,6 +2313,20 @@ K1G_CHRONO_NO_LINEAGE = (
     "K1g chronology FAIL: a restored record with no flushed lineage (pre_K1g flushed no circadian "
     "record; a stale or shared home, or the live lake)"
 )
+#: The other False returns (persist off; the record already holds that step) bumped no failure
+#: counter: nothing new was written, which is not a failed write (#7255 NIT-1).
+K1G_CHRONO_UNWRITTEN = (
+    "K1g chronology not read: pre_K1g's _flush_circadian returned False without a failure (persist "
+    "off, or the record unchanged), so no record was written to resume"
+)
+K3_PHASE_UNWRITTEN = (
+    "K3_phase not applicable: pre_K3's _flush_circadian returned False without a failure (persist "
+    "off, or the record unchanged), so no record was written to resume"
+)
+CHRONO_FLUSH_FAILED = (
+    "chrono FAIL: the parent pre_ process's _flush_circadian returned False every time after a "
+    "raised write or a failed keep, so it wrote no record for the restore to carry"
+)
 #: A pre_ flush that returned False wrote nothing (engine/brain.py:5394-5403): its own cause, never
 #: 'the restore dropped the record' (#7204 MINOR-1).
 K1G_CHRONO_FLUSH_FAILED = (
@@ -2363,7 +2393,10 @@ def c7_seed(arms):
         chrono, chrono_ok = {"scored": True, "clean": False, "fail": K1G_CHRONO_FLUSH_FAILED}, False
     elif pre.get("flushed_step") is None:  # the code under test wrote no clock: nothing to resume
         if res.get("construct_circadian_restored") is None:
-            chrono, chrono_ok = {"scored": False, "refused": K1G_CHRONO_REFUSED}, True
+            refused = (
+                K1G_CHRONO_UNWRITTEN if pre.get("flush_unwritten_steps") else K1G_CHRONO_REFUSED
+            )
+            chrono, chrono_ok = {"scored": False, "refused": refused}, True
         else:  # but the restore carries a record: it came from outside this lineage
             chrono, chrono_ok = (
                 {"scored": True, "clean": False, "fail": K1G_CHRONO_NO_LINEAGE},
@@ -2491,9 +2524,17 @@ def seed_comparisons(arms, base=None):
         c["c6"]["K3_phase"] = False  # a flush that returned False wrote nothing: a named FAIL
         c["k3_phase_flush_failed"] = K3_PHASE_FLUSH_FAILED
     elif pre_k3.get("flushed_step") is None:  # no clock written: nothing to resume
-        c["k3_phase_refused"] = K3_PHASE_REFUSED
+        unwritten = pre_k3.get("flush_unwritten_steps")
+        c["k3_phase_refused"] = K3_PHASE_UNWRITTEN if unwritten else K3_PHASE_REFUSED
     else:
         c["c6"]["K3_phase"] = _k3_phase(get("res_K3"), get("twin_K3"))
+    named = {
+        role: CHRONO_FLUSH_FAILED
+        for role in c["chrono"]
+        if _parent_flush_failed(get(dict(R2_ROLES)[role]))
+    }
+    if named:
+        c["chrono_flush_failed"] = named
     c["reds"]["CHRONO"] = _complete(get("CHRONO")) and not chrono_clean(get("CHRONO"))
     c["reds"]["MOTOR"] = _complete(get("MOTOR")) and not chrono_clean(get("MOTOR"))
     fw = fw_seed(arms)

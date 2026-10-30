@@ -1382,6 +1382,9 @@ def test_round7_the_docstrings_say_flushed_means_wrote():
 
 
 def test_round5_the_branch_is_not_keyed_on_the_restored_record():
+    """Kept under its round-5 name (a deleted red is a P8 defect). Despite 'not keyed' it now
+    asserts the keyed FAIL: the parent flushed none and the restore reports a record, so the
+    chronology reads FAIL (NO_LINEAGE), the branch keyed on the code under test (#7255 NIT-2)."""
     arms = _k1g_arms()  # the parent flushed none, yet the restore reports a record
     arms["res_K1g"]["construct_circadian_restored"] = {"step": 6}
     c = rh.c7_seed(arms)["chrono"]
