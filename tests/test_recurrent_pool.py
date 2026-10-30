@@ -1556,6 +1556,8 @@ def test_join_r_b3_agrees_at_257_and_512(n):
 
 # D-89's pre-registered detector: an outlier is a top eigenvalue above 1.5 x the predicted bulk
 # sqrt(k w**2 / 3) (0.41 at TUNED); the mean-drift threshold is 0.051 (advocate 2, TUNED).
+# OUTLIER_FACTOR = 1.5 is RULED (lanes/engine-1024/g3-grow-research/RULING.md, 'RULED 2026-10-29
+# ~20:50', enforcer #7298 NIT): a detector threshold for a reported FINDING, never a stop or a cap.
 BULK = float(np.sqrt(TUNED["k"] * TUNED["w"] ** 2 / 3))
 OUTLIER_FACTOR = 1.5
 DRIFT_THRESHOLD = 0.051
