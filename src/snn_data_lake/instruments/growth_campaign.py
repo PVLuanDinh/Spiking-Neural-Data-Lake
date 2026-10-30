@@ -58,9 +58,26 @@ ARMS = (
     "SHAM",  # identical bookkeeping, output synapses held at zero
 )
 _SEPARATORS = ("/", "\\", ":")  # a family is one path component: no separator, no drive
-MIN_SOLVING_SEEDS = (
-    6  # "fewer neurons" is licensed only when both arms of a contrast solve on >= 6 of 8
-)
+# "fewer neurons" is licensed only when both arms of a contrast solve on >= 6 of 8 registered seeds: the
+# registered fraction 3/4 of S, so it follows len(CONFIRMATORY_SEEDS) when the P1 section fixes S (D-73)
+MIN_SOLVING_FRACTION = (3, 4)
+#: paired one-sided t bars by degrees of freedom (S - 1), alpha 0.05: paired_contrast's registered bars only
+T_BARS = {7: pc.T_BAR, 30: pc.T_BAR_S31}
+
+
+def min_solving_seeds(n):
+    """ceil(3/4 * n): 6 of 8, 24 of 31."""
+    num, den = MIN_SOLVING_FRACTION
+    return -(-n * num // den)
+
+
+def t_bar(n):
+    """The registered bar for n paired seeds ((n - 1) d.f.); an unregistered d.f. is refused, never 1.895."""
+    if n - 1 not in T_BARS:
+        raise ValueError(
+            f"no registered t bar for {n - 1} d.f. ({n} seeds): registered {sorted(T_BARS)}"
+        )
+    return T_BARS[n - 1]
 
 
 # distinct-from: instruments/taught_campaign.py::preflight -- G2's guard is hard-wired to seeds 8000-8999,
@@ -86,10 +103,10 @@ def preflight(seeds, *, go=None):
                     f"seeds touch {family[0]}-{family[-1]} but are not that exact block"
                 )
             written = go if go is not None else GO
-            if not isinstance(written, str) or not written:
+            if not isinstance(written, str) or not written.strip():
                 raise PermissionError(
                     "confirmatory read refused: the lead's written go is not entered "
-                    f"as a non-empty string, got {written!r}"
+                    f"as a non-blank string, got {written!r}"
                 )
 
 
@@ -117,21 +134,22 @@ def restricted_score(outcome, budget, batch):
     return failure_penalty(budget, batch)
 
 
-def superiority(name, diffs):
+def superiority(name, diffs, bar=pc.T_BAR):
     """Ruling 9: a degenerate (zero-variance) paired sample reads NOT MET, stricter than `contrast`."""
-    c = pc.contrast(name, diffs)
+    c = pc.contrast(name, diffs, bar)
     return c._replace(met=False) if c.degenerate else c
 
 
-def non_inferiority(name, diffs):
+def non_inferiority(name, diffs, bar=pc.T_BAR):
     """Ruling 9a: a non-inferiority bar reads a degenerate sample by its common value (> 0 MET)."""
-    return pc.contrast(name, diffs)
+    return pc.contrast(name, diffs, bar)
 
 
 def primary(outcomes, budget, batch):
     """G-R3 clause 1 over paired seeds. `outcomes[arm]` is the per-seed list for TARGETED, PRESIZED_SELECTED and
-    RANDOM. PASS needs t > 1.895 on BOTH D_sel and D_rand AND mean D >= one batch (L4: the grid's resolution).
-    'fewer neurons' is licensed only when both arms of a contrast solve on >= 6 seeds and the paired size
+    RANDOM. PASS needs t > the (S - 1)-d.f. bar (1.895 at the registered S = 8) on BOTH D_sel and D_rand AND
+    mean D >= one batch (L4: the grid's resolution). 'fewer neurons' is licensed only when both arms of a
+    contrast solve on >= 3/4 of the S seeds (6 of 8) and the paired size
     difference on the seeds where both solve is itself >= the floor; otherwise the verdict is a solve-rate
     difference, never a neuron saving."""
     arms = ("TARGETED", "PRESIZED_SELECTED", "RANDOM")
@@ -144,11 +162,12 @@ def primary(outcomes, budget, batch):
         )
     if any(len(outcomes[a]) != n for a in arms):
         raise ValueError("every arm needs the same paired seeds")
+    bar, need = t_bar(n), min_solving_seeds(n)
     out = {"penalty": failure_penalty(budget, batch), "floor": batch}
     passed = fewer = True
     for name, ctl in (("D_sel", "PRESIZED_SELECTED"), ("D_rand", "RANDOM")):
         diffs = [c - t for c, t in zip(scores[ctl], scores["TARGETED"], strict=True)]
-        c = superiority(name, diffs)
+        c = superiority(name, diffs, bar)
         mean = sum(diffs) / n
         met = c.met and mean >= batch
         both = [
@@ -157,8 +176,8 @@ def primary(outcomes, budget, batch):
             if _solved(co) and _solved(to)
         ]
         licensed = (
-            sum(map(_solved, outcomes[ctl])) >= MIN_SOLVING_SEEDS
-            and sum(map(_solved, outcomes["TARGETED"])) >= MIN_SOLVING_SEEDS
+            sum(map(_solved, outcomes[ctl])) >= need
+            and sum(map(_solved, outcomes["TARGETED"])) >= need
             and bool(both)
             and sum(both) / len(both) >= batch
         )
@@ -221,9 +240,9 @@ def child_home(argv, env=None):
         raise PermissionError(
             f"child refused: --home {arg!r} and NORD_HOME {env['NORD_HOME']!r} differ"
         )
-    with mock.patch.dict(
-        os.environ, {"NORD_HOME": env["NORD_HOME"]}
-    ):  # the shared guard reads os.environ
+    # require_isolated_home(live_home) takes the LIVE lake, not the home: it reads the home from os.environ, so
+    # the swap stays (it cannot be passed as an argument without editing the shared guard, home.py:542)
+    with mock.patch.dict(os.environ, {"NORD_HOME": env["NORD_HOME"]}):
         return Path(home_mod.require_isolated_home())
 
 
