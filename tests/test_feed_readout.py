@@ -391,7 +391,7 @@ def test_restart_rebuilds_grown_pool_from_join_rows(tmp_path):
     live, w = _born_pool(), _feed(rp.N, batch)
     w, rest, _ = join_fed_unit(live, w, batch, 40, _row(live), ledger)
     w, rest, _ = join_fed_unit(live, w, rest, 42, _row(live), ledger)
-    restarted = rebuild_joined_pool(_born_pool(), ledger)
+    restarted, _, _ = rebuild_joined_pool(_born_pool(), _feed(rp.N, batch), batch, ledger)
     assert restarted.n == live.n == rp.N + 2
     assert restarted.params_fingerprint() == live.params_fingerprint()
     assert restarted.frozen() and restarted.boundary == live.boundary
@@ -402,3 +402,22 @@ def test_restart_rebuilds_grown_pool_from_join_rows(tmp_path):
     for row in _joins(ledger):
         stripped.apply_join(dict(row, retargeted=[]))
     assert stripped.params_fingerprint() != live.params_fingerprint()
+
+
+def test_restart_rebuilds_the_feed_handover_from_join_rows(tmp_path):
+    """RULING items 5-6 (enforcer #7299 MAJOR-1): the restart rebuilds the feed from the same join
+    rows as the pool, so the restarted feed names the restarted pool's units and a joined unit
+    drives only as a pool unit, never also as a feed column."""
+    ledger, batch = _admitted(tmp_path)
+    live, w = _born_pool(), _feed(rp.N, batch)
+    w, rest, _ = join_fed_unit(live, w, batch, 40, _row(live), ledger)
+    w, rest, _ = join_fed_unit(live, w, rest, 42, _row(live), ledger)
+    born = _feed(rp.N, batch)
+    pool, feed, units = rebuild_joined_pool(_born_pool(), born, batch, ledger)
+    assert pool.n == rp.N + 2 and feed.shape == w.shape == (rp.N + 2, 1)
+    assert [u.unit_id for u in units] == [u.unit_id for u in rest] == [41]  # 40, 42 retired
+    assert np.array_equal(feed, w)  # the restarted feed equals the live one, every column
+    assert np.array_equal(feed[: rp.N, 0], born[:, 1]) and not np.any(feed[rp.N :])
+    # the red: a born feed that is not the one the joins retired columns from is REFUSED
+    with pytest.raises(ValueError, match="REFUSED"):
+        rebuild_joined_pool(_born_pool(), born * 2, batch, ledger)
