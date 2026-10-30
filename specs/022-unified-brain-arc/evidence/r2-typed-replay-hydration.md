@@ -1682,7 +1682,9 @@ Data-exposure: no confirmatory or reserve seed of R2's block was read or run in 
    (a) no pre_ flush wrote AND at least one FAILED (a raised write or a failed keep; the failure counter bumped) -> its own named
    FAIL: CHRONO_FLUSH_FAILED for every restoring arm (K1G_CHRONO_FLUSH_FAILED for K1g; K3_phase False with k3_phase_flush_failed
    for K3), never 'the restore dropped it'; (b) no pre_ flush wrote and every False was persist-off or an unchanged record ->
-   REFUSED by name (K1G_CHRONO_UNWRITTEN / K3_PHASE_UNWRITTEN), neither pass nor fail. The OWED line of enforcer #7255 MINOR-1 is
+   for K1g and K3 ONLY, REFUSED by name (K1G_CHRONO_UNWRITTEN / K3_PHASE_UNWRITTEN), neither pass nor fail; every OTHER restoring
+   arm reads that case as a clean fresh head (no record was expected, so _clock_clean's step_ok holds; replay_hydration.py
+   :1876-1877 @1ab73b72). No seed reading changes while K1g and K3 are the only chronology reads (enforcer #7334). The OWED line of enforcer #7255 MINOR-1 is
    CLOSED by round 8 (enforcer #7297). chrono_clean's step term compares with the step the parent pre_ process
    last flushed (harness-side). Until claude/circadian-p4b-1029 lands, K3's alignment holds BY CONSTRUCTION because the harness
    carries the phase (option (i), D-77 (i)), and K3_phase, keyed on the same harness-side bit, is refused by name as
