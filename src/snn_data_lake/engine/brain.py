@@ -5268,20 +5268,22 @@ class Brain:
 
     @staticmethod
     def _keep_refused(store, sub, prefix=REFUSED_PREFIX):
-        """R2-M1: a refused sub-record its live store supersedes is KEPT, under its own named state
-        `<prefix><store>.<id>.json` -- one per distinct record, never superseded, so neither the
+        """R2-M1: a refused sub-record is KEPT before it is overwritten -- a prototype one once its
+        live store supersedes it, a circadian one at the first flush -- under its own named state
+        `<prefix><store>.<id>.json`, one per distinct record, never superseded, so neither the
         next flush nor consolidation drops it. Its reader is the restore, which retries a refused
         store from these records, newest first (R3-M2). Retiring one is an explicit act no code path
         performs: a lake rebuild that leaves the name out. They grow by at most one per distinct
-        superseded refusal; the prototype ones (`REFUSED_PREFIX`) are counted at
+        refusal; the prototype ones (`REFUSED_PREFIX`) are counted at
         `state()["prototypes_refused_kept"]`, the circadian ones (`CIRCADIAN_REFUSED_PREFIX`) are
-        named in `state()["circadian_restore"]` (`; kept: [...]`), not counted. True once the lake
-        holds it."""
+        named in `state()["circadian_restore"]` (`; kept: [...]`), not counted. Returns the name
+        once the lake holds it, else None."""
         from snn_data_lake.substrate.home import load_named_state, save_state
 
         name = f"{prefix}{store}.{_record_id(sub)}.json"
         # the name embeds the record's id: an unchanged (False) save means the lake holds it
-        return save_state(name, sub) or load_named_state(name) is not None
+        held = save_state(name, sub) or load_named_state(name) is not None
+        return name if held else None
 
     # P4b finding (iii): the clock phase is ONE named sub-record under _T_STATE (owner ruling A),
     #   through the same save_state/load_state pair as _flush_prototypes.
@@ -5327,7 +5329,7 @@ class Brain:
             from snn_data_lake.substrate.home import load_state, named_states
 
             rec = load_state(CIRCADIAN_STATE, default=None)
-            if not rec:
+            if rec is None:
                 return "absent: fresh day (the lake holds no circadian record)"
             foreign = self._circadian_foreign(rec)
             if not foreign and self._load_circadian(rec):
@@ -5388,10 +5390,10 @@ class Brain:
 
             carried = self._circadian_carried
             if carried is not None:
-                if not self._keep_refused("clock", carried, CIRCADIAN_REFUSED_PREFIX):
+                name = self._keep_refused("clock", carried, CIRCADIAN_REFUSED_PREFIX)
+                if not name:
                     self._circadian_flush_failed += 1
                     return False
-                name = f"{CIRCADIAN_REFUSED_PREFIX}clock.{_record_id(carried)}.json"
                 self._circadian_restore_note = f"{self._circadian_restore_note}; kept: {[name]}"
                 self._circadian_carried = None
             rec = dict(self.clock.state_dict(), step=self._step, **self._circadian_binding())
