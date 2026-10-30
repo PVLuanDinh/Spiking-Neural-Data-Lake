@@ -400,7 +400,7 @@ def test_restart_rebuilds_grown_pool_from_join_rows(tmp_path):
     # the red: a journal holding only unit N's row (no retargeted list) rebuilds another pool
     stripped = _born_pool()
     for row in _joins(ledger):
-        stripped.apply_join(dict(row, retargeted=[]))
+        stripped.apply_join(dict(row, retargeted=[], params=None))
     assert stripped.params_fingerprint() != live.params_fingerprint()
 
 
@@ -421,3 +421,44 @@ def test_restart_rebuilds_the_feed_handover_from_join_rows(tmp_path):
     # the red: a born feed that is not the one the joins retired columns from is REFUSED
     with pytest.raises(ValueError, match="REFUSED"):
         rebuild_joined_pool(_born_pool(), born * 2, batch, ledger)
+
+
+def _born_twin(**host):
+    """The born pool's network on another host setting (frac_bits or p_parts)."""
+    _, pre, w = rp._lsm_draw(rp.realization_seed("lsm", rp.DEV_SEED), rp.N, TUNED["k"], TUNED["w"])
+    return KernelLsmPool(pre, w, TUNED, w_in=rp.w_in(rp.DEV_SEED), window=0, **host)
+
+
+def test_each_join_row_journals_the_params_the_join_makes(tmp_path):
+    """Enforcer #7299 MINOR-1 (RULING item 6, 'a journaled re-boundary per join'): every join row
+    carries the params fingerprint the pool has right after that join, staged before the write."""
+    ledger, batch = _admitted(tmp_path)
+    live, w = _born_pool(), _feed(rp.N, batch)
+    w, rest, _ = join_fed_unit(live, w, batch, 40, _row(live), ledger)
+    after_first = live.params_fingerprint()
+    join_fed_unit(live, w, rest, 42, _row(live), ledger)
+    assert [r["params"] for r in _joins(ledger)] == [after_first, live.params_fingerprint()]
+    assert live.boundary == live.params_fingerprint()  # the journaled value is the re-boundary
+
+
+def test_a_diverging_rebuild_is_refused_by_the_journaled_params(tmp_path):
+    """A restart whose rebuild would not reproduce the live pool is REFUSED before any write; the
+    fingerprint is P-independent, so a rebuild at another partition count still passes."""
+    ledger, batch = _admitted(tmp_path)
+    live = _born_pool()
+    join_fed_unit(live, _feed(rp.N, batch), batch, 40, _row(live), ledger)
+    # the control: another P rebuilds the same pool, so the check is not over-strict
+    same, _, _ = rebuild_joined_pool(
+        _born_twin(p_parts=live.p_parts + 1), _feed(rp.N, batch), batch, ledger
+    )
+    assert same.n == rp.N + 1 and same.params_fingerprint() == live.params_fingerprint()
+    # the red: another frac_bits quantizes every weight differently -> a diverging rebuild
+    other = _born_twin(frac_bits=live.frac_bits + 1)
+    with pytest.raises(ValueError, match="REFUSED"):
+        rebuild_joined_pool(other, _feed(rp.N, batch), batch, ledger)
+    assert other.n == rp.N  # refused before the write
+    # a journaled join row that carries no params cannot be checked, so it is REFUSED too
+    bare = Ledger(tmp_path / "bare.bin", JOIN_VALUES)
+    bare.record_event({k: v for k, v in _joins(ledger)[0].items() if k != "params"})
+    with pytest.raises(ValueError, match="REFUSED"):
+        rebuild_joined_pool(_born_pool(), _feed(rp.N, batch), batch, bare)
