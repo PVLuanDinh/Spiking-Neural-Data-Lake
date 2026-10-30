@@ -5,10 +5,15 @@ Contract: specs/022-unified-brain-arc/evidence/g3-growth-loop.md 2.10,
 another classifier. No teaching rule, pool growth target, or campaign is
 invented here. The G9 consumer must bind these separate latencies to its
 label-neuron port; that consumer is absent at base d4c18ce0.
+
+The join seam (G3 grow round 2, lanes/engine-1024/g3-grow-research/RULING.md items 5-7): an admitted
+fed unit becomes pool unit N through `join_fed_unit` (its feed column retired, one join row per join
+on the ONE grower's Ledger), and `rebuild_joined_pool` replays those rows on a restart (P4b).
 """
 
 import numpy as np
 
+from snn_data_lake.growth.growable import grow_rows
 from snn_data_lake.growth.grown_code import apply_unit_row, latencies
 from snn_data_lake.growth.grown_feed import check_feed, feed_drive, random_feed
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
@@ -97,6 +102,49 @@ def arm_latencies(
     weights = random_feed(w_feed, segment, seed) if arm == "random-feed" else w_feed
     external = feed_drive(segment, ranks, tau, t_post_g, weights)
     return pool_first_spikes(pool, observation, external)
+
+
+# distinct-from: growth/grown_feed.py::random_feed -- redraws every column's direction for the random
+#   arm; this retires one column from the live feed when its unit joins the pool
+def join_fed_unit(pool, w_feed, units, unit_id, encoder_row, ledger):
+    """An admitted fed unit becomes pool unit N (RULING items 5-7). The join follows only from
+    GrowthLoop's admission: a unit with no birth row on `ledger` (Ledger.known_unit) is REFUSED, as
+    is a unit that is not among the fed `units` or a feed that does not name the pool's units. The
+    join row is drawn from the declared join stream with join_seed = unit_id (minted once, never
+    reused, so no two joins share a stream), checked by a dry apply, journaled write-ahead as ONE
+    "join" row through Ledger.record_event (with the retired feed column), then applied. The unit's
+    feed column leaves the live network; every other column keeps its entries bit for bit and gains
+    a zero row for N (growable.grow_rows). Returns (w_feed, the fed units left, the applied row)."""
+    if type(pool) is not KernelLsmPool:
+        raise ValueError("REFUSED: G1(c)'s hosted KernelLsmPool required")
+    if not ledger.known_unit(unit_id):
+        raise ValueError(f"REFUSED: unit {unit_id!r} has no birth row; a join follows admission")
+    fed = sorted(units, key=lambda u: u.unit_id)
+    column = [i for i, u in enumerate(fed) if u.unit_id == unit_id]
+    if not column:
+        raise ValueError(f"REFUSED: unit {unit_id} is not one of the fed units")
+    check_feed(w_feed, fed)
+    w = np.asarray(w_feed, dtype=np.float64)
+    if w.shape[0] != pool.n:
+        raise ValueError("REFUSED: feed synapses do not name exactly the pool units")
+    j = column[0]
+    record = pool.draw_join(fed[j].sign, unit_id, encoder_row)
+    pool.apply_join(record, dry=True)
+    record = dict(record, unit_id=unit_id, retired_feed=w[:, j].tolist())
+    ledger.record_event({"kind": "join", **record})
+    applied = pool.apply_join(record)
+    kept = np.delete(w, j, axis=1)
+    grown = np.array(grow_rows(kept.tolist(), pool.n, ncols=kept.shape[1]), dtype=np.float64)
+    return grown, tuple(fed[:j] + fed[j + 1 :]), applied
+
+
+def rebuild_joined_pool(pool, ledger):
+    """P4b: `pool` (rebuilt as born) with every journaled "join" row applied in lake order through
+    KernelLsmPool.apply_join, the one apply path; a row for another N is REFUSED there."""
+    for row in ledger.events():
+        if row.get("kind") == "join":
+            pool.apply_join(row)
+    return pool
 
 
 def feed_u_contrasts(fed, direct, random):

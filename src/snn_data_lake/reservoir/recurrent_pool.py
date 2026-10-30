@@ -722,10 +722,14 @@ class KernelLsmPool(LsmPool):
         return 2 / (self.n + 1)
 
     def join(self, sign, join_seed, encoder_row=None):
-        """Draw the join that makes unit N = self.n from the declared join stream, apply it, and
-        return its journal row (apply_join's input). Row N first (B1): k pairs (randrange(N+1),
-        uniform(-w, w)), an entry whose pre is a signed unit (self included) weighted s_pre * |u|
-        (AMENDMENT 1). Then A4's coin, sign-matched: every existing entry whose weight sign is
+        """Draw the join that makes unit N = self.n and apply it; returns the applied journal row."""
+        return self.apply_join(self.draw_join(sign, join_seed, encoder_row))
+
+    def draw_join(self, sign, join_seed, encoder_row=None):
+        """The join row that makes unit N = self.n, drawn from the declared join stream and never
+        applied (apply_join's input; a caller journals it first). Row N first (B1): k pairs
+        (randrange(N+1), uniform(-w, w)), an entry whose pre is a signed unit (self included)
+        weighted s_pre * |u| (AMENDMENT 1). Then A4's coin, sign-matched: every existing entry whose weight sign is
         `sign`, rows then slots in order, moves to pre = N with probability _retarget_p(), keeping
         its weight. A row with no entry of that sign takes no edge from N: counted, never forced.
         No cap: N is any size; the pace is the caller's (GrowthLoop's admission, P4d budget)."""
@@ -755,9 +759,9 @@ class KernelLsmPool(LsmPool):
             "encoder_row": None if encoder_row is None else [float(x) for x in encoder_row],
             "rows_without_sign": int(np.count_nonzero(~matched.any(axis=1))),
         }
-        return self.apply_join(record)
+        return record
 
-    def apply_join(self, record):
+    def apply_join(self, record, *, dry=False):
         """Apply one join row: the live join and a restart's rebuild (P4b) are this one path, and
         neither draws. Unit N takes row N, its sign and its encoder row; each listed (row, slot)
         entry points at N with its weight kept; the carriers, the accumulators and the tick index
@@ -765,7 +769,8 @@ class KernelLsmPool(LsmPool):
         fingerprint re-anchored (a journaled re-boundary per join). Returns the record with the
         new boundary. REFUSED, before any write: a record for another N, a lesioned pool, a bundle
         in flight, a malformed row, a signed pre whose weight breaks its sign, a retargeted entry
-        whose weight is not the unit's sign (C17), an encoder row that is not 64 finite values."""
+        whose weight is not the unit's sign (C17), an encoder row that is not 64 finite values.
+        `dry` runs every refusal and writes nothing (a write-ahead journal checks before it writes)."""
         n, k = self.n, self.pre.shape[1]
         sign = _dale(record["sign"])
         if int(record["n"]) != n:
@@ -795,6 +800,8 @@ class KernelLsmPool(LsmPool):
             row = np.asarray(row, dtype=np.float64)
             if row.shape != (N_IN,) or not np.all(np.isfinite(row)):
                 raise ValueError(f"REFUSED: the encoder row is not {N_IN} finite values")
+        if dry:
+            return None
         pre = np.array(grow_rows(self.pre.tolist(), n + 1), dtype=np.int64)
         weights = np.array(grow_rows(self.w.tolist(), n + 1), dtype=np.float64)
         pre[n], weights[n] = pre_row, w_row
