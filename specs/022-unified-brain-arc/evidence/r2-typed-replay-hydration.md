@@ -1475,8 +1475,8 @@ Facts, stated without a ruling:
 5a. The finding (iii) red-first test, named by test id, is SHOWN failing on the parent of the D-79 fix for its stated reason (the
    restored brain's clock state or sleep/wake differs from the uninterrupted twin's), by the RECORDED pytest log of that test id on
    claude/r2-instr-fix-1029 at the commit that lands it (6fd1344e, or its landed sha), run BEFORE claude/circadian-p4b-1029 stacks on
-   it (first line = the command). The record of choice is the same test run with --runxfail, its log matching the assertion message
-   ('restored clock is not the twin's at the cut'). A strict XFAIL alone is weaker: an AssertionError raised anywhere inside
+   it (first line = the command). The record of choice is the same test run with --runxfail, its log matching either assertion message
+   ('restored clock is not the twin's at the cut', :128, or 'the restored brain's day diverged from the twin's', :129). A strict XFAIL alone is weaker: an AssertionError raised anywhere inside
    run_brain or its fixtures also logs XFAIL (enforcer #7114, #7141 NIT). The circadian branch has no commit
    where the red can fail: it first appears there after the first fix (enforcer #7054 MINOR-2). A stdlib simulation stands only
    as the pre-run prediction (enforcer #7018 MINOR-1); the b311e78d test does not meet this at seed 15000 (D1.4). Then the launcher's D-79 fix (claude/circadian-p4b-1029) has
@@ -1672,9 +1672,12 @@ Data-exposure: no confirmatory or reserve seed of R2's block was read or run in 
    15020-15027, 15040-15047 and 15060-15067 outside the owed list).
 7. K3 phase check (integrator ruling #7111, accepted by launcher D-84; enforcer #7103). twin_K3 records its own sleep-onset step;
    each K3 restoring arm's resumed step must EQUAL it (the bound rests on tick order at circadian@1d87efd4: _step += 1, then
-   _enter_sleep, whose persist block flushes the clock first). The K1g chronology branch is keyed on the CODE UNDER TEST, read
-   harness-side (amendment #7142, enforcer #7141): if the pre_ arm flushed a circadian record, the restore must carry it (scored;
-   a dropped record reads chrono FAIL); if pre_ flushed none (a head without circadian), the read is refused by name. chrono_clean's step term compares with the step the parent pre_ process
+   _enter_sleep, whose persist block flushes the clock first). The K1g chronology reads a FOUR-cell table keyed on the code under
+   test, read harness-side (ruling #7186, superseding #7142; enforcer #7141, #7183): (pre_ flushed, restore carries) = scored;
+   (flushed, dropped) = chrono FAIL; (none flushed, restore carries) = chrono FAIL 'a restored record with no flushed lineage' (an
+   isolation defect: a stale or shared home, or the live lake); (none, none) = refused by name. One red per FAIL cell (r2-instr-fix
+   round 5 item 6 and round 6). chrono_clean's step term compares with the step the parent pre_ process
    last flushed (harness-side). Until claude/circadian-p4b-1029 lands, K3's alignment holds BY CONSTRUCTION because the harness
-   carries the phase (option (i), D-77 (i)), and K3_phase reads False (no record is restored). It becomes a real cross-check of
+   carries the phase (option (i), D-77 (i)), and K3_phase, keyed on the same harness-side bit, is refused by name as
+   not-applicable (never NOT MET; #7183 NIT). It becomes a real cross-check of
    the brain only after the D-79 fix lands (launcher D-84).
