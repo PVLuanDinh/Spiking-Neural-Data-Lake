@@ -5333,8 +5333,8 @@ class Brain:
         kept copies are retried newest first (`_adopt_kept`; P4b "foreign records preserved"; the
         prototype path's R3-M2; a restore that raises is noted `restore raised: <exc>; adopted:
         [...]` or `restore raised: fresh day (<exc>)`); one whose read raised is re-read and kept at
-        the first flush. A malformed record (or one whose restore raises) of this binding adopts
-        only a kept copy at its step or later, so a rollback never moves the clock back to an older
+        the first flush. A malformed or raising record of this binding adopts only a kept copy
+        at its step or later, so a rollback never moves the clock back to an older
         copy; a corrupt step larger than every kept copy's is a fresh day, step 0, further back
         still (#7257 NIT-1: disclosed, fail-closed, a corrupt step names no state to resume). A
         JSON null or non-JSON record is NOT kept (a bytes-level keep is owed) and the note says so.

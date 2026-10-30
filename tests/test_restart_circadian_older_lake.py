@@ -265,9 +265,10 @@ def test_a_codec_defect_is_reported_as_raised_not_malformed(tmp_path):
 
 def test_a_record_whose_restore_raises_retries_the_kept_copies(tmp_path):
     """Enforcer MINOR-1 (#7257): a record whose load raises outside load_state_dict's decode catch
-    (a newer build's layout after a rollback) retries the kept copies, as the docstring says. A
-    stray seed keeps seed S's step-5 record; the stray's record, rebound to S, raises on its own rng
-    only, so the step-5 copy is adopted under a 'restore raised' note."""
+    (a newer build's layout after a rollback) retries the kept copies, as
+    `Brain._restore_circadian`'s docstring says. A stray seed keeps seed S's step-5 record; the
+    stray's record, rebound to S, raises on its own rng only, so the step-5 copy is adopted under a
+    'restore raised' note."""
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED, ticks=5)
     run_brain(home, seed=SEED + 1)
