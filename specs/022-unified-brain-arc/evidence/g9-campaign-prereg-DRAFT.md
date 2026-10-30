@@ -321,7 +321,9 @@ after the one 10x re-test (POL:598, 955). An underpowered result is INCONCLUSIVE
 
 On the pilot's paired-difference distributions (resampled, centered for the null), with the legs' observed
 correlation kept: a planted null on any subset of legs keeps each leg's false-positive rate at or below its alpha and
-the family-wise rate at or below alpha_1 = .0303964 (was .05) under the fixed-sequence group-sequential order (section 4.1b); a planted effect of
+the family-wise rate at or below alpha_1 = .0303964 (was .05) under the fixed-sequence group-sequential order (section 4.1b);
+the IUT cases are planted too (enforcer #7055 / #7114): G-a's null alone true (A0's rate at pi0, every leg at delta) gives
+P(MET) <= alpha_1, and so does each damage check planted alone at its non-inferiority boundary; a planted effect of
 size delta on EVERY leg (G-a at pi1, every damage check at its null) gives **joint P(MET | delta) >= .8** by the cap,
 reported as the design's power (Fold 1, lens A B2); the probability of every outcome (MET at each look, futility,
 uncrossed cap, NOT TESTED legs, INCONCLUSIVE, NOT MET (ENGINE FLOOR), VOID (contrast) by damage) is reported, and
