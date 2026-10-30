@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+import snn_data_lake.reservoir.recurrent_pool as rp
 from snn_data_lake.growth.feed_readout import arm_latencies, feed_u_contrasts, pool_first_spikes
 from snn_data_lake.growth.grown_code import GrownUnit, latencies
 from snn_data_lake.growth.grown_feed import feed_drive
@@ -193,6 +194,53 @@ def test_the_n_gate_is_strictly_above_256():
             observation=np.zeros(64),
             w_feed=np.array([[2.0, 1.0, 1.5], [0.0, 3.0, 2.0], [1.0, 0.5, 3.0]]),
         )
+
+
+# Measurement points of the N > 256 arm, never caps (g3-growth-loop.md DATED ADDENDUM 2026-10-29):
+# 257 is the smallest N above the engine's 256; 512 is the first doubling of it.
+GROWN_N = (257, 512)
+
+
+def grown_pool(n, p_parts=1, threads=1, w=None):
+    """A hosted pool at size n: R-b3's witness, its draw and encoder rule at n rows, dev seed."""
+    config = rp.R_B3_WITNESS["lsm"]
+    _, pre, drawn = rp._lsm_draw(
+        rp.realization_seed("lsm", rp.DEV_SEED), n, config["k"], config["w"]
+    )
+    encoder = np.random.default_rng(rp.DEV_SEED * 31 + 7).standard_normal((n, rp.N_IN)) / 8
+    return KernelLsmPool(
+        pre,
+        drawn if w is None else w,
+        config,
+        w_in=encoder,
+        window=8,
+        p_parts=p_parts,
+        threads=threads,
+    )
+
+
+@pytest.mark.parametrize("n", GROWN_N)
+def test_fed_arm_reads_a_hosted_pool_above_256(n):
+    us, code, x = units(), ranks(), np.linspace(0.0, 1.0, 64)
+    w = np.zeros((n, 3))
+    w[0], w[-1] = [2.0, 1.0, 1.5], [1.0, 0.5, 3.0]
+    fed, control = grown_pool(n), grown_pool(n)
+    got = arm_latencies("fed", us, code, 8.0, 14, seed=9900, pool=fed, observation=x, w_feed=w)
+    expected = pool_first_spikes(control, x, feed_drive(us, code, 8.0, 14, w))
+    assert len(got) == n and got == expected
+    assert fed.fingerprint() == control.fingerprint()
+
+
+@pytest.mark.parametrize("n", GROWN_N)
+def test_the_pools_determinism_red_reruns_at_each_grown_n(n):
+    seq = rp.cycled_fixture(16)
+    runs = [rp._record(grown_pool(n, p, t), seq, chain=True) for p, t in rp.R_B3_HOSTED]
+    assert rp._runs_agree(runs)
+    # the red: one incoming weight of the last unit (index n - 1 > 255) changed must disagree
+    drawn = grown_pool(n).w.copy()
+    drawn[n - 1, 0] = -drawn[n - 1, 0]
+    planted = rp._record(grown_pool(n, w=drawn), seq, chain=True)
+    assert not rp._runs_agree([runs[0], planted])
 
 
 def _assert_random_arm_delivers_its_own_drive():
