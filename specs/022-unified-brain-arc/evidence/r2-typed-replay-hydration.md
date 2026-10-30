@@ -1676,7 +1676,13 @@ Data-exposure: no confirmatory or reserve seed of R2's block was read or run in 
    test, read harness-side (ruling #7186, superseding #7142; enforcer #7141, #7183): (pre_ flushed, restore carries) = scored;
    (flushed, dropped) = chrono FAIL; (none flushed, restore carries) = chrono FAIL 'a restored record with no flushed lineage' (an
    isolation defect: a stale or shared home, or the live lake); (none, none) = refused by name. One red per FAIL cell (r2-instr-fix
-   round 5 item 6 and round 6). chrono_clean's step term compares with the step the parent pre_ process
+   round 5 item 6 and round 6).
+   'pre_ flushed' means WROTE: a truthy _flush_circadian return (r2-instr-fix round 7 @aa238ad7, enforcer #7204). A PRECEDENCE
+   row is read before the four cells: when every pre_ flush returned False, the read is its own named FAIL
+   (K1G_CHRONO_FLUSH_FAILED for K1g; K3_phase False with k3_phase_flush_failed for K3), never 'the restore dropped it'. For every
+   OTHER restoring arm the failed-flush case is not yet read (enforcer #7255 MINOR-1): r2-instr-fix round 8 makes it a named
+   FAIL there too, and gives the unchanged-record and persist-off False returns their own named outcome. Until round 8 lands,
+   that cell is OWED, before any 15010+ seed (enforcer #7259). chrono_clean's step term compares with the step the parent pre_ process
    last flushed (harness-side). Until claude/circadian-p4b-1029 lands, K3's alignment holds BY CONSTRUCTION because the harness
    carries the phase (option (i), D-77 (i)), and K3_phase, keyed on the same harness-side bit, is refused by name as
    not-applicable (never NOT MET; #7183 NIT). It becomes a real cross-check of
