@@ -190,6 +190,26 @@ def test_a_malformed_record_never_adopts_a_kept_copy_older_than_its_step(tmp_pat
     assert note == "refused: fresh day (malformed record)", note
 
 
+def test_a_malformed_record_adopts_a_kept_copy_at_its_own_step(tmp_path):
+    """Coverage review (round 4): the floor's boundary -- a malformed record of this binding at
+    step 5 adopts the step-5 kept copy (step >= floor). A pin: the base adopts it too."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    run_brain(home, seed=SEED + 1)
+    out = run_brain(home, seed=SEED, rewrite={"seed": SEED, "step": 5, "phase": 1.5})
+    assert out["note"].startswith("refused: malformed record; adopted:"), out["note"]
+    assert out["restored"]["step"] == 5, out["restored"]
+
+
+def test_a_record_missing_a_binding_key_is_malformed_not_loaded(tmp_path):
+    """Coverage review (round 4): a record valid but for one missing binding key (written before
+    the key joined the binding) is malformed, never loaded under constants it does not name."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    note = _fresh(run_brain(home, seed=SEED, drop="day_period"))
+    assert note == "refused: fresh day (malformed record)", note
+
+
 @pytest.mark.parametrize("replace", [[1, 2], {}])
 def test_a_record_not_in_this_builds_layout_is_malformed_and_adopts_a_kept_copy(tmp_path, replace):
     """Lens C MINOR-3/MINOR-4 (#7184): a non-dict record raised at `rec.get` and skipped the
@@ -222,6 +242,15 @@ def test_a_record_the_restore_could_not_read_is_kept_before_it_is_overwritten(tm
     assert out["step"] == 0 and out["note"].startswith("restore raised"), out["note"]
     names = [name for name, rec in out["kept"].items() if rec == out["written"]]
     assert names and out["note_at_close"].endswith(f"; kept: {names}"), out["note_at_close"]
+
+
+def test_a_failed_keep_after_a_reread_never_overwrites_the_record(tmp_path):
+    """Coverage review (round 4): a re-read record whose keep fails is never overwritten, and
+    the failed flush is counted."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    out = run_brain(home, seed=SEED, ticks=60, restore_raises=True, no_keep=True)
+    assert out["record"] == out["written"] and out["flush_failed"] >= 1, out
 
 
 def test_a_codec_defect_is_reported_as_raised_not_malformed(tmp_path):

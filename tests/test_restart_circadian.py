@@ -40,6 +40,10 @@ from snn_data_lake.engine.brain import make_brain
 CIRCADIAN_STATE = "circadian_clock.json"
 if "rewrite" in spec:
     home.save_state(CIRCADIAN_STATE, dict(home.load_state(CIRCADIAN_STATE), **spec["rewrite"]))
+if "drop" in spec:  # a record missing one binding key (a key `rewrite` cannot delete)
+    rec = home.load_state(CIRCADIAN_STATE)
+    del rec[spec["drop"]]
+    home.save_state(CIRCADIAN_STATE, rec)
 if "replace" in spec:  # a record that is not this build's layout at all
     home.save_state(CIRCADIAN_STATE, spec["replace"])
 if "rewrite_gauss_next" in spec:  # the cached normal inside the codec's encoded rng state
