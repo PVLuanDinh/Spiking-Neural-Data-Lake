@@ -2581,6 +2581,15 @@ def _selfcheck():
     from snn_data_lake.plasticity.valence_stdp import ValenceLearner, _pattern
 
     mine, other, orig, win = ValenceLearner(), ValenceLearner(), ValenceLearner.learn, _pattern(1)
+    try:
+        with contextlib.redirect_stdout(None):
+            ArmPatch("vfrozen").bind(types.SimpleNamespace(_valence=mine))
+        gone = None
+    except Refused as e:
+        gone = e.msg
+    if gone != PLAN_W_GONE:
+        print(f"rpe_charge self-check FAILED: bind without `_plan_w` refused with {gone!r}")
+        return 1
     with ArmPatch("vfrozen") as ap:
         ap.bind(types.SimpleNamespace(_valence=mine))
         mine.learn(win, 1.0)
