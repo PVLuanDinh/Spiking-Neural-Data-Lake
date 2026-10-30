@@ -1321,3 +1321,39 @@ def test_zero_born_edge_trainability_on_the_compiled_host(form):
     outcome, coactive = _zero_born_outcome(_zero_born(rp.KernelLsmPool, form), seq)
     assert coactive, "no zero-born slot saw pre and post fire together: the run proves nothing"
     assert outcome == "dormant"
+
+
+# ---- G3 grow round 2: the encoder follows pool.n (RULING.md item 3) ------------------------------
+
+# Measurement points, never caps: 257 is the smallest N above the born 256, 512 its first doubling.
+JOIN_N = (257, 512)
+
+
+@pytest.mark.parametrize("n", JOIN_N)
+def test_encoder_extension_is_prefix_stable(n):
+    grown, born = rp.w_in(rp.DEV_SEED, n), rp.w_in(rp.DEV_SEED)
+    assert grown.shape == (n, rp.N_IN) and np.array_equal(grown[: rp.N], born)
+    # the red: an extension drawn from any other stream changes the old rows
+    reseeded = np.random.default_rng(rp.DEV_SEED * 31 + 8).standard_normal((n, rp.N_IN)) / 8
+    assert not np.array_equal(reseeded[: rp.N], born)
+
+
+def test_encoder_row_n_is_drawn_by_w_ins_law():
+    row = rp.w_in(rp.DEV_SEED, rp.N + 1)[rp.N]
+    law = np.random.default_rng(rp.DEV_SEED * 31 + 7).standard_normal((rp.N + 1, rp.N_IN)) / 8
+    assert np.array_equal(row, law[rp.N])
+    assert np.count_nonzero(row) == rp.N_IN  # the red, a zero row, cannot pass
+
+
+@pytest.mark.parametrize("n", JOIN_N)
+def test_encoder_shape_follows_pool_n(n):
+    _, pre, w = rp._lsm_draw(rp.realization_seed("lsm", rp.DEV_SEED), n, TUNED["k"], TUNED["w"])
+    pool = rp.KernelLsmPool(pre, w, TUNED, w_in=rp.w_in(rp.DEV_SEED, n), window=0)
+    pool.replace_encoder(rp.w_in(rp.DEV_SEED + 1, n))
+    assert pool.w_in.shape == (n, rp.N_IN)
+    with pytest.raises(ValueError, match="REFUSED"):
+        pool.replace_encoder(rp.w_in(rp.DEV_SEED))  # 256 rows no longer fit this pool
+    drawn = rp.w_in(rp.DEV_SEED, n)
+    assert rp.fresh_encoder(rp.DEV_SEED, drawn).shape == (n, rp.N_IN)
+    moved = rp.transported_encoder(drawn, np.ones((n, rp.N_IN)))
+    assert moved.shape == (n, rp.N_IN)
