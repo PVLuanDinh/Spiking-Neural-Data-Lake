@@ -227,6 +227,11 @@ FIXTURE_FROZEN = (
 )
 
 
+# T125 (E1d route (iii)) deleted the `_plan_w` update and its nudge; E1b/E1c/E1d ran on
+# c1df3887 / ee224e50 / c4c10b28, where it exists.
+PLAN_W_GONE = "`_plan_w` deleted by T125; read E1d at c4c10b28"
+
+
 class Refused(SystemExit):
     """A refusal is an explicit exit with code 3, never an assert: it survives `python -O`."""
 
@@ -747,6 +752,9 @@ class ArmPatch:
         self._in_learn = False
 
     def bind(self, arm_obj):
+        if not hasattr(arm_obj, "_plan_w"):  # every arm reads it (w_pfc_bias, the per-tick series)
+            print(f"REFUSED (bind): {PLAN_W_GONE}", flush=True)
+            raise Refused(PLAN_W_GONE)
         self.target = arm_obj
         if self.arm == "pfrozen":
             arm_obj._plan_lr = 0.0

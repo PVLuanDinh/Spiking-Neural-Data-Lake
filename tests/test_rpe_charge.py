@@ -139,7 +139,7 @@ def test_a_broken_patch_is_not_a_perfect_neuter():
 
     vl = ValenceLearner()
     vl.dopamine = _broken_dopamine  # the neuter body raises on every call
-    arm = types.SimpleNamespace(_valence=vl)
+    arm = types.SimpleNamespace(_plan_w=0.1, _valence=vl)
     with R.ArmPatch("vfrozen") as ap:
         ap.bind(arm)
         n_err = 0
@@ -162,7 +162,7 @@ def test_patches_are_restored_and_scoped_to_the_arm_instance():
     orig, win = ValenceLearner.learn, _pattern(1)
     mine, foreign = ValenceLearner(), ValenceLearner()
     with R.ArmPatch("vshuf", perm=[1.0, -1.0, 1.0]) as ap:
-        ap.bind(types.SimpleNamespace(_valence=mine))
+        ap.bind(types.SimpleNamespace(_plan_w=0.1, _valence=mine))
         mine.learn(win, 0.5)
         foreign.learn(win, 0.5)
         assert ap.v["calls"] == 1 and ap.v["foreign_learn"] == 1
@@ -1313,7 +1313,7 @@ def test_r6_pc_rotates_only_the_bound_arms_pfc_bias_by_one_and_is_restored():
     assert p.goal == 0
     orig = PrefrontalExecutive.top_down_bias
     with R.ArmPatch("pc") as ap:
-        ap.bind(types.SimpleNamespace(pfc=p))
+        ap.bind(types.SimpleNamespace(_plan_w=0.1, pfc=p))
         out = PrefrontalExecutive.top_down_bias(p, strength=0.37)
         assert isinstance(out, list) and len(out) == n
         assert out[1] == 0.37 and out[0] == 0 and ap.pc_calls == 1
@@ -1336,7 +1336,7 @@ def test_real_arm_records_the_prediction_before_learning():
 
     vl, win = ValenceLearner(), _pattern(1)
     with R.ArmPatch("real") as ap:
-        ap.bind(types.SimpleNamespace(_valence=vl))
+        ap.bind(types.SimpleNamespace(_plan_w=0.1, _valence=vl))
         for r in (1.0, 1.0, -1.0):
             vl.valence(win)
             vl.learn(win, r)
@@ -1356,7 +1356,7 @@ def test_valence_exceptions_are_recorded_then_reraised():
     vl = ValenceLearner()
     vl.n = None  # makes _active() fail inside valence()
     with R.ArmPatch("real") as ap:
-        ap.bind(types.SimpleNamespace(_valence=vl))
+        ap.bind(types.SimpleNamespace(_plan_w=0.1, _valence=vl))
         with pytest.raises(TypeError):
             vl.valence([0.5])
     assert [e["where"] for e in ap.exc] == ["valence"]
@@ -1875,7 +1875,7 @@ def test_prediction_is_none_when_learn_runs_without_a_preceding_valence_read():
 
     vl = ValenceLearner()
     with R.ArmPatch("real") as ap:
-        ap.bind(types.SimpleNamespace(_valence=vl))
+        ap.bind(types.SimpleNamespace(_plan_w=0.1, _valence=vl))
         vl.learn(_pattern(1), 1.0)  # learn()'s own internal valence read is not the prediction
     assert ap.v["pred"] == [None]
     bad = R.run_problems(
