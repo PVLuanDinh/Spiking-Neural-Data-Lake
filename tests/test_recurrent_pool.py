@@ -10,6 +10,7 @@ the constructed wrong hosts below are this file's own reds of that pool's arithm
 import copy
 import inspect
 import json
+import os
 import random
 import statistics
 import zlib
@@ -1359,3 +1360,225 @@ def test_encoder_shape_follows_pool_n(n):
     assert rp.fresh_encoder(rp.DEV_SEED, drawn).shape == (n, rp.N_IN)
     moved = rp.transported_encoder(drawn, np.ones((n, rp.N_IN)))
     assert moved.shape == (n, rp.N_IN)
+
+
+# ---- G3 grow round 2: a fed unit joins the pool as unit N (RULING items 1-4, AMENDMENT 1, D-89) --
+
+JOIN_SEED = 4100  # the tests' declared join seeds are JOIN_SEED + N, one per join
+COL_E = 8  # COL's batch: k E units to exactly one I unit (grown_code.column_latencies), k = 8 here
+
+
+def _col_sign(j):
+    """The grown units' real E/I mix: in each COL batch of COL_E + 1 joins, the last is I."""
+    return -1 if j % (COL_E + 1) == COL_E else 1
+
+
+def _born(cls=None, form="carried", window=0, **host):
+    _, pre, w = rp._lsm_draw(rp.realization_seed("lsm", rp.DEV_SEED), rp.N, TUNED["k"], TUNED["w"])
+    cls = cls or rp.KernelLsmPool
+    return cls(pre, w, TUNED, form, rp.w_in(rp.DEV_SEED), window=window, **host)
+
+
+def _join_to(pool, n, seed=JOIN_SEED):
+    """Join units pool.n..n-1, each with its COL sign, seed + N and w_in's row N."""
+    encoder = rp.w_in(rp.DEV_SEED, n)
+    records = [pool.join(_col_sign(j - rp.N), seed + j, encoder[j]) for j in range(pool.n, n)]
+    return pool, records
+
+
+def _dense(pool):
+    j = np.zeros((pool.n, pool.n))
+    np.add.at(
+        j, (np.repeat(np.arange(pool.n), pool.pre.shape[1]), pool.pre.ravel()), pool.w.ravel()
+    )
+    return j
+
+
+@pytest.mark.parametrize("n", JOIN_N)
+def test_join_keeps_fan_in_k_every_row(n):
+    pool, records = _join_to(_born(), n)
+    assert pool.n == n and pool.pre.shape == pool.w.shape == (n, TUNED["k"])
+    assert len(pool._live_edges()["edge_pre"]) == n * TUNED["k"]
+    assert [r["n"] for r in records] == list(range(rp.N, n))
+    assert pool.w_in.shape == (n, rp.N_IN) and np.array_equal(pool.w_in, rp.w_in(rp.DEV_SEED, n))
+
+
+class _BiasedCoin(rp.KernelLsmPool):
+    """The red, not a method: a retarget coin at twice the ruled 2/(N+1)."""
+
+    def _retarget_p(self):
+        return 4 / (self.n + 1)
+
+
+def _new_unit_out_degree(cls, seeds):
+    """Entries of the old rows that point at unit 256 after one join, per join seed."""
+    born = _born(cls)
+    counts = []
+    for seed in seeds:
+        pool = copy.deepcopy(born)
+        pool.join(1, seed, rp.w_in(rp.DEV_SEED, rp.N + 1)[rp.N])
+        counts.append(int(np.count_nonzero(pool.pre[: rp.N] == rp.N)))
+    return statistics.fmean(counts)
+
+
+def test_join_pre_law_matches_fresh_draw_at_n_plus_1():
+    """One join from the born pool: every entry ends at pre = N with probability 1/(N+1), as in a
+    fresh _lsm_draw at N+1 (half the entries match the sign, each moves at 2/(N+1)). Pre-registered
+    tolerance: 4 standard errors of a 64-seed mean of a Binomial(N*k, 1/(N+1)) count."""
+    k, seeds = TUNED["k"], range(JOIN_SEED, JOIN_SEED + 64)
+    expected = rp.N * k / (rp.N + 1)
+    tolerance = 4 * np.sqrt(expected / len(seeds))
+    # positive control: fresh draws at N+1, the law itself, pass the same tolerance
+    fresh = [
+        np.count_nonzero(rp._lsm_draw(s, rp.N + 1, k, TUNED["w"])[1][: rp.N] == rp.N) for s in seeds
+    ]
+    assert abs(statistics.fmean(fresh) - expected) < tolerance
+    assert abs(_new_unit_out_degree(rp.KernelLsmPool, seeds) - expected) < tolerance
+    assert abs(_new_unit_out_degree(_BiasedCoin, seeds) - expected) > tolerance  # the red
+
+
+@pytest.mark.parametrize("n", JOIN_N)
+def test_join_row_n_follows_the_declared_stream(n):
+    """Row N (B1 + AMENDMENT 1, D-89): k pairs (randrange(N+1), U(-w, w)) from the join stream,
+    drawn first; an entry from an unsigned original unit keeps U(-w, w) exactly, an entry from a
+    signed (joined) unit, self included, takes s_pre * |U(-w, w)|. Old weights never move."""
+    pool, _ = _join_to(_born(), n - 1)
+    before = pool.w.copy()
+    record = pool.join(_col_sign(n - 1 - rp.N), JOIN_SEED + n - 1, rp.w_in(rp.DEV_SEED, n)[n - 1])
+    stream = rp.join_stream(JOIN_SEED + n - 1, n - 1)
+    pairs = [
+        (stream.randrange(n), stream.uniform(-TUNED["w"], TUNED["w"])) for _ in range(TUNED["k"])
+    ]
+    assert list(pool.pre[n - 1]) == [p for p, _ in pairs] == record["pre_row"]
+    for (p, u), got in zip(pairs, pool.w[n - 1], strict=True):
+        sign = int(pool.signs[p])
+        assert got == (u if sign == 0 else sign * abs(u))
+    assert np.array_equal(pool.w[: n - 1], before)  # retargeting keeps every weight in place
+    # the red: re-running _lsm_draw at N+1 changes the old rows
+    redrawn = rp._lsm_draw(
+        rp.realization_seed("lsm", rp.DEV_SEED), rp.N + 1, TUNED["k"], TUNED["w"]
+    )
+    assert not np.array_equal(redrawn[1][: rp.N], _born().pre)
+
+
+@pytest.mark.parametrize("n", JOIN_N)
+def test_signed_join_weights_obey_unit_dale_sign(n):
+    """C17 (g3-growth-loop.md:422) under AMENDMENT 1: every output edge of every joined unit
+    carries its write-once sign, edges drawn at LATER joins included; old rows keep their weight
+    multisets."""
+    born = _born()
+    pool, records = _join_to(copy.deepcopy(born), n)
+    assert [int(pool.signs[j]) for j in range(rp.N, n)] == [_col_sign(j) for j in range(n - rp.N)]
+    assert not np.any(pool.signs[: rp.N])
+    later = 0
+    for j in range(rp.N, n):
+        rows, slots = np.nonzero(pool.pre == j)
+        assert all(np.sign(pool.w[i, c]) == pool.signs[j] for i, c in zip(rows, slots, strict=True))
+        later += int(np.count_nonzero(rows > j))
+    if n > rp.N + 1:
+        assert later > 0  # non-vacuous: some joined unit's edge was drawn at a later join
+    for i in range(rp.N):
+        assert sorted(pool.w[i]) == sorted(born.w[i])  # no mean drift in any old row
+    for r in records:
+        assert all(np.sign(born.w[i, c]) == r["sign"] for i, c in r["retargeted"] if i < rp.N)
+        assert isinstance(r["rows_without_sign"], int)  # counted and disclosed, never forced
+
+
+def test_join_carries_carriers_bytewise():
+    pool = _born(window=4)
+    for x in rp.cycled_fixture(6):
+        pool.percept(x)
+    v, s, acc = pool.v.copy(), pool.s.copy(), pool.acc.copy()
+    arrays = {key: a.copy() for key, a in pool._kt.state.arrays.items()}
+    tick, count = pool._kt.tick_index, pool.count
+    pool.join(-1, JOIN_SEED, rp.w_in(rp.DEV_SEED, rp.N + 1)[rp.N])
+    assert np.array_equal(pool.v[: rp.N], v) and pool.v[rp.N] == 0
+    assert np.array_equal(pool.s[: rp.N], s) and not pool.s[rp.N]
+    assert np.array_equal(pool.acc[: rp.N], acc) and pool.acc[rp.N] == 0
+    for key, a in arrays.items():
+        assert np.array_equal(pool._kt.state.arrays[key][: rp.N], a), key
+    assert pool._kt.state.arrays["thr"][rp.N] == np.float32(pool.THR)
+    assert pool._kt.state.arrays["sign"][rp.N] == -1
+    assert (pool._kt.tick_index, pool.count) == (tick, count)
+    # a reset keeps the joined unit's sign: it is the network's, not a carrier
+    pool.reset_carriers()
+    assert pool._kt.state.arrays["sign"][rp.N] == -1
+
+
+def test_undeclared_write_still_reds_freeze_after_join():
+    pool = _born()
+    assert pool.frozen()
+    record = pool.join(1, JOIN_SEED, rp.w_in(rp.DEV_SEED, rp.N + 1)[rp.N])
+    assert pool.frozen() and record["boundary"] == pool.boundary == pool.params_fingerprint()
+    pool.w[0, 0] += 1.0  # an undeclared write, no join, no re-boundary
+    assert pool.frozen() is False
+
+
+def test_join_breaks_identity_with_unjoined_twin():
+    twin = _born()
+    a, _ = _join_to(_born(), rp.N + 1)
+    b, _ = _join_to(_born(), rp.N + 1)
+    c, _ = _join_to(_born(), rp.N + 1, seed=JOIN_SEED + 1)
+    assert a.fingerprint() == b.fingerprint()  # the join is a function of its declared seed
+    assert a.params_fingerprint() != twin.params_fingerprint()
+    assert a.params_fingerprint() != c.params_fingerprint()
+
+
+def test_join_refuses_an_unsigned_unit_a_wrong_encoder_row_and_a_lesioned_pool():
+    row = rp.w_in(rp.DEV_SEED, rp.N + 1)[rp.N]
+    for sign in (0, 2):
+        with pytest.raises(ValueError, match="REFUSED"):
+            _born().join(sign, JOIN_SEED, row)
+    with pytest.raises(ValueError, match="REFUSED"):
+        _born().join(1, JOIN_SEED, row[:-1])
+    with pytest.raises(ValueError, match="REFUSED"):
+        _born(form="front_end").join(1, JOIN_SEED, row)  # window 0: lesioned at birth
+
+
+class _UnseededJoin(rp.KernelLsmPool):
+    """The red, not a method: a join stream nothing seeds."""
+
+    def _join_stream(self, join_seed):
+        return random.Random(int.from_bytes(os.urandom(16), "little"))
+
+
+@pytest.mark.parametrize("n", JOIN_N)
+def test_join_r_b3_agrees_at_257_and_512(n):
+    seq = rp.cycled_fixture(16)
+    runs = [
+        rp._record(_join_to(_born(window=8, p_parts=p, threads=t), n)[0], seq, chain=True)
+        for p, t in rp.R_B3_HOSTED
+    ]
+    assert rp._runs_agree(runs)
+    planted = rp._record(_join_to(_born(_UnseededJoin, window=8), n)[0], seq, chain=True)
+    assert not rp._runs_agree([runs[0], planted])
+
+
+# D-89's pre-registered detector: an outlier is a top eigenvalue above 1.5 x the predicted bulk
+# sqrt(k w**2 / 3) (0.41 at TUNED); the mean-drift threshold is 0.051 (advocate 2, TUNED).
+BULK = float(np.sqrt(TUNED["k"] * TUNED["w"] ** 2 / 3))
+OUTLIER_FACTOR = 1.5
+DRIFT_THRESHOLD = 0.051
+
+
+def _spectrum(pool):
+    return float(np.max(np.abs(np.linalg.eigvals(_dense(pool))))), float(abs(np.mean(pool.w)))
+
+
+@pytest.mark.parametrize("n", JOIN_N)
+def test_the_spectrum_at_each_join_point_is_measured(n, record_property):
+    """D-89: measure and record |<J>| and the top eigenvalue at N under COL's E/I mix. Crossing a
+    threshold is a FINDING for the growth arc, never a failure and never a reason to drop Dale."""
+    born = _born()
+    top, mean = _spectrum(born)
+    assert top < OUTLIER_FACTOR * BULK  # the born pool has no outlier
+    planted = _born()
+    planted.w = np.abs(planted.w)  # the positive control: a one-signed matrix, mean w/2
+    planted_top, planted_mean = _spectrum(planted)
+    assert planted_top > OUTLIER_FACTOR * BULK and planted_mean > DRIFT_THRESHOLD  # detector fires
+    pool, _ = _join_to(born, n)
+    top, mean = _spectrum(pool)
+    finding = top > OUTLIER_FACTOR * BULK or mean > DRIFT_THRESHOLD
+    line = f"D-89 N={n} |<J>|={mean:.5f} top={top:.5f} bulk={BULK:.5f} finding={finding}"
+    record_property("d89", line)
+    print(line)
