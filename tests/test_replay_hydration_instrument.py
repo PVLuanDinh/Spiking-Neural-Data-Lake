@@ -173,8 +173,13 @@ def _arms():
         for side in ("on", "off"):
             arms[f"{kind}_{side}"] = copy.deepcopy(base)
     arms["O_cursor"]["cursor_probe"] = {"binding_valid": True, "redo_steps": 1}
-    arms["twin_K3"]["cut_step"] = 10  # the cut sits J_NIGHT sleep ticks into the night whose onset
-    arms["res_K3"]["construct_circadian_restored"] = {"step": 8}  # the restore resumed
+    # the cut night's onset is step 8 (the cut sits J_NIGHT - 1 = 2 ticks later, at step 10); the
+    # circadian flush runs first in `_enter_sleep`, so the parent pre_K3 flushed step 8 and the
+    # restore adopted that record and constructed its clock at it
+    arms["twin_K3"]["onset_step"] = 8
+    arms["pre_K3"]["flushed_step"] = 8
+    arms["res_K3"]["construct_circadian_restored"] = {"step": 8}
+    arms["res_K3"]["construct_chrono"]["step"] = 8
     return arms
 
 

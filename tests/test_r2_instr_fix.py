@@ -881,13 +881,18 @@ def _constructed(step, restored, **over):
     return rec
 
 
+def _parent(step):
+    """What the parent pre_ process wrote: the step its last `_flush_circadian` call flushed."""
+    return {"role": "pre_K0", "flushed_step": step}
+
+
 def test_round4_a_clock_constructed_at_the_restored_step_is_clean():
-    assert rh.chrono_clean(_constructed(6, {"step": 6}))
+    assert rh.chrono_clean(_constructed(6, {"step": 6}), _parent(6))
 
 
 @pytest.mark.parametrize("step", [0, 5, 7])
 def test_round4_a_clock_constructed_off_the_restored_step_is_unclean(step):
-    assert not rh.chrono_clean(_constructed(step, {"step": 6}))
+    assert not rh.chrono_clean(_constructed(step, {"step": 6}), _parent(6))
 
 
 @pytest.mark.parametrize(("step", "clean"), [(0, True), (6, False)])
@@ -898,22 +903,53 @@ def test_round4_with_no_restored_record_the_clock_must_still_start_at_zero(step,
 def test_round4_nights_must_still_be_zero_at_construction():
     rec = _constructed(6, {"step": 6})
     rec["construct_chrono"]["nights"] = 1
-    assert not rh.chrono_clean(rec)
+    assert not rh.chrono_clean(rec, _parent(6))
 
 
 def test_round4_a_motor_call_or_a_replay_tick_is_unclean_on_a_restored_clock():
-    assert not rh.chrono_clean(_constructed(6, {"step": 6}, construct_motor=1))
+    assert not rh.chrono_clean(_constructed(6, {"step": 6}, construct_motor=1), _parent(6))
     ticked = _constructed(6, {"step": 6})
     ticked["replay_windows"][0]["after"]["step"] = 7
-    assert not rh.chrono_clean(ticked)
+    assert not rh.chrono_clean(ticked, _parent(6))
+
+
+# ---- ROUND 5 (#7103 MINOR-2): the step term meets the harness-side flush, not only the brain -----
+#: construct_chrono.step and construct_circadian_restored.step are both read from the brain under
+#: test, and `_load_circadian` sets them together, so a restore that adopted the WRONG record (the
+#: stale phase of #6952 A-1) agrees with itself. The third operand is the step the parent pre_
+#: process last flushed, recorded by the harness in the parent's own result.
+
+
+def test_round5_a_restore_that_adopted_the_wrong_record_is_unclean_though_it_agrees_with_itself():
+    assert rh.chrono_clean(_constructed(6, {"step": 6}), _parent(6))
+    assert not rh.chrono_clean(_constructed(6, {"step": 6}), _parent(4)), "stale phase adopted"
+
+
+@pytest.mark.parametrize(
+    "parent", [None, {"role": "pre_K0"}, {"role": "pre_K0", "flushed_step": None}]
+)
+def test_round5_a_restored_record_with_no_parent_flush_is_unclean_not_waved_through(parent):
+    assert not rh.chrono_clean(_constructed(6, {"step": 6}), parent)
+
+
+def test_round5_with_no_restored_record_and_no_parent_flush_the_clock_starts_at_zero():
+    assert rh.chrono_clean(_constructed(0, None), None)
+    assert rh.chrono_clean(_constructed(0, None), {"role": "pre_K0"})
+
+
+def test_round5_a_restore_that_dropped_the_record_its_parent_flushed_is_unclean():
+    assert not rh.chrono_clean(_constructed(0, None), _parent(4)), "dropped, not 'no circadian'"
 
 
 def _night_crossed(arms):
-    """Every arm that records a construction clock restored a night-crossed record (step 6)."""
-    for rec in arms.values():
+    """Every arm that records a construction clock restored a night-crossed record (step 6), and
+    every parent pre_ process last flushed step 6."""
+    for role, rec in arms.items():
         if "construct_chrono" in rec:
             rec["construct_chrono"]["step"] = 6
             rec["construct_circadian_restored"] = {"step": 6}
+        elif role.startswith("pre_"):
+            rec["flushed_step"] = 6
     return arms
 
 
@@ -921,6 +957,17 @@ def test_round4_clean_night_crossed_restores_read_clean_and_the_chrono_reds_stay
     c = rh.seed_comparisons(_night_crossed(_arms()))
     assert all(c["chrono"].values()), c["chrono"]
     assert c["reds"]["CHRONO"] is False and c["reds"]["MOTOR"] is False
+
+
+@pytest.mark.parametrize(
+    "role",
+    ["res_K0", "res_K1", "res_K2", "res_K3", "res_K4", "res_B", "res_Bpre", "res_Bpost", "res_rw"],
+)
+def test_round5_each_restoring_arm_is_unclean_when_its_own_parent_flushed_another_step(role):
+    arms = _night_crossed(_arms())
+    arms[dict(rh.R2_ROLES)[role]]["flushed_step"] = 4
+    c = rh.seed_comparisons(arms)["chrono"]
+    assert c[role] is False and sum(not v for v in c.values()) == 1, c
 
 
 @pytest.mark.parametrize("red", ["CHRONO", "MOTOR"])
@@ -942,16 +989,33 @@ def test_round4_the_restored_record_is_read_at_construction_before_the_chrono_re
     assert src.index("construct_circadian_restored") < src.index('if role == "CHRONO"')
 
 
-# ---- ROUND 4 (A, #6952 A-1): a K1g restore resumes a stale phase until the clock flushes first --
+# ---- ROUND 5 (#7103 MAJOR-1, integrator #7111 (2) as amended by #7142): the K1g chronology -------
+# ---- branches on the CODE UNDER TEST: whether the pre_ arm flushed a circadian record ------------
 
 
-def test_round4_the_k1g_chronology_read_is_refused_with_a_named_reason_not_scored():
-    c = rh.c7_seed(_k1g_arms())
+def _k1g_restored(arms, *, step=6, restored=6, flushed=6, nights=0):
+    """A K1g restore on a head with the circadian fix: the parent pre_K1g last flushed `flushed`
+    (harness-side), the restore constructed its clock at `step` from a record at `restored`."""
+    arms["res_K1g"]["construct_chrono"] = {"step": step, "nights": nights}
+    arms["res_K1g"]["construct_circadian_restored"] = {"step": restored}
+    arms["pre_K1g"]["flushed_step"] = flushed
+    return arms
+
+
+def test_round5_a_head_without_circadian_is_refused_by_name_not_scored():
+    arms = _k1g_arms()  # pre_K1g flushed no circadian record: the code under test has none
+    arms["pre_K1g"]["flushed_step"] = None
+    c = rh.c7_seed(arms)
     assert c["chrono"] == {"scored": False, "refused": rh.K1G_CHRONO_REFUSED}
-    assert "flush" in rh.K1G_CHRONO_REFUSED and "stale" in rh.K1G_CHRONO_REFUSED
+    assert "flushed no circadian record" in rh.K1G_CHRONO_REFUSED
+    assert "claude/circadian-p4b-1029" in rh.K1G_CHRONO_REFUSED  # NIT-1: the commit that lifts it
+    assert "flush-first pending" not in rh.K1G_CHRONO_REFUSED
+    assert rh.c7_seed(_k1g_arms())["chrono"] == c["chrono"], (
+        "a parent that recorded no flush at all"
+    )
 
 
-def test_round4_a_k1g_chronology_difference_neither_passes_nor_fails_c7():
+def test_round5_a_refused_k1g_chronology_neither_passes_nor_fails_c7():
     arms = _k1g_arms()
     arms["res_K1g"]["construct_chrono"] = {"step": 6, "nights": 0}
     arms["twin_K1g"]["construct_chrono"] = {"step": 0, "nights": 0}
@@ -959,26 +1023,98 @@ def test_round4_a_k1g_chronology_difference_neither_passes_nor_fails_c7():
     assert c["ok"] and c["K1g"], c
 
 
-# ---- ROUND 4 (D-79): MAJOR-3 (i) as a cross-check against the brain's resumed phase -------------
-#: twin_K3 records the step of its cut; a K3 restore that resumed the brain's phase starts at the
-#: night's onset, 0..J_NIGHT sleep ticks before the cut.
+def test_round5_the_branch_is_not_keyed_on_the_restored_record():
+    arms = _k1g_arms()  # the parent flushed none, yet the restore reports a record: still refused
+    arms["res_K1g"]["construct_circadian_restored"] = {"step": 6}
+    assert rh.c7_seed(arms)["chrono"] == {"scored": False, "refused": rh.K1G_CHRONO_REFUSED}
 
 
-def test_round4_the_k3_restore_resumes_the_phase_of_the_cut_night():
-    c = rh.seed_comparisons(_arms())["c6"]
-    assert c["K3_phase"] is True
+def test_round5_a_k1g_restore_that_carries_the_flushed_record_is_scored_and_clean():
+    c = rh.c7_seed(_k1g_restored(_k1g_arms()))
+    assert c["chrono"] == {"scored": True, "clean": True}
+    assert c["ok"] and c["K1g"], c
 
 
-@pytest.mark.parametrize("restored", [None, {"step": 0}, {"step": 5}, {"step": 11}])
-def test_round4_a_k3_restore_off_the_cut_nights_onset_is_a_red(restored):
-    arms = _arms()  # the twin cut at step 10; J_NIGHT sleep ticks put the onset in 7..10
+def test_round5_a_k1g_restore_that_dropped_the_flushed_record_is_a_chrono_fail_not_refused():
+    arms = _k1g_restored(_k1g_arms())
+    arms["res_K1g"]["construct_circadian_restored"] = (
+        None  # pre_ flushed step 6; the restore lost it
+    )
+    arms["res_K1g"]["construct_chrono"]["step"] = 0
+    c = rh.c7_seed(arms)
+    assert c["chrono"] == {"scored": True, "clean": False}
+    assert c["K1g"] is True and c["ok"] is False
+    del arms["res_K1g"]["construct_circadian_restored"]  # or never reported one
+    assert rh.c7_seed(arms)["chrono"] == {"scored": True, "clean": False}
+
+
+@pytest.mark.parametrize(
+    "over",
+    [
+        {"step": 7},  # the construction ticked, or the clock was not the record's
+        {"step": 0, "restored": 0},  # a stale phase: it agrees with itself, not with the parent
+        {"flushed": 4},  # the parent flushed another step than the record adopted
+        {"nights": 1},
+    ],
+)
+def test_round5_a_k1g_restore_whose_clock_is_off_the_flushed_record_is_scored_unclean(over):
+    c = rh.c7_seed(_k1g_restored(_k1g_arms(), **over))
+    assert c["chrono"] == {"scored": True, "clean": False}
+    assert c["K1g"] is True and c["ok"] is False, "the bar's other half still reads; ok needs both"
+
+
+def test_round5_the_percept_process_records_the_clock_the_chronology_read_needs():
+    src = inspect.getsource(rh.run_percept)
+    assert "construct_chrono" in src and "construct_circadian_restored" in src
+    assert "_track_clock" in src, "pre_K1g0 and pre_K1g record the step they last flushed"
+    assert src.index("_track_clock") < src.index("make_brain(")
+
+
+# ---- ROUND 5 (#7111 (1), #7103 MINOR-1): K3_phase is EQUAL to twin_K3's own onset step -----------
+#: tick order at circadian@1d87efd4: `_step += 1` (:3934), then `_enter_sleep` (:3939), whose
+#: persist block flushes the clock first (:3822-3824). twin_K3 records the step of the onset of the
+#: night it is cut in; the restore adopts exactly that record. The fixture's onset is step 8 and
+#: its cut step 10: J_NIGHT - 1 = 2 ticks later.
+
+
+def test_round5_the_k3_restore_resumes_the_phase_of_the_cut_night():
+    assert rh.seed_comparisons(_arms())["c6"]["K3_phase"] is True
+
+
+@pytest.mark.parametrize("restored", [None, {"step": 0}, {"step": 7}, {"step": 9}, {"step": 10}])
+def test_round5_a_k3_restore_off_the_onset_step_by_any_gap_is_a_red(restored):
+    arms = _arms()  # onset 8; 7 and 9 are the off-by-one gaps, 10 is the cut (gap J_NIGHT)
     arms["res_K3"]["construct_circadian_restored"] = restored
     assert rh.seed_comparisons(arms)["c6"]["K3_phase"] is False
 
 
-def test_round4_twin_k3_records_the_step_of_its_cut():
+@pytest.mark.parametrize("onset", [None, "8"])
+def test_round5_a_twin_k3_with_no_integer_onset_step_reads_false(onset):
+    arms = _arms()
+    arms["twin_K3"]["onset_step"] = onset
+    assert rh.seed_comparisons(arms)["c6"]["K3_phase"] is False
+
+
+def test_round5_twin_k3_records_the_onset_step_of_the_night_it_is_cut_in():
     src = inspect.getsource(rh.run_process)
-    assert "cut_step" in src and src.index("cut_step") < src.index("_sleep_rows(")
+    assert "onset_step" in src and src.index("onset_step") < src.index("_sleep_rows(")
+    assert "cut_step" not in src, "the onset replaces the cut step: the cut is not the record"
+    assert "_track_clock" in src and src.index("_track_clock") < src.index("make_brain(")
+    assert "cut_step" not in inspect.getsource(rh._k3_phase)
+
+
+def test_round5_the_k3_phase_docstring_cites_the_tick_order_not_a_window():
+    doc = " ".join(rh._k3_phase.__doc__.split())
+    assert "_enter_sleep" in doc and "0..J_NIGHT" not in doc
+
+
+# ---- ROUND 5 (#7103 NIT-2): c6 reads NOT MET on every seed until circadian stacks ---------------
+
+
+def test_round5_the_c6_docstring_says_a_red_k3_phase_is_not_an_instrument_fault():
+    doc = " ".join(rh.seed_comparisons.__doc__.split())
+    assert "K3_phase" in doc and "D-79" in doc and "circadian" in doc
+    assert "NOT MET" in doc
 
 
 # ---- ROUND 4 (B, #6987 MINOR-3 residual): a P3 campaign launches no base role -------------------

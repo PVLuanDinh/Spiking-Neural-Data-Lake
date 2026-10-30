@@ -1034,6 +1034,8 @@ def test_restart_hydrated_buffer_and_next_refit_equal_the_uninterrupted_twin(tmp
     from snn_data_lake.instruments import replay_hydration as rh
 
     arms = rh.run_seed(DEV_SEED, tmp_path, roles=["res_K1g", "twin_K1g"])
+    for role in ("twin_K1g", "res_K1g"):  # a failed arm shows its stderr, never a bare KeyError
+        assert "error" not in arms[role], (role, arms[role].get("error"), arms[role].get("stderr"))
     twin, res = arms["twin_K1g"], arms["res_K1g"]
     assert twin["before"]["buf_x"], "the twin must hold transitions past its first refit"
     assert twin["model"]["refit_row"], "the bar must compare a refit"
