@@ -147,7 +147,9 @@ class CircadianClock:
             if not (type(phase) is float and 0.0 <= phase < 1.0):
                 return False
             rng = _merge_state(None, sd["rng"])
-        except Exception:  # any decode failure, a deep-nesting RecursionError too (panel #7021)
+        # a decode failure, a deep-nesting RecursionError too (panel #7021); any other exception is
+        # a codec defect and reaches the caller (panel #7181 R3-MINOR-3, #7184 MINOR-2)
+        except (KeyError, TypeError, ValueError, RecursionError):
             return False
         # setstate checks the version and the 625 words but takes the cached gauss_next unchecked
         if type(rng) is not random.Random or type(rng.getstate()[2]) not in (float, type(None)):

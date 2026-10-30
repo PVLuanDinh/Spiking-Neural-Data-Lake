@@ -1173,13 +1173,11 @@ class Brain:
                     _ok[_key] = _accept(_key, _rec[_key])
                     if _ok[_key]:
                         continue
-                    for _name, _blob in _home.named_states(f"{REFUSED_PREFIX}{_key}."):
-                        try:
-                            if _accept(_key, json.loads(_blob.decode("ascii"))):
-                                _adopted.append(_name)
-                                break
-                        except Exception:  # a kept record is a candidate, never a reason to stop
-                            continue
+                    _name = self._adopt_kept(
+                        f"{REFUSED_PREFIX}{_key}.", lambda r, k=_key: _accept(k, r)
+                    )
+                    if _name:
+                        _adopted.append(_name)
                 self._prototypes_kept = len(_home.named_states(REFUSED_PREFIX))
                 self._real_units = (self._vis_learner.n_units if self._vis_learner else 0) + (
                     self._aud_learner.n_units if self._aud_learner else 0
@@ -4269,7 +4267,7 @@ class Brain:
             # brain is not None here: it says "not persisted" (panel #6911 MINOR-3)
             "circadian_restore": self._circadian_restore_note,
             "circadian_restored": self._circadian_restored,  # the record's step + phase, or None
-            "circadian_flush_failed": self._circadian_flush_failed,  # flushes that wrote nothing
+            "circadian_flush_failed": self._circadian_flush_failed,  # raised or keep failed
             "prototype_faults": self._prototype_faults,
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
@@ -5285,6 +5283,24 @@ class Brain:
         held = save_state(name, sub) or load_named_state(name) is not None
         return name if held else None
 
+    # consolidates: the prototype restore's and _restore_circadian's two inline retry loops.
+    # distinct-from: sleep/lake_consolidation.py -- picks which FACT records survive a prune; this
+    #   reads back the refused sub-records `_keep_refused` wrote and adopts one.
+    @staticmethod
+    def _adopt_kept(prefix, accept):
+        """R3-M2: retry the records `_keep_refused` kept under `prefix`, newest first; the name of
+        the first one `accept` adopts, else None. The one retry loop of both callers, the prototype
+        restore and `_restore_circadian` (lens C #7184 MINOR-5, P2)."""
+        from snn_data_lake.substrate.home import named_states
+
+        for name, blob in named_states(prefix):
+            try:
+                if accept(json.loads(blob.decode("ascii"))):
+                    return name
+            except Exception:  # a kept record is a candidate, never a reason to stop
+                continue
+        return None
+
     # P4b finding (iii): the clock phase is ONE named sub-record under _T_STATE (owner ruling A),
     #   through the same save_state/load_state pair as _flush_prototypes.
     # distinct-from: sleep/circadian_clock.py -- reused here (state_dict / load_state_dict), not rebuilt
@@ -5306,14 +5322,22 @@ class Brain:
         (`home._prune_state_history`), so at most ~10 circadian records (~76 KB) are live. That holds
         only while the night's replay succeeds (`records` is not None) and consolidate neither
         raises nor is refused (`ImmortalRefusal`); while it fails, the history grows by one record
-        an onset until a consolidation succeeds. Kept refusals are distinct names, never pruned.
+        an onset until a consolidation succeeds. A process that closes before its first night adds
+        one record (`close()`'s) that no prune of its own retires; the next process to reach a
+        consolidation night prunes it. Kept refusals are distinct names, never pruned.
         A lake without the record (written before it existed) is a FRESH DAY, as before, and the
         returned note says so; it is surfaced at `state()["circadian_restore"]`. A record this build
         refuses -- bound to another seed, day period or clock constants (FOREIGN: the note names the
-        keys), malformed to this build's validator, or one whose restore raises (a newer build's
-        layout after a rollback) -- is carried, kept by `_flush_circadian` before the first overwrite,
-        and the kept copies are retried newest first (P4b "foreign records preserved"; the prototype
-        path's R3-M2). Staleness: the record is written at each sleep onset and at `close()`, so a
+        keys it holds and differs on), malformed to this build's validator (a missing binding key or
+        a non-dict too), or one whose restore raises (a newer build's layout after a rollback, a
+        codec defect) -- is carried, kept by `_flush_circadian` before the first overwrite, and the
+        kept copies are retried newest first (`_adopt_kept`; P4b "foreign records preserved"; the
+        prototype path's R3-M2). A malformed record of this binding with a step adopts only a kept
+        copy at that step or later, so a rollback never jumps the clock back under 'adopted'. A
+        record whose read raised is re-read and kept at the first flush. A JSON null or non-JSON
+        record is NOT kept (its bytes are overwritten at the first flush; a bytes-level keep is
+        owed) and the note says so, never 'absent'. Staleness: the record is written at each sleep
+        onset and at `close()`, so a
         crash restores the last onset or close -- up to one day period old. The night's persist
         block is not atomic: a kill after the clock's flush but before the growth, prototype or
         coverage flushes finish restores night N's onset (asleep, so `_enter_sleep` does not re-run)
@@ -5322,30 +5346,35 @@ class Brain:
         night-cadence gates read `_nights`, so `state()` shows a resumed step beside a fresh night
         count, as before this record existed. Never raises."""
         self._circadian_carried = self._circadian_restored = None
+        self._circadian_reread = False
         if not self._persist:
             return "not persisted: fresh day"
         rec = None
         try:
-            from snn_data_lake.substrate.home import load_state, named_states
+            from snn_data_lake.substrate.home import load_named_state, load_state
 
             rec = load_state(CIRCADIAN_STATE, default=None)
-            if rec is None:
-                return "absent: fresh day (the lake holds no circadian record)"
+            if rec is None:  # load_state reads a JSON null or non-JSON bytes as absent too
+                if load_named_state(CIRCADIAN_STATE) is None:
+                    return "absent: fresh day (the lake holds no circadian record)"
+                return "refused: fresh day (not a JSON record: NOT kept)"
             foreign = self._circadian_foreign(rec)
             if not foreign and self._load_circadian(rec):
                 return None
             self._circadian_carried = rec
             why = f"record bound to another {foreign}" if foreign else "malformed record"
-            for name, blob in named_states(CIRCADIAN_REFUSED_PREFIX):
-                try:
-                    kept = json.loads(blob.decode("ascii"))
-                    if not self._circadian_foreign(kept) and self._load_circadian(kept):
-                        return f"refused: {why}; adopted: {[name]}"
-                except Exception:  # a kept record is a candidate, never a reason to stop
-                    continue
-            return f"refused: fresh day ({why})"
+            step = rec.get("step") if isinstance(rec, dict) else None
+            floor = step if not foreign and type(step) is int and step > 0 else 0
+            name = self._adopt_kept(
+                CIRCADIAN_REFUSED_PREFIX,
+                lambda kept: (
+                    not self._circadian_foreign(kept) and self._load_circadian(kept, floor)
+                ),
+            )
+            return f"refused: {why}; adopted: {[name]}" if name else f"refused: fresh day ({why})"
         except Exception as e:  # a broken record must never block brain construction
             self._circadian_carried = rec
+            self._circadian_reread = rec is None  # never read: the flush re-reads it to keep it
             return f"restore raised: fresh day ({e})"
 
     def _circadian_binding(self):
@@ -5365,13 +5394,19 @@ class Brain:
         }
 
     def _circadian_foreign(self, rec):
-        """The binding keys `rec` differs on, in binding order; empty if it is this brain's."""
-        return [k for k, v in self._circadian_binding().items() if rec.get(k) != v]
+        """The binding keys `rec` holds and differs on, in binding order; empty if it is this
+        brain's or not a dict. A missing key is malformed, not foreign (`_load_circadian`)."""
+        if not isinstance(rec, dict):
+            return []
+        return [k for k, v in self._circadian_binding().items() if k in rec and rec[k] != v]
 
-    def _load_circadian(self, rec):
-        """Adopt `rec`'s clock state and step; True if adopted, else the clock is untouched."""
+    def _load_circadian(self, rec, floor=0):
+        """Adopt `rec`'s clock state and step if it is a dict holding every binding key and a step
+        >= `floor`; True if adopted, else the clock is untouched."""
+        if not (isinstance(rec, dict) and rec.keys() >= self._circadian_binding().keys()):
+            return False
         step = rec.get("step")
-        if not (type(step) is int and step >= 0 and self.clock.load_state_dict(rec)):
+        if not (type(step) is int and step >= floor and self.clock.load_state_dict(rec)):
             return False
         self._step = step
         self._circadian_restored = {"step": step, "phase": self.clock.phase}
@@ -5379,15 +5414,19 @@ class Brain:
 
     def _flush_circadian(self):
         """Write the clock's state, step and binding (see `_restore_circadian`), FIRST in the
-        night's persist block; unchanged state writes nothing. A carried refused record is kept
-        first and the restore note names it (`; kept: [<name>]`); a failed keep writes nothing, so
+        night's persist block; unchanged state writes nothing. A carried refused record (or one the
+        restore's read raised on, re-read here) is kept first and the restore note names it
+        (`; kept: [<name>]`); a failed keep writes nothing, so
         the refused record is never overwritten. A flush that raises or whose keep fails is counted
         at `state()["circadian_flush_failed"]`. True if a record was written."""
         if not self._persist:
             return False
         try:
-            from snn_data_lake.substrate.home import save_state
+            from snn_data_lake.substrate.home import load_state, save_state
 
+            if self._circadian_reread:  # the restore's read raised: keep the record it never read
+                self._circadian_carried = load_state(CIRCADIAN_STATE, default=None)
+                self._circadian_reread = False
             carried = self._circadian_carried
             if carried is not None:
                 name = self._keep_refused("clock", carried, CIRCADIAN_REFUSED_PREFIX)
