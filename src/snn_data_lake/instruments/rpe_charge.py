@@ -2603,7 +2603,7 @@ def _selfcheck():
     print(
         f"rpe_charge self-check OK: planted-learning control t={ta:.1f}/{tb:.1f}, planted null refused, planted-harm "
         f"separated, MET/VOID status, 3 fixtures, exact mde factor {f:.3f} (rule {MDE_F}), neuter scoped to the arm "
-        "instance and restored. No brain was built; the campaign runs on the pushed head (integrator)."
+        "instance and restored, bind refuses by name without `_plan_w`. No brain was built; the campaign runs on the pushed head (integrator)."
     )
     return 0
 
