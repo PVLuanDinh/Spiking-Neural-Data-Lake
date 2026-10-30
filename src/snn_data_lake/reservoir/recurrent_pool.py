@@ -67,6 +67,7 @@ import zlib
 
 import numpy as np
 
+from snn_data_lake.growth.growable import grow_rows, grow_vector
 from snn_data_lake.reservoir.kernel_state import KernelState
 from snn_data_lake.reservoir.kernel_tick import KernelTick, Synapses
 
@@ -315,6 +316,25 @@ def _lsm_draw(seed, n, k, w):
 
 # distinct-from: instruments/everyday_battery.py -- sites read (a NamedTuple, prior_drift_harness's host recorder, episodic_recall's unbind); none limits BLAS threads
 # distinct-from: instruments/memory_diagnostic.py -- its L102 reports the loaded pools (threadpool_info), never limits them; pool_selection.py L684 CALLS this limiter
+# ---- a fed unit joins the pool as unit N (G3 grow round 2, RULING.md items 1-6, AMENDMENT 1) ------
+
+JOIN_TAG = "g3-join"
+
+
+def join_stream(join_seed, n):
+    """The declared join seed stream of the join that makes unit n: random.Random over the string
+    "g3-join|<join_seed>|<n>" (a str seed is hashed by sha512, the same on every run and platform),
+    so no join shares a stream with _lsm_draw's integer seeds or w_in's numpy stream."""
+    return random.Random(f"{JOIN_TAG}|{int(join_seed)}|{int(n)}")
+
+
+def _dale(sign):
+    """A joined unit's write-once Dale sign (grown_code.GrownUnit.sign): +1 or -1, nothing else."""
+    if isinstance(sign, bool) or sign not in (1, -1):
+        raise ValueError(f"REFUSED: a joined unit's Dale sign is +1 or -1, got {sign!r}")
+    return int(sign)
+
+
 def _blas_threads(limit):
     """threadpoolctl's limit on every loaded BLAS: R-b3, the cost and the harness's one-thread pin.
     BLAS only (G1(b) panel, 2026-09-25): an unscoped limit also caps torch's OpenMP runtime, so R-b3's
@@ -577,6 +597,7 @@ class KernelLsmPool(LsmPool):
         self._syn = None  # compiled by the first reset_carriers, from self.pre and self.w
         self._kt = None
         self._s = None
+        self._signs = None  # every born unit is unsigned; join() writes each joined unit's sign
         super().__init__(pre, w, config, form, w_in, **kwargs)
 
     # -- the host's tables -------------------------------------------------------------------------
@@ -599,6 +620,8 @@ class KernelLsmPool(LsmPool):
     def _start(self):
         state = KernelState([("pool", self.n)])
         state.arrays["thr"][:] = self.THR
+        if self._signs is not None:  # the network's write-once signs, never a carrier a reset wipes
+            state.arrays["sign"][:] = self._signs
         self._kt = KernelTick(
             state,
             self._syn,
@@ -683,6 +706,116 @@ class KernelLsmPool(LsmPool):
 
     def params_fingerprint(self):
         return _crc_arrays(self._live_edges(), _crc_arrays(self.params()))
+
+    # -- a fed unit joins as unit N (RULING.md items 1-6, AMENDMENT 1) -----------------------------
+
+    @property
+    def signs(self):
+        """Each unit's write-once Dale sign: 0 for a born (unsigned) unit, s_j for a joined one."""
+        return np.zeros(self.n, dtype=np.int8) if self._signs is None else self._signs
+
+    def _join_stream(self, join_seed):
+        return join_stream(join_seed, self.n)
+
+    def _retarget_p(self):
+        """A4's coin: 2/(N+1), so with half the entries sign-matched each ends at N w.p. 1/(N+1)."""
+        return 2 / (self.n + 1)
+
+    def join(self, sign, join_seed, encoder_row=None):
+        """Draw the join that makes unit N = self.n from the declared join stream, apply it, and
+        return its journal row (apply_join's input). Row N first (B1): k pairs (randrange(N+1),
+        uniform(-w, w)), an entry whose pre is a signed unit (self included) weighted s_pre * |u|
+        (AMENDMENT 1). Then A4's coin, sign-matched: every existing entry whose weight sign is
+        `sign`, rows then slots in order, moves to pre = N with probability _retarget_p(), keeping
+        its weight. A row with no entry of that sign takes no edge from N: counted, never forced.
+        No cap: N is any size; the pace is the caller's (GrowthLoop's admission, P4d budget)."""
+        sign = _dale(sign)
+        bound = self.config.get("w")
+        if bound is None:
+            raise ValueError("REFUSED: a join draws by the pool's weight bound w; none is set")
+        n, k = self.n, self.pre.shape[1]
+        rng = self._join_stream(join_seed)
+        signs = np.append(self.signs, np.int8(sign))
+        pre_row, w_row = [], []
+        for _ in range(k):
+            p, u = rng.randrange(n + 1), rng.uniform(-float(bound), float(bound))
+            pre_row.append(p)
+            w_row.append(u if signs[p] == 0 else int(signs[p]) * abs(u))
+        matched = np.sign(self.w) == sign
+        chance = self._retarget_p()
+        retargeted = [[int(i), int(c)] for i, c in zip(*np.nonzero(matched), strict=True)]
+        retargeted = [cell for cell in retargeted if rng.random() < chance]
+        record = {
+            "n": n,
+            "sign": sign,
+            "seed": int(join_seed),
+            "retargeted": retargeted,
+            "pre_row": pre_row,
+            "w_row": w_row,
+            "encoder_row": None if encoder_row is None else [float(x) for x in encoder_row],
+            "rows_without_sign": int(np.count_nonzero(~matched.any(axis=1))),
+        }
+        return self.apply_join(record)
+
+    def apply_join(self, record):
+        """Apply one join row: the live join and a restart's rebuild (P4b) are this one path, and
+        neither draws. Unit N takes row N, its sign and its encoder row; each listed (row, slot)
+        entry points at N with its weight kept; the carriers, the accumulators and the tick index
+        are carried bytewise (unit N starts at rest); the table is recompiled and the boundary
+        fingerprint re-anchored (a journaled re-boundary per join). Returns the record with the
+        new boundary. REFUSED, before any write: a record for another N, a lesioned pool, a bundle
+        in flight, a malformed row, a signed pre whose weight breaks its sign, a retargeted entry
+        whose weight is not the unit's sign (C17), an encoder row that is not 64 finite values."""
+        n, k = self.n, self.pre.shape[1]
+        sign = _dale(record["sign"])
+        if int(record["n"]) != n:
+            raise ValueError(f"REFUSED: the join row makes unit {record['n']}, this pool's is {n}")
+        if self.lesion_record is not None:
+            raise ValueError("REFUSED: a lesioned front_end pool takes no join")
+        if any(slot for ring in self._kt._rings for slot in ring):
+            raise ValueError("REFUSED: a delay ring holds an in-flight bundle at a join")
+        pre_row = np.asarray(record["pre_row"], dtype=np.int64)
+        w_row = np.asarray(record["w_row"], dtype=np.float64)
+        if pre_row.shape != (k,) or w_row.shape != (k,) or not np.all(np.isfinite(w_row)):
+            raise ValueError(f"REFUSED: row N is k = {k} finite entries")
+        if np.any(pre_row < 0) or np.any(pre_row > n):
+            raise ValueError(f"REFUSED: row N's pre indices lie outside 0..{n}")
+        signs = np.append(self.signs, np.int8(sign))
+        if np.any((signs[pre_row] != 0) & (np.sign(w_row) * signs[pre_row] < 0)):
+            raise ValueError("REFUSED: an entry from a signed unit breaks its Dale sign (C17)")
+        cells = np.asarray(record["retargeted"], dtype=np.int64).reshape(-1, 2)
+        if np.any(cells < 0) or np.any(cells[:, 0] >= n) or np.any(cells[:, 1] >= k):
+            raise ValueError("REFUSED: a retargeted entry lies outside the pool's rows and slots")
+        if np.any(np.sign(self.w[cells[:, 0], cells[:, 1]]) != sign):
+            raise ValueError("REFUSED: a retargeted entry's weight is not the unit's sign (C17)")
+        row = record.get("encoder_row")
+        if (row is None) != (self.w_in is None):
+            raise ValueError("REFUSED: an encoder row joins a pool with an encoder, and only one")
+        if row is not None:
+            row = np.asarray(row, dtype=np.float64)
+            if row.shape != (N_IN,) or not np.all(np.isfinite(row)):
+                raise ValueError(f"REFUSED: the encoder row is not {N_IN} finite values")
+        pre = np.array(grow_rows(self.pre.tolist(), n + 1), dtype=np.int64)
+        weights = np.array(grow_rows(self.w.tolist(), n + 1), dtype=np.float64)
+        pre[n], weights[n] = pre_row, w_row
+        pre[cells[:, 0], cells[:, 1]] = n
+        old_kt, old_s = self._kt, self._s
+        self.pre, self.w, self.n, self._signs = pre, weights, n + 1, signs
+        if row is not None:
+            self.w_in = np.array(grow_rows(self.w_in.tolist(), n + 1), dtype=np.float64)
+            self.w_in[n] = row
+        self._syn = self._compile()
+        self._start()
+        for key, old in old_kt.state.arrays.items():
+            fresh = self._kt.state.arrays[key]
+            fresh[:] = grow_vector(old.tolist(), n + 1, fill=fresh[n].item())
+        for part in range(self.p_parts):
+            self._kt._acc[part][:] = grow_vector(old_kt._acc[part].tolist(), n + 1)
+        self._kt.tick_index = old_kt.tick_index
+        self._s = np.array(grow_vector(old_s.tolist(), n + 1, fill=False), dtype=bool)
+        if self.boundary is not None:
+            self.boundary = self.params_fingerprint()
+        return dict(record, n=n, sign=sign, boundary=self.boundary)
 
     def fingerprint(self):
         """crc32 of the complete continuation state, independent of P: the percept count and the
