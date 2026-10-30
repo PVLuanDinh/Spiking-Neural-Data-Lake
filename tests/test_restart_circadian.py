@@ -46,7 +46,28 @@ if "rewrite_gauss_next" in spec:  # the cached normal inside the codec's encoded
     rec = home.load_state(CIRCADIAN_STATE)
     rec["rng"]["state"]["items"][2] = spec["rewrite_gauss_next"]
     home.save_state(CIRCADIAN_STATE, rec)
+if "replace_bytes" in spec:  # a JSON null or a non-JSON blob: load_state reads either as absent
+    home.save_named_state(CIRCADIAN_STATE, spec["replace_bytes"].encode("ascii"))
 written = home.load_state(CIRCADIAN_STATE, default=None)
+load_state = home.load_state
+if spec.get("restore_raises"):  # the restore's read raises (a lake that will not open), once
+
+    def _raising(name, default=None):
+        if name == CIRCADIAN_STATE:
+            raise OSError("lake will not open")
+        return load_state(name, default)
+
+    home.load_state = _raising
+from snn_data_lake.readout import interaction_learning
+merge = interaction_learning._merge_state
+if spec.get("codec_raises"):  # a defect in the shared codec, not a malformed record
+
+    def _broken(target, saved):
+        if isinstance(saved, dict) and saved.get("__kind__") == "random":
+            raise RuntimeError("codec defect")
+        return merge(target, saved)
+
+    interaction_learning._merge_state = _broken
 
 def count_records():
     names = (home._unpack_state(p) for p in home._log().replay() if p[:1] == home._T_STATE)
@@ -57,6 +78,7 @@ def clock(b):
     return {"step": b._step, "phase": b.clock.phase, "rng": rng}
 
 b = make_brain(seed=spec["seed"], persist=True, device="cpu")
+home.load_state, interaction_learning._merge_state = load_state, merge
 s = b.state()
 # .get: the same child runs on the unfixed base (no such keys), where the red must fail
 # on its assert, never on a crash
@@ -82,6 +104,7 @@ while woke < into_day if into_day is not None else ticks < spec.get("ticks", 0):
         woke += 1
 out.update(cut=ticks, at=clock(b), after=[b.tick() for _ in range(spec.get("after", 0))])
 out.update(nights=b._nights, flush_failed=b.state().get("circadian_flush_failed"))
+out.update(lake_night=b._lake_night)
 b.close()
 rec = home.load_state(CIRCADIAN_STATE, default=None)
 kept = home.named_states("circadian_clock.refused.")

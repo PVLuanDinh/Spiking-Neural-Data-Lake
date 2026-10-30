@@ -179,13 +179,71 @@ def test_a_malformed_record_adopts_the_newest_kept_copy_it_can_load(tmp_path):
     assert out["restored"]["step"] == 5, out["restored"]
 
 
+def test_a_malformed_record_never_adopts_a_kept_copy_older_than_its_step(tmp_path):
+    """Lens A R3-MINOR-2 (#7181): a malformed record bound to this brain at step 9 (a rollback)
+    must not adopt the step-5 kept copy, or the clock jumps back under an 'adopted' note; with no
+    kept copy at step >= 9 it is a fresh day."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    run_brain(home, seed=SEED + 1)
+    note = _fresh(run_brain(home, seed=SEED, rewrite={"seed": SEED, "step": 9, "phase": 1.5}))
+    assert note == "refused: fresh day (malformed record)", note
+
+
+@pytest.mark.parametrize("replace", [[1, 2], {}])
+def test_a_record_not_in_this_builds_layout_is_malformed_and_adopts_a_kept_copy(tmp_path, replace):
+    """Lens C MINOR-3/MINOR-4 (#7184): a non-dict record raised at `rec.get` and skipped the
+    kept-copy retry, and {} was reported foreign on all six binding keys. Both are malformed: a
+    stray seed keeps seed S's step-5 record, then a record of either layout adopts it."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    run_brain(home, seed=SEED + 1)
+    out = run_brain(home, seed=SEED, replace=replace)
+    assert out["note"].startswith("refused: malformed record; adopted:"), out["note"]
+    assert out["restored"]["step"] == 5, out["restored"]
+
+
+@pytest.mark.parametrize("blob", ["null", "{not json"])
+def test_a_record_that_is_not_json_is_not_reported_absent(tmp_path, blob):
+    """Lens C MINOR-1 (#7184), lens A R3-MINOR-1(a) (#7181): load_state reads a JSON null or a
+    non-JSON blob as its default, so the restore said the lake holds no record, which is false.
+    The note says the record is not JSON and was NOT kept (a bytes-level keep is OWED)."""
+    note = _fresh(run_brain(private_home(tmp_path, "h"), seed=SEED, replace_bytes=blob))
+    assert note == "refused: fresh day (not a JSON record: NOT kept)", note
+
+
+def test_a_record_the_restore_could_not_read_is_kept_before_it_is_overwritten(tmp_path):
+    """Lens A R3-MINOR-1(b) (#7181), enforcer concurring (#7205): the restore's read raised, so
+    nothing was carried and the first flush superseded the record unkept. The flush re-reads the
+    record and keeps it before the first overwrite."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    out = run_brain(home, seed=SEED, restore_raises=True)
+    assert out["step"] == 0 and out["note"].startswith("restore raised"), out["note"]
+    names = [name for name, rec in out["kept"].items() if rec == out["written"]]
+    assert names and out["note_at_close"].endswith(f"; kept: {names}"), out["note_at_close"]
+
+
+def test_a_codec_defect_is_reported_as_raised_not_malformed(tmp_path):
+    """Lens C MINOR-2 (#7184), lens A R3-MINOR-3 (#7181): load_state_dict refuses only a decode
+    failure (KeyError, TypeError, ValueError, RecursionError); a defect in the shared codec reaches
+    the restore as 'restore raised: <exc>', still kept, still a fresh day."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    out = run_brain(home, seed=SEED, codec_raises=True)
+    assert out["step"] == 0 and out["note"] == "restore raised: fresh day (codec defect)", out
+    assert any(rec == out["written"] for rec in out["kept"].values()), out["kept"]
+
+
 def test_superseded_circadian_records_are_retired_by_the_nights_consolidation(tmp_path):
     """Lens A MAJOR-A (#7028), lens C MAJOR-B (#7021), enforcer MAJOR-1 (#7053): the night block's
     `klog.consolidate` (nights % 8 == 0, `records` not None) runs `_prune_state_history` before the
     night's flush, so the live circadian history is bounded (at most 8 onsets after a prune, plus
     the survivor and close()'s record), and after a consolidation only the newest record remains.
-    A pin of the tree's prune: no circadian code drives it."""
+    A pin of the tree's prune: no circadian code drives it. Enforcer MINOR (#7205): the bound is
+    asserted against the unpruned count (one record an onset plus close()'s), which a run whose
+    night block never consolidated would reach, and the in-run consolidation's night is read."""
     out = run_brain(private_home(tmp_path, "h"), seed=SEED, ticks=400, consolidate=True)
-    assert out["nights"] >= 9, out["nights"]  # crossed at least one nights % 8 == 0 after night 0
-    assert 1 <= out["record_count"] <= 10, out["record_count"]
+    assert out["lake_night"] >= 8, out["lake_night"]  # the night block consolidated after night 0
+    assert 1 <= out["record_count"] < out["nights"] + 1, (out["record_count"], out["nights"])
     assert (out["consolidated_count"], out["consolidated"]) == (1, out["record"])
