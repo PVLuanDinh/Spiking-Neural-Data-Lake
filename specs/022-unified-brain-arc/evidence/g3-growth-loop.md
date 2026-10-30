@@ -1252,3 +1252,8 @@ Configuration versioning, Dale and the rebuilt isolation guards retain their con
 - **No code may treat a tested N as a maximum.** A measurement point is a place the arm looks, never a bound the pool may not pass.
 - **Owed to the integrator (P3 / P4d conflict).** The refusal `growth/feed_readout.py:89-90` is a hard maximum on N, and its message
   ('N>256 growth target unratified') is now false; its two tests above pin it. They are NOT changed here (docs only); they are listed in the g3-arms REPORT.md, Round 3, as OWED for the build that admits N > 256.
+- **Measurement points, named before any seed (g3-grow, claude/g3-grow-1029@19bc62b2, #7127; recorded by the integrator).** N = 257, the
+  smallest N above the engine's 256 (reservoir/recurrent_pool.py:73), and N = 512, the first doubling of the last determinism-checked
+  size. Neither is a cap. The refusal at growth/feed_readout.py:89-90 is REMOVED at 19bc62b2 with its three pinning tests re-pointed in
+  that commit. Still OWED: the fed-unit-joins-the-reservoir build (design options A-E in lanes/engine-1024/g3-grow-row/REPORT.md, under
+  the owner's research-and-debate order) and a second hard N = 256 in reservoir/recurrent_pool.py _encoder_shaped (:185-189).
