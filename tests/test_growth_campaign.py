@@ -123,7 +123,7 @@ def test_preflight_requires_the_go_to_be_a_non_empty_string(go):
 
 @pytest.mark.parametrize("gap", [9116, 9199, 9216, 9299, 9316, 9500, 9899])
 def test_preflight_refuses_seeds_in_the_unregistered_gaps_of_g3s_block(gap):
-    with pytest.raises(PermissionError):
+    with pytest.raises(PermissionError, match="no registered block"):
         gc.preflight([gap])
 
 
