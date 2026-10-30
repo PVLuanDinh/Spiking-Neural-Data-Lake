@@ -6313,8 +6313,8 @@ class Brain:
         # this method must not be what decides whether the brain keeps what it grew.
         self._flush_growth()
         self._flush_prototypes()  # rank 2b
-        # P4b (iii): after growth, unlike the night block's clock-first order -- a graceful close
-        # finishes every flush, so only the growth-first rule above decides this order
+        # P4b (iii): after growth -- a graceful close finishes every flush, so the night block's
+        # clock-first order is not needed here
         self._flush_circadian()
         self._flush_coverage()  # T038
         self._flush_interaction_learner()

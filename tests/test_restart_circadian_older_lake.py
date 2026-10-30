@@ -10,7 +10,8 @@ from tests.test_restart_circadian import SEED, private_home, run_brain
 
 pytestmark = pytest.mark.slow
 
-_DEEP = 0  # a list 1,200 deep: the codec's staging recurses once a level (RecursionError)
+# a list 1,200 deep: the codec's staging recurses once a level (RecursionError)
+_DEEP = 0
 for _ in range(1200):
     _DEEP = [_DEEP]
 
@@ -116,9 +117,6 @@ def test_a_kill_right_after_the_growth_flush_restores_that_nights_onset(tmp_path
     assert restored["note"] is None and restored["step"] == killed["killed_at"], restored
 
 
-# ---- round 3 (#7021 / #7028 / #7053) ----
-
-
 @pytest.mark.parametrize(
     "rewrite, replace",
     [
@@ -168,7 +166,7 @@ def test_a_failed_circadian_flush_is_counted(tmp_path):
 
 
 def test_a_malformed_record_adopts_the_newest_kept_copy_it_can_load(tmp_path):
-    """Coverage review: a malformed record now retries the kept copies, as a foreign one does,
+    """Coverage review: a malformed record retries the kept copies, as a foreign one does,
     and skips a kept copy it cannot load. A stray seed keeps seed S's step-5 record; a second
     stray keeps an unloadable record newest; a record bound to S with a bool step then adopts
     the step-5 copy."""
@@ -186,7 +184,7 @@ def test_superseded_circadian_records_are_retired_by_the_nights_consolidation(tm
     `klog.consolidate` (nights % 8 == 0, `records` not None) runs `_prune_state_history` before the
     night's flush, so the live circadian history is bounded (at most 8 onsets after a prune, plus
     the survivor and close()'s record), and after a consolidation only the newest record remains.
-    A pin of the tree's prune, not a red: the night block is unchanged by this round."""
+    A pin of the tree's prune: no circadian code drives it."""
     out = run_brain(private_home(tmp_path, "h"), seed=SEED, ticks=400, consolidate=True)
     assert out["nights"] >= 9, out["nights"]  # crossed at least one nights % 8 == 0 after night 0
     assert 1 <= out["record_count"] <= 10, out["record_count"]
