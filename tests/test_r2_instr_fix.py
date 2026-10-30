@@ -8,7 +8,9 @@ or reserve seed is ever run."""
 import copy
 import inspect
 import json
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from test_r2_p3_percept_transitions import _chain, _hydrate, _pairs
@@ -1276,3 +1278,123 @@ def test_round4_the_instrument_says_it_is_the_only_r2_c7_reading():
     doc = " ".join(rh.__doc__.split())
     assert "by a second procedure" not in doc
     assert "holds no second copy" in doc
+
+
+# ---- ROUND 7 (#7204 MINOR-1, #7210 MINOR-1): 'pre_ flushed' means WROTE, not CALLED --------------
+#: At circadian@1abbbcff `_flush_circadian` returns False and writes nothing when it raises or the
+#: keep fails (engine/brain.py:5394-5403). A failed call must not move `flushed_step`; it goes to
+#: `flush_failed_steps` and reads as its own named cause, never as 'the restore dropped the record'.
+
+
+def _fake_brain(monkeypatch):
+    """A stand-in Brain with the two methods `_track_clock` wraps; no brain, no torch. Its flush
+    returns the instance's `ok`."""
+
+    class Brain:
+        ok = True
+        _step = 0
+
+        def _flush_circadian(self, *a, **kw):
+            return self.ok
+
+        def _enter_sleep(self, *a, **kw):
+            return "slept"
+
+    monkeypatch.setitem(sys.modules, "snn_data_lake.engine.brain", SimpleNamespace(Brain=Brain))
+    return Brain()
+
+
+def test_round7_a_flush_that_returns_false_leaves_flushed_step_at_the_last_truthy_step(
+    monkeypatch,
+):
+    brain, result = _fake_brain(monkeypatch), {}
+    rh._track_clock("pre_K0", result)
+    brain._step = 4
+    assert brain._flush_circadian() is True and result["flushed_step"] == 4
+    brain.ok, brain._step = False, 6
+    assert brain._flush_circadian() is False
+    assert result["flushed_step"] == 4, "CALLED at step 6 is not WROTE"
+    assert result["flush_failed_steps"] == [6]
+
+
+def test_round7_a_pre_arm_whose_every_flush_failed_wrote_none(monkeypatch):
+    brain, result = _fake_brain(monkeypatch), {}
+    brain.ok = False
+    rh._track_clock("pre_K0", result)
+    for step in (3, 5):
+        brain._step = step
+        assert brain._flush_circadian() is False
+    assert result["flushed_step"] is None and result["flush_failed_steps"] == [3, 5]
+
+
+def test_round7_the_wrapper_passes_the_flush_result_through_and_notes_the_step(monkeypatch):
+    brain, result = _fake_brain(monkeypatch), {}
+    rh._track_clock("pre_K1g", result)
+    brain._step = 8
+    assert brain._flush_circadian() is True
+    assert result["flushed_step"] == 8 and not result.get("flush_failed_steps")
+
+
+def test_round7_a_role_that_is_not_pre_notes_no_flush_and_twin_k3_notes_its_onset(monkeypatch):
+    brain, result = _fake_brain(monkeypatch), {}
+    seen = rh._track_clock("twin_K3", result)
+    brain._step = 10
+    assert brain._flush_circadian() is True and "flushed_step" not in result
+    assert brain._enter_sleep() == "slept" and seen["onset"] == 10
+
+
+@pytest.mark.parametrize("restored", [None, {"step": 6}])
+def test_round7_a_failed_flush_on_pre_k1g_is_its_own_named_chrono_fail(restored):
+    arms = _k1g_arms()
+    arms["pre_K1g"]["flushed_step"] = None
+    arms["pre_K1g"]["flush_failed_steps"] = [6]
+    arms["res_K1g"]["construct_circadian_restored"] = restored
+    c = rh.c7_seed(arms)
+    assert c["chrono"] == {"scored": True, "clean": False, "fail": rh.K1G_CHRONO_FLUSH_FAILED}
+    assert c["chrono"]["fail"] != rh.K1G_CHRONO_NO_LINEAGE
+    assert c["K1g"] is True and c["ok"] is False
+    assert "returned False" in rh.K1G_CHRONO_FLUSH_FAILED
+    assert "dropped" not in rh.K1G_CHRONO_FLUSH_FAILED
+
+
+def test_round7_a_failed_flush_after_a_written_one_still_scores_against_the_written_step():
+    arms = _k1g_restored(_k1g_arms())  # pre_K1g WROTE step 6; the restore carries 6
+    arms["pre_K1g"]["flush_failed_steps"] = [9]
+    assert rh.c7_seed(arms)["chrono"] == {"scored": True, "clean": True}
+
+
+def test_round7_a_failed_flush_on_pre_k3_is_a_false_k3_phase_with_its_own_name():
+    arms = _arms()
+    arms["pre_K3"]["flushed_step"] = None
+    arms["pre_K3"]["flush_failed_steps"] = [8]
+    c = rh.seed_comparisons(arms)
+    assert c["c6"]["K3_phase"] is False and "k3_phase_refused" not in c
+    assert c["k3_phase_flush_failed"] == rh.K3_PHASE_FLUSH_FAILED
+    assert "returned False" in rh.K3_PHASE_FLUSH_FAILED
+
+
+def test_round7_the_docstrings_say_flushed_means_wrote():
+    for fn in (rh._track_clock, rh.c7_seed, rh.seed_comparisons):
+        assert "WROTE" in " ".join(fn.__doc__.split()), fn.__name__
+
+
+# ---- ROUND 7 (#7210 item 4): the round-5 red, FLIPPED not deleted --------------------------------
+
+
+def test_round5_the_branch_is_not_keyed_on_the_restored_record():
+    arms = _k1g_arms()  # the parent flushed none, yet the restore reports a record
+    arms["res_K1g"]["construct_circadian_restored"] = {"step": 6}
+    c = rh.c7_seed(arms)["chrono"]
+    assert c == {"scored": True, "clean": False, "fail": rh.K1G_CHRONO_NO_LINEAGE}
+
+
+# ---- ROUND 7 (#7210 NIT): the K3_phase refusal does not hide the isolation defect --------------
+
+
+def test_round7_a_restored_record_with_a_non_int_parent_flush_is_still_unclean_for_res_k3():
+    assert not rh.chrono_clean(_constructed(6, {"step": 6}), _parent(None))
+
+
+def test_round7_the_k3_phase_docstring_says_chrono_clean_still_catches_the_isolation_defect():
+    doc = " ".join(rh._k3_phase.__doc__.split())
+    assert "chrono_clean" in doc and "res_K3" in doc and "isolation" in doc
