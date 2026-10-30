@@ -663,11 +663,11 @@ some calls would pass. It gets a `driver_check` mutant: the default design must 
   - a positional mix-up confined to the first 9 seeds.
 - These are the dry pin's disclosed limits. The live campaign pairs by seed key, not by position.
 
-## Results (campaign of record; DRAFT while the campaign runs)
+## Results (RESULTS OF RECORD (campaign ended 2026-10-29 22:18))
 
-Append-only record of the E1d campaign (T124). Written 2026-10-29 by lane e1d-record while the campaign runs. Every
-number below is quoted from the file named beside it, never recomputed. Nothing here is a verdict: the decision of
-record at each look is the line the campaign's compare tool printed, and a section marked OWED is empty on purpose.
+Append-only record of the E1d campaign (T124). Written 2026-10-29 by lane e1d-record; round 4 (2026-10-29, after the campaign ended at look 10) fills looks 6 to 10 and the disposition. Every
+number below is quoted from the file named beside it, never recomputed. The decision of
+record at each look is the line the campaign's compare tool printed; look 10 (R12) is the stop of record.
 
 ### R0. Campaign identity
 
@@ -970,24 +970,522 @@ L721: - perception tier of every number above: production (reported eprop-snn)
 L724: wall: total run_s over runs = 17903s (643 runs)
 ```
 
-### R8. Looks 6 to 11: OWED
+### R8. Look 6 of 11 (n = 384)
 
-Each is filled from its report with the same lines as R3 and R4 (the full set: VALIDITY, H-P1, sequential decision of record, stratum, sensitivity, exact-zero, E-P2 "no stop of record yet", the tail-census list, the perception-tier line and the wall line), verbatim with report line numbers. R5 to R7 carry that full set since round 3. Nothing is entered until the report exists.
+Source: `lanes/e1d-plan-w-work/reports/compare-production-look6.md` (858 lines), sha256 `8ae633c81fee73f6e2631fe71435b43f8e6c15360258b426b927ef034014fe7b`. Board record: #6852 (2026-10-29T17:41:39-05:00, e1d-b3, status): "E1d look 6 done: 771 runs done in total; per-run median 29s (tier production = eprop-snn); pauses so far 0". Boundary t 2.480 (E1c section 5). Report lines copied verbatim below, each prefixed by its line number in the report; no interpretation.
 
-| Look | n | Boundary t (E1c section 5) | Source report | State |
-|---|---|---|---|---|
-| 6 | 384 | 2.480 | `reports/compare-production-look6.md` | OWED |
-| 7 | 448 | 2.285 | `reports/compare-production-look7.md` | OWED |
-| 8 | 512 | 2.130 | `reports/compare-production-look8.md` | OWED |
-| 9 | 576 | 2.002 | `reports/compare-production-look9.md` | OWED |
-| 10 | 640 | 1.896 | `reports/compare-production-look10.md` | OWED (futility opens here, section 4b) |
-| 11 | 704 | 1.804 | `reports/compare-production-look11.md` | OWED (the hard cap) |
+```text
+L776: - tree sha(s) in this tier: ['c4c10b285f1741aa798d5ee9c5296ae371fabecf']
+L777: - native sha256(s) in this tier: ['fb25d9a9bbc7e9e889721e46d952054b59150ab9d2a5644757caf7e97368110b']
+L778: - repeat arm (real seed 23000 again): action flips 0 first=None; recorded series identical: True
+L779: - pc seed 23000: action flips 383 (first 8)
+L780: - pc seed 23001: action flips 430 (first 4)
+L781: - **VALIDITY: ALL HOLD**
+L784: - t=0.587 (200/384 seeds > 0), SD=0.2986 -> **CONTINUE: no verdict (CONTINUE at look 6 of 11, n=384 (no verdict): next look n=448 | beside (no bar): k 200/384, trim10 +0.0175, HL +0.0174 [-0.0040, +0.0388], zeros 0.016, |d|>0.4 51)**
+L785: - stratum (DESCRIPTIVE ONLY, decides nothing): 46/384 seeds goal-frozen; H-P1 within frozen t=0.385 (24/46), within moving t=0.495 (176/338); real/pfrozen frozen status disagrees on 34 seeds (pfrozen held_goal missing on 0)
+L786: - sequential decision of record: look 6 of 11, n=384: t=0.587 vs boundary 2.480, 200/384 > 0 (need 192), conditional power 0.527 (futility < 0.1, closed at this look) -> continue
+L787: - sensitivity H-P1 without degenerate seeds [23008, 23208, 23292, 23308, 23312, 23327]: t=0.587 (199/378)
+L790: - no stop of record yet
+L799: - n=384: exact-zero 0.016
+L801: ## Tail census (|d| > 0.4; beside, no bar)
+L803: - seed 23019: d +0.4390, first divergence tick 8
+L804: - seed 23022: d +0.4384, first divergence tick 211
+L805: - seed 23025: d +0.4629, first divergence tick 150
+L806: - seed 23041: d +0.7285, first divergence tick 38
+L807: - seed 23049: d +0.5888, first divergence tick 49
+L808: - seed 23058: d -0.6588, first divergence tick 46
+L809: - seed 23061: d -0.4162, first divergence tick 197
+L810: - seed 23065: d +0.5326, first divergence tick 44
+L811: - seed 23068: d +1.4218, first divergence tick 32
+L812: - seed 23069: d -0.5162, first divergence tick 52
+L813: - seed 23072: d -0.4300, first divergence tick 71
+L814: - seed 23082: d -0.5967, first divergence tick 60
+L815: - seed 23086: d +0.6256, first divergence tick 149
+L816: - seed 23098: d -1.2385, first divergence tick 87
+L817: - seed 23100: d -0.7583, first divergence tick 322
+L818: - seed 23101: d -0.5626, first divergence tick 49
+L819: - seed 23105: d -0.4406, first divergence tick 76
+L820: - seed 23109: d +0.7346, first divergence tick 163
+L821: - seed 23118: d +0.9959, first divergence tick 103
+L822: - seed 23120: d -0.4359, first divergence tick 154
+L823: - seed 23121: d +0.4562, first divergence tick 28
+L824: - seed 23126: d -1.3311, first divergence tick 12
+L825: - seed 23130: d +0.5564, first divergence tick 120
+L826: - seed 23141: d -0.6272, first divergence tick 9
+L827: - seed 23142: d +0.7788, first divergence tick 44
+L828: - seed 23144: d +0.4982, first divergence tick 56
+L829: - seed 23151: d +0.5854, first divergence tick 75
+L830: - seed 23153: d -0.5578, first divergence tick 20
+L831: - seed 23157: d -0.4943, first divergence tick 125
+L832: - seed 23177: d +0.4998, first divergence tick 20
+L833: - seed 23200: d -0.4239, first divergence tick 69
+L834: - seed 23204: d +0.6167, first divergence tick 104
+L835: - seed 23207: d +0.6531, first divergence tick 157
+L836: - seed 23210: d +0.4490, first divergence tick 125
+L837: - seed 23217: d -0.6207, first divergence tick 32
+L838: - seed 23235: d -0.8695, first divergence tick 87
+L839: - seed 23238: d -0.5417, first divergence tick 22
+L840: - seed 23239: d +0.4039, first divergence tick 68
+L841: - seed 23262: d -0.5629, first divergence tick 108
+L842: - seed 23271: d -1.3950, first divergence tick 46
+L843: - seed 23283: d +0.5252, first divergence tick 35
+L844: - seed 23291: d +0.4246, first divergence tick 139
+L845: - seed 23295: d +0.5248, first divergence tick 54
+L846: - seed 23302: d -1.1643, first divergence tick 56
+L847: - seed 23309: d -0.6623, first divergence tick 28
+L848: - seed 23319: d +0.4112, first divergence tick 59
+L849: - seed 23332: d -0.4408, first divergence tick 39
+L850: - seed 23336: d -0.4945, first divergence tick 34
+L851: - seed 23361: d -0.4511, first divergence tick 85
+L852: - seed 23362: d +1.4175, first divergence tick 30
+L853: - seed 23375: d -0.8022, first divergence tick 46
+L855: - perception tier of every number above: production (reported eprop-snn)
+L856: - validity ALL HOLD: no stop of record yet (no verdict).
+L858: wall: total run_s over runs = 21575s (771 runs)
+```
 
-Look 1 and 2 boundaries (7.627, 4.639) are in R3 and R4; looks 3 to 5 are quoted from their reports in R5 to R7. The per-look t list is E1c section 5's, quoted above; the mapping of the eleven values to looks 1-11 is by order.
+### R9. Look 7 of 11 (n = 448)
 
-### R9. Disposition: OWED
+Source: `lanes/e1d-plan-w-work/reports/compare-production-look7.md` (1000 lines), sha256 `aad47912df9e5328a15bf3ad582b85b6889104ada0b6c8c5df57dd216a3d8297`. Board record: #7069 (2026-10-29T18:52:15-05:00, e1d-b3, status): "E1d look 7 done: 899 runs done in total; per-run median 29s (tier production = eprop-snn); pauses so far 0". Boundary t 2.285 (E1c section 5). Report lines copied verbatim below, each prefixed by its line number in the report; no interpretation.
 
-OWED. It is the integrator's, under section 8, from the stop of record (harm boundary crossed with k >= ceil(n/2),
-futility at n = 640 where powered, or the uncrossed cap at n = 704), and it names its mde where P8 null-scale item 4
-needs it. The campaign's own final report (`reports/` and `logs/campaign.console`) is the source. A futility stop or an
-uncrossed cap is NOT a null.
+```text
+L904: - tree sha(s) in this tier: ['c4c10b285f1741aa798d5ee9c5296ae371fabecf']
+L905: - native sha256(s) in this tier: ['fb25d9a9bbc7e9e889721e46d952054b59150ab9d2a5644757caf7e97368110b']
+L906: - repeat arm (real seed 23000 again): action flips 0 first=None; recorded series identical: True
+L907: - pc seed 23000: action flips 383 (first 8)
+L908: - pc seed 23001: action flips 430 (first 4)
+L909: - **VALIDITY: ALL HOLD**
+L912: - t=1.243 (236/448 seeds > 0), SD=0.3047 -> **CONTINUE: no verdict (CONTINUE at look 7 of 11, n=448 (no verdict): next look n=512 | beside (no bar): k 236/448, trim10 +0.0227, HL +0.0228 [+0.0026, +0.0428], zeros 0.018, |d|>0.4 64)**
+L913: - stratum (DESCRIPTIVE ONLY, decides nothing): 54/448 seeds goal-frozen; H-P1 within frozen t=0.898 (29/54), within moving t=1.030 (207/394); real/pfrozen frozen status disagrees on 44 seeds (pfrozen held_goal missing on 0)
+L914: - sequential decision of record: look 7 of 11, n=448: t=1.243 vs boundary 2.285, 236/448 > 0 (need 224), conditional power 0.689 (futility < 0.1, closed at this look) -> continue
+L915: - sensitivity H-P1 without degenerate seeds [23008, 23208, 23292, 23308, 23312, 23327, 23441]: t=1.244 (235/441)
+L918: - no stop of record yet
+L928: - n=448: exact-zero 0.018
+L930: ## Tail census (|d| > 0.4; beside, no bar)
+L932: - seed 23019: d +0.4390, first divergence tick 8
+L933: - seed 23022: d +0.4384, first divergence tick 211
+L934: - seed 23025: d +0.4629, first divergence tick 150
+L935: - seed 23041: d +0.7285, first divergence tick 38
+L936: - seed 23049: d +0.5888, first divergence tick 49
+L937: - seed 23058: d -0.6588, first divergence tick 46
+L938: - seed 23061: d -0.4162, first divergence tick 197
+L939: - seed 23065: d +0.5326, first divergence tick 44
+L940: - seed 23068: d +1.4218, first divergence tick 32
+L941: - seed 23069: d -0.5162, first divergence tick 52
+L942: - seed 23072: d -0.4300, first divergence tick 71
+L943: - seed 23082: d -0.5967, first divergence tick 60
+L944: - seed 23086: d +0.6256, first divergence tick 149
+L945: - seed 23098: d -1.2385, first divergence tick 87
+L946: - seed 23100: d -0.7583, first divergence tick 322
+L947: - seed 23101: d -0.5626, first divergence tick 49
+L948: - seed 23105: d -0.4406, first divergence tick 76
+L949: - seed 23109: d +0.7346, first divergence tick 163
+L950: - seed 23118: d +0.9959, first divergence tick 103
+L951: - seed 23120: d -0.4359, first divergence tick 154
+L952: - seed 23121: d +0.4562, first divergence tick 28
+L953: - seed 23126: d -1.3311, first divergence tick 12
+L954: - seed 23130: d +0.5564, first divergence tick 120
+L955: - seed 23141: d -0.6272, first divergence tick 9
+L956: - seed 23142: d +0.7788, first divergence tick 44
+L957: - seed 23144: d +0.4982, first divergence tick 56
+L958: - seed 23151: d +0.5854, first divergence tick 75
+L959: - seed 23153: d -0.5578, first divergence tick 20
+L960: - seed 23157: d -0.4943, first divergence tick 125
+L961: - seed 23177: d +0.4998, first divergence tick 20
+L962: - seed 23200: d -0.4239, first divergence tick 69
+L963: - seed 23204: d +0.6167, first divergence tick 104
+L964: - seed 23207: d +0.6531, first divergence tick 157
+L965: - seed 23210: d +0.4490, first divergence tick 125
+L966: - seed 23217: d -0.6207, first divergence tick 32
+L967: - seed 23235: d -0.8695, first divergence tick 87
+L968: - seed 23238: d -0.5417, first divergence tick 22
+L969: - seed 23239: d +0.4039, first divergence tick 68
+L970: - seed 23262: d -0.5629, first divergence tick 108
+L971: - seed 23271: d -1.3950, first divergence tick 46
+L972: - seed 23283: d +0.5252, first divergence tick 35
+L973: - seed 23291: d +0.4246, first divergence tick 139
+L974: - seed 23295: d +0.5248, first divergence tick 54
+L975: - seed 23302: d -1.1643, first divergence tick 56
+L976: - seed 23309: d -0.6623, first divergence tick 28
+L977: - seed 23319: d +0.4112, first divergence tick 59
+L978: - seed 23332: d -0.4408, first divergence tick 39
+L979: - seed 23336: d -0.4945, first divergence tick 34
+L980: - seed 23361: d -0.4511, first divergence tick 85
+L981: - seed 23362: d +1.4175, first divergence tick 30
+L982: - seed 23375: d -0.8022, first divergence tick 46
+L983: - seed 23386: d -0.4708, first divergence tick 21
+L984: - seed 23390: d +0.4477, first divergence tick 75
+L985: - seed 23392: d -0.8233, first divergence tick 176
+L986: - seed 23409: d +0.6032, first divergence tick 64
+L987: - seed 23411: d -0.4636, first divergence tick 347
+L988: - seed 23412: d -0.4893, first divergence tick 53
+L989: - seed 23415: d +0.7160, first divergence tick 79
+L990: - seed 23421: d -0.7116, first divergence tick 60
+L991: - seed 23423: d +0.4342, first divergence tick 77
+L992: - seed 23427: d +1.2586, first divergence tick 50
+L993: - seed 23429: d +0.5687, first divergence tick 115
+L994: - seed 23436: d +1.0997, first divergence tick 22
+L995: - seed 23445: d +0.4136, first divergence tick 62
+L997: - perception tier of every number above: production (reported eprop-snn)
+L998: - validity ALL HOLD: no stop of record yet (no verdict).
+L1000: wall: total run_s over runs = 25438s (899 runs)
+```
+
+### R10. Look 8 of 11 (n = 512)
+
+Source: `lanes/e1d-plan-w-work/reports/compare-production-look8.md` (1137 lines), sha256 `f295a22f86f4a3ce918a265d83911841ac66cb2d0fbe1b48d623816b85f966b7`. Board record: #7244 (2026-10-29T20:05:09-05:00, e1d-b3, status): "E1d look 8 done: 1027 runs done in total; per-run median 29s (tier production = eprop-snn); pauses so far 0". Boundary t 2.130 (E1c section 5). Report lines copied verbatim below, each prefixed by its line number in the report; no interpretation.
+
+```text
+L1032: - tree sha(s) in this tier: ['c4c10b285f1741aa798d5ee9c5296ae371fabecf']
+L1033: - native sha256(s) in this tier: ['fb25d9a9bbc7e9e889721e46d952054b59150ab9d2a5644757caf7e97368110b']
+L1034: - repeat arm (real seed 23000 again): action flips 0 first=None; recorded series identical: True
+L1035: - pc seed 23000: action flips 383 (first 8)
+L1036: - pc seed 23001: action flips 430 (first 4)
+L1037: - **VALIDITY: ALL HOLD**
+L1040: - t=1.497 (266/512 seeds > 0), SD=0.3100 -> **CONTINUE: no verdict (CONTINUE at look 8 of 11, n=512 (no verdict): next look n=576 | beside (no bar): k 266/512, trim10 +0.0233, HL +0.0220 [+0.0038, +0.0406], zeros 0.020, |d|>0.4 72)**
+L1041: - stratum (DESCRIPTIVE ONLY, decides nothing): 62/512 seeds goal-frozen; H-P1 within frozen t=0.955 (32/62), within moving t=1.291 (234/450); real/pfrozen frozen status disagrees on 50 seeds (pfrozen held_goal missing on 0)
+L1042: - sequential decision of record: look 8 of 11, n=512: t=1.497 vs boundary 2.130, 266/512 > 0 (need 256), conditional power 0.712 (futility < 0.1, closed at this look) -> continue
+L1043: - sensitivity H-P1 without degenerate seeds [23008, 23208, 23292, 23308, 23312, 23327, 23441]: t=1.498 (265/505)
+L1046: - no stop of record yet
+L1057: - n=512: exact-zero 0.020
+L1059: ## Tail census (|d| > 0.4; beside, no bar)
+L1061: - seed 23019: d +0.4390, first divergence tick 8
+L1062: - seed 23022: d +0.4384, first divergence tick 211
+L1063: - seed 23025: d +0.4629, first divergence tick 150
+L1064: - seed 23041: d +0.7285, first divergence tick 38
+L1065: - seed 23049: d +0.5888, first divergence tick 49
+L1066: - seed 23058: d -0.6588, first divergence tick 46
+L1067: - seed 23061: d -0.4162, first divergence tick 197
+L1068: - seed 23065: d +0.5326, first divergence tick 44
+L1069: - seed 23068: d +1.4218, first divergence tick 32
+L1070: - seed 23069: d -0.5162, first divergence tick 52
+L1071: - seed 23072: d -0.4300, first divergence tick 71
+L1072: - seed 23082: d -0.5967, first divergence tick 60
+L1073: - seed 23086: d +0.6256, first divergence tick 149
+L1074: - seed 23098: d -1.2385, first divergence tick 87
+L1075: - seed 23100: d -0.7583, first divergence tick 322
+L1076: - seed 23101: d -0.5626, first divergence tick 49
+L1077: - seed 23105: d -0.4406, first divergence tick 76
+L1078: - seed 23109: d +0.7346, first divergence tick 163
+L1079: - seed 23118: d +0.9959, first divergence tick 103
+L1080: - seed 23120: d -0.4359, first divergence tick 154
+L1081: - seed 23121: d +0.4562, first divergence tick 28
+L1082: - seed 23126: d -1.3311, first divergence tick 12
+L1083: - seed 23130: d +0.5564, first divergence tick 120
+L1084: - seed 23141: d -0.6272, first divergence tick 9
+L1085: - seed 23142: d +0.7788, first divergence tick 44
+L1086: - seed 23144: d +0.4982, first divergence tick 56
+L1087: - seed 23151: d +0.5854, first divergence tick 75
+L1088: - seed 23153: d -0.5578, first divergence tick 20
+L1089: - seed 23157: d -0.4943, first divergence tick 125
+L1090: - seed 23177: d +0.4998, first divergence tick 20
+L1091: - seed 23200: d -0.4239, first divergence tick 69
+L1092: - seed 23204: d +0.6167, first divergence tick 104
+L1093: - seed 23207: d +0.6531, first divergence tick 157
+L1094: - seed 23210: d +0.4490, first divergence tick 125
+L1095: - seed 23217: d -0.6207, first divergence tick 32
+L1096: - seed 23235: d -0.8695, first divergence tick 87
+L1097: - seed 23238: d -0.5417, first divergence tick 22
+L1098: - seed 23239: d +0.4039, first divergence tick 68
+L1099: - seed 23262: d -0.5629, first divergence tick 108
+L1100: - seed 23271: d -1.3950, first divergence tick 46
+L1101: - seed 23283: d +0.5252, first divergence tick 35
+L1102: - seed 23291: d +0.4246, first divergence tick 139
+L1103: - seed 23295: d +0.5248, first divergence tick 54
+L1104: - seed 23302: d -1.1643, first divergence tick 56
+L1105: - seed 23309: d -0.6623, first divergence tick 28
+L1106: - seed 23319: d +0.4112, first divergence tick 59
+L1107: - seed 23332: d -0.4408, first divergence tick 39
+L1108: - seed 23336: d -0.4945, first divergence tick 34
+L1109: - seed 23361: d -0.4511, first divergence tick 85
+L1110: - seed 23362: d +1.4175, first divergence tick 30
+L1111: - seed 23375: d -0.8022, first divergence tick 46
+L1112: - seed 23386: d -0.4708, first divergence tick 21
+L1113: - seed 23390: d +0.4477, first divergence tick 75
+L1114: - seed 23392: d -0.8233, first divergence tick 176
+L1115: - seed 23409: d +0.6032, first divergence tick 64
+L1116: - seed 23411: d -0.4636, first divergence tick 347
+L1117: - seed 23412: d -0.4893, first divergence tick 53
+L1118: - seed 23415: d +0.7160, first divergence tick 79
+L1119: - seed 23421: d -0.7116, first divergence tick 60
+L1120: - seed 23423: d +0.4342, first divergence tick 77
+L1121: - seed 23427: d +1.2586, first divergence tick 50
+L1122: - seed 23429: d +0.5687, first divergence tick 115
+L1123: - seed 23436: d +1.0997, first divergence tick 22
+L1124: - seed 23445: d +0.4136, first divergence tick 62
+L1125: - seed 23454: d +1.1791, first divergence tick 40
+L1126: - seed 23457: d +1.0678, first divergence tick 74
+L1127: - seed 23482: d -1.2099, first divergence tick 42
+L1128: - seed 23484: d +0.4804, first divergence tick 18
+L1129: - seed 23485: d +0.4799, first divergence tick 85
+L1130: - seed 23501: d -1.0951, first divergence tick 78
+L1131: - seed 23502: d +0.7883, first divergence tick 126
+L1132: - seed 23504: d +0.7073, first divergence tick 221
+L1134: - perception tier of every number above: production (reported eprop-snn)
+L1135: - validity ALL HOLD: no stop of record yet (no verdict).
+L1137: wall: total run_s over runs = 29431s (1027 runs)
+```
+
+### R11. Look 9 of 11 (n = 576)
+
+Source: `lanes/e1d-plan-w-work/reports/compare-production-look9.md` (1274 lines), sha256 `6d6fd0ab13fac8fb883a93463207d5152452b3b9a5c9cb8cfb358692a3825147`. Board record: #7327 (2026-10-29T21:14:48-05:00, e1d-b3, status): "E1d look 9 done: 1155 runs done in total; per-run median 29s (tier production = eprop-snn); pauses so far 0". Boundary t 2.002 (E1c section 5). Report lines copied verbatim below, each prefixed by its line number in the report; no interpretation.
+
+```text
+L1160: - tree sha(s) in this tier: ['c4c10b285f1741aa798d5ee9c5296ae371fabecf']
+L1161: - native sha256(s) in this tier: ['fb25d9a9bbc7e9e889721e46d952054b59150ab9d2a5644757caf7e97368110b']
+L1162: - repeat arm (real seed 23000 again): action flips 0 first=None; recorded series identical: True
+L1163: - pc seed 23000: action flips 383 (first 8)
+L1164: - pc seed 23001: action flips 430 (first 4)
+L1165: - **VALIDITY: ALL HOLD**
+L1168: - t=1.593 (297/576 seeds > 0), SD=0.3025 -> **CONTINUE: no verdict (CONTINUE at look 9 of 11, n=576 (no verdict): next look n=640 | beside (no bar): k 297/576, trim10 +0.0219, HL +0.0206 [+0.0036, +0.0375], zeros 0.024, |d|>0.4 80)**
+L1169: - stratum (DESCRIPTIVE ONLY, decides nothing): 65/576 seeds goal-frozen; H-P1 within frozen t=1.294 (35/65), within moving t=1.296 (262/511); real/pfrozen frozen status disagrees on 52 seeds (pfrozen held_goal missing on 0)
+L1170: - sequential decision of record: look 9 of 11, n=576: t=1.593 vs boundary 2.002, 297/576 > 0 (need 288), conditional power 0.678 (futility < 0.1, closed at this look) -> continue
+L1171: - sensitivity H-P1 without degenerate seeds [23008, 23208, 23292, 23308, 23312, 23327, 23441, 23527]: t=1.583 (295/568)
+L1174: - no stop of record yet
+L1186: - n=576: exact-zero 0.024
+L1188: ## Tail census (|d| > 0.4; beside, no bar)
+L1190: - seed 23019: d +0.4390, first divergence tick 8
+L1191: - seed 23022: d +0.4384, first divergence tick 211
+L1192: - seed 23025: d +0.4629, first divergence tick 150
+L1193: - seed 23041: d +0.7285, first divergence tick 38
+L1194: - seed 23049: d +0.5888, first divergence tick 49
+L1195: - seed 23058: d -0.6588, first divergence tick 46
+L1196: - seed 23061: d -0.4162, first divergence tick 197
+L1197: - seed 23065: d +0.5326, first divergence tick 44
+L1198: - seed 23068: d +1.4218, first divergence tick 32
+L1199: - seed 23069: d -0.5162, first divergence tick 52
+L1200: - seed 23072: d -0.4300, first divergence tick 71
+L1201: - seed 23082: d -0.5967, first divergence tick 60
+L1202: - seed 23086: d +0.6256, first divergence tick 149
+L1203: - seed 23098: d -1.2385, first divergence tick 87
+L1204: - seed 23100: d -0.7583, first divergence tick 322
+L1205: - seed 23101: d -0.5626, first divergence tick 49
+L1206: - seed 23105: d -0.4406, first divergence tick 76
+L1207: - seed 23109: d +0.7346, first divergence tick 163
+L1208: - seed 23118: d +0.9959, first divergence tick 103
+L1209: - seed 23120: d -0.4359, first divergence tick 154
+L1210: - seed 23121: d +0.4562, first divergence tick 28
+L1211: - seed 23126: d -1.3311, first divergence tick 12
+L1212: - seed 23130: d +0.5564, first divergence tick 120
+L1213: - seed 23141: d -0.6272, first divergence tick 9
+L1214: - seed 23142: d +0.7788, first divergence tick 44
+L1215: - seed 23144: d +0.4982, first divergence tick 56
+L1216: - seed 23151: d +0.5854, first divergence tick 75
+L1217: - seed 23153: d -0.5578, first divergence tick 20
+L1218: - seed 23157: d -0.4943, first divergence tick 125
+L1219: - seed 23177: d +0.4998, first divergence tick 20
+L1220: - seed 23200: d -0.4239, first divergence tick 69
+L1221: - seed 23204: d +0.6167, first divergence tick 104
+L1222: - seed 23207: d +0.6531, first divergence tick 157
+L1223: - seed 23210: d +0.4490, first divergence tick 125
+L1224: - seed 23217: d -0.6207, first divergence tick 32
+L1225: - seed 23235: d -0.8695, first divergence tick 87
+L1226: - seed 23238: d -0.5417, first divergence tick 22
+L1227: - seed 23239: d +0.4039, first divergence tick 68
+L1228: - seed 23262: d -0.5629, first divergence tick 108
+L1229: - seed 23271: d -1.3950, first divergence tick 46
+L1230: - seed 23283: d +0.5252, first divergence tick 35
+L1231: - seed 23291: d +0.4246, first divergence tick 139
+L1232: - seed 23295: d +0.5248, first divergence tick 54
+L1233: - seed 23302: d -1.1643, first divergence tick 56
+L1234: - seed 23309: d -0.6623, first divergence tick 28
+L1235: - seed 23319: d +0.4112, first divergence tick 59
+L1236: - seed 23332: d -0.4408, first divergence tick 39
+L1237: - seed 23336: d -0.4945, first divergence tick 34
+L1238: - seed 23361: d -0.4511, first divergence tick 85
+L1239: - seed 23362: d +1.4175, first divergence tick 30
+L1240: - seed 23375: d -0.8022, first divergence tick 46
+L1241: - seed 23386: d -0.4708, first divergence tick 21
+L1242: - seed 23390: d +0.4477, first divergence tick 75
+L1243: - seed 23392: d -0.8233, first divergence tick 176
+L1244: - seed 23409: d +0.6032, first divergence tick 64
+L1245: - seed 23411: d -0.4636, first divergence tick 347
+L1246: - seed 23412: d -0.4893, first divergence tick 53
+L1247: - seed 23415: d +0.7160, first divergence tick 79
+L1248: - seed 23421: d -0.7116, first divergence tick 60
+L1249: - seed 23423: d +0.4342, first divergence tick 77
+L1250: - seed 23427: d +1.2586, first divergence tick 50
+L1251: - seed 23429: d +0.5687, first divergence tick 115
+L1252: - seed 23436: d +1.0997, first divergence tick 22
+L1253: - seed 23445: d +0.4136, first divergence tick 62
+L1254: - seed 23454: d +1.1791, first divergence tick 40
+L1255: - seed 23457: d +1.0678, first divergence tick 74
+L1256: - seed 23482: d -1.2099, first divergence tick 42
+L1257: - seed 23484: d +0.4804, first divergence tick 18
+L1258: - seed 23485: d +0.4799, first divergence tick 85
+L1259: - seed 23501: d -1.0951, first divergence tick 78
+L1260: - seed 23502: d +0.7883, first divergence tick 126
+L1261: - seed 23504: d +0.7073, first divergence tick 221
+L1262: - seed 23516: d -0.4375, first divergence tick 90
+L1263: - seed 23526: d +0.5607, first divergence tick 62
+L1264: - seed 23540: d -0.4877, first divergence tick 401
+L1265: - seed 23542: d -0.6035, first divergence tick 129
+L1266: - seed 23554: d -0.4880, first divergence tick 27
+L1267: - seed 23555: d +0.4500, first divergence tick 50
+L1268: - seed 23560: d +0.6459, first divergence tick 75
+L1269: - seed 23562: d +0.7188, first divergence tick 30
+L1271: - perception tier of every number above: production (reported eprop-snn)
+L1272: - validity ALL HOLD: no stop of record yet (no verdict).
+L1274: wall: total run_s over runs = 33272s (1155 runs)
+```
+
+### R12. Look 10 of 11 (n = 640): THE STOP OF RECORD
+
+Source: `lanes/e1d-plan-w-work/reports/compare-production-look10.md` (1407 lines), sha256 `8c1d2185bf7e8ea05267c57379ab8943a52dca389293028509847535894f7f33`. Board record: #7374 (2026-10-29T22:18:07-05:00, e1d-b3, status): "E1d look 10 done: 1283 runs done in total; per-run median 29s (tier production = eprop-snn); pauses so far 0". Boundary t 1.896 (E1c section 5). Report lines copied verbatim below, each prefixed by its line number in the report; no interpretation.
+
+```text
+L1288: - tree sha(s) in this tier: ['c4c10b285f1741aa798d5ee9c5296ae371fabecf']
+L1289: - native sha256(s) in this tier: ['fb25d9a9bbc7e9e889721e46d952054b59150ab9d2a5644757caf7e97368110b']
+L1290: - repeat arm (real seed 23000 again): action flips 0 first=None; recorded series identical: True
+L1291: - pc seed 23000: action flips 383 (first 8)
+L1292: - pc seed 23001: action flips 430 (first 4)
+L1293: - **VALIDITY: ALL HOLD**
+L1296: - t=1.916 (329/640 seeds > 0), SD=0.2952 -> **HARM MET at look 10 (n=640): a measured harm of the learned `_plan_w` trajectory on production at 600 ticks; route (iii) deletes the update and the plan nudge (section 8) | beside (no bar): k 329/640, trim10 +0.0223, HL +0.0211 [+0.0050, +0.0368], zeros 0.022, |d|>0.4 84**
+L1297: - stratum (DESCRIPTIVE ONLY, decides nothing): 76/640 seeds goal-frozen; H-P1 within frozen t=1.512 (39/76), within moving t=1.543 (290/564); real/pfrozen frozen status disagrees on 60 seeds (pfrozen held_goal missing on 0)
+L1298: - sequential decision of record: look 10 of 11, n=640: t=1.916 vs boundary 1.896, 329/640 > 0 (need 320), conditional power n/a (futility < 0.1, open at this look) -> harm
+L1299: - sensitivity H-P1 without degenerate seeds [23008, 23208, 23292, 23308, 23312, 23327, 23441, 23527, 23581]: t=1.914 (327/631)
+L1302: - mean benefit -0.0224 against DR 0.0131; mde 0.0320 (the H-P1 stop's boundary mde, read against DR) > DR: INCONCLUSIVE (unpowered)
+L1315: - n=640: exact-zero 0.022
+L1317: ## Tail census (|d| > 0.4; beside, no bar)
+L1319: - seed 23019: d +0.4390, first divergence tick 8
+L1320: - seed 23022: d +0.4384, first divergence tick 211
+L1321: - seed 23025: d +0.4629, first divergence tick 150
+L1322: - seed 23041: d +0.7285, first divergence tick 38
+L1323: - seed 23049: d +0.5888, first divergence tick 49
+L1324: - seed 23058: d -0.6588, first divergence tick 46
+L1325: - seed 23061: d -0.4162, first divergence tick 197
+L1326: - seed 23065: d +0.5326, first divergence tick 44
+L1327: - seed 23068: d +1.4218, first divergence tick 32
+L1328: - seed 23069: d -0.5162, first divergence tick 52
+L1329: - seed 23072: d -0.4300, first divergence tick 71
+L1330: - seed 23082: d -0.5967, first divergence tick 60
+L1331: - seed 23086: d +0.6256, first divergence tick 149
+L1332: - seed 23098: d -1.2385, first divergence tick 87
+L1333: - seed 23100: d -0.7583, first divergence tick 322
+L1334: - seed 23101: d -0.5626, first divergence tick 49
+L1335: - seed 23105: d -0.4406, first divergence tick 76
+L1336: - seed 23109: d +0.7346, first divergence tick 163
+L1337: - seed 23118: d +0.9959, first divergence tick 103
+L1338: - seed 23120: d -0.4359, first divergence tick 154
+L1339: - seed 23121: d +0.4562, first divergence tick 28
+L1340: - seed 23126: d -1.3311, first divergence tick 12
+L1341: - seed 23130: d +0.5564, first divergence tick 120
+L1342: - seed 23141: d -0.6272, first divergence tick 9
+L1343: - seed 23142: d +0.7788, first divergence tick 44
+L1344: - seed 23144: d +0.4982, first divergence tick 56
+L1345: - seed 23151: d +0.5854, first divergence tick 75
+L1346: - seed 23153: d -0.5578, first divergence tick 20
+L1347: - seed 23157: d -0.4943, first divergence tick 125
+L1348: - seed 23177: d +0.4998, first divergence tick 20
+L1349: - seed 23200: d -0.4239, first divergence tick 69
+L1350: - seed 23204: d +0.6167, first divergence tick 104
+L1351: - seed 23207: d +0.6531, first divergence tick 157
+L1352: - seed 23210: d +0.4490, first divergence tick 125
+L1353: - seed 23217: d -0.6207, first divergence tick 32
+L1354: - seed 23235: d -0.8695, first divergence tick 87
+L1355: - seed 23238: d -0.5417, first divergence tick 22
+L1356: - seed 23239: d +0.4039, first divergence tick 68
+L1357: - seed 23262: d -0.5629, first divergence tick 108
+L1358: - seed 23271: d -1.3950, first divergence tick 46
+L1359: - seed 23283: d +0.5252, first divergence tick 35
+L1360: - seed 23291: d +0.4246, first divergence tick 139
+L1361: - seed 23295: d +0.5248, first divergence tick 54
+L1362: - seed 23302: d -1.1643, first divergence tick 56
+L1363: - seed 23309: d -0.6623, first divergence tick 28
+L1364: - seed 23319: d +0.4112, first divergence tick 59
+L1365: - seed 23332: d -0.4408, first divergence tick 39
+L1366: - seed 23336: d -0.4945, first divergence tick 34
+L1367: - seed 23361: d -0.4511, first divergence tick 85
+L1368: - seed 23362: d +1.4175, first divergence tick 30
+L1369: - seed 23375: d -0.8022, first divergence tick 46
+L1370: - seed 23386: d -0.4708, first divergence tick 21
+L1371: - seed 23390: d +0.4477, first divergence tick 75
+L1372: - seed 23392: d -0.8233, first divergence tick 176
+L1373: - seed 23409: d +0.6032, first divergence tick 64
+L1374: - seed 23411: d -0.4636, first divergence tick 347
+L1375: - seed 23412: d -0.4893, first divergence tick 53
+L1376: - seed 23415: d +0.7160, first divergence tick 79
+L1377: - seed 23421: d -0.7116, first divergence tick 60
+L1378: - seed 23423: d +0.4342, first divergence tick 77
+L1379: - seed 23427: d +1.2586, first divergence tick 50
+L1380: - seed 23429: d +0.5687, first divergence tick 115
+L1381: - seed 23436: d +1.0997, first divergence tick 22
+L1382: - seed 23445: d +0.4136, first divergence tick 62
+L1383: - seed 23454: d +1.1791, first divergence tick 40
+L1384: - seed 23457: d +1.0678, first divergence tick 74
+L1385: - seed 23482: d -1.2099, first divergence tick 42
+L1386: - seed 23484: d +0.4804, first divergence tick 18
+L1387: - seed 23485: d +0.4799, first divergence tick 85
+L1388: - seed 23501: d -1.0951, first divergence tick 78
+L1389: - seed 23502: d +0.7883, first divergence tick 126
+L1390: - seed 23504: d +0.7073, first divergence tick 221
+L1391: - seed 23516: d -0.4375, first divergence tick 90
+L1392: - seed 23526: d +0.5607, first divergence tick 62
+L1393: - seed 23540: d -0.4877, first divergence tick 401
+L1394: - seed 23542: d -0.6035, first divergence tick 129
+L1395: - seed 23554: d -0.4880, first divergence tick 27
+L1396: - seed 23555: d +0.4500, first divergence tick 50
+L1397: - seed 23560: d +0.6459, first divergence tick 75
+L1398: - seed 23562: d +0.7188, first divergence tick 30
+L1399: - seed 23613: d +0.5884, first divergence tick 27
+L1400: - seed 23627: d +0.7430, first divergence tick 45
+L1401: - seed 23633: d +0.6304, first divergence tick 70
+L1402: - seed 23637: d +0.5497, first divergence tick 61
+L1404: - perception tier of every number above: production (reported eprop-snn)
+L1405: - validity ALL HOLD: the verdict stands.
+L1407: wall: total run_s over runs = 36723s (1283 runs)
+```
+
+The decision log `lanes/e1d-plan-w-work/logs/decide-look10.log` (sha256 `e73f4c1d3b34abba564bf26b57ba86e7fb136b40b54639b1becb039e8f4ba3bf`), verbatim with its line numbers:
+
+```text
+L1: # 2026-10-29T22:17:53-05:00 tool.ps1 D:\AI-project\lanes\e1d-plan-w-work\plan.py decide 10
+L2: TIER production look=10 n=640 valid=True pending=0 bad=[] n_owed={'H-P1': 640}
+L3: DECISION tier=production H-P1 decision=harm disposition=HARM MET at look 10 (n=640): a measured harm of the learned `_plan_w` trajectory on production at 600 ticks; route (iii) deletes the update and the plan nudge (section 8) | beside (no bar): k 329/640, trim10 +0.0223, HL +0.0211 [+0.0050, +0.0368], zeros 0.022, |d|>0.4 84
+L4: NEXT stop production H-P1=harm
+L5: rc=0
+```
+
+The campaign console end, `lanes/e1d-plan-w-work/logs/campaign.console` (sha256 `3a8f3e829a358be311e3baa09ae94e7af7032747679611435756f25fa4f14efa`), last 5 lines verbatim:
+
+```text
+L1435: 2026-10-29T22:17:39-05:00 ran production/pfrozen_23639 rc=0 25s
+L1436: 2026-10-29T22:18:07-05:00 look 10: NEXT stop production H-P1=harm
+L1437: 2026-10-29T22:18:07-05:00 CAMPAIGN END at look 10: NEXT stop production H-P1=harm
+L1438: 2026-10-29T22:18:08-05:00 released resource:timing
+L1439: EXIT=0
+```
+
+Look 10 is the decision of record. Quoted, not re-derived: H-P1 t=1.916 against the look-10 boundary 1.896, 329/640 seeds > 0 against the need of 320, futility open at this look (n = 640), validity ALL HOLD (repeat arm; pc seeds 23000 and 23001). Sensitivity without the 9 degenerate seeds: t=1.914 (327/631). The stratum is DESCRIPTIVE ONLY and decides nothing. The secondary benefit read (E-P2) is INCONCLUSIVE (unpowered); it is beside and decides nothing. The tail census is beside, no bar.
+
+**Disclosure (P8, unprompted; integrator round 4 addition 2026-10-29 22:33, relaying duo B's independent recompute; descriptive only).** Duo B's independent recompute matches t 1.916, k 329/640, SD 0.2952, boundary 1.896, need 320, decision HARM; masking ticks > 300 gives t 1.913 (still crossing). The crossing margin (0.020 in t) is SMALLER than the leverage of one extreme seed (about 0.09-0.19 in t per seed). trim10, HL and its CI agree on direction (R12, L1296). The verdict stands as pre-registered: no post-hoc rule changes it; this paragraph tells a reader how close it was. The recompute figures are the integrator's relay, not a file of this record.
+
+### R13. Look 11 of 11 (n = 704, the hard cap): NOT RUN
+
+The campaign ended at look 10 (`logs/campaign.console`, "CAMPAIGN END at look 10: NEXT stop production H-P1=harm"; EXIT=0, 2026-10-29 22:18:07-05:00). `reports/compare-production-look11.md` does not exist. Nothing is entered for look 11.
+
+### R14. Disposition (E1d section 8, route (iii)); the stop of record is look 10
+
+E1d section 8 (`specs/022-unified-brain-arc/evidence/e1d-plan-w-pc2.md:416-418` at c4c10b28, this file) states: "HARM MET, NOT MET powered, and NOT MET underpowered: as E1c section 8, verbatim." E1c section 8 is `specs/022-unified-brain-arc/evidence/e1c-plan-w-powered.md:251-266` at c4c10b28; its HARM MET clause, lines 253-265, verbatim with file line numbers:
+
+```text
+253: - **HARM MET** at a look:
+254:   - The learned `_plan_w` trajectory is a measured harm on production at 600 ticks. P8 null-scale item 4: "a measured
+255:     harm ... is deleted without a re-test".
+256:   - The integrator writes the deletion row **(route (iii), enforcer #5635 M2; P1 no-hardcode).** The `_plan_w` update
+257:     is deleted, AND the plan nudge `bias[...] += _plan_w * gain` leaves the live path with it.
+258:     - Holding `_plan_w` at its init 0.1 would leave a hand-set constant arbitrating behaviour on a live path, and none
+259:       of P1's exceptions applies.
+260:     - Any replacement (for example a running-baseline form) comes back only through its own pre-registered row.
+261:     - Until then `_planned_seq`'s nudge is off the live path. If that leaves the planner's sequence output with no
+262:       consumer, it takes a `dormancy_gate.EXEMPT` entry naming that row (P3, "awaiting a prerequisite").
+263:     - **Disclosed:** the deleted state (no nudge) is NOT the `pfrozen` arm (a nudge at 0.1), and E1c does not
+264:       measure it. The replacement row's pre-registration measures it against the planner-off and planner-on states.
+265:   - The owner is told before it lands. `_plan_w` is not an owner-drawn P4d part.
+```
+
+Look 10 printed "HARM MET at look 10 (n=640)" (`reports/compare-production-look10.md` L1296; `logs/decide-look10.log`). Per the clause above, the disposition is route (iii): the learned `_plan_w` update AND the plan nudge `bias[...] += _plan_w * gain` are deleted. P8 null-scale item 4, as quoted there: "a measured harm ... is deleted without a re-test".
+
+**The deletion is a SEPARATE red-first change. It is not in this record and is not made here.** This commit is docs only; no source changed. The deletion row is owed before ARC 6's battery. The clause also says the owner is told before it lands.
+
+Beside, not decisive: the secondary benefit read is INCONCLUSIVE (unpowered) (R12, L1302); the stratum is DESCRIPTIVE ONLY; the tail census has no bar.
