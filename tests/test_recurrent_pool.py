@@ -1242,3 +1242,82 @@ def test_the_hosted_freeze_is_re_based_on_the_live_bundles_and_fails_on_that_for
     assert pool.frozen() is False  # ... and only the live edges' chain in params_fingerprint saw it
     delta = pool._syn.bundles[moved[0]][1] - before[moved[0]]
     assert delta.tolist() == [1] + [0] * (len(delta) - 1)
+
+
+# ---- G3 grow round 2: zero-born edges on the compiled host (launcher D-86, landing gate) --------
+
+
+class _PlantedTrainer(rp.KernelLsmPool):
+    """The positive control, not a method: after every step, each zero-born slot whose pre and post
+    both fired takes +2**-8 and the table is recompiled, so a detector that cannot see a trained
+    zero-born edge fails here first."""
+
+    def step(self, u):
+        activity = super().step(u)
+        fired = self.s
+        w = self.w.copy()
+        for i, c in _zero_born_slots(self):
+            if fired[i] and fired[self.pre[i, c]] and w[i, c] == 0.0:
+                w[i, c] = 2.0**-8
+        if not np.array_equal(w, self.w):
+            self.w = w
+            self._syn = self._compile()
+            self._kt.syn = self._syn
+        return activity
+
+
+def _zero_born_slots(pool):
+    return [(i, 0) for i in range(pool.n)]
+
+
+def _zero_born(cls, form):
+    """TUNED's draw at N, slot 0 of every row born zero, window 0 (parameters final at birth)."""
+    _, pre, w = rp._lsm_draw(rp.realization_seed("lsm", rp.DEV_SEED), rp.N, TUNED["k"], TUNED["w"])
+    w[:, 0] = 0.0
+    return cls(pre, w, TUNED, form, rp.w_in(rp.DEV_SEED), window=0, s_settle=rp.S_SETTLE)
+
+
+def _zero_born_outcome(pool, percepts):
+    """'dormant' when, after the percepts, every zero-born slot's stored weight and live q are 0 and
+    the parameters equal their construction fingerprint; 'trainable' otherwise. Also returns whether
+    some zero-born slot saw its pre and its post fire on one tick (a quiet pool proves nothing)."""
+    born = pool.params_fingerprint()
+    coactive = []
+
+    def observe(current, activity):
+        fired = activity != 0
+        if any(fired[i] and fired[current.pre[i, c]] for i, c in _zero_born_slots(current)):
+            coactive.append(True)
+
+    pool.observer = observe
+    for x in percepts:
+        pool.percept(x)
+    pool.observer = None
+    live = pool._live_edges()
+    zero_q = all(
+        np.all(live["edge_q"][(live["edge_post"] == i) & (live["edge_pre"] == pool.pre[i, c])] == 0)
+        for i, c in _zero_born_slots(pool)
+        if np.count_nonzero(pool.pre[i] == pool.pre[i, c]) == 1  # a duplicate pre shares the key
+    )
+    stored_zero = all(pool.w[i, c] == 0.0 for i, c in _zero_born_slots(pool))
+    dormant = zero_q and stored_zero and pool.params_fingerprint() == born
+    return ("dormant" if dormant else "trainable"), bool(coactive)
+
+
+@pytest.mark.parametrize("form", ("carried", "reset", "settled"))
+def test_zero_born_edge_trainability_on_the_compiled_host(form):
+    """D-86 landing gate: runs after the campaign, before claude/g3-grow-1029 lands.
+
+    Every live path that can write this pool is exercised: the wake percept loop (percept ->
+    percept_drive -> step) under each form that keeps its table (front_end lesions it at birth),
+    resets included. No sleep or plasticity module binds KernelLsmPool at base c4c10b28 (git grep
+    over src/snn_data_lake/sleep and src/snn_data_lake/plasticity: no hit).
+    PASS = 'dormant': zero-born edges stay zero; RULING.md's A3/B2 dormancy premise holds.
+    FAIL = 'trainable': zero-init is trainable on this host and the A-choice reopens (D-86).
+    """
+    seq = rp.cycled_fixture(rp.W0_PERCEPTS)
+    planted, planted_coactive = _zero_born_outcome(_zero_born(_PlantedTrainer, form), seq)
+    assert planted_coactive and planted == "trainable"  # the detector sees a trained zero edge
+    outcome, coactive = _zero_born_outcome(_zero_born(rp.KernelLsmPool, form), seq)
+    assert coactive, "no zero-born slot saw pre and post fire together: the run proves nothing"
+    assert outcome == "dormant"
