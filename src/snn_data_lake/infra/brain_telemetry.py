@@ -406,15 +406,22 @@ PROVENANCE = {
     "circadian_restore": (
         "P4b finding (iii) (2026-10-29): None = the light step, the SCN clock phase and its jitter "
         "rng state were restored from circadian_clock.json; a string says why this is a fresh day "
-        "(absent, malformed, not persisted, or a record bound to another ['seed' / 'day_period' / "
-        "clock constant], kept as circadian_clock.refused.clock.<id>.json and retried; "
-        "'adopted: [<name>]' names the kept record restored). The record is written at each sleep "
-        "onset and at close, so a crash restores up to one day period back. Unlike "
-        "prototypes_restore, a non-persist brain is not None here"
+        "(absent, not persisted, malformed, restore raised, or a record bound to another ['seed' / "
+        "'day_period' / clock constant]; every refused record is kept as "
+        "circadian_clock.refused.clock.<id>.json before the first overwrite, '; kept: [<name>]' "
+        "names it, and the kept copies are retried; 'adopted: [<name>]' names the kept record "
+        "restored). The record is written at each sleep onset and at close, so a crash restores up "
+        "to one day period back; a kill inside the night's persist block can leave the clock one "
+        "night ahead of the learned stores. Superseded records are retired by the night's "
+        "consolidation (nights % 8). Unlike prototypes_restore, a non-persist brain is not None here"
     ),
     "circadian_restored": (
         "the restored record's step and phase, or None on a fresh day; the night/wake counters "
         "beside it are process-lifetime, so a resumed step sits beside a fresh night count"
+    ),
+    "circadian_flush_failed": (
+        "circadian flushes since construction that wrote nothing because they raised or the keep of "
+        "a refused record failed (a failed keep is retried every onset); 0 = none (2026-10-29)"
     ),
 }
 

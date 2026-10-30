@@ -659,6 +659,7 @@ class Brain:
         self.clock = CircadianClock(seed=self._seed)
         self._schedule = light_cycle(self.day_period)
         self._step = 0
+        self._circadian_flush_failed = 0
         self._circadian_restore_note = self._restore_circadian()
         self._baseline = self.clock.baseline()
         self._was_asleep = self.clock.consolidation_gate()
@@ -4268,6 +4269,7 @@ class Brain:
             # brain is not None here: it says "not persisted" (panel #6911 MINOR-3)
             "circadian_restore": self._circadian_restore_note,
             "circadian_restored": self._circadian_restored,  # the record's step + phase, or None
+            "circadian_flush_failed": self._circadian_flush_failed,  # flushes that wrote nothing
             "prototype_faults": self._prototype_faults,
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
@@ -5272,8 +5274,9 @@ class Brain:
         store from these records, newest first (R3-M2). Retiring one is an explicit act no code path
         performs: a lake rebuild that leaves the name out. They grow by at most one per distinct
         superseded refusal; the prototype ones (`REFUSED_PREFIX`) are counted at
-        `state()["prototypes_refused_kept"]`, the circadian ones (`CIRCADIAN_REFUSED_PREFIX`) are not
-        counted. True once the lake holds it."""
+        `state()["prototypes_refused_kept"]`, the circadian ones (`CIRCADIAN_REFUSED_PREFIX`) are
+        named in `state()["circadian_restore"]` (`; kept: [...]`), not counted. True once the lake
+        holds it."""
         from snn_data_lake.substrate.home import load_named_state, save_state
 
         name = f"{prefix}{store}.{_record_id(sub)}.json"
@@ -5292,25 +5295,34 @@ class Brain:
         from the named record `circadian_clock.json`: the step, and the clock's phase and jitter rng
         state (`CircadianClock.state_dict`, the rng through the one shared codec). Not a replay from the
         seed: that costs O(step), unbounded over a long life (launcher D-82; the draw sites and the
-        one-year cost are at `CircadianClock.state_dict`). Cost of the state instead (#6952 A-2):
-        ~7.6 KB a record, one record per sleep onset plus one per `close()`. At day_period 200 the
-        clock free-runs (~24.2 steps a cycle), so ~8.3 onsets a simulated day: ~63 KB a day, and at
-        the learn daemon's 40 ticks/s ceiling ~5.2e7 onsets, ~400 GB, a year of `_T_STATE` appends.
-        Retiring superseded circadian records is OWED (P4b lake hygiene), not built here.
-        A lake without the record (written before it existed) or a malformed record is a FRESH
-        DAY, as before, and the returned note says so; it is surfaced at
-        `state()["circadian_restore"]`. A malformed record is overwritten by the next flush (it
-        holds nothing to keep). A record bound to another seed, day period or clock constants is
-        FOREIGN: its note names the keys; it is carried, kept by `_flush_circadian` before the first
-        overwrite, and the kept copies are retried newest first (P4b "foreign records preserved";
-        the prototype path's R3-M2). Staleness: the record is written at each sleep onset and at
-        `close()`, so a crash restores the last onset or close -- up to one day period old.
+        one-year cost are at `CircadianClock.state_dict`). Re-seeding the jitter from (seed, step)
+        would be O(1) but changes the clock's draw sequence, which the deterministic gates read.
+        Cost of the state (#6952 A-2): ~7.6 KB a record, one per sleep onset plus one per `close()`;
+        ~8.3 onsets a simulated day at day_period 200, so ~63 KB a day of WRITE traffic. The live
+        history is bounded: the night block's `klog.consolidate` (`_nights % 8 == 0`, run BEFORE the
+        night's flush) prunes superseded `_T_STATE` records to the newest per name
+        (`home._prune_state_history`), so at most ~10 circadian records (~76 KB) are live. That holds
+        only while the night's replay succeeds (`records` is not None) and consolidate neither
+        raises nor is refused (`ImmortalRefusal`); while it fails, the history grows by one record
+        an onset until a consolidation succeeds. Kept refusals are distinct names, never pruned.
+        A lake without the record (written before it existed) is a FRESH DAY, as before, and the
+        returned note says so; it is surfaced at `state()["circadian_restore"]`. A record this build
+        refuses -- bound to another seed, day period or clock constants (FOREIGN: the note names the
+        keys), malformed to this build's validator, or one whose restore raises (a newer build's
+        layout after a rollback) -- is carried, kept by `_flush_circadian` before the first overwrite,
+        and the kept copies are retried newest first (P4b "foreign records preserved"; the prototype
+        path's R3-M2). Staleness: the record is written at each sleep onset and at `close()`, so a
+        crash restores the last onset or close -- up to one day period old. The night's persist
+        block is not atomic: a kill after the clock's flush but before the growth, prototype or
+        coverage flushes finish restores night N's onset (asleep, so `_enter_sleep` does not re-run)
+        beside learned stores at night N-1, the clock one night ahead.
         `_nights`, `_wake_ticks` and `_interval_timer` are NOT restored (panel #6910 m3): the
         night-cadence gates read `_nights`, so `state()` shows a resumed step beside a fresh night
         count, as before this record existed. Never raises."""
         self._circadian_carried = self._circadian_restored = None
         if not self._persist:
             return "not persisted: fresh day"
+        rec = None
         try:
             from snn_data_lake.substrate.home import load_state, named_states
 
@@ -5318,25 +5330,28 @@ class Brain:
             if not rec:
                 return "absent: fresh day (the lake holds no circadian record)"
             foreign = self._circadian_foreign(rec)
-            if foreign:
-                self._circadian_carried = rec
-                for name, blob in named_states(CIRCADIAN_REFUSED_PREFIX):
-                    try:
-                        kept = json.loads(blob.decode("ascii"))
-                        if not self._circadian_foreign(kept) and self._load_circadian(kept):
-                            return f"refused: record bound to another {foreign}; adopted: {[name]}"
-                    except Exception:  # a kept record is a candidate, never a reason to stop
-                        continue
-                return f"refused: fresh day (record bound to another {foreign})"
-            if not self._load_circadian(rec):
-                return "refused: fresh day (malformed record)"
-            return None
+            if not foreign and self._load_circadian(rec):
+                return None
+            self._circadian_carried = rec
+            why = f"record bound to another {foreign}" if foreign else "malformed record"
+            for name, blob in named_states(CIRCADIAN_REFUSED_PREFIX):
+                try:
+                    kept = json.loads(blob.decode("ascii"))
+                    if not self._circadian_foreign(kept) and self._load_circadian(kept):
+                        return f"refused: {why}; adopted: {[name]}"
+                except Exception:  # a kept record is a candidate, never a reason to stop
+                    continue
+            return f"refused: fresh day ({why})"
         except Exception as e:  # a broken record must never block brain construction
+            self._circadian_carried = rec
             return f"restore raised: fresh day ({e})"
 
     def _circadian_binding(self):
         """What a circadian record is bound to: the seed and day period it was written under and the
-        clock's constants (panel #6910 m2), so another build's clock is refused, not resumed."""
+        clock's constants (panel #6910 m2), so another build's clock is refused, not resumed. The
+        light cycle's duty and offset are not bound: the brain always builds
+        `light_cycle(self.day_period)` with their defaults, so no record can differ on them; bind
+        them when the brain takes them as parameters (panel #7028 MINOR-2)."""
         c = self.clock
         return {
             "seed": self._seed,
@@ -5362,23 +5377,27 @@ class Brain:
 
     def _flush_circadian(self):
         """Write the clock's state, step and binding (see `_restore_circadian`), FIRST in the
-        night's persist block; unchanged state writes nothing. A carried foreign record
-        is kept first; a failed keep writes nothing, so the foreign record is never overwritten.
-        True if a record was written."""
+        night's persist block; unchanged state writes nothing. A carried refused record is kept
+        first and the restore note names it (`; kept: [<name>]`); a failed keep writes nothing, so
+        the refused record is never overwritten. A flush that raises or whose keep fails is counted
+        at `state()["circadian_flush_failed"]`. True if a record was written."""
         if not self._persist:
             return False
         try:
             from snn_data_lake.substrate.home import save_state
 
-            if self._circadian_carried is not None:
-                if not self._keep_refused(
-                    "clock", self._circadian_carried, CIRCADIAN_REFUSED_PREFIX
-                ):
+            carried = self._circadian_carried
+            if carried is not None:
+                if not self._keep_refused("clock", carried, CIRCADIAN_REFUSED_PREFIX):
+                    self._circadian_flush_failed += 1
                     return False
+                name = f"{CIRCADIAN_REFUSED_PREFIX}clock.{_record_id(carried)}.json"
+                self._circadian_restore_note = f"{self._circadian_restore_note}; kept: {[name]}"
                 self._circadian_carried = None
             rec = dict(self.clock.state_dict(), step=self._step, **self._circadian_binding())
             return bool(save_state(CIRCADIAN_STATE, rec))
         except Exception:
+            self._circadian_flush_failed += 1
             return False
 
     def _flush_coverage(self):
@@ -6292,7 +6311,9 @@ class Brain:
         # this method must not be what decides whether the brain keeps what it grew.
         self._flush_growth()
         self._flush_prototypes()  # rank 2b
-        self._flush_circadian()  # P4b (iii)
+        # P4b (iii): after growth, unlike the night block's clock-first order -- a graceful close
+        # finishes every flush, so only the growth-first rule above decides this order
+        self._flush_circadian()
         self._flush_coverage()  # T038
         self._flush_interaction_learner()
         try:
