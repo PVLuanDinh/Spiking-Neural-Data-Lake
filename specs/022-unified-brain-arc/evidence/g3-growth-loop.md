@@ -418,7 +418,7 @@ arm.
 | C13 | budget ledger survives a restart (P4b) | a fresh process reading a lake whose spend row was dropped must refuse to reproduce the ledger | the uninterrupted twin's ledger, byte-equal |
 | C14 | the forbidden context channel | a context port that reads a target or a future observation must raise | the declared causal port |
 | C16 | the grown-segment port's positive control (2.3; also T2's precondition, D-G4-3): the bare learner, reading G2's `witness_units(problem)` (two hand threshold units over the frozen code) through the port, learns B (XOR or S0C1) to G2's solved predicate, learning OFF at evaluation, on fixture seeds 9900-9907 | the same units with the grown segment masked off (all-off ablation): B must stay unsolved; and, for SPECIFICITY (Codex b1 G3 #9), witness units replaced by PROVABLY INCAPABLE planted units of equal count and norm (each unit's latency a function of a single word slot, so the augmented code stays inseparable), whose incapacity is VERIFIED before the run by the exact lift certificate firing on the augmented code: B must stay unsolved. G2's random norm-matched `decoy_units(problem, n, seed)` are a MEASURED COMPARATOR, reported, never a red (random threshold features can make XOR learnable) | the port None (byte-identical incumbent), unsolved on B |
-| C15 | (P5) the feed is wired | the norm-matched random-feed arm must differ from the fed arm on the pool's carriers | the pool's own determinism red at N 256 (G1) |
+| C15 | (P5) the feed is wired | the norm-matched random-feed arm must differ from the fed arm on the pool's carriers | the pool's own determinism red at N 256 (G1), and at EVERY tested N once the N > 256 arm is built [ANSWERED 2026-10-29: see DATED ADDENDUM 2026-10-29 (owner growth target) at the end of this file.] |
 | C17 | (lead read 2026-10-03; D9): Dale's sign holds on every grown/reservoir output synapse | a planted deposit that would flip an I unit's synapse positive (and an E unit's negative) must be clipped, and a planted synapse whose stored value violates its unit's sign must be refused at restore; the red names the synapse | the same deposits on sign-consistent synapses pass unchanged |
 | C18 | (lead read 2026-10-03; D3): the gated loop's attempt cap | (Codex b1 G3 #10) a SEPARABLE problem (C2's twin) in the red's fixture only, with PLANTED, VERIFIED-INCORRECT initial reads (label-neuron weights set so the twin reads at most 2 of 4, checked before the run) and EVERY plasticity path disabled (R-STDP deposit, modulation, correction and tick; asserted by the learner's weights and checkpoint bytes being identical before and after one attempt): the fixture's unsolved state is ASSERTED first, then the gated loop must stop after exactly A_max = 3 no-growth attempts, state LEARNING-RULE DEFICIT, never solved, zero units grown; a twin variant with neither lift witness nor verified separator must end UNRESOLVED the same way | the same twin with learning on solves without growth |
 | C19 | (lead read 2026-10-03; L1): the held-out judgement on C1-d is real | a lookup memorizer (a constructed reader storing every teach and validation combo's label) reads teach + validation right and must FAIL the future combos' `solved` | a reader that computes the XOR core from the words solves the future combos |
@@ -885,7 +885,7 @@ Ties to the state-branch amendment (98d92203) and its ctxread row types (21ca1bc
   family (9200-9207, reserve 9208-9215) is NOT run and waits for the lead's written go.
 - **Scope of what is built.** The port, the projection and its two reds. NOT built, as pre-registered: the fed / direct /
   random-feed READOUT contrast of 2.10 (the U contrasts need G2's problems and the taught learner's label neurons) and the
-  N > 256 fed-unit-becomes-reservoir arm (owner ratification, POLICIES P4d). No claim about feed benefit is made.
+  N > 256 fed-unit-becomes-reservoir arm (owner ratification, POLICIES P4d) [ANSWERED 2026-10-29: see DATED ADDENDUM 2026-10-29 (owner growth target) at the end of this file.] No claim about feed benefit is made.
 - **A fixture is not a measurement.** The tests run on a hand-sized KernelLsmPool (N 3) and W_in of 0.01; they prove the
   wiring and the reds, not the engine's N = 256 behaviour. The pool's own N = 256 determinism red was not re-run by this
   arm beyond `tests/test_recurrent_pool.py` passing.
@@ -1238,9 +1238,9 @@ Configuration versioning, Dale and the rebuilt isolation guards retain their con
   neurons to eventually gain cognition and consciousness". It answers the open owner question of 2.16 (annotated there) and rules the N > 256
   arm of 2.8 (:518-520, "waits for the owner to ratify a growth target inside the reservoir").
 - **Ruling (the launcher's binding reading).** The target is STEADY growth with NO CEILING. Reservoir growth is not capped at any N.
-- **Tested N values are measurement points, not caps.** Today no test fixes an N above 256. The tests that fix N around the gate are
-  `tests/test_feed_readout.py:143-158` and `:162-177` (a planted declared size of 257 only; no larger pool is built or admitted) and
-  `:181-194` (N = 256, the bound at which the size gate passes). They pin the CURRENT refusal gate `growth/feed_readout.py:89-90`
+- **Tested N values are measurement points, not caps.** Today no test BUILDS or admits a pool above 256. The tests that fix N around the gate are
+  `tests/test_feed_readout.py:143-159` and `:162-178` (a planted declared size of 257 only; no larger pool is built or admitted) and
+  `:181-195` (N = 256, the bound at which the size gate passes). They pin the CURRENT refusal gate `growth/feed_readout.py:89-90`
   (`pool.n > 256`), not a measurement point. Why those N: 256 is the engine's existing pool size (`reservoir/recurrent_pool.py:73`), the last
   N whose determinism red has been run; 257 is the smallest N above it, the minimal probe that the gate fires. The N values the arm will MEASURE
   at are named by the building session in a further dated line in this file BEFORE any seed runs, with the reason for each; none is named here.
@@ -1250,5 +1250,5 @@ Configuration versioning, Dale and the rebuilt isolation guards retain their con
   growth spends a budget relative to a persisted running baseline (P1); at the limit the brain reports UNSOLVED, stops growing, and keeps the
   problem OPEN to retry after sleep or new teaching." The budget paces growth per problem and pauses it; it is not a ceiling on the reservoir.
 - **No code may treat a tested N as a maximum.** A measurement point is a place the arm looks, never a bound the pool may not pass.
-- **Owed to the integrator (P3 / P4d conflict).** The refusal `growth/feed_readout.py:89-90` is a hard maximum on N and its two tests above
-  pin it. They are NOT changed here (docs only); they are listed in the g3-arms REPORT.md, Round 3, as OWED for the build that admits N > 256.
+- **Owed to the integrator (P3 / P4d conflict).** The refusal `growth/feed_readout.py:89-90` is a hard maximum on N, and its message
+  ('N>256 growth target unratified') is now false; its two tests above pin it. They are NOT changed here (docs only); they are listed in the g3-arms REPORT.md, Round 3, as OWED for the build that admits N > 256.
