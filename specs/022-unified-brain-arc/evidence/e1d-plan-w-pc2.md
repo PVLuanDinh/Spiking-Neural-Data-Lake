@@ -1488,4 +1488,6 @@ Look 10 printed "HARM MET at look 10 (n=640)" (`reports/compare-production-look1
 
 **The deletion is a SEPARATE red-first change. It is not in this record and is not made here.** This commit is docs only; no source changed. The deletion row is owed before ARC 6's battery. The clause also says the owner is told before it lands.
 
+**Integrator additions (2026-10-29 22:45, append-only).** The campaign's HEAVY-RUN.lock was RELEASED at 22:18:28 (lanes/engine-1024/HEAVY-RUN.audit.log: 'LOCK RELEASED pid=3208037 what=E1d campaign (tmux e1d:campaign ended)'); the campaign printed CAMPAIGN END at 22:18:07 with EXIT=0. Launcher D-93: the pre-registered decision of record stands and is the authority to BUILD route (iii); the owner was told at about 22:20 (push + chat); the deletion (tasks.md T125) is built red-first and is included in ARC 6's stack unless the owner says 'hold' before ARC 6's battery, in which case it lands later. T123 (the `_plan_w` / `_stn_gain` duplicate) closes by that deletion.
+
 Beside, not decisive: the secondary benefit read is INCONCLUSIVE (unpowered) (R12, L1302); the stratum is DESCRIPTIVE ONLY; the tail census has no bar.
