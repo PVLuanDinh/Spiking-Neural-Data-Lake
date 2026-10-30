@@ -20,7 +20,7 @@ K3 records "the rest of the night, then 6" (2.2): twin_K3 measures the sleep tic
 left, and every K3 restoring arm records that count plus 6 (integrator ruling, option (i)). The
 harness carries circadian phase across the restart; the brain does not (finding iii): a restoring
 process starts a fresh clock, so the K3 arms are coupled to twin_K3's record; c6's `K3_phase` checks
-that the restore resumed the cut night's phase (twin_K3's `cut_step`, D-79). The two sides differ at
+that the restore adopted the clock record of the cut night's onset (twin_K3's `onset_step`, D-79). The two sides differ at
 row R: twin_K3 runs R rest-of-night rows, then a wake day and a sleep entry (`_enter_wake`,
 `_enter_sleep` move learner state), then 6 rows; a K3 restore runs its wake period first, then R+6
 sleep rows with no wake/sleep transition between row R and R+1. So res_K3 vs twin_K3 can differ from the
@@ -533,6 +533,37 @@ def _chrono(brain):
         "observed": getattr(neuro, "observed", None),
         "live_n": getattr(neuro, "live_n", None),
     }
+
+
+def _track_clock(role, result):
+    """Harness-side clock facts, read from the process under test and never from its restore. A pre_
+    role notes the step of its last `_flush_circadian` call in `result["flushed_step"]` (None when
+    this head has no circadian flush); twin_K3 notes the step of each sleep onset, returned as
+    `seen["onset"]` (tick order: `_step += 1`, then `_enter_sleep`, whose persist block flushes the
+    clock first)."""
+    from snn_data_lake.engine.brain import Brain
+
+    seen = {"onset": None}
+    if role.startswith("pre_"):
+        result["flushed_step"] = None
+        flush = getattr(Brain, "_flush_circadian", None)
+        if flush is not None:
+
+            def flushed(self, *a, **kw):
+                done = flush(self, *a, **kw)
+                result["flushed_step"] = self._step
+                return done
+
+            Brain._flush_circadian = flushed
+    if role == "twin_K3":
+        enter = Brain._enter_sleep
+
+        def onset(self, *a, **kw):
+            seen["onset"] = self._step
+            return enter(self, *a, **kw)
+
+        Brain._enter_sleep = onset
+    return seen
 
 
 def _before(brain):
@@ -1225,6 +1256,7 @@ def run_process(role, seed, home, out, head="r2", *, nonce=None, k3_rest=None):
             return flushed
 
         Brain._flush_interaction_learner = sample_before_checkpoint
+    seen = _track_clock(role, result)
     brain = make_brain(seed=seed, persist=True)
     result["construct_motor"] = motor.n
     result["construct_chrono"] = _chrono(brain)
@@ -1253,7 +1285,7 @@ def run_process(role, seed, home, out, head="r2", *, nonce=None, k3_rest=None):
     windows = []
     draws = _watch(brain, motor, windows)
     if role == "twin_K3":  # the rest of the night, then 6: its length is the K3 restores' count
-        result["cut_step"] = brain._step  # where the cut left the clock: c6's K3_phase reads it
+        result["onset_step"] = seen["onset"]  # the cut night's onset record: c6's K3_phase reads it
         result["rows"] = _sleep_rows(brain, draws, until_wake=True)
         result["k3_rest"] = len(result["rows"]) - S_SLEEP
     else:
@@ -1329,8 +1361,11 @@ def run_percept(role, seed, out):
     restoring = dict(P3_ROLES)[role] == "pre_K1g"
     if restoring:
         result["reader"] = _reader_view()
+    _track_clock(role, result)
     brain = make_brain(seed=seed, persist=True, device="cpu")
     neuro = brain.neuro
+    result["construct_chrono"] = _chrono(brain)
+    result["construct_circadian_restored"] = getattr(brain, "_circadian_restored", None)
     result["fault"] = getattr(brain, "_r2_fault", None)
     if role == "pre_K1g0":
         _tick_to_boundary(brain)
@@ -1791,26 +1826,42 @@ def _k3_split(res, twin, rest):
 
 def _k3_phase(res, twin):
     """D-79's cross-check on the K3 count (MAJOR-3 (i)): the harness carries the cut night's remaining
-    ticks, so the brain must have resumed that night's phase too. A restore adopts the night's onset
-    record; twin_K3's cut lies 0..J_NIGHT sleep ticks after it. A brain that carries no phase (the
-    record is absent) reads False: that is finding (iii), not a harness fault."""
+    ticks, so the brain must have resumed that night's phase too. Tick order: `_step += 1`, then
+    `_enter_sleep`, whose persist block flushes the clock first; the schedule ends at a night's
+    boundary, so pre_K3's sleep ticks are the NEXT night's first ones and the last flush is that
+    night's onset. The restore adopts that record, so its step EQUALS the onset step twin_K3
+    recorded; a step off by any gap reads False. A brain that carries no phase (the record is
+    absent) reads False: that is finding (iii), not a harness fault."""
     step = ((res or {}).get("construct_circadian_restored") or {}).get("step")
-    cut = (twin or {}).get("cut_step")
-    return type(step) is int and type(cut) is int and 0 <= cut - step <= J_NIGHT
+    onset = (twin or {}).get("onset_step")
+    return type(step) is int and type(onset) is int and step == onset
 
 
-def chrono_clean(r):
-    """Hydration and redo tick nothing (construction leaves the clock where the restored record put
-    it: step 0 with no record, the record's step with one -- a restore that crossed a night adopts
-    the last sleep onset's step) and a sleep step advances no chronology and reaches no actuator
-    (R2-c5's instrument-level half). `nights` is not restored, so it stays 0."""
+def _clock_clean(r, parent):
+    """The restored clock at construction. `parent` is the pre_ arm's result: the step its last
+    `_flush_circadian` call flushed, recorded by the harness. With a restored record the clock, the
+    record and the parent's flush must agree (a restore that adopted the wrong record agrees with
+    itself, not with the parent); with none, the parent must have flushed none (a restore that
+    DROPPED a flushed record is not a head without circadian) and the clock starts at 0. `nights` is
+    not restored, so it stays 0."""
     c = r.get("construct_chrono") or {}
-    restored = r.get("construct_circadian_restored") or {"step": 0}
+    restored = r.get("construct_circadian_restored")
+    flushed = (parent or {}).get("flushed_step")
+    if restored is None:
+        step_ok = flushed is None and c.get("step") == 0
+    else:
+        step_ok = type(flushed) is int and c.get("step") == restored.get("step") == flushed
+    return step_ok and c.get("nights") == 0
+
+
+def chrono_clean(r, parent=None):
+    """Hydration and redo tick nothing (construction leaves the clock where the parent's flushed
+    record put it, see `_clock_clean`) and a sleep step advances no chronology and reaches no
+    actuator (R2-c5's instrument-level half)."""
     windows = r.get("replay_windows") or []
     return (
         r.get("construct_motor") == 0
-        and c.get("step") == restored.get("step")
-        and c.get("nights") == 0
+        and _clock_clean(r, parent)
         and all(w["before"] == w["after"] and w["motor"] == 0 for w in windows)
     )
 
@@ -2223,18 +2274,19 @@ def _percept_planted_entry(kind, arms):
     }
 
 
-#: #6952 A-1: until the circadian clock flushes before `_flush_growth`, a K1g kill leaves the previous
-#: session's close-time phase on disk, so res_K1g and twin_K1g differ in chronology for a reason the
-#: K1g bar does not register.
+#: #6952 A-1: on a head without the circadian fix there is no clock record to resume, so the K1g
+#: chronology has nothing to be compared with. The read is keyed on the code under test (pre_K1g's own
+#: flush, harness-side), never on what the restore reports (#7142).
 K1G_CHRONO_REFUSED = (
-    "K1g chronology not read: the kill falls before the circadian flush, so the restore resumes a "
-    "stale phase (circadian-p4b #6952 A-1, flush-first pending)"
+    "K1g chronology not read: pre_K1g flushed no circadian record, so this head has no clock to "
+    "resume (lifted by claude/circadian-p4b-1029; circadian-p4b #6952 A-1)"
 )
 
 
 def c7_seed(arms):
     """R2-c7 (2.10, part P3) on one seed: K1g's restore equals the uninterrupted twin (the buffer and
-    the next refit) and leaves the chronology untouched; CROSS and O_buf each move it; each planted
+    the next refit) and leaves the chronology untouched (scored when pre_K1g flushed a circadian
+    record, refused by name when it flushed none; a restore that dropped the record is a FAIL); CROSS and O_buf each move it; each planted
     percept red reads as `_percept_planted_entry`; the shuffled-buffer positive control's refit
     differs. Its own incomplete list: a P1/P2 arm never makes a P3 seed INVALID (2.3, A6)."""
     get, twin = arms.get, arms.get("twin_K1g")
@@ -2272,6 +2324,12 @@ def c7_seed(arms):
         role = f"K1g_{kind}_off"
         if (get(role) or {}).get("fault") is not None and role not in incomplete:
             incomplete.append(role)
+    pre = get("pre_K1g") or {}
+    if pre.get("flushed_step") is None:  # the code under test flushed no clock: nothing to resume
+        chrono, chrono_ok = {"scored": False, "refused": K1G_CHRONO_REFUSED}, True
+    else:  # it did, so the restore must carry it: a dropped record is a FAIL, never a refusal
+        chrono_ok = _clock_clean(res, pre)
+        chrono = {"scored": True, "clean": chrono_ok}
     pos = get("K1g_POS") or {}
     pos_model = pos.get("model") or {}
     control = (
@@ -2286,6 +2344,7 @@ def c7_seed(arms):
         and all(reds.values())
         and all(all(entry.values()) for entry in planted.values())
         and control
+        and chrono_ok
         and not incomplete
     )
     return {
@@ -2293,7 +2352,7 @@ def c7_seed(arms):
         "reds": reds,
         "planted": planted,
         "positive_control": control,
-        "chrono": {"scored": False, "refused": K1G_CHRONO_REFUSED},
+        "chrono": chrono,
         "incomplete": incomplete,
         "arms_complete": not incomplete,
         "ok": ok,
@@ -2303,7 +2362,9 @@ def c7_seed(arms):
 def seed_comparisons(arms, base=None):
     """Every per-seed reading of 2.3, from the R2-head arms (and the base-head arms when given). A red
     FIRES only if its arm and its twin are COMPLETE records; an incomplete arm makes the seed
-    incomplete (never a fire)."""
+    incomplete (never a fire). c6's `K3_phase` is a conjunct of its all(): until claude/circadian-p4b-1029
+    stacks (D-79 registers the cross-check) the brain restores no phase, so R2-c6 reads NOT MET on
+    every seed at a head without it. That is finding (iii), not an instrument fault."""
     eq, get = records_equal, arms.get
     required = [r for r, _ in R2_ROLES if not r.startswith(("fw_", "pre_"))]
     incomplete = [r for r in required if not _complete(get(r))]
@@ -2331,7 +2392,7 @@ def seed_comparisons(arms, base=None):
             get("res_K3"), get("twin_K3"), (get("twin_K3") or {}).get("k3_rest", 0)
         ),
         "chrono": {
-            r: chrono_clean(get(r, {}))
+            r: chrono_clean(get(r, {}), get(dict(R2_ROLES)[r]))
             for r in (
                 "res_K0",
                 "res_K1",
