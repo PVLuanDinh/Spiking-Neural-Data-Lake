@@ -7,6 +7,7 @@ and a positive dopamine step is applied on every call, with the old `_plan_*` st
 values that made the old rule grow `_plan_w` and nudge. The break this catches: any `_plan_w` term
 (an update or a nudge) back on the live path."""
 
+import ast
 import types
 from pathlib import Path
 
@@ -65,12 +66,19 @@ def test_live_path_does_not_update_plan_w():
 
 def _planned_seq_readers(pkg):
     """Modules of package dir `pkg` that LOAD the attribute `_planned_seq` (stores are the beam
-    writers and the H-JEPA reset, not readers)."""
+    writers and the H-JEPA reset, not readers; `+=` stores but reads the old value)."""
     out = []
     for p in sorted(Path(pkg).rglob("*.py")):
         parts = p.relative_to(pkg.parent).with_suffix("").parts
         dotted = ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
-        if "_planned_seq" in _py_idents(pkg.parent, dotted)[1]:
+        augs = (
+            n.target
+            for n in ast.walk(ast.parse(p.read_text(encoding="utf-8")))
+            if isinstance(n, ast.AugAssign)
+        )
+        if "_planned_seq" in _py_idents(pkg.parent, dotted)[1] or any(
+            isinstance(t, ast.Attribute) and t.attr == "_planned_seq" for t in augs
+        ):
             out.append(dotted)
     return out
 
