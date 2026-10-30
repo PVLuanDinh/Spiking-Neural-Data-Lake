@@ -1212,7 +1212,7 @@ Configuration versioning, Dale and the rebuilt isolation guards retain their con
   c4d0e921: `instruments/growth_campaign.py` + `tests/test_growth_campaign.py` (P4b, learner-independent part). Additive; nothing above changes.
 - **P4a as built.** Arms COL / SINGLE / BATCH9 (batch sizes 9 / 1 / 9 at k = 8; U counts every unit), `coupling(arm, gamma)` with gamma a
   REQUIRED parameter (pending Q-COL; nothing decided), `as_column` / `column_source` (k E then one I, output synapses clipped to the
-  sign), role-free `ColumnBatch` from label rows (2.7 D8), `worst_residual` (the one shared targeting rule). Reds that fire: BATCH9 equals
+  sign), role-free `ColumnBatch` from label rows (2.7 D8), `worst_residual` (the one shared targeting rule). Reds that fire (read off the 2026-10-08 run on claude/g3-b3; this port has not run them): BATCH9 equals
   COL at gamma 0 byte-identically; a planted early-I fixture makes COL's E latency None where BATCH9's is 4.
 - **P4b as built.** Seed families and `preflight` (a confirmatory family is refused unless it is the exact registered block AND the lead's
   written go is entered; `GO` is None), `failure_penalty` (54 for batch 9, 53 for batch 1), `restricted_score` (2.8), `primary` (D_sel, D_rand
