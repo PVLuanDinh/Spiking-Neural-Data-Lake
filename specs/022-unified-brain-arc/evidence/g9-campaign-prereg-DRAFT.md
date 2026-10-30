@@ -367,7 +367,7 @@ FOLD1 is not on this base (Fold 2, #6589 MINOR-4).
 
 | # | Item | Needs a run? |
 |---|---|---|
-| 1 | G9's engine built: G1(c), G3, G5, G6 landed (PLAN:2057), then A0c, A0a, every arm A1-A11, A8-imp, A8-rand, A0-shuf and the O3 sham hooks built, each with graph-exists dispositions (P2: reuse `gate_from`, `state_digest`, `rsa_drift`) | build, no campaign run |
+| 1 | G9's engine built: G1(c), G3, G5, G6 landed (PLAN:2057), and T117a ticked (the reservoir join bound into the live grower; it GATES the first pilot, launcher D-92), then A0c, A0a, every arm A1-A11, A8-imp, A8-rand, A0-shuf and the O3 sham hooks built, each with graph-exists dispositions (P2: reuse `gate_from`, `state_digest`, `rsa_drift`) | build, no campaign run |
 | 2 | Section 3.4's reds counted RED (including the queued `tests/test_rsa_drift.py`), logs with the command on line 1 | YES (tests; after the campaign holds the host) |
 | 3 | The shared drift reader (pv / rate / tuning + `rsa_drift` moved in, one unit-set rule agreed with #6244; FOLD1 finding 3, FOLD1 owed 5) | build + its reds (YES) |
 | 4 | Registered before the pilot (author choice): per-contrast delta and delta_vii (FOLD1 owed 7); G-a's floor rate pi0 and its planned rate pi1; the pilot's SD-bound ratio r (section 4.1's pilot count rule); the budget B (section 2); the train/validation/test split rule and sizes; O3's equivalence margin | no (author choice) |
