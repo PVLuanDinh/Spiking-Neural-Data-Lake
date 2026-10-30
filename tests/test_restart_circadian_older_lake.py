@@ -267,14 +267,35 @@ def test_a_record_whose_restore_raises_retries_the_kept_copies(tmp_path):
     """Enforcer MINOR-1 (#7257): a record whose load raises outside load_state_dict's decode catch
     (a newer build's layout after a rollback) retries the kept copies, as the docstring says. A
     stray seed keeps seed S's step-5 record; the stray's record, rebound to S, raises on its own rng
-    only, so the step-5 copy is adopted under a 'restore raised' note. Red at 03369175: a fresh
-    day."""
+    only, so the step-5 copy is adopted under a 'restore raised' note."""
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED, ticks=5)
     run_brain(home, seed=SEED + 1)
     out = run_brain(home, seed=SEED, rewrite={"seed": SEED}, codec_raises_on_written=True)
     assert out["note"].startswith("restore raised: newer layout; adopted:"), out["note"]
     assert out["restored"]["step"] == 5, out["restored"]
+
+
+def test_a_record_whose_restore_raises_never_adopts_a_kept_copy_older_than_its_step(tmp_path):
+    """Coverage review (round 5): the raise path keeps the malformed path's floor (lens A
+    R3-MINOR-2, #7181). A raising record at step 9 must not adopt the step-5 kept copy; with no
+    kept copy at step >= 9 it is a fresh day. A pin: the base is a fresh day too."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    run_brain(home, seed=SEED + 1)
+    rewrite = {"seed": SEED, "step": 9}
+    note = _fresh(run_brain(home, seed=SEED, rewrite=rewrite, codec_raises_on_written=True))
+    assert note == "restore raised: fresh day (newer layout)", note
+
+
+def test_a_kept_copy_that_also_raises_is_skipped_and_the_note_keeps_the_first_error(tmp_path):
+    """Coverage review (round 5): with a codec defect every kept copy raises too; the retry skips
+    each one and the note names the record's own error. A pin: the base gives the same note."""
+    home = private_home(tmp_path, "h")
+    run_brain(home, seed=SEED, ticks=5)
+    run_brain(home, seed=SEED + 1)
+    note = _fresh(run_brain(home, seed=SEED, rewrite={"seed": SEED}, codec_raises=True))
+    assert note == "restore raised: fresh day (codec defect)", note
 
 
 def test_superseded_circadian_records_are_retired_by_the_nights_consolidation(tmp_path):
