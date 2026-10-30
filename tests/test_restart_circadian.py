@@ -69,7 +69,7 @@ if spec.get("kill_at_growth_flush"):  # R2's K1g boundary: os._exit right after 
         os._exit(0)
     b._flush_growth = _killed
 if spec.get("no_keep"):
-    b._keep_refused = lambda *a, **k: False
+    b._keep_refused = lambda *a, **k: None
 ticks, slept, woke = 0, False, 0
 into_day = spec.get("wake_ticks_into_day")
 while woke < into_day if into_day is not None else ticks < spec.get("ticks", 0):

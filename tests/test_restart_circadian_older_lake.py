@@ -179,3 +179,15 @@ def test_a_malformed_record_adopts_the_newest_kept_copy_it_can_load(tmp_path):
     out = run_brain(home, seed=SEED, rewrite={"seed": SEED, "step": True})
     assert out["note"].startswith("refused: malformed record; adopted:"), out["note"]
     assert out["restored"]["step"] == 5, out["restored"]
+
+
+def test_superseded_circadian_records_are_retired_by_the_nights_consolidation(tmp_path):
+    """Lens A MAJOR-A (#7028), lens C MAJOR-B (#7021), enforcer MAJOR-1 (#7053): the night block's
+    `klog.consolidate` (nights % 8 == 0, `records` not None) runs `_prune_state_history` before the
+    night's flush, so the live circadian history is bounded (at most 8 onsets after a prune, plus
+    the survivor and close()'s record), and after a consolidation only the newest record remains.
+    A pin of the tree's prune, not a red: the night block is unchanged by this round."""
+    out = run_brain(private_home(tmp_path, "h"), seed=SEED, ticks=400, consolidate=True)
+    assert out["nights"] >= 9, out["nights"]  # crossed at least one nights % 8 == 0 after night 0
+    assert 1 <= out["record_count"] <= 10, out["record_count"]
+    assert (out["consolidated_count"], out["consolidated"]) == (1, out["record"])
