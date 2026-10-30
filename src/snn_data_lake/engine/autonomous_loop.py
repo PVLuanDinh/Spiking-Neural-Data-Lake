@@ -609,15 +609,9 @@ class AutonomousArm:
         self._learned_ctl = (
             None  # C2 #9: (cost, value) of control LEARNED by the cortex (None -> fixed constants)
         )
-        self._planned_seq = []  # C2 #6: best multi-step action sequence from the beam planner (preference only)
-        # LEARNED (not hand-set) strength of the plan's vote against the reactive PFC bias
-        self._plan_w = 0.1  # three-factor synapse, grown/shrunk by dopamine (see _pfc_bias)
-        self._plan_lr = 0.02  # its learning rate
-        self._plan_elig = 0.0  # eligibility trace: was the plan followed on the last tick
-        self._plan_base = (
-            0.0  # that trace's running mean (subtracted -> only better-than-usual pays)
-        )
-        self._plan_tau = 0.02  # baseline adaptation rate
+        # C2 #6: best multi-step action sequence from the beam planner. T125 (E1d route (iii)) deleted its
+        # only consumer, the `_plan_w` nudge; the sequence is computed and read by nothing live (P3 EXEMPT).
+        self._planned_seq = []
         self._allo_pos = (0.0, 0.0)  # allocentric position estimate readout
         self._gain_on = bool(gain_adapt)
         self._gain = None
@@ -1485,8 +1479,6 @@ class AutonomousArm:
 
                 self.pfc.plan(z1, ACTIONS, self.hjepa_serve, goal_value, horizon=self.jepa_horizon)
                 # this path plans ONE abstract step, so the multi-step sequence is stale -> drop it
-                # (it must not nudge with an old plan) and fall through to the shared learning tail
-                # so the plan synapse still sees this tick's outcome.
                 self._planned_seq, hj_planned = [], True
             # window still filling / no abstract goal yet -> fall through to the reactive bootstrap below
         if hj_planned:
@@ -1528,27 +1520,6 @@ class AutonomousArm:
             evidence = [max(0.0, row[a]) for a in ACTIONS]
             self.pfc.update(evidence)  # reactive gated deliberation -> a WM goal
         bias = self.pfc.top_down_bias(strength=gain)
-        # BRAIN-NATIVE: how far the multi-step plan out-votes the reactive PFC bias is a LEARNED
-        # synapse, not a hand-set 0.5. Three-factor with an eligibility trace: the trace carries
-        # whether the plan was followed last tick, dopamine (the arm's RPE) supplies the sign, and
-        # the trace's own running mean is subtracted so only BETTER-than-usual outcomes strengthen
-        # plan-following. Bounded preference; the reflex/E-STOP still preempts and no actuator
-        # route is added.
-        da = float(self._rpe or 0.0)
-        self._plan_w = min(
-            1.0, max(0.0, self._plan_w + self._plan_lr * da * (self._plan_elig - self._plan_base))
-        )
-        self._plan_base = (
-            1.0 - self._plan_tau
-        ) * self._plan_base + self._plan_tau * self._plan_elig
-        self._plan_elig = 0.0
-        if self._planned_seq:  # bounded nudge toward the FIRST action of the best planned sequence
-            try:
-                bias = list(bias)
-                bias[ACTIONS.index(self._planned_seq[0])] += self._plan_w * gain
-                self._plan_elig = 1.0
-            except (ValueError, IndexError):
-                pass
         return bias
 
     def _lake_write(self, pattern, goal, action):
