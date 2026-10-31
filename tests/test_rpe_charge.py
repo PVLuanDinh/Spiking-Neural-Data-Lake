@@ -130,6 +130,11 @@ def test_refusals_are_explicit_exits_not_asserts(tmp_path):
 
 
 # ------------------------------------------------------------------------------- wrappers / patches
+def _plan_arm(**kw):
+    # the four plan series every arm reads, which T125 deleted from the real arm and bind requires
+    return types.SimpleNamespace(_plan_w=0.1, _plan_elig=1.0, _plan_base=0.0, _plan_lr=0.02, **kw)
+
+
 def _broken_dopamine(window, reward):
     raise RuntimeError("planted patch bug")
 
@@ -139,7 +144,7 @@ def test_a_broken_patch_is_not_a_perfect_neuter():
 
     vl = ValenceLearner()
     vl.dopamine = _broken_dopamine  # the neuter body raises on every call
-    arm = types.SimpleNamespace(_plan_w=0.1, _valence=vl)
+    arm = _plan_arm(_valence=vl)
     with R.ArmPatch("vfrozen") as ap:
         ap.bind(arm)
         n_err = 0
@@ -162,7 +167,7 @@ def test_patches_are_restored_and_scoped_to_the_arm_instance():
     orig, win = ValenceLearner.learn, _pattern(1)
     mine, foreign = ValenceLearner(), ValenceLearner()
     with R.ArmPatch("vshuf", perm=[1.0, -1.0, 1.0]) as ap:
-        ap.bind(types.SimpleNamespace(_plan_w=0.1, _valence=mine))
+        ap.bind(_plan_arm(_valence=mine))
         mine.learn(win, 0.5)
         foreign.learn(win, 0.5)
         assert ap.v["calls"] == 1 and ap.v["foreign_learn"] == 1
@@ -1149,7 +1154,7 @@ def test_pshuf_swaps_the_rpe_and_restores_it_even_when_the_call_raises(monkeypat
         return "ok"
 
     monkeypatch.setattr(AutonomousArm, "_pfc_bias", fake)
-    arm = types.SimpleNamespace(_rpe=0.25, _plan_w=0.1, _plan_lr=0.02)
+    arm = _plan_arm(_rpe=0.25)
     with R.ArmPatch("pshuf", perm=[0.9, -0.9]) as ap:
         ap.bind(arm)
         assert AutonomousArm._pfc_bias(arm, "u") == "ok"
@@ -1170,7 +1175,7 @@ def test_pfc_bias_wrapper_records_the_held_goal_beside_the_tick(monkeypatch):
 
     monkeypatch.setattr(AutonomousArm, "_pfc_bias", lambda self, unit, pattern=None, qa=None: "ok")
     pfc = PrefrontalExecutive(len(ACTIONS), seed=0)
-    arm = types.SimpleNamespace(_rpe=0.0, _plan_w=0.1, pfc=pfc)
+    arm = _plan_arm(_rpe=0.0, pfc=pfc)
     with R.ArmPatch("real") as ap:
         ap.bind(arm)
         AutonomousArm._pfc_bias(arm, "u")
@@ -1288,7 +1293,7 @@ def test_a_byte_copied_repeat_and_a_retagged_record_fail_their_own_identity(tmp_
 
 
 def test_pfrozen_zeroes_the_plan_rate():
-    arm = types.SimpleNamespace(_plan_w=0.1, _plan_lr=0.02)
+    arm = _plan_arm()
     with R.ArmPatch("pfrozen") as ap:
         ap.bind(arm)
     assert arm._plan_lr == 0.0
@@ -1329,7 +1334,7 @@ def test_r6_pc_rotates_only_the_bound_arms_pfc_bias_by_one_and_is_restored():
     assert p.goal == 0
     orig = PrefrontalExecutive.top_down_bias
     with R.ArmPatch("pc") as ap:
-        ap.bind(types.SimpleNamespace(_plan_w=0.1, pfc=p))
+        ap.bind(_plan_arm(pfc=p))
         out = PrefrontalExecutive.top_down_bias(p, strength=0.37)
         assert isinstance(out, list) and len(out) == n
         assert out[1] == 0.37 and out[0] == 0 and ap.pc_calls == 1
@@ -1352,7 +1357,7 @@ def test_real_arm_records_the_prediction_before_learning():
 
     vl, win = ValenceLearner(), _pattern(1)
     with R.ArmPatch("real") as ap:
-        ap.bind(types.SimpleNamespace(_plan_w=0.1, _valence=vl))
+        ap.bind(_plan_arm(_valence=vl))
         for r in (1.0, 1.0, -1.0):
             vl.valence(win)
             vl.learn(win, r)
@@ -1372,7 +1377,7 @@ def test_valence_exceptions_are_recorded_then_reraised():
     vl = ValenceLearner()
     vl.n = None  # makes _active() fail inside valence()
     with R.ArmPatch("real") as ap:
-        ap.bind(types.SimpleNamespace(_plan_w=0.1, _valence=vl))
+        ap.bind(_plan_arm(_valence=vl))
         with pytest.raises(TypeError):
             vl.valence([0.5])
     assert [e["where"] for e in ap.exc] == ["valence"]
@@ -1891,7 +1896,7 @@ def test_prediction_is_none_when_learn_runs_without_a_preceding_valence_read():
 
     vl = ValenceLearner()
     with R.ArmPatch("real") as ap:
-        ap.bind(types.SimpleNamespace(_plan_w=0.1, _valence=vl))
+        ap.bind(_plan_arm(_valence=vl))
         vl.learn(_pattern(1), 1.0)  # learn()'s own internal valence read is not the prediction
     assert ap.v["pred"] == [None]
     bad = R.run_problems(

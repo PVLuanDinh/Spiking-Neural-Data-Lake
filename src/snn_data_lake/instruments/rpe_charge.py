@@ -230,6 +230,9 @@ FIXTURE_FROZEN = (
 # T125 (E1d route (iii)) deleted the `_plan_w` update and its nudge; E1b/E1c/E1d ran on
 # c1df3887 / ee224e50 / c4c10b28, where it exists.
 PLAN_W_GONE = "`_plan_w` deleted by T125; read E1d at c4c10b28"
+# every arm reads all four (w_pfc_bias, the per-tick series, plan_lr_final): one missing is a
+# half-applied T125, so bind refuses on any of them and never lets an AttributeError out mid-run.
+PLAN_SERIES = ("_plan_w", "_plan_elig", "_plan_base", "_plan_lr")
 
 
 class Refused(SystemExit):
@@ -752,9 +755,10 @@ class ArmPatch:
         self._in_learn = False
 
     def bind(self, arm_obj):
-        if not hasattr(arm_obj, "_plan_w"):  # every arm reads it (w_pfc_bias, the per-tick series)
-            print(f"REFUSED (bind): {PLAN_W_GONE}", flush=True)
-            raise Refused(PLAN_W_GONE)
+        for attr in PLAN_SERIES:
+            if not hasattr(arm_obj, attr):
+                print(f"REFUSED (bind): {attr} missing -- {PLAN_W_GONE}", flush=True)
+                raise Refused(PLAN_W_GONE)
         self.target = arm_obj
         if self.arm == "pfrozen":
             arm_obj._plan_lr = 0.0
@@ -2590,8 +2594,24 @@ def _selfcheck():
     if gone != PLAN_W_GONE:
         print(f"rpe_charge self-check FAILED: bind without `_plan_w` refused with {gone!r}")
         return 1
+    half = types.SimpleNamespace(_plan_w=0.1, _plan_elig=1.0, _plan_base=0.0)
+    try:
+        with contextlib.redirect_stdout(None):
+            ArmPatch("vfrozen").bind(half)
+        half_gone = None
+    except Refused as e:
+        half_gone = e.msg
+    if half_gone != PLAN_W_GONE:
+        print(
+            f"rpe_charge self-check FAILED: bind with `_plan_lr` missing refused with {half_gone!r}"
+        )
+        return 1
     with ArmPatch("vfrozen") as ap:
-        ap.bind(types.SimpleNamespace(_plan_w=0.1, _valence=mine))
+        ap.bind(
+            types.SimpleNamespace(
+                _plan_w=0.1, _plan_elig=1.0, _plan_base=0.0, _plan_lr=0.02, _valence=mine
+            )
+        )
         mine.learn(win, 1.0)
         other.learn(win, 1.0)
         scoped = (
@@ -2603,7 +2623,7 @@ def _selfcheck():
     print(
         f"rpe_charge self-check OK: planted-learning control t={ta:.1f}/{tb:.1f}, planted null refused, planted-harm "
         f"separated, MET/VOID status, 3 fixtures, exact mde factor {f:.3f} (rule {MDE_F}), neuter scoped to the arm "
-        "instance and restored, bind refuses by name without `_plan_w`. No brain was built; the campaign runs on the pushed head (integrator)."
+        "instance and restored, bind refuses by name without the plan series (`_plan_w`..`_plan_lr`). No brain was built; the campaign runs on the pushed head (integrator)."
     )
     return 0
 
