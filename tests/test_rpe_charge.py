@@ -1306,6 +1306,18 @@ def test_t125_bind_refuses_by_name_on_a_head_without_plan_w(arm_name):
     assert not hasattr(arm, "_plan_lr")
 
 
+@pytest.mark.parametrize("missing", ("_plan_elig", "_plan_base", "_plan_lr"))
+def test_t125_bind_refuses_by_name_when_a_read_plan_attr_is_missing(missing):
+    # a half-applied T125 keeps `_plan_w` and drops the rest: bind must refuse by name here, not
+    # pass and raise AttributeError on the first tick that reads the missing series.
+    arm = types.SimpleNamespace(_plan_w=0.1, _plan_elig=1.0, _plan_base=0.0, _plan_lr=0.02)
+    delattr(arm, missing)
+    with R.ArmPatch("real") as ap:
+        with pytest.raises(R.Refused) as e:
+            ap.bind(arm)
+    assert e.value.msg == "`_plan_w` deleted by T125; read E1d at c4c10b28"
+
+
 def test_r6_pc_rotates_only_the_bound_arms_pfc_bias_by_one_and_is_restored():
     from snn_data_lake.engine.autonomous_loop import ACTIONS
     from snn_data_lake.faculties.prefrontal_executive import PrefrontalExecutive
