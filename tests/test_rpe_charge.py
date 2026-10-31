@@ -1065,16 +1065,11 @@ def test_real_brain_pc_smoke_no_encoder_scopes_the_stub_to_the_arms_own_pfc(
 
 
 @pytest.mark.slow
-def test_real_brain_smoke_no_encoder(tmp_path, monkeypatch):
-    rec, out = _no_encoder_run(tmp_path, monkeypatch, "real", 3)
-    assert out.exists() and rec["tier"]["reported"] == "stdlib" and rec["errs"] == 0
-    _assert_e1d_record_fields(tmp_path, rec, "real_8")
-    assert rec["tier"]["state_api"] == "stdlib" and rec["tier"]["encoder_calls"] == {
-        "vision": 0,
-        "audio": 0,
-        "pc": 0,
-    }
-    assert math.isfinite(rec["run_s"])
+def test_real_brain_smoke_no_encoder(tmp_path, monkeypatch, capsys):
+    """T125 RE-POINT: route (iii) deleted `_plan_w`, so run_arm's arm patch refuses by name at bind
+    before any tick. What this @slow smoke still proves on a REAL no-encoder brain: it builds, the
+    tier gate passes, and the arm patch refuses by NAME (never AttributeError)."""
+    _assert_t125_refusal(tmp_path, monkeypatch, "real", 3, capsys)
 
 
 # ------------------------------------------------------------- run_arm refusals (stub brain only)
