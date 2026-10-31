@@ -1027,32 +1027,41 @@ def _assert_e1d_record_fields(tmp_path, rec, tag):
     assert len(rec["p"]["held_goal"]) == rec["pfc_bias_calls"]
 
 
-def _assert_pc_scoped(rec):
-    assert rec["pfc_bias_calls"] > 0  # the detector's own positive control
-    assert rec["pc_stub_calls"] == rec["pfc_bias_calls"], rec["pc_stub_calls"]
+def _assert_t125_refusal(tmp_path, monkeypatch, arm, ticks, capsys):
+    """T125 route (iii) deleted `_plan_w`: the arm patch must REFUSE BY NAME at bind -- after the
+    real brain is built and tier-checked, before any tick -- and never an AttributeError."""
+    from snn_data_lake.engine.brain import Brain
+
+    ticked = []
+    orig = Brain.tick
+    monkeypatch.setattr(Brain, "tick", lambda self: ticked.append(1) or orig(self))
+    with pytest.raises(R.Refused) as e:
+        _no_encoder_run(tmp_path, monkeypatch, arm, ticks)
+    assert e.value.msg == R.PLAN_W_GONE
+    assert ticked == []  # the brain was built, never run past the build
+    assert not (tmp_path / f"{arm}_8.json").exists()
+    out = capsys.readouterr().out
+    assert f"arm={arm} seed=8" in out and "TIER requested=no-encoder" in out and "ok=True" in out
 
 
 PC_TICKS = 12
 
 
 @pytest.mark.slow
-def test_real_brain_pc_smoke_no_encoder_scopes_the_stub_to_the_arms_own_pfc(tmp_path, monkeypatch):
-    """stack-c #5933 MAJOR-1: the pc stub's scope, the identity tag, tier.native and held_goal,
-    read at runtime on the real run_arm path before R2a. Red: the stub's scope check reads False
-    for the PFC, so the stub counts nothing while _pfc_bias still does."""
-    rec, out = _no_encoder_run(tmp_path, monkeypatch, "pc", PC_TICKS)
-    assert out.exists() and rec["errs"] == 0 and rec["tier"]["reported"] == "stdlib"
-    _assert_pc_scoped(rec)
-    _assert_e1d_record_fields(tmp_path, rec, "pc_8")
-    assert not any("stub calls" in b for b in R.run_problems("pc", 8, rec, "no-encoder", R.E1C))
-    mine = R.ArmPatch._mine
-    monkeypatch.setattr(R.ArmPatch, "_mine", lambda s, o, a: a != "pfc" and mine(s, o, a))
-    bad, _ = _no_encoder_run(tmp_path / "mutant", monkeypatch, "pc", PC_TICKS)
-    assert bad["pc_stub_calls"] == 0 and bad["pfc_bias_calls"] > 0
-    with pytest.raises(AssertionError):
-        _assert_pc_scoped(bad)
-    want = f"pc_8: stub calls=0 != pfc_bias_calls={bad['pfc_bias_calls']}"
-    assert want in R.run_problems("pc", 8, bad, "no-encoder", R.E1C)
+def test_real_brain_pc_smoke_no_encoder_scopes_the_stub_to_the_arms_own_pfc(
+    tmp_path, monkeypatch, capsys
+):
+    """ORIGINAL PURPOSE (stack-c #5933 MAJOR-1): "the pc stub's scope, the identity tag, tier.native
+    and held_goal, read at runtime on the real run_arm path before R2a".
+
+    T125 RE-POINT: route (iii) deleted `_plan_w`, so run_arm's arm patch refuses by name at bind --
+    before any tick -- and the runtime pc-scope measurement this smoke was built for is unreachable
+    through run_arm on this head. The stub's scope stays covered on stand-ins by
+    test_r6_pc_rotates_only_the_bound_arms_pfc_bias_by_one_and_is_restored, and the refusal per arm
+    by test_t125_bind_refuses_by_name_on_a_head_without_plan_w. What this @slow smoke still proves
+    on a REAL no-encoder brain: it builds, the tier gate passes, and the arm patch refuses by NAME
+    (never AttributeError) without running the brain past the build."""
+    _assert_t125_refusal(tmp_path, monkeypatch, "pc", PC_TICKS, capsys)
 
 
 @pytest.mark.slow
