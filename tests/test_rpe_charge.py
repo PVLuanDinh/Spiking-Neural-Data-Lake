@@ -1307,7 +1307,10 @@ def test_t125_bind_refuses_by_name_on_a_head_without_plan_w(arm_name):
     with R.ArmPatch(arm_name, perm=[0.5]) as ap:
         with pytest.raises(R.Refused) as e:
             ap.bind(arm)
-    assert e.value.msg == "`_plan_w` deleted by T125; read E1d at c4c10b28"
+    assert (
+        e.value.msg == "`_plan_w` deleted by T125; rule at c4c10b28; "
+        "verdict on the E1d record branch (enforcer #7457)"
+    )
     assert not hasattr(arm, "_plan_lr")
 
 
@@ -1320,7 +1323,10 @@ def test_t125_bind_refuses_by_name_when_a_read_plan_attr_is_missing(missing):
     with R.ArmPatch("real") as ap:
         with pytest.raises(R.Refused) as e:
             ap.bind(arm)
-    assert e.value.msg == "`_plan_w` deleted by T125; read E1d at c4c10b28"
+    assert (
+        e.value.msg == "`_plan_w` deleted by T125; rule at c4c10b28; "
+        "verdict on the E1d record branch (enforcer #7457)"
+    )
 
 
 def test_r6_pc_rotates_only_the_bound_arms_pfc_bias_by_one_and_is_restored():

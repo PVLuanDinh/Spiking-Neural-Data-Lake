@@ -229,7 +229,9 @@ FIXTURE_FROZEN = (
 
 # T125 (E1d route (iii)) deleted the `_plan_w` update and its nudge; E1b/E1c/E1d ran on
 # c1df3887 / ee224e50 / c4c10b28, where it exists.
-PLAN_W_GONE = "`_plan_w` deleted by T125; read E1d at c4c10b28"
+PLAN_W_GONE = (
+    "`_plan_w` deleted by T125; rule at c4c10b28; verdict on the E1d record branch (enforcer #7457)"
+)
 # every arm reads all four (w_pfc_bias, the per-tick series, plan_lr_final): one missing is a
 # half-applied T125, so bind refuses on any of them and never lets an AttributeError out mid-run.
 PLAN_SERIES = ("_plan_w", "_plan_elig", "_plan_base", "_plan_lr")
