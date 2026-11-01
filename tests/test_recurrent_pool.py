@@ -565,8 +565,15 @@ def test_the_transported_encoder_refuses_what_it_cannot_carry(block, match):
 
 
 def test_the_transported_encoder_refuses_a_random_draw_that_is_not_the_encoder():
+    # not an encoder: wrong width, or no row. A draw of ANY positive row count x 64 is one (RULING
+    # item 3, as fresh_encoder's own test below), so 255 rows is NOT refused here
     with pytest.raises(ValueError, match="encoder shape"):
-        rp.transported_encoder(np.ones((255, 64)), _block(2))
+        rp.transported_encoder(np.ones((256, 63)), _block(2))
+    with pytest.raises(ValueError, match="encoder shape"):
+        rp.transported_encoder(np.ones((0, 64)), _block(2))
+    assert rp.transported_encoder(np.ones((255, 64)), _block(2)).shape == (255, 64)
+    with pytest.raises(ValueError, match="more than the encoder"):
+        rp.transported_encoder(np.ones((255, 64)), _block(256))
     # 256 units fill every row: the largest block it admits
     out = rp.transported_encoder(rp.w_in(7), _block(256))
     assert abs(rp.mean_row_norm(out) - rp.mean_row_norm(rp.w_in(7))) < 1e-12
