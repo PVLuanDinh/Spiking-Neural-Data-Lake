@@ -223,7 +223,8 @@ GRANDFATHERED: frozenset[str] = frozenset(
 OWES_AT_FREEZE: Mapping[str, str] = {
     _EV + "g3-growth-loop.md": "2026-11-05",
     _EV + "g5-readout-variants.md": "2026-11-05",
-    # ARC 6 (integrator, 2026-11-01): two DRAFT pre-registrations stacked unfrozen; each owes its section at freeze.
+    # ARC 6 (integrator, 2026-11-01): two DRAFT pre-registrations stacked unfrozen; each HAS a Sample size (P1) section that
+    # lacks one required field (aii: measured SD; p4b: target), owed at freeze (panel lens B #7783 MINOR-1).
     # 2026-11-15 = two weeks, one ARC 7 build window; renewal only by a dated integrator commit with the reason (D-74).
     _EV + "aii-stack-repair-prereg-DRAFT.md": "2026-11-15",
     _EV + "p4b-learner-persistence-DRAFT.md": "2026-11-15",
