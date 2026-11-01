@@ -29,6 +29,12 @@ by a console script, or a faculty awaiting a prerequisite such as a real sensor)
 brain module is neither reachable nor exempt; it also reports (soft) any EXEMPT entry that has since
 become reachable (retire the exemption) so the list shrinks honestly as waves land.
 
+A row may also carry an EXPIRY: a specs/022 tasks.md row id, as a third element. Once that row is
+ticked ([X] or [x]) in tasks.md (the plan's own completion signal, the file conclusion_protocol reads) with the
+module still unreachable, the gate REDS, so "wire it before the row closes, else delete it" is mechanical (launcher
+D-90, enforcer #7333). The key fails CLOSED: an expiry id that names no tasks.md row, or a tasks.md
+that cannot be read, is itself a red, on every audit and not only after the tick.
+
   python -m snn_data_lake.gates.dormancy_gate   # (also run by run_selfchecks.py)
 """
 
@@ -36,7 +42,7 @@ import ast
 import os
 
 from snn_data_lake import REGIONS, TORCH_TIER, TRAIN_TIER, module_path
-from snn_data_lake.gates import null_scale_gate
+from snn_data_lake.gates import conclusion_protocol, null_scale_gate
 
 _PKG = "snn_data_lake"
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../snn_data_lake
@@ -119,13 +125,21 @@ _S6_PANEL_CORRECTION = (
 # a null awaiting its one 10x re-test, checked by null_scale_gate, expires before the next pushed arc). The gate shrinks this
 # list as Policy-3 waves land; a "retire"/"wire" entry that outlives its wave is a standing TODO.
 # ------------------------------------------------------------------------------------------------
-# key = module basename (unique across REGIONS per brain_atlas); value = (disposition, reason).
+# key = module basename (unique across REGIONS per brain_atlas); value = (disposition, reason[, expiry]).
+# expiry (optional) = a specs/022 tasks.md row id; ticked with the module unreachable -> "expired", asserted.
 EXEMPT = {
     "feed_readout": (
         "wire",
         "G3 reservoir/direct/random first-spike segment plumbing and paired-U rule; "
         "same-label-neuron teaching consumer remains unbound. Retire this exemption "
-        "after measured consumer wiring; fixture reachability is not a charge claim.",
+        "after measured consumer wiring; fixture reachability is not a charge claim. "
+        "The reservoir join seam (join_fed_unit, rebuild_joined_pool; G3 grow, launcher D-90) "
+        "lives here too. OWNER: T117a, binding the reservoir join into the live grower (it ticks "
+        "before G9's first pilot and gates it; launcher D-92). RETIRE CONDITION: the module is "
+        "reachable when T117a ticks (GrowthLoop's admission calls the join and its restart "
+        "rebuilds the joined pool and feed), otherwise the seam is DELETED. A call site proves "
+        "a caller, not a charge (P3 honesty guard a): the charge is G9's own neuter-A/B.",
+        "T117a",
     ),
     "rpe_charge": (
         "permanent",
@@ -1201,7 +1215,7 @@ def _phantom_selfcheck():
 def _assert_scale_retest(exempt, history=null_scale_gate.git_history, root=null_scale_gate.REPO):
     problems = [
         p
-        for m, (disposition, reason) in sorted(exempt.items())
+        for m, (disposition, reason, *_expiry) in sorted(exempt.items())
         if disposition == "scale-retest"
         for p in null_scale_gate.exempt_problems(m, reason, history, root)
     ]
@@ -1223,13 +1237,68 @@ def _scale_retest_selfcheck():
     _assert_scale_retest(EXEMPT)
 
 
+# distinct-from: gates/null_scale_gate.py, growth/growth_loop.py -- null_scale_gate.expiry_problem is keyed to a
+#   pushed arc's closing record (a sha walk) for "scale-retest" rows; this one to a tasks.md row (the
+#   file is conclusion_protocol.TASKS_MD).
+# ONE helper for both gates (enforcer #7333); still_open(key) is the gate's own predicate. Rows read via
+# conclusion_protocol.task_state (enforcer #7373 MINOR-1); fails CLOSED on an unreadable file, where
+# _task_done fails open.
+def expired_rows(exempt, still_open, tasks_md=None):
+    """-> sorted findings for every row carrying an expiry (see the module docstring for the rule).
+    `tasks_md` is the tasks text (default: conclusion_protocol.TASKS_MD, read from disk)."""
+    out = []
+    for k, t in sorted((k, v[2]) for k, v in exempt.items() if len(v) > 2):
+        try:
+            state = conclusion_protocol.task_state(t, tasks_md)
+        except (OSError, UnicodeDecodeError) as exc:
+            out.append(f"{k} (expiry {t}: tasks.md unreadable: {exc})")
+            continue
+        if state is None:
+            out.append(f"{k} (expiry {t} names no tasks.md row)")
+        elif state == "x" and still_open(k):
+            out.append(f"{k} (expiry {t} ticked; still open)")
+    return out
+
+
+def _assert_no_expired(rows):
+    assert not rows, (
+        f"Policy 3: {len(rows)} EXEMPT row(s) past or unable to check their expiry -- wire the module "
+        f"on a live path or delete it (the row's own retire condition), or fix the key: {rows}"
+    )
+
+
+def _expiry_selfcheck():
+    """The expiry assert's reachable reds, one per arm, each planted in its own one-row table and its own tasks
+    text: a typo'd key must red whatever the predicate says (the key check runs first), and a key ticked in
+    the planted text must red while still open (enforcer #7373 NIT-1). Not a copy of EXEMPT, unlike the
+    sibling self-checks: a real row's own red would then mask an arm that no longer fires. The real table
+    is asserted by main() on coverage()'s walk."""
+    arms = (
+        ("typo'd expiry key", "T1111", lambda m: False, "", "names no tasks.md row"),
+        (
+            "ticked expiry, still open",
+            "T1112",
+            lambda m: True,
+            "- [X] T1112 planted\n",
+            "ticked; still open",
+        ),
+    )
+    for arm, key, still_open, tasks_md, finding in arms:
+        planted = {"g3_planted_expiry": ("wire", f"planted; {arm}", key)}
+        try:
+            _assert_no_expired(expired_rows(planted, still_open, tasks_md))
+        except AssertionError as exc:
+            assert finding in str(exc), f"the planted {arm} red is not '{finding}': {exc}"
+        else:
+            raise AssertionError(f"dormancy self-check: a planted {arm} did not red")
+
+
 def coverage():
     reach = reachable()
     exempt = {_CANON[m] for m in EXEMPT if m in _CANON}
     dormant = sorted(BRAIN_MODULES - reach - exempt)
-    stale = sorted(
-        m for m in EXEMPT if m in _CANON and _CANON[m] in reach
-    )  # exempt but now reachable
+    reached = {m for m in EXEMPT if m in _CANON and _CANON[m] in reach}
+    stale = sorted(reached)  # exempt but now reachable
     return {
         "total": len(BRAIN_MODULES),
         "reachable": len(reach),
@@ -1237,6 +1306,7 @@ def coverage():
         "dormant": [d.replace(_PKG + ".", "") for d in dormant],
         "stale_exempt": stale,
         "phantom_exempt": _phantom_rows(EXEMPT),  # G8 S0b: asserted in main()
+        "expired": expired_rows(EXEMPT, lambda m: m not in reached),  # launcher D-90
         "conditional_imports": conditional_import_count(),
         # US1 audit B3: the module gate's STANDING-TODO arm, the method gate's shape. A
         # non-permanent row is open work; seven of them carried a bound ("S0 exit (T039),
@@ -1299,6 +1369,8 @@ def main():
     _phantom_selfcheck()
     _assert_scale_retest(EXEMPT)  # P8 null-scale R-EXEMPT, with its own planted red next
     _scale_retest_selfcheck()
+    _assert_no_expired(cov["expired"])  # launcher D-90 tasks-row expiry, its planted red next
+    _expiry_selfcheck()
     from snn_data_lake.gates import native_dormancy
 
     native_dormancy.check("d")  # Rust half (D1 exports, D2 modules); native/ ABSENT today

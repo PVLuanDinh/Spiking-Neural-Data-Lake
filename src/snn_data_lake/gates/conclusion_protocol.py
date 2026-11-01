@@ -238,16 +238,32 @@ def _registry_from_source(path: Path = SELF) -> dict[str, tuple]:
     raise ValueError(f"{path}: no CONCLUSION literal found")
 
 
+# THE tasks.md row parser (enforcer #7373 MINOR-1, P2). Sites read.
+# distinct-from: sensorimotor/nl_interface.py -- _is_non_imperative filters questions and denials.
+# distinct-from: instruments/carried_state_report.py -- render() writes the G-R1 report as markdown.
+# distinct-from: growth/growth_loop.py -- GrowthLoop._grow admits one batch.
+# distinct-from: gates/eprop_transport_gate.py -- resolves a finding's disposition from its registry.
+# distinct-from: faculties/forward_model.py -- Plant is the true 1-D dynamics a model learns.
+def task_state(task: str, tasks_md: str | None = None) -> str | None:
+    """-> None (no such row), ' ' (open) or 'x' (ticked, [X] or [x]) for `task`'s tasks.md row.
+
+    A row is a line `- [ ] <id> `, indent allowed, so a quoted or inline mention is no row. Raises on an
+    unreadable file (OSError, UnicodeDecodeError): each caller picks its own policy (_task_done fails
+    open, dormancy_gate.expired_rows fails closed)."""
+    text = TASKS_MD.read_text(encoding="utf-8") if tasks_md is None else tasks_md
+    row = re.search(rf"^[ \t]*- \[([ xX])\] {re.escape(task)} ", text, re.M)
+    return None if row is None else row.group(1).lower()
+
+
 def _task_done(task: str | None, tasks_md: str | None = None) -> bool:
     """True when `task` is checked off in tasks.md -- the plan's own completion signal, read rather than
     mirrored, so this gate cannot disagree with the task list about what exists."""
     if not task:
         return False
     try:
-        text = TASKS_MD.read_text(encoding="utf-8") if tasks_md is None else tasks_md
-    except OSError:
+        return task_state(task, tasks_md) == "x"
+    except (OSError, UnicodeDecodeError):
         return False
-    return f"- [X] {task} " in text or f"- [x] {task} " in text
 
 
 def row_findings(registry=None, instruments=None, tasks=None) -> list[str]:
