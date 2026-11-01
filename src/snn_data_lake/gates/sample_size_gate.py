@@ -223,6 +223,10 @@ GRANDFATHERED: frozenset[str] = frozenset(
 OWES_AT_FREEZE: Mapping[str, str] = {
     _EV + "g3-growth-loop.md": "2026-11-05",
     _EV + "g5-readout-variants.md": "2026-11-05",
+    # ARC 6 (integrator, 2026-11-01): two DRAFT pre-registrations stacked unfrozen; each owes its section at freeze.
+    # 2026-11-15 = two weeks, one ARC 7 build window; renewal only by a dated integrator commit with the reason (D-74).
+    _EV + "aii-stack-repair-prereg-DRAFT.md": "2026-11-15",
+    _EV + "p4b-learner-persistence-DRAFT.md": "2026-11-15",
 }
 # Matched by R1 or R2, but say of themselves they are not a pre-registration. Reasons:
 NOT_PREREGISTRATIONS: frozenset[str] = frozenset(
@@ -238,6 +242,9 @@ NOT_PREREGISTRATIONS: frozenset[str] = frozenset(
         "research/cloud-replies/REPLY-2-FROM-CLOUD-SESSION-2026-10-28.md",  # item 4 names a branch "...-prereg-..."
         # a session record restating d1's design; the registration is d1-readout-staleness.md, which carries the section
         "research/representational-drift/SESSION-RECORD-2026-10-27.md",
+        # G9 design input: its own status line says "Nothing in this file is a pre-registration" (the G9 pre-registration
+        # is g9-campaign-prereg-DRAFT.md); ARC 6 integrator, 2026-11-01
+        _EV + "g9-campaign-design-input-DRAFT.md",
     }
 )
 
