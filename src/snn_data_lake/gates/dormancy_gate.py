@@ -151,7 +151,8 @@ EXEMPT = {
         "adds no rule and no tick path. Consumers: run_selfchecks (its brain-free self-check), tests/test_rpe_charge.py and the "
         "E1b campaign CLI (`python -m snn_data_lake.instruments.rpe_charge run|replay|compare|cross|fixture`), which the integrator "
         "runs once on the pushed head of the engine arc; never on a tick. Decided after E1d (H-P1 HARM MET, look 10): the harm "
-        "disposition deleted the `_plan_w` rule it measured (T125), not this harness.",
+        "disposition deleted the `_plan_w` rule it measured (T125), not this harness. Retire this row when no E1b/E1c/E1d record "
+        "still needs a replay on its pinned base (the records are closed, or T126's replacement row supersedes them).",
     ),
     "g5_part_d_reading": (
         "permanent",
