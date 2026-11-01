@@ -107,7 +107,7 @@ def _t126_pin_violation(readers, tasks_md=None):
     state = task_state("T126", tasks_md)
     if state == " ":
         return None
-    return f"tasks.md row T126 is {state!r}, not ' ' (open), while `_planned_seq` has no reader: {T126}"
+    return f"tasks.md row T126 is {state!r}, not ' ' (open), with `_planned_seq` unread: {T126}"
 
 
 _T126_ROW = "- [{}] T126 [E1] 2026-10-29 Replacement for the deleted `_plan_w` plan nudge\n"
