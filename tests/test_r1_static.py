@@ -669,7 +669,7 @@ def _lake(tmp_path, eps):
     path = str(tmp_path / "brain_lake.bin")
     for e in eps:
         assert H.save_episode(e, path=path)
-    return H._blog(path), path
+    return H._log(path), path
 
 
 def _scan(path, cue):
