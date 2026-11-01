@@ -98,3 +98,30 @@ def test_planted_planned_seq_load_reads_as_a_reader(tmp_path):
         "class A:\n    def f(self):\n        self._planned_seq += [0]\n"
     )
     assert _planned_seq_readers(pkg) == ["pkg.extender", "pkg.reader"]
+
+
+def _t126_pin_violation(readers, tasks_md=None):
+    return "red stub: pin not implemented"
+
+
+_T126_ROW = "- [{}] T126 [E1] 2026-10-29 Replacement for the deleted `_plan_w` plan nudge\n"
+
+
+def test_t126_stays_open_while_planned_seq_has_no_reader():
+    assert _t126_pin_violation(_planned_seq_readers(Path(snn_data_lake.__file__).parent)) is None
+
+
+def test_planted_ticked_t126_row_breaks_the_pin():
+    assert "'x'" in _t126_pin_violation([], _T126_ROW.format("x"))
+
+
+def test_planted_missing_t126_row_breaks_the_pin():
+    assert "None" in _t126_pin_violation([], "- [ ] T125 [E1] some other row\n")
+
+
+def test_planted_open_t126_row_keeps_the_pin():
+    assert _t126_pin_violation([], _T126_ROW.format(" ")) is None
+
+
+def test_the_pin_is_off_once_a_reader_exists():
+    assert _t126_pin_violation(["pkg.reader"], _T126_ROW.format("x")) is None
