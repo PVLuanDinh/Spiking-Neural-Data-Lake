@@ -224,7 +224,10 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # names: 330 + 3 = 333.
     # 2026-11-01/arc 6 registry, R1: episode_index and recall_audit are REGIONS rows only (never
     # LEGACY_REGIONS), each differing from its region: 333 + 2 = 335.
-    assert len(S._MOVED) == 335 and "claustrum" not in S._MOVED
+    # 2026-11-01/arc 6 P4c (arc6-p4c): aii_o6_design moved from tools/ into instruments, a REGIONS
+    # row only (never LEGACY_REGIONS) differing from its region, so _MOVED gains exactly that name:
+    # 335 + 1 = 336 (re-derived from the gate by import on the P4c tree, not by arithmetic alone).
+    assert len(S._MOVED) == 336 and "claustrum" not in S._MOVED
     assert {"grower", "organoid_ingest", "p5b_gate", "rpe_charge", "readout_staleness"} <= set(
         S._MOVED
     )  # A-m2
