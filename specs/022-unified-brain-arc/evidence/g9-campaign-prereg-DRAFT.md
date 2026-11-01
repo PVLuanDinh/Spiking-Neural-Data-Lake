@@ -313,7 +313,7 @@ The axis each contrast scales with, named here (the author names it; a disputed 
 | A3c, A3a (transport), A4 (return) | ticks per run | the effect is learned through the path over time |
 | A10 (sleep), D1/D2 drift | sleep bouts (ticks) | a consolidation mechanism scales with bouts |
 
-Owner-drawn parts (the two networks, the reservoir, the return path) are never deleted on a null: implementation
+Owner-drawn parts (the two networks, the reservoir, the return path) are never deleted after a null result: implementation
 reverted, not claimed, owner decides, NULL-RECORD still written (POL:598). A decision-C part (A7, A8) is deleted only
 after the one 10x re-test (POL:598, 955). An underpowered result is INCONCLUSIVE, never a null (POL:971-974).
 
