@@ -205,6 +205,7 @@ every pre-registration carries the section's fields, read from the file as it st
 looks or the one-shot reason, spending function, futility, cap), with a planted-missing red; the pre-registrations frozen
 before this amendment landed are a CLOSED list, grandfathered by name when the gate is built (ancestry is not the trigger:
 a branch merged after the landing would slip past it). Count it before this marker retires.
+**Mechanized (ARC 6):** `gates/sample_size_gate.py --assert`; PROVISIONAL stays until counted.
 
 ## P2 — Adopt-better **or merge**, then retire the inferior (non-additive)
 
