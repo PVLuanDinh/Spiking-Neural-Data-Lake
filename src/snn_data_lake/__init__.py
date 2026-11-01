@@ -288,6 +288,8 @@ REGIONS = {
         "unit_label_gate",
     ],
     "instruments": [
+        # O-6 of the A_ii stack-repair pre-registration: the committed sample-size (P1) arithmetic, stdlib only, no brain
+        "aii_o6_design",
         # specs/022 T078 Part I: the G3 task-binding (MI vs a permutation floor) and G4 content-leakage (held-out decode vs a shuffle band) instrument over the live loop's own attention state; no ACS, no wire to brain.py
         "attention_schema",
         "binding_instrument",

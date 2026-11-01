@@ -1021,6 +1021,16 @@ EXEMPT = {
         "isolation), reached by its own CLI and its arm runners, which launch subprocess arms and must never "
         "sit on the live tick",
     ),
+    "aii_o6_design": (
+        "permanent",
+        "O-6 of the A_ii stack-repair pre-registration (evidence aii-stack-repair-prereg-DRAFT.md section 4 + Fold 2/3): "
+        "the committed P1 sample-size arithmetic (exact binomial lattice, sequential design, joint three-arm lattice, "
+        "seeded Monte Carlo), stdlib only and brain-free. An entrypoint-only design tool "
+        "(`python src/snn_data_lake/instruments/aii_o6_design.py`, reds in tests/test_aii_o6_design.py), run before data "
+        "and never on the live tick (P3). RETIRE CONDITION: the A_ii stack-repair pre-registration is resolved "
+        "(its sample-size section is closed by a recorded verdict, or the pre-registration is withdrawn); then the "
+        "module is deleted with its reds",
+    ),
     # 2026-10-13 owner2106: staged_sleep_bout is now reachable through Brain's common R2
     # bout boundary; its instrument-only exemption is retired. Automatic R3 sleep is unchanged.
     "sleep_mask_apply": (
