@@ -63,6 +63,11 @@ GRADIENT_CLAIM = {
         "'backprop' are different claims and only the second is forbidden. LOCAL would be the "
         "lumping-in it warns against; this value exists so the distinction survives in the census",
     ),
+    "refit_holdout": (
+        "NOT_A_RULE",
+        "returns the held-out row COUNT of one refit (min(60, n // 3)); it reads no error signal and writes "
+        "no weight, so there is no update to classify (ARC 6 integrator declaration, 2026-11-01)",
+    ),
 }
 
 

@@ -71,6 +71,16 @@ import textwrap
 import traceback
 from pathlib import Path
 
+#: Gradient-claim declaration (gates/gradient_claim_gate.py, FR-002d): module-scope, literal, never imported.
+GRADIENT_CLAIM = {
+    "_next_refit": (
+        "NOT_A_RULE",
+        "steps the grower (neuro.tick) to its next refit and reads the model for the R2 bar; the "
+        "instrument computes no update of its own, so there is no rule to classify (ARC 6 integrator "
+        "declaration, 2026-11-01)",
+    ),
+}
+
 DEV_SEEDS = tuple(range(15000, 15008))
 #: each part's confirmatory block plus its reserve (2.6, 2.10 Seeds)
 PART_SEEDS = {
