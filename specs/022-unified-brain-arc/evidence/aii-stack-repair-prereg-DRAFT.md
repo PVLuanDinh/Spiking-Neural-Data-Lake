@@ -491,3 +491,5 @@ Folds the policy-enforcer's #7019 on `c275b299`. One row per item in `lanes/engi
 - **MINOR-3:** `--alpha` defaults to alpha_1; the 0.05 run is "Fold 2 reproduction".
 - **MINOR-4:** the MET row's lower bounds are labelled and printed at confidence 1 - alpha_1 (0.457 / 0.280 / 0.233), 95% values kept for reference.
 - **NIT:** vacuous `joint(0) == 0` replaced by a lax-boundary red on the joint lattice; a failing-bare-arm (RD-5) red and a VOID-before-MET red added; the Monte Carlo now covers the joint lattice; `_fixed_sample` and `--looks` raise ValueError (CLI exits with a usage error).
+
+- **MOVED (2026-11-01, ARC 6 P4c):** the script `tools/aii_o6_design.py` is now `src/snn_data_lake/instruments/aii_o6_design.py` (registered in the governed tree, stdlib-only and brain-free as before); the `@sha` paths cited above name its location at those commits and are unchanged.

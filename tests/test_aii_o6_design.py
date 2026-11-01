@@ -1,5 +1,5 @@
 # ruff: noqa: E501
-"""Reds for `tools/aii_o6_design.py` (O-6 of the A_ii stack-repair pre-registration DRAFT, section 4 + Fold 2).
+"""Reds for `src/snn_data_lake/instruments/aii_o6_design.py` (O-6 of the A_ii stack-repair pre-registration DRAFT, section 4 + Fold 2).
 
 The script is the committed sample-size arithmetic of `specs/022-unified-brain-arc/evidence/aii-stack-repair-prereg-DRAFT.md`:
 an exact stdlib binomial lattice for a sequential design (looks, Lan-DeMets O'Brien-Fleming spending, non-binding futility,
@@ -7,20 +7,15 @@ cap), a joint lattice over the candidate / original / bare arms (RD-4, RD-5, the
 check (RNG seed 20261029). VERIFY THE VERIFIER: each test below fires a constructed case the design must catch. Four reds
 are the brief's; the rest pin the DRAFT's printed numbers (a mismatch is OWED to the integrator, never edited to fit).
 
-stdlib only. Loaded by ABSOLUTE path, as tests/test_red_reachability.py:18-22 does for its tool.
+stdlib only (the module under test is registered in the governed tree, so it is imported by name).
 Run: pytest tests/test_aii_o6_design.py   (campaign rule 1: NOT run while the E1d campaign holds the host)
 """
 
 import contextlib
-import importlib.util
 import io
 import math
-import pathlib
 
-_PATH = pathlib.Path(__file__).resolve().parents[1] / "tools" / "aii_o6_design.py"
-_spec = importlib.util.spec_from_file_location("aii_o6_design", _PATH)
-M = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(M)
+from snn_data_lake.instruments import aii_o6_design as M
 
 D = M.derive(
     alpha=0.05

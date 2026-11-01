@@ -21,17 +21,17 @@ bound lines are derived from the design (looks, efficacy counts, confidence 1 - 
 
 Convention mirrored: `src/snn_data_lake/instruments/rpe_charge.py:440-486` (`seq_boundaries`, Lan-DeMets O'Brien-Fleming
 spending, boundaries per look, non-binding futility) and `:434-438` (the `distinct-from` note). It is NOT imported: that
-module's boundaries are a normal-model t-scale integral and importing `snn_data_lake` pulls torch (campaign rule 1);
-this design is a COUNT lattice, a different object. The script layout (module docstring with a Reproduce line, `main`)
+module's boundaries are a normal-model t-scale integral; this design is a COUNT lattice, a different object.
+Moved from tools/ into the governed tree (P4c, 2026-11-01): the former "importing `snn_data_lake` pulls torch" caveat (campaign rule 1) is history, the campaign rule ended. The script layout (module docstring with a Reproduce line, `main`)
 follows `tools/red_reachability.py:1-24`.
 # distinct-from: instruments/rpe_charge.py seq_boundaries -- continuous t-scale boundaries; this solves integer counts
 #   exactly on the binomial lattice and adds the joint three-arm VOID/guard lattice (graph-exists "exact binomial
 #   lattice sequential design power": NO LEXICAL MATCH; "sequential stopping boundary alpha spending": rpe_charge only).
 
 Reproduce (WSL system python3, stdlib, well under 200 MB):
-    python3 tools/aii_o6_design.py                    # the REGISTERED design: alpha_1 = 0.0303964, looks 10/20/30
-    python3 tools/aii_o6_design.py --alpha 0.05       # Fold 2 reproduction (superseded): looks 8/15/23
-    python3 tools/aii_o6_design.py --looks 10,20,23   # another look schedule
+    python3 src/snn_data_lake/instruments/aii_o6_design.py                    # the REGISTERED design: alpha_1 = 0.0303964, looks 10/20/30
+    python3 src/snn_data_lake/instruments/aii_o6_design.py --alpha 0.05       # Fold 2 reproduction (superseded): looks 8/15/23
+    python3 src/snn_data_lake/instruments/aii_o6_design.py --looks 10,20,23   # another look schedule
 Reds: tests/test_aii_o6_design.py.
 """
 
