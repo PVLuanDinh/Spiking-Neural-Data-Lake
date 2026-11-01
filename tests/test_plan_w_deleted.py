@@ -13,6 +13,7 @@ from pathlib import Path
 
 import snn_data_lake
 from snn_data_lake.engine.autonomous_loop import ACTIONS, AutonomousArm
+from snn_data_lake.gates.conclusion_protocol import task_state
 from snn_data_lake.gates.native_dormancy import _py_idents
 
 T126 = (
@@ -101,7 +102,12 @@ def test_planted_planned_seq_load_reads_as_a_reader(tmp_path):
 
 
 def _t126_pin_violation(readers, tasks_md=None):
-    return "red stub: pin not implemented"
+    if readers:
+        return None  # half (a) owns a reader; the pin ends only through T126, not around it
+    state = task_state("T126", tasks_md)
+    if state == " ":
+        return None
+    return f"tasks.md row T126 is {state!r}, not ' ' (open), while `_planned_seq` has no reader: {T126}"
 
 
 _T126_ROW = "- [{}] T126 [E1] 2026-10-29 Replacement for the deleted `_plan_w` plan nudge\n"
