@@ -240,9 +240,16 @@ def test_m2c_the_null_arity_counts_content_slots_only():
     lr = LR.LakeRecall(episodes=_session_lake(), seed=0)
     plain = lr.recall({"when": "t3"}, k=1)[0]
     with_session = lr.recall({"when": "t3", "session": "0"}, k=1)[0]
-    assert plain["calibrated"] and with_session["calibrated"]
+    # arity 1 has no clean null on this lake (every single slot value is a real sub-cue), so the
+    # plain cue is uncalibrated; provenance must not move it onto the arity-2 null that exists
+    assert with_session["calibrated"] == plain["calibrated"]
     assert with_session["margin"] == plain["margin"]
     assert with_session["retrieval"] == plain["retrieval"]
+    # arity 2 IS calibrated: a two-content-slot cue plus provenance keeps the arity-2 null
+    plain2 = lr.recall({"when": "t3", "who": "arm"}, k=1)[0]
+    with_session2 = lr.recall({"when": "t3", "who": "arm", "session": "0"}, k=1)[0]
+    assert plain2["calibrated"] and with_session2["calibrated"]
+    assert with_session2["margin"] == plain2["margin"]
 
 
 def test_m2d_the_working_tier_restore_encodes_content_only(H):
