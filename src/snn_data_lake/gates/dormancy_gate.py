@@ -144,12 +144,14 @@ EXEMPT = {
     "rpe_charge": (
         "permanent",
         "E1b's governed measurement harness (record evidence/e1b-rpe-harm.md, FROZEN before any run): the neuter arms for "
-        "ValenceLearner.learn and the `_plan_w` update, the tier pin, the replay, the compare and cross-tier rules. A campaign "
-        "instrument like g5_part_d_reading: it patches two LIVE learning rules in-process, instance-scoped (only the positive-control `pc` arm stubs PrefrontalExecutive.top_down_bias class-wide, rotating the bound arm's own PFC vector by one and passing every other instance through), all restored on exit, and "
+        "ValenceLearner.learn and the `_plan_w` update (that update and its nudge are deleted by T125, E1d route (iii); on a "
+        "head without `_plan_w` every arm refuses by name, so E1b/E1c/E1d are read on their pinned bases c1df3887 / ee224e50 / "
+        "c4c10b28), the tier pin, the replay, the compare and cross-tier rules. A campaign "
+        "instrument like g5_part_d_reading: it patches ONE live learning rule (ValenceLearner.learn; the `_plan_w` rule is deleted) in-process, instance-scoped (only the positive-control `pc` arm stubs PrefrontalExecutive.top_down_bias class-wide, rotating the bound arm's own PFC vector by one and passing every other instance through), all restored on exit, and "
         "adds no rule and no tick path. Consumers: run_selfchecks (its brain-free self-check), tests/test_rpe_charge.py and the "
         "E1b campaign CLI (`python -m snn_data_lake.instruments.rpe_charge run|replay|compare|cross|fixture`), which the integrator "
-        "runs once on the pushed head of the engine arc; never on a tick. Re-decide after the campaign: a harm disposition "
-        "deletes the rule it measured, not this harness.",
+        "runs once on the pushed head of the engine arc; never on a tick. Decided after E1d (H-P1 HARM MET, look 10): the harm "
+        "disposition deleted the `_plan_w` rule it measured (T125), not this harness.",
     ),
     "g5_part_d_reading": (
         "permanent",
