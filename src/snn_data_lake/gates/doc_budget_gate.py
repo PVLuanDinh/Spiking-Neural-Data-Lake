@@ -195,7 +195,7 @@ BUDGETS = {
     # raise.
     # RAISED 1644 -> 1680 on 2026-09-16: T080's MECHANIZED line under 6 (measured 1644 -> 1680, +36 words;
     # measured + 0, the minimum-viable raise, the same rule as the 2026-09-15 raise below).
-    "docs/INVENTION_REGISTER.md": 2441,  # RAISED 1618 -> 1644 on 2026-09-15: T079's MECHANIZED line under 6
+    "docs/INVENTION_REGISTER.md": 2588,  # RAISED 2441 -> 2588 on 2026-11-01 (ARC 6, integrator), +147 measured + 0: G3 rows 14-16 (ace4e81b, c85bda0a: the lift certificate, the trace-trained source, the budget pause), each citing its red, control and attribution by symbol as P8 requires; cutting them would delete the attribution this ceiling exists to keep. The raise is a separate integrator commit at compose, not the growth commit: disclosed. RAISED 1618 -> 1644 on 2026-09-15: T079's MECHANIZED line under 6
     # (measured 1618 -> 1644, +26 words; measured + 0, the minimum-viable raise). EARLIER:
     # RAISED 1595 -> 1618 on 2026-09-15: T077's MECHANIZED line under
     # S6 (FR-031 requires a register row per landed P8 invention; the row is two lines, condensed twice
