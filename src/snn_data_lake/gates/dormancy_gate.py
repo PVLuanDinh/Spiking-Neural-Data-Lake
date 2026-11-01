@@ -683,6 +683,12 @@ EXEMPT = {
         "instrument, never on a tick -- the policy_manifest / capability_bar disposition. RETIRES "
         "with the migration (every count at zero and the libraries gone), never by a tick reading it",
     ),
+    "sample_size_gate": (
+        "permanent",
+        "POLICIES P1 amendment: every pre-registration carries its Sample size (P1) section (planted-missing "
+        "reds, closed GRANDFATHERED list by name). A CI/run_selfchecks instrument, never on a tick -- the "
+        "p5b_gate / policy_manifest disposition. RETIRES only with the P1 amendment, never by a tick reading it",
+    ),
     "p5b_gate": (
         "permanent",
         "POLICIES P5b: every native Rust module cites a pre-registration recording all six criteria with "
@@ -746,6 +752,19 @@ EXEMPT = {
     #   lake_segments (T005) segment writer (WAL + sealed Arrow IPC) -- the migrator and the bridge read it
     #                 as instruments; the live-path consumer is T066.
     # All three keep BOUND EXPIRED AT T039 UNMET, recorded and not re-dated.
+    "episode_index": (
+        "permanent",
+        "specs/022 T102 (R1) P3, r1-bounded-recall.md 2.11: the SUCCESSOR deep tier, DORMANT BY DESIGN "
+        "until the deciding run adopts it (nothing in engine/ calls it; on KEEP the module is reverted "
+        "per P3). It is the candidate the audit measures, so it is exempt with that reason, not wired",
+    ),
+    "recall_audit": (
+        "permanent",
+        "specs/022 T102 (R1), r1-bounded-recall.md A4: the bounded-recall audit's MEASUREMENT "
+        "INSTRUMENT core (P3 disposition 3, benchmark harness, permanent). It imports no retrieval or "
+        "storage reader at module level and is never constructed BY a brain; the brain-touching arms "
+        "are owed to the campaign build arc",
+    ),
     "lake_index": (
         "wire",
         "specs/022 T007: the derived pointer index (sqlite WAL, stdlib). EXPIRY RE-EVALUATED "
@@ -989,6 +1008,18 @@ EXEMPT = {
         "the gate answered from a plan). Retires at G6's P4: the pressure input lands in "
         "sleep/circadian_clock.py + Brain.tick after the deciding test (C13), or the input is deleted "
         "on its null and this harness with it",
+    ),
+    "column_batch": (
+        "wire",
+        "specs/022 T111 (G3) P4a: the growth-unit arms COL / SINGLE / BATCH9. Its only consumer shape is "
+        "GrowthLoop(source=column_source(..), batch=batch_size(..)); this row retires at the first live-root "
+        "GrowthLoop construction that passes column_source/batch_size (an import from growth_campaign does not)",
+    ),
+    "growth_campaign": (
+        "permanent",
+        "specs/022 T111 (G3) P4b: a governed measurement instrument (the growth campaign's score, verdict and "
+        "isolation), reached by its own CLI and its arm runners, which launch subprocess arms and must never "
+        "sit on the live tick",
     ),
     # 2026-10-13 owner2106: staged_sleep_bout is now reachable through Brain's common R2
     # bout boundary; its instrument-only exemption is retired. Automatic R3 sleep is unchanged.

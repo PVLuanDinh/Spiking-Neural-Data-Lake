@@ -37,7 +37,7 @@ missed by an agent reading only this page.)*
 `p4c_ratchet --assert`, `p6_gate --assert` (P6), `dependency_ledger --assert` (P7), `red_reachability --assert`
 and `--self-check` (P8), `citation_guard` and `doc_command_guard --assert`. The **lint** job also runs
 `native_ratchet`, `growth_coverage_gate`, `gradient_claim_gate`, `policy_manifest`, `null_scale_gate` (P8's
-amendment) and `p5b_gate` (P5b), each `--assert` plus `--self-check`; the self-checks job runs the determinism,
+amendment), `sample_size_gate` (P1's amendment) and `p5b_gate` (P5b), each `--assert` plus `--self-check`; the self-checks job runs the determinism,
 replay, manifest, envelope-hash, region-charge and atlas-node gates. **The GitHub Actions workflow has been
 disabled since 2026-08-20** (its last four runs failed), so none of this runs on GitHub today: the operator's
 local battery (plan A.4 step 5) is the verification of record.

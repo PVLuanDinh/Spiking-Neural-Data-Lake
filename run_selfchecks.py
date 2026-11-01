@@ -178,6 +178,7 @@ CORE = [
     "growth.placement",  # grown units ordered into cortical layers by measured H01 occupancy
     "growth.growth_stop",  # T047: overgrowth red + four regimes + |LP| veto + measured null clause
     "growth.capacity_certificate",  # G3 P1: XOR fires with an exact witness, twin separable, doubled-multiplier red
+    "growth.column_batch",  # G3 P4a: BATCH9 == COL at gamma 0, COL coupling changes an E latency, column assembly refusals
     "growth.grown_code",  # G3 P1: C1 widening red, C17 sign-violating restore red, version on silencing
     "growth.growth_loop",  # G3 P3: pause at 45/52, attempt cap, ledger rebuild, seq-gap red, live lake refused
     "growth.batch_reconciler",  # G3: real throwaway-lake restart refusal controls.
@@ -192,6 +193,7 @@ CORE = [
     "instruments.carried_state_report",  # G1(c) driver part 2c: provenance refusals, digests, the golden check deterministic and moved by a one-ulp leak
     "instruments.carried_state_driver",  # G1(c) campaign driver: preflight, stage chain, the later stages' refusals, REPAIR.txt, the half-moved rule
     "instruments.inseparable_mapping",  # G2(ii)'s generator + G-R2's construction check: A1-A5, every construction and stream red, a smoke A3/A4 on one development seed
+    "instruments.growth_campaign",  # G3 P4b: failure penalty 54/53, ruling 9 vs 9a, planted verdict, preflight + child refusals
     "instruments.taught_campaign",  # G2 P3: the G-R2 reading and its 9 row reds, preflight's refusals, the presized front-end's determinism, the incumbent on S0C0 / S1C0 at 30 epochs on scratch seed 8900; no Brain
     "instruments.taught_problems",  # G2 P2: the Problem contract's B9 (predicate), B11 (cost budget), B12 (learning OFF) and its 4 reds incl. the future_d refusal
     "instruments.delayed_cue",  # G2 P1: the problem generators' construction checks (B1, B2, B2-A, B10, B13, B14, witnesses) on dev seed 8000 and all 17 constructed reds; no learner taught
@@ -470,6 +472,7 @@ CORE = [
     "gates.import_manifest",  # Policy 3: assert every reasoning/ module the live brain lazily imports still imports
     "gates.method_dormancy_gate",  # Policy 3 amendment: assert no update rule on a live module lacks a live caller
     "gates.null_scale_gate",  # P8 null-scale: bare == --assert (counted records, re-test scale, arc expiry); its --self-check runs in the lint CI job
+    "gates.sample_size_gate",  # P1 amendment: bare == --assert (every pre-registration carries its Sample size (P1) section); its --self-check runs in the lint CI job
     "gates.p5b_gate",  # P5b: bare == --assert (native modules cite a six-criterion pre-registration); its --self-check runs in the lint CI job
     "gates.eprop_transport_gate",  # e-prop invariant: assert no governed module transposes a weight into a weight update
     "gates.doc_budget_gate",  # word ceilings on the standing docs: a document may not grow unnoticed
@@ -488,6 +491,7 @@ CORE = [
     "substrate.lake_bridge",  # 022 T005b: bridge round-trip red on a constructed temp lake (never the real home)
     "substrate.lake_segments",  # 022 T005: seal round-trip + CRC red on a constructed temp store (never the real home)
     "substrate.lake_index",  # 022 T007: pointer-index round-trip + watermark persistence + divergence red (temp db)
+    "substrate.episode_index",  # 022 T102 (R1) P3: index equals the exact scan, None trap refused, tail fold (temp lake)
     "gates.lake_rebuild_gate",  # 022 T008: rebuild equality + planted-divergence red + lake-tracking control (temp)
     "substrate.lake_migrate",  # 022 T009: per-tag identity migration + unknown-tag red (constructed multi-tag lake)
     "substrate.lake_engine",  # 022 T010-i: retention/disposition registries agree + constructed flood red

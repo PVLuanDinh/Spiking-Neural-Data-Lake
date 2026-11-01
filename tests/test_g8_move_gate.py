@@ -216,7 +216,11 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # 2026-10-29/L1b-STALE landing: readout_staleness is registered in REGIONS (its row only, never
     # LEGACY_REGIONS), so _MOVED gains exactly that name: 329 + 1 = 330 (derived statically from the
     # REGIONS diff in the same commit; the integrator measures it after the campaign).
-    assert len(S._MOVED) == 330 and "claustrum" not in S._MOVED
+    # 2026-11-01/arc 6 registry (arc6-registry lane, derived on b8ad0890 from the REGIONS tables with _MOVED's own comprehension; 330 re-measured first and equal to the pin):
+    # G3 port adds growth.column_batch and instruments.growth_campaign, P1 adds gates.sample_size_gate, each a REGIONS row
+    # only (never LEGACY_REGIONS) and each differing from its region, so _MOVED gains exactly those names: 330 + 3 = 333.
+    # 2026-11-01/arc 6 registry, R1: episode_index and recall_audit are REGIONS rows only (never LEGACY_REGIONS), each differing from its region: 333 + 2 = 335.
+    assert len(S._MOVED) == 335 and "claustrum" not in S._MOVED
     assert {"grower", "organoid_ingest", "p5b_gate", "rpe_charge", "readout_staleness"} <= set(
         S._MOVED
     )  # A-m2

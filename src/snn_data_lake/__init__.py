@@ -207,6 +207,7 @@ REGIONS = {
         "lake_bridge",  # specs/022 T005b: read-old/write-new format bridge; bare == constructed round-trip red
         "lake_segments",  # specs/022 T005: WAL(BinLog) + sealed Arrow IPC segments; bare == round-trip + CRC red
         "lake_index",  # specs/022 T007: derived pointer index (sqlite WAL); bare == round-trip + divergence red
+        "episode_index",  # specs/022 T102 (R1) P3: the successor deep tier (token -> frame-offset postings, verified); DORMANT until the deciding run; bare == equals the exact scan, None trap, tail fold
         "lake_migrate",  # specs/022 T009: per-tag dispositions + identity migration; bare == identity + unknown-tag red
         "lake_engine",  # specs/022 T010-i: retention registry + IMMORTAL append budget; bare == consistency + flood red
         # PROMOTED 2026-08-11 (#10 family C1): the 64-dim crc32 content key for lake/skill routing
@@ -279,6 +280,8 @@ REGIONS = {
         "native_ratchet",
         # THE five approval-gated brainstem files, one definition + a SECURITY.md agreement check
         "safety_envelope",
+        # P1 amendment: every pre-registration carries its Sample size (P1) section; closed grandfather list; bare == assert
+        "sample_size_gate",
         # battery carry-forward: closure-hash-verified PASS carries; bare == dependency/poison/envelope/FAIL reds
         "selfcheck_cache",
         # specs/022 G7 (T115): P4d's provenance check (red G-R7) -- unlabeled grown units refused; bare == R6 + ten reds
@@ -315,6 +318,8 @@ REGIONS = {
         "g5_part_d_cells",
         # specs/022 T113 (G5) Part D D1: the reader of the registered reds (PD-R0..R3) over per-seed accuracy records; pure functions, no pool or Brain
         "g5_part_d_reading",
+        # specs/022 T111 (G3) P4b: the growth campaign's learner-independent instrument (restricted score, G-R3 verdict, seed preflight, 2.12a isolation)
+        "growth_campaign",
         # specs/022 T112 (G4) T3: H01 connection probability vs soma distance -- flat / Gaussian / exponential / mixture,
         # held-out on neuron folds, region blocks and the z-interior; the planted stage gates every edge read
         "h01_distance_kernel",
@@ -341,6 +346,8 @@ REGIONS = {
         "pool_selection",
         # specs/022 T021: pinned-payload neuter + margin surveillance + replay-twice A/B; bare == both controls
         "port_charge_probe",
+        # specs/022 T102 (R1): the bounded-recall audit's generator-side oracle, workload generator, I2/I3-I7 probes; brain-free core only
+        "recall_audit",
         # specs/022 T063: the three-arm seeded/random/wrong drift harness with SC-006's two reds, PLANTED and FROZEN; bare == the offline self-check
         "prior_drift_harness",
         # specs/022 L1b-STALE (T121, LS-R1): the readout-staleness instrument (shadow re-solve, calibration, OJA/RAND operators, drift and null-split readings); bound to evidence/d1-readout-staleness.md; bare == brain-free self-check
@@ -472,6 +479,8 @@ REGIONS = {
         "growth_program",
         # specs/022 T047: |LP|+charge growth gates, executive-independent (P8 #4)
         "growth_stop",
+        # specs/022 T111 (G3) P4a: the growth-unit arms COL / SINGLE / BATCH9 (pre-registration 2.7)
+        "column_batch",
         # specs/022 T111 (G3) P3: the grow-attempt loop, the budget pause, the ledger + unit journal
         "growth_loop",
         # specs/022 G3-T1 (P2 merge step 1): the Brain's one Grower + PerceptProblem wrapping the B1 engine

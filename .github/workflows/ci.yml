@@ -446,6 +446,13 @@ jobs:
       - name: Policy manifest verdicts can fail (--self-check)
         run: python -m snn_data_lake.gates.policy_manifest --self-check
 
+      # P1 amendment: every pre-registration carries its Sample size (P1) section (closed grandfather list by name).
+      - name: P1 sample-size gate
+        run: python -m snn_data_lake.gates.sample_size_gate --assert
+
+      - name: P1 sample-size gate reds can fire (--self-check)
+        run: python -m snn_data_lake.gates.sample_size_gate --self-check
+
       # P8 null-scale amendment (2026-10-23): every null names its scale; deleting on a null waits for one
       # 10x re-test; a PENDING re-test or scale-retest exemption expires before the next pushed arc.
       - name: P8 null-scale gate (records, re-test scale, arc expiry)
