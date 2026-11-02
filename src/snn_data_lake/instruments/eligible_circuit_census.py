@@ -854,6 +854,16 @@ EXCLUDED: tuple[Excluded, ...] = (
     Excluded("Brain._reason_env", "ReasoningEnv is the curriculum ENVIRONMENT, not a population."),
     Excluded("Brain.clock", "CircadianClock is a fixed schedule clock, not learned neurons."),
     Excluded(
+        "Brain._circadian_restore_note",
+        "The status string _restore_circadian returns for state(); a restore reading, "
+        "not a population. The clock it restores is the declared non-learned Brain.clock.",
+    ),
+    Excluded(
+        "Brain._circadian_carried",
+        "A refused circadian JSON record held for keep-before-overwrite (load_state "
+        "FACTORY); lake bytes in transit, not learned storage. Same rule as _acq_lm_blob.",
+    ),
+    Excluded(
         "Brain._drives",
         "HomeostaticDrives is a drive set; its fields are adaptive "
         "parameters covered by the learned-policy-scalars row, not a separate population.",
