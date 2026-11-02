@@ -318,7 +318,14 @@ def test_docstring_does_not_claim_r1_is_a_subset_of_r2():
 def test_g2_is_grandfathered_g3_and_g5_are_deferred_by_name():
     ev = "specs/022-unified-brain-arc/evidence/"
     assert ev + "g2-taught-problems.md" in sg.GRANDFATHERED
-    assert set(sg.OWES_AT_FREEZE) == {ev + "g3-growth-loop.md", ev + "g5-readout-variants.md"}
+    # ARC 6 (c6ffc03c, enforcer AGREE #7778, D-74): two DRAFT pre-registrations deferred by name too. The pin stays
+    # an EXACT set: a new deferral must edit this line (seen in review), never slip in.
+    assert set(sg.OWES_AT_FREEZE) == {
+        ev + "g3-growth-loop.md",
+        ev + "g5-readout-variants.md",
+        ev + "aii-stack-repair-prereg-DRAFT.md",
+        ev + "p4b-learner-persistence-DRAFT.md",
+    }
     assert not {ev + "g3-growth-loop.md", ev + "g5-readout-variants.md"} & sg.GRANDFATHERED
 
 
