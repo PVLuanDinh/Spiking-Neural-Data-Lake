@@ -21,8 +21,8 @@ specs/022-unified-brain-arc/evidence/p1-sample-size-grandfather.md, whose lists 
     R2  an evidence file (`specs/**/evidence/*.md`) that says `pre-?regist` or `prereg` anywhere in its text
 
 The gate checks R1 UNION R2. R2 reaches evidence files whose body, not heading, declares the pre-registration; R1
-reaches files outside the evidence directories (a session record whose heading restates a design). Neither is a
-subset of the other. Vendored and generated trees (dot-directories, node_modules, target, graphify-out) are not scanned.
+reaches files outside the evidence directories (a session record whose heading restates a design). Neither contains
+the other. Vendored and generated trees (dot-directories, node_modules, target, graphify-out) are not scanned.
 Each pre-registration owes a heading named "Sample size (P1)" (any level, outside a code fence); the text of all such
 sections of the file is read together and must carry each field by its word:
 
@@ -66,8 +66,8 @@ tree that is not a git checkout (a temporary test tree) is walked instead. Every
 
 What it reds: R-NO-SECTION, R-FIELD, R-STALE-GRANDFATHER, R-DEFERRAL-EXPIRED, R-FROZEN-DEFERRED, R-LIST-CONFLICT.
 What it cannot do, and says so on every run: judge whether a number is right, a simulation was run, or a
-boundary is sound (the policy-enforcer and the panel do), or see who moved an OWES_AT_FREEZE date (it cannot see
-who moved a date; review enforces that); it checks that each field is WRITTEN. render()'s LIMIT line states all of
+boundary is sound (the policy-enforcer and the panel do). It cannot see who moved a date in OWES_AT_FREEZE:
+review enforces that. It checks that each field is WRITTEN. render()'s LIMIT line states all of
 these.
 
   python -m snn_data_lake.gates.sample_size_gate [--assert | --self-check | --census]
