@@ -328,8 +328,20 @@ def test_a_faulted_binder_is_counted_and_never_a_bound_tick():
             raise RuntimeError("constructed binder fault")
 
         b._xmodal.bind = boom
-        while calls["n"] == 0:
+        # ARC 6 (2026-11-01): CAPPED. The uncapped `while` livelocked a battery for ~2 h when
+        # the perception assets (gitignored models/*.pt) were missing: no real percept reached
+        # the binder. With the assets the first bind comes in a few ticks; a missing percept
+        # now FAILS by name.
+        for _ in range(2000):
+            if calls["n"]:
+                break
             b.tick()
+        else:
+            tier = b.state().get("perception_tier")
+            pytest.fail(
+                "the binder was never called in 2000 ticks: no real visual+audio percept "
+                f"reached it (perception assets missing? perception_tier={tier!r})"
+            )
         assert b.state()["crossmodal_handle"] is None
         assert b.state()["crossmodal_faults"] == calls["n"] >= 1
         assert b._xmodal_bound_hist[-1] is False
