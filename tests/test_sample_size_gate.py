@@ -23,8 +23,8 @@ FIELD_LINES = {
     "effect": "Claimed effect: DH = 0.035.",
     "target": "Fixed-sample target: 485 seeds at power .8, one-sided alpha .05.",
     "looks": "Looks: 11 blocks of 64 seeds.",
-    "spending": "Alpha spending: Lan-DeMets O'Brien-Fleming, one boundary per look.",
-    "futility": "Futility: non-binding, opens at the look where the mde is below the effect.",
+    "spending": "Alpha spending: Lan-DeMets O'Brien-Fleming, one boundary per block.",
+    "futility": "Futility: non-binding, opens once the conditional power drops below .2.",
     "cap": "Hard cap: 704 seeds, power .8 at the cap.",
 }
 ONE_SHOT_REASON = "One-shot run: a single block of 8 seeds, power stated before data."
@@ -211,7 +211,8 @@ def test_stale_owes_at_freeze_entry_reds(tmp_path):
 def test_declared_not_a_pre_registration_is_skipped_but_must_exist(tmp_path):
     text = "A retroactive record, not a pre-registration.\n"
     assert run(tmp_path, {A: text}, not_prereg=frozenset({A})).reds == []
-    assert reds(run(tmp_path, {}, not_prereg=frozenset({A})), "R-STALE-GRANDFATHER")
+    (tmp_path / "empty").mkdir()
+    assert reds(run(tmp_path / "empty", {}, not_prereg=frozenset({A})), "R-STALE-GRANDFATHER")
 
 
 def test_counts_name_every_class(tmp_path):
@@ -365,7 +366,7 @@ def test_r1_heading_rule_is_the_lists_exact_one_pre_registered_headings_are_not_
 
 
 # --- round 3 (enforcer #6592) ---
-LIST = EV + "p1-sample-size-grandfather.md"
+LIST = sg.LIST_FILE
 LIST_TEXT = (
     "# list\n\n## 3. Grandfathered\n\n| 1 | `{other}` | R2 |\n\n"
     "## 4. Owes a section at freeze (1; NOT grandfathered)\n\n"
@@ -539,7 +540,7 @@ def test_a_grandfathered_name_the_list_file_does_not_list_is_a_conflict(tmp_path
         A: "# X -- pre-registration\n\nseeds 8.\n",
     }
     found = reds(run(tmp_path, files, grandfathered=frozenset({A})), "R-LIST-CONFLICT")
-    assert [r.where for r in found] == [A] and "does not list" in found[0].message
+    assert [r.where for r in found] == [A] and "do not list" in found[0].message
 
 
 def test_a_name_in_section_4b_of_the_list_file_may_be_grandfathered(tmp_path):
