@@ -492,6 +492,8 @@ CORE = [
     "substrate.lake_segments",  # 022 T005: seal round-trip + CRC red on a constructed temp store (never the real home)
     "substrate.lake_index",  # 022 T007: pointer-index round-trip + watermark persistence + divergence red (temp db)
     "substrate.episode_index",  # 022 T102 (R1) P3: index equals the exact scan, None trap refused, tail fold (temp lake)
+    "instruments.recall_audit",  # 022 R1 audit: NO __main__ -- import smoke only; behaviour pinned by its tests (ARC 6 G1)
+    "instruments.aii_o6_design",  # AII O-6 P1 design arithmetic, stdlib: derives section 4 + seeded Monte Carlo (~3 s) (ARC 6 G1)
     "gates.lake_rebuild_gate",  # 022 T008: rebuild equality + planted-divergence red + lake-tracking control (temp)
     "substrate.lake_migrate",  # 022 T009: per-tag identity migration + unknown-tag red (constructed multi-tag lake)
     "substrate.lake_engine",  # 022 T010-i: retention/disposition registries agree + constructed flood red
