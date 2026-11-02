@@ -130,8 +130,8 @@ allowed.
   - a null on an axis the null-scale gate admits (`units` or `ticks`).
 
   "More mice", "more sessions" and "more days" are not legal 10x axes.
-- An engine null names its scale and waits for one 10x re-test before anything is removed. Owner-drawn P4d parts are
-  never deleted on a null.
+- An engine null names its scale and waits for one 10x re-test before anything is removed. Owner-drawn P4d parts stay
+  whatever an engine reading shows (P4d).
 
 ## 6. What this does not claim
 
