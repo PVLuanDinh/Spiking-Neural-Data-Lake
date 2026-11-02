@@ -865,6 +865,16 @@ EXEMPT = {
         "campaign guard and every nuisance refusal. Conjunct (a) reads NOT READ from here on: "
         "drift is not measurable without a learner, and specs/011's FR-008/FR-009 stay OPEN",
     ),
+    "representational_drift": (
+        "permanent",
+        "MAP D0 (research/representational-drift/MAP.md section 4), DATED 2026-11-02: the "
+        "representational-drift MEASUREMENT INSTRUMENT. Pure measurement on arrays its caller "
+        "supplies (mouse sessions for Part A, an engine population for Part B); it opens no lake, "
+        "builds no brain and is never constructed BY a brain, which is the prior_drift_harness / "
+        "paired_contrast shape. Reachable from run_selfchecks (its six constructed reds) and its "
+        "tests, never from a tick. Its readings are claimed only under a pre-registration "
+        "(evidence/d0-representational-drift-DRAFT.md), never by being wired",
+    ),
     "attention_schema": (
         "permanent",
         "specs/022 T078 Part I instrument, DATED 2026-09-15: the G3 task-binding gate (MI between "

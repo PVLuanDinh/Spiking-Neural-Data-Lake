@@ -343,6 +343,8 @@ REGIONS = {
         "port_charge_probe",
         # specs/022 T063: the three-arm seeded/random/wrong drift harness with SC-006's two reds, PLANTED and FROZEN; bare == the offline self-check
         "prior_drift_harness",
+        # MAP D0 (research/representational-drift/MAP.md): the representational-drift instrument -- pv/tuning correlation, readout null split, capacity-guarded decoder, Procrustes re-alignment; bare == its six constructed reds
+        "representational_drift",
         # specs/022 T081 [US4]: the C5 report_order instrument -- the live arm's report channel read against LESIONED CLONES of the workspace state that produced it (named pool vs a scrambled one); the lesion never touches the live brain
         "report_order_probe",
         # specs/022 E1b: the RPE-harm harness (neuter arms, tier pin, replay, compare); bound to evidence/e1b-rpe-harm.md; bare == brain-free self-check
