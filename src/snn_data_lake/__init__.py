@@ -342,6 +342,8 @@ REGIONS = {
         "neuronal_avalanches",
         # the plan's seed-paired t + exact sign-flip FPR (lifted from the T063 harness, T077 2.10)
         "paired_contrast",
+        # specs/022 D-R0: the Marks & Goard stability index (RDI) and its four synthetic criteria; offline, never a tick
+        "representational_drift",
         # specs/022 G7 (T115) P4: T1 / T4 decision instrument (verdict rules, guard, exact-M sampler, modularity)
         "unit_organization",
         # G1(b) pool-selection campaign: section 2's steps, ordering and taxonomy
@@ -403,6 +405,8 @@ REGIONS = {
         "nl_interface",
         # specs/022 OG1 (T118) Stage 0: pinned DANDI 001603 organoid NWB -> npz behind five refusal gates (licence, bytes, index, time units, exact depositor raster); offline, never the lake
         "organoid_ingest",
+        # specs/022 D-R0: the Marks & Goard two-photon .mat reader (organoid_ingest's gates, an append-only dev log, a clean-tree refusal); offline, never the lake
+        "ophys_ingest",
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
         "population_encoding",

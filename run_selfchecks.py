@@ -419,6 +419,7 @@ CORE = [
     # substrate â€” the spiking data-lake, telemetry, and infra (not a brain region)
     "infra._mathutils",
     "instruments.paired_contrast",  # T077 2.10: the seed-paired t + exact FPR, lifted from the T063 harness
+    "instruments.representational_drift",  # D-R0 2.1/2.2: stability_index + aa / dose / mov_vs_mov / agreement, each green with its constructed red; synthetic, ~10 s, no data
     "instruments.unit_organization",  # G7 T115 P4: six instrument reds (verdict rules, guard, sampler, beta live)
     "substrate.spike_stream_sketch",
     "substrate.spike_cardinality",
@@ -526,6 +527,7 @@ CORE = [
     "gates.safety_envelope",  # THE five approval-gated brainstem files: assert code and SECURITY.md still name the same five
     "sensorimotor.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "sensorimotor.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
+    "sensorimotor.ophys_ingest",  # D-R0 2.1/2.4: licence / bytes / dirty-tree / lake-write reds on a synthetic .mat in a temp git repo; no data, no lake
     "sensorimotor.organoid_ingest",  # OG1 Stage 0: five refusal gates (licence, bytes, index, time units, exact depositor raster), each red on a synthetic HDF5 fixture; no download, no lake
     "faculties.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
     "growth.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
