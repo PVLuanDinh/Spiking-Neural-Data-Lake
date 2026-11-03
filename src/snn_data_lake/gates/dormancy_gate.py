@@ -832,7 +832,7 @@ EXEMPT = {
         "and 3 is a chosen interval, not derived). Disposition 'wire' -> 'permanent' (awaiting-prerequisite: no wiring wave is pending after A9; rv-arc1-b B-m11), OWNER 2026-10-25, verbatim: 'I approve ... the organoid exempt wording'; the module, its pin and its tests are unchanged.",
     ),
     "representational_drift": (
-        "wire",
+        "permanent",
         "specs/022 D-R0 (pre-registration d-r0-representational-drift-instrument.md 2.1), DATED 2026-11-03: the "
         "Marks & Goard stability index (stability_index, mov_index, DriftReading) and its four synthetic "
         "criteria. Consumers: run_selfchecks (the synthetic reds) and tools/d_r0_partA.py (Part A E1); never on "
@@ -841,7 +841,7 @@ EXEMPT = {
         "is asked whether to keep it (an integrator review trigger; nothing counts arcs).",
     ),
     "ophys_ingest": (
-        "wire",
+        "permanent",
         "specs/022 D-R0 (pre-registration 2.1, 2.4), DATED 2026-11-03: the Marks & Goard .mat reader; only the "
         "loadmat reading is new (licence, pin and bytes are organoid_ingest's). Appends every read to "
         "tools/d_r0_dev_log.jsonl, refuses a dirty src/ or tools/ tree, never writes the lake (P4b; its "
