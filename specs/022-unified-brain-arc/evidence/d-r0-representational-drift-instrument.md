@@ -348,3 +348,15 @@ Written before any DEV pipeline run (no RDI, no agreement value, no control valu
 - The synthetic halves of §2.2 (generator §2.2, 15 trials per arm) are unchanged: they test the estimator, not the deposit.
 - Disclosed: Mouse 10's MOV RDI averages over C(20, 8) picks against C(30, 8) for the others, so its MOV estimate is
   noisier at equal reps; it is a DEV mouse and decides nothing alone.
+
+## 10. Amendment 2026-11-03 (launcher-d0; owner 2026-11-03 "Yes, don't count"; enforcer #7901 MINOR-1): what the 5-revision cap counts
+§2.4 says "A revision = a logged run with a new source hash. At most 5." The dev log at claude/int3@1cdd1619 already holds
+two calling-tool hashes, both from `tools/d_r0_layout.py` (`__main__` 12e5dca7... at 5ca170ce and 662fe632... at
+597b58c7): structure-only reads (names, shapes, dtypes) that computed no RDI, agreement or control value. Ruling:
+- Those two runs do NOT count toward the cap. The cap bounds revisions that could be steered by a DEV outcome
+  (§2.4, panel C-N4); a run that reads no value cannot be. This is disclosed here, not hidden: 18 DEV structure reads.
+- From now on the counter is mechanical: a revision is a distinct `sources` hash set among dev-log entries whose
+  `__main__` hash equals the sha256 of `tools/d_r0_partA.py` at that entry's `commit`. Every other calling tool
+  counts zero revisions, and it may never compute or print a response value (a tool that does is a pipeline run and
+  goes through `tools/d_r0_partA.py`, or the cap is breached).
+- Cap unchanged: at most 5 such revisions; the rest of §2.4 (no revision after the SD pilot, NOT MET at the cap) stands.
