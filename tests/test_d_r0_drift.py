@@ -121,3 +121,17 @@ def test_d_r0_ingest_refuses_a_file_absent_from_the_pin(tmp_path):
     pin = {"license": "spdx:CC0-1.0", "assets": []}
     with pytest.raises(ophys_ingest.IngestRefused):
         ophys_ingest.read_response(mat, pin, tmp_path, repo, repo / "tools" / "d_r0_dev_log.jsonl")
+
+
+def test_d_r0_ingest_refuses_a_read_from_an_interactive_main(tmp_path, monkeypatch):
+    import sys
+    import types
+
+    repo = _repo(tmp_path)
+    mat, entry = _mat(tmp_path)
+    pin = {"license": "spdx:CC0-1.0", "assets": [entry]}
+    log = repo / "tools" / "d_r0_dev_log.jsonl"
+    monkeypatch.setitem(sys.modules, "__main__", types.ModuleType("__main__"))
+    with pytest.raises(ophys_ingest.IngestRefused, match="interactive"):
+        ophys_ingest.read_response(mat, pin, tmp_path, repo, log)
+    assert not log.exists()

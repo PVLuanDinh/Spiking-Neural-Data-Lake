@@ -90,6 +90,10 @@ def pinned_entry(path, pin, data_dir=DATA_DIR):
 
 
 def read_response(path, pin, data_dir=DATA_DIR, root=ROOT, log_path=LOG_PATH, live_home=None):
+    if not getattr(sys.modules.get("__main__"), "__file__", None):
+        raise IngestRefused(
+            "interactive session (no __main__ file): the calling tool cannot be hashed"
+        )
     gate_license(pin)
     entry = pinned_entry(path, pin, data_dir)
     gate_bytes(path, entry)
