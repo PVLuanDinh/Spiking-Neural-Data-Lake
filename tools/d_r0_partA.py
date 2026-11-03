@@ -51,6 +51,7 @@ EVIDENCE = (
 )
 OUT = ROOT / "tools" / "d_r0_partA.json"
 LOG = ROOT / "tools" / "d_r0_dev_log.jsonl"
+PIN_PATH = ROOT / "tools" / "marks_goard_pin.json"
 DEV = (2, 3, 10, 11)
 HELD_OUT = (1, 4, 5, 6, 7, 8, 9, 12)
 WEEKS = (2, 3, 4, 5)
@@ -97,16 +98,15 @@ def dev_log_committed(root=ROOT, log=LOG):
     return tracked.returncode == 0 and not _porcelain(root, log)
 
 
-_MOUSE_RE = re.compile(r"(?i)(?:mouse|m)[-_ ]?0*(\d+)(?!\d)")
-
-
-def held_out_read_in_log(log=LOG):
-    """True when any dev-log entry's files name a HELD-OUT mouse (path token `mouse<N>`/`m<N>`)."""
+def held_out_read_in_log(log=LOG, pin=None):
+    """True when a logged file's sha256 is a held-out one in the pin; a sha absent from the pin counts (fail closed)."""
     if not Path(log).exists():
         return False
+    pin = json.loads(PIN_PATH.read_text(encoding="utf-8")) if pin is None else pin
+    held = {a["sha256"]: a["split"] == "held-out" for a in pin["assets"]}
     for line in Path(log).read_text(encoding="utf-8").splitlines():
         for f in json.loads(line).get("files", []):
-            if any(int(n) in HELD_OUT for n in _MOUSE_RE.findall(f["path"])):
+            if held.get(f["sha256"], True):
                 return True
     return False
 

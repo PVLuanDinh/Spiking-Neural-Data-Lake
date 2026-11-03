@@ -204,37 +204,77 @@ def test_d_r0_driver_refuses_to_start_while_its_result_file_is_dirty(tmp_path):
     assert partA.result_file_dirty(repo, out)
 
 
-def _dev_log(tmp_path, *paths):
+def _pin(*rows):
+    return {
+        "assets": [{"path": p, "sha256": sha, "split": sp, "mouse": None} for p, sha, sp in rows]
+    }
+
+
+def _dev_log(tmp_path, *shas):
     import json
 
     log = tmp_path / "dev_log.jsonl"
     log.write_text(
         "".join(
-            json.dumps({"commit": "a" * 40, "files": [{"path": p, "sha256": "0"}]}) + "\n"
-            for p in paths
+            json.dumps({"commit": "a" * 40, "files": [{"path": "x.mat", "sha256": sha}]}) + "\n"
+            for sha in shas
         ),
         encoding="utf-8",
     )
     return log
 
 
+_PIN = _pin(
+    ("Main experiments/Mouse 1/r.mat", "h" * 64, "held-out"),
+    ("Prism experiments/Mouse 2/r.mat", "h" * 64, "held-out"),
+    ("Main experiments/Mouse 2/r.mat", "d" * 64, "dev"),
+    ("Inhibitory experiments/Mouse 1/r.mat", "n" * 64, "none"),
+)
+
+
 def test_d_r0_driver_held_out_read_once_refuses_a_logged_held_out_file(tmp_path):
-    log = _dev_log(tmp_path, "mouse2/week3.mat", "mouse4/week2.mat")
-    assert partA.held_out_read_in_log(log)
+    log = _dev_log(tmp_path, "d" * 64, "h" * 64)
+    assert partA.held_out_read_in_log(log, _PIN)
     with pytest.raises(partA.HeldOutRefused, match="read ONCE"):
         _gate(
             tmp_path,
             _DEV_LINES,
             selfchecks=lambda: [],
             log_committed=lambda: True,
-            held_out_logged=lambda: partA.held_out_read_in_log(log),
+            held_out_logged=lambda: partA.held_out_read_in_log(log, _PIN),
         )
 
 
+def test_d_r0_driver_held_out_read_once_sees_a_prism_copy_under_a_dev_numbered_path(tmp_path):
+    # the log row's path says nothing; only the sha (pin: held-out) decides
+    log = _dev_log(tmp_path, "h" * 64)
+    assert partA.held_out_read_in_log(log, _PIN)
+
+
+def test_d_r0_driver_held_out_read_once_fails_closed_on_a_sha_absent_from_the_pin(tmp_path):
+    assert partA.held_out_read_in_log(_dev_log(tmp_path, "z" * 64), _PIN)
+
+
 def test_d_r0_driver_held_out_read_once_passes_a_dev_only_log(tmp_path):
-    log = _dev_log(tmp_path, "mouse2/week3.mat", "Mouse_10/week5.mat", "mouse11/week2.mat")
-    assert not partA.held_out_read_in_log(log)
-    assert not partA.held_out_read_in_log(tmp_path / "absent.jsonl")
+    assert not partA.held_out_read_in_log(_dev_log(tmp_path, "d" * 64, "n" * 64), _PIN)
+    assert not partA.held_out_read_in_log(tmp_path / "absent.jsonl", _PIN)
+
+
+def test_d_r0_driver_the_tracked_pin_split_is_the_sealed_draw(tmp_path):
+    import json
+
+    pin = json.loads(partA.PIN_PATH.read_text(encoding="utf-8"))
+    assets = pin["assets"]
+    mice = lambda sp: sorted({a["mouse"] for a in assets if a["split"] == sp})  # noqa: E731
+    assert mice("held-out") == sorted(partA.HELD_OUT)
+    assert mice("dev") == sorted(partA.DEV)
+    for a in assets:
+        if not a["path"].startswith("Main experiments/") and a["split"] != "none":
+            assert a.get("copy_of"), a["path"]
+    prism_held = next(
+        a for a in assets if a["split"] == "held-out" and a["path"].startswith("Prism")
+    )
+    assert partA.held_out_read_in_log(_dev_log(tmp_path, prism_held["sha256"]), pin)
 
 
 def test_d_r0_driver_held_out_read_once_is_checked_before_the_selfchecks(tmp_path):
