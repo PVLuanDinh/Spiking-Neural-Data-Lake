@@ -4,7 +4,8 @@ ONLY the `.mat` reading is new. Licence, pin and byte refusal are `organoid_inge
 assert_not_live_home` (pre-registration specs/022-unified-brain-arc/evidence/d-r0-representational-drift-
 instrument.md 2.1, 2.4).
 
-  read_response(path, pin)        -- licence, the pin's own entry for the file (absent -> refused), streamed bytes, then a clean src/ and tools/ tree,
+  read_response(path, pin, split) -- licence, the pin's own entry for the file (absent -> refused), its pin
+                                     `split` must equal the requested one (dev|heldout; "none" never), streamed bytes, then a clean src/ and tools/ tree,
                                      then ONE line appended to `tools/d_r0_dev_log.jsonl` (commit sha,
                                      timestamp, files, sha256 of every snn_data_lake module loaded and of
                                      the calling script), then `scipy.io.loadmat(squeeze_me=True,
@@ -89,13 +90,24 @@ def pinned_entry(path, pin, data_dir=DATA_DIR):
     return entry
 
 
-def read_response(path, pin, data_dir=DATA_DIR, root=ROOT, log_path=LOG_PATH, live_home=None):
+PIN_SPLIT = {"dev": "dev", "heldout": "held-out"}
+
+
+def read_response(
+    path, pin, split, data_dir=DATA_DIR, root=ROOT, log_path=LOG_PATH, live_home=None
+):
     if not getattr(sys.modules.get("__main__"), "__file__", None):
         raise IngestRefused(
             "interactive session (no __main__ file): the calling tool cannot be hashed"
         )
     gate_license(pin)
     entry = pinned_entry(path, pin, data_dir)
+    if split not in PIN_SPLIT:
+        raise IngestRefused(f"(split) {split!r} is not 'dev' or 'heldout'")
+    if entry.get("split") != PIN_SPLIT[split]:
+        raise IngestRefused(
+            f"(split) {entry['path']} is pinned split {entry.get('split')!r}, not {PIN_SPLIT[split]!r}"
+        )
     gate_bytes(path, entry)
     dirty = dirty_paths(root, log_path)
     if dirty:
@@ -149,13 +161,13 @@ def _selfcheck():
         mat = td / "resp.mat"
         savemat(mat, {"RespMat": np.arange(6.0).reshape(2, 3), "Info": {"week": 3.0, "name": "m"}})
         sha, size = stream_sha256(mat)
-        entry = {"path": "resp.mat", "size": size, "sha256": sha}
+        entry = {"path": "resp.mat", "size": size, "sha256": sha, "split": "dev"}
         pin = {"license": "spdx:CC0-1.0", "assets": [entry]}
-        rd = lambda p=mat, d=td, pn=pin: read_response(p, pn, d, td, log)  # noqa: E731
+        rd = lambda p=mat, d=td, pn=pin: read_response(p, pn, "dev", d, td, log)  # noqa: E731
 
         must_refuse(
             "licence empty",
-            lambda: read_response(mat, {**pin, "license": ""}, td, td, log),
+            lambda: read_response(mat, {**pin, "license": ""}, "dev", td, td, log),
             needle="(a)",
         )
         flipped = bytearray(mat.read_bytes())
@@ -167,6 +179,15 @@ def _selfcheck():
             lambda: rd(td / "flipdir" / "resp.mat", td / "flipdir"),
             needle="(b)",
         )
+        for label, sp, call in (
+            ("held-out entry read as dev", "held-out", "dev"),
+            ("dev entry read as heldout", "dev", "heldout"),
+            ("split none entry", "none", "dev"),
+        ):
+            bad = {**pin, "assets": [{**entry, "split": sp}]}
+            must_refuse(
+                label, lambda b=bad, c=call: read_response(mat, b, c, td, td, log), needle="(split)"
+            )
         (td / "extra.mat").write_bytes(mat.read_bytes())
         must_refuse(
             "unpinned file with a matching self-made entry",
@@ -223,7 +244,7 @@ def _selfcheck():
     if failures:
         return 1
     print(
-        "ophys_ingest self-check OK: reds (licence, bytes, dirty untracked, dirty modified, lake write) refuse, "
+        "ophys_ingest self-check OK: reds (licence, bytes, split mismatch, dirty untracked, dirty modified, lake write) refuse, "
         "green control loads a struct and a matrix, two reads log two lines, the log never dirties the tree"
     )
     return 0

@@ -111,7 +111,7 @@ def _mat(tmp_path):
     mat = tmp_path / "unpinned.mat"
     savemat(mat, {"RespMat": np.arange(6.0)})
     sha, size = stream_sha256(mat)
-    return mat, {"path": "unpinned.mat", "size": size, "sha256": sha}
+    return mat, {"path": "unpinned.mat", "size": size, "sha256": sha, "split": "dev"}
 
 
 def test_d_r0_ingest_refuses_a_file_absent_from_the_pin(tmp_path):
@@ -119,7 +119,9 @@ def test_d_r0_ingest_refuses_a_file_absent_from_the_pin(tmp_path):
     mat, entry = _mat(tmp_path)
     pin = {"license": "spdx:CC0-1.0", "assets": []}
     with pytest.raises(ophys_ingest.IngestRefused):
-        ophys_ingest.read_response(mat, pin, tmp_path, repo, repo / "tools" / "d_r0_dev_log.jsonl")
+        ophys_ingest.read_response(
+            mat, pin, "dev", tmp_path, repo, repo / "tools" / "d_r0_dev_log.jsonl"
+        )
 
 
 def test_d_r0_ingest_refuses_a_read_from_an_interactive_main(tmp_path, monkeypatch):
@@ -132,7 +134,7 @@ def test_d_r0_ingest_refuses_a_read_from_an_interactive_main(tmp_path, monkeypat
     log = repo / "tools" / "d_r0_dev_log.jsonl"
     monkeypatch.setitem(sys.modules, "__main__", types.ModuleType("__main__"))
     with pytest.raises(ophys_ingest.IngestRefused, match="interactive"):
-        ophys_ingest.read_response(mat, pin, tmp_path, repo, log)
+        ophys_ingest.read_response(mat, pin, "dev", tmp_path, repo, log)
     assert not log.exists()
 
 
@@ -247,3 +249,40 @@ def test_d_r0_driver_held_out_read_once_is_checked_before_the_selfchecks(tmp_pat
             log_committed=lambda: True,
             held_out_logged=lambda: True,
         )
+
+
+def _read_with_split(tmp_path, pin_split, call_split):
+    repo = _repo(tmp_path)
+    mat, entry = _mat(tmp_path)
+    entry["split"] = pin_split
+    pin = {"license": "spdx:CC0-1.0", "assets": [entry]}
+    log = repo / "tools" / "d_r0_dev_log.jsonl"
+    return ophys_ingest.read_response(
+        mat, pin, split=call_split, data_dir=tmp_path, root=repo, log_path=log
+    ), log
+
+
+def test_d_r0_ingest_refuses_a_held_out_entry_read_as_dev(tmp_path):
+    with pytest.raises(ophys_ingest.IngestRefused, match="split"):
+        _read_with_split(tmp_path, "held-out", "dev")
+
+
+def test_d_r0_ingest_refuses_a_dev_entry_read_as_held_out(tmp_path):
+    with pytest.raises(ophys_ingest.IngestRefused, match="split"):
+        _read_with_split(tmp_path, "dev", "heldout")
+
+
+def test_d_r0_ingest_refuses_a_split_none_entry_in_either_split(tmp_path):
+    for call in ("dev", "heldout"):
+        sub = tmp_path / call
+        sub.mkdir()
+        with pytest.raises(ophys_ingest.IngestRefused, match="split"):
+            _read_with_split(sub, "none", call)
+
+
+def test_d_r0_ingest_reads_an_entry_whose_split_matches(tmp_path):
+    for pin_split, call in (("dev", "dev"), ("held-out", "heldout")):
+        sub = tmp_path / call
+        sub.mkdir()
+        data, _ = _read_with_split(sub, pin_split, call)
+        assert "RespMat" in data
