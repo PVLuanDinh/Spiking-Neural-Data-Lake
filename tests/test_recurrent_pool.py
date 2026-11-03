@@ -660,8 +660,8 @@ class _StrictThreshold(
 
 
 class _Truncates(rp.KernelLsmPool):  # wrong host: weights and drive truncated, not rounded
-    def _edges(self):
-        pre, post, weight, delay = super()._edges()
+    def _edges(self, pre=None, w=None):
+        pre, post, weight, delay = super()._edges(pre, w)
         scale = 2.0**self.frac_bits
         return pre, post, np.trunc(weight * scale) / scale, delay
 
@@ -764,7 +764,10 @@ def test_one_reachable_pool_implementation():
     assert not hasattr(rp, "HOSTS") and "host" not in inspect.signature(rp.make_pool).parameters
     assert "step" not in vars(rp.LsmPool) and "step" not in vars(rp._Pool)
     assert "_rec" not in vars(rp.LsmPool) and "reset_carriers" not in vars(rp._Pool)
-    stepping = {cls for cls in _subclasses(rp._Pool) if "step" in vars(cls)}
+    # the census is of the SHIPPED module: a test file's own positive-control subclass
+    # (_PlantedTrainer) is not reachable from make_pool and must not move it
+    shipped = [cls for cls in _subclasses(rp._Pool) if cls.__module__ == rp.__name__]
+    stepping = {cls for cls in shipped if "step" in vars(cls)}
     assert stepping == {rp.KernelLsmPool, rp._FloatTwin}, stepping
     assert rp._FloatTwin not in rp.POOLS.values() and rp._ForwardTwin not in rp.POOLS.values()
     for form in rp.FORMS:
