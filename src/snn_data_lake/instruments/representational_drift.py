@@ -59,7 +59,9 @@ class DriftReading(NamedTuple):
 def _rowcorr(a, b):
     a = a - a.mean(1, keepdims=True)
     b = b - b.mean(1, keepdims=True)
-    with np.errstate(invalid="ignore", divide="ignore"):  # constant row: NaN as in MATLAB; fmax reads 0
+    with np.errstate(
+        invalid="ignore", divide="ignore"
+    ):  # constant row: NaN as in MATLAB; fmax reads 0
         return (a * b).sum(1) / np.sqrt((a * a).sum(1) * (b * b).sum(1))
 
 
@@ -182,7 +184,12 @@ def author_agreement_verdict(ceil, self_mad, ours, theirs):
     0.05), at least 200 neuron-sessions."""
     rho = float(spearmanr(ours, theirs)[0])
     mad = float(np.median(np.abs(ours - theirs)))
-    ok = ceil >= 0.9 and rho >= max(0.9 * ceil, 0.8) and mad <= min(2 * self_mad, 0.05) and len(ours) >= 200
+    ok = (
+        ceil >= 0.9
+        and rho >= max(0.9 * ceil, 0.8)
+        and mad <= min(2 * self_mad, 0.05)
+        and len(ours) >= 200
+    )
     return bool(ok), rho, mad
 
 
@@ -239,15 +246,21 @@ def _selfcheck():
     s1, s2 = synth_pair(200, 0.7, SEED)
     ceil, self_mad, ours, theirs = _agreement_inputs(stability_index, s1, s2)
     ok, rho, mad = author_agreement_verdict(ceil, self_mad, ours, theirs)
-    expect(f"agreement green (ceil {ceil:.3f}, rho {rho:.3f}, mad {mad:.4f}, self_mad {self_mad:.4f})", ok, True)
+    expect(
+        f"agreement green (ceil {ceil:.3f}, rho {rho:.3f}, mad {mad:.4f}, self_mad {self_mad:.4f})",
+        ok,
+        True,
+    )
     sh1, sh2 = _shuffle_labels(s1, s2, SEED)
     shuf = population_rdi(sh1, sh2, stability_index, [SEED, 3, 1])
     ok, rho, mad = author_agreement_verdict(ceil, self_mad, shuf, theirs)
     expect(f"agreement red, labels shuffled (rho {rho:.3f}, mad {mad:.4f})", ok, False)
     if failures:
         return 1
-    print("representational_drift self-check OK: floor, rowcorr == corrcoef, SE triggers clear, aa / dose / "
-          "mov_vs_mov (200 and 65) / agreement each green and its constructed red fires")
+    print(
+        "representational_drift self-check OK: floor, rowcorr == corrcoef, SE triggers clear, aa / dose / "
+        "mov_vs_mov (200 and 65) / agreement each green and its constructed red fires"
+    )
     return 0
 
 
