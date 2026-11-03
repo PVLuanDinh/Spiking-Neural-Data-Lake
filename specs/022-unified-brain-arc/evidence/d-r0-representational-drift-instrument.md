@@ -324,3 +324,11 @@ C9 overclaim -> licensed sentence narrowed (§2.7). C10 rotation red -> dose red
 procrustes bar, C12 orientation period -> moot (functions not built). C13 training accuracy -> stated (§2.2). C14
 opposite direction -> t < -bar (§2.4). C15 EXEMPT rows -> both, consumers, retire conditions, P4b red (§2.1). C16
 presence deviation -> adopted the paper's rule instead. C17 backticks -> moot.
+
+## 8. Amendment 2026-11-03 (launcher-d0; enforcer #7886 NIT-2): a crashed HELD-OUT run
+The build (claude/int3@b3e9816d) makes "HELD-OUT response bytes are read ONCE" (§2.3) literal: the driver refuses a
+HELD-OUT run once the dev log records any HELD-OUT mouse file. A HELD-OUT run that stops after its first logged read
+(crash, kill, power loss) therefore cannot be re-run. Such a run is reported AS IT STANDS: the endpoint D is computed
+only if every one of the 8 HELD-OUT mice was scored; otherwise the verdict is INCONCLUSIVE (§2.3, n < 8), with the
+scored mice and the point of failure disclosed. It is NOT re-run, and no log line is removed to re-enable it, without
+an owner ruling in chat recorded here as a dated amendment.
