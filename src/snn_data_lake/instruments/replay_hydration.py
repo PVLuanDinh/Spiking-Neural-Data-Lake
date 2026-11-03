@@ -2546,8 +2546,12 @@ def seed_comparisons(arms, base=None):
     }
     if named:
         c["chrono_flush_failed"] = named
-    c["reds"]["CHRONO"] = _complete(get("CHRONO")) and not chrono_clean(get("CHRONO"))
-    c["reds"]["MOTOR"] = _complete(get("MOTOR")) and not chrono_clean(get("MOTOR"))
+    c["reds"]["CHRONO"] = _complete(get("CHRONO")) and not chrono_clean(
+        get("CHRONO"), get(dict(R2_ROLES)["CHRONO"])
+    )
+    c["reds"]["MOTOR"] = _complete(get("MOTOR")) and not chrono_clean(
+        get("MOTOR"), get(dict(R2_ROLES)["MOTOR"])
+    )
     fw = fw_seed(arms)
     c["failwrite"] = fw
     if fw is not None:
