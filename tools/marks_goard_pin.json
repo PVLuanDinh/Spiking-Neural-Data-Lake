@@ -1,0 +1,1133 @@
+{
+ "license": "spdx:CC0-1.0",
+ "doi": "10.25349/D9M606",
+ "citation": "Marks, T.D. & Goard, M.J. (2021) Stimulus-dependent representational drift in primary visual cortex. Nat Commun 12, 5169. Data: Dryad https://doi.org/10.25349/D9M606",
+ "split_rule": "a file under 'Main experiments/Mouse N' takes N's split (pre-reg 1.5 split). A file anywhere else whose sha256 equals a Main file takes THAT file's split and mouse (Prism copies are renumbered: Prism M2 == Main M1). Everything else is split 'none' (not part of Part A). Hashing is the only read; no .mat is parsed. ",
+ "assets": [
+  {
+   "path": "Inhibitory experiments/Mouse 1/NatMov_ChronicImaging_maps.mat",
+   "size": 26045616,
+   "sha256": "e01f73a80af364c570a490b8edd7063c6b4a64271c7d12403fd66e49a7a6faa9",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 1/OrientationData.mat",
+   "size": 51575,
+   "sha256": "6dfa40a87c832accbeade5ed584b82a3f08979dc2d133f402e213ac2573558e3",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 1/PDG_ChronicImaging_maps.mat",
+   "size": 26093162,
+   "sha256": "c050dcd3d7c46e975832cca3576a71fccdd2af6a26cc37b80c14f2ab195d34e0",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 1/RespData.mat",
+   "size": 90944790,
+   "sha256": "0a42484dbc1eed6836a1d9a1d33736f68c3025c6da738f56659a7604d7337d73",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 1/RoiINFO.mat",
+   "size": 448,
+   "sha256": "5f7d515ed293b1effce2514c847342f154322873beb3c36b09a5a674492c8070",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 1/StabilityData.mat",
+   "size": 26743,
+   "sha256": "180fb7763b6c083e9447e279276f75bb5907189734ae80bc9775128a85b39810",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 2/NatMov_ChronicImaging_maps.mat",
+   "size": 25530620,
+   "sha256": "ccef1f975983186ee93d326c4bd82bb1c63f48c08be5f1489c2d2cfce92190d6",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 2/OrientationData.mat",
+   "size": 62019,
+   "sha256": "8a83cce5f46cbd733c51c8b3432a2c96cdf1876a60dcb58552183bc21a584ebc",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 2/PDG_ChronicImaging_maps.mat",
+   "size": 25591080,
+   "sha256": "a0ce3dc26944f3b0826d6d25c85d793ccc138cabe4c5fbbac7dc331c80f6c25d",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 2/RespData.mat",
+   "size": 109913968,
+   "sha256": "ac9c35c20a57d60916dcf52e90397794e2b5179012e0cf6a32de486f3b2e6b2a",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 2/RoiINFO.mat",
+   "size": 476,
+   "sha256": "7f66163ce4777204e3982a7a6b46e437ff3e0bdbf2b0e7fdc33f5565ba2672ac",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 2/StabilityData.mat",
+   "size": 31657,
+   "sha256": "b101f5f0d708e7a99390b07a06d06c8e1fd57acfc21600f45dc119ed87b26ab4",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 3/NatMov_ChronicImaging_maps.mat",
+   "size": 25768424,
+   "sha256": "3ec6808b3045a909ffb60f54bce44a22c4bb53556fb5a9ce9784ebaa73421d64",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 3/OrientationData.mat",
+   "size": 54228,
+   "sha256": "7340f90fd06816a6d163417debae3337c8654c5fbc5e3dcfcc2498b579ad50cf",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 3/PDG_ChronicImaging_maps.mat",
+   "size": 25779630,
+   "sha256": "6d17a8669f3b766e33512160580e7225d126861453753e63b0163a3d7089bf47",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 3/RespData.mat",
+   "size": 96215196,
+   "sha256": "4bfc8730e27f4df8152fc2c09f48a9d605917c9018bd86e1e078c567351bdc30",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 3/RoiINFO.mat",
+   "size": 462,
+   "sha256": "26c1a323f2bb8bb79dc9a07a6ba04d7708bb4ec3efdd8219ad3ad931bd355606",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 3/StabilityData.mat",
+   "size": 28421,
+   "sha256": "74722513d926aa3d7e9255c68faf08aaa59408b276b2b342a0bc45a8c6b4ccc6",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 4/NatMov_ChronicImaging_maps.mat",
+   "size": 25923278,
+   "sha256": "9a35486a3259c479104ea57edbe9e63e64107a8110b64c9b29c40efb60d4e8e4",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 4/OrientationData.mat",
+   "size": 38214,
+   "sha256": "08c6e43ef09c862fa81f191cda83ea1c2206851c33b269571348a5584a04a84f",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 4/PDG_ChronicImaging_maps.mat",
+   "size": 25889788,
+   "sha256": "a336810ca3cc66e264e571ed227174414e8fc675668be08ac0706eb81f45a0f3",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 4/RespData.mat",
+   "size": 68088221,
+   "sha256": "5b2cd598c2fcd3c194636f97c8197d601660c357c52c5dd5a3cde76d43f73e23",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 4/RoiINFO.mat",
+   "size": 436,
+   "sha256": "4b42ead50ab1886f4279b12e36fdeeb84d059df5e19fa262eb39508cea74a474",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Inhibitory experiments/Mouse 4/StabilityData.mat",
+   "size": 20238,
+   "sha256": "6f966d12434ddccada807bff4c49946f61296fe0bfbfadcdf4c8e5e2779bacbb",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Main experiments/Mouse 1/NatMov_ChronicImaging_maps.mat",
+   "size": 18522350,
+   "sha256": "f444c2642d09fd3855bdd5f04fbfa05e08457e5e0c18c690750ee0335e4e14d9",
+   "mouse": 1,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 1/OrientationData.mat",
+   "size": 202621,
+   "sha256": "f3aff2728a5b61babd66f39de10221d7a09e8006b7deef3e8b212baf4f406083",
+   "mouse": 1,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 1/PDG_ChronicImaging_maps.mat",
+   "size": 18477620,
+   "sha256": "11fe126175d2c41fd40d99cb7a738f4175c920d205c53b4481eb029c0814fae5",
+   "mouse": 1,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 1/RespData.mat",
+   "size": 362237137,
+   "sha256": "6e8da13fe984144502e6ff4bbaec50817b6b7861d0416f8fe03843f6cc8a745c",
+   "mouse": 1,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 1/RoiINFO.mat",
+   "size": 909,
+   "sha256": "ace0a68847513a9172922570dbb9b33c419555f44815a52a8f7fcf944f918472",
+   "mouse": 1,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 1/StabilityData.mat",
+   "size": 101258,
+   "sha256": "d135331e63e62678153c4cd07606df1b209fdedc2d22af68df7d35182d25c48d",
+   "mouse": 1,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 10/NatMov_ChronicImaging_maps.mat",
+   "size": 25868586,
+   "sha256": "fa76ec04a110f0ce4f67328d98e169ad752074b498d8781499c738930b26dc75",
+   "mouse": 10,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 10/OrientationData.mat",
+   "size": 317592,
+   "sha256": "82319dc64152dd0fcc0dd214877f653c1e31cd037932f4cc5967eff85d009a81",
+   "mouse": 10,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 10/PDG_ChronicImaging_maps.mat",
+   "size": 25847994,
+   "sha256": "31b8c42467bcd5a516d82bd3741dc71387521079c7fe3206a3394bfb294b4f82",
+   "mouse": 10,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 10/RespData.mat",
+   "size": 424279776,
+   "sha256": "243d373c24a744708f78a283dc7a8afb0e2156bc8f7531bd5eae788d131d6a0d",
+   "mouse": 10,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 10/RoiINFO.mat",
+   "size": 1005,
+   "sha256": "1f21ad4f64aac79a0f5849f6005c2cc96a1156641b83e68a0b88bfaa5d6ca7dc",
+   "mouse": 10,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 10/StabilityData.mat",
+   "size": 164709,
+   "sha256": "924530a126b99e672addce5ba79ea8df8357acd9afe5e2bddbd4ab9a191d77d5",
+   "mouse": 10,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 11/NatMov_ChronicImaging_maps.mat",
+   "size": 25765919,
+   "sha256": "31e7a509627d988965295ba7be76bdc02e73c7c690cb2c91f5851e2bd92c19e6",
+   "mouse": 11,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 11/OrientationData.mat",
+   "size": 402944,
+   "sha256": "62ea9fdd6afe78f68ce923e878e90a413909f9e49556b7a587374f6b6bf97117",
+   "mouse": 11,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 11/PDG_ChronicImaging_maps.mat",
+   "size": 25765790,
+   "sha256": "07e2d183197e48acbf14074fa75dde68458cc2abd6a0992af51eee06b4dfe210",
+   "mouse": 11,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 11/RespData.mat",
+   "size": 720051076,
+   "sha256": "f8ed6d761a1557a3a4601335a2bacb50b5d40093fad5bd42eba537d76b5ede0d",
+   "mouse": 11,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 11/RoiINFO.mat",
+   "size": 1116,
+   "sha256": "c1240a53b6e898aba0d4c49f08dc6bc2a64e58f96e4d7a6bf018dfd4e6dcfb6b",
+   "mouse": 11,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 11/StabilityData.mat",
+   "size": 206611,
+   "sha256": "373e07b86e7e75d288583de396d65cf15a68ae65c674e5893221d8e0543f4968",
+   "mouse": 11,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 12/NatMov_ChronicImaging_maps.mat",
+   "size": 24372606,
+   "sha256": "bcacc098a051f3b3b392911877e1c789163154122355410fe6eb48bed13e2a93",
+   "mouse": 12,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 12/OrientationData.mat",
+   "size": 394725,
+   "sha256": "c21605f0769dee9c0c829f53c2630c37232fb1b52cd95d2f4926a86ead0460e6",
+   "mouse": 12,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 12/PDG_ChronicImaging_maps.mat",
+   "size": 24356448,
+   "sha256": "38f1b19c1aae1984e2dabe1bb42d55aa866663603629eb654488ff1683ade18c",
+   "mouse": 12,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 12/RespData.mat",
+   "size": 707204855,
+   "sha256": "0a78122dab3792ab98084d9fb2d9efd34bd1265f001d56c80f32853d558af75b",
+   "mouse": 12,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 12/RoiINFO.mat",
+   "size": 1166,
+   "sha256": "8f27ee31aa900901c223f73fde0fae072c33814c6da72fe0176c5ac44ee2bd86",
+   "mouse": 12,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 12/StabilityData.mat",
+   "size": 203231,
+   "sha256": "1abd333925b1dc6223b18743afca1a7c81313778d4111f4a12ad5230836913db",
+   "mouse": 12,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 1/NatMov_ChronicImaging_maps.mat",
+   "size": 25271534,
+   "sha256": "8287f9872676bee26fea6340fe648b20132e4719e2b39adfcf470c9a973ee788",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 1/OrientationData.mat",
+   "size": 415982,
+   "sha256": "75f3bd99afd79d61c56795603841f67bfd437b4b6adda431748f6346f6d8e23b",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 1/PDG_ChronicImaging_maps.mat",
+   "size": 25194775,
+   "sha256": "7b14af54b4e546a913f9f6eb508b0cd42ffd4b85fdf1f1dc15a65562e835ef6a",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 1/RespData.mat",
+   "size": 744190284,
+   "sha256": "ad3f2e1ff19aa91d01f15991277336111755d1e3888e88ee7aa6ce53c49a7294",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 1/RoiINFO.mat",
+   "size": 1183,
+   "sha256": "044f186147ae4882a68a9cb3eb7b751a000c5468a805e97a6c14350391a0d172",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 1/StabilityData.mat",
+   "size": 212485,
+   "sha256": "cbe59818a02eb82164dda95e577adf792e214d16ef004ca6ea523eae529f5cd2",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 2/NatMov_ChronicImaging_maps.mat",
+   "size": 25278084,
+   "sha256": "788952f3a06aa0c8ab2f32f5bec700420983b61e4810924bdae06444cd687083",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 2/OrientationData.mat",
+   "size": 342840,
+   "sha256": "3d761626c0a08047bbb496e1ad473123232ab659df366407d2aae67d09454cf6",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 2/PDG_ChronicImaging_maps.mat",
+   "size": 25249999,
+   "sha256": "b71a2aed4ead8f0e5fac2d511563e6b5d9566b92008802ec38831b7c34101540",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 2/RespData.mat",
+   "size": 612738771,
+   "sha256": "350c3b166b2c32b54e481b9034d00841eb9fbead7fb6b204114237b9224d421e",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 2/RoiINFO.mat",
+   "size": 1013,
+   "sha256": "7b3d0bca9067daf2ffa838c2675c08c86c859c6876f9b882c471f5b85c1ff0bc",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 2/Window 2/StabilityData.mat",
+   "size": 175104,
+   "sha256": "d169ed795e3a62eb73ebe001bbbb048607d47470508267896716093513b1e103",
+   "mouse": 2,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 3/NatMov_ChronicImaging_maps.mat",
+   "size": 25563776,
+   "sha256": "79e1241b8f8ede64cc8880fe4d90e752b7f94bc9aee51b4f7a796fcfa1f26f14",
+   "mouse": 3,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 3/OrientationData.mat",
+   "size": 604053,
+   "sha256": "17f72d98ea8940d1ad39b32d5a08d3f89351a305b6e3f9a6c7a3d267077ea429",
+   "mouse": 3,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 3/PDG_ChronicImaging_maps.mat",
+   "size": 25411511,
+   "sha256": "dad2f47573cf0e6580a8afe29b0b87718034978b03e998fdc592dbdca9af829c",
+   "mouse": 3,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 3/RespData.mat",
+   "size": 1081537676,
+   "sha256": "321265f8c0b2ce05169975c298f05283ac019630e8c05798bd744acbc3683ff2",
+   "mouse": 3,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 3/RoiINFO.mat",
+   "size": 1511,
+   "sha256": "a6a0b99304d9cde8b745b72a7e8186792186a3cf1e65f45505cfb06510a58bc2",
+   "mouse": 3,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 3/StabilityData.mat",
+   "size": 310273,
+   "sha256": "92a4135178ca0d19dd9de164589c13c4e2a4b16b58fe4c8351debb5f1681ebf7",
+   "mouse": 3,
+   "split": "dev"
+  },
+  {
+   "path": "Main experiments/Mouse 4/NatMov_ChronicImaging_maps.mat",
+   "size": 18998679,
+   "sha256": "3c02b778995cfc89fc098548d21c1f5b381c3785a00cf2224c16e2fe66730b85",
+   "mouse": 4,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 4/OrientationData.mat",
+   "size": 69784,
+   "sha256": "ed944c3e5a143da84a40b345b25fe6a13527c94d0bff257a0268bbb0ed0ccfa4",
+   "mouse": 4,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 4/PDG_ChronicImaging_maps.mat",
+   "size": 18813995,
+   "sha256": "891924252632f405337234cf02be1643fe5bda5c06e7239aa6e96cd8bd8043df",
+   "mouse": 4,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 4/RespData.mat",
+   "size": 124234960,
+   "sha256": "8d6b33cc474885080ec227f1462cb63dca4eaaa18b18b2a3d9453c7796e46848",
+   "mouse": 4,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 4/RoiINFO.mat",
+   "size": 501,
+   "sha256": "525e53519daaf62aef449593e948287b216e6b850ff5d8906b823f6b16bd0856",
+   "mouse": 4,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 4/StabilityData.mat",
+   "size": 35234,
+   "sha256": "80ae9584a418fd5c2b69ac19f01b2164222bbe804e10e56b42c89ccf94f50eb4",
+   "mouse": 4,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 5/NatMov_ChronicImaging_maps.mat",
+   "size": 26425741,
+   "sha256": "1d4dfb368ffb2ec9f7edc88c05b33dd1980f8dd9ae380fcf674abeca570f711e",
+   "mouse": 5,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 5/OrientationData.mat",
+   "size": 366811,
+   "sha256": "3e187a2a72e8e81924adab0afcc90bc3c108cdea148893601929d905a17de915",
+   "mouse": 5,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 5/PDG_ChronicImaging_maps.mat",
+   "size": 26292794,
+   "sha256": "b4db84caf174373df56e36f9051522c04416852f55095eb9a144f49dfdf710bd",
+   "mouse": 5,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 5/RespData.mat",
+   "size": 656894145,
+   "sha256": "a019c5b28800e1963ddcc9efde717cc2fd8ba05c1d4c617be0411aa3edcb8ac5",
+   "mouse": 5,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 5/RoiINFO.mat",
+   "size": 997,
+   "sha256": "3e58aa806884f213f08b4a6591331828b9c603d0829323692a49109626a8055b",
+   "mouse": 5,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 5/StabilityData.mat",
+   "size": 189749,
+   "sha256": "bffa58ebcb7ae3fdbf423ddff1198b49c3ffc9a6aef783e7ff1bfe3cff6f3042",
+   "mouse": 5,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 6/NatMov_ChronicImaging_maps.mat",
+   "size": 26292641,
+   "sha256": "79b9ac65e87378732b266789bd4bc4e1db98154ad2e398647f15708e52df398e",
+   "mouse": 6,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 6/OrientationData.mat",
+   "size": 278846,
+   "sha256": "fc2f042bc2e1a029aaf82af5fd9ef2289eb925a4ee0a0608ef024ee27c385bd1",
+   "mouse": 6,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 6/PDG_ChronicImaging_maps.mat",
+   "size": 26163211,
+   "sha256": "2545363520118555c36ec5f8261dc9efa5a9b4e221c458af54f79d071bbe7e46",
+   "mouse": 6,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 6/RespData.mat",
+   "size": 501103517,
+   "sha256": "6309d1967fb954928216756d1243707a2ca739971b36f499f7ebc31a37fabadb",
+   "mouse": 6,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 6/RoiINFO.mat",
+   "size": 917,
+   "sha256": "56b98796e9cd45391363240a34077c63bfe240d75a8ab1febc8f3b1c3ee89f24",
+   "mouse": 6,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 6/StabilityData.mat",
+   "size": 143987,
+   "sha256": "49e6b13afc2ce494120310e563079eeab4df3f57a4838ec3c4c66e0226365a92",
+   "mouse": 6,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 7/NatMov_ChronicImaging_maps.mat",
+   "size": 22609579,
+   "sha256": "46f4c15e76104d69ece9fc9cb059ee9667a4979c9efa35d12b2b2e228ce615ef",
+   "mouse": 7,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 7/OrientationData.mat",
+   "size": 243235,
+   "sha256": "997408f4a55fef987393a1c0829c9b48a568b06ca2cd732f003098531ff627a5",
+   "mouse": 7,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 7/PDG_ChronicImaging_maps.mat",
+   "size": 22497926,
+   "sha256": "7271c55abcc87435eb1a89c3f191900973c531f334a5592c8923eddef9c7c7d0",
+   "mouse": 7,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 7/RespData.mat",
+   "size": 435421484,
+   "sha256": "0072f53ecabe6705183f73c031449a67eb26ed13356e9245ad86482d2af5d73a",
+   "mouse": 7,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 7/RoiINFO.mat",
+   "size": 952,
+   "sha256": "d073bd78cfc400aa611e58e08f18ec76ddcc7f29972821b90981020414bbe27a",
+   "mouse": 7,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 7/StabilityData.mat",
+   "size": 123618,
+   "sha256": "fd879350a14410951cd86a614ed032f5fdc2203334e1306a7cc8660a473ef9a0",
+   "mouse": 7,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 8/NatMov_ChronicImaging_maps.mat",
+   "size": 18606993,
+   "sha256": "7fef053477da9413cc7436fea813c3230f64eeb585df95feda192bc759ad9e94",
+   "mouse": 8,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 8/OrientationData.mat",
+   "size": 193571,
+   "sha256": "d70d053d739b53d3bb020ffd504be1c9831391a82933d62ba0e4ae6b30f5d249",
+   "mouse": 8,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 8/PDG_ChronicImaging_maps.mat",
+   "size": 18524908,
+   "sha256": "f09c8eb052f6b24dba538368427eea39b0c8e874aa94f6d0fd9dbef26b9ab15d",
+   "mouse": 8,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 8/RespData.mat",
+   "size": 347125109,
+   "sha256": "c1868b6871f9d1a2893ebeb83b74440b9021243ae1ce90fbd8dc03513c993fa0",
+   "mouse": 8,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 8/RoiINFO.mat",
+   "size": 876,
+   "sha256": "4f2085aeacf060da9908b678427d70080d6288cf91887337dd2bfde9d413e937",
+   "mouse": 8,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 8/StabilityData.mat",
+   "size": 96919,
+   "sha256": "74ac2c106554aa6b68c3a015f8f4a6c3d6e8e1dd6468aee3ec6236ee493afae0",
+   "mouse": 8,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 9/NatMov_ChronicImaging_maps.mat",
+   "size": 22410689,
+   "sha256": "ba2a959cff4b0d3d26bc1447c5520d0011627994dbe1a14b83b23a6e10f095d1",
+   "mouse": 9,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 9/OrientationData.mat",
+   "size": 243804,
+   "sha256": "1104684cd62500548b7169a5ddd5c71f49d4ff517dc449f25e9df4019edf9850",
+   "mouse": 9,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 9/PDG_ChronicImaging_maps.mat",
+   "size": 22255005,
+   "sha256": "e962ffbd7817dec04533085e317caffe8640d110dec44a12cacdfdbedc4a3bf9",
+   "mouse": 9,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 9/RespData.mat",
+   "size": 437919692,
+   "sha256": "28fd367768f3fdd901cff67ff25dce3088b84bf088d991eb4057b8091eae6196",
+   "mouse": 9,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 9/RoiINFO.mat",
+   "size": 867,
+   "sha256": "7e95eaba5ba7aad918cc9ad18da4822e035f4167556d5021f3f517d3fa0f2c5e",
+   "mouse": 9,
+   "split": "held-out"
+  },
+  {
+   "path": "Main experiments/Mouse 9/StabilityData.mat",
+   "size": 124614,
+   "sha256": "8a2cb19f7bbc3fa86d25116ed5b4ac376ffa3d565de3906872e1f37edeca052a",
+   "mouse": 9,
+   "split": "held-out"
+  },
+  {
+   "path": "Neural data README.txt",
+   "size": 4607,
+   "sha256": "57a6f5950275ce29b9983e3fbe4a35dcea852a303b0ae9e0657fc3e420ae38c6",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 1/LayerVec.mat",
+   "size": 592,
+   "sha256": "231c4ea619a5b27b5e0d7ae57b3281538cbab64ac9af2354946281dd84854d50",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 1/NatMov_ChronicImaging_maps.mat",
+   "size": 25271534,
+   "sha256": "8287f9872676bee26fea6340fe648b20132e4719e2b39adfcf470c9a973ee788",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 1/NatMov_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 1/OrientationData.mat",
+   "size": 415982,
+   "sha256": "75f3bd99afd79d61c56795603841f67bfd437b4b6adda431748f6346f6d8e23b",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 1/OrientationData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 1/PDG_ChronicImaging_maps.mat",
+   "size": 25194775,
+   "sha256": "7b14af54b4e546a913f9f6eb508b0cd42ffd4b85fdf1f1dc15a65562e835ef6a",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 1/PDG_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 1/RespData.mat",
+   "size": 744190284,
+   "sha256": "ad3f2e1ff19aa91d01f15991277336111755d1e3888e88ee7aa6ce53c49a7294",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 1/RespData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 1/RoiINFO.mat",
+   "size": 1183,
+   "sha256": "044f186147ae4882a68a9cb3eb7b751a000c5468a805e97a6c14350391a0d172",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 1/RoiINFO.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 1/StabilityData.mat",
+   "size": 212485,
+   "sha256": "cbe59818a02eb82164dda95e577adf792e214d16ef004ca6ea523eae529f5cd2",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 1/StabilityData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 2/LayerVec.mat",
+   "size": 536,
+   "sha256": "4175db08af4a5d23b0d38215dcd2787202ac124a8349fec1ee15008a53048048",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 2/NatMov_ChronicImaging_maps.mat",
+   "size": 25278084,
+   "sha256": "788952f3a06aa0c8ab2f32f5bec700420983b61e4810924bdae06444cd687083",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 2/NatMov_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 2/OrientationData.mat",
+   "size": 342840,
+   "sha256": "3d761626c0a08047bbb496e1ad473123232ab659df366407d2aae67d09454cf6",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 2/OrientationData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 2/PDG_ChronicImaging_maps.mat",
+   "size": 25249999,
+   "sha256": "b71a2aed4ead8f0e5fac2d511563e6b5d9566b92008802ec38831b7c34101540",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 2/PDG_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 2/RespData.mat",
+   "size": 612738771,
+   "sha256": "350c3b166b2c32b54e481b9034d00841eb9fbead7fb6b204114237b9224d421e",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 2/RespData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 2/RoiINFO.mat",
+   "size": 1013,
+   "sha256": "7b3d0bca9067daf2ffa838c2675c08c86c859c6876f9b882c471f5b85c1ff0bc",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 2/RoiINFO.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 1/Window 2/StabilityData.mat",
+   "size": 175104,
+   "sha256": "d169ed795e3a62eb73ebe001bbbb048607d47470508267896716093513b1e103",
+   "mouse": 2,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 2/Window 2/StabilityData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 2/LayerVec.mat",
+   "size": 532,
+   "sha256": "a05bf81bce3332111fc15281afc517f9262f90e75ad22f10ce5965ed0054e773",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Prism experiments/Mouse 2/NatMov_ChronicImaging_maps.mat",
+   "size": 18522350,
+   "sha256": "f444c2642d09fd3855bdd5f04fbfa05e08457e5e0c18c690750ee0335e4e14d9",
+   "mouse": 1,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 1/NatMov_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 2/OrientationData.mat",
+   "size": 202621,
+   "sha256": "f3aff2728a5b61babd66f39de10221d7a09e8006b7deef3e8b212baf4f406083",
+   "mouse": 1,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 1/OrientationData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 2/PDG_ChronicImaging_maps.mat",
+   "size": 18477620,
+   "sha256": "11fe126175d2c41fd40d99cb7a738f4175c920d205c53b4481eb029c0814fae5",
+   "mouse": 1,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 1/PDG_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 2/RespData.mat",
+   "size": 362237137,
+   "sha256": "6e8da13fe984144502e6ff4bbaec50817b6b7861d0416f8fe03843f6cc8a745c",
+   "mouse": 1,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 1/RespData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 2/RoiINFO.mat",
+   "size": 909,
+   "sha256": "ace0a68847513a9172922570dbb9b33c419555f44815a52a8f7fcf944f918472",
+   "mouse": 1,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 1/RoiINFO.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 2/StabilityData.mat",
+   "size": 101258,
+   "sha256": "d135331e63e62678153c4cd07606df1b209fdedc2d22af68df7d35182d25c48d",
+   "mouse": 1,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 1/StabilityData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 3/LayerVec.mat",
+   "size": 616,
+   "sha256": "d00be51fae41c94ba047f6df58f49aa64ec2c86f78b617f1ede89c2f4cf4e741",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Prism experiments/Mouse 3/NatMov_ChronicImaging_maps.mat",
+   "size": 24372606,
+   "sha256": "bcacc098a051f3b3b392911877e1c789163154122355410fe6eb48bed13e2a93",
+   "mouse": 12,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 12/NatMov_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 3/OrientationData.mat",
+   "size": 394725,
+   "sha256": "c21605f0769dee9c0c829f53c2630c37232fb1b52cd95d2f4926a86ead0460e6",
+   "mouse": 12,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 12/OrientationData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 3/PDG_ChronicImaging_maps.mat",
+   "size": 24356448,
+   "sha256": "38f1b19c1aae1984e2dabe1bb42d55aa866663603629eb654488ff1683ade18c",
+   "mouse": 12,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 12/PDG_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 3/RespData.mat",
+   "size": 707204855,
+   "sha256": "0a78122dab3792ab98084d9fb2d9efd34bd1265f001d56c80f32853d558af75b",
+   "mouse": 12,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 12/RespData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 3/RoiINFO.mat",
+   "size": 1166,
+   "sha256": "8f27ee31aa900901c223f73fde0fae072c33814c6da72fe0176c5ac44ee2bd86",
+   "mouse": 12,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 12/RoiINFO.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 3/StabilityData.mat",
+   "size": 203231,
+   "sha256": "1abd333925b1dc6223b18743afca1a7c81313778d4111f4a12ad5230836913db",
+   "mouse": 12,
+   "split": "held-out",
+   "copy_of": "Main experiments/Mouse 12/StabilityData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 4/LayerVec.mat",
+   "size": 583,
+   "sha256": "5c45b90666bbf913c05a64251fab0115df25ee8b661b2a25ad6f20dbe45609ad",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Prism experiments/Mouse 4/NatMov_ChronicImaging_maps.mat",
+   "size": 25765919,
+   "sha256": "31e7a509627d988965295ba7be76bdc02e73c7c690cb2c91f5851e2bd92c19e6",
+   "mouse": 11,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 11/NatMov_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 4/OrientationData.mat",
+   "size": 402944,
+   "sha256": "62ea9fdd6afe78f68ce923e878e90a413909f9e49556b7a587374f6b6bf97117",
+   "mouse": 11,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 11/OrientationData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 4/PDG_ChronicImaging_maps.mat",
+   "size": 25765790,
+   "sha256": "07e2d183197e48acbf14074fa75dde68458cc2abd6a0992af51eee06b4dfe210",
+   "mouse": 11,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 11/PDG_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 4/RespData.mat",
+   "size": 720051076,
+   "sha256": "f8ed6d761a1557a3a4601335a2bacb50b5d40093fad5bd42eba537d76b5ede0d",
+   "mouse": 11,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 11/RespData.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 4/RoiINFO.mat",
+   "size": 1116,
+   "sha256": "c1240a53b6e898aba0d4c49f08dc6bc2a64e58f96e4d7a6bf018dfd4e6dcfb6b",
+   "mouse": 11,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 11/RoiINFO.mat"
+  },
+  {
+   "path": "Prism experiments/Mouse 4/StabilityData.mat",
+   "size": 206611,
+   "sha256": "373e07b86e7e75d288583de396d65cf15a68ae65c674e5893221d8e0543f4968",
+   "mouse": 11,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 11/StabilityData.mat"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 1/NatMov_ChronicImaging_maps.mat",
+   "size": 25852978,
+   "sha256": "02faea699da4c80fc9ee12b5c2a6619f62170d955592a771e8e762ad3c324859",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 1/OrientationData.mat",
+   "size": 225974,
+   "sha256": "4bfd2327b1b4d9129c176ae137bec3891f0bba41960deadafad19112aeec9cca",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 1/PDG_ChronicImaging_maps.mat",
+   "size": 25887863,
+   "sha256": "5664a5237ddc25365c9efd5cbe16b129d638ab8a8c5230e7751c00f3e0e81f0e",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 1/RespData.mat",
+   "size": 715640998,
+   "sha256": "817f961862d9dfe499a86bbfa4039f175e596972daa4be823564217b30e6e031",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 1/RoiINFO.mat",
+   "size": 887,
+   "sha256": "e5579766d3a7409179ddad514fa9138b7afa7afac83081052e19d51db4e25eda",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 1/StabilityData.mat",
+   "size": 233076,
+   "sha256": "2a7880e6cff33cc0210327d12f36fd1778d23f75f9f4e25fd9a21f5a7dc602b1",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 2/NatMov_ChronicImaging_maps.mat",
+   "size": 25868586,
+   "sha256": "fa76ec04a110f0ce4f67328d98e169ad752074b498d8781499c738930b26dc75",
+   "mouse": 10,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 10/NatMov_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 2/OrientationData.mat",
+   "size": 317592,
+   "sha256": "82319dc64152dd0fcc0dd214877f653c1e31cd037932f4cc5967eff85d009a81",
+   "mouse": 10,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 10/OrientationData.mat"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 2/PDG_ChronicImaging_maps.mat",
+   "size": 25847994,
+   "sha256": "31b8c42467bcd5a516d82bd3741dc71387521079c7fe3206a3394bfb294b4f82",
+   "mouse": 10,
+   "split": "dev",
+   "copy_of": "Main experiments/Mouse 10/PDG_ChronicImaging_maps.mat"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 2/RespData.mat",
+   "size": 1012277538,
+   "sha256": "e157026282dc10eeaffac50af378d8773e869c7457533780a964b3616e281747",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 2/RoiINFO.mat",
+   "size": 1013,
+   "sha256": "0d4803d67d24e8392b5d13d405eaf4be89eb809ec41d028e250ea4a1a7b78ef1",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 2/StabilityData.mat",
+   "size": 329717,
+   "sha256": "af6e4c56bdf245620f84ac587c184bb073a83aae2faa0808fcb40bd2a8d64d09",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 3/NatMov_ChronicImaging_maps.mat",
+   "size": 29123623,
+   "sha256": "9c04d7b5bd7fcc0ec05e583cc92db6a4b9529216c6d2b9adf1a434b741141d14",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 3/OrientationData.mat",
+   "size": 287976,
+   "sha256": "b264fdaec0c5b2869343d6ea867611a823ccddcd4bc9f37d725102189675514d",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 3/PDG_ChronicImaging_maps.mat",
+   "size": 29191937,
+   "sha256": "42d9a1629b3399d3f25d1929e85e45c1d28483db977121df80cbee4ba3193340",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 3/RespData.mat",
+   "size": 911677373,
+   "sha256": "bf6d830ef82dbbf080c423cafec4761dd21458d48a8a15f7e6a55beb0b8f141a",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 3/RoiINFO.mat",
+   "size": 1016,
+   "sha256": "5cd9aa38033043b48fdacd63d369e3182cba1ea9e6f3bf249d74f3f15219fa1a",
+   "mouse": null,
+   "split": "none"
+  },
+  {
+   "path": "Scrambled movie experiments/Mouse 3/StabilityData.mat",
+   "size": 295494,
+   "sha256": "29c7509a4a5f4993d118aae7ede988a7d17733ff06fc4807280250e52bc5f288",
+   "mouse": null,
+   "split": "none"
+  }
+ ]
+}
