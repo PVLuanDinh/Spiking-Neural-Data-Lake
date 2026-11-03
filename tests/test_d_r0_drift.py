@@ -53,7 +53,6 @@ def test_d_r0_driver_refuses_held_out_without_the_amendment(tmp_path):
     ev.write_text("x\nFROZEN-SHA 2026-11-10 " + "b" * 40 + "\n", encoding="utf-8")
     with pytest.raises(partA.HeldOutRefused, match="not the frozen sha"):
         partA.refuse_held_out_unless_frozen(ev, head="a" * 40)
-    assert partA.refuse_held_out_unless_frozen(ev, head="b" * 40) == "b" * 40
 
 
 def test_d_r0_driver_run_refuses_held_out_on_the_registered_file():
@@ -135,3 +134,69 @@ def test_d_r0_ingest_refuses_a_read_from_an_interactive_main(tmp_path, monkeypat
     with pytest.raises(ophys_ingest.IngestRefused, match="interactive"):
         ophys_ingest.read_response(mat, pin, tmp_path, repo, log)
     assert not log.exists()
+
+
+_DEV_LINES = "DEV-AGREEMENT MET 2026-11-08\nDEV-CONTROL MET 2026-11-07\n"
+
+
+def _gate(tmp_path, text, **kw):
+    ev = tmp_path / "ev.md"
+    ev.write_text(text + "FROZEN-SHA 2026-11-10 " + "b" * 40 + "\n", encoding="utf-8")
+    return partA.refuse_held_out_unless_frozen(ev, head="b" * 40, **kw)
+
+
+def test_d_r0_driver_held_out_needs_the_dev_agreement_line(tmp_path):
+    with pytest.raises(partA.HeldOutRefused, match="DEV-AGREEMENT"):
+        _gate(
+            tmp_path,
+            "DEV-CONTROL MET 2026-11-07\n",
+            selfchecks=lambda: [],
+            log_committed=lambda: True,
+        )
+
+
+def test_d_r0_driver_held_out_needs_the_dev_control_line(tmp_path):
+    with pytest.raises(partA.HeldOutRefused, match="DEV-CONTROL"):
+        _gate(
+            tmp_path,
+            "DEV-AGREEMENT MET 2026-11-08\n",
+            selfchecks=lambda: [],
+            log_committed=lambda: True,
+        )
+
+
+def test_d_r0_driver_held_out_needs_both_selfchecks_green(tmp_path):
+    with pytest.raises(partA.HeldOutRefused, match="self-check"):
+        _gate(tmp_path, _DEV_LINES, selfchecks=lambda: ["ophys_ingest"], log_committed=lambda: True)
+
+
+def test_d_r0_driver_held_out_needs_the_dev_log_committed(tmp_path):
+    with pytest.raises(partA.HeldOutRefused, match="dev log"):
+        _gate(tmp_path, _DEV_LINES, selfchecks=lambda: [], log_committed=lambda: False)
+
+
+def test_d_r0_driver_held_out_green_when_every_condition_holds(tmp_path):
+    assert (
+        _gate(tmp_path, _DEV_LINES, selfchecks=lambda: [], log_committed=lambda: True) == "b" * 40
+    )
+
+
+def test_d_r0_driver_dev_log_committed_reads_git(tmp_path):
+    repo = _repo(tmp_path)
+    log = repo / "tools" / "d_r0_dev_log.jsonl"
+    assert not partA.dev_log_committed(repo, log)
+    log.write_text("{}\n", encoding="utf-8")
+    assert not partA.dev_log_committed(repo, log)
+    ophys_ingest._git(repo, "add", ".")
+    ophys_ingest._git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "log")
+    assert partA.dev_log_committed(repo, log)
+    log.write_text("{}\n{}\n", encoding="utf-8")
+    assert not partA.dev_log_committed(repo, log)
+
+
+def test_d_r0_driver_refuses_to_start_while_its_result_file_is_dirty(tmp_path):
+    repo = _repo(tmp_path)
+    out = repo / "tools" / "d_r0_partA.json"
+    assert not partA.result_file_dirty(repo, out)
+    out.write_text("{}", encoding="utf-8")
+    assert partA.result_file_dirty(repo, out)

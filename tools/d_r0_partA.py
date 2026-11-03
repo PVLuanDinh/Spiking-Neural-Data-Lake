@@ -8,9 +8,14 @@ WRITTEN IN ROUND 1, NEVER RUN ON DATA. Two things are deliberately not here yet:
     through `ophys_ingest.read_response` (the only reader allowed to touch response bytes).
   * any DEV agreement step (`author_agreement_verdict` real half): a separate launcher step.
 
-HELD-OUT is refused unless the evidence file carries a dated amendment line
+HELD-OUT is refused unless ALL hold: the evidence file carries a dated amendment line
     FROZEN-SHA <YYYY-MM-DD> <40 hex>
-and HEAD equals that sha. DEV needs no amendment.
+and HEAD equals that sha; it carries the dated lines
+    DEV-AGREEMENT MET <YYYY-MM-DD>      (DEV author_agreement_verdict)
+    DEV-CONTROL MET <YYYY-MM-DD>        (DEV mov_vs_mov_control_verdict)
+both module self-checks re-run green HERE, at that sha (the driver runs them itself); and
+`tools/d_r0_dev_log.jsonl` is tracked and clean in git at that sha. DEV needs none of these.
+The driver refuses to start while `tools/d_r0_partA.json` is dirty: COMMIT THE RESULT FILE AFTER EACH RUN.
 
   python tools/d_r0_partA.py --split dev|heldout
 """
@@ -45,6 +50,7 @@ EVIDENCE = (
     / "d-r0-representational-drift-instrument.md"
 )
 OUT = ROOT / "tools" / "d_r0_partA.json"
+LOG = ROOT / "tools" / "d_r0_dev_log.jsonl"
 DEV = (2, 3, 10, 11)
 HELD_OUT = (1, 4, 5, 6, 7, 8, 9, 12)
 WEEKS = (2, 3, 4, 5)
@@ -74,6 +80,39 @@ def read_field(mouse):
     )
 
 
+def _porcelain(root, path):
+    proc = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=all", "--", str(path)],
+        cwd=str(root),
+        capture_output=True,
+        text=True,
+    )
+    return proc.stdout.strip()
+
+
+def dev_log_committed(root=ROOT, log=LOG):
+    tracked = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", str(log)], cwd=str(root), capture_output=True
+    )
+    return tracked.returncode == 0 and not _porcelain(root, log)
+
+
+def result_file_dirty(root=ROOT, out=OUT):
+    return bool(_porcelain(root, out))
+
+
+def run_selfchecks():
+    """Names of the module self-checks that do not return 0 (both are synthetic, about 10 s each)."""
+    from snn_data_lake.instruments import representational_drift
+    from snn_data_lake.sensorimotor import ophys_ingest
+
+    checks = {
+        "representational_drift": representational_drift._selfcheck,
+        "ophys_ingest": ophys_ingest._selfcheck,
+    }
+    return [name for name, fn in checks.items() if fn() != 0]
+
+
 def head_sha(root=ROOT):
     proc = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=str(root), capture_output=True, text=True
@@ -86,13 +125,28 @@ def frozen_sha(evidence=EVIDENCE):
     return found[-1] if found else None
 
 
-def refuse_held_out_unless_frozen(evidence=EVIDENCE, head=None):
+def refuse_held_out_unless_frozen(
+    evidence=EVIDENCE, head=None, selfchecks=run_selfchecks, log_committed=dev_log_committed
+):
     sha = frozen_sha(evidence)
     if sha is None:
         raise HeldOutRefused("HELD-OUT refused: no FROZEN-SHA amendment in the evidence file")
     head = head_sha() if head is None else head
     if head != sha:
         raise HeldOutRefused(f"HELD-OUT refused: HEAD {head[:12]} is not the frozen sha {sha[:12]}")
+    text = Path(evidence).read_text(encoding="utf-8")
+    for tag in ("DEV-AGREEMENT", "DEV-CONTROL"):
+        if not re.search(rf"^{tag} MET \d{{4}}-\d{{2}}-\d{{2}}\s*$", text, re.M):
+            raise HeldOutRefused(
+                f"HELD-OUT refused: no dated '{tag} MET' line in the evidence file"
+            )
+    failed = selfchecks()
+    if failed:
+        raise HeldOutRefused(f"HELD-OUT refused: self-check FAIL at the frozen sha: {failed}")
+    if not log_committed():
+        raise HeldOutRefused(
+            "HELD-OUT refused: the dev log is not tracked and clean at the frozen sha"
+        )
     return sha
 
 
@@ -117,6 +171,10 @@ def field_d(f, seed=0, weeks=WEEKS):
 
 
 def run(split, reader=read_field, seed=0):
+    if result_file_dirty():
+        raise RuntimeError(
+            f"{OUT.name} is dirty: commit the result file after each run, then start again"
+        )
     mice = DEV if split == "dev" else HELD_OUT
     if split == "heldout":
         refuse_held_out_unless_frozen()
@@ -140,6 +198,7 @@ def main(argv=None):
     out = run(ap.parse_args(argv).split)
     OUT.write_text(json.dumps(out, indent=1, default=str) + "\n", encoding="utf-8")
     print(json.dumps(out, default=str))
+    print(f"{OUT.name} written: commit the result file after each run")
     return 0
 
 
