@@ -332,3 +332,19 @@ HELD-OUT run once the dev log records any HELD-OUT mouse file. A HELD-OUT run th
 only if every one of the 8 HELD-OUT mice was scored; otherwise the verdict is INCONCLUSIVE (§2.3, n < 8), with the
 scored mice and the point of failure disclosed. It is NOT re-run, and no log line is removed to re-enable it, without
 an owner ruling in chat recorded here as a dated amendment.
+
+## 9. Amendment 2026-11-03 (launcher-d0; owner 2026-11-03 "Yes, amend"): the MOV trial count is T, read per field
+Written before any DEV pipeline run (no RDI, no agreement value, no control value computed on mouse data). The layout dump
+(`tools/d_r0_layout.py` at claude/int3@5ca170ce/597b58c7; dev log at 1cdd1619: names, shapes and dtypes only) shows
+`RespData.NatMov.RespMat_onTime` with T = 30 trials for DEV Mice 2, 3, 11 and T = 20 for DEV Mouse 10. §1.4, §2.2 and
+§2.4 assumed T = 30. The HELD-OUT mice's T is unknown and is not read before their single run. Therefore, everywhere:
+- MOV path (§1.4, §2.4 agreement): 8 of T trials, 10 subsamples, the same 8 indices in both sessions -- the authors'
+  pick of 8 is unchanged; "8 of 30" reads "8 of T". The PDG path (8 trials, no subsampling) is unchanged.
+- `mov_vs_mov_control_verdict` (§2.2): each interleaved arm holds floor(T/2) trials (odd vs even indices) and runs
+  8 of floor(T/2) x 10; "8 of 15" reads "8 of floor(T/2)" (Mouse 10: 8 of 10). The reported contiguous split is the
+  first floor(T/2) vs the rest. Bar, seed and bootstrap are unchanged.
+- Fail closed: a field with T < 8 (MOV path) or floor(T/2) < 8 (control) is refused by the code, never run on fewer
+  trials; a HELD-OUT field refused this way counts as unscored (§2.3: n < 8 is INCONCLUSIVE, §8 applies).
+- The synthetic halves of §2.2 (generator §2.2, 15 trials per arm) are unchanged: they test the estimator, not the deposit.
+- Disclosed: Mouse 10's MOV RDI averages over C(20, 8) picks against C(30, 8) for the others, so its MOV estimate is
+  noisier at equal reps; it is a DEV mouse and decides nothing alone.
