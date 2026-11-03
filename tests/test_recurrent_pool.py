@@ -764,9 +764,10 @@ def test_one_reachable_pool_implementation():
     assert not hasattr(rp, "HOSTS") and "host" not in inspect.signature(rp.make_pool).parameters
     assert "step" not in vars(rp.LsmPool) and "step" not in vars(rp._Pool)
     assert "_rec" not in vars(rp.LsmPool) and "reset_carriers" not in vars(rp._Pool)
-    # the census is of the SHIPPED module: a test file's own positive-control subclass
-    # (_PlantedTrainer) is not reachable from make_pool and must not move it
-    shipped = [cls for cls in _subclasses(rp._Pool) if cls.__module__ == rp.__name__]
+    # the census is of SHIPPED code: a test file's own positive-control subclass
+    # (_PlantedTrainer) is not reachable from make_pool and must not move it, while a stepping
+    # subclass in ANY package module still does (Duo B review #7958)
+    shipped = [cls for cls in _subclasses(rp._Pool) if cls.__module__.startswith("snn_data_lake.")]
     stepping = {cls for cls in shipped if "step" in vars(cls)}
     assert stepping == {rp.KernelLsmPool, rp._FloatTwin}, stepping
     assert rp._FloatTwin not in rp.POOLS.values() and rp._ForwardTwin not in rp.POOLS.values()
