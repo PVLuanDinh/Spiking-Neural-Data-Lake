@@ -3602,7 +3602,9 @@ class Brain:
                 else:
                     self._lake_recall.attach(self._episode_window)
                 hits = self._lake_recall.recall(cue, k=1)
-                if hits and hits[0]["confidence"] >= min_conf:
+                # a hit that CONTRADICTS the cue is a different episode that shares some slots, not
+                # a completion of it: it falls through to the exact deep tier (G67)
+                if hits and hits[0]["confidence"] >= min_conf and not hits[0]["contradicted"]:
                     return {
                         "episode": hits[0]["episode"],
                         "confidence": hits[0]["confidence"],
