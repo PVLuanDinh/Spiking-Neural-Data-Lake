@@ -4,7 +4,7 @@ ONLY the `.mat` reading is new. Licence, pin and byte refusal are `organoid_inge
 assert_not_live_home` (pre-registration specs/022-unified-brain-arc/evidence/d-r0-representational-drift-
 instrument.md 2.1, 2.4).
 
-  read_response(path, entry, pin) -- licence, then streamed bytes == pin, then a clean src/ and tools/ tree,
+  read_response(path, pin)        -- licence, the pin's own entry for the file (absent -> refused), streamed bytes, then a clean src/ and tools/ tree,
                                      then ONE line appended to `tools/d_r0_dev_log.jsonl` (commit sha,
                                      timestamp, files, sha256 of every snn_data_lake module loaded and of
                                      the calling script), then `scipy.io.loadmat(squeeze_me=True,
@@ -39,6 +39,7 @@ from snn_data_lake.substrate.home import assert_not_live_home
 ROOT = Path(__file__).resolve().parents[3]
 PIN_PATH = ROOT / "tools" / "marks_goard_pin.json"
 LOG_PATH = ROOT / "tools" / "d_r0_dev_log.jsonl"
+DATA_DIR = ROOT / "data" / "drift" / "marks-goard-2021"
 
 
 def _git(root, *args):
@@ -76,8 +77,21 @@ def _append_log(entry, log_path, live_home=None):
         fh.write(json.dumps(entry, sort_keys=True) + "\n")
 
 
-def read_response(path, entry, pin, root=ROOT, log_path=LOG_PATH, live_home=None):
+def pinned_entry(path, pin, data_dir=DATA_DIR):
+    """The pin's own entry for `path` (its path relative to `data_dir`); a file the pin does not list is refused."""
+    try:
+        rel = Path(path).resolve().relative_to(Path(data_dir).resolve()).as_posix()
+    except ValueError:
+        raise IngestRefused(f"(pin) {path} is not under the deposit folder {data_dir}") from None
+    entry = next((a for a in pin["assets"] if a["path"] == rel), None)
+    if entry is None:
+        raise IngestRefused(f"(pin) {rel} is not in the pin: only pinned files are read")
+    return entry
+
+
+def read_response(path, pin, data_dir=DATA_DIR, root=ROOT, log_path=LOG_PATH, live_home=None):
     gate_license(pin)
+    entry = pinned_entry(path, pin, data_dir)
     gate_bytes(path, entry)
     dirty = dirty_paths(root, log_path)
     if dirty:
@@ -133,17 +147,28 @@ def _selfcheck():
         sha, size = stream_sha256(mat)
         entry = {"path": "resp.mat", "size": size, "sha256": sha}
         pin = {"license": "spdx:CC0-1.0", "assets": [entry]}
-        rd = lambda p=mat, e=entry, pn=pin: read_response(p, e, pn, td, log)  # noqa: E731
+        rd = lambda p=mat, d=td, pn=pin: read_response(p, pn, d, td, log)  # noqa: E731
 
         must_refuse(
             "licence empty",
-            lambda: read_response(mat, entry, {**pin, "license": ""}, td, log),
+            lambda: read_response(mat, {**pin, "license": ""}, td, td, log),
             needle="(a)",
         )
         flipped = bytearray(mat.read_bytes())
         flipped[len(flipped) // 2] ^= 1
-        (td / "flip.mat").write_bytes(bytes(flipped))
-        must_refuse("one byte flipped", lambda: rd(td / "flip.mat"), needle="(b)")
+        (td / "flipdir").mkdir()
+        (td / "flipdir" / "resp.mat").write_bytes(bytes(flipped))
+        must_refuse(
+            "one byte flipped",
+            lambda: rd(td / "flipdir" / "resp.mat", td / "flipdir"),
+            needle="(b)",
+        )
+        (td / "extra.mat").write_bytes(mat.read_bytes())
+        must_refuse(
+            "unpinned file with a matching self-made entry",
+            lambda: rd(td / "extra.mat"),
+            needle="(pin)",
+        )
         (td / "tools" / "stray.py").write_text("y = 2\n", encoding="utf-8")
         must_refuse("dirty tree, untracked", rd, needle="dirty tree")
         (td / "tools" / "stray.py").unlink()

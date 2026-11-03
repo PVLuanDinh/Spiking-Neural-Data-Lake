@@ -89,3 +89,35 @@ def test_d_r0_driver_field_d_is_none_with_no_present_neuron():
 def test_d_r0_driver_read_field_is_not_guessed():
     with pytest.raises(NotImplementedError):
         partA.read_field(1)
+
+
+def _repo(tmp_path):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "tools").mkdir()
+    (tmp_path / "src" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    for cmd in (
+        ["init", "-q"],
+        ["add", "."],
+        ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "i"],
+    ):
+        ophys_ingest._git(tmp_path, *cmd)
+    return tmp_path
+
+
+def _mat(tmp_path):
+    from scipy.io import savemat
+
+    from snn_data_lake.sensorimotor.organoid_ingest import stream_sha256
+
+    mat = tmp_path / "unpinned.mat"
+    savemat(mat, {"RespMat": np.arange(6.0)})
+    sha, size = stream_sha256(mat)
+    return mat, {"path": "unpinned.mat", "size": size, "sha256": sha}
+
+
+def test_d_r0_ingest_refuses_a_file_absent_from_the_pin(tmp_path):
+    repo = _repo(tmp_path)
+    mat, entry = _mat(tmp_path)
+    pin = {"license": "spdx:CC0-1.0", "assets": []}
+    with pytest.raises(ophys_ingest.IngestRefused):
+        ophys_ingest.read_response(mat, pin, tmp_path, repo, repo / "tools" / "d_r0_dev_log.jsonl")
