@@ -200,3 +200,50 @@ def test_d_r0_driver_refuses_to_start_while_its_result_file_is_dirty(tmp_path):
     assert not partA.result_file_dirty(repo, out)
     out.write_text("{}", encoding="utf-8")
     assert partA.result_file_dirty(repo, out)
+
+
+def _dev_log(tmp_path, *paths):
+    import json
+
+    log = tmp_path / "dev_log.jsonl"
+    log.write_text(
+        "".join(
+            json.dumps({"commit": "a" * 40, "files": [{"path": p, "sha256": "0"}]}) + "\n"
+            for p in paths
+        ),
+        encoding="utf-8",
+    )
+    return log
+
+
+def test_d_r0_driver_held_out_read_once_refuses_a_logged_held_out_file(tmp_path):
+    log = _dev_log(tmp_path, "mouse2/week3.mat", "mouse4/week2.mat")
+    assert partA.held_out_read_in_log(log)
+    with pytest.raises(partA.HeldOutRefused, match="read ONCE"):
+        _gate(
+            tmp_path,
+            _DEV_LINES,
+            selfchecks=lambda: [],
+            log_committed=lambda: True,
+            held_out_logged=lambda: partA.held_out_read_in_log(log),
+        )
+
+
+def test_d_r0_driver_held_out_read_once_passes_a_dev_only_log(tmp_path):
+    log = _dev_log(tmp_path, "mouse2/week3.mat", "Mouse_10/week5.mat", "mouse11/week2.mat")
+    assert not partA.held_out_read_in_log(log)
+    assert not partA.held_out_read_in_log(tmp_path / "absent.jsonl")
+
+
+def test_d_r0_driver_held_out_read_once_is_checked_before_the_selfchecks(tmp_path):
+    def boom():
+        raise AssertionError("self-checks ran before the read-once check")
+
+    with pytest.raises(partA.HeldOutRefused, match="read ONCE"):
+        _gate(
+            tmp_path,
+            _DEV_LINES,
+            selfchecks=boom,
+            log_committed=lambda: True,
+            held_out_logged=lambda: True,
+        )

@@ -13,7 +13,7 @@ HELD-OUT is refused unless ALL hold: the evidence file carries a dated amendment
 and HEAD equals that sha; it carries the dated lines
     DEV-AGREEMENT MET <YYYY-MM-DD>      (DEV author_agreement_verdict)
     DEV-CONTROL MET <YYYY-MM-DD>        (DEV mov_vs_mov_control_verdict)
-both module self-checks re-run green HERE, at that sha (the driver runs them itself); and
+the dev log holds no HELD-OUT file read yet (read ONCE); both module self-checks re-run green HERE, at that sha (the driver runs them itself); and
 `tools/d_r0_dev_log.jsonl` is tracked and clean in git at that sha. DEV needs none of these.
 The driver refuses to start while `tools/d_r0_partA.json` is dirty: COMMIT THE RESULT FILE AFTER EACH RUN.
 
@@ -97,6 +97,20 @@ def dev_log_committed(root=ROOT, log=LOG):
     return tracked.returncode == 0 and not _porcelain(root, log)
 
 
+_MOUSE_RE = re.compile(r"(?i)(?:mouse|m)[-_ ]?0*(\d+)(?!\d)")
+
+
+def held_out_read_in_log(log=LOG):
+    """True when any dev-log entry's files name a HELD-OUT mouse (path token `mouse<N>`/`m<N>`)."""
+    if not Path(log).exists():
+        return False
+    for line in Path(log).read_text(encoding="utf-8").splitlines():
+        for f in json.loads(line).get("files", []):
+            if any(int(n) in HELD_OUT for n in _MOUSE_RE.findall(f["path"])):
+                return True
+    return False
+
+
 def result_file_dirty(root=ROOT, out=OUT):
     return bool(_porcelain(root, out))
 
@@ -126,7 +140,11 @@ def frozen_sha(evidence=EVIDENCE):
 
 
 def refuse_held_out_unless_frozen(
-    evidence=EVIDENCE, head=None, selfchecks=run_selfchecks, log_committed=dev_log_committed
+    evidence=EVIDENCE,
+    head=None,
+    selfchecks=run_selfchecks,
+    log_committed=dev_log_committed,
+    held_out_logged=held_out_read_in_log,
 ):
     sha = frozen_sha(evidence)
     if sha is None:
@@ -140,6 +158,10 @@ def refuse_held_out_unless_frozen(
             raise HeldOutRefused(
                 f"HELD-OUT refused: no dated '{tag} MET' line in the evidence file"
             )
+    if held_out_logged():
+        raise HeldOutRefused(
+            "HELD-OUT refused: the dev log already records a HELD-OUT read (pre-reg 2.3: read ONCE)"
+        )
     failed = selfchecks()
     if failed:
         raise HeldOutRefused(f"HELD-OUT refused: self-check FAIL at the frozen sha: {failed}")
