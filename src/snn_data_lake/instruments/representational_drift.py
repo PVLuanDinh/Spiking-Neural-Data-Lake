@@ -198,6 +198,12 @@ def _agreement_inputs(fn, s1, s2):
     return float(spearmanr(r1, r2)[0]), float(np.median(np.abs(r1 - r2))), r1, theirs
 
 
+def _ws_for_bs(s1, s2, rng):
+    """The dose red's broken estimator (pre-registration 2.2): within-session CC used in place of between-session."""
+    r = stability_index(s1, s2, rng)
+    return DriftReading(r.cc_ws, r.cc_ws, (r.cc_ws - r.cc_ws) / (r.cc_ws + r.cc_ws))
+
+
 def _shuffle_labels(s1, s2, seed):
     """Per neuron, pool both sessions' trials and re-split them at random."""
     rng = np.random.default_rng(seed)
@@ -228,7 +234,6 @@ def _selfcheck():
 
     ref = load_reference() if REF_PATH.exists() else reference()
     expect("se triggers", se_triggers(ref), [])
-    broken = lambda s1, s2, r: stability_index(s1, s1, r)  # noqa: E731 -- the red: no between-session pairing
 
     ok, m = aa_stability_verdict(stability_index)
     expect(f"aa green (mean {m:+.4f})", ok, True)
@@ -236,7 +241,7 @@ def _selfcheck():
     expect(f"aa red d=0.55 (mean {m:+.4f})", ok, False)
     ok, means = planted_drift_dose_verdict(stability_index, ref)
     expect(f"dose green ({[round(x, 3) for x in means]})", ok, True)
-    ok, means = planted_drift_dose_verdict(broken, ref)
+    ok, means = planted_drift_dose_verdict(_ws_for_bs, ref)
     expect(f"dose red, ws-for-bs ({[round(x, 3) for x in means]})", ok, False)
     for n in (200, 65):
         ok, d, bar = mov_vs_mov_control_verdict(n)
