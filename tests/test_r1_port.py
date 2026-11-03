@@ -266,7 +266,15 @@ def test_m2d_the_working_tier_restore_encodes_content_only(H):
     b2 = make_brain(seed=0, persist=True)
     try:
         assert b2._episodes_restored > 0
-        assert "session" not in b2._episode_consolidator._role
+        cons = b2._episode_consolidator
+        # the consolidator keeps no role table (it hashes the whole canonical episode), so the
+        # content-only encoding is read off the stored trace keys: each resident key is the key of
+        # the episode WITHOUT its session slot, and none is the key of the episode WITH it
+        assert cons.episodes and all("session" in e for e in cons.episodes if e)
+        for e in cons.episodes:
+            content = {k: v for k, v in e.items() if k != "session"}
+            assert cons._pattern_key(cons.encode(content)) in cons.keys
+            assert cons._pattern_key(cons.encode(e)) not in cons.keys
     finally:
         b2.close()
 
