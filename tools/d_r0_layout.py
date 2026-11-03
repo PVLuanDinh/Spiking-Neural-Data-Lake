@@ -26,7 +26,7 @@ DEV = (2, 3, 10, 11)
 NAMES = ("RoiINFO.mat", "StabilityData.mat", "RespData.mat")
 
 
-def describe(x, depth=0, max_depth=4):
+def describe(x, depth=0, max_depth=8):
     """Structure only: type, shape, dtype, field names; object arrays describe their FIRST element only."""
     pad = "  " * depth
     if hasattr(x, "_fieldnames"):
