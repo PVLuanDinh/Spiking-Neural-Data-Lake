@@ -173,3 +173,29 @@ A-to-B and fresh-process recovery under this frozen mode, retaining both positiv
 trajectories. All-active selection must still require actual stable acquisition and old-task
 feasibility; changing the feedback policy does not waive either requirement. Do not promote
 experimental intrinsic-transfer wiring, which failed its own stability diagnostic.
+
+### 4.2 Separate eligibility for a protected core and learned growth
+
+The actual full-Brain corrective trajectory acquired A in22epochs and B in88epochs after one
+18-unit admission, but A then scored0/16. The retention feasibility gate refused selection;
+no untouched final set was consumed. A separate prospective fixed rehearsal control also failed
+to produce simultaneous A/B stability. These negative trajectories remain part of the record.
+
+The existing whole-response neuron mask returns before the grown-output deposit, so it cannot
+protect an old shared core while learning new grown synapses. Add explicit optional
+`core_plasticity="frozen"` to the B engineering recipe and derive a typed `core_eligible` response
+mask in its actual grown context. The ordinary neuron mask continues to govern the WHOLE
+response. A false core-only eligibility skips the old52-synapse row and its stack state while
+permitting the existing local `chat_grown_deposit` on admitted output synapses, with its own
+causal eligibility and raw scalar feedback. No new synaptic rule is introduced. A's original
+all-faculty learning remains enabled; only the already learned core is protected during B.
+The capacity LP must hold ineligible core rows at their actual weights as well as honoring
+grown-output eligibility; acceptance still requires real cloned-reader answers.
+
+The disclosed exposed brain-free eligibility control retained A throughout B and reached
+joint stable10 at127Bepochs with18grown units, while the whole core/stack stayed exactly equal
+to A's endpoint. This motivates the prospective full-Brain test; it is not that test's result.
+Run the actual candidate/PartD/feed/return/journal path, old-skill and planted-damage feasibility,
+and a fresh process before claiming this bounded grow/retain/restore cycle. Record zero core
+deposits separately from actual grown synaptic changes. No claim is made about an entirely
+plastic shared core, uncued task composition, optimal size, pruning, or general RSI.
