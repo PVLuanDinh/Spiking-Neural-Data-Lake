@@ -192,3 +192,19 @@ host gates; it becomes the re-test venue if PL1 crosses. Outside judge: FRESH-tw
 ## 7. Not decided here (integrator at freeze)
 Section 2a parameter values (K, T_age, k_modes, width); `R` is NOT one of them -- it is filled into 2a from the pilot by
 section 2's derivation rule; exact row id; whether the pilot runs on an opencode lane or the integrator host.
+
+## Amendments (dated, pre-data)
+
+### Amendment 1 (2026-11-04, integrator duo A; duo B's minors on #8082, AGREE on the freeze at 69a838d5)
+Pre-data: nothing has run on any PL1 seed. No hypothesis, arm, endpoint, delta, value or seed changes; three
+statements in section 2a are corrected.
+- m1 (the K = 1000 reason). Section 2a says each task's last refits train on a buffer holding only that task's rows.
+  That holds at the task's FINAL refit alone, and even that buffer carries ONE cross-task row: `observe()` pairs the
+  previous percept `_prev` with the current category (growth/neurogenesis_engine.py:533-537), so the first row of a task
+  pairs the previous task's last percept with the new task's first category. Earlier refits in the task still hold
+  rows of the previous task. The reason for K = 1000 stands as "a task fills the buffer once", not "the buffer is pure".
+- m2 (seed range). The derived stream seeds `s * 1000 + i` (and `s * 1000 + 999` for the probe) span
+  31,000,000-31,999,999 for s in 31000-31999. Board #8078 claimed only 31000-31999 (the engine-init seeds s); the
+  claim now also covers 31,000,000-31,999,999 (board post on thread PL1, this date).
+- m3 (wording). Section 2a's "None changes after the pilot" reads: nothing in section 2a changes after the pilot
+  except `R`, which the pilot fills by section 2's rule.
