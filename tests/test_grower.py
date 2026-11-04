@@ -92,14 +92,61 @@ def _t0_base(root=_ROOT, rel=None):
     restack leaves off every pushed ref (re-panel A-M1: 78af459c is in no clone); this one is in
     any full clone's lineage, and its src tree equals the captured one (T0 adds no src module;
     git diff 78af459c 4bc2a726 -- src is empty). A shallow clone refuses: its boundary commit
-    reads as touching every file (closing review A-1)."""
+    reads as touching every file (closing review A-1).
+
+    D-190 cause B2: that premise broke at the D-140 re-capture. It ran on 95a1dd87 and was
+    committed as 816244a8 over c1cdec16, so the last-touch commit's src has two modules
+    (representational_drift, ophys_ingest) the capture never saw, and the derived delta missed
+    them. The capture's own `base_commit` IS the captured src tree, so it wins whenever this
+    repo has that commit. A clone without it (95a1dd87 is on lane refs only) uses the
+    in-lineage commit _SRC_TWIN names for it, whose src tree is byte-identical; the last-touch
+    commit is the fallback only for a base this table does not know."""
+    import subprocess
+
     rel = rel or _T0_JSON.relative_to(_ROOT).as_posix()
     assert _git(root, "rev-parse", "--is-shallow-repository") == "false", (
         "R2's census anchor needs full history (shallow clone)"
     )
     sha = _git(root, "log", "--format=%H", "-1", "--", rel)
     assert sha, f"no commit touches {rel} in HEAD's history"
+    cap = json.loads((Path(root) / rel).read_text(encoding="utf-8"))
+    base = cap.get("base_commit") if isinstance(cap, dict) else None
+    if base:
+        found = subprocess.run(
+            ["git", "cat-file", "-e", f"{base}^{{commit}}"], cwd=root, capture_output=True
+        )
+        if found.returncode == 0:
+            return _git(root, "rev-parse", base)
+        if base in _SRC_TWIN:
+            return _SRC_TWIN[base]
     return sha
+
+
+# capture base_commit (a lane commit no pushed ref holds) -> an int3 ancestor with the SAME src
+# tree. 95a1dd87's parent 45957549 has src tree cf01aaec, as 95a1dd87 does; their only diff is
+# tests/test_recurrent_pool.py (Duo B, D-190 B2 review). Checked live wherever both resolve.
+_SRC_TWIN = {
+    "95a1dd87fe0853c6acbe737274e6db74c275eeaa": "4595754926c3a643ffc7f0cad890166fa2fcc23d",
+}
+
+
+def test_src_twin_has_the_capture_base_src_tree_and_is_in_heads_lineage():
+    """Each _SRC_TWIN row: the twin is an ancestor of HEAD (so it ships with any push), and
+    where this repo also has the lane commit, every census input is equal: the delta diffs
+    src/snn_data_lake, and the captured counts came from dormancy_gate, which reads src, root
+    scripts and integrations/ but never tests/ (dormancy_gate._external_roots). So the two
+    commits may differ under tests/ only."""
+    import subprocess
+
+    for base, twin in _SRC_TWIN.items():
+        assert _git(_ROOT, "merge-base", "--is-ancestor", twin, "HEAD") == ""
+        has = subprocess.run(["git", "cat-file", "-e", f"{base}^{{commit}}"], cwd=_ROOT)
+        if has.returncode == 0:
+            assert _git(_ROOT, "rev-parse", f"{base}:src") == _git(
+                _ROOT, "rev-parse", f"{twin}:src"
+            )
+            moved = _git(_ROOT, "diff", "--name-only", twin, base).split()
+            assert all(p.startswith("tests/") for p in moved), moved
 
 
 def test_t0_anchor_is_the_last_capture_commit_and_refuses_a_shallow_clone(tmp_path):
@@ -112,6 +159,13 @@ def test_t0_anchor_is_the_last_capture_commit_and_refuses_a_shallow_clone(tmp_pa
         _git(repo, "add", rel)
         _git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", body)
     assert _t0_base(repo, rel) == _git(repo, "rev-parse", "HEAD")
+    # a capture naming its base_commit anchors there (D-190 B2); an unknown one falls back
+    first = _git(repo, "rev-parse", "HEAD~1")
+    for base, want in ((first, first), ("0" * 40, None)):
+        (repo / rel).write_text(json.dumps({"base_commit": base}), encoding="utf-8")
+        _git(repo, "add", rel)
+        _git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", base[:7])
+        assert _t0_base(repo, rel) == (want or _git(repo, "rev-parse", "HEAD"))
     shallow = tmp_path / "s"
     _git(tmp_path, "clone", "-q", "--depth", "1", repo.as_uri(), str(shallow))
     with pytest.raises(AssertionError, match="shallow"):
