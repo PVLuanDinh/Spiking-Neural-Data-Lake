@@ -169,3 +169,55 @@ def test_foreign_records_are_preserved(tmp_path, monkeypatch):
     assert H.KnowledgeLog().count() == 1, "the episode or growth record ate the fact"
     assert len(H.load_episodes()) == 1, "the fact or growth record ate the episode"
     assert H.load_growth() is not None, "the fact or episode ate the growth blob"
+
+
+def _window_stub(window):
+    """A Brain stand-in for the real `Brain.recall_episode_durable`: nothing resident in working
+    memory, `window` as the lake window tier (the recall_audit idiom)."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        _episode_consolidator=SimpleNamespace(recall_episode=lambda cue, min_conf=0.5: {}),
+        _episode_window=list(window),
+        _lake_recall=None,
+        _seed=0,
+    )
+
+
+_TRUE = {"who": "arm", "what": "GRASP", "where": "1@1", "when": "500", "affect": "calm"}
+_NEIGHBOUR = dict(_TRUE, where="2@2", when="501")  # shares 3 of 5 slots: contradicts 2
+_OTHERS = [
+    {"who": f"w{i}", "what": f"X{i}", "where": f"{i}@9", "when": str(900 + i), "affect": "dread"}
+    for i in range(5)
+]
+
+
+def test_a_contradicted_window_hit_is_demoted_to_the_exact_deep_episode(tmp_path, monkeypatch):
+    """G67 / launcher D-148 (ii): the evicted episode's EXACT cue whose nearest window episode
+    contradicts it (3 of 5 slots, the battery-3 shape) answers the deep tier's exact episode,
+    never the neighbour. Red on 45957549, where the window returned the neighbour."""
+    from snn_data_lake.engine.brain import Brain
+    from snn_data_lake.substrate import home as H
+
+    monkeypatch.setenv("NORD_HOME", str(tmp_path))
+    H.save_episode(_TRUE)
+    got = Brain.recall_episode_durable(_window_stub([_NEIGHBOUR, *_OTHERS]), dict(_TRUE))
+    assert got.get("source") == "lake" and got.get("episode") == _TRUE, got
+    assert got.get("contradicted") == 0 and got.get("confidence") == 1.0, got
+
+
+def test_a_noisy_cue_with_no_exact_match_still_gets_the_demoted_window_hit(tmp_path, monkeypatch):
+    """G67 / launcher D-148 (i): a contradicting window hit is DEMOTED, not refused (lake_recall:
+    "demoted below any true match"). With no exact match in the lake, a cue with one wrong slot
+    gets the nearest window episode back with its contradiction visible, as before G67. Red on
+    92b58bb6, which refused it and missed. The chat path asks min_conf=1.0, which a contradicted
+    hit can never reach, so it is never spoken as a memory."""
+    from snn_data_lake.engine.brain import Brain
+
+    monkeypatch.setenv("NORD_HOME", str(tmp_path))  # empty lake: the deep tier has no match
+    noisy = dict(_OTHERS[2], where="7@7")
+    got = Brain.recall_episode_durable(_window_stub(_OTHERS), noisy, min_conf=0.5)
+    assert got.get("source") == "lake" and got.get("episode") == _OTHERS[2], got
+    assert got.get("contradicted", 0) >= 1, got
+    spoken = Brain.recall_episode_durable(_window_stub(_OTHERS), noisy, min_conf=1.0)
+    assert spoken.get("source") == "miss", spoken

@@ -3593,6 +3593,7 @@ class Brain:
         if got and got.get("episode"):
             got["source"] = "working"
             return got
+        window_hit = None
         try:
             if isinstance(cue, dict) and cue and self._episode_window:
                 if self._lake_recall is None:
@@ -3602,18 +3603,21 @@ class Brain:
                 else:
                     self._lake_recall.attach(self._episode_window)
                 hits = self._lake_recall.recall(cue, k=1)
-                # a hit that CONTRADICTS the cue is a different episode that shares some slots, not
-                # a completion of it: it falls through to the exact deep tier (G67)
-                if hits and hits[0]["confidence"] >= min_conf and not hits[0]["contradicted"]:
-                    return {
+                if hits and hits[0]["confidence"] >= min_conf:
+                    window_hit = {
                         "episode": hits[0]["episode"],
                         "confidence": hits[0]["confidence"],
                         "margin": hits[0]["margin"],
                         "contradicted": hits[0]["contradicted"],
                         "source": "lake",
                     }
+                    if not window_hit["contradicted"]:
+                        return window_hit
         except Exception:
             pass
+        # A window hit that CONTRADICTS the cue is DEMOTED, not refused (lake_recall: "demoted below
+        # any true match"): the exact deep tier below is asked first, and the contradicted hit, its
+        # `contradicted` count visible, answers only when the deep tier has no exact match (G67).
         try:
             from snn_data_lake.substrate.home import load_episodes
             from snn_data_lake.substrate.lake_recall import is_subcue
@@ -3638,6 +3642,8 @@ class Brain:
                 "source": "refused",
                 "reason": f"{type(exc).__name__}: {exc}",
             }
+        if window_hit is not None:
+            return window_hit
         return {"episode": {}, "confidence": 0.0, "source": "miss"}
 
     # distinct-from: faculties/prefrontal_executive.py -- its neuter() gates the WM rehearsal
