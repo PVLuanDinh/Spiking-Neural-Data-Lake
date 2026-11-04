@@ -1,6 +1,7 @@
 """D-R0 round 1: the drift instrument, its reader and the Part A driver, on synthetic data only."""
 
 import random
+import sys
 
 import numpy as np
 import pytest
@@ -8,6 +9,17 @@ import pytest
 from snn_data_lake.instruments import d_r0_part_a as partA
 from snn_data_lake.instruments import representational_drift as rd
 from snn_data_lake.sensorimotor import ophys_ingest, ophys_layout
+
+
+@pytest.fixture(autouse=True)
+def _a_hashable_calling_tool(monkeypatch):
+    """Under xdist the worker's __main__ is execnet's bootstrap, which has no __file__, so
+    read_response refuses every call as interactive (5 reds under -n, green without it; D-190).
+    The calling tool here is this test module, a real file source_hashes() can read. The
+    interactive-main red below still replaces __main__ outright, so the refusal stays tested."""
+    main = sys.modules.get("__main__")
+    if main is not None and not getattr(main, "__file__", None):
+        monkeypatch.setattr(main, "__file__", __file__, raising=False)
 
 
 def test_d_r0_part_a_selfcheck():
