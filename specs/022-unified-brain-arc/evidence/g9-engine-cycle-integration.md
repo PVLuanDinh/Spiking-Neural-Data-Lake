@@ -118,3 +118,35 @@ Amendments are appended and dated; historical evidence and the SHD pilot remain 
 Pending. Commands and raw diagnostics are recorded outside the repository under the local
 `planning/experiments/engine-integration` workspace directory. This section will distinguish
 implemented ports, passing engineering controls, measured behavior and remaining scientific debt.
+
+## 4. Engineering amendment: canonical stack blockers (2026-11-04)
+
+This amendment follows exposed-fixture diagnostics; it is not a pre-data scientific efficacy
+registration. The owner authorized fixing full-Engine blockers, including the actual canonical
+consumer and the ability to acquire/retain its first skill. Existing #2135's requirement to repair
+the enabled E/I/Benna-Fusi/homeostatic stack remains applicable; no release is inferred.
+
+Initial Aii on fixture9900 fails even over the existing three400-epoch attempts: best/final8/16,
+no all-correct epoch. Removing one faculty or preinitializing its state is diagnostic only and
+does not supply a successful canonical curriculum. B's separate learned-growth feasibility does
+not establish old-skill retention. All attempts and raw traces are retained.
+
+Confirmed source defect: cold BF initialization occurs after the first synaptic update, so that
+update becomes the baseline of every deep beaker. The homeostatic ceiling is likewise described
+as a baseline but calibrated after the first update. Repair the PRE baseline boundary in the
+existing `plasticity_rule_stack`, `homeostatic_plasticity_stack`, and `interaction_learning`
+consumer, without resetting any warm/restored state, deleting a faculty, or inventing a new
+learning rule. Tests must show a first deposit reaches fast state and diffuses normally instead
+of instantly populating all slow levels, and a warm continuation is unchanged. This defect fix
+alone has already failed to establish stable Aii in exposed diagnostic controls and is not
+represented as a sufficient learning repair.
+
+Further diagnosis may test the existing intrinsic-plasticity participation/clock seam:
+currently its learned gain/bias is not consumed by the final reader, and activity faculties see
+reward-deposited rows rather than all responses once per presentation. Freeze each disclosed
+engineering variant before its outcomes, compare raw/unconsumed and label-independent all-row
+observation plus actual transfer consumption, retain all failures, and keep validation pure.
+Do not silently insert a sigmoid into only trained rows, hand-install separating weights,
+change the old task, or relabel a transient correct read as stable acquisition. Promote any
+additional source repair only after a causal control, restore proof and explicit evidence of
+its behavior; broad G2/G3/G9 efficacy and the full operator battery remain unverified.
