@@ -50,6 +50,7 @@ def test_strict_red_ignores_the_escape():
     ), f"the refusal message is missing:\n{proc.stderr[-500:]}"
 
 
+@pytest.mark.pool
 def test_construction_red_under_gil():
     """FR-006 verbatim: brain CONSTRUCTION under a GIL-enabled interpreter fails, before any
     state is touched. The escape is set on purpose -- it must not help construction."""

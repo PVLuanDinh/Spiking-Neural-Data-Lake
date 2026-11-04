@@ -1797,6 +1797,7 @@ def test_the_call_kind_refuses_a_target_it_may_not_run(tmp_path, target):
     assert not Path(spec["out"]).exists()  # nothing is saved for a refused call
 
 
+@pytest.mark.pool
 def test_the_call_kind_runs_in_a_child_and_a_refused_target_fails_there(tmp_path, monkeypatch):
     # the child imports the code under test whatever the interpreter's installed copy is
     src = Path(ps.__file__).resolve().parents[2]

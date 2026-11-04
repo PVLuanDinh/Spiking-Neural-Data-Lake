@@ -66,6 +66,7 @@ def fresh_process(path, home):
 
 
 @pytest.mark.parametrize("stage", ["partial_birth", "full_birth", "run"])
+@pytest.mark.pool
 def test_half_admitted_batch_is_refused_by_name_in_fresh_process(tmp_path, stage):
     path = tmp_path / "lake.bin"
     ledger = Ledger(path, VALUES)
@@ -81,6 +82,7 @@ def test_half_admitted_batch_is_refused_by_name_in_fresh_process(tmp_path, stage
     assert path.read_bytes() == before  # no repair journal, no deletion, no guessed spend
 
 
+@pytest.mark.pool
 def test_fully_charged_journal_survives_fresh_process_without_append(tmp_path):
     path = tmp_path / "lake.bin"
     ledger = Ledger(path, VALUES)
@@ -167,6 +169,7 @@ def test_corrupt_birth_digest_names_batch_and_unit(tmp_path):
 
 
 @pytest.mark.parametrize("module", ["batch_reconciler", "feed_readout"])
+@pytest.mark.pool
 def test_registered_selfcheck_entrypoint_runs_in_a_fresh_private_home(tmp_path, module):
     child = subprocess.run(
         [sys.executable, "-B", "-m", "snn_data_lake.growth." + module],

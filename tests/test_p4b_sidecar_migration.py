@@ -714,6 +714,7 @@ else:
 
 
 @pytest.mark.slow
+@pytest.mark.pool
 def test_a_new_process_reads_the_language_and_skills_records_back():
     """The writer process is gone before the reader starts; both see only the lake on disk."""
     from tests.test_p4b_restart_restore import _run

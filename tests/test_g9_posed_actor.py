@@ -133,6 +133,7 @@ def _teach(brain, actor, episode=None):
     )
 
 
+@pytest.mark.pool
 def test_posed_checkpoint_and_pending_event_survive_real_restart():
     with _private_brain() as (brain, private):
         _, _, actor = _bind(brain)
@@ -279,6 +280,7 @@ def test_resource_silencing_refuses_unlisted_inactive_even_at_equal_actual_count
         assert receipt["arms"]["presized"]["silenced_N"] == 2
 
 
+@pytest.mark.pool
 def test_new_admission_is_journaled_before_install_and_survives_restart():
     with _private_brain() as (brain, private):
         ledger, _, actor = _bind(brain)
@@ -294,6 +296,7 @@ def test_new_admission_is_journaled_before_install_and_survives_restart():
         assert restarted["semantic"] == expected
 
 
+@pytest.mark.pool
 def test_no_checkpoint_complete_prefix_rebuilds_first_actor_and_births():
     with _private_brain() as (brain, private):
         ledger, _, actor = _bind(brain)
@@ -324,6 +327,7 @@ def test_readout_and_return_masks_freeze_actual_weights():
         assert actor.port.weights == return_before
 
 
+@pytest.mark.pool
 def test_posed_payload_tamper_preserves_full_prefix_refusal():
     import json
 
@@ -546,6 +550,7 @@ def _malformed_teaches(actor):
     }
 
 
+@pytest.mark.pool
 def test_malformed_effect_is_refused_before_append_and_restart_recovers():
     from snn_data_lake.readout.posed_problem import PosedRefused
 

@@ -37,6 +37,7 @@ def _completed(brain):
         ("sleep", "weights_digest"),
     ],
 )
+@pytest.mark.pool
 def test_checkpointed_payload_tamper_refuses_fresh_and_closed(kind, field):
     from snn_data_lake.engine.brain import make_brain
     from snn_data_lake.substrate import home
@@ -97,6 +98,7 @@ def test_checkpointed_payload_tamper_refuses_fresh_and_closed(kind, field):
 
 
 @pytest.mark.parametrize("binding", ["missing", None, "", "not-a-digest", "0" * 64])
+@pytest.mark.pool
 def test_unbound_or_malformed_checkpoint_refuses_without_install(binding):
     from snn_data_lake.substrate import home
 
@@ -120,6 +122,7 @@ def test_unbound_or_malformed_checkpoint_refuses_without_install(binding):
 
 
 @pytest.mark.parametrize("pending_tail", [False, True])
+@pytest.mark.pool
 def test_untampered_bound_prefix_and_pending_tail_restart_identically(pending_tail):
     with _private_brain() as (brain, private):
         expected = _completed(brain)
@@ -139,6 +142,7 @@ def test_untampered_bound_prefix_and_pending_tail_restart_identically(pending_ta
         assert again["hydrations"] == 1 and again["redo"] == int(pending_tail)
 
 
+@pytest.mark.pool
 def test_empty_prefix_checkpoint_is_bound_and_restarts():
     with _private_brain() as (brain, private):
         expected = _semantic(brain)

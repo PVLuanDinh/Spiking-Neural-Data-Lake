@@ -379,6 +379,7 @@ def test_refusing_certificate_is_recorded_not_just_printed(monkeypatch, tmp_path
 # ------------------------------------------------ Phase 8 convergence: T035/T036
 
 
+@pytest.mark.pool
 def test_audit_json_mode_mirrors_the_schema():
     # T035: --audit --json emits one object (results + drift), per contracts/cli.md.
     import json as _json

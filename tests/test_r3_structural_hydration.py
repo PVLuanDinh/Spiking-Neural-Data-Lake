@@ -40,6 +40,7 @@ def _pending_sleep(brain):
     return after
 
 
+@pytest.mark.pool
 def test_pending_structural_sleep_matches_uninterrupted_twin_after_os_restart():
     from snn_data_lake.substrate import home
     from snn_data_lake.substrate.learner_events import SLEEP_DIGESTS, SLEEP_PROGRESS
@@ -142,6 +143,7 @@ def test_pending_sleep_schema_red_refuses_without_partial_install(profile):
 
 
 @pytest.mark.parametrize("slot", ["presentations_spent", "drawn", "weights_digest"])
+@pytest.mark.pool
 def test_pending_structural_sleep_retains_digest_and_progress_reds(monkeypatch, slot):
     from snn_data_lake.substrate import home
 

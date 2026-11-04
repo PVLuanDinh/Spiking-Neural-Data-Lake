@@ -1026,6 +1026,7 @@ def _run_child(mode, home_dir):
     return out
 
 
+@pytest.mark.pool
 def test_restart_hydrated_buffer_and_next_refit_equal_the_uninterrupted_twin(tmp_path):
     """K1g on dev seed 15000, CPU, through the instrument's own roles (R2-c7's one reading): the
     restore after a kill inside the night's `_flush_growth` call holds the twin's buffer and its

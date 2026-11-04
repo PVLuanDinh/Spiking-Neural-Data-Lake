@@ -414,6 +414,7 @@ def test_ctxread_plant_follows_the_shared_sequence_including_p3_percepts(lake):
     assert events[-1]["kind"] == "ctxread"
 
 
+@pytest.mark.pool
 def test_real_k4_restart_equals_its_twin_at_the_precheckpoint_boundary(tmp_path):
     arms = rh.run_seed(
         15000,
@@ -453,6 +454,7 @@ def test_planted_sleep_digest_row_is_eligible_with_a_wrong_digest(lake):
 # ---- one real process set on a dev seed: K1 restart equals its twin, an omission red moves ------
 
 
+@pytest.mark.pool
 def test_real_k1_restart_equals_twin_and_an_omitted_weight_is_flagged(tmp_path):
     src = str(Path(rh.__file__).resolve().parents[2])
     arms = rh.run_seed(
@@ -470,6 +472,7 @@ def test_real_k1_restart_equals_twin_and_an_omitted_weight_is_flagged(tmp_path):
     assert sys.version_info >= (3, 12)
 
 
+@pytest.mark.pool
 def test_real_cursor_red_reaches_sleep_redo_with_a_valid_prefix_binding(tmp_path):
     arms = _run(tmp_path, "cursor", ("pre_K1", "twin_K1", "res_K1", "O_cursor"))
     assert rh.records_equal(arms["res_K1"], arms["twin_K1"]), "clean cursor control"
@@ -784,6 +787,7 @@ def test_c4_needs_differing_post_night_weight_rows_and_a_stack():
     assert not rh.seed_comparisons(no_stack)["c4_structural_moves"], "no stack: NOT MET"
 
 
+@pytest.mark.pool
 def test_o_rng_real_construction_fires_and_the_lone_after_restore_replay_does_not(tmp_path):
     src = str(Path(rh.__file__).resolve().parents[2])
     fired = rh.run_seed(
@@ -997,6 +1001,7 @@ def _run(tmp_path, name, roles):
     return arms
 
 
+@pytest.mark.pool
 def test_real_failwrite_absent_arm_meets_every_bar_and_red_ckpt_fires(tmp_path):
     arms = _run(
         tmp_path,
@@ -1011,6 +1016,7 @@ def test_real_failwrite_absent_arm_meets_every_bar_and_red_ckpt_fires(tmp_path):
     assert not rh.fw_red_fired("KIND", arms["fw_t_absent"], n_i)
 
 
+@pytest.mark.pool
 def test_real_bout_killed_between_event_and_effect_restarts_equal_to_its_twin(tmp_path):
     arms = _run(
         tmp_path,
@@ -1065,6 +1071,7 @@ def test_fw_partial_is_caught_by_the_strict_bar_but_not_by_the_prefix_comparator
     assert not rh.fw_red_fired("PARTIAL", early, 1)
 
 
+@pytest.mark.pool
 def test_real_partial_fires_on_all_six_arms_and_the_strict_bar_holds_without_it(tmp_path):
     roles = ["fw_ref_A", "fw_ref_AB", "fw_ref_ABb"]
     roles += [f"fw_{k}_{a}" for k in "tb" for a in ("absent", "landed", "torn")]
@@ -1083,6 +1090,7 @@ def test_real_partial_fires_on_all_six_arms_and_the_strict_bar_holds_without_it(
     assert not moved["t", "absent"], "teach/absent: the prefix comparator alone stays blind"
 
 
+@pytest.mark.pool
 def test_survivor_path_never_truncates_a_torn_lake_between_c_calls(tmp_path):
     arms = _run(tmp_path, "surv", ("fw_ref_A", "fw_ref_AB", "fw_t_torn"))
     rec = arms["fw_t_torn"]

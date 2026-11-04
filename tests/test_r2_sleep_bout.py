@@ -31,6 +31,7 @@ def _pending_bout(brain):
     return _semantic(brain)
 
 
+@pytest.mark.pool
 def test_bout_crash_before_checkpoint_redoes_exactly_in_a_fresh_process():
     with _private_brain() as (twin, _):
         expected = _pending_bout(twin)
@@ -44,6 +45,7 @@ def test_bout_crash_before_checkpoint_redoes_exactly_in_a_fresh_process():
         assert restarted["redo"] == 1 and restarted["hydrations"] == 1
 
 
+@pytest.mark.pool
 def test_bout_checkpoints_are_not_redone_on_restart():
     with _private_brain() as (brain, private):
         expected = _pending_bout(brain)
@@ -83,6 +85,7 @@ def test_append_precedes_live_effect_and_rem_never_enters_lake_ring_or_labels(mo
 
 
 @pytest.mark.parametrize("field", ["profile", "extra", "seed", "weights_digest", "drawn"])
+@pytest.mark.pool
 def test_tampered_bout_refuses_by_name_without_installing_a_partial_prefix(field):
     from snn_data_lake.substrate import home
     from snn_data_lake.substrate.binlog import pack_episode, unpack_episode
@@ -116,6 +119,7 @@ def test_tampered_bout_refuses_by_name_without_installing_a_partial_prefix(field
 
 
 @pytest.mark.parametrize("landed", [False, True])
+@pytest.mark.pool
 def test_uncertain_bout_append_rolls_back_latches_and_restarts_from_real_prefix(
     monkeypatch, landed
 ):

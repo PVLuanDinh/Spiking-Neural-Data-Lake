@@ -88,6 +88,7 @@ def test_missing_structural_carrier_refuses_before_wake_admission(monkeypatch):
         assert brain._flush_interaction_learner() is False
 
 
+@pytest.mark.pool
 def test_real_sleep_redo_matches_complete_tick_in_new_process():
     from snn_data_lake.substrate import home
 
@@ -175,6 +176,7 @@ def test_sleep_append_failure_restores_full_state_and_keeps_latch(monkeypatch):
 
 
 @pytest.mark.parametrize("arm", ["absent", "landed", "torn"])
+@pytest.mark.pool
 def test_checkpoint_failure_preserves_actual_event_prefix_and_reconciles_complete_b(
     monkeypatch, tmp_path, arm
 ):

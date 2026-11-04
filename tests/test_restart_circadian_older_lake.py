@@ -21,6 +21,7 @@ def _fresh(out):
     return out["note"]
 
 
+@pytest.mark.pool
 def test_an_older_lake_restores_a_fresh_day_and_says_so(tmp_path):
     note = _fresh(run_brain(private_home(tmp_path, "h"), seed=SEED))
     assert note is not None and note.startswith("absent"), note
@@ -36,6 +37,7 @@ def test_an_older_lake_restores_a_fresh_day_and_says_so(tmp_path):
         ({"noise": 0.1}, "noise"),
     ],
 )
+@pytest.mark.pool
 def test_a_record_bound_to_another_binding_is_refused_naming_it(tmp_path, changes, cause):
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED, ticks=5)
@@ -43,6 +45,7 @@ def test_a_record_bound_to_another_binding_is_refused_naming_it(tmp_path, change
     assert note.startswith("refused") and f"[{cause!r}]" in note, note
 
 
+@pytest.mark.pool
 def test_a_record_of_another_seed_is_refused_naming_the_seed(tmp_path):
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED + 1, ticks=5)  # a valid record in every other respect
@@ -61,6 +64,7 @@ def test_a_record_of_another_seed_is_refused_naming_the_seed(tmp_path):
         {"rng": _DEEP},  # coverage review: a decode that raises RecursionError is malformed too
     ],
 )
+@pytest.mark.pool
 def test_a_malformed_record_is_refused_as_malformed(tmp_path, changes):
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED, ticks=5)
@@ -68,6 +72,7 @@ def test_a_malformed_record_is_refused_as_malformed(tmp_path, changes):
     assert note.startswith("refused") and "malformed" in note, note
 
 
+@pytest.mark.pool
 def test_a_bad_cached_gauss_is_refused_as_malformed(tmp_path):
     """api-usage review P3: CPython's Random.setstate checks the version and the 625 words but
     assigns gauss_next unchecked: a string there would restore, then raise on the next tick."""
@@ -77,6 +82,7 @@ def test_a_bad_cached_gauss_is_refused_as_malformed(tmp_path):
     assert note.startswith("refused") and "malformed" in note, note
 
 
+@pytest.mark.pool
 def test_a_stray_seed_keeps_the_record_and_the_newest_kept_copy_is_adopted(tmp_path):
     """Panel lens C MAJOR-1 (#6911, P4b 'foreign records preserved'): a brain of another seed that
     refuses the record KEEPS it before its own flush overwrites it; the record's seed then adopts
@@ -93,6 +99,7 @@ def test_a_stray_seed_keeps_the_record_and_the_newest_kept_copy_is_adopted(tmp_p
     assert (second["step"], second["phase"]) == (8, first["at"]["phase"])
 
 
+@pytest.mark.pool
 def test_a_failed_keep_never_overwrites_the_foreign_record(tmp_path):
     home = private_home(tmp_path, "h")
     run_brain(home, seed=SEED, ticks=5)
@@ -100,6 +107,7 @@ def test_a_failed_keep_never_overwrites_the_foreign_record(tmp_path):
     assert stray["record"]["seed"] == SEED and stray["record"]["step"] == 5, stray["record"]
 
 
+@pytest.mark.pool
 def test_the_record_carries_the_rng_state_through_the_one_codec(tmp_path):
     """Launcher D-82 on ruling #6978 (brief item 9): a replay from the seed costs O(_step),
     unbounded over a long life, so the jitter rng's STATE rides the record, encoded by
@@ -108,6 +116,7 @@ def test_the_record_carries_the_rng_state_through_the_one_codec(tmp_path):
     assert out["record"]["rng"]["__kind__"] == "random", out["record"]
 
 
+@pytest.mark.pool
 def test_a_kill_right_after_the_growth_flush_restores_that_nights_onset(tmp_path):
     """Policy lens A-1 (#6952): R2's K1g kill is os._exit right after the night's growth flush; the
     clock is flushed FIRST in that persist block, so the restore resumes at that onset."""
@@ -126,6 +135,7 @@ def test_a_kill_right_after_the_growth_flush_restores_that_nights_onset(tmp_path
         (None, {}),  # correctness review: a present but empty record is not an absent one
     ],
 )
+@pytest.mark.pool
 def test_a_record_this_build_cannot_load_is_kept_before_it_is_overwritten(
     tmp_path, rewrite, replace
 ):
@@ -144,6 +154,7 @@ def test_a_record_this_build_cannot_load_is_kept_before_it_is_overwritten(
     assert out["note_at_close"].endswith(f"; kept: {names}"), out["note_at_close"]
 
 
+@pytest.mark.pool
 def test_a_kept_foreign_record_is_named_in_the_note(tmp_path):
     """Lens C MINOR-C (#7021): the prototype path notes `superseded: [...]`; the circadian keep
     appends `; kept: [<name>]` to `state()["circadian_restore"]`."""
@@ -154,6 +165,7 @@ def test_a_kept_foreign_record_is_named_in_the_note(tmp_path):
     assert names and stray["note_at_close"].endswith(f"; kept: {names}"), stray["note_at_close"]
 
 
+@pytest.mark.pool
 def test_a_failed_circadian_flush_is_counted(tmp_path):
     """Lens A MINOR-1 (#7028): a flush that writes nothing because its keep failed is counted at
     `state()["circadian_flush_failed"]`, never silent (the keep is retried every onset)."""
@@ -165,6 +177,7 @@ def test_a_failed_circadian_flush_is_counted(tmp_path):
     assert own["nights"] >= 1 and own["flush_failed"] == 0, own
 
 
+@pytest.mark.pool
 def test_a_malformed_record_adopts_the_newest_kept_copy_it_can_load(tmp_path):
     """Coverage review: a malformed record retries the kept copies, as a foreign one does,
     and skips a kept copy it cannot load. A stray seed keeps seed S's step-5 record; a second
@@ -179,6 +192,7 @@ def test_a_malformed_record_adopts_the_newest_kept_copy_it_can_load(tmp_path):
     assert out["restored"]["step"] == 5, out["restored"]
 
 
+@pytest.mark.pool
 def test_a_malformed_record_never_adopts_a_kept_copy_older_than_its_step(tmp_path):
     """Lens A R3-MINOR-2 (#7181): a malformed record bound to this brain at step 9 (a rollback)
     must not adopt the step-5 kept copy, or the clock jumps back under an 'adopted' note; with no
@@ -190,6 +204,7 @@ def test_a_malformed_record_never_adopts_a_kept_copy_older_than_its_step(tmp_pat
     assert note == "refused: fresh day (malformed record)", note
 
 
+@pytest.mark.pool
 def test_a_malformed_record_adopts_a_kept_copy_at_its_own_step(tmp_path):
     """Coverage review (round 4): the floor's boundary -- a malformed record of this binding at
     step 5 adopts the step-5 kept copy (step >= floor). A pin: the base adopts it too."""
@@ -201,6 +216,7 @@ def test_a_malformed_record_adopts_a_kept_copy_at_its_own_step(tmp_path):
     assert out["restored"]["step"] == 5, out["restored"]
 
 
+@pytest.mark.pool
 def test_a_record_missing_a_binding_key_is_malformed_not_loaded(tmp_path):
     """Coverage review (round 4): a record valid but for one missing binding key (written before
     the key joined the binding) is malformed, never loaded under constants it does not name."""
@@ -211,6 +227,7 @@ def test_a_record_missing_a_binding_key_is_malformed_not_loaded(tmp_path):
 
 
 @pytest.mark.parametrize("replace", [[1, 2], {}])
+@pytest.mark.pool
 def test_a_record_not_in_this_builds_layout_is_malformed_and_adopts_a_kept_copy(tmp_path, replace):
     """Lens C MINOR-3/MINOR-4 (#7184): a non-dict record and {} are malformed, not foreign, and
     retry the kept copies: a stray seed keeps seed S's step-5 record, then either adopts it."""
@@ -223,6 +240,7 @@ def test_a_record_not_in_this_builds_layout_is_malformed_and_adopts_a_kept_copy(
 
 
 @pytest.mark.parametrize("blob", ["null", "{not json"])
+@pytest.mark.pool
 def test_a_record_that_is_not_json_is_not_reported_absent(tmp_path, blob):
     """Lens C MINOR-1 (#7184), lens A R3-MINOR-1(a) (#7181): load_state reads a JSON null or a
     non-JSON blob as its default; the note says the record is not JSON and was NOT kept (a
@@ -231,6 +249,7 @@ def test_a_record_that_is_not_json_is_not_reported_absent(tmp_path, blob):
     assert note == "refused: fresh day (not a JSON record: NOT kept)", note
 
 
+@pytest.mark.pool
 def test_a_record_the_restore_could_not_read_is_kept_before_it_is_overwritten(tmp_path):
     """Lens A R3-MINOR-1(b) (#7181), enforcer concurring (#7205): when the restore's read
     raises, the first flush re-reads the record and keeps it before the first overwrite."""
@@ -242,6 +261,7 @@ def test_a_record_the_restore_could_not_read_is_kept_before_it_is_overwritten(tm
     assert names and out["note_at_close"].endswith(f"; kept: {names}"), out["note_at_close"]
 
 
+@pytest.mark.pool
 def test_a_failed_keep_after_a_reread_never_overwrites_the_record(tmp_path):
     """Coverage review (round 4): a re-read record whose keep fails is never overwritten, and
     the failed flush is counted."""
@@ -252,6 +272,7 @@ def test_a_failed_keep_after_a_reread_never_overwrites_the_record(tmp_path):
     assert out["flush_failed"] >= 1, out["flush_failed"]
 
 
+@pytest.mark.pool
 def test_a_codec_defect_is_reported_as_raised_not_malformed(tmp_path):
     """Lens C MINOR-2 (#7184), lens A R3-MINOR-3 (#7181): load_state_dict refuses only a decode
     failure (KeyError, TypeError, ValueError, RecursionError); a defect in the shared codec reaches
@@ -263,6 +284,7 @@ def test_a_codec_defect_is_reported_as_raised_not_malformed(tmp_path):
     assert any(rec == out["written"] for rec in out["kept"].values()), out["kept"]
 
 
+@pytest.mark.pool
 def test_a_record_whose_restore_raises_retries_the_kept_copies(tmp_path):
     """Enforcer MINOR-1 (#7257): a record whose load raises outside load_state_dict's decode catch
     (a newer build's layout after a rollback) retries the kept copies, as
@@ -277,6 +299,7 @@ def test_a_record_whose_restore_raises_retries_the_kept_copies(tmp_path):
     assert out["restored"]["step"] == 5, out["restored"]
 
 
+@pytest.mark.pool
 def test_a_record_whose_restore_raises_never_adopts_a_kept_copy_older_than_its_step(tmp_path):
     """Coverage review (round 5): the raise path keeps the malformed path's floor (lens A
     R3-MINOR-2, #7181). A raising record at step 9 must not adopt the step-5 kept copy; with no
@@ -289,6 +312,7 @@ def test_a_record_whose_restore_raises_never_adopts_a_kept_copy_older_than_its_s
     assert note == "restore raised: fresh day (newer layout)", note
 
 
+@pytest.mark.pool
 def test_a_kept_copy_that_also_raises_is_skipped_and_the_note_keeps_the_first_error(tmp_path):
     """Coverage review (round 5): the record raises 'newer layout', its kept copy raises 'codec
     defect'; the retry skips the copy and the note names the record's own error, so a copy's
@@ -301,6 +325,7 @@ def test_a_kept_copy_that_also_raises_is_skipped_and_the_note_keeps_the_first_er
     assert note == "restore raised: fresh day (newer layout)", note
 
 
+@pytest.mark.pool
 def test_superseded_circadian_records_are_retired_by_the_nights_consolidation(tmp_path):
     """Lens A MAJOR-A (#7028), lens C MAJOR-B (#7021), enforcer MAJOR-1 (#7053): the night block's
     `klog.consolidate` (nights % 8 == 0, `records` not None) runs `_prune_state_history` before the

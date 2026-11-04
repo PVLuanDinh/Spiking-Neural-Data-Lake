@@ -634,6 +634,7 @@ def test_f5_dev_gate_blind_cases():
     assert m.f5_dev_gate(recs((4, 6), (3, 5)), dev) == []  # the control: a moving, sub-ceiling FLAT
 
 
+@pytest.mark.pool
 def test_f5_real_staged_and_flat_arm_seeds(tmp_path):
     """STAGED and FLAT on a red-block seed through the two-process path: every record check green
     (K2-F5, K10a-d, K1, K3, K5, K8), 320 presentations on both counts, 256 vs 320 deposit-bearing
@@ -668,6 +669,7 @@ def test_f5_real_staged_and_flat_arm_seeds(tmp_path):
         ("K8a-f5", "STAGED"),
     ],
 )
+@pytest.mark.pool
 def test_f5_brain_level_reds_fire(tmp_path, name, arm):
     """Each constructed red, built through the real child, is caught by its check on a record whose
     unplanted twin is green (the unplanted run is the control)."""
