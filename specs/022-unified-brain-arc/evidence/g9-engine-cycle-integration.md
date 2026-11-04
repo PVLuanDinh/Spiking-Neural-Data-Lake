@@ -150,3 +150,26 @@ Do not silently insert a sigmoid into only trained rows, hand-install separating
 change the old task, or relabel a transient correct read as stable acquisition. Promote any
 additional source repair only after a causal control, restore proof and explicit evidence of
 its behavior; broad G2/G3/G9 efficacy and the full operator battery remain unverified.
+
+### 4.1 Explicit corrective-feedback engineering mode
+
+The exposed teaching-policy diagnostic found Aii stable at22epochs/88presentations with33actual
+teaching calls when already-correct answers received no further synaptic reward. The original
+always-positive control remained unstable at1200epochs. This is post-diagnostic motivation,
+not a primary-endpoint or untouched-data finding. Pure cache clearing and snapshot restore did
+not change that diagnostic's decisions.
+
+Add an explicitly bound optional `feedback_gate="corrective"` to the engineering cycle recipe;
+omission preserves the existing always-positive path. The common joint event first executes
+the real Part D/readout/return path, then reads the actual shared canonical decision. If that
+decision already matches the teaching feedback, its shared readout eligibility is zero for
+that correction; otherwise the unchanged incumbent local R-STDP update applies. Every input,
+feedback/cache event, pool/readout/return effect, epoch and actual shared plasticity deposit
+is still accounted for and replays through the same event body. No answer is looked up from
+teaching authority, no fitted weights are installed, and no unseen label enters inference.
+
+This is a disclosed feedback policy, not the original always-positive G3 campaign. Evaluate
+A-to-B and fresh-process recovery under this frozen mode, retaining both positive and failed
+trajectories. All-active selection must still require actual stable acquisition and old-task
+feasibility; changing the feedback policy does not waive either requirement. Do not promote
+experimental intrinsic-transfer wiring, which failed its own stability diagnostic.
