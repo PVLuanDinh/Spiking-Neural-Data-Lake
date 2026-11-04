@@ -127,6 +127,7 @@ print("R3 RED CLOSED", flush=True)
     assert result.stdout.rstrip().endswith(b"R3 RED CLOSED")
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.parametrize("profile", ["retired", "unknown"])
 def test_pending_sleep_schema_red_refuses_without_partial_install(profile):
     from snn_data_lake.substrate import home

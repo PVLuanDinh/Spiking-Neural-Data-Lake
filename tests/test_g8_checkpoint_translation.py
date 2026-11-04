@@ -257,6 +257,7 @@ def r_l0(tmp_path_factory):
     return writer, plant, arms
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_the_writer_and_the_plant_are_not_vacuous(r_l0):
     writer, plant, _ = r_l0
     # The lake's newest checkpoint IS the taught learner, read back. (`flushed` is only a reading:
@@ -271,6 +272,7 @@ def test_the_writer_and_the_plant_are_not_vacuous(r_l0):
     assert plant["written"] is True and plant["read_back"] is True
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_r_l0_planted_legacy_names_restore_through_the_injected_map(r_l0):
     writer, _, arms = r_l0
     arm = arms["pass"]
@@ -279,6 +281,7 @@ def test_r_l0_planted_legacy_names_restore_through_the_injected_map(r_l0):
     assert arm["answers"] == writer["answers"]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.parametrize(
     ("arm", "message"),
     [
@@ -296,6 +299,7 @@ def test_r_l0_controls_refuse(r_l0, arm, message):
     assert message in refused, refused
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_s0_is_read_side_only(r_l0):
     _, plant, arms = r_l0
     arm = arms["pass"]

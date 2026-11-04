@@ -379,6 +379,7 @@ def test_no_function_name_carries_a_learning_verb():
     assert names and not [n for n in names if any(v in n.lower() for v in FORBIDDEN)]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_importing_the_module_does_not_import_the_campaign_module():
     out = subprocess.run(
         [

@@ -178,18 +178,21 @@ def restarted():
     return parent, _run(_CHILD, home, "CHILD", "1"), home
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_arm_q_table_survives_a_new_process(restarted):
     parent, child, _ = restarted
     assert child["q"] == parent["q"], "arm.q did not come back equal"
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_affect_som_survives_a_new_process(restarted):
     parent, child, _ = restarted
     assert child["som"] == parent["som"], "the affect integrator's SOM did not come back equal"
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_lifelong_learner_survives_a_new_process(restarted):
     parent, child, _ = restarted
@@ -200,6 +203,7 @@ def test_lifelong_learner_survives_a_new_process(restarted):
     ), "the lifelong consolidator's learner did not come back equal"
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_lifelong_replay_memory_is_rebuilt_in_a_new_process(restarted):
     """A-B1: without the replay memory the next task learns with no rehearsal and task 0 is
@@ -209,6 +213,7 @@ def test_lifelong_replay_memory_is_rebuilt_in_a_new_process(restarted):
     assert (child["ll_mem"], child["ll_rng"]) == (parent["ll_mem"], parent["ll_rng"])
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_consumers_read_the_restored_state_at_tick_0(restarted):
     parent, child, _ = restarted
@@ -217,6 +222,7 @@ def test_consumers_read_the_restored_state_at_tick_0(restarted):
     assert child["note"] is None, child["note"]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_wrong_width_record_is_refused_and_the_store_stays_empty():
     pytest.importorskip("torch")
@@ -240,6 +246,7 @@ def test_a_wrong_width_record_is_refused_and_the_store_stays_empty():
     assert note.startswith("refused:") and all(k in note for k in ("q", "affect", "lifelong")), note
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_persist_false_reads_and_writes_no_record(restarted):
     """The determinism path: a non-persisting brain over a home that HOLDS a record restores
@@ -267,6 +274,7 @@ print("PARENTA " + json.dumps(out))
 """
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_brain_that_grew_only_emotions_still_writes_and_restores_them():
     pytest.importorskip("torch")
@@ -278,6 +286,7 @@ def test_a_brain_that_grew_only_emotions_still_writes_and_restores_them():
     assert child["som"] == parent["som"] and child["n_emotions"] == len(parent["som"]), child
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_one_refused_store_does_not_block_the_others():
     """Mixed record: the emotion map restores; the lifelong store (right width, task index out of
@@ -343,6 +352,7 @@ def _refused_lifelong_home(tag):
     return home, rec
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_refused_record_survives_the_next_flush_and_consolidation():
     """A-M1 / B MINOR-3: the refused lifelong record is carried forward unchanged while its store
@@ -357,6 +367,7 @@ def test_a_refused_record_survives_the_next_flush_and_consolidation():
     assert _record_count(home) == 1
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_refused_record_is_superseded_only_once_its_store_relearns_and_says_so():
     pytest.importorskip("torch")
@@ -367,6 +378,7 @@ def test_a_refused_record_is_superseded_only_once_its_store_relearns_and_says_so
     assert got["lifelong"]["i"] == 1 and got["lifelong"] != rec["lifelong"]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_refused_affect_record_is_superseded_once_the_som_relearns():
     pytest.importorskip("torch")
@@ -410,6 +422,7 @@ def _bytes_of(sub):
     return json.dumps(sub, ensure_ascii=True, sort_keys=True)
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_refused_record_survives_a_real_sleep_that_relearns_its_store():
     """R2-M1: the night that would lose a refused lifelong record learns task 0 BEFORE its flush,
@@ -444,6 +457,7 @@ print("ARMRL " + json.dumps(out))
 """
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_stale_q_table_is_never_bound_to_a_fresh_arm():
     """R2-M1 (b): q's unit ids name the arm record it was written beside. Arm refused (width), arm
@@ -463,6 +477,7 @@ def test_a_stale_q_table_is_never_bound_to_a_fresh_arm():
     assert any(_bytes_of(q["rows"]) in b for b in blobs), "the refused q record was lost"
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_q_table_naming_another_arm_record_is_refused(restarted):
     """The id check alone: a parent's own arm + q, with q's arm id changed -- q is refused even
@@ -475,6 +490,7 @@ def test_a_q_table_naming_another_arm_record_is_refused(restarted):
     assert child["q"] == "{}" and child["note"] == "refused: ['q']", child
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_an_arc2_record_without_the_q_arm_id_or_the_seed_is_refused(restarted):
     """The upgrade path: a record written before the id and the seed existed restores neither
@@ -505,6 +521,7 @@ def test_a_refused_record_holding_a_nan_is_kept_under_its_id():
     assert back is not None and math.isnan(back["prototypes"][0][0])
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_lifelong_record_of_another_seed_is_refused():
     """B MINOR-5: the replay memory is re-derived from `_make_tasks(seed)`; a record learned at
@@ -536,6 +553,7 @@ print("SLEEPAT " + json.dumps(out))
 """
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_foreign_seed_brain_never_shelves_the_daemons_lifelong_store():
     """R3-M2: a seed-7 brain on the daemon's home refuses the seed-0 lifelong record, learns its
@@ -574,6 +592,7 @@ print("FKEEP " + json.dumps({"note": b._prototypes_restore_note}))
 """
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_failed_keep_never_writes_the_refused_bytes_over_the_live_store():
     """m5: the refused record stays carried (the keep is retried next flush), but the flush writes
@@ -586,6 +605,7 @@ def test_a_failed_keep_never_writes_the_refused_bytes_over_the_live_store():
     assert got["lifelong"]["i"] == 1 and got["lifelong"] != rec["lifelong"], got["lifelong"]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_failed_keep_is_retried_by_the_next_flush():
     pytest.importorskip("torch")
@@ -605,6 +625,7 @@ print("SEEDN " + json.dumps([bool(save_state(n, o)) for n, o in json.loads(sys.a
 """
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_an_adopted_arm_brings_back_the_q_kept_with_it(restarted):
     """R3-M2 for the arm: the main arm is refused (width), so its q is too; the kept arm is
@@ -637,6 +658,7 @@ def test_an_adopted_arm_brings_back_the_q_kept_with_it(restarted):
     ), child["note"]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_records_a_raising_restore_never_reached_are_carried():
     """The arm's malformed width raises before any store is read: every sub-record is carried,
@@ -652,6 +674,7 @@ def test_records_a_raising_restore_never_reached_are_carried():
     assert got["lifelong"] == ll and got["arm"] == {"dim": "x"}
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.slow
 def test_a_non_dict_record_does_not_block_construction():
     pytest.importorskip("torch")

@@ -157,6 +157,7 @@ print("RESULT " + json.dumps(out))
 """
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_growth_survives_an_immediate_exit():
     """A brain that grows and exits AT ONCE must still come back grown -- `Brain.close()` flushes.
 
@@ -208,6 +209,7 @@ def test_growth_survives_an_immediate_exit():
     )
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_a_brain_that_grew_comes_back_grown():
     home = tempfile.mkdtemp(prefix="brain_restart_")
 

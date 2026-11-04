@@ -19,6 +19,8 @@ import re
 import subprocess
 import sys
 
+import pytest
+
 gate = importlib.import_module("snn_data_lake.gates.gradient_claim_gate")
 
 BAR = 0.5
@@ -31,6 +33,7 @@ def _sub(code):
     return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=600)
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_the_frozen_feedback_alignment_arm_misses_the_bar_on_every_draw():
     """SC-003, driven through the SHIPPED module rather than a reconstruction.
 
@@ -144,6 +147,7 @@ def test_instrument_falsified_is_reachable_and_rule_judged_is_too():
     # The aligned cosine is IDENTICAL in both calls, so only coherence can have moved the verdict.
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_the_gate_imports_no_rule_module_in_any_mode():
     """FR-013b / SC-023. The boundary 89 src modules already assert, turned into an assertion.
 

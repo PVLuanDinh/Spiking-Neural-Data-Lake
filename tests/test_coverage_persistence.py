@@ -74,6 +74,7 @@ def _run_child(max_ticks=400):
     raise AssertionError(f"child produced no RESULT.\nstdout:{proc.stdout}\nstderr:{proc.stderr}")
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_the_ledger_survives_a_killed_brain_and_is_adopted_wholesale():
     """The P4b red: a real brain covers cells, its sleep tick flushes, the process dies without
     close(); a NEW process adopts. Goes red when the sleep-tick flush is removed."""

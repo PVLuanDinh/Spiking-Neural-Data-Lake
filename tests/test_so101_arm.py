@@ -564,6 +564,7 @@ def _foreign_sidecar(pid=1):
         )
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_estop_survives_a_restart_in_a_real_second_process():
     """Red (a): E-STOP -> process gone -> a fresh process's arm is STILL stopped and says why."""
     env = dict(os.environ)

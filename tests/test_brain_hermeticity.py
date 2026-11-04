@@ -322,6 +322,7 @@ def census():
     return _census()
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_a_temp_home_brain_writes_no_learned_state_outside_its_home(census):
     kinds = _classify(census["opened"])
     print(
@@ -339,6 +340,7 @@ def test_a_temp_home_brain_writes_no_learned_state_outside_its_home(census):
     assert not reds, reds
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_the_census_runs_the_perception_tier_it_claims(census):
     absent = _absent_assets("models/")
     if absent:
@@ -346,6 +348,7 @@ def test_the_census_runs_the_perception_tier_it_claims(census):
     assert census["tier"] == "eprop-snn", census["tier"]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_every_allowlisted_asset_is_still_read(census):
     """The closed list stays closed: an entry no Brain opens any more is removed, not kept. An
     asset absent on disk (the gitignored `models/` on a CI checkout) is skipped, by name."""
@@ -363,6 +366,7 @@ def test_a_checkout_without_the_encoders_skips_only_their_staleness_check():
     assert _stale(opened, absent=[]) == models
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_the_census_reds_a_planted_repo_state_read_and_writes(tmp_path):
     out = str(tmp_path)
     planted = _census(out)
@@ -389,6 +393,7 @@ def test_the_census_reds_a_planted_repo_state_read_and_writes(tmp_path):
     assert [k for k in planted["scratch"] if k.endswith("/_t120_absent/a")], planted["scratch"]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_the_planted_probes_refuse_to_run_over_an_existing_directory(tmp_path):
     """The probes act on `<root>/models/_t120_absent`; if it exists, the child stops before any."""
     keep = tmp_path / "models" / "_t120_absent" / "rt" / "keep"

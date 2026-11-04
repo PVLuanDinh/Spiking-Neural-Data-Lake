@@ -1048,6 +1048,7 @@ def test_restart_hydrated_buffer_and_next_refit_equal_the_uninterrupted_twin(tmp
     assert not rh.percept_equal({**res, "before": {**res["before"], "buf_y": []}}, twin)
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_clean_close_checkpoint_and_restart_keeps_percepts_teach_and_the_chain_reconciled():
     """A checkpoint whose cursor and canonical-prefix digest cover interleaved percept and teach
     events: the next boot reconciles (no fault), hydrates the same pairs and does not touch the
@@ -1066,6 +1067,7 @@ def test_clean_close_checkpoint_and_restart_keeps_percepts_teach_and_the_chain_r
         assert got["cursor"] == first["cursor"]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_three_process_restarts_preserve_pairs_after_a_teach_only_session():
     """Panel B1: a close flush with no subsequent percept must retain its proof in the lake."""
     from snn_data_lake.substrate import home

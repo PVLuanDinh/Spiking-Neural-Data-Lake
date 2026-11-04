@@ -97,6 +97,7 @@ def test_an_unchanged_state_is_not_re_appended(tmp_path, monkeypatch):
 
 
 # --------------------------------------------------------------------- the cross-process proof ----
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_written_in_one_process_read_in_a_separate_one(tmp_path, monkeypatch):
     """P4b's honesty guard: "it persists" is a claim about a NEW process.
 
@@ -140,6 +141,7 @@ def test_written_in_one_process_read_in_a_separate_one(tmp_path, monkeypatch):
 
 
 # ------------------------------------------------------------------------ the legacy migration ----
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_a_pre_p4b_sidecar_migrates_and_is_kept_renamed(tmp_path, monkeypatch):
     """An operator's already-recorded operating point must survive the policy fix, not be reset by
     it.

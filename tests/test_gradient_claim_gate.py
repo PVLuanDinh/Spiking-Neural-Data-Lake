@@ -19,6 +19,8 @@ Two defects found during implementation motivated half of this file, both measur
 import importlib
 import json
 
+import pytest
+
 gate = importlib.import_module("snn_data_lake.gates.gradient_claim_gate")
 
 _PROBE = "faculties/zz_probe_rule.py"
@@ -169,6 +171,7 @@ def test_ng_snn_fit_is_direct_solve_and_not_lumped_in_as_local():
     assert gate._STATE_OF[gate.LOCAL] != gate._STATE_OF[gate.DIRECT_SOLVE]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_a_non_importing_module_is_still_classified():
     """SC-010. A classifier that skips what it cannot import silently UNDER-COUNTS.
 

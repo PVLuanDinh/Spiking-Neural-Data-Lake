@@ -134,6 +134,7 @@ def _record_count(home):
     return n
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_prototypes_survive_a_new_process_and_an_empty_home_does_not():
     torch = pytest.importorskip("torch")  # noqa: F841  (the brain's growth tier)
     home = tempfile.mkdtemp(prefix="snn_proto_restart_")
@@ -161,6 +162,7 @@ def test_prototypes_survive_a_new_process_and_an_empty_home_does_not():
     assert ctrl["arm_units"] == 0 and ctrl["vis_units"] == 0 and ctrl["aud_units"] == 0, ctrl
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_a_killed_parent_keeps_what_the_night_flushed():
     """The sleep-tick caller's own red: a parent that dies WITHOUT close() (os._exit) after a
     night's flush comes back with exactly what that night wrote -- the daemon's crash/kill

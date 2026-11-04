@@ -147,6 +147,7 @@ print('G9 RESTART CLOSED',flush=True)
     return json.loads(rows[0][len(b"G9 RESTART ") :])
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_actual_adapter_admits_only_after_durable_birth_and_survives_restart():
     from snn_data_lake.growth.growth_loop import LedgerError
     from snn_data_lake.readout.posed_problem import PosedRefused
@@ -180,6 +181,7 @@ def test_actual_adapter_admits_only_after_durable_birth_and_survives_restart():
         assert set(restored["births"]) == {"0"}
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_attempt_uses_actual_writer_and_resumes_schedule_in_fresh_process():
     from snn_data_lake.growth.growth_loop import LedgerError
 
@@ -368,6 +370,7 @@ def test_resource_receipt_refuses_an_unreconciled_population(monkeypatch):
         assert arm["U"] == 1 and arm["candidate_evaluations"] == 3
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_restart_refuses_to_rearm_an_actor_whose_population_is_unreconciled():
     with _owner() as (brain, private):
         adapter = _bind(brain)
@@ -449,6 +452,7 @@ def test_final_retention_is_refused_across_same_brain_rebind():
         assert old.state_dict() == before
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_final_retention_is_refused_in_a_fresh_process():
     with _owner() as (brain, private):
         _bind(brain, "ii.twin")
@@ -526,6 +530,7 @@ def _fresh_process_fault_phase(brain, private):
     return json.loads(lines[0][len("G9 FAULT ") :])["phase"]
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_unregistered_problem_bind_refusal_is_not_an_immortal_event():
     from snn_data_lake.readout.posed_problem import PosedRefused
 
@@ -538,6 +543,7 @@ def test_unregistered_problem_bind_refusal_is_not_an_immortal_event():
         assert _fresh_process_fault_phase(brain, private) is None
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_sign_violating_projection_admit_refusal_is_not_an_immortal_event():
     with _owner() as (brain, private):
         labels = list(brain.brain._ixn.responses)

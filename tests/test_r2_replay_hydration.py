@@ -144,6 +144,7 @@ print("R2 RESTART CLOSED",flush=True)
     return json.loads(matches[0][len(b"R2 RESTART RECEIPT ") :])
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_complete_checkpoint_and_os_restart_match_completed_a_plus_b():
     expected = _reference(True)
     with _private_brain() as (brain, private):
@@ -161,6 +162,7 @@ def test_complete_checkpoint_and_os_restart_match_completed_a_plus_b():
         assert restarted["hydrations"] == 1
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 @pytest.mark.parametrize("arm", ["absent", "landed", "torn"])
 def test_failed_b_latches_and_os_restart_uses_actual_durable_prefix(monkeypatch, tmp_path, arm):
     from snn_data_lake.substrate import home
@@ -222,6 +224,7 @@ def test_failed_b_latches_and_os_restart_uses_actual_durable_prefix(monkeypatch,
         assert frozen.read_bytes() == raw_prefix, "R2 original prefix history must remain immutable"
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_class_stabilize_partial_b_rolls_back_then_replays_complete_b(monkeypatch):
     from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
     from snn_data_lake.substrate import home

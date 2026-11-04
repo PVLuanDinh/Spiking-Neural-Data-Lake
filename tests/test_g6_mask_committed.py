@@ -69,6 +69,7 @@ def test_commit_alone_is_sufficient_and_generator_rows_work(tmp_path):
     assert sma.mask_committed(str(tmp_path), "night-1", jms.mask_digest(prepared)) is True
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_committed_pair_replays_in_fresh_process(tmp_path):
     ledger = Ledger(tmp_path / "brain_lake.bin", VALUES)
     prepared = sma.prepare("night-1", 7, kept=["u1"], pruned=["u2"])

@@ -104,6 +104,7 @@ def test_in_process_run_arms_the_live_home_tripwire(monkeypatch, tmp_path):
     assert os.environ.get("SNDL_LIVE_HOME_GUARD") is None  # restored after the run
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_each_runner_process_gets_its_own_home_and_ignores_any_pin(tmp_path):
     # Codex MAJOR 1: concurrent runners never share the E-STOP latch's home (red on the old fixed
     # %TEMP%/snn_selfchecks_home: both processes printed the same path). Opus MAJOR 1: no env var
@@ -186,6 +187,7 @@ def _probe_env(monkeypatch):
     return rs._ENV
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_subprocess_env_arms_the_live_home_tripwire(tmp_path, monkeypatch):
     # bfix3 MAJOR 1. RED on the old _ENV (no SNDL_LIVE_HOME_GUARD): the probe pops NORD_HOME, home()
     # falls back to the fake live home and the probe prints REACHED / exits 3.
@@ -252,6 +254,7 @@ def test_each_in_process_check_is_rearmed(monkeypatch, tmp_path):
     assert seen == [("1", str(tmp_path))] * 3, seen
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_in_process_exit_code_follows_cpython_for_int_subclasses(monkeypatch):
     # bfix3 MINOR 4: the expected value is what a REAL interpreter exits with, not our guess of it.
     # RED on `type(code) in (int, bool)`: an IntEnum zero exits 0 in CPython and failed here.
@@ -313,6 +316,7 @@ def test_in_process_run_never_clears_a_latch_outside_its_own_home(monkeypatch, t
     assert any("from a previous run cleared" in line for line in lines), lines
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_in_process_per_check_sweep_never_reaches_the_live_latch(monkeypatch, tmp_path):
     # Opus n2: the test above exercises only the pre-clear (CORE is empty). This drives the sweep
     # that runs after EACH live check: a check that leaves a latch in ITS home has it cleared and

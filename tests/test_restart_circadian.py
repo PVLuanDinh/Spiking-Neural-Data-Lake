@@ -162,6 +162,7 @@ def private_home(tmp_path, tag):
     return assert_not_live_home(str(path))
 
 
+@pytest.mark.pool  # D-176: spawns a brain child python (>= 1.5 GB); never beside xdist
 def test_a_restored_brain_resumes_its_twins_clock(tmp_path):
     twin = run_brain(
         private_home(tmp_path, "twin"),
