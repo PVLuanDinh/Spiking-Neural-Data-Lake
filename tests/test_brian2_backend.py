@@ -22,6 +22,11 @@ from snn_data_lake.growth.brian2_backend import (
     reds,
 )
 
+# D-183: brian_reference_trace (and every conjunct/red/cost_report that calls it) spawns one
+# `python -m snn_data_lake.growth.brian2_backend --reference-trace` child of 1.5-1.75 GB per call;
+# battery 6 VOIDed with 4-6 of them beside the xdist workers. Whole module serial (D-33 stage).
+pytestmark = pytest.mark.pool
+
 
 @pytest.mark.parametrize("reset", ["subtract", "zero", "none"])
 def test_torch_bridge_matches_brian2_reference(reset):
