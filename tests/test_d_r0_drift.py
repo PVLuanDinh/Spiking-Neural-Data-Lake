@@ -1,20 +1,21 @@
 """D-R0 round 1: the drift instrument, its reader and the Part A driver, on synthetic data only."""
 
-import importlib.util
 import random
-from pathlib import Path
 
 import numpy as np
 import pytest
 
+from snn_data_lake.instruments import d_r0_part_a as partA
 from snn_data_lake.instruments import representational_drift as rd
-from snn_data_lake.sensorimotor import ophys_ingest
+from snn_data_lake.sensorimotor import ophys_ingest, ophys_layout
 
-_spec = importlib.util.spec_from_file_location(
-    "d_r0_partA", Path(__file__).resolve().parents[1] / "tools" / "d_r0_partA.py"
-)
-partA = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(partA)
+
+def test_d_r0_part_a_selfcheck():
+    assert partA._selfcheck() == 0
+
+
+def test_d_r0_layout_selfcheck():
+    assert ophys_layout._selfcheck() == 0
 
 
 def test_d_r0_drift_selfcheck():

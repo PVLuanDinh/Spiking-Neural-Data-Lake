@@ -189,7 +189,8 @@ If any DEV revision changes the estimator, the synthetic reference is re-pinned 
   SEPARATE sets (`movresp` neurons for RDI_MOV, `pdgresp` for RDI_PDG), not a paired difference (panel B9). Control
   RDI (`RDI_control`) is reported beside each, never subtracted.
 - **Frozen before HELD-OUT is read** (panel C6): the code commit of `representational_drift.py`, `ophys_ingest.py` and
-  `tools/d_r0_partA.py` is named by sha in a dated amendment; HELD-OUT is run only from that sha.
+  the Part A driver (`src/snn_data_lake/instruments/d_r0_part_a.py` since section 11) is named by sha in a dated amendment;
+  HELD-OUT is run only from that sha.
 
 ### 2.4 Verdict rule (written before data)
 - **`author_agreement_verdict`**, per stimulus, unit = one neuron-session (eligible population, weeks 2-5):
@@ -360,3 +361,18 @@ two calling-tool hashes, both from `tools/d_r0_layout.py` (`__main__` 12e5dca7..
   counts zero revisions, and it may never compute or print a response value (a tool that does is a pipeline run and
   goes through `tools/d_r0_partA.py`, or the cap is breached).
 - Cap unchanged: at most 5 such revisions; the rest of §2.4 (no revision after the SD pilot, NOT MET at the cap) stands.
+
+## 11. Amendment 2026-11-04 (owner 2026-11-04 "Move D-R0 tools"; P4c ratchet): the two D-R0 tools are package modules
+`tools/p4c_ratchet.py --assert` read tools 32 > baseline 30: a `tools/` script is never governed (governed = a
+REGIONS-registered `src/snn_data_lake/<region>/<module>.py`). Both scripts moved, logic unchanged, each with a
+self-check that reds on a constructed input (REGIONS + `run_selfchecks` + `dormancy_gate.EXEMPT`, one commit):
+- `tools/d_r0_partA.py` -> `src/snn_data_lake/instruments/d_r0_part_a.py`, run as
+  `python -m snn_data_lake.instruments.d_r0_part_a --split dev|heldout`. Its result file stays `tools/d_r0_partA.json`.
+- `tools/d_r0_layout.py` -> `src/snn_data_lake/sensorimotor/ophys_layout.py`, run as
+  `python -m snn_data_lake.sensorimotor.ophys_layout --mouse N`.
+- Every rule above that names `tools/d_r0_partA.py` (2.1 registration, 2.3 freeze, section 10 counter) names the new
+  module for every dev-log entry whose `commit` is at or after the move commit; the section 10 counter reads the
+  sha256 of the file the path held at that entry's `commit` (old path before the move, new path after). Under
+  `python -m` the calling tool is still `__main__` and `ophys_ingest.source_hashes` still hashes that file; nothing in
+  the read path or the log format changed. Historical text naming the old paths (sections 9, 10) is unchanged.
+  §2.3's freeze bullet (line 192) was re-worded in place, path only; the original text is at 928f117f. Reason: citation_guard STRICT scope covers §2.3 (its heading matches `reproduc`), so the old path would red the gate.

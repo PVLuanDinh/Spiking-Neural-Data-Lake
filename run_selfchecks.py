@@ -420,6 +420,7 @@ CORE = [
     "infra._mathutils",
     "instruments.paired_contrast",  # T077 2.10: the seed-paired t + exact FPR, lifted from the T063 harness
     "instruments.representational_drift",  # D-R0 2.1/2.2: stability_index + aa / dose / mov_vs_mov / agreement, each green with its constructed red; synthetic, ~10 s, no data
+    "instruments.d_r0_part_a",  # D-R0 2.3/2.4 Part A driver: seven held-out freeze reds + green control, read-once fail-closed, E1 sign; synthetic, no data
     "instruments.unit_organization",  # G7 T115 P4: six instrument reds (verdict rules, guard, sampler, beta live)
     "substrate.spike_stream_sketch",
     "substrate.spike_cardinality",
@@ -528,6 +529,7 @@ CORE = [
     "sensorimotor.ingest_guard",  # outside-data content boundary: licence deny-by-default + injection flagging
     "sensorimotor.hf_stream",  # streamed HF datasets -> features; offline self-check (no network, no datasets dep)
     "sensorimotor.ophys_ingest",  # D-R0 2.1/2.4: licence / bytes / dirty-tree / lake-write reds on a synthetic .mat in a temp git repo; no data, no lake
+    "sensorimotor.ophys_layout",  # D-R0 2.3/2.4 structure dump: names/shapes/dtypes of a synthetic RespData, planted-value leak red, held-out mouse refused; no data
     "sensorimotor.organoid_ingest",  # OG1 Stage 0: five refusal gates (licence, bytes, index, time units, exact depositor raster), each red on a synthetic HDF5 fixture; no download, no lake
     "faculties.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
     "growth.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)

@@ -2,6 +2,9 @@ r"""D-R0 Part A driver (pre-registration specs/022-unified-brain-arc/evidence/d-
 instrument.md 2.3, 2.4): per mouse, E1 = D = mean over weeks {2,3,4,5} present of the mean over neurons present
 that week of (RDI_MOV - RDI_PDG); then the paired contrast over mice.
 
+MOVED 2026-11-04 from `tools/d_r0_partA.py` (owner "Move D-R0 tools"; P4c ratchet: a tools/ script is never
+governed), byte-for-byte the same driver logic; evidence file section 11 records the move.
+
 WRITTEN IN ROUND 1, NEVER RUN ON DATA. Two things are deliberately not here yet:
   * `read_field` (the deposit's file layout and variable names -- RespMat_Full, RespMat_onTime, the RoiINFO flags
     -- were not read in round 1: no mouse data). It raises until the launcher supplies it, as a logged revision,
@@ -13,11 +16,14 @@ HELD-OUT is refused unless ALL hold: the evidence file carries a dated amendment
 and HEAD equals that sha; it carries the dated lines
     DEV-AGREEMENT MET <YYYY-MM-DD>      (DEV author_agreement_verdict)
     DEV-CONTROL MET <YYYY-MM-DD>        (DEV mov_vs_mov_control_verdict)
-the dev log holds no HELD-OUT file read yet (read ONCE); both module self-checks re-run green HERE, at that sha (the driver runs them itself); and
-`tools/d_r0_dev_log.jsonl` is tracked and clean in git at that sha. DEV needs none of these.
-The driver refuses to start while `tools/d_r0_partA.json` is dirty: COMMIT THE RESULT FILE AFTER EACH RUN.
+the dev log holds no HELD-OUT file read yet (read ONCE); both module self-checks re-run green HERE, at that sha (the
+driver runs them itself); and `tools/d_r0_dev_log.jsonl` is tracked and clean in git at that sha. DEV needs none of
+these. The driver refuses to start while `tools/d_r0_partA.json` is dirty: COMMIT THE RESULT FILE AFTER EACH RUN.
 
-  python tools/d_r0_partA.py --split dev|heldout
+Run as a package module, so the calling tool `ophys_ingest.read_response` hashes is this file, as `__main__`:
+
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.d_r0_part_a --split dev|heldout
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.d_r0_part_a     # no argument: the self-check
 """
 
 from __future__ import annotations
@@ -28,20 +34,20 @@ import random
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import NamedTuple
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
-from snn_data_lake.instruments.paired_contrast import T_BAR, contrast  # noqa: E402
-from snn_data_lake.instruments.representational_drift import (  # noqa: E402
+from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
+from snn_data_lake.instruments.representational_drift import (
     mov_index,
     stability_index,
+    synth_pair,
 )
 
+ROOT = Path(__file__).resolve().parents[3]
 EVIDENCE = (
     ROOT
     / "specs"
@@ -214,7 +220,118 @@ def run(split, reader=read_field, seed=0):
     return out
 
 
+_SHA = "b" * 40
+_DEV_LINES = "DEV-AGREEMENT MET 2026-11-08\nDEV-CONTROL MET 2026-11-07\n"
+
+
+def _synth_field(dose_mov, dose_pdg, n=6, weeks=(2, 3), seed=5):
+    mov1, mov_w = synth_pair(n, dose_mov, seed, trials=30)
+    pdg1, pdg_w = synth_pair(n, dose_pdg, seed + 1)
+    return FieldData(
+        mov1,
+        pdg1,
+        {w: mov_w for w in weeks},
+        {w: pdg_w for w in weeks},
+        {w: np.ones(n, bool) for w in weeks},
+    )
+
+
+def _gate_reds(tmp):
+    """Each held-out refusal fires on its constructed red; the all-conditions control passes."""
+    failures = []
+    ev = Path(tmp) / "ev.md"
+    ok = {"selfchecks": lambda: [], "log_committed": lambda: True, "held_out_logged": lambda: False}
+    frozen = f"FROZEN-SHA 2026-11-10 {_SHA}\n"
+    reds = (
+        ("no FROZEN-SHA", "no amendment\n" + _DEV_LINES, _SHA, {}),
+        ("not the frozen sha", frozen + _DEV_LINES, "a" * 40, {}),
+        ("DEV-AGREEMENT", frozen + "DEV-CONTROL MET 2026-11-07\n", _SHA, {}),
+        ("DEV-CONTROL", frozen + "DEV-AGREEMENT MET 2026-11-08\n", _SHA, {}),
+        ("read ONCE", frozen + _DEV_LINES, _SHA, {"held_out_logged": lambda: True}),
+        ("self-check FAIL", frozen + _DEV_LINES, _SHA, {"selfchecks": lambda: ["ophys_ingest"]}),
+        ("dev log", frozen + _DEV_LINES, _SHA, {"log_committed": lambda: False}),
+    )
+    for needle, text, head, bad in reds:
+        ev.write_text(text, encoding="utf-8")
+        try:
+            refuse_held_out_unless_frozen(ev, head=head, **{**ok, **bad})
+            failures.append(f"held-out red '{needle}' was NOT refused")
+        except HeldOutRefused as exc:
+            if needle not in str(exc):
+                failures.append(f"held-out red '{needle}' refused for another reason: {exc}")
+    ev.write_text(frozen + _DEV_LINES, encoding="utf-8")
+    try:
+        if refuse_held_out_unless_frozen(ev, head=_SHA, **ok) != _SHA:
+            failures.append("green control did not return the frozen sha")
+    except HeldOutRefused as exc:
+        failures.append(f"green control refused: {exc}")
+    return failures
+
+
+def _read_once_reds(tmp):
+    """A held-out sha in the log, and a sha absent from the pin, both count as a held-out read."""
+    pin = {
+        "assets": [
+            {"path": "h.mat", "sha256": "h" * 64, "split": "held-out"},
+            {"path": "d.mat", "sha256": "d" * 64, "split": "dev"},
+        ]
+    }
+    log = Path(tmp) / "log.jsonl"
+    failures = []
+    for shas, want in ((("d" * 64,), False), (("d" * 64, "h" * 64), True), (("z" * 64,), True)):
+        log.write_text(
+            "".join(json.dumps({"files": [{"sha256": s}]}) + "\n" for s in shas), encoding="utf-8"
+        )
+        if held_out_read_in_log(log, pin) is not want:
+            failures.append(f"held_out_read_in_log({[s[0] for s in shas]}) is not {want}")
+    if held_out_read_in_log(Path(tmp) / "absent.jsonl", pin):
+        failures.append("an absent log reads as a held-out read")
+    return failures
+
+
+def _field_d_reds():
+    """E1's sign follows which stimulus drifts; a field with no present neuron is None, never 0."""
+    failures = []
+    more_mov, more_pdg = _synth_field(0.85, 0.0), _synth_field(0.0, 0.85)
+    if not field_d(more_mov) > 0.05:
+        failures.append(f"field_d(MOV drifts) = {field_d(more_mov)} is not > 0.05")
+    if not field_d(more_pdg) < -0.05:
+        failures.append(f"field_d(PDG drifts) = {field_d(more_pdg)} is not < -0.05")
+    empty = more_mov._replace(present={w: np.zeros(6, bool) for w in more_mov.present})
+    if field_d(empty) is not None:
+        failures.append("field_d with no present neuron is not None")
+    return failures
+
+
+def _selfcheck():
+    failures = []
+    if sorted(DEV + HELD_OUT) != list(range(1, 13)):
+        failures.append("DEV + HELD_OUT is not mice 1..12")
+    with tempfile.TemporaryDirectory() as tmp:
+        failures += _gate_reds(tmp)
+        failures += _read_once_reds(tmp)
+    failures += _field_d_reds()
+    try:
+        read_field(1)
+        failures.append("read_field returned without the deposit layout")
+    except NotImplementedError:
+        pass
+    for f in failures:
+        print("FAIL", f)
+    if failures:
+        return 1
+    print(
+        "d_r0_part_a self-check OK: seven held-out reds refuse (no FROZEN-SHA, HEAD != sha, DEV-AGREEMENT, "
+        "DEV-CONTROL, read ONCE, self-check FAIL, dev log), the all-conditions control passes, read-once fails "
+        "closed, E1's sign follows the drifting stimulus, read_field is not guessed"
+    )
+    return 0
+
+
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv:
+        return _selfcheck()
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", choices=("dev", "heldout"), required=True)
     out = run(ap.parse_args(argv).split)

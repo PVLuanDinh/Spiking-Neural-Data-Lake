@@ -835,7 +835,7 @@ EXEMPT = {
         "permanent",
         "specs/022 D-R0 (pre-registration d-r0-representational-drift-instrument.md 2.1), DATED 2026-11-03: the "
         "Marks & Goard stability index (stability_index, mov_index, DriftReading) and its four synthetic "
-        "criteria. Consumers: run_selfchecks (the synthetic reds) and tools/d_r0_partA.py (Part A E1); never on "
+        "criteria. Consumers: run_selfchecks (the synthetic reds) and instruments/d_r0_part_a.py (Part A E1); never on "
         "a tick. RETIRE CONDITION: the verdict INSTRUMENT BLIND -> repair (a NEW pre-registration) or delete; "
         "no D-R* study consuming stability_index registered within 3 pushed arcs after the verdict -> the owner "
         "is asked whether to keep it (an integrator review trigger; nothing counts arcs).",
@@ -845,9 +845,25 @@ EXEMPT = {
         "specs/022 D-R0 (pre-registration 2.1, 2.4), DATED 2026-11-03: the Marks & Goard .mat reader; only the "
         "loadmat reading is new (licence, pin and bytes are organoid_ingest's). Appends every read to "
         "tools/d_r0_dev_log.jsonl, refuses a dirty src/ or tools/ tree, never writes the lake (P4b; its "
-        "self-check carries the constructed red). Consumers: run_selfchecks and tools/d_r0_partA.py; never on "
+        "self-check carries the constructed red). Consumers: run_selfchecks, instruments/d_r0_part_a.py and sensorimotor/ophys_layout.py; never on "
         "a tick. RETIRE CONDITION: the verdict INSTRUMENT BLIND -> repair (a NEW pre-registration) or delete; "
         "no D-R* study consuming it registered within 3 pushed arcs after the verdict -> the owner is asked.",
+    ),
+    "d_r0_part_a": (
+        "permanent",
+        "specs/022 D-R0 (pre-registration 2.3, 2.4; evidence section 11), DATED 2026-11-04: the Part A driver "
+        "(E1 per mouse, the held-out freeze gate, read-once), moved from tools/d_r0_partA.py (owner 'Move D-R0 "
+        "tools'; P4c). Consumers: run_selfchecks (seven freeze reds on synthetic input) and the launcher's "
+        "`python -m` run; never on a tick. RETIRE CONDITION: the verdict INSTRUMENT BLIND -> repair (a NEW "
+        "pre-registration) or delete; the D-R0 verdict read -> the owner is asked whether to keep it.",
+    ),
+    "ophys_layout": (
+        "permanent",
+        "specs/022 D-R0 (pre-registration 2.3, 2.4; evidence sections 10, 11), DATED 2026-11-04: the deposit's "
+        "structure dump (names, shapes, dtypes, never a value) through ophys_ingest.read_response, moved from "
+        "tools/d_r0_layout.py (owner 'Move D-R0 tools'; P4c). Consumers: run_selfchecks (planted-value leak red) "
+        "and the launcher's `python -m` run; never on a tick. RETIRE CONDITION: read_field supplied in "
+        "d_r0_part_a -> delete; the D-R0 verdict read -> the owner is asked.",
     ),
     "h01_ingest": (
         "wire",
