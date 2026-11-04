@@ -3583,7 +3583,11 @@ class Brain:
         kept as the deep fallback rather than deleted -- P2's port-first rule, and the
         committed durability suite's guarantee that a restart is not amnesia): it replays
         the ENTIRE lake (seconds on a mature lake, the incumbent's own cost) only when the
-        window tier has no qualifying answer, and returns exact sub-cue matches at verified
+        window tier has no qualifying answer OR its answer CONTRADICTS the cue (G67: such a hit
+        is demoted, and answers, `contradicted` visible, only if the deep tier has no exact
+        match; if the deep read itself fails the result is a visible refusal, R1 F4, even with
+        a demoted hit held -- before G67 that hit was returned without a deep read), and
+        returns exact sub-cue matches at verified
         confidence 1.0 with no margin (no measured null exists at that tier -- a margin is
         never guessed).
         """
