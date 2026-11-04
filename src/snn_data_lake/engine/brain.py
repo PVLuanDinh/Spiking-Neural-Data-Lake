@@ -99,6 +99,14 @@ def _record_id(rec):
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
+    "Brain.learn_engine_episode": (
+        "NOT_A_RULE",
+        "Journals one typed joint teaching event; the existing actor and local R-STDP consumer own its updates.",
+    ),
+    "Brain._g9_selection_adapter": (
+        "NOT_A_RULE",
+        "Validates the frozen actual Meter and returns its bound actor; computes no plasticity.",
+    ),
     "Brain.learn_part_d_episode": (
         "NOT_A_RULE",
         "Typed same-writer posed-event orchestration; the existing Part D learner and canonical R-STDP return port own all weight updates.",
@@ -5299,6 +5307,20 @@ class Brain:
         for pid, actor in snapshot["actors"].items():
             actor.rollback(snapshot["states"][pid])
         self._g9_actors = snapshot["actors"]
+        # Neural trials may roll back; admitted final-judgment reservations may not.
+        from snn_data_lake.readout.interaction_learning import _event_order
+
+        metadata = []
+        for actor in self._g9_actors.values():
+            if actor.selection is not None:
+                metadata.append(_event_order(actor.selection["selection_id"]))
+            metadata.extend(_event_order(eid) for eid in actor.retention_claims.values())
+        if metadata:
+            cursor = self.brain._ixn._cursor
+            self.brain._ixn._cursor = max(metadata + ([] if cursor is None else [cursor]))
+        self.brain._ixn._g9_carriers = {
+            pid: actor.state_dict() for pid, actor in sorted(self._g9_actors.items())
+        }
 
     def _g9_publish_context(self, actor):
         from snn_data_lake.readout.posed_problem import actor_context
@@ -5355,6 +5377,8 @@ class Brain:
             # Existing COMPLETE carrier includes all effects through the common cursor.
             # Do not run those effects twice; the full global prefix is still verified.
             _need(value["problem_id"] in actors, "checkpoint omitted its posed registry member")
+            if value["op"] == "engine_teach":
+                self._g9_engine_effect(staged, actors, value, event["event_id"], cache_only=True)
             return
         pid = value["problem_id"]
         op = value["op"]
@@ -5386,10 +5410,254 @@ class Brain:
         else:
             _need(pid in actors, "effect before actual posed owner binding")
             actor = actors[pid]
-            actor._effect(value, event_id=event["event_id"])
+            if op in {"engine_teach", "engine_read"}:
+                self._g9_engine_effect(staged, actors, value, event["event_id"])
+            else:
+                if op in {"freeze_selection", "claim_retention"}:
+                    self._g9_validate_selection_source(value, staged, actors)
+                actor._effect(value, event_id=event["event_id"])
         actor.last_event_id = event["event_id"]
-        staged._g9_context = actor_context(actor)
+        if op not in {"freeze_selection", "claim_retention"}:
+            staged._g9_context = actor_context(actor)
         staged._g9_carriers = {k: v.state_dict() for k, v in sorted(actors.items())}
+
+    def _g9_engine_effect(self, ixn, actors, value, event_id, *, cache_only=False):
+        """One real Part D + shared canonical effect; preview/redo use this same body without append."""
+        from snn_data_lake.readout.interaction_learning import _utterance_key, text_features
+        from snn_data_lake.readout.posed_problem import (
+            _need,
+            actor_context,
+            posed_source,
+            sync_actor_context,
+        )
+
+        posed_source(value)
+        op = value["op"]
+        _need(op in {"engine_teach", "engine_read"}, "bound joint engine operation required")
+        _need(
+            len(value["turns"]) == 1
+            and value["turns"][0][1] == "probe"
+            and value["shifted_label"] is None,
+            "G9_ENGINE_SCOPE_UNREADY",
+        )
+        text = value["turns"][0][0]
+        if cache_only:
+            if op == "engine_teach":
+                ixn._apply_turn(
+                    "teach",
+                    _utterance_key(text),
+                    value["turns"][0][2],
+                    event_id,
+                    text_features(text, ixn.n_in),
+                    cache_only=True,
+                )
+            return None
+        actor = actors[value["problem_id"]]
+        if (
+            ixn is self.brain._ixn
+            and actors is self._g9_actors
+            and self._g9_apply_receipt is not None
+        ):
+            actor.apply(value, owner=self, event_id=event_id)
+        else:
+            actor._effect(value, event_id=event_id)
+        ixn._g9_context = actor_context(actor)
+        if op == "engine_teach":
+            previous = ixn._g9_neuron_mask
+            shared_eligibility = list(value["neuron_mask"])
+            if (
+                actor.factory.get("engine_binding", {}).get("cycle", {}).get("feedback_gate")
+                == "corrective"
+                and ixn.route_text(text) == value["turns"][0][2]
+            ):
+                shared_eligibility = [False] * len(ixn.responses)
+            ixn._g9_neuron_mask = shared_eligibility
+            try:
+                ixn._apply_turn(
+                    "teach",
+                    _utterance_key(text),
+                    value["turns"][0][2],
+                    event_id,
+                    text_features(text, ixn.n_in),
+                )
+            finally:
+                ixn._g9_neuron_mask = previous
+            sync_actor_context(ixn, actors)
+        ixn._g9_carriers = {pid: item.state_dict() for pid, item in sorted(actors.items())}
+        return ixn.route_text(text)
+
+    @staticmethod
+    def _g9_retention_manifest(actors, current):
+        from snn_data_lake.instruments.joint_mask_search import RetentionSets
+        from snn_data_lake.instruments.taught_problems import PROBLEMS
+
+        def digest(items):
+            return hashlib.sha256(
+                json.dumps(items, separators=(",", ":"), allow_nan=False).encode()
+            ).hexdigest()
+
+        result = {}
+        for pid, actor in sorted(actors.items()):
+            sets = RetentionSets.for_problem(PROBLEMS[pid], actor.factory["seed"])
+            result[pid] = {
+                "seed": actor.factory["seed"],
+                "select_digest": digest(sets._select),
+                "final_digest": digest(sets._final),
+            }
+        return result
+
+    def _g9_selection_adapter(self, problem_id, meter):
+        from snn_data_lake.growth.growth_loop import CanonicalGrowthAdapter
+        from snn_data_lake.instruments.joint_mask_search import Meter, SelectionLeak
+        from snn_data_lake.readout.posed_problem import _need
+
+        if type(meter) is not Meter or not meter.frozen:
+            raise SelectionLeak("retention_final read before the winner was frozen")
+        if type(meter.p) is not CanonicalGrowthAdapter:
+            raise SelectionLeak("G9_SELECTION_CONSUMER_REQUIRED: foreign or synthetic Meter")
+        binding, actor = meter.p._require_engine()
+        _need(
+            binding["owner"] is self
+            and meter.p.problem.id == problem_id
+            and actor is self._g9_actors[problem_id],
+            "G9_SELECTION_CONSUMER_REQUIRED",
+        )
+        _need(
+            actor.factory.get("engine_binding", {}).get("cycle", {}).get("schema")
+            == "g9.engine.cycle.v1",
+            "G9_ENGINE_SCOPE_UNREADY",
+        )
+        _need(tuple(meter.winner) == (True,) * len(actor.units), "G9_NO_PRUNE_SCOPE_REQUIRED")
+        return actor
+
+    def _g9_validate_selection_source(self, value, ixn, actors):
+        from snn_data_lake.readout.posed_problem import _need, engine_model_digest
+
+        actor = actors[value["problem_id"]]
+        if value["op"] == "freeze_selection":
+            _need(actor.selection is None, "G9_SELECTION_ALREADY_FROZEN")
+            _need(
+                value["winner"] == [True] * len(actor.units)
+                and all(u.active for u in actor.units)
+                and all(all(row) for row in actor.factory["out_eligible"])
+                and not actor.return_neutered,
+                "G9_NO_PRUNE_SCOPE_REQUIRED",
+            )
+            _need(
+                value["retention"] == self._g9_retention_manifest(actors, value["problem_id"]),
+                "G9_RETENTION_SCHEDULE_DRIFT",
+            )
+            _need(
+                value["model_digest"] == engine_model_digest(ixn, actors),
+                "G9_SELECTION_STATE_DRIFT",
+            )
+        else:
+            selected = actor.selection
+            _need(
+                selected is not None
+                and selected["selection_id"] == value["selection_id"]
+                and value["old_problem_id"] in selected["retention"],
+                "G9_RETENTION_SELECTION_MISMATCH",
+            )
+            _need(
+                value["old_problem_id"] not in actor.retention_claims,
+                "G9_RETENTION_ALREADY_CONSUMED",
+            )
+            _need(
+                selected["retention"] == self._g9_retention_manifest(actors, value["problem_id"]),
+                "G9_RETENTION_SCHEDULE_DRIFT",
+            )
+            _need(
+                selected["model_digest"] == engine_model_digest(ixn, actors),
+                "G9_SELECTION_STATE_DRIFT",
+            )
+
+    def freeze_selection(self, problem_id, *, meter):
+        """Freeze the actual all-active winner once; its common event ID owns the identity."""
+        from snn_data_lake.readout.posed_problem import ENGINE_SELECTION_SCOPE, engine_model_digest
+
+        with self._r2_lock:
+            self._g9_selection_adapter(problem_id, meter)
+            return self._g9_apply_source(
+                {
+                    "op": "freeze_selection",
+                    "problem_id": problem_id,
+                    "scope": ENGINE_SELECTION_SCOPE,
+                    "winner": list(meter.winner),
+                    "model_digest": engine_model_digest(self.brain._ixn, self._g9_actors),
+                    "retention": self._g9_retention_manifest(self._g9_actors, problem_id),
+                }
+            )
+
+    def claim_retention(self, problem_id, old_problem_id, *, meter, selection_id=None):
+        """Write the irreversible reservation BEFORE the caller's untouched-set read."""
+        from snn_data_lake.readout.posed_problem import _need
+
+        with self._r2_lock:
+            actor = self._g9_selection_adapter(problem_id, meter)
+            _need(actor.selection is not None, "G9_SELECTION_NOT_FROZEN")
+            return self._g9_apply_source(
+                {
+                    "op": "claim_retention",
+                    "problem_id": problem_id,
+                    "old_problem_id": old_problem_id,
+                    "selection_id": actor.selection["selection_id"]
+                    if selection_id is None
+                    else selection_id,
+                }
+            )
+
+    @staticmethod
+    def _g9_check_protocol_prefix(staged, actors, events):
+        """A checkpoint cannot rewrite factory identity or final-read facts from its covered prefix."""
+        from snn_data_lake.readout.interaction_learning import _event_order
+        from snn_data_lake.readout.posed_problem import _need
+
+        def immutable_factory(factory):
+            dynamic = {"units", "birth_rows", "w_feed", "attachments", "out_eligible"}
+            return {key: value for key, value in factory.items() if key not in dynamic}
+
+        expected = {pid: {"selection": None, "claims": {}, "factory": None} for pid in actors}
+        for event in events:
+            if staged._cursor is None or _event_order(event["event_id"]) > staged._cursor:
+                continue
+            if event["kind"] != "posed_problem":
+                continue
+            value = json.loads(event["source"])
+            if value["op"] == "bind":
+                pid = value["problem_id"]
+                _need(
+                    pid in expected and expected[pid]["factory"] is None,
+                    "G9_FACTORY_PREFIX_MISMATCH",
+                )
+                expected[pid]["factory"] = immutable_factory(value["factory"])
+            elif value["op"] == "freeze_selection":
+                row = expected[value["problem_id"]]
+                _need(row["selection"] is None, "duplicate frozen selection in prefix")
+                row["selection"] = {
+                    k: copy.deepcopy(v) for k, v in value.items() if k not in {"op", "problem_id"}
+                }
+                row["selection"]["selection_id"] = event["event_id"]
+            elif value["op"] == "claim_retention":
+                row = expected[value["problem_id"]]
+                _need(
+                    row["selection"] is not None
+                    and row["selection"]["selection_id"] == value["selection_id"]
+                    and value["old_problem_id"] not in row["claims"],
+                    "invalid retention claim prefix",
+                )
+                row["claims"][value["old_problem_id"]] = event["event_id"]
+        for pid, actor in actors.items():
+            _need(
+                expected[pid]["factory"] is not None
+                and immutable_factory(actor.factory) == expected[pid]["factory"],
+                "G9_FACTORY_PREFIX_MISMATCH",
+            )
+            _need(
+                actor.selection == expected[pid]["selection"]
+                and actor.retention_claims == expected[pid]["claims"],
+                "G9_RETENTION_PREFIX_MISMATCH",
+            )
 
     def _g9_apply_source(self, value, *, ticket=None):
         """Append is BEFORE constructor/pool/reader/producer/return/authority mutation."""
@@ -5440,6 +5708,8 @@ class Brain:
                 if op != "bind":
                     # Deterministic input errors are refused BEFORE the common writer appends.
                     self._g9_actors[pid].validate_effect(value)
+                    if op in {"freeze_selection", "claim_retention"}:
+                        self._g9_validate_selection_source(value, self.brain._ixn, self._g9_actors)
             try:
                 self._r2_supported(self.brain._ixn)
                 before = self._g9_snapshot()
@@ -5471,9 +5741,19 @@ class Brain:
                     answer = None
                 else:
                     actor = self._g9_actors[pid]
-                    answer = actor.apply(value, owner=self, event_id=eid)
+                    if op in {"engine_teach", "engine_read"}:
+                        answer = self._g9_engine_effect(
+                            self.brain._ixn, self._g9_actors, value, eid
+                        )
+                    else:
+                        answer = actor.apply(value, owner=self, event_id=eid)
                 actor.last_event_id = eid
-                self._g9_publish_context(actor)
+                if op in {"freeze_selection", "claim_retention"}:
+                    self.brain._ixn._g9_carriers = {
+                        key: item.state_dict() for key, item in sorted(self._g9_actors.items())
+                    }
+                else:
+                    self._g9_publish_context(actor)
                 from snn_data_lake.readout.interaction_learning import _event_order
 
                 self.brain._ixn._cursor = _event_order(eid)
@@ -5524,6 +5804,36 @@ class Brain:
                 "op": "read",
                 "problem_id": problem_id,
                 "turns": [[t.text, t.role, t.label] for t in episode],
+                "shifted_label": None,
+                "neuron_mask": list(neuron_mask),
+                "return_mask": list(return_mask),
+                "return_neutered": return_neutered,
+            }
+        )
+
+    def learn_engine_episode(
+        self, problem_id, episode, *, neuron_mask, return_mask, return_neutered=False
+    ):
+        return self._g9_apply_source(
+            {
+                "op": "engine_teach",
+                "problem_id": problem_id,
+                "turns": [[t.text, t.role, t.label] for t in episode],
+                "shifted_label": None,
+                "neuron_mask": list(neuron_mask),
+                "return_mask": list(return_mask),
+                "return_neutered": return_neutered,
+            }
+        )
+
+    def read_engine_episode(
+        self, problem_id, episode, *, neuron_mask, return_mask, return_neutered=False
+    ):
+        return self._g9_apply_source(
+            {
+                "op": "engine_read",
+                "problem_id": problem_id,
+                "turns": [[t.text, t.role, None] for t in episode],
                 "shifted_label": None,
                 "neuron_mask": list(neuron_mask),
                 "return_mask": list(return_mask),
@@ -5601,6 +5911,7 @@ class Brain:
                         checkpoint["sleep_observations"]
                     )
                 staged_actors = self._g9_stage_registry(staged)
+                self._g9_check_protocol_prefix(staged, staged_actors, events)
                 report = staged.hydrate(
                     events,
                     receipt=receipt,

@@ -524,6 +524,13 @@ class SpikingInteractionLearner:
                 raise ValueError("G9 malformed actual readout eligibility mask")
             if not mask[li]:
                 return [0.0] * self.n_in
+        if self._g9_context is not None:
+            from snn_data_lake.readout.posed_problem import _chat_context, chat_grown_deposit
+
+            context, _, _ = _chat_context(self)
+            if "core_eligible" in context and not context["core_eligible"][li]:
+                chat_grown_deposit(self, li, code, float(d))
+                return [0.0] * self.n_in
         n = self.neurons[li]
         n.e = [0.0] * self.n_in  # fresh trial: clear eligibility + spike history
         n.t_pre = [None] * self.n_in
@@ -532,6 +539,10 @@ class SpikingInteractionLearner:
             n.pre_spike(i, float(t))
         n.post_spike(self.t_post)  # post spike AFTER the inputs -> LTP eligibility
         if self.stack is not None:  # PRE: fast short-term dynamic gain modulates the deposit
+            activity = [self._psp(self.t_post - t) for t in code]
+            prepare = getattr(self.stack, "prepare_update", None)
+            if prepare is not None:
+                prepare(li, list(n.w), activity)
             d = float(d) * self.stack.pre_gain(
                 li
             )  #      (Tsodyks-Markram release: onset strong, burst fades)
@@ -552,9 +563,6 @@ class SpikingInteractionLearner:
             for i in range(self.n_in):
                 n.w[i] += mod[i]
         if self.stack is not None:  # POST: homeostatic scaling + intrinsic plasticity STABILIZE
-            activity = [
-                self._psp(self.t_post - t) for t in code
-            ]  # per-synapse PSP drive (>=0); y=sum(w*psp)=readout v
             n.w = self.stack.stabilize(
                 li, list(n.w), activity
             )  #   bound the live synapses + hold the firing rate

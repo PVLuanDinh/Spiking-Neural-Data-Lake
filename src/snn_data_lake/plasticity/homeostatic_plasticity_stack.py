@@ -50,6 +50,10 @@ from snn_data_lake.plasticity.short_term_plasticity import DynamicSynapse
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
+    "HomeostaticPlasticityStack.prepare_update": (
+        "NOT_A_RULE",
+        "Captures a cold pre-deposit baseline once through the existing calibration helper; changes no synapse and advances no rule clock.",
+    ),
     "HomeostaticPlasticityStack.learning_step": (
         "LOCAL",
         "runs the whole fixed-order sandwich of local rules once and logs the order it touched each. "
@@ -122,6 +126,12 @@ class _HomeostaticScaling:
         ]  # per-neuron drive ceiling, set on first sight
         self.ceiling_factor = float(ceiling_factor)
 
+    def calibrate(self, neuron_id, drive):
+        """Capture a cold neuron's baseline once; never reset a warm/restored ceiling."""
+        i = int(neuron_id)
+        if self._target[i] is None:
+            self._target[i] = max(self.ceiling_factor * abs(drive), 1e-3)
+
     def stabilize(self, ctx):
         i = ctx["neuron_id"]
         cell = self._cell[i]
@@ -129,8 +139,7 @@ class _HomeostaticScaling:
         x = list(ctx["activity"])
         y = cell.output(x)  # membrane drive y = sum(w*x) == the readout v
         ctx["drive"] = y
-        if self._target[i] is None:  # calibrate the ceiling from the baseline drive
-            self._target[i] = max(self.ceiling_factor * abs(y), 1e-3)
+        self.calibrate(i, y)  # fallback for standalone POST callers without a PRE baseline
         cell.target = self._target[i]
         if y > cell.target:  # only trim genuine runaway (never boost a loser)
             cell.stabilize(x)  # REUSE the real multiplicative synaptic scaling
@@ -223,6 +232,17 @@ class HomeostaticPlasticityStack:
         self._order_log = []  # one tuple per learning_step (fixed-order proof)
 
     # -- public API used by SpikingInteractionLearner --------------------------------------------
+    def prepare_update(self, neuron_id, weights, activity):
+        """PRE: capture the actual pre-plasticity baseline without advancing a rule clock.
+
+        Warm/restored state is left alone. Standalone stabilize() callers retain their lazy
+        first-observation fallback when no pre-update row is available.
+        """
+        if self._homeo is not None:
+            i = int(neuron_id)
+            if self._homeo._target[i] is None:
+                self._homeo.calibrate(i, sum(w * a for w, a in zip(weights, activity)))
+
     def pre_gain(self, neuron_id):
         """PRE: advance the global clock and return the composed short-term dynamic gain for a deposit
         onto `neuron_id` (a scalar in [gain_floor, 1.0] the learner multiplies into the reward sign)."""
@@ -253,6 +273,7 @@ class HomeostaticPlasticityStack:
         """Run the WHOLE fixed-ordered sandwich once and log the exact order it touched each rule.
         `rstdp_update(gain, weights) -> weights` is the caller's LIVE R-STDP deposit (w += lr*gain*d*e).
         Returns (stabilized_weights, ctx). Records the order in self._order_log for the ordering proof."""
+        self.prepare_update(neuron_id, weights, activity)
         self._global_t += 1
         trace = []
         ctx = {

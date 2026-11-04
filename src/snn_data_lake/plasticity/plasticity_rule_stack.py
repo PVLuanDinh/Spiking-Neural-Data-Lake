@@ -63,6 +63,10 @@ from snn_data_lake.plasticity.inhibitory_stdp import InhibitorySTDP
 
 #: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
 GRADIENT_CLAIM = {
+    "PlasticityRuleStack.prepare_update": (
+        "NOT_A_RULE",
+        "Captures cold baselines and initializes existing Benna-Fusi beakers at current-weight equilibrium; performs no deposit or diffusion.",
+    ),
     "PlasticityRuleStack.learning_step": (
         "LOCAL",
         "applies the metaplastic gate then the stacked local rules for one neuron. Every rule in the "
@@ -308,6 +312,12 @@ class PlasticityRuleStack(HomeostaticPlasticityStack):
         )
 
     # -- PRE: base short-term gain, then the metaplastic BCM brake ---------------------------------
+    def prepare_update(self, neuron_id, weights, activity):
+        """Anchor cold baselines before plasticity; the first deposit enters only fast state."""
+        super().prepare_update(neuron_id, weights, activity)
+        if self._cons is not None:
+            self._cons._ensure(int(neuron_id), weights)
+
     def pre_gain(self, neuron_id):
         g = super().pre_gain(neuron_id)
         if self._meta is not None:

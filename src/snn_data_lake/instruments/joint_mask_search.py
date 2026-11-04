@@ -161,6 +161,8 @@ class Meter:
 
     def freeze(self, mask):
         """Bind THE winner: `judge` will read this mask and no other."""
+        if self.frozen:
+            raise SelectionLeak("winner already frozen")
         self.frozen = True
         self.winner = tuple(mask)
 

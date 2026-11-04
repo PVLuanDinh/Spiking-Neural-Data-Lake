@@ -32,6 +32,100 @@ def _need(ok, reason):
         raise PosedRefused(reason)
 
 
+ENGINE_SELECTION_SCOPE = "g9.grow-retain-restore.v1"
+
+
+def pack_engine_binding(config):
+    """Lossless frozen source in a compact carrier, avoiding repeated mutable schedule trees."""
+    import base64
+    import zlib
+
+    raw = json.dumps(config, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    return {
+        "schema": "g9.engine.binding.zlib.v1",
+        "cycle": copy.deepcopy(config["cycle"]),
+        "raw_size": len(raw),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "payload": base64.b64encode(zlib.compress(raw, 9)).decode("ascii"),
+    }
+
+
+def unpack_engine_binding(carrier):
+    """Decode exact canonical source; no schedule is regenerated from a seed on restore."""
+    import base64
+    import zlib
+
+    _need(type(carrier) is dict, "complete engine binding carrier")
+    if "schema" not in carrier:
+        return copy.deepcopy(carrier)
+    _need(
+        set(carrier) == {"schema", "cycle", "raw_size", "sha256", "payload"}
+        and carrier["schema"] == "g9.engine.binding.zlib.v1"
+        and type(carrier["raw_size"]) is int
+        and 0 < carrier["raw_size"] <= 16 * 1024 * 1024
+        and type(carrier["sha256"]) is str
+        and type(carrier["payload"]) is str,
+        "G9_ENGINE_BINDING_CODEC: complete bounded source carrier",
+    )
+    try:
+        compressed = base64.b64decode(carrier["payload"], validate=True)
+        decoder = zlib.decompressobj()
+        raw = decoder.decompress(compressed, carrier["raw_size"] + 1)
+        _need(
+            decoder.eof
+            and not decoder.unused_data
+            and not decoder.unconsumed_tail
+            and len(raw) == carrier["raw_size"]
+            and hashlib.sha256(raw).hexdigest() == carrier["sha256"],
+            "G9_ENGINE_BINDING_CODEC: corrupt frozen source",
+        )
+        config = json.loads(raw)
+        _need(
+            type(config) is dict and set(config) == {"schedule", "projections", "cycle"},
+            "G9_ENGINE_BINDING_CODEC: complete scoped source",
+        )
+        canonical = json.dumps(
+            config, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode()
+        _need(
+            canonical == raw and config["cycle"] == carrier["cycle"],
+            "G9_ENGINE_BINDING_CODEC: source/cycle drift",
+        )
+        return config
+    except (ValueError, TypeError, UnicodeError, zlib.error) as exc:
+        raise PosedRefused("G9_ENGINE_BINDING_CODEC: invalid frozen source") from exc
+
+
+def engine_model_digest(ixn, actors):
+    """Bind actual shared neural/cache state and every posed circuit, not journal bookkeeping."""
+    shared = copy.deepcopy(ixn._snapshot())
+    attrs = shared["state"]["tree"]["attrs"]
+    for key in (
+        "_cursor",
+        "_g9_carriers",
+        "_redo_count",
+        "_unjournaled_refused",
+        "_hydrated",
+        "_hydration_count",
+        "_hydration_refusals",
+    ):
+        attrs.pop(key, None)
+    circuits = {}
+    for pid, actor in sorted(actors.items()):
+        state = actor.state_dict()
+        for key in ("event", "selection", "retention_claims"):
+            state.pop(key, None)
+        circuits[pid] = state
+    return hashlib.sha256(
+        json.dumps(
+            {"shared": shared, "actors": circuits},
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode()
+    ).hexdigest()
+
+
 def _source_receipt():
     names = (
         "snn_data_lake.instruments.g5_part_d_cells",
@@ -245,7 +339,19 @@ def posed_source(value):
             raise PosedRefused(m)
 
     need(
-        type(value) is dict and value.get("op") in {"bind", "teach", "read", "reset", "admit"},
+        type(value) is dict
+        and value.get("op")
+        in {
+            "bind",
+            "teach",
+            "read",
+            "reset",
+            "admit",
+            "engine_teach",
+            "engine_read",
+            "freeze_selection",
+            "claim_retention",
+        },
         "unknown typed posed operation",
     )
     op = value["op"]
@@ -275,11 +381,40 @@ def posed_source(value):
         )
         need(f["population_origin"] in {"born", "constructed"}, "named real population origin")
         if "engine_binding" in f:
-            config = f["engine_binding"]
+            config = unpack_engine_binding(f["engine_binding"])
             need(
-                type(config) is dict and set(config) == {"schedule", "projections"},
+                type(config) is dict
+                and set(config)
+                in ({"schedule", "projections"}, {"schedule", "projections", "cycle"}),
                 "complete engine binding carrier",
             )
+            if "cycle" in config:
+                need(
+                    type(config["cycle"]) is dict
+                    and config["cycle"].get("schema") == "g9.engine.cycle.v1",
+                    "typed scoped engine cycle",
+                )
+
+                # json.dumps below rejects non-finite values; no opaque runtime object is a carrier.
+                def primitive(item):
+                    return (
+                        item is None
+                        or type(item) in (str, bool, int, float)
+                        or type(item) is list
+                        and all(primitive(x) for x in item)
+                        or type(item) is dict
+                        and all(type(k) is str and primitive(v) for k, v in item.items())
+                    )
+
+                need(primitive(config["cycle"]), "primitive scoped cycle source")
+                # One validator owns supported options, including restore: an
+                # unknown core/feedback flag cannot silently select a default.
+                from snn_data_lake.growth.growth_loop import LedgerError, _cycle_recipe
+
+                try:
+                    _cycle_recipe(config["cycle"])
+                except LedgerError as exc:
+                    raise PosedRefused(str(exc)) from exc
             need(
                 type(config["schedule"]) is list
                 and config["schedule"]
@@ -346,7 +481,8 @@ def posed_source(value):
             type(f["attachments"]) is list and type(f["out_eligible"]) is list,
             "typed attachment and output-mask lists",
         )
-    elif op in {"teach", "read"}:
+    elif op in {"teach", "read", "engine_teach", "engine_read"}:
+        read = op in {"read", "engine_read"}
         need(
             set(value)
             == common | {"turns", "shifted_label", "neuron_mask", "return_mask", "return_neutered"},
@@ -366,13 +502,13 @@ def posed_source(value):
             "typed actual turns",
         )
         need(
-            (turns[-1][1] == "probe" or op == "read" and turns[-1][1] == "context")
+            (turns[-1][1] == "probe" or read and turns[-1][1] == "context")
             and all(t[1] == "context" for t in turns[:-1]),
             "actual teach episode or label-free read_split prefix boundary",
         )
         need(
             all(t[2] is None for t in turns)
-            if op == "read"
+            if read
             else all(t[2] is None for t in turns[:-1]) and type(turns[-1][2]) is str,
             "OFF reads must be label-free; teaching label is probe-only",
         )
@@ -387,6 +523,47 @@ def posed_source(value):
                 for m in (value["neuron_mask"], value["return_mask"])
             ),
             "actual circuit masks",
+        )
+    elif op == "freeze_selection":
+        need(
+            set(value) == common | {"scope", "winner", "model_digest", "retention"},
+            "complete frozen selection source",
+        )
+        need(value["scope"] == ENGINE_SELECTION_SCOPE, "registered no-prune selection scope")
+        need(
+            type(value["winner"]) is list and all(type(x) is bool for x in value["winner"]),
+            "typed actual winner mask",
+        )
+        need(
+            type(value["model_digest"]) is str
+            and len(value["model_digest"]) == 64
+            and all(c in "0123456789abcdef" for c in value["model_digest"]),
+            "model digest",
+        )
+        need(type(value["retention"]) is dict, "frozen retention schedule manifest")
+        for pid, entry in value["retention"].items():
+            need(
+                type(pid) is str
+                and pid
+                and type(entry) is dict
+                and set(entry) == {"seed", "select_digest", "final_digest"}
+                and type(entry["seed"]) is int,
+                "retention identity",
+            )
+            need(
+                all(
+                    type(entry[k]) is str
+                    and len(entry[k]) == 64
+                    and all(c in "0123456789abcdef" for c in entry[k])
+                    for k in ("select_digest", "final_digest")
+                ),
+                "retention schedule digest",
+            )
+    elif op == "claim_retention":
+        need(set(value) == common | {"old_problem_id", "selection_id"}, "retention claim source")
+        need(
+            all(type(value[k]) is str and value[k] for k in ("old_problem_id", "selection_id")),
+            "retention claim identity",
         )
     elif op == "admit":
         need(
@@ -548,8 +725,11 @@ class PosedActor:
         self.last_event_id = None
         self.return_neutered = False
         self.reads = self.teaches = 0
+        self.selection = None
+        self.retention_claims = {}
 
     def snapshot(self):
+        # Selection/claim facts are append-only protocol state, never reversible neural trials.
         return {
             "factory": copy.deepcopy(self.factory),
             "neutered": self.return_neutered,
@@ -595,14 +775,25 @@ class PosedActor:
         # The owner runs it BEFORE the common writer appends (a deterministic input error must
         # not become an immortal unreplayable event); replay runs it again through `_effect`.
         posed_source(value)
-        if value["op"] not in {"teach", "read"}:
+        op = value["op"]
+        if self.selection is not None:
+            _need(op not in {"teach", "engine_teach", "reset"}, "G9_SELECTION_FROZEN")
+        if op not in {"teach", "read", "engine_teach", "engine_read"}:
             return
+        if op in {"engine_teach", "engine_read"}:
+            _need(
+                self.factory["arm"] == "RSTDP_BRAIN"
+                and len(value["turns"]) == 1
+                and value["turns"][0][1] == "probe"
+                and value["shifted_label"] is None,
+                "G9_ENGINE_SCOPE_UNREADY",
+            )
         _need(
             len(value["neuron_mask"]) == len(self.reader.learner.neurons)
             and len(value["return_mask"]) == (0 if self.port is None else len(self.port.rows)),
             "complete actual readout and return circuit masks",
         )
-        if value["op"] == "teach":
+        if op in {"teach", "engine_teach"}:
             label = (
                 value["shifted_label"]
                 if self.reader.arm == "RSTDP_BRAIN_SHUF"
@@ -622,6 +813,33 @@ class PosedActor:
 
         posed_source(value)
         _need(event_id != self.last_event_id, "duplicate actor event")
+        if value["op"] == "freeze_selection":
+            _need(self.selection is None, "G9_SELECTION_ALREADY_FROZEN")
+            self.selection = {
+                k: copy.deepcopy(v) for k, v in value.items() if k not in {"op", "problem_id"}
+            }
+            self.selection["selection_id"] = event_id
+            self.last_event_id = event_id
+            return copy.deepcopy(self.selection)
+        if value["op"] == "claim_retention":
+            old = value["old_problem_id"]
+            _need(
+                self.selection is not None
+                and value["selection_id"] == self.selection["selection_id"]
+                and old in self.selection["retention"],
+                "G9_RETENTION_SELECTION_MISMATCH",
+            )
+            _need(old not in self.retention_claims, "G9_RETENTION_ALREADY_CONSUMED")
+            self.retention_claims[old] = event_id
+            self.last_event_id = event_id
+            return {
+                "selection_id": value["selection_id"],
+                "old_problem_id": old,
+                "claim_id": event_id,
+            }
+        if value["op"] in {"engine_teach", "engine_read"}:
+            self.validate_effect(value)
+            value = {**value, "op": "teach" if value["op"] == "engine_teach" else "read"}
         if value["op"] == "reset":
             self.reader.drive._pool.reset_carriers()
             if self.port is not None:
@@ -726,7 +944,7 @@ class PosedActor:
 
     def state_dict(self):
         return {
-            "schema": "g9.posed.actor.v1",
+            "schema": "g9.posed.actor.v2",
             "factory": copy.deepcopy(self.factory),
             "units": unit_rows(self.units),
             "feed": copy.deepcopy(self.feed),
@@ -737,12 +955,15 @@ class PosedActor:
             "neutered": self.return_neutered,
             "reads": self.reads,
             "teaches": self.teaches,
+            "selection": copy.deepcopy(self.selection),
+            "retention_claims": copy.deepcopy(self.retention_claims),
         }
 
     def expanded(self, value, birth_records):
         """Stage an admission, preserving every old learned weight/trace/pending arrival."""
         from snn_data_lake.instruments import inseparable_mapping as im
 
+        _need(self.selection is None, "G9_SELECTION_FROZEN")
         _need(
             self.factory["population_origin"] == "born", "constructed control cannot admit growth"
         )
@@ -796,28 +1017,38 @@ class PosedActor:
         staged.clock, staged.last_event_id = self.clock, self.last_event_id
         staged.reads, staged.teaches = self.reads, self.teaches
         staged.return_neutered = self.return_neutered
+        staged.selection = copy.deepcopy(self.selection)
+        staged.retention_claims = copy.deepcopy(self.retention_claims)
         return staged
 
     @classmethod
     def restore(cls, saved, birth_records):
-
+        legacy_fields = {
+            "schema",
+            "factory",
+            "units",
+            "feed",
+            "reader",
+            "port",
+            "clock",
+            "event",
+            "neutered",
+            "reads",
+            "teaches",
+        }
+        if type(saved) is dict and saved.get("schema") == "g9.posed.actor.v1":
+            _need(set(saved) == legacy_fields, "complete legacy actor carrier")
+            # Genuine v1 could never execute a final retention read.
+            saved = {
+                **saved,
+                "schema": "g9.posed.actor.v2",
+                "selection": None,
+                "retention_claims": {},
+            }
         _need(
             type(saved) is dict
-            and set(saved)
-            == {
-                "schema",
-                "factory",
-                "units",
-                "feed",
-                "reader",
-                "port",
-                "clock",
-                "event",
-                "neutered",
-                "reads",
-                "teaches",
-            }
-            and saved["schema"] == "g9.posed.actor.v1",
+            and set(saved) == legacy_fields | {"selection", "retention_claims"}
+            and saved["schema"] == "g9.posed.actor.v2",
             "complete actor carrier",
         )
         staged = cls(saved["factory"], birth_records)
@@ -848,6 +1079,33 @@ class PosedActor:
         )
         staged.return_neutered = saved["neutered"]
         staged.reads, staged.teaches = saved["reads"], saved["teaches"]
+        selection, claims = saved["selection"], saved["retention_claims"]
+        _need(
+            type(claims) is dict
+            and all(type(k) is str and type(v) is str and v for k, v in claims.items()),
+            "retention claim carrier",
+        )
+        if selection is None:
+            _need(not claims, "claims without a frozen selection")
+        else:
+            _need(
+                type(selection) is dict
+                and set(selection)
+                == {"selection_id", "scope", "winner", "model_digest", "retention"}
+                and type(selection["selection_id"]) is str
+                and selection["selection_id"],
+                "complete frozen selection carrier",
+            )
+            posed_source(
+                {
+                    "op": "freeze_selection",
+                    "problem_id": staged.factory["problem_id"],
+                    **{k: v for k, v in selection.items() if k != "selection_id"},
+                }
+            )
+            _need(set(claims) <= set(selection["retention"]), "claim for unregistered old task")
+            _need(selection["winner"] == [True] * len(staged.units), "no-prune winner carrier")
+        staged.selection, staged.retention_claims = copy.deepcopy(selection), copy.deepcopy(claims)
         return staged
 
 
@@ -858,13 +1116,16 @@ def actor_context(actor):
         if actor.port is None
         else actor.port.context(actor.units, actor.clock, neutered=actor.return_neutered)
     )
-    return {
+    context = {
         "problem_id": actor.factory["problem_id"],
         "units": unit_rows(actor.units),
         "afferents": [[uid, [[t, w] for t, w in aff[uid]]] for uid in sorted(aff)],
         "t_post_g": actor.factory["t_post_g"],
         "out_eligible": copy.deepcopy(actor.factory["out_eligible"]),
     }
+    if actor.factory.get("engine_binding", {}).get("cycle", {}).get("core_plasticity") == "frozen":
+        context["core_eligible"] = [False] * len(actor.reader.learner.responses)
+    return context
 
 
 def sync_actor_context(ixn, actors):
@@ -896,13 +1157,21 @@ def _chat_context(ixn):
     from snn_data_lake.readout import _IXN_INTENTS
 
     c = ixn._g9_context
+    fields = {"problem_id", "units", "afferents", "t_post_g", "out_eligible"}
     _need(
         type(c) is dict
-        and set(c) == {"problem_id", "units", "afferents", "t_post_g", "out_eligible"}
+        and set(c) in (fields, fields | {"core_eligible"})
         and ixn.n_in == 52
         and tuple(ixn.responses) == _IXN_INTENTS,
         "typed Brain chat52/grown return context",
     )
+    if "core_eligible" in c:
+        _need(
+            type(c["core_eligible"]) is list
+            and len(c["core_eligible"]) == len(ixn.responses)
+            and all(type(v) is bool for v in c["core_eligible"]),
+            "all actual core circuits",
+        )
     units = units_from_rows(c["units"], len(ixn.responses))
     ids = [u.unit_id for u in units]
     pairs = c["afferents"]

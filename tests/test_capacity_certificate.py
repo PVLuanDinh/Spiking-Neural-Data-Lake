@@ -7,6 +7,9 @@ the exact check). Fixtures are the learner's own `text_features` on hand-built t
 of G2's module) at fixture seed 9900; nothing here builds a Brain or touches a lake.
 """
 
+import copy
+import threading
+from dataclasses import replace
 from fractions import Fraction
 
 import pytest
@@ -16,6 +19,7 @@ pytest.importorskip("scipy")
 from snn_data_lake.growth.capacity_certificate import (  # noqa: E402
     check_farkas,
     contradiction_count,
+    current_keys,
     diagnose,
     farkas_witness,
     item_ranks,
@@ -233,3 +237,128 @@ def test_diagnose_counts_contradictions_on_the_full_code():
     unit = _two_synapse_unit(learner)
     d = diagnose(learner, ["sun sky", "sun sky"], ["GREET", "GOAL"], units=(unit,))
     assert d.kind == "DATA" and d.k == 2
+
+
+def _actual_learner():
+    from snn_data_lake.readout import _IXN_INTENTS
+
+    return SpikingInteractionLearner(list(_IXN_INTENTS), n_in=52, seed=SEED, t_post=6)
+
+
+def _actual_context(learner, units=(), *, afferents=None, eligible=True):
+    """Constructed real-port fixture, not an admission or learned Engine result."""
+    from snn_data_lake.readout.posed_problem import unit_rows
+
+    learner._g9_context = {
+        "problem_id": "ii.xor",
+        "units": unit_rows(units),
+        "afferents": [[u.unit_id, list((afferents or {}).get(u.unit_id, ()))] for u in units],
+        "t_post_g": 15.0,
+        "out_eligible": [[eligible] * len(learner.responses) for _ in units],
+    }
+    return learner
+
+
+def test_actual_context_starts_with_the_same_empty_port_capacity_certificate():
+    learner = _actual_context(_actual_learner())
+    assert diagnose(learner, TEXTS, XOR, actual_context=True).kind == "CAPACITY"
+    assert diagnose(learner, TEXTS, TWIN, actual_context=True).kind == "SEPARABLE"
+
+
+@pytest.mark.parametrize("sign", [1, -1])
+def test_actual_grown_separator_is_verified_by_real_reader_and_preserves_parent(sign):
+    learner = _actual_learner()
+    unit = replace(_two_synapse_unit(learner), sign=sign)
+    _actual_context(learner, (unit,))
+    before = learner._snapshot()
+    result = diagnose(learner, TEXTS, XOR, units=(unit,), actual_context=True)
+    assert result.kind == "SEPARABLE"
+    assert result.separator.reads == XOR
+    assert learner._snapshot() == before
+    assert len(result.separator.grown_outputs) == 1
+    row = result.separator.grown_outputs[0]
+    assert row["unit_id"] == unit.unit_id and all(sign * w >= 0 for w in row["out"])
+    probe = copy.deepcopy(learner)
+    for neuron, weights in zip(probe.neurons, result.separator.weights, strict=True):
+        neuron.w = weights
+    probe._g9_context["units"][0]["out"] = list(row["out"])
+    assert [probe.route_text(t) for t in TEXTS] == XOR
+
+
+def test_actual_context_refuses_absent_or_mismatched_port():
+    learner = _actual_learner()
+    with pytest.raises(ValueError, match="bound grown/return reader"):
+        diagnose(learner, TEXTS, XOR, actual_context=True)
+    unit = _two_synapse_unit(learner)
+    _actual_context(learner, (unit,))
+    with pytest.raises(ValueError, match="differ from the actual"):
+        diagnose(learner, TEXTS, XOR, units=(replace(unit, threshold=1.7),), actual_context=True)
+
+
+def test_actual_context_uses_return_arrivals_in_keys_and_witness():
+    learner = _actual_learner()
+    unit = _two_synapse_unit(learner)
+    _actual_context(learner, (unit,))
+    bare = current_keys(learner, TEXTS, actual_context=True)
+    assert diagnose(learner, TEXTS, XOR, actual_context=True).kind == "SEPARABLE"
+    # A strong uniform actual arrival makes the unit cross at t=1 for every item;
+    # the nonlinear discriminating feature is gone, so the exact witness fires again.
+    _actual_context(learner, (unit,), afferents={unit.unit_id: [[0.0, 10.0]]})
+    fed = current_keys(learner, TEXTS, actual_context=True)
+    assert fed != bare
+    assert {keys[-1][-1] for keys in fed} == {1}
+    assert diagnose(learner, TEXTS, XOR, actual_context=True).kind == "CAPACITY"
+
+
+def test_actual_separator_cannot_change_ineligible_grown_output_weights():
+    learner = _actual_learner()
+    unit = _two_synapse_unit(learner)
+    _actual_context(learner, (unit,), eligible=False)
+    before = learner._snapshot()
+    assert separating_witness(learner, TEXTS, XOR, actual_context=True) is None
+    result = diagnose(learner, TEXTS, XOR, actual_context=True)
+    assert result.kind == "UNRESOLVED"
+    assert learner._snapshot() == before
+
+
+def test_actual_inactive_or_nonspiking_unit_does_not_fake_separability():
+    learner = _actual_learner()
+    unit = _two_synapse_unit(learner)
+    for absent in (replace(unit, active=False), replace(unit, threshold=1e6)):
+        _actual_context(learner, (absent,))
+        assert diagnose(learner, TEXTS, XOR, actual_context=True).kind == "CAPACITY"
+
+
+def test_actual_witness_does_not_clone_or_invoke_bound_writer_callbacks():
+    class Owner:
+        def __init__(self):
+            self.lock = threading.RLock()
+            self.calls = 0
+
+        def write(self, *args, **kwargs):
+            self.calls += 1
+            raise AssertionError("a diagnostic called its external writer")
+
+    owner = Owner()
+    learner = _actual_learner()
+    _actual_context(learner, (_two_synapse_unit(learner),))
+    learner.event_sink = owner.write
+    learner.teach_sink = owner.write
+    before = learner._snapshot()
+    assert diagnose(learner, TEXTS, XOR, actual_context=True).kind == "SEPARABLE"
+    assert learner.event_sink.__self__ is owner and learner.teach_sink.__self__ is owner
+    assert owner.calls == 0 and learner._snapshot() == before
+
+
+def test_actual_separator_cannot_rewrite_a_protected_shared_core():
+    learner = _actual_learner()
+    _actual_context(learner, (_two_synapse_unit(learner),), eligible=False)
+    assert [learner.route_text(t) for t in TEXTS] != TWIN
+    # Positive control: the same frozen input code admits a real separator when
+    # its base weights may move. This is a diagnostic, not a learned solution.
+    assert separating_witness(learner, TEXTS, TWIN, actual_context=True) is not None
+    learner._g9_context["core_eligible"] = [False] * len(learner.responses)
+    before = learner._snapshot()
+    assert separating_witness(learner, TEXTS, TWIN, actual_context=True) is None
+    assert diagnose(learner, TEXTS, TWIN, actual_context=True).kind == "UNRESOLVED"
+    assert learner._snapshot() == before

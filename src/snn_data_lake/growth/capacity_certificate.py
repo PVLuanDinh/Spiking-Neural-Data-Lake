@@ -28,6 +28,10 @@ import numpy as np
 from snn_data_lake.readout.interaction_learning import text_features
 
 GRADIENT_CLAIM = {
+    "_witness_learner": (
+        "NOT_A_RULE",
+        "Detaches writer callbacks and restores an independent diagnostic clone; it neither teaches nor fits a live weight.",
+    ),
     "_constraints": (
         "NOT_A_RULE",
         "lists the multiclass constraint index pairs (item, competitor label) in a fixed order for the "
@@ -172,6 +176,29 @@ def farkas_witness(keys_list, labels, n_labels):
 class Separator:
     weights: list  # one row per label neuron, n_in floats
     reads: list  # route_text of each item through a learner carrying `weights`
+    grown_outputs: list = field(
+        default_factory=list
+    )  # actual unit_id/out rows, never input changes
+
+
+def _actual_port(learner, units, actual_context):
+    """Validate the incumbent port; an unbound mathematical segment is not a real reader.
+
+    The Brain caller owns its state lock. Copy the primitive context so a witness is
+    about one actual return/eligibility boundary, not a newly drawn return state.
+    """
+    if type(actual_context) is not bool:
+        raise ValueError("actual_context must be a bool")
+    if not actual_context:
+        return None
+    from snn_data_lake.readout.posed_problem import _chat_context
+
+    if getattr(learner, "_g9_context", None) is None:
+        raise ValueError("actual_context requires the bound grown/return reader")
+    context, actual_units, afferents = _chat_context(learner)
+    if units and tuple(units) != actual_units:
+        raise ValueError("explicit units differ from the actual grown/return reader")
+    return copy.deepcopy(context), actual_units, afferents
 
 
 def _psp_rows(learner, texts):
@@ -180,13 +207,45 @@ def _psp_rows(learner, texts):
     ]
 
 
-def separating_witness(learner, texts, labels, margin=1.0):
+def _witness_learner(learner):
+    """Clone learned state without following the incumbent's external writer wiring.
+
+    These two callbacks are explicitly excluded by the interaction learner's
+    codec. A bound Brain callback owns an RLock and must never be deep-copied or
+    invoked by a diagnostic witness. The incumbent snapshot restores all neural,
+    RNG and lake-derived cache state on the detached exact-class copy.
+    """
+    snapshot = learner._snapshot()
+    memo = {
+        id(callback): None
+        for name in ("event_sink", "teach_sink")
+        if (callback := getattr(learner, name, None)) is not None
+    }
+    probe = copy.deepcopy(learner, memo)
+    probe._restore_snapshot(snapshot)
+    return probe
+
+
+def separating_witness(learner, texts, labels, margin=1.0, *, actual_context=False):
     """A weight setting that reads every item right through the REAL float `route_text` (G2's witness
     pattern), or None. Found by the Kesler LP on the PSP code; accepted only on the real reader's reads.
     The caller's learner is never modified (a deep copy carries the weights)."""
     from scipy.optimize import linprog
 
+    port = _actual_port(learner, (), actual_context)
     phis = np.array(_psp_rows(learner, texts))
+    frozen_width = phis.shape[1]
+    if port is not None:
+        from snn_data_lake.growth.grown_code import segment_psp
+
+        context, units, afferents = port
+        grown = np.array(
+            [
+                segment_psp(units, ranks, learner.tau, context["t_post_g"], afferents=afferents)
+                for ranks in item_ranks(learner, texts)
+            ]
+        )
+        phis = np.concatenate((phis, grown), axis=1)
     n_lab, d = len(learner.responses), phis.shape[1]
     ys = [learner.responses.index(lab) for lab in labels]
     rows = []
@@ -197,23 +256,63 @@ def separating_witness(learner, texts, labels, margin=1.0):
                 row[y * d : (y + 1) * d] -= phi
                 row[c * d : (c + 1) * d] += phi
                 rows.append(row)
+    bounds = [(None, None)] * (n_lab * d)
+    if port is not None:
+        for li in range(n_lab):
+            if not context.get("core_eligible", [True] * n_lab)[li]:
+                for j, value in enumerate(learner.neurons[li].w):
+                    bounds[li * d + j] = (value, value)
+            for j, unit in enumerate(units):
+                if not context["out_eligible"][j][li]:
+                    bound = (unit.out[li], unit.out[li])
+                else:
+                    bound = (0.0, None) if unit.sign > 0 else (None, 0.0)
+                bounds[li * d + frozen_width + j] = bound
     res = linprog(
         np.zeros(n_lab * d),
         A_ub=np.array(rows),
         b_ub=np.full(len(rows), -margin),
-        bounds=(None, None),
+        bounds=bounds,
         method="highs",
     )
     if res.status != 0:
         return None
     w = res.x.reshape(n_lab, d)
-    probe = copy.deepcopy(learner)
+    if port is not None:
+        for li in range(n_lab):
+            if not context.get("core_eligible", [True] * n_lab)[li]:
+                w[li, :frozen_width] = learner.neurons[li].w
+    probe = _witness_learner(learner)
     for li, neuron in enumerate(probe.neurons):
-        neuron.w = [float(v) for v in w[li]]
+        neuron.w = [float(v) for v in w[li, :frozen_width]]
+    grown_outputs = []
+    if port is not None:
+        from dataclasses import replace
+
+        from snn_data_lake.growth.grown_code import clip_to_sign
+        from snn_data_lake.readout.posed_problem import unit_rows
+
+        installed = []
+        for j, unit in enumerate(units):
+            out = tuple(
+                clip_to_sign(
+                    [
+                        float(w[li, frozen_width + j])
+                        if context["out_eligible"][j][li]
+                        else unit.out[li]
+                        for li in range(n_lab)
+                    ],
+                    unit.sign,
+                    unit.unit_id,
+                )
+            )
+            installed.append(replace(unit, out=out))
+            grown_outputs.append({"unit_id": unit.unit_id, "out": list(out)})
+        probe._g9_context["units"] = unit_rows(installed)
     reads = [probe.route_text(t) for t in texts]
     if reads != list(labels):
         return None
-    return Separator([list(map(float, r)) for r in w], reads)
+    return Separator([list(map(float, r[:frozen_width])) for r in w], reads, grown_outputs)
 
 
 @dataclass
@@ -226,29 +325,39 @@ class Diagnosis:
     log: dict = field(default_factory=dict)
 
 
-def current_keys(learner, texts, units=()):
+def current_keys(learner, texts, units=(), *, actual_context=False):
     """THE one accessor for the learner's FULL current code (cp1 #3): the frozen rank lift plus the
     grown segment's latency per unit (unit_id order). Contradiction counting, certification and the
     history pass all read it; nothing reads the frozen code alone."""
     from snn_data_lake.growth.grown_code import latencies
 
-    return [lift_keys(r, latencies(units, r, learner.tau)) for r in item_ranks(learner, texts)]
+    port = _actual_port(learner, units, actual_context)
+    afferents = None
+    if port is not None:
+        _, units, afferents = port
+    return [
+        lift_keys(r, latencies(units, r, learner.tau, afferents=afferents))
+        for r in item_ranks(learner, texts)
+    ]
 
 
-def diagnose(learner, texts, labels, history_texts=None, units=()):
+def diagnose(learner, texts, labels, history_texts=None, units=(), *, actual_context=False):
     """The three-way diagnosis on the learner's FULL current code (2.4): frozen code + grown segment.
     Labels are response names. The separator direction is read through the REAL `route_text`, which
     carries no grown segment until the port lands after R2's P1: with grown units present and no lift
     witness, the separator cannot be verified on the real reader, so the diagnosis is UNRESOLVED (no
     growth licensed) and the log says why -- never an exact-arithmetic shadow standing in for the reader."""
+    port = _actual_port(learner, units, actual_context)
+    if port is not None:
+        _, units, _ = port
     ys = [learner.responses.index(lab) for lab in labels]
     n_lab = len(learner.responses)
-    keys = current_keys(learner, texts, units)
+    keys = current_keys(learner, texts, units, actual_context=actual_context)
     k = contradiction_count(keys, ys)
     if k > 0:
         if history_texts is None:
             return Diagnosis("DATA", k, log={"history": "absent"})
-        hkeys = current_keys(learner, history_texts, units)
+        hkeys = current_keys(learner, history_texts, units, actual_context=actual_context)
         kh = contradiction_count(hkeys, ys)
         if kh > 0:
             return Diagnosis("DATA", k, kh)
@@ -257,16 +366,25 @@ def diagnose(learner, texts, labels, history_texts=None, units=()):
     w = farkas_witness(keys, ys, n_lab)
     if w is not None:
         return Diagnosis("CAPACITY", 0, witness=w, log={"path": w.path})
-    if units:
+    if units and not actual_context:
         return Diagnosis(
             "UNRESOLVED",
             0,
             log={"separator": "no grown-segment reader yet (the port lands after R2's P1)"},
         )
-    sep = separating_witness(learner, texts, labels)
+    sep = separating_witness(learner, texts, labels, actual_context=actual_context)
     if sep is not None:
-        return Diagnosis("SEPARABLE", 0, separator=sep)
-    return Diagnosis("UNRESOLVED", 0)
+        return Diagnosis(
+            "SEPARABLE",
+            0,
+            separator=sep,
+            log={"separator": "actual grown/return reader"} if actual_context else {},
+        )
+    return Diagnosis(
+        "UNRESOLVED",
+        0,
+        log={"separator": "no verified actual grown/return separator"} if actual_context else {},
+    )
 
 
 def main():

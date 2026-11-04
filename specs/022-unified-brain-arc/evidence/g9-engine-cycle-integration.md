@@ -115,9 +115,50 @@ Amendments are appended and dated; historical evidence and the SHD pilot remain 
 
 ## 3. Execution record
 
-Pending. Commands and raw diagnostics are recorded outside the repository under the local
-`planning/experiments/engine-integration` workspace directory. This section will distinguish
-implemented ports, passing engineering controls, measured behavior and remaining scientific debt.
+Bounded engineering acceptance04 passed on2026-11-04, using the actual isolated persisted
+`make_brain(9900)`, the common writer and real PartD/feed/return/canonical readout path.
+Raw commands, exact source overlays/hashes, frozen recipes, lake and result receipts are kept
+under the local `planning/experiments/engine-integration` workspace directory. The operator
+battery and a merge to main were not performed.
+
+| Measured event | Actual result |
+| --- | --- |
+| Acquire old Aii with enabled canonical stack and explicit corrective feedback | 22epochs,88teaching presentations,66base-stack deposits; stable10 |
+| Diagnose B and grow via the actual source/G7 writer | CAPACITY;1024candidate evaluations; one admitted18-unit batch, IDs0–17 |
+| Learn ii.xor with the learned core protected and grown outputs plastic | 107epochs,428teaching presentations; stable10 at epoch ends98–107;36nonzero grown-output weights |
+| Old/new validation and once-only future judgments | A16/16 and B16/16; frozen selection and both consumption claims journaled before final reads |
+| Protected core | Entire saved canonical neuron/stack state exactly equal to A's endpoint; zero B base-stack deposits |
+| Planted old-feature lesion | A0/16 while B's decisions unchanged; feasibility refused; full state restored |
+| Actual grown units silenced | B8/16; A16/16 |
+| Actual return conductances zeroed | B8/16 |
+| Actual feed conductances zeroed | B16/16; pool features change, L2difference32.68026927673638; no final-answer benefit established for feed |
+| Fresh-process checkpoint and full-journal recovery | Exact model digest, all actor carriers and A/B predictions; repeated final read refused; boot heldout reads forbidden |
+
+Each task contains FOUR unique constructed texts;16presentations are four repetitions in a
+frozen order. The future sets reorder the SAME items. These counts are not16independent examples
+or unseen-semantic generalization. This is one already exposed fixture, explicit task identity,
+corrective feedback, protected core and all-active/no-prune selection. It is not a SHD result,
+powered architecture comparison, entirely plastic-core solution or general recursive improvement.
+
+An independent reader rescored all129recorded epoch ends, all validation/final/intervention
+answers and the source accounting from raw receipts/lake bytes. It confirmed these results.
+The genuine all-plastic negative control acquired B but forgot A (0/16); final selection refused
+and no final set was consumed. That negative and the failed initialization/intrinsic/rehearsal
+controls remain in the record. One checkpoint-controller assertion failed only because it
+compared tuples with JSON lists; the exact serialized predictions matched, and the corrected
+comparison passed in a new process. No neural values were adjusted.
+
+Final focused checks:120growth/budget/certificate/codec/retention-set/PRE tests plus95Brain/
+posed/admission/eligibility/protocol/mask-search regressions passed. Five bounded module
+selfchecks passed; Ruff0.15.20 and targeted gradient-claim declaration checks passed. No new
+gradient algorithm or baseline relaxation was introduced. Final declaration-only additions
+are checked against acceptance source with exact AST equality after removing only the
+`GRADIENT_CLAIM` constants; numerical bodies are identical.
+
+Remaining debts: source-owned BETA for a later positive-spend task, broader problem families,
+uncued composition, learned-core plasticity without forgetting, competitive pruning/sleep
+claims, full-Engine SHD, independent-seed efficacy and the full operator battery. Their gates
+are not released by this integration result.
 
 ## 4. Engineering amendment: canonical stack blockers (2026-11-04)
 

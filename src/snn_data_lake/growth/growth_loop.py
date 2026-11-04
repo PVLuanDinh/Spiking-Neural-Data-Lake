@@ -239,8 +239,9 @@ class Ledger:
     def record_run(self, problem_id):
         self._write(problem_id, "run")
 
-    def record_attempt(self, problem_id, solved, epochs=None):
-        self._write(problem_id, "attempt", solved=bool(solved), epochs=epochs)
+    def record_attempt(self, problem_id, solved, epochs=None, *, exposure=None):
+        extra = {} if exposure is None else {"exposure": copy.deepcopy(exposure)}
+        self._write(problem_id, "attempt", solved=bool(solved), epochs=epochs, **extra)
 
     def set_state(self, problem_id, state, evidence=None):
         extra = {} if evidence is None else {"evidence": evidence}
@@ -464,6 +465,8 @@ class GrowthLoop:
     ):
         if isinstance(learner, CanonicalGrowthAdapter):
             CanonicalGrowthAdapter.require_ready(learner)
+            CanonicalGrowthAdapter.require_ready(learner, ledger=ledger)
+            CanonicalGrowthAdapter.check_loop_binding(learner, ledger, source, batch, epochs)
         self.learner, self.problem_id, self.ledger = learner, problem_id, ledger
         if isinstance(batch, bool) or not isinstance(batch, int) or batch <= 0:
             raise ValueError(f"batch must be a positive int, got {batch!r}")
@@ -535,6 +538,7 @@ class GrowthLoop:
             return False
         self._mark_run()
         self.ledger.record_spend(self.problem_id, len(units), evals=evals)
+        self._record_search()
         before = tuple(self.learner.segment)
         self.learner.admit(
             units, labels, ticket
@@ -568,11 +572,19 @@ class GrowthLoop:
         if evals:
             self._mark_run()
             self.ledger.record_spend(self.problem_id, 0, evals=evals)
+            self._record_search()
+
+    def _record_search(self):
+        if type(self.source) is CanonicalGrowthSource and hasattr(self.source, "last_receipt"):
+            self.ledger.record_event(self.source.last_receipt)
+            del self.source.last_receipt
 
     def _attempt(self):
         solved = bool(self.learner.attempt(self.epochs))
         self._mark_run()
-        self.ledger.record_attempt(self.problem_id, solved, self.epochs)
+        exposure = getattr(self.learner, "last_attempt", None)
+        actual = self.epochs if exposure is None else exposure["epochs"]
+        self.ledger.record_attempt(self.problem_id, solved, actual, exposure=exposure)
         if solved and self.solved_sink is not None:
             self.solved_sink(self.ledger.ledger(self.problem_id))
         return solved
@@ -626,6 +638,164 @@ class GrowthLoop:
         return self.ledger.ledger(self.problem_id)
 
 
+def _cycle_recipe(value):
+    """Explicit engineering recipe; no defaults, global calibration or learned values."""
+    import math
+
+    keys = {
+        "schema",
+        "batch_size",
+        "candidate_pool",
+        "input_sigma",
+        "threshold_min",
+        "threshold_max",
+        "window",
+        "t_post_g",
+        "trace_epochs",
+        "trace_eta",
+        "feed_norm",
+        "return_weight",
+        "return_delay",
+        "max_epochs",
+        "stable_epochs",
+        "selection",
+    }
+    optional = {"feedback_gate", "core_plasticity"}
+    if type(value) is not dict or not keys <= set(value) or set(value) - keys - optional:
+        raise LedgerError("G9_CYCLE_RECIPE: exact explicit recipe required")
+    v = copy.deepcopy(value)
+    if "feedback_gate" in v and v["feedback_gate"] != "corrective":
+        raise LedgerError("G9_CYCLE_RECIPE: unsupported explicit feedback gate")
+    if "core_plasticity" in v and v["core_plasticity"] != "frozen":
+        raise LedgerError("G9_CYCLE_RECIPE: unsupported explicit core eligibility")
+    if v["schema"] != "g9.engine.cycle.v1" or v["selection"] != "all-active/no-prune":
+        raise LedgerError("G9_CYCLE_RECIPE: unsupported cycle/selection")
+    for key in ("batch_size", "candidate_pool", "window", "max_epochs", "stable_epochs"):
+        if type(v[key]) is not int or v[key] <= 0:
+            raise LedgerError(f"G9_CYCLE_RECIPE: {key} must be a positive exact int")
+    for key in ("trace_epochs", "return_delay"):
+        if type(v[key]) is not int or v[key] < 0:
+            raise LedgerError(f"G9_CYCLE_RECIPE: {key} must be a nonnegative exact int")
+    for key in (
+        "input_sigma",
+        "threshold_min",
+        "threshold_max",
+        "t_post_g",
+        "trace_eta",
+        "feed_norm",
+        "return_weight",
+    ):
+        if type(v[key]) not in (int, float) or not math.isfinite(v[key]) or v[key] <= 0:
+            raise LedgerError(f"G9_CYCLE_RECIPE: {key} must be finite and positive")
+    from snn_data_lake.instruments import inseparable_mapping as im
+    from snn_data_lake.instruments import taught_problems as tp
+
+    if (
+        v["candidate_pool"] < v["batch_size"]
+        or v["threshold_min"] >= v["threshold_max"]
+        or v["t_post_g"] <= v["window"]
+        or v["max_epochs"] != im.TEACH_EPOCHS
+        or v["stable_epochs"] != tp.STABLE
+    ):
+        raise LedgerError("G9_CYCLE_RECIPE: candidate/time/stable-10 contract")
+    return v
+
+
+class CanonicalGrowthSource:
+    """Actual latency candidates, using the incumbent local fit and lifecycle selector.
+
+    A stream is derived from durable batch identity, so a fresh process draws the
+    same next pool. Search can return empty and pause; it never pads with dead
+    units. LP witnesses are diagnostics and never enter this learned state.
+    """
+
+    def __init__(self, adapter, ledger):
+        self.adapter, self.ledger = adapter, ledger
+
+    def __call__(self, count):
+        import random
+
+        import torch
+
+        from snn_data_lake.growth.candidate_lifecycle import Pool, contribution, select_block
+        from snn_data_lake.growth.grown_code import GrownUnit, segment_psp
+        from snn_data_lake.instruments import inseparable_mapping as im
+        from snn_data_lake.readout.posed_problem import chat_grown_drives
+
+        a, ledger = self.adapter, self.ledger
+        binding, actor = a._require_engine()
+        recipe = json.loads(binding["config"])["cycle"]
+        a.check_loop_binding(ledger, self, count, recipe["max_epochs"])
+        owner = binding["owner"]
+        with owner._r2_lock:
+            if actor.selection is not None:
+                raise LedgerError("G9_SELECTION_FROZEN: growth after selection")
+            owner._g9_publish_context(actor)
+            lo, hi = SEED_BLOCK
+            stream = lo + (a.seed - lo + ledger.next_batch_id()) % (hi - lo)
+            rng = random.Random(stream)
+            ranks = [im.ranks(text) for text in a._texts]
+            residual, items = [], []
+            for code, target in zip(ranks, a._labels, strict=True):
+                drives = [a.learner._drive(n, code) for n in a.learner.neurons]
+                grown = chat_grown_drives(a.learner, code)
+                p = label_probabilities([x + y for x, y in zip(drives, grown, strict=True)])
+                y = [float(label == target) for label in a.learner.responses]
+                residual.append([yc - pc for yc, pc in zip(y, p, strict=True)])
+                items.append((code, y, p))
+            candidates, scores = [], []
+            for i in range(recipe["candidate_pool"]):
+                row = tuple(rng.gauss(0.0, recipe["input_sigma"]) for _ in range(im.N_IN))
+                threshold = rng.uniform(recipe["threshold_min"], recipe["threshold_max"])
+                feedback_seed = lo + (stream - lo + i) % (hi - lo)
+                row = trace_train(
+                    row,
+                    threshold,
+                    recipe["window"],
+                    a.learner.tau,
+                    items,
+                    recipe["trace_eta"],
+                    recipe["trace_epochs"],
+                    feedback_seed,
+                )
+                u = GrownUnit(
+                    i, row, threshold, recipe["window"], 1, (0.0,) * len(a.learner.responses)
+                )
+                feature = [
+                    segment_psp((u,), code, a.learner.tau, recipe["t_post_g"])[0] for code in ranks
+                ]
+                candidates.append(u)
+                scores.append(contribution(feature, residual))
+            pool = Pool(
+                torch.tensor([u.w_in for u in candidates], dtype=torch.float64),
+                torch.tensor([u.threshold for u in candidates], dtype=torch.float64),
+                torch.tensor(scores, dtype=torch.float64),
+                torch.zeros(len(candidates), dtype=torch.bool),
+                torch.zeros(len(candidates), dtype=torch.bool),
+            )
+            chosen = select_block(pool, count, count, len(actor.units))
+            next_id = max(ledger.birth_records(), default=-1) + 1
+            selected = []
+            if len(chosen) == count:
+                for j, i in enumerate(chosen):
+                    c = candidates[i]
+                    unit_id = next_id + j
+                    sign = -1 if unit_id % 9 == 8 else 1
+                    selected.append(GrownUnit(unit_id, c.w_in, c.threshold, c.window, sign, c.out))
+            self.last_receipt = {
+                "kind": "engine_source",
+                "problem_id": a.problem.id,
+                "batch_id": ledger.next_batch_id(),
+                "stream_seed": stream,
+                "evaluations": len(candidates),
+                "selected_source_indices": chosen,
+                "selected_scores": [scores[i] for i in chosen],
+                "admitted_ids": [u.unit_id for u in selected],
+                "complete_batch": len(selected) == count,
+            }
+            return selected, len(candidates)
+
+
 class CanonicalGrowthAdapter:
     """Canonical diagnosis plus explicitly bound, same-writer posed operations.
 
@@ -663,10 +833,10 @@ class CanonicalGrowthAdapter:
             raise ValueError("canonical post time required")
         if tuple(learner.responses) != tuple(im._IXN_INTENTS):
             raise ValueError("canonical response order required")
-        if type(problem) is not tp.Problem or not (
-            problem is tp.PROBLEMS["ii.xor"] or problem is tp.PROBLEMS["ii.twin"]
+        if type(problem) is not tp.Problem or not any(
+            problem is tp.PROBLEMS[pid] for pid in ("ii.xor", "ii.twin", "aii")
         ):
-            raise ValueError("registered ii.xor/ii.twin problem required")
+            raise ValueError("registered ii.xor/ii.twin/aii problem required")
 
         reader = Reader(learner, history=False)
         epochs = list(problem.teach_epochs(seed, 1))
@@ -688,13 +858,141 @@ class CanonicalGrowthAdapter:
         self.last_diagnosis = None
 
     @classmethod
-    def for_brain(cls, owner, problem, *, factory, teach_schedule, projections):
+    def for_brain(cls, owner, problem, *, factory, teach_schedule, projections, cycle=None):
         """Bind the actual canonical owner, never a lookalike or a second learner."""
         adapter = cls(owner.brain._ixn, problem, seed=factory["seed"])
-        adapter.bind_engine(owner, factory, teach_schedule, projections)
+        adapter.bind_engine(owner, factory, teach_schedule, projections, cycle=cycle)
         return adapter
 
-    def bind_engine(self, owner, factory, teach_schedule, projections):
+    @classmethod
+    def prepare_cycle(cls, owner, problem, *, ledger, recipe):
+        """Build an explicit first-budget integration binding, or resume its frozen source.
+
+        These initialization values are experimental inputs, never measurements.
+        The existing Brain/actor and the immortal lake remain the only learned state.
+        """
+        import numpy as np
+
+        from snn_data_lake.growth.grown_code import GrownUnit
+        from snn_data_lake.growth.grown_feed import random_feed
+        from snn_data_lake.instruments import taught_problems as tp
+        from snn_data_lake.instruments.taught_problems import Turn
+        from snn_data_lake.readout.posed_problem import unpack_engine_binding
+        from snn_data_lake.substrate import home
+
+        recipe = _cycle_recipe(recipe)
+        if type(ledger) is not Ledger or ledger._path != Path(
+            os.path.realpath(home.knowledge_path())
+        ):
+            raise LedgerError("G9_CYCLE_LEDGER: actual isolated owner lake required")
+        if problem.id not in ("aii", "ii.xor"):
+            raise LedgerError("G9_CYCLE_PROBLEM: first integration supports aii/ii.xor only")
+        if recipe.get("core_plasticity") == "frozen" and problem.id != "ii.xor":
+            raise LedgerError("G9_CYCLE_CURRICULUM: protected core follows the learned aii task")
+        if problem.id in owner._g9_actors:
+            factory = copy.deepcopy(owner._g9_actors[problem.id].factory)
+            config = unpack_engine_binding(factory.get("engine_binding", {}))
+            if config.get("cycle") != recipe:
+                raise LedgerError("G9_ENGINE_CONFIG_DRIFT: restored cycle recipe differs")
+            schedule = tuple(
+                tuple(tuple(Turn(*t) for t in ep) for ep in epoch) for epoch in config["schedule"]
+            )
+            projections = config["projections"]
+        else:
+            expected_old = set() if problem.id == "aii" else {"aii"}
+            if set(owner._g9_actors) != expected_old or any(
+                pid not in ledger.problem_ids() or ledger.ledger(pid).state != "SOLVED"
+                for pid in expected_old
+            ):
+                raise LedgerError(
+                    "G9_CYCLE_CURRICULUM: learn aii before ii.xor in this integration"
+                )
+            if ledger.baseline() is not None:
+                # No implicit BETA or first-budget fallback for later sequences.
+                raise LedgerError(
+                    "G9_CYCLE_SEQUENCE: positive-spend sequence needs source-owned calibration"
+                )
+            if ledger.values.first != tp.FIRST_BUDGET:
+                raise LedgerError("G9_CYCLE_BUDGET: source-owned first budget required")
+            count = tp.FIRST_BUDGET
+            next_id = max(ledger.birth_records(), default=-1) + 1
+            future = [
+                GrownUnit(
+                    i,
+                    (0.0,) * 52,
+                    recipe["threshold_min"],
+                    recipe["window"],
+                    -1 if i % 9 == 8 else 1,
+                    (0.0,) * len(owner.brain._ixn.responses),
+                )
+                for i in range(next_id, next_id + count)
+            ]
+            columns = np.array([[u.sign * recipe["feed_norm"] / 16 for u in future]] * 256)
+            feed = random_feed(columns, future, owner.brain._ixn.seed)
+            projections = {
+                str(u.unit_id): {
+                    "feed": feed[:, j].tolist(),
+                    "return": [
+                        {
+                            "source": label,
+                            "sign": 1,
+                            "weight": recipe["return_weight"],
+                            "delay": recipe["return_delay"],
+                        }
+                        for label in owner.brain._ixn.responses
+                    ],
+                }
+                for j, u in enumerate(future)
+            }
+            reserved = (count // recipe["batch_size"] + A_MAX) * recipe["max_epochs"]
+            schedule = tuple(
+                tuple(tuple(ep) for ep in epoch)
+                for epoch in problem.teach_epochs(owner.brain._ixn.seed, reserved)
+            )
+            factory = {
+                "problem_id": problem.id,
+                "labels": list(owner.brain._ixn.responses),
+                "seed": owner.brain._ixn.seed,
+                "arm": "RSTDP_BRAIN",
+                "population_origin": "born",
+                "units": [],
+                "birth_rows": [],
+                "w_feed": [[] for _ in range(256)],
+                "t_post_g": float(recipe["t_post_g"]),
+                "source_signs": {label: 1 for label in owner.brain._ixn.responses},
+                "attachments": [],
+                "out_eligible": [],
+            }
+        adapter = cls.for_brain(
+            owner,
+            problem,
+            factory=factory,
+            teach_schedule=schedule,
+            projections=projections,
+            cycle=recipe,
+        )
+        adapter._cycle_ledger = ledger
+        adapter.source = CanonicalGrowthSource(adapter, ledger)
+        return adapter
+
+    def check_loop_binding(self, ledger, source, batch, epochs):
+        binding, _ = self._require_engine()
+        recipe = json.loads(binding["config"]).get("cycle")
+        if recipe is None:
+            raise LedgerError("G9_A_UNREADY: actual cycle source is unbound")
+        _cycle_recipe(recipe)
+        if (
+            getattr(self, "_cycle_ledger", None) is not ledger
+            or type(source) is not CanonicalGrowthSource
+            or source.adapter is not self
+            or source.ledger is not ledger
+            or getattr(self, "source", None) is not source
+            or batch != recipe["batch_size"]
+            or epochs != recipe["max_epochs"]
+        ):
+            raise LedgerError("G9_CYCLE_BINDING: exact source/ledger/batch/exposure required")
+
+    def bind_engine(self, owner, factory, teach_schedule, projections, *, cycle=None):
         """Freeze supplied schedules/routing in the existing typed factory carrier.
 
         No schedule or projection is generated here. Births remain G3/G7 rows
@@ -703,7 +1001,12 @@ class CanonicalGrowthAdapter:
         from snn_data_lake.engine.brain import Brain
         from snn_data_lake.instruments import taught_problems as tp
         from snn_data_lake.instruments.joint_mask_search import RetentionSets
-        from snn_data_lake.readout.posed_problem import _need, posed_source
+        from snn_data_lake.readout.posed_problem import (
+            _need,
+            pack_engine_binding,
+            posed_source,
+            unpack_engine_binding,
+        )
 
         _need(
             type(owner) is Brain and owner.brain._ixn is self.learner,
@@ -761,15 +1064,19 @@ class CanonicalGrowthAdapter:
             ],
             "projections": copy.deepcopy(projections),
         }
+        if cycle is not None:
+            config["cycle"] = _cycle_recipe(cycle)
         config_source = json.dumps(config, sort_keys=True, separators=(",", ":"), allow_nan=False)
         bound_factory = copy.deepcopy(factory)
         if "engine_binding" in bound_factory:
             _need(
-                bound_factory["engine_binding"] == config,
+                unpack_engine_binding(bound_factory["engine_binding"]) == config,
                 "G9_ENGINE_CONFIG_DRIFT: frozen binding differs",
             )
         else:
-            bound_factory["engine_binding"] = config
+            bound_factory["engine_binding"] = (
+                pack_engine_binding(config) if cycle is not None else config
+            )
         posed_source({"op": "bind", "problem_id": self.problem.id, "factory": bound_factory})
         with owner._r2_lock:
             _need(owner._r2_fault is None, "common all-learning latch is closed")
@@ -791,6 +1098,8 @@ class CanonicalGrowthAdapter:
                 "schedule": teach_schedule,
                 "config": config_source,
                 "sha256": hashlib.sha256(config_source.encode()).hexdigest(),
+                "carrier": copy.deepcopy(bound_factory["engine_binding"]),
+                "cycle": copy.deepcopy(cycle),
                 "retention": retention,
             }
 
@@ -804,8 +1113,10 @@ class CanonicalGrowthAdapter:
         if hashlib.sha256(binding["config"].encode()).hexdigest() != binding["sha256"]:
             raise LedgerError("G9_ENGINE_CONFIG_DRIFT: binding source changed")
         actor = owner._g9_actors[self.problem.id]
-        if actor.factory.get("engine_binding") != json.loads(binding["config"]):
+        if actor.factory.get("engine_binding") != binding["carrier"]:
             raise LedgerError("G9_ENGINE_CONFIG_DRIFT: actual actor binding changed")
+        if actor.factory["engine_binding"].get("cycle") != binding["cycle"]:
+            raise LedgerError("G9_ENGINE_CONFIG_DRIFT: active cycle recipe changed")
         return binding, actor
 
     def _retention_read(self, pid, episode):
@@ -815,30 +1126,36 @@ class CanonicalGrowthAdapter:
         snapshot rollback. Labels remain solely in this judging consumer.
         """
         binding, _ = self._require_engine()
-        actor = binding["owner"]._g9_actors[pid]
+        owner = binding["owner"]
+        actor = owner._g9_actors[pid]
+        cycle = binding["cycle"] is not None
         turns = []
         result = []
         for turn in episode:
             turns.append([turn.text, turn.role, None])
-            answer = actor._effect(
-                {
-                    "op": "read",
-                    "problem_id": pid,
-                    "turns": list(turns),
-                    "shifted_label": None,
-                    "neuron_mask": [True] * len(actor.reader.learner.neurons),
-                    "return_mask": [True] * (0 if actor.port is None else len(actor.port.rows)),
-                    "return_neutered": False,
-                },
-                event_id=f"g9.retention.off:{actor.reads}",
+            value = {
+                "op": "engine_read" if cycle else "read",
+                "problem_id": pid,
+                "turns": list(turns),
+                "shifted_label": None,
+                "neuron_mask": [True] * len(actor.reader.learner.neurons),
+                "return_mask": [True] * (0 if actor.port is None else len(actor.port.rows)),
+                "return_neutered": False,
+            }
+            event_id = f"g9.retention.off:{actor.reads}"
+            answer = (
+                owner._g9_engine_effect(self.learner, owner._g9_actors, value, event_id)
+                if cycle
+                else actor._effect(value, event_id=event_id)
             )
             if turn.role == "probe":
                 result.append((answer, turn.label))
         return tuple(result)
 
     def read_retention(self, problem_id, *, meter=None):
-        """A14 select reads only; the one-shot final read is refused until its consumption is durable."""
+        """Actual old skills, with complete rollback and durable final-read reservation."""
         binding, _ = self._require_engine()
+        cycle = binding["cycle"] is not None
         if meter is not None:
             from snn_data_lake.instruments.joint_mask_search import Meter, SelectionLeak
 
@@ -848,14 +1165,18 @@ class CanonicalGrowthAdapter:
             # rebind or restart recreates; no durable record of consumption (keyed to the
             # frozen experiment/winner and old task) exists in the carrier/journal yet.
             # Until it does, the untouched final judgment is not callable from a Brain.
-            raise LedgerError(
-                "G9_RETENTION_FINAL_UNRECORDED: durable consumption record not built; "
-                "the one-shot final read is refused on the Brain-bound adapter"
-            )
+            if not cycle:
+                raise LedgerError(
+                    "G9_RETENTION_FINAL_UNRECORDED: durable consumption record not built; "
+                    "the one-shot final read is refused on the Brain-bound adapter"
+                )
         with binding["owner"]._r2_lock:
             binding, _ = self._require_engine()
             actor = binding["owner"]._g9_actors[problem_id]
-            sets = binding["retention"][problem_id]
+            if problem_id == self.problem.id and cycle:
+                sets = binding.setdefault("current_sets", self._current_sets())
+            else:
+                sets = binding["retention"][problem_id]
             owner = binding["owner"]
 
             def closing(fn):
@@ -872,17 +1193,102 @@ class CanonicalGrowthAdapter:
                 return run
 
             args = {
-                "snapshot": closing(actor.snapshot),
-                "restore": closing(actor.rollback),
+                "snapshot": closing(owner._g9_snapshot if cycle else actor.snapshot),
+                "restore": closing(owner._g9_restore if cycle else actor.rollback),
                 "read_off": lambda episode: self._retention_read(problem_id, episode),
             }
+            if meter is not None:
+                owner.claim_retention(self.problem.id, problem_id, meter=meter)
+                return sets.read_final(meter, **args)
             return sets.read_select(**args)
+
+    def _current_sets(self):
+        from snn_data_lake.instruments.joint_mask_search import RetentionSets
+
+        return RetentionSets.for_problem(self.problem, self.seed)
+
+    @staticmethod
+    def _correct(reads):
+        return all(answer == target for episode in reads for answer, target in episode)
+
+    @property
+    def n(self):
+        return len(self.segment)
+
+    def _full_mask(self, mask):
+        if type(mask) is not tuple or len(mask) != self.n or any(b is not True for b in mask):
+            raise LedgerError(
+                "G9_CYCLE_SELECTION: only actual all-active/no-prune control is bound"
+            )
+
+    def cost(self, mask):
+        self._full_mask(mask)
+        _, actor = self._require_engine()
+        return (
+            self.n
+            + sum(len(u.w_in) + len(u.out) for u in actor.units)
+            + 256 * self.n
+            + len(actor.factory["attachments"])
+        )
+
+    def evaluate(self, mask):
+        """One learned-state feasibility read for the explicit no-prune integration control."""
+        self._full_mask(mask)
+        binding, _ = self._require_engine()
+        current = self.read_retention(self.problem.id)
+        old = [self.read_retention(pid) for pid in binding["retention"]]
+        feasible = self._correct(current) and all(self._correct(rows) for rows in old)
+        score = sum(a == b for episode in current for a, b in episode)
+        return feasible, score
+
+    def select_cycle(self):
+        from snn_data_lake.instruments.joint_mask_search import Meter
+
+        self.require_ready(ledger=self._cycle_ledger)
+        if self._cycle_ledger.ledger(self.problem.id).state != "SOLVED":
+            raise LedgerError("G9_CYCLE_INFEASIBLE: stable acquisition has not been recorded")
+        binding, actor = self._require_engine()
+        meter = Meter(self, budget=1)
+        if actor.selection is not None:
+            meter.freeze(tuple(actor.selection["winner"]))
+            self._cycle_meter = meter
+            return meter, copy.deepcopy(actor.selection)
+        full = tuple([True] * self.n)
+        feasible, _ = meter.evaluate(full)
+        if not feasible:
+            raise LedgerError("G9_CYCLE_INFEASIBLE: current solve/old-skill retention failed")
+        meter.freeze(full)
+        receipt = binding["owner"].freeze_selection(self.problem.id, meter=meter)
+        self._cycle_meter = meter
+        return meter, receipt
+
+    def judge(self, mask):
+        self._full_mask(mask)
+        meter = getattr(self, "_cycle_meter", None)
+        if meter is None or meter.p is not self or meter.winner != mask:
+            raise LedgerError("G9_CYCLE_SELECTION: actual frozen deciding meter required")
+        binding, _ = self._require_engine()
+        current = self.read_retention(self.problem.id, meter=meter)
+        old = {pid: self.read_retention(pid, meter=meter) for pid in binding["retention"]}
+        self.final_reads = {self.problem.id: current, **old}
+        return self._correct(current), all(self._correct(rows) for rows in old.values())
 
     def diagnose(self):
         from snn_data_lake.growth import capacity_certificate
 
+        actual = hasattr(self, "_engine_binding") and "cycle" in json.loads(
+            self._engine_binding["config"]
+        )
+        if actual:
+            binding, actor = self._require_engine()
+            binding["owner"]._g9_publish_context(actor)
         self.last_diagnosis = capacity_certificate.diagnose(
-            self.learner, self._texts, self._labels, history_texts=None, units=()
+            self.learner,
+            self._texts,
+            self._labels,
+            history_texts=None,
+            units=self.segment if actual else (),
+            **({"actual_context": True} if actual else {}),
         )
         return self.last_diagnosis.kind
 
@@ -907,6 +1313,8 @@ class CanonicalGrowthAdapter:
                 "weights": [list(row) for row in diagnosis.separator.weights],
                 "reads": list(diagnosis.separator.reads),
             }
+            if hasattr(diagnosis.separator, "grown_outputs"):
+                separator["grown_outputs"] = copy.deepcopy(diagnosis.separator.grown_outputs)
         return {
             "kind": diagnosis.kind,
             "k": diagnosis.k,
@@ -914,8 +1322,10 @@ class CanonicalGrowthAdapter:
             "log": copy.deepcopy(diagnosis.log),
             "witness": witness,
             "separator": separator,
-            "scope": "canonical-frozen-code-only",
-            "missing": list(CanonicalGrowthAdapter._MISSING),
+            "scope": "canonical-actual-context"
+            if hasattr(self, "source")
+            else "canonical-frozen-code-only",
+            "missing": list(self.readiness()),
         }
 
     def readiness(self, *, ledger=None, sequence=False):
@@ -940,13 +1350,34 @@ class CanonicalGrowthAdapter:
                 "G6 deciding mask/progress carrier",
                 "retention final read (G9_RETENTION_FINAL_UNRECORDED) until durable consumption exists",
             )
+            if (
+                "cycle" in json.loads(self._engine_binding["config"])
+                and type(getattr(self, "source", None)) is CanonicalGrowthSource
+                and getattr(self, "_cycle_ledger", None) is self.source.ledger
+            ):
+                self.check_loop_binding(
+                    self._cycle_ledger,
+                    self.source,
+                    json.loads(self._engine_binding["config"])["cycle"]["batch_size"],
+                    json.loads(self._engine_binding["config"])["cycle"]["max_epochs"],
+                )
+                missing = ()
+                # Continuing/judging an already granted budget is not opening
+                # another positive-spend sequence problem.
+                if (
+                    not sequence
+                    and ledger is self._cycle_ledger
+                    and self.problem.id in ledger.problem_ids()
+                ):
+                    needs_beta = False
         if needs_beta and beta is None:
             missing += ("source-owned BETA baseline",)
         return missing
 
     def require_ready(self, *, ledger=None, sequence=False):
         missing = CanonicalGrowthAdapter.readiness(self, ledger=ledger, sequence=sequence)
-        raise LedgerError("G9_A_UNREADY: " + ", ".join(missing))
+        if missing:
+            raise LedgerError("G9_A_UNREADY: " + ", ".join(missing))
 
     @property
     def segment(self):
@@ -1008,6 +1439,8 @@ class CanonicalGrowthAdapter:
         from snn_data_lake.instruments import taught_problems as tp
 
         binding, actor = self._require_engine()
+        if "cycle" in json.loads(binding["config"]):
+            return self._cycle_attempt(epochs)
         with binding["owner"]._r2_lock:
             binding, actor = self._require_engine()
             if type(epochs) is not int or epochs <= 0:
@@ -1042,6 +1475,152 @@ class CanonicalGrowthAdapter:
                 ),
             )
             return tp.solved(self.problem, self.seed, "validation", reads)
+
+    def _cycle_attempt(self, epochs):
+        """E=400 maximum, stable-10 at epoch ends, with durable actual exposure."""
+        from snn_data_lake.instruments import taught_problems as tp
+
+        binding, actor = self._require_engine()
+        recipe = json.loads(binding["config"])["cycle"]
+        if type(epochs) is not int or epochs != recipe["max_epochs"]:
+            raise LedgerError("G9_CYCLE_EXPOSURE: registered maximum epoch count required")
+        ledger, owner = self._cycle_ledger, binding["owner"]
+        with owner._r2_lock:
+            if actor.selection is not None:
+                raise LedgerError("G9_SELECTION_FROZEN: teaching after selection")
+            events = [r for r in ledger.events() if r.get("problem_id") == self.problem.id]
+            starts = [r for r in events if r.get("kind") == "engine_attempt_start"]
+            finishes = {r["attempt_id"]: r for r in events if r.get("kind") == "engine_attempt_end"}
+            recorded = {
+                r.get("exposure", {}).get("attempt_id")
+                for r in ledger._problem_rows(self.problem.id)
+                if r.get("op") == "attempt"
+            }
+            pending = starts[-1] if starts and starts[-1]["attempt_id"] not in recorded else None
+            if pending is None:
+                pending = {
+                    "kind": "engine_attempt_start",
+                    "problem_id": self.problem.id,
+                    "attempt_id": len(starts),
+                    "teaches": actor.teaches,
+                    "max_epochs": epochs,
+                    "shared_deposits_before": self.learner.stack._global_t,
+                }
+                ledger.record_event(pending)
+            attempt_id = pending["attempt_id"]
+            schedule = binding["schedule"]
+            size = len(schedule[0])
+            if any(len(epoch) != size for epoch in schedule):
+                raise LedgerError("G9_CYCLE_SCHEDULE: constant registered epoch width required")
+            if pending["teaches"] % size:
+                raise LedgerError("G9_CYCLE_CURSOR: new attempt must start at an epoch boundary")
+            start_epoch = pending["teaches"] // size
+            history = [
+                r
+                for r in events
+                if r.get("kind") == "engine_epoch" and r["attempt_id"] == attempt_id
+            ]
+            stable = 0
+            expected_targets = [
+                ep[-1].label for ep in self.problem.episodes(self.seed, "validation")
+            ]
+            for j, row in enumerate(history, 1):
+                flat = row["reads"]
+                if (
+                    row["teaches"] != pending["teaches"] + j * size
+                    or row["epoch"] != start_epoch + j
+                    or row["teaches"] > actor.teaches
+                    or [pair[1] for pair in flat] != expected_targets
+                    or row["correct"] != sum(a == b for a, b in flat)
+                    or row["presentations"] != len(flat)
+                ):
+                    raise LedgerError("G9_CYCLE_HISTORY: missing or inconsistent actual epoch")
+                solved = tp.solved(self.problem, self.seed, "validation", flat)
+                stable = stable + 1 if solved else 0
+                if row["stable_run"] != stable:
+                    raise LedgerError(
+                        "G9_CYCLE_HISTORY: stability does not match the recorded reads"
+                    )
+            if len(history) > epochs:
+                raise LedgerError("G9_CYCLE_HISTORY: attempt exceeds its registered exposure")
+            if attempt_id in finishes:
+                self.last_attempt = copy.deepcopy(finishes[attempt_id]["exposure"])
+                if (
+                    self.last_attempt["teaches_after"] != actor.teaches
+                    or self.last_attempt["epochs"] != len(history)
+                    or self.last_attempt["stable_run"] != stable
+                    or bool(finishes[attempt_id]["solved"]) != (stable >= recipe["stable_epochs"])
+                ):
+                    raise LedgerError(
+                        "G9_CYCLE_HISTORY: completed attempt differs from the actual cursor"
+                    )
+                return bool(finishes[attempt_id]["solved"])
+            while True:
+                completed, offset = divmod(actor.teaches, size)
+                # A crash after the last teach but before its validation must
+                # finish that same epoch, before any new teaching is allowed.
+                if (
+                    completed > start_epoch
+                    and offset == 0
+                    and (not history or history[-1]["teaches"] != actor.teaches)
+                ):
+                    reads = self.read_retention(self.problem.id)
+                    flat = [pair for episode in reads for pair in episode]
+                    solved = tp.solved(self.problem, self.seed, "validation", flat)
+                    stable = stable + 1 if solved else 0
+                    row = {
+                        "kind": "engine_epoch",
+                        "problem_id": self.problem.id,
+                        "attempt_id": attempt_id,
+                        "epoch": completed,
+                        "teaches": actor.teaches,
+                        "correct": sum(a == b for a, b in flat),
+                        "presentations": len(flat),
+                        "stable_run": stable,
+                        "shared_deposits": self.learner.stack._global_t,
+                        "reads": [list(pair) for pair in flat],
+                    }
+                    ledger.record_event(row)
+                    history.append(row)
+                if stable >= recipe["stable_epochs"] or completed - start_epoch >= epochs:
+                    break
+                if completed >= len(schedule):
+                    raise LedgerError(
+                        "attempt would redraw or exceed its pre-frozen teaching schedule"
+                    )
+                for episode in schedule[completed][offset:]:
+                    owner.learn_engine_episode(
+                        self.problem.id,
+                        episode,
+                        neuron_mask=[True] * len(actor.reader.learner.neurons),
+                        return_mask=[True] * (0 if actor.port is None else len(actor.port.rows)),
+                        return_neutered=False,
+                    )
+            self.last_attempt = {
+                "attempt_id": attempt_id,
+                "epochs": actor.teaches // size - start_epoch,
+                "teach_episodes": actor.teaches - pending["teaches"],
+                "teaches_before": pending["teaches"],
+                "teaches_after": actor.teaches,
+                "validation_presentations": sum(r["presentations"] for r in history),
+                "stable_run": stable,
+                "shared_plasticity_deposits": (
+                    self.learner.stack._global_t - pending["shared_deposits_before"]
+                    if "shared_deposits_before" in pending
+                    else None
+                ),
+            }
+            success = stable >= recipe["stable_epochs"]
+            ledger.record_event(
+                {
+                    "kind": "engine_attempt_end",
+                    "problem_id": self.problem.id,
+                    "attempt_id": attempt_id,
+                    "solved": success,
+                    "exposure": self.last_attempt,
+                }
+            )
+            return success
 
 
 def main():
