@@ -2341,7 +2341,7 @@ def main():
             BinLog(race_path).append(pack_fact({"cue": ["seed"], "answer": "seed"}))
             _log(race_path)  # prime the cache...
             BinLog(race_path).append(pack_fact({"cue": ["ext"], "answer": "ext"}))  # ...go stale
-            assert _LOG_CACHE[(race_path, True)].stale(), (
+            assert _LOG_CACHE[(os.path.normcase(_resolve(race_path)), True)].stale(), (
                 "precondition: the cached instance must be stale, or this probe proves nothing"
             )
             victim = _T_FACT + pack_fact({"cue": ["race"], "answer": "written exactly once"})
