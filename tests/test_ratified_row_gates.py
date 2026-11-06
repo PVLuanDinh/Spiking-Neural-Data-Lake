@@ -33,6 +33,46 @@ def test_the_capability_bar_catches_a_claim_without_its_measurement():
     )
 
 
+# BrainCog 02 (owner D-271): the reference side admits an external SYSTEM, which names how it
+# was trained.
+_LP = "a protocol long enough to be a protocol"
+_BP = "evidence/x.md, commit abc1234"
+_Q = '"train on 200 samples, test on the 10k test set"'
+
+
+def _sys_row(prov, verdict="below", brain=0.5):
+    return {"t": (_LP, 0.81, prov, brain, _BP, "2026-11-05", verdict)}
+
+
+def test_an_external_system_reference_must_name_its_training_method():
+    assert capability_bar.findings(_sys_row(f"cited: system=BrainCog STDP [95]; {_Q}"), {})
+    assert capability_bar.findings(
+        _sys_row(f"cited: system=BrainCog STDP [95]; trained by: magic; {_Q}"), {}
+    )
+    good = f"cited: system=BrainCog STDP [95]; trained by: local-rule; {_Q}"
+    assert capability_bar.findings(_sys_row(good), {}) == []  # the positive control
+
+
+def test_a_backprop_trained_reference_discloses_it_is_never_an_sndl_learning_path():
+    bptt = f"cited: system=BrainCog BPSTA [94]; trained by: BPTT-surrogate; {_Q}"
+    assert capability_bar.findings(_sys_row(bptt), {})
+    assert capability_bar.findings(_sys_row(bptt + "; never an SNDL learning path"), {}) == []
+
+
+def test_a_machine_comparison_verdict_needs_both_numbers():
+    good = f"cited: system=BrainCog STDP [95]; trained by: local-rule; {_Q}"
+    assert capability_bar.findings(_sys_row(good, verdict="beats BrainCog", brain=None), {})
+
+
+def test_a_machine_comparison_word_beside_a_refused_row_is_caught_on_a_surface():
+    good = f"cited: system=BrainCog STDP [95]; trained by: local-rule; {_Q}"
+    refused = {"widget": (_LP, 0.81, good, None, "", "2026-11-05", "REFUSED: SNDL not measured")}
+    assert capability_bar.findings(refused, {}) == []
+    assert capability_bar.findings(
+        refused, {"README.md": "the brain beats BrainCog on the widget task"}
+    )
+
+
 #: The one row the registry carries today. Pinned here as a literal, never read from the module,
 #: so a renamed or dropped key is a red rather than a silently-agreeing tautology.
 C0_TASK = "everyday reasoning, 20 items (C0)"

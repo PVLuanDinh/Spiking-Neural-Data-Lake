@@ -13,6 +13,15 @@ obtained under a matching protocol is written with `human=None` and the REFUSED 
 word may be used for that task anywhere a reader can see, which is the honest form of "superhuman is not a claim
 this project may make on that task".
 
+THE REFERENCE MAY BE A SYSTEM (BrainCog 02, owner D-271 "Yes, generalize to reference", 2026-11-05). The `human`
+column is the REFERENCE side: a human measurement, or an external system's reported number. A system reference is
+written `cited: system=<name>; trained by: <method>; ... "<the protocol's own words>"`, the method one of METHODS; a
+backprop-trained one (BPTT-surrogate, ANN-conversion) must also say "never an SNDL learning path" (e-prop invariant):
+it is a yardstick, never a route. COMPARISON_WORDS carry the machine forms ("beats", "matches", ...). DISCLOSED
+BLIND SPOT: the gate tells a system from a human only by the `system=` token its author writes; a machine number
+entered as a plain `cited:` passes as a human reference and owes no method. Only review catches that (the
+GRADIENT_CLAIM shape); no detector is built.
+
 READ STATICALLY, like `GRADIENT_CLAIM`: the check parses this file's literal dict with `ast` and never imports it,
 so a registry that cannot be imported still cannot hide from its own check.
 
@@ -56,6 +65,12 @@ COMPARISON_WORDS = (
     "beats a human",
     "human-level",
     "outperforms a human",
+    # machine forms (BrainCog 02, owner D-271): a comparison to an external SYSTEM's reported number
+    "beats",
+    "outperforms",
+    "matches",
+    "on par with",
+    "state of the art",
 )
 
 #: Surfaces a reader sees. A comparison word beside a registry task name here needs a complete row.
@@ -71,8 +86,10 @@ TRACKED_SURFACES = (
 #: measured under, and no human number, so no capability claim has been earned by it either.
 #: Row shape: (protocol, human, human_provenance, brain, brain_provenance, date, verdict)
 #:   protocol           what was run, exactly, on both sides -- the same words for both, or it is not a comparison
-#:   human              the human number, or None when none could be obtained under a matching protocol
-#:   human_provenance   "measured here: <how, when>" or a cited source WITH the protocol's own words quoted
+#:   human              the REFERENCE number (a human's, or an external system's -- see the docstring), or None
+#:                      when none could be obtained under a matching protocol
+#:   human_provenance   "measured here: <how, when>" or a cited source WITH the protocol's own words quoted; a
+#:                      system adds "system=<name>; trained by: <method>"
 #:   brain              this brain's number, or None before it is measured
 #:   brain_provenance   the evidence file and commit the number came from
 #:   verdict            "REFUSED: ..." when human is None; else a comparison word or "below"
@@ -103,6 +120,13 @@ CAPABILITY_BAR: dict[str, tuple] = {
 }
 
 _MIN_PROV = 24  # a provenance shorter than this is a label, not a provenance (CHOSEN, disclosed)
+
+#: How an external system's reference number was trained (BrainCog 02, owner D-271). Closed list; `other(...)`
+#: names anything else in words.
+METHODS = ("BPTT-surrogate", "ANN-conversion", "local-rule", "RL", "other(<words>)")
+_METHOD_RE = re.compile(r"trained by: (BPTT-surrogate|ANN-conversion|local-rule|RL|other\([^)]+\))")
+_BACKPROP_RE = re.compile(r"trained by: (BPTT-surrogate|ANN-conversion)")
+_NOT_A_PATH = "never an SNDL learning path"
 _QUOTE = chr(34)
 
 
@@ -129,7 +153,7 @@ def findings(registry=None, surfaces=None) -> list[str]:
     for task, row in sorted(reg.items()):
         if not (isinstance(row, tuple) and len(row) == 7):
             out.append(
-                f"{task}: a row is (protocol, human, human_prov, brain, brain_prov, date, verdict)"
+                f"{task}: a row is (protocol, reference, reference_prov, brain, brain_prov, date, verdict)"
             )
             continue
         protocol, human, human_prov, brain, brain_prov, date, verdict = row
@@ -144,16 +168,31 @@ def findings(registry=None, surfaces=None) -> list[str]:
             )
             if not ok:
                 out.append(
-                    f"{task}: a human number whose provenance neither records a measurement here "
+                    f"{task}: a reference number whose provenance neither records a measurement here "
                     "nor quotes the cited protocol"
+                )
+            elif "system=" in human_prov and not _METHOD_RE.search(human_prov):
+                out.append(
+                    f"{task}: an external-system reference must name its training method "
+                    f"('trained by: <one of {', '.join(METHODS)}>')"
+                )
+            elif (
+                "system=" in human_prov
+                and _BACKPROP_RE.search(human_prov)
+                and _NOT_A_PATH not in human_prov
+            ):
+                out.append(
+                    f"{task}: a backprop-trained reference must say '{_NOT_A_PATH}' (e-prop invariant)"
                 )
         if not isinstance(verdict, str) or not verdict:
             out.append(f"{task}: no verdict")
             continue
         refused = verdict.startswith("REFUSED")
         if human is None and not refused:
-            out.append(f"{task}: no human number, so the only honest verdict is REFUSED: ...")
-        comparative = any(w in verdict.lower() for w in ("parity", "superhuman", "human"))
+            out.append(f"{task}: no reference number, so the only honest verdict is REFUSED: ...")
+        comparative = any(
+            w in verdict.lower() for w in ("parity", "superhuman", "human", *COMPARISON_WORDS)
+        )
         if not refused and comparative and (human is None or brain is None):
             out.append(f"{task}: a comparison verdict with a missing number")
         if not isinstance(date, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date or ""):
@@ -179,7 +218,7 @@ def findings(registry=None, surfaces=None) -> list[str]:
                     if refused:
                         out.append(
                             f"{rel}:{line_no}: a comparison word for {task!r}, whose row is REFUSED "
-                            "(no human number under a matching protocol)"
+                            "(a side is missing under a matching protocol)"
                         )
                     elif not complete:
                         out.append(
@@ -235,8 +274,31 @@ def main() -> None:
             "t": (lp, None, "", 0.5, bp, "2026-09-06", "at parity")
         },
     }
+    # BrainCog 02 (owner D-271): an external-system reference names its training method; backprop discloses
+    q = _QUOTE + "train on 200 samples, test on the 10k test set" + _QUOTE
+    sysp = "cited: system=BrainCog STDP [95]; trained by: local-rule; " + q
+    bptt = "cited: system=BrainCog BPSTA [94]; trained by: BPTT-surrogate; " + q
+    reds["system reference without a training method"] = {
+        "t": (lp, 0.81, "cited: system=BrainCog STDP [95]; " + q, 0.5, bp, "2026-11-05", "below")
+    }
+    reds["system reference, method outside the list"] = {
+        "t": (lp, 0.81, sysp.replace("local-rule", "magic"), 0.5, bp, "2026-11-05", "below")
+    }
+    reds["backprop reference without the disclosure"] = {
+        "t": (lp, 0.81, bptt, 0.5, bp, "2026-11-05", "below")
+    }
+    reds["machine comparison verdict, missing number"] = {
+        "t": (lp, 0.81, sysp, None, "", "2026-11-05", "beats BrainCog")
+    }
     for name, reg in reds.items():
         assert findings(reg, {}), f"the constructed red {name!r} was not caught"
+    system_ok = {
+        "t": (lp, 0.81, sysp, 0.5, bp, "2026-11-05", "below"),
+        "u": (lp, 0.99, bptt + "; " + _NOT_A_PATH, 0.5, bp, "2026-11-05", "below"),
+    }
+    assert findings(system_ok, {}) == [], findings(
+        system_ok, {}
+    )  # the external-system positive control
     refused = {
         "widget task": (
             lp,
@@ -251,6 +313,10 @@ def main() -> None:
     assert findings(refused, {}) == [], findings(refused, {})
     surf = findings(refused, {"docs/PITCH.md": "the brain is superhuman on the widget task today"})
     assert surf and "REFUSED" in surf[0], surf
+    msurf = findings(refused, {"README.md": "the brain beats BrainCog on the widget task"})
+    assert msurf and "REFUSED" in msurf[0], (
+        msurf
+    )  # a machine comparison word is caught the same way
     print(report())
     print(
         f"capability_bar self-check OK: {len(reds)} constructed reds caught, the complete row and the REFUSED "
