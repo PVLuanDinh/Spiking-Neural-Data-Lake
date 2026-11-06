@@ -84,14 +84,34 @@ def test_a_machine_comparison_word_is_matched_as_a_word_not_inside_another():
 #: The one row the registry carries today. Pinned here as a literal, never read from the module,
 #: so a renamed or dropped key is a red rather than a silently-agreeing tautology.
 C0_TASK = "everyday reasoning, 20 items (C0)"
+#: BrainCog 02b: the first external-system rows, one per Table II sample count (reviewer #8210).
+FEWSHOT_TASKS = {
+    f"MNIST few-shot unsupervised STDP, {n} training samples (BrainCog Table II)"
+    for n in (200, 100, 50, 10)
+}
 
 
-def test_the_capability_registry_holds_only_the_c0_row_and_is_clean_today():
-    # Was `test_the_capability_registry_is_empty_and_clean_today`, asserting `== {}`. The registry
-    # stopped being empty in this commit (specs/022 C0, evidence/c0-everyday-battery.md 2.6 MET), so
-    # the count pin MOVES WITH the row rather than being deleted (obs #2200).
-    assert set(capability_bar._registry_from_source()) == {C0_TASK}
+def test_the_capability_registry_holds_the_c0_and_fewshot_rows_and_is_clean_today():
+    # Was `..._holds_only_the_c0_row_...`; before that `..._is_empty_...` asserting `== {}`. The pin
+    # MOVES WITH the rows rather than being deleted (obs #2200): C0 (specs/022) + BrainCog 02b.
+    assert set(capability_bar._registry_from_source()) == {C0_TASK} | FEWSHOT_TASKS
     assert capability_bar.findings() == []
+
+
+def test_the_fewshot_rows_cite_braincog_as_a_local_rule_system_and_stay_refused():
+    reg = capability_bar._registry_from_source()
+    refs = {}
+    for task in FEWSHOT_TASKS:
+        protocol, ref, ref_prov, brain, brain_prov, date, verdict = reg[task]
+        refs[task.split(", ")[1].split()[0]] = ref
+        assert brain is None and verdict.startswith("REFUSED"), (task, brain, verdict)
+        assert "system=BrainCog" in ref_prov and "trained by: local-rule" in ref_prov
+        assert "caption" in ref_prov and "UNVERIFIED" in protocol
+    # Table II "Ours" row, verified against the owner PDF by g5-reviewer #8210.
+    assert refs == {"200": 0.8145, "100": 0.7544, "50": 0.7288, "10": 0.5145}, refs
+    # A machine comparison word beside one of these REFUSED tasks is a finding on a surface.
+    task = sorted(FEWSHOT_TASKS)[0]
+    assert capability_bar.findings(reg, {"README.md": f"the brain beats BrainCog on {task}"})
 
 
 def test_the_c0_row_carries_its_number_and_refuses_the_human_side():

@@ -88,8 +88,8 @@ TRACKED_SURFACES = (
     "README.md",
 )
 
-#: task -> row. ONE ROW TODAY, and it is a REFUSED one: a measured number with the protocol it was
-#: measured under, and no human number, so no capability claim has been earned by it either.
+#: task -> row. FIVE ROWS TODAY, every one REFUSED: C0 (a measured brain number, no human number) and the four
+#: BrainCog few-shot rows (an external reference, no brain number yet). No capability claim has been earned.
 #: Row shape: (protocol, human, human_provenance, brain, brain_provenance, date, verdict)
 #:   protocol           what was run, exactly, on both sides -- the same words for both, or it is not a comparison
 #:   human              the REFERENCE number (a human's, or an external system's -- see the docstring), or None
@@ -122,7 +122,65 @@ CAPABILITY_BAR: dict[str, tuple] = {
         "14 ABSTAIN / 5 UNRELATED_ROW / 1 SELF_REPORT",
         "2026-09-17",
         "REFUSED: no human number under a matching protocol",
-    )
+    ),
+    # 2026-11-05, BrainCog 02b (owner D-271 Q7 "fine subject to g5-reviewer"; reviewer #8210 AGREE 4 rows, one per
+    # sample count, numbers verified against the owner PDF's TABLE II). External-system rows: the reference is
+    # BrainCog's reported local-rule (unsupervised STDP) number, never an SNDL learning path; its own ANN column is
+    # quoted as the reference's control. REFUSED until SNDL's side is measured under this protocol (ticket 02c,
+    # blocked until BrainCog's [95] is read: the paper text names neither the test set, the network size nor the
+    # label assignment, so all three are UNVERIFIED inside the protocol).
+    "MNIST few-shot unsupervised STDP, 200 training samples (BrainCog Table II)": (
+        "unsupervised STDP SNN trained on 200 MNIST training samples, scored by test accuracy; the test set, the "
+        "network size and the label assignment are those of BrainCog [95], all three UNVERIFIED (not in the paper text)",
+        0.8145,
+        "cited: system=BrainCog unsupervised STDP SNN [95] (Zeng et al., arXiv 2207.08533v2, Table II); "
+        "trained by: local-rule; the reference's own control, an ANN of similar structure: 79.77%; table caption "
+        '(not the protocol): "The performance of unsupervised SNN compared with ANN on MNIST dataset with '
+        'different number of training samples"',
+        None,
+        "",
+        "2026-11-05",
+        "REFUSED: SNDL not yet measured under this protocol (ticket 02c)",
+    ),
+    "MNIST few-shot unsupervised STDP, 100 training samples (BrainCog Table II)": (
+        "unsupervised STDP SNN trained on 100 MNIST training samples, scored by test accuracy; the test set, the "
+        "network size and the label assignment are those of BrainCog [95], all three UNVERIFIED (not in the paper text)",
+        0.7544,
+        "cited: system=BrainCog unsupervised STDP SNN [95] (Zeng et al., arXiv 2207.08533v2, Table II); "
+        "trained by: local-rule; the reference's own control, an ANN of similar structure: 71.40%; table caption "
+        '(not the protocol): "The performance of unsupervised SNN compared with ANN on MNIST dataset with '
+        'different number of training samples"',
+        None,
+        "",
+        "2026-11-05",
+        "REFUSED: SNDL not yet measured under this protocol (ticket 02c)",
+    ),
+    "MNIST few-shot unsupervised STDP, 50 training samples (BrainCog Table II)": (
+        "unsupervised STDP SNN trained on 50 MNIST training samples, scored by test accuracy; the test set, the "
+        "network size and the label assignment are those of BrainCog [95], all three UNVERIFIED (not in the paper text)",
+        0.7288,
+        "cited: system=BrainCog unsupervised STDP SNN [95] (Zeng et al., arXiv 2207.08533v2, Table II); "
+        "trained by: local-rule; the reference's own control, an ANN of similar structure: 68.72%; table caption "
+        '(not the protocol): "The performance of unsupervised SNN compared with ANN on MNIST dataset with '
+        'different number of training samples"',
+        None,
+        "",
+        "2026-11-05",
+        "REFUSED: SNDL not yet measured under this protocol (ticket 02c)",
+    ),
+    "MNIST few-shot unsupervised STDP, 10 training samples (BrainCog Table II)": (
+        "unsupervised STDP SNN trained on 10 MNIST training samples, scored by test accuracy; the test set, the "
+        "network size and the label assignment are those of BrainCog [95], all three UNVERIFIED (not in the paper text)",
+        0.5145,
+        "cited: system=BrainCog unsupervised STDP SNN [95] (Zeng et al., arXiv 2207.08533v2, Table II); "
+        "trained by: local-rule; the reference's own control, an ANN of similar structure: 47.12%; table caption "
+        '(not the protocol): "The performance of unsupervised SNN compared with ANN on MNIST dataset with '
+        'different number of training samples"',
+        None,
+        "",
+        "2026-11-05",
+        "REFUSED: SNDL not yet measured under this protocol (ticket 02c)",
+    ),
 }
 
 _MIN_PROV = 24  # a provenance shorter than this is a label, not a provenance (CHOSEN, disclosed)
