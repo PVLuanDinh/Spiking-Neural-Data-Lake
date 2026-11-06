@@ -11,6 +11,12 @@ This file does four things:
 - It carries the operator-side lessons and reasoning procedures that exist nowhere else in the tree.
 - It defines what you hand back.
 
+**Scope, owner directive 2026-11-06, verbatim: "SNDL engine is the entire project".** Every task in
+this repository is engine work. The engine is defined in `docs/POLICIES.md` P4d: the brain in the one
+lake grows neurons into a separate spiking reservoir, and readouts tuned by e-prop return to the brain.
+Read every rule below through that scope. A change that is not part of the engine has no home here,
+because P4c already says every build is part of the brain.
+
 Two words used throughout: the **owner** is the human who directs the project and decides in chat; the
 **operator** is the owner's local Claude sessions and machine, which run the battery and land work on
 `main`.
