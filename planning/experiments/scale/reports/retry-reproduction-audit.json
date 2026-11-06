@@ -1,0 +1,16 @@
+{
+  "shared_checkpoints": [
+    "initial",
+    "block-1",
+    "block-2",
+    "block-3",
+    "block-4",
+    "block-5",
+    "block-6",
+    "block-7",
+    "block-8"
+  ],
+  "all_model_hashes_identical": true,
+  "all_saved_arrays_bitwise_identical": true,
+  "independent_new_seed": false
+}

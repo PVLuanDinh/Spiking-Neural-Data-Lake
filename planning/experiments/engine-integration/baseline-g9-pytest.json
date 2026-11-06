@@ -1,0 +1,21 @@
+{
+  "exit_code": 0,
+  "seconds": 64.80234987500035,
+  "command": [
+    "zsh",
+    "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/engine-integration/run-engine.sh",
+    "-u",
+    "-m",
+    "pytest",
+    "-p",
+    "no:cacheprovider",
+    "--no-cov",
+    "-x",
+    "-vv",
+    "tests/test_g9_posed_actor.py",
+    "tests/test_g9_growth_adapter.py"
+  ],
+  "cwd": "/Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/baseline-source",
+  "isolated_home": "/private/tmp/sndl-engine-baseline-ihypskvp",
+  "deadline_seconds": 600
+}

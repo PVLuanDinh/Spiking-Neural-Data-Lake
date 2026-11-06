@@ -1,0 +1,61 @@
+{
+  "scope": "exploratory fixed-width SHD audio component pilot; no full-engine inference",
+  "completed_runs": 4,
+  "independently_verified_prediction_checkpoints": 36,
+  "dataset_manifest_sha256": "abb54567b576e6b66c8de2c8e4dddf2c30bce20d5e548cc0b9bc543fb69ddace",
+  "official_test_read": false,
+  "endpoints": [
+    {
+      "arm": "joint",
+      "n": 1,
+      "macro_accuracy_mean_pct": 38.09483561605395,
+      "macro_accuracy_sd_pp": null,
+      "min_pct": 38.09483561605395,
+      "max_pct": 38.09483561605395,
+      "mean_wall_seconds": 165.68107412499376,
+      "max_peak_rss_bytes": 418414592
+    },
+    {
+      "arm": "sequential",
+      "n": 1,
+      "macro_accuracy_mean_pct": 5.0,
+      "macro_accuracy_sd_pp": null,
+      "min_pct": 5.0,
+      "max_pct": 5.0,
+      "mean_wall_seconds": 123.49545545800356,
+      "max_peak_rss_bytes": 459915264
+    },
+    {
+      "arm": "repeat",
+      "n": 1,
+      "macro_accuracy_mean_pct": 5.73076923076923,
+      "macro_accuracy_sd_pp": null,
+      "min_pct": 5.73076923076923,
+      "max_pct": 5.73076923076923,
+      "mean_wall_seconds": 147.69313966599293,
+      "max_peak_rss_bytes": 484278272
+    },
+    {
+      "arm": "replay",
+      "n": 1,
+      "macro_accuracy_mean_pct": 11.576312446053619,
+      "macro_accuracy_sd_pp": null,
+      "min_pct": 11.576312446053619,
+      "max_pct": 11.576312446053619,
+      "mean_wall_seconds": 166.56652508297702,
+      "max_peak_rss_bytes": 509460480
+    }
+  ],
+  "paired_results": [
+    {
+      "seed": 8000,
+      "replay_minus_repeat_macro_pp": 5.845543215284389,
+      "repeat_forgetting_pp": 77.9078204893817,
+      "replay_forgetting_pp": 79.93228717264215
+    }
+  ],
+  "total_training_run_wall_seconds": 603.4361943319673,
+  "total_exposures": 44583,
+  "logical_replay_frame_bytes": 56000000,
+  "source_verification_note": "Previously Git-blob-verified export; current imported hashes match across runs. Fresh Git verification blocked by dataless pack."
+}

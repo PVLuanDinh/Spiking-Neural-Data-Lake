@@ -1,0 +1,1 @@
+self-check OK: B9, B11, B12; 5 of 5 reds fired; validation presentations {'i.S0C0': 32, 'i.S1C0': 32, 'i.S0C1': 32, 'i.S1C1': 32, 'c1d': 32, 'ac1d': 32, 'ii.xor': 16, 'ii.twin': 16, 'aii': 16, 'U': 32, 'U_S': 32}

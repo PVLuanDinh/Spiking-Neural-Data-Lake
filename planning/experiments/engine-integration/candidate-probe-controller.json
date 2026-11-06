@@ -1,0 +1,27 @@
+[
+  {
+    "recipe": "bare",
+    "exit_code": 0,
+    "seconds": 2.0382904580001195
+  },
+  {
+    "recipe": "random9",
+    "exit_code": 0,
+    "seconds": 3.1859965840003497
+  },
+  {
+    "recipe": "trace9",
+    "exit_code": 0,
+    "seconds": 2.9702555829999255
+  },
+  {
+    "recipe": "random27",
+    "exit_code": 0,
+    "seconds": 5.68444216700027
+  },
+  {
+    "recipe": "trace27",
+    "exit_code": 0,
+    "seconds": 2.9619309999998222
+  }
+]

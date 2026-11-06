@@ -1,0 +1,17 @@
+[
+  {
+    "mode": "baseline",
+    "exit_code": 0,
+    "seconds": 3.712450833
+  },
+  {
+    "mode": "allrow_raw",
+    "exit_code": 0,
+    "seconds": 3.4723111670000004
+  },
+  {
+    "mode": "allrow_logit",
+    "exit_code": 0,
+    "seconds": 3.6517268330000006
+  }
+]

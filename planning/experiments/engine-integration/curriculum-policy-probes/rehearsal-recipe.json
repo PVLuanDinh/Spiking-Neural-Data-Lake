@@ -1,0 +1,12 @@
+{
+  "scope": "prospective exposed engineering teaching/rehearsal policy control, not full Engine efficacy",
+  "seed": 9900,
+  "mode": "rehearsal",
+  "feedback": "pure currentprediction wrong => unchangedcanonicallearn_turn; correct=>no deposit",
+  "initialization": "working-source PREbaselinefix, allfacultiesenabled",
+  "A": "aii stable10 beforeB, max1200 epochs",
+  "B": "ii.xor, oneinitial18 pool1024 exactsource stream9900/uniqueB, zerooutputs, max1200epochs",
+  "rehearsal": "onecontinuingAteach-epoch(4presentations) aftereachBepoch, Bcontextoff; wrongonly",
+  "endpoint": "BANDoldAvalidationallcorrect10ends, validationpure, nofuture",
+  "script_sha256": "9e465ef68d86ebacd2da7b2260450a0cba128def460edcb29a5390f5d3db488a"
+}

@@ -1,0 +1,31 @@
+{
+  "code_sha": "c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "interpreter": "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.venv-01/bin/python",
+  "interpreter_realpath": "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/bin/python3.14t",
+  "python": "3.14.6 free-threading build (main, Aug  4 2026, 22:35:20) [Clang 22.1.3 ]",
+  "machine": "arm64",
+  "Py_GIL_DISABLED": 1,
+  "GIL_enabled": false,
+  "SOABI": "cpython-314t-darwin",
+  "packages": {
+    "pip": "26.2.2"
+  },
+  "runner_sha256": "07bfdd87d73b279e917e68c5affcdc0c172bd57177a1a4a307b75fa5aae5e23b",
+  "runs": [
+    {
+      "label": "smoke-1",
+      "returncode": 0,
+      "stdout_sha256": "d6d5e69040526bc2ecf18e8271ac817de2fe7cad1493dc905f3270244d87d22e",
+      "stderr_empty": true,
+      "expected_marker": true
+    },
+    {
+      "label": "smoke-2",
+      "returncode": 0,
+      "stdout_sha256": "d6d5e69040526bc2ecf18e8271ac817de2fe7cad1493dc905f3270244d87d22e",
+      "stderr_empty": true,
+      "expected_marker": true
+    }
+  ],
+  "stdout_byte_identical": true
+}

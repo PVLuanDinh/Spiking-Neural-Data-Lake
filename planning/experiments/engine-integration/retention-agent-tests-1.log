@@ -1,0 +1,58 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0
+rootdir: /Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/working-source
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0
+collected 8 items
+
+tests/test_g9_retention_consumption.py ....F
+
+=================================== FAILURES ===================================
+________ test_failed_final_read_restores_whole_brain_but_stays_consumed ________
+
+    def test_failed_final_read_restores_whole_brain_but_stays_consumed():
+        from snn_data_lake.instruments.joint_mask_search import RetentionSets
+        from snn_data_lake.readout.posed_problem import PosedRefused
+    
+        with _owner() as (brain, _):
+            old_adapter = _bind(brain, "aii")
+            adapter = _bind(brain)
+            meter = _meter(adapter)
+            brain.freeze_selection(adapter.problem.id, meter=meter)
+            brain.claim_retention(adapter.problem.id, "aii", meter=meter)
+            before = brain._g9_snapshot()
+            sets = RetentionSets.for_problem(old_adapter.problem, SEED)
+    
+            def interrupted(episode):
+                brain._g9_engine_effect(
+                    brain.brain._ixn,
+                    brain._g9_actors,
+                    {
+                        "op": "engine_read",
+                        "problem_id": "aii",
+                        "turns": [[t.text, t.role, None] for t in episode],
+                        "shifted_label": None,
+                        **_masks(brain),
+                        "return_neutered": False,
+                    },
+                    "9900-999999",
+                )
+                raise RuntimeError("planted final interruption")
+    
+            with pytest.raises(RuntimeError, match="final interruption"):
+                sets.read_final(
+                    meter, snapshot=brain._g9_snapshot, restore=brain._g9_restore, read_off=interrupted
+                )
+>           assert brain._g9_snapshot() == before
+E           AssertionError: assert {'actors': {'...tems': {}}]}}} == {'actors': {'...tems': {}}]}}}
+E             
+E             Omitting 2 identical items, use -vv to show
+E             Differing items:
+E             {'states': {'aii': {'factory': {'problem_id': 'aii', 'labels': ['GREET', 'INTEROCEPT', 'GOAL', 'MEMORY', 'ATTENTION', ...eadout_cells.BrainProducer', 'attrs': {'nucleus': {...}, 'modulator': {...}, 'neutered': False}}}, 'port': None, ...}}} != {'states': {'aii': {'factory': {'problem_id': 'aii', 'labels': ['GREET', 'INTEROCEPT', 'GOAL', 'MEMORY', 'ATTENTION', ...eadout_cells.BrainProducer', 'attrs': {'nucleus': {...}, 'modulator': {...}, 'neutered': False}}}, 'port': None, ...}}}
+E             Use -v to get more diff
+
+tests/test_g9_retention_consumption.py:196: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_g9_retention_consumption.py::test_failed_final_read_restores_whole_brain_but_stays_consumed
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+========================= 1 failed, 4 passed in 6.02s ==========================

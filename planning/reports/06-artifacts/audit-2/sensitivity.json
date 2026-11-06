@@ -1,0 +1,15 @@
+{
+  "faults_caught": {
+    "answers": true,
+    "counter": true,
+    "duration_answer": true,
+    "duration_budget": true,
+    "duration_replay": true,
+    "duration_restart": true,
+    "mask": true,
+    "memory": true,
+    "restart": true,
+    "work": true
+  },
+  "positive": true
+}

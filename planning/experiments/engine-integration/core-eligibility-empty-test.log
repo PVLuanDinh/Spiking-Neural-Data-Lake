@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0
+rootdir: /Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/working-source
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0
+collected 11 items / 10 deselected / 1 selected
+
+tests/test_g9_core_eligibility.py .                                      [100%]
+
+======================= 1 passed, 10 deselected in 1.14s =======================

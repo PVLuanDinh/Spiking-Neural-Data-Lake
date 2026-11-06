@@ -1,0 +1,103 @@
+[
+  {
+    "run_id": "shd-joint-s8000",
+    "status": "complete",
+    "wall_seconds": 165.68107412499376
+  },
+  {
+    "run_id": "shd-sequential-s8000",
+    "exit_code": 0,
+    "wall_seconds": 134.31535366701428,
+    "status": "complete",
+    "accuracy": 0.04364857302742026,
+    "macro_accuracy": 0.05
+  },
+  {
+    "run_id": "shd-repeat-s8000",
+    "exit_code": 0,
+    "wall_seconds": 152.8677468750393,
+    "status": "complete",
+    "accuracy": 0.05987688864017907,
+    "macro_accuracy": 0.0573076923076923
+  },
+  {
+    "run_id": "shd-replay-s8000",
+    "exit_code": 0,
+    "wall_seconds": 173.43206095899222,
+    "status": "complete",
+    "accuracy": 0.10912143256855064,
+    "macro_accuracy": 0.11576312446053619
+  },
+  {
+    "run_id": "shd-joint-s8001",
+    "exit_code": 0,
+    "wall_seconds": 160.19894725002814,
+    "status": "complete",
+    "accuracy": 0.46278679350867374,
+    "macro_accuracy": 0.45495070869162574
+  },
+  {
+    "run_id": "shd-sequential-s8001",
+    "exit_code": 0,
+    "wall_seconds": 86.51766916702036,
+    "status": "complete",
+    "accuracy": 0.047006155567991044,
+    "macro_accuracy": 0.052531645569620256
+  },
+  {
+    "run_id": "shd-repeat-s8001",
+    "exit_code": 0,
+    "wall_seconds": 137.2770010420354,
+    "status": "complete",
+    "accuracy": 0.07498601007274762,
+    "macro_accuracy": 0.08435126582278481
+  },
+  {
+    "run_id": "shd-replay-s8001",
+    "exit_code": 0,
+    "wall_seconds": 150.22333004197571,
+    "status": "complete",
+    "accuracy": 0.1242305540011192,
+    "macro_accuracy": 0.13858101763369424
+  },
+  {
+    "run_id": "shd-joint-s8002",
+    "exit_code": 0,
+    "wall_seconds": 139.08652241696836,
+    "status": "complete",
+    "accuracy": 0.4202574146614438,
+    "macro_accuracy": 0.4144185961387293
+  },
+  {
+    "run_id": "shd-sequential-s8002",
+    "exit_code": 0,
+    "wall_seconds": 88.79391458298778,
+    "status": "complete",
+    "accuracy": 0.0817011751538892,
+    "macro_accuracy": 0.08927076359725736
+  },
+  {
+    "run_id": "shd-repeat-s8002",
+    "exit_code": 0,
+    "wall_seconds": 171.83288508403348,
+    "status": "complete",
+    "accuracy": 0.042529378847229994,
+    "macro_accuracy": 0.04871794871794872
+  },
+  {
+    "run_id": "shd-replay-s8002",
+    "exit_code": 0,
+    "wall_seconds": 162.12001170800067,
+    "status": "complete",
+    "accuracy": 0.08505875769445999,
+    "macro_accuracy": 0.09703817573546487
+  },
+  {
+    "run_id": "shd-joint-s8003",
+    "exit_code": 0,
+    "wall_seconds": 145.4365246249945,
+    "status": "complete",
+    "accuracy": 0.3928371572467823,
+    "macro_accuracy": 0.3961666393390881
+  }
+]

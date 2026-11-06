@@ -1,0 +1,6 @@
+The bundle contains this ref:
+26501ed3d0ac118c227b0f1919f520844e564948 refs/heads/engine-cycle-integration
+The bundle requires this ref:
+c4c10b285f1741aa798d5ee9c5296ae371fabecf 
+The bundle uses this hash algorithm: sha1
+/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/handoff/engine-cycle-integration.bundle is okay

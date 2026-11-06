@@ -1,0 +1,1 @@
+NEGATIVE {"scope": "actual failed retention control, no final data consumed", "scores": {"aii": 0, "ii.xor": 16}, "selection": null, "claims": {}, "model_digest": "338533b4dbad8434f5213660afc4ec9fd8f3a03f8bf947638077141f5570b177"}

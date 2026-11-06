@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/04-artifacts/evaluate.py", line 342, in <module>
+    main()
+    ~~~~^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/04-artifacts/evaluate.py", line 338, in main
+    worker(args) if args.worker else run(args)
+    ~~~~~~^^^^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/04-artifacts/evaluate.py", line 233, in worker
+    result = checks()
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/04-artifacts/evaluate.py", line 145, in checks
+    from snn_data_lake.instruments.g5_part_d_cells import _learner
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/g5_part_d_cells.py", line 63, in <module>
+    from snn_data_lake.instruments.g5_readout_cells import PD_POOL_MODES
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/g5_readout_cells.py", line 699, in <module>
+    PD_POOL_CONFIG = _pd_pool_config()
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/g5_readout_cells.py", line 694, in _pd_pool_config
+    from snn_data_lake.instruments.carried_state_campaign import TUNED
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/carried_state_campaign.py", line 76, in <module>
+    from snn_data_lake.instruments import memory_diagnostic as md
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/memory_diagnostic.py", line 52, in <module>
+    from threadpoolctl import threadpool_info
+ModuleNotFoundError: No module named 'threadpoolctl'

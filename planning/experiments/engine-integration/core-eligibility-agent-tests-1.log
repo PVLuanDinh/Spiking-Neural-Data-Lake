@@ -1,0 +1,13 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0
+rootdir: /Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/working-source
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0
+collected 34 items
+
+tests/test_g9_core_eligibility.py ...........                            [ 32%]
+tests/test_g9_corrective_feedback.py ........                            [ 55%]
+tests/test_g9_retention_consumption.py ........                          [ 79%]
+tests/test_plasticity_prebaseline.py .......                             [100%]
+
+============================= 34 passed in 22.65s ==============================

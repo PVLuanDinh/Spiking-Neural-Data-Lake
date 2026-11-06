@@ -1,0 +1,182 @@
+{"prepared": 0, "total": 8156, "seconds": 0.9155859159999409}
+{"prepared": 1000, "total": 8156, "seconds": 2.5851587499998914}
+{"prepared": 2000, "total": 8156, "seconds": 4.314697540999987}
+{"prepared": 3000, "total": 8156, "seconds": 6.052396790999978}
+{"prepared": 4000, "total": 8156, "seconds": 7.917134707999935}
+{"prepared": 5000, "total": 8156, "seconds": 9.726925415999972}
+{"prepared": 6000, "total": 8156, "seconds": 11.478608915999985}
+{"prepared": 7000, "total": 8156, "seconds": 13.158404999999902}
+{"prepared": 8000, "total": 8156, "seconds": 14.870390290999921}
+{
+  "dataset": "SHD official training set only",
+  "url": "https://zenkelab.org/datasets/shd/shd_train.h5.gz",
+  "license": "CC BY 4.0",
+  "publisher_md5": "d47c9825dee33347913e8ce0f2be08b0",
+  "archive_sha256": "e95bdc00c03c36537ff587d85d14efeee14a01b3846e14a70defc7e8a14e387c",
+  "raw_sha256": "2bddb4bd46732f09982b7d1631b7c29c19853c73d3d240e3eb32bba909bdd6c1",
+  "schema": {
+    "extra/keys": {
+      "shape": [
+        20
+      ],
+      "dtype": "|S6"
+    },
+    "extra/meta_info/age": {
+      "shape": [
+        12
+      ],
+      "dtype": "uint16"
+    },
+    "extra/meta_info/body_height": {
+      "shape": [
+        12
+      ],
+      "dtype": "uint16"
+    },
+    "extra/meta_info/gender": {
+      "shape": [
+        12
+      ],
+      "dtype": "|S6"
+    },
+    "extra/speaker": {
+      "shape": [
+        8156
+      ],
+      "dtype": "uint16"
+    },
+    "labels": {
+      "shape": [
+        8156
+      ],
+      "dtype": "uint16"
+    },
+    "spikes/times": {
+      "shape": [
+        8156
+      ],
+      "dtype": "object"
+    },
+    "spikes/units": {
+      "shape": [
+        8156
+      ],
+      "dtype": "object"
+    }
+  },
+  "bins": 100,
+  "channels": 700,
+  "classes": 20,
+  "framing": "per-recording observed min/max equal-width bins, last endpoint clamped; counts preserved",
+  "recordings": 8156,
+  "train_recordings": 6369,
+  "dev_recordings": 1787,
+  "held_speakers": [
+    10,
+    11
+  ],
+  "train_speakers": [
+    0,
+    1,
+    2,
+    3,
+    6,
+    7,
+    8,
+    9
+  ],
+  "train_class_counts": [
+    326,
+    322,
+    323,
+    329,
+    313,
+    319,
+    323,
+    318,
+    317,
+    323,
+    315,
+    313,
+    318,
+    313,
+    317,
+    320,
+    313,
+    315,
+    311,
+    321
+  ],
+  "dev_class_counts": [
+    80,
+    79,
+    81,
+    78,
+    80,
+    80,
+    77,
+    82,
+    78,
+    83,
+    96,
+    99,
+    94,
+    100,
+    101,
+    101,
+    102,
+    97,
+    99,
+    100
+  ],
+  "total_events": 63993588,
+  "events_min_median_max": [
+    2410.0,
+    7605.0,
+    14917.0
+  ],
+  "duration_min_median_max_seconds": [
+    0.2333984375,
+    0.70458984375,
+    1.369140625
+  ],
+  "largest_bin_count": 6,
+  "all_events_conserved": true,
+  "split_disjoint": true,
+  "all_classes_each_split": true,
+  "official_test_read": false,
+  "files": {
+    "dev_ids.npy": {
+      "bytes": 14424,
+      "sha256": "edb791c147b0924bc9db2a325b20a67a4875a8da8b7c4d7ac885494c7fafc4f8"
+    },
+    "event_counts.npy": {
+      "bytes": 65376,
+      "sha256": "cacd71654dc0c14796ce2bc045ff59afd63c2c2780a53dd293f77768cf3ad926"
+    },
+    "frames.npy": {
+      "bytes": 1141840128,
+      "sha256": "99dcf4c2afaf3bba7767b3ddde8520ed21e74bf0cce03f81bcdfb3f009957ea2"
+    },
+    "labels.npy": {
+      "bytes": 65376,
+      "sha256": "79c1773981b65a29dd269af5eab37cdcbc6de6390c2534b28806ee6449dec9b9"
+    },
+    "speakers.npy": {
+      "bytes": 65376,
+      "sha256": "1305c3a0e299d3eb4e1dbd9acb537f766eab24307789e33e817549e4e9231d4d"
+    },
+    "time_limits.npy": {
+      "bytes": 130624,
+      "sha256": "c6af64927c2cc49468a8dbc108bde20d3ab7d3da10b5d78f3e39284e5ed5e331"
+    },
+    "train_ids.npy": {
+      "bytes": 51080,
+      "sha256": "2c5894e5f354d9973088c465f7430edce6e1f599e4eedefaa825817103b3feba"
+    }
+  },
+  "prepare_script_sha256": "7e710a3d99d61eda535b1fdc35d3bde2f3d5782a08b1359b05e7d392f9dbc3e2",
+  "numpy": "2.5.4",
+  "h5py": "3.16.0",
+  "wall_seconds": 16.85880762499994
+}

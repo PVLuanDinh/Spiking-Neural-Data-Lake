@@ -1,0 +1,12 @@
+{
+  "preregistered_amendment": "dee3a474 section4",
+  "mode": "allrow_raw",
+  "rawreadout": true,
+  "EI_BF_homeo_metaplastic_shortterm": "all enabled",
+  "intrinsic_clock": "all9rows once after each actual teaching presentation",
+  "readout": "actual rawdrive",
+  "candidate_probabilities": "T1 softmax over actual decision variables",
+  "initialization": "unchanged canonical cold initialization; no PRE baseline patch",
+  "prediction_target_input": false,
+  "validation_observation": false
+}

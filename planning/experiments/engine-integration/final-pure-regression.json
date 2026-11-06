@@ -1,0 +1,21 @@
+{
+  "exit_code": 0,
+  "seconds": 3.3766055420001067,
+  "command": [
+    "zsh",
+    "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/engine-integration/run-engine.sh",
+    "-m",
+    "pytest",
+    "-p",
+    "no:cacheprovider",
+    "--no-cov",
+    "-x",
+    "-q",
+    "tests/test_growth_loop.py",
+    "tests/test_g9_first_budget.py",
+    "tests/test_capacity_certificate.py",
+    "tests/test_g9_engine_binding_codec.py",
+    "tests/test_plasticity_prebaseline.py",
+    "tests/test_g9_retention_sets.py"
+  ]
+}

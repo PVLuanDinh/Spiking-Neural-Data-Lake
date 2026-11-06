@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "stdout": "{\"import_ok\": true, \"native\": \"/Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/baseline-source/src/snn_data_lake/_native.cpython-314t-darwin.so\", \"gil\": false}\n",
+  "stderr": "",
+  "seconds": 2.8041703339999913,
+  "isolated_home": "/private/tmp/sndl-engine-import-rrxh7w7i",
+  "native_wheel": "/Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/wheels/sndl_native-0.1.0-cp314-cp314t-macosx_11_0_arm64.whl",
+  "native_wheel_sha256": "fbb553c6b25b4e84a0ee54185a02af8d84601eca790e9c63305616d2947b4feb"
+}

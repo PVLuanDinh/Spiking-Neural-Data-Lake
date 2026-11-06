@@ -1,0 +1,10 @@
+{
+  "head": "c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "git_status_porcelain": "",
+  "envelope_diff_empty": true,
+  "source_hashes_match": true,
+  "report_local_links_verified": 7,
+  "summary_audit": "Audit OK",
+  "report_sha256": "0cde69eb803ee4a0b83a831aad663651ad12d879f9bab426512bfa60e38e663a",
+  "notes": "No source changes; no full battery; error traces checks-1 and checks-2 preserved."
+}

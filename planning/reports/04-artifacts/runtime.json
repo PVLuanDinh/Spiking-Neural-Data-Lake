@@ -1,0 +1,13 @@
+{
+  "runtime": {
+    "gil": false,
+    "numpy": "2.5.4",
+    "python": "3.14.6 free-threading build (main, Aug  4 2026, 22:35:20) [Clang 22.1.3 ]",
+    "torch": "2.15.0"
+  },
+  "workers": 36,
+  "cpu_seconds_inside_workers": 42.183428,
+  "max_worker_maxrss_bytes_macOS": 307691520,
+  "raw_bytes": 30370220,
+  "evaluator_same_pilot1_pilot2": true
+}

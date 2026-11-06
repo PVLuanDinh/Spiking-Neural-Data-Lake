@@ -1,0 +1,29 @@
+{
+  "exit_code": 0,
+  "stderr": "",
+  "result": {
+    "answers": [
+      "GREET",
+      "GOAL",
+      "GOAL",
+      "GREET"
+    ],
+    "labels": [
+      "GREET",
+      "GOAL",
+      "GOAL",
+      "GREET"
+    ],
+    "matrix_residual_max": 8.326672684688674e-14,
+    "readout_psp_rank": 4,
+    "real_respond_separator_verified": true,
+    "scope": "constructed, brain-free separating diagnostic; no learning, no lake, no full-Engine result",
+    "seed": 9900,
+    "source_files": {
+      "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/g5_part_d_cells.py": "3369a2d80ccac1b24f0a15f04a735b391b5f9ccb5b3b5126af9e74ce200141a9",
+      "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/g5_readout_cells.py": "6c2c0bf4aa71efa89b8b86628e09b94af284dbd0c23c4a802658b3791fa410b9",
+      "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/readout/interaction_learning.py": "f75fd677ca89adc290e266e29549215b30c641c8a0aa4f842367a9ede3445e2e"
+    },
+    "unique_features": 4
+  }
+}

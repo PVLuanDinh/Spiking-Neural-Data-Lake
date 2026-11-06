@@ -1,0 +1,7 @@
+{
+  "command": "from snn_data_lake.engine.brain import make_brain (no construction, no lake)",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from snn_data_lake.engine.brain import make_brain; print(\"BRAIN_IMPORT_OK\",flush=True)\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/engine/brain.py\", line 52, in <module>\n    from snn_data_lake.engine.live_brain import (\n    ...<6 lines>...\n    )\n  File \"/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/engine/live_brain.py\", line 20, in <module>\n    from snn_data_lake.engine.autonomous_loop import ACTIONS, AutonomousArm\n  File \"/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/engine/autonomous_loop.py\", line 31, in <module>\n    from snn_data_lake.brainstem.serial_arm import is_valid_command\n  File \"/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/brainstem/serial_arm.py\", line 30, in <module>\n    from snn_data_lake.brainstem.so101_arm import So101Arm\n  File \"/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/brainstem/so101_arm.py\", line 89, in <module>\n    import mujoco\nModuleNotFoundError: No module named 'mujoco'\n",
+  "seconds": 3.7810761249997995
+}

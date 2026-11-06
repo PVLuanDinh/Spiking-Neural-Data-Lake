@@ -1,0 +1,13 @@
+{
+  "source_commit": "26501ed3d0ac118c227b0f1919f520844e564948",
+  "archive": "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/handoff/SNDL_CONTEXT_PACKET_2026-11-04.zip",
+  "archive_bytes": 65023993,
+  "archive_sha256": "54fafa971a0484ea2acb179b143cb3072261fb8e48983ddda36649c9d2ead5c3",
+  "manifest_members_verified": 1820,
+  "zip_crc_verified": true,
+  "all_manifest_sha256_verified": true,
+  "git_bundle_verified": true,
+  "source_working_tree_clean_after": true,
+  "experiments_run_in_this_handoff": false,
+  "presentation_edited_in_this_handoff": false
+}

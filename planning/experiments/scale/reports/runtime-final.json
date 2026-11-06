@@ -1,0 +1,23 @@
+[
+  {
+    "repeat": 0,
+    "seconds": 1.108799708000106,
+    "exit_code": 0,
+    "stdout": "{\"torch\": \"2.15.0\", \"numpy\": \"2.5.4\", \"gil\": false, \"tensor_ok\": true}\n",
+    "stderr": ""
+  },
+  {
+    "repeat": 1,
+    "seconds": 0.7569740830001592,
+    "exit_code": 0,
+    "stdout": "{\"torch\": \"2.15.0\", \"numpy\": \"2.5.4\", \"gil\": false, \"tensor_ok\": true}\n",
+    "stderr": ""
+  },
+  {
+    "repeat": 2,
+    "seconds": 0.7562118329999521,
+    "exit_code": 0,
+    "stdout": "{\"torch\": \"2.15.0\", \"numpy\": \"2.5.4\", \"gil\": false, \"tensor_ok\": true}\n",
+    "stderr": ""
+  }
+]

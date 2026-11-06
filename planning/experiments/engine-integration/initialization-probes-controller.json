@@ -1,0 +1,42 @@
+[
+  {
+    "mode": "baseline",
+    "exit_code": 0,
+    "seconds": 3.039284667
+  },
+  {
+    "mode": "bf_pre",
+    "exit_code": 0,
+    "seconds": 2.55299825
+  },
+  {
+    "mode": "homeo_pre",
+    "exit_code": 0,
+    "seconds": 2.4092881250000007
+  },
+  {
+    "mode": "both_pre",
+    "exit_code": 0,
+    "seconds": 2.4400534999999994
+  },
+  {
+    "mode": "common_pre",
+    "exit_code": 0,
+    "seconds": 2.5522609999999997
+  },
+  {
+    "mode": "bf_off",
+    "exit_code": 0,
+    "seconds": 1.8730097500000014
+  },
+  {
+    "mode": "homeo_off",
+    "exit_code": 0,
+    "seconds": 2.4506186250000024
+  },
+  {
+    "mode": "ei_off",
+    "exit_code": 0,
+    "seconds": 2.3026279589999987
+  }
+]

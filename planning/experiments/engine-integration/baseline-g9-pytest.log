@@ -1,0 +1,40 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0 -- /Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.venv-04/bin/python
+rootdir: /Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/baseline-source
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0
+collecting ... collected 31 items
+
+tests/test_g9_posed_actor.py::test_posed_checkpoint_and_pending_event_survive_real_restart PASSED [  3%]
+tests/test_g9_posed_actor.py::test_learning_off_read_preserves_weights_and_traces PASSED [  6%]
+tests/test_g9_posed_actor.py::test_complete_actor_carrier_keeps_real_replay_ring_and_clock_join PASSED [  9%]
+tests/test_g9_posed_actor.py::test_real_resource_unit_and_silencing_reds PASSED [ 12%]
+tests/test_g9_posed_actor.py::test_resource_silencing_refuses_unlisted_inactive_even_at_equal_actual_count[engine] PASSED [ 16%]
+tests/test_g9_posed_actor.py::test_resource_silencing_refuses_unlisted_inactive_even_at_equal_actual_count[presized] PASSED [ 19%]
+tests/test_g9_posed_actor.py::test_new_admission_is_journaled_before_install_and_survives_restart PASSED [ 22%]
+tests/test_g9_posed_actor.py::test_no_checkpoint_complete_prefix_rebuilds_first_actor_and_births PASSED [ 25%]
+tests/test_g9_posed_actor.py::test_readout_and_return_masks_freeze_actual_weights PASSED [ 29%]
+tests/test_g9_posed_actor.py::test_posed_payload_tamper_preserves_full_prefix_refusal PASSED [ 32%]
+tests/test_g9_posed_actor.py::test_named_width_refusal_leaves_writer_untouched PASSED [ 35%]
+tests/test_g9_posed_actor.py::test_pool_width_refusal_is_named_before_writer_effect PASSED [ 38%]
+tests/test_g9_posed_actor.py::test_actual_snapshot_failure_closes_all_learning_before_append PASSED [ 41%]
+tests/test_g9_posed_actor.py::test_posed_entry_uses_existing_common_chat_carrier_guard PASSED [ 45%]
+tests/test_g9_posed_actor.py::test_landed_append_failure_rolls_back_and_closes_common_latch PASSED [ 48%]
+tests/test_g9_posed_actor.py::test_learned_return_changes_brains_own_next_answer_untrained_and_random_do_not PASSED [ 51%]
+tests/test_g9_posed_actor.py::test_malformed_effect_is_refused_before_append_and_restart_recovers PASSED [ 54%]
+tests/test_g9_growth_adapter.py::test_actual_adapter_admits_only_after_durable_birth_and_survives_restart PASSED [ 58%]
+tests/test_g9_growth_adapter.py::test_attempt_uses_actual_writer_and_resumes_schedule_in_fresh_process PASSED [ 61%]
+tests/test_g9_growth_adapter.py::test_retention_consumer_restores_complete_state_and_forbids_early_or_repeat_final PASSED [ 64%]
+tests/test_g9_growth_adapter.py::test_binding_drift_width_and_common_latch_refuse_before_effect PASSED [ 67%]
+tests/test_g9_growth_adapter.py::test_retention_restore_failure_closes_the_common_latch_and_keeps_both_errors PASSED [ 70%]
+tests/test_g9_growth_adapter.py::test_retention_read_and_restore_failures_are_both_propagated PASSED [ 74%]
+tests/test_g9_growth_adapter.py::test_admission_refuses_a_born_batch_the_reconciler_refuses PASSED [ 77%]
+tests/test_g9_growth_adapter.py::test_resource_receipt_refuses_an_unreconciled_population PASSED [ 80%]
+tests/test_g9_growth_adapter.py::test_restart_refuses_to_rearm_an_actor_whose_population_is_unreconciled PASSED [ 83%]
+tests/test_g9_growth_adapter.py::test_final_retention_is_refused_across_same_brain_rebind PASSED [ 87%]
+tests/test_g9_growth_adapter.py::test_final_retention_is_refused_in_a_fresh_process PASSED [ 90%]
+tests/test_g9_growth_adapter.py::test_unregistered_problem_bind_refusal_is_not_an_immortal_event PASSED [ 93%]
+tests/test_g9_growth_adapter.py::test_sign_violating_projection_admit_refusal_is_not_an_immortal_event PASSED [ 96%]
+tests/test_g9_growth_adapter.py::test_no_g9_test_leaves_its_home_behind PASSED [100%]
+
+============================= 31 passed in 50.07s ==============================

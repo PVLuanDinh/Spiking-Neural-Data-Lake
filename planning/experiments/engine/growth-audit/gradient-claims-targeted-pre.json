@@ -1,0 +1,160 @@
+{
+  "scope": "targeted changed Python module AST audit using incumbent enumerate_rules/read_declaration; not full gate or numeric measurement",
+  "baseline_commit": "c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "elapsed_seconds": 0.22234366699922248,
+  "brain_imported": false,
+  "rows": [
+    {
+      "module": "engine/brain.py",
+      "baseline_sha256": "9294860fb52b00209f4d7b76ac82675d397e41e9f064e8faa1e1f1eab59aee38",
+      "current_sha256": "5007170644a026a337b50053ea05c2962d308de7553eeed998cba0e1c8790c0f",
+      "new_enumerated": [
+        "Brain._g9_selection_adapter",
+        "Brain.learn_engine_episode"
+      ],
+      "new_missing": [
+        "Brain._g9_selection_adapter",
+        "Brain.learn_engine_episode"
+      ],
+      "baseline_missing": [],
+      "current_missing": [
+        "Brain._g9_selection_adapter",
+        "Brain.learn_engine_episode"
+      ],
+      "new_declarations": {},
+      "phantom_declarations": [],
+      "new_missing_details": [
+        {
+          "symbol": "Brain._g9_selection_adapter",
+          "inferred": "UNKNOWN",
+          "resolved": "UNDETERMINABLE"
+        },
+        {
+          "symbol": "Brain.learn_engine_episode",
+          "inferred": "UNKNOWN",
+          "resolved": "UNDETERMINABLE"
+        }
+      ]
+    },
+    {
+      "module": "growth/capacity_certificate.py",
+      "baseline_sha256": "315108701a3d35ff150de526fe40ccbe2b729420b3e0fa291b96f5607dc3a4ea",
+      "current_sha256": "e002742ffe9245e70ef4d6dcb5fec32bb0c1d4f54580b23e6e7351d250af1814",
+      "new_enumerated": [
+        "_witness_learner"
+      ],
+      "new_missing": [
+        "_witness_learner"
+      ],
+      "baseline_missing": [],
+      "current_missing": [
+        "_witness_learner"
+      ],
+      "new_declarations": {},
+      "phantom_declarations": [],
+      "new_missing_details": [
+        {
+          "symbol": "_witness_learner",
+          "inferred": "UNKNOWN",
+          "resolved": "UNDETERMINABLE"
+        }
+      ]
+    },
+    {
+      "module": "growth/growth_loop.py",
+      "baseline_sha256": "94cac351c023029ab949074961957d73a6312f2cfef585b8ccb6b72cfcd30063",
+      "current_sha256": "23d36ccf5cb5d8eed418678150be92a26300cdaf9c90e94413cd54a24ff4546f",
+      "new_enumerated": [],
+      "new_missing": [],
+      "baseline_missing": [],
+      "current_missing": [],
+      "new_declarations": {},
+      "phantom_declarations": [],
+      "new_missing_details": []
+    },
+    {
+      "module": "instruments/joint_mask_search.py",
+      "baseline_sha256": "1e76b063af9a4d019da1038532ee01e32fd221a7f5b1060d8da184bb92a417cd",
+      "current_sha256": "2771ab09eac8e4e34dfa0d82b752b4a1a839a2c5420eaa06bcf55eee61b8b0dc",
+      "new_enumerated": [],
+      "new_missing": [],
+      "baseline_missing": [],
+      "current_missing": [],
+      "new_declarations": {},
+      "phantom_declarations": [],
+      "new_missing_details": []
+    },
+    {
+      "module": "plasticity/homeostatic_plasticity_stack.py",
+      "baseline_sha256": "1e07811ca1df8b19e90159a085c394e2533246d562d08620d10cdd2b08eaf9d1",
+      "current_sha256": "99fe23a9df1cda8286f30479a873655f68586af82f0a1e9606df3fcaa8f5a637",
+      "new_enumerated": [
+        "HomeostaticPlasticityStack.prepare_update"
+      ],
+      "new_missing": [
+        "HomeostaticPlasticityStack.prepare_update"
+      ],
+      "baseline_missing": [],
+      "current_missing": [
+        "HomeostaticPlasticityStack.prepare_update"
+      ],
+      "new_declarations": {},
+      "phantom_declarations": [],
+      "new_missing_details": [
+        {
+          "symbol": "HomeostaticPlasticityStack.prepare_update",
+          "inferred": "UNKNOWN",
+          "resolved": "UNDETERMINABLE"
+        }
+      ]
+    },
+    {
+      "module": "plasticity/plasticity_rule_stack.py",
+      "baseline_sha256": "e9b2b59297476e2e4abe9527e0eea185a6b4766b07d8b41a3c581ddca151f9d4",
+      "current_sha256": "07f27c5b21becb63d95fba41f60d1aeb108c9bb32365c6321a50e26121022a88",
+      "new_enumerated": [
+        "PlasticityRuleStack.prepare_update"
+      ],
+      "new_missing": [
+        "PlasticityRuleStack.prepare_update"
+      ],
+      "baseline_missing": [],
+      "current_missing": [
+        "PlasticityRuleStack.prepare_update"
+      ],
+      "new_declarations": {},
+      "phantom_declarations": [],
+      "new_missing_details": [
+        {
+          "symbol": "PlasticityRuleStack.prepare_update",
+          "inferred": "UNKNOWN",
+          "resolved": "UNDETERMINABLE"
+        }
+      ]
+    },
+    {
+      "module": "readout/interaction_learning.py",
+      "baseline_sha256": "f75fd677ca89adc290e266e29549215b30c641c8a0aa4f842367a9ede3445e2e",
+      "current_sha256": "f1d9a1785e66921c6f4bb2fa608f4cca0e8080b317bcf68243a5078cbbac14b9",
+      "new_enumerated": [],
+      "new_missing": [],
+      "baseline_missing": [],
+      "current_missing": [],
+      "new_declarations": {},
+      "phantom_declarations": [],
+      "new_missing_details": []
+    },
+    {
+      "module": "readout/posed_problem.py",
+      "baseline_sha256": "92ea57ec05baf6f5dd7a27560311c57d541b152d09c136e0ed59e05355471459",
+      "current_sha256": "0e6e90143a0bc586c574a9e3bb8cdc56a1892e03346f5f5fc03ebcfea7f8d86d",
+      "new_enumerated": [],
+      "new_missing": [],
+      "baseline_missing": [],
+      "current_missing": [],
+      "new_declarations": {},
+      "phantom_declarations": [],
+      "new_missing_details": []
+    }
+  ]
+}

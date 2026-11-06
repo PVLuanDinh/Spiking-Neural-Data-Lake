@@ -1,0 +1,27 @@
+[
+  {
+    "recipe": "bare1200",
+    "exit_code": 0,
+    "seconds": 3.861735167000006
+  },
+  {
+    "recipe": "exact128",
+    "exit_code": 0,
+    "seconds": 19.482339790999504
+  },
+  {
+    "recipe": "wide1024",
+    "exit_code": 0,
+    "seconds": 16.104178083999614
+  },
+  {
+    "recipe": "literal45",
+    "exit_code": 0,
+    "seconds": 11.585195207999277
+  },
+  {
+    "recipe": "outoff128",
+    "exit_code": 0,
+    "seconds": 10.570220707999397
+  }
+]

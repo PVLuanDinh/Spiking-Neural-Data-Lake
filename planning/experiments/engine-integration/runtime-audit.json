@@ -1,0 +1,7 @@
+{
+  "command": "cp314t find_spec preflight, no Brain construction",
+  "exit_code": 0,
+  "stdout": "{\"python\": \"3.14.6 free-threading build (main, Aug  4 2026, 22:35:20) [Clang 22.1.3 ]\", \"gil_disabled_build\": 1, \"gil\": false, \"modules\": {\"torch\": \"/private/tmp/sndl-class-packages-749rpbye/site/torch/__init__.py\", \"numpy\": \"/private/tmp/sndl-class-packages-749rpbye/site/numpy/__init__.py\", \"pyarrow\": null, \"mujoco\": null, \"brian2\": null, \"psutil\": null, \"threadpoolctl\": \"/private/tmp/sndl-class-packages-749rpbye/site/threadpoolctl.py\", \"scipy\": null, \"networkx\": \"/private/tmp/sndl-class-packages-749rpbye/site/networkx/__init__.py\", \"pytest\": null, \"maturin\": null, \"snn_data_lake._native\": null}}\n",
+  "stderr": "",
+  "seconds": 0.07241270800022903
+}

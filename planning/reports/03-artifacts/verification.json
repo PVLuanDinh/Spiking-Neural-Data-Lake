@@ -1,0 +1,65 @@
+{
+  "deliverable_sha256": {
+    "planning/reports/03-artifacts/evaluate.py": "88fa0359ba3a4a4e53185e037d13dd9c443d56925814ccba0291922f0114ec9e",
+    "planning/reports/03-artifacts/power.py": "4ee3c9b61f4906cb3d5f5cd0e65b830e5a02fe293467cc023f0559c52eaa8425",
+    "planning/reports/03-artifacts/preregistration-template.md": "3274847e3e47c7b53af885a5e1b63827cec27d74043b56b4aade9c8efcd427a6",
+    "planning/reports/03-artifacts/protocol.md": "1de3ae43869d3d847e18addcc55a957235739c243847cae7fcc775f22223a253",
+    "planning/reports/03-artifacts/recompute.py": "ca85d731cee69c8d5dabd5941ec91bcccc3a3e6cd81c06e0e819985398e033ef",
+    "planning/reports/03-artifacts/run-stage.py": "547c5c74595fc8f69d827bced5402c5f4ae14912593a1cdad3299af704225c75",
+    "planning/reports/03-artifacts/verify-failures.py": "9bea18faaed15b8d1ecdadb53b5e13e965e370f6959969daf5e2c6ed7a86f4b3",
+    "planning/reports/03-evaluation.md": "20b16b5a75250b133c15688941054db48709f054a394cfdeb1fa6eccccc533fa"
+  },
+  "failure_checks": {
+    "complete_run_positive": {
+      "detected": true
+    },
+    "declared_exclusion": {
+      "detected": true,
+      "reason": "exclusions/dirty tree: INVALID",
+      "synthetic": true
+    },
+    "hash_corruption": {
+      "detected": true,
+      "reason": "result hash mismatch",
+      "synthetic": true
+    },
+    "incomplete_run": {
+      "detected": true,
+      "reason": "incomplete/error/timeout run: NOT RUN",
+      "synthetic": true
+    },
+    "missing_manifest_arm": {
+      "detected": true,
+      "reason": "missing/extra subprocess",
+      "synthetic": true
+    },
+    "pipeline_halts_at_stage_1": {
+      "detected": true,
+      "synthetic": true
+    },
+    "pipeline_halts_at_stage_2": {
+      "detected": true,
+      "synthetic": true
+    },
+    "pipeline_halts_at_stage_3": {
+      "detected": true,
+      "synthetic": true
+    },
+    "worker_failed": {
+      "detected": true,
+      "reason": "worker error/timeout",
+      "synthetic": true
+    },
+    "worker_timeout": {
+      "detected": true,
+      "reason": "worker error/timeout",
+      "synthetic": true
+    }
+  },
+  "independent_repeat_equal": true,
+  "offline_synthetic_cases": 18,
+  "raw_manifest_and_snapshots_verified": true,
+  "report_links_resolve": true,
+  "source_head": "c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "two_recomputations_equal": true
+}

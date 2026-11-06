@@ -1,0 +1,229 @@
+{
+  "scope": "single exposed fixture engineering, task-conditioned, no-prune",
+  "seed": 9900,
+  "phase": "restore",
+  "recipe": {
+    "schema": "g9.engine.cycle.v1",
+    "batch_size": 18,
+    "candidate_pool": 1024,
+    "input_sigma": 1.0,
+    "threshold_min": 0.5,
+    "threshold_max": 2.0,
+    "window": 12,
+    "t_post_g": 15.0,
+    "trace_epochs": 20,
+    "trace_eta": 0.05,
+    "feed_norm": 1.0,
+    "return_weight": 0.2,
+    "return_delay": 0,
+    "max_epochs": 400,
+    "stable_epochs": 10,
+    "selection": "all-active/no-prune",
+    "feedback_gate": "corrective",
+    "core_plasticity": "frozen"
+  },
+  "journal_only": false,
+  "validation": {
+    "ii.xor": [
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ]
+    ],
+    "aii": [
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GREET",
+          "GREET"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ],
+      [
+        [
+          "GOAL",
+          "GOAL"
+        ]
+      ]
+    ]
+  },
+  "error": {
+    "type": "AssertionError",
+    "message": ""
+  },
+  "seconds": 4.130816875000164
+}

@@ -1,0 +1,1363 @@
+import time: self [us] | cumulative | imported package
+import time:      1382 |       1382 |   _io
+import time:        45 |         45 |   marshal
+import time:      1768 |       1768 |   posix
+import time:      2249 |       5442 | _frozen_importlib_external
+import time:      1067 |       1067 |   time
+import time:      2022 |       3088 | zipimport
+import time:       124 |        124 |     _codecs
+import time:       947 |       1070 |   codecs
+import time:      1839 |       1839 |   encodings.aliases
+import time:      5576 |       8485 | encodings
+import time:       810 |        810 | encodings.utf_8
+import time:        48 |         48 | _signal
+import time:        18 |         18 |       _abc
+import time:       107 |        125 |     abc
+import time:        62 |         62 |       _stat
+import time:        74 |        135 |     stat
+import time:       935 |        935 |     _collections_abc
+import time:        29 |         29 |       errno
+import time:       165 |        165 |       genericpath
+import time:       134 |        327 |     posixpath
+import time:      1233 |       2754 |   os
+import time:        62 |         62 |   _sitebuiltins
+import time:       287 |        287 |   sitecustomize
+import time:      2316 |       5417 | site
+import time:      1294 |       1294 | linecache
+import time:        25 |         25 | faulthandler
+import time:       112 |        112 |         _contextvars
+import time:       449 |        449 |             _types
+import time:      1604 |       2053 |           types
+import time:      1218 |       3270 |         _weakrefset
+import time:        53 |         53 |         itertools
+import time:        28 |         28 |         _collections
+import time:      4982 |       8444 |       threading
+import time:      2921 |      11364 |     sysconfig
+import time:       461 |        461 |     _ctypes
+import time:       258 |        258 |       _struct
+import time:       376 |        634 |     struct
+import time:       553 |        553 |     ctypes._endian
+import time:      3496 |      16507 |   ctypes
+import time:       383 |        383 |       keyword
+import time:       188 |        188 |         _operator
+import time:      1834 |       2022 |       operator
+import time:      1233 |       1233 |       reprlib
+import time:      7377 |      11013 |     collections
+import time:        33 |         33 |     _functools
+import time:      4305 |      15350 |   functools
+import time:      2399 |       2399 |     contextlib
+import time:     10236 |      10236 |       enum
+import time:        54 |         54 |         _sre
+import time:       900 |        900 |           re._constants
+import time:      4359 |       5258 |         re._parser
+import time:       431 |        431 |         re._casefix
+import time:      3646 |       9388 |       re._compiler
+import time:      1138 |       1138 |       copyreg
+import time:      1612 |      22372 |     re
+import time:      1107 |       1107 |     fnmatch
+import time:      2515 |      28391 |   glob
+import time:       779 |        779 |   importlib
+import time:       292 |        292 |         _ast
+import time:      3018 |       3310 |       ast
+import time:      4544 |       7854 |     annotationlib
+import time:       158 |        158 |       io
+import time:       216 |        216 |         _opcode
+import time:      1020 |       1020 |         _opcode_metadata
+import time:       804 |       2039 |       opcode
+import time:      5132 |       7329 |     dis
+import time:       232 |        232 |     importlib.machinery
+import time:       883 |        883 |       token
+import time:        33 |         33 |       _tokenize
+import time:      4172 |       5088 |     tokenize
+import time:      2688 |       2688 |     weakref
+import time:     11844 |      35033 |   inspect
+import time:       119 |        119 |   math
+import time:        75 |         75 |     _wmi
+import time:      4481 |       4556 |   platform
+import time:      1632 |       1632 |   textwrap
+import time:        43 |         43 |     _typing
+import time:     14598 |      14641 |   typing
+import time:      3413 |       3413 |       _py_warnings
+import time:       720 |       4132 |     warnings
+import time:     14600 |      18732 |   typing_extensions
+import time:       570 |        570 |           __future__
+import time:       801 |       1370 |         codeop
+import time:      1134 |       1134 |             copy
+import time:      7438 |       8572 |           dataclasses
+import time:      4445 |      13016 |         _colorize
+import time:      7022 |      21407 |       traceback
+import time:        27 |         27 |         _string
+import time:      1319 |       1346 |       string
+import time:        28 |         28 |       atexit
+import time:      8708 |      31489 |     logging
+import time:      1101 |       1101 |       _compat_pickle
+import time:        90 |         90 |       _pickle
+import time:      8264 |       9454 |     pickle
+import time:      5258 |      46200 |   torch._utils
+import time:       431 |        431 |         zlib
+import time:       290 |        290 |             compression
+import time:       157 |        447 |           compression._common
+import time:       954 |        954 |           compression._common._streams
+import time:       230 |        230 |           _bz2
+import time:      1504 |       3133 |         bz2
+import time:       594 |        594 |           _lzma
+import time:      1200 |       1793 |         lzma
+import time:        84 |         84 |           _zstd
+import time:      1138 |       1138 |           compression.zstd._zstdfile
+import time:      1229 |       2450 |         compression.zstd
+import time:      6248 |      14054 |       shutil
+import time:        20 |         20 |           _bisect
+import time:       541 |        561 |         bisect
+import time:        28 |         28 |         _random
+import time:      3223 |       3811 |       random
+import time:      3451 |      21315 |     tempfile
+import time:       326 |        326 |       torch._strobelight
+import time:        28 |         28 |             _json
+import time:       714 |        742 |           json.scanner
+import time:      1694 |       2435 |         json.decoder
+import time:      1856 |       1856 |         json.encoder
+import time:       985 |       5275 |       json
+import time:        51 |         51 |           _locale
+import time:      4867 |       4918 |         locale
+import time:       952 |        952 |         signal
+import time:        46 |         46 |         fcntl
+import time:        70 |         70 |         msvcrt
+import time:        13 |         13 |         _posixsubprocess
+import time:       289 |        289 |         select
+import time:      2555 |       2555 |         selectors
+import time:      6951 |      15792 |       subprocess
+import time:       215 |        215 |         _datetime
+import time:       345 |        560 |       datetime
+import time:       341 |        341 |         _socket
+import time:      3476 |       3817 |       socket
+import time:        37 |         37 |           gc
+import time:      1247 |       1283 |         timeit
+import time:      1446 |       2728 |       torch._strobelight.cli_function_profiler
+import time:       979 |      29474 |     torch._strobelight.compile_time_profiler
+import time:      1432 |      52220 |   torch._utils_internal
+import time:       290 |        290 |         torch._vendor
+import time:       487 |        777 |       torch._vendor.packaging
+import time:       478 |        478 |       torch._vendor.packaging._structures
+import time:      2390 |       3643 |     torch._vendor.packaging.version
+import time:       380 |        380 |     torch.version
+import time:       454 |       4476 |   torch.torch_version
+import time:        20 |         20 |   torch._rocm_init
+import time:       419 |        419 |       numpy.version
+import time:       510 |        510 |       numpy._expired_attrs_2_0
+import time:       321 |        321 |           numpy._utils._conversions
+import time:       585 |        905 |         numpy._utils
+import time:       694 |       1598 |       numpy._globals
+import time:        20 |         20 |         numpy._distributor_init_local
+import time:       412 |        432 |       numpy._distributor_init
+import time:       794 |        794 |                 numpy.exceptions
+import time:      1532 |       1532 |                 numpy._core._exceptions
+import time:       290 |        290 |                   contextvars
+import time:       447 |        736 |                 numpy._core.printoptions
+import time:       792 |        792 |                 numpy.dtypes
+import time:     31554 |      35405 |               numpy._core._multiarray_umath
+import time:      1599 |       1599 |                 numpy._utils._inspect
+import time:      1000 |       2599 |               numpy._core.overrides
+import time:      4501 |      42504 |             numpy._core.multiarray
+import time:      1523 |       1523 |             numpy._core.umath
+import time:      4713 |       4713 |               numbers
+import time:       581 |        581 |               numpy._core._string_helpers
+import time:       870 |        870 |               numpy._core._type_aliases
+import time:      1481 |       7644 |             numpy._core.numerictypes
+import time:      1469 |       1469 |                     numpy._core._methods
+import time:      7335 |       8804 |                   numpy._core.fromnumeric
+import time:      2873 |      11676 |                 numpy._core.shape_base
+import time:       853 |        853 |                 numpy._core._ufunc_config
+import time:       390 |        390 |                 numpy._core._asarray
+import time:      7757 |       7757 |                 numpy._core.arrayprint
+import time:      6478 |      27151 |               numpy._core.numeric
+import time:      6552 |      33702 |             numpy._core.einsumfunc
+import time:      1228 |       1228 |             numpy._core.function_base
+import time:      1611 |       1611 |             numpy._core.getlimits
+import time:       968 |        968 |             numpy._core.memmap
+import time:      3532 |       3532 |             numpy._core.records
+import time:      8500 |       8500 |             numpy._core._add_newdocs
+import time:      1155 |       1155 |             numpy._core._add_newdocs_scalars
+import time:      1521 |       1521 |             numpy._core._dtype
+import time:       476 |        476 |             numpy._core._dtype_ctypes
+import time:      3603 |       3603 |             numpy._core._internal
+import time:       560 |        560 |             numpy._pytesttester
+import time:      1250 |     109771 |           numpy._core
+import time:        19 |     109789 |         numpy._core._multiarray_umath
+import time:       774 |     110563 |       numpy.__config__
+import time:       467 |        467 |                         numpy._typing._nbit_base
+import time:      1843 |       1843 |                         numpy._typing._nested_sequence
+import time:       398 |        398 |                         numpy._typing._shape
+import time:       955 |       3662 |                       numpy._typing._array_like
+import time:      1097 |       1097 |                       numpy._typing._char_codes
+import time:       718 |        718 |                       numpy._typing._dtype_like
+import time:       226 |        226 |                       numpy._typing._nbit
+import time:       235 |        235 |                       numpy._typing._scalars
+import time:       124 |        124 |                       numpy._typing._ufunc
+import time:       743 |       6803 |                     numpy._typing
+import time:       357 |        357 |                         numpy.lib._array_utils_impl
+import time:      1429 |       1785 |                       numpy.lib._stride_tricks_impl
+import time:      1861 |       3646 |                     numpy.lib._twodim_base_impl
+import time:       290 |        290 |                     numpy.lib.array_utils
+import time:      8068 |       8068 |                     numpy.linalg._umath_linalg
+import time:      8370 |      27176 |                   numpy.linalg._linalg
+import time:       445 |      27621 |                 numpy.linalg
+import time:      2043 |      29663 |               numpy.matrixlib.defmatrix
+import time:       503 |      30165 |             numpy.matrixlib
+import time:     10440 |      10440 |               numpy.lib._histograms_impl
+import time:     21598 |      32038 |             numpy.lib._function_base_impl
+import time:      2460 |      64662 |           numpy.lib._index_tricks_impl
+import time:      4436 |      69098 |         numpy.lib._arraypad_impl
+import time:      6206 |       6206 |         numpy.lib._arraysetops_impl
+import time:      4368 |       4368 |         numpy.lib._arrayterator_impl
+import time:      7951 |       7951 |         numpy.lib._nanfunctions_impl
+import time:      2813 |       2813 |               numpy.lib._utils_impl
+import time:      4224 |       7036 |             numpy.lib._format_impl
+import time:       282 |       7317 |           numpy.lib.format
+import time:      2317 |       2317 |           numpy.lib._datasource
+import time:      3169 |       3169 |           numpy.lib._iotools
+import time:      9791 |      22593 |         numpy.lib._npyio_impl
+import time:      4970 |       4970 |             numpy.lib._ufunclike_impl
+import time:      1596 |       6566 |           numpy.lib._type_check_impl
+import time:      7846 |      14412 |         numpy.lib._polynomial_impl
+import time:      2258 |       2258 |         numpy.lib._shape_base_impl
+import time:       750 |        750 |         numpy.lib._version
+import time:       392 |        392 |         numpy.lib.introspect
+import time:       590 |        590 |         numpy.lib.mixins
+import time:       207 |        207 |         numpy.lib.npyio
+import time:      1629 |       1629 |           numpy.lib._scimath_impl
+import time:       688 |       2316 |         numpy.lib.scimath
+import time:       118 |        118 |         numpy.lib.stride_tricks
+import time:       882 |     132135 |       numpy.lib
+import time:       734 |        734 |       numpy._array_api_info
+import time:     11012 |     257400 |     numpy
+import time:       756 |        756 |     torch._custom_class_base
+import time:    448293 |     706448 |   torch._C
+import time:     16801 |      16801 |     torch.overrides
+import time:      6354 |      23155 |   torch._tensor
+import time:      1475 |       1475 |     torch.types
+import time:      7351 |       8826 |   torch.storage
+import time:      2163 |       2163 |     torch.amp.autocast_mode
+import time:      2881 |       2881 |     torch.amp.grad_scaler
+import time:       653 |       5696 |   torch.amp
+import time:      1162 |       1162 |   torch.random
+import time:        88 |         88 |         _heapq
+import time:      2042 |       2130 |       heapq
+import time:      6272 |       8401 |     difflib
+import time:        87 |         87 |       pwd
+import time:        31 |         31 |       grp
+import time:     16943 |      17061 |     tarfile
+import time:      4617 |       4617 |     torch._weights_only_unpickler
+import time:      1090 |       1090 |     torch._sources
+import time:        66 |         66 |     mmap
+import time:      8695 |      39928 |   torch.serialization
+import time:      3597 |       3597 |   torch._tensor_str
+import time:       453 |        453 |       importlib._abc
+import time:       134 |        587 |     importlib.util
+import time:       955 |        955 |     torch.cuda._device_limits
+import time:       827 |        827 |     torch.cuda.gds
+import time:        71 |         71 |         cuda
+import time:        13 |         84 |       cuda.bindings
+import time:      2382 |       2465 |     torch.cuda._utils
+import time:        59 |         59 |         cuda
+import time:        13 |         72 |       cuda.bindings
+import time:      1190 |       1190 |       ctypes._layout
+import time:      5617 |       6878 |     torch.cuda.graphs
+import time:      3011 |       3011 |     torch.cuda.green_contexts
+import time:       953 |        953 |     torch.cuda.streams
+import time:        54 |         54 |     pynvml
+import time:        93 |         93 |           binascii
+import time:      2625 |       2717 |         base64
+import time:      3964 |       6681 |       torch.cuda._memory_viz
+import time:      7680 |      14361 |     torch.cuda.memory
+import time:       900 |        900 |     torch.cuda.random
+import time:       626 |        626 |       torch.cuda.amp.autocast_mode
+import time:       321 |        321 |       torch.cuda.amp.common
+import time:       254 |        254 |       torch.cuda.amp.grad_scaler
+import time:       309 |       1509 |     torch.cuda.amp
+import time:      2677 |       2677 |         gzip
+import time:       381 |        381 |           email
+import time:        74 |         74 |               _winapi
+import time:        46 |         46 |               nt
+import time:        41 |         41 |               nt
+import time:        40 |         40 |               nt
+import time:        42 |         42 |               nt
+import time:        39 |         39 |               nt
+import time:        37 |         37 |               nt
+import time:        37 |         37 |               nt
+import time:       402 |        754 |             ntpath
+import time:        73 |         73 |               _winapi
+import time:      2186 |       2259 |             pathlib._os
+import time:      5239 |       8250 |           pathlib
+import time:       828 |        828 |               zipfile._path.glob
+import time:      1823 |       2651 |             zipfile._path
+import time:      9067 |      11717 |           zipfile
+import time:       759 |        759 |           importlib.metadata._meta
+import time:       514 |        514 |           importlib.metadata._collections
+import time:       322 |        322 |           importlib.metadata._functools
+import time:       270 |        270 |           importlib.metadata._itertools
+import time:       803 |        803 |           importlib.abc
+import time:      4019 |      27030 |         importlib.metadata
+import time:        68 |         68 |           cuda
+import time:        12 |         80 |         cuda.bindings
+import time:      4277 |      34062 |       torch.cuda._graph_annotations
+import time:       173 |      34235 |     torch.cuda.graph_annotations
+import time:       548 |        548 |     torch.cuda.jiterator
+import time:       391 |        391 |     torch.cuda.nvtx
+import time:       200 |        200 |     torch.cuda.profiler
+import time:       100 |        100 |     torch.cuda.sparse
+import time:      1555 |       1555 |           multiprocessing.process
+import time:        50 |         50 |             array
+import time:      1196 |       1245 |           multiprocessing.reduction
+import time:      1693 |       4492 |         multiprocessing.context
+import time:       477 |       4969 |       multiprocessing
+import time:      3417 |       8385 |     torch.cuda.tunable
+import time:      8986 |      85338 |   torch.cuda
+import time:      1429 |       1429 |       torch.sparse._semi_structured_conversions
+import time:      1500 |       1500 |       torch.sparse._semi_structured_ops
+import time:      2490 |       5418 |     torch.sparse.semi_structured
+import time:      1368 |       6785 |   torch.sparse
+import time:       503 |        503 |   torch._compile
+import time:       382 |        382 |   torch._VF
+import time:      1292 |       1292 |         torch.nn.parameter
+import time:      8139 |       8139 |             torch._prims_common
+import time:      1548 |       1548 |                 torch.utils.backcompat
+import time:      3434 |       3434 |                 torch.utils.collect_env
+import time:        41 |         41 |                       _queue
+import time:      1234 |       1275 |                     queue
+import time:       258 |        258 |                               torch.distributed._pycute.typing
+import time:      1424 |       1681 |                             torch.distributed._pycute.int_tuple
+import time:      2163 |       2163 |                             torch.distributed._pycute.layout
+import time:       532 |       4375 |                           torch.distributed._pycute
+import time:      2051 |       6426 |                         torch.distributed._mesh_layout
+import time:       941 |        941 |                         torch.utils._typing_utils
+import time:      6770 |       6770 |                               _hashlib
+import time:        43 |         43 |                               _blake2
+import time:      1474 |       8287 |                             hashlib
+import time:      1030 |       1030 |                                 unittest.util
+import time:      1312 |       2342 |                               unittest.result
+import time:      3285 |       3285 |                                 pprint
+import time:      6425 |       9710 |                               unittest.case
+import time:      1777 |       1777 |                               unittest.suite
+import time:      2842 |       2842 |                               unittest.loader
+import time:      2777 |       2777 |                                   gettext
+import time:     11305 |      14081 |                                 argparse
+import time:    700536 |     700536 |                                   unittest.signals
+import time:    609171 |    1309707 |                                 unittest.runner
+import time:      1468 |    1325255 |                               unittest.main
+import time:       604 |    1342527 |                             unittest
+import time:    431253 |     431253 |                             graphlib
+import time:     12460 |    1794525 |                           torch.utils._config_module
+import time:      1888 |    1796413 |                         torch.distributed.config
+import time:      1012 |       1012 |                           torch.monitor
+import time:       492 |        492 |                             torch.distributed.logging_handlers
+import time:      1164 |       1656 |                           torch.distributed.c10d_logger
+import time:       290 |        290 |                           torch.distributed.constants
+import time:    261829 |     261829 |                               urllib
+import time:    505396 |     505396 |                               ipaddress
+import time:    506300 |    1273525 |                             urllib.parse
+import time:      1672 |    1275196 |                           torch.distributed.rendezvous
+import time:       163 |        163 |                             torchcomms
+import time:        22 |        185 |                           torchcomms._comms
+import time:        61 |         61 |                             torchcomms
+import time:        14 |         75 |                           torchcomms._backend_wrapper
+import time:     49202 |    1327614 |                         torch.distributed.distributed_c10d
+import time:      6233 |    3137625 |                       torch.distributed.device_mesh
+import time:       874 |        874 |                       torch.distributed.remote_device
+import time:     11141 |    3149639 |                     torch.distributed
+import time:      1584 |       1584 |                                     torch.utils.data.datapipes._hook_iterator
+import time:      2369 |       3952 |                                   torch.utils.data.datapipes._typing
+import time:       368 |        368 |                                     torch.utils._import_utils
+import time:       226 |        226 |                                       torch.utils.data.datapipes.utils
+import time:      1914 |       2140 |                                     torch.utils.data.datapipes.utils.common
+import time:      2056 |       2056 |                                     torch.utils.data.dataset
+import time:      2039 |       6601 |                                   torch.utils.data.datapipes.datapipe
+import time:      1412 |      11964 |                                 torch.utils.data.datapipes._decorator
+import time:       548 |        548 |                                   torch.utils.data.datapipes.dataframe.dataframe_wrapper
+import time:       435 |        983 |                                 torch.utils.data.datapipes.dataframe.structures
+import time:      3579 |      16526 |                               torch.utils.data.datapipes.dataframe.dataframes
+import time:      1068 |       1068 |                               torch.utils.data.datapipes.dataframe.datapipes
+import time:       391 |      17984 |                             torch.utils.data.datapipes.dataframe
+import time:      1381 |       1381 |                                     torch.utils.data._utils.collate
+import time:       403 |        403 |                                     torch.utils.data._utils.fetch
+import time:       653 |        653 |                                     torch.utils.data._utils.pin_memory
+import time:       245 |        245 |                                     torch.utils.data._utils.signal_handling
+import time:      2665 |       2665 |                                     torch.utils.data._utils.worker
+import time:       258 |       5602 |                                   torch.utils.data._utils
+import time:        13 |       5614 |                                 torch.utils.data._utils.collate
+import time:      1032 |       6646 |                               torch.utils.data.datapipes.iter.callable
+import time:      1299 |       1299 |                                 torch.utils.data.sampler
+import time:      1064 |       2362 |                               torch.utils.data.datapipes.iter.combinatorics
+import time:      2944 |       2944 |                               torch.utils.data.datapipes.iter.combining
+import time:       324 |        324 |                                 torch.utils.data.datapipes.iter.utils
+import time:       404 |        727 |                               torch.utils.data.datapipes.iter.filelister
+import time:       342 |        342 |                               torch.utils.data.datapipes.iter.fileopener
+import time:      1201 |       1201 |                               torch.utils.data.datapipes.iter.grouping
+import time:      1275 |       1275 |                                 torch.utils.data.datapipes.utils.decoder
+import time:       393 |       1668 |                               torch.utils.data.datapipes.iter.routeddecoder
+import time:       498 |        498 |                               torch.utils.data.datapipes.iter.selecting
+import time:       595 |        595 |                               torch.utils.data.datapipes.iter.sharding
+import time:       281 |        281 |                               torch.utils.data.datapipes.iter.streamreader
+import time:       292 |      17551 |                             torch.utils.data.datapipes.iter
+import time:       370 |        370 |                               torch.utils.data.datapipes.map.callable
+import time:       741 |        741 |                               torch.utils.data.datapipes.map.combinatorics
+import time:       612 |        612 |                               torch.utils.data.datapipes.map.combining
+import time:       420 |        420 |                               torch.utils.data.datapipes.map.grouping
+import time:       292 |        292 |                               torch.utils.data.datapipes.map.utils
+import time:       193 |       2627 |                             torch.utils.data.datapipes.map
+import time:       425 |      38586 |                           torch.utils.data.datapipes
+import time:        10 |      38595 |                         torch.utils.data.datapipes.iter
+import time:        11 |      38606 |                       torch.utils.data.datapipes.iter.sharding
+import time:       855 |        855 |                       torch.utils.data.graph
+import time:       989 |      40449 |                     torch.utils.data.graph_settings
+import time:      3929 |    3195291 |                   torch.utils.data.dataloader
+import time:      1412 |       1412 |                   torch.utils.data.distributed
+import time:       697 |    3197398 |                 torch.utils.data
+import time:       516 |        516 |                 torch.utils.deterministic
+import time:      1478 |       1478 |                 torch.utils.hooks
+import time:      2143 |       2143 |                 torch.utils.backend_registration
+import time:       303 |        303 |                 torch.utils.cpp_backtrace
+import time:       771 |        771 |                 torch.utils.throughput_benchmark
+import time:      1140 |    3208727 |               torch.utils
+import time:      1581 |       1581 |               torchgen
+import time:      1075 |       1075 |                   torchgen.code_template
+import time:      3678 |       4753 |                 torchgen.utils
+import time:     26871 |      31623 |               torchgen.model
+import time:      4356 |    3246285 |             torch.utils._python_dispatch
+import time:      9356 |    3263779 |           torch.nn.modules.module
+import time:       809 |        809 |                   torch.distributed.autograd
+import time:      1710 |       1710 |                     torch.futures
+import time:      1319 |       1319 |                     torch.distributed.rpc._utils
+import time:      1173 |       1173 |                     torch.distributed.rpc.constants
+import time:      1571 |       1571 |                     torch.distributed.rpc.internal
+import time:      2924 |       8694 |                   torch.distributed.rpc.api
+import time:      2226 |       2226 |                   torch.distributed.rpc.backend_registry
+import time:       298 |        298 |                   torch.distributed.rpc.functions
+import time:       840 |        840 |                   torch.distributed.rpc.options
+import time:       528 |        528 |                                       torch._functorch
+import time:       964 |        964 |                                           torch.utils._contextlib
+import time:      1460 |       2424 |                                         torch.autograd.grad_mode
+import time:       819 |       3243 |                                       torch.autograd.forward_ad
+import time:      1832 |       5601 |                                     torch._functorch.pyfunctorch
+import time:      6476 |      12076 |                                   torch._ops
+import time:      3065 |       3065 |                                   torch._library.utils
+import time:      1668 |      16808 |                                 torch._library.autograd
+import time:       854 |        854 |                                 torch._library.fake_impl
+import time:      1063 |       1063 |                                   torch.utils._ordered_set
+import time:       566 |        566 |                                   torch._library.effects
+import time:       786 |       2414 |                                 torch._library.simple_registry
+import time:      2063 |       2063 |                                 torch._library.fake_class_registry
+import time:       356 |        356 |                                   torch.utils._exposed_in
+import time:      2933 |       2933 |                                   torch._library.custom_ops
+import time:      2120 |       2120 |                                     torch._library.opaque_object
+import time:      2137 |       4256 |                                   torch._library.infer_schema
+import time:      2310 |       9854 |                                 torch._library.triton
+import time:       671 |      32662 |                               torch._library
+import time:        21 |      32683 |                             torch._library.opaque_object
+import time:     11908 |      44591 |                           torch.utils._pytree
+import time:      1491 |      46082 |                         torch._vmap_internals
+import time:      3281 |       3281 |                         torch.autograd.functional
+import time:       218 |        218 |                           torch.autograd.variable
+import time:      3097 |       3315 |                         torch.autograd.graph
+import time:       341 |        341 |                         torch.autograd.anomaly_mode
+import time:       395 |        395 |                               torch._functorch.utils
+import time:      1067 |       1067 |                                 torch._functorch.predispatch
+import time:      2677 |       3743 |                               torch._functorch.vmap
+import time:      1171 |       5308 |                             torch._functorch.apis
+import time:      4308 |       9616 |                           torch._functorch.autograd_function
+import time:      2640 |      12255 |                         torch.autograd.function
+import time:       462 |        462 |                             torch.testing._utils
+import time:       392 |        392 |                               cmath
+import time:      5438 |       5829 |                             torch.testing._comparison
+import time:      1018 |       1018 |                             torch.testing._creation
+import time:       675 |       7984 |                           torch.testing
+import time:     11643 |      19626 |                         torch.autograd.gradcheck
+import time:       831 |        831 |                             _uuid
+import time:    611704 |     612534 |                           uuid
+import time:     10187 |      10187 |                           torch.autograd.profiler_util
+import time:      4712 |     627432 |                         torch.autograd.profiler
+import time:      6408 |     718736 |                       torch.autograd
+import time:      1538 |     720274 |                     torch.autograd.profiler_legacy
+import time:       610 |     720883 |                   torch.distributed.rpc.server_process_global_profiler
+import time:      3882 |     737629 |                 torch.distributed.rpc
+import time:    414467 |     414467 |                             pickletools
+import time:      1262 |       1262 |                             torch.package._digraph
+import time:      1149 |       1149 |                             torch.package._importlib
+import time:       531 |        531 |                             torch.package._mangling
+import time:      1609 |       1609 |                               torch.package.importer
+import time:       857 |       2466 |                             torch.package._package_pickler
+import time:       294 |        294 |                             torch.package._stdlib
+import time:       829 |        829 |                             torch.package.find_file_dependencies
+import time:      1146 |       1146 |                             torch.package.glob_group
+import time:      7332 |     429472 |                           torch.package.package_exporter
+import time:       654 |     430126 |                         torch.package.analyze.find_first_use_of_broken_modules
+import time:       418 |        418 |                         torch.package.analyze.trace_dependencies
+import time:       886 |     431429 |                       torch.package.analyze
+import time:       354 |     431783 |                     torch.package.analyze.is_from_package
+import time:       719 |        719 |                     torch.package.file_structure_representation
+import time:       876 |        876 |                       torch.package._directory_reader
+import time:       517 |        517 |                       torch.package._package_unpickler
+import time:      5925 |       7317 |                     torch.package.package_importer
+import time:      1321 |     441138 |                   torch.package
+import time:        19 |     441157 |                 torch.package._mangling
+import time:      1114 |       1114 |                 torch._awaits
+import time:      6461 |    1186359 |               torch._jit_internal
+import time:     10385 |      10385 |               torch._torch_docs
+import time:       750 |        750 |               torch.nn._reduction
+import time:       623 |        623 |                 torch.nn.modules.utils
+import time:       677 |       1300 |               torch.nn.grad
+import time:     39623 |    1238415 |             torch.nn.functional
+import time:      2323 |       2323 |             torch.nn.init
+import time:      1036 |       1036 |             torch.nn.modules.lazy
+import time:      3589 |    1245361 |           torch.nn.modules.linear
+import time:      5047 |       5047 |           torch.nn.modules.activation
+import time:      5381 |       5381 |             torch.nn.modules.container
+import time:      1425 |       6805 |           torch.nn.modules.adaptive
+import time:      1490 |       1490 |             torch.nn.modules._functions
+import time:      2734 |       4223 |           torch.nn.modules.batchnorm
+import time:       357 |        357 |           torch.nn.modules.channelshuffle
+import time:       668 |        668 |             torch.nn.common_types
+import time:      4724 |       5392 |           torch.nn.modules.conv
+import time:       545 |        545 |           torch.nn.modules.distance
+import time:       831 |        831 |           torch.nn.modules.dropout
+import time:       616 |        616 |           torch.nn.modules.flatten
+import time:       638 |        638 |           torch.nn.modules.fold
+import time:      1177 |       1177 |           torch.nn.modules.instancenorm
+import time:      1608 |       1608 |           torch.nn.modules.linear_cross_entropy_options
+import time:      3579 |       3579 |           torch.nn.modules.loss
+import time:      1297 |       1297 |           torch.nn.modules.normalization
+import time:      1740 |       1740 |           torch.nn.modules.padding
+import time:       456 |        456 |           torch.nn.modules.pixelshuffle
+import time:      3035 |       3035 |           torch.nn.modules.pooling
+import time:       400 |        400 |                     torch.__future__
+import time:      2848 |       3247 |                   torch.nn.utils.parametrize
+import time:      2755 |       6002 |                 torch.nn.utils.parametrizations
+import time:      1946 |       1946 |                 torch.nn.utils.rnn
+import time:      1836 |       1836 |                   torch.nn.utils._named_member_accessor
+import time:       972 |       2808 |                 torch.nn.utils.stateless
+import time:       510 |        510 |                   torch.utils._foreach_utils
+import time:      1152 |       1661 |                 torch.nn.utils.clip_grad
+import time:       451 |        451 |                 torch.nn.utils.convert_parameters
+import time:       735 |        735 |                 torch.nn.utils.fusion
+import time:       316 |        316 |                 torch.nn.utils.init
+import time:       417 |        417 |                 torch.nn.utils.memory_format
+import time:      1538 |       1538 |                 torch.nn.utils.spectral_norm
+import time:       688 |        688 |                 torch.nn.utils.weight_norm
+import time:       861 |      17419 |               torch.nn.utils
+import time:        17 |      17435 |             torch.nn.utils.rnn
+import time:      7629 |      25063 |           torch.nn.modules.rnn
+import time:      1315 |       1315 |           torch.nn.modules.sparse
+import time:      3297 |       3297 |           torch.nn.modules.transformer
+import time:       680 |        680 |           torch.nn.modules.upsampling
+import time:      2456 |    4579286 |         torch.nn.modules
+import time:       467 |        467 |               torch.backends.cpu
+import time:      2112 |       2112 |               torch.backends.cuda
+import time:      1176 |       1176 |                 torch.backends.cudnn.rnn
+import time:      1246 |       2421 |               torch.backends.cudnn
+import time:       798 |        798 |               torch.backends.cusparselt
+import time:       602 |        602 |               torch.backends.kleidiai
+import time:       962 |        962 |               torch.backends.mha
+import time:       327 |        327 |               torch.backends.miopen
+import time:       266 |        266 |               torch.backends.mkl
+import time:       782 |        782 |               torch.backends.mkldnn
+import time:      5720 |       5720 |                 torch.library
+import time:       522 |       6242 |               torch.backends.mps
+import time:       407 |        407 |               torch.backends.nnpack
+import time:       150 |        150 |               torch.backends.openmp
+import time:        74 |         74 |                 opt_einsum
+import time:       637 |        711 |               torch.backends.opt_einsum
+import time:      1892 |       1892 |               torch.backends.python_native
+import time:       604 |        604 |               torch.backends.quantized
+import time:      1567 |      20302 |             torch.backends
+import time:        14 |      20315 |           torch.backends.cuda
+import time:       664 |        664 |           torch.nn.attention._registry
+import time:      2601 |       2601 |           torch.nn.attention._fa3
+import time:       623 |        623 |             torch.nn.attention._utils
+import time:      2429 |       3051 |           torch.nn.attention._fa4
+import time:      1072 |      27701 |         torch.nn.attention
+import time:       900 |        900 |             torch.nn.parallel.parallel_apply
+import time:       747 |        747 |                 torch.cuda.nccl
+import time:       992 |       1738 |               torch.nn.parallel.comm
+import time:      1128 |       2866 |             torch.nn.parallel.replicate
+import time:      1190 |       1190 |               torch.nn.parallel._functions
+import time:       780 |       1969 |             torch.nn.parallel.scatter_gather
+import time:      1272 |       7006 |           torch.nn.parallel.data_parallel
+import time:      1435 |       1435 |                 torch.distributed.algorithms.join
+import time:       694 |       2129 |               torch.distributed.algorithms
+import time:        16 |       2144 |             torch.distributed.algorithms.join
+import time:      2181 |       2181 |             torch.distributed.utils
+import time:      9332 |      13656 |           torch.nn.parallel.distributed
+import time:       485 |      21146 |         torch.nn.parallel
+import time:       865 |    4630289 |       torch.nn
+import time:        14 |    4630302 |     torch.nn.functional
+import time:       785 |        785 |       torch._linalg_utils
+import time:       897 |       1681 |     torch._lowrank
+import time:      5455 |    4637437 |   torch.functional
+import time:       329 |        329 |   torch.__config__
+import time:       413 |        413 |       torch.accelerator._utils
+import time:       444 |        857 |     torch.accelerator.random
+import time:       799 |        799 |     torch.accelerator.graphs
+import time:       745 |        745 |     torch.accelerator.memory
+import time:       853 |       3252 |   torch.accelerator
+import time:       407 |        407 |       torch.cpu.amp.autocast_mode
+import time:       249 |        249 |       torch.cpu.amp.grad_scaler
+import time:       304 |        960 |     torch.cpu.amp
+import time:      1048 |       2007 |   torch.cpu
+import time:       501 |        501 |     torch.mps.profiler
+import time:       484 |        484 |     torch.mps.event
+import time:       469 |        469 |     torch.mps.streams
+import time:      1207 |       2659 |   torch.mps
+import time:       306 |        306 |     torch._environment
+import time:       435 |        435 |     torch.mtia._utils
+import time:       404 |        404 |     torch.mtia.memory
+import time:      1139 |       1139 |     torch.mtia.mtia_graph
+import time:      2941 |       5222 |   torch.mtia
+import time:       533 |        533 |     torch.xpu._utils
+import time:      2340 |       2340 |     torch.xpu.graphs
+import time:      1019 |       1019 |     torch.xpu.streams
+import time:      2526 |       2526 |     torch.xpu.memory
+import time:       978 |        978 |     torch.xpu.random
+import time:      4972 |      12364 |   torch.xpu
+import time:      3145 |       3145 |       torch.distributions.constraints
+import time:      1209 |       1209 |         torch.distributions.utils
+import time:      1731 |       2939 |       torch.distributions.distribution
+import time:      6748 |      12831 |     torch.distributions.transforms
+import time:       483 |        483 |       torch.distributions.exp_family
+import time:       939 |       1421 |     torch.distributions.bernoulli
+import time:       882 |        882 |       torch.distributions.dirichlet
+import time:       774 |       1655 |     torch.distributions.beta
+import time:       986 |        986 |     torch.distributions.binomial
+import time:       991 |        991 |     torch.distributions.categorical
+import time:       612 |        612 |     torch.distributions.cauchy
+import time:       729 |        729 |       torch.distributions.gamma
+import time:       279 |       1008 |     torch.distributions.chi2
+import time:       854 |        854 |     torch.distributions.constraint_registry
+import time:      1277 |       1277 |     torch.distributions.continuous_bernoulli
+import time:       537 |        537 |     torch.distributions.exponential
+import time:       591 |        591 |     torch.distributions.fishersnedecor
+import time:       864 |        864 |     torch.distributions.generalized_pareto
+import time:       749 |        749 |     torch.distributions.geometric
+import time:       730 |        730 |         torch.distributions.independent
+import time:      1077 |       1806 |       torch.distributions.transformed_distribution
+import time:       606 |        606 |       torch.distributions.uniform
+import time:       516 |       2928 |     torch.distributions.gumbel
+import time:       491 |        491 |     torch.distributions.half_cauchy
+import time:       628 |        628 |       torch.distributions.normal
+import time:       460 |       1088 |     torch.distributions.half_normal
+import time:       402 |        402 |     torch.distributions.inverse_gamma
+import time:       696 |        696 |       torch.distributions.laplace
+import time:      1127 |       1127 |         torch.distributions.multivariate_normal
+import time:      1130 |       2257 |       torch.distributions.lowrank_multivariate_normal
+import time:       626 |        626 |       torch.distributions.one_hot_categorical
+import time:       409 |        409 |       torch.distributions.pareto
+import time:       410 |        410 |       torch.distributions.poisson
+import time:      4191 |       8587 |     torch.distributions.kl
+import time:       470 |        470 |     torch.distributions.kumaraswamy
+import time:       560 |        560 |     torch.distributions.lkj_cholesky
+import time:       394 |        394 |     torch.distributions.log_normal
+import time:       338 |        338 |     torch.distributions.logistic_normal
+import time:       931 |        931 |     torch.distributions.mixture_same_family
+import time:       746 |        746 |     torch.distributions.multinomial
+import time:       758 |        758 |     torch.distributions.negative_binomial
+import time:       731 |        731 |     torch.distributions.relaxed_bernoulli
+import time:       646 |        646 |     torch.distributions.relaxed_categorical
+import time:       549 |        549 |     torch.distributions.studentT
+import time:      1245 |       1245 |           torch.jit._builtins
+import time:      2070 |       3315 |         torch.jit._async
+import time:       498 |        498 |         torch.jit._await
+import time:       475 |        475 |         torch.jit._decomposition_utils
+import time:       539 |        539 |             torch._classes
+import time:       883 |        883 |             torch.jit._fuser
+import time:       121 |        121 |               monkeytype
+import time:      1193 |       1314 |             torch.jit._monkeytype_config
+import time:       988 |        988 |               torch.jit._check
+import time:       748 |        748 |               torch.jit._state
+import time:      2363 |       2363 |                 torch.jit.annotations
+import time:      1060 |       1060 |                 torch.jit._dataclass_impls
+import time:      5495 |       8917 |               torch.jit.frontend
+import time:      5253 |      15905 |             torch.jit._recursive
+import time:       798 |        798 |             torch.jit._serialization
+import time:      6712 |      26149 |           torch.jit._script
+import time:      1274 |      27423 |         torch.jit._freeze
+import time:       267 |        267 |         torch.jit._ir_utils
+import time:      5045 |       5045 |         torch.jit._trace
+import time:       937 |      37957 |       torch.jit
+import time:       875 |      38832 |     torch.distributions.von_mises
+import time:       685 |        685 |     torch.distributions.weibull
+import time:      1646 |       1646 |     torch.distributions.wishart
+import time:      1288 |      86429 |   torch.distributions
+import time:      1148 |       1148 |   torch.fft
+import time:      5710 |       5710 |   torch.foreach
+import time:    491578 |     491578 |       urllib.response
+import time:    473629 |     965206 |     urllib.error
+import time:    620267 |     620267 |         http
+import time:    399407 |     399407 |             email.errors
+import time:    745212 |     745212 |                 email.quoprimime
+Timeout (0:00:12)!
+Thread 0x000000020a8220c0 (most recent call first):
+  File "<frozen importlib._bootstrap_external>", line 951 in get_data
+  File "<frozen importlib._bootstrap_external>", line 892 in get_code
+  File "<frozen importlib._bootstrap_external>", line 755 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/email/header.py", line 17 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1434 in _handle_fromlist
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/email/_policybase.py", line 8 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/email/feedparser.py", line 27 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/email/parser.py", line 12 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/http/client.py", line 71 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/urllib/request.py", line 89 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/hub.py", line 19 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1434 in _handle_fromlist
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/__init__.py", line 2721 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "<string>", line 1 in <module>
+import time:    485205 |     485205 |                 email.base64mime
+import time:    429483 |     429483 |                     quopri
+import time:    427645 |     857127 |                   email.encoders
+import time:    517174 |    1374301 |                 email.charset
+import time:    464540 |    3069257 |               email.header
+import time:    414730 |     414730 |                 email._parseaddr
+import time:    434274 |     849004 |               email.utils
+import time:    482775 |    4401034 |             email._policybase
+import time:    432350 |    5232791 |           email.feedparser
+import time:    509233 |    5742023 |         email.parser
+import time:    467541 |     467541 |           email._encoded_words
+import time:    387669 |     387669 |           email.iterators
+import time:    407750 |    1262958 |         email.message
+import time:      3196 |       3196 |           _ssl
+import time:    441010 |     444205 |         ssl
+import time:    375571 |    8445023 |       http.client
+import time:       287 |        287 |       _scproxy
+import time:    756060 |    9201368 |     urllib.request
+import time:       271 |        271 |     tqdm
+import time:      5026 |   10171870 |   torch.hub
+import time:      5179 |       5179 |   torch.linalg
+import time:    514299 |     514299 |       multiprocessing.util
+import time:    414009 |     414009 |       multiprocessing.resource_sharer
+import time:      5120 |     933427 |     torch.multiprocessing.reductions
+import time:       180 |        180 |         _multiprocessing
+import time:       290 |        290 |         _winapi
+import time:    590092 |     590561 |       multiprocessing.connection
+import time:    466012 |     466012 |         concurrent
+import time:    441490 |     441490 |         concurrent.futures._base
+import time:      3118 |       3118 |         _interpreters
+import time:    541550 |    1452169 |       concurrent.futures
+import time:    421724 |     421724 |       concurrent.futures.thread
+import time:      4592 |    2469044 |     torch.multiprocessing.spawn
+import time:       886 |        886 |         runpy
+import time:    552351 |     553236 |       multiprocessing.spawn
+import time:        81 |         81 |       _posixshmem
+import time:    461663 |    1014978 |     multiprocessing.resource_tracker
+import time:      2210 |    4419658 |   torch.multiprocessing
+import time:      4395 |       4395 |   torch.nested
+import time:      8324 |       8324 |       torch.optim.optimizer
+import time:     20713 |      29037 |     torch.optim.lr_scheduler
+import time:      3126 |       3126 |     torch.optim.swa_utils
+import time:      4216 |       4216 |     torch.optim._adafactor
+import time:      1793 |       1793 |     torch.optim._muon
+import time:      1675 |       1675 |     torch.optim._stateless
+import time:      2854 |       2854 |     torch.optim.adadelta
+import time:      3170 |       3170 |     torch.optim.adagrad
+import time:      4864 |       4864 |     torch.optim.adam
+import time:      2736 |       2736 |     torch.optim.adamax
+import time:     26488 |      26488 |     torch.optim.adamw
+import time:      2377 |       2377 |     torch.optim.asgd
+import time:      2154 |       2154 |     torch.optim.lbfgs
+import time:      2682 |       2682 |     torch.optim.nadam
+import time:      2189 |       2189 |     torch.optim.radam
+import time:      1898 |       1898 |     torch.optim.rmsprop
+import time:      1752 |       1752 |     torch.optim.rprop
+import time:      1816 |       1816 |     torch.optim.sgd
+import time:       568 |        568 |       torch.optim._functional
+import time:       975 |       1542 |     torch.optim.sparse_adam
+import time:       536 |        536 |     torch.optim.functional
+import time:      2332 |      99226 |   torch.optim
+import time:      1500 |       1500 |         torch.profiler._utils
+import time:      7069 |       8569 |       torch.profiler._memory_profiler
+import time:      8372 |      16941 |     torch.profiler.profiler
+import time:       495 |        495 |     torch.profiler.itt
+import time:      1179 |      18614 |   torch.profiler
+import time:      1106 |       1106 |   torch.special
+import time:      2454 |       2454 |       torch.signal.windows.windows
+import time:       312 |       2766 |     torch.signal.windows
+import time:       305 |       3070 |   torch.signal
+import time:       468 |        468 |   torch.ao
+import time:       298 |        298 |       torch.ao.nn
+import time:      1189 |       1189 |         torch.ao.nn.intrinsic.modules.fused
+import time:       352 |       1541 |       torch.ao.nn.intrinsic.modules
+import time:       417 |       2255 |     torch.ao.nn.intrinsic
+import time:       211 |        211 |       torch.nn.intrinsic.modules.fused
+import time:       420 |        630 |     torch.nn.intrinsic.modules
+import time:      1168 |       1168 |                     torch.ao.nn.qat.modules.conv
+import time:       788 |        788 |                     torch.ao.nn.qat.modules.embedding_ops
+import time:       472 |        472 |                     torch.ao.nn.qat.modules.linear
+import time:       382 |       2808 |                   torch.ao.nn.qat.modules
+import time:       336 |       3144 |                 torch.ao.nn.qat
+import time:      2575 |       5718 |               torch.ao.nn.intrinsic.qat.modules.conv_fused
+import time:       749 |        749 |               torch.ao.nn.intrinsic.qat.modules.linear_fused
+import time:       425 |        425 |               torch.ao.nn.intrinsic.qat.modules.linear_relu
+import time:       345 |       7236 |             torch.ao.nn.intrinsic.qat.modules
+import time:       180 |       7415 |           torch.ao.nn.intrinsic.qat
+import time:       153 |       7568 |         torch.nn.intrinsic.qat.modules.conv_fused
+import time:       112 |        112 |         torch.nn.intrinsic.qat.modules.linear_fused
+import time:       101 |        101 |         torch.nn.intrinsic.qat.modules.linear_relu
+import time:       184 |       7963 |       torch.nn.intrinsic.qat.modules
+import time:       578 |       8541 |     torch.nn.intrinsic.qat
+import time:      2093 |       2093 |                                 torch.ao.nn.quantizable.modules.activation
+import time:      2496 |       2496 |                                 torch.ao.nn.quantizable.modules.rnn
+import time:       169 |       4756 |                               torch.ao.nn.quantizable.modules
+import time:       125 |       4880 |                             torch.ao.nn.quantizable
+import time:      1337 |       1337 |                             torch.ao.nn.quantized.modules.activation
+import time:       745 |        745 |                             torch.ao.nn.quantized.modules.batchnorm
+import time:       872 |        872 |                               torch.ao.nn.quantized.modules.utils
+import time:      3481 |       4353 |                             torch.ao.nn.quantized.modules.conv
+import time:       251 |        251 |                             torch.ao.nn.quantized.modules.dropout
+import time:      1338 |       1338 |                             torch.ao.nn.quantized.modules.embedding_ops
+import time:      1119 |       1119 |                             torch.ao.nn.quantized.modules.functional_modules
+import time:      1447 |       1447 |                             torch.ao.nn.quantized.modules.linear
+import time:      1087 |       1087 |                             torch.ao.nn.quantized.modules.normalization
+import time:       283 |        283 |                             torch.ao.nn.quantized.modules.rnn
+import time:       905 |      17740 |                           torch.ao.nn.quantized.modules
+import time:        15 |      17754 |                         torch.ao.nn.quantized.modules.utils
+import time:      1695 |      19448 |                       torch.ao.nn.quantized.functional
+import time:       266 |      19714 |                     torch.ao.nn.quantized
+import time:       678 |      20391 |                   torch.ao.nn.intrinsic.quantized.modules.bn_relu
+import time:       537 |        537 |                   torch.ao.nn.intrinsic.quantized.modules.conv_add
+import time:       810 |        810 |                   torch.ao.nn.intrinsic.quantized.modules.conv_relu
+import time:       759 |        759 |                   torch.ao.nn.intrinsic.quantized.modules.linear_relu
+import time:       990 |      23485 |                 torch.ao.nn.intrinsic.quantized.modules
+import time:       213 |      23698 |               torch.ao.nn.intrinsic.quantized
+import time:      1486 |       1486 |                       torch.ao.nn.quantized.dynamic.modules.conv
+import time:       577 |        577 |                       torch.ao.nn.quantized.dynamic.modules.linear
+import time:      4399 |       4399 |                       torch.ao.nn.quantized.dynamic.modules.rnn
+import time:       182 |       6642 |                     torch.ao.nn.quantized.dynamic.modules
+import time:       117 |       6759 |                   torch.ao.nn.quantized.dynamic
+import time:       405 |       7163 |                 torch.ao.nn.intrinsic.quantized.dynamic.modules.linear_relu
+import time:       170 |       7333 |               torch.ao.nn.intrinsic.quantized.dynamic.modules
+import time:       125 |      31154 |             torch.ao.nn.intrinsic.quantized.dynamic
+import time:       132 |      31286 |           torch.nn.intrinsic.quantized.dynamic.modules.linear_relu
+import time:       154 |      31439 |         torch.nn.intrinsic.quantized.dynamic.modules
+import time:       142 |      31580 |       torch.nn.intrinsic.quantized.dynamic
+import time:       192 |        192 |         torch.nn.intrinsic.quantized.modules.bn_relu
+import time:       639 |        639 |         torch.nn.intrinsic.quantized.modules.conv_relu
+import time:       111 |        111 |         torch.nn.intrinsic.quantized.modules.linear_relu
+import time:       289 |       1230 |       torch.nn.intrinsic.quantized.modules
+import time:       139 |      32948 |     torch.nn.intrinsic.quantized
+import time:       408 |      44780 |   torch.nn.intrinsic
+import time:      1019 |       1019 |                   torch.ao.nn.qat.dynamic.modules.linear
+import time:       221 |       1240 |                 torch.ao.nn.qat.dynamic.modules
+import time:       179 |       1419 |               torch.ao.nn.qat.dynamic
+import time:         9 |       1427 |             torch.ao.nn.qat.dynamic.modules
+import time:        10 |       1436 |           torch.ao.nn.qat.dynamic.modules.linear
+import time:       129 |       1565 |         torch.nn.qat.dynamic.modules.linear
+import time:       816 |       2381 |       torch.nn.qat.dynamic.modules
+import time:       195 |       2575 |     torch.nn.qat.dynamic
+import time:       161 |        161 |       torch.nn.qat.modules.conv
+import time:       114 |        114 |       torch.nn.qat.modules.embedding_ops
+import time:       107 |        107 |       torch.nn.qat.modules.linear
+import time:       230 |        611 |     torch.nn.qat.modules
+import time:       255 |       3440 |   torch.nn.qat
+import time:       163 |        163 |     torch.nn.quantizable.modules
+import time:       257 |        419 |   torch.nn.quantizable
+import time:       271 |        271 |     torch.nn.quantized.dynamic
+import time:        99 |         99 |     torch.nn.quantized.functional
+import time:       360 |        360 |     torch.nn.quantized.modules
+import time:       191 |        920 |   torch.nn.quantized
+import time:       245 |        245 |   torch._size_docs
+import time:       255 |        255 |   torch._storage_docs
+import time:      3748 |       3748 |   torch._tensor_docs
+import time:       374 |        374 |                 torch.ao.quantization.quant_type
+import time:       377 |        377 |                     torch.fx._compatibility
+import time:       730 |       1107 |                   torch.fx.immutable_collections
+import time:       391 |        391 |                         torch.fx.experimental
+import time:      1132 |       1132 |                         torch.fx.experimental._config
+import time:      1445 |       1445 |                           torch.utils._dtype_abbrs
+import time:       721 |        721 |                             torch.return_types
+import time:       943 |       1663 |                           torch.fx._pytree
+import time:       622 |        622 |                               torch.utils._inspect
+import time:      2845 |       3467 |                             torch.fx.operator_schemas
+import time:     31249 |      34715 |                           torch.fx.node
+import time:       704 |        704 |                                           torch.fx.experimental.unification.multipledispatch.utils
+import time:       413 |        413 |                                           torch.fx.experimental.unification.multipledispatch.variadic
+import time:      1104 |       2220 |                                         torch.fx.experimental.unification.multipledispatch.conflict
+import time:      2132 |       4351 |                                       torch.fx.experimental.unification.multipledispatch.dispatcher
+import time:       482 |       4832 |                                     torch.fx.experimental.unification.multipledispatch.core
+import time:       284 |       5116 |                                   torch.fx.experimental.unification.multipledispatch
+import time:       189 |       5304 |                                 torch.fx.experimental.unification.dispatch
+import time:      1265 |       1265 |                                 torch.fx.experimental.unification.unification_tools
+import time:       566 |        566 |                                 torch.fx.experimental.unification.utils
+import time:       511 |        511 |                                 torch.fx.experimental.unification.variable
+import time:      1311 |       8955 |                               torch.fx.experimental.unification.core
+import time:       529 |        529 |                               torch.fx.experimental.unification.more
+import time:       378 |       9862 |                             torch.fx.experimental.unification
+import time:      1000 |      10861 |                           torch.fx.tensor_type
+import time:     14127 |      62809 |                         torch.fx.graph
+import time:      4751 |      69082 |                       torch.fx.graph_module
+import time:       923 |      70005 |                     torch.fx._lazy_graph_module
+import time:      2773 |       2773 |                       torch.fx.traceback
+import time:    458278 |     458278 |                             pkgutil
+import time:      2399 |       2399 |                             torch._logging.structured
+import time:    394843 |     394843 |                                     asyncio.constants
+import time:    382456 |     382456 |                                     asyncio.coroutines
+Timeout (0:00:12)!
+Thread 0x000000020a8220c0 (most recent call first):
+  File "<frozen importlib._bootstrap_external>", line 951 in get_data
+  File "<frozen importlib._bootstrap_external>", line 892 in get_code
+  File "<frozen importlib._bootstrap_external>", line 755 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1434 in _handle_fromlist
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/asyncio/base_events.py", line 40 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/asyncio/__init__.py", line 8 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/unittest/mock.py", line 27 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/_guards.py", line 12 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/_logging/_internal.py", line 27 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/_logging/_registrations.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/_logging/__init__.py", line 7 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/fx/proxy.py", line 21 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/fx/_symbolic_trace.py", line 28 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/fx/__init__.py", line 88 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/ao/quantization/utils.py", line 16 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/ao/quantization/observer.py", line 21 in <module>
+import time:    450659 |     450659 |                                       asyncio.format_helpers
+import time:    428980 |     428980 |                                         asyncio.base_futures
+import time:    425592 |     425592 |                                         asyncio.exceptions
+import time:    412115 |     412115 |                                         asyncio.base_tasks
+import time:      1018 |    1267703 |                                       _asyncio
+import time:    467174 |    2185535 |                                     asyncio.events
+import time:    472074 |     472074 |                                     asyncio.futures
+import time:    434799 |     434799 |                                     asyncio.protocols
+import time:    602721 |     602721 |                                       asyncio.transports
+import time:    434978 |     434978 |                                       asyncio.log
+import time:    477571 |    1515269 |                                     asyncio.sslproto
+import time:    431763 |     431763 |                                         asyncio.mixins
+import time:    504328 |     936090 |                                       asyncio.locks
+import time:    428209 |     428209 |                                         asyncio.queues
+import time:    419691 |     419691 |                                         asyncio.timeouts
+import time:    453712 |    1301612 |                                       asyncio.tasks
+import time:    403174 |    2640875 |                                     asyncio.staggered
+import time:    551432 |     551432 |                                     asyncio.trsock
+import time:    621393 |    9198672 |                                   asyncio.base_events
+import time:    528850 |     528850 |                                   asyncio.graph
+import time:    434386 |     434386 |                                   asyncio.runners
+import time:    759466 |     759466 |                                   asyncio.streams
+import time:    792388 |     792388 |                                   asyncio.subprocess
+import time:    947581 |     947581 |                                   asyncio.taskgroups
+import time:    406051 |     406051 |                                   asyncio.threads
+Timeout (0:00:12)!
+Thread 0x000000020a8220c0 (most recent call first):
+  File "<frozen importlib._bootstrap_external>", line 951 in get_data
+  File "<frozen importlib._bootstrap_external>", line 892 in get_code
+  File "<frozen importlib._bootstrap_external>", line 755 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1434 in _handle_fromlist
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/asyncio/unix_events.py", line 17 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/asyncio/__init__.py", line 48 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/.runtime-01/python/cpython-3.14.6+freethreaded-macos-aarch64-none/lib/python3.14t/unittest/mock.py", line 27 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/_guards.py", line 12 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/_logging/_internal.py", line 27 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/_logging/_registrations.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/_logging/__init__.py", line 7 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/fx/proxy.py", line 21 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/fx/_symbolic_trace.py", line 28 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/fx/__init__.py", line 88 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/ao/quantization/utils.py", line 16 in <module>
+  File "<frozen importlib._bootstrap>", line 491 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 759 in exec_module
+  File "<frozen importlib._bootstrap>", line 938 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1342 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1371 in _find_and_load
+  File "/private/tmp/sndl-class-packages-749rpbye/site/torch/ao/quantization/observer.py", line 21 in <module>
+import time:    454137 |     454137 |                                     asyncio.base_subprocess
+import time:    412538 |     412538 |                                     asyncio.selector_events
+import time:    459655 |    1326328 |                                   asyncio.unix_events
+import time:    450299 |   14844017 |                                 asyncio
+import time:    475630 |   15319646 |                               unittest.mock
+import time:      2078 |       2078 |                               torch.utils._traceback
+import time:      3682 |       3682 |                               torch.utils.weak
+import time:     26215 |   15351620 |                             torch._guards
+import time:      6631 |   15818926 |                           torch._logging._internal
+import time:       873 |   15819799 |                         torch._logging._registrations
+import time:       391 |   15820189 |                       torch._logging
+import time:      4746 |   15827707 |                     torch.fx.proxy
+import time:      5655 |   15903365 |                   torch.fx._symbolic_trace
+import time:       320 |        320 |                     torch.fx.config
+import time:      3545 |       3864 |                   torch.fx.interpreter
+import time:      2167 |       2167 |                   torch.fx.subgraph_rewriter
+import time:       570 |   15911071 |                 torch.fx
+import time:      3051 |   15914495 |               torch.ao.quantization.utils
+import time:     11280 |   15925775 |             torch.ao.quantization.observer
+import time:      2138 |   15927913 |           torch.ao.quantization.fake_quantize
+import time:      1184 |       1184 |             torch.ao.quantization.fuser_method_mappings
+import time:       893 |       2077 |           torch.ao.quantization.fuse_modules
+import time:      2281 |       2281 |           torch.ao.quantization.qconfig
+import time:      1595 |       1595 |           torch.ao.quantization.qconfig_mapping
+import time:      1486 |       1486 |                   torch.ao.nn.quantized.reference.modules.utils
+import time:      1979 |       3464 |                 torch.ao.nn.quantized.reference.modules.conv
+import time:       414 |        414 |                 torch.ao.nn.quantized.reference.modules.linear
+import time:      3879 |       3879 |                 torch.ao.nn.quantized.reference.modules.rnn
+import time:       763 |        763 |                 torch.ao.nn.quantized.reference.modules.sparse
+import time:       368 |       8887 |               torch.ao.nn.quantized.reference.modules
+import time:       357 |       9243 |             torch.ao.nn.quantized.reference
+import time:      1312 |       1312 |                     torch.ao.nn.sparse.quantized.linear
+import time:       381 |        381 |                     torch.ao.nn.sparse.quantized.utils
+import time:      1002 |       2695 |                   torch.ao.nn.sparse.quantized.dynamic.linear
+import time:       364 |       3058 |                 torch.ao.nn.sparse.quantized.dynamic
+import time:       254 |       3311 |               torch.ao.nn.sparse.quantized
+import time:       164 |       3475 |             torch.ao.nn.sparse
+import time:       458 |        458 |             torch.ao.quantization.stubs
+import time:      8348 |      21523 |           torch.ao.quantization.quantization_mappings
+import time:      3013 |       3013 |           torch.ao.quantization.quantize
+import time:      1593 |       1593 |           torch.ao.quantization.quantize_jit
+import time:      1443 |   15961434 |         torch.ao.quantization
+import time:        23 |   15961456 |       torch.ao.quantization.fake_quantize
+import time:       298 |   15961753 |     torch.quantization.fake_quantize
+import time:       402 |        402 |     torch.quantization.fuse_modules
+import time:       343 |        343 |     torch.quantization.fuser_method_mappings
+import time:       256 |        256 |     torch.quantization.observer
+import time:       245 |        245 |     torch.quantization.qconfig
+import time:       679 |        679 |     torch.quantization.quant_type
+import time:       154 |        154 |     torch.quantization.quantization_mappings
+import time:       462 |        462 |     torch.quantization.quantize
+import time:       120 |        120 |     torch.quantization.quantize_jit
+import time:       566 |        566 |     torch.quantization.stubs
+import time:       586 |   15965563 |   torch.quantization
+import time:       840 |        840 |   torch.quasirandom
+import time:       281 |        281 |   torch.multiprocessing._atfork
+import time:      4361 |       4361 |   torch._lobpcg
+import time:       629 |        629 |       torch.masked._docs
+import time:      2306 |       2306 |             torch.masked.maskedtensor.core
+import time:      3801 |       6107 |           torch.masked.maskedtensor.binary
+import time:      1234 |       1234 |           torch.masked.maskedtensor.passthrough
+import time:       361 |        361 |             torch.masked.maskedtensor.creation
+import time:      2028 |       2388 |           torch.masked.maskedtensor.reductions
+import time:      2861 |       2861 |           torch.masked.maskedtensor.unary
+import time:       344 |      12932 |         torch.masked.maskedtensor
+import time:        18 |      12949 |       torch.masked.maskedtensor.core
+import time:      7785 |      21362 |     torch.masked._ops
+import time:       642 |      22003 |   torch.masked
+import time:      1992 |       1992 |   torch.utils.dlpack
+import time:       273 |        273 |                 torch._dispatch
+import time:      1413 |       1685 |               torch._dispatch.python
+import time:      3140 |       3140 |                     torch._library.fake_profile
+import time:       483 |        483 |                       torch.utils._mode_utils
+import time:     18492 |      18974 |                     torch._subclasses.meta_utils
+import time:       860 |        860 |                     torch.utils._stats
+import time:     10079 |      10079 |                       torch.fx.experimental.sym_node
+import time:      3024 |      13103 |                     torch._subclasses._fake_tensor_utils
+import time:       336 |        336 |                       torch._custom_op
+import time:     48754 |      49090 |                     torch._subclasses.fake_impls
+import time:     24567 |     109731 |                   torch._subclasses.fake_tensor
+import time:      1832 |       1832 |                   torch._subclasses.fake_utils
+import time:       426 |     111987 |                 torch._subclasses
+import time:        17 |     112004 |               torch._subclasses.meta_utils
+import time:      1440 |     115129 |             torch.fx.passes.shape_prop
+import time:       180 |        180 |             pydot
+import time:      2534 |     117842 |           torch.fx.passes.graph_drawer
+import time:       951 |        951 |           torch.fx.passes.graph_manipulation
+import time:      2541 |       2541 |                   torch.fx.passes.utils.matcher_utils
+import time:       755 |       3296 |                 torch.fx.passes.utils.common
+import time:       462 |       3757 |               torch.fx.passes.utils
+import time:      2533 |       2533 |               torch.fx.passes.tools_common
+import time:      2641 |       8930 |             torch.fx.passes.split_utils
+import time:      4208 |      13137 |           torch.fx.passes.net_min_base
+import time:      1305 |       1305 |           torch.fx.passes.operator_support
+import time:       711 |        711 |           torch.fx.passes.param_fetch
+import time:      1532 |       1532 |           torch.fx.passes.regional_inductor
+import time:      2781 |       2781 |           torch.fx.passes.reinplace
+import time:       455 |        455 |             torch.fx._utils
+import time:      6465 |       6465 |               torch._subclasses.functional_tensor
+import time:      3510 |       3510 |               torch.fx.experimental.dynamic_spec
+import time:       402 |        402 |               torch.utils._thunk
+import time:       193 |        193 |               torch.fx.experimental._backward_state
+import time:     49047 |      59614 |             torch.fx.experimental.proxy_tensor
+import time:      2954 |      63022 |           torch.fx.passes.runtime_assert
+import time:      4949 |       4949 |           torch.fx.passes.split_module
+import time:      5474 |       5474 |           torch.fx.passes.splitter_base
+import time:       709 |     212410 |         torch.fx.passes
+import time:       587 |        587 |           torch.fx.passes.infra.pass_base
+import time:      1738 |       2325 |         torch.fx.passes.infra.pass_manager
+import time:       390 |     215124 |       torch.fx.passes.infra
+import time:        14 |     215137 |     torch.fx.passes.infra.pass_base
+import time:       814 |        814 |     torch.export.custom_ops
+import time:      1317 |       1317 |     torch.export._state_dict_utils
+import time:       472 |        472 |           torch.export._tree_utils
+import time:      5431 |       5431 |           torch.export.graph_signature
+import time:      1533 |       1533 |                 torch._custom_op.autograd
+import time:      3322 |       4854 |               torch._custom_op.impl
+import time:       701 |       5554 |             torch._custom_ops
+import time:      7887 |       7887 |             torch._export.utils
+import time:      2220 |       2220 |                         torch._higher_order_ops.schema
+import time:      7608 |       9828 |                       torch._higher_order_ops.utils
+import time:      6552 |      16379 |                     torch._higher_order_ops.auto_functionalize
+import time:      1483 |      17862 |                   torch._higher_order_ops.base_hop
+import time:       889 |      18750 |                 torch._higher_order_ops._invoke_quant
+import time:       993 |        993 |                 torch._higher_order_ops.aoti_call_delegate
+import time:      3754 |       3754 |                 torch._higher_order_ops.associative_scan
+import time:      3094 |       3094 |                 torch._higher_order_ops.cond
+import time:      5074 |       5074 |                   torch._higher_order_ops.invoke_leaf_function
+import time:       983 |        983 |                   torch._higher_order_ops.print
+import time:       544 |        544 |                       torch._functorch._aot_autograd
+import time:      3901 |       4444 |                     torch._functorch._aot_autograd.utils
+import time:      1059 |       5503 |                   torch._higher_order_ops.torchbind
+import time:      2115 |      13673 |                 torch._higher_order_ops.effects
+import time:       888 |        888 |                 torch._higher_order_ops.executorch_call_delegate
+import time:      1265 |       1265 |                 torch._higher_order_ops.flat_apply
+import time:       492 |        492 |                       torch.testing._internal
+import time:      1428 |       1920 |                     torch.testing._internal.logging_tensor
+import time:      6871 |       8791 |                   torch.utils.checkpoint
+import time:      6358 |      15148 |                 torch._higher_order_ops.flex_attention
+import time:      2025 |       2025 |                   torch._higher_order_ops.inline_asm_elementwise
+import time:      2589 |       2589 |                   torch._prims_common.wrappers
+import time:      7544 |      12157 |                 torch._higher_order_ops.flex_gemm
+import time:       310 |        310 |                 torch._higher_order_ops.foreach_map
+import time:       715 |        715 |                 torch._higher_order_ops.hints_wrap
+import time:      1580 |       1580 |                       torch.utils._debug_mode._utils
+import time:      3499 |       5078 |                     torch.utils._debug_mode._calls
+import time:      5999 |       5999 |                     torch.utils._debug_mode._mode
+import time:       490 |      11566 |                   torch.utils._debug_mode
+import time:      6124 |      17690 |                 torch._higher_order_ops.invoke_subgraph
+import time:      4143 |       4143 |                 torch._higher_order_ops.local_map
+import time:      1776 |       1776 |                 torch._higher_order_ops.map
+import time:      1001 |       1001 |                 torch._higher_order_ops.out_dtype
+import time:       649 |        649 |                 torch._higher_order_ops.run_const_graph
+import time:      2141 |       2141 |                   torch._higher_order_ops.partitioner
+import time:      5468 |       7608 |                 torch._higher_order_ops.scan
+import time:       615 |        615 |                 torch._higher_order_ops.strict_mode
+import time:      2222 |       2222 |                 torch._higher_order_ops.switch
+import time:      3817 |       3817 |                 torch._higher_order_ops.while_loop
+import time:      2177 |       2177 |                 torch._higher_order_ops.wrap
+import time:       909 |     113346 |               torch._higher_order_ops
+import time:        19 |     113364 |             torch._higher_order_ops.flat_apply
+import time:      2149 |     128953 |           torch._export.wrappers
+import time:       658 |        658 |           torch._export.config
+import time:      1492 |     137005 |         torch._export
+import time:        18 |     137022 |       torch._export.utils
+import time:      1269 |     138291 |     torch.export.decomp_utils
+import time:      2833 |       2833 |         torch._export.verifier
+import time:      7129 |       9962 |       torch.export.exported_program
+import time:      8446 |      18408 |     torch.export.dynamic_shapes
+import time:      1219 |       1219 |       torch.export._remove_effect_tokens_pass
+import time:      9179 |      10398 |     torch.export.unflatten
+import time:      1715 |     386077 |   torch.export
+import time:       459 |        459 |     torch._functorch.batch_norm_replacement
+import time:      2124 |       2124 |       torch.fx.experimental.const_fold
+import time:      6860 |       8984 |     torch._functorch.eager_transforms
+import time:       481 |        481 |     torch._functorch.einops
+import time:       986 |        986 |     torch._functorch.functional_call
+import time:       470 |      11378 |   torch.func
+import time:      1151 |       1151 |   torch.distributed._meta_registrations
+import time:      1551 |       1551 |             torch.utils._content_store
+import time:       762 |       2312 |           torch._prims.debug_prims
+import time:      2916 |       2916 |           torch._prims.rng_prims
+import time:     80679 |      85906 |         torch._prims
+import time:     52283 |     138189 |       torch._decomp.decompositions
+import time:      1216 |       1216 |         torch.testing._internal.common_dtype
+import time:      1066 |       1066 |         torch._refs._conversions
+import time:      5047 |       5047 |         torch._refs.fft
+import time:      2649 |       2649 |         torch._refs.linalg
+import time:       260 |        260 |           torch._refs.nn
+import time:      8321 |       8580 |         torch._refs.nn.functional
+import time:      2624 |       2624 |         torch._refs.special
+import time:     52378 |      73557 |       torch._refs
+import time:      2830 |     214575 |     torch._decomp
+import time:    101339 |     315914 |   torch._meta_registrations
+import time:     10950 |      10950 |     torch._precompile
+import time:      1471 |       1471 |     torch.compiler.config
+import time:      2049 |       2049 |       torch.compiler._precompile_types
+import time:       644 |       2693 |     torch.compiler.precompile
+import time:       908 |        908 |       torch.utils._appending_byte_serializer
+import time:      2266 |       3174 |     torch.compiler._cache
+import time:      2194 |      20479 |   torch.compiler
+import time:       471 |        471 |       torch._native.common_utils
+import time:      4356 |       4356 |         torch._native.registry
+import time:      1367 |       5722 |       torch._native.dsl_registry
+import time:       829 |       7022 |     torch._native.cutedsl_utils
+import time:      1003 |       1003 |     torch._native.flydsl_utils
+import time:       556 |        556 |     torch._native.helion_utils
+import time:      1777 |       1777 |           torch._native.triton_utils
+import time:       621 |       2397 |         torch._native.ops.bmm_outer_product.triton_impl
+import time:       423 |       2819 |       torch._native.ops.bmm_outer_product
+import time:      1495 |       1495 |         torch._native.ops.foreach_mm.impl
+import time:       341 |       1835 |       torch._native.ops.foreach_mm
+import time:      1313 |       1313 |         torch._native.ops.linear_cross_entropy.cutedsl_impl
+import time:       190 |       1503 |       torch._native.ops.linear_cross_entropy
+import time:       221 |        221 |           torch._native.ops.norm.flydsl_rmsnorm_utils
+import time:       604 |        825 |         torch._native.ops.norm.flydsl_rmsnorm_impl
+import time:       144 |        144 |                 torch._native.flydsl
+import time:       796 |        940 |               torch._native.flydsl.cache
+import time:      2618 |       3558 |             torch._native.instrumentation
+import time:      1068 |       4625 |           torch._native.ops.norm.norms
+import time:      1045 |       5669 |         torch._native.ops.norm.rmsnorm_impl
+import time:       187 |       6680 |       torch._native.ops.norm
+import time:       413 |        413 |           torch._native.nvmath_utils
+import time:       771 |       1183 |         torch._native.ops.polar.impl
+import time:       151 |       1333 |       torch._native.ops.polar
+import time:      1175 |       1175 |           torch._tensor_iterator
+import time:      1226 |       2401 |         torch._native.ops.reductions.cutedsl_impl
+import time:       302 |       2703 |       torch._native.ops.reductions
+import time:      1570 |       1570 |         torch._native.ops.scatter_add.cutedsl_impl
+import time:       158 |       1728 |       torch._native.ops.scatter_add
+import time:       409 |        409 |           torch._native.ops.topk._common
+import time:      1665 |       1665 |           torch._native.ops.topk.aot
+import time:       968 |       3040 |         torch._native.ops.topk.cutedsl_impl
+import time:      1178 |       1178 |         torch._native.ops.topk.flydsl_impl
+import time:       190 |       4407 |       torch._native.ops.topk
+import time:       608 |      23612 |     torch._native.ops
+import time:      1528 |       1528 |       torchgen.native_aot_decl
+import time:       500 |        500 |       torchgen.native_aot_spec_grid
+import time:      1187 |       3215 |     torch._native.aot_manifest
+import time:      6557 |      41961 |   torch._native
+import time:     31527 |   37457923 | torch

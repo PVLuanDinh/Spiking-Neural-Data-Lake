@@ -1,0 +1,28 @@
+{
+  "rule": "smallest P within 5% of peak ticks/s (knee; fewer partitions -> less growth imbalance)",
+  "bench": "4096 LIF units x 40 random out-edges, delays 1..8, ~10% driven, 30 ticks/cell, seed 7",
+  "host": "LUAN_AND_ANNIE",
+  "utc": "2026-08-20T00:43:22Z",
+  "sweep_ticks_per_s": {
+    "P1/T1": 784.3,
+    "P1/T4": 363.74,
+    "P1/T8": 455.8,
+    "P2/T1": 331.58,
+    "P2/T4": 407.46,
+    "P2/T8": 403.86,
+    "P4/T1": 234.24,
+    "P4/T4": 307.44,
+    "P4/T8": 151.66,
+    "P8/T1": 158.92,
+    "P8/T4": 220.14,
+    "P8/T8": 276.62,
+    "P16/T1": 177.49,
+    "P16/T4": 230.42,
+    "P16/T8": 228.33,
+    "P32/T1": 105.93,
+    "P32/T4": 203.3,
+    "P32/T8": 199.48
+  },
+  "peak_ticks_per_s": 784.3,
+  "P": 1
+}

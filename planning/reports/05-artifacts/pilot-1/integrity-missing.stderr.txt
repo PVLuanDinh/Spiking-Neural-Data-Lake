@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/05-artifacts/evaluate.py", line 483, in <module>
+    main()
+    ~~~~^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/05-artifacts/evaluate.py", line 479, in main
+    worker(args) if args.worker else run(args)
+    ~~~~~~^^^^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/05-artifacts/evaluate.py", line 331, in worker
+    result = restored(data, args.expected)
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/05-artifacts/evaluate.py", line 254, in restored
+    body = decode_checkpoint(blob, expected)
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/05-artifacts/evaluate.py", line 104, in decode_checkpoint
+    require(blob is not None, "missing checkpoint")
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/03-artifacts/evaluate.py", line 41, in require
+    raise RuntimeError(reason)
+RuntimeError: missing checkpoint

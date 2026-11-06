@@ -1,0 +1,36 @@
+Traceback (most recent call last):
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/02-artifacts/run-baseline.py", line 253, in <module>
+    main()
+    ~~~~^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/02-artifacts/run-baseline.py", line 194, in main
+    worker(args.worker)
+    ~~~~~~^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/02-artifacts/run-baseline.py", line 85, in worker
+    dc.main()
+    ~~~~~~~^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/delayed_cue.py", line 789, in main
+    result = construction_check(seeds=(8000,))
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/delayed_cue.py", line 657, in construction_check
+    "b1": check_b1_all(),
+          ~~~~~~~~~~~~^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/delayed_cue.py", line 408, in check_b1_all
+    "i": check_b1(words_i, texts_i(), _others("i"), BUCKETS_I),
+         ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/delayed_cue.py", line 376, in check_b1
+    "firewall_reject": all(firewall_kind(t) == "reject" for t in texts),
+                       ^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/delayed_cue.py", line 376, in <genexpr>
+    "firewall_reject": all(firewall_kind(t) == "reject" for t in texts),
+                           ~~~~~~~~~~~~~^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/delayed_cue.py", line 349, in firewall_kind
+    return _firewall().interpret(text).get("kind")
+           ~~~~~~~~~^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/instruments/delayed_cue.py", line 343, in _firewall
+    from snn_data_lake.sensorimotor.nl_interface import NLInterface
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/sensorimotor/nl_interface.py", line 43, in <module>
+    from snn_data_lake.brainstem.serial_arm import is_valid_command
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/brainstem/serial_arm.py", line 30, in <module>
+    from snn_data_lake.brainstem.so101_arm import So101Arm
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/repo/src/snn_data_lake/brainstem/so101_arm.py", line 89, in <module>
+    import mujoco
+ModuleNotFoundError: No module named 'mujoco'

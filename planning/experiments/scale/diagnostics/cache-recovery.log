@@ -1,0 +1,51 @@
+{"download": "filelock-4.2.6-py3-none-any.whl", "bytes": 164378}
+{"download": "fsspec-2026.9.0-py3-none-any.whl", "bytes": 221738}
+{"download": "jinja2-3.1.6-py3-none-any.whl", "bytes": 134899}
+{"download": "markupsafe-3.0.4-cp314-cp314t-macosx_11_0_arm64.whl", "bytes": 12096}
+{"download": "mpmath-1.3.0-py3-none-any.whl", "bytes": 536198}
+{"download": "networkx-3.7-py3-none-any.whl", "bytes": 2142205}
+{"download": "numpy-2.5.4-cp314-cp314t-macosx_11_0_arm64.whl", "bytes": 12138695}
+{"download": "setuptools-84.2.1-py3-none-any.whl", "bytes": 876263}
+{"download": "sympy-1.14.0-py3-none-any.whl", "bytes": 6299353}
+{"download": "threadpoolctl-3.7.0-py3-none-any.whl", "bytes": 26362}
+{"download": "torch-2.15.0-cp314-cp314t-macosx_14_0_arm64.whl", "bytes": 138900111}
+{"download": "typing_extensions-4.16.0-py3-none-any.whl", "bytes": 45571}
+{"download": "h5py-3.16.0-cp312-cp312-macosx_11_0_arm64.whl", "bytes": 3061940}
+{"download": "numpy-2.5.4-cp312-cp312-macosx_14_0_arm64.whl", "bytes": 5451717}
+{"download": "matplotlib-3.11.2-cp312-cp312-macosx_11_0_arm64.whl", "bytes": 9305583}
+{"download": "contourpy-1.4.0-cp312-cp312-macosx_11_0_arm64.whl", "bytes": 284921}
+{"download": "cycler-0.12.1-py3-none-any.whl", "bytes": 8321}
+{"download": "fonttools-4.68.0-cp312-cp312-macosx_10_13_universal2.whl", "bytes": 3143556}
+{"download": "kiwisolver-1.5.1-cp312-cp312-macosx_11_0_arm64.whl", "bytes": 64660}
+{"download": "packaging-26.3-py3-none-any.whl", "bytes": 129956}
+{"download": "pillow-13.0.0-cp312-cp312-macosx_11_0_arm64.whl", "bytes": 4852329}
+{"download": "pyparsing-3.3.3-py3-none-any.whl", "bytes": 126420}
+{"download": "python_dateutil-4.0.0-py3-none-any.whl", "bytes": 92853}
+{"download": "tzdata-2026.6-py2.py3-none-any.whl", "bytes": 348210}
+Traceback (most recent call last):
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/scale/recover_caches.py", line 89, in <module>
+    main()
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/scale/recover_caches.py", line 70, in main
+    archive = download("https://codeload.github.com/PVLuanDinh/Spiking-Neural-Data-Lake/tar.gz/c4c10b285f1741aa798d5ee9c5296ae371fabecf", "source-c4c10b2.tar.gz")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/scale/recover_caches.py", line 30, in download
+    with urllib.request.urlopen(url, timeout=30) as src, part.open("wb") as dst:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py", line 521, in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py", line 630, in http_response
+    response = self.parent.error(
+               ^^^^^^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py", line 559, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/Users/arthurkhvan/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py", line 639, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 404: Not Found

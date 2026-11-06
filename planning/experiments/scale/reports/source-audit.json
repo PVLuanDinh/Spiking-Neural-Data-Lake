@@ -1,0 +1,1942 @@
+{
+  "repository": "PVLuanDinh/Spiking-Neural-Data-Lake",
+  "commit": "c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "remote_tree_url": "https://api.github.com/repos/PVLuanDinh/Spiking-Neural-Data-Lake/git/trees/c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "verified_blobs": 483,
+  "all_match": true,
+  "source_root": "/private/tmp/sndl-class-source-tlefts_z",
+  "files": {
+    "src/snn_data_lake/__init__.py": {
+      "git_blob": "4a8e7ab12cc2b8fafaefe4a6d6382628ff7a92b8",
+      "sha256": "d682c8dffa9519486740d75e6bfe886febca62645ce21add3961b24e341ef6ae"
+    },
+    "src/snn_data_lake/brain_atlas.py": {
+      "git_blob": "8ab21ab40aedbd428c09c82ab876465a824edf94",
+      "sha256": "9befe599b018d5d8722f62493107993a7a1889e143d1e819154840c74d3909fe"
+    },
+    "src/snn_data_lake/brainstem/__init__.py": {
+      "git_blob": "6573f8e74a13c6bcad171223be72fa7d4242fe14",
+      "sha256": "4a08cb7bb10bf549bc542d835fe193e340ef246de29ce88663c8a25e664648ab"
+    },
+    "src/snn_data_lake/brainstem/arm_config.py": {
+      "git_blob": "9a3f2fccfe7eb058d6bca79bf936da865a0cfc95",
+      "sha256": "562ad5d7053062b590a7e49c469ff7b853e3c7e1d1a68ffd7c175f68e8170276"
+    },
+    "src/snn_data_lake/brainstem/interpreter.py": {
+      "git_blob": "131b8ad1079c313c29a5e950b1008c376f00a2a9",
+      "sha256": "91d58718c1ba22357a80eb8e1360ee2f1abf1126c590084c29cedb17b68f98c9"
+    },
+    "src/snn_data_lake/brainstem/reflex.py": {
+      "git_blob": "b1faa1e92be3511160d7710db9b534481b89907b",
+      "sha256": "06c0d936a9f57fcc206862042f1960b2156f9262091a0279afb0acefa9b8d694"
+    },
+    "src/snn_data_lake/brainstem/serial_arm.py": {
+      "git_blob": "558688611886e48c648af98181dfac224e02de1c",
+      "sha256": "b81874b063e6cfbe42c499771b508c9a9b78f64e65879b7c03b8d5218607df18"
+    },
+    "src/snn_data_lake/brainstem/so101/SO-ARM100-LICENSE": {
+      "git_blob": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/base_motor_holder_so101_v1.stl": {
+      "git_blob": "cac2b8dd98d3d8a6dcdf429b36aaa4b576d82041",
+      "sha256": "8cd2f241037ea377af1191fffe0dd9d9006beea6dcc48543660ed41647072424"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/base_so101_v2.stl": {
+      "git_blob": "ed10aa61d1181f8001c908ee5cae5c4f970ba417",
+      "sha256": "bb12b7026575e1f70ccc7240051f9d943553bf34e5128537de6cd86fae33924d"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/motor_holder_so101_base_v1.stl": {
+      "git_blob": "9eaf67243a5ffc2dacb3fbd026b4c0620adcdd66",
+      "sha256": "31242ae6fb59d8b15c66617b88ad8e9bded62d57c35d11c0c43a70d2f4caa95b"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/motor_holder_so101_wrist_v1.stl": {
+      "git_blob": "d0aa18b15a9cd63f41fa4d48e82df7a3b618c75d",
+      "sha256": "887f92e6013cb64ea3a1ab8675e92da1e0beacfd5e001f972523540545e08011"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/moving_jaw_so101_v1.stl": {
+      "git_blob": "7e8736686592072cf34c7f6e2e6e88f8a3ba60bb",
+      "sha256": "785a9dded2f474bc1d869e0d3dae398a3dcd9c0c345640040472210d2861fa9d"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/rotation_pitch_so101_v1.stl": {
+      "git_blob": "5c05dee570623f62c4ab7597d76c7bdea20eacea",
+      "sha256": "9be900cc2a2bf718102841ef82ef8d2873842427648092c8ed2ca1e2ef4ffa34"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/sts3215_03a_no_horn_v1.stl": {
+      "git_blob": "2a89597702f5ec6849b6b1b894c867b35b98ca42",
+      "sha256": "75ef3781b752e4065891aea855e34dc161a38a549549cd0970cedd07eae6f887"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/sts3215_03a_v1.stl": {
+      "git_blob": "fe05403dbfac7a26822b8c8cd0fc3d5288a69fc8",
+      "sha256": "a37c871fb502483ab96c256baf457d36f2e97afc9205313d9c5ab275ef941cd0"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/under_arm_so101_v1.stl": {
+      "git_blob": "480e0583c8bb27ff9affefbebee72b784fb054c8",
+      "sha256": "d01d1f2de365651dcad9d6669e94ff87ff7652b5bb2d10752a66a456a86dbc71"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/upper_arm_so101_v1.stl": {
+      "git_blob": "9c0f9b275a51f720476e529c92193f4f69d4784c",
+      "sha256": "475056e03a17e71919b82fd88ab9a0b898ab50164f2a7943652a6b2941bb2d4f"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/waveshare_mounting_plate_so101_v2.stl": {
+      "git_blob": "4dba1f22b01ab9afef2466872fcb3e1efca89e38",
+      "sha256": "e197e24005a07d01bbc06a8c42311664eaeda415bf859f68fa247884d0f1a6e9"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/wrist_roll_follower_so101_v1.stl": {
+      "git_blob": "123ce374ad3efc240e4d7022f31314e59fe4b0c0",
+      "sha256": "4b17b410a12d64ec39554abc3e8054d8a97384b2dc4a8d95a5ecb2a93670f5f4"
+    },
+    "src/snn_data_lake/brainstem/so101/assets/wrist_roll_pitch_so101_v2.stl": {
+      "git_blob": "ac5172a35e6da3e9fdea21e25803f23cc61e31f1",
+      "sha256": "6c7ec5525b4d8b9e397a30ab4bb0037156a5d5f38a4adf2c7d943d6c56eda5ae"
+    },
+    "src/snn_data_lake/brainstem/so101/scene.xml": {
+      "git_blob": "255b970b33735ff20d970fdd762218a7ea1e4004",
+      "sha256": "3b79a253a742f55ff0b16682173609229560d97744be472a238ea2e0a6a31ef6"
+    },
+    "src/snn_data_lake/brainstem/so101/so101_new_calib.xml": {
+      "git_blob": "ee235d7e313a9cd9ab56a98dd707c61c97f1e44a",
+      "sha256": "d75253eb568e8a7214db9c631ab7bed4217f608a26f7276ebe9a7636cac82580"
+    },
+    "src/snn_data_lake/brainstem/so101_arm.py": {
+      "git_blob": "0222078b67c238e91a093c1e1e1a886e8868bcbc",
+      "sha256": "5c3fa4b0665bcd4da010b9b904ee42f8e9e735205d2e57f60ce05a45936ae470"
+    },
+    "src/snn_data_lake/connectome.py": {
+      "git_blob": "b0666c510952b59466b4ebe3f194d2932633bd5b",
+      "sha256": "68e6610cc05dbcd99f3723da35ddfbfbae89495e6fad0a68c3c754f88150eb42"
+    },
+    "src/snn_data_lake/engine/__init__.py": {
+      "git_blob": "1c351470bc721f185d71154893f6bef625f681ed",
+      "sha256": "3f2811206840b991f4558a7455fbca7c39799eb670b5d4cd34392a381b1b4b35"
+    },
+    "src/snn_data_lake/engine/autonomous_loop.py": {
+      "git_blob": "5764a476c65c02283db8f50a1db74031ecabd0e8",
+      "sha256": "8532fd12d02e1f5cc97a4da84f98de7303c876b8cad843bc3716b20364988c2b"
+    },
+    "src/snn_data_lake/engine/brain.py": {
+      "git_blob": "0ffa27f0b0f4f3f80b147713df69be36ae63b35f",
+      "sha256": "9294860fb52b00209f4d7b76ac82675d397e41e9f064e8faa1e1f1eab59aee38"
+    },
+    "src/snn_data_lake/engine/learn_daemon.py": {
+      "git_blob": "307faf590020166caf6cd146e9bae4f3eeb85c90",
+      "sha256": "53f6b37d741c16bc7d9da3b9fef39c293e9b1bfd9245b077d9df94f57423492a"
+    },
+    "src/snn_data_lake/engine/live_brain.py": {
+      "git_blob": "871a7c450a3818954ae8f4a4be85f9276fb19ce6",
+      "sha256": "9a4b69f055770e757a499e976ec800ba2ed63a5b5b2b784d867db5216a21166b"
+    },
+    "src/snn_data_lake/engine/report_channel.py": {
+      "git_blob": "f01a1ce715cb62de14fee93e1fcd9dfe361d7050",
+      "sha256": "b107279ad426b4d13cd10dcb3633b68cf91abc0dfab88c7343d2a3c020bd5182"
+    },
+    "src/snn_data_lake/engine/signal_ring.py": {
+      "git_blob": "e352c6cb7cf900d43125716a92bb789f1eec5ca0",
+      "sha256": "84c0f4794a2bffa0cebb50945e50a9bf3ab698106c9f75a635b0bf6541b0f20f"
+    },
+    "src/snn_data_lake/engine/wiring_manifest.py": {
+      "git_blob": "e61c32056dcdbfd225fec0b968d7bb64b2dba1d1",
+      "sha256": "ed06602233c3e3a4563c9ea167550ca4c567ebcc0f83043f717a0a5ab7a830e6"
+    },
+    "src/snn_data_lake/faculties/__init__.py": {
+      "git_blob": "d8e5e75f0037e8bb69bb85cb62b950ed6d7e127d",
+      "sha256": "aea3561f1a85b8a96d3c835aa796f233f64b11bc5ef1c5a238e90d0ebf2be29d"
+    },
+    "src/snn_data_lake/faculties/access_consciousness.py": {
+      "git_blob": "a06b66ddea39b725f0a572406debfd6b3965922c",
+      "sha256": "4ce9ed2a26f4482385f7da9c4eefb0127806af2d650045cc88900258892d78ad"
+    },
+    "src/snn_data_lake/faculties/acetylcholine.py": {
+      "git_blob": "43f985ccc3b13208483c24b7e504bd83e874f7bc",
+      "sha256": "b8af5c2033c83b1c4ed9b5582d60f997f1f2d8ff909cea8dc44e745a276923ba"
+    },
+    "src/snn_data_lake/faculties/action_gating.py": {
+      "git_blob": "5498be53761a15dfd4f86091c240d52b2ae382f5",
+      "sha256": "0cd9b03f63965b5c3599c55e019ceb472a47ecfa3803521e291b5370b366a637"
+    },
+    "src/snn_data_lake/faculties/affect_core.py": {
+      "git_blob": "f63f4c77ac54abecd132c56a0a46f458b187485d",
+      "sha256": "941bb91879e8433abba70581da114d1a4c1c6a1d9e8d6eb7f472ab33cc2c5635"
+    },
+    "src/snn_data_lake/faculties/affect_integrator.py": {
+      "git_blob": "10cd0eee9a6abe9d5c6947a1974e670ab26347d6",
+      "sha256": "f22d09a9dd36668772ff9c7ab216ae3876b254fa15b5e54bbe39e0d72ad681f8"
+    },
+    "src/snn_data_lake/faculties/affective_appraisal.py": {
+      "git_blob": "ecb0049d46f4f657cbf7173425d7dbd07d884802",
+      "sha256": "757e19f156a578b998caf421114a6af86afd5ef7affb4f64ab4e67e6b28d9cac"
+    },
+    "src/snn_data_lake/faculties/affective_memory.py": {
+      "git_blob": "8fcaa5df7d79b79e0c59429012de1a18507017c7",
+      "sha256": "589518ba355e2efe4e891a484b8f671213532b0f1a14e2fb19ebb8eee356c4fe"
+    },
+    "src/snn_data_lake/faculties/agency_monitor.py": {
+      "git_blob": "bc83b31e1247bfce79763ec91c60c01675a5f9c3",
+      "sha256": "da2dafbadbbb9ed36b454115a9cc87ce9282d4724dd423411a8c545e1d472574"
+    },
+    "src/snn_data_lake/faculties/allocentric_map.py": {
+      "git_blob": "42dd960fbdbdeb9a8cfd3161b5393bb0f4480eae",
+      "sha256": "5ed1e9cf96cc2faac034f55b5e7d8215cdedd2a129abc26d2eda7d4a647e5386"
+    },
+    "src/snn_data_lake/faculties/astrocyte_modulation.py": {
+      "git_blob": "5e0e792daeee2b5bb2264b72d0d2d845b3c441ed",
+      "sha256": "6b56114239ada044b2f0642173345a88ee427bef2c014bbd39db0a6408bea238"
+    },
+    "src/snn_data_lake/faculties/autotelic_goals.py": {
+      "git_blob": "91cbc87a183f8eefac92ab972c89e4cf1d8c95fd",
+      "sha256": "fabd1cc6c443d292415795134105dad944b965d690c22c748fcc3630907dda77"
+    },
+    "src/snn_data_lake/faculties/brain_decision.py": {
+      "git_blob": "02d545f80c38f5d61fa43703acfc7245f6ce4a47",
+      "sha256": "771aff5cdfea2ccbe08a6cc90acaae16bc39b6204301cb607ccf7b6c339dadd2"
+    },
+    "src/snn_data_lake/faculties/claustrum.py": {
+      "git_blob": "49e1ffaeb173e96aac3784ebf91c4330ae053e9c",
+      "sha256": "a29e024a01c520a1a0a89b1b19c0a88d7cd4a341a5816b2838d11545ca3dd359"
+    },
+    "src/snn_data_lake/faculties/competence_executive.py": {
+      "git_blob": "8a5a5f92f194c0d3999a866bd4f9cff85ea05f86",
+      "sha256": "ca0f89abf05eca7eccde59e21fae9427e0eba1ad6846f131eaea88158dcbb9f8"
+    },
+    "src/snn_data_lake/faculties/connectome_router.py": {
+      "git_blob": "754616ed8f96223b6dd7b303524016ce59f7287b",
+      "sha256": "55039a8e4786e8a35dfda9f3cdb84b44a34b644604f43c83938e191da854e89b"
+    },
+    "src/snn_data_lake/faculties/contrastive_episode_analysis.py": {
+      "git_blob": "9cabd9af4b7dd27914bb2878e324b8602a57f6e9",
+      "sha256": "a9626c9718823f36079405e48675f5b234f40b9e14fe71674ed3429c3dd4760c"
+    },
+    "src/snn_data_lake/faculties/cortisol.py": {
+      "git_blob": "94b578fcc2111bfa372cfb597339d85dcc17692c",
+      "sha256": "ec09755e677f59434e7245addea07297f97f9fdd705d03e3da05bdd25f25e5a0"
+    },
+    "src/snn_data_lake/faculties/counterfactual_sim.py": {
+      "git_blob": "a68b8ff6e22f1fec10c77c3504ade08878f61e15",
+      "sha256": "05360de897fc2924bb81414edc923cadb99204e0b55a1320e73b25ac83c3b56c"
+    },
+    "src/snn_data_lake/faculties/cpg_oscillator.py": {
+      "git_blob": "de4899fa5745da0a88a719ea0f0767548147a4d9",
+      "sha256": "1bc2dbd40961ae7aee68329ebc61ee338411a6490e02e1dba1a78215ac51ade8"
+    },
+    "src/snn_data_lake/faculties/crossmodal_binder.py": {
+      "git_blob": "4fdec2f1ebc40c2cb6b1b12c1fea7eaa04f32219",
+      "sha256": "f5246460655f80a390179452293722b4482b9e25737b2463367b90d0c99f6bfd"
+    },
+    "src/snn_data_lake/faculties/developmental_envelope.py": {
+      "git_blob": "50af62bbf52d5d2dc28b6b7005334ea8bb3ca1a5",
+      "sha256": "32151cde369ab04d4465364b1c62751aebe2215c415e23b5cc8787bca5333bb0"
+    },
+    "src/snn_data_lake/faculties/divisive_normalization.py": {
+      "git_blob": "4da01a786accef179aac9cbec56ad743a10c32ff",
+      "sha256": "61028bdd283c15543cce256ffec7e0fd68abefc3201e396eb139cda1233887b7"
+    },
+    "src/snn_data_lake/faculties/dopamine_nuclei.py": {
+      "git_blob": "8ffb390f3a4137461b19124a80935b1d152e17da",
+      "sha256": "72e619d50f1b2c4476f3a7c0be3f4df33ffd85a4d7ddf41b8638f5456f4b0c4b"
+    },
+    "src/snn_data_lake/faculties/drive_reduction.py": {
+      "git_blob": "df300c50d50cdad669e512f1a6a8ce7e0defbf38",
+      "sha256": "527e9ed0312d39325c8582d7f57207306cd608648e7edc1234e30113018ab9bb"
+    },
+    "src/snn_data_lake/faculties/empowerment.py": {
+      "git_blob": "d372fbdc8363ffd988a10a1ba841dcc561ea83c7",
+      "sha256": "f517c2170585960f7fc084f9607de8fde4486655ee75d3525cd1e66ea9369a0c"
+    },
+    "src/snn_data_lake/faculties/evidence_accumulation.py": {
+      "git_blob": "fd93b3bb9ff487eeac13b218edd0db5a2c806e4c",
+      "sha256": "01e4e2772e35123464a780ce1e1b2ad4aa279958b982ebeb42c4c590314229ef"
+    },
+    "src/snn_data_lake/faculties/executive_control.py": {
+      "git_blob": "04e0f4f826c4c54e2b620ab9b8272e681489a453",
+      "sha256": "394cf65a162b10bf1126307df783037dc5f71192f61d34100ae8a7abfbd3e841"
+    },
+    "src/snn_data_lake/faculties/fear_conditioning.py": {
+      "git_blob": "e580d8295238c02a4c38adc3921a5366473d8ff5",
+      "sha256": "3339c276f4bb510447f8afe6f1851263e45aa2c10500ec9cda203725b618ab20"
+    },
+    "src/snn_data_lake/faculties/forward_model.py": {
+      "git_blob": "52097d24b75ec2047e484a3364d76b85af5d9554",
+      "sha256": "8ace61077848930fb83c86d683f8272cd4ef08a4c71fadb533f4db157870c855"
+    },
+    "src/snn_data_lake/faculties/gain_adaptation.py": {
+      "git_blob": "d4706c3b3f903bc60e33504d7451c3e7a04f687a",
+      "sha256": "09e0e1b13fa7e2be539bc266cbaeeb48d65d2d808c44a3923e383d85f585ac0f"
+    },
+    "src/snn_data_lake/faculties/generalizing_novelty.py": {
+      "git_blob": "e3cd13b42ca402a68965000cbec32f11b544e47d",
+      "sha256": "b7b843f4eb50868a4de0fbdd54a83c4356883af443f85b77b39649fb984aa9f3"
+    },
+    "src/snn_data_lake/faculties/generative_self_model.py": {
+      "git_blob": "7d213001bfa175d9accd950f2b197b2cb06aa098",
+      "sha256": "1d4a811aaeb9494875a78cc45d0b464e9a5d379a562b33ff1850f3c4f6e7e936"
+    },
+    "src/snn_data_lake/faculties/global_workspace.py": {
+      "git_blob": "8961235132a08006b362f8b8f746b31cc377fb2a",
+      "sha256": "522ba55bff0e07f971f9952dae9988420805b3d0027908df37610e78008b9025"
+    },
+    "src/snn_data_lake/faculties/grid_cells.py": {
+      "git_blob": "87e2bc7b9cbb8fbc15935d6aff152689f85ecd59",
+      "sha256": "d082642eb5ddd46ca429fe4159c9351aeb32ff396b46d75ccfe9d0bd0c17a4b4"
+    },
+    "src/snn_data_lake/faculties/grid_place_map.py": {
+      "git_blob": "e77d8f15ee045162e4c74f54770d0df6df9c0cd0",
+      "sha256": "7e1d1732273cdb2e221421936b78210f7a801380d9608818e85070b6dca046f1"
+    },
+    "src/snn_data_lake/faculties/gwt_deep.py": {
+      "git_blob": "f2411b3d40b0ecd6bf05ffd6df8da29379700881",
+      "sha256": "5a9a8931724bf051628a5ee2e08bcba256a43a86d533a469f72b95322026e0af"
+    },
+    "src/snn_data_lake/faculties/habenula.py": {
+      "git_blob": "6f5540da4893008a63382eaa0e39e350ec1bb4a9",
+      "sha256": "dc840d34a8aaa8c9364fc26728021a32f849659defe7eedb3ae003907bebf696"
+    },
+    "src/snn_data_lake/faculties/hjepa_serve.py": {
+      "git_blob": "95514082124185b1db90ae3fcc364c8999de471f",
+      "sha256": "8f2deb53aec8246b73184cea35d74acd32c4cfaf2544add1a98e1c54e65c4839"
+    },
+    "src/snn_data_lake/faculties/homeostatic_drives.py": {
+      "git_blob": "b1cf6029baa914b407dd9f67c19f574a9558398f",
+      "sha256": "f67d3ade6bfd7ef2006c2026b8c69600e7a485b350229f220aedc09c5fa4e531"
+    },
+    "src/snn_data_lake/faculties/interoceptive_arousal.py": {
+      "git_blob": "28bba4190c4b4cee2012b180d6d857abd97afb82",
+      "sha256": "5c7afcf62fce622880730d6aff76f34fa3d3b2e7e5f06e85dd750ccb8880dd69"
+    },
+    "src/snn_data_lake/faculties/interoceptive_integration.py": {
+      "git_blob": "4896425369de1fb5e1f45704c50ce8fa1641df4d",
+      "sha256": "fa5f66554be6d2e1468857aca6282dbca8a203d227f2fb58d5069a5c47154917"
+    },
+    "src/snn_data_lake/faculties/interoceptive_relay.py": {
+      "git_blob": "ca4e7f8cd1c6fd2d568352710c8aa1a29acde05b",
+      "sha256": "3760ecd94e80f96a8d88f83d022182ba6e18441909d7ae867b5e769cf2beb947"
+    },
+    "src/snn_data_lake/faculties/intrinsic_motivation.py": {
+      "git_blob": "383f456fbf2a8a4e1d2c9a3a12808dfe2c722a00",
+      "sha256": "dd60b0cec2ccb78c20b1b9ca471b1c3fc253c131bf5f5c68f0b60212a6e0d0a8"
+    },
+    "src/snn_data_lake/faculties/is_snn_forward.py": {
+      "git_blob": "59e788313139d789b43db75be278074af68c974b",
+      "sha256": "0aa4fe63b1e314dff2f9f552827f01fb0c067a061d650410c35f3a1c5be69eb0"
+    },
+    "src/snn_data_lake/faculties/jepa_world_model.py": {
+      "git_blob": "6d2ef4b9aea283a5036882971c6f13ea8b2b26fb",
+      "sha256": "b7baed9fedbda6f3b845e2968464a0912b6fc51f80dc7fb991fecfe61008a5b6"
+    },
+    "src/snn_data_lake/faculties/kb_ranking.py": {
+      "git_blob": "5b83ba07e726bf2209ad31736871bcd0f13686ad",
+      "sha256": "186f60b429c3ecd126bdc93a01412b47154910a04a4942e683d951803214ff29"
+    },
+    "src/snn_data_lake/faculties/language_acquisition.py": {
+      "git_blob": "3a218febb2d5a6d6f17247ef506606e7ebef0c2c",
+      "sha256": "c82ce3353b8d7bf0a1d6e909e9934f19e575ab671b316c1d03deba1701aa1108"
+    },
+    "src/snn_data_lake/faculties/language_self_build.py": {
+      "git_blob": "e19414ba7183096428567ba23b948adbb8ec7d53",
+      "sha256": "7add46ce0a9e1621f6e0e09676fae353cb6659ee2a5946aa5e1dbe8beaba3e2d"
+    },
+    "src/snn_data_lake/faculties/latent_q.py": {
+      "git_blob": "feeec91de223813d94ff56eb2471ecec18e8fb6b",
+      "sha256": "a995ef2f8fd398c7d8ccc0b88284627617f63230609d9b73ec8ff736d12a08cb"
+    },
+    "src/snn_data_lake/faculties/learned_attention.py": {
+      "git_blob": "ee68e7c6cc9040febf60cd85c5a09298cd885fb7",
+      "sha256": "507ff4cad22bac850a06a2d47643b3201f22dddc66a4045780d132780fbbd652"
+    },
+    "src/snn_data_lake/faculties/learned_evc.py": {
+      "git_blob": "0f07b56f47ca2e8067d6881d1439a4941250be99",
+      "sha256": "5a0afc78e1e38d22431eab2b574691684b8851e06cb7c1e50e876e0f5c17a2aa"
+    },
+    "src/snn_data_lake/faculties/locus_coeruleus.py": {
+      "git_blob": "fdea9dac3332c691623f6461fd1d0d2828a3bf4e",
+      "sha256": "4dcdaed98811f13a3a6f9ec5afed77b79ff3c02279c0622e3be681e32e38d668"
+    },
+    "src/snn_data_lake/faculties/metacognitive_monitor.py": {
+      "git_blob": "11af49258f24aa0998c1595e9bae7c0b7d5cd99c",
+      "sha256": "c39fb7e4db42c317240bdc3ba14332367d9b18caa69605bded09a2bbfb5c8921"
+    },
+    "src/snn_data_lake/faculties/microcircuit.py": {
+      "git_blob": "1d1f7d60ef735a4953525b1e3f6b3970a3a9c65c",
+      "sha256": "cea4f0000c657809238eb524fc66959d9474a4900accc6f99fd4edc6bb8532bd"
+    },
+    "src/snn_data_lake/faculties/mlp_q.py": {
+      "git_blob": "1b846d0436ca1510ae9ed3cab82293ae9080c926",
+      "sha256": "cd776368e16e481787324115c51ab27979d31dc93b3e3bbca2f1955119acb296"
+    },
+    "src/snn_data_lake/faculties/mossy_relay.py": {
+      "git_blob": "14a8eacbaf68421bdaf78775500013916fa4f0c7",
+      "sha256": "61ebe46b6866d256ceb78c28beb27168b0b7929a1cee5dc6d9ad0fd4e28b7fee"
+    },
+    "src/snn_data_lake/faculties/multisensory_integration.py": {
+      "git_blob": "9a3b108ebe1633f777a157fd129ac759713c334f",
+      "sha256": "457d62a540b9d62186d2d5fcc6e8f828a2c9e0ad942f212846d63ae99e3d5996"
+    },
+    "src/snn_data_lake/faculties/open_world_loop.py": {
+      "git_blob": "e554085f5c61d9718f419fdab4e03eb96216ffc7",
+      "sha256": "0afdfd6766575dbc04578f6f4ddfc976e1a1df20dd5b5372975a689234971c6f"
+    },
+    "src/snn_data_lake/faculties/percept_surprise.py": {
+      "git_blob": "4189612df4ae826fd066f59223704c1a2efe5b12",
+      "sha256": "bd5f139a4bf4acd4465106a642a24f7797b2f5269b4bceffb5b152394a63727d"
+    },
+    "src/snn_data_lake/faculties/polychronization.py": {
+      "git_blob": "6dee3dc3721b9b6564411314f780b588dedb396f",
+      "sha256": "2578209fb1998a32fa9a3179d19bb978ebed581fd40bc430c485d34cbc69520d"
+    },
+    "src/snn_data_lake/faculties/prefrontal_executive.py": {
+      "git_blob": "dfaa92548da94e910496fd406bd61ddc07b1a4da",
+      "sha256": "b1da8a4d9223e404a068c2e0f3300531704fd7631bac07cd7b684208eff7221e"
+    },
+    "src/snn_data_lake/faculties/quality_diversity.py": {
+      "git_blob": "58fd2497e49ec23f0694833c7324d8d41dd6a701",
+      "sha256": "c2909d69933da73d7e6cbc38dfd773fcce8bef624a7aafc34fed3f9b0b061765"
+    },
+    "src/snn_data_lake/faculties/raphe_serotonin.py": {
+      "git_blob": "b812a0456fbde78877ed2a952c24f4aa1d1422b9",
+      "sha256": "dd284dec1c2f45ccb47b3273c9c10564ee528b94fb6c757199883617f456f533"
+    },
+    "src/snn_data_lake/faculties/reasoning_curriculum.py": {
+      "git_blob": "352c54eb7e2a9462a98b59b8bdb176b3979bebe3",
+      "sha256": "7912466264617f0c1409c924e120ccb0c4cf6ab7eda10be6b8872b83a6baf633"
+    },
+    "src/snn_data_lake/faculties/recursive_tom.py": {
+      "git_blob": "013b9b4f90ded8c2583b060d11af7eb6702375f9",
+      "sha256": "dbb9ca53f32980a05542208936d52ee9f9f7e691dba8820fa5c8a499bebd002e"
+    },
+    "src/snn_data_lake/faculties/reentrant_workspace.py": {
+      "git_blob": "b14dfccb2678621737cc1e2df52adb3c9e1de5b5",
+      "sha256": "891af66930fc8f1ed6a2b39732511719a80716636622440b4af2b18aab015272"
+    },
+    "src/snn_data_lake/faculties/region_coherence.py": {
+      "git_blob": "d85d3e4b30bfe4cc999f6e96ccceb343704702f9",
+      "sha256": "e8f1facc3af0b700d57a2d80e49763227da6a6499a1853e133141da3ea98dd66"
+    },
+    "src/snn_data_lake/faculties/reticular_gate.py": {
+      "git_blob": "84f16c583626f26686d0cb8579e04a1d21100ff0",
+      "sha256": "ea2d28c5b156a53a184b4fe6add997a632d7bc9d12e02f1b2703b325eb033619"
+    },
+    "src/snn_data_lake/faculties/ring_attractor.py": {
+      "git_blob": "e85588f58519ca8011701aa0b22870451d99a012",
+      "sha256": "38caebe216105cf1d8d03aab7ea6b275dd5727d06c757a3c9c2a234606869a8c"
+    },
+    "src/snn_data_lake/faculties/rose_language.py": {
+      "git_blob": "b107c97aa2a15f11839bf141d75414e10538a1a6",
+      "sha256": "334854b5b0866c14a8bc07c62a708c6db8a67e7d45ea0bc694d1fd71705d1fbe"
+    },
+    "src/snn_data_lake/faculties/sc_deep_layers.py": {
+      "git_blob": "1f220c89bef216ddd8978b590fe2adad1252b39b",
+      "sha256": "b3b4ff0d820783b3d00bdccf53d13053b07bd42e892800bf840a00cd50368149"
+    },
+    "src/snn_data_lake/faculties/second_order_access.py": {
+      "git_blob": "28cc5d7073d057a3faa8472084ffdf2f9f2e49db",
+      "sha256": "a97f3a1209bc81d2ea188cbc898514239d67a8811f92dbc605643164367340cd"
+    },
+    "src/snn_data_lake/faculties/self_improvement_suite.py": {
+      "git_blob": "6591afe73b8469c47dc24c1d09c35cee160abede",
+      "sha256": "668d58beff1f129667df084ac50857d2b8d16b1f4b5bf4b8d3218fa1fd8ee779"
+    },
+    "src/snn_data_lake/faculties/self_model.py": {
+      "git_blob": "bee8c3a87900a7816856dacbba83a56e0010e870",
+      "sha256": "69f030c4930de414d61995a9613b23df58f22761f04fbe419fa5de83412b4565"
+    },
+    "src/snn_data_lake/faculties/set_points.py": {
+      "git_blob": "4e09853a3b5f939481dce61765daea24c02ad800",
+      "sha256": "f93e1cc30ae888fc67db85fdb7d534cd18ba1f66a86f5c5a35c26861d2a16245"
+    },
+    "src/snn_data_lake/faculties/skill_builder.py": {
+      "git_blob": "1b8e3c28122b192fabf830ce23461e84c3e0bf32",
+      "sha256": "10f13223c5f4cb7ba5e367b9b91b859a326e4452c9992c2399db8bdcfa0ffb15"
+    },
+    "src/snn_data_lake/faculties/spiking_curiosity.py": {
+      "git_blob": "ea8051558757c413ed500b85e92436005c23995e",
+      "sha256": "2249e422973087975d86c9bbccaaa0b02170b4877e5f60ddd5e09f23044b1ea3"
+    },
+    "src/snn_data_lake/faculties/spiking_grid_can.py": {
+      "git_blob": "ac951cc83ac34e3071811a7e945fd76c15095bc3",
+      "sha256": "f8c39fc9c3c3623f18168087859b77294ced34d5008fe94f05e3f613629d2b45"
+    },
+    "src/snn_data_lake/faculties/spiking_jepa.py": {
+      "git_blob": "b512ad9e34979b993093c62a5657efdbb43aeaaf",
+      "sha256": "d0575685a761da69677e800634a81c2d0fecef7e2d66cbf146fb2d814343bc6b"
+    },
+    "src/snn_data_lake/faculties/spiking_pid.py": {
+      "git_blob": "bc03528ad91a38f73afc6c05aa3148af9c96cb79",
+      "sha256": "13dc66484c2240f4e5882744fc95af1f750dafb31c122e444c51d4347556f399"
+    },
+    "src/snn_data_lake/faculties/spiking_storage_prototype.py": {
+      "git_blob": "c6ab39a4108d81e3bcaba3abceb1f27f3cbd26fb",
+      "sha256": "af6dd4187bcbefee7fb41cc5a0ddb5515fc10b7c20ea77e7051556fce89f794f"
+    },
+    "src/snn_data_lake/faculties/superior_colliculus.py": {
+      "git_blob": "e298ab852a51d1819e905fafdc36d38c3d7f25b4",
+      "sha256": "3cb1b0565b9f9b90efbe211cffb15d4108df6771ec9ddc0b281c76eed7073473"
+    },
+    "src/snn_data_lake/faculties/synfire_chain.py": {
+      "git_blob": "5c398015e6e818eb2f72ff9794d563b2badc7bfa",
+      "sha256": "d92adc38aa9293d7b84935e9c651ff56d369f92d5587a9f75edc3b8d1c896b79"
+    },
+    "src/snn_data_lake/faculties/task_set.py": {
+      "git_blob": "9d8ca450f788a165a2b52a7ae9daa98818c447e6",
+      "sha256": "feda8129f83c29a21b06e539eb6ee5b7b24554000b9d054b24ae2c2457a6e558"
+    },
+    "src/snn_data_lake/faculties/theory_of_mind.py": {
+      "git_blob": "5620b1f3fa53a18bf3d6983bdc372d574bddba2d",
+      "sha256": "f27aa7f84209ed3fefe6f4323ca2d2233d15ae452b44dbe25e29f90b7e5161c4"
+    },
+    "src/snn_data_lake/faculties/theta_gamma_code.py": {
+      "git_blob": "42c8929e804d158ef5b8fbadd98a96b717cbf866",
+      "sha256": "44105c17346890b817b6d499049d4b958724e532205600639f8e877130c3d0a1"
+    },
+    "src/snn_data_lake/faculties/time_cells.py": {
+      "git_blob": "3cb01705efa6ced694d446b13555d21f1d77255a",
+      "sha256": "4bbc61a5765d579ecd3e5fd4337c1233340f37cc0b5734123ccd409624dd3458"
+    },
+    "src/snn_data_lake/faculties/vital_nuclei.py": {
+      "git_blob": "199a61db14cb8e99374e9a9f683b12eedfabc6b7",
+      "sha256": "9e3f40febcd776cc317500a729e13dbf2ad244d1b94927e71c02a8216c14db54"
+    },
+    "src/snn_data_lake/faculties/vsa_reasoning.py": {
+      "git_blob": "6cc71c8579419ed6a0526368adaabef87baa1954",
+      "sha256": "6adfd1a2c5b8c1507e4d07b307e32462ea747ecf1790bb8e7128bc1501a54299"
+    },
+    "src/snn_data_lake/faculties/vsa_structure_mapping.py": {
+      "git_blob": "a8611b9d6e50f1134f1e39a0b764e42537258e7d",
+      "sha256": "389021266555f5d7a7a38cbf8e2683235b1865d0b8d8072bbfc6cf79b8350a21"
+    },
+    "src/snn_data_lake/faculties/wholistic_loop.py": {
+      "git_blob": "825976376e41891028843c084daab5b77545d8ec",
+      "sha256": "6b5df2cf1f4d8e4e07a14307a39d6dc5e2cd216c50d468f6f5c6927ebc7eb5f5"
+    },
+    "src/snn_data_lake/faculties/wm_capacity.py": {
+      "git_blob": "6eb1c93bf7678edc8d260875d0cba5e43600ead1",
+      "sha256": "bd4c370054c80b8717e53f245b3ade1e971b0323ed3fa6a05722c03af05be34a"
+    },
+    "src/snn_data_lake/gates/__init__.py": {
+      "git_blob": "36ce9d50f4e8d492902e9f180e569c066cefa4f8",
+      "sha256": "978687b7a8eed9a95e9e47f3523ae21ed532125a6aee053b7be57b7c38c6c9e1"
+    },
+    "src/snn_data_lake/gates/amdahl_gate.py": {
+      "git_blob": "5952e69f3e5d398ca92f4160136c7a3c4df3b7bd",
+      "sha256": "1fe23403b4e07acccdd434d3b3c1f48cb812758f2f8966132e4914e6dbc48899"
+    },
+    "src/snn_data_lake/gates/atlas_node_gate.py": {
+      "git_blob": "5706ee4ac8b49bd1d1e586e29b64c589cfbfddfa",
+      "sha256": "ae3a6d74166124d900f1c0d2f8d795705876f45b39e0dfaeda720ee54f458b35"
+    },
+    "src/snn_data_lake/gates/capability_bar.py": {
+      "git_blob": "68b5c2dbd8055a6a87683bfe4d50edcc026ddabd",
+      "sha256": "754de2e29b394be06ebbdad60fc295adcc388671a17c6efbadd6ba11548beef7"
+    },
+    "src/snn_data_lake/gates/conclusion_protocol.py": {
+      "git_blob": "012a1281f95bf1007fe00723b04cb7ec564c43c0",
+      "sha256": "e092d4860f2e7e00fb3c5653729eb68c2d092bcbe7ce4d7c233b24b84f4a746b"
+    },
+    "src/snn_data_lake/gates/determinism_gate.py": {
+      "git_blob": "07d55afe9d11433c4ba84d6b58b64e065c7225ef",
+      "sha256": "cf67fb7471117142c27ad73fea7813ee3e2b72dbb94d0d5fcce931d087f4947f"
+    },
+    "src/snn_data_lake/gates/doc_budget_gate.py": {
+      "git_blob": "2f1ad1770bd791c96d3c3881b1240816e06c4942",
+      "sha256": "1b60be158125e8230cc8b30861f8e51cef0fe0e597c640bcd4a5d4a5c9723416"
+    },
+    "src/snn_data_lake/gates/docs_only_battery.py": {
+      "git_blob": "cd9989fc3be92a056e913e4bbaedb6b3cf79d710",
+      "sha256": "ad4243d964236548c5a7dab6818b0781c55c0a8d8fd67a0a3ef6c7234edfd3eb"
+    },
+    "src/snn_data_lake/gates/dormancy_gate.py": {
+      "git_blob": "e217b4b734c34ef134bdf737ab3577a582a16d47",
+      "sha256": "c32279205e9ca9230a931d30722564cae14e8f64731e88ec9dc803e7c105b93e"
+    },
+    "src/snn_data_lake/gates/envelope_hash_gate.py": {
+      "git_blob": "0aa80ca9354e5778036321cd33379a6b461a6993",
+      "sha256": "de01c26fec27a7f469eddfbb7dcce552e99f5d0877c804de3afbe571be87c93a"
+    },
+    "src/snn_data_lake/gates/eprop_transport_gate.py": {
+      "git_blob": "c4e27c82861f704fbb30adab117bc804d21b96d3",
+      "sha256": "98718956c417b8f900756c89ed64ccf5f93f9c6f8f29e32a94b61b5991db4525"
+    },
+    "src/snn_data_lake/gates/gradient_claim_gate.py": {
+      "git_blob": "113f0bc7c46a5d6ef91a5c1b6ee09beea2226dc8",
+      "sha256": "4725628a66eba35887d817c22e88d93e442003f622270695149dcbd37b974c1a"
+    },
+    "src/snn_data_lake/gates/growth_coverage_gate.py": {
+      "git_blob": "e8457ecb863b5df647f6a8cdfb8a004b3284d3d2",
+      "sha256": "0d527a4d40b6ab3bf1ed00460b4db3ea29b564b1e10f76b3831cbe2503522cf7"
+    },
+    "src/snn_data_lake/gates/immortal_retention.py": {
+      "git_blob": "db2e5b220ea88910aec64f3f0476bef526b7fafe",
+      "sha256": "97b6200515e32a062fa8546cf86a3336e28e0b9067bd1372e769fb31732c09da"
+    },
+    "src/snn_data_lake/gates/import_manifest.py": {
+      "git_blob": "7f02bf4760102ef9b56a93e09efb746e021bbbda",
+      "sha256": "91d3659ba7c09c257b6c9890f90fdecc403736a91bff3c0437780389ac00995a"
+    },
+    "src/snn_data_lake/gates/lake_rebuild_gate.py": {
+      "git_blob": "1cddbd38cd51f241ed92920d4054ce95d05355ef",
+      "sha256": "8bc0d862bd5778a185d13ffa211ba1da6aff3922d857bee45d8723a6850d2c3b"
+    },
+    "src/snn_data_lake/gates/manifest_gate.py": {
+      "git_blob": "6d7f55adf2c215adba8423d762fb24eff840286a",
+      "sha256": "342ba5cb536ba1718ff919034f0d96623c2977642deaf5860ec4667001c6fc0b"
+    },
+    "src/snn_data_lake/gates/method_dormancy_gate.py": {
+      "git_blob": "446ee28c8da4fb281eb56487f6963635b04cac79",
+      "sha256": "795cc8c6332933788284b73dbff7d7eaff0824e9ed6927bc215b785f6d67d09f"
+    },
+    "src/snn_data_lake/gates/move_gate.py": {
+      "git_blob": "12474b288c4daf8dddcdd4740232ee8b03bf7d85",
+      "sha256": "66cddf899fa7977877629054aa9964372a206e060b29eabf840a944a602d9553"
+    },
+    "src/snn_data_lake/gates/native_dormancy.py": {
+      "git_blob": "cacf3bbe29d01931aa47fce5b8900cdc9678e712",
+      "sha256": "0af4c96dfd3cd8bbcf5c417c5954586ee47997e6116687116e655da084922a32"
+    },
+    "src/snn_data_lake/gates/native_ratchet.py": {
+      "git_blob": "b55a9244af9d16b9fa1f7cb5257aa2ee73bf09aa",
+      "sha256": "f4de47023d1a6810945a4342f0a330cc1f9cacbd53bc251e3e98ce722c346031"
+    },
+    "src/snn_data_lake/gates/null_scale_gate.py": {
+      "git_blob": "d8eaaf4bb94b92510b70a7480eb7e2fb8eb0bfe0",
+      "sha256": "7e1171ee8c3e49d4dc1a926c16385f6c668235d393fa1f8d0164917dba37c1ef"
+    },
+    "src/snn_data_lake/gates/p5b_gate.py": {
+      "git_blob": "37d1aaa8e6c5cdbeb50583f24b61923ca1a0eff2",
+      "sha256": "aaa4fccdeb966f594b94b4f03e3f09ba74e551e84900512bf99bf0a1258d4984"
+    },
+    "src/snn_data_lake/gates/perf_baseline.py": {
+      "git_blob": "b0c2488e83af6d72054b5320e6e704089eabc2f5",
+      "sha256": "5c6e2d5dfe3a0de0385362defe2de4e0b746d6325edace9ac6cad5868e371d8c"
+    },
+    "src/snn_data_lake/gates/policy_manifest.py": {
+      "git_blob": "349795c7d7ded5f67108beb086526dcaa359b554",
+      "sha256": "93f59c4dcb6bced472b509bff294671ee5cd95fe6509945cc189f99d91dddfc1"
+    },
+    "src/snn_data_lake/gates/region_charge_gate.py": {
+      "git_blob": "42fe3c70523f643343b020a8a51027e5d4a6651c",
+      "sha256": "cb9650c5e6c2aa41226b2d7e7e0ba774635e44bf98799d887742d47228d1ebda"
+    },
+    "src/snn_data_lake/gates/replay_gate.py": {
+      "git_blob": "106a87afa2b9f0b4fea71b276a3a0606a3356ab6",
+      "sha256": "8154118d2fc45bb0845776a02f9e3977a382e6dc0a427d39f83140fbc7d9ea51"
+    },
+    "src/snn_data_lake/gates/replication_guard.py": {
+      "git_blob": "472ce610d4af43367c921f6ead6402e345b508fa",
+      "sha256": "617e07ad845588b9153cb3e4670c0b32af321d313c164d120fbe73b0c918c97c"
+    },
+    "src/snn_data_lake/gates/rust_facts.py": {
+      "git_blob": "7dd73d848d3b9c2faee293a592384dad0375665f",
+      "sha256": "b4a121d41e16a7e772299a44e51ca56a3a307963e26bd8b5c2fd9fc075320bd6"
+    },
+    "src/snn_data_lake/gates/safety_envelope.py": {
+      "git_blob": "c671142fc0725d8ef9611cab021e27e4ed298721",
+      "sha256": "5af70e69d4f2c39553113c9fc9783d83c46d5e85ada403c9f38d48f1f57992c2"
+    },
+    "src/snn_data_lake/gates/selfcheck_cache.py": {
+      "git_blob": "7a07d4bf755d25678db72cf7e88ed3973009b902",
+      "sha256": "4a015518bcc4cf94d0638e9303b60ac787115ee414ccb049e743147621e5e932"
+    },
+    "src/snn_data_lake/gates/unit_label_gate.py": {
+      "git_blob": "bf48e786de169fb6083f06c0f11a96fd9c75d881",
+      "sha256": "9ae36e89f60596f92c00aa93df8870413cf6950fd8d5cd958fda61befda6ef96"
+    },
+    "src/snn_data_lake/growth/__init__.py": {
+      "git_blob": "b18c7ca6a364ed44143142ba1886de20668c5e9a",
+      "sha256": "cd76900e08bd29d5fc2e8c9bcc32bee766934dd4605f2f93bdf2bfdffd27d510"
+    },
+    "src/snn_data_lake/growth/adex_neuron.py": {
+      "git_blob": "63b6c24eca0dec7d9b0d4b70b3a9cb50e749aee6",
+      "sha256": "377392de85c8ffb6d8d8dd50d20e1ba167a04e2a0185744748655dfd3ff58e77"
+    },
+    "src/snn_data_lake/growth/alif_neuron.py": {
+      "git_blob": "fa331d4b0a1b83bc2f7f1f938e9430ebbc3e61aa",
+      "sha256": "d2d5a0fa892b1dff540451d2929f520bd75e1a1e9ae91c895dc04576ff468e21"
+    },
+    "src/snn_data_lake/growth/arealization.py": {
+      "git_blob": "d872d94dcd5dbee549da1658a7fcc6967358fb54",
+      "sha256": "fbb7c66fffb3113071d5d0783690e120743dcdf5cab4e8adb85673722209f22d"
+    },
+    "src/snn_data_lake/growth/autapse_neuron.py": {
+      "git_blob": "f03d6adb0394307ba7c40e04b3b3d2d80c108232",
+      "sha256": "38083e2218efe26634e59891171aa865e8bf1d074acdfacebdde22ab5d6fead9"
+    },
+    "src/snn_data_lake/growth/basic_components.py": {
+      "git_blob": "a0c9322ae33851ea3168b5432189aeef0384ab14",
+      "sha256": "a0d4b4ef3736f6ab5a47eb9f18fa05308e5304813cc1c108cff85f31e3aaa4bb"
+    },
+    "src/snn_data_lake/growth/batch_reconciler.py": {
+      "git_blob": "552a6b8d1fec665d5bc0fc40988b908faec767ee",
+      "sha256": "5c4db3b6cc77351e026e3e3a90fe310c72b692ce3101a85a21fc982177f59253"
+    },
+    "src/snn_data_lake/growth/brian2_backend.py": {
+      "git_blob": "b06189eaf0dfb0e44e518005ae74b86a580e1354",
+      "sha256": "ad5216228b19f72a92c6a855d9562e952e3bfadf931100201ee10ddb6a2bf262"
+    },
+    "src/snn_data_lake/growth/candidate_lifecycle.py": {
+      "git_blob": "bee40b52713b084c75eb9e90e25841eed6d6c52b",
+      "sha256": "73aa5424a414fb8ac667b11f34526edc55130be5808a173fb631451a2e19855a"
+    },
+    "src/snn_data_lake/growth/capacity_certificate.py": {
+      "git_blob": "324ab12def1a7d5447f470804ecf5016835a591b",
+      "sha256": "315108701a3d35ff150de526fe40ccbe2b729420b3e0fa291b96f5607dc3a4ea"
+    },
+    "src/snn_data_lake/growth/cortical_prior.py": {
+      "git_blob": "89b18ad9293e4a1bf4543b36a52240030f044eb6",
+      "sha256": "8420eff078ae4ce233a3c452b5370a7333f39737b3c003d6521f3e74360302c3"
+    },
+    "src/snn_data_lake/growth/dendritic_neuron.py": {
+      "git_blob": "53d0328572cadbfa26a855241c6cff95b314d1d5",
+      "sha256": "29316741e9aebad1c7889b7913dd1250cd65d124906ffeb598a823aa820063ec"
+    },
+    "src/snn_data_lake/growth/feed_readout.py": {
+      "git_blob": "17b783941bf124bd9961abef352433dce6e484ed",
+      "sha256": "b0d6bc9bc0b2b1f4224915a097051a50dce73f3b9ec66d74de7947e6b232eee7"
+    },
+    "src/snn_data_lake/growth/function_preserving_growth.py": {
+      "git_blob": "5bb576ad0be32a914d6e9e349a7cf087cdb4fe93",
+      "sha256": "ecc2c01fe4ef4f8d40dae671168834165eb1abd8452df5c822c8a5851935a87c"
+    },
+    "src/snn_data_lake/growth/growable.py": {
+      "git_blob": "880263d794abde2d8d33857425e16c851f4eee34",
+      "sha256": "57636ce110d940b409a555e2cc999665035cf32768f675758c24ebe846161707"
+    },
+    "src/snn_data_lake/growth/grower.py": {
+      "git_blob": "e197b3802fea2fe9b9bc1b828c9fbc868cc70965",
+      "sha256": "410d69d59afe30cb781cb50c01d21ef0c5ed614ce73df9884b4d4c5d41ccf834"
+    },
+    "src/snn_data_lake/growth/growing_learner.py": {
+      "git_blob": "b1b46134a37b87a7dd5455a86ea39eb788b563cd",
+      "sha256": "d6209fd914451c6cbc4d98e7b143faa2a9a838e07846850e3e24538293a347bb"
+    },
+    "src/snn_data_lake/growth/grown_code.py": {
+      "git_blob": "cfaa40513e0983c523888cdf6b2345af9c4be57c",
+      "sha256": "31f7d4eb7a857fbb54dad1f46d611e92f170a5da9657031a29b96b3707d36521"
+    },
+    "src/snn_data_lake/growth/grown_feed.py": {
+      "git_blob": "f58c0a7d4e0889a504970137c3cf001cecc70978",
+      "sha256": "dc9efa3deb95c77548c546dc148b70b953c92b00b8144c0e74f460a89a308d8f"
+    },
+    "src/snn_data_lake/growth/growth_loop.py": {
+      "git_blob": "b41d5a920e57442a34b22127c315046f966c485b",
+      "sha256": "94cac351c023029ab949074961957d73a6312f2cfef585b8ccb6b72cfcd30063"
+    },
+    "src/snn_data_lake/growth/growth_program.py": {
+      "git_blob": "49ec8dff99cbccf3003f879af7450a478ad7875d",
+      "sha256": "c0a8b173ca2ca24052719a3302ef11a576f6213e24a2e6572362e3d10cf384bf"
+    },
+    "src/snn_data_lake/growth/growth_stop.py": {
+      "git_blob": "4afc7dc6afee496b9956c197a3d343441e31cdd9",
+      "sha256": "c5e14cd59aab930a7368df5be933db484b737732d6dcd6fdf1897d9cc4490ba4"
+    },
+    "src/snn_data_lake/growth/h01_ingest.py": {
+      "git_blob": "06919576ff664b37a533bc0f7a713d7e3be4a9a1",
+      "sha256": "a5cb167e801ecd30c2a08fe6b51d6d10a375e7f577d339b7dbafbfc025fc7145"
+    },
+    "src/snn_data_lake/growth/heterogeneous_microcircuit.py": {
+      "git_blob": "74620cf9665607febcf1e67db745e958fa2d2f6e",
+      "sha256": "7d69d495d64c78a4f279fb14c0f756d6eca22c86048bc04e45d4675dbf78c874"
+    },
+    "src/snn_data_lake/growth/hodgkin_huxley.py": {
+      "git_blob": "d3a3133a1780892e9796b997ffc7f609cf51b673",
+      "sha256": "d99572cc4fa04b82a0312ad8deb71efc11782fd46b3579611a1a27b278dd230f"
+    },
+    "src/snn_data_lake/growth/izhikevich_neuron.py": {
+      "git_blob": "83b2662082e4c31cff2be34b38efa162b7c252dd",
+      "sha256": "b85c6b4bac7627b9beb4d93478559032734db20691ab64694cdec1a8410a57f8"
+    },
+    "src/snn_data_lake/growth/learning_progress.py": {
+      "git_blob": "d2ec1cadf1e59a8c9b9ac5618a5343e92c76ba8f",
+      "sha256": "88fa417726c9b90a8513243ab4c15e3aa8347b7befd22798286be722d8552e88"
+    },
+    "src/snn_data_lake/growth/lif_neuron.py": {
+      "git_blob": "f032131131ede98a4cc3dea72ccc45f656db1d31",
+      "sha256": "53fb3efaabad390202958c7f96135909aa0318d0de363884b2ef78a91b1696b7"
+    },
+    "src/snn_data_lake/growth/neurogenesis_engine.py": {
+      "git_blob": "a6c6a5e1a6ed5af2898a06a453d1928ae14535af",
+      "sha256": "d41099e5f4c9ef032544ee2610369af0fa33b30811a2433ff995450ba5963f1e"
+    },
+    "src/snn_data_lake/growth/neuron_zoo.py": {
+      "git_blob": "bdb6d079a4cc040b5eafd83c2a521d4f0dc68ab9",
+      "sha256": "d5ad9df72fbd58b84e1a4903705de1a2de42a39693d4a4bf6efad19b440fff00"
+    },
+    "src/snn_data_lake/growth/ng_snn.py": {
+      "git_blob": "169de4bc5fd6cb7eeebd09b8566d402dbc83762b",
+      "sha256": "714230197bb4e48dff877fdabd250d8c513a82ce8edcd68e1e781a89bf144cd3"
+    },
+    "src/snn_data_lake/growth/placement.py": {
+      "git_blob": "71ea90249eb9d2d75e6cb6b452f728a249077f77",
+      "sha256": "08ff5f5717f0839f6d17617203730aa934eca835ec0787b4e1aea1b065343a39"
+    },
+    "src/snn_data_lake/growth/resonate_and_fire.py": {
+      "git_blob": "ba664d0383c7fc7c4b87718f04952ee2edb3b949",
+      "sha256": "85c8df6a8363750fc6dbf824469b49d9973a179fceb098fd96211ebcdeab7326"
+    },
+    "src/snn_data_lake/growth/similarity_sized_growth.py": {
+      "git_blob": "dd012b10f21914f6801564f6dc42f75cd7d10997",
+      "sha256": "0593772413c530a63fe2e6002e9872697267b104a026f0ce46c536ebbb4a7963"
+    },
+    "src/snn_data_lake/growth/srm_neuron.py": {
+      "git_blob": "e3f55efffacd4cd79a98c993c68ffa43431c0636",
+      "sha256": "e18542159714403daa397a057750946d93945fc304f393ee146b0f682d98b85d"
+    },
+    "src/snn_data_lake/growth/wiring_prior.py": {
+      "git_blob": "5e2c3b2bb3551e9d78fe1876d6c1e673b7d68f17",
+      "sha256": "e65fc9fecebfd290a6d26fc8abd3c686c3b0f91708329181c9cc88919eeeb57b"
+    },
+    "src/snn_data_lake/infra/__init__.py": {
+      "git_blob": "71727efb2e8e3f902f6e333258601707cbffbb81",
+      "sha256": "032eb1c6fd764faa56f487179d15858389d86d3cbf07327b6adfe39881673862"
+    },
+    "src/snn_data_lake/infra/_mathutils.py": {
+      "git_blob": "bcc824814bbd2cab07e5f031cf4660801df8fd1a",
+      "sha256": "74a55b3a522f7b54a018e41b4a65757d5394c1ac1c54a1bd6f0946e3a2fea3d5"
+    },
+    "src/snn_data_lake/infra/brain_bundle.py": {
+      "git_blob": "be4bfc5498385582295dd19a57ba711e05344327",
+      "sha256": "4d2432f9b3ad6c0a42626efe7deb6f21444411394d6366aa7d60fd2779c7276f"
+    },
+    "src/snn_data_lake/infra/brain_geometry.py": {
+      "git_blob": "2434183988cc804dd49b90535d35524f084f8a08",
+      "sha256": "279a2cb23c149432a44fb35d03b7b06e39e7c83a6fb1ce056a529ca0e9e08c1e"
+    },
+    "src/snn_data_lake/infra/brain_native_selfbuild.py": {
+      "git_blob": "861ccd2b94394e768a5be712b5e919783884cf34",
+      "sha256": "599e5bb569ae597bb6de7bd3ff4f9ad287bd91a5ff09644d0a61a26f854ebc0e"
+    },
+    "src/snn_data_lake/infra/brain_telemetry.py": {
+      "git_blob": "516e2007a1360e06dacf700d4688b45d4cbbda59",
+      "sha256": "11d91571feefd639208987ac576df1ad8353ab12283eae9fd16563cd509a5823"
+    },
+    "src/snn_data_lake/infra/cockpit.py": {
+      "git_blob": "d432500870aee38b41ca4916288c3daff1858220",
+      "sha256": "d6a71b854a0035d050c36145017501ba9a167f862ce61c86ab0d6ded0ba15fce"
+    },
+    "src/snn_data_lake/infra/demo.py": {
+      "git_blob": "b9939574b4f9c774a7c40e38aac4a2c171c62a0c",
+      "sha256": "20f1c0e71b6f26d734f5c3709a7bfed341f27d8189b3ef0510d57192d035cea5"
+    },
+    "src/snn_data_lake/infra/device.py": {
+      "git_blob": "34c62a0dc90e820fd2856b224c33e734ad5a8b8e",
+      "sha256": "7c80cda53eff04f9c661dc599269bc66e77f6d82b77ace19173e2fa30986853e"
+    },
+    "src/snn_data_lake/infra/drift_monitor.py": {
+      "git_blob": "31846ae52218e6cf9edcb962a615f695ba346fe7",
+      "sha256": "4a48db801b74ed240ba69c5efd3eea83bc92771d071802bfc39bc5067fc19511"
+    },
+    "src/snn_data_lake/infra/native_build.py": {
+      "git_blob": "521cc4b25fd746d4bb48a9cb7d99c04696958d56",
+      "sha256": "d7113058ed9d78272b9ec176ff1e4cf5c998225d6b842c159b8b00be4e7dc428"
+    },
+    "src/snn_data_lake/infra/nengo_bridge.py": {
+      "git_blob": "20fa6d2831082a9c795f86c839c817f6c161decf",
+      "sha256": "90d37d531f4309ebb93740e743f51dbbcc9e7d93e45feed66b0c8315594f6991"
+    },
+    "src/snn_data_lake/infra/nir_export.py": {
+      "git_blob": "5e0ad6db58278af5aa9c72bbc9cf17bb0c4b724b",
+      "sha256": "7dc931c800b145a59306f99f2ee058b2b642abd5a4b95d644b56f1a089d4b710"
+    },
+    "src/snn_data_lake/infra/region_wiring.py": {
+      "git_blob": "c54f428c9adb5ff3543e51f2b81ee04723126ae9",
+      "sha256": "b99b355ccb6e94579242359411aac561975f41f215acd8dedc4882b6b4f6b7aa"
+    },
+    "src/snn_data_lake/infra/self_build_loop.py": {
+      "git_blob": "d647387b4f72de81d92e85dbcd6266a4982bb773",
+      "sha256": "1341b82f69c94db2618bd229c8d47d5fccdaae6c476bd8d9213e21918ae700a1"
+    },
+    "src/snn_data_lake/infra/self_mod_harness.py": {
+      "git_blob": "70e6eb14d45dba90c0e9c1f7b4059422ee283ac7",
+      "sha256": "8062b3a7abf7ebd8ea96c9abdc53c2393cec576f97fad861e9ed132b7d42e6c2"
+    },
+    "src/snn_data_lake/instruments/__init__.py": {
+      "git_blob": "600d357eed9143545a21a9954fcbd7cf5a722364",
+      "sha256": "632c0b96ce85b93755e1bbd7fbdbf4d3b7d556b245f9b61471772559f881fa2b"
+    },
+    "src/snn_data_lake/instruments/attention_schema.py": {
+      "git_blob": "db6fa809d44baf9ffdc50008701e5c4e3dc4a61d",
+      "sha256": "55267d9da3be87b34e45e973d28c0b1fd3da50ee43a53720acf86d327eba3627"
+    },
+    "src/snn_data_lake/instruments/binding_instrument.py": {
+      "git_blob": "d0a5b057e91da376611371c847c1eeca1961db9d",
+      "sha256": "42f79d8b61e4208e8561ac5cabde02583b482d0ffc1e9794d42c24653d51b38a"
+    },
+    "src/snn_data_lake/instruments/carried_state_campaign.py": {
+      "git_blob": "dc8e2caec47cac4cd56038744c3e51a7512c062b",
+      "sha256": "3cda4dfd1838a6820e41e5e6ab70aa2d265c18c86f86f7d8f8adde43d5577b3b"
+    },
+    "src/snn_data_lake/instruments/carried_state_controls.py": {
+      "git_blob": "68322709199c0505c8d8c86676acf33cd7d9b7b3",
+      "sha256": "def355662bcd716a6df4e69b267edff12f9b196861fd82f755ad5afaac31a4b4"
+    },
+    "src/snn_data_lake/instruments/carried_state_driver.py": {
+      "git_blob": "d39a9d3cb2be7a0bf8bc09057f3b7efe6e9bdf0e",
+      "sha256": "35b80f6fd5e8a197b0e3fb5303730d91bc1b63f81dbe701e5af2189cedba9341"
+    },
+    "src/snn_data_lake/instruments/carried_state_report.py": {
+      "git_blob": "f2015f7d738103a166b4985b1886e7596b8b5c65",
+      "sha256": "bd9989612acdce6d10d0f9b96c4c5edd76e973ff0dcd75325e4bf3a21227f48f"
+    },
+    "src/snn_data_lake/instruments/carried_state_stages.py": {
+      "git_blob": "daf8daac1f329f2441f96954b7a1e279cd2e8575",
+      "sha256": "ff40f0ac649bc04dd592d83748f63c152cc0abe4e2eea5c107475d548900827b"
+    },
+    "src/snn_data_lake/instruments/deep_stdp.py": {
+      "git_blob": "f4b464d03441deee213b79c9d344bdf753bdc4f7",
+      "sha256": "b82d4f9d4d80baf2c7f381a76bb502bd3650ebcf28f598464432362b47f8aec9"
+    },
+    "src/snn_data_lake/instruments/deep_stdp_latency.py": {
+      "git_blob": "bb09930b6051c805f15179da714586313b84e878",
+      "sha256": "ee49c3cc4ce8f8b3291f8a917cac7c525b2277b64365bf0c7b03f5455bfae824"
+    },
+    "src/snn_data_lake/instruments/delayed_cue.py": {
+      "git_blob": "b1097b56170fdc6f6c53f21ffda9bf52117655bb",
+      "sha256": "51227352a4a92e601057834f526c072bd241767a59dbdf5d02ae5358777b3c11"
+    },
+    "src/snn_data_lake/instruments/developmental_loop_brain.py": {
+      "git_blob": "81f99b2842799f5e0cc18dcd1295f423f464ff9c",
+      "sha256": "0645073326ca02e5dc48defb431dd026a25342693e1979a89fffd7b89949421b"
+    },
+    "src/snn_data_lake/instruments/eligible_circuit_census.py": {
+      "git_blob": "505b05111dadc7a7f959aadc9ab730530fcd1f95",
+      "sha256": "93f08355c3c38f3e59139a7a4dd0e1f34f8cd44dab8907e10b5a9a78c29d96e6"
+    },
+    "src/snn_data_lake/instruments/energy.py": {
+      "git_blob": "05866807fa1c27cef31982268f38f544943438f9",
+      "sha256": "d6299e2910de61624dbdded5d82b6086c715d2060755377d5c3cd780f1b4aad6"
+    },
+    "src/snn_data_lake/instruments/episode_driver.py": {
+      "git_blob": "f444baa7819752b45fc5dd78c12963eca392ba8b",
+      "sha256": "b9ca5a373ca2977be8e036f1d49a67a868e5de1a2dde84035b7111e0254c3862"
+    },
+    "src/snn_data_lake/instruments/everyday_battery.py": {
+      "git_blob": "963a39554dbb7eb7c16a1236b5332505bc42ab93",
+      "sha256": "2bc745003d9b95f10f71d93a3f38c379c749bf26d843171f0c979c342fe831b4"
+    },
+    "src/snn_data_lake/instruments/g5_part_d_adaptors.py": {
+      "git_blob": "15738a7dae168cbaca03002285c3e484b6d70ca5",
+      "sha256": "36f88414222056e38f4893316b22fed38cd93f9448654be6724eb11ee5c24cab"
+    },
+    "src/snn_data_lake/instruments/g5_part_d_cells.py": {
+      "git_blob": "cf83ad243ca1a79fc5ad507790869cac60757744",
+      "sha256": "3369a2d80ccac1b24f0a15f04a735b391b5f9ccb5b3b5126af9e74ce200141a9"
+    },
+    "src/snn_data_lake/instruments/g5_part_d_reading.py": {
+      "git_blob": "f215af554edf3fa0a37302a1a25e08df03b90dc7",
+      "sha256": "683f64fde1189956678398a76e02cf5d70689d552afe4886db289835d097407a"
+    },
+    "src/snn_data_lake/instruments/g5_readout_cells.py": {
+      "git_blob": "7b51e76535b0b8502ea5241aa515420bbfd01815",
+      "sha256": "6c2c0bf4aa71efa89b8b86628e09b94af284dbd0c23c4a802658b3791fa410b9"
+    },
+    "src/snn_data_lake/instruments/h01_distance_kernel.py": {
+      "git_blob": "431fc89b4c3d3a5caf0b3929fc55e01fdadc63c2",
+      "sha256": "3515c6c45fe74f08ba60686398b1a47b3f03fb45f92891702e8630bb287b53d4"
+    },
+    "src/snn_data_lake/instruments/h01_partb_tangential.py": {
+      "git_blob": "a298637028d70e471df26fbcbcd28362283cb911",
+      "sha256": "b2953243ca78af9fb2e0946c381c79cd2c5c6beb8d48aeffabca5210a7b634e9"
+    },
+    "src/snn_data_lake/instruments/ignition_instrument.py": {
+      "git_blob": "697b1c3dbe85d628a1d37890258741e978e253bb",
+      "sha256": "7f1ac9a2e677e96f7c70613c7a55ec86788616169a5469cb531b77d713dda186"
+    },
+    "src/snn_data_lake/instruments/inseparable_mapping.py": {
+      "git_blob": "f13728b3ace22d4f1eef4b61005f4fbeea987375",
+      "sha256": "339b2e4b637e62068b8ca390a08f55e7d261f54789d98144c457ec9ba87eddc6"
+    },
+    "src/snn_data_lake/instruments/integration_measure.py": {
+      "git_blob": "3baac57aa7dd84c56343e6d1b17fe5d9afbbd03c",
+      "sha256": "0e2c64667fee3ea5d38b2de478c330422483df637bfaec70ca3e285ee9e38193"
+    },
+    "src/snn_data_lake/instruments/joint_mask_search.py": {
+      "git_blob": "e7d774b88d4f30ce606eacc9074bb5b9fff4087a",
+      "sha256": "1e76b063af9a4d019da1038532ee01e32fd221a7f5b1060d8da184bb92a417cd"
+    },
+    "src/snn_data_lake/instruments/memory_diagnostic.py": {
+      "git_blob": "fb7893baf2bd0de40086b2fe50a3754534118f9d",
+      "sha256": "d42dddb7e423838872ef5cb56847c2236df7d098ad81079d5078c33381a32e34"
+    },
+    "src/snn_data_lake/instruments/nef_compute.py": {
+      "git_blob": "797223e8341b7b67157f4e83a83b6682094826cc",
+      "sha256": "a503c58c016051f7952faedeab5ac98fefcf5578509c96518bcc775485805f70"
+    },
+    "src/snn_data_lake/instruments/neuro_chip.py": {
+      "git_blob": "05b6428218eb7940114e5df5b1ff614c88c6fec0",
+      "sha256": "803e21ab6cf370e3996198494ce0cf6a4810ae09472e4f78107a944812e25d47"
+    },
+    "src/snn_data_lake/instruments/neuro_chip_stream.py": {
+      "git_blob": "b4c8ccaae26bae916ee4b2e194131e4dd5866bf4",
+      "sha256": "1570691ae41f9ae7617f105b3daecdc9e1bf4a3dc6a6676dc6cadbfe03d7a9a3"
+    },
+    "src/snn_data_lake/instruments/neuronal_avalanches.py": {
+      "git_blob": "9ed7717538c0147d6f66d3a1596a6e0fe3f1b146",
+      "sha256": "e16e68c5f90863a33b9628da0e037a12d4a2ba8231cba5e1257fa45727c262d8"
+    },
+    "src/snn_data_lake/instruments/paired_contrast.py": {
+      "git_blob": "847a02b485035a8567cd093cdae2488e9fb822f4",
+      "sha256": "c5e366f3963f2953b01453d1c97d562e7ec1d2c70daa1590369bfcd3a0fea45f"
+    },
+    "src/snn_data_lake/instruments/pool_selection.py": {
+      "git_blob": "d69754aa0c43b14ae65fa95dc2b94736454a755e",
+      "sha256": "93dab58092e7c5707ed7f2cb1150a39f1c46f810ee18264c53ff429414a8778e"
+    },
+    "src/snn_data_lake/instruments/port_charge_probe.py": {
+      "git_blob": "5dfc49524a970ac1e4321a03901eb9dad78160b0",
+      "sha256": "057ba3eee4ecf4e63eace3a34aef24ab3181c11f51164836bcca48418a4d17d5"
+    },
+    "src/snn_data_lake/instruments/prior_drift_harness.py": {
+      "git_blob": "2d0d637a570b88e8e60d23b8aacbefa2ad73b3ca",
+      "sha256": "f780fae1c2e81a6de834c1b247198dd3715688bda24fb1710233eae8710463ac"
+    },
+    "src/snn_data_lake/instruments/replay_hydration.py": {
+      "git_blob": "1c988c4fa93f7e6b3afb8cc5e6f74a1870f41080",
+      "sha256": "47f97ccd876f0e0eb61a85a7dd36966e80a00b59f0e49d9053ba22428afed5c0"
+    },
+    "src/snn_data_lake/instruments/report_order_probe.py": {
+      "git_blob": "d56d8dab233af7449e924d018bfdead908c07cfd",
+      "sha256": "e701a6d4d82c1fe206a9cb893fe314a07debb06ced4ae695f9fb42b3d6ae0cb1"
+    },
+    "src/snn_data_lake/instruments/rpe_charge.py": {
+      "git_blob": "fb21fd020fdbd49491ce1336470f3c35d843ebda",
+      "sha256": "b317a9f758d7130102f01c22f3401bde662fbd412d3791ef18ff755ebf7a4e8b"
+    },
+    "src/snn_data_lake/instruments/sleep_mask_apply.py": {
+      "git_blob": "cd003612d2b8a0b2fe822fcb79f7d40a86774a25",
+      "sha256": "a3adb49d49ea84a4bf615dcc56984976631c03a6ca2e3526d920ba9525ed7b17"
+    },
+    "src/snn_data_lake/instruments/sleep_plasticity_ab.py": {
+      "git_blob": "004b849f35b9687d9b6ff959834f712a3744e7e5",
+      "sha256": "1a972896545033d63981113acd2243cff156af75a2ff0fe0de6b1e56c9832a23"
+    },
+    "src/snn_data_lake/instruments/sleep_pressure.py": {
+      "git_blob": "cd38679ccb733ef0de3ae9e2943a40bd7ff7d4e6",
+      "sha256": "f45a0e7105e3850502b4a2de1c401d2359d17d7662935780ffb177a000fc9c91"
+    },
+    "src/snn_data_lake/instruments/sleep_pruner_census.py": {
+      "git_blob": "d7fe76339f479c7a7b2f4d963d32d70a64a25731",
+      "sha256": "4b908195185b4ea41013302504c83235fdda8f40ee5071394c78ea127577892d"
+    },
+    "src/snn_data_lake/instruments/snn_mnist_stdp.py": {
+      "git_blob": "a98038c18b06ec6ef474d879fb9da2c94a9cd773",
+      "sha256": "56182d13e4ba6ad2fa17efb31da02d3b6cf2aeb901ef1c93225f3575cf31500e"
+    },
+    "src/snn_data_lake/instruments/snn_mnist_stdp_genn.py": {
+      "git_blob": "fbda3db59723f2712278ecd0d3c34d950be8396d",
+      "sha256": "a20e44fcc31ea80631561c3bf9cadc08b340ad489a1a50fa64941c49c58123b2"
+    },
+    "src/snn_data_lake/instruments/staged_sleep_bout.py": {
+      "git_blob": "c6403b9f5a558f041da3952ebcf407465c4236b8",
+      "sha256": "f2e890138f3a61331a6b1d17e4e3e4aee8eacdc03c4c966b5acebc604c8c4061"
+    },
+    "src/snn_data_lake/instruments/taught_campaign.py": {
+      "git_blob": "f506bc994407d577b25e83d55f796a223abadaf2",
+      "sha256": "ba8fe63bc01c501aa158d0da1c880d73aa8711bbcd48a6cda481e2390d653266"
+    },
+    "src/snn_data_lake/instruments/taught_problems.py": {
+      "git_blob": "746f7edc27a64f69978a1f5625d7ff7ea8e22878",
+      "sha256": "d9bac1aa758d98a8153d4da9edefc9f5d46703eb44ec5599e4c56f80e6c3c61a"
+    },
+    "src/snn_data_lake/instruments/unit_organization.py": {
+      "git_blob": "cb0c3156d087c161b3ae18fdb49402c1f0af4ee3",
+      "sha256": "3087c768f2b77ab912648cdd4f41fa4b45afc066fe37965a71d40422f7a1f02d"
+    },
+    "src/snn_data_lake/instruments/world_red_probe.py": {
+      "git_blob": "ab6a7b6933696f8b912adb8a39c577a437865586",
+      "sha256": "e2481d3ad604be25c4d70565b0c778c20d03f8ad393732f00a263aa24c7b2d63"
+    },
+    "src/snn_data_lake/plasticity/__init__.py": {
+      "git_blob": "14ca0c25351b7279bcf6a10b571363bdb5277215",
+      "sha256": "e597c53ba470dc8eddd185582d873f1daf6033ca4b400982b8a4ca5814fc8614"
+    },
+    "src/snn_data_lake/plasticity/bcm_plasticity.py": {
+      "git_blob": "2d7cfaa2c9f87d328a7f4632c3a1d5d44ecba43e",
+      "sha256": "25e6b86093a57b60b2ee3fee0e988df76d1efa06074987618c1349dc3a9e4ec9"
+    },
+    "src/snn_data_lake/plasticity/benna_fusi.py": {
+      "git_blob": "0975a439b4fe2c86809ef92af43fa8bc136cc604",
+      "sha256": "b82d4becf8b2ed2c55465c1750750c1db5448d67415e7247b600ae6e6dd09e42"
+    },
+    "src/snn_data_lake/plasticity/competitive_learning.py": {
+      "git_blob": "eef55476e8f6559f5b5bacb46951e718d00b8619",
+      "sha256": "1968578dede8a4fd0006f0db2d9101892aaeaaa2c4526572557533a68ddd52f3"
+    },
+    "src/snn_data_lake/plasticity/eligibility_algebra.py": {
+      "git_blob": "423591d75ecb42d3e87c3fc71c2ddcbdc08a7b7a",
+      "sha256": "9763b1c0e3bf115fb98e0948b62c270369321db5ee80fc1ea6553ec9287390a1"
+    },
+    "src/snn_data_lake/plasticity/eprop_kernel.py": {
+      "git_blob": "5955484518f1950a0a26cba0c7746688e2b14fab",
+      "sha256": "f10cca303e28ba2084dd38fae1b5e47b6edaa9aa3e443aad805310c270dbf5d9"
+    },
+    "src/snn_data_lake/plasticity/espp_rule.py": {
+      "git_blob": "3cce03a1b71f08f3b7510c011380995e00b5ccac",
+      "sha256": "1c24880330204be68ef2a64bd170ace05199d2047b2be3bcf80507499339b661"
+    },
+    "src/snn_data_lake/plasticity/homeostatic_plasticity_stack.py": {
+      "git_blob": "70ee0a6f3c094a0a51c81fbffd0163ca98f3b276",
+      "sha256": "1e07811ca1df8b19e90159a085c394e2533246d562d08620d10cdd2b08eaf9d1"
+    },
+    "src/snn_data_lake/plasticity/homeostatic_scaling.py": {
+      "git_blob": "0e5106c4b01379fcc72bbbfc6e25ad7479660c9d",
+      "sha256": "6825515baea03ee79ec9c75379f82fcdb4538dd16dbafc218d279a4bdfb4623f"
+    },
+    "src/snn_data_lake/plasticity/inhibitory_stdp.py": {
+      "git_blob": "6505d02a94c84d15a0ab780471f63832706594c9",
+      "sha256": "3b441f8c9530affd511fa871473f9d30e4033ed524af942bc7c7c2ed421d4e2e"
+    },
+    "src/snn_data_lake/plasticity/intrinsic_plasticity.py": {
+      "git_blob": "90216e7fe4a252f1439d2df380464465e1216d74",
+      "sha256": "59aad79635814e556720066058086e30eb2035f1e9542cb7d850424c57d1ee70"
+    },
+    "src/snn_data_lake/plasticity/meta_plasticity.py": {
+      "git_blob": "4e0cc69166652dcb9a514b00a7f1c6fa845330be",
+      "sha256": "20a17344524bf88680feea892dfe7f7058fbf696f8b4441cf8f530351b899dbe"
+    },
+    "src/snn_data_lake/plasticity/naca.py": {
+      "git_blob": "849e017d6dd9aa83d75eadf3ac4d789e4a569be9",
+      "sha256": "5043d8f601ac34456a4abfefe7f923d360c3c298aca0320993610c65db76833c"
+    },
+    "src/snn_data_lake/plasticity/oja_pca.py": {
+      "git_blob": "5664a9713d0f71955f09224c405be17945fe98c5",
+      "sha256": "ba91511bd66b499e106d7a5cfdced554dfcaab644e267cb6e1e66109f047c6bd"
+    },
+    "src/snn_data_lake/plasticity/plasticity_rule_stack.py": {
+      "git_blob": "c5d6125ed04a161fd2f5a0c20ab4a49b06ba4e81",
+      "sha256": "e9b2b59297476e2e4abe9527e0eea185a6b4766b07d8b41a3c581ddca151f9d4"
+    },
+    "src/snn_data_lake/plasticity/r_stdp.py": {
+      "git_blob": "9596d874cf8454db0ca387dc40bbae25037f8355",
+      "sha256": "02463f0306ee4db4db2a6e9598b316fa36098b4ea96c1f1f85ffa311e8beb83a"
+    },
+    "src/snn_data_lake/plasticity/rule_composer.py": {
+      "git_blob": "de8764b829b9fb60d6263a80dca5794ef29c957c",
+      "sha256": "f5564a11587f6646d29ac6049745dae410f36f5eacead5844e5ce7c5d94deee4"
+    },
+    "src/snn_data_lake/plasticity/short_term_plasticity.py": {
+      "git_blob": "81693a693ae5ad3712b840b7d993232a412e7b5c",
+      "sha256": "1fa26911138fbd03d60568756127af2a612e442e74eb393dd0c1e23f841743cc"
+    },
+    "src/snn_data_lake/plasticity/valence_stdp.py": {
+      "git_blob": "1e9266b6c7c662e0089e91399cacc52d7cbde9dd",
+      "sha256": "a2ab8b4a6fb7a89674eede5008b1ccb5a68d1d0081c053a6ebd54e2c103f23fc"
+    },
+    "src/snn_data_lake/readout/__init__.py": {
+      "git_blob": "7afac4786449244c1d88646d5fbd2945129b77aa",
+      "sha256": "4871a3d7b6fe6101baae977cbf40a8026dd45551bb924bb7d5119b8ca8b3c3c1"
+    },
+    "src/snn_data_lake/readout/growable_readout.py": {
+      "git_blob": "844c3efb04d4f7d6dfdda4fc6af46f212fae5592",
+      "sha256": "145ba706bc96f8ad709f6ba50ed53b9b8b42d21050fb515a2c5b333c00e40bf9"
+    },
+    "src/snn_data_lake/readout/interaction_learning.py": {
+      "git_blob": "8cdc04e6caebe09598ce30f275a091eee68c78cb",
+      "sha256": "f75fd677ca89adc290e266e29549215b30c641c8a0aa4f842367a9ede3445e2e"
+    },
+    "src/snn_data_lake/readout/laminar_local_readout.py": {
+      "git_blob": "639f7165d5078baf3fbd32d9b06b05aab68dee07",
+      "sha256": "077c1a12a37633d8c4b8701dfae6cb6e59512ae6357ae4a11ca62b94b44c152c"
+    },
+    "src/snn_data_lake/readout/language_readout_slda.py": {
+      "git_blob": "8911862895f1b6dbab1bd81d911c352d92008ad2",
+      "sha256": "aa67c93bfd724a4ccf630fa2e18b577a5aabb279da20721d4e99ba103852645d"
+    },
+    "src/snn_data_lake/readout/online_readout.py": {
+      "git_blob": "8d2a145da9254a95e3f8505d5b598a9aebeeee0e",
+      "sha256": "9a9aaa03dc79b36de3d2b3e62278eb85ab7e39f77046191e6385328c6949fd19"
+    },
+    "src/snn_data_lake/readout/posed_problem.py": {
+      "git_blob": "505d3c7688b8cb39b70c2f269085560e8cd19fee",
+      "sha256": "92ea57ec05baf6f5dd7a27560311c57d541b152d09c136e0ed59e05355471459"
+    },
+    "src/snn_data_lake/readout/predictive_coding.py": {
+      "git_blob": "c96debb965db01afff7077b0dcf8a2953c3b1842",
+      "sha256": "1db11753ea2cf41ccfbb8bec4a0d21bd43f60a4a61e5534ef4e063d31658043e"
+    },
+    "src/snn_data_lake/readout/snn_classifier.py": {
+      "git_blob": "f960f14c1310acdd89bcc8345b89ed71c7d4e702",
+      "sha256": "20dec79a16ae69a90139ab0505f6ec7d01140c42ea966b9072a00d24007d9974"
+    },
+    "src/snn_data_lake/readout/snn_moe_classifier.py": {
+      "git_blob": "5b5c766c0c9210c7bb6ae5fe8e0918e84b703227",
+      "sha256": "d58fadf04bd7bdda27c3856e6a6351d0569308a3a3fa8b9f88fc901274dc73a8"
+    },
+    "src/snn_data_lake/readout/tempotron.py": {
+      "git_blob": "1577ae06b374d021f13aaeedd8b5cec332246cb6",
+      "sha256": "2b901cb1e747b6b33162eff78faf66a9dac56efd31452317fdd82f44e946b495"
+    },
+    "src/snn_data_lake/reasoning/__init__.py": {
+      "git_blob": "d13018a50495ab1249ce962b192c49efb28efc79",
+      "sha256": "fcc0b761565e034142ae3bdb319a77aa017a9fb4f7d077ebf05a91c7abbd8828"
+    },
+    "src/snn_data_lake/reasoning/_loop_common.py": {
+      "git_blob": "9118c3687d756c2b545cff9dca3a707683d53068",
+      "sha256": "65e40294f8e0abec1ff253d148c1cce9e211bf442e7fbaabc99d14e92f918353"
+    },
+    "src/snn_data_lake/reasoning/ar_spiking_lm_serve.py": {
+      "git_blob": "966291a0213192072b7d879c6fc8bead702916bc",
+      "sha256": "f59c5ea8b3010f4d320dad20e6f59dec8bca798e03a12ab9779bf8b484583304"
+    },
+    "src/snn_data_lake/reasoning/arc_bench.py": {
+      "git_blob": "cc5f7635ccaa8a4765a8a1f77dd01b5328a9734f",
+      "sha256": "a48ccd7b71787ba80a9b0902c05b653d5f69158da0785237257dd01da9515c12"
+    },
+    "src/snn_data_lake/reasoning/arc_mint.py": {
+      "git_blob": "6658931424aba9de20a155a15be6ccc9988c8207",
+      "sha256": "4c13b92bb2272d37a3f8b4e558c349e4e2950ca878e4298f6803d4c29945dbe4"
+    },
+    "src/snn_data_lake/reasoning/arc_residual.py": {
+      "git_blob": "d29da751edd048ef9cc399b730062cc87a5213b5",
+      "sha256": "5fb2083abe94a25af321d1b18356a500936b4fdd1b4ebb4da009fc9d52798d33"
+    },
+    "src/snn_data_lake/reasoning/arc_scene.py": {
+      "git_blob": "fec0dbfb5caf918d63b19e9013e8942b9e26cda3",
+      "sha256": "ec3e504bb3481d9f06bd0edfffe9753f577b7c6d5a2240632ad32d5b43626f44"
+    },
+    "src/snn_data_lake/reasoning/arc_solver.py": {
+      "git_blob": "06ae76811b4e48627da1bde711babc89fde4a093",
+      "sha256": "8a8a85b9b633c0040ef0896ed0c2565c3211661ccfa027c7aaacd95a4a01152f"
+    },
+    "src/snn_data_lake/reasoning/autonomous_enrich.py": {
+      "git_blob": "18df1ec8f270a57a74e60baf7c1d963bf7bd9a29",
+      "sha256": "1df07790195ade02a8a895c09d50e10b7451dff44ee8d431938098efb49aa271"
+    },
+    "src/snn_data_lake/reasoning/blimp_bench.py": {
+      "git_blob": "85f17316a647ec30a525da1b9ec6818484cc5d6c",
+      "sha256": "2ab32b6682d356794c597ca9263dd49327a3ff61604da4ff9f0cc82e27e941e6"
+    },
+    "src/snn_data_lake/reasoning/concept_reflection.py": {
+      "git_blob": "08939a738257e26960f1b7959a4a55660d3fe545",
+      "sha256": "da275b0db2fac2fab5ff98b82e4eed795b54ba9af8441156679f82d798b586da"
+    },
+    "src/snn_data_lake/reasoning/dense_associative_memory.py": {
+      "git_blob": "2f9a02470b77bc98448e557963f16ca7189f434b",
+      "sha256": "3a9f5d2e255d4e8cc37a2de5e62655cb8482869cae52880255e860e4685063d8"
+    },
+    "src/snn_data_lake/reasoning/derivation.py": {
+      "git_blob": "1f8f818e3bdf3bb80e38b28a6ff51714cdf7715f",
+      "sha256": "1c1611ae141d95e03f0e8f1eb38235ff433389bb4ff79a54eee58ed9cc96f1c4"
+    },
+    "src/snn_data_lake/reasoning/eprop.py": {
+      "git_blob": "2378d0f354348600721e7abd465e83c6f80cf2ba",
+      "sha256": "406912e69f1b301777ab58f31b6c06b46bd82d531a4dc755d6f68f6e7740f07c"
+    },
+    "src/snn_data_lake/reasoning/fast_features.py": {
+      "git_blob": "f8d2ce8a7f4f297de129e8fa6664b74d56d4894a",
+      "sha256": "7726a2e5047c31b750e5d55b836cf68d61b94a08c0b343410faad028547d322a"
+    },
+    "src/snn_data_lake/reasoning/gf.py": {
+      "git_blob": "1082f1015ba5ebc3763c21ed485c27e41ee9a02f",
+      "sha256": "4730bbe7a4891819e7ce272b35cd1dbaa238e067c7f944247c3b098749f7c1b4"
+    },
+    "src/snn_data_lake/reasoning/godel_machine.py": {
+      "git_blob": "0644b639636228e027e4466574e3b6b2a0b46752",
+      "sha256": "e473fe9cb1aec0c6582109e9bef67f07e7341168c5625b6d93478bca01b92f9b"
+    },
+    "src/snn_data_lake/reasoning/impact_analysis.py": {
+      "git_blob": "d41fbebf7884e7536d47b19403451151b72a6125",
+      "sha256": "15b96f09a6b4ff1cc4f39e2b4d32ec3b2c812e880bc66dfb3993e358ac804450"
+    },
+    "src/snn_data_lake/reasoning/lake_reason.py": {
+      "git_blob": "e62394325c1b0d0db9efc04cdad7d7a9d9adc6aa",
+      "sha256": "c75f266911c1319ef4039ec2d27f98863f7ad3b2f412c90437bfb677f1e569f4"
+    },
+    "src/snn_data_lake/reasoning/mcr_hdc.py": {
+      "git_blob": "0b5dcdd8d99ff388df43f84080ac1e23430302c8",
+      "sha256": "33c64371a4150d96eb214a4b6b43343be04b2f33b4b2644f9970d20b21a41b94"
+    },
+    "src/snn_data_lake/reasoning/model_builder.py": {
+      "git_blob": "aae5b5c9466a0a4baae94f4783f956b0ef879c9a",
+      "sha256": "ab624894e2b9f4769fd36ceb3a5ee39616b442195be8c2154d1c6174e5feb467"
+    },
+    "src/snn_data_lake/reasoning/pc_abduction.py": {
+      "git_blob": "a84f404b12a0bcb4c0e8a09421f43988929767d1",
+      "sha256": "f3ca2514c0f3d97f9827c9332e05b9950015b1813e1e21ef5f2429412c4803a6"
+    },
+    "src/snn_data_lake/reasoning/pragmatics.py": {
+      "git_blob": "cc84e4614b885e87365b64968b36b45bcd584a28",
+      "sha256": "52495f1f243ce09acef0c45d78ab41d20e7cf72c3768b3736446e774a1504b34"
+    },
+    "src/snn_data_lake/reasoning/raven_bench.py": {
+      "git_blob": "8373d5f49a41adf0dada452db2aca925ee62bdf2",
+      "sha256": "c73104bdf36fa1355117772484ce33d18f1ffd4ef70a2577f6cbac59c2a02787"
+    },
+    "src/snn_data_lake/reasoning/reasoning_compose.py": {
+      "git_blob": "0869d206f8093699cc5cd1f756868a6c6b29a598",
+      "sha256": "3c25c39decdb40ec824d6963609d75d5e73e2af3ce6339eb9555a90deabef6f3"
+    },
+    "src/snn_data_lake/reasoning/reasoning_cortex.py": {
+      "git_blob": "8b7e049ecc474da36eb01db38ef889d2fd53f085",
+      "sha256": "6bf4647c354ea0331099e29b4ed9c28893bae55c7a84b558fadbb592a6461de7"
+    },
+    "src/snn_data_lake/reasoning/rpm_solver.py": {
+      "git_blob": "bc103f670ea2414026c93077bcc0ae1591613324",
+      "sha256": "ee194d6c53bdd468082e400806e0f5d912885b678c1db19ad70124f404d621f8"
+    },
+    "src/snn_data_lake/reasoning/schema_induction.py": {
+      "git_blob": "ede28058df32c1b24c172b7f3810703ee7dc3889",
+      "sha256": "9d18e057874b909896cfb4eba01829d46ecaf7622e8522fe654f359266d6ed8e"
+    },
+    "src/snn_data_lake/reasoning/self_improve.py": {
+      "git_blob": "45989a14f3658e577f9143f248086a19f9b53087",
+      "sha256": "3c75d9e167d06bb72061c81dbbe33f3e963d9ae855444136b0de55562c325d1b"
+    },
+    "src/snn_data_lake/reasoning/semantic_memory.py": {
+      "git_blob": "fe1d6ad461589cf0db7f807af3502f9555f6ffdb",
+      "sha256": "48c5296091bd66466230ae0ba32708d9fd303b9544c2a4cb3ed632eaf666c9f3"
+    },
+    "src/snn_data_lake/reasoning/snn_mnist_stdp_fast.py": {
+      "git_blob": "6e9cbc5bc31f83b8e1bde648629144d1248a959b",
+      "sha256": "69fe55a6cce9197d06b0b49f1cfe25ee1f7ec4d26ea22481b618a527b36fd499"
+    },
+    "src/snn_data_lake/reasoning/sparse_distributed_memory.py": {
+      "git_blob": "285d3efc5cdc46bb63974ab419015bef33807fe2",
+      "sha256": "d9e31af1df8c76c23cb1329f5309c785df33fb28377d0a95caef11dfadd2fbad"
+    },
+    "src/snn_data_lake/reasoning/spike_chat_lake.py": {
+      "git_blob": "e8841584531d0bc56a508e804c39c6e8edb6165a",
+      "sha256": "9774527fbd8c18ce1b80a5d0621eac0dfb043f5164604d9d306fea5e33a8f28d"
+    },
+    "src/snn_data_lake/reasoning/spiking_som.py": {
+      "git_blob": "0f502c0b7f71f26a1ee3af4785cf2783e89395a3",
+      "sha256": "09adbadcd838cbf31b30a3f018f447ad266deef17dfb7fd13cb51f2deae77e7c"
+    },
+    "src/snn_data_lake/reasoning/spiking_ssm.py": {
+      "git_blob": "ee43f65d915b364d73fb7ebf4ad4b73db4a501c5",
+      "sha256": "9d086e1abec0e832fb0cca11728c83619e0064fafd93d1c20e774f6250c6d763"
+    },
+    "src/snn_data_lake/reasoning/stats_bounds.py": {
+      "git_blob": "acc1a778fae375145c8d56700a5f1360b513e6df",
+      "sha256": "04c42a55e7db791262bd56ab7b7fb2e20f8a3c7d3acdeb07e2b203b124411dd6"
+    },
+    "src/snn_data_lake/reasoning/train_of_thought.py": {
+      "git_blob": "45cdcc609a264756196048156386487746db349b",
+      "sha256": "523affb33ad9dec7bec48f7dc232a3b2e467152ce8d0d29f333b3ff58271a8e9"
+    },
+    "src/snn_data_lake/reasoning/triplet_stdp.py": {
+      "git_blob": "01c82855f49e67e07aef0c483d1e44f326b08204",
+      "sha256": "78e07b7d5f0a2d8038c4f033943b20eec686f55c95913d2253c0da18503b138c"
+    },
+    "src/snn_data_lake/reasoning/vsa_synthesize.py": {
+      "git_blob": "516222c50356363c4aa7d663c4f042ba5c897855",
+      "sha256": "b7cd367400d695745358f3504c6b25e2b11bb205cd371ee19706713ed39ac3cc"
+    },
+    "src/snn_data_lake/reasoning/web_ingest_gate.py": {
+      "git_blob": "93f78a4727dce4c91572bc064dfb4954617747ca",
+      "sha256": "9d8dfc6e8438261db6dd95492020be2eec1b42776330e35eebde0d6184cf760e"
+    },
+    "src/snn_data_lake/reasoning/weight_perturbation.py": {
+      "git_blob": "a2b2752dd27936d2555e9236bd4fd954682237d0",
+      "sha256": "dc0141b576a23c3f8ceb79af1b6f173aea108006744df0b3da3bb35b442f8a6a"
+    },
+    "src/snn_data_lake/reservoir/__init__.py": {
+      "git_blob": "4b4e1f438cf6e3910ca6dc556ecfd13adcf9b972",
+      "sha256": "ac43910268dd3ee06e1c27506ca8d37eaaa52fac6256eff4ae3c28a0d1a11c48"
+    },
+    "src/snn_data_lake/reservoir/cortical_microcircuit.py": {
+      "git_blob": "e6cb8513d2912c6a578e803cbe422e253c493b12",
+      "sha256": "a8fd4303aa839c2f2280026fa64de55f21403fa3d41d9536bd77d53ed3a39402"
+    },
+    "src/snn_data_lake/reservoir/criticality_regulator.py": {
+      "git_blob": "e372b250a41c3c8b5b1ff2aa82c32f7e390e6f37",
+      "sha256": "8de2721879b293aeea9b20f0a4bb51375ad1debcc43e6eda4d829c872833a2d1"
+    },
+    "src/snn_data_lake/reservoir/kernel_state.py": {
+      "git_blob": "73204f14bd08ea8e6dfa4fa710167ca15b0985da",
+      "sha256": "d46fec7339dd3c622de7c7b3382d06edae009bdc69aea2e7f9e5488c1da3c8f3"
+    },
+    "src/snn_data_lake/reservoir/kernel_tick.py": {
+      "git_blob": "8c9df83c50d0dc26bb51ec3a4d6be0033ebf1004",
+      "sha256": "c11e7f4f7113069eefd35efd741f9ff01617f61ffabbf2db00ad390914849b1b"
+    },
+    "src/snn_data_lake/reservoir/neural_sampling.py": {
+      "git_blob": "ea9c09f2a942246a1114740b292d51ff7b4885e8",
+      "sha256": "15c8e5f48395764b6abb7a16007f1de34e23c5afa7b0e62f0092623236eb1ca5"
+    },
+    "src/snn_data_lake/reservoir/recurrent_pool.py": {
+      "git_blob": "69b8b9fe7e5efeeb17122a4b1cf523b5ee765c63",
+      "sha256": "88c156441626de2ba32732403abab26dc8bc7ee15eb5ab4b80680c4c56c74a4b"
+    },
+    "src/snn_data_lake/reservoir/spontaneous_activity.py": {
+      "git_blob": "192a4de024270938dba3fd6393492999cdfb4149",
+      "sha256": "1b1861ae81dd9f174499f8d626aa7646333d4d587389a903b0e9ec35fd630e02"
+    },
+    "src/snn_data_lake/sensorimotor/__init__.py": {
+      "git_blob": "00ee185f03c8957676446b6bd80e5476245d8dc5",
+      "sha256": "14f44e2c16c3aee993cc6af227715c1af849de59b9bd036cb01ebddba548679a"
+    },
+    "src/snn_data_lake/sensorimotor/afferent_boundary.py": {
+      "git_blob": "45b024f61304e995eed4976a7ceaa93845f3c655",
+      "sha256": "c2f453235eb977c6bc79e9b6d3818dc8a1eba16e61d0689d31c056a82c1125f5"
+    },
+    "src/snn_data_lake/sensorimotor/arm_bridge.py": {
+      "git_blob": "2c8a4ef9f062e5d031206b86c6021422f54554c6",
+      "sha256": "b118f660c841d4802f7011aef112882ac3c58523bc3acab4bc946c5bc77c6402"
+    },
+    "src/snn_data_lake/sensorimotor/arm_hardware.py": {
+      "git_blob": "fe35dd0328fe1aa15f2b89aa1e0acc71f4343acd",
+      "sha256": "e7dc890c422ebdb589c2b40fc3c34950db794dd10f08db08331f0825088218a3"
+    },
+    "src/snn_data_lake/sensorimotor/closed_loop.py": {
+      "git_blob": "f342c3b37d18ff025b1089b06a4a8de9f45b8296",
+      "sha256": "f51f6fe9d92bee4a5ed5a274f6ece34e63a9841b719110c3c75be84b6923408e"
+    },
+    "src/snn_data_lake/sensorimotor/corpus_stream.py": {
+      "git_blob": "3b96d13c3fdf8450901523f7f803bc8207136c6a",
+      "sha256": "29add2ffb8fc267ac16900881b1947d39f070c1e1128293e2d305b7a58afe93d"
+    },
+    "src/snn_data_lake/sensorimotor/efferent_boundary.py": {
+      "git_blob": "ad639c955daac9558684295aaebc030957aabe6f",
+      "sha256": "91310d56cfa6af87cfe7314c22c75c03f6210c6c17cb6085bbdf76c77f6e36ec"
+    },
+    "src/snn_data_lake/sensorimotor/eprop_nmnist.py": {
+      "git_blob": "a3cef59a729c556e3e1d2fff45d6bad43d8e1f4d",
+      "sha256": "6a45aa509eb830dd2668a86f282320a5763c3e11a22ba421f1978f7718fb21b7"
+    },
+    "src/snn_data_lake/sensorimotor/eprop_shd.py": {
+      "git_blob": "1fec4619dcea26c4a4e090f884f5cd2f965b19f4",
+      "sha256": "0ddc1301ffa73cc7ba109b2a8824628f2ade706506f4eef0e82e911e07fb3ba6"
+    },
+    "src/snn_data_lake/sensorimotor/esp32_encoder_path.py": {
+      "git_blob": "d1c89529a83c8353cc00b301c75e1699f5d00990",
+      "sha256": "2cca19bf0ac77bb94cdad8931880839cce41b943f8f815ac0b3d7fe18ce85cdf"
+    },
+    "src/snn_data_lake/sensorimotor/gesture_recognition.py": {
+      "git_blob": "b80dfa3b3bbec57f0f14e15cfcbfbcb1f83a4b2e",
+      "sha256": "4be928cd02f6e793a5e48079b00a301b21ef5fa3f9ad6cb6755e33359fb736a7"
+    },
+    "src/snn_data_lake/sensorimotor/hf_stream.py": {
+      "git_blob": "cc4fee25865d544d74002e9d93257aa7c01e1e16",
+      "sha256": "98add7c00c9a67a4919db76a9e202177d1a56f7fbb22f6c13f6c619d574fe660"
+    },
+    "src/snn_data_lake/sensorimotor/ingest_guard.py": {
+      "git_blob": "6f3d63be165fe0a3b22ed37699d1b5c930cf4d4e",
+      "sha256": "92dab48a540009b83e6f366cc1809e471998e2804d017a4c4482be757e344e36"
+    },
+    "src/snn_data_lake/sensorimotor/lca_sparse_coding.py": {
+      "git_blob": "731e4431fd939c929efb5f2c97a69691ac7b855d",
+      "sha256": "de66baf661fd211911287c189f0de9d5440a50fbf045dc6d70eca6140b42c358"
+    },
+    "src/snn_data_lake/sensorimotor/learned_matcher.py": {
+      "git_blob": "241ac1537a30b2e820685c1a3d2bf75769059773",
+      "sha256": "c4b37f70ffb724f9606774d2cf3738412c71347573621b13fe1f6566786768c6"
+    },
+    "src/snn_data_lake/sensorimotor/live_arm.py": {
+      "git_blob": "4e4ac601a76de7f121d8a1d73bc1ccebfbce3b7c",
+      "sha256": "7c0d4dd8cddda96fe48c58add822ae07f7b1ad8577f0e2aa4923b26c806d3587"
+    },
+    "src/snn_data_lake/sensorimotor/make_sensor_dataset.py": {
+      "git_blob": "d5af870bcf323871017c263390bf4d4c9d1644fb",
+      "sha256": "a3e0bddccec78c77d69e4ac4439e7d907455d4b6fc328dba8c1c41616eca779d"
+    },
+    "src/snn_data_lake/sensorimotor/multimodal_encoder.py": {
+      "git_blob": "089e260beca28a19f077fa17e5cfd6088c15904d",
+      "sha256": "4d1cca4f72ee24e4e3315ae61926a5cc21b0e32a0a2c751e4a924dfc13918e18"
+    },
+    "src/snn_data_lake/sensorimotor/nl_interface.py": {
+      "git_blob": "edf3a60a059f994174514194c52f51668b1fd367",
+      "sha256": "6c5c7e9aeadadb515d9d45b950b9b027bb6ce4e49160554428074b71866d9a22"
+    },
+    "src/snn_data_lake/sensorimotor/organoid_ingest.py": {
+      "git_blob": "ec21ec75a8f149d278e514910310e3ea5099ec78",
+      "sha256": "45f5296f06f37dbdfddbf1e117970371c59dd4b9eefa55d0895d6c779b7d85ed"
+    },
+    "src/snn_data_lake/sensorimotor/pc_cortex_serve.py": {
+      "git_blob": "e5e873c616130430a9653a64590f3a50bb950370",
+      "sha256": "940886c98f9695730e5709f8aaa8c909cd0885fa29bd4a53fa4fa964df127479"
+    },
+    "src/snn_data_lake/sensorimotor/population_encoding.py": {
+      "git_blob": "19c9f743ae0fc27c25063d95a0bffcdd4e05e767",
+      "sha256": "dc61088e5a9bb81418178e95bb43cf9511b1d821325fb1ce67aa44e23f6f05a5"
+    },
+    "src/snn_data_lake/sensorimotor/rank_order_coding.py": {
+      "git_blob": "16882230d4b6e9347631cfbddbd04f21cdbdab1b",
+      "sha256": "4de84fb2287e8f05f1f3f03696df8455c8b0263d1f7a917ad72d425ca9cdaca3"
+    },
+    "src/snn_data_lake/sensorimotor/recognizer_bank.py": {
+      "git_blob": "702f4087772618aef10de6d3f064cf3b5363044b",
+      "sha256": "d00997d073adfdd7a6dada222e304f4dbfac09518f4a29f41c93b5c13f279509"
+    },
+    "src/snn_data_lake/sensorimotor/rsnn_encoder.py": {
+      "git_blob": "1b15b102df930ecc0122f8a878a430b09053389c",
+      "sha256": "75db07f82e25081fcf4152de0eaa89cb90bc4804f820d4e05d038b1e2edaaf7f"
+    },
+    "src/snn_data_lake/sensorimotor/sensor_csv_ingest.py": {
+      "git_blob": "c438e3ab9467df2c7876157ccc8b1abef7e50b34",
+      "sha256": "1bb3b833a883a9726b043823f91a591dec7f85e846b05b3328205341e2027d0a"
+    },
+    "src/snn_data_lake/sensorimotor/signal_loop.py": {
+      "git_blob": "3a2cb4c523493cb453db003545ed26a3370b47a4",
+      "sha256": "e1a33a8b9d7c02e8aa63de6894418195cf44546a0d5fa514bc0e63c380a5f6fa"
+    },
+    "src/snn_data_lake/sensorimotor/spike_preprocessing.py": {
+      "git_blob": "aba59c695f6dd62f507669620bab23192ace5db2",
+      "sha256": "a009af734f252c6581b76920a74d6cf270b06874b7f10b016dfe69ec031642a2"
+    },
+    "src/snn_data_lake/sensorimotor/trained_brain.py": {
+      "git_blob": "ffaed006bc71d8c5b48c33bdd857a5173b40a978",
+      "sha256": "985e70087544c90aeec6601fb82565597b65021e037e6fcc371eb8aacdd17b80"
+    },
+    "src/snn_data_lake/sensorimotor/wavefront_planner.py": {
+      "git_blob": "5ba7ee5fed37377343078d2c6c824857dc5695bb",
+      "sha256": "f58422e0b89f53f0fd6c2962a0fd4b54ce1f8c15a3de88aba8e2b34da6e98efe"
+    },
+    "src/snn_data_lake/sensorimotor/web_ingest.py": {
+      "git_blob": "297386b109e1ddb183f70e28e5d64c818e8302c5",
+      "sha256": "8e56c7fec4fe70846a682578c5bc0ccde704345329e4eb1999778d5e29831c9b"
+    },
+    "src/snn_data_lake/sensorimotor/world_kb_stream.py": {
+      "git_blob": "042da20544f6a128fb4f879b1cb9b9c7bbba33e0",
+      "sha256": "42d4b338b3d9bddd9b87b7536dc0070f9e078281ecfb7050cbe0ef51e17829db"
+    },
+    "src/snn_data_lake/sleep/__init__.py": {
+      "git_blob": "1531c958b12e9d9b731752e68e28b6a3acb7510a",
+      "sha256": "2708e1bd9965fe9a12da18a784dff65fca5d3c2e794803e63c10982189de6ff9"
+    },
+    "src/snn_data_lake/sleep/circadian_clock.py": {
+      "git_blob": "d633f1c57379972c5030b8c4a0772934d93907f7",
+      "sha256": "9e9927ed80e541bfda8204bdd9f5603546456efee68ab412d7b3a7a313cbf271"
+    },
+    "src/snn_data_lake/sleep/developmental_pruning.py": {
+      "git_blob": "7a1dd65d00e45cc2b35852032cdc31eda0461cd3",
+      "sha256": "a775b15f5b7bfd487814b180f80c2ddbacda20452f3c08f7c3ba7008fb91da9d"
+    },
+    "src/snn_data_lake/sleep/episode_consolidation.py": {
+      "git_blob": "8cf7b21c2195bcd52c18e666b0be4339082120d9",
+      "sha256": "ac2964cd04b4834f39f44730109e6f435ecf55da0d0c18d69072bf4875e44c2d"
+    },
+    "src/snn_data_lake/sleep/experience_replay.py": {
+      "git_blob": "4b6fa25b473b6099c2192faeeac629d0ef109789",
+      "sha256": "189f4720637666ce6a4ebceacdc14e5a76bf99e9bb2bcd3b45660a9012215b61"
+    },
+    "src/snn_data_lake/sleep/hippocampal_memory.py": {
+      "git_blob": "a24f61d0499f0cd3f5d565fbb6d5e3907b2f2cf3",
+      "sha256": "99cc6f957374bebb2c78f0d8420900e4e9c71cf5d5cbed03bb21841ea76d0cc5"
+    },
+    "src/snn_data_lake/sleep/lake_consolidation.py": {
+      "git_blob": "55d482d7d567b5431d7af07fc37aeb4839ac1b78",
+      "sha256": "dae9f112ffee9cc402161507d928839f5d19fd942b0f1ce518ab65b46756b4ed"
+    },
+    "src/snn_data_lake/sleep/lifelong_consolidation.py": {
+      "git_blob": "2cdf799320952af318d50b1ca4c5b5b0a48079cc",
+      "sha256": "d02c1a2f44a09e27f5f1f117b320da11a2175a90005e4b9ee54c65b2c79cfc54"
+    },
+    "src/snn_data_lake/sleep/nightly_skills.py": {
+      "git_blob": "5213567893e0f785c8a557f5095c9e9e10e8576c",
+      "sha256": "450b5de70ed5e6e3ef42772c7609414eca22feed4dba7f3944aaa9f67ad4a8f9"
+    },
+    "src/snn_data_lake/sleep/sleep_consolidation.py": {
+      "git_blob": "f4f3d0f5c5e5a418b9b8126483cc1779c47d6cb5",
+      "sha256": "7e8cb88214c7e8d4e9bf8b9b36d539f097842a18524b5e22842ddbc2f0150a44"
+    },
+    "src/snn_data_lake/sleep/sleep_replay.py": {
+      "git_blob": "fd379c7f67254443456fd8dbcb24b567261e50f0",
+      "sha256": "f64ecfa63e97ba3c24756ce368577665b20bc3e13039519a0f79d3bd39d63bbf"
+    },
+    "src/snn_data_lake/sleep/structural_rewiring.py": {
+      "git_blob": "94a742c28f19284da25ce7ee17d6043966f79f97",
+      "sha256": "7c93e4c43df05b6aab07e9ae9e2989a15331e107e95abb26c8281ef18898b60f"
+    },
+    "src/snn_data_lake/substrate/__init__.py": {
+      "git_blob": "368424efcdacedd8b5464e244c89ad65c464c1be",
+      "sha256": "dba876547101a0c3026acfc05a864a58882c5c4b43f904385d3d86d3392985f5"
+    },
+    "src/snn_data_lake/substrate/arm_view.py": {
+      "git_blob": "cdb78f647d4cc016c4b45c2de74223c07eefda07",
+      "sha256": "4b2e94a6b1b08f81439f951943dd3164856b1e0d0b8aa790acddccbe566265a8"
+    },
+    "src/snn_data_lake/substrate/binlog.py": {
+      "git_blob": "9f1fa3ffa2338f3e5d2c3f7aa9a9c41630480a00",
+      "sha256": "79319e17a67d2ea9564fcc2c66137c571654fd08cf2c0dae3a581cb2082b8a1b"
+    },
+    "src/snn_data_lake/substrate/chat_memory.py": {
+      "git_blob": "7e02e05c36eea52aeec90852046e483e191d4e40",
+      "sha256": "a25e5ed068e3f898fdea5ad6daeae89a1aca828c9f2b14ca04335f7173ad8ce8"
+    },
+    "src/snn_data_lake/substrate/content_signature.py": {
+      "git_blob": "2e18192e16e67c4c4ea59aae221ef40e76771279",
+      "sha256": "496a675250594abd7fdde5e4141dc45ef20e7d1c3e012095f4d1238bcc340487"
+    },
+    "src/snn_data_lake/substrate/data_quality.py": {
+      "git_blob": "a6aa052c868d35b0190d45d0c82f599551352ed7",
+      "sha256": "5c1a48cd6473c3afdde1ea3c6cdb27543fe3272d3b3cf11faa02b2c7dfc3bacd"
+    },
+    "src/snn_data_lake/substrate/episodic_recall.py": {
+      "git_blob": "c35539f7b7e201d6f8f4caa2dc4f75a99c5dc928",
+      "sha256": "b98da7a89dc4079e0051861eb792f57d1451539e7609ad4367ee3e6e3f9fcb0e"
+    },
+    "src/snn_data_lake/substrate/frequency_moment.py": {
+      "git_blob": "005e01cfdcd1b8a508cef92787c2579e6c7f9ce6",
+      "sha256": "f4c1044440b414608b665ab3ef0ae1811fd58e9651c429e37fe83b714195b2c2"
+    },
+    "src/snn_data_lake/substrate/home.py": {
+      "git_blob": "4780ecf249045214b31b3a61f6b6e901b0bd5ebd",
+      "sha256": "fa16461c2d8169b176e5e2fbdb14f8e5e8d5e32db59777f0b531407dc43040fc"
+    },
+    "src/snn_data_lake/substrate/lake_bridge.py": {
+      "git_blob": "e4ef6aac753f72e56e389afb31b9f987510d1a95",
+      "sha256": "25a3262ee65383fadbd326329cbc7d61fbb6ed53d776c31461329ab038684124"
+    },
+    "src/snn_data_lake/substrate/lake_engine.py": {
+      "git_blob": "59da74879bb2fedeb207351778d0e3848e5128e0",
+      "sha256": "9585d8916f49aa301ecb5d862e401e67a4fa957789621f3b28d4f8089849197f"
+    },
+    "src/snn_data_lake/substrate/lake_index.py": {
+      "git_blob": "735ccb4837106c36c26c2851a13e80569c036bea",
+      "sha256": "ff5863c851f75b878ab93067eb54bd9811b51c7d96db33762db544b0c508126c"
+    },
+    "src/snn_data_lake/substrate/lake_memory.py": {
+      "git_blob": "41d3b07a7f6a73b4f051c81d190eaf99c7580ebf",
+      "sha256": "4698e0e975bbc8187691b05ff53b598b9f812395f35e940e9e4221e4d46e786d"
+    },
+    "src/snn_data_lake/substrate/lake_migrate.py": {
+      "git_blob": "47b3697279f7f6bb0118de6d0f5b90f444d9c330",
+      "sha256": "f494d606f4d2b572936979bc0b6d60059751f1ef318dda062c058a21a29658da"
+    },
+    "src/snn_data_lake/substrate/lake_recall.py": {
+      "git_blob": "29436f2a9bf1ffd970ae938ca62f6902cfd56bbe",
+      "sha256": "3514a982f2f452bd6c21ce9e1b287facfe7d3121597d541753e7f5c4d9ca635f"
+    },
+    "src/snn_data_lake/substrate/lake_segments.py": {
+      "git_blob": "8fa0ba3690fa80730a6da96db0771f19948d4a13",
+      "sha256": "f11348f24fb521427ce897c8c90fa43e9694df26d6c4abf212faf4b6ea768d3a"
+    },
+    "src/snn_data_lake/substrate/lake_working_memory.py": {
+      "git_blob": "103f8cb93e87bc04838098d4b2a2f1390e9f1fe6",
+      "sha256": "cc19a42ce4d1cd0efa13e72071426f7c6c9890ca24e9b4fc2c3b154a61c546d9"
+    },
+    "src/snn_data_lake/substrate/learner_events.py": {
+      "git_blob": "680b63532c1ff2adca98830a182b15f203b9a577",
+      "sha256": "342bfd882e2a937a0a34dec51adfcfd459384f2639f8a11f0b4b8a97ee57a9f6"
+    },
+    "src/snn_data_lake/substrate/minhash.py": {
+      "git_blob": "637a5bb8b052e9d17732e274e8b327a7ee49c943",
+      "sha256": "c29faf4d70674bdbc457c5ebd327b8b06136450e6e16db5fc7b79c83c1d5bdf7"
+    },
+    "src/snn_data_lake/substrate/morris_counter.py": {
+      "git_blob": "47309bb7394d1b3c8963f52a4da27df6916337e8",
+      "sha256": "c6c13cef9e6a6d2f8530b1e3033a5dc37fdb8e8f978aa70128c4583bebe5add8"
+    },
+    "src/snn_data_lake/substrate/paradigm_b_engine.py": {
+      "git_blob": "e7cae867a87a466137ebda63289d6c922a49de60",
+      "sha256": "ab9c08a648742ba9069db3f8adee44f2cf41493b185f1d9cb220a66bc41ba9fe"
+    },
+    "src/snn_data_lake/substrate/paradigm_b_matcher.py": {
+      "git_blob": "f8fe50e117fa46211aa7ff46bda338ed632370aa",
+      "sha256": "423a32806a352b03c2de44dedfbed9cce56fc47bd627577e9b09990a6c6f8117"
+    },
+    "src/snn_data_lake/substrate/proximity_index.py": {
+      "git_blob": "70e2cb06d3d309c0efdc50040ac103b621c81a83",
+      "sha256": "12363411bea71df356187be71adff35d4d5632e8e33b7bd604da1c58d35e5b69"
+    },
+    "src/snn_data_lake/substrate/proximity_replay.py": {
+      "git_blob": "52a8bdd5c41e4bd5e7cb32317478a245b2ca2e32",
+      "sha256": "0fa418b59e8a7f00bc4332097dd6e39ebaf9634465d2d69d4dbd5b3363f80280"
+    },
+    "src/snn_data_lake/substrate/reservoir_sampling.py": {
+      "git_blob": "868dafcdfd49c4f129618c4d48e21c793537c04d",
+      "sha256": "0dd73989dcb641c84cb6973ecff3f5aa88e05d61bfdec610a6ab980613097cd5"
+    },
+    "src/snn_data_lake/substrate/signal_calibrator.py": {
+      "git_blob": "a633e1c29c56f01b64cb1b7241528dfaa2dd8578",
+      "sha256": "eb6b7b85f0344460586f5489a247b597bb1717145508d91d2f822487ff35cbd6"
+    },
+    "src/snn_data_lake/substrate/sliding_window_count.py": {
+      "git_blob": "4b2896cd06d6371ae90c87df8836e36099d53a82",
+      "sha256": "00364532ccd6008d695ad28d520a1ffaec264d8a479d67e52f14fa2cdf962d61"
+    },
+    "src/snn_data_lake/substrate/spike_cardinality.py": {
+      "git_blob": "6c49465995375b02f089d3383238a613d49bb885",
+      "sha256": "60839328a54a8d709ba7432fa3e5f90bf3a696f4a7c80fce1acc885d768c3ad8"
+    },
+    "src/snn_data_lake/substrate/spike_stream_sketch.py": {
+      "git_blob": "a8d0bf0e25548a9116a39afb3a7993fb11355169",
+      "sha256": "1fb070d4df5e5ae9fe3c9b9a09e16f0d9901218f60b74b46b21894a4556a46be"
+    },
+    "src/snn_data_lake/substrate/spike_telemetry_hub.py": {
+      "git_blob": "04bf4f78460e786e2d51c930dd82ee7c055f2282",
+      "sha256": "a1e545f1674448876d53ead1519dadd3496b506f74e78039e0f5e01d745939ac"
+    },
+    "src/snn_data_lake/substrate/stream_sketch_panel.py": {
+      "git_blob": "349933d53d3bff4e7d6e54f6dffde803f3cb734d",
+      "sha256": "99160dd04c448cc4264041d63c2173b21c6cf3551c8fc22d93258bd171a0dcb7"
+    },
+    "src/snn_data_lake/substrate/streaming_hub.py": {
+      "git_blob": "c1ad095ed5fdd44e2f2e473f8ac9be20b2fcf858",
+      "sha256": "41886def57154b19e1ba3b36d5c5e800332d09105911b8d04f3d72a40aba9386"
+    },
+    "src/snn_data_lake/substrate/streaming_quantile.py": {
+      "git_blob": "e245ff5abf7149af2a8a269d7763310856176301",
+      "sha256": "91a25c3c93d89febb859c3441a0af06410025b40238d0898fdc1cfb0d9801712"
+    },
+    "src/snn_data_lake/training/__init__.py": {
+      "git_blob": "71462c3f23409be5bf1dc209190d23dfd5b041ae",
+      "sha256": "b3e1996847b295cf3dd9e77d84e4f88c8a5c4356472d0a2ad8568c373f6730f0"
+    },
+    "tools/ab_connectome_delay.py": {
+      "git_blob": "43c59929050bc18d95831b0947378904461e7de3",
+      "sha256": "bf7deb0dd9c434e8458703e1c2aefb5228654b4ed2f71192a1d3a9cf9b34f532"
+    },
+    "tools/ar_lm_disjoint.py": {
+      "git_blob": "3b93a5d5663be5c6a9bc7a9d2bfe519b613ca3f3",
+      "sha256": "2750cb7cde091a2559032d065a617354884e53a887b076c0557836567c429fac"
+    },
+    "tools/ar_lm_ngram_control.py": {
+      "git_blob": "57744e2c2198fa2d8336c24d9bb86f67d57923ae",
+      "sha256": "83459f0b50022cff3781e0e881b8e14fcbf0477dc7b21bef3d95e69df8d98e1a"
+    },
+    "tools/arc_baseline.py": {
+      "git_blob": "db74641a49cc23d57d43fa4abc63ca9e407964f3",
+      "sha256": "d524c27b7b3e0b27e35a83bb88aec97f20f81053fdc8e4eff46c93ee7de9070c"
+    },
+    "tools/arc_census.py": {
+      "git_blob": "10fb2132d1a2404a64b7c9ff7d9a568228ba1dd9",
+      "sha256": "908654161a3e8676410dd8af102c2e54d3e742570c432bfee7005160248ef854"
+    },
+    "tools/arc_designb.py": {
+      "git_blob": "afb1a404b6ade826feb5c2b93be9d1b8ae9ce67d",
+      "sha256": "f4c1d8e164423ed0dd407f922e1013096b99f67d67a7d8277f5c2c79b6563247"
+    },
+    "tools/arc_fixdepth_control.py": {
+      "git_blob": "8d29de052d81b9c128bc22d3295ba74c6e289120",
+      "sha256": "8cb2c4f206b79c67a5f4ac2c602fc4996cad44b13df461c750da697fbd457350"
+    },
+    "tools/arc_probe_ids.py": {
+      "git_blob": "5b8a804aebb40353c347cbd5ea94e16133b91f89",
+      "sha256": "90c579307e4ab2dd1cbe6e5ba0d6a1db7018e00a1e52006e2bb821e539f5ef6f"
+    },
+    "tools/arc_score.py": {
+      "git_blob": "fd629e2bc05bae7b555b7ebd8b7b1b6559e1bb91",
+      "sha256": "78acbbe7be093f8a205ab1550dc77c690f608bd89418fcc9907f81638ef5db10"
+    },
+    "tools/arm_benchmark.py": {
+      "git_blob": "40494121627b10d1c3aed3c3a54a7b1818e2afbe",
+      "sha256": "9dc0f4d425aca69629cdfc930cdff33256c0364d1186b294160dd07a41ce2fc9"
+    },
+    "tools/blimp_baseline.py": {
+      "git_blob": "32f482d8e01257d4b6bc12790837e914403a28f8",
+      "sha256": "01a0700d1357e7cd226a6e7d5931a60f21036b1d1a85c8c993f0b7b82d8120cc"
+    },
+    "tools/c0_everyday_battery.json": {
+      "git_blob": "53408b45e40805846c7869e3e0eb36336b7f5d94",
+      "sha256": "2b37aa172d003745c52c1ccf162aea1660f67c93d1c490cf2fb5a7e75ea2b1d4"
+    },
+    "tools/capacity_curve.py": {
+      "git_blob": "4825b894726ba0527d57204e1d50939e89c92c0a",
+      "sha256": "f5a5e931bfa4e0c2b1f65fc31905553b09cc5110bcd69e5749365b1152b3e4a5"
+    },
+    "tools/charge_probe.py": {
+      "git_blob": "8127d6798385e64baafe3ffc0cc50e073c92de9d",
+      "sha256": "bc487ed484b154cff9d79704bc7cd01a500d2224b8dbba2e2f94373a81b9c3d4"
+    },
+    "tools/citation_guard.py": {
+      "git_blob": "8f32b0e2f0697c11dc594ddbf1e5a8336c3e5deb",
+      "sha256": "7d44f37cdd914999f3f9c386a2c896f1a15dede411f647bd5709e65668f9e53c"
+    },
+    "tools/coverage_score.py": {
+      "git_blob": "2a9b07657950f8bb434e3bdd36cac5a810c191de",
+      "sha256": "4001b1110448c35763a972561fff0f103ab3b7b036aa89d222f853c0923b7c9f"
+    },
+    "tools/deep_fingerprint.py": {
+      "git_blob": "1b6ade5a3fa1519f083f6bfd2f3366fbc9fc9a11",
+      "sha256": "7a90683c191e246f930d2ecb92c3309119766e1916ae5fb64c73e861b6726abf"
+    },
+    "tools/dependency_ledger.py": {
+      "git_blob": "146fb7d7b7ee204c928fc1d653cd79f7b91ec0a7",
+      "sha256": "98de0ce2bdd2619817c54aa3d67eb944973090204bb093c15cf27bd8ef78422d"
+    },
+    "tools/determinism_baseline.json": {
+      "git_blob": "774358cc3d709969f8a5bdf87b121b4c314a0774",
+      "sha256": "b67a03b17653542fe55a70fa6b31d7044b23d3bd5377c83ac3ffad66220de4ff"
+    },
+    "tools/doc_command_guard.py": {
+      "git_blob": "dfe7a88bd1edb11ae5a0ead3ee7ec9877e42d4c0",
+      "sha256": "6f82dd8d6e0ee5d0d35c2a0b0c8141038758f3bf7d8ea423f1f495c9f77df7f0"
+    },
+    "tools/doc_reader_map.json": {
+      "git_blob": "8051dd177649ab8ed302e6a5ce69988826bdee51",
+      "sha256": "f23b6521ff748c854cd1e4d6c8a0e92fd651cb9217b143569e736e7833899c8e"
+    },
+    "tools/envelope_hashes.json": {
+      "git_blob": "d8202d558c475f72417ac3ae37e44036af7b1d57",
+      "sha256": "017f8dfaf73e9056a8f1cdad37b1b67951044d53205a00922f44f66bfaa71eef"
+    },
+    "tools/fanout_bisect.py": {
+      "git_blob": "3cf32d4857c9af08255ff5f8759ab232d5b11a4e",
+      "sha256": "77e662b185ac87020903a0537111ca534dc14f4944f1031e7e610d769dc1e0e5"
+    },
+    "tools/g4_t3_campaign.json": {
+      "git_blob": "7966393a03ba08d7a107ccd5370faadf1460f0e1",
+      "sha256": "dc5e341d95a1352f852a1616dd50989c686b1e2ad681317b780607231a566c02"
+    },
+    "tools/gradient_claim_baseline.json": {
+      "git_blob": "5a71f25abf5dfd13f78bedd9c9ed26a72d031a95",
+      "sha256": "64da8c0541535d5241f275bb6c1c4b988766267ecbdfa7bcf99b200637fa847a"
+    },
+    "tools/gradient_claim_measure.json": {
+      "git_blob": "6532ae6bde645de48e9d3a308af0ce292916af90",
+      "sha256": "699ad880c46ac62bf1297fe3b656cd5e6a6c98c8ad64f14042cd3f471eff6e39"
+    },
+    "tools/h01_c3_graph_pin.json": {
+      "git_blob": "e4240bd139f88dae02fcbcd4a86ed3e0c30525ad",
+      "sha256": "50555ac39437e3cf81c07a7bb29cc5b6e1e14f476842b69c942a92cf7c094789"
+    },
+    "tools/h01_c3_shards.json": {
+      "git_blob": "aeb99e91192c3c8806999662fb165710af551966",
+      "sha256": "84918c69892cceab9c98680b8257cadae9903928d1b13cab0dc007b76ab03cbe"
+    },
+    "tools/hooks/pre-push": {
+      "git_blob": "000d29dc598ae3555e9ee801680a961cc3435484",
+      "sha256": "1b113ae824ed5332df8c01e6777647822a311c54b79edf5c80a300376f68204e"
+    },
+    "tools/ignition_baseline.json": {
+      "git_blob": "5df8b080da15ebd707ae1c1ed5459a934ac7ec80",
+      "sha256": "0c805e5b1db387d1d9a39db3d9cac6d3697f13435128d93af7fd45f9b7b8f664"
+    },
+    "tools/instrument_guard.py": {
+      "git_blob": "912a7d4cc30ece9cc3908f1d5b7a0d3148809838",
+      "sha256": "9f97117fb66881fb00f0833efa2a1fabe32c4250a2ede210cb26760ac03a618a"
+    },
+    "tools/kernel_partition_baseline.json": {
+      "git_blob": "2507119b8e2fdaf46ae305fe63b3c1fd0940c7fc",
+      "sha256": "c58be0db5b18af9edbdd9347c77869783d103a1612e827fe296ea03088d793cb"
+    },
+    "tools/lake_append_baseline.json": {
+      "git_blob": "c244045ab60dbbaddd9d82aa15f3b898e8bf608d",
+      "sha256": "b8490b2ed142b71c5e9b49b68e63ec283f9e9fde2fca246b8473ed03286b308b"
+    },
+    "tools/lang_coverage.py": {
+      "git_blob": "0ec9f4c318a463aabc72d648b1759ef1d8181f48",
+      "sha256": "20ca9225fe8726f1f99307b92b04a8d7ac225a397e89ce5e3b385b443ec24e8e"
+    },
+    "tools/lang_diag.py": {
+      "git_blob": "58f32e305f6af6c86c55e549985a8201bcbd1a10",
+      "sha256": "c0eedbf49aa4c66eb1073bbbe2a42886f6df1c5217b12fd00a8cbcb9a8e69948"
+    },
+    "tools/lang_probe.py": {
+      "git_blob": "715b077ea04cd3c5d4e3fbfef5450e91f7a12ffa",
+      "sha256": "8ca26421de52e20c8ec4bd598d2cd0f0303fbccdc68a52947bf33764e0432e14"
+    },
+    "tools/lang_scale.py": {
+      "git_blob": "814efdfac0eeb12dce500a61b8e82d1fcab4a665",
+      "sha256": "4a085b347b4675fb14251d36bbf7166871e55fd9430c0b416aefbf4786727a70"
+    },
+    "tools/native_ratchet_baseline.json": {
+      "git_blob": "99f6d1eae368a4a0f206236bec80acff76068da2",
+      "sha256": "6a0baf3ac5ecc0ae13ddd4141067c006cf3dbf3f84fd65cdea47f9a63db864eb"
+    },
+    "tools/og1_dandi_pin.json": {
+      "git_blob": "e8c30e968ba9c5cce619d29f4dbb4a15bd8ee6a4",
+      "sha256": "4419bd2ae45a6fe03ee1aeb8e5e512b8ed76a1e894f1daff055cde41c357893c"
+    },
+    "tools/p4c_ratchet.py": {
+      "git_blob": "7d2759651a967efaa9818ac9005888af217db325",
+      "sha256": "0e5c22709cc82dd51e121ac7f6564f3e7b76423b305c317818124a465c54a6bd"
+    },
+    "tools/p4c_ungoverned_baseline.json": {
+      "git_blob": "f6a0e4966f5ebce78a59bd1f78979af966dc7121",
+      "sha256": "5cbcab0096fff4e49c1c5a824ce47ca511700b60c2cd429e36f6f78453e82531"
+    },
+    "tools/p6_gate.py": {
+      "git_blob": "3f6fc16a897967407d3111f329b07d12675d5dac",
+      "sha256": "c0d5e8feb0566b91840c7bb04342560f6bd29b2db9ae8fd12305fab28e1ef395"
+    },
+    "tools/perf_baseline.json": {
+      "git_blob": "a4b0afa6a979f19b21974c48a27eff44af19b0e7",
+      "sha256": "4ffd9b2d46b6e2673036f028c04228bf06ea62ce0da8bce273265b605cc3361f"
+    },
+    "tools/policy_certification.json": {
+      "git_blob": "db4a1257b18bcd508b95425e913733221ac6a306",
+      "sha256": "73de912c003ab169fe419d9271f81a5c93ece8f1bdd83194e15a5879602135ad"
+    },
+    "tools/policy_manifest.json": {
+      "git_blob": "dc44f64106c454bbc6c73b75ddc2db8b866a5e66",
+      "sha256": "0da2e01b6428dba8fd17cea213c882b1888e1732e39e04f6f0dc100ddf56ce28"
+    },
+    "tools/promotion_sweep.py": {
+      "git_blob": "f38862b7c6e137f4f8fa3c6f63938840da7539ba",
+      "sha256": "ad7680406f68a65c061d36edeea40abfa9ecd8b397b8dc723d52b2a3ec56c0f2"
+    },
+    "tools/red_reachability.py": {
+      "git_blob": "a9dcfaba388c8265a1cb94b9cfacae259d750149",
+      "sha256": "71295ebaae3b3b2e9eb6cdd8692766750d2c937dcbea491c1f318c0ec5839ec3"
+    },
+    "tools/regime_split.py": {
+      "git_blob": "fc5b57217c5c8b9b2ad07fa7f3c539d140260200",
+      "sha256": "ea3c38ed6a654dd17f63d98c5eb33e15ed2309f0468805475b2e698e623dd37c"
+    },
+    "tools/region_charge_evidence.json": {
+      "git_blob": "699b4854d15c13170333d90d0f8e9f5f0a44ef26",
+      "sha256": "582d1e163f958c4e70124c9264dc9125b651a35d7f105712ebea520110fd63be"
+    },
+    "tools/region_charge_floor.json": {
+      "git_blob": "a8521754c124ac3b3fe7a665d66b78869c51481d",
+      "sha256": "e55d091194becbf77975965c25ed4900af5c549ad294c199d15b667988d0cf40"
+    },
+    "tools/rsfacts/Cargo.lock": {
+      "git_blob": "01b60cf7c0d9483c7a4c675772dce945fa2913d8",
+      "sha256": "0fb363ea6ca5fd3a58d86d7884dd1cf57996ce13d94fccc3de18ea6528649767"
+    },
+    "tools/rsfacts/Cargo.toml": {
+      "git_blob": "54c7ab38ee97fc80c14b90ffc48375bff699196a",
+      "sha256": "6f1b6fc9744f150021533fa4122d57c316ae1377294b32e31907489b817621ff"
+    },
+    "tools/rsfacts/src/main.rs": {
+      "git_blob": "4f78bcb4bb4e25a95824316a913c74459f29e832",
+      "sha256": "32638bfc4e57618436d6d0888c97bcf9e0df94f5cc39d6b8a463e7c2b8776714"
+    },
+    "tools/rule_census.json": {
+      "git_blob": "b5d04d80240dea53f5cb08fbadeab34b0a1894a9",
+      "sha256": "e6fed68d1aec03ceea2ae22583bb01cfda8c9b42cf1c0334815b81fcfabce7e8"
+    },
+    "tools/t063_campaign.json": {
+      "git_blob": "601b1b459e913b99c15635915e3eec25c4e2bdf4",
+      "sha256": "a78ebf0598c299abaed32fe40b0af34c330c4700f25b3d6dc0fad2a0fdf720e8"
+    },
+    "tools/t063_pilot.json": {
+      "git_blob": "7cdc411ce416118419d7a0af6e2fa34335bfc66f",
+      "sha256": "fe8aa5a664e068328d33fa20bae5df521cf57c3b240b42518811f1cd9d88ddc4"
+    },
+    "tools/t070_pci.json": {
+      "git_blob": "8c28783f5556553397f0d145a8119eb3edd94d24",
+      "sha256": "3def08bf40cda2c53542938e6a866ff891762dbdfe83f6bb2011454cd29c8dba"
+    },
+    "tools/t077_metacognition.json": {
+      "git_blob": "3f1d989eaecc155757b2f02edc118427159e9525",
+      "sha256": "99bae1ef96f08dbe4f3e922fa8aa0185d23299b9095783df0a62cc62ea180141"
+    },
+    "tools/t078_attention_schema.json": {
+      "git_blob": "2a19f1e8c5a4efa56f01309b930421b532916eba",
+      "sha256": "8ac4c365a36b9ab530b3fefd24733f92e9f41b0e6600af37e374d257f83a7934"
+    },
+    "tools/t078_latents.npz": {
+      "git_blob": "e6d42f356d455e58c2ffda0dafb11e296a168060",
+      "sha256": "f74d85247ccc7d397fcbe5f01885b7bcf6ba870a95612e73926c9eb1614bd194"
+    },
+    "tools/t079_agency.json": {
+      "git_blob": "5ee38566d746e511b32fe0c2dd7068456d011244",
+      "sha256": "66117613ac61b558c46379471637d9455dbdafee781b8f416378c18eb9036837"
+    },
+    "tools/t080_latents.npz": {
+      "git_blob": "7b411142f2cea065a83dc822e4ca71971a17296e",
+      "sha256": "b5bddf194407e09b84f80c2599895718f795b22b606f8e647038d6cb4d213f4b"
+    },
+    "tools/t080_temporal_binding.json": {
+      "git_blob": "c8bd31973f37086cbb3e9ef3f3b5154c51c6e1b7",
+      "sha256": "1029c958805759fb9552863c2ad906873653fefb138e7b9f620339c2ba6805a5"
+    },
+    "tools/t081_report_order.json": {
+      "git_blob": "887cd33f62808c555707cb82f028ed1f1d8c9557",
+      "sha256": "e46745131b3744d0f422c599da38285066c4868d327be340ca8c5433cb35a188"
+    },
+    "tools/t082_social_cognition.json": {
+      "git_blob": "25bdb97ba630cdb8af022644186ddbfd083f67d8",
+      "sha256": "91c5762b0eb53d31da27cabe2ad12d0658a454c184731297d2cc6f76f0390005"
+    },
+    "tools/timing_heldout.py": {
+      "git_blob": "aaaa93b11446e18839f8a9e05fb38cf31393a694",
+      "sha256": "4bb0bd78c75fd3123ed9416ec41eced9f9937bec41e3a7a085483afb01b1df86"
+    },
+    "tools/wiring_manifest.nir": {
+      "git_blob": "c48314c8e2a2d7685d4dfab1e26151d172477b8f",
+      "sha256": "7b356d480b29f7f3857ca2b16609af0dd8e280e99649fc4e5d5aaf6834987d90"
+    }
+  }
+}

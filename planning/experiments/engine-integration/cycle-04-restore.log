@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/engine-integration/cycle_acceptance.py", line 256, in <module>
+    main()
+    ~~~~^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/engine-integration/cycle_acceptance.py", line 215, in main
+    assert receipt["validation"] == previous["validation"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

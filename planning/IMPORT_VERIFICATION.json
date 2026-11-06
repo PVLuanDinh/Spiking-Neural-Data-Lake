@@ -1,0 +1,91 @@
+{
+  "schema": "sndl.showcase-research-import-verification.v1",
+  "import_date": "2026-11-05",
+  "engine_source_commit": "26501ed3d0ac118c227b0f1919f520844e564948",
+  "files_copied_and_byte_compared": 1426,
+  "payload_bytes": 202538112,
+  "excluded_files": 111,
+  "file_suffix_counts": {
+    ".csv": 1,
+    ".html": 1,
+    ".inputs": 4,
+    ".json": 605,
+    ".jsonl": 17,
+    ".log": 75,
+    ".md": 65,
+    ".npy": 22,
+    ".npz": 153,
+    ".png": 5,
+    ".py": 189,
+    ".sh": 2,
+    ".txt": 286,
+    ".xml": 1
+  },
+  "python_files_ast_parsed": 189,
+  "python_syntax_errors": [],
+  "json_files_checked": 605,
+  "jsonl_files_checked": 17,
+  "structured_data_parse_errors": [
+    {
+      "path": "reports/02-artifacts/checks-1/checks.stdout.json",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "bytes": 0,
+      "disposition": "Preserved original historical stdout capture; not a valid structured JSON result"
+    },
+    {
+      "path": "reports/02-artifacts/checks-2/checks.stdout.json",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "bytes": 0,
+      "disposition": "Preserved original historical stdout capture; not a valid structured JSON result"
+    },
+    {
+      "path": "reports/04-artifacts/pilot-1/checks-8900.json",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "bytes": 0,
+      "disposition": "Preserved original historical stdout capture; not a valid structured JSON result"
+    },
+    {
+      "path": "reports/05-artifacts/pilot-1/integrity-corrupt.json",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "bytes": 0,
+      "disposition": "Preserved original historical stdout capture; not a valid structured JSON result"
+    },
+    {
+      "path": "reports/05-artifacts/pilot-1/integrity-missing.json",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "bytes": 0,
+      "disposition": "Preserved original historical stdout capture; not a valid structured JSON result"
+    },
+    {
+      "path": "reports/05-artifacts/pilot-1/integrity-recipe.json",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "bytes": 0,
+      "disposition": "Preserved original historical stdout capture; not a valid structured JSON result"
+    },
+    {
+      "path": "reports/05-artifacts/pilot-1/integrity-stale.json",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "bytes": 0,
+      "disposition": "Preserved original historical stdout capture; not a valid structured JSON result"
+    }
+  ],
+  "npz_archives_crc_checked": 153,
+  "credential_pattern_scan": "No matches for private-key, GitHub-token, AWS-access-key or OpenAI-key patterns",
+  "experiments_rerun": false,
+  "full_operator_battery_run": false,
+  "python_syntax_parser_version": "3.9.6",
+  "copy_source_counts": {
+    "workspace source file": 888,
+    "existing transfer packet, SHA256 verified; source size/mtime unchanged since packet": 538
+  },
+  "git_diff_check": {
+    "exit_code": 2,
+    "reported_files": [
+      "planning/experiments/engine-integration/retention-agent-tests-1.log",
+      "planning/experiments/engine-integration/rust-install.log",
+      "planning/handoff/GIT_BUNDLE_VERIFICATION.txt",
+      "planning/handoff/SHD_PER_SEED_METRICS.csv"
+    ],
+    "disposition": "Only original archived log whitespace and CSV CRLF formatting; preserved byte-for-byte rather than rewriting historical evidence"
+  }
+}

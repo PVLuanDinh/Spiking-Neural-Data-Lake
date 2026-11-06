@@ -1,0 +1,26 @@
+[
+  {
+    "exposures": 256,
+    "updates": 16,
+    "elapsed_s": 18.820257415995002,
+    "peak_rss_bytes": 401342464,
+    "mean_loss_per_example_timestep": 3.2729802894592277,
+    "mean_hidden_spike_fraction": 0.14304931640625
+  },
+  {
+    "exposures": 1024,
+    "updates": 64,
+    "elapsed_s": 29.39333433302818,
+    "peak_rss_bytes": 401342464,
+    "mean_loss_per_example_timestep": 3.022328443527222,
+    "mean_hidden_spike_fraction": 0.13455108642578126
+  },
+  {
+    "exposures": 4096,
+    "updates": 256,
+    "elapsed_s": 64.66068691603141,
+    "peak_rss_bytes": 401342464,
+    "mean_loss_per_example_timestep": 2.702615077495575,
+    "mean_hidden_spike_fraction": 0.14656181335449214
+  }
+]

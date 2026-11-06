@@ -1,0 +1,75 @@
+{
+  "commit": "26501ed3",
+  "branch": "engine-cycle-integration",
+  "focused_tests": 215,
+  "checkpoint_recovery": true,
+  "journal_only_recovery": true,
+  "final_repeat_reason": "G9_RETENTION_ALREADY_CONSUMED",
+  "model_digest": "ff48914c33b40f4c87eb4bbf1de6b8f3414f810249eb0a6567dd7b45ed516a1c",
+  "source_files": [
+    {
+      "path": "src/snn_data_lake/growth/growth_loop.py",
+      "acceptance_sha256": "23d36ccf5cb5d8eed418678150be92a26300cdaf9c90e94413cd54a24ff4546f",
+      "final_sha256": "23d36ccf5cb5d8eed418678150be92a26300cdaf9c90e94413cd54a24ff4546f",
+      "numerical_ast_identical_excluding_claim_declaration": true,
+      "missing_claims": [],
+      "phantom_claims": []
+    },
+    {
+      "path": "src/snn_data_lake/growth/capacity_certificate.py",
+      "acceptance_sha256": "e002742ffe9245e70ef4d6dcb5fec32bb0c1d4f54580b23e6e7351d250af1814",
+      "final_sha256": "0c715d32840e55b21f463798f0b5811d5c490ac0de05a64982a6201679e92fe8",
+      "numerical_ast_identical_excluding_claim_declaration": true,
+      "missing_claims": [],
+      "phantom_claims": []
+    },
+    {
+      "path": "src/snn_data_lake/engine/brain.py",
+      "acceptance_sha256": "5007170644a026a337b50053ea05c2962d308de7553eeed998cba0e1c8790c0f",
+      "final_sha256": "6b07551d4b9a808d3cc9a82c722a68750a91260b11de3723de580017b818b9fc",
+      "numerical_ast_identical_excluding_claim_declaration": true,
+      "missing_claims": [],
+      "phantom_claims": []
+    },
+    {
+      "path": "src/snn_data_lake/readout/posed_problem.py",
+      "acceptance_sha256": "0e6e90143a0bc586c574a9e3bb8cdc56a1892e03346f5f5fc03ebcfea7f8d86d",
+      "final_sha256": "0e6e90143a0bc586c574a9e3bb8cdc56a1892e03346f5f5fc03ebcfea7f8d86d",
+      "numerical_ast_identical_excluding_claim_declaration": true,
+      "missing_claims": [],
+      "phantom_claims": []
+    },
+    {
+      "path": "src/snn_data_lake/instruments/joint_mask_search.py",
+      "acceptance_sha256": "2771ab09eac8e4e34dfa0d82b752b4a1a839a2c5420eaa06bcf55eee61b8b0dc",
+      "final_sha256": "2771ab09eac8e4e34dfa0d82b752b4a1a839a2c5420eaa06bcf55eee61b8b0dc",
+      "numerical_ast_identical_excluding_claim_declaration": true,
+      "missing_claims": [],
+      "phantom_claims": []
+    },
+    {
+      "path": "src/snn_data_lake/readout/interaction_learning.py",
+      "acceptance_sha256": "f1d9a1785e66921c6f4bb2fa608f4cca0e8080b317bcf68243a5078cbbac14b9",
+      "final_sha256": "f1d9a1785e66921c6f4bb2fa608f4cca0e8080b317bcf68243a5078cbbac14b9",
+      "numerical_ast_identical_excluding_claim_declaration": true,
+      "missing_claims": [],
+      "phantom_claims": []
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/plasticity_rule_stack.py",
+      "acceptance_sha256": "07f27c5b21becb63d95fba41f60d1aeb108c9bb32365c6321a50e26121022a88",
+      "final_sha256": "32487f79b4e13edfa7413eec391d425e5fc5d3889097576eba25b88b84c98d65",
+      "numerical_ast_identical_excluding_claim_declaration": true,
+      "missing_claims": [],
+      "phantom_claims": []
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/homeostatic_plasticity_stack.py",
+      "acceptance_sha256": "99fe23a9df1cda8286f30479a873655f68586af82f0a1e9606df3fcaa8f5a637",
+      "final_sha256": "4d1175fa1a3e1871c8d333ced5259e07a9a2ba15d40844ee6ecf6ba15b543dda",
+      "numerical_ast_identical_excluding_claim_declaration": true,
+      "missing_claims": [],
+      "phantom_claims": []
+    }
+  ]
+}

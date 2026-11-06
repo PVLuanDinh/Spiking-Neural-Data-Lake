@@ -1,0 +1,20 @@
+{
+  "completed_runs": 16,
+  "independently_rescored_checkpoints": 144,
+  "complete_cohort_exposures": 178332,
+  "independent_seeds": 4,
+  "infrastructure_interruptions_retained": 1,
+  "offline_scoring_metadata_verified": true,
+  "no_official_test_used": true,
+  "retry_shared_checkpoints_bitwise_equal": 9,
+  "upstream_git_status": {
+    "status": "timeout",
+    "seconds": 10,
+    "source_integrity": "Fresh pinned GitHub blob audit and run hashes used instead; no source edits performed"
+  },
+  "root_shims": [],
+  "cache_recovery_helper_verified": true,
+  "prepared_cache_restore_helper_verified": true,
+  "persistent_bytecode_cache": true,
+  "no_active_experiment_workers": true
+}

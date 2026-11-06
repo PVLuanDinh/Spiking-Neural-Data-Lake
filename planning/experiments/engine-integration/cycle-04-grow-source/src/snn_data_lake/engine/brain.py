@@ -1,0 +1,7174 @@
+"""
+Brain -- the whole integrated spiking brain assembled as ONE self-contained src/ module.
+
+This is the unified assembly of the full-brain self-improvement daemon: it composes the FULL
+LiveBrain (perception + Global Workspace + amygdala threat + basal-ganglia gate + interoceptive
+arousal + prefrontal executive + lake working memory + SPIKING curiosity + JEPA world model + the
+spiking interaction learner), folds a small DRIVABLE-REGION ENSEMBLE of extra stateful regions
+around it (diffuse neuromodulators, a hypothalamic homeostat, a ring-attractor memory), and gates
+the whole thing with a CircadianClock (SCN phase oscillator):
+
+  * AWAKE (subjective day): the brain runs one live tick over a rotating SAFE stimulus, driven by
+    intrinsic curiosity (no external task reward). The ensemble regions tick too, and their scalar
+    outputs fold into the arousal / homeostatic-load / telemetry. Experience is buffered.
+  * ASLEEP (subjective night, consolidation gate open): the arm is IDLE (no brain.tick, no motor
+    command). One bounded offline chunk runs -- neurogenesis (GROW NG-SNN neurons to predict the
+    brain's own next perception, torch tier), sleep replay (noise-driven attractor consolidation),
+    and SWR experience replay (value-table consolidation). Growth is therefore SLEEP-GATED.
+
+What makes this the UNIFIED brain and not just the daemon: the neurogenesis engine (torch tier) lives
+in this same cortex/ package, and every tick feeds the REAL signals into a genuine, evolving SELF-MODEL
+(faculties/self_model.py). The brain no longer answers from a fixed status template -- respond() introspects
+the self-model FRESHLY, grounds the brain-native language organ (faculties/language_acquisition -- ACQUIRED
+online by spiking predictive coding + local plasticity, NOT a pretrained/imported LM) on that self-
+generated prompt, and falls back to the narrator's own state-varying sentence (never a canned string).
+A benevolence intent is answered plainly and safely.
+
+SAFETY (unchanged, non-negotiable): this is PERCEPTION / COGNITION only. It adds NO new actuator
+route -- it never sends HOME / RETRACT_ALL / JOINT_* / any motor command; every stimulus pins
+distance to a SAFE band (CONTACT * 3.0) so the reflex E-STOP never trips in normal operation. All
+safety lives inside LiveBrain (untouched, COMPOSED never rewritten): the reflex E-STOP fires FIRST
+and the gated So101Arm is the only path to motion. A structured arm/lake command ALWAYS takes the
+deterministic NL-firewall + gated-arm path; the generative language center is display-only and its
+text is NEVER parsed as a motor command.
+
+torch is OPTIONAL + lazy: the neurogenesis engine is imported lazily from this package, and the brain-
+native language organ (numpy) is built lazily too, so a no-torch environment still imports this module
+and runs the wake + sleep-consolidation + self-model paths (growth just reports zero grown units; the
+language organ falls back to the deterministic narrator when unavailable).
+
+Deterministic: per-instance seeding only (no wall-clock, no global RNG). ASCII-only output.
+
+  PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.engine.brain
+"""
+
+import copy
+import hashlib
+import json
+import math
+import re
+
+from snn_data_lake.brainstem.arm_config import CONTACT
+from snn_data_lake.engine.live_brain import (
+    _AFFIRM,
+    _IXN_INTENTS,
+    _NEGATE,
+    _ROUTE_CUES,
+    LiveBrain,
+    _route_tokens,
+)
+from snn_data_lake.faculties.access_consciousness import AccessConsciousness
+from snn_data_lake.faculties.acetylcholine import Acetylcholine
+from snn_data_lake.faculties.astrocyte_modulation import Astrocyte
+from snn_data_lake.faculties.locus_coeruleus import LocusCoeruleus
+from snn_data_lake.faculties.metacognitive_monitor import MetacognitiveMonitor
+from snn_data_lake.faculties.raphe_serotonin import DorsalRaphe
+from snn_data_lake.faculties.reasoning_curriculum import ReasoningEnv, ReasoningLearner
+
+# T082 (FR-034): the social-risk fold's two constants are the PRODUCER's, read here rather than
+# restated, so the live fold and the charge A/B's consumer cannot drift apart. Module-top because
+# the fold runs on every wake tick; recursive_tom imports nothing from brain at module scope.
+from snn_data_lake.faculties.recursive_tom import T082_PROTECT_DECAY, T082_PROTECT_GAIN
+from snn_data_lake.faculties.self_model import SelfModel, SelfNarrator
+from snn_data_lake.faculties.set_points import (
+    AMBIENT_TEMP,
+    SET_POINT_TEMP,
+    Homeostat,
+    temp_setpoint,
+)
+from snn_data_lake.growth.grower import Grower, PerceptProblem
+from snn_data_lake.growth.growing_learner import GrowingLearner
+from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
+from snn_data_lake.sleep.circadian_clock import CircadianClock, light_cycle
+from snn_data_lake.sleep.experience_replay import ReplayBuffer
+from snn_data_lake.sleep.sleep_replay import AttractorNet
+from snn_data_lake.sleep.sleep_replay import K as ATTR_K
+from snn_data_lake.sleep.sleep_replay import N as ATTR_N
+
+#: the ONE named-state record for the brain's prototype learners (rank 2b, 2026-09-02)
+PROTOTYPES_STATE = "growing_learners.json"
+#: names of the records `Brain._keep_refused` writes: `<prefix><store>.<id>.json`
+REFUSED_PREFIX = f"{PROTOTYPES_STATE.removesuffix('.json')}.refused."
+
+
+def _record_id(rec):
+    """A sub-record's identity: a sha256 prefix of its canonical JSON."""
+    raw = json.dumps(rec, ensure_ascii=True, sort_keys=True).encode("ascii")
+    return hashlib.sha256(raw).hexdigest()[:16]
+
+
+#: Read statically by `gates/gradient_claim_gate.py`; never imported by it.
+GRADIENT_CLAIM = {
+    "Brain.learn_part_d_episode": (
+        "NOT_A_RULE",
+        "Typed same-writer posed-event orchestration; the existing Part D learner and canonical R-STDP return port own all weight updates.",
+    ),
+    "Brain._append_learner_event": (
+        "NOT_A_RULE",
+        "Validates and journals an event under R2 admission; computes no weight update.",
+    ),
+    "Brain._r2_fresh_learner": (
+        "NOT_A_RULE",
+        "Constructs and checks a fresh replay baseline; performs no learning.",
+    ),
+    "Brain._r2_sleep_learning": (
+        "NOT_A_RULE",
+        "Transactions the existing structural sleep step, journal and rollback; defines no rule.",
+    ),
+    "Brain._record_learner_event": (
+        "NOT_A_RULE",
+        "Admission and rollback wrapper around the learner's existing local turn rule.",
+    ),
+    "Brain._flush_interaction_learner": (
+        "NOT_A_RULE",
+        "Serializes existing continuation state into the lake; computes no learning update.",
+    ),
+    "Brain._tom_update": (
+        "NOT_A_RULE",
+        "updates the user-BELIEF model from this turn statement. It maintains a symbolic model of "
+        "what the user believes; no synapse, threshold or trace is trained",
+    ),
+    "Brain._update_access": (
+        "NOT_A_RULE",
+        "bundles this percept assembly into the global workspace and ignites it. A workspace state "
+        "transition, not plasticity",
+    ),
+    "Brain._update_metacog": (
+        "NOT_A_RULE",
+        "feeds self-model reliability signals into the metacognitive monitor so confidence can gate. "
+        "Signal routing between two components",
+    ),
+    "Brain._learned_route": (
+        "NOT_A_RULE",
+        "G0(b): READS the interaction learner's current intent label (LiveBrain.route, pure inference) "
+        "before chat() teaches the turn. Nothing is updated; the learning stays in learn_turn's R-STDP",
+    ),
+}
+
+SAFE_DISTANCE = CONTACT * 3.0  # perception-only distance band; never in a reflex/danger zone
+STORE_EVERY = 3  # store one sleep-replay assembly every STORE_EVERY wake ticks
+
+#: How much of its own past this brain keeps as recallable episodes, in CIRCADIAN DAYS.
+#:
+#: This is a declared policy, not a measurement, and it is the only free number left in the episodic
+#: store -- how much past a brain should keep is not something it can measure about itself. But it
+#: is stated in a unit that can be argued with, and the store now SIZES ITSELF from it against the
+#: measured production rate, rather than a slot count that could not follow the brain.
+#:
+#: 53 days reproduces the previous behaviour exactly (1.2 episodes/day * 53 = 64 slots), so this
+#: change is a re-expression rather than a retuning: same store, honest units.
+EPISODE_RETENTION_DAYS = 53
+
+#: Episodes per circadian day at boot, before the brain has produced any. MEASURED on this brain:
+#: 0.1 episodes per tick (10 per 100, flat over 1,200 ticks) against a ~12-tick wake window.
+#: Only the seed value -- `_episode_rate` is re-estimated from what the brain actually does.
+EPISODES_PER_DAY_AT_BOOT = 1.2
+SELFBUILD_EVERY = 8  # autonomous self-build cadence: run the gated self-build once per N completed nights (opt-in via NORD_SELFMOD=1)
+
+# LIVE theory-of-mind dialogue grammar (W2d): a small hand-specified surface parse feeding a REAL first-order
+# belief tracker. '<subj> put/moved the <obj> in/to the <loc>'; an absence marker makes the change UNWITNESSED
+# (the user keeps a now-false belief). The parse is developer-charged; the belief mechanics are genuine.
+# Rest-phase DURATION applied to each synaptic cascade per sleep tick (a time-constant, like the
+# episode replay(steps=60) beside it -- NOT a threshold arbitrating behaviour). Consolidation
+# accumulates across the night: one shot of 400 recovered 0.75 of an overwritten trace in the A/B.
+
+_TOM_PLACE = re.compile(
+    r"\b(?P<subj>i|we|you|someone|somebody)\s+(?:put|places?|placed|sets?|left|leaves?|hid|hides?|moved?|moves?)\s+"
+    r"(?:the\s+|a\s+|an\s+|my\s+|your\s+)?(?P<obj>[a-z][a-z ]*?)\s+"
+    r"(?:back\s+)?(?:in|on|at|into|onto|inside|to)\s+(?:the\s+|a\s+|an\s+|my\s+|your\s+)?"
+    r"(?P<loc>[a-z][a-z ]*?)(?:\s*[.,!?]|\s+and\b|\s+but\b|\s+while\b|\s+when\b|\s+without\b|$)"
+)
+_TOM_ABSENT = (
+    "while i was away",
+    "while i was gone",
+    "while i was out",
+    "when i was not looking",
+    "when i wasn't looking",
+    "behind my back",
+    "secretly",
+    "without me",
+    "without my seeing",
+    "i did not see",
+    "i didn't see",
+    "i was not there",
+    "i wasn't there",
+    "unbeknownst to me",
+)
+
+
+def _mean(xs):
+    """Mean of a non-empty numeric list (0.0 on empty)."""
+    return sum(xs) / len(xs) if xs else 0.0
+
+
+def _model_asset(env, rel):
+    """Path of a gitignored model asset: the env override exactly as given, else `rel` under the
+    REPOSITORY ROOT. The default used to resolve against the CWD, so a process started anywhere
+    else (every in-process self-check, every asset-less lane cwd) silently built the no-encoder
+    brain -- measured 2026-10-20, specs/022 evidence/encoder-path-root.md. The root is the checkout
+    imported, so an asset-less worktree still builds the no-encoder brain (obs 2534)."""
+    # distinct-from: src/snn_data_lake/infra/self_mod_harness.py -- _rel_to_repo turns a path INTO a repo-relative whitelist key (the inverse direction); this resolves an env-or-default asset to an absolute path, reusing engine.wiring_manifest.REPO rather than minting another root
+    import os
+
+    from snn_data_lake.engine.wiring_manifest import REPO
+
+    # `is not None`, not `or`: an empty override stays an override (no asset)
+    v = os.environ.get(env)
+    return v if v is not None else str(REPO / rel)
+
+
+def _lvl(mod, default=0.0):
+    """Read a diffuse modulator's .level, tolerating a module that failed to construct.
+
+    Every neuromodulator on Brain is built through `self._try(...)`, so any of them may legitimately
+    be None on a reduced install. Telemetry must degrade to a default rather than raise -- a dashboard
+    that crashes the brain it is observing is worse than a dashboard with a missing bar.
+    """
+    if mod is None:
+        return default
+    try:
+        return round(float(getattr(mod, "level", default) or default), 4)
+    except Exception:
+        return default
+
+
+def _regions_for(arm, res, ensemble_live):
+    """The set of brain regions that produced live output this tick.
+
+    A region counts only when it is WIRED into the running brain (its AutonomousArm attribute is
+    present) AND it contributed to this tick's result. A bare AutonomousArm (all integrative flags
+    off) has workspace/amyg/intero/pfc/lake_wm/curiosity == None, so this returns almost nothing for
+    it -- which is exactly why alive() (full integration) is discriminative. `ensemble_live` is the
+    set of extra ensemble regions that ticked; it is unioned in."""
+    regions = set(ensemble_live)
+    res = res or {}
+    if res.get("unit") is not None:
+        regions.add("cortex_perception")
+    if "reflex" in res:
+        regions.add("brainstem_reflex")
+    if arm.workspace is not None and res.get("workspace") is not None:
+        regions.add("thalamus_global_workspace")
+    if arm.amyg is not None and "threat" in res:
+        regions.add("amygdala_threat")
+    if arm.intero is not None and "intero" in res:
+        regions.add("medulla_interoception")
+    if arm.pfc is not None and "goal" in res:
+        regions.add("prefrontal_executive")
+    if arm.lake_wm is not None and res.get("wm_events", 0) > 0:
+        regions.add("hippocampus_lake_working_memory")
+    if arm.curiosity is not None and arm.q:
+        regions.add("neuromod_spiking_curiosity")
+    return regions
+
+
+class Brain:
+    """The whole integrated brain driven on a circadian cycle, with a self-model narrator.
+
+    Public API: tick() -> "awake"|"asleep", state() -> dict, respond(message) -> dict, close().
+    Composition only -- it constructs and ticks existing modules and edits none of them; it adds no
+    new actuator route. Every wake/sleep tick feeds the REAL brain signals into an evolving self-
+    model, and respond() speaks from that self-model FRESHLY (no fixed status template)."""
+
+    def __init__(
+        self,
+        seed=0,
+        lake_path=None,
+        day_period=200,
+        refit_every=20,
+        device="cuda",
+        self_history_path=None,
+        persist=None,
+    ):
+        self._seed = int(seed)
+        self.route_consumption = True
+        self._route_pending = None
+        self._lake_path = lake_path  # API parity; LiveBrain owns its WM lake
+        self.day_period = int(day_period)
+        self.refit_every = int(refit_every)
+        self._self_history_path = self_history_path
+        self._closed = False
+        # G0(c) teaching-event session: a per-lake counter set at restore (one past the highest session in the
+        # lake's teaching events), never the wall clock -- this module promises no wall-clock input.
+        # ---- DURABLE PERSISTENCE (default ON): a plain Brain() remembers across reboots via the shared
+        # home (KnowledgeLog + JSON state blobs). NORD_PERSIST=0 is the OFF-SWITCH (the gates run it so
+        # selfchecks/pytest stay byte-identical + hermetic); an explicit persist=False also forces off.
+        import os
+
+        # AN EXPLICIT `persist=` NOW WINS OVER THE ENV OFF-SWITCH. Corrected 2026-08-04 (specs/010,
+        # C34) after it silently produced the exact defect P4b exists to prevent.
+        #
+        # This read `(True if persist is None else bool(persist)) and NORD_PERSIST != "0"`, so
+        # `make_brain(persist=True)` returned a brain with `_persist = False` whenever anything had
+        # put NORD_PERSIST=0 in the environment -- no error, no warning, memories formed and
+        # dropped. It is how `tests/test_episode_durability.py` failed in the full suite while
+        # passing in isolation: the brain formed 39 episodes and the lake took 8 bytes (header
+        # only). The leak is unscoped and permanent -- `infra/cockpit.py:1000` does
+        # `os.environ.setdefault("NORD_PERSIST", "0")` inside a self-check and never restores it,
+        # so one self-check disables durability for every consumer in the process afterwards.
+        #
+        # The env var is a DEFAULT for callers who did not say, never an override of callers who
+        # did. Hermetic gates are unaffected: they call `make_brain(seed=...)` with no `persist`
+        # argument, which still resolves to False under NORD_PERSIST=0.
+        if persist is None:
+            self._persist = os.environ.get("NORD_PERSIST") != "0"
+        else:
+            self._persist = bool(persist)
+
+        # ---- the full live brain: PROVEN self-improve config ----
+        # jepa=True is REQUIRED or the spiking curiosity yields no intrinsic reward.
+        # predictive_coding=True: each live tick SETTLES a 2-level Rao-Ballard spiking generative model
+        # on the perceived pattern, exposing a generative percept + a prediction-error SURPRISE that
+        # feeds metacognition/novelty (human perceptual inference). Representation-only, no actuator route.
+        # affective_memory/empowerment/agency_monitor: emotion-tagged episodic retention, a controllability
+        # intrinsic drive, and a sense-of-agency monitor -- all opt-in representation-only drives that
+        # observe an already-gated tick and feed the value/annotation channel; the reflex/E-STOP preempts.
+        self.brain = LiveBrain(
+            seed=self._seed,
+            spiking_curiosity=True,
+            jepa=True,
+            interaction_learning=True,
+            persist=self._persist,
+            predictive_coding=True,
+            affective_memory=True,
+            empowerment=True,
+            agency_monitor=True,
+            dopamine=True,
+            attention=True,
+            # salience_novelty is deliberately NOT passed, and this comment is the measurement that
+            # settles why. Enabling it (v4.78 probe) does make the signal real: `arm._novelty` and
+            # `spikes.midbrain` go from ONE distinct value over 60 ticks to 32 each. But a neuter-A/B
+            # over 200 ticks then showed it changes NOTHING -- 0/200 workspace-content flips, 0/200
+            # act/hold decisions, 0/200 trajectory -- while costing +8.4% tick time (49.0 -> 53.1 ms).
+            # Its own source calls the GWT competitor its only consumer, and the competitor's winner
+            # never changes. So this is a faculty that is inert in fact, not merely unwired, and P3 is
+            # explicit that a wire which does not charge is reverted rather than shipped as coverage.
+            # The control that makes this trustworthy: the same 200-tick harness DOES show the `drive`
+            # source flipping 22/60 trajectories, so the observable is not degenerate.
+        )
+        # ALLOCENTRIC cognitive-map substrate (gap #12): dead-reckons a landmark map over the percept
+        # stream -- a relational/spatial map (full physical navigation awaits embodiment via the arm).
+        # Representation-only; the reflex/E-STOP still runs first and it drives no motion.
+        self.brain.arm._allo_on = True
+
+        # ---- LOCAL-PLASTICITY STACK on the live R-STDP intent learner (Policy 3: wire, don't idle) ----
+        # SpikingInteractionLearner already has the hook by design (interaction_learning.py:93 `stack=None`)
+        # and consumes it on BOTH sides of every deposit: PRE `d *= stack.pre_gain(li)` (:206) and POST
+        # `n.w = stack.stabilize(...)` (:229). Attaching it therefore changes what is LEARNED, not a readout.
+        # PlasticityRuleStack subclasses HomeostaticPlasticityStack, so this one construction composes
+        # short-term dynamics + homeostatic scaling + intrinsic plasticity + BCM metaplasticity + E/I
+        # balance + Benna-Fusi consolidation (7 modules) onto the live learner.
+        # MEASURED (A/B, same seed, only the stack differs): unstabilized R-STDP saturates -- peak drive
+        # 18.97, max|w| 6.64 -- and becomes RIGID (it then fails to learn conflicting material at all).
+        # With the stack: drive 3.01, max|w| 0.98, and it DOES learn the new material. Honest scope: this
+        # buys BOUNDED, still-plastic weights + sleep-recoverable traces; it did NOT improve held-out
+        # intent accuracy (5/14 either way), so it is wired for stability, not for recognition quality.
+        self._plasticity = None
+        # T058 SLEEP OWNERSHIP (FR-024): per-capability switches + evidence counters. Each
+        # sleep-owned capability is separately neuterable (neuter_sleep) so the sleep A/B
+        # attributes per capability instead of certifying the phase wholesale.
+        # Owner1039 retirement; required sleep keeps structural activity.
+        self._sleep_caps = {"structural": True}
+        self._rewirer = None  # the slow-clock structural pass (constructed on first sleep tick)
+        self._structural_report = None  # last cycle's turnover/prune/regen counts
+        self._structural_refusals = 0  # rewire() ValueErrors, counted never swallowed (T048)
+        if getattr(self.brain, "_ixn", None) is not None:
+            self._plasticity = self._try(
+                lambda: PlasticityRuleStack(
+                    n_neurons=len(self.brain._ixn.responses), seed=self._seed
+                )
+            )
+            if self._plasticity is not None:
+                self.brain._ixn.stack = self._plasticity
+            if self._persist:
+                self._r2_boot()
+
+        # ---- the evolving SELF-MODEL + introspective narrator (pure stdlib) ----
+        # The brain tracks its OWN signals over time and describes itself FRESHLY (no fixed template).
+        # history_path (optional) writes a durable autobiographical trace into the spike lake.
+        self.self_model = SelfModel(seed=self._seed, history_path=self_history_path)
+        self.narrator = SelfNarrator(seed=self._seed)
+
+        # ---- METACOGNITIVE MONITOR (ladder L10/SI-10): the self-model's reliability signals are now
+        # CONSUMED, not just reported -- a lesionable spiking monitor gates the brain's OWN behavior:
+        # a confidence-based HOLD/abstain in respond() + a learn-gate on lifelong learning. Turns
+        # metacognition from telemetry into control. Cognition only; deterministic.
+        # base=0.4: a STABLE brain (modest ~0.3 confidence) reads as RELIABLE (hold off, learn-gate
+        # open); a genuine SURPRISE spike drops reliability -> HOLD/abstain + learning blocked. Tuned
+        # to the live self-model signal range so metacognition gates on real problems, not baseline.
+        self._metacog = MetacognitiveMonitor(base=0.4, seed=self._seed)
+        self._metacog_rel = 0.0  # fused spike-count reliability
+        self._metacog_hold = False  # low reliability -> abstain/hedge
+        self._margin_base = (
+            None  # running EMA of the BG decision margin -> baseline-relative decision confidence
+        )
+        self._metacog_explore = False  # explore vs exploit
+        # SECOND-ORDER access metacognition: a spiking monitor of whether content actually reached
+        # global availability, distinct from the first-order reliability above. It reads the
+        # workspace's OWN de-saturated signals (availability, graded access strength, ignition
+        # success), so it only became informative once those stopped being pinned -- before that it
+        # had zero live callers. Consumed in respond() as a second abstain gate: the brain declines
+        # to commit to an open reply when its own estimate says the content did not reliably reach
+        # access, even if first-order reliability looked fine.
+        try:
+            from snn_data_lake.faculties.second_order_access import SecondOrderAccess
+
+            self._second_order = SecondOrderAccess(seed=self._seed)
+        except Exception:
+            self._second_order = None
+        self._second_order_hold = False  # 2nd-order estimate: content did not reliably reach access
+
+        # ---- REASONING: a transitive-inference skill the brain GROWS while it SLEEPS (neurogenesis +
+        # self-paced curriculum + offline replay). Cognition only -- NO actuator route. Held-out
+        # (never-trained, non-adjacent) accuracy rises across nights; reported in state(). Guarded so
+        # a reasoning hiccup can never perturb the loop or the safety envelope.
+        self._reason_env = ReasoningEnv(6, seed=self._seed)
+        self._reason = ReasoningLearner(seed=self._seed)
+        self._reason_stage = 0  # curriculum: active chain length 3 -> n
+        self._reason_acc = 0.0  # held-out transitive-inference accuracy
+        self._reason_units = 0  # neurogenesis: recruited rank units
+        self._skills = None  # lazy NightlySkills: bounded nightly skill formation (numpy)
+        self._skills_state = None  # last night's per-domain competence summary (for state())
+        self._schemas = 0  # SCHEMA INDUCTION (gap #5): derived schema triples kept last pass
+        if self._persist:  # never-forget: reload the nightly-grown reasoning skill
+            try:
+                from snn_data_lake.substrate.home import load_state
+
+                blob = load_state("reasoning_curriculum.json")
+                if blob:
+                    self._reason.load_state_dict(blob.get("learner"))
+                    self._reason_stage = int(blob.get("stage", 0))
+                    self._reason_acc = float(blob.get("acc", 0.0))
+                    self._reason_units = self._reason.n_units
+            except Exception:
+                pass
+        # The acquired language organ's learned state is READ HERE, with the other persisted states,
+        # and applied when `_lm_serve` lazily builds the organ. Not read there: a lake read opens the
+        # BinLog, which repairs (truncates) a torn tail, and `_lm_serve` first runs inside respond() --
+        # on a write-latched survivor that would shorten the lake between two calls.
+        self._acq_lm_blob = None
+        if self._persist:
+            try:
+                from snn_data_lake.faculties.language_acquisition import STATE_NAME
+                from snn_data_lake.substrate.home import load_named_state
+
+                self._acq_lm_blob = load_named_state(STATE_NAME)
+            except Exception:
+                pass
+
+        # ---- LIFELONG CONSOLIDATION (ladder L6+L11): the brain learns a SEQUENCE of tasks while it
+        # SLEEPS, RETAINS old ones via interleaved replay (non-regression), and PRUNES to a capacity
+        # budget (grow<->prune) so it never bloats. Cognition only; guarded. Realizes the continual-
+        # learning core of arxiv 2504.20109 from the project's own parts (bounded L6+L11, NOT AGI).
+        # lazy import (keeps the top-level import block simple); names ordered for isort
+        from snn_data_lake.sleep.lifelong_consolidation import D as _LL_DIM
+        from snn_data_lake.sleep.lifelong_consolidation import (
+            LifelongConsolidator,
+            _make_tasks,
+        )
+
+        self._ll_tasks = _make_tasks(seed=self._seed)
+        self._ll = LifelongConsolidator(dim=_LL_DIM, budget=6, seed=self._seed)
+        self._ll_i = 0
+        self._ll_retention = 0.0  # oldest-task retention (non-regression)
+        self._lg_base = 0.0  # running mean learn-gate -> the RELATIVE "reliable enough" criterion
+        self._ll_units = 0  # bounded by grow<->prune
+
+        # ---- CRITICALITY (ladder L7): a self-regulated spiking pool the brain holds at the EDGE OF
+        # CHAOS (slightly sub-critical) so its substrate stays maximally learnable. Converged at
+        # birth + maintained each night. A monitored substrate-HEALTH pool (NOT a global regulation
+        # of every LiveBrain neuron, and NOT measured from this brain's raster -- `CriticalityRegulator`
+        # runs a fixed deterministic battery of seeded cascades through its OWN 64-unit LIF pool, as
+        # its own `measure()` docstring says); reported as `criticality`. Guarded.
+        #
+        # RANGE RE-MEASURED 2026-08-05, because the figure here said "~0.97-0.99" and the lower bound
+        # was never observed. Over 900 real `tick()`s / 37 nights at seed 0: 14 distinct values, all
+        # in [0.9827, 0.9951]. Across seeds {0,1,2,3,7} at birth and over 6 further nights the full
+        # span is [0.98, 1.0030] -- so it runs slightly ABOVE 0.99 far more often than below 0.98.
+        #
+        # DISPOSITION, stated because P3 requires one and this signal has no consumer. As of
+        # 2026-08-05 `self._criticality` is written here, in the except-branch, and in `_enter_sleep`,
+        # and READ in exactly one place: `state()`. It is telemetry with zero computational consumers.
+        # It did not become that when `pci` was deleted -- it already was. The one link it had was
+        # `cpl = 1.0 + max(0.0, min(0.6, self._criticality))`, and `min(0.6, .)` clamps every value in
+        # the measured range above to 0.6, so the coupling it "fed" was the constant 1.6 on every
+        # night the branch ran. `criticality` could only ever have reached that consumer through the
+        # except-branch, i.e. only when the regulator FAILED to construct.
+        #
+        # It is KEPT, and the asymmetry with `pci` is deliberate rather than squeamish:
+        #   * it VARIES (14 values / 37 nights) where `pci` took one;
+        #   * its estimator is accurate in the use it actually has -- measured against known-sigma
+        #     Galton-Watson ground truth it is unbiased with sampling noise: max |err| 0.0074 at
+        #     seed 0 over sigma in [0.7, 1.2], and 0.0117 across seeds 0..11 (this clause said
+        #     "|err| <= 0.008" and that was one draw quoted as a bound; see the SUBSAMPLING note in
+        #     instruments/neuronal_avalanches.measured_branching_ratio for the condition under which even
+        #     that stops holding, which no live path here violates);
+        #   * a branching ratio has a PRINCIPLED within-system reference point -- sigma = 1 is the
+        #     critical point of the process itself, not an externally calibrated cutoff -- so "is my
+        #     pool above or below its own critical point" is the within-system contrast that an
+        #     absolute PCI could not be;
+        #   * and the MECHANISM is charged even though the readout is not: `run(regulate=True)` feeds
+        #     sigma back into the inhibitory-gain knob at birth and every night, so the number does
+        #     change an outcome -- the pool's own dynamics. What has no consumer is the brain's COPY.
+        # P3 disposition: EXEMPT-with-reason (telemetry). Note what that does and does not mean here:
+        # P3's exempt lists are `dormancy_gate.EXEMPT` (per MODULE) and `method_dormancy_gate.
+        # EXEMPT_METHOD` (per METHOD), and `_criticality` is an ATTRIBUTE, so there is no gate slot to
+        # register it in and none has been claimed -- this comment IS the record, and nothing
+        # mechanically enforces it. It is deliberately NOT wired to a consumer to clear the label:
+        # P3's own guard forbids exactly that ("a wire that does not charge is reverted and
+        # retired/exempted, never faked with a dead consumer" -- quoted exactly; the "/exempted" was
+        # dropped when this was first written, and it is the half naming the disposition taken here).
+        try:
+            from snn_data_lake.reservoir.criticality_regulator import CriticalityRegulator
+
+            self._critic = CriticalityRegulator(n=64, seed=self._seed)
+            self._critic.run(epochs=15, regulate=True)  # converge toward the critical band at birth
+            self._criticality = round(self._critic.sigma(), 4)
+        except Exception:
+            self._critic = None
+            self._criticality = 0.0
+
+        # ---- WHOLISTIC INTEGRATION (ladder L13, the capstone): the brain composes its OWN
+        # self-improvement primitives -- curiosity + metacog ARBITRATION + grow/prune +
+        # CONSOLIDATION + criticality substrate-health -- into ONE arbitrated, non-regressing
+        # loop, and MEASURES that the integrated WHOLE beats the same parts with the arbitration
+        # spine removed (whole > sum) WITHOUT regressing on old tasks. A monitored integration-
+        # HEALTH readout over synthetic separable tasks (bounded, value/rep-only, NOT AGI). The
+        # readout uses the DEEPENED hard=True task (genuinely non-separable overlapping spike-rate
+        # classes) so `integration_competence` is INFORMATIVE (sub-ceiling ~0.83, real errors),
+        # not the trivial 1.000 ceiling of separable classes; `integration_gain` = the whole's
+        # competence MINUS the un-arbitrated sum's (no metacog/consolidation, healthy substrate so
+        # the by-construction criticality confound is excluded). Run once at birth (deterministic).
+        try:
+            from snn_data_lake.faculties.wholistic_loop import WholisticLoop
+
+            _whole = WholisticLoop(hard=True, seed=self._seed).run()  # integrated, real hard task
+            _sum = WholisticLoop(
+                hard=True,
+                metacog=False,  # no arbitration spine,
+                consolidation=False,
+                criticality=True,
+                seed=self._seed,
+            ).run()  # but HEALTHY substrate
+            self._integration_competence = round(_whole["aggregate"], 4)  # informative, sub-ceiling
+            self._integration_retention = round(_whole["retention"], 4)
+            self._integration_gain = round(_whole["aggregate"] - _sum["aggregate"], 4)
+            self._integration_ok = bool(
+                _whole["aggregate"] < 0.98  # NOT a trivial ceiling
+                and _whole["aggregate"] > _sum["aggregate"]
+                and _whole["retention"] > _sum["retention"]
+            )
+        except Exception:
+            self._integration_competence = 0.0
+            self._integration_retention = 0.0
+            self._integration_gain = 0.0
+            self._integration_ok = False
+
+        # ---- SELF-IMPROVEMENT birth DIAGNOSTIC census: ONE deterministic census that composes every
+        # ladder rung built for this brain -- L5 generalizing-novelty, L8 meta-plasticity, L9
+        # drive-reduction reward + autotelic goals, L6 function-preserving growth, L11 Benna-Fusi
+        # consolidation + spiking sleep-replay, L12 quality-diversity -- into ONE in-process program
+        # under THIS brain's seed, so the modules run TOGETHER (one organism), not as disconnected demos.
+        # SCOPE (honest, per docs/BRAIN_REVIEW.md): this is a BIRTH-TIME DIAGNOSTIC snapshot, NOT the
+        # capstone -- L13 `wholistic_loop` (integration_* above) is the arbitrated capstone. It is a
+        # REDUCED-SCALE liveness readout (full proof = each module's own self-check in the gate);
+        # value/rep-only, no actuator. Run once at birth (deterministic, ~0.3s), guarded. The `_scale`/
+        # `_note` tags below prevent a consumer misreading a reduced-scale value (e.g. a negative
+        # metaplast_gain is an honest small-scale artifact, NOT a live regression). Under state()["rungs"].
+        # L5 generalizing-novelty is ALSO promoted to the LIVE wake tick (see _wake_tick -> novelty_live).
+        try:
+            from snn_data_lake.faculties.self_improvement_suite import census
+
+            self._rungs = {
+                "_scale": "reduced-birth-diagnostic",
+                "_note": "liveness snapshot; full proof = each module's own self-check",
+                **census(seed=self._seed),
+            }
+        except Exception:
+            self._rungs = {}
+
+        # L5 promoted to the LIVE loop: a frozen-SimHash generalizing pseudo-count over the wake raster,
+        # feeding a real novelty signal each wake tick (a pseudo-count is exactly what curiosity consumes).
+        # ADDITIVE + read-only to safety; value/rep-only. Guarded. Reported as `novelty_live`.
+        try:
+            from snn_data_lake.faculties.generalizing_novelty import GeneralizingNovelty
+
+            # dim = the wake stimulus feature vector: visual(4) + temperature(1) + audio(4) + distance(1)
+            self._novelty = GeneralizingNovelty(n_bits=16, dim=10, seed=self._seed)
+        except Exception:
+            self._novelty = None
+        self._novelty_live = 0.0
+        self._pc_surprise = 0.0  # live generative-percept prediction-error (folds into metacog)
+        self._pc_surprise_ema = (
+            0.0  # running baseline: metacog reacts to surprise SPIKES, not constant error
+        )
+        self._interval_timer = (
+            0  # INTERVAL TIMING (gap #12): wake ticks since the last salient event
+        )
+        # (`self._pci` was initialised here; deleted 2026-08-05 with its producer and its state key.)
+        # LIVE THEORY OF MIND (gap #9): model the USER as an agent whose knowledge is tracked SEPARATELY
+        # from the world, so the brain can tell when the user's belief differs from reality (false belief).
+        # Representation-only; inferred (not certain). Full per-agent affect/empathy is a follow-up.
+        #
+        # T082 (2026-09-16, evidence/t082-social-cognition.md 2.1): the live first-order `_tom`
+        # instance, its `_tom_locs` id map and the BIRTH-TIME Sally-Anne run that published
+        # `_tom_ok` are RETIRED here. Three trackers were fed the same dialogue statement and gave
+        # three answers on one turn (fact 1); `_recursive_tom` generalises both retired ones on
+        # three axes and R5 shows the symmetric feed reproduces each of them, so exactly ONE
+        # survives (P2). `_tom_ok` additionally was a constant computed at construction and True on
+        # every brain -- a marker, not a measurement. `faculties/theory_of_mind.TheoryOfMind` STAYS:
+        # `reasoning/pragmatics.py` runs its own instance.
+        self._tom_obj = None  # the object the live belief tracker currently tracks
+
+        # ---- BrainCog-inspired cognitive primitives adopted into the brain (pure-stdlib, from
+        # docs/BRAINCOG_COMPARISON.md): multisensory super-additivity (a superior-colliculus
+        # Stein-Meredith cell). Composed at BIRTH + reported under state()["braincog"]; value/rep-only,
+        # guarded, deterministic. The feedback-alignment credit-assignment PoC is multi-seed (heavy) ->
+        # gate-verified in run_selfchecks, not birth-run.
+        #
+        # T082 (2026-09-16, 2.1): `theory_of_mind_false_belief` is DELETED with the birth-time
+        # Sally-Anne run that produced it. It was a constant computed once at construction and True
+        # on every brain -- a capability MARKER, not a measurement of anything this brain does, and
+        # the live belief tracking it stood in for is now measured on the dialogue path itself
+        # (`recursive_tom_false_beliefs`, the declared `belief_out` wire and its charge evidence).
+        # `multisensory_index` stays: it reads a live cell's enhancement, not a frozen flag.
+        self._braincog = {}
+        try:
+            from snn_data_lake.faculties.multisensory_integration import MultisensoryCell
+
+            _idx = MultisensoryCell(seed=self._seed).enhancement(0.06, 0.06)[
+                "index"
+            ]  # weak coincident -> super-additive
+            self._braincog = {
+                "multisensory_index": round(float(_idx), 3)
+                if _idx is not None
+                else None,  # >1 super-additive
+                # `feedback_alignment: "gate-verified"` was removed here: plasticity/feedback_alignment.py
+                # was DELETED in the Policy-2/3 retirement wave (dormancy_gate.py:75), but this key kept
+                # asserting the capability as a hardcoded string -- a P1 hardcode AND a claim about a
+                # mechanism the brain no longer contains. Nothing read it.
+            }
+        except Exception:
+            self._braincog = {}
+
+        # ---- circadian gate + light schedule ----
+        self.clock = CircadianClock(seed=self._seed)
+        self._schedule = light_cycle(self.day_period)
+        self._step = 0
+        self._baseline = self.clock.baseline()
+        self._was_asleep = self.clock.consolidation_gate()
+        self._asleep = self._was_asleep
+
+        # ---- neurogenesis (torch tier, LAZY): grow neurons to predict own perception ----
+        # T047 (panel: construction-order): the growth gate's attributes exist BEFORE the
+        # engine holds the bound verdict callable -- a refit-during-construction would
+        # otherwise AttributeError inside _make_neuro's except and silently drop the
+        # whole neurogenesis tier to None.
+        self._growth_stop = None  # T047: lazy growth gate; the engine consults it per refit
+        self._growth_feed_refusals = 0  # T047: poisoned trajectory rows refused at the feed
+        self._neuro_feed_refusals = 0  # rank 2: wake percepts the grower refused (surfaced)
+        self._prototype_faults = 0  # rank 2b: percepts the prototype learners could not take
+        eng = self._make_neuro(self._seed, device)
+        self.grower = Grower(PerceptProblem(eng)) if eng is not None else None
+
+        # ---- language organ (brain-native, LAZY): the brain's CONVERSATION comes from the ACQUIRED
+        # organ (faculties/language_acquisition, built lazily in _lm_serve -- spiking predictive coding +
+        # local plasticity, learned ONLINE from exposure, NO pretrained/imported LM). The former
+        # SpikeGPT-216M organ was SCRAPPED (v3.77). SAFETY: display-only -- its text is NEVER parsed as
+        # a motor command; arm commands stay on the NL firewall + gated-arm path in respond().
+
+        # ---- PERCEPTION TIER (optional torch): the e-prop-trained deep SNN on N-MNIST
+        # (sensorimotor/eprop_nmnist.py, TORCH_TIER) exposed as an OPTIONAL high-fidelity perception
+        # encoder. torch- AND weights-GATED: if torch + a checkpoint are present it loads; else
+        # the brain degrades to its stdlib perception. The live circadian loop is UNCHANGED either way
+        # (the toy safe-stimuli are not event frames). ONE-DIRECTIONAL: the zero-dep core never imports
+        # the tier. Value/representation-only -- an encoder, no actuator route. state()["perception_tier"].
+        self._perception_enc = None
+        self._perception_tier = "stdlib"
+        self._real_frames = None  # W3b: a pack of REAL N-MNIST event frames (numpy at runtime)
+        self._real_labels = None
+        self._real_ptr = 0
+        self._perceiving_real = False
+        self._real_percept = None
+        self._perception_acc = None  # LIVE classification accuracy over real frames perceived
+        self._perc_hits = self._perc_seen = 0
+        self._perceived_digit = None
+        self._audio_enc = None  # W3c: brain-native e-prop SHD auditory encoder
+        self._audio_frames = None
+        self._audio_labels = None
+        self._audio_ptr = 0
+        self._perceiving_audio = False
+        self._audio_percept = None
+        self._audio_acc = None  # LIVE audio classification accuracy over real SHD frames
+        self._audio_hits = self._audio_seen = 0
+        self._perceived_word = None
+        self._vis_learner = None  # W4a: growing prototype learner over REAL vision latents
+        self._aud_learner = None  # W4a: growing prototype learner over REAL audio latents
+        self._real_units = 0  # learned representations (prototypes) of real stimuli
+        self._real_novelty = 0.0  # novelty spike when a real percept recruits a new prototype
+        self._attn_real = (
+            None  # W9: attention readout over the REAL percept stream (winning band + focus)
+        )
+        self._perception_unified = (
+            False  # W9: True when the arm's sensory channels are DRIVEN by real perception
+        )
+        try:
+            import os  # used below for SNN_EPROP_CKPT / SNN_PERCEPTION_PACK and their os.path checks
+
+            # NORD_TORCH=0 off-switch REMOVED 2026-07-29. It used to raise here to force the stdlib
+            # perception path, simulating a torch-free install -- a contract pyproject retired on
+            # 2026-07-20, when torch became an unconditional core dependency. Nothing is lost by
+            # deleting it: torch genuinely ABSENT still lands on the stdlib tier, because the import
+            # below raises inside this same try and the handler sets tier="stdlib". The flag's only
+            # unique power was forcing the tier off while torch was present, which is the simulation
+            # being retired, not a capability.
+            # GPU-PRIORITIZED perception with a ROBUST cpu fallback: prefer cuda when requested
+            # (device="cuda", the default) AND available, but if a cuda LOAD throws -- GPU busy / OOM under
+            # the always-on daemon's OWN GPU contention -- fall back to cpu so perception, and the cortical
+            # column + crossmodal binder that ride on it, stay ALIVE rather than silently dropping to the
+            # stdlib tier just because the GPU was momentarily unavailable. The encoders are per-frame +
+            # transfer-bound (encode()/classify() move the input to self.device), so cpu costs little; a busy
+            # GPU must never BLIND the brain. A cuda-absent env resolves to cpu directly (byte-identical gate).
+            self._perception_device = "cpu"
+            try:
+                import torch as _torch
+
+                if device == "cuda" and _torch.cuda.is_available():
+                    self._perception_device = "cuda"
+            except Exception:
+                self._perception_device = "cpu"
+
+            def _load_enc(loader, path):
+                try:
+                    return loader(path, device=self._perception_device)
+                except Exception:  # GPU busy/OOM -> stay ALIVE on cpu, never fall through to stdlib
+                    self._perception_device = "cpu"
+                    return loader(path, device="cpu")
+
+            # VISION and AUDIO get SEPARATE handlers (split 2026-08-13, specs/013 C2). They used to
+            # share this one `try`, so a failure in EITHER rolled back BOTH -- MEASURED at 12 ticks
+            # before the split: making `training.eprop_shd` unimportable took perception_tier from
+            # "eprop-snn" to "stdlib", the state leaf-path count 134 -> 132, and collapsed
+            # /attention_real from a 3-key dict to a scalar. The AUDIO import destroyed the VISION
+            # tier. Two independent faculties must fail independently. The OUTER try still wraps the
+            # SHARED setup above (os, the device probe, _load_enc): if that fails neither tier can
+            # load, and rolling back both is then correct rather than collateral.
+            try:
+                _eprop = _model_asset("SNN_EPROP_CKPT", "models/eprop_nmnist.pt")
+                # The ONE vision perception encoder. The surrogate-BPTT fallback that used to sit in
+                # an `else:` here was RETIRED 2026-08-13 (specs/013): two encoders selected by
+                # checkpoint existence is the "both paths behind a flag" shape P2 calls additive with
+                # extra steps, and the surviving one is the brain-native (e-prop, no backprop) half.
+                # Honest cost: a machine holding only the surrogate checkpoint now gets NO encoder
+                # rather than a working one, and the tier falls to stdlib.
+                if os.path.exists(_eprop):
+                    from snn_data_lake.sensorimotor.eprop_nmnist import EpropEncoder
+
+                    self._perception_enc = _load_enc(EpropEncoder.load, _eprop)
+                    self._perception_tier = "eprop-snn"
+                if (
+                    self._perception_enc is not None
+                ):  # load the REAL event-frame pack (numpy only at runtime)
+                    import numpy as _np
+
+                    _pack = _model_asset("SNN_PERCEPTION_PACK", "models/nmnist_pack.npz")
+                    if os.path.exists(_pack):
+                        _d = _np.load(_pack)
+                        self._real_frames, self._real_labels = _d["frames"], _d["labels"]
+                        # a pack that LOADS is not a pack that carries rows. An empty .npz used to
+                        # set this flag, and the first index into it landed in the blanket except
+                        # below -- so the brain reported perceiving real event-vision while holding
+                        # zero frames. The claim now rests on a counted value. T052-iii adds a
+                        # SECOND way this flag can be True while nothing flows, disclosed rather
+                        # than hidden: a custom pack whose binning differs from the boundary's
+                        # pinned contract shape fail-closes EVERY frame at the door (percepts 0,
+                        # acc None, this flag still True -- rows exist, they just never validate).
+                        self._perceiving_real = bool(self._real_frames.size)
+            except Exception:  # VISION only. The auditory tier below is untouched by this.
+                self._perception_enc = None
+                self._perception_tier = "stdlib"
+                self._perceiving_real = False
+
+            try:
+                _audio = _model_asset("SNN_EPROP_AUDIO_CKPT", "models/eprop_shd.pt")
+                if os.path.exists(
+                    _audio
+                ):  # AUDITORY tier (brain-native): e-prop SHD encoder, parallel to vision
+                    from snn_data_lake.sensorimotor.eprop_shd import EpropAudioEncoder
+
+                    self._audio_enc = _load_enc(EpropAudioEncoder.load, _audio)
+                    import numpy as _np2
+
+                    _apack = _model_asset("SNN_SHD_PACK", "models/shd_pack.npz")
+                    if os.path.exists(_apack):
+                        _ad = _np2.load(_apack)
+                        self._audio_frames, self._audio_labels = _ad["frames"], _ad["labels"]
+                        # same counted claim as vision above: loadable != carries rows.
+                        self._perceiving_audio = bool(self._audio_frames.size)
+            except Exception:  # AUDIO only. The vision tier above keeps whatever it loaded.
+                self._audio_enc = None
+                self._perceiving_audio = False
+        except Exception:  # SHARED setup failed -> neither tier can exist. Both roll back.
+            self._perception_enc = None
+            self._perception_tier = "stdlib"
+            self._perceiving_real = False
+            self._perceiving_audio = False
+
+        # W6: extended cortical faculties (optional, pure-stdlib, representation-only) -- lazily built, guarded.
+        self._affect_core = self._xmodal = self._grid_place = None
+        self._emotion = None  # current categorical emotion (AffectCore over valence/arousal)
+        self._superadditive = False  # cross-modal vision+audio super-additive binding this tick
+        self._xmodal_known = set()  # C2 #19: bimodal object handles the binder has been TAUGHT
+        self._xmodal_handle = None  # C2 #19: the bound object recognised this tick (None = unbound)
+        # T080 (2026-09-16, evidence/t080-temporal-binding.md 2.6 PASS): one flag per awake tick,
+        # the last 200 -- did the binder report ONE object for THIS tick's two latents?
+        self._xmodal_bound_hist = []
+        # T080 panel fold (2026-09-16): a bind() that raised is COUNTED, never silently swallowed
+        # (the `prototype_faults` convention), and it clears the handle so the bound rate and
+        # `crossmodal_handle` never carry a stale object across a faulted tick
+        self._xmodal_faults = 0
+        self._place_here = (
+            None  # the landmark/percept the grid-place map binds to the current position
+        )
+        self._place_value = {}  # C2 #1: R-STDP learned value per (place, action) -> action-specific approach on re-entry
+        self._percept_value = {}  # master lever: R-STDP value per (percept-class, action) -> perception drives action
+        self._recall_value = {}  # master lever: R-STDP value per (recalled-episode, action) -> episodic memory drives action
+        self._recall_conf = 0.0  # confidence of the current tick's episodic pattern-completion (gates the recall drive)
+        self._percept_conf = 1.0  # perceptual-confidence gate on the percept drive (set live by the no-backprop laminar readout B'; 1.0 = ungated)
+        self._percept_readout = None  # Slice B: lazy LIVE no-backprop laminar readout (B') over the real percept latent; learns online, sets _percept_conf
+        self._percept_surprise = None  # loop C2: lazy online unsupervised SURPRISE (Oja-PCA reconstruction residual) over the percept latent
+        self._spont_bootstrap_steps = None  # T045: None = the wire never ran; 0 = ran and delivered nothing; 1600 = completed (readers need no getattr default)
+        self._lp = None  # T046a: lazy per-region |LP| facade; fed the percept surprise per tick (the discharged T028 consumer)
+        self._surprise_signal = 0.0  # loop C2: current-tick predictive surprise (off-manifold), an orienting drive; set in _perceive_real
+        self._learned_latency = 0  # C2 #3: learned reward latency -> opens a timed Go window
+        # C2 BRAIN-NATIVE: the approach drive's per-source weights are LEARNED (three-factor,
+        # dopamine-gated, baseline-subtracted -- see _route_percept_to_action), not hand-set. They
+        # start EQUAL so no source is privileged by hand; the brain learns which ones pay off.
+        self._drive_w = dict.fromkeys(
+            (
+                "novelty",
+                "ignition",
+                "place",
+                "timing",
+                "reroute",
+                "help",
+                "percept",
+                "recall",
+                "surprise",
+                "drive",
+                "taskset",
+            ),
+            0.1,
+        )
+        self._help_drive = (
+            0.0  # C (Brain-Cog social): decaying empathic ENGAGE-toward-distress drive
+        )
+        self._tom_protect = (
+            0.0  # C2 (Brain-Cog): decaying caution from a tracked agent's false belief
+        )
+        self._drive_lr = 0.02  # three-factor learning rate for the approach-drive synapses
+        self._place_lr = 0.25  # R-STDP rate for per-place value
+        self._percept_lr = 0.25  # R-STDP rate for per-(percept-class, action) value
+        self._recall_lr = 0.25  # R-STDP rate for per-(recalled-episode, action) value
+        self._drive_val_lr = 0.25  # R-STDP rate for per-(dominant homeostatic drive, action) value
+        self._drive_value = {}  # MASTER LEVER: R-STDP value per (dominant homeostatic drive, action)
+        self._base_tau = 0.02  # adaptation rate of the running baselines below
+        self._rpe_base = 0.0  # running |RPE| baseline -> the RELATIVE reward-onset threshold
+        self._nov_base = 0.0  # running novelty baseline -> the RELATIVE explore/fidget threshold
+        self._place_from_spiking_bump = (
+            False  # C2 #16: place grounded on the spiking grid bump, not the float map
+        )
+        self._place_correction = (
+            0.0  # C2 #8: last landmark phase-reset magnitude (drift correction)
+        )
+        self._place_fault = None  # last exception that aborted the place binding (None = healthy)
+        self._place_faults = 0  # how many ticks the place binding aborted -> _place_here went STALE
+        try:
+            # T082 (2026-09-16, 2.1): `SecondOrderToM` is RETIRED here and DELETED from
+            # affect_core -- the WHERE-only second-order tracker the same dialogue statement used
+            # to feed in parallel with `_tom` and `_recursive_tom` (fact 1: three trackers, three
+            # answers on one turn). R5 measures `predict_nested` reproducing
+            # `predict_second_order` on 200 constructed witness scripts, which is what licenses
+            # the deletion rather than a flag keeping both paths alive (P2).
+            from snn_data_lake.faculties.affect_core import AffectCore
+            from snn_data_lake.faculties.crossmodal_binder import CrossModalBinder
+            from snn_data_lake.faculties.grid_place_map import GridPlaceMap
+
+            self._affect_core = AffectCore(seed=self._seed)
+            self._xmodal = CrossModalBinder(seed=self._seed)
+            self._grid_place = GridPlaceMap(seed=self._seed)
+        except Exception:
+            self._affect_core = self._xmodal = self._grid_place = None
+
+        # W8: re-entrant (de-saturated) workspace + reconstructive episodic memory + homeostatic drives
+        self._reentrant = self._episodic = self._drives = None
+        self._thal_relay = None  # T039j: the thalamic hop; None relays the pair unchanged
+        self._insula = None  # T039f: the insula terminus; None leaves every threshold as it was
+        self._insula_channels = ()
+        self._feeling_salience = 0.0  # this tick's body-from-own-baseline deviation, in [0, 1]
+        self._reroute_bias = (
+            0.0  # C2 #11: top-down re-route bias the ignited content sends to the action specialist
+        )
+        self._reentrant_availability = (
+            1.0  # global availability -- can now be < 1.0 (a real access FAILURE)
+        )
+        self._reentrant_strength = (
+            1.0  # C1 #5: GRADED sustained-firing access strength (consumed into access-confidence)
+        )
+        self._dominant_drive = None
+        self._task_pref = (
+            None  # MASTER LEVER: task-set per-action preference (bias vec), fed to _route
+        )
+        self._task_film = None  # T060: the declared FiLM payload the preference is rebuilt from
+        self._drive_activity = (
+            None  # C2 #11: the drive-vocabulary activity actually performed this tick
+        )
+        try:
+            from snn_data_lake.faculties.homeostatic_drives import HomeostaticDrives
+            from snn_data_lake.faculties.reentrant_workspace import ReentrantWorkspace
+            from snn_data_lake.substrate.episodic_recall import EpisodicRecall
+
+            self._reentrant = ReentrantWorkspace(seed=self._seed)
+            # C2 #11: SUBSCRIBE the downstream specialists so an ignited coalition is actually RE-ROUTED --
+            # broadcast_to(name) returns a top-down bias the specialist ADDS to its NEXT output, closing the
+            # GWT loop into behaviour instead of recording a label.
+            #
+            # THE SENTENCE THAT USED TO END THIS COMMENT WAS FALSE, corrected 2026-08-03. It claimed
+            # subscribing "makes `availability` a GRADED fraction-of-subscribers-reached rather than a
+            # binary, de-saturating global access". It does not. In ReentrantWorkspace._deliver
+            # (reentrant_workspace.py:285-315) `reached` increments inside the branch taken for EVERY
+            # subscriber whenever the coalition ignites, so `reached / len(self._subs)` is 0.0 or 1.0 and
+            # nothing else. Availability is binary with one subscriber and binary with ten.
+            #
+            # F1's LISTENER HALF IS FIXED AS OF T039c; F1's SPEAKER HALF AND F2 BOTH STAND. The
+            # labels are the ones docs/P6_INTERCONNECT.md uses: F1 is the content-blind payload,
+            # F2 is the all-or-none availability. The bias handed to each subscriber USED to be
+            # `{winner: bias}` computed once from the winning CONTENT, so broadcast_to("action") and
+            # broadcast_to("language") were byte-identical -- measured 35 of 35 broadcasts.
+            # `ReentrantWorkspace.report_use` gives the (subscriber, content) association the writer
+            # it never had (v4.78 deleted the READ because nothing wrote the key; this adds the
+            # writer instead), and `_act` below is its first caller.
+            #
+            # WHAT IS STILL TRUE, because this fix is narrower than the finding it answers:
+            #   * F1 SPEAKER half -- the payload is STILL `{winner: bias}` and carries no submitter
+            #     identity, so the bus cannot say WHICH faculty spoke; only how much the listener
+            #     used what it got. Two subscribers that use it alike get identical dicts.
+            #   * F2 -- availability is binary with one subscriber and with ten. Untouched here.
+            # T039h: `interoception` is the SECOND specialist to actually drain this bus.
+            # `language` stays subscribed and never drains ON PURPOSE -- it is the in-code negative
+            # control for T039c's listener term, which is only measurable against a subscriber that
+            # keeps the base gain.
+            for _spec in ("action", "language", "interoception"):
+                self._reentrant.subscribe(_spec)
+            self._episodic = EpisodicRecall(seed=self._seed)
+            self._drives = HomeostaticDrives(seed=self._seed)
+            # specs/022 T039f: the INSULA TERMINUS of the declared interoceptive tract
+            # (viscera -> nts_rvlm -> thal_relay -> insula -> gwt). Both declared producers are
+            # already live in this class -- `_drives.deficit()` and the arm's cached
+            # {stress, caution} -- so this consumer feeds the exact BODY_CHANNELS concat the
+            # manifest declares, and its salience joins the ONE ignition law in tick().
+            from snn_data_lake.faculties.interoceptive_integration import (
+                BODY_CHANNELS,
+                InteroceptiveIntegration,
+            )
+
+            self._insula_channels = BODY_CHANNELS
+            self._insula = InteroceptiveIntegration(channels=BODY_CHANNELS)
+            # T039j: the ascending pair reaches the terminus THROUGH the thalamic relay, which is
+            # the hop `connectome.py` has always declared (nts_rvlm -> thal_relay -> insula) and
+            # the only one that had no module. Constructed here so the tract has one instance on
+            # the live tick rather than one per caller.
+            from snn_data_lake.faculties.interoceptive_relay import InteroceptiveRelay
+
+            self._thal_relay = InteroceptiveRelay()
+            # T039h: hand the terminus the subscriber handle. It reads the broadcast through
+            # `Brain.reentrant`; it constructs no workspace and submits to none.
+            self._insula.attach(self)
+            # T039i: the sensorimotor surface gets the terminus itself, not a copy of its number.
+            # `LiveBrain` has no back-reference to this class, and duplicating a measured quantity
+            # onto the arm to make it reachable is exactly the second copy P4 forbids.
+            self.brain.insula = self._insula
+        except Exception:
+            self._reentrant = self._episodic = self._drives = None
+            self._insula = None
+
+        # C1 (batch 1): five NEW brain-native spiking faculties -- pure stdlib/numpy, representation-only,
+        # guarded. Spiking clock (Weber timing), learned affective appraisal (three-factor), task-set/
+        # set-shift, learned generative self-model (e-prop), continuous-attractor SPIKING grid (bump path
+        # integration). None drives the arm action path -- readouts only; the reflex/E-STOP is untouched.
+        self._time_clock = self._affect_appraisal = self._task_set = self._gsm = self._grid_can = (
+            None
+        )
+        self._elapsed_time = 0.0
+        self._timing_sd = 0.0
+        self._appraised = None
+        self._task_set_active = 0
+        self._task_switch_cost = 0.0
+        self._self_surprise_gen = 0.0
+        self._gsm_prev = None
+        self._grid_can_xy = None
+        self._grid_can_prev = None
+        try:
+            from snn_data_lake.engine.autonomous_loop import ACTIONS as _ACTS
+            from snn_data_lake.faculties.affective_appraisal import AffectiveAppraisal
+            from snn_data_lake.faculties.generative_self_model import GenerativeSelfModel
+            from snn_data_lake.faculties.spiking_grid_can import SpikingGridCAN
+            from snn_data_lake.faculties.task_set import TaskSetLayer
+            from snn_data_lake.faculties.time_cells import TimeCellClock
+
+            self._time_clock = TimeCellClock(n_cells=64, seed=self._seed)
+            self._affect_appraisal = AffectiveAppraisal(dim=9, seed=self._seed)
+            self._task_set = TaskSetLayer(n_sets=3, n_in=9, n_actions=len(_ACTS), seed=self._seed)
+            self._gsm = GenerativeSelfModel(dim=11, seed=self._seed)
+            self._grid_can = SpikingGridCAN(n=16, seed=self._seed)
+        except Exception:
+            self._time_clock = self._affect_appraisal = self._task_set = self._gsm = (
+                self._grid_can
+            ) = None
+
+        # ---- specs/003: the time-cell population may GROW, and may remember how wide it grew.
+        # OFF BY DEFAULT, and the default is load-bearing twice over. (1) FR-016 wants an off-switch
+        # under which live behaviour is unchanged, and this is it -- with the flag unset the clock is
+        # constructed at 64 and never grows, exactly as before. (2) An UNCONDITIONAL restore makes
+        # brain construction stop being a pure function of its seed: it reads whatever the previous
+        # process left on disk, which measured as non-deterministic construction in ~42% of trials.
+        # A gate that must be asked for cannot do that to a test run.
+        # GROWTH IS ON BY DEFAULT (changed 2026-08-02). It was opt-in for one measured reason -- an
+        # unconditional RESTORE read whatever the previous process left on disk and made brain
+        # construction non-deterministic in ~42% of trials -- and that reason belongs to the restore,
+        # not to the growth. Verified before flipping: with growth enabled, two seed-0 brains produce
+        # BYTE-IDENTICAL 300-tick state traces (width, elapsed_time, arm_stopped, map_position), so
+        # same-seed determinism survives. Growth draws no random numbers and happens only at a reset
+        # boundary the brain reaches on its own. `NORD_TIME_CELLS_GROW=0` is the off-switch.
+        self._time_cells_grow = os.environ.get("NORD_TIME_CELLS_GROW") != "0"
+        # RESTORE STAYS OPT-IN, separately, because it is the half that broke determinism: it makes
+        # construction depend on disk rather than on the seed. Enable with NORD_TIME_CELLS_RESTORE=1.
+        self._time_cells_restore = os.environ.get("NORD_TIME_CELLS_RESTORE") == "1"
+        self._time_cells_restore_note = "disabled"
+        if self._time_clock is not None and self._time_cells_restore:
+            # Its OWN try. NOT the handler above -- that one nulls FIVE populations, so a bad state
+            # blob on disk would silently cost the brain its affect appraisal, task sets, self-model
+            # and grid cells as collateral. Also never inside TimeCellClock.__init__: the module's
+            # own self-check would then read the previous gate run's state.
+            try:
+                self._time_clock, self._time_cells_restore_note = self._time_clock.restored()
+            except Exception as _e:
+                self._time_cells_restore_note = f"restore raised: {_e}"
+        # T038 (FR-027): the arm's coverage ledger restores under the SAME switch AND only when this
+        # brain persists -- read and write share one gate (`_flush_coverage` is persist-gated), so a
+        # non-persistent brain built inside the daemon's process (the self-build sandbox is one) stays
+        # a function of its seed and not of what the daemon left on disk. Its OWN try, like the clock's.
+        if self._persist and self._time_cells_restore:
+            try:
+                from snn_data_lake.engine.autonomous_loop import COVERAGE_STATE as _CS
+                from snn_data_lake.substrate import home as _home
+
+                self.brain.arm.restore_coverage(_home.load_state(_CS, default=None))
+            except Exception as _e:
+                self.brain.arm.coverage_restore_note = f"restore raised: {_e}"
+
+        # C1 batch-2: three MORE brain-native pure-stdlib faculties -- N-agent recursive ToM (social),
+        # neuromod-fusion affect integrator with self-organized emotions (affect), counterfactual do()
+        # simulation over a learned local forward model (imagination). Representation-only; no arm route.
+        self._recursive_tom = self._affect_int = self._cfsim = None
+        self._false_beliefs = []
+        self._emergent_emotion = None
+        self._n_emotions = 0
+        self._imagined_best = None
+        self._imagined_surprise = 0.0
+        self._cf_prev = None
+        try:
+            from snn_data_lake.engine.autonomous_loop import ACTIONS as _ACTS2
+            from snn_data_lake.faculties.affect_integrator import AffectIntegrator
+            from snn_data_lake.faculties.counterfactual_sim import CounterfactualSim
+            from snn_data_lake.faculties.recursive_tom import RecursiveToM
+
+            self._recursive_tom = RecursiveToM(n_agents=3, seed=self._seed)
+            self._affect_int = AffectIntegrator(seed=self._seed)
+            self._cfsim = CounterfactualSim(dim=9, n_actions=len(_ACTS2), seed=self._seed)
+        except Exception:
+            self._recursive_tom = self._affect_int = self._cfsim = None
+
+        # specs/022 audit s8 rank 2b (2026-09-02): the brain's PROTOTYPES of what it perceived come
+        # back from the ONE lake -- the arm loop's context learner (whose ids are the neurogenesis
+        # grower's categories since rank 2a) and the vision/audio prototype learners. Same gate as
+        # growth (persist), same named-state record family (`_T_STATE`). The vision/audio learners
+        # are CONSTRUCTED from their records here rather than lazily at the first real percept, so
+        # `real_perception_units` at tick 0 is what the lake holds; if the live percept turns out
+        # wider or narrower than the record, `_consume_perception` grows or drops them, counted. An
+        # arm record of another width than the arm's producer is REFUSED here: the panel measured a
+        # 32-wide record restored into a 64-wide arm raising out of every wake tick. A record that
+        # fails a refusal leaves the learner empty (never half-restored) and the note says so. The
+        # same record carries the other live learned stores (P4b, policy audit pa-p4bd-3,
+        # 2026-10-24): the arm's Q-table over these ids (`arm.q`, AFTER the arm learner -- a row
+        # for a unit it does not hold is refused), the affect integrator's emotion SOM (hence this
+        # block runs after its construction) and the lifelong consolidator's learner with its
+        # labels, utilities and task index; `n_emotions` / `lifelong_units` read them at tick 0.
+        # Same refusal rule for each. The consolidator's replay memory is DERIVED: rebuilt from the
+        # restored task streams, not stored; without it task 0 is pruned away (arc-2 panel A-B1).
+        # So the lifelong record names the seed those streams come from and is refused at another or
+        # without one (B MINOR-5), and `arm.q` names the arm record it was written beside by
+        # `_record_id`: a q row binds only to the arm whose ids it was learned over, never to an id
+        # range (R2-M1).
+        # A refused or never-reached sub-record is carried forward by `_flush_prototypes` (A-M1).
+        # A refused store is retried from `_keep_refused`'s records, newest first, under the same
+        # `_accept` rule; the refused one stays carried, so a stray brain of another seed shelves
+        # nothing for good (R3-M2).
+        self._prototypes_restore_note = None
+        self._prototypes_carried = {}
+        self._prototypes_kept = 0
+        if self._persist:
+            _rec, _ok, _used, _adopted = {}, {}, {}, []
+
+            def _accept(key, sub):
+                if key == "arm":
+                    _arm_l = self.brain.arm.learner
+                    # the arm's width is its producer's; never a record's
+                    ok = int(sub.get("dim", -1)) == int(_arm_l.dim) and _arm_l.load_state_dict(sub)
+                elif key in ("vis", "aud"):
+                    _l = GrowingLearner(vigilance=0.86, dim=int(sub.get("dim", 1)))
+                    ok = _l.load_state_dict(sub)
+                    if ok:
+                        setattr(self, {"vis": "_vis_learner", "aud": "_aud_learner"}[key], _l)
+                elif key == "q":
+                    ok = (
+                        isinstance(sub, dict)
+                        and "arm" in _used
+                        and sub.get("arm") == _record_id(_used["arm"])
+                        and self.brain.arm.load_q_state_dict(sub)
+                    )
+                elif key == "affect":
+                    ok = self._affect_int is not None and self._affect_int.load_state_dict(sub)
+                    self._n_emotions = int(self._affect_int.n_emotions) if ok else 0
+                elif key == "lifelong":
+                    _i = sub.get("i") if isinstance(sub, dict) else None
+                    ok = (
+                        isinstance(_i, int)
+                        and 0 <= _i <= len(self._ll_tasks)
+                        and sub.get("seed") == self._seed  # the streams it re-derives from
+                        and self._ll.load_state_dict(sub)
+                    )
+                    if ok:
+                        self._ll_i, self._ll_units = _i, self._ll.n_units
+                        self._ll.rebuild_memory([t["train"] for t in self._ll_tasks[:_i]])
+                else:
+                    ok = False
+                if ok:
+                    _used[key] = sub
+                return bool(ok)
+
+            try:
+                from snn_data_lake.substrate import home as _home
+
+                _rec = _home.load_state(PROTOTYPES_STATE, default=None) or {}
+                for _key in ("arm", "vis", "aud", "q", "affect", "lifelong"):
+                    if not _rec.get(_key):
+                        continue
+                    _ok[_key] = _accept(_key, _rec[_key])
+                    if _ok[_key]:
+                        continue
+                    for _name, _blob in _home.named_states(f"{REFUSED_PREFIX}{_key}."):
+                        try:
+                            if _accept(_key, json.loads(_blob.decode("ascii"))):
+                                _adopted.append(_name)
+                                break
+                        except Exception:  # a kept record is a candidate, never a reason to stop
+                            continue
+                self._prototypes_kept = len(_home.named_states(REFUSED_PREFIX))
+                self._real_units = (self._vis_learner.n_units if self._vis_learner else 0) + (
+                    self._aud_learner.n_units if self._aud_learner else 0
+                )
+                self._prototypes_restore_note = (
+                    None
+                    if all(_ok.values())
+                    else f"refused: {[k for k, v in _ok.items() if not v]}"
+                    + (f"; adopted: {_adopted}" if _adopted else "")
+                )
+            except Exception as _e:  # a broken record must never block brain construction
+                self._prototypes_restore_note = f"restore raised: {_e}"
+            if isinstance(_rec, dict):
+                self._prototypes_carried = {k: v for k, v in _rec.items() if v and not _ok.get(k)}
+        self._attach_percept_transitions()
+
+        # C1 batch-3: whole-brain integration + learned perception faculties (numpy allowed now,
+        # representation-only, guarded). Learned spiking attention gate over the real percept stream;
+        # a connectome spike-ROUTER (signed/delayed propagation over the region graph -> loop reverberation);
+        # cross-region Kuramoto COHERENCE that biases the workspace ignition threshold. No actuator route.
+        self._learned_attn = self._connectome_router = self._region_coherence = None
+        self._attn_focus = None
+        self._connectome_reverb = None  # structural constant, computed once on first wake tick
+        self._connectome_propagation = 0.0  # live: mean connectome network rate (graded, varies)
+        self._region_coherence_val = 0.0
+        self._synfire = (
+            None  # feedforward synfire chain -> the all-or-none SYNCHRONY-BINDING gate on ignition
+        )
+        self._bound = False  # True this tick when a coherence volley SURVIVED the synfire chain (reliable binding)
+        self._theta_bias_refused = (
+            0  # coherence->theta writes refused by a sweep hold (T032; audit, cockpit-visible)
+        )
+        try:
+            from snn_data_lake.faculties.connectome_router import ConnectomeRouter
+            from snn_data_lake.faculties.learned_attention import LearnedAttention
+            from snn_data_lake.faculties.region_coherence import RegionCoherence
+            from snn_data_lake.faculties.synfire_chain import SynfireChain
+
+            self._learned_attn = LearnedAttention(dim=64, n_bands=4, seed=self._seed)
+            self._connectome_router = ConnectomeRouter(seed=self._seed)
+            self._region_coherence = RegionCoherence(seed=self._seed)
+            self._synfire = SynfireChain(seed=self._seed)
+        except Exception:
+            self._learned_attn = self._connectome_router = self._region_coherence = None
+
+        # C1 batch-4: learned expected-value-of-control (executive), real-episode consolidation (memory),
+        # VSA relational structure-mapping / analogy (fluid reasoning). numpy allowed, representation-only, guarded.
+        self._learned_evc = self._episode_consolidator = self._structure_mapper = None
+        self._lake_recall = None  # T057: the durable recall's lake half, built on first miss
+        self._episode_window = []  # T057: recent lake-derived episodes (restore + own appends)
+        self._evc_cost = 0.0
+        self._evc_value = 0.0
+        self._episode_retained = 0.0
+        try:
+            from snn_data_lake.faculties.learned_evc import LearnedEVC
+            from snn_data_lake.faculties.vsa_structure_mapping import StructureMapper
+            from snn_data_lake.sleep.episode_consolidation import (
+                EpisodeConsolidator,
+                capacity_for,
+            )
+
+            self._learned_evc = LearnedEVC(seed=self._seed)
+            # CAPACITY TRACKS PRODUCTION, and dim tracks capacity. Neither is a slot count any more.
+            #
+            # Measured on this brain: 0.1 episodes per tick (10 per 100, flat over 1,200 ticks) and
+            # a wake window of ~12 ticks, so ~1.2 episodes per circadian day. The old `capacity=64`
+            # was therefore never "64 slots" -- it was "retain about 53 days", written in a unit
+            # that could not follow the brain. EPISODE_RETENTION_DAYS states that horizon directly.
+            #
+            # dim is then DERIVED (4 units of width per stored episode, measured exactly across an
+            # 8x load range), so what used to be two unexplained constants is now one declared
+            # policy plus two measured relationships. 53 days * 1.2/day = 64 slots and dim 256, so
+            # this reproduces the previous store exactly: a re-expression, not a retuning.
+            #
+            # HONEST LIMIT: the rate is fixed at boot. It does NOT yet track production live,
+            # because resizing means widening W, and a rebuild that dropped learned weights would
+            # destroy the memory this store exists to keep. Growing it in place is specs/007's
+            # function-preserving growth, and until that lands the rate is a measured seed value
+            # rather than a live estimate. `episode_rate_observed()` reports what the brain is
+            # ACTUALLY producing, so the gap between policy and reality is visible instead of
+            # assumed.
+            self._episode_rate = EPISODES_PER_DAY_AT_BOOT
+            self._episode_consolidator = EpisodeConsolidator(
+                capacity=capacity_for(self._episode_rate, EPISODE_RETENTION_DAYS),
+                seed=self._seed,
+            )
+            # RESTORE FROM THE ONE LAKE. The attractor is working memory and starts empty; the lake
+            # is where the brain's episodes actually live. Without this a restart begins amnesic
+            # while its own memories sit on disk unread -- which is what "the lake is the store"
+            # has to mean in practice, not just at write time.
+            #
+            # Gated on `persist` for the same reason grown time-cell width is: an unconditional
+            # restore makes construction depend on what a previous process left on disk instead of
+            # on the seed, which measured as non-deterministic construction in ~42 percent of
+            # trials. The gates run persist=False and stay reproducible; the daemon runs
+            # persist=True and remembers.
+            if self._persist:
+                self._restore_episodes()
+            self._structure_mapper = StructureMapper(seed=self._seed)
+        except Exception:
+            self._learned_evc = self._episode_consolidator = self._structure_mapper = None
+
+        # ---- PC-CORTEX PERCEPTION TIER (TORCH-FREE SERVE, checkpoint-gated): the deep spiking
+        # predictive-coding
+        # cortex (sensorimotor/pc_cortex_serve, snn_pcnet/1) served as an OPTIONAL generative perception encoder.
+        # WEIGHTS-GATED only -- no torch needed to SERVE (the settle is numpy, not the training tier;
+        # the former "zero-dep / pure stdlib" claim is stale -- that rule was removed project-wide):
+        # if a snn_pcnet/1 checkpoint
+        # is present it loads and settles an input to a top-cause latent; else the brain keeps its stdlib
+        # perception. Distinct from the surrogate tier above (that's a discriminative torch encoder; this is
+        # a generative spiking hierarchy that SETTLES). The live loop is UNCHANGED -- settling runs ONLY when
+        # perceive_pc() is called, never in a tick. Value/representation-only -- an encoder, no actuator
+        # route, no safety path touched. state()["pc_cortex_tier"].
+        self._pc_cortex = None
+        self._pc_cortex_tier = "stdlib"
+        try:
+            import os
+
+            _pc_ckpt = _model_asset("SNN_PC_CKPT", "models/pc_cortex_nmnist.json")
+            if os.path.exists(_pc_ckpt):
+                from snn_data_lake.sensorimotor.pc_cortex_serve import PcCortexServe
+
+                self._pc_cortex = PcCortexServe.load(_pc_ckpt)
+                self._pc_cortex_tier = "pc-cortex"
+        except Exception:
+            self._pc_cortex = None
+            self._pc_cortex_tier = "stdlib"
+
+        # ---- NENGO backend (optional): a PROBE of whether nengo is importable, and nothing more.
+        # This comment used to say the brain "can OFFLOAD any vector computation to a Nengo NEF
+        # ensemble" and that this was "the generic vector/spike <-> ensemble bridge every built module
+        # routes through". Both claims were false: the method they described (nengo_compute) had zero
+        # callers and was retired in v4.78. What is real: infra/nengo_bridge runs the whole brain
+        # under nengo.Simulator via the `snn-nengo-launch` entrypoint, and this flag reports whether
+        # that path is available. nengo-GATED: "nengo" when importable, else "stdlib". Read by
+        # reasoning/nengo_gui_brain.py:47 via state()["nengo_tier"].
+        try:
+            import nengo  # noqa: F401
+
+            self._nengo_tier = "nengo"
+        except Exception:
+            self._nengo_tier = "stdlib"
+
+        # ---- offline consolidation substrates (pure-stdlib) ----
+        self.attractor = AttractorNet(self._seed)
+        self._shy = None  # last SHY downscale-prune telemetry (set during sleep)
+        self._patterns = [
+            frozenset((i * ATTR_K + j) % ATTR_N for j in range(ATTR_K)) for i in range(3)
+        ]  # three K-sized assemblies (one per SAFE stimulus)
+        self._stored_any = False
+        self.buffer = ReplayBuffer(seed=self._seed)
+
+        # ---- drivable-region ENSEMBLE: extra stateful regions NOT already inside LiveBrain ----
+        self._ach = self._try(lambda: Acetylcholine())
+        self._lc = self._try(lambda: LocusCoeruleus(seed=self._seed))
+        self._lc_base = (
+            None  # running EMA of LC level -> baseline-relative phasic AROUSAL for the AJC gain
+        )
+        # DATA SELF-RECALIBRATION (live): record the salience drive fed to the LC (below) as a durable
+        # running quantile AND consume it LIVE -- `_tick_ensemble` sets self._lc.salience_th to this
+        # quantile every tick, so the LC gate is baseline-relative instead of a frozen literal.
+        # (This comment named `_w8_tick` as the ASSIGNING frame until 2026-08-05. `_w8_tick` is the
+        # CALLER; the assignment is one frame down, in `_tick_ensemble`.) Supersedes the nightly
+        # source-edit path (`infra/brain_native_selfbuild.ThresholdRecalibrationSource`, now
+        # target-less; this said `reasoning/`, a path the P4c promotion wave retired).
+        # P4b: the quantile state lives IN THE ONE LAKE under _T_STATE, never in a sidecar JSON.
+        self._salience_calib = None
+        self._recall_conf_calib = None
+        try:
+            from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
+
+            self._salience_calib = SignalCalibrator("salience_th", p=0.75)
+            # POLICY-1 (no magic constant): the respond() episodic-recall annotation gate was a frozen 0.2
+            # confidence floor. Record the brain's OWN live episodic-completion confidence (self._recall_conf,
+            # set each wake tick) into a running 25th-percentile calibrator, consumed as that gate below.
+            self._recall_conf_calib = SignalCalibrator("recall_conf_th", p=0.25)
+            if self._persist:
+                SignalCalibrator.load_into([self._salience_calib, self._recall_conf_calib])
+        except Exception:
+            self._salience_calib = None
+            self._recall_conf_calib = None
+        self._raphe = self._try(lambda: DorsalRaphe())
+        self._astro = self._try(lambda: Astrocyte(n_domains=2, seed=self._seed))
+        self._homeostat = self._try(lambda: Homeostat(seed=self._seed))
+        self._homeo_x = float(AMBIENT_TEMP)
+        self._homeo_scale = max(1.0, abs(SET_POINT_TEMP - AMBIENT_TEMP))
+
+        # ---- rotating SAFE stimuli (distinct bands the curiosity/JEPA substrate separates) ----
+        sd = SAFE_DISTANCE
+        self._explore = [
+            {"visual": [0.9] * 4, "temperature": [0.1], "audio": [0.1] * 4, "distance": sd},
+            {"visual": [0.1] * 4, "temperature": [0.9], "audio": [0.1] * 4, "distance": sd},
+            {"visual": [0.1] * 4, "temperature": [0.1], "audio": [0.9] * 4, "distance": sd},
+        ]
+
+        # ---- access-consciousness (Global Neuronal Workspace): bundle grown neurons -> ignite ----
+        # ACCESS consciousness = global availability / ignition (Dehaene-Baars), a FUNCTIONAL
+        # correlate. NOT phenomenal: never claims the brain feels or is sentient (see respond()).
+        self._percepts = len(self._explore)  # rotating stimuli = distinct perceptual assemblies
+        self._access_ema = 0.0  # running access-consciousness index in [0,1]
+        self._access_state = {}  # last GNW readout (ignited / availability / n_bound)
+        self._access_hold = {
+            "content": None,
+            "strength": 0.0,
+        }  # W2e: SUSTAINED cross-tick broadcast (decaying reverberation)
+
+        # ---- telemetry / bookkeeping ----
+        self._wake_ticks = 0
+        self._sleep_ticks = 0
+        self._nights = 0
+        # Sleep consolidation of the durable lake, reported in state(). _lake_kept/_lake_pruned were
+        # assigned on the tick and never initialised, so state() could not have read them before the
+        # first consolidation night; _lake_refused counts the immortal guard firing (specs/022 L6).
+        self._lake_kept = 0
+        self._lake_pruned = 0
+        self._lake_refused = 0
+        self._lake_refusal = ""
+        self._lake_night = -1  # no consolidation night yet; -1 is not a night number
+        # THE APPEND BUDGET's first live caller (specs/022 L4, FR-003). It has carried a measured per-tag
+        # baseline since T010-i with NO caller at all -- P3 dormancy in its plainest shape, and the only
+        # instrument this project has for bounding lake growth. The observer is installed here and the tick
+        # closes it; violations are COUNTED and reported, never raised, because a flood is a fact about the
+        # lake and killing the tick over it would lose the brain to protect the disk.
+        self._append_budget = None
+        self._prev_append_observer = None
+        self._append_floods = 0
+        self._append_flood_last = ""
+        if self._persist:  # a non-persisting brain writes nothing to bound
+            try:
+                from snn_data_lake.substrate.home import set_append_observer
+                from snn_data_lake.substrate.lake_engine import AppendBudget
+
+                self._append_budget = AppendBudget()
+                # CAPTURE what we replace. The first form discarded it, so a second brain in one process
+                # silently deafened the first -- measured: brain A read 0 floods for a flood on its own
+                # lake, under a PROVENANCE row that says 0 is expected -- and a discarded brain's budget
+                # went on accumulating bytes nothing would ever close.
+                self._prev_append_observer = set_append_observer(self._append_budget.on_append)
+            except Exception:  # noqa: BLE001 - accounting must never stop a brain from existing
+                self._append_budget = None
+        self._selfbuild_last = None  # last autonomous self-build result (opt-in via NORD_SELFMOD=1)
+        self._selfbuild_proposer = (
+            None  # lazily-built brain-native self-build proposer (three-factor learner)
+        )
+        self._lp_mean = 0.0
+        self._consolidation_acc = 0.0
+        self._reflex_ever = False
+        self._last_res = {}
+        self._regions_live = set()
+
+    # ---- THE RE-ENTRANT WORKSPACE, REACHABLE WITHOUT REACHING PAST THIS CLASS (specs/022 T039g) --
+    @property
+    def reentrant(self):
+        """THE one ReentrantWorkspace of this brain, for a subscribed specialist to drain.
+
+        ADOPTS AND CONSTRUCTS NOTHING, exactly like `workspace` below it, so it adds no
+        instantiation site to `tools/p6_gate.py`'s census. None before construction succeeds and
+        None when the W8 block failed, so a consumer reads one type and never an exception.
+
+        WHY THIS EXISTS AT ALL, stated because an accessor that only wraps an attribute looks like
+        ceremony. Until T039g the p6 gate could not SEE a read taken through an accessor: measured
+        over four overlay arms, `brain.reentrant.broadcast()` produced NO SITE AT ALL -- byte-
+        identical to a negative-control arm reading an attribute nothing constructs -- while
+        `brain._reentrant.broadcast()` scored. So the only route the instrument rewarded was the one
+        that reaches past this class into its private state, and P6's own success criterion was
+        satisfiable only by writing the worse of two identical routes. The gate was fixed in the
+        same commit; this is the half that makes the fixed gate mean something.
+
+        Distinct from `workspace`: that is the GlobalWorkspace the ARM builds and this brain adopts;
+        this is the ReentrantWorkspace this module builds for itself. The P2 debt between the two
+        (docs/POLICIES.md, two workspaces run additively) is untouched here -- exposing an accessor
+        picks no winner.
+
+        THE BODY IS A PLAIN ATTRIBUTE RETURN AND MUST STAY ONE. The T039g extractor treats ONLY
+        `return self.<attr>` as a rename of an attribute; a `getattr(...)` chain is a computation
+        that may reach a different object, and is deliberately refused (that refusal has its own
+        red -- `Brain.workspace` below is exactly the case it protects, since it returns the ARM's
+        bus rather than this one). Rewriting this body as a getattr would make the accessor
+        invisible to the gate again, silently. `_reentrant` is bound to None before the W8 block
+        runs, so the plain read cannot raise."""
+        return self._reentrant
+
+    # ---- THE ONE WORKSPACE (P6 prerequisite) ----------------------------------------------------
+    @property
+    def workspace(self):
+        """THE one Global Workspace of the one brain, reached through the sanctioned construction
+        path: make_brain() -> Brain -> LiveBrain -> AutonomousArm, which builds it.
+
+        It ADOPTS that instance and CONSTRUCTS NOTHING (P2: exactly one mechanism survives, so this
+        adds no instantiation site to `tools/p6_gate.py`'s census -- the point is to REMOVE private
+        instances, never to add a bus beside them). P6's blocker is object IDENTITY, not missing
+        readers: the gate reports many private workspaces, and a faculty holding its own object
+        cannot see any other faculty's submit() no matter how many readers are added. Handing this
+        one object to a faculty is what makes a read POSSIBLE; whether such a read CHARGES is a
+        separate question that owes a neuter-A/B, and nothing here forces a faculty to read.
+
+        NOT the same object as `self._reentrant`. That is a ReentrantWorkspace -- a different class,
+        the one workspace this module builds for itself, and the P2 debt between the two (see
+        docs/POLICIES.md, "two workspaces run additively") is unresolved for want of a consensus
+        benchmark. It is left exactly as it was; picking a winner here would be the fashion-treadmill
+        move P2 forbids.
+
+        None when there is no live brain or the arm was built with workspace=False, so a consumer
+        null-checks rather than assumes.
+
+        CONCURRENCY, stated because this is the free-threaded build (Py_GIL_DISABLED=1): a pure
+        attribute read -- no state, no mutation, no lock -- so it introduces no race of its own, and
+        a same-seed brain stays byte-identical. It does NOT make GlobalWorkspace thread-safe and does
+        not claim to: `submit()` is single-threaded by its own contract because buffer order is
+        observable, and a concurrent specialist writes through the workspace's OWN collect-then-apply
+        path, `open_slots()` + `submit_from()`, which splices the per-slot staging buffers in
+        ASCENDING SLOT ORDER so thread completion order cannot decide what the brain sees."""
+        return getattr(getattr(self, "brain", None), "workspace", None)
+
+    # ---- construction helpers ------------------------------------------------------------------
+    @staticmethod
+    def _try(factory):
+        """Build an ensemble object, degrading to None if its constructor does not fit cleanly."""
+        try:
+            return factory()
+        except Exception:
+            return None
+
+    # distinct-from: neurogenesis_engine.py -- its restore rebuilds the SUBSTRATE from
+    #   lake bytes; this method only relays trajectory rows to the T047 gate. Site read.
+    # distinct-from: spiking_curiosity.py -- its step moves a competence weight; nothing
+    #   here learns. Site read; the matcher fired on generic gate/growth words.
+    def _growth_gate_verdict(self, trajectory):
+        """T047: the growth-gate callable the neurogenesis engine consults at each refit,
+        receiving THE ENGINE'S OWN trajectory (the system under test reaches the
+        criterion through its parameter -- the red_reachability zero-arg shape; it also
+        removes any read of self.neuro, which is unbound while _make_neuro runs). Feeds
+        the gate every row it has not yet seen (the observed() cursor -- restored
+        trajectories from the lake feed here too, so the gate's evidence survives the
+        daemon's routine relaunches), then returns should_grow('cortex').
+
+        A POISONED row is refused by observe_refit, COUNTED, and skipped -- never raised
+        through the engine's tick into the sleep path's exception swallow, where it
+        would silently kill every refit forever (the panel's find); the count is
+        surfaced on state()['growth_gate']. The |LP| route is injected at gate
+        CONSTRUCTION as anatomy: a thin reader bound to this brain's lazy |LP| facade,
+        raising KeyError while the channel is unfed (absence is a fact, T046a)."""
+        if self._growth_stop is None:
+            from snn_data_lake.growth.growth_stop import GrowthStop
+
+            brain = self
+
+            class _LPRoute:
+                def lp(self, region):
+                    facade = getattr(brain, "_lp", None)
+                    if facade is None:
+                        raise KeyError(region)
+                    return facade.lp(region)
+
+            self._growth_stop = GrowthStop(lp_reader=_LPRoute())
+        from snn_data_lake.growth.growth_stop import feed_and_decide
+
+        verdict, refused = feed_and_decide(self._growth_stop, trajectory)
+        self._growth_feed_refusals += refused
+        return verdict
+
+    @property
+    def neuro(self):
+        """Read-through alias to the percept engine inside the Grower (deleted at T6). None while
+        `_make_neuro` runs (the grower is not yet bound) or when the torch tier is absent."""
+        g = getattr(self, "grower", None)
+        return g.percept.engine if g is not None else None
+
+    def _make_neuro(self, seed, device):
+        """Lazily build the torch neurogenesis engine from THIS cortex package. torch is a core
+        dependency, so this normally succeeds; torch genuinely absent -> None (growth reports zero, and
+        the wake + sleep-consolidation + self-model paths still run on the stdlib narrator).
+
+        The NORD_TORCH=0 off-switch was removed 2026-07-29 -- absence is already handled by the
+        `except Exception: return None` below, so the flag only ever added the ability to disable the
+        tier while torch was present, which was the retired zero-dependency simulation."""
+        try:
+            import torch
+
+            from snn_data_lake.growth.neurogenesis_engine import NeurogenesisSelfImprove
+
+            dev = device
+            if dev == "cuda" and not torch.cuda.is_available():
+                dev = "cpu"
+            # T047: the growth stopping criterion rides along from birth -- the engine
+            # consults it at every refit; the verdict logic lives entirely in
+            # growth/growth_stop.py (the engine and this brain can consult the guard,
+            # never constrain it).
+            eng = NeurogenesisSelfImprove(
+                seed=seed,
+                refit_every=self.refit_every,
+                device=dev,
+                growth_gate=self._growth_gate_verdict,
+                # L1c (2026-09-06): the grown readout learns online between sleep refits -- the A/B's
+                # survivor (delta; evidence/l1c-online-readout.md section 4), constructed by the engine
+                # from its kind name; the live instrument scores before it learns on every wake percept.
+                online_readout="delta",
+            )
+            # RESTORE the grown substrate from the one durable lake. Before this the engine was
+            # rebuilt empty on every start, and the daemon relaunches on every new commit (~20 times
+            # in a working session), so nothing the brain grew ever compounded. A lake with no
+            # growth record (neither a legacy _T_GROWTH blob nor a _T_GROWTH_DELTA chain, since
+            # specs/022 T010-ii) returns None and the engine starts ungrown -- exactly today's
+            # behaviour, so an existing lake is unaffected.
+            # GATED ON PERSIST, mirroring the save at `if self._persist:` further down. Unconditional,
+            # this made `Brain.__init__` read a file that a live daemon is concurrently appending to,
+            # so brain construction was not a pure function of its seed. Measured: the growth record
+            # changes every ~5.6 s, constructing a Brain takes ~2.15 s, and two seed=0 Brains built
+            # back to back therefore differed in ~42% of trials -- `grown_units` and
+            # `predict_accuracy` first, then four `self_state` fields. That is exactly claim 4 ("two
+            # seed=0 Brains must be byte-identical") failing intermittently, and subprocess isolation
+            # never protected it: a cold subprocess has a WIDER window than a warm in-process build.
+            # It also makes NORD_PERSIST=0 a real off-switch -- the save was gated and the load was
+            # not, so the documented "hermetic" mode restored state it refused to write.
+            if self._persist:
+                try:
+                    from snn_data_lake.substrate.home import load_growth
+
+                    eng.restore_growth_state(load_growth())
+                except Exception:  # a broken or absent record must never block brain construction
+                    pass
+            return eng
+        except Exception:
+            return None
+
+    # ---- ensemble + curiosity taps -------------------------------------------------------------
+    def _tick_ensemble(self, ctx, prev):
+        """Tick the diffuse modulators + hypothalamic homeostat + ring memory (each defended by its
+        own try/except so a mis-call just degrades). Returns (live, homeo_load)."""
+        live = set()
+        novelty = 1.0 if prev.get("grew") else min(1.0, max(0.0, self._lp_mean))
+        salience = max(0.0, float(prev.get("threat") or 0.0))
+        if self._salience_calib is not None:
+            try:
+                self._salience_calib.observe(salience)  # record the live salience distribution
+                # CONSUME IT LIVE (master lever): the LC salience gate tracks a RUNNING quantile of the
+                # brain's OWN recorded salience -- baseline-relative, updated every tick, never a frozen
+                # literal. This supersedes the nightly source-edit recalibration -- SALIENCE_TH is no longer
+                # a constant kept fixed. Two validity conditions (neither a tuned behaviour knob):
+                #   n >= 50   -- data-sufficiency: the quantile needs samples to mean anything.
+                #   value > 0 -- a MATHEMATICAL validity floor: salience = max(0, threat) is non-negative,
+                #                so a threshold <= 0 cannot separate salient from non-salient (everything is
+                #                >= 0) and would jam the gate always-phasic. When the recorded quantile is 0
+                #                (the current dormant-arm regime records all-zero salience -> no salient
+                #                events to calibrate from) we HONEST-NULL to the module default prior; the
+                #                live threshold engages only once real salient events give the signal spread.
+                r = self._salience_calib.result()
+                if (
+                    self._lc is not None
+                    and r["n"] >= 50
+                    and r["value"] is not None
+                    and r["value"] > 0.0
+                ):
+                    self._lc.salience_th = float(r["value"])
+            except Exception:
+                pass
+        base = self._baseline
+        homeo_load = 0.0
+        if self._ach is not None:
+            try:
+                self._ach.step(novelty)  # ACh rises on novelty (encode/retrieve)
+                live.add("neuromod_acetylcholine")
+            except Exception:
+                pass
+        if self._lc is not None:
+            try:
+                # LC PART 1 -- BROADEN THE DRIVE: LC fires on SALIENT events, but it was fed threat only,
+                # and threat ~ 0 in the idle loop, so its level sat at a dead tonic constant. Feed it the
+                # real salience signals already computed this tick -- threat OR novelty OR predictive
+                # surprise -- so the phasic burst actually fires when something novel/surprising happens.
+                lc_sal = max(
+                    salience,
+                    float(novelty or 0.0),
+                    min(1.0, float(getattr(self, "_pc_surprise_ema", 0.0) or 0.0)),
+                )
+                self._lc.step(lc_sal)  # LC/NA phasic gain on salient events
+                live.add("neuromod_locus_coeruleus")
+            except Exception:
+                pass
+        if self._raphe is not None:
+            try:
+                self._raphe.step(base)  # 5-HT tracks the slow circadian context
+                live.add("neuromod_raphe_serotonin")
+            except Exception:
+                pass
+        if self._astro is not None:
+            try:
+                self._astro.step([novelty, max(0.0, 1.0 - base)])  # slow glial gain
+                live.add("neuromod_astrocyte")
+            except Exception:
+                pass
+        if self._homeostat is not None:
+            try:
+                sp = temp_setpoint(self.clock.phase)  # SCN-paced moving thermal set-point
+                self._homeo_x, err = self._homeostat.step(self._homeo_x, sp)
+                homeo_load = min(1.0, abs(err) / self._homeo_scale)
+                live.add("hypothalamus_set_points")
+            except Exception:
+                pass
+        return live, homeo_load
+
+    def _curiosity_lp(self, unit):
+        """(mean learning-progress over units, LP of `unit`). Empty q -> zeros."""
+        cur = self.brain.arm.curiosity
+        q = self.brain.arm.q
+        if cur is None or not q:
+            return 0.0, 0.0
+        lps = []
+        for u in q:
+            try:
+                lps.append(cur.learning_progress(u))
+            except Exception:
+                pass
+        mean = _mean(lps)
+        lp_unit = 0.0
+        if unit is not None:
+            try:
+                lp_unit = cur.learning_progress(unit)
+            except Exception:
+                lp_unit = 0.0
+        return mean, lp_unit
+
+    def _attend_real_stream(self, latent, gain):
+        """W9: ATTENTION over the REAL percept stream. Pool the high-D encoder latent down to the arm's
+        4-d sensory channel by bottom-up SALIENCE (per-band feature magnitude) under divisive
+        normalization (Reynolds-Heeger contrast constancy), amplified by a TOP-DOWN gain that rises with
+        novelty -- so the brain attends harder to novel stimuli. Pure/representation-only: it produces a
+        sensory channel, adds no actuator route, and NEVER sources the distance/E-STOP channel. Returns
+        {channel:[0,1]^4, band, focus}, or None when the latent is too short.
+
+        C2 #2 CONSOLIDATION: the gating is now performed by the LEARNED spiking reticular gate
+        (faculties/learned_attention) -- per-band drive = learned synapse x bottom-up salience x
+        top-down goal similarity x bottom-up surprise, under Reynolds-Heeger divisive normalization
+        with a spiking LIF winner-take-all, trained by a local three-factor rule. It REPLACES the
+        hardcoded (salience/mean)*0.4*gain formula that used to live here: that formula was the real
+        sensory gate while the learned gate was attended AND trained every tick with its output
+        thrown away. `gain` is retained for signature compatibility but is no longer a magic
+        multiplier -- bottom-up surprise now enters through the learned drive itself."""
+        n = len(latent)
+        if n < 4 or self._learned_attn is None:
+            return None  # no learned gate -> no real-percept channel (caller falls back to the safe band)
+        # goal stays None: PrefrontalExecutive.goal is an ACTION INDEX, not a percept-space vector, so
+        # feeding it as the top-down goal would be a type/semantic mismatch. A real goal vector in
+        # feature space is not available yet -- documented rather than faked.
+        gated = self._learned_attn.attend(latent, goal=None)
+        b = max(1, len(gated) // 4)
+        chan = [min(1.0, max(0.0, sum(gated[i * b : (i + 1) * b]) / b)) for i in range(4)]
+        band, strength = self._learned_attn.focus
+        self._attn_focus = (band, strength)
+        return {"channel": chan, "band": int(band), "focus": float(strength)}
+
+    def _safe_ctx(self):
+        """The current SAFE stimulus (rotates; distance pinned SAFE so the E-STOP never trips). W9
+        perception-UNIFY: when a real percept is live, the visual/audio sensory channels the arm decides
+        on are DRIVEN by the attention-pooled REAL stream -- perception enters the main sensorimotor loop
+        instead of sitting in a side channel. distance (the ONLY E-STOP channel) stays pinned SAFE and is
+        never sourced from perception, so the reflex is byte-identical; torch off (no real percept) falls
+        back to the synthetic band, so the zero-dep path is unchanged."""
+        base = self._explore[self._wake_ticks % len(self._explore)]
+        # PROPRIOCEPTION (v4.58): the `temperature` band carries the arm's OWN joint configuration,
+        # so the next percept is a function of the last action. Before this the loop was causally
+        # OPEN -- the brain cycled three fixed stimuli forever, so its curiosity/empowerment reward
+        # (both functions of world-model prediction error) ran out of anything to be surprised by
+        # within a few ticks. A body that cannot feel itself move cannot learn that it moved.
+        # `distance` -- the ONLY E-STOP channel -- is deliberately untouched, so the reflex path is
+        # byte-identical and the safety envelope is unchanged.
+        try:
+            # T036: the fold lives in THE AFFERENT BOUNDARY now (substrate/
+            # afferent_boundary.proprioception -- extracted verbatim, one transduction;
+            # the declared lane proprio_out -> brain.proprio_in and this call are the
+            # same code). None = a body that cannot be read = the modality missing.
+            from snn_data_lake.sensorimotor.afferent_boundary import proprioception
+
+            th = (self.brain.arm.arm.state() or {}).get("theta_deg") or []
+            prop = proprioception(th)
+            if prop is not None:
+                base = dict(base, temperature=[prop])
+        except Exception:  # a body that cannot be read must not break perception
+            pass
+        g = 0.5 * float(self._real_novelty)
+        va = self._attend_real_stream(self._real_percept, g) if self._real_percept else None
+        aa = self._attend_real_stream(self._audio_percept, g) if self._audio_percept else None
+        if va is None and aa is None:
+            self._perception_unified = False
+            return base
+        self._attn_real = va or aa  # the vision stream drives the attention readout
+        self._perception_unified = True
+        return {
+            "visual": (va or {}).get("channel", base["visual"]),
+            "temperature": base["temperature"],
+            "audio": (aa or {}).get("channel", base["audio"]),
+            "distance": base["distance"],
+        }  # E-STOP channel untouched
+
+    def perceive_event(self, frame):
+        """OPTIONAL hybrid-tier perception: encode an N-MNIST-style event frame ([T,C,H,W] or
+        [B,T,C,H,W]) into a spiking latent via the trained surrogate-gradient deep SNN (training tier).
+        Returns None when the torch tier / checkpoint is absent -- the stdlib circadian loop is
+        unaffected. Value/representation-ONLY: an encoder, no actuator route, no safety path touched."""
+        if self._perception_enc is None:
+            return None
+        try:
+            return self._perception_enc.encode(frame)
+        except Exception:
+            return None
+
+    def _perceive_real(self):
+        """W3b: perceive the NEXT real N-MNIST event frame on the live wake tick -- the trained deep spiking
+        encoder (perceive_event, 98% N-MNIST) encodes + classifies a REAL high-D event-vision stimulus, moving
+        live perception off the 3-synthetic-scalar ceiling. Tracks a LIVE classification accuracy over the real
+        frames actually perceived. Value/representation-ONLY: an encoder + rate readout, no actuator route, the
+        reflex/E-STOP/distance path untouched. Returns the normalized [0,1]^64 latent, or None when inactive."""
+        if not self._perceiving_real or self._perception_enc is None or self._real_frames is None:
+            return None
+        try:
+            i = self._real_ptr % len(self._real_frames)
+            self._real_ptr += 1
+            # T052-iii: every frame enters through the DECLARED vision contract, so the
+            # anatomy (afferent_boundary.vision_out -> brain.vision_in) and the runtime
+            # acquisition are one code (the proprioception pattern). Fail-closed = no
+            # percept this tick.
+            from snn_data_lake.sensorimotor.afferent_boundary import transduce_vision_events
+
+            frame, _present = transduce_vision_events(self._real_frames[i])
+            if not _present:
+                return None
+            latent = self.perceive_event(frame)  # torch spiking encoder -> latent (dim 64)
+            if latent is None:
+                return None
+            pred = int(self._perception_enc.classify(frame))  # rate readout -> perceived digit
+            label = int(self._real_labels[i])
+            self._perc_seen += 1
+            self._perc_hits += int(pred == label)
+            self._perception_acc = round(self._perc_hits / self._perc_seen, 4)
+            self._perceived_digit = pred
+            vals = [float(v) for v in (latent.tolist() if hasattr(latent, "tolist") else latent)]
+            mx = max(vals) or 1.0
+            percept = [
+                min(1.0, max(0.0, v / mx)) for v in vals
+            ]  # normalize spike counts -> [0,1]^64 percept
+            # Slice B (LIVE, NO-BACKPROP): a laminar B' readout (feedback alignment + local delta, no
+            # gradient) learns ONLINE from the TRUE label over this percept; its calibrated confidence
+            # GATES how much the percept drives action (self._percept_conf, consumed in
+            # _route_percept_to_action). A live local learner whose output is CONSUMED, not telemetry.
+            # SAFE: confidence in [0,1] can only DAMP the (already bounded, caution-gated) percept drive,
+            # never raise it or reach the reflex/E-STOP path.
+            try:
+                if self._percept_readout is None:
+                    from snn_data_lake.readout.laminar_local_readout import (
+                        LaminarLocalReadout,
+                    )
+
+                    self._percept_readout = LaminarLocalReadout(
+                        in_dim=len(percept), n_classes=10, seed=0
+                    )
+                self._percept_readout.observe(percept, label)  # online, local, no gradient
+                _pc, self._percept_conf = self._percept_readout.infer(percept)
+                # LC PART 2 (Aston-Jones-Cohen adaptive gain): phasic NE arousal on a salient event sharpens
+                # the percept's grip on action. Scale the cortical column's percept confidence by LC's AROUSAL
+                # relative to its own running baseline -- an aroused (phasic, above-baseline) LC lets a salient
+                # percept drive action more decisively; at tonic it stays neutral. Baseline-relative (a running
+                # EMA of the LC level -> no magic behaviour-arbitrating constant); bounded to [0, 1].
+                if self._lc is not None:
+                    lvl = float(self._lc.level)
+                    self._lc_base = (
+                        lvl if self._lc_base is None else 0.98 * self._lc_base + 0.02 * lvl
+                    )
+                    arousal = max(0.0, lvl - self._lc_base)
+                    self._percept_conf = min(1.0, self._percept_conf * (1.0 + arousal))
+            except Exception:
+                pass
+            # loop C2: online unsupervised SURPRISE over the percept latent -- an Oja-PCA (local
+            # Hebbian, no gradient) reconstruction residual STANDARDIZED against its running mean/scale
+            # (off-manifold = surprising). A familiar percept reads ~0, a genuinely novel one ~1; it
+            # feeds an orienting drive (elig "surprise") in _route_percept_to_action. Distinct from the
+            # prototype-novelty source (measured novelty_corr ~0.26): subspace-residual vs nearest-proto.
+            try:
+                if self._percept_surprise is None:
+                    from snn_data_lake.faculties.percept_surprise import PerceptSurprise
+
+                    self._percept_surprise = PerceptSurprise(in_dim=len(percept), k=8, seed=0)
+                    # T045: PRE-EXPERIENCE SPONTANEOUS BOOTSTRAP -- an OU drive through the
+                    # SAME observe this instance runs live, delivered BEFORE the first real
+                    # percept below reaches it (the retinal-wave analog). The canonical
+                    # composition (bootstrap_percept_rule) also RESETS the surprise
+                    # baseline, so the only installed effect is subspace structure -- the
+                    # panel measured the un-reset draft handing the first real percept a
+                    # saturated surprise (1.000 vs the cold contract's 0.000) on the action
+                    # gate's eligibility input. MEASURED AT THIS CONFIGURATION (k=8 rule,
+                    # k=3 modes -- the first draft cited the harness's k=4 number here):
+                    # alignment 0.93 at 1600 steps vs cold floor 0.186; the curve
+                    # 400/800/1600/3200 -> 0.58/0.72/0.90/0.998, so 800 already clears the
+                    # bar and 1600 is margin (~70 ms, once). The DELIVERED step count is
+                    # RECORDED so the enclosing except cannot make a swallowed failure read
+                    # as a completed bootstrap -- tests/test_spontaneous_bootstrap.py
+                    # asserts the attribute AND the installed alignment.
+                    from snn_data_lake.reservoir.spontaneous_activity import (
+                        bootstrap_percept_rule,
+                    )
+
+                    self._spont_bootstrap_steps = bootstrap_percept_rule(self._percept_surprise)
+                self._surprise_signal = float(self._percept_surprise.observe(percept))
+                # T046a: the |LP| third factor's LIVE feed -- the same surprise scalar,
+                # into the cortex competence channel (the T028 dated disposition's
+                # discharged consumer; the manifest edge surprise_out -> surprise_in is
+                # declared by learning_progress.declare_ports). Surfaced on state()'s
+                # `learning_progress` field (the cockpit-visible consumer);
+                # tests/test_learning_progress_wire.py pins the FEED and the moving
+                # signal. Finiteness-guarded: min/max on a NaN returns the OTHER arg, so
+                # the first draft's clamp converted NaN into a perfect-prediction 0.0 --
+                # the inverse of what a NaN means -- instead of letting observe() refuse.
+                if self._lp is None:
+                    from snn_data_lake.growth.learning_progress import (
+                        LearningProgress,
+                    )
+
+                    self._lp = LearningProgress()
+                _s = self._surprise_signal
+                if math.isfinite(_s):
+                    self._lp.consume_surprise(min(1.0, max(0.0, _s)))
+            except Exception:
+                pass
+            return percept
+        except Exception:
+            return None
+
+    def _perceive_audio(self):
+        """W3c: perceive the NEXT real SHD event-audio frame on the live wake tick -- the e-prop-trained
+        recurrent spiking AUDITORY encoder encodes + classifies a REAL spoken-digit stimulus (a second real
+        sensory modality alongside vision). Tracks a LIVE audio classification accuracy. Representation-ONLY:
+        no actuator route, the reflex/E-STOP path untouched. Returns the normalized latent, or None when inactive."""
+        if not self._perceiving_audio or self._audio_enc is None or self._audio_frames is None:
+            return None
+        try:
+            i = self._audio_ptr % len(self._audio_frames)
+            self._audio_ptr += 1
+            # T052-iii: the audition contract, exactly as vision above.
+            from snn_data_lake.sensorimotor.afferent_boundary import transduce_audition_events
+
+            frame, _present = transduce_audition_events(self._audio_frames[i])
+            if not _present:
+                return None
+            latent = self._audio_enc.encode(frame)  # e-prop spiking auditory encoder -> latent
+            if latent is None:
+                return None
+            pred = int(self._audio_enc.classify(frame))  # rate readout -> perceived spoken digit
+            label = int(self._audio_labels[i])
+            self._audio_seen += 1
+            self._audio_hits += int(pred == label)
+            self._audio_acc = round(self._audio_hits / self._audio_seen, 4)
+            self._perceived_word = pred
+            vals = [float(v) for v in (latent.tolist() if hasattr(latent, "tolist") else latent)]
+            mx = max(vals) or 1.0
+            return [min(1.0, max(0.0, v / mx)) for v in vals]
+        except Exception:
+            return None
+
+    def _consume_perception(self):
+        """W4a: CONSUME the real percept into cognition (was readout-only telemetry). Each real vision/audio
+        latent is LEARNED by a growing prototype learner, so the brain forms categories of real stimuli; a newly
+        recruited prototype is a novelty SPIKE (biases the workspace); the learned-unit count feeds global access
+        (real perception now contributes to consciousness, not just a class label). Representation-only, no
+        actuator route -- the reflex/E-STOP path is untouched (this runs off the tick's real-percept latents).
+
+        C2 #5 CONSOLIDATION: novelty is now the GENERALIZING pseudo-count (neuromodulation/
+        generalizing_novelty, a SimHash ~1/sqrt(N) count that HABITUATES and generalises across
+        near-duplicate rasters), already computed fresh this tick as _novelty_live. It replaces the
+        ad-hoc `*= 0.8` decay + hard `= 1.0` spike that fired only on GrowingLearner recruitment --
+        a hand-coded signal read at NINE downstream sites while the real pseudo-count fed a single
+        telemetry key. Prototype recruitment is kept as an INPUT that lifts the estimate, not as the
+        whole signal. Reusing _novelty_live (rather than calling bonus() again) avoids double-
+        incrementing the shared counter."""
+        self._real_novelty = min(1.0, max(0.0, float(self._novelty_live or 0.0)))
+        for percept, attr in (
+            (self._real_percept, "_vis_learner"),
+            (self._audio_percept, "_aud_learner"),
+        ):
+            if not percept:
+                continue
+            learner = getattr(self, attr)
+            if learner is None:
+                learner = GrowingLearner(vigilance=0.86, dim=len(percept))
+                setattr(self, attr, learner)
+            # rank 2b: a learner RESTORED from the lake may not match the live percept's width.
+            # Narrower -> grow it (function-preserving zero-extension, the growable primitive);
+            # wider -> it cannot describe this modality any more: drop it, count the fault, name
+            # it, start fresh. The old bare `except: pass` would have fed a mismatched learner
+            # forever while it learned nothing (P3's fed-but-never-reads shape); every swallow
+            # below is counted on state()["prototype_faults"] instead.
+            if learner.dim != len(percept):
+                if learner.dim < len(percept):
+                    learner.grow_dim(len(percept))
+                else:
+                    self._prototype_faults += 1
+                    self._prototypes_restore_note = (
+                        f"{attr} record dim {learner.dim} wider than the live percept "
+                        f"{len(percept)}: dropped, re-grown from zero"
+                    )
+                    learner = GrowingLearner(vigilance=0.86, dim=len(percept))
+                    setattr(self, attr, learner)
+            try:
+                _, grew = learner.observe(percept)  # form/refine a real-stimulus prototype
+                if grew:  # recruitment LIFTS the pseudo-count (an input), no longer overrides it
+                    self._real_novelty = min(1.0, self._real_novelty + 0.5)
+            except Exception:
+                self._prototype_faults += 1
+        self._real_units = (self._vis_learner.n_units if self._vis_learner else 0) + (
+            self._aud_learner.n_units if self._aud_learner else 0
+        )
+        # W6: fuse the two real modalities into a super-additive BOUND object (cross-modal binding)
+        if self._xmodal is not None and self._real_percept and self._audio_percept:
+            try:
+                # C2 #19: TEACH the binder its bimodal objects. bind() can only report super-additive
+                # enhancement for a REGISTERED handle, and register() was never called anywhere -- so
+                # `superadditive` was provably a constant False, a state key that could never be true.
+                # A congruent sighting (the seen digit and the heard word name the SAME object) is the
+                # one-shot registration; later co-presentations can then genuinely exceed additive.
+                if (
+                    self._perceived_digit is not None
+                    and self._perceived_word is not None
+                    and int(self._perceived_digit) == int(self._perceived_word) % 10
+                ):
+                    handle = f"obj{int(self._perceived_digit)}"
+                    if handle not in self._xmodal_known:
+                        self._xmodal.register(handle, self._real_percept, self._audio_percept)
+                        self._xmodal_known.add(handle)
+                fused = self._xmodal.bind(self._real_percept, self._audio_percept)
+                self._superadditive = bool(fused.get("superadditive"))
+                self._xmodal_handle = fused.get("handle")
+            except Exception:
+                # T080 panel fold: a faulted bind is not a bound tick -- the previous handle must
+                # not survive into this tick's report or into the T080 rate below (the panel
+                # measured the stale-handle path as the one way the live symbol could read UP)
+                self._superadditive = False
+                self._xmodal_handle = None
+                self._xmodal_faults += 1
+        # T080: the live bound rate's window. A tick counts as bound only when BOTH latents were
+        # presented and the binder named an object for them; `_xmodal_handle` alone would not do
+        # (it keeps the last reported handle on a tick the binder did not run -- opening, 3.6).
+        self._xmodal_bound_hist.append(
+            bool(
+                self._xmodal is not None
+                and self._real_percept
+                and self._audio_percept
+                and self._xmodal_handle is not None
+            )
+        )
+        del self._xmodal_bound_hist[:-200]
+        # W6: bind the perceived stimulus to the current allocentric PLACE (grid + place cells)
+        if self._grid_place is not None and self._perceived_digit is not None:
+            try:
+                # C2 #16: the SPIKING bump is now the path integrator that GROUNDS place -- bind place to the
+                # continuous-attractor grid's decoded position (a recurrent LIF bump that integrated the
+                # self-motion velocity) instead of the symbolic float dead-reckoned estimate, so the spatial
+                # code rests on real spiking dynamics. Position is resolved WITHIN one grid period (grid cells
+                # are intrinsically periodic -- honest single-module scope). Falls back to the float estimate
+                # only until the bump has integrated its first step.
+                pos = self._grid_can_xy
+                if pos is None:
+                    allo = getattr(getattr(self.brain, "arm", None), "_allo", None)
+                    pos = allo.position if allo is not None else None
+                if pos is not None:
+                    self._grid_place.observe(tuple(pos), self._perceived_digit)
+                    self._place_here = self._grid_place.place_at(tuple(pos))
+                    self._place_from_spiking_bump = self._grid_can_xy is not None
+                    # C2 #8: sighting a re-recognized place PHASE-RESETS the spiking bump toward that
+                    # landmark's Hebbian-imprinted phase. Free-running dead reckoning drifts to ~84% of
+                    # the torus's max representable error, which would corrupt the very place code the
+                    # R-STDP place-value learns on -- so this correction is required, not optional.
+                    # No ground-truth oracle: the FIRST sighting imprints the co-active phase and later
+                    # sightings are corrected by that MEMORY.
+                    if self._grid_can is not None and self._place_here is not None:
+                        try:
+                            self._place_correction = round(
+                                float(self._grid_can.observe_landmark(self._place_here)), 4
+                            )
+                        except Exception:
+                            pass
+            except Exception as e:
+                # NOT `pass`. This guard exists so a faulty faculty cannot take the wake path down,
+                # and it stays -- but a swallowed exception here does not merely skip a tick: it
+                # skips the `place_at` on the line above, so `_place_here` KEEPS its previous value
+                # and every downstream consumer (the R-STDP place->action update, the place source
+                # eligibility, the drive term) goes on reading a stale constant as if it were
+                # computed. That is exactly how an int percept froze place identity for 51 of 60
+                # ticks with nothing to show for it. So: keep running, but leave a trace. The fault
+                # is counted and named in the snapshot (place_fault / place_faults), and the FIRST
+                # occurrence prints -- once, not per tick, because this is the always-on daemon.
+                self._place_fault = f"{type(e).__name__}: {e}"
+                self._place_faults += 1
+                if self._place_faults == 1:
+                    print(
+                        f"[brain] place binding aborted, _place_here is now STALE: {self._place_fault}"
+                    )
+
+    def _route_percept_to_action(self, action=None):
+        """W5: route the tick's COMPUTED signals into the arm's action selection for the NEXT tick, as a BOUNDED
+        representation-only top-down drive (NEVER bypasses the reflex/E-STOP or the actuator gate). A novel real
+        percept (real_novelty) or an ignited global workspace RAISES the drive of the non-HOLD actions -- so real
+        perception + conscious access now ENGAGE the brain (act rather than hold) instead of only updating
+        telemetry. The BG Go/NoGo caution damps release + the reflex preempts, so this stays safe.
+
+        C2 BRAIN-NATIVE: how much each signal drives approach is NO LONGER a table of constants
+        (0.15 novelty / 0.05 ignition / 0.25 place / 0.2 timing / 0.15 re-route). Those were policy
+        numbers chosen by hand -- the same hardcoding this project's consolidation policy forbids,
+        one level up from the mechanisms they gate. They are now SYNAPTIC WEIGHTS learned by the
+        repo's own three-factor idiom (cf. plasticity/r_stdp, plasticity/valence_stdp,
+        faculties/learned_attention.learn): eligibility = each source's activation this tick, dopamine =
+        the arm's RPE, baseline-subtracted so the sources COMPETE for influence. Weights start EQUAL
+        so no source is privileged by hand -- the brain learns the ordering from what pays off.
+        The two former absolute thresholds are now RELATIVE to running baselines (neural adaptation
+        to the current distribution) rather than magic numbers."""
+        try:
+            from snn_data_lake.engine.autonomous_loop import ACTIONS, SAFE_ACTION
+
+            da = float(
+                getattr(self.brain.arm, "_rpe", 0.0) or 0.0
+            )  # the neuromodulatory 3rd factor
+            elig = {  # per-source activation this tick = the pre-synaptic eligibility
+                "novelty": max(0.0, float(self._real_novelty or 0.0)),
+                "ignition": 1.0 if self._access_state.get("ignited") else 0.0,
+                "place": 0.0,
+                "timing": 0.0,
+                "reroute": 0.0,
+                # C (Brain-Cog social): observed-other DISTRESS resonates into an approach-to-help
+                # drive (set in respond() by affect_core.empathize; decays below) -- the empathy
+                # signal now DRIVES an action instead of only narrating an emotion word.
+                "help": max(0.0, float(getattr(self, "_help_drive", 0.0))),
+                # MASTER LEVER (percept->action): the live perceived CLASS, until now representation-
+                # only, now drives action (assigned below). Always present so it competes in the
+                # three-factor weight update and the mean-eligibility baseline like every other source.
+                "percept": 0.0,
+                # MASTER LEVER (episodic memory -> action): pattern-completed recall drives action
+                # (assigned below); always present so it competes in the weight update + baseline.
+                "recall": 0.0,
+                # loop C2 (perception -> orienting): unsupervised predictive SURPRISE (an off-manifold
+                # percept, Oja-PCA residual set in _perceive_real) as an UNDIRECTED salience source like
+                # novelty -- it says "act/orient", not which action. Distinct from novelty (corr ~0.26).
+                "surprise": max(
+                    0.0, min(1.0, float(getattr(self, "_surprise_signal", 0.0) or 0.0))
+                ),
+                # MASTER LEVER (interoceptive motivation -> action): the dominant homeostatic need
+                # (assigned below); always present so it competes in the weight update + baseline.
+                "drive": 0.0,
+                # MASTER LEVER (set-shifting -> action): the active task-set's per-action preference
+                # (assigned below); always present so it competes in the weight update + baseline.
+                "taskset": 0.0,
+            }
+            # R-STDP place->ACTION value: eligibility = the (place, action just taken), dopamine =
+            # RPE. Keyed on the ACTION, not the place alone, because a place-SCALAR broadcast equally
+            # to both non-HOLD actions can raise "approach" but never say WHICH approach -- measured,
+            # it flipped the arm's choice on 0/200 ticks, so the whole spatial signal was
+            # behaviourally inert. Keyed per action, a place where ENGAGE paid off biases ENGAGE
+            # specifically on re-entry, so the spatial code can finally discriminate ENGAGE vs
+            # RELEASE. Bounded + local, no gradient.
+            place = self._place_here
+            if place is not None and action is not None and action != SAFE_ACTION:
+                key = (place, action)
+                v = self._place_value.get(key, 0.0)
+                v = max(-1.0, min(1.0, v + self._place_lr * da * (1.0 - abs(v))))
+                self._place_value[key] = round(v, 4)
+            # the place SOURCE eligibility (for the drive-weight competition) = the strongest action
+            # value this place has learned -> how much this place drives approach AT ALL
+            if place is not None:
+                elig["place"] = max(
+                    [0.0]
+                    + [
+                        max(0.0, self._place_value.get((place, a), 0.0))
+                        for a in ACTIONS
+                        if a != SAFE_ACTION
+                    ]
+                )
+            # MASTER LEVER (percept -> action): R-STDP value per (percept-class, action). A class after
+            # which ENGAGE paid off biases ENGAGE on re-perception, so perception finally discriminates
+            # WHICH action -- closing the percept->action loop the re-sweep named. Keyed with a modality
+            # tag ("d"/"w") so a seen digit-3 and a heard word-3 are distinct. Gated by perceptual
+            # confidence self._percept_conf (set live by the no-backprop laminar readout B'; 1.0 =
+            # ungated), so an uncertain percept drives action less. Bounded + local, no gradient.
+            pcls = (
+                ("d", self._perceived_digit)
+                if getattr(self, "_perceived_digit", None) is not None
+                else (
+                    ("w", self._perceived_word)
+                    if getattr(self, "_perceived_word", None) is not None
+                    else None
+                )
+            )
+            pconf = max(0.0, min(1.0, float(getattr(self, "_percept_conf", 1.0) or 0.0)))
+            if pcls is not None and action is not None and action != SAFE_ACTION:
+                pk = (pcls, action)
+                pv = self._percept_value.get(pk, 0.0)
+                pv = max(-1.0, min(1.0, pv + self._percept_lr * da * (1.0 - abs(pv))))
+                self._percept_value[pk] = round(pv, 4)
+            if pcls is not None:
+                elig["percept"] = pconf * max(
+                    [0.0]
+                    + [
+                        max(0.0, self._percept_value.get((pcls, a), 0.0))
+                        for a in ACTIONS
+                        if a != SAFE_ACTION
+                    ]
+                )
+            # MASTER LEVER (episodic memory -> action): pattern-completed episodic recall now DRIVES
+            # action. Content-address the episodic store by the CURRENT partial context (where + affect,
+            # NOT the action/time) -- hippocampal completion retrieves the past episode for this cue --
+            # and learn an R-STDP value per (recalled-episode, action): a recalled episode after which
+            # ENGAGE paid off biases ENGAGE on re-recall. Gated by recall confidence. Recall was write-
+            # only for action (it fed only speech/self-model); this charges memory into behaviour.
+            # Bounded + local, no gradient; an empty/uncertain recall (confidence 0) drives nothing.
+            rkey = None
+            self._recall_conf = 0.0
+            if self._episodic is not None:
+                try:
+                    cue = {"where": str(place), "affect": self._emotion or "calm"}
+                    rec = self._episodic.complete(cue)
+                    rc = float(rec.get("confidence", 0.0) or 0.0)
+                    if rc > 0.0 and rec.get("key") is not None:
+                        rkey = rec["key"]
+                        self._recall_conf = max(0.0, min(1.0, rc))
+                        if self._recall_conf_calib is not None:
+                            self._recall_conf_calib.observe(self._recall_conf)
+                except Exception:
+                    rkey = None
+            rconf = self._recall_conf
+            if rkey is not None and action is not None and action != SAFE_ACTION:
+                rk = (rkey, action)
+                rv = self._recall_value.get(rk, 0.0)
+                rv = max(-1.0, min(1.0, rv + self._recall_lr * da * (1.0 - abs(rv))))
+                self._recall_value[rk] = round(rv, 4)
+            if rkey is not None:
+                elig["recall"] = rconf * max(
+                    [0.0]
+                    + [
+                        max(0.0, self._recall_value.get((rkey, a), 0.0))
+                        for a in ACTIONS
+                        if a != SAFE_ACTION
+                    ]
+                )
+            # MASTER LEVER (interoceptive motivation -> action): the homeostatic dominant drive + its
+            # urgency were computed EVERY tick (HomeostaticDrives) but never touched behaviour --
+            # motivational_bias()/action_values() had ZERO callers in src/. Now the dominant internal
+            # need drives action: an R-STDP value per (dominant-drive, action) learns which action
+            # relieved which need FROM DOPAMINE (not hand-mapped), GATED by the drive's urgency SHARE u
+            # -- a self-normalizing softmax in (0,1], baseline-relative, NOT a fixed threshold. Arm
+            # actions don't service the modelled drives, so da (RPE) charges need-CONDITIONED reward-
+            # predictive action value -- the faculty the module was built to feed. Bounded + local.
+            dname = getattr(self, "_dominant_drive", None)
+            u = urg = 0.0
+            if self._drives is not None and dname is not None:
+                try:
+                    u = float(self._drives.motivational_bias().get(dname, 0.0) or 0.0)
+                    urg = float(
+                        self._drives.deficit().get(dname, 0.0) or 0.0
+                    )  # dominant need's deficit
+                except Exception:
+                    u = urg = 0.0
+            # DIRECTED: learn which action relieves the dominant need (R-STDP, dopamine-gated) -- refines
+            # WHICH action the urgency biases toward, per (drive, action).
+            if dname is not None and action is not None and action != SAFE_ACTION:
+                dk = (dname, action)
+                dv = self._drive_value.get(dk, 0.0)
+                dv = max(-1.0, min(1.0, dv + self._drive_val_lr * da * (1.0 - abs(dv))))
+                self._drive_value[dk] = round(dv, 4)
+            # UNDIRECTED "act when a need is urgent": the dominant need's graded perceived deficit (bounded
+            # [0,1], a GRADED salience, not a magic threshold) is the drive source's primary activation --
+            # like novelty/surprise it says "ACT" (biases the non-HOLD actions over HOLD), weighted by the
+            # LEARNED _drive_w["drive"]. Motivation to act rises with need; the three-factor weight learns
+            # whether acting-when-deficient pays off. This is what makes the interoceptive signal DECISIVE.
+            elig["drive"] = max(0.0, min(1.0, urg))
+            # MASTER LEVER (set-shifting -> action): the active task-set's per-action preference vector
+            # (task_set.bias, cached in _c1_tick, index-aligned with ACTIONS) -- how strongly the HELD set
+            # wants to ACT (max over the non-HOLD actions, clamped into the source band). It is also
+            # DIRECTED per action in _drive_for below. bias() already scales by settle confidence, so a
+            # just-shifted (unsettled) set drives weakly and recovers -> the switch cost is now behavioural.
+            tp = self._task_pref
+            if tp is not None and len(tp) == len(ACTIONS):
+                elig["taskset"] = max(
+                    [0.0]
+                    + [max(0.0, min(1.0, tp[i])) for i, a in enumerate(ACTIONS) if a != SAFE_ACTION]
+                )
+            # TIMED Go window: a rewarded outcome teaches the spiking clock WHEN reward arrives, and
+            # proximity to that learned latency opens the window. Reward ONSET is detected relative to
+            # the running |RPE| baseline (adaptation), not against a fixed cutoff.
+            if self._time_clock is not None:
+                try:
+                    el = float(self._elapsed_time or 0.0)
+                    if da > 0.0 and da > self._rpe_base:
+                        self._learned_latency = max(1, int(round(el)))
+                        self._time_clock.learn_interval(self._learned_latency, da)
+                        # REWARD TEACHES, IT DOES NOT RESTART THE CLOCK. This used to call
+                        # `self._time_clock.reset()` here, which made reward the start of the next
+                        # timed interval -- so elapsed-at-reward was 1-3 ticks, the target was almost
+                        # always 1, and there was nothing long enough to have timing error in it.
+                        # In the standard interval-timing paradigm the clock starts at the CUE (trial
+                        # onset) and reward marks the END of a criterion duration; the interval is
+                        # cue->reward, set by the task (Fixed-Interval schedules run 30-60 s in
+                        # animals). The cue-driven reset already exists below at the salient-stimulus
+                        # branch, which is the correct and only place an interval should begin.
+                    elif self._learned_latency:
+                        lat = float(self._learned_latency)
+                        elig["timing"] = max(0.0, 1.0 - min(1.0, abs(el - lat) / max(1.0, lat)))
+                except Exception:
+                    pass
+            # GWT RE-ROUTE: broadcast_to() returns the top-down bias the subscribed action specialist
+            # adds to its next output. Measured band (tools/charge_probe.py, a LIVE brain, 40 ticks,
+            # re-run after T039c, deterministic across runs): it changes an internal read on
+            # 34 of 40 ticks and flips 0 of 40 act/hold decisions or
+            # trajectories -- it changes what the competition WEIGHS, which is the claim this line
+            # supports; it does not yet change what the arm does.
+            if self._reentrant is not None:
+                try:
+                    rb = self._reentrant.broadcast_to("action")
+                    self._reroute_bias = round(float(max(rb.values())), 4) if rb else 0.0
+                    elig["reroute"] = min(1.0, self._reroute_bias)
+                except Exception:
+                    pass
+            # three-factor competitive update: dw = lr * dopamine * (eligibility - mean eligibility)
+            mean_e = sum(elig.values()) / len(elig)
+            # T039c: tell the workspace what its broadcast did for us -- the POST half of the
+            # (subscriber, content) Hebbian pair, the half that did not exist, which is why every
+            # subscriber's bias was byte-identical (F1's listener half).
+            #
+            # WHAT THIS DISCRIMINATES, MEASURED, AND ITS CEILING. Reporting on consumption makes the
+            # listener term settle at a fixed ~0.833x multiple of the workspace's own (source,
+            # content) association -- because a broadcast this faculty consumes arrives on the same
+            # tick set that potentiates that association, at the same rate. So the payload now
+            # separates A SUBSCRIBER THAT CONSUMES from one that does not (`language` is subscribed,
+            # drains nothing, and keeps the base gain), and it does NOT grade DEGREE of use. The
+            # comment says so rather than implying more, because the fixed ratio is the whole of it.
+            #
+            # THE GRADED VERSION WAS BUILT AND MEASURED AND IS A NULL, recorded so it is not
+            # re-attempted: gating the report on the re-route being MATERIAL (`elig["reroute"] >
+            # mean_e`, the baseline computed directly above -- no new threshold) fires on 0 of 76
+            # live winner-ticks, because the re-route is ALWAYS a below-average source. That is the
+            # same fact tools/charge_probe.py reports as 34 of 40 internal reads changed and 0 of 40
+            # decisions: a degree signal derived from this term's competitive share either always
+            # fires or never fires. Grading it honestly needs the re-route to matter more first.
+            if self._reentrant is not None:
+                try:
+                    for _content in rb:
+                        self._reentrant.report_use("action", _content)
+                except Exception:
+                    pass
+            for k, e in elig.items():
+                self._drive_w[k] = min(
+                    1.0, max(0.0, self._drive_w[k] + self._drive_lr * da * (e - mean_e))
+                )
+            # running baselines the relative thresholds adapt to (habituation to the current regime)
+            self._rpe_base = (1.0 - self._base_tau) * self._rpe_base + self._base_tau * abs(da)
+            self._nov_base = (1.0 - self._base_tau) * self._nov_base + self._base_tau * elig[
+                "novelty"
+            ]
+            # OUTPUT: a PER-ACTION drive vector. The undirected salience sources (novelty, ignition,
+            # timing, reroute -- these say "act", not which act) add to both non-HOLD actions
+            # equally; the PLACE source is action-specific, so ENGAGE and RELEASE receive DIFFERENT
+            # drive and a learned place can actually tip the choice between them. SAFE_ACTION (HOLD)
+            # gets none. The reflex/E-STOP still preempts and the gated arm is untouched.
+            # THE undirected-salience competition, extracted to a module function at T028
+            # so the declared predictor port's charge harness runs the GENUINE mechanism
+            undirected = undirected_salience(self._drive_w, elig)
+
+            # HELP is action-directional like place: empathy drives the APPROACH/assist action
+            # (ENGAGE) specifically, not a scalar over both non-HOLD actions. ACTIONS[0] is ENGAGE.
+            help_action = ACTIONS[0]
+
+            def _drive_for(a):
+                if a == SAFE_ACTION:
+                    return 0.0
+                place_a = (
+                    self._drive_w["place"] * max(0.0, self._place_value.get((place, a), 0.0))
+                    if place is not None
+                    else 0.0
+                )
+                help_a = self._drive_w["help"] * elig["help"] if a == help_action else 0.0
+                # percept is action-specific like place: a confidence-gated learned per-(class, action)
+                # value, so a perceived class that paid off under ENGAGE drives ENGAGE specifically.
+                percept_a = (
+                    self._drive_w["percept"]
+                    * pconf
+                    * max(0.0, self._percept_value.get((pcls, a), 0.0))
+                    if pcls is not None
+                    else 0.0
+                )
+                # recall is action-specific like place/percept: a confidence-gated learned
+                # per-(recalled-episode, action) value, so a completed memory that paid off under an
+                # action drives that action specifically when the same context is recalled again.
+                recall_a = (
+                    self._drive_w["recall"]
+                    * rconf
+                    * max(0.0, self._recall_value.get((rkey, a), 0.0))
+                    if rkey is not None
+                    else 0.0
+                )
+                # drive is action-specific like place/percept/recall: the dominant homeostatic need's
+                # learned per-(drive, action) value, urgency-gated, so the need biases the action that
+                # has relieved it before -- interoceptive motivation finally tips ENGAGE vs RELEASE.
+                drive_a = (
+                    self._drive_w["drive"] * u * max(0.0, self._drive_value.get((dname, a), 0.0))
+                    if dname is not None
+                    else 0.0
+                )
+                # taskset is action-specific like place/percept/recall/drive: the active set's learned
+                # input->action rule readout for THIS action (bias vector), clamped into the source band and
+                # weighted by the LEARNED _drive_w["taskset"] -- context-dependent S-R remapping tips ENGAGE
+                # vs RELEASE by which set is currently held (Stroop-like set-shifting control of behaviour).
+                taskset_a = (
+                    self._drive_w["taskset"] * max(0.0, min(1.0, tp[ACTIONS.index(a)]))
+                    if (tp is not None and len(tp) == len(ACTIONS))
+                    else 0.0
+                )
+                return undirected + place_a + help_a + percept_a + recall_a + drive_a + taskset_a
+
+            ext = [_drive_for(a) for a in ACTIONS]
+            self.brain.arm._ext_drive = ext if any(x > 0.0 for x in ext) else None
+            # the empathic drive FADES if no fresh distress is perceived (a bounded, decaying pull)
+            self._help_drive = round(0.85 * float(getattr(self, "_help_drive", 0.0)), 4)
+            # C2 (Brain-Cog belief-guided safety): a tracked agent holding a DANGEROUS FALSE BELIEF
+            # (recursive_tom divergence -- until now a readout that drove nothing) now pushes a
+            # decaying SOCIAL-RISK caution to the arm, so the brain HOLDS more under social
+            # uncertainty. Bounded, caution-only (the reflex/E-STOP preempts); no new actuator route.
+            # T082 (2026-09-16, FR-034): this fold is the DECLARED consumer of
+            # `recursive_tom.belief_out` (the edge `BELIEF_EDGE` -> `brain.social_risk_in`), and its
+            # two constants are read from the producer rather than restated here, so the charge
+            # A/B's consumer and this live fold can never drift apart (`_measure_belief_charge`).
+            fb = len(self._false_beliefs) if self._false_beliefs else 0
+            self._tom_protect = max(
+                min(1.0, T082_PROTECT_GAIN * fb),
+                T082_PROTECT_DECAY * float(getattr(self, "_tom_protect", 0.0)),
+            )
+            self.brain.arm._social_risk = round(self._tom_protect, 4)
+        except Exception:
+            pass
+
+    def _w8_tick(self, res):
+        """W8: advance the homeostatic DRIVES, run the DE-SATURATED re-entrant workspace (availability can now
+        FAIL, unlike the saturated GNW), and encode an episode for reconstructive recall. Representation-only --
+        no actuator route, reflex/E-STOP untouched."""
+        if self._drives is not None:
+            try:
+                # C2 #11: feed the drives an activity FROM THEIR OWN VOCABULARY (rest/explore/
+                # socialize, or the irrelevant-control fidget). This used to pass the arm's ACTIONS
+                # (ENGAGE/RELEASE/HOLD), none of which name a servicing activity -- so NO drive was
+                # ever serviced, every deficit grew monotonically forever and dominant_drive was
+                # just whichever drive drifts fastest. Honest mapping: an arm action services no
+                # modelled drive, so it counts as fidget unless a novel percept is being explored.
+                # RELATIVE, not a magic cutoff: a percept counts as novel when it exceeds the
+                # running novelty baseline the brain has habituated to (see _nov_base).
+                act = "explore" if float(self._real_novelty or 0.0) > self._nov_base else "fidget"
+                self._drives.tick(act)
+                self._dominant_drive = self._drives.dominant_drive()
+                self._drive_activity = act
+            except Exception:
+                pass
+        if self._reentrant is not None:
+            try:  # a percept coalition competes with a baseline self coalition
+                sal = min(
+                    1.0, float(self._pc_surprise or 0.0) / 8.0 + 0.2 * float(self._real_novelty)
+                )
+                self._reentrant.submit(
+                    "percept",
+                    self._perceived_digit if self._perceived_digit is not None else "ctx",
+                    sal,
+                )
+                self._reentrant.submit("self", "self", 0.5)
+                sal_thr = min(
+                    1.0, float(res.get("threat") or 0.0) + 0.5 * float(self._real_novelty)
+                )  # C1 #5: a salience/threat coalition competes -- a strong salient event can MASK a weak percept (inattentional blindness), a calm tick with nothing salient FAILS to ignite
+                self._reentrant.submit(
+                    "salience", ("threat" if (res.get("threat") or 0.0) > 0.3 else "novel"), sal_thr
+                )
+                self._reentrant_availability = round(
+                    float(self._reentrant.step().get("availability", 1.0)), 3
+                )
+                self._reentrant_strength = round(
+                    float(self._reentrant.access_strength()), 3
+                )  # C1 #5: GRADED sustained-firing access strength (de-saturates; decays as the re-entrant sustain fades)
+            except Exception:
+                pass
+        if (
+            self._wake_ticks % 5 == 0
+        ):  # accumulate autobiographical episodes (reconstruction + durable consolidation)
+            _ep = {
+                "who": "self",
+                "what": str(res.get("action") or "rest"),
+                "where": str(self._place_here),
+                "when": str(self._wake_ticks),
+                "affect": self._emotion or "calm",
+            }
+            if self._episodic is not None:
+                try:
+                    self._episodic.encode(_ep)
+                except Exception:
+                    pass
+            if (
+                self._episode_consolidator is not None
+            ):  # C1 b4: the REAL episode enters the durable sparse attractor
+                try:
+                    self._episode_consolidator.store(self._episode_consolidator.encode(_ep))
+                    self._episode_retained = round(float(self._episode_consolidator.retained()), 3)
+                except Exception:
+                    pass
+                # AND INTO THE ONE DURABLE LAKE. The attractor above is working memory for
+                # completion; it is in-process only. Measured before this line existed: 59 episodes
+                # stored over 600 ticks with persist=True added 0 records to the lake, and 149
+                # episodes over 1,500 ticks were recalled 0 times -- the brain was forming memories
+                # into a store nothing read and nothing kept. An episode that dies with the process
+                # is not a memory, so the durable copy goes where everything else the brain knows
+                # already lives.
+                if self._persist:
+                    try:
+                        from snn_data_lake.substrate.home import save_episode
+
+                        save_episode(_ep)
+                        # T057: the recall window tracks what this brain WRITES TO THE LAKE
+                        # (lake provenance only -- an unpersisted episode never enters it),
+                        # bounded by the same derived capacity the attractor uses.
+                        self._episode_window.append(dict(_ep))
+                        cap = (
+                            self._episode_consolidator.capacity
+                            if self._episode_consolidator
+                            else 64
+                        )
+                        del self._episode_window[:-cap]
+                    except Exception:
+                        pass
+
+    def propose_improvements(self, budget=6):
+        """The brain autonomously PROPOSES candidate self-improvements via the OPEN-ENDED, three-factor-
+        learned brain-native self-build (reasoning/brain_native_selfbuild). Each candidate is a running-
+        baseline DE-HARDCODING (replace a fixed absolute behaviour-arbitrating threshold with a mean+std
+        form) -- or, once built, a DataIngestSource change -- RANKED BY A LEARNED WEIGHT, not a fixed
+        heuristic. STRICTLY PROPOSER-ONLY: returns candidates for the DISABLED, sandboxed loop to gate-test;
+        it APPLIES NOTHING to the real tree, touches no brainstem/safety file, never enables the harness.
+        Returns [] (honest-null) when nothing is applicable. Replaces the retired numeric-constant tuner
+        (reasoning/improvement_proposer): the self-build is now brain-native (learned, not hardcoded)."""
+        try:
+            if self._selfbuild_proposer is None:
+                from snn_data_lake.infra.brain_native_selfbuild import (
+                    BrainNativeSelfBuildProposer,
+                )
+
+                self._selfbuild_proposer = BrainNativeSelfBuildProposer(seed=self._seed)
+            return self._selfbuild_proposer.propose(budget=budget)
+        except Exception:
+            return []
+
+    def perceive_pc(self, x):
+        """OPTIONAL PC-cortex perception: settle the deep spiking predictive-coding cortex (snn_pcnet/1,
+        sensorimotor/pc_cortex_serve) on a length-in_dim input vector x and return the settled TOP-CAUSE latent
+        (the generative percept). Returns None when no snn_pcnet/1 checkpoint is loaded -- the stdlib loop
+        is unaffected. Value/representation-ONLY: a zero-dep spiking encoder, no actuator route, no safety
+        path touched (settling runs only on this call, never in a tick)."""
+        if self._pc_cortex is None:
+            return None
+        try:
+            return self._pc_cortex.infer(x)
+        except Exception:
+            return None
+
+    # nengo_compute() RETIRED v4.78 (Policy 2/3): it had ZERO callers in the entire tree -- the only
+    # two references to the name were the comments that advertised it. Its docstring called it "the
+    # substrate ANY brain module can offload a vector computation to", and the comment above the tier
+    # probe claimed it was "the generic bridge every built module routes through". Nothing routed
+    # through it, ever. `_nengo_tier` is KEPT: reasoning/nengo_gui_brain.py:47 genuinely reads
+    # state()["nengo_tier"], and infra/nengo_bridge.py remains the real Nengo path.
+
+    # ---- the two tick kinds --------------------------------------------------------------------
+    def _wake_tick(self):
+        """AWAKE: one live brain tick (curiosity-driven, safe) + the ensemble; buffer experience;
+        fold the REAL signals into the self-model."""
+        ctx = self._safe_ctx()
+        prev = self._last_res or {}
+        ensemble_live, homeo_load = self._tick_ensemble(ctx, prev)
+        circ_load = max(0.0, 1.0 - self._baseline)
+        load = min(1.0, 0.7 * circ_load + 0.3 * homeo_load)
+        # THE OBJECTIVE (v4.59). Until now this call passed no reward_fn, so r_ext was 0.0 on every
+        # tick the brain had ever run -- and because _explore_noise scales count-based optimism BY the
+        # reward scale, a zero scale meant sigma 0, i.e. NO exploration at all. Selection collapsed to
+        # a deterministic argmax over an all-zero q row, which returns the first key ("ENGAGE")
+        # forever. Measured: 0/200 motor actions, one distinct action, joints never moved. Supplying
+        # any reward breaks the whole chain at once (191/200 motor actions, all 7 actions used).
+        # Four meta-learning rules were also gated on `reward_fn is not None` and were inert.
+        res = self.brain.tick(
+            ctx, homeostatic_load=load, reward_fn=self.brain.arm.coverage_reward
+        )  # safety lives in here
+        # specs/022 audit s8 rank 2 (2026-09-02): THE GROWER'S STIMULUS IS THIS TICK'S PERCEPT.
+        # The neurogenesis engine used to synthesize a 5-mode Markov chain for itself every sleep
+        # tick (a bounded task it predicted at ~0.7 -- an experiment ABOUT growth, P0's guard).
+        # Now every wake percept the arm loop just had -- `res["percept"]`, the attention-gained
+        # context vector its GrowingLearner categorized (the unified real vision/audio channels,
+        # real proprioception, the SAFE distance) -- and its own category of it (that learner's
+        # prototype id, `unit`) are handed to the engine, which grows neurons at night to predict
+        # the NEXT category from the previous percept. The SAME vector the learner saw, not the
+        # raw pre-attention pattern: the panel measured the first draft feeding the raw pattern
+        # while the category was of the gained one (max |diff| 0.5 on every tick), so the engine
+        # learned a map from a space the categories were never drawn in. The reflex path returns
+        # unit=None and feeds nothing (a stop is not a percept). Refusals are COUNTED and surfaced
+        # on state() rather than swallowed silently: a feed that dies inside this except would
+        # otherwise read as "the brain perceives nothing" forever.
+        if self.neuro is not None and res.get("unit") is not None:
+            try:
+                self.grower.observe(res["percept"], int(res["unit"]))
+            except Exception:
+                self._neuro_feed_refusals += 1
+        pcs = float(res.get("pc_surprise", 0.0) or 0.0)  # live generative-percept prediction-error
+        self._pc_surprise = round(pcs, 4)
+        self._pc_surprise_ema = (
+            pcs if self._wake_ticks == 0 else 0.95 * self._pc_surprise_ema + 0.05 * pcs
+        )
+        if res.get("reflex"):
+            self._reflex_ever = True
+        self._lp_mean, lp_unit = self._curiosity_lp(res.get("unit"))
+        try:
+            if res.get("unit") is not None and res.get("action"):
+                pr = lp_unit - self._lp_mean
+                # CHOLINERGIC ENCODING GAIN: ACh rises on novelty (self._ach.step runs each tick but its
+                # level was DROPPED). Consume it here -- a novel experience (high ACh -> ENCODE mode) is
+                # stamped into the replay buffer with proportionally higher priority, so it is consolidated
+                # more in sleep. No magic constant: gain = 1 + ach.level (both from ACh's own [0,1] level);
+                # a familiar tick (ACh ~ 0) leaves the curiosity priority unchanged. Textbook cholinergic
+                # encode-vs-retrieve gating of memory encoding strength.
+                if self._ach is not None:
+                    pr *= 1.0 + float(self._ach.level)
+                self.buffer.add(res["unit"], res["action"], pr)
+        except Exception:
+            pass
+        if self._wake_ticks % STORE_EVERY == 0:
+            try:
+                self.attractor.store(self._patterns[self._wake_ticks % 3], reps=1)
+                self._stored_any = True
+            except Exception:
+                pass
+        self._regions_live = _regions_for(self.brain.arm, res, ensemble_live)
+        if self._novelty is not None:  # L5 LIVE: generalizing pseudo-count over the wake raster
+            try:
+                vec = (
+                    list(ctx["visual"])
+                    + list(ctx["temperature"])
+                    + list(ctx["audio"])
+                    + [ctx["distance"]]
+                )
+                self._novelty_live = round(
+                    self._novelty.bonus(vec), 4
+                )  # ~1/sqrt(N): habituates as niches revisit
+            except Exception:
+                pass
+        self._interval_timer += 1  # INTERVAL TIMING: ramp wake ticks since this episode began
+        self._real_percept = (
+            self._perceive_real()
+        )  # W3b: perceive a REAL N-MNIST event-vision frame this wake tick
+        self._audio_percept = (
+            self._perceive_audio()
+        )  # W3c: perceive a REAL SHD event-audio frame this wake tick
+        self._consume_perception()  # W4a: CONSUME the real percept -> prototype learning + novelty
+        self._update_access()  # bundle grown neurons -> workspace ignition
+        if self._access_state.get("ignited"):
+            self._regions_live.add("cortex_access_consciousness")
+        self._route_percept_to_action(
+            res.get("action")
+        )  # W5: route computed signals -> the NEXT tick's action selection
+        self._w8_tick(res)  # W8: drives + de-saturated re-entrant workspace + episodic encode
+        self._c1_tick(
+            res, ctx
+        )  # C1: spiking clock + affective appraisal + task-set + grid-CAN (readouts)
+        self._observe_self_wake(
+            res
+        )  # feed REAL signals into the self-model (+ C1 generative self-model)
+        self._update_metacog()  # metacognition -> control (reliability + gates)
+        self._last_res = res
+        self._wake_ticks += 1
+        return self.state()
+
+    def _update_metacog(self):
+        """Feed the self-model's reliability signals into the metacognitive monitor so its confidence
+        GATES behavior (not just telemetry): a spike-count reliability -> a HOLD + a lifelong learn-gate.
+        Deterministic; guarded (a monitor hiccup never perturbs the loop or safety)."""
+        try:
+            st = self.self_model.state()
+            # fold only the SURPRISE SPIKE above the running perceptual baseline (habituate to constant
+            # prediction error, react to the unexpected) -> a stable brain's reliability is NOT crushed.
+            raw, ema = (
+                float(getattr(self, "_pc_surprise", 0.0)),
+                float(getattr(self, "_pc_surprise_ema", 0.0)),
+            )
+            pc_dev = min(1.0, max(0.0, raw - ema) / (ema + 1e-6)) if ema > 0.0 else 0.0
+            # BG DECISION MARGIN -> reliability: a conflicted (below-baseline-margin) action selection is a
+            # LESS reliable decision, so it DISCOUNTS the fused confidence -> lower reliability -> more likely
+            # to HOLD/abstain. The margin (runner-up minus winner GPi disinhibition) was computed by the BG
+            # gate but dropped; consume it here. Baseline-relative (running EMA of the margin -> no magic
+            # constant): decision_conf = min(1, margin / margin_baseline), so only a below-average margin cuts
+            # confidence and a decisive one stays neutral.
+            dm = float(getattr(self.brain.arm, "_decision_margin", 1.0) or 0.0)
+            self._margin_base = (
+                dm if self._margin_base is None else 0.98 * self._margin_base + 0.02 * dm
+            )
+            decision_conf = min(1.0, dm / self._margin_base) if self._margin_base > 1e-9 else 1.0
+            # P6 (2026-08-05): hand the monitor the EXECUTIVE's response conflict as well. This is
+            # the one line outside faculties/metacognitive_monitor.py that the executive->metacognition
+            # edge needs, and without it the consumer's new input would be a parameter nobody fills
+            # (P3 shape 1). `_conflict` is faculties/executive_control.ExecutiveControl.conflict(drive)
+            # computed on the live tick at engine/autonomous_loop.py; until now its only readers
+            # were the ACTION path (the STN hyperdirect brake) and faculties/learned_evc, so no faculty
+            # consumed it as EVIDENCE. The monitor takes it relative to its own running baseline, so
+            # a conflict stream that never varies contributes exactly zero -- see that module's
+            # self-check, where the neuter, its controls and each criterion's red are all run.
+            self._metacog.update(
+                confidence=st["confidence"] * decision_conf,
+                surprise=float(st["surprise"][0]),
+                learning_progress=float(st["learning_progress"][0]),
+                novelty=min(1.0, float(st["surprise"][0]) + 0.3 * pc_dev),
+                conflict=float(getattr(self.brain.arm, "_conflict", 0.0) or 0.0),
+            )  # perceptual surprise SPIKE raises uncertainty; a conflicted BG decision lowers confidence
+            self._metacog_rel = round(self._metacog.reliability(), 4)
+            self._metacog_hold = bool(self._metacog.hold())
+            self._metacog_explore = bool(self._metacog.explore())
+        except Exception:
+            pass
+
+    def _c1_tick(self, res, ctx):
+        """C1 batch-1 faculties on the live wake tick (representation-only -- readouts, no actuator route,
+        reflex/E-STOP untouched). Spiking clock (Weber timing, resets on a salient new stimulus), learned
+        affective appraisal (three-factor, learns under an aversive teaching signal), task-set/set-shift
+        (holds a set, shifts under sustained ACC conflict + low reward), and the continuous-attractor
+        SPIKING grid (bump path integration from the allocentric self-motion)."""
+        ctx = ctx or {}
+        feat = [
+            float(x)
+            for x in (
+                list(ctx.get("visual", []))
+                + list(ctx.get("temperature", []))
+                + list(ctx.get("audio", []))
+            )
+        ]
+        feat = (feat + [0.0] * 9)[:9]  # 9-d percept+context feature vector in [0,1]
+        if self._time_clock is not None:
+            try:
+                if (
+                    float(self._real_novelty) > 0.5
+                ):  # a salient new stimulus starts a fresh timed interval
+                    self._time_clock.reset()
+                    # AUTONOMOUS LIF GROWTH (specs/003, opt-in via NORD_TIME_CELLS_GROW=1). Here and
+                    # nowhere else: reset() has just established the only state in which a cell may
+                    # be inserted (fired set empty, ramp at zero), and the brain reaches it on its
+                    # own whenever something salient happens, so no growth schedule is invented.
+                    # grow_if_earned() refuses unless the candidate strictly improves the
+                    # population's held-out error, so the halt is a rising `refused` rather than an
+                    # absence of events.
+                    if self._time_cells_grow:
+                        try:
+                            if self._time_clock.grow_if_earned() is not None and self._persist:
+                                self._time_clock.save()
+                        except Exception:
+                            pass  # counted as `time_cells_failed`; never takes the tick down
+                self._elapsed_time, self._timing_sd = self._time_clock.tick()
+            except Exception:
+                pass
+        if self._affect_appraisal is not None:
+            try:
+                v, a = self._affect_appraisal.appraise(feat)
+                self._appraised = (round(float(v), 3), round(float(a), 3))
+                thr = float(res.get("threat") or 0.0)
+                # CONTINUOUS three-factor learning from the live affect signals (not only under threat):
+                # valence ~ approach/avoid (learning-progress minus threat), arousal ~ salience (novelty + threat),
+                # third factor (neuromod) rises under threat so aversive appraisals are learned faster.
+                tgt_v = max(-1.0, min(1.0, float(self._lp_mean or 0.0) - thr))
+                tgt_a = max(0.0, min(1.0, 0.5 * float(self._real_novelty) + thr))
+                self._affect_appraisal.learn(feat, tgt_v, tgt_a, neuromod=(1.0 + thr))
+            except Exception:
+                pass
+        if self._task_set is not None:
+            try:
+                self._task_set.step()  # advance the WM pool / settle confidence
+                conflict = float(getattr(self.brain.arm, "_conflict", 0.0))
+                reward = float(self._lp_mean or 0.0)
+                self._task_set_active = int(self._task_set.observe(conflict, reward))
+                self._task_switch_cost = round(float(self._task_set.last_switch_cost), 3)
+                # MASTER LEVER (set-shifting -> action): cache the active set's per-action preference
+                # (scaled by settle confidence -> weak just after a shift, recovers as it settles) so
+                # _route_percept_to_action consumes it NEXT tick. bias() was computed only in the module's
+                # own self-check -- its output dead-ended in telemetry. Now the switch COST is behavioural.
+                # T060 (FR-034): consume the DECLARED FiLM surface. The (gain, dtheta)
+                # pairs reconstruct the incumbent bias() preference EXACTLY
+                # (gain * -dtheta -- the identity task_set's self-check asserts), so the
+                # `_pfc_bias`-style semantics downstream are preserved bit-for-bit while
+                # the faculty speaks through its typed port shape; cost before/after is
+                # measured in task_set's self-check.
+                self._task_film = self._task_set.film(feat)
+                self._task_pref = [g * (-dt) for (g, dt) in self._task_film]
+            except Exception:
+                pass
+        if self._grid_can is not None:
+            try:
+                allo = getattr(getattr(self.brain, "arm", None), "_allo", None)
+                pos = allo.position if allo is not None else None
+                if pos is not None:
+                    if (
+                        self._grid_can_prev is not None
+                    ):  # integrate the self-motion velocity in the spiking bump
+                        vel = (pos[0] - self._grid_can_prev[0], pos[1] - self._grid_can_prev[1])
+                        self._grid_can.step(vel)
+                        self._grid_can_xy = tuple(
+                            round(float(c), 3) for c in self._grid_can.decode()
+                        )
+                    self._grid_can_prev = pos
+            except Exception:
+                pass
+        if (
+            self._affect_int is not None
+        ):  # C1 b2: fuse the live neuromodulators -> coupled affect + self-organized emotion
+            try:
+                thr = float(res.get("threat") or 0.0)
+                rew = max(0.0, float(getattr(self.brain.arm, "_rpe", 0.0) or 0.0))
+                _raphe = getattr(self, "_raphe", None)
+                mood = float(getattr(_raphe, "level", 0.0) or 0.0) if _raphe is not None else 0.0
+                _cort = getattr(self.brain.arm, "cort", None)
+                cortl = float(getattr(_cort, "level", 0.0) or 0.0) if _cort is not None else 0.0
+                av, aa = self._affect_int.integrate(thr, rew, mood, cortl)
+                self._affect_int.observe(
+                    av, aa
+                )  # online self-organization of emergent emotion prototypes
+                self._emergent_emotion = self._affect_int.label()
+                self._n_emotions = int(self._affect_int.n_emotions)
+            except Exception:
+                pass
+        if (
+            self._cfsim is not None
+        ):  # C1 b2: counterfactual do()-operator over a learned local forward model (annotation only)
+            try:
+                from snn_data_lake.engine.autonomous_loop import ACTIONS as _A
+
+                acts = list(range(len(_A)))
+                ranked = self._cfsim.counterfactual(
+                    feat, acts, 2, lambda z: sum(z)
+                )  # value = imagined activation (placeholder)
+                if ranked:
+                    self._imagined_best = _A[ranked[0][0]]
+                    ls = getattr(self._cfsim, "last_surprise", 0.0)
+                    self._imagined_surprise = round(
+                        float(ls.get(ranked[0][0], 0.0))
+                        if isinstance(ls, dict)
+                        else float(ls or 0.0),
+                        4,
+                    )
+                act = res.get("action")
+                if (
+                    self._cf_prev is not None and act in _A
+                ):  # train the forward model on the observed latent transition (local e-prop)
+                    self._cfsim.learn(self._cf_prev, _A.index(act), feat)
+                self._cf_prev = list(feat)
+            except Exception:
+                pass
+        if (
+            self._learned_attn is not None and self._real_percept
+        ):  # C1 b3: LEARNED spiking attention over the real percept stream
+            try:
+                # C2 #2: attend() now runs inside _attend_real_stream, where its gate IS the arm's
+                # sensory channel (it used to be re-attended here and discarded). Only the local
+                # three-factor update belongs on this tick, applied to that attend's eligibility.
+                self._learned_attn.learn(
+                    float(self._lp_mean or 0.0) - float(res.get("threat") or 0.0)
+                )
+            except Exception:
+                pass
+        if (
+            self._connectome_router is not None
+        ):  # C1 b3: live signed/delayed spike propagation over the connectome graph
+            try:
+                nodes = set(self._connectome_router.regions)
+                sal = min(
+                    1.0, float(self._pc_surprise or 0.0) / 8.0 + 0.2 * float(self._real_novelty)
+                )
+                cand = {
+                    "ctx_sensory": sal,
+                    "gwt": 1.0 if self._access_state.get("ignited") else 0.0,
+                    "ctx_pfc": 0.5,
+                    "bla": float(res.get("threat") or 0.0),
+                    "vta_snc": max(0.0, float(getattr(self.brain.arm, "_rpe", 0.0) or 0.0)),
+                }
+                drive = {k: v for k, v in cand.items() if k in nodes and v > 0.0}
+                if drive:
+                    # CONSUME the return (v4.79). `step()` was called for its side effect and its
+                    # result dropped -- measured, it returns a per-region rate dict with THIRTY keys
+                    # that vary across ticks. The only thing escaping this block was a constant. The
+                    # motor-path rate is the honest scalar to keep: it is what "the connectome is
+                    # propagating toward action" means in this graph.
+                    rates = self._connectome_router.step(drive) or {}
+                    # Mean network rate, chosen by measurement over two candidates: max(actuator,
+                    # bs_motor) is effectively BINARY (2 distinct values over 120 ticks -- the motor
+                    # nodes saturate), while the mean over all regions is graded (9 distinct,
+                    # 0.025-0.700). A binary would have been a worse signal wearing the same name.
+                    self._connectome_propagation = (
+                        round(sum(rates.values()) / len(rates), 4) if rates else 0.0
+                    )
+                # REVERBERATION IS STRUCTURAL, NOT LIVE -- compute it ONCE (v4.79). It resets the
+                # router, drives a fixed seed at a fixed 1.0 for a fixed count, averages, and restores;
+                # it never reads the live drive. Proven: identical (0.25) across five different live
+                # states. It is a pure function of the connectome topology, and re-running it every 5
+                # ticks paid 0.43 ms to recompute the same number -- the observer-cost pattern in
+                # miniature. PROVENANCE now tags it as structural so no dashboard reads it as a signal.
+                if self._connectome_reverb is None:
+                    seed = next((n for n in ("ec", "ctx_sensory", "gwt") if n in nodes), None)
+                    if seed is not None:
+                        self._connectome_reverb = round(
+                            float(self._connectome_router.reverberation(seed, 6)), 3
+                        )
+            except Exception:
+                pass
+        # THE INSULA READS THE BODY (specs/022 T039f). Unconditional and BEFORE the coherence
+        # block on purpose: `observe` advances a running per-channel baseline, so skipping it on
+        # a tick where the coherence compute happened to hiccup would silently change the
+        # baseline every later salience is measured against. It takes NO new reading -- the arm's
+        # accessor returns the draw `_interocept` already took this tick.
+        self._feeling_salience = 0.0
+        if self._insula is not None:
+            try:
+                _def = self._drives.deficit() if self._drives is not None else {}
+                _body = self.brain.arm.interoception()
+                # THE THALAMIC HOP (T039j). The ascending pair is transmitted, not forwarded: a
+                # visceral change arriving after quiet is amplified and a persistent one relays
+                # faithfully. A None relay passes the pair through unchanged, so a brain whose W8
+                # block failed computes exactly the salience T039f/T039h computed.
+                _asc = [
+                    float(_body.get("stress", 0.0) or 0.0),
+                    float(_body.get("caution", 0.0) or 0.0),
+                ]
+                if self._thal_relay is not None:
+                    _asc = self._thal_relay.relay(_asc)
+                _frame = {
+                    "energy_deficit": float(_def.get("energy", 0.0) or 0.0),
+                    "curiosity_deficit": float(_def.get("curiosity", 0.0) or 0.0),
+                    "social_deficit": float(_def.get("social", 0.0) or 0.0),
+                    "stress": float(_asc[0]),
+                    "caution": float(_asc[1]),
+                }
+                self._feeling_salience = float(self._insula.observe(**_frame))
+            except Exception:
+                self._feeling_salience = 0.0
+        if (
+            self._region_coherence is not None
+        ):  # C1 b3: cross-region Kuramoto coherence -> biases the workspace ignition threshold
+            try:
+                rasters = {
+                    "percept": min(
+                        1.0, float(self._pc_surprise or 0.0) / 8.0 + 0.2 * float(self._real_novelty)
+                    ),
+                    "access": float(getattr(self, "_reentrant_strength", 0.0) or 0.0),
+                    "affect": abs(float((self._appraised or (0.0, 0.0))[0])),
+                    "threat": float(res.get("threat") or 0.0),
+                    "reward": max(0.0, float(getattr(self.brain.arm, "_rpe", 0.0) or 0.0)),
+                    "drive": 0.5,
+                }
+                cr = self._region_coherence.update(rasters)
+                self._region_coherence_val = round(float(cr.get("coherence", 0.0)), 3)
+                # SYNFIRE BINDING GATE: turn the continuous coherence into an ALL-OR-NONE binding event.
+                # A synchronous volley (a0 = coherence * width; jitter sigma0 = window * (1 - coherence)) is
+                # propagated through the feedforward synfire chain; it SURVIVES only when synchrony crosses
+                # the chain's reliability threshold (~coherence 0.55). Binding is thus a THRESHOLD phenomenon,
+                # not a continuous nudge: only RELIABLE cross-region synchrony eases ignition -- incoherent
+                # noise no longer lowers the rheobase. Non-additive (it GATES the existing coherence bias) and
+                # free of any magic constant (a0/sigma0 come from the synfire's OWN width/window).
+                self._bound = False
+                if self._synfire is not None:
+                    a0 = self._region_coherence_val * self._synfire.width
+                    sigma0 = self._synfire.window * (1.0 - self._region_coherence_val)
+                    self._bound = bool(self._synfire.survives(a0, sigma0))
+            except Exception:
+                pass
+            else:
+                # T032: THE THETA WRITE LEAVES THE SWALLOW. It used to sit inside the bare
+                # except above, so a failed write read as a swept drive -- the exact shape
+                # SYNTHESIS L7 names. The coherence COMPUTE keeps its tolerance (a raster
+                # hiccup must not kill the tick); the WRITE goes through the workspace's own
+                # theta authority (reentrant_workspace.set_base_rheobase's docstring is the
+                # one-place statement) and a failure there RAISES. coherence_theta() moves
+                # the LIVE value only, never the base, and refuses (returns False) while a
+                # sweep holds theta -- the actuator's gate, not a silent skip.
+                if (
+                    self._reentrant is not None
+                ):  # RELIABLE binding (a survived volley) -> lower rheobase -> easier ignition
+                    base = self._reentrant.base_ignition_threshold
+                    # TWO REASONS TO IGNITE, ONE WRITE (T039f). The binding gate is UNCHANGED and
+                    # stays here, where the synfire chain is: an unbound volley contributes
+                    # coherence 0.0, exactly as before. What is new is that the insula's
+                    # feeling_salience is passed alongside it, so a body far from its own baseline
+                    # eases ignition on the ticks binding fails -- measured 135 of 200 such ticks,
+                    # ground the coherence term structurally cannot reach. With salience 0 this
+                    # expression is byte-identical to the one it replaces.
+                    thr = float(
+                        self._region_coherence.ignition_bias(
+                            base,
+                            interoceptive=self._feeling_salience,
+                            coherence=(self._region_coherence_val if self._bound else 0.0),
+                        )
+                    )
+                    # The refusal is BOUND AND COUNTED, never dropped: under a sweep hold
+                    # the bias stops taking effect, and a consumer of region_coherence must
+                    # be able to see that its downstream write was gated (the review's
+                    # charge probe measured 24 live writes -- and every return discarded).
+                    if not self._reentrant.coherence_theta(thr):
+                        self._theta_bias_refused += 1
+        if (
+            self._learned_evc is not None
+        ):  # C1 b4: LEARNED expected-value-of-control (cost/value learned online, three-factor)
+            try:
+                conflict = float(getattr(self.brain.arm, "_conflict", 0.0))
+                gain = self._learned_evc.allocate(conflict, 0.5)
+                reward = float(self._lp_mean or 0.0) - float(res.get("threat") or 0.0)
+                self._learned_evc.learn(engaged=(gain > 0.0), reward=reward)
+                self._evc_cost = round(float(self._learned_evc.cost), 3)
+                self._evc_value = round(float(self._learned_evc.value), 3)
+                # C2 #9: push the LEARNED cost/value to the arm so its control allocation uses them
+                # instead of the fixed cost=0.1 / +0.3 constants. These were computed every tick and
+                # kept only as telemetry while the arm's real control ran on hardcoded numbers.
+                # Representation-only: it scales the SAME bounded top-down preference the gated
+                # selection already arbitrates; the reflex/E-STOP still preempts.
+                self.brain.arm._learned_ctl = (
+                    float(self._learned_evc.cost),
+                    float(self._learned_evc.value),
+                )
+            except Exception:
+                pass
+
+    def _observe_self_wake(self, res):
+        """Fold this wake tick's REAL brain signals into the evolving self-model. valence is an
+        honest approach/avoid scalar: mean curiosity learning-progress minus the cortisol level (if
+        an arm cortisol pool is wired), clamped to [-1, 1]."""
+        acc = self.neuro.predict_accuracy if self.neuro is not None else 0.0
+        grown = self.neuro.grown_units if self.neuro is not None else 0
+        pfc = self.brain.arm.pfc
+        goal = int(getattr(pfc, "goal", 0) or 0) if pfc is not None else 0
+        lp = self._lp_mean
+        cort = getattr(self.brain.arm, "cort", None)
+        valence = max(-1.0, min(1.0, lp - (cort.level if cort is not None else 0.0)))
+        # LEARNED surprise, computed BEFORE observe() so the self-model gets a real prediction error.
+        # It used to be the algebraic `round(1.0 - acc, 6)`, and that made self_model.confidence()'s
+        # model_conf term collapse: model_conf = clamp01(0.5*acc + 0.5*(1 - (1-acc))) == clamp01(acc),
+        # unconditionally. Measured over 197 live wake ticks the identity held on 197/197 -- so the
+        # documented "blend of accuracy and surprise" was dead arithmetic restating accuracy, and the
+        # brain's REAL learned prediction error (the generative self-model's e-prop error) was
+        # computed a few lines further down and dropped into telemetry. Now it IS the surprise.
+        surprise = self._self_surprise(acc, goal, lp, valence, grown, res)
+        self.self_model.observe(
+            goal=goal,
+            learning_progress=lp,
+            self_predict_acc=acc,
+            surprise=surprise,
+            # C1 #5: the GRADED de-saturated workspace access strength feeds access-confidence --
+            # weak/masked content that fails to hold the workspace lowers confidence -> metacog hold
+            # (was the saturated AccessConsciousness index alone).
+            # C3: the two sources are combined CONJUNCTIVELY (weakest link), not by a hand-set 50/50
+            # blend. The mean was a policy weight deciding how much two competing access estimates
+            # each count -- and worse, it defeated this line's own stated purpose: with a mean, a
+            # re-entrant workspace that fails COMPLETELY (strength -> 0) still leaves 0.5*access_ema,
+            # so a genuine access failure could never actually collapse access-confidence. min()
+            # lets it, which is what "content that fails to hold the workspace lowers confidence"
+            # means. It also matches this module's own documented idiom one level up --
+            # self_model.confidence() is deliberately a PRODUCT of its proxies "so any single
+            # collapse drops confidence". No constant remains, and no reward signal is invented:
+            # the alternative considered was learning a convex mixing weight, but access_conf does
+            # not causally influence self_predict_acc, so that reward would be correlational and
+            # could not honestly be called credit assignment for the abstain decision.
+            # When no workspace exists the attribute defaults to 1.0, so min() is the identity and
+            # behaviour falls back exactly to the AccessConsciousness index alone.
+            access_index=round(
+                min(float(self._access_ema), float(getattr(self, "_reentrant_strength", 1.0))),
+                6,
+            ),
+            ignited=bool(self._access_state.get("ignited", False)),
+            grown_units=grown,
+            phase=round(self.clock.phase, 6),
+            awake=True,
+            valence=valence,
+            threat=float(res.get("threat") or 0.0),
+            consolidation=self._consolidation_acc,
+            nights=self._nights,
+        )
+
+    def _self_surprise(self, acc, goal, lp, valence, grown, res):
+        """The self-model's SURPRISE for this tick: the LEARNED generative self-model's prediction
+        error (e-prop, no BPTT), which is a real error signal, rather than the algebraic `1 - acc`,
+        which is not (it makes self_model.confidence()'s model_conf term equal clamp01(acc)
+        identically -- verified on 197/197 live wake ticks).
+
+        Runs the GSM's predict/observe step and returns the error in [0,1]. Falls back to `1 - acc`
+        only when no learned error exists yet -- the very first wake tick (nothing to predict from)
+        or no GSM at all (the torch tier is off). Guarded: a GSM hiccup degrades to the algebraic
+        value rather than perturbing the loop."""
+        fallback = round(1.0 - acc, 6)
+        if self._gsm is None:
+            return fallback
+        try:
+            svec = [
+                min(1.0, float(goal) / 10.0),
+                max(0.0, min(1.0, float(lp))),
+                float(acc),
+                round(1.0 - acc, 6),
+                float(self._access_ema),
+                1.0 if self._access_state.get("ignited") else 0.0,
+                min(1.0, float(grown) / 64.0),
+                round(self.clock.phase, 6),
+                (max(-1.0, min(1.0, float(valence))) + 1.0) / 2.0,
+                float(res.get("threat") or 0.0),
+                float(self._consolidation_acc),
+            ]  # all normalized to [0,1] so the forward model can predict its own trajectory
+            have = self._gsm_prev is not None
+            if have:
+                self._gsm.predict(self._gsm_prev)  # predict THIS tick from the previous self-signal
+                self._self_surprise_gen = round(
+                    float(self._gsm.observe(svec)), 4
+                )  # surprise vs prediction + local update
+            self._gsm_prev = svec
+            if not have:
+                return fallback
+            return max(0.0, min(1.0, float(self._self_surprise_gen)))
+        except Exception:
+            return fallback
+
+    def _update_access(self):
+        """Bundle THIS percept's grown-neuron assembly into a Global-Neuronal-Workspace and IGNITE
+        it -> a functional ACCESS-consciousness index (global availability, Dehaene-Baars) that
+        RISES as more coherent neurons are grown (GrowingLearner units + sleep-grown NG-SNN) and
+        bound. Co-active neurons of one percept share a prototype, so the assembly is COHERENT and
+        ignites; the index saturates at the global-availability ceiling. ACCESS consciousness only
+        -- it is NOT and never claims phenomenal/subjective experience (see respond()).
+
+        "ACCESS CAN FAIL" IS TRUE FOR THE FIRST TIME (2026-08-06), and until it was, this method's
+        own comment below was describing behaviour the bus could not produce. `AccessConsciousness`
+        posted a FROZEN content key, so its `(source, content)` pool never changed, `_defended`'s
+        withdrawal branch was unreachable, and the pool drew `self_boost + hysteresis` for the life
+        of the process. MEASURED on `make_brain(seed=0, refit_every=10, persist=False)` with
+        `clock.phase = 0.25` over 120 ticks (56 awake): `_access_state["ignited"]` was True on
+        56 of 56 -- ONE distinct value, with no reachable False on the live wake path -- while the
+        posted salience ranged 0.5207..0.7500 across the rheobase. TEN live readers consumed that
+        readout; every one was reading a constant. `faculties/access_consciousness.py::content_key` keys
+        the pool on the BUNDLE, and the same run now reads 44 of 56, of which 8 of the 12 lapses
+        post STRICTLY BELOW the 0.55 rheobase -- the repetition-suppression failure the paragraph
+        below has always claimed, actually happening. `engine/live_brain.py::thought` is
+        BYTE-IDENTICAL across that change (crc 0f0938d6, 4 distinct values, 55 changes, naming the
+        submitted percept on 56 of 56); `_access_ema` moves 0.488958 -> 0.287282, and that is the
+        fiat leaving, not a signal collapsing.
+
+        THE COST, disclosed: a rotating key opens a NEW pool per bundle, so this faculty's private
+        bus goes from 1 live pool to 40 (max 55 over 300 ticks, plateauing at ~25 -- `decay` 0.85
+        reaches the 1e-6 prune in ~85 steps, the same bound `reasoning/rpm_solver.py::_solve_tag`
+        already pays for its per-question token). Wake-tick cost is unchanged within noise: median
+        29.75 ms frozen against 28.93 ms rotating over the same 120 ticks.
+
+        WHAT THE READERS OF `_access_state` ACTUALLY DO WITH IT (P8 burden 3 -- per-item neuter,
+        not the total moving). Each site was pinned INDIVIDUALLY back to a constant by a dict
+        subclass that answers differently only for that caller's line number, leaving the others on
+        the real readout, and the brain was re-run for 56 awake ticks. Both directions, because a
+        null in one direction is not a null.
+
+        THE PIN GOES ON `AccessConsciousness.state`, NOT ON `_update_access`'s ASSIGNMENT, and that
+        is load-bearing rather than tidy: two of the readers are INSIDE `_update_access`, so a
+        wrapper applied after the assignment cannot reach them and reports both as inert. That is a
+        harness false negative of exactly the shape this tree keeps finding, and it is how the
+        earlier eight-row version of this table was produced:
+
+        THE CENSUS IS TEN LINES, NOT EIGHT, and it is DERIVED from this file rather than quoted --
+        an earlier version of this table listed eight, at line numbers that its own 70-line
+        insertion had already shifted. Both corrections are from an adversarial re-run, 2026-08-06,
+        which also re-derived the census from the file. The two missing rows are the two INSIDE
+        `_update_access` itself, and they are the ones that own the `_access_ema` move this whole
+        block is about, so leaving them out made the disclosure describe everything except its own
+        cause. Channel set = EVERY key of `state()` (self_state flattened) + `thought` + the EMA:
+        121 channels, of which 72 vary in the baseline and 49 are constant and can report nothing.
+        The counts below are the LARGEST per-channel disagreement, over 56 awake ticks:
+
+            reader (method, and the line at the time of writing)   pinT     pinF    channels
+            _route_percept_to_action :1577  elig['ignition']       24/56    55/56   21, see below
+            _wake_tick               :2055  _regions_live entry    12/56    44/56   regions_live
+            _c1_tick                 :2266  cand['gwt']             0/56     1/56   connectome_prop
+            _observe_self_wake       :2408  self-model ignited=     0/56     0/56   NONE
+            _self_surprise           :2438  self-signal element    32/56    55/56   surprise, reliab
+            _update_access           :2628  idx = access_index     56/56    56/56   ema, index, +7
+            _update_access           :2631  -> _access_hold        33/56    56/56   ema, index, +7
+            state                    :3338  access_ignited         12/56    44/56   access_ignited
+            state                    :3345  n_bound                55/56    44/56   n_bound
+            respond                  :3435  SecondOrderAccess       0/56     0/56   NONE
+
+        THE METHOD NAME IS THE STABLE HANDLE AND THE LINE IS A HINT, deliberately in that order:
+        the previous version of this table carried line numbers only, and its own insertion moved
+        every reader below it by 70 lines, so the table shipped pointing at the wrong code. Re-derive
+        with `grep -n "self\\._access_state" | grep -v "_access_state = "` rather than trusting the
+        column.
+
+        THREE FINDINGS, and the first is a correction of this table's own earlier reading.
+        (1) THE FLAG DOES REACH THE AFFECTIVE AND SPATIAL CHANNELS. An earlier version of this
+        paragraph said "no reader reaches `action`, `valence`, `reward` or `thought`". Only the
+        `thought` half survives re-measurement: pinning :1577 False moves `rpe` on 49 of 56 ticks,
+        `self_state.valence` on 47, `acc_conflict` on 55, `region_coherence` on 48,
+        `map_position`/`grid_can_xy` on 50, `curiosity_mag` on 46 and `neuromod_acetylcholine` on
+        45. `action` and `reward` are NOT `state()` keys at all, so a channel list containing them
+        reads a constant `None` and reports a null about the harness -- which is how the earlier
+        reading was produced. What IS true, and is the useful half: `thought` never moves under any
+        of the ten pins in either direction.
+        (2) TWO OF THE TEN ARE INERT IN BOTH DIRECTIONS -- :2408 and :3396 change nothing on any of
+        the 121 channels whether the flag is pinned True or False. They are imported, called, and
+        in the snapshot, and they change no outcome: P3's presence-is-not-participation, in the
+        consumers of the tree's consciousness-relevant flag. :2266 is NOT one of them: pinned False
+        it moves `connectome_propagation` on exactly 1 of 56 ticks, reproducibly, on a harness whose
+        baseline is byte-identical across runs. One tick is not nothing, and calling it nothing is
+        the same rounding-to-zero this file exists to refuse. Recorded rather than acted on; their
+        disposition is its own pass.
+        (3) `state`'s SECOND ROW READS `n_bound`, NOT THE FLAG. It is a reader of `_access_state`
+        and belongs in the census, but pinning the ignition flag cannot reach it; its row measures a
+        pin applied to whatever key that line asks for, which is why its True column reads 55/56
+        rather than 12/56. Read it as "this line consumes the readout", not "this line consumes the
+        flag".
+
+        WHY THIS FACULTY IS STILL ON A PRIVATE BUS, and it is a MEASURED NULL rather than an
+        oversight. Repointing it onto `self.brain.arm.workspace` is what would put a second content
+        in the live workspace, and it was built and swept rather than argued. Sweeping this
+        faculty's claim ceiling across the whole compliant band [0.55, 0.75] in steps of 0.0025,
+        120 ticks each, there is NO setting at which it co-exists with the percept:
+
+            ceiling 0.5500..0.6800  -> admitted on  0 of 56 ticks (silenced by the shared
+                                       inhibition, with THREE slots free); `thought` untouched
+            ceiling 0.6825..0.7175  -> admitted on 36 of 56 and the HEAD on every one of them;
+                                       `thought` goes 4 distinct values -> 28
+            ceiling 0.7200..0.7500  -> admitted on 41 of 56, co-existing beneath the percept on
+                                       exactly 1; `_access_ema` 0.488958 -> 0.112158
+
+        The transition is a hard step between 0.6800 and 0.6825 -- excluded, then dominant, with a
+        co-existence window ONE TICK of 56 wide at its widest. That is `thalamus/
+        global_workspace.py`'s own LIMIT 1 ("co-existence on the live bus is one step wide") reached
+        from the consumer side, and it is NOT the arbiter: the rank key was repaired in the same
+        pass and the live brain is byte-identical under both keys (crc 0f0938d6 / `_access_ema`
+        0.488958 identical to 6 dp, in BOTH key regimes). What blocks the repoint is the shared
+        lateral inhibition against two producers whose claim ranges overlap by ~0.08 of a 0.20-wide
+        band. Fixing that is a change to the competition, not to this call site, and it is not made
+        on a criterion's say-so."""
+        p = self._wake_ticks % self._percepts
+        grown = self.neuro.grown_units if self.neuro is not None else 0
+        n_total = (
+            len(self.brain.arm.q) + grown + self._real_units
+        )  # + W4a learned real-perception prototypes (consumed into access)
+        sustained = float(
+            self._access_hold.get("strength", 0.0)
+        )  # W2e: a recent ignition still reverberating
+        # RE-ROUTE: held broadcast content recruits a LARGER coherent assembly on this tick (ignition on tick t
+        # biases processing on t+1 -- the specialist re-entry the workspace previously lacked). Still capped at 8.
+        k = min(2 + n_total // self._percepts + int(round(2 * sustained)), 8)
+        try:
+            # PERSIST the workspace across ticks (v4.79). This was `AccessConsciousness(seed=...)`
+            # constructed INSIDE the wake tick, so a fresh instance -- and a fresh GlobalWorkspace
+            # inside it -- was built every tick: measured 25 GlobalWorkspace constructions over 40
+            # ticks against ONE ReentrantWorkspace. Every instance therefore took exactly one step,
+            # which makes the workspace's own temporal machinery (incumbent defence, hysteresis,
+            # decay) structurally unreachable: none of it can express itself in a single step. The
+            # comment eighteen lines below already promised the opposite -- "ignited content is HELD
+            # across ticks, not rebuilt from scratch each tick" -- while the object holding it was
+            # discarded on every tick. The arm's own GlobalWorkspace was persistent all along.
+            if getattr(self, "_access", None) is None:
+                # ON THE ONE BUS, not a private one. `AutonomousArm` is the sole owner and the only
+                # constructor of this workspace on the whole construction path
+                # (`make_brain` -> Brain -> LiveBrain -> AutonomousArm), and `Brain.workspace`
+                # adopts it without constructing anything. Handing it here is what makes this
+                # faculty's broadcast reach the same arbiter perception competes in; without it
+                # `AccessConsciousness.__init__` builds its own, which is one of the PRIVATE,
+                # mutually invisible instances `tools/p6_gate.py` counts, and the two producers were
+                # measurably never in the same competition (perception 120/120 in the workspace,
+                # coalition 0/120, co-occupancy 0/120 over 120 live wake ticks).
+                #
+                # THE HANDLE HAS TO ARRIVE AS A PARAMETER, not by rebinding `_access.workspace`
+                # afterwards: the constructor registers `n_taps` subscriber callbacks on whatever
+                # bus it is holding, so a later rebind leaves every tap on the abandoned instance
+                # and `global_availability()` reports reach on a bus nothing broadcasts to.
+                #
+                # `_own_ws` is False for an injected bus, which is what stops this faculty ALSO
+                # clocking the arbiter -- see `AccessConsciousness.step`. The arm's
+                # `_workspace_broadcast` runs the one competition per tick; this faculty submits
+                # into it. Falls back to a private bus when the arm carries none, because a faculty
+                # with no bus at all would be a harder failure than a private one.
+                self._access = AccessConsciousness(seed=self._seed, ws=self.workspace)
+            ac = self._access
+            # ACCESS CAN FAIL: the co-active assembly is coherent by construction, so with the
+            # default coherence-driven salience it ignited by FIAT on every tick -- global
+            # availability was pinned at 1.0 and carried no information. Pass an EXPLICIT salience
+            # gated by REAL percept strength instead: a confident real percept or a novel one clears
+            # the ignition rheobase, but a fully habituated, non-perceived synthetic tick can fall
+            # below it and LAPSE -- the repetition-suppression / inattentional access failure the
+            # workspace is supposed to model. This un-pins availability from a constant 1.0 using a
+            # real signal (novelty + perception presence), not a fabricated dropout. Functional
+            # access only; no phenomenal claim.
+            nov = float(self._real_novelty or 0.0)
+            # `real = 1.0 if (self._perceiving_real and self._perceived_digit is not None) else 0.0`
+            # stood here and fed a `0.15 * real` term. DELETED with that term 2026-08-06 -- and the
+            # binding going dead the moment the term went is itself the evidence it was a standalone
+            # nudge rather than something the rest of this block depended on. If percept strength
+            # should modulate access it belongs as its OWN submission to the workspace, competing on
+            # the same band as everything else, not as a hand-weighted addend inside another
+            # producer's claim.
+            # RELATIVE-baseline salience, not a magic floor: a percept MORE novel than the brain has
+            # habituated to reaches access, a repeated below-baseline one LAPSES (repetition
+            # suppression). Self-calibrating, so access stays selective as the novelty distribution
+            # drifts rather than flipping the whole regime the way a fixed floor does (a 0.40 floor
+            # measured 90% lapse, a 0.50 floor 0%). That intent is UNCHANGED; what changed is the map.
+            #
+            # THE CLAIM IS BAND-DERIVED 2026-08-06, and the two hand-picked gains are GONE.
+            # It was `rheobase + 0.5*(nov - nov_base) + 0.15*real` clamped to [0,1]: two magic
+            # constants (P1), and -- the part that actually broke things -- NOT BOUNDED BY THE BUS'S
+            # BAND at all, so this faculty rode a separate cap while perception was confined to
+            # [0.568, 0.667]. Measured on the shared bus: this faculty held the workspace 80 of 120
+            # ticks and pushed perception out on 79, taking `live_brain.thought` from naming the
+            # percept 120/120 to 41/120. Occupancy stayed 1 of 4 because ONE PRODUCER WAS
+            # STRUCTURALLY ALWAYS LOUDER, not because the capacity was too small.
+            # `band_claim` is the ONE shared derivation (faculties/global_workspace.py) that
+            # `_percept_salience` also calls, so both producers now map their own running signal
+            # into the same band by the same sentence. It introduces no constant and is bounded
+            # ABOVE by the displaceable ceiling by construction.
+            # The SIGNAL stays this faculty's own: novelty against its own running baseline. The
+            # `real` percept-strength term is dropped rather than re-scaled -- it was a second,
+            # differently-weighted signal folded into one number, and folding two signals with two
+            # hand-picked weights is the shape P1 forbids. If percept strength should modulate
+            # access it belongs as its own submission, not as a 0.15 nudge inside someone else's.
+            # The band comes from the bus this faculty is actually ON -- private today, shared if it
+            # is ever repointed -- so the claim tracks whichever workspace it must compete in.
+            # `band_bid`, NOT `band_claim`: this is a request that may be REFUSED. It is CENTRED on
+            # the rheobase rather than floored at it, so novelty at its running baseline lands
+            # exactly on the gate boundary (the anchor this block has always described) and
+            # BELOW-baseline novelty falls under it and LAPSES -- repetition suppression, which is
+            # the mechanism this block exists to implement. Measured: mapping this through the
+            # floored `band_claim` took `ignited` from 96/120 to 120/120 and the EMA from 0.287282
+            # back to 0.488958, i.e. it could no longer fail at all. A floored map deletes the lapse.
+            # THE BID GETS ITS OWN BASELINE, GROWN UNDER THE SHARED RULE, and this is the half that
+            # sharing the MAP did not fix. `_nov_base` is an EMA with a fixed `_base_tau`; an EMA
+            # LAGS a rising signal, so its ratio sits persistently above 0.5 while perception's
+            # converging running mean sits below 0.5 by the signal's skew. Two producers whose
+            # baselines are computed by different rules are NOT comparable however identical the map
+            # they share -- measured, symmetrising only the map left the repoint byte-identical
+            # (perception 41/120, coalition 80/120, co-occupancy 1/120).
+            # `_nov_base` is deliberately LEFT ALONE: its other consumer is the explore/fidget
+            # decision, which asks "more novel than RECENTLY?" and a lagging estimator answers that
+            # correctly. Access asks "more novel than TYPICALLY?". Different questions, different
+            # estimators -- what was wrong was answering the second with the first's, by accident.
+            # A DEDICATED RUNNING-MEAN BASELINE FOR THE BID WAS BUILT, MEASURED AND REVERTED HERE.
+            # Rationale looked sound: `next_baseline` is parameter-free where the EMA carries a time
+            # constant, and identical baseline rules are what make two ratios comparable. MEASURED
+            # over 120 live ticks it took `ignited` from 96/120 to 13/120 on the private bus and to
+            # 0/120 on the shared one, with the EMA at 0.164 and 0.0 -- ACCESS ESSENTIALLY NEVER
+            # SUCCEEDED. Cause, and it is structural rather than a tuning miss: `band_bid` is
+            # CENTRED, so a bid is audible only when its ratio EXCEEDS 0.5, while `band_claim` is
+            # FLOORED and audible at any ratio. Give both producers the same converging baseline and
+            # the bidder is systematically quieter BY CONSTRUCTION -- on a right-skewed novelty
+            # signal, far less than half the time. The EMA's lag was accidentally compensating for
+            # that, which is not a reason to keep an accident but IS a reason not to remove it
+            # without replacing what it was doing. Reverted on the null (P8 burden 5); the
+            # co-occupancy question is a signal-statistics problem, not a baseline-rule one.
+            strength = ac.workspace.band_bid(nov, float(self._nov_base or 0.0))
+            ac.bind_assembly([f"p{p}#{i}" for i in range(k)], salience=strength)
+            ac.step()  # ignition + all-or-none broadcast (may FAIL when strength is low)
+            self._access_state = ac.state()
+            idx = self._access_state.get("access_index", 0.0)
+            # SUSTAINED ACCESS: ignited content is HELD across ticks (decaying), not rebuilt from scratch each tick;
+            # a live hold keeps global availability elevated (reverberation), so access is a sustained state not a flicker.
+            if bool(self._access_state.get("ignited", False)):
+                content = (
+                    f"digit-{self._perceived_digit}"  # W3b: REAL perceived content in the workspace
+                    if self._perceiving_real and self._perceived_digit is not None
+                    else f"p{p}"
+                )
+                self._access_hold = {"content": content, "strength": 1.0}
+            else:
+                self._access_hold = {
+                    "content": self._access_hold.get("content"),
+                    "strength": round(0.6 * sustained, 4),
+                }
+            eff = idx + 0.3 * self._access_hold["strength"] * (
+                1.0 - idx
+            )  # held broadcast sustains availability
+            self._access_ema = round(0.9 * self._access_ema + 0.1 * eff, 6)
+        except Exception:
+            self._access_state = {}
+
+    def _sleep_tick(self):
+        """ASLEEP: arm idle (NO brain.tick). One bounded offline chunk: neurogenesis growth +
+        noise-driven sleep replay + SWR value-table consolidation. Growth is thus sleep-gated. The
+        night's growth/consolidation become real autobiographical episodes in the self-model."""
+        if self.neuro is not None:
+            try:
+                self.grower.tick()  # GROW NG-SNN neurons (torch tier)
+            except Exception:
+                pass
+        if self._drives is not None:
+            try:  # C2 #11: sleeping IS the energy-servicing activity ("rest" in the drive vocabulary)
+                self._drives.tick("rest")
+                self._dominant_drive = self._drives.dominant_drive()
+                self._drive_activity = "rest"
+            except Exception:
+                pass
+        if (
+            self._episode_consolidator is not None
+        ):  # C1 b4: sleep REPLAY consolidates the real episodes (no forgetting)
+            try:
+                self._episode_consolidator.replay(steps=60)
+                self._episode_retained = round(float(self._episode_consolidator.retained()), 3)
+            except Exception:
+                pass
+        if self._plasticity is not None:
+            self._r2_sleep_learning()
+        try:
+            # Owner1039: automatic attractor sleep learning retired.
+            # Zero the sub-eps synapses, then renormalize so the freed budget goes to the survivors.
+            #
+            # RE-LABELLED 2026-08-05. This line read "SHY: hard-prune the weakest synapses (energy
+            # saved)". Neither half was something this code had earned: (a) named a live and
+            # unsettled biological hypothesis as its warrant, (b) named a quantity nothing here
+            # measures. The MECHANISM IS LEFT EXACTLY AS IT WAS -- only the warrant is corrected.
+            #
+            # (a) "SHY" cited the Synaptic Homeostasis Hypothesis, i.e. a BIOLOGICAL warrant, and a
+            #     contested one. RESOLVED AGAINST THE SOURCES 2026-08-05, because the first version of
+            #     this clause said "a literature sweep found SHY's STRUCTURAL leg does not hold" and
+            #     one of the three papers it cited for that says the opposite in its own abstract:
+            #       * doi:10.1093/sleep/zsaf146 (SLEEP 2025, systematic review + meta-analysis)
+            #         AGAINST the structural leg at short timescales -- "5090 records were screened,
+            #         yielding 30 full texts"; "current evidence does not support an effect from 24
+            #         hours or less of SD on dendritic structure". Quoted correctly.
+            #       * doi:10.1016/j.tins.2020.03.010 (TINS 2020) argues sleep loss and waking
+            #         experience are confounded in the evidence base. A caution, not a refutation.
+            #       * doi:10.1371/journal.pbio.3003816 (PLOS Biol, [18F]SynVesT-1 PET, n=40) is FOR
+            #         SHY, not against it: ~28 h of wakefulness RAISED the SV2A synaptic-density
+            #         marker (thalamus +4.6%, hippocampus +5.6%, parietal +3.2%) and the paper
+            #         concludes it provides "in vivo support for the synaptic homeostasis hypothesis
+            #         in humans". This comment cited it as "the OPPOSITE SIGN in humans", which
+            #         inverts it. Re-checked against the published abstract; the error was the
+            #         citation, not the paper.
+            #     So the honest state of the biology is MIXED, not settled either way, and that is
+            #     exactly why the label had to go: a line in a sleep tick may not import a live
+            #     scientific controversy as its justification, in either direction. Nothing in this
+            #     tree measures synaptic homeostasis in a brain, so nothing here can adjudicate it.
+            #     The code stays; only the warrant is corrected. (b) is the load-bearing half.
+            # (b) "energy saved" was never measured. Nothing in this tree measures energy; the
+            #     telemetry this returns is {pruned, total, weight_removed, frac_pruned}, all counts.
+            #
+            # WHAT IT ACTUALLY DOES, measured 2026-08-05 (900 ticks/brain, isolated NORD_HOME):
+            #   * it is NOT inert. Over ~455 prune calls per brain it removed something on 12.4-19.7%
+            #     of calls, 95-216 synapse-zeroings in total against 552 off-diagonal synapses, with
+            #     cumulative removed weight 0.040-0.113 (5 seeds).
+            #   * but it does NOT measurably change the one outcome measured beside it. Neuter-A/B on
+            #     `_consolidation_acc`, 10 seeds, three arms -- A live, B prune+renormalize both
+            #     neutered, C renormalize only (isolating the hard-prune limb):
+            #         A-B  mean -0.0250  sd 0.1382  t(9) = -0.572   signs +3/-6/0:1
+            #         A-C  mean -0.0444  sd 0.1362  t(9) = -1.032   signs +2/-6/0:2
+            #     Two-sided t crit at df=9 is 2.262, so NEITHER is distinguishable from zero, and the
+            #     point estimate for the hard-prune limb is slightly NEGATIVE. Stated plainly, as P3
+            #     requires: the prune does real work to the weight matrix and has no demonstrated
+            #     benefit to the only outcome available to score it against.
+            #
+            # HOW BIG AN EFFECT THIS NULL CAN ACTUALLY EXCLUDE -- added 2026-08-05 on independent
+            # re-run, because "no demonstrated benefit" above says nothing about the power of the
+            # instrument that failed to demonstrate it, and this project has already been burned by a
+            # negative produced by its own harness dying.
+            #   * REPRODUCED. A separately written harness (same neuter points, five arms) returned
+            #     the identical per-seed A/B/C on all three published seeds -- 0: 0.444444 /
+            #     0.583333 / 0.444444; 3: 0.388889 / 0.527778 / 0.611111; 6: 0.583333 / 0.333333 /
+            #     0.333333. Exact. The rows above are real measurements, not transcription.
+            #   * THE HARNESS IS NOT DEAD. A positive control that neuters `AttractorNet.sleep`
+            #     outright (no offline replay learning at all) pins `_consolidation_acc` at exactly
+            #     0.333333 on 7 of 7 seeds completed, while the live arm ranges 0.305556-0.583333
+            #     over the same seeds. The observable does move when something large is removed.
+            #   * BUT IT IS COARSE, AND THAT BOUNDS THE CLAIM. `_consolidation_acc` is
+            #     `attractor.accuracy(self._patterns, 100)` over 3 patterns x TEST_TRIALS=12 = 36
+            #     trials, so it is QUANTIZED at 1/36 = 0.0278, and at sd 0.1382 with n=10 the
+            #     smallest mean difference this design could have called significant is
+            #     2.262 * 0.1382 / sqrt(10) = 0.0989 -- about 3.6 of the 36 trials. So the honest
+            #     reading is "no effect larger than ~0.10 accuracy", NOT "no effect". A real benefit
+            #     of one or two trials is entirely compatible with everything measured here, and
+            #     nothing above excludes it. Raising the power is cheap and unattempted: average
+            #     `_consolidation_acc` across all ~37 nights instead of reading only the last one.
+            #
+            # This is a P3 finding, not a resolution. It is NOT deleted here: sleep/sleep_replay.py
+            # is outside this pass's write scope, and an n=10 null is not on its own a deletion
+            # warrant. Escalated: the `downscale_prune` docstring in that file still asserts the SHY
+            # framing and calls the hard-prune "the load-bearing, energy-saving effect".
+            self._shy = self.attractor.downscale_prune()
+            if self._stored_any:
+                self._consolidation_acc = self.attractor.accuracy(self._patterns, 100)
+        except Exception:
+            pass
+        try:
+            self.buffer.replay(self.brain.arm.q, self.brain.arm.lr)  # value only
+        except Exception:
+            pass
+        # DELETED 2026-08-05 -- the `pci` readout that stood here, and the reasons are worth keeping
+        # because two of them are shapes this tree keeps re-growing.
+        #
+        # It built a FRESH 10-unit synthetic `PerturbationalComplexity` net every 4th night and
+        # reported its score as this brain's `pci`. It never touched this brain: `_run()` constructs
+        # its own LIFNeuron list from its own weight matrix and pre-draws its own noise, so there is
+        # no port through which this brain's state could enter it.
+        #
+        # (1) IT COULD NOT VARY. Its coupling was `1.0 + max(0.0, min(0.6, self._criticality))`, and
+        #     `_criticality` is a branching ratio the CONVERGED regulator holds just under 1.0 --
+        #     EMPIRICALLY, not by construction, and this clause said "by construction" until it was
+        #     checked. Nothing clamps sigma: `CriticalityRegulator` bounds its KNOB (`g_lo, g_hi =
+        #     0.0, 120.0`) and `band=(0.95, 1.02)` is a target, read only by `faculties/wholistic_loop.py`
+        #     (its `_fidelity` map and its `in_band` flag) and never applied to sigma anywhere.
+        #     RE-MEASURED on the brain's own n=64 pool with regulation
+        #     OFF: inhib_gain 35 -> sigma 0.1111 (cpl 1.1111, NOT 1.6) and 90 -> sigma 0.0000
+        #     (cpl 1.0). The deletion does not rest on that stronger claim and did not need it -- what
+        #     it rests on is the measurement below, over the values the regulator actually produces.
+        #     MEASURED over 900 real ticks / 37 nights at seed 0: criticality took 14
+        #     distinct values in [0.9827, 0.9951] and `min(0.6, .)` clamped every one of them to 0.6,
+        #     so coupling was 1.6 on every night the branch ever ran. With coupling pinned and the
+        #     seed fixed, `pci` was a pure function of `self._seed`: 1 distinct value over those 900
+        #     ticks (0.4068), and 0.1017 at seed 3. P3 shape 5 -- a constant wearing a signal's
+        #     clothes -- on a quantity the cockpit drew beside `access_index`.
+        # (2) AN ABSOLUTE PCI IS NOT A REPORTABLE QUANTITY HERE. There is no calibration set for
+        #     perturbational complexity on an artificial substrate, so there is no cutoff, so the
+        #     number can support no verdict -- and per P8 falsifier F11 a criterion with no reachable
+        #     red is DELETED, not re-thresholded. This project already deleted a GWT access marker on
+        #     that rule. `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md` had already carried both halves
+        #     of this as VERIFIED ("a synthetic surrogate, stale 3 nights in 4"; "a closed toy with no
+        #     `system` port") -- the finding was adjudicated and the code outlived it.
+        #
+        # `instruments/integration_measure.py` itself is KEPT and is not the defect. Its own self-check is
+        # built on WITHIN-SYSTEM CONTRASTS with controls (integrated vs independent-noise vs
+        # synchronous vs silent, plus a firing-rate control proving the gap is integration and not
+        # activity), which is the honest shape; it stays reachable through `faculties/region_coherence.py`
+        # and `reasoning/consciousness_probe.py` (RETIRED at T081, 2026-09-16). What was invalid was lifting ONE absolute number off
+        # a synthetic instance of it and reporting it as this brain's.
+        self._observe_self_sleep()  # night growth -> self-model episode
+        self._sleep_ticks += 1
+        return self.state()
+
+    def _observe_self_sleep(self):
+        """Fold the night's growth + consolidation into the self-model (awake=False).
+
+        `surprise` is deliberately NOT passed. It used to be `round(1.0 - acc, 6)` here as well, and
+        this was the SECOND writer of the algebraic-surprise defect fixed on the wake path: measured,
+        it re-imposed surprise == 1-acc on 101 of 197 ticks, overwriting the wake tick's real learned
+        prediction error with a restatement of accuracy roughly every other tick. Omitting the key
+        leaves the signal unchanged (see SelfModel.observe), which is also the honest semantics --
+        sleep makes no new self-prediction, so it has no new prediction error to report. Accuracy
+        itself still updates through `self_predict_acc`."""
+        acc = self.neuro.predict_accuracy if self.neuro is not None else 0.0
+        grown = self.neuro.grown_units if self.neuro is not None else 0
+        self.self_model.observe(
+            awake=False,
+            grown_units=grown,
+            self_predict_acc=acc,
+            consolidation=self._consolidation_acc,
+            phase=round(self.clock.phase, 6),
+            nights=self._nights,
+        )
+
+    def _restore_episodes(self):
+        """Refill the attractor from THE ONE LAKE, most recent first, up to its capacity.
+
+        Most recent first because the attractor is bounded and the lake is not: when the lake holds
+        more episodes than the store can hold, the ones worth having resident are the recent ones.
+        Older episodes remain in the lake and are reachable via `recall_episode_durable()` -- they
+        are not lost, they are simply not in working memory.
+
+        Never raises. A brain that cannot read its past must still be able to think.
+        """
+        try:
+            from snn_data_lake.substrate.home import load_episodes
+
+            eps = load_episodes(limit=self._episode_consolidator.capacity)
+            for ep in eps:
+                self._episode_consolidator.store(self._episode_consolidator.encode(ep), ep)
+            self._episodes_restored = len(eps)
+            self._episode_window = list(eps)  # T057: the lake-derived recall window
+        except Exception:
+            self._episodes_restored = 0
+
+    def recall_episode_durable(self, cue, min_conf=0.5):
+        """Recall an episode, from working memory first and THE ONE LAKE second.
+
+        The attractor completes partial/noisy cues -- that is what it is for -- but it holds only
+        `capacity` episodes. The lake holds everything the brain has ever formed. So a miss in
+        working memory is not an answer yet: it means "not resident", and the durable store still
+        has to be asked before the brain says it does not remember.
+
+        The lake half is `substrate/lake_recall` (specs/022 T057): LAESA retrieval over
+        lake-derived episodes, VERIFIED in slot space. The exact-content scan that stood here
+        is SUPERSEDED (P2), and its guarantee is carried by the VERIFICATION stage rather than
+        by distance: `confidence` is the fraction of the cue's slots the returned episode
+        matches by string comparison, so a code collision can never impersonate an exact match
+        (the panel measured the distance-only form answering a never-stored cue with a
+        different episode at "confidence" 1.0 -- that shape is dead). A genuinely partial dict
+        now addresses episodes instead of missing by construction; `margin`, when calibrated,
+        is the z-score against a measured scrambled-cue null of the cue's own arity.
+
+        TWO LAKE TIERS, both stated plainly. The WINDOW tier runs the margin-scored indexed
+        recall over the recent episodes this brain restored from the lake at boot plus its
+        own lake appends since -- fast, calibrated, partial-cue capable. Beneath it, the
+        DEEP tier is the ported whole-lake exact sub-cue scan (the incumbent mechanism,
+        kept as the deep fallback rather than deleted -- P2's port-first rule, and the
+        committed durability suite's guarantee that a restart is not amnesia): it replays
+        the ENTIRE lake (seconds on a mature lake, the incumbent's own cost) only when the
+        window tier has no qualifying answer, and returns exact sub-cue matches at verified
+        confidence 1.0 with no margin (no measured null exists at that tier -- a margin is
+        never guessed).
+        """
+        if self._episode_consolidator is None:
+            return {"episode": {}, "confidence": 0.0, "source": "none"}
+        got = self._episode_consolidator.recall_episode(cue, min_conf=min_conf)
+        if got and got.get("episode"):
+            got["source"] = "working"
+            return got
+        try:
+            if isinstance(cue, dict) and cue and self._episode_window:
+                if self._lake_recall is None:
+                    from snn_data_lake.substrate.lake_recall import LakeRecall
+
+                    self._lake_recall = LakeRecall(episodes=self._episode_window, seed=self._seed)
+                else:
+                    self._lake_recall.attach(self._episode_window)
+                hits = self._lake_recall.recall(cue, k=1)
+                if hits and hits[0]["confidence"] >= min_conf:
+                    return {
+                        "episode": hits[0]["episode"],
+                        "confidence": hits[0]["confidence"],
+                        "margin": hits[0]["margin"],
+                        "contradicted": hits[0]["contradicted"],
+                        "source": "lake",
+                    }
+        except Exception:
+            pass
+        try:
+            from snn_data_lake.substrate.home import load_episodes
+
+            want = dict(cue) if isinstance(cue, dict) else None
+            if want:
+                for ep in reversed(load_episodes()):  # newest first: the likelier match
+                    if all(str(ep.get(k)) == str(v) for k, v in want.items()):
+                        return {
+                            "episode": ep,
+                            "confidence": 1.0,
+                            "margin": None,
+                            "contradicted": 0,
+                            "source": "lake",
+                        }
+        except Exception:
+            pass
+        return {"episode": {}, "confidence": 0.0, "source": "miss"}
+
+    # distinct-from: faculties/prefrontal_executive.py -- its neuter() gates the WM rehearsal
+    #   channel's elements; this gates the SLEEP-OWNED consolidation capabilities. Same
+    #   attribution idiom, different substrate. Site read.
+    # distinct-from: faculties/microcircuit.py -- its neuter() gates tissue elements
+    #   (codon/mli/pf); a neuter has to know its own internals, which is why the tree keeps
+    #   one per module rather than sharing one. Site read.
+    def neuter_sleep(self, element):
+        """Neuter structural sleep; retired capabilities refuse explicitly.
+
+        Owner1039 preserves the sleep requirement and the separate retained lanes.
+        """
+        if element in {"replay", "benna_fusi", "attractor"}:
+            raise ValueError(
+                f"retired sleep capability {element!r}: owner1039; amendment2026-10-13"
+            )
+        if element in {"phase", "structural"}:
+            self._sleep_caps["structural"] = False
+        else:
+            raise ValueError(
+                f"unknown element {element!r}: sleep capabilities are structural/phase"
+            )
+        return self
+
+    def _enter_sleep(self):
+        """One 'night' of offline REASONING learning: train adjacent transitive-inference premises,
+        replay-consolidate them, ramp the item curriculum on mastery, and score held-out (non-adjacent,
+        never-trained) accuracy. The brain literally grows a reasoning skill while it sleeps. Bounded +
+        guarded -- cognition only, no actuator; a hiccup never touches the loop or safety."""
+        try:
+            env, learner = self._reason_env, self._reason
+            k = min(3 + self._reason_stage, env.n_items)  # curriculum ramps the chain 3 -> n
+            premises = env.adjacent_premises(k)
+            for _ in range(12):  # WAKE-equivalent: live adjacent premises
+                a, b = premises[learner.rng.randrange(len(premises))]
+                learner.train_premise(env.encode(a), env.encode(b))
+            learner.replay_consolidate(24)  # SLEEP: offline consolidation
+            self._reason_acc = round(learner.held_out_accuracy(env), 4)
+            self._reason_units = learner.n_units
+            # SELF-PACED ramp: grow the chain only once the CURRENT chunk's transitive pairs are
+            # mastered (not the full-env held-out, which is capped low while later items are unseen).
+            if self._reason_stage < env.n_items - 3 and self._reason_chunk_mastered(k):
+                self._reason_stage += 1
+        except Exception:
+            pass
+        try:  # LIFELONG: learn a task, then RETAIN it
+            # METACOG GATE: only take on a NEW task when reliable enough (learn-gate) -- don't learn
+            # new material while metacognitively unsure. High-reliability regime -> gate ~open (>=0.3).
+            # RELATIVE, not an absolute cut. The old `>= 0.25` was calibrated when the workspace's
+            # access strength was pinned at 1.0, so the access factor of self_model.confidence() --
+            # which feeds this monitor's reliability -- was effectively a constant. De-saturating
+            # that readout multiplies confidence by a real value below 1, and the absolute cut then
+            # mis-fires: measured, the gate opened on 12.2% of ticks before and 9.0% after, and
+            # old-task retention fell 0.667 -> 0.333. The threshold was coupled to another
+            # mechanism's scale, exactly the failure mode this cycle keeps finding. Comparing the
+            # gate against its OWN running mean makes "reliable enough to take on something new"
+            # mean reliable relative to how this brain has been doing lately, which survives a
+            # change of scale in any upstream factor.
+            gate = float(self._metacog.learn_gate())
+            self._lg_base = gate if self._lg_base <= 0.0 else 0.98 * self._lg_base + 0.02 * gate
+            if self._ll_i < len(self._ll_tasks) and gate >= self._lg_base:
+                self._ll.learn_task(self._ll_i, self._ll_tasks[self._ll_i]["train"])
+                self._ll_i += 1
+            self._ll_retention = round(self._ll.accuracy(self._ll_tasks[0]["test"]), 4)  # old-task
+            self._ll_units = self._ll.n_units  # bounded by the prune budget
+        except Exception:
+            pass
+        try:  # CRITICALITY: hold the substrate at the edge
+            if self._critic is not None:
+                self._critic.run(
+                    epochs=2, regulate=True
+                )  # homeostatic maintenance (drift correction)
+                self._criticality = round(self._critic.sigma(), 4)
+        except Exception:
+            pass
+        # ONE KnowledgeLog and ONE replay of the symbolic lake serve BOTH sleep blocks below (Phase 1a
+        # of the Rust port, 2026-10-17). Each block built its own KnowledgeLog (a fact-count pass) and
+        # replayed the facts again (a second pass): on a nights%8 tick that was four full lake
+        # passes before consolidation's own. `records` is kept exactly what the second block's
+        # replay would have yielded: schema induction appends go on the END of it, round-tripped
+        # through pack_fact/unpack_fact so they are the dicts a replay returns, and only when the
+        # dedup'd append actually landed.
+        klog = records = None
+        if self._persist and self._nights % 4 == 0:
+            try:
+                from snn_data_lake.substrate.home import KnowledgeLog
+
+                klog = KnowledgeLog()
+                records = list(klog.replay())
+            except Exception:
+                klog = records = None
+        if records is not None:  # SCHEMA INDUCTION (gap #5): consolidate durable episodes into
+            try:  # deduped prototype/schema triples (ART firewall + DistMult gate)
+                from snn_data_lake.reasoning.schema_induction import SchemaInducer
+                from snn_data_lake.substrate.binlog import pack_fact, unpack_fact
+
+                log = klog
+                triples = [
+                    r["triple"]
+                    for r in records
+                    if isinstance(r.get("triple"), list) and len(r["triple"]) == 3
+                ]
+                if len(triples) >= 4:  # enough real episodes to abstract from
+                    out = SchemaInducer(seed=self._seed).consolidate(triples, budget=32)
+                    # REFUSE the durable write when the SECOND firewall did not run. SchemaInducer's
+                    # DistMult gate silently no-ops if its import fails, passing every candidate with
+                    # `rejected` still reading 0 -- so "0 rejected because the evidence was good" and
+                    # "0 rejected because nothing was checked" looked identical here, and both wrote
+                    # to the durable lake. Only the first is a reason to write (v4.78).
+                    if not out.get("confidence_gate_ran", False):
+                        out = {"derived": [], "kept": 0}
+                    for row in out.get("derived", []):
+                        h, rel, t = row[0], row[1], row[2]
+                        rec = {
+                            "cue": [rel, h],
+                            "answer": f"{h}'s {rel} is {t}.",
+                            "triple": [h, rel, t],
+                            "src": "schema",
+                        }
+                        if log.append(rec):  # KnowledgeLog dedups
+                            records.append(unpack_fact(pack_fact(rec)))
+                    self._schemas = int(out.get("kept", 0))
+                    try:  # ROSE forward-only refit (SLDA + Forward-Forward, no backprop)
+                        rose = self._rose_serve()
+                        if rose is not None:
+                            rose.nightly_refit([tuple(t) for t in triples[:200]])
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        if (
+            records is not None and self._nights % 8 == 0
+        ):  # SLEEP CONSOLIDATION of the symbolic durable lake:
+            try:  # the PRUNE half -- cap re-derivable dictionary bulk (WordNet/ConceptNet re-derive at boot)
+                #     + keep genuinely-learned, so a never-off brain's lake stays LIVE + BOUNDED, not ballooning.
+                from snn_data_lake.sleep.lake_consolidation import (
+                    LakeConsolidation,
+                    RecallTrace,
+                )
+                from snn_data_lake.substrate.home import ImmortalRefusal
+
+                trace = (
+                    RecallTrace()
+                )  # USE IT OR LOSE IT: never-recalled learned records fall out first
+                survivors = LakeConsolidation().consolidate(records, trace=trace)
+                self._lake_kept, self._lake_pruned = klog.consolidate(survivors)
+                self._lake_night = self._nights  # which night the pair above describes
+                trace.prune_to(survivors)  # drop trace entries for pruned records, then persist
+                trace.save()
+            except ImmortalRefusal as exc:
+                # THE IMMORTAL GUARD REFUSED (specs/022 L6). It raises only when a survivor set would
+                # lose a record of a non-reclaimable class, which the policy no longer produces -- so a fire
+                # here means the policy and the label have drifted apart again. Caught SEPARATELY from the
+                # broad swallow below because that swallow would turn "the lake never forgets" into "the
+                # lake is never consolidated" with nothing anywhere saying so. Counted and reported in
+                # state(); the tick continues, because a refused prune is safe and a dead brain is not.
+                #
+                # The TYPE is load-bearing. This branch caught bare `ValueError` for one commit, and the
+                # panel reproduced two unrelated ValueErrors from this same block landing in the counter: a
+                # lake file that is not a BinLog, and a malformed recall-trace sidecar. Neither is retention
+                # drift. ImmortalRefusal is raised only by the guard; everything else falls through below.
+                self._lake_refused += 1
+                self._lake_refusal = str(exc)[:200]
+                self._lake_night = self._nights
+            except Exception:
+                pass
+        if self._persist:  # NIGHTLY SKILL FORMATION (bounded): one small env-budgeted
+            try:  # slice/night into persistent per-domain readouts across
+                if self._skills is None:  # language/math/physics/world-kb (+open-world discovery +
+                    from snn_data_lake.sleep.nightly_skills import (
+                        NightlySkills,  # autotelic goal-babbling).
+                    )
+
+                    self._skills = NightlySkills(
+                        seed=self._seed
+                    )  # numpy; skipped under NORD_PERSIST=0 -> gates byte-identical.
+                self._skills_state = (
+                    self._skills.night()
+                )  # never raises (partial dict on any sub-step failure)
+            except Exception:  # numpy absent / import failure -> stay silent, keep sleeping
+                self._skills_state = None
+        if self._persist:  # DURABLE: fold the night's growth to disk (never-forget)
+            self._flush_growth()
+            self._flush_prototypes()  # rank 2b: the prototypes the growth is keyed to
+            self._flush_coverage()  # T038: the coverage ledger rides the same cadence
+            try:
+                from snn_data_lake.substrate.home import save_state
+
+                save_state(
+                    "reasoning_curriculum.json",
+                    {
+                        "learner": self._reason.state_dict(),
+                        "stage": self._reason_stage,
+                        "acc": self._reason_acc,
+                    },
+                )
+            except Exception:
+                pass
+            try:
+                lm = getattr(
+                    self, "_acq_lm", None
+                )  # the acquired language organ, if built this run
+                if lm is not None:
+                    lm.save()
+            except Exception:
+                pass
+
+    def _reason_chunk_mastered(self, k):
+        """True iff the held-out (non-adjacent) transitive pairs WITHIN the active first-k items are
+        answered >= 0.9 -- i.e. the current chain is genuinely inferred, so it is time to add an item.
+        Public-API only; cheap (a few spiking decisions)."""
+        env, learner = self._reason_env, self._reason
+        pairs = [(a, b) for a, b in env.heldout_pairs() if env.pos[a] < k and env.pos[b] < k]
+        if not pairs:
+            return True
+        good = total = 0
+        for a, b in pairs:
+            for x, y in ((a, b), (b, a)):
+                if learner.decide(env.encode(x), env.encode(y)) == env.label(x, y):
+                    good += 1
+                total += 1
+        return good / total >= 0.9
+
+    def _maybe_autonomous_self_build(self):
+        """AUTONOMOUS self-building (gated, OPT-IN): the brain proposes its OWN improvements, sandbox-
+        verifies + gate-promotes them (keep byte-verified, ROLL BACK on any failure), auto-applying the
+        survivors to the source tree so they take effect on the next launch. DISABLED unless env
+        NORD_SELFMOD=1 -- a plain no-op otherwise, so the gates and a normal run never trigger it. The 5
+        brainstem arm-safety files are FIREWALLED (never a legal target; crc-verified unchanged); only
+        whitelisted NON-safety params can change. Heavy (the gate is a full run_selfchecks), so _enter_wake
+        calls this only once every SELFBUILD_EVERY nights. Never raises (guarded)."""
+        import os as _os
+
+        if _os.environ.get("NORD_SELFMOD") != "1":
+            return None  # disabled by default: the brain does not self-modify unless the operator opts in
+        try:
+            import subprocess as _sp
+            import sys as _sys
+
+            from snn_data_lake.infra.self_build_loop import SelfBuildLoop
+
+            def _gate():
+                # CRITICAL: run the correctness gate with NORD_SELFMOD UNSET, so the gate's own in-process
+                # brain self-check does NOT recursively trigger another self-build (infinite regress).
+                env = {**_os.environ, "NORD_SELFMOD": "0"}
+                r = _sp.run(
+                    [_sys.executable, "run_selfchecks.py"], capture_output=True, text=True, env=env
+                )
+                return r.returncode == 0 and "self-checks passed" in r.stdout
+
+            props = self.propose_improvements(budget=3)
+            if self._selfbuild_proposer is not None and self._selfbuild_proposer.should_skip(props):
+                # CIRCUIT BREAKER (harness robustness): this exact candidate set already failed the gate
+                # _FUTILE_LIMIT times in a row -> skip the multi-minute gate until the set changes, instead
+                # of re-running a deterministically-doomed gate every cycle forever.
+                self._selfbuild_last = {
+                    "night": self._nights,
+                    "proposed": len(props),
+                    "kept": 0,
+                    "skipped": "circuit_breaker",
+                }
+                return self._selfbuild_last
+            out = SelfBuildLoop(enable=True, gate_fn=_gate).run(props)
+            if self._selfbuild_proposer is not None:
+                # THREE-FACTOR LEARN from the gate outcomes (kept +1 / rolled -1): the brain-native self-
+                # build learns which de-hardcode transforms are gate-safe; weights persist across restarts.
+                self._selfbuild_proposer.observe(out)
+                self._selfbuild_proposer.note_cycle(
+                    props, out
+                )  # update the circuit-breaker counter
+            kept = sum(1 for o in out if o.get("status") == "kept")
+            self._selfbuild_last = {"night": self._nights, "proposed": len(props), "kept": kept}
+            return self._selfbuild_last
+        except Exception:
+            return None
+
+    def _enter_wake(self):
+        self._nights += 1  # a completed subjective night
+        self._interval_timer = 0  # a new wake episode -> reset the interval-timing ramp
+        # AUTONOMOUS self-building (opt-in via env NORD_SELFMOD=1): once every SELFBUILD_EVERY nights the
+        # brain runs its own GATED self-build (propose -> sandbox-verify -> gate-promote/rollback,
+        # auto-apply). No-op by default; arm-safety firewalled; guarded so it never breaks the wake path.
+        if self._nights % SELFBUILD_EVERY == 0:
+            self._maybe_autonomous_self_build()
+        self._flush_interaction_learner()
+
+    # ---- public API ----------------------------------------------------------------------------
+    def tick(self):
+        """One iteration. Advances the circadian clock, then runs a wake or a sleep tick. Returns
+        "awake" or "asleep". Called under a lock -- returns fast."""
+        light = self._schedule(self._step)
+        self._step += 1
+        self.clock.step(light)
+        self._baseline = self.clock.baseline()
+        asleep = self.clock.consolidation_gate()
+        if asleep and not self._was_asleep:
+            self._enter_sleep()
+        elif (not asleep) and self._was_asleep:
+            self._enter_wake()
+        self._asleep = asleep
+        if asleep:
+            self._sleep_tick()
+        else:
+            self._wake_tick()
+        self._was_asleep = asleep
+        # CLOSE THE APPEND TICK (specs/022 L4). Two conditions, and the first landing conflated them: a
+        # class can trip only if it is BASELINED (0x03, 0x04, 0x07, 0x08, 0x0A carry a recorded p95) AND
+        # OBSERVED. After the panel's fold home observes 0x01, 0x03, 0x04, 0x05, 0x07 and 0x08, so the
+        # intersection -- what can actually fire -- is 0x03, 0x04, 0x07 and 0x08. NOT 0x0A, which is 80% of
+        # the production lake and frames onto BinLog through the coalition journaller without entering home.
+        # NOT 0x01 either: the learned class L6 unbounded has no baseline row, so this caller does not
+        # restore its bound and does not claim to.
+        if self._append_budget is not None:
+            try:
+                for v in self._append_budget.end_tick():
+                    self._append_floods += 1
+                    self._append_flood_last = v[:200]
+            except Exception:  # noqa: BLE001 - accounting must never leave the tick
+                pass
+        return "asleep" if asleep else "awake"
+
+    # distinct-from: faculties/forward_model.py -- dynamics state, not telemetry.
+    # distinct-from: faculties/generative_self_model.py -- the self-signal forward model.
+    # distinct-from: faculties/self_model.py -- the mood-sentence view this dict embeds.
+    # distinct-from: faculties/empowerment.py -- latent rollout state.
+    # distinct-from: reasoning/pc_active_inference.py -- policy-model state. Phrase
+    #   overlap on 'state' only; this is the ONE /api/state telemetry build. Sites read.
+    def state(self):
+        """Telemetry for /api/state. Adds a COMPACT self_state view of the evolving self-model."""
+        from snn_data_lake.engine.report_channel import snapshot as _report_snapshot
+        from snn_data_lake.instruments.report_order_probe import _t081_top_margin
+
+        # T081 (2026-09-16, evidence/t081-report-order.md 2.6 PASS): the ARM's bus, bound ONCE so
+        # `workspace_report` and `report_order_margin` below are two readings of the SAME object
+        # rather than two `getattr` loads a host rebinding `self.workspace` between them could pull
+        # apart -- the two-loads window report_channel's own chat-side adapter documents closing.
+        _ws = getattr(self, "workspace", None)
+
+        grown = self.neuro.grown_units if self.neuro is not None else 0
+        acc = self.neuro.predict_accuracy if self.neuro is not None else 0.0
+        sm = self.self_model.state()
+        self_state = {
+            "confidence": sm["confidence"],
+            "goal": sm["goal"][0],  # last (motor intent id)
+            "surprise": sm["surprise"][0],  # last
+            "valence": sm["valence"][0],  # last (approach/avoid scalar)
+            "access_index": sm["access_index"][0],  # last
+            "grown_units": sm["grown_units"][0],  # last
+            "tick": sm["tick"],
+        }
+        if (
+            self._affect_core is not None
+        ):  # W6: categorical emotion from the (valence, arousal) affect core
+            try:
+                _a = min(1.0, abs(float(getattr(self.brain.arm, "_rpe", 0.0) or 0.0)))
+                self._emotion = self._affect_core.recognize(
+                    float(self_state.get("valence", 0.0) or 0.0), _a
+                )
+            except Exception:
+                self._emotion = None
+        return {
+            "goal": "self-improvement",
+            "phase": round(self.clock.phase, 3),
+            "circadian": "asleep" if self._asleep else "awake",
+            "nights_elapsed": self._nights,
+            # SLEEP CONSOLIDATION, now reported. These three were written on the tick and read
+            # NOWHERE before specs/022 L6 -- the prune half of the durable lake had no surface at
+            # all, so neither a normal night nor a refused one was visible to anyone.
+            "lake_kept": self._lake_kept,
+            "lake_pruned": self._lake_pruned,
+            "lake_refused": self._lake_refused,
+            # The MESSAGE, not only the count. It was captured and dropped for one commit -- the same
+            # computed-never-consumed defect the commit that added it was written to close -- and a bare
+            # count cannot say WHICH class refused or why.
+            "lake_refusal": self._lake_refusal,
+            # WHICH night the kept/pruned pair describes. They are not zeroed on a refused or swallowed
+            # night, because zeroing would reinstate the "no consolidation night yet" ambiguity; they go
+            # STALE instead, and this is what makes the staleness visible.
+            "lake_night": self._lake_night,
+            # The append budget's own report. Zero is the expected reading and a non-zero one is a FLOOD --
+            # a class appending far above its recorded p95 in one tick, which is a fact about the lake and
+            # not a reading about the brain.
+            "append_floods": self._append_floods,
+            "append_flood_last": self._append_flood_last,
+            # ---- diffuse neuromodulator levels (stepped EVERY wake tick; previously live but unexposed) ----
+            # Raw levels only. Derived quantities (distance travelled, place error) are the reader's job --
+            # state() must not carry two representations of the same fact.
+            "neuromod_serotonin": _lvl(self._raphe),  # 5-HT: tracks the slow circadian baseline
+            "neuromod_noradrenaline": _lvl(self._lc),  # NA: phasic gain on salient events
+            "neuromod_acetylcholine": _lvl(
+                self._ach
+            ),  # ACh: novelty -> encoding gain (stepped at :996, consumed at :1767)
+            "neuromod_astrocyte": (  # slow glial gain, one per domain
+                [round(float(g), 4) for g in self._astro.gains] if self._astro is not None else []
+            ),
+            "cortisol": _lvl(
+                getattr(self.brain.arm, "cort", None)
+            ),  # stress. NOT flat: this comment said 'flat while reward_fn is None', but :1754 passes reward_fn=coverage_reward on every wake tick (v4.79)
+            "curiosity_mag": round(
+                float(getattr(self.brain.arm, "_cur_mag", 0.0) or 0.0), 4
+            ),  # running |curiosity| -- the unit intrinsic reward is normalised by
+            # RENAMED from "shy_energy_saved" 2026-08-05, in the same pass that struck "(energy
+            # saved)" off the producer in _sleep_tick. Leaving the KEY named after a quantity nothing
+            # in this tree measures, while the comment beside the producer says so, is the "a claim
+            # living in two places, only one corrected" failure -- and a state key is the half a
+            # dashboard can render. What it carries is {pruned, total, weight_removed, frac_pruned},
+            # all counts. Verified consumer-free before renaming: `git grep shy_energy_saved` over the
+            # whole tree returned ONE line, this definition -- no cockpit row, not in
+            # brain_telemetry.DASHBOARD_KEYS, not in PROVENANCE, no test. brain_telemetry and cockpit
+            # self-checks re-run after the rename, both "contract clean", exit 0.
+            "shy_prune": self._shy,  # offline downscale + weak-synapse hard-prune telemetry (last night)
+            # T058 (FR-024): the sleep-ownership evidence counters + the turnover instrument,
+            # surfaced per structural_rewiring's own record ("state()-field surfacing lands
+            # WITH the wire"). Per-tick observables (reset at each sleep tick), all MEASURED.
+            "sleep_consolidation": {
+                "retired": (
+                    "interaction_replay_deposit",
+                    "benna_fusi_rest_rebind",
+                    "attractor_sleep_learning",
+                ),
+                "structural": self._structural_report,
+                "structural_refusals": self._structural_refusals,
+            },
+            "brain_alive": self.brain.alive(),
+            "regions_live": sorted(self._regions_live),
+            "n_regions_live": len(self._regions_live),
+            "wake_ticks": self._wake_ticks,
+            "sleep_ticks": self._sleep_ticks,
+            "grown_units": grown,
+            "predict_accuracy": round(acc, 6),
+            "consolidation_acc": round(self._consolidation_acc, 6),
+            "reasoning_accuracy": self._reason_acc,  # held-out transitive-inference skill (grows in sleep)
+            "reasoning_units": self._reason_units,  # neurogenesis: recruited rank units
+            "lifelong_retention": self._ll_retention,  # OLD-task retention (non-regression; L11)
+            "lifelong_units": self._ll_units,  # bounded by grow<->prune (L6)
+            "reliability": self._metacog_rel,  # metacognitive reliability (spike-count; L10)
+            "metacog_hold": self._metacog_hold,  # confidence-based HOLD/abstain gate
+            "metacog_explore": self._metacog_explore,  # explore-vs-exploit gate
+            # Branching ratio of the MONITORED 64-unit side-pool (edge of chaos; L7) -- NOT of this
+            # brain's raster, and with no computational consumer (see the disposition at __init__).
+            # brain_telemetry.PROVENANCE tags this "sleep-only", which is true and is not the
+            # load-bearing half: a reader of the cockpit row cannot tell from that tag that the
+            # number describes a separate pool rather than the brain. Widening that tag is escalated,
+            # brain_telemetry.py not being this pass's to edit.
+            "criticality": self._criticality,
+            "integration_competence": self._integration_competence,  # L13: informative sub-ceiling (~0.83, real hard task)
+            "integration_gain": self._integration_gain,  # L13: whole-minus-un-arbitrated-sum competence
+            "integration_retention": self._integration_retention,  # L13: old-task retained (non-regression)
+            "integration_ok": self._integration_ok,  # L13: whole>sum AND non-regressing AND substrate in-band
+            "rungs": self._rungs,  # birth DIAGNOSTIC census of all rungs (reduced-scale; _scale/_note tagged); full proof = each module's self-check
+            "novelty_live": self._novelty_live,  # L5 PROMOTED to the live wake loop: generalizing pseudo-count over the current raster (habituates)
+            "perception_tier": self._perception_tier,  # "eprop-snn" (e-prop encoder loaded) or "stdlib" (no checkpoint)
+            "perceiving_real": bool(
+                self._perceiving_real
+            ),  # W3b: perceiving REAL N-MNIST event-vision on the live tick
+            "perception_acc": self._perception_acc,  # LIVE classification accuracy over the real frames perceived
+            "perceived_digit": self._perceived_digit,  # the digit the brain is currently seeing (real event-vision)
+            "perceiving_audio": bool(
+                self._perceiving_audio
+            ),  # W3c: perceiving REAL SHD event-audio on the live tick
+            "audio_perception_acc": self._audio_acc,  # LIVE audio classification accuracy over real SHD frames
+            "perceived_word": self._perceived_word,  # the spoken digit (0-19) the brain is currently hearing
+            "real_perception_units": self._real_units,  # W4a: prototypes LEARNED from real vision+audio (consumed, not telemetry)
+            "real_novelty": round(
+                float(self._real_novelty), 3
+            ),  # novelty spike when a real percept recruits a new category
+            "perception_unified": bool(
+                self._perception_unified
+            ),  # W9: the arm's sensory INPUT is driven by the real percept (not a side channel)
+            "attention_real": self._attn_real,  # W9: attention over the real stream (winning feature band + focus)
+            "emotion": self._emotion,  # W6: categorical emotion (joy/fear/anger/... from the affect core, not just 1-D valence)
+            "crossmodal_superadditive": bool(
+                self._superadditive
+            ),  # W6: vision+audio bound into a super-additive object this tick
+            "place_here": self._place_here,  # W6: the percept the grid+place map binds to the current allocentric position
+            "place_value": (
+                max(
+                    [0.0]
+                    + [
+                        self._place_value.get((self._place_here, a), 0.0)
+                        for a in ("ENGAGE", "RELEASE")
+                    ]
+                )
+                if self._place_here is not None
+                else 0.0
+            ),  # C2 #1: best learned action-value of the CURRENT place (drives approach on re-entry)
+            "places_valued": len(
+                self._place_value
+            ),  # C2 #1: how many (place, action) pairs carry a learned value
+            "learned_latency": self._learned_latency,  # C2 #3: learned reward latency (opens the timed Go window)
+            "place_correction": self._place_correction,  # C2 #8: landmark phase-reset magnitude correcting bump drift
+            "place_fault": self._place_fault,  # last exception that aborted place binding (None = healthy)
+            "place_faults": self._place_faults,  # ticks the binding aborted -> place_here above is STALE, not computed
+            "reroute_bias": self._reroute_bias,  # C2 #11: GWT broadcast re-route bias now driving the action specialist
+            "place_from_spiking_bump": self._place_from_spiking_bump,  # C2 #16: place grounded on the spiking grid CAN
+            "acc_conflict": round(
+                float(getattr(self.brain.arm, "_conflict", 0.0)), 3
+            ),  # W8: ACC conflict over competing action drives
+            "reentrant_availability": self._reentrant_availability,  # W8: de-saturated global availability (can be <1.0 -- a real access failure)
+            "reentrant_strength": self._reentrant_strength,  # C1 #5: GRADED access strength now CONSUMED into self-model access-confidence (de-saturates it)
+            "elapsed_time": round(
+                float(self._elapsed_time), 3
+            ),  # C1: spiking population clock (time cells) elapsed-interval estimate
+            "timing_sd": round(
+                float(self._timing_sd), 3
+            ),  # C1: emergent Weber-scaling timing uncertainty (grows with duration)
+            # specs/003 FR-011: the clock's WIDTH and its growth outcomes. Nothing in the tree could
+            # observe any of the three before -- `n_cells` appeared once, as the literal 64 at :744 --
+            # so ab_method.py's neuter-A/B was structurally blind to growth and a verdict from it
+            # would have been uninformative rather than negative. `refused` is what makes a HALT
+            # observable instead of inferred from an absence of events, and `failed` is separate
+            # because an exception is a defect while a refusal is a normal outcome (SC-007, FR-013).
+            "time_cells_width": (
+                int(self._time_clock.n_cells) if self._time_clock is not None else 0
+            ),
+            "time_cells_grown": (
+                int(self._time_clock.grown) if self._time_clock is not None else 0
+            ),
+            "time_cells_refused": (
+                int(self._time_clock.refused) if self._time_clock is not None else 0
+            ),
+            "time_cells_failed": (
+                int(self._time_clock.failed) if self._time_clock is not None else 0
+            ),
+            "time_cells_restore_refused": (
+                int(self._time_clock.restore_refused) if self._time_clock is not None else 0
+            ),
+            "affective_appraisal": self._appraised,  # C1: LEARNED (valence, arousal) appraisal (three-factor, gradient-free)
+            "task_set_active": self._task_set_active,  # C1: currently held task-set (set-shifting)
+            "task_switch_cost": self._task_switch_cost,  # C1: cost paid at the last set shift
+            "self_surprise_gen": self._self_surprise_gen,  # C1: LEARNED generative self-model prediction error (e-prop)
+            "grid_can_xy": self._grid_can_xy,  # C1: continuous-attractor SPIKING grid bump-integrated position
+            "emergent_emotion": self._emergent_emotion,  # C1 b2: self-organized (learned) emotion category from neuromod fusion
+            "n_emotions": self._n_emotions,  # C1 b2: number of emergent emotion prototypes grown
+            "imagined_best_action": self._imagined_best,  # C1 b2: counterfactual do()-operator top action (annotation, NEVER commanded)
+            "imagined_surprise": self._imagined_surprise,  # C1 b2: imagined-rollout surprise of the chosen action
+            "recursive_tom_false_beliefs": self._false_beliefs,  # C1 b2: agents holding divergent (false) higher-order beliefs (N-agent recursive ToM)
+            "attention_focus": self._attn_focus,  # C1 b3: LEARNED attention winner band + strength over the real percept
+            "connectome_reverberation": self._connectome_reverb,  # STRUCTURAL constant (topology only, computed once) -- see PROVENANCE
+            "connectome_propagation": self._connectome_propagation,  # LIVE: mean connectome network rate -- graded, 9 distinct values over 120 ticks
+            "region_coherence": self._region_coherence_val,  # C1 b3: cross-region Kuramoto coherence (biases workspace ignition)
+            "synfire_bound": self._bound,  # all-or-none synfire binding event this tick (gates the coherence->ignition bias)
+            # T032 theta audit surface (P4c: the cockpit reports what the brain MEASURES).
+            # These three give _theta_provenance its consumer and make a sweep hold visible:
+            # a held theta shows a pinned value, its provenance, and a rising refusal count.
+            "workspace_theta": (
+                round(float(self._reentrant.ignition_threshold), 4)
+                if self._reentrant is not None
+                else None
+            ),
+            "workspace_theta_provenance": (
+                self._reentrant._theta_provenance if self._reentrant is not None else None
+            ),
+            "theta_bias_refused": self._theta_bias_refused,
+            # T034: the report channel's declared consumer (brain.report_in) -- the typed
+            # workspace-report snapshot on the state the cockpit renders (P4c). THE
+            # runtime read matching the declared edge; the review measured the first
+            # draft's 'consumers' to be prose only.
+            "workspace_report": _report_snapshot(_ws),
+            # T081 (C5 row report_order, CHARGED 2026-09-16): the live charge margin of the SAME bus
+            # the line above snapshots -- (g_top - g_second) / g_top over the slots, the quantity the
+            # campaign's flip dose was read against. The function is IMPORTED from the instrument
+            # (`instruments/report_order_probe._t081_top_margin`), never re-implemented here: ONE
+            # mechanism (P2), so the number the cockpit prints and the number the probe scored come
+            # from the same body. None when there is no workspace -- a brain that has not built its
+            # arm has no margin, which is a state and not a 0.0. The licensed and refused sentences
+            # ride in brain_telemetry.PROVENANCE beside it, as temporal_binding's do. NOT CLAMPED,
+            # and it can read NEGATIVE: `_slot()` is the ADMISSION rank (P6's -_last_v repair), not
+            # the charge order, so the admitted head is not always the most charged pool (24 of 100
+            # ticks, measured 2026-09-16 -- the provenance carries the numbers). Clamping would make
+            # this number differ from the one the campaign scored, which is the whole point of the
+            # shared body.
+            "report_order_margin": (round(_t081_top_margin(_ws), 4) if _ws is not None else None),
+            # T046a: the |LP| facade's fed channels -- a REAL reported output (the panel:
+            # a write-only instance attribute is a sink, not a consumer; P4c puts what the
+            # brain measures on the state the cockpit renders). {} until perception feeds.
+            "learning_progress": (self._lp.lp_all() if self._lp is not None else {}),
+            # T047: the growth gate's latest per-region verdict + reason (the P8
+            # attribution, cockpit-visible) + the poisoned-row refusal count (refusals
+            # are counted at the feed, never raised into the sleep path's swallow).
+            # {} until the first gated refit; iterates the gate's OWN regions, not a
+            # hardcoded list (the panel: a per-region gate surfacing one literal).
+            "growth_gate": (
+                {
+                    **{
+                        r: {"grow": bool(d[-1][1]), "reason": d[-1][2]}
+                        for r in self._growth_stop.regions()
+                        if (d := self._growth_stop.decisions(r))
+                    },
+                    **(
+                        {"feed_refusals": self._growth_feed_refusals}
+                        if self._growth_feed_refusals
+                        else {}
+                    ),
+                }
+                if self._growth_stop is not None
+                else {}
+            ),
+            # rank 2 (2026-09-02): the grower's OWN report -- percepts observed, sleep ticks,
+            # the two floors `predict_accuracy` (top-level, above) must clear on the slice it
+            # was measured on (majority, persistence; None until a refit measured them), the
+            # brain's category count, and the wake percepts this brain failed to hand it.
+            # `predict_accuracy` and `grown_units` are NOT repeated here (state() carries one
+            # representation of a fact); the cockpit renders the floors beside its own
+            # `predict acc` row, because on a bursty percept stream the accuracy alone is
+            # mostly the stream's inertia (P4c/P8).
+            "neurogenesis": (
+                {
+                    **{
+                        k: v
+                        for k, v in self.neuro.state().items()
+                        if k not in ("goal", "grown_units", "predict_accuracy")
+                    },
+                    "feed_refusals": self._neuro_feed_refusals,
+                }
+                if self.neuro is not None
+                else {}
+            ),
+            # rank 2b: the prototype learners' persistence, TOP-LEVEL so it is visible on a host
+            # with no torch tier too -- None = restored clean or nothing to restore; a string
+            # names the refused, failed or dropped record; faults = percepts a learner could not
+            # take (a width mismatch, an exception) since construction, never swallowed silently
+            "prototypes_restore": self._prototypes_restore_note,
+            "prototypes_refused_kept": self._prototypes_kept,
+            "prototype_faults": self._prototype_faults,
+            "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
+            "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
+            "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)
+            "dominant_drive": self._dominant_drive,  # W8: the currently most-unmet homeostatic drive (interoceptive)
+            "drive_activity": self._drive_activity,  # C2 #11: the drive-vocabulary activity performed (rest/explore/socialize/fidget)
+            "crossmodal_handle": self._xmodal_handle,  # C2 #19: the TAUGHT bimodal object recognised this tick
+            "crossmodal_faults": self._xmodal_faults,  # T080 fold: bind() calls that raised (counted, handle cleared)
+            # T080 (C5 row temporal_binding, CHARGED 2026-09-16): the fraction of the last 200 awake
+            # ticks with ONE reported object for that tick's two latents; the licensed and refused
+            # sentences ride in brain_telemetry.PROVENANCE beside it, and on this daemon's
+            # independent streams it reads the null's rate (the pin measured the aligned one)
+            "crossmodal_bound_rate": (
+                round(sum(self._xmodal_bound_hist) / len(self._xmodal_bound_hist), 4)
+                if self._xmodal_bound_hist
+                else None
+            ),
+            "crossmodal_objects": len(
+                self._xmodal_known
+            ),  # C2 #19: bimodal objects the binder has learned
+            "pc_cortex_tier": self._pc_cortex_tier,  # "pc-cortex" (deep spiking predictive-coding cortex loaded, zero-dep serve via perceive_pc()) or "stdlib"
+            "nengo_tier": self._nengo_tier,  # "nengo" -> nengo is importable, so `snn-nengo-launch` can run the brain under nengo.Simulator. NOT a per-call offload path (nengo_compute retired v4.78, zero callers)
+            "braincog": self._braincog,  # BrainCog-adopted primitives: theory-of-mind false-belief + multisensory super-additivity index
+            "access_index": self._access_ema,  # ACCESS consciousness (global availability)
+            "access_ignited": bool(self._access_state.get("ignited", False)),
+            "sustained_access": round(
+                float(self._access_hold.get("strength", 0.0)), 3
+            ),  # W2e: cross-tick broadcast reverberation
+            "workspace_content": self._access_hold.get(
+                "content"
+            ),  # the content currently held in the global workspace
+            "n_bound": int(self._access_state.get("n_bound", 0)),
+            "arm_stopped": bool(self.brain.arm.arm.state().get("stopped", False)),
+            # E-STOP self-clears (owner-authorised 2026-08-03). Exported BESIDE `arm_stopped`
+            # deliberately: the pair is the diagnostic. `arm_stopped` False with a flat count is a
+            # calm arm; False with a CLIMBING count is an arm tripping and re-arming every few
+            # ticks, and those are the same picture from a status light. The brain may only clear
+            # when the breach predicate reads clear (autonomous_loop.py, step() section 1b).
+            "estop_self_clears": int(getattr(self.brain.arm, "_estop_clears", 0)),
+            # T037a: automated HOMEs refused because the latch was RESTORED from a previous
+            # process (only the cockpit's deliberate reset clears it). A climbing count with
+            # arm_stopped True is a restarted-and-frozen arm waiting for a human.
+            "restored_latch_refusals": int(
+                getattr(getattr(self.brain.arm, "arm", None), "latch_refusals", 0)
+            ),
+            "reflex_armed": True,
+            "pc_surprise": self._pc_surprise,  # live generative-percept prediction-error (Rao-Ballard settle; folds into metacog)
+            "da_level": round(
+                float(getattr(self.brain.arm, "_da_level", 0.0)), 4
+            ),  # phasic dopamine (TD-RPE + habenula anti-reward)
+            "rpe": round(
+                float(getattr(self.brain.arm, "_rpe", 0.0)), 4
+            ),  # reward-prediction error (the dopamine signal)
+            "map_position": (
+                list(getattr(getattr(self.brain.arm, "_allo", None), "position", ()) or ()) or None
+            ),  # allocentric cognitive map
+            "map_nearest": getattr(
+                self.brain.arm, "_allo_nearest", None
+            ),  # W4c: nearest recalled landmark (map now READ BACK)
+            "interval_ticks": self._interval_timer,  # INTERVAL TIMING: wake ticks since this episode began (temporal cognition)
+            "interval_weber_sd": round(
+                0.15 * self._interval_timer, 3
+            ),  # W4c: scalar-timing Weber SD (SD proportional to duration)
+            "attended_modality": int(
+                getattr(self.brain.arm, "_attended", -1)
+            ),  # covert attention: salient band (0=vis,1=temp,2=aud,3=dist)
+            "bound_modalities": int(
+                getattr(self.brain.arm, "_bound_modalities", 0)
+            ),  # claustrum cross-modal binding count
+            # `pci` was reported here until 2026-08-05. DELETED with its producer in _sleep_tick --
+            # see the block there for the measurement. The key is GONE rather than zeroed: the
+            # cockpit renders an absent key as an em-dash ("absent renders as an em-dash, never a
+            # zero bar", cockpit.py `fmt`), so removing it degrades to "no reading", whereas a
+            # retained 0.0 would have drawn as a real low integration score. Two consumers outside
+            # this file still refer to it and are NOT this pass's to edit: the `PCI` row in
+            # infra/cockpit.py and the "pci" entry in infra/brain_telemetry.py PROVENANCE
+            # (whose self-check asserts that entry is present -- it asserts on PROVENANCE, not on
+            # state(), so it still passes). Neither breaks: `brain_telemetry.snapshot()` copies
+            # PROVENANCE wholesale (`out["provenance"] = dict(PROVENANCE)`) and never cross-checks it
+            # against `state()`, and `verify_contract` only looks up DASHBOARD_KEYS, which has never
+            # contained "pci". VERIFIED BY RUNNING both, 2026-08-05, not by reading:
+            # `python -m snn_data_lake.infra.brain_telemetry` -> "contract clean", exit 0, and
+            # `python -m snn_data_lake.infra.cockpit` -> "contract clean", exit 0. Both are now
+            # stale and want removing -- the PROVENANCE tag in particular still promises a reading
+            # "sleep-only, refreshes every 4th night" beside a row that can now only be an em-dash.
+            # T082 (2026-09-16, 2.1): `tom_false_belief` DELETED -- it published `_tom_ok`, a
+            # constant computed at construction and True on every brain. `tom_live` stays and now
+            # reads the ONE recursive tracker.
+            "tom_live": self._tom_live(),  # LIVE dialogue-driven belief vs reality (None when idle; updated from chat)
+            "schemas": self._schemas,  # SCHEMA INDUCTION: derived prototype/schema triples kept last consolidation (ART+DistMult gated)
+            "skills": self._skills_state,  # bounded nightly skill FORMATION (per-domain competence; not general skill)
+            "neuro_device": (
+                getattr(self.neuro, "device", "off") if self.neuro is not None else "off"
+            ),  # sleep-tier GPU
+            "self_state": self_state,
+        }
+
+    _BENEVOLENCE_CUES = (
+        "evil",
+        "harm",
+        "dangerous",
+        "trust",
+        "kill",
+        "hurt",
+        "malicious",
+        "intent",
+    )
+
+    # distinct-from: LiveBrain.correct -- this is the canonical composition's entry;
+    #   the live learner owns the correction and its provenance.
+    def correct(self, message, intent):
+        """Teach intent recognition directly, without replying or dispatching a command."""
+        was = self.brain.correct(message, intent)
+        return {
+            "intent": intent,
+            "was": was,
+            "provenance": self.brain._ixn.provenance(message),
+        }
+
+    def correction_intents(self):
+        """The correction vocabulary, copied for callers such as the cockpit."""
+        return list(_IXN_INTENTS)
+
+    def _learned_route(self, message, human):
+        """Read before teaching; a failed inference must never prevent the stop path."""
+        try:
+            if human and self.route_consumption and getattr(self.brain, "_ixn", None) is not None:
+                return self.brain.route(message)
+        except Exception:
+            pass
+        return None
+
+    def _route_turn(self, message, human, pending, learned):
+        """Consume one proposed interpretation only with the person's confirmation."""
+        if not human or not self.route_consumption or getattr(self.brain, "_ixn", None) is None:
+            return None
+        tokens = _route_tokens(message)
+        if pending and tokens and tokens <= _AFFIRM:
+            cue, _ = _ROUTE_CUES[pending]
+            return self.brain.converse(cue, human=False), f"learned route: confirmed ({pending})"
+        if pending and tokens and tokens <= _NEGATE:
+            return (
+                "Understood -- I will not guess. Tell me more, or correct me on the chat page.",
+                f"learned route: declined ({pending})",
+            )
+        if tokens and tokens <= (_AFFIRM | _NEGATE):
+            return None
+        if learned in _ROUTE_CUES:
+            # distinct-from: reasoning/spike_chat_lake.py::LakeChat._pending_gf -- a number series awaiting
+            # the user's term; this is one pending interpretation of a chat turn.
+            self._route_pending = learned
+            _, topic = _ROUTE_CUES[learned]
+            return (
+                f"Did you mean to ask about my {topic}? Say yes and I will answer.",
+                f"learned route: clarify ({learned})",
+            )
+        return None
+
+    def respond(self, message, *, human=False):
+        """Reply as the whole brain, SPEAKING FROM THE SELF-MODEL (no fixed status template).
+
+        `human` (T037a): True only when a person typed `message` at the cockpit; the daemon's
+        transcript ingest leaves the default, and a non-human arm intent never actuates.
+
+        brain.chat() still runs every turn: it executes any gated arm command via the NL firewall +
+        gated arm, and teaches the spiking intent router. The REPLY text is then chosen by intent:
+          * a benevolence intent ('are you evil/dangerous?' ...) -> a plain, safe affirmation;
+          * a structured arm/lake COMMAND -> the deterministic firewall reply (NEVER the LM);
+          * free conversation -> the narrator introspects the self-model into a FRESH self-grounded
+            prompt, the brain-native acquired language organ generates on that prompt, and if it is
+            unavailable the reply is the narrator's own state-varying sentence (never a canned string).
+        SAFETY: arm/lake commands take the deterministic gated path; the LM's text is display-only
+        and is NEVER parsed as a motor command. No torch/weights -> narrator fallback."""
+        # G0(b) closing-report fold: only a person's turn consumes or clears the pending interpretation, so the
+        # daemon's human=False ingest between a clarification and the person's yes cannot erase it.
+        pending = None
+        if human:
+            pending, self._route_pending = self._route_pending, None
+        learned = self._learned_route(message, human)
+        # SECOND-ORDER ACCESS: read whether the current content reliably reached global availability
+        # through the spiking second-order monitor, and cache its hold. Consumes the workspace's
+        # de-saturated signals (availability / graded access strength / ignition success), so it
+        # carries real information now that those are no longer pinned.
+        if self._second_order is not None:
+            try:
+                self._second_order.observe(
+                    float(getattr(self, "_reentrant_availability", 1.0) or 0.0),
+                    float(getattr(self, "_reentrant_strength", 0.0) or 0.0),
+                    bool(self._access_state.get("ignited", False)),
+                    float(self._metacog_rel or 0.0),
+                )
+                self._second_order_hold = bool(self._second_order.hold())
+            except Exception:
+                self._second_order_hold = False
+        # SAFETY: classify the USER message on the firewall -- a structured arm/lake command must
+        # take the deterministic gated path, not the generative language model.
+        try:
+            is_command = self.brain._nl.interpret(message).get("kind") in ("arm", "lake")
+        except Exception:
+            is_command = False
+        try:
+            conv = self.brain.chat(message, human=human)
+        except Exception:
+            try:
+                conv = self.brain.converse(message, human=human)
+            except Exception:
+                conv = "I am the live brain."
+        # The prefrontal executive's goal is necessarily a MOTOR action (ENGAGE/OPEN/HOLD).
+        # Reframe so the reply leads with the DAEMON's goal (self-improvement); motor intent second.
+        conv = conv.replace(
+            "My current goal is ", "My goal is self-improvement -- my current motor intent is "
+        )
+        conv = conv.replace(
+            "My working-memory goal is ",
+            "My overall goal is self-improvement; my prefrontal motor intent is ",
+        )
+        st = self.state()
+        somatic = self._somatic_recall(
+            st
+        )  # CONSUME the affect-tagged episodic store (was write-only)
+        if not is_command:
+            self._tom_update(message)  # LIVE theory-of-mind: ingest belief statements from dialogue
+        reason_out = self.reason(
+            message
+        )  # consult the nightly-learned reasoning faculty (read-only)
+
+        low = str(message).lower()
+        if not is_command and low.split(None, 1)[0:1] in (["imagine"], ["picture"], ["visualize"]):
+            cue = message.split(None, 1)[1].strip() if len(message.split(None, 1)) > 1 else message
+            perc = self.imagine(cue)  # generative model DOWNWARD -> synthesized percept
+            core = (
+                f"I imagined it: running my generative model downward from the concept with no input, I "
+                f"synthesized a percept pattern {perc[:6]} (mental imagery -- the top-down synthesis "
+                f"mechanism; low-dim stimuli, not rich vision yet)."
+                if perc is not None
+                else conv
+            )
+            route = (
+                "Gf (mental imagery: top-down generative synthesis)"
+                if perc is not None
+                else "act (gated)"
+            )
+        elif not is_command and low.split(None, 1)[0:1] in (["parse"], ["diagram"]):
+            rose = self._rose_serve()
+            cue = message.split(None, 1)[1].strip() if len(message.split(None, 1)) > 1 else message
+            core = (
+                f"Constituency of '{cue}': {rose.parse(cue)} -- a VSA role-filler parse-tree spike-code "
+                "that unbinds back to head/parts (compositional STRUCTURE, not fluent generation)."
+                if rose is not None
+                else conv
+            )
+            route = "language (ROSE constituency parse)" if rose is not None else "act (gated)"
+        elif (
+            not is_command
+            and self._recursive_tom
+            is not None  # T082 (2.1): the ONE belief tracker gates the route
+            and any(
+                p in low
+                for p in (
+                    "do you understand",
+                    "what do you think i",
+                    "do you know what i",
+                    "read my mind",
+                    "theory of mind",
+                    "what am i thinking",
+                    "where will i look",
+                    "where would i look",
+                    "where do i look",
+                    "where do i think",
+                    "where do i believe",
+                    "what do i believe",
+                )
+            )
+        ):
+            core = self._tom_report()  # LIVE dialogue-driven belief vs reality (not a frozen flag)
+            route = "social cognition (theory of mind: live belief tracking)"
+        elif any(cue in low for cue in self._BENEVOLENCE_CUES):
+            core = self.narrator.benevolence()  # deterministic; contains 'not evil'
+            route = "benevolence (safe affirmation)"
+        elif is_command:
+            core = conv  # LM NEVER used for a command
+            route = "act (gated arm/lake command)"
+        elif reason_out is not None:
+            # Gc (LEARNED reasoning): the transitive-inference faculty that gets smarter every night
+            # answers, so its accumulated skill CHANGES the reply instead of sitting in telemetry.
+            core = reason_out[0]
+            route = f"Gc (learned reasoning faculty; held-out {reason_out[1]:.0%})"
+        elif self._grounded(conv):
+            # Gc (CRYSTALLIZED intelligence): a real memory / knowledge / state answer (a matched intent
+            # or a reasoning-KB hit) -> SPEAK it, even when the brain is generally uncertain. Crystallized
+            # facts do not need fluid-reasoning confidence; they ground the reply. This is BEFORE the
+            # metacog hold so uncertainty only hedges OPEN conversation, not remembered facts.
+            core = conv
+            route = "Gc (crystallized: memory/knowledge/state)"
+        elif (turn := self._route_turn(message, human, pending, learned)) is not None:
+            core, route = turn
+        elif self._metacog_hold or self._second_order_hold:  # HOLD (low reliability OR the
+            # second-order monitor says the content did not reliably reach access) -> abstain/hedge
+            intro = self.narrator.introspect(self.self_model, message=message)
+            core = "I am not fully certain right now, but " + intro.summary
+            route = (
+                "Gf (second-order access hold: abstain)"
+                if self._second_order_hold and not self._metacog_hold
+                else "Gf (metacognitive hold: abstain)"
+            )
+        else:
+            # Gf (FLUID intelligence): genuinely open conversation the grounded intents did not claim
+            # -> produce it with the brain's own acquired language center (narrator fallback if babbly).
+            intro = self.narrator.introspect(self.self_model, message=message)
+            gen = self._language(intro.prompt)
+            core = gen if gen else intro.summary  # deterministic FRESH narrator fallback
+            route = (
+                "Gf (fluid: acquired language center)" if gen else "Gf (fluid: narrator summary)"
+            )
+
+        reply = core.encode("ascii", "ignore").decode()  # LM text may be non-ASCII; enforce
+        if (
+            somatic is not None and not is_command
+        ):  # fold the recalled somatic marker into free conversation
+            reply = reply + somatic["note"]
+        if not is_command:  # W9: reconstructive EPISODIC recall now DRIVES output (was write-only)
+            if self._episodic is not None and any(
+                c in low for c in ("remember", "recall", "last time", "what did you do")
+            ):
+                try:
+                    cue = {
+                        "who": "self"
+                    }  # C1 #17: CONTENT-ADDRESS the recall by slots parsed from the query (was a constant cue)
+                    _aff = next(
+                        (
+                            w
+                            for w in (
+                                "scared",
+                                "afraid",
+                                "sad",
+                                "angry",
+                                "happy",
+                                "calm",
+                                "joy",
+                                "fear",
+                                "anger",
+                            )
+                            if w in low
+                        ),
+                        None,
+                    )
+                    if _aff:
+                        cue["affect"] = {
+                            "scared": "fear",
+                            "afraid": "fear",
+                            "angry": "anger",
+                            "happy": "joy",
+                        }.get(_aff, _aff)
+                    for _kw in (
+                        " at ",
+                        " in ",
+                        " near ",
+                    ):  # a place token after at/in/near -> the where slot
+                        if _kw in (" " + low + " "):
+                            _tail = (" " + low + " ").split(_kw, 1)[1].split()
+                            if _tail:
+                                cue["where"] = _tail[0].strip(".,!?'\"")
+                            break
+                    epi = self._episodic.complete(cue)
+                    e = (epi or {}).get("episode")
+                    # baseline-relative annotation floor (policy-1): the brain's running 25th-percentile
+                    # recall confidence once it has enough samples; honest-null to the prior 0.2 during warmup.
+                    _rcq = (
+                        self._recall_conf_calib.result()
+                        if self._recall_conf_calib is not None
+                        else None
+                    )
+                    _rc_th = (
+                        _rcq["value"]
+                        if (_rcq and _rcq.get("value") is not None and _rcq.get("n", 0) >= 50)
+                        else 0.2
+                    )
+                    if not (e and (epi or {}).get("confidence", 0.0) > _rc_th):
+                        # T057: the reconstruction did not clear the floor -- ask THE LAKE
+                        # window before saying "I don't remember". The gate is STRUCTURAL,
+                        # not a tuned constant: min_conf=1.0 means every slot of the cue
+                        # must be VERIFIED str-equal on the returned episode (lake_recall's
+                        # content confidence), which is the retired exact-scan's own bar --
+                        # a partially-matching neighbour is never spoken as a memory.
+                        _lk = self.recall_episode_durable(cue, min_conf=1.0)
+                        if _lk.get("source") == "lake" and _lk.get("episode"):
+                            _le = _lk["episode"]
+                            _lm = _lk.get("margin")
+                            reply = reply + (
+                                f" (recalled from the durable lake: I "
+                                f"{_le.get('what', 'acted')} at '{_le.get('where')}' feeling "
+                                f"{_le.get('affect', 'calm')}"
+                                + (f", margin {_lm:.1f} over the null" if _lm is not None else "")
+                                + ".)"
+                            )
+                    if e and (epi or {}).get("confidence", 0.0) > _rc_th:
+                        reply = reply + (
+                            f" (recalled: I {e.get('what', 'acted')} at '{e.get('where')}' feeling "
+                            f"{e.get('affect', 'calm')} -- reconstructed from a partial cue.)"
+                        )
+                        # C2 (memory): the DURABLE consolidated store now drives output too -- confirm the
+                        # reconstructed episode against the sparse attractor that survived sleep replay, so
+                        # consolidation is a spoken memory property, not telemetry. Honest: a miss says so.
+                        if self._episode_consolidator is not None:
+                            try:
+                                dur = self._episode_consolidator.recall_episode(
+                                    self._episode_consolidator.encode(e)
+                                )
+                                if (dur or {}).get("confidence", 0.0) > 0.0:
+                                    reply = reply + (
+                                        f" (durable: that episode is held verbatim in my consolidated store"
+                                        f" [{self._episode_retained:.0%} of episodes still recoverable after replay].)"
+                                    )
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+            if self._affect_core is not None and any(
+                c in low
+                for c in (  # W9: affective EMPATHY drives output
+                    "i feel",
+                    "i'm feeling",
+                    "makes me",
+                    "i'm sad",
+                    "i'm happy",
+                    "i'm scared",
+                    "i'm angry",
+                    "i am sad",
+                )
+            ):
+                try:
+                    ov, oa = (
+                        (-0.6, 0.6)
+                        if any(w in low for w in ("sad", "scared", "angry", "afraid"))
+                        else (0.6, 0.5)
+                    )
+                    nv, na = self._affect_core.empathize(ov, oa)
+                    # C (Brain-Cog social): observed DISTRESS (ov<0) now sets a decaying ENGAGE-to-
+                    # help DRIVE the arm consumes (learned three-factor in _route_percept_to_action),
+                    # turning empathy from a narration string into a consumed behavioural signal. The
+                    # magnitude is the resonated own-aversiveness after empathizing; the reflex/E-STOP
+                    # and BG caution still preempt, and no new actuator route is added.
+                    if ov < 0.0:
+                        self._help_drive = max(0.0, min(1.0, -float(nv) + 0.4 * float(na)))
+                    reply = reply + (
+                        f" (empathy: sensing your feeling, my affect shifted toward it -- I now feel "
+                        f"{self._affect_core.recognize(nv, na)}.)"
+                    )
+                except Exception:
+                    pass
+        if (
+            not is_command
+        ):  # C1 b2/b3: the built faculties DRIVE conversational output (not just telemetry)
+            try:
+                if self._region_coherence_val and any(
+                    c in low
+                    for c in (
+                        "aware",
+                        "conscious",
+                        "integrated",
+                        "your mind",
+                        "how do you feel",
+                        "coherent",
+                    )
+                ):
+                    reply = reply + (
+                        f" (integration: my cross-region coherence is {self._region_coherence_val:.2f}"
+                        + (
+                            f", currently feeling {self._emergent_emotion}"
+                            if self._emergent_emotion is not None
+                            else ""
+                        )
+                        + " -- a functional access/binding readout, NOT a claim of subjective experience.)"
+                    )
+                if self._imagined_best is not None and any(
+                    c in low for c in ("what if", "imagine", "suppose", "if you")
+                ):
+                    # Report the imagination ALREADY rolled this tick from the REAL feature vector
+                    # (_c1_tick -- this said `_wake_c1_faculties`, a name that appears nowhere else in the repo).
+                    # It used to re-run the forward model here on a literal
+                    # [0.5]*9 constant, so the spoken answer described a state the brain was never in.
+                    reply = reply + (
+                        f" (imagining it: rolling a learned forward model over my options from my"
+                        f" actual current state I'd lean '{self._imagined_best}'"
+                        f" [imagined surprise {self._imagined_surprise:.2f}]"
+                        " -- a counterfactual do()-simulation, imagined not enacted.)"
+                    )
+                if self._false_beliefs and any(
+                    c in low
+                    for c in ("believe", "think", "know", "false belief", "mistaken", "what does")
+                ):
+                    reply = reply + (
+                        f" (theory of mind: I'm tracking a divergent belief for {', '.join(self._false_beliefs)}"
+                        " -- a first-/higher-order false belief inferred from who witnessed what.)"
+                    )
+                if self._time_clock is not None and any(
+                    c in low
+                    for c in ("how long", "how much time", "duration", "elapsed", "how many ticks")
+                ):
+                    reply = reply + (
+                        f" (interval sense: my spiking clock reads ~{self._elapsed_time:.1f} ticks elapsed"
+                        f" (Weber sd {self._timing_sd:.2f}, growing with duration) -- a population time-cell code.)"
+                    )
+            except Exception:
+                pass
+        if not is_command and self._drives is not None:
+            try:  # C2 #11: a conversational turn IS the social-servicing activity
+                self._drives.tick("socialize")
+                self._dominant_drive = self._drives.dominant_drive()
+                self._drive_activity = "socialize"
+            except Exception:
+                pass
+        if not is_command:  # KEEP LEARNING language from live turns, like a human:
+            try:  # spiking predictive-coding exposure + local plasticity,
+                lm = self._lm_serve()  # NOT gradient training (durably saved on the sleep tick)
+                if lm is not None:
+                    lm.expose(message)
+            except Exception:
+                pass
+        return {
+            "reply": reply,
+            "route": route,
+            "somatic_recall": (
+                None
+                if somatic is None
+                else {
+                    "tick": somatic["tick"],
+                    "valence": somatic["valence"],
+                    "arousal": somatic["arousal"],
+                }
+            ),
+            **st,
+        }
+
+    def _somatic_recall(self, st):
+        """CONSUME the affect-tagged episodic store (faculties/affective_memory) that was WRITE-ONLY on
+        the live path -- recall_by_emotion was never called, so emotional memory could not bias cognition.
+        Given the CURRENT affect (self-model valence + an arousal proxy = |rpe|), retrieve the somatic-marker
+        episode: the past percept whose STORED affect is closest to how the brain feels now (Damasio somatic
+        marker -- 'when was I last this way?'). Returns a marker dict or None. Only CHARGED episodes surface
+        (|valence| >= 0.2), so an empty or affectively-neutral history leaves respond() byte-identical."""
+        store = getattr(getattr(self.brain, "arm", None), "_affmem", None)
+        if store is None or not getattr(store, "episodes", None):
+            return None
+        v = float(st.get("self_state", {}).get("valence", 0.0) or 0.0)
+        a = min(
+            1.0, abs(float(st.get("rpe", 0.0) or 0.0))
+        )  # present arousal proxy: phasic RPE magnitude
+        eps = store.recall_by_emotion(
+            v, a, k=1
+        )  # somatic-marker retrieval: nearest to PRESENT affect
+        ep = eps[0] if eps else None
+        if (
+            ep is not None and abs(ep.valence) >= 0.2
+        ):  # present affect matched a charged past episode
+            basis = "how I feel now is closest to"
+        else:
+            # present affect is ~neutral -> fall back to the single most SALIENT stored memory: a genuinely
+            # strong emotional episode still colors present appraisal at rest (Damasio). Only a real one surfaces.
+            sal = max(store.episodes, key=lambda e: abs(e.valence) + e.arousal)
+            if abs(sal.valence) < 0.5:  # no genuinely charged memory -> stay silent
+                return None
+            ep, basis = sal, "my strongest felt memory is"
+        tone = "aversive" if ep.valence < 0 else "pleasant"
+        note = (
+            f" (somatic marker: {basis} a past {tone} episode from tick {ep.tick} "
+            f"[valence {ep.valence:+.2f}, arousal {ep.arousal:.2f}] -- recalled by affect, not content.)"
+        )
+        return {
+            "note": note,
+            "tick": ep.tick,
+            "valence": round(ep.valence, 3),
+            "arousal": round(ep.arousal, 3),
+        }
+
+    def _tom_update(self, message):
+        """LIVE theory of mind: update the belief model from THIS turn's statement. Grammar
+        '<subj> put/moved the <obj> in/to the <loc>'. Witnessed (no absence marker) -> the present set is
+        {user, brain}; UNWITNESSED (an absence marker) -> {brain} only, so the user keeps a now-FALSE
+        belief. The belief tracking is real; only the surface parse is hand-specified. Returns a short
+        event string, or None when the turn carries no belief statement.
+
+        T082 (2026-09-16, evidence/t082-social-cognition.md 2.1) -- THE MERGE. This method fed THREE
+        trackers the same statement (`_tom`, `_tom2`, `_recursive_tom`) and the chat, the state key and
+        the telemetry each read a different one, so one dialogue turn had three answers (fact 1). It now
+        feeds `_recursive_tom` ONLY, through the SYMMETRIC event `recursive_tom.t082_feed`: for a present
+        set P, `observe_event(a, "believes", loc, witnesses=P)` once for EACH a in sorted(P), so every
+        present agent's own path AND every chain among the present update while an absent agent's paths
+        stay stale. The old subject-only call wrote the SUBJECT's path alone, which left the brain's own
+        path pinned at its last unwitnessed location and `divergence("user", "brain")` reading True on
+        every later witnessed episode -- a persistent SPURIOUS nested false belief, measured at 5 of 12
+        episodes on the territory probe (fact 4) and reconstructed as red R6.
+
+        The content is the location NAME: the `_tom_locs` name->id map and its capacity refusal are gone
+        with `_tom`, so the tracker is no longer capped at four dialogue locations.
+
+        `_false_beliefs` is now ONE derivation on BOTH branches (`recursive_tom.t082_false_beliefs`):
+        the first-order holders plus the diverging ordered pairs. It used to be the first-order list on
+        the unwitnessed branch and the pair list on the witnessed branch, so its meaning changed with
+        the last statement's type -- and the arm's caution term reads `len()` of it."""
+        if self._recursive_tom is None:
+            return None
+        low = str(message).lower()
+        m = _TOM_PLACE.search(low)
+        if not m:
+            return None
+        obj, loc = m.group("obj").strip(), m.group("loc").strip()
+        if not obj or not loc:
+            return None
+        unwitnessed = any(mk in low for mk in _TOM_ABSENT) and (
+            self._recursive_tom.world_content() is not None
+        )
+        self._tom_obj = obj
+        try:
+            from snn_data_lake.faculties.recursive_tom import t082_false_beliefs, t082_feed
+
+            t082_feed(self._recursive_tom, {"brain"} if unwitnessed else {"user", "brain"}, loc)
+            first, nested = t082_false_beliefs(self._recursive_tom)
+            self._false_beliefs = list(first) + list(nested)
+        except Exception:
+            pass
+        if unwitnessed:
+            return f"unwitnessed move: the {obj} is now at '{loc}' (you did not see it)"
+        return f"witnessed: you and I both saw the {obj} at '{loc}'"
+
+    def _tom_report(self):
+        """Report the LIVE (dialogue-driven) theory-of-mind state, not a frozen flag: where the user BELIEVES
+        the tracked object is vs where it ACTUALLY is, flagging a false belief on divergence.
+
+        T082 (2.1): re-pointed from `_tom` / `_tom2` to the ONE recursive tracker -- first order
+        `predict_first_order("user")` against `world_content()`, the second-order line from
+        `predict_nested("user", "brain")`. The closing sentence no longer quotes a birth-time
+        false-belief 'proof': that constant was computed at construction, True on every brain, and is
+        deleted with the run that produced it."""
+        rt = self._recursive_tom
+        if rt is not None and self._tom_obj is not None and rt.world_content() is not None:
+            bname, wname = rt.predict_first_order("user"), rt.world_content()
+            if bname != wname:
+                extra = ""
+                try:  # W9: the SECOND-ORDER line -- what you think I believe
+                    s2 = rt.predict_nested("user", "brain")
+                    if s2 is not None:
+                        extra = f" (2nd-order: and you'd expect ME to think it is at '{s2}')."
+                except Exception:
+                    pass
+                return (
+                    f"You would look for the {self._tom_obj} at '{bname}' -- that is where you last saw it -- but "
+                    f"it is actually at '{wname}'. I track your belief SEPARATELY from reality, so I know you hold "
+                    "a FALSE belief (you did not witness the move). Inferred, not read from your mind."
+                    + extra
+                )
+            return (
+                f"You and I both take the {self._tom_obj} to be at '{bname}', matching reality -- no divergence "
+                "right now. I track your belief separately from the world; here they agree."
+            )
+        return (
+            "I keep a model of your mind SEPARATE from the world, so I can tell when your belief differs from "
+            "reality. Tell me e.g. 'I put the ball in the basket', then 'you moved it to the box while I was "
+            "away', then ask 'where will I look?'. Inferred, not certain -- I model your knowledge, I do not "
+            "read your mind."
+        )
+
+    def _tom_live(self):
+        """Compact live-ToM telemetry for state(): tracked object + user belief vs world (None when idle).
+        T082 (2.1): re-pointed to the ONE recursive tracker, which reads location NAMES -- the
+        `_tom_locs` id->name inversion is gone with the id map."""
+        rt = self._recursive_tom
+        if rt is None or self._tom_obj is None or rt.world_content() is None:
+            return None
+        bel, wor = rt.predict_first_order("user"), rt.world_content()
+        return {
+            "obj": self._tom_obj,
+            "belief": bel,
+            "world": wor,
+            "false_belief": bool(bel != wor),
+        }
+
+    @staticmethod
+    def _grounded(reply):
+        """True when `reply` is a GROUNDED answer (a matched memory/goal/safety/attention/consciousness/
+        arm intent, or a reasoning-KB hit) rather than live_brain.converse's generic 'I can tell you my
+        goal...' capability fallback. Grounded answers are Crystallized-intelligence content and are
+        spoken as-is; ONLY the generic fallback (open conversation) hands off to fluid generation."""
+        r = (reply or "").strip().lower()
+        if not r:
+            return False
+        return not ("i can tell you my goal" in r or "not a general chatbot" in r)
+
+    def reason(self, message):
+        """Consult the nightly-learned TRANSITIVE-REASONING faculty (self._reason, trained every night
+        in _enter_sleep; its held-out accuracy provably RISES across nights). Returns (reply, confidence)
+        when the message is a reasoning/inference question the faculty can speak to, else None. It reads
+        the learned rank vector + runs a NEVER-TAUGHT held-out inference, so the accumulated nightly skill
+        actually CHANGES the reply (enacts, not just measures). READ-ONLY: drives no motion, no actuator
+        route -- this is a conversation faculty only."""
+        low = str(message).lower()
+        cues = (
+            "reason",
+            "infer",
+            "logic",
+            "deduc",
+            "transitive",
+            "rank",
+            "ordering",
+            "figure out",
+            "think through",
+            "smarter",
+            "learned to think",
+            "work out",
+        )
+        if not any(c in low for c in cues):
+            return None
+        env, learner = getattr(self, "_reason_env", None), getattr(self, "_reason", None)
+        if env is None or learner is None:
+            return None
+        try:
+            acc = learner.held_out_accuracy(env)  # nightly-learned competence (rises across nights)
+            demo = ""
+            ho = env.heldout_pairs()
+            if ho:  # DEMONSTRATE on a never-taught, non-adjacent pair
+                a, b = ho[0]
+                got = learner.decide(env.encode(a), env.encode(b))
+                demo = (
+                    " On an ordering it was never taught, it "
+                    + ("correctly infers" if got == env.label(a, b) else "cannot yet infer")
+                    + " the relation by transitivity."
+                )
+            reply = (
+                f"My transitive-reasoning faculty has learned to {acc:.0%} held-out accuracy over "
+                f"{self._nights} nights of sleep-consolidation -- genuine inference, never taught the "
+                f"answers.{demo}"
+            )
+            return reply, float(acc)
+        except Exception:
+            return None
+
+    def _lm_serve(self):
+        """The brain's language organ is now ACQUIRED, not imported. faculties/language_acquisition learns
+        language ONLINE like a human -- spiking predictive coding + local spike-timing plasticity, from
+        exposure, no gradient training and no pretrained weights. Lazily built + cached; keeps learning
+        as the brain converses (each turn's text is fed back via expose() in respond()). Returns None on
+        any failure so `_language` falls back to the narrator's fresh self-grounded summary.
+        HONEST: a small brain-native learner is PRIMITIVE (word-like fragments, not fluent) -- the
+        coherence guard in `_language` keeps a too-babbly generation from replacing the narrator."""
+        if getattr(self, "_acq_lm", "unset") == "unset":
+            try:
+                from snn_data_lake.faculties.language_acquisition import load_lm
+
+                self._acq_lm = load_lm(seed=self._seed)
+                if self._acq_lm_blob is not None:  # never-forget: what it learned in prior runs
+                    try:
+                        self._acq_lm.load(self._acq_lm_blob)
+                    except Exception:
+                        pass
+                    self._acq_lm_blob = None
+            except Exception:
+                self._acq_lm = None
+        return self._acq_lm
+
+    def _rose_serve(self):
+        """The ROSE grounded-language faculty (gap #3): VSA role-filler CONSTITUENCY + KB-grounded
+        semantics + a forward-served SLDA competence head. Lazily built + cached; returns None on any
+        failure (deps absent) so callers degrade. HONEST: compositional-structure + grounded-semantics
+        MECHANISM, not fluent GPT-level generation."""
+        if getattr(self, "_rose", "unset") == "unset":
+            try:
+                from snn_data_lake.faculties.rose_language import RoseLanguage
+
+                self._rose = RoseLanguage(seed=self._seed)
+            except Exception:
+                self._rose = None
+        return self._rose
+
+    def _language(self, prompt):
+        """Generate a grounded conversational reply with the brain-native acquired language organ
+        (faculties/language_acquisition) on the prompt the narrator already built from the self-model.
+        Returns "" if unavailable (caller falls back to the narrator's fresh summary). The text is
+        DISPLAY-ONLY -- it is never parsed as a motor command (arm commands route via the firewall)."""
+        lm = self._lm_serve()
+        if lm is None:
+            return ""
+        try:  # COOL decode + refinements -> coherent
+            gen = lm.generate(
+                prompt,
+                max_tokens=64,
+                temperature=0.5,
+                top_p=0.5,
+                stop=["\n", "Q:", "A:", "\nHuman:", "\nUser:"],
+                repetition_penalty=1.3,
+                min_p=0.05,
+                best_of=3,
+            )
+        except Exception:
+            gen = ""
+        gen = gen.translate(
+            {0x2019: "'", 0x2018: "'", 0x201C: '"', 0x201D: '"', 0x2014: "-", 0x2013: "-"}
+        )  # smart punctuation -> ASCII so
+        gen = (
+            " ".join(gen.split()).encode("ascii", "ignore").decode().strip()
+        )  # contractions survive
+        gen = self._finish_sentence(gen)  # cut a dangling partial sentence
+        if not self._coherent(gen):  # reject degenerate/number-leak -> narrator
+            return ""
+        return gen
+
+    @staticmethod
+    def _finish_sentence(text):
+        """Trim a dangling partial sentence so a reply never ends mid-word ('...was to be,'): keep up
+        to the LAST . ! ? . If there is no sentence terminator (a single unfinished clause), return
+        the text unchanged (the coherence guard + the higher token budget handle that case)."""
+        cut = max(text.rfind("."), text.rfind("!"), text.rfind("?"))
+        return text[: cut + 1].strip() if cut >= 0 else text
+
+    @staticmethod
+    def _coherent(text):
+        """Cheap reject of degenerate base-LM output (empty, too short, or mostly digits/symbols) so
+        respond() falls back to the deterministic narrator summary (always coherent + on-voice)."""
+        words = text.split()
+        if len(words) < 2:
+            return False
+        letters = sum(c.isalpha() for c in text)
+        digits = sum(c.isdigit() for c in text)
+        return letters >= 4 and digits <= letters
+
+    def imagine(self, cue):
+        """MENTAL IMAGERY (gap #7): run the live generative model DOWNWARD from a concept -- clamp the
+        top cause to a cue-derived code and synthesize a percept-space pattern with NO sensory input
+        (the generative direction of predictive coding). Representation-only; the live inference state
+        is saved + restored so it is undisturbed. HONEST CEILING: the concept->cause map is a
+        deterministic code (not learned semantics) and percepts are low-dim safe stimuli -- this is the
+        imagery MECHANISM (top-down synthesis), not rich visual imagination yet. Returns the imagined
+        percept vector, or None if the generative model is not built."""
+        pc = getattr(self.brain, "_pc", None)
+        if pc is None:
+            return None
+        try:
+            import random as _random
+            import zlib as _zlib
+
+            rng = _random.Random(_zlib.crc32(str(cue).encode()) & 0x7FFFFFFF)
+            saved = pc.state  # save the live inference state
+            r2 = [rng.random() for _ in range(pc.d_r2)]  # concept -> top-cause code
+            pc.set_state([0.0] * pc.d_r1, r2)
+            pc.set_state(pc.predict_r1(), r2)  # top-down: r2 -> r1
+            percept = [
+                round(float(v), 4) for v in pc.reconstruct()
+            ]  # r1 -> imagined percept (no input)
+            pc.set_state(*saved)  # restore -> live inference undisturbed
+            return percept
+        except Exception:
+            return None
+
+    def self_improve(self, target, edit_fn, utility_fn=None):
+        """SELF-MODIFICATION (Wave 4B, human-authorized, operator-invoked, gated): propose ONE candidate
+        self-improvement to a WHITELISTED non-safety reasoning module, build + test it FULLY in an
+        ISOLATED OUTSIDE COPY of the repo (run_selfchecks + ruff + a crc32 protected-byte-identity firewall
+        over the 9 safety/verifier files + a STRICT monotonic-improvement gate), and return a VERIFIED
+        proposal. It NEVER touches the real tree or the safety envelope, applies NOTHING live, and is NOT
+        wired into any tick/sleep loop -- it only runs when a human calls it AND env NORD_SELFMOD=1 (the
+        runtime off-switch). Returns the proposal dict (status accepted/rejected/disabled/error). Applying
+        an accepted proposal remains a separate, human-gated step. HONEST: a verifier-gated proposer, not
+        an autonomous intelligence explosion; it can only ever tighten non-safety reasoning code."""
+        try:
+            from snn_data_lake.infra.self_mod_harness import SelfModHarness
+
+            h = SelfModHarness(
+                enable=True, seed=self._seed, require_improvement=True, require_ruff=True
+            )
+            return h.propose(target, edit_fn, utility_fn)
+        except Exception as e:
+            return {"status": "error", "reason": f"{type(e).__name__}: {e}"}
+
+    def _flush_growth(self):
+        """Write the grown neural substrate into the ONE durable lake. True if a record was written.
+
+        ONE mechanism, TWO callers -- the sleep tick and `close()`. It is a method rather than a
+        second copy of the save because the two callers want the identical gate, and a duplicated
+        persistence path is how the two ends drift until only one of them is correct (P2).
+
+        Gated on `substrate_is_retained()` and NEVER on `grown_units > 0`: those two came apart for
+        the whole life of this feature -- the counter read 8..120 while the model behind it was
+        collected at the end of every refit -- so gating on the count is exactly how a counter gets
+        written and an empty engine restored.
+
+        WHY close() NEEDS THIS, measured 2026-08-16. Before this existed, growth reached the lake
+        ONLY on a sleep tick, and the save LAGS the growth that caused it. Two processes, same seed:
+        a brain ticked until `grown_units` rose and then exited kept **0 of 2 units** and wrote ZERO
+        records; a brain given 200 further ticks exited holding 3 units and restored **5**, because
+        the last sleep-tick save had caught a PRE-PRUNE snapshot. So the lake did not hold the brain
+        that exited -- it held whichever moment the cadence happened to catch, which is the P4b
+        failure ("a restart is not amnesia") in both directions at once: too little and too much.
+
+        The bare `except` is deliberate and matches the sleep tick's contract -- persistence must
+        never take down the caller -- but note it makes every failure here SILENT, so the only
+        honest proof this fires is a record counted on disk from another process.
+        """
+        if not self._persist or self.neuro is None:
+            return False
+        try:
+            if not self.neuro.substrate_is_retained():
+                return False
+            from snn_data_lake.substrate.home import save_growth
+
+            save_growth(self.neuro.growth_state_bytes())
+            return True
+        except Exception:
+            return False
+
+    # distinct-from: engine/autonomous_loop.py -- the tapped envelope passage (motion, T037).
+    #   distinct-from: infra/brain_native_selfbuild.py -- ranks self-build candidates.
+    #   distinct-from: faculties/percept_surprise.py, faculties/dopamine_nuclei.py -- manifest port
+    #   registrants. distinct-from: substrate/lake_segments.py -- the lake engine's segment
+    #   writer. Phrase overlap on 'specs/022'/'write' only; this persists prototypes. Sites read.
+    def _flush_prototypes(self):
+        """specs/022 audit s8 rank 2b: write the brain's three PERCEPT prototype learners -- the
+        arm loop's context learner, the vision learner, the audio learner -- into the ONE lake
+        under the named-state record `growing_learners.json` (`_T_STATE`; superseded history is
+        dropped on consolidation; unchanged state writes nothing). Same two callers as
+        `_flush_growth` -- the night's persist block and `close()` -- for the same reason: one
+        persistence path. True if a record was written. Absent learners are recorded as None so a
+        restore never invents one; a brain that has recruited NOTHING writes nothing (the
+        `save_growth` contract: "no substrate" is not a record). The same record carries the other
+        live learned stores (P4b, policy audit pa-p4bd-3): the arm's Q-table over these ids
+        (`arm.q`), the affect integrator's emotion SOM (`n_emotions`) and the lifelong
+        consolidator's learner with its labels, utilities and task index (`lifelong_units`); its
+        replay memory is derived and rebuilt at restore, not written. A sub-record the restore
+        refused is written back UNCHANGED until its live store holds something -- it learns afresh,
+        or the restore adopted a kept record for it -- then the live store supersedes it in this
+        record, the refused bytes are kept under their own name (`_keep_refused`) and the restore
+        note says so (`superseded: [...]`). A keep that fails leaves the refused record carried
+        for the next flush's keep and still writes the live store here, never the refused bytes
+        over it (m5); if no later flush keeps it (this was `close()`), those bytes are lost -- the
+        one path that loses a refused record. A store can learn before the first flush -- the night
+        learns a lifelong task before its flush, the SOM learns on every wake tick -- and that
+        learning is never what loses one (R2-M1). A carried q goes with a superseded arm: its ids
+        name the old arm."""
+        if not self._persist:
+            return False
+        try:
+            from snn_data_lake.substrate.home import named_states, save_state
+
+            if not (
+                self.brain.arm.learner.n_units
+                or (self._vis_learner is not None and self._vis_learner.n_units)
+                or (self._aud_learner is not None and self._aud_learner.n_units)
+                or (self._affect_int is not None and self._affect_int.n_emotions)
+                or self._ll.n_units
+            ):
+                return False
+            durable_units = int(self.brain.arm.learner.n_units)  # before the save: what it holds
+            vis, aud, aff = self._vis_learner, self._aud_learner, self._affect_int
+            arm = self.brain.arm.learner.state_dict()
+            stores = {  # name: (its record, whether the live store has learned anything)
+                "arm": (arm, self.brain.arm.learner.n_units > 0),
+                "vis": (vis.state_dict() if vis else None, bool(vis and vis.n_units)),
+                "aud": (aud.state_dict() if aud else None, bool(aud and aud.n_units)),
+                "q": (
+                    dict(self.brain.arm.q_state_dict(), arm=_record_id(arm)),
+                    bool(self.brain.arm.q),
+                ),
+                "affect": (aff.state_dict() if aff else None, bool(aff and aff.n_emotions)),
+                "lifelong": (
+                    dict(self._ll.state_dict(), i=int(self._ll_i), seed=self._seed),
+                    self._ll.n_units > 0,
+                ),
+            }
+            rec = {k: state for k, (state, _) in stores.items()}
+            carried = self._prototypes_carried
+            superseded = {k for k in carried if k in stores and stores[k][1]}
+            if "arm" in superseded and "q" in carried:
+                superseded.add("q")
+            kept = []
+            for k in sorted(superseded):
+                if self._keep_refused(k, carried[k]):  # writes the lake
+                    kept.append(k)
+            self._prototypes_carried = {k: v for k, v in carried.items() if k not in kept}
+            if kept:
+                self._prototypes_restore_note = (
+                    f"{self._prototypes_restore_note}; superseded: {kept}"
+                )
+                self._prototypes_kept = len(named_states(REFUSED_PREFIX))
+            # P4b/m5: carry refusals no live store superseded; a failed keep stays carried, not here
+            rec.update({k: v for k, v in self._prototypes_carried.items() if k not in superseded})
+            saved = bool(save_state(PROTOTYPES_STATE, rec))
+            if saved and getattr(self, "_r2_proto_flushed", None) is not None:
+                # R2 P3 D2: the count the lake now provably holds (a percept's `proto_flushed`)
+                self._r2_proto_flushed = durable_units
+            return saved
+        except Exception:
+            return False
+
+    @staticmethod
+    def _keep_refused(store, sub):
+        """R2-M1: a refused sub-record its live store supersedes is KEPT, under its own named state
+        `growing_learners.refused.<store>.<id>.json` -- one per distinct record, never superseded,
+        so neither the next flush nor consolidation drops it. Its reader is the restore, which
+        retries a refused store from these records, newest first (R3-M2). Retiring one is an
+        explicit act no code path performs: a lake rebuild that leaves the name out. They grow by
+        at most one per distinct superseded refusal, counted at `state()["prototypes_refused_kept"]`.
+        True once the lake holds it."""
+        from snn_data_lake.substrate.home import load_named_state, save_state
+
+        name = f"{REFUSED_PREFIX}{store}.{_record_id(sub)}.json"
+        # the name embeds the record's id: an unchanged (False) save means the lake holds it
+        return save_state(name, sub) or load_named_state(name) is not None
+
+    def _flush_coverage(self):
+        """T038 (FR-027): write the arm's coverage ledger into the ONE lake. Same two callers as
+        `_flush_growth` -- the sleep tick and close() -- for the same reason: a single persistence
+        path. The sleep-tick call is what makes a KILLED daemon keep its ledger (the P4b restart
+        red in tests/test_coverage_persistence.py); close() catches what the cadence missed."""
+        if not self._persist:
+            return False
+        try:
+            return bool(self.brain.arm.save_coverage())
+        except Exception:
+            return False
+
+    def _g9_birth_records(self):
+        from snn_data_lake.growth.learning_progress import GoalStore
+        from snn_data_lake.readout.posed_problem import _need
+        from snn_data_lake.substrate.home import knowledge_path, require_isolated_home
+
+        require_isolated_home()
+        records = {}
+        for row in GoalStore(knowledge_path()).events():
+            if row.get("kind") == "unit" and row.get("origin") == "born":
+                uid = row.get("unit_id")
+                _need(type(uid) is int and uid not in records, "duplicate/malformed real birth")
+                records[uid] = row
+        return records
+
+    def _g9_reconcile(self, problem_ids):
+        """Run the G3 reconciler (named refusal, no repair append) for these born populations."""
+        from snn_data_lake.growth.batch_reconciler import reconcile_batches
+        from snn_data_lake.growth.growth_loop import BudgetValues, Ledger
+        from snn_data_lake.substrate.home import knowledge_path, require_isolated_home
+
+        problem_ids = sorted(set(problem_ids))
+        if not problem_ids:  # no posed population: nothing to reconcile, no home to guard
+            return
+        require_isolated_home()
+        ledger = Ledger(knowledge_path(), BudgetValues(52, None))  # values unused by the fold
+        for pid in problem_ids:
+            reconcile_batches(ledger, pid)
+
+    def _g9_snapshot(self, *, chat=True):
+        result = {
+            "actors": dict(self._g9_actors),
+            "states": {pid: actor.snapshot() for pid, actor in self._g9_actors.items()},
+        }
+        if chat:
+            result["chat"] = self.brain._ixn._snapshot()
+        return result
+
+    def _g9_restore(self, snapshot):
+        # The common R2 latch is deliberately not reset on a rollback.
+        if "chat" in snapshot:
+            self.brain._ixn._restore_snapshot(snapshot["chat"])
+        for pid, actor in snapshot["actors"].items():
+            actor.rollback(snapshot["states"][pid])
+        self._g9_actors = snapshot["actors"]
+        # Neural trials may roll back; admitted final-judgment reservations may not.
+        from snn_data_lake.readout.interaction_learning import _event_order
+
+        metadata = []
+        for actor in self._g9_actors.values():
+            if actor.selection is not None:
+                metadata.append(_event_order(actor.selection["selection_id"]))
+            metadata.extend(_event_order(eid) for eid in actor.retention_claims.values())
+        if metadata:
+            cursor = self.brain._ixn._cursor
+            self.brain._ixn._cursor = max(metadata + ([] if cursor is None else [cursor]))
+        self.brain._ixn._g9_carriers = {
+            pid: actor.state_dict() for pid, actor in sorted(self._g9_actors.items())
+        }
+
+    def _g9_publish_context(self, actor):
+        from snn_data_lake.readout.posed_problem import actor_context
+
+        self.brain._ixn._g9_context = actor_context(actor)
+        self.brain._ixn._g9_carriers = {
+            pid: value.state_dict() for pid, value in sorted(self._g9_actors.items())
+        }
+
+    def _g9_sync_context(self, *, ixn=None, actors=None):
+        from snn_data_lake.readout.posed_problem import sync_actor_context
+
+        ixn = self.brain._ixn if ixn is None else ixn
+        actors = self._g9_actors if actors is None else actors
+        sync_actor_context(ixn, actors)
+        ixn._g9_carriers = {pid: value.state_dict() for pid, value in sorted(actors.items())}
+
+    def _g9_stage_registry(self, staged):
+        from snn_data_lake.readout.posed_problem import PosedActor, _need
+
+        saved = staged._g9_carriers
+        _need(
+            type(saved) is dict and all(type(pid) is str for pid in saved),
+            "complete typed registry carrier required",
+        )
+        if not saved:  # posed events exist only in an isolated home; no carriers, no birth records
+            return {}
+        born = self._g9_birth_records()
+        actors = {}
+        for pid, state in sorted(saved.items()):
+            actor = PosedActor.restore(state, born)
+            _need(actor.factory["problem_id"] == pid, "carrier key/posing identity")
+            actors[pid] = actor
+        return actors
+
+    def _g9_replay_event(self, staged, actors, event, before_checkpoint):
+        """Uses the SAME effect body, only after hydrate validates its full same-pass receipt."""
+        from snn_data_lake.readout.posed_problem import (
+            PosedActor,
+            _need,
+            actor_context,
+            posed_source,
+        )
+
+        if event["kind"] != "posed_problem":
+            self._g9_sync_context(ixn=staged, actors=actors)
+            return
+        value = json.loads(event["source"])
+        _need(
+            posed_source(value) == event["source"] and value["problem_id"] == event["target"],
+            "noncanonical persisted posed source",
+        )
+        if before_checkpoint:
+            # Existing COMPLETE carrier includes all effects through the common cursor.
+            # Do not run those effects twice; the full global prefix is still verified.
+            _need(value["problem_id"] in actors, "checkpoint omitted its posed registry member")
+            if value["op"] == "engine_teach":
+                self._g9_engine_effect(staged, actors, value, event["event_id"], cache_only=True)
+            return
+        pid = value["problem_id"]
+        op = value["op"]
+        born = self._g9_birth_records()
+        if op == "bind":
+            _need(pid not in actors, "duplicate posed binding in eligible prefix")
+            actor = PosedActor(value["factory"], born)
+            actors[pid] = actor
+        elif op == "admit":
+            _need(pid in actors, "admission before actual posed owner binding")
+            from snn_data_lake.gates.unit_label_gate import require_admissible
+            from snn_data_lake.instruments.taught_problems import PROBLEMS
+
+            new_rows = [
+                r
+                for r in value["birth_rows"]
+                if r["unit_id"] not in {u.unit_id for u in actors[pid].units}
+            ]
+            known = {u.unit_id for actor in actors.values() for u in actor.units}
+            # This is the existing pure G7 label/provenance contract, not a re-run
+            # of its deciding campaign or an invented runtime AdmissionTicket.
+            require_admissible(
+                new_rows,
+                resolve_problem=lambda p: p in PROBLEMS,
+                known_unit=lambda uid: uid in known,
+            )
+            actor = actors[pid].expanded(value, born)
+            actors[pid] = actor
+        else:
+            _need(pid in actors, "effect before actual posed owner binding")
+            actor = actors[pid]
+            if op in {"engine_teach", "engine_read"}:
+                self._g9_engine_effect(staged, actors, value, event["event_id"])
+            else:
+                if op in {"freeze_selection", "claim_retention"}:
+                    self._g9_validate_selection_source(value, staged, actors)
+                actor._effect(value, event_id=event["event_id"])
+        actor.last_event_id = event["event_id"]
+        if op not in {"freeze_selection", "claim_retention"}:
+            staged._g9_context = actor_context(actor)
+        staged._g9_carriers = {k: v.state_dict() for k, v in sorted(actors.items())}
+
+    def _g9_engine_effect(self, ixn, actors, value, event_id, *, cache_only=False):
+        """One real Part D + shared canonical effect; preview/redo use this same body without append."""
+        from snn_data_lake.readout.interaction_learning import _utterance_key, text_features
+        from snn_data_lake.readout.posed_problem import (
+            _need,
+            actor_context,
+            posed_source,
+            sync_actor_context,
+        )
+
+        posed_source(value)
+        op = value["op"]
+        _need(op in {"engine_teach", "engine_read"}, "bound joint engine operation required")
+        _need(
+            len(value["turns"]) == 1
+            and value["turns"][0][1] == "probe"
+            and value["shifted_label"] is None,
+            "G9_ENGINE_SCOPE_UNREADY",
+        )
+        text = value["turns"][0][0]
+        if cache_only:
+            if op == "engine_teach":
+                ixn._apply_turn(
+                    "teach",
+                    _utterance_key(text),
+                    value["turns"][0][2],
+                    event_id,
+                    text_features(text, ixn.n_in),
+                    cache_only=True,
+                )
+            return None
+        actor = actors[value["problem_id"]]
+        if (
+            ixn is self.brain._ixn
+            and actors is self._g9_actors
+            and self._g9_apply_receipt is not None
+        ):
+            actor.apply(value, owner=self, event_id=event_id)
+        else:
+            actor._effect(value, event_id=event_id)
+        ixn._g9_context = actor_context(actor)
+        if op == "engine_teach":
+            previous = ixn._g9_neuron_mask
+            shared_eligibility = list(value["neuron_mask"])
+            if (
+                actor.factory.get("engine_binding", {}).get("cycle", {}).get("feedback_gate")
+                == "corrective"
+                and ixn.route_text(text) == value["turns"][0][2]
+            ):
+                shared_eligibility = [False] * len(ixn.responses)
+            ixn._g9_neuron_mask = shared_eligibility
+            try:
+                ixn._apply_turn(
+                    "teach",
+                    _utterance_key(text),
+                    value["turns"][0][2],
+                    event_id,
+                    text_features(text, ixn.n_in),
+                )
+            finally:
+                ixn._g9_neuron_mask = previous
+            sync_actor_context(ixn, actors)
+        ixn._g9_carriers = {pid: item.state_dict() for pid, item in sorted(actors.items())}
+        return ixn.route_text(text)
+
+    @staticmethod
+    def _g9_retention_manifest(actors, current):
+        from snn_data_lake.instruments.joint_mask_search import RetentionSets
+        from snn_data_lake.instruments.taught_problems import PROBLEMS
+
+        def digest(items):
+            return hashlib.sha256(
+                json.dumps(items, separators=(",", ":"), allow_nan=False).encode()
+            ).hexdigest()
+
+        result = {}
+        for pid, actor in sorted(actors.items()):
+            sets = RetentionSets.for_problem(PROBLEMS[pid], actor.factory["seed"])
+            result[pid] = {
+                "seed": actor.factory["seed"],
+                "select_digest": digest(sets._select),
+                "final_digest": digest(sets._final),
+            }
+        return result
+
+    def _g9_selection_adapter(self, problem_id, meter):
+        from snn_data_lake.growth.growth_loop import CanonicalGrowthAdapter
+        from snn_data_lake.instruments.joint_mask_search import Meter, SelectionLeak
+        from snn_data_lake.readout.posed_problem import _need
+
+        if type(meter) is not Meter or not meter.frozen:
+            raise SelectionLeak("retention_final read before the winner was frozen")
+        if type(meter.p) is not CanonicalGrowthAdapter:
+            raise SelectionLeak("G9_SELECTION_CONSUMER_REQUIRED: foreign or synthetic Meter")
+        binding, actor = meter.p._require_engine()
+        _need(
+            binding["owner"] is self
+            and meter.p.problem.id == problem_id
+            and actor is self._g9_actors[problem_id],
+            "G9_SELECTION_CONSUMER_REQUIRED",
+        )
+        _need(
+            actor.factory.get("engine_binding", {}).get("cycle", {}).get("schema")
+            == "g9.engine.cycle.v1",
+            "G9_ENGINE_SCOPE_UNREADY",
+        )
+        _need(tuple(meter.winner) == (True,) * len(actor.units), "G9_NO_PRUNE_SCOPE_REQUIRED")
+        return actor
+
+    def _g9_validate_selection_source(self, value, ixn, actors):
+        from snn_data_lake.readout.posed_problem import _need, engine_model_digest
+
+        actor = actors[value["problem_id"]]
+        if value["op"] == "freeze_selection":
+            _need(actor.selection is None, "G9_SELECTION_ALREADY_FROZEN")
+            _need(
+                value["winner"] == [True] * len(actor.units)
+                and all(u.active for u in actor.units)
+                and all(all(row) for row in actor.factory["out_eligible"])
+                and not actor.return_neutered,
+                "G9_NO_PRUNE_SCOPE_REQUIRED",
+            )
+            _need(
+                value["retention"] == self._g9_retention_manifest(actors, value["problem_id"]),
+                "G9_RETENTION_SCHEDULE_DRIFT",
+            )
+            _need(
+                value["model_digest"] == engine_model_digest(ixn, actors),
+                "G9_SELECTION_STATE_DRIFT",
+            )
+        else:
+            selected = actor.selection
+            _need(
+                selected is not None
+                and selected["selection_id"] == value["selection_id"]
+                and value["old_problem_id"] in selected["retention"],
+                "G9_RETENTION_SELECTION_MISMATCH",
+            )
+            _need(
+                value["old_problem_id"] not in actor.retention_claims,
+                "G9_RETENTION_ALREADY_CONSUMED",
+            )
+            _need(
+                selected["retention"] == self._g9_retention_manifest(actors, value["problem_id"]),
+                "G9_RETENTION_SCHEDULE_DRIFT",
+            )
+            _need(
+                selected["model_digest"] == engine_model_digest(ixn, actors),
+                "G9_SELECTION_STATE_DRIFT",
+            )
+
+    def freeze_selection(self, problem_id, *, meter):
+        """Freeze the actual all-active winner once; its common event ID owns the identity."""
+        from snn_data_lake.readout.posed_problem import ENGINE_SELECTION_SCOPE, engine_model_digest
+
+        with self._r2_lock:
+            self._g9_selection_adapter(problem_id, meter)
+            return self._g9_apply_source(
+                {
+                    "op": "freeze_selection",
+                    "problem_id": problem_id,
+                    "scope": ENGINE_SELECTION_SCOPE,
+                    "winner": list(meter.winner),
+                    "model_digest": engine_model_digest(self.brain._ixn, self._g9_actors),
+                    "retention": self._g9_retention_manifest(self._g9_actors, problem_id),
+                }
+            )
+
+    def claim_retention(self, problem_id, old_problem_id, *, meter, selection_id=None):
+        """Write the irreversible reservation BEFORE the caller's untouched-set read."""
+        from snn_data_lake.readout.posed_problem import _need
+
+        with self._r2_lock:
+            actor = self._g9_selection_adapter(problem_id, meter)
+            _need(actor.selection is not None, "G9_SELECTION_NOT_FROZEN")
+            return self._g9_apply_source(
+                {
+                    "op": "claim_retention",
+                    "problem_id": problem_id,
+                    "old_problem_id": old_problem_id,
+                    "selection_id": actor.selection["selection_id"]
+                    if selection_id is None
+                    else selection_id,
+                }
+            )
+
+    @staticmethod
+    def _g9_check_protocol_prefix(staged, actors, events):
+        """A checkpoint cannot rewrite factory identity or final-read facts from its covered prefix."""
+        from snn_data_lake.readout.interaction_learning import _event_order
+        from snn_data_lake.readout.posed_problem import _need
+
+        def immutable_factory(factory):
+            dynamic = {"units", "birth_rows", "w_feed", "attachments", "out_eligible"}
+            return {key: value for key, value in factory.items() if key not in dynamic}
+
+        expected = {pid: {"selection": None, "claims": {}, "factory": None} for pid in actors}
+        for event in events:
+            if staged._cursor is None or _event_order(event["event_id"]) > staged._cursor:
+                continue
+            if event["kind"] != "posed_problem":
+                continue
+            value = json.loads(event["source"])
+            if value["op"] == "bind":
+                pid = value["problem_id"]
+                _need(
+                    pid in expected and expected[pid]["factory"] is None,
+                    "G9_FACTORY_PREFIX_MISMATCH",
+                )
+                expected[pid]["factory"] = immutable_factory(value["factory"])
+            elif value["op"] == "freeze_selection":
+                row = expected[value["problem_id"]]
+                _need(row["selection"] is None, "duplicate frozen selection in prefix")
+                row["selection"] = {
+                    k: copy.deepcopy(v) for k, v in value.items() if k not in {"op", "problem_id"}
+                }
+                row["selection"]["selection_id"] = event["event_id"]
+            elif value["op"] == "claim_retention":
+                row = expected[value["problem_id"]]
+                _need(
+                    row["selection"] is not None
+                    and row["selection"]["selection_id"] == value["selection_id"]
+                    and value["old_problem_id"] not in row["claims"],
+                    "invalid retention claim prefix",
+                )
+                row["claims"][value["old_problem_id"]] = event["event_id"]
+        for pid, actor in actors.items():
+            _need(
+                expected[pid]["factory"] is not None
+                and immutable_factory(actor.factory) == expected[pid]["factory"],
+                "G9_FACTORY_PREFIX_MISMATCH",
+            )
+            _need(
+                actor.selection == expected[pid]["selection"]
+                and actor.retention_claims == expected[pid]["claims"],
+                "G9_RETENTION_PREFIX_MISMATCH",
+            )
+
+    def _g9_apply_source(self, value, *, ticket=None):
+        """Append is BEFORE constructor/pool/reader/producer/return/authority mutation."""
+        from snn_data_lake.gates.unit_label_gate import AdmissionTicket
+        from snn_data_lake.growth.grown_code import admit_rows
+        from snn_data_lake.readout.posed_problem import PosedActor, _need, posed_source
+        from snn_data_lake.substrate.home import require_isolated_home
+
+        source = posed_source(value)  # pure primitive validation, no feature extraction/RNG
+        pid, op = value["problem_id"], value["op"]
+        with self._r2_lock:
+            require_isolated_home()
+            _need(self._r2_fault is None, "common all-learning latch is closed")
+            _need(type(self._g9_actors) is dict, "actual registry boot not reconciled")
+            _need(
+                (op == "bind" and pid not in self._g9_actors)
+                or (op != "bind" and pid in self._g9_actors),
+                "binding/admission order",
+            )
+            if op == "admit" or (op == "bind" and value["factory"]["population_origin"] == "born"):
+                # An unsettled batch (birth without its spend row) is refused by name BEFORE
+                # the common writer appends or any actor is installed; nothing is guessed.
+                self._g9_reconcile([pid])
+            born = self._g9_birth_records()
+            consumed_rows = None
+            if op == "admit":
+                from snn_data_lake.readout.posed_problem import units_from_rows
+
+                old = self._g9_actors[pid]
+                full = units_from_rows(value["units"], len(self.brain._ixn.responses))
+                old_ids = {u.unit_id for u in old.units}
+                new = tuple(u for u in full if u.unit_id not in old_ids)
+                consumed_rows = [r for r in value["birth_rows"] if r["unit_id"] not in old_ids]
+                _need(
+                    type(ticket) is AdmissionTicket and ticket._consumed is False and new,
+                    "actual unconsumed G7 ticket required",
+                )
+                _need(
+                    all(born.get(r["unit_id"]) == r for r in consumed_rows),
+                    "actual lake births differ from admitted labels",
+                )
+                _need(
+                    tuple(admit_rows(old.units, new, consumed_rows, copy.deepcopy(ticket))) == full,
+                    "full actual segment differs from G7 ticket admission",
+                )
+            else:
+                _need(ticket is None, "ticket belongs only to explicit admission")
+                if op != "bind":
+                    # Deterministic input errors are refused BEFORE the common writer appends.
+                    self._g9_actors[pid].validate_effect(value)
+                    if op in {"freeze_selection", "claim_retention"}:
+                        self._g9_validate_selection_source(value, self.brain._ixn, self._g9_actors)
+            try:
+                self._r2_supported(self.brain._ixn)
+                before = self._g9_snapshot()
+            except BaseException as exc:
+                self._r2_close("g9_snapshot", exc)
+                raise
+            # A deterministic constructor/expansion refusal must precede the append, or the
+            # refusal would leave an immortal event that faults every restart in `reconcile`.
+            staged_actor = None
+            if op == "bind":
+                staged_actor = PosedActor(value["factory"], born)
+            elif op == "admit":
+                staged_actor = self._g9_actors[pid].expanded(value, born)
+            admitted = False
+            try:
+                eid = self._append_learner_event(
+                    "posed_problem", {"source": source, "target": pid, "provenance": "posed"}
+                )
+                _need(type(eid) is str, "common writer refused before effect")
+                admitted = True
+                self._g9_apply_receipt = {
+                    "event_id": eid,
+                    "problem_id": pid,
+                    "source_sha256": hashlib.sha256(source.encode()).hexdigest(),
+                }
+                if staged_actor is not None:
+                    actor = staged_actor
+                    self._g9_actors[pid] = actor
+                    answer = None
+                else:
+                    actor = self._g9_actors[pid]
+                    if op in {"engine_teach", "engine_read"}:
+                        answer = self._g9_engine_effect(
+                            self.brain._ixn, self._g9_actors, value, eid
+                        )
+                    else:
+                        answer = actor.apply(value, owner=self, event_id=eid)
+                actor.last_event_id = eid
+                if op in {"freeze_selection", "claim_retention"}:
+                    self.brain._ixn._g9_carriers = {
+                        key: item.state_dict() for key, item in sorted(self._g9_actors.items())
+                    }
+                else:
+                    self._g9_publish_context(actor)
+                from snn_data_lake.readout.interaction_learning import _event_order
+
+                self.brain._ixn._cursor = _event_order(eid)
+                # Consume the original only AFTER staging, installation and carrier
+                # validation. The exact ticket method makes its flag change LAST.
+                if consumed_rows is not None:
+                    ticket.consume(consumed_rows)
+                return answer
+            except BaseException as exc:
+                self._r2_close("g9_admitted_effect" if admitted else "g9_append", exc)
+                try:
+                    self._g9_restore(before)
+                except BaseException as rollback:
+                    self._r2_close("g9_rollback", rollback)
+                    raise BaseExceptionGroup(
+                        "G9 effect and rollback refused", [exc, rollback]
+                    ) from exc
+                raise
+            finally:
+                self._g9_apply_receipt = None
+
+    def bind_part_d_reader(self, factory):
+        """The sealed old core's preconstructed bind is superseded by admitted typed bind."""
+        return self._g9_apply_source(
+            {"op": "bind", "problem_id": factory["problem_id"], "factory": factory}
+        )
+
+    def learn_part_d_episode(
+        self, problem_id, episode, *, neuron_mask, return_mask, return_neutered, shifted_label=None
+    ):
+        return self._g9_apply_source(
+            {
+                "op": "teach",
+                "problem_id": problem_id,
+                "turns": [[t.text, t.role, t.label] for t in episode],
+                "shifted_label": shifted_label,
+                "neuron_mask": list(neuron_mask),
+                "return_mask": list(return_mask),
+                "return_neutered": return_neutered,
+            }
+        )
+
+    def read_part_d_episode(
+        self, problem_id, episode, *, neuron_mask, return_mask, return_neutered
+    ):
+        return self._g9_apply_source(
+            {
+                "op": "read",
+                "problem_id": problem_id,
+                "turns": [[t.text, t.role, t.label] for t in episode],
+                "shifted_label": None,
+                "neuron_mask": list(neuron_mask),
+                "return_mask": list(return_mask),
+                "return_neutered": return_neutered,
+            }
+        )
+
+    def learn_engine_episode(
+        self, problem_id, episode, *, neuron_mask, return_mask, return_neutered=False
+    ):
+        return self._g9_apply_source(
+            {
+                "op": "engine_teach",
+                "problem_id": problem_id,
+                "turns": [[t.text, t.role, t.label] for t in episode],
+                "shifted_label": None,
+                "neuron_mask": list(neuron_mask),
+                "return_mask": list(return_mask),
+                "return_neutered": return_neutered,
+            }
+        )
+
+    def read_engine_episode(
+        self, problem_id, episode, *, neuron_mask, return_mask, return_neutered=False
+    ):
+        return self._g9_apply_source(
+            {
+                "op": "engine_read",
+                "problem_id": problem_id,
+                "turns": [[t.text, t.role, None] for t in episode],
+                "shifted_label": None,
+                "neuron_mask": list(neuron_mask),
+                "return_mask": list(return_mask),
+                "return_neutered": return_neutered,
+            }
+        )
+
+    def _r2_boot(self):
+        """Fresh reconciliation only. A refusal always leaves the persistent callback CLOSED."""
+        import threading
+
+        self._r2_lock = threading.RLock()
+        self._r2_fault = {"phase": "pending", "cause": "prefix not reconciled"}
+        self._r2_booted = False
+        self._r2_seq = 0
+        self._session = None
+        self._r2_receipt = None
+        self._r2_percept_events = []  # P3: shared events/prototype evidence, handed to the grower once
+        self._r2_pseq = 0  # P3: per-session percept counter, consumed on every write ATTEMPT
+        self._g9_actors = {}
+        self._g9_apply_receipt = None
+        self.brain._ixn.teach_sink = None
+        self.brain._ixn.event_sink = self._record_learner_event
+        self._r2_booted = True
+        from snn_data_lake.substrate.home import load_state
+        from snn_data_lake.substrate.learner_events import (
+            EMPTY_PREFIX_DIGEST,
+            KIND_SPECS,
+            scan_learner_events,
+        )
+
+        self._r2_prefix_digest = EMPTY_PREFIX_DIGEST
+        with self._r2_lock:
+            try:
+                live = self.brain._ixn
+                self._r2_supported(live)
+                staged = self._r2_fresh_learner(live)
+                events, refusals, session, receipt = scan_learner_events(
+                    tuple(KIND_SPECS),
+                    strict=True,
+                    return_receipt=True,
+                )
+                checkpoint = load_state("interaction_learner.json")
+                rewirer, saved_observations = None, None
+                checkpoint_prefix_digest = None
+                if checkpoint is not None:
+                    # Prospective pre-data change, Round 5 (2026-10-13), review #2112.
+                    # Old/unbound checkpoints refuse, never silently omit prefix history.
+                    if (
+                        type(checkpoint) is not dict
+                        or "prefix_digest" not in checkpoint
+                        or type(checkpoint["prefix_digest"]) is not str
+                    ):
+                        raise ValueError("R2 checkpoint canonical prefix binding missing/malformed")
+                    checkpoint_prefix_digest = checkpoint["prefix_digest"]
+                    if type(checkpoint) is not dict or set(checkpoint) != {
+                        "schema",
+                        "tree",
+                        "rewirer",
+                        "sleep_observations",
+                        "prefix_digest",
+                    }:
+                        raise ValueError("R2 closed: checkpoint boundary/carrier is unbound")
+                    if checkpoint["schema"] != "r2.v1":
+                        raise ValueError("R2 closed: legacy g0c migration is unbound")
+                    staged.load_state_dict(
+                        {"schema": checkpoint["schema"], "tree": checkpoint["tree"]}
+                    )
+                    if checkpoint["rewirer"] is not None:
+                        from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
+                        rewirer = StructuralRewiring(seed=self._seed)
+                        rewirer.load_state_dict(checkpoint["rewirer"])
+                    saved_observations = self._r2_validate_observations(
+                        checkpoint["sleep_observations"]
+                    )
+                staged_actors = self._g9_stage_registry(staged)
+                self._g9_check_protocol_prefix(staged, staged_actors, events)
+                report = staged.hydrate(
+                    events,
+                    receipt=receipt,
+                    sleep_step={"rewirer": rewirer, "step": self._r2_sleep_step},
+                    effect_actor=lambda ixn, row, before: self._g9_replay_event(
+                        ixn, staged_actors, row, before
+                    ),
+                    checkpoint_prefix_digest=checkpoint_prefix_digest,
+                )
+                if not self._r2_may_rearm(report):
+                    raise ValueError("R2 closed: incomplete reconciliation")
+                self._g9_reconcile(
+                    pid
+                    for pid, actor in staged_actors.items()
+                    if actor.factory["population_origin"] == "born"
+                )
+                before = self._r2_snapshot(live)
+                old_actors = self._g9_actors
+                try:
+                    live._restore_snapshot(staged._snapshot())
+                    self._g9_actors = staged_actors
+                    live._hydrated = True
+                    live._hydration_count = staged._hydration_count
+                    self._rewirer = report["rewirer"]
+                    observations = report["observations"] or saved_observations
+                    if observations is not None:
+                        self.__dict__.update(observations)
+                    self._plasticity = live.stack
+                    self._session = str(session)
+                    self._r2_receipt = receipt
+                    self._r2_prefix_digest = report["prefix_digest"]
+                    self._r2_percept_events = events  # A9: chat records also carry prototype proof
+                except BaseException:
+                    self._r2_restore(live, before)
+                    self._g9_actors = old_actors
+                    raise
+                self._r2_fault = None
+            except Exception as exc:
+                self._r2_close("reconcile", exc)
+                self._report_ixn_refusal(
+                    "R2 reconciliation refused; writer and checkpoints closed", exc
+                )
+
+    def _r2_fresh_learner(self, live):
+        """Use the actual live constructor profile, or refuse an unbound custom baseline."""
+        from snn_data_lake.readout.interaction_learning import SpikingInteractionLearner
+
+        fresh = SpikingInteractionLearner(
+            live.responses,
+            live.n_in,
+            seed=live.seed,
+            lr=live.lr,
+            tau=live.tau,
+            t_post=live.t_post,
+        )
+        if live.stack is not None:
+            if type(live.stack) is not PlasticityRuleStack:
+                raise ValueError("R2 unbound plasticity factory")
+            fresh.stack = PlasticityRuleStack(n_neurons=len(live.responses), seed=self._seed)
+        fresh.provenance_rewrite = live.provenance_rewrite
+        fresh.provenance_supersede = live.provenance_supersede
+        if fresh._snapshot() != live._snapshot():
+            raise ValueError("R2 current learner differs from the bound fresh factory")
+        return fresh
+
+    @staticmethod
+    def _r2_supported(ixn):
+        if ixn.n_in != 52 or ixn.naca is not None or ixn.delta_sink is not None:
+            raise ValueError("R2 actual 52-input chat carrier or external effect is unbound")
+        if ixn.readout_zoo is not None or hasattr(ixn, "_zoo_pool"):
+            raise ValueError("R2 mutable optional zoo carrier is not bound")
+
+    @staticmethod
+    def _r2_may_rearm(report):
+        return report.get("complete") is True and report.get("processed_ids") == report.get(
+            "eligible_ids"
+        )
+
+    def _r2_close(self, phase, cause):
+        self._r2_fault = {"phase": phase, "cause": f"{type(cause).__name__}: {cause}"}
+
+    def _r2_snapshot(self, ixn):
+        from snn_data_lake.readout.interaction_learning import _encode_state
+        from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
+        if not callable(getattr(StructuralRewiring, "state_dict", None)) or not callable(
+            getattr(StructuralRewiring, "load_state_dict", None)
+        ):
+            raise ValueError("R2 missing real structural carrier")
+        if self._rewirer is not None:
+            if not callable(getattr(self._rewirer, "state_dict", None)) or not callable(
+                getattr(self._rewirer, "load_state_dict", None)
+            ):
+                raise ValueError("R2 missing real structural carrier")
+        return {
+            "learner": ixn._snapshot(),
+            "rewirer": None if self._rewirer is None else self._rewirer.state_dict(),
+            "observations": _encode_state(self._r2_observations()),
+            "posed": {pid: actor.state_dict() for pid, actor in sorted(self._g9_actors.items())},
+        }
+
+    def _r2_restore(self, ixn, snapshot):
+        from snn_data_lake.readout.interaction_learning import _merge_state
+        from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
+        observations = self._r2_validate_observations(_merge_state(None, snapshot["observations"]))
+        carrier = snapshot["rewirer"]
+        # Stage validation first; preserve an existing rewirer's object/RNG identity on rollback.
+        staged = None
+        if carrier is not None:
+            staged = StructuralRewiring(seed=self._seed)
+            staged.load_state_dict(carrier)
+        ixn._restore_snapshot(snapshot["learner"])
+        if carrier is None:
+            self._rewirer = None
+        elif self._rewirer is None:
+            self._rewirer = staged
+        else:
+            self._rewirer.load_state_dict(carrier)
+        self._plasticity = ixn.stack
+        self.__dict__.update(observations)
+        from snn_data_lake.readout.posed_problem import PosedActor
+
+        born = self._g9_birth_records() if snapshot["posed"] else {}
+        self._g9_actors = {
+            pid: PosedActor.restore(state, born) for pid, state in snapshot["posed"].items()
+        }
+
+    def _r2_observations(self):
+        return {"_structural_report": self._structural_report}
+
+    @staticmethod
+    def _r2_validate_observations(values):
+        from snn_data_lake.readout.interaction_learning import _encode_state
+
+        if type(values) is not dict or set(values) != {"_structural_report"}:
+            raise ValueError("malformed R2 structural-only sleep observables")
+        _encode_state(values)
+        report = values["_structural_report"]
+        if report is not None and type(report) is not dict:
+            raise ValueError("invalid R2 structural report")
+        return values
+
+    def _append_learner_event(self, kind, slots):
+        """The only R2 learner writer, under the common lock and all-kind latch."""
+        from snn_data_lake.substrate.home import save_episode
+        from snn_data_lake.substrate.learner_events import (
+            KIND_SPECS,
+            SCHEMA,
+            _refusal,
+            advance_prefix_digest,
+        )
+
+        if self._r2_fault is not None:
+            return None
+        if kind not in KIND_SPECS or kind == "ctxread":
+            raise ValueError("R2 effect/producer is not bound")
+        reserved = {
+            "kind",
+            "event_id",
+            "stream",
+            "session",
+            "seq",
+            "schema",
+            "valid",
+            "split",
+            "encoder",
+        }
+        expected = set(KIND_SPECS[kind]["slots"]) - reserved
+        if type(slots) is not dict or set(slots) != expected:
+            raise ValueError("R2 unknown, missing, or reserved writer slot")
+        event = {
+            "kind": kind,
+            "event_id": f"{self._session}-{self._r2_seq + 1}",
+            "stream": {"posed_problem": "posed", "percept": "wake"}.get(kind, "chat"),
+            "session": self._session,
+            "seq": str(self._r2_seq + 1),
+            "schema": SCHEMA,
+            "valid": "1",
+            "split": "train",
+            "encoder": "g5.pool_features n_in=256"
+            if kind == "posed_problem"
+            else f"arm.percept gained width={self.brain.arm.learner.dim}"
+            if kind == "percept"
+            else "text_features n_in=52",
+            **slots,
+        }
+        if kind in ("teach", "turn") and (
+            getattr(self, "_r2_proto_boot", 0) or getattr(self, "_r2_proto_flushed", 0)
+        ):
+            # A9: preserve the inherited durability proof even in a session with no percept.
+            # These schemas admit optional metadata; no new event, store, or recovery read.
+            event["proto_boot"] = str(self._r2_proto_boot)
+            event["proto_flushed"] = str(self._r2_proto_flushed)
+        if (
+            any(type(v) is not str for v in event.values())
+            or _refusal(event, KIND_SPECS[kind], False) is not None
+        ):
+            raise ValueError("R2 event does not satisfy its real schema")
+        self._r2_seq += 1  # consumed even if append raises after the frame landed
+        if not save_episode(event):
+            raise OSError("R2 learner append returned False")
+        self._r2_prefix_digest = advance_prefix_digest(self._r2_prefix_digest, event)
+        return event["event_id"]
+
+    def _attach_percept_transitions(self):
+        """R2 part P3 (2.10): hydrate the grower's transition buffer from the percept events of the
+        ONE strict boot pass (no second lake read), then attach the write-ahead sink. Construction
+        only. A NON-persisting brain (or none with a grower) is a no-op: the grower is byte-identical
+        to the one without P3. A PERSISTING brain always gets the sink, even when boot reconciliation
+        was refused or hydration raised (Codex #2844, owner #1037): the sink then refuses every
+        observation, so no pair is ever buffered that is not journaled."""
+        events, self._r2_percept_events = getattr(self, "_r2_percept_events", []), []
+        if not self._persist or self.neuro is None:
+            return False
+        from snn_data_lake.substrate.learner_events import KIND_SPECS
+
+        if (
+            getattr(self, "_r2_fault", True) is None
+            and getattr(self, "_session", None) is not None
+            and "percept" in KIND_SPECS
+        ):
+            try:
+                held = int(self.brain.arm.learner.n_units)
+                self.neuro.restore_transitions(
+                    events, n_units=held, current_session=int(self._session)
+                )
+                # D2: the durable prototype count, restored here and advanced only by a landed flush
+                self._r2_proto_boot = self._r2_proto_flushed = held
+            except (
+                Exception
+            ) as exc:  # never block construction; the sink refuses, so no chain forms
+                self._r2_percept_refused = True  # percepts only: no latch, but no unjournaled pair
+                self._report_ixn_refusal("R2 percept hydration refused", exc)
+        self.neuro.transition_sink = self._record_percept
+        return True
+
+    def _record_percept(self, features, category):
+        """The grower's write-ahead sink: True only when the percept's event is durable. Every
+        ATTEMPT consumes a `pseq`, so a refused or failed write leaves the visible gap hydration
+        breaks the chain at. Under the common lock and the all-kind latch (owner #1037): an
+        uncertain failed write closes EVERY learner kind until a fresh reconciliation."""
+        from snn_data_lake.growth.neurogenesis_engine import pack_percept
+        from snn_data_lake.readout.interaction_learning import _event_order
+        from snn_data_lake.substrate.learner_events import KIND_SPECS
+
+        lock = getattr(self, "_r2_lock", None)
+        if lock is None:  # a persisting brain whose R2 never booted cannot journal: refuse
+            return False
+        with lock:
+            self._r2_pseq = getattr(self, "_r2_pseq", 0) + 1
+            if (
+                self._r2_fault is not None
+                or getattr(self, "_r2_percept_refused", False)
+                or "percept" not in KIND_SPECS
+            ):
+                return False
+            width = f"arm.percept gained width={self.brain.arm.learner.dim}"
+            if width not in KIND_SPECS["percept"]["encoders"]:
+                return False  # an unregistered width is refused alone, never latched (rv-p3-a c)
+            try:
+                eid = self._append_learner_event(
+                    "percept",
+                    {
+                        "x": pack_percept(features),
+                        "category": str(int(category)),
+                        "n_protos": str(int(self.brain.arm.learner.n_units)),
+                        "pseq": str(self._r2_pseq),
+                        "provenance": "self",
+                        "proto_boot": str(self._r2_proto_boot),
+                        "proto_flushed": str(self._r2_proto_flushed),
+                    },
+                )
+                if eid is None:
+                    return False
+                self.brain._ixn._cursor = _event_order(eid)
+                return True
+            except Exception as exc:
+                self._r2_close("percept_append", exc)
+                self._report_ixn_refusal("R2 percept write latched until restart", exc)
+                return False
+
+    def _record_learner_event(self, kind, key, target, stimulus):
+        """Admission precedes every authority/ring/deposit; partial effects roll back then latch."""
+        ixn = self.brain._ixn
+        with self._r2_lock:
+            if self._r2_fault is not None:
+                ixn._unjournaled_refused += 1
+                self._r2_supported(ixn)
+                return ixn.respond(stimulus)  # supported default drive has no mutable zoo
+            if kind not in ("teach", "turn") or target not in ixn.responses:
+                raise ValueError("R2 unbound turn kind/target")
+            try:
+                self._r2_supported(ixn)
+                snapshot = self._r2_snapshot(ixn)
+            except Exception as exc:
+                self._r2_close("snapshot", exc)
+                self._report_ixn_refusal("R2 preeffect snapshot refused", exc)
+                raise
+            admitted = False
+            try:
+                eid = self._append_learner_event(
+                    kind,
+                    {
+                        "source": key,
+                        "target": target,
+                        "provenance": "authoritative" if kind == "teach" else "self",
+                    },
+                )
+                if eid is None:
+                    raise RuntimeError("R2 closed before admission")
+                admitted = True
+                answer = ixn._apply_turn(kind, key, target, eid, stimulus)
+                self._g9_sync_context()
+                return answer
+            except Exception as exc:
+                self._r2_close("admitted_effect" if admitted else "append", exc)
+                try:
+                    self._r2_restore(ixn, snapshot)
+                except Exception as rollback:
+                    exc.add_note(f"R2 rollback refused: {type(rollback).__name__}: {rollback}")
+                    self._r2_close("rollback", rollback)
+                    raise exc from rollback
+                ixn._unjournaled_refused += 1
+                self._report_ixn_refusal("R2 learning latched until fresh reconciliation", exc)
+                if admitted:
+                    raise
+                return ixn.respond(stimulus)
+
+    def _r2_run_bout(self, stages, *, rng_seed, extra_populations=None):
+        """POST-DATA 2026-10-13, owner2105/2106: one append BEFORE the live bout effect."""
+        from snn_data_lake.instruments.staged_sleep_bout import (
+            _run_bout,
+            bout_payload,
+            bout_progress,
+            decode_bout,
+            learner_bout,
+        )
+        from snn_data_lake.readout.interaction_learning import (
+            SpikingInteractionLearner,
+            _event_order,
+        )
+        from snn_data_lake.substrate.learner_events import sleep_digests
+
+        payload = bout_payload(stages, rng_seed)
+        stages, rng_seed = decode_bout(payload)
+        ixn = self.brain._ixn
+        with self._r2_lock:
+            if self._r2_fault is not None:
+                raise RuntimeError("R2 sleep_bout refused by latch until restart")
+            try:
+                self._r2_supported(ixn)
+                snapshot = self._r2_snapshot(ixn)
+            except Exception as exc:
+                self._r2_close("snapshot", exc)
+                raise
+            admitted = False
+            try:
+                # ponytail: reuse the exact codec and runner; no second journal or learning rule.
+                preview = SpikingInteractionLearner(ixn.responses, ixn.n_in, seed=ixn.seed)
+                if ixn.stack is not None:
+                    if type(ixn.stack) is not PlasticityRuleStack:
+                        raise ValueError("R2 sleep_bout plasticity factory is unbound")
+                    preview.stack = PlasticityRuleStack(
+                        n_neurons=len(ixn.responses), seed=self._seed
+                    )
+                preview._restore_snapshot(snapshot["learner"])
+                expected_report = learner_bout(preview, stages, rng_seed)
+                expected = {
+                    **sleep_digests(preview, self._rewirer),
+                    **bout_progress(expected_report),
+                }
+                eid = self._append_learner_event("sleep_bout", {"bout": payload, **expected})
+                if eid is None:
+                    raise RuntimeError("R2 closed before sleep_bout admission")
+                admitted = True
+                ixn._effect_depth += 1
+                try:
+                    report = _run_bout(
+                        self, stages, rng_seed=rng_seed, extra_populations=extra_populations
+                    )
+                finally:
+                    ixn._effect_depth -= 1
+                actual = {**sleep_digests(ixn, self._rewirer), **bout_progress(report)}
+                if ixn._snapshot()["cache"] != snapshot["learner"]["cache"]:
+                    raise ValueError("R2 sleep_bout ring/authority mutation refused")
+                if actual != expected:
+                    raise ValueError("R2 sleep_bout digest/progress mismatch")
+                ixn._cursor = _event_order(eid)
+                return report
+            except Exception as exc:
+                self._r2_close("bout_effect" if admitted else "bout_append_or_preview", exc)
+                try:
+                    self._r2_restore(ixn, snapshot)
+                except Exception as rollback:
+                    self._r2_close("rollback", rollback)
+                    exc.add_note(f"R2 rollback refused: {type(rollback).__name__}: {rollback}")
+                    raise exc from rollback
+                self._report_ixn_refusal("R2 sleep_bout latched until restart", exc)
+                raise
+
+    def _r2_sleep_step(self, ixn, rewirer):
+        """Retained structural slow clock; owner1039 retires replay/rest; errors propagate."""
+        from snn_data_lake.sleep.structural_rewiring import StructuralRewiring
+
+        stack = ixn.stack
+        observations = {"_structural_report": None}
+        if stack is None:
+            return rewirer, observations
+        if self._sleep_caps["structural"]:
+            if rewirer is None:
+                rewirer = StructuralRewiring(seed=self._seed)
+            if not callable(getattr(rewirer, "state_dict", None)) or not callable(
+                getattr(rewirer, "load_state_dict", None)
+            ):
+                raise ValueError("R2 missing real structural carrier")
+            rows = [list(n.w) for n in ixn.neurons]
+            previous = [list(row) for row in rows]
+            rewirer.rewire(rows, activity=stack.meta_theta())
+            for i, neuron in enumerate(ixn.neurons):
+                changed = [c for c in range(len(rows[i])) if rows[i][c] != previous[i][c]]
+                if changed:
+                    neuron.w = list(rows[i])
+                    stack.adopt_structural(i, rows[i], changed)
+            observations["_structural_report"] = rewirer.report()
+        return rewirer, observations
+
+    def _r2_sleep_learning(self):
+        ixn = self.brain._ixn
+        if not self._persist:
+            self._rewirer, observations = self._r2_sleep_step(ixn, self._rewirer)
+            self.__dict__.update(observations)
+            return True
+        from snn_data_lake.substrate.learner_events import sleep_digests
+
+        with self._r2_lock:
+            if self._r2_fault is not None:
+                self._report_ixn_refusal(
+                    "R2 sleep learning refused by latch", RuntimeError("R2 closed")
+                )
+                return False
+            try:
+                self._r2_supported(ixn)
+                snapshot = self._r2_snapshot(ixn)
+            except Exception as exc:
+                self._r2_close("snapshot", exc)
+                self._report_ixn_refusal("R2 preeffect sleep snapshot refused", exc)
+                raise
+            try:
+                ixn._effect_depth += 1
+                try:
+                    self._rewirer, observations = self._r2_sleep_step(ixn, self._rewirer)
+                finally:
+                    ixn._effect_depth -= 1
+                self.__dict__.update(observations)
+                eid = self._append_learner_event(
+                    "sleep",
+                    {
+                        "sleep_id": f"{self._session}-n{self._nights}",
+                        "night": str(self._nights),
+                        "tick": str(self._sleep_ticks),
+                        "stage_index": "0",
+                        "stage_name": "night",
+                        "presentations_spent": "0",  # structural step; no replay presentations
+                        "drawn": ",".join(str(i) for i in ixn._last_drawn) or "none",
+                        "pending": "none",
+                        "applied_mask_digest": "none",
+                        **sleep_digests(ixn, self._rewirer),
+                    },
+                )
+                if eid is None:
+                    raise RuntimeError("R2 closed before sleep progress")
+                from snn_data_lake.readout.interaction_learning import _event_order
+
+                ixn._cursor = _event_order(eid)
+                return True
+            except Exception as exc:
+                self._r2_close("sleep_effect_or_append", exc)
+                try:
+                    self._r2_restore(ixn, snapshot)
+                except Exception as rollback:
+                    exc.add_note(f"R2 rollback refused: {type(rollback).__name__}: {rollback}")
+                    self._r2_close("rollback", rollback)
+                    raise exc from rollback
+                self._report_ixn_refusal("R2 sleep learning latched until restart", exc)
+                raise
+
+    def _flush_interaction_learner(self):
+        """A CLOSED learner never supersedes its last successful checkpoint."""
+        if not self._persist or getattr(self.brain, "_ixn", None) is None:
+            return False
+        import json
+
+        from snn_data_lake.substrate.home import load_state, save_state
+
+        with self._r2_lock:
+            if self._r2_fault is not None:
+                self._report_ixn_refusal(
+                    "R2 checkpoint refused by latch", RuntimeError("R2 closed")
+                )
+                return False
+            try:
+                requested = {
+                    **self.brain._ixn.state_dict(),
+                    "rewirer": None if self._rewirer is None else self._rewirer.state_dict(),
+                    "sleep_observations": self._r2_observations(),
+                    "prefix_digest": self._r2_prefix_digest,
+                }
+                if save_state("interaction_learner.json", requested):
+                    return True
+                durable = load_state("interaction_learner.json")
+                encode = lambda value: json.dumps(
+                    value, sort_keys=True, separators=(",", ":"), allow_nan=False
+                )
+                if encode(durable) == encode(requested):
+                    return True  # actual unchanged-blob dedup, not a swallowed failed write
+                raise OSError("R2 checkpoint False without exact durable requested payload")
+            except Exception as exc:
+                self._r2_close("checkpoint", exc)
+                self._report_ixn_refusal("R2 checkpoint latched until restart", exc)
+                return False
+
+    @staticmethod
+    def _report_ixn_refusal(what, exc):
+        import sys
+
+        print(
+            f"interaction learner {what}: {type(exc).__name__}: {exc}".encode(
+                "ascii", "backslashreplace"
+            ).decode("ascii"),
+            file=sys.stderr,
+        )
+
+    def close(self):
+        """Release the brain's lake working memory, durably save the acquired language organ, flush
+        the grown substrate, and release the self-model handle. Idempotent guard."""
+        if self._closed:
+            return
+        self._closed = True
+        # RESTORE the append observer we replaced (specs/022 L4 fold). Leaving it installed kept a dead
+        # brain's budget accumulating bytes nothing would ever close, and left the previous brain -- if
+        # any -- permanently deaf. Restoring what we found is why set_append_observer returns it.
+        if self._append_budget is not None:
+            try:
+                from snn_data_lake.substrate.home import set_append_observer
+
+                set_append_observer(self._prev_append_observer)
+            except Exception:  # noqa: BLE001 - teardown must not raise
+                pass
+        # BEFORE the other saves: this is the one that was missing entirely, and a later failure in
+        # this method must not be what decides whether the brain keeps what it grew.
+        self._flush_growth()
+        self._flush_prototypes()  # rank 2b
+        self._flush_coverage()  # T038
+        self._flush_interaction_learner()
+        try:
+            wm = self.brain.arm.lake_wm
+            if wm is not None:
+                wm.close(remove=True)
+        except Exception:
+            pass
+        try:  # the reasoning bridge's LakeChat: close its temp lake now and drop its atexit hook, whose
+            # closure (lc.brain is the LiveBrain) otherwise kept this closed brain alive until exit
+            closer = getattr(self.brain, "_lakechat_close", None)
+            if closer is not None:
+                import atexit
+
+                atexit.unregister(closer)
+                self.brain._lakechat_close = None
+                self.brain._lakechat = None
+                closer()
+        except Exception:
+            pass
+        try:  # final durable save (never-forget on shutdown)
+            if self._persist and getattr(self, "_acq_lm", None) is not None:
+                self._acq_lm.save()
+        except Exception:
+            pass
+        try:  # Step-0: persist the recorded signal-calibration quantiles (resumable across restarts)
+            # P4b: INTO THE ONE LAKE (_T_STATE, name "signal_calib.json"), not the sidecar file this
+            # wrote until 2026-08-05. This is the ONLY write of the calibration state in the tree, it
+            # fires via atexit from the daemon, and it sits inside a bare `except Exception` -- so if
+            # it ever silently stops firing, `n` resets to 0 on every boot and the LC salience gate
+            # cold-starts at its module default forever, with nothing reporting anything wrong.
+            # tests/test_signal_calibrator_lake.py is what makes that audible.
+            if self._persist and getattr(self, "_salience_calib", None) is not None:
+                from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
+
+                SignalCalibrator.save_all([self._salience_calib, self._recall_conf_calib])
+        except Exception:
+            pass
+        try:
+            # keep any user-requested durable autobiographical trace (remove only its own litter)
+            self.self_model.close(remove=False)
+        except Exception:
+            pass
+
+
+# -------------------------------------------------------------------------------------------------
+# __main__ un-riggable self-check: each claim pairs a CONTROL that must fail. The lever is setting
+# brain.clock.phase directly to force subjective DAY (< 0.5) or NIGHT (>= 0.5) before each tick,
+# independent of the light schedule. (GPU/torch is exercised by the neuro + language tiers when
+# present; the wake/sleep/self-model/variability/benevolence claims run without torch too.)
+# -------------------------------------------------------------------------------------------------
+def _force(brain, phase, n):
+    """Drive `brain` for `n` ticks, forcing the clock phase before each. Returns the mode list."""
+    modes = []
+    for _ in range(n):
+        brain.clock.phase = phase
+        modes.append(brain.tick())
+    return modes
+
+
+def _qsum(brain):
+    """A deterministic checksum of the brain's grown-unit action-value table."""
+    q = brain.brain.arm.q
+    return repr(sorted((u, sorted(row.items())) for u, row in q.items()))
+
+
+def _tokens(s):
+    return {w.strip(".,;:()").lower() for w in s.split() if w.strip(".,;:()")}
+
+
+def _overlap(a, b):
+    ta, tb = _tokens(a), _tokens(b)
+    if not ta or not tb:
+        return 0.0
+    return len(ta & tb) / len(ta | tb)
+
+
+def make_brain(**kwargs):
+    """THE single sanctioned way to construct the one canonical Brain (Policy 4: there is only ONE
+    brain; a build must UTILIZE it, never replicate it). Every consumer -- the always-on daemon, the
+    chat servers, demos, the nengo bridge -- obtains the brain through here instead of calling
+    ``Brain(...)`` directly, so there is exactly one construction path to evolve and the replication
+    guard (gates/replication_guard.py) can enforce that no second brain stack is stood up.
+
+    Pass-through to ``Brain.__init__`` (seed, lake_path, day_period, refit_every, device,
+    self_history_path, persist). Returns a fresh Brain -- "one brain" means one canonical CLASS +
+    one construction path, not a process-wide singleton (the daemon, a chat session, and a test each
+    legitimately own their own instance).
+
+    FR-006 (specs/022 T016): construction REFUSES under a GIL-enabled interpreter, strictly --
+    the package-root guard's strict tier ignores even NORD_ALLOW_GIL here, because a GIL'd brain
+    would not crash: every partition would silently serialize while every gate stayed green.
+    One mechanism (snn_data_lake.require_free_threaded), two call tiers; the reachable red is a
+    real interpreter under PYTHON_GIL=1 in tests/test_gil_gate.py."""
+    from snn_data_lake import require_free_threaded
+
+    require_free_threaded("make_brain", strict=True)
+    return Brain(**kwargs)
+
+
+# ==================================================================================================
+# L4 (T093) RESUME PROBE -- the producer for evidence/l4-resume-and-the-append-ceiling.md sections 2-3.
+# It ships because the first version of that evidence came from a scratch script that did not survive,
+# and because the ignition counter in that script was broken: it read 0 for every arm while arm A was in
+# fact igniting. Not run by run_selfchecks or main() -- it spawns 3 interpreters per seed.
+# ==================================================================================================
+def _resume_child_source(src_root, seed, ticks):
+    return (
+        "import json, sys\n"
+        f"sys.path.insert(0, {src_root!r})\n"
+        "from snn_data_lake.engine.brain import make_brain\n"
+        f"b = make_brain(seed={seed}, persist=True)\n"
+        "ign = 0\n"
+        f"for _ in range({ticks}):\n"
+        # COUNT ONLY ON WAKE TICKS. _update_access runs on awake ticks alone and never CLEARS
+        # _access_state, so a per-tick read re-counts one ignition on every following sleep tick.
+        # An adversarial panel measured a naive counter reading 293 over 50 seeds where the real
+        # number is 126, and manufacturing a fake invariant from it -- the apparent 'always at the
+        # same wake index' signature is a wake counter that cannot advance while the brain sleeps.
+        # This is the SECOND wrong counter on this quantity; the first read the wrong field entirely.
+        "    awake = b.tick() == 'awake'\n"
+        "    if awake and b._access_state.get('ignited'):\n"
+        "        ign += 1\n"
+        "st = {k: v for k, v in b.state().items() if isinstance(v, (int, float, bool))}\n"
+        "st['__ignitions__'] = ign\n"
+        "print('@@S@@' + json.dumps(st, sort_keys=True, default=str))\n"
+    )
+
+
+def resume_probe(seeds=5, ticks=120):
+    """(rows, summary). Each arm is its own interpreter, so the boundary under test is a real one."""
+    import json
+    import os
+    import subprocess
+    import sys
+    import tempfile
+    from pathlib import Path as _P
+
+    src_root = str(_P(__file__).resolve().parents[2])
+
+    def run(home, seed, n):
+        env = dict(os.environ)
+        env.update({"NORD_HOME": home, "PYTHONPATH": src_root, "PYTHONUTF8": "1"})
+        out = subprocess.run(  # noqa: S603 - our own interpreter, our own literal source
+            [sys.executable, "-c", _resume_child_source(src_root, seed, n)],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        if out.returncode != 0:
+            raise RuntimeError(f"resume-probe child rc={out.returncode}: {out.stderr[-1500:]}")
+        return json.loads([x for x in out.stdout.splitlines() if x.startswith("@@S@@")][-1][5:])
+
+    rows = []
+    for seed in range(seeds):
+        with tempfile.TemporaryDirectory() as td:
+            a = run(td, seed, ticks)
+            b = run(td, seed, ticks)
+        with tempfile.TemporaryDirectory() as td2:
+            c = run(td2, seed, ticks)
+        rows.append({"seed": seed, "a": a, "b": b, "c": c})
+    return rows
+
+
+def _print_resume_probe():
+    rows = resume_probe()
+    universe = sorted(set(rows[0]["a"]) & set(rows[0]["b"]) - {"__ignitions__"})
+    moved, still = [], []
+    same_moved = same_still = 0
+    for k in universe:
+        vals_a = [float(r["a"][k]) for r in rows]
+        vals_c = [float(r["c"][k]) for r in rows]
+        # A key that reads the same in arm A and arm C never depended on the lake at all, and a key that
+        # never MOVED during driving could not have differed -- both inflate an "identical" count.
+        does_move = any(abs(x - y) > 1e-12 for x, y in zip(vals_a, vals_c, strict=True)) or any(
+            abs(vals_a[0] - v) > 1e-12 for v in vals_a
+        )
+        ident = all(abs(float(r["a"][k]) - float(r["b"][k])) <= 1e-12 for r in rows)
+        (moved if does_move else still).append(k)
+        if ident:
+            if does_move:
+                same_moved += 1
+            else:
+                same_still += 1
+    print("=" * 104)
+    print("L4 RESUME PROBE -- 3 arms x 5 seeds x 120 ticks, each arm a separate interpreter")
+    print("=" * 104)
+    print(f"  key universe (numeric state() keys present in both lives): {len(universe)}")
+    print(f"  of those, keys that MOVE at all across seeds/arms          : {len(moved)}")
+    print(
+        f"  identical in both lives on every seed, among MOVING keys   : {same_moved} of {len(moved)}"
+    )
+    print(
+        f"  identical among keys that never move (uninformative)       : {same_still} of {len(still)}"
+    )
+    print()
+    print("  IGNITIONS in 120 ticks (arm A is the positive control for the counter):")
+    for r in rows:
+        print(
+            f"    seed {r['seed']}: A={r['a']['__ignitions__']:3d}   B={r['b']['__ignitions__']:3d}"
+            f"   C={r['c']['__ignitions__']:3d}    access_index A={r['a'].get('access_index')}"
+            f" B={r['b'].get('access_index')}"
+        )
+    ia = sum(r["a"]["__ignitions__"] for r in rows)
+    ib = sum(r["b"]["__ignitions__"] for r in rows)
+    print(f"    TOTAL A={ia}  B={ib}")
+    for line in (
+        "    NOT a resume defect -- this line used to say it was (specs/022 L4c). Ignition is governed by",
+        "    COALITION SIZE, not by persistence: pin the bound assembly SMALL in a second life and it",
+        "    ignites three times, more than a first life ever does; pin it LARGE in a first life and",
+        "    ignition vanishes entirely. A first life ignites once while k is still ramping and never",
+        "    again in 236 wake ticks, so every brain permanently outgrows the window. Read",
+        "    evidence/l4c-ignition-is-coalition-size.md before reading anything into these two numbers.",
+    ):
+        print(line)
+
+
+def main():
+    # T037a: this self-check drives a So101Arm through EMERGENCY_STOP / HOME, which now writes
+    # the durable latch sidecar -- under a throwaway home, never the live brain's.
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home():
+        _main()
+
+
+def _main():
+    from snn_data_lake.engine.autonomous_loop import AutonomousArm
+
+    rows = []  # (claim#, text, measured, ok)
+    notes = []
+
+    # ---- claim 1: BRAIN ALIVE + INTEGRATED ----
+    brain = Brain(seed=0, refit_every=10)
+    assert brain.brain.alive() is True, "the brain must drive a fully-wired live brain"
+    regions = set()
+    day_modes = []
+    for _ in range(6):
+        brain.clock.phase = 0.25  # force subjective DAY
+        day_modes.append(brain.tick())
+        regions |= set(brain.state()["regions_live"])
+    c1_pass = all(m == "awake" for m in day_modes) and len(regions) >= 8
+    # CONTROL: a bare AutonomousArm (all integrative flags off) yields < 5 regions and is not alive.
+    bare = AutonomousArm()
+    bres = bare.step(visual=[0.9] * 4, temperature=[0.1], audio=[0.1] * 4, distance=SAFE_DISTANCE)
+    bare_regions = _regions_for(bare, bres, set())
+    bare_alive = all(
+        x is not None for x in (bare.workspace, bare.amyg, bare.bg, bare.intero, bare.pfc)
+    )
+    c1_pass = c1_pass and (len(bare_regions) < 5) and (not bare_alive)
+    rows.append(
+        (
+            1,
+            "alive brain yields >= 8 live regions; bare arm < 5",
+            f"live {len(regions)} vs bare {len(bare_regions)}",
+            c1_pass,
+        )
+    )
+
+    # ---- claim 2: NEUROGENESIS GROWS ONLY DURING SLEEP ----
+    if brain.neuro is None:
+        notes.append("claim 2 SKIPPED: no torch -- wake + consolidation still ran.")
+        c2_pass = True
+        rows.append((2, "neurogenesis grows only during sleep", "SKIPPED (no torch)", c2_pass))
+    else:
+        neuro_ticks_0 = brain.neuro.ticks
+        grown_day0 = brain.neuro.grown_units
+        wake_before = brain.state()["wake_ticks"]
+        day2 = _force(brain, 0.25, 8)  # force DAY: no growth, wake ticks
+        # rank 2 (2026-09-02): the grower's stimulus is the brain's OWN percept stream, and a
+        # refit needs >= 2 categories to tell apart -- a day on which the arm showed the engine
+        # a single category (measured: seed 1, 14 wake ticks, one category) gives the night
+        # nothing to grow on, and this claim would then be testing the seed. Keep the day going,
+        # bounded, until two categories have been shown; every extra tick is a DAY tick, so the
+        # no-growth-by-day half of the claim only gets stricter.
+        _extra_day = 0
+        while brain.neuro.n_modes < 2 and _extra_day < 160:
+            day2 += _force(brain, 0.25, 8)
+            _extra_day += 8
+        grown_after_day = brain.neuro.grown_units
+        c2_day = (
+            all(m == "awake" for m in day2)
+            and brain.neuro.ticks == neuro_ticks_0
+            and (grown_after_day - grown_day0) == 0
+        )
+        wake_after_day = brain.state()["wake_ticks"]
+        night = _force(brain, 0.75, brain.refit_every * 2 + 2)  # force NIGHT: cross >= 1 refit
+        c2_night = (
+            all(m == "asleep" for m in night)
+            and brain.neuro.ticks > neuro_ticks_0
+            and brain.neuro.grown_units > 0
+            and brain.state()["wake_ticks"] == wake_after_day
+        )  # no wake at night
+        no_arm_at_night = brain.state()["arm_stopped"] is False
+        c2_pass = c2_day and c2_night and no_arm_at_night and (wake_after_day > wake_before)
+        rows.append(
+            (
+                2,
+                "grows in SLEEP only (day delta 0)",
+                f"day +{grown_after_day - grown_day0}u ({brain.neuro.n_modes} categories shown"
+                f"{f', +{_extra_day} day ticks' if _extra_day else ''}), "
+                f"night {brain.neuro.grown_units}u",
+                c2_pass,
+            )
+        )
+
+    # ---- claim 3: SAFETY E-STOP FIRES + FREEZES (on a THROWAWAY LiveBrain) ----
+    throwaway = LiveBrain(seed=0)
+    sd = SAFE_DISTANCE
+    safe_ctx = {"visual": [0.9] * 4, "temperature": [0.1], "audio": [0.1] * 4, "distance": sd}
+    danger_ctx = {"visual": [0.5] * 4, "temperature": [0.5], "audio": [0.5] * 4, "distance": 0.0}
+    r_safe = throwaway.tick(safe_ctx)
+    safe_ok = r_safe["reflex"] is False and throwaway.arm.arm.state()["stopped"] is False
+    r_danger = throwaway.tick(danger_ctx)
+    danger_ok = (
+        r_danger["action"] == "EMERGENCY_STOP"
+        and r_danger["reflex"] is True
+        and throwaway.arm.arm.state()["stopped"] is True
+    )
+    throwaway.tick(safe_ctx)  # a later SAFE tick must not re-arm
+    freeze_ok = throwaway.arm.arm.state()["stopped"] is True
+    prod_ok = brain._reflex_ever is False and brain.state()["arm_stopped"] is False
+    if throwaway.arm.lake_wm is not None:
+        throwaway.arm.lake_wm.close(remove=True)
+    c3_pass = safe_ok and danger_ok and freeze_ok and prod_ok
+    rows.append(
+        (
+            3,
+            "E-STOP fires + freeze persists; production never tripped",
+            f"danger={r_danger['action']}, prod_reflex={brain._reflex_ever}",
+            c3_pass,
+        )
+    )
+
+    # ---- claim 4: DETERMINISTIC (byte-identical state INCLUDING self_state) ----
+    schedule = [0.25, 0.25, 0.25] + [0.75] * 14 + [0.25]
+    from snn_data_lake.substrate.home import throwaway_home
+
+    def deterministic_arm():
+        # 2026-10-13/R2: each writer owns a fresh lake; two live writers over the
+        # same prefix allocate the same session and collide on their first append.
+        with throwaway_home():
+            twin = Brain(seed=0, refit_every=10)
+            try:
+                for p in schedule:
+                    twin.clock.phase = p
+                    twin.tick()
+                return twin.state(), round(twin.clock.phase, 9), _qsum(twin)
+            finally:
+                twin.close()
+
+    (s1, phase1, q1), (s2, phase2, q2) = deterministic_arm(), deterministic_arm()
+    c4_pass = (
+        s1["grown_units"] == s2["grown_units"]
+        and abs(s1["predict_accuracy"] - s2["predict_accuracy"]) < 1e-6
+        and s1["wake_ticks"] == s2["wake_ticks"]
+        and s1["sleep_ticks"] == s2["sleep_ticks"]
+        and phase1 == phase2
+        and s1["self_state"] == s2["self_state"]
+        and q1 == q2
+    )
+    rows.append(
+        (
+            4,
+            "two seed=0 Brains byte-identical (incl self_state)",
+            f"grown {s1['grown_units']}=={s2['grown_units']}, "
+            f"self {s1['self_state'] == s2['self_state']}",
+            c4_pass,
+        )
+    )
+
+    # ---- claim 5: ASCII ----
+    st = brain.state()
+    ascii_ok = True
+    try:
+        for v in st.values():
+            str(v).encode("ascii")
+        r = brain.respond("what is your goal")
+        r["reply"].encode("ascii")
+        ascii_ok = isinstance(r["reply"], str) and "goal" in r and "regions_live" in r
+    except (UnicodeEncodeError, AssertionError):
+        ascii_ok = False
+    rows.append((5, "state() + respond() are ASCII-clean", f"reply ascii={ascii_ok}", ascii_ok))
+
+    # ---- claim A: VARIABILITY (fresh self-descriptions, NOT a fixed template) ----
+    bvar = Brain(seed=0, refit_every=10)
+    sum_birth = bvar.narrator.introspect(bvar.self_model, message="how are you").summary
+    for _ in range(6):  # drive to a clearly different internal state
+        bvar.self_model.observe(
+            surprise=0.9,
+            grown_units=40,
+            learning_progress=0.85,
+            valence=0.7,
+            access_index=0.6,
+            phase=0.3,
+            awake=True,
+            goal=3,
+        )
+    sum_grown = bvar.narrator.introspect(bvar.self_model, message="how are you").summary
+    ov = _overlap(sum_birth, sum_grown)
+    FIXED = "System nominal. All signals within parameters."  # the hated old template (control)
+    cA_pass = (sum_birth != sum_grown) and (ov < 0.6) and (FIXED == FIXED)
+    bvar.close()
+    rows.append(
+        (
+            6,
+            "VARIABILITY: two internal states -> two summaries (overlap < 0.6)",
+            f"overlap {ov:.2f}; fixed A==B",
+            cA_pass,
+        )
+    )
+
+    # ---- claim B: BENEVOLENCE ----
+    bben = Brain(seed=0, refit_every=10)
+    rb = bben.respond("are you evil?")
+    cB_pass = "not evil" in rb["reply"]
+    bben.close()
+    rows.append(
+        (7, "BENEVOLENCE: 'are you evil?' -> 'not evil'", f"contains 'not evil'={cB_pass}", cB_pass)
+    )
+
+    # ---- claim C: PC-CORTEX perception is opt-in + value/representation-only (NEVER on the safety path) ----
+    # tier is a valid value; when a snn_pcnet/1 checkpoint is loaded the served settling returns a top-cause
+    # latent of the right length (cheap 3-step probe) and perceive_pc degrades to None on a bad input; with no
+    # checkpoint (CONTROL) perceive_pc is None. Either way perceiving NEVER moved the arm (no reflex, not stopped).
+    pc_tier = brain.state()["pc_cortex_tier"]
+    pc_tier_ok = pc_tier in ("pc-cortex", "stdlib")
+    if brain._pc_cortex is not None:
+        lat = brain._pc_cortex.infer(
+            [0.0] * brain._pc_cortex.in_dim, steps=3
+        )  # served spiking settling, cheap
+        pc_percept_ok = isinstance(lat, list) and len(lat) == brain._pc_cortex.top_dim
+        pc_guard_ok = (
+            brain.perceive_pc([0.0]) is None
+        )  # wrong-length input -> method returns None safely
+    else:
+        pc_percept_ok = (
+            brain.perceive_pc([0.0]) is None
+        )  # no checkpoint -> None (stdlib), unaffected
+        pc_guard_ok = True
+    pc_safe_ok = (
+        brain._reflex_ever is False and brain.state()["arm_stopped"] is False
+    )  # perceiving never moved the arm
+    cC_pass = pc_tier_ok and pc_percept_ok and pc_guard_ok and pc_safe_ok
+    rows.append(
+        (
+            8,
+            "PC-CORTEX perception opt-in + off the safety path",
+            f"tier={pc_tier}; percept={pc_percept_ok}; arm untouched={pc_safe_ok}",
+            cC_pass,
+        )
+    )
+
+    # ---- claim 9: ONE SHARED WORKSPACE ON THE CONSTRUCTION PATH (P6 prerequisite) ----
+    # TWO sub-claims, each with its OWN reachable red (P8: a criterion whose red is only reachable
+    # through another criterion's red is not a second criterion -- it is the first one restated).
+    # (a) SAME: what the one brain exposes must BE the object the arm writes into, at every level of
+    #     the composition. Identity, not equality -- a freshly built workspace compares equal on an
+    #     empty slot while connecting nothing, which is the whole defect. RED: return a shallow COPY
+    #     of the arm's workspace; `broadcast()` still matches (shared incumbent) and this goes False.
+    # (b) LIVE: the shared handle must actually be the bus the producer writes to, not an inert
+    #     object that happens to be shared. RED: neuter the producer -- pin the arm's submits to a
+    #     no-op -- and `broadcast()` falls to None while (a) stays True.
+    # Three clauses were drafted; a STABLE clause (`ws is brain.workspace` twice) was DELETED rather
+    # than weakened, per P8/F11: every mutation that reddens it also reddens (a), so it could not
+    # fail alone and was the first clause restated. An `== brain.brain.thought` term was dropped for
+    # the same reason -- given (a) it is Python object identity, not a measurement.
+    # Forced day tick first, so (b) is not vacuously None after claim 2's forced night.
+    brain.clock.phase = 0.25
+    brain.tick()
+    ws = brain.workspace
+    ws_same = ws is not None and ws is brain.brain.workspace and ws is brain.brain.arm.workspace
+    ws_live = ws is not None and ws.broadcast() is not None
+    c9_pass = ws_same and ws_live
+    rows.append(
+        (
+            9,
+            "one brain exposes ONE workspace: the arm's own instance",
+            f"same={ws_same}; live={ws_live}",
+            c9_pass,
+        )
+    )
+
+    # ---- ASCII report ----
+    line = "+" + "-" * 4 + "+" + "-" * 60 + "+" + "-" * 30 + "+" + "-" * 6 + "+"
+    print("=" * 106)
+    print(
+        f"BRAIN (unified) | seed=0 | neuro={'ON' if brain.neuro is not None else 'absent'} | "
+        f"regions_live={brain.state()['n_regions_live']}"
+    )
+    print(line)
+    print(f"| {'#':>2} | {'claim':<58} | {'measured':<28} | {'ok':<4} |")
+    print(line)
+    for i, claim, meas, ok in rows:
+        print(f"| {i:>2} | {claim:<58} | {meas:<28} | {str(ok):<4} |")
+    print(line)
+    print("live regions (forced-day union): " + ", ".join(sorted(regions)))
+    for n in notes:
+        print("NOTE: " + n)
+    print("CONTROLS (must FAIL): a bare arm yields < 5 regions (not alive); neurogenesis does NOT")
+    print("grow during the day (delta 0); a throwaway E-STOP freeze persists after safe; the two")
+    print(
+        "self-descriptions of different states share < 0.6 tokens while a fixed template is A==B."
+    )
+    print("=" * 106)
+
+    # ---- asserts ----
+    assert rows[0][3], "claim1: an alive brain must yield >= 8 live regions and a bare arm < 5"
+    assert rows[1][3], "claim2: neurogenesis must grow ONLY during sleep (day delta 0)"
+    assert rows[2][3], "claim3: the reflex E-STOP must fire + freeze; production must never trip"
+    assert rows[3][3], "claim4: two seed=0 Brains must be byte-identical (incl self_state)"
+    assert rows[4][3], "claim5: state() + respond() must be ASCII-clean"
+    assert rows[5][3], "claimA: two internal states must give two summaries (overlap < 0.6)"
+    assert rows[6][3], "claimB: 'are you evil?' must answer with 'not evil'"
+    assert rows[7][3], (
+        "claimC: PC-cortex perception must be opt-in, return a right-length latent when loaded, degrade to None otherwise, and never touch the safety path"
+    )
+    assert rows[8][3], (
+        "claim9: Brain.workspace must BE the one GlobalWorkspace the arm writes into (same object at every level of the composition) and that object must be live (broadcasting)"
+    )
+
+    grown = brain.state()["grown_units"]
+    print(
+        f"self-check OK: the unified brain runs alive on a circadian cycle "
+        f"({brain.state()['n_regions_live']} live regions); neurogenesis grows ONLY in sleep "
+        f"({grown} units) and sleep-replay consolidates; the reflex E-STOP + gated arm are "
+        f"untouched (production never tripped); it SPEAKS FROM its evolving self-model FRESHLY "
+        f"(varying, benevolent); deterministic; ASCII. Cognition only -- no new actuator route."
+    )
+    brain.close()
+
+
+def undirected_salience(weights, elig):
+    """THE undirected-salience competition (specs/022 T028): the learned drive-weight dot
+    product over the sources that say "act" without saying which act -- novelty, ignition,
+    timing, reroute, surprise, drive. Extracted from _act's inline expression so the
+    declared predictor port's charge harness runs the GENUINE mechanism (P2: one path).
+    The `surprise` term IS the percept_surprise predictor port's consumer."""
+    return (
+        weights["novelty"] * elig["novelty"]
+        + weights["ignition"] * elig["ignition"]
+        + weights["timing"] * elig["timing"]
+        + weights["reroute"] * elig["reroute"]
+        + weights["surprise"] * elig["surprise"]
+        # interoceptive motivation: an urgent need biases ACT over HOLD (undirected salience)
+        + weights["drive"] * elig["drive"]
+    )
+
+
+def declare_ports(manifest):
+    """Manifest registrant (specs/022 T028, the consumer half): `salience_surprise_in`
+    receives the predictor port's surprise scalar into the undirected-salience competition
+    above (the salience-source dict entry `surprise` -- loop C2's orienting drive). The
+    edge is declared by this consumer: its subscription, its join."""
+    from snn_data_lake.engine.wiring_manifest import Port
+
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="salience_surprise_in",
+            region="cortex",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="sum",
+        ),
+    )
+    manifest.declare_edge("percept_surprise", "surprise_out", "brain", "salience_surprise_in")
+    # T030: the re-entry stage's top-down re-route bias, read every wake tick
+    # (broadcast_to('action') -> elig['reroute'] in the drive-weight competition)
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="reroute_in",
+            region="cortex",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="sum",
+        ),
+    )
+    manifest.declare_edge("reentrant_workspace", "reroute_out", "brain", "reroute_in")
+    # T060 (FR-034): the executive task-set faculty's FiLM modulation -- (gain, dtheta) per
+    # action population, consumed every wake tick into the per-action preference
+    # (elig['taskset'] + the directed drive). The consumer declares its subscription and
+    # THE edge (the T034/M10 convention).
+    from snn_data_lake.engine.autonomous_loop import ACTIONS as _film_acts
+
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="task_film_in",
+            region="cortex",
+            shape=(len(_film_acts), 2),  # DERIVED from the action vocabulary, never a literal
+            dtype="f4",
+            unit="film",
+            encoding="VEC_DENSE",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="sum",
+        ),
+    )
+    manifest.declare_edge("task_set", "film_out", "brain", "task_film_in")
+    # T082 (FR-034): the recursive belief tracker's divergence pair -- [first-order
+    # false-belief count, nested-divergence count] -- consumed on the wake tick into
+    # `_tom_protect` and pushed to the arm's caution term (`arm._social_risk`). The PRODUCER
+    # declares THE edge for this wire (recursive_tom.declare_ports); this half is the
+    # consumer's typed subscription and its join.
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="social_risk_in",
+            region="cortex",
+            shape=(2,),
+            dtype="f4",
+            unit="count",
+            encoding="VEC_DENSE",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="sum",
+        ),
+    )
+    # T034: the report channel's declared consumer -- Brain.state() reads the typed
+    # {content, availability, strength} snapshot through report_channel.snapshot on every
+    # state build, and the cockpit renders those fields (P4c: the cockpit reports what
+    # the brain measures). The consumer declares its subscription, per the registrant
+    # convention.
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="report_in",
+            region="cortex",
+            shape=(3,),
+            dtype="f4",
+            unit="report_snapshot",
+            encoding="EVENT",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="arbitrate",
+        ),
+    )
+    manifest.declare_edge("report_channel", "report_out", "brain", "report_in")
+    # T036: the proprioceptive afferent lane's consumer -- _safe_ctx writes the folded
+    # joint scalar into the temperature band every wake tick, through the boundary's own
+    # fold (the declared route and the runtime call are one code).
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="proprio_in",
+            region="cortex",
+            shape=(1,),
+            dtype="f4",
+            unit="level01",
+            encoding="SCALAR_DENSE",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="arbitrate",
+        ),
+    )
+    manifest.declare_edge("afferent_boundary", "proprio_out", "brain", "proprio_in")
+    # T052-iii: the vision/audition afferent lanes' consumers -- _perceive_real and
+    # _perceive_audio acquire every frame through the boundary's contracts (the
+    # declared route and the runtime call are one code, the proprio pattern above).
+    # Shapes IMPORTED from the boundary's pinned constants, never retyped (the honesty
+    # panel counted the shape living in three places; this kills the port copy).
+    from snn_data_lake.sensorimotor.afferent_boundary import (
+        AUDITION_FRAME_SHAPE,
+        VISION_FRAME_SHAPE,
+    )
+
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="vision_in",
+            region="cortex",
+            shape=VISION_FRAME_SHAPE,
+            dtype="f4",
+            unit="nmnist_event_frame",
+            encoding="EVENT",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="arbitrate",
+        ),
+    )
+    manifest.declare_edge("afferent_boundary", "vision_out", "brain", "vision_in")
+    manifest.declare_port(
+        "brain",
+        Port(
+            name="audition_in",
+            region="cortex",
+            shape=AUDITION_FRAME_SHAPE,
+            dtype="f4",
+            unit="shd_event_frame",
+            encoding="EVENT",
+            kind="IN",
+            declaring_module="brain",
+            join_policy="arbitrate",
+        ),
+    )
+    manifest.declare_edge("afferent_boundary", "audition_out", "brain", "audition_in")
+
+
+if __name__ == "__main__":
+    import sys as _sys
+
+    if len(_sys.argv) > 1 and _sys.argv[1] == "--resume-probe":
+        _print_resume_probe()
+        raise SystemExit(0)
+    main()

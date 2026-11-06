@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/02-artifacts/run-baseline.py", line 253, in <module>
+    main()
+    ~~~~^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/02-artifacts/run-baseline.py", line 194, in main
+    worker(args.worker)
+    ~~~~~~^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/reports/02-artifacts/run-baseline.py", line 74, in worker
+    if any(home.iterdir()):
+           ^^^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'iterdir'

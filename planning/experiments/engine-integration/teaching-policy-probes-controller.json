@@ -1,0 +1,12 @@
+[
+  {
+    "mode": "always_positive",
+    "exit_code": 0,
+    "seconds": 2.740625125
+  },
+  {
+    "mode": "corrective_only",
+    "exit_code": 0,
+    "seconds": 0.18598025000000007
+  }
+]

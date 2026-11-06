@@ -1,0 +1,5 @@
+{"event": "launch", "run_id": "shd-repeat-s8003"}
+{"run_id": "shd-repeat-s8003", "exit_code": 0}
+{"event": "launch", "run_id": "shd-replay-s8003"}
+{"run_id": "shd-replay-s8003", "exit_code": 0}
+Remaining registered arms complete

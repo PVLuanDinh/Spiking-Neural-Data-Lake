@@ -1,0 +1,47 @@
+{
+  "complete_run_positive": {
+    "detected": true
+  },
+  "declared_exclusion": {
+    "detected": true,
+    "reason": "exclusions/dirty tree: INVALID",
+    "synthetic": true
+  },
+  "hash_corruption": {
+    "detected": true,
+    "reason": "result hash mismatch",
+    "synthetic": true
+  },
+  "incomplete_run": {
+    "detected": true,
+    "reason": "incomplete/error/timeout run: NOT RUN",
+    "synthetic": true
+  },
+  "missing_manifest_arm": {
+    "detected": true,
+    "reason": "missing/extra subprocess",
+    "synthetic": true
+  },
+  "pipeline_halts_at_stage_1": {
+    "detected": true,
+    "synthetic": true
+  },
+  "pipeline_halts_at_stage_2": {
+    "detected": true,
+    "synthetic": true
+  },
+  "pipeline_halts_at_stage_3": {
+    "detected": true,
+    "synthetic": true
+  },
+  "worker_failed": {
+    "detected": true,
+    "reason": "worker error/timeout",
+    "synthetic": true
+  },
+  "worker_timeout": {
+    "detected": true,
+    "reason": "worker error/timeout",
+    "synthetic": true
+  }
+}

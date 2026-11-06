@@ -1,0 +1,7 @@
+{
+  "selector_first_budget": true,
+  "selector_no_effect": true,
+  "selector_later_budget": true,
+  "independent_scorer_positive": 1.0,
+  "independent_scorer_reversed": 0.0
+}

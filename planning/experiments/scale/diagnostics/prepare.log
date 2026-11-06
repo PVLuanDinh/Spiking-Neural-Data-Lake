@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/scale/prepare_shd.py", line 124, in <module>
+    main()
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/scale/prepare_shd.py", line 52, in main
+    assert digest(part, "md5") == EXPECTED_MD5, "archive checksum mismatch"
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/scale/prepare_shd.py", line 22, in digest
+    for part in iter(lambda: f.read(4 * 1024 * 1024), b""):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/scale/prepare_shd.py", line 22, in <lambda>
+    for part in iter(lambda: f.read(4 * 1024 * 1024), b""):
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: [Errno 60] Operation timed out

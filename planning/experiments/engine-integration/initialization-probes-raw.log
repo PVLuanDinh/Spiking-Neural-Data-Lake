@@ -1,0 +1,8 @@
+{"mode": "baseline", "stable_solved": false, "epochs": 1200, "best_correct": 8, "max_streak": 0, "wall_seconds": 2.802903624999999}
+{"mode": "bf_pre", "stable_solved": false, "epochs": 1200, "best_correct": 16, "max_streak": 2, "wall_seconds": 2.4143056659995636}
+{"mode": "homeo_pre", "stable_solved": false, "epochs": 1200, "best_correct": 8, "max_streak": 0, "wall_seconds": 2.291924082999685}
+{"mode": "both_pre", "stable_solved": false, "epochs": 1200, "best_correct": 16, "max_streak": 2, "wall_seconds": 2.3343569580001713}
+{"mode": "common_pre", "stable_solved": false, "epochs": 1200, "best_correct": 8, "max_streak": 0, "wall_seconds": 2.424373667000509}
+{"mode": "bf_off", "stable_solved": false, "epochs": 1200, "best_correct": 16, "max_streak": 3, "wall_seconds": 1.7864199169998756}
+{"mode": "homeo_off", "stable_solved": false, "epochs": 1200, "best_correct": 8, "max_streak": 0, "wall_seconds": 2.338824917000238}
+{"mode": "ei_off", "stable_solved": false, "epochs": 1200, "best_correct": 16, "max_streak": 2, "wall_seconds": 2.209131957999489}

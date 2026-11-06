@@ -1,0 +1,36 @@
+{
+  "exit_code": 0,
+  "seconds": 64.6562267499994,
+  "command": [
+    "zsh",
+    "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/engine-integration/run-engine.sh",
+    "-m",
+    "pytest",
+    "-p",
+    "no:cacheprovider",
+    "--no-cov",
+    "-x",
+    "-q",
+    "--junitxml=/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/engine-integration/final-brain-regression.xml",
+    "tests/test_g9_growth_adapter.py",
+    "tests/test_g9_posed_actor.py",
+    "tests/test_g9_core_eligibility.py",
+    "tests/test_g9_corrective_feedback.py",
+    "tests/test_g9_retention_consumption.py",
+    "tests/test_g9_factory_prefix.py",
+    "tests/test_g9_live_home_boot.py",
+    "tests/test_joint_mask_search.py"
+  ],
+  "suites": [
+    {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "95",
+      "time": "64.071",
+      "timestamp": "2026-11-04T02:07:39.540399-06:00",
+      "hostname": "MacBook-Air-Arthur-3.local"
+    }
+  ]
+}

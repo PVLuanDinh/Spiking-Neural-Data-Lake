@@ -1,0 +1,74 @@
+{
+  "file": "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/handoff/CLAUDE_REVIEW_CONTEXT.md",
+  "bytes": 183845,
+  "words": 17801,
+  "sha256": "51d2bd5bd9f90755f34ca9237a80e3f593726ce36efe43c8afc13ab9bbdd5676",
+  "included_sources": [
+    {
+      "workspace_member": "planning/handoff/CLAUDE_START_HERE.md",
+      "sha256": "bd3e2166f744250c83a1870d718f314f4661894e913feb14081715da8c2b1aee",
+      "bytes": 4103
+    },
+    {
+      "workspace_member": "planning/handoff/SNDL_RESEARCH_HANDOFF_2026-11-04.md",
+      "sha256": "25d70f46b50c3758b45f2c4cf523a90865726231de5e6a4768165a3e1d846128",
+      "bytes": 35255
+    },
+    {
+      "workspace_member": "planning/handoff/CONTEXT.json",
+      "sha256": "3e50637d6c05224d7a4608feea7cdc602d57e9bd75d0e011700b8a1b119a9a3f",
+      "bytes": 23135
+    },
+    {
+      "workspace_member": "planning/experiments/scale/PROTOCOL.md",
+      "sha256": "b6407d8bfd47585d1fa6a244fc0390b61afbf2f66a34f2498ca8522cf09f6aa1",
+      "bytes": 6253
+    },
+    {
+      "workspace_member": "planning/experiments/scale/reports/data-manifest.json",
+      "sha256": "abb54567b576e6b66c8de2c8e4dddf2c30bce20d5e548cc0b9bc543fb69ddace",
+      "bytes": 3369
+    },
+    {
+      "workspace_member": "planning/experiments/scale/reports/pilot-results.json",
+      "sha256": "2cf00b78fe3f821677f55f384fb421b43e0f2a0404c0155530c01f21cf7b4cca",
+      "bytes": 64739
+    },
+    {
+      "workspace_member": "planning/experiments/scale/DEVIATIONS.md",
+      "sha256": "d8fd60b8f7e2b6ad113ba8f878c4f4b38c32d39bafcb5249cfde3396d1776c88",
+      "bytes": 3947
+    },
+    {
+      "workspace_member": "planning/experiments/scale/reports/closing-verification.json",
+      "sha256": "67bbe7d31a5a5fab80cd8f639a9217e43f1ca143af25d0292b3e06acdbf14402",
+      "bytes": 685
+    },
+    {
+      "workspace_member": "repo/specs/022-unified-brain-arc/evidence/g9-engine-cycle-integration.md",
+      "sha256": "a658b50ddbb4713b9505d365a43e99667802e577298106ca0b9f91d1dcb20524",
+      "bytes": 17434
+    },
+    {
+      "workspace_member": "planning/experiments/engine-integration/LEDGER.md",
+      "sha256": "25d8016c32a56fbf0b5fff19cb41aada73a709a34ac0464f94376f4258066ea3",
+      "bytes": 8185
+    },
+    {
+      "workspace_member": "planning/experiments/engine-integration/cycle-04-independent-audit.json",
+      "sha256": "90b42ee43bb6a98f88d038fe466eb5611de94df25768c2eb746e7010add669db",
+      "bytes": 8197
+    },
+    {
+      "workspace_member": "planning/experiments/engine-integration/completion.json",
+      "sha256": "7b803126cc3896f866a8d95e55a7bf0e54fa8ddcdc0f85a930d2b59b34cb4105",
+      "bytes": 3401
+    },
+    {
+      "workspace_member": "planning/experiments/engine-integration/RUNTIME.md",
+      "sha256": "fed82026ea2d315d15f736971976647468f4fd19a3511dd754dd8a1dcb045a53",
+      "bytes": 2755
+    }
+  ],
+  "scope": "single text review subset; full code and detailed raw records in ZIP"
+}

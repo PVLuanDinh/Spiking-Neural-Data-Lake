@@ -1,0 +1,19 @@
+{
+  "all_primary_final_accuracy_full": true,
+  "all_seeds_zero_forgetting_and_headroom": true,
+  "head": "c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "independent_panel_or_full_battery": false,
+  "no_sidecars": true,
+  "offline_audits_equal": {
+    "sensitivity.json": true,
+    "summary.json": true,
+    "table.md": true
+  },
+  "report_links_checked": 9,
+  "report_sha256": "05eafeae2dfb6d5bcf92e4152570b72874584565e4f7d4effd5fdb85587c47bd",
+  "restore_targets_absent": true,
+  "source_clean": true,
+  "source_receipts_matched": 405,
+  "status": "VERIFIED_IN_STATED_COMPONENT_SCOPE",
+  "summary_sha256": "c1643a5ffc34e859201e40169a2615db6debd6dfb83a22870965375928fdfe27"
+}

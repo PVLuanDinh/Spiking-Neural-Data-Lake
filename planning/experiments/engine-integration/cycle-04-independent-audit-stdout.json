@@ -1,0 +1,210 @@
+{
+  "checks": {
+    "lake_rb_only_no_change": true,
+    "raw_console_rows_equal_journal": true,
+    "canonical_neurons_and_complete_stack_exact_old_to_grow": true,
+    "source_18_of_1024_one_batch_stream9900": true
+  },
+  "scores": {
+    "old.validation.aii": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.validation.ii.xor": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.validation.aii": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.final.ii.xor": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.final.aii": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.grown_off.ii.xor": {
+      "correct": 8,
+      "presentations": 16
+    },
+    "grow.grown_off.aii": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "prior_allplastic.aii": {
+      "correct": 0,
+      "presentations": 16
+    },
+    "prior_allplastic.ii.xor": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.channel.baseline": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.channel.feed_off": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.channel.return_off": {
+      "correct": 8,
+      "presentations": 16
+    },
+    "grow.channel.both_off": {
+      "correct": 8,
+      "presentations": 16
+    },
+    "cycle-04-grow-restore-2.json.ii.xor": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "cycle-04-grow-restore-2.json.aii": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "cycle-04-grow-restore-journal.json.ii.xor": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "cycle-04-grow-restore-journal.json.aii": {
+      "correct": 16,
+      "presentations": 16
+    }
+  },
+  "epochs": {
+    "aii": {
+      "epochs": 22,
+      "teach_presentations": 88,
+      "validation_presentations": 352,
+      "shared_plasticity_deposits": 66,
+      "first_all_correct_epoch": 13,
+      "final_stable_run": 10,
+      "all_epoch_rows_rescored": 22
+    },
+    "ii.xor": {
+      "epochs": 107,
+      "teach_presentations": 428,
+      "validation_presentations": 1712,
+      "shared_plasticity_deposits": 0,
+      "first_all_correct_epoch": 98,
+      "final_stable_run": 10,
+      "all_epoch_rows_rescored": 107
+    }
+  },
+  "channels": {
+    "baseline": {
+      "score": {
+        "correct": 16,
+        "presentations": 16
+      },
+      "pool_feature_l2_delta": 0.0,
+      "feed_l2_minmax": [
+        2.567633719219973,
+        2.976195381808685
+      ],
+      "return_weights_l2": 4.913636133957407,
+      "afferent_l1_minmax": [
+        7946.315312388685,
+        8230.419010981283
+      ],
+      "changed_latency_entries": 0,
+      "grown_drive_l2_delta": 0.0
+    },
+    "feed_off": {
+      "score": {
+        "correct": 16,
+        "presentations": 16
+      },
+      "pool_feature_l2_delta": 32.68026927673638,
+      "feed_l2_minmax": [
+        0.0,
+        0.0
+      ],
+      "return_weights_l2": 4.913636133957407,
+      "afferent_l1_minmax": [
+        7946.315312388685,
+        8230.419010981283
+      ],
+      "changed_latency_entries": 0,
+      "grown_drive_l2_delta": 0.0
+    },
+    "return_off": {
+      "score": {
+        "correct": 8,
+        "presentations": 16
+      },
+      "pool_feature_l2_delta": 21.166010488516726,
+      "feed_l2_minmax": [
+        3.760032649929224,
+        3.969203856319631
+      ],
+      "return_weights_l2": 0.0,
+      "afferent_l1_minmax": [
+        0.0,
+        0.0
+      ],
+      "changed_latency_entries": 220,
+      "grown_drive_l2_delta": 0.536067283836626
+    },
+    "both_off": {
+      "score": {
+        "correct": 8,
+        "presentations": 16
+      },
+      "pool_feature_l2_delta": 32.68026927673638,
+      "feed_l2_minmax": [
+        0.0,
+        0.0
+      ],
+      "return_weights_l2": 0.0,
+      "afferent_l1_minmax": [
+        0.0,
+        0.0
+      ],
+      "changed_latency_entries": 220,
+      "grown_drive_l2_delta": 0.536067283836626
+    }
+  },
+  "lesion": {
+    "aii": {
+      "correct": 0,
+      "presentations": 16,
+      "predictions_unchanged": false
+    },
+    "ii.xor": {
+      "correct": 16,
+      "presentations": 16,
+      "predictions_unchanged": true
+    }
+  },
+  "restores": {
+    "cycle-04-grow-restore-2.json": {
+      "journal_only": false,
+      "exact": {
+        "model_digest": true,
+        "core_state": true,
+        "actors": true,
+        "validation": true,
+        "source_events": true
+      },
+      "final_repeat_refused": true,
+      "reason": "refusal asserted by recorded controller"
+    },
+    "cycle-04-grow-restore-journal.json": {
+      "journal_only": true,
+      "exact": {
+        "model_digest": true,
+        "core_state": true,
+        "actors": true,
+        "validation": true,
+        "source_events": true
+      },
+      "final_repeat_refused": true,
+      "reason": "G9_RETENTION_ALREADY_CONSUMED"
+    }
+  }
+}

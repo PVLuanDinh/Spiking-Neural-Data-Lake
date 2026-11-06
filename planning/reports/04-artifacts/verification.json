@@ -1,0 +1,85 @@
+{
+  "two_offline_recomputations_byte_identical": [
+    "summary.json",
+    "table.md",
+    "sensitivity.json",
+    "transport.json",
+    "analysis-source.py"
+  ],
+  "summary_sha256": "0ea62ebe86b5649a65ad4ce0fe748487b57a9c9af05c678b6dc0af692c67ed10",
+  "ac1d_carry_reset_full_reader_results_identical": true,
+  "baseline_eligibility": [
+    {
+      "family": "rst",
+      "mode": "carry",
+      "stable_final_with_controls": false,
+      "task": "i.S0C0"
+    },
+    {
+      "family": "delta",
+      "mode": "carry",
+      "stable_final_with_controls": true,
+      "task": "i.S0C0"
+    },
+    {
+      "family": "rst",
+      "mode": "reset",
+      "stable_final_with_controls": false,
+      "task": "i.S0C0"
+    },
+    {
+      "family": "delta",
+      "mode": "reset",
+      "stable_final_with_controls": true,
+      "task": "i.S0C0"
+    },
+    {
+      "family": "rst",
+      "mode": "carry",
+      "stable_final_with_controls": false,
+      "task": "i.S1C0"
+    },
+    {
+      "family": "delta",
+      "mode": "carry",
+      "stable_final_with_controls": true,
+      "task": "i.S1C0"
+    },
+    {
+      "family": "rst",
+      "mode": "reset",
+      "stable_final_with_controls": false,
+      "task": "i.S1C0"
+    },
+    {
+      "family": "delta",
+      "mode": "reset",
+      "stable_final_with_controls": false,
+      "task": "i.S1C0"
+    },
+    {
+      "family": "rst",
+      "mode": "carry",
+      "stable_final_with_controls": false,
+      "task": "ac1d"
+    },
+    {
+      "family": "delta",
+      "mode": "carry",
+      "stable_final_with_controls": true,
+      "task": "ac1d"
+    },
+    {
+      "family": "rst",
+      "mode": "reset",
+      "stable_final_with_controls": false,
+      "task": "ac1d"
+    },
+    {
+      "family": "delta",
+      "mode": "reset",
+      "stable_final_with_controls": true,
+      "task": "ac1d"
+    }
+  ]
+}

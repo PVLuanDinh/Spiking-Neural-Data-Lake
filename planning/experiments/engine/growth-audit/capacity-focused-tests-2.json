@@ -1,0 +1,14 @@
+{
+  "exit_code": 0,
+  "stdout": "............................                                             [100%]\n",
+  "stderr": "",
+  "command": [
+    "zsh",
+    "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/engine-integration/run-engine.sh",
+    "-m",
+    "pytest",
+    "--no-cov",
+    "-q",
+    "tests/test_capacity_certificate.py"
+  ]
+}

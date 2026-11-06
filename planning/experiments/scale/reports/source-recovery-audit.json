@@ -1,0 +1,31 @@
+{
+  "repository": "PVLuanDinh/Spiking-Neural-Data-Lake",
+  "commit": "c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "remote_tree_url": "https://api.github.com/repos/PVLuanDinh/Spiking-Neural-Data-Lake/git/trees/c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "verified_blobs": 5,
+  "all_match": true,
+  "scope": "imported-only",
+  "source_root": "/private/tmp/sndl-class-source-tlefts_z",
+  "files": {
+    "src/snn_data_lake/__init__.py": {
+      "git_blob": "4a8e7ab12cc2b8fafaefe4a6d6382628ff7a92b8",
+      "sha256": "d682c8dffa9519486740d75e6bfe886febca62645ce21add3961b24e341ef6ae"
+    },
+    "src/snn_data_lake/plasticity/__init__.py": {
+      "git_blob": "14ca0c25351b7279bcf6a10b571363bdb5277215",
+      "sha256": "e597c53ba470dc8eddd185582d873f1daf6033ca4b400982b8a4ca5814fc8614"
+    },
+    "src/snn_data_lake/plasticity/eprop_kernel.py": {
+      "git_blob": "5955484518f1950a0a26cba0c7746688e2b14fab",
+      "sha256": "f10cca303e28ba2084dd38fae1b5e47b6edaa9aa3e443aad805310c270dbf5d9"
+    },
+    "src/snn_data_lake/sensorimotor/__init__.py": {
+      "git_blob": "00ee185f03c8957676446b6bd80e5476245d8dc5",
+      "sha256": "14f44e2c16c3aee993cc6af227715c1af849de59b9bd036cb01ebddba548679a"
+    },
+    "src/snn_data_lake/sensorimotor/eprop_shd.py": {
+      "git_blob": "1fec4619dcea26c4a4e090f884f5cd2f965b19f4",
+      "sha256": "0ddc1301ffa73cc7ba109b2a8824628f2ade706506f4eef0e82e911e07fb3ba6"
+    }
+  }
+}

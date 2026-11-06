@@ -1,0 +1,19 @@
+{
+  "scope": "exposed engineering teaching-policy diagnostic, not canonical repair/promotion or efficacy claim",
+  "mode": "corrective_only",
+  "seed": 9900,
+  "problem": "aii",
+  "max_epochs": 1200,
+  "stable_epochs": 10,
+  "initialization": "canonical working-source PRE baseline fix, all faculties enabled",
+  "source_modules": {
+    "/Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/working-source/src/snn_data_lake/instruments/taught_problems.py": "d9bac1aa758d98a8153d4da9edefc9f5d46703eb44ec5599e4c56f80e6c3c61a",
+    "/Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/working-source/src/snn_data_lake/readout/interaction_learning.py": "a5e7929aae020d83495dcb1d3c698d58d5f61826a2be29dbe9ba7f6c2426ed2a",
+    "/Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/working-source/src/snn_data_lake/plasticity/plasticity_rule_stack.py": "07f27c5b21becb63d95fba41f60d1aeb108c9bb32365c6321a50e26121022a88",
+    "/Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/working-source/src/snn_data_lake/plasticity/homeostatic_plasticity_stack.py": "99fe23a9df1cda8286f30479a873655f68586af82f0a1e9606df3fcaa8f5a637"
+  },
+  "script_sha256": "13890e0ecf656832622b624b1d3e0de0b4ee78cb178a9051296525c285de4623",
+  "corrective_action_if_correct": "count/log external presentation, no learn_turn or learned/cache/replay mutation",
+  "corrective_action_if_wrong": "unchanged actual Reader.teach / canonical learn_turn(label)",
+  "validation": "pure route_text, no target input or update"
+}

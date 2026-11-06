@@ -1,0 +1,18 @@
+# Large data and host runtime state are regenerated outside this research archive.
+**/data/
+**/homes/
+**/__pycache__/
+**/.venv*/
+*.bin
+*.pyc
+*.pyo
+*.part
+*.zip
+*.bundle
+*.patch
+
+# Deliberate exceptions to the repository-wide array ignore rules:
+# measured prediction outputs, stream/replay IDs, and small scoring metadata.
+!/experiments/scale/runs/*/predictions-*.npz
+!/experiments/scale/runs/*/*.npy
+!/experiments/scale/reports/evaluation-metadata/*.npy

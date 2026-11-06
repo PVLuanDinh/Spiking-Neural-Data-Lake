@@ -1,0 +1,250 @@
+{
+  "all_simulation_point_checks": true,
+  "bootstrap_residuals": [
+    -0.048112522432468774,
+    0.24056261216234395,
+    -0.33678765702728164,
+    0.14433756729740643
+  ],
+  "design": {
+    "alpha": 0.05,
+    "cap": 48,
+    "delta": 0.1,
+    "fixed_n": 31,
+    "futility": "nonbinding; MDE <= delta and conditional final-crossing power under delta < .10",
+    "inflation": 1.5483870967741935,
+    "looks": [
+      {
+        "alpha_increment": 0.0125,
+        "mde": 0.19622487043694636,
+        "n": 12,
+        "z": 2.2414027276049464
+      },
+      {
+        "alpha_increment": 0.0125,
+        "mde": 0.13875193652341647,
+        "n": 24,
+        "z": 2.2414027276049464
+      },
+      {
+        "alpha_increment": 0.0125,
+        "mde": 0.11329048176847041,
+        "n": 36,
+        "z": 2.2414027276049464
+      },
+      {
+        "alpha_increment": 0.0125,
+        "mde": 0.09811243521847318,
+        "n": 48,
+        "z": 2.2414027276049464
+      }
+    ],
+    "sigma_assumed_known": 0.22047927592204916
+  },
+  "formula_source": "https://www.itl.nist.gov/div898/handbook/prc/section2/prc222.htm",
+  "limitations": [
+    "four exposed dev seeds cannot establish population variance or tails",
+    "known-sigma normal model only; do not run a Z-test using this small pilot SD as known sigma",
+    "bootstrap simulation is a sensitivity check, not validation for every possible distribution",
+    "new confirmatory task seeds unassigned; no old frozen protocol inherited",
+    "10 percentage points is a design assumption, not an empirically established useful effect"
+  ],
+  "measured_paired_sd": 0.22047927592204916,
+  "pilot_differences": [
+    0.33333333333333337,
+    0.5833333333333333,
+    0.08333333333333337,
+    0.5
+  ],
+  "pilot_seeds": [
+    8000,
+    8001,
+    8002,
+    8003
+  ],
+  "planner_sha256": "4ee3c9b61f4906cb3d5f5cd0e65b830e5a02fe293467cc023f0559c52eaa8425",
+  "primary": "final accuracy trained minus shuffled; learned dev positive and frozen control required",
+  "sensitivity": [
+    {
+      "alpha": 0.05,
+      "cap": 188,
+      "delta": 0.05,
+      "fixed_n": 121,
+      "futility": "nonbinding; MDE <= delta and conditional final-crossing power under delta < .10",
+      "inflation": 1.5537190082644627,
+      "looks": [
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.0991506909597019,
+          "n": 47,
+          "z": 2.2414027276049464
+        },
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.07011012593693691,
+          "n": 94,
+          "z": 2.2414027276049464
+        },
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.05724467811592128,
+          "n": 141,
+          "z": 2.2414027276049464
+        },
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.04957534547985095,
+          "n": 188,
+          "z": 2.2414027276049464
+        }
+      ],
+      "sigma_assumed_known": 0.22047927592204916
+    },
+    {
+      "alpha": 0.05,
+      "cap": 12,
+      "delta": 0.2,
+      "fixed_n": 8,
+      "futility": "nonbinding; MDE <= delta and conditional final-crossing power under delta < .10",
+      "inflation": 1.5,
+      "looks": [
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.3924497408738927,
+          "n": 3,
+          "z": 2.2414027276049464
+        },
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.27750387304683294,
+          "n": 6,
+          "z": 2.2414027276049464
+        },
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.22658096353694082,
+          "n": 9,
+          "z": 2.2414027276049464
+        },
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.19622487043694636,
+          "n": 12,
+          "z": 2.2414027276049464
+        }
+      ],
+      "sigma_assumed_known": 0.22047927592204916
+    },
+    {
+      "alpha": 0.05,
+      "cap": 188,
+      "delta": 0.1,
+      "fixed_n": 121,
+      "futility": "nonbinding; MDE <= delta and conditional final-crossing power under delta < .10",
+      "inflation": 1.5537190082644627,
+      "looks": [
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.1983013819194038,
+          "n": 47,
+          "z": 2.2414027276049464
+        },
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.14022025187387382,
+          "n": 94,
+          "z": 2.2414027276049464
+        },
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.11448935623184256,
+          "n": 141,
+          "z": 2.2414027276049464
+        },
+        {
+          "alpha_increment": 0.0125,
+          "mde": 0.0991506909597019,
+          "n": 188,
+          "z": 2.2414027276049464
+        }
+      ],
+      "sigma_assumed_known": 0.4409585518440983
+    }
+  ],
+  "simulations": [
+    {
+      "efficacy_mc_95_wilson": [
+        0.030564384722022043,
+        0.03551499615798529
+      ],
+      "mean_seeds_used": 47.2758,
+      "meets_point_check": true,
+      "model": "normal",
+      "planted_effect": 0,
+      "rates": {
+        "cap_no_crossing_at_stated_mde": 0.96705,
+        "efficacy": 0.03295,
+        "futility": 0.0,
+        "inconclusive": 0.0
+      },
+      "replicates": 20000,
+      "rng_seed": 301
+    },
+    {
+      "efficacy_mc_95_wilson": [
+        0.841741686080786,
+        0.8517251177106997
+      ],
+      "mean_seeds_used": 30.051,
+      "meets_point_check": true,
+      "model": "normal",
+      "planted_effect": 0.1,
+      "rates": {
+        "cap_no_crossing_at_stated_mde": 0.1532,
+        "efficacy": 0.8468,
+        "futility": 0.0,
+        "inconclusive": 0.0
+      },
+      "replicates": 20000,
+      "rng_seed": 302
+    },
+    {
+      "efficacy_mc_95_wilson": [
+        0.02729190962565913,
+        0.03198877709952971
+      ],
+      "mean_seeds_used": 47.4066,
+      "meets_point_check": true,
+      "model": "centred_rescaled_pilot",
+      "planted_effect": 0,
+      "rates": {
+        "cap_no_crossing_at_stated_mde": 0.97045,
+        "efficacy": 0.02955,
+        "futility": 0.0,
+        "inconclusive": 0.0
+      },
+      "replicates": 20000,
+      "rng_seed": 303
+    },
+    {
+      "efficacy_mc_95_wilson": [
+        0.8427042093792048,
+        0.8526622295437745
+      ],
+      "mean_seeds_used": 30.2178,
+      "meets_point_check": true,
+      "model": "centred_rescaled_pilot",
+      "planted_effect": 0.1,
+      "rates": {
+        "cap_no_crossing_at_stated_mde": 0.15225,
+        "efficacy": 0.84775,
+        "futility": 0.0,
+        "inconclusive": 0.0
+      },
+      "replicates": 20000,
+      "rng_seed": 304
+    }
+  ],
+  "status": "DRAFT / NOT LAUNCH READY",
+  "summary_sha256": "022ee4f632943bcf47eecfc9beab5b2aeb330b98178d22739cf69b3eb8987af0"
+}

@@ -1,0 +1,326 @@
+{
+  "scope": "independent artifact and raw-journal audit, no Brain or learning run",
+  "seed": 9900,
+  "checks": {
+    "lake_rb_only_no_change": true,
+    "raw_console_rows_equal_journal": true,
+    "canonical_neurons_and_complete_stack_exact_old_to_grow": true,
+    "source_18_of_1024_one_batch_stream9900": true
+  },
+  "scores": {
+    "old.validation.aii": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.validation.ii.xor": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.validation.aii": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.final.ii.xor": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.final.aii": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.grown_off.ii.xor": {
+      "correct": 8,
+      "presentations": 16
+    },
+    "grow.grown_off.aii": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "prior_allplastic.aii": {
+      "correct": 0,
+      "presentations": 16
+    },
+    "prior_allplastic.ii.xor": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.channel.baseline": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.channel.feed_off": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "grow.channel.return_off": {
+      "correct": 8,
+      "presentations": 16
+    },
+    "grow.channel.both_off": {
+      "correct": 8,
+      "presentations": 16
+    },
+    "cycle-04-grow-restore-2.json.ii.xor": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "cycle-04-grow-restore-2.json.aii": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "cycle-04-grow-restore-journal.json.ii.xor": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "cycle-04-grow-restore-journal.json.aii": {
+      "correct": 16,
+      "presentations": 16
+    }
+  },
+  "actual_epoch_history": {
+    "aii": {
+      "epochs": 22,
+      "teach_presentations": 88,
+      "validation_presentations": 352,
+      "shared_plasticity_deposits": 66,
+      "first_all_correct_epoch": 13,
+      "final_stable_run": 10,
+      "all_epoch_rows_rescored": 22
+    },
+    "ii.xor": {
+      "epochs": 107,
+      "teach_presentations": 428,
+      "validation_presentations": 1712,
+      "shared_plasticity_deposits": 0,
+      "first_all_correct_epoch": 98,
+      "final_stable_run": 10,
+      "all_epoch_rows_rescored": 107
+    }
+  },
+  "schedule_summary": {
+    "aii": {
+      "unique_teach_items": 4,
+      "teach_items_per_epoch": 4,
+      "validation_unique_texts": 4,
+      "validation_presentations": 16,
+      "repetitions_per_unique_item": 4,
+      "actor_teaches": 88
+    },
+    "ii.xor": {
+      "unique_teach_items": 4,
+      "teach_items_per_epoch": 4,
+      "validation_unique_texts": 4,
+      "validation_presentations": 16,
+      "repetitions_per_unique_item": 4,
+      "actor_teaches": 428
+    }
+  },
+  "source": {
+    "batch_id": 0,
+    "stream_seed": 9900,
+    "evaluations": 1024,
+    "admitted_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "selected_source_indices": [
+      737,
+      678,
+      328,
+      22,
+      471,
+      505,
+      87,
+      407,
+      762,
+      390,
+      140,
+      114,
+      387,
+      111,
+      816,
+      17,
+      711,
+      973
+    ]
+  },
+  "channel_interventions": {
+    "baseline": {
+      "score": {
+        "correct": 16,
+        "presentations": 16
+      },
+      "pool_feature_l2_delta": 0.0,
+      "feed_l2_minmax": [
+        2.567633719219973,
+        2.976195381808685
+      ],
+      "return_weights_l2": 4.913636133957407,
+      "afferent_l1_minmax": [
+        7946.315312388685,
+        8230.419010981283
+      ],
+      "changed_latency_entries": 0,
+      "grown_drive_l2_delta": 0.0
+    },
+    "feed_off": {
+      "score": {
+        "correct": 16,
+        "presentations": 16
+      },
+      "pool_feature_l2_delta": 32.68026927673638,
+      "feed_l2_minmax": [
+        0.0,
+        0.0
+      ],
+      "return_weights_l2": 4.913636133957407,
+      "afferent_l1_minmax": [
+        7946.315312388685,
+        8230.419010981283
+      ],
+      "changed_latency_entries": 0,
+      "grown_drive_l2_delta": 0.0
+    },
+    "return_off": {
+      "score": {
+        "correct": 8,
+        "presentations": 16
+      },
+      "pool_feature_l2_delta": 21.166010488516726,
+      "feed_l2_minmax": [
+        3.760032649929224,
+        3.969203856319631
+      ],
+      "return_weights_l2": 0.0,
+      "afferent_l1_minmax": [
+        0.0,
+        0.0
+      ],
+      "changed_latency_entries": 220,
+      "grown_drive_l2_delta": 0.536067283836626
+    },
+    "both_off": {
+      "score": {
+        "correct": 8,
+        "presentations": 16
+      },
+      "pool_feature_l2_delta": 32.68026927673638,
+      "feed_l2_minmax": [
+        0.0,
+        0.0
+      ],
+      "return_weights_l2": 0.0,
+      "afferent_l1_minmax": [
+        0.0,
+        0.0
+      ],
+      "changed_latency_entries": 220,
+      "grown_drive_l2_delta": 0.536067283836626
+    }
+  },
+  "lesion_arithmetic_rescore": {
+    "aii": {
+      "correct": 0,
+      "presentations": 16,
+      "predictions_unchanged": false
+    },
+    "ii.xor": {
+      "correct": 16,
+      "presentations": 16,
+      "predictions_unchanged": true
+    }
+  },
+  "restores": {
+    "cycle-04-grow-restore-2.json": {
+      "journal_only": false,
+      "exact": {
+        "model_digest": true,
+        "core_state": true,
+        "actors": true,
+        "validation": true,
+        "source_events": true
+      },
+      "final_repeat_refused": true,
+      "reason": "refusal asserted by recorded controller"
+    },
+    "cycle-04-grow-restore-journal.json": {
+      "journal_only": true,
+      "exact": {
+        "model_digest": true,
+        "core_state": true,
+        "actors": true,
+        "validation": true,
+        "source_events": true
+      },
+      "final_repeat_refused": true,
+      "reason": "G9_RETENTION_ALREADY_CONSUMED"
+    }
+  },
+  "provenance": {
+    "old": {
+      "exit_code": 0,
+      "controller_seconds": 9.676446291000502,
+      "source_hashes_verified": 8
+    },
+    "grow": {
+      "exit_code": 0,
+      "controller_seconds": 135.82026391600084,
+      "source_hashes_verified": 8
+    },
+    "restore-2": {
+      "exit_code": 0,
+      "controller_seconds": 5.082242708000194,
+      "source_hashes_verified": 8
+    },
+    "restore_journal": {
+      "exit_code": 0,
+      "controller_seconds": 31.41120899999987,
+      "source_hashes_verified": 8
+    }
+  },
+  "lake": {
+    "sha256": "dda9da7974984173ccba86d74fcc2b2755bb64ab3133628f370e5c0b4dcc5f7a",
+    "frames": 685,
+    "goal_events": 159
+  },
+  "retained_negative_control": {
+    "allplastic_A": {
+      "correct": 0,
+      "presentations": 16
+    },
+    "allplastic_B": {
+      "correct": 16,
+      "presentations": 16
+    },
+    "no_frozen_selection": true,
+    "no_final_claims": true
+  },
+  "limitations": [
+    "Single already exposed engineering seed; no independent statistical cohort or efficacy comparison.",
+    "Four unique constructed text/code items per task, repeated four times per read set; not 16 independent cases.",
+    "Future/final is a different presentation order of those same four items, not a new semantic generalization set.",
+    "Task-conditioned context, corrective feedback, explicit protected core, one admitted batch of18, no pruning; no autonomous RSI claim.",
+    "Feed ablation changes Part D features but retains16/16; no demonstrated final-answer feed benefit.",
+    "Return ablation reduces B to8/16 on this fixture; not a general causal/statistical effect estimate.",
+    "Canonical neurons+complete stack are independently equal; full shared-state digest is compared as recorded, not recomputed from an unavailable full shared snapshot.",
+    "Lesion rescore uses saved core weights plus actual captured grown-drive continuation; controller independently asserted real lesion refusal.",
+    "First checkpoint restore controller retained an assertion failure caused by tuple/list normalization; corrected checkpoint and journal-only controllers pass.",
+    "No SHD result or full operator battery is implied."
+  ]
+}

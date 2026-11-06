@@ -1,0 +1,2906 @@
+{
+  "repository": "PVLuanDinh/Spiking-Neural-Data-Lake",
+  "commit": "c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "url": "https://api.github.com/repos/PVLuanDinh/Spiking-Neural-Data-Lake/git/trees/c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "truncated": false,
+  "blobs": [
+    {
+      "path": "src/snn_data_lake/__init__.py",
+      "mode": "100644",
+      "sha": "4a8e7ab12cc2b8fafaefe4a6d6382628ff7a92b8",
+      "size": 62765
+    },
+    {
+      "path": "src/snn_data_lake/brain_atlas.py",
+      "mode": "100644",
+      "sha": "8ab21ab40aedbd428c09c82ab876465a824edf94",
+      "size": 8253
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/__init__.py",
+      "mode": "100644",
+      "sha": "6573f8e74a13c6bcad171223be72fa7d4242fe14",
+      "size": 80
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/arm_config.py",
+      "mode": "100644",
+      "sha": "9a3f2fccfe7eb058d6bca79bf936da865a0cfc95",
+      "size": 16303
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/interpreter.py",
+      "mode": "100644",
+      "sha": "131b8ad1079c313c29a5e950b1008c376f00a2a9",
+      "size": 6928
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/reflex.py",
+      "mode": "100644",
+      "sha": "b1faa1e92be3511160d7710db9b534481b89907b",
+      "size": 7686
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/serial_arm.py",
+      "mode": "100644",
+      "sha": "558688611886e48c648af98181dfac224e02de1c",
+      "size": 11239
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/SO-ARM100-LICENSE",
+      "mode": "100644",
+      "sha": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+      "size": 11357
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/base_motor_holder_so101_v1.stl",
+      "mode": "100644",
+      "sha": "cac2b8dd98d3d8a6dcdf429b36aaa4b576d82041",
+      "size": 1877084
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/base_so101_v2.stl",
+      "mode": "100644",
+      "sha": "ed10aa61d1181f8001c908ee5cae5c4f970ba417",
+      "size": 471584
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/motor_holder_so101_base_v1.stl",
+      "mode": "100644",
+      "sha": "9eaf67243a5ffc2dacb3fbd026b4c0620adcdd66",
+      "size": 1129384
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/motor_holder_so101_wrist_v1.stl",
+      "mode": "100644",
+      "sha": "d0aa18b15a9cd63f41fa4d48e82df7a3b618c75d",
+      "size": 1052184
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/moving_jaw_so101_v1.stl",
+      "mode": "100644",
+      "sha": "7e8736686592072cf34c7f6e2e6e88f8a3ba60bb",
+      "size": 1413584
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/rotation_pitch_so101_v1.stl",
+      "mode": "100644",
+      "sha": "5c05dee570623f62c4ab7597d76c7bdea20eacea",
+      "size": 883684
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/sts3215_03a_no_horn_v1.stl",
+      "mode": "100644",
+      "sha": "2a89597702f5ec6849b6b1b894c867b35b98ca42",
+      "size": 865884
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/sts3215_03a_v1.stl",
+      "mode": "100644",
+      "sha": "fe05403dbfac7a26822b8c8cd0fc3d5288a69fc8",
+      "size": 954084
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/under_arm_so101_v1.stl",
+      "mode": "100644",
+      "sha": "480e0583c8bb27ff9affefbebee72b784fb054c8",
+      "size": 1975884
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/upper_arm_so101_v1.stl",
+      "mode": "100644",
+      "sha": "9c0f9b275a51f720476e529c92193f4f69d4784c",
+      "size": 1303484
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/waveshare_mounting_plate_so101_v2.stl",
+      "mode": "100644",
+      "sha": "4dba1f22b01ab9afef2466872fcb3e1efca89e38",
+      "size": 62784
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/wrist_roll_follower_so101_v1.stl",
+      "mode": "100644",
+      "sha": "123ce374ad3efc240e4d7022f31314e59fe4b0c0",
+      "size": 1439884
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/assets/wrist_roll_pitch_so101_v2.stl",
+      "mode": "100644",
+      "sha": "ac5172a35e6da3e9fdea21e25803f23cc61e31f1",
+      "size": 2699784
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/scene.xml",
+      "mode": "100644",
+      "sha": "255b970b33735ff20d970fdd762218a7ea1e4004",
+      "size": 931
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101/so101_new_calib.xml",
+      "mode": "100644",
+      "sha": "ee235d7e313a9cd9ab56a98dd707c61c97f1e44a",
+      "size": 13921
+    },
+    {
+      "path": "src/snn_data_lake/brainstem/so101_arm.py",
+      "mode": "100644",
+      "sha": "0222078b67c238e91a093c1e1e1a886e8868bcbc",
+      "size": 39443
+    },
+    {
+      "path": "src/snn_data_lake/connectome.py",
+      "mode": "100644",
+      "sha": "b0666c510952b59466b4ebe3f194d2932633bd5b",
+      "size": 31588
+    },
+    {
+      "path": "src/snn_data_lake/engine/__init__.py",
+      "mode": "100644",
+      "sha": "1c351470bc721f185d71154893f6bef625f681ed",
+      "size": 75
+    },
+    {
+      "path": "src/snn_data_lake/engine/autonomous_loop.py",
+      "mode": "100644",
+      "sha": "5764a476c65c02283db8f50a1db74031ecabd0e8",
+      "size": 229483
+    },
+    {
+      "path": "src/snn_data_lake/engine/brain.py",
+      "mode": "100644",
+      "sha": "0ffa27f0b0f4f3f80b147713df69be36ae63b35f",
+      "size": 407470
+    },
+    {
+      "path": "src/snn_data_lake/engine/learn_daemon.py",
+      "mode": "100644",
+      "sha": "307faf590020166caf6cd146e9bae4f3eeb85c90",
+      "size": 37844
+    },
+    {
+      "path": "src/snn_data_lake/engine/live_brain.py",
+      "mode": "100644",
+      "sha": "871a7c450a3818954ae8f4a4be85f9276fb19ce6",
+      "size": 87442
+    },
+    {
+      "path": "src/snn_data_lake/engine/report_channel.py",
+      "mode": "100644",
+      "sha": "f01a1ce715cb62de14fee93e1fcd9dfe361d7050",
+      "size": 9757
+    },
+    {
+      "path": "src/snn_data_lake/engine/signal_ring.py",
+      "mode": "100644",
+      "sha": "e352c6cb7cf900d43125716a92bb789f1eec5ca0",
+      "size": 23833
+    },
+    {
+      "path": "src/snn_data_lake/engine/wiring_manifest.py",
+      "mode": "100644",
+      "sha": "e61c32056dcdbfd225fec0b968d7bb64b2dba1d1",
+      "size": 28994
+    },
+    {
+      "path": "src/snn_data_lake/faculties/__init__.py",
+      "mode": "100644",
+      "sha": "d8e5e75f0037e8bb69bb85cb62b950ed6d7e127d",
+      "size": 78
+    },
+    {
+      "path": "src/snn_data_lake/faculties/access_consciousness.py",
+      "mode": "100644",
+      "sha": "a06b66ddea39b725f0a572406debfd6b3965922c",
+      "size": 124523
+    },
+    {
+      "path": "src/snn_data_lake/faculties/acetylcholine.py",
+      "mode": "100644",
+      "sha": "43f985ccc3b13208483c24b7e504bd83e874f7bc",
+      "size": 13567
+    },
+    {
+      "path": "src/snn_data_lake/faculties/action_gating.py",
+      "mode": "100644",
+      "sha": "5498be53761a15dfd4f86091c240d52b2ae382f5",
+      "size": 12348
+    },
+    {
+      "path": "src/snn_data_lake/faculties/affect_core.py",
+      "mode": "100644",
+      "sha": "f63f4c77ac54abecd132c56a0a46f458b187485d",
+      "size": 22559
+    },
+    {
+      "path": "src/snn_data_lake/faculties/affect_integrator.py",
+      "mode": "100644",
+      "sha": "10cd0eee9a6abe9d5c6947a1974e670ab26347d6",
+      "size": 15813
+    },
+    {
+      "path": "src/snn_data_lake/faculties/affective_appraisal.py",
+      "mode": "100644",
+      "sha": "ecb0049d46f4f657cbf7173425d7dbd07d884802",
+      "size": 15067
+    },
+    {
+      "path": "src/snn_data_lake/faculties/affective_memory.py",
+      "mode": "100644",
+      "sha": "8fcaa5df7d79b79e0c59429012de1a18507017c7",
+      "size": 13750
+    },
+    {
+      "path": "src/snn_data_lake/faculties/agency_monitor.py",
+      "mode": "100644",
+      "sha": "bc83b31e1247bfce79763ec91c60c01675a5f9c3",
+      "size": 92031
+    },
+    {
+      "path": "src/snn_data_lake/faculties/allocentric_map.py",
+      "mode": "100644",
+      "sha": "42dd960fbdbdeb9a8cfd3161b5393bb0f4480eae",
+      "size": 12197
+    },
+    {
+      "path": "src/snn_data_lake/faculties/astrocyte_modulation.py",
+      "mode": "100644",
+      "sha": "5e0e792daeee2b5bb2264b72d0d2d845b3c441ed",
+      "size": 18796
+    },
+    {
+      "path": "src/snn_data_lake/faculties/autotelic_goals.py",
+      "mode": "100644",
+      "sha": "91cbc87a183f8eefac92ab972c89e4cf1d8c95fd",
+      "size": 30433
+    },
+    {
+      "path": "src/snn_data_lake/faculties/brain_decision.py",
+      "mode": "100644",
+      "sha": "02d545f80c38f5d61fa43703acfc7245f6ce4a47",
+      "size": 25625
+    },
+    {
+      "path": "src/snn_data_lake/faculties/claustrum.py",
+      "mode": "100644",
+      "sha": "49e1ffaeb173e96aac3784ebf91c4330ae053e9c",
+      "size": 13081
+    },
+    {
+      "path": "src/snn_data_lake/faculties/competence_executive.py",
+      "mode": "100644",
+      "sha": "8a5a5f92f194c0d3999a866bd4f9cff85ea05f86",
+      "size": 33611
+    },
+    {
+      "path": "src/snn_data_lake/faculties/connectome_router.py",
+      "mode": "100644",
+      "sha": "754616ed8f96223b6dd7b303524016ce59f7287b",
+      "size": 24722
+    },
+    {
+      "path": "src/snn_data_lake/faculties/contrastive_episode_analysis.py",
+      "mode": "100644",
+      "sha": "9cabd9af4b7dd27914bb2878e324b8602a57f6e9",
+      "size": 16402
+    },
+    {
+      "path": "src/snn_data_lake/faculties/cortisol.py",
+      "mode": "100644",
+      "sha": "94b578fcc2111bfa372cfb597339d85dcc17692c",
+      "size": 5638
+    },
+    {
+      "path": "src/snn_data_lake/faculties/counterfactual_sim.py",
+      "mode": "100644",
+      "sha": "a68b8ff6e22f1fec10c77c3504ade08878f61e15",
+      "size": 14187
+    },
+    {
+      "path": "src/snn_data_lake/faculties/cpg_oscillator.py",
+      "mode": "100644",
+      "sha": "de4899fa5745da0a88a719ea0f0767548147a4d9",
+      "size": 7979
+    },
+    {
+      "path": "src/snn_data_lake/faculties/crossmodal_binder.py",
+      "mode": "100644",
+      "sha": "4fdec2f1ebc40c2cb6b1b12c1fea7eaa04f32219",
+      "size": 23272
+    },
+    {
+      "path": "src/snn_data_lake/faculties/developmental_envelope.py",
+      "mode": "100644",
+      "sha": "50af62bbf52d5d2dc28b6b7005334ea8bb3ca1a5",
+      "size": 11254
+    },
+    {
+      "path": "src/snn_data_lake/faculties/divisive_normalization.py",
+      "mode": "100644",
+      "sha": "4da01a786accef179aac9cbec56ad743a10c32ff",
+      "size": 8363
+    },
+    {
+      "path": "src/snn_data_lake/faculties/dopamine_nuclei.py",
+      "mode": "100644",
+      "sha": "8ffb390f3a4137461b19124a80935b1d152e17da",
+      "size": 14560
+    },
+    {
+      "path": "src/snn_data_lake/faculties/drive_reduction.py",
+      "mode": "100644",
+      "sha": "df300c50d50cdad669e512f1a6a8ce7e0defbf38",
+      "size": 23088
+    },
+    {
+      "path": "src/snn_data_lake/faculties/empowerment.py",
+      "mode": "100644",
+      "sha": "d372fbdc8363ffd988a10a1ba841dcc561ea83c7",
+      "size": 11205
+    },
+    {
+      "path": "src/snn_data_lake/faculties/evidence_accumulation.py",
+      "mode": "100644",
+      "sha": "fd93b3bb9ff487eeac13b218edd0db5a2c806e4c",
+      "size": 29029
+    },
+    {
+      "path": "src/snn_data_lake/faculties/executive_control.py",
+      "mode": "100644",
+      "sha": "04e0f4f826c4c54e2b620ab9b8272e681489a453",
+      "size": 25039
+    },
+    {
+      "path": "src/snn_data_lake/faculties/fear_conditioning.py",
+      "mode": "100644",
+      "sha": "e580d8295238c02a4c38adc3921a5366473d8ff5",
+      "size": 21440
+    },
+    {
+      "path": "src/snn_data_lake/faculties/forward_model.py",
+      "mode": "100644",
+      "sha": "52097d24b75ec2047e484a3364d76b85af5d9554",
+      "size": 14047
+    },
+    {
+      "path": "src/snn_data_lake/faculties/gain_adaptation.py",
+      "mode": "100644",
+      "sha": "d4706c3b3f903bc60e33504d7451c3e7a04f687a",
+      "size": 11380
+    },
+    {
+      "path": "src/snn_data_lake/faculties/generalizing_novelty.py",
+      "mode": "100644",
+      "sha": "e3cd13b42ca402a68965000cbec32f11b544e47d",
+      "size": 17158
+    },
+    {
+      "path": "src/snn_data_lake/faculties/generative_self_model.py",
+      "mode": "100644",
+      "sha": "7d213001bfa175d9accd950f2b197b2cb06aa098",
+      "size": 15126
+    },
+    {
+      "path": "src/snn_data_lake/faculties/global_workspace.py",
+      "mode": "100644",
+      "sha": "8961235132a08006b362f8b8f746b31cc377fb2a",
+      "size": 258769
+    },
+    {
+      "path": "src/snn_data_lake/faculties/grid_cells.py",
+      "mode": "100644",
+      "sha": "87e2bc7b9cbb8fbc15935d6aff152689f85ecd59",
+      "size": 12109
+    },
+    {
+      "path": "src/snn_data_lake/faculties/grid_place_map.py",
+      "mode": "100644",
+      "sha": "e77d8f15ee045162e4c74f54770d0df6df9c0cd0",
+      "size": 23521
+    },
+    {
+      "path": "src/snn_data_lake/faculties/gwt_deep.py",
+      "mode": "100644",
+      "sha": "f2411b3d40b0ecd6bf05ffd6df8da29379700881",
+      "size": 21594
+    },
+    {
+      "path": "src/snn_data_lake/faculties/habenula.py",
+      "mode": "100644",
+      "sha": "6f5540da4893008a63382eaa0e39e350ec1bb4a9",
+      "size": 10038
+    },
+    {
+      "path": "src/snn_data_lake/faculties/hjepa_serve.py",
+      "mode": "100644",
+      "sha": "95514082124185b1db90ae3fcc364c8999de471f",
+      "size": 23461
+    },
+    {
+      "path": "src/snn_data_lake/faculties/homeostatic_drives.py",
+      "mode": "100644",
+      "sha": "b1cf6029baa914b407dd9f67c19f574a9558398f",
+      "size": 25220
+    },
+    {
+      "path": "src/snn_data_lake/faculties/interoceptive_arousal.py",
+      "mode": "100644",
+      "sha": "28bba4190c4b4cee2012b180d6d857abd97afb82",
+      "size": 15105
+    },
+    {
+      "path": "src/snn_data_lake/faculties/interoceptive_integration.py",
+      "mode": "100644",
+      "sha": "4896425369de1fb5e1f45704c50ce8fa1641df4d",
+      "size": 24506
+    },
+    {
+      "path": "src/snn_data_lake/faculties/interoceptive_relay.py",
+      "mode": "100644",
+      "sha": "ca4e7f8cd1c6fd2d568352710c8aa1a29acde05b",
+      "size": 21876
+    },
+    {
+      "path": "src/snn_data_lake/faculties/intrinsic_motivation.py",
+      "mode": "100644",
+      "sha": "383f456fbf2a8a4e1d2c9a3a12808dfe2c722a00",
+      "size": 21390
+    },
+    {
+      "path": "src/snn_data_lake/faculties/is_snn_forward.py",
+      "mode": "100644",
+      "sha": "59e788313139d789b43db75be278074af68c974b",
+      "size": 13710
+    },
+    {
+      "path": "src/snn_data_lake/faculties/jepa_world_model.py",
+      "mode": "100644",
+      "sha": "6d2ef4b9aea283a5036882971c6f13ea8b2b26fb",
+      "size": 69648
+    },
+    {
+      "path": "src/snn_data_lake/faculties/kb_ranking.py",
+      "mode": "100644",
+      "sha": "5b83ba07e726bf2209ad31736871bcd0f13686ad",
+      "size": 10111
+    },
+    {
+      "path": "src/snn_data_lake/faculties/language_acquisition.py",
+      "mode": "100644",
+      "sha": "3a218febb2d5a6d6f17247ef506606e7ebef0c2c",
+      "size": 17872
+    },
+    {
+      "path": "src/snn_data_lake/faculties/language_self_build.py",
+      "mode": "100644",
+      "sha": "e19414ba7183096428567ba23b948adbb8ec7d53",
+      "size": 19693
+    },
+    {
+      "path": "src/snn_data_lake/faculties/latent_q.py",
+      "mode": "100644",
+      "sha": "feeec91de223813d94ff56eb2471ecec18e8fb6b",
+      "size": 14712
+    },
+    {
+      "path": "src/snn_data_lake/faculties/learned_attention.py",
+      "mode": "100644",
+      "sha": "ee68e7c6cc9040febf60cd85c5a09298cd885fb7",
+      "size": 13213
+    },
+    {
+      "path": "src/snn_data_lake/faculties/learned_evc.py",
+      "mode": "100644",
+      "sha": "0f07b56f47ca2e8067d6881d1439a4941250be99",
+      "size": 17598
+    },
+    {
+      "path": "src/snn_data_lake/faculties/locus_coeruleus.py",
+      "mode": "100644",
+      "sha": "fdea9dac3332c691623f6461fd1d0d2828a3bf4e",
+      "size": 18917
+    },
+    {
+      "path": "src/snn_data_lake/faculties/metacognitive_monitor.py",
+      "mode": "100644",
+      "sha": "11af49258f24aa0998c1595e9bae7c0b7d5cd99c",
+      "size": 81124
+    },
+    {
+      "path": "src/snn_data_lake/faculties/microcircuit.py",
+      "mode": "100644",
+      "sha": "1d1f7d60ef735a4953525b1e3f6b3970a3a9c65c",
+      "size": 34349
+    },
+    {
+      "path": "src/snn_data_lake/faculties/mlp_q.py",
+      "mode": "100644",
+      "sha": "1b846d0436ca1510ae9ed3cab82293ae9080c926",
+      "size": 32700
+    },
+    {
+      "path": "src/snn_data_lake/faculties/mossy_relay.py",
+      "mode": "100644",
+      "sha": "14a8eacbaf68421bdaf78775500013916fa4f0c7",
+      "size": 9452
+    },
+    {
+      "path": "src/snn_data_lake/faculties/multisensory_integration.py",
+      "mode": "100644",
+      "sha": "9a3b108ebe1633f777a157fd129ac759713c334f",
+      "size": 16770
+    },
+    {
+      "path": "src/snn_data_lake/faculties/open_world_loop.py",
+      "mode": "100644",
+      "sha": "e554085f5c61d9718f419fdab4e03eb96216ffc7",
+      "size": 18145
+    },
+    {
+      "path": "src/snn_data_lake/faculties/percept_surprise.py",
+      "mode": "100644",
+      "sha": "4189612df4ae826fd066f59223704c1a2efe5b12",
+      "size": 23303
+    },
+    {
+      "path": "src/snn_data_lake/faculties/polychronization.py",
+      "mode": "100644",
+      "sha": "6dee3dc3721b9b6564411314f780b588dedb396f",
+      "size": 8747
+    },
+    {
+      "path": "src/snn_data_lake/faculties/prefrontal_executive.py",
+      "mode": "100644",
+      "sha": "dfaa92548da94e910496fd406bd61ddc07b1a4da",
+      "size": 58330
+    },
+    {
+      "path": "src/snn_data_lake/faculties/quality_diversity.py",
+      "mode": "100644",
+      "sha": "58fd2497e49ec23f0694833c7324d8d41dd6a701",
+      "size": 34196
+    },
+    {
+      "path": "src/snn_data_lake/faculties/raphe_serotonin.py",
+      "mode": "100644",
+      "sha": "b812a0456fbde78877ed2a952c24f4aa1d1422b9",
+      "size": 9179
+    },
+    {
+      "path": "src/snn_data_lake/faculties/reasoning_curriculum.py",
+      "mode": "100644",
+      "sha": "352c54eb7e2a9462a98b59b8bdb176b3979bebe3",
+      "size": 34877
+    },
+    {
+      "path": "src/snn_data_lake/faculties/recursive_tom.py",
+      "mode": "100644",
+      "sha": "013b9b4f90ded8c2583b060d11af7eb6702375f9",
+      "size": 90809
+    },
+    {
+      "path": "src/snn_data_lake/faculties/reentrant_workspace.py",
+      "mode": "100644",
+      "sha": "b14dfccb2678621737cc1e2df52adb3c9e1de5b5",
+      "size": 91768
+    },
+    {
+      "path": "src/snn_data_lake/faculties/region_coherence.py",
+      "mode": "100644",
+      "sha": "d85d3e4b30bfe4cc999f6e96ccceb343704702f9",
+      "size": 35556
+    },
+    {
+      "path": "src/snn_data_lake/faculties/reticular_gate.py",
+      "mode": "100644",
+      "sha": "84f16c583626f26686d0cb8579e04a1d21100ff0",
+      "size": 17706
+    },
+    {
+      "path": "src/snn_data_lake/faculties/ring_attractor.py",
+      "mode": "100644",
+      "sha": "e85588f58519ca8011701aa0b22870451d99a012",
+      "size": 10250
+    },
+    {
+      "path": "src/snn_data_lake/faculties/rose_language.py",
+      "mode": "100644",
+      "sha": "b107c97aa2a15f11839bf141d75414e10538a1a6",
+      "size": 48636
+    },
+    {
+      "path": "src/snn_data_lake/faculties/sc_deep_layers.py",
+      "mode": "100644",
+      "sha": "1f220c89bef216ddd8978b590fe2adad1252b39b",
+      "size": 19831
+    },
+    {
+      "path": "src/snn_data_lake/faculties/second_order_access.py",
+      "mode": "100644",
+      "sha": "28cc5d7073d057a3faa8472084ffdf2f9f2e49db",
+      "size": 26662
+    },
+    {
+      "path": "src/snn_data_lake/faculties/self_improvement_suite.py",
+      "mode": "100644",
+      "sha": "6591afe73b8469c47dc24c1d09c35cee160abede",
+      "size": 15220
+    },
+    {
+      "path": "src/snn_data_lake/faculties/self_model.py",
+      "mode": "100644",
+      "sha": "bee8c3a87900a7816856dacbba83a56e0010e870",
+      "size": 26289
+    },
+    {
+      "path": "src/snn_data_lake/faculties/set_points.py",
+      "mode": "100644",
+      "sha": "4e09853a3b5f939481dce61765daea24c02ad800",
+      "size": 15728
+    },
+    {
+      "path": "src/snn_data_lake/faculties/skill_builder.py",
+      "mode": "100644",
+      "sha": "1b8e3c28122b192fabf830ce23461e84c3e0bf32",
+      "size": 11474
+    },
+    {
+      "path": "src/snn_data_lake/faculties/spiking_curiosity.py",
+      "mode": "100644",
+      "sha": "ea8051558757c413ed500b85e92436005c23995e",
+      "size": 57063
+    },
+    {
+      "path": "src/snn_data_lake/faculties/spiking_grid_can.py",
+      "mode": "100644",
+      "sha": "ac951cc83ac34e3071811a7e945fd76c15095bc3",
+      "size": 35335
+    },
+    {
+      "path": "src/snn_data_lake/faculties/spiking_jepa.py",
+      "mode": "100644",
+      "sha": "b512ad9e34979b993093c62a5657efdbb43aeaaf",
+      "size": 98467
+    },
+    {
+      "path": "src/snn_data_lake/faculties/spiking_pid.py",
+      "mode": "100644",
+      "sha": "bc03528ad91a38f73afc6c05aa3148af9c96cb79",
+      "size": 18822
+    },
+    {
+      "path": "src/snn_data_lake/faculties/spiking_storage_prototype.py",
+      "mode": "100644",
+      "sha": "c6ab39a4108d81e3bcaba3abceb1f27f3cbd26fb",
+      "size": 18955
+    },
+    {
+      "path": "src/snn_data_lake/faculties/superior_colliculus.py",
+      "mode": "100644",
+      "sha": "e298ab852a51d1819e905fafdc36d38c3d7f25b4",
+      "size": 15141
+    },
+    {
+      "path": "src/snn_data_lake/faculties/synfire_chain.py",
+      "mode": "100644",
+      "sha": "5c398015e6e818eb2f72ff9794d563b2badc7bfa",
+      "size": 12649
+    },
+    {
+      "path": "src/snn_data_lake/faculties/task_set.py",
+      "mode": "100644",
+      "sha": "9d8ca450f788a165a2b52a7ae9daa98818c447e6",
+      "size": 30304
+    },
+    {
+      "path": "src/snn_data_lake/faculties/theory_of_mind.py",
+      "mode": "100644",
+      "sha": "5620b1f3fa53a18bf3d6983bdc372d574bddba2d",
+      "size": 13049
+    },
+    {
+      "path": "src/snn_data_lake/faculties/theta_gamma_code.py",
+      "mode": "100644",
+      "sha": "42c8929e804d158ef5b8fbadd98a96b717cbf866",
+      "size": 18920
+    },
+    {
+      "path": "src/snn_data_lake/faculties/time_cells.py",
+      "mode": "100644",
+      "sha": "3cb01705efa6ced694d446b13555d21f1d77255a",
+      "size": 41154
+    },
+    {
+      "path": "src/snn_data_lake/faculties/vital_nuclei.py",
+      "mode": "100644",
+      "sha": "199a61db14cb8e99374e9a9f683b12eedfabc6b7",
+      "size": 14604
+    },
+    {
+      "path": "src/snn_data_lake/faculties/vsa_reasoning.py",
+      "mode": "100644",
+      "sha": "6cc71c8579419ed6a0526368adaabef87baa1954",
+      "size": 14687
+    },
+    {
+      "path": "src/snn_data_lake/faculties/vsa_structure_mapping.py",
+      "mode": "100644",
+      "sha": "a8611b9d6e50f1134f1e39a0b764e42537258e7d",
+      "size": 35061
+    },
+    {
+      "path": "src/snn_data_lake/faculties/wholistic_loop.py",
+      "mode": "100644",
+      "sha": "825976376e41891028843c084daab5b77545d8ec",
+      "size": 40071
+    },
+    {
+      "path": "src/snn_data_lake/faculties/wm_capacity.py",
+      "mode": "100644",
+      "sha": "6eb1c93bf7678edc8d260875d0cba5e43600ead1",
+      "size": 32831
+    },
+    {
+      "path": "src/snn_data_lake/gates/__init__.py",
+      "mode": "100644",
+      "sha": "36ce9d50f4e8d492902e9f180e569c066cefa4f8",
+      "size": 660
+    },
+    {
+      "path": "src/snn_data_lake/gates/amdahl_gate.py",
+      "mode": "100644",
+      "sha": "5952e69f3e5d398ca92f4160136c7a3c4df3b7bd",
+      "size": 60750
+    },
+    {
+      "path": "src/snn_data_lake/gates/atlas_node_gate.py",
+      "mode": "100644",
+      "sha": "5706ee4ac8b49bd1d1e586e29b64c589cfbfddfa",
+      "size": 12462
+    },
+    {
+      "path": "src/snn_data_lake/gates/capability_bar.py",
+      "mode": "100644",
+      "sha": "68b5c2dbd8055a6a87683bfe4d50edcc026ddabd",
+      "size": 13529
+    },
+    {
+      "path": "src/snn_data_lake/gates/conclusion_protocol.py",
+      "mode": "100644",
+      "sha": "012a1281f95bf1007fe00723b04cb7ec564c43c0",
+      "size": 47956
+    },
+    {
+      "path": "src/snn_data_lake/gates/determinism_gate.py",
+      "mode": "100644",
+      "sha": "07d55afe9d11433c4ba84d6b58b64e065c7225ef",
+      "size": 11665
+    },
+    {
+      "path": "src/snn_data_lake/gates/doc_budget_gate.py",
+      "mode": "100644",
+      "sha": "2f1ad1770bd791c96d3c3881b1240816e06c4942",
+      "size": 32588
+    },
+    {
+      "path": "src/snn_data_lake/gates/docs_only_battery.py",
+      "mode": "100644",
+      "sha": "cd9989fc3be92a056e913e4bbaedb6b3cf79d710",
+      "size": 44634
+    },
+    {
+      "path": "src/snn_data_lake/gates/dormancy_gate.py",
+      "mode": "100644",
+      "sha": "e217b4b734c34ef134bdf737ab3577a582a16d47",
+      "size": 89070
+    },
+    {
+      "path": "src/snn_data_lake/gates/envelope_hash_gate.py",
+      "mode": "100644",
+      "sha": "0aa80ca9354e5778036321cd33379a6b461a6993",
+      "size": 7145
+    },
+    {
+      "path": "src/snn_data_lake/gates/eprop_transport_gate.py",
+      "mode": "100644",
+      "sha": "c4e27c82861f704fbb30adab117bc804d21b96d3",
+      "size": 83713
+    },
+    {
+      "path": "src/snn_data_lake/gates/gradient_claim_gate.py",
+      "mode": "100644",
+      "sha": "113f0bc7c46a5d6ef91a5c1b6ee09beea2226dc8",
+      "size": 121830
+    },
+    {
+      "path": "src/snn_data_lake/gates/growth_coverage_gate.py",
+      "mode": "100644",
+      "sha": "e8457ecb863b5df647f6a8cdfb8a004b3284d3d2",
+      "size": 31583
+    },
+    {
+      "path": "src/snn_data_lake/gates/immortal_retention.py",
+      "mode": "100644",
+      "sha": "db2e5b220ea88910aec64f3f0476bef526b7fafe",
+      "size": 34915
+    },
+    {
+      "path": "src/snn_data_lake/gates/import_manifest.py",
+      "mode": "100644",
+      "sha": "7f02bf4760102ef9b56a93e09efb746e021bbbda",
+      "size": 29715
+    },
+    {
+      "path": "src/snn_data_lake/gates/lake_rebuild_gate.py",
+      "mode": "100644",
+      "sha": "1cddbd38cd51f241ed92920d4054ce95d05355ef",
+      "size": 6655
+    },
+    {
+      "path": "src/snn_data_lake/gates/manifest_gate.py",
+      "mode": "100644",
+      "sha": "6d7f55adf2c215adba8423d762fb24eff840286a",
+      "size": 12874
+    },
+    {
+      "path": "src/snn_data_lake/gates/method_dormancy_gate.py",
+      "mode": "100644",
+      "sha": "446ee28c8da4fb281eb56487f6963635b04cac79",
+      "size": 22981
+    },
+    {
+      "path": "src/snn_data_lake/gates/move_gate.py",
+      "mode": "100644",
+      "sha": "12474b288c4daf8dddcdd4740232ee8b03bf7d85",
+      "size": 115739
+    },
+    {
+      "path": "src/snn_data_lake/gates/native_dormancy.py",
+      "mode": "100644",
+      "sha": "cacf3bbe29d01931aa47fce5b8900cdc9678e712",
+      "size": 36903
+    },
+    {
+      "path": "src/snn_data_lake/gates/native_ratchet.py",
+      "mode": "100644",
+      "sha": "b55a9244af9d16b9fa1f7cb5257aa2ee73bf09aa",
+      "size": 17219
+    },
+    {
+      "path": "src/snn_data_lake/gates/null_scale_gate.py",
+      "mode": "100644",
+      "sha": "d8eaaf4bb94b92510b70a7480eb7e2fb8eb0bfe0",
+      "size": 36040
+    },
+    {
+      "path": "src/snn_data_lake/gates/p5b_gate.py",
+      "mode": "100644",
+      "sha": "37d1aaa8e6c5cdbeb50583f24b61923ca1a0eff2",
+      "size": 45562
+    },
+    {
+      "path": "src/snn_data_lake/gates/perf_baseline.py",
+      "mode": "100644",
+      "sha": "b0c2488e83af6d72054b5320e6e704089eabc2f5",
+      "size": 25702
+    },
+    {
+      "path": "src/snn_data_lake/gates/policy_manifest.py",
+      "mode": "100644",
+      "sha": "349795c7d7ded5f67108beb086526dcaa359b554",
+      "size": 40153
+    },
+    {
+      "path": "src/snn_data_lake/gates/region_charge_gate.py",
+      "mode": "100644",
+      "sha": "42fe3c70523f643343b020a8a51027e5d4a6651c",
+      "size": 11613
+    },
+    {
+      "path": "src/snn_data_lake/gates/replay_gate.py",
+      "mode": "100644",
+      "sha": "106a87afa2b9f0b4fea71b276a3a0606a3356ab6",
+      "size": 12990
+    },
+    {
+      "path": "src/snn_data_lake/gates/replication_guard.py",
+      "mode": "100644",
+      "sha": "472ce610d4af43367c921f6ead6402e345b508fa",
+      "size": 16674
+    },
+    {
+      "path": "src/snn_data_lake/gates/rust_facts.py",
+      "mode": "100644",
+      "sha": "7dd73d848d3b9c2faee293a592384dad0375665f",
+      "size": 49326
+    },
+    {
+      "path": "src/snn_data_lake/gates/safety_envelope.py",
+      "mode": "100644",
+      "sha": "c671142fc0725d8ef9611cab021e27e4ed298721",
+      "size": 16384
+    },
+    {
+      "path": "src/snn_data_lake/gates/selfcheck_cache.py",
+      "mode": "100644",
+      "sha": "7a07d4bf755d25678db72cf7e88ed3973009b902",
+      "size": 96262
+    },
+    {
+      "path": "src/snn_data_lake/gates/unit_label_gate.py",
+      "mode": "100644",
+      "sha": "bf48e786de169fb6083f06c0f11a96fd9c75d881",
+      "size": 40532
+    },
+    {
+      "path": "src/snn_data_lake/growth/__init__.py",
+      "mode": "100644",
+      "sha": "b18c7ca6a364ed44143142ba1886de20668c5e9a",
+      "size": 75
+    },
+    {
+      "path": "src/snn_data_lake/growth/adex_neuron.py",
+      "mode": "100644",
+      "sha": "63b6c24eca0dec7d9b0d4b70b3a9cb50e749aee6",
+      "size": 7945
+    },
+    {
+      "path": "src/snn_data_lake/growth/alif_neuron.py",
+      "mode": "100644",
+      "sha": "fa331d4b0a1b83bc2f7f1f938e9430ebbc3e61aa",
+      "size": 8504
+    },
+    {
+      "path": "src/snn_data_lake/growth/arealization.py",
+      "mode": "100644",
+      "sha": "d872d94dcd5dbee549da1658a7fcc6967358fb54",
+      "size": 49627
+    },
+    {
+      "path": "src/snn_data_lake/growth/autapse_neuron.py",
+      "mode": "100644",
+      "sha": "f03d6adb0394307ba7c40e04b3b3d2d80c108232",
+      "size": 12499
+    },
+    {
+      "path": "src/snn_data_lake/growth/basic_components.py",
+      "mode": "100644",
+      "sha": "a0c9322ae33851ea3168b5432189aeef0384ab14",
+      "size": 14162
+    },
+    {
+      "path": "src/snn_data_lake/growth/batch_reconciler.py",
+      "mode": "100644",
+      "sha": "552a6b8d1fec665d5bc0fc40988b908faec767ee",
+      "size": 6041
+    },
+    {
+      "path": "src/snn_data_lake/growth/brian2_backend.py",
+      "mode": "100644",
+      "sha": "b06189eaf0dfb0e44e518005ae74b86a580e1354",
+      "size": 35629
+    },
+    {
+      "path": "src/snn_data_lake/growth/candidate_lifecycle.py",
+      "mode": "100644",
+      "sha": "bee40b52713b084c75eb9e90e25841eed6d6c52b",
+      "size": 14006
+    },
+    {
+      "path": "src/snn_data_lake/growth/capacity_certificate.py",
+      "mode": "100644",
+      "sha": "324ab12def1a7d5447f470804ecf5016835a591b",
+      "size": 12380
+    },
+    {
+      "path": "src/snn_data_lake/growth/cortical_prior.py",
+      "mode": "100644",
+      "sha": "89b18ad9293e4a1bf4543b36a52240030f044eb6",
+      "size": 16338
+    },
+    {
+      "path": "src/snn_data_lake/growth/dendritic_neuron.py",
+      "mode": "100644",
+      "sha": "53d0328572cadbfa26a855241c6cff95b314d1d5",
+      "size": 9547
+    },
+    {
+      "path": "src/snn_data_lake/growth/feed_readout.py",
+      "mode": "100644",
+      "sha": "17b783941bf124bd9961abef352433dce6e484ed",
+      "size": 5767
+    },
+    {
+      "path": "src/snn_data_lake/growth/function_preserving_growth.py",
+      "mode": "100644",
+      "sha": "5bb576ad0be32a914d6e9e349a7cf087cdb4fe93",
+      "size": 15333
+    },
+    {
+      "path": "src/snn_data_lake/growth/growable.py",
+      "mode": "100644",
+      "sha": "880263d794abde2d8d33857425e16c851f4eee34",
+      "size": 14419
+    },
+    {
+      "path": "src/snn_data_lake/growth/grower.py",
+      "mode": "100644",
+      "sha": "e197b3802fea2fe9b9bc1b828c9fbc868cc70965",
+      "size": 2894
+    },
+    {
+      "path": "src/snn_data_lake/growth/growing_learner.py",
+      "mode": "100644",
+      "sha": "b1b46134a37b87a7dd5455a86ea39eb788b563cd",
+      "size": 15145
+    },
+    {
+      "path": "src/snn_data_lake/growth/grown_code.py",
+      "mode": "100644",
+      "sha": "cfaa40513e0983c523888cdf6b2345af9c4be57c",
+      "size": 25910
+    },
+    {
+      "path": "src/snn_data_lake/growth/grown_feed.py",
+      "mode": "100644",
+      "sha": "f58c0a7d4e0889a504970137c3cf001cecc70978",
+      "size": 6313
+    },
+    {
+      "path": "src/snn_data_lake/growth/growth_loop.py",
+      "mode": "100644",
+      "sha": "b41d5a920e57442a34b22127c315046f966c485b",
+      "size": 53267
+    },
+    {
+      "path": "src/snn_data_lake/growth/growth_program.py",
+      "mode": "100644",
+      "sha": "49ec8dff99cbccf3003f879af7450a478ad7875d",
+      "size": 20360
+    },
+    {
+      "path": "src/snn_data_lake/growth/growth_stop.py",
+      "mode": "100644",
+      "sha": "4afc7dc6afee496b9956c197a3d343441e31cdd9",
+      "size": 44734
+    },
+    {
+      "path": "src/snn_data_lake/growth/h01_ingest.py",
+      "mode": "100644",
+      "sha": "06919576ff664b37a533bc0f7a713d7e3be4a9a1",
+      "size": 100968
+    },
+    {
+      "path": "src/snn_data_lake/growth/heterogeneous_microcircuit.py",
+      "mode": "100644",
+      "sha": "74620cf9665607febcf1e67db745e958fa2d2f6e",
+      "size": 17062
+    },
+    {
+      "path": "src/snn_data_lake/growth/hodgkin_huxley.py",
+      "mode": "100644",
+      "sha": "d3a3133a1780892e9796b997ffc7f609cf51b673",
+      "size": 11929
+    },
+    {
+      "path": "src/snn_data_lake/growth/izhikevich_neuron.py",
+      "mode": "100644",
+      "sha": "83b2662082e4c31cff2be34b38efa162b7c252dd",
+      "size": 3542
+    },
+    {
+      "path": "src/snn_data_lake/growth/learning_progress.py",
+      "mode": "100644",
+      "sha": "d2ec1cadf1e59a8c9b9ac5618a5343e92c76ba8f",
+      "size": 28510
+    },
+    {
+      "path": "src/snn_data_lake/growth/lif_neuron.py",
+      "mode": "100644",
+      "sha": "f032131131ede98a4cc3dea72ccc45f656db1d31",
+      "size": 3882
+    },
+    {
+      "path": "src/snn_data_lake/growth/neurogenesis_engine.py",
+      "mode": "100644",
+      "sha": "a6c6a5e1a6ed5af2898a06a453d1928ae14535af",
+      "size": 89426
+    },
+    {
+      "path": "src/snn_data_lake/growth/neuron_zoo.py",
+      "mode": "100644",
+      "sha": "bdb6d079a4cc040b5eafd83c2a521d4f0dc68ab9",
+      "size": 45101
+    },
+    {
+      "path": "src/snn_data_lake/growth/ng_snn.py",
+      "mode": "100644",
+      "sha": "169de4bc5fd6cb7eeebd09b8566d402dbc83762b",
+      "size": 54457
+    },
+    {
+      "path": "src/snn_data_lake/growth/placement.py",
+      "mode": "100644",
+      "sha": "71ea90249eb9d2d75e6cb6b452f728a249077f77",
+      "size": 56705
+    },
+    {
+      "path": "src/snn_data_lake/growth/resonate_and_fire.py",
+      "mode": "100644",
+      "sha": "ba664d0383c7fc7c4b87718f04952ee2edb3b949",
+      "size": 4696
+    },
+    {
+      "path": "src/snn_data_lake/growth/similarity_sized_growth.py",
+      "mode": "100644",
+      "sha": "dd012b10f21914f6801564f6dc42f75cd7d10997",
+      "size": 23384
+    },
+    {
+      "path": "src/snn_data_lake/growth/srm_neuron.py",
+      "mode": "100644",
+      "sha": "e3f55efffacd4cd79a98c993c68ffa43431c0636",
+      "size": 5393
+    },
+    {
+      "path": "src/snn_data_lake/growth/wiring_prior.py",
+      "mode": "100644",
+      "sha": "5e2c3b2bb3551e9d78fe1876d6c1e673b7d68f17",
+      "size": 18203
+    },
+    {
+      "path": "src/snn_data_lake/infra/__init__.py",
+      "mode": "100644",
+      "sha": "71727efb2e8e3f902f6e333258601707cbffbb81",
+      "size": 74
+    },
+    {
+      "path": "src/snn_data_lake/infra/_mathutils.py",
+      "mode": "100644",
+      "sha": "bcc824814bbd2cab07e5f031cf4660801df8fd1a",
+      "size": 8765
+    },
+    {
+      "path": "src/snn_data_lake/infra/brain_bundle.py",
+      "mode": "100644",
+      "sha": "be4bfc5498385582295dd19a57ba711e05344327",
+      "size": 15471
+    },
+    {
+      "path": "src/snn_data_lake/infra/brain_geometry.py",
+      "mode": "100644",
+      "sha": "2434183988cc804dd49b90535d35524f084f8a08",
+      "size": 27678
+    },
+    {
+      "path": "src/snn_data_lake/infra/brain_native_selfbuild.py",
+      "mode": "100644",
+      "sha": "861ccd2b94394e768a5be712b5e919783884cf34",
+      "size": 74621
+    },
+    {
+      "path": "src/snn_data_lake/infra/brain_telemetry.py",
+      "mode": "100644",
+      "sha": "516e2007a1360e06dacf700d4688b45d4cbbda59",
+      "size": 66233
+    },
+    {
+      "path": "src/snn_data_lake/infra/cockpit.py",
+      "mode": "100644",
+      "sha": "d432500870aee38b41ca4916288c3daff1858220",
+      "size": 88833
+    },
+    {
+      "path": "src/snn_data_lake/infra/demo.py",
+      "mode": "100644",
+      "sha": "b9939574b4f9c774a7c40e38aac4a2c171c62a0c",
+      "size": 10428
+    },
+    {
+      "path": "src/snn_data_lake/infra/device.py",
+      "mode": "100644",
+      "sha": "34c62a0dc90e820fd2856b224c33e734ad5a8b8e",
+      "size": 28619
+    },
+    {
+      "path": "src/snn_data_lake/infra/drift_monitor.py",
+      "mode": "100644",
+      "sha": "31846ae52218e6cf9edcb962a615f695ba346fe7",
+      "size": 8743
+    },
+    {
+      "path": "src/snn_data_lake/infra/native_build.py",
+      "mode": "100644",
+      "sha": "521cc4b25fd746d4bb48a9cb7d99c04696958d56",
+      "size": 6254
+    },
+    {
+      "path": "src/snn_data_lake/infra/nengo_bridge.py",
+      "mode": "100644",
+      "sha": "20fa6d2831082a9c795f86c839c817f6c161decf",
+      "size": 31399
+    },
+    {
+      "path": "src/snn_data_lake/infra/nir_export.py",
+      "mode": "100644",
+      "sha": "5e0ad6db58278af5aa9c72bbc9cf17bb0c4b724b",
+      "size": 8614
+    },
+    {
+      "path": "src/snn_data_lake/infra/region_wiring.py",
+      "mode": "100644",
+      "sha": "c54f428c9adb5ff3543e51f2b81ee04723126ae9",
+      "size": 41797
+    },
+    {
+      "path": "src/snn_data_lake/infra/self_build_loop.py",
+      "mode": "100644",
+      "sha": "d647387b4f72de81d92e85dbcd6266a4982bb773",
+      "size": 27184
+    },
+    {
+      "path": "src/snn_data_lake/infra/self_mod_harness.py",
+      "mode": "100644",
+      "sha": "70e6eb14d45dba90c0e9c1f7b4059422ee283ac7",
+      "size": 42004
+    },
+    {
+      "path": "src/snn_data_lake/instruments/__init__.py",
+      "mode": "100644",
+      "sha": "600d357eed9143545a21a9954fcbd7cf5a722364",
+      "size": 80
+    },
+    {
+      "path": "src/snn_data_lake/instruments/attention_schema.py",
+      "mode": "100644",
+      "sha": "db6fa809d44baf9ffdc50008701e5c4e3dc4a61d",
+      "size": 84824
+    },
+    {
+      "path": "src/snn_data_lake/instruments/binding_instrument.py",
+      "mode": "100644",
+      "sha": "d0a5b057e91da376611371c847c1eeca1961db9d",
+      "size": 85848
+    },
+    {
+      "path": "src/snn_data_lake/instruments/carried_state_campaign.py",
+      "mode": "100644",
+      "sha": "dc8e2caec47cac4cd56038744c3e51a7512c062b",
+      "size": 72487
+    },
+    {
+      "path": "src/snn_data_lake/instruments/carried_state_controls.py",
+      "mode": "100644",
+      "sha": "68322709199c0505c8d8c86676acf33cd7d9b7b3",
+      "size": 34265
+    },
+    {
+      "path": "src/snn_data_lake/instruments/carried_state_driver.py",
+      "mode": "100644",
+      "sha": "d39a9d3cb2be7a0bf8bc09057f3b7efe6e9bdf0e",
+      "size": 35828
+    },
+    {
+      "path": "src/snn_data_lake/instruments/carried_state_report.py",
+      "mode": "100644",
+      "sha": "f2015f7d738103a166b4985b1886e7596b8b5c65",
+      "size": 36928
+    },
+    {
+      "path": "src/snn_data_lake/instruments/carried_state_stages.py",
+      "mode": "100644",
+      "sha": "daf8daac1f329f2441f96954b7a1e279cd2e8575",
+      "size": 19493
+    },
+    {
+      "path": "src/snn_data_lake/instruments/deep_stdp.py",
+      "mode": "100644",
+      "sha": "f4b464d03441deee213b79c9d344bdf753bdc4f7",
+      "size": 19242
+    },
+    {
+      "path": "src/snn_data_lake/instruments/deep_stdp_latency.py",
+      "mode": "100644",
+      "sha": "bb09930b6051c805f15179da714586313b84e878",
+      "size": 21938
+    },
+    {
+      "path": "src/snn_data_lake/instruments/delayed_cue.py",
+      "mode": "100644",
+      "sha": "b1097b56170fdc6f6c53f21ffda9bf52117655bb",
+      "size": 36052
+    },
+    {
+      "path": "src/snn_data_lake/instruments/developmental_loop_brain.py",
+      "mode": "100644",
+      "sha": "81f99b2842799f5e0cc18dcd1295f423f464ff9c",
+      "size": 40701
+    },
+    {
+      "path": "src/snn_data_lake/instruments/eligible_circuit_census.py",
+      "mode": "100644",
+      "sha": "505b05111dadc7a7f959aadc9ab730530fcd1f95",
+      "size": 75482
+    },
+    {
+      "path": "src/snn_data_lake/instruments/energy.py",
+      "mode": "100644",
+      "sha": "05866807fa1c27cef31982268f38f544943438f9",
+      "size": 13183
+    },
+    {
+      "path": "src/snn_data_lake/instruments/episode_driver.py",
+      "mode": "100644",
+      "sha": "f444baa7819752b45fc5dd78c12963eca392ba8b",
+      "size": 23625
+    },
+    {
+      "path": "src/snn_data_lake/instruments/everyday_battery.py",
+      "mode": "100644",
+      "sha": "963a39554dbb7eb7c16a1236b5332505bc42ab93",
+      "size": 54486
+    },
+    {
+      "path": "src/snn_data_lake/instruments/g5_part_d_adaptors.py",
+      "mode": "100644",
+      "sha": "15738a7dae168cbaca03002285c3e484b6d70ca5",
+      "size": 18894
+    },
+    {
+      "path": "src/snn_data_lake/instruments/g5_part_d_cells.py",
+      "mode": "100644",
+      "sha": "cf83ad243ca1a79fc5ad507790869cac60757744",
+      "size": 24641
+    },
+    {
+      "path": "src/snn_data_lake/instruments/g5_part_d_reading.py",
+      "mode": "100644",
+      "sha": "f215af554edf3fa0a37302a1a25e08df03b90dc7",
+      "size": 9552
+    },
+    {
+      "path": "src/snn_data_lake/instruments/g5_readout_cells.py",
+      "mode": "100644",
+      "sha": "7b51e76535b0b8502ea5241aa515420bbfd01815",
+      "size": 35655
+    },
+    {
+      "path": "src/snn_data_lake/instruments/h01_distance_kernel.py",
+      "mode": "100644",
+      "sha": "431fc89b4c3d3a5caf0b3929fc55e01fdadc63c2",
+      "size": 55550
+    },
+    {
+      "path": "src/snn_data_lake/instruments/h01_partb_tangential.py",
+      "mode": "100644",
+      "sha": "a298637028d70e471df26fbcbcd28362283cb911",
+      "size": 49366
+    },
+    {
+      "path": "src/snn_data_lake/instruments/ignition_instrument.py",
+      "mode": "100644",
+      "sha": "697b1c3dbe85d628a1d37890258741e978e253bb",
+      "size": 34488
+    },
+    {
+      "path": "src/snn_data_lake/instruments/inseparable_mapping.py",
+      "mode": "100644",
+      "sha": "f13728b3ace22d4f1eef4b61005f4fbeea987375",
+      "size": 34012
+    },
+    {
+      "path": "src/snn_data_lake/instruments/integration_measure.py",
+      "mode": "100644",
+      "sha": "3baac57aa7dd84c56343e6d1b17fe5d9afbbd03c",
+      "size": 36427
+    },
+    {
+      "path": "src/snn_data_lake/instruments/joint_mask_search.py",
+      "mode": "100644",
+      "sha": "e7d774b88d4f30ce606eacc9074bb5b9fff4087a",
+      "size": 25294
+    },
+    {
+      "path": "src/snn_data_lake/instruments/memory_diagnostic.py",
+      "mode": "100644",
+      "sha": "fb7893baf2bd0de40086b2fe50a3754534118f9d",
+      "size": 101957
+    },
+    {
+      "path": "src/snn_data_lake/instruments/nef_compute.py",
+      "mode": "100644",
+      "sha": "797223e8341b7b67157f4e83a83b6682094826cc",
+      "size": 15975
+    },
+    {
+      "path": "src/snn_data_lake/instruments/neuro_chip.py",
+      "mode": "100644",
+      "sha": "05b6428218eb7940114e5df5b1ff614c88c6fec0",
+      "size": 11967
+    },
+    {
+      "path": "src/snn_data_lake/instruments/neuro_chip_stream.py",
+      "mode": "100644",
+      "sha": "b4c8ccaae26bae916ee4b2e194131e4dd5866bf4",
+      "size": 16909
+    },
+    {
+      "path": "src/snn_data_lake/instruments/neuronal_avalanches.py",
+      "mode": "100644",
+      "sha": "9ed7717538c0147d6f66d3a1596a6e0fe3f1b146",
+      "size": 16928
+    },
+    {
+      "path": "src/snn_data_lake/instruments/paired_contrast.py",
+      "mode": "100644",
+      "sha": "847a02b485035a8567cd093cdae2488e9fb822f4",
+      "size": 32302
+    },
+    {
+      "path": "src/snn_data_lake/instruments/pool_selection.py",
+      "mode": "100644",
+      "sha": "d69754aa0c43b14ae65fa95dc2b94736454a755e",
+      "size": 95640
+    },
+    {
+      "path": "src/snn_data_lake/instruments/port_charge_probe.py",
+      "mode": "100644",
+      "sha": "5dfc49524a970ac1e4321a03901eb9dad78160b0",
+      "size": 15316
+    },
+    {
+      "path": "src/snn_data_lake/instruments/prior_drift_harness.py",
+      "mode": "100644",
+      "sha": "2d0d637a570b88e8e60d23b8aacbefa2ad73b3ca",
+      "size": 116069
+    },
+    {
+      "path": "src/snn_data_lake/instruments/replay_hydration.py",
+      "mode": "100644",
+      "sha": "1c988c4fa93f7e6b3afb8cc5e6f74a1870f41080",
+      "size": 88325
+    },
+    {
+      "path": "src/snn_data_lake/instruments/report_order_probe.py",
+      "mode": "100644",
+      "sha": "d56d8dab233af7449e924d018bfdead908c07cfd",
+      "size": 72493
+    },
+    {
+      "path": "src/snn_data_lake/instruments/rpe_charge.py",
+      "mode": "100644",
+      "sha": "fb21fd020fdbd49491ce1336470f3c35d843ebda",
+      "size": 123111
+    },
+    {
+      "path": "src/snn_data_lake/instruments/sleep_mask_apply.py",
+      "mode": "100644",
+      "sha": "cd003612d2b8a0b2fe822fcb79f7d40a86774a25",
+      "size": 13640
+    },
+    {
+      "path": "src/snn_data_lake/instruments/sleep_plasticity_ab.py",
+      "mode": "100644",
+      "sha": "004b849f35b9687d9b6ff959834f712a3744e7e5",
+      "size": 71146
+    },
+    {
+      "path": "src/snn_data_lake/instruments/sleep_pressure.py",
+      "mode": "100644",
+      "sha": "cd38679ccb733ef0de3ae9e2943a40bd7ff7d4e6",
+      "size": 28405
+    },
+    {
+      "path": "src/snn_data_lake/instruments/sleep_pruner_census.py",
+      "mode": "100644",
+      "sha": "d7fe76339f479c7a7b2f4d963d32d70a64a25731",
+      "size": 51269
+    },
+    {
+      "path": "src/snn_data_lake/instruments/snn_mnist_stdp.py",
+      "mode": "100644",
+      "sha": "a98038c18b06ec6ef474d879fb9da2c94a9cd773",
+      "size": 12576
+    },
+    {
+      "path": "src/snn_data_lake/instruments/snn_mnist_stdp_genn.py",
+      "mode": "100644",
+      "sha": "fbda3db59723f2712278ecd0d3c34d950be8396d",
+      "size": 26154
+    },
+    {
+      "path": "src/snn_data_lake/instruments/staged_sleep_bout.py",
+      "mode": "100644",
+      "sha": "c6403b9f5a558f041da3952ebcf407465c4236b8",
+      "size": 21376
+    },
+    {
+      "path": "src/snn_data_lake/instruments/taught_campaign.py",
+      "mode": "100644",
+      "sha": "f506bc994407d577b25e83d55f796a223abadaf2",
+      "size": 38047
+    },
+    {
+      "path": "src/snn_data_lake/instruments/taught_problems.py",
+      "mode": "100644",
+      "sha": "746f7edc27a64f69978a1f5625d7ff7ea8e22878",
+      "size": 19781
+    },
+    {
+      "path": "src/snn_data_lake/instruments/unit_organization.py",
+      "mode": "100644",
+      "sha": "cb0c3156d087c161b3ae18fdb49402c1f0af4ee3",
+      "size": 29848
+    },
+    {
+      "path": "src/snn_data_lake/instruments/world_red_probe.py",
+      "mode": "100644",
+      "sha": "ab6a7b6933696f8b912adb8a39c577a437865586",
+      "size": 30348
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/__init__.py",
+      "mode": "100644",
+      "sha": "14ca0c25351b7279bcf6a10b571363bdb5277215",
+      "size": 79
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/bcm_plasticity.py",
+      "mode": "100644",
+      "sha": "2d7cfaa2c9f87d328a7f4632c3a1d5d44ecba43e",
+      "size": 5762
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/benna_fusi.py",
+      "mode": "100644",
+      "sha": "0975a439b4fe2c86809ef92af43fa8bc136cc604",
+      "size": 15022
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/competitive_learning.py",
+      "mode": "100644",
+      "sha": "eef55476e8f6559f5b5bacb46951e718d00b8619",
+      "size": 20234
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/eligibility_algebra.py",
+      "mode": "100644",
+      "sha": "423591d75ecb42d3e87c3fc71c2ddcbdc08a7b7a",
+      "size": 29820
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/eprop_kernel.py",
+      "mode": "100644",
+      "sha": "5955484518f1950a0a26cba0c7746688e2b14fab",
+      "size": 29568
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/espp_rule.py",
+      "mode": "100644",
+      "sha": "3cce03a1b71f08f3b7510c011380995e00b5ccac",
+      "size": 45813
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/homeostatic_plasticity_stack.py",
+      "mode": "100644",
+      "sha": "70ee0a6f3c094a0a51c81fbffd0163ca98f3b276",
+      "size": 24789
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/homeostatic_scaling.py",
+      "mode": "100644",
+      "sha": "0e5106c4b01379fcc72bbbfc6e25ad7479660c9d",
+      "size": 5244
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/inhibitory_stdp.py",
+      "mode": "100644",
+      "sha": "6505d02a94c84d15a0ab780471f63832706594c9",
+      "size": 28389
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/intrinsic_plasticity.py",
+      "mode": "100644",
+      "sha": "90216e7fe4a252f1439d2df380464465e1216d74",
+      "size": 5013
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/meta_plasticity.py",
+      "mode": "100644",
+      "sha": "4e0cc69166652dcb9a514b00a7f1c6fa845330be",
+      "size": 25805
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/naca.py",
+      "mode": "100644",
+      "sha": "849e017d6dd9aa83d75eadf3ac4d789e4a569be9",
+      "size": 19360
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/oja_pca.py",
+      "mode": "100644",
+      "sha": "5664a9713d0f71955f09224c405be17945fe98c5",
+      "size": 6453
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/plasticity_rule_stack.py",
+      "mode": "100644",
+      "sha": "c5d6125ed04a161fd2f5a0c20ab4a49b06ba4e81",
+      "size": 42135
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/r_stdp.py",
+      "mode": "100644",
+      "sha": "9596d874cf8454db0ca387dc40bbae25037f8355",
+      "size": 65649
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/rule_composer.py",
+      "mode": "100644",
+      "sha": "de8764b829b9fb60d6263a80dca5794ef29c957c",
+      "size": 124731
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/short_term_plasticity.py",
+      "mode": "100644",
+      "sha": "81693a693ae5ad3712b840b7d993232a412e7b5c",
+      "size": 4372
+    },
+    {
+      "path": "src/snn_data_lake/plasticity/valence_stdp.py",
+      "mode": "100644",
+      "sha": "1e9266b6c7c662e0089e91399cacc52d7cbde9dd",
+      "size": 6459
+    },
+    {
+      "path": "src/snn_data_lake/readout/__init__.py",
+      "mode": "100644",
+      "sha": "7afac4786449244c1d88646d5fbd2945129b77aa",
+      "size": 329
+    },
+    {
+      "path": "src/snn_data_lake/readout/growable_readout.py",
+      "mode": "100644",
+      "sha": "844c3efb04d4f7d6dfdda4fc6af46f212fae5592",
+      "size": 60484
+    },
+    {
+      "path": "src/snn_data_lake/readout/interaction_learning.py",
+      "mode": "100644",
+      "sha": "8cdc04e6caebe09598ce30f275a091eee68c78cb",
+      "size": 127439
+    },
+    {
+      "path": "src/snn_data_lake/readout/laminar_local_readout.py",
+      "mode": "100644",
+      "sha": "639f7165d5078baf3fbd32d9b06b05aab68dee07",
+      "size": 36577
+    },
+    {
+      "path": "src/snn_data_lake/readout/language_readout_slda.py",
+      "mode": "100644",
+      "sha": "8911862895f1b6dbab1bd81d911c352d92008ad2",
+      "size": 11786
+    },
+    {
+      "path": "src/snn_data_lake/readout/online_readout.py",
+      "mode": "100644",
+      "sha": "8d2a145da9254a95e3f8505d5b598a9aebeeee0e",
+      "size": 12406
+    },
+    {
+      "path": "src/snn_data_lake/readout/posed_problem.py",
+      "mode": "100644",
+      "sha": "505d3c7688b8cb39b70c2f269085560e8cd19fee",
+      "size": 44854
+    },
+    {
+      "path": "src/snn_data_lake/readout/predictive_coding.py",
+      "mode": "100644",
+      "sha": "c96debb965db01afff7077b0dcf8a2953c3b1842",
+      "size": 24630
+    },
+    {
+      "path": "src/snn_data_lake/readout/snn_classifier.py",
+      "mode": "100644",
+      "sha": "f960f14c1310acdd89bcc8345b89ed71c7d4e702",
+      "size": 13162
+    },
+    {
+      "path": "src/snn_data_lake/readout/snn_moe_classifier.py",
+      "mode": "100644",
+      "sha": "5b5c766c0c9210c7bb6ae5fe8e0918e84b703227",
+      "size": 21450
+    },
+    {
+      "path": "src/snn_data_lake/readout/tempotron.py",
+      "mode": "100644",
+      "sha": "1577ae06b374d021f13aaeedd8b5cec332246cb6",
+      "size": 5579
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/__init__.py",
+      "mode": "100644",
+      "sha": "d13018a50495ab1249ce962b192c49efb28efc79",
+      "size": 86
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/_loop_common.py",
+      "mode": "100644",
+      "sha": "9118c3687d756c2b545cff9dca3a707683d53068",
+      "size": 4516
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/ar_spiking_lm_serve.py",
+      "mode": "100644",
+      "sha": "966291a0213192072b7d879c6fc8bead702916bc",
+      "size": 25182
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/arc_bench.py",
+      "mode": "100644",
+      "sha": "cc5f7635ccaa8a4765a8a1f77dd01b5328a9734f",
+      "size": 7106
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/arc_mint.py",
+      "mode": "100644",
+      "sha": "6658931424aba9de20a155a15be6ccc9988c8207",
+      "size": 45967
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/arc_residual.py",
+      "mode": "100644",
+      "sha": "d29da751edd048ef9cc399b730062cc87a5213b5",
+      "size": 20883
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/arc_scene.py",
+      "mode": "100644",
+      "sha": "fec0dbfb5caf918d63b19e9013e8942b9e26cda3",
+      "size": 38826
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/arc_solver.py",
+      "mode": "100644",
+      "sha": "06ae76811b4e48627da1bde711babc89fde4a093",
+      "size": 43020
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/autonomous_enrich.py",
+      "mode": "100644",
+      "sha": "18df1ec8f270a57a74e60baf7c1d963bf7bd9a29",
+      "size": 20376
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/blimp_bench.py",
+      "mode": "100644",
+      "sha": "85f17316a647ec30a525da1b9ec6818484cc5d6c",
+      "size": 11712
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/concept_reflection.py",
+      "mode": "100644",
+      "sha": "08939a738257e26960f1b7959a4a55660d3fe545",
+      "size": 12339
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/dense_associative_memory.py",
+      "mode": "100644",
+      "sha": "2f9a02470b77bc98448e557963f16ca7189f434b",
+      "size": 11617
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/derivation.py",
+      "mode": "100644",
+      "sha": "1f8f818e3bdf3bb80e38b28a6ff51714cdf7715f",
+      "size": 10942
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/eprop.py",
+      "mode": "100644",
+      "sha": "2378d0f354348600721e7abd465e83c6f80cf2ba",
+      "size": 20177
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/fast_features.py",
+      "mode": "100644",
+      "sha": "f8d2ce8a7f4f297de129e8fa6664b74d56d4894a",
+      "size": 14567
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/gf.py",
+      "mode": "100644",
+      "sha": "1082f1015ba5ebc3763c21ed485c27e41ee9a02f",
+      "size": 94701
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/godel_machine.py",
+      "mode": "100644",
+      "sha": "0644b639636228e027e4466574e3b6b2a0b46752",
+      "size": 18381
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/impact_analysis.py",
+      "mode": "100644",
+      "sha": "d41fbebf7884e7536d47b19403451151b72a6125",
+      "size": 10194
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/lake_reason.py",
+      "mode": "100644",
+      "sha": "e62394325c1b0d0db9efc04cdad7d7a9d9adc6aa",
+      "size": 13820
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/mcr_hdc.py",
+      "mode": "100644",
+      "sha": "0b5dcdd8d99ff388df43f84080ac1e23430302c8",
+      "size": 4667
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/model_builder.py",
+      "mode": "100644",
+      "sha": "aae5b5c9466a0a4baae94f4783f956b0ef879c9a",
+      "size": 10499
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/pc_abduction.py",
+      "mode": "100644",
+      "sha": "a84f404b12a0bcb4c0e8a09421f43988929767d1",
+      "size": 29622
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/pragmatics.py",
+      "mode": "100644",
+      "sha": "cc84e4614b885e87365b64968b36b45bcd584a28",
+      "size": 30498
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/raven_bench.py",
+      "mode": "100644",
+      "sha": "8373d5f49a41adf0dada452db2aca925ee62bdf2",
+      "size": 13207
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/reasoning_compose.py",
+      "mode": "100644",
+      "sha": "0869d206f8093699cc5cd1f756868a6c6b29a598",
+      "size": 11423
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/reasoning_cortex.py",
+      "mode": "100644",
+      "sha": "8b7e049ecc474da36eb01db38ef889d2fd53f085",
+      "size": 57099
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/rpm_solver.py",
+      "mode": "100644",
+      "sha": "bc103f670ea2414026c93077bcc0ae1591613324",
+      "size": 55297
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/schema_induction.py",
+      "mode": "100644",
+      "sha": "ede28058df32c1b24c172b7f3810703ee7dc3889",
+      "size": 43669
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/self_improve.py",
+      "mode": "100644",
+      "sha": "45989a14f3658e577f9143f248086a19f9b53087",
+      "size": 15499
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/semantic_memory.py",
+      "mode": "100644",
+      "sha": "fe1d6ad461589cf0db7f807af3502f9555f6ffdb",
+      "size": 18117
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/snn_mnist_stdp_fast.py",
+      "mode": "100644",
+      "sha": "6e9cbc5bc31f83b8e1bde648629144d1248a959b",
+      "size": 8772
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/sparse_distributed_memory.py",
+      "mode": "100644",
+      "sha": "285d3efc5cdc46bb63974ab419015bef33807fe2",
+      "size": 4423
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/spike_chat_lake.py",
+      "mode": "100644",
+      "sha": "e8841584531d0bc56a508e804c39c6e8edb6165a",
+      "size": 143072
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/spiking_som.py",
+      "mode": "100644",
+      "sha": "0f502c0b7f71f26a1ee3af4785cf2783e89395a3",
+      "size": 4417
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/spiking_ssm.py",
+      "mode": "100644",
+      "sha": "ee43f65d915b364d73fb7ebf4ad4b73db4a501c5",
+      "size": 7452
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/stats_bounds.py",
+      "mode": "100644",
+      "sha": "acc1a778fae375145c8d56700a5f1360b513e6df",
+      "size": 3696
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/train_of_thought.py",
+      "mode": "100644",
+      "sha": "45cdcc609a264756196048156386487746db349b",
+      "size": 28758
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/triplet_stdp.py",
+      "mode": "100644",
+      "sha": "01c82855f49e67e07aef0c483d1e44f326b08204",
+      "size": 6457
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/vsa_synthesize.py",
+      "mode": "100644",
+      "sha": "516222c50356363c4aa7d663c4f042ba5c897855",
+      "size": 23858
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/web_ingest_gate.py",
+      "mode": "100644",
+      "sha": "93f78a4727dce4c91572bc064dfb4954617747ca",
+      "size": 19419
+    },
+    {
+      "path": "src/snn_data_lake/reasoning/weight_perturbation.py",
+      "mode": "100644",
+      "sha": "a2b2752dd27936d2555e9236bd4fd954682237d0",
+      "size": 12770
+    },
+    {
+      "path": "src/snn_data_lake/reservoir/__init__.py",
+      "mode": "100644",
+      "sha": "4b4e1f438cf6e3910ca6dc556ecfd13adcf9b972",
+      "size": 78
+    },
+    {
+      "path": "src/snn_data_lake/reservoir/cortical_microcircuit.py",
+      "mode": "100644",
+      "sha": "e6cb8513d2912c6a578e803cbe422e253c493b12",
+      "size": 35245
+    },
+    {
+      "path": "src/snn_data_lake/reservoir/criticality_regulator.py",
+      "mode": "100644",
+      "sha": "e372b250a41c3c8b5b1ff2aa82c32f7e390e6f37",
+      "size": 19477
+    },
+    {
+      "path": "src/snn_data_lake/reservoir/kernel_state.py",
+      "mode": "100644",
+      "sha": "73204f14bd08ea8e6dfa4fa710167ca15b0985da",
+      "size": 10567
+    },
+    {
+      "path": "src/snn_data_lake/reservoir/kernel_tick.py",
+      "mode": "100644",
+      "sha": "8c9df83c50d0dc26bb51ec3a4d6be0033ebf1004",
+      "size": 24129
+    },
+    {
+      "path": "src/snn_data_lake/reservoir/neural_sampling.py",
+      "mode": "100644",
+      "sha": "ea9c09f2a942246a1114740b292d51ff7b4885e8",
+      "size": 12471
+    },
+    {
+      "path": "src/snn_data_lake/reservoir/recurrent_pool.py",
+      "mode": "100644",
+      "sha": "69b8b9fe7e5efeeb17122a4b1cf523b5ee765c63",
+      "size": 77140
+    },
+    {
+      "path": "src/snn_data_lake/reservoir/spontaneous_activity.py",
+      "mode": "100644",
+      "sha": "192a4de024270938dba3fd6393492999cdfb4149",
+      "size": 35153
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/__init__.py",
+      "mode": "100644",
+      "sha": "00ee185f03c8957676446b6bd80e5476245d8dc5",
+      "size": 81
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/afferent_boundary.py",
+      "mode": "100644",
+      "sha": "45b024f61304e995eed4976a7ceaa93845f3c655",
+      "size": 29006
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/arm_bridge.py",
+      "mode": "100644",
+      "sha": "2c8a4ef9f062e5d031206b86c6021422f54554c6",
+      "size": 6932
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/arm_hardware.py",
+      "mode": "100644",
+      "sha": "fe35dd0328fe1aa15f2b89aa1e0acc71f4343acd",
+      "size": 29551
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/closed_loop.py",
+      "mode": "100644",
+      "sha": "f342c3b37d18ff025b1089b06a4a8de9f45b8296",
+      "size": 12411
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/corpus_stream.py",
+      "mode": "100644",
+      "sha": "3b96d13c3fdf8450901523f7f803bc8207136c6a",
+      "size": 13003
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/efferent_boundary.py",
+      "mode": "100644",
+      "sha": "ad639c955daac9558684295aaebc030957aabe6f",
+      "size": 19833
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/eprop_nmnist.py",
+      "mode": "100644",
+      "sha": "a3cef59a729c556e3e1d2fff45d6bad43d8e1f4d",
+      "size": 46309
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/eprop_shd.py",
+      "mode": "100644",
+      "sha": "1fec4619dcea26c4a4e090f884f5cd2f965b19f4",
+      "size": 49556
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/esp32_encoder_path.py",
+      "mode": "100644",
+      "sha": "d1c89529a83c8353cc00b301c75e1699f5d00990",
+      "size": 13173
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/gesture_recognition.py",
+      "mode": "100644",
+      "sha": "b80dfa3b3bbec57f0f14e15cfcbfbcb1f83a4b2e",
+      "size": 5002
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/hf_stream.py",
+      "mode": "100644",
+      "sha": "cc4fee25865d544d74002e9d93257aa7c01e1e16",
+      "size": 9524
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/ingest_guard.py",
+      "mode": "100644",
+      "sha": "6f3d63be165fe0a3b22ed37699d1b5c930cf4d4e",
+      "size": 9883
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/lca_sparse_coding.py",
+      "mode": "100644",
+      "sha": "731e4431fd939c929efb5f2c97a69691ac7b855d",
+      "size": 6565
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/learned_matcher.py",
+      "mode": "100644",
+      "sha": "241ac1537a30b2e820685c1a3d2bf75769059773",
+      "size": 9281
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/live_arm.py",
+      "mode": "100644",
+      "sha": "4e4ac601a76de7f121d8a1d73bc1ccebfbce3b7c",
+      "size": 22784
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/make_sensor_dataset.py",
+      "mode": "100644",
+      "sha": "d5af870bcf323871017c263390bf4d4c9d1644fb",
+      "size": 4638
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/multimodal_encoder.py",
+      "mode": "100644",
+      "sha": "089e260beca28a19f077fa17e5cfd6088c15904d",
+      "size": 12557
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/nl_interface.py",
+      "mode": "100644",
+      "sha": "edf3a60a059f994174514194c52f51668b1fd367",
+      "size": 14162
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/organoid_ingest.py",
+      "mode": "100644",
+      "sha": "ec21ec75a8f149d278e514910310e3ea5099ec78",
+      "size": 34217
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/pc_cortex_serve.py",
+      "mode": "100644",
+      "sha": "e5e873c616130430a9653a64590f3a50bb950370",
+      "size": 38624
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/population_encoding.py",
+      "mode": "100644",
+      "sha": "19c9f743ae0fc27c25063d95a0bffcdd4e05e767",
+      "size": 5327
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/rank_order_coding.py",
+      "mode": "100644",
+      "sha": "16882230d4b6e9347631cfbddbd04f21cdbdab1b",
+      "size": 5037
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/recognizer_bank.py",
+      "mode": "100644",
+      "sha": "702f4087772618aef10de6d3f064cf3b5363044b",
+      "size": 29524
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/rsnn_encoder.py",
+      "mode": "100644",
+      "sha": "1b15b102df930ecc0122f8a878a430b09053389c",
+      "size": 15485
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/sensor_csv_ingest.py",
+      "mode": "100644",
+      "sha": "c438e3ab9467df2c7876157ccc8b1abef7e50b34",
+      "size": 4786
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/signal_loop.py",
+      "mode": "100644",
+      "sha": "3a2cb4c523493cb453db003545ed26a3370b47a4",
+      "size": 41003
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/spike_preprocessing.py",
+      "mode": "100644",
+      "sha": "aba59c695f6dd62f507669620bab23192ace5db2",
+      "size": 17459
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/trained_brain.py",
+      "mode": "100644",
+      "sha": "ffaed006bc71d8c5b48c33bdd857a5173b40a978",
+      "size": 15737
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/wavefront_planner.py",
+      "mode": "100644",
+      "sha": "5ba7ee5fed37377343078d2c6c824857dc5695bb",
+      "size": 13972
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/web_ingest.py",
+      "mode": "100644",
+      "sha": "297386b109e1ddb183f70e28e5d64c818e8302c5",
+      "size": 26165
+    },
+    {
+      "path": "src/snn_data_lake/sensorimotor/world_kb_stream.py",
+      "mode": "100644",
+      "sha": "042da20544f6a128fb4f879b1cb9b9c7bbba33e0",
+      "size": 25024
+    },
+    {
+      "path": "src/snn_data_lake/sleep/__init__.py",
+      "mode": "100644",
+      "sha": "1531c958b12e9d9b731752e68e28b6a3acb7510a",
+      "size": 74
+    },
+    {
+      "path": "src/snn_data_lake/sleep/circadian_clock.py",
+      "mode": "100644",
+      "sha": "d633f1c57379972c5030b8c4a0772934d93907f7",
+      "size": 14493
+    },
+    {
+      "path": "src/snn_data_lake/sleep/developmental_pruning.py",
+      "mode": "100644",
+      "sha": "7a1dd65d00e45cc2b35852032cdc31eda0461cd3",
+      "size": 9962
+    },
+    {
+      "path": "src/snn_data_lake/sleep/episode_consolidation.py",
+      "mode": "100644",
+      "sha": "8cf7b21c2195bcd52c18e666b0be4339082120d9",
+      "size": 40120
+    },
+    {
+      "path": "src/snn_data_lake/sleep/experience_replay.py",
+      "mode": "100644",
+      "sha": "4b6fa25b473b6099c2192faeeac629d0ef109789",
+      "size": 7266
+    },
+    {
+      "path": "src/snn_data_lake/sleep/hippocampal_memory.py",
+      "mode": "100644",
+      "sha": "a24f61d0499f0cd3f5d565fbb6d5e3907b2f2cf3",
+      "size": 13933
+    },
+    {
+      "path": "src/snn_data_lake/sleep/lake_consolidation.py",
+      "mode": "100644",
+      "sha": "55d482d7d567b5431d7af07fc37aeb4839ac1b78",
+      "size": 23506
+    },
+    {
+      "path": "src/snn_data_lake/sleep/lifelong_consolidation.py",
+      "mode": "100644",
+      "sha": "2cdf799320952af318d50b1ca4c5b5b0a48079cc",
+      "size": 22624
+    },
+    {
+      "path": "src/snn_data_lake/sleep/nightly_skills.py",
+      "mode": "100644",
+      "sha": "5213567893e0f785c8a557f5095c9e9e10e8576c",
+      "size": 72319
+    },
+    {
+      "path": "src/snn_data_lake/sleep/sleep_consolidation.py",
+      "mode": "100644",
+      "sha": "f4f3d0f5c5e5a418b9b8126483cc1779c47d6cb5",
+      "size": 19356
+    },
+    {
+      "path": "src/snn_data_lake/sleep/sleep_replay.py",
+      "mode": "100644",
+      "sha": "fd379c7f67254443456fd8dbcb24b567261e50f0",
+      "size": 32705
+    },
+    {
+      "path": "src/snn_data_lake/sleep/structural_rewiring.py",
+      "mode": "100644",
+      "sha": "94a742c28f19284da25ce7ee17d6043966f79f97",
+      "size": 36772
+    },
+    {
+      "path": "src/snn_data_lake/substrate/__init__.py",
+      "mode": "100644",
+      "sha": "368424efcdacedd8b5464e244c89ad65c464c1be",
+      "size": 83
+    },
+    {
+      "path": "src/snn_data_lake/substrate/arm_view.py",
+      "mode": "100644",
+      "sha": "cdb78f647d4cc016c4b45c2de74223c07eefda07",
+      "size": 17778
+    },
+    {
+      "path": "src/snn_data_lake/substrate/binlog.py",
+      "mode": "100644",
+      "sha": "9f1fa3ffa2338f3e5d2c3f7aa9a9c41630480a00",
+      "size": 50958
+    },
+    {
+      "path": "src/snn_data_lake/substrate/chat_memory.py",
+      "mode": "100644",
+      "sha": "7e02e05c36eea52aeec90852046e483e191d4e40",
+      "size": 17540
+    },
+    {
+      "path": "src/snn_data_lake/substrate/content_signature.py",
+      "mode": "100644",
+      "sha": "2e18192e16e67c4c4ea59aae221ef40e76771279",
+      "size": 2887
+    },
+    {
+      "path": "src/snn_data_lake/substrate/data_quality.py",
+      "mode": "100644",
+      "sha": "a6aa052c868d35b0190d45d0c82f599551352ed7",
+      "size": 6666
+    },
+    {
+      "path": "src/snn_data_lake/substrate/episodic_recall.py",
+      "mode": "100644",
+      "sha": "c35539f7b7e201d6f8f4caa2dc4f75a99c5dc928",
+      "size": 57634
+    },
+    {
+      "path": "src/snn_data_lake/substrate/frequency_moment.py",
+      "mode": "100644",
+      "sha": "005e01cfdcd1b8a508cef92787c2579e6c7f9ce6",
+      "size": 12321
+    },
+    {
+      "path": "src/snn_data_lake/substrate/home.py",
+      "mode": "100644",
+      "sha": "4780ecf249045214b31b3a61f6b6e901b0bd5ebd",
+      "size": 142028
+    },
+    {
+      "path": "src/snn_data_lake/substrate/lake_bridge.py",
+      "mode": "100644",
+      "sha": "e4ef6aac753f72e56e389afb31b9f987510d1a95",
+      "size": 6981
+    },
+    {
+      "path": "src/snn_data_lake/substrate/lake_engine.py",
+      "mode": "100644",
+      "sha": "59da74879bb2fedeb207351778d0e3848e5128e0",
+      "size": 31603
+    },
+    {
+      "path": "src/snn_data_lake/substrate/lake_index.py",
+      "mode": "100644",
+      "sha": "735ccb4837106c36c26c2851a13e80569c036bea",
+      "size": 6782
+    },
+    {
+      "path": "src/snn_data_lake/substrate/lake_memory.py",
+      "mode": "100644",
+      "sha": "41d3b07a7f6a73b4f051c81d190eaf99c7580ebf",
+      "size": 31478
+    },
+    {
+      "path": "src/snn_data_lake/substrate/lake_migrate.py",
+      "mode": "100644",
+      "sha": "47b3697279f7f6bb0118de6d0f5b90f444d9c330",
+      "size": 9037
+    },
+    {
+      "path": "src/snn_data_lake/substrate/lake_recall.py",
+      "mode": "100644",
+      "sha": "29436f2a9bf1ffd970ae938ca62f6902cfd56bbe",
+      "size": 27620
+    },
+    {
+      "path": "src/snn_data_lake/substrate/lake_segments.py",
+      "mode": "100644",
+      "sha": "8fa0ba3690fa80730a6da96db0771f19948d4a13",
+      "size": 12778
+    },
+    {
+      "path": "src/snn_data_lake/substrate/lake_working_memory.py",
+      "mode": "100644",
+      "sha": "103f8cb93e87bc04838098d4b2a2f1390e9f1fe6",
+      "size": 13039
+    },
+    {
+      "path": "src/snn_data_lake/substrate/learner_events.py",
+      "mode": "100644",
+      "sha": "680b63532c1ff2adca98830a182b15f203b9a577",
+      "size": 17908
+    },
+    {
+      "path": "src/snn_data_lake/substrate/minhash.py",
+      "mode": "100644",
+      "sha": "637a5bb8b052e9d17732e274e8b327a7ee49c943",
+      "size": 8554
+    },
+    {
+      "path": "src/snn_data_lake/substrate/morris_counter.py",
+      "mode": "100644",
+      "sha": "47309bb7394d1b3c8963f52a4da27df6916337e8",
+      "size": 10299
+    },
+    {
+      "path": "src/snn_data_lake/substrate/paradigm_b_engine.py",
+      "mode": "100644",
+      "sha": "e7cae867a87a466137ebda63289d6c922a49de60",
+      "size": 5699
+    },
+    {
+      "path": "src/snn_data_lake/substrate/paradigm_b_matcher.py",
+      "mode": "100644",
+      "sha": "f8fe50e117fa46211aa7ff46bda338ed632370aa",
+      "size": 8275
+    },
+    {
+      "path": "src/snn_data_lake/substrate/proximity_index.py",
+      "mode": "100644",
+      "sha": "70e2cb06d3d309c0efdc50040ac103b621c81a83",
+      "size": 23693
+    },
+    {
+      "path": "src/snn_data_lake/substrate/proximity_replay.py",
+      "mode": "100644",
+      "sha": "52a8bdd5c41e4bd5e7cb32317478a245b2ca2e32",
+      "size": 33868
+    },
+    {
+      "path": "src/snn_data_lake/substrate/reservoir_sampling.py",
+      "mode": "100644",
+      "sha": "868dafcdfd49c4f129618c4d48e21c793537c04d",
+      "size": 9590
+    },
+    {
+      "path": "src/snn_data_lake/substrate/signal_calibrator.py",
+      "mode": "100644",
+      "sha": "a633e1c29c56f01b64cb1b7241528dfaa2dd8578",
+      "size": 17064
+    },
+    {
+      "path": "src/snn_data_lake/substrate/sliding_window_count.py",
+      "mode": "100644",
+      "sha": "4b2896cd06d6371ae90c87df8836e36099d53a82",
+      "size": 11339
+    },
+    {
+      "path": "src/snn_data_lake/substrate/spike_cardinality.py",
+      "mode": "100644",
+      "sha": "6c49465995375b02f089d3383238a613d49bb885",
+      "size": 10754
+    },
+    {
+      "path": "src/snn_data_lake/substrate/spike_stream_sketch.py",
+      "mode": "100644",
+      "sha": "a8d0bf0e25548a9116a39afb3a7993fb11355169",
+      "size": 6048
+    },
+    {
+      "path": "src/snn_data_lake/substrate/spike_telemetry_hub.py",
+      "mode": "100644",
+      "sha": "04bf4f78460e786e2d51c930dd82ee7c055f2282",
+      "size": 19723
+    },
+    {
+      "path": "src/snn_data_lake/substrate/stream_sketch_panel.py",
+      "mode": "100644",
+      "sha": "349933d53d3bff4e7d6e54f6dffde803f3cb734d",
+      "size": 23040
+    },
+    {
+      "path": "src/snn_data_lake/substrate/streaming_hub.py",
+      "mode": "100644",
+      "sha": "c1ad095ed5fdd44e2f2e473f8ac9be20b2fcf858",
+      "size": 36542
+    },
+    {
+      "path": "src/snn_data_lake/substrate/streaming_quantile.py",
+      "mode": "100644",
+      "sha": "e245ff5abf7149af2a8a269d7763310856176301",
+      "size": 14794
+    },
+    {
+      "path": "src/snn_data_lake/training/__init__.py",
+      "mode": "100644",
+      "sha": "71462c3f23409be5bf1dc209190d23dfd5b041ae",
+      "size": 681
+    },
+    {
+      "path": "tools/ab_connectome_delay.py",
+      "mode": "100644",
+      "sha": "43c59929050bc18d95831b0947378904461e7de3",
+      "size": 29948
+    },
+    {
+      "path": "tools/ar_lm_disjoint.py",
+      "mode": "100644",
+      "sha": "3b93a5d5663be5c6a9bc7a9d2bfe519b613ca3f3",
+      "size": 6784
+    },
+    {
+      "path": "tools/ar_lm_ngram_control.py",
+      "mode": "100644",
+      "sha": "57744e2c2198fa2d8336c24d9bb86f67d57923ae",
+      "size": 6729
+    },
+    {
+      "path": "tools/arc_baseline.py",
+      "mode": "100644",
+      "sha": "db74641a49cc23d57d43fa4abc63ca9e407964f3",
+      "size": 7326
+    },
+    {
+      "path": "tools/arc_census.py",
+      "mode": "100644",
+      "sha": "10fb2132d1a2404a64b7c9ff7d9a568228ba1dd9",
+      "size": 1849
+    },
+    {
+      "path": "tools/arc_designb.py",
+      "mode": "100644",
+      "sha": "afb1a404b6ade826feb5c2b93be9d1b8ae9ce67d",
+      "size": 7116
+    },
+    {
+      "path": "tools/arc_fixdepth_control.py",
+      "mode": "100644",
+      "sha": "8d29de052d81b9c128bc22d3295ba74c6e289120",
+      "size": 2465
+    },
+    {
+      "path": "tools/arc_probe_ids.py",
+      "mode": "100644",
+      "sha": "5b8a804aebb40353c347cbd5ea94e16133b91f89",
+      "size": 5710
+    },
+    {
+      "path": "tools/arc_score.py",
+      "mode": "100644",
+      "sha": "fd629e2bc05bae7b555b7ebd8b7b1b6559e1bb91",
+      "size": 4024
+    },
+    {
+      "path": "tools/arm_benchmark.py",
+      "mode": "100644",
+      "sha": "40494121627b10d1c3aed3c3a54a7b1818e2afbe",
+      "size": 11159
+    },
+    {
+      "path": "tools/blimp_baseline.py",
+      "mode": "100644",
+      "sha": "32f482d8e01257d4b6bc12790837e914403a28f8",
+      "size": 6620
+    },
+    {
+      "path": "tools/c0_everyday_battery.json",
+      "mode": "100644",
+      "sha": "53408b45e40805846c7869e3e0eb36336b7f5d94",
+      "size": 40748
+    },
+    {
+      "path": "tools/capacity_curve.py",
+      "mode": "100644",
+      "sha": "4825b894726ba0527d57204e1d50939e89c92c0a",
+      "size": 3740
+    },
+    {
+      "path": "tools/charge_probe.py",
+      "mode": "100644",
+      "sha": "8127d6798385e64baafe3ffc0cc50e073c92de9d",
+      "size": 12944
+    },
+    {
+      "path": "tools/citation_guard.py",
+      "mode": "100644",
+      "sha": "8f32b0e2f0697c11dc594ddbf1e5a8336c3e5deb",
+      "size": 20933
+    },
+    {
+      "path": "tools/coverage_score.py",
+      "mode": "100644",
+      "sha": "2a9b07657950f8bb434e3bdd36cac5a810c191de",
+      "size": 43175
+    },
+    {
+      "path": "tools/deep_fingerprint.py",
+      "mode": "100644",
+      "sha": "1b6ade5a3fa1519f083f6bfd2f3366fbc9fc9a11",
+      "size": 6296
+    },
+    {
+      "path": "tools/dependency_ledger.py",
+      "mode": "100644",
+      "sha": "146fb7d7b7ee204c928fc1d653cd79f7b91ec0a7",
+      "size": 40113
+    },
+    {
+      "path": "tools/determinism_baseline.json",
+      "mode": "100644",
+      "sha": "774358cc3d709969f8a5bdf87b121b4c314a0774",
+      "size": 469
+    },
+    {
+      "path": "tools/doc_command_guard.py",
+      "mode": "100644",
+      "sha": "dfe7a88bd1edb11ae5a0ead3ee7ec9877e42d4c0",
+      "size": 24260
+    },
+    {
+      "path": "tools/doc_reader_map.json",
+      "mode": "100644",
+      "sha": "8051dd177649ab8ed302e6a5ce69988826bdee51",
+      "size": 300083
+    },
+    {
+      "path": "tools/envelope_hashes.json",
+      "mode": "100644",
+      "sha": "d8202d558c475f72417ac3ae37e44036af7b1d57",
+      "size": 4230
+    },
+    {
+      "path": "tools/fanout_bisect.py",
+      "mode": "100644",
+      "sha": "3cf32d4857c9af08255ff5f8759ab232d5b11a4e",
+      "size": 8967
+    },
+    {
+      "path": "tools/g4_t3_campaign.json",
+      "mode": "100644",
+      "sha": "7966393a03ba08d7a107ccd5370faadf1460f0e1",
+      "size": 599492
+    },
+    {
+      "path": "tools/gradient_claim_baseline.json",
+      "mode": "100644",
+      "sha": "5a71f25abf5dfd13f78bedd9c9ed26a72d031a95",
+      "size": 729
+    },
+    {
+      "path": "tools/gradient_claim_measure.json",
+      "mode": "100644",
+      "sha": "6532ae6bde645de48e9d3a308af0ce292916af90",
+      "size": 850
+    },
+    {
+      "path": "tools/h01_c3_graph_pin.json",
+      "mode": "100644",
+      "sha": "e4240bd139f88dae02fcbcd4a86ed3e0c30525ad",
+      "size": 31411
+    },
+    {
+      "path": "tools/h01_c3_shards.json",
+      "mode": "100644",
+      "sha": "aeb99e91192c3c8806999662fb165710af551966",
+      "size": 36456
+    },
+    {
+      "path": "tools/hooks/pre-push",
+      "mode": "100644",
+      "sha": "000d29dc598ae3555e9ee801680a961cc3435484",
+      "size": 1521
+    },
+    {
+      "path": "tools/ignition_baseline.json",
+      "mode": "100644",
+      "sha": "5df8b080da15ebd707ae1c1ed5459a934ac7ec80",
+      "size": 628
+    },
+    {
+      "path": "tools/instrument_guard.py",
+      "mode": "100644",
+      "sha": "912a7d4cc30ece9cc3908f1d5b7a0d3148809838",
+      "size": 47531
+    },
+    {
+      "path": "tools/kernel_partition_baseline.json",
+      "mode": "100644",
+      "sha": "2507119b8e2fdaf46ae305fe63b3c1fd0940c7fc",
+      "size": 713
+    },
+    {
+      "path": "tools/lake_append_baseline.json",
+      "mode": "100644",
+      "sha": "c244045ab60dbbaddd9d82aa15f3b898e8bf608d",
+      "size": 2536
+    },
+    {
+      "path": "tools/lang_coverage.py",
+      "mode": "100644",
+      "sha": "0ec9f4c318a463aabc72d648b1759ef1d8181f48",
+      "size": 16702
+    },
+    {
+      "path": "tools/lang_diag.py",
+      "mode": "100644",
+      "sha": "58f32e305f6af6c86c55e549985a8201bcbd1a10",
+      "size": 11279
+    },
+    {
+      "path": "tools/lang_probe.py",
+      "mode": "100644",
+      "sha": "715b077ea04cd3c5d4e3fbfef5450e91f7a12ffa",
+      "size": 4635
+    },
+    {
+      "path": "tools/lang_scale.py",
+      "mode": "100644",
+      "sha": "814efdfac0eeb12dce500a61b8e82d1fcab4a665",
+      "size": 20097
+    },
+    {
+      "path": "tools/native_ratchet_baseline.json",
+      "mode": "100644",
+      "sha": "99f6d1eae368a4a0f206236bec80acff76068da2",
+      "size": 506
+    },
+    {
+      "path": "tools/og1_dandi_pin.json",
+      "mode": "100644",
+      "sha": "e8c30e968ba9c5cce619d29f4dbb4a15bd8ee6a4",
+      "size": 7174
+    },
+    {
+      "path": "tools/p4c_ratchet.py",
+      "mode": "100644",
+      "sha": "7d2759651a967efaa9818ac9005888af217db325",
+      "size": 35976
+    },
+    {
+      "path": "tools/p4c_ungoverned_baseline.json",
+      "mode": "100644",
+      "sha": "f6a0e4966f5ebce78a59bd1f78979af966dc7121",
+      "size": 6470
+    },
+    {
+      "path": "tools/p6_gate.py",
+      "mode": "100644",
+      "sha": "3f6fc16a897967407d3111f329b07d12675d5dac",
+      "size": 154352
+    },
+    {
+      "path": "tools/perf_baseline.json",
+      "mode": "100644",
+      "sha": "a4b0afa6a979f19b21974c48a27eff44af19b0e7",
+      "size": 1141
+    },
+    {
+      "path": "tools/policy_certification.json",
+      "mode": "100644",
+      "sha": "db4a1257b18bcd508b95425e913733221ac6a306",
+      "size": 4373
+    },
+    {
+      "path": "tools/policy_manifest.json",
+      "mode": "100644",
+      "sha": "dc44f64106c454bbc6c73b75ddc2db8b866a5e66",
+      "size": 6946
+    },
+    {
+      "path": "tools/promotion_sweep.py",
+      "mode": "100644",
+      "sha": "f38862b7c6e137f4f8fa3c6f63938840da7539ba",
+      "size": 12366
+    },
+    {
+      "path": "tools/red_reachability.py",
+      "mode": "100644",
+      "sha": "a9dcfaba388c8265a1cb94b9cfacae259d750149",
+      "size": 32699
+    },
+    {
+      "path": "tools/regime_split.py",
+      "mode": "100644",
+      "sha": "fc5b57217c5c8b9b2ad07fa7f3c539d140260200",
+      "size": 3995
+    },
+    {
+      "path": "tools/region_charge_evidence.json",
+      "mode": "100644",
+      "sha": "699b4854d15c13170333d90d0f8e9f5f0a44ef26",
+      "size": 7075
+    },
+    {
+      "path": "tools/region_charge_floor.json",
+      "mode": "100644",
+      "sha": "a8521754c124ac3b3fe7a665d66b78869c51481d",
+      "size": 2082
+    },
+    {
+      "path": "tools/rsfacts/Cargo.lock",
+      "mode": "100644",
+      "sha": "01b60cf7c0d9483c7a4c675772dce945fa2913d8",
+      "size": 2671
+    },
+    {
+      "path": "tools/rsfacts/Cargo.toml",
+      "mode": "100644",
+      "sha": "54c7ab38ee97fc80c14b90ffc48375bff699196a",
+      "size": 331
+    },
+    {
+      "path": "tools/rsfacts/src/main.rs",
+      "mode": "100644",
+      "sha": "4f78bcb4bb4e25a95824316a913c74459f29e832",
+      "size": 20787
+    },
+    {
+      "path": "tools/rule_census.json",
+      "mode": "100644",
+      "sha": "b5d04d80240dea53f5cb08fbadeab34b0a1894a9",
+      "size": 21072
+    },
+    {
+      "path": "tools/t063_campaign.json",
+      "mode": "100644",
+      "sha": "601b1b459e913b99c15635915e3eec25c4e2bdf4",
+      "size": 194935
+    },
+    {
+      "path": "tools/t063_pilot.json",
+      "mode": "100644",
+      "sha": "7cdc411ce416118419d7a0af6e2fa34335bfc66f",
+      "size": 9733
+    },
+    {
+      "path": "tools/t070_pci.json",
+      "mode": "100644",
+      "sha": "8c28783f5556553397f0d145a8119eb3edd94d24",
+      "size": 24510
+    },
+    {
+      "path": "tools/t077_metacognition.json",
+      "mode": "100644",
+      "sha": "3f1d989eaecc155757b2f02edc118427159e9525",
+      "size": 179932
+    },
+    {
+      "path": "tools/t078_attention_schema.json",
+      "mode": "100644",
+      "sha": "2a19f1e8c5a4efa56f01309b930421b532916eba",
+      "size": 7848764
+    },
+    {
+      "path": "tools/t078_latents.npz",
+      "mode": "100644",
+      "sha": "e6d42f356d455e58c2ffda0dafb11e296a168060",
+      "size": 581021
+    },
+    {
+      "path": "tools/t079_agency.json",
+      "mode": "100644",
+      "sha": "5ee38566d746e511b32fe0c2dd7068456d011244",
+      "size": 14755916
+    },
+    {
+      "path": "tools/t080_latents.npz",
+      "mode": "100644",
+      "sha": "7b411142f2cea065a83dc822e4ca71971a17296e",
+      "size": 2082369
+    },
+    {
+      "path": "tools/t080_temporal_binding.json",
+      "mode": "100644",
+      "sha": "c8bd31973f37086cbb3e9ef3f3b5154c51c6e1b7",
+      "size": 2373082
+    },
+    {
+      "path": "tools/t081_report_order.json",
+      "mode": "100644",
+      "sha": "887cd33f62808c555707cb82f028ed1f1d8c9557",
+      "size": 10393
+    },
+    {
+      "path": "tools/t082_social_cognition.json",
+      "mode": "100644",
+      "sha": "25bdb97ba630cdb8af022644186ddbfd083f67d8",
+      "size": 18041
+    },
+    {
+      "path": "tools/timing_heldout.py",
+      "mode": "100644",
+      "sha": "aaaa93b11446e18839f8a9e05fb38cf31393a694",
+      "size": 21182
+    },
+    {
+      "path": "tools/wiring_manifest.nir",
+      "mode": "100644",
+      "sha": "c48314c8e2a2d7685d4dfab1e26151d172477b8f",
+      "size": 327816
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "phase": "restore_journal",
+  "home": "/Users/arthurkhvan/.codex/visualizations/2026/11/03/01a19f80-851f-7960-9c7a-18ef1711b019/engine-runtime/acceptance-home-xyepqsvu",
+  "command": [
+    "zsh",
+    "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/engine-integration/run-engine.sh",
+    "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/engine-integration/cycle_acceptance.py",
+    "restore",
+    "--receipt",
+    "/Users/arthurkhvan/Documents/ChatGPT/Spiking-Neural-Data-Lake 2/planning/experiments/engine-integration/cycle-04-grow.json"
+  ],
+  "source_sha256": {
+    "src/snn_data_lake/growth/growth_loop.py": "23d36ccf5cb5d8eed418678150be92a26300cdaf9c90e94413cd54a24ff4546f",
+    "src/snn_data_lake/growth/capacity_certificate.py": "0c715d32840e55b21f463798f0b5811d5c490ac0de05a64982a6201679e92fe8",
+    "src/snn_data_lake/engine/brain.py": "6b07551d4b9a808d3cc9a82c722a68750a91260b11de3723de580017b818b9fc",
+    "src/snn_data_lake/readout/posed_problem.py": "0e6e90143a0bc586c574a9e3bb8cdc56a1892e03346f5f5fc03ebcfea7f8d86d",
+    "src/snn_data_lake/instruments/joint_mask_search.py": "2771ab09eac8e4e34dfa0d82b752b4a1a839a2c5420eaa06bcf55eee61b8b0dc",
+    "src/snn_data_lake/readout/interaction_learning.py": "f1d9a1785e66921c6f4bb2fa608f4cca0e8080b317bcf68243a5078cbbac14b9",
+    "src/snn_data_lake/plasticity/plasticity_rule_stack.py": "32487f79b4e13edfa7413eec391d425e5fc5d3889097576eba25b88b84c98d65",
+    "src/snn_data_lake/plasticity/homeostatic_plasticity_stack.py": "4d1175fa1a3e1871c8d333ced5259e07a9a2ba15d40844ee6ecf6ba15b543dda"
+  },
+  "script_sha256": "089a8db5c178703c545e10e6c0244ea40adce947c4f84fe384aeb3542979506c",
+  "exit_code": 0,
+  "seconds": 30.271034999999756
+}

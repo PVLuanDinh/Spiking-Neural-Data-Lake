@@ -1,0 +1,100 @@
+{
+  "phase": "cells",
+  "head": "c4c10b285f1741aa798d5ee9c5296ae371fabecf",
+  "python": "3.14.6 free-threading build (main, Aug  4 2026, 22:35:20) [Clang 22.1.3 ]",
+  "machine": "arm64",
+  "platform": "macOS-15.6-arm64-arm-64bit-Mach-O",
+  "protocol_sha256": "bc07cd5fbc8c04f3435cddf4d4540cbdb08c1a043ea23cf04f4ca44e2203b241",
+  "adapter_sha256": "958f0aac8b8e1fd53761116f5eb783ff1cb2b9783986c9d19ebfbf49da33773b",
+  "source_sha256": {
+    "src/snn_data_lake/instruments/taught_campaign.py": "ba8fe63bc01c501aa158d0da1c880d73aa8711bbcd48a6cda481e2390d653266",
+    "src/snn_data_lake/instruments/taught_problems.py": "d9bac1aa758d98a8153d4da9edefc9f5d46703eb44ec5599e4c56f80e6c3c61a",
+    "src/snn_data_lake/instruments/delayed_cue.py": "51227352a4a92e601057834f526c072bd241767a59dbdf5d02ae5358777b3c11"
+  },
+  "runs": [
+    {
+      "case": "s1c0",
+      "seconds": 3.709209041990107,
+      "result_sha256": "52944bb89414d64ca91f91e611321be45ba7177d46389098ee56a3733b7f2698",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "s0c1",
+      "seconds": 3.910781125014182,
+      "result_sha256": "5008e88e2681a1e92d00d808d29db41f155543085e01162d01a5b942c810045e",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "s1c1",
+      "seconds": 3.739400624996051,
+      "result_sha256": "08766a0ce0abbf6bcc47d984bb93e87635eec415c6cd963263d13f8c7a184660",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "history-s0c0",
+      "seconds": 0.47402579098707065,
+      "result_sha256": "3484b7580bb1e29b9f39afcef861a73294c1db8351d29e6f1612b4cc0c870f3d",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "history-s1c0",
+      "seconds": 0.4546441670099739,
+      "result_sha256": "e6d9bc384cf3644b3df107f4bc1fcb0a231638be1a786da803e23749c02b6cea",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "history-s1c1",
+      "seconds": 3.67927791600232,
+      "result_sha256": "2e3fe3390d540a7466f5507e524ce84a23bf3cf2a402be506c41bdea1bb18188",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "presized-s0c1",
+      "seconds": 0.6856819579843432,
+      "result_sha256": "749ce7ddb5deb52f129b10f766738bec9779b8baa746a8080c016a5b91afa093",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "presized-history-s1c1",
+      "seconds": 0.7320680000120774,
+      "result_sha256": "fe4009cdf2f73448f464f79ec87cbf8fab2ca6fbf715b201fbafeaa9bdbd57e4",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "presized-s1c0",
+      "seconds": 11.38571062500705,
+      "result_sha256": "0a93b6f4468c90865839c2476b152953a93a2eada207bf14a11198f0a692b702",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "history-window1",
+      "seconds": 3.7591035829973407,
+      "result_sha256": "e4f94b7a3c9853576491462601d145d5f1c3e3e62ea3db387d37b29cbffb2a9e",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "history-constant-cue",
+      "seconds": 3.7625707910046913,
+      "result_sha256": "75c958c11fa1a3ee7d0c92ba0ab8c7e73c7e004072357d12e9af2b52267b629f",
+      "stderr_empty": true,
+      "exit_code": 0
+    },
+    {
+      "case": "presized-s0c1-shuffle",
+      "seconds": 11.228541708987905,
+      "result_sha256": "a90afce384389f6b0361bf188e9853a7605f8cf245522ad1e2de97f4e09b7898",
+      "stderr_empty": true,
+      "exit_code": 0
+    }
+  ]
+}
