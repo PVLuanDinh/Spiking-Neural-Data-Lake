@@ -15,7 +15,7 @@ Correlations are Pearson, vectorised across iterations (`_rowcorr`); the self-ch
 
 Criteria (each named `*_verdict`; each has its constructed red in `_selfcheck`): aa_stability_verdict,
 planted_drift_dose_verdict, mov_vs_mov_control_verdict, author_agreement_verdict. The synthetic half only:
-the real-data halves belong to `tools/d_r0_partA.py`. Pure numpy + scipy.stats; deterministic; ASCII prints.
+the real-data halves belong to `instruments/d_r0_part_a.py`. Pure numpy + scipy.stats; deterministic; ASCII prints.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.representational_drift
   ... --pin-ref   (writes tools/d_r0_synthetic_ref.json; refuses to overwrite an existing pin)
