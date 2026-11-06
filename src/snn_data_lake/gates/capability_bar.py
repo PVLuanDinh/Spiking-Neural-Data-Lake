@@ -58,20 +58,26 @@ REPO = Path(__file__).resolve().parents[3]
 SELF = Path(__file__).resolve()
 
 #: Comparison words that may appear beside a task name ONLY when its row is complete.
-COMPARISON_WORDS = (
+_HUMAN_WORDS = (
     "superhuman",
     "above parity",
     "at parity",
     "beats a human",
     "human-level",
     "outperforms a human",
-    # machine forms (BrainCog 02, owner D-271): a comparison to an external SYSTEM's reported number
-    "beats",
-    "outperforms",
-    "matches",
-    "on par with",
-    "state of the art",
 )
+#: machine forms (BrainCog 02, owner D-271): a comparison to an external SYSTEM's reported number
+_MACHINE_WORDS = ("beats", "outperforms", "matches", "on par with", "state of the art")
+COMPARISON_WORDS = _HUMAN_WORDS + _MACHINE_WORDS
+#: The machine forms are ordinary English, so a surface line matches them as WHOLE WORDS ('heartbeats' is not
+#: 'beats'; reviewer #8209 NOTE 1). The owner-ratified human forms keep substring matching (no relaxation).
+_MACHINE_RE = re.compile(r"\b(?:" + "|".join(re.escape(w) for w in _MACHINE_WORDS) + r")\b")
+
+
+def _compares(line_lower: str) -> bool:
+    """A surface line uses a comparison word: a human form anywhere, a machine form as a whole word."""
+    return any(w in line_lower for w in _HUMAN_WORDS) or bool(_MACHINE_RE.search(line_lower))
+
 
 #: Surfaces a reader sees. A comparison word beside a registry task name here needs a complete row.
 TRACKED_SURFACES = (
@@ -214,7 +220,7 @@ def findings(registry=None, surfaces=None) -> list[str]:
             refused = shaped and isinstance(row[6], str) and row[6].startswith("REFUSED")
             for line_no, line in enumerate(text.splitlines(), 1):
                 ll = line.lower()
-                if task.lower() in ll and any(w in ll for w in COMPARISON_WORDS):
+                if task.lower() in ll and _compares(ll):
                     if refused:
                         out.append(
                             f"{rel}:{line_no}: a comparison word for {task!r}, whose row is REFUSED "
@@ -314,9 +320,10 @@ def main() -> None:
     surf = findings(refused, {"docs/PITCH.md": "the brain is superhuman on the widget task today"})
     assert surf and "REFUSED" in surf[0], surf
     msurf = findings(refused, {"README.md": "the brain beats BrainCog on the widget task"})
-    assert msurf and "REFUSED" in msurf[0], (
-        msurf
-    )  # a machine comparison word is caught the same way
+    # a machine comparison word is caught the same way, as a whole word only ('heartbeats' is not 'beats')
+    assert msurf and "REFUSED" in msurf[0], msurf
+    inside = findings(refused, {"README.md": "the widget task heartbeats are logged"})
+    assert inside == [], inside
     print(report())
     print(
         f"capability_bar self-check OK: {len(reds)} constructed reds caught, the complete row and the REFUSED "

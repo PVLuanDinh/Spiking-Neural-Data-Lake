@@ -73,6 +73,14 @@ def test_a_machine_comparison_word_beside_a_refused_row_is_caught_on_a_surface()
     )
 
 
+def test_a_machine_comparison_word_is_matched_as_a_word_not_inside_another():
+    good = f"cited: system=BrainCog STDP [95]; trained by: local-rule; {_Q}"
+    refused = {"widget": (_LP, 0.81, good, None, "", "2026-11-05", "REFUSED: SNDL not measured")}
+    for line in ("the widget task heartbeats are logged", "the widget task rematches nothing"):
+        assert capability_bar.findings(refused, {"README.md": line}) == [], line
+    assert capability_bar.findings(refused, {"README.md": "the widget task matches BrainCog"})
+
+
 #: The one row the registry carries today. Pinned here as a literal, never read from the module,
 #: so a renamed or dropped key is a red rather than a silently-agreeing tautology.
 C0_TASK = "everyday reasoning, 20 items (C0)"
