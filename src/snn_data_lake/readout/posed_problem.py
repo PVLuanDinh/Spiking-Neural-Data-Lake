@@ -904,6 +904,9 @@ def _chat_context(ixn):
         "typed Brain chat52/grown return context",
     )
     units = units_from_rows(c["units"], len(ixn.responses))
+    from snn_data_lake.growth.grown_code import APICAL_THETA_REFUSAL, apical_targets_ok
+
+    _need(apical_targets_ok(units), APICAL_THETA_REFUSAL)  # D10 A2.C1: at context build
     ids = [u.unit_id for u in units]
     pairs = c["afferents"]
     _need(

@@ -16,6 +16,8 @@ Contract, all pure functions over immutable units (no RNG, no state carried betw
   reused unit_id or a stored output synapse that violates the unit's Dale sign (2.9 C17's restore half);
 - `admit_rows(segment, units, label_rows, ticket)` -- THE single append: a ticketed, label-matched batch only;
 - `clip_to_sign(w, sign)` -- the deposit half of C17: E outputs >= 0, I outputs <= 0 (D9).
+- D10 apical entry: a return context's afferents GATE the basal drive, D = B * (1 + tanh(A / theta)),
+  never add to it; `apical_targets_ok(units)` (theta > 0) is checked once at return-context build.
 
 The port that feeds this segment into `SpikingInteractionLearner` lands after R2's P1 (OWNERS.md landing order);
 this module is the segment it will call.
@@ -70,12 +72,45 @@ def _psp(dt, tau):
     return math.exp(-dt / tau) if dt > 0 else 0.0
 
 
+APICAL_THETA_REFUSAL = "apical entry requires a positive target threshold"
+
+
+# distinct-from: instruments/delayed_cue.py -- ThresholdUnit is a hand w.phi > theta unit; no return
+#   target or threshold-sign check. distinct-from: faculties/homeostatic_drives.py,
+#   growth/capacity_certificate.py, instruments/sleep_pruner_census.py, instruments/snn_mnist_stdp.py --
+#   read 2026-11-06 (duplicate-guard lexical hits): drive ticks, rank codes, a workload, an MNIST sim;
+#   none checks return targets or gates a soma drive by an apical compartment.
+# distinct-from: growth/dendritic_neuron.py -- a STATEFUL step neuron reachable only via the
+#   instrument-side neuron_zoo (D-351); its apical isolation + amplification is ported here as the one
+#   LIVE apical entry (D10 PREREG A1.N: its BAC plateau is not portable to a single first crossing).
+#   Its retirement waits on builder-1's neuron_zoo ruling (PREREG Q2), so it is not retired here.
+def apical_targets_ok(units):
+    """D10 (PREREG A1.B1/A2.C1): every return target's threshold is > 0, checked ONCE where a
+    return context is built (GrownReturnPort, posed_problem._chat_context), never per step."""
+    return all(u.threshold > 0.0 for u in units)
+
+
+def _apical_gain(apical, theta):
+    """Soma gain from the apical compartment: 1 + tanh(A / theta), in [0, 2]; identity at A = 0
+    (P1 case (a): a fixed point on a normalized output). The raise is a never-firing backstop:
+    context build refuses theta <= 0 first."""
+    if not theta > 0.0:
+        raise ValueError(APICAL_THETA_REFUSAL + f" (backstop, theta={theta!r})")
+    return 1.0 + math.tanh(apical / theta)
+
+
 def _drive(unit, ranks, tau, t, *, afferents=None):
-    """The unit's PSP-weighted drive from the frozen code at step t (one expression for latency and the column)."""
+    """The unit's PSP-weighted drive from the frozen code at step t (one expression for latency and the column).
+
+    D10 apical entry: the readout's return afferents form an APICAL potential A(t) (same PSP kernel);
+    it GATES the basal drive B(t) multiplicatively, D = B * (1 + tanh(A / theta)), so B = 0 gives
+    D = 0 and the return alone never fires a unit (it replaced the additive B + A entry).
+    afferents=None (no return context) skips the apical helper: D = B byte-for-byte."""
     base = sum(w * _psp(t - r, tau) for w, r in zip(unit.w_in, ranks) if w != 0.0)
     if afferents is None:
         return base
-    return base + sum(w * _psp(t - arrival, tau) for arrival, w in afferents.get(unit.unit_id, ()))
+    apical = sum(w * _psp(t - arrival, tau) for arrival, w in afferents.get(unit.unit_id, ()))
+    return base * _apical_gain(apical, unit.threshold)
 
 
 def latency(unit, ranks, tau, *, afferents=None):
@@ -240,6 +275,7 @@ class GrownReturnPort:
         units = tuple(sorted(units, key=lambda u: u.unit_id))
         ids = tuple(u.unit_id for u in units)
         _return_need(units and len(ids) == len(set(ids)), "actual unique targets required")
+        _return_need(apical_targets_ok(units), APICAL_THETA_REFUSAL)
         _return_need(
             type(source_ids) is tuple
             and source_ids
@@ -338,6 +374,7 @@ class GrownReturnPort:
             set(by_id) == set(self.factory["targets"]),
             "target membership changed without journaled port rebind",
         )
+        _return_need(apical_targets_ok(by_id.values()), APICAL_THETA_REFUSAL)
         for uid, u in by_id.items():
             _check_unit(u, u.out)
             born = dict(self.factory["birth_rows"])[uid]
