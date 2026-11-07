@@ -1302,6 +1302,11 @@ def test_mde_n_a_on_a_structural_record_in_the_triage_file_is_green(tmp_path):
         f"# t\n{ARGUMENT}\n\n{rec(mde='n/a')}\n",  # prose in ANOTHER paragraph does not count
         f"# t\n{rec()}\n{rec(method='n')}\n\n{ARGUMENT}\n",  # two records, no prose between them
         f"# t\n{rec()}\n```\n{ARGUMENT}\n```\n",  # a fence ends the paragraph
+        # panel-3 #9345: a --- / === right under a record is a setext underline, which made the record a
+        # "heading" and hid it from the paragraph reader; a record line is never part of a heading
+        f"# t\n{rec()}\n---\n",
+        f"# t\n{rec()}\n===\n",
+        f"# t\n- {rec()}\n---\ntext after the break\n",
     ],
 )
 def test_a_structural_record_with_no_argument_in_its_paragraph_is_r_structural_arg(tmp_path, text):

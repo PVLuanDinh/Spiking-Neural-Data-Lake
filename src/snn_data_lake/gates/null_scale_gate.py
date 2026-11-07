@@ -464,8 +464,13 @@ def _structure(lines: list[Line]) -> tuple[list[tuple[int, int]], set[int]]:
             owned.add(j)
             run = None
         elif plain and run is not None and (u := SETEXT_RE.match(ln.text)):
-            heads.append((run, 1 if u.group(1)[0] == "=" else 2))
-            owned.update(range(run, j + 1))
+            if any(RECORD_RE.match(r.text) for r in lines[run:j]):
+                # a record line is never part of a heading: the underline is a break, its own line, and the
+                # record's paragraph ends before it (#9345)
+                owned.add(j)
+            else:
+                heads.append((run, 1 if u.group(1)[0] == "=" else 2))
+                owned.update(range(run, j + 1))
             run = None
         else:
             run = (j if run is None else run) if plain else None
@@ -817,6 +822,8 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
             {"grandfathered": frozenset({(f"{_EV}a.md", "0" * 12)})},
         ),
         "R-STRUCTURAL-ARG": ({f"{_EV}a.md": f"# t\n{_STRUCT}\n"}, {}),
+        # #9345: a --- under a bare record is a break, not a setext underline; it must not hide the record
+        "R-STRUCTURAL-ARG/setext-underline": ({f"{_EV}a.md": f"# t\n{_STRUCT}\n---\n"}, {}),
         # addendum 10: every other field valid, so only the mde=n/a branch can red it (reviewer-3 #9172 C1);
         # the key's text after "/" names the case, the code is the part before it
         "R-FIELD/mde-n/a-without-STRUCTURAL": (
