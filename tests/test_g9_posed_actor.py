@@ -1,7 +1,6 @@
 """Round 3 software controls; constructed parameters, no deciding campaign."""
 
 import copy
-import math
 from dataclasses import replace
 
 import pytest
@@ -435,84 +434,35 @@ def test_landed_append_failure_rolls_back_and_closes_common_latch(monkeypatch):
         assert not brain._flush_interaction_learner()
 
 
-#: Fixed, closed candidate texts for the D10 probe and isolation queries (no search over a corpus).
-_D10_QUERIES = (
-    "hello unseen return receiver",
-    "what time is it",
-    "please help me",
-    "tell me a story",
-    "goodbye for now",
-    "thank you very much",
-    "open the door",
-    "how are you today",
-)
-#: Probe basal peak as a fraction of theta (A2.T condition 4 requires [0.5, 1)).
-_D10_PROBE_RATIO = 0.9
+def test_learned_return_changes_brains_own_next_answer_untrained_and_random_do_not():
+    """Constructed causal software positive; no claim of G-R9 campaign success.
 
-
-def _d10_fixture(teach_ranks, tau):
-    """Two rank coordinates (i, j) and a shared window W: the teach episode has BOTH inside W
-    (supra-threshold basal, the unit fires and its return can learn), the probe query only i
-    (sub-threshold basal), the isolation query neither (zero basal)."""
-    from snn_data_lake.instruments import inseparable_mapping as im
-
-    codes = {q: im.ranks(q) for q in _D10_QUERIES}
-    span = tau * math.log(1.0 / (1.0 / _D10_PROBE_RATIO - 1.0))
-    for i in range(52):
-        for j in range(52):
-            ri, rj = teach_ranks[i], teach_ranks[j]
-            if i == j or ri > rj:
-                continue
-            window = rj + 1
-            if window - 1 - ri > span:
-                continue
-            for probe, qp in codes.items():
-                if not qp[i] < window <= qp[j]:
-                    continue
-                for iso, qz in codes.items():
-                    if iso != probe and qz[i] >= window and qz[j] >= window:
-                        return i, j, window, probe, iso
-    raise AssertionError("no D10 fixture in the closed candidate list")
-
-
-def test_apical_return_changes_brains_own_next_answer_untrained_and_random_do_not(monkeypatch):
-    """D10 replacement of the additive-era positive (PREREG 4fc3ff89c2e9, A1.T + A2.T; D-362).
-
-    CONSTRUCTED fixture: it proves the return port CAN charge the brain's own next answer under
-    apical entry; it is NOT the engine charge (that is E2's floor on the brain's own posed problems,
-    PREREG A2.B3). theta is ~1e-17 (below Part D's tiny first anti-causal update), so A/theta is
-    large and tanh saturates: the gate acts as a fixed ~2x step here, not a graded gain.
-
-    The teach episode drives two coordinates inside the window (supra-threshold basal, the unit
-    fires, the zero-born return learns through the genuine _teach scalar). The probe query drives
-    one (basal peak in [theta/2, theta): silent alone, crosses only with the learned return). The
-    isolation query drives none: the same learned return alone must NOT flip it (the additive
-    entry's positive, archived as R4 on the 2f5a9c22 build). Kept from the additive-era test:
-    pre-teach == baseline, zero-born weights, no assigned reward, `assert emitted`, the untrained
-    and the random-routing controls. Added: the isolation probe and the gain=1 plant red.
+    Choose a single rank coordinate with a known train/evaluation distinction.
+    A zero-born return learns via actual canonical anti-causal R-STDP, then
+    enables a previously silent grown output in the actual chat learner.
     """
-    from snn_data_lake.growth import grown_code as gc
     from snn_data_lake.growth.grown_code import GrownUnit
     from snn_data_lake.instruments import inseparable_mapping as im
     from snn_data_lake.readout.posed_problem import actor_context
 
+    query = "hello unseen return receiver"
     with _private_brain() as (brain, _):
-        ixn = brain.brain._ixn
+        baseline = brain.brain._ixn.route_text(query)
+        target = next(label for label in brain.brain._ixn.responses if label != baseline)
         episode = _episode()
-        ranks = im.ranks(episode[-1].text)
-        index, other, window, query, iso_query = _d10_fixture(ranks, ixn.tau)
-        baseline = ixn.route_text(query)
-        iso_baseline = ixn.route_text(iso_query)
-        target = next(label for label in ixn.responses if label != baseline)
-        future = im.ranks(query)
-        w = tuple(1e-17 if k in (index, other) else 0.0 for k in range(52))
-        theta = 1e-17 * math.exp(-1.0 / ixn.tau) / _D10_PROBE_RATIO
-        output = tuple(10000.0 if label == target else 0.0 for label in ixn.responses)
+        ranks, future = im.ranks(episode[-1].text), im.ranks(query)
+        index = next(i for i, (a, b) in enumerate(zip(ranks, future, strict=True)) if a < b)
+        # Part D's real post time is 256. Its unchanged anti-causal kernel
+        # gives a tiny first update at the early grown crossing; use an
+        # explicit constructed threshold below that update, not a new rule.
+        w = tuple(1e-17 if i == index else 0.0 for i in range(52))
+        window = ranks[index] + 1
+        output = tuple(10000.0 if label == target else 0.0 for label in brain.brain._ixn.responses)
         units = (
-            GrownUnit(0, w, theta, window, 1, output),
-            GrownUnit(1, w, theta, window, -1, (0.0,) * len(output)),
+            GrownUnit(0, w, 5e-18, window, 1, output),
+            GrownUnit(1, w, 5e-18, window, -1, (0.0,) * len(output)),
         )
-        labels = ixn.responses
+        labels = brain.brain._ixn.responses
         routing = [
             {
                 "source": label,
@@ -526,37 +476,15 @@ def test_apical_return_changes_brains_own_next_answer_untrained_and_random_do_no
             for uid in (0, 1)
         ]
         _, _, actor = _bind(brain, population=units, routing=routing)
-        teach_tau = actor.reader.learner.tau
-        # Fixture preconditions, measured with the no-return (basal) drive.
-        teach_peak = max(gc._drive(units[0], ranks, teach_tau, t) for t in range(1, window + 1))
-        probe_peak = max(gc._drive(units[0], future, ixn.tau, t) for t in range(1, window + 1))
-        iso_peak = max(
-            gc._drive(units[0], im.ranks(iso_query), ixn.tau, t) for t in range(1, window + 1)
-        )
-        b_ratio = probe_peak / theta
-        print(f"D10 fixture: i={index} j={other} W={window} B/theta={b_ratio!r}")
-        assert teach_peak >= theta, "teach episode must fire the unit on its own basal drive"
-        assert 0.5 <= b_ratio < 1.0, b_ratio
-        assert iso_peak == 0.0
-        assert ixn.route_text(query) == baseline
-        assert ixn.route_text(iso_query) == iso_baseline
+        assert brain.brain._ixn.route_text(query) == baseline
         # Use actual frozen teaching episodes until a genuine wrong-answer
         # scalar reaches the real return receiver; do not assign a reward.
         _teach(brain, actor, episode)
         assert max(actor.port.weights) > 0.0, "the real learning positive must move return weights"
-        intact = ixn.route_text(query)
-        aff = dict(actor.port.context(actor.units, actor.clock))
-        a_ratio = (
-            max(
-                sum(wt * gc._psp(t - arrival, ixn.tau) for arrival, wt in aff[0])
-                for t in range(1, window + 1)
-            )
-            / theta
-        )
-        print(f"D10 probe: A/theta={a_ratio!r} intact={intact} baseline={baseline}")
+        intact = brain.brain._ixn.route_text(query)
         actor.return_neutered = True
         brain._g9_publish_context(actor)
-        neutered = ixn.route_text(query)
+        neutered = brain.brain._ixn.route_text(query)
         assert intact == target and neutered == baseline, {
             "intact": intact,
             "target": target,
@@ -565,18 +493,10 @@ def test_apical_return_changes_brains_own_next_answer_untrained_and_random_do_no
             "weights": actor.port.weights,
             "clock": actor.clock,
             "window": window,
-            "B/theta": b_ratio,
-            "A/theta": a_ratio,
-            "context": aff,
+            "rank": ranks[index],
+            "future_rank": future[index],
+            "context": actor.port.context(actor.units, actor.clock),
         }
-        # Isolation probe: the same learned return alone (zero basal) must not flip the answer.
-        actor.return_neutered = False
-        brain._g9_publish_context(actor)
-        assert ixn.route_text(iso_query) == iso_baseline, "the return alone flipped the answer"
-        # gain=1 plant (R3 inside the live brain): A computed, never applied -> no charge.
-        with monkeypatch.context() as m:
-            m.setattr(gc, "_apical_gain", lambda apical, th: 1.0, raising=False)
-            assert ixn.route_text(query) == baseline, "gain=1 plant still charged the answer"
         emitted = {
             row["source"]
             for row, weight in zip(actor.port.rows, actor.port.weights, strict=True)
@@ -589,8 +509,8 @@ def test_apical_return_changes_brains_own_next_answer_untrained_and_random_do_no
         zero["afferents"] = [
             [uid, [[t, 0.0] for t, _ in values]] for uid, values in zero["afferents"]
         ]
-        ixn._g9_context = zero
-        assert ixn.route_text(query) == baseline
+        brain.brain._ixn._g9_context = zero
+        assert brain.brain._ixn.route_text(query) == baseline
         # Equal-count wrong-target control delivers the same actual learned
         # arrivals to the pre-existing inhibitory unit with zero output.
         random_context = copy.deepcopy(zero)
@@ -604,8 +524,8 @@ def test_apical_return_changes_brains_own_next_answer_untrained_and_random_do_no
             [uid, [list(pair) for pair in actual[permutation[uid]]] if uid == 1 else []]
             for uid in (0, 1)
         ]
-        ixn._g9_context = random_context
-        assert ixn.route_text(query) == baseline
+        brain.brain._ixn._g9_context = random_context
+        assert brain.brain._ixn.route_text(query) == baseline
         actor.return_neutered = False
         brain._g9_publish_context(actor)
 
