@@ -43,6 +43,7 @@ compressed clause.
 | **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` and `--self-check` (lint CI job) | yes (the judgement half; see P7 guard (b)) |
 | **P8 invent the method** | **BUILT AND ASSERTING** — `tools/red_reachability.py --assert` (lint CI job); the null-scale amendment (2026-10-23): `gates/null_scale_gate.py` (`--assert` + `--self-check`, lint CI job) | yes (whether a criterion measures the RIGHT thing; whether a STRUCTURAL null's argument holds and the named scaling axis is the right one) |
 | e-prop not backprop | **PARTIALLY — TWO gates: `gates/eprop_transport_gate.py`** (CORE) asserts no GOVERNED module reads a weight transposed into a weight update, and reports the ungoverned tier without asserting on it — it is NOT a `.backward()` tripwire, and `mlp_q`'s single-row-indexing spelling evades both its rules, printed on every run; **and `gates/gradient_claim_gate.py`** (scope/census) asserts every governed learning rule is classified as owing a cosine or not, ratcheting MISSING_DECLARATION and UNDETERMINABLE, plus the ALL-scope PHANTOM_DECLARATION bound (`--assert` + `--self-check`, lint CI job) | yes (everything the static rule cannot reach: whether a second matrix is transported or independently maintained is semantic, and the cosine bar itself) |
+| *(cross-cutting, owner 2026-11-07, D-434)* push per part (provisional) | — | yes: the change-scoped selector is UNBUILT (gate spec in the cross-cutting amendment); selection by hand |
 | *(not a policy — the safety envelope's own gate)* ONE envelope definition, five brainstem files | `gates/safety_envelope.py` (bare = assert, in run_selfchecks; envelope EDITS stay approval-gated) | — |
 | *(not a policy — repo hygiene)* standing docs keep their word ceilings | `gates/doc_budget_gate.py` (bare = assert, in run_selfchecks) | — |
 | *(not a policy — repo hygiene)* outside data passes license + injection gates before the brain keeps it | `sensorimotor/ingest_guard.py` (bare = assert, in run_selfchecks) | — |
@@ -1296,6 +1297,17 @@ The counted landing output is in `docs/POLICIES_EVIDENCE.md`.
   diff or a map not measured on this code, runs every other stage in full, and runs pytest only on the files
   the map shows reading the changed docs. Every full battery rebuilds the map. The gate and its count:
   `specs/022-unified-brain-arc/evidence/docs-only-battery.md`.
+  **AMENDED 2026-11-07, owner: PUSH PER PART — PROVISIONAL** (D-434): "push build upon positive testing and integration
+  of parts to the main build to avoid long wait time for batteries". A part may push to `main` before the arc's full
+  battery when, on the exact head: (1) its compose gate is GREEN; (2) its code AGREE(s) and the enforcer's gate-log AGREE
+  are cited; (3) a change-scoped shard run (the tests reading the files changed against `origin/main`, with its
+  derivation and a known positive) is green with skips reported; (4) `policy_manifest --certify` records that head,
+  `--assert` accepts it, and that record is the last commit pushed; (5) after the push, `origin/main` read back equals
+  the pushed head, with a negative control. PROVISIONAL until the change-scoped selector is built and counted; until
+  then the selection is made by hand and says so. A bad push is undone by a revert commit, never a force-push; the push
+  go stays the owner's. Unchanged: one change per commit; lane branches never push; the arc's panel and full shard
+  coverage (D-348); the safety envelope. Incident, rationale and the selector's gate spec (reds, count):
+  `specs/022-unified-brain-arc/evidence/d434-push-per-part-2026-11-07.md`.
 - **A `file.py:NNN` citation is a claim, and it is the least durable claim this project makes.** The
   docs-wide audit that measured it (thousands resolved; the worst misses in this file's own most
   safety-relevant paragraphs; a file whose line numbers moved *between two reads minutes apart*) is
