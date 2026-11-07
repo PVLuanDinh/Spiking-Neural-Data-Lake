@@ -21,6 +21,8 @@ OTHER = "specs/s/evidence/other.md"
 SHA = "a" * 40
 STATEMENT = "The method was deleted on its own null result."
 STRUCT = "STRUCTURAL: zero call sites, the proposer is empty"
+# addendum 10: a STRUCTURAL record's paragraph must hold a prose line (R-STRUCTURAL-ARG)
+ARGUMENT = "The argument: no call site reaches the method, checked by a positive-controlled grep."
 
 
 def rec(method="m", units="4", ticks="600", seeds="8", mde="0.5", retest=STRUCT):
@@ -216,8 +218,8 @@ def test_a_reason_that_carries_the_field_separator_is_r_field(tmp_path):
     # review #4483 m2: "STRUCTURAL: <reason> | note=x" must not hide an unknown key in the reason
     reason = "the path has no synapses at any scale whatsoever"
     head = "NULL-RECORD: m | units=n/a | ticks=n/a | seeds=1 | mde=0.1 | retest=STRUCTURAL: "
-    bad = run(tmp_path / "bad", {EV + "a.md": f"# t\n{head}{reason} | note=x\n"})
-    good = run(tmp_path / "good", {EV + "a.md": f"# t\n{head}{reason}\n"})
+    bad = run(tmp_path / "bad", {EV + "a.md": f"# t\n{ARGUMENT}\n{head}{reason} | note=x\n"})
+    good = run(tmp_path / "good", {EV + "a.md": f"# t\n{ARGUMENT}\n{head}{reason}\n"})
     assert [r.code for r in bad.reds] == ["R-FIELD"]
     assert good.reds == []
 
@@ -429,7 +431,7 @@ def test_a_charged_retest_reds_a_grandfathered_statement_too(tmp_path):
 )
 def test_a_charged_retest_reds_the_statement_whatever_the_null_retest_is(tmp_path, retest):
     files = {
-        EV + "a.md": f"# t\n{STATEMENT}\n\n{rec(retest=retest)}\n",
+        EV + "a.md": f"# t\n{STATEMENT}\n\n{ARGUMENT}\n{rec(retest=retest)}\n",
         EV + "b.md": "# r\n" + retest_rec(result="charges") + "\n",
     }
     assert [r.code for r in run(tmp_path, files, history=alive).reds] == ["R-RETEST-CHARGED"]
@@ -942,7 +944,7 @@ def test_a_block_quoted_statement_wrapped_across_lines_is_r_unrecorded(tmp_path,
 
 
 def test_a_block_quoted_statement_is_satisfied_by_a_record_in_its_section(tmp_path):
-    text = f"# t\n> The method was deleted on its\n> own null.\n\n{rec()}\n"
+    text = f"# t\n> The method was deleted on its\n> own null.\n\n{ARGUMENT}\n{rec()}\n"
     assert run(tmp_path, {EV + "a.md": text}).reds == []
 
 
@@ -1004,7 +1006,7 @@ def test_unknown_scale_fields_are_allowed_in_the_triage_file_only(tmp_path):
 
 @pytest.mark.parametrize("field", ["units", "ticks", "seeds", "mde"])
 def test_each_unknown_is_triage_only(tmp_path, field):
-    line = rec(**{field: "unknown"})
+    line = ARGUMENT + "\n" + rec(**{field: "unknown"})
     assert reds(run(tmp_path / "e", {OTHER: "# t\n" + line + "\n"}), "R-FIELD")
     assert run(tmp_path / "t", {ng.TRIAGE: "# t\n" + line + "\n"}).reds == []
 
@@ -1045,7 +1047,7 @@ def test_a_not_needed_with_an_unknown_kind_or_short_reason_is_r_field_even_in_tr
 
 
 def test_structural_reasons_are_printed_for_review_and_the_limit_is_stated(tmp_path):
-    report = run(tmp_path, {EV + "a.md": f"# t\n{rec()}\n"})
+    report = run(tmp_path, {EV + "a.md": f"# t\n{ARGUMENT}\n{rec()}\n"})
     assert report.reds == [] and len(report.structural) == 1
     out = ng.render(report)
     assert "zero call sites" in out and "cannot judge a STRUCTURAL argument" in out
@@ -1072,7 +1074,9 @@ HARM = "NOT-NEEDED: harm the pre-registered R4 read turned red against the incum
 
 
 def test_every_harm_record_is_printed_for_review_and_the_limit_says_the_bar_is_unjudged(tmp_path):
-    report = run(tmp_path, {EV + "a.md": f"# t\n{rec(retest=HARM)}\n{rec(method='n')}\n"})
+    report = run(
+        tmp_path, {EV + "a.md": f"# t\n{rec(retest=HARM)}\n{rec(method='n')}\n{ARGUMENT}\n"}
+    )
     assert report.reds == [] and len(report.harm) == 1
     out = ng.render(report)
     assert f"HARM (printed for review): {EV}a.md:2 m: {HARM}" in out
@@ -1225,6 +1229,8 @@ def test_the_self_check_passes(capsys):
         "_check_unrecorded",
         "_check_charged",
         "_check_stale",
+        "_check_structural_argument",
+        "_mde_problem",  # reviewer-3 #9172 C1: --self-check itself must see the mde=n/a branch
     ],
 )
 def test_the_self_check_fails_when_a_check_is_blind(monkeypatch, capsys, blind):
@@ -1247,3 +1253,104 @@ def test_assert_exits_1_on_a_red(tmp_path, capsys):
     root = tree(tmp_path, {EV + "a.md": f"# t\n{STATEMENT}\n"})
     assert ng.main(["--assert"], root=root) == 1
     assert "R-UNRECORDED" in capsys.readouterr().out
+
+
+# ---------------------------------------- addendum 10 (D-402): mde=n/a only for a STRUCTURAL null
+
+
+def field_reds(report):
+    return [r.message for r in reds(report, "R-FIELD")]
+
+
+def test_mde_n_a_on_a_structural_record_with_an_argument_is_green(tmp_path):
+    # (a)
+    report = run(tmp_path, {EV + "a.md": f"# t\n{ARGUMENT}\n{rec(mde='n/a')}\n"})
+    assert report.reds == [] and report.counts["NULL-RECORDs"] == 1
+
+
+@pytest.mark.parametrize(
+    "retest",
+    [
+        "REF:" + EV + "b.md#m",  # (b)
+        "PENDING since " + SHA,  # (c)
+        "NOT-NEEDED: harm the harm cleared its pre-registered bar",  # (d)
+    ],
+)
+def test_mde_n_a_with_any_other_retest_is_r_field_naming_the_structural_condition(tmp_path, retest):
+    files = {
+        EV + "a.md": f"# t\n{ARGUMENT}\n{rec(mde='n/a', retest=retest)}\n",
+        EV + "b.md": "# r\n" + retest_rec() + "\n",
+    }
+    messages = field_reds(run(tmp_path, files, history=alive))
+    assert messages and all("mde" in m and "STRUCTURAL" in m for m in messages), messages
+
+
+def test_mde_n_a_with_candidate_in_the_triage_file_is_r_field(tmp_path):
+    report = run(tmp_path, {ng.TRIAGE: f"# t\n{ARGUMENT}\n{rec(mde='n/a', retest='CANDIDATE')}\n"})
+    assert any("STRUCTURAL" in m for m in field_reds(report))
+
+
+def test_mde_n_a_on_a_structural_record_in_the_triage_file_is_green(tmp_path):
+    report = run(tmp_path, {ng.TRIAGE: f"# t\n{ARGUMENT}\n{rec(mde='n/a')}\n"})
+    assert report.reds == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"# t\n{rec()}\n",  # (e) alone under its heading: a heading is not an argument
+        f"# t\n{ARGUMENT}\n\n{rec(mde='n/a')}\n",  # prose in ANOTHER paragraph does not count
+        f"# t\n{rec()}\n{rec(method='n')}\n\n{ARGUMENT}\n",  # two records, no prose between them
+        f"# t\n{rec()}\n```\n{ARGUMENT}\n```\n",  # a fence ends the paragraph
+    ],
+)
+def test_a_structural_record_with_no_argument_in_its_paragraph_is_r_structural_arg(tmp_path, text):
+    report = run(tmp_path, {EV + "a.md": text})
+    assert reds(report, "R-STRUCTURAL-ARG"), text
+    assert not reds(report, "R-FIELD")
+
+
+def test_r_structural_arg_names_each_bare_record_line(tmp_path):
+    text = f"# t\n{rec()}\n{rec(method='n')}\n"
+    where = {r.where for r in reds(run(tmp_path, {EV + "a.md": text}), "R-STRUCTURAL-ARG")}
+    assert where == {EV + "a.md:2", EV + "a.md:3"}
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"# t\n{ARGUMENT}\n{rec()}\n",
+        f"# t\n{rec()}\n{ARGUMENT}\n",
+        f"# t\n- {rec()}\n  {ARGUMENT}\n",
+    ],
+)
+def test_a_structural_record_with_prose_in_its_paragraph_is_green(tmp_path, text):
+    assert run(tmp_path, {EV + "a.md": text}).reds == []
+
+
+def test_a_non_structural_record_needs_no_argument_paragraph(tmp_path):
+    assert run(tmp_path, {EV + "a.md": f"# t\n{rec(retest=HARM)}\n"}).reds == []
+
+
+def test_a_numeric_mde_on_a_structural_record_stays_legal(tmp_path):
+    assert run(tmp_path, {EV + "a.md": f"# t\n{ARGUMENT}\n{rec(mde='0.5')}\n"}).reds == []
+
+
+def test_mde_unknown_outside_the_triage_file_is_still_r_field(tmp_path):
+    # (f) on a STRUCTURAL record too: n/a widened, unknown did not
+    report = run(tmp_path, {OTHER: f"# t\n{ARGUMENT}\n{rec(mde='unknown')}\n"})
+    assert reds(report, "R-FIELD")
+
+
+@pytest.mark.parametrize("mde", ["0.5", "n/a"])
+def test_seeds_n_a_is_still_r_field(tmp_path, mde):
+    # (g)
+    report = run(tmp_path, {EV + "a.md": f"# t\n{ARGUMENT}\n{rec(seeds='n/a', mde=mde)}\n"})
+    assert any("seeds" in m for m in field_reds(report))
+
+
+def test_the_self_check_plants_r_structural_arg_and_a_green_mde_n_a_record():
+    assert "R-STRUCTURAL-ARG" in ng._planted()
+    assert "R-FIELD/mde-n/a-without-STRUCTURAL" in ng._planted()
+    source = Path(ng.__file__).read_text(encoding="utf-8")
+    assert "mde=n/a" in source

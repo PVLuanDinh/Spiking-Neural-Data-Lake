@@ -18,7 +18,7 @@ lands. Sections 0-4 are frozen at the commit that adds this file; later changes 
 Scope: tracked `specs/**/evidence/*.md` and `docs/*.md`.
 
 ```
-NULL-RECORD: <method> | units=<int|n/a> | ticks=<int|n/a> | seeds=<int> | mde=<number|unknown> | retest=<R>
+NULL-RECORD: <method> | units=<int|n/a> | ticks=<int|n/a> | seeds=<int> | mde=<number|unknown|n/a> | retest=<R>
 R := REF:<repo path>#<method> | PENDING since <full 40-hex sha> | STRUCTURAL: <reason, >= 20 chars>
 RETEST-RECORD: <method> | axis=<units|ticks|seeds> | <axis>=<int> | result=<null|charges> | of=<repo path of the NULL-RECORD>
 ```
@@ -26,6 +26,9 @@ RETEST-RECORD: <method> | axis=<units|ticks|seeds> | <axis>=<int> | result=<null
 - `n/a` is allowed for `units` (a rule acting on no unit population) and `ticks` (an offline measurement), never for `seeds`.
 - `unknown` is allowed for `mde` only inside `specs/022-unified-brain-arc/evidence/null-scale-triage.md` (the one-time
   retroactive list, option B); a forward NULL-RECORD states its mde.
+- `n/a` is allowed for `mde` only when the same record's retest is `STRUCTURAL: ...`, in every in-scope file (addendum
+  10); with `REF`, `PENDING`, `NOT-NEEDED` or `CANDIDATE` it is R-FIELD. A STRUCTURAL record's paragraph must hold a prose
+  line that is not a record line (R-STRUCTURAL-ARG); the gate checks that the argument is present, never that it holds.
 - A **delete-on-null statement** is a line matching, case-insensitively,
   `(delet(ed|ion|e)|retir(ed|e)|removed) on (its|a|the|their) (own )?null` in an evidence file
   (`specs/**/evidence/*.md`). Policy restatements in `docs/` and spec plans are not statements about a deletion and are
@@ -241,3 +244,56 @@ Lanes build on branches cut from `claude/p8-nullscale-1023`; the integrator comp
      pin 325 with its measured provenance; the wiring commit keeps only its `run_selfchecks` entry. The head tree differs
      from the v2 head by exactly those two files. The per-commit check now also runs `tests/test_g8_move_gate.py` on every
      commit. The closing record lists the v3 shas.
+10. 2026-11-07 06:31, `mde=n/a` FOR A STRUCTURAL NULL (orchestrator D-402, board #9068; enforcer #9017 conditions),
+   written before the gate change and before its census, red run or green run.
+   - **Incident.** The D9 copy-init null (`d9-copy-init-structural-null.md`) is STRUCTURAL. Its PREREG A6.2 says seeds = 1
+     constructed unit and mde = not applicable (structural). Section 0 had no legal `mde` for that record: `n/a` was
+     R-FIELD and `unknown` is triage-only (addendum 1). Writing a number would have put an invented power figure on a
+     null whose disposition has no re-test (board #9006 / D-402).
+   - **POLICIES text relied on, P8 amendment item 4, verbatim:** "A **structural** null (zero call sites, an empty
+     proposer, a constant input, no synapses on the path) is deleted without a re-test; its record states the argument,
+     and the argument owes its own check. An **underpowered** result (`mde` above the claimed effect) is INCONCLUSIVE,
+     not a null, and licenses no deletion at any scale until a run with enough seeds (power .8 for the claimed effect) is
+     done". The mde sizes a re-test and judges whether a run was underpowered. A structural null has neither, so `n/a`
+     is the honest value there and nowhere else. Every other retest keeps a number, so the underpowered rule still bites.
+   - **New grammar line for mde:** `mde=<number|unknown|n/a>`. `unknown` stays inside `null-scale-triage.md` only.
+     `n/a` is legal only when the same record's retest is `STRUCTURAL: ...`, in every in-scope file, the triage list
+     included. With `REF:`, `PENDING since`, `NOT-NEEDED:` or `CANDIDATE` it is R-FIELD, and the message names the
+     STRUCTURAL condition. `seeds` stays an int >= 1, never `n/a`. Every existing red is unchanged.
+   - **"The record states the argument", mechanized as far as a gate can.** A STRUCTURAL record whose paragraph holds no
+     prose line other than NULL-RECORD / RETEST-RECORD lines reds with a NEW code, **R-STRUCTURAL-ARG**. The paragraph is
+     the gate's existing paragraph: consecutive non-blank lines, bounded by a blank line, a heading or a fence line (the
+     same boundaries R-UNRECORDED reads). A heading directly above a record is not its argument, and prose separated by
+     a blank line does not count. This applies to every STRUCTURAL record, whatever its mde, in every in-scope file. The
+     gate checks that prose is PRESENT, never what it says. Judging the argument stays review-enforced, and the LIMIT
+     line says so.
+   - **Why a new code and not R-FIELD.** R-FIELD is a property of the record line alone (a missing key, a wrong type).
+     This check reads the record's context, as R-UNRECORDED does, so it gets its own code. That keeps every R-FIELD
+     input and message as it was. A failure names its cause, and `--self-check` plants it separately, so a blind
+     version of this check is caught on its own. The code is added to `_planted()`.
+   - **Census before this rule, tracked tree at 2f5a9c22:** 3 STRUCTURAL records, all in `null-scale-triage.md` (blocks
+     20, 23 and U3). Each sits between a `class:` line and an `evidence:` line in one paragraph, so none reds. The
+     untracked D9 record file is also scanned (the gate globs the filesystem, not `git ls-files`; addendum 6's open
+     minor). Its record carries a prose line in its paragraph.
+   - **Self-check fixtures.** `_STRUCT` keeps `mde=0.5`: it proves a numeric mde on a STRUCTURAL record is still legal.
+     The clean tree gains a planted `mde=n/a` STRUCTURAL record with a prose line, which must stay green.
+   - **Section 0 is edited, NOT append-only** (its grammar block and bullets would otherwise contradict this
+     addendum). Before the edit, section 0 (lines 16-32 of the LF blob of this file at 2f5a9c22, 1054 bytes) had
+     sha256 `36eefbcfa74d02fd573bbb342467ea057645f07cbd1e461e9c16c854a39959b5`. The whole-file LF blob was 23321 bytes,
+     sha256 `3dcd4f1cf2d92aef66ae2a4b77f1974edc506d5599e5b979c4c89f39c671b2f1`. Outside section 0 the old bytes are
+     unchanged, and this addendum is appended after them. Section 0's other stale items (`axis=...|seeds`, the missing
+     `NOT-NEEDED` alternatives) are not touched; addenda 2, 7 and 8 still govern them.
+   - **Fixture disclosure (2026-11-07 06:39, builder-2, appended before commit).** R-STRUCTURAL-ARG redded nine existing GREEN tests
+     whose fixtures held a STRUCTURAL record alone in its paragraph. Each fixture gained one prose line; no assertion
+     changed: test_a_reason_that_carries_the_field_separator_is_r_field,
+     test_a_charged_retest_reds_the_statement_whatever_the_null_retest_is[STRUCTURAL],
+     test_a_block_quoted_statement_is_satisfied_by_a_record_in_its_section, test_each_unknown_is_triage_only (4 cases),
+     test_structural_reasons_are_printed_for_review_and_the_limit_is_stated,
+     test_every_harm_record_is_printed_for_review_and_the_limit_says_the_bar_is_unjudged. Reviewers: confirm each edit
+     only adds the prose line (git.exe diff tests/test_null_scale_gate.py).
+- **Fold 1 (2026-11-07 09:51 CST, reviewer-3 #9172 C1).** The mde=n/a branch was only pytest-visible: a mutant
+  that accepts mde=n/a with any retest passed `--self-check`. The branch moves unchanged into `_mde_problem`,
+  `_planted()` gains `R-FIELD/mde-n/a-without-STRUCTURAL` (a PENDING record with mde=n/a, every other field valid;
+  the self-check reads the code before "/"), and the blind list gains `_mde_problem`. Red first: with `_mde_problem`
+  disabled, `--self-check` printed "planted R-FIELD/mde-n/a-without-STRUCTURAL did not red" rc 1; folded rc 0,
+  `--assert` OK, pytest 208 passed. This fold is unreviewed code until it is re-reviewed.

@@ -10,13 +10,14 @@ invariant "build the gate and COUNT its output first", this module lands before 
 
 Records (specs/**/evidence/*.md and docs/*.md; lines inside a fenced code block are examples, never records):
 
-    NULL-RECORD: <method> | units=<int|n/a> | ticks=<int|n/a> | seeds=<int> | mde=<number> | retest=<R>
+    NULL-RECORD: <method> | units=<int|n/a> | ticks=<int|n/a> | seeds=<int> | mde=<number|n/a> | retest=<R>
+    (mde=n/a only with retest=STRUCTURAL; a STRUCTURAL record's paragraph holds a prose line -- addendum 10)
     R := REF:<repo path>#<method> | PENDING since <40-hex sha> | STRUCTURAL: <reason, >= 20 chars>
          | NOT-NEEDED: harm <reason, >= 20 chars>
     RETEST-RECORD: <method> | axis=<units|ticks> | <axis>=<int> | result=<null|charges> | of=<repo path>
 
 What it reds: R-FIELD, R-UNRECORDED, R-RETEST-REF, R-RETEST-SCALE, R-RETEST-CHARGED, R-EXPIRED,
-R-STALE-GRANDFATHER here; R-EXEMPT through `exempt_problems`, the ONE check `dormancy_gate` imports for its
+R-STALE-GRANDFATHER, R-STRUCTURAL-ARG here; R-EXEMPT through `exempt_problems`, the ONE check `dormancy_gate` imports for its
 "scale-retest" disposition.
 What it cannot do, and says so on every run: judge a STRUCTURAL argument (the reason is printed for review),
 or decide whether a method's null was measured on the RIGHT axis (the pre-registration author decides).
@@ -341,6 +342,20 @@ def _count_ok(value: str, extra: tuple[str, ...]) -> bool:
     return re.fullmatch(_INT, value) is not None or value in extra
 
 
+# distinct-from: taught_problems.py -- that site orders teach epochs; this validates a NULL-RECORD's mde field
+def _mde_problem(mde: str, retest: str, unknown: tuple[str, ...]) -> str | None:
+    """mde: the minimum detectable effect at one-sided alpha .05, power .8 (P8 amendment item 1; section 0 of
+    the pre-registration defines the field). The gate checks that it is a number, not how it was derived.
+    Addendum 10 (D-402): a STRUCTURAL null has no re-test for an mde to size, so mde=n/a is legal there only.
+    A named function so the self-check's blind list can disable it (reviewer-3 #9172 C1)."""
+    if mde == "n/a":
+        if not retest.startswith("STRUCTURAL:"):
+            return "mde='n/a' is allowed only with retest=STRUCTURAL: <argument> (addendum 10)"
+    elif re.fullmatch(_NUM, mde) is None and mde not in unknown:
+        return f"mde={mde!r} is not a number"
+    return None
+
+
 def _retest_ok(value: str, triage: bool) -> bool:
     if re.fullmatch(r"REF:[^\s#]+#.+", value) or re.fullmatch(rf"PENDING since {_SHA}", value):
         return True
@@ -377,10 +392,9 @@ def parse_null(path: str, no: int, body: str, triage: bool = False) -> NullRecor
             return f"{key}={got[key]!r} is not an integer >= 1" + (
                 " or n/a" if "n/a" in extra else ""
             )
-    # mde: the minimum detectable effect at one-sided alpha .05, power .8 (P8 amendment item 1; section 0 of
-    # the pre-registration defines the field). The gate checks that it is a number, not how it was derived.
-    if re.fullmatch(_NUM, got["mde"]) is None and got["mde"] not in unknown:
-        return f"mde={got['mde']!r} is not a number"
+    err = _mde_problem(got["mde"], got["retest"], unknown)
+    if err:
+        return err
     if not _retest_ok(got["retest"], triage):
         return (
             f"retest={got['retest']!r} is not REF:<path>#<method>, PENDING since <sha>, "
@@ -506,7 +520,20 @@ def _paragraphs(lines: list[Line]) -> list[Line]:
     A block quote's leading `>` markers are not part of the paragraph.
     Heading and fenced lines stay one Line each, as the line census read them (a heading can record a deletion).
     ponytail: a heading or fenced statement wrapped across lines is still missed, as it was before the join."""
-    out: list[Line] = []
+    return [
+        Line(run[0].path, run[0].no, " ".join(QUOTE_RE.sub("", r.text.strip()) for r in run), False)
+        if prose
+        else run[0]
+        for prose, run in _runs(lines)
+    ]
+
+
+# distinct-from: instruments/rpe_charge.py -- that renders campaign markdown; this splits an evidence file
+# into its paragraphs, the ONE splitter both `_paragraphs` (statements) and R-STRUCTURAL-ARG (records) read
+def _runs(lines: list[Line]) -> list[tuple[bool, list[Line]]]:
+    """In file order: (True, raw lines) for each paragraph (consecutive non-blank lines that are not heading or
+    fence lines) and (False, [line]) for each heading line and each fenced line."""
+    out: list[tuple[bool, list[Line]]] = []
     run: list[Line] = []
     owned = _structure(lines)[1]
     for j, ln in enumerate([*lines, None]):
@@ -514,12 +541,32 @@ def _paragraphs(lines: list[Line]) -> list[Line]:
             run.append(ln)
             continue
         if run:
-            joined = " ".join(QUOTE_RE.sub("", r.text.strip()) for r in run)
-            out.append(Line(run[0].path, run[0].no, joined, False))
+            out.append((True, run))
             run = []
         if ln is not None and ln.text.strip():
-            out.append(ln)
+            out.append((False, [ln]))
     return out
+
+
+def _check_structural_argument(scan: _Scan) -> list[Red]:
+    """R-STRUCTURAL-ARG (addendum 10): P8 item 4, "its record states the argument". A STRUCTURAL record whose
+    paragraph holds no line other than NULL-RECORD / RETEST-RECORD lines states none. Presence only: the
+    argument itself stays review-enforced."""
+    reds = []
+    for rel, recs in scan.nulls.items():
+        structural = {n.no for n in recs if n.retest.startswith("STRUCTURAL:")}
+        for prose, run in _runs(scan.lines[rel]) if structural else ():
+            bare = structural & {ln.no for ln in run}
+            if prose and bare and all(RECORD_RE.match(ln.text) for ln in run):
+                reds += [
+                    Red(
+                        "R-STRUCTURAL-ARG",
+                        f"{rel}:{no}",
+                        "STRUCTURAL record's paragraph states no argument",
+                    )
+                    for no in sorted(bare)
+                ]
+    return reds
 
 
 def statements(scan: _Scan) -> list[Line]:
@@ -693,6 +740,7 @@ def check(root: Path = REPO, grandfathered=GRANDFATHERED, history=git_history) -
         *_check_retest_scale(scan),
         *_check_expired(scan, history),
         *_check_stale(scan, grandfathered),
+        *_check_structural_argument(scan),
     ]
     found = statements(scan)
     return Report(
@@ -723,7 +771,8 @@ def render(report: Report) -> str:
     out += [f"  STRUCTURAL (printed for review): {s}" for s in report.structural]
     out += [f"  HARM (printed for review): {s}" for s in report.harm]
     out.append(
-        "  LIMIT: the gate cannot judge a STRUCTURAL argument, whether a NOT-NEEDED: harm claim passed its "
+        "  LIMIT: the gate cannot judge a STRUCTURAL argument (it checks only that the record's paragraph holds "
+        "prose), whether a NOT-NEEDED: harm claim passed its "
         "pre-registered bar, or whether a re-test used the right axis; all three stay review-enforced. "
         "Scoping is spec-literal: a section runs from its heading (# or setext "
         "=== / ---) to the next heading of the same or higher level, so one NULL-RECORD of any method "
@@ -767,13 +816,24 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
             {f"{_EV}a.md": "# t\n"},
             {"grandfathered": frozenset({(f"{_EV}a.md", "0" * 12)})},
         ),
+        "R-STRUCTURAL-ARG": ({f"{_EV}a.md": f"# t\n{_STRUCT}\n"}, {}),
+        # addendum 10: every other field valid, so only the mde=n/a branch can red it (reviewer-3 #9172 C1);
+        # the key's text after "/" names the case, the code is the part before it
+        "R-FIELD/mde-n/a-without-STRUCTURAL": (
+            {f"{_EV}a.md": f"# t\n{_REC.replace('mde=0.5', 'mde=n/a')}PENDING since {'a' * 40}\n"},
+            {"history": lambda sha: History([])},
+        ),
     }
 
 
 def self_check() -> int:
     """Plant each red in a temporary tree; fail unless the gate reds with exactly that code, and stays green
     on the clean tree. A gate seen only green is indistinguishable from one that cannot see."""
-    clean = {f"{_EV}a.md": f"# t\nThe method was deleted on its own null.\n{_STRUCT}\n"}
+    # addendum 10: a STRUCTURAL record with mde=n/a and its argument in its paragraph stays green
+    clean = {
+        f"{_EV}a.md": f"# t\nThe method was deleted on its own null.\n{_STRUCT}\n",
+        f"{_EV}n.md": f"# t\nNo call site reaches it.\n{_STRUCT.replace('mde=0.5', 'mde=n/a')}\n",
+    }
     failures = []
     with tempfile.TemporaryDirectory() as tmp:
         for name, (tree, kwargs) in [
@@ -787,7 +847,7 @@ def self_check() -> int:
             codes = check(root, **{"grandfathered": frozenset(), **kwargs}).codes()
             if name == "clean" and codes:
                 failures.append(f"clean tree reds: {sorted(codes)}")
-            elif name != "clean" and name not in codes:
+            elif name != "clean" and name.split("/")[0] not in codes:
                 failures.append(f"planted {name} did not red (got {sorted(codes)})")
     if not exempt_problems("m", "no record, no sha"):
         failures.append("planted R-EXEMPT did not red")
