@@ -562,7 +562,14 @@ def _check_structural_argument(scan: _Scan) -> list[Red]:
         structural = {n.no for n in recs if n.retest.startswith("STRUCTURAL:")}
         for prose, run in _runs(scan.lines[rel]) if structural else ():
             bare = structural & {ln.no for ln in run}
-            if prose and bare and all(RECORD_RE.match(ln.text) for ln in run):
+            # a non-record line is an argument only if it holds a LETTER outside quote markers and HTML tags
+            # (reviewer-3 C4 #9375: ***, ___, - - -, <!-- -->, |---|, <br>, > are not prose)
+            argued = any(
+                not RECORD_RE.match(ln.text)
+                and re.search(r"[^\W\d_]", re.sub(r"<[^>]*>", "", QUOTE_RE.sub("", ln.text)))
+                for ln in run
+            )
+            if prose and bare and not argued:
                 reds += [
                     Red(
                         "R-STRUCTURAL-ARG",
@@ -777,7 +784,8 @@ def render(report: Report) -> str:
     out += [f"  HARM (printed for review): {s}" for s in report.harm]
     out.append(
         "  LIMIT: the gate cannot judge a STRUCTURAL argument (it checks only that the record's paragraph holds "
-        "prose), whether a NOT-NEEDED: harm claim passed its "
+        "a line with a letter outside separators/markup; a record + --- is read as a break; only '-'/'*' list "
+        "markers open a record line, so '+', '1.', '>' before NULL-RECORD are not seen), whether a NOT-NEEDED: harm claim passed its "
         "pre-registered bar, or whether a re-test used the right axis; all three stay review-enforced. "
         "Scoping is spec-literal: a section runs from its heading (# or setext "
         "=== / ---) to the next heading of the same or higher level, so one NULL-RECORD of any method "
@@ -824,6 +832,8 @@ def _planted() -> dict[str, tuple[dict[str, str], dict]]:
         "R-STRUCTURAL-ARG": ({f"{_EV}a.md": f"# t\n{_STRUCT}\n"}, {}),
         # #9345: a --- under a bare record is a break, not a setext underline; it must not hide the record
         "R-STRUCTURAL-ARG/setext-underline": ({f"{_EV}a.md": f"# t\n{_STRUCT}\n---\n"}, {}),
+        # reviewer-3 C4 #9375: a record plus one letterless line is still no argument
+        "R-STRUCTURAL-ARG/thematic-break": ({f"{_EV}a.md": f"# t\n{_STRUCT}\n***\n"}, {}),
         # addendum 10: every other field valid, so only the mde=n/a branch can red it (reviewer-3 #9172 C1);
         # the key's text after "/" names the case, the code is the part before it
         "R-FIELD/mde-n/a-without-STRUCTURAL": (

@@ -1307,6 +1307,16 @@ def test_mde_n_a_on_a_structural_record_in_the_triage_file_is_green(tmp_path):
         f"# t\n{rec()}\n---\n",
         f"# t\n{rec()}\n===\n",
         f"# t\n- {rec()}\n---\ntext after the break\n",
+        # reviewer-3 C4 #9375: a record plus ONE non-prose line (break, markup, table rule) is still no argument
+        f"# t\n{rec()}\n***\n",
+        f"# t\n{rec()}\n___\n",
+        f"# t\n{rec()}\n* * *\n",
+        f"# t\n{rec()}\n- - -\n",
+        f"# t\n{rec()}\n    ---\n",
+        f"# t\n{rec()}\n<!-- note -->\n",
+        f"# t\n{rec()}\n|---|\n",
+        f"# t\n{rec()}\n<br>\n",
+        f"# t\n{rec()}\n>\n",
     ],
 )
 def test_a_structural_record_with_no_argument_in_its_paragraph_is_r_structural_arg(tmp_path, text):
