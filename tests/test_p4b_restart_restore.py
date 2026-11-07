@@ -715,7 +715,7 @@ def test_lifelong_codec_round_trips_and_refuses_untouched():
     for rec in bad:
         e = LifelongConsolidator(dim=c.dim, budget=6, seed=7)
         assert not e.load_state_dict(rec), rec
-        assert (e.n_units, e.labels, e.utility) == (0, [], []), rec
+        assert (e.n_units, e.labels, list(e.utility)) == (0, [], []), rec
     e = LifelongConsolidator(dim=c.dim, budget=6, seed=7)
     assert e.load_state_dict(d) and e.state_dict() == d
     assert not e.load_state_dict(d), "a consolidator that already grew is never overwritten"

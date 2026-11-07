@@ -193,7 +193,7 @@ def test_c3_ll_sabotage_drops_the_highest_utility_units():
     expect = [p for i, p in enumerate(ll.learner.prototypes) if i != top]
     expect_u = [u for i, u in enumerate(ll.utility) if i != top]
     spc._ll_top_utility(ll)
-    assert ll.n_units == n - 1 and ll.learner.prototypes == expect and ll.utility == expect_u
+    assert ll.n_units == n - 1 and ll.learner.prototypes == expect and list(ll.utility) == expect_u
 
 
 def test_scratch_home_guard_refuses_the_live_home(monkeypatch, tmp_path):

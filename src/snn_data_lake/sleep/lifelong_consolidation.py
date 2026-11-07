@@ -64,6 +64,43 @@ GRADIENT_CLAIM = {
 }
 
 
+# distinct-from: growth/candidate_lifecycle.py heldout_prune -- a memoryless held-out cost, no trace (D7
+#   commit 2 moves it onto THIS primitive). distinct-from: sleep/developmental_pruning.py -- synapse magnitude.
+#   distinct-from: plasticity/r_stdp.py, substrate/lake_memory.py `_Trace` -- learning / memory traces, not unit
+#   survival. Sites read (D7 PREREG s1, A7: the one leaky-trace primitive lives here, stdlib only).
+class LeakySurvival:
+    """The ONE leaky per-unit survival score (D7, P2 merge): a float per unit, kept aligned to its units.
+
+    Two operations on their own cadences, no mode switch: `decay(lam)` multiplies every score by lam (P-LL: once
+    per task boundary), `credit(i, delta)` adds delta to unit i (P-LL: +1.0 on a familiar hit). `add_unit` appends
+    a newborn unit's score, `reindex(keep)` keeps the survivors' scores in `keep` order. `values()` is an
+    immutable tuple, so a reader can never write through it. Construction refuses a non-finite score."""
+
+    def __init__(self, values=()):
+        vals = [float(v) for v in values]
+        if any(not math.isfinite(v) for v in vals):
+            raise ValueError("LeakySurvival: non-finite score")
+        self._s = vals
+
+    def __len__(self):
+        return len(self._s)
+
+    def values(self):
+        return tuple(self._s)
+
+    def add_unit(self, credit):
+        self._s.append(credit)
+
+    def credit(self, i, delta):
+        self._s[i] += delta
+
+    def decay(self, lam):
+        self._s = [u * lam for u in self._s]
+
+    def reindex(self, keep):
+        self._s = [self._s[i] for i in keep]
+
+
 class LifelongConsolidator:
     """Continual learner over a sequence of tasks: grow <-> prune <-> consolidate.
 
@@ -118,13 +155,20 @@ class LifelongConsolidator:
         self.seed = seed
         self.learner = GrowingLearner(vigilance=vigilance, lr=lr, dim=dim)
         self.labels = []  # class label per unit (aligned to prototypes)
-        self.utility = []  # use-decayed activity trace per unit
+        self._utility = LeakySurvival()  # use-decayed activity trace per unit
         self.memory = ReplayBuffer(capacity=4096, seed=seed + 1)  # lifelong exemplars
         self.rng = random.Random(seed + 2)  # random-prune RNG
 
     @property
     def n_units(self):
         return self.learner.n_units
+
+    # distinct-from: readout/laminar_local_readout.py -- its grow(freeze_old) freezes L2/3 weights; this is
+    #   an immutable view of a score list. Site read.
+    @property
+    def utility(self):
+        """Per-unit utility as a tuple (no setter): every write goes through `_utility`."""
+        return self._utility.values()
 
     # distinct-from: growth/growing_learner.py -- REUSED for the prototypes; this adds the labels and
     #   utilities kept aligned to them. distinct-from: readout/growable_readout.py,
@@ -163,7 +207,7 @@ class LifelongConsolidator:
             return False
         if not self.learner.load_state_dict(rec):
             return False
-        self.labels, self.utility = labels, utility
+        self.labels, self._utility = labels, LeakySurvival(utility)
         return True
 
     # ---- learning primitives ------------------------------------------------
@@ -176,9 +220,9 @@ class LifelongConsolidator:
         uid, grew = self.learner.observe(x)
         if grew:
             self.labels.append(y)
-            self.utility.append(1.0)  # new unit starts with unit credit
+            self._utility.add_unit(1.0)  # new unit starts with unit credit
         else:
-            self.utility[uid] += 1.0  # familiar hit -> refresh (use it)
+            self._utility.credit(uid, 1.0)  # familiar hit -> refresh (use it)
         return uid
 
     def _prune_to_budget(self):
@@ -194,12 +238,13 @@ class LifelongConsolidator:
         if self.prune_mode == "random":
             victims = set(self.rng.sample(range(n), n_remove))
         else:
-            ranked = sorted(range(n), key=lambda i: (self.utility[i], i))
+            utility = self.utility
+            ranked = sorted(range(n), key=lambda i: (utility[i], i))
             victims = set(ranked[:n_remove])
         keep = [i for i in range(n) if i not in victims]
         self.learner.prototypes = [self.learner.prototypes[i] for i in keep]
         self.labels = [self.labels[i] for i in keep]
-        self.utility = [self.utility[i] for i in keep]
+        self._utility.reindex(keep)
 
     def _replay_once(self):
         """Rehearse a batch of OLD exemplars: re-fire + refine their units (no decay).
@@ -243,7 +288,7 @@ class LifelongConsolidator:
     def learn_task(self, task_id, train):
         """Learn one task: grow/refine on its stream, interleave old-task replay,
         commit its exemplars to lifelong memory, then prune to the budget."""
-        self.utility = [u * self.task_decay for u in self.utility]  # recency pressure
+        self._utility.decay(self.task_decay)  # recency pressure
         self._walk_task(task_id, train, learn=True)
         self._prune_to_budget()  # grow <-> prune under the budget
 

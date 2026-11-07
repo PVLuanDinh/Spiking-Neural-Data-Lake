@@ -482,7 +482,7 @@ class WholisticLoop:
                     dec.recruit_cap if dec.grew else 0
                 )  # familiar -> 0 -> reuse, no growth
                 self._task_recruited = 0
-            self.con.utility = [u * TASK_DECAY for u in self.con.utility]  # recency pressure
+            self.con._utility.decay(TASK_DECAY)  # recency pressure (the shared LeakySurvival trace)
             fresh = []
             for label, vec in task["stream"]:
                 self._tick(label, vec, fresh)

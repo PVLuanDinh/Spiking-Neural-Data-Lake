@@ -786,12 +786,13 @@ def _ll_top_utility(self):
     n = self.n_units
     if not self.prune_on or n <= self.budget:
         return
-    ranked = sorted(range(n), key=lambda i: (-self.utility[i], i))
+    utility = self.utility
+    ranked = sorted(range(n), key=lambda i: (-utility[i], i))
     victims = set(ranked[: n - self.budget])
     keep = [i for i in range(n) if i not in victims]
     self.learner.prototypes = [self.learner.prototypes[i] for i in keep]
     self.labels = [self.labels[i] for i in keep]
-    self.utility = [self.utility[i] for i in keep]
+    self._utility.reindex(keep)
 
 
 def _arm_patches(brain, arm, run, schedule):
