@@ -6,7 +6,7 @@
         "-m",
         "snn_data_lake.gates.dormancy_gate"
       ],
-      "seconds": 17.06,
+      "seconds": 12.31,
       "verdict": "PASS"
     },
     {
@@ -14,7 +14,7 @@
         "-m",
         "snn_data_lake.gates.method_dormancy_gate"
       ],
-      "seconds": 14.82,
+      "seconds": 15.72,
       "verdict": "PASS"
     },
     {
@@ -22,7 +22,7 @@
         "-m",
         "snn_data_lake.gates.import_manifest"
       ],
-      "seconds": 4.46,
+      "seconds": 4.48,
       "verdict": "PASS"
     },
     {
@@ -30,7 +30,7 @@
         "-m",
         "snn_data_lake.gates.replication_guard"
       ],
-      "seconds": 2.62,
+      "seconds": 2.69,
       "verdict": "PASS"
     },
     {
@@ -46,7 +46,7 @@
         "-m",
         "snn_data_lake.gates.unit_label_gate"
       ],
-      "seconds": 33.88,
+      "seconds": 34.01,
       "verdict": "PASS"
     },
     {
@@ -54,7 +54,7 @@
         "tools/p6_gate.py",
         "--assert"
       ],
-      "seconds": 7.78,
+      "seconds": 6.68,
       "verdict": "PASS"
     },
     {
@@ -62,7 +62,7 @@
         "tools/dependency_ledger.py",
         "--assert"
       ],
-      "seconds": 7.99,
+      "seconds": 7.84,
       "verdict": "PASS"
     },
     {
@@ -70,7 +70,7 @@
         "tools/red_reachability.py",
         "--assert"
       ],
-      "seconds": 2.07,
+      "seconds": 2.03,
       "verdict": "PASS"
     },
     {
@@ -78,7 +78,7 @@
         "-m",
         "snn_data_lake.gates.null_scale_gate"
       ],
-      "seconds": 0.69,
+      "seconds": 0.79,
       "verdict": "PASS"
     },
     {
@@ -86,7 +86,7 @@
         "-m",
         "snn_data_lake.gates.eprop_transport_gate"
       ],
-      "seconds": 26.54,
+      "seconds": 26.64,
       "verdict": "PASS"
     },
     {
@@ -94,7 +94,7 @@
         "-m",
         "snn_data_lake.gates.gradient_claim_gate"
       ],
-      "seconds": 2.98,
+      "seconds": 2.97,
       "verdict": "PASS"
     },
     {
@@ -102,7 +102,7 @@
         "tools/p4c_ratchet.py",
         "--assert"
       ],
-      "seconds": 0.17,
+      "seconds": 0.2,
       "verdict": "PASS"
     },
     {
@@ -111,7 +111,7 @@
         "snn_data_lake.gates.p5b_gate",
         "--assert"
       ],
-      "seconds": 0.22,
+      "seconds": 0.53,
       "verdict": "PASS"
     }
   ],
@@ -228,7 +228,7 @@
     "P8 amendment"
   ],
   "tree": {
-    "commit": "9c78cea77533361a1ce2a23ed019b375bd5eba91",
+    "commit": "0f0a790c2c124e79c76fc8877e4313bb30d0477c",
     "dirty": false
   }
 }
