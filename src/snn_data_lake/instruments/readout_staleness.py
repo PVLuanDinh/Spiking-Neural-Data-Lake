@@ -19,6 +19,10 @@ distinct-from: plasticity/oja_pca.py -- one neuron's principal component, not a 
 reuses: instruments/paired_contrast (contrast, FPR exact and MC), instruments/rpe_charge.seq_boundaries (lazy).
 """
 
+import json
+import multiprocessing
+import os
+import sys
 import zlib
 
 import numpy as np
@@ -338,5 +342,401 @@ def main():
     print("readout_staleness selfcheck OK")
 
 
+# ---- D1 driver (pre-registration 2.1 item 5; built 2026-11-15 by FCC/GLM 5.3, integrated by the orchestrator) ----
+# ---- D1 driver (pre-registration items 2.6 and 5) -------------------------------------------------------------
+# INTEGRATOR: move these four imports to the module top (they must not stay in this block): json, multiprocessing, os, sys
+
+D1_ARMS = ("FROZEN", "FROZEN_B", "OJA", "RAND")
+D1_TICKS = 800
+
+
+def wire_arm(engine, arm, seed):
+    """Item 5: install the arm's operator on THIS engine instance (never a class patch). FROZEN and
+    FROZEN_B install nothing. Counts operator calls and Sum|dW|; a fault is counted, never raised."""
+    stats = {
+        "arm": arm,
+        "seed": int(seed),
+        "calls": 0,
+        "sum_dw": 0.0,
+        "skipped": 0,
+        "faults": 0,
+        "fault_msgs": [],
+    }
+    if arm not in ("OJA", "RAND"):
+        return stats
+    import torch
+
+    rand = RandStep(seed, arm)  # one RandStep instance per arm, created once
+    orig = engine.observe
+
+    def observe_wrapped(features, category):
+        ret = orig(features, category)
+        try:
+            m = getattr(engine, "_model", None)
+            if m is None or getattr(m, "W", None) is None:
+                stats["skipped"] += 1
+                return ret
+            x = np.asarray(features, dtype=float).ravel()
+            nx = float(np.linalg.norm(x))
+            xn = x / nx if nx > 0.0 else np.zeros_like(x)
+            X = torch.as_tensor(x, dtype=torch.float32).reshape(1, -1)
+            s = _np(m._rates(X, m.W, m.b)).ravel()  # rates on THIS percept, BEFORE the update
+            W0 = _np(m.W)
+            W1 = oja_step(W0, s, xn) if arm == "OJA" else rand(W0, s)
+            m.W = _like(m.W, W1)
+            stats["calls"] += 1
+            stats["sum_dw"] += float(np.abs(W1 - W0).sum())
+        except Exception as exc:  # counted, never raised into the brain
+            stats["faults"] += 1
+            if len(stats["fault_msgs"]) < 20:
+                stats["fault_msgs"].append("{}: {}".format(type(exc).__name__, exc))
+        return ret
+
+    engine.observe = observe_wrapped
+    return stats
+
+
+def _leak_beta(eng):
+    """R2 red 'LEAK': after each refit the shadow beta is copied into the engine's batch beta."""
+    beta = getattr(getattr(eng, "_model", None), "beta", None)
+    if beta is None:
+        return
+    if hasattr(getattr(eng, "_batch_beta", None), "copy_"):
+        eng._batch_beta.copy_(beta)
+    else:
+        eng._batch_beta = beta
+
+
+def _ulp_once(eng, state):
+    """R8 red 'ULP': one-ulp bump of the first bias entry, once, after the first refit that
+    produced a model."""
+    if state.get("done") or getattr(eng, "_model", None) is None:
+        return
+    b = getattr(eng._model, "b", None)
+    if b is None:
+        return
+    import torch
+
+    with torch.no_grad():
+        flat = b.view(-1)
+        flat[0] = torch.nextafter(flat[0].detach().clone(), float("inf"))
+    state["done"] = True
+
+
+def _plant_once(eng, log, state):
+    """Positive control 'PLANTED': at the first refit whose gate row is 'closed', rotate the
+    retained model's W by rotate_pairs(..., 30) once, so every later scoring sees the rotated
+    substrate and the seed's mean gap_all must exceed FROZEN's."""
+    if state.get("done"):
+        return
+    rows = log.get("rows") or []
+    if not rows or rows[-1].get("gate") != "closed":
+        return
+    W = getattr(getattr(eng, "_model", None), "W", None)
+    if W is None:
+        return
+    eng._model.W = _like(W, rotate_pairs(_np(W), 30))
+    state["done"] = True
+
+
+def _wire_red(eng, arm, log):
+    """Red-arm dispatch (LEAK / ULP / PLANTED): wraps eng._refit on the instance AFTER
+    instrument_engine, so each wrap sees the instrumented refit. Faults counted, not raised."""
+    state = {"arm": arm, "faults": 0}
+    if arm not in ("LEAK", "ULP", "PLANTED"):
+        return state
+    orig = eng._refit
+
+    def refit_wrapped(*a, **k):
+        ret = orig(*a, **k)
+        try:
+            if arm == "LEAK":
+                _leak_beta(eng)
+            elif arm == "ULP":
+                _ulp_once(eng, state)
+            elif arm == "PLANTED":
+                _plant_once(eng, log, state)
+        except Exception as exc:  # counted, never raised into the brain
+            state["faults"] += 1
+            state.setdefault("msgs", []).append("{}: {}".format(type(exc).__name__, exc))
+        return ret
+
+    eng._refit = refit_wrapped
+    return state
+
+
+def _traj_len(eng):
+    """Length of the engine's trajectory, or None if it is not countable."""
+    try:
+        return len(getattr(eng, "trajectory", ()) or ())
+    except TypeError:
+        return None
+
+
+def _wire_row_hashes(eng):
+    """Fix 2: per-refit substrate hash of the ENGINE's model, batch beta and trajectory, wrapped
+    on the instance AFTER instrument_engine (outermost, so red-wrap effects are hashed too);
+    appended after each refit that advanced the trajectory."""
+    row_hashes = []
+    orig = eng._refit
+
+    def refit_wrapped(*a, **k):
+        n0 = _traj_len(eng)
+        ret = orig(*a, **k)
+        if _traj_len(eng) != n0 or n0 is None:  # advanced, or not countable: record anyway
+            row_hashes.append(int(substrate_hash(eng._model, eng._batch_beta, eng.trajectory)))
+        return ret
+
+    eng._refit = refit_wrapped
+    return row_hashes
+
+
+def arm_cell(args):
+    """One arm in a worker process (g5 pattern): fresh home, make_brain(persist=False),
+    instrumented engine, arm dispatch (real operators + red-arm wraps), D1_TICKS ticks."""
+    seed, arm = args
+    import torch
+
+    torch.set_num_threads(1)
+    from snn_data_lake.instruments.g5_readout_cells import check_fresh_home
+    from snn_data_lake.substrate.home import throwaway_home
+
+    with throwaway_home() as fresh:
+        check_fresh_home(fresh)
+        from snn_data_lake.engine.brain import make_brain
+
+        b = make_brain(seed=seed + (1000 if arm == "OTHER_STREAM" else 0), persist=False)
+        try:
+            eng = b.neuro
+            log = instrument_engine(eng, shadow=(arm != "SHADOW_OFF"))
+            ops = wire_arm(eng, arm, seed)
+            red = _wire_red(eng, arm, log)
+            row_hashes = _wire_row_hashes(eng)
+            for _ in range(D1_TICKS):
+                b.tick()
+            out = {
+                "seed": int(seed),
+                "arm": arm,
+                "rows": log.get("rows", []),
+                "faults": int(log.get("faults", 0)) + int(red["faults"]),
+                "ops": ops,
+                "row_hashes": row_hashes,
+                "floors": [(float(m), float(p)) for _, m, p in getattr(eng, "baselines", [])],
+            }
+            if (
+                getattr(eng, "_model", None) is not None
+                and getattr(eng._model, "W", None) is not None
+            ):
+                out["hash"] = int(substrate_hash(eng._model, eng._batch_beta, eng.trajectory))
+            return out
+        finally:
+            b.close()
+
+
+def seed_summary(rows):
+    """Last-third endpoints for one arm: GAP, ACC_SH, ACC (shadow_reading's keys acc_shadow /
+    acc_reader / gap_all; missing keys are named, not guessed). Floors are NOT reported here."""
+    rows = list(rows)
+    k = max(1, len(rows) // 3) if rows else 0
+    win = rows[-k:] if k else []
+    out = {
+        "n_rows": len(rows),
+        "n_window": len(win),
+        "GAP": None,
+        "ACC_SH": None,
+        "ACC": None,
+        "missing_keys": [],
+    }
+    if not win:
+        return out
+    need = ("acc_shadow", "acc_reader")
+    out["missing_keys"] = sorted({key for r in win for key in need if key not in r})
+    gaps, ash, acc = [], [], []
+    for r in win:
+        a_sh, a_r = float(r.get("acc_shadow", np.nan)), float(r.get("acc_reader", np.nan))
+        g = r.get("gap_all")
+        gaps.append(float(g) if g is not None else a_sh - a_r)
+        ash.append(a_sh)
+        acc.append(a_r)
+    out.update(GAP=float(np.mean(gaps)), ACC_SH=float(np.mean(ash)), ACC=float(np.mean(acc)))
+    return out
+
+
+def _num_leaves(x, out):
+    """Every recorded number in x, in traversal order (dicts/lists flattened, arrays ravelled)."""
+    if isinstance(x, dict):
+        for v in x.values():
+            _num_leaves(v, out)
+    elif isinstance(x, (list, tuple)):
+        for v in x:
+            _num_leaves(v, out)
+    elif isinstance(x, np.ndarray):
+        out.extend(float(v) for v in np.asarray(x).ravel())
+    elif hasattr(x, "detach"):
+        out.extend(float(v) for v in _np(x).ravel())
+    elif isinstance(x, (bool, np.bool_)):
+        out.append(float(bool(x)))
+    elif isinstance(x, (int, float, np.integer, np.floating)):
+        out.append(float(x))
+
+
+def _rows_match(rows_a, rows_b, tol=1e-6):
+    """Row-for-row numeric equality to tol (the rows half of the A/A check)."""
+    if len(rows_a) != len(rows_b):
+        return False
+    for ra, rb in zip(rows_a, rows_b):
+        la, lb = [], []
+        _num_leaves(ra, la)
+        _num_leaves(rb, lb)
+        if len(la) != len(lb) or any(abs(p - q) > tol for p, q in zip(la, lb)):
+            return False
+    return True
+
+
+def _aa_pass(a, b):
+    """The A/A check (R8 green): rows match to 1e-6 AND per-refit row_hashes match EXACTLY
+    (so a ulp-only change, which shows in the hash, fails the check)."""
+    return _rows_match(a["rows"], b["rows"]) and a["row_hashes"] == b["row_hashes"]
+
+
+def _floors_match(fa, fb, tol=1e-6):
+    """Same-rows rule: per-refit (majority_floor, persistence_floor) lists identical to tol;
+    lengths must match exactly."""
+    if len(fa) != len(fb):
+        return False
+    return all(abs(m1 - m2) <= tol and abs(p1 - p2) <= tol for (m1, p1), (m2, p2) in zip(fa, fb))
+
+
+def _mean_gap_all(rows):
+    """PLANTED control endpoint: mean gap_all over ALL rows (acc_shadow - acc_reader fallback;
+    rows missing both are skipped)."""
+    vals = []
+    for r in rows:
+        g = r.get("gap_all")
+        if g is None:
+            a_sh, a_r = r.get("acc_shadow"), r.get("acc_reader")
+            if a_sh is None or a_r is None:
+                continue
+            g = float(a_sh) - float(a_r)
+        vals.append(float(g))
+    return float(np.mean(vals)) if vals else None
+
+
+def run_seed(seed, pool):
+    """One seed: the four real arms, each its own child process; then the A/A check, the
+    same-rows floors rule, and d1 = p1_diffs([GAP_OJA], [GAP_FROZEN])[0] for THIS seed."""
+    by = {r["arm"]: r for r in pool.map(arm_cell, [(seed, a) for a in D1_ARMS])}
+    summ = {a: seed_summary(by[a]["rows"]) for a in D1_ARMS}
+    aa_fail = not _aa_pass(by["FROZEN"], by["FROZEN_B"])
+    excluded = any(not _floors_match(by["FROZEN"]["floors"], by[a]["floors"]) for a in D1_ARMS[1:])
+    d1 = None
+    if summ["OJA"]["GAP"] is not None and summ["FROZEN"]["GAP"] is not None:
+        d1 = p1_diffs([summ["OJA"]["GAP"]], [summ["FROZEN"]["GAP"]])[0]
+    arms = {
+        a: {
+            "summary": summ[a],
+            "ops": by[a]["ops"],
+            "faults": by[a]["faults"],
+            "hash": by[a].get("hash"),
+            "floors": by[a]["floors"],
+        }
+        for a in D1_ARMS
+    }
+    return {
+        "seed": int(seed),
+        "arms": arms,
+        "aa_fail": bool(aa_fail),
+        "excluded": bool(excluded),
+        "d1": d1,
+    }
+
+
+def stage(seeds, out_json):
+    """Pilot: the four real arms over the seeds on one spawn pool, one JSON. Refuses to
+    overwrite. Measures only; no confirmatory statistic or boundary."""
+    if os.path.exists(out_json):
+        raise FileExistsError("refusing to overwrite existing {}".format(out_json))
+    ctx = multiprocessing.get_context("spawn")
+    with ctx.Pool(processes=len(D1_ARMS)) as pool:
+        results = [run_seed(s, pool) for s in seeds]
+    doc = {
+        "seeds": [int(s) for s in seeds],
+        "results": results,
+        "d1": [r["d1"] for r in results],
+        "aa_fail_seeds": [r["seed"] for r in results if r["aa_fail"]],
+        "excluded_seeds": [r["seed"] for r in results if r["excluded"]],
+    }
+    os.makedirs(os.path.dirname(os.path.abspath(out_json)), exist_ok=True)
+    with open(out_json, "w") as f:
+        json.dump(doc, f, indent=1, sort_keys=True, default=float)
+    return doc
+
+
+def stage0(out_json):
+    """Pre-registration 2.6: seed 0. Four real arms plus the red arms (SHADOW_OFF, LEAK,
+    OTHER_STREAM, ULP, PLANTED), each its own child process; reports each red MET/NOT MET
+    and writes stage0_ok (all reds MET and the planted control MET)."""
+    if os.path.exists(out_json):
+        raise FileExistsError("refusing to overwrite existing {}".format(out_json))
+    arms0 = D1_ARMS + ("SHADOW_OFF", "LEAK", "OTHER_STREAM", "ULP", "PLANTED")
+    ctx = multiprocessing.get_context("spawn")
+    with ctx.Pool(processes=min(4, len(arms0))) as pool:  # RAM: at most 4 brains at once
+        by = {r["arm"]: r for r in pool.map(arm_cell, [(0, a) for a in arms0])}
+    fh = by["FROZEN"]["row_hashes"]
+    greens = all(_floors_match(by["FROZEN"]["floors"], by[a]["floors"]) for a in D1_ARMS[1:])
+    reds = {
+        "R2_SHADOW_OFF": by["SHADOW_OFF"]["row_hashes"] == fh,
+        "R2_LEAK": by["LEAK"]["row_hashes"] != fh,
+        "R7_OTHER_STREAM": greens
+        and not _floors_match(by["FROZEN"]["floors"], by["OTHER_STREAM"]["floors"]),
+        "R8_ULP": (not _aa_pass(by["FROZEN"], by["ULP"]))
+        and _aa_pass(by["FROZEN"], by["FROZEN_B"]),
+    }
+    pg, fg = _mean_gap_all(by["PLANTED"]["rows"]), _mean_gap_all(by["FROZEN"]["rows"])
+    planted = pg is not None and fg is not None and pg > fg
+    reds["PLANTED"] = bool(planted)
+    for name, met in sorted(reds.items()):
+        print("{}: {}".format(name, "MET" if met else "NOT MET"))
+    if not planted:
+        print("INSTRUMENT BLIND")
+    ok = all(reds.values())
+    doc = {
+        "seed": 0,
+        "arms": {
+            a: {
+                "summary": seed_summary(by[a]["rows"]),
+                "ops": by[a]["ops"],
+                "faults": by[a]["faults"],
+                "hash": by[a].get("hash"),
+                "floors": by[a]["floors"],
+            }
+            for a in D1_ARMS
+        },
+        "reds": {k: bool(v) for k, v in reds.items()},
+        "planted_control": {"planted_gap": pg, "frozen_gap": fg, "met": bool(planted)},
+        "stage0_ok": bool(ok),
+        "verdict": "OK" if ok else ("BLIND" if not planted else "REDS_FAILED"),
+    }
+    os.makedirs(os.path.dirname(os.path.abspath(out_json)), exist_ok=True)
+    with open(out_json, "w") as f:
+        json.dump(doc, f, indent=1, sort_keys=True, default=float)
+    return doc
+
+
+def stage_cli(argv=None):
+    """stage0 -> reds on seed 0 to tools/d1_stage0.json; pilot -> the four real arms on seeds
+    0-7 to tools/d1_pilot.json. Returns None on a bare/unknown call: the integrator's single
+    module guard calls this before main()."""
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "stage0":
+        stage0(os.path.join("tools", "d1_stage0.json"))
+        return 0
+    if argv and argv[0] == "pilot":
+        stage(list(range(8)), os.path.join("tools", "d1_pilot.json"))
+        return 0
+    return None
+
+
 if __name__ == "__main__":
-    main()
+    if stage_cli() is None:
+        main()

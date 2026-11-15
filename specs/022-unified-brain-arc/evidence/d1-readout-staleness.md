@@ -808,3 +808,13 @@ moves them keeps those entries with the functions.
 `growth/h01_ingest.py:894` (`_pearson`). These are P2 findings for the integrator; nothing is changed here.
 
 Nothing is built by this correction.
+
+### Owner decision and unpark, 2026-11-15
+
+Owner in chat, choosing among the sample-size options laid out to them: "A" = keep the design as D-11 #3 left it
+(pilot seeds 0-7 measure SD_1/SD_2; n0 by power .8 for 0.10; looks every 8; O'Brien-Fleming-type spending;
+non-binding futility; cap = n0 x simulated inflation, seeds from 22000 on, > 1000 back to the owner; MC FPR past 40).
+D1 is unparked (D-28 lifted by the owner's choice). The driver this file's 2.1 item 5 names was built 2026-11-15
+(FCC / GLM 5.3 under the owner's "Use FCC for all processes, you orchestrate only"; reviewed and integrated by the
+orchestrator): `readout_staleness.py` `stage0` runs the four arms plus the in-brain reds R2 (shadow off / LEAK), R7
+(OTHER_STREAM), R8 (ULP) and the PLANTED positive control on seed 0; `pilot` runs seeds 0-7.
