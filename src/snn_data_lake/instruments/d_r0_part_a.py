@@ -286,7 +286,7 @@ def dev_checks(reader=read_field, data_dir=None):
     return {
         "agreement": agree,
         "control": control,
-        "DEV-AGREEMENT": all(a["met"] for a in agree.values()),
+        "DEV-AGREEMENT": all(a["rules"]["components"] for a in agree.values()),  # amendment 13
         "DEV-CONTROL": all(c["met"] for c in control.values()),
     }
 
@@ -410,17 +410,28 @@ def run(split, reader=read_field, seed=0, data_dir=None):
     mice = DEV if split == "dev" else HELD_OUT
     if split == "heldout":
         refuse_held_out_unless_frozen()
-    d, n_neurons = {}, {}
+    d, n_neurons, pooled = {}, {}, []
     for m in mice:
         fields = reader(m, split) if data_dir is None else reader(m, split, data_dir=data_dir)
+        pooled += fields
         vals = [field_d(f, seed) for f in fields]
         d[m] = None if any(v is None for v in vals) else float(np.mean(vals))
         n_neurons[m] = [int(f.mov1.shape[0]) for f in fields]
     out = {"split": split, "D": d, "n_neurons": n_neurons}
-    if split == "heldout" and all(v is not None for v in d.values()) and len(d) == 8:
+    agree_ok = True
+    if all(
+        f.theirs is not None for f in pooled
+    ):  # amendment 13: the components rule, recomputed on this split
+        out["agreement"] = {s: dev_agreement(pooled, s) for s in ("mov", "pdg")}
+        agree_ok = all(a["rules"]["components"] for a in out["agreement"].values())
+    if split == "dev":
+        out["E1"] = "NOT READ"
+    elif not agree_ok:
+        out["E1"] = "INSTRUMENT BLIND (held-out agreement, components rule, NOT MET)"
+    elif all(v is not None for v in d.values()) and len(d) == 8:
         out["E1"] = contrast("E1", list(d.values()), T_BAR)._asdict()
     else:
-        out["E1"] = "NOT READ" if split == "dev" else "INCONCLUSIVE (n < 8)"
+        out["E1"] = "INCONCLUSIVE (n < 8)"
     return out
 
 

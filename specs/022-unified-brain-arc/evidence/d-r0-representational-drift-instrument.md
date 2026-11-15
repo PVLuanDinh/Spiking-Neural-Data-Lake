@@ -389,3 +389,22 @@ DEV-AGREEMENT NOT MET 2026-11-15
   agrees with itself (rho 0.867 vs ceil 0.863; mad 0.030 vs self_mad 0.030): the stochastic part is the authors'
   8-of-T x 10 subsampling, which section 2.4 fixes. Per section 2.4 the HELD-OUT read is not run unless the owner rules.
 - Full numbers: tools/d_r0_dev_checks.json.
+
+## 13. Amendment 2026-11-15 (owner in chat: "Yes to the components rule"): the agreement rule
+
+Before any HELD-OUT byte is read, `author_agreement_verdict`'s role in section 2.4 is replaced, for BOTH the DEV and
+the HELD-OUT conjunct, by the components rule: the relative clauses (rho >= max(0.9 x ceil, 0.8), median |ours -
+theirs| <= min(2 x self_mad, 0.05), n >= 200 neuron-sessions) must hold for CC_ws, CC_bs AND RDI, per stimulus.
+The absolute `ceil >= 0.9` clause is dropped.
+
+Why (evidence, not the DEV outcome): `research/representational-drift/agreement_rule_sim.py` (commit b71f4049), a
+synthetic test with a known answer and five planted bugs. At the DEV noise level (ceil 0.869) correct code passed the
+registered rule 0/6, the RDI-only relative rule 6/6 and the components rule 6/6; only the components rule caught the
+15-of-30 subsampling bug (0/6 pass vs 6/6). Disclosed limit: none of the three rules reliably catches same-half
+pairing or a missing rectification.
+
+Disclosure: this rule was chosen AFTER the DEV agreement reading (section 12) was seen. The registered clause is
+reported NOT MET (MOV ceil 0.863) in every write-up. DEV under the components rule (revision 2, eb4e63b4): MOV CC_ws
+rho 0.984 (ceil 0.985), CC_bs 0.976 (0.979), RDI 0.867 (0.863); PDG all >= 0.985; all MET.
+
+DEV-AGREEMENT MET 2026-11-15
