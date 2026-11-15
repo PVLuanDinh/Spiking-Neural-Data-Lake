@@ -89,3 +89,24 @@ gate flagged it. No number below was used to choose n.
   d1 difference mean +0.063 (about 4 SD) and d2 mean -0.064.
 - Target: power 0.74 at p+ = 0.9 for MET at >= 9 of 10 (exact binomial; 0.996 at p+ = 0.99); below that the reading is
   INCONCLUSIVE, never a null. A proper P1 design for a follow-up takes these SDs as its pilot.
+
+## Amendment S10, 2026-11-15 (owner "Start next steps"): the 10x re-test on units, written before any scaled run
+
+P8 amendment item 2: E-H2 read NOT MET (0/10) at 24 cause neurons; geometry may stabilise only in larger populations,
+so the one 10x re-test runs on the **units** axis.
+
+- **Change:** dims (64, 160, 80), so 240 cause neurons. Everything else as registered (inputs, settle, learning rule,
+  sessions, ticks, noise, 10 seeds, frozen twin), except REPEATS = 20 per probe per session: the decoder needs more
+  training trials than its 241 parameters (capacity guard), so 300 even-trial samples train it.
+- **Same hypotheses and rule:** E-H1, E-H2, E-H3, exact one-sided sign test, MET at >= 9 of 10; the frozen-twin red.
+- **Now readable:** the readout null-space split (30 classes in 240 dimensions leaves a 210-dimensional null space),
+  reported beside its matched-rank random control, Rule et al. (2020). Reported, not decided.
+- **Disposition:** E-H2 still NOT MET at 240 neurons -> a scale-tested null for this layer (the network's geometry is
+  not preserved at 24 or 240 units). E-H2 MET at 240 -> geometry preservation is scale-dependent, credited at 240 only.
+- **Sample size (P1):** one-shot 10 seeds, the same fixed count as the registered run so the two scales compare
+  directly; measured SD from the 24-unit run (d2 SD 0.023); effect p+ >= 0.9; target power 0.74 at p+ = 0.9.
+- Output: research/representational-drift/engine_pc_drift_scale10_result.json.
+- Disclosure before the scaled run (smoke test, unregistered seed 99, 30 ticks): the Procrustes re-alignment is
+  ILL-POSED at this scale -- it is fitted on 30 class means in 240 dimensions, so the rotation is underdetermined
+  outside their span (smoke: realigned accuracy 0.097). The realigned accuracy is reported as uninterpretable at
+  scale 10, never read. The registered scale-1 code path is unchanged (R1, R2, REPEATS default to 16, 8, 10).

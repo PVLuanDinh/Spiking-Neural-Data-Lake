@@ -449,6 +449,7 @@ def _shuffle_labels(s1, s2, seed):
 SEEDS = range(10)
 N_PROBES, REPEATS, SESSIONS, TICKS = 30, 10, 4, 300
 NOISE = 0.05
+R1, R2 = 16, 8  # the live LiveBrain dims; engine-pc --scale k multiplies both (amendment S10)
 
 
 def raw_context(rng):
@@ -477,7 +478,7 @@ def settle(net, x):
 def imaging(net, probes, rng):
     """(24, REPEATS, N_PROBES): measurement only; the network is copied so no state leaks back."""
     probe_net = copy.deepcopy(net)
-    out = np.zeros((24, REPEATS, len(probes)))
+    out = np.zeros((R1 + R2, REPEATS, len(probes)))
     for r in range(REPEATS):
         for j, p in enumerate(probes):
             out[:, r, j] = settle(probe_net, encode(p, rng))
@@ -490,7 +491,7 @@ def run_arm(seed, learn):
     rng_p = np.random.default_rng([seed, 1])
     probes = [raw_context(rng_p) for _ in range(N_PROBES)]
     x0 = encode(probes[0])
-    net = PredictiveCodingNetwork(dims=(len(x0), 16, 8), seed=seed)
+    net = PredictiveCodingNetwork(dims=(len(x0), R1, R2), seed=seed)
     stream = np.random.default_rng([seed, 2])  # identical stream in both arms
     noise = np.random.default_rng([seed, 3])  # identical trial noise in both arms
     sessions = []
@@ -558,7 +559,19 @@ def seed_sign_test(v, pos=True):
     return k, n, sum(math.comb(n, i) for i in range(k, n + 1)) / 2**n
 
 
-def engine_pc_main():
+def engine_pc_main(scale=1):
+    """The registered run (scale 1) or amendment S10's 10x re-test (scale 10: 240 neurons, 20 repeats)."""
+    global R1, R2, REPEATS
+    saved = (R1, R2, REPEATS)
+    if scale != 1:
+        R1, R2, REPEATS = 16 * scale, 8 * scale, 20
+    try:
+        return _engine_pc_run("" if scale == 1 else f"_scale{scale}")
+    finally:
+        R1, R2, REPEATS = saved
+
+
+def _engine_pc_run(suffix):
     per = []
     for seed in SEEDS:
         row = {"seed": seed}
@@ -599,7 +612,9 @@ def engine_pc_main():
             print(f"{arm} readout {k}: mean {np.mean(v):.4f}" if v else f"{arm} readout {k}: n/a")
     out = {"per_seed": per, "tests": {k: list(v) for k, v in tests.items()}}
     with open(
-        "research/representational-drift/engine_pc_drift_result.json", "w", encoding="utf-8"
+        f"research/representational-drift/engine_pc_drift{suffix}_result.json",
+        "w",
+        encoding="utf-8",
     ) as fh:
         json.dump(out, fh, indent=1, default=str)
     return 0
@@ -680,7 +695,7 @@ def _selfcheck():
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["engine-pc"]:
-        return engine_pc_main()
+        return engine_pc_main(int(argv[2]) if argv[1:2] == ["--scale"] else 1)
     if argv == ["--pin-ref"]:
         if REF_PATH.exists():
             print(f"refused: {REF_PATH} exists; a pin is never overwritten")
