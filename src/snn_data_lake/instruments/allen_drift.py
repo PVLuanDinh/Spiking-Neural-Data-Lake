@@ -278,6 +278,7 @@ def fetch(split):
     _bind_h5py()
     out = DATA / split
     out.mkdir(parents=True, exist_ok=True)
+    failed = 0
     for u in _pins(split):
         for _, exp_id, _ in u["sessions"]:
             dst = out / f"{exp_id}.npz"
@@ -287,6 +288,8 @@ def fetch(split):
                 print(u["container"], *extract(str(exp_id), eye_key(exp_id), str(dst)), flush=True)
             except Exception as e:  # reported, never imputed
                 print(f"FAILED {u['container']} {exp_id}: {type(e).__name__}: {e}", flush=True)
+                failed += 1
+    return failed
 
 
 def eye_key(exp_id):
@@ -553,6 +556,8 @@ def analyze_main(argv):
                 "refused: sealed read before the freeze (tools/d0_allen/FROZEN absent)"
             )
         rows, missing = run_split("sealed")
+        if not rows:  # never spend the one sealed read on an empty set (review fold)
+            raise SystemExit(f"refused: no sealed unit could be scored ({len(missing)} missing)")
         table = hypothesis_table(rows)
         for h, t in table.items():
             print(
@@ -600,8 +605,7 @@ def main(argv=None):
     if not argv:
         return _selfcheck()
     if argv[0] == "fetch":
-        fetch(argv[1])
-        return 0
+        return 1 if fetch(argv[1]) else 0  # any failed session -> non-zero (review fold)
     if argv[0] == "sealed" and (DATA / "heldout_result.json").exists():
         raise SystemExit(
             "refused: the sealed read already ran once (data/drift/allen/heldout_result.json)"

@@ -289,7 +289,7 @@ def readout(sessions):
 
 def seed_sign_test(v, pos=True):
     v = np.asarray(v)
-    v = v[v != 0]
+    v = v[np.isfinite(v) & (v != 0)]
     k = int(np.sum(v > 0 if pos else v < 0))
     n = v.size
     return k, n, sum(math.comb(n, i) for i in range(k, n + 1)) / 2**n

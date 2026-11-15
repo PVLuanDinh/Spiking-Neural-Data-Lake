@@ -256,12 +256,17 @@ def dev_control(fields, seed=SEED, weeks=WEEKS):
     each, 8 picked), D_null = mean neuron diff (arm A - arm B) over present weeks; bar max(0.05, 3 x bootstrap SE)."""
     diffs = []
     for k, f in enumerate(fields):
+        half = (
+            f.mov1.shape[1] // 2
+        )  # amendment 9: floor(T/2) trials per arm, the same count in both
+        if half < 8:
+            raise ValueError(f"field {k}: floor(T/2) = {half} < 8 MOV trials per control arm")
         rng = np.random.default_rng([seed, 4, k])
         per = {}
         for w in weeks:
             for i in np.flatnonzero(f.present.get(w, [])):
-                a = mov_index(f.mov1[i][0::2], f.mov[w][i][0::2], rng).rdi
-                b = mov_index(f.mov1[i][1::2], f.mov[w][i][1::2], rng).rdi
+                a = mov_index(f.mov1[i][: 2 * half][0::2], f.mov[w][i][: 2 * half][0::2], rng).rdi
+                b = mov_index(f.mov1[i][: 2 * half][1::2], f.mov[w][i][: 2 * half][1::2], rng).rdi
                 per.setdefault(i, []).append(a - b)
         diffs += [float(np.mean(v)) for v in per.values()]
     diffs = np.array(diffs)
@@ -417,7 +422,7 @@ def run(split, reader=read_field, seed=0, data_dir=None):
         d[m] = None if any(v is None for v in vals) else float(np.mean(vals))
         n_neurons[m] = [int(f.mov1.shape[0]) for f in fields]
     out = {"split": split, "D": d, "n_neurons": n_neurons}
-    agree_ok = True
+    agree_ok = split == "dev"  # held-out: no authors' values -> the gate cannot pass (review fold)
     if all(
         f.theirs is not None for f in pooled
     ):  # amendment 13: the components rule, recomputed on this split

@@ -193,7 +193,7 @@ def decoder_accuracy(x_train, y_train, x_test, y_test, k) -> float:
     from snn_data_lake.instruments.prior_drift_harness import fit_readout, predict
 
     x_train = np.asarray(x_train, dtype=np.float64)
-    if x_train.shape[1] + 1 > x_train.shape[0]:
+    if x_train.shape[1] + 1 >= x_train.shape[0]:
         raise CapacityRefusal(
             f"{x_train.shape[1]} features + bias > {x_train.shape[0]} training samples: the readout "
             "would interpolate any labelling"
@@ -254,7 +254,13 @@ def read_drift(x0, y0, x1, y1, k, null_draws=200, seed=0) -> ReadoutDrift:
     if np.any(delta):
         w = fit_readout(x0[tr0], y0[tr0], k)[:-1].T  # (k, n): weights, bias row dropped
         null = readout_null_split(delta, w)
-        rand = float(np.mean(random_readout_null_fractions(delta, w.shape[0], null_draws, seed)))
+        rand = float(
+            np.mean(
+                random_readout_null_fractions(
+                    delta, int(np.linalg.matrix_rank(w)), null_draws, seed
+                )
+            )
+        )
     else:
         null = rand = None
     return ReadoutDrift(drift_index(m0.T, m1.T), null, rand, acc0, acc1, acc1r)
@@ -295,6 +301,11 @@ def _readout_reds():
     try:
         decoder_accuracy(rng.normal(size=(10, 10)), np.arange(10) % 2, np.zeros((1, 10)), [0], 2)
         fails.append("red5: an over-parameterised decoder was not refused")
+    except CapacityRefusal:
+        pass
+    try:  # the boundary: 9 features + bias = 10 parameters on 10 samples also interpolates (review fold)
+        decoder_accuracy(rng.normal(size=(10, 9)), np.arange(10) % 2, np.zeros((1, 9)), [0], 2)
+        fails.append("red5: the d + 1 == n boundary was not refused")
     except CapacityRefusal:
         pass
     shear = np.eye(x.shape[1])
