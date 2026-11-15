@@ -48,3 +48,19 @@ fixed one-shot count chosen for the deadline, not a power-derived P1 design (dis
   null fraction is 0 for the readout and its random control alike. It is reported as vacuous, never read.
 - The smoke test found and fixed one ordering bug in the script (trials must be probe-major so `read_drift`'s
   even/odd split falls on repeats). No registered seed was run before this commit.
+
+## Results, 2026-11-15 (10 registered seeds, run once at b878ee89)
+
+| test | k / n | exact p | verdict |
+|---|---|---|---|
+| E-H1 d1(LEARN) - d1(FROZEN) > 0 | 10/10 | 0.00098 | MET |
+| E-H2 d2(LEARN) > 0 | 0/10 | 1.0 | NOT MET (all 10 negative) |
+| E-H3 d3(LEARN) < 0 | 10/10 | 0.00098 | MET |
+| RED d1(FROZEN) > 0 (must not be met) | 5/10 | 0.62 | not met, as required |
+
+- d1: LEARN mean +0.0627 (sd 0.0154); FROZEN +0.00005 (sd 0.0017). d2: LEARN -0.0645 (sd 0.023); FROZEN +0.0005.
+  d3: LEARN -1.53e-4 per tick; FROZEN -1.1e-6.
+- Frozen readout (probe identity, 30 classes, chance 0.033): session 0 accuracy 0.647 in both arms; at session 3
+  LEARN 0.419 vs FROZEN 0.642; after Procrustes realignment LEARN 0.545, FROZEN 0.582.
+- Null-space split: vacuous (0 in both arms and in the random control), as disclosed before the run.
+- Full per-seed numbers: research/representational-drift/engine_pc_drift_result.json.
