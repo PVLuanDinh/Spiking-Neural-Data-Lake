@@ -200,3 +200,18 @@ The three frozen blocks are saved as `tools/d0_allen/{rangefile,extract,analyze_
 - DEV note: the DEV reading predates the section 3 run-only fallback; with it, DEV d4 is 3/4 positive (mean 0.0013)
   instead of 2/4. Descriptive only.
 - The sealed split is read ONCE from here (`tools/d0_allen/FROZEN` now exists).
+
+## 12. Results, 2026-11-15 (sealed read, once, at the frozen analysis c8b203cf; 44/44 units scored, 0 missing)
+
+| H | k / n (crit 30) | exact p | mean [bootstrap 95%] | median | verdict |
+|---|---|---|---|---|---|
+| H1 d1 > 0 | 44/44 | 5.7e-14 | +0.217 [+0.192, +0.242] | +0.217 | MET |
+| H2 d2 > 0 | 17/44 | 0.95 | -0.028 [-0.073, +0.017] | -0.044 | NOT MET (observed share 0.39) |
+| H3 d3 < 0 | 31/44 | 0.0048 | -0.0069 [-0.0190, +0.0040] | -0.0080 | MET (sign test); mean CI includes 0 |
+| H4 d4 > 0 | 13/44 | 0.998 | -0.0046 [-0.0073, -0.0019] | -0.0045 | NOT MET; share d4/d1 = -0.021 |
+
+- Matched cells per unit: median 59.5, range 6-224. Run-only fallback sessions: 13 of 132. Secondary d4 (running only):
+  mean -0.0024, 16/44 positive.
+- EXPLORATORY (not pre-registered, decides nothing): mean d2 is -0.053 in the 30 units with < 100 matched cells and
+  +0.025 in the 14 with >= 100, consistent with segment-level RSA being noisy at low cell counts.
+- Per-unit statistics: research/representational-drift/allen_heldout_result.json.
