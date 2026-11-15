@@ -1,0 +1,268 @@
+{
+ "what": "MAP D0 Part A: the DEV / sealed held-out split of Allen Visual Coding 2-photon V1 containers, fixed before any trace was read (2026-11-02)",
+ "rule": "excitatory Cre, VISp, not failed, sessions A+B+C/C2, eye tracking in all three; sorted by container id; first 4 distinct mice = DEV; the rest SEALED (held-out), not read",
+ "source": "api.brain-map.org model::ExperimentContainer (590 containers), filtered locally",
+ "eligible_container_ids": [
+  511498742,
+  511510675,
+  511510718,
+  511510855,
+  511510955,
+  517328083,
+  524691282,
+  526481129,
+  528792730,
+  528889127,
+  531134088,
+  535575493,
+  536323956,
+  538803515,
+  540993888,
+  545578995,
+  555040113,
+  571137444,
+  588503721,
+  595806298,
+  598564171,
+  602616431,
+  603425700,
+  616886391,
+  627823571,
+  627823692,
+  637998953,
+  643592301,
+  644909309,
+  647155120,
+  648377366,
+  649401934,
+  650389885,
+  652842570,
+  653122665,
+  653125128,
+  653932503,
+  656939125,
+  657016265,
+  657082052,
+  658536109,
+  660065749,
+  661732156,
+  661744802,
+  665722299,
+  666589599,
+  674802081,
+  679702882,
+  680156909,
+  682734790,
+  686912320,
+  701412138,
+  702934962
+ ],
+ "dev": [
+  {
+   "container": 511498742,
+   "specimen": 502185555,
+   "cre": "Scnn1a-Tg3-Cre",
+   "depth": 350,
+   "sessions": [
+    [
+     "three_session_A",
+     511534603,
+     "2016-04-01"
+    ],
+    [
+     "three_session_B",
+     511434920,
+     "2016-03-31"
+    ],
+    [
+     "three_session_C",
+     511242327,
+     "2016-03-30"
+    ]
+   ]
+  },
+  {
+   "container": 511510675,
+   "specimen": 501139891,
+   "cre": "Rorb-IRES2-Cre",
+   "depth": 275,
+   "sessions": [
+    [
+     "three_session_A",
+     510214538,
+     "2016-03-24"
+    ],
+    [
+     "three_session_B",
+     509962140,
+     "2016-03-23"
+    ],
+    [
+     "three_session_C",
+     509729072,
+     "2016-03-22"
+    ]
+   ]
+  },
+  {
+   "container": 511510718,
+   "specimen": 505143644,
+   "cre": "Cux2-CreERT2",
+   "depth": 175,
+   "sessions": [
+    [
+     "three_session_A",
+     510514474,
+     "2016-03-26"
+    ],
+    [
+     "three_session_B",
+     510345479,
+     "2016-03-25"
+    ],
+    [
+     "three_session_C",
+     510174759,
+     "2016-03-24"
+    ]
+   ]
+  },
+  {
+   "container": 511510855,
+   "specimen": 497258322,
+   "cre": "Cux2-CreERT2",
+   "depth": 175,
+   "sessions": [
+    [
+     "three_session_A",
+     510517131,
+     "2016-03-26"
+    ],
+    [
+     "three_session_B",
+     510705057,
+     "2016-03-28"
+    ],
+    [
+     "three_session_C",
+     509644421,
+     "2016-03-22"
+    ]
+   ]
+  }
+ ],
+ "sealed_heldout_container_ids": [
+  511510955,
+  517328083,
+  524691282,
+  526481129,
+  528792730,
+  528889127,
+  531134088,
+  535575493,
+  536323956,
+  538803515,
+  540993888,
+  545578995,
+  555040113,
+  571137444,
+  588503721,
+  595806298,
+  598564171,
+  602616431,
+  603425700,
+  616886391,
+  627823571,
+  627823692,
+  637998953,
+  643592301,
+  644909309,
+  647155120,
+  648377366,
+  649401934,
+  650389885,
+  652842570,
+  653122665,
+  653125128,
+  653932503,
+  656939125,
+  657016265,
+  657082052,
+  658536109,
+  660065749,
+  661732156,
+  661744802,
+  665722299,
+  666589599,
+  674802081,
+  679702882,
+  680156909,
+  682734790,
+  686912320,
+  701412138,
+  702934962
+ ],
+ "dev_sources": {
+  "509644421": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 509644421",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/509644421_610493116_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-497258322/sub-497258322_ses-509644421-StimC_ophys.nwb"
+  },
+  "509729072": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 509729072",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/509729072_610493123_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-501139891/sub-501139891_ses-509729072-StimC_ophys.nwb"
+  },
+  "509962140": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 509962140",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/509962140_610493207_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-501139891/sub-501139891_ses-509962140-StimB_ophys.nwb"
+  },
+  "510174759": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 510174759",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/510174759_610493249_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-505143644/sub-505143644_ses-510174759-StimC_ophys.nwb"
+  },
+  "510214538": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 510214538",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/510214538_610493256_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-501139891/sub-501139891_ses-510214538-StimA_ophys.nwb"
+  },
+  "510345479": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 510345479",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/510345479_610493291_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-505143644/sub-505143644_ses-510345479-StimB_ophys.nwb"
+  },
+  "510514474": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 510514474",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/510514474_610493326_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-505143644/sub-505143644_ses-510514474-StimA_ophys.nwb"
+  },
+  "510517131": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 510517131",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/510517131_610493340_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-497258322/sub-497258322_ses-510517131-StimA_ophys.nwb"
+  },
+  "510705057": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 510705057",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/510705057_610493452_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-497258322/sub-497258322_ses-510705057-StimB_ophys.nwb"
+  },
+  "511242327": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 511242327",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/511242327_610493522_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-502185555/sub-502185555_ses-511242327-StimC_ophys.nwb"
+  },
+  "511434920": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 511434920",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/511434920_610493555_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-502185555/sub-502185555_ses-511434920-StimB_ophys.nwb"
+  },
+  "511534603": {
+   "processed_nwb": "api.brain-map.org well_known_file type 514173063 for ophys_experiment 511534603",
+   "eye": "https://allen-brain-observatory.s3.amazonaws.com/visual-coding-2p/ophys_eye_gaze_mapping/511534603_610493597_eyetracking_dlc_to_screen_mapping.h5",
+   "dandi_000728_raw": "sub-502185555/sub-502185555_ses-511534603-StimA_ophys.nwb"
+  }
+ },
+ "licence": "CC-BY-4.0 (DANDI 000728 metadata, spdx); ingest_guard.LICENSE_ALLOW contains cc-by-4.0"
+}

@@ -1,0 +1,991 @@
+{
+ "what": "D0 Part A held-out units: one container per sealed mouse (the lowest container id), derived by rule from d0_partA_split_pin.json before any sealed trace was read",
+ "derived_from": {
+  "file": "tools/d0_partA_split_pin.json",
+  "sha256": "66cb84390831e5056a1c5971616ec38841fbf6d176c4148cc4dd415b5a634f2d"
+ },
+ "rule": "group sealed_heldout_container_ids by specimen; keep the lowest container id per specimen; the other containers of a multi-container mouse are EXCLUDED and never read",
+ "n_units": 44,
+ "units": [
+  {
+   "container": 511510955,
+   "specimen": 501800291,
+   "cre": "Scnn1a-Tg3-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     508753256,
+     "2016-03-18"
+    ],
+    [
+     "three_session_B",
+     508546728,
+     "2016-03-17"
+    ],
+    [
+     "three_session_C",
+     508220632,
+     "2016-03-15"
+    ]
+   ]
+  },
+  {
+   "container": 517328083,
+   "specimen": 509522655,
+   "cre": "Emx1-IRES-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     526504941,
+     "2016-06-28"
+    ],
+    [
+     "three_session_B",
+     526928092,
+     "2016-06-30"
+    ],
+    [
+     "three_session_C",
+     527583578,
+     "2016-07-06"
+    ]
+   ]
+  },
+  {
+   "container": 524691282,
+   "specimen": 515910155,
+   "cre": "Cux2-CreERT2",
+   "sessions": [
+    [
+     "three_session_A",
+     524691284,
+     "2016-06-20"
+    ],
+    [
+     "three_session_B",
+     524848692,
+     "2016-06-21"
+    ],
+    [
+     "three_session_C",
+     525368285,
+     "2016-06-23"
+    ]
+   ]
+  },
+  {
+   "container": 526481129,
+   "specimen": 515912950,
+   "cre": "Rorb-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     527048992,
+     "2016-07-01"
+    ],
+    [
+     "three_session_B",
+     528480613,
+     "2016-07-12"
+    ],
+    [
+     "three_session_C",
+     526768996,
+     "2016-06-29"
+    ]
+   ]
+  },
+  {
+   "container": 528792730,
+   "specimen": 519772020,
+   "cre": "Nr5a1-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     529693740,
+     "2016-07-19"
+    ],
+    [
+     "three_session_B",
+     528972913,
+     "2016-07-14"
+    ],
+    [
+     "three_session_C",
+     528792732,
+     "2016-07-13"
+    ]
+   ]
+  },
+  {
+   "container": 528889127,
+   "specimen": 518632289,
+   "cre": "Scnn1a-Tg3-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     530645663,
+     "2016-07-25"
+    ],
+    [
+     "three_session_B",
+     530773844,
+     "2016-07-26"
+    ],
+    [
+     "three_session_C",
+     531008833,
+     "2016-07-27"
+    ]
+   ]
+  },
+  {
+   "container": 535575493,
+   "specimen": 521222627,
+   "cre": "Scnn1a-Tg3-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     539497234,
+     "2016-08-16"
+    ],
+    [
+     "three_session_B",
+     539643002,
+     "2016-08-17"
+    ],
+    [
+     "three_session_C",
+     540609585,
+     "2016-08-23"
+    ]
+   ]
+  },
+  {
+   "container": 536323956,
+   "specimen": 524697480,
+   "cre": "Emx1-IRES-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     540684467,
+     "2016-08-23"
+    ],
+    [
+     "three_session_B",
+     541048140,
+     "2016-08-24"
+    ],
+    [
+     "three_session_C",
+     539515366,
+     "2016-08-16"
+    ]
+   ]
+  },
+  {
+   "container": 538803515,
+   "specimen": 527109693,
+   "cre": "Nr5a1-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     539290504,
+     "2016-08-15"
+    ],
+    [
+     "three_session_B",
+     538803517,
+     "2016-08-11"
+    ],
+    [
+     "three_session_C",
+     539000397,
+     "2016-08-12"
+    ]
+   ]
+  },
+  {
+   "container": 545578995,
+   "specimen": 529503639,
+   "cre": "Emx1-IRES-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     546716391,
+     "2016-09-23"
+    ],
+    [
+     "three_session_B",
+     545578997,
+     "2016-09-16"
+    ],
+    [
+     "three_session_C2",
+     546341286,
+     "2016-09-21"
+    ]
+   ]
+  },
+  {
+   "container": 555040113,
+   "specimen": 544691086,
+   "cre": "Rbp4-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     559192380,
+     "2016-11-22"
+    ],
+    [
+     "three_session_B",
+     559082739,
+     "2016-11-21"
+    ],
+    [
+     "three_session_C2",
+     558581038,
+     "2016-11-17"
+    ]
+   ]
+  },
+  {
+   "container": 571137444,
+   "specimen": 561035974,
+   "cre": "Rbp4-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     571137446,
+     "2017-02-24"
+    ],
+    [
+     "three_session_B",
+     571177752,
+     "2017-02-25"
+    ],
+    [
+     "three_session_C2",
+     571494829,
+     "2017-03-01"
+    ]
+   ]
+  },
+  {
+   "container": 588503721,
+   "specimen": 572401673,
+   "cre": "Rbp4-Cre_KL100",
+   "sessions": [
+    [
+     "three_session_A",
+     592407200,
+     "2017-05-30"
+    ],
+    [
+     "three_session_B",
+     591414748,
+     "2017-05-24"
+    ],
+    [
+     "three_session_C2",
+     591537010,
+     "2017-05-25"
+    ]
+   ]
+  },
+  {
+   "container": 595806298,
+   "specimen": 580514822,
+   "cre": "Emx1-IRES-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     595806300,
+     "2017-06-15"
+    ],
+    [
+     "three_session_B",
+     596525298,
+     "2017-06-19"
+    ],
+    [
+     "three_session_C2",
+     596769570,
+     "2017-06-20"
+    ]
+   ]
+  },
+  {
+   "container": 598564171,
+   "specimen": 587083131,
+   "cre": "Rbp4-Cre_KL100",
+   "sessions": [
+    [
+     "three_session_A",
+     598564173,
+     "2017-06-27"
+    ],
+    [
+     "three_session_B",
+     601260046,
+     "2017-07-03"
+    ],
+    [
+     "three_session_C2",
+     599586915,
+     "2017-06-30"
+    ]
+   ]
+  },
+  {
+   "container": 602616431,
+   "specimen": 590563964,
+   "cre": "Nr5a1-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     603224878,
+     "2017-07-17"
+    ],
+    [
+     "three_session_B",
+     602857315,
+     "2017-07-14"
+    ],
+    [
+     "three_session_C2",
+     603905059,
+     "2017-07-24"
+    ]
+   ]
+  },
+  {
+   "container": 603425700,
+   "specimen": 593402247,
+   "cre": "Ntsr1-Cre_GN220",
+   "sessions": [
+    [
+     "three_session_A",
+     604145810,
+     "2017-07-25"
+    ],
+    [
+     "three_session_B",
+     603516552,
+     "2017-07-19"
+    ],
+    [
+     "three_session_C2",
+     606227591,
+     "2017-08-03"
+    ]
+   ]
+  },
+  {
+   "container": 616886391,
+   "specimen": 603750239,
+   "cre": "Fezf2-CreER",
+   "sessions": [
+    [
+     "three_session_A",
+     623347352,
+     "2017-09-11"
+    ],
+    [
+     "three_session_B",
+     636930038,
+     "2017-09-18"
+    ],
+    [
+     "three_session_C2",
+     617429820,
+     "2017-09-07"
+    ]
+   ]
+  },
+  {
+   "container": 627823571,
+   "specimen": 603751387,
+   "cre": "Tlx3-Cre_PL56",
+   "sessions": [
+    [
+     "three_session_A",
+     643645390,
+     "2017-10-16"
+    ],
+    [
+     "three_session_B",
+     644660705,
+     "2017-10-20"
+    ],
+    [
+     "three_session_C2",
+     644909644,
+     "2017-10-23"
+    ]
+   ]
+  },
+  {
+   "container": 627823692,
+   "specimen": 605677257,
+   "cre": "Ntsr1-Cre_GN220",
+   "sessions": [
+    [
+     "three_session_A",
+     627823695,
+     "2017-09-14"
+    ],
+    [
+     "three_session_B",
+     629789161,
+     "2017-09-15"
+    ],
+    [
+     "three_session_C2",
+     636889229,
+     "2017-09-18"
+    ]
+   ]
+  },
+  {
+   "container": 637998953,
+   "specimen": 606651548,
+   "cre": "Fezf2-CreER",
+   "sessions": [
+    [
+     "three_session_A",
+     637998955,
+     "2017-09-21"
+    ],
+    [
+     "three_session_B",
+     638754323,
+     "2017-09-25"
+    ],
+    [
+     "three_session_C2",
+     639254728,
+     "2017-09-28"
+    ]
+   ]
+  },
+  {
+   "container": 643592301,
+   "specimen": 615618755,
+   "cre": "Fezf2-CreER",
+   "sessions": [
+    [
+     "three_session_A",
+     643592303,
+     "2017-10-16"
+    ],
+    [
+     "three_session_B",
+     644910997,
+     "2017-10-23"
+    ],
+    [
+     "three_session_C2",
+     644949350,
+     "2017-10-24"
+    ]
+   ]
+  },
+  {
+   "container": 644909309,
+   "specimen": 617941978,
+   "cre": "Ntsr1-Cre_GN220",
+   "sessions": [
+    [
+     "three_session_A",
+     645086975,
+     "2017-10-26"
+    ],
+    [
+     "three_session_B",
+     645035917,
+     "2017-10-25"
+    ],
+    [
+     "three_session_C2",
+     644909311,
+     "2017-10-23"
+    ]
+   ]
+  },
+  {
+   "container": 647155120,
+   "specimen": 617884009,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     647155122,
+     "2017-11-08"
+    ],
+    [
+     "three_session_B",
+     648389302,
+     "2017-11-14"
+    ],
+    [
+     "three_session_C2",
+     648186871,
+     "2017-11-13"
+    ]
+   ]
+  },
+  {
+   "container": 648377366,
+   "specimen": 642166662,
+   "cre": "Tlx3-Cre_PL56",
+   "sessions": [
+    [
+     "three_session_A",
+     649938038,
+     "2017-11-21"
+    ],
+    [
+     "three_session_B",
+     648644110,
+     "2017-11-15"
+    ],
+    [
+     "three_session_C2",
+     648377368,
+     "2017-11-14"
+    ]
+   ]
+  },
+  {
+   "container": 649401934,
+   "specimen": 639706978,
+   "cre": "Rbp4-Cre_KL100",
+   "sessions": [
+    [
+     "three_session_A",
+     649401936,
+     "2017-11-20"
+    ],
+    [
+     "three_session_B",
+     652340572,
+     "2017-12-06"
+    ],
+    [
+     "three_session_C2",
+     653054766,
+     "2017-12-12"
+    ]
+   ]
+  },
+  {
+   "container": 650389885,
+   "specimen": 643479450,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     652094901,
+     "2017-12-05"
+    ],
+    [
+     "three_session_B",
+     650512363,
+     "2017-11-29"
+    ],
+    [
+     "three_session_C2",
+     650389887,
+     "2017-11-28"
+    ]
+   ]
+  },
+  {
+   "container": 652842570,
+   "specimen": 644548932,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     652842572,
+     "2017-12-08"
+    ],
+    [
+     "three_session_B",
+     652988777,
+     "2017-12-11"
+    ],
+    [
+     "three_session_C2",
+     653053207,
+     "2017-12-12"
+    ]
+   ]
+  },
+  {
+   "container": 653125128,
+   "specimen": 644549836,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     653125130,
+     "2017-12-13"
+    ],
+    [
+     "three_session_B",
+     653923501,
+     "2017-12-19"
+    ],
+    [
+     "three_session_C2",
+     653552163,
+     "2017-12-18"
+    ]
+   ]
+  },
+  {
+   "container": 653932503,
+   "specimen": 645355944,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     653932505,
+     "2017-12-19"
+    ],
+    [
+     "three_session_B",
+     656381309,
+     "2017-12-22"
+    ],
+    [
+     "three_session_C2",
+     654920038,
+     "2017-12-21"
+    ]
+   ]
+  },
+  {
+   "container": 656939125,
+   "specimen": 645148351,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     657080632,
+     "2018-01-11"
+    ],
+    [
+     "three_session_B",
+     656939127,
+     "2018-01-09"
+    ],
+    [
+     "three_session_C2",
+     657012597,
+     "2018-01-10"
+    ]
+   ]
+  },
+  {
+   "container": 657016265,
+   "specimen": 646855414,
+   "cre": "Tlx3-Cre_PL56",
+   "sessions": [
+    [
+     "three_session_A",
+     657016267,
+     "2018-01-10"
+    ],
+    [
+     "three_session_B",
+     657087057,
+     "2018-01-11"
+    ],
+    [
+     "three_session_C2",
+     657892406,
+     "2018-01-19"
+    ]
+   ]
+  },
+  {
+   "container": 657082052,
+   "specimen": 647086913,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     657082055,
+     "2018-01-11"
+    ],
+    [
+     "three_session_B",
+     657469734,
+     "2018-01-16"
+    ],
+    [
+     "three_session_C2",
+     657649672,
+     "2018-01-17"
+    ]
+   ]
+  },
+  {
+   "container": 658536109,
+   "specimen": 651725217,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     658536111,
+     "2018-01-24"
+    ],
+    [
+     "three_session_B",
+     658854887,
+     "2018-01-25"
+    ],
+    [
+     "three_session_C2",
+     659771301,
+     "2018-01-30"
+    ]
+   ]
+  },
+  {
+   "container": 660065749,
+   "specimen": 652809884,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     664404274,
+     "2018-02-15"
+    ],
+    [
+     "three_session_B",
+     663873076,
+     "2018-02-14"
+    ],
+    [
+     "three_session_C2",
+     667376208,
+     "2018-02-26"
+    ]
+   ]
+  },
+  {
+   "container": 661732156,
+   "specimen": 654610564,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     663485329,
+     "2018-02-13"
+    ],
+    [
+     "three_session_B",
+     662989044,
+     "2018-02-12"
+    ],
+    [
+     "three_session_C2",
+     661753184,
+     "2018-02-07"
+    ]
+   ]
+  },
+  {
+   "container": 661744802,
+   "specimen": 651725139,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     662033243,
+     "2018-02-05"
+    ],
+    [
+     "three_session_B",
+     661744804,
+     "2018-02-06"
+    ],
+    [
+     "three_session_C2",
+     662107986,
+     "2018-02-07"
+    ]
+   ]
+  },
+  {
+   "container": 665722299,
+   "specimen": 652809665,
+   "cre": "Ntsr1-Cre_GN220",
+   "sessions": [
+    [
+     "three_session_A",
+     665722301,
+     "2018-02-20"
+    ],
+    [
+     "three_session_B",
+     666563739,
+     "2018-02-21"
+    ],
+    [
+     "three_session_C2",
+     667721307,
+     "2018-02-27"
+    ]
+   ]
+  },
+  {
+   "container": 666589599,
+   "specimen": 656145286,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     667364442,
+     "2018-02-26"
+    ],
+    [
+     "three_session_B",
+     667011230,
+     "2018-02-23"
+    ],
+    [
+     "three_session_C2",
+     666589601,
+     "2018-02-22"
+    ]
+   ]
+  },
+  {
+   "container": 674802081,
+   "specimen": 661977224,
+   "cre": "Fezf2-CreER",
+   "sessions": [
+    [
+     "three_session_A",
+     674679019,
+     "2018-03-20"
+    ],
+    [
+     "three_session_B",
+     675067662,
+     "2018-03-21"
+    ],
+    [
+     "three_session_C2",
+     675478137,
+     "2018-03-22"
+    ]
+   ]
+  },
+  {
+   "container": 679702882,
+   "specimen": 661407746,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     679702884,
+     "2018-04-03"
+    ],
+    [
+     "three_session_B",
+     681674286,
+     "2018-04-09"
+    ],
+    [
+     "three_session_C2",
+     680601319,
+     "2018-04-05"
+    ]
+   ]
+  },
+  {
+   "container": 680156909,
+   "specimen": 664877009,
+   "cre": "Slc17a7-IRES2-Cre",
+   "sessions": [
+    [
+     "three_session_A",
+     680156911,
+     "2018-04-04"
+    ],
+    [
+     "three_session_B",
+     681673022,
+     "2018-04-09"
+    ],
+    [
+     "three_session_C2",
+     682054669,
+     "2018-04-10"
+    ]
+   ]
+  },
+  {
+   "container": 686912320,
+   "specimen": 666788991,
+   "cre": "Ntsr1-Cre_GN220",
+   "sessions": [
+    [
+     "three_session_A",
+     689388034,
+     "2018-04-24"
+    ],
+    [
+     "three_session_B",
+     691201201,
+     "2018-04-26"
+    ],
+    [
+     "three_session_C2",
+     690004696,
+     "2018-04-25"
+    ]
+   ]
+  },
+  {
+   "container": 701412138,
+   "specimen": 680974785,
+   "cre": "Cux2-CreERT2",
+   "sessions": [
+    [
+     "three_session_A",
+     704298735,
+     "2018-05-31"
+    ],
+    [
+     "three_session_B",
+     704826374,
+     "2018-06-01"
+    ],
+    [
+     "three_session_C2",
+     705412356,
+     "2018-06-04"
+    ]
+   ]
+  }
+ ],
+ "excluded_second_containers": [
+  531134088,
+  540993888,
+  653122665,
+  682734790,
+  702934962
+ ],
+ "frozen_pipeline_sha256": {
+  "rangefile.py": "cb00d4cbe6c03d6c24c1e84731aef63d085fd29f14ebcfc32b3800371177ce05",
+  "extract.py": "d7829a6376b7b5591f18d23f9c31a8fcab35ea255236201c6c39babf6df809e0",
+  "analyze_dev.py": "144932391e8caf7fc1deb25f2af834b6da3181980d6fb8fcd7685d2445977b5a"
+ }
+}
