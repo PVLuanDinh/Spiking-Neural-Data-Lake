@@ -64,6 +64,7 @@ EVIDENCE = (
 )
 OUT = ROOT / "tools" / "d_r0_partA.json"
 CHECKS_OUT = ROOT / "tools" / "d_r0_dev_checks.json"
+COMPONENTS = ("CC_ws", "CC_bs", "RDI")  # DriftReading order; StabilityData field names
 LOG = ROOT / "tools" / "d_r0_dev_log.jsonl"
 PIN_PATH = ROOT / "tools" / "marks_goard_pin.json"
 DEV = (2, 3, 10, 11)
@@ -172,8 +173,14 @@ def _read_one(mouse, folder, split, data_dir, pin, **kw):
     stab = mat("StabilityData.mat")[
         "StabilityData"
     ]  # RDI rows = sessions 2..n vs session 1, cols = all neurons
-    theirs = {
-        key: {w: np.asarray(getattr(stab, name).RDI)[s - 1, elig] for s, w in sessions}
+    theirs = {  # per week: (eligible neurons, 3) = the authors' (CC_ws, CC_bs, RDI)
+        key: {
+            w: np.stack(
+                [np.asarray(getattr(getattr(stab, name), c))[s - 1, elig] for c in COMPONENTS],
+                axis=1,
+            )
+            for s, w in sessions
+        }
         for key, name in (("mov", "NatMov"), ("pdg", "PDG"))
     }
     return FieldData(
@@ -193,32 +200,53 @@ def _read_one(mouse, folder, split, data_dir, pin, **kw):
 # distinct-from: instruments/joint_mask_search.py -- constructed per-seed readings of C22; no RDI.
 # The verdicts are REUSED from representational_drift (author_agreement_verdict, mov_index, stability_index).
 def _neuron_sessions(f, stim, seed, weeks=WEEKS):
-    """Our RDI and the authors' for every (eligible neuron, scored week) present that week, as two arrays."""
+    """Ours and the authors' (CC_ws, CC_bs, RDI) for every (eligible neuron, scored week) present that week:
+    two (k, 3) arrays."""
     rng = np.random.default_rng(seed)
     fn, s1, sw = (mov_index, f.mov1, f.mov) if stim == "mov" else (stability_index, f.pdg1, f.pdg)
     ours, theirs = [], []
     for w in weeks:
         for i in np.flatnonzero(f.present.get(w, [])):
-            ours.append(fn(s1[i], sw[w][i], rng).rdi)
-            theirs.append(float(f.theirs[stim][w][i]))
-    return np.array(ours), np.array(theirs)
+            ours.append(tuple(fn(s1[i], sw[w][i], rng)))
+            theirs.append(f.theirs[stim][w][i])
+    return (
+        np.array(ours, dtype=np.float64).reshape(-1, 3),
+        np.array(theirs, dtype=np.float64).reshape(-1, 3),
+    )
+
+
+# distinct-from: readout/interaction_learning.py -- one subprocess per seed/arm (docstring); no RDI.
+# distinct-from: instruments/h01_partb_tangential.py -- a mixture's held-out advantage per seed; no RDI.
+def _component(x1, x2, th):
+    """Ceiling, self_mad, rho, mad for one component, and the relative (doc-rule) pass: rho >= max(0.9 ceil, 0.8),
+    mad <= min(2 self_mad, 0.05), n >= 200 -- author_agreement_verdict without its absolute ceil >= 0.9 clause."""
+    ceil = float(spearmanr(x1, x2)[0])
+    self_mad = float(np.median(np.abs(x1 - x2)))
+    rho = float(spearmanr(x1, th)[0])
+    mad = float(np.median(np.abs(x1 - th)))
+    rel = rho >= max(0.9 * ceil, 0.8) and mad <= min(2 * self_mad, 0.05) and len(x1) >= 200
+    return {"ceil": ceil, "self_mad": self_mad, "rho": rho, "mad": mad, "relative_pass": bool(rel)}
 
 
 def dev_agreement(fields, stim):
-    """Pre-reg 2.4 per stimulus over all `fields`: ceil/self_mad from seeds 1 vs 2, ours = seed 1 vs StabilityData.RDI.
-    Neuron-sessions whose authors' RDI is not finite are dropped and counted."""
-    r1, th = (np.concatenate(x) for x in zip(*(_neuron_sessions(f, stim, 1) for f in fields)))
-    r2 = np.concatenate([_neuron_sessions(f, stim, 2)[0] for f in fields])
-    ok = np.isfinite(th) & np.isfinite(r1) & np.isfinite(r2)
-    ceil = float(spearmanr(r1[ok], r2[ok])[0])
-    self_mad = float(np.median(np.abs(r1[ok] - r2[ok])))
-    met, rho, mad = author_agreement_verdict(ceil, self_mad, r1[ok], th[ok])
+    """Pre-reg 2.4 per stimulus over all `fields`: seeds 1 vs 2 give the ceiling, ours = seed 1 vs StabilityData.
+    Three rules are reported (research/representational-drift/agreement_rule_sim.py): 'dr0' =
+    author_agreement_verdict on RDI (registered), 'doc' = the relative clauses on RDI only, 'components' = the
+    relative clauses on CC_ws, CC_bs AND RDI. Neuron-sessions with any non-finite value are dropped and counted."""
+    a, th = (np.concatenate(x) for x in zip(*(_neuron_sessions(f, stim, 1) for f in fields)))
+    b = np.concatenate([_neuron_sessions(f, stim, 2)[0] for f in fields])
+    ok = np.isfinite(a).all(1) & np.isfinite(b).all(1) & np.isfinite(th).all(1)
+    comp = {c: _component(a[ok, j], b[ok, j], th[ok, j]) for j, c in enumerate(COMPONENTS)}
+    r = comp["RDI"]
+    dr0, _, _ = author_agreement_verdict(r["ceil"], r["self_mad"], a[ok, 2], th[ok, 2])
     return {
-        "met": met,
-        "ceil": ceil,
-        "self_mad": self_mad,
-        "rho": rho,
-        "mad": mad,
+        "met": dr0,
+        "rules": {
+            "dr0": dr0,
+            "doc": r["relative_pass"],
+            "components": all(c["relative_pass"] for c in comp.values()),
+        },
+        "components": comp,
         "n": int(ok.sum()),
         "dropped": int((~ok).sum()),
     }
