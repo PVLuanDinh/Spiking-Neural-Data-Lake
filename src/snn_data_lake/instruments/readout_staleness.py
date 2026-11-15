@@ -389,7 +389,7 @@ def wire_arm(engine, arm, seed):
         except Exception as exc:  # counted, never raised into the brain
             stats["faults"] += 1
             if len(stats["fault_msgs"]) < 20:
-                stats["fault_msgs"].append("{}: {}".format(type(exc).__name__, exc))
+                stats["fault_msgs"].append(f"{type(exc).__name__}: {exc}")
         return ret
 
     engine.observe = observe_wrapped
@@ -458,7 +458,7 @@ def _wire_red(eng, arm, log):
                 _plant_once(eng, log, state)
         except Exception as exc:  # counted, never raised into the brain
             state["faults"] += 1
-            state.setdefault("msgs", []).append("{}: {}".format(type(exc).__name__, exc))
+            state.setdefault("msgs", []).append(f"{type(exc).__name__}: {exc}")
         return ret
 
     eng._refit = refit_wrapped
@@ -655,7 +655,7 @@ def stage(seeds, out_json):
     """Pilot: the four real arms over the seeds on one spawn pool, one JSON. Refuses to
     overwrite. Measures only; no confirmatory statistic or boundary."""
     if os.path.exists(out_json):
-        raise FileExistsError("refusing to overwrite existing {}".format(out_json))
+        raise FileExistsError(f"refusing to overwrite existing {out_json}")
     ctx = multiprocessing.get_context("spawn")
     with ctx.Pool(processes=len(D1_ARMS)) as pool:
         results = [run_seed(s, pool) for s in seeds]
@@ -677,7 +677,7 @@ def stage0(out_json):
     OTHER_STREAM, ULP, PLANTED), each its own child process; reports each red MET/NOT MET
     and writes stage0_ok (all reds MET and the planted control MET)."""
     if os.path.exists(out_json):
-        raise FileExistsError("refusing to overwrite existing {}".format(out_json))
+        raise FileExistsError(f"refusing to overwrite existing {out_json}")
     arms0 = D1_ARMS + ("SHADOW_OFF", "LEAK", "OTHER_STREAM", "ULP", "PLANTED")
     ctx = multiprocessing.get_context("spawn")
     with ctx.Pool(processes=min(4, len(arms0))) as pool:  # RAM: at most 4 brains at once
