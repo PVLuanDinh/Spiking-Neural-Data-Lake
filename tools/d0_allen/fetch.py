@@ -24,17 +24,25 @@ OUT = ROOT / "data" / "drift" / "allen"
 
 
 def check_frozen_code():
-    pin = json.loads((ROOT / "tools" / "d0_partA_heldout_units_pin.json").read_text(encoding="utf-8"))
+    pin = json.loads(
+        (ROOT / "tools" / "d0_partA_heldout_units_pin.json").read_text(encoding="utf-8")
+    )
     for name, want in pin["frozen_pipeline_sha256"].items():
         got = hashlib.sha256((HERE / name).read_bytes()).hexdigest()
         if got != want:
-            raise SystemExit(f"refused: {name} sha256 {got[:12]} != pinned {want[:12]} (frozen code changed)")
+            raise SystemExit(
+                f"refused: {name} sha256 {got[:12]} != pinned {want[:12]} (frozen code changed)"
+            )
 
 
 def eye_key(exp_id):
     url = f"{BUCKET}/?list-type=2&prefix={EYE_PREFIX}{exp_id}_"
     xml = urllib.request.urlopen(url, timeout=120).read().decode()
-    keys = [k for k in re.findall(r"<Key>([^<]+)</Key>", xml) if k.endswith("_eyetracking_dlc_to_screen_mapping.h5")]
+    keys = [
+        k
+        for k in re.findall(r"<Key>([^<]+)</Key>", xml)
+        if k.endswith("_eyetracking_dlc_to_screen_mapping.h5")
+    ]
     if len(keys) != 1:
         raise RuntimeError(f"{exp_id}: expected 1 eye file, found {keys}")
     return keys[0]
@@ -42,11 +50,17 @@ def eye_key(exp_id):
 
 def units(split):
     if split == "dev":
-        return json.loads((ROOT / "tools" / "d0_partA_split_pin.json").read_text(encoding="utf-8"))["dev"]
+        return json.loads((ROOT / "tools" / "d0_partA_split_pin.json").read_text(encoding="utf-8"))[
+            "dev"
+        ]
     if split == "sealed":
         if not (HERE / "FROZEN").exists():
-            raise SystemExit("refused: sealed read before the freeze (tools/d0_allen/FROZEN absent)")
-        return json.loads((ROOT / "tools" / "d0_partA_heldout_units_pin.json").read_text(encoding="utf-8"))["units"]
+            raise SystemExit(
+                "refused: sealed read before the freeze (tools/d0_allen/FROZEN absent)"
+            )
+        return json.loads(
+            (ROOT / "tools" / "d0_partA_heldout_units_pin.json").read_text(encoding="utf-8")
+        )["units"]
     raise SystemExit(f"unknown split {split!r}")
 
 
@@ -63,7 +77,9 @@ def main(split):
                 continue
             try:
                 print(u["container"], *extract(str(exp_id), eye_key(exp_id), str(dst)), flush=True)
-            except Exception as e:  # report and continue; a missing session is reported, never imputed
+            except (
+                Exception
+            ) as e:  # report and continue; a missing session is reported, never imputed
                 print(f"FAILED {u['container']} {exp_id}: {type(e).__name__}: {e}", flush=True)
 
 
