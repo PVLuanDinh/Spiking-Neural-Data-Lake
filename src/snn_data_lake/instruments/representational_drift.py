@@ -174,10 +174,20 @@ def readout_null_split(delta, w) -> float:
     total = float(np.sum(d * d))
     if total == 0.0:
         raise ValueError("a zero change has no null fraction")
-    _, s, vt = np.linalg.svd(np.asarray(w, dtype=np.float64), full_matrices=False)
-    rank = int(np.sum(s > s.max() * max(np.asarray(w).shape) * np.finfo(np.float64).eps))
-    row = vt[:rank] @ d
-    return 1.0 - float(np.sum(row * row)) / total
+    # P2: the ONE projector is readout_staleness's (d1-readout-staleness.md names it the drift home); this is the
+    # (delta, W) wrapper that record asks for, not a second SVD. beta = W^T (n x k), dS = delta^T (m x n).
+    from snn_data_lake.instruments.readout_staleness import readout_projector, visible_fraction
+
+    proj, _ = readout_projector(np.asarray(w, dtype=np.float64).T)
+    return 1.0 - visible_fraction(d.T, proj)
+
+
+def readout_rank(w) -> int:
+    """The readout's numerical rank by the same projector (n - null_dim), for the matched-rank control."""
+    from snn_data_lake.instruments.readout_staleness import readout_projector
+
+    w = np.asarray(w, dtype=np.float64)
+    return int(w.shape[1] - readout_projector(w.T)[1])
 
 
 def random_readout_null_fractions(delta, rank, n_draws, seed):
@@ -257,11 +267,7 @@ def read_drift(x0, y0, x1, y1, k, null_draws=200, seed=0) -> ReadoutDrift:
         w = fit_readout(x0[tr0], y0[tr0], k)[:-1].T  # (k, n): weights, bias row dropped
         null = readout_null_split(delta, w)
         rand = float(
-            np.mean(
-                random_readout_null_fractions(
-                    delta, int(np.linalg.matrix_rank(w)), null_draws, seed
-                )
-            )
+            np.mean(random_readout_null_fractions(delta, readout_rank(w), null_draws, seed))
         )
     else:
         null = rand = None
