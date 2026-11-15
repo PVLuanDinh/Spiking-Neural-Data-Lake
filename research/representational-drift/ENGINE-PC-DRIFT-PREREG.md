@@ -110,3 +110,25 @@ so the one 10x re-test runs on the **units** axis.
   ILL-POSED at this scale -- it is fitted on 30 class means in 240 dimensions, so the rotation is underdetermined
   outside their span (smoke: realigned accuracy 0.097). The realigned accuracy is reported as uninterpretable at
   scale 10, never read. The registered scale-1 code path is unchanged (R1, R2, REPEATS default to 16, 8, 10).
+
+## Results, amendment S10 (10x: 240 cause neurons, 10 registered seeds, run once at f6bbe750)
+
+| test | k / n | exact p | verdict |
+|---|---|---|---|
+| E-H1 d1(LEARN) - d1(FROZEN) > 0 | 9/10 | 0.011 | MET |
+| E-H2 d2(LEARN) > 0 | 10/10 | 0.00098 | MET by the registered rule -- see the disclosure below |
+| E-H3 d3(LEARN) < 0 | 10/10 | 0.00098 | MET |
+| RED d1(FROZEN) > 0 (must not be met) | 6/10 | 0.38 | not met, as required |
+
+- d1: LEARN +0.0067 (sd 0.0030), FROZEN +0.0001: drift is ~10x smaller than at 24 units (the same lr_w spread over
+  10x more units). d3: LEARN -1.7e-5 per tick, FROZEN -3e-7.
+- **Disclosure on E-H2 (unprompted, P8 item 4):** the FROZEN twin reads the same d2 (+0.1166 vs LEARN +0.1173). At 240
+  units the population geometry is simply measured more reliably than noisy single-unit tuning, learning or not. The
+  registered E-H2 asks only d2(LEARN) > 0, so it is MET, but the reading is NOT evidence that learning preserves
+  geometry: d2(LEARN) - d2(FROZEN) is +0.0007 here and -0.065 at 24 units. The rule should have been the contrast
+  against the frozen twin, as E-H1 is; recorded as a design lesson, the verdict is not re-scored.
+- Frozen readout: 0.531 -> 0.429 under learning (FROZEN 0.531 -> 0.543). Re-alignment ill-posed at this scale (0.08,
+  disclosed before the run), not read.
+- Null-space split (now readable, reported only): learning-driven drift lies 94.8% in the readout's null space vs
+  87.9% for matched-rank random readouts (FROZEN arm 98.2%, noise only).
+- Per-seed numbers: research/representational-drift/engine_pc_drift_scale10_result.json.
