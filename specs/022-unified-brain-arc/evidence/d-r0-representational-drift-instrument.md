@@ -415,7 +415,11 @@ FROZEN-SHA 2026-11-15 3ccfe9f87e49ee1f70481aa33a546d5fd0d99897
 ## Move note, 2026-11-15 (P4c; history above is unchanged)
 
 The scripts named above moved into the governed package: the Allen pipeline into
-`src/snn_data_lake/instruments/allen_drift.py` (the frozen code kept byte-exact as sha256-checked records in
+`src/snn_data_lake/sensorimotor/allen_drift.py` (the frozen code kept byte-exact as sha256-checked records in
 `tools/d0_allen/frozen-code/*.py.txt`; the module self-check proves its copies AST-identical to them), and the
 agreement-rule simulation and the E-PC engine study into `src/snn_data_lake/instruments/drift_studies.py`
 (`rule-sim`, `engine-pc`). No result was re-read or re-run for the move.
+
+- Correction, same day: `drift_studies.py` was folded away before landing (native_ratchet: one fewer numpy
+  importer). The agreement-rule simulation now lives in `instruments/d_r0_part_a.py` (`rule-sim`), the E-PC
+  engine study in `instruments/representational_drift.py` (`engine-pc`).

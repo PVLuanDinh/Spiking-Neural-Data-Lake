@@ -243,6 +243,9 @@ NOT_PREREGISTRATIONS: frozenset[str] = frozenset(
         "research/cloud-replies/REPLY-2-FROM-CLOUD-SESSION-2026-10-28.md",  # item 4 names a branch "...-prereg-..."
         # a session record restating d1's design; the registration is d1-readout-staleness.md, which carries the section
         "research/representational-drift/SESSION-RECORD-2026-10-27.md",
+        # the D0 Part A DEV reading (descriptive, 4 mice); the registration is d0-partA-heldout-prereg.md, which
+        # carries the section (final project, 2026-11-15)
+        "research/representational-drift/PARTA-DEV-2026-11-02.md",
         # G9 design input: its own status line says "Nothing in this file is a pre-registration" (the G9 pre-registration
         # is g9-campaign-prereg-DRAFT.md); ARC 6 integrator, 2026-11-01
         _EV + "g9-campaign-design-input-DRAFT.md",

@@ -69,7 +69,23 @@ fixed one-shot count chosen for the deadline, not a power-derived P1 design (dis
 ## Move note, 2026-11-15 (P4c; history above is unchanged)
 
 The scripts named above moved into the governed package: the Allen pipeline into
-`src/snn_data_lake/instruments/allen_drift.py` (the frozen code kept byte-exact as sha256-checked records in
+`src/snn_data_lake/sensorimotor/allen_drift.py` (the frozen code kept byte-exact as sha256-checked records in
 `tools/d0_allen/frozen-code/*.py.txt`; the module self-check proves its copies AST-identical to them), and the
 agreement-rule simulation and the E-PC engine study into `src/snn_data_lake/instruments/drift_studies.py`
 (`rule-sim`, `engine-pc`). No result was re-read or re-run for the move.
+
+- Correction, same day: `drift_studies.py` was folded away before landing (native_ratchet: one fewer numpy
+  importer). The agreement-rule simulation now lives in `instruments/d_r0_part_a.py` (`rule-sim`), the E-PC
+  engine study in `instruments/representational_drift.py` (`engine-pc`).
+
+## Sample size (P1)
+
+One-shot: a fixed count of 10 seeds, because the owner's course deadline left no time for a sequential campaign.
+Written 2026-11-15 AFTER the registered run (disclosed): the section was missing at registration and the sample-size
+gate flagged it. No number below was used to choose n.
+
+- Measured SD (from the registered run itself, not a pilot): d1(LEARN) - d1(FROZEN) SD 0.0154; d2(LEARN) SD 0.023.
+- Effect claimed: the sign test's p+ >= 0.9 (9 of 10 seeds in the predicted direction); the observed effect was
+  d1 difference mean +0.063 (about 4 SD) and d2 mean -0.064.
+- Target: power 0.74 at p+ = 0.9 for MET at >= 9 of 10 (exact binomial; 0.996 at p+ = 0.99); below that the reading is
+  INCONCLUSIVE, never a null. A proper P1 design for a follow-up takes these SDs as its pilot.

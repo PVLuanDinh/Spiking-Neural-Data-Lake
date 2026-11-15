@@ -6,7 +6,7 @@ import shutil
 
 import pytest
 
-from snn_data_lake.instruments import allen_drift as A
+from snn_data_lake.sensorimotor import allen_drift as A
 
 
 def test_allen_selfcheck_passes():

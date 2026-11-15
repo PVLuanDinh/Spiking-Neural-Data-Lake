@@ -231,10 +231,10 @@ def test_legacy_layer_holds_exactly_the_moved_modules_and_the_provider_returns_i
     # ophys_ingest, c868f86f moves d_r0_part_a and ophys_layout from tools/ into src; all four are
     # REGIONS rows only (never LEGACY_REGIONS), each differing from its region, and neither commit
     # re-pinned: 336 + 4 = 340 (re-derived by import on e20f11b3; exactly _MOVED's new members).
-    # 2026-11-15/final project (P4c): allen_drift and drift_studies are REGIONS rows only (moved
-    # from tools/ and research/); ophys_layout retired (its condition: read_field supplied):
-    # 340 + 2 - 1 = 341 (re-derived by import on the final-m1 tree).
-    assert len(S._MOVED) == 341 and "claustrum" not in S._MOVED
+    # 2026-11-15/final project (P4c): allen_drift is a REGIONS row only (moved from tools/; the two
+    # research studies folded into d_r0_part_a and representational_drift); ophys_layout retired
+    # (its condition: read_field supplied): 340 + 1 - 1 = 340 (re-derived by import).
+    assert len(S._MOVED) == 340 and "claustrum" not in S._MOVED
     assert {"grower", "organoid_ingest", "p5b_gate", "rpe_charge", "readout_staleness"} <= set(
         S._MOVED
     )  # A-m2

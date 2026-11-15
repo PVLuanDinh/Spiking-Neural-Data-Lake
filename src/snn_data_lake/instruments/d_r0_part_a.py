@@ -39,8 +39,8 @@ from pathlib import Path
 from typing import NamedTuple
 
 import numpy as np
-from scipy.stats import spearmanr
 
+from snn_data_lake.instruments import representational_drift as rd
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.instruments.representational_drift import (
     MOV_CAP,
@@ -219,9 +219,9 @@ def _neuron_sessions(f, stim, seed, weeks=WEEKS):
 def _component(x1, x2, th):
     """Ceiling, self_mad, rho, mad for one component, and the relative (doc-rule) pass: rho >= max(0.9 ceil, 0.8),
     mad <= min(2 self_mad, 0.05), n >= 200 -- author_agreement_verdict without its absolute ceil >= 0.9 clause."""
-    ceil = float(spearmanr(x1, x2)[0])
+    ceil = rd.rank_corr(x1, x2)
     self_mad = float(np.median(np.abs(x1 - x2)))
-    rho = float(spearmanr(x1, th)[0])
+    rho = rd.rank_corr(x1, th)
     mad = float(np.median(np.abs(x1 - th)))
     rel = rho >= max(0.9 * ceil, 0.8) and mad <= min(2 * self_mad, 0.05) and len(x1) >= 200
     return {"ceil": ceil, "self_mad": self_mad, "rho": rho, "mad": mad, "relative_pass": bool(rel)}
@@ -229,7 +229,7 @@ def _component(x1, x2, th):
 
 def dev_agreement(fields, stim):
     """Pre-reg 2.4 per stimulus over all `fields`: seeds 1 vs 2 give the ceiling, ours = seed 1 vs StabilityData.
-    Three rules are reported (instruments/drift_studies.py rule-sim): 'dr0' =
+    Three rules are reported (this module's rule-sim): 'dr0' =
     author_agreement_verdict on RDI (registered), 'doc' = the relative clauses on RDI only, 'components' = the
     relative clauses on CC_ws, CC_bs AND RDI. Neuron-sessions with any non-finite value are dropped and counted."""
     a, th = (np.concatenate(x) for x in zip(*(_neuron_sessions(f, stim, 1) for f in fields)))
@@ -439,6 +439,186 @@ def run(split, reader=read_field, seed=0, data_dir=None):
     return out
 
 
+# =============================================================================================
+# Agreement-rule simulation (amendment 13's evidence; MOVED 2026-11-15 from instruments/drift_studies.py, which
+# took it from research/representational-drift/agreement_rule_sim.py). Known answer: the authors' RDI is the
+# correct estimator with an independent seed; five planted bugs. `python -m ... d_r0_part_a rule-sim [sigma ...]`
+# =============================================================================================
+N_NEURONS, TRIALS, REPS = 300, 30, 6
+SIGMAS = (1.0, 1.5, 2.0, 2.5)
+
+
+def _halves(s1, s2, rng):
+    n = s1.shape[0]
+    iters = 50 if n <= 8 else 100
+    idx = np.stack([rng.permutation(n) for _ in range(iters)])
+    h1, h2 = idx[:, : n // 2], idx[:, n // 2 :]
+    return s1[h1].mean(1), s1[h2].mean(1), s2[h1].mean(1), s2[h2].mean(1)
+
+
+def _rdi(ws, bs):
+    ws = 0.001 if ws <= 0 else ws
+    return rd.DriftReading(float(ws), float(bs), float((ws - bs) / (ws + bs)))
+
+
+def bug_same_half(s1, s2, rng):
+    """Between-session pairs the SAME half (a1-b1, a2-b2) instead of opposite halves."""
+    a1, a2, b1, b2 = _halves(s1, s2, rng)
+    c = rd._rowcorr
+    ws = np.fmax((c(a1, a2) + c(b1, b2)) / 2, 0).mean()
+    bs = np.fmax((c(a1, b1) + c(a2, b2)) / 2, 0).mean()
+    return _rdi(ws, bs)
+
+
+def bug_no_rectify(s1, s2, rng):
+    """Drops the per-iteration rectification (np.fmax(., 0))."""
+    a1, a2, b1, b2 = _halves(s1, s2, rng)
+    c = rd._rowcorr
+    return _rdi(((c(a1, a2) + c(b1, b2)) / 2).mean(), ((c(a1, b2) + c(a2, b1)) / 2).mean())
+
+
+def bug_ws_session1(s1, s2, rng):
+    """Within-session CC from session 1 only (the authors average both sessions)."""
+    a1, a2, b1, b2 = _halves(s1, s2, rng)
+    c = rd._rowcorr
+    return _rdi(np.fmax(c(a1, a2), 0).mean(), np.fmax((c(a1, b2) + c(a2, b1)) / 2, 0).mean())
+
+
+def bug_diff_index(s1, s2, rng):
+    """Reports ws - bs instead of the normalised (ws - bs) / (ws + bs)."""
+    r = rd.stability_index(s1, s2, rng)
+    return rd.DriftReading(r.cc_ws, r.cc_bs, r.cc_ws - r.cc_bs)
+
+
+def mov(fn):
+    def f(s1, s2, rng):
+        return rd.mov_index(s1, s2, rng) if fn is None else _mov_with(fn, s1, s2, rng)
+
+    return f
+
+
+def _mov_with(fn, s1, s2, rng, pick=8, reps=10):
+    rs = []
+    for _ in range(reps):
+        idx = rng.choice(s1.shape[0], pick, replace=False)
+        rs.append(fn(s1[idx], s2[idx], rng))
+    return rd.DriftReading(*(float(np.mean(col)) for col in zip(*rs)))
+
+
+def bug_pick15(s1, s2, rng):
+    """Subsamples 15 of 30 trials instead of the authors' 8."""
+    return _mov_with(rd.stability_index, s1, s2, rng, pick=15)
+
+
+IMPLS = {
+    "correct": mov(None),
+    "bug_same_half": mov(bug_same_half),
+    "bug_no_rectify": mov(bug_no_rectify),
+    "bug_ws_session1": mov(bug_ws_session1),
+    "bug_diff_index": mov(bug_diff_index),
+    "bug_pick15": bug_pick15,
+}
+
+
+def dataset(sigma, seed):
+    rng = np.random.default_rng(seed)
+    p1, p2 = rd._patterns(rng, N_NEURONS), rd._patterns(rng, N_NEURONS)
+    amp = rng.lognormal(0.0, 0.5, N_NEURONS)[
+        :, None
+    ]  # heterogeneous reliability, as in real neurons
+    dose = rng.uniform(0.0, 1.0, N_NEURONS)[:, None]
+    m2 = np.sqrt(1 - dose**2) * p1 + dose * p2
+    s1 = amp[:, None] * p1[:, None, :] + sigma * rng.standard_normal(
+        (N_NEURONS, TRIALS, rd.N_FRAMES)
+    )
+    s2 = amp[:, None] * m2[:, None, :] + sigma * rng.standard_normal(
+        (N_NEURONS, TRIALS, rd.N_FRAMES)
+    )
+    return s1, s2
+
+
+def pop(s1, s2, fn, seed):
+    """(ws, bs, rdi) per neuron, one rng stream (population_rdi returns rdi only)."""
+    rng = np.random.default_rng(seed)
+    return np.array([tuple(fn(a, b, rng)) for a, b in zip(s1, s2)])
+
+
+def _rel(x1, x2, th):
+    ceil = rd.rank_corr(x1, x2)
+    self_mad = float(np.median(np.abs(x1 - x2)))
+    rho = rd.rank_corr(x1, th)
+    mad = float(np.median(np.abs(x1 - th)))
+    return rho >= max(0.9 * ceil, 0.8) and mad <= min(2 * self_mad, 0.05) and len(x1) >= 200
+
+
+def verdicts(ceil, self_mad, ours, theirs):
+    rho = rd.rank_corr(ours, theirs)
+    mad = float(np.median(np.abs(ours - theirs)))
+    rel = rho >= max(0.9 * ceil, 0.8) and mad <= min(2 * self_mad, 0.05) and len(ours) >= 200
+    return {"doc": bool(rel), "dr0": bool(rel and ceil >= 0.9), "rho": rho, "mad": mad}
+
+
+def rule_sim_main(sigmas=SIGMAS):
+    rows = []
+    for sigma in sigmas:
+        for rep in range(REPS):
+            s1, s2 = dataset(sigma, [7, rep, int(sigma * 10)])
+            th = pop(s1, s2, IMPLS["correct"], [99, rep])
+            for name, fn in IMPLS.items():
+                a, b = pop(s1, s2, fn, [1, rep]), pop(s1, s2, fn, [2, rep])
+                r1, r2, theirs = a[:, 2], b[:, 2], th[:, 2]
+                ceil = rd.rank_corr(r1, r2)
+                self_mad = float(np.median(np.abs(r1 - r2)))
+                v = verdicts(ceil, self_mad, r1, theirs)
+                v["comp"] = bool(
+                    v["doc"]
+                    and _rel(a[:, 0], b[:, 0], th[:, 0])
+                    and _rel(a[:, 1], b[:, 1], th[:, 1])
+                )
+                rows.append({"sigma": sigma, "rep": rep, "impl": name, "ceil": ceil, **v})
+                print(
+                    f"sigma {sigma} rep {rep} {name:16s} ceil {ceil:.3f} rho {v['rho']:.3f} mad {v['mad']:.4f} "
+                    f"doc {v['doc']} dr0 {v['dr0']} comp {v['comp']}",
+                    flush=True,
+                )
+    summary = {}
+    for sigma in sigmas:
+        for name in IMPLS:
+            sel = [r for r in rows if r["sigma"] == sigma and r["impl"] == name]
+            summary[f"{sigma}|{name}"] = {
+                "mean_ceil": round(float(np.mean([r["ceil"] for r in sel])), 3),
+                "doc_pass": sum(r["doc"] for r in sel),
+                "dr0_pass": sum(r["dr0"] for r in sel),
+                "comp_pass": sum(r["comp"] for r in sel),
+                "n": len(sel),
+            }
+    out = {"rows": rows, "summary": summary}
+    path = f"research/representational-drift/agreement_rule_sim_{'_'.join(map(str, sigmas))}.json"
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(out, fh, indent=1)
+    print("\nsigma | impl | mean ceil | doc pass | D-R0 pass")
+    for k, v in summary.items():
+        print(k, v)
+    return 0
+
+
+def _rule_sim_reds():
+    """Small rule-sim: correct code passes the components rule and the 15-trial bug fails it."""
+    global N_NEURONS
+    saved, N_NEURONS = N_NEURONS, 240
+    fails = []
+    try:
+        s1, s2 = dataset(2.0, [7, 0, 20])
+        th = pop(s1, s2, IMPLS["correct"], [99, 0])
+        for name, want in (("correct", True), ("bug_pick15", False)):
+            a, b = pop(s1, s2, IMPLS[name], [1, 0]), pop(s1, s2, IMPLS[name], [2, 0])
+            if all(_rel(a[:, j], b[:, j], th[:, j]) for j in range(3)) != want:
+                fails.append(f"rule-sim: components rule on {name} did not read {want}")
+    finally:
+        N_NEURONS = saved
+    return fails
+
+
 _SHA = "b" * 40
 _DEV_LINES = "DEV-AGREEMENT MET 2026-11-08\nDEV-CONTROL MET 2026-11-07\n"
 
@@ -538,6 +718,7 @@ def _selfcheck():
     except IngestRefused as e:
         if "(split)" not in str(e):
             failures.append(f"read_field(1, 'dev') refused for the wrong reason: {e}")
+    failures += _rule_sim_reds()
     for f in failures:
         print("FAIL", f)
     if failures:
@@ -554,6 +735,8 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if not argv:
         return _selfcheck()
+    if argv[0] == "rule-sim":
+        return rule_sim_main(tuple(float(x) for x in argv[1:]) or SIGMAS)
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", choices=("dev", "heldout"), required=True)
     ap.add_argument("--data-dir", default=None)

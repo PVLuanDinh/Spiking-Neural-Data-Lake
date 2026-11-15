@@ -865,14 +865,6 @@ EXEMPT = {
         "self-check. Consumers: run_selfchecks and the `python -m` run; never on a tick. RETIRE CONDITION: no "
         "D-R* study consumes it within 3 pushed arcs after the final project -> the owner is asked.",
     ),
-    "drift_studies": (
-        "permanent",
-        "Final project (owner 2026-11-15), DATED 2026-11-15: the agreement-rule simulation (D-R0 amendment 13) "
-        "and E-PC, drift in the engine's live predictive-coding layer vs a frozen twin "
-        "(ENGINE-PC-DRIFT-PREREG.md), moved from research/ (P4c). Consumers: run_selfchecks and the `python -m` "
-        "run; never on a tick. RETIRE CONDITION: MAP D3 re-registered as an engine row -> merge into it; "
-        "otherwise the owner is asked after the final project.",
-    ),
     "h01_ingest": (
         "wire",
         "specs/022 T062, DATED 2026-09-09: the H01 c3 synapse-graph ingest and the population it "

@@ -421,8 +421,7 @@ CORE = [
     "instruments.paired_contrast",  # T077 2.10: the seed-paired t + exact FPR, lifted from the T063 harness
     "instruments.representational_drift",  # D-R0 2.1/2.2: stability_index + aa / dose / mov_vs_mov / agreement, each green with its constructed red; synthetic, ~10 s, no data
     "instruments.d_r0_part_a",
-    "instruments.allen_drift",  # final project: records == pins, FROZEN copies AST-identical, R-SIGN, R-C (no network)
-    "instruments.drift_studies",  # final project: components rule passes correct code / catches the 15-trial bug; PC learning drifts, frozen twin does not
+    "sensorimotor.allen_drift",  # final project: records == pins, FROZEN copies AST-identical, R-SIGN, R-C (no network)
     # D-R0 2.3/2.4 Part A driver: seven held-out freeze reds + green control, read-once fail-closed, E1 sign; synthetic, no data
     "instruments.unit_organization",  # G7 T115 P4: six instrument reds (verdict rules, guard, sampler, beta live)
     "substrate.spike_stream_sketch",

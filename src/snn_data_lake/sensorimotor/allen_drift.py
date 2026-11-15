@@ -7,7 +7,7 @@ records in tools/d0_allen/frozen-code/*.py.txt; the functions marked FROZEN belo
 mechanically, and the self-check proves each one AST-identical to its record and every record's sha256 equal to
 its pin. The sealed read already ran once (prereg section 12); `sealed` refuses to run again.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.instruments.allen_drift      # self-check (no network)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.sensorimotor.allen_drift      # self-check (no network)
   ... allen_drift fetch dev|sealed     # range-read sessions into data/drift/allen/<split>/ (gitignored)
   ... allen_drift checks [--after-freeze] | dev | sealed
 """

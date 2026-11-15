@@ -346,10 +346,6 @@ REGIONS = {
         "representational_drift",
         # specs/022 D-R0 Part A driver (E1 per mouse + held-out freeze gate); moved from tools/ 2026-11-04 (P4c); offline, never a tick
         "d_r0_part_a",
-        # final project 2026-11-15: Allen D0 Part A (frozen extraction + held-out analysis), moved from tools/ (P4c); offline, never a tick
-        "allen_drift",
-        # final project 2026-11-15: agreement-rule simulation + engine PC drift study, moved from research/ (P4c); offline, never a tick
-        "drift_studies",
         # specs/022 G7 (T115) P4: T1 / T4 decision instrument (verdict rules, guard, exact-M sampler, modularity)
         "unit_organization",
         # G1(b) pool-selection campaign: section 2's steps, ordering and taxonomy
@@ -411,6 +407,8 @@ REGIONS = {
         "nl_interface",
         # specs/022 OG1 (T118) Stage 0: pinned DANDI 001603 organoid NWB -> npz behind five refusal gates (licence, bytes, index, time units, exact depositor raster); offline, never the lake
         "organoid_ingest",
+        # final project 2026-11-15: Allen D0 Part A (frozen extraction + held-out analysis), moved from tools/ (P4c); offline, never a tick
+        "allen_drift",
         # specs/022 D-R0: the Marks & Goard two-photon .mat reader (organoid_ingest's gates, an append-only dev log, a clean-tree refusal); offline, never the lake
         "ophys_ingest",
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
