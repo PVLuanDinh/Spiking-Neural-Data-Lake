@@ -39,9 +39,16 @@ from pathlib import Path
 from typing import NamedTuple
 
 import numpy as np
+from scipy.stats import spearmanr
 
 from snn_data_lake.instruments.paired_contrast import T_BAR, contrast
 from snn_data_lake.instruments.representational_drift import (
+    MOV_CAP,
+    MOV_FLOOR,
+    N_BOOT,
+    SEED,
+    SEED_BOOT,
+    author_agreement_verdict,
     mov_index,
     stability_index,
     synth_pair,
@@ -56,6 +63,7 @@ EVIDENCE = (
     / "d-r0-representational-drift-instrument.md"
 )
 OUT = ROOT / "tools" / "d_r0_partA.json"
+CHECKS_OUT = ROOT / "tools" / "d_r0_dev_checks.json"
 LOG = ROOT / "tools" / "d_r0_dev_log.jsonl"
 PIN_PATH = ROOT / "tools" / "marks_goard_pin.json"
 DEV = (2, 3, 10, 11)
@@ -79,6 +87,9 @@ class FieldData(NamedTuple):
     mov: dict
     pdg: dict
     present: dict
+    theirs: dict | None = (
+        None  # {'mov'|'pdg': {week: authors' StabilityData.RDI over the eligible set}}
+    )
 
 
 # distinct-from: sensorimotor/ophys_layout.py -- prints variable names/shapes only and never builds response
@@ -158,13 +169,98 @@ def _read_one(mouse, folder, split, data_dir, pin, **kw):
         return np.transpose(a[:, :, elig, s], (2, 0, 1))
 
     sessions = list(enumerate(weeks))[1:]
+    stab = mat("StabilityData.mat")[
+        "StabilityData"
+    ]  # RDI rows = sessions 2..n vs session 1, cols = all neurons
+    theirs = {
+        key: {w: np.asarray(getattr(stab, name).RDI)[s - 1, elig] for s, w in sessions}
+        for key, name in (("mov", "NatMov"), ("pdg", "PDG"))
+    }
     return FieldData(
         take(mov, 0),
         take(pdg, 0),
         {w: take(mov, s) for s, w in sessions},
         {w: take(pdg, s) for s, w in sessions},
         {w: roi.presence[elig, s] > 0 for s, w in sessions},
+        theirs,
     )
+
+
+# distinct-from: instruments/everyday_battery.py -- per-seed process launcher (docstring); no RDI.
+# distinct-from: instruments/replay_hydration.py -- per-seed readings of its own pre-registration; no RDI.
+# distinct-from: instruments/report_order_probe.py -- per-seed reading over recording rows; no RDI.
+# distinct-from: instruments/delayed_cue.py -- fair-bit stream per presentation; no RDI.
+# distinct-from: instruments/joint_mask_search.py -- constructed per-seed readings of C22; no RDI.
+# The verdicts are REUSED from representational_drift (author_agreement_verdict, mov_index, stability_index).
+def _neuron_sessions(f, stim, seed, weeks=WEEKS):
+    """Our RDI and the authors' for every (eligible neuron, scored week) present that week, as two arrays."""
+    rng = np.random.default_rng(seed)
+    fn, s1, sw = (mov_index, f.mov1, f.mov) if stim == "mov" else (stability_index, f.pdg1, f.pdg)
+    ours, theirs = [], []
+    for w in weeks:
+        for i in np.flatnonzero(f.present.get(w, [])):
+            ours.append(fn(s1[i], sw[w][i], rng).rdi)
+            theirs.append(float(f.theirs[stim][w][i]))
+    return np.array(ours), np.array(theirs)
+
+
+def dev_agreement(fields, stim):
+    """Pre-reg 2.4 per stimulus over all `fields`: ceil/self_mad from seeds 1 vs 2, ours = seed 1 vs StabilityData.RDI.
+    Neuron-sessions whose authors' RDI is not finite are dropped and counted."""
+    r1, th = (np.concatenate(x) for x in zip(*(_neuron_sessions(f, stim, 1) for f in fields)))
+    r2 = np.concatenate([_neuron_sessions(f, stim, 2)[0] for f in fields])
+    ok = np.isfinite(th) & np.isfinite(r1) & np.isfinite(r2)
+    ceil = float(spearmanr(r1[ok], r2[ok])[0])
+    self_mad = float(np.median(np.abs(r1[ok] - r2[ok])))
+    met, rho, mad = author_agreement_verdict(ceil, self_mad, r1[ok], th[ok])
+    return {
+        "met": met,
+        "ceil": ceil,
+        "self_mad": self_mad,
+        "rho": rho,
+        "mad": mad,
+        "n": int(ok.sum()),
+        "dropped": int((~ok).sum()),
+    }
+
+
+def dev_control(fields, seed=SEED, weeks=WEEKS):
+    """Pre-reg 2.2 mov_vs_mov on one mouse's fields: interleaved odd/even MOV arms (amendment 9: floor(T/2) trials
+    each, 8 picked), D_null = mean neuron diff (arm A - arm B) over present weeks; bar max(0.05, 3 x bootstrap SE)."""
+    diffs = []
+    for k, f in enumerate(fields):
+        rng = np.random.default_rng([seed, 4, k])
+        per = {}
+        for w in weeks:
+            for i in np.flatnonzero(f.present.get(w, [])):
+                a = mov_index(f.mov1[i][0::2], f.mov[w][i][0::2], rng).rdi
+                b = mov_index(f.mov1[i][1::2], f.mov[w][i][1::2], rng).rdi
+                per.setdefault(i, []).append(a - b)
+        diffs += [float(np.mean(v)) for v in per.values()]
+    diffs = np.array(diffs)
+    boot = np.random.default_rng(SEED_BOOT).choice(diffs, (N_BOOT, diffs.size))
+    se = float(boot.mean(1).std(ddof=1))
+    bar, d_null = max(MOV_FLOOR, 3 * se), float(diffs.mean())
+    return {
+        "met": bool(abs(d_null) <= bar and bar <= MOV_CAP),
+        "d_null": d_null,
+        "bar": bar,
+        "n": int(diffs.size),
+    }
+
+
+def dev_checks(reader=read_field, data_dir=None):
+    """DEV-AGREEMENT (both stimuli, pooled over DEV mice) and DEV-CONTROL (per DEV mouse); one result dict."""
+    fields = {m: reader(m, "dev", data_dir=data_dir) for m in DEV}
+    pooled = [f for m in DEV for f in fields[m]]
+    agree = {s: dev_agreement(pooled, s) for s in ("mov", "pdg")}
+    control = {m: dev_control(fields[m]) for m in DEV}
+    return {
+        "agreement": agree,
+        "control": control,
+        "DEV-AGREEMENT": all(a["met"] for a in agree.values()),
+        "DEV-CONTROL": all(c["met"] for c in control.values()),
+    }
 
 
 def _porcelain(root, path):
@@ -418,7 +514,15 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", choices=("dev", "heldout"), required=True)
     ap.add_argument("--data-dir", default=None)
+    ap.add_argument("--checks", action="store_true", help="DEV-AGREEMENT + DEV-CONTROL (dev only)")
     a = ap.parse_args(argv)
+    if a.checks:
+        if a.split != "dev":
+            raise SystemExit("--checks is DEV only")
+        res = dev_checks(data_dir=a.data_dir)
+        CHECKS_OUT.write_text(json.dumps(res, indent=1, default=str) + chr(10), encoding="utf-8")
+        print(json.dumps(res, default=str))
+        return 0
     out = run(a.split, data_dir=a.data_dir)
     OUT.write_text(json.dumps(out, indent=1, default=str) + "\n", encoding="utf-8")
     print(json.dumps(out, default=str))
