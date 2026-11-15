@@ -185,3 +185,18 @@ fallback, and a session whose NWB or eye file fails to load, which is reported b
 
 The three frozen blocks are saved as `tools/d0_allen/{rangefile,extract,analyze_dev}.py`; their sha256 equal
 `frozen_pipeline_sha256` in the units pin (checked 2026-11-15, and re-checked by `fetch.py` on every run).
+
+## 11. Freeze, 2026-11-15
+
+- Held-out analysis: `tools/d0_allen/analyze_heldout.py`, sha256 `5a7a81f7949ee363b1f4ee4b156293a5f017293f3e7594aad5d9173a44d9a2b1`, at commit `f0802d0a27e4376088b92b4b216df22041aeb09a`.
+- Pre-read checks (section 5), run at that commit on DEV/synthetic data only, all MET: R-A (instrument self-check,
+  exit 0), R-SIGN (exact tail == enumeration, n 1..20), R-B (12 self-paired pseudo-units, max |d1| = 0), R-C
+  (planted behavioural drift: raw d1 0.626, residualized between/within >= 0.999), R-D (RSA drops 4/4:
+  0.328->0.130, 0.645->-0.016, 0.700->0.094, 0.696->0.034), R-E (0 sealed-derived files).
+- R-C as written in section 5 (a running trace whose distribution differs across sessions) cannot be removed by the
+  frozen model when the difference is segment-locked (it is collinear with the segment design) or a per-session
+  mean (absorbed as a per-cell offset). The constructed case therefore uses segment x repeat running, centred per
+  session. Disclosed here, before the read.
+- DEV note: the DEV reading predates the section 3 run-only fallback; with it, DEV d4 is 3/4 positive (mean 0.0013)
+  instead of 2/4. Descriptive only.
+- The sealed split is read ONCE from here (`tools/d0_allen/FROZEN` now exists).
