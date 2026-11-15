@@ -376,3 +376,16 @@ self-check that reds on a constructed input (REGIONS + `run_selfchecks` + `dorma
   `python -m` the calling tool is still `__main__` and `ophys_ingest.source_hashes` still hashes that file; nothing in
   the read path or the log format changed. Historical text naming the old paths (sections 9, 10) is unchanged.
   §2.3's freeze bullet (line 192) was re-worded in place, path only; the original text is at 928f117f. Reason: citation_guard STRICT scope covers §2.3 (its heading matches `reproduc`), so the old path would red the gate.
+
+## 12. DEV checks, 2026-11-15 (final project M3; revision 1 = commit of dev_checks, logged in tools/d_r0_dev_log.jsonl)
+
+DEV-CONTROL MET 2026-11-15
+- mov_vs_mov per DEV mouse: M2 D -0.0005 -> 0.00045, M3 -0.0384, M10 0.0006, M11 -0.0214; bar 0.05 each (cap 0.10).
+
+DEV-AGREEMENT NOT MET 2026-11-15
+- PDG: MET. ceil 0.984, rho 0.985, mad 0.0030 (self_mad 0.0031), n 1684 neuron-sessions.
+- MOV: NOT MET on the ceiling clause only: ceil 0.863 < 0.9. rho 0.867 >= max(0.9 x ceil, 0.8) = 0.8 and
+  mad 0.030 <= min(2 x self_mad, 0.05) both hold; n 1684. Our MOV estimator agrees with the authors' RDI as well as it
+  agrees with itself (rho 0.867 vs ceil 0.863; mad 0.030 vs self_mad 0.030): the stochastic part is the authors'
+  8-of-T x 10 subsampling, which section 2.4 fixes. Per section 2.4 the HELD-OUT read is not run unless the owner rules.
+- Full numbers: tools/d_r0_dev_checks.json.
