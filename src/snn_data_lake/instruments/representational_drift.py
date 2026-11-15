@@ -10,6 +10,19 @@ instrument.md section 1.4), plus the four synthetic criteria its section 2.2 reg
                                   10 times, each through stability_index, averaged
   DriftReading                 -- (cc_ws, cc_bs, rdi)
 
+MERGED 2026-11-15 (P2, final-project M1): the MAP D0 readout-geometry half from branch
+origin/cloud/drift-d0-instrument-1102 (ddaaf233) now lives here too, so ONE module serves both datasets:
+  pv_correlation / drift_index   population-vector correlation per stimulus, averaged (A/A = 1, 0)
+  tuning_correlation             per-neuron correlation of the response profile across stimuli
+  preferred_shift                circular difference of preferred orientation (0/180 wrap)
+  readout_null_split             the fraction of a population change in null(W) of a readout W
+  random_readout_null_fractions  the same fraction for random readouts of matched rank (the control)
+  decoder_accuracy               the closed-form readout, CAPACITY-GUARDED (refuses to interpolate)
+  procrustes_realign / recovered the best orthogonal re-alignment of one session onto another
+  read_drift -> ReadoutDrift     the above on a two-session labelled pair (renamed from the branch's
+                                 DriftReading, which collided with the RDI tuple above)
+RSA geometry stays in ONE home, `infra/_mathutils.rsa_drift` (tests/test_rsa_drift.py); not copied here.
+
 Correlations are Pearson, vectorised across iterations (`_rowcorr`); the self-check ties it to
 `numpy.corrcoef` to 1e-12. Distinct-from `faculties/grid_place_map._pearson` and `infra/drift_monitor.psi`.
 
@@ -24,7 +37,9 @@ the real-data halves belong to `instruments/d_r0_part_a.py`. Pure numpy + scipy.
 from __future__ import annotations
 
 import json
+import math
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
@@ -92,6 +107,201 @@ def population_rdi(S1, S2, fn, seed):
     """RDI of every neuron (rows of the (neurons, trials, frames) arrays) through `fn`, one rng stream."""
     rng = np.random.default_rng(seed)
     return np.array([fn(a, b, rng).rdi for a, b in zip(S1, S2)])
+
+
+# =============================================================================================
+# Readout geometry half (MAP D0, merged from origin/cloud/drift-d0-instrument-1102 ddaaf233)
+# distinct-from: instruments/prior_drift_harness.py -- WEIGHT drift off the H01 prior (DriftRecord); its
+#   closed-form readout is REUSED below (fit_readout / predict), not copied (P2).
+# =============================================================================================
+#: P1, a NUMERICAL tolerance (not a behavioural bar): an orthogonal planted drift is undone by
+#: orthogonal Procrustes to float64 round-off; 1e-8 leaves six orders of headroom.
+RECOVERY_TOL = 1e-8
+
+
+class CapacityRefusal(ValueError):
+    """A decoder with at least as many free parameters as training samples interpolates any labelling."""
+
+
+def _corr(x, y):
+    """Pearson of two vectors as num / sqrt(sxx * syy), so identical inputs read exactly 1.0."""
+    xc = np.asarray(x, dtype=np.float64) - np.mean(x)
+    yc = np.asarray(y, dtype=np.float64) - np.mean(y)
+    sxx, syy = float(xc @ xc), float(yc @ yc)
+    if sxx == 0.0 or syy == 0.0:
+        raise ValueError("a constant vector has no correlation")
+    return float(xc @ yc) / math.sqrt(sxx * syy)
+
+
+def _same_shape(a, b):
+    a, b = np.asarray(a, dtype=np.float64), np.asarray(b, dtype=np.float64)
+    if a.shape != b.shape:
+        raise ValueError(f"sessions differ in shape: {a.shape} vs {b.shape}")
+    return a, b
+
+
+def pv_correlation(a, b) -> float:
+    """Mean over stimuli (columns) of the correlation between two sessions' population vectors.
+    `a`, `b`: (n_neurons, n_stimuli) trial-averaged responses of the SAME neurons."""
+    a, b = _same_shape(a, b)
+    return float(np.mean([_corr(a[:, j], b[:, j]) for j in range(a.shape[1])]))
+
+
+def drift_index(a, b) -> float:
+    """1 - pv_correlation: 0 for identical sessions, larger as the population code moves."""
+    return 1.0 - pv_correlation(a, b)
+
+
+def tuning_correlation(a, b):
+    """Per neuron (row), the correlation of its response profile across stimuli between sessions."""
+    a, b = _same_shape(a, b)
+    return np.array([_corr(a[i], b[i]) for i in range(a.shape[0])])
+
+
+def preferred_shift(pref_a, pref_b, period=180.0) -> float:
+    """Signed circular change of a preferred orientation (degrees) in [-period/2, period/2)."""
+    half = period / 2.0
+    return float((pref_b - pref_a + half) % period - half)
+
+
+def readout_null_split(delta, w) -> float:
+    """Fraction of the squared norm of a change `delta` ((n,) or (n, m)) in the null space of readout
+    `w` (k, n). 1.0 = invisible to the readout, 0.0 = entirely in its row space."""
+    d = np.asarray(delta, dtype=np.float64)
+    d = d.reshape(d.shape[0], -1)
+    total = float(np.sum(d * d))
+    if total == 0.0:
+        raise ValueError("a zero change has no null fraction")
+    _, s, vt = np.linalg.svd(np.asarray(w, dtype=np.float64), full_matrices=False)
+    rank = int(np.sum(s > s.max() * max(np.asarray(w).shape) * np.finfo(np.float64).eps))
+    row = vt[:rank] @ d
+    return 1.0 - float(np.sum(row * row)) / total
+
+
+def random_readout_null_fractions(delta, rank, n_draws, seed):
+    """The control that is not the method: the null split for `n_draws` Gaussian readouts of the same
+    rank. For isotropic change its mean is about (n - rank) / n."""
+    rng = np.random.default_rng(seed)
+    n = np.asarray(delta).shape[0]
+    return np.array(
+        [readout_null_split(delta, rng.normal(size=(rank, n))) for _ in range(int(n_draws))]
+    )
+
+
+def decoder_accuracy(x_train, y_train, x_test, y_test, k) -> float:
+    """Train prior_drift_harness's closed-form readout and return its test accuracy; refuses interpolation."""
+    from snn_data_lake.instruments.prior_drift_harness import fit_readout, predict
+
+    x_train = np.asarray(x_train, dtype=np.float64)
+    if x_train.shape[1] + 1 > x_train.shape[0]:
+        raise CapacityRefusal(
+            f"{x_train.shape[1]} features + bias > {x_train.shape[0]} training samples: the readout "
+            "would interpolate any labelling"
+        )
+    coef = fit_readout(x_train, y_train, k)
+    hits = [predict(coef, row, k) == int(label) for row, label in zip(x_test, y_test, strict=True)]
+    return sum(hits) / len(hits)
+
+
+def procrustes_realign(source, target):
+    """The orthogonal R minimising ||source @ R - target||, and the relative residual."""
+    from scipy.linalg import orthogonal_procrustes
+
+    source = np.asarray(source, dtype=np.float64)
+    target = np.asarray(target, dtype=np.float64)
+    r, _ = orthogonal_procrustes(source, target)
+    return r, float(np.linalg.norm(source @ r - target) / np.linalg.norm(target))
+
+
+def recovered(rel_residual, tol=RECOVERY_TOL) -> bool:
+    """True iff an orthogonal re-alignment undid the change to numerical precision."""
+    return rel_residual <= tol
+
+
+@dataclass(frozen=True)
+class ReadoutDrift:
+    """One two-session readout reading (was the branch's DriftReading; renamed, P2 merge)."""
+
+    drift_index: float
+    null_fraction: float | None
+    null_fraction_random: float | None
+    frozen_acc_day0: float
+    frozen_acc_day1: float
+    realigned_acc_day1: float
+
+
+def _class_means(x, y, k):
+    return np.stack([x[y == c].mean(axis=0) for c in range(k)])
+
+
+def read_drift(x0, y0, x1, y1, k, null_draws=200, seed=0) -> ReadoutDrift:
+    """Rule et al. (2020) aims on one labelled session pair (rows = trials, columns = the SAME neurons).
+    Even trials train/calibrate, odd trials are judged; re-alignment is fitted on even-trial class means
+    only; the null fraction splits the class-mean change against the frozen readout, beside the
+    matched-rank random control."""
+    from snn_data_lake.instruments.prior_drift_harness import fit_readout
+
+    x0, x1 = np.asarray(x0, dtype=np.float64), np.asarray(x1, dtype=np.float64)
+    y0, y1 = np.asarray(y0), np.asarray(y1)
+    tr0, te0 = np.arange(0, len(y0), 2), np.arange(1, len(y0), 2)
+    tr1, te1 = np.arange(0, len(y1), 2), np.arange(1, len(y1), 2)
+    m0, m1 = _class_means(x0, y0, k), _class_means(x1, y1, k)
+    acc0 = decoder_accuracy(x0[tr0], y0[tr0], x0[te0], y0[te0], k)
+    acc1 = decoder_accuracy(x0[tr0], y0[tr0], x1[te1], y1[te1], k)
+    r, _ = procrustes_realign(_class_means(x1[tr1], y1[tr1], k), _class_means(x0[tr0], y0[tr0], k))
+    acc1r = decoder_accuracy(x0[tr0], y0[tr0], x1[te1] @ r, y1[te1], k)
+    delta = (m1 - m0).T
+    if np.any(delta):
+        w = fit_readout(x0[tr0], y0[tr0], k)[:-1].T  # (k, n): weights, bias row dropped
+        null = readout_null_split(delta, w)
+        rand = float(np.mean(random_readout_null_fractions(delta, w.shape[0], null_draws, seed)))
+    else:
+        null = rand = None
+    return ReadoutDrift(drift_index(m0.T, m1.T), null, rand, acc0, acc1, acc1r)
+
+
+def _rotation(n, dose, seed=0):
+    from scipy.linalg import expm
+
+    a = np.random.default_rng(seed).normal(size=(n, n))
+    return expm(dose * (a - a.T) / np.sqrt(n))
+
+
+def _readout_reds():
+    """The six constructed reds of the merged half; returns the list of failures (empty = all fire)."""
+    rng = np.random.default_rng(0)
+    fails = []
+    a = rng.normal(size=(40, 12))
+    if drift_index(a, a.copy()) != 0.0:
+        fails.append("red1: A/A did not read exactly zero")
+    x = a.T
+    drifts = []
+    for dose in (0.05, 0.2, 0.5, 1.0):
+        r = _rotation(x.shape[1], dose)
+        _, rel = procrustes_realign(x @ r, x)
+        if not recovered(rel):
+            fails.append(f"red2: rotation at dose {dose} not recovered (rel {rel:.2e})")
+        drifts.append(drift_index(x.T, (x @ r).T))
+    if drifts != sorted(drifts) or drifts[0] <= 0.0:
+        fails.append(f"red2: drift does not grow with the dose {drifts}")
+    w = rng.normal(size=(4, 30))
+    _, _, vt = np.linalg.svd(w)
+    if abs(readout_null_split(vt[4:].T @ rng.normal(size=(26, 5)), w) - 1.0) > 1e-12:
+        fails.append("red3: null-confined drift did not read 1")
+    if abs(readout_null_split(vt[:4].T @ rng.normal(size=(4, 5)), w)) > 1e-12:
+        fails.append("red3: row-space drift did not read 0")
+    if abs(preferred_shift(170.0, 10.0) - 20.0) > 1e-12:
+        fails.append("red4: the 0/180 wrap misread")
+    try:
+        decoder_accuracy(rng.normal(size=(10, 10)), np.arange(10) % 2, np.zeros((1, 10)), [0], 2)
+        fails.append("red5: an over-parameterised decoder was not refused")
+    except CapacityRefusal:
+        pass
+    shear = np.eye(x.shape[1])
+    shear[: x.shape[1] // 2] *= 1.5
+    if recovered(procrustes_realign(x @ shear, x)[1]):
+        fails.append("red6: a non-orthogonal drift read as recovered")
+    return fails
 
 
 # =============================================================================================
@@ -260,11 +470,15 @@ def _selfcheck():
     shuf = population_rdi(sh1, sh2, stability_index, [SEED, 3, 1])
     ok, rho, mad = author_agreement_verdict(ceil, self_mad, shuf, theirs)
     expect(f"agreement red, labels shuffled (rho {rho:.3f}, mad {mad:.4f})", ok, False)
+    readout_fails = _readout_reds()
+    expect(f"readout half: six reds fire ({readout_fails or 'all'})", readout_fails, [])
     if failures:
         return 1
     print(
         "representational_drift self-check OK: floor, rowcorr == corrcoef, SE triggers clear, aa / dose / "
-        "mov_vs_mov (200 and 65) / agreement each green and its constructed red fires"
+        "mov_vs_mov (200 and 65) / agreement each green and its constructed red fires; readout half: "
+        "A/A 0, rotation recovered at 4 doses, null 1 / row 0, 0/180 wrap, interpolating decoder "
+        "refused, shear not recovered"
     )
     return 0
 
