@@ -81,9 +81,89 @@ class FieldData(NamedTuple):
     present: dict
 
 
-def read_field(mouse):
-    raise NotImplementedError(
-        "read_field: the deposit layout was not read in round 1; supply it via ophys_ingest.read_response"
+# distinct-from: sensorimotor/ophys_layout.py -- prints variable names/shapes only and never builds response
+#   arrays; this builds the eligible-neuron (neurons, trials, frames) arrays the RDI reads. Both open files only
+#   through ophys_ingest.read_response (the one reader), which this REUSES.
+# distinct-from: reservoir/recurrent_pool.py, faculties/affect_core.py, faculties/theory_of_mind.py,
+#   reasoning/mcr_hdc.py, readout/tempotron.py -- the write hook's second match list (generic-word overlap); per
+#   their docstrings (window checks, spiking WTA, phasor means, tempotron) none reads a .mat deposit.
+ODD_WEEKS = {
+    7: (1, 2, 3, 5, 6, 7),
+    8: (1, 2, 4, 5, 6),
+}  # pre-reg 1.3; every other mouse: week = session + 1
+
+
+def _weeks(mouse, n_sessions):
+    weeks = ODD_WEEKS.get(mouse, tuple(range(1, n_sessions + 1)))
+    if len(weeks) != n_sessions:
+        raise ValueError(f"mouse {mouse}: file has {n_sessions} sessions, listed weeks {weeks}")
+    return weeks
+
+
+def read_field(mouse, split, data_dir=None, pin=None, **kw):
+    """One FieldData per field of `mouse` (Mouse 2 has Window 1/2).
+    PORTED 2026-11-15 (final-project M3) from claude/d-r0-build-1103 tools/d_r0_partA.py rounds 5-8 (fdf4a4c7),
+    which never reached the package module when the tool was moved (the round-1 stub was carried instead)."""
+    from snn_data_lake.sensorimotor.ophys_ingest import DATA_DIR
+
+    data_dir = DATA_DIR if data_dir is None else data_dir
+    pin = json.loads(PIN_PATH.read_text(encoding="utf-8")) if pin is None else pin
+    prefix = f"Main experiments/Mouse {mouse}/"
+    folders = sorted(
+        a["path"].rsplit("/", 1)[0]
+        for a in pin["assets"]
+        if a["path"].startswith(prefix) and a["path"].endswith("/RespData.mat")
+    )
+    if not folders:
+        raise ValueError(f"no RespData.mat pinned for mouse {mouse}")
+    return [_read_one(mouse, f, split, data_dir, pin, **kw) for f in folders]
+
+
+def _check_axes(mouse, pdg, mov, roi):
+    if pdg.ndim != 4 or mov.ndim != 4:
+        raise ValueError(f"mouse {mouse}: PDG {pdg.shape} / MOV {mov.shape} are not 4-D")
+    n_s = mov.shape[3]
+    if pdg.shape[3] != n_s or roi.presence.shape[1] != n_s:
+        raise ValueError(f"mouse {mouse}: session axes disagree (PDG/MOV/presence)")
+    if pdg.shape[0] < 2 or mov.shape[0] < 8:
+        raise ValueError(
+            f"mouse {mouse}: PDG trials {pdg.shape[0]} < 2 or MOV trials {mov.shape[0]} < 8"
+        )
+    n_n = {pdg.shape[2], mov.shape[2], len(roi.quality), roi.presence.shape[0]}
+    if len(n_n) != 1:
+        raise ValueError(f"mouse {mouse}: neurons disagree across arrays: {n_n}")
+    return n_s
+
+
+def _read_one(mouse, folder, split, data_dir, pin, **kw):
+    from snn_data_lake.sensorimotor.ophys_ingest import read_response
+
+    def mat(name):
+        return read_response(Path(data_dir) / folder / name, pin, split, data_dir=data_dir, **kw)
+
+    roi, resp = mat("RoiINFO.mat")["RoiINFO"], mat("RespData.mat")["RespData"]
+    pdg, mov = (
+        resp.PDG.RespMat_Full,
+        resp.NatMov.RespMat_onTime,
+    )  # (trials, frames, neurons, sessions)
+    weeks = _weeks(mouse, _check_axes(mouse, pdg, mov, roi))
+    elig = (
+        (roi.PDG_Responsive_thresh > 0)
+        & (roi.NatMov_Responsive_thresh > 0)
+        & (roi.quality >= 3)
+        & (roi.presence[:, 0] > 0)
+    )
+
+    def take(a, s):
+        return np.transpose(a[:, :, elig, s], (2, 0, 1))
+
+    sessions = list(enumerate(weeks))[1:]
+    return FieldData(
+        take(mov, 0),
+        take(pdg, 0),
+        {w: take(mov, s) for s, w in sessions},
+        {w: take(pdg, s) for s, w in sessions},
+        {w: roi.presence[elig, s] > 0 for s, w in sessions},
     )
 
 
@@ -198,7 +278,7 @@ def field_d(f, seed=0, weeks=WEEKS):
     return float(np.mean(per_week)) if per_week else None
 
 
-def run(split, reader=read_field, seed=0):
+def run(split, reader=read_field, seed=0, data_dir=None):
     if result_file_dirty():
         raise RuntimeError(
             f"{OUT.name} is dirty: commit the result file after each run, then start again"
@@ -208,7 +288,7 @@ def run(split, reader=read_field, seed=0):
         refuse_held_out_unless_frozen()
     d, n_neurons = {}, {}
     for m in mice:
-        fields = reader(m)
+        fields = reader(m, split) if data_dir is None else reader(m, split, data_dir=data_dir)
         vals = [field_d(f, seed) for f in fields]
         d[m] = None if any(v is None for v in vals) else float(np.mean(vals))
         n_neurons[m] = [int(f.mov1.shape[0]) for f in fields]
@@ -311,11 +391,14 @@ def _selfcheck():
         failures += _gate_reds(tmp)
         failures += _read_once_reds(tmp)
     failures += _field_d_reds()
-    try:
-        read_field(1)
-        failures.append("read_field returned without the deposit layout")
-    except NotImplementedError:
-        pass
+    from snn_data_lake.sensorimotor.ophys_ingest import IngestRefused
+
+    try:  # the reader's red: a HELD-OUT mouse requested as DEV is refused before any byte is read
+        read_field(1, "dev")
+        failures.append("read_field(1, 'dev') read a held-out mouse as DEV")
+    except IngestRefused as e:
+        if "(split)" not in str(e):
+            failures.append(f"read_field(1, 'dev') refused for the wrong reason: {e}")
     for f in failures:
         print("FAIL", f)
     if failures:
@@ -323,7 +406,7 @@ def _selfcheck():
     print(
         "d_r0_part_a self-check OK: seven held-out reds refuse (no FROZEN-SHA, HEAD != sha, DEV-AGREEMENT, "
         "DEV-CONTROL, read ONCE, self-check FAIL, dev log), the all-conditions control passes, read-once fails "
-        "closed, E1's sign follows the drifting stimulus, read_field is not guessed"
+        "closed, E1's sign follows the drifting stimulus, read_field refuses a held-out mouse requested as DEV"
     )
     return 0
 
@@ -334,7 +417,9 @@ def main(argv=None):
         return _selfcheck()
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", choices=("dev", "heldout"), required=True)
-    out = run(ap.parse_args(argv).split)
+    ap.add_argument("--data-dir", default=None)
+    a = ap.parse_args(argv)
+    out = run(a.split, data_dir=a.data_dir)
     OUT.write_text(json.dumps(out, indent=1, default=str) + "\n", encoding="utf-8")
     print(json.dumps(out, default=str))
     print(f"{OUT.name} written: commit the result file after each run")
