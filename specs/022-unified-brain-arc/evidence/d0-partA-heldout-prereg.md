@@ -215,3 +215,12 @@ The three frozen blocks are saved as `tools/d0_allen/{rangefile,extract,analyze_
 - EXPLORATORY (not pre-registered, decides nothing): mean d2 is -0.053 in the 30 units with < 100 matched cells and
   +0.025 in the 14 with >= 100, consistent with segment-level RSA being noisy at low cell counts.
 - Per-unit statistics: research/representational-drift/allen_heldout_result.json.
+
+
+## Move note, 2026-11-15 (P4c; history above is unchanged)
+
+The scripts named above moved into the governed package: the Allen pipeline into
+`src/snn_data_lake/instruments/allen_drift.py` (the frozen code kept byte-exact as sha256-checked records in
+`tools/d0_allen/frozen-code/*.py.txt`; the module self-check proves its copies AST-identical to them), and the
+agreement-rule simulation and the E-PC engine study into `src/snn_data_lake/instruments/drift_studies.py`
+(`rule-sim`, `engine-pc`). No result was re-read or re-run for the move.

@@ -93,9 +93,8 @@ class FieldData(NamedTuple):
     )
 
 
-# distinct-from: sensorimotor/ophys_layout.py -- prints variable names/shapes only and never builds response
-#   arrays; this builds the eligible-neuron (neurons, trials, frames) arrays the RDI reads. Both open files only
-#   through ophys_ingest.read_response (the one reader), which this REUSES.
+# Opens files only through ophys_ingest.read_response (the one reader), which this REUSES. (ophys_layout, the
+#   structure dump, was retired 2026-11-15 under its own condition: read_field supplied here.)
 # distinct-from: reservoir/recurrent_pool.py, faculties/affect_core.py, faculties/theory_of_mind.py,
 #   reasoning/mcr_hdc.py, readout/tempotron.py -- the write hook's second match list (generic-word overlap); per
 #   their docstrings (window checks, spiking WTA, phasor means, tempotron) none reads a .mat deposit.
@@ -230,7 +229,7 @@ def _component(x1, x2, th):
 
 def dev_agreement(fields, stim):
     """Pre-reg 2.4 per stimulus over all `fields`: seeds 1 vs 2 give the ceiling, ours = seed 1 vs StabilityData.
-    Three rules are reported (research/representational-drift/agreement_rule_sim.py): 'dr0' =
+    Three rules are reported (instruments/drift_studies.py rule-sim): 'dr0' =
     author_agreement_verdict on RDI (registered), 'doc' = the relative clauses on RDI only, 'components' = the
     relative clauses on CC_ws, CC_bs AND RDI. Neuron-sessions with any non-finite value are dropped and counted."""
     a, th = (np.concatenate(x) for x in zip(*(_neuron_sessions(f, stim, 1) for f in fields)))

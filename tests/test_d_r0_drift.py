@@ -8,7 +8,7 @@ import pytest
 
 from snn_data_lake.instruments import d_r0_part_a as partA
 from snn_data_lake.instruments import representational_drift as rd
-from snn_data_lake.sensorimotor import ophys_ingest, ophys_layout
+from snn_data_lake.sensorimotor import ophys_ingest
 
 
 @pytest.fixture(autouse=True)
@@ -24,10 +24,6 @@ def _a_hashable_calling_tool(monkeypatch):
 
 def test_d_r0_part_a_selfcheck():
     assert partA._selfcheck() == 0
-
-
-def test_d_r0_layout_selfcheck():
-    assert ophys_layout._selfcheck() == 0
 
 
 def test_d_r0_drift_selfcheck():
@@ -98,9 +94,11 @@ def test_d_r0_driver_field_d_is_none_with_no_present_neuron():
     assert partA.field_d(empty) is None
 
 
-def test_d_r0_driver_read_field_is_not_guessed():
-    with pytest.raises(NotImplementedError):
-        partA.read_field(1)
+def test_d_r0_driver_read_field_refuses_held_out_as_dev():
+    """read_field is supplied (ported 2026-11-15); its red: a HELD-OUT mouse requested as DEV
+    is refused by ophys_ingest's split check before any byte is read."""
+    with pytest.raises(ophys_ingest.IngestRefused, match=r"\(split\)"):
+        partA.read_field(1, "dev")
 
 
 def _repo(tmp_path):
@@ -157,6 +155,9 @@ _DEV_LINES = "DEV-AGREEMENT MET 2026-11-08\nDEV-CONTROL MET 2026-11-07\n"
 def _gate(tmp_path, text, **kw):
     ev = tmp_path / "ev.md"
     ev.write_text(text + "FROZEN-SHA 2026-11-10 " + "b" * 40 + "\n", encoding="utf-8")
+    # the real dev log records the one HELD-OUT read (2026-11-15); the read-once red has its own
+    # tests, so the other gate tests stub it unless they pass their own
+    kw.setdefault("held_out_logged", lambda: False)
     return partA.refuse_held_out_unless_frozen(ev, head="b" * 40, **kw)
 
 

@@ -64,3 +64,12 @@ fixed one-shot count chosen for the deadline, not a power-derived P1 design (dis
   LEARN 0.419 vs FROZEN 0.642; after Procrustes realignment LEARN 0.545, FROZEN 0.582.
 - Null-space split: vacuous (0 in both arms and in the random control), as disclosed before the run.
 - Full per-seed numbers: research/representational-drift/engine_pc_drift_result.json.
+
+
+## Move note, 2026-11-15 (P4c; history above is unchanged)
+
+The scripts named above moved into the governed package: the Allen pipeline into
+`src/snn_data_lake/instruments/allen_drift.py` (the frozen code kept byte-exact as sha256-checked records in
+`tools/d0_allen/frozen-code/*.py.txt`; the module self-check proves its copies AST-identical to them), and the
+agreement-rule simulation and the E-PC engine study into `src/snn_data_lake/instruments/drift_studies.py`
+(`rule-sim`, `engine-pc`). No result was re-read or re-run for the move.

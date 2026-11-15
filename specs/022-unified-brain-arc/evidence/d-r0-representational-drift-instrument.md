@@ -410,3 +410,12 @@ rho 0.984 (ceil 0.985), CC_bs 0.976 (0.979), RDI 0.867 (0.863); PDG all >= 0.985
 DEV-AGREEMENT MET 2026-11-15
 
 FROZEN-SHA 2026-11-15 3ccfe9f87e49ee1f70481aa33a546d5fd0d99897
+
+
+## Move note, 2026-11-15 (P4c; history above is unchanged)
+
+The scripts named above moved into the governed package: the Allen pipeline into
+`src/snn_data_lake/instruments/allen_drift.py` (the frozen code kept byte-exact as sha256-checked records in
+`tools/d0_allen/frozen-code/*.py.txt`; the module self-check proves its copies AST-identical to them), and the
+agreement-rule simulation and the E-PC engine study into `src/snn_data_lake/instruments/drift_studies.py`
+(`rule-sim`, `engine-pc`). No result was re-read or re-run for the move.

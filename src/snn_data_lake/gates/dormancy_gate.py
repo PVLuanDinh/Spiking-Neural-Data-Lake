@@ -845,7 +845,7 @@ EXEMPT = {
         "specs/022 D-R0 (pre-registration 2.1, 2.4), DATED 2026-11-03: the Marks & Goard .mat reader; only the "
         "loadmat reading is new (licence, pin and bytes are organoid_ingest's). Appends every read to "
         "tools/d_r0_dev_log.jsonl, refuses a dirty src/ or tools/ tree, never writes the lake (P4b; its "
-        "self-check carries the constructed red). Consumers: run_selfchecks, instruments/d_r0_part_a.py and sensorimotor/ophys_layout.py; never on "
+        "self-check carries the constructed red). Consumers: run_selfchecks and instruments/d_r0_part_a.py (ophys_layout retired 2026-11-15); never on "
         "a tick. RETIRE CONDITION: the verdict INSTRUMENT BLIND -> repair (a NEW pre-registration) or delete; "
         "no D-R* study consuming it registered within 3 pushed arcs after the verdict -> the owner is asked.",
     ),
@@ -857,13 +857,21 @@ EXEMPT = {
         "`python -m` run; never on a tick. RETIRE CONDITION: the verdict INSTRUMENT BLIND -> repair (a NEW "
         "pre-registration) or delete; the D-R0 verdict read -> the owner is asked whether to keep it.",
     ),
-    "ophys_layout": (
+    "allen_drift": (
         "permanent",
-        "specs/022 D-R0 (pre-registration 2.3, 2.4; evidence sections 10, 11), DATED 2026-11-04: the deposit's "
-        "structure dump (names, shapes, dtypes, never a value) through ophys_ingest.read_response, moved from "
-        "tools/d_r0_layout.py (owner 'Move D-R0 tools'; P4c). Consumers: run_selfchecks (planted-value leak red) "
-        "and the launcher's `python -m` run; never on a tick. RETIRE CONDITION: read_field supplied in "
-        "d_r0_part_a -> delete; the D-R0 verdict read -> the owner is asked.",
+        "Final project (owner 2026-11-15), DATED 2026-11-15: D0 Part A on Allen V1 -- the frozen range-read "
+        "extraction and the held-out analysis (prereg d0-partA-heldout-prereg.md), moved from tools/d0_allen (P4c); "
+        "the frozen code is kept as sha256-pinned records in tools/d0_allen/frozen-code and AST-checked by the "
+        "self-check. Consumers: run_selfchecks and the `python -m` run; never on a tick. RETIRE CONDITION: no "
+        "D-R* study consumes it within 3 pushed arcs after the final project -> the owner is asked.",
+    ),
+    "drift_studies": (
+        "permanent",
+        "Final project (owner 2026-11-15), DATED 2026-11-15: the agreement-rule simulation (D-R0 amendment 13) "
+        "and E-PC, drift in the engine's live predictive-coding layer vs a frozen twin "
+        "(ENGINE-PC-DRIFT-PREREG.md), moved from research/ (P4c). Consumers: run_selfchecks and the `python -m` "
+        "run; never on a tick. RETIRE CONDITION: MAP D3 re-registered as an engine row -> merge into it; "
+        "otherwise the owner is asked after the final project.",
     ),
     "h01_ingest": (
         "wire",

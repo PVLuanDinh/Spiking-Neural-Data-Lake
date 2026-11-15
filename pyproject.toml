@@ -365,7 +365,7 @@ line-length = 100
 # reformats nothing and reddens nothing. It TIGHTENS the ruleset; if it ever reddens later that is a
 # real UP finding on new code, not this line misbehaving.
 target-version = "py312"
-extend-exclude = ["research", "integrations", "src/snn_data_lake/training", "training", "scratchpad", "tools/d0_allen/rangefile.py", "tools/d0_allen/extract.py", "tools/d0_allen/analyze_dev.py"]  # the three: D0 Part A frozen code, sha256-pinned, never reformatted
+extend-exclude = ["research", "integrations", "src/snn_data_lake/training", "training", "scratchpad"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
