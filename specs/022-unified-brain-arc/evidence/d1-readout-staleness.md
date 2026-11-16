@@ -818,3 +818,17 @@ D1 is unparked (D-28 lifted by the owner's choice). The driver this file's 2.1 i
 (FCC / GLM 5.3 under the owner's "Use FCC for all processes, you orchestrate only"; reviewed and integrated by the
 orchestrator): `readout_staleness.py` `stage0` runs the four arms plus the in-brain reds R2 (shadow off / LEAK), R7
 (OTHER_STREAM), R8 (ULP) and the PLANTED positive control on seed 0; `pilot` runs seeds 0-7.
+
+### Stage 0 run 1 (2026-11-15): BLIND by construction of three reds, repaired before any pilot seed
+
+Run 1 (`tools/d1_stage0_run1_BLIND.json`) read R2_SHADOW_OFF MET, R7 MET, R2_LEAK / R8_ULP / PLANTED NOT MET, verdict
+BLIND. An orchestrator diagnostic on seed 0 found the cause in the reds, not the instrument: every one of the 20 refit
+rows has gate "open" in all arms (a closed-gate refit never occurs at 800 ticks), so (a) PLANTED, written to fire at
+the first CLOSED-gate refit, never planted; (b) LEAK copied the model beta into a batch beta that already equals it;
+(c) ULP raised on every refit (torch.nextafter given a Python float). The instrument itself reads staleness: OJA
+GAP +0.094 (369 Oja steps), RAND +0.008, FROZEN 0.0 exactly.
+
+**Amendment A0h (positive control, written before any pilot seed).** Section 2.6's positive control plants R1's
+rotation at the FIRST refit row whatever its gate (the text's "first closed-gate refit" assumed a gate that closes,
+which this stream never does). LEAK writes the previous refit's beta into `_batch_beta`; ULP uses a tensor bound.
+Stage 0 is re-run in full; the pilot runs only on a Stage 0 that reads OK.

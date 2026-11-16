@@ -396,41 +396,59 @@ def wire_arm(engine, arm, seed):
     return stats
 
 
-def _leak_beta(eng):
-    """R2 red 'LEAK': after each refit the shadow beta is copied into the engine's batch beta."""
+def _leak_beta(eng, state):
+    """R2 red 'LEAK': stateful leak - after each refit, write the PREVIOUS refit's beta
+    (detached copy kept in state) into the engine's batch beta, then remember the
+    current beta as the new previous."""
     beta = getattr(getattr(eng, "_model", None), "beta", None)
-    if beta is None:
-        return
-    if hasattr(getattr(eng, "_batch_beta", None), "copy_"):
-        eng._batch_beta.copy_(beta)
-    else:
-        eng._batch_beta = beta
+    prev = state.get("prev_beta")
+    if prev is not None and beta is not None and tuple(prev.shape) == tuple(beta.shape):
+        batch = getattr(eng, "_batch_beta", None)
+        if hasattr(batch, "copy_"):
+            batch.copy_(prev)
+        else:
+            eng._batch_beta = prev
+    if beta is not None:
+        if hasattr(beta, "detach"):
+            state["prev_beta"] = beta.detach().clone()
+        else:
+            import numpy as _npa
+
+            state["prev_beta"] = _npa.array(beta, copy=True)
 
 
 def _ulp_once(eng, state):
     """R8 red 'ULP': one-ulp bump of the first bias entry, once, after the first refit that
-    produced a model."""
+    produced a model. Works for torch tensors and numpy arrays; done only on success."""
     if state.get("done") or getattr(eng, "_model", None) is None:
         return
     b = getattr(eng._model, "b", None)
     if b is None:
         return
-    import torch
+    if hasattr(b, "detach"):  # torch tensor
+        import torch
 
-    with torch.no_grad():
-        flat = b.view(-1)
-        flat[0] = torch.nextafter(flat[0].detach().clone(), float("inf"))
-    state["done"] = True
+        with torch.no_grad():
+            flat = b.data.view(-1)
+            x = flat[0].detach().clone()
+            flat[0] = torch.nextafter(x, torch.full_like(x, float("inf")))
+        state["done"] = True
+    else:  # numpy array
+        import numpy as np
+
+        flat = np.asarray(b).reshape(-1)
+        flat[0] = np.nextafter(flat[0], np.inf)
+        state["done"] = True
 
 
 def _plant_once(eng, log, state):
-    """Positive control 'PLANTED': at the first refit whose gate row is 'closed', rotate the
-    retained model's W by rotate_pairs(..., 30) once, so every later scoring sees the rotated
-    substrate and the seed's mean gap_all must exceed FROZEN's."""
+    """Positive control 'PLANTED': at the FIRST refit row that exists, whatever its gate,
+    rotate the retained model's W by rotate_pairs(..., 30) once, so the next refit's
+    pre-refit shadow reading scores the stale reader on rotated W."""
     if state.get("done"):
         return
     rows = log.get("rows") or []
-    if not rows or rows[-1].get("gate") != "closed":
+    if not rows:
         return
     W = getattr(getattr(eng, "_model", None), "W", None)
     if W is None:
@@ -451,7 +469,7 @@ def _wire_red(eng, arm, log):
         ret = orig(*a, **k)
         try:
             if arm == "LEAK":
-                _leak_beta(eng)
+                _leak_beta(eng, state)
             elif arm == "ULP":
                 _ulp_once(eng, state)
             elif arm == "PLANTED":
