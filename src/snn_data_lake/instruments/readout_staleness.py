@@ -788,7 +788,7 @@ def _a1_design(n0, sd1, claimed, look_every, n_sims, seed):
     n = ((n0 + look_every - 1) // look_every) * look_every
     while True:
         if n > 1000:
-            raise RuntimeError("cap %d > 1000: back to the owner" % n)
+            raise RuntimeError(f"cap {n} > 1000: back to the owner")
         looks = tuple(range(look_every, n + 1, look_every))
         bounds = seq_boundaries(looks, 0.05)
         rng = np.random.default_rng([seed, n])
@@ -844,8 +844,8 @@ def a1_cli(out_path):
     for key in sorted(design):
         val = design[key]
         if key == "seed_block":
-            val = "%d seeds: %d..%d" % (len(val), val[0], val[-1])
-        print("a1 %-15s %s" % (key, val))
+            val = f"{len(val)} seeds: {val[0]}..{val[-1]}"
+        print(f"a1 {key:<15} {val}")
     if os.path.exists(out_path):
         print(f"{out_path} exists; refusing to overwrite")
         return 1
