@@ -832,3 +832,10 @@ GAP +0.094 (369 Oja steps), RAND +0.008, FROZEN 0.0 exactly.
 rotation at the FIRST refit row whatever its gate (the text's "first closed-gate refit" assumed a gate that closes,
 which this stream never does). LEAK writes the previous refit's beta into `_batch_beta`; ULP uses a tensor bound.
 Stage 0 is re-run in full; the pilot runs only on a Stage 0 that reads OK.
+
+### Stage 0 run 2 (2026-11-15, after A0h): OK
+
+`tools/d1_stage0.json`: R2_SHADOW_OFF, R2_LEAK, R7_OTHER_STREAM, R8_ULP and the PLANTED positive control all MET
+(planted mean gap_all +0.0150 vs FROZEN 0.0; the plant lands in one refit of 20, so the mean is small but the
+direction is the required one). Seed 0, real arms (window GAP): FROZEN 0.0, FROZEN_B 0.0 (A/A identical), OJA
++0.0944, RAND +0.0083; identical to run 1 (deterministic). Faults 0. The pilot (seeds 0-7) may run.
