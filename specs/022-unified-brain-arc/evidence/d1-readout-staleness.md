@@ -858,3 +858,17 @@ the planted-null FPR <= .05 + 2 x its Monte-Carlo SE (sqrt(.05 x .95 / 100000) =
 the cap >= .80. Disclosed: this criterion was chosen after the 10k reading was seen; it only allows for simulation
 noise around the exact analytical .05 of a single-look paired t, and it is fixed here before the 100k number exists.
 If it fails, D1 stops at the pilot. Output: tools/d1_A1b.json.
+
+### Confirmatory result, 2026-11-15 (seeds 22000-22007, one look at n = 8 per A1/A1b; tools/d1_confirm.json)
+
+- Checks: 0 A/A failures, 0 exclusions.
+- **P1: NOT MET at a powered stop.** d1 per seed -.019 +.117 -.056 -.008 .000 -.006 .000 +.072 (mean +.0125, SD .055);
+  paired one-sided t 0.643 < bound 1.8946 (`look_reading`, exact sign-flip FPR .0625); mde at n = 8 = 0.054 <= 0.10.
+- **P2: NOT READ** (fixed sequence: P2 only after P1).
+- Licensed (section 2.7, verbatim): "at this scale, a stale readout does not carry L1b's Oja cost by 0.10 or more".
+  L1b's M-1 cause statement is contradicted at this scale (2-38 units, 800 ticks, mu = 0.05 ungated, this stream).
+- Descriptive, deciding nothing: ACC_OJA - ACC_FROZEN mean -0.384 (the Oja cost replicates, larger than L1b's -0.196);
+  with the reader re-solved the cost remains (d2 = ACC_SH diff + 0.10, t -4.28), so it lives in the moved rows
+  themselves, not in a stale reader. S1 GAP_RAND - GAP_FROZEN mean -0.0035. The pilot's d1 (mean .047) did not
+  replicate; the pilot was never pooled.
+- Refused, as section 2.7 says in every branch: "Oja helps the brain"; reading P2 descriptively as a verdict.

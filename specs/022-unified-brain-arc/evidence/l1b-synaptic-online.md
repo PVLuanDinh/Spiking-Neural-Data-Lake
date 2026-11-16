@@ -369,3 +369,11 @@ All three lenses: the disposition STANDS (deletion on the null). Findings and di
 | M-4 | "the engine feeds nothing back" false by code; same rows by measurement | folded: §2.3 |
 | M-7 | the archived module is a draft; the git hash is the artifact | folded: §5 note |
 | M-8..M-12 NOTE | same rows, A/A, every statistic reproduced (the harm also clears the mirrored p 0.039), Stage 0, the instrument's ordering, the brain-free reds | none |
+
+### Cross-reference, 2026-11-15 (D1, d1-readout-staleness.md "Confirmatory result")
+
+D1 ran the control this record owed (a re-solve-beta-on-every-refit shadow, the gate verdict logged per refit row).
+P1 NOT MET at a powered stop (n 8, t 0.643, mde 0.054): at 2-38 units, 800 ticks, mu = 0.05 ungated, a stale readout
+does not carry this record's Oja cost by 0.10 or more, so the M-1 cause statement is contradicted at this scale. The
+Oja cost itself replicated descriptively (ACC_OJA - ACC_FROZEN -0.384) and survives a re-solved reader. The rule
+stays deleted; nothing is re-landed.
