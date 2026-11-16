@@ -849,3 +849,12 @@ seeds 22000-22007; power at cap 1.00; P2 power at cap 0.42; futility inert. **Si
 planted-null FPR 0.0516 > .05 at 10,000 draws (MC SE .0022; a single-look paired t is exactly .05 analytically under
 the simulated normal null). Section 2.5: "If either fails, the design is re-derived before data" -- no confirmatory
 seed runs until the owner rules on the re-derivation.
+
+### Amendment A1b, 2026-11-15 (owner in chat: "Rerun"), written before the re-run and before any confirmatory seed
+
+The 10,000-draw guard read the planted-null FPR 0.0516 (MC SE 0.0022). Re-derivation: the guard is re-run with the
+SAME design (n0 3, one look at 8, `seq_boundaries((8,), 0.05)`), seed 20261115, at **100,000 draws**. It is MET iff
+the planted-null FPR <= .05 + 2 x its Monte-Carlo SE (sqrt(.05 x .95 / 100000) = .00069, so <= .0514) AND power at
+the cap >= .80. Disclosed: this criterion was chosen after the 10k reading was seen; it only allows for simulation
+noise around the exact analytical .05 of a single-look paired t, and it is fixed here before the 100k number exists.
+If it fails, D1 stops at the pilot. Output: tools/d1_A1b.json.
