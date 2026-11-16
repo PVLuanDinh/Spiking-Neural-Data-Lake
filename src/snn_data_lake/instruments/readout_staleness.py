@@ -741,10 +741,125 @@ def stage0(out_json):
     return doc
 
 
+def _a1_pilot(pilot_json):
+    """Pilot d1 values plus the P2 shifted SH gap (ACC_SH_OJA - ACC_SH_FROZEN) + 0.10 per seed."""
+    with open(pilot_json) as fh:
+        rows = json.load(fh)["results"]
+
+    def sh(row, tag):
+        return float(row["arms"][tag]["summary"]["ACC_SH"])  # exact arm key (FROZEN != FROZEN_B)
+
+    d1 = np.array([float(r["d1"]) for r in rows])
+    d2 = np.array([sh(r, "OJA") - sh(r, "FROZEN") + 0.10 for r in rows])
+    return d1, d2
+
+
+def _a1_n0(sd1, claimed):
+    """Smallest n >= 2 with (t_.95,n-1 + t_.80,n-1) * SD_1 / claimed <= sqrt(n)."""
+    from snn_data_lake.instruments.pool_selection import t_quantile
+
+    n = 2
+    while True:
+        need = (t_quantile(0.95, n - 1) + t_quantile(0.80, n - 1)) * sd1 / claimed
+        if need <= n**0.5:
+            return n
+        n += 1
+        if n > 1000:
+            raise RuntimeError("n0 > 1000: back to the owner")
+
+
+def _a1_cross(z, sd, delta, bounds):
+    """Per-sim boolean: the paired one-sided t crosses an upper boundary at any look."""
+    x = sd * z + delta
+    hit = np.zeros(z.shape[0], dtype=bool)
+    for b in bounds:
+        head = x[:, : b["n"]]
+        s = head.std(axis=1, ddof=1)
+        s = np.where(s > 0.0, s, 1e-12)
+        t = head.mean(axis=1) * (b["n"] ** 0.5) / s
+        hit |= t >= b["t"]
+    return hit
+
+
+def _a1_design(n0, sd1, claimed, look_every, n_sims, seed):
+    """Smallest sequential cap (a multiple of look_every, >= n0 rounded up) with power >= 0.80."""
+    from snn_data_lake.instruments.rpe_charge import seq_boundaries
+
+    n = ((n0 + look_every - 1) // look_every) * look_every
+    while True:
+        if n > 1000:
+            raise RuntimeError("cap %d > 1000: back to the owner" % n)
+        looks = tuple(range(look_every, n + 1, look_every))
+        bounds = seq_boundaries(looks, 0.05)
+        rng = np.random.default_rng([seed, n])
+        z = rng.standard_normal((n_sims, n))
+        if float(_a1_cross(z, sd1, claimed, bounds).mean()) >= 0.80:
+            return n, looks, bounds
+        n += look_every
+
+
+def design_a1(pilot_json, claimed=0.10, look_every=8, n_sims=10000, seed=20261115):
+    """Amendment A1: pilot SDs, fixed-n n0, sequential inflation, guards, futility, seed block."""
+    from snn_data_lake.instruments.rpe_charge import futility_open
+
+    d1, d2 = _a1_pilot(pilot_json)
+    sd1 = float(np.std(d1, ddof=1))
+    sd2 = float(np.std(d2, ddof=1))
+    n0 = _a1_n0(sd1, claimed)
+    cap, looks, bounds = _a1_design(n0, sd1, claimed, look_every, n_sims, seed)
+    if cap > 1000:
+        raise RuntimeError("cap > 1000: back to the owner")
+    z = np.random.default_rng(seed).standard_normal((n_sims, cap))
+    fpr = float(_a1_cross(z, sd1, 0.0, bounds).mean())
+    power = float(_a1_cross(z, sd1, claimed, bounds).mean())
+    p2_power = float(_a1_cross(z, sd2, 0.10, bounds).mean())
+    fut = [
+        n for n in looks[:-1] if futility_open(n, claimed, looks=looks, sd_pre=sd1, bounds=bounds)
+    ]
+    return {
+        "claimed": claimed,
+        "look_every": look_every,
+        "n_sims": n_sims,
+        "seed": seed,
+        "sd1": sd1,
+        "mean1": float(np.mean(d1)),
+        "sd2": sd2,
+        "mean2": float(np.mean(d2)),
+        "n0": n0,
+        "looks": list(looks),
+        "cap": cap,
+        "inflation": cap / n0,
+        "fpr_null": fpr,
+        "power_at_cap": power,
+        "guard_ok": bool(fpr <= 0.05 and power >= 0.80),
+        "p2_power_at_cap": p2_power,
+        "futility": fut if fut else "futility inert",
+        "seed_block": list(range(22000, 22000 + cap)),
+    }
+
+
+def a1_cli(out_path):
+    """Compute design_a1 on tools/d1_pilot.json, print every number, write out_path once."""
+    design = design_a1(os.path.join("tools", "d1_pilot.json"))
+    for key in sorted(design):
+        val = design[key]
+        if key == "seed_block":
+            val = "%d seeds: %d..%d" % (len(val), val[0], val[-1])
+        print("a1 %-15s %s" % (key, val))
+    if os.path.exists(out_path):
+        print(f"{out_path} exists; refusing to overwrite")
+        return 1
+    with open(out_path, "w") as fh:
+        json.dump(design, fh, indent=2, sort_keys=True)
+        fh.write("\n")
+    return 0
+
+
 def stage_cli(argv=None):
     """stage0 -> reds on seed 0 to tools/d1_stage0.json; pilot -> the four real arms on seeds
-    0-7 to tools/d1_pilot.json. Returns None on a bare/unknown call: the integrator's single
-    module guard calls this before main()."""
+    0-7 to tools/d1_pilot.json; a1 -> amendment A1 design from the pilot to tools/d1_A1.json.
+    Returns None on a bare/unknown call: the integrator's single module guard calls this
+    before main()."""
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] == "stage0":
         stage0(os.path.join("tools", "d1_stage0.json"))
@@ -752,6 +867,8 @@ def stage_cli(argv=None):
     if argv and argv[0] == "pilot":
         stage(list(range(8)), os.path.join("tools", "d1_pilot.json"))
         return 0
+    if argv and argv[0] == "a1":
+        return a1_cli(os.path.join("tools", "d1_A1.json"))
     return None
 
 

@@ -839,3 +839,13 @@ Stage 0 is re-run in full; the pilot runs only on a Stage 0 that reads OK.
 (planted mean gap_all +0.0150 vs FROZEN 0.0; the plant lands in one refit of 20, so the mean is small but the
 direction is the required one). Seed 0, real arms (window GAP): FROZEN 0.0, FROZEN_B 0.0 (A/A identical), OJA
 +0.0944, RAND +0.0083; identical to run 1 (deterministic). Faults 0. The pilot (seeds 0-7) may run.
+
+### Pilot (seeds 0-7, 2026-11-15) and A1 as computed (tools/d1_pilot.json, tools/d1_A1.json)
+
+Pilot: 0 A/A failures, 0 exclusions. d1 per seed .094 .000 .061 .028 .014 .114 .019 .047 (mean .047, SD_1 .0403);
+d2 mean -0.211, SD_2 .178. Never pooled into a test.
+A1 (`design_a1`, FCC-built, orchestrator-verified; n0 checked by hand): n0 = 3; looks every 8 -> one look; cap 8;
+seeds 22000-22007; power at cap 1.00; P2 power at cap 0.42; futility inert. **Simulation guard NOT MET as written:**
+planted-null FPR 0.0516 > .05 at 10,000 draws (MC SE .0022; a single-look paired t is exactly .05 analytically under
+the simulated normal null). Section 2.5: "If either fails, the design is re-derived before data" -- no confirmatory
+seed runs until the owner rules on the re-derivation.
